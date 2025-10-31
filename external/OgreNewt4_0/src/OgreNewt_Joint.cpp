@@ -1,42 +1,100 @@
-#include "OgreNewt_Stdafx.h"
+﻿#include "OgreNewt_Stdafx.h"
 #include "OgreNewt_Body.h"
+#include "OgreNewt_BodyNotify.h"
 #include "OgreNewt_World.h"
 #include "OgreNewt_Joint.h"
 #include <float.h>
 
 using namespace OgreNewt;
 
-// ----------------- Joint ctor/dtor -----------------
+namespace
+{
+    // Find the ndWorld* that owns our joint by walking via BodyNotify → OgreNewt::Body → World
+    ndWorld* getNdWorldFromJoint(ndJointBilateralConstraint* jnt)
+    {
+        if (!jnt) return nullptr;
+
+        auto tryBody = [](ndBodyKinematic* nbody) -> ndWorld*
+            {
+                if (!nbody) return nullptr;
+                if (auto* notify = nbody->GetNotifyCallback())
+                {
+                    // BodyNotify is your wrapper's notify class
+                    if (auto* ogreNotify = dynamic_cast<OgreNewt::BodyNotify*>(notify))
+                    {
+                        if (auto* ogreBody = ogreNotify->GetOgreNewtBody())
+                        {
+                            if (auto* ogreWorld = ogreBody->getWorld())
+                                return ogreWorld->getNewtonWorld();
+                        }
+                    }
+                }
+                return nullptr;
+            };
+
+        if (auto* w = tryBody(jnt->GetBody0())) return w;
+        if (auto* w = tryBody(jnt->GetBody1())) return w;
+        return nullptr;
+    }
+}
+
 Joint::Joint()
-    : m_joint(nullptr)
+    : m_jointPtr(),
+    m_joint(nullptr),
+    m_stiffness(1.0f)
 {
 }
 
 Joint::~Joint()
 {
-    if (m_joint)
+    if (!m_jointPtr)
+        return;
+
+    if (ndWorld* ndWorldPtr = getNdWorldFromJoint(m_joint))
     {
-        // if you allocated the ND joint, delete it or hand it back to world as your ownership scheme requires
-        // Note: do not attempt to call ND API that isn't present in your build
-        m_joint = nullptr;
+        // Use the overload your ND4 build provides; this variant works with raw*
+        ndWorldPtr->RemoveJoint(m_joint);
     }
+
+    // Clear our reference (no reset/release API; assign default)
+    m_jointPtr = ndSharedPtr<ndJointBilateralConstraint>();
+    m_joint = nullptr;
 }
 
-// set the ND joint pointer
+void Joint::destroyJoint(OgreNewt::World* /*world*/)
+{
+    if (!m_jointPtr)
+        return;
+
+    if (ndWorld* ndWorldPtr = getNdWorldFromJoint(m_joint))
+    {
+        // Use the overload your ND4 build provides; this variant works with raw*
+        ndWorldPtr->RemoveJoint(m_joint);
+    }
+
+    // Clear our reference (no reset/release API; assign default)
+    m_jointPtr = ndSharedPtr<ndJointBilateralConstraint>();
+    m_joint = nullptr;
+}
+
 void Joint::SetSupportJoint(ndJointBilateralConstraint* supportJoint)
 {
-    m_joint = supportJoint;
-    if (m_joint)
-    {
-        // if needed, set user data/destructor via ND API; left as TODO if your ND4 exposes it
-        // m_joint->SetUserData(this);
-        // m_joint->SetUserDestructorCallback(destructorCallback);
-    }
-}
+    // Wrap raw -> shared
+    m_jointPtr = ndSharedPtr<ndJointBilateralConstraint>(supportJoint);
+    m_joint = m_jointPtr.operator->();
+    if (!m_joint)
+        return;
 
-ndJointBilateralConstraint* Joint::GetSupportJoint() const
-{
-    return m_joint;
+    // Resolve ndWorld* via BodyNotify → OgreNewt::Body → World
+    if (ndWorld* ndWorldPtr = getNdWorldFromJoint(m_joint))
+    {
+        // ND4 expects a shared-ptr here
+        ndWorldPtr->AddJoint(m_jointPtr);
+    }
+
+    // Optional: set user data / destructor callback if you use it
+    // m_joint->SetUserData(this);
+    // m_joint->SetUserDestructorCallback(&Joint::destructorCallback);
 }
 
 // ----------------- Pending row API (public wrapper methods) -----------------
@@ -111,20 +169,11 @@ void Joint::applyPendingRows(ndConstraintDescritor& desc)
         {
         case PendingRow::LINEAR:
         {
-            // call the ND4 helper you referenced:
-            // void AddLinearRowJacobian(ndConstraintDescritor& desc, const ndVector& pivot0, const ndVector& pivot1, const ndVector& dir)
-            // Use m_joint (ndJointBilateralConstraint) to add the row
             m_joint->AddLinearRowJacobian(desc, row.p0, row.p1, row.dir);
-
-            // if the ND API or ndConstraintDescritor allows setting row stiffness/accel after adding the row,
-            // do it here. If not, you may need to store parameters elsewhere or pass them via ND helper.
-            // Example (pseudocode - replace with your ND4 API):
-            // if (row.stiffness >= 0.0f) desc.SetRowStiffness(row.stiffness);
-            // if (row.accel != FLT_MAX) desc.SetRowAcceleration(row.accel);
-            // if (row.springK != 0.0f || row.springD != 0.0f) desc.SetRowSpringDamper(row.stiffness, row.springK, row.springD);
+            m_joint->SetLowerFriction(desc, row.springK);
+            m_joint->SetHighFriction(desc, row.springD);
             break;
         }
-
         case PendingRow::ANGULAR:
         {
             // call ND4 helper to add angular row:
@@ -140,7 +189,7 @@ void Joint::applyPendingRows(ndConstraintDescritor& desc)
             // But we try a direct jacobian adder here if exists:
             // If ND4 does not have an AddGeneralRowJacobian, fall back to adding rows separately:
 
-            // fallback: add linear row with direction = linear0? It's complicated � better to add explicit helper if ND4 provides it.
+            // fallback: add linear row with direction = linear0? It's complicated — better to add explicit helper if ND4 provides it.
             // As a safe fallback we add three linear rows using linear0..linear1 vectors as jacobian.
             // NOTE: this fallback is simplistic. Adjust per your needs.
             m_joint->AddLinearRowJacobian(desc, row.linear0, row.linear1, row.linear0); // placeholder usage
@@ -150,6 +199,8 @@ void Joint::applyPendingRows(ndConstraintDescritor& desc)
         }
         }
     }
+
+    m_joint->SetDiagonalRegularizer(desc, static_cast<ndFloat32>(m_stiffness));
 
     // done with pending rows for this Jacobian pass
     m_pendingRows.clear();
@@ -162,6 +213,113 @@ void Joint::destructorCallback(const ndJointBilateralConstraint* /*me*/)
     // Left intentionally blank for now.
 }
 
+void Joint::setCollisionState(int state) const
+{
+	m_joint->SetCollidable(state != 0);
+}
+
+int Joint::getCollisionState() const
+{
+	return m_joint->IsCollidable() ? 1 : 0;
+}
+
+Ogre::Real Joint::getStiffness() const
+{
+    return m_stiffness;
+}
+
+void Joint::setStiffness(Ogre::Real stiffness) const
+{
+    m_stiffness = stiffness;
+}
+
+void Joint::setBodyMassScale(Ogre::Real, Ogre::Real)
+{
+    // no-op in ND4; left for API compatibility
+}
+
+void Joint::setJointForceCalculation(bool)
+{
+    // ND4 always computes forces; keep for backward compatibility
+}
+
+OgreNewt::Body* Joint::getBody0() const
+{
+    if (!m_joint)
+        return nullptr;
+
+    if (auto* notify = m_joint->GetBody0()->GetNotifyCallback())
+    {
+        if (auto* bodyNotify = dynamic_cast<OgreNewt::BodyNotify*>(notify))
+        {
+            return bodyNotify->GetOgreNewtBody();
+        }
+    }
+    return nullptr;
+}
+
+OgreNewt::Body* Joint::getBody1() const
+{
+    if (!m_joint)
+        return nullptr;
+
+    if (auto* notify = m_joint->GetBody1()->GetNotifyCallback())
+    {
+        if (auto* bodyNotify = dynamic_cast<OgreNewt::BodyNotify*>(notify))
+        {
+            return bodyNotify->GetOgreNewtBody();
+        }
+    }
+    return nullptr;
+}
+
+void Joint::setRowMinimumFriction(Ogre::Real friction) const
+{
+    if (!m_pendingRows.empty())
+        m_pendingRows.back().springK = static_cast<ndFloat32>(friction); // reuse param for lower friction
+}
+
+void Joint::setRowMaximumFriction(Ogre::Real friction) const
+{
+    if (!m_pendingRows.empty())
+        m_pendingRows.back().springD = static_cast<ndFloat32>(friction); // reuse param for upper friction
+}
+
+Ogre::Vector3 Joint::getForce0() const
+{
+    if (!m_joint)
+        return Ogre::Vector3::ZERO;
+
+    const ndVector f = m_joint->GetForceBody0();
+    return Ogre::Vector3(f.m_x, f.m_y, f.m_z);
+}
+
+Ogre::Vector3 Joint::getTorque0() const
+{
+    if (!m_joint)
+        return Ogre::Vector3::ZERO;
+
+    const ndVector t = m_joint->GetTorqueBody0();
+    return Ogre::Vector3(t.m_x, t.m_y, t.m_z);
+}
+
+Ogre::Vector3 Joint::getForce1() const
+{
+    if (!m_joint)
+        return Ogre::Vector3::ZERO;
+
+    const ndVector f = m_joint->GetForceBody1();
+    return Ogre::Vector3(f.m_x, f.m_y, f.m_z);
+}
+
+Ogre::Vector3 Joint::getTorque1() const
+{
+    if (!m_joint)
+        return Ogre::Vector3::ZERO;
+
+    const ndVector t = m_joint->GetTorqueBody1();
+    return Ogre::Vector3(t.m_x, t.m_y, t.m_z);
+}
 
 // ----------------- CustomJoint: construct ND joint and pass owner pointer -----------------
 CustomJoint::CustomJoint(unsigned int maxDOF, const Body* child, const Body* parent)
@@ -171,14 +329,17 @@ CustomJoint::CustomJoint(unsigned int maxDOF, const Body* child, const Body* par
 {
     ndBodyKinematic* b0 = nullptr;
     ndBodyKinematic* b1 = nullptr;
-    if (child) b0 = const_cast<ndBodyKinematic*>(child->getNewtonBody());
-    if (parent) b1 = const_cast<ndBodyKinematic*>(parent->getNewtonBody());
+
+    if (child)
+        b0 = const_cast<ndBodyKinematic*>(child->getNewtonBody());
+    if (parent)
+        b1 = const_cast<ndBodyKinematic*>(parent->getNewtonBody());
 
     // build an identity frame
-    ndMatrix frame(ndGetIdentityMatrix());
+    const ndMatrix frame(ndGetIdentityMatrix());
 
     // create our custom ND joint that calls back into this wrapper
-    OgreNewtUserJoint* ujoint = new OgreNewtUserJoint(frame, b0, b1, this);
+    OgreNewtUserJoint* ujoint = new OgreNewtUserJoint(m_maxDOF, frame, b0, b1, this);
     SetSupportJoint(ujoint);
 
     // You must add this joint to the ND world if your world expects to own it,

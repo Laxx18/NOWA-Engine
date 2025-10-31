@@ -2,8 +2,8 @@
 #define PHYSICS_RAG_DOLL_COMPONENT_H
 
 #include "PhysicsActiveComponent.h"
-#include <tinyxml.h>
 #include "JointComponents.h"
+#include "utilities/rapidxml.hpp"
 
 namespace NOWA
 {
@@ -377,7 +377,7 @@ namespace NOWA
 		bool createRagDoll(const Ogre::String& boneName);
 
 		// recursive function for creating bones.
-		bool createRagDollFromXML(TiXmlElement* rootXmlElement, const Ogre::String& boneName);
+		bool createRagDollFromXML(rapidxml::xml_node<>* rootXmlElement, const Ogre::String& boneName);
 
 		// add a joint between 2 bones.
 		void joinBones(PhysicsRagDollComponent::JointType type, RagBone* childRagBone, RagBone* parentRagBone, const Ogre::Vector3& pin,

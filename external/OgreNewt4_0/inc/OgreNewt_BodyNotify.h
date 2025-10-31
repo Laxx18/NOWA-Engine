@@ -19,15 +19,19 @@ namespace OgreNewt
 		BodyNotify(Body* ogreNewtBody);
 		virtual ~BodyNotify();
 
+		void SetMaterialId(int id) { m_materialId = id; }
+		int  GetMaterialId() const { return m_materialId; }
+
 		// Get the OgreNewt::Body pointer
 		Body* GetOgreNewtBody() const { return m_ogreNewtBody; }
 
 		// Newton 4.0 notification callbacks
-		virtual void OnTransform(ndInt32 threadIndex, const ndMatrix& matrix) override;
+		virtual void OnTransform(ndFloat32 timestep, const ndMatrix& matrix) override;
 		virtual void OnApplyExternalForce(ndInt32 threadIndex, ndFloat32 timestep) override;
 
 	private:
 		Body* m_ogreNewtBody;
+		int m_materialId { 0 };
 	};
 }
 

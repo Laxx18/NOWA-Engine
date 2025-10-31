@@ -25,9 +25,8 @@ by melven
 
 namespace OgreNewt
 {
-    // ----------------------------------------------------------------
-    // Same callback interface you already use in your engine
-    // ----------------------------------------------------------------
+    class PlayerControllerBody;
+
     class _OgreNewtExport PlayerCallback
     {
     public:
@@ -55,10 +54,8 @@ namespace OgreNewt
         }
     };
 
-    // ----------------------------------------------------------------
-    // Internal ND4 capsule with ApplyInputs + friction callback
-    // ----------------------------------------------------------------
-    class OgreNewtPlayerCapsule : public ndBodyPlayerCapsule
+
+    class OgreNewtPlayerController : public ndBodyPlayerCapsule
     {
     public:
         class Owner
@@ -72,15 +69,12 @@ namespace OgreNewt
             virtual Ogre::Real      forwardCmd() const = 0;
             virtual Ogre::Real      strafeCmd() const = 0;
             virtual Ogre::Radian    headingCmd() const = 0;
+            virtual bool            isActive() const = 0;
             virtual PlayerCallback* getCallback() const = 0;
         };
 
-        OgreNewtPlayerCapsule(Owner* owner,
-            const ndMatrix& localAxis,
-            ndFloat32 mass,
-            ndFloat32 radius,
-            ndFloat32 height,
-            ndFloat32 stepHeight)
+        OgreNewtPlayerController(Owner* owner, const ndMatrix& localAxis, ndFloat32 mass,
+            ndFloat32 radius, ndFloat32 height, ndFloat32 stepHeight)
             : ndBodyPlayerCapsule(localAxis, mass, radius, height, stepHeight)
             , m_owner(owner)
         {
@@ -91,7 +85,15 @@ namespace OgreNewt
         {
             if (!m_owner) return;
 
-            // gravity as impulse
+            // Respect activation state from the body
+            if (!m_owner->isActive())
+            {
+                SetForwardSpeed(0.0f);
+                SetLateralSpeed(0.0f);
+                return;
+            }
+
+            // Gravity (direction may be changed via setGravityDirection)
             const Ogre::Vector3 g = m_owner->getGravity();
             const ndVector gravity(g.x, g.y, g.z, ndFloat32(0.0f));
             m_impulse += gravity.Scale(m_mass * timestep);
@@ -127,10 +129,7 @@ namespace OgreNewt
         }
 
         // Friction hook (like your old onContactFriction). Called per contact.
-        ndFloat32 ContactFrictionCallback(const ndVector& position,
-            const ndVector& normal,
-            ndInt32 contactId,
-            const ndBodyKinematic* const otherBody) const override
+        ndFloat32 ContactFrictionCallback(const ndVector& position, const ndVector& normal, ndInt32 contactId, const ndBodyKinematic* const otherBody) const override
         {
             PlayerCallback* cb = (m_owner ? m_owner->getCallback() : nullptr);
             if (!cb) return ndFloat32(2.0f);

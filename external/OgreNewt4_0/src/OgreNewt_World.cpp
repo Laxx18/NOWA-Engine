@@ -1,3 +1,4 @@
+#include "OgreNewt_Stdafx.h"
 #include "OgreNewt_World.h"
 #include "OgreNewt_MaterialID.h"
 #include "OgreNewt_Body.h"
@@ -9,7 +10,7 @@ namespace OgreNewt
 	std::map<Ogre::String, World*> World::worlds = std::map<Ogre::String, World*>();
 
 	World::World(Ogre::Real desiredFps, int maxUpdatesPerFrames, Ogre::String name)
-		: solverModel(1),
+		: solverModel(6),
 		desiredFps(desiredFps),
 		name(name),
 		m_threadCount(1),
@@ -92,6 +93,7 @@ namespace OgreNewt
 
 	void World::setUpdateFPS(Ogre::Real desiredFps, int maxUpdatesPerFrames)
 	{
+		m_world->SetSubSteps(maxUpdatesPerFrames);
 		if (maxUpdatesPerFrames < 1)
 		{
 			maxUpdatesPerFrames = 1;
@@ -134,6 +136,42 @@ namespace OgreNewt
 	void World::cleanUp(void)
 	{
 		m_world->Sync();
+		// Causes crash
+		// m_world->CleanUp();
+		invalidateCache();
+		m_timeAcumulator = 0.0f;
+	}
+
+	void World::recover(void)
+	{
+		if (!m_world)
+		{
+			return;
+		}
+
+		// No CleanUp / ClearCache here — just wake & invalidate per-body.
+		const ndBodyListView& bodyList = m_world->GetBodyList();
+		const ndArray<ndBodyKinematic*>& view = bodyList.GetView();
+
+		for (ndInt32 i = ndInt32(view.GetCount()) - 1; i >= 0; --i)
+		{
+			ndBodyKinematic* const b = view[i];
+			if (!b) continue;
+
+			// dynamic only
+			if (b->GetInvMass() > ndFloat32(0.0f))
+			{
+
+
+				// mark the body/scene as dirty (invalidates contact cache & aabb)
+				//    This is the ND4 way to say "something changed, don’t keep me asleep".
+				b->SetMatrixUpdateScene(b->GetMatrix());
+
+				// actually wake it
+				b->SetAutoSleep(true);      // keep normal autosleep behavior
+				b->SetSleepState(false);    // force out of equilibrium for the next step
+			}
+		}
 	}
 
 	int World::update(Ogre::Real t_step)
@@ -141,51 +179,42 @@ namespace OgreNewt
 		int realUpdates = 0;
 
 		if (t_step > (m_timestep * m_maxTicksPerFrames))
-		{
 			t_step = m_timestep * m_maxTicksPerFrames;
-		}
 
 		m_timeAcumulator += t_step;
 
 		while (m_timeAcumulator >= m_timestep)
 		{
 			m_world->Update(m_timestep);
-
 			m_timeAcumulator -= m_timestep;
 			realUpdates++;
 		}
 
-		Ogre::Real param = m_timeAcumulator * m_invTimestep;
-
-		for (Body* body = getFirstBody(); body; body = body->getNext())
-		{
-			body->updateNode(param);
-		}
-
+		const Ogre::Real interp = m_timeAcumulator * m_invTimestep;
+		postUpdate(interp);
 		return realUpdates;
 	}
 
-	Body* World::getFirstBody() const
+	void World::postUpdate(Ogre::Real interp)
 	{
-		const auto& bodyList = m_world->GetBodyList();
-		if (bodyList.GetCount() > 0)
+		const ndBodyListView& bodyList = m_world->GetBodyList();
+		const ndArray<ndBodyKinematic*>& view = bodyList.GetView();
+
+		for (ndInt32 i = ndInt32(view.GetCount()) - 1; i >= 0; --i)
 		{
-			ndBodyList::ndNode* node = bodyList.GetFirst();
-			if (node)
+			ndBodyKinematic* const ndBody = view[i];
+			if (!ndBody->GetSleepState())
 			{
-				auto ndBody = node->GetInfo();
-				if (ndBody)
+				if (auto* notify = ndBody->GetNotifyCallback())
 				{
-					ndBodyNotify* notify = ndBody->GetNotifyCallback();
-					if (notify)
+					if (auto* ogreNotify = dynamic_cast<BodyNotify*>(notify))
 					{
-						BodyNotify* ogreNotify = static_cast<BodyNotify*>(notify);
-						return ogreNotify->GetOgreNewtBody();
+						if (auto* ogreBody = ogreNotify->GetOgreNewtBody())
+							ogreBody->updateNode(interp);
 					}
 				}
 			}
 		}
-		return nullptr;
 	}
 
 	void World::registerMaterialPair(MaterialPair* pair)
@@ -220,22 +249,44 @@ namespace OgreNewt
 
 	void World::invalidateCache()
 	{
-		m_world->Sync();
+		m_world->ClearCache();
 	}
 
+	// OgreNewt_World.cpp
 	void World::destroyAllBodies()
 	{
-		const ndBodyListView& bodyList = m_world->GetBodyList();
-		if (bodyList.GetCount() > 0)
+		ndWorld* const w = m_world;
+		if (!w)
+			return;
+
+		// Ensure nobody is stepping
+		w->Sync();
+
+		// Remove all joints first (safer if you have constraints between bodies)
 		{
-			auto ndBody = bodyList.GetFirst()->GetInfo();
-			if (ndBody)
+			const ndJointList& jlist = w->GetJointList();
+			for (ndJointList::ndNode* node = jlist.GetFirst(); node; )
 			{
-				ndBody->GetAsBody();
-				m_world->RemoveBody(*ndBody);
+				ndJointList::ndNode* next = node->GetNext();
+				auto j = node->GetInfo();
+				w->RemoveJoint(j.operator->());
+				node = next;
+			}
+		}
+
+		// Remove all bodies
+		{
+			const ndBodyListView& blist = w->GetBodyList();
+			const ndArray<ndBodyKinematic*>& view = blist.GetView();
+			// removing by pointer is safe; removing backwards avoids reindex costs
+			for (ndInt32 i = ndInt32(view.GetCount()) - 1; i >= 0; --i)
+			{
+				ndBodyKinematic* const b = view[i];
+				w->RemoveBody(b->GetAsBody());
 			}
 		}
 	}
+
 
 	void World::setSolverModel(int model)
 	{

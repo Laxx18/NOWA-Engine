@@ -78,14 +78,23 @@ namespace NOWA
 		class EXPORTED IForceObserver
 		{
 		public:
-			IForceObserver(IPicker* picker)
-				: picker(picker)
+			IForceObserver()
 			{
 
 			}
 
 			virtual ~IForceObserver()
 			{
+			}
+
+			void setPicker(IPicker* picker)
+			{
+				this->picker.store(picker, std::memory_order_release);
+			}
+
+			IPicker* getPicker() const
+			{
+				return this->picker.load(std::memory_order_acquire);
 			}
 
 			void setName(const Ogre::String& name)
@@ -98,6 +107,11 @@ namespace NOWA
 				return this->name;
 			}
 
+			void deactivate()
+			{
+				this->picker.store(nullptr, std::memory_order_release);
+			}
+
 			/**
 			* @brief		Called in the force and torque callback of the physics active component
 			* @param[in]	body		The body to add the force
@@ -106,7 +120,7 @@ namespace NOWA
 			*/
 			virtual void onForceAdd(OgreNewt::Body* body, Ogre::Real timeStep, int threadIndex) = 0;
 		protected:
-			IPicker* picker;
+			std::atomic<IPicker*> picker{ nullptr };
 		private:
 			Ogre::String name;
 		};
@@ -568,8 +582,9 @@ namespace NOWA
 		std::vector<unsigned long> springs;
 		bool hasSpring;
 
-		std::unordered_map<Ogre::String, IForceObserver*> forceObservers;
 		std::unordered_map<Ogre::String, std::pair<Ogre::SceneNode*, Ogre::ManualObject*>> drawLineMap;
+		std::unordered_map<Ogre::String, std::shared_ptr<IForceObserver>> forceObservers;
+		mutable std::shared_mutex forceObserversMutex;
 
 		double lastTime;
 		Ogre::Real dt;

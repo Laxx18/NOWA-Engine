@@ -126,7 +126,7 @@ namespace NOWA
 		bool castShadows = true;
 		bool visible = true;
 
-		ENQUEUE_RENDER_COMMAND_MULTI("GameObject::GameObject setStatic", _2(&castShadows, &visible),
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObject::GameObject setStatic", _2(&castShadows, &visible),
 		{
 			// game object uses the unique name of the scene node
 			if (nullptr != this->sceneNode)
@@ -283,7 +283,7 @@ namespace NOWA
 
 	bool GameObject::init(Ogre::MovableObject* newMovableObject)
 	{
-		ENQUEUE_RENDER_COMMAND_MULTI("GameObject::init", _1(newMovableObject),
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObject::init", _1(newMovableObject),
 		{
 			if (nullptr != newMovableObject)
 			{

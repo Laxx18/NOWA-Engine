@@ -14,6 +14,10 @@
 namespace
 {
 	const unsigned char findKnotSubSteps = 10;
+
+	ndFloat32 toRad(Ogre::Degree d) { return static_cast<ndFloat32>(Ogre::Radian(d).valueRadians()); }
+	Ogre::Real toDeg(ndFloat32 r) { return Ogre::Radian(r).valueDegrees(); }
+	ndFloat32 clampf(ndFloat32 v, ndFloat32 a, ndFloat32 b) { return (v < a) ? a : (v > b) ? b : v; }
 }
 
 namespace OgreNewt
@@ -141,7 +145,7 @@ namespace OgreNewt
 		if (!m_child) return Ogre::Vector3::ZERO;
 
 		ndVector f0 = m_child->getNewtonBody()->GetForce();
-		ndVector f1 = m_parent ? m_parent->getNewtonBody()->GetForce() : ndVector::m_zero;
+		ndVector f1 = m_parent ? m_parent->getNewtonBody()->GetForce() : ndVector(0.0f, 0.0f, 0.0f, 0.0f);
 		ndVector result = f0 - f1;
 		return Ogre::Vector3(result.m_x, result.m_y, result.m_z);
 	}
@@ -157,7 +161,7 @@ namespace OgreNewt
 		// Compute relative angular velocity
 		if (!m_child) return Ogre::Vector3::ZERO;
 		ndVector w0 = m_child->getNewtonBody()->GetOmega();
-		ndVector w1 = m_parent ? m_parent->getNewtonBody()->GetOmega() : ndVector::m_zero;
+		ndVector w1 = m_parent ? m_parent->getNewtonBody()->GetOmega() : ndVector(0.0f, 0.0f, 0.0f, 0.0f);
 		ndVector diff = w0 - w1;
 		return Ogre::Vector3(diff.m_x, diff.m_y, diff.m_z);
 	}
@@ -286,7 +290,7 @@ namespace OgreNewt
 			const Ogre::Vector3 pinWorld = q0 * m_childPinLocal;
 
 			const ndVector w0 = m_body0->getNewtonBody()->GetOmega();
-			const ndVector w1 = (m_body1 ? m_body1->getNewtonBody()->GetOmega() : ndVector::m_zero);
+			const ndVector w1 = (m_body1 ? m_body1->getNewtonBody()->GetOmega() : ndVector(0.0f, 0.0f, 0.0f, 0.0f));
 			const Ogre::Vector3 wRel(w0.m_x - w1.m_x, w0.m_y - w1.m_y, w0.m_z - w1.m_z);
 
 			const Ogre::Real omega = wRel.dotProduct(pinWorld);
@@ -1067,10 +1071,6 @@ namespace OgreNewt
 
 	///////////////////////////////////////////////////////////////////////////////////////////////
 
-	static inline ndFloat32 toRad(Ogre::Degree d) { return static_cast<ndFloat32>(Ogre::Radian(d).valueRadians()); }
-	static inline Ogre::Real toDeg(ndFloat32 r) { return Ogre::Radian(r).valueDegrees(); }
-	static inline ndFloat32 clampf(ndFloat32 v, ndFloat32 a, ndFloat32 b) { return (v < a) ? a : (v > b) ? b : v; }
-
 	HingeActuator::HingeActuator(const Body* child, const Body* parent,
 		const Ogre::Vector3& pos, const Ogre::Vector3& pin,
 		const Ogre::Degree& angularRate,
@@ -1245,8 +1245,6 @@ namespace OgreNewt
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////////////////
-
-	static inline ndFloat32 clampf(ndFloat32 v, ndFloat32 a, ndFloat32 b) { return (v < a) ? a : (v > b) ? b : v; }
 
 	SliderActuator::SliderActuator(const Body* child, const Body* parent,
 		const Ogre::Vector3& pos, const Ogre::Vector3& pin,
@@ -1436,6 +1434,94 @@ namespace OgreNewt
 
 	///////////////////////////////////////////////////////////////////////////////////////////////
 
+	using ndFloat = ndFloat32;
+
+	class ndFlexyPipeHandle : public ndJointBilateralConstraint
+	{
+	public:
+		ndFlexyPipeHandle(ndBodyKinematic* const body0,
+			const ndVector& pin,
+			const ndVector& anchorPosition)
+			: ndJointBilateralConstraint(6, body0, nullptr, ndGetIdentityMatrix())
+			, m_linearFriction(3000.0f)
+			, m_angularFriction(200.0f)
+		{
+			Ogre::Quaternion q = OgreNewt::Converters::grammSchmidt(
+				Ogre::Vector3(pin.m_x, pin.m_y, pin.m_z));
+			ndMatrix globalFrame;
+			OgreNewt::Converters::QuatPosToMatrix(
+				q, Ogre::Vector3(anchorPosition.m_x, anchorPosition.m_y, anchorPosition.m_z), globalFrame);
+
+			CalculateLocalMatrix(globalFrame, m_localMatrix0, m_localMatrix1);
+			SetSolverModel(ndJointBilateralSolverModel::m_jointkinematicAttachment);
+		}
+
+		void JacobianDerivative(ndConstraintDescritor& desc) override
+		{
+			const ndMatrix m0 = CalculateGlobalMatrix0();
+
+			for (int i = 0; i < 3; ++i)
+			{
+				AddLinearRowJacobian(desc, m0.m_posit, m0.m_posit, m0[i]);
+				SetJointErrorPosit(desc, 0.0f);
+				SetLowerFriction(desc, -m_linearFriction);
+				SetHighFriction(desc, m_linearFriction);
+			}
+
+			for (int i = 0; i < 3; ++i)
+			{
+				AddAngularRowJacobian(desc, m0[i], 0.0f);
+				SetJointErrorPosit(desc, 0.0f);
+				SetLowerFriction(desc, -m_angularFriction);
+				SetHighFriction(desc, m_angularFriction);
+			}
+		}
+
+		void SetVelocity(const ndVector& desiredVel, ndFloat dt)
+		{
+			const ndVector massProps = m_body0->GetMassMatrix(); // (Ixx, Iyy, Izz, mass)
+			const ndFloat mass = massProps.m_w;
+			const ndVector curVel = m_body0->GetVelocity();
+			const ndVector err = desiredVel - curVel;
+
+			if (err.DotProduct(err).GetScalar() > ndFloat(1.0e-6f))
+			{
+				const ndVector dir = err.Normalize();
+				const ndVector impulse = err.Scale(mass) + dir.Scale(m_linearFriction * dt);
+				m_body0->ApplyImpulsePair(impulse, ndVector::m_wOne * 0.0f, dt);
+			}
+		}
+
+		void SetOmega(const ndVector& desiredOmega, ndFloat dt)
+		{
+			const ndVector massProps = m_body0->GetMassMatrix(); // (Ixx, Iyy, Izz, mass)
+			const ndFloat Ixx = massProps.m_x, Iyy = massProps.m_y, Izz = massProps.m_z;
+			const ndVector curOmega = m_body0->GetOmega();
+			const ndVector err = desiredOmega - curOmega;
+
+			if (err.DotProduct(err).GetScalar() <= ndFloat(1.0e-6f))
+				return;
+
+			const ndMatrix R = m_body0->GetMatrix();
+			const ndVector& r0 = R.m_front;
+			const ndVector& r1 = R.m_up;
+			const ndVector& r2 = R.m_right;
+
+			const ndFloat e0 = err.DotProduct(r0).GetScalar();
+			const ndFloat e1 = err.DotProduct(r1).GetScalar();
+			const ndFloat e2 = err.DotProduct(r2).GetScalar();
+
+			ndVector angImpulse = r0.Scale(Ixx * e0) + r1.Scale(Iyy * e1) + r2.Scale(Izz * e2);
+			const ndVector dir = err.Normalize();
+			angImpulse += dir.Scale(m_angularFriction * dt);
+
+			m_body0->ApplyImpulsePair(ndVector::m_wOne * 0.0f, angImpulse, dt);
+		}
+
+		ndFloat m_linearFriction;
+		ndFloat m_angularFriction;
+	};
+
 	class ndFlexyPipeSpinner : public ndJointBilateralConstraint
 	{
 	public:
@@ -1449,47 +1535,48 @@ namespace OgreNewt
 		{
 			ndMatrix m0, m1;
 			CalculateGlobalMatrix(m0, m1);
-
 			ApplyTwistAction(desc, m0, m1);
 			ApplyElasticConeAction(desc, m0, m1);
 		}
 
 		void ApplyTwistAction(ndConstraintDescritor& desc, const ndMatrix& m0, const ndMatrix& m1)
 		{
-			ndVector pin0 = m0.m_front;
-			ndVector pin1 = m1.m_front.Scale(-1.0f);
-			ndFloat32 relOmega = m_body0->GetOmega().DotProduct(pin0).GetScalar() + m_body1->GetOmega().DotProduct(pin1).GetScalar();
-			ndFloat32 relAccel = -relOmega / desc.m_timestep;
+			const ndVector pin0 = m0.m_front;
+			const ndVector pin1 = m1.m_front.Scale(-1.0f);
+			const ndFloat relOmega =
+				m_body0->GetOmega().DotProduct(pin0).GetScalar() +
+				m_body1->GetOmega().DotProduct(pin1).GetScalar();
+			const ndFloat relAccel = -relOmega / desc.m_timestep;
+
 			AddAngularRowJacobian(desc, pin0, 0.0f);
 			SetMotorAcceleration(desc, relAccel);
 		}
 
 		void ApplyElasticConeAction(ndConstraintDescritor& desc, const ndMatrix& m0, const ndMatrix& m1)
 		{
-			const ndFloat32 relaxation = 0.01f;
-			const ndFloat32 spring = 1000.0f;
-			const ndFloat32 damper = 50.0f;
-			const ndFloat32 maxConeAngle = ndDegreeToRad * 45.0f;
+			const ndFloat relaxation = 0.01f;
+			const ndFloat spring = 1000.0f;
+			const ndFloat damper = 50.0f;
+			const ndFloat maxConeAngle = ndDegreeToRad * 45.0f;
 
-			ndFloat32 cosAng = m1.m_front.DotProduct(m0.m_front).GetScalar();
+			ndFloat cosAng = m1.m_front.DotProduct(m0.m_front).GetScalar();
 			if (cosAng >= 0.998f)
 			{
-				ndFloat32 a0 = CalculateAngle(m0.m_front, m1.m_front, m1.m_up);
+				const ndFloat a0 = CalculateAngle(m0.m_front, m1.m_front, m1.m_up);
 				AddAngularRowJacobian(desc, m1.m_up, a0);
 				SetMassSpringDamperAcceleration(desc, relaxation, spring, damper);
 
-				ndFloat32 a1 = CalculateAngle(m0.m_front, m1.m_front, m1.m_right);
+				const ndFloat a1 = CalculateAngle(m0.m_front, m1.m_front, m1.m_right);
 				AddAngularRowJacobian(desc, m1.m_right, a1);
 				SetMassSpringDamperAcceleration(desc, relaxation, spring, damper);
 			}
 			else
 			{
 				ndVector lateralDir = m1.m_front.CrossProduct(m0.m_front);
-				ndFloat32 len2 = lateralDir.DotProduct(lateralDir).GetScalar();
-				if (len2 > 1.0e-6f)
+				if (lateralDir.DotProduct(lateralDir).GetScalar() > 1.0e-6f)
 				{
 					lateralDir = lateralDir.Normalize();
-					ndFloat32 coneAngle = acos(ndClamp(cosAng, -1.0f, 1.0f));
+					const ndFloat coneAngle = ndAcos(ndClamp(cosAng, -1.0f, 1.0f));
 					if (coneAngle > maxConeAngle)
 					{
 						AddAngularRowJacobian(desc, lateralDir, maxConeAngle - coneAngle);
@@ -1505,24 +1592,46 @@ namespace OgreNewt
 		}
 	};
 
-	// OgreNewt wrapper
-	class _OgreNewtExport FlexyPipeSpinnerJoint : public OgreNewt::Joint
+	FlexyPipeHandleJoint::FlexyPipeHandleJoint(OgreNewt::Body* currentBody, const Ogre::Vector3& pin)
 	{
-	public:
-		FlexyPipeSpinnerJoint(OgreNewt::Body* currentBody, OgreNewt::Body* predecessorBody,
-			const Ogre::Vector3& anchorPosition, const Ogre::Vector3& pin)
-		{
-			ndBodyKinematic* b0 = const_cast<ndBodyKinematic*>(currentBody->getNewtonBody());
-			ndBodyKinematic* b1 = predecessorBody ? const_cast<ndBodyKinematic*>(predecessorBody->getNewtonBody()) : nullptr;
+		ndBodyKinematic* b0 = const_cast<ndBodyKinematic*>(currentBody->getNewtonBody());
 
-			Ogre::Quaternion q = OgreNewt::Converters::grammSchmidt(pin);
-			ndMatrix frame;
-			OgreNewt::Converters::QuatPosToMatrix(q, anchorPosition, frame);
+		Ogre::Vector3 pos;
+		Ogre::Quaternion q;
+		currentBody->getPositionOrientation(pos, q);
 
-			auto* joint = new ndFlexyPipeSpinner(frame, b0, b1);
-			SetSupportJoint(joint);
-		}
-	};
+		const ndVector ndPin(pin.x, pin.y, pin.z, 0.0f);
+		const ndVector ndPos(pos.x, pos.y, pos.z, 1.0f);
+
+		auto* joint = new ndFlexyPipeHandle(b0, ndPin, ndPos);
+		SetSupportJoint(joint);
+	}
+
+	void FlexyPipeHandleJoint::setVelocity(const Ogre::Vector3& velocity, Ogre::Real dt)
+	{
+		if (auto* j = static_cast<ndFlexyPipeHandle*>(GetSupportJoint()))
+			j->SetVelocity(ndVector(velocity.x, velocity.y, velocity.z, 0.0f), static_cast<ndFloat32>(dt));
+	}
+
+	void FlexyPipeHandleJoint::setOmega(const Ogre::Vector3& omega, Ogre::Real dt)
+	{
+		if (auto* j = static_cast<ndFlexyPipeHandle*>(GetSupportJoint()))
+			j->SetOmega(ndVector(omega.x, omega.y, omega.z, 0.0f), static_cast<ndFloat32>(dt));
+	}
+
+	// Spinner wrapper
+	FlexyPipeSpinnerJoint::FlexyPipeSpinnerJoint(OgreNewt::Body* currentBody, OgreNewt::Body* predecessorBody, const Ogre::Vector3& anchorPosition, const Ogre::Vector3& pin)
+	{
+		ndBodyKinematic* b0 = const_cast<ndBodyKinematic*>(currentBody->getNewtonBody());
+		ndBodyKinematic* b1 = predecessorBody ? const_cast<ndBodyKinematic*>(predecessorBody->getNewtonBody()) : nullptr;
+
+		Ogre::Quaternion q = OgreNewt::Converters::grammSchmidt(pin);
+		ndMatrix frame;
+		OgreNewt::Converters::QuatPosToMatrix(q, anchorPosition, frame);
+
+		auto* joint = new ndFlexyPipeSpinner(frame, b0, b1);
+		SetSupportJoint(joint);
+	}
 
 	///////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -1909,13 +2018,13 @@ namespace OgreNewt
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	KinematicController::KinematicController(const OgreNewt::Body* child, const Ogre::Vector3& pos)
+	KinematicController::KinematicController(const OgreNewt::World* world, const OgreNewt::Body* child, const Ogre::Vector3& pos)
 	{
 		const ndVector attachment(pos.x, pos.y, pos.z, 1.0f);
 		ndBodyKinematic* const body = const_cast<ndBodyKinematic*>(child->getNewtonBody());
-		ndBodyKinematic* const worldBody = nullptr;
+		ndBodyKinematic* const sentinelBody = world->getNewtonWorld()->GetSentinelBody();
 
-		auto* joint = new ndJointKinematicController(worldBody, body, attachment);
+		auto* joint = new ndJointKinematicController(body, sentinelBody, attachment);
 		SetSupportJoint(joint);
 
 		joint->SetControlMode(ndJointKinematicController::m_full6dof);
@@ -2074,7 +2183,7 @@ namespace OgreNewt
 
 	//////////////////////////////////CustomDryRollingFriction///////////////////////////////////////////////////
 
-	DryRollingFriction::DryRollingFriction(const Body* child,
+	CustomDryRollingFriction::CustomDryRollingFriction(const Body* child,
 		const Body* parent,
 		Ogre::Real friction)
 	{
@@ -2086,31 +2195,31 @@ namespace OgreNewt
 		SetSupportJoint(j);
 	}
 
-	DryRollingFriction::~DryRollingFriction()
+	CustomDryRollingFriction::~CustomDryRollingFriction()
 	{
 		// handled by Joint base
 	}
 
-	void DryRollingFriction::setFrictionCoefficient(Ogre::Real coeff)
+	void CustomDryRollingFriction::setFrictionCoefficient(Ogre::Real coeff)
 	{
 		if (auto* j = getJoint())
 			j->SetFrictionCoefficient(static_cast<ndFloat32>(coeff));
 	}
 
-	Ogre::Real DryRollingFriction::getFrictionCoefficient() const
+	Ogre::Real CustomDryRollingFriction::getFrictionCoefficient() const
 	{
 		if (auto* j = getJoint())
 			return j->GetFrictionCoefficient();
 		return 0.0f;
 	}
 
-	void DryRollingFriction::setContactTrail(Ogre::Real trail)
+	void CustomDryRollingFriction::setContactTrail(Ogre::Real trail)
 	{
 		if (auto* j = getJoint())
 			j->SetContactTrail(static_cast<ndFloat32>(trail));
 	}
 
-	Ogre::Real DryRollingFriction::getContactTrail() const
+	Ogre::Real CustomDryRollingFriction::getContactTrail() const
 	{
 		if (auto* j = getJoint())
 			return j->GetContactTrail();
@@ -2334,12 +2443,12 @@ namespace OgreNewt
 			{
 				ndMatrix pinFrame0(ndGramSchmidtMatrix(rotAxis));
 				CalculateLocalMatrix(pinFrame0, m_localMatrix0, dummy);
-				m_localMatrix0.m_posit = ndVector::m_wOne;
+				m_localMatrix0.m_posit = ndVector(0.0f, 0.0f, 0.0f, 1.0f);
 			}
 			{
 				ndMatrix pinFrame1(ndGramSchmidtMatrix(linAxis));
 				CalculateLocalMatrix(pinFrame1, dummy, m_localMatrix1);
-				m_localMatrix1.m_posit = ndVector::m_wOne;
+				m_localMatrix1.m_posit = ndVector(0.0f, 0.0f, 0.0f, 1.0f);
 			}
 
 			// Same solver mode as ndJointGear (stable)
@@ -2357,10 +2466,10 @@ namespace OgreNewt
 			ndJacobian& J0 = desc.m_jacobian[desc.m_rowsCount - 1].m_jacobianM0;
 			ndJacobian& J1 = desc.m_jacobian[desc.m_rowsCount - 1].m_jacobianM1;
 
-			J0.m_linear = ndVector::m_zero;
-			J0.m_angular = ndVector::m_zero;
-			J1.m_linear = ndVector::m_zero;
-			J1.m_angular = ndVector::m_zero;
+			J0.m_linear = ndVector(0.0f, 0.0f, 0.0f, 0.0f);
+			J0.m_angular = ndVector(0.0f, 0.0f, 0.0f, 0.0f);
+			J1.m_linear = ndVector(0.0f, 0.0f, 0.0f, 0.0f);
+			J1.m_angular = ndVector(0.0f, 0.0f, 0.0f, 0.0f);
 
 			// Body0 rotation contributes ω0·axisRot * gearRatio
 			J0.m_angular = m0.m_front.Scale(m_gearRatio);
@@ -2418,12 +2527,12 @@ namespace OgreNewt
 			{
 				ndMatrix pinFrame0(ndGramSchmidtMatrix(rotPin));
 				CalculateLocalMatrix(pinFrame0, m_localMatrix0, dummy);
-				m_localMatrix0.m_posit = ndVector::m_wOne;
+				m_localMatrix0.m_posit = ndVector(0.0f, 0.0f, 0.0f, 1.0f);
 			}
 			{
 				ndMatrix pinFrame1(ndGramSchmidtMatrix(linPin));
 				CalculateLocalMatrix(pinFrame1, dummy, m_localMatrix1);
-				m_localMatrix1.m_posit = ndVector::m_wOne;
+				m_localMatrix1.m_posit = ndVector(0.0f, 0.0f, 0.0f, 1.0f);
 			}
 
 			// Use kinematic open loop (matches ndJointGear default)
@@ -2444,10 +2553,10 @@ namespace OgreNewt
 			ndJacobian& J1 = desc.m_jacobian[desc.m_rowsCount - 1].m_jacobianM1;
 
 			// zero everything first
-			J0.m_linear = ndVector::m_zero;
-			J0.m_angular = ndVector::m_zero;
-			J1.m_linear = ndVector::m_zero;
-			J1.m_angular = ndVector::m_zero;
+			J0.m_linear = ndVector(0.0f, 0.0f, 0.0f, 0.0f);
+			J0.m_angular = ndVector(0.0f, 0.0f, 0.0f, 0.0f);
+			J1.m_linear = ndVector(0.0f, 0.0f, 0.0f, 0.0f);
+			J1.m_angular = ndVector(0.0f, 0.0f, 0.0f, 0.0f);
 
 			// angular part on body0 around its pin (scaled by gearRatio)
 			//   contributes ω0 · (gearRatio * axis0)
@@ -3186,6 +3295,79 @@ namespace OgreNewt
 	RayCastTire* VehicleTire::getRayCastTire()
 	{
 		return (RayCastTire*)GetSupportJoint();
+	}
+
+	VehicleMotor::VehicleMotor(Vehicle* vehicle, Ogre::Real mass, Ogre::Real radius)
+		: Joint()
+		, m_vehicle(vehicle)
+		, m_mass(mass)
+		, m_radius(radius)
+	{
+		// Pre-conditions
+		if (!m_vehicle || !m_vehicle->getVehicleModel())
+		{
+			// Leave null; caller should guard if this failed.
+			SetSupportJoint(nullptr);
+			return;
+		}
+
+		// Create internal ND4 motor by using the vehicle model API (preferred in ND4)
+		ndMultiBodyVehicle* const model = m_vehicle->getVehicleModel();
+		ndMultiBodyVehicleMotor* const motor =
+			model->AddMotor(static_cast<ndFloat32>(m_mass), static_cast<ndFloat32>(m_radius));
+
+		// Track it via base Joint (so lifetime & debug fit your wrapper style)
+		SetSupportJoint(motor);
+
+		// Optionally store on the vehicle for quick access
+		m_vehicle->setMotor(motor);
+	}
+
+	VehicleMotor::~VehicleMotor()
+	{
+		// Nothing: the vehicle model owns the motor; the base Joint will not delete it.
+		// Model deletion (Vehicle dtor) will clean up the motor.
+	}
+
+	void VehicleMotor::setMaxRpm(Ogre::Real redLineRpm)
+	{
+		if (auto* j = getJoint())
+		{
+			j->SetMaxRpm(static_cast<ndFloat32>(redLineRpm));
+		}
+	}
+
+	void VehicleMotor::setOmegaAccel(Ogre::Real rpmStep)
+	{
+		if (auto* j = getJoint())
+		{
+			j->SetOmegaAccel(static_cast<ndFloat32>(rpmStep));
+		}
+	}
+
+	void VehicleMotor::setFrictionLoss(Ogre::Real newtonMeters)
+	{
+		if (auto* j = getJoint())
+		{
+			j->SetFrictionLoss(static_cast<ndFloat32>(newtonMeters));
+		}
+	}
+
+	void VehicleMotor::setTorqueAndRpm(Ogre::Real rpm, Ogre::Real torque)
+	{
+		if (auto* j = getJoint())
+		{
+			j->SetTorqueAndRpm(static_cast<ndFloat32>(rpm), static_cast<ndFloat32>(torque));
+		}
+	}
+
+	Ogre::Real VehicleMotor::getRpm() const
+	{
+		if (auto* j = getJoint())
+		{
+			return j->GetRpm();
+		}
+		return 0.0f;
 	}
 
 }   // end NAMESPACE OgreNewt

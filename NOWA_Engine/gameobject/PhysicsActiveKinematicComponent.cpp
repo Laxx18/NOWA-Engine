@@ -3,7 +3,6 @@
 #include "PhysicsComponent.h"
 #include "utilities/XMLConverter.h"
 #include "utilities/MathHelper.h"
-#include "tinyxml.h"
 #include "main/AppStateManager.h"
 
 namespace NOWA

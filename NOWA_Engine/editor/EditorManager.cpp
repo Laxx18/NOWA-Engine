@@ -453,7 +453,7 @@ namespace NOWA
 
 		virtual void redo(void) override
 		{
-			ENQUEUE_RENDER_COMMAND("AddGameObjectUndoCommand::redo",
+			NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
 			{
 				// Create custom scenenode to store temporary data
 				this->objectNode = this->sceneManager->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_STATIC);
@@ -465,9 +465,12 @@ namespace NOWA
 					this->scale = Ogre::Vector3::UNIT_SCALE;
 				}
 
-				NOWA::GraphicsModule::getInstance()->updateNodeTransform(this->objectNode, this->position, this->orientation, this->scale);
-
-				// this->sceneManager->findMovableObjects
+				ENQUEUE_RENDER_COMMAND_WAIT("AddGameObjectUndoCommand::redo setTransform",
+				{
+					this->objectNode->setPosition(this->position);
+					this->objectNode->setScale(this->scale);
+					this->objectNode->setOrientation(this->orientation);
+				});
 
 				// Only create id once, so that when undo, redo, the id is the same
 				if (0 == this->id)
@@ -642,10 +645,9 @@ namespace NOWA
 						NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, DatablockTerraComponent::getStaticClassName());
 						gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
 					}
-					// Register after the component has been created
-					AppStateManager::getSingletonPtr()->getGameObjectController()->registerGameObject(gameObjectPtr);
 				}
-			});
+			};
+			NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "AddGameObjectUndoCommand::redo");
 
 			boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
 			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGeometryModified);
@@ -1570,7 +1572,9 @@ namespace NOWA
 		Ogre::Real x = 0.0f;
 		Ogre::Real y = 0.0f;
 		MathHelper::getInstance()->mouseToViewPort(evt.state.X.abs, evt.state.Y.abs, x, y, Core::getSingletonPtr()->getOgreRenderWindow());
-		Ogre::Ray hitRay = this->camera->getCameraToViewportRay(x, y);
+
+		Ogre::Ray hitRay;
+		ENQUEUE_GET_CAMERA_TO_VIEWPORT_RAY(this->camera, x, y, hitRay);
 
 		if (id == this->mouseButtonId && EDITOR_PLACE_MODE == this->manipulationMode)
 		{
@@ -2365,7 +2369,7 @@ namespace NOWA
 
 	void EditorManager::applyPlaceMovableTransform(void)
 	{
-		//ENQUEUE_RENDER_COMMAND("EditorManager::applyPlaceMovableTransform", 
+		//ENQUEUE_RENDER_COMMAND_WAIT("EditorManager::applyPlaceMovableTransform", 
 		//{
 		//	// Set position with center and y = 0 with offset to center when place node is orientated
 		//	this->tempPlaceMovableNode->_setDerivedPosition(this->placeNode->_getDerivedPositionUpdated() + (this->placeNode->getOrientation()
@@ -2374,7 +2378,7 @@ namespace NOWA
 		//});
 
 		NOWA::GraphicsModule::getInstance()->updateNodeTransform(this->tempPlaceMovableNode, this->placeNode->_getDerivedPositionUpdated() + (this->placeNode->getOrientation()
-			* MathHelper::getInstance()->getBottomCenterOfMesh(this->tempPlaceMovableNode, this->tempPlaceMovableObject)), this->placeNode->_getDerivedOrientationUpdated());
+		  	* MathHelper::getInstance()->getBottomCenterOfMesh(this->tempPlaceMovableNode, this->tempPlaceMovableObject)), this->placeNode->_getDerivedOrientationUpdated());
 	}
 
 	void EditorManager::applyGroupTransform(void)
@@ -3687,7 +3691,7 @@ namespace NOWA
 				}
 				else
 				{
-					physicsComponent->translate(offset);
+					physicsComponent->setPosition(this->gizmo->getPosition() + offset);
 				}
 				if (Ogre::Vector3::ZERO != normal)
 				{
@@ -3706,7 +3710,7 @@ namespace NOWA
 				
 				if (true == success)
 				{
-					ENQUEUE_RENDER_COMMAND_MULTI("EditorManager::moveObjects1", _2(selectedGameObject, height), {
+					ENQUEUE_RENDER_COMMAND_MULTI_WAIT("EditorManager::moveObjects1", _2(selectedGameObject, height), {
 						selectedGameObject.second.gameObject->getSceneNode()->setPosition(selectedGameObject.second.gameObject->getSceneNode()->getPosition().x, height,
 							selectedGameObject.second.gameObject->getSceneNode()->getPosition().z);
 					})
@@ -3748,7 +3752,7 @@ namespace NOWA
 				if (Ogre::Vector3::ZERO != normal)
 				{
 					// TODO: How to use interpolation?
-					ENQUEUE_RENDER_COMMAND_MULTI("EditorManager::moveObjects2", _2(selectedGameObject, normal),
+					ENQUEUE_RENDER_COMMAND_MULTI_WAIT("EditorManager::moveObjects2", _2(selectedGameObject, normal),
 					{
 						selectedGameObject.second.gameObject->getSceneNode()->setDirection(normal, Ogre::Node::TS_PARENT, Ogre::Vector3::NEGATIVE_UNIT_Y);
 					});
@@ -4220,8 +4224,8 @@ namespace NOWA
 		{
 			NOWA::AppStateManager::LogicCommand logicCommand = [this]()
 			{
-				// Internally calls invalidate cache, so that all newton data is set to default for deterministic simulations, when started again
-				AppStateManager::getSingletonPtr()->getOgreNewtModule()->getOgreNewt()->cleanUp();
+				// Internally sets all bodies sleep state to false and recovers the physics world
+				AppStateManager::getSingletonPtr()->getOgreNewtModule()->getOgreNewt()->recover();
 			};
 			NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 		}

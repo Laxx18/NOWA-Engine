@@ -4,6 +4,7 @@
 #include "GameObjectComponent.h"
 #include "OgreNewt.h"
 #include <fparser.hh>
+#include "lua.h"
 
 #include "main/Events.h"
 
@@ -3468,6 +3469,71 @@ namespace NOWA
 		Variant* springLength;
 		Variant* springConst;
 		Variant* springDamp;
+	};
+
+	/*******************************JointVehicleTireComponent*******************************/
+
+	class JointVehicleMotorComponent : public JointComponent
+	{
+	public:
+		JointVehicleMotorComponent();
+
+		virtual ~JointVehicleMotorComponent();
+
+		virtual Ogre::String getClassName() const override;
+
+		virtual Ogre::String getParentClassName() const override;
+
+		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
+
+		virtual bool postInit(void) override;
+
+		virtual bool createJoint(const Ogre::Vector3& customJointPosition = Ogre::Vector3::ZERO) override;
+
+		virtual void onRemoveComponent(void) override;
+
+		virtual void actualizeValue(Variant* attribute) override;
+
+		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
+
+
+		static unsigned int getStaticClassId(void)
+		{
+			return NOWA::getIdFromName("JointVehicleMotorComponent");
+		}
+
+		static Ogre::String getStaticClassName(void)
+		{
+			return "JointVehicleMotorComponent";
+		}
+
+		/**
+		 * @see  GameObjectComponent::createStaticApiForLua
+		 */
+		static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObject, luabind::class_<GameObjectController>& gameObjectController) {}
+
+		/**
+		* @see	GameObjectComponent::getStaticInfoText
+		*/
+		static Ogre::String getStaticInfoText(void)
+		{
+			return "Info: A motor, which can be attached a vehicle chassis. Requirements: A GameObject with a PhysicsActiveVehicleComponent and a base JointComponent must exist.";
+		}
+	public:
+		static Ogre::String AttrMotorMass() { return "MotorMass"; }
+		static Ogre::String AttrMotorRadius() { return "MotorRadius"; }
+		static Ogre::String AttrMaxRpm() { return "MaxRpm"; }
+		static Ogre::String AttrTorque() { return "Torque"; }
+		static Ogre::String AttrOmegaAccel() { return "OmegaAccel"; }
+		static Ogre::String AttrFrictionLoss() { return "FrictionLoss"; }
+
+	private:
+		Variant* motorMass;
+		Variant* motorRadius;
+		Variant* maxRpm;
+		Variant* torque;
+		Variant* omegaAccel;
+		Variant* frictionLoss;
 	};
 	
 }; // namespace end

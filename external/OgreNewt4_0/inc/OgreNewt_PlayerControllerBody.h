@@ -16,13 +16,11 @@ namespace OgreNewt
     // ----------------------------------------------------------------
     // Public API-compatible wrapper
     // ----------------------------------------------------------------
-    class _OgreNewtExport PlayerControllerBody : public Body, private OgreNewtPlayerCapsule::Owner
+    class _OgreNewtExport PlayerControllerBody : public Body, private OgreNewtPlayerController::Owner
     {
     public:
-        PlayerControllerBody(World* world, Ogre::SceneManager* sceneManager,
-            const Ogre::Quaternion& startOrientation, const Ogre::Vector3& startPosition, const Ogre::Vector3& direction,
-            Ogre::Real mass, Ogre::Real radius, Ogre::Real height, Ogre::Real stepHeight, unsigned int categoryId,
-            PlayerCallback* playerCallback = nullptr);
+        PlayerControllerBody(World* world, Ogre::SceneManager* sceneManager, const Ogre::Quaternion& startOrientation, const Ogre::Vector3& startPosition, const Ogre::Vector3& direction,
+            Ogre::Real mass, Ogre::Real radius, Ogre::Real height, Ogre::Real stepHeight, const Ogre::Vector3& collisionPosition, unsigned int categoryId, PlayerCallback* playerCallback = nullptr);
 
         virtual ~PlayerControllerBody();
 
@@ -38,8 +36,17 @@ namespace OgreNewt
         void setFrame(const Ogre::Quaternion& frame);
         Ogre::Quaternion getFrame() const;
 
-        void reCreatePlayer(const Ogre::Quaternion& startOrientation, const Ogre::Vector3& startPosition, const Ogre::Vector3& direction,
-            Ogre::Real mass, Ogre::Real radius, Ogre::Real height, Ogre::Real stepHeight, unsigned int categoryId, PlayerCallback* playerCallback);
+        void reCreatePlayer(
+            const Ogre::Quaternion& startOrientation,
+            const Ogre::Vector3& startPosition,
+            const Ogre::Vector3& direction,
+            Ogre::Real              mass,
+            Ogre::Real              radius,
+            Ogre::Real              height,
+            Ogre::Real              stepHeight,
+            const Ogre::Vector3& collisionPosition,   // API parity
+            unsigned int            categoryId,
+            PlayerCallback* playerCallback);
 
         void setDirection(const Ogre::Vector3& direction);
         Ogre::Vector3 getDirection() const;
@@ -78,13 +85,14 @@ namespace OgreNewt
         void setStartOrientation(const Ogre::Quaternion& startOrientation);
         Ogre::Quaternion getStartOrientation() const;
 
+        void setGravityDirection(const Ogre::Vector3& gravityDir);
+        void setActive(bool active);
+        bool isActive(void) const override;
+
         PlayerCallback* getPlayerCallback() const;
 
     private:
-        // OgreNewtPlayerCapsule::Owner impl
         Ogre::Vector3   getGravity() const override { return m_gravity; }
-        Ogre::Real      getWalkSpeed() const override { return m_walkSpeed; }
-        Ogre::Real      getJumpSpeed() const override { return m_jumpSpeed; }
         bool            consumeJumpFlag() override { const bool j = m_canJump; m_canJump = false; return j; }
         Ogre::Real      forwardCmd() const override { return m_forwardSpeed; }
         Ogre::Real      strafeCmd() const override { return m_sideSpeed; }
@@ -94,7 +102,7 @@ namespace OgreNewt
         void createPlayer(const Ogre::Quaternion& startOrientation, const Ogre::Vector3& startPosition);
     private:
         World* m_worldRef;
-        OgreNewtPlayerCapsule* m_player; // owned by world (shared_ptr), we keep raw for quick access
+        OgreNewtPlayerController* m_player; // owned by world (shared_ptr), we keep raw for quick access
 
         Ogre::Vector3   m_startPosition;
         Ogre::Quaternion m_startOrientation;
@@ -116,6 +124,9 @@ namespace OgreNewt
         bool            m_canJump;
 
         unsigned int    m_categoryId;
+
+        bool          m_active{ true };
+        Ogre::Vector3 m_gravity{ 0.0f, -16.8f, 0.0f };
 
         PlayerCallback* m_playerCallback;
     };

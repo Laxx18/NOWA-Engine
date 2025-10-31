@@ -1,3 +1,4 @@
+#include "OgreNewt_Stdafx.h"
 #include "OgreNewt_PlayerControllerBody.h"
 #include "OgreNewt_Tools.h"
 #include "OgreNewt_BodyNotify.h"
@@ -18,33 +19,33 @@ namespace OgreNewt
     // ================================================================
     // PlayerControllerBody
     // ================================================================
-    PlayerControllerBody::PlayerControllerBody(
-        World* world, Ogre::SceneManager* sceneManager,
+    PlayerControllerBody::PlayerControllerBody(World* world, Ogre::SceneManager* sceneManager,
         const Ogre::Quaternion& startOrientation, const Ogre::Vector3& startPosition, const Ogre::Vector3& direction,
-        Ogre::Real mass, Ogre::Real radius, Ogre::Real height, Ogre::Real stepHeight, unsigned int categoryId,
-        PlayerCallback* playerCallback)
-        : Body(world, sceneManager, Ogre::SceneMemoryMgrTypes::SCENE_DYNAMIC)
-        , m_worldRef(world)
-        , m_player(nullptr)
-        , m_startPosition(startPosition)
-        , m_startOrientation(startOrientation)
-        , m_direction(direction)
-        , m_mass(mass)
-        , m_radius(radius)
-        , m_height(height)
-        , m_stepHeight(stepHeight)
-        , m_collisionPositionOffset(Ogre::Vector3::ZERO)
-        , m_forwardSpeed(0.0f)
-        , m_sideSpeed(0.0f)
-        , m_heading(0.0f)
-        , m_startHeading(0.0f)
-        , m_walkSpeed(10.0f)
-        , m_jumpSpeed(20.0f)
-        , m_canJump(false)
-        , m_categoryId(categoryId)
-        , m_playerCallback(playerCallback)
+        Ogre::Real mass, Ogre::Real radius, Ogre::Real height, Ogre::Real stepHeight, const Ogre::Vector3& collisionPosition, unsigned int categoryId, PlayerCallback* playerCallback)
+        : Body(world, sceneManager),
+        m_startOrientation(startOrientation),
+        m_startPosition(startPosition),
+        // TODO: Port?
+        // m_oldStartPosition(Ogre::Vector3(Ogre::Math::POS_INFINITY, Ogre::Math::POS_INFINITY, Ogre::Math::POS_INFINITY)),
+        // m_oldStartOrientation(Ogre::Quaternion(Ogre::Math::POS_INFINITY, Ogre::Math::POS_INFINITY, Ogre::Math::POS_INFINITY, 1.0f)),
+        m_direction(direction),
+        m_mass(mass),
+        m_collisionPositionOffset(collisionPosition),
+        m_height(height),
+        m_radius(radius),
+        m_stepHeight(stepHeight),
+        m_forwardSpeed(0.0f),
+        m_sideSpeed(0.0f),
+        m_heading(0.0f),
+        m_startHeading(0.0f),
+        // Note will be recreated in reCreatePlayer 
+        m_playerCallback(nullptr),
+        m_walkSpeed(10.0f),
+        m_jumpSpeed(20.0f),
+        m_canJump(false),
+        m_active(true)
     {
-        reCreatePlayer(startOrientation, startPosition, direction, mass, radius, height, stepHeight, categoryId, playerCallback);
+        reCreatePlayer(startOrientation, startPosition, direction, mass, radius, height, stepHeight, m_collisionPositionOffset, categoryId, playerCallback);
     }
 
     PlayerControllerBody::~PlayerControllerBody()
@@ -70,9 +71,7 @@ namespace OgreNewt
         localAxis[2] = localAxis[0].CrossProduct(localAxis[1]);
 
         // Create ND4 player capsule
-        auto* playerBody = new OgreNewtPlayerCapsule(this, localAxis,
-            ndFloat32(m_mass), ndFloat32(m_radius),
-            ndFloat32(m_height), ndFloat32(m_stepHeight));
+        auto* playerBody = new OgreNewtPlayerController(this, localAxis, ndFloat32(m_mass), ndFloat32(m_radius), ndFloat32(m_height), ndFloat32(m_stepHeight));
 
         // Set start transform
         ndMatrix start(ndGetIdentityMatrix());
@@ -87,6 +86,7 @@ namespace OgreNewt
         // Attach our notify so visual updates/gravity pipeline stay consistent with Body
         if (!m_bodyNotify)
             m_bodyNotify = new BodyNotify(this);
+
         playerBody->SetNotifyCallback(m_bodyNotify);
 
         // Add to ND4 world
@@ -101,9 +101,19 @@ namespace OgreNewt
         setType(m_categoryId);
     }
 
-    void PlayerControllerBody::reCreatePlayer(const Ogre::Quaternion& startOrientation, const Ogre::Vector3& startPosition, const Ogre::Vector3& direction,
-        Ogre::Real mass, Ogre::Real radius, Ogre::Real height, Ogre::Real stepHeight, unsigned int categoryId, PlayerCallback* playerCallback)
+    void PlayerControllerBody::reCreatePlayer(
+        const Ogre::Quaternion& startOrientation,
+        const Ogre::Vector3& startPosition,
+        const Ogre::Vector3& direction,
+        Ogre::Real              mass,
+        Ogre::Real              radius,
+        Ogre::Real              height,
+        Ogre::Real              stepHeight,
+        const Ogre::Vector3& collisionPosition,   // API parity
+        unsigned int            categoryId,
+        PlayerCallback* playerCallback)
     {
+        // store everything exactly like the old code did
         m_startOrientation = startOrientation;
         m_startPosition = startPosition;
         m_direction = direction;
@@ -111,18 +121,20 @@ namespace OgreNewt
         m_radius = radius;
         m_height = height;
         m_stepHeight = stepHeight;
+        m_collisionPositionOffset = collisionPosition; // kept for parity; ND4 capsule is centered
 
-        if (m_playerCallback && (m_playerCallback != playerCallback))
+        if (m_playerCallback && m_playerCallback != playerCallback)
             delete m_playerCallback;
         m_playerCallback = playerCallback;
 
-        // In ND4, removing a body requires keeping the shared_ptr handle; since we don't keep it,
-        // we let the world own & recycle. For re-create, we just make a new capsule and reassign.
+        // (Re)build the ND4 capsule body
         createPlayer(m_startOrientation, m_startPosition);
 
-        // Initialize heading from orientation yaw as in your old code
+        // re-apply heading based on your old behavior
         move(0.0f, 0.0f, m_startOrientation.getYaw());
+        setType(categoryId);
     }
+
 
     // ---------------- movement API ----------------
     void PlayerControllerBody::move(Ogre::Real forwardSpeed, Ogre::Real sideSpeed, const Ogre::Radian& headingAngle)
@@ -307,6 +319,35 @@ namespace OgreNewt
     Ogre::Quaternion PlayerControllerBody::getStartOrientation() const
     {
         return m_startOrientation;
+    }
+
+    void PlayerControllerBody::setGravityDirection(const Ogre::Vector3& gravityDir)
+    {
+        // preserve magnitude, just change direction
+        const Ogre::Real mag = m_gravity.length();
+        Ogre::Vector3 dir = gravityDir;
+        if (!dir.isZeroLength()) dir.normalise();
+        m_gravity = dir * (mag > 0 ? mag : 9.81f);
+    }
+
+    void PlayerControllerBody::setActive(bool active)
+    {
+        m_active = active;
+        if (m_player)
+        {
+            // If inactive, put the capsule to sleep; if active, wake it.
+            m_player->SetSleepState(!active);
+            if (!active)
+            {
+                m_player->SetVelocity(ndVector::m_zero);
+                m_player->SetOmega(ndVector::m_zero);
+            }
+        }
+    }
+
+    bool PlayerControllerBody::isActive(void) const
+    {
+        return m_active;
     }
 
     PlayerCallback* PlayerControllerBody::getPlayerCallback() const

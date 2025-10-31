@@ -14,19 +14,20 @@ namespace OgreNewt
     class _OgreNewtExport Joint
     {
     public:
-        friend class OgreNewtUserJoint;
-
         Joint();
         virtual ~Joint();
 
         Body* getBody0() const;
         Body* getBody1() const;
 
+        // Explicit destroy (optional for callers); safe with ND4 shared ownership.
         void destroyJoint(OgreNewt::World* world);
 
-        virtual void submitConstraint(Ogre::Real timeStep, int threadIndex) {}
+        virtual void submitConstraint(Ogre::Real timeStep, int threadIndex)
+        {
 
-        // unchanged API...
+        }
+
         int getCollisionState() const;
         void setCollisionState(int state) const;
         Ogre::Real getStiffness() const;
@@ -41,7 +42,7 @@ namespace OgreNewt
         Ogre::Vector3 getTorque1(void) const;
 
     protected:
-        // compatibility API (keeps old public signatures)
+        // Back-compat helpers your old custom joints call during submitConstraint()
         void addLinearRow(const Ogre::Vector3& pt0, const Ogre::Vector3& pt1, const Ogre::Vector3& dir) const;
         void addAngularRow(Ogre::Radian relativeAngleError, const Ogre::Vector3& dir) const;
         void addGeneralRow(const Ogre::Vector3& linear0, const Ogre::Vector3& angular0,
@@ -53,42 +54,32 @@ namespace OgreNewt
 
         void setJointSolverModel(int model);
 
-        // support joint
+        // NEW: take ownership of the native joint and auto-register in ND world
         void SetSupportJoint(ndJointBilateralConstraint* supportJoint);
-        ndJointBilateralConstraint* GetSupportJoint() const;
+        ndJointBilateralConstraint* GetSupportJoint() const { return m_joint; }
 
-        // called from the ND4 joint during JacobianDerivative
+        // Called from native joint’s JacobianDerivative if you use the pending-row bridge
         void applyPendingRows(ndConstraintDescritor& desc);
 
-        // destructor callback (if ND4 supports user destructor)
         static void _CDECL destructorCallback(const ndJointBilateralConstraint* me);
 
     protected:
-        mutable std::vector<uint8_t> m_placeholder; // keep alignment of const methods
+        mutable std::vector<uint8_t> m_placeholder;
 
-        // internal pending-row representation
         struct PendingRow
         {
             enum Type { LINEAR, ANGULAR, GENERAL } type;
-            ndVector p0;         // for linear
-            ndVector p1;         // for linear
-            ndVector dir;        // for linear/angular OR linear-general
-            ndVector linear0;    // for general
-            ndVector angular0;   // for general
-            ndVector linear1;    // for general
-            ndVector angular1;   // for general
-            ndFloat32 relAngle;  // angular
-            // row params (applied to this row if non-default)
-            ndFloat32 stiffness;
-            ndFloat32 accel;
-            ndFloat32 springK;
-            ndFloat32 springD;
-            PendingRow() : stiffness(-1.0f), accel(FLT_MAX), springK(0.0f), springD(0.0f), relAngle(0.0f) {}
+            ndVector p0, p1, dir, linear0, angular0, linear1, angular1;
+            ndFloat32 relAngle;
+            ndFloat32 stiffness, accel, springK, springD;
+            PendingRow() : relAngle(0.0f), stiffness(-1.0f), accel(FLT_MAX), springK(0.0f), springD(0.0f) {}
         };
-        mutable std::vector<PendingRow> m_pendingRows; // pending rows; mutable so add* can be const.
+        mutable std::vector<PendingRow> m_pendingRows;
 
-        // the ND4 joint object
-        ndJointBilateralConstraint* m_joint;
+        // NEW: shared ownership + cached raw
+        ndSharedPtr<ndJointBilateralConstraint> m_jointPtr{};
+        ndJointBilateralConstraint* m_joint{ nullptr };
+        mutable Ogre::Real m_stiffness;
     };
 
     // small helper ND4 joint subclass that calls back to the wrapper

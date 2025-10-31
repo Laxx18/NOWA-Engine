@@ -2,8 +2,10 @@
 #include "OgreNewt_Debugger.h"
 #include "OgreNewt_World.h"
 #include "OgreNewt_Body.h"
+#include "OgreNewt_BodyNotify.h"
 #include "OgreNewt_Joint.h"
 #include "OgreNewt_Collision.h"
+#include "OgreNewt_CollisionDebugNotify.h"
 
 #include "OgreHlmsUnlitDatablock.h"
 #include "OgreHlmsUnlit.h"
@@ -168,12 +170,19 @@ namespace OgreNewt
 			m_raycastsnode->setListener(this);
 		}
 
-		// make the new lines.
-		for (Body* body = m_world->getFirstBody(); body; body = body->getNext())
+		const ndBodyListView& bodyList = m_world->getNewtonWorld()->GetBodyList();
+		const ndArray<ndBodyKinematic*>& view = bodyList.GetView();
+
+		for (ndInt32 i = ndInt32(view.GetCount()) - 1; i >= 0; --i)
 		{
-			if (OgreNewt::NullPrimitiveType != body->getCollisionPrimitiveType())
+			ndBodyKinematic* const ndBody = view[i];
+			if (auto* notify = ndBody->GetNotifyCallback())
 			{
-				processBody(body);
+				if (auto* ogreNotify = dynamic_cast<BodyNotify*>(notify))
+				{
+					if (auto* ogreBody = ogreNotify->GetOgreNewtBody())
+						processBody(ogreBody);
+				}
 			}
 		}
 
@@ -256,40 +265,6 @@ namespace OgreNewt
 		// joint->showDebugData(m_sceneManager, m_debugnode);
 	}
 
-	Debugger::DebugCallback::DebugCallback(Ogre::ManualObject* lines, const Ogre::Vector3& scale)
-		: m_lines(lines), m_scale(scale), m_index(0)
-	{
-	}
-
-	void Debugger::DebugCallback::DrawPolygon(ndInt32 vertexCount, const ndVector* const faceArray, const ndEdgeType* const)
-	{
-		if (vertexCount < 3 || !m_lines)
-			return;
-
-		// Draw triangle edges
-		for (ndInt32 i = 0; i < vertexCount; i++)
-		{
-			ndInt32 j = (i + 1) % vertexCount;
-
-			Ogre::Vector3 v0(
-				faceArray[i].m_x / m_scale.x,
-				faceArray[i].m_y / m_scale.y,
-				faceArray[i].m_z / m_scale.z
-			);
-
-			Ogre::Vector3 v1(
-				faceArray[j].m_x / m_scale.x,
-				faceArray[j].m_y / m_scale.y,
-				faceArray[j].m_z / m_scale.z
-			);
-
-			m_lines->position(v0);
-			m_lines->index(m_index++);
-			m_lines->position(v1);
-			m_lines->index(m_index++);
-		}
-	}
-
 	void Debugger::buildDebugObjectFromCollision(Ogre::ManualObject* object, Ogre::ColourValue colour, int index, OgreNewt::Body* body) const
 	{
 		if (nullptr == object || nullptr == body)
@@ -305,13 +280,13 @@ namespace OgreNewt
 		object->begin(datablockName, Ogre::OperationType::OT_LINE_LIST);
 
 		Ogre::Vector3 scale = body->getOgreNode()->_getDerivedScaleUpdated();
-		DebugCallback callback(object, scale);
+		CollisionDebugNotify collisionDebugNotify(object, scale);
 
 		ndBodyKinematic* nativeBody = body->getNewtonBody(); // or however you store it
 		ndShapeInstance& shapeInstance = nativeBody->GetCollisionShape();
 
 		ndMatrix matrix = ndGetIdentityMatrix();
-		shapeInstance.DebugShape(matrix, callback);
+		shapeInstance.DebugShape(matrix, collisionDebugNotify);
 
 		object->end();
 	}
@@ -438,7 +413,7 @@ namespace OgreNewt
 		body->getVisualPositionOrientation(pos, ori);
 
 		Ogre::Vector3 scale = body->getOgreNode()->_getDerivedScaleUpdated();
-		DebugCallback callback(line, scale);
+		CollisionDebugNotify collisionDebugNotify(line, scale);
 
 		ndMatrix matrix;
 		OgreNewt::Converters::QuatPosToMatrix(ori, pos, matrix);
@@ -446,7 +421,7 @@ namespace OgreNewt
 		ndBodyKinematic* nativeBody = body->getNewtonBody(); // or however you store it
 		ndShapeInstance& shapeInstance = nativeBody->GetCollisionShape();
 
-		shapeInstance.DebugShape(matrix, callback);
+		shapeInstance.DebugShape(matrix, collisionDebugNotify);
 
 		line->end();
 
@@ -484,7 +459,7 @@ namespace OgreNewt
 		body->getVisualPositionOrientation(pos, ori);
 
 		Ogre::Vector3 scale = body->getOgreNode()->_getDerivedScaleUpdated();
-		DebugCallback callback(line, scale);
+		CollisionDebugNotify collisionDebugNotify(line, scale);
 
 		ndMatrix matrix;
 		OgreNewt::Converters::QuatPosToMatrix(ori, pos, matrix);
@@ -492,7 +467,7 @@ namespace OgreNewt
 		ndBodyKinematic* nativeBody = body->getNewtonBody(); // or however you store it
 		ndShapeInstance& shapeInstance = nativeBody->GetCollisionShape();
 
-		shapeInstance.DebugShape(matrix, callback);
+		shapeInstance.DebugShape(matrix, collisionDebugNotify);
 
 		line->end();
 
@@ -605,7 +580,7 @@ namespace OgreNewt
 
 		// bodies
 		ndMatrix matrix;
-		DebugCallback callback(line, Ogre::Vector3::UNIT_SCALE);
+		CollisionDebugNotify collisionDebugNotify(line, Ogre::Vector3::UNIT_SCALE);
 
 		OgreNewt::Converters::QuatPosToMatrix(colori, startpt, matrix);
 		// Newton 4.0 shapes need to be wrapped in ndShapeInstance for debug rendering
@@ -615,7 +590,7 @@ namespace OgreNewt
 		if (endpt != startpt)
 		{
 			OgreNewt::Converters::QuatPosToMatrix(colori, endpt, matrix);
-			// col->DebugShape(matrix, callback);
+			col->DebugShape(matrix, collisionDebugNotify);
 		}
 
 		line->end();

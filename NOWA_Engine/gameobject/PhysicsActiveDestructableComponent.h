@@ -2,6 +2,7 @@
 #define PHYSICS_ACTIVE_DESTRUCTABLE_COMPONENT_H
 
 #include "PhysicsActiveComponent.h"
+#include "utilities/rapidxml.hpp"
 
 namespace NOWA
 {

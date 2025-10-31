@@ -29,9 +29,9 @@ namespace NOWA
 
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[OgreNewtModule] Initializing OgreNewt");
 
-		this->ogreNewt = new OgreNewt::World(updateRate, 5, name);
+		this->ogreNewt = new OgreNewt::World(updateRate, 2, name);
 		this->ogreNewt->setSolverModel(solverModel);
-		this->ogreNewt->setBroadPhaseAlgorithm(broadPhaseAlgorithm);
+		// this->ogreNewt->setBroadPhaseAlgorithm(broadPhaseAlgorithm);
 		this->ogreNewt->setDefaultLinearDamping(defaultLinearDamping);
 		this->ogreNewt->setDefaultAngularDamping(defaultAngularDamping);
 		this->ogreNewt->setMultithreadSolverOnSingleIsland(multithreadSolverOnSingleIsland);

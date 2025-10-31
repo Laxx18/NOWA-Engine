@@ -1142,6 +1142,23 @@ namespace NOWA
         (normalVar) = normalVar##Local; \
     }
 
+/*
+* Usage: Ogre::Ray ray;
+*   ENQUEUE_GET_CAMERA_TO_VIEWPORT_RAY(this->camera, mx, my, ray);
+*
+*   return ray;
+*/
 
+#define ENQUEUE_GET_CAMERA_TO_VIEWPORT_RAY(cameraPtr, mx, my, resultRay) \
+    Ogre::Ray resultRay##Local; \
+    Ogre::Real mx##Local = (mx); \
+    Ogre::Real my##Local = (my); \
+    Ogre::Camera* camera##Local = (cameraPtr); \
+    NOWA::GraphicsModule::getInstance()->enqueueAndWaitWithResult<bool>( \
+        [=, &resultRay##Local]() -> bool { \
+            resultRay##Local = camera##Local->getCameraToViewportRay(mx##Local, my##Local); \
+            return true; \
+        }, "ENQUEUE_GET_CAMERA_TO_VIEWPORT_RAY"); \
+    (resultRay) = resultRay##Local;
 
 #endif

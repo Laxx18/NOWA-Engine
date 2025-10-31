@@ -78,11 +78,13 @@ namespace OgreNewt
 
 		void cleanUp(void);
 
+		void recover(void);
+
 		int getVersion() const;
 
 		Ogre::Real getDesiredFps(void) const { return this->desiredFps; }
 
-		Body* getFirstBody() const;
+		void postUpdate(Ogre::Real timestep);
 
 		Debugger& getDebugger() const { return *m_debugger; }
 

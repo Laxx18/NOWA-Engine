@@ -1,4 +1,5 @@
-﻿#include "OgreNewt_RayCast.h"
+﻿#include "OgreNewt_Stdafx.h"
+#include "OgreNewt_RayCast.h"
 #include "OgreNewt_World.h"
 
 namespace OgreNewt

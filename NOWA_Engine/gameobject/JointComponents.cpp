@@ -46,6 +46,8 @@ namespace NOWA
 	typedef boost::shared_ptr<JointFlexyPipeSpinnerComponent> JointFlexyPipeSpinnerCompPtr;
 	typedef boost::shared_ptr<JointVehicleTireComponent> JointVehicleTireCompPtr;
 	typedef boost::shared_ptr<JointWheelComponent> JointWheelCompPtr;
+	typedef boost::shared_ptr<JointVehicleMotorComponent> JointVehicleMotorCompPtr;
+	
 	
 	typedef boost::shared_ptr<PhysicsComponent> PhysicsCompPtr;
 	typedef boost::shared_ptr<PhysicsActiveComponent> PhysicsActiveCompPtr;
@@ -8639,14 +8641,12 @@ namespace NOWA
 		// http://newtondynamics.com/forum/viewtopic.php?f=9&t=5608
 
 		Ogre::Real gravity = this->gravity.length();
+		Ogre::Real mass;
+		Ogre::Vector3 inertiaVector;
 
-		float Ixx;
-		float Iyy;
-		float Izz;
-		float mass;
-		NewtonBodyGetMass(this->body->getNewtonBody(), &mass, &Ixx, &Iyy, &Izz);
+		this->body->getMassMatrix(mass, inertiaVector);
 
-		const dFloat inertia = dMax(Izz, dMax(Ixx, Iyy));
+		const Ogre::Real inertia = ndMax(inertiaVector.z, ndMax(inertiaVector.x, inertiaVector.y));
 
 		if (0.0f == gravity)
 		{
@@ -8892,13 +8892,12 @@ namespace NOWA
 		{
 			Ogre::Real gravity = this->gravity.length();
 
-			float Ixx;
-			float Iyy;
-			float Izz;
-			float mass;
-			NewtonBodyGetMass(this->body->getNewtonBody(), &mass, &Ixx, &Iyy, &Izz);
+			Ogre::Real mass;
+			Ogre::Vector3 inertiaVector;
 
-			const dFloat inertia = dMax(Izz, dMax(Ixx, Iyy));
+			this->body->getMassMatrix(mass, inertiaVector);
+
+			const Ogre::Real inertia = ndMax(inertiaVector.z, ndMax(inertiaVector.x, inertiaVector.y));
 
 			if (0.0f == gravity)
 			{
@@ -9243,7 +9242,7 @@ namespace NOWA
 		// Release joint each time, to create new one with new values
 		this->internalReleaseJoint();
 		// has no predecessor body
-		this->joint = new OgreNewt::KinematicController(this->body, this->jointPosition);
+		this->joint = new OgreNewt::KinematicController(AppStateManager::getSingletonPtr()->getOgreNewtModule()->getOgreNewt(), this->body, this->jointPosition);
 		OgreNewt::KinematicController* kinematicController = static_cast<OgreNewt::KinematicController*>(this->joint);
 		/*
 		if ("Linear" == this->mode->getListSelectedValue())
@@ -9272,16 +9271,16 @@ namespace NOWA
 			gravity = -1.0f;
 		}
 
-		dFloat Ixx;
-		dFloat Iyy;
-		dFloat Izz;
-		dFloat mass;
-		NewtonBodyGetMass(this->body->getNewtonBody(), &mass, &Ixx, &Iyy, &Izz);
+		Ogre::Real mass;
+		Ogre::Vector3 inertiaVector;
+
+		this->body->getMassMatrix(mass, inertiaVector);
+
+		const Ogre::Real inertia = ndMax(inertiaVector.z, ndMax(inertiaVector.x, inertiaVector.y));
 
 		// change this to make the grabbing stronger or weaker
-		const dFloat angularFritionAccel = 100000.0f;
-		const dFloat linearFrictionAccel = 100000.0f;
-		const dFloat inertia = dMax(Izz, dMax(Ixx, Iyy));
+		const Ogre::Real angularFritionAccel = 100000.0f;
+		const Ogre::Real linearFrictionAccel = 100000.0f;
 
 		kinematicController->setSolverModel(0);
 		kinematicController->setPickingMode(4);
@@ -9884,10 +9883,10 @@ namespace NOWA
 			Ogre::Real scale = 1.0f / resolution;
 
 			int index = 0;
-			dBigVector p0(spline.CurvePoint(0.0f));
+			ndBigVector p0(spline.CurvePoint(0.0f));
 			for (int i = 1; i <= resolution; i++)
 			{
-				dBigVector p1(spline.CurvePoint(i * scale));
+				ndBigVector p1(spline.CurvePoint(i * scale));
 				this->lineObjects->position(p0.m_x, p0.m_y, p0.m_z);
 				this->lineObjects->colour(Ogre::ColourValue::White);
 				this->lineObjects->index(index++);
@@ -10046,9 +10045,16 @@ namespace NOWA
 			return true;
 		}
 
+		OgreNewt::Body* predecessorBody = nullptr;
+
+		if (this->predecessorJointCompPtr)
+		{
+			predecessorBody = this->predecessorJointCompPtr->getBody();
+		}
+
 		// Release joint each time, to create new one with new values
 		this->internalReleaseJoint();
-		this->joint = new OgreNewt::CustomDryRollingFriction(this->body, this->radius->getReal(), this->rollingFrictionCoefficient->getReal());
+		this->joint = new OgreNewt::CustomDryRollingFriction(this->body, predecessorBody, this->rollingFrictionCoefficient->getReal());
 		
 		return true;
 	}
@@ -15298,6 +15304,204 @@ void JointUniversalActuatorComponent::update(Ogre::Real dt, bool notSimulating)
 	Ogre::Real JointVehicleTireComponent::getSpringDamp(void) const
 	{
 		return this->springDamp->getReal();
+	}
+
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	JointVehicleMotorComponent::JointVehicleMotorComponent()
+		: JointComponent()
+	{
+		this->type->setReadOnly(false);
+		this->type->setValue(this->getClassName());
+		this->type->setReadOnly(true);
+		this->type->setDescription("Creates and configures a vehicle motor (engine) inside the ND4 multibody vehicle model.");
+
+		this->motorMass = new Variant(AttrMotorMass(), 40.0f, this->attributes);
+		this->motorRadius = new Variant(AttrMotorRadius(), 0.25f, this->attributes);
+		this->maxRpm = new Variant(AttrMaxRpm(), 6000.0f, this->attributes);
+		this->torque = new Variant(AttrTorque(), 800.0f, this->attributes);
+		this->omegaAccel = new Variant(AttrOmegaAccel(), 200.0f, this->attributes);
+		this->frictionLoss = new Variant(AttrFrictionLoss(), 1.0f, this->attributes);
+
+		this->targetId->setVisible(false);
+	}
+
+	JointVehicleMotorComponent::~JointVehicleMotorComponent()
+	{
+	}
+
+	Ogre::String JointVehicleMotorComponent::getClassName() const
+	{
+		return "JointVehicleMotorComponent";
+	}
+
+	Ogre::String JointVehicleMotorComponent::getParentClassName() const
+	{
+		return "JointComponent";
+	}
+
+	bool JointVehicleMotorComponent::init(xml_node<>*& propertyElement)
+	{
+		JointComponent::init(propertyElement);
+
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "MotorMass")
+		{
+			this->motorMass->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "MotorRadius")
+		{
+			this->motorRadius->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "MaxRpm")
+		{
+			this->maxRpm->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Torque")
+		{
+			this->torque->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "OmegaAccel")
+		{
+			this->omegaAccel->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "FrictionLoss")
+		{
+			this->frictionLoss->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+		return true;
+	}
+
+	bool JointVehicleMotorComponent::postInit(void)
+	{
+		JointComponent::postInit();
+		if (nullptr != this->gameObjectPtr)
+		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[JointVehicleMotorComponent] Init motor component for game object: " + this->gameObjectPtr->getName());
+		}
+		return true;
+	}
+
+	bool JointVehicleMotorComponent::createJoint(const Ogre::Vector3& customJointPosition)
+	{
+		// Base joint boilerplate (creates node/debug lines etc.); returns true-as-ok if delay-loading
+		if (false == JointComponent::createJoint(customJointPosition))
+		{
+			return true;
+		}
+
+		if (!this->predecessorJointCompPtr)
+		{
+			return false;
+		}
+
+		auto& physicsActiveVehicleCompPtr = NOWA::makeStrongPtr(this->predecessorJointCompPtr->getOwner()->getComponent<PhysicsActiveVehicleComponent>());
+		if (!physicsActiveVehicleCompPtr)
+		{
+			return false;
+		}
+
+		OgreNewt::Vehicle* const vehicle = physicsActiveVehicleCompPtr->getVehicle();
+		if (!vehicle || !vehicle->getVehicleModel())
+		{
+			return false;
+		}
+
+		// Release previous wrapper (if any)
+		this->internalReleaseJoint();
+
+		// Create the wrapper joint; model creates the ND4 motor internally
+		OgreNewt::VehicleMotor* motorJoint = new OgreNewt::VehicleMotor(vehicle, this->motorMass->getReal(), this->motorRadius->getReal());
+
+		if (!motorJoint || !motorJoint->getJoint())
+		{
+			delete motorJoint;
+			return false;
+		}
+
+		// Configure from attributes
+		motorJoint->setMaxRpm(this->maxRpm->getReal());
+		motorJoint->setOmegaAccel(this->omegaAccel->getReal());
+		motorJoint->setFrictionLoss(this->frictionLoss->getReal());
+		motorJoint->setTorqueAndRpm(0.0f, 0.0f); // start idle
+
+		// Store into base JointComponent::joint
+		this->joint = motorJoint;
+
+		if (nullptr != this->gameObjectPtr)
+		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[JointVehicleMotorComponent] Created motor joint for game object: " + this->gameObjectPtr->getName());
+		}
+
+		this->jointAlreadyCreated = true;
+		return true;
+	}
+
+	void JointVehicleMotorComponent::onRemoveComponent(void)
+	{
+		JointComponent::onRemoveComponent();
+
+	}
+
+	void JointVehicleMotorComponent::actualizeValue(Variant* attribute)
+	{
+		JointComponent::actualizeValue(attribute);
+
+		// Live retuning when attribute changes
+		if (!this->joint)
+		{
+			return;
+		}
+		auto* motor = dynamic_cast<OgreNewt::VehicleMotor*>(this->joint);
+		if (!motor)
+		{
+			return;
+		}
+
+		if (AttrMaxRpm() == attribute->getName())
+		{
+			motor->setMaxRpm(attribute->getReal());
+		}
+		else if (AttrOmegaAccel() == attribute->getName())
+		{
+			motor->setOmegaAccel(attribute->getReal());
+		}
+		else if (AttrFrictionLoss() == attribute->getName())
+		{
+			motor->setFrictionLoss(attribute->getReal());
+		}
+		else if (AttrTorque() == attribute->getName())
+		{
+			// if you want “static torque” while parked, you can apply here,
+			// but usually torque comes from your VehicleCallback each frame
+			// motor->setTorqueAndRpm(motor->getRpm(), attribute->getReal());
+		}
+	}
+
+	void JointVehicleMotorComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
+	{
+		JointComponent::writeXML(propertiesXML, doc);
+
+		auto addProp = [&](const char* name, Ogre::Real val)
+			{
+				xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
+				propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+				propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string(name)));
+				propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, val)));
+				propertiesXML->append_node(propertyXML);
+			};
+
+		addProp("MotorMass", this->motorMass->getReal());
+		addProp("MotorRadius", this->motorRadius->getReal());
+		addProp("MaxRpm", this->maxRpm->getReal());
+		addProp("Torque", this->torque->getReal());
+		addProp("OmegaAccel", this->omegaAccel->getReal());
+		addProp("FrictionLoss", this->frictionLoss->getReal());
 	}
 
 }; // namespace end

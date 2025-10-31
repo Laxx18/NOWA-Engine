@@ -235,6 +235,7 @@ namespace NOWA
 	typedef boost::shared_ptr<JointFlexyPipeHandleComponent> JointFlexyPipeHandleCompPtr;
 	typedef boost::shared_ptr<JointFlexyPipeSpinnerComponent> JointFlexyPipeSpinnerCompPtr;
 	typedef boost::shared_ptr<JointVehicleTireComponent> JointVehicleTireCompPtr;
+	typedef boost::shared_ptr<JointVehicleMotorComponent> JointVehicleMotorCompPtr;
 	
 	typedef boost::shared_ptr<PhysicsComponent> PhysicsCompPtr;
 	typedef boost::shared_ptr<PhysicsActiveComponent> PhysicsActiveCompPtr;

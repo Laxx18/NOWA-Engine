@@ -87,6 +87,12 @@
     <ClCompile Include="src\OgreNewt_ContactNotify.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\ndVehicleCommon.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\OgreNewt_CollisionDebugNotify.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="inc\OgreNewt.h">
@@ -174,6 +180,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="inc\OgreNewt_ContactNotify.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="inc\ndVehicleCommon.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="inc\OgreNewt_CollisionDebugNotify.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

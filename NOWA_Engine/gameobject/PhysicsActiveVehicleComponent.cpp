@@ -4,7 +4,6 @@
 #include "LuaScriptComponent.h"
 #include "utilities/XMLConverter.h"
 #include "utilities/MathHelper.h"
-#include "tinyxml.h"
 #include "main/AppStateManager.h"
 
 namespace NOWA
@@ -47,7 +46,7 @@ namespace NOWA
 		// Resets the values, as they are volatile
 		this->vehicleDrivingManipulation->steerAngle = 0.0f;
 
-		PhysicsComponent* visitorPhysicsComponent = OgreNewt::any_cast<PhysicsComponent*>(visitor->getUserData());
+		PhysicsComponent* visitorPhysicsComponent = OgreNewt::any_cast<PhysicsComponent*>(visitor->getChassis()->getUserData());
 		if (nullptr != visitorPhysicsComponent)
 		{
 			if (nullptr != this->luaScript && this->luaScript->isCompiled() && false == this->onSteerAngleChangedFunctionName.empty())
@@ -67,7 +66,7 @@ namespace NOWA
 	{
 		this->vehicleDrivingManipulation->motorForce = 0.0f;
 
-		PhysicsComponent* visitorPhysicsComponent = OgreNewt::any_cast<PhysicsComponent*>(visitor->getUserData());
+		PhysicsComponent* visitorPhysicsComponent = OgreNewt::any_cast<PhysicsComponent*>(visitor->getChassis()->getUserData());
 		if (nullptr != visitorPhysicsComponent)
 		{
 			if (nullptr != this->luaScript && this->luaScript->isCompiled() && false == this->onMotorForceChangedFunctionName.empty())
@@ -87,7 +86,7 @@ namespace NOWA
 	{
 		this->vehicleDrivingManipulation->handBrake = 0.0f;
 
-		PhysicsComponent* visitorPhysicsComponent = OgreNewt::any_cast<PhysicsComponent*>(visitor->getUserData());
+		PhysicsComponent* visitorPhysicsComponent = OgreNewt::any_cast<PhysicsComponent*>(visitor->getChassis()->getUserData());
 		if (nullptr != visitorPhysicsComponent)
 		{
 			if (nullptr != this->luaScript && this->luaScript->isCompiled() && false == this->onHandBrakeChangedFunctionName.empty())
@@ -103,7 +102,7 @@ namespace NOWA
 	{
 		this->vehicleDrivingManipulation->brake = 0.0f;
 
-		PhysicsComponent* visitorPhysicsComponent = OgreNewt::any_cast<PhysicsComponent*>(visitor->getUserData());
+		PhysicsComponent* visitorPhysicsComponent = OgreNewt::any_cast<PhysicsComponent*>(visitor->getChassis()->getUserData());
 		if (nullptr != visitorPhysicsComponent)
 		{
 			if (nullptr != this->luaScript && this->luaScript->isCompiled() && false == this->onBrakeChangedFunctionName.empty())

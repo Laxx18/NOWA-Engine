@@ -4,6 +4,7 @@
 #include "ndBodyKinematic.h"
 #include "ndContact.h"
 #include "ndContactOptions.h"
+#include "OgreNewt_BodyNotify.h"
 
 namespace OgreNewt
 {
@@ -20,6 +21,7 @@ namespace OgreNewt
 	{
 		ndContactPointList::ndNode* contactPointsNode = m_contact->GetContactPoints().GetFirst();
 		Contact contact(contactPointsNode, this);
+		return contact;
 	}
 
 	int ContactJoint::getContactCount() const
@@ -38,7 +40,7 @@ namespace OgreNewt
 			ndBodyKinematic* body = m_contact->GetBody0();
 			if (body)
 			{
-				return static_cast<OgreNewt::Body*>(body->GetNotifyCallback()->GetUserData());
+				return static_cast<OgreNewt::BodyNotify*>(body->GetNotifyCallback())->GetOgreNewtBody();
 			}
 		}
 		return nullptr;
@@ -51,7 +53,7 @@ namespace OgreNewt
 			ndBodyKinematic* body = m_contact->GetBody1();
 			if (body)
 			{
-				return static_cast<OgreNewt::Body*>(body->GetNotifyCallback()->GetUserData());
+				return static_cast<OgreNewt::BodyNotify*>(body->GetNotifyCallback())->GetOgreNewtBody();
 			}
 		}
 		return nullptr;

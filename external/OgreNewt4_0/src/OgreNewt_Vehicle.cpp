@@ -252,7 +252,6 @@ void RayCastTire::updateGroundProbe()
 
             if (hitBody)
             {
-                ndFloat32 mass, Ixx, Iyy, Izz;
                 ndVector massMatrix = hitBody->GetMassMatrix();
                 ndFloat32 mass = massMatrix.m_w;
 
@@ -288,28 +287,46 @@ void RayCastTire::updateGroundProbe()
 
 // ---------------- Vehicle ----------------
 
-Vehicle::Vehicle(World* world, Ogre::SceneManager* sceneManager, const Ogre::Vector3& /*defaultDirection*/,
-    const OgreNewt::CollisionPtr& col, Ogre::Real vhmass,
-    const Ogre::Vector3& /*massOrigin*/, const Ogre::Vector3& /*collisionPosition*/,
+Vehicle::Vehicle(OgreNewt::World* world,
+    Ogre::SceneManager* sceneManager,
+    const Ogre::Vector3& defaultDirection,
+    const OgreNewt::CollisionPtr& col,
+    Ogre::Real vhmass,
+    const Ogre::Vector3& massOrigin,
+    const Ogre::Vector3& collisionPosition,
     VehicleCallback* vehicleCallback)
-    : m_world(world), m_vehicleCallback(vehicleCallback)
+    : OgreNewt::Body(world, sceneManager, col, Ogre::SceneMemoryMgrTypes::SCENE_DYNAMIC)
+    , m_vehicleCallback(vehicleCallback)
+    , m_vehicleModel(nullptr)
+    , m_canDrive(true)
+    , m_initMassDataDone(false)
 {
-    // Create chassis body via OgreNewt::Body (ND4 backed)
-    m_chassis = new OgreNewt::Body(world, sceneManager, col);
-    m_mass = vhmass;
+    // Chassis physical setup (this Vehicle *is* the Body)
+    setMassMatrix(vhmass, Ogre::Vector3(1.0f, 1.0f, 1.0f)); // replace inertia with your calc if available
+    setCenterOfMass(massOrigin);
 
-    // Set mass/inertia using wrapper API (pure ND4 underneath)
-    m_chassis->setMassMatrix(m_mass, Ogre::Vector3(1, 1, 1));
+    // Orient by defaultDirection (same convention you use elsewhere)
+    const Ogre::Quaternion q = OgreNewt::Converters::grammSchmidt(defaultDirection);
+    setPositionOrientation(collisionPosition, q);
 
-    // Cache COM in local space via wrapper
-    m_comLocal = m_chassis->getCenterOfMass();
+    // --- ND4 vehicle model creation (gravity magnitude param) ---
+    const ndFloat32 gravityMag = ndFloat32(this->getGravity().length()); // or hardcode 10.0f if you prefer
+    m_vehicleModel = new ndMultiBodyVehicle(gravityMag);
 
-    m_vehicleModel = nullptr;
-    m_vehicleAddedToWorld = false;
-    m_canDrive = false;
-    m_initMassDataDone = false;
+    // Add this chassis body to the model
+    ndBodyKinematic* const chassisBody = getNewtonBody();
+    // ND4 expects an ndSharedPtr<ndBody>. It is safe to wrap your existing body pointer here.
+    m_vehicleModel->AddChassis(ndSharedPtr<ndBody>(chassisBody));
+
+    // Register the model with the ND4 world (so Update/PostUpdate/Debug run)
+    world->getNewtonWorld()->AddModel(m_vehicleModel);
+
+    // mild default damping (optional)
+    setLinearDamping(0.1f);
+    setAngularDamping(Ogre::Vector3(0.1f, 0.1f, 0.1f));
 }
 
+#if 0
 Vehicle::~Vehicle()
 {
     m_tires.clear();
@@ -318,6 +335,20 @@ Vehicle::~Vehicle()
     delete m_vehicleCallback;
     m_vehicleCallback = nullptr;
 }
+#else
+Vehicle::~Vehicle()
+{
+    if (m_vehicleModel)
+    {
+        if (auto* const ndWorld = getWorld() ? getWorld()->getNewtonWorld() : nullptr)
+        {
+            ndWorld->RemoveModel(m_vehicleModel);
+        }
+        delete m_vehicleModel;
+        m_vehicleModel = nullptr;
+    }
+}
+#endif
 
 void Vehicle::SetRayCastMode(VehicleRaycastType)
 {
@@ -376,7 +407,6 @@ void Vehicle::ApplyForceAndTorque(OgreNewt::Body* vBody, const Ogre::Vector3& vF
     AddForceAtPos(vBody, vForce, vPoint);
 }
 
-
 void Vehicle::AddForceAtPos(OgreNewt::Body* body, const Ogre::Vector3& forceWS, const Ogre::Vector3& pointWS)
 {
     // τ = (r × F), r = pointWS - comWS
@@ -430,7 +460,7 @@ void Vehicle::PreUpdate(Ogre::Real timestep)
             ndVector up = m.m_up;
             ndVector sideVel = velocity - forward.Scale(velocity.DotProduct(forward).GetScalar()) - up.Scale(velocity.DotProduct(up).GetScalar());
             ndVector correction = sideVel.Scale(-0.8f * body->GetMassMatrix().m_w);
-            body->ApplyImpulsePair(correction, ndVector::m_zero, static_cast<ndFloat32>(timestep));
+            body->ApplyImpulsePair(correction, ndVector(0.0f, 0.0f, 0.0f, 0.0f), static_cast<ndFloat32>(timestep));
         }
 
         // 2️ Perform ND4 raycast to detect ground contact and trigger onTireContact()
@@ -514,6 +544,11 @@ void Vehicle::setMotorFrictionLoss(Ogre::Real newtonMeters)
 void Vehicle::setMotorTorqueScale(Ogre::Real nmPerUnit)
 {
     m_motorTorqueScale = static_cast<ndFloat32>(nmPerUnit);
+}
+
+void Vehicle::setCanDrive(bool canDrive)
+{
+    m_canDrive = canDrive;
 }
 
 Ogre::Vector3 Vehicle::getVehicleForce() const

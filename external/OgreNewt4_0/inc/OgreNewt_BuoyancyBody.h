@@ -37,11 +37,8 @@ namespace OgreNewt
         bool       m_hasPlane;
     };
 
-    // ----------------------------------------------------------------
-    // BuoyancyForceTriggerCallback (API-compatible callback)
-    // ----------------------------------------------------------------
     class Body;
-    class BuoyancyForceTriggerCallback : public TriggerCallback
+    class _OgreNewtExport BuoyancyForceTriggerCallback : public TriggerCallback
     {
     public:
         BuoyancyForceTriggerCallback(
@@ -82,19 +79,10 @@ namespace OgreNewt
     // ----------------------------------------------------------------
     // BuoyancyBody (same API as before, ND4-compatible)
     // ----------------------------------------------------------------
-    class BuoyancyBody : public Body
+    class _OgreNewtExport BuoyancyBody : public Body
     {
     public:
-        BuoyancyBody(
-            World* world,
-            Ogre::SceneManager* sceneManager,
-            const CollisionPtr& col,
-            BuoyancyForceTriggerCallback* buoyancyForceTriggerCallback,
-            Ogre::SceneMemoryMgrTypes memoryType,
-            const Ogre::Plane& fluidPlane,
-            Ogre::Real waterToSolidVolumeRatio,
-            Ogre::Real viscosity,
-            const Ogre::Vector3& gravity);
+        BuoyancyBody(World* world, Ogre::SceneManager* sceneManager, const CollisionPtr& col, BuoyancyForceTriggerCallback* buoyancyForceTriggerCallback);
 
         virtual ~BuoyancyBody();
 

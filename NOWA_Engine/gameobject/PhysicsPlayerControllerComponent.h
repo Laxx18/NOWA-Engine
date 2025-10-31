@@ -206,7 +206,7 @@ namespace NOWA
 
 		void adjustScale(void);
 	protected:
-		OgreNewt::PlayerController* playerController;
+		OgreNewt::PlayerControllerBody* playerController;
 		Variant* radius;
 		Variant* height;
 		Variant* stepHeight;

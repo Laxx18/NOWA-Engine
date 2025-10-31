@@ -446,11 +446,13 @@ namespace NOWA
 
 	OgreNewt::CollisionPtr PhysicsComponent::createDeformableCollision(OgreNewt::CollisionPtr collisionPtr)
 	{
-		OgreNewt::CollisionPrimitives::TetrahedraDeformableCollision* deformableCollision = new OgreNewt::CollisionPrimitives::TetrahedraDeformableCollision(
+		/*OgreNewt::CollisionPrimitives::TetrahedraDeformableCollision* deformableCollision = new OgreNewt::CollisionPrimitives::TetrahedraDeformableCollision(
 			this->ogreNewt, collisionPtr->getNewtonCollision(), 0);
 
 		collisionPtr = OgreNewt::CollisionPtr(deformableCollision);
-		return collisionPtr;
+		return collisionPtr;*/
+
+		return OgreNewt::CollisionPtr();
 	}
 
 	OgreNewt::CollisionPtr PhysicsComponent::getWeightedBoneConvexHull(Ogre::v1::OldBone* bone, Ogre::v1::MeshPtr mesh, Ogre::Real minWeight,
@@ -821,8 +823,13 @@ namespace NOWA
 		Ogre::Quaternion orientation = Ogre::Quaternion::IDENTITY;
 		Ogre::Vector3 position = Ogre::Vector3(terra->getTerrainOrigin().x - this->gameObjectPtr->getPosition().x, this->gameObjectPtr->getPosition().y, terra->getTerrainOrigin().z - this->gameObjectPtr->getPosition().z);
 
+		//col = OgreNewt::CollisionPtr(
+		//	new OgreNewt::CollisionPrimitives::HeightField(this->ogreNewt, sizeX, sizeZ, 1, elevation, attibutesCol, 1.0f /* cellSize */, cellSize * 1.0f, cellSize * 1.0f,
+		//		position, orientation, this->gameObjectPtr->getCategoryId())); // move the collision hull to x = -184 and z = -184 as origin
+
+
 		col = OgreNewt::CollisionPtr(
-			new OgreNewt::CollisionPrimitives::HeightField(this->ogreNewt, sizeX, sizeZ, 1, elevation, attibutesCol, 1.0f /* cellSize */, cellSize * 1.0f, cellSize * 1.0f,
+			new OgreNewt::CollisionPrimitives::HeightField(this->ogreNewt, sizeX, sizeZ, elevation, 1.0f /* cellSize */, cellSize * 1.0f, cellSize * 1.0f,
 				position, orientation, this->gameObjectPtr->getCategoryId())); // move the collision hull to x = -184 and z = -184 as origin
 
 
@@ -839,7 +846,8 @@ namespace NOWA
 			// this->physicsBody->setCollision(OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::Null(this->ogreNewt)));
 			if (nullptr != this->collisionPtr)
 			{
-				NewtonDestroyCollision(this->collisionPtr->getNewtonCollision());
+				// NewtonDestroyCollision(this->collisionPtr->getNewtonCollision());
+				this->collisionPtr->getNewtonCollision()->Release();
 				this->collisionPtr.reset();
 			}
 		}

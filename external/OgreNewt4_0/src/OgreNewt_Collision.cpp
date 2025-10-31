@@ -103,8 +103,11 @@ namespace OgreNewt
 
 	void Collision::scaleCollision(const Ogre::Vector3& scale)
 	{
-		// This would need to be applied at the body level through ndShapeInstance
-		// For now, this is a placeholder
+		ndShapeInstance* collision = this->getShapeInstance();
+		if (nullptr != collision)
+		{
+			collision->SetScale(ndVector(scale.x, scale.y, scale.z, ndFloat32(0.0f)));
+		}
 	}
 
 	ConvexCollision::ConvexCollision(const OgreNewt::World* world) : Collision(world)

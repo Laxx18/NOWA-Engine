@@ -224,6 +224,7 @@ namespace NOWA
 		this->componentFactory.registerClass<JointFlexyPipeHandleComponent>(JointFlexyPipeHandleComponent::getStaticClassId(), JointFlexyPipeHandleComponent::getStaticClassName());
 		this->componentFactory.registerClass<JointFlexyPipeSpinnerComponent>(JointFlexyPipeSpinnerComponent::getStaticClassId(), JointFlexyPipeSpinnerComponent::getStaticClassName());
 		this->componentFactory.registerClass<JointVehicleTireComponent>(JointVehicleTireComponent::getStaticClassId(), JointVehicleTireComponent::getStaticClassName());
+		this->componentFactory.registerClass<JointVehicleMotorComponent>(JointVehicleMotorComponent::getStaticClassId(), JointVehicleMotorComponent::getStaticClassName());
 		
 		// AI Components
 		this->componentFactory.registerClass<AiMoveComponent>(AiMoveComponent::getStaticClassId(), AiMoveComponent::getStaticClassName());

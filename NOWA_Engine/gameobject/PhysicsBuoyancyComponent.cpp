@@ -414,7 +414,6 @@ namespace NOWA
 		if (nullptr != this->physicsBody)
 		{
 			this->destroyCollision();
-			this->ogreNewt->RemoveSceneCollision(this->physicsBody->getNewtonCollision());
 		}
 
 		this->createStaticBody();

@@ -6,7 +6,6 @@
 #include "utilities/XMLConverter.h"
 #include "utilities/MathHelper.h"
 #include "main/EventManager.h"
-#include "tinyxml.h"
 #include "main/AppStateManager.h"
 
 namespace NOWA

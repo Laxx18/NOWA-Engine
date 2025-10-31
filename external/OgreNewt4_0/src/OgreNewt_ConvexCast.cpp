@@ -1,3 +1,4 @@
+#include "OgreNewt_Stdafx.h"
 #include "OgreNewt_ConvexCast.h"
 #include "OgreNewt_World.h"
 #include "OgreNewt_Body.h"

@@ -207,7 +207,7 @@ namespace OgreNewt
 			//! set RayCastCallback active/disabled
 			void setRayCastCallbackActive(bool active = true)
 			{
-				setRayCastCallbackActive(active, m_col);
+				// setRayCastCallbackActive(active, m_col);
 			}
 
 			//! Change the user defined collision attribute stored with faces
@@ -243,7 +243,7 @@ namespace OgreNewt
 
 			void setRayCastCallbackActive(bool active = true)
 			{
-				setRayCastCallbackActive(active, m_col);
+				// setRayCastCallbackActive(active, m_col);
 			}
 
 		private:
@@ -274,7 +274,9 @@ namespace OgreNewt
 			//! get ID for this group of polygons
 			virtual unsigned int getID(const Ogre::SceneNode* currentNode, const Ogre::v1::Entity* currentEntity, unsigned int currentSubMesh)
 			{
-				return count++;
+				// return count++;
+				// TODO: necessary?
+				return 0;
 			}
 
 		private:
@@ -282,7 +284,7 @@ namespace OgreNewt
 			void _parseNode(Ogre::SceneNode* node, const Ogre::Quaternion& curOrient, const Ogre::Vector3& curPos,
 				const Ogre::Vector3& curScale, FaceWinding fw, unsigned int id);
 
-			static int count;
+			// static int count;
 		};
 
 		//! create a compound from several collision pieces.

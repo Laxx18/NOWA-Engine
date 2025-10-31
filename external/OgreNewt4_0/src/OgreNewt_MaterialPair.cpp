@@ -1,3 +1,4 @@
+#include "OgreNewt_Stdafx.h"
 #include "OgreNewt_MaterialPair.h"
 #include "ndContactCallback.h"
 

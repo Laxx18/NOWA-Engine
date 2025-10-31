@@ -47,56 +47,9 @@ namespace NOWA
 		class PickForceObserver : public PhysicsActiveComponent::IForceObserver
 		{
 		public:
-			PickForceObserver(Picker* picker)
-				: PhysicsActiveComponent::IForceObserver(picker)
-			{
+			PickForceObserver();
 
-			}
-
-			virtual void onForceAdd(OgreNewt::Body* body, Ogre::Real timeStep, int threadIndex) override
-			{
-				Ogre::Ray mouseRay = this->picker->getRayFromMouse();
-				// Get the global position our cursor is at
-				Ogre::Vector3 cursorPos = mouseRay.getPoint(this->picker->getDragDistance());
-
-				Ogre::Quaternion bodyOrientation;
-				Ogre::Vector3 bodyPos;
-
-				// Now find the global point on the body
-				body->getPositionOrientation(bodyPos, bodyOrientation);
-
-				// Find the handle position we are holding the body from
-				Ogre::Vector3 dragPos = (bodyOrientation * this->picker->getDragPoint()) + bodyPos;
-
-				Ogre::Vector3 inertia;
-				Ogre::Real mass;
-
-				body->getMassMatrix(mass, inertia);
-
-				Ogre::Vector3 dragForce = Ogre::Vector3::ZERO;
-
-				if (Ogre::Math::RealEqual(this->picker->getPickForce(), 50.0f))
-				{
-					body->setPositionOrientation(cursorPos, Ogre::Quaternion::IDENTITY);
-					// Annulate gravity
-					body->addForce(body->getGravity() * mass);
-					this->picker->destroyLine();
-				}
-				else
-				{
-					// Calculate picking spring force
-					Ogre::Vector3 dragForce = ((cursorPos - dragPos) * mass * this->picker->getPickForce()) - body->getVelocity();
-					if (this->picker->getDrawLine())
-					{
-						this->picker->drawLine(cursorPos, dragPos);
-					}
-
-					// body->addForce(body->getGravity() * mass);
-
-					// Add the picking spring force at the handle
-					body->addGlobalForce(dragForce, dragPos);
-				}
-			}
+			virtual void onForceAdd(OgreNewt::Body* body, Ogre::Real timeStep, int threadIndex) override;
 		};
 
 		/**
@@ -211,10 +164,10 @@ namespace NOWA
 
 		virtual void destroyLine() override;
 
-		void dragCallback(OgreNewt::Body* body, Ogre::Real timeStep, int threadIndex);
-
 	private:
 		void deleteBodyDelegate(EventDataPtr eventData);
+
+		void updateVisual(void);
 	private:
 		bool active;
 		bool dragging;
@@ -235,8 +188,7 @@ namespace NOWA
 		Ogre::SceneNode* dragLineNode;
 		Ogre::ManualObject* dragLineObject;
 		std::vector<IPickObserver*> pickObservers;
-		bool hasMoveCallback;
-		OgreNewt::Body::ForceCallback oldForceTorqueCallback;
+		std::atomic_bool destroyingLine{ false };
 	};
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -251,65 +203,9 @@ namespace NOWA
 		class PickForceObserver : public PhysicsActiveComponent::IForceObserver
 		{
 		public:
-			PickForceObserver(IPicker* picker)
-				: PhysicsActiveComponent::IForceObserver(picker)
-			{
-
-			}
-
-			virtual void onForceAdd(OgreNewt::Body* body, Ogre::Real timeStep, int threadIndex) override
-			{
-				Ogre::Ray mouseRay = this->picker->getRayFromMouse();
-				// Get the global position our cursor is at
-				Ogre::Vector3 cursorPos = mouseRay.getPoint(this->picker->getDragDistance());
-
-				Ogre::Quaternion bodyOrientation;
-				Ogre::Vector3 bodyPos;
-
-				// Now find the global point on the body
-				body->getPositionOrientation(bodyPos, bodyOrientation);
-
-				// Find the handle position we are holding the body from
-				Ogre::Vector3 dragPos = (bodyOrientation * this->picker->getDragPoint()) + (bodyPos + static_cast<GameObjectPicker*>(this->picker)->offsetPosition);
-
-				Ogre::Vector3 inertia;
-				Ogre::Real mass;
-
-				body->getMassMatrix(mass, inertia);
-
-				// Calculate picking spring force
-				Ogre::Vector3 dragForce = Ogre::Vector3::ZERO;
-
-				if (Ogre::Math::RealEqual(this->picker->getPickForce(), 50.0f))
-				{
-					body->setPositionOrientation(cursorPos, Ogre::Quaternion::IDENTITY);
-					// Annulate gravity
-					body->addForce(body->getGravity() * mass);
-					this->picker->destroyLine();
-				}
-				else
-				{
-					Ogre::Real length = (cursorPos - dragPos).length();
-					// Ogre::LogManager::getSingletonPtr()->logMessage("length: " + Ogre::StringConverter::toString(this->dragDistance));
-					if (length < static_cast<GameObjectPicker*>(this->picker)->dragAffectDistance)
-					{
-						Ogre::Vector3 dragForce = ((cursorPos - dragPos) * mass * (static_cast<Ogre::Real>(this->picker->getPickForce())))/* - body->getVelocity()*/;
-						if (this->picker->getDrawLine())
-						{
-							this->picker->drawLine(cursorPos, dragPos);
-						}
-						// Add the picking spring force at the handle
-						body->addGlobalForce(dragForce, dragPos);
-					}
-					else
-					{
-						if (this->picker->getDrawLine())
-						{
-							this->picker->destroyLine();
-						}
-					}
-				}
-			}
+			PickForceObserver();
+			
+			virtual void onForceAdd(OgreNewt::Body* body, Ogre::Real timeStep, int threadIndex) override;
 		};
 	public:
 		GameObjectPicker();
@@ -398,12 +294,12 @@ namespace NOWA
 		virtual void drawLine(const Ogre::Vector3& startPosition, const Ogre::Vector3& endPosition) override;
 
 		virtual void destroyLine() override;
-
-		void dragCallbackGameObject(OgreNewt::Body* body, Ogre::Real timeStep, int threadIndex);
 	private:
 		void deleteJointDelegate(EventDataPtr eventData);
 
 		void deleteBodyDelegate(EventDataPtr eventData);
+
+		void updateVisual(void);
 	private:
 		bool active;
 		bool dragging;
@@ -424,12 +320,11 @@ namespace NOWA
 		unsigned long gameObjectId;
 		Ogre::SceneNode* dragLineNode;
 		Ogre::ManualObject* dragLineObject;
-		bool hasMoveCallback;
-		OgreNewt::Body::ForceCallback oldForceTorqueCallback;
 		Ogre::Real dragAffectDistance;
 		Ogre::Vector3 offsetPosition;
 		Ogre::Vector3 cursorPos;
 		Ogre::Vector3 dragPos;
+		std::atomic_bool destroyingLine{ false };
 	};
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////

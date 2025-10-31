@@ -143,12 +143,13 @@ namespace NOWA
 		}
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "CameraPosition")
 		{
-			this->setCameraPosition(XMLConverter::getAttribVector3(propertyElement, "data"));
+			// ONLY set the variant during init; don't touch Ogre yet
+			this->position->setValue(XMLConverter::getAttribVector3(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "CameraOrientation")
 		{
-			this->setCameraDegreeOrientation(XMLConverter::getAttribVector3(propertyElement, "data"));
+			this->orientation->setValue(XMLConverter::getAttribVector3(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "NearClipDistance")
@@ -347,118 +348,123 @@ namespace NOWA
 
 	void CameraComponent::update(Ogre::Real dt, bool notSimulating)
 	{
-		if (false == notSimulating)
+		if (!notSimulating) return; // do nothing while simulating
+
+		// Tighten debounce
+		if (this->timeSinceLastUpdate > 0.0f)
 		{
-			// Do NOT update component attributes during simulation.
-			// During simulation, the camera's movement is driven by game logic (e.g., a process, physics, or another component).
+			this->timeSinceLastUpdate -= dt;
 			return;
 		}
 
-		// Update camera values
-		if (this->timeSinceLastUpdate >= 0.0f)
+		if (!this->gameObjectPtr) return;
+
+		// Prefer camera's world transform; fallback to node
+		Ogre::Vector3 worldPos;
+		Ogre::Quaternion worldOri;
+
+		if (this->camera)
 		{
-			this->timeSinceLastUpdate -= dt;
+			worldPos = this->camera->getDerivedPosition();
+			worldOri = this->camera->getDerivedOrientation();
 		}
 		else
 		{
-			if (nullptr != this->gameObjectPtr)
-			{
-				// Ogre::Vector3 cameraPosition = this->camera->getDerivedPosition();
-				Ogre::Vector3 cameraPosition = this->gameObjectPtr->getSceneNode()->_getDerivedPositionUpdated();
-
-				if (false == MathHelper::getInstance()->vector3Equals(this->position->getVector3(), cameraPosition, 0.001f))
-				{
-					this->setCameraPosition(cameraPosition);
-				}
-
-				// Ogre::Quaternion cameraOrientation = this->camera->getDerivedOrientation();
-				Ogre::Quaternion cameraOrientation = this->gameObjectPtr->getSceneNode()->_getDerivedOrientationUpdated();
-				// this->gameObjectPtr->getSceneNode()->setOrientation(MathHelper::getInstance()->degreesToQuat(this->orientation->getVector3()));
-				// 
-				Ogre::Vector3 orientationDegree = MathHelper::getInstance()->quatToDegrees(cameraOrientation);
-
-				if (false == MathHelper::getInstance()->vector3Equals(this->orientation->getVector3(), orientationDegree, 0.001f))
-				{
-					this->setCameraOrientation(cameraOrientation);
-				}
-
-				this->timeSinceLastUpdate = 2.0f;
-			}
+			auto* node = this->gameObjectPtr->getSceneNode();
+			worldPos = node->_getDerivedPositionUpdated();
+			worldOri = node->_getDerivedOrientationUpdated();
 		}
+
+		// Update Variants only (no setter = no push-back into Ogre here)
+		if (!MathHelper::getInstance()->vector3Equals(this->position->getVector3(), worldPos, 0.001f))
+		{
+			this->position->setValue(worldPos);
+		}
+
+		const Ogre::Vector3 worldDeg = MathHelper::getInstance()->quatToDegrees(worldOri);
+		if (!MathHelper::getInstance()->vector3Equals(this->orientation->getVector3(), worldDeg, 0.001f))
+		{
+			this->orientation->setValue(worldDeg);
+		}
+
+		// small debounce for editor responsiveness
+		this->timeSinceLastUpdate = 0.05f;
 	}
 
 	void CameraComponent::createCamera(void)
 	{
 		if (nullptr == this->camera)
 		{
-			ENQUEUE_RENDER_COMMAND_WAIT("CameraComponent::createCamera",
-			{
-				this->camera = this->gameObjectPtr->getSceneManager()->createCamera(this->gameObjectPtr->getName());
-
-				// As attribute? because it should be set to false, when several viewports are used
-				// this->camera->setAutoAspectRatio(true);
-
-				this->camera->setFixedYawAxis(this->fixedYawAxis->getBool());
-				this->camera->setFOVy(Ogre::Degree(this->fovy->getReal()));
-				this->camera->setNearClipDistance(this->nearClipDistance->getReal());
-				this->camera->setFarClipDistance(this->farClipDistance->getReal());
-				this->camera->setQueryFlags(0 << 0);
-				this->setOrthographic(this->orthographic->getBool());
-
-				// This is required, because when a camera is created via the editor, it must be placed where placenode has been when the user clicked the mouse button
-				// But when a camera is loaded from scene, it must not have an orientation, else there are ugly side effects
-				if (true == CameraComponent::justCreated)
+			NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
 				{
-					// this->gameObjectPtr->getSceneNode()->setOrientation(MathHelper::getInstance()->degreesToQuat(this->orientation->getVector3()));
-					this->position->setValue(this->gameObjectPtr->getSceneNode()->getPosition());
-					this->orientation->setValue(MathHelper::getInstance()->quatToDegreesRounded(this->gameObjectPtr->getSceneNode()->getOrientation()));
+					this->camera = this->gameObjectPtr->getSceneManager()->createCamera(this->gameObjectPtr->getName());
 
-					CameraComponent::justCreated = false;
-				}
+					// As attribute? because it should be set to false, when several viewports are used
+					// this->camera->setAutoAspectRatio(true);
 
-				this->gameObjectPtr->getSceneNode()->setPosition(this->position->getVector3());
-				this->gameObjectPtr->getSceneNode()->setOrientation(MathHelper::getInstance()->degreesToQuat(this->orientation->getVector3()));
+					this->camera->setFixedYawAxis(this->fixedYawAxis->getBool());
+					this->camera->setFOVy(Ogre::Degree(this->fovy->getReal()));
+					this->camera->setNearClipDistance(this->nearClipDistance->getReal());
+					this->camera->setFarClipDistance(this->farClipDistance->getReal());
+					this->camera->setQueryFlags(0 << 0);
+					this->setOrthographic(this->orthographic->getBool());
 
-				Ogre::Vector3 position = this->position->getVector3();
-				Ogre::Quaternion orientation = MathHelper::getInstance()->degreesToQuat(this->orientation->getVector3());
-
-				this->camera->setPosition(this->camera->getParentSceneNode()->convertWorldToLocalPositionUpdated(position));
-				this->camera->setOrientation(this->camera->getParentSceneNode()->convertWorldToLocalOrientationUpdated(orientation));
-
-				// Borrow the entity from the game object
-				this->dummyEntity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
-				if (nullptr != this->dummyEntity)
-				{
-					this->dummyEntity->setCastShadows(false);
-				}
-
-				// Special treatment: A camera must be created at an early stage, because other game objects and components are relying on this
-				// So if its the main camera add the camera to the camera manager to have public available
-				if (this->gameObjectPtr->getId() == GameObjectController::MAIN_CAMERA_ID)
-				{
-					// Delete camera that existed, before a project was loaded
-					Ogre::Camera* previousCamera = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
-					if (nullptr != previousCamera)
+					// Ensure camera is attached to the GameObject's node
+					Ogre::SceneNode* node = this->gameObjectPtr->getSceneNode();
+					if (this->camera->getParentSceneNode() != node)
 					{
-						NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->removeCamera(previousCamera);
-						NOWA::GraphicsModule::getInstance()->removeTrackedCamera(previousCamera);
-						this->gameObjectPtr->getSceneManager()->destroyCamera(previousCamera);
-						previousCamera = nullptr;
+						if (this->camera->getParentSceneNode())
+						{
+							this->camera->getParentSceneNode()->detachObject(this->camera);
+						}
+						node->setStatic(false);
+						this->camera->setStatic(false);
+						node->attachObject(this->camera);
 					}
 
-					this->dummyEntity->setVisible(false);
+					// Apply desired world transform to the node
+					node->setPosition(this->position->getVector3());
+					node->setOrientation(MathHelper::getInstance()->degreesToQuat(this->orientation->getVector3()));
 
-					if (nullptr == this->baseCamera)
+					// Keep camera local at origin/identity (node carries the world transform)
+					this->camera->setPosition(Ogre::Vector3::ZERO);
+					this->camera->setOrientation(Ogre::Quaternion::IDENTITY);
+
+					// Borrow the entity from the game object
+					this->dummyEntity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
+					if (nullptr != this->dummyEntity)
 					{
-						this->baseCamera = new NOWA::BaseCamera(NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getCameraBehaviorId(), 10.0f, 1.0f, 0.01f);
+						this->dummyEntity->setCastShadows(false);
 					}
-					AppStateManager::getSingletonPtr()->getCameraManager()->addCameraBehavior(this->camera, this->baseCamera);
-					AppStateManager::getSingletonPtr()->getCameraManager()->addCamera(this->camera, true);
-				}
 
-				// Call activation, because e.g. new workspace must be set
-				this->setActivated(this->active->getBool());
-			});
+					// Special treatment: A camera must be created at an early stage, because other game objects and components are relying on this
+					// So if its the main camera add the camera to the camera manager to have public available
+					if (this->gameObjectPtr->getId() == GameObjectController::MAIN_CAMERA_ID)
+					{
+						// Delete camera that existed, before a project was loaded
+						Ogre::Camera* previousCamera = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
+						if (nullptr != previousCamera)
+						{
+							NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->removeCamera(previousCamera);
+							NOWA::GraphicsModule::getInstance()->removeTrackedCamera(previousCamera);
+							this->gameObjectPtr->getSceneManager()->destroyCamera(previousCamera);
+							previousCamera = nullptr;
+						}
+
+						this->dummyEntity->setVisible(false);
+
+						if (nullptr == this->baseCamera)
+						{
+							this->baseCamera = new NOWA::BaseCamera(NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getCameraBehaviorId(), 10.0f, 1.0f, 0.01f);
+						}
+						AppStateManager::getSingletonPtr()->getCameraManager()->addCameraBehavior(this->camera, this->baseCamera);
+						AppStateManager::getSingletonPtr()->getCameraManager()->addCamera(this->camera, true);
+					}
+
+					// Call activation, because e.g. new workspace must be set
+					this->setActivated(this->active->getBool());
+				};
+			NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CameraComponent::createCamera");
 		}
 	}
 
@@ -532,7 +538,7 @@ namespace NOWA
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "9"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "CameraPosition"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->camera->getPosition())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->position->getVector3())));
 		propertiesXML->append_node(propertyXML);
 
 		// this->setCameraPosition(this->gameObjectPtr->getSceneNode()->_getDerivedPositionUpdated());
@@ -540,7 +546,7 @@ namespace NOWA
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "9"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "CameraOrientation"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, MathHelper::getInstance()->quatToDegrees(this->camera->getOrientation()))));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->orientation->getVector3())));
 		propertiesXML->append_node(propertyXML);
 
 		// this->setCameraOrientation(this->gameObjectPtr->getSceneNode()->_getDerivedOrientationUpdated());
@@ -616,8 +622,8 @@ namespace NOWA
 				this->gameObjectPtr->setAttributePosition(desiredWorldPosition);
 				this->gameObjectPtr->setAttributeOrientation(desiredWorldOrientation);
 
-				this->setCameraPosition(this->camera->getParentSceneNode()->convertWorldToLocalPositionUpdated(desiredWorldPosition));
-				this->setCameraOrientation(this->camera->getParentSceneNode()->convertWorldToLocalOrientationUpdated(desiredWorldOrientation));
+				// this->setCameraPosition(this->camera->getParentSceneNode()->convertWorldToLocalPositionUpdated(desiredWorldPosition));
+				// this->setCameraOrientation(this->camera->getParentSceneNode()->convertWorldToLocalOrientationUpdated(desiredWorldOrientation));
 
 				auto& workspaceBaseCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<WorkspaceBaseComponent>());
 				if (nullptr != workspaceBaseCompPtr)
@@ -766,16 +772,15 @@ namespace NOWA
 
 	void CameraComponent::setCameraPosition(const Ogre::Vector3& position)
 	{
-		/*if (true == this->bConnected)
-		{
-			return;
-		}*/
-
 		this->position->setValue(position);
-		if (nullptr != this->gameObjectPtr)
+		if (this->gameObjectPtr)
 		{
-			this->gameObjectPtr->setAttributePosition(this->position->getVector3());
-			NOWA::GraphicsModule::getInstance()->updateCameraPosition(this->camera, camera->getParentSceneNode()->convertWorldToLocalPositionUpdated(position));
+			this->gameObjectPtr->setAttributePosition(position);
+		}
+
+		if (this->camera)
+		{
+			NOWA::GraphicsModule::getInstance()->updateCameraPosition(this->camera, this->camera->getParentSceneNode()->convertWorldToLocalPositionUpdated(position));
 		}
 	}
 
@@ -785,45 +790,30 @@ namespace NOWA
 		return this->position->getVector3();
 	}
 
-	void CameraComponent::setCameraDegreeOrientation(const Ogre::Vector3& orientation)
+	void CameraComponent::setCameraDegreeOrientation(const Ogre::Vector3& orientationDeg)
 	{
-		/*if (true == this->bConnected)
+		this->orientation->setValue(orientationDeg);
+		if (this->gameObjectPtr)
 		{
-			return;
-		}*/
+			this->gameObjectPtr->setAttributeOrientation(MathHelper::getInstance()->degreesToQuat(orientationDeg));
+		}
 
-		this->orientation->setValue(orientation);
-		if (nullptr != this->gameObjectPtr)
+		if (this->camera)
 		{
-			this->gameObjectPtr->setAttributeOrientation(MathHelper::getInstance()->degreesToQuat(orientation));
-			/*auto camera = this->camera;
-			ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("CameraComponent::setCameraDegreeOrientation", _2(camera, orientation),
-			{
-				camera->setOrientation(camera->getParentSceneNode()->convertWorldToLocalOrientationUpdated(MathHelper::getInstance()->degreesToQuat(orientation)));
-			});*/
-
-			NOWA::GraphicsModule::getInstance()->updateCameraOrientation(this->camera, camera->getParentSceneNode()->convertWorldToLocalOrientationUpdated(MathHelper::getInstance()->degreesToQuat(orientation)));
+			NOWA::GraphicsModule::getInstance()->updateCameraOrientation(this->camera, this->camera->getParentSceneNode()->convertWorldToLocalOrientationUpdated( MathHelper::getInstance()->degreesToQuat(orientationDeg)));
 		}
 	}
 
 	void CameraComponent::setCameraOrientation(const Ogre::Quaternion& orientation)
 	{
-		/*if (true == this->bConnected)
-		{
-			return;
-		}*/
-
 		this->orientation->setValue(MathHelper::getInstance()->quatToDegrees(orientation));
 		if (nullptr != this->gameObjectPtr)
 		{
 			this->gameObjectPtr->setAttributeOrientation(orientation);
-			/*auto camera = this->camera;
-			ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("CameraComponent::setCameraOrientation", _2(camera, orientation),
-			{
-				camera->setOrientation(camera->getParentSceneNode()->convertWorldToLocalOrientationUpdated(orientation));
-			});*/
-
-			NOWA::GraphicsModule::getInstance()->updateCameraOrientation(this->camera, camera->getParentSceneNode()->convertWorldToLocalOrientationUpdated(orientation));
+		}
+		if (this->camera)
+		{
+			NOWA::GraphicsModule::getInstance()->updateCameraOrientation(this->camera, this->camera->getParentSceneNode()->convertWorldToLocalOrientationUpdated(orientation));
 		}
 	}
 

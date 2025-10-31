@@ -1093,7 +1093,7 @@ namespace NOWA
 		auto lineNode = this->translationLineNode;
 		auto line = this->translationLine;
 
-		ENQUEUE_RENDER_COMMAND_MULTI("Destroy Gizmo Line", _3(sceneManager, lineNode, line),
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("Destroy Gizmo Line", _3(sceneManager, lineNode, line),
 		{
 			lineNode->detachAllObjects();
 			if (line)

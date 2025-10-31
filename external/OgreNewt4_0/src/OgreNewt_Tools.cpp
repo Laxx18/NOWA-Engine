@@ -22,89 +22,61 @@ namespace OgreNewt
 {
 	namespace Converters
 	{
-		void MatrixToQuatPos(const ndMatrix& matrix, Ogre::Quaternion& quat, Ogre::Vector3& pos)
+		void MatrixToQuatPos(const ndMatrix& m, Ogre::Quaternion& quat, Ogre::Vector3& pos)
 		{
-			// Convert Newton 4.0 ndMatrix to Ogre Quaternion and position
-			using namespace Ogre;
+			// ND4 layout: m_front (X), m_up (Y), m_right (Z), m_posit (translation)
+			const Ogre::Vector3 front(m.m_front.m_x, m.m_front.m_y, m.m_front.m_z);
+			const Ogre::Vector3 up(m.m_up.m_x, m.m_up.m_y, m.m_up.m_z);
+			const Ogre::Vector3 right(m.m_right.m_x, m.m_right.m_y, m.m_right.m_z);
 
-			quat = Quaternion(Matrix3(
-				matrix[0][0], matrix[0][1], matrix[0][2],
-				matrix[1][0], matrix[1][1], matrix[1][2],
-				matrix[2][0], matrix[2][1], matrix[2][2]
-			));
+			Ogre::Matrix3 rot;
+			rot.FromAxes(front, up, right);
+			quat.FromRotationMatrix(rot);
 
-			pos = Vector3(matrix.m_posit.m_x, matrix.m_posit.m_y, matrix.m_posit.m_z);
+			pos = Ogre::Vector3(m.m_posit.m_x, m.m_posit.m_y, m.m_posit.m_z);
 		}
 
-		void QuatPosToMatrix(const Ogre::Quaternion& _quat, const Ogre::Vector3& pos, ndMatrix& matrix)
+		void QuatPosToMatrix(const Ogre::Quaternion& quatIn, const Ogre::Vector3& pos, ndMatrix& outMatrix)
 		{
-			// Convert Ogre Quaternion and position to Newton 4.0 ndMatrix
-			using namespace Ogre;
-			Matrix3 rot;
-			Vector3 xcol, ycol, zcol;
+			Ogre::Quaternion q = quatIn;
+			q.normalise();
 
-			Ogre::Quaternion quat(_quat);
-			quat.normalise();
-			quat.ToRotationMatrix(rot);
+			Ogre::Matrix3 rot;
+			q.ToRotationMatrix(rot);
 
-			xcol = rot.GetColumn(0);
-			ycol = rot.GetColumn(1);
-			zcol = rot.GetColumn(2);
+			// Ogre::Matrix3::GetColumn(i) returns axis vectors in row-major form
+			Ogre::Vector3 front = rot.GetColumn(0); // X-axis
+			Ogre::Vector3 up = rot.GetColumn(1); // Y-axis
+			Ogre::Vector3 right = rot.GetColumn(2); // Z-axis
 
-			matrix[0][0] = xcol.x;
-			matrix[1][0] = xcol.y;
-			matrix[2][0] = xcol.z;
-			matrix[3][0] = 0.0f;
-
-			matrix[0][1] = ycol.x;
-			matrix[1][1] = ycol.y;
-			matrix[2][1] = ycol.z;
-			matrix[3][1] = 0.0f;
-
-			matrix[0][2] = zcol.x;
-			matrix[1][2] = zcol.y;
-			matrix[2][2] = zcol.z;
-			matrix[3][2] = 0.0f;
-
-			matrix.m_posit.m_x = pos.x;
-			matrix.m_posit.m_y = pos.y;
-			matrix.m_posit.m_z = pos.z;
-			matrix.m_posit.m_w = 1.0f;
+			outMatrix.m_front = ndVector(front.x, front.y, front.z, 0.0f);
+			outMatrix.m_up = ndVector(up.x, up.y, up.z, 0.0f);
+			outMatrix.m_right = ndVector(right.x, right.y, right.z, 0.0f);
+			outMatrix.m_posit = ndVector(pos.x, pos.y, pos.z, 1.0f);
 		}
 
-		void MatrixToMatrix4(const ndMatrix& matrix_in, Ogre::Matrix4& matrix_out)
+		void MatrixToMatrix4(const ndMatrix& m, Ogre::Matrix4& out)
 		{
-			// Convert Newton 4.0 ndMatrix to Ogre::Matrix4
-			matrix_out = Ogre::Matrix4(
-				matrix_in[0][0], matrix_in[0][1], matrix_in[0][2], matrix_in[0][3],
-				matrix_in[1][0], matrix_in[1][1], matrix_in[1][2], matrix_in[1][3],
-				matrix_in[2][0], matrix_in[2][1], matrix_in[2][2], matrix_in[2][3],
-				matrix_in[3][0], matrix_in[3][1], matrix_in[3][2], matrix_in[3][3]
-			);
+			// Column 0: front (X)
+			out[0][0] = m.m_front.m_x;  out[1][0] = m.m_front.m_y;  out[2][0] = m.m_front.m_z;  out[3][0] = 0.0f;
+			// Column 1: up (Y)
+			out[0][1] = m.m_up.m_x;     out[1][1] = m.m_up.m_y;     out[2][1] = m.m_up.m_z;     out[3][1] = 0.0f;
+			// Column 2: right (Z)
+			out[0][2] = m.m_right.m_x;  out[1][2] = m.m_right.m_y;  out[2][2] = m.m_right.m_z;  out[3][2] = 0.0f;
+			// Column 3: translation
+			out[0][3] = m.m_posit.m_x;  out[1][3] = m.m_posit.m_y;  out[2][3] = m.m_posit.m_z;  out[3][3] = 1.0f;
 		}
 
-		void Matrix4ToMatrix(const Ogre::Matrix4& matrix_in, ndMatrix& matrix_out)
+		void Matrix4ToMatrix(const Ogre::Matrix4& in, ndMatrix& m)
 		{
-			// Convert Ogre::Matrix4 to Newton 4.0 ndMatrix
-			matrix_out[0][0] = matrix_in[0][0];
-			matrix_out[1][0] = matrix_in[1][0];
-			matrix_out[2][0] = matrix_in[2][0];
-			matrix_out[3][0] = matrix_in[3][0];
+			m.m_front = ndVector(in[0][0], in[1][0], in[2][0], 0.0f);
+			m.m_up = ndVector(in[0][1], in[1][1], in[2][1], 0.0f);
+			m.m_right = ndVector(in[0][2], in[1][2], in[2][2], 0.0f);
+			m.m_posit = ndVector(in[0][3], in[1][3], in[2][3], 1.0f);
 
-			matrix_out[0][1] = matrix_in[0][1];
-			matrix_out[1][1] = matrix_in[1][1];
-			matrix_out[2][1] = matrix_in[2][1];
-			matrix_out[3][1] = matrix_in[3][1];
-
-			matrix_out[0][2] = matrix_in[0][2];
-			matrix_out[1][2] = matrix_in[1][2];
-			matrix_out[2][2] = matrix_in[2][2];
-			matrix_out[3][2] = matrix_in[3][2];
-
-			matrix_out[0][3] = matrix_in[0][3];
-			matrix_out[1][3] = matrix_in[1][3];
-			matrix_out[2][3] = matrix_in[2][3];
-			matrix_out[3][3] = matrix_in[3][3];
+#ifdef _DEBUG
+			m.TestOrthogonal(1.0e-4f);
+#endif
 		}
 
 		Ogre::Quaternion grammSchmidt(const Ogre::Vector3& pin)

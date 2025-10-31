@@ -612,144 +612,23 @@ namespace OgreNewt
 		}
 	};
 
-	class ndFlexyPipeHandle : public ndJointBilateralConstraint
+	class _OgreNewtExport FlexyPipeHandleJoint : public Joint
 	{
 	public:
-		ndFlexyPipeHandle(ndBodyKinematic* const body0,
-			const ndVector& pin,
-			const ndVector& anchorPosition)
-			: ndJointBilateralConstraint(6, body0, nullptr, ndGetIdentityMatrix())
-			, m_linearFriction(3000.0f)
-			, m_angularFriction(200.0f)
-		{
-			// Build a global frame from pin + position
-			Ogre::Quaternion q = OgreNewt::Converters::grammSchmidt(Ogre::Vector3(pin.m_x, pin.m_y, pin.m_z));
-			ndMatrix globalFrame;
-			OgreNewt::Converters::QuatPosToMatrix(q,
-				Ogre::Vector3(anchorPosition.m_x, anchorPosition.m_y, anchorPosition.m_z),
-				globalFrame);
+		// Keep legacy signature: only body + pin
+		FlexyPipeHandleJoint(OgreNewt::Body* currentBody, const Ogre::Vector3& pin);
 
-			// Compute local matrices in each body space
-			CalculateLocalMatrix(globalFrame, m_localMatrix0, m_localMatrix1);
-
-			// Use a stiff kinematic attachment solver (similar to ND3’s model 3)
-			SetSolverModel(ndJointBilateralSolverModel::m_jointkinematicAttachment);
-		}
-
-		void JacobianDerivative(ndConstraintDescritor& desc) override
-		{
-			const ndMatrix m0 = CalculateGlobalMatrix0();
-
-			// 3 linear rows (lock position)
-			for (int i = 0; i < 3; ++i)
-			{
-				AddLinearRowJacobian(desc, m0.m_posit, m0.m_posit, m0[i]);
-				SetJointErrorPosit(desc, 0.0f);
-				SetLowerFriction(desc, -m_linearFriction);
-				SetHighFriction(desc, m_linearFriction);
-			}
-
-			// 3 angular rows (lock orientation)
-			for (int i = 0; i < 3; ++i)
-			{
-				AddAngularRowJacobian(desc, m0[i], 0.0f);
-				SetJointErrorPosit(desc, 0.0f);
-				SetLowerFriction(desc, -m_angularFriction);
-				SetHighFriction(desc, m_angularFriction);
-			}
-		}
-
-		// ------------------------------------------------------------------------
-		// Apply a linear velocity to body0 with friction and mass compensation
-		// ------------------------------------------------------------------------
-		void SetVelocity(const ndVector& desiredVel, ndFloat32 dt)
-		{
-			const ndVector massProps = m_body0->GetMassMatrix(); // (Ixx, Iyy, Izz, mass)
-			const ndFloat32 mass = massProps.m_w;
-
-			const ndVector curVel = m_body0->GetVelocity();
-			const ndVector err = desiredVel - curVel;
-			const ndFloat32 mag2 = err.DotProduct(err).GetScalar();
-
-			if (mag2 > ndFloat32(1.0e-6f))
-			{
-				const ndVector dir = err.Normalize();
-				const ndVector impulse = err.Scale(mass) + dir.Scale(m_linearFriction * dt);
-				m_body0->ApplyImpulsePair(impulse, ndVector::m_zero, dt);
-			}
-		}
-
-		// ------------------------------------------------------------------------
-		// Apply an angular velocity to body0 using inertia and friction
-		// ------------------------------------------------------------------------
-		void SetOmega(const ndVector& desiredOmega, ndFloat32 dt)
-		{
-			const ndVector massProps = m_body0->GetMassMatrix(); // (Ixx, Iyy, Izz, mass)
-			const ndFloat32 Ixx = massProps.m_x;
-			const ndFloat32 Iyy = massProps.m_y;
-			const ndFloat32 Izz = massProps.m_z;
-
-			const ndVector curOmega = m_body0->GetOmega();
-			const ndVector err = desiredOmega - curOmega;
-			const ndFloat32 mag2 = err.DotProduct(err).GetScalar();
-
-			if (mag2 <= ndFloat32(1.0e-6f))
-				return;
-
-			const ndMatrix R = m_body0->GetMatrix();
-			const ndVector& r0 = R.m_front;
-			const ndVector& r1 = R.m_up;
-			const ndVector& r2 = R.m_right;
-
-			const ndFloat32 e0 = err.DotProduct(r0).GetScalar();
-			const ndFloat32 e1 = err.DotProduct(r1).GetScalar();
-			const ndFloat32 e2 = err.DotProduct(r2).GetScalar();
-
-			ndVector angImpulse = r0.Scale(Ixx * e0) + r1.Scale(Iyy * e1) + r2.Scale(Izz * e2);
-			const ndVector dir = err.Normalize();
-			angImpulse += dir.Scale(m_angularFriction * dt);
-
-			m_body0->ApplyImpulsePair(ndVector::m_zero, angImpulse, dt);
-		}
-
-		ndFloat32 m_linearFriction;
-		ndFloat32 m_angularFriction;
+		// Legacy drive apis preserved
+		void setVelocity(const Ogre::Vector3& velocity, Ogre::Real dt);
+		void setOmega(const Ogre::Vector3& omega, Ogre::Real dt);
 	};
 
-	// ============================================================================
-	// OgreNewt wrapper
-	// ============================================================================
-	class _OgreNewtExport FlexyPipeHandleJoint : public OgreNewt::Joint
+	// Spinner (ND4)
+	class _OgreNewtExport FlexyPipeSpinnerJoint : public Joint
 	{
 	public:
-		FlexyPipeHandleJoint(OgreNewt::Body* currentBody, const Ogre::Vector3& pin)
-		{
-			ndBodyKinematic* b0 = const_cast<ndBodyKinematic*>(currentBody->getNewtonBody());
-
-			Ogre::Vector3 pos;
-			Ogre::Quaternion bodyQ;
-			currentBody->getPositionOrientation(pos, bodyQ);
-
-			ndVector ndPin(pin.x, pin.y, pin.z, 0.0f);
-			ndVector ndPos(pos.x, pos.y, pos.z, 1.0f);
-
-			auto* joint = new ndFlexyPipeHandle(b0, ndPin, ndPos);
-			SetSupportJoint(joint);
-		}
-
-		void setVelocity(const Ogre::Vector3& velocity, Ogre::Real dt)
-		{
-			auto* j = static_cast<ndFlexyPipeHandle*>(GetSupportJoint());
-			if (j)
-				j->SetVelocity(ndVector(velocity.x, velocity.y, velocity.z, 0.0f), static_cast<ndFloat32>(dt));
-		}
-
-		void setOmega(const Ogre::Vector3& omega, Ogre::Real dt)
-		{
-			auto* j = static_cast<ndFlexyPipeHandle*>(GetSupportJoint());
-			if (j)
-				j->SetOmega(ndVector(omega.x, omega.y, omega.z, 0.0f), static_cast<ndFloat32>(dt));
-		}
+		// Keep legacy signature
+		FlexyPipeSpinnerJoint(OgreNewt::Body* currentBody, OgreNewt::Body* predecessorBody, const Ogre::Vector3& anchorPosition, const Ogre::Vector3& pin);
 	};
 
 	class _OgreNewtExport ActiveSliderJoint : public OgreNewt::Joint
@@ -865,7 +744,7 @@ namespace OgreNewt
 	{
 	public:
 		//! Constructor with attachment to world
-		KinematicController(const OgreNewt::Body* child, const Ogre::Vector3& pos);
+		KinematicController(const OgreNewt::World* world, const OgreNewt::Body* child, const Ogre::Vector3& pos);
 
 		//! Constructor with reference body
 		KinematicController(const OgreNewt::Body* child, const Ogre::Vector3& pos, const OgreNewt::Body* referenceBody);
@@ -963,7 +842,7 @@ namespace OgreNewt
 	* or any other where the movement of balls is the main objective the rolling friction is a real big problem.
 	*/
 
-	class _OgreNewtExport DryRollingFriction : public Joint
+	class _OgreNewtExport CustomDryRollingFriction : public Joint
 	{
 	public:
 		//! constructor
@@ -972,10 +851,10 @@ namespace OgreNewt
 			\param parent pointer to the parent rigid body (can be nullptr for world sentinel body)
 			\param friction friction coefficient for rolling resistance.
 		*/
-		DryRollingFriction(const OgreNewt::Body* child, const OgreNewt::Body* parent, Ogre::Real friction);
+		CustomDryRollingFriction(const OgreNewt::Body* child, const OgreNewt::Body* parent, Ogre::Real friction);
 
 		//! destructor
-		~DryRollingFriction();
+		~CustomDryRollingFriction();
 
 		//! set the rolling friction coefficient
 		void setFrictionCoefficient(Ogre::Real coeff);
@@ -1340,6 +1219,33 @@ namespace OgreNewt
 		{
 			return static_cast<ndJointWheel*>(GetSupportJoint());
 		}
+	};
+
+	class _OgreNewtExport VehicleMotor : public Joint
+	{
+	public:
+		// Creates an internal ND4 motor in the vehicle model (preferred API)
+		VehicleMotor(Vehicle* vehicle, Ogre::Real mass, Ogre::Real radius);
+
+		virtual ~VehicleMotor();
+
+		// ND4 motor controls
+		void setMaxRpm(Ogre::Real redLineRpm);
+		void setOmegaAccel(Ogre::Real rpmStep);
+		void setFrictionLoss(Ogre::Real newtonMeters);
+		void setTorqueAndRpm(Ogre::Real rpm, Ogre::Real torque);
+		Ogre::Real getRpm() const;
+
+		// Access to underlying ND4 joint
+		inline ndMultiBodyVehicleMotor* getJoint() const
+		{
+			return static_cast<ndMultiBodyVehicleMotor*>(GetSupportJoint());
+		}
+
+	private:
+		Vehicle* m_vehicle;
+		Ogre::Real m_mass;
+		Ogre::Real m_radius;
 	};
 
 }   // end NAMESPACE OgreNewt

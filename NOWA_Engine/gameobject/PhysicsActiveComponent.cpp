@@ -8,6 +8,7 @@
 #include "Math/Simple/OgreAabb.h"
 #include "LuaScriptComponent.h"
 #include "main/AppStateManager.h"
+#include "editor/Picker.h"
 
 #include <mutex>
 
@@ -1456,7 +1457,7 @@ namespace NOWA
 
 		if (nullptr != this->physicsBody)
 		{
-			this->physicsBody->setIsSoftBody(asSoftBody);
+			// this->physicsBody->setIsSoftBody(asSoftBody);
 		}
 	}
 
@@ -2546,23 +2547,39 @@ namespace NOWA
 
 	void PhysicsActiveComponent::attachForceObserver(IForceObserver* forceObserver)
 	{
-		auto& it = this->forceObservers.find(forceObserver->getName());
-		if (it == this->forceObservers.end())
+		// Take ownership immediately in a shared_ptr
+		std::shared_ptr<IForceObserver> holder(forceObserver);
+
+		std::unique_lock<std::shared_mutex> lk(this->forceObserversMutex);
+		auto it = forceObservers.find(holder->getName());
+		if (it == forceObservers.end())
 		{
-			this->forceObservers.emplace(forceObserver->getName(), forceObserver);
+			forceObservers.emplace(holder->getName(), std::move(holder));
 		}
 	}
 
 	void PhysicsActiveComponent::detachAndDestroyForceObserver(const Ogre::String& name)
 	{
-		auto& it = this->forceObservers.find(name);
-		if (it != this->forceObservers.end())
+		std::unique_lock<std::shared_mutex> lk(this->forceObserversMutex);
+		auto it = forceObservers.find(name);
+		if (it != forceObservers.end())
 		{
-			IForceObserver* observer = it->second;
-			this->forceObservers.erase(it);
-			delete observer;
-			observer = nullptr;
+			// Make it inert for any in-flight calls
+			it->second->deactivate();
+			// Erase container reference. Real destruction happens after any
+			// in-flight physics-thread copies (shared_ptr) go out of scope.
+			forceObservers.erase(it);
 		}
+	}
+
+	void PhysicsActiveComponent::detachAndDestroyAllForceObserver(void)
+	{
+		std::unique_lock<std::shared_mutex> lk(forceObserversMutex);
+		for (auto& kv : forceObservers)
+		{
+			kv.second->deactivate();
+		}
+		forceObservers.clear(); // shared_ptr handles lifetime
 	}
 
 	void PhysicsActiveComponent::setContactSolvingEnabled(bool enable)
@@ -2579,18 +2596,6 @@ namespace NOWA
 		{
 			this->physicsBody->removeContactCallback();
 		}
-	}
-
-	void PhysicsActiveComponent::detachAndDestroyAllForceObserver(void)
-	{
-		for (auto& it = this->forceObservers.cbegin(); it != this->forceObservers.cend();)
-		{
-			IForceObserver* observer = it->second;
-			it = this->forceObservers.erase(it);
-			delete observer;
-			observer = nullptr;
-		}
-		this->forceObservers.clear();
 	}
 
 	void PhysicsActiveComponent::addJointSpringComponent(unsigned long id)
@@ -2716,6 +2721,8 @@ namespace NOWA
 
 	void PhysicsActiveComponent::moveCallback(OgreNewt::Body* body, Ogre::Real timeStep, int threadIndex)
 	{
+		// This moveCallback is called in the physics thread!
+
 		/////////////////////Standard gravity force/////////////////////////////////////
 		Ogre::Vector3 wholeForce = body->getGravity();
 		Ogre::Real mass = 0.0f;
@@ -2873,10 +2880,19 @@ namespace NOWA
 
 		/////////////////Force observer//////////////////////////////////////////
 
-		for (auto& it = this->forceObservers.cbegin(); it != this->forceObservers.cend(); ++it)
+		std::vector<std::shared_ptr<IForceObserver>> local;
 		{
-			// notify the observer
-			it->second->onForceAdd(body, timeStep, threadIndex);
+			std::shared_lock<std::shared_mutex> lk(forceObserversMutex);
+			local.reserve(forceObservers.size());
+			for (auto& kv : forceObservers)
+			{
+				local.push_back(kv.second);
+			}
+		}
+
+		for (auto& obs : local)
+		{
+			obs->onForceAdd(body, timeStep, threadIndex);
 		}
 
 		/////////////////Magnetic attraction behaviour//////////////////////////////////////

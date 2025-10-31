@@ -120,6 +120,7 @@ namespace OgreNewt
     };
 
     class RayCastTire;
+    class Vehicle;
 
     // --- callback interface (unchanged) ---
     class _OgreNewtExport VehicleCallback
@@ -264,16 +265,15 @@ namespace OgreNewt
     };
 
     // --- vehicle container ---
-    class _OgreNewtExport Vehicle
+    class _OgreNewtExport Vehicle : public OgreNewt::Body
     {
     public:
         friend class RayCastTire;
     public:
 
-        Vehicle(World* world, Ogre::SceneManager* sceneManager, const Ogre::Vector3& defaultDirection,
-            const OgreNewt::CollisionPtr& col, Ogre::Real vhmass,
-            const Ogre::Vector3& massOrigin, const Ogre::Vector3& collisionPosition,
-            VehicleCallback* vehicleCallback);
+        Vehicle(World* world, Ogre::SceneManager* sceneManager, const Ogre::Vector3& defaultDirection, const OgreNewt::CollisionPtr& col, Ogre::Real vhmass,
+            const Ogre::Vector3& collisionPosition, const Ogre::Vector3& massOrigin, VehicleCallback* vehicleCallback);
+
         ~Vehicle();
 
         void SetRayCastMode(VehicleRaycastType raytype);
@@ -303,8 +303,25 @@ namespace OgreNewt
         void setMotorOmegaAccel(Ogre::Real rpmPerSec);
         void setMotorFrictionLoss(Ogre::Real newtonMeters);
         void setMotorTorqueScale(Ogre::Real nmPerUnit); // scales normalized throttle to torque
+        void setCanDrive(bool canDrive);
 
         Ogre::Vector3 getVehicleForce() const;
+
+        inline ndMultiBodyVehicle* getVehicleModel() const
+        {
+            return m_vehicleModel;
+        }
+
+        // store a convenience pointer to the motor (optional but handy)
+        inline void setMotor(ndMultiBodyVehicleMotor* motor)
+        {
+            m_motor = motor;
+        }
+
+        inline ndMultiBodyVehicleMotor* getMotor() const
+        {
+            return m_motor;
+        }
     private:
         void InitMassData();
 

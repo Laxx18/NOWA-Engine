@@ -977,7 +977,7 @@ namespace NOWA
 					Ogre::String plattformArchitectureDescription;
 					xmlNode->append_attribute(doc.allocate_attribute("solverModel", XMLConverter::ConvertString(doc, this->ogreNewt->getSolverModel())));
 					xmlNode->append_attribute(doc.allocate_attribute("multithreadSolverOnSingleIsland", XMLConverter::ConvertString(doc, this->ogreNewt->getMultithreadSolverOnSingleIsland())));
-					xmlNode->append_attribute(doc.allocate_attribute("broadPhaseAlgorithm", XMLConverter::ConvertString(doc, this->ogreNewt->getBroadPhaseAlgorithm())));
+					// xmlNode->append_attribute(doc.allocate_attribute("broadPhaseAlgorithm", XMLConverter::ConvertString(doc, this->ogreNewt->getBroadPhaseAlgorithm())));
 					xmlNode->append_attribute(doc.allocate_attribute("threadCount", XMLConverter::ConvertString(doc, this->ogreNewt->getThreadCount())));
 					xmlNode->append_attribute(doc.allocate_attribute("desiredFps", XMLConverter::ConvertString(doc, this->ogreNewt->getDesiredFps())));
 					xmlNode->append_attribute(doc.allocate_attribute("defaultLinearDamping", XMLConverter::ConvertString(doc, this->ogreNewt->getDefaultLinearDamping())));

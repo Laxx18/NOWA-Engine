@@ -143,17 +143,6 @@ namespace OgreNewt
         typedef std::list<Ogre::ManualObject*> ManualObjectList;
         ManualObjectList mRecordedRaycastObjects;
 
-        class DebugCallback : public ndShapeDebugNotify
-        {
-        public:
-            DebugCallback(Ogre::ManualObject* lines, const Ogre::Vector3& scale);
-            virtual void DrawPolygon(ndInt32 vertexCount, const ndVector* const faceArray, const ndEdgeType* const edgeType) override;
-
-            Ogre::ManualObject* m_lines;
-            Ogre::Vector3 m_scale;
-            ndInt32 m_index;
-        };
-
     private:
         //! this function is declared private, so nobody can use it!
         Debugger() {}

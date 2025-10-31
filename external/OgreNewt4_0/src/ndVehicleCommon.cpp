@@ -9,6 +9,7 @@
 * freely
 */
 
+#include "OgreNewt_Stdafx.h"
 #include "ndVehicleCommon.h"
 
 
@@ -100,7 +101,7 @@ ndFloat32 ndVehicleDectriptor::ndEngineTorqueCurve::GetTorque(ndFloat32 omegaInR
 }
 
 ndVehicleDectriptor::ndVehicleDectriptor(const char* const fileName)
-	:m_comDisplacement(ndVector::m_zero)
+	:m_comDisplacement(ndVector(0.0f, 0.0f, 0.0f, 0.0f))
 {
 	strncpy(m_name, fileName, sizeof(m_name));
 
@@ -160,11 +161,12 @@ ndVehicleDectriptor::ndVehicleDectriptor(const char* const fileName)
 	ndFloat32 longStiffness = 10.0f * - 16.2f /*DEMO_GRAVITY*/;
 	ndFloat32 lateralStiffness = 2.0f * longStiffness;
 
-	m_rearTire.m_longitudinalStiffness = longStiffness;
-	m_frontTire.m_longitudinalStiffness = longStiffness;
+	// TODO: Port?
+	// m_rearTire.m_longitudinalStiffness = longStiffness;
+	// m_frontTire.m_longitudinalStiffness = longStiffness;
 	
-	m_rearTire.m_laterialStiffness = lateralStiffness;
-	m_frontTire.m_laterialStiffness = lateralStiffness;
+	// m_rearTire.m_laterialStiffness = lateralStiffness;
+	// m_frontTire.m_laterialStiffness = lateralStiffness;
 
 	m_motorMass = 20.0f;
 	m_motorRadius = 0.25f;

@@ -375,18 +375,32 @@ namespace NOWA
 		delete this->gameObjects;
 	}
 	
-	GameObjectPtr GameObjectController::clone(const Ogre::String& originalGameObjectName, Ogre::SceneNode* parentNode, unsigned long targetId, const Ogre::Vector3& targetPosition,
+	GameObjectPtr GameObjectController::clone(const Ogre::String& originalGameObjectName,
+		Ogre::SceneNode* parentNode, unsigned long targetId, const Ogre::Vector3& targetPosition,
 		const Ogre::Quaternion& targetOrientation, const Ogre::Vector3& targetScale, bool cloneDatablock)
 	{
-		GameObjectPtr originalGameObjectPtr = this->getGameObjectFromName(originalGameObjectName);
-		if (nullptr == originalGameObjectPtr)
-		{
-			return GameObjectPtr();
-		}
-		return this->internalClone(originalGameObjectPtr, parentNode, targetId, targetPosition, targetOrientation, targetScale);
+		GameObjectPtr original = this->getGameObjectFromName(originalGameObjectName);
+		if (!original) return GameObjectPtr();
+
+		GameObjectPtr result;
+
+		// Ensure EVERYTHING runs on the render thread
+		NOWA::GraphicsModule::RenderCommand cmd = [this, &result, original, parentNode, targetId,
+			targetPosition, targetOrientation, targetScale, cloneDatablock]()
+			{
+				result = this->internalClone(original, parentNode, targetId,
+					targetPosition, targetOrientation, targetScale, cloneDatablock);
+
+				if (result)
+					result->setVisible(true); // default visible (no delayed show here)
+			};
+
+		NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "Clone_NoCallback");
+		return result;
 	}
 
-	GameObjectPtr GameObjectController::clone(unsigned long originalGameObjectId, Ogre::SceneNode* parentNode, unsigned long targetId, const Ogre::Vector3& targetPosition,
+	GameObjectPtr GameObjectController::clone(unsigned long originalGameObjectId,
+		Ogre::SceneNode* parentNode, unsigned long targetId, const Ogre::Vector3& targetPosition,
 		const Ogre::Quaternion& targetOrientation, const Ogre::Vector3& targetScale, bool cloneDatablock)
 	{
 		GameObjectPtr originalGameObjectPtr = this->getGameObjectFromId(originalGameObjectId);
@@ -394,7 +408,22 @@ namespace NOWA
 		{
 			return GameObjectPtr();
 		}
-		return this->internalClone(originalGameObjectPtr, parentNode, targetId, targetPosition, targetOrientation, targetScale, cloneDatablock);
+
+		GameObjectPtr result;
+
+		// Ensure EVERYTHING runs on the render thread
+		NOWA::GraphicsModule::RenderCommand cmd = [this, &result, originalGameObjectPtr, parentNode, targetId,
+			targetPosition, targetOrientation, targetScale, cloneDatablock]()
+			{
+				result = this->internalClone(originalGameObjectPtr, parentNode, targetId,
+					targetPosition, targetOrientation, targetScale, cloneDatablock);
+
+				if (result)
+					result->setVisible(true); // default visible (no delayed show here)
+			};
+
+		NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "Clone_NoCallback");
+		return result;
 	}
 
 	void GameObjectController::cloneWithCallback(GameObjectCreationCallback callback, const Ogre::String& originalGameObjectName, Ogre::SceneNode* parentNode, unsigned long targetId, const Ogre::Vector3& targetPosition,
@@ -557,7 +586,7 @@ namespace NOWA
 				{
 					const auto& datablock = static_cast<Ogre::Item*>(originalMovableObject)->getSubItem(i)->getDatablock();
 					const Ogre::String* datablockName = datablock->getNameStr();
-					static_cast<Ogre::Item*>(originalMovableObject)->getSubItem(i)->setDatablock(datablock);
+					static_cast<Ogre::Item*>(clonedMovableObject)->getSubItem(i)->setDatablock(datablock);
 				}
 			}
 		}

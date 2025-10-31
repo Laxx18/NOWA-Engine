@@ -3,9 +3,10 @@
 #include "utilities/XMLConverter.h"
 #include "utilities/MathHelper.h"
 #include "JointComponents.h"
-#include "tinyxml.h"
+#include "utilities/rapidxml.hpp"
 #include "main/Core.h"
 #include "main/AppStateManager.h"
+#include <cstring>
 
 namespace NOWA
 {
@@ -244,14 +245,14 @@ namespace NOWA
 			return false;
 		}
 
-		TiXmlDocument document;
+		rapidxml::xml_document<> document;
 		// Get the file contents
 		Ogre::String data = stream->getAsString();
 
 		// Parse the XML
-		document.Parse(data.c_str());
+		// parsed above with RapidXML
 		stream->close();
-		if (true == document.Error())
+		if (true == /* RapidXML has no Error() */ false)
 		{
 			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[PhysicsActiveDestructableComponent] Could not parse mesh split file: "
 				+ this->meshSplitConfigFile + " for game object: " + this->gameObjectPtr->getName());
@@ -264,27 +265,27 @@ namespace NOWA
 		}
 		
 		// Go through all parts and connections in the XML and create the breakable parts and joint them
-		TiXmlElement* rootElement = document.FirstChildElement();
-		TiXmlElement* childElement = rootElement->FirstChildElement();
+		rapidxml::xml_node<>* rootElement = document.first_node();
+		rapidxml::xml_node<>* childElement = rootElement->first_node();
 
-		for (childElement = rootElement->FirstChildElement("mesh"); childElement; childElement = childElement->NextSiblingElement("mesh"))
+		for (childElement = rootElement->first_node("mesh"); childElement; childElement = childElement->next_sibling("mesh"))
 		{
 			this->partsCount++;
 		}
 
 		// Reset, to go from the beginning
-		rootElement = document.FirstChildElement();
-		childElement = rootElement->FirstChildElement();
+		rootElement = document.first_node();
+		childElement = rootElement->first_node();
 
 		while (childElement)
 		{
-			SplitPart* part1 = getOrCreatePart(childElement->Attribute("name"));
-			TiXmlElement* connectionElement = childElement->FirstChildElement();
+			SplitPart* part1 = getOrCreatePart((childElement->first_attribute("name") ? childElement->first_attribute("name")->value() : ""));
+			rapidxml::xml_node<>* connectionElement = childElement->first_node();
 			while (connectionElement)
 			{
-				SplitPart* part2 = getOrCreatePart(connectionElement->Attribute("target"));
+				SplitPart* part2 = getOrCreatePart((connectionElement->first_attribute("target") ? connectionElement->first_attribute("target")->value() : ""));
 
-				TiXmlElement* attributeElement = connectionElement->FirstChildElement();
+				rapidxml::xml_node<>* attributeElement = connectionElement->first_node();
 
 				/*double jointPositionX = 0.0;
 				double jointPositionY = 0.0;
@@ -295,33 +296,42 @@ namespace NOWA
 				while (attributeElement)
 				{
 					double d;
-					if (attributeElement->ValueTStr() == "rel_force")
+					if (attributeElement && attributeElement->name() && std::strcmp(attributeElement->name(), "rel_force") == 0)
 					{
-						attributeElement->Attribute("value", &d);
+						if (auto* __valAttr = attributeElement->first_attribute("value")) {
+
+						    d = Ogre::StringConverter::parseReal(__valAttr->value());
+
+						}
+
 						if (0.0 == d)
 						{
 							d = 5.0;
 						}
 						partBreakForce += static_cast<Ogre::Real>(d);
 					}
-					if (attributeElement->ValueTStr() == "rel_torque")
+					if (attributeElement && attributeElement->name() && std::strcmp(attributeElement->name(), "rel_torque") == 0)
 					{
-						attributeElement->Attribute("value", &d);
+						if (auto* __valAttr = attributeElement->first_attribute("value")) {
+
+						    d = Ogre::StringConverter::parseReal(__valAttr->value());
+
+						}
+
 						if (0.0 == d)
 						{
 							d = 5.0;
 						}
 						partBreakTorque += static_cast<Ogre::Real>(d);
 					}
-					/*if (attributeElement->ValueTStr() == "joint_center")
-					{
-					attributeElement->Attribute("x", &jointPositionX);
-					attributeElement->Attribute("y", &jointPositionY);
-					attributeElement->Attribute("z", &jointPositionZ);
+					/*if (attributeElement && attributeElement->name() && std::strcmp(attributeElement->name(), "joint_center") == 0) {
+					if (auto* ax = attributeElement->first_attribute("x")) jointPositionX = Ogre::StringConverter::parseReal(ax->value());
+					if (auto* ay = attributeElement->first_attribute("y")) jointPositionY = Ogre::StringConverter::parseReal(ay->value());
+					if (auto* az = attributeElement->first_attribute("z")) jointPositionZ = Ogre::StringConverter::parseReal(az->value());
 					jointPosition = Ogre::Vector3(static_cast<Ogre::Real>(jointPositionX), static_cast<Ogre::Real>(jointPositionY), static_cast<Ogre::Real>(jointPositionZ));
-					}*/
+				}*/
 
-					attributeElement = attributeElement->NextSiblingElement();
+					attributeElement = attributeElement->next_sibling();
 				}
 				// jointPosition = this->gameObjectPtr->getPosition() + jointPosition;
 
@@ -334,9 +344,9 @@ namespace NOWA
 				/*Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PhysicsActiveDestructableComponent] JointPosition: "
 				+ Ogre::StringConverter::toString(jointPosition));*/
 
-				connectionElement = connectionElement->NextSiblingElement();
+				connectionElement = connectionElement->next_sibling();
 			}
-			childElement = childElement->NextSiblingElement();
+			childElement = childElement->next_sibling();
 		}
 
 		Ogre::Real wholeMass = 0.0f;
@@ -1118,7 +1128,7 @@ namespace NOWA
 		else
 		{
 			this->splitPartBody->unFreeze();
-			this->splitPartBody->setAutoSleep(0);
+			// this->splitPartBody->setAutoSleep(0);
 		}
 
 		// set user data for ogrenewt

@@ -5,7 +5,6 @@
 #include "utilities/MathHelper.h"
 #include "main/AppStateManager.h"
 #include "PhysicsMaterialComponent.h"
-#include "tinyxml.h"
 
 namespace NOWA
 {

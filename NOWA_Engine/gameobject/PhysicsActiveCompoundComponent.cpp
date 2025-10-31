@@ -3,7 +3,7 @@
 #include "PhysicsCompoundConnectionComponent.h"
 #include "utilities/XMLConverter.h"
 #include "utilities/MathHelper.h"
-#include "tinyxml.h"
+#include "utilities/rapidxml.hpp"
 #include "main/AppStateManager.h"
 
 namespace NOWA
@@ -348,27 +348,29 @@ namespace NOWA
 				return false;
 			}
 
-			TiXmlDocument document;
-			// Get the file contents
+			rapidxml::xml_document<> doc;
 			Ogre::String data = stream->getAsString();
-
-			// Parse the XML
-			document.Parse(data.c_str());
-			stream->close();
-			if (document.Error())
+			std::vector<char> xmlBuffer(data.begin(), data.end());
+			xmlBuffer.push_back('\0');
+			try
 			{
-				Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[PhysicsActiveCompoundComponent] Could not parse mesh compound file: " 
+				doc.parse<0>(&xmlBuffer[0]);
+			} catch (const rapidxml::parse_error&)
+			{
+				stream->close();
+				Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[PhysicsActiveCompoundComponent] Could not parse mesh compound file: "
 					+ this->meshCompoundConfigFile->getString() + " for game object: " + this->gameObjectPtr->getName());
 				return false;
 			}
-			TiXmlElement* rootElement = document.FirstChildElement();
-			TiXmlElement* childElement = rootElement->FirstChildElement();
+			stream->close();
+			rapidxml::xml_node<>* rootElement = doc.first_node();
+			rapidxml::xml_node<>* childElement = rootElement->first_node();
 
 			while (childElement)
 			{
 				// create scene node and entity
 				Ogre::String sceneNodeName = "CompoundNode" + Ogre::StringConverter::toString(partsCount++) + "_" + this->gameObjectPtr->getName();
-				Ogre::String meshName = childElement->Attribute("name");
+				Ogre::String meshName = (childElement->first_attribute("name") ? childElement->first_attribute("name")->value() : "");
 
 				Ogre::v1::Entity* entity = nullptr;
 				Ogre::Item* item = nullptr;
@@ -415,7 +417,7 @@ namespace NOWA
 					collisionList.emplace_back(collisionPtr);
 				}
 
-				childElement = childElement->NextSiblingElement();
+				childElement = childElement->next_sibling();
 			}
 		}
 		else

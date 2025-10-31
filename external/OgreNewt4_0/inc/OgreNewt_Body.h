@@ -58,12 +58,13 @@ namespace OgreNewt
 		void setStandardForceCallback();
 		void setCustomForceAndTorqueCallback(ForceCallback callback);
 
+		void removeForceAndTorqueCallback();
+
 		template<class c> void setCustomForceAndTorqueCallback(OgreNewt::function<void(c*, Body*, float, int)> callback, c* instancedClassPointer)
 		{
 			setCustomForceAndTorqueCallback(OgreNewt::bind(callback, instancedClassPointer, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 		}
 
-		void removeForceAndTorqueCallback();
 		ForceCallback getForceTorqueCallback() { return m_forcecallback; }
 
 		void setNodeUpdateNotify(NodeUpdateNotifyCallback callback);
@@ -99,9 +100,11 @@ namespace OgreNewt
 		void unFreeze();
 		bool isFreezed();
 
+		CollisionPrimitiveType getCollisionPrimitiveType() const;
+
 		void enableGyroscopicTorque(bool enable);
 
-		void setMaterialGroupID(const MaterialID* ID);
+		void setMaterialGroupID(const MaterialID* materialId);
 		void setContinuousCollisionMode(unsigned state);
 		void setJointRecursiveCollision(unsigned state);
 		void setCollidable(bool collidable);
@@ -161,7 +164,6 @@ namespace OgreNewt
 		void addGlobalForceAccumulate(const Ogre::Vector3& force, const Ogre::Vector3& pos);
 		void addLocalForce(const Ogre::Vector3& force, const Ogre::Vector3& pos);
 
-		CollisionPrimitiveType getCollisionPrimitiveType() const;
 		ndShapeInstance* getNewtonCollision() const;
 
 		//! Sets the spline for path follow constraint (only valid for that)

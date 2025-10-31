@@ -14,7 +14,7 @@ namespace OgreNewt
 	{
 	}
 
-	void BodyNotify::OnTransform(ndInt32 threadIndex, const ndMatrix& matrix)
+	void BodyNotify::OnTransform(ndFloat32 timestep, const ndMatrix& matrix)
 	{
 		if (m_ogreNewtBody)
 		{

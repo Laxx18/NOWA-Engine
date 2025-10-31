@@ -7,7 +7,6 @@
 #include "OgreNewt_CollisionPrimitives.h"
 #include "OgreNewt_Tools.h"
 
-#include "ndPhysicsWorld.h"
 #include "ndRayCastNotify.h"
 #include "ndContact.h"
 
@@ -27,7 +26,7 @@ namespace OgreNewt
         void go(const World* world, const Ogre::Vector3& startpt, const Ogre::Vector3& endpt, int threadIndex = 0);
 
         virtual bool userPreFilterCallback(Body* body) { return true; }
-        virtual bool userCallback(Body* body, CollisionPtr collision, Ogre::Real distance, const Ogre::Vector3& normal, dLong collisionID) = 0;
+        virtual bool userCallback(Body* body, CollisionPtr collision, Ogre::Real distance, const Ogre::Vector3& normal, long collisionID) = 0;
 
     protected:
         Body* mLastBody;

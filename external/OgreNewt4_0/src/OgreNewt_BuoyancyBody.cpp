@@ -1,3 +1,4 @@
+#include "OgreNewt_Stdafx.h"
 #include "OgreNewt_BuoyancyBody.h"
 #include "OgreNewt_Body.h"
 #include "OgreNewt_World.h"
@@ -64,10 +65,10 @@ namespace OgreNewt
 	// ================================================================
 	ndArchimedesBuoyancyVolume::ndArchimedesBuoyancyVolume()
 		: ndBodyTriggerVolume()
-		, m_gravity(ndVector::m_zero)
+		, m_gravity(ndVector(0.0f, 0.0f, 0.0f, 0.0f))
 		, m_density(1.0f)
 		, m_viscosity(0.99f)
-		, m_plane(ndVector::m_zero)
+		, m_plane(ndVector(0.0f, 0.0f, 0.0f, 0.0f))
 		, m_hasPlane(false)
 	{
 	}
@@ -111,7 +112,7 @@ namespace OgreNewt
 			return;
 
 		ndVector mass(body->GetMassMatrix());
-		ndVector centerOfPressure(ndVector::m_zero);
+		ndVector centerOfPressure(ndVector(0.0f, 0.0f, 0.0f, 0.0f));
 		ndMatrix matrix(body->GetMatrix());
 		ndShapeInstance& collision = body->GetCollisionShape();
 
@@ -248,24 +249,16 @@ namespace OgreNewt
 	// ================================================================
 	// BuoyancyBody
 	// ================================================================
-	BuoyancyBody::BuoyancyBody(
-		World* world,
-		Ogre::SceneManager* sceneManager,
-		const CollisionPtr& col,
-		BuoyancyForceTriggerCallback* buoyancyForceTriggerCallback,
-		Ogre::SceneMemoryMgrTypes memoryType,
-		const Ogre::Plane& fluidPlane,
-		Ogre::Real waterToSolidVolumeRatio,
-		Ogre::Real viscosity,
-		const Ogre::Vector3& gravity)
-		: Body(world, sceneManager, memoryType)
-		, m_fluidPlane(fluidPlane)
-		, m_waterToSolidVolumeRatio(waterToSolidVolumeRatio)
-		, m_viscosity(viscosity)
-		, m_gravity(gravity)
+	BuoyancyBody::BuoyancyBody(World* world, Ogre::SceneManager* sceneManager, const CollisionPtr& col, BuoyancyForceTriggerCallback* buoyancyForceTriggerCallback)
+		: Body(world, sceneManager, Ogre::SceneMemoryMgrTypes::SCENE_DYNAMIC)
+		, m_fluidPlane(Ogre::Plane(Ogre::Vector3::UNIT_Y, 0.0f))
+		, m_waterToSolidVolumeRatio(1.0f)
+		, m_viscosity(0.99f)
+		, m_gravity(Ogre::Vector3(0.0f, -9.81f, 0.0f))
 		, m_triggerBody(nullptr)
 		, m_buoyancyForceTriggerCallback(buoyancyForceTriggerCallback)
 	{
+		// Keep behaviour consistent with legacy OgreNewt3 version
 		reCreateTrigger(col);
 	}
 

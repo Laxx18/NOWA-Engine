@@ -4,7 +4,11 @@
 #include "OgreNewt_World.h"
 #include "OgreNewt_Collision.h"
 #include "OgreNewt_Tools.h"
+#include "OgreNewt_CollisionDebugNotify.h"
+
 #include "OgreNewt_ContactJoint.h"
+#include "OgreNewt_ContactNotify.h"
+
 
 namespace OgreNewt
 {
@@ -51,8 +55,7 @@ namespace OgreNewt
 		m_body->SetCollisionShape(collisionPtr->getNewtonCollision());
 		m_body->SetNotifyCallback(m_bodyNotify);
 
-		ndSharedPtr<ndBody> bodyPtr(m_body);
-		m_world->getNewtonWorld()->AddBody(bodyPtr);
+		m_world->getNewtonWorld()->AddBody(m_body);
 
 		setLinearDamping(m_world->getDefaultLinearDamping() * (60.0f / m_world->getUpdateFPS()));
 		setAngularDamping(m_world->getDefaultAngularDamping() * (60.0f / m_world->getUpdateFPS()));
@@ -97,6 +100,9 @@ namespace OgreNewt
 		{
 			m_bodyNotify = new BodyNotify(this);
 			m_body->SetNotifyCallback(m_bodyNotify);
+
+			m_world->getNewtonWorld()->AddBody(m_body);
+
 			setLinearDamping(m_world->getDefaultLinearDamping() * (60.0f / m_world->getUpdateFPS()));
 			setAngularDamping(m_world->getDefaultAngularDamping() * (60.0f / m_world->getUpdateFPS()));
 		}
@@ -137,6 +143,7 @@ namespace OgreNewt
 		m_contactCallback(nullptr),
 		m_renderUpdateCallback(nullptr)
 	{
+		
 	}
 
 	Body::~Body()
@@ -155,12 +162,6 @@ namespace OgreNewt
 			m_sceneManager = nullptr;
 
 			m_world->getNewtonWorld()->Sync();
-
-			if (m_bodyNotify)
-			{
-				delete m_bodyNotify;
-				m_bodyNotify = nullptr;
-			}
 
 			if (true == m_isOwner)
 			{
@@ -243,6 +244,95 @@ namespace OgreNewt
 	void Body::detachNode(void)
 	{
 		m_node = nullptr;
+	};
+
+	CollisionPrimitiveType Body::getCollisionPrimitiveType() const
+	{
+		const ndShapeInstance* col = getNewtonCollision();
+		if (!col)
+			return NullPrimitiveType;
+
+		const ndShape* constShape = col->GetShape();
+		if (!constShape)
+			return NullPrimitiveType;
+
+		ndShape* shape = const_cast<ndShape*>(constShape);
+
+		if (shape->GetAsShapeBox())
+			return BoxPrimitiveType;
+		if (shape->GetAsShapeCone())
+			return ConePrimitiveType;
+		if (shape->GetAsShapeSphere())
+			return EllipsoidPrimitiveType; // maps ND4 sphere to OgreNewt ellipsoid
+		if (shape->GetAsShapeCapsule())
+			return CapsulePrimitiveType;
+		if (shape->GetAsShapeCylinder())
+			return CylinderPrimitiveType;
+		if (shape->GetAsShapeCompound())
+			return CompoundCollisionPrimitiveType;
+		if (shape->GetAsShapeConvexHull())
+			return ConvexHullPrimitiveType;
+		if (shape->GetAsShapeChamferCylinder())
+			return ChamferCylinderPrimitiveType;
+		// if (shape->GetAsShapeScene())
+			// return ScenePrimitiveType;
+		if (shape->GetAsShapeHeightfield())
+			return HeighFieldPrimitiveType;
+		if (shape->GetAsShapeStaticMesh())
+			return TreeCollisionPrimitiveType;
+		// if (shape->GetAsShapeDeformableMesh())
+			// return DeformableType;
+		// if (shape->GetAsShapeConvexHullModifier())
+		// 	return ConcaveHullPrimitiveType;
+
+		return NullPrimitiveType;
+	}
+
+	void Body::freeze()
+	{
+		if (!m_body)
+			return;
+
+		m_body->SetSleepState(true);
+	}
+
+	void Body::unFreeze()
+	{
+		if (!m_body)
+			return;
+
+		m_body->SetSleepState(false);
+	}
+
+	bool Body::isFreezed()
+	{
+		if (!m_body)
+			return false;
+
+		return m_body->GetSleepState();
+	}
+
+	void Body::setAutoSleep(int flag)
+	{
+		if (!m_body)
+			return;
+
+		// use newtondynamics4 final api
+		m_body->SetAutoSleep(flag != 0);
+	}
+
+	int Body::getAutoSleep()
+	{
+		if (!m_body)
+			return 0;
+
+		return m_body->GetAutoSleep() ? 1 : 0;
+	}
+
+	void Body::scaleCollision(const Ogre::Vector3& scale)
+	{
+		ndShapeInstance& collision = m_body->GetCollisionShape();
+		collision.SetScale(ndVector(scale.x, scale.y, scale.z, ndFloat32(0.0f)));
 	}
 
 	void Body::setPositionOrientation(const Ogre::Vector3& pos, const Ogre::Quaternion& orient, int threadIndex)
@@ -298,6 +388,11 @@ namespace OgreNewt
 		m_forcecallback = callback;
 	}
 
+	void Body::removeForceAndTorqueCallback()
+	{ 
+		m_forcecallback = nullptr;
+	}
+
 	void Body::setCollision(const OgreNewt::CollisionPtr& col)
 	{
 		m_body->SetCollisionShape(col->getNewtonCollision());
@@ -306,18 +401,6 @@ namespace OgreNewt
 	ndShapeInstance* Body::getNewtonCollision(void) const
 	{
 		return &m_body->GetCollisionShape();
-	}
-
-	const OgreNewt::MaterialID* Body::getMaterialGroupID() const
-	{
-		if (m_matid)
-		{
-			return m_matid;
-		}
-		else
-		{
-			return m_world->getDefaultMaterialID();
-		}
 	}
 
 	void Body::getPositionOrientation(Ogre::Vector3& pos, Ogre::Quaternion& orient) const
@@ -424,17 +507,75 @@ namespace OgreNewt
 		return Ogre::Vector3(damping.m_x, damping.m_y, damping.m_z);
 	}
 
+	void Body::setCenterOfMass(const Ogre::Vector3& centerOfMass)
+	{
+		ndVector com(centerOfMass.x, centerOfMass.y, centerOfMass.z, ndFloat32(1.0f));
+		m_body->SetCentreOfMass(com);
+	}
+
 	Ogre::Vector3 Body::getCenterOfMass() const
 	{
-		ndVector com = m_body->GetCentreOfMass();
+		const ndVector com = m_body->GetCentreOfMass();
 		return Ogre::Vector3(com.m_x, com.m_y, com.m_z);
+	}
+
+	void Body::setContinuousCollisionMode(unsigned state)
+	{
+		// Not found in ND4
+	}
+
+	int Body::getContinuousCollisionMode() const
+	{
+		// Not found in ND4
+		return 0;
+	}
+
+	void Body::setJointRecursiveCollision(unsigned state)
+	{
+		// Not found in ND4
+	}
+
+	int Body::getJointRecursiveCollision() const
+	{
+		// Not found in ND4
+		return 0;
 	}
 
 	void Body::enableGyroscopicTorque(bool enable)
 	{
 		// TODO: What here?
 		// m_body->SetGyroMode(enable);
+		// ND4 has much more complexity, for now leave it as is.
 	}
+
+	void Body::setMaterialGroupID(const MaterialID* materialId)
+	{
+		// store pointer (keep legacy API)
+		m_matid = materialId ? materialId : m_world->getDefaultMaterialID();
+
+		// propagate to BodyNotify so contact callbacks can read it
+		if (m_body && m_body->GetNotifyCallback())
+		{
+			if (auto* ogreNotify = dynamic_cast<BodyNotify*>(m_body->GetNotifyCallback()))
+			{
+				const int id = m_matid ? m_matid->getID() : 0;
+				ogreNotify->SetMaterialId(id);
+			}
+		}
+	}
+
+	const OgreNewt::MaterialID* Body::getMaterialGroupID() const
+	{
+		if (m_matid)
+		{
+			return m_matid;
+		}
+		else
+		{
+			return m_world->getDefaultMaterialID();
+		}
+	}
+
 
 	void Body::setCollidable(bool collidable)
 	{
@@ -496,6 +637,114 @@ namespace OgreNewt
 		m_body->ApplyImpulsePair(linearImpulse, angularImpulse, timestep);
 	}
 
+	void Body::setForce(const Ogre::Vector3& force)
+	{
+		if (!m_body)
+			return;
+
+		if (auto* dyn = m_body->GetAsBodyDynamic())
+		{
+			ndVector f((ndFloat32)force.x, (ndFloat32)force.y, (ndFloat32)force.z, 0.0f);
+			dyn->SetForce(f);
+		}
+	}
+
+	void Body::setTorque(const Ogre::Vector3& torque)
+	{
+		if (!m_body)
+			return;
+
+		if (auto* dyn = m_body->GetAsBodyDynamic())
+		{
+			ndVector t((ndFloat32)torque.x, (ndFloat32)torque.y, (ndFloat32)torque.z, 0.0f);
+			dyn->SetTorque(t);
+		}
+	}
+
+	void Body::addForce(const Ogre::Vector3& force)
+	{
+		if (!m_body)
+			return;
+
+		if (auto* dyn = m_body->GetAsBodyDynamic())
+		{
+			// accumulate previous + new
+			ndVector prev = dyn->GetForce();
+			ndVector f((ndFloat32)force.x, (ndFloat32)force.y, (ndFloat32)force.z, 0.0f);
+			dyn->SetForce(prev + f);
+		}
+	}
+
+	void Body::addTorque(const Ogre::Vector3& torque)
+	{
+		if (!m_body)
+			return;
+
+		if (auto* dyn = m_body->GetAsBodyDynamic())
+		{
+			ndVector prev = dyn->GetTorque();
+			ndVector t((ndFloat32)torque.x, (ndFloat32)torque.y, (ndFloat32)torque.z, 0.0f);
+			dyn->SetTorque(prev + t);
+		}
+	}
+
+	void Body::addImpulse(const Ogre::Vector3& deltav, const Ogre::Vector3& posit, Ogre::Real timeStep)
+	{
+		if (!m_body)
+			return;
+
+		if (auto* dyn = m_body->GetAsBodyDynamic())
+		{
+			ndVector v((ndFloat32)deltav.x, (ndFloat32)deltav.y, (ndFloat32)deltav.z, 0.0f);
+			ndVector p((ndFloat32)posit.x, (ndFloat32)posit.y, (ndFloat32)posit.z, 1.0f);
+			dyn->AddImpulse(v, p, (ndFloat32)timeStep);
+		}
+	}
+
+	void Body::setLinearDamping(Ogre::Real damp)
+	{
+		if (!m_body)
+			return;
+
+		if (auto* dyn = m_body->GetAsBodyDynamic())
+		{
+			dyn->SetLinearDamping(static_cast<ndFloat32>(damp));
+		}
+	}
+
+	void Body::setAngularDamping(const Ogre::Vector3& damp)
+	{
+		if (!m_body)
+			return;
+
+		if (auto* dyn = m_body->GetAsBodyDynamic())
+		{
+			ndVector d(static_cast<ndFloat32>(damp.x), static_cast<ndFloat32>(damp.y), static_cast<ndFloat32>(damp.z), 0.0f);
+			dyn->SetAngularDamping(d);
+		}
+	}
+
+	void Body::setOmega(const Ogre::Vector3& omega)
+	{
+		if (!m_body)
+			return;
+
+		ndVector w(static_cast<ndFloat32>(omega.x), static_cast<ndFloat32>(omega.y), static_cast<ndFloat32>(omega.z), 0.0f);
+
+		m_body->SetOmega(w);
+	}
+
+	void Body::setVelocity(const Ogre::Vector3& vel)
+	{
+		if (!m_body)
+			return;
+
+		ndVector v(static_cast<ndFloat32>(vel.x), static_cast<ndFloat32>(vel.y), static_cast<ndFloat32>(vel.z), 0.0f);
+
+		m_body->SetVelocity(v);
+	}
+
+
 	void Body::showDebugCollision(bool isStatic, bool show, const Ogre::ColourValue& color)
 	{
 		if (!m_node)
@@ -537,46 +786,26 @@ namespace OgreNewt
 		getPositionOrientation(pos, ori);
 		scale = m_node->_getDerivedScaleUpdated();
 
-		// ND4 callback for DebugShape
-		class OgreDebugCallback : public ndShapeDebugNotify
+		if (m_debugCollisionLines && m_debugCollisionLines->getNumSections() > 0)
 		{
-		public:
-			OgreDebugCallback(Ogre::ManualObject* obj, const Ogre::ColourValue& col, const Ogre::Vector3& scl)
-				: m_obj(obj),
-				m_color(col),
-				m_scale(scl)
-			{
+			m_debugCollisionLines->beginUpdate(0);
+		}
+		else
+		{
+			m_debugCollisionLines->begin("GreenNoLighting", Ogre::OperationType::OT_LINE_LIST);
+			// m_debugCollisionLines->begin("BaseWhiteLine", Ogre::OperationType::OT_LINE_LIST);
+		}
 
-			}
-
-			void DrawPolygon(ndInt32 vertexCount, const ndVector* const faceArray, const ndEdgeType* const /*edgeType*/) override
-			{
-				for (ndInt32 i = 0; i < vertexCount; ++i)
-				{
-					const ndVector& v = faceArray[i];
-					m_obj->position(v.m_x / m_scale.x, v.m_y / m_scale.y, v.m_z / m_scale.z);
-					m_obj->colour(m_color);
-				}
-
-				// connect vertices as line list (triangle edges)
-				for (ndInt32 i = 0; i < vertexCount; ++i)
-				{
-					m_obj->index(i);
-					m_obj->index((i + 1) % vertexCount);
-				}
-			}
-
-		private:
-			Ogre::ManualObject* m_obj;
-			Ogre::ColourValue m_color;
-			Ogre::Vector3 m_scale;
-		};
-
-		OgreDebugCallback dbgCallback(m_debugCollisionLines, color, scale);
+		CollisionDebugNotify collisionDebugNotify(m_debugCollisionLines, scale);
 
 		// get collision shape
 		ndShapeInstance& shapeInstance = nbody->GetCollisionShape();
-		shapeInstance.DebugShape(ndGetIdentityMatrix(), dbgCallback);
+#if 1
+		shapeInstance.DebugShape(ndGetIdentityMatrix(), collisionDebugNotify);
+#else
+		ndMatrix bodyMatrix = nbody->GetMatrix();
+		shapeInstance.DebugShape(bodyMatrix, dbgCallback);
+#endif
 
 		m_debugCollisionLines->end();
 	}
@@ -654,6 +883,8 @@ namespace OgreNewt
 			m_nodeRotation = Ogre::Quaternion::Slerp(interpolatParam, m_prevRotation, m_curRotation);
 		}
 
+		// m_world->m_ogreMutex.lock();
+
 		Ogre::Vector3 nodePosit = m_nodePosit;
 		Ogre::Quaternion nodeRot = m_nodeRotation;
 		bool updateRot = m_updateRotation;
@@ -702,14 +933,65 @@ namespace OgreNewt
 
 		if (m_contactCallback)
 		{
-			// Contact joint iteration for Newton 4.0 would be different
-			// This needs to be implemented based on Newton 4.0's contact API
+			// Iterate all active contacts for this body
+			ndBodyKinematic* const me = m_body;
+			if (me)
+			{
+				ndBodyKinematic::ndContactMap& cmap = me->GetContactMap();
+				for (ndBodyKinematic::ndContactMap::Iterator it(cmap); it; it++)
+				{
+					ndContact* const contact = *it;
+					if (!contact || !contact->IsActive())
+					{
+						continue;
+					}
+
+					// Determine the other Newton body
+					ndBodyKinematic* const body0 = contact->GetBody0();
+					ndBodyKinematic* const body1 = contact->GetBody1();
+					ndBodyKinematic* const otherNd = (body0 == me) ? body1 : body0;
+
+					if (!otherNd)
+					{
+						continue;
+					}
+
+					// Map Newton body -> OgreNewt::Body via your ContactNotify bridge
+					OgreNewt::Body* other = nullptr;
+					if (ndBodyNotify* notify = otherNd->GetNotifyCallback())
+					{
+						if (auto* bridge = dynamic_cast<OgreNewt::ContactNotify*>(notify))
+						{
+							other = bridge->getOgreNewtBody();
+						}
+					}
+
+					if (!other)
+					{
+						continue;
+					}
+
+					// Wrap the joint and iterate contact points
+					OgreNewt::ContactJoint contactJoint(contact);
+
+					const ndContactPointList& pts = contact->GetContactPoints();
+					for (ndContactPointList::ndNode* node = pts.GetFirst(); node; node = node->GetNext())
+					{
+						OgreNewt::Contact ogreContact(node, &contactJoint);
+
+						// This mirrors:
+						m_contactCallback(other, &ogreContact);
+					}
+				}
+			}
 		}
 
 		/*if (m_isSoftBody)
 		{
 			this->updateDeformableCollision();
 		}*/
+
+		// m_world->m_ogreMutex.unlock();
 	}
 
 	Ogre::SceneMemoryMgrTypes Body::getSceneMemoryType(void) const

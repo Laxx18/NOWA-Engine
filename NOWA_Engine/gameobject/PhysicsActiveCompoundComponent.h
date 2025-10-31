@@ -1,3 +1,4 @@
+#include "utilities/rapidxml.hpp"
 #ifndef PHYSICS_ACTIVE_COMPOUND_COMPONENT_H
 #define PHYSICS_ACTIVE_COMPOUND_COMPONENT_H
 
