@@ -43,23 +43,56 @@ namespace OgreNewt
         if (!m_world)
             return;
 
-        ndContactCallback* callback = (ndContactCallback*)m_world->getNewtonWorld()->GetContactNotify();
+        auto* callback = static_cast<ndContactCallback*>(m_world->getNewtonWorld()->GetContactNotify());
         if (!callback)
             return;
 
-        ndApplicationMaterial material;
-        material.m_softness = static_cast<ndFloat32>(m_defaultSoftness);
-        material.m_restitution = static_cast<ndFloat32>(m_defaultElasticity);
-        material.m_staticFriction0 = static_cast<ndFloat32>(m_defaultStaticFriction);
-        material.m_staticFriction1 = static_cast<ndFloat32>(m_defaultStaticFriction);
-        material.m_dynamicFriction0 = static_cast<ndFloat32>(m_defaultKineticFriction);
-        material.m_dynamicFriction1 = static_cast<ndFloat32>(m_defaultKineticFriction);
-        material.m_skinMargin = static_cast<ndFloat32>(m_defaultSurfaceThickness);
+        const ndUnsigned32 idA = id0->getID();
+        const ndUnsigned32 idB = id1->getID();
 
-        // Register material for the pair
-        int idA = id0->getID();
-        int idB = id1->getID();
-        callback->RegisterMaterial(material, idA, idB);
+        ndApplicationMaterial newMat;
+        newMat.m_softness = static_cast<ndFloat32>(m_defaultSoftness);
+        newMat.m_restitution = static_cast<ndFloat32>(m_defaultElasticity);
+        newMat.m_staticFriction0 = static_cast<ndFloat32>(m_defaultStaticFriction);
+        newMat.m_staticFriction1 = static_cast<ndFloat32>(m_defaultStaticFriction);
+        newMat.m_dynamicFriction0 = static_cast<ndFloat32>(m_defaultKineticFriction);
+        newMat.m_dynamicFriction1 = static_cast<ndFloat32>(m_defaultKineticFriction);
+        newMat.m_skinMargin = static_cast<ndFloat32>(m_defaultSurfaceThickness);
+
+        // Register or update in Newton's internal material graph.
+        callback->RegisterMaterial(newMat, idA, idB);
+        if (idA != idB)
+            callback->RegisterMaterial(newMat, idB, idA);
     }
 
+    void MaterialPair::setDefaultSoftness(Ogre::Real softness)
+    {
+        m_defaultSoftness = softness;
+        registerWithWorld();
+    }
+
+    void MaterialPair::setDefaultElasticity(Ogre::Real elasticity)
+    {
+        m_defaultElasticity = elasticity;
+        registerWithWorld();
+    }
+
+    void MaterialPair::setDefaultFriction(Ogre::Real stat, Ogre::Real kinetic)
+    {
+        m_defaultStaticFriction = stat;
+        m_defaultKineticFriction = kinetic;
+        registerWithWorld();
+    }
+
+    void MaterialPair::setDefaultSurfaceThickness(float thickness)
+    {
+        m_defaultSurfaceThickness = thickness;
+        registerWithWorld();
+    }
+
+    void MaterialPair::setDefaultCollidable(int state)
+    {
+        m_defaultCollidable = state;
+        registerWithWorld();
+    }
 }

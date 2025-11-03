@@ -14838,10 +14838,6 @@ void JointUniversalActuatorComponent::update(Ogre::Real dt, bool notSimulating)
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[JointVehicleTireComponent] Cannot create joint for: " + gameObjectName + " because there is no predecessor.");
 			return false;
 		}
-		
-		// Attention: A test!
-		this->body->removeForceAndTorqueCallback();
-		this->body->removeTransformCallback();
 
 		// this->predecessorJointCompPtr->setJointRecursiveCollisionEnabled(false);
 		// this->setJointRecursiveCollisionEnabled(false);

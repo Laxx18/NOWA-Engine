@@ -34,7 +34,6 @@ namespace NOWA
 		// this->ogreNewt->setBroadPhaseAlgorithm(broadPhaseAlgorithm);
 		this->ogreNewt->setDefaultLinearDamping(defaultLinearDamping);
 		this->ogreNewt->setDefaultAngularDamping(defaultAngularDamping);
-		this->ogreNewt->setMultithreadSolverOnSingleIsland(multithreadSolverOnSingleIsland);
 		//Ogrenewt mit 2 Thread einstellen: nicht sicher ob OgreNewt diese Funktionalitaet von Newtondynamics unterstuetzt!
 #ifdef _WIN32
 		SYSTEM_INFO sysinfo;
@@ -72,19 +71,9 @@ namespace NOWA
 
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[OgreNewtModule] Initializing OgreNewt (performant)");
 		this->ogreNewt = new OgreNewt::World(updateRate, 5, name);
-		// this->ogreNewt->setWorldSize(leftCorner, rightCorner);
-		//this->ogreNewt->setWorldSize(Vector3(-500,-500,-500), Vector3(500,500,500));
-		// OgreNewt::World::SM_FASTEST and OgreNewt::World::FM_ADAPTIVE are not precise but sufficient for Games see NewtonWiki
-		//ogreNewt->setSolverModel(OgreNewt::World::SM_EXACT);
-		//ogreNewt->setFrictionModel(OgreNewt::World::FM_EXACT);
-		this->ogreNewt->setSolverModel(OgreNewt::World::SM_MEDIUM);
-		// this->ogreNewt->setFrictionModel(OgreNewt::World::FM_ADAPTIVE);
-		//PF_COMMON_OPTIMIZED --> nachschauen wenn es Probleme gibt
-		//ogreNewt->setPlatformArchitecture(OgreNewt::World::PF_COMMON_OPTIMIZED);
-		// this->ogreNewt->setPlatformArchitecture(OgreNewt::World::PF_BEST_POSSIBLE + 1);
+		this->ogreNewt->setSolverModel(3);
 		this->ogreNewt->setDefaultLinearDamping(0.1f);
 		this->ogreNewt->setDefaultAngularDamping(Ogre::Vector3(0.1f, 0.1f, 0.1f));
-		// this->ogreNewt->setMultithreadSolverOnSingleIsland(1);
 #ifdef _WIN32
 		SYSTEM_INFO sysinfo;
 		GetSystemInfo(&sysinfo);
@@ -119,25 +108,9 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[OgreNewtModule] Initializing OgreNewt (quality)");
 
 		this->ogreNewt = new OgreNewt::World(updateRate, 5, name);
-		// this->ogreNewt->setWorldSize(leftCorner, rightCorner);
-		//this->ogreNewt->setWorldSize(Vector3(-500,-500,-500), Vector3(500,500,500));
-		this->ogreNewt->setSolverModel(OgreNewt::World::SM_EXACT);
-		//ogreNewt->setFrictionModel(OgreNewt::World::FM_EXACT);
-		//ogreNewt->setSolverModel(OgreNewt::World::SM_FASTEST);
-		// this->ogreNewt->setFrictionModel(OgreNewt::World::FM_EXACT);
-		//PF_COMMON_OPTIMIZED --> nachschauen wenn es Probleme gibt
-		//ogreNewt->setPlatformArchitecture(OgreNewt::World::PF_COMMON_OPTIMIZED);
-		// this->ogreNewt->setPlatformArchitecture(OgreNewt::World::PF_BEST_POSSIBLE + 1);
+		this->ogreNewt->setSolverModel(4);
 		this->ogreNewt->setDefaultLinearDamping(0.1f);
 		this->ogreNewt->setDefaultAngularDamping(Ogre::Vector3(0.1f, 0.1f, 0.1f));
-		// this->ogreNewt->setMultithreadSolverOnSingleIsland(1);
-
-		//NewtonWaitForUpdateToFinish (m_world);
-		//SetAutoSleepMode (m_world, !m_autoSleepState);
-		//NewtonSetSolverModel (m_world, m_solverModes[m_solverModeIndex]);
-		//NewtonSetSolverConvergenceQuality (m_world, m_solverModeQuality ? 1 : 0);
-		//NewtonSetMultiThreadSolverOnSingleIsland (m_world, m_useParallelSolver ? 1 : 0);	
-		//NewtonSelectBroadphaseAlgorithm (m_world, m_broadPhaseType);
 
 #ifdef _WIN32
 		SYSTEM_INFO sysinfo;

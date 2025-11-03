@@ -75,7 +75,6 @@ namespace OgreNewt
 			setNodeUpdateNotify(OgreNewt::bind(callback, instancedClassPointer, std::placeholders::_1));
 		}
 
-		void removeTransformCallback(void);
 		void removeNodeUpdateNotify() { m_nodeupdatenotifycallback = nullptr; }
 
 		void setContactCallback(ContactCallback callback);

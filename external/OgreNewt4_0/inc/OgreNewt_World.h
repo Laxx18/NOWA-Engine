@@ -1,137 +1,141 @@
-/*
-	OgreNewt Library 4.0
-
-	Ogre implementation of Newton Game Dynamics SDK 4.0
-*/
 #ifndef _INCLUDE_OGRENEWT_WORLD
 #define _INCLUDE_OGRENEWT_WORLD
 
 #include "OgreNewt_Prerequisites.h"
+#include "OgreNewt_Body.h"
+#include "OgreVector3.h"
 #include "OgreNewt_Debugger.h"
 #include "OgreNewt_MaterialPair.h"
-
-#include <map>
+#include "OgreNewt_MaterialID.h"
+#include "ndWorld.h"
+#include "ndThread.h"
+#include <functional>
+#include <mutex>
+#include <vector>
 
 namespace OgreNewt
 {
-	class World;
+    class _OgreNewtExport World : public ndWorld
+    {
+    public:
+        typedef OgreNewt::function<void(OgreNewt::Body*, int threadIndex)> LeaveWorldCallback;
+    public:
+        World(Ogre::Real desiredFps = 100.0f,
+            int maxUpdatesPerFrames = 5,
+            const Ogre::String& name = "main");
+        ~World() override;
 
-	//! represents a physics world for Newton Dynamics 4.0
-	class _OgreNewtExport World
-	{
-	public:
-		enum SolverModelMode
-		{
-			SM_EXACT = 0,
-			SM_FASTEST = 1,
-			SM_MEDIUM = 4,
-			SM_SLOW = 8,
-			SM_RIDICULUS = 16
-		};
+        // --- Legacy/engine-facing API (unchanged names) ---
+        void update(Ogre::Real t_step);
+        void postUpdate(Ogre::Real interp);  // called by your render loop after update()
+        void recover();                      // wake bodies & force transforms refresh
+        int getVersion() const;
 
-		typedef OgreNewt::function<void(OgreNewt::Body*, int threadIndex)> LeaveWorldCallback;
+        void cleanUp();                      // clear caches, end step safely
+        void clearCache();                   // ndWorld::ClearCache
+        void waitForUpdateToFinish();        // ndWorld::Sync
 
-	public:
-		World(Ogre::Real desiredFps = 100.0f, int maxUpdatesPerFrames = 5, Ogre::String name = "main");
-		~World();
+        void setUpdateFPS(Ogre::Real desiredFps, int maxUpdatesPerFrames);
+        Ogre::Real getUpdateFPS() const { return m_updateFPS; }
+        Ogre::Real getDesiredFps(void) const { return m_desiredFps; }
 
-		static World* get(Ogre::String name = "main");
+        // Solver / threads / gravity / damping controls
+        void setSolverModel(int mode);
+        int getSolverModel() const { return m_solverMode; }
 
-		int update(Ogre::Real t_step);
+        void setThreadCount(int threads);
+        int  getThreadCount() const { return m_threadsRequested; }
 
-		void invalidateCache();
+        void setGravity(const Ogre::Vector3& g);
+        Ogre::Vector3 getGravity() const;
 
-		void setUpdateFPS(Ogre::Real desiredFps, int maxUpdatesPerFrames);
+        int getMemoryUsed(void) const;
 
-		Ogre::Real getUpdateFPS() const { return m_updateFPS; }
+        int getBodyCount() const;
+        int getConstraintCount() const;
 
-		void setDefaultLinearDamping(Ogre::Real defaultLinearDamping) { m_defaultLinearDamping = defaultLinearDamping; }
-		Ogre::Real getDefaultLinearDamping() const { return m_defaultLinearDamping; }
+        void registerMaterialPair(MaterialPair* pair);
 
-		void setDefaultAngularDamping(Ogre::Vector3 defaultAngularDamping) { m_defaultAngularDamping = defaultAngularDamping; }
-		Ogre::Vector3 getDefaultAngularDamping() const { return m_defaultAngularDamping; }
+        void unregisterMaterialPair(MaterialPair* pair);
 
-		ndWorld* getNewtonWorld() const { return m_world; }
+        MaterialPair* World::findMaterialPair(int id0, int id1) const;
 
-		const MaterialID* getDefaultMaterialID() const { return m_defaultMatID; }
+        const MaterialID* getDefaultMaterialID() const { return m_defaultMatID; }
 
-		void destroyAllBodies();
+        void setPaused(bool p) { m_paused.store(p); }
+        bool isPaused() const { return m_paused.load(); }
+        void singleStep() { m_doSingleStep.store(true); }
 
-		void setSolverModel(int model);
-		int getSolverModel(void) const { return this->solverModel; }
+        void setDefaultLinearDamping(Ogre::Real v) { m_defaultLinearDamping = v; }
+        void setDefaultAngularDamping(const Ogre::Vector3 &v) { m_defaultAngularDamping = v; }
+        Ogre::Real getDefaultLinearDamping()  const { return m_defaultLinearDamping; }
+        Ogre::Vector3 getDefaultAngularDamping() const { return m_defaultAngularDamping; }
 
-		int getMemoryUsed(void) const;
+        bool isSimulating() const { return m_isSimulating.load(std::memory_order_relaxed); }
 
-		int getBodyCount() const;
-		int getConstraintCount() const;
+        void setSimulating(bool state) { m_isSimulating.store(state); }
 
-		void setMultithreadSolverOnSingleIsland(int mode);
-		int getMultithreadSolverOnSingleIsland() const;
+        Debugger& getDebugger() const { return *m_debugger; }
 
-		void setThreadCount(int threads);
-		int getThreadCount() const;
+        // Some engines rely on accessing the raw ndWorld*
+        ndWorld* getNewtonWorld() const { return const_cast<World*>(this); }
 
-		void waitForUpdateToFinish(void);
+        // Safe deferrals from physics step to main thread (e.g. picker callback swaps)
+        void deferAfterPhysics(std::function<void()> fn);
 
-		void criticalSectionLock(int threadIndex = 0) const;
-		void criticalSectionUnlock() const;
+        // --- ndWorld overrides/hooks (optional but aligned with ND4) ---
+        void PreUpdate(ndFloat32 timestep) override;
+        void PostUpdate(ndFloat32 timestep) override;
+        void OnSubStepPreUpdate(ndFloat32 timestep) override;
+        void OnSubStepPostUpdate(ndFloat32 timestep) override;
 
-		void cleanUp(void);
+    private:
+        void flushDeferred();
 
-		void recover(void);
+        // Timing / stepping state
+        Ogre::String m_name;
+        Ogre::Real   m_updateFPS;         // user-requested FPS
+        Ogre::Real   m_fixedTimestep;     // 1 / m_updateFPS
+        Ogre::Real   m_timeAccumulator;   // fixed-step accumulator
+        int          m_maxTicksPerFrames; // clamp for accumulator
+        Ogre::Real   m_invFixedTimestep;
+		Ogre::Real   m_desiredFps;
 
-		int getVersion() const;
+        // Book-keeping for threads/solver
+        int  m_solverMode;
+        int             m_threadsRequested;
 
-		Ogre::Real getDesiredFps(void) const { return this->desiredFps; }
+        MaterialID*     m_defaultMatID;
+        std::map<std::pair<int, int>, MaterialPair*> m_materialPairs;
 
-		void postUpdate(Ogre::Real timestep);
+        // Defaults used by new bodies (your API preserved)
+        Ogre::Real m_defaultLinearDamping;
+        Ogre::Vector3 m_defaultAngularDamping;
 
-		Debugger& getDebugger() const { return *m_debugger; }
+        // World gravity shadow (for quick get/set in Ogre math)
+        ndVector   m_gravity;
+        std::atomic<bool> m_isSimulating = false;
 
-		std::mutex m_ogreMutex;
+        mutable Debugger* m_debugger;
 
-		void registerMaterialPair(MaterialPair* pair);
+        std::atomic<bool> m_paused{ false };
+        std::atomic<bool> m_doSingleStep{ false };
 
-		void unregisterMaterialPair(MaterialPair* pair);
+        // ND4 sync helpers
+        mutable ndSpinLock m_lock;  // protects mutations/reads across threads
 
-		MaterialPair* findMaterialPair(int id0, int id1) const;
-
-	protected:
-		int m_maxTicksPerFrames;
-		Ogre::Real m_timestep;
-		Ogre::Real m_invTimestep;
-		Ogre::Real m_timeAcumulator;
-		Ogre::Real m_updateFPS;
-
-		Ogre::Vector3 m_defaultAngularDamping;
-		Ogre::Real m_defaultLinearDamping;
-
-		ndWorld* m_world;
-		MaterialID* m_defaultMatID;
-
-		LeaveWorldCallback m_leaveCallback;
-
-		static std::map<Ogre::String, World*> worlds;
-
-		mutable Debugger* m_debugger;
-
-	private:
-		int solverModel;
-		Ogre::Real desiredFps;
-		int m_threadCount;
-
-		int m_framesCount;
-		int m_physicsFramesCount;
-		ndFloat32 m_fps;
-		ndFloat32 m_timestepAcc;
-		ndFloat32 m_currentListenerTimestep;
-		ndFloat32 m_mainThreadPhysicsTime;
-		ndFloat32 m_mainThreadPhysicsTimeAcc;
-		__int64 m_microsecunds;
-		Ogre::String name;
-
-		std::map<std::pair<int, int>, MaterialPair*> m_materialPairs;
-	};
+        // Deferral queue (from worker to main)
+        std::mutex m_deferMutex;
+        std::vector<std::function<void()>> m_deferred;
+        LeaveWorldCallback m_leaveCallback;
+    };
 }
+
+#define SAFE_DEFER(world, code) \
+    if (world && world->isSimulating()) { \
+        world->deferAfterPhysics([=]() { code; }); \
+    } else { \
+        code; \
+    }
 
 #endif

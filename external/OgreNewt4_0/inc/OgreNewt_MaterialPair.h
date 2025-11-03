@@ -14,14 +14,11 @@ namespace OgreNewt
         MaterialPair(World* world, const MaterialID* mat1, const MaterialID* mat2);
         ~MaterialPair();
 
-        void setDefaultSoftness(Ogre::Real softness) { m_defaultSoftness = softness; }
-        void setDefaultElasticity(Ogre::Real elasticity) { m_defaultElasticity = elasticity; }
-        void setDefaultCollidable(int state) { m_defaultCollidable = state; }
-        void setDefaultSurfaceThickness(float thickness) { m_defaultSurfaceThickness = thickness; }
-        void setDefaultFriction(Ogre::Real stat, Ogre::Real kinetic)
-        {
-            m_defaultStaticFriction = stat; m_defaultKineticFriction = kinetic;
-        }
+        void setDefaultSoftness(Ogre::Real softness);
+        void setDefaultElasticity(Ogre::Real elasticity);
+        void setDefaultCollidable(int state);
+        void setDefaultSurfaceThickness(float thickness);
+        void setDefaultFriction(Ogre::Real stat, Ogre::Real kinetic);
 
         void setContactCallback(OgreNewt::ContactCallback* callback) { m_contactcallback = callback; }
 

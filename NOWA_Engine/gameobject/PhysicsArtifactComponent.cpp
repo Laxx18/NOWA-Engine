@@ -266,7 +266,6 @@ namespace NOWA
 		// Artifact body should always sleep?
 		this->physicsBody->setAutoSleep(1);
 		// Not required, since artifact does not move
-		this->physicsBody->removeTransformCallback();
 
 		// Object will not be moved frequently
 		// this->gameObjectPtr->setDynamic(false); // Am I shit? Let the designer choose, because else an object with artifact collision can be no more moved!

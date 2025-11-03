@@ -101,7 +101,7 @@ ndFloat32 ndVehicleDectriptor::ndEngineTorqueCurve::GetTorque(ndFloat32 omegaInR
 }
 
 ndVehicleDectriptor::ndVehicleDectriptor(const char* const fileName)
-	:m_comDisplacement(ndVector(0.0f, 0.0f, 0.0f, 0.0f))
+	:m_comDisplacement(ndVector(0.0f, 0.0f, 0.0f, 1.0f))
 {
 	strncpy(m_name, fileName, sizeof(m_name));
 

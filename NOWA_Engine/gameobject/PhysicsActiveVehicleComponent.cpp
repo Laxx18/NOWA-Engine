@@ -575,8 +575,6 @@ namespace NOWA
 			this->physicsBody->setAngularDamping(this->angularDamping->getVector3());
 		}
 
-		// Attention: A Test:
-		this->physicsBody->removeTransformCallback();
 		// Can be used if in vehicle: vehicle->m_curPosit = vehiclePos; etc. is not used!
 
 		this->physicsBody->setCustomForceAndTorqueCallback<PhysicsActiveComponent>(&PhysicsActiveComponent::moveCallback, this);

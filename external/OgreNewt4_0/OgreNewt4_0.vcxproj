@@ -230,7 +230,7 @@
     </ResourceCompile>
     <Link>
       <AdditionalOptions> /STACK:10000000 /debug %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>ndNewton_d.lib;OgreMain_d.lib;OgreOverlay_d.lib;OgreHlmsUnlit_d.lib</AdditionalDependencies>
+      <AdditionalDependencies>ndNewton_d.lib;ndModel_d.lib;OgreMain_d.lib;OgreOverlay_d.lib;OgreHlmsUnlit_d.lib</AdditionalDependencies>
       <OutputFile>$(NOWA)/bin/$(configuration)/$(TargetName)$(TargetExt)</OutputFile>
       <Version>2.0</Version>
       <AdditionalLibraryDirectories>$(NOWA)/bin/$(Configuration);$(NOWA)/bin/$(Configuration)/libs</AdditionalLibraryDirectories>
@@ -378,7 +378,7 @@
     </ResourceCompile>
     <Link>
       <AdditionalOptions> /STACK:10000000 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>ndNewton.lib;OgreMain.lib;OgreOverlay.lib;OgreHlmsUnlit.lib</AdditionalDependencies>
+      <AdditionalDependencies>ndNewton.lib;ndModel.lib;OgreMain.lib;OgreOverlay.lib;OgreHlmsUnlit.lib</AdditionalDependencies>
       <OutputFile>$(NOWA)/bin/$(configuration)/$(TargetName)$(TargetExt)</OutputFile>
       <Version>2.0</Version>
       <AdditionalLibraryDirectories>$(NOWA)/bin/$(Configuration);$(NOWA)/bin/$(Configuration)/libs</AdditionalLibraryDirectories>

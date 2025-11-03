@@ -560,6 +560,8 @@ namespace OgreNewt
 			{
 				const int id = m_matid ? m_matid->getID() : 0;
 				ogreNotify->SetMaterialId(id);
+				ndShapeInstance& shape = m_body->GetCollisionShape();
+				shape.m_shapeMaterial.m_userId = static_cast<ndUnsigned32>(id);
 			}
 		}
 	}
@@ -845,11 +847,6 @@ namespace OgreNewt
 	void Body::setNodeUpdateNotify(NodeUpdateNotifyCallback callback)
 	{
 		m_nodeupdatenotifycallback = callback;
-	}
-
-	void Body::removeTransformCallback(void)
-	{
-		m_body->SetNotifyCallback(nullptr);
 	}
 
 	void Body::setContactCallback(ContactCallback callback)

@@ -1,345 +1,283 @@
 #include "OgreNewt_Stdafx.h"
 #include "OgreNewt_World.h"
-#include "OgreNewt_MaterialID.h"
-#include "OgreNewt_Body.h"
 #include "OgreNewt_BodyNotify.h"
+#include "OgreLogManager.h"
 #include "OgreNewt_ContactNotify.h"
 
-namespace OgreNewt
+using namespace OgreNewt;
+
+World::World(Ogre::Real desiredFps, int maxUpdatesPerFrames, const Ogre::String& name)
+    : ndWorld()
+    , m_name(name)
+    , m_desiredFps(desiredFps)
+    , m_updateFPS(desiredFps > 1.0f ? desiredFps : 120.0f)
+    , m_fixedTimestep(1.0f / (m_updateFPS > 1.0f ? m_updateFPS : 100.0f))
+    , m_timeAccumulator(0.0f)
+    , m_maxTicksPerFrames(maxUpdatesPerFrames > 0 ? maxUpdatesPerFrames : 5)
+	, m_invFixedTimestep(1.0f / m_fixedTimestep)
+    , m_solverMode(4)
+    , m_threadsRequested(std::max(1u, std::thread::hardware_concurrency()))
+    , m_defaultLinearDamping(0.01f)
+    , m_defaultAngularDamping(0.05f)
+    , m_gravity(0.0f, -9.81f, 0.0f, 0.0f)
 {
-	std::map<Ogre::String, World*> World::worlds = std::map<Ogre::String, World*>();
+    // Bring ND4 defaults to sane values.
+    // Threads: you can tweak this externally via setThreadCountExt().
+    SetThreadCount(m_threadsRequested);
 
-	World::World(Ogre::Real desiredFps, int maxUpdatesPerFrames, Ogre::String name)
-		: solverModel(6),
-		desiredFps(desiredFps),
-		name(name),
-		m_threadCount(1),
-		m_debugger(nullptr),
-		m_framesCount(0),
-		m_physicsFramesCount(0),
-		m_fps(0.0f),
-		m_timestepAcc(0.0f),
-		m_currentListenerTimestep(0.0f),
-		m_mainThreadPhysicsTime(0.0f),
-		m_mainThreadPhysicsTimeAcc(0.0f)
-	{
-		m_world = new ndWorld();
+    // Solver “model” mapping: we use iterations as a proxy (ND4 changed this surface)
+    setSolverModel(m_solverMode);
 
-		if (!m_world)
-		{
-			// world not created!
-		}
+    // Substeps: keep at 1; we handle fixed stepping in update()
+    SetSubSteps(1);
 
-		setUpdateFPS(this->desiredFps, maxUpdatesPerFrames);
+    m_defaultMatID = new OgreNewt::MaterialID(this, 0);
 
-		m_defaultMatID = new OgreNewt::MaterialID(this, 0);
+    m_debugger = new Debugger(this);
 
-		m_leaveCallback = nullptr;
+    OgreNewt::ContactNotify* notify = new OgreNewt::ContactNotify(this);
+    SetContactNotify(notify);
+}
 
-		m_defaultAngularDamping = Ogre::Vector3(0.001f, 0.001f, 0.001f);
-		m_defaultLinearDamping = 0.001f;
+World::~World()
+{
+    cleanUp();
+}
 
-		m_debugger = new Debugger(this);
+void World::cleanUp()
+{
+    // ndScopeSpinLock lock(m_lock);
+    Sync();       // join worker threads
+    ClearCache(); // ndWorld clears spatial/broadphase caches
+}
 
-		setSolverModel(solverModel);
-		setThreadCount(m_threadCount);
+void World::clearCache()
+{
+    // ndScopeSpinLock lock(m_lock);
+    ClearCache();
+}
 
-		worlds[name] = this;
+void World::waitForUpdateToFinish()
+{
+    // Safe point for cross-thread ops
+    Sync();
+}
 
-		OgreNewt::ContactNotify* notify = new OgreNewt::ContactNotify(this);
-		m_world->SetContactNotify(notify);
-	}
+void World::setUpdateFPS(Ogre::Real desiredFps, int maxUpdatesPerFrames)
+{
+    // ndScopeSpinLock lock(m_lock);
+    m_updateFPS = std::max<Ogre::Real>(1.0f, desiredFps);
+    m_fixedTimestep = 1.0f / m_updateFPS;
+    m_invFixedTimestep = 1.0f / m_fixedTimestep;
+    m_maxTicksPerFrames = std::max(1, maxUpdatesPerFrames);
+}
 
-	World::~World()
-	{
-		const auto& it = World::worlds.find(this->name);
-		if (it != World::worlds.cend())
-		{
-			World::worlds.erase(it);
-		}
+void World::setSolverModel(int mode)
+{
+    // ndScopeSpinLock lock(m_lock);
+    m_solverMode = mode;
 
-		cleanUp();
+    SetSolverIterations(m_solverMode);
+}
 
-		if (m_debugger)
-		{
-			delete m_debugger;
-			m_debugger = nullptr;
-		}
+void World::setThreadCount(int threads)
+{
+    // ndScopeSpinLock lock(m_lock);
+    m_threadsRequested = std::max(1, threads);
+    ndWorld::SetThreadCount(m_threadsRequested);
+}
 
-		if (m_defaultMatID)
-		{
-			delete m_defaultMatID;
-			m_defaultMatID = nullptr;
-		}
+void World::setGravity(const Ogre::Vector3& g)
+{
+    // ndScopeSpinLock lock(m_lock);
+    m_gravity = ndVector(g.x, g.y, g.z, 0.0f);
+}
 
-		if (m_world)
-		{
-			delete m_world;
-			m_world = nullptr;
-		}
-	}
+Ogre::Vector3 World::getGravity() const
+{
+    // No need to lock for a trivial read; keep it safe anyway
+    // ndScopeSpinLock lock(m_lock);
+    return Ogre::Vector3(m_gravity.m_x, m_gravity.m_y, m_gravity.m_z);
+}
 
-	World* World::get(Ogre::String name)
-	{
-		std::map<Ogre::String, World*>::const_iterator search = worlds.find(name);
+int World::getMemoryUsed(void) const
+{
+    return 0; // TODO: Implement if Newton 4.0 provides memory tracking
+}
 
-		if (search != worlds.end())
-		{
-			return search->second;
-		}
+int World::getBodyCount() const
+{
+    return GetBodyList().GetCount();
+}
 
-		return nullptr;
-	}
+int World::getConstraintCount() const
+{
+    return GetJointList().GetCount();
+}
 
-	void World::setUpdateFPS(Ogre::Real desiredFps, int maxUpdatesPerFrames)
-	{
-		m_world->SetSubSteps(maxUpdatesPerFrames);
-		if (maxUpdatesPerFrames < 1)
-		{
-			maxUpdatesPerFrames = 1;
-		}
+int World::getVersion() const
+{
+    return 400; // Newton 4.0
+}
 
-		if (maxUpdatesPerFrames > 10)
-		{
-			maxUpdatesPerFrames = 10;
-		}
+void World::registerMaterialPair(MaterialPair* pair)
+{
+    int id0 = pair->getMaterial0()->getID();
+    int id1 = pair->getMaterial1()->getID();
+    if (id0 > id1) std::swap(id0, id1);
+    m_materialPairs[std::make_pair(id0, id1)] = pair;
+}
 
-		m_maxTicksPerFrames = maxUpdatesPerFrames;
-		m_updateFPS = desiredFps;
-		this->desiredFps = desiredFps;
+void World::unregisterMaterialPair(MaterialPair* pair)
+{
+    if (!pair) return;
 
-		m_timestep = 1.0f / desiredFps;
+    int id0 = pair->getMaterial0()->getID();
+    int id1 = pair->getMaterial1()->getID();
+    if (id0 > id1) std::swap(id0, id1);
 
-		if (m_timestep > 1.0f / 10.0f)
-		{
-			m_maxTicksPerFrames += (int)ceilf(m_timestep / (1.0f / 10.0f));
-			m_timestep = 1.0f / 10.0f;
-			m_updateFPS = 10.0f;
-		}
+    auto it = m_materialPairs.find(std::make_pair(id0, id1));
+    if (it != m_materialPairs.end())
+    {
+        m_materialPairs.erase(it);
+    }
+}
 
-		if (m_timestep < 1.0f / 1000.0f)
-		{
-			m_timestep = 1.0f / 1000.0f;
-			m_updateFPS = 1000.0f;
-		}
+MaterialPair* World::findMaterialPair(int id0, int id1) const
+{
+    if (id0 > id1) std::swap(id0, id1);
+    auto it = m_materialPairs.find(std::make_pair(id0, id1));
+    return (it != m_materialPairs.end()) ? it->second : nullptr;
+}
 
-		m_invTimestep = 1.0f / m_timestep;
-		m_timeAcumulator = m_timestep;
-	}
+void World::deferAfterPhysics(std::function<void()> fn)
+{
+    std::lock_guard<std::mutex> g(m_deferMutex);
+    m_deferred.emplace_back(std::move(fn));
+}
 
-	void World::setThreadCount(int threads)
-	{
-		m_threadCount = threads;
-		m_world->SetThreadCount(threads);
-	}
+void World::flushDeferred()
+{
+    std::vector<std::function<void()>> pending;
+    {
+        std::lock_guard<std::mutex> g(m_deferMutex);
+        pending.swap(m_deferred);
+    }
 
-	void World::cleanUp(void)
-	{
-		m_world->Sync();
-		// Causes crash
-		// m_world->CleanUp();
-		invalidateCache();
-		m_timeAcumulator = 0.0f;
-	}
+    for (auto& fn : pending)
+    {
+        if (fn) fn();
+    }
+}
 
-	void World::recover(void)
-	{
-		if (!m_world)
-		{
-			return;
-		}
+void World::update(Ogre::Real t_step)
+{
+    if (m_paused.load())
+    {
+        if (!m_doSingleStep.exchange(false))
+            return;
+    }
 
-		// No CleanUp / ClearCache here — just wake & invalidate per-body.
-		const ndBodyListView& bodyList = m_world->GetBodyList();
-		const ndArray<ndBodyKinematic*>& view = bodyList.GetView();
+    // clamp to avoid spiral-of-death
+    if (t_step > (m_fixedTimestep * m_maxTicksPerFrames))
+        t_step = m_fixedTimestep * m_maxTicksPerFrames;
 
-		for (ndInt32 i = ndInt32(view.GetCount()) - 1; i >= 0; --i)
-		{
-			ndBodyKinematic* const b = view[i];
-			if (!b) continue;
+    m_timeAccumulator += t_step;
 
-			// dynamic only
-			if (b->GetInvMass() > ndFloat32(0.0f))
-			{
+    while (m_timeAccumulator >= m_fixedTimestep)
+    {
+        // 1) Kick the step (ndWorld::Update will first Sync with any *previous* step,
+        //    then start this step asynchronously via TickOne()).
+        ndWorld::Update(static_cast<ndFloat32>(m_fixedTimestep));  // starts async work
 
+        // 2) Wait for the step we just started to finish -> this makes stepping synchronous.
+        ndWorld::Sync();  // <- THIS is the “second Sync” you asked about
 
-				// mark the body/scene as dirty (invalidates contact cache & aabb)
-				//    This is the ND4 way to say "something changed, don’t keep me asleep".
-				b->SetMatrixUpdateScene(b->GetMatrix());
+        // 3) (Optional) If you kept any deferral queue, you can flush immediately here,
+        //    but with a purely synchronous model you won’t need deferral any more.
+        // flushDeferred();
 
-				// actually wake it
-				b->SetAutoSleep(true);      // keep normal autosleep behavior
-				b->SetSleepState(false);    // force out of equilibrium for the next step
-			}
-		}
-	}
+        m_timeAccumulator -= m_fixedTimestep;
 
-	int World::update(Ogre::Real t_step)
-	{
-		int realUpdates = 0;
+        if (m_paused.load())
+            break;
+    }
 
-		if (t_step > (m_timestep * m_maxTicksPerFrames))
-			t_step = m_timestep * m_maxTicksPerFrames;
+    const Ogre::Real interp = m_timeAccumulator * m_invFixedTimestep;
+    postUpdate(interp);
+}
 
-		m_timeAcumulator += t_step;
+void World::postUpdate(Ogre::Real interp)
+{
+    const ndBodyListView& bodyList = GetBodyList();
+    const ndArray<ndBodyKinematic*>& view = bodyList.GetView();
 
-		while (m_timeAcumulator >= m_timestep)
-		{
-			m_world->Update(m_timestep);
-			m_timeAcumulator -= m_timestep;
-			realUpdates++;
-		}
+    for (ndInt32 i = ndInt32(view.GetCount()) - 1; i >= 0; --i)
+    {
+        ndBodyKinematic* const ndBody = view[i];
+        if (!ndBody->GetSleepState())
+        {
+            if (auto* notify = ndBody->GetNotifyCallback())
+            {
+                if (auto* ogreNotify = dynamic_cast<BodyNotify*>(notify))
+                {
+                    if (auto* ogreBody = ogreNotify->GetOgreNewtBody())
+                        ogreBody->updateNode(interp);
+                }
+            }
+        }
+    }
+}
 
-		const Ogre::Real interp = m_timeAcumulator * m_invTimestep;
-		postUpdate(interp);
-		return realUpdates;
-	}
+void World::recover()
+{
+    // ndScopeSpinLock lock(m_lock);
 
-	void World::postUpdate(Ogre::Real interp)
-	{
-		const ndBodyListView& bodyList = m_world->GetBodyList();
-		const ndArray<ndBodyKinematic*>& view = bodyList.GetView();
+    const ndBodyListView& bodyList = GetBodyList();
+    const ndArray<ndBodyKinematic*>& view = bodyList.GetView();
 
-		for (ndInt32 i = ndInt32(view.GetCount()) - 1; i >= 0; --i)
-		{
-			ndBodyKinematic* const ndBody = view[i];
-			if (!ndBody->GetSleepState())
-			{
-				if (auto* notify = ndBody->GetNotifyCallback())
-				{
-					if (auto* ogreNotify = dynamic_cast<BodyNotify*>(notify))
-					{
-						if (auto* ogreBody = ogreNotify->GetOgreNewtBody())
-							ogreBody->updateNode(interp);
-					}
-				}
-			}
-		}
-	}
+    for (ndInt32 i = ndInt32(view.GetCount()) - 1; i >= 0; --i)
+    {
+        ndBodyKinematic* const b = view[i];
+        if (!b) continue;
 
-	void World::registerMaterialPair(MaterialPair* pair)
-	{
-		int id0 = pair->getMaterial0()->getID();
-		int id1 = pair->getMaterial1()->getID();
-		if (id0 > id1) std::swap(id0, id1);
-		m_materialPairs[std::make_pair(id0, id1)] = pair;
-	}
-
-	void World::unregisterMaterialPair(MaterialPair* pair)
-	{
-		if (!pair) return;
-
-		int id0 = pair->getMaterial0()->getID();
-		int id1 = pair->getMaterial1()->getID();
-		if (id0 > id1) std::swap(id0, id1);
-
-		auto it = m_materialPairs.find(std::make_pair(id0, id1));
-		if (it != m_materialPairs.end())
-		{
-			m_materialPairs.erase(it);
-		}
-	}
-
-	MaterialPair* World::findMaterialPair(int id0, int id1) const
-	{
-		if (id0 > id1) std::swap(id0, id1);
-		auto it = m_materialPairs.find(std::make_pair(id0, id1));
-		return (it != m_materialPairs.end()) ? it->second : nullptr;
-	}
-
-	void World::invalidateCache()
-	{
-		m_world->ClearCache();
-	}
-
-	// OgreNewt_World.cpp
-	void World::destroyAllBodies()
-	{
-		ndWorld* const w = m_world;
-		if (!w)
-			return;
-
-		// Ensure nobody is stepping
-		w->Sync();
-
-		// Remove all joints first (safer if you have constraints between bodies)
-		{
-			const ndJointList& jlist = w->GetJointList();
-			for (ndJointList::ndNode* node = jlist.GetFirst(); node; )
-			{
-				ndJointList::ndNode* next = node->GetNext();
-				auto j = node->GetInfo();
-				w->RemoveJoint(j.operator->());
-				node = next;
-			}
-		}
-
-		// Remove all bodies
-		{
-			const ndBodyListView& blist = w->GetBodyList();
-			const ndArray<ndBodyKinematic*>& view = blist.GetView();
-			// removing by pointer is safe; removing backwards avoids reindex costs
-			for (ndInt32 i = ndInt32(view.GetCount()) - 1; i >= 0; --i)
-			{
-				ndBodyKinematic* const b = view[i];
-				w->RemoveBody(b->GetAsBody());
-			}
-		}
-	}
+        // dynamic only
+        if (b->GetInvMass() > ndFloat32(0.0f))
+        {
 
 
-	void World::setSolverModel(int model)
-	{
-		this->solverModel = model;
-		m_world->SetSolverIterations(model);
-	}
+            // mark the body/scene as dirty (invalidates contact cache & aabb)
+            //    This is the ND4 way to say "something changed, don’t keep me asleep".
+            b->SetMatrixUpdateScene(b->GetMatrix());
 
-	int World::getMemoryUsed(void) const
-	{
-		return 0; // TODO: Implement if Newton 4.0 provides memory tracking
-	}
+            // actually wake it
+            b->SetAutoSleep(true);      // keep normal autosleep behavior
+            b->SetSleepState(false);    // force out of equilibrium for the next step
+        }
+    }
+}
 
-	int World::getBodyCount() const
-	{
-		return m_world->GetBodyList().GetCount();
-	}
+void World::PreUpdate(ndFloat32 /*timestep*/)
+{
+    // Called by ND4 just before the internal update work starts.
+    // Keep minimal work here; use it if you need to latch external state.
+}
 
-	int World::getConstraintCount() const
-	{
-		return m_world->GetJointList().GetCount();
-	}
+void World::OnSubStepPreUpdate(ndFloat32 /*timestep*/)
+{
+    // Per-substep pre (rarely needed)
+}
 
-	void World::setMultithreadSolverOnSingleIsland(int mode)
-	{
-		// Implementation depends on Newton 4.0 API
-	}
+void World::OnSubStepPostUpdate(ndFloat32 /*timestep*/)
+{
+    // Per-substep post (rarely needed)
+}
 
-	int World::getMultithreadSolverOnSingleIsland() const
-	{
-		return 0;
-	}
-
-	void World::waitForUpdateToFinish(void)
-	{
-		m_world->Sync();
-	}
-
-	void World::criticalSectionLock(int threadIndex) const
-	{
-		m_world->Sync();
-	}
-
-	void World::criticalSectionUnlock() const
-	{
-	}
-
-	int World::getThreadCount() const
-	{
-		return m_world->GetThreadCount();
-	}
-
-	int World::getVersion() const
-	{
-		return 400; // Newton 4.0
-	}
+void World::PostUpdate(ndFloat32 /*timestep*/)
+{
+    // ND4 calls this after each Update() completes (while still inside Update()).
+    // We do *not* push to Ogre here to avoid render-thread contention.
+    // If you want to run something tightly after the step, enqueue via deferAfterPhysics().
+    // Example:
+    // deferAfterPhysics([this](){ /* safe edits after Sync() in update() */ });
 }

@@ -860,12 +860,10 @@ namespace NOWA
 
 	void GenericContactCallback::contactsProcess(OgreNewt::ContactJoint& contactJoint, Ogre::Real timeStep, int threadIndex)
 	{
-		// Note: If several threads are used, a lock is required, else lua will crash when a script is called
-		AppStateManager::getSingletonPtr()->getOgreNewtModule()->getOgreNewt()->criticalSectionLock(threadIndex);
+		// Note: If several threads are used, a lock is required, else lua will crash when a script is called?
 		
 		if (nullptr == this->luaScript)
 		{
-			AppStateManager::getSingletonPtr()->getOgreNewtModule()->getOgreNewt()->criticalSectionUnlock();
 			return;
 		}
 
@@ -949,8 +947,6 @@ namespace NOWA
 				NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 			}
 		}
-
-		AppStateManager::getSingletonPtr()->getOgreNewtModule()->getOgreNewt()->criticalSectionUnlock();
 	}
 
 }; // namespace end

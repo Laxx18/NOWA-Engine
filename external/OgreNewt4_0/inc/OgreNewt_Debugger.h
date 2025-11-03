@@ -99,9 +99,9 @@ namespace OgreNewt
     protected:
         friend class OgreNewt::World;
         //! this function must only be used by an instance of the OgreNewt::World class
-        Debugger(const OgreNewt::World* world);
+        Debugger(OgreNewt::World* world);
 
-        const OgreNewt::World* m_world;
+        OgreNewt::World* m_world;
         Ogre::SceneManager* m_sceneManager;
         Ogre::SceneNode* m_debugnode;
         typedef std::map<int, Ogre::ColourValue> MaterialIdColorMap;

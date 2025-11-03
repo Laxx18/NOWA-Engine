@@ -99,7 +99,7 @@ namespace
             break;
 
         case ChamferCylinderPrimitiveType:
-            writeVal(os, info.m_chamferCylinder.m_r);
+            writeVal(os, info.m_chamferCylinder.m_radius);
             writeVal(os, info.m_chamferCylinder.m_height);
             break;
 

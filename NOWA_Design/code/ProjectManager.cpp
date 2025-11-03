@@ -528,8 +528,6 @@ void ProjectManager::internalApplySettings(void)
 		if (nullptr != ogreNewt)
 		{
 			ogreNewt->setSolverModel(this->projectParameter.solverModel);
-			ogreNewt->setMultithreadSolverOnSingleIsland(true == this->projectParameter.solverForSingleIsland ? 1 : 0);
-			// ogreNewt->setBroadPhaseAlgorithm(this->projectParameter.broadPhaseAlgorithm);
 			ogreNewt->setUpdateFPS(this->projectParameter.physicsUpdateRate, 2);
 			ogreNewt->setThreadCount(this->projectParameter.physicsThreadCount);
 			ogreNewt->setDefaultLinearDamping(this->projectParameter.linearDamping);

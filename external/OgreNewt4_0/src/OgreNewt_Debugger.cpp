@@ -29,7 +29,7 @@ namespace OgreNewt
 	//////////////////////////////////////////////////////////
 	// DEUBBER FUNCTIONS
 	//////////////////////////////////////////////////////////
-	Debugger::Debugger(const OgreNewt::World* world)
+	Debugger::Debugger(OgreNewt::World* world)
 		: m_world(world),
 		m_debugnode(nullptr),
 		m_raycastsnode(nullptr),
@@ -425,14 +425,12 @@ namespace OgreNewt
 
 		line->end();
 
-#ifndef WIN32
-		m_world->ogreCriticalSectionLock();
-#endif
-		mRecordedRaycastObjects.push_back(line);
-		m_raycastsnode->attachObject(line);
-#ifndef WIN32
-		m_world->ogreCriticalSectionUnlock();
-#endif
+		m_world->deferAfterPhysics([this, line]()
+			{
+				mRecordedRaycastObjects.push_back(line);
+				if (m_raycastsnode)
+					m_raycastsnode->attachObject(line);
+			});
 	}
 
 	void Debugger::addHitBody(const OgreNewt::Body* body)
@@ -471,14 +469,12 @@ namespace OgreNewt
 
 		line->end();
 
-#ifndef WIN32
-		m_world->ogreCriticalSectionLock();
-#endif
-		mRecordedRaycastObjects.push_back(line);
-		m_raycastsnode->attachObject(line);
-#ifndef WIN32
-		m_world->ogreCriticalSectionUnlock();
-#endif
+		m_world->deferAfterPhysics([this, line]()
+			{
+				mRecordedRaycastObjects.push_back(line);
+				if (m_raycastsnode)
+					m_raycastsnode->attachObject(line);
+			});
 	}
 
 	// ----------------- raycast-debugging -----------------------
@@ -549,14 +545,12 @@ namespace OgreNewt
 		line->line(0, 1);
 		line->end();
 
-#ifndef WIN32
-		m_world->ogreCriticalSectionLock();
-#endif
-		mRecordedRaycastObjects.push_back(line);
-		m_raycastsnode->attachObject(line);
-#ifndef WIN32
-		m_world->ogreCriticalSectionUnlock();
-#endif
+		m_world->deferAfterPhysics([this, line]()
+			{
+				mRecordedRaycastObjects.push_back(line);
+				if (m_raycastsnode)
+					m_raycastsnode->attachObject(line);
+			});
 	}
 
 	void Debugger::addConvexRay(const ndShape* col, const Ogre::Vector3& startpt, const Ogre::Quaternion& colori, const Ogre::Vector3& endpt)
@@ -595,14 +589,12 @@ namespace OgreNewt
 
 		line->end();
 
-#ifndef WIN32
-		m_world->ogreCriticalSectionLock();
-#endif
-		mRecordedRaycastObjects.push_back(line);
-		m_raycastsnode->attachObject(line);
-#ifndef WIN32
-		m_world->ogreCriticalSectionUnlock();
-#endif
+		m_world->deferAfterPhysics([this, line]()
+			{
+				mRecordedRaycastObjects.push_back(line);
+				if (m_raycastsnode)
+					m_raycastsnode->attachObject(line);
+			});
 	}
 
 }   // end namespace OgreNewt
