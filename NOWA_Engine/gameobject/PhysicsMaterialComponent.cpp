@@ -896,7 +896,7 @@ namespace NOWA
 					// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "hit: " + Ogre::StringConverter::toString(normalSpeedDiff));
 					NOWA::AppStateManager::LogicCommand logicCommand = [this, contact]()
 					{
-							this->luaScript->callTableFunction(this->contactOnceFunctionName, this->gameObject0, this->gameObject1, contact);
+						this->luaScript->callTableFunction(this->contactOnceFunctionName, this->gameObject0, this->gameObject1, contact);
 					};
 					NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 					break;
@@ -904,7 +904,9 @@ namespace NOWA
 
 				this->lastNormalSpeed = contact->getNormalSpeed();
 				if (this->lastNormalSpeed == 0.0f)
+				{
 					this->lastNormalSpeed = 1.0f;
+				}
 			}
 
 			if (false == this->contactScratchFunctionName.empty())

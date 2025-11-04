@@ -283,7 +283,7 @@ namespace NOWA
 
 	bool GameObject::init(Ogre::MovableObject* newMovableObject)
 	{
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObject::init", _1(newMovableObject),
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this, newMovableObject]()
 		{
 			if (nullptr != newMovableObject)
 			{
@@ -372,7 +372,8 @@ namespace NOWA
 
 			this->boundingBoxDraw = sceneManager->createWireAabb();
 			this->boundingBoxDraw->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
-		});
+		};
+		NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObject::init");
 
 		return true;
 	}
@@ -426,9 +427,9 @@ namespace NOWA
 	{
 		if (GameObject::ITEM == this->type || GameObject::PLANE == this->type)
 		{
-			ENQUEUE_RENDER_COMMAND_WAIT("GameObject::actualizeDatablocks",
+			NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
 			{
-				Ogre::Item * item = this->getMovableObjectUnsafe<Ogre::Item>();
+				Ogre::Item* item = this->getMovableObjectUnsafe<Ogre::Item>();
 				if (nullptr != item)
 				{
 					this->meshName->setValue(item->getMesh()->getName());
@@ -463,11 +464,12 @@ namespace NOWA
 				{
 					this->meshName->setVisible(false);
 				}
-			});
+			};
+			NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObject::actualizeDatablocks");
 		}
 		else
 		{
-			ENQUEUE_RENDER_COMMAND_WAIT("GameObject::actualizeDatablocks",
+			NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
 			{
 				Ogre::v1::Entity * entity = this->getMovableObjectUnsafe<Ogre::v1::Entity>();
 				if (nullptr != entity)
@@ -504,7 +506,8 @@ namespace NOWA
 				{
 					this->meshName->setVisible(false);
 				}
-			});
+			};
+			NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObject::actualizeDatablocks");
 		}
 
 		this->meshName->setReadOnly(true);
@@ -969,11 +972,12 @@ namespace NOWA
 				}
 			};
 
-			NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "GameObject::setDatablock item");
+			NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObject::setDatablock item");
 		}
 		else
 		{
-			GraphicsModule::RenderCommand renderCommand = [this, attribute]() {
+			GraphicsModule::RenderCommand renderCommand = [this, attribute]()
+			{
 				Ogre::v1::Entity* entity = this->getMovableObject<Ogre::v1::Entity>();
 				if (nullptr != entity)
 				{
@@ -1015,7 +1019,7 @@ namespace NOWA
 				}
 			};
 
-			NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "GameObject::setDatablock entity");
+			NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObject::setDatablock entity");
 		}
 	}
 

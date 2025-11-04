@@ -94,63 +94,64 @@ namespace OgreNewt
         if (!b0 || !b1)
             return true;
 
-        auto* n0 = dynamic_cast<ContactNotify*>(b0->GetNotifyCallback());
-        auto* n1 = dynamic_cast<ContactNotify*>(b1->GetNotifyCallback());
+        // use Newton's real shape user IDs to find the pair
+        const ndUnsigned32 id0 = b0->GetCollisionShape().m_shapeMaterial.m_userId;
+        const ndUnsigned32 id1 = b1->GetCollisionShape().m_shapeMaterial.m_userId;
+        MaterialPair* pair = m_world->findMaterialPair((int)id0, (int)id1);
+        if (!pair || !pair->getContactCallback())
+            return true;
+
+        if (!pair->getDefaultCollidable())
+            return false;
+
+        // fetch OgreNewt::Body via BodyNotify on each body
+        auto* n0 = dynamic_cast<BodyNotify*>(b0->GetNotifyCallback());
+        auto* n1 = dynamic_cast<BodyNotify*>(b1->GetNotifyCallback());
         if (!n0 || !n1)
             return true;
 
-        OgreNewt::Body* ob0 = n0->getOgreNewtBody();
-        OgreNewt::Body* ob1 = n1->getOgreNewtBody();
+        OgreNewt::Body* ob0 = n0->GetOgreNewtBody();
+        OgreNewt::Body* ob1 = n1->GetOgreNewtBody();
+
         if (!ob0 || !ob1)
             return true;
 
-        const MaterialID* mat0 = ob0->getMaterialGroupID();
-        const MaterialID* mat1 = ob1->getMaterialGroupID();
-        if (!mat0 || !mat1)
-            return true;
-
-        MaterialPair* pair = m_world->findMaterialPair(mat0->getID(), mat1->getID());
-        if (pair && pair->getContactCallback())
-        {
-            return pair->getContactCallback()->onAABBOverlap(ob0, ob1, 0) != 0;
-        }
-
-        return true;
+        // delegate to your engine callback
+        return pair->getContactCallback()->onAABBOverlap(ob0, ob1, 0) != 0;
     }
 
-    bool ContactNotify::OnCompoundSubShapeOverlap(
-        const ndContact* const contact, ndFloat32, const ndShapeInstance* const subA,
-        const ndShapeInstance* const subB) const
+    bool ContactNotify::OnCompoundSubShapeOverlap(const ndContact* const contact, ndFloat32, const ndShapeInstance* const subA, const ndShapeInstance* const subB) const
     {
         if (!contact)
-            return false;
+            return true; // allow by default
 
         ndBodyKinematic* b0 = contact->GetBody0();
         ndBodyKinematic* b1 = contact->GetBody1();
         if (!b0 || !b1)
-            return false;
+            return true;
 
-        auto* n0 = dynamic_cast<ContactNotify*>(b0->GetNotifyCallback());
-        auto* n1 = dynamic_cast<ContactNotify*>(b1->GetNotifyCallback());
+        // use Newton's real shape user IDs to find the pair
+        const ndUnsigned32 id0 = b0->GetCollisionShape().m_shapeMaterial.m_userId;
+        const ndUnsigned32 id1 = b1->GetCollisionShape().m_shapeMaterial.m_userId;
+        MaterialPair* pair = m_world->findMaterialPair((int)id0, (int)id1);
+        if (!pair || !pair->getContactCallback())
+            return true;
+
+        // fetch OgreNewt::Body via BodyNotify on each body
+        auto* n0 = dynamic_cast<BodyNotify*>(b0->GetNotifyCallback());
+        auto* n1 = dynamic_cast<BodyNotify*>(b1->GetNotifyCallback());
         if (!n0 || !n1)
-            return false;
+            return true;
 
-        OgreNewt::Body* ob0 = n0->getOgreNewtBody();
-        OgreNewt::Body* ob1 = n1->getOgreNewtBody();
+        OgreNewt::Body* ob0 = n0->GetOgreNewtBody();
+        OgreNewt::Body* ob1 = n1->GetOgreNewtBody();
         if (!ob0 || !ob1)
-            return false;
+            return true;
 
-        const MaterialID* mat0 = ob0->getMaterialGroupID();
-        const MaterialID* mat1 = ob1->getMaterialGroupID();
-        if (!mat0 || !mat1)
-            return false;
-
-        MaterialPair* pair = m_world->findMaterialPair(mat0->getID(), mat1->getID());
-        if (pair && pair->getContactCallback())
-            return pair->getContactCallback()->onCompoundSubShapeOverlap(ob0, ob1, subA, subB);
-
-        return false;
+        // delegate to your engine callback (return whether to keep this sub-shape contact)
+        return pair->getContactCallback()->onCompoundSubShapeOverlap(ob0, ob1, subA, subB);
     }
+
 
     void ContactNotify::setOgreNewtBody(OgreNewt::Body* body)
     {

@@ -1866,10 +1866,7 @@ namespace OgreNewt
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	Plane2DUpVectorJoint::Plane2DUpVectorJoint(const OgreNewt::Body* child,
-		const Ogre::Vector3& pos,
-		const Ogre::Vector3& normal,
-		const Ogre::Vector3& pin)
+	Plane2DUpVectorJoint::Plane2DUpVectorJoint(const OgreNewt::Body* child, const Ogre::Vector3& pos, const Ogre::Vector3& normal, const Ogre::Vector3& pin)
 		: Joint(),
 		m_pin(pin)
 	{
@@ -1942,14 +1939,11 @@ namespace OgreNewt
 	// -----------------------------------------------------------------------------
 	// PlaneConstraint Implementation
 	// -----------------------------------------------------------------------------
-	PlaneConstraint::PlaneConstraint(const OgreNewt::Body* child,
-		const OgreNewt::Body* parent,
-		const Ogre::Vector3& pos,
-		const Ogre::Vector3& normal)
+	PlaneConstraint::PlaneConstraint(const OgreNewt::Body* child, const OgreNewt::Body* parent, const Ogre::Vector3& pos, const Ogre::Vector3& normal)
 		: Joint()
 	{
 		ndBodyKinematic* const b0 = const_cast<ndBodyKinematic*>(child->getNewtonBody());
-		ndBodyKinematic* const b1 = parent ? const_cast<ndBodyKinematic*>(parent->getNewtonBody()) : nullptr;
+		ndBodyKinematic* const b1 = parent ? const_cast<ndBodyKinematic*>(parent->getNewtonBody()) : child->getWorld()->getNewtonWorld()->GetSentinelBody();
 
 		ndVector ndPos(pos.x, pos.y, pos.z, 1.0f);
 		ndVector ndNormal(normal.x, normal.y, normal.z, 0.0f);
@@ -1984,14 +1978,14 @@ namespace OgreNewt
 	UpVector::UpVector(const Body* body, const Ogre::Vector3& pin)
 		: m_pin(pin)
 	{
-		ndBodyKinematic* const child = const_cast<ndBodyKinematic*>(body->getNewtonBody());
-		ndBodyKinematic* const parent = nullptr; // attach to world sentinel
+		ndBodyKinematic* const child = static_cast<ndBodyKinematic*>(body->getNewtonBody());
+		ndBodyKinematic* const sentinelBody = body->getWorld()->getNewtonWorld()->GetSentinelBody();
 
 		// Convert Ogre::Vector3 → ndVector
 		const ndVector up(pin.x, pin.y, pin.z, 0.0f);
 
 		// Create the ND4 up-vector joint
-		auto* j = new ndJointUpVector(up, child, parent);
+		auto* j = new ndJointUpVector(up, child, sentinelBody);
 		SetSupportJoint(j);
 	}
 
@@ -2604,11 +2598,7 @@ namespace OgreNewt
 
 	///////////////////////////////////////////////////////////////////////////////////////////////
 
-	Pulley::Pulley(const OgreNewt::Body* child,
-		const OgreNewt::Body* parent,
-		const Ogre::Vector3& childPin,
-		const Ogre::Vector3& parentPin,
-		Ogre::Real pulleyRatio)
+	Pulley::Pulley(const OgreNewt::Body* child, const OgreNewt::Body* parent, const Ogre::Vector3& childPin, const Ogre::Vector3& parentPin, Ogre::Real pulleyRatio)
 		: Joint()
 	{
 		// convert pins to ndVector
@@ -3044,10 +3034,7 @@ namespace OgreNewt
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	Wheel::Wheel(const OgreNewt::Body* child,
-		const OgreNewt::Body* parent,
-		const Ogre::Vector3& pos,
-		const Ogre::Vector3& pin)
+	Wheel::Wheel(const OgreNewt::Body* child, const OgreNewt::Body* parent, const Ogre::Vector3& pos, const Ogre::Vector3& pin)
 		: Joint()
 	{
 		// build pin matrix using our existing converter
@@ -3065,12 +3052,7 @@ namespace OgreNewt
 		SetSupportJoint(joint);
 	}
 
-	Wheel::Wheel(const OgreNewt::Body* child,
-		const OgreNewt::Body* parent,
-		const Ogre::Vector3& childPos,
-		const Ogre::Vector3& childPin,
-		const Ogre::Vector3& parentPos,
-		const Ogre::Vector3& parentPin)
+	Wheel::Wheel(const OgreNewt::Body* child, const OgreNewt::Body* parent, const Ogre::Vector3& childPos, const Ogre::Vector3& childPin, const Ogre::Vector3& parentPos, const Ogre::Vector3& parentPin)
 		: Joint()
 	{
 		Ogre::Quaternion qChild = OgreNewt::Converters::grammSchmidt(childPin);
@@ -3133,12 +3115,7 @@ namespace OgreNewt
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	VehicleTire::VehicleTire(OgreNewt::Body* child,
-		OgreNewt::Body* parentBody,
-		const Ogre::Vector3& pos,
-		const Ogre::Vector3& pin,
-		Vehicle* parent,
-		Ogre::Real radius)
+	VehicleTire::VehicleTire(OgreNewt::Body* child, OgreNewt::Body* parentBody, const Ogre::Vector3& pos, const Ogre::Vector3& pin, Vehicle* parent, Ogre::Real radius)
 		: Joint(),
 		m_vehicle(parent),
 		m_radius(radius),
