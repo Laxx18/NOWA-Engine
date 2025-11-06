@@ -31,7 +31,7 @@ namespace OgreNewt
 		m_coneFriction(0.0f)
 	{
 		ndBodyKinematic* b0 = child ? const_cast<ndBodyKinematic*>(child->getNewtonBody()) : nullptr;
-		ndBodyKinematic* b1 = parent ? const_cast<ndBodyKinematic*>(parent->getNewtonBody()) : nullptr;
+		ndBodyKinematic* b1 = parent ? const_cast<ndBodyKinematic*>(parent->getNewtonBody()) : child->getWorld()->getNewtonWorld()->GetSentinelBody();
 
 		ndMatrix pivot(ndGetIdentityMatrix());
 		pivot.m_posit = ndVector(pos.x, pos.y, pos.z, 1.0f);
@@ -169,67 +169,47 @@ namespace OgreNewt
 	///////////////////////////////////////////////////////////////////////////////////////////////
 
 	Hinge::Hinge(const Body* child, const Body* parent, const Ogre::Vector3& pos, const Ogre::Vector3& pin)
+		: Joint(),
+		m_childPinLocal(pin)
 	{
-		m_body0 = const_cast<Body*>(child);
-		m_body1 = const_cast<Body*>(parent);
-
-		ndBodyKinematic* b0 = child ? const_cast<ndBodyKinematic*>(child->getNewtonBody()) : nullptr;
-		ndBodyKinematic* b1 = parent ? const_cast<ndBodyKinematic*>(parent->getNewtonBody()) : nullptr;
-
-		// build ND frame from Ogre quaternion returned by grammSchmidt
+		// build ND4 frame from Ogre pin + position (same as Newton3 grammSchmidt logic)
 		Ogre::Quaternion q = OgreNewt::Converters::grammSchmidt(pin);
-		Ogre::Matrix3 m3;
-		q.ToRotationMatrix(m3);
+		ndMatrix pivotFrame(ndGetIdentityMatrix());
+		OgreNewt::Converters::QuatPosToMatrix(q, pos, pivotFrame);
 
-		ndMatrix frame(ndGetIdentityMatrix());
-		frame.m_front = ndVector(m3.GetColumn(0).x, m3.GetColumn(0).y, m3.GetColumn(0).z, 0.0f);
-		frame.m_up = ndVector(m3.GetColumn(1).x, m3.GetColumn(1).y, m3.GetColumn(1).z, 0.0f);
-		frame.m_right = ndVector(m3.GetColumn(2).x, m3.GetColumn(2).y, m3.GetColumn(2).z, 0.0f);
-		frame.m_posit = ndVector(pos.x, pos.y, pos.z, 1.0f);
+		// resolve bodies (use sentinel if no parent)
+		ndBodyKinematic* const childBody = child ? const_cast<ndBodyKinematic*>(child->getNewtonBody()) : nullptr;
+		ndBodyKinematic* const parentBody = parent ? const_cast<ndBodyKinematic*>(parent->getNewtonBody())
+			: (child ? child->getWorld()->getNewtonWorld()->GetSentinelBody() : nullptr);
 
-		// store local pin for later world reconstruction
-		{
-			Ogre::Quaternion q0; Ogre::Vector3 p0;
-			if (m_body0)
-				m_body0->getPositionOrientation(p0, q0);
+		// create actual ND4 joint
+		ndJointHinge* const joint = new ndJointHinge(pivotFrame, childBody, parentBody);
 
-			m_childPinLocal = q0.Inverse() * pin.normalisedCopy();
-		}
-
-		auto* joint = new ndJointHinge(frame, b0, b1);
+		// store for OgreNewt lifetime mgmt
 		SetSupportJoint(joint);
 	}
 
 	Hinge::Hinge(const Body* child, const Body* parent, const Ogre::Vector3& childPos, const Ogre::Vector3& childPin, const Ogre::Vector3& parentPos, const Ogre::Vector3& parentPin)
+		: Joint(),
+		m_childPinLocal(childPin)
 	{
-		m_body0 = const_cast<Body*>(child);
-		m_body1 = const_cast<Body*>(parent);
+		// convert child frame
+		Ogre::Quaternion qChild = OgreNewt::Converters::grammSchmidt(childPin);
+		ndMatrix frameChild(ndGetIdentityMatrix());
+		OgreNewt::Converters::QuatPosToMatrix(qChild, childPos, frameChild);
 
-		ndBodyKinematic* b0 = child ? const_cast<ndBodyKinematic*>(child->getNewtonBody()) : nullptr;
-		ndBodyKinematic* b1 = parent ? const_cast<ndBodyKinematic*>(parent->getNewtonBody()) : nullptr;
+		// convert parent frame
+		Ogre::Quaternion qParent = OgreNewt::Converters::grammSchmidt(parentPin);
+		ndMatrix frameParent(ndGetIdentityMatrix());
+		OgreNewt::Converters::QuatPosToMatrix(qParent, parentPos, frameParent);
 
-		Ogre::Vector3 mid = (childPos + parentPos) * 0.5f;
+		ndBodyKinematic* const childBody = child ? const_cast<ndBodyKinematic*>(child->getNewtonBody()) : nullptr;
+		ndBodyKinematic* const parentBody = parent ? const_cast<ndBodyKinematic*>(parent->getNewtonBody())
+			: (child ? child->getWorld()->getNewtonWorld()->GetSentinelBody() : nullptr);
 
-		Ogre::Quaternion q = OgreNewt::Converters::grammSchmidt(childPin);
-		Ogre::Matrix3 m3;
-		q.ToRotationMatrix(m3);
+		// ND4 hinge can also be created from separate frames
+		ndJointHinge* const joint = new ndJointHinge(frameChild, frameParent, childBody, parentBody);
 
-		ndMatrix frame(ndGetIdentityMatrix());
-		frame.m_front = ndVector(m3.GetColumn(0).x, m3.GetColumn(0).y, m3.GetColumn(0).z, 0.0f);
-		frame.m_up = ndVector(m3.GetColumn(1).x, m3.GetColumn(1).y, m3.GetColumn(1).z, 0.0f);
-		frame.m_right = ndVector(m3.GetColumn(2).x, m3.GetColumn(2).y, m3.GetColumn(2).z, 0.0f);
-		frame.m_posit = ndVector(mid.x, mid.y, mid.z, 1.0f);
-
-		{
-			Ogre::Quaternion q0; Ogre::Vector3 p0;
-
-			if (m_body0)
-				m_body0->getPositionOrientation(p0, q0);
-
-			m_childPinLocal = q0.Inverse() * childPin.normalisedCopy();
-		}
-
-		auto* joint = new ndJointHinge(frame, b0, b1);
 		SetSupportJoint(joint);
 	}
 
@@ -301,17 +281,7 @@ namespace OgreNewt
 
 	Ogre::Vector3 Hinge::GetJointPin() const
 	{
-		// Reconstruct from child local pin and current child orientation
-		Ogre::Quaternion q0; Ogre::Vector3 p0;
-
-		if (!m_body0)
-			return Ogre::Vector3::UNIT_X;
-
-		m_body0->getPositionOrientation(p0, q0);
-
-		Ogre::Vector3 pinWorld = q0 * m_childPinLocal;
-		pinWorld.normalise();
-		return pinWorld;
+		return m_childPinLocal;
 	}
 
 	void Hinge::SetTorque(Ogre::Real torque)
@@ -386,7 +356,7 @@ namespace OgreNewt
 		m_body1 = const_cast<Body*>(parent);
 
 		ndBodyKinematic* b0 = child ? const_cast<ndBodyKinematic*>(child->getNewtonBody()) : nullptr;
-		ndBodyKinematic* b1 = parent ? const_cast<ndBodyKinematic*>(parent->getNewtonBody()) : nullptr;
+		ndBodyKinematic* b1 = parent ? const_cast<ndBodyKinematic*>(parent->getNewtonBody()) : child->getWorld()->getNewtonWorld()->GetSentinelBody();
 
 		// use converter to build ndMatrix
 		Ogre::Quaternion q = OgreNewt::Converters::grammSchmidt(pin);
@@ -466,7 +436,7 @@ namespace OgreNewt
 	Gear::Gear(const Body* child, const Body* parent, const Ogre::Vector3& childPin, const Ogre::Vector3& parentPin, Ogre::Real gearRatio)
 	{
 		ndBodyKinematic* b0 = child ? const_cast<ndBodyKinematic*>(child->getNewtonBody()) : nullptr;
-		ndBodyKinematic* b1 = parent ? const_cast<ndBodyKinematic*>(parent->getNewtonBody()) : nullptr;
+		ndBodyKinematic* b1 = parent ? const_cast<ndBodyKinematic*>(parent->getNewtonBody()) : child->getWorld()->getNewtonWorld()->GetSentinelBody();
 
 		// Convert pin directions
 		ndVector pin0(childPin.x, childPin.y, childPin.z, 0.0f);
@@ -490,7 +460,7 @@ namespace OgreNewt
 		m_body1 = const_cast<Body*>(parent);
 
 		ndBodyKinematic* b0 = child ? const_cast<ndBodyKinematic*>(child->getNewtonBody()) : nullptr;
-		ndBodyKinematic* b1 = parent ? const_cast<ndBodyKinematic*>(parent->getNewtonBody()) : nullptr;
+		ndBodyKinematic* b1 = parent ? const_cast<ndBodyKinematic*>(parent->getNewtonBody()) : child->getWorld()->getNewtonWorld()->GetSentinelBody();
 
 		// Build frame from your canonical converter
 		Ogre::Quaternion q = OgreNewt::Converters::grammSchmidt(pin);
@@ -507,7 +477,7 @@ namespace OgreNewt
 		m_body1 = const_cast<Body*>(parent);
 
 		ndBodyKinematic* b0 = child ? const_cast<ndBodyKinematic*>(child->getNewtonBody()) : nullptr;
-		ndBodyKinematic* b1 = parent ? const_cast<ndBodyKinematic*>(parent->getNewtonBody()) : nullptr;
+		ndBodyKinematic* b1 = parent ? const_cast<ndBodyKinematic*>(parent->getNewtonBody()) : child->getWorld()->getNewtonWorld()->GetSentinelBody();
 
 		// Use mid-point for pivot; align with childPin
 		const Ogre::Vector3 mid = (childPos + parentPos) * 0.5f;
@@ -680,7 +650,7 @@ namespace OgreNewt
 	CorkScrew::CorkScrew(const Body* child, const Body* parent, const Ogre::Vector3& pos)
 	{
 		ndBodyKinematic* b0 = child ? const_cast<ndBodyKinematic*>(child->getNewtonBody()) : nullptr;
-		ndBodyKinematic* b1 = parent ? const_cast<ndBodyKinematic*>(parent->getNewtonBody()) : nullptr;
+		ndBodyKinematic* b1 = parent ? const_cast<ndBodyKinematic*>(parent->getNewtonBody()) : child->getWorld()->getNewtonWorld()->GetSentinelBody();
 
 		ndMatrix frame(ndGetIdentityMatrix());
 		frame.m_posit = ndVector(pos.x, pos.y, pos.z, 1.0f);
@@ -967,7 +937,7 @@ namespace OgreNewt
 		: Joint()
 	{
 		ndBodyKinematic* b0 = child ? const_cast<ndBodyKinematic*>(child->getNewtonBody()) : nullptr;
-		ndBodyKinematic* b1 = parent ? const_cast<ndBodyKinematic*>(parent->getNewtonBody()) : nullptr;
+		ndBodyKinematic* b1 = parent ? const_cast<ndBodyKinematic*>(parent->getNewtonBody()) : child->getWorld()->getNewtonWorld()->GetSentinelBody();
 
 		const ndVector p0(pos1.x, pos1.y, pos1.z, 1.0f);
 		const ndVector p1(pos2.x, pos2.y, pos2.z, 1.0f);
@@ -994,7 +964,7 @@ namespace OgreNewt
 
 		// get Newton bodies
 		ndBodyKinematic* const body0 = const_cast<ndBodyKinematic*>(child->getNewtonBody());
-		ndBodyKinematic* const body1 = parent ? const_cast<ndBodyKinematic*>(parent->getNewtonBody()) : nullptr;
+		ndBodyKinematic* const body1 = parent ? const_cast<ndBodyKinematic*>(parent->getNewtonBody()) : child->getWorld()->getNewtonWorld()->GetSentinelBody();
 
 		// create the 6DoF constraint
 		auto* joint = new ndJointFix6dof(body0, body1, frame0, frame1);
@@ -1071,35 +1041,18 @@ namespace OgreNewt
 
 	///////////////////////////////////////////////////////////////////////////////////////////////
 
-	HingeActuator::HingeActuator(const Body* child, const Body* parent,
-		const Ogre::Vector3& pos, const Ogre::Vector3& pin,
-		const Ogre::Degree& angularRate,
-		const Ogre::Degree& minAngle, const Ogre::Degree& maxAngle)
+	HingeActuator::HingeActuator(const Body* child, const Body* parent, const Ogre::Vector3& pos, const Ogre::Vector3& pin, const Ogre::Degree& angularRate, const Ogre::Degree& minAngle, const Ogre::Degree& maxAngle)
 	{
-		m_body0 = const_cast<Body*>(child);
-		m_body1 = const_cast<Body*>(parent);
-
-		ndBodyKinematic* b0 = child ? const_cast<ndBodyKinematic*>(child->getNewtonBody()) : nullptr;
-		ndBodyKinematic* b1 = parent ? const_cast<ndBodyKinematic*>(parent->getNewtonBody()) : nullptr;
-
-		// Build a stable orthonormal frame from 'pin' at world position 'pos'
 		Ogre::Quaternion q = OgreNewt::Converters::grammSchmidt(pin);
-		Ogre::Matrix3 m3; q.ToRotationMatrix(m3);
+		ndMatrix pivotFrame(ndGetIdentityMatrix());
+		OgreNewt::Converters::QuatPosToMatrix(q, pos, pivotFrame);
 
-		ndMatrix frame(ndGetIdentityMatrix());
-		frame.m_front = ndVector(m3.GetColumn(0).x, m3.GetColumn(0).y, m3.GetColumn(0).z, 0.0f);
-		frame.m_up = ndVector(m3.GetColumn(1).x, m3.GetColumn(1).y, m3.GetColumn(1).z, 0.0f);
-		frame.m_right = ndVector(m3.GetColumn(2).x, m3.GetColumn(2).y, m3.GetColumn(2).z, 0.0f);
-		frame.m_posit = ndVector(pos.x, pos.y, pos.z, 1.0f);
+		// --- Resolve bodies (with sentinel fallback)
+		ndBodyKinematic* const b0 = child ? const_cast<ndBodyKinematic*>(child->getNewtonBody()) : nullptr;
+		ndBodyKinematic* const b1 = parent ? const_cast<ndBodyKinematic*>(parent->getNewtonBody())
+			: (child ? child->getWorld()->getNewtonWorld()->GetSentinelBody() : nullptr);
 
-		// cache pin in child local space
-		{
-			Ogre::Quaternion q0; Ogre::Vector3 p0;
-			if (m_body0) m_body0->getPositionOrientation(p0, q0);
-			m_childPinLocal = q0.Inverse() * pin.normalisedCopy();
-		}
-
-		auto* joint = new ndJointHinge(frame, b0, b1);
+		auto* joint = new ndJointHinge(pivotFrame, b0, b1);
 		SetSupportJoint(joint);
 
 		// init limits + rate
@@ -1254,7 +1207,7 @@ namespace OgreNewt
 		m_body1 = const_cast<Body*>(parent);
 
 		ndBodyKinematic* b0 = child ? const_cast<ndBodyKinematic*>(child->getNewtonBody()) : nullptr;
-		ndBodyKinematic* b1 = parent ? const_cast<ndBodyKinematic*>(parent->getNewtonBody()) : nullptr;
+		ndBodyKinematic* b1 = parent ? const_cast<ndBodyKinematic*>(parent->getNewtonBody()) : child->getWorld()->getNewtonWorld()->GetSentinelBody();
 
 		// Build orthonormal frame from pin at world position pos
 		Ogre::Quaternion q = OgreNewt::Converters::grammSchmidt(pin);
@@ -2182,7 +2135,7 @@ namespace OgreNewt
 		Ogre::Real friction)
 	{
 		ndBodyKinematic* b0 = child ? const_cast<ndBodyKinematic*>(child->getNewtonBody()) : nullptr;
-		ndBodyKinematic* b1 = parent ? const_cast<ndBodyKinematic*>(parent->getNewtonBody()) : nullptr;
+		ndBodyKinematic* b1 = parent ? const_cast<ndBodyKinematic*>(parent->getNewtonBody()) : child->getWorld()->getNewtonWorld()->GetSentinelBody();
 
 		// create newton4 dry rolling friction joint
 		auto* j = new ndJointDryRollingFriction(b0, b1, static_cast<ndFloat32>(friction));
@@ -2607,7 +2560,7 @@ namespace OgreNewt
 
 		// cast to Newton4 bodies
 		ndBodyKinematic* const body0 = child ? const_cast<ndBodyKinematic*>(child->getNewtonBody()) : nullptr;
-		ndBodyKinematic* const body1 = parent ? const_cast<ndBodyKinematic*>(parent->getNewtonBody()) : nullptr;
+		ndBodyKinematic* const body1 = parent ? const_cast<ndBodyKinematic*>(parent->getNewtonBody()) : child->getWorld()->getNewtonWorld()->GetSentinelBody();
 
 		// create Newton4 pulley joint
 		auto* joint = new ndJointPulley(static_cast<ndFloat32>(pulleyRatio), body0Pin, body0, body1Pin, body1);
@@ -2643,7 +2596,7 @@ namespace OgreNewt
 		m_body1 = const_cast<Body*>(parent);
 
 		ndBodyKinematic* b0 = child ? const_cast<ndBodyKinematic*>(child->getNewtonBody()) : nullptr;
-		ndBodyKinematic* b1 = parent ? const_cast<ndBodyKinematic*>(parent->getNewtonBody()) : nullptr;
+		ndBodyKinematic* b1 = parent ? const_cast<ndBodyKinematic*>(parent->getNewtonBody()) : child->getWorld()->getNewtonWorld()->GetSentinelBody();
 
 		// Frame: legacy ND3 actuator took identity rotation + pivot at pos.
 		// We keep that convention: identity basis, pivot at 'pos'.
@@ -3046,7 +2999,7 @@ namespace OgreNewt
 		ndWheelDescriptor desc;
 
 		ndBodyKinematic* const childBody = const_cast<ndBodyKinematic*>(child->getNewtonBody());
-		ndBodyKinematic* const parentBody = parent ? const_cast<ndBodyKinematic*>(parent->getNewtonBody()) : nullptr;
+		ndBodyKinematic* const parentBody = parent ? const_cast<ndBodyKinematic*>(parent->getNewtonBody()) : child->getWorld()->getNewtonWorld()->GetSentinelBody();
 
 		auto* joint = new ndJointWheel(pinAndPivotFrame, childBody, parentBody, desc);
 		SetSupportJoint(joint);
@@ -3067,7 +3020,7 @@ namespace OgreNewt
 		ndWheelDescriptor desc;
 
 		ndBodyKinematic* const childBody = const_cast<ndBodyKinematic*>(child->getNewtonBody());
-		ndBodyKinematic* const parentBody = parent ? const_cast<ndBodyKinematic*>(parent->getNewtonBody()) : nullptr;
+		ndBodyKinematic* const parentBody = parent ? const_cast<ndBodyKinematic*>(parent->getNewtonBody()) : child->getWorld()->getNewtonWorld()->GetSentinelBody();
 
 		auto* joint = new ndJointWheel(frameChild, childBody, parentBody, desc);
 		SetSupportJoint(joint);

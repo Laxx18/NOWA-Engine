@@ -88,7 +88,7 @@ namespace NOWA
 		*/
 		void init(Ogre::SceneManager* sceneManager, Ogre::Camera* camera, Ogre::Real maxDistance = 100.0f, unsigned int queryMask = 0xFFFFFFFF, bool drawLines = true);
 
-		
+
 		/**
 		 * @brief		Attaches a pick observer to react at the moment when a game object has been picked or released.
 		 * @param[in]	pickObserver	The pick observer to attach
@@ -168,6 +168,10 @@ namespace NOWA
 		void deleteBodyDelegate(EventDataPtr eventData);
 
 		void updateVisual(void);
+
+		// ----- Reintroduced classic Newton callback path -----
+		void dragCallback(OgreNewt::Body* body, Ogre::Real timeStep, int threadIndex);
+
 	private:
 		bool active;
 		bool dragging;
@@ -189,6 +193,10 @@ namespace NOWA
 		Ogre::ManualObject* dragLineObject;
 		std::vector<IPickObserver*> pickObservers;
 		std::atomic_bool destroyingLine{ false };
+
+		// callback storage (old FT callback) + flag
+		OgreNewt::Body::ForceCallback oldForceTorqueCallback{ nullptr };
+		bool hasMoveCallback{ false };
 	};
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -204,7 +212,7 @@ namespace NOWA
 		{
 		public:
 			PickForceObserver();
-			
+
 			virtual void onForceAdd(OgreNewt::Body* body, Ogre::Real timeStep, int threadIndex) override;
 		};
 	public:
@@ -300,6 +308,10 @@ namespace NOWA
 		void deleteBodyDelegate(EventDataPtr eventData);
 
 		void updateVisual(void);
+
+		// ----- Reintroduced classic Newton callback path -----
+		void dragCallback(OgreNewt::Body* body, Ogre::Real timeStep, int threadIndex);
+
 	private:
 		bool active;
 		bool dragging;
@@ -325,6 +337,10 @@ namespace NOWA
 		Ogre::Vector3 cursorPos;
 		Ogre::Vector3 dragPos;
 		std::atomic_bool destroyingLine{ false };
+
+		// callback storage (old FT callback) + flag
+		OgreNewt::Body::ForceCallback oldForceTorqueCallback{ nullptr };
+		bool hasMoveCallback{ false };
 	};
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////

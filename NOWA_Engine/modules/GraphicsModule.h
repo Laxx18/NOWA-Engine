@@ -91,9 +91,10 @@ namespace NOWA
         // Transform data structure - just stores the raw transform data
         struct TransformData
         {
-            Ogre::Vector3 position = Ogre::Vector3::ZERO;
-            Ogre::Quaternion orientation = Ogre::Quaternion::IDENTITY;
-            Ogre::Vector3 scale = Ogre::Vector3::UNIT_SCALE;
+            // Absolute components (interpolated)
+            Ogre::Vector3     position = Ogre::Vector3::ZERO;
+            Ogre::Quaternion  orientation = Ogre::Quaternion::IDENTITY;
+            Ogre::Vector3     scale = Ogre::Vector3::UNIT_SCALE;
         };
 
         struct PassSpeedData
@@ -104,7 +105,8 @@ namespace NOWA
 
         struct CameraTransformData
         {
-            Ogre::Vector3 position = Ogre::Vector3::ZERO;
+            // Absolute components (interpolated)
+            Ogre::Vector3    position = Ogre::Vector3::ZERO;
             Ogre::Quaternion orientation = Ogre::Quaternion::IDENTITY;
         };
 

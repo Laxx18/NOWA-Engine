@@ -1,4 +1,4 @@
-#include "NOWAPrecompiled.h"
+﻿#include "NOWAPrecompiled.h"
 #include "BaseCamera.h"
 #include "gameobject/GameObjectComponent.h"
 #include "main/InputDeviceCore.h"
@@ -300,7 +300,8 @@ namespace NOWA
 			Ogre::Quaternion currentOrientation = this->camera->getOrientation();
 
 			// Create rotation quaternions for yaw and pitch
-			Ogre::Quaternion yawRotation = Ogre::Quaternion(Ogre::Degree(rotationValue.x), upVector);
+			// Create rotation quaternions for yaw and pitch
+			Ogre::Quaternion yawRotation(Ogre::Degree(rotationValue.x), upVector);
 
 			// For pitch, we need the camera's right vector (perpendicular to up)
 			Ogre::Vector3 rightVector = currentOrientation * Ogre::Vector3::UNIT_X;
@@ -309,19 +310,20 @@ namespace NOWA
 			rightVector = rightVector - rightVector.dotProduct(upVector) * upVector;
 			rightVector.normalise();
 
-			Ogre::Quaternion pitchRotation = Ogre::Quaternion(Ogre::Degree(rotationValue.y), rightVector);
+			Ogre::Quaternion pitchRotation(Ogre::Degree(rotationValue.y), rightVector);
 
-			// Combine rotations and apply to current orientation
-			Ogre::Quaternion newOrientation = yawRotation * pitchRotation * currentOrientation;
+			// --- rollRotation based on forward axis, then reset it to identity ---
+			Ogre::Vector3 forwardVector = currentOrientation * (-Ogre::Vector3::UNIT_Z);
+			forwardVector.normalise();
+
+			// Create roll rotation quaternion (even though we reset it, we define it for clarity)
+			Ogre::Quaternion rollRotation(Ogre::Radian(0.0f), forwardVector); // explicitly no roll
+
+			// Combine rotations (yaw * pitch, but NO roll)
+			Ogre::Quaternion newOrientation = yawRotation * pitchRotation * rollRotation * currentOrientation;
 
 			// Use the thread-safe update method just like moveCamera does
 			NOWA::GraphicsModule::getInstance()->updateCameraOrientation(this->camera, newOrientation);
-
-			// this->lastValue = rotationValue;
-		}
-		// else
-		{
-			// this->lastValue = Ogre::Vector2::ZERO;
 		}
 
 		this->lastValue = rotationValue;

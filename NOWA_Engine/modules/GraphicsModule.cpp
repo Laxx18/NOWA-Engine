@@ -938,6 +938,7 @@ namespace NOWA
         newNodeTransform.node = node;
         newNodeTransform.active = true;
         newNodeTransform.isNew = true;
+        newNodeTransform.useDerived = false;
 
         // Initialize all buffers with the current node transform
         for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)

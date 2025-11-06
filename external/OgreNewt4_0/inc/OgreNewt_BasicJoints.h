@@ -115,7 +115,7 @@ namespace OgreNewt
 		OgreNewt::Body* m_body0 = nullptr;
 		OgreNewt::Body* m_body1 = nullptr;
 
-		// we keep a stable “local pin in child space” to reconstruct world pin at runtime
+		// we keep a stable "local pin in child space" to reconstruct world pin at runtime
 		Ogre::Vector3   m_childPinLocal = Ogre::Vector3::UNIT_X;
 
 		// emulate features that ND4 does not expose 1:1

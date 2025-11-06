@@ -8,7 +8,7 @@ namespace NOWA
 	Picker::PickForceObserver::PickForceObserver()
 		: PhysicsActiveComponent::IForceObserver()
 	{
-		
+
 	}
 
 	void Picker::PickForceObserver::onForceAdd(OgreNewt::Body* body, Ogre::Real timeStep, int threadIndex)
@@ -92,7 +92,7 @@ namespace NOWA
 		this->dragComponent = nullptr;
 
 		if (this->hitBody)
-		{               
+		{
 			this->release();
 		}
 
@@ -189,16 +189,16 @@ namespace NOWA
 		this->destroyingLine.store(false, std::memory_order_release);
 
 		ENQUEUE_RENDER_COMMAND_WAIT("Picker::createLine",
-		{
-			this->dragLineNode = this->sceneManager->getRootSceneNode()->createChildSceneNode();
-			// this->dragLineObject = new Ogre::v1::ManualObject(0, &this->sceneManager->_getEntityMemoryManager(Ogre::SCENE_DYNAMIC), this->sceneManager);
-			this->dragLineObject = this->sceneManager->createManualObject();
-			this->dragLineObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
-			this->dragLineObject->setName("PickerDragLines");
-			this->dragLineObject->setQueryFlags(0 << 0);
-			this->dragLineObject->setCastShadows(false);
-			this->dragLineNode->attachObject(this->dragLineObject);
-		});
+			{
+				this->dragLineNode = this->sceneManager->getRootSceneNode()->createChildSceneNode();
+		// this->dragLineObject = new Ogre::v1::ManualObject(0, &this->sceneManager->_getEntityMemoryManager(Ogre::SCENE_DYNAMIC), this->sceneManager);
+		this->dragLineObject = this->sceneManager->createManualObject();
+		this->dragLineObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
+		this->dragLineObject->setName("PickerDragLines");
+		this->dragLineObject->setQueryFlags(0 << 0);
+		this->dragLineObject->setCastShadows(false);
+		this->dragLineNode->attachObject(this->dragLineObject);
+			});
 	}
 
 	void Picker::drawLine(const Ogre::Vector3& startPosition, const Ogre::Vector3& endPosition)
@@ -214,21 +214,21 @@ namespace NOWA
 		}
 
 		auto closureFunction = [this, startPosition, endPosition](Ogre::Real weight)
-		{
-			if (nullptr == this->dragLineObject)
 			{
-				return;
-			}
+				if (nullptr == this->dragLineObject)
+				{
+					return;
+				}
 
-			// Draw a 3D line between these points for visual effect
-			this->dragLineObject->clear();
-			this->dragLineObject->begin("WhiteNoLightingBackground", Ogre::OperationType::OT_LINE_LIST);
-			this->dragLineObject->position(startPosition);
-			this->dragLineObject->index(0);
-			this->dragLineObject->position(endPosition);
-			this->dragLineObject->index(1);
-			this->dragLineObject->end();
-		};
+				// Draw a 3D line between these points for visual effect
+				this->dragLineObject->clear();
+				this->dragLineObject->begin("WhiteNoLightingBackground", Ogre::OperationType::OT_LINE_LIST);
+				this->dragLineObject->position(startPosition);
+				this->dragLineObject->index(0);
+				this->dragLineObject->position(endPosition);
+				this->dragLineObject->index(1);
+				this->dragLineObject->end();
+			};
 		Ogre::String id = "Picker_drawLine_" + camera->getName();
 		NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
 	}
@@ -250,18 +250,18 @@ namespace NOWA
 		auto localDragLineObject = this->dragLineObject;
 
 		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("Picker::destroyLine", _3(localSceneManager, localDragLineNode, localDragLineObject),
-		{
-			localDragLineObject->clear();
-			localDragLineNode->detachAllObjects();
-			if (localDragLineObject)
 			{
-				localSceneManager->destroyManualObject(localDragLineObject);
-			}
-			if (localDragLineNode->getParentSceneNode())
-			{
-				localDragLineNode->getParentSceneNode()->removeAndDestroyChild(localDragLineNode);
-			}
-		});
+				localDragLineObject->clear();
+				localDragLineNode->detachAllObjects();
+				if (localDragLineObject)
+				{
+					localSceneManager->destroyManualObject(localDragLineObject);
+				}
+				if (localDragLineNode->getParentSceneNode())
+				{
+					localDragLineNode->getParentSceneNode()->removeAndDestroyChild(localDragLineNode);
+				}
+			});
 
 		this->dragLineObject = nullptr;
 		this->dragLineNode = nullptr;
@@ -360,8 +360,16 @@ namespace NOWA
 							physicsActiveComponent->attachForceObserver(pickForceObserver);
 						}
 					}
+					else
+					{
+						// ---- Reintroduced classic Newton callback path (no component attached) ----
+						this->oldForceTorqueCallback = this->hitBody->getForceTorqueCallback();
+						this->hitBody->setCustomForceAndTorqueCallback<Picker>(&Picker::dragCallback, this);
+						this->hasMoveCallback = true;
+					}
 
 					this->dragDistance = (this->maxDistance * info.mDistance);
+					this->dragPoint = localPos;
 
 					if (nullptr != this->dragComponent)
 					{
@@ -408,6 +416,13 @@ namespace NOWA
 					physicsActiveComponent->detachAndDestroyForceObserver(this->dragComponent->getOwner()->getName() + "_Picker" + Ogre::StringConverter::toString(this->dragComponent->getIndex()));
 				}
 			}
+
+			// ---- Restore old FT callback if we set a custom one ----
+			if (this->hasMoveCallback)
+			{
+				this->hitBody->setCustomForceAndTorqueCallback(this->oldForceTorqueCallback);
+				this->hasMoveCallback = false;
+			}
 		}
 
 		if (this->getDrawLine())
@@ -438,6 +453,39 @@ namespace NOWA
 	bool Picker::getIsDragging(void) const
 	{
 		return this->dragging;
+	}
+
+	// ---- Classic Newton callback implementation for Picker ----
+	void Picker::dragCallback(OgreNewt::Body* body, Ogre::Real timeStep, int threadIndex)
+	{
+		Ogre::Ray mouseRay = this->getRayFromMouse();
+		Ogre::Vector3 cursorPos = mouseRay.getPoint(this->dragDistance);
+
+		Ogre::Quaternion bodyOrientation;
+		Ogre::Vector3 bodyPos;
+		body->getPositionOrientation(bodyPos, bodyOrientation);
+
+		Ogre::Vector3 dragPos = (bodyOrientation * this->dragPoint) + bodyPos;
+
+		Ogre::Vector3 inertia;
+		Ogre::Real mass;
+		body->getMassMatrix(mass, inertia);
+
+		if (Ogre::Math::RealEqual(this->pickForce, 50.0f))
+		{
+			body->setPositionOrientation(cursorPos, Ogre::Quaternion::IDENTITY);
+			body->addForce(body->getGravity() * mass);
+			this->destroyLine();
+		}
+		else
+		{
+			Ogre::Vector3 dragForce = ((cursorPos - dragPos) * mass * this->pickForce) - body->getVelocity();
+			if (this->getDrawLine())
+			{
+				this->drawLine(cursorPos, dragPos);
+			}
+			body->addGlobalForce(dragForce, dragPos);
+		}
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -661,16 +709,16 @@ namespace NOWA
 		this->destroyingLine.store(false, std::memory_order_release);
 
 		ENQUEUE_RENDER_COMMAND_WAIT("GameObjectPicker::createLine",
-		{
-			this->dragLineNode = this->sceneManager->getRootSceneNode()->createChildSceneNode();
-			// this->dragLineObject = new Ogre::v1::ManualObject(0, &this->sceneManager->_getEntityMemoryManager(Ogre::SCENE_DYNAMIC), this->sceneManager);
-			this->dragLineObject = this->sceneManager->createManualObject();
-			this->dragLineObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
-			this->dragLineObject->setName("PickerDragLines");
-			this->dragLineObject->setQueryFlags(0 << 0);
-			this->dragLineObject->setCastShadows(false);
-			this->dragLineNode->attachObject(this->dragLineObject);
-		});
+			{
+				this->dragLineNode = this->sceneManager->getRootSceneNode()->createChildSceneNode();
+		// this->dragLineObject = new Ogre::v1::ManualObject(0, &this->sceneManager->_getEntityMemoryManager(Ogre::SCENE_DYNAMIC), this->sceneManager);
+		this->dragLineObject = this->sceneManager->createManualObject();
+		this->dragLineObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
+		this->dragLineObject->setName("PickerDragLines");
+		this->dragLineObject->setQueryFlags(0 << 0);
+		this->dragLineObject->setCastShadows(false);
+		this->dragLineNode->attachObject(this->dragLineObject);
+			});
 	}
 
 	void GameObjectPicker::drawLine(const Ogre::Vector3& startPosition, const Ogre::Vector3& endPosition)
@@ -686,20 +734,20 @@ namespace NOWA
 		}
 
 		auto closureFunction = [this, startPosition, endPosition](Ogre::Real weight)
-		{
-			if (nullptr == this->dragLineObject)
 			{
-				return;
-			}
-			// Draw a 3D line between these points for visual effect
-			this->dragLineObject->clear();
-			this->dragLineObject->begin("WhiteNoLightingBackground", Ogre::OperationType::OT_LINE_LIST);
-			this->dragLineObject->position(startPosition);
-			this->dragLineObject->index(0);
-			this->dragLineObject->position(endPosition);
-			this->dragLineObject->index(1);
-			this->dragLineObject->end();
-		};
+				if (nullptr == this->dragLineObject)
+				{
+					return;
+				}
+				// Draw a 3D line between these points for visual effect
+				this->dragLineObject->clear();
+				this->dragLineObject->begin("WhiteNoLightingBackground", Ogre::OperationType::OT_LINE_LIST);
+				this->dragLineObject->position(startPosition);
+				this->dragLineObject->index(0);
+				this->dragLineObject->position(endPosition);
+				this->dragLineObject->index(1);
+				this->dragLineObject->end();
+			};
 		Ogre::String id = "GameObjectPicker_drawLine_" + camera->getName();
 		NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
 	}
@@ -721,18 +769,18 @@ namespace NOWA
 		auto localDragLineObject = this->dragLineObject;
 
 		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObjectPicker::destroyLine", _3(localSceneManager, localDragLineNode, localDragLineObject),
-		{
-			localDragLineObject->clear();
-			localDragLineNode->detachAllObjects();
-			if (localDragLineObject)
 			{
-				localSceneManager->destroyManualObject(localDragLineObject);
-			}
-			if (localDragLineNode->getParentSceneNode())
-			{
-				localDragLineNode->getParentSceneNode()->removeAndDestroyChild(localDragLineNode);
-			}
-		});
+				localDragLineObject->clear();
+				localDragLineNode->detachAllObjects();
+				if (localDragLineObject)
+				{
+					localSceneManager->destroyManualObject(localDragLineObject);
+				}
+				if (localDragLineNode->getParentSceneNode())
+				{
+					localDragLineNode->getParentSceneNode()->removeAndDestroyChild(localDragLineNode);
+				}
+			});
 
 		this->dragLineObject = nullptr;
 		this->dragLineNode = nullptr;
@@ -854,6 +902,13 @@ namespace NOWA
 						physicsActiveComponent->attachForceObserver(pickForceObserver);
 					}
 				}
+				else
+				{
+					// ---- Reintroduced classic Newton callback path (no component attached) ----
+					this->oldForceTorqueCallback = this->hitBody->getForceTorqueCallback();
+					this->hitBody->setCustomForceAndTorqueCallback<GameObjectPicker>(&GameObjectPicker::dragCallback, this);
+					this->hasMoveCallback = true;
+				}
 
 				Ogre::Vector3 currentMousePoint = mouseRay.getOrigin(); /*mouseRay.getPoint(length);*/
 				this->dragDistance = ((globalPos + this->offsetPosition) - currentMousePoint).length();
@@ -885,6 +940,13 @@ namespace NOWA
 					physicsActiveComponent->detachAndDestroyForceObserver(this->dragComponent->getOwner()->getName() + "_GameObjectPicker" + Ogre::StringConverter::toString(this->dragComponent->getIndex()));
 				}
 			}
+
+			// ---- Restore old FT callback if we set a custom one ----
+			if (this->hasMoveCallback)
+			{
+				this->hitBody->setCustomForceAndTorqueCallback(this->oldForceTorqueCallback);
+				this->hasMoveCallback = false;
+			}
 		}
 
 		if (this->getDrawLine())
@@ -910,6 +972,50 @@ namespace NOWA
 	Ogre::Real GameObjectPicker::getPickForce(void) const
 	{
 		return this->pickForce;
+	}
+
+	// ---- Classic Newton callback implementation for GameObjectPicker ----
+	void GameObjectPicker::dragCallback(OgreNewt::Body* body, Ogre::Real timeStep, int threadIndex)
+	{
+		Ogre::Ray mouseRay = this->getRayFromMouse();
+		this->cursorPos = mouseRay.getPoint(this->dragDistance);
+
+		Ogre::Quaternion bodyOrientation;
+		Ogre::Vector3 bodyPos;
+		body->getPositionOrientation(bodyPos, bodyOrientation);
+
+		this->dragPos = (bodyOrientation * this->dragPoint) + (bodyPos + this->offsetPosition);
+
+		Ogre::Vector3 inertia;
+		Ogre::Real mass;
+		body->getMassMatrix(mass, inertia);
+
+		if (Ogre::Math::RealEqual(this->pickForce, 50.0f))
+		{
+			body->setPositionOrientation(this->cursorPos, Ogre::Quaternion::IDENTITY);
+			body->addForce(body->getGravity() * mass);
+			this->destroyLine();
+		}
+		else
+		{
+			Ogre::Real length = (this->cursorPos - this->dragPos).length();
+			if (length < this->dragAffectDistance)
+			{
+				Ogre::Vector3 dragForce = ((this->cursorPos - this->dragPos) * mass * this->pickForce)/* - body->getVelocity()*/;
+				if (this->getDrawLine())
+				{
+					this->drawLine(this->cursorPos, this->dragPos);
+				}
+				body->addGlobalForce(dragForce, this->dragPos);
+			}
+			else
+			{
+				if (this->getDrawLine())
+				{
+					this->destroyLine();
+				}
+			}
+		}
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -950,7 +1056,7 @@ namespace NOWA
 	{
 		this->mousePosition = position;
 		this->renderWindow = renderWindow;
-		
+
 		if (false == this->active || nullptr == this->sceneManager)
 		{
 			return nullptr;
@@ -970,7 +1076,7 @@ namespace NOWA
 			{
 				this->dragDistance = this->maxDistance * info.mDistance;
 				this->dragNormal = info.mNormal;
-				
+
 				// check its query mask
 				unsigned int type = info.mBody->getType();
 				unsigned int finalType = type & this->queryMask;
@@ -1003,7 +1109,7 @@ namespace NOWA
 						}
 
 						// Change this to make the grabbing stronger or weaker
-				        //const dFloat angularFritionAccel = 10.0f;
+						//const dFloat angularFritionAccel = 10.0f;
 						const Ogre::Real angularFrictionAccel = 5.0f;
 						const Ogre::Real linearFrictionAccel = 400.0f * gravity.y;
 

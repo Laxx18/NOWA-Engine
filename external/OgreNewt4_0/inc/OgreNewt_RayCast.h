@@ -14,111 +14,73 @@
 
 namespace OgreNewt
 {
-    //! general raycast base class
     class _OgreNewtExport Raycast
     {
     public:
-        friend class BasicRaycast;
-
         Raycast();
         virtual ~Raycast();
 
-        void go(const World* world, const Ogre::Vector3& startpt, const Ogre::Vector3& endpt, int threadIndex = 0);
+        void go(const OgreNewt::World* world, const Ogre::Vector3& startpt, const Ogre::Vector3& endpt, int threadIndex = 0);
 
-        virtual bool userPreFilterCallback(Body* body) { return true; }
-        virtual bool userCallback(Body* body, CollisionPtr collision, Ogre::Real distance, const Ogre::Vector3& normal, long collisionID) = 0;
+        virtual bool userCallback(OgreNewt::Body* body, OgreNewt::CollisionPtr collision, Ogre::Real distance, const Ogre::Vector3& normal, long collisionID) = 0;
+        virtual bool userPreFilterCallback(OgreNewt::Body* body);
 
     protected:
-        Body* mLastBody;
-        bool mBodyAdded;
-
-    private:
         class RayCastCallback : public ndRayCastClosestHitCallback
         {
         public:
-            RayCastCallback(Raycast* owner) : mOwner(owner) { m_param = 1.0f; }
+            explicit RayCastCallback(Raycast* owner);
+            virtual ~RayCastCallback();
 
-            ndFloat32 OnRayCastAction(const ndContactPoint& contact, ndFloat32 intersetParam) override
-            {
-                if (intersetParam < m_param)
-                {
-                    m_contact = contact;
-                    m_param = intersetParam;
-
-                    const ndBodyKinematic* b0 = contact.m_body0;
-                    if (b0)
-                    {
-                        ndBodyNotify* notify = b0->GetNotifyCallback();
-                        if (notify)
-                        {
-                            BodyNotify* bodyNotify = dynamic_cast<BodyNotify*>(notify);
-                            if (bodyNotify)
-                                mOwner->mLastBody = bodyNotify->GetOgreNewtBody();
-                        }
-                    }
-                }
-                return intersetParam;
-            }
+            virtual ndFloat32 OnRayCastAction(const ndContactPoint& contact, ndFloat32 intersetParam) override;
 
             Raycast* mOwner;
         };
 
+        OgreNewt::Body* mLastBody;
+        bool mBodyAdded;
+
+        Ogre::Vector3 mStart;
+        Ogre::Vector3 mEnd;
+
         RayCastCallback mCallback;
     };
 
-    //! Basic implementation: stores all hits
     class _OgreNewtExport BasicRaycast : public Raycast
     {
     public:
         class _OgreNewtExport BasicRaycastInfo
         {
         public:
-            BasicRaycastInfo()
-                : mDistance(1.0f),
-                mBody(nullptr),
-                mCollisionID(-1)
-            {
+            BasicRaycastInfo();
 
-            }
+            // ND3-compatible getters (REQUIRED BY YOUR ENGINE)
+            Ogre::Real getDistance();
+            Body* getBody();
+            long getCollisionId();
+            Ogre::Vector3 getNormal();
+            Ogre::Quaternion getNormalOrientation();
 
-            ~BasicRaycastInfo()
-            {
-
-            }
-
-            Ogre::Real getDistance() { return mDistance; }
-
-            Body* getBody() { return mBody; }
-
-            long getCollisionId() { return mCollisionID; }
-
-            Ogre::Vector3 getNormal() { return mNormal; }
-
-            Ogre::Quaternion getNormalOrientation() { return Converters::grammSchmidt(mNormal); }
-
-            Ogre::Real mDistance;
+            // Public data members (unchanged from ND3)
+            Ogre::Real mDistance;       // normalized t in [0..1]
             Body* mBody;
             long mCollisionID;
             Ogre::Vector3 mNormal;
 
-            bool operator<(const BasicRaycastInfo& rhs) const { return mDistance < rhs.mDistance; }
+            bool operator<(const BasicRaycastInfo& rhs) const;
         };
 
         BasicRaycast();
-
-        BasicRaycast(const World* world, const Ogre::Vector3& startpt, const Ogre::Vector3& endpt, bool sorted = true);
-
-        void go(const World* world, const Ogre::Vector3& startpt, const Ogre::Vector3& endpt, bool sorted = true);
-
+        BasicRaycast(const OgreNewt::World* world, const Ogre::Vector3& startpt, const Ogre::Vector3& endpt, bool sorted = true);
         ~BasicRaycast();
 
-        bool userCallback(Body* body, CollisionPtr col, Ogre::Real distance, const Ogre::Vector3& normal, long collisionID);
+        void go(const OgreNewt::World* world, const Ogre::Vector3& startpt, const Ogre::Vector3& endpt, bool sorted = true);
 
-        int getHitCount() const { return (int)mRayList.size(); }
-
+        int getHitCount() const;
+        BasicRaycastInfo getFirstHit() const;
         BasicRaycastInfo getInfoAt(unsigned int hitnum) const;
 
-        BasicRaycastInfo getFirstHit() const;
+        virtual bool userCallback(Body* body, CollisionPtr col, Ogre::Real distance, const Ogre::Vector3& normal, long collisionID);
 
     private:
         typedef std::vector<BasicRaycastInfo> RaycastInfoList;
