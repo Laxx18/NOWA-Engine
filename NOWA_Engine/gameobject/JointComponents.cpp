@@ -630,18 +630,19 @@ namespace NOWA
 	{
 		if (nullptr != this->body)
 		{
-			if (true == this->bShowDebugData && true == activate)
+			NOWA::GraphicsModule::RenderCommand renderCommand = [this, activate, type, value1, value2]()
 			{
-				if (nullptr == this->debugGeometryNode)
+				if (true == this->bShowDebugData && true == activate)
 				{
-					ENQUEUE_RENDER_COMMAND_MULTI_WAIT("JointComponent::internalShowDebugData", _4(activate, type, value1, value2),
+					if (nullptr == this->debugGeometryNode)
 					{
+
 						// For hinge
 						if (0 == type)
 						{
 							if (nullptr != this->body->getOgreNode())
 							{
-								this->debugGeometryNode = static_cast<Ogre::SceneNode*>(this->body->getOgreNode())->createChildSceneNode(Ogre::SCENE_DYNAMIC);
+								this->debugGeometryNode = this->gameObjectPtr->getSceneNode()->createChildSceneNode(Ogre::SCENE_DYNAMIC);
 								this->debugGeometryNode->setPosition(value1);
 								this->debugGeometryNode->setDirection(value2);
 								// Do not inherit, because if parent node is scaled, then this scale is relative and debug data may be to small or to big
@@ -664,7 +665,7 @@ namespace NOWA
 							{
 								if (nullptr == this->debugGeometryNode)
 								{
-									this->debugGeometryNode = static_cast<Ogre::SceneNode*>(this->body->getOgreNode())->createChildSceneNode(Ogre::SCENE_DYNAMIC);
+									this->debugGeometryNode = this->gameObjectPtr->getSceneNode()->createChildSceneNode(Ogre::SCENE_DYNAMIC);
 									this->debugGeometryNode->setPosition(value1);
 									// this->debugGeometryNode->setDirection(value2);
 									this->debugGeometryNode->setName(this->getClassName() + "_Node");
@@ -689,7 +690,7 @@ namespace NOWA
 								{
 									if (nullptr == this->debugGeometryNode)
 									{
-										this->debugGeometryNode = static_cast<Ogre::SceneNode*>(this->body->getOgreNode())->createChildSceneNode(Ogre::SCENE_DYNAMIC);
+										this->debugGeometryNode = this->gameObjectPtr->getSceneNode()->createChildSceneNode(Ogre::SCENE_DYNAMIC);
 										this->debugGeometryNode->setPosition(value1);
 										this->debugGeometryNode->setName(this->getClassName() + "_Node");
 										// Do not inherit, because if parent node is scaled, then this scale is relative and debug data may be to small or to big
@@ -702,7 +703,7 @@ namespace NOWA
 										this->debugGeometryEntity->setCastShadows(false);
 										this->debugGeometryNode->attachObject(this->debugGeometryEntity);
 
-										this->debugGeometryNode2 = static_cast<Ogre::SceneNode*>(this->body->getOgreNode())->createChildSceneNode(Ogre::SCENE_DYNAMIC);
+										this->debugGeometryNode2 = this->gameObjectPtr->getSceneNode()->createChildSceneNode(Ogre::SCENE_DYNAMIC);
 										this->debugGeometryNode2->setName(this->getClassName() + "_Node2");
 										this->debugGeometryNode2->setPosition(value2);
 										// Do not inherit, because if parent node is scaled, then this scale is relative and debug data may be to small or to big
@@ -718,35 +719,30 @@ namespace NOWA
 								}
 							}
 						}
-					});
+					}
 				}
-			}
-		}
 
-		if (false == this->bShowDebugData || false == activate)
-		{
-			if (nullptr != this->debugGeometryNode)
-			{
-				ENQUEUE_RENDER_COMMAND_WAIT("Destroy debugGeometryNode",
+				if (false == this->bShowDebugData || false == activate)
 				{
-					this->debugGeometryNode->detachAllObjects();
-					this->gameObjectPtr->getSceneManager()->destroySceneNode(this->debugGeometryNode);
-					this->debugGeometryNode = nullptr;
-					this->gameObjectPtr->getSceneManager()->destroyMovableObject(this->debugGeometryEntity);
-					this->debugGeometryEntity = nullptr;
-				});
-			}
-			if (nullptr != this->debugGeometryNode2)
-			{
-				ENQUEUE_RENDER_COMMAND_WAIT("Destroy debugGeometryNode2",
-				{
-					this->debugGeometryNode2->detachAllObjects();
-					this->gameObjectPtr->getSceneManager()->destroySceneNode(this->debugGeometryNode2);
-					this->debugGeometryNode2 = nullptr;
-					this->gameObjectPtr->getSceneManager()->destroyMovableObject(this->debugGeometryEntity2);
-					this->debugGeometryEntity2 = nullptr;
-				});
-			}
+					if (nullptr != this->debugGeometryNode)
+					{
+						this->debugGeometryNode->detachAllObjects();
+						this->gameObjectPtr->getSceneManager()->destroySceneNode(this->debugGeometryNode);
+						this->debugGeometryNode = nullptr;
+						this->gameObjectPtr->getSceneManager()->destroyMovableObject(this->debugGeometryEntity);
+						this->debugGeometryEntity = nullptr;
+					}
+					if (nullptr != this->debugGeometryNode2)
+					{
+						this->debugGeometryNode2->detachAllObjects();
+						this->gameObjectPtr->getSceneManager()->destroySceneNode(this->debugGeometryNode2);
+						this->debugGeometryNode2 = nullptr;
+						this->gameObjectPtr->getSceneManager()->destroyMovableObject(this->debugGeometryEntity2);
+						this->debugGeometryEntity2 = nullptr;
+					}
+				}
+			};
+			NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "JointComponent::internalShowDebugData");
 		}
 	}
 	
@@ -1028,7 +1024,7 @@ namespace NOWA
 	{
 		bool success = JointComponent::connect();
 
-		this->internalShowDebugData(true, 0, this->getUpdatedJointPosition(), this->pin->getVector3());
+		this->internalShowDebugData(true, 0, this->anchorPosition->getVector3(), this->pin->getVector3());
 
 		return success;
 	}
@@ -1292,7 +1288,7 @@ namespace NOWA
 
 	void JointHingeComponent::forceShowDebugData(bool activate)
 	{
-		this->internalShowDebugData(activate, 0, this->getUpdatedJointPosition(), this->pin->getVector3());
+		this->internalShowDebugData(activate, 0, this->anchorPosition->getVector3(), this->pin->getVector3());
 	}
 
 	void JointHingeComponent::actualizeValue(Variant* attribute)
@@ -1772,7 +1768,7 @@ namespace NOWA
 			}
 		}
 
-		this->internalShowDebugData(true, 0, this->getUpdatedJointPosition(), this->pin->getVector3());
+		this->internalShowDebugData(true, 0, this->anchorPosition->getVector3(), this->pin->getVector3());
 
 		return success;
 	}
@@ -2291,7 +2287,7 @@ namespace NOWA
 
 	void JointHingeActuatorComponent::forceShowDebugData(bool activate)
 	{
-		this->internalShowDebugData(activate, 0, this->getUpdatedJointPosition(), this->pin->getVector3());
+		this->internalShowDebugData(activate, 0, this->anchorPosition->getVector3(), this->pin->getVector3());
 	}
 
 	void JointHingeActuatorComponent::actualizeValue(Variant* attribute)
@@ -2669,7 +2665,7 @@ namespace NOWA
 	{
 		bool success = JointComponent::connect();
 
-		this->internalShowDebugData(true, 1, this->getUpdatedJointPosition(), Ogre::Vector3::ZERO);
+		this->internalShowDebugData(true, 1, this->anchorPosition->getVector3(), Ogre::Vector3::ZERO);
 
 		return success;
 	}
@@ -2871,7 +2867,7 @@ namespace NOWA
 
 	void JointBallAndSocketComponent::forceShowDebugData(bool activate)
 	{
-		this->internalShowDebugData(activate, 1, this->getUpdatedJointPosition(), Ogre::Vector3::ZERO);
+		this->internalShowDebugData(activate, 1, this->anchorPosition->getVector3(), Ogre::Vector3::ZERO);
 	}
 
 	void JointBallAndSocketComponent::actualizeValue(Variant* attribute)
@@ -2933,7 +2929,7 @@ namespace NOWA
 
 		if (nullptr != this->debugGeometryNode)
 		{
-			ENQUEUE_RENDER_COMMAND("JointBallAndSocketComponent::setAnchorPosition debugGeometryNode",
+			ENQUEUE_RENDER_COMMAND_WAIT("JointBallAndSocketComponent::setAnchorPosition debugGeometryNode",
 			{
 				this->debugGeometryNode->setPosition(this->jointPosition);
 			});
@@ -14695,7 +14691,7 @@ void JointUniversalActuatorComponent::update(Ogre::Real dt, bool notSimulating)
 	{
 		bool success = JointComponent::connect();
 
-		this->internalShowDebugData(true, 0, this->getUpdatedJointPosition(), this->pin->getVector3());
+		this->internalShowDebugData(true, 0, this->anchorPosition->getVector3(), this->pin->getVector3());
 
 		return success;
 	}
@@ -14882,7 +14878,7 @@ void JointUniversalActuatorComponent::update(Ogre::Real dt, bool notSimulating)
 
 	void JointVehicleTireComponent::forceShowDebugData(bool activate)
 	{
-		this->internalShowDebugData(activate, 0, this->getUpdatedJointPosition(), this->pin->getVector3());
+		this->internalShowDebugData(activate, 0, this->anchorPosition->getVector3(), this->pin->getVector3());
 	}
 
 	void JointVehicleTireComponent::actualizeValue(Variant* attribute)

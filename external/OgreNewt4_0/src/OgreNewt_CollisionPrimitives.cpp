@@ -640,104 +640,7 @@ namespace OgreNewt
 			unsigned int id, Ogre::Real tolerance) : ConvexCollision(world)
 		{
 		}
-#if 0
-		TreeCollision::TreeCollision(const World* world, Ogre::v1::Entity* obj, bool optimize, unsigned int id, FaceWinding fw)
-			: Collision(world)
-		{
-			m_categoryId = id;
-			start(id);
 
-			ndPolygonSoupBuilder meshBuilder;
-			meshBuilder.Begin();
-
-			Ogre::v1::MeshPtr mesh = obj->getMesh();
-
-			Ogre::Vector3 scale(1.0f);
-			if (Ogre::Node* node = obj->getParentNode())
-				scale = node->_getDerivedScaleUpdated();
-
-			const unsigned short subCount = mesh->getNumSubMeshes();
-			for (unsigned short s = 0; s < subCount; ++s)
-			{
-				Ogre::v1::SubMesh* sub = mesh->getSubMesh(s);
-
-				Ogre::v1::VertexData* vdata =
-					sub->useSharedVertices ? mesh->sharedVertexData[0] : sub->vertexData[0];
-
-				if (!vdata || !vdata->vertexDeclaration)
-					continue;
-
-				const Ogre::v1::VertexElement* posElem =
-					vdata->vertexDeclaration->findElementBySemantic(Ogre::VES_POSITION);
-				if (!posElem)
-					continue;
-
-				Ogre::v1::HardwareVertexBufferSharedPtr vbuf =
-					vdata->vertexBufferBinding->getBuffer(posElem->getSource());
-				if (vbuf.isNull() || vbuf->getNumVertices() == 0)
-					continue;
-
-				unsigned char* vbase =
-					static_cast<unsigned char*>(vbuf->lock(Ogre::v1::HardwareBuffer::HBL_READ_ONLY));
-
-				Ogre::v1::IndexData* idata = sub->indexData[0];
-				if (!idata || !idata->indexBuffer || idata->indexCount < 3)
-				{
-					vbuf->unlock();
-					continue;
-				}
-
-				Ogre::v1::HardwareIndexBufferSharedPtr ibuf = idata->indexBuffer;
-				const bool use32 = (ibuf->getType() == Ogre::v1::HardwareIndexBuffer::IT_32BIT);
-
-				const size_t indexCount = idata->indexCount;
-				const size_t triCount = indexCount / 3;
-
-				const unsigned long* i32 = nullptr;
-				const unsigned short* i16 = nullptr;
-
-				if (use32)
-					i32 = static_cast<unsigned long*>(ibuf->lock(Ogre::v1::HardwareBuffer::HBL_READ_ONLY));
-				else
-					i16 = static_cast<unsigned short*>(ibuf->lock(Ogre::v1::HardwareBuffer::HBL_READ_ONLY));
-
-				int iOff = 0;
-				for (size_t t = 0; t < triCount; ++t)
-				{
-					Ogre::Vector3 v[3];
-
-					for (int j = 0; j < 3; ++j)
-					{
-						const int idx = use32 ? static_cast<int>(i32[iOff + j])
-							: static_cast<int>(i16[iOff + j]);
-
-						unsigned char* vptr = vbase + idx * vbuf->getVertexSize();
-						float* pos = nullptr;
-						posElem->baseVertexPointerToElement(vptr, &pos);
-
-						v[j].x = *pos++; v[j].y = *pos++; v[j].z = *pos++;
-						v[j] *= scale;
-					}
-
-					if (fw == FW_REVERSE)
-						std::swap(v[1], v[2]);
-
-					meshBuilder.AddFace(reinterpret_cast<const ndFloat32*>(&v[0].x), static_cast<ndInt32>(sizeof(Ogre::Vector3)), 3, static_cast<ndInt32>(id));
-
-					iOff += 3;
-				}
-
-				vbuf->unlock();
-				ibuf->unlock();
-			}
-
-			finish(optimize);
-
-			meshBuilder.End(optimize);
-			m_shapeInstance = new ndShapeInstance(new ndShapeStatic_bvh(meshBuilder));
-			m_col = m_shapeInstance->GetShape();
-		}
-#else
 		OgreNewt::CollisionPrimitives::TreeCollision::TreeCollision(
 			const OgreNewt::World* world, Ogre::v1::Entity* obj,
 			bool optimize, unsigned int id, FaceWinding fw)
@@ -766,6 +669,7 @@ namespace OgreNewt
 				Ogre::v1::SubMesh* sub = mesh->getSubMesh(i);
 				if (!sub) continue;
 
+				// --- Resolve vertex data (shared counted only once per sub that uses it) ---
 				Ogre::v1::VertexData* vData = sub->useSharedVertices ? mesh->sharedVertexData[0] : sub->vertexData[0];
 				if (!vData) continue;
 
@@ -773,68 +677,102 @@ namespace OgreNewt
 					vData->vertexDeclaration->findElementBySemantic(Ogre::VES_POSITION);
 				if (!posElem) continue;
 
+				// Respect vertexStart when addressing vertices
+				const size_t vStart = vData->vertexStart;
+				const size_t vCount = vData->vertexCount;
+
 				Ogre::v1::HardwareVertexBufferSharedPtr vBuf =
 					vData->vertexBufferBinding->getBuffer(posElem->getSource());
-				unsigned char* base = static_cast<unsigned char*>(vBuf->lock(Ogre::v1::HardwareBuffer::HBL_READ_ONLY));
-				const size_t stride = vBuf->getVertexSize();
+				if (!vBuf) continue;
 
+				unsigned char* vBase = static_cast<unsigned char*>(
+					vBuf->lock(Ogre::v1::HardwareBuffer::HBL_READ_ONLY));
+				const size_t vStride = vBuf->getVertexSize();
+
+				// --- Resolve index data (respect indexStart / indexCount) ---
 				Ogre::v1::IndexData* iData = sub->indexData[0];
 				if (!iData) { vBuf->unlock(); continue; }
 
 				Ogre::v1::HardwareIndexBufferSharedPtr iBuf = iData->indexBuffer;
+				if (iBuf.isNull()) { vBuf->unlock(); continue; }
+
 				const bool use32 = (iBuf->getType() == Ogre::v1::HardwareIndexBuffer::IT_32BIT);
-				unsigned char* iBase = static_cast<unsigned char*>(iBuf->lock(Ogre::v1::HardwareBuffer::HBL_READ_ONLY));
+				const size_t iStart = iData->indexStart;   // first index to read
+				const size_t iCount = iData->indexCount;   // how many indices to read
+				if (iCount < 3) { vBuf->unlock(); continue; }
 
-				const unsigned int numPolys = static_cast<unsigned int>(iData->indexCount / 3);
-				const unsigned int indexSize = static_cast<unsigned int>(iBuf->getIndexSize());
-				const unsigned int iStart = static_cast<unsigned int>(iData->indexStart);
+				unsigned char* iBase = static_cast<unsigned char*>(
+					iBuf->lock(Ogre::v1::HardwareBuffer::HBL_READ_ONLY));
 
-				for (unsigned int poly = 0; poly < numPolys; ++poly)
+				const size_t indexSize = iBuf->getIndexSize();
+				// Safety: indexSize must match use32
+				// assert((use32 && indexSize==4) || (!use32 && indexSize==2));
+
+				const size_t triCount = iCount / 3;
+
+				// --- Iterate triangles via index buffer ---
+				for (size_t t = 0; t < triCount; ++t)
 				{
-					Ogre::Vector3 v[3];
-					for (int j = 0; j < 3; ++j)
+					// Read 3 indices with indexStart offset
+					unsigned int idx[3];
+					if (use32)
 					{
-						unsigned int index;
-						if (use32)
-							index = reinterpret_cast<unsigned int*>(iBase)[iStart + poly * 3 + j];
-						else
-							index = reinterpret_cast<unsigned short*>(iBase)[iStart + poly * 3 + j];
-
-						unsigned char* ptr = base + (index * stride);
-						float* pos = nullptr;
-						posElem->baseVertexPointerToElement(ptr, &pos);
-						v[j] = Ogre::Vector3(pos[0], pos[1], pos[2]) * scale;
+						const unsigned int* src = reinterpret_cast<unsigned int*>(iBase);
+						idx[0] = src[iStart + t * 3 + 0];
+						idx[1] = src[iStart + t * 3 + 1];
+						idx[2] = src[iStart + t * 3 + 2];
+					}
+					else
+					{
+						const unsigned short* src = reinterpret_cast<unsigned short*>(iBase);
+						idx[0] = src[iStart + t * 3 + 0];
+						idx[1] = src[iStart + t * 3 + 1];
+						idx[2] = src[iStart + t * 3 + 2];
 					}
 
-					// Gentle extrusion for degenerate faces
-					Ogre::Vector3 e1 = v[1] - v[0];
-					Ogre::Vector3 e2 = v[2] - v[0];
+					// Guard index range against this submesh's vertex window (vStart..vStart+vCount-1)
+					if (idx[0] >= vStart + vCount || idx[1] >= vStart + vCount || idx[2] >= vStart + vCount)
+						continue;
+
+					// Fetch positions respecting vertexStart
+					Ogre::Vector3 vtx[3];
+					for (int j = 0; j < 3; ++j)
+					{
+						const size_t vIdx = idx[j]; // indices in v1 are relative to the vertex data used
+						unsigned char* ptr = vBase + (vIdx * vStride);
+						float* pos = nullptr;
+						posElem->baseVertexPointerToElement(ptr, &pos);
+						vtx[j] = Ogre::Vector3(pos[0], pos[1], pos[2]) * scale;
+					}
+
+					// Gentle extrusion for degenerate faces (ND4 optimizer-safe)
+					Ogre::Vector3 e1 = vtx[1] - vtx[0];
+					Ogre::Vector3 e2 = vtx[2] - vtx[0];
 					Ogre::Vector3 n = e1.crossProduct(e2);
-					Ogre::Real area2 = n.squaredLength();
-					if (area2 < 1e-16f)
+					if (n.squaredLength() < 1e-16f)
 					{
 						if (n.isZeroLength())
 							n = Ogre::Vector3::UNIT_Y;
 						else
 							n.normalise();
 						const Ogre::Real EPS = 1e-4f;
-						v[0] += n * EPS;
-						v[1] += n * EPS * 0.5f;
-						v[2] += n * EPS * 0.25f;
+						vtx[0] += n * EPS;
+						vtx[1] += n * EPS * 0.5f;
+						vtx[2] += n * EPS * 0.25f;
 					}
 
 					ndVector face[3];
 					if (localFw == FW_DEFAULT)
 					{
-						face[0] = ndVector(v[0].x, v[0].y, v[0].z, 1.0f);
-						face[1] = ndVector(v[1].x, v[1].y, v[1].z, 1.0f);
-						face[2] = ndVector(v[2].x, v[2].y, v[2].z, 1.0f);
+						face[0] = ndVector(vtx[0].x, vtx[0].y, vtx[0].z, 1.0f);
+						face[1] = ndVector(vtx[1].x, vtx[1].y, vtx[1].z, 1.0f);
+						face[2] = ndVector(vtx[2].x, vtx[2].y, vtx[2].z, 1.0f);
 					}
 					else
 					{
-						face[0] = ndVector(v[0].x, v[0].y, v[0].z, 1.0f);
-						face[1] = ndVector(v[2].x, v[2].y, v[2].z, 1.0f);
-						face[2] = ndVector(v[1].x, v[1].y, v[1].z, 1.0f);
+						face[0] = ndVector(vtx[0].x, vtx[0].y, vtx[0].z, 1.0f);
+						face[1] = ndVector(vtx[2].x, vtx[2].y, vtx[2].z, 1.0f);
+						face[2] = ndVector(vtx[1].x, vtx[1].y, vtx[1].z, 1.0f);
 					}
 
 					meshBuilder.AddFace(&face[0].m_x, sizeof(ndVector), 3, id);
@@ -848,143 +786,24 @@ namespace OgreNewt
 			m_shapeInstance = new ndShapeInstance(new ndShapeStatic_bvh(meshBuilder));
 			m_col = m_shapeInstance->GetShape();
 		}
-#endif
 
-#if 0
 		TreeCollision::TreeCollision(const World* world, Ogre::Item* item, bool optimize, unsigned int id, FaceWinding fw)
 			: Collision(world)
 		{
 			m_categoryId = id;
-
-			// begin legacy wrapper state
 			start(id);
 
-			// ND4: build polygon soup
-			ndPolygonSoupBuilder meshBuilder;
-			meshBuilder.Begin();
-
 			Ogre::MeshPtr mesh = item->getMesh();
-			Ogre::Vector3 scale(1.0f);
-
-			if (Ogre::Node* node = item->getParentNode())
-				scale = node->_getDerivedScaleUpdated();
-
-			// Iterate submeshes / first LOD
-			for (Ogre::SubMesh* subMesh : mesh->getSubMeshes())
+			if (mesh.isNull())
 			{
-				const Ogre::VertexArrayObjectArray& vaos = subMesh->mVao[0];
-				if (vaos.empty())
-					continue;
-
-				Ogre::VertexArrayObject* vao = vaos[0];
-
-				// --- request POSITION stream (Ogre-managed async tickets)
-				Ogre::VertexArrayObject::ReadRequestsVec requests;
-				requests.push_back(Ogre::VertexArrayObject::ReadRequests(Ogre::VES_POSITION));
-				vao->readRequests(requests);
-				Ogre::VertexArrayObject::mapAsyncTickets(requests);
-
-				// Position stream info
-				const Ogre::VertexElementType posType = requests[0].type;                 // VET_FLOAT3 or VET_HALF4
-				const Ogre::VertexBufferPacked* posBuf = requests[0].vertexBuffer;
-				const size_t posStride = posBuf->getBytesPerElement();
-				// Header note: data is already offseted; to get base pointer, do data - offset
-				const char* posBase = requests[0].data - requests[0].offset;
-
-				// --- index buffer
-				Ogre::IndexBufferPacked* indexBuffer = vao->getIndexBuffer();
-				if (!indexBuffer || indexBuffer->getNumElements() < 3)
-				{
-					Ogre::VertexArrayObject::unmapAsyncTickets(requests);
-					continue;
-				}
-
-				const bool indices32 = (indexBuffer->getIndexType() == Ogre::IndexBufferPacked::IT_32BIT);
-				const size_t indexCount = indexBuffer->getNumElements();
-
-				// Map index data via async ticket from IndexBufferPacked
-				Ogre::AsyncTicketPtr idxTicket = indexBuffer->readRequest(0, indexCount);
-				const void* idxDataRaw = idxTicket->map();
-
-				auto getIndex = [&](size_t i) -> uint32_t {
-					return indices32
-						? static_cast<uint32_t>(reinterpret_cast<const uint32_t*>(idxDataRaw)[i])
-						: static_cast<uint32_t>(reinterpret_cast<const uint16_t*>(idxDataRaw)[i]);
-					};
-
-				const size_t triCount = indexCount / 3;
-				for (size_t t = 0; t < triCount; ++t)
-				{
-					const uint32_t i0 = getIndex(t * 3 + 0);
-					const uint32_t i1 = getIndex(t * 3 + 1);
-					const uint32_t i2 = getIndex(t * 3 + 2);
-
-					Ogre::Vector3 v[3];
-
-					auto loadFloat3 = [&](uint32_t idx) -> Ogre::Vector3 {
-						const float* p = reinterpret_cast<const float*>(posBase + idx * posStride);
-						return Ogre::Vector3(p[0], p[1], p[2]);
-						};
-					auto loadHalf4 = [&](uint32_t idx) -> Ogre::Vector3 {
-						const Ogre::uint16* h = reinterpret_cast<const Ogre::uint16*>(posBase + idx * posStride);
-						return Ogre::Vector3(
-							Ogre::Bitwise::halfToFloat(h[0]),
-							Ogre::Bitwise::halfToFloat(h[1]),
-							Ogre::Bitwise::halfToFloat(h[2])
-						);
-						};
-
-					if (posType == Ogre::VET_FLOAT3)
-					{
-						v[0] = loadFloat3(i0) * scale;
-						v[1] = loadFloat3(i1) * scale;
-						v[2] = loadFloat3(i2) * scale;
-					}
-					else if (posType == Ogre::VET_HALF4)
-					{
-						v[0] = loadHalf4(i0) * scale;
-						v[1] = loadHalf4(i1) * scale;
-						v[2] = loadHalf4(i2) * scale;
-					}
-					else
-					{
-						// Unsupported vertex format for positions
-						continue;
-					}
-
-					if (fw == FW_REVERSE)
-						std::swap(v[1], v[2]);
-
-					// keep legacy internal storage if you need it
-					addPoly(v, static_cast<int>(t));
-
-					// feed Newton soup (x,y,z) tightly packed, stride = sizeof(Vector3)
-					meshBuilder.AddFace(
-						reinterpret_cast<const ndFloat32*>(&v[0].x),
-						static_cast<ndInt32>(sizeof(Ogre::Vector3)),
-						3,
-						static_cast<ndInt32>(t));
-				}
-
-				// Unmap
-				idxTicket->unmap();
-				Ogre::VertexArrayObject::unmapAsyncTickets(requests);
+				ndPolygonSoupBuilder dummy;
+				dummy.Begin(); dummy.End(optimize);
+				m_shapeInstance = new ndShapeInstance(new ndShapeStatic_bvh(dummy));
+				m_col = m_shapeInstance->GetShape();
+				return;
 			}
 
-			// finalize legacy wrapper + ND4 BVH
-			finish(optimize);
-
-			meshBuilder.End(optimize);
-			m_shapeInstance = new ndShapeInstance(new ndShapeStatic_bvh(meshBuilder));
-			m_col = m_shapeInstance->GetShape();
-		}
-#else
-		OgreNewt::CollisionPrimitives::TreeCollision::TreeCollision(
-			const OgreNewt::World* world, Ogre::Item* item,
-			bool optimize, unsigned int id, FaceWinding fw)
-			: Collision(world)
-		{
-			Ogre::Vector3 scale(1.0f, 1.0f, 1.0f);
+			Ogre::Vector3 scale(1, 1, 1);
 			if (Ogre::Node* node = item->getParentNode())
 				scale = node->_getDerivedScaleUpdated();
 
@@ -992,96 +811,211 @@ namespace OgreNewt
 			if (scale.x * scale.y * scale.z < 0.0f)
 				localFw = (fw == FW_DEFAULT) ? FW_REVERSE : FW_DEFAULT;
 
-			Ogre::MeshPtr mesh = item->getMesh();
-			std::vector<Ogre::Vector3> vertices;
-			std::vector<int> indices;
+			ndPolygonSoupBuilder meshBuilder;
+			meshBuilder.Begin();
 
-			for (auto* subMesh : mesh->getSubMeshes())
+			//--------------------------------------------------------------------
+			// Iterate submeshes
+			//--------------------------------------------------------------------
+			for (Ogre::SubMesh* subMesh : mesh->getSubMeshes())
 			{
-				Ogre::VertexArrayObjectArray vaos = subMesh->mVao[0];
+				if (!subMesh) continue;
+				const Ogre::VertexArrayObjectArray& vaos = subMesh->mVao[0];
 				if (vaos.empty()) continue;
+
 				Ogre::VertexArrayObject* vao = vaos[0];
+				Ogre::IndexBufferPacked* indexBuffer = vao->getIndexBuffer();
+				if (!indexBuffer) continue;
 
-				const size_t vertexOffset = vertices.size();
-				Ogre::VertexArrayObject::ReadRequestsVec requests;
-				requests.push_back(Ogre::VertexArrayObject::ReadRequests(Ogre::VES_POSITION));
-				vao->readRequests(requests);
-				vao->mapAsyncTickets(requests);
+				//----------------------------------------------------------------
+				// 1) Read vertices (async)
+				//----------------------------------------------------------------
+				Ogre::VertexArrayObject::ReadRequestsVec vReqs;
+				vReqs.push_back(Ogre::VertexArrayObject::ReadRequests(Ogre::VES_POSITION));
+				vao->readRequests(vReqs);
+				vao->mapAsyncTickets(vReqs);
 
-				const size_t vCount = requests[0].vertexBuffer->getNumElements();
-				if (requests[0].type == Ogre::VET_HALF4)
+				const Ogre::VertexBufferPacked* vb = vReqs[0].vertexBuffer;
+				const size_t vCount = vb ? vb->getNumElements() : 0;
+				std::vector<Ogre::Vector3> verts(vCount);
+
+				if (vReqs[0].type == Ogre::VET_HALF4)
 				{
-					for (size_t i = 0; i < vCount; ++i)
+					for (size_t i = 0;i < vCount;++i)
 					{
-						const Ogre::uint16* p = reinterpret_cast<const Ogre::uint16*>(requests[0].data);
-						Ogre::Vector3 v(Ogre::Bitwise::halfToFloat(p[0]),
+						const Ogre::uint16* p = reinterpret_cast<const Ogre::uint16*>(vReqs[0].data);
+						verts[i] = Ogre::Vector3(
+							Ogre::Bitwise::halfToFloat(p[0]),
 							Ogre::Bitwise::halfToFloat(p[1]),
-							Ogre::Bitwise::halfToFloat(p[2]));
-						requests[0].data += requests[0].vertexBuffer->getBytesPerElement();
-						vertices.push_back(v * scale);
+							Ogre::Bitwise::halfToFloat(p[2])) * scale;
+						vReqs[0].data += vb->getBytesPerElement();
 					}
 				}
-				else if (requests[0].type == Ogre::VET_FLOAT3)
+				else if (vReqs[0].type == Ogre::VET_FLOAT3)
 				{
-					for (size_t i = 0; i < vCount; ++i)
+					for (size_t i = 0;i < vCount;++i)
 					{
-						const float* p = reinterpret_cast<const float*>(requests[0].data);
-						Ogre::Vector3 v(p[0], p[1], p[2]);
-						requests[0].data += requests[0].vertexBuffer->getBytesPerElement();
-						vertices.push_back(v * scale);
+						const float* p = reinterpret_cast<const float*>(vReqs[0].data);
+						verts[i] = Ogre::Vector3(p[0], p[1], p[2]) * scale;
+						vReqs[0].data += vb->getBytesPerElement();
 					}
-				}
-				vao->unmapAsyncTickets(requests);
-
-				Ogre::IndexBufferPacked* ib = vao->getIndexBuffer();
-				if (!ib) continue;
-
-				const size_t num = ib->getNumElements();
-				const void* data = ib->map(0, num);
-				if (ib->getIndexType() == Ogre::IndexBufferPacked::IT_16BIT)
-				{
-					const Ogre::uint16* idx = reinterpret_cast<const Ogre::uint16*>(data);
-					for (size_t i = 0; i < num; ++i)
-						indices.push_back(static_cast<int>(idx[i]) + static_cast<int>(vertexOffset));
 				}
 				else
 				{
-					const Ogre::uint32* idx = reinterpret_cast<const Ogre::uint32*>(data);
-					for (size_t i = 0; i < num; ++i)
-						indices.push_back(static_cast<int>(idx[i]) + static_cast<int>(vertexOffset));
+					vao->unmapAsyncTickets(vReqs);
 				}
-				ib->unmap(Ogre::UO_KEEP_PERSISTENT);
+				vao->unmapAsyncTickets(vReqs);
+
+				//----------------------------------------------------------------
+				// 2) Read index buffer (async)
+				//----------------------------------------------------------------
+				Ogre::IndexBufferPacked::IndexType idxType = indexBuffer->getIndexType();
+				Ogre::AsyncTicketPtr ticket = indexBuffer->readRequest(0, indexBuffer->getNumElements());
+				const void* idxData = ticket->map();
+				const size_t idxCount = indexBuffer->getNumElements();
+
+				//----------------------------------------------------------------
+				// Helper to add a triangle
+				//----------------------------------------------------------------
+				auto emitTri = [&](uint32_t a, uint32_t b, uint32_t c)
+					{
+						if (a >= verts.size() || b >= verts.size() || c >= verts.size())
+							return;
+						Ogre::Vector3 v0 = verts[a], v1 = verts[b], v2 = verts[c];
+						Ogre::Vector3 e1 = v1 - v0, e2 = v2 - v0, n = e1.crossProduct(e2);
+						if (n.squaredLength() < 1e-16f)
+						{
+							if (n.isZeroLength()) n = Ogre::Vector3::UNIT_Y;
+							else n.normalise();
+							const Ogre::Real EPS = 1e-4f;
+							v0 += n * EPS; v1 += n * EPS * 0.5f; v2 += n * EPS * 0.25f;
+						}
+
+						ndVector face[3];
+						if (localFw == FW_DEFAULT)
+						{
+							face[0] = ndVector(v0.x, v0.y, v0.z, 1.f);
+							face[1] = ndVector(v1.x, v1.y, v1.z, 1.f);
+							face[2] = ndVector(v2.x, v2.y, v2.z, 1.f);
+						}
+						else
+						{
+							face[0] = ndVector(v0.x, v0.y, v0.z, 1.f);
+							face[1] = ndVector(v2.x, v2.y, v2.z, 1.f);
+							face[2] = ndVector(v1.x, v1.y, v1.z, 1.f);
+						}
+						meshBuilder.AddFace(&face[0].m_x, sizeof(ndVector), 3, id);
+					};
+
+				//----------------------------------------------------------------
+				// 3) Iterate triangles
+				//----------------------------------------------------------------
+				if (idxType == Ogre::IndexBufferPacked::IT_16BIT)
+				{
+					const uint16_t* idx = reinterpret_cast<const uint16_t*>(idxData);
+					for (size_t k = 0;k + 2 < idxCount;k += 3)
+						emitTri(idx[k], idx[k + 1], idx[k + 2]);
+				}
+				else
+				{
+					const uint32_t* idx = reinterpret_cast<const uint32_t*>(idxData);
+					for (size_t k = 0;k + 2 < idxCount;k += 3)
+						emitTri(idx[k], idx[k + 1], idx[k + 2]);
+				}
+
+				ticket->unmap();
 			}
 
+			//--------------------------------------------------------------------
+			// Finish
+			//--------------------------------------------------------------------
+			finish(optimize);
+			meshBuilder.End(optimize);
+			m_shapeInstance = new ndShapeInstance(new ndShapeStatic_bvh(meshBuilder));
+			m_col = m_shapeInstance->GetShape();
+		}
+
+		OgreNewt::CollisionPrimitives::TreeCollision::TreeCollision(
+			const OgreNewt::World* world,
+			int numVertices, int numIndices,
+			const float* vertices, const int* indices,
+			bool optimize, unsigned int id, FaceWinding fw)
+			: Collision(world)
+		{
 			if (m_col)
 				m_col->Release();
 
 			ndPolygonSoupBuilder meshBuilder;
 			meshBuilder.Begin();
 
-			for (size_t i = 0; i + 2 < indices.size(); i += 3)
+			// ----------------------------------------------------------------
+			// 1. Basic validation
+			// ----------------------------------------------------------------
+			if (!vertices || !indices || numVertices <= 0 || numIndices < 3)
 			{
-				Ogre::Vector3 a = vertices[indices[i + 0]];
-				Ogre::Vector3 b = vertices[indices[i + 1]];
-				Ogre::Vector3 c = vertices[indices[i + 2]];
+				meshBuilder.End(optimize);
+				m_shapeInstance = new ndShapeInstance(new ndShapeStatic_bvh(meshBuilder));
+				m_col = m_shapeInstance->GetShape();
+				return;
+			}
 
-				// Gentle extrusion for degenerate faces
+			// Optional: detect mirrored scale by inspecting the vertex orientation
+			FaceWinding localFw = fw; // could later come from user transform
+			// (You can add a scale argument if needed; flipping handled externally.)
+
+			const int triCount = numIndices / 3;
+
+			// ----------------------------------------------------------------
+			// 2. Build triangles from index triplets
+			// ----------------------------------------------------------------
+			for (int i = 0; i < triCount; ++i)
+			{
+				const int i0 = indices[i * 3 + 0];
+				const int i1 = indices[i * 3 + 1];
+				const int i2 = indices[i * 3 + 2];
+
+				// Skip out-of-range or degenerate indices
+				if (i0 < 0 || i1 < 0 || i2 < 0 ||
+					i0 >= numVertices || i1 >= numVertices || i2 >= numVertices)
+					continue;
+
+				Ogre::Vector3 a(
+					vertices[i0 * 3 + 0],
+					vertices[i0 * 3 + 1],
+					vertices[i0 * 3 + 2]);
+				Ogre::Vector3 b(
+					vertices[i1 * 3 + 0],
+					vertices[i1 * 3 + 1],
+					vertices[i1 * 3 + 2]);
+				Ogre::Vector3 c(
+					vertices[i2 * 3 + 0],
+					vertices[i2 * 3 + 1],
+					vertices[i2 * 3 + 2]);
+
+				// ----------------------------------------------------------------
+				// 3. Gentle extrusion for degenerate faces (ND4-safe)
+				// ----------------------------------------------------------------
 				Ogre::Vector3 e1 = b - a;
 				Ogre::Vector3 e2 = c - a;
 				Ogre::Vector3 n = e1.crossProduct(e2);
-				Ogre::Real area2 = n.squaredLength();
+				const Ogre::Real area2 = n.squaredLength();
+
 				if (area2 < 1e-16f)
 				{
 					if (n.isZeroLength())
 						n = Ogre::Vector3::UNIT_Y;
 					else
 						n.normalise();
+
 					const Ogre::Real EPS = 1e-4f;
 					a += n * EPS;
 					b += n * EPS * 0.5f;
 					c += n * EPS * 0.25f;
 				}
 
+				// ----------------------------------------------------------------
+				// 4. Add triangle to ND4 polygon soup
+				// ----------------------------------------------------------------
 				ndVector face[3];
 				if (localFw == FW_DEFAULT)
 				{
@@ -1099,244 +1033,15 @@ namespace OgreNewt
 				meshBuilder.AddFace(&face[0].m_x, sizeof(ndVector), 3, id);
 			}
 
+			// ----------------------------------------------------------------
+			// 5. Finalize Newton shape
+			// ----------------------------------------------------------------
 			meshBuilder.End(optimize);
-			m_shapeInstance = new ndShapeInstance(new ndShapeStatic_bvh(meshBuilder));
-			m_col = m_shapeInstance->GetShape();
-		}
-#endif
 
-#if 0
-		TreeCollision::TreeCollision(const OgreNewt::World* world, int numVertices, int numIndices, const float* vertices, const int* indices, bool optimize, unsigned int id, FaceWinding fw)
-			: OgreNewt::Collision(world)
-		{
-			start(id);
-
-			ndPolygonSoupBuilder meshBuilder;
-			meshBuilder.Begin();
-
-			// Early outs / sanity
-			if (!vertices || !indices || numVertices <= 0 || numIndices < 3 || (numIndices % 3) != 0)
-			{
-				finish(optimize);
-				meshBuilder.End(optimize);
-				m_shapeInstance = new ndShapeInstance(new ndShapeStatic_bvh(meshBuilder));
-				m_col = m_shapeInstance->GetShape();
-				return;
-			}
-
-			// Build an Ogre::Vector3 cache for convenient access
-			Ogre::Vector3* vecVertices = new Ogre::Vector3[numVertices];
-			for (int v = 0; v < numVertices; ++v)
-			{
-				const int off = v * 3;
-				vecVertices[v].x = vertices[off + 0];
-				vecVertices[v].y = vertices[off + 1];
-				vecVertices[v].z = vertices[off + 2];
-			}
-
-			const int numPolys = numIndices / 3;
-			for (int p = 0; p < numPolys; ++p)
-			{
-				const int i0 = indices[p * 3 + 0];
-				const int i1 = indices[p * 3 + 1];
-				const int i2 = indices[p * 3 + 2];
-
-				// Bounds check (defensive)
-				if (i0 < 0 || i1 < 0 || i2 < 0 ||
-					i0 >= numVertices || i1 >= numVertices || i2 >= numVertices)
-					continue;
-
-				Ogre::Vector3 v[3];
-				v[0] = vecVertices[i0];
-				v[1] = vecVertices[i1];
-				v[2] = vecVertices[i2];
-
-				if (fw == FW_REVERSE)
-					std::swap(v[1], v[2]);
-
-				// Degeneracy filter: skip zero-length edges or near-zero area
-				const Ogre::Vector3 e0 = v[1] - v[0];
-				const Ogre::Vector3 e1 = v[2] - v[0];
-				const float edgeMin2 = 1.0e-20f;   // ~1e-10 length
-				const float areaMin2 = 1.0e-12f;   // matches ND’s assert threshold
-				if (e0.squaredLength() <= edgeMin2 ||
-					e1.squaredLength() <= edgeMin2 ||
-					e0.crossProduct(e1).squaredLength() <= areaMin2)
-				{
-					continue; // skip degenerate
-				}
-
-				// Legacy store if you need it elsewhere
-				addPoly(v, p);
-
-				// Feed Newton soup: (x,y,z) tightly packed, stride=sizeof(Vector3)
-				meshBuilder.AddFace(reinterpret_cast<const ndFloat32*>(&v[0].x), static_cast<ndInt32>(sizeof(Ogre::Vector3)), 3, static_cast<ndInt32>(id)); // or use p if you prefer unique face IDs
-			}
-
-			delete[] vecVertices;
-
-			finish(optimize);
-
-			meshBuilder.End(optimize);
-			m_shapeInstance = new ndShapeInstance(new ndShapeStatic_bvh(meshBuilder));
-			m_col = m_shapeInstance->GetShape();
-		}
-#else
-		OgreNewt::CollisionPrimitives::TreeCollision::TreeCollision(
-			const OgreNewt::World* world,
-			int numVertices, int numIndices,
-			const float* vertices, const int* indices,
-			bool optimize, unsigned int id, FaceWinding fw)
-			: Collision(world)
-		{
-			if (m_col)
-				m_col->Release();
-
-			ndPolygonSoupBuilder meshBuilder;
-			meshBuilder.Begin();
-
-			for (int i = 0; i + 2 < numIndices; i += 3)
-			{
-				Ogre::Vector3 a(vertices[indices[i] * 3 + 0],
-					vertices[indices[i] * 3 + 1],
-					vertices[indices[i] * 3 + 2]);
-				Ogre::Vector3 b(vertices[indices[i + 1] * 3 + 0],
-					vertices[indices[i + 1] * 3 + 1],
-					vertices[indices[i + 1] * 3 + 2]);
-				Ogre::Vector3 c(vertices[indices[i + 2] * 3 + 0],
-					vertices[indices[i + 2] * 3 + 1],
-					vertices[indices[i + 2] * 3 + 2]);
-
-				// Gentle extrusion for degenerate faces
-				Ogre::Vector3 e1 = b - a;
-				Ogre::Vector3 e2 = c - a;
-				Ogre::Vector3 n = e1.crossProduct(e2);
-				Ogre::Real area2 = n.squaredLength();
-				if (area2 < 1e-16f)
-				{
-					if (n.isZeroLength())
-						n = Ogre::Vector3::UNIT_Y;
-					else
-						n.normalise();
-					const Ogre::Real EPS = 1e-4f;
-					a += n * EPS;
-					b += n * EPS * 0.5f;
-					c += n * EPS * 0.25f;
-				}
-
-				ndVector face[3];
-				if (fw == FW_DEFAULT)
-				{
-					face[0] = ndVector(a.x, a.y, a.z, 1.0f);
-					face[1] = ndVector(b.x, b.y, b.z, 1.0f);
-					face[2] = ndVector(c.x, c.y, c.z, 1.0f);
-				}
-				else
-				{
-					face[0] = ndVector(a.x, a.y, a.z, 1.0f);
-					face[1] = ndVector(c.x, c.y, c.z, 1.0f);
-					face[2] = ndVector(b.x, b.y, b.z, 1.0f);
-				}
-
-				meshBuilder.AddFace(&face[0].m_x, sizeof(ndVector), 3, id);
-			}
-
-			meshBuilder.End(optimize);
 			m_shapeInstance = new ndShapeInstance(new ndShapeStatic_bvh(meshBuilder));
 			m_col = m_shapeInstance->GetShape();
 		}
 
-#endif
-
-#if 0
-		TreeCollision::TreeCollision(const World* world, int numVertices, Ogre::Vector3* vertices, Ogre::v1::IndexData* indexData, bool optimize, unsigned int id, FaceWinding fw)
-			: Collision(world)
-		{
-			m_categoryId = id;
-			start(id);
-
-			ndPolygonSoupBuilder meshBuilder;
-			meshBuilder.Begin();
-
-			if (!vertices || !indexData || !indexData->indexBuffer)
-			{
-				finish(optimize);
-				meshBuilder.End(optimize);
-				m_shapeInstance = new ndShapeInstance(new ndShapeStatic_bvh(meshBuilder));
-				m_col = m_shapeInstance->GetShape();
-				return;
-			}
-
-			Ogre::v1::HardwareIndexBufferSharedPtr ibuf = indexData->indexBuffer;
-			const size_t indexCount = indexData->indexCount;
-			if (indexCount < 3)
-			{
-				finish(optimize);
-				meshBuilder.End(optimize);
-				m_shapeInstance = new ndShapeInstance(new ndShapeStatic_bvh(meshBuilder));
-				m_col = m_shapeInstance->GetShape();
-				return;
-			}
-
-			const size_t triCount = indexCount / 3;
-			const size_t indexSize = ibuf->getIndexSize();
-			assert(indexSize == 2 || indexSize == 4);
-
-			void* indexDataRaw = ibuf->lock(Ogre::v1::HardwareBuffer::HBL_READ_ONLY);
-
-			auto readIndex16 = [&](size_t i) -> uint32_t {
-				return static_cast<uint32_t>(reinterpret_cast<uint16_t*>(indexDataRaw)[i]);
-				};
-			auto readIndex32 = [&](size_t i) -> uint32_t {
-				return static_cast<uint32_t>(reinterpret_cast<uint32_t*>(indexDataRaw)[i]);
-				};
-
-			const bool use32 = (indexSize == 4);
-			for (size_t t = 0; t < triCount; ++t)
-			{
-				const uint32_t i0 = use32 ? readIndex32(t * 3 + 0) : readIndex16(t * 3 + 0);
-				const uint32_t i1 = use32 ? readIndex32(t * 3 + 1) : readIndex16(t * 3 + 1);
-				const uint32_t i2 = use32 ? readIndex32(t * 3 + 2) : readIndex16(t * 3 + 2);
-
-				if (i0 >= static_cast<uint32_t>(numVertices) ||
-					i1 >= static_cast<uint32_t>(numVertices) ||
-					i2 >= static_cast<uint32_t>(numVertices))
-					continue;
-
-				Ogre::Vector3 v[3];
-				v[0] = vertices[i0];
-				v[1] = vertices[i1];
-				v[2] = vertices[i2];
-
-				if (fw == FW_REVERSE)
-					std::swap(v[1], v[2]);
-
-				// Skip degenerate triangles
-				const Ogre::Vector3 e0 = v[1] - v[0];
-				const Ogre::Vector3 e1 = v[2] - v[0];
-				const float edgeMin2 = 1.0e-20f;
-				const float areaMin2 = 1.0e-12f;
-				if (e0.squaredLength() <= edgeMin2 ||
-					e1.squaredLength() <= edgeMin2 ||
-					e0.crossProduct(e1).squaredLength() <= areaMin2)
-				{
-					continue;
-				}
-
-				addPoly(v, static_cast<int>(t));
-
-				meshBuilder.AddFace(reinterpret_cast<const ndFloat32*>(&v[0].x), static_cast<ndInt32>(sizeof(Ogre::Vector3)), 3, static_cast<ndInt32>(id));
-			}
-
-			ibuf->unlock();
-
-			finish(optimize);
-
-			meshBuilder.End(optimize);
-			m_shapeInstance = new ndShapeInstance(new ndShapeStatic_bvh(meshBuilder));
-			m_col = m_shapeInstance->GetShape();
-		}
-#else
 		TreeCollision::TreeCollision(
 			const World* world,
 			int numVertices,
@@ -1353,8 +1058,10 @@ namespace OgreNewt
 			ndPolygonSoupBuilder meshBuilder;
 			meshBuilder.Begin();
 
-			// Guard: invalid input
-			if (!vertices || !indexData || !indexData->indexBuffer)
+			// --------------------------------------------------------------------
+			// 1. Validate input
+			// --------------------------------------------------------------------
+			if (!vertices || numVertices <= 0 || !indexData || !indexData->indexBuffer)
 			{
 				finish(optimize);
 				meshBuilder.End(optimize);
@@ -1365,6 +1072,8 @@ namespace OgreNewt
 
 			Ogre::v1::HardwareIndexBufferSharedPtr ibuf = indexData->indexBuffer;
 			const size_t indexCount = indexData->indexCount;
+			const size_t indexStart = indexData->indexStart;
+
 			if (indexCount < 3)
 			{
 				finish(optimize);
@@ -1380,69 +1089,90 @@ namespace OgreNewt
 
 			void* indexDataRaw = ibuf->lock(Ogre::v1::HardwareBuffer::HBL_READ_ONLY);
 
-			auto readIndex16 = [&](size_t i) -> uint32_t {
-				return static_cast<uint32_t>(reinterpret_cast<uint16_t*>(indexDataRaw)[i]);
-				};
-			auto readIndex32 = [&](size_t i) -> uint32_t {
-				return static_cast<uint32_t>(reinterpret_cast<uint32_t*>(indexDataRaw)[i]);
-				};
-
 			const bool use32 = (indexSize == 4);
+			auto readIndex = [&](size_t i) -> uint32_t
+				{
+					return use32 ?
+						static_cast<uint32_t>(reinterpret_cast<uint32_t*>(indexDataRaw)[i]) :
+						static_cast<uint32_t>(reinterpret_cast<uint16_t*>(indexDataRaw)[i]);
+				};
 
+			// Optional: mirrored scale check (can be provided externally)
+			FaceWinding localFw = fw;
+
+			// --------------------------------------------------------------------
+			// 2. Iterate through triangles
+			// --------------------------------------------------------------------
 			for (size_t t = 0; t < triCount; ++t)
 			{
-				const uint32_t i0 = use32 ? readIndex32(t * 3 + 0) : readIndex16(t * 3 + 0);
-				const uint32_t i1 = use32 ? readIndex32(t * 3 + 1) : readIndex16(t * 3 + 1);
-				const uint32_t i2 = use32 ? readIndex32(t * 3 + 2) : readIndex16(t * 3 + 2);
+				const uint32_t i0 = readIndex(indexStart + t * 3 + 0);
+				const uint32_t i1 = readIndex(indexStart + t * 3 + 1);
+				const uint32_t i2 = readIndex(indexStart + t * 3 + 2);
 
 				if (i0 >= static_cast<uint32_t>(numVertices) ||
 					i1 >= static_cast<uint32_t>(numVertices) ||
 					i2 >= static_cast<uint32_t>(numVertices))
 					continue;
 
-				Ogre::Vector3 v[3];
-				v[0] = vertices[i0];
-				v[1] = vertices[i1];
-				v[2] = vertices[i2];
+				Ogre::Vector3 vtx[3];
+				vtx[0] = vertices[i0];
+				vtx[1] = vertices[i1];
+				vtx[2] = vertices[i2];
 
-				if (fw == FW_REVERSE)
-					std::swap(v[1], v[2]);
+				if (localFw == FW_REVERSE)
+					std::swap(vtx[1], vtx[2]);
 
-				// --- Gentle extrusion for degenerate or nearly-flat faces ---
-				Ogre::Vector3 e0 = v[1] - v[0];
-				Ogre::Vector3 e1 = v[2] - v[0];
-				Ogre::Vector3 n = e0.crossProduct(e1);
-				Ogre::Real area2 = n.squaredLength();
-				if (area2 < 1e-16f)
+				// ----------------------------------------------------------------
+				// 3. Degenerate-face extrusion (ND4 optimizer-safe)
+				// ----------------------------------------------------------------
+				Ogre::Vector3 e1 = vtx[1] - vtx[0];
+				Ogre::Vector3 e2 = vtx[2] - vtx[0];
+				Ogre::Vector3 n = e1.crossProduct(e2);
+
+				if (n.squaredLength() < 1e-16f)
 				{
 					if (n.isZeroLength())
 						n = Ogre::Vector3::UNIT_Y;
 					else
 						n.normalise();
+
 					const Ogre::Real EPS = 1e-4f;
-					v[0] += n * EPS;
-					v[1] += n * EPS * 0.5f;
-					v[2] += n * EPS * 0.25f;
+					vtx[0] += n * EPS;
+					vtx[1] += n * EPS * 0.5f;
+					vtx[2] += n * EPS * 0.25f;
 				}
-				// ------------------------------------------------------------
 
-				addPoly(v, static_cast<int>(t));
+				// ----------------------------------------------------------------
+				// 4. Add face to Newton soup
+				// ----------------------------------------------------------------
+				ndVector face[3];
+				if (localFw == FW_DEFAULT)
+				{
+					face[0] = ndVector(vtx[0].x, vtx[0].y, vtx[0].z, 1.0f);
+					face[1] = ndVector(vtx[1].x, vtx[1].y, vtx[1].z, 1.0f);
+					face[2] = ndVector(vtx[2].x, vtx[2].y, vtx[2].z, 1.0f);
+				}
+				else
+				{
+					face[0] = ndVector(vtx[0].x, vtx[0].y, vtx[0].z, 1.0f);
+					face[1] = ndVector(vtx[2].x, vtx[2].y, vtx[2].z, 1.0f);
+					face[2] = ndVector(vtx[1].x, vtx[1].y, vtx[1].z, 1.0f);
+				}
 
-				meshBuilder.AddFace(reinterpret_cast<const ndFloat32*>(&v[0].x),
-					static_cast<ndInt32>(sizeof(Ogre::Vector3)),
-					3,
-					static_cast<ndInt32>(id));
+				meshBuilder.AddFace(&face[0].m_x, sizeof(ndVector), 3, id);
 			}
 
 			ibuf->unlock();
 
+			// --------------------------------------------------------------------
+			// 5. Finalize ND4 collision shape
+			// --------------------------------------------------------------------
 			finish(optimize);
-
 			meshBuilder.End(optimize);
+
 			m_shapeInstance = new ndShapeInstance(new ndShapeStatic_bvh(meshBuilder));
 			m_col = m_shapeInstance->GetShape();
 		}
-#endif
 
 		void TreeCollision::start(unsigned int id)
 		{

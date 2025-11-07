@@ -1061,6 +1061,7 @@ namespace NOWA
 
 	void GameObjectController::deleteGameObjectImmediately(GameObjectPtr gameObjectPtr)
 	{
+		gameObjectPtr->setVisible(false);
 		// Frees the category, internally a check will be made if there is still a game object with the category, if not it will be un-occupied, for a next new category
 		this->freeCategoryFromGameObject(gameObjectPtr->getCategory());
 		this->freeRenderCategoryFromGameObject(gameObjectPtr->getRenderCategory());
@@ -1662,13 +1663,6 @@ namespace NOWA
 
 	void GameObjectController::start(void)
 	{
-		// Must be called, else all initial transforms, which are used via _getDerivedPosition() and not _getDerivedPositionUpdated() are 0 0 0 etc.!
-		// Ogre::Root::getSingletonPtr()->renderOneFrame();
-
-		// Must be called on logic thread, because lua operations must be on logic thread!
-		/*auto done = std::make_shared<std::promise<void>>();
-		std::future<void> future = done->get_future();*/
-
 		NOWA::AppStateManager::LogicCommand logicCommand = [this]()
 		{
 			// Clears lua errors etc.
@@ -1756,19 +1750,14 @@ namespace NOWA
 		};
 
 		NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-		// NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-		// future.wait();
 	}
 
 	void GameObjectController::stop(void)
 	{
-		// Must be called on logic thread, because lua operations must be on logic thread!
-		/*auto done = std::make_shared<std::promise<void>>();
-		std::future<void> future = done->get_future();*/
-
 		NOWA::GraphicsModule::getInstance()->clearAllClosures();
 		NOWA::AppStateManager::getSingletonPtr()->clearLogicQueue();
 
+		// Must be called on logic thread, because lua operations must be on logic thread!
 		NOWA::AppStateManager::LogicCommand logicCommand = [this]()
 		{
 			// Resets the command, so that deletion of game object can be processed again.
@@ -1841,7 +1830,6 @@ namespace NOWA
 		};
 
 		NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-		// future.wait();
 	}
 
 	void GameObjectController::pause(void)

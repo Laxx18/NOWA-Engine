@@ -37,6 +37,10 @@ namespace OgreNewt
 		pivot.m_posit = ndVector(pos.x, pos.y, pos.z, 1.0f);
 
 		ndJointSpherical* joint = new ndJointSpherical(pivot, b0, b1);
+
+		// This is key: prefer the iterative soft model for stability, else whole simulation can become unstable!
+		joint->SetSolverModel(m_jointIterativeSoft);
+
 		SetSupportJoint(joint);
 	}
 
@@ -96,8 +100,8 @@ namespace OgreNewt
 	void BallAndSocket::setTwistFriction(Ogre::Real frictionTorque)
 	{
 		m_twistFriction = frictionTorque;
-		if (auto* j = asNd())
-			j->SetAsSpringDamper(0.01f, 0.0f, static_cast<ndFloat32>(frictionTorque)); // mimic friction
+		// if (auto* j = asNd())
+		// 	j->SetAsSpringDamper(0.01f, 0.0f, static_cast<ndFloat32>(frictionTorque)); // mimic friction
 
 		if (m_child)
 			m_child->unFreeze();
@@ -113,8 +117,8 @@ namespace OgreNewt
 	void BallAndSocket::setConeFriction(Ogre::Real frictionTorque)
 	{
 		m_coneFriction = frictionTorque;
-		if (auto* j = asNd())
-			j->SetAsSpringDamper(0.01f, 0.0f, static_cast<ndFloat32>(frictionTorque));
+		// if (auto* j = asNd())
+		// 	j->SetAsSpringDamper(0.01f, 0.0f, static_cast<ndFloat32>(frictionTorque));
 
 		if (m_child)
 			m_child->unFreeze();
@@ -184,6 +188,9 @@ namespace OgreNewt
 
 		// create actual ND4 joint
 		ndJointHinge* const joint = new ndJointHinge(pivotFrame, childBody, parentBody);
+
+		// This is key: prefer the iterative soft model for stability, else whole simulation can become unstable!
+		joint->SetSolverModel(m_jointIterativeSoft);
 
 		// store for OgreNewt lifetime mgmt
 		SetSupportJoint(joint);
@@ -364,6 +371,10 @@ namespace OgreNewt
 		OgreNewt::Converters::QuatPosToMatrix(q, pos, frame);
 
 		auto* joint = new ndJointSlider(frame, b0, b1);
+
+		// This is key: prefer the iterative soft model for stability, else whole simulation can become unstable!
+		joint->SetSolverModel(m_jointIterativeSoft);
+
 		SetSupportJoint(joint);
 	}
 
@@ -1938,8 +1949,12 @@ namespace OgreNewt
 		const ndVector up(pin.x, pin.y, pin.z, 0.0f);
 
 		// Create the ND4 up-vector joint
-		auto* j = new ndJointUpVector(up, child, sentinelBody);
-		SetSupportJoint(j);
+		auto* joint = new ndJointUpVector(up, child, sentinelBody);
+
+		// This is key: prefer the iterative soft model for stability, else whole simulation can become unstable!
+		joint->SetSolverModel(m_jointIterativeSoft);
+
+		SetSupportJoint(joint);
 	}
 
 	UpVector::~UpVector()

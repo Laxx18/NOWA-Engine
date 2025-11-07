@@ -17,8 +17,8 @@ namespace NOWA
 		solverForSingleIsland(true),
 		broadPhaseAlgorithm(0),
 		physicsThreadCount(1),
-		linearDamping(0.1f),
-		angularDamping(Ogre::Vector3(0.1f, 0.1f, 0.1f)),
+		linearDamping(0.001f),
+		angularDamping(Ogre::Vector3(0.001f, 0.001f, 0.001f)),
 		gravity(Ogre::Vector3(0.0f, -19.8f, 0.0f)),
 		useV2Item(false),
 

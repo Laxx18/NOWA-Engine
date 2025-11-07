@@ -3129,7 +3129,7 @@ void PropertiesPanelComponent::notifySetItemBoxData(MyGUI::ItemBox* sender, cons
 
 void PropertiesPanelComponent::buttonHit(MyGUI::Widget* sender)
 {
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PropertiesPanelComponent::buttonHit", _1(sender),
+	NOWA::GraphicsModule::RenderCommand renderCommand = [this, sender]()
 	{
 		this->showDescription(sender);
 
@@ -3370,7 +3370,8 @@ void PropertiesPanelComponent::buttonHit(MyGUI::Widget* sender)
 				}
 			}
 		}
-	});
+	};
+	NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PropertiesPanelComponent::buttonHit");
 }
 
 void PropertiesPanelComponent::notifyComboChangedPosition(MyGUI::ComboBox* sender, size_t index)

@@ -556,39 +556,38 @@ void ComponentsPanelDynamic::buttonHit(MyGUI::Widget* sender)
 	MyGUI::Button* button = sender->castType<MyGUI::Button>();
 	if (nullptr != button)
 	{
-		ENQUEUE_RENDER_COMMAND_MULTI("ComponentsPanelDynamic::buttonHit", _1(button),
+		Ogre::String componentName = button->getCaption();
+
+		// This should be handled via editormanager due to undo/redo functionality
+		// GameObjectPtr is required, so get it from game object. Note: Only game object was available because of selection result, which never may be shared_ptr! because of reference count mess when
+		// Ogre would hold those shared ptrs in user any
+
+		std::vector<unsigned long> gameObjectIds(this->gameObjects.size());
+		size_t i = 0;
+		// Do not delete directly via selection manager, because when internally deleted, an event is sent out to selection manager to remove from map
+		for (size_t i = 0; i < this->gameObjects.size(); i++)
 		{
-			Ogre::String componentName = button->getCaption();
+			gameObjectIds[i] = this->gameObjects[i]->getId();
+		}
+		if (0 == gameObjectIds.size())
+		{
+			return;
+		}
 
-			// This should be handled via editormanager due to undo/redo functionality
-			// GameObjectPtr is required, so get it from game object. Note: Only game object was available because of selection result, which never may be shared_ptr! because of reference count mess when
-			// Ogre would hold those shared ptrs in user any
+		this->editorManager->addComponent(gameObjectIds, componentName);
+		if (this->index != -1)
+		{
+			this->gameObjects[0]->moveComponent(this->index + 1);
+		}
 
-			std::vector<unsigned long> gameObjectIds(this->gameObjects.size());
-			size_t i = 0;
-			// Do not delete directly via selection manager, because when internally deleted, an event is sent out to selection manager to remove from map
-			for (size_t i = 0; i < this->gameObjects.size(); i++)
-			{
-				gameObjectIds[i] = this->gameObjects[i]->getId();
-			}
-			if (0 == gameObjectIds.size())
-			{
-				return;
-			}
-
-			this->editorManager->addComponent(gameObjectIds, componentName);
-			if (this->index != -1)
-			{
-				this->gameObjects[0]->moveComponent(this->index + 1);
-			}
-
-
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ComponentsPanelDynamic::buttonHit", _1(button),
+		{
 			this->parentPanel->setVisible(false);
 			this->clear();
-
-			// Sent when a component has been added, so that the properties panel can be refreshed with new values
-			boost::shared_ptr<EventDataRefreshPropertiesPanel> eventDataRefreshPropertiesPanel(new EventDataRefreshPropertiesPanel());
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataRefreshPropertiesPanel);
 		});
+
+		// Sent when a component has been added, so that the properties panel can be refreshed with new values
+		boost::shared_ptr<EventDataRefreshPropertiesPanel> eventDataRefreshPropertiesPanel(new EventDataRefreshPropertiesPanel());
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataRefreshPropertiesPanel);
 	}
 }

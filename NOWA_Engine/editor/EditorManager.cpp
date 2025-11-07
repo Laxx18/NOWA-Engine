@@ -871,7 +871,7 @@ namespace NOWA
 
 		virtual void undo(void) override
 		{
-			ENQUEUE_RENDER_COMMAND("CloneGameObjectGroupUndoCommand::undo",
+			ENQUEUE_RENDER_COMMAND_WAIT("CloneGameObjectGroupUndoCommand::undo",
 			{
 				AppStateManager::getSingletonPtr()->getGameObjectController()->stop();
 
@@ -911,46 +911,47 @@ namespace NOWA
 
 		virtual void redo(void) override
 		{
-			this->editorManager->getSelectionManager()->clearSelection();
 			// First disconnect game objects, because during clone, when there are joint components etc. only those to be cloned joint components may be in a list
 			// to find the new predecessor. If there would be all other, a wrong predecessor joint could be found!
-			ENQUEUE_RENDER_COMMAND("CloneGameObjectGroupUndoCommand::redo",
+			NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
 			{
+				this->editorManager->getSelectionManager()->clearSelection();
 				AppStateManager::getSingletonPtr()->getGameObjectController()->stop();
-			});
 
-			if (false == this->gameObjectsToAddStream.empty())
-			{
-				// If the cloned game objects had been deleted, their ids are also gone, so get them from stream
-				this->createGameObjects();
-			}
-			else
-			{
-				for (size_t i = 0; i < this->gameObjectIds.size(); i++)
+				if (false == this->gameObjectsToAddStream.empty())
 				{
-					// Clone with the clone target id to get the same game object id, as the one that had been deleted in undo
-					GameObjectPtr clonedGameObject = AppStateManager::getSingletonPtr()->getGameObjectController()->clone(this->gameObjectIds[i], nullptr, this->gameObjectClonedIds[i]);
-					if (nullptr != clonedGameObject)
+					// If the cloned game objects had been deleted, their ids are also gone, so get them from stream
+					this->createGameObjects();
+				}
+				else
+				{
+					for (size_t i = 0; i < this->gameObjectIds.size(); i++)
 					{
-						this->editorManager->getSelectionManager()->select(clonedGameObject->getId());
-						// Important: Set the cloned name, for undo redo
-						this->gameObjectClonedIds[i] = clonedGameObject->getId();
-					}
-					else
-					{
-						// If the to be cloned game object does no more exist, e.g. prior deleted, cloning is no more possible
-						this->gameObjectIds.clear();
-						this->gameObjectClonedIds.clear();
-						break;
+						// Clone with the clone target id to get the same game object id, as the one that had been deleted in undo
+						GameObjectPtr clonedGameObject = AppStateManager::getSingletonPtr()->getGameObjectController()->clone(this->gameObjectIds[i], nullptr, this->gameObjectClonedIds[i]);
+						if (nullptr != clonedGameObject)
+						{
+							this->editorManager->getSelectionManager()->select(clonedGameObject->getId());
+							// Important: Set the cloned name, for undo redo
+							this->gameObjectClonedIds[i] = clonedGameObject->getId();
+						}
+						else
+						{
+							// If the to be cloned game object does no more exist, e.g. prior deleted, cloning is no more possible
+							this->gameObjectIds.clear();
+							this->gameObjectClonedIds.clear();
+							break;
+						}
 					}
 				}
-			}
 
-			// Connect just after cloning, so that onCloned and connect is called. E.g. for joints its necessary to call it right after cloning, so that 
-			// the correct predecssor via priorId can be found and set to another id, so that when cloned a second time, it will not be found again!
-			// But only for the cloned ones
-			// Internally game object component can react on onCloned method and search for its target game object that has been cloned by its prior id
-			AppStateManager::getSingletonPtr()->getGameObjectController()->connectClonedGameObjects(this->gameObjectClonedIds);
+				// Connect just after cloning, so that onCloned and connect is called. E.g. for joints its necessary to call it right after cloning, so that 
+				// the correct predecssor via priorId can be found and set to another id, so that when cloned a second time, it will not be found again!
+				// But only for the cloned ones
+				// Internally game object component can react on onCloned method and search for its target game object that has been cloned by its prior id
+				AppStateManager::getSingletonPtr()->getGameObjectController()->connectClonedGameObjects(this->gameObjectClonedIds);
+			};
+			NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CloneGameObjectGroupUndoCommand::redo");
 
 			boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
 			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGeometryModified);
@@ -1007,7 +1008,7 @@ namespace NOWA
 
 		virtual void undo(void) override
 		{
-			ENQUEUE_RENDER_COMMAND("CloneGameObjectsUndoCommand::undo",
+			ENQUEUE_RENDER_COMMAND_WAIT("CloneGameObjectsUndoCommand::undo",
 			{
 				AppStateManager::getSingletonPtr()->getGameObjectController()->stop();
 			});
@@ -1037,7 +1038,7 @@ namespace NOWA
 			this->editorManager->getSelectionManager()->clearSelection();
 			// First disconnect game objects, because during clone, when there are joint components etc. only those to be cloned joint components may be in a list
 			// to find the new predecessor. If there would be all other, a wrong predecessor joint could be found!
-			ENQUEUE_RENDER_COMMAND("CloneGameObjectsUndoCommand::redo",
+			ENQUEUE_RENDER_COMMAND_WAIT("CloneGameObjectsUndoCommand::redo",
 			{
 				AppStateManager::getSingletonPtr()->getGameObjectController()->stop();
 			});
@@ -1069,7 +1070,7 @@ namespace NOWA
 			// Internally game object component can react on onCloned method and search for its target game object that has been cloned by its prior id
 			AppStateManager::getSingletonPtr()->getGameObjectController()->connectClonedGameObjects(this->gameObjectClonedIds);
 
-			ENQUEUE_RENDER_COMMAND("CloneGameObjectsUndoCommand::redo2",
+			ENQUEUE_RENDER_COMMAND_WAIT("CloneGameObjectsUndoCommand::redo2",
 			{
 				this->editorManager->setManipulationMode(EditorManager::EDITOR_TRANSLATE_MODE);
 				this->editorManager->setGizmoToGameObjectsCenter();
@@ -1608,6 +1609,9 @@ namespace NOWA
 					}
 				}
 
+				// Due to threading necessary to call one last time if click happend, so the the go gets correct position.
+				this->applyPlaceMovableTransform();
+
 				// Create GameObject etc. and push to undo stack
 				this->sceneManipulationCommandModule.pushCommand(std::make_shared<AddGameObjectUndoCommand>(this->sceneManager, this->tempPlaceMovableNode, meshData, this->currentPlaceType));
 				// Sent event that scene has been modified
@@ -1628,6 +1632,9 @@ namespace NOWA
 				// When group is placed, the group is cloned, so that it can be placed several times, until the user presses escape or chooses another manipulation mode
 				if (this->groupGameObjectIds.size() > 0)
 				{
+					// Due to threading necessary to call one last time if click happend, so that first go of group gets correct position.
+					this->applyGroupTransform();
+
 					std::vector<unsigned long> tempGameObjectGroup(this->groupGameObjectIds.size());
 					// Do not change to translate mode after clone (false parameter)
 					for (size_t i = 0; i < this->groupGameObjectIds.size(); i++)
@@ -2409,7 +2416,7 @@ namespace NOWA
 				// Set orientation as the place node + the current object orientation
 				gameObjectPtr->setAttributeOrientation(this->placeNode->_getDerivedOrientationUpdated() * std::get<2>(this->groupGameObjectIds[i]) /** gameObjectPtr->getSceneNode()->getOrientation()*/);
 
-
+				// NOWA::GraphicsModule::getInstance()->updateNodeTransform(gameObjectPtr->getSceneNode(), targetPosition, this->placeNode->_getDerivedOrientationUpdated() * std::get<2>(this->groupGameObjectIds[i]) /** gameObjectPtr->getSceneNode()->getOrientation()*/);
 			}
 		}
 	}

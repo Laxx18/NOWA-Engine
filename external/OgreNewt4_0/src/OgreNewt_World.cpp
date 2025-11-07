@@ -41,14 +41,53 @@ World::World(Ogre::Real desiredFps, int maxUpdatesPerFrames, const Ogre::String&
 
 World::~World()
 {
-    cleanUp();
+    Sync();       // join worker threads
+    ClearCache(); // clears spatial/broadphase caches
 }
 
 void World::cleanUp()
 {
-    // ndScopeSpinLock lock(m_lock);
     Sync();       // join worker threads
-    ClearCache(); // ndWorld clears spatial/broadphase caches
+    ClearCache(); // clears spatial/broadphase caches
+
+    const ndBodyListView& bodyList = GetBodyList();
+    const ndArray<ndBodyKinematic*>& view = bodyList.GetView();
+
+    for (ndInt32 i = ndInt32(view.GetCount()) - 1; i >= 0; --i)
+    {
+        ndBodyKinematic* const ndBody = view[i];
+        if (!ndBody)
+            continue;
+
+        // Skip static/kinematic (not dynamic) bodies
+        ndBodyDynamic* const dyn = ndBody->GetAsBodyDynamic();
+        if (!dyn)
+            continue;
+
+        // Reset physical state
+        dyn->SetForce(ndVector::m_zero);
+        dyn->SetTorque(ndVector::m_zero);
+        dyn->SetVelocity(ndVector::m_zero);
+        dyn->SetOmega(ndVector::m_zero);
+
+        // Optionally clear sleep flags to make sure state is clean
+        // dyn->SetSleepState(true);
+
+        // Sync Ogre side
+        if (auto* notify = ndBody->GetNotifyCallback())
+        {
+            if (auto* ogreNotify = dynamic_cast<OgreNewt::BodyNotify*>(notify))
+            {
+                if (auto* ogreBody = ogreNotify->GetOgreNewtBody())
+                {
+                    ogreBody->setForce(Ogre::Vector3::ZERO);
+                    ogreBody->setTorque(Ogre::Vector3::ZERO);
+                    ogreBody->setVelocity(Ogre::Vector3::ZERO);
+                    ogreBody->setOmega(Ogre::Vector3::ZERO);
+                }
+            }
+        }
+    }
 }
 
 void World::clearCache()
