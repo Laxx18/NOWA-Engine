@@ -384,12 +384,12 @@ void ProjectManager::loadProject(const Ogre::String& filePathName, unsigned shor
 	{
 		bool success = false;
 
-		// NOWA::AppStateManager::LogicCommand logicCommand = [this, &success]()
-			// {
-				// Internally calls invalidate cache, so that all newton data is set to default for deterministic simulations, when started again
-				success = this->dotSceneImportModule->parseScene(this->projectParameter.projectName, this->projectParameter.sceneName, "Projects", nullptr, nullptr, false);
-			// };
-		// NOWA::AppStateManager::getSingletonPtr()->enqueueAndWait(std::move(logicCommand));
+		NOWA::AppStateManager::LogicCommand logicCommand = [this, &success]()
+		{
+			// Internally calls invalidate cache, so that all newton data is set to default for deterministic simulations, when started again
+			success = this->dotSceneImportModule->parseScene(this->projectParameter.projectName, this->projectParameter.sceneName, "Projects", nullptr, nullptr, false);
+		};
+		NOWA::AppStateManager::getSingletonPtr()->enqueueAndWait(std::move(logicCommand));
 
 		// Must be done back in logic thread, because this is called via mygui mouse press from rendering thread!
 		if (false == success)

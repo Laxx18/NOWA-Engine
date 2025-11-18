@@ -2030,6 +2030,9 @@ namespace NOWA
 
     void GraphicsModule::logCommandEvent(const Ogre::String& message, Ogre::LogMessageLevel level) const
     {
+        // TODO: REmoved log flooding
+        return;
+
         if (level >= this->logLevel)
         {
             std::stringstream ss;
@@ -2045,6 +2048,9 @@ namespace NOWA
 
     void GraphicsModule::logCommandState(const char* commandName, bool willWait) const
     {
+        // TODO: REmoved log flooding
+        return;
+
         std::stringstream ss;
         ss << "Command '" << commandName << "' - Will wait: " << (willWait ? "YES" : "NO");
         this->logCommandEvent(ss.str(), Ogre::LML_NORMAL);

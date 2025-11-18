@@ -854,8 +854,8 @@ namespace OgreNewt
 		OgreNewt::Converters::QuatPosToMatrix(q, pos, frame);
 
 		// Create Newton4 cylindrical joint (same DOFs as 3.x dCustomSlidingContact)
-		ndBodyKinematic* b0 = m_body0 ? const_cast<ndBodyKinematic*>(m_body0->getNewtonBody()) : nullptr;
-		ndBodyKinematic* b1 = m_body1 ? const_cast<ndBodyKinematic*>(m_body1->getNewtonBody()) : nullptr;
+		ndBodyKinematic* b0 = child ? const_cast<ndBodyKinematic*>(child->getNewtonBody()) : nullptr;
+		ndBodyKinematic* b1 = parent ? const_cast<ndBodyKinematic*>(parent->getNewtonBody()) : child->getWorld()->getNewtonWorld()->GetSentinelBody();
 
 		ndJointCylinder* j = new ndJointCylinder(frame, b0, b1 ? b1 : nullptr);
 		SetSupportJoint(j);
@@ -1071,17 +1071,9 @@ namespace OgreNewt
 		m_maxRad = toRad(maxAngle);
 		m_maxOmega = toRad(angularRate);
 
-		if (auto* j = asNd())
-		{
-			j->SetLimitState(true);
-			j->SetLimits(m_minRad, m_maxRad);
-			j->SetAsSpringDamper(m_regularizer, 0.0f, 0.0f); // PD disabled by default
-			// Initialize targets to current angle
-			const ndFloat32 a = j->GetAngle();
-			m_targetCmd = clampf(a, m_minRad, m_maxRad);
-			m_targetSlew = m_targetCmd;
-			j->SetTargetAngle(m_targetSlew);
-		}
+		SetMinAngularLimit(minAngle);
+		SetMaxAngularLimit(maxAngle);
+		SetAngularRate(angularRate);
 	}
 
 	HingeActuator::~HingeActuator()
@@ -1093,7 +1085,10 @@ namespace OgreNewt
 	{
 		m_minRad = toRad(limit);
 		if (auto* j = asNd())
+		{
 			j->SetLimits(m_minRad, m_maxRad);
+			j->SetLimitState(true);
+		}
 		_wake();
 	}
 
@@ -1101,7 +1096,10 @@ namespace OgreNewt
 	{
 		m_maxRad = toRad(limit);
 		if (auto* j = asNd())
+		{
 			j->SetLimits(m_minRad, m_maxRad);
+			j->SetLimitState(true);
+		}
 		_wake();
 	}
 
@@ -1586,8 +1584,8 @@ namespace OgreNewt
 	// Spinner wrapper
 	FlexyPipeSpinnerJoint::FlexyPipeSpinnerJoint(OgreNewt::Body* currentBody, OgreNewt::Body* predecessorBody, const Ogre::Vector3& anchorPosition, const Ogre::Vector3& pin)
 	{
-		ndBodyKinematic* b0 = const_cast<ndBodyKinematic*>(currentBody->getNewtonBody());
-		ndBodyKinematic* b1 = predecessorBody ? const_cast<ndBodyKinematic*>(predecessorBody->getNewtonBody()) : nullptr;
+		ndBodyKinematic* b0 = currentBody ? const_cast<ndBodyKinematic*>(currentBody->getNewtonBody()) : nullptr;
+		ndBodyKinematic* b1 = predecessorBody ? const_cast<ndBodyKinematic*>(predecessorBody->getNewtonBody()) : currentBody->getWorld()->getNewtonWorld()->GetSentinelBody();
 
 		Ogre::Quaternion q = OgreNewt::Converters::grammSchmidt(pin);
 		ndMatrix frame;
@@ -1623,7 +1621,7 @@ namespace OgreNewt
 		m_round = 0;
 
 		ndBodyKinematic* b0 = currentBody ? const_cast<ndBodyKinematic*>(currentBody->getNewtonBody()) : nullptr;
-		ndBodyKinematic* b1 = predecessorBody ? const_cast<ndBodyKinematic*>(predecessorBody->getNewtonBody()) : nullptr;
+		ndBodyKinematic* b1 = predecessorBody ? const_cast<ndBodyKinematic*>(predecessorBody->getNewtonBody()) : currentBody->getWorld()->getNewtonWorld()->GetSentinelBody();
 
 		Ogre::Quaternion q = OgreNewt::Converters::grammSchmidt(pin);
 		ndMatrix frame;

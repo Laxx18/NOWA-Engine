@@ -1795,7 +1795,7 @@ namespace NOWA
 		return "JointComponent";
 	}
 
-#if 1
+#if 0
 	void JointHingeActuatorComponent::update(Ogre::Real dt, bool notSimulating)
 	{
 		if (false == notSimulating && true == this->activated->getBool())
@@ -1915,9 +1915,8 @@ namespace NOWA
 				// “close enough to target” AND “almost stopped”
 				const bool atTarget = (std::abs(angle - target) <= posTol) && (std::abs(omega) <= velTol);
 
-				hingeActuatorJoint->ControllerUpdate(static_cast<ndFloat32>(dt);
+				hingeActuatorJoint->ControllerUpdate(static_cast<ndFloat32>(dt));
 
-				Ogre::Real angle = hingeActuatorJoint->GetActuatorAngle();
 				// Ogre::Real step = this->angleRate->getReal() * dt;
 				if (this->oppositeDir == 1.0f)
 				{
@@ -5830,7 +5829,9 @@ namespace NOWA
 
 		// Release joint each time, to create new one with new values
 		this->internalReleaseJoint();
-		this->joint = new OgreNewt::Slider(this->body, predecessorBody, this->jointPosition, this->body->getOrientation() * this->pin->getVector3());
+
+		// TODO: Checkbox for: Use local axis! if yes then: this->body->getOrientation() * this->pin->getVector3()
+		this->joint = new OgreNewt::Slider(this->body, predecessorBody, this->jointPosition, /*this->body->getOrientation() **/ this->pin->getVector3());
 		OgreNewt::Slider* passiveSlider = dynamic_cast<OgreNewt::Slider*>(this->joint);
 
 		this->joint->setBodyMassScale(this->bodyMassScale->getVector2().x, this->bodyMassScale->getVector2().y);
@@ -7483,15 +7484,12 @@ namespace NOWA
 
 	void JointActiveSliderComponent::update(Ogre::Real dt, bool notSimulating)
 	{
-		// TODO: Activate if newton4 is ready
-#if 0
 		OgreNewt::ActiveSliderJoint* activeSlider = dynamic_cast<OgreNewt::ActiveSliderJoint*>(this->joint);
 
 		if (nullptr != activeSlider)
 		{
 			activeSlider->ControllerUpdate(static_cast<ndFloat32>(dt));
 		}
-#endif
 	}
 
 	void JointActiveSliderComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
@@ -12876,8 +12874,8 @@ void JointUniversalActuatorComponent::update(Ogre::Real dt, bool notSimulating)
 		this->type->setValue(this->getClassName());
 		this->type->setReadOnly(true);
 		
-		this->anchorPosition0 = new Variant(Joint6DofComponent::AttrAnchorPosition0(), Ogre::Vector3::ZERO, this->attributes);
-		this->anchorPosition1 = new Variant(Joint6DofComponent::AttrAnchorPosition1(), Ogre::Vector3::ZERO, this->attributes);
+		this->anchorPosition0 = new Variant(Joint6DofComponent::AttrAnchorPosition0(), Ogre::Vector3(1.0f, 0.0f, 0.0f), this->attributes);
+		this->anchorPosition1 = new Variant(Joint6DofComponent::AttrAnchorPosition1(), Ogre::Vector3(1.0f, 1.0f, 0.0f), this->attributes);
 		
 		this->minStopDistance = new Variant(Joint6DofComponent::AttrMinStopDistance(), 0.0f, this->attributes);
 		this->maxStopDistance = new Variant(Joint6DofComponent::AttrMaxStopDistance(), 0.0f, this->attributes);

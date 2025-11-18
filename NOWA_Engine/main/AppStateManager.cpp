@@ -291,33 +291,76 @@ namespace NOWA
 
 	void AppStateManager::enqueueAndWait(LogicCommand&& command)
 	{
-		if (true == this->isLogicThread())
+		// With this code its possible to call from render thread logic stuff with wait and from logic thread commands, which have inside other commands for render thread with wait!
+
+		// If we are already on the logic thread, just run it directly
+		if (this->isLogicThread())
 		{
 			command();
 			return;
 		}
 
-		std::promise<void> promise;
-		std::future<void> future = promise.get_future();
+		auto* graphics = NOWA::GraphicsModule::getInstance();
+		const bool calledFromRenderThread = graphics && graphics->isRenderThread();
 
-		// Wrap the command to set promise on completion or exception
-		LogicCommand wrappedCommand = [command = std::move(command), &p = promise]() mutable
+		// We can't use a std::promise with a reference here safely from multiple threads,
+		// so we use flags + exception_ptr stored in this scope.
+		std::atomic<bool> done{ false };
+		std::exception_ptr exceptionPtr = nullptr;
+
+		// This runs on the logic thread
+		LogicCommand wrappedCommand = [cmd = std::move(command), &done, &exceptionPtr]() mutable
 		{
 			try
 			{
-				command();
-				p.set_value();
+				cmd();
 			}
-			catch (...) {
-				p.set_exception(std::current_exception());
+			catch (...)
+			{
+				exceptionPtr = std::current_exception();
 			}
+
+			done.store(true, std::memory_order_release);
 		};
 
-		// Enqueue the wrapped command into your queue for the logic thread
+		// Enqueue command for the logic thread
 		this->queue.enqueue(std::move(wrappedCommand));
 
-		// Now wait for the logic thread to execute the command and set the promise
-		future.get();  // This will re-throw exceptions here
+		// CASE 1: Caller is a normal thread (not render thread)
+		if (!calledFromRenderThread)
+		{
+			// Simple blocking wait for 'done'
+			while (!done.load(std::memory_order_acquire))
+			{
+				std::this_thread::sleep_for(std::chrono::milliseconds(1));
+			}
+
+			if (exceptionPtr)
+				std::rethrow_exception(exceptionPtr);
+
+			return;
+		}
+
+		// CASE 2: Caller is the RENDER THREAD:
+		// We MUST keep processing render commands while waiting,
+		// because the logic command may call ENQUEUE_RENDER_COMMAND_*_WAIT
+
+		while (!done.load(std::memory_order_acquire))
+		{
+			// 1) Process any pending render commands
+			graphics->processAllCommands();
+
+			// 2) Pump window events so OS stays happy
+			Ogre::WindowEventUtilities::messagePump();
+
+			// 3) Don't burn 100% CPU
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		}
+
+		if (exceptionPtr)
+		{
+			std::rethrow_exception(exceptionPtr);
+		}
 	}
 
 	void AppStateManager::clearLogicQueue(void)

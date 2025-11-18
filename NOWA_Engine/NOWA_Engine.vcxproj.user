@@ -11,6 +11,7 @@
     <LocalDebuggerCommandArguments>ogre.cfg</LocalDebuggerCommandArguments>
     <LocalDebuggerWorkingDirectory>$(NOWA)\bin\Debug</LocalDebuggerWorkingDirectory>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+    <LocalDebuggerCommandArgumentsHistory>ogre.cfg|</LocalDebuggerCommandArgumentsHistory>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LocalDebuggerWorkingDirectory>$(NOWA)\bin\Release</LocalDebuggerWorkingDirectory>

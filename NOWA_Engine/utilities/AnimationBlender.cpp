@@ -37,6 +37,7 @@ namespace NOWA
 
 	AnimationBlender::~AnimationBlender()
 	{
+		this->entity = nullptr;
 		AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &AnimationBlender::gameObjectIsInRagDollStateDelegate), EventDataGameObjectIsInRagDollingState::getStaticEventType());
 	}
 
@@ -733,34 +734,47 @@ namespace NOWA
 
 	void AnimationBlender::gameObjectIsInRagDollStateDelegate(EventDataPtr eventData)
 	{
+		if (true == AppStateManager::getSingletonPtr()->getGameObjectController()->getIsDestroying())
+		{
+			return;
+		}
+
 		boost::shared_ptr<EventDataGameObjectIsInRagDollingState> castEventData =
 			boost::static_pointer_cast<NOWA::EventDataGameObjectIsInRagDollingState>(eventData);
 
 		// 2. Capture the raw Entity pointer.
 		// While the shared_ptr to 'self' ensures the component is alive, the Ogre::Entity* // itself may be safer to capture explicitly than rely on 'self->entity'.
-		Ogre::v1::Entity* safeEntity = this->entity;
+		Ogre::v1::Entity* entity = this->entity;
 
-		ENQUEUE_RENDER_COMMAND_MULTI("AnimationBlender::gameObjectIsInRagDollStateDelegate", _2(castEventData, safeEntity),
-			{
-				// Use the captured 'self' and 'safeEntity' pointers instead of 'this' and 'this->entity'.
+		// ENQUEUE_RENDER_COMMAND_MULTI_WAIT("AnimationBlender::gameObjectIsInRagDollStateDelegate", _2(castEventData, entity),
+		// 	{
+				// Use the captured 'self' and 'entity' pointers instead of 'this' and 'this->entity'.
 				// Check both pointers for validity (although 'self' should be valid due to the shared_ptr).
-				if (safeEntity)
+				if (entity)
 				{
 					unsigned long id = castEventData->getGameObjectId();
 
-					// Access the GameObject via the safe, captured Entity pointer
-					NOWA::GameObject* gameObject = Ogre::any_cast<NOWA::GameObject*>(safeEntity->getUserObjectBindings().getUserAny());
-
-					if (nullptr != gameObject)
+					try
 					{
-						if (gameObject->getId() == id)
+						// Access the GameObject via the safe, captured Entity pointer
+						NOWA::GameObject* gameObject = Ogre::any_cast<NOWA::GameObject*>(entity->getUserObjectBindings().getUserAny());
+
+						if (nullptr != gameObject)
 						{
-							// Update the state on the safe 'self' component pointer
-							this->canAnimate = !castEventData->getIsInRagDollingState();
+							if (gameObject->getId() == id)
+							{
+								// Update the state on the safe 'self' component pointer
+								this->canAnimate = !castEventData->getIsInRagDollingState();
+							}
 						}
 					}
+					catch (...)
+					{
+						int i = 0;
+						i = 1;
+					}
 				}
-			});
+			// });
 	}
 	
 	Ogre::v1::AnimationState* AnimationBlender::getAnimationState(AnimID animationId)

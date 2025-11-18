@@ -689,165 +689,44 @@ namespace NOWA
 		}
 	}
 
-#if 0
 	GameObjectCompPtr GameObjectFactory::createComponent(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename, GameObjectPtr gameObjectPtr, GameObjectCompPtr existingGameObjectCompPtr)
 	{
 		Ogre::String name = XMLConverter::getAttrib(propertyElement, "data", "");
+
+		// This will hold the resulting component
+		GameObjectCompPtr resultComp = nullptr;
 
 		if (nullptr == existingGameObjectCompPtr)
 		{
 			GameObjectCompPtr componentPtr(this->componentFactory.create(NOWA::getIdFromName(name)));
 			if (nullptr != componentPtr)
 			{
-				if (false == componentPtr->init(propertyElement))
+				if (!componentPtr->init(propertyElement))
 				{
-					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectFactory] Error: Failed to initialize component: " + name);
-					return nullptr;
+					Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL,
+						"[GameObjectFactory] Error: Failed to initialize component: " + name);
 				}
 			}
 			else
 			{
 				Ogre::String message = "[GameObjectFactory] Error: Could not find GameObjectComponent named: '" + name + "'. If its a plugin component, see your application folders plugin.cfg";
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, message);
-				boost::shared_ptr<EventDataFeedback> eventDataFeedback(new EventDataFeedback(false, message));
-				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataFeedback);
-				return nullptr;
+				Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, message);
+				auto feedback = boost::make_shared<EventDataFeedback>(false, message);
+				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(feedback);
+				// done->set_value();
+				// return;
 			}
-			
-			// Sends event, that component has been created
-			boost::shared_ptr<EventDataNewComponent> eventDataNewComponent(new EventDataNewComponent(name));
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataNewComponent);
 
-			return componentPtr;
+			auto createdEvent = boost::make_shared<EventDataNewComponent>(name);
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(createdEvent);
+
+			resultComp = componentPtr;
 		}
 		else
 		{
 			existingGameObjectCompPtr->init(propertyElement);
+			resultComp = existingGameObjectCompPtr;
 		}
-
-		return existingGameObjectCompPtr;
-	}
-#endif
-
-#if 0
-	GameObjectCompPtr GameObjectFactory::createComponent(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename, GameObjectPtr gameObjectPtr, GameObjectCompPtr existingGameObjectCompPtr)
-	{
-		// Create promise/future pair to get the result
-		std::promise<GameObjectCompPtr> promise;
-		std::future<GameObjectCompPtr> future = promise.get_future();
-
-		// Create the logic command
-		NOWA::AppStateManager::LogicCommand logicCommand = [this, propertyElement, filename, gameObjectPtr, existingGameObjectCompPtr, &promise]() mutable
-		{
-			GameObjectCompPtr result = nullptr;
-			Ogre::String name = XMLConverter::getAttrib(propertyElement, "data", "");
-
-			if (nullptr == existingGameObjectCompPtr)
-			{
-				GameObjectCompPtr componentPtr(this->componentFactory.create(NOWA::getIdFromName(name)));
-				if (nullptr != componentPtr)
-				{
-					if (false == componentPtr->init(propertyElement))
-					{
-						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectFactory] Error: Failed to initialize component: " + name);
-						promise.set_value(nullptr);
-						return;
-					}
-				}
-				else
-				{
-					Ogre::String message = "[GameObjectFactory] Error: Could not find GameObjectComponent named: '" + name + "'. If its a plugin component, see your application folders plugin.cfg";
-					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, message);
-					boost::shared_ptr<EventDataFeedback> eventDataFeedback(new EventDataFeedback(false, message));
-					NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataFeedback);
-					promise.set_value(nullptr);
-					return;
-				}
-
-				boost::shared_ptr<EventDataNewComponent> eventDataNewComponent(new EventDataNewComponent(name));
-				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataNewComponent);
-
-				result = componentPtr;
-			}
-			else
-			{
-				existingGameObjectCompPtr->init(propertyElement);
-				result = existingGameObjectCompPtr;
-			}
-
-			// Return the result to render thread
-			promise.set_value(result);
-		};
-
-		// Enqueue the logic command and wait
-		NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-
-		// Wait without blocking the render thread
-		while (future.wait_for(std::chrono::milliseconds(1)) != std::future_status::ready)
-		{
-			std::this_thread::yield();
-		}
-
-		return future.get();
-	}
-#endif
-
-	GameObjectCompPtr GameObjectFactory::createComponent(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename, GameObjectPtr gameObjectPtr, GameObjectCompPtr existingGameObjectCompPtr)
-	{
-		Ogre::String name = XMLConverter::getAttrib(propertyElement, "data", "");
-
-		// Prepare a promise/future pair for synchronization
-		auto done = std::make_shared<std::promise<void>>();
-		std::future<void> future = done->get_future();
-
-		// This will hold the resulting component
-		GameObjectCompPtr resultComp = nullptr;
-
-		// Create the logic command lambda
-		NOWA::AppStateManager::LogicCommand logicCommand = [this, done, &resultComp, name, &propertyElement, existingGameObjectCompPtr]() mutable
-		{
-			if (nullptr == existingGameObjectCompPtr)
-			{
-				GameObjectCompPtr componentPtr(this->componentFactory.create(NOWA::getIdFromName(name)));
-				if (nullptr != componentPtr)
-				{
-					if (!componentPtr->init(propertyElement))
-					{
-						Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL,
-							"[GameObjectFactory] Error: Failed to initialize component: " + name);
-						done->set_value();
-						return;
-					}
-				}
-				else
-				{
-					Ogre::String message = "[GameObjectFactory] Error: Could not find GameObjectComponent named: '" + name + "'. If its a plugin component, see your application folders plugin.cfg";
-					Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, message);
-					auto feedback = boost::make_shared<EventDataFeedback>(false, message);
-					NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(feedback);
-					done->set_value();
-					return;
-				}
-
-				auto createdEvent = boost::make_shared<EventDataNewComponent>(name);
-				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(createdEvent);
-
-				resultComp = componentPtr;
-			}
-			else
-			{
-				existingGameObjectCompPtr->init(propertyElement);
-				resultComp = existingGameObjectCompPtr;
-			}
-
-			done->set_value();
-		};
-
-		// Enqueue the logic command to be executed on the logic thread
-		NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-
-		// Wait for the logic command to finish
-		future.wait();
 
 		// Return the created or initialized component
 		return resultComp;

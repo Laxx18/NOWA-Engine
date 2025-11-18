@@ -2384,6 +2384,11 @@ namespace NOWA
 		//	this->tempPlaceMovableNode->setOrientation(this->placeNode->_getDerivedOrientationUpdated());
 		//});
 
+		if (nullptr == this->tempPlaceMovableNode)
+		{
+			return;
+		}
+
 		NOWA::GraphicsModule::getInstance()->updateNodeTransform(this->tempPlaceMovableNode, this->placeNode->_getDerivedPositionUpdated() + (this->placeNode->getOrientation()
 		  	* MathHelper::getInstance()->getBottomCenterOfMesh(this->tempPlaceMovableNode, this->tempPlaceMovableObject)), this->placeNode->_getDerivedOrientationUpdated());
 	}
@@ -2506,8 +2511,6 @@ namespace NOWA
 																		Ogre::v1::HardwareBuffer::HBU_STATIC, Ogre::v1::HardwareBuffer::HBU_STATIC);
 			}
 
-			// Ogre::Root::getSingletonPtr()->renderOneFrame();
-
 			if (nullptr == v1Mesh)
 			{
 				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[EditorManager] Error cannot create entity, because the mesh: '"
@@ -2603,8 +2606,11 @@ namespace NOWA
 					{
 						sourceDataBlock->setFresnel(Ogre::Vector3(0.01f, 0.01f, 0.01f), false);
 					}
+					// sourceDataBlock->mAllowTextureResidencyChange = true;
+					// sourceDataBlock->preload();
 				}
 			}
+
 		}
 		else
 		{
@@ -2643,20 +2649,13 @@ namespace NOWA
 						if (sourceDataBlock->getWorkflow() != Ogre::HlmsPbsDatablock::SpecularAsFresnelWorkflow && sourceDataBlock->getWorkflow() != Ogre::HlmsPbsDatablock::MetallicWorkflow)
 						{
 							sourceDataBlock->setFresnel(Ogre::Vector3(0.01f, 0.01f, 0.01f), false);
+
+							tempItem->getSubItem(i)->setDatablock(tempItem->getSubItem(i)->getDatablock());
 						}
 					}
 				}
 			}
 		}
-
-		// this->tempPlaceEntity->setQueryFlags(VWE::PLACEOBJECT_MASK);
-		// MathHelper::getInstance()->ensureHasTangents(this->tempPlaceEntity->getMesh());
-		// MathHelper::getInstance()->substractOutTangentsForShader(this->tempPlaceEntity);
-
-		/*for (size_t i = 0; i < this->tempPlaceEntity->getNumSubEntities(); i++)
-		{
-			this->tempPlaceEntity->getSubEntity(i)->setDatablock(this->tempPlaceEntity->getSubEntity(i)->getDatablock());
-		}*/
 
 		this->createMeshPlaceNode(type);
 	}

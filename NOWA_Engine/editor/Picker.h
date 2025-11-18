@@ -193,6 +193,7 @@ namespace NOWA
 		Ogre::ManualObject* dragLineObject;
 		std::vector<IPickObserver*> pickObservers;
 		std::atomic_bool destroyingLine{ false };
+		Ogre::String cameraName;
 
 		// callback storage (old FT callback) + flag
 		OgreNewt::Body::ForceCallback oldForceTorqueCallback{ nullptr };
@@ -341,6 +342,7 @@ namespace NOWA
 		// callback storage (old FT callback) + flag
 		OgreNewt::Body::ForceCallback oldForceTorqueCallback{ nullptr };
 		bool hasMoveCallback{ false };
+		Ogre::String cameraName;
 	};
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////
