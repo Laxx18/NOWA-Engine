@@ -880,6 +880,11 @@ namespace OgreNewt
 			m_nodeRotation = Ogre::Quaternion::Slerp(interpolatParam, m_prevRotation, m_curRotation);
 		}
 
+		if (m_nodePosit.positionEquals(m_curPosit) && m_nodeRotation.equals(m_curRotation, Ogre::Radian(0.001f)))
+		{
+			return;
+		}
+
 		// m_world->m_ogreMutex.lock();
 
 		Ogre::Vector3 nodePosit = m_nodePosit;

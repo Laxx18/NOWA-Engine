@@ -118,6 +118,8 @@ namespace NOWA
             bool active = false;
             bool isNew = false;
             bool useDerived = false;
+            bool updatedThisFrame = false;
+            int stableFrames = 0;
         };
 
         struct CameraTransforms

@@ -233,7 +233,10 @@ namespace NOWA
 		auto& physicsActiveRootCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsActiveComponent>());
 		if (nullptr != physicsActiveRootCompPtr)
 		{
-			physicsActiveRootCompPtr->destroyCompoundBody(this->physicsActiveComponentList);
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsCompoundConnectionComponent::destroyCompoundCollision", _1(physicsActiveRootCompPtr),
+			{
+				physicsActiveRootCompPtr->destroyCompoundBody(this->physicsActiveComponentList);
+			});
 			this->physicsActiveComponentList.clear();
 		}
 	}

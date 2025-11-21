@@ -846,8 +846,8 @@ namespace NOWA
 			// this->physicsBody->setCollision(OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::Null(this->ogreNewt)));
 			if (nullptr != this->collisionPtr)
 			{
-				// NewtonDestroyCollision(this->collisionPtr->getNewtonCollision());
-				this->collisionPtr->getNewtonCollision()->Release();
+				// Newton does it already, if body is destroyed, so its prohibited to do it!
+				// this->collisionPtr->getNewtonCollision()->Release();
 				this->collisionPtr.reset();
 			}
 		}
@@ -859,6 +859,8 @@ namespace NOWA
 		{
 			boost::shared_ptr<EventDataDeleteBody> deleteBodyEvent(boost::make_shared<EventDataDeleteBody>(this->physicsBody));
 			AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(deleteBodyEvent);
+
+			Ogre::Node* node = this->gameObjectPtr ? this->gameObjectPtr->getSceneNode() : nullptr;
 
 			// Dangerous: If there is a joint and the body is destroyed, all constraints are destroyed by newton automatically!
 			// And joint pointer will become invalid! Hence release the joints
@@ -874,12 +876,19 @@ namespace NOWA
 				}
 			} while (nullptr != jointCompPtr);
 
+			this->physicsBody->setRenderUpdateCallback(nullptr);
 			this->physicsBody->removeForceAndTorqueCallback();
 			this->physicsBody->removeNodeUpdateNotify();
 			this->physicsBody->detachNode();
 			this->physicsBody->removeDestructorCallback();
 			delete this->physicsBody;
 			this->physicsBody = nullptr;
+
+			// Really important! Remove the tracked node, else there is a transform mess next time!
+			if (nullptr != node)
+			{
+				GraphicsModule::getInstance()->removeTrackedNode(node);
+			}
 		}
 	}
 

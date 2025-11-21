@@ -1,4 +1,4 @@
-#include "NOWAPrecompiled.h"
+ï»¿#include "NOWAPrecompiled.h"
 #include "PhysicsActiveComponent.h"
 #include "PhysicsCompoundConnectionComponent.h"
 #include "JointComponents.h"
@@ -477,6 +477,7 @@ namespace NOWA
 		return true;
 	}
 
+#if 0
 	bool PhysicsActiveComponent::createDynamicBody(void)
 	{
 		// If a default pose name is set, first set the animation, this is used, because e.g. the T-pose may extend the convex hull to much
@@ -587,6 +588,76 @@ namespace NOWA
 
 		return true;
 	}
+#else
+	bool PhysicsActiveComponent::createDynamicBody(void)
+	{
+		// Always snapshot the current transform as "initial" for this body
+		// this->initialPosition = this->gameObjectPtr->getSceneNode()->getPosition();
+		// this->initialScale = this->gameObjectPtr->getSceneNode()->getScale();
+		// this->initialOrientation = this->gameObjectPtr->getSceneNode()->getOrientation();
+
+		// --- existing code from here on unchanged ---
+		Ogre::Vector3 inertia = Ogre::Vector3(1.0f, 1.0f, 1.0f);
+
+		Ogre::Quaternion collisionOrientation = Ogre::Quaternion::IDENTITY;
+		if (Ogre::Vector3::ZERO != this->collisionDirection->getVector3())
+		{
+			collisionOrientation = MathHelper::getInstance()->degreesToQuat(this->collisionDirection->getVector3());
+		}
+
+		Ogre::Vector3 calculatedMassOrigin = Ogre::Vector3::ZERO;
+
+		OgreNewt::CollisionPtr collisionPtr;
+
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsActiveComponent::createDynamicCollision", _4(&inertia, collisionOrientation, &calculatedMassOrigin, &collisionPtr),
+		{
+			collisionPtr = this->createDynamicCollision(inertia,this->collisionSize->getVector3(), this->collisionPosition->getVector3(), collisionOrientation, calculatedMassOrigin, this->gameObjectPtr->getCategoryId());
+		});
+
+		this->physicsBody = new OgreNewt::Body(this->ogreNewt, this->gameObjectPtr->getSceneManager(), collisionPtr);
+
+		NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->registerRenderCallbackForBody(this->physicsBody);
+
+		if (Ogre::Vector3::ZERO != this->massOrigin->getVector3())
+		{
+			calculatedMassOrigin = this->massOrigin->getVector3();
+		}
+
+		Ogre::Real weightedMass = this->mass->getReal();
+		inertia *= weightedMass;
+		this->physicsBody->setMassMatrix(weightedMass, inertia);
+		this->physicsBody->setCenterOfMass(calculatedMassOrigin);
+
+		this->physicsBody->setGravity(this->gravity->getVector3());
+		this->physicsBody->setLinearDamping(this->linearDamping->getReal());
+		this->physicsBody->setAngularDamping(this->angularDamping->getVector3());
+
+		this->physicsBody->setCustomForceAndTorqueCallback<PhysicsActiveComponent>(&PhysicsActiveComponent::moveCallback, this);
+
+		// set user data for ogrenewt
+		this->physicsBody->setUserData(OgreNewt::Any(static_cast<PhysicsComponent*>(this)));
+		this->physicsBody->attachNode(this->gameObjectPtr->getSceneNode());
+
+		this->setPosition(this->initialPosition);
+		this->setOrientation(this->initialOrientation);
+
+		// Must be set after body set its position! And orientation must be correct.
+		this->setConstraintAxis(this->constraintAxis->getVector3());
+		this->setConstraintDirection(this->constraintDirection->getVector3());
+
+		this->setCollidable(this->collidable->getBool());
+
+		this->physicsBody->setType(this->gameObjectPtr->getCategoryId());
+
+		const auto materialId = AppStateManager::getSingletonPtr()->getGameObjectController()->getMaterialID(
+			this->gameObjectPtr.get(), this->ogreNewt);
+		this->physicsBody->setMaterialGroupID(materialId);
+
+		this->setActivated(this->activated->getBool());
+
+		return true;
+	}
+#endif
 
 	void PhysicsActiveComponent::createSoftBody(void)
 	{
@@ -695,180 +766,191 @@ namespace NOWA
 
 	void PhysicsActiveComponent::createCompoundBody(const std::vector<PhysicsActiveComponent*>& physicsComponentList)
 	{
-		Ogre::Vector3 inertia = Ogre::Vector3(1.0f, 1.0f, 1.0f);
-		Ogre::Vector3 collisionPosition = Ogre::Vector3::ZERO;
+		Ogre::SceneNode* rootNode = this->gameObjectPtr->getSceneNode();          // Bed
+		Ogre::SceneNode* rootParent = rootNode->getParentSceneNode();            // RootSceneNode
+
+		// Treat the current root transform as the new "initial" for the compound
+		this->initialPosition = rootNode->getPosition();
+		this->initialScale = rootNode->getScale();
+		this->initialOrientation = rootNode->getOrientation();
+
+		// Clean existing bodies/collisions once
+		this->destroyBody();
+		this->destroyCollision();
+		for (PhysicsActiveComponent* partComp : physicsComponentList)
+		{
+			if (nullptr == partComp || partComp == this)
+			{
+				continue;                          // never treat root as child
+			}
+			partComp->destroyBody();
+			partComp->destroyCollision();
+		}
+
+		Ogre::Vector3 inertia(1.0f, 1.0f, 1.0f);
 		Ogre::Vector3 cumMassOrigin = Ogre::Vector3::ZERO;
-		Ogre::Real cumMass = 0.0f;
+		Ogre::Real cumMass = this->getMass();
 		std::vector<OgreNewt::CollisionPtr> compoundCollisionList;
 
-		//First create for this root compound the collision data
-		
+		// Root (bed) collision
 		Ogre::Quaternion collisionOrientation = Ogre::Quaternion::IDENTITY;
 		if (Ogre::Vector3::ZERO != this->collisionDirection->getVector3())
 		{
 			collisionOrientation = MathHelper::getInstance()->degreesToQuat(this->collisionDirection->getVector3());
 		}
-		// Add collision to list
-		compoundCollisionList.emplace_back(this->createDynamicCollision(inertia, this->collisionSize->getVector3(), this->collisionPosition->getVector3(), 
-			collisionOrientation, cumMassOrigin, this->gameObjectPtr->getCategoryId()));
 
-		PhysicsActiveComponent* prevPhysicsComponent = nullptr;
-		std::vector<PhysicsActiveComponent*>::const_iterator it;
-
-		for (it = physicsComponentList.cbegin(); it != physicsComponentList.cend(); ++it)
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsActiveComponent::createDynamicCollisionForCompound", _4(&inertia, &compoundCollisionList, &collisionOrientation, &cumMassOrigin),
 		{
+			compoundCollisionList.emplace_back(this->createDynamicCollision(inertia, this->collisionSize->getVector3(), this->collisionPosition->getVector3(), collisionOrientation, cumMassOrigin, this->gameObjectPtr->getCategoryId()));
+		});
 
-			Ogre::SceneNode* pItNode = (*it)->getOwner()->getSceneNode();
-			Ogre::Vector3 resultPosition = this->gameObjectPtr->getSceneNode()->convertWorldToLocalPosition(pItNode->getPosition());
-			Ogre::Quaternion resultOrientation = this->gameObjectPtr->getSceneNode()->convertWorldToLocalOrientation(pItNode->getOrientation());
+		// Children (chairs etc.)
+		for (PhysicsActiveComponent* partComp : physicsComponentList)
+		{
+			if (!partComp || partComp == this) continue;
 
-			//// Check if its the root compound (has not root id, because its the root)
-			//auto& physicsCompoundConnectionCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsCompoundConnectionComponent>());
-			//if (nullptr != physicsCompoundConnectionCompPtr && 0 == physicsCompoundConnectionCompPtr->getRootId())
+			Ogre::SceneNode* partNode = partComp->getOwner()->getSceneNode();
+			if (nullptr == partNode)
 			{
-
-				// since a scenenode can not be attachted to two nodes, detach it from the "WorldNode" and add it under the root compound node
-				this->gameObjectPtr->getSceneNode()->getParentSceneNode()->removeChild(pItNode);
-				this->gameObjectPtr->getSceneNode()->addChild(pItNode);
-				pItNode->setPosition(resultPosition);
-				pItNode->setOrientation(resultOrientation);
-				pItNode->setInheritScale(false);
+				continue;
 			}
 
-			// if (prevPhysicsComponent)
+			// world pose before parenting change
+			const Ogre::Vector3 worldPos = partNode->_getDerivedPosition();
+			const Ogre::Quaternion worldOri = partNode->_getDerivedOrientation();
+
+			// local pose relative to bed
+			const Ogre::Vector3 localPos = rootNode->convertWorldToLocalPosition(worldPos);
+			const Ogre::Quaternion localOri = rootNode->convertWorldToLocalOrientation(worldOri);
+
+			// reparent Root -> Bed
+			if (Ogre::SceneNode* currentParent = partNode->getParentSceneNode())
 			{
-				collisionPosition = resultPosition;
-				collisionOrientation = resultOrientation;
+				if (currentParent != rootNode)
+				{
+					currentParent->removeChild(partNode);
+				}
 			}
-// Attention: Is this correct
-			cumMassOrigin += ((*it)->getOwner()->getMovableObject()->getLocalAabb().getSize() * (*it)->getOwner()->getSceneNode()->getScale() * (*it)->getMassOrigin());
-			cumMass += (*it)->getMass();
-			// Attention!
-			Ogre::Vector3 massOrigin = (*it)->getMassOrigin();
-			compoundCollisionList.emplace_back((*it)->createDynamicCollision(inertia, (*it)->getCollisionSize(), 
-				collisionPosition, collisionOrientation, massOrigin, this->gameObjectPtr->getCategoryId()));
+			if (partNode->getParentSceneNode() != rootNode)
+			{
+				rootNode->addChild(partNode);
+			}
 
-			prevPhysicsComponent = *it;
+			// keep world transform
+			partNode->setPosition(localPos);
+			partNode->setOrientation(localOri);
+			partNode->setInheritScale(false);
+
+			// mass / COM
+			cumMassOrigin += (partComp->getOwner()->getMovableObject()->getLocalAabb().getSize() * partComp->getOwner()->getSceneNode()->getScale() * partComp->getMassOrigin());
+			cumMass += partComp->getMass();
+
+			Ogre::Vector3 massOrigin = partComp->getMassOrigin();
+			compoundCollisionList.emplace_back(partComp->createDynamicCollision(inertia, partComp->getCollisionSize(), localPos, localOri, massOrigin, this->gameObjectPtr->getCategoryId()));
 		}
 
-		// cumMassOrigin /= physicsComponentList.size();
+		OgreNewt::CollisionPrimitives::CompoundCollision* col;
 
-		OgreNewt::CollisionPtr compoundCollision = OgreNewt::CollisionPtr(
-			new OgreNewt::CollisionPrimitives::CompoundCollision(this->ogreNewt, compoundCollisionList, this->gameObjectPtr->getCategoryId()));
-		// what about volume? Since compound collision has no volume calculation
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsActiveComponent::createDynamicCollision", _2(&col, &compoundCollisionList),
+		{
+			col = new OgreNewt::CollisionPrimitives::CompoundCollision(this->ogreNewt, compoundCollisionList, this->gameObjectPtr->getCategoryId());
+		});
+		// Compound collision/body
+		this->collisionPtr = OgreNewt::CollisionPtr(col);
 
-		/*if (nullptr != this->physicsBody)
-		{
-			this->physicsBody->detachNode();
-			this->physicsBody->removeForceAndTorqueCallback();
-			this->physicsBody->removeNodeUpdateNotify();
-			this->physicsBody->removeDestructorCallback();
-			delete this->physicsBody;
-			this->physicsBody = nullptr;
-		}*/
-
-		if (nullptr == this->physicsBody)
-		{
-			this->physicsBody = new OgreNewt::Body(this->ogreNewt, this->gameObjectPtr->getSceneManager(), compoundCollision);
-			NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->registerRenderCallbackForBody(this->physicsBody);
-		}
-		else
-		{
-			this->physicsBody->setCollision(compoundCollision);
-		}
+		this->physicsBody = new OgreNewt::Body(this->ogreNewt, this->gameObjectPtr->getSceneManager(), this->collisionPtr);
+		NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->registerRenderCallbackForBody(this->physicsBody);
 
 		this->physicsBody->setGravity(this->gravity->getVector3());
 
-		/*// just take the scale factor into account if it is not to small
-		if (scale.x * scale.y * scale.z > 0.1f) {
-		newMass = scale.x * scale.y * scale.z * this->mass; //Masse ist standartmaessig 10, ausser wenn der Benutzer im Editor eine Masse uebergeben hat
-		}*/
 		inertia *= cumMass;
-
 		this->physicsBody->setMassMatrix(cumMass, inertia);
-
 		this->physicsBody->setCenterOfMass(cumMassOrigin);
-	
+
 		this->physicsBody->setLinearDamping(this->linearDamping->getReal());
 		this->physicsBody->setAngularDamping(this->angularDamping->getVector3());
 
 		this->setConstraintAxis(this->getConstraintAxis());
-		
-		// pin the object stand in pose and not fall down
 		this->setConstraintDirection(this->getConstraintDirection());
 
 		this->setActivated(this->activated->getBool());
-
 		this->setContinuousCollision(this->continuousCollision->getBool());
 		this->setGyroscopicTorqueEnabled(this->gyroscopicTorque->getBool());
 
 		this->physicsBody->setType(this->gameObjectPtr->getCategoryId());
-
-		// Set user data for ogrenewt
-		this->physicsBody->setUserData(OgreNewt::Any(dynamic_cast<PhysicsComponent*>(this)));
-
+		this->physicsBody->setUserData(OgreNewt::Any(static_cast<PhysicsComponent*>(this)));
 		this->physicsBody->setCustomForceAndTorqueCallback<PhysicsActiveComponent>(&PhysicsActiveComponent::moveCallback, this);
 
-		this->physicsBody->attachNode(this->gameObjectPtr->getSceneNode());
+		this->physicsBody->attachNode(rootNode);
 
-		this->physicsBody->setPositionOrientation(this->initialPosition, this->initialOrientation);
-
-
-		this->physicsBody->setType(gameObjectPtr->getCategoryId());
+		this->setPosition(this->initialPosition);
+		this->setOrientation(this->initialOrientation);
 
 		const auto materialId = AppStateManager::getSingletonPtr()->getGameObjectController()->getMaterialID(this->gameObjectPtr.get(), this->ogreNewt);
 		this->physicsBody->setMaterialGroupID(materialId);
 
-		// If this root has a joint, set this new body
 		unsigned int i = 0;
 		boost::shared_ptr<JointComponent> jointCompPtr = nullptr;
 		do
 		{
 			jointCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentWithOccurrence<JointComponent>(i));
-			if (nullptr != jointCompPtr)
+			if (jointCompPtr)
 			{
 				jointCompPtr->setBody(this->physicsBody);
-				i++;
+				++i;
 			}
-		} while (nullptr != jointCompPtr);
+		} while (jointCompPtr);
 	}
 
 	void PhysicsActiveComponent::destroyCompoundBody(const std::vector<PhysicsActiveComponent*>& physicsComponentList)
 	{
-		Ogre::Vector3 collisionPosition = Ogre::Vector3::ZERO;
-		Ogre::Quaternion collisionOrientation = Ogre::Quaternion::IDENTITY;
-		
-		std::vector<PhysicsActiveComponent*>::const_iterator it;
-		PhysicsActiveComponent* prevPhysicsComponent = nullptr;
-		for (it = physicsComponentList.cbegin(); it != physicsComponentList.cend(); ++it)
+		Ogre::SceneNode* rootNode = this->gameObjectPtr->getSceneNode();        // Bed
+		Ogre::SceneNode* rootParent = rootNode->getParentSceneNode();          // RootSceneNode
+
+		// 1) reparent children back under Root, keeping their world transform
+		for (PhysicsActiveComponent* partComp : physicsComponentList)
 		{
-			Ogre::SceneNode* pItNode = (*it)->getOwner()->getSceneNode();
-			Ogre::Vector3 resultPosition = this->gameObjectPtr->getSceneNode()->convertLocalToWorldPosition(pItNode->getPosition());
-			Ogre::Quaternion resultOrientation = this->gameObjectPtr->getSceneNode()->convertLocalToWorldOrientation(pItNode->getOrientation());
-
-			//// Check if its the root compound (has not root id, because its the root)
-			//auto& physicsCompoundConnectionCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsCompoundConnectionComponent>());
-			//if (nullptr != physicsCompoundConnectionCompPtr && 0 == physicsCompoundConnectionCompPtr->getRootId())
+			if (nullptr == partComp || partComp == this)
 			{
-				this->gameObjectPtr->getSceneNode()->removeChild(pItNode);
-				this->gameObjectPtr->getSceneNode()->getParentSceneNode()->addChild(pItNode);
-
-				pItNode->setPosition(resultPosition);
-				pItNode->setOrientation(resultOrientation);
-				pItNode->setInheritScale(false);
+				continue;
 			}
 
-			if (prevPhysicsComponent)
+			Ogre::SceneNode* partNode = partComp->getOwner()->getSceneNode();
+			if (nullptr == partNode)
 			{
-				collisionPosition = resultPosition;
-				collisionOrientation = resultOrientation;
+				continue;
 			}
-			(*it)->destroyCollision();
 
-			prevPhysicsComponent = *it;
+			// world pose while still under Bed
+			const Ogre::Vector3 worldPos = partNode->_getDerivedPosition();
+			const Ogre::Quaternion worldOri = partNode->_getDerivedOrientation();
+
+			// detach from Bed
+			if (partNode->getParentSceneNode() == rootNode)
+			{
+				rootNode->removeChild(partNode);
+			}
+
+			// attach directly under Root
+			if (nullptr != rootParent)
+			{
+				rootParent->addChild(partNode);
+			}
+
+			// IMPORTANT: just use worldPos/worldOri directly as local, assuming Root is identity
+			partNode->setPosition(worldPos);
+			partNode->setOrientation(worldOri);
+
+			// kill compound body for child and recreate simple dynamic body if needed
+			partComp->destroyBody();
+			partComp->destroyCollision();
+			partComp->createDynamicBody();
 		}
 
+		// 2) destroy compound body and recreate normal body for bed
 		this->destroyBody();
+		this->destroyCollision();
+		this->createDynamicBody();
 	}
 
 	void PhysicsActiveComponent::setActivated(bool activated)
@@ -2000,7 +2082,7 @@ namespace NOWA
 			if (type == finalType)
 			{
 				//* 500 da bei der distanz ein Wert zwischen [0,1] rauskommt also zb. 0.0019
-				//Die Distanz ist relativ zur Länge des Raystrahls
+				//Die Distanz ist relativ zur LÃ¤nge des Raystrahls
 				//d. h. wenn der Raystrahl nichts mehr trifft wird in diesem Fall
 				//die Distanz > 500, da prozentural, es wird vorher skaliert
 				height = info.mDistance * 500.0f;
@@ -2253,7 +2335,7 @@ namespace NOWA
 			if (type == finalType)
 			{
 				//* 500 da bei der distanz ein Wert zwischen [0,1] rauskommt also zb. 0.0019
-				//Die Distanz ist relativ zur Länge des Raystrahls
+				//Die Distanz ist relativ zur LÃ¤nge des Raystrahls
 				//d. h. wenn der Raystrahl nichts mehr trifft wird in diesem Fall
 				//die Distanz > 500, da prozentural, es wird vorher skaliert
 				height = info.mDistance * 500.0f;
@@ -2764,7 +2846,7 @@ namespace NOWA
 					Ogre::Vector3 directionToPlanet = this->getPosition() - gravitySourcePhysicsComponentPtr->getPosition();
 					directionToPlanet.normalise();
 
-					// Ensures constant acceleration of e.g. -19.8 m/s²
+					// Ensures constant acceleration of e.g. -19.8 m/sÂ²
 					Ogre::Real gravityAcceleration = -this->gravity->getVector3().length(); // Should be e.g. 19.8
 
 					this->gravityDirection = -directionToPlanet;

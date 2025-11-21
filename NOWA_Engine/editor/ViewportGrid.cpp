@@ -112,7 +112,7 @@ namespace NOWA
 
 	void ViewportGrid::setPosition(const Ogre::Vector3& position)
 	{
-		NOWA::GraphicsModule::getInstance()->updateNodePosition(this->node, position);
+		NOWA::GraphicsModule::getInstance()->updateNodePosition(this->node, position, false);
 		// this->applyForceUpdate();
 	}
 
@@ -123,7 +123,7 @@ namespace NOWA
 
 	void ViewportGrid::setOrientation(const Ogre::Quaternion& orientation)
 	{
-		NOWA::GraphicsModule::getInstance()->updateNodeOrientation(this->node, orientation);
+		NOWA::GraphicsModule::getInstance()->updateNodeOrientation(this->node, orientation, false);
 		// this->applyForceUpdate();
 	}
 

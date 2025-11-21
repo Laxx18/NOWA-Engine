@@ -1008,6 +1008,7 @@ namespace NOWA
         nodeTransforms->transforms[this->currentTransformNodeIdx].position = position;
         nodeTransforms->active = true;
         nodeTransforms->useDerived = useDerived;
+        nodeTransforms->updatedThisFrame = true;
 
         if (true == this->debugVisualization)
         {
@@ -1032,6 +1033,7 @@ namespace NOWA
         nodeTransforms->transforms[this->currentTransformNodeIdx].orientation = orientation;
         nodeTransforms->active = true;
         nodeTransforms->useDerived = useDerived;
+        nodeTransforms->updatedThisFrame = true;
 
         if (true == this->debugVisualization)
         {
@@ -1056,6 +1058,7 @@ namespace NOWA
         nodeTransforms->transforms[this->currentTransformNodeIdx].scale = scale;
         nodeTransforms->active = true;
         nodeTransforms->useDerived = useDerived;
+        nodeTransforms->updatedThisFrame = true;
 
         if (true == this->debugVisualization)
         {
@@ -1081,6 +1084,7 @@ namespace NOWA
         nodeTransforms->transforms[this->currentTransformNodeIdx].scale = scale;
         nodeTransforms->active = true;
         nodeTransforms->useDerived = useDerived;
+        nodeTransforms->updatedThisFrame = true;
     }
 
     void GraphicsModule::addTrackedCamera(Ogre::Camera* camera)
@@ -1679,7 +1683,7 @@ namespace NOWA
     void GraphicsModule::advanceTransformBuffer(void)
     {
         // Runs in Main thread
-        
+      
         // Move to the next buffer - this is the key operation that separates logic and render threads
         size_t prevIdx = this->currentTransformNodeIdx;
         this->currentTransformNodeIdx = (this->currentTransformNodeIdx + 1) % NUM_TRANSFORM_BUFFERS;
@@ -1709,13 +1713,42 @@ namespace NOWA
                 }
 
                 nodeTransform.isNew = false;
+                nodeTransform.stableFrames = 0;
+                nodeTransform.updatedThisFrame = false;
             }
             else if (true == nodeTransform.active)
             {
+                if (nodeTransform.updatedThisFrame)
+                {
+                    // Got a new transform this frame
+                    nodeTransform.stableFrames = 0;
+                }
+                else
+                {
+                    ++nodeTransform.stableFrames;     // <<< THIS is the increment
+                }
+
                 // For existing active nodes, copy from previous buffer to new current buffer
                 // This is important - we're not copying from the node's current transform
                 // but from the previous buffer, which preserves the transform history
                 nodeTransform.transforms[this->currentTransformNodeIdx] = nodeTransform.transforms[prevIdx];
+
+                // Reset update flag for next frame
+                nodeTransform.updatedThisFrame = false;
+            }
+        }
+
+        // Deactivates nodes that have not been updated for a while
+        const int maxStableFrames = 4;
+
+        for (int i = static_cast<int>(this->trackedNodes.size()) - 1; i >= 0; --i)
+        {
+            NodeTransforms& nodeTransform = this->trackedNodes[i];
+
+            // Optionally also check !active, but not needed if you just rely on stableFrames
+            if (nodeTransform.stableFrames >= maxStableFrames)
+            {
+                this->removeTrackedNode(nodeTransform.node);
             }
         }
 

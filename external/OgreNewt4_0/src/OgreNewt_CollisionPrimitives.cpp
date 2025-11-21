@@ -138,7 +138,6 @@ namespace OgreNewt
 		{
 		}
 
-#if 0
 		ConvexHull::ConvexHull(const World* world, Ogre::v1::Entity* obj, unsigned int id,
 			const Ogre::Quaternion& orient, const Ogre::Vector3& pos, Ogre::Real tolerance,
 			const Ogre::Vector3& forceScale)
@@ -146,58 +145,37 @@ namespace OgreNewt
 		{
 			OGRE_ASSERT_LOW(obj);
 			Ogre::Vector3 scale(1, 1, 1);
-
 			if (Ogre::Node* node = obj->getParentNode())
 				scale = node->_getDerivedScaleUpdated();
 			if (forceScale != Ogre::Vector3::ZERO)
 				scale = forceScale;
 
 			Ogre::v1::MeshPtr mesh = obj->getMesh();
-			if (mesh.isNull())
-			{
-				m_shapeInstance = nullptr;
-				m_col = nullptr;
-				return;
-			}
+			if (mesh.isNull()) { m_shapeInstance = nullptr; m_col = nullptr; return; }
 
 			const unsigned short subCount = mesh->getNumSubMeshes();
 			size_t totalVerts = 0;
 
-			// Pass 1: count vertices (shared counted once)
+			// Pass 1: count vertices (shared once)
 			bool sharedAdded = false;
 			for (unsigned short i = 0; i < subCount; ++i)
 			{
 				Ogre::v1::SubMesh* sub = mesh->getSubMesh(i);
 				if (!sub) continue;
-
 				Ogre::v1::VertexData* vdata = nullptr;
-				if (sub->useSharedVertices)
-				{
-					if (!sharedAdded)
-					{
-						vdata = mesh->sharedVertexData[0];
-						sharedAdded = true;
-					}
+				if (sub->useSharedVertices) {
+					if (!sharedAdded) { vdata = mesh->sharedVertexData[0]; sharedAdded = true; }
 				}
-				else
-				{
+				else {
 					vdata = sub->vertexData[0];
 				}
-				if (vdata)
-					totalVerts += vdata->vertexCount;
+				if (vdata) totalVerts += vdata->vertexCount;
 			}
+			if (totalVerts < 4) { m_shapeInstance = nullptr; m_col = nullptr; return; }
 
-			if (totalVerts < 4)
-			{
-				// Not enough points for a convex hull
-				m_shapeInstance = nullptr;
-				m_col = nullptr;
-				return;
-			}
-
-			// Pass 2: read positions
-			Ogre::Vector3* vertices = new Ogre::Vector3[totalVerts];
-			unsigned int writeOfs = 0;
+			// Pass 2: read positions -> temp CPU array of Ogre::Vector3
+			std::vector<Ogre::Vector3> verts;
+			verts.reserve(totalVerts);
 			sharedAdded = false;
 
 			for (unsigned short i = 0; i < subCount; ++i)
@@ -206,16 +184,10 @@ namespace OgreNewt
 				if (!sub) continue;
 
 				Ogre::v1::VertexData* vdata = nullptr;
-				if (sub->useSharedVertices)
-				{
-					if (!sharedAdded)
-					{
-						vdata = mesh->sharedVertexData[0];
-						sharedAdded = true;
-					}
+				if (sub->useSharedVertices) {
+					if (!sharedAdded) { vdata = mesh->sharedVertexData[0]; sharedAdded = true; }
 				}
-				else
-				{
+				else {
 					vdata = sub->vertexData[0];
 				}
 				if (!vdata) continue;
@@ -233,169 +205,65 @@ namespace OgreNewt
 
 				unsigned char* base = static_cast<unsigned char*>(
 					vbuf->lock(Ogre::v1::HardwareBuffer::HBL_READ_ONLY));
-
 				const size_t stride = vbuf->getVertexSize();
 
 				for (size_t j = 0; j < vCount; ++j)
 				{
 					unsigned char* ptr = base + (start + j) * stride;
-					float* posPtr = nullptr;
-					posElem->baseVertexPointerToElement(ptr, &posPtr);
-
-					Ogre::Vector3 v(posPtr[0], posPtr[1], posPtr[2]);
-					vertices[writeOfs++] = v * scale;
+					float* p = nullptr;
+					posElem->baseVertexPointerToElement(ptr, &p);
+					Ogre::Vector3 v(p[0], p[1], p[2]);
+					verts.push_back(v * scale);
 				}
-
 				vbuf->unlock();
+			}
+
+			// Clean input & convert to contiguous ndFloat32 buffer (XYZXYZ…)
+			const float dedupEps2 = 1e-16f; // collapse ~1e-8 distance
+			std::vector<ndFloat32> points; points.reserve(verts.size() * 3);
+			{
+				// optional: compute bbox for adaptive tolerance
+				Ogre::AxisAlignedBox aabb;
+				for (const auto& v : verts) if (IsFiniteVec3(v)) aabb.merge(v);
+				const Ogre::Real diag = aabb.isNull() ? Ogre::Real(1) : aabb.getSize().length();
+				if (tolerance <= 0) tolerance = std::max<Ogre::Real>(diag * Ogre::Real(1e-4), 1e-6f);
+
+				// dedup + push
+				for (const auto& v : verts)
+				{
+					if (!IsFiniteVec3(v)) continue;
+					bool dup = false;
+					// cheap linear dedup (ok for typical mesh vertex counts for hulls)
+					for (size_t i = 0; i + 2 < points.size(); i += 3)
+					{
+						const float dx = points[i + 0] - v.x;
+						const float dy = points[i + 1] - v.y;
+						const float dz = points[i + 2] - v.z;
+						if (dx * dx + dy * dy + dz * dz <= dedupEps2) { dup = true; break; }
+					}
+					if (!dup) { points.push_back(v.x); points.push_back(v.y); points.push_back(v.z); }
+				}
+			}
+
+			if (points.size() < 12) { // < 4 points
+				m_shapeInstance = nullptr; m_col = nullptr; return;
 			}
 
 			if (m_col) m_col->Release();
 
-			// Build the ND4 convex hull with the correct stride (avoid SSE/padding surprises)
-			const ndInt32 count = ndInt32(totalVerts);
-			const ndInt32 stride = ndInt32(sizeof(vertices[0])); // sizeof(Ogre::Vector3)
+			const ndInt32 count = ndInt32(points.size() / 3);
+			const ndInt32 stride = ndInt32(sizeof(ndFloat32) * 3); // tightly packed floats
 
 			m_shapeInstance = new ndShapeInstance(
 				new ndShapeConvexHull(count, stride, ndFloat32(tolerance),
-					(ndFloat32*)&vertices[0].x));
+					reinterpret_cast<const ndFloat32*>(&points[0])));
 			m_col = m_shapeInstance->GetShape();
 
-			// Apply local offset/orientation
 			ndMatrix localM;
 			OgreNewt::Converters::QuatPosToMatrix(orient, pos, localM);
 			m_shapeInstance->SetLocalMatrix(localM);
-
-			delete[] vertices;
-		}
-#else
-	ConvexHull::ConvexHull(const World* world, Ogre::v1::Entity* obj, unsigned int id,
-		const Ogre::Quaternion& orient, const Ogre::Vector3& pos, Ogre::Real tolerance,
-		const Ogre::Vector3& forceScale)
-		: ConvexCollision(world)
-	{
-		OGRE_ASSERT_LOW(obj);
-		Ogre::Vector3 scale(1, 1, 1);
-		if (Ogre::Node* node = obj->getParentNode())
-			scale = node->_getDerivedScaleUpdated();
-		if (forceScale != Ogre::Vector3::ZERO)
-			scale = forceScale;
-
-		Ogre::v1::MeshPtr mesh = obj->getMesh();
-		if (mesh.isNull()) { m_shapeInstance = nullptr; m_col = nullptr; return; }
-
-		const unsigned short subCount = mesh->getNumSubMeshes();
-		size_t totalVerts = 0;
-
-		// Pass 1: count vertices (shared once)
-		bool sharedAdded = false;
-		for (unsigned short i = 0; i < subCount; ++i)
-		{
-			Ogre::v1::SubMesh* sub = mesh->getSubMesh(i);
-			if (!sub) continue;
-			Ogre::v1::VertexData* vdata = nullptr;
-			if (sub->useSharedVertices) {
-				if (!sharedAdded) { vdata = mesh->sharedVertexData[0]; sharedAdded = true; }
-			}
-			else {
-				vdata = sub->vertexData[0];
-			}
-			if (vdata) totalVerts += vdata->vertexCount;
-		}
-		if (totalVerts < 4) { m_shapeInstance = nullptr; m_col = nullptr; return; }
-
-		// Pass 2: read positions -> temp CPU array of Ogre::Vector3
-		std::vector<Ogre::Vector3> verts;
-		verts.reserve(totalVerts);
-		sharedAdded = false;
-
-		for (unsigned short i = 0; i < subCount; ++i)
-		{
-			Ogre::v1::SubMesh* sub = mesh->getSubMesh(i);
-			if (!sub) continue;
-
-			Ogre::v1::VertexData* vdata = nullptr;
-			if (sub->useSharedVertices) {
-				if (!sharedAdded) { vdata = mesh->sharedVertexData[0]; sharedAdded = true; }
-			}
-			else {
-				vdata = sub->vertexData[0];
-			}
-			if (!vdata) continue;
-
-			const Ogre::v1::VertexElement* posElem =
-				vdata->vertexDeclaration->findElementBySemantic(Ogre::VES_POSITION);
-			if (!posElem) continue;
-
-			const size_t start = vdata->vertexStart;
-			const size_t vCount = vdata->vertexCount;
-
-			Ogre::v1::HardwareVertexBufferSharedPtr vbuf =
-				vdata->vertexBufferBinding->getBuffer(posElem->getSource());
-			if (!vbuf) continue;
-
-			unsigned char* base = static_cast<unsigned char*>(
-				vbuf->lock(Ogre::v1::HardwareBuffer::HBL_READ_ONLY));
-			const size_t stride = vbuf->getVertexSize();
-
-			for (size_t j = 0; j < vCount; ++j)
-			{
-				unsigned char* ptr = base + (start + j) * stride;
-				float* p = nullptr;
-				posElem->baseVertexPointerToElement(ptr, &p);
-				Ogre::Vector3 v(p[0], p[1], p[2]);
-				verts.push_back(v * scale);
-			}
-			vbuf->unlock();
 		}
 
-		// Clean input & convert to contiguous ndFloat32 buffer (XYZXYZ…)
-		const float dedupEps2 = 1e-16f; // collapse ~1e-8 distance
-		std::vector<ndFloat32> points; points.reserve(verts.size() * 3);
-		{
-			// optional: compute bbox for adaptive tolerance
-			Ogre::AxisAlignedBox aabb;
-			for (const auto& v : verts) if (IsFiniteVec3(v)) aabb.merge(v);
-			const Ogre::Real diag = aabb.isNull() ? Ogre::Real(1) : aabb.getSize().length();
-			if (tolerance <= 0) tolerance = std::max<Ogre::Real>(diag * Ogre::Real(1e-4), 1e-6f);
-
-			// dedup + push
-			for (const auto& v : verts)
-			{
-				if (!IsFiniteVec3(v)) continue;
-				bool dup = false;
-				// cheap linear dedup (ok for typical mesh vertex counts for hulls)
-				for (size_t i = 0; i + 2 < points.size(); i += 3)
-				{
-					const float dx = points[i + 0] - v.x;
-					const float dy = points[i + 1] - v.y;
-					const float dz = points[i + 2] - v.z;
-					if (dx * dx + dy * dy + dz * dz <= dedupEps2) { dup = true; break; }
-				}
-				if (!dup) { points.push_back(v.x); points.push_back(v.y); points.push_back(v.z); }
-			}
-		}
-
-		if (points.size() < 12) { // < 4 points
-			m_shapeInstance = nullptr; m_col = nullptr; return;
-		}
-
-		if (m_col) m_col->Release();
-
-		const ndInt32 count = ndInt32(points.size() / 3);
-		const ndInt32 stride = ndInt32(sizeof(ndFloat32) * 3); // tightly packed floats
-
-		m_shapeInstance = new ndShapeInstance(
-			new ndShapeConvexHull(count, stride, ndFloat32(tolerance),
-				reinterpret_cast<const ndFloat32*>(&points[0])));
-		m_col = m_shapeInstance->GetShape();
-
-		ndMatrix localM;
-		OgreNewt::Converters::QuatPosToMatrix(orient, pos, localM);
-		m_shapeInstance->SetLocalMatrix(localM);
-	}
-#endif
-
-#if 0
 		ConvexHull::ConvexHull(const World* world, Ogre::Item* item, unsigned int id,
 			const Ogre::Quaternion& orient, const Ogre::Vector3& pos,
 			Ogre::Real tolerance, const Ogre::Vector3& forceScale)
@@ -403,31 +271,26 @@ namespace OgreNewt
 		{
 			OGRE_ASSERT_LOW(item);
 
-			// Determine scale (node scale unless forceScale is provided)
 			Ogre::Vector3 scale(1, 1, 1);
 			if (Ogre::Node* node = item->getParentNode())
 				scale = node->_getDerivedScaleUpdated();
 			if (forceScale != Ogre::Vector3::ZERO)
 				scale = forceScale;
 
-			// Gather all positions from VAOs
 			std::vector<Ogre::Vector3> verts;
 			verts.reserve(4096);
 
 			Ogre::MeshPtr mesh = item->getMesh();
 			if (!mesh.isNull())
 			{
-				const Ogre::Mesh::SubMeshVec& subs = mesh->getSubMeshes();
-				for (Ogre::SubMesh* sub : subs)
+				for (Ogre::SubMesh* sub : mesh->getSubMeshes())
 				{
 					if (!sub) continue;
-
-					const Ogre::VertexArrayObjectArray& vaos = sub->mVao[0];
+					const Ogre::VertexArrayObjectArray& vaos = sub->mVao[0]; // VpNormal
 					if (vaos.empty()) continue;
 
 					Ogre::VertexArrayObject* vao = vaos[0];
 
-					// Request position stream
 					Ogre::VertexArrayObject::ReadRequestsVec reqs;
 					reqs.push_back(Ogre::VertexArrayObject::ReadRequests(Ogre::VES_POSITION));
 					vao->readRequests(reqs);
@@ -461,152 +324,55 @@ namespace OgreNewt
 								verts.push_back(v * scale);
 							}
 						}
-						// other vertex types are ignored intentionally
 					}
 
 					vao->unmapAsyncTickets(reqs);
 				}
 			}
 
-			// Need at least 4 points for a convex hull
-			if (verts.size() < 4)
+			// Need at least 4 points
+			if (verts.size() < 4) { if (m_col) m_col->Release(); m_shapeInstance = nullptr; m_col = nullptr; return; }
+
+			// Clean & convert to contiguous ndFloat32 buffer
+			const float dedupEps2 = 1e-16f;
+
+			// Optional: adaptive tolerance
+			Ogre::AxisAlignedBox aabb;
+			for (const auto& v : verts) if (IsFiniteVec3(v)) aabb.merge(v);
+			const Ogre::Real diag = aabb.isNull() ? Ogre::Real(1) : aabb.getSize().length();
+			if (tolerance <= 0) tolerance = std::max<Ogre::Real>(diag * Ogre::Real(1e-4), 1e-6f);
+
+			std::vector<ndFloat32> points; points.reserve(verts.size() * 3);
+			for (const auto& v : verts)
 			{
-				if (m_col) m_col->Release();
-				m_shapeInstance = nullptr;
-				m_col = nullptr;
-				return;
+				if (!IsFiniteVec3(v)) continue;
+				bool dup = false;
+				for (size_t i = 0; i + 2 < points.size(); i += 3)
+				{
+					const float dx = points[i + 0] - v.x;
+					const float dy = points[i + 1] - v.y;
+					const float dz = points[i + 2] - v.z;
+					if (dx * dx + dy * dy + dz * dz <= dedupEps2) { dup = true; break; }
+				}
+				if (!dup) { points.push_back(v.x); points.push_back(v.y); points.push_back(v.z); }
 			}
 
-			if (m_col)
-				m_col->Release();
+			if (points.size() < 12) { if (m_col) m_col->Release(); m_shapeInstance = nullptr; m_col = nullptr; return; }
 
-			// Build ND4 convex hull with the ACTUAL stride of Ogre::Vector3
-			const ndInt32 count = ndInt32(verts.size());
-			const ndInt32 stride = ndInt32(sizeof(verts[0])); // do NOT hardcode 12; some builds may pad
+			if (m_col) m_col->Release();
+
+			const ndInt32 count = ndInt32(points.size() / 3);
+			const ndInt32 stride = ndInt32(sizeof(ndFloat32) * 3); // tightly packed XYZ floats
 
 			m_shapeInstance = new ndShapeInstance(
-				new ndShapeConvexHull(count,
-					stride,
-					ndFloat32(tolerance),
-					(ndFloat32*)&verts[0].x));
+				new ndShapeConvexHull(count, stride, ndFloat32(tolerance),
+					reinterpret_cast<const ndFloat32*>(&points[0])));
 			m_col = m_shapeInstance->GetShape();
 
-			// Apply local transform (orientation + position) to the shape instance
 			ndMatrix localM;
 			OgreNewt::Converters::QuatPosToMatrix(orient, pos, localM);
 			m_shapeInstance->SetLocalMatrix(localM);
 		}
-#else
-	ConvexHull::ConvexHull(const World* world, Ogre::Item* item, unsigned int id,
-		const Ogre::Quaternion& orient, const Ogre::Vector3& pos,
-		Ogre::Real tolerance, const Ogre::Vector3& forceScale)
-		: ConvexCollision(world)
-	{
-		OGRE_ASSERT_LOW(item);
-
-		Ogre::Vector3 scale(1, 1, 1);
-		if (Ogre::Node* node = item->getParentNode())
-			scale = node->_getDerivedScaleUpdated();
-		if (forceScale != Ogre::Vector3::ZERO)
-			scale = forceScale;
-
-		std::vector<Ogre::Vector3> verts;
-		verts.reserve(4096);
-
-		Ogre::MeshPtr mesh = item->getMesh();
-		if (!mesh.isNull())
-		{
-			for (Ogre::SubMesh* sub : mesh->getSubMeshes())
-			{
-				if (!sub) continue;
-				const Ogre::VertexArrayObjectArray& vaos = sub->mVao[0]; // VpNormal
-				if (vaos.empty()) continue;
-
-				Ogre::VertexArrayObject* vao = vaos[0];
-
-				Ogre::VertexArrayObject::ReadRequestsVec reqs;
-				reqs.push_back(Ogre::VertexArrayObject::ReadRequests(Ogre::VES_POSITION));
-				vao->readRequests(reqs);
-				vao->mapAsyncTickets(reqs);
-
-				const Ogre::VertexBufferPacked* vb = reqs[0].vertexBuffer;
-				if (vb)
-				{
-					const size_t count = vb->getNumElements();
-					verts.reserve(verts.size() + count);
-
-					if (reqs[0].type == Ogre::VET_HALF4)
-					{
-						for (size_t i = 0; i < count; ++i)
-						{
-							const Ogre::uint16* p = reinterpret_cast<const Ogre::uint16*>(reqs[0].data);
-							Ogre::Vector3 v(Ogre::Bitwise::halfToFloat(p[0]),
-								Ogre::Bitwise::halfToFloat(p[1]),
-								Ogre::Bitwise::halfToFloat(p[2]));
-							reqs[0].data += vb->getBytesPerElement();
-							verts.push_back(v * scale);
-						}
-					}
-					else if (reqs[0].type == Ogre::VET_FLOAT3)
-					{
-						for (size_t i = 0; i < count; ++i)
-						{
-							const float* p = reinterpret_cast<const float*>(reqs[0].data);
-							Ogre::Vector3 v(p[0], p[1], p[2]);
-							reqs[0].data += vb->getBytesPerElement();
-							verts.push_back(v * scale);
-						}
-					}
-				}
-
-				vao->unmapAsyncTickets(reqs);
-			}
-		}
-
-		// Need at least 4 points
-		if (verts.size() < 4) { if (m_col) m_col->Release(); m_shapeInstance = nullptr; m_col = nullptr; return; }
-
-		// Clean & convert to contiguous ndFloat32 buffer
-		const float dedupEps2 = 1e-16f;
-
-		// Optional: adaptive tolerance
-		Ogre::AxisAlignedBox aabb;
-		for (const auto& v : verts) if (IsFiniteVec3(v)) aabb.merge(v);
-		const Ogre::Real diag = aabb.isNull() ? Ogre::Real(1) : aabb.getSize().length();
-		if (tolerance <= 0) tolerance = std::max<Ogre::Real>(diag * Ogre::Real(1e-4), 1e-6f);
-
-		std::vector<ndFloat32> points; points.reserve(verts.size() * 3);
-		for (const auto& v : verts)
-		{
-			if (!IsFiniteVec3(v)) continue;
-			bool dup = false;
-			for (size_t i = 0; i + 2 < points.size(); i += 3)
-			{
-				const float dx = points[i + 0] - v.x;
-				const float dy = points[i + 1] - v.y;
-				const float dz = points[i + 2] - v.z;
-				if (dx * dx + dy * dy + dz * dz <= dedupEps2) { dup = true; break; }
-			}
-			if (!dup) { points.push_back(v.x); points.push_back(v.y); points.push_back(v.z); }
-		}
-
-		if (points.size() < 12) { if (m_col) m_col->Release(); m_shapeInstance = nullptr; m_col = nullptr; return; }
-
-		if (m_col) m_col->Release();
-
-		const ndInt32 count = ndInt32(points.size() / 3);
-		const ndInt32 stride = ndInt32(sizeof(ndFloat32) * 3); // tightly packed XYZ floats
-
-		m_shapeInstance = new ndShapeInstance(
-			new ndShapeConvexHull(count, stride, ndFloat32(tolerance),
-				reinterpret_cast<const ndFloat32*>(&points[0])));
-		m_col = m_shapeInstance->GetShape();
-
-		ndMatrix localM;
-		OgreNewt::Converters::QuatPosToMatrix(orient, pos, localM);
-		m_shapeInstance->SetLocalMatrix(localM);
-	}
-#endif
 
 		ConvexHull::ConvexHull(const World* world, const Ogre::Vector3* verts, int vertcount, unsigned int id,
 			const Ogre::Quaternion& orient, const Ogre::Vector3& pos, Ogre::Real tolerance) : ConvexCollision(world)
@@ -1268,8 +1034,11 @@ namespace OgreNewt
 		{
 		}
 
-		CompoundCollision::CompoundCollision(const World* world, std::vector<OgreNewt::CollisionPtr> col_array,
-			unsigned int id) : Collision(world)
+		CompoundCollision::CompoundCollision(
+			const World* world,
+			std::vector<OgreNewt::CollisionPtr> col_array,
+			unsigned int id)
+			: Collision(world)
 		{
 			if (m_col)
 				m_col->Release();
@@ -1281,7 +1050,21 @@ namespace OgreNewt
 			{
 				if (col && col->getNewtonCollision())
 				{
-					ndShapeInstance* instance = new ndShapeInstance(col->getNewtonCollision());
+					// IMPORTANT: preserve local transform of the child
+					ndShapeInstance* childInstSrc = col->getShapeInstance(); // new accessor
+					ndShapeInstance* instance = nullptr;
+
+					if (childInstSrc)
+					{
+						// Copy full instance including its local matrix
+						instance = new ndShapeInstance(*childInstSrc);
+					}
+					else
+					{
+						// Fallback: at least use the raw shape (no offset)
+						instance = new ndShapeInstance(col->getNewtonCollision());
+					}
+
 					compound->AddCollision(instance);
 				}
 			}
@@ -1291,6 +1074,7 @@ namespace OgreNewt
 			m_shapeInstance = new ndShapeInstance(compound);
 			m_col = m_shapeInstance->GetShape();
 		}
+
 
 		Pyramid::Pyramid(const World* world) : ConvexCollision(world)
 		{

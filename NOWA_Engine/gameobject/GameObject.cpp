@@ -235,7 +235,7 @@ namespace NOWA
 			// Attention: No this may be used here, because its in the destructor!
 			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObject::~GameObject", _5(sceneNode, movableObject, boundingBoxDraw, clampObjectQuery, sceneManager),
 			{
-					this->destroyGameObjectResources(sceneNode, movableObject, boundingBoxDraw, clampObjectQuery, sceneManager);
+				this->destroyGameObjectResources(sceneNode, movableObject, boundingBoxDraw, clampObjectQuery, sceneManager);
 			});
 		}
 	}
