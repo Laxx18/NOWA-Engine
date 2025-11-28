@@ -11,5 +11,6 @@
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
     <LocalDebuggerCommandArguments>ogre.cfg</LocalDebuggerCommandArguments>
     <LocalDebuggerWorkingDirectory>$(NOWA)\bin\Release</LocalDebuggerWorkingDirectory>
+    <LocalDebuggerCommandArgumentsHistory>ogre.cfg|</LocalDebuggerCommandArgumentsHistory>
   </PropertyGroup>
 </Project>

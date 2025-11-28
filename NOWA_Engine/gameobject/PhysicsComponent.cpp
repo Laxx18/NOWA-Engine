@@ -593,8 +593,8 @@ namespace NOWA
 
 		serializeCollisionPath += "/";
 		serializeCollisionPath += meshName;
-		//"../media/TestWorld/Meshname.col"
-		serializeCollisionPath += ".col";
+		//"../media/TestWorld/Meshname.ply"
+		serializeCollisionPath += ".ply";
 
 		// Check if serialized collision file does exist
 		FILE* file;
@@ -711,8 +711,8 @@ namespace NOWA
 		Ogre::String serializeCollisionPath = scenePath;
 		serializeCollisionPath += "/";
 		serializeCollisionPath += this->gameObjectPtr->getName();
-		//"../media/TestWorld/gameObjectName.col"
-		serializeCollisionPath += ".col";
+		//"../media/TestWorld/gameObjectName.ply"
+		serializeCollisionPath += ".ply";
 
 		// Check if serialized collision file does exist
 		FILE* file;
@@ -822,11 +822,6 @@ namespace NOWA
 
 		Ogre::Quaternion orientation = Ogre::Quaternion::IDENTITY;
 		Ogre::Vector3 position = Ogre::Vector3(terra->getTerrainOrigin().x - this->gameObjectPtr->getPosition().x, this->gameObjectPtr->getPosition().y, terra->getTerrainOrigin().z - this->gameObjectPtr->getPosition().z);
-
-		//col = OgreNewt::CollisionPtr(
-		//	new OgreNewt::CollisionPrimitives::HeightField(this->ogreNewt, sizeX, sizeZ, 1, elevation, attibutesCol, 1.0f /* cellSize */, cellSize * 1.0f, cellSize * 1.0f,
-		//		position, orientation, this->gameObjectPtr->getCategoryId())); // move the collision hull to x = -184 and z = -184 as origin
-
 
 		col = OgreNewt::CollisionPtr(
 			new OgreNewt::CollisionPrimitives::HeightField(this->ogreNewt, sizeX, sizeZ, elevation, 1.0f /* cellSize */, cellSize * 1.0f, cellSize * 1.0f,

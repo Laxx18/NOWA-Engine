@@ -111,12 +111,15 @@ namespace OgreNewt
         ndMatrix matrix(ndGetIdentityMatrix());
         trigger->SetMatrix(matrix);
 
-        // Convert CollisionPtr -> ndShape* and wrap as ndShapeInstance (ND4 expects Instance)
-        ndShape* shape = const_cast<ndShape*>(col->getNewtonCollision()); // we have a const getter; cast away const for instance
-        if (!shape)
+        // Prefer the collision's ndShapeInstance if it has one (keeps local transform)
+        ndShapeInstance* srcInst = col->getShapeInstance();
+        if (!srcInst && !col->getNewtonCollision())
             return;
 
-        ndShapeInstance shapeInstance(shape);
+        ndShapeInstance shapeInstance = srcInst
+            ? ndShapeInstance(*srcInst)                          // copy instance incl. local matrix
+            : ndShapeInstance(col->getNewtonCollision());        // fallback: build from raw shape
+
         trigger->SetCollisionShape(shapeInstance);
 
         // Add to world (ND4 takes ownership via shared_ptr)

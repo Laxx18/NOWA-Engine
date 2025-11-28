@@ -52,7 +52,21 @@ namespace OgreNewt
 		m_bodyNotify = new BodyNotify(this);
 		m_body = new ndBodyDynamic();
 		m_body->SetMatrix(matrix);
-		m_body->SetCollisionShape(collisionPtr->getNewtonCollision());
+		
+		ndShapeInstance* srcInst = collisionPtr->getShapeInstance();
+		if (srcInst)
+		{
+			// Copy instance, including its local matrix (HeightField offset, etc.)
+			ndShapeInstance shapeInst(*srcInst);
+			m_body->SetCollisionShape(shapeInst);
+		}
+		else
+		{
+			// fallback: build instance from raw shape with identity local matrix
+			ndShapeInstance shapeInst(collisionPtr->getNewtonCollision());
+			m_body->SetCollisionShape(shapeInst);
+		}
+
 		m_body->SetNotifyCallback(m_bodyNotify);
 
 		m_world->getNewtonWorld()->AddBody(m_body);
@@ -395,7 +409,20 @@ namespace OgreNewt
 
 	void Body::setCollision(const OgreNewt::CollisionPtr& col)
 	{
-		m_body->SetCollisionShape(col->getNewtonCollision());
+		if (!m_body)
+			return;
+
+		ndShapeInstance* srcInst = col->getShapeInstance();
+		if (srcInst)
+		{
+			ndShapeInstance shapeInst(*srcInst);
+			m_body->SetCollisionShape(shapeInst);
+		}
+		else
+		{
+			ndShapeInstance shapeInst(col->getNewtonCollision());
+			m_body->SetCollisionShape(shapeInst);
+		}
 	}
 
 	ndShapeInstance* Body::getNewtonCollision(void) const
@@ -880,10 +907,11 @@ namespace OgreNewt
 			m_nodeRotation = Ogre::Quaternion::Slerp(interpolatParam, m_prevRotation, m_curRotation);
 		}
 
-		if (m_nodePosit.positionEquals(m_curPosit) && m_nodeRotation.equals(m_curRotation, Ogre::Radian(0.001f)))
+		// UNDO/REDO will not work anymore
+		/*if (m_nodePosit.positionEquals(m_curPosit) && m_nodeRotation.equals(m_curRotation, Ogre::Radian(0.001f)))
 		{
 			return;
-		}
+		}*/
 
 		// m_world->m_ogreMutex.lock();
 

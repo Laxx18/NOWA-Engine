@@ -29,7 +29,7 @@ World::World(Ogre::Real desiredFps, int maxUpdatesPerFrames, const Ogre::String&
     setSolverModel(m_solverMode);
 
     // Substeps: keep at 1; we handle fixed stepping in update()
-    SetSubSteps(1);
+    SetSubSteps(2);
 
     m_defaultMatID = new OgreNewt::MaterialID(this, 0);
 

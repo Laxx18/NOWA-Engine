@@ -3,5 +3,6 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LocalDebuggerCommandArguments>C:\Users\lukas\Documents\NOWA-Engine\development\MeshUtils\1.8\OgreMeshMagick.exe transform -rotate=90/0/1/0 C:/Users/lukas/Documents/NOWA-Engine/media/models/Vehicles/jeepBody.mesh</LocalDebuggerCommandArguments>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+    <LocalDebuggerCommandArgumentsHistory>C:\Users\lukas\Documents\NOWA-Engine\development\MeshUtils\1.8\OgreMeshMagick.exe transform -rotate=90/0/1/0 C:/Users/lukas/Documents/NOWA-Engine/media/models/Vehicles/jeepBody.mesh|</LocalDebuggerCommandArgumentsHistory>
   </PropertyGroup>
 </Project>

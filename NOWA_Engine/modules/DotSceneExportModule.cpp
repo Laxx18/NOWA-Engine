@@ -372,19 +372,19 @@ namespace NOWA
 									meshName = item->getMesh()->getName();
 								}
 							}
-							// Note: Col files are outside the scene folders in the parent project folder
-							Ogre::String sourceFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + meshName + ".col";
-							Ogre::String targetFilePathName = tempFilePath + "/" + meshName + ".col";
+							// Note: Ply files are outside the scene folders in the parent project folder
+							Ogre::String sourceFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + meshName + ".ply";
+							Ogre::String targetFilePathName = tempFilePath + "/" + meshName + ".ply";
 							CopyFile(sourceFilePathName.data(), targetFilePathName.data(), TRUE);
 						}
 
-						// Copy a terra .col file, if it does exist
+						// Copy a terra .ply file, if it does exist
 						auto physicsTerrainCompPtr = boost::dynamic_pointer_cast<PhysicsTerrainComponent>(std::get<COMPONENT>(*it));
 						if (nullptr != physicsTerrainCompPtr)
 						{
 							Ogre::String name = gameObjectPtr->getName();
-							Ogre::String sourceFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + name + ".col";
-							Ogre::String targetFilePathName = tempFilePath + "/" + name + ".col";
+							Ogre::String sourceFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + name + ".ply";
+							Ogre::String targetFilePathName = tempFilePath + "/" + name + ".ply";
 							CopyFile(sourceFilePathName.data(), targetFilePathName.data(), TRUE);
 						}
 

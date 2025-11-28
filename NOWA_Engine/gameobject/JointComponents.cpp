@@ -1504,11 +1504,6 @@ namespace NOWA
 
 	void JointHingeComponent::setPin(const Ogre::Vector3& pin)
 	{
-		if (nullptr == this->joint)
-		{
-			return;
-		}
-
 		this->pin->setValue(pin);
 		if (nullptr != this->debugGeometryNode)
 		{
@@ -1543,11 +1538,6 @@ namespace NOWA
 
 	void JointHingeComponent::setMinMaxAngleLimit(const Ogre::Degree& minAngleLimit, const Ogre::Degree& maxAngleLimit)
 	{
-		if (nullptr == this->joint)
-		{
-			return;
-		}
-
 		this->minAngleLimit->setValue(minAngleLimit.valueDegrees());
 		this->maxAngleLimit->setValue(maxAngleLimit.valueDegrees());
 		OgreNewt::Hinge* hingeJoint = dynamic_cast<OgreNewt::Hinge*>(this->joint);
@@ -1569,11 +1559,6 @@ namespace NOWA
 	
 	void JointHingeComponent::setTorgue(Ogre::Real torgue)
 	{
-		if (nullptr == this->joint)
-		{
-			return;
-		}
-
 		this->torque->setValue(torgue);
 		OgreNewt::Hinge* hingeJoint = dynamic_cast<OgreNewt::Hinge*>(this->joint);
 		if (hingeJoint /*&& this->enableLimits->getBool()*/)
@@ -2563,6 +2548,11 @@ namespace NOWA
 		this->twistFriction = new Variant(JointBallAndSocketComponent::AttrTwistFriction(), 0.0f, this->attributes);
 		this->coneFriction = new Variant(JointBallAndSocketComponent::AttrConeFriction(), 0.0f, this->attributes);
 
+		this->twistSpringDamperEnabled = new Variant(JointBallAndSocketComponent::AttrTwistSpringDamperEnabled(), false, this->attributes);
+		this->twistSpringDamperRelaxation = new Variant(JointBallAndSocketComponent::AttrTwistSpringDamperRelaxation(), 0.1f, this->attributes);
+		this->twistSpringK = new Variant(JointBallAndSocketComponent::AttrTwistSpringK(), 0.0f, this->attributes);
+		this->twistSpringD = new Variant(JointBallAndSocketComponent::AttrTwistSpringD(), 0.0f, this->attributes);
+
 		this->targetId->setVisible(false);
 		// this->minAngleLimit->setVisible(false);
 		// this->maxAngleLimit->setVisible(false);
@@ -2592,6 +2582,7 @@ namespace NOWA
 		clonedJointCompPtr->setMinMaxConeAngleLimit(Ogre::Degree(this->minAngleLimit->getReal()), Ogre::Degree(this->maxAngleLimit->getReal()), Ogre::Degree(this->maxConeLimit->getReal()));
 		clonedJointCompPtr->setTwistFriction(this->twistFriction->getReal());
 		clonedJointCompPtr->setConeFriction(this->coneFriction->getReal());
+		clonedJointCompPtr->setTwistSpringDamper(this->twistSpringDamperEnabled->getBool(), this->twistSpringDamperRelaxation->getReal(), this->twistSpringK->getReal(), this->twistSpringD->getReal());
 
 		clonedGameObjectPtr->addComponent(clonedJointCompPtr);
 		clonedJointCompPtr->setOwner(clonedGameObjectPtr);
@@ -2643,6 +2634,26 @@ namespace NOWA
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "ConeFriction")
 		{
 			this->coneFriction->setValue(XMLConverter::getAttribReal(propertyElement, "data", Ogre::Real(0.0f)));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "TwistSpringDamper")
+		{
+			this->twistSpringDamperEnabled->setValue(XMLConverter::getAttribBool(propertyElement, "data", false));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "TwistSpringDamperRelaxation")
+		{
+			this->twistSpringDamperRelaxation->setValue(XMLConverter::getAttribReal(propertyElement, "data", Ogre::Real(0.1f)));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "TwistSpringK")
+		{
+			this->twistSpringK->setValue(XMLConverter::getAttribReal(propertyElement, "data", Ogre::Real(0.0f)));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "TwistSpringD")
+		{
+			this->twistSpringD->setValue(XMLConverter::getAttribReal(propertyElement, "data", Ogre::Real(0.0f)));
 			propertyElement = propertyElement->next_sibling("property");
 		}
 		return true;
@@ -2746,6 +2757,30 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("name", "ConeFriction"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->coneFriction->getReal())));
 		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "TwistSpringDamper"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->twistSpringDamperEnabled->getBool())));
+		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "TwistSpringDamperRelaxation"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->twistSpringDamperRelaxation->getReal())));
+		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "TwistSpringK"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->twistSpringK->getReal())));
+		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "TwistSpringD"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->twistSpringD->getReal())));
+		propertiesXML->append_node(propertyXML);
 	}
 
 	Ogre::Vector3 JointBallAndSocketComponent::getUpdatedJointPosition(void)
@@ -2843,11 +2878,6 @@ namespace NOWA
 
 		if (true == this->enableTwistLimits->getBool())
 		{
-			/*if (this->minAngleLimit == this->maxAngleLimit)
-			{
-				throw Ogre::Exception(Ogre::Exception::ERR_INVALIDPARAMS, "[PhysicsComponent] The ball and socket joint cannot have the same min angle limit as max angle limit!\n", "NOWA");
-			}*/
-
 			ballAndSocketJoint->setTwistLimits(Ogre::Degree(this->minAngleLimit->getReal()), Ogre::Degree(this->maxAngleLimit->getReal()));
 		}
 		if (true == this->enableConeLimits->getBool())
@@ -2858,6 +2888,12 @@ namespace NOWA
 			ballAndSocketJoint->setTwistFriction(this->twistFriction->getReal());
 		if (0.0f != this->coneFriction->getReal())
 			ballAndSocketJoint->setConeFriction(this->coneFriction->getReal());
+
+		// NEW: apply twist spring–damper if enabled
+		if (this->twistSpringDamperEnabled->getBool())
+		{
+			ballAndSocketJoint->setTwistSpringDamper(true, this->twistSpringDamperRelaxation->getReal(), this->twistSpringK->getReal(), this->twistSpringD->getReal());
+		}
 
 		this->jointAlreadyCreated = true;
 
@@ -2904,6 +2940,11 @@ namespace NOWA
 		else if (JointBallAndSocketComponent::AttrConeFriction() == attribute->getName())
 		{
 			this->setConeFriction(attribute->getReal());
+		}
+		else if (JointBallAndSocketComponent::AttrTwistSpringDamperRelaxation() == attribute->getName() || JointBallAndSocketComponent::AttrTwistSpringK() == attribute->getName() ||
+			JointBallAndSocketComponent::AttrTwistSpringD() == attribute->getName())
+		{
+			this->setTwistSpringDamper(this->twistSpringDamperEnabled->getBool(), this->twistSpringDamperRelaxation->getReal(), this->twistSpringK->getReal(), this->twistSpringD->getReal());
 		}
 	}
 
@@ -3029,6 +3070,59 @@ namespace NOWA
 	Ogre::Real JointBallAndSocketComponent::getConeFriction(void) const
 	{
 		return this->coneFriction->getReal();
+	}
+
+	void JointBallAndSocketComponent::setTwistSpringDamper(bool state)
+	{
+		this->twistSpringDamperEnabled->setValue(state);
+
+		OgreNewt::BallAndSocket* ballAndSocketJoint = dynamic_cast<OgreNewt::BallAndSocket*>(this->joint);
+		if (nullptr != ballAndSocketJoint)
+		{
+			ballAndSocketJoint->setTwistSpringDamper(
+				state,
+				this->twistSpringDamperRelaxation->getReal(),
+				this->twistSpringK->getReal(),
+				this->twistSpringD->getReal());
+		}
+	}
+
+	void JointBallAndSocketComponent::setTwistSpringDamper(bool state, Ogre::Real springDamperRelaxation, Ogre::Real spring, Ogre::Real damper)
+	{
+		this->twistSpringDamperEnabled->setValue(state);
+		this->twistSpringDamperRelaxation->setValue(springDamperRelaxation);
+		this->twistSpringK->setValue(spring);
+		this->twistSpringD->setValue(damper);
+
+		OgreNewt::BallAndSocket* ballAndSocketJoint = dynamic_cast<OgreNewt::BallAndSocket*>(this->joint);
+		if (nullptr != ballAndSocketJoint)
+		{
+			ballAndSocketJoint->setTwistSpringDamper(
+				state,
+				this->twistSpringDamperRelaxation->getReal(),
+				this->twistSpringK->getReal(),
+				this->twistSpringD->getReal());
+		}
+	}
+
+	bool JointBallAndSocketComponent::getTwistSpringDamperEnabled(void) const
+	{
+		return this->twistSpringDamperEnabled->getBool();
+	}
+
+	Ogre::Real JointBallAndSocketComponent::getTwistSpringDamperRelaxation(void) const
+	{
+		return this->twistSpringDamperRelaxation->getReal();
+	}
+
+	Ogre::Real JointBallAndSocketComponent::getTwistSpringK(void) const
+	{
+		return this->twistSpringK->getReal();
+	}
+
+	Ogre::Real JointBallAndSocketComponent::getTwistSpringD(void) const
+	{
+		return this->twistSpringD->getReal();
 	}
 
 	/*******************************JointControlledBallAndSocketComponent*******************************/
@@ -3619,6 +3713,10 @@ namespace NOWA
 		if (nullptr != this->predecessorJointCompPtr)
 		{
 			OgreNewt::Body* predecessorBody = this->predecessorJointCompPtr->getBody();
+			if (nullptr == predecessorBody)
+			{
+				return;
+			}
 			Ogre::Vector3 size = predecessorBody->getAABB().getSize();
 			Ogre::Vector3 offset = (this->anchorPosition2->getVector3() * size);
 			this->jointPosition2 = (predecessorBody->getPosition() + offset);
@@ -9365,11 +9463,16 @@ namespace NOWA
 		lineNode(nullptr),
 		lineObjects(nullptr),
 		pathProgress(0.0f),
-		currentMoveDirection(Ogre::Vector3::ZERO)
+		currentMoveDirection(Ogre::Vector3::ZERO),
+		oldActivated(true),
+		finishedOnce(false)
 	{
 		 this->anchorPosition = new Variant(JointPathFollowComponent::AttrAnchorPosition(), Ogre::Vector3::ZERO, this->attributes);
 		 this->drawPath = new Variant(JointPathFollowComponent::AttrDrawPath(), true, this->attributes);
 		 this->waypointsCount = new Variant(JointPathFollowComponent::AttrWaypointsCount(), 4, this->attributes);
+		 this->loop = new Variant(JointPathFollowComponent::AttrLoop(), true, this->attributes);
+		 this->clockwise = new Variant(JointPathFollowComponent::AttrClockwise(), true, this->attributes);
+
 		 // Since when waypoints count is changed, the whole properties must be refreshed, so that new field may come for way points
 		 this->waypointsCount->addUserData(GameObject::AttrActionNeedRefresh());
 
@@ -9401,6 +9504,10 @@ namespace NOWA
 
 		clonedJointCompPtr->setAnchorPosition(this->anchorPosition->getVector3());
 		clonedJointCompPtr->setDrawPath(this->drawPath->getBool());
+		clonedJointCompPtr->setLoop(this->loop->getBool());
+		clonedJointCompPtr->setClockwise(this->clockwise->getBool());
+
+		this->oldActivated = clonedJointCompPtr->activated->getBool();
 		
 		clonedJointCompPtr->setWaypointsCount(this->waypointsCount->getUInt());
 
@@ -9431,10 +9538,19 @@ namespace NOWA
 			this->setDrawPath(XMLConverter::getAttribBool(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
-
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "WaypointsCount")
 		{
 			this->waypointsCount->setValue(XMLConverter::getAttribUnsignedInt(propertyElement, "data", 1));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Loop")
+		{
+			this->setLoop(XMLConverter::getAttribBool(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Clockwise")
+		{
+			this->setClockwise(XMLConverter::getAttribBool(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
 
@@ -9465,6 +9581,9 @@ namespace NOWA
 	{
 		JointComponent::postInit();
 
+		this->oldActivated = this->activated->getBool();
+		this->finishedOnce = false;
+
 		// Component must be dynamic, because it will be moved
 		this->gameObjectPtr->setDynamic(true);
 		this->gameObjectPtr->getAttribute(GameObject::AttrDynamic())->setVisible(false);
@@ -9485,15 +9604,81 @@ namespace NOWA
 
 	void JointPathFollowComponent::update(Ogre::Real dt, bool notSimulating)
 	{
-		if (false == notSimulating)
+		if (true == notSimulating)
 		{
-			
+			return;
+		}
+		if (false == this->activated->getBool())
+		{
+			return;
+		}
+		if (nullptr == this->body)
+		{
+			return;
+		}
+
+		auto* pathFollowJoint = dynamic_cast<OgreNewt::PathFollow*>(this->joint);
+		if (!pathFollowJoint)
+			return;
+
+		// Keep flags in sync
+		// pathFollowJoint->setLoop(this->getLoop());
+		// pathFollowJoint->setClockwise(this->getClockwise());
+
+		// Only handle "stop at end" when NOT looping
+		if (!this->getLoop())
+		{
+			Ogre::Real progress = this->getPathProgress();
+
+			if (progress >= 0.99f)
+			{
+				// Stop body motion for THIS run
+				this->body->setVelocity(Ogre::Vector3::ZERO);
+				this->body->setOmega(Ogre::Vector3::ZERO);
+
+				// Remove joint so Newton stops pulling
+				this->internalReleaseJoint();
+				this->joint = nullptr;
+
+				// Remember that we finished at least once in this sim
+				// and store the original activated state (only first time)
+				if (false == this->finishedOnce)
+				{
+					this->finishedOnce = true;
+					this->oldActivated = this->activated->getBool();
+				}
+
+				// Deactivate for THIS run, so update() won’t keep trying
+				this->activated->setValue(false);
+
+				this->currentMoveDirection = Ogre::Vector3::ZERO;
+				this->pathProgress = 1.0f;
+
+				return;
+			}
+		}
+
+		// Optional: update progress & currentMoveDirection for queries/UI
+		{
+			OgreNewt::PathFollow* pathFollow = pathFollowJoint;
+
+			auto progPos = pathFollow->getPathProgressAndPosition(this->body->getPosition());
+			this->pathProgress = progPos.first;
+
+			this->currentMoveDirection = pathFollow->getCurrentMoveDirection(this->body->getPosition());
 		}
 	}
 
 	bool JointPathFollowComponent::connect(void)
 	{
 		bool success = JointComponent::connect();
+
+		// New sim round → restore original "activated" if we finished last time
+		if (true == this->finishedOnce)
+		{
+			this->activated->setValue(this->oldActivated);
+			this->finishedOnce = false;
+		}
 
 		return success;
 	}
@@ -9537,6 +9722,18 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->waypointsCount->getUInt())));
 		propertiesXML->append_node(propertyXML);
 
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "Loop"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->loop->getBool())));
+		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "Clockwise"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->clockwise->getBool())));
+		propertiesXML->append_node(propertyXML);
+
 		for (size_t i = 0; i < this->waypoints.size(); i++)
 		{
 			propertyXML = doc.allocate_node(node_element, "property");
@@ -9569,13 +9766,6 @@ namespace NOWA
 
 	bool JointPathFollowComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
-		// Joint base created but not activated, return false, but its no error, hence after that return true.
-		// This kind of joint must be created, else the physics active component will not be stable
-		/*if (false == JointComponent::createJoint(customJointPosition))
-		{
-			return true;
-		}*/
-
 		if (false == this->activated->getBool())
 		{
 			return true;
@@ -9586,7 +9776,6 @@ namespace NOWA
 			this->connect();
 		}
 
-		// Still null, creation to early, skip for now
 		if (nullptr == this->body)
 		{
 			return true;
@@ -9595,13 +9784,6 @@ namespace NOWA
 		if (Ogre::Vector3::ZERO == customJointPosition)
 		{
 			Ogre::Vector3 size = this->body->getAABB().getSize();
-			//Ogre::Vector3 aPos = Ogre::Vector3(-this->anchorPosition.x, -this->anchorPosition.y, -this->anchorPosition.z);
-			//// relative anchor pos: 0.5 0 0 means 50% in X of the size of the parent object
-			//Ogre::Vector3 offset = (aPos * size);
-			//// take orientation into account, so that orientated joints are processed correctly
-			//this->jointPosition = this->body->getPosition() - (this->body->getOrientation() * offset);
-
-			// without rotation
 			Ogre::Vector3 offset = (this->anchorPosition->getVector3() * size);
 			this->jointPosition = (this->body->getPosition() + offset);
 		}
@@ -9616,23 +9798,28 @@ namespace NOWA
 		if (nullptr != this->predecessorJointCompPtr)
 		{
 			predecessorBody = this->predecessorJointCompPtr->getBody();
-			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointPathFollowComponent] Creating path follow joint for body1 (predecessor) name: "
-														+ this->predecessorJointCompPtr->getOwner()->getName() + " body2 name: " + this->gameObjectPtr->getName());
+			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL,
+				"[JointPathFollowComponent] Creating path follow joint for body1 (predecessor) name: "
+				+ this->predecessorJointCompPtr->getOwner()->getName()
+				+ " body2 name: " + this->gameObjectPtr->getName());
 		}
 		else
 		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[JointPathFollowComponent] Could not create path follow joint: " + this->gameObjectPtr->getName() + " because the predecessor path body does not exist.");
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+				"[JointPathFollowComponent] Could not create path follow joint: " + this->gameObjectPtr->getName()
+				+ " because the predecessor path body does not exist.");
 			return false;
 		}
 
 		// Release joint each time, to create new one with new values
 		this->internalReleaseJoint();
-		// Has no predecessor body
 		this->joint = new OgreNewt::PathFollow(this->body, predecessorBody, this->jointPosition);
 
-		this->knots.resize(this->waypoints.size() + 1);
+		// --- Build knots in "natural" order: anchor + waypoints ---
+		this->knots.clear();
+		this->knots.reserve(this->waypoints.size() + 1);
 
-		this->knots[0] = this->jointPosition;
+		this->knots.push_back(this->jointPosition);
 
 		for (size_t i = 0; i < this->waypoints.size(); i++)
 		{
@@ -9642,8 +9829,7 @@ namespace NOWA
 				auto nodeCompPtr = NOWA::makeStrongPtr(waypointGameObjectPtr->getComponent<NodeComponent>());
 				if (nullptr != nodeCompPtr)
 				{
-					// Add the way points
-					this->knots[i + 1] = nodeCompPtr->getPosition();
+					this->knots.push_back(nodeCompPtr->getPosition());
 				}
 			}
 		}
@@ -9653,7 +9839,9 @@ namespace NOWA
 
 		if (true == success)
 		{
-			OgreNewt::PathFollow* pathFollow = static_cast<OgreNewt::PathFollow*>(this->joint);
+			// pass current flags once; PathFollow will handle reorder & loop internally
+			pathFollow->setLoop(this->loop->getBool());
+			pathFollow->setClockwise(this->clockwise->getBool());
 			pathFollow->createPathJoint();
 
 			if (true == this->drawPath->getBool())
@@ -9664,7 +9852,9 @@ namespace NOWA
 		}
 		else
 		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[JointPathFollowComponent] Could not create path follow joint: " + this->gameObjectPtr->getName() + " because there are no waypoints.");
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+				"[JointPathFollowComponent] Could not create path follow joint: " + this->gameObjectPtr->getName()
+				+ " because there are no waypoints.");
 		}
 
 		return success;
@@ -9721,6 +9911,38 @@ namespace NOWA
 		return this->drawPath->getBool();
 	}
 
+	void JointPathFollowComponent::setLoop(bool value)
+	{
+		this->loop->setValue(value);
+
+		auto* pathFollow = dynamic_cast<OgreNewt::PathFollow*>(this->joint);
+		if (pathFollow)
+		{
+			pathFollow->setLoop(value);  // will rebuild spline internally
+		}
+	}
+
+	bool JointPathFollowComponent::getLoop(void) const
+	{
+		return this->loop->getBool();
+	}
+
+	void JointPathFollowComponent::setClockwise(bool value)
+	{
+		this->clockwise->setValue(value);
+
+		auto* pathFollow = dynamic_cast<OgreNewt::PathFollow*>(this->joint);
+		if (pathFollow)
+		{
+			pathFollow->setClockwise(value);  // runtime reorder
+		}
+	}
+
+	bool JointPathFollowComponent::getClockwise(void) const
+	{
+		return this->clockwise->getBool();
+	}
+
 	void JointPathFollowComponent::actualizeValue(Variant* attribute)
 	{
 		JointComponent::actualizeValue(attribute);
@@ -9736,6 +9958,14 @@ namespace NOWA
 		else if (JointPathFollowComponent::AttrWaypointsCount() == attribute->getName())
 		{
 			this->setWaypointsCount(attribute->getUInt());
+		}
+		else if (JointPathFollowComponent::AttrLoop() == attribute->getName())
+		{
+			this->setLoop(attribute->getBool());
+		}
+		else if (JointPathFollowComponent::AttrClockwise() == attribute->getName())
+		{
+			this->setClockwise(attribute->getBool());     // same here
 		}
 		else
 		{
@@ -9868,7 +10098,15 @@ namespace NOWA
 
 		auto closureFunction = [this](Ogre::Real weight)
 		{
-			const auto& spline = this->predecessorJointCompPtr->getBody()->getSpline();
+			auto* pathFollow = dynamic_cast<OgreNewt::PathFollow*>(this->joint);
+			if (!pathFollow)
+				return;
+
+			const ndBezierSpline& spline = pathFollow->getSpline();
+			if (spline.GetControlPointArray().GetCount() == 0 || spline.GetControlPointCount() == 0)
+			{
+				return;
+			}
 
 			this->lineObjects->clear();
 			this->lineObjects->begin("WhiteNoLightingBackground", Ogre::OperationType::OT_LINE_LIST);
@@ -9926,6 +10164,19 @@ namespace NOWA
 		
 		this->radius = new Variant(JointDryRollingFrictionComponent::AttrRadius(), 1.0f, this->attributes);
 		this->rollingFrictionCoefficient = new Variant(JointDryRollingFrictionComponent::AttrFrictionCoefficient(), 0.5f, this->attributes);
+		this->contactTrail = new Variant(JointDryRollingFrictionComponent::AttrContactTrail(), 0.0f, this->attributes);
+
+		this->rollingFrictionCoefficient = new Variant(JointDryRollingFrictionComponent::AttrFrictionCoefficient(), 0.5f, this->attributes);
+		this->rollingFrictionCoefficient->setDescription(
+			"Dimensionless rolling friction coefficient. Higher values increase the rolling resistance torque "
+			"generated around the contact point."
+		);
+
+		this->contactTrail = new Variant(JointDryRollingFrictionComponent::AttrContactTrail(), 0.0f, this->attributes);
+		this->contactTrail->setDescription(
+			"Effective contact trail (lever arm) in world units. This acts like a rolling radius for the friction torque: "
+			"larger values produce more rolling resistance for the same friction coefficient."
+		);
 
 		this->targetId->setVisible(false);
 	}
@@ -9949,6 +10200,7 @@ namespace NOWA
 
 		clonedJointCompPtr->setRadius(this->radius->getReal());
 		clonedJointCompPtr->setRollingFrictionCoefficient(this->rollingFrictionCoefficient->getReal());
+		clonedJointCompPtr->setContactTrail(this->contactTrail->getReal());
 
 		clonedGameObjectPtr->addComponent(clonedJointCompPtr);
 		clonedJointCompPtr->setOwner(clonedGameObjectPtr);
@@ -9970,6 +10222,11 @@ namespace NOWA
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "JointFrictionCoefficient")
 		{
 			this->rollingFrictionCoefficient->setValue(XMLConverter::getAttribReal(propertyElement, "data", 0.5f));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "JointContactTrail")
+		{
+			this->contactTrail->setValue(XMLConverter::getAttribReal(propertyElement, "data", 0.0f));
 			propertyElement = propertyElement->next_sibling("property");
 		}
 		return true;
@@ -10050,6 +10307,14 @@ namespace NOWA
 		this->internalReleaseJoint();
 		this->joint = new OgreNewt::CustomDryRollingFriction(this->body, predecessorBody, this->rollingFrictionCoefficient->getReal());
 		
+		if (auto* dryJoint = dynamic_cast<OgreNewt::CustomDryRollingFriction*>(this->joint))
+		{
+			dryJoint->setFrictionCoefficient(this->rollingFrictionCoefficient->getReal());
+			dryJoint->setContactTrail(this->contactTrail->getReal());
+		}
+
+		this->jointAlreadyCreated = true;
+
 		return true;
 	}
 	
@@ -10064,6 +10329,10 @@ namespace NOWA
 		else if (JointDryRollingFrictionComponent::AttrFrictionCoefficient() == attribute->getName())
 		{
 			this->setRollingFrictionCoefficient(attribute->getReal());
+		}
+		else if (JointDryRollingFrictionComponent::AttrContactTrail() == attribute->getName())
+		{
+			this->setContactTrail(attribute->getReal());
 		}
 	}
 	
@@ -10089,6 +10358,12 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("name", "JointFrictionCoefficient"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->rollingFrictionCoefficient->getReal())));
 		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "JointContactTrail"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->contactTrail->getReal())));
+		propertiesXML->append_node(propertyXML);
 	}
 
 	void JointDryRollingFrictionComponent::setRadius(Ogre::Real radius)
@@ -10104,11 +10379,31 @@ namespace NOWA
 	void JointDryRollingFrictionComponent::setRollingFrictionCoefficient(Ogre::Real rollingFrictionCoefficient)
 	{
 		this->rollingFrictionCoefficient->setValue(rollingFrictionCoefficient);
+
+		if (auto* dryJoint = dynamic_cast<OgreNewt::CustomDryRollingFriction*>(this->joint))
+		{
+			dryJoint->setFrictionCoefficient(rollingFrictionCoefficient);
+		}
 	}
 
 	Ogre::Real JointDryRollingFrictionComponent::getRollingFrictionCoefficient(void) const
 	{
 		return this->rollingFrictionCoefficient->getReal();
+	}
+
+	void JointDryRollingFrictionComponent::setContactTrail(Ogre::Real contactTrail)
+	{
+		this->contactTrail->setValue(contactTrail);
+
+		if (auto* dryJoint = dynamic_cast<OgreNewt::CustomDryRollingFriction*>(this->joint))
+		{
+			dryJoint->setContactTrail(contactTrail);
+		}
+	}
+
+	Ogre::Real JointDryRollingFrictionComponent::getContactTrail(void) const
+	{
+		return this->contactTrail->getReal();
 	}
 
 	/*******************************JointGearComponent*******************************/

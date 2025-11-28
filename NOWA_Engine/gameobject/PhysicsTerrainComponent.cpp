@@ -83,7 +83,7 @@ namespace NOWA
 		// Collision for static objects
 		OgreNewt::CollisionPtr staticCollision;
 
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsComponent::createHeightFieldCollision", _3(terra, overwrite, &staticCollision),
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this, terra, overwrite, &staticCollision]()
 		{
 			if (false == this->serialize->getBool())
 			{
@@ -105,14 +105,14 @@ namespace NOWA
 				// For more complexe objects its better to serialize the collision hull, so that the creation is a lot of faster next time
 				staticCollision = OgreNewt::CollisionPtr(this->serializeHeightFieldCollision(projectFilePath, this->gameObjectPtr->getCategoryId(), terra, overwrite));
 			}
-		});
+		};
+		NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PhysicsComponent::createHeightFieldCollision");
 
 		if (nullptr == staticCollision)
 		{
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsTerrainComponent] Could create collision file for game object: "
 				+ this->gameObjectPtr->getName() + " and terrain mesh. Maybe the mesh is corrupt.");
-			throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[PhysicsTerrainComponent] Could create collision file for game object: "
-				+ this->gameObjectPtr->getName() + " and terrain mesh. Maybe the mesh is corrupt.\n", "NOWA");
+			staticCollision = this->createHeightFieldCollision(terra);
 		}
 
 		if (nullptr == this->physicsBody)
@@ -122,10 +122,10 @@ namespace NOWA
 			// Set mass to 0 = infinity = static
 			this->physicsBody->setMassMatrix(0.0f, Ogre::Vector3::ZERO);
 
-			// this->physicsBody->setPositionOrientation(this->initialPosition, this->initialOrientation);
+			this->physicsBody->setPositionOrientation(this->initialPosition, this->initialOrientation);
 
-			this->setPosition(this->gameObjectPtr->getSceneNode()->getPosition());
-			this->setOrientation(this->gameObjectPtr->getSceneNode()->getOrientation());
+			// this->setPosition(this->gameObjectPtr->getSceneNode()->getPosition());
+			// this->setOrientation(this->gameObjectPtr->getSceneNode()->getOrientation());
 
 			this->physicsBody->setUserData(OgreNewt::Any(dynamic_cast<PhysicsComponent*>(this)));
 
@@ -203,7 +203,7 @@ namespace NOWA
 			bool isGlobal = this->gameObjectPtr->getGlobal();
 			if (false == isGlobal)
 			{
-				Ogre::String sourceCollisionFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName() + "/" + this->gameObjectPtr->getName() + ".col";
+				Ogre::String sourceCollisionFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName() + "/" + this->gameObjectPtr->getName() + ".ply";
 				try
 				{
 					DeleteFile(sourceCollisionFilePathName.c_str());
@@ -215,7 +215,7 @@ namespace NOWA
 			}
 			else
 			{
-				Ogre::String sourceCollisionFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + this->gameObjectPtr->getName() + ".col";
+				Ogre::String sourceCollisionFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + this->gameObjectPtr->getName() + ".ply";
 				try
 				{
 					DeleteFile(sourceCollisionFilePathName.c_str());
@@ -263,8 +263,8 @@ namespace NOWA
 				// this->destroyCollision();
 			}
 
-			Ogre::String sourceCollisionFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + this->gameObjectPtr->getName() + ".col";
-			Ogre::String destinationCollisionFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName() + "/" + this->gameObjectPtr->getName() + ".col";
+			Ogre::String sourceCollisionFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + this->gameObjectPtr->getName() + ".ply";
+			Ogre::String destinationCollisionFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName() + "/" + this->gameObjectPtr->getName() + ".ply";
 			CopyFile(sourceCollisionFilePathName.c_str(), destinationCollisionFilePathName.c_str(), false);
 
 			try
@@ -286,8 +286,8 @@ namespace NOWA
 				// this->destroyCollision();
 			}
 
-			Ogre::String sourceCollisionFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName() + "/" + this->gameObjectPtr->getName() + ".col";
-			Ogre::String destinationCollisionFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + this->gameObjectPtr->getName() + ".col";
+			Ogre::String sourceCollisionFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName() + "/" + this->gameObjectPtr->getName() + ".ply";
+			Ogre::String destinationCollisionFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + this->gameObjectPtr->getName() + ".ply";
 			CopyFile(sourceCollisionFilePathName.c_str(), destinationCollisionFilePathName.c_str(), false);
 
 			try

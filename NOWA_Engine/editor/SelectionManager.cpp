@@ -112,7 +112,7 @@ namespace NOWA
 		this->selectionNode = nullptr;  // if you want
 
 		// Step 3: Enqueue destruction command with copies, no this capture
-		ENQUEUE_RENDER_COMMAND_MULTI("SelectionManager::~SelectionManager", _5(selectionRectCopy, selectionNodeCopy, sceneManagerCopy, selectQueryCopy, volumeQueryCopy),
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("SelectionManager::~SelectionManager", _5(selectionRectCopy, selectionNodeCopy, sceneManagerCopy, selectQueryCopy, volumeQueryCopy),
 		{
 			if (selectionRectCopy && selectionNodeCopy)
 			{
@@ -243,7 +243,7 @@ namespace NOWA
 				Ogre::Real absX = evt.state.X.abs;
 				Ogre::Real absY = evt.state.Y.abs;
 
-				ENQUEUE_RENDER_COMMAND_MULTI("SelectionManager::handleMousePress select", _2(absX, absY),
+				ENQUEUE_RENDER_COMMAND_MULTI_WAIT("SelectionManager::handleMousePress select", _2(absX, absY),
 				{
 					// true at the end: raycast from point does not work correctly so far
 					GameObject* selectedGameObject = AppStateManager::getSingletonPtr()->getGameObjectController()->selectGameObject(absX, absY, this->camera, this->selectQuery, true);
@@ -349,7 +349,7 @@ namespace NOWA
 	{
 		this->categories = categories;
 		this->categoryId = AppStateManager::getSingletonPtr()->getGameObjectController()->generateCategoryId(categories);
-		ENQUEUE_RENDER_COMMAND("SelectionManager::filterCategories",
+		ENQUEUE_RENDER_COMMAND_WAIT("SelectionManager::filterCategories",
 		{
 			this->volumeQuery->setQueryMask(this->categoryId);
 			this->selectQuery->setQueryMask(this->categoryId);
@@ -452,7 +452,7 @@ namespace NOWA
 			top = (2.0f * (1.0f - top)) - 1.0f;
 			bottom = (2.0f * (1.0f - bottom)) - 1.0f;
 
-			ENQUEUE_RENDER_COMMAND_MULTI("SelectionManager::selectGameObjects1", _10(left, right, top, bottom, viewMatrix, projMatrix, camPos, vol, frontDistance, backDistance),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("SelectionManager::selectGameObjects1", _10(left, right, top, bottom, viewMatrix, projMatrix, camPos, vol, frontDistance, backDistance),
 			{
 				Ogre::PlaneBoundedVolumeList volList;
 				volList.push_back(vol);

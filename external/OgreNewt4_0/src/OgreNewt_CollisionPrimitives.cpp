@@ -34,7 +34,8 @@ namespace OgreNewt
 		}
 
 		Box::Box(const World* world, const Ogre::Vector3& size, unsigned int id,
-			const Ogre::Quaternion& orient, const Ogre::Vector3& pos) : ConvexCollision(world)
+			const Ogre::Quaternion& orient, const Ogre::Vector3& pos)
+			: ConvexCollision(world)
 		{
 			if (m_col)
 				m_col->Release();
@@ -68,7 +69,8 @@ namespace OgreNewt
 			}
 		}
 
-		Cylinder::Cylinder(const World* world) : ConvexCollision(world)
+		Cylinder::Cylinder(const World* world)
+			: ConvexCollision(world)
 		{
 		}
 
@@ -87,7 +89,8 @@ namespace OgreNewt
 		}
 
 		Capsule::Capsule(const World* world, Ogre::Real radius, Ogre::Real height, unsigned int id,
-			const Ogre::Quaternion& orient, const Ogre::Vector3& pos) : ConvexCollision(world)
+			const Ogre::Quaternion& orient, const Ogre::Vector3& pos)
+			: ConvexCollision(world)
 		{
 			if (m_col)
 				m_col->Release();
@@ -106,7 +109,8 @@ namespace OgreNewt
 			m_col = m_shapeInstance->GetShape();
 		}
 
-		Cone::Cone(const World* world) : ConvexCollision(world)
+		Cone::Cone(const World* world)
+			: ConvexCollision(world)
 		{
 		}
 
@@ -125,7 +129,8 @@ namespace OgreNewt
 		}
 
 		ChamferCylinder::ChamferCylinder(const World* world, Ogre::Real radius, Ogre::Real height, unsigned int id,
-			const Ogre::Quaternion& orient, const Ogre::Vector3& pos) : ConvexCollision(world)
+			const Ogre::Quaternion& orient, const Ogre::Vector3& pos)
+			: ConvexCollision(world)
 		{
 			if (m_col)
 				m_col->Release();
@@ -145,13 +150,20 @@ namespace OgreNewt
 		{
 			OGRE_ASSERT_LOW(obj);
 			Ogre::Vector3 scale(1, 1, 1);
+
 			if (Ogre::Node* node = obj->getParentNode())
 				scale = node->_getDerivedScaleUpdated();
+
 			if (forceScale != Ogre::Vector3::ZERO)
 				scale = forceScale;
 
 			Ogre::v1::MeshPtr mesh = obj->getMesh();
-			if (mesh.isNull()) { m_shapeInstance = nullptr; m_col = nullptr; return; }
+			if (mesh.isNull())
+			{
+				m_shapeInstance = nullptr;
+				m_col = nullptr;
+				return;
+			}
 
 			const unsigned short subCount = mesh->getNumSubMeshes();
 			size_t totalVerts = 0;
@@ -161,17 +173,31 @@ namespace OgreNewt
 			for (unsigned short i = 0; i < subCount; ++i)
 			{
 				Ogre::v1::SubMesh* sub = mesh->getSubMesh(i);
-				if (!sub) continue;
+
+				if (!sub)
+					continue;
+
 				Ogre::v1::VertexData* vdata = nullptr;
-				if (sub->useSharedVertices) {
-					if (!sharedAdded) { vdata = mesh->sharedVertexData[0]; sharedAdded = true; }
+				if (sub->useSharedVertices)
+				{
+					if (!sharedAdded)
+					{
+						vdata = mesh->sharedVertexData[0];
+						sharedAdded = true;
+					}
 				}
-				else {
+				else
+				{
 					vdata = sub->vertexData[0];
 				}
 				if (vdata) totalVerts += vdata->vertexCount;
 			}
-			if (totalVerts < 4) { m_shapeInstance = nullptr; m_col = nullptr; return; }
+			if (totalVerts < 4)
+			{
+				m_shapeInstance = nullptr;
+				m_col = nullptr;
+				return;
+			}
 
 			// Pass 2: read positions -> temp CPU array of Ogre::Vector3
 			std::vector<Ogre::Vector3> verts;
@@ -184,27 +210,34 @@ namespace OgreNewt
 				if (!sub) continue;
 
 				Ogre::v1::VertexData* vdata = nullptr;
-				if (sub->useSharedVertices) {
-					if (!sharedAdded) { vdata = mesh->sharedVertexData[0]; sharedAdded = true; }
+				if (sub->useSharedVertices)
+				{
+					if (!sharedAdded)
+					{
+						vdata = mesh->sharedVertexData[0];
+						sharedAdded = true;
+					}
 				}
-				else {
+				else
+				{
 					vdata = sub->vertexData[0];
 				}
-				if (!vdata) continue;
 
-				const Ogre::v1::VertexElement* posElem =
-					vdata->vertexDeclaration->findElementBySemantic(Ogre::VES_POSITION);
-				if (!posElem) continue;
+				if (!vdata)
+					continue;
+
+				const Ogre::v1::VertexElement* posElem = vdata->vertexDeclaration->findElementBySemantic(Ogre::VES_POSITION);
+				if (!posElem)
+					continue;
 
 				const size_t start = vdata->vertexStart;
 				const size_t vCount = vdata->vertexCount;
 
-				Ogre::v1::HardwareVertexBufferSharedPtr vbuf =
-					vdata->vertexBufferBinding->getBuffer(posElem->getSource());
-				if (!vbuf) continue;
+				Ogre::v1::HardwareVertexBufferSharedPtr vbuf = vdata->vertexBufferBinding->getBuffer(posElem->getSource());
+				if (!vbuf)
+					continue;
 
-				unsigned char* base = static_cast<unsigned char*>(
-					vbuf->lock(Ogre::v1::HardwareBuffer::HBL_READ_ONLY));
+				unsigned char* base = static_cast<unsigned char*>(vbuf->lock(Ogre::v1::HardwareBuffer::HBL_READ_ONLY));
 				const size_t stride = vbuf->getVertexSize();
 
 				for (size_t j = 0; j < vCount; ++j)
@@ -224,14 +257,23 @@ namespace OgreNewt
 			{
 				// optional: compute bbox for adaptive tolerance
 				Ogre::AxisAlignedBox aabb;
-				for (const auto& v : verts) if (IsFiniteVec3(v)) aabb.merge(v);
+				for (const auto& v : verts)
+				{
+					if (IsFiniteVec3(v))
+						aabb.merge(v);
+				}
+
 				const Ogre::Real diag = aabb.isNull() ? Ogre::Real(1) : aabb.getSize().length();
-				if (tolerance <= 0) tolerance = std::max<Ogre::Real>(diag * Ogre::Real(1e-4), 1e-6f);
+
+				if (tolerance <= 0)
+					tolerance = std::max<Ogre::Real>(diag * Ogre::Real(1e-4), 1e-6f);
 
 				// dedup + push
 				for (const auto& v : verts)
 				{
-					if (!IsFiniteVec3(v)) continue;
+					if (!IsFiniteVec3(v))
+						continue;
+
 					bool dup = false;
 					// cheap linear dedup (ok for typical mesh vertex counts for hulls)
 					for (size_t i = 0; i + 2 < points.size(); i += 3)
@@ -239,33 +281,44 @@ namespace OgreNewt
 						const float dx = points[i + 0] - v.x;
 						const float dy = points[i + 1] - v.y;
 						const float dz = points[i + 2] - v.z;
-						if (dx * dx + dy * dy + dz * dz <= dedupEps2) { dup = true; break; }
+						if (dx * dx + dy * dy + dz * dz <= dedupEps2)
+						{
+							dup = true;
+							break;
+						}
 					}
-					if (!dup) { points.push_back(v.x); points.push_back(v.y); points.push_back(v.z); }
+					if (!dup)
+					{
+						points.push_back(v.x);
+						points.push_back(v.y);
+						points.push_back(v.z);
+					}
 				}
 			}
 
-			if (points.size() < 12) { // < 4 points
-				m_shapeInstance = nullptr; m_col = nullptr; return;
+			if (points.size() < 12)
+			{ // < 4 points
+				m_shapeInstance = nullptr;
+				m_col = nullptr;
+				return;
 			}
 
-			if (m_col) m_col->Release();
+			if (m_col)
+				m_col->Release();
 
 			const ndInt32 count = ndInt32(points.size() / 3);
 			const ndInt32 stride = ndInt32(sizeof(ndFloat32) * 3); // tightly packed floats
 
-			m_shapeInstance = new ndShapeInstance(
-				new ndShapeConvexHull(count, stride, ndFloat32(tolerance),
-					reinterpret_cast<const ndFloat32*>(&points[0])));
-			m_col = m_shapeInstance->GetShape();
+			m_shapeInstance = new ndShapeInstance(new ndShapeConvexHull(count, stride, ndFloat32(tolerance), reinterpret_cast<const ndFloat32*>(&points[0])));
 
 			ndMatrix localM;
 			OgreNewt::Converters::QuatPosToMatrix(orient, pos, localM);
 			m_shapeInstance->SetLocalMatrix(localM);
+
+			m_col = m_shapeInstance->GetShape();
 		}
 
-		ConvexHull::ConvexHull(const World* world, Ogre::Item* item, unsigned int id,
-			const Ogre::Quaternion& orient, const Ogre::Vector3& pos,
+		ConvexHull::ConvexHull(const World* world, Ogre::Item* item, unsigned int id, const Ogre::Quaternion& orient, const Ogre::Vector3& pos,
 			Ogre::Real tolerance, const Ogre::Vector3& forceScale)
 			: ConvexCollision(world)
 		{
@@ -274,6 +327,7 @@ namespace OgreNewt
 			Ogre::Vector3 scale(1, 1, 1);
 			if (Ogre::Node* node = item->getParentNode())
 				scale = node->_getDerivedScaleUpdated();
+
 			if (forceScale != Ogre::Vector3::ZERO)
 				scale = forceScale;
 
@@ -285,9 +339,12 @@ namespace OgreNewt
 			{
 				for (Ogre::SubMesh* sub : mesh->getSubMeshes())
 				{
-					if (!sub) continue;
+					if (!sub)
+						continue;
+
 					const Ogre::VertexArrayObjectArray& vaos = sub->mVao[0]; // VpNormal
-					if (vaos.empty()) continue;
+					if (vaos.empty())
+						continue;
 
 					Ogre::VertexArrayObject* vao = vaos[0];
 
@@ -307,9 +364,7 @@ namespace OgreNewt
 							for (size_t i = 0; i < count; ++i)
 							{
 								const Ogre::uint16* p = reinterpret_cast<const Ogre::uint16*>(reqs[0].data);
-								Ogre::Vector3 v(Ogre::Bitwise::halfToFloat(p[0]),
-									Ogre::Bitwise::halfToFloat(p[1]),
-									Ogre::Bitwise::halfToFloat(p[2]));
+								Ogre::Vector3 v(Ogre::Bitwise::halfToFloat(p[0]), Ogre::Bitwise::halfToFloat(p[1]), Ogre::Bitwise::halfToFloat(p[2]));
 								reqs[0].data += vb->getBytesPerElement();
 								verts.push_back(v * scale);
 							}
@@ -331,16 +386,31 @@ namespace OgreNewt
 			}
 
 			// Need at least 4 points
-			if (verts.size() < 4) { if (m_col) m_col->Release(); m_shapeInstance = nullptr; m_col = nullptr; return; }
+			if (verts.size() < 4)
+			{
+				if (m_col)
+				{
+					m_col->Release();
+					m_shapeInstance = nullptr;
+					m_col = nullptr;
+					return;
+				}
+			}
 
 			// Clean & convert to contiguous ndFloat32 buffer
 			const float dedupEps2 = 1e-16f;
 
 			// Optional: adaptive tolerance
 			Ogre::AxisAlignedBox aabb;
-			for (const auto& v : verts) if (IsFiniteVec3(v)) aabb.merge(v);
+			for (const auto& v : verts)
+			{
+				if (IsFiniteVec3(v))
+					aabb.merge(v);
+			}
 			const Ogre::Real diag = aabb.isNull() ? Ogre::Real(1) : aabb.getSize().length();
-			if (tolerance <= 0) tolerance = std::max<Ogre::Real>(diag * Ogre::Real(1e-4), 1e-6f);
+
+			if (tolerance <= 0)
+				tolerance = std::max<Ogre::Real>(diag * Ogre::Real(1e-4), 1e-6f);
 
 			std::vector<ndFloat32> points; points.reserve(verts.size() * 3);
 			for (const auto& v : verts)
@@ -352,21 +422,38 @@ namespace OgreNewt
 					const float dx = points[i + 0] - v.x;
 					const float dy = points[i + 1] - v.y;
 					const float dz = points[i + 2] - v.z;
-					if (dx * dx + dy * dy + dz * dz <= dedupEps2) { dup = true; break; }
+					if (dx * dx + dy * dy + dz * dz <= dedupEps2)
+					{
+						dup = true;
+						break;
+					}
 				}
-				if (!dup) { points.push_back(v.x); points.push_back(v.y); points.push_back(v.z); }
+				if (!dup)
+				{
+					points.push_back(v.x);
+					points.push_back(v.y);
+					points.push_back(v.z);
+				}
 			}
 
-			if (points.size() < 12) { if (m_col) m_col->Release(); m_shapeInstance = nullptr; m_col = nullptr; return; }
+			if (points.size() < 12)
+			{
+				if (m_col)
+				{
+					m_col->Release();
+					m_shapeInstance = nullptr;
+					m_col = nullptr;
+					return;
+				}
+			}
 
-			if (m_col) m_col->Release();
+			if (m_col)
+				m_col->Release();
 
 			const ndInt32 count = ndInt32(points.size() / 3);
 			const ndInt32 stride = ndInt32(sizeof(ndFloat32) * 3); // tightly packed XYZ floats
 
-			m_shapeInstance = new ndShapeInstance(
-				new ndShapeConvexHull(count, stride, ndFloat32(tolerance),
-					reinterpret_cast<const ndFloat32*>(&points[0])));
+			m_shapeInstance = new ndShapeInstance(new ndShapeConvexHull(count, stride, ndFloat32(tolerance), reinterpret_cast<const ndFloat32*>(&points[0])));
 			m_col = m_shapeInstance->GetShape();
 
 			ndMatrix localM;
@@ -375,7 +462,8 @@ namespace OgreNewt
 		}
 
 		ConvexHull::ConvexHull(const World* world, const Ogre::Vector3* verts, int vertcount, unsigned int id,
-			const Ogre::Quaternion& orient, const Ogre::Vector3& pos, Ogre::Real tolerance) : ConvexCollision(world)
+			const Ogre::Quaternion& orient, const Ogre::Vector3& pos, Ogre::Real tolerance)
+			: ConvexCollision(world)
 		{
 			if (m_col)
 				m_col->Release();
@@ -407,8 +495,7 @@ namespace OgreNewt
 		{
 		}
 
-		OgreNewt::CollisionPrimitives::TreeCollision::TreeCollision(
-			const OgreNewt::World* world, Ogre::v1::Entity* obj,
+		OgreNewt::CollisionPrimitives::TreeCollision::TreeCollision(const OgreNewt::World* world, Ogre::v1::Entity* obj,
 			bool optimize, unsigned int id, FaceWinding fw)
 			: Collision(world)
 		{
@@ -419,7 +506,9 @@ namespace OgreNewt
 			// Flip winding if mirrored scale
 			FaceWinding localFw = fw;
 			if (scale.x * scale.y * scale.z < 0.0f)
+			{
 				localFw = (fw == FW_DEFAULT) ? FW_REVERSE : FW_DEFAULT;
+			}
 
 			if (m_col)
 				m_col->Release();
@@ -437,11 +526,12 @@ namespace OgreNewt
 
 				// --- Resolve vertex data (shared counted only once per sub that uses it) ---
 				Ogre::v1::VertexData* vData = sub->useSharedVertices ? mesh->sharedVertexData[0] : sub->vertexData[0];
-				if (!vData) continue;
+				if (!vData)
+					continue;
 
-				const Ogre::v1::VertexElement* posElem =
-					vData->vertexDeclaration->findElementBySemantic(Ogre::VES_POSITION);
-				if (!posElem) continue;
+				const Ogre::v1::VertexElement* posElem = vData->vertexDeclaration->findElementBySemantic(Ogre::VES_POSITION);
+				if (!posElem)
+					continue;
 
 				// Respect vertexStart when addressing vertices
 				const size_t vStart = vData->vertexStart;
@@ -451,24 +541,35 @@ namespace OgreNewt
 					vData->vertexBufferBinding->getBuffer(posElem->getSource());
 				if (!vBuf) continue;
 
-				unsigned char* vBase = static_cast<unsigned char*>(
-					vBuf->lock(Ogre::v1::HardwareBuffer::HBL_READ_ONLY));
+				unsigned char* vBase = static_cast<unsigned char*>(vBuf->lock(Ogre::v1::HardwareBuffer::HBL_READ_ONLY));
 				const size_t vStride = vBuf->getVertexSize();
 
 				// --- Resolve index data (respect indexStart / indexCount) ---
 				Ogre::v1::IndexData* iData = sub->indexData[0];
-				if (!iData) { vBuf->unlock(); continue; }
+				if (!iData)
+				{
+					vBuf->unlock();
+					continue;
+				}
 
 				Ogre::v1::HardwareIndexBufferSharedPtr iBuf = iData->indexBuffer;
-				if (iBuf.isNull()) { vBuf->unlock(); continue; }
+				if (iBuf.isNull())
+				{
+					vBuf->unlock();
+					continue;
+				}
 
 				const bool use32 = (iBuf->getType() == Ogre::v1::HardwareIndexBuffer::IT_32BIT);
 				const size_t iStart = iData->indexStart;   // first index to read
 				const size_t iCount = iData->indexCount;   // how many indices to read
-				if (iCount < 3) { vBuf->unlock(); continue; }
 
-				unsigned char* iBase = static_cast<unsigned char*>(
-					iBuf->lock(Ogre::v1::HardwareBuffer::HBL_READ_ONLY));
+				if (iCount < 3)
+				{
+					vBuf->unlock();
+					continue;
+				}
+
+				unsigned char* iBase = static_cast<unsigned char*>(iBuf->lock(Ogre::v1::HardwareBuffer::HBL_READ_ONLY));
 
 				const size_t indexSize = iBuf->getIndexSize();
 				// Safety: indexSize must match use32
@@ -521,6 +622,7 @@ namespace OgreNewt
 							n = Ogre::Vector3::UNIT_Y;
 						else
 							n.normalise();
+
 						const Ogre::Real EPS = 1e-4f;
 						vtx[0] += n * EPS;
 						vtx[1] += n * EPS * 0.5f;
@@ -610,10 +712,7 @@ namespace OgreNewt
 					for (size_t i = 0;i < vCount;++i)
 					{
 						const Ogre::uint16* p = reinterpret_cast<const Ogre::uint16*>(vReqs[0].data);
-						verts[i] = Ogre::Vector3(
-							Ogre::Bitwise::halfToFloat(p[0]),
-							Ogre::Bitwise::halfToFloat(p[1]),
-							Ogre::Bitwise::halfToFloat(p[2])) * scale;
+						verts[i] = Ogre::Vector3(Ogre::Bitwise::halfToFloat(p[0]), Ogre::Bitwise::halfToFloat(p[1]), Ogre::Bitwise::halfToFloat(p[2])) * scale;
 						vReqs[0].data += vb->getBytesPerElement();
 					}
 				}
@@ -647,6 +746,7 @@ namespace OgreNewt
 					{
 						if (a >= verts.size() || b >= verts.size() || c >= verts.size())
 							return;
+
 						Ogre::Vector3 v0 = verts[a], v1 = verts[b], v2 = verts[c];
 						Ogre::Vector3 e1 = v1 - v0, e2 = v2 - v0, n = e1.crossProduct(e2);
 						if (n.squaredLength() < 1e-16f)
@@ -701,11 +801,8 @@ namespace OgreNewt
 			m_col = m_shapeInstance->GetShape();
 		}
 
-		OgreNewt::CollisionPrimitives::TreeCollision::TreeCollision(
-			const OgreNewt::World* world,
-			int numVertices, int numIndices,
-			const float* vertices, const int* indices,
-			bool optimize, unsigned int id, FaceWinding fw)
+		OgreNewt::CollisionPrimitives::TreeCollision::TreeCollision(const OgreNewt::World* world, int numVertices, int numIndices,
+			const float* vertices, const int* indices, bool optimize, unsigned int id, FaceWinding fw)
 			: Collision(world)
 		{
 			if (m_col)
@@ -745,18 +842,9 @@ namespace OgreNewt
 					i0 >= numVertices || i1 >= numVertices || i2 >= numVertices)
 					continue;
 
-				Ogre::Vector3 a(
-					vertices[i0 * 3 + 0],
-					vertices[i0 * 3 + 1],
-					vertices[i0 * 3 + 2]);
-				Ogre::Vector3 b(
-					vertices[i1 * 3 + 0],
-					vertices[i1 * 3 + 1],
-					vertices[i1 * 3 + 2]);
-				Ogre::Vector3 c(
-					vertices[i2 * 3 + 0],
-					vertices[i2 * 3 + 1],
-					vertices[i2 * 3 + 2]);
+				Ogre::Vector3 a(vertices[i0 * 3 + 0], vertices[i0 * 3 + 1], vertices[i0 * 3 + 2]);
+				Ogre::Vector3 b(vertices[i1 * 3 + 0], vertices[i1 * 3 + 1], vertices[i1 * 3 + 2]);
+				Ogre::Vector3 c(vertices[i2 * 3 + 0], vertices[i2 * 3 + 1], vertices[i2 * 3 + 2]);
 
 				// ----------------------------------------------------------------
 				// 3. Gentle extrusion for degenerate faces (ND4-safe)
@@ -808,14 +896,8 @@ namespace OgreNewt
 			m_col = m_shapeInstance->GetShape();
 		}
 
-		TreeCollision::TreeCollision(
-			const World* world,
-			int numVertices,
-			Ogre::Vector3* vertices,
-			Ogre::v1::IndexData* indexData,
-			bool optimize,
-			unsigned int id,
-			FaceWinding fw)
+		TreeCollision::TreeCollision(const World* world, int numVertices, Ogre::Vector3* vertices,
+			Ogre::v1::IndexData* indexData, bool optimize, unsigned int id, FaceWinding fw)
 			: Collision(world)
 		{
 			m_categoryId = id;
@@ -875,9 +957,7 @@ namespace OgreNewt
 				const uint32_t i1 = readIndex(indexStart + t * 3 + 1);
 				const uint32_t i2 = readIndex(indexStart + t * 3 + 2);
 
-				if (i0 >= static_cast<uint32_t>(numVertices) ||
-					i1 >= static_cast<uint32_t>(numVertices) ||
-					i2 >= static_cast<uint32_t>(numVertices))
+				if (i0 >= static_cast<uint32_t>(numVertices) || i1 >= static_cast<uint32_t>(numVertices) || i2 >= static_cast<uint32_t>(numVertices))
 					continue;
 
 				Ogre::Vector3 vtx[3];
@@ -995,7 +1075,13 @@ namespace OgreNewt
 			if (m_col)
 				m_col->Release();
 
-			// Create Newton 4.0 heightfield
+			if (m_shapeInstance)
+			{
+				delete m_shapeInstance;
+				m_shapeInstance = nullptr;
+			}
+
+			// 1) Create Newton 4.0 heightfield shape
 			ndShapeHeightfield* heightfield = new ndShapeHeightfield(
 				width,
 				height,
@@ -1004,20 +1090,30 @@ namespace OgreNewt
 				ndFloat32(horizontalScaleZ)
 			);
 
+			// 2) Wrap in shape instance
 			m_shapeInstance = new ndShapeInstance(heightfield);
 			m_col = m_shapeInstance->GetShape();
 
-			// Copy elevation data
+			// 3) Apply local transform from position/orientation
+			{
+				ndMatrix localM;
+				OgreNewt::Converters::QuatPosToMatrix(orientation, position, localM);
+				m_shapeInstance->SetLocalMatrix(localM);
+			}
+
+			// 4) Copy elevation data with vertical scale
 			ndArray<ndFloat32>& elevations = heightfield->GetElevationMap();
-			for (int i = 0; i < width * height; i++)
+			const int count = width * height;
+			for (int i = 0; i < count; ++i)
 			{
 				elevations[i] = ndFloat32(elevationMap[i] * verticleScale);
 			}
 
-			// Update AABB after setting elevation data
+			// 5) Update AABB after setting elevation data
 			heightfield->UpdateElevationMapAabb();
 
-			m_col = heightfield;
+			// IMPORTANT: do NOT reset m_col to the raw heightfield here.
+			// m_col already points to the shape owned by m_shapeInstance.
 		}
 
 		void HeightField::setFaceId(unsigned int faceId)
@@ -1034,10 +1130,7 @@ namespace OgreNewt
 		{
 		}
 
-		CompoundCollision::CompoundCollision(
-			const World* world,
-			std::vector<OgreNewt::CollisionPtr> col_array,
-			unsigned int id)
+		CompoundCollision::CompoundCollision(const World* world, std::vector<OgreNewt::CollisionPtr> col_array, unsigned int id)
 			: Collision(world)
 		{
 			if (m_col)
@@ -1110,4 +1203,5 @@ namespace OgreNewt
 		}
 
 	}   // end namespace CollisionPrimitives
+
 }   // end namespace OgreNewt

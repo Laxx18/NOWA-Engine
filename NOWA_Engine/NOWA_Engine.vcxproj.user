@@ -24,6 +24,7 @@
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
     <LocalDebuggerCommand>$(NOWA)\bin\Release\NOWA_Design.exe</LocalDebuggerCommand>
     <LocalDebuggerCommandArguments>ogre.cfg</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArgumentsHistory>ogre.cfg|</LocalDebuggerCommandArgumentsHistory>
   </PropertyGroup>
   <PropertyGroup>
     <ShowAllFiles>false</ShowAllFiles>

@@ -278,11 +278,14 @@ namespace OgreNewt
 		if (!world)
 			return;
 
-		ndShape* shape = const_cast<ndShape*>(col->getNewtonCollision());
-		if (!shape)
+		// Prefer the collision's ndShapeInstance if it has one (keeps local transform)
+		ndShapeInstance* srcInst = col->getShapeInstance();
+		if (!srcInst && !col->getNewtonCollision())
 			return;
 
-		ndShapeInstance shapeCopy(shape);
+		ndShapeInstance shapeCopy = srcInst
+			? ndShapeInstance(*srcInst)                          // copy instance incl. local matrix
+			: ndShapeInstance(col->getNewtonCollision());        // fallback: build from raw shape
 
 		// create trigger volume adapter
 		auto* trigger = new OgreNewtBuoyancyTriggerVolume(m_buoyancyForceTriggerCallback);
@@ -295,6 +298,7 @@ namespace OgreNewt
 		// assign BodyNotify to sync scene nodes
 		if (!m_bodyNotify)
 			m_bodyNotify = new BodyNotify(this);
+
 		trigger->SetNotifyCallback(m_bodyNotify);
 		m_body = trigger;
 	}

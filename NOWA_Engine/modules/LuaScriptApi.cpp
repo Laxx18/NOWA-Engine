@@ -8844,9 +8844,9 @@ namespace NOWA
 			"Note: This function is dangerous and may cause a crash, because an inconsistent behavior may happen.");
 
 		module(lua)
-			[
-				class_<JointHingeComponent, JointComponent>("JointHingeComponent")
-				// // .def("clone", &JointHingeComponent::clone)
+		[
+			class_<JointHingeComponent, JointComponent>("JointHingeComponent")
+			// // .def("clone", &JointHingeComponent::clone)
 			.def("setAnchorPosition", &JointHingeComponent::setAnchorPosition)
 			.def("getAnchorPosition", &JointHingeComponent::getAnchorPosition)
 			.def("setPin", &JointHingeComponent::setPin)
@@ -8867,7 +8867,7 @@ namespace NOWA
 			.def("getBreakForce", &JointHingeComponent::getBreakForce)
 			.def("setBreakTorque", &JointHingeComponent::setBreakTorque)
 			.def("getBreakTorque", &JointHingeComponent::getBreakTorque)
-			];
+		];
 
 		AddClassToCollection("JointHingeComponent", "class inherits JointComponent", JointHingeComponent::getStaticInfoText());
 		AddClassToCollection("JointHingeComponent", "String getId()", "Gets the id of this joint.");
@@ -8891,9 +8891,9 @@ namespace NOWA
 		AddClassToCollection("JointHingeComponent", "float getBreakTorque()", "Gets break torque that is required to break this joint, so that the go will no longer use the hinge joint.");
 
 		module(lua)
-			[
-				class_<JointHingeActuatorComponent, JointComponent>("JointHingeActuatorComponent")
-				// // .def("clone", &JointHingeActuatorComponent::clone)
+		[
+			class_<JointHingeActuatorComponent, JointComponent>("JointHingeActuatorComponent")
+			// // .def("clone", &JointHingeActuatorComponent::clone)
 			.def("setAnchorPosition", &JointHingeActuatorComponent::setAnchorPosition)
 			.def("getAnchorPosition", &JointHingeActuatorComponent::getAnchorPosition)
 			.def("setPin", &JointHingeActuatorComponent::setPin)
@@ -8915,7 +8915,7 @@ namespace NOWA
 			.def("setSpring", (void (JointHingeActuatorComponent::*)(bool, bool)) & JointHingeActuatorComponent::setSpring)
 			.def("setSpring", (void (JointHingeActuatorComponent::*)(bool, bool, Ogre::Real, Ogre::Real, Ogre::Real)) & JointHingeActuatorComponent::setSpring)
 			.def("reactOnTargetAngleReached", &JointHingeActuatorComponent::reactOnTargetAngleReached)
-			];
+		];
 
 		AddClassToCollection("JointHingeActuatorComponent", "class inherits JointComponent", JointHingeActuatorComponent::getStaticInfoText());
 		AddClassToCollection("JointHingeActuatorComponent", "String getId()", "Gets the id of this joint.");
@@ -8966,9 +8966,9 @@ namespace NOWA
 
 		
 		module(lua)
-			[
-				class_<JointBallAndSocketComponent, JointComponent>("JointBallAndSocketComponent")
-				// // .def("clone", &JointBallAndSocketComponent::clone)
+		[
+			class_<JointBallAndSocketComponent, JointComponent>("JointBallAndSocketComponent")
+			// // .def("clone", &JointBallAndSocketComponent::clone)
 			.def("setAnchorPosition", &JointBallAndSocketComponent::setAnchorPosition)
 			.def("getAnchorPosition", &JointBallAndSocketComponent::getAnchorPosition)
 			.def("setTwistLimitsEnabled", &JointBallAndSocketComponent::setTwistLimitsEnabled)
@@ -8983,7 +8983,9 @@ namespace NOWA
 			.def("getTwistFriction", &JointBallAndSocketComponent::getTwistFriction)
 			.def("setConeFriction", &JointBallAndSocketComponent::setConeFriction)
 			.def("getConeFriction", &JointBallAndSocketComponent::getConeFriction)
-			];
+			.def("setTwistSpringDamper", (void (JointBallAndSocketComponent::*)(bool)) &JointBallAndSocketComponent::setTwistSpringDamper)
+			.def("setTwistSpringDamper", (void (JointBallAndSocketComponent::*)(bool, Ogre::Real, Ogre::Real, Ogre::Real)) &JointBallAndSocketComponent::setTwistSpringDamper)
+		];
 
 		AddClassToCollection("JointBallAndSocketComponent", "class inherits JointComponent", JointBallAndSocketComponent::getStaticInfoText());
 		AddClassToCollection("JointBallAndSocketComponent", "void setAnchorPosition(Vector3 anchorPosition)", "Sets anchor position where to place the joint. The anchor position is set relative to the global mesh origin.");
@@ -9001,28 +9003,30 @@ namespace NOWA
 		AddClassToCollection("JointBallAndSocketComponent", "float getTwistFriction()", "Gets the twist friction of this joint.");
 		AddClassToCollection("JointBallAndSocketComponent", "void setConeFriction(float friction)", "Sets the cone friction for this joint in order to prevent high peek values.");
 		AddClassToCollection("JointBallAndSocketComponent", "float getConeFriction()", "Gets the cone friction of this joint.");
+		AddClassToCollection("JointBallAndSocketComponent", "void setTwistSpringDamper(bool asSpringDamper)", "Activates the twist spring with currently set spring values.");
+		AddClassToCollection("JointBallAndSocketComponent", "void setTwistSpringDamper(bool asSpringDamper, float springDamperRelaxation, float spring, float damper)", "Sets the twist spring values for this joint. Note: When 'asSpringDamper' is activated the joint will use spring values for twist.");
 
 		module(lua)
-			[
-				class_<JointPinComponent, JointComponent>("JointPinComponent")
-				// // .def("clone", &JointPinComponent::clone)
+		[
+			class_<JointPinComponent, JointComponent>("JointPinComponent")
+			// // .def("clone", &JointPinComponent::clone)
 			.def("setPin", &JointPinComponent::setPin)
 			.def("getPin", &JointPinComponent::getPin)
-			];
+		];
 		AddClassToCollection("JointPinComponent", "class inherits JointComponent", "Derived class from JointComponent. This class can be used to limit rotation to one axis of freedom.");
 		AddClassToCollection("JointPinComponent", "String getId()", "Gets the id of this joint.");
 		AddClassToCollection("JointPinComponent", "void setPin(Vector3 pin)", "Sets pin axis for the joint, to limit rotation to one axis of freedom.");
 		AddClassToCollection("JointPinComponent", "Vector3 getPin()", "Gets joint pin axis.");
 
 		module(lua)
-			[
-				class_<JointPlaneComponent, JointComponent>("JointPlaneComponent")
-				// // .def("clone", &JointPlaneComponent::clone)
+		[
+			class_<JointPlaneComponent, JointComponent>("JointPlaneComponent")
+			// // .def("clone", &JointPlaneComponent::clone)
 			.def("setAnchorPosition", &JointPlaneComponent::setAnchorPosition)
 			.def("getAnchorPosition", &JointPlaneComponent::getAnchorPosition)
 			.def("setNormal", &JointPlaneComponent::setNormal)
 			.def("getNormal", &JointPlaneComponent::getNormal)
-			];
+		];
 		AddClassToCollection("JointPlaneComponent", "class inherits JointComponent", "Derived class from JointComponent. This class can be used to limit position to two axis.");
 		AddClassToCollection("JointPlaneComponent", "String getId()", "Gets the id of this joint.");
 		AddClassToCollection("JointPlaneComponent", "void setAnchorPosition(Vector3 anchorPosition)", "Sets anchor position where to place the joint. The anchor position is set relative to the global mesh origin.");
@@ -9031,9 +9035,9 @@ namespace NOWA
 		AddClassToCollection("JointPlaneComponent", "Vector3 getNormal()", "Gets joint normal axis.");
 
 		module(lua)
-			[
-				class_<JointSpringComponent, JointComponent>("JointSpringComponent")
-				// // .def("clone", &JointSpringComponent::clone)
+		[
+			class_<JointSpringComponent, JointComponent>("JointSpringComponent")
+			// // .def("clone", &JointSpringComponent::clone)
 			.def("setShowLine", &JointSpringComponent::setShowLine)
 			.def("getShowLine", &JointSpringComponent::getShowLine)
 			.def("setAnchorOffsetPosition", &JointSpringComponent::setAnchorOffsetPosition)
@@ -9042,7 +9046,7 @@ namespace NOWA
 			.def("getSpringOffsetPosition", &JointSpringComponent::getSpringOffsetPosition)
 			.def("releaseSpring", &JointSpringComponent::releaseSpring)
 			// .def("drawLine", &JointSpringComponent::drawLine)
-			];
+		];
 		AddClassToCollection("JointSpringComponent", "class inherits JointComponent", "Derived class from JointComponent. With this joint its possible to connect two objects with a spring.");
 		AddClassToCollection("JointSpringComponent", "String getId()", "Gets the id of this joint.");
 		AddClassToCollection("JointSpringComponent", "void setShowLine(bool showLine)", "Sets whether to show the spring line.");
@@ -9054,16 +9058,16 @@ namespace NOWA
 		AddClassToCollection("JointSpringComponent", "void releaseSpring()", "Releases the spring, so that it is no more visible and no spring calculation takes places.");
 
 		module(lua)
-			[
-				class_<JointAttractorComponent, JointComponent>("JointAttractorComponent")
-				// // .def("clone", &JointAttractorComponent::clone)
+		[
+			class_<JointAttractorComponent, JointComponent>("JointAttractorComponent")
+			// // .def("clone", &JointAttractorComponent::clone)
 			.def("setMagneticStrength", &JointAttractorComponent::setMagneticStrength)
 			.def("getMagneticStrength", &JointAttractorComponent::getMagneticStrength)
 			.def("setAttractionDistance", &JointAttractorComponent::setAttractionDistance)
 			.def("getAttractionDistance", &JointAttractorComponent::getAttractionDistance)
 			.def("setRepellerCategory", &JointAttractorComponent::setRepellerCategory)
 			.def("getRepellerCategory", &JointAttractorComponent::getRepellerCategory)
-			];
+		];
 		AddClassToCollection("JointAttractorComponent", "class inherits JointComponent", "Derived class from JointComponent. With this joint its possible to influence other physics active game object (repeller) by magnetic strength. "
 			"The to be attracted game object must belong to the specified repeller category.");
 		AddClassToCollection("JointAttractorComponent", "String getId()", "Gets the id of this joint.");
@@ -9075,9 +9079,9 @@ namespace NOWA
 		AddClassToCollection("JointAttractorComponent", "String getRepellerCategory()", "Gets the repeller category.");
 
 		module(lua)
-			[
-				class_<JointCorkScrewComponent, JointComponent>("JointCorkScrewComponent")
-				// // .def("clone", &JointCorkScrewComponent::clone)
+		[
+			class_<JointCorkScrewComponent, JointComponent>("JointCorkScrewComponent")
+			// // .def("clone", &JointCorkScrewComponent::clone)
 			.def("setAnchorPosition", &JointCorkScrewComponent::setAnchorPosition)
 			.def("getAnchorPosition", &JointCorkScrewComponent::getAnchorPosition)
 			.def("setLinearLimitsEnabled", &JointCorkScrewComponent::setLinearLimitsEnabled)
@@ -9090,7 +9094,7 @@ namespace NOWA
 			.def("setMinMaxAngleLimit", &JointCorkScrewComponent::setMinMaxAngleLimit)
 			.def("getMinAngleLimit", &JointCorkScrewComponent::getMinAngleLimit)
 			.def("getMaxAngleLimit", &JointCorkScrewComponent::getMaxAngleLimit)
-			];
+		];
 		AddClassToCollection("JointCorkScrewComponent", "class inherits JointComponent", "Derived class from JointComponent. This joint type is an enhanched version of a slider joint which allows the attached child body to not "
 			"only slide up and down the axis, but also to rotate around this axis.");
 		AddClassToCollection("JointCorkScrewComponent", "String getId()", "Gets the id of this joint.");
@@ -9111,9 +9115,9 @@ namespace NOWA
 		AddClassToCollection("JointCorkScrewComponent", "float getMaxAngleLimit()", "Gets max angle limit.");
 
 		module(lua)
-			[
-				class_<JointPassiveSliderComponent, JointComponent>("JointPassiveSliderComponent")
-				// // .def("clone", &JointPassiveSliderComponent::clone)
+		[
+			class_<JointPassiveSliderComponent, JointComponent>("JointPassiveSliderComponent")
+			// // .def("clone", &JointPassiveSliderComponent::clone)
 			.def("setAnchorPosition", &JointPassiveSliderComponent::setAnchorPosition)
 			.def("getAnchorPosition", &JointPassiveSliderComponent::getAnchorPosition)
 			.def("setPin", &JointPassiveSliderComponent::setPin)
@@ -9126,7 +9130,7 @@ namespace NOWA
 			.def("setSpring", (void (JointPassiveSliderComponent::*)(bool)) & JointPassiveSliderComponent::setSpring)
 			.def("setSpring", (void (JointPassiveSliderComponent::*)(bool, Ogre::Real, Ogre::Real, Ogre::Real)) & JointPassiveSliderComponent::setSpring)
 			// .def("getSpring", &JointPassiveSliderComponent::getSpring)
-			];
+		];
 		AddClassToCollection("JointPassiveSliderComponent", "class inherits JointComponent", "Derived class from JointComponent. A child body attached via a slider joint can only slide up and down (move along) the axis it is attached to.");
 		AddClassToCollection("JointPassiveSliderComponent", "String getId()", "Gets the id of this joint.");
 		AddClassToCollection("JointPassiveSliderComponent", "void setAnchorPosition(Vector3 anchorPosition)", "Sets anchor position where to place the joint. The anchor position is set relative to the global mesh origin.");
@@ -9143,9 +9147,9 @@ namespace NOWA
 		AddClassToCollection("JointPassiveSliderComponent", "void setSpring2(bool asSpringDamper, float springDamperRelaxation, float springK, float springD)", "Sets the spring values for this joint. Note: When 'asSpringDamper' is activated the slider will use spring values for motion.");
 
 		module(lua)
-			[
-				class_<JointSliderActuatorComponent, JointComponent>("JointSliderActuatorComponent")
-				// // .def("clone", &JointSliderActuatorComponent::clone)
+		[
+			class_<JointSliderActuatorComponent, JointComponent>("JointSliderActuatorComponent")
+			// // .def("clone", &JointSliderActuatorComponent::clone)
 			.def("setAnchorPosition", &JointSliderActuatorComponent::setAnchorPosition)
 			.def("getAnchorPosition", &JointSliderActuatorComponent::getAnchorPosition)
 			.def("setPin", &JointSliderActuatorComponent::setPin)
@@ -9198,9 +9202,9 @@ namespace NOWA
 							 "Sets whether to react at the moment when the game object has reached the target position. The position can be used to check if it equals the min stop distance or the max stop distance.");
 
 		module(lua)
-			[
-				class_<JointSlidingContactComponent, JointComponent>("JointSlidingContactComponent")
-				// // .def("clone", &JointSlidingContactComponent::clone)
+		[
+			class_<JointSlidingContactComponent, JointComponent>("JointSlidingContactComponent")
+			// // .def("clone", &JointSlidingContactComponent::clone)
 			.def("setAnchorPosition", &JointSlidingContactComponent::setAnchorPosition)
 			.def("getAnchorPosition", &JointSlidingContactComponent::getAnchorPosition)
 			.def("setPin", &JointSlidingContactComponent::setPin)
@@ -9218,7 +9222,7 @@ namespace NOWA
 			.def("setSpring", (void (JointSlidingContactComponent::*)(bool)) & JointSlidingContactComponent::setSpring)
 			.def("setSpring", (void (JointSlidingContactComponent::*)(bool, Ogre::Real, Ogre::Real, Ogre::Real)) & JointSlidingContactComponent::setSpring)
 			// .def("getSpring", &JointSlidingContactComponent::getSpring)
-			];
+		];
 		AddClassToCollection("JointSlidingContactComponent", "class inherits JointComponent", "Derived class from JointComponent. A child body attached via a slider joint can only slide up and down (move along) the axis it is attached to and rotate around given pin-axis.");
 		AddClassToCollection("JointSlidingContactComponent", "String getId()", "Gets the id of this joint.");
 		AddClassToCollection("JointSlidingContactComponent", "void setAnchorPosition(Vector3 anchorPosition)", "Sets anchor position where to place the joint. The anchor position is set relative to the global mesh origin.");
@@ -9241,9 +9245,9 @@ namespace NOWA
 		AddClassToCollection("JointSlidingContactComponent", "void setSpring2(bool asSpringDamper, float springDamperRelaxation, float springK, float springD)", "Sets the spring values for this joint. Note: When 'asSpringDamper' is activated the slider will use spring values for motion.");
 
 		module(lua)
-			[
-				class_<JointActiveSliderComponent, JointComponent>("JointActiveSliderComponent")
-				// // .def("clone", &JointActiveSliderComponent::clone)
+		[
+			class_<JointActiveSliderComponent, JointComponent>("JointActiveSliderComponent")
+			// // .def("clone", &JointActiveSliderComponent::clone)
 			.def("setAnchorPosition", &JointActiveSliderComponent::setAnchorPosition)
 			.def("getAnchorPosition", &JointActiveSliderComponent::getAnchorPosition)
 			.def("setPin", &JointActiveSliderComponent::setPin)
@@ -9260,7 +9264,7 @@ namespace NOWA
 			.def("getRepeat", &JointActiveSliderComponent::getRepeat)
 			.def("setDirectionChange", &JointActiveSliderComponent::setDirectionChange)
 			.def("getDirectionChange", &JointActiveSliderComponent::getDirectionChange)
-			];
+		];
 		AddClassToCollection("JointActiveSliderComponent", "class inherits JointComponent", "Derived class from JointComponent. A child body attached via a slider joint can only slide up and down (move along) the axis it is attached to. "
 			"It will move automatically from the min stop distance to the max stop distance by the specifed axis, or when direction change is activated from min- to max stop distance and vice versa.");
 		AddClassToCollection("JointActiveSliderComponent", "String getId()", "Gets the id of this joint.");
@@ -9282,9 +9286,9 @@ namespace NOWA
 		AddClassToCollection("JointActiveSliderComponent", "bool getRepeat()", "Gets whether the direction changed motion is repeated.");
 
 		module(lua)
-			[
-				class_<JointMathSliderComponent, JointComponent>("JointMathSliderComponent")
-				// // .def("clone", &JointMathSliderComponent::clone)
+		[
+			class_<JointMathSliderComponent, JointComponent>("JointMathSliderComponent")
+			// // .def("clone", &JointMathSliderComponent::clone)
 			.def("setLimitsEnabled", &JointMathSliderComponent::setLimitsEnabled)
 			.def("getLimitsEnabled", &JointMathSliderComponent::getLimitsEnabled)
 			.def("setMinMaxStopDistance", &JointMathSliderComponent::setMinMaxStopDistance)
@@ -9302,7 +9306,7 @@ namespace NOWA
 			.def("getFunctionY", &JointMathSliderComponent::getFunctionY)
 			.def("setFunctionZ", &JointMathSliderComponent::setFunctionZ)
 			.def("getFunctionZ", &JointMathSliderComponent::getFunctionZ)
-			];
+		];
 		AddClassToCollection("JointMathSliderComponent", "class inherits JointComponent", "Derived class from JointComponent. A child body attached via a slider joint can only slide by the given mathematical function.");
 		AddClassToCollection("JointMathSliderComponent", "String getId()", "Gets the id of this joint.");
 		AddClassToCollection("JointMathSliderComponent", "void setMinMaxStopDistance(float minStopDistance, float maxStopDistance)", "Sets the min and max stop limit."
@@ -9397,31 +9401,43 @@ namespace NOWA
 														  "Sets whether to react at the moment when the game object has reached the target position.");
 
 		module(lua)
-			[
-				class_<JointDryRollingFrictionComponent, JointComponent>("JointDryRollingFrictionComponent")
+		[
+			class_<JointDryRollingFrictionComponent, JointComponent>("JointDryRollingFrictionComponent")
 				// // .def("clone", &JointDryRollingFrictionComponent::clone)
-			.def("setRadius", &JointDryRollingFrictionComponent::setRadius)
-			.def("getRadius", &JointDryRollingFrictionComponent::getRadius)
-			.def("setRollingFrictionCoefficient", &JointDryRollingFrictionComponent::setRollingFrictionCoefficient)
-			.def("getRollingFrictionCoefficient", &JointDryRollingFrictionComponent::getRollingFrictionCoefficient)
-			];
-		AddClassToCollection("JointDryRollingFrictionComponent", "class inherits JointComponent", "Derived class from JointComponent. This joint is usefully to simulate the rolling friction of a rolling ball over a flat surface. "
-			" Normally this is not important for non spherical objects, but for games like poll, pinball, bolling, golf"
-			" or any other where the movement of balls is the main objective the rolling friction is a real big problem."
-			" See: http://newtondynamics.com/forum/viewtopic.php?f=15&t=1187&p=8158&hilit=dry+rolling+friction");
+				.def("setRadius", &JointDryRollingFrictionComponent::setRadius)
+				.def("getRadius", &JointDryRollingFrictionComponent::getRadius)
+				.def("setRollingFrictionCoefficient", &JointDryRollingFrictionComponent::setRollingFrictionCoefficient)
+				.def("getRollingFrictionCoefficient", &JointDryRollingFrictionComponent::getRollingFrictionCoefficient)
+				// NEW:
+				.def("setContactTrail", &JointDryRollingFrictionComponent::setContactTrail)
+				.def("getContactTrail", &JointDryRollingFrictionComponent::getContactTrail)
+		];
+
+		AddClassToCollection("JointDryRollingFrictionComponent", "class inherits JointComponent",
+			"Derived class from JointComponent. This joint is used to simulate the rolling friction of a rolling ball over a flat surface. "
+			"Normally this is not important for non-spherical objects, but for games like pool, pinball, bowling, golf "
+			"or any other where the movement of balls is the main objective the rolling friction is a real big problem. "
+			"See: http://newtondynamics.com/forum/viewtopic.php?f=15&t=1187&p=8158&hilit=dry+rolling+friction");
 		AddClassToCollection("JointDryRollingFrictionComponent", "String getId()", "Gets the id of this joint.");
-		AddClassToCollection("JointDryRollingFrictionComponent", "void setRadius(float radius)", "Sets radius of the ball.");
-		AddClassToCollection("JointDryRollingFrictionComponent", "float getRadius()", "Gets the radius of the ball.");
-		AddClassToCollection("JointDryRollingFrictionComponent", "void setRollingFrictionCoefficient(float rollingFrictionCoefficient)", "Sets the rolling friction coefficient.");
+		AddClassToCollection("JointDryRollingFrictionComponent", "void setRadius(float radius)", "Sets the visual/logic radius of the rolling body (e.g. ball or wheel).");
+		AddClassToCollection("JointDryRollingFrictionComponent", "float getRadius()", "Gets the visual/logic radius of the rolling body.");
+		AddClassToCollection("JointDryRollingFrictionComponent", "void setRollingFrictionCoefficient(float rollingFrictionCoefficient)",
+			"Sets the dimensionless rolling friction coefficient. Higher values increase the rolling resistance torque.");
 		AddClassToCollection("JointDryRollingFrictionComponent", "float getRollingFrictionCoefficient()", "Gets the rolling friction coefficient.");
+		AddClassToCollection("JointDryRollingFrictionComponent", "void setContactTrail(float contactTrail)",
+			"Sets the effective contact trail (lever arm) in world units. Acts like an effective rolling radius for the friction torque: "
+			"larger values generate more rolling resistance for the same friction coefficient.");
+		AddClassToCollection("JointDryRollingFrictionComponent", "float getContactTrail()",
+			"Gets the effective contact trail (lever arm) used to compute the rolling friction torque.");
+
 
 		module(lua)
-			[
-				class_<JointGearComponent, JointComponent>("JointGearComponent")
-				// // .def("clone", &JointGearComponent::clone)
+		[
+			class_<JointGearComponent, JointComponent>("JointGearComponent")
+			// // .def("clone", &JointGearComponent::clone)
 			.def("setGearRatio", &JointGearComponent::setGearRatio)
 			.def("getGearRatio", &JointGearComponent::getGearRatio)
-			];
+		];
 		AddClassToCollection("JointGearComponent", "class inherits JointComponent", "Derived class from JointComponent. This joint is for use in conjunction with Hinge of other spherical joints"
 			" is useful for establishing synchronization between the phase angle other the"
 			" relative angular velocity of two spinning disks according to the law of gears"
@@ -9433,14 +9449,14 @@ namespace NOWA
 		AddClassToCollection("JointGearComponent", "float getGearRatio()", "Gets the ratio between the first hinge rotation and the second hinge rotation.");
 
 		module(lua)
-			[
-				class_<JointWormGearComponent, JointComponent>("JointWormGearComponent")
-				// // .def("clone", &JointWormGearComponent::clone)
+		[
+			class_<JointWormGearComponent, JointComponent>("JointWormGearComponent")
+			// // .def("clone", &JointWormGearComponent::clone)
 			.def("setGearRatio", &JointWormGearComponent::setGearRatio)
 			.def("getGearRatio", &JointWormGearComponent::getGearRatio)
 			.def("setSlideRatio", &JointWormGearComponent::setSlideRatio)
 			.def("getSlideRatio", &JointWormGearComponent::getSlideRatio)
-			];
+		];
 		AddClassToCollection("JointWormGearComponent", "class inherits JointComponent", "Derived class from JointComponent. This joint is for use in conjunction with Hinge of other slider joints"
 			" is useful for establishing synchronization between the phase angle and a slider motion.");
 		AddClassToCollection("JointWormGearComponent", "String getId()", "Gets the id of this joint.");
@@ -9450,12 +9466,12 @@ namespace NOWA
 		AddClassToCollection("JointWormGearComponent", "float getSlideRatio()", "Gets the ratio between the hinge rotation and the slider motion.");
 
 		module(lua)
-			[
-				class_<JointPulleyComponent, JointComponent>("JointPulleyComponent")
-				// // .def("clone", &JointPulleyComponent::clone)
+		[
+			class_<JointPulleyComponent, JointComponent>("JointPulleyComponent")
+			// // .def("clone", &JointPulleyComponent::clone)
 			.def("setPulleyRatio", &JointPulleyComponent::setPulleyRatio)
 			.def("getPulleyRatio", &JointPulleyComponent::getPulleyRatio)
-			];
+		];
 		AddClassToCollection("JointPulleyComponent", "class inherits JointComponent", "Derived class from JointComponent. This joint is for use in conjunction with Slider of other linear joints"
 			" it is useful for establishing synchronization between the relative position"
 			" or relative linear velocity of two sliding bodies according to the law of pulley"
@@ -9711,24 +9727,32 @@ namespace NOWA
 			.def("getCurrentMoveDirection", &JointPathFollowComponent::getCurrentMoveDirection)
 			.def("getPathLength", &JointPathFollowComponent::getPathLength)
 			.def("getPathProgress", &JointPathFollowComponent::getPathProgress)
+			.def("setLoop", &JointPathFollowComponent::setLoop)
+			.def("getLoop", &JointPathFollowComponent::getLoop)
+			.def("setClockwise", &JointPathFollowComponent::setClockwise)
+			.def("getClockwise", &JointPathFollowComponent::getClockwise)
 		];
 
-		AddClassToCollection("JointWheelComponent", "class inherits JointComponent", "Derived class from JointComponent. An object attached to a wheel joint can only rotate around one dimension perpendicular to the axis it is attached to and also steer.");
-		AddClassToCollection("JointWheelComponent", "String getId()", "Gets the id of this joint.");
-		AddClassToCollection("JointWheelComponent", "void setAnchorPosition(Vector3 anchorPosition)", "Sets anchor position where to place the joint. The anchor position is set relative to the global mesh origin.");
-		AddClassToCollection("JointWheelComponent", "Vector3 getAnchorPosition()", "Gets joint anchor position.");
-		AddClassToCollection("JointWheelComponent", "Vector3 getStartMoveDirection()", "Gets the starting move direction of the game object on the path. It can be used e.g. in order to add a force in that direction, in order to start movement the game object along the path.");
-		AddClassToCollection("JointWheelComponent", "Vector3 getCurrentMoveDirection()", "Gets the current move direction of the game object on the path. It can be used e.g. in order to add a force in that direction, in order to continue movement the game object along the path.");
-		AddClassToCollection("JointWheelComponent", "float getPathLength()", "Gets the path length in meters.");
-		AddClassToCollection("JointWheelComponent", "float getPathProgress()", "Gets the path progress in percent.");
+		AddClassToCollection("JointPathFollowComponent", "class inherits JointComponent", "Derived class from JointComponent. An object attached to a list of pathes does move along the path with physics rules.");
+		AddClassToCollection("JointPathFollowComponent", "String getId()", "Gets the id of this joint.");
+		AddClassToCollection("JointPathFollowComponent", "void setAnchorPosition(Vector3 anchorPosition)", "Sets anchor position where to place the joint. The anchor position is set relative to the global mesh origin.");
+		AddClassToCollection("JointPathFollowComponent", "Vector3 getAnchorPosition()", "Gets joint anchor position.");
+		AddClassToCollection("JointPathFollowComponent", "Vector3 getStartMoveDirection()", "Gets the starting move direction of the game object on the path. It can be used e.g. in order to add a force in that direction, in order to start movement the game object along the path.");
+		AddClassToCollection("JointPathFollowComponent", "Vector3 getCurrentMoveDirection()", "Gets the current move direction of the game object on the path. It can be used e.g. in order to add a force in that direction, in order to continue movement the game object along the path.");
+		AddClassToCollection("JointPathFollowComponent", "float getPathLength()", "Gets the path length in meters.");
+		AddClassToCollection("JointPathFollowComponent", "float getPathProgress()", "Gets the path progress in percent.");
+		AddClassToCollection("JointPathFollowComponent", "void setLoop(bool loop)", "Sets whether to loop the path movement.");
+		AddClassToCollection("JointPathFollowComponent", "bool getLoop()", "Gets whether path movement is looped.");
+		AddClassToCollection("JointPathFollowComponent", "void setClockwise(bool clockwise)", "Sets whether to move the path clockwise.");
+		AddClassToCollection("JointPathFollowComponent", "bool getClockwise()", "Gets whether path movement is clockwise.");
 	}
 
 	void bindLightComponents(lua_State* lua)
 	{
 		module(lua)
-			[
-				class_<LightDirectionalComponent, GameObjectComponent>("LightDirectionalComponent")
-				// .def("getClassName", &LightDirectionalComponent::getClassName)
+		[
+			class_<LightDirectionalComponent, GameObjectComponent>("LightDirectionalComponent")
+			// .def("getClassName", &LightDirectionalComponent::getClassName)
 			.def("getParentClassName", &LightDirectionalComponent::getParentClassName)
 			.def("setActivated", &LightDirectionalComponent::setActivated)
 			.def("isActivated", &LightDirectionalComponent::isActivated)
@@ -9751,7 +9775,7 @@ namespace NOWA
 			.def("setShowDummyEntity", &LightDirectionalComponent::setShowDummyEntity)
 			.def("getShowDummyEntity", &LightDirectionalComponent::getShowDummyEntity)
 			// .def("getOgreLight", &LightDirectionalComponent::getOgreLight)
-			];
+		];
 
 		AddClassToCollection("LightDirectionalComponent", "class inherits GameObjectComponent", "This Light simulates a huge source that is very far away - like daylight. Light hits the entire scene at the same angle everywhere.");
 		// AddClassToCollection("LightDirectionalComponent", "String getClassName()", "Gets the class name of this component as string.");

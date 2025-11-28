@@ -629,7 +629,14 @@ namespace NOWA
 
 		Ogre::Real getConeFriction(void) const;
 
-		// void setTwistSpringDamper(bool state, Ogre::Real springDamperRelaxation, Ogre::Real spring, Ogre::Real damper);
+		void setTwistSpringDamper(bool state);
+		void setTwistSpringDamper(bool state, Ogre::Real springDamperRelaxation, Ogre::Real spring, Ogre::Real damper);
+
+		bool getTwistSpringDamperEnabled(void) const;
+		Ogre::Real getTwistSpringDamperRelaxation(void) const;
+		Ogre::Real getTwistSpringK(void) const;
+		Ogre::Real getTwistSpringD(void) const;
+
 
 	public:
 		// Attribute constants
@@ -641,6 +648,11 @@ namespace NOWA
 		static const Ogre::String AttrMaxConeLimit(void) { return "Max Cone Angle"; }
 		static const Ogre::String AttrTwistFriction(void) { return "Twist Friction"; }
 		static const Ogre::String AttrConeFriction(void) { return "Cone Friction"; }
+		static const Ogre::String AttrTwistSpringDamperEnabled(void) { return "Twist Spring Damper"; }
+		static const Ogre::String AttrTwistSpringDamperRelaxation(void) { return "Twist SpringDamper Relaxation"; }
+		static const Ogre::String AttrTwistSpringK(void) { return "Twist Spring K"; }
+		static const Ogre::String AttrTwistSpringD(void) { return "Twist Spring D"; }
+
 	protected:
 		Variant* anchorPosition;
 		Variant* enableTwistLimits;
@@ -650,6 +662,10 @@ namespace NOWA
 		Variant* maxConeLimit;
 		Variant* twistFriction;
 		Variant* coneFriction;
+		Variant* twistSpringDamperEnabled;
+		Variant* twistSpringDamperRelaxation;
+		Variant* twistSpringK;
+		Variant* twistSpringD;
 	};
 	
 	/*******************************PointToPointComponent*******************************/
@@ -2219,11 +2235,21 @@ namespace NOWA
 		*/
 		Ogre::Real getPathProgress(void);
 
+		void setLoop(bool loop);
+
+		bool getLoop(void) const;
+
+		void setClockwise(bool clockwise);
+
+		bool getClockwise(void) const;
+
 	public:
 		static const Ogre::String AttrAnchorPosition(void) { return "Anchor Position"; }
 		static const Ogre::String AttrDrawPath(void) { return "Draw Path"; }
 		static const Ogre::String AttrWaypointsCount(void) { return "Waypoints Count"; }
 		static const Ogre::String AttrWaypoint(void) { return "Waypoint Id "; }
+		static const Ogre::String AttrLoop(void) { return "Loop"; }
+		static const Ogre::String AttrClockwise(void) { return "Clockwise"; }
 	private:
 		void createLines(void);
 
@@ -2234,6 +2260,8 @@ namespace NOWA
 		Variant* anchorPosition;
 		Variant* drawPath;
 		Variant* waypointsCount;
+		Variant* loop;
+		Variant* clockwise;
 		std::vector<Variant*> waypoints;
 
 		std::vector<Ogre::Vector3> knots;
@@ -2242,6 +2270,8 @@ namespace NOWA
 
 		Ogre::Real pathProgress;
 		Ogre::Vector3 currentMoveDirection;
+		bool finishedOnce;
+		bool oldActivated;
 	};
 
 	/*******************************JointDryRollingFrictionComponent*******************************/
@@ -2307,12 +2337,19 @@ namespace NOWA
 		void setRollingFrictionCoefficient(Ogre::Real rollingFrictionCoefficient);
 
 		Ogre::Real getRollingFrictionCoefficient(void) const;
+
+		void setContactTrail(Ogre::Real contactTrail);
+
+		Ogre::Real getContactTrail(void) const;
 	public:
 		static const Ogre::String AttrRadius(void) { return "Radius"; }
 		static const Ogre::String AttrFrictionCoefficient(void) { return "Friction Coeff."; }
+		static const Ogre::String AttrContactTrail(void) { return "Contact Trail"; }
+
 	protected:
 		Variant* radius;
 		Variant* rollingFrictionCoefficient;
+		Variant* contactTrail;
 	};
 
 	/*******************************JointGearComponent*******************************/
@@ -2498,7 +2535,8 @@ namespace NOWA
 		*/
 		static Ogre::String getStaticInfoText(void)
 		{
-			return "Requirements: A kind of physics component must exist.";
+			return "Requirements: A kind of physics component must exist. Instructions: Create a kind of slider component first, then the WormGear. "
+				"Set as predecessor Id the id of the slider. Create another GO with physics component and kind of hinge. Set in the WormGear for target id the joint id of the other hinge.";
 		}
 
 		void setGearRatio(Ogre::Real gearRatio);
@@ -2569,7 +2607,8 @@ namespace NOWA
 		*/
 		static Ogre::String getStaticInfoText(void)
 		{
-			return "Requirements: A kind of physics component must exist.";
+			return "Requirements: A kind of physics component must exist. Instructions: Create a kind of slider component first, then the JointPulley. "
+				"Set as predecessor Id the id of the slider. Create another GO with physics component and slider. Set in the JointPulley for target id the joint id of the other slider.";
 		}
 
 		void setPulleyRatio(Ogre::Real pulleyRatio);

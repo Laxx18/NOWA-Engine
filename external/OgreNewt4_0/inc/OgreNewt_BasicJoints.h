@@ -825,14 +825,27 @@ namespace OgreNewt
 		//! Gets progress (0–1) and path position for current body position
 		std::pair<Ogre::Real, Ogre::Vector3> getPathProgressAndPosition(const Ogre::Vector3& currentBodyPosition);
 
+		const ndBezierSpline& getSpline() const { return m_spline; }
+
+		void setLoop(bool loop);
+		bool getLoop() const;
+
+		void setClockwise(bool clockwise);
+		bool getClockwise() const;
 	private:
 		OgreNewt::Body* m_childBody;
 		OgreNewt::Body* m_pathBody;
 		Ogre::Vector3 m_pos;
+		ndBezierSpline m_spline;
+		bool m_loop;
+		bool m_clockwise;
 		std::vector<ndBigVector> m_internalControlPoints;
+		std::vector<ndBigVector> m_sourceControlPoints;
 
 		// helper to compute direction in Newton space
 		ndVector computeDirection(unsigned int index) const;
+
+		void rebuildSpline();
 	};
 
 	///! CustomDryRollingFriction

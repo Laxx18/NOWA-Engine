@@ -218,7 +218,7 @@ void DesignState::createScene(void)
 	numThreads = std::max<size_t>(1, Ogre::PlatformInformation::getNumLogicalCores());
 #endif
 
-	ENQUEUE_RENDER_COMMAND_MULTI("DesignState::createScene", _1(numThreads),
+	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DesignState::createScene", _1(numThreads),
 	{
 		// Create the SceneManager, in this case a generic one
 		this->sceneManager = NOWA::Core::getSingletonPtr()->getOgreRoot()->createSceneManager(Ogre::ST_GENERIC, numThreads, "NOWA_SceneManager");
@@ -265,7 +265,7 @@ void DesignState::createScene(void)
 
 	this->projectManager = new ProjectManager(this->sceneManager);
 
-	ENQUEUE_RENDER_COMMAND("setupMyGUI",
+	ENQUEUE_RENDER_COMMAND_WAIT("setupMyGUI",
 	{
 		// Setup all MyGUI widgets
 		this->setupMyGUIWidgets();
@@ -704,7 +704,7 @@ void DesignState::wakeSleepGameObjects(bool allGameObjects, bool sleep)
 			}
 		}
 	}
-	ENQUEUE_RENDER_COMMAND("ShowProperties",
+	ENQUEUE_RENDER_COMMAND_WAIT("ShowProperties",
 	{
 		this->propertiesPanel->showProperties();
 	});
@@ -712,7 +712,7 @@ void DesignState::wakeSleepGameObjects(bool allGameObjects, bool sleep)
 
 void DesignState::enableWidgets(bool enable)
 {
-	ENQUEUE_RENDER_COMMAND_MULTI("DesignState::enableWidgets", _1(enable),
+	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DesignState::enableWidgets", _1(enable),
 	{
 		this->playButton->setStateSelected(enable);
 		this->undoButton->setEnabled(enable);
@@ -830,7 +830,7 @@ void DesignState::handleExit(NOWA::EventDataPtr eventData)
 {
 	if (true == this->hasSceneChanges)
 	{
-		ENQUEUE_RENDER_COMMAND("DesignState::handleExit1",
+		ENQUEUE_RENDER_COMMAND_WAIT("DesignState::handleExit1",
 		{
 			MyGUI::Message* messageBox = MyGUI::Message::createMessageBox("Menue", MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{SceneModified}"),
 				MyGUI::MessageBoxStyle::IconWarning | MyGUI::MessageBoxStyle::Yes | MyGUI::MessageBoxStyle::No, "Popup", true);
@@ -842,7 +842,7 @@ void DesignState::handleExit(NOWA::EventDataPtr eventData)
 	}
 	else
 	{
-		ENQUEUE_RENDER_COMMAND("DesignState::handleExit2",
+		ENQUEUE_RENDER_COMMAND_WAIT("DesignState::handleExit2",
 		{
 			MyGUI::Message* messageBox = MyGUI::Message::createMessageBox("Menue", MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{Quit_Application}"),
 				MyGUI::MessageBoxStyle::IconWarning | MyGUI::MessageBoxStyle::Yes | MyGUI::MessageBoxStyle::No, "Popup", true);
@@ -946,7 +946,7 @@ void DesignState::handleProjectManipulation(NOWA::EventDataPtr eventData)
 	}
 	else if (ProjectManager::eProjectMode::SAVE == projectMode)
 	{
-		ENQUEUE_RENDER_COMMAND("simulationWindow setCaption",
+		ENQUEUE_RENDER_COMMAND_WAIT("simulationWindow setCaption",
 		{
 			this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getProjectName() + "/" + NOWA::Core::getSingletonPtr()->getSceneName());
 		});
@@ -961,7 +961,7 @@ void DesignState::handleEditorMode(NOWA::EventDataPtr eventData)
 
 	if (NOWA::EditorManager::EDITOR_SELECT_MODE == castEventData->getManipulationMode())
 	{
-		ENQUEUE_RENDER_COMMAND("DesignState::handleEditorMode select",
+		ENQUEUE_RENDER_COMMAND_WAIT("DesignState::handleEditorMode select",
 		{
 			this->selectModeCheck->setStateSelected(true);
 			this->placeModeCheck->setStateSelected(false);
@@ -977,7 +977,7 @@ void DesignState::handleEditorMode(NOWA::EventDataPtr eventData)
 	}
 	else if (NOWA::EditorManager::EDITOR_PLACE_MODE == castEventData->getManipulationMode())
 	{
-		ENQUEUE_RENDER_COMMAND("DesignState::handleEditorMode place",
+		ENQUEUE_RENDER_COMMAND_WAIT("DesignState::handleEditorMode place",
 		{
 			this->selectModeCheck->setStateSelected(false);
 			this->placeModeCheck->setStateSelected(true);
@@ -1065,7 +1065,7 @@ void DesignState::handleMyGUIWidgetSelected(NOWA::EventDataPtr eventData)
 	// Event not for this state
 	if (0 != castEventData->getGameObjectId())
 	{
-		ENQUEUE_RENDER_COMMAND_MULTI("DesignState::handleMyGUIWidgetSelected", _1(castEventData),
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DesignState::handleMyGUIWidgetSelected", _1(castEventData),
 		{
 			MyGUI::Widget * widget = MyGUI::InputManager::getInstance().getMouseFocusWidget();
 			if (nullptr != widget && false == this->simulating)
@@ -1140,7 +1140,7 @@ void DesignState::itemSelected(MyGUI::ComboBox* sender, size_t index)
 			this->activeCategory = this->categoriesComboBox->getItemNameAt(index);
 
 			// Enqueue the filtering logic to the render thread to interact with the editorManager
-			ENQUEUE_RENDER_COMMAND("DesignState::itemSelected1",
+			ENQUEUE_RENDER_COMMAND_WAIT("DesignState::itemSelected1",
 			{
 				this->editorManager->getSelectionManager()->filterCategories(this->activeCategory);
 			});
@@ -1153,7 +1153,7 @@ void DesignState::itemSelected(MyGUI::ComboBox* sender, size_t index)
 			Ogre::String selectedGridValue = this->gridValueComboBox->getItemNameAt(index);
 
 			// Enqueue the logic to update the grid step in the render thread
-			ENQUEUE_RENDER_COMMAND_MULTI("DesignState::itemSelected2", _1(selectedGridValue),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DesignState::itemSelected2", _1(selectedGridValue),
 			{
 				this->editorManager->setGridStep(Ogre::StringConverter::parseReal(selectedGridValue));
 			});
@@ -1166,10 +1166,7 @@ void DesignState::notifyEditSelectAccept(MyGUI::EditBox* sender)
 	if (sender == this->categoriesComboBox)
 	{
 		this->activeCategory = this->categoriesComboBox->getOnlyText();
-		ENQUEUE_RENDER_COMMAND("DesignState::notifyEditSelectAccept",
-		{
-			this->editorManager->getSelectionManager()->filterCategories(this->activeCategory);
-		});
+		this->editorManager->getSelectionManager()->filterCategories(this->activeCategory);
 	}
 	else if (sender == this->findObjectEdit)
 	{
@@ -1243,7 +1240,7 @@ void DesignState::notifyEditSelectAccept(MyGUI::EditBox* sender)
 
 void DesignState::buttonHit(MyGUI::Widget* sender)
 {
-	ENQUEUE_RENDER_COMMAND("DesignState::buttonHit 1",
+	ENQUEUE_RENDER_COMMAND_WAIT("DesignState::buttonHit 1",
 	{
 		this->selectModeCheck->setStateSelected(false);
 		this->placeModeCheck->setStateSelected(false);
@@ -1278,7 +1275,7 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
 
 	if (this->selectModeCheck == sender)
 	{
-		ENQUEUE_RENDER_COMMAND("DesignState::buttonHit2",
+		ENQUEUE_RENDER_COMMAND_WAIT("DesignState::buttonHit2",
 		{
 			this->selectModeCheck->setStateSelected(true);
 		});
@@ -1286,7 +1283,7 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
 	}
 	else if (this->placeModeCheck == sender)
 	{
-		ENQUEUE_RENDER_COMMAND("DesignState::buttonHit3",
+		ENQUEUE_RENDER_COMMAND_WAIT("DesignState::buttonHit3",
 		{
 			this->placeModeCheck->setStateSelected(true);
 			this->placeModePopupMenu->showMenu();
@@ -1304,7 +1301,7 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
 	}
 	else if (this->translateModeCheck == sender)
 	{
-		ENQUEUE_RENDER_COMMAND("DesignState::buttonHit3",
+		ENQUEUE_RENDER_COMMAND_WAIT("DesignState::buttonHit3",
 		{
 			this->translateModeCheck->setStateSelected(true);
 			this->translateModePopupMenu->showMenu();
@@ -1325,7 +1322,7 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
 		// If already in picker mode, to not re-start simulation again, since another undo command is pushed, so when stopped, the first undo is gone (2x undo would be required)
 		if (NOWA::EditorManager::EDITOR_PICKER_MODE != this->editorManager->getManipulationMode())
 		{
-			ENQUEUE_RENDER_COMMAND("DesignState::buttonHit4",
+			ENQUEUE_RENDER_COMMAND_WAIT("DesignState::buttonHit4",
 			{
 				this->pickModeCheck->setStateSelected(true);
 				this->propertiesPanel->clearProperties();
@@ -1339,7 +1336,7 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
 	}
 	else if (this->scaleModeCheck == sender)
 	{
-		ENQUEUE_RENDER_COMMAND("DesignState::buttonHit5",
+		ENQUEUE_RENDER_COMMAND_WAIT("DesignState::buttonHit5",
 		{
 			this->scaleModeCheck->setStateSelected(true);
 		});
@@ -1347,7 +1344,7 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
 	}
 	else if (this->rotate1ModeCheck == sender)
 	{
-		ENQUEUE_RENDER_COMMAND("DesignState::buttonHit6",
+		ENQUEUE_RENDER_COMMAND_WAIT("DesignState::buttonHit6",
 		{
 			this->rotate1ModeCheck->setStateSelected(true);
 		});
@@ -1355,7 +1352,7 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
 	}
 	else if (this->rotate2ModeCheck == sender)
 	{
-		ENQUEUE_RENDER_COMMAND("DesignState::buttonHit7",
+		ENQUEUE_RENDER_COMMAND_WAIT("DesignState::buttonHit7",
 		{
 			this->rotate2ModeCheck->setStateSelected(true);
 		});
@@ -1363,7 +1360,7 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
 	}
 	else if (this->terrainModifyModeCheck == sender)
 	{
-		ENQUEUE_RENDER_COMMAND("DesignState::buttonHit8",
+		ENQUEUE_RENDER_COMMAND_WAIT("DesignState::buttonHit8",
 		{
 			this->terrainSmoothModeCheck->setStateSelected(false);
 			this->terrainModifyModeCheck->setStateSelected(true);
@@ -1374,7 +1371,7 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
 	}
 	else if (this->terrainSmoothModeCheck == sender)
 	{
-		ENQUEUE_RENDER_COMMAND("DesignState::buttonHit9",
+		ENQUEUE_RENDER_COMMAND_WAIT("DesignState::buttonHit9",
 		{
 			this->terrainSmoothModeCheck->setStateSelected(true);
 			this->terrainModifyModeCheck->setStateSelected(false);
@@ -1384,7 +1381,7 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
 	}
 	else if (this->terrainPaintModeCheck == sender)
 	{
-		ENQUEUE_RENDER_COMMAND("DesignState::buttonHit10",
+		ENQUEUE_RENDER_COMMAND_WAIT("DesignState::buttonHit10",
 		{
 			this->terrainSmoothModeCheck->setStateSelected(false);
 			this->terrainModifyModeCheck->setStateSelected(false);
@@ -1402,7 +1399,7 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
 	}
 	else if (this->undoButton == sender)
 	{
-		ENQUEUE_RENDER_COMMAND("DesignState::buttonHit11",
+		ENQUEUE_RENDER_COMMAND_WAIT("DesignState::buttonHit11",
 		{
 			// Show properties
 			this->propertiesPanel->showProperties();
@@ -1419,7 +1416,7 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
 	}
 	else if (this->redoButton == sender)
 	{
-		ENQUEUE_RENDER_COMMAND("DesignState::buttonHit12",
+		ENQUEUE_RENDER_COMMAND_WAIT("DesignState::buttonHit12",
 		{
 			this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getProjectName() + "/" + NOWA::Core::getSingletonPtr()->getSceneName() + "*");
 			this->hasSceneChanges = true;
@@ -1439,7 +1436,7 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
 	}
 	else if (this->selectUndoButton == sender)
 	{
-		ENQUEUE_RENDER_COMMAND("DesignState::buttonHit13",
+		ENQUEUE_RENDER_COMMAND_WAIT("DesignState::buttonHit13",
 		{
 			// Show properties
 			this->propertiesPanel->showProperties();
@@ -1449,7 +1446,7 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
 	}
 	else if (this->selectRedoButton == sender)
 	{
-		ENQUEUE_RENDER_COMMAND("DesignState::buttonHit14",
+		ENQUEUE_RENDER_COMMAND_WAIT("DesignState::buttonHit14",
 		{
 			// Show properties
 			this->propertiesPanel->showProperties();
@@ -1459,7 +1456,7 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
 	}
 	else if (this->cameraSpeedUpButton == sender)
 	{
-		ENQUEUE_RENDER_COMMAND("DesignState::buttonHit15",
+		ENQUEUE_RENDER_COMMAND_WAIT("DesignState::buttonHit15",
 		{
 			this->cameraSpeedDownButton->setEnabled(true);
 		});
@@ -1481,7 +1478,7 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
 	}
 	else if (this->cameraSpeedDownButton == sender)
 	{
-		ENQUEUE_RENDER_COMMAND("DesignState::buttonHit16",
+		ENQUEUE_RENDER_COMMAND_WAIT("DesignState::buttonHit16",
 		{
 			this->cameraSpeedUpButton->setEnabled(true);
 		});
@@ -1527,7 +1524,7 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
 		}
 	}
 
-	ENQUEUE_RENDER_COMMAND_MULTI("DesignState::buttonHit17", _1(sender),
+	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DesignState::buttonHit17", _1(sender),
 	{
 		// Check if some place mode has been pressed
 		for (size_t i = 0; i < this->placeModePopupMenu->getChildCount(); i++)
@@ -1603,7 +1600,7 @@ void DesignState::mouseClicked(MyGUI::Widget* sender)
 	{
 		if (true == this->mainMenuBar->hasLuaErrors())
 		{
-			ENQUEUE_RENDER_COMMAND("DesignState::mouseClicked",
+			ENQUEUE_RENDER_COMMAND_WAIT("DesignState::mouseClicked",
 			{
 				this->mainMenuBar->showLuaAnalysisWindow();
 			});
@@ -1618,7 +1615,7 @@ void DesignState::notifyToolTip(MyGUI::Widget* sender, const MyGUI::ToolTipInfo&
 
 void DesignState::notifyMessageBoxEnd(MyGUI::Message* _sender, MyGUI::MessageBoxStyle result)
 {
-	ENQUEUE_RENDER_COMMAND_MULTI("DesignState::notifyMessageBoxEnd", _1(result),
+	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DesignState::notifyMessageBoxEnd", _1(result),
 	{
 		if (result == MyGUI::MessageBoxStyle::Yes)
 		{
@@ -1640,7 +1637,7 @@ void DesignState::notifyMessageBoxEnd(MyGUI::Message* _sender, MyGUI::MessageBox
 
 void DesignState::notifyMessageBoxEndExit(MyGUI::Message* sender, MyGUI::MessageBoxStyle result)
 {
-	ENQUEUE_RENDER_COMMAND_MULTI("DesignState::notifyMessageBoxEndExit", _1(result),
+	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DesignState::notifyMessageBoxEndExit", _1(result),
 	{
 		if (result == MyGUI::MessageBoxStyle::Yes)
 		{
@@ -1973,7 +1970,7 @@ void DesignState::showDebugCollisionLines(bool show)
 
 void DesignState::showContextMenu(int mouseX, int mouseY)
 {
-	ENQUEUE_RENDER_COMMAND_MULTI("DesignState::showContextMenu", _2(mouseX, mouseY),
+	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DesignState::showContextMenu", _2(mouseX, mouseY),
 	{
 		this->editPopupMenu = MyGUI::Gui::getInstancePtr()->createWidget<MyGUI::MenuCtrl>("PopupMenu", mouseX, mouseY, 150, 0, MyGUI::Align::Default, "Popup", "ContextMenu");
 
@@ -2074,7 +2071,7 @@ void DesignState::onMenuItemSelected(MyGUI::MenuCtrl* menu, MyGUI::MenuItem* ite
 		Ogre::LogManager::getSingleton().logMessage("Option 3 selected");
 	}*/
 
-	ENQUEUE_RENDER_COMMAND_MULTI("DesignState::onMenuItemSelected", _1(menu),
+	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DesignState::onMenuItemSelected", _1(menu),
 	{
 		// Close (destroy) the menu after selection
 		MyGUI::Gui::getInstancePtr()->destroyWidget(menu);
@@ -2083,7 +2080,7 @@ void DesignState::onMenuItemSelected(MyGUI::MenuCtrl* menu, MyGUI::MenuItem* ite
 
 void DesignState::toggleGuiVisibility(bool visible)
 {
-	ENQUEUE_RENDER_COMMAND_MULTI("DesignState::toggleGuiVisibility", _1(visible),
+	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DesignState::toggleGuiVisibility", _1(visible),
 	{
 		if (nullptr != this->propertiesPanel)
 		{
@@ -2252,7 +2249,7 @@ bool DesignState::keyPressed(const OIS::KeyEvent& keyEventRef)
 					{
 						if (false == this->editorManager->getSelectionManager()->getSelectedGameObjects().empty())
 						{
-							ENQUEUE_RENDER_COMMAND("ShowComponents",
+							ENQUEUE_RENDER_COMMAND_WAIT("ShowComponents",
 							{
 								this->componentsPanel->showComponents(-1);
 							});
@@ -2278,7 +2275,7 @@ bool DesignState::keyPressed(const OIS::KeyEvent& keyEventRef)
 					{
 						this->editorManager->getSelectionManager()->select(affectedGameObjects[i]->getId());
 					}
-					ENQUEUE_RENDER_COMMAND("Click ShowProperties",
+					ENQUEUE_RENDER_COMMAND_WAIT("Click ShowProperties",
 					{
 						this->propertiesPanel->showProperties();
 					});
@@ -2661,7 +2658,7 @@ bool DesignState::mousePressed(const OIS::MouseEvent& evt, OIS::MouseButtonID id
 					this->editorManager->getSelectionManager()->select(std::get<1>(gameObjectData));
 
 					// Also scrolls down to component
-					ENQUEUE_RENDER_COMMAND_MULTI("DesignState::mousePressed showProperties", _1(gameObjectData),
+					ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DesignState::mousePressed showProperties", _1(gameObjectData),
 					{
 						this->propertiesPanel->showProperties(std::get<2>(gameObjectData));
 					});
@@ -2764,7 +2761,7 @@ bool DesignState::mouseReleased(const OIS::MouseEvent &evt, OIS::MouseButtonID i
 					// if (true == selectedGameObjectsChanged)
 					{
 						// Show properties (only when selection changed, because showProperties is an heavy operation!)
-						ENQUEUE_RENDER_COMMAND("Mouse Release ShowProperties",
+						ENQUEUE_RENDER_COMMAND_WAIT("Mouse Release ShowProperties",
 						{
 							this->propertiesPanel->showProperties();
 						});

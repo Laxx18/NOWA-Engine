@@ -131,11 +131,19 @@ namespace OgreNewt
 		return m_coneFriction;
 	}
 
-	void BallAndSocket::setTwistSpringDamper(bool /*state*/, Ogre::Real springDamperRelaxation, Ogre::Real spring, Ogre::Real damper)
+	void BallAndSocket::setTwistSpringDamper(bool state, Ogre::Real springDamperRelaxation, Ogre::Real spring, Ogre::Real damper)
 	{
 		if (auto* j = asNd())
 		{
-			j->SetAsSpringDamper(static_cast<ndFloat32>(springDamperRelaxation), static_cast<ndFloat32>(spring), static_cast<ndFloat32>(damper));
+			if (state)
+			{
+				j->SetAsSpringDamper(static_cast<ndFloat32>(springDamperRelaxation), static_cast<ndFloat32>(spring), static_cast<ndFloat32>(damper));
+			}
+			else
+			{
+				// Approximate "disable": zero stiffness/damping
+				j->SetAsSpringDamper(static_cast<ndFloat32>(springDamperRelaxation), 0.0f, 0.0f);
+			}
 		}
 		if (m_child)
 			m_child->unFreeze();
@@ -177,7 +185,7 @@ namespace OgreNewt
 		m_childPinLocal(pin)
 	{
 		// build ND4 frame from Ogre pin + position (same as Newton3 grammSchmidt logic)
-		Ogre::Quaternion q = OgreNewt::Converters::grammSchmidt(pin);
+		const Ogre::Quaternion q = OgreNewt::Converters::grammSchmidt(pin);
 		ndMatrix pivotFrame(ndGetIdentityMatrix());
 		OgreNewt::Converters::QuatPosToMatrix(q, pos, pivotFrame);
 
@@ -2189,17 +2197,17 @@ namespace OgreNewt
 	/////////////////////////////////////////////////////////////////////////////////////
 
 	// =============================================================
-	//   ND4 Adapter: implements spline query via OgreNewt::Body spline
-	// =============================================================
+//   ND4 Adapter: implements spline query via PathFollow::m_spline
+// =============================================================
 	class NdCustomPathFollowAdapter : public ndJointFollowPath
 	{
 	public:
 		NdCustomPathFollowAdapter(const ndMatrix& pinAndPivotFrame,
 			ndBodyDynamic* const child,
 			ndBodyDynamic* const pathBody,
-			OgreNewt::Body* const pathBodyWrapper)
-			: ndJointFollowPath(pinAndPivotFrame, child, pathBody),
-			m_pathBodyWrapper(pathBodyWrapper)
+			const ndBezierSpline* spline)
+			: ndJointFollowPath(pinAndPivotFrame, child, pathBody)
+			, m_spline(spline)
 		{
 		}
 
@@ -2207,24 +2215,28 @@ namespace OgreNewt
 			ndVector& positOut,
 			ndVector& tangentOut) const override
 		{
-			// Get spline from the OgreNewt path body
-			const ndBezierSpline& spline = m_pathBodyWrapper->getSpline();
 			const ndBodyKinematic* const pathKine = GetBody1();
 			const ndMatrix pathM(pathKine->GetMatrix());
 
+			// local position relative to path body
 			const ndVector pLocal(pathM.UntransformVector(location));
 
 			ndBigVector closestPoint;
-			const ndFloat64 knot = spline.FindClosestKnot(closestPoint, pLocal, 8);
-			ndBigVector tangent(spline.CurveDerivative(knot));
+			const ndFloat64 knot = m_spline->FindClosestKnot(closestPoint, pLocal, 8);
+
+			ndBigVector tangent(m_spline->CurveDerivative(knot));
 			tangent = tangent.Scale(1.0 / ndSqrt(tangent.DotProduct(tangent).GetScalar()));
 
 			positOut = pathM.TransformVector(closestPoint);
-			tangentOut = ndVector(ndFloat32(tangent.m_x), ndFloat32(tangent.m_y), ndFloat32(tangent.m_z), 0.0f);
+			tangentOut = ndVector(
+				(ndFloat32)tangent.m_x,
+				(ndFloat32)tangent.m_y,
+				(ndFloat32)tangent.m_z,
+				0.0f);
 		}
 
 	private:
-		OgreNewt::Body* const m_pathBodyWrapper;
+		const ndBezierSpline* m_spline;
 	};
 
 	// =============================================================
@@ -2234,7 +2246,9 @@ namespace OgreNewt
 	PathFollow::PathFollow(OgreNewt::Body* child, OgreNewt::Body* pathBody, const Ogre::Vector3& pos)
 		: m_childBody(child),
 		m_pathBody(pathBody),
-		m_pos(pos)
+		m_pos(pos),
+		m_loop(false),
+		m_clockwise(true)
 	{
 	}
 
@@ -2243,28 +2257,129 @@ namespace OgreNewt
 		// Base Joint class cleans up joint object
 	}
 
+	void PathFollow::setLoop(bool value)
+	{
+		m_loop = value;
+		if (!m_sourceControlPoints.empty())
+		{
+			rebuildSpline();
+		}
+	}
+
+	bool PathFollow::getLoop() const
+	{
+		return m_loop;
+	}
+
+	void PathFollow::setClockwise(bool value)
+	{
+		m_clockwise = value;
+		if (!m_sourceControlPoints.empty())
+		{
+			rebuildSpline();
+		}
+	}
+
+	bool PathFollow::getClockwise() const
+	{
+		return m_clockwise;
+	}
+
 	bool PathFollow::setKnots(const std::vector<Ogre::Vector3>& knots)
 	{
-		m_internalControlPoints.clear();
-		m_internalControlPoints.reserve(knots.size());
+		m_sourceControlPoints.clear();
+		m_sourceControlPoints.reserve(knots.size());
 
+		// store world-space points as given by the component
 		for (const auto& p : knots)
-			m_internalControlPoints.emplace_back(ndBigVector(p.x, p.y, p.z, 1.0));
+		{
+			m_sourceControlPoints.emplace_back(ndBigVector(p.x, p.y, p.z, 1.0));
+		}
 
-		return !m_internalControlPoints.empty();
+		if (m_sourceControlPoints.size() < 2)
+			return false;
+
+		// Path body must exist
+		if (!m_pathBody || !m_pathBody->getNewtonBody())
+			return false;
+
+		rebuildSpline();
+		return true;
+	}
+
+	void PathFollow::rebuildSpline()
+	{
+		m_internalControlPoints.clear();
+
+		// nothing to do without source data
+		if (m_sourceControlPoints.size() < 2)
+			return;
+
+		// Start from original points
+		m_internalControlPoints = m_sourceControlPoints;
+
+		// --------------------------------------------------
+		// Apply clockwise: keep first point, reverse the rest
+		// --------------------------------------------------
+		if (!m_clockwise && m_internalControlPoints.size() > 2)
+		{
+			// [0] remains anchor/start, [1..N-1] get reversed
+			std::reverse(m_internalControlPoints.begin() + 1, m_internalControlPoints.end());
+		}
+
+		// --------------------------------------------------
+		// Apply loop: duplicate first at end if not already
+		// --------------------------------------------------
+		if (m_loop && !m_internalControlPoints.empty())
+		{
+			const ndBigVector& first = m_internalControlPoints.front();
+			const ndBigVector& last = m_internalControlPoints.back();
+			ndBigVector diff = last - first;
+			const ndFloat64 dist2 = diff.DotProduct(diff).GetScalar();
+			if (dist2 > 1.0e-8)
+			{
+				m_internalControlPoints.push_back(first);
+			}
+		}
+
+		if (!m_pathBody || !m_pathBody->getNewtonBody())
+			return;
+
+		const ndBodyKinematic* pathKine = (ndBodyKinematic*)m_pathBody->getNewtonBody();
+		ndMatrix pathM(pathKine->GetMatrix());
+
+		// Convert world -> local
+		std::vector<ndBigVector> localPoints;
+		localPoints.reserve(m_internalControlPoints.size());
+
+		for (const auto& pWorldBig : m_internalControlPoints)
+		{
+			ndVector pWorld((ndFloat32)pWorldBig.m_x, (ndFloat32)pWorldBig.m_y, (ndFloat32)pWorldBig.m_z, 1.0f);
+
+			ndVector pLocal = pathM.UntransformVector(pWorld);
+			localPoints.emplace_back(ndBigVector(pLocal.m_x, pLocal.m_y, pLocal.m_z, 1.0));
+		}
+
+		const ndInt32 count = (ndInt32)localPoints.size();
+		if (count < 2)
+			return;
+
+		ndBigVector firstTangent = localPoints[1] - localPoints[0];
+		ndBigVector lastTangent = localPoints[count - 1] - localPoints[count - 2];
+
+		// Build the real spline
+		m_spline.GlobalCubicInterpolation(count, &localPoints[0], firstTangent, lastTangent);
 	}
 
 	void PathFollow::createPathJoint(void)
 	{
-		// Build orientation frame from direction
+		// direction from first segment (already consistent with clockwise order)
 		const Ogre::Vector3 dir = getMoveDirection(0);
 		Ogre::Quaternion q = OgreNewt::Converters::grammSchmidt(dir);
 
-		// convert Ogre quaternion + position to ndMatrix
 		ndMatrix frame;
 		OgreNewt::Converters::QuatPosToMatrix(q, Ogre::Vector3::ZERO, frame);
 
-		// Position joint along the path body transform
 		const ndBodyKinematic* pathKine = (ndBodyKinematic*)m_pathBody->getNewtonBody();
 		const ndMatrix pathM(pathKine->GetMatrix());
 		frame.m_posit = pathM.TransformVector(ndVector(m_pos.x, m_pos.y, m_pos.z, 1.0f));
@@ -2272,7 +2387,7 @@ namespace OgreNewt
 		ndBodyDynamic* const childDyn = ((ndBodyKinematic*)m_childBody->getNewtonBody())->GetAsBodyDynamic();
 		ndBodyDynamic* const pathDyn = ((ndBodyKinematic*)m_pathBody->getNewtonBody())->GetAsBodyDynamic();
 
-		auto* joint = new NdCustomPathFollowAdapter(frame, childDyn, pathDyn, m_pathBody);
+		auto* joint = new NdCustomPathFollowAdapter(frame, childDyn, pathDyn, &m_spline);
 		SetSupportJoint(joint);
 	}
 
@@ -2283,15 +2398,21 @@ namespace OgreNewt
 
 		const ndBigVector a = m_internalControlPoints[index + 0];
 		const ndBigVector b = m_internalControlPoints[index + 1];
-		const ndVector dir((ndFloat32)(b.m_x - a.m_x), (ndFloat32)(b.m_y - a.m_y), (ndFloat32)(b.m_z - a.m_z), 0.0f);
+		ndVector dir((ndFloat32)(b.m_x - a.m_x), (ndFloat32)(b.m_y - a.m_y), (ndFloat32)(b.m_z - a.m_z), 0.0f);
 
 		const ndFloat32 len2 = dir.DotProduct(dir).GetScalar();
-		return len2 > 1.0e-6f ? dir.Scale(1.0f / ndSqrt(len2)) : ndVector(1.0f, 0.0f, 0.0f, 0.0f);
+		if (len2 <= 1.0e-6f)
+			dir = ndVector(1.0f, 0.0f, 0.0f, 0.0f);
+		else
+			dir = dir.Scale(1.0f / ndSqrt(len2));
+
+		return dir;
 	}
+
 
 	Ogre::Vector3 PathFollow::getMoveDirection(unsigned int index)
 	{
-		const ndVector v = computeDirection(index);
+		ndVector v = computeDirection(index);
 		return Ogre::Vector3(v.m_x, v.m_y, v.m_z);
 	}
 
@@ -2302,7 +2423,7 @@ namespace OgreNewt
 
 		ndVector pos(currentBodyPosition.x, currentBodyPosition.y, currentBodyPosition.z, 1.0f);
 
-		// Find nearest segment
+		// Find nearest segment (same as before)
 		ndFloat32 minDist2 = 1e20f;
 		ndVector bestDir(1.0f, 0.0f, 0.0f, 0.0f);
 		for (size_t i = 0; i + 1 < m_internalControlPoints.size(); ++i)
@@ -2320,6 +2441,7 @@ namespace OgreNewt
 				bestDir = ab.Scale(1.0f / ndSqrt(ab.DotProduct(ab).GetScalar()));
 			}
 		}
+
 		return Ogre::Vector3(bestDir.m_x, bestDir.m_y, bestDir.m_z);
 	}
 
@@ -2382,9 +2504,9 @@ namespace OgreNewt
 			}
 			accum += segLens[i];
 		}
+
 		return { progress, nearest };
 	}
-
 
 	///////////////////////////////////////////////////////////////////////////////////////////////
 

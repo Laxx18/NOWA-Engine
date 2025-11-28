@@ -18,7 +18,19 @@ KinematicBody::KinematicBody(World* world, Ogre::SceneManager* sceneManager, con
     // Create a kinematic body
     m_body = new ndBodyKinematic();
     m_body->SetMatrix(matrix);
-    m_body->SetCollisionShape(col->getNewtonCollision());
+    ndShapeInstance* srcInst = col->getShapeInstance();
+    if (srcInst)
+    {
+        // Copy instance, including its local matrix (HeightField offset, etc.)
+        ndShapeInstance shapeInst(*srcInst);
+        m_body->SetCollisionShape(shapeInst);
+    }
+    else
+    {
+        // fallback: build instance from raw shape with identity local matrix
+        ndShapeInstance shapeInst(col->getNewtonCollision());
+        m_body->SetCollisionShape(shapeInst);
+    }
 
     // Attach to Newton world
     m_world->getNewtonWorld()->AddBody(m_body);

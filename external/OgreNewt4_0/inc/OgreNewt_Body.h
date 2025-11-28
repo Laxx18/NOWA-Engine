@@ -165,12 +165,6 @@ namespace OgreNewt
 
 		ndShapeInstance* getNewtonCollision() const;
 
-		//! Sets the spline for path follow constraint (only valid for that)
-		void setSpline(ndBezierSpline& spline) { m_spline = spline; }
-
-		//! Gets the spline for path follow constraint (only valid for that)
-		const ndBezierSpline& getSpline() const { return m_spline; }
-
 		void showDebugCollision(bool isStatic, bool show, const Ogre::ColourValue& color = Ogre::ColourValue::Green);
 
 		void updateNode(Ogre::Real interpolatParam);
@@ -196,7 +190,6 @@ namespace OgreNewt
 		const MaterialID* m_matid;
 		World* m_world;
 		Ogre::Vector3 m_gravity;
-		ndBezierSpline m_spline;
 
 		std::vector<std::pair<Ogre::Vector3, Ogre::Vector3> > m_accumulatedGlobalForces;
 
