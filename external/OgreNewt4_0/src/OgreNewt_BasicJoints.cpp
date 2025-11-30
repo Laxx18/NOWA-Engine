@@ -13,11 +13,24 @@
 
 namespace
 {
-	const unsigned char findKnotSubSteps = 10;
+	ndFloat32 toRad(Ogre::Degree d)
+	{
+		return static_cast<ndFloat32>(Ogre::Radian(d).valueRadians());
+	}
 
-	ndFloat32 toRad(Ogre::Degree d) { return static_cast<ndFloat32>(Ogre::Radian(d).valueRadians()); }
-	Ogre::Real toDeg(ndFloat32 r) { return Ogre::Radian(r).valueDegrees(); }
-	ndFloat32 clampf(ndFloat32 v, ndFloat32 a, ndFloat32 b) { return (v < a) ? a : (v > b) ? b : v; }
+	Ogre::Real toDeg(ndFloat32 r)
+	{
+		return Ogre::Radian(r).valueDegrees();
+	}
+
+	ndFloat32 clampf(ndFloat32 v, ndFloat32 a, ndFloat32 b)
+	{
+		return (v < a) ? a : (v > b) ? b : v;
+	}
+
+	ndFloat32 OGRENEWT_LARGE_TORQUE = ndFloat32(1.0e8f);
+	const ndFloat32 OGRENEWT_LARGE_FORCE = ndFloat32(1.0e8f);
+
 }
 
 namespace OgreNewt
@@ -1060,346 +1073,620 @@ namespace OgreNewt
 
 	///////////////////////////////////////////////////////////////////////////////////////////////
 
-	HingeActuator::HingeActuator(const Body* child, const Body* parent, const Ogre::Vector3& pos, const Ogre::Vector3& pin, const Ogre::Degree& angularRate, const Ogre::Degree& minAngle, const Ogre::Degree& maxAngle)
+	ndOgreHingeActuator::ndOgreHingeActuator(
+		const ndMatrix& pinAndPivotFrame,
+		ndBodyKinematic* const child,
+		ndBodyKinematic* const parent,
+		ndFloat32 angularRate,
+		ndFloat32 minAngle,
+		ndFloat32 maxAngle)
+		: ndJointHinge(pinAndPivotFrame, child, parent)
+		, m_motorSpeed(ndAbs(angularRate))
+		, m_maxTorque(OGRENEWT_LARGE_TORQUE)
 	{
+		// We use our own limit handling (like ND3 custom joint),
+		// so disable the built-in hinge limit state.
+		SetLimitState(false);
+
+		// initial limits & target angle
+		m_minLimit = minAngle;
+		m_maxLimit = maxAngle;
+		m_targetAngle = m_angle;
+	}
+
+	void ndOgreHingeActuator::UpdateParameters()
+	{
+		ndJointHinge::UpdateParameters();
+	}
+
+	ndFloat32 ndOgreHingeActuator::GetActuatorAngle() const
+	{
+		// In ND3: GetActuatorAngle() just returned GetJointAngle().
+		// Here we use ndJointHinge::GetAngle(), which uses m_angle updated in UpdateParameters().
+		return GetAngle();
+	}
+
+	ndFloat32 ndOgreHingeActuator::GetTargetAngle() const
+	{
+		return m_targetAngle;
+	}
+
+	ndFloat32 ndOgreHingeActuator::GetMinAngularLimit() const
+	{
+		return m_minLimit;
+	}
+
+	ndFloat32 ndOgreHingeActuator::GetMaxAngularLimit() const
+	{
+		return m_maxLimit;
+	}
+
+	ndFloat32 ndOgreHingeActuator::GetAngularRate() const
+	{
+		return m_motorSpeed;
+	}
+
+	ndFloat32 ndOgreHingeActuator::GetMaxTorque() const
+	{
+		return m_maxTorque;
+	}
+
+	void ndOgreHingeActuator::SetMinAngularLimit(ndFloat32 limit)
+	{
+		m_minLimit = limit;
+	}
+
+	void ndOgreHingeActuator::SetMaxAngularLimit(ndFloat32 limit)
+	{
+		m_maxLimit = limit;
+	}
+
+	void ndOgreHingeActuator::SetAngularRate(ndFloat32 rate)
+	{
+		// ND3: EnableMotor(false, rate) -> store |rate|, no actual "motor" flag.
+		m_motorSpeed = ndAbs(rate);
+	}
+
+	void ndOgreHingeActuator::SetMaxTorque(ndFloat32 torque)
+	{
+		m_maxTorque = ndAbs(torque);
+	}
+
+	void ndOgreHingeActuator::WakeBodies()
+	{
+		if (m_body0)
+			m_body0->SetSleepState(false);
+		if (m_body1)
+			m_body1->SetSleepState(false);
+	}
+
+	void ndOgreHingeActuator::SetTargetAngle(ndFloat32 angle)
+	{
+		// Direct ND4 clone of ND3 SetTargetAngle:
+		// angle = clamp(angle, m_minAngle, m_maxAngle);
+		// if |angle - m_targetAngle| > 1e-3, wake body and update m_targetAngle.
+		angle = ndClamp(angle, m_minLimit, m_maxLimit);
+		if (ndAbs(angle - m_targetAngle) > ndFloat32(1.0e-3f))
+		{
+			WakeBodies();
+			m_targetAngle = angle;
+		}
+	}
+
+	void ndOgreHingeActuator::SetSpringAndDamping(
+		bool enable,
+		bool massIndependent,
+		ndFloat32 springDamperRelaxation,
+		ndFloat32 spring,
+		ndFloat32 damper)
+	{
+		// ND3 used SetAsSpringDamper / SetMassIndependentSpringDamper
+		// which boiled down to a spring-damper stiffness on the constraint row.
+		// In ND4, ndJointHinge already has SetAsSpringDamper(regularizer, spring, damper),
+		// which is mass-independent; we ignore massIndependent but keep behaviour.
+		if (enable)
+		{
+			SetAsSpringDamper(springDamperRelaxation, spring, damper);
+		}
+		else
+		{
+			// "Disable" spring/damper by setting zero
+			SetAsSpringDamper(ndFloat32(0.0f), ndFloat32(0.0f), ndFloat32(0.0f));
+		}
+	}
+
+	// This is the core of the ND3 dCustomHingeActuator::SubmitAngularRow port.
+	// We:
+	// 1) Apply the base hinge rows (3 linear + 2 angular) via ApplyBaseRows.
+	// 2) Add one angular row which behaves like the ND3 actuator servo.
+	// 3) Use friction limits (±m_maxTorque) and limits (m_minLimit/m_maxLimit)
+	//    exactly like the ND3 code.
+	void ndOgreHingeActuator::JacobianDerivative(ndConstraintDescritor& desc)
+	{
+		ndMatrix matrix0;
+		ndMatrix matrix1;
+		CalculateGlobalMatrix(matrix0, matrix1);
+
+		// 1) base hinge constraints (position + basic twist alignment)
+		ApplyBaseRows(desc, matrix0, matrix1);
+
+		// 2) actuator row, ported from dCustomHingeActuator::SubmitAngularRow
+		//    (we use m_angle & m_targetAngle instead of m_curJointAngle & m_targetAngle.GetAngle())
+		const ndFloat32 timestep = desc.m_timestep;
+		const ndFloat32 invTimeStep = desc.m_invTimestep;
+
+		const ndFloat32 angle = m_angle;
+		const ndFloat32 targetAngle = m_targetAngle;
+
+		const ndFloat32 step = m_motorSpeed * timestep;
+		ndFloat32       currentSpeed = ndFloat32(0.0f);
+
+		if (angle < (targetAngle - step))
+		{
+			currentSpeed = m_motorSpeed;
+		}
+		else if (angle < targetAngle)
+		{
+			currentSpeed = ndFloat32(0.3f) * (targetAngle - angle) * invTimeStep;
+		}
+		else if (angle > (targetAngle + step))
+		{
+			currentSpeed = -m_motorSpeed;
+		}
+		else if (angle > targetAngle)
+		{
+			currentSpeed = ndFloat32(0.3f) * (targetAngle - angle) * invTimeStep;
+		}
+
+		// This is equivalent to NewtonUserJointAddAngularRow(m_joint, 0.0f, &matrix0.m_front[0]);
+		AddAngularRowJacobian(desc, &matrix0.m_front[0], ndFloat32(0.0f));
+
+		// accel = NewtonUserJointCalculateRowZeroAcceleration + currentSpeed * invTimeStep;
+		const ndFloat32 accel = GetMotorZeroAcceleration(desc) + currentSpeed * invTimeStep;
+		SetMotorAcceleration(desc, accel);
+
+		// 3) Limit handling via friction, just like ND3:
+		//    if angle > max -> only positive torque
+		//    if angle < min -> only negative torque
+		//    else           -> +-m_maxTorque
+		if (angle > m_maxLimit)
+		{
+			SetHighFriction(desc, m_maxTorque);
+		}
+		else if (angle < m_minLimit)
+		{
+			SetLowerFriction(desc, -m_maxTorque);
+		}
+		else
+		{
+			SetLowerFriction(desc, -m_maxTorque);
+			SetHighFriction(desc, m_maxTorque);
+		}
+	}
+
+	/////////////////////////////////////////////////////////////////////////////////////////
+	
+	HingeActuator::HingeActuator(const OgreNewt::Body* child,
+		const OgreNewt::Body* parent,
+		const Ogre::Vector3& pos,
+		const Ogre::Vector3& pin,
+		const Ogre::Degree& angularRate,
+		const Ogre::Degree& minAngle,
+		const Ogre::Degree& maxAngle)
+		: Joint()
+	{
+		// Build hinge frame from pin + position, just like ND3 (dGrammSchmidt)
 		Ogre::Quaternion q = OgreNewt::Converters::grammSchmidt(pin);
-		ndMatrix pivotFrame(ndGetIdentityMatrix());
-		OgreNewt::Converters::QuatPosToMatrix(q, pos, pivotFrame);
 
-		// --- Resolve bodies (with sentinel fallback)
-		ndBodyKinematic* const b0 = child ? const_cast<ndBodyKinematic*>(child->getNewtonBody()) : nullptr;
-		ndBodyKinematic* const b1 = parent ? const_cast<ndBodyKinematic*>(parent->getNewtonBody())
-			: (child ? child->getWorld()->getNewtonWorld()->GetSentinelBody() : nullptr);
+		ndMatrix pinAndPivotFrame;
+		OgreNewt::Converters::QuatPosToMatrix(q, pos, pinAndPivotFrame);
+		pinAndPivotFrame.m_posit = ndVector(pos.x, pos.y, pos.z, ndFloat32(1.0f));
 
-		auto* joint = new ndJointHinge(pivotFrame, b0, b1);
-		SetSupportJoint(joint);
+		ndBodyKinematic* const b0 = child ?
+			const_cast<ndBodyKinematic*>(child->getNewtonBody()) :
+			nullptr;
 
-		// init limits + rate
-		m_minRad = toRad(minAngle);
-		m_maxRad = toRad(maxAngle);
-		m_maxOmega = toRad(angularRate);
+		ndBodyKinematic* const b1 = parent ?
+			const_cast<ndBodyKinematic*>(parent->getNewtonBody()) :
+			(child ? child->getWorld()->getNewtonWorld()->GetSentinelBody() : nullptr);
 
-		SetMinAngularLimit(minAngle);
-		SetMaxAngularLimit(maxAngle);
-		SetAngularRate(angularRate);
+		const ndFloat32 angularRateRad = angularRate.valueRadians();
+		const ndFloat32 minAngleRad = minAngle.valueRadians();
+		const ndFloat32 maxAngleRad = maxAngle.valueRadians();
+
+		ndOgreHingeActuator* const hinge =
+			new ndOgreHingeActuator(pinAndPivotFrame, b0, b1,
+				angularRateRad, minAngleRad, maxAngleRad);
+
+		SetSupportJoint(hinge);
+
+		// hinge->SetSolverModel(m_jointIterativeSoft);
 	}
 
 	HingeActuator::~HingeActuator()
 	{
-		// Joint base manages native pointer
 	}
 
-	void HingeActuator::SetMinAngularLimit(const Ogre::Degree& limit)
+	// Degrees wrapper for component code:
+	Ogre::Real HingeActuator::GetActuatorAngle() const
 	{
-		m_minRad = toRad(limit);
-		if (auto* j = asNd())
-		{
-			j->SetLimits(m_minRad, m_maxRad);
-			j->SetLimitState(true);
-		}
-		_wake();
-	}
-
-	void HingeActuator::SetMaxAngularLimit(const Ogre::Degree& limit)
-	{
-		m_maxRad = toRad(limit);
-		if (auto* j = asNd())
-		{
-			j->SetLimits(m_minRad, m_maxRad);
-			j->SetLimitState(true);
-		}
-		_wake();
-	}
-
-	void HingeActuator::SetAngularRate(const Ogre::Degree& rate)
-	{
-		m_maxOmega = toRad(rate);
-		_wake();
+		const ndOgreHingeActuator* const joint =
+			static_cast<const ndOgreHingeActuator*>(GetSupportJoint());
+		// joint angle is in radians → convert to degrees for your component
+		return Ogre::Radian(joint->GetActuatorAngle()).valueDegrees();
 	}
 
 	void HingeActuator::SetTargetAngle(const Ogre::Degree& angle)
 	{
-		m_targetCmd = clampf(toRad(angle), m_minRad, m_maxRad);
-		_wake();
+		ndOgreHingeActuator* const joint =
+			static_cast<ndOgreHingeActuator*>(GetSupportJoint());
+		joint->SetTargetAngle(angle.valueRadians());
 	}
 
-	Ogre::Real HingeActuator::GetActuatorAngle() const
+	void HingeActuator::SetMinAngularLimit(const Ogre::Degree& limit)
 	{
-		if (auto* j = const_cast<HingeActuator*>(this)->asNd())
-			return toDeg(j->GetAngle());
-		return 0.0f;
+		ndOgreHingeActuator* const joint =
+			static_cast<ndOgreHingeActuator*>(GetSupportJoint());
+		joint->SetMinAngularLimit(limit.valueRadians());
+	}
+
+	void HingeActuator::SetMaxAngularLimit(const Ogre::Degree& limit)
+	{
+		ndOgreHingeActuator* const joint =
+			static_cast<ndOgreHingeActuator*>(GetSupportJoint());
+		joint->SetMaxAngularLimit(limit.valueRadians());
+	}
+
+	void HingeActuator::SetAngularRate(const Ogre::Degree& rate)
+	{
+		ndOgreHingeActuator* const joint =
+			static_cast<ndOgreHingeActuator*>(GetSupportJoint());
+		joint->SetAngularRate(rate.valueRadians());
 	}
 
 	void HingeActuator::SetMaxTorque(Ogre::Real torque)
 	{
-		m_maxTorque = static_cast<ndFloat32>(std::max<Ogre::Real>(0.0f, torque));
-		_wake();
+		ndOgreHingeActuator* const joint =
+			static_cast<ndOgreHingeActuator*>(GetSupportJoint());
+		joint->SetMaxTorque(static_cast<ndFloat32>(torque));
 	}
 
-	Ogre::Real HingeActuator::GetTargetAngleDeg() const
+	Ogre::Real HingeActuator::GetMaxTorque() const
 	{
-		if (auto* j = const_cast<HingeActuator*>(this)->asNd())
-			return Ogre::Radian(j->GetTargetAngle()).valueDegrees();
-		return 0.0f;
+		const ndOgreHingeActuator* const joint =
+			static_cast<const ndOgreHingeActuator*>(GetSupportJoint());
+		return static_cast<Ogre::Real>(joint->GetMaxTorque());
 	}
 
-	Ogre::Real HingeActuator::GetOmegaDegPerSec() const
-	{
-		if (auto* j = const_cast<HingeActuator*>(this)->asNd())
-			return Ogre::Radian(j->GetOmega()).valueDegrees();
-		return 0.0f;
-	}
-
-	void HingeActuator::SetSpringAndDamping(bool enable, bool /*massIndependent*/,
+	void HingeActuator::SetSpringAndDamping(bool enable,
+		bool massIndependent,
 		Ogre::Real springDamperRelaxation,
-		Ogre::Real spring, Ogre::Real damper)
+		Ogre::Real spring,
+		Ogre::Real damper)
 	{
-		m_regularizer = static_cast<ndFloat32>(springDamperRelaxation);
-		m_pdEnabled = enable;
-		m_kp = enable ? static_cast<ndFloat32>(spring) : 0.0f;
-		m_kd = enable ? static_cast<ndFloat32>(damper) : 0.0f;
-
-		if (auto* j = asNd())
-			j->SetAsSpringDamper(m_regularizer, m_kp, m_kd);
-
-		_wake();
-	}
-
-	void HingeActuator::ControllerUpdate(ndFloat32 dt)
-	{
-		auto* j = asNd();
-		if (!j || dt <= ndFloat32(0)) return;
-
-		// 1) Slew-limit the target angle
-		const ndFloat32 cur = j->GetAngle();
-		const ndFloat32 tgt = clampf(m_targetCmd, m_minRad, m_maxRad);
-		const ndFloat32 err = tgt - cur;
-
-		const ndFloat32 maxStep = m_maxOmega * dt;
-		const ndFloat32 step = (err < -maxStep) ? -maxStep : (err > maxStep) ? maxStep : err;
-
-		m_targetSlew = cur + step;
-		m_targetSlew = clampf(m_targetSlew, m_minRad, m_maxRad);
-
-		// 2) If PD disabled, just set target (hinge will not drive)
-		if (!m_pdEnabled)
-		{
-			j->SetTargetAngle(m_targetSlew);
-			return;
-		}
-
-		// 3) Soft torque cap by scaling PD gains for this step if needed
-		// Desired PD torque about hinge axis:
-		const ndFloat32 omega = j->GetOmega(); // relative hinge angular velocity (rad/s)
-		ndFloat32 errToTarget = m_targetSlew - cur;     // rad
-		ndFloat32 desiredTau = m_kp * errToTarget - m_kd * omega;
-
-		ndFloat32 scale = 1.0f;
-		if (m_maxTorque > ndFloat32(0.0f))
-		{
-			const ndFloat32 absTau = std::fabs(desiredTau);
-			if (absTau > m_maxTorque + ndFloat32(1e-6))
-				scale = m_maxTorque / absTau;
-		}
-
-		const ndFloat32 kpStep = m_kp * scale;
-		const ndFloat32 kdStep = m_kd * scale;
-
-		// 4) Apply step gains + new target to the ND hinge
-		j->SetAsSpringDamper(m_regularizer, kpStep, kdStep);
-		j->SetTargetAngle(m_targetSlew);
-
-		// Optional: wake bodies if we are actively driving
-		if (std::fabs(desiredTau) > ndFloat32(1e-6))
-			_wake();
+		ndOgreHingeActuator* const joint =
+			static_cast<ndOgreHingeActuator*>(GetSupportJoint());
+		joint->SetSpringAndDamping(
+			enable,
+			massIndependent,
+			static_cast<ndFloat32>(springDamperRelaxation),
+			static_cast<ndFloat32>(spring),
+			static_cast<ndFloat32>(damper));
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////////////////
 
-	SliderActuator::SliderActuator(const Body* child, const Body* parent,
-		const Ogre::Vector3& pos, const Ogre::Vector3& pin,
-		Ogre::Real linearRate, Ogre::Real minPosition, Ogre::Real maxPosition)
+	ndOgreSliderActuator::ndOgreSliderActuator(
+		const ndMatrix& pinAndPivotFrame,
+		ndBodyKinematic* const child,
+		ndBodyKinematic* const parent,
+		ndFloat32 linearRate,
+		ndFloat32 minPosit,
+		ndFloat32 maxPosit)
+		: ndJointSlider(pinAndPivotFrame, child, parent)
+		, m_targetPosit(ndFloat32(0.0f))
+		, m_linearRate(linearRate)
+		, m_maxForce(OGRENEWT_LARGE_FORCE)
+		, m_minForce(-OGRENEWT_LARGE_FORCE)
+		, m_force(ndFloat32(0.0f))
 	{
-		m_body0 = const_cast<Body*>(child);
-		m_body1 = const_cast<Body*>(parent);
+		// we will handle limits & forces manually (like ND3 custom joint),
+		// so disable built-in limit/maxForce state
+		SetLimitState(false);
+		SetMaxForceState(false);
 
-		ndBodyKinematic* b0 = child ? const_cast<ndBodyKinematic*>(child->getNewtonBody()) : nullptr;
-		ndBodyKinematic* b1 = parent ? const_cast<ndBodyKinematic*>(parent->getNewtonBody()) : child->getWorld()->getNewtonWorld()->GetSentinelBody();
+		// set limits on base joint
+		SetLimits(minPosit, maxPosit);
 
-		// Build orthonormal frame from pin at world position pos
+		// initialize target at current posit
+		// (UpdateParameters will fill m_posit before JacobianDerivative)
+		m_targetPosit = GetTargetPosit();
+	}
+
+	void ndOgreSliderActuator::UpdateParameters()
+	{
+		ndJointSlider::UpdateParameters();
+	}
+
+	void ndOgreSliderActuator::WakeBodies()
+	{
+		if (m_body0)
+			m_body0->SetSleepState(false);
+		if (m_body1)
+			m_body1->SetSleepState(false);
+	}
+
+	ndFloat32 ndOgreSliderActuator::GetActuatorPosit() const
+	{
+		// equivalent to GetJointPosit() in ND3
+		return GetPosit();
+	}
+
+	ndFloat32 ndOgreSliderActuator::GetTargetPosit() const
+	{
+		return m_targetPosit;
+	}
+
+	void ndOgreSliderActuator::SetTargetPosit(ndFloat32 posit)
+	{
+		ndFloat32 minLimit, maxLimit;
+		GetLimits(minLimit, maxLimit);
+
+		posit = ndClamp(posit, minLimit, maxLimit);
+		if (ndAbs(posit - m_targetPosit) > ndFloat32(1.0e-3f))
+		{
+			WakeBodies();
+			m_targetPosit = ndClamp(posit, minLimit, maxLimit);
+		}
+	}
+
+	ndFloat32 ndOgreSliderActuator::GetLinearRate() const
+	{
+		return m_linearRate;
+	}
+
+	void ndOgreSliderActuator::SetLinearRate(ndFloat32 rate)
+	{
+		m_linearRate = ndAbs(rate);
+	}
+
+	ndFloat32 ndOgreSliderActuator::GetMinPositLimit() const
+	{
+		ndFloat32 minLimit, maxLimit;
+		GetLimits(minLimit, maxLimit);
+		return minLimit;
+	}
+
+	ndFloat32 ndOgreSliderActuator::GetMaxPositLimit() const
+	{
+		ndFloat32 minLimit, maxLimit;
+		GetLimits(minLimit, maxLimit);
+		return maxLimit;
+	}
+
+	void ndOgreSliderActuator::SetMinPositLimit(ndFloat32 limit)
+	{
+		ndFloat32 minLimit, maxLimit;
+		GetLimits(minLimit, maxLimit);
+		SetLimits(limit, maxLimit);
+	}
+
+	void ndOgreSliderActuator::SetMaxPositLimit(ndFloat32 limit)
+	{
+		ndFloat32 minLimit, maxLimit;
+		GetLimits(minLimit, maxLimit);
+		SetLimits(minLimit, limit);
+	}
+
+	ndFloat32 ndOgreSliderActuator::GetMaxForce() const
+	{
+		return m_maxForce;
+	}
+
+	ndFloat32 ndOgreSliderActuator::GetMinForce() const
+	{
+		return m_minForce;
+	}
+
+	void ndOgreSliderActuator::SetMaxForce(ndFloat32 force)
+	{
+		m_maxForce = ndAbs(force);
+	}
+
+	void ndOgreSliderActuator::SetMinForce(ndFloat32 force)
+	{
+		m_minForce = -ndAbs(force);
+	}
+
+	ndFloat32 ndOgreSliderActuator::GetForce() const
+	{
+		return m_force;
+	}
+
+	void ndOgreSliderActuator::JacobianDerivative(ndConstraintDescritor& desc)
+	{
+		ndMatrix matrix0;
+		ndMatrix matrix1;
+		CalculateGlobalMatrix(matrix0, matrix1);
+
+		// 1) base slider constraints (align axes, lock unwanted degrees)
+		ApplyBaseRows(desc, matrix0, matrix1);
+
+		const ndFloat32 timestep = desc.m_timestep;
+		const ndFloat32 invTimeStep = desc.m_invTimestep;
+
+		const ndFloat32 posit = m_posit;      // updated by UpdateParameters()
+		const ndFloat32 targetPosit = m_targetPosit;
+
+		ndFloat32 minLimit, maxLimit;
+		GetLimits(minLimit, maxLimit);
+
+		// ND3 logic:
+		// step = m_linearRate * timestep;
+		const ndFloat32 step = m_linearRate * timestep;
+		ndFloat32 currentSpeed = ndFloat32(0.0f);
+
+		if (posit < (targetPosit - step))
+		{
+			currentSpeed = m_linearRate;
+		}
+		else if (posit < targetPosit)
+		{
+			currentSpeed = ndFloat32(0.3f) * (targetPosit - posit) * invTimeStep;
+		}
+		else if (posit > (targetPosit + step))
+		{
+			currentSpeed = -m_linearRate;
+		}
+		else if (posit > targetPosit)
+		{
+			currentSpeed = ndFloat32(0.3f) * (targetPosit - posit) * invTimeStep;
+		}
+
+		// 2) "active dof" row, port of ND3 SubmitAngularRow body:
+		//
+		// ND3:
+		//   NewtonUserJointAddLinearRow(m_joint, &matrix0.m_posit[0],
+		//                               &matrix1.m_posit[0], &matrix1.m_front[0]);
+		//
+		AddLinearRowJacobian(
+			desc,
+			&matrix0.m_posit[0],
+			&matrix1.m_posit[0],
+			&matrix1.m_front[0]);
+
+		const ndFloat32 accel = GetMotorZeroAcceleration(desc) + currentSpeed * invTimeStep;
+		SetMotorAcceleration(desc, accel);
+		// row stiffness is handled inside base; we don't need explicit call here
+
+		// 3) friction / force limits like ND3:
+		if (posit > maxLimit)
+		{
+			SetHighFriction(desc, m_maxForce);
+		}
+		else if (posit < minLimit)
+		{
+			SetLowerFriction(desc, m_minForce);
+		}
+		else
+		{
+			SetLowerFriction(desc, m_minForce);
+			SetHighFriction(desc, m_maxForce);
+		}
+
+		// For now we approximate m_force as the "expected" force range.
+		// If you later need the exact constraint row force, we can refine this
+		// once we hook into ndJointBilateralConstraint's row force accessors.
+		//
+		// Here we just store a signed value representing the active range.
+		if (posit > targetPosit)
+		{
+			m_force = m_minForce;
+		}
+		else if (posit < targetPosit)
+		{
+			m_force = m_maxForce;
+		}
+		else
+		{
+			m_force = ndFloat32(0.0f);
+		}
+	}
+
+	SliderActuator::SliderActuator(const OgreNewt::Body* child,
+		const OgreNewt::Body* parent,
+		const Ogre::Vector3& pos,
+		const Ogre::Vector3& pin,
+		Ogre::Real linearRate,
+		Ogre::Real minPosition,
+		Ogre::Real maxPosition)
+		: Joint()
+	{
+		// Same way as old OgreNewt3 code: build frame from pin + pos
 		Ogre::Quaternion q = OgreNewt::Converters::grammSchmidt(pin);
-		ndMatrix frame;
-		OgreNewt::Converters::QuatPosToMatrix(q, pos, frame);
 
-		auto* j = new ndJointSlider(frame, b0, b1);
-		SetSupportJoint(j);
+		ndMatrix pinAndPivotFrame;
+		OgreNewt::Converters::QuatPosToMatrix(q, pos, pinAndPivotFrame);
+		pinAndPivotFrame.m_posit = ndVector(pos.x, pos.y, pos.z, ndFloat32(1.0f));
 
-		m_minPos = static_cast<ndFloat32>(std::min(minPosition, maxPosition));
-		m_maxPos = static_cast<ndFloat32>(std::max(minPosition, maxPosition));
-		m_maxSpeed = static_cast<ndFloat32>(std::max<Ogre::Real>(1e-6f, linearRate));
+		ndBodyKinematic* const b0 = child ?
+			const_cast<ndBodyKinematic*>(child->getNewtonBody()) :
+			nullptr;
 
-		j->SetLimitState(true);
-		j->SetLimits(m_minPos, m_maxPos);
+		ndBodyKinematic* const b1 = parent ?
+			const_cast<ndBodyKinematic*>(parent->getNewtonBody()) :
+			(child ? child->getWorld()->getNewtonWorld()->GetSentinelBody() : nullptr);
 
-		// default regularizer; PD gains will be chosen in _retuneGains()
-		j->SetAsSpringDamper(m_regularizer, 0.0f, 0.0f);
+		ndOgreSliderActuator* const slider =
+			new ndOgreSliderActuator(
+				pinAndPivotFrame,
+				b0,
+				b1,
+				static_cast<ndFloat32>(linearRate),
+				static_cast<ndFloat32>(minPosition),
+				static_cast<ndFloat32>(maxPosition));
 
-		// initialize targets to current position
-		const ndFloat32 p = j->GetPosit();
-		m_targetCmd = clampf(p, m_minPos, m_maxPos);
-		m_targetSlew = m_targetCmd;
-		j->SetTargetPosit(m_targetSlew);
-
-		// program initial max force (abs) and choose gains
-		_applyMaxForceToNative();
-		_retuneGains();
+		SetSupportJoint(slider);
 	}
 
 	SliderActuator::~SliderActuator()
 	{
-		// base Joint cleans up native joint
 	}
 
 	Ogre::Real SliderActuator::GetActuatorPosition() const
 	{
-		if (auto* j = const_cast<SliderActuator*>(this)->asNd())
-			return j->GetPosit();
-		return 0.0f;
+		const ndOgreSliderActuator* const joint =
+			static_cast<const ndOgreSliderActuator*>(GetSupportJoint());
+		return static_cast<Ogre::Real>(joint->GetActuatorPosit());
 	}
 
 	void SliderActuator::SetTargetPosition(Ogre::Real targetPosition)
 	{
-		m_targetCmd = static_cast<ndFloat32>(targetPosition);
-		m_targetCmd = clampf(m_targetCmd, m_minPos, m_maxPos);
-		_wake();
+		ndOgreSliderActuator* const joint =
+			static_cast<ndOgreSliderActuator*>(GetSupportJoint());
+		joint->SetTargetPosit(static_cast<ndFloat32>(targetPosition));
 	}
 
 	void SliderActuator::SetLinearRate(Ogre::Real linearRate)
 	{
-		m_maxSpeed = static_cast<ndFloat32>(std::max<Ogre::Real>(1e-6f, linearRate));
-		_wake();
+		ndOgreSliderActuator* const joint =
+			static_cast<ndOgreSliderActuator*>(GetSupportJoint());
+		joint->SetLinearRate(static_cast<ndFloat32>(linearRate));
 	}
 
 	void SliderActuator::SetMinPositionLimit(Ogre::Real limit)
 	{
-		m_minPos = static_cast<ndFloat32>(limit);
-		if (auto* j = asNd())
-			j->SetLimits(m_minPos, m_maxPos);
-		_retuneGains();
-		_wake();
+		ndOgreSliderActuator* const joint =
+			static_cast<ndOgreSliderActuator*>(GetSupportJoint());
+		joint->SetMinPositLimit(static_cast<ndFloat32>(limit));
 	}
 
 	void SliderActuator::SetMaxPositionLimit(Ogre::Real limit)
 	{
-		m_maxPos = static_cast<ndFloat32>(limit);
-		if (auto* j = asNd())
-			j->SetLimits(m_minPos, m_maxPos);
-		_retuneGains();
-		_wake();
+		ndOgreSliderActuator* const joint =
+			static_cast<ndOgreSliderActuator*>(GetSupportJoint());
+		joint->SetMaxPositLimit(static_cast<ndFloat32>(limit));
 	}
 
 	void SliderActuator::SetMinForce(Ogre::Real force)
 	{
-		m_minForce = static_cast<ndFloat32>(force);
-		_applyMaxForceToNative();
-		_retuneGains();
-		_wake();
+		ndOgreSliderActuator* const joint =
+			static_cast<ndOgreSliderActuator*>(GetSupportJoint());
+		joint->SetMinForce(static_cast<ndFloat32>(force));
 	}
 
 	void SliderActuator::SetMaxForce(Ogre::Real force)
 	{
-		m_maxForce = static_cast<ndFloat32>(force);
-		_applyMaxForceToNative();
-		_retuneGains();
-		_wake();
+		ndOgreSliderActuator* const joint =
+			static_cast<ndOgreSliderActuator*>(GetSupportJoint());
+		joint->SetMaxForce(static_cast<ndFloat32>(force));
 	}
 
 	Ogre::Real SliderActuator::GetForce() const
 	{
-		return m_lastForce;
-	}
-
-	Ogre::Real SliderActuator::GetTargetPosition() const
-	{
-		if (auto* j = const_cast<SliderActuator*>(this)->asNd())
-			return j->GetTargetPosit();
-		return 0.0f;
-	}
-
-	Ogre::Real SliderActuator::GetSpeed() const
-	{
-		if (auto* j = const_cast<SliderActuator*>(this)->asNd())
-			return j->GetSpeed();
-		return 0.0f;
-	}
-
-	void SliderActuator::_applyMaxForceToNative()
-	{
-		auto* j = asNd();
-		if (!j) return;
-
-		// ND4 only supports absolute max force (+ enable state)
-		const ndFloat32 absMax = std::max(std::fabs(m_minForce), std::fabs(m_maxForce));
-		j->SetMaxForceState(true);
-		j->SetMaxForce(absMax);
-	}
-
-	void SliderActuator::_retuneGains()
-	{
-		auto* j = asNd();
-		if (!j) return;
-
-		// Pick PD gains so that a full-span error requests roughly the available force.
-		// This keeps behavior sane without exposing extra API knobs.
-		const ndFloat32 span = std::max(ndFloat32(1e-4f), m_maxPos - m_minPos);
-		const ndFloat32 absMax = std::max(std::fabs(m_minForce), std::fabs(m_maxForce));
-
-		// Simple heuristic:
-		// kp such that kp * (span * 0.5) ~= 0.7 * absMax  --> moderate stiffness
-		const ndFloat32 kp = (absMax > 1e-6f) ? (absMax * 0.7f) / (span * 0.5f) : 0.0f;
-
-		// Critical-ish damping around small mass assumptions: kd ~= 2*sqrt(kp*m_eff); with unknown mass,
-		// use a proportional term to rate: larger rate -> more damping, but keep bounded.
-		const ndFloat32 kd = kp > 0.0f ? ndFloat32(0.25f) * std::max(ndFloat32(1.0f), m_maxSpeed) : 0.0f;
-
-		m_kp = kp;
-		m_kd = kd;
-
-		j->SetAsSpringDamper(m_regularizer, m_kp, m_kd);
-	}
-
-	void SliderActuator::ControllerUpdate(ndFloat32 dt)
-	{
-		auto* j = asNd();
-		if (!j || dt <= ndFloat32(0)) return;
-
-		// 1) Slew-limit the target position
-		const ndFloat32 cur = j->GetPosit();
-		const ndFloat32 tgt = clampf(m_targetCmd, m_minPos, m_maxPos);
-		const ndFloat32 err = tgt - cur;
-		const ndFloat32 maxDx = m_maxSpeed * dt;
-		const ndFloat32 step = (err < -maxDx) ? -maxDx : (err > maxDx) ? maxDx : err;
-
-		m_targetSlew = clampf(cur + step, m_minPos, m_maxPos);
-
-		// 2) Compute PD force request (signed)
-		const ndFloat32 speed = j->GetSpeed();
-		ndFloat32 desiredF = m_kp * (m_targetSlew - cur) - m_kd * speed;
-
-		// 3) Soft directional clamp
-		desiredF = std::min(std::max(desiredF, m_minForce), m_maxForce);
-		m_lastForce = desiredF;
-
-		// 4) Program ND4: set gains (already set in _retuneGains), set target pos, and ensure absolute max force guard is on.
-		// Note: ND4 applies spring/damper internal drive; we can optionally scale gains per-step to mimic a hard cap,
-		// but the soft clamp plus ND4 absolute guard is usually sufficient.
-		j->SetAsSpringDamper(m_regularizer, m_kp, m_kd);
-		_applyMaxForceToNative();
-		j->SetTargetPosit(m_targetSlew);
-
-		// 5) Wake bodies if we’re actively driving
-		if (std::fabs(m_lastForce) > ndFloat32(1e-6))
-			_wake();
+		const ndOgreSliderActuator* const joint =
+			static_cast<const ndOgreSliderActuator*>(GetSupportJoint());
+		return static_cast<Ogre::Real>(joint->GetForce());
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////////////////
@@ -1424,6 +1711,11 @@ namespace OgreNewt
 
 			CalculateLocalMatrix(globalFrame, m_localMatrix0, m_localMatrix1);
 			SetSolverModel(ndJointBilateralSolverModel::m_jointkinematicAttachment);
+		}
+
+		void UpdateParameters() override
+		{
+			
 		}
 
 		void JacobianDerivative(ndConstraintDescritor& desc) override
@@ -1499,6 +1791,11 @@ namespace OgreNewt
 			: ndJointBilateralConstraint(3, child, parent, pinAndPivotFrame)
 		{
 			SetSolverModel(ndJointBilateralSolverModel::m_jointIterativeSoft);
+		}
+
+		void UpdateParameters() override
+		{
+
 		}
 
 		void JacobianDerivative(ndConstraintDescritor& desc) override
@@ -1904,6 +2201,11 @@ namespace OgreNewt
 		}
 
 		~ndPlaneConstraintWrapper() override = default;
+
+		void UpdateParameters() override
+		{
+			ndJointPlane::UpdateParameters();
+		}
 	};
 
 	// -----------------------------------------------------------------------------
@@ -2209,6 +2511,11 @@ namespace OgreNewt
 			: ndJointFollowPath(pinAndPivotFrame, child, pathBody)
 			, m_spline(spline)
 		{
+		}
+
+		void UpdateParameters() override
+		{
+			ndJointFollowPath::UpdateParameters();
 		}
 
 		void GetPointAndTangentAtLocation(const ndVector& location,
@@ -2537,6 +2844,11 @@ namespace OgreNewt
 			SetSolverModel(ndJointBilateralSolverModel::m_jointkinematicOpenLoop);
 		}
 
+		void UpdateParameters() override
+		{
+			
+		}
+
 		void JacobianDerivative(ndConstraintDescritor& desc) override
 		{
 			ndMatrix m0, m1;
@@ -2619,6 +2931,11 @@ namespace OgreNewt
 
 			// Use kinematic open loop (matches ndJointGear default)
 			SetSolverModel(ndJointBilateralSolverModel::m_jointkinematicOpenLoop);
+		}
+
+		void UpdateParameters() override
+		{
+			
 		}
 
 		void JacobianDerivative(ndConstraintDescritor& desc) override
@@ -2723,262 +3040,390 @@ namespace OgreNewt
 
 	///////////////////////////////////////////////////////////////////////////////////////////////
 
-	UniversalActuator::UniversalActuator(const Body* child, const Body* parent, const Ogre::Vector3& pos,
-		const Ogre::Degree& angularRate0, const Ogre::Degree& minAngle0, const Ogre::Degree& maxAngle0,
-		const Ogre::Degree& angularRate1, const Ogre::Degree& minAngle1, const Ogre::Degree& maxAngle1)
+	ndOgreDoubleHingeActuator::ndOgreDoubleHingeActuator(
+		const ndMatrix& pinAndPivotFrame,
+		ndBodyKinematic* const child,
+		ndBodyKinematic* const parent,
+		ndFloat32 angularRate0, ndFloat32 minAngle0, ndFloat32 maxAngle0,
+		ndFloat32 angularRate1, ndFloat32 minAngle1, ndFloat32 maxAngle1)
+		: ndJointDoubleHinge(pinAndPivotFrame, child, parent)
+		, m_targetAngle0(ndFloat32(0.0f))
+		, m_targetAngle1(ndFloat32(0.0f))
+		, m_angularRate0(ndAbs(angularRate0))
+		, m_angularRate1(ndAbs(angularRate1))
+		, m_maxTorque0(OGRENEWT_LARGE_TORQUE)
+		, m_maxTorque1(OGRENEWT_LARGE_TORQUE)
+		, m_axis0Enable(true)
+		, m_axis1Enable(true)
 	{
-		m_body0 = const_cast<Body*>(child);
-		m_body1 = const_cast<Body*>(parent);
+		// We handle limits via our own servo logic
+		SetLimitState0(false);
+		SetLimitState1(false);
 
-		ndBodyKinematic* b0 = child ? const_cast<ndBodyKinematic*>(child->getNewtonBody()) : nullptr;
-		ndBodyKinematic* b1 = parent ? const_cast<ndBodyKinematic*>(parent->getNewtonBody()) : child->getWorld()->getNewtonWorld()->GetSentinelBody();
+		SetLimits0(minAngle0, maxAngle0);
+		SetLimits1(minAngle1, maxAngle1);
 
-		// Frame: legacy ND3 actuator took identity rotation + pivot at pos.
-		// We keep that convention: identity basis, pivot at 'pos'.
-		ndMatrix frame(ndGetIdentityMatrix());
-		frame.m_posit = ndVector(pos.x, pos.y, pos.z, 1.0f);
+		// Initialize targets to current angles (after first update)
+		m_targetAngle0 = GetAngle0();
+		m_targetAngle1 = GetAngle1();
+	}
 
-		auto* joint = new ndJointDoubleHinge(frame, b0, b1);
+	void ndOgreDoubleHingeActuator::UpdateParameters()
+	{
+		ndJointDoubleHinge::UpdateParameters();
+	}
+
+	void ndOgreDoubleHingeActuator::WakeBodies()
+	{
+		if (m_body0)
+			m_body0->SetSleepState(false);
+		if (m_body1)
+			m_body1->SetSleepState(false);
+	}
+
+	// ---------------- Axis 0 ----------------
+
+	ndFloat32 ndOgreDoubleHingeActuator::GetActuatorAngle0() const
+	{
+		return GetAngle0();
+	}
+
+	void ndOgreDoubleHingeActuator::SetTargetAngle0(ndFloat32 angle)
+	{
+		ndFloat32 minLimit, maxLimit;
+		GetLimits0(minLimit, maxLimit);
+
+		angle = ndClamp(angle, minLimit, maxLimit);
+		if (ndAbs(angle - m_targetAngle0) > ndFloat32(1.0e-3f))
+		{
+			WakeBodies();
+			m_targetAngle0 = angle;
+		}
+	}
+
+	void ndOgreDoubleHingeActuator::SetMinAngularLimit0(ndFloat32 limit)
+	{
+		ndFloat32 minLimit, maxLimit;
+		GetLimits0(minLimit, maxLimit);
+		SetLimits0(limit, maxLimit);
+
+		// ensure target stays in range
+		SetTargetAngle0(m_targetAngle0);
+	}
+
+	void ndOgreDoubleHingeActuator::SetMaxAngularLimit0(ndFloat32 limit)
+	{
+		ndFloat32 minLimit, maxLimit;
+		GetLimits0(minLimit, maxLimit);
+		SetLimits0(minLimit, limit);
+
+		SetTargetAngle0(m_targetAngle0);
+	}
+
+	void ndOgreDoubleHingeActuator::SetAngularRate0(ndFloat32 rate)
+	{
+		m_angularRate0 = ndAbs(rate);
+	}
+
+	void ndOgreDoubleHingeActuator::SetMaxTorque0(ndFloat32 torque)
+	{
+		m_maxTorque0 = ndAbs(torque);
+	}
+
+	ndFloat32 ndOgreDoubleHingeActuator::GetMaxTorque0() const
+	{
+		return m_maxTorque0;
+	}
+
+	// ---------------- Axis 1 ----------------
+
+	ndFloat32 ndOgreDoubleHingeActuator::GetActuatorAngle1() const
+	{
+		return GetAngle1();
+	}
+
+	void ndOgreDoubleHingeActuator::SetTargetAngle1(ndFloat32 angle)
+	{
+		ndFloat32 minLimit, maxLimit;
+		GetLimits1(minLimit, maxLimit);
+
+		angle = ndClamp(angle, minLimit, maxLimit);
+		if (ndAbs(angle - m_targetAngle1) > ndFloat32(1.0e-3f))
+		{
+			WakeBodies();
+			m_targetAngle1 = angle;
+		}
+	}
+
+	void ndOgreDoubleHingeActuator::SetMinAngularLimit1(ndFloat32 limit)
+	{
+		ndFloat32 minLimit, maxLimit;
+		GetLimits1(minLimit, maxLimit);
+		SetLimits1(limit, maxLimit);
+
+		SetTargetAngle1(m_targetAngle1);
+	}
+
+	void ndOgreDoubleHingeActuator::SetMaxAngularLimit1(ndFloat32 limit)
+	{
+		ndFloat32 minLimit, maxLimit;
+		GetLimits1(minLimit, maxLimit);
+		SetLimits1(minLimit, limit);
+
+		SetTargetAngle1(m_targetAngle1);
+	}
+
+	void ndOgreDoubleHingeActuator::SetAngularRate1(ndFloat32 rate)
+	{
+		m_angularRate1 = ndAbs(rate);
+	}
+
+	void ndOgreDoubleHingeActuator::SetMaxTorque1(ndFloat32 torque)
+	{
+		m_maxTorque1 = ndAbs(torque);
+	}
+
+	ndFloat32 ndOgreDoubleHingeActuator::GetMaxTorque1() const
+	{
+		return m_maxTorque1;
+	}
+
+	// ---------------- Jacobian ----------------
+
+	void ndOgreDoubleHingeActuator::JacobianDerivative(ndConstraintDescritor& desc)
+	{
+		ndMatrix matrix0;
+		ndMatrix matrix1;
+		CalculateGlobalMatrix(matrix0, matrix1);
+
+		// Base rows: same idea as dCustomDoubleHinge::SubmitAngularRow base call.
+		ApplyBaseRows(desc, matrix0, matrix1);
+
+		const ndFloat32 timestep = desc.m_timestep;
+		const ndFloat32 invTimeStep = desc.m_invTimestep;
+
+		const ndFloat32 angle0 = GetAngle0();
+		const ndFloat32 angle1 = GetAngle1();
+
+		const ndFloat32 target0 = m_targetAngle0;
+		const ndFloat32 target1 = m_targetAngle1;
+
+		ndFloat32 minLimit0, maxLimit0;
+		ndFloat32 minLimit1, maxLimit1;
+		GetLimits0(minLimit0, maxLimit0);
+		GetLimits1(minLimit1, maxLimit1);
+
+		// -------- Axis 0 servo (like first part of SubmitAngularRow) --------
+		if (m_axis0Enable && (m_angularRate0 > ndFloat32(0.0f)))
+		{
+			const ndFloat32 step0 = m_angularRate0 * timestep;
+			ndFloat32 currentSpeed0 = ndFloat32(0.0f);
+
+			if (angle0 < (target0 - step0))
+			{
+				currentSpeed0 = m_angularRate0;
+			}
+			else if (angle0 < target0)
+			{
+				currentSpeed0 = ndFloat32(0.3f) * (target0 - angle0) * invTimeStep;
+			}
+			else if (angle0 > (target0 + step0))
+			{
+				currentSpeed0 = -m_angularRate0;
+			}
+			else if (angle0 > target0)
+			{
+				currentSpeed0 = ndFloat32(0.3f) * (target0 - angle0) * invTimeStep;
+			}
+
+			// ND3 row: NewtonUserJointAddAngularRow(m_joint, 0.0f, &matrix0.m_front[0]);
+			AddAngularRowJacobian(desc, &matrix0.m_front[0], ndFloat32(0.0f));
+
+			const ndFloat32 accel0 = GetMotorZeroAcceleration(desc) + currentSpeed0 * invTimeStep;
+			SetMotorAcceleration(desc, accel0);
+			SetLowerFriction(desc, -m_maxTorque0);
+			SetHighFriction(desc, m_maxTorque0);
+		}
+
+		// -------- Axis 1 servo (second part of SubmitAngularRow) --------
+		if (m_axis1Enable && (m_angularRate1 > ndFloat32(0.0f)))
+		{
+			const ndFloat32 step1 = m_angularRate1 * timestep;
+			ndFloat32 currentSpeed1 = ndFloat32(0.0f);
+
+			if (angle1 < (target1 - step1))
+			{
+				currentSpeed1 = m_angularRate1;
+			}
+			else if (angle1 < target1)
+			{
+				currentSpeed1 = ndFloat32(0.3f) * (target1 - angle1) * invTimeStep;
+			}
+			else if (angle1 > (target1 + step1))
+			{
+				currentSpeed1 = -m_angularRate1;
+			}
+			else if (angle1 > target1)
+			{
+				currentSpeed1 = ndFloat32(0.3f) * (target1 - angle1) * invTimeStep;
+			}
+
+			// ND3 row: NewtonUserJointAddAngularRow(m_joint, 0.0f, &matrix1.m_up[0]);
+			AddAngularRowJacobian(desc, &matrix1.m_up[0], ndFloat32(0.0f));
+
+			const ndFloat32 accel1 = GetMotorZeroAcceleration(desc) + currentSpeed1 * invTimeStep;
+			SetMotorAcceleration(desc, accel1);
+			SetLowerFriction(desc, -m_maxTorque1);
+			SetHighFriction(desc, m_maxTorque1);
+		}
+	}
+
+	UniversalActuator::UniversalActuator(const OgreNewt::Body* child,
+		const OgreNewt::Body* parent,
+		const Ogre::Vector3& pos,
+		const Ogre::Degree& angularRate0,
+		const Ogre::Degree& minAngle0,
+		const Ogre::Degree& maxAngle0,
+		const Ogre::Degree& angularRate1,
+		const Ogre::Degree& minAngle1,
+		const Ogre::Degree& maxAngle1)
+		: Joint()
+	{
+		// Same as ND3: identity orientation, only position specified.
+		ndMatrix pinAndPivotFrame(ndGetIdentityMatrix());
+		pinAndPivotFrame.m_posit = ndVector(pos.x, pos.y, pos.z, ndFloat32(1.0f));
+
+		ndBodyKinematic* const b0 = child ?
+			const_cast<ndBodyKinematic*>(child->getNewtonBody()) :
+			nullptr;
+
+		ndBodyKinematic* const b1 = parent ?
+			const_cast<ndBodyKinematic*>(parent->getNewtonBody()) :
+			(child ? child->getWorld()->getNewtonWorld()->GetSentinelBody() : nullptr);
+
+		ndFloat32 rate0Rad = static_cast<ndFloat32>(angularRate0.valueRadians());
+		ndFloat32 min0Rad = static_cast<ndFloat32>(minAngle0.valueRadians());
+		ndFloat32 max0Rad = static_cast<ndFloat32>(maxAngle0.valueRadians());
+
+		ndFloat32 rate1Rad = static_cast<ndFloat32>(angularRate1.valueRadians());
+		ndFloat32 min1Rad = static_cast<ndFloat32>(minAngle1.valueRadians());
+		ndFloat32 max1Rad = static_cast<ndFloat32>(maxAngle1.valueRadians());
+
+		ndOgreDoubleHingeActuator* const joint =
+			new ndOgreDoubleHingeActuator(
+				pinAndPivotFrame,
+				b0,
+				b1,
+				rate0Rad, min0Rad, max0Rad,
+				rate1Rad, min1Rad, max1Rad);
+
 		SetSupportJoint(joint);
-
-		// store limits/rates
-		m_min0 = toRad(minAngle0);
-		m_max0 = toRad(maxAngle0);
-		m_min1 = toRad(minAngle1);
-		m_max1 = toRad(maxAngle1);
-		m_rate0 = std::max<ndFloat32>(toRad(angularRate0), ndFloat32(1e-6f));
-		m_rate1 = std::max<ndFloat32>(toRad(angularRate1), ndFloat32(1e-6f));
-
-		// program limits
-		joint->SetLimits0(m_min0, m_max0);
-		joint->SetLimits1(m_min1, m_max1);
-
-		// default PD off until we pick gains; regularizer kept at 0.1
-		joint->SetAsSpringDamper0(m_reg0, 0.0f, 0.0f);
-		joint->SetAsSpringDamper1(m_reg1, 0.0f, 0.0f);
-
-		// init targets to current angles (clamped)
-		const ndFloat32 a0 = clampf(joint->GetAngle0(), m_min0, m_max0);
-		const ndFloat32 a1 = clampf(joint->GetAngle1(), m_min1, m_max1);
-		m_cmd0 = m_slew0 = a0;
-		m_cmd1 = m_slew1 = a1;
-
-		// set offsets to current (so no initial jump)
-		joint->SetOffsetAngle0(m_slew0);
-		joint->SetOffsetAngle1(m_slew1);
-
-		_retuneAxisGains();
 	}
 
 	UniversalActuator::~UniversalActuator()
 	{
-		// base Joint cleans native
 	}
 
-	// ---------------- Axis 0 API ----------------
+	// -------- Axis 0 --------
+
 	Ogre::Real UniversalActuator::GetActuatorAngle0() const
 	{
-		if (auto* j = const_cast<UniversalActuator*>(this)->asNd())
-			return toDeg(j->GetAngle0());
-		return 0.0f;
+		const ndOgreDoubleHingeActuator* const joint =
+			static_cast<const ndOgreDoubleHingeActuator*>(GetSupportJoint());
+		return Ogre::Radian(joint->GetActuatorAngle0()).valueDegrees();
 	}
 
 	void UniversalActuator::SetTargetAngle0(const Ogre::Degree& angle0)
 	{
-		m_cmd0 = clampf(toRad(angle0), m_min0, m_max0);
-		_wake();
+		ndOgreDoubleHingeActuator* const joint =
+			static_cast<ndOgreDoubleHingeActuator*>(GetSupportJoint());
+		joint->SetTargetAngle0(static_cast<ndFloat32>(angle0.valueRadians()));
 	}
 
 	void UniversalActuator::SetMinAngularLimit0(const Ogre::Degree& limit0)
 	{
-		m_min0 = toRad(limit0);
-		if (auto* j = asNd())
-			j->SetLimits0(m_min0, m_max0);
-		_retuneAxisGains();
-		_wake();
+		ndOgreDoubleHingeActuator* const joint =
+			static_cast<ndOgreDoubleHingeActuator*>(GetSupportJoint());
+		joint->SetMinAngularLimit0(static_cast<ndFloat32>(limit0.valueRadians()));
 	}
 
 	void UniversalActuator::SetMaxAngularLimit0(const Ogre::Degree& limit0)
 	{
-		m_max0 = toRad(limit0);
-		if (auto* j = asNd())
-			j->SetLimits0(m_min0, m_max0);
-		_retuneAxisGains();
-		_wake();
+		ndOgreDoubleHingeActuator* const joint =
+			static_cast<ndOgreDoubleHingeActuator*>(GetSupportJoint());
+		joint->SetMaxAngularLimit0(static_cast<ndFloat32>(limit0.valueRadians()));
 	}
 
 	void UniversalActuator::SetAngularRate0(const Ogre::Degree& rate0)
 	{
-		m_rate0 = std::max<ndFloat32>(toRad(rate0), ndFloat32(1e-6f));
-		_wake();
+		ndOgreDoubleHingeActuator* const joint =
+			static_cast<ndOgreDoubleHingeActuator*>(GetSupportJoint());
+		joint->SetAngularRate0(static_cast<ndFloat32>(rate0.valueRadians()));
 	}
 
 	void UniversalActuator::SetMaxTorque0(Ogre::Real torque0)
 	{
-		m_maxTau0 = static_cast<ndFloat32>(std::max<Ogre::Real>(0.0f, torque0));
-		_retuneAxisGains();
-		_wake();
+		ndOgreDoubleHingeActuator* const joint =
+			static_cast<ndOgreDoubleHingeActuator*>(GetSupportJoint());
+		joint->SetMaxTorque0(static_cast<ndFloat32>(torque0));
 	}
 
-	// ---------------- Axis 1 API ----------------
+	Ogre::Real UniversalActuator::GetMaxTorque0() const
+	{
+		const ndOgreDoubleHingeActuator* const joint =
+			static_cast<const ndOgreDoubleHingeActuator*>(GetSupportJoint());
+		return static_cast<Ogre::Real>(joint->GetMaxTorque0());
+	}
+
+	// -------- Axis 1 --------
+
 	Ogre::Real UniversalActuator::GetActuatorAngle1() const
 	{
-		if (auto* j = const_cast<UniversalActuator*>(this)->asNd())
-			return toDeg(j->GetAngle1());
-		return 0.0f;
+		const ndOgreDoubleHingeActuator* const joint =
+			static_cast<const ndOgreDoubleHingeActuator*>(GetSupportJoint());
+		return Ogre::Radian(joint->GetActuatorAngle1()).valueDegrees();
 	}
 
 	void UniversalActuator::SetTargetAngle1(const Ogre::Degree& angle1)
 	{
-		m_cmd1 = clampf(toRad(angle1), m_min1, m_max1);
-		_wake();
+		ndOgreDoubleHingeActuator* const joint =
+			static_cast<ndOgreDoubleHingeActuator*>(GetSupportJoint());
+		joint->SetTargetAngle1(static_cast<ndFloat32>(angle1.valueRadians()));
 	}
 
 	void UniversalActuator::SetMinAngularLimit1(const Ogre::Degree& limit1)
 	{
-		m_min1 = toRad(limit1);
-		if (auto* j = asNd())
-			j->SetLimits1(m_min1, m_max1);
-		_retuneAxisGains();
-		_wake();
+		ndOgreDoubleHingeActuator* const joint =
+			static_cast<ndOgreDoubleHingeActuator*>(GetSupportJoint());
+		joint->SetMinAngularLimit1(static_cast<ndFloat32>(limit1.valueRadians()));
 	}
 
 	void UniversalActuator::SetMaxAngularLimit1(const Ogre::Degree& limit1)
 	{
-		m_max1 = toRad(limit1);
-		if (auto* j = asNd())
-			j->SetLimits1(m_min1, m_max1);
-		_retuneAxisGains();
-		_wake();
+		ndOgreDoubleHingeActuator* const joint =
+			static_cast<ndOgreDoubleHingeActuator*>(GetSupportJoint());
+		joint->SetMaxAngularLimit1(static_cast<ndFloat32>(limit1.valueRadians()));
 	}
 
 	void UniversalActuator::SetAngularRate1(const Ogre::Degree& rate1)
 	{
-		m_rate1 = std::max<ndFloat32>(toRad(rate1), ndFloat32(1e-6f));
-		_wake();
+		ndOgreDoubleHingeActuator* const joint =
+			static_cast<ndOgreDoubleHingeActuator*>(GetSupportJoint());
+		joint->SetAngularRate1(static_cast<ndFloat32>(rate1.valueRadians()));
 	}
 
 	void UniversalActuator::SetMaxTorque1(Ogre::Real torque1)
 	{
-		m_maxTau1 = static_cast<ndFloat32>(std::max<Ogre::Real>(0.0f, torque1));
-		_retuneAxisGains();
-		_wake();
+		ndOgreDoubleHingeActuator* const joint =
+			static_cast<ndOgreDoubleHingeActuator*>(GetSupportJoint());
+		joint->SetMaxTorque1(static_cast<ndFloat32>(torque1));
 	}
 
-	Ogre::Real UniversalActuator::GetTargetAngle0() const
+	Ogre::Real UniversalActuator::GetMaxTorque1() const
 	{
-		if (auto* j = const_cast<UniversalActuator*>(this)->asNd())
-			return Ogre::Radian(j->GetOffsetAngle0()).valueDegrees();
-		return 0.0f;
-	}
-	Ogre::Real UniversalActuator::GetOmega0() const
-	{
-		if (auto* j = const_cast<UniversalActuator*>(this)->asNd())
-			return Ogre::Radian(j->GetOmega0()).valueDegrees();
-		return 0.0f;
-	}
-
-	Ogre::Real UniversalActuator::GetTargetAngle1() const
-	{
-		if (auto* j = const_cast<UniversalActuator*>(this)->asNd())
-			return Ogre::Radian(j->GetOffsetAngle1()).valueDegrees();
-		return 0.0f;
-	}
-
-	Ogre::Real UniversalActuator::GetOmega1() const
-	{
-		if (auto* j = const_cast<UniversalActuator*>(this)->asNd())
-			return Ogre::Radian(j->GetOmega1()).valueDegrees();
-		return 0.0f;
-	}
-
-	// --------------- gains heuristic ---------------
-	void UniversalActuator::_retuneAxisGains()
-	{
-		auto* j = asNd();
-		if (!j) return;
-
-		// Choose KP so that half-span error ~ 0.7 * maxTorque (per axis).
-		const ndFloat32 span0 = std::max(ndFloat32(1e-4f), m_max0 - m_min0);
-		const ndFloat32 span1 = std::max(ndFloat32(1e-4f), m_max1 - m_min1);
-
-		m_kp0 = (m_maxTau0 > 1e-6f) ? (m_maxTau0 * 0.7f) / (span0 * 0.5f) : 0.0f;
-		m_kp1 = (m_maxTau1 > 1e-6f) ? (m_maxTau1 * 0.7f) / (span1 * 0.5f) : 0.0f;
-
-		// Simple damping heuristic tied to rate; keep bounded & nonzero if kp>0
-		m_kd0 = (m_kp0 > 0.0f) ? ndFloat32(0.25f) * std::max(m_rate0, ndFloat32(1.0f)) : 0.0f;
-		m_kd1 = (m_kp1 > 0.0f) ? ndFloat32(0.25f) * std::max(m_rate1, ndFloat32(1.0f)) : 0.0f;
-
-		j->SetAsSpringDamper0(m_reg0, m_kp0, m_kd0);
-		j->SetAsSpringDamper1(m_reg1, m_kp1, m_kd1);
-	}
-
-	// --------------- per-step drive ---------------
-	void UniversalActuator::ControllerUpdate(ndFloat32 dt)
-	{
-		auto* j = asNd();
-		if (!j || dt <= ndFloat32(0)) return;
-
-		// Axis 0
-		{
-			const ndFloat32 a = j->GetAngle0();
-			const ndFloat32 w = j->GetOmega0();
-			const ndFloat32 tg = clampf(m_cmd0, m_min0, m_max0);
-
-			const ndFloat32 err = tg - a;
-			const ndFloat32 maxStep = m_rate0 * dt;
-			const ndFloat32 step = (err < -maxStep) ? -maxStep : (err > maxStep) ? maxStep : err;
-			m_slew0 = clampf(a + step, m_min0, m_max0);
-
-			// desired torque from base gains
-			ndFloat32 tau = m_kp0 * (m_slew0 - a) - m_kd0 * w;
-
-			// soft clamp by scaling gains
-			ndFloat32 scale = 1.0f;
-			if (m_maxTau0 > ndFloat32(0.0f))
-			{
-				const ndFloat32 absTau = std::fabs(tau);
-				if (absTau > m_maxTau0 + ndFloat32(1e-6f))
-					scale = m_maxTau0 / absTau;
-			}
-
-			const ndFloat32 kpS = m_kp0 * scale;
-			const ndFloat32 kdS = m_kd0 * scale;
-
-			j->SetAsSpringDamper0(m_reg0, kpS, kdS);
-			j->SetOffsetAngle0(m_slew0);
-		}
-
-		// Axis 1
-		{
-			const ndFloat32 a = j->GetAngle1();
-			const ndFloat32 w = j->GetOmega1();
-			const ndFloat32 tg = clampf(m_cmd1, m_min1, m_max1);
-
-			const ndFloat32 err = tg - a;
-			const ndFloat32 maxStep = m_rate1 * dt;
-			const ndFloat32 step = (err < -maxStep) ? -maxStep : (err > maxStep) ? maxStep : err;
-			m_slew1 = clampf(a + step, m_min1, m_max1);
-
-			ndFloat32 tau = m_kp1 * (m_slew1 - a) - m_kd1 * w;
-
-			ndFloat32 scale = 1.0f;
-			if (m_maxTau1 > ndFloat32(0.0f))
-			{
-				const ndFloat32 absTau = std::fabs(tau);
-				if (absTau > m_maxTau1 + ndFloat32(1e-6f))
-					scale = m_maxTau1 / absTau;
-			}
-
-			const ndFloat32 kpS = m_kp1 * scale;
-			const ndFloat32 kdS = m_kd1 * scale;
-
-			j->SetAsSpringDamper1(m_reg1, kpS, kdS);
-			j->SetOffsetAngle1(m_slew1);
-		}
-
-		// wake if driving
-		_wake();
+		const ndOgreDoubleHingeActuator* const joint =
+			static_cast<const ndOgreDoubleHingeActuator*>(GetSupportJoint());
+		return static_cast<Ogre::Real>(joint->GetMaxTorque1());
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////////////////

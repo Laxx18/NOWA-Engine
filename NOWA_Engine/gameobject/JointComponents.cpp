@@ -1781,6 +1781,7 @@ namespace NOWA
 	}
 
 #if 0
+	// Stops after 2 rounds
 	void JointHingeActuatorComponent::update(Ogre::Real dt, bool notSimulating)
 	{
 		if (false == notSimulating && true == this->activated->getBool())
@@ -1871,89 +1872,90 @@ namespace NOWA
 		}
 	}
 #else
-	// For newton4
-
 	void JointHingeActuatorComponent::update(Ogre::Real dt, bool notSimulating)
 	{
-		if (false == notSimulating && true == this->activated->getBool())
+		if (!notSimulating && this->activated->getBool())
 		{
+			const bool repeat = this->repeat->getBool();
 			bool targetAngleReached = false;
 
-
-
-			if (this->round == 2)
+			// Only stop after two legs if we are NOT repeating
+			if (!repeat && this->round == 2)
 			{
 				return;
 			}
 
-			OgreNewt::HingeActuator* hingeActuatorJoint = static_cast<OgreNewt::HingeActuator*>(this->joint);
-			if (nullptr != hingeActuatorJoint)
+			OgreNewt::HingeActuator* hingeActuatorJoint =
+				static_cast<OgreNewt::HingeActuator*>(this->joint);
+
+			if (hingeActuatorJoint)
 			{
-				const Ogre::Real angle = hingeActuatorJoint->GetActuatorAngle(); 
-				const Ogre::Real target = hingeActuatorJoint->GetTargetAngleDeg();     
-				const Ogre::Real omega = hingeActuatorJoint->GetOmegaDegPerSec(); 
+				const Ogre::Real angle = hingeActuatorJoint->GetActuatorAngle();
 
-				// tolerances (tune as you like)
-				const Ogre::Real posTol = 0.5f; 
-				const Ogre::Real velTol = 2.0f; 
-
-				// “close enough to target” AND “almost stopped”
-				const bool atTarget = (std::abs(angle - target) <= posTol) && (std::abs(omega) <= velTol);
-
-				hingeActuatorJoint->ControllerUpdate(static_cast<ndFloat32>(dt));
-
-				// Ogre::Real step = this->angleRate->getReal() * dt;
 				if (this->oppositeDir == 1.0f)
 				{
 					// heading toward max
-					if (atTarget && std::abs(target - this->maxAngleLimit->getReal()) <= posTol) {
-						// reached the “max” target
+					if (Ogre::Math::RealEqual(angle, this->maxAngleLimit->getReal(), 0.1f))
+					{
+						targetAngleReached = true;
+
 						if (this->internalDirectionChange)
 						{
+							// flip direction and go to min
 							this->oppositeDir *= -1.0f;
-							hingeActuatorJoint->SetTargetAngle(Ogre::Degree(this->minAngleLimit->getReal()));
+							hingeActuatorJoint->SetTargetAngle(
+								Ogre::Degree(this->minAngleLimit->getReal()));
 						}
-						else if (this->repeat->getBool())
+
+						// Only count rounds if we are NOT in repeat mode
+						if (!repeat)
 						{
-							this->round = 0;
+							++this->round;
 						}
-						this->round++;
-						targetAngleReached = true;
 					}
 				}
 				else
 				{
 					// heading toward min
-					if (atTarget && std::abs(target - this->minAngleLimit->getReal()) <= posTol)
+					if (Ogre::Math::RealEqual(angle, this->minAngleLimit->getReal(), 0.1f))
 					{
+						targetAngleReached = true;
+
 						if (this->internalDirectionChange)
 						{
+							// flip direction and go to max
 							this->oppositeDir *= -1.0f;
-							hingeActuatorJoint->SetTargetAngle(Ogre::Degree(this->maxAngleLimit->getReal()));
+							hingeActuatorJoint->SetTargetAngle(
+								Ogre::Degree(this->maxAngleLimit->getReal()));
 						}
-						else if (this->repeat->getBool())
+
+						if (!repeat)
 						{
-							this->round = 0;
+							++this->round;
 						}
-						this->round++;
-						targetAngleReached = true;
 					}
 				}
 			}
 
-			if (true == targetAngleReached && this->round == 2)
+			// Only do the "2 rounds done" handling when NOT repeating
+			if (targetAngleReached && !repeat && this->round == 2)
 			{
-				Ogre::Degree newAngle = Ogre::Degree(0.0f);
+				if (!hingeActuatorJoint)
+					return;
 
-				if (1.0f == this->oppositeDir)
+				Ogre::Degree newAngle(0.0f);
+
+				if (this->oppositeDir == 1.0f)
 					newAngle = Ogre::Degree(this->minAngleLimit->getReal());
 				else
 					newAngle = Ogre::Degree(this->maxAngleLimit->getReal());
+
 				hingeActuatorJoint->SetTargetAngle(newAngle);
 
 				if (this->targetAngleReachedClosureFunction.is_valid())
 				{
-					NOWA::AppStateManager::LogicCommand logicCommand = [this, newAngle]()
+					NOWA::AppStateManager::LogicCommand logicCommand =
+						[this, newAngle]()
 						{
 							try
 							{
@@ -1965,10 +1967,13 @@ namespace NOWA
 								std::stringstream msg;
 								msg << errorMsg;
 
-								Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[JointHingeActuatorComponent] Caught error in 'reactOnTargetAngleReached' Error: " + Ogre::String(error.what())
-									+ " details: " + msg.str());
+								Ogre::LogManager::getSingleton().logMessage(
+									Ogre::LML_CRITICAL,
+									"[JointHingeActuatorComponent] Caught error in 'reactOnTargetAngleReached' Error: "
+									+ Ogre::String(error.what()) + " details: " + msg.str());
 							}
 						};
+
 					NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 				}
 			}
@@ -2470,6 +2475,19 @@ namespace NOWA
 	{
 		this->directionChange->setValue(directionChange);
 		this->internalDirectionChange = directionChange;
+
+		OgreNewt::HingeActuator* hingeActuatorJoint = dynamic_cast<OgreNewt::HingeActuator*>(this->joint);
+		if (nullptr != hingeActuatorJoint)
+		{
+			if (this->getTargetAngle() >= Ogre::Degree(0.0f))
+			{
+				hingeActuatorJoint->SetTargetAngle(Ogre::Degree(this->maxAngleLimit->getReal()));
+			}
+			else
+			{
+				hingeActuatorJoint->SetTargetAngle(Ogre::Degree(this->minAngleLimit->getReal()));
+			}
+		}
 	}
 		
 	bool JointHingeActuatorComponent::getDirectionChange(void) const
@@ -2480,6 +2498,19 @@ namespace NOWA
 	void JointHingeActuatorComponent::setRepeat(bool repeat)
 	{
 		this->repeat->setValue(repeat);
+
+		OgreNewt::HingeActuator* hingeActuatorJoint = dynamic_cast<OgreNewt::HingeActuator*>(this->joint);
+		if (nullptr != hingeActuatorJoint)
+		{
+			if (this->getTargetAngle() >= Ogre::Degree(0.0f))
+			{
+				hingeActuatorJoint->SetTargetAngle(Ogre::Degree(this->maxAngleLimit->getReal()));
+			}
+			else
+			{
+				hingeActuatorJoint->SetTargetAngle(Ogre::Degree(this->minAngleLimit->getReal()));
+			}
+		}
 	}
 	
 	bool JointHingeActuatorComponent::getRepeat(void) const
@@ -2494,7 +2525,7 @@ namespace NOWA
 		OgreNewt::HingeActuator* hingeActuatorJoint = dynamic_cast<OgreNewt::HingeActuator*>(this->joint);
 		if (nullptr != hingeActuatorJoint)
 		{
-			hingeActuatorJoint->SetSpringAndDamping(asSpringDamper, massIndependent, this->springDamperRelaxation->getBool(), this->springK->getReal(), this->springD->getReal());
+			hingeActuatorJoint->SetSpringAndDamping(asSpringDamper, massIndependent, this->springDamperRelaxation->getReal(), this->springK->getReal(), this->springD->getReal());
 		}
 	}
 
@@ -6205,8 +6236,7 @@ namespace NOWA
 
 		return success;
 	}
-	
-#if 0
+
 	void JointSliderActuatorComponent::update(Ogre::Real dt, bool notSimulating)
 	{
 		if (false == notSimulating && true == this->activated->getBool())
@@ -6294,128 +6324,6 @@ namespace NOWA
 			}
 		}
 	}
-#else
-	void JointSliderActuatorComponent::update(Ogre::Real dt, bool notSimulating)
-	{
-		if (notSimulating || !this->activated->getBool())
-			return;
-
-		auto* sliderActuatorJoint = static_cast<OgreNewt::SliderActuator*>(this->joint);
-		if (!sliderActuatorJoint)
-			return;
-
-		// 0) Make sure actuator uses the desired rate (cheap to set each frame; or cache & set on change)
-		sliderActuatorJoint->SetLinearRate(this->linearRate->getReal());
-
-		// 1) Advance the actuator controller ONCE per physics step.
-		//    Important: ensure no other system also calls ControllerUpdate(dt) for the same joint this step.
-		sliderActuatorJoint->ControllerUpdate(static_cast<ndFloat32>(dt));
-
-		// 2) Read fresh kinematics
-		const Ogre::Real position = sliderActuatorJoint->GetActuatorPosition();
-
-		// If you added the optional helpers:
-		const Ogre::Real target = sliderActuatorJoint->GetTargetPosition();   // current slewed target
-		const Ogre::Real speed = sliderActuatorJoint->GetSpeed();            // units/sec
-
-		// If you did NOT add helpers, you can approximate:
-		// const Ogre::Real target = (this->oppositeDir == 1.0f) ? this->maxStopDistance->getReal()
-		//                                                       : this->minStopDistance->getReal();
-		// const Ogre::Real speed  = 0.0f; // (less robust arrival test)
-
-		// 3) Robust “arrival” test with hysteresis
-		// Tune these to taste (units of your slider space, e.g. meters)
-		const Ogre::Real posTol = std::max<Ogre::Real>(0.5f * this->linearRate->getReal() * dt, 0.001f); // ≥ 0.001, proportional to step
-		const Ogre::Real velTol = std::max<Ogre::Real>(0.1f * this->linearRate->getReal(), 0.01f);       // ~10% of rate
-
-		const bool nearTargetPos = std::abs(position - target) <= posTol;
-		const bool nearlyStopped = std::abs(speed) <= velTol;
-		const bool arrived = nearTargetPos && nearlyStopped;
-
-		bool flippedThisFrame = false;
-
-		if (this->internalDirectionChange)
-		{
-			// 4) Flip direction only when we've truly arrived at the intended boundary
-			if (this->oppositeDir == 1.0f)
-			{
-				// moving toward MAX
-				const Ogre::Real desired = this->maxStopDistance->getReal();
-				const bool atMax = (std::abs(target - desired) <= posTol) && arrived;
-				if (atMax)
-				{
-					this->oppositeDir *= -1.0f;
-					this->round++;
-					flippedThisFrame = true;
-				}
-			}
-			else
-			{
-				// moving toward MIN
-				const Ogre::Real desired = this->minStopDistance->getReal();
-				const bool atMin = (std::abs(target - desired) <= posTol) && arrived;
-				if (atMin)
-				{
-					this->oppositeDir *= -1.0f;
-					this->round++;
-					flippedThisFrame = true;
-				}
-			}
-
-			// 5) If we completed a full cycle (forth & back), handle repeat logic
-			if (this->round == 2)
-			{
-				this->round = 0;
-				if (!this->repeat->getBool())
-				{
-					// one full cycle done → stop internal auto-flipping
-					this->internalDirectionChange = false;
-				}
-			}
-		}
-
-		// 6) Program (or re-assert) the actuator target if repeating or if we are still in flip mode
-		if (this->repeat->getBool() || this->internalDirectionChange || flippedThisFrame)
-		{
-			const Ogre::Real newTarget =
-				(this->oppositeDir == 1.0f) ? this->maxStopDistance->getReal()
-				: this->minStopDistance->getReal();
-
-			// Only send when it actually changes to avoid redundant calls
-			if (std::abs(newTarget - target) > Ogre::Real(1e-6))
-				sliderActuatorJoint->SetTargetPosition(newTarget);
-
-			// 7) Notify script on boundary arrival/flip (only when we just flipped this frame)
-			if (flippedThisFrame && this->targetPositionReachedClosureFunction.is_valid())
-			{
-				try
-				{
-					NOWA::AppStateManager::LogicCommand logicCommand = [this, newTarget]()
-						{
-							try
-							{
-								luabind::call_function<void>(this->targetPositionReachedClosureFunction, newTarget);
-							}
-							catch (luabind::error& error)
-							{
-								luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-								std::stringstream msg; msg << errorMsg;
-								Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[JointSliderActuatorComponent] Caught error in 'targetPositionReachedClosureFunction' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
-							}
-						};
-					NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-				}
-				catch (luabind::error& error)
-				{
-					luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-					std::stringstream msg; msg << errorMsg;
-					Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[JointSliderActuatorComponent] Caught error in 'reactOnTargetPositionReached' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
-				}
-			}
-		}
-	}
-
-#endif
 
 	Ogre::String JointSliderActuatorComponent::getClassName(void) const
 	{
@@ -12328,7 +12236,6 @@ namespace NOWA
 		return "JointComponent";
 	}
 
-#if 0
 	void JointUniversalActuatorComponent::update(Ogre::Real dt, bool notSimulating)
 	{
 		if (false == notSimulating && true == this->activated->getBool())
@@ -12430,128 +12337,6 @@ namespace NOWA
 			}
 		}
 	}
-#else
-void JointUniversalActuatorComponent::update(Ogre::Real dt, bool notSimulating)
-{
-	if (notSimulating || !this->activated->getBool())
-		return;
-
-	auto* universalActuatorJoint = static_cast<OgreNewt::UniversalActuator*>(this->joint);
-	if (!universalActuatorJoint)
-		return;
-
-	// --- 1) Step controller once per physics tick ---
-	universalActuatorJoint->ControllerUpdate(static_cast<ndFloat32>(dt));
-
-	// Common tolerances for both axes
-	const Ogre::Real posTol = 0.5f * std::max(this->angleRate0->getReal(), this->angleRate1->getReal()) * dt;
-	const Ogre::Real velTol = 0.1f * std::max(this->angleRate0->getReal(), this->angleRate1->getReal());
-
-	// ========== AXIS 0 ==========
-	if (this->internalDirectionChange0)
-	{
-		const Ogre::Real angle = universalActuatorJoint->GetActuatorAngle0();
-		const Ogre::Real target = universalActuatorJoint->GetTargetAngle0();
-		const Ogre::Real omega = universalActuatorJoint->GetOmega0();
-
-		const bool nearTargetPos = std::abs(angle - target) <= posTol;
-		const bool nearlyStopped = std::abs(omega) <= velTol;
-		const bool arrived = nearTargetPos && nearlyStopped;
-		bool flippedThisFrame = false;
-
-		if (this->oppositeDir0 == 1.0f)
-		{
-			const Ogre::Real desired = this->maxAngleLimit0->getReal();
-			if (std::abs(target - desired) <= posTol && arrived)
-			{
-				this->oppositeDir0 *= -1.0f;
-				this->round0++;
-				flippedThisFrame = true;
-			}
-		}
-		else
-		{
-			const Ogre::Real desired = this->minAngleLimit0->getReal();
-			if (std::abs(target - desired) <= posTol && arrived)
-			{
-				this->oppositeDir0 *= -1.0f;
-				this->round0++;
-				flippedThisFrame = true;
-			}
-		}
-
-		if (this->round0 == 2)
-		{
-			this->round0 = 0;
-			if (!this->repeat0->getBool())
-				this->internalDirectionChange0 = false;
-		}
-
-		if (this->repeat0->getBool() || this->internalDirectionChange0 || flippedThisFrame)
-		{
-			const Ogre::Degree newAngle =
-				(this->oppositeDir0 == 1.0f)
-				? Ogre::Degree(this->maxAngleLimit0->getReal())
-				: Ogre::Degree(this->minAngleLimit0->getReal());
-
-			if (std::abs(newAngle.valueDegrees() - target) > 1e-4f)
-				universalActuatorJoint->SetTargetAngle0(newAngle);
-		}
-	}
-
-	// ========== AXIS 1 ==========
-	if (this->internalDirectionChange1)
-	{
-		const Ogre::Real angle = universalActuatorJoint->GetActuatorAngle1();
-		const Ogre::Real target = universalActuatorJoint->GetTargetAngle1();
-		const Ogre::Real omega = universalActuatorJoint->GetOmega1();
-
-		const bool nearTargetPos = std::abs(angle - target) <= posTol;
-		const bool nearlyStopped = std::abs(omega) <= velTol;
-		const bool arrived = nearTargetPos && nearlyStopped;
-		bool flippedThisFrame = false;
-
-		if (this->oppositeDir1 == 1.0f)
-		{
-			const Ogre::Real desired = this->maxAngleLimit1->getReal();
-			if (std::abs(target - desired) <= posTol && arrived)
-			{
-				this->oppositeDir1 *= -1.0f;
-				this->round1++;
-				flippedThisFrame = true;
-			}
-		}
-		else
-		{
-			const Ogre::Real desired = this->minAngleLimit1->getReal();
-			if (std::abs(target - desired) <= posTol && arrived)
-			{
-				this->oppositeDir1 *= -1.0f;
-				this->round1++;
-				flippedThisFrame = true;
-			}
-		}
-
-		if (this->round1 == 2)
-		{
-			this->round1 = 0;
-			if (!this->repeat1->getBool())
-				this->internalDirectionChange1 = false;
-		}
-
-		if (this->repeat1->getBool() || this->internalDirectionChange1 || flippedThisFrame)
-		{
-			const Ogre::Degree newAngle =
-				(this->oppositeDir1 == 1.0f)
-				? Ogre::Degree(this->maxAngleLimit1->getReal())
-				: Ogre::Degree(this->minAngleLimit1->getReal());
-
-			if (std::abs(newAngle.valueDegrees() - target) > 1e-4f)
-				universalActuatorJoint->SetTargetAngle1(newAngle);
-		}
-	}
-}
-#endif
 
 	bool JointUniversalActuatorComponent::init(xml_node<>*& propertyElement)
 	{

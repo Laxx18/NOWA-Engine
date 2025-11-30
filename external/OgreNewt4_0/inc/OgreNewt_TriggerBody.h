@@ -6,6 +6,8 @@
 #include "OgreNewt_World.h"
 #include "OgreNewt_TriggerControllerManager.h"
 
+#include "ndContact.h"
+
 namespace OgreNewt
 {
     //! Trigger body that detects enter/stay/exit using Newton Dynamics 4.0 trigger volumes

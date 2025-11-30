@@ -29,12 +29,27 @@ namespace OgreNewt
 				m_cb->OnEnter(visitor);
 		}
 
-		void OnTrigger(ndBodyKinematic* const body, ndFloat32 timestep) override
+		void OnTrigger(const ndContact* const contact, ndFloat32 timestep) override
 		{
 			(void)timestep;
-			if (!m_cb) return;
-			if (Body* visitor = bodyToOgre(body))
+			if (!m_cb || !contact)
+				return;
+
+			// Select the body that is NOT the trigger volume itself
+			ndBodyKinematic* const self = static_cast<ndBodyKinematic*>(this);
+			ndBodyKinematic* const otherKinematic =
+				(contact->GetBody0() != self)
+				? contact->GetBody0()->GetAsBodyKinematic()
+				: contact->GetBody1()->GetAsBodyKinematic();
+
+			if (!otherKinematic)
+				return;
+
+			if (Body* visitor = bodyToOgre(otherKinematic))
+			{
+				// This is your high-level "inside" generic callback
 				m_cb->OnInside(visitor);
+			}
 		}
 
 		void OnTriggerExit(ndBodyKinematic* const body, ndFloat32 timestep) override
@@ -105,10 +120,32 @@ namespace OgreNewt
 		CalculatePlane(body);
 	}
 
-	void ndArchimedesBuoyancyVolume::OnTrigger(ndBodyKinematic* const kinBody, ndFloat32)
+	void ndArchimedesBuoyancyVolume::OnTrigger(const ndContact* const contact, ndFloat32)
 	{
+		if (!contact)
+			return;
+
+		// Pick the body that is NOT the trigger
+		ndBodyKinematic* const self = static_cast<ndBodyKinematic*>(this);
+		ndBodyKinematic* const kinBody =
+			(contact->GetBody0() != self)
+			? contact->GetBody0()->GetAsBodyKinematic()
+			: contact->GetBody1()->GetAsBodyKinematic();
+
+		if (!kinBody)
+			return;
+
 		ndBodyDynamic* const body = kinBody->GetAsBodyDynamic();
-		if (!body || !m_hasPlane || body->GetInvMass() == 0.0f)
+		if (!body)
+			return;
+
+		// Make sure we have a plane (in case OnTriggerEnter isn't called for some reason)
+		if (!m_hasPlane)
+		{
+			CalculatePlane(kinBody);
+		}
+
+		if (!m_hasPlane || body->GetInvMass() == 0.0f)
 			return;
 
 		ndVector mass(body->GetMassMatrix());
@@ -120,7 +157,7 @@ namespace OgreNewt
 		if (volume <= 0.0f)
 			return;
 
-		// Apply buoyancy force and drag
+		// Apply buoyancy force and drag (same logic as before)
 		ndVector cog(body->GetCentreOfMass());
 		centerOfPressure -= matrix.TransformVector(cog);
 

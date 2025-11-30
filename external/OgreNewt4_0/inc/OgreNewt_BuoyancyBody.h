@@ -1,28 +1,33 @@
 #pragma once
 
 #include "OgreNewt_World.h"
-#include "OgreNewt_Body.h"
 #include "OgreNewt_Collision.h"
 #include "OgreNewt_TriggerControllerManager.h" // for TriggerCallback base
 
 #include <OgreVector3.h>
 #include <OgrePlane.h>
 
+#include "ndContact.h"
+
 namespace OgreNewt
 {
     // ----------------------------------------------------------------
     // ndArchimedesBuoyancyVolume (ND4 trigger-based buoyancy volume)
     // ----------------------------------------------------------------
+
     class ndArchimedesBuoyancyVolume : public ndBodyTriggerVolume
     {
     public:
         D_CLASS_REFLECTION(ndArchimedesBuoyancyVolume, ndBodyTriggerVolume)
 
-            ndArchimedesBuoyancyVolume();
+        ndArchimedesBuoyancyVolume();
 
         void CalculatePlane(ndBodyKinematic* const body);
+
         void OnTriggerEnter(ndBodyKinematic* const body, ndFloat32 timestep) override;
-        void OnTrigger(ndBodyKinematic* const body, ndFloat32 timestep) override;
+
+        void OnTrigger(const ndContact* const contact, ndFloat32 timestep) override;
+
         void OnTriggerExit(ndBodyKinematic* const body, ndFloat32 timestep) override;
 
         void SetGravity(const ndVector& g) { m_gravity = g; }
@@ -36,6 +41,7 @@ namespace OgreNewt
         ndPlane    m_plane;
         bool       m_hasPlane;
     };
+
 
     class Body;
     class _OgreNewtExport BuoyancyForceTriggerCallback : public TriggerCallback

@@ -395,76 +395,100 @@ namespace OgreNewt
 		}
 	};
 
-	/*!
-	hinge actuator joint (ND4 version).
-	Implements the old actuator API by composing an ndJointHinge and a small PD/slew controller.
-	*/
-	class _OgreNewtExport HingeActuator : public OgreNewt::Joint
+	class ndOgreHingeActuator : public ndJointHinge
 	{
 	public:
-		HingeActuator(const OgreNewt::Body* child, const OgreNewt::Body* parent, const Ogre::Vector3& pos,
-			const Ogre::Vector3& pin, const Ogre::Degree& angularRate,
-			const Ogre::Degree& minAngle, const Ogre::Degree& maxAngle);
+		D_CLASS_REFLECTION(ndOgreHingeActuator, ndJointHinge)
+
+			ndOgreHingeActuator(
+				const ndMatrix& pinAndPivotFrame,
+				ndBodyKinematic* const child,
+				ndBodyKinematic* const parent,
+				ndFloat32 angularRate,
+				ndFloat32 minAngle,
+				ndFloat32 maxAngle);
+
+		virtual ~ndOgreHingeActuator() {}
+
+		// API equivalent to old dCustomHingeActuator,
+		// but in radians for Newton4 side.
+		ndFloat32 GetActuatorAngle() const;
+
+		ndFloat32 GetTargetAngle() const;
+		void      SetTargetAngle(ndFloat32 angle);
+
+		ndFloat32 GetMinAngularLimit() const;
+		ndFloat32 GetMaxAngularLimit() const;
+		void      SetMinAngularLimit(ndFloat32 limit);
+		void      SetMaxAngularLimit(ndFloat32 limit);
+
+		ndFloat32 GetAngularRate() const;
+		void      SetAngularRate(ndFloat32 rate);
+
+		ndFloat32 GetMaxTorque() const;
+		void      SetMaxTorque(ndFloat32 torque);
+
+		// massIndependent is ignored in ND4 (hinge spring is already mass-independent),
+		// but we keep the signature for OgreNewt compatibility.
+		void SetSpringAndDamping(
+			bool enable,
+			bool massIndependent,
+			ndFloat32 springDamperRelaxation,
+			ndFloat32 spring,
+			ndFloat32 damper);
+
+		// main constraint builder (ND3 SubmitAngularRow equivalent + hinge base rows)
+		void JacobianDerivative(ndConstraintDescritor& desc) override;
+
+	protected:
+		// we do NOT override UpdateParameters; we reuse ndJointHinge::UpdateParameters
+		// which fills m_angle and m_omega for us.
+
+		void WakeBodies();
+
+		void UpdateParameters() override;
+
+		ndFloat32 m_motorSpeed;   // like m_motorSpeed in ND3 actuator
+		ndFloat32 m_maxTorque;    // like m_maxTorque in ND3 actuator
+
+		// we reuse ndJointHinge protected fields:
+		//   m_angle, m_omega, m_minLimit, m_maxLimit, m_targetAngle, ...
+	};
+
+	/*!
+		Hinge actuator joint (ND4 port).
+		API kept compatible with the old ND3-based OgreNewt::HingeActuator.
+	*/
+	class _OgreNewtExport HingeActuator : public Joint
+	{
+	public:
+		HingeActuator(const OgreNewt::Body* child,
+			const OgreNewt::Body* parent,
+			const Ogre::Vector3& pos,
+			const Ogre::Vector3& pin,
+			const Ogre::Degree& angularRate,
+			const Ogre::Degree& minAngle,
+			const Ogre::Degree& maxAngle);
 
 		~HingeActuator();
 
-		// --- API preserved exactly ---
-		Ogre::Real GetActuatorAngle() const;            // returns current hinge angle in degrees
+		Ogre::Real GetActuatorAngle() const;
 
-		void SetTargetAngle(const Ogre::Degree& angle); // desired (deg), will be slewed at AngularRate
+		void SetTargetAngle(const Ogre::Degree& angle);
 
 		void SetMinAngularLimit(const Ogre::Degree& limit);
-
 		void SetMaxAngularLimit(const Ogre::Degree& limit);
 
-		void SetAngularRate(const Ogre::Degree& rate);  // deg/s
+		void SetAngularRate(const Ogre::Degree& rate);
+
 		void SetMaxTorque(Ogre::Real torque);
+		Ogre::Real GetMaxTorque() const;
 
-		Ogre::Real GetMaxTorque() const { return m_maxTorque; }
-
-		Ogre::Real GetTargetAngleDeg() const;
-
-		Ogre::Real GetOmegaDegPerSec() const;
-
-		void SetSpringAndDamping(bool enable, bool massIndependent, Ogre::Real springDamperRelaxation, Ogre::Real spring, Ogre::Real damper);
-
-		// Call this once per physics step (dt in seconds).
-		void ControllerUpdate(ndFloat32 dt);
-
-	private:
-		ndJointHinge* asNd() const
-		{
-			return static_cast<ndJointHinge*>(GetSupportJoint());
-		}
-
-		// cached bodies for wakeups & axis reconstruction
-		OgreNewt::Body* m_body0 = nullptr;
-		OgreNewt::Body* m_body1 = nullptr;
-
-		// stable local pin (child space) -> for projecting omega if needed
-		Ogre::Vector3   m_childPinLocal = Ogre::Vector3::UNIT_X;
-
-		// state (radians internally)
-		ndFloat32 m_targetCmd = 0.0f; // commanded by user (clamped to limits)
-		ndFloat32 m_targetSlew = 0.0f; // slewed target we actually set on the ND hinge
-		ndFloat32 m_minRad = 0.0f;
-		ndFloat32 m_maxRad = 0.0f;
-		ndFloat32 m_maxOmega = 0.0f; // rad/s (slew rate)
-
-		// PD parameters
-		bool      m_pdEnabled = false;
-		ndFloat32 m_regularizer = 0.1f;
-		ndFloat32 m_kp = 0.0f;
-		ndFloat32 m_kd = 0.0f;
-
-		// torque cap (Nm) applied by scaling PD gains if needed (soft cap)
-		ndFloat32 m_maxTorque = 1000.0f;
-
-		void _wake() const
-		{
-			if (m_body0) m_body0->unFreeze();
-			if (m_body1) m_body1->unFreeze();
-		}
+		void SetSpringAndDamping(bool enable,
+			bool massIndependent,
+			Ogre::Real springDamperRelaxation,
+			Ogre::Real spring,
+			Ogre::Real damper);
 	};
 
 	//! slider joint.
@@ -536,80 +560,100 @@ namespace OgreNewt
 		ndFloat32 m_c = 0.0f;
 	};
 
+	class ndOgreSliderActuator : public ndJointSlider
+	{
+	public:
+		D_CLASS_REFLECTION(ndOgreSliderActuator, ndJointSlider)
+
+			ndOgreSliderActuator(
+				const ndMatrix& pinAndPivotFrame,
+				ndBodyKinematic* const child,
+				ndBodyKinematic* const parent,
+				ndFloat32 linearRate,
+				ndFloat32 minPosit,
+				ndFloat32 maxPosit);
+
+		virtual ~ndOgreSliderActuator() {}
+
+		// --- ND3-equivalent API (radians/meters) ---
+
+		// position along slider axis (like GetJointPosit)
+		ndFloat32 GetActuatorPosit() const;
+
+		// target
+		ndFloat32 GetTargetPosit() const;
+		void      SetTargetPosit(ndFloat32 posit);
+
+		// limits
+		ndFloat32 GetLinearRate() const;
+		void      SetLinearRate(ndFloat32 rate);
+
+		ndFloat32 GetMinPositLimit() const;
+		ndFloat32 GetMaxPositLimit() const;
+		void      SetMinPositLimit(ndFloat32 limit);
+		void      SetMaxPositLimit(ndFloat32 limit);
+
+		// forces
+		ndFloat32 GetMaxForce() const;
+		ndFloat32 GetMinForce() const;
+		void      SetMaxForce(ndFloat32 force);
+		void      SetMinForce(ndFloat32 force);
+
+		ndFloat32 GetForce() const;
+
+		// main constraint builder (ND3 SubmitAngularRow equivalent + slider base rows)
+		void JacobianDerivative(ndConstraintDescritor& desc) override;
+
+	protected:
+		void UpdateParameters() override;
+
+		void WakeBodies();
+
+		ndFloat32 m_targetPosit;
+		ndFloat32 m_linearRate;
+		ndFloat32 m_maxForce;
+		ndFloat32 m_minForce;
+		ndFloat32 m_force;        // last constraint row force (approx like ND3 m_force)
+	};
+
 	//! Slider actuator joint.
 	/*!
 	Slider actuator joint.
 	*/
-	class _OgreNewtExport SliderActuator : public OgreNewt::Joint
+	class _OgreNewtExport SliderActuator : public Joint
 	{
 	public:
+		//! constructor
+		/*!
+		\param child pointer to the child rigid body.
+		\param parent pointer to the parent rigid body. pass nullptr to make the world itself the parent (aka a rigid joint)
+		\param pos of the joint in global space
+		\param pin direction of the joint pin in global space
+		*/
 		SliderActuator(const OgreNewt::Body* child,
 			const OgreNewt::Body* parent,
 			const Ogre::Vector3& pos,
 			const Ogre::Vector3& pin,
-			Ogre::Real            linearRate,   // units/sec
-			Ogre::Real            minPosition,  // units
-			Ogre::Real            maxPosition); // units
+			Ogre::Real linearRate,
+			Ogre::Real minPosition,
+			Ogre::Real maxPosition);
 
+		//! destructor
 		~SliderActuator();
 
-		// --- API preserved exactly ---
 		Ogre::Real GetActuatorPosition() const;
 
 		void SetTargetPosition(Ogre::Real targetPosition);
+
 		void SetLinearRate(Ogre::Real linearRate);
 
 		void SetMinPositionLimit(Ogre::Real limit);
 		void SetMaxPositionLimit(Ogre::Real limit);
 
-		void SetMinForce(Ogre::Real force);  // signed, compression/tension
-		void SetMaxForce(Ogre::Real force);  // signed
+		void SetMinForce(Ogre::Real force);
+		void SetMaxForce(Ogre::Real force);
 
-		Ogre::Real GetForce() const;         // last applied (soft-clamped) PD force this step
-
-		Ogre::Real GetTargetPosition() const;
-
-		Ogre::Real GetSpeed() const;
-
-		// Call once per physics step
-		void ControllerUpdate(ndFloat32 dt);
-
-	private:
-		ndJointSlider* asNd() const
-		{
-			return static_cast<ndJointSlider*>(GetSupportJoint());
-		}
-
-		// cached bodies for wake-ups (optional)
-		OgreNewt::Body* m_body0 = nullptr;
-		OgreNewt::Body* m_body1 = nullptr;
-
-		// state
-		ndFloat32 m_targetCmd = 0.0f;  // commanded by user (clamped to limits)
-		ndFloat32 m_targetSlew = 0.0f;  // slewed target programmed into ND
-		ndFloat32 m_minPos = 0.0f;
-		ndFloat32 m_maxPos = 0.0f;
-		ndFloat32 m_maxSpeed = 1.0f;  // units/sec
-
-		// PD parameters (internal). ND3 actuator hid these; we auto-tune softly.
-		ndFloat32 m_regularizer = 0.1f;
-		ndFloat32 m_kp = 0.0f;
-		ndFloat32 m_kd = 0.0f;
-
-		// directional force limits (soft clamp)
-		ndFloat32 m_minForce = -1000.0f;
-		ndFloat32 m_maxForce = 1000.0f;
-
-		// last applied force (after clamp)
-		ndFloat32 m_lastForce = 0.0f;
-
-		void _retuneGains();   // pick kp/kd based on range & force ceilings
-		void _applyMaxForceToNative(); // program ND4 absolute force guard
-		void _wake() const
-		{
-			if (m_body0) m_body0->unFreeze();
-			if (m_body1) m_body1->unFreeze();
-		}
+		Ogre::Real GetForce() const;
 	};
 
 	class _OgreNewtExport FlexyPipeHandleJoint : public Joint
@@ -966,84 +1010,97 @@ namespace OgreNewt
 		}
 	};
 
+	class ndOgreDoubleHingeActuator : public ndJointDoubleHinge
+	{
+	public:
+		D_CLASS_REFLECTION(ndOgreDoubleHingeActuator, ndJointDoubleHinge)
+
+			ndOgreDoubleHingeActuator(
+				const ndMatrix& pinAndPivotFrame,
+				ndBodyKinematic* const child,
+				ndBodyKinematic* const parent,
+				ndFloat32 angularRate0, ndFloat32 minAngle0, ndFloat32 maxAngle0,
+				ndFloat32 angularRate1, ndFloat32 minAngle1, ndFloat32 maxAngle1);
+
+		virtual ~ndOgreDoubleHingeActuator() {}
+
+		// Axis 0 (like *_0 methods in the ND3 custom joint)
+		ndFloat32 GetActuatorAngle0() const;
+		void      SetTargetAngle0(ndFloat32 angle);
+		void      SetMinAngularLimit0(ndFloat32 limit);
+		void      SetMaxAngularLimit0(ndFloat32 limit);
+		void      SetAngularRate0(ndFloat32 rate);
+		void      SetMaxTorque0(ndFloat32 torque);
+		ndFloat32 GetMaxTorque0() const;
+
+		// Axis 1
+		ndFloat32 GetActuatorAngle1() const;
+		void      SetTargetAngle1(ndFloat32 angle);
+		void      SetMinAngularLimit1(ndFloat32 limit);
+		void      SetMaxAngularLimit1(ndFloat32 limit);
+		void      SetAngularRate1(ndFloat32 rate);
+		void      SetMaxTorque1(ndFloat32 torque);
+		ndFloat32 GetMaxTorque1() const;
+
+		void JacobianDerivative(ndConstraintDescritor& desc) override;
+
+	protected:
+		void WakeBodies();
+
+		void UpdateParameters() override;
+
+		ndFloat32 m_targetAngle0;
+		ndFloat32 m_targetAngle1;
+		ndFloat32 m_angularRate0;
+		ndFloat32 m_angularRate1;
+		ndFloat32 m_maxTorque0;
+		ndFloat32 m_maxTorque1;
+		bool      m_axis0Enable;
+		bool      m_axis1Enable;
+	};
+
 	//! universal actuator joint.
 	/*!
 	universal actuator joint.
 	*/
-	class _OgreNewtExport UniversalActuator : public OgreNewt::Joint
+	class _OgreNewtExport UniversalActuator : public Joint
 	{
 	public:
+		//! constructor
+		/*!
+		\param child pointer to the child rigid body.
+		\param parent pointer to the parent rigid body. pass nullptr to make the world itself the parent (aka a rigid joint)
+		\param pos position of the joint in global space
+		*/
 		UniversalActuator(const OgreNewt::Body* child,
 			const OgreNewt::Body* parent,
 			const Ogre::Vector3& pos,
-			const Ogre::Degree& angularRate0, const Ogre::Degree& minAngle0, const Ogre::Degree& maxAngle0,
-			const Ogre::Degree& angularRate1, const Ogre::Degree& minAngle1, const Ogre::Degree& maxAngle1);
+			const Ogre::Degree& angularRate0,
+			const Ogre::Degree& minAngle0,
+			const Ogre::Degree& maxAngle0,
+			const Ogre::Degree& angularRate1,
+			const Ogre::Degree& minAngle1,
+			const Ogre::Degree& maxAngle1);
 
 		~UniversalActuator();
 
-		// --- API preserved exactly (angles in Degrees like your legacy code) ---
 		Ogre::Real GetActuatorAngle0() const;
+
 		void SetTargetAngle0(const Ogre::Degree& angle0);
 		void SetMinAngularLimit0(const Ogre::Degree& limit0);
 		void SetMaxAngularLimit0(const Ogre::Degree& limit0);
 		void SetAngularRate0(const Ogre::Degree& rate0);
 		void SetMaxTorque0(Ogre::Real torque0);
-		Ogre::Real GetMaxTorque0() const { return static_cast<Ogre::Real>(m_maxTau0); }
+		Ogre::Real GetMaxTorque0() const;
 
 		Ogre::Real GetActuatorAngle1() const;
+
 		void SetTargetAngle1(const Ogre::Degree& angle1);
 		void SetMinAngularLimit1(const Ogre::Degree& limit1);
 		void SetMaxAngularLimit1(const Ogre::Degree& limit1);
 		void SetAngularRate1(const Ogre::Degree& rate1);
 		void SetMaxTorque1(Ogre::Real torque1);
-		Ogre::Real GetMaxTorque1() const { return static_cast<Ogre::Real>(m_maxTau1); }
-
-		Ogre::Real GetTargetAngle0() const;
-
-		Ogre::Real GetOmega0() const;
-
-		Ogre::Real GetTargetAngle1() const;
-
-		Ogre::Real GetOmega1() const;
-
-		// Call once per physics step
-		void ControllerUpdate(ndFloat32 dt);
-
-	private:
-		ndJointDoubleHinge* asNd() const
-		{
-			return static_cast<ndJointDoubleHinge*>(GetSupportJoint());
-		}
-
-		// cached bodies for wakeups
-		OgreNewt::Body* m_body0 = nullptr;
-		OgreNewt::Body* m_body1 = nullptr;
-
-		// per-axis state (radians internally)
-		ndFloat32 m_min0 = 0.0f, m_max0 = 0.0f;
-		ndFloat32 m_min1 = 0.0f, m_max1 = 0.0f;
-
-		ndFloat32 m_cmd0 = 0.0f, m_slew0 = 0.0f; // commanded & slewed targets
-		ndFloat32 m_cmd1 = 0.0f, m_slew1 = 0.0f;
-
-		ndFloat32 m_rate0 = 0.0f; // rad/s
-		ndFloat32 m_rate1 = 0.0f; // rad/s
-
-		// PD params (regularizer + base gains)
-		ndFloat32 m_reg0 = 0.1f, m_kp0 = 0.0f, m_kd0 = 0.0f;
-		ndFloat32 m_reg1 = 0.1f, m_kp1 = 0.0f, m_kd1 = 0.0f;
-
-		// soft torque caps (Nm)
-		ndFloat32 m_maxTau0 = 1000.0f;
-		ndFloat32 m_maxTau1 = 1000.0f;
-
-		// simple auto-tuning for default gains (you can override later if you add setters)
-		void _retuneAxisGains();
-		void _wake() const
-		{
-			if (m_body0) m_body0->unFreeze();
-			if (m_body1) m_body1->unFreeze();
-		}
+		Ogre::Real GetMaxTorque1() const;
 	};
 
 	//! Plane constraint.
