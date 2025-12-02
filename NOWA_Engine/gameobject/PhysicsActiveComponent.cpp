@@ -2990,7 +2990,8 @@ namespace NOWA
 			boost::shared_ptr<JointAttractorComponent> jointAttractorCompPtr = boost::dynamic_pointer_cast<JointAttractorComponent>(
 				NOWA::makeStrongPtr(AppStateManager::getSingletonPtr()->getGameObjectController()->getJointComponent(*it)));
 
-			if (this->gameObjectPtr->getSceneNode()->getAttachedObject(0)->isVisible())
+			// Causes threading issues, if its required, use atomic bool
+			// if (this->gameObjectPtr->getSceneNode()->getAttachedObject(0)->isVisible())
 			{
 				// Check if its within the attraction distance
 				Ogre::Vector3 attractorDirection = body->getPosition() - jointAttractorCompPtr->getOwner()->getPosition();

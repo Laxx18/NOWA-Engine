@@ -5,6 +5,7 @@
     <LocalDebuggerCommandArguments>ogre.cfg</LocalDebuggerCommandArguments>
     <LocalDebuggerWorkingDirectory>$(NOWA)\bin\Debug</LocalDebuggerWorkingDirectory>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+    <LocalDebuggerCommandArgumentsHistory>ogre.cfg|</LocalDebuggerCommandArgumentsHistory>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LocalDebuggerCommand>$(NOWA)\bin\Release\NOWA_Design.exe</LocalDebuggerCommand>

@@ -1120,7 +1120,7 @@ namespace NOWA
 
 						const Ogre::Real inertia = std::max(hitBodyInertia.z, std::max(hitBodyInertia.x, hitBodyInertia.y));
 
-						this->kinematicController = new OgreNewt::KinematicController(AppStateManager::getSingletonPtr()->getOgreNewtModule()->getOgreNewt(), this->hitBody, bodyPos);
+						this->kinematicController = new OgreNewt::KinematicController(this->hitBody, bodyPos);
 						this->kinematicController->setPickingMode(/*linearPlusAngularFriction*/ 4);
 
 						this->kinematicController->setMaxLinearFriction(hitBody->getMass() * linearFrictionAccel);

@@ -54,7 +54,7 @@ void ComponentsPanel::destroyContent(void)
 
 void ComponentsPanel::clearComponents(void)
 {
-	ENQUEUE_RENDER_COMMAND("ComponentsPanel::clearComponents",
+	ENQUEUE_RENDER_COMMAND_WAIT("ComponentsPanel::clearComponents",
 	{
 		if (nullptr != this->componentsPanelDynamic)
 		{

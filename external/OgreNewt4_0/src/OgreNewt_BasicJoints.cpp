@@ -28,6 +28,35 @@ namespace
 		return (v < a) ? a : (v > b) ? b : v;
 	}
 
+	void BuildMotorFrame(const Ogre::Vector3& pin0, const Ogre::Vector3& pin1, const Ogre::Vector3& pos, ndMatrix& outMatrix)
+	{
+		Ogre::Vector3 fwd = pin0;
+		if (fwd.isZeroLength())
+			fwd = Ogre::Vector3::UNIT_Z;
+		fwd.normalise();
+
+		Ogre::Vector3 up = pin1;
+		if (up.isZeroLength())
+			up = Ogre::Vector3::UNIT_Y;
+
+		// make sure up is not parallel to fwd
+		if (Ogre::Math::Abs(fwd.dotProduct(up)) > 0.999f)
+			up = Ogre::Vector3::UNIT_X;
+
+		Ogre::Vector3 right = fwd.crossProduct(up);
+		right.normalise();
+		up = right.crossProduct(fwd);
+		up.normalise();
+
+		Ogre::Matrix3 m3;
+		// Ogre uses (right, up, forward) as axes
+		m3.FromAxes(right, up, fwd);
+		Ogre::Quaternion q(m3);
+
+		OgreNewt::Converters::QuatPosToMatrix(q, pos, outMatrix);
+		outMatrix.m_posit = ndVector(pos.x, pos.y, pos.z, ndFloat32(1.0f));
+	}
+
 	ndFloat32 OGRENEWT_LARGE_TORQUE = ndFloat32(1.0e8f);
 	const ndFloat32 OGRENEWT_LARGE_FORCE = ndFloat32(1.0e8f);
 
@@ -2288,11 +2317,16 @@ namespace OgreNewt
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	KinematicController::KinematicController(const OgreNewt::World* world, const OgreNewt::Body* child, const Ogre::Vector3& pos)
+	KinematicController::KinematicController(const OgreNewt::Body* child, const Ogre::Vector3& pos)
 	{
+		if (child->getNewtonBody()->GetInvMass() <= 0.0f)
+		{
+			return;
+		}
+
 		const ndVector attachment(pos.x, pos.y, pos.z, 1.0f);
 		ndBodyKinematic* const body = const_cast<ndBodyKinematic*>(child->getNewtonBody());
-		ndBodyKinematic* const sentinelBody = world->getNewtonWorld()->GetSentinelBody();
+		ndBodyKinematic* const sentinelBody = child->getWorld()->getNewtonWorld()->GetSentinelBody();
 
 		auto* joint = new ndJointKinematicController(body, sentinelBody, attachment);
 		SetSupportJoint(joint);
@@ -2303,10 +2337,10 @@ namespace OgreNewt
 	KinematicController::KinematicController(const OgreNewt::Body* child, const Ogre::Vector3& pos, const OgreNewt::Body* referenceBody)
 	{
 		const ndVector attachment(pos.x, pos.y, pos.z, 1.0f);
-		ndBodyKinematic* const body = const_cast<ndBodyKinematic*>(child->getNewtonBody());
-		ndBodyKinematic* const refBody = referenceBody ? const_cast<ndBodyKinematic*>(referenceBody->getNewtonBody()) : nullptr;
+		ndBodyKinematic* b0 = child ? const_cast<ndBodyKinematic*>(child->getNewtonBody()) : nullptr;
+		ndBodyKinematic* b1 = referenceBody ? const_cast<ndBodyKinematic*>(referenceBody->getNewtonBody()) : child->getWorld()->getNewtonWorld()->GetSentinelBody();
 
-		auto* joint = new ndJointKinematicController(refBody, body, attachment);
+		auto* joint = new ndJointKinematicController(b1, b0, attachment);
 		SetSupportJoint(joint);
 
 		joint->SetControlMode(ndJointKinematicController::m_full6dof);
@@ -3428,79 +3462,191 @@ namespace OgreNewt
 
 	///////////////////////////////////////////////////////////////////////////////////////////////
 
-	Motor::Motor(const Body* child,
-		const Body* parent0,
-		const Body* parent1,
-		const Ogre::Vector3& pin0,
-		const Ogre::Vector3& pin1)
-		: Hinge(child, parent0, Ogre::Vector3::ZERO, pin0)
-		, m_isMotor2(false)
+	class ndOgreMotorHinge : public ndJointHinge
 	{
-		if (parent1)
-			m_isMotor2 = true;
+	public:
+		D_CLASS_REFLECTION(ndOgreMotorHinge, ndJointHinge)
 
-		m_targetSpeed0 = 0.0f;
-		m_targetSpeed1 = 0.0f;
-		m_torque0 = 0.0f;
-		m_torque1 = 0.0f;
+			ndOgreMotorHinge(const ndMatrix& pinAndPivotFrame,
+				ndBodyKinematic* const child,
+				ndBodyKinematic* const parent)
+			: ndJointHinge(pinAndPivotFrame, child, parent)
+			, m_speed(ndFloat32(0.0f))
+			, m_maxTorque(ndFloat32(1000.0f))
+		{
+			// Start with zero offset = current angle
+			UpdateParameters();
+			m_targetAngle = GetAngle();
+
+			// spring-damper like in your actuator
+			const ndFloat32 regularizer = ndFloat32(0.1f);
+			const ndFloat32 spring = ndFloat32(50.0f);
+			const ndFloat32 damper = ndFloat32(5.0f);
+			SetAsSpringDamper(regularizer, spring, damper);
+		}
+
+		void SetSpeed(ndFloat32 speed)
+		{
+			m_speed = speed;
+			if (ndAbs(speed) > ndFloat32(1.0e-6f))
+			{
+				WakeBodies();
+			}
+		}
+
+		ndFloat32 GetSpeed() const
+		{
+			return m_speed;
+		}
+
+		void SetMaxTorque(ndFloat32 torque)
+		{
+			m_maxTorque = ndAbs(torque);
+		}
+
+		ndFloat32 GetMaxTorque() const
+		{
+			return m_maxTorque;
+		}
+
+	protected:
+		void WakeBodies()
+		{
+			if (m_body0)
+				m_body0->SetSleepState(false);
+			if (m_body1)
+				m_body1->SetSleepState(false);
+		}
+
+		void UpdateParameters() override
+		{
+			// keep hinge internal angle/omega up to date
+			ndJointHinge::UpdateParameters();
+		}
+
+		void JacobianDerivative(ndConstraintDescritor& desc) override
+		{
+			ndMatrix matrix0;
+			ndMatrix matrix1;
+			CalculateGlobalMatrix(matrix0, matrix1);
+
+			// base hinge constraints
+			ApplyBaseRows(desc, matrix0, matrix1);
+
+			// update target angle: rotate continuously with speed
+			const ndFloat32 timestep = desc.m_timestep;
+			const ndFloat32 invTimeStep = desc.m_invTimestep;
+
+			const ndFloat32 angle = GetAngle();
+			m_targetAngle += m_speed * timestep;
+
+			// same servo logic as in ndOgreHingeActuator, but no min/max limits
+			const ndFloat32 targetAngle = m_targetAngle;
+			const ndFloat32 step = ndAbs(m_speed) * timestep;
+
+			// ndFloat32 currentSpeed = m_speed;
+			ndFloat32 currentSpeed = ndFloat32(0.0f);
+
+			if (angle < (targetAngle - step))
+			{
+				currentSpeed = ndAbs(m_speed);
+			}
+			else if (angle < targetAngle)
+			{
+				currentSpeed = ndFloat32(0.3f) * (targetAngle - angle) * invTimeStep;
+			}
+			else if (angle > (targetAngle + step))
+			{
+				currentSpeed = -ndAbs(m_speed);
+			}
+			else if (angle > targetAngle)
+			{
+				currentSpeed = ndFloat32(0.3f) * (targetAngle - angle) * invTimeStep;
+			}
+
+			// motor row around hinge axis (matrix0.m_front)
+			AddAngularRowJacobian(desc, &matrix0.m_front[0], ndFloat32(0.0f));
+
+			const ndFloat32 accel = GetMotorZeroAcceleration(desc) + currentSpeed * invTimeStep;
+			SetMotorAcceleration(desc, accel);
+
+			// symmetric torque limits
+			SetLowerFriction(desc, -m_maxTorque);
+			SetHighFriction(desc, m_maxTorque);
+		}
+
+	private:
+		ndFloat32 m_speed;       // rad/sec
+		ndFloat32 m_targetAngle; // rad
+		ndFloat32 m_maxTorque;
+	};
+
+	// ---------------------------------------------------------------------
+// Motor implementation (single hinge motor)
+// ---------------------------------------------------------------------
+
+	Motor::Motor(const Body* child, const Body* parent, const Ogre::Vector3& pin)
+		: Joint()
+		, m_targetSpeed(0.0f)
+	{
+		if (!child)
+		{
+			return;
+		}
+
+		// Build motor frame from the child bodys position and the given pin
+		const Ogre::Vector3 pos = child->getPosition();
+
+		Ogre::Quaternion q = OgreNewt::Converters::grammSchmidt(pin);
+
+		ndMatrix frame;
+		OgreNewt::Converters::QuatPosToMatrix(q, pos, frame);
+		frame.m_posit = ndVector(pos.x, pos.y, pos.z, ndFloat32(1.0f));
+
+		ndBodyKinematic* const childBody = const_cast<ndBodyKinematic*>(child->getNewtonBody());
+		ndBodyKinematic* const parentBody = parent ? const_cast<ndBodyKinematic*>(parent->getNewtonBody()) : child->getWorld()->getNewtonWorld()->GetSentinelBody();
+
+		ndOgreMotorHinge* const joint = new ndOgreMotorHinge(frame, childBody, parentBody);
+		SetSupportJoint(joint);
 	}
 
 	Motor::~Motor() = default;
 
-	// ---------------------------------------------------------------------
-	Ogre::Real Motor::GetSpeed0() const
+	// Helper to get the underlying ndOgreMotorHinge
+	ndOgreMotorHinge* Motor::getMotor() const
 	{
-		// reuse base Hinge::GetJointAngularVelocity()
-		return Ogre::Real(GetJointAngularVelocity().valueRadians());
+		return static_cast<ndOgreMotorHinge*>(GetSupportJoint());
 	}
 
-	Ogre::Real Motor::GetSpeed1() const
+	Ogre::Real Motor::GetSpeed() const
 	{
-		if (m_isMotor2)
-			return m_targetSpeed1;
-		return 0.0f;
-	}
-
-	// ---------------------------------------------------------------------
-	void Motor::SetSpeed0(Ogre::Real speed0)
-	{
-		m_targetSpeed0 = speed0;
-
-		if (auto* j = asNd())
+		if (auto* j = getMotor())
 		{
-			// Compute acceleration toward desired speed
-			const ndFloat32 accel = static_cast<ndFloat32>(speed0 * 60.0f); // heuristically scaled
-			ndConstraintDescritor desc{};
-			j->SetMotorAcceleration(desc, accel);
+			// Return actual hinge angular velocity (rad/s)
+			return static_cast<Ogre::Real>(j->GetOmega());
+		}
+		return Ogre::Real(0.0f);
+	}
+
+	void Motor::SetSpeed(Ogre::Real speed)
+	{
+		m_targetSpeed = speed;
+
+		if (auto* j = getMotor())
+		{
+			// We interpret speed0 as radians per second on the hinge axis
+			j->SetSpeed(static_cast<ndFloat32>(speed));
 		}
 	}
 
-	// ---------------------------------------------------------------------
-	void Motor::SetSpeed1(Ogre::Real speed1)
+	Ogre::Real Motor::GetCurrentAngleDeg(void) const
 	{
-		m_targetSpeed1 = speed1;
-		// optional 2-motor case could be extended later
-	}
-
-	// ---------------------------------------------------------------------
-	void Motor::SetTorque0(Ogre::Real torque0)
-	{
-		m_torque0 = torque0;
-
-		if (auto* j = asNd())
+		if (auto* j = getMotor())
 		{
-			// Emulate motor torque as viscous friction around hinge axis
-			const ndFloat32 reg = static_cast<ndFloat32>(m_lastRegularizer);
-			const ndFloat32 damper = static_cast<ndFloat32>(std::fabs(torque0));
-			j->SetAsSpringDamper(reg, 0.0f, damper);
+			// Return actual hinge angle in degrees
+			return Ogre::Radian(j->GetAngle()).valueDegrees();
 		}
-	}
-
-	// ---------------------------------------------------------------------
-	void Motor::SetTorque1(Ogre::Real torque1)
-	{
-		m_torque1 = torque1;
-		// optional: dual hinge variant can apply similar SetAsSpringDamper
+		return Ogre::Real(0.0f);
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////

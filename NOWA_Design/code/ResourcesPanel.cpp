@@ -227,7 +227,7 @@ void ResourcesPanelMeshes::editTextChange(MyGUI::Widget* sender)
 
 void ResourcesPanelMeshes::handleRefreshMeshResources(NOWA::EventDataPtr eventData)
 {
-	ENQUEUE_RENDER_COMMAND("ResourcesPanelMeshes::handleRefreshMeshResources",
+	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelMeshes::handleRefreshMeshResources",
 	{
 		this->clear();
 	});
@@ -776,7 +776,7 @@ void ResourcesPanelGameObjects::refresh(const Ogre::String& filter)
 
 void ResourcesPanelGameObjects::clear(void)
 {
-	ENQUEUE_RENDER_COMMAND("ResourcesPanelGameObjects::clear",
+	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelGameObjects::clear",
 	{
 		MyGUI::TreeControl::Node * root = this->gameObjectsTree->getRoot();
 		root->removeAll();
@@ -921,7 +921,7 @@ void ResourcesPanelGameObjects::keyButtonPressed(MyGUI::Widget* sender, MyGUI::K
 
 void ResourcesPanelGameObjects::handleRefreshGameObjectsPanel(NOWA::EventDataPtr eventData)
 {
-	ENQUEUE_RENDER_COMMAND("ResourcesPanelGameObjects::handleRefreshGameObjectsPanel",
+	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelGameObjects::handleRefreshGameObjectsPanel",
 	{
 		this->clear();
 	});
@@ -1076,7 +1076,7 @@ void ResourcesPanelDataBlocks::loadDataBlocks(const Ogre::String& filter)
 
 void ResourcesPanelDataBlocks::clear(void)
 {
-	ENQUEUE_RENDER_COMMAND("ResourcesPanelDataBlocks::clear",
+	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelDataBlocks::clear",
 	{
 		MyGUI::TreeControl::Node * root = this->dataBlocksTree->getRoot();
 		root->removeAll();
@@ -1254,7 +1254,7 @@ void ResourcesPanelTextures::loadTextures(const Ogre::String& filter)
 
 void ResourcesPanelTextures::clear(void)
 {
-	ENQUEUE_RENDER_COMMAND("ResourcesPanelTextures::clear",
+	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelTextures::clear",
 	{
 		MyGUI::TreeControl::Node * root = this->texturesTree->getRoot();
 		root->removeAll();
@@ -1375,7 +1375,7 @@ void ResourcesPanelProject::shutdown(void)
 
 void ResourcesPanelProject::clear(void)
 {
-	ENQUEUE_RENDER_COMMAND("ResourcesPanelProject::clear",
+	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelProject::clear",
 	{
 		this->selectedText.clear();
 		MyGUI::TreeControl::Node * root = this->filesTreeControl->getRoot();
@@ -1657,7 +1657,7 @@ void ResourcesPanelLuaScript::shutdown(void)
 
 void ResourcesPanelLuaScript::clear(void)
 {
-	ENQUEUE_RENDER_COMMAND("ResourcesPanelLuaScript::clear",
+	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelLuaScript::clear",
 	{
 		this->selectedText.clear();
 		this->listBox->removeAllItems();
@@ -1668,7 +1668,7 @@ void ResourcesPanelLuaScript::populateListBox(void)
 {
 	this->clear();
 
-	ENQUEUE_RENDER_COMMAND("ResourcesPanelLuaScript::clear",
+	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelLuaScript::clear",
 	{
 		auto luaScripts = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getManagedLuaScripts();
 
@@ -1793,7 +1793,7 @@ void ResourcesPanelPlugins::shutdown(void)
 
 void ResourcesPanelPlugins::clear(void)
 {
-	ENQUEUE_RENDER_COMMAND("ResourcesPanelPlugins::clear",
+	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelPlugins::clear",
 	{
 		this->selectedText.clear();
 		this->listBox->removeAllItems();
@@ -1804,7 +1804,7 @@ void ResourcesPanelPlugins::populateListBox(void)
 {
 	this->clear();
 
-	ENQUEUE_RENDER_COMMAND("ResourcesPanelPlugins::populateListBox",
+	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelPlugins::populateListBox",
 	{
 			// Get all available plugin names
 		std::vector<Ogre::String> allPlugins = NOWA::Core::getSingletonPtr()->getAllPluginNames();

@@ -1780,98 +1780,6 @@ namespace NOWA
 		return "JointComponent";
 	}
 
-#if 0
-	// Stops after 2 rounds
-	void JointHingeActuatorComponent::update(Ogre::Real dt, bool notSimulating)
-	{
-		if (false == notSimulating && true == this->activated->getBool())
-		{
-			bool targetAngleReached = false;
-
-			if (this->round == 2)
-			{
-				return;
-			}
-
-			OgreNewt::HingeActuator* hingeActuatorJoint = static_cast<OgreNewt::HingeActuator*>(this->joint);
-			if (nullptr != hingeActuatorJoint)
-			{
-				Ogre::Real angle = hingeActuatorJoint->GetActuatorAngle();
-				// Ogre::Real step = this->angleRate->getReal() * dt;
-				if (1.0f == this->oppositeDir)
-				{
-					// Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[JointHingeActuatorComponent] Angle: " + Ogre::StringConverter::toString(angle) + " max angle limit: "
-					// 	+ Ogre::StringConverter::toString(this->maxAngleLimit->getReal()));
-					if (Ogre::Math::RealEqual(angle, this->maxAngleLimit->getReal(), 0.1f))
-					{
-						targetAngleReached = true;
-						if (true == this->internalDirectionChange)
-						{
-							this->oppositeDir *= -1.0f;
-							hingeActuatorJoint->SetTargetAngle(Ogre::Degree(this->minAngleLimit->getReal()));
-						}
-						else if (true == this->repeat->getBool())
-						{
-							this->round = 0;
-						}
-						this->round++;
-					}
-				}
-				else
-				{
-					// Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[JointHingeActuatorComponent] Angle: " + Ogre::StringConverter::toString(angle) + " min angle limit: "
-					// 	+ Ogre::StringConverter::toString(this->minAngleLimit->getReal()));
-					if (Ogre::Math::RealEqual(angle, this->minAngleLimit->getReal(), 0.1f))
-					{
-						targetAngleReached = true;
-						if (true == this->internalDirectionChange)
-						{
-							this->oppositeDir *= -1.0f;
-							hingeActuatorJoint->SetTargetAngle(Ogre::Degree(this->maxAngleLimit->getReal()));
-						}
-						else if (true == this->repeat->getBool())
-						{
-							this->round = 0;
-						}
-						this->round++;
-					}
-				}
-			}
-
-			if (true == targetAngleReached && this->round == 2)
-			{
-				Ogre::Degree newAngle = Ogre::Degree(0.0f);
-
-				if (1.0f == this->oppositeDir)
-					newAngle = Ogre::Degree(this->minAngleLimit->getReal());
-				else
-					newAngle = Ogre::Degree(this->maxAngleLimit->getReal());
-				hingeActuatorJoint->SetTargetAngle(newAngle);
-
-				if (this->targetAngleReachedClosureFunction.is_valid())
-				{
-					NOWA::AppStateManager::LogicCommand logicCommand = [this, newAngle]()
-						{
-							try
-							{
-								luabind::call_function<void>(this->targetAngleReachedClosureFunction, newAngle);
-							}
-							catch (luabind::error& error)
-							{
-								luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-								std::stringstream msg;
-								msg << errorMsg;
-
-								Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[JointHingeActuatorComponent] Caught error in 'reactOnTargetAngleReached' Error: " + Ogre::String(error.what())
-									+ " details: " + msg.str());
-							}
-						};
-					NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-				}
-			}
-		}
-	}
-#else
 	void JointHingeActuatorComponent::update(Ogre::Real dt, bool notSimulating)
 	{
 		if (!notSimulating && this->activated->getBool())
@@ -1979,7 +1887,6 @@ namespace NOWA
 			}
 		}
 	}
-#endif
 
 	bool JointHingeActuatorComponent::init(xml_node<>*& propertyElement)
 	{
@@ -1987,12 +1894,14 @@ namespace NOWA
 		
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AnchorPosition")
 		{
-			this->anchorPosition->setValue(XMLConverter::getAttribVector3(propertyElement, "data"));
+			Ogre::Vector3 anchor = XMLConverter::getAttribVector3(propertyElement, "data");
+			this->setAnchorPosition(anchor);
 			propertyElement = propertyElement->next_sibling("property");
 		}
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Pin")
 		{
-			this->pin->setValue(XMLConverter::getAttribVector3(propertyElement, "data"));
+			Ogre::Vector3 pin = XMLConverter::getAttribVector3(propertyElement, "data");
+			this->setPin(pin);
 			propertyElement = propertyElement->next_sibling("property");
 		}
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "TargetAngle")
@@ -4957,7 +4866,7 @@ namespace NOWA
 		NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
 	}
 
-	/*******************************JointSpringComponent*******************************/
+	/*******************************JointAttractorComponent*******************************/
 
 	JointAttractorComponent::JointAttractorComponent()
 		: JointComponent()
@@ -8614,7 +8523,14 @@ namespace NOWA
 		// Release joint each time, to create new one with new values
 		this->internalReleaseJoint();
 		// has no predecessor body
-		this->joint = new OgreNewt::KinematicController(this->body, this->jointPosition, predecessorBody);
+		if (nullptr != predecessorBody)
+		{
+			this->joint = new OgreNewt::KinematicController(this->body, this->jointPosition, predecessorBody);
+		}
+		else
+		{
+			this->joint = new OgreNewt::KinematicController(this->body, this->jointPosition);
+		}
 		OgreNewt::KinematicController* kinematicController = dynamic_cast<OgreNewt::KinematicController*>(this->joint);
 
 		// Better results!
@@ -9242,7 +9158,7 @@ namespace NOWA
 		// Release joint each time, to create new one with new values
 		this->internalReleaseJoint();
 		// has no predecessor body
-		this->joint = new OgreNewt::KinematicController(AppStateManager::getSingletonPtr()->getOgreNewtModule()->getOgreNewt(), this->body, this->jointPosition);
+		this->joint = new OgreNewt::KinematicController(this->body, this->jointPosition);
 		OgreNewt::KinematicController* kinematicController = static_cast<OgreNewt::KinematicController*>(this->joint);
 		/*
 		if ("Linear" == this->mode->getListSelectedValue())
@@ -13446,12 +13362,8 @@ namespace NOWA
 		this->type->setReadOnly(true);
 		this->type->setDescription("A motor joint, which needs another joint component as reference (predecessor), which should be rotated. Its also possible to use a second joint component (target) and pin for a different rotation.");
 
-		this->pin0 = new Variant(JointMotorComponent::AttrPin0(), Ogre::Vector3(0.0f, 0.0f, 1.0f), this->attributes);
-		this->pin1 = new Variant(JointMotorComponent::AttrPin1(), Ogre::Vector3(0.0f, 0.0f, 1.0f), this->attributes);
-		this->speed0 = new Variant(JointMotorComponent::AttrSpeed0(), 10.0f, this->attributes);
-		this->speed1 = new Variant(JointMotorComponent::AttrSpeed1(), -10.0f, this->attributes);
-		this->torgue0 = new Variant(JointMotorComponent::AttrTorque0(), 1.0f, this->attributes);
-		this->torgue1 = new Variant(JointMotorComponent::AttrTorque1(), 1.0f, this->attributes);
+		this->pin = new Variant(JointMotorComponent::AttrPin(), Ogre::Vector3(0.0f, 0.0f, 1.0f), this->attributes);
+		this->speed = new Variant(JointMotorComponent::AttrSpeed(), 10.0f, this->attributes);
 
 		this->jointRecursiveCollision->setVisible(false);
 	}
@@ -13464,34 +13376,14 @@ namespace NOWA
 	{
 		JointComponent::init(propertyElement);
 		
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Pin0")
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Pin")
 		{
-			this->pin0->setValue(XMLConverter::getAttribVector3(propertyElement, "data", Ogre::Vector3(0.0f, 0.0f, 1.0f)));
+			this->pin->setValue(XMLConverter::getAttribVector3(propertyElement, "data", Ogre::Vector3(0.0f, 0.0f, 1.0f)));
 			propertyElement = propertyElement->next_sibling("property");
 		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Pin1")
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Speed")
 		{
-			this->pin1->setValue(XMLConverter::getAttribVector3(propertyElement, "data", Ogre::Vector3(0.0f, 0.0f, 1.0f)));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Speed0")
-		{
-			this->speed0->setValue(XMLConverter::getAttribReal(propertyElement, "data", 10.0f));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Speed1")
-		{
-			this->speed1->setValue(XMLConverter::getAttribReal(propertyElement, "data", 10.0f));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Torgue0")
-		{
-			this->torgue0->setValue(XMLConverter::getAttribReal(propertyElement, "data", 1.0f));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Torgue1")
-		{
-			this->torgue1->setValue(XMLConverter::getAttribReal(propertyElement, "data", 1.0f));
+			this->speed->setValue(XMLConverter::getAttribReal(propertyElement, "data", 10.0f));
 			propertyElement = propertyElement->next_sibling("property");
 		}
 		
@@ -13549,12 +13441,8 @@ namespace NOWA
 		clonedJointCompPtr->setTargetId(this->targetId->getULong());
 		clonedJointCompPtr->setJointPosition(this->jointPosition);
 
-		clonedJointCompPtr->setPin0(this->pin0->getVector3());
-		clonedJointCompPtr->setPin1(this->pin1->getVector3());
-		clonedJointCompPtr->setSpeed0(this->speed0->getReal());
-		clonedJointCompPtr->setSpeed1(this->speed1->getReal());
-		clonedJointCompPtr->setTorgue0(this->torgue0->getReal());
-		clonedJointCompPtr->setTorgue1(this->torgue1->getReal());
+		clonedJointCompPtr->setPin(this->pin->getVector3());
+		clonedJointCompPtr->setSpeed(this->speed->getReal());
 
 		clonedGameObjectPtr->addComponent(clonedJointCompPtr);
 		clonedJointCompPtr->setOwner(clonedGameObjectPtr);
@@ -13577,18 +13465,19 @@ namespace NOWA
 			// joint already created so skip
 			return true;
 		}
-		
+
 		if (nullptr == this->body)
 		{
 			this->connect();
 		}
 
-		// Still null, creation to early, skip for now
+		// Still null, creation too early, skip for now
 		if (nullptr == this->body)
 		{
 			return true;
 		}
-		if (Ogre::Vector3::ZERO == this->pin0->getVector3())
+
+		if (Ogre::Vector3::ZERO == this->pin->getVector3())
 		{
 			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointMotorComponent] Cannot create joint for: " + this->gameObjectPtr->getName() + " because the pin 0 is zero.");
 			return false;
@@ -13608,49 +13497,28 @@ namespace NOWA
 		if (this->predecessorJointCompPtr)
 		{
 			predecessorBody = this->predecessorJointCompPtr->getBody();
-			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointMotorComponent] Creating motor joint for body name: "
-				+ this->gameObjectPtr->getName() + " reference body0 name: " + this->predecessorJointCompPtr->getOwner()->getName());
-		}
-		else
-		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[JointMotorComponent] Cannot create joint for: " + this->gameObjectPtr->getName() + " because there is no reference joint 0 (predecessor).");
-			return false;
-		}
-
-		OgreNewt::Body* targetBody = nullptr;
-		if (this->targetJointCompPtr)
-		{
-			targetBody = this->targetJointCompPtr->getBody();
-			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointMotorComponent] Creating motor joint for body name: "
-				+ this->gameObjectPtr->getName() + " reference body1 name: " + this->targetJointCompPtr->getOwner()->getName());
-
-			if (Ogre::Vector3::ZERO == this->pin1->getVector3())
-			{
-				Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointMotorComponent] Cannot create joint for: " + this->gameObjectPtr->getName() + " because the pin 1 is zero.");
-				return false;
-			}
+			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointMotorComponent] Creating motor joint for body name: " + this->gameObjectPtr->getName() + " predecessor body name: " + this->predecessorJointCompPtr->getOwner()->getName());
 		}
 
 		// Release joint each time, to create new one with new values
 		this->internalReleaseJoint();
-	
-		this->joint = new OgreNewt::Motor(this->body, predecessorBody, targetBody, predecessorBody->getOrientation() * this->pin0->getVector3(),
-													targetBody->getOrientation() * this->pin1->getVector3());
-		
+
+		Ogre::Vector3 worldPin = this->body->getOrientation() * this->pin->getVector3();
+
+		this->joint = new OgreNewt::Motor(this->body, predecessorBody, worldPin);
 
 		OgreNewt::Motor* motorJoint = dynamic_cast<OgreNewt::Motor*>(this->joint);
-		
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[JointMotoreComponent] Created joint: " + this->gameObjectPtr->getName());
 
-		motorJoint->SetSpeed0(this->speed0->getReal());
-		motorJoint->SetSpeed1(this->speed1->getReal());
-		motorJoint->SetTorque0(this->torgue0->getReal());
-		motorJoint->SetTorque1(this->torgue1->getReal());
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[JointMotorComponent] Created motor joint: " + this->gameObjectPtr->getName());
+
+		// Apply configured speed/torque for axis 0
+		motorJoint->SetSpeed(this->speed->getReal());
 
 		this->jointAlreadyCreated = true;
 
 		return true;
 	}
+
 
 	void JointMotorComponent::forceShowDebugData(bool activate)
 	{
@@ -13660,29 +13528,13 @@ namespace NOWA
 	{
 		JointComponent::actualizeValue(attribute);
 		
-		if (JointMotorComponent::AttrPin0() == attribute->getName())
+		if (JointMotorComponent::AttrPin() == attribute->getName())
 		{
-			this->setPin0(attribute->getVector3());
+			this->setPin(attribute->getVector3());
 		}
-		else if (JointMotorComponent::AttrPin1() == attribute->getName())
+		else if (JointMotorComponent::AttrSpeed() == attribute->getName())
 		{
-			this->setPin1(attribute->getVector3());
-		}
-		else if (JointMotorComponent::AttrSpeed0() == attribute->getName())
-		{
-			this->setSpeed0(attribute->getReal());
-		}
-		else if (JointMotorComponent::AttrSpeed1() == attribute->getName())
-		{
-			this->setSpeed1(attribute->getReal());
-		}
-		else if (JointMotorComponent::AttrTorque0() == attribute->getName())
-		{
-			this->setTorgue0(attribute->getReal());
-		}
-		else if (JointMotorComponent::AttrTorque1() == attribute->getName())
-		{
-			this->setTorgue1(attribute->getReal());
+			this->setSpeed(attribute->getReal());
 		}
 	}
 
@@ -13699,120 +13551,52 @@ namespace NOWA
 		// 12 = bool
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "9"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "Pin0"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->pin0->getVector3())));
-		propertiesXML->append_node(propertyXML);
-
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "9"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "Pin1"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->pin1->getVector3())));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "Pin"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->pin->getVector3())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "Speed0"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->speed0->getReal())));
-		propertiesXML->append_node(propertyXML);
-
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "Speed1"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->speed1->getReal())));
-		propertiesXML->append_node(propertyXML);
-
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "Torgue0"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->torgue0->getReal())));
-		propertiesXML->append_node(propertyXML);
-
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "Torgue1"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->torgue1->getReal())));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "Speed"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->speed->getReal())));
 		propertiesXML->append_node(propertyXML);
 	}
 
-	void JointMotorComponent::setPin0(const Ogre::Vector3& pin0)
+	void JointMotorComponent::setPin(const Ogre::Vector3& pin)
 	{
-		this->pin0->setValue(pin0);
+		this->pin->setValue(pin);
 	}
 
-	Ogre::Vector3 JointMotorComponent::getPin0(void) const
+	Ogre::Vector3 JointMotorComponent::getPin(void) const
 	{
-		return this->pin0->getVector3();
+		return this->pin->getVector3();
 	}
 
-	void JointMotorComponent::setPin1(const Ogre::Vector3& pin1)
+	void JointMotorComponent::setSpeed(Ogre::Real speed)
 	{
-		this->pin1->setValue(pin1);
-	}
-
-	Ogre::Vector3 JointMotorComponent::getPin1(void) const
-	{
-		return this->pin1->getVector3();
-	}
-
-	void JointMotorComponent::setSpeed0(Ogre::Real speed0)
-	{
-		this->speed0->setValue(speed0);
+		this->speed->setValue(speed);
 		OgreNewt::Motor* motorJoint = dynamic_cast<OgreNewt::Motor*>(this->joint);
 		if (motorJoint)
 		{
-			motorJoint->SetSpeed0(speed0);
+			motorJoint->SetSpeed(speed);
 		}
 	}
 
-	Ogre::Real JointMotorComponent::getSpeed0(void) const
+	Ogre::Real JointMotorComponent::getSpeed(void) const
 	{
-		return this->speed0->getReal();
+		return this->speed->getReal();
 	}
 
-	void JointMotorComponent::setSpeed1(Ogre::Real speed1)
+	Ogre::Real JointMotorComponent::getCurrentAngleDeg(void) const
 	{
-		this->speed1->setValue(speed1);
 		OgreNewt::Motor* motorJoint = dynamic_cast<OgreNewt::Motor*>(this->joint);
 		if (motorJoint)
 		{
-			motorJoint->SetSpeed1(speed1);
+			return motorJoint->GetCurrentAngleDeg();
 		}
+		return Ogre::Real(0.0f);
 	}
 
-	Ogre::Real JointMotorComponent::getSpeed1(void) const
-	{
-		return this->speed1->getReal();
-	}
-
-	void JointMotorComponent::setTorgue0(Ogre::Real torgue0)
-	{
-		this->torgue0->setValue(torgue0);
-		OgreNewt::Motor* motorJoint = dynamic_cast<OgreNewt::Motor*>(this->joint);
-		if (motorJoint)
-		{
-			motorJoint->SetTorque0(this->torgue0->getReal());
-		}
-	}
-
-	Ogre::Real JointMotorComponent::getTorgue0(void) const
-	{
-		return this->torgue0->getReal();
-	}
-
-	void JointMotorComponent::setTorgue1(Ogre::Real torgue1)
-	{
-		this->torgue1->setValue(torgue1);
-		OgreNewt::Motor* motorJoint = dynamic_cast<OgreNewt::Motor*>(this->joint);
-		if (motorJoint)
-		{
-			motorJoint->SetTorque1(this->torgue1->getReal());
-		}
-	}
-
-	Ogre::Real JointMotorComponent::getTorgue1(void) const
-	{
-		return this->torgue1->getReal();
-	}
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

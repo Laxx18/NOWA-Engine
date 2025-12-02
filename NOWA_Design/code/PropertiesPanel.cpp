@@ -212,7 +212,7 @@ void PropertiesPanel::destroyContent(void)
 
 void PropertiesPanel::clearProperties(void)
 {
-	ENQUEUE_RENDER_COMMAND("PropertiesPanel::clearProperties",
+	ENQUEUE_RENDER_COMMAND_WAIT("PropertiesPanel::clearProperties",
 	{
 		// Schrott MyGUI, those events do not work at all
 		// this->propertiesPanelView1->getScrollView()->eventMouseWheel -= MyGUI::newDelegate(this, &PropertiesPanel::onMouseWheel);
@@ -924,7 +924,7 @@ void PropertiesPanelDynamic::setPropertiesPanelInfo(PropertiesPanelInfo* propert
 
 void PropertiesPanelDynamic::initialise()
 {
-	ENQUEUE_RENDER_COMMAND("PropertiesPanelDynamic::initialise",
+	ENQUEUE_RENDER_COMMAND_WAIT("PropertiesPanelDynamic::initialise",
 	{
 		mPanelCell->setCaption(this->name);
 		mPanelCell->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());

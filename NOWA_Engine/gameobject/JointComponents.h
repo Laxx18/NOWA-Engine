@@ -3111,44 +3111,22 @@ namespace NOWA
 			return "Requirements: A kind of physics component must exist.";
 		}
 	
-		void setPin0(const Ogre::Vector3& pin0);
+		void setPin(const Ogre::Vector3& pin);
 
-		Ogre::Vector3 getPin0(void) const;
+		Ogre::Vector3 getPin(void) const;
 
-		void setPin1(const Ogre::Vector3& pin1);
+		void setSpeed(Ogre::Real speed);
 
-		Ogre::Vector3 getPin1(void) const;
+		Ogre::Real getSpeed(void) const;
 
-		void setSpeed0(Ogre::Real speed0);
-
-		Ogre::Real getSpeed0(void) const;
-
-		void setSpeed1(Ogre::Real speed1);
-
-		Ogre::Real getSpeed1(void) const;
-
-		void setTorgue0(Ogre::Real torgue0);
-
-		Ogre::Real getTorgue0(void) const;
-
-		void setTorgue1(Ogre::Real torgue1);
-
-		Ogre::Real getTorgue1(void) const;
+		Ogre::Real getCurrentAngleDeg(void) const;
 	public:
 		// Attribute constants
-		static const Ogre::String AttrPin0(void) { return "Pin0"; }
-		static const Ogre::String AttrPin1(void) { return "Pin1"; }
-		static const Ogre::String AttrSpeed0(void) { return "Speed 0"; }
-		static const Ogre::String AttrSpeed1(void) { return "Speed 1"; }
-		static const Ogre::String AttrTorque0(void) { return "Torque 0"; }
-		static const Ogre::String AttrTorque1(void) { return "Torque 1"; }
+		static const Ogre::String AttrPin(void) { return "Pin"; }
+		static const Ogre::String AttrSpeed(void) { return "Speed"; }
 	protected:
-		Variant* pin0;
-		Variant* pin1;
-		Variant* speed0;
-		Variant* speed1;
-		Variant* torgue0;
-		Variant* torgue1;
+		Variant* pin;
+		Variant* speed;
 	};
 
 	/*******************************JointWheelComponent*******************************/

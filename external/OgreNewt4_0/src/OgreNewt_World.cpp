@@ -15,7 +15,7 @@ World::World(Ogre::Real desiredFps, int maxUpdatesPerFrames, const Ogre::String&
     , m_timeAccumulator(0.0f)
     , m_maxTicksPerFrames(maxUpdatesPerFrames > 0 ? maxUpdatesPerFrames : 5)
 	, m_invFixedTimestep(1.0f / m_fixedTimestep)
-    , m_solverMode(4)
+    , m_solverMode(6)
     , m_threadsRequested(std::max(1u, std::thread::hardware_concurrency()))
     , m_defaultLinearDamping(0.01f)
     , m_defaultAngularDamping(0.05f)
@@ -25,11 +25,11 @@ World::World(Ogre::Real desiredFps, int maxUpdatesPerFrames, const Ogre::String&
     // Threads: you can tweak this externally via setThreadCountExt().
     SetThreadCount(m_threadsRequested);
 
-    // Solver “model” mapping: we use iterations as a proxy (ND4 changed this surface)
+    // Solver model mapping: we use iterations as a proxy (ND4 changed this surface)
     setSolverModel(m_solverMode);
 
-    // Substeps: keep at 1; we handle fixed stepping in update()
-    SetSubSteps(4);
+    // Substeps: keep at 2; we handle fixed stepping in update()
+    SetSubSteps(2);
 
     m_defaultMatID = new OgreNewt::MaterialID(this, 0);
 

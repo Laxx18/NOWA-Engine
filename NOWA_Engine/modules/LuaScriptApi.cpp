@@ -9659,34 +9659,20 @@ namespace NOWA
 		module(lua)
 		[
 			class_<JointMotorComponent, JointComponent>("JointMotorComponent")
-			.def("setPin0", &JointMotorComponent::setPin0)
-			.def("getPin0", &JointMotorComponent::getPin0)
-			.def("setPin1", &JointMotorComponent::setPin1)
-			.def("getPin1", &JointMotorComponent::getPin1)
-			.def("setSpeed0", &JointMotorComponent::setSpeed0)
-			.def("getSpeed0", &JointMotorComponent::getSpeed0)
-			.def("setSpeed1", &JointMotorComponent::setSpeed1)
-			.def("getSpeed1", &JointMotorComponent::getSpeed1)
-			.def("setTorgue0", &JointMotorComponent::setTorgue0)
-			.def("getTorgue0", &JointMotorComponent::getTorgue0)
-			.def("setTorgue1", &JointMotorComponent::setTorgue1)
-			.def("getTorgue1", &JointMotorComponent::getTorgue1)
+			.def("setPin", &JointMotorComponent::setPin)
+			.def("getPin", &JointMotorComponent::getPin)
+			.def("setSpeed", &JointMotorComponent::setSpeed)
+			.def("getSpeed", &JointMotorComponent::getSpeed)
+			.def("getCurrentAngleDeg", &JointMotorComponent::getCurrentAngleDeg)
 		];
 
 		AddClassToCollection("JointMotorComponent", "class inherits JointComponent", "Derived class from JointComponent. A motor joint, which needs another joint component as reference (predecessor), which should be rotated. Its also possible to use a second joint component (target) and pin for a different rotation.");
 		AddClassToCollection("JointMotorComponent", "String getId()", "Gets the id of this joint.");
-		AddClassToCollection("JointMotorComponent", "void setPin0(Vector3 pin0)", "Sets pin0 axis for the first reference body, to rotate around one dimension prependicular to the axis.");
-		AddClassToCollection("JointMotorComponent", "Vector3 getPin0()", "Gets first reference body pin0 axis.");
-		AddClassToCollection("JointMotorComponent", "void setPin1(Vector3 pin1)", "Sets pin1 axis for the second reference body, to rotate around one dimension prependicular to the axis. Note: This is optional.");
-		AddClassToCollection("JointMotorComponent", "Vector3 getPin1()", "Gets second reference body pin1 axis.");
-		AddClassToCollection("JointMotorComponent", "void setSpeed0(float speed0)", "Sets the rotating speed 0.");
-		AddClassToCollection("JointMotorComponent", "float getSpeed0()", "Gets the rotating speed 0.");
-		AddClassToCollection("JointMotorComponent", "void setSpeed1(float speed1)", "Sets the rotating speed 1.");
-		AddClassToCollection("JointMotorComponent", "float getSpeed1()", "Gets the rotating speed 1.");
-		AddClassToCollection("JointMotorComponent", "void setTorgue0(float torque0)", "Sets the torque rotation 0 for this joint.");
-		AddClassToCollection("JointMotorComponent", "float getTorgue0()", "Gets the torque rotation 0 for this joint.");
-		AddClassToCollection("JointMotorComponent", "void setTorgue1(float torque1)", "Sets the torque rotation 1 for this joint. Note: This is optional.");
-		AddClassToCollection("JointMotorComponent", "float getTorgue1()", "Gets the torque rotation 1 for this joint.");
+		AddClassToCollection("JointMotorComponent", "void setPin(Vector3 pin)", "Sets pin axis for the reference body, to rotate around one dimension prependicular to the axis.");
+		AddClassToCollection("JointMotorComponent", "Vector3 getPin()", "Gets reference body pin0 axis.");
+		AddClassToCollection("JointMotorComponent", "void setSpeed(float speed)", "Sets the rotating speed.");
+		AddClassToCollection("JointMotorComponent", "float getSpeed()", "Gets the rotating speed.");
+		AddClassToCollection("JointMotorComponent", "float getCurrentAngleDeg()", "Gets the current angle in degrees.");
 
 		module(lua)
 		[

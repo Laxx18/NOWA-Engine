@@ -651,6 +651,9 @@ namespace NOWA
 	{
 		if (nullptr != this->debugGeometryArrowNode)
 		{
+			GraphicsModule::getInstance()->removeTrackedNode(this->debugGeometryArrowNode);
+			GraphicsModule::getInstance()->removeTrackedNode(this->debugGeometrySphereNode);
+
 			ENQUEUE_RENDER_COMMAND("TagPointComponent::destroyDebugData",
 			{
 				this->debugGeometryArrowNode->detachAllObjects();
@@ -714,6 +717,7 @@ namespace NOWA
 
 				if (nullptr != this->tagPointNode)
 				{
+					GraphicsModule::getInstance()->removeTrackedNode(this->tagPointNode);
 					this->tagPointNode->removeAndDestroyAllChildren();
 					this->gameObjectPtr->getSceneManager()->destroySceneNode(this->tagPointNode);
 					this->tagPointNode = nullptr;

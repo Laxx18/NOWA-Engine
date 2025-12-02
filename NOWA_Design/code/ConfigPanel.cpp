@@ -375,7 +375,7 @@ void ConfigPanelProject::initialise()
 
 void ConfigPanelProject::resetSettings(void)
 {
-	ENQUEUE_RENDER_COMMAND("ConfigPanelProject::resetSettings",
+	ENQUEUE_RENDER_COMMAND_WAIT("ConfigPanelProject::resetSettings",
 	{
 		this->projectAutoCompleteSearch.reset();
 
@@ -536,7 +536,7 @@ void ConfigPanelProject::onMouseButtonClicked(MyGUI::Widget* sender)
 {
 	if (this->getMainWidget() == sender)
 	{
-		ENQUEUE_RENDER_COMMAND("ConfigPanelProject::onMouseButtonClicked",
+		ENQUEUE_RENDER_COMMAND_WAIT("ConfigPanelProject::onMouseButtonClicked",
 		{
 			this->projectNameEdit->hideList();
 			this->sceneNameEdit->hideList();

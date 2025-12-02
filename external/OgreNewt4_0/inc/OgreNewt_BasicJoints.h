@@ -788,7 +788,7 @@ namespace OgreNewt
 	{
 	public:
 		//! Constructor with attachment to world
-		KinematicController(const OgreNewt::World* world, const OgreNewt::Body* child, const Ogre::Vector3& pos);
+		KinematicController(const OgreNewt::Body* child, const Ogre::Vector3& pos);
 
 		//! Constructor with reference body
 		KinematicController(const OgreNewt::Body* child, const Ogre::Vector3& pos, const OgreNewt::Body* referenceBody);
@@ -1126,38 +1126,26 @@ namespace OgreNewt
 		bool getControlRotationEnabled() const;
 	};
 
-	/*!
-		@brief Simple motorized hinge joint.
+	class ndOgreMotorHinge;
 
-		Extends Hinge with motor-like behaviour: target angular velocity,
-		torque control and optional dual-motor setup (two axes / two parents).
-	*/
-	class _OgreNewtExport Motor : public Hinge
+	class _OgreNewtExport Motor : public Joint
 	{
 	public:
-		Motor(const Body* child,
-			const Body* parent0,
-			const Body* parent1,
-			const Ogre::Vector3& pin0,
-			const Ogre::Vector3& pin1);
+		Motor(const Body* child, const Body* parent, const Ogre::Vector3& pin);
 
-		~Motor() override;
+		virtual ~Motor();
 
-		Ogre::Real GetSpeed0() const;
-		Ogre::Real GetSpeed1() const;
+		Ogre::Real GetSpeed() const;
 
-		void SetSpeed0(Ogre::Real speed0);
-		void SetSpeed1(Ogre::Real speed1);
+		void SetSpeed(Ogre::Real speed);
 
-		void SetTorque0(Ogre::Real torque0);
-		void SetTorque1(Ogre::Real torque1);
+		Ogre::Real GetCurrentAngleDeg(void) const;
 
 	private:
-		bool m_isMotor2;
-		Ogre::Real m_targetSpeed0{ 0.0f };
-		Ogre::Real m_targetSpeed1{ 0.0f };
-		Ogre::Real m_torque0{ 0.0f };
-		Ogre::Real m_torque1{ 0.0f };
+		ndOgreMotorHinge* getMotor() const;
+
+		Ogre::Real m_targetSpeed;
+		Ogre::Real m_torque;
 	};
 
 	/*!

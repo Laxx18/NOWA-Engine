@@ -448,8 +448,12 @@ namespace NOWA
 		this->endPositionGameObject = endPositionGameObjectPtr.get();
 
 		// Snapshot where the source game object was placed and how it was orientated, this is the base for calculation
-		this->positionOffsetSnapshot = this->startPositionGameObject->getPosition() - this->gameObjectPtr->getPosition();
-		this->orientationOffsetSnapshot = this->endPositionGameObject->getOrientation() * this->gameObjectPtr->getOrientation().Inverse();
+		// this->positionOffsetSnapshot = this->startPositionGameObject->getPosition() - this->gameObjectPtr->getPosition();
+		// this->orientationOffsetSnapshot = this->endPositionGameObject->getOrientation() * this->gameObjectPtr->getOrientation().Inverse();
+
+		this->positionOffsetSnapshot = this->gameObjectPtr->getPosition() - this->startPositionGameObject->getPosition();
+		this->orientationOffsetSnapshot = this->gameObjectPtr->getOrientation() * this->startPositionGameObject->getOrientation().Inverse();
+
 		this->scaleSnapshot = this->gameObjectPtr->getScale();
 		this->sizeSnapshot = this->gameObjectPtr->getSize();
 
@@ -465,7 +469,7 @@ namespace NOWA
 
 		if (Ogre::Vector3::ZERO != this->scaleSnapshot)
 		{
-			this->gameObjectPtr->getSceneNode()->setScale(this->scaleSnapshot);
+			NOWA::GraphicsModule::getInstance()->updateNodeScale(this->gameObjectPtr->getSceneNode(), this->scaleSnapshot);
 		}
 		this->sizeSnapshot = Ogre::Vector3::ZERO;
 
@@ -501,10 +505,15 @@ namespace NOWA
 				return;
 			}
 
-			this->gameObjectPtr->getSceneNode()->setPosition(this->startPositionGameObject->getPosition() - (this->startPositionGameObject->getSceneNode()->getOrientation() * this->positionOffsetSnapshot));
-			this->gameObjectPtr->getSceneNode()->setOrientation(this->endPositionGameObject->getOrientation() * this->orientationOffsetSnapshot.Inverse());
+			// Ogre::Vector3 resultPosition = this->startPositionGameObject->getPosition() - (this->startPositionGameObject->getSceneNode()->getOrientation() * this->positionOffsetSnapshot);
+			// Ogre::Quaternion resultOrientation = this->endPositionGameObject->getOrientation() * this->orientationOffsetSnapshot.Inverse();
 
-			Ogre::Real length = (this->endPositionGameObject->getPosition() - this->gameObjectPtr->getSceneNode()->getPosition()).length();
+			Ogre::Vector3 resultPosition = this->startPositionGameObject->getPosition() + this->startPositionGameObject->getSceneNode()->getOrientation() * this->positionOffsetSnapshot;
+			Ogre::Quaternion resultOrientation = this->startPositionGameObject->getOrientation() * this->orientationOffsetSnapshot;
+
+			NOWA::GraphicsModule::getInstance()->updateNodeTransform(this->gameObjectPtr->getSceneNode(), resultPosition, resultOrientation);
+
+			Ogre::Real length = (this->endPositionGameObject->getPosition() - this->startPositionGameObject->getPosition()).length();
 			// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "->length: " + Ogre::StringConverter::toString(length));
 
 			Ogre::Real affectiveSize = 1.0f;
@@ -1004,6 +1013,8 @@ namespace NOWA
 	{
 		if (nullptr != sceneNode)
 		{
+			GraphicsModule::getInstance()->removeTrackedNode(sceneNode);
+
 			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("LineMeshComponent::deleteSceneNode", _1(&sceneNode),
 			{
 				Ogre::MovableObject* movableObject = sceneNode->getAttachedObject(0);
@@ -1015,7 +1026,6 @@ namespace NOWA
 					Ogre::Node* subNode = nodeIt.getNext();
 					subNode->removeAllChildren();
 				}
-
 				sceneNode->detachAllObjects();
 				this->gameObjectPtr->getSceneManager()->getRootSceneNode()->removeAndDestroyChild(sceneNode);
 				sceneNode = nullptr;

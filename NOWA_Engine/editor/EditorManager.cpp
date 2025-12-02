@@ -1508,6 +1508,10 @@ namespace NOWA
 		MathHelper::getInstance()->mouseToViewPort(evt.state.X.abs, evt.state.Y.abs, x, y, Core::getSingletonPtr()->getOgreRenderWindow());
 		this->mouseHitRay = this->camera->getCameraToViewportRay(x, y);
 
+		Ogre::Ray hitRay;
+		ENQUEUE_GET_CAMERA_TO_VIEWPORT_RAY(this->camera, x, y, hitRay);
+		this->mouseHitRay = hitRay;
+
 		if (EDITOR_PLACE_MODE == this->manipulationMode)
 		{
 			// Handle here, how to place objects
