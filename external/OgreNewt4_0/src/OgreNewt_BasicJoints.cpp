@@ -1728,7 +1728,7 @@ namespace OgreNewt
 		ndFlexyPipeHandle(ndBodyKinematic* const body0,
 			const ndVector& pin,
 			const ndVector& anchorPosition)
-			: ndJointBilateralConstraint(6, body0, nullptr, ndGetIdentityMatrix())
+			: ndJointBilateralConstraint(6, body0, body0->GetScene()->GetSentinelBody(), ndGetIdentityMatrix())
 			, m_linearFriction(3000.0f)
 			, m_angularFriction(200.0f)
 		{
@@ -1816,47 +1816,79 @@ namespace OgreNewt
 	class ndFlexyPipeSpinner : public ndJointBilateralConstraint
 	{
 	public:
-		ndFlexyPipeSpinner(const ndMatrix& pinAndPivotFrame, ndBodyKinematic* const child, ndBodyKinematic* const parent)
-			: ndJointBilateralConstraint(3, child, parent, pinAndPivotFrame)
+		ndFlexyPipeSpinner(const ndMatrix& pinAndPivotFrame,
+			ndBodyKinematic* const child,
+			ndBodyKinematic* const parent)
+			: ndJointBilateralConstraint(6, child, parent, pinAndPivotFrame)
 		{
 			SetSolverModel(ndJointBilateralSolverModel::m_jointIterativeSoft);
 		}
 
 		void UpdateParameters() override
 		{
-
+			// nothing special here for now
 		}
 
 		void JacobianDerivative(ndConstraintDescritor& desc) override
 		{
 			ndMatrix m0, m1;
 			CalculateGlobalMatrix(m0, m1);
+
+			// -------------------------------------------------
+			// 1) Ball-and-socket positional constraint
+			//    (keep pivot of child and parent together)
+			// -------------------------------------------------
+			const ndVector& p0 = m0.m_posit;
+			const ndVector& p1 = m1.m_posit;
+
+			// Standard way: 3 orthogonal directions from the child frame
+			for (int i = 0; i < 3; ++i)
+			{
+				const ndVector& dir = m0[i];
+				AddLinearRowJacobian(desc, p0, p1, dir);
+
+				// optional soft spring on position (can be tuned or removed)
+				// this gives a bit of compliance like the original ball/socket
+				SetMassSpringDamperAcceleration(desc, ndFloat32(0.01f),
+					ndFloat32(1000.0f),
+					ndFloat32(50.0f));
+			}
+
+			// -------------------------------------------------
+			// 2) Angular part: your twist + cone behavior
+			// -------------------------------------------------
 			ApplyTwistAction(desc, m0, m1);
 			ApplyElasticConeAction(desc, m0, m1);
 		}
 
-		void ApplyTwistAction(ndConstraintDescritor& desc, const ndMatrix& m0, const ndMatrix& m1)
+		void ApplyTwistAction(ndConstraintDescritor& desc,
+			const ndMatrix& m0,
+			const ndMatrix& m1)
 		{
 			const ndVector pin0 = m0.m_front;
 			const ndVector pin1 = m1.m_front.Scale(-1.0f);
+
 			const ndFloat relOmega =
 				m_body0->GetOmega().DotProduct(pin0).GetScalar() +
 				m_body1->GetOmega().DotProduct(pin1).GetScalar();
+
 			const ndFloat relAccel = -relOmega / desc.m_timestep;
 
 			AddAngularRowJacobian(desc, pin0, 0.0f);
 			SetMotorAcceleration(desc, relAccel);
 		}
 
-		void ApplyElasticConeAction(ndConstraintDescritor& desc, const ndMatrix& m0, const ndMatrix& m1)
+		void ApplyElasticConeAction(ndConstraintDescritor& desc,
+			const ndMatrix& m0,
+			const ndMatrix& m1)
 		{
-			const ndFloat relaxation = 0.01f;
-			const ndFloat spring = 1000.0f;
-			const ndFloat damper = 50.0f;
-			const ndFloat maxConeAngle = ndDegreeToRad * 45.0f;
+			const ndFloat relaxation = ndFloat32(0.01f);
+			const ndFloat spring = ndFloat32(1000.0f);
+			const ndFloat damper = ndFloat32(50.0f);
+			const ndFloat maxConeAngle = ndDegreeToRad * ndFloat32(45.0f);
 
 			ndFloat cosAng = m1.m_front.DotProduct(m0.m_front).GetScalar();
-			if (cosAng >= 0.998f)
+			if (cosAng >= ndFloat32(0.998f))
 			{
 				const ndFloat a0 = CalculateAngle(m0.m_front, m1.m_front, m1.m_up);
 				AddAngularRowJacobian(desc, m1.m_up, a0);
@@ -1869,10 +1901,13 @@ namespace OgreNewt
 			else
 			{
 				ndVector lateralDir = m1.m_front.CrossProduct(m0.m_front);
-				if (lateralDir.DotProduct(lateralDir).GetScalar() > 1.0e-6f)
+				if (lateralDir.DotProduct(lateralDir).GetScalar() > ndFloat32(1.0e-6f))
 				{
 					lateralDir = lateralDir.Normalize();
-					const ndFloat coneAngle = ndAcos(ndClamp(cosAng, -1.0f, 1.0f));
+					const ndFloat coneAngle = ndAcos(ndClamp(cosAng,
+						ndFloat32(-1.0f),
+						ndFloat32(1.0f)));
+
 					if (coneAngle > maxConeAngle)
 					{
 						AddAngularRowJacobian(desc, lateralDir, maxConeAngle - coneAngle);

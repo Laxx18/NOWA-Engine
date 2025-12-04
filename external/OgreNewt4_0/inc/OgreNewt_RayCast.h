@@ -32,6 +32,8 @@ namespace OgreNewt
             explicit RayCastCallback(Raycast* owner);
             virtual ~RayCastCallback();
 
+            virtual ndUnsigned32 OnRayPrecastAction(const ndBody* const body, const ndShapeInstance* const) override;
+
             virtual ndFloat32 OnRayCastAction(const ndContactPoint& contact, ndFloat32 intersetParam) override;
 
             Raycast* mOwner;

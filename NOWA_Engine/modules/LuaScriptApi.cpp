@@ -5979,6 +5979,8 @@ namespace NOWA
 			.def("getBuoyancyGravity", &PhysicsBuoyancyComponent::getBuoyancyGravity)
 			.def("setOffsetHeight", &PhysicsBuoyancyComponent::setOffsetHeight)
 			.def("getOffsetHeight", &PhysicsBuoyancyComponent::getOffsetHeight)
+			.def("setCategories", &PhysicsBuoyancyComponent::setCategories)
+			.def("getCategories", &PhysicsBuoyancyComponent::getCategories)
 			// .def("destroyBuoyancy", &PhysicsBuoyancyComponent::destroyBuoyancy)
 			.def("reactOnEnter", &PhysicsBuoyancyComponent::reactOnEnter)
 			.def("reactOnInside", &PhysicsBuoyancyComponent::reactOnInside)
@@ -5995,6 +5997,8 @@ namespace NOWA
 		AddClassToCollection("PhysicsBuoyancyComponent", "void setOffsetHeight(float offsetHeight)", "Sets the offset height, at which the area begins (default value is 0).");
 		AddClassToCollection("PhysicsBuoyancyComponent", "float getOffsetHeight()", "Gets the offset height, at which the area begins (default value is 0).");
 		// AddClassToCollection("PhysicsBuoyancyComponent", "void destroyBuoyancy()", "Destroys the buoyancy trigger, so that no fluid physics take place anymore.");
+		AddClassToCollection("PhysicsBuoyancyComponent", "void setCategories(String categories)", "Sets categories which can be managed by buoyancy (may be composed: e.g. ALL or ALL-House+Floor to get specifig game objects with physics active component to manage.");
+		AddClassToCollection("PhysicsBuoyancyComponent", "String getCategories()", "Gets categories which can be managed by buoyancy.");
 
 		// AddClassToCollection("PhysicsBuoyancyComponent", "void destroyTrigger()", "Destroys the trigger.");
 		AddClassToCollection("PhysicsBuoyancyComponent", "void reactOnEnter(func closure, visitorGameObject)",
@@ -6014,6 +6018,8 @@ namespace NOWA
 			.def("reactOnEnter", &PhysicsTriggerComponent::reactOnEnter)
 			.def("reactOnInside", &PhysicsTriggerComponent::reactOnInside)
 			.def("reactOnLeave", &PhysicsTriggerComponent::reactOnLeave)
+			.def("setCategories", &PhysicsTriggerComponent::setCategories)
+			.def("getCategories", &PhysicsTriggerComponent::getCategories)
 		];
 
 		AddClassToCollection("PhysicsTriggerComponent", "class inherits PhysicsComponent", PhysicsTriggerComponent::getStaticInfoText());
@@ -6024,6 +6030,8 @@ namespace NOWA
 							 "Lua closure function gets called in order to react when a game object is inside the trigger area. Note: This function should only be used if really necessary, because this function gets triggered permanently.");
 		AddClassToCollection("PhysicsTriggerComponent", "void reactOnLeave(func closure, visitorGameObject)",
 														  "Lua closure function gets called in order to react when a game object leaves the trigger area.");
+		AddClassToCollection("PhysicsTriggerComponent", "void setCategories(String categories)", "Sets categories (may be composed: e.g. ALL or ALL-House+Floor to get specifig game objects with physics component to manage.");
+		AddClassToCollection("PhysicsTriggerComponent", "String getCategories()", "Gets categories which can trigger.");
 	}
 
 	void bindParticleUniverseComponent(lua_State* lua)

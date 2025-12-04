@@ -63,6 +63,29 @@ namespace
 		}
 		return ch;
 	}
+
+	void normalizeMouseEventCoords(const OIS::MouseEvent& e)
+	{
+		HWND hwnd = nullptr;
+		NOWA::Core::getSingletonPtr()->getOgreRenderWindow()->getCustomAttribute("WINDOW", &hwnd);
+
+		if (!hwnd)
+			return;
+
+		POINT p;
+		if (!GetCursorPos(&p))
+			return;
+
+		if (!ScreenToClient(hwnd, &p))
+			return;
+
+		// We want everyone to see client coords in e.state.X.abs / Y.abs,
+		// so we overwrite them (OIS is not particularly const-correct anyway).
+		auto& state = const_cast<OIS::MouseState&>(e.state);
+		state.X.abs = p.x;
+		state.Y.abs = p.y;
+	}
+
 }
 
 namespace NOWA
@@ -628,22 +651,26 @@ namespace NOWA
 
 	bool InputDeviceCore::mouseMoved(const OIS::MouseEvent& e)
 	{
+		// Normalize OIS coords once:
+		normalizeMouseEventCoords(e);
+
 		int mX = e.state.X.abs;
 		int mY = e.state.Y.abs;
 		int mZ = e.state.Z.abs;
 
 		ENQUEUE_RENDER_COMMAND_MULTI("InputDeviceCore::mouseMoved", _3(mX, mY, mZ),
-		{
-			MyGUI::InputManager::getInstancePtr()->injectMouseMove(mX, mY, mZ);
-		});
-
-		auto& itMouseListener = this->mouseListeners.begin();
-		auto& itMouseListenerEnd = this->mouseListeners.end();
-		for (; itMouseListener != itMouseListenerEnd; ++itMouseListener)
-		{
-			if (!itMouseListener->second->mouseMoved(e))
 			{
-				if (true == this->listenerAboutToBeRemoved)
+				if (auto* inputMgr = MyGUI::InputManager::getInstancePtr())
+					inputMgr->injectMouseMove(mX, mY, mZ);
+			});
+
+		auto it = this->mouseListeners.begin();
+		auto end = this->mouseListeners.end();
+		for (; it != end; ++it)
+		{
+			if (!it->second->mouseMoved(e))
+			{
+				if (this->listenerAboutToBeRemoved)
 				{
 					this->listenerAboutToBeRemoved = false;
 					return true;
@@ -657,30 +684,27 @@ namespace NOWA
 
 	bool InputDeviceCore::mousePressed(const OIS::MouseEvent& e, OIS::MouseButtonID id)
 	{
+		// Normalize coordinates first
+		normalizeMouseEventCoords(e);
+
 		this->bSelectDown = this->getKeyboard()->isKeyDown(NOWA_K_SELECT);
 
 		int mX = e.state.X.abs;
 		int mY = e.state.Y.abs;
 
 		ENQUEUE_RENDER_COMMAND_MULTI("InputDeviceCore::mousePressed", _3(mX, mY, id),
-		{
-			MyGUI::InputManager::getInstancePtr()->injectMousePress(mX, mY, MyGUI::MouseButton::Enum(id));
-		});
-
-		//// Do not react on input if there is any interaction with a mygui widget
-		//MyGUI::Widget* widget = MyGUI::InputManager::getInstance().getMouseFocusWidget();
-		//if (nullptr != widget)
-		//{
-		//	return false;
-		//}
-
-		auto& itMouseListener = this->mouseListeners.begin();
-		auto& itMouseListenerEnd = this->mouseListeners.end();
-		for (; itMouseListener != itMouseListenerEnd; ++itMouseListener)
-		{
-			if (!itMouseListener->second->mousePressed(e, id))
 			{
-				if (true == this->listenerAboutToBeRemoved)
+				if (auto* inputMgr = MyGUI::InputManager::getInstancePtr())
+					inputMgr->injectMousePress(mX, mY, MyGUI::MouseButton::Enum(id));
+			});
+
+		auto it = this->mouseListeners.begin();
+		auto end = this->mouseListeners.end();
+		for (; it != end; ++it)
+		{
+			if (!it->second->mousePressed(e, id))
+			{
+				if (this->listenerAboutToBeRemoved)
 				{
 					this->listenerAboutToBeRemoved = false;
 					return true;
@@ -694,28 +718,25 @@ namespace NOWA
 
 	bool InputDeviceCore::mouseReleased(const OIS::MouseEvent& e, OIS::MouseButtonID id)
 	{
+		// Normalize coordinates first
+		normalizeMouseEventCoords(e);
+
 		int mX = e.state.X.abs;
 		int mY = e.state.Y.abs;
 
 		ENQUEUE_RENDER_COMMAND_MULTI("InputDeviceCore::mouseReleased", _3(mX, mY, id),
-		{
-			MyGUI::InputManager::getInstancePtr()->injectMouseRelease(mX, mY, MyGUI::MouseButton::Enum(id));
-		});
-
-		// Do not react on input if there is any interaction with a mygui widget
-		/*MyGUI::Widget* widget = MyGUI::InputManager::getInstance().getMouseFocusWidget();
-		if (nullptr != widget)
-		{
-			return false;
-		}*/
-
-		auto& itMouseListener = this->mouseListeners.begin();
-		auto& itMouseListenerEnd = this->mouseListeners.end();
-		for (; itMouseListener != itMouseListenerEnd; itMouseListener++)
-		{
-			if (!itMouseListener->second->mouseReleased(e, id))
 			{
-				if (true == this->listenerAboutToBeRemoved)
+				if (auto* inputMgr = MyGUI::InputManager::getInstancePtr())
+					inputMgr->injectMouseRelease(mX, mY, MyGUI::MouseButton::Enum(id));
+			});
+
+		auto it = this->mouseListeners.begin();
+		auto end = this->mouseListeners.end();
+		for (; it != end; ++it)
+		{
+			if (!it->second->mouseReleased(e, id))
+			{
+				if (this->listenerAboutToBeRemoved)
 				{
 					this->listenerAboutToBeRemoved = false;
 					return true;

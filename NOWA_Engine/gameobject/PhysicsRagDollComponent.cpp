@@ -197,7 +197,8 @@ namespace NOWA
 		try
 		{
 			doc.parse<0>(&xmlBuffer[0]);
-		} catch (const rapidxml::parse_error&)
+		}
+		catch (const rapidxml::parse_error&)
 		{
 			stream->close();
 			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[PhysicsRagDollComponent] Could not parse one configuration file: " + this->boneConfigFile->getString()
@@ -216,19 +217,19 @@ namespace NOWA
 
 		// Check if the ragdoll config has a default pose
 		Ogre::String defaultPose;
-		if ((root->first_attribute("Pose") ? root->first_attribute("Pose")->value() : ""))
+		if (auto* poseAttr = root->first_attribute("Pose"))
 		{
-			defaultPose = (root->first_attribute("Pose") ? root->first_attribute("Pose")->value() : "");
+			defaultPose = poseAttr->value();
 		}
 
-		if ((root->first_attribute("PositionOffset") ? root->first_attribute("PositionOffset")->value() : ""))
+		if (auto* posOffsetAttr = root->first_attribute("PositionOffset"))
 		{
-			this->ragdollPositionOffset = Ogre::StringConverter::parseVector3((root->first_attribute("PositionOffset") ? root->first_attribute("PositionOffset")->value() : ""));
+			this->ragdollPositionOffset = Ogre::StringConverter::parseVector3(posOffsetAttr->value());
 		}
 
-		if ((root->first_attribute("OrientationOffset") ? root->first_attribute("OrientationOffset")->value() : ""))
+		if (auto* orientOffsetAttr = root->first_attribute("OrientationOffset"))
 		{
-			Ogre::Vector3 dirOffset = Ogre::StringConverter::parseVector3((root->first_attribute("OrientationOffset") ? root->first_attribute("OrientationOffset")->value() : ""));
+			Ogre::Vector3 dirOffset = Ogre::StringConverter::parseVector3(orientOffsetAttr->value());
 			if (dirOffset != Ogre::Vector3::ZERO)
 			{
 				Ogre::Matrix3 rot;
@@ -253,23 +254,23 @@ namespace NOWA
 		this->mesh = entity->getMesh();
 
 		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsRagDollComponent::createRagDoll", _2(entity, defaultPose),
-		{
-			Ogre::v1::AnimationState* animState = nullptr;
-			if (defaultPose.length() > 0)
 			{
-				// Get the default pose animation state (ideally the T-Pose)
-				animState = entity->getAnimationState(defaultPose);
-				animState->setEnabled(true);
-				animState->setLoop(false);
-				animState->setTimePosition(100.0f);
-				entity->_updateAnimation(); //critical! read this functions comments!
-			}
+				Ogre::v1::AnimationState * animState = nullptr;
+				if (defaultPose.length() > 0)
+				{
+					// Get the default pose animation state (ideally the T-Pose)
+					animState = entity->getAnimationState(defaultPose);
+					animState->setEnabled(true);
+					animState->setLoop(false);
+					animState->setTimePosition(100.0f);
+					entity->_updateAnimation(); //critical! read this functions comments!
+				}
 
-			if (nullptr != animState)
-			{
-				animState->setEnabled(false);
-			}
-		});
+				if (nullptr != animState)
+				{
+					animState->setEnabled(false);
+				}
+			});
 
 		// First delete all prior created ragbones
 		while (this->ragDataList.size() > 0)
@@ -299,6 +300,7 @@ namespace NOWA
 
 		return true;
 	}
+
 
 	/*
 	bool OgreRagdollOX3D::SetRagdollManualBoneAnim(String boneName, bool active)
@@ -951,9 +953,9 @@ namespace NOWA
 		while (nullptr != boneXmlElement)
 		{
 			// Check if there is a source, that points to a target for position correction
-			if ((boneXmlElement->first_attribute("Source") ? boneXmlElement->first_attribute("Source")->value() : ""))
+			if (auto* sourceAttr = boneXmlElement->first_attribute("Source"))
 			{
-				Ogre::String sourceBoneName =( boneXmlElement->first_attribute("Source") ? boneXmlElement->first_attribute("Source")->value() : "");
+				Ogre::String sourceBoneName = sourceAttr->value();
 				if (false == boneName.empty())
 				{
 					// Found bone name at which all other targets should be parsed, so parse til the bone name is found and proceed as usual after that
@@ -964,8 +966,17 @@ namespace NOWA
 						continue;
 					}
 				}
-				Ogre::String targetBoneName =( boneXmlElement->first_attribute("Target") ? boneXmlElement->first_attribute("Target")->value() : "");
-				Ogre::Vector3 offset = Ogre::StringConverter::parseVector3((boneXmlElement->first_attribute("Offset") ? boneXmlElement->first_attribute("Offset")->value() : ""));
+
+				auto* targetAttr = boneXmlElement->first_attribute("Target");
+				Ogre::String targetBoneName = targetAttr ? targetAttr->value() : "";
+
+				auto* offsetAttr = boneXmlElement->first_attribute("Offset");
+				Ogre::Vector3 offset = Ogre::Vector3::ZERO;
+				if (offsetAttr)
+				{
+					offset = Ogre::StringConverter::parseVector3(offsetAttr->value());
+				}
+
 				Ogre::v1::OldBone* sourceBone = this->skeleton->getBone(sourceBoneName);
 				Ogre::v1::OldBone* targetBone = this->skeleton->getBone(targetBoneName);
 				this->boneCorrectionMap.emplace(sourceBone, std::make_pair(targetBone, offset));
@@ -973,15 +984,22 @@ namespace NOWA
 				boneXmlElement = boneXmlElement->next_sibling("Bone");
 				continue;
 			}
-			
-			// get the information for the bone represented by this element.
-			Ogre::Vector3 size = Ogre::StringConverter::parseVector3((boneXmlElement->first_attribute("Size") ? boneXmlElement->first_attribute("Size")->value() : ""));
 
-			Ogre::String skeletonBone =( boneXmlElement->first_attribute("SkeletonBone") ? boneXmlElement->first_attribute("SkeletonBone")->value() : "");
+			// get the information for the bone represented by this element.
+			auto* sizeAttr = boneXmlElement->first_attribute("Size");
+			if (nullptr == sizeAttr)
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsRagDollComponent] Error: Size could not be loaded from XML for: " + this->gameObjectPtr->getName());
+				return false;
+			}
+			Ogre::Vector3 size = Ogre::StringConverter::parseVector3(sizeAttr->value());
+
+			auto* skeletonBoneAttr = boneXmlElement->first_attribute("SkeletonBone");
+			Ogre::String skeletonBone = skeletonBoneAttr ? skeletonBoneAttr->value() : "";
 
 			// Partial ragdolling root bone can be left off, so that position and orientation is taken from whole mesh (position, orientation)
 			// This is useful, because when attaching to a root bone, it may be that the bone is somewhat feeble and so would be the whole character!
-			if(skeletonBone.empty() && (false == first || false == partial))
+			if (skeletonBone.empty() && (false == first || false == partial))
 			{
 				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsRagDollComponent] Error: Skeleton bone name could not be loaded from XML for: "
 					+ this->gameObjectPtr->getName());
@@ -1004,7 +1022,8 @@ namespace NOWA
 			}
 
 			Ogre::String boneNameFromFile;
-			Ogre::String strName =( boneXmlElement->first_attribute("Name") ? boneXmlElement->first_attribute("Name")->value() : "");
+			auto* nameAttr = boneXmlElement->first_attribute("Name");
+			Ogre::String strName = nameAttr ? nameAttr->value() : "";
 			if (!strName.empty())
 			{
 				boneNameFromFile = strName;
@@ -1017,19 +1036,19 @@ namespace NOWA
 			}
 
 			Ogre::String strCategory;
-			if ((boneXmlElement->first_attribute("Category") ? boneXmlElement->first_attribute("Category")->value() : ""))
+			if (auto* catAttr = boneXmlElement->first_attribute("Category"))
 			{
-				strCategory =( boneXmlElement->first_attribute("Category") ? boneXmlElement->first_attribute("Category")->value() : "");
+				strCategory = catAttr->value();
 			}
 
 			Ogre::Vector3 offset = Ogre::Vector3::ZERO;
-
-			if ((boneXmlElement->first_attribute("Offset") ? boneXmlElement->first_attribute("Offset")->value() : ""))
+			if (auto* offsetAttr2 = boneXmlElement->first_attribute("Offset"))
 			{
-				offset = Ogre::StringConverter::parseVector3((boneXmlElement->first_attribute("Offset") ? boneXmlElement->first_attribute("Offset")->value() : ""));
+				offset = Ogre::StringConverter::parseVector3(offsetAttr2->value());
 			}
 
-			Ogre::String strShape =( boneXmlElement->first_attribute("Shape") ? boneXmlElement->first_attribute("Shape")->value() : "");
+			auto* shapeAttr = boneXmlElement->first_attribute("Shape");
+			Ogre::String strShape = shapeAttr ? shapeAttr->value() : "";
 			PhysicsRagDollComponent::RagBone::BoneShape shape = PhysicsRagDollComponent::RagBone::BS_BOX;
 
 			if (strShape == "Hull")
@@ -1057,7 +1076,13 @@ namespace NOWA
 				shape = PhysicsRagDollComponent::RagBone::BS_ELLIPSOID;
 			}
 
-			Ogre::Real mass = Ogre::StringConverter::parseReal((boneXmlElement->first_attribute("Mass") ? boneXmlElement->first_attribute("Mass")->value() : ""));
+			auto* massAttr = boneXmlElement->first_attribute("Mass");
+			if (nullptr == massAttr)
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsRagDollComponent] Error: Mass could not be loaded from XML for: " + this->gameObjectPtr->getName());
+				return false;
+			}
+			Ogre::Real mass = Ogre::StringConverter::parseReal(massAttr->value());
 			// this->mass += mass;
 
 			///////////////////////////////////////////////////////////////////////////////
@@ -1065,12 +1090,12 @@ namespace NOWA
 			RagBone* currentRagBone = new RagBone(boneNameFromFile, this, parentRagBone, ogreBone, this->mesh, constraintDirection->getVector3(), shape, size, mass, partial, offset, strCategory);
 
 			// add a name from file, if it exists, because it could be, that someone that rigged the mesh, did not name it properly, so this can be done in the *.xml file
-			
+
 			PhysicsRagDollComponent::RagData ragData;
 			ragData.ragBoneName = boneNameFromFile;
 			ragData.ragBone = currentRagBone;
 			this->ragDataList.emplace_back(ragData);
-			
+
 			boneXmlElement = boneXmlElement->next_sibling("Bone");
 			// store parent rag bone pointer
 			parentRagBone = currentRagBone;
@@ -1085,16 +1110,18 @@ namespace NOWA
 			return false;
 		}
 
-		
+
 		// Go through all joints
 		rapidxml::xml_node<>* jointXmlElement = jointsXmlElement->first_node("Joint");
 		while (nullptr != jointXmlElement)
 		{
-			Ogre::String ragBoneChildName = (jointXmlElement->first_attribute("Child") ? jointXmlElement->first_attribute("Child")->value() : "");
+			auto* childAttr = jointXmlElement->first_attribute("Child");
+			Ogre::String ragBoneChildName = childAttr ? childAttr->value() : "";
+
 			Ogre::String ragBoneParentName;
-			if ((jointXmlElement->first_attribute("Parent") ? jointXmlElement->first_attribute("Parent")->value() : ""))
+			if (auto* parentAttr = jointXmlElement->first_attribute("Parent"))
 			{
-				ragBoneParentName =( jointXmlElement->first_attribute("Parent") ? jointXmlElement->first_attribute("Parent")->value() : "");
+				ragBoneParentName = parentAttr->value();
 			}
 
 			RagBone* childRagBone = this->getRagBone(ragBoneChildName);
@@ -1107,13 +1134,13 @@ namespace NOWA
 			}
 
 			Ogre::Real friction = -1.0f;
-
-			if ((jointXmlElement->first_attribute("Friction") ? jointXmlElement->first_attribute("Friction")->value() : ""))
+			if (auto* frictionAttr = jointXmlElement->first_attribute("Friction"))
 			{
-				friction = Ogre::StringConverter::parseReal((jointXmlElement->first_attribute("Friction") ? jointXmlElement->first_attribute("Friction")->value() : ""));
+				friction = Ogre::StringConverter::parseReal(frictionAttr->value());
 			}
 
-			Ogre::String strJointType =( jointXmlElement->first_attribute("Type") ? jointXmlElement->first_attribute("Type")->value() : "");
+			auto* typeAttr = jointXmlElement->first_attribute("Type");
+			Ogre::String strJointType = typeAttr ? typeAttr->value() : "";
 			PhysicsRagDollComponent::JointType jointType = PhysicsRagDollComponent::JT_BASE;
 			Ogre::Vector3 pin = Ogre::Vector3::ZERO;
 
@@ -1128,9 +1155,10 @@ namespace NOWA
 			else if (strJointType == JointHingeComponent::getStaticClassName())
 			{
 				jointType = PhysicsRagDollComponent::JT_HINGE;
-				if ((jointXmlElement->first_attribute("Pin") ? jointXmlElement->first_attribute("Pin")->value() : ""))
+				auto* pinAttr = jointXmlElement->first_attribute("Pin");
+				if (pinAttr)
 				{
-					pin = Ogre::StringConverter::parseVector3((jointXmlElement->first_attribute("Pin") ? jointXmlElement->first_attribute("Pin")->value() : ""));
+					pin = Ogre::StringConverter::parseVector3(pinAttr->value());
 				}
 				else
 				{
@@ -1143,17 +1171,18 @@ namespace NOWA
 			else if (strJointType == JointUniversalComponent::getStaticClassName())
 			{
 				jointType = PhysicsRagDollComponent::JT_DOUBLE_HINGE;
-				if ((jointXmlElement->first_attribute("Pin") ? jointXmlElement->first_attribute("Pin")->value() : ""))
+				if (auto* pinAttr = jointXmlElement->first_attribute("Pin"))
 				{
-					pin = Ogre::StringConverter::parseVector3((jointXmlElement->first_attribute("Pin") ? jointXmlElement->first_attribute("Pin")->value() : ""));
+					pin = Ogre::StringConverter::parseVector3(pinAttr->value());
 				}
 			}
 			else if (strJointType == JointHingeActuatorComponent::getStaticClassName())
 			{
 				jointType = PhysicsRagDollComponent::JT_HINGE_ACTUATOR;
-				if ((jointXmlElement->first_attribute("Pin") ? jointXmlElement->first_attribute("Pin")->value() : ""))
+				auto* pinAttr = jointXmlElement->first_attribute("Pin");
+				if (pinAttr)
 				{
-					pin = Ogre::StringConverter::parseVector3((jointXmlElement->first_attribute("Pin") ? jointXmlElement->first_attribute("Pin")->value() : ""));
+					pin = Ogre::StringConverter::parseVector3(pinAttr->value());
 				}
 				else
 				{
@@ -1166,9 +1195,10 @@ namespace NOWA
 			else if (strJointType == JointUniversalActuatorComponent::getStaticClassName())
 			{
 				jointType = PhysicsRagDollComponent::JT_DOUBLE_HINGE_ACTUATOR;
-				if ((jointXmlElement->first_attribute("Pin") ? jointXmlElement->first_attribute("Pin")->value() : ""))
+				auto* pinAttr = jointXmlElement->first_attribute("Pin");
+				if (pinAttr)
 				{
-					pin = Ogre::StringConverter::parseVector3((jointXmlElement->first_attribute("Pin") ? jointXmlElement->first_attribute("Pin")->value() : ""));
+					pin = Ogre::StringConverter::parseVector3(pinAttr->value());
 				}
 				else
 				{
@@ -1186,13 +1216,13 @@ namespace NOWA
 			Ogre::Degree minTwistAngle = Ogre::Degree(0.0f);
 			Ogre::Degree maxTwistAngle = Ogre::Degree(0.0f);
 
-			if ((jointXmlElement->first_attribute("MinTwistAngle") ? jointXmlElement->first_attribute("MinTwistAngle")->value() : ""))
+			if (auto* minTwistAttr = jointXmlElement->first_attribute("MinTwistAngle"))
 			{
-				minTwistAngle = Ogre::Degree(Ogre::StringConverter::parseReal((jointXmlElement->first_attribute("MinTwistAngle") ? jointXmlElement->first_attribute("MinTwistAngle")->value() : "")));
+				minTwistAngle = Ogre::Degree(Ogre::StringConverter::parseReal(minTwistAttr->value()));
 			}
-			if ((jointXmlElement->first_attribute("MinTwistAngle") ? jointXmlElement->first_attribute("MinTwistAngle")->value() : ""))
+			if (auto* maxTwistAttr = jointXmlElement->first_attribute("MaxTwistAngle"))
 			{
-				maxTwistAngle = Ogre::Degree(Ogre::StringConverter::parseReal((jointXmlElement->first_attribute("MaxTwistAngle") ? jointXmlElement->first_attribute("MaxTwistAngle")->value() : "")));
+				maxTwistAngle = Ogre::Degree(Ogre::StringConverter::parseReal(maxTwistAttr->value()));
 			}
 
 			Ogre::Degree minTwistAngle2 = Ogre::Degree(0.0f);
@@ -1200,17 +1230,17 @@ namespace NOWA
 
 			Ogre::Degree maxConeAngle = Ogre::Degree(0.0f);
 
-			if ((jointXmlElement->first_attribute("MaxConeAngle") ? jointXmlElement->first_attribute("MaxConeAngle")->value() : ""))
+			if (auto* maxConeAttr = jointXmlElement->first_attribute("MaxConeAngle"))
 			{
-				maxConeAngle = Ogre::Degree(Ogre::StringConverter::parseReal((jointXmlElement->first_attribute("MaxConeAngle") ? jointXmlElement->first_attribute("MaxConeAngle")->value() : "")));
+				maxConeAngle = Ogre::Degree(Ogre::StringConverter::parseReal(maxConeAttr->value()));
 			}
-			if ((jointXmlElement->first_attribute("MinTwistAngle2") ? jointXmlElement->first_attribute("MinTwistAngle2")->value() : ""))
+			if (auto* minTwist2Attr = jointXmlElement->first_attribute("MinTwistAngle2"))
 			{
-				minTwistAngle2 = Ogre::Degree(Ogre::StringConverter::parseReal((jointXmlElement->first_attribute("MinTwistAngle2") ? jointXmlElement->first_attribute("MinTwistAngle2")->value() : "")));
+				minTwistAngle2 = Ogre::Degree(Ogre::StringConverter::parseReal(minTwist2Attr->value()));
 			}
-			if ((jointXmlElement->first_attribute("MaxTwistAngle2") ? jointXmlElement->first_attribute("MaxTwistAngle2")->value() : ""))
+			if (auto* maxTwist2Attr = jointXmlElement->first_attribute("MaxTwistAngle2"))
 			{
-				maxTwistAngle2 = Ogre::Degree(Ogre::StringConverter::parseReal((jointXmlElement->first_attribute("MaxTwistAngle2") ? jointXmlElement->first_attribute("MaxTwistAngle2")->value() : "")));
+				maxTwistAngle2 = Ogre::Degree(Ogre::StringConverter::parseReal(maxTwist2Attr->value()));
 			}
 
 			if (!(jointXmlElement->first_attribute("Child")) || !*(jointXmlElement->first_attribute("Child")->value()))
@@ -1220,24 +1250,16 @@ namespace NOWA
 			}
 
 			bool useSpring = false;
-
-			if ((jointXmlElement->first_attribute("Spring") ? jointXmlElement->first_attribute("Spring")->value() : ""))
+			if (auto* springAttr = jointXmlElement->first_attribute("Spring"))
 			{
-				useSpring = Ogre::StringConverter::parseBool((jointXmlElement->first_attribute("Spring") ? jointXmlElement->first_attribute("Spring")->value() : ""));
+				useSpring = Ogre::StringConverter::parseBool(springAttr->value());
 			}
 
 			Ogre::Vector3 offset = Ogre::Vector3::ZERO;
-			if ((jointXmlElement->first_attribute("Offset") ? jointXmlElement->first_attribute("Offset")->value() : ""))
+			if (auto* offsetAttr3 = jointXmlElement->first_attribute("Offset"))
 			{
-				offset = Ogre::StringConverter::parseVector3((jointXmlElement->first_attribute("Offset") ? jointXmlElement->first_attribute("Offset")->value() : ""));
+				offset = Ogre::StringConverter::parseVector3(offsetAttr3->value());
 			}
-
-			// if (this->rdState != PhysicsRagDollComponent::RAGDOLLING)
-			// {
-			/*currentRagBone->setInitialPose(jointPos);
-			currentRagBone->applyPose(jointPos);*/
-			// this->applyPose(jpin);
-			// }
 
 			if (nullptr != childRagBone)
 			{

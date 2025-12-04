@@ -227,7 +227,8 @@ void ResourcesPanelMeshes::editTextChange(MyGUI::Widget* sender)
 
 void ResourcesPanelMeshes::handleRefreshMeshResources(NOWA::EventDataPtr eventData)
 {
-	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelMeshes::handleRefreshMeshResources",
+	// Wait will block for ever, have no idea why
+	ENQUEUE_RENDER_COMMAND("ResourcesPanelMeshes::handleRefreshMeshResources",
 	{
 		this->clear();
 	});
@@ -776,13 +777,11 @@ void ResourcesPanelGameObjects::refresh(const Ogre::String& filter)
 
 void ResourcesPanelGameObjects::clear(void)
 {
-	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelGameObjects::clear",
-	{
-		MyGUI::TreeControl::Node * root = this->gameObjectsTree->getRoot();
-		root->removeAll();
+	// is called from render thread
+	MyGUI::TreeControl::Node * root = this->gameObjectsTree->getRoot();
+	root->removeAll();
 
-		this->refresh("");
-	});
+	this->refresh("");
 }
 
 void ResourcesPanelGameObjects::notifyTreeNodeSelected(MyGUI::TreeControl* treeControl, MyGUI::TreeControl::Node* node)
@@ -921,10 +920,11 @@ void ResourcesPanelGameObjects::keyButtonPressed(MyGUI::Widget* sender, MyGUI::K
 
 void ResourcesPanelGameObjects::handleRefreshGameObjectsPanel(NOWA::EventDataPtr eventData)
 {
-	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelGameObjects::handleRefreshGameObjectsPanel",
+	NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
 	{
 		this->clear();
-	});
+	};
+	NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ResourcesPanelGameObjects::handleRefreshGameObjectsPanel");
 }
 
 void ResourcesPanelGameObjects::selectAllNodes(MyGUI::TreeControl* treeControl)
@@ -1076,7 +1076,7 @@ void ResourcesPanelDataBlocks::loadDataBlocks(const Ogre::String& filter)
 
 void ResourcesPanelDataBlocks::clear(void)
 {
-	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelDataBlocks::clear",
+	ENQUEUE_RENDER_COMMAND("ResourcesPanelDataBlocks::clear",
 	{
 		MyGUI::TreeControl::Node * root = this->dataBlocksTree->getRoot();
 		root->removeAll();
@@ -1254,7 +1254,8 @@ void ResourcesPanelTextures::loadTextures(const Ogre::String& filter)
 
 void ResourcesPanelTextures::clear(void)
 {
-	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelTextures::clear",
+	// Wait will block for ever, have no idea why
+	ENQUEUE_RENDER_COMMAND("ResourcesPanelTextures::clear",
 	{
 		MyGUI::TreeControl::Node * root = this->texturesTree->getRoot();
 		root->removeAll();
@@ -1375,7 +1376,8 @@ void ResourcesPanelProject::shutdown(void)
 
 void ResourcesPanelProject::clear(void)
 {
-	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelProject::clear",
+	// Wait will block for ever, have no idea why
+	ENQUEUE_RENDER_COMMAND("ResourcesPanelProject::clear",
 	{
 		this->selectedText.clear();
 		MyGUI::TreeControl::Node * root = this->filesTreeControl->getRoot();
@@ -1657,7 +1659,8 @@ void ResourcesPanelLuaScript::shutdown(void)
 
 void ResourcesPanelLuaScript::clear(void)
 {
-	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelLuaScript::clear",
+	// Wait will block for ever, have no idea why
+	ENQUEUE_RENDER_COMMAND("ResourcesPanelLuaScript::clear",
 	{
 		this->selectedText.clear();
 		this->listBox->removeAllItems();
@@ -1793,7 +1796,8 @@ void ResourcesPanelPlugins::shutdown(void)
 
 void ResourcesPanelPlugins::clear(void)
 {
-	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelPlugins::clear",
+	// Wait will block for ever, have no idea why
+	ENQUEUE_RENDER_COMMAND("ResourcesPanelPlugins::clear",
 	{
 		this->selectedText.clear();
 		this->listBox->removeAllItems();

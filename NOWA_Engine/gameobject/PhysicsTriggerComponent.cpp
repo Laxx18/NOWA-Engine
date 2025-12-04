@@ -60,7 +60,7 @@ namespace NOWA
 							{
 								try
 								{
-									luabind::call_function<void>(this->leaveClosureFunction, visitorGameObject);
+									luabind::call_function<void>(this->enterClosureFunction, visitorGameObject);
 								}
 								catch (luabind::error& error)
 								{

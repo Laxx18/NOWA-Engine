@@ -29,6 +29,10 @@ namespace OgreNewt
 			m_col = new ndShapeNull();
 		}
 
+		// --------------------------------
+		// Box
+		// --------------------------------
+
 		Box::Box(const World* world) : ConvexCollision(world)
 		{
 		}
@@ -41,8 +45,17 @@ namespace OgreNewt
 				m_col->Release();
 
 			m_shapeInstance = new ndShapeInstance(new ndShapeBox(ndFloat32(size.x), ndFloat32(size.y), ndFloat32(size.z)));
+
+			ndMatrix localM;
+			OgreNewt::Converters::QuatPosToMatrix(orient, pos, localM);
+			m_shapeInstance->SetLocalMatrix(localM);
+
 			m_col = m_shapeInstance->GetShape();
 		}
+
+		// --------------------------------
+		// Ellipsoid / Sphere
+		// --------------------------------
 
 		Ellipsoid::Ellipsoid(const World* world) : ConvexCollision(world)
 		{
@@ -54,20 +67,34 @@ namespace OgreNewt
 			if (m_col)
 				m_col->Release();
 
+			ndMatrix localM;
+			OgreNewt::Converters::QuatPosToMatrix(orient, pos, localM);
+
 			if ((size.x == size.y) && (size.y == size.z))
 			{
-				m_shapeInstance = new ndShapeInstance(new ndShapeSphere(ndFloat32(size.x * 0.5f)));
-				m_col = m_shapeInstance->GetShape();
+				// Uniform sphere: use size.x as radius (same as ND3)
+				m_shapeInstance = new ndShapeInstance(new ndShapeSphere(ndFloat32(size.x)));
+
+				m_shapeInstance->SetLocalMatrix(localM);
 			}
 			else
 			{
-				// For non-uniform ellipsoid, use sphere with the average radius
-				ndFloat32 radius = (size.x + size.y + size.z) / 6.0f;
+				const Ogre::Real radius = std::min(std::min(size.x, size.y), size.z);
+				const Ogre::Vector3 scale = Ogre::Vector3(size.x / radius, size.y / radius, size.z / radius);
 
-				m_shapeInstance = new ndShapeInstance(new ndShapeSphere(radius));
-				m_col = m_shapeInstance->GetShape();
+				m_shapeInstance = new ndShapeInstance(new ndShapeSphere(ndFloat32(radius)));
+
+				m_shapeInstance->SetLocalMatrix(localM);
+				m_shapeInstance->SetScale(ndVector(ndFloat32(scale.x), ndFloat32(scale.y), ndFloat32(scale.z), ndFloat32(1.0f)));
 			}
+
+			m_col = m_shapeInstance->GetShape();
 		}
+
+
+		// --------------------------------
+		// Cylinder
+		// --------------------------------
 
 		Cylinder::Cylinder(const World* world)
 			: ConvexCollision(world)
@@ -81,8 +108,17 @@ namespace OgreNewt
 				m_col->Release();
 
 			m_shapeInstance = new ndShapeInstance(new ndShapeCylinder(ndFloat32(radius), ndFloat32(radius), ndFloat32(height)));
+
+			ndMatrix localM;
+			OgreNewt::Converters::QuatPosToMatrix(orient, pos, localM);
+			m_shapeInstance->SetLocalMatrix(localM);
+
 			m_col = m_shapeInstance->GetShape();
 		}
+
+		// --------------------------------
+		// Capsule
+		// --------------------------------
 
 		Capsule::Capsule(const World* world) : ConvexCollision(world)
 		{
@@ -96,6 +132,11 @@ namespace OgreNewt
 				m_col->Release();
 
 			m_shapeInstance = new ndShapeInstance(new ndShapeCapsule(ndFloat32(radius), ndFloat32(radius), ndFloat32(height - (radius * 2.0f))));
+
+			ndMatrix localM;
+			OgreNewt::Converters::QuatPosToMatrix(orient, pos, localM);
+			m_shapeInstance->SetLocalMatrix(localM);
+
 			m_col = m_shapeInstance->GetShape();
 		}
 
@@ -106,8 +147,17 @@ namespace OgreNewt
 				m_col->Release();
 
 			m_shapeInstance = new ndShapeInstance(new ndShapeCapsule(ndFloat32(size.x), ndFloat32(size.z), ndFloat32(size.y)));
+
+			ndMatrix localM;
+			OgreNewt::Converters::QuatPosToMatrix(orient, pos, localM);
+			m_shapeInstance->SetLocalMatrix(localM);
+
 			m_col = m_shapeInstance->GetShape();
 		}
+
+		// --------------------------------
+		// Cone
+		// --------------------------------
 
 		Cone::Cone(const World* world)
 			: ConvexCollision(world)
@@ -121,8 +171,17 @@ namespace OgreNewt
 				m_col->Release();
 
 			m_shapeInstance = new ndShapeInstance(new ndShapeCone(ndFloat32(radius), ndFloat32(height)));
+
+			ndMatrix localM;
+			OgreNewt::Converters::QuatPosToMatrix(orient, pos, localM);
+			m_shapeInstance->SetLocalMatrix(localM);
+
 			m_col = m_shapeInstance->GetShape();
 		}
+
+		// --------------------------------
+		// ChamferCylinder
+		// --------------------------------
 
 		ChamferCylinder::ChamferCylinder(const World* world) : ConvexCollision(world)
 		{
@@ -136,6 +195,11 @@ namespace OgreNewt
 				m_col->Release();
 
 			m_shapeInstance = new ndShapeInstance(new ndShapeChamferCylinder(ndFloat32(radius), ndFloat32(height)));
+
+			ndMatrix localM;
+			OgreNewt::Converters::QuatPosToMatrix(orient, pos, localM);
+			m_shapeInstance->SetLocalMatrix(localM);
+
 			m_col = m_shapeInstance->GetShape();
 		}
 
@@ -143,19 +207,21 @@ namespace OgreNewt
 		{
 		}
 
-		ConvexHull::ConvexHull(const World* world, Ogre::v1::Entity* obj, unsigned int id,
-			const Ogre::Quaternion& orient, const Ogre::Vector3& pos, Ogre::Real tolerance,
-			const Ogre::Vector3& forceScale)
+		ConvexHull::ConvexHull(const World* world, Ogre::v1::Entity* obj, unsigned int id, const Ogre::Quaternion& orient, const Ogre::Vector3& pos, Ogre::Real tolerance, const Ogre::Vector3& forceScale)
 			: ConvexCollision(world)
 		{
 			OGRE_ASSERT_LOW(obj);
 			Ogre::Vector3 scale(1, 1, 1);
 
 			if (Ogre::Node* node = obj->getParentNode())
+			{
 				scale = node->_getDerivedScaleUpdated();
+			}
 
 			if (forceScale != Ogre::Vector3::ZERO)
+			{
 				scale = forceScale;
+			}
 
 			Ogre::v1::MeshPtr mesh = obj->getMesh();
 			if (mesh.isNull())
@@ -175,7 +241,9 @@ namespace OgreNewt
 				Ogre::v1::SubMesh* sub = mesh->getSubMesh(i);
 
 				if (!sub)
+				{
 					continue;
+				}
 
 				Ogre::v1::VertexData* vdata = nullptr;
 				if (sub->useSharedVertices)
@@ -190,7 +258,10 @@ namespace OgreNewt
 				{
 					vdata = sub->vertexData[0];
 				}
-				if (vdata) totalVerts += vdata->vertexCount;
+				if (vdata)
+				{
+					totalVerts += vdata->vertexCount;
+				}
 			}
 			if (totalVerts < 4)
 			{
@@ -224,18 +295,24 @@ namespace OgreNewt
 				}
 
 				if (!vdata)
+				{
 					continue;
+				}
 
 				const Ogre::v1::VertexElement* posElem = vdata->vertexDeclaration->findElementBySemantic(Ogre::VES_POSITION);
 				if (!posElem)
+				{
 					continue;
+				}
 
 				const size_t start = vdata->vertexStart;
 				const size_t vCount = vdata->vertexCount;
 
 				Ogre::v1::HardwareVertexBufferSharedPtr vbuf = vdata->vertexBufferBinding->getBuffer(posElem->getSource());
 				if (!vbuf)
+				{
 					continue;
+				}
 
 				unsigned char* base = static_cast<unsigned char*>(vbuf->lock(Ogre::v1::HardwareBuffer::HBL_READ_ONLY));
 				const size_t stride = vbuf->getVertexSize();
@@ -260,7 +337,9 @@ namespace OgreNewt
 				for (const auto& v : verts)
 				{
 					if (IsFiniteVec3(v))
+					{
 						aabb.merge(v);
+					}
 				}
 
 				const Ogre::Real diag = aabb.isNull() ? Ogre::Real(1) : aabb.getSize().length();
@@ -340,11 +419,15 @@ namespace OgreNewt
 				for (Ogre::SubMesh* sub : mesh->getSubMeshes())
 				{
 					if (!sub)
+					{
 						continue;
+					}
 
 					const Ogre::VertexArrayObjectArray& vaos = sub->mVao[0]; // VpNormal
 					if (vaos.empty())
+					{
 						continue;
+					}
 
 					Ogre::VertexArrayObject* vao = vaos[0];
 
@@ -405,17 +488,25 @@ namespace OgreNewt
 			for (const auto& v : verts)
 			{
 				if (IsFiniteVec3(v))
+				{
 					aabb.merge(v);
+				}
 			}
 			const Ogre::Real diag = aabb.isNull() ? Ogre::Real(1) : aabb.getSize().length();
 
 			if (tolerance <= 0)
+			{
 				tolerance = std::max<Ogre::Real>(diag * Ogre::Real(1e-4), 1e-6f);
+			}
 
 			std::vector<ndFloat32> points; points.reserve(verts.size() * 3);
 			for (const auto& v : verts)
 			{
-				if (!IsFiniteVec3(v)) continue;
+				if (!IsFiniteVec3(v))
+				{
+					continue;
+				}
+
 				bool dup = false;
 				for (size_t i = 0; i + 2 < points.size(); i += 3)
 				{
@@ -1199,6 +1290,11 @@ namespace OgreNewt
 				m_col->Release();
 
 			m_shapeInstance = new ndShapeInstance(new ndShapeConvexHull(5, sizeof(ndFloat32) * 3, ndFloat32(tolerance), vertices));
+
+			ndMatrix localM;
+			OgreNewt::Converters::QuatPosToMatrix(orient, pos, localM);
+			m_shapeInstance->SetLocalMatrix(localM);
+
 			m_col = m_shapeInstance->GetShape();
 		}
 

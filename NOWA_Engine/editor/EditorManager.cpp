@@ -4221,12 +4221,12 @@ namespace NOWA
 		// Physics simulation will be corrupt!
 		if (nullptr != AppStateManager::getSingletonPtr()->getOgreNewtModule()->getOgreNewt())
 		{
-			NOWA::AppStateManager::LogicCommand logicCommand = [this]()
-			{
+			// NOWA::AppStateManager::LogicCommand logicCommand = [this]()
+			// {
 				// Internally sets all bodies sleep state to false and recovers the physics world
-				AppStateManager::getSingletonPtr()->getOgreNewtModule()->getOgreNewt()->recover();
-			};
-			NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+ 				AppStateManager::getSingletonPtr()->getOgreNewtModule()->getOgreNewt()->recover();
+			// };
+			// NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 		}
 
 		this->oldGameObjectDataList.clear();

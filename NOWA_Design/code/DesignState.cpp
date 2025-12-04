@@ -802,7 +802,7 @@ void DesignState::simulate(bool pause, bool withUndo)
 		}
 
 		boost::shared_ptr<EventDataRefreshResourcesPanel> eventDataRefreshResourcesPanel(new EventDataRefreshResourcesPanel());
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataRefreshResourcesPanel, 3.0f);
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataRefreshResourcesPanel);
 	}
 }
 
@@ -2162,7 +2162,7 @@ bool DesignState::keyPressed(const OIS::KeyEvent& keyEventRef)
 
 	bool handled = false;
 
-	if (true == validScene)
+	if (true == validScene && nullptr != this->editorManager)
 	{
 		handled = this->editorManager->handleKeyPress(keyEventRef);
 	}

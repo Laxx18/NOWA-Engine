@@ -14,34 +14,40 @@ namespace NOWA
 		class PhysicsBuoyancyTriggerCallback : public OgreNewt::BuoyancyForceTriggerCallback
 		{
 		public:
-			PhysicsBuoyancyTriggerCallback(GameObject* owner, Ogre::Plane& fluidPlane, Ogre::Real waterToSolidVolumeRatio, Ogre::Real viscosity, 
-				const Ogre::Vector3& gravity, Ogre::Real offsetHeight, LuaScript* luaScript, 
-										   luabind::object& enterClosureFunction, luabind::object& insideClosureFunction, luabind::object& leaveClosureFunction);
+			PhysicsBuoyancyTriggerCallback(GameObject* owner,
+				Ogre::Real waterToSolidVolumeRatio,
+				Ogre::Real viscosity,
+				LuaScript* luaScript,
+				luabind::object& enterClosureFunction,
+				luabind::object& insideClosureFunction,
+				luabind::object& leaveClosureFunction);
 
 			virtual ~PhysicsBuoyancyTriggerCallback();
 
-			virtual void OnEnter(const OgreNewt::Body* visitor);
-
-			virtual void OnInside(const OgreNewt::Body* visitor);
-
-			virtual void OnExit(const OgreNewt::Body* visitor);
+			virtual void OnEnter(const OgreNewt::Body* visitor) override;
+			virtual void OnInside(const OgreNewt::Body* visitor) override;
+			virtual void OnExit(const OgreNewt::Body* visitor) override;
 
 			void setLuaScript(LuaScript* luaScript);
-
-			void setTriggerFunctions(luabind::object& enterClosureFunction, luabind::object& insideClosureFunction, luabind::object& leaveClosureFunction);
+			void setCategoryId(unsigned int categoryId);
+			void setTriggerFunctions(luabind::object& enterClosureFunction,
+				luabind::object& insideClosureFunction,
+				luabind::object& leaveClosureFunction);
 		private:
 			GameObject* owner;
 			LuaScript* luaScript;
-			bool onInsideFunctionAvailable;
+			bool           onInsideFunctionAvailable;
+			unsigned int   categoryId;
 			luabind::object enterClosureFunction;
 			luabind::object insideClosureFunction;
 			luabind::object leaveClosureFunction;
 		};
+
 	public:
 		typedef boost::shared_ptr<GameObject> GameObjectPtr;
 		typedef boost::shared_ptr<PhysicsBuoyancyComponent> PhysicsBuoyancyCompPtr;
 	public:
-	
+
 		PhysicsBuoyancyComponent();
 
 		virtual ~PhysicsBuoyancyComponent();
@@ -99,7 +105,7 @@ namespace NOWA
 		/**
 		 * @see  GameObjectComponent::createStaticApiForLua
 		 */
-		static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObject, luabind::class_<GameObjectController>& gameObjectController) { }
+		static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObject, luabind::class_<GameObjectController>& gameObjectController) {}
 
 		/**
 		* @see	GameObjectComponent::getStaticInfoText
@@ -107,7 +113,7 @@ namespace NOWA
 		static Ogre::String getStaticInfoText(void)
 		{
 			return "Usage: This Component is used for fluid simulation of physics active components. "
-				   "Requirements: A PhysicsArtifactComponent, which acts as the fluid container.";
+				"Requirements: A PhysicsArtifactComponent, which acts as the fluid container.";
 		}
 
 		static Ogre::String getStaticRequiredCategory(void)
@@ -119,7 +125,7 @@ namespace NOWA
 		 * @see		GameObjectComponent::actualizeValue
 		 */
 		virtual void actualizeValue(Variant* attribute) override;
-		
+
 		/**
 		 * @see		PhysicsComponent::isMovable
 		 */
@@ -150,6 +156,18 @@ namespace NOWA
 		void setOffsetHeight(Ogre::Real offsetHeight);
 
 		Ogre::Real getOffsetHeight(void) const;
+
+		void setCategories(const Ogre::String& categories);
+
+		Ogre::String getCategories(void) const;
+
+		void setWaveAmplitude(Ogre::Real waveAmplitude);
+
+		Ogre::Real getWaveAmplitude(void) const;
+
+		void setWaveFrequency(Ogre::Real waveFrequency);
+
+		Ogre::Real getWaveFrequency(void) const;
 
 		/**
 		 * @brief Sets the lua function name, to react when a game object enters the buoyancy area.
@@ -192,6 +210,9 @@ namespace NOWA
 		static const Ogre::String AttrViscosity(void) { return "Viscosity"; }
 		static const Ogre::String AttrBuoyancyGravity(void) { return "Buoyancy Gravity"; }
 		static const Ogre::String AttrOffsetHeight(void) { return "OffsetHeight"; }
+		static const Ogre::String AttrCategories(void) { return "Categories"; }
+		static const Ogre::String AttrWaveAmplitude(void) { return "Wave Amplitude"; }
+		static const Ogre::String AttrWaveFrequency(void) { return "Wave Frequency"; }
 	private:
 		bool createStaticBody(void);
 	protected:
@@ -199,8 +220,12 @@ namespace NOWA
 		Variant* viscosity;
 		Variant* buoyancyGravity;
 		Variant* offsetHeight;
+		Variant* categories;
+		Variant* waveAmplitude;
+		Variant* waveFrequency;
 		PhysicsBuoyancyComponent::PhysicsBuoyancyTriggerCallback* physicsBuoyancyTriggerCallback;
 		bool newleyCreated;
+		unsigned int categoriesId;
 		luabind::object enterClosureFunction;
 		luabind::object insideClosureFunction;
 		luabind::object leaveClosureFunction;

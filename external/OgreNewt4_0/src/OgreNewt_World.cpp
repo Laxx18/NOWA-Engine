@@ -270,7 +270,7 @@ void World::postUpdate(Ogre::Real interp)
 
 void World::recover()
 {
-    // ndScopeSpinLock lock(m_lock);
+    ndScopeSpinLock lock(m_lock);
 
     const ndBodyListView& bodyList = GetBodyList();
     const ndArray<ndBodyKinematic*>& view = bodyList.GetView();

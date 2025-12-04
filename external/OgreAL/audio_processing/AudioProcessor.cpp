@@ -205,11 +205,8 @@ namespace OgreAL
 		this->beatDetectorBandLimits.push_back(7000 / bandSize); // 12 HI_HAT 7000Hz-12000Hz
 		this->beatDetectorBandLimits.push_back(12000 / bandSize);
 
-		// Adding additional ranges for other percussion or instrumentation if needed
-		// e.g., toms, cymbals, hi-hats, etc.
-		// ...
-
 		this->fftHistoryBeatDetector.clear();
+		this->fftHistoryMaxSize = static_cast<int>(this->samplingFrequency / this->processingSize);
 
 		this->spectrumDivision.resize(AudioProcessor::SpectrumArea::HI_HAT + AudioProcessor::SpectrumArea::MAX_VALUE - 1, false);
 	}
@@ -263,9 +260,24 @@ namespace OgreAL
 			const Ogre::Real absmin = limitValue * limitValue * this->processingSize * this->processingSize;
 			const Ogre::Real abs = (re * re) + (im * im);
 
-			this->magnitudeSpectrum[i] = Ogre::Math::Sqrt(abs) / static_cast<Ogre::Real>(nyquist);
+			// Normalize magnitude using window normalization
+			Ogre::Real magnitude = Ogre::Math::Sqrt(abs) * normalizer;
+			if (magnitude <= 0.0f)
+			{
+				magnitude = 1.0e-8f;
+			}
 
-			const auto level = mapValue(limit(mindB, maxdB, amplitudeToDecibels(this->magnitudeSpectrum[i]) - (amplitudeToDecibels(static_cast<Ogre::Real>(nyquist)))), mindB, maxdB, 0.0f, 1.0f);
+			// Magnitude -> dB
+			Ogre::Real db = amplitudeToDecibels(magnitude);
+
+			// *** IMPORTANT: bring back the old offset behavior ***
+			// This mimics your original "minus amplitudeToDecibels(nyquist)" logic,
+			// so the spectrum sits much lower in dB space.
+			db -= amplitudeToDecibels(static_cast<Ogre::Real>(nyquist));
+
+			// Clamp and map to [0,1]
+			db = limit(mindB, maxdB, db);
+			const Ogre::Real level = mapValue(db, mindB, maxdB, 0.0f, 1.0f);
 
 			this->magnitudeSpectrum[i] = level;
 		}
@@ -281,6 +293,7 @@ namespace OgreAL
 		this->updateSpectrumVisualization(this->levelSpectrum, averageSpectrum);
 	}
 
+#if 1
 	void AudioProcessor::fillAverageSpectrum(std::vector<Ogre::Real>& averageSpectrum, int numBands, const std::deque<std::vector<Ogre::Real>>& fftHistory)
 	{
 		if (fftHistory.empty())
@@ -337,85 +350,122 @@ namespace OgreAL
 			varianceSpectrum[i] = (smoothingFactor * variance) + ((1.0f - smoothingFactor) * varianceSpectrum[i]);
 		}
 	}
+#else
+	void AudioProcessor::fillAverageSpectrum(std::vector<Ogre::Real>& averageSpectrum, int numBands, const std::deque<std::vector<Ogre::Real>>& fftHistory)
+	{
+		if (fftHistory.empty())
+		{
+			std::fill(averageSpectrum.begin(), averageSpectrum.end(), 0.0f);
+			return;
+		}
+
+		std::fill(averageSpectrum.begin(), averageSpectrum.end(), 0.0f);
+
+		for (const auto& pastSpectrum : fftHistory)
+		{
+			const int spectrumSize = static_cast<int>(pastSpectrum.size());
+			for (int i = 0; i < std::min(numBands, spectrumSize); ++i)
+			{
+				averageSpectrum[i] += pastSpectrum[i];
+			}
+		}
+
+		for (int i = 0; i < numBands; ++i)
+		{
+			averageSpectrum[i] /= static_cast<Ogre::Real>(fftHistory.size());
+		}
+	}
+
+	void AudioProcessor::fillVarianceSpectrum(std::vector<Ogre::Real>& varianceSpectrum, int numBands, const std::deque<std::vector<Ogre::Real>>& fftHistory, const std::vector<Ogre::Real>& averageSpectrum)
+	{
+		if (fftHistory.empty())
+		{
+			std::fill(varianceSpectrum.begin(), varianceSpectrum.end(), 0.0f);
+			return;
+		}
+
+		std::fill(varianceSpectrum.begin(), varianceSpectrum.end(), 0.0f);
+
+		for (const auto& pastSpectrum : fftHistory)
+		{
+			const int spectrumSize = static_cast<int>(pastSpectrum.size());
+			for (int i = 0; i < std::min(numBands, spectrumSize); ++i)
+			{
+				const Ogre::Real diff = pastSpectrum[i] - averageSpectrum[i];
+				varianceSpectrum[i] += diff * diff;
+			}
+		}
+
+		for (int i = 0; i < numBands; ++i)
+		{
+			varianceSpectrum[i] /= static_cast<Ogre::Real>(fftHistory.size());
+		}
+	}
+
+
+#endif
 
 	void AudioProcessor::updateSpectrumVisualization(std::vector<Ogre::Real>& spectrum, std::vector<Ogre::Real>& averageSpectrum)
 	{
-		const int numBands = spectrum.size();
-		if (numBands == 0) return; // Safety check to prevent empty spectrum processing
+		const int numBands = static_cast<int>(spectrum.size());
+		if (numBands == 0)
+		{
+			return;
+		}
 
-		// Ensure correct size for previous detection values
+		// Ensure storage is correctly sized
 		this->previousDetection.resize(numBands, 0.0f);
-		Ogre::Real alpha = this->firstFrame ? 0.8f : 0.2f; // Higher smoothing at first frame
-		Ogre::Real maxDelta = 0.1f;
-
-		// Rolling median filter for smoothing
 		this->rollingWindows.resize(numBands);
+
+		const Ogre::Real alpha = this->firstFrame ? 0.8f : 0.2f; // stronger smoothing on first frame
+		const Ogre::Real maxDelta = 0.1f;
 		const size_t windowSize = 4;
 
 		for (int numBand = 0; numBand < numBands; ++numBand)
 		{
-			// First frame initialization: avoid sudden jumps
-			if (this->firstFrame)
-			{
-				this->previousDetection[numBand] = 0.0f;
-			}
-
-			// Ensure rolling window is correctly populated
+			// Rolling window for median filter (linear domain)
 			if (this->rollingWindows[numBand].size() >= windowSize)
 			{
 				this->rollingWindows[numBand].pop_front();
 			}
 			this->rollingWindows[numBand].push_back(spectrum[numBand]);
 
-			// Compute median only if we have enough elements
 			std::vector<Ogre::Real> sortedWindow(this->rollingWindows[numBand].begin(), this->rollingWindows[numBand].end());
 			std::sort(sortedWindow.begin(), sortedWindow.end());
 
-			if (!sortedWindow.empty()) // Ensure we don't access an empty vector
+			Ogre::Real medianValue = 0.0f;
+			if (!sortedWindow.empty())
 			{
-				size_t medianIndex = sortedWindow.size() / 2;
-				spectrum[numBand] = sortedWindow[medianIndex];
-			}
-			else
-			{
-				spectrum[numBand] = 0.0f; // Fallback in case something went wrong
+				const size_t medianIndex = sortedWindow.size() / 2;
+				medianValue = sortedWindow[medianIndex];
 			}
 
-			// Apply Exponential Moving Average (EMA)
-			spectrum[numBand] = alpha * spectrum[numBand] + (1 - alpha) * this->previousDetection[numBand];
-			this->previousDetection[numBand] = spectrum[numBand];
+			// Log scaling (ensure non-negative input for log)
+			Ogre::Real logVal = std::log(1.0f + std::max(medianValue, 0.0f) * 10.0f) / std::log(11.0f);
 
-			// Logarithmic Scaling (Ensure non-negative input for log)
-			spectrum[numBand] = std::log(1.0f + std::max(spectrum[numBand], 0.0f) * 10.0f) / std::log(11.0f);
+			// Exponential Moving Average in log-space
+			const Ogre::Real prevLog = this->previousDetection[numBand];
+			Ogre::Real smoothed = alpha * logVal + (1.0f - alpha) * prevLog;
 
-			// Frame-to-frame change limitation
-			Ogre::Real delta = spectrum[numBand] - this->previousDetection[numBand];
+			// Frame-to-frame change limitation in the same domain (log-space)
+			Ogre::Real delta = smoothed - prevLog;
 			if (std::abs(delta) > maxDelta)
 			{
-				spectrum[numBand] = this->previousDetection[numBand] + (delta > 0 ? maxDelta : -maxDelta);
+				smoothed = prevLog + (delta > 0.0f ? maxDelta : -maxDelta);
 			}
 
-			// Apply EMA to average spectrum
-			averageSpectrum[numBand] = alpha * spectrum[numBand] + (1 - alpha) * averageSpectrum[numBand];
+			// Output and store for next frame
+			spectrum[numBand] = smoothed;
+			this->previousDetection[numBand] = smoothed;
+
+			// EMA for average spectrum (also in log-space)
+			averageSpectrum[numBand] = alpha * smoothed + (1.0f - alpha) * averageSpectrum[numBand];
 		}
 
-		// Set firstFrame to false after initialization
 		this->firstFrame = false;
 
-		// Store spectrum in history
-		if (!this->fftHistoryBeatDetector.empty())
-		{
-			this->fillAverageSpectrum(averageSpectrum, numBands, this->fftHistoryBeatDetector);
-			std::vector<Ogre::Real> varianceSpectrum(numBands, 0.0f);
-			this->fillVarianceSpectrum(varianceSpectrum, numBands, this->fftHistoryBeatDetector, averageSpectrum);
-
-			std::vector<Ogre::Real> fftResult(spectrum.begin(), spectrum.end());
-			if (this->fftHistoryBeatDetector.size() >= this->fftHistoryMaxSize)
-			{
-				this->fftHistoryBeatDetector.pop_front();
-			}
-			this->fftHistoryBeatDetector.push_back(fftResult);
-		}
+		// No fftHistoryBeatDetector handling here anymore:
+		// history is updated solely in detectBeat(), to avoid double-pushing.
 	}
 
 	void AudioProcessor::detectBeat(std::vector<Ogre::Real>& spectrum, std::vector<Ogre::Real>& averageSpectrum)
@@ -428,57 +478,122 @@ namespace OgreAL
 
 		if (length > 0)
 		{
-			int numBands = this->beatDetectorBandLimits.size() / 2;
-
-			for (int numBand = 0; numBand < numBands; ++numBand)
+			const int numBands = static_cast<int>(this->beatDetectorBandLimits.size() / 2);
+			if (numBands <= 0)
 			{
-				int bandBoundIndex = numBand * 2;
-				for (int indexFFT = this->beatDetectorBandLimits[bandBoundIndex]; indexFFT < this->beatDetectorBandLimits[bandBoundIndex + 1]; ++indexFFT)
-				{
-					spectrum[numBand] += this->magnitudeSpectrum[indexFFT];
-				}
-				spectrum[numBand] /= (this->beatDetectorBandLimits[bandBoundIndex + 1] - this->beatDetectorBandLimits[bandBoundIndex]);
+				return;
 			}
 
-			if (this->fftHistoryBeatDetector.size() > 0)
+			// Ensure vectors are large enough
+			if (static_cast<int>(spectrum.size()) < numBands)
+			{
+				spectrum.resize(numBands, 0.0f);
+			}
+			if (static_cast<int>(averageSpectrum.size()) < numBands)
+			{
+				averageSpectrum.resize(numBands, 0.0f);
+			}
+
+			// Reset band accumulators every frame (fixes accumulation bug)
+			for (int numBand = 0; numBand < numBands; ++numBand)
+			{
+				spectrum[numBand] = 0.0f;
+			}
+
+			// Average FFT magnitudes into frequency bands
+			for (int numBand = 0; numBand < numBands; ++numBand)
+			{
+				const int bandBoundIndex = numBand * 2;
+				const int startIdx = this->beatDetectorBandLimits[bandBoundIndex];
+				const int endIdx = this->beatDetectorBandLimits[bandBoundIndex + 1];
+
+				const int bandWidth = endIdx - startIdx;
+				if (bandWidth <= 0)
+				{
+					continue;
+				}
+
+				for (int indexFFT = startIdx; indexFFT < endIdx; ++indexFFT)
+				{
+					// magnitudeSpectrum has length "length" (nyquist)
+					if (indexFFT >= 0 && indexFFT < static_cast<int>(this->magnitudeSpectrum.size()))
+					{
+						spectrum[numBand] += this->magnitudeSpectrum[indexFFT];
+					}
+				}
+
+				spectrum[numBand] /= static_cast<Ogre::Real>(bandWidth);
+			}
+
+			// Use history to compute average + variance, but only if we have past frames
+			if (!this->fftHistoryBeatDetector.empty())
 			{
 				fillAverageSpectrum(averageSpectrum, numBands, this->fftHistoryBeatDetector);
 
 				std::vector<Ogre::Real> varianceSpectrum(numBands, 0.0f);
 				fillVarianceSpectrum(varianceSpectrum, numBands, this->fftHistoryBeatDetector, averageSpectrum);
 
-				// Update beat detection logic with the smoothed spectrum
-				this->spectrumDivision[DEEP_BASS] = (spectrum[DEEP_BASS] - 0.005f) > beatThreshold(varianceSpectrum[DEEP_BASS]) * averageSpectrum[DEEP_BASS];
-				this->spectrumDivision[LOW_BASS] = (spectrum[LOW_BASS] - 0.005f) > beatThreshold(varianceSpectrum[LOW_BASS]) * averageSpectrum[LOW_BASS];
-				this->spectrumDivision[MID_BASS] = (spectrum[MID_BASS] - 0.005f) > beatThreshold(varianceSpectrum[MID_BASS]) * averageSpectrum[MID_BASS];
-				this->spectrumDivision[KICK_DRUM] = (spectrum[KICK_DRUM] - 0.06f) > beatThreshold(varianceSpectrum[KICK_DRUM]) * averageSpectrum[KICK_DRUM];
-				this->spectrumDivision[UPPER_BASS] = (spectrum[UPPER_BASS] - 0.005f) > beatThreshold(varianceSpectrum[UPPER_BASS]) * averageSpectrum[UPPER_BASS];
-				this->spectrumDivision[LOWER_MIDRANGE] = (spectrum[LOWER_MIDRANGE] - 0.0005f) > beatThreshold(varianceSpectrum[LOWER_MIDRANGE]) * averageSpectrum[LOWER_MIDRANGE];
-				this->spectrumDivision[MIDDLE_MIDRANGE] = (spectrum[MIDDLE_MIDRANGE] - 0.0005f) > beatThreshold(varianceSpectrum[MIDDLE_MIDRANGE]) * averageSpectrum[MIDDLE_MIDRANGE];
-				this->spectrumDivision[UPPER_MIDRANGE] = (spectrum[UPPER_MIDRANGE] - 0.0005f) > beatThreshold(varianceSpectrum[UPPER_MIDRANGE]) * averageSpectrum[UPPER_MIDRANGE];
-				this->spectrumDivision[PRESENCE_RANGE] = (spectrum[PRESENCE_RANGE] - 0.0005f) > beatThreshold(varianceSpectrum[PRESENCE_RANGE]) * averageSpectrum[PRESENCE_RANGE];
-				this->spectrumDivision[HIGH_END] = (spectrum[HIGH_END] - 0.0005f) > beatThreshold(varianceSpectrum[HIGH_END]) * averageSpectrum[HIGH_END];
-				this->spectrumDivision[EXTREMELY_HIGH_END] = (spectrum[EXTREMELY_HIGH_END] - 0.0005f) > beatThreshold(varianceSpectrum[EXTREMELY_HIGH_END]) * averageSpectrum[EXTREMELY_HIGH_END];
+				// -------------------------
+				// Beat / instrument logic
+				// -------------------------
 
-				// HI-HAT detection: High frequency range, sharp transients
-				this->spectrumDivision[HI_HAT] = (spectrum[HI_HAT] - 0.0003f) > threshold(-14.0f, varianceSpectrum[HI_HAT], 1.65f) * averageSpectrum[HI_HAT];
+				// Sub-bass / deep bass
+				this->spectrumDivision[DEEP_BASS] =
+					(spectrum[DEEP_BASS] - 0.005f) > beatThreshold(varianceSpectrum[DEEP_BASS]) * averageSpectrum[DEEP_BASS];
+
+				// Low bass
+				this->spectrumDivision[LOW_BASS] =
+					(spectrum[LOW_BASS] - 0.005f) > beatThreshold(varianceSpectrum[LOW_BASS]) * averageSpectrum[LOW_BASS];
+
+				// Mid bass
+				this->spectrumDivision[MID_BASS] =
+					(spectrum[MID_BASS] - 0.005f) > beatThreshold(varianceSpectrum[MID_BASS]) * averageSpectrum[MID_BASS];
+
+				// Kick drum – more aggressive threshold
+				this->spectrumDivision[KICK_DRUM] =
+					(spectrum[KICK_DRUM] - 0.05f) > beatThreshold(varianceSpectrum[KICK_DRUM]) * averageSpectrum[KICK_DRUM];
+
+				// Upper bass
+				this->spectrumDivision[UPPER_BASS] =
+					(spectrum[UPPER_BASS] - 0.005f) > beatThreshold(varianceSpectrum[UPPER_BASS]) * averageSpectrum[UPPER_BASS];
+
+				// Lower midrange
+				this->spectrumDivision[LOWER_MIDRANGE] =
+					(spectrum[LOWER_MIDRANGE] - 0.0005f) > beatThreshold(varianceSpectrum[LOWER_MIDRANGE]) * averageSpectrum[LOWER_MIDRANGE];
+
+				// Middle midrange
+				this->spectrumDivision[MIDDLE_MIDRANGE] =
+					(spectrum[MIDDLE_MIDRANGE] - 0.0005f) > beatThreshold(varianceSpectrum[MIDDLE_MIDRANGE]) * averageSpectrum[MIDDLE_MIDRANGE];
+
+				// Upper midrange
+				this->spectrumDivision[UPPER_MIDRANGE] =
+					(spectrum[UPPER_MIDRANGE] - 0.0005f) > beatThreshold(varianceSpectrum[UPPER_MIDRANGE]) * averageSpectrum[UPPER_MIDRANGE];
+
+				// Presence range
+				this->spectrumDivision[PRESENCE_RANGE] =
+					(spectrum[PRESENCE_RANGE] - 0.0005f) > beatThreshold(varianceSpectrum[PRESENCE_RANGE]) * averageSpectrum[PRESENCE_RANGE];
+
+				// High end
+				this->spectrumDivision[HIGH_END] =
+					(spectrum[HIGH_END] - 0.0005f) > beatThreshold(varianceSpectrum[HIGH_END]) * averageSpectrum[HIGH_END];
+
+				// Extremely high end
+				this->spectrumDivision[EXTREMELY_HIGH_END] =
+					(spectrum[EXTREMELY_HIGH_END] - 0.0005f) > beatThreshold(varianceSpectrum[EXTREMELY_HIGH_END]) * averageSpectrum[EXTREMELY_HIGH_END];
+
+				// HI-HAT detection: high frequency range, sharp transients
+				this->spectrumDivision[HI_HAT] =
+					(spectrum[HI_HAT] - 0.0003f) >
+					threshold(-14.0f, varianceSpectrum[HI_HAT], 1.65f) * averageSpectrum[HI_HAT];
 
 				// Ensure SNARE_DRUM detection logic is in place
-				this->spectrumDivision[SNARE_DRUM] = (spectrum[SNARE_DRUM] - 0.005f) > beatThreshold(varianceSpectrum[SNARE_DRUM]) * averageSpectrum[SNARE_DRUM];
-
-				// Snare Drum Detection: Fine-tuning
-				// float snareThreshold = beatThreshold(varianceSpectrum[SNARE_DRUM]) * averageSpectrum[SNARE_DRUM];
-
-				// Fine-tune the subtraction factor (0.005f to a smaller or larger value for sensitivity adjustment)
-				// float snareAdjustment = 0.003f; // Try lowering or increasing this for more/less sensitivity
-
-				// Apply threshold adjustment with a more sensitive detection (adjust the subtraction factor for fine-tuning)
-				// this->spectrumDivision[SNARE_DRUM] = (spectrum[SNARE_DRUM] - snareAdjustment) > snareThreshold;
-
-				// Alternative: More aggressive detection with a higher threshold and a more negative offset
-				// this->spectrumDivision[SNARE_DRUM] = (spectrum[SNARE_DRUM] - 0.01f) > snareThreshold;
+				this->spectrumDivision[SNARE_DRUM] =
+					(spectrum[SNARE_DRUM] - 0.005f) > beatThreshold(varianceSpectrum[SNARE_DRUM]) * averageSpectrum[SNARE_DRUM];
 			}
 
+			// --------------------------------
+			// Update history for next frames
+			// --------------------------------
 			std::vector<Ogre::Real> fftResult;
 			fftResult.reserve(numBands);
 			for (int index = 0; index < numBands; ++index)
@@ -486,7 +601,8 @@ namespace OgreAL
 				fftResult.push_back(spectrum[index]);
 			}
 
-			if (this->fftHistoryBeatDetector.size() >= this->samplingFrequency / this->processingSize)
+			// Limit history length roughly to "frames per second"
+			if (this->fftHistoryBeatDetector.size() >= static_cast<size_t>(this->samplingFrequency / this->processingSize))
 			{
 				this->fftHistoryBeatDetector.pop_front();
 			}

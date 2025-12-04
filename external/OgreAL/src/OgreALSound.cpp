@@ -1257,18 +1257,33 @@ namespace OgreAL
 	}
 
 	void Sound::analyseSpectrum(int arraySize, const Buffer& data)
-	{		
-		if (nullptr == mSpectrumParameter)
-			return;
-
-		mDataRead += arraySize;
-	    // Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "spectrum dataread: " + Ogre::StringConverter::toString(mDataRead));
-
-		for (unsigned short i = 0; i < arraySize; i++)
+	{
+		if (nullptr == mSpectrumParameter || nullptr == mAudioProcessor)
 		{
-			mSpectrumParameter->VUpoints[i] = static_cast<Ogre::Real>(mData[i]) / 85.0f;
+			return;
 		}
 
+		mDataRead += arraySize;
+		// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "spectrum dataread: " + Ogre::StringConverter::toString(mDataRead));
+
+		// Make sure we don't read/write out of bounds
+		const int maxSize = static_cast<int>(mSpectrumParameter->VUpoints.size());
+		const int dataSize = static_cast<int>(data.size());
+		const int count = std::min(arraySize, std::min(maxSize, dataSize));
+
+		for (int i = 0; i < count; ++i)
+		{
+			// Keep old behaviour: treat each byte as sample and scale by 85.0f
+			mSpectrumParameter->VUpoints[i] = static_cast<Ogre::Real>(data[i]) / 85.0f;
+		}
+
+		// If arraySize > count, zero the tail so FFT input is clean
+		for (int i = count; i < arraySize && i < maxSize; ++i)
+		{
+			mSpectrumParameter->VUpoints[i] = 0.0f;
+		}
+
+		// Run FFT + beat detection pipeline
 		mAudioProcessor->process(mCurrentSpectrumPos, mSpectrumParameter->VUpoints);
 
 		const std::vector<Ogre::Real>& magnitudeSpectrum = mAudioProcessor->getMagnitudeSpectrum();
@@ -1283,7 +1298,10 @@ namespace OgreAL
 		const std::vector<Ogre::Real>& phaseList = mAudioProcessor->getPhaseList();
 		memcpy(&mSpectrumParameter->phase[0], &phaseList[0], phaseList.size() * sizeof(Ogre::Real));
 
-		mSpectrumCallback->execute(static_cast<Sound*>(this));	
+		if (mSpectrumCallback)
+		{
+			mSpectrumCallback->execute(static_cast<Sound*>(this));
+		}
 	}
 
 	//-----------------OgreAL::SoundFactory-----------------//

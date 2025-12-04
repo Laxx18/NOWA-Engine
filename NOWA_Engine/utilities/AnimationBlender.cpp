@@ -2,7 +2,6 @@
 #include "AnimationBlender.h"
 #include "OgreTagPoint.h"
 #include "main/AppStateManager.h"
-#include "utilities/Mathhelper.h"
 
 namespace NOWA
 {

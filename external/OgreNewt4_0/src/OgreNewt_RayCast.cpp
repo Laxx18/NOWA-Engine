@@ -35,17 +35,42 @@ namespace OgreNewt
     {
     }
 
+    ndUnsigned32 Raycast::RayCastCallback::OnRayPrecastAction(const ndBody* const body, const ndShapeInstance* const shape)
+    {
+		// TODO: Take parent OnRayPrecastAction into account?
+        // ndUnsigned32 result = ndRayCastClosestHitCallback::OnRayPrecastAction(body, shape);
+
+        // Map to OgreNewt::Body via notify
+        ndBodyKinematic* const kBody = const_cast<ndBody*>(body)->GetAsBodyKinematic();
+        if (!kBody)
+            return 0;
+
+        if (ndBodyNotify* const notify = kBody->GetNotifyCallback())
+        {
+            if (BodyNotify* const bodyNotify = dynamic_cast<BodyNotify*>(notify))
+            {
+                Body* ogreBody = bodyNotify->GetOgreNewtBody();
+                if (!ogreBody)
+                    return 0;
+
+                mOwner->mBodyAdded = false;
+                mOwner->mLastBody = ogreBody;
+
+                return mOwner->userPreFilterCallback(ogreBody) ? 1u : 0u;
+            }
+        }
+        return 0;
+    }
+
     ndFloat32 Raycast::RayCastCallback::OnRayCastAction(const ndContactPoint& contact, ndFloat32 intersetParam)
     {
-        // keep the closest hit only (closest-hit behavior like ND3's filter returning min t)
         if (intersetParam < m_param)
         {
             m_contact = contact;
             m_param = intersetParam;
 
-            // Map Newton body -> OgreNewt::Body via your BodyNotify bridge
             const ndBodyKinematic* const kBody = contact.m_body0;
-            if (kBody != nullptr)
+            if (kBody)
             {
                 if (ndBodyNotify* const notify = kBody->GetNotifyCallback())
                 {
@@ -56,7 +81,8 @@ namespace OgreNewt
                 }
             }
         }
-        return intersetParam;
+        // closest-hit behavior: just return current clip param
+        return m_param;
     }
 
     void Raycast::go(const World* world, const Ogre::Vector3& startpt, const Ogre::Vector3& endpt, int /*threadIndex*/)
@@ -65,6 +91,9 @@ namespace OgreNewt
         mBodyAdded = false;
         mStart = startpt;
         mEnd = endpt;
+
+        mCallback.m_param = ndFloat32(1.0f);
+        mCallback.m_contact = ndContactPoint();
 
         ndWorld* const ndworld = world->getNewtonWorld();
 

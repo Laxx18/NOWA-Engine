@@ -1382,6 +1382,8 @@ namespace NOWA
 			}
 		}
 
+		this->actualizeComponentsIndices();
+
 		return true;
 	}
 
@@ -1420,6 +1422,8 @@ namespace NOWA
 				i++;
 			}
 		}
+
+		this->actualizeComponentsIndices();
 
 		return true;
 	}

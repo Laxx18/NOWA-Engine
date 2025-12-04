@@ -87,7 +87,7 @@ namespace NOWA
         // this->enableDebugVisualization(true);
 #else
     // In release builds, keep timeout enabled with normal logging
-    // this->enableTimeout(true);
+    // this->enableTimeout(false);
     // this->setLogLevel(Ogre::LML_CRITICAL);
        this->setLogLevel(Ogre::LML_TRIVIAL);
 #endif

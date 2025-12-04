@@ -141,17 +141,31 @@ namespace OgreAL
 	{
 		std::vector<Ogre::Real> window(numSamples, 0.0f);
 
-		Ogre::Real a = 2.0f / (numSamples - 1);
+		if (numSamples <= 0)
+		{
+			return window;
+		}
 
-		for (int i = 0; i < 2.0f / (numSamples - 1); i++)
+		if (numSamples == 1)
+		{
+			window[0] = 1.0f;
+			return window;
+		}
+
+		const Ogre::Real numSamplesMinus1 = static_cast<Ogre::Real>(numSamples - 1);
+		const Ogre::Real a = 2.0f / numSamplesMinus1;
+		const int half = numSamples / 2;
+
+		for (int i = 0; i <= half; ++i)
 		{
 			window[i] = i * a;
 		}
 
-		for (int i = 0; i < numSamples; i++)
+		for (int i = half + 1; i < numSamples; ++i)
 		{
-			window[i] += 2.0f - (i * a);
+			window[i] = 2.0f - (i * a);
 		}
+
 		return window;
 	}
 

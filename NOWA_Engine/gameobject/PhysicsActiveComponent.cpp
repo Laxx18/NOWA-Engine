@@ -1859,7 +1859,7 @@ namespace NOWA
 		GameObjectComponent::showDebugData();
 		if (nullptr != this->physicsBody)
 		{
-			ENQUEUE_RENDER_COMMAND("PhysicsActiveComponent::showDebugData",
+			ENQUEUE_RENDER_COMMAND_WAIT("PhysicsActiveComponent::showDebugData",
 			{
 				this->physicsBody->showDebugCollision(false, this->bShowDebugData);
 			});
@@ -1907,7 +1907,8 @@ namespace NOWA
 			{
 				ENQUEUE_RENDER_COMMAND_MULTI("PhysicsActiveComponent::getContactBelow", _3(key, charPoint, rayEndPoint),
 				{
-					Ogre::SceneNode * debugLineNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
+					Ogre::SceneNode* debugLineNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
+					debugLineNode->setName("getContactBelow");
 					Ogre::ManualObject * debugLineObject = this->gameObjectPtr->getSceneManager()->createManualObject();
 					debugLineObject->setQueryFlags(0 << 0);
 					debugLineObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
@@ -1925,9 +1926,11 @@ namespace NOWA
 			}
 			else
 			{
-				ENQUEUE_RENDER_COMMAND_MULTI("PhysicsActiveComponent::getContactBelow::Draw", _3(it, charPoint, rayEndPoint),
+				// ENQUEUE_RENDER_COMMAND_MULTI("PhysicsActiveComponent::getContactBelow::Draw", _3(it, charPoint, rayEndPoint),
+				// {
+				auto closureFunction = [this, it, charPoint, rayEndPoint](Ogre::Real weight)
 				{
-					Ogre::ManualObject * debugLineObject = it->second.second;
+					Ogre::ManualObject* debugLineObject = it->second.second;
 					debugLineObject->clear();
 					debugLineObject->begin("RedNoLighting", Ogre::OperationType::OT_LINE_LIST);
 					debugLineObject->position(charPoint);
@@ -1935,7 +1938,10 @@ namespace NOWA
 					debugLineObject->position(rayEndPoint);
 					debugLineObject->index(1);
 					debugLineObject->end();
-				});
+				};
+				Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::drawLineMap" + Ogre::StringConverter::toString(this->index) + "_" + it->second.first->getName();
+				NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
+				// });
 			}
 		}
 
@@ -2042,6 +2048,7 @@ namespace NOWA
 				ENQUEUE_RENDER_COMMAND_MULTI("PhysicsActiveComponent::getContactAhead", _3(key, charPoint, rayEndPoint),
 				{
 					Ogre::SceneNode * debugLineNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
+					debugLineNode->setName("getContactAhead");
 					Ogre::ManualObject * debugLineObject = this->gameObjectPtr->getSceneManager()->createManualObject();
 					debugLineObject->setQueryFlags(0 << 0);
 					debugLineObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
@@ -2059,17 +2066,22 @@ namespace NOWA
 			}
 			else
 			{
-				ENQUEUE_RENDER_COMMAND_MULTI("PhysicsActiveComponent::getContactAhead::Draw", _3(it, charPoint, rayEndPoint),
-				{
-					Ogre::ManualObject * debugLineObject = it->second.second;
-					debugLineObject->clear();
-					debugLineObject->begin("RedNoLighting", Ogre::OperationType::OT_LINE_LIST);
-					debugLineObject->position(charPoint);
-					debugLineObject->index(0);
-					debugLineObject->position(rayEndPoint);
-					debugLineObject->index(1);
-					debugLineObject->end();
-				});
+				// ENQUEUE_RENDER_COMMAND_MULTI("PhysicsActiveComponent::getContactAhead::Draw", _3(it, charPoint, rayEndPoint),
+				// {
+				auto closureFunction = [this, it, charPoint, rayEndPoint](Ogre::Real weight)
+					{
+						Ogre::ManualObject* debugLineObject = it->second.second;
+						debugLineObject->clear();
+						debugLineObject->begin("RedNoLighting", Ogre::OperationType::OT_LINE_LIST);
+						debugLineObject->position(charPoint);
+						debugLineObject->index(0);
+						debugLineObject->position(rayEndPoint);
+						debugLineObject->index(1);
+						debugLineObject->end();
+					};
+				Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::drawLineMap" + Ogre::StringConverter::toString(this->index) + "_" + it->second.first->getName();
+				NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
+				// });
 			}
 		}
 
@@ -2166,6 +2178,7 @@ namespace NOWA
 				ENQUEUE_RENDER_COMMAND_MULTI("PhysicsActiveComponent::getContactAbove", _3(key, fromPosition, toPosition),
 				{
 					Ogre::SceneNode * debugLineNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
+					debugLineNode->setName("getContactAbove");
 					Ogre::ManualObject * debugLineObject = this->gameObjectPtr->getSceneManager()->createManualObject();
 					debugLineObject->setQueryFlags(0 << 0);
 					debugLineObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
@@ -2184,17 +2197,22 @@ namespace NOWA
 			}
 			else
 			{
-				ENQUEUE_RENDER_COMMAND_MULTI("PhysicsActiveComponent::getContactAbove::Draw", _3(it, fromPosition, toPosition),
+				// ENQUEUE_RENDER_COMMAND_MULTI("PhysicsActiveComponent::getContactAbove::Draw", _3(it, charPoint, rayEndPoint),
+				// {
+				auto closureFunction = [this, it, charPoint, rayEndPoint](Ogre::Real weight)
 				{
-					Ogre::ManualObject * debugLineObject = it->second.second;
+					Ogre::ManualObject* debugLineObject = it->second.second;
 					debugLineObject->clear();
 					debugLineObject->begin("RedNoLighting", Ogre::OperationType::OT_LINE_LIST);
-					debugLineObject->position(fromPosition);
+					debugLineObject->position(charPoint);
 					debugLineObject->index(0);
-					debugLineObject->position(toPosition);
+					debugLineObject->position(rayEndPoint);
 					debugLineObject->index(1);
 					debugLineObject->end();
-				});
+				};
+				Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::drawLineMap" + Ogre::StringConverter::toString(this->index) + "_" + it->second.first->getName();
+				NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
+				// });
 			}
 		}
 
@@ -2295,6 +2313,7 @@ namespace NOWA
 				ENQUEUE_RENDER_COMMAND_MULTI("PhysicsActiveComponent::getContactToDirection", _3(key, fromPosition, toPosition),
 				{
 					Ogre::SceneNode * debugLineNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
+					debugLineNode->setName("getContactToDirection");
 					Ogre::ManualObject * debugLineObject = this->gameObjectPtr->getSceneManager()->createManualObject();
 					debugLineObject->setQueryFlags(0 << 0);
 					debugLineObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_OBJECTS_ALWAYS_IN_FOREGROUND);
@@ -2312,17 +2331,22 @@ namespace NOWA
 			}
 			else
 			{
-				ENQUEUE_RENDER_COMMAND_MULTI("PhysicsActiveComponent::getContactToDirection::Draw", _3(it, fromPosition, toPosition),
-				{
-					Ogre::ManualObject * debugLineObject = it->second.second;
-					debugLineObject->clear();
-					debugLineObject->begin("RedNoLighting", Ogre::OperationType::OT_LINE_LIST);
-					debugLineObject->position(fromPosition);
-					debugLineObject->index(0);
-					debugLineObject->position(toPosition);
-					debugLineObject->index(1);
-					debugLineObject->end();
-				});
+				// ENQUEUE_RENDER_COMMAND_MULTI("PhysicsActiveComponent::getContactToDirection::Draw", _3(it, charPoint, rayEndPoint),
+				// {
+				auto closureFunction = [this, it, fromPosition, toPosition](Ogre::Real weight)
+					{
+						Ogre::ManualObject* debugLineObject = it->second.second;
+						debugLineObject->clear();
+						debugLineObject->begin("RedNoLighting", Ogre::OperationType::OT_LINE_LIST);
+						debugLineObject->position(fromPosition);
+						debugLineObject->index(0);
+						debugLineObject->position(toPosition);
+						debugLineObject->index(1);
+						debugLineObject->end();
+					};
+				Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::drawLineMap" + Ogre::StringConverter::toString(this->index) + "_" + it->second.first->getName();
+				NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
+				// });
 			}
 		}
 
@@ -2435,6 +2459,7 @@ namespace NOWA
 				ENQUEUE_RENDER_COMMAND_MULTI("PhysicsActiveComponent::getContact", _1(key),
 				{
 					Ogre::SceneNode * debugLineNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
+					debugLineNode->setName("getContact");
 					Ogre::ManualObject * debugLineObject = this->gameObjectPtr->getSceneManager()->createManualObject();
 					debugLineObject->setQueryFlags(0 << 0);
 					debugLineObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
@@ -2445,17 +2470,22 @@ namespace NOWA
 			}
 			else
 			{
-				ENQUEUE_RENDER_COMMAND_MULTI("PhysicsActiveComponent::getContact::Draw", _3(it, fromPosition, toPosition),
+				// ENQUEUE_RENDER_COMMAND_MULTI("PhysicsActiveComponent::getContact::Draw", _3(it, charPoint, rayEndPoint),
+				// {
+				auto closureFunction = [this, it, fromPosition, toPosition](Ogre::Real weight)
 				{
-					Ogre::ManualObject * debugLineObject = it->second.second;
+					Ogre::ManualObject* debugLineObject = it->second.second;
 					debugLineObject->clear();
-					debugLineObject->begin("BlueNoLighting", Ogre::OperationType::OT_LINE_LIST);
+					debugLineObject->begin("RedNoLighting", Ogre::OperationType::OT_LINE_LIST);
 					debugLineObject->position(fromPosition);
 					debugLineObject->index(0);
 					debugLineObject->position(toPosition);
 					debugLineObject->index(1);
 					debugLineObject->end();
-				});
+				};
+				Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::drawLineMap" + Ogre::StringConverter::toString(this->index) + "_" + it->second.first->getName();
+				NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
+				// });
 			}
 		}
 
@@ -2773,6 +2803,10 @@ namespace NOWA
 		for (auto& it = this->drawLineMap.cbegin(); it != this->drawLineMap.cend(); ++it)
 		{
 			Ogre::SceneNode* debugLineNode = it->second.first;
+
+			Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::drawLineMap" + Ogre::StringConverter::toString(this->index) + "_" + debugLineNode->getName();
+			NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
+
 			Ogre::ManualObject* debugLineObject = it->second.second;
 			debugLineObject->clear();
 
