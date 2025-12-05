@@ -35,9 +35,10 @@
 
 #include "OgreALException.h"
 #include "OgreALWavSound.h"
-#include "OgreALSoundManager.h"
 
-namespace OgreAL {
+namespace OgreAL
+{
+
 	WavSound::WavSound(Ogre::SceneManager* sceneMgr, const Ogre::String& name, const Ogre::DataStreamPtr& soundStream, bool loop, bool stream) :
 		Sound(sceneMgr, name, soundStream->getName(), stream)
 	{
@@ -251,23 +252,23 @@ namespace OgreAL {
 		}
 	}
 
-	void WavSound::enableSpectrumAnalysis(bool enable, int processingSize, int numberOfBands, MathWindows::WindowType windowType, 
+	void WavSound::enableSpectrumAnalysis(bool enable, int processingSize, int numberOfBands,
+		MathWindows::WindowType windowType,
 		AudioProcessor::SpectrumPreparationType spectrumPreparationType, Ogre::Real smoothFactor)
 	{
 		if (true == enable)
 		{
-			/*if (processingSize < 1000)
-			{
-				processingSize = 1024;
-
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "OgreALSound Warning: Note: Because of VSYNC which minimum dt is 16MS, a spectrum size of 512 will never work, "
-					" because mTargetDeltaMS would result in 10MS, which cannot work! So minimum spectrum size is 1024, which will result in mTargetDeltaMS of 21MS!");
-			}*/
-
 			mSpectrumProcessingSize = processingSize;
 			mSpectrumNumberOfBands = numberOfBands;
 			mMathWindowType = windowType;
 			mSpectrumPreparationType = spectrumPreparationType;
+
+			// Reset timing state so a fresh start after reconnect feels clean
+			mFirstTimeReady = true;
+			mFractionSum = 0.0f;
+			mRenderDelta = 0;
+			mTotalElapsedTime = 0.0f;
+			mCurrentSpectrumPos = 0.0f;
 
 			const unsigned int arraySize = mSpectrumProcessingSize * 2;
 
@@ -276,13 +277,10 @@ namespace OgreAL {
 				Ogre::ResourceGroupManager* groupManager = Ogre::ResourceGroupManager::getSingletonPtr();
 				Ogre::String group = groupManager->findGroupContainingResource(mSoundStream->getName());
 				mSpectrumSoundStream = groupManager->openResource(mSoundStream->getName(), group);
-					
-				/*int dataOffset = (mBufferSize * 2) / arraySize;
-				mSpectrumSoundStream->seek(dataOffset * arraySize);
-				mDataRead = (dataOffset * arraySize);*/
 
 				// mBufferSize * 4 = samples per second
-				mAudioProcessor = new AudioProcessor(static_cast<int>(arraySize), mFreq, mSpectrumNumberOfBands, mBufferSize * 4, mMathWindowType, mSpectrumPreparationType, smoothFactor);
+				mAudioProcessor = new AudioProcessor(static_cast<int>(arraySize), mFreq, mSpectrumNumberOfBands,
+					mBufferSize * 4, mMathWindowType, mSpectrumPreparationType, smoothFactor);
 
 				mSpectrumParameter = new SpectrumParameter;
 				mSpectrumParameter->VUpoints.resize(arraySize, 0.0f);
@@ -293,9 +291,6 @@ namespace OgreAL {
 				mSpectrumParameter->actualSpectrumSize = mAudioProcessor->getLevelSpectrum().size();
 
 				mLastTime = mTimer.getMilliseconds();
-
-				// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "sumSamplings: " + Ogre::StringConverter::toString(sumSamplings));
-				// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "mTargetDelta: " + Ogre::StringConverter::toString(mTargetDeltaSec));
 			}
 		}
 		else
@@ -305,6 +300,12 @@ namespace OgreAL {
 			mSpectrumNumberOfBands = 0;
 			mDataRead = 0;
 			mCurrentSpectrumPos = 0.0f;
+
+			// Prepare for a clean restart later
+			mFirstTimeReady = true;
+			mFractionSum = 0.0f;
+			mRenderDelta = 0;
+			mTotalElapsedTime = 0.0f;
 
 			if (nullptr != mSpectrumCallback)
 			{
@@ -323,7 +324,6 @@ namespace OgreAL {
 		}
 	}
 
-#if 1
 	bool WavSound::updateSound()
 	{
 		// Call the parent method to update the position
@@ -340,13 +340,10 @@ namespace OgreAL {
 
 			// Got through several channels:
 			// https://forum.unity.com/threads/fft-how-to.253192/
-
 			// Several channels:
 			// https://medium.com/giant-scam/algorithmic-beat-mapping-in-unity-preprocessed-audio-analysis-d41c339c135a
 			while (processed--)
 			{
-				// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "processed: " + Ogre::StringConverter::toString(processed));
-
 				ALuint buffer;
 
 				alSourceUnqueueBuffers(mSource, 1, &buffer);
@@ -361,8 +358,9 @@ namespace OgreAL {
 					{
 						alBufferData(buffer, mFormat, &data[0], static_cast<Size>(data.size()), mFreq);
 					}
-					// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "dataRead: " + Ogre::StringConverter::toString(mSumDataRead));
+					// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "dataRead: " + Ogre::StringConverter::toString(mSumDataRead));
 				}
+
 				eof = mSoundStream->eof();
 
 				/*if (true == eof)
@@ -373,6 +371,7 @@ namespace OgreAL {
 				alSourceQueueBuffers(mSource, 1, &buffer);
 				CheckError(alGetError(), "Failed to queue buffers");
 
+				// If there is NO spectrum callback we can end the sound here on EOF
 				if (true == eof && nullptr == mSpectrumCallback)
 				{
 					if (mLoop)
@@ -391,12 +390,23 @@ namespace OgreAL {
 				}
 			}
 
-			if (nullptr != mSpectrumCallback)
+			// ---------------------------
+			// Spectrum / beat processing
+			// ---------------------------
+			// IMPORTANT: only run if we actually have a valid processing size
+			if (mSpectrumCallback && mSpectrumProcessingSize > 0)
 			{
-
 				const unsigned int arraySize = mSpectrumProcessingSize * 2;
 
-				// Since the sound must already be buffered and has x-samples in buffer, the spectrum would start always behind the sound, so adjust the offset
+				// Extra guard: should never happen when mSpectrumProcessingSize > 0,
+				// but protects against accidental zero during re-init.
+				if (0 == arraySize)
+				{
+					return !eof;
+				}
+
+				// Since the sound must already be buffered and has x-samples in buffer,
+				// the spectrum would start always behind the sound, so adjust the offset
 				if (true == mFirstTimeReady)
 				{
 					if (mSpectrumSoundStream.isNull())
@@ -404,11 +414,13 @@ namespace OgreAL {
 						stop();
 						return true;
 					}
-					// Char to float max test
+
+					// Char to float max test (debug-only, kept as comment):
 					// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "limit min: " + Ogre::StringConverter::toString(std::numeric_limits<char>::min()));
 					// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "limit max: " + Ogre::StringConverter::toString(std::numeric_limits<char>::max()));
 					// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "limit minmax: " + Ogre::StringConverter::toString(Ogre::Math::Abs(std::numeric_limits<char>::min()) + std::numeric_limits<char>::max()));
-					// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "limit float max: " + Ogre::StringConverter::toString((Ogre::Math::Abs(std::numeric_limits<char>::min()) + std::numeric_limits<char>::max()) / 127.5f /* 255.0f*/));
+					// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "limit minmax normalized: " + Ogre::StringConverter::toString((Ogre::Math::Abs(std::numeric_limits<char>::min()) + std::numeric_limits<char>::max()) / 127.5f /* 255.0f*/));
+
 					unsigned int startOffset = /*mChannels **/ mBufferSize / arraySize;
 					mSpectrumSoundStream->seek(startOffset * arraySize);
 					mFirstTimeReady = false;
@@ -423,14 +435,14 @@ namespace OgreAL {
 
 				const Ogre::Real samplesCount = sumSamplingsPerSec / static_cast<Ogre::Real>(arraySize * mChannels);
 
-				// realTargetDeltaMS could be 21,33 MS, but mTargetDeltaMS is just 21, so fraction is 0.33, which must be added up
+				// realTargetDeltaMS could be 21.33 ms, but mTargetDeltaMS is just 21, so fraction is 0.33, which must be added up
 				Ogre::Real realTargetDeltaMS = (1.0f / samplesCount) * 1000.0f;
 
 				mTargetDeltaMS = static_cast<unsigned int>(realTargetDeltaMS);
 
 				Ogre::Real fraction;
 				Ogre::Real intPart;
-				fraction = modf (realTargetDeltaMS, &intPart);
+				fraction = modf(realTargetDeltaMS, &intPart);
 
 				mFractionSum += fraction;
 				// Ogre::LogManager::getSingletonPtr()->logMessage("mFractionSum: " + Ogre::StringConverter::toString(mFractionSum));
@@ -453,7 +465,7 @@ namespace OgreAL {
 
 				// add the time difference. E.g. for 100 fps timediff each 10 times 1
 				mRenderDelta += timediff;
-				
+
 				// Ogre::LogManager::getSingletonPtr()->logMessage("mRenderDelta: " + Ogre::StringConverter::toString(mRenderDelta));
 
 				if (mRenderDelta >= mTargetDeltaMS)
@@ -469,11 +481,12 @@ namespace OgreAL {
 
 						int numProcessed = 0;
 						Ogre::Real combinedChannelAverage = 0.0f;
-						for (int i = 0; i < tempData.size(); i++)
+						for (int i = 0; i < static_cast<int>(tempData.size()); i++)
 						{
 							combinedChannelAverage += tempData[i];
 
-							// Each time we have processed all channels samples for a point in time, we will store the average of the channels combined
+							// Each time we have processed all channels samples for a point in time,
+							// we will store the average of the channels combined
 							if ((i + 1) % mChannels == 0)
 							{
 								mData[numProcessed] = combinedChannelAverage / mChannels;
@@ -490,7 +503,6 @@ namespace OgreAL {
 					bool spectrumEof = mSpectrumSoundStream->eof();
 
 					// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "spectrumEof: " + Ogre::StringConverter::toString(spectrumEof));
-
 					// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "mCurrentSpectrumPos: " + Ogre::StringConverter::toString(mCurrentSpectrumPos));
 
 					if (false == spectrumEof && mData.size() > 0)
@@ -526,7 +538,6 @@ namespace OgreAL {
 							if (mLoopedCallback)
 								mLoopedCallback->execute(static_cast<Sound*>(this));
 						}
-
 						else
 						{
 							stop();
@@ -540,168 +551,6 @@ namespace OgreAL {
 
 		return !eof;
 	}
-#endif
-
-#if 0
-	bool WavSound::updateSound()
-	{
-		// Call the parent method to update the position
-		Sound::updateSound();
-
-		bool eof = false;
-		if (mStream && (mSource != AL_NONE) && isPlaying())
-		{
-			// Update the stream
-			int processed;
-
-			alGetSourcei(mSource, AL_BUFFERS_PROCESSED, &processed);
-			CheckError(alGetError(), "Failed to get source");
-
-			while (processed--)
-			{
-				ALuint buffer;
-
-				alSourceUnqueueBuffers(mSource, 1, &buffer);
-				CheckError(alGetError(), "Failed to unqueue buffers");
-
-				Buffer data = bufferData(mSoundStream, mBufferSize);
-
-				if (!eof && !data.empty())
-				{
-					mSumDataRead += data.size();
-					alBufferData(buffer, mFormat, &data[0], static_cast<Size>(data.size()), mFreq);
-				}
-
-				eof = mSoundStream->eof();
-
-				alSourceQueueBuffers(mSource, 1, &buffer);
-				CheckError(alGetError(), "Failed to queue buffers");
-
-				if (eof && !mSpectrumCallback)
-				{
-					if (mLoop)
-					{
-						eof = false;
-						mSoundStream->seek(mDataStart);
-						if (mLoopedCallback)
-							mLoopedCallback->execute(static_cast<Sound*>(this));
-					}
-					else
-					{
-						stop();
-						if (mFinishedCallback)
-							mFinishedCallback->execute(static_cast<Sound*>(this));
-					}
-				}
-			}
-
-			if (mSpectrumCallback && mSpectrumProcessingSize > 0)
-			{
-				const unsigned int arraySize = mSpectrumProcessingSize * 2;
-
-				if (mFirstTimeReady)
-				{
-					if (mSpectrumSoundStream.isNull())
-					{
-						stop();
-						return true;
-					}
-
-					unsigned int startOffset = mBufferSize / arraySize;
-					mSpectrumSoundStream->seek(startOffset * arraySize);
-					mFirstTimeReady = false;
-				}
-
-				// Synchronizing spectrum update
-				const Ogre::Real sumSamplingsPerSec = static_cast<Ogre::Real>(mBufferSize * 4.0f);
-				const Ogre::Real samplesCount = sumSamplingsPerSec / static_cast<Ogre::Real>(arraySize * mChannels);
-
-				Ogre::Real realTargetDeltaMS = (1.0f / samplesCount) * 1000.0f;
-				mTargetDeltaMS = static_cast<unsigned int>(realTargetDeltaMS);
-
-				Ogre::Real fraction;
-				Ogre::Real intPart;
-				fraction = modf(realTargetDeltaMS, &intPart);
-
-				mFractionSum += fraction;
-
-				if (mFractionSum >= 1.0f)
-				{
-					mTargetDeltaMS += 1;
-					mFractionSum -= 1.0f;
-				}
-
-				unsigned long curtime = mTimer.getMilliseconds();
-				int timediff = static_cast<int>(curtime - mLastTime);
-				if (timediff < 0)
-					timediff = 0;
-
-				mCurrentSpectrumPos += static_cast<Ogre::Real>(timediff) * 0.001f;
-				mLastTime = curtime;
-
-				mRenderDelta += timediff;
-
-				if (mRenderDelta >= mTargetDeltaMS)
-				{
-					mRenderDelta = mRenderDelta % mTargetDeltaMS;
-
-					if (mChannels > 1)
-					{
-						Buffer tempData = bufferData(mSpectrumSoundStream, arraySize * mChannels);
-						mData.resize(arraySize);
-
-						int numProcessed = 0;
-						Ogre::Real combinedChannelAverage = 0.0f;
-						for (int i = 0; i < tempData.size(); i++)
-						{
-							combinedChannelAverage += tempData[i];
-
-							if ((i + 1) % mChannels == 0)
-							{
-								mData[numProcessed] = combinedChannelAverage / mChannels;
-								numProcessed++;
-								combinedChannelAverage = 0.0f;
-							}
-						}
-					}
-					else
-					{
-						mData = bufferData(mSpectrumSoundStream, arraySize);
-					}
-
-					bool spectrumEof = mSpectrumSoundStream->eof();
-
-					if (!spectrumEof && !mData.empty())
-					{
-						this->analyseSpectrum(arraySize, mData);
-					}
-					else
-					{
-						if (mLoop)
-						{
-							spectrumEof = false;
-							mSpectrumSoundStream->seek(mDataStart);
-							mFirstTimeReady = true;
-							eof = false;
-							mSoundStream->seek(mDataStart);
-							if (mLoopedCallback)
-								mLoopedCallback->execute(static_cast<Sound*>(this));
-						}
-						else
-						{
-							stop();
-							if (mFinishedCallback)
-								mFinishedCallback->execute(static_cast<Sound*>(this));
-						}
-					}
-				}
-			}
-		}
-
-		return !eof;
-	}
-
-#endif
 
 	Buffer WavSound::bufferData(Ogre::DataStreamPtr dataStream, int size)
 	{

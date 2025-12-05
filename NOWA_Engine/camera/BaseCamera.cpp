@@ -86,41 +86,45 @@ namespace NOWA
 
 		if (nullptr != joyStick)
 		{
-			Ogre::Real moveHorizontal = 0.0f; // Range is -1.f for full left to +1.f for full right
-			Ogre::Real moveVertical = 0.0f; // -1.f for full down to +1.f for full up.
-
-			const OIS::JoyStickState& joystickState = joyStick->getJoyStickState();
-
-			// We receive the full analog range of the axes, and so have to implement our
-			// own dead zone.  This is an empirical value, since some joysticks have more
-			// jitter or creep around the center point than others.  We'll use 5% of the
-			// range as the dead zone, but generally you would want to give the user the
-			// option to change this.
-			const Ogre::Real DEAD_ZONE = 0.05f;
-
-			moveVertical = (Ogre::Real)joystickState.mAxes[2].abs / 32767.0f;
-			// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[DesignState]: moveHorizontal " + Ogre::StringConverter::toString(moveHorizontal));
-			if (Ogre::Math::Abs(moveVertical) < DEAD_ZONE)
+			// First time, somehow from a controller an impulse is sent, ignore it, else camera is moved ab bit each time a scene is started
+			if (false == this->firstTimeMoveValueSet)
 			{
-				isMoving = false;
-			}
-			else
-			{
-				isMoving = true;
-			}
+				Ogre::Real moveHorizontal = 0.0f; // Range is -1.f for full left to +1.f for full right
+				Ogre::Real moveVertical = 0.0f; // -1.f for full down to +1.f for full up.
 
-			moveHorizontal = (Ogre::Real)joystickState.mAxes[3].abs / 32767.0f;
-			// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[DesignState]: moveVertical " + Ogre::StringConverter::toString(moveVertical));
-			if (Ogre::Math::Abs(moveHorizontal) < DEAD_ZONE)
-			{
-				isMoving = false;
-			}
-			else
-			{
-				isMoving = true;
-			}
+				const OIS::JoyStickState& joystickState = joyStick->getJoyStickState();
 
-			moveValue += Ogre::Vector3((this->moveSpeed * moveHorizontal), 0.0f, (this->moveSpeed * moveVertical) * this->moveCameraWeight);
+				// We receive the full analog range of the axes, and so have to implement our
+				// own dead zone.  This is an empirical value, since some joysticks have more
+				// jitter or creep around the center point than others.  We'll use 5% of the
+				// range as the dead zone, but generally you would want to give the user the
+				// option to change this.
+				const Ogre::Real DEAD_ZONE = 0.05f;
+
+				moveVertical = (Ogre::Real)joystickState.mAxes[2].abs / 32767.0f;
+				// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[DesignState]: moveHorizontal " + Ogre::StringConverter::toString(moveHorizontal));
+				if (Ogre::Math::Abs(moveVertical) < DEAD_ZONE)
+				{
+					isMoving = false;
+				}
+				else
+				{
+					isMoving = true;
+				}
+
+				moveHorizontal = (Ogre::Real)joystickState.mAxes[3].abs / 32767.0f;
+				// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[DesignState]: moveVertical " + Ogre::StringConverter::toString(moveVertical));
+				if (Ogre::Math::Abs(moveHorizontal) < DEAD_ZONE)
+				{
+					isMoving = false;
+				}
+				else
+				{
+					isMoving = true;
+				}
+
+				moveValue += Ogre::Vector3((this->moveSpeed * moveHorizontal), 0.0f, (this->moveSpeed * moveVertical) * this->moveCameraWeight);
+			}
 		}
 
 		// Normalize movement speed by frame time

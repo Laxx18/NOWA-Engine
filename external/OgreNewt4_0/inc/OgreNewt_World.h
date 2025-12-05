@@ -90,7 +90,10 @@ namespace OgreNewt
         void OnSubStepPostUpdate(ndFloat32 timestep) override;
 
     private:
+        void recoverInternal();
+
         void flushDeferred();
+    private:
 
         // Timing / stepping state
         Ogre::String m_name;

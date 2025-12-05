@@ -240,6 +240,29 @@ namespace NOWA
 		 * @return hasBeat true if a beat has been detected, else false
 		 */
 		bool isSpectrumArea(OgreAL::AudioProcessor::SpectrumArea spectrumArea) const;
+
+		/**
+		 * @brief Returns the current intensity (energy level) of a specific audio spectrum area.
+		 *
+		 * 	This function provides the same underlying value that the beat detector uses for
+		 * 	deciding whether a band like KICK_DRUM, SNARE_DRUM, HI_HAT, etc. is active.
+		 * 	It represents the accumulated magnitude of FFT frequencies inside the band’s
+		 * 	defined frequency range (see beatDetectorBandLimits inside AudioProcessor).
+		 * 
+		 * 	This value is useful when you want to react not only to the binary state
+		 * 	(beat or no beat), but proportionally to the band’s real amplitude
+		 * 	(e.g. driving animations, physics forces, visual effects, etc.).
+		 *
+		 * 	@note The returned value is unbounded but typically small (0.0–0.5 range),
+		 * 		  depending on audio loudness. It is already clamped to >= 0.0.
+		 * 		  To check if a band triggered a beat, use isSpectrumArea() instead.
+		 *
+		 * 	@param area The spectrum band (e.g., SpectrumArea::KICK_DRUM) to query.
+		 *
+		 * 	@return The current energy/intensity of the requested spectrum area.
+		 * 			Returns 0.0 if no analysis is active or the band index is invalid.
+		 */
+		Ogre::Real getSpectrumAreaIntensity(OgreAL::AudioProcessor::SpectrumArea area) const;
 		
 		// These Methods are just for lua and are special, so there are not stored for an editor
 		

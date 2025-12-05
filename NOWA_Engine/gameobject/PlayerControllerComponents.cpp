@@ -296,24 +296,27 @@ namespace NOWA
 			Ogre::Vector3 bottomOffset = this->gameObjectPtr->getBottomOffset();
 			Ogre::Vector3 centerOffset = this->gameObjectPtr->getCenterOffset();
 			Ogre::Vector3 middleOfPlayer = this->gameObjectPtr->getMiddle();
-			// Note on ogrenewt raycast, the startpoint is always the absolute game object position. Hence if root is on the middle of the game object, it will start e.g. plus 1 meter
-			// Ogre::Vector3 centerBottom = bottomOffset - playerSize.y;  /*middleOfPlayer - playerSize.y;*/
-			Ogre::Vector3 centerBottom = bottomOffset;
+
+			// Note on ogrenewt raycast, the startpoint is always the absolute game object position.
+			// The root is in the middle of the game object, so we need to move the ray start down to the FEET.
+			const Ogre::Real halfHeight = bottomOffset.y;							// e.g. ~1.0 for a 2m player
+			Ogre::Vector3 centerBottom = Ogre::Vector3(0.0f, -halfHeight, 0.0f);	// local feet position
 			const Ogre::Real fraction = 0.4f;
 
 			bool showDebugData = false;
-			
+
 			// 1. Check objects that are below the player
-			PhysicsActiveComponent::ContactData contactsDataBelow1 = this->physicsActiveComponent->getContactBelow(0, 
-				Ogre::Vector3(-playerSize.z * fraction, centerBottom.y + 0.2f, 0.0f), showDebugData, this->categoriesId, true); // y must be 0!!
-			
-			PhysicsActiveComponent::ContactData contactsDataBelow2 = this->physicsActiveComponent->getContactBelow(1, 
-				Ogre::Vector3(0.0f, centerBottom.y + 0.2f, playerSize.z * fraction), showDebugData, this->categoriesId, true); // y must be 0!!
-			
-			PhysicsActiveComponent::ContactData contactsDataBelow3 = this->physicsActiveComponent->getContactBelow(2, 
-				Ogre::Vector3(playerSize.z * fraction, centerBottom.y + 0.2f, 0.0f), showDebugData, this->categoriesId, true); // y must be 0!!
-			
-			/*PhysicsActiveComponent::ContactData contactsDataBelowLine = this->physicsActiveComponent->getContactToDirection(0, Ogre::Vector3::UNIT_X, 
+			// Use feetY + small epsilon, so the ray starts slightly above the feet
+			PhysicsActiveComponent::ContactData contactsDataBelow1 = this->physicsActiveComponent->getContactBelow(0,
+				Ogre::Vector3(-playerSize.z * fraction, centerBottom.y + 0.2f, 0.0f), showDebugData, this->categoriesId, true); // y is near feet
+
+			PhysicsActiveComponent::ContactData contactsDataBelow2 = this->physicsActiveComponent->getContactBelow(1,
+				Ogre::Vector3(0.0f, centerBottom.y + 0.2f, playerSize.z * fraction), showDebugData, this->categoriesId, true);  // y is near feet
+
+			PhysicsActiveComponent::ContactData contactsDataBelow3 = this->physicsActiveComponent->getContactBelow(2,
+				Ogre::Vector3(playerSize.z * fraction, centerBottom.y + 0.2f, 0.0f), showDebugData, this->categoriesId, true);  // y is near feet
+
+			/*PhysicsActiveComponent::ContactData contactsDataBelowLine = this->physicsActiveComponent->getContactToDirection(0, Ogre::Vector3::UNIT_X,
 				Ogre::Vector3(0.0f, centerBottom.y + 0.1f, 0.0f), -playerSize.z * fraction, playerSize.z * fraction, showDebugData, this->categoriesId);*/
 
 			this->hitGameObjectBelow = contactsDataBelow1.getHitGameObject();
@@ -364,25 +367,25 @@ namespace NOWA
 			/*if (widget)
 				widget->setCaption("Height: " + Ogre::StringConverter::toString(this->height));*/
 
-			// if (widget)
-			// 	widget->setCaption("Normal: " + Ogre::StringConverter::toString(this->normal));
+				// if (widget)
+				// 	widget->setCaption("Normal: " + Ogre::StringConverter::toString(this->normal));
 
-			// 2. Check all objects that are in front of the player
+				// 2. Check all objects that are in front of the player
 
-			// never change -0.2, because else the rope does not exist anymore and the player gets stuck on a wall
+				// never change -0.2, because else the rope does not exist anymore and the player gets stuck on a wall
 
 			Ogre::Vector3 direction = this->physicsActiveComponent->getOrientation() * this->gameObjectPtr->getDefaultDirection();
 
 			PhysicsActiveComponent::ContactData contactDataFront[3];
 
 #if 1
-			contactDataFront[0] = this->physicsActiveComponent->getContactToDirection(1, direction, 
+			contactDataFront[0] = this->physicsActiveComponent->getContactToDirection(1, direction,
 				Ogre::Vector3(0.0f, centerBottom.y + playerSize.y, playerSize.z - 0.2f), 0.0f, 0.1f, showDebugData, this->categoriesId);
-			
-			contactDataFront[1] = this->physicsActiveComponent->getContactToDirection(2, direction, 
+
+			contactDataFront[1] = this->physicsActiveComponent->getContactToDirection(2, direction,
 				Ogre::Vector3(0.0f, 0.2f, playerSize.z - 0.2f), 0.0f, 0.1f, showDebugData, this->categoriesId);
-			
-			contactDataFront[2] = this->physicsActiveComponent->getContactToDirection(3, direction, 
+
+			contactDataFront[2] = this->physicsActiveComponent->getContactToDirection(3, direction,
 				Ogre::Vector3(0.0f, centerBottom.y + (playerSize.y * 0.5f), playerSize.z - 0.2f), 0.0f, 0.1f, showDebugData, this->categoriesId);
 #else
 			contactDataFront[0] = this->physicsActiveComponent->getContactAhead(1,
@@ -399,7 +402,7 @@ namespace NOWA
 			////		A | -> Line to check front
 			//contactDataFront[3] = this->physicsActiveComponent->getContactToDirection(4, Ogre::Vector3::UNIT_Y, 
 			//	Ogre::Vector3(0.0f, centerBottom.y + 0.1f, playerSize.z * 0.5f), -0.05f, playerSize.y + 0.05f, showDebugData, this->categoriesId); // 0.2 is to much, and player would stuck in certain ground
-			
+
 			this->hitGameObjectFront = nullptr;
 
 			if (nullptr != contactDataFront[0].getHitGameObject())
@@ -408,11 +411,11 @@ namespace NOWA
 			}
 			else if (nullptr != contactDataFront[1].getHitGameObject())
 			{
-			 	this->hitGameObjectFront = contactDataFront[1].getHitGameObject();
+				this->hitGameObjectFront = contactDataFront[1].getHitGameObject();
 			}
 			else if (nullptr != contactDataFront[2].getHitGameObject())
 			{
-			 	this->hitGameObjectFront = contactDataFront[2].getHitGameObject();
+				this->hitGameObjectFront = contactDataFront[2].getHitGameObject();
 			}
 			/*if (nullptr != contactDataFront[3].getHitGameObject())
 			{
@@ -425,7 +428,7 @@ namespace NOWA
 			if (true == this->useStandUp->getBool())
 			{
 				// 90° * threshold (0.7 = 63°)
-				Ogre::Real fallThresholdAngle = Ogre::Degree(90.0f * 0.7f).valueDegrees(); 
+				Ogre::Real fallThresholdAngle = Ogre::Degree(90.0f * 0.7f).valueDegrees();
 
 				// Gravity up direction (should always be stable)
 				Ogre::Vector3 gravityUp = -this->physicsActiveComponent->getGravityDirection();
@@ -437,7 +440,7 @@ namespace NOWA
 				Ogre::Real angleDeviation = Ogre::Math::ACos(currentPlayerUp.dotProduct(gravityUp)).valueDegrees();
 
 				// Player is tilted significantly
-				if (angleDeviation > fallThresholdAngle) 
+				if (angleDeviation > fallThresholdAngle)
 				{
 					if (false == this->isFallen) // Start counting time
 					{
@@ -462,6 +465,7 @@ namespace NOWA
 			}
 		}
 	}
+
 
 	void PlayerControllerComponent::actualizeValue(Variant* attribute)
 	{

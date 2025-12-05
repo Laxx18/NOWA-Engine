@@ -63,6 +63,12 @@ namespace OgreAL
 		const std::vector<Ogre::Real>& getPhaseList(void) noexcept;
 
 		bool isSpectrumArea(SpectrumArea spectrumArea) const noexcept;
+
+		// Beat hold helper: keeps a band "on" for a few frames after detection.
+		void updateBeatHold(SpectrumArea band, bool beatNow);
+
+		// Intensity (energy) of a given beat detector band (DEEP_BASS, KICK_DRUM, HI_HAT, ...)
+		Ogre::Real getSpectrumAreaLevel(SpectrumArea area) const noexcept;
 	private:
 		void initializeFFT();
 
@@ -121,6 +127,13 @@ namespace OgreAL
 		bool firstFrame;
 		std::vector<std::deque<Ogre::Real>> rollingWindows;
 
+		// Beat hold frames per band (to avoid flickering)
+		std::vector<int> beatHoldFrames;
+
+		// Number of frames to keep a beat "on" after it has been detected
+		int beatHoldFramesMax;
+		// Latest per-band spectrum values used for beat detection
+		std::vector<Ogre::Real> beatBandSpectrum;
 	};
 
 };

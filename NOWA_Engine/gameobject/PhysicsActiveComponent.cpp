@@ -1905,7 +1905,7 @@ namespace NOWA
 			auto& it = this->drawLineMap.find(key);
 			if (it == this->drawLineMap.cend())
 			{
-				ENQUEUE_RENDER_COMMAND_MULTI("PhysicsActiveComponent::getContactBelow", _3(key, charPoint, rayEndPoint),
+				ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsActiveComponent::getContactBelow", _3(key, charPoint, rayEndPoint),
 				{
 					Ogre::SceneNode* debugLineNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
 					debugLineNode->setName("getContactBelow");
@@ -2045,7 +2045,7 @@ namespace NOWA
 			auto& it = this->drawLineMap.find(key);
 			if (it == this->drawLineMap.cend())
 			{
-				ENQUEUE_RENDER_COMMAND_MULTI("PhysicsActiveComponent::getContactAhead", _3(key, charPoint, rayEndPoint),
+				ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsActiveComponent::getContactAhead", _3(key, charPoint, rayEndPoint),
 				{
 					Ogre::SceneNode * debugLineNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
 					debugLineNode->setName("getContactAhead");
@@ -2175,7 +2175,7 @@ namespace NOWA
 			auto& it = this->drawLineMap.find(key);
 			if (it == this->drawLineMap.cend())
 			{
-				ENQUEUE_RENDER_COMMAND_MULTI("PhysicsActiveComponent::getContactAbove", _3(key, fromPosition, toPosition),
+				ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsActiveComponent::getContactAbove", _3(key, fromPosition, toPosition),
 				{
 					Ogre::SceneNode * debugLineNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
 					debugLineNode->setName("getContactAbove");
@@ -2310,7 +2310,7 @@ namespace NOWA
 			auto& it = this->drawLineMap.find(key);
 			if (it == this->drawLineMap.cend())
 			{
-				ENQUEUE_RENDER_COMMAND_MULTI("PhysicsActiveComponent::getContactToDirection", _3(key, fromPosition, toPosition),
+				ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsActiveComponent::getContactToDirection", _3(key, fromPosition, toPosition),
 				{
 					Ogre::SceneNode * debugLineNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
 					debugLineNode->setName("getContactToDirection");
@@ -2456,7 +2456,7 @@ namespace NOWA
 			auto& it = this->drawLineMap.find(key);
 			if (it == this->drawLineMap.cend())
 			{
-				ENQUEUE_RENDER_COMMAND_MULTI("PhysicsActiveComponent::getContact", _1(key),
+				ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsActiveComponent::getContact", _1(key),
 				{
 					Ogre::SceneNode * debugLineNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
 					debugLineNode->setName("getContact");

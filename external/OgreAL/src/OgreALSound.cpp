@@ -1264,7 +1264,6 @@ namespace OgreAL
 		}
 
 		mDataRead += arraySize;
-		// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "spectrum dataread: " + Ogre::StringConverter::toString(mDataRead));
 
 		// Make sure we don't read/write out of bounds
 		const int maxSize = static_cast<int>(mSpectrumParameter->VUpoints.size());
@@ -1273,8 +1272,16 @@ namespace OgreAL
 
 		for (int i = 0; i < count; ++i)
 		{
-			// Keep old behaviour: treat each byte as sample and scale by 85.0f
-			mSpectrumParameter->VUpoints[i] = static_cast<Ogre::Real>(data[i]) / 85.0f;
+			// Interpret buffer bytes as signed samples in [-128, 127]
+			const signed char sample = static_cast<signed char>(data[i]);
+
+			// Normalize to [-1, 1]
+			Ogre::Real normalized = static_cast<Ogre::Real>(sample) / 127.0f;
+
+			// Optional small input gain if needed (1.0f = neutral)
+			const Ogre::Real inputGain = 1.0f;
+
+			mSpectrumParameter->VUpoints[i] = normalized * inputGain;
 		}
 
 		// If arraySize > count, zero the tail so FFT input is clean
@@ -1302,6 +1309,16 @@ namespace OgreAL
 		{
 			mSpectrumCallback->execute(static_cast<Sound*>(this));
 		}
+	}
+
+	Ogre::Real Sound::getSpectrumAreaIntensity(AudioProcessor::SpectrumArea area) const
+	{
+		if (nullptr == this->mAudioProcessor)
+		{
+			return 0.0f;
+		}
+
+		return this->mAudioProcessor->getSpectrumAreaLevel(area);
 	}
 
 	//-----------------OgreAL::SoundFactory-----------------//

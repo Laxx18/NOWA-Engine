@@ -671,6 +671,15 @@ namespace NOWA
 		return false;
 	}
 
+	Ogre::Real SimpleSoundComponent::getSpectrumAreaIntensity(OgreAL::AudioProcessor::SpectrumArea area) const
+	{
+		if (nullptr != this->sound && this->sound->getAudioProcessor())
+		{
+			return this->sound->getSpectrumAreaIntensity(area);
+		}
+		return 0.0f;
+	}
+
 	void SimpleSoundComponent::setFadeInOutTime(const Ogre::Vector2& fadeInOutTime)
 	{
 		if (nullptr != this->sound)

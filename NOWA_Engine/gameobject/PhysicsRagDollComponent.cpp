@@ -285,8 +285,14 @@ namespace NOWA
 			this->rootJointCompPtr.reset();
 		}
 
-		// Parse rag doll data from xml
-		bool success = this->createRagDollFromXML(root, boneName);
+		bool success = false;
+
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsRagDollComponent::createRagDollFromXML", _3(&success, root, boneName),
+		{
+			// Parse rag doll data from xml
+			success = this->createRagDollFromXML(root, boneName);
+		});
+
 		if (false == success)
 		{
 			return false;

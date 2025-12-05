@@ -195,6 +195,31 @@ void World::deferAfterPhysics(std::function<void()> fn)
     m_deferred.emplace_back(std::move(fn));
 }
 
+void OgreNewt::World::recoverInternal()
+{
+    const ndBodyListView& bodyList = GetBodyList();
+    const ndArray<ndBodyKinematic*>& view = bodyList.GetView();
+
+    for (ndInt32 i = ndInt32(view.GetCount()) - 1; i >= 0; --i)
+    {
+        ndBodyKinematic* const b = view[i];
+        if (!b || b == GetSentinelBody())
+            continue;
+
+        ndBodyDynamic* const dyn = b->GetAsBodyDynamic();
+        if (!dyn)
+            continue;
+
+        // mark the body/scene as dirty (invalidates contact cache & aabb)
+            //    This is the ND4 way to say "something changed, don’t keep me asleep".
+        dyn->SetMatrixUpdateScene(b->GetMatrix());
+
+        // actually wake it
+        dyn->SetAutoSleep(true);      // keep normal autosleep behavior
+        dyn->SetSleepState(false);    // force out of equilibrium for the next step
+    }
+}
+
 void World::flushDeferred()
 {
     std::vector<std::function<void()>> pending;
@@ -234,7 +259,7 @@ void World::update(Ogre::Real t_step)
 
         // 3) (Optional) If you kept any deferral queue, you can flush immediately here,
         //    but with a purely synchronous model you won’t need deferral any more.
-        // flushDeferred();
+        flushDeferred();
 
         m_timeAccumulator -= m_fixedTimestep;
 
@@ -270,30 +295,11 @@ void World::postUpdate(Ogre::Real interp)
 
 void World::recover()
 {
-    ndScopeSpinLock lock(m_lock);
-
-    const ndBodyListView& bodyList = GetBodyList();
-    const ndArray<ndBodyKinematic*>& view = bodyList.GetView();
-
-    for (ndInt32 i = ndInt32(view.GetCount()) - 1; i >= 0; --i)
+    // Called from logic/render thread -> just schedule
+    this->deferAfterPhysics([this]()
     {
-        ndBodyKinematic* const b = view[i];
-        if (!b) continue;
-
-        // dynamic only
-        if (b->GetInvMass() > ndFloat32(0.0f))
-        {
-
-
-            // mark the body/scene as dirty (invalidates contact cache & aabb)
-            //    This is the ND4 way to say "something changed, don’t keep me asleep".
-            b->SetMatrixUpdateScene(b->GetMatrix());
-
-            // actually wake it
-            b->SetAutoSleep(true);      // keep normal autosleep behavior
-            b->SetSleepState(false);    // force out of equilibrium for the next step
-        }
-    }
+        this->recoverInternal();
+    });
 }
 
 void World::PreUpdate(ndFloat32 /*timestep*/)

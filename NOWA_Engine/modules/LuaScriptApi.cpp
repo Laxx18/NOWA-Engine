@@ -11061,6 +11061,7 @@ namespace NOWA
 			.def("getCurrentSpectrumTimePosSec", &SimpleSoundComponent::getCurrentSpectrumTimePosSec)
 			.def("getFrequency", &SimpleSoundComponent::getFrequency)
 			.def("isSpectrumArea", &SimpleSoundComponent::isSpectrumArea)
+			.def("getSpectrumAreaIntensity", &SimpleSoundComponent::getSpectrumAreaIntensity)
 		];
 
 		AddClassToCollection("SimpleSoundComponent", "class inherits GameObjectComponent", "With this component a dolby surround is created and calibrated. It can be used for music, sound and effects like spectrum analysis, doppler effect etc.");
@@ -11122,6 +11123,12 @@ namespace NOWA
 		AddClassToCollection("SimpleSoundComponent", "float getCurrentSpectrumTimePosSec()", "Gets the current spectrum time position in seconds when the sound is being played.");
 		AddClassToCollection("SimpleSoundComponent", "float getFrequency()", "Gets the frequency.");
 		AddClassToCollection("SimpleSoundComponent", "bool isSpectrumArea(SpectrumArea spectrumArea)", "During spectrum analysis, gets whether a specific spectrum area has been recognized when being played.");
+		AddClassToCollection("SimpleSoundComponent",
+					"Ogre::Real getSpectrumAreaIntensity(SpectrumArea spectrumArea)",
+					"Returns the current intensity (energy level) of the requested audio spectrum area. \
+					Use this to drive animations, physics forces or visual effects proportionally to \
+					how strong the band (e.g., Kick, Snare, Hi-Hat) is at the current analysis frame.");
+
 	}
 
 	void bindSoundComponent(lua_State* lua)

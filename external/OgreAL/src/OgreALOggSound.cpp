@@ -207,7 +207,7 @@ namespace OgreAL {
 		}
 	}
 
-	void OggSound::enableSpectrumAnalysis(bool enable, int processingSize, int numberOfBands, MathWindows::WindowType windowType, 
+	void OggSound::enableSpectrumAnalysis(bool enable, int processingSize, int numberOfBands, MathWindows::WindowType windowType,
 		AudioProcessor::SpectrumPreparationType spectrumPreparationType, Ogre::Real smoothFactor)
 	{
 		if (true == enable)
@@ -216,14 +216,23 @@ namespace OgreAL {
 			{
 				processingSize = 1024;
 
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "OgreALSound Warning: Note: Because of VSYNC which minimum dt is 16MS, a spectrum size of 512 will never work, "
-					" because mTargetDeltaMS would result in 10MS, which cannot work! So minimum spectrum size is 1024, which will result in mTargetDeltaMS of 21MS!");
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+					"[OggSound] enableSpectrumAnalysis: Minimum processingSize is 1024! Adjusted to 1024 because of VSYNC which minimum dt is 16MS, "
+					"a spectrum size of 512 will never work, because mTargetDeltaMS would result in 10MS, which cannot work! "
+					"So minimum spectrum size is 1024, which will result in mTargetDeltaMS of 21MS!");
 			}*/
 
 			mSpectrumProcessingSize = processingSize;
 			mSpectrumNumberOfBands = numberOfBands;
 			mMathWindowType = windowType;
 			mSpectrumPreparationType = spectrumPreparationType;
+
+			// Reset timing state so spectrum / beat detection starts clean
+			mFirstTimeReady = true;
+			mFractionSum = 0.0f;
+			mRenderDelta = 0;
+			mTotalElapsedTime = 0.0f;
+			mCurrentSpectrumPos = 0.0f;
 
 			const unsigned int arraySize = mSpectrumProcessingSize * 2;
 
@@ -243,11 +252,11 @@ namespace OgreAL {
 						filePathName = locations->at(i).archive->getName() + "/" + locations->at(i).filename;
 						break;
 					}
-				}*/
+				}
 
 				// Open the Ogre::DataStreamPtr
-				// CheckCondition(ov_fopen(filePathName.c_str(), &mSpectrumOggStream) >= 0, 1, "Could not open Ogg spectrum stream.");
-				
+				CheckCondition(ov_fopen(filePathName.c_str(), &mSpectrumOggStream) >= 0, 1, "Could not open Ogg spectrum stream.");*/
+
 				// Set up custom accessors
 				ov_callbacks callbacks;
 				callbacks.close_func = OgreALOggStreamClose;
@@ -255,11 +264,13 @@ namespace OgreAL {
 				callbacks.read_func = OgreALOggStreamRead;
 				callbacks.seek_func = OgreALOggStreamSeek;
 
-				// Open the Ogre::DataStreamPtr
-				CheckCondition(ov_open_callbacks(&mSpectrumSoundStream, &mSpectrumOggStream, NULL, 0, callbacks) >= 0, 1, "Could not open Ogg spectrum stream.");
+				// Open the Ogre::DataStreamPtr for spectrum
+				CheckCondition(ov_open_callbacks(&mSpectrumSoundStream, &mSpectrumOggStream, nullptr, 0, callbacks) >= 0, 1,
+					"Could not open Ogg spectrum stream.");
 
 				// mBufferSize * 4 = samples per second
-				mAudioProcessor = new AudioProcessor(static_cast<int>(arraySize), mFreq, mSpectrumNumberOfBands, mBufferSize * 4, mMathWindowType, mSpectrumPreparationType, smoothFactor);
+				mAudioProcessor = new AudioProcessor(static_cast<int>(arraySize), mFreq, mSpectrumNumberOfBands,
+					mBufferSize * 4, mMathWindowType, mSpectrumPreparationType, smoothFactor);
 
 				mSpectrumParameter = new SpectrumParameter;
 				mSpectrumParameter->VUpoints.resize(arraySize, 0.0f);
@@ -271,8 +282,8 @@ namespace OgreAL {
 
 				mLastTime = mTimer.getMilliseconds();
 
-				// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "sumSamplings: " + Ogre::StringConverter::toString(sumSamplings));
-				// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "mTargetDelta: " + Ogre::StringConverter::toString(mTargetDeltaSec));
+				// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "sumSamplings: " + Ogre::StringConverter::toString(sumSamplings));
+				// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "targetDelta: " + Ogre::StringConverter::toString(mTargetDeltaSec));
 			}
 		}
 		else
@@ -282,6 +293,12 @@ namespace OgreAL {
 			mSpectrumNumberOfBands = 0;
 			mDataRead = 0;
 			mCurrentSpectrumPos = 0.0f;
+
+			// Reset timing state for next enable
+			mFirstTimeReady = true;
+			mFractionSum = 0.0f;
+			mRenderDelta = 0;
+			mTotalElapsedTime = 0.0f;
 
 			if (nullptr != mSpectrumCallback)
 			{

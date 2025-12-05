@@ -203,21 +203,20 @@ namespace OgreAL
 			for (int index = 0; index < this->numberOfSamplesPerBar.size(); ++index)
 			{
 				previousSpectrum = spectrum[index];
-				for (int frec = 0; frec < this->numberOfSamplesPerBar[index] && indexFFT < data.size(); ++frec)
+				for (int frec = 0; frec < this->numberOfSamplesPerBar[index] && indexFFT < static_cast<int>(data.size()); ++frec)
 				{
+					// Sum linear magnitudes per (sub-)octave band
 					spectrum[index] += data[indexFFT];
 					++indexFFT;
 				}
 
+				// Convert accumulated spectrum into average
 				if (this->numberOfSamplesPerBar[index] > 0)
 				{
 					spectrum[index] /= static_cast<Ogre::Real>(this->numberOfSamplesPerBar[index]);
 				}
 
-				// Apply logarithmic scaling to reduce large peaks and enhance small signals
-				spectrum[index] = std::log(1.0f + spectrum[index]);
-
-				// Apply smoothing if needed
+				// Optional smoothing: keep EMA in *linear* domain.
 				if (this->smoothFactor > 0.0f)
 				{
 					spectrum[index] = this->emaFilter(spectrum[index], previousSpectrum, this->smoothFactor);

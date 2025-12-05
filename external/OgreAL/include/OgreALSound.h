@@ -376,6 +376,8 @@ namespace OgreAL {
 		/** Returns the current audio spectrum time position in seconds. */
 		Ogre::Real getCurrentSpectrumTimePosSec(void) const { return static_cast<Ogre::Real>(mCurrentSpectrumPos); }
 		SpectrumParameter* getSpectrumParameter(void) const { return this->mSpectrumParameter; }
+		/** Intensity / energy of a given beat detector band (0.0..+inf, usually small). */
+		Ogre::Real getSpectrumAreaIntensity(AudioProcessor::SpectrumArea area) const;
 		/** Returns the buffer size. */
 		int getBufferSize(void) const { return mBufferSize; }
 		/** Returns the frequency (often 44100, or 48000) */
