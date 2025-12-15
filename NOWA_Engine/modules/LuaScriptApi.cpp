@@ -7577,7 +7577,6 @@ namespace NOWA
 			.def("unFreeze", &OgreNewt::Body::unFreeze)
 			.def("isFreezed", &OgreNewt::Body::isFreezed)
 			.def("setMaterialGroupID", &OgreNewt::Body::setMaterialGroupID)
-			.def("setContinuousCollisionMode", &OgreNewt::Body::setContinuousCollisionMode)
 			.def("setJointRecursiveCollision", &OgreNewt::Body::setJointRecursiveCollision)
 			.def("getNext", &OgreNewt::Body::getNext)
 			.def("setOmega", &OgreNewt::Body::setOmega)
@@ -10233,8 +10232,6 @@ namespace NOWA
 			.def("releaseConstraintDirection", &PhysicsActiveComponent::releaseConstraintDirection)
 			.def("setGravitySourceCategory", &PhysicsActiveComponent::setGravitySourceCategory)
 			.def("getGravitySourceCategory", &PhysicsActiveComponent::getGravitySourceCategory)
-			.def("setContinuousCollision", &PhysicsActiveComponent::setContinuousCollision)
-			.def("getContinuousCollision", &PhysicsActiveComponent::getContinuousCollision)
 
 			// .def("getContactAhead", (OgreNewt::BasicRaycast::BasicRaycastInfo (PhysicsActiveComponent::*)(Ogre::Vector3 , Ogre::Real )) &PhysicsActiveComponent::getContactAhead)
 			.def("getContactAhead", &getContactAhead)
@@ -10347,11 +10344,6 @@ namespace NOWA
 		// 											"Note: The sleep state will be changed, when another physics body does touch this sleeping physics body.");
 
 		AddClassToCollection("PhysicsActiveComponent", "void setActivated(bool activated)", "Activates or deactivates the physics of this component");
-
-
-		AddClassToCollection("PhysicsActiveComponent", "void setContinuousCollision(bool continuousCollision)", "Sets whether to use continuous collision, if set to true, "
-			"the collision hull will be slightly resized, so that a fast moving physics body will still collide with other bodies. Note: This comes with a performance impact.");
-		AddClassToCollection("PhysicsActiveComponent", "bool getContinuousCollision()", "Gets whether continuous collision mode is used.");
 		AddClassToCollection("PhysicsActiveComponent", "void setAngularDamping(Vector3 angularDamping)", "Sets the angular damping. Range: [0, 1]");
 		AddClassToCollection("PhysicsActiveComponent", "Vector3 getAngularDamping()", "Gets the angular damping.");
 
@@ -10664,6 +10656,42 @@ namespace NOWA
 		AddClassToCollection("VehicleDrivingManipulation", "float getHandBrake()", "Gets hand brake force.");
 		AddClassToCollection("VehicleDrivingManipulation", "void setBrake(float brake)", "Sets brake force e.g. via input device.");
 		AddClassToCollection("VehicleDrivingManipulation", "float getBrake()", "Gets brake force.");
+
+
+		module(lua)
+		[
+			class_<PhysicsActiveComplexVehicleComponent, PhysicsActiveComponent>("PhysicsActiveComplexVehicleComponent")
+			.def("getParentClassName", &PhysicsActiveComplexVehicleComponent::getParentClassName)
+			.def("getVehicleForce", &PhysicsActiveComplexVehicleComponent::getVehicleForce)
+			.def("applyWheelie", &PhysicsActiveComplexVehicleComponent::applyWheelie)
+			.def("applyDrift", &PhysicsActiveComplexVehicleComponent::applyDrift)
+		];
+		AddClassToCollection("PhysicsActiveComplexVehicleComponent", "class inherits PhysicsActiveComponent", "Derived class of PhysicsActiveComplexVehicleComponent. It can be used to control a vehicle.");
+		AddClassToCollection("PhysicsActiveComplexVehicleComponent", "Vector3 getVehicleForce()", "Gets current vehicle force.");
+		AddClassToCollection("PhysicsActiveComplexVehicleComponent", "void applyWheelie(number strength)", "Applies a wheelie stunt by putting up the front tires at the given strength.");
+		AddClassToCollection("PhysicsActiveComplexVehicleComponent", "void applyDrift(boolean left, number strength, number steeringStrength)", "Applies a drift at the given strength (jump) and if left side, at the given steering strength and vice versa. Note: A high force strength is required to put the vehicle in the air, e.g. 50000NM.");
+
+		module(lua)
+		[
+			class_<ComplexVehicleDrivingManipulation>("ComplexVehicleDrivingManipulation")
+			.def("setSteerAngle", &ComplexVehicleDrivingManipulation::setSteerAngle)
+			.def("getSteerAngle", &ComplexVehicleDrivingManipulation::getSteerAngle)
+			.def("setMotorForce", &ComplexVehicleDrivingManipulation::setMotorForce)
+			.def("getMotorForce", &ComplexVehicleDrivingManipulation::getMotorForce)
+			.def("setHandBrake", &ComplexVehicleDrivingManipulation::setHandBrake)
+			.def("getHandBrake", &ComplexVehicleDrivingManipulation::getHandBrake)
+			.def("setBrake", &ComplexVehicleDrivingManipulation::setBrake)
+			.def("getBrake", &ComplexVehicleDrivingManipulation::getBrake)
+		];
+		AddClassToCollection("ComplexVehicleDrivingManipulation", "VehicleDrivingManipulation", "It can be used in the vehicle component vehicle driving callback to manipulate the driving behavior.");
+		AddClassToCollection("ComplexVehicleDrivingManipulation", "void setSteerAngle(float steerAngle)", "Sets the steering angle e.g. via input device.");
+		AddClassToCollection("ComplexVehicleDrivingManipulation", "float getSteerAngle()", "Gets the steering angle.");
+		AddClassToCollection("ComplexVehicleDrivingManipulation", "void setMotorForce(float motorForce)", "Sets the motor force e.g. via input device.");
+		AddClassToCollection("ComplexVehicleDrivingManipulation", "float getMotorForce()", "Gets the motor force.");
+		AddClassToCollection("ComplexVehicleDrivingManipulation", "void setHandBrake(float handBrake)", "Sets hand brake force e.g. via input device.");
+		AddClassToCollection("ComplexVehicleDrivingManipulation", "float getHandBrake()", "Gets hand brake force.");
+		AddClassToCollection("ComplexVehicleDrivingManipulation", "void setBrake(float brake)", "Sets brake force e.g. via input device.");
+		AddClassToCollection("ComplexVehicleDrivingManipulation", "float getBrake()", "Gets brake force.");
 	}
 
 	luabind::object getPositionAndNormal(OgreNewt::Contact* instance)

@@ -91,11 +91,7 @@ namespace OgreNewt
 
     // -------- TriggerBody --------
 
-    TriggerBody::TriggerBody(World* world,
-        Ogre::SceneManager* sceneManager,
-        const OgreNewt::CollisionPtr& col,
-        TriggerCallback* triggerCallback,
-        Ogre::SceneMemoryMgrTypes memoryType)
+    TriggerBody::TriggerBody(World* world, Ogre::SceneManager* sceneManager, const OgreNewt::CollisionPtr& col, TriggerCallback* triggerCallback, Ogre::SceneMemoryMgrTypes memoryType)
         : Body(world, sceneManager, memoryType)
         , m_triggerVolume(nullptr)
         , m_triggerCallback(triggerCallback)
@@ -121,44 +117,54 @@ namespace OgreNewt
         if (!m_world || !col)
             return;
 
-        ndWorld* const world = m_world->getNewtonWorld();
-        if (!world)
-            return;
-
-        // Create a fresh trigger volume that forwards to our user callback
-        OgreNewtTriggerVolume* trigger = new OgreNewtTriggerVolume(m_triggerCallback);
-
-        // Identity matrix by default; you can move it later via setPositionOrientation or velocities.
-        ndMatrix matrix(ndGetIdentityMatrix());
-        trigger->SetMatrix(matrix);
-
-        // Prefer the collision's ndShapeInstance if it has one (keeps local transform)
         ndShapeInstance* srcInst = col->getShapeInstance();
         if (!srcInst && !col->getNewtonCollision())
             return;
 
+        // Build shape instance on caller thread (safe)
         ndShapeInstance shapeInstance = srcInst
-            ? ndShapeInstance(*srcInst)                          // copy instance incl. local matrix
-            : ndShapeInstance(col->getNewtonCollision());        // fallback: build from raw shape
+            ? ndShapeInstance(*srcInst)
+            : ndShapeInstance(col->getNewtonCollision());
 
-        trigger->SetCollisionShape(shapeInstance);
+        // Allocate the new trigger on caller thread
+        OgreNewtTriggerVolume* newTrigger = new OgreNewtTriggerVolume(m_triggerCallback);
 
-        // Add to world (ND4 takes ownership via shared_ptr)
-        ndSharedPtr<ndBody> bodyPtr(trigger);
-        world->AddBody(bodyPtr);
+        // Build initial matrix (identity for now)
+        ndMatrix matrix(ndGetIdentityMatrix());
+        newTrigger->SetMatrix(matrix);
+        newTrigger->SetCollisionShape(shapeInstance);
 
-        // Keep a raw convenience pointer and also set our base-class m_body to this
-        m_triggerVolume = trigger;
-        m_body = trigger;
-
-        // Attach our BodyNotify so scene nodes update normally (same as Body ctor does)
         if (!m_bodyNotify)
-        {
             m_bodyNotify = new BodyNotify(this);
-        }
-        m_body->SetNotifyCallback(m_bodyNotify);
 
-        // For triggers, no damping/mass required; leave as purely kinematic/trigger.
+        // Cache old body pointers (if we are recreating)
+        ndBodyKinematic* oldBody = m_body;
+        OgreNewtTriggerVolume* oldTrigger = m_triggerVolume;
+
+        // Do all world mutations on world thread / safe point
+        m_world->enqueuePhysicsAndWait([this, newTrigger, oldBody, oldTrigger](World& w) mutable
+            {
+                // If there was an old trigger/body, remove it first
+                if (oldBody)
+                {
+                    oldBody->SetNotifyCallback(nullptr);
+                    w.destroyBody(oldBody);
+
+                    // If we own it, delete it (most trigger volumes are owned here)
+                    // Adjust this if your ownership differs.
+                    delete oldBody;
+                }
+
+                // Install new trigger as our active body
+                m_triggerVolume = newTrigger;
+                m_body = newTrigger;
+
+                // Attach notify + add to world
+                m_body->SetNotifyCallback(m_bodyNotify);
+                w.addBody(m_body);
+            });
+
+        // Note: triggers usually don't need damping/mass (fine)
     }
 
     TriggerCallback* TriggerBody::getTriggerCallback(void) const

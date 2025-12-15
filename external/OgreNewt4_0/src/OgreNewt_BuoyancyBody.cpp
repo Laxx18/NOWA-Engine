@@ -367,57 +367,95 @@ namespace OgreNewt
         if (!col || !m_world)
             return;
 
-        ndWorld* world = m_world->getNewtonWorld();
-        if (!world)
-            return;
-
         ndShapeInstance* srcInst = col->getShapeInstance();
         if (!srcInst && !col->getNewtonCollision())
             return;
 
+        // Build shape instance copy on caller thread (safe)
         ndShapeInstance shapeCopy = srcInst
             ? ndShapeInstance(*srcInst)
             : ndShapeInstance(col->getNewtonCollision());
 
-        auto* trigger = new OgreNewtBuoyancyTriggerVolume(m_buoyancyForceTriggerCallback);
+        // Allocate trigger on caller thread
+        auto* newTrigger = new OgreNewtBuoyancyTriggerVolume(m_buoyancyForceTriggerCallback);
 
-        // Push current parameters into the trigger volume
-        trigger->SetGravity(ndVector(
-            (ndFloat32)m_gravity.x,
-            (ndFloat32)m_gravity.y,
-            (ndFloat32)m_gravity.z,
-            0.0f));
-
-        trigger->SetViscosity((ndFloat32)m_viscosity);
-        trigger->SetWaveAmplitude((ndFloat32)m_waveAmplitude);
-        trigger->SetWaveFrequency((ndFloat32)m_waveFrequency);
-
-        if (!m_useRaycastPlane)
-        {
-            // Use fixed plane from m_fluidPlane
-            const Ogre::Plane& fp = m_fluidPlane;
-            ndVector n((ndFloat32)fp.normal.x, (ndFloat32)fp.normal.y, (ndFloat32)fp.normal.z, 0.0f);
-            ndFloat32 d = (ndFloat32)fp.d;
-            ndPlane plane(n, d);
-            trigger->SetPlane(plane);
-        }
-        else
-        {
-            // Let the trigger compute plane via raycast on first contact
-            trigger->ClearPlane();
-        }
-
-        trigger->SetMatrix(ndGetIdentityMatrix());
-        trigger->SetCollisionShape(shapeCopy);
-
-        world->AddBody(ndSharedPtr<ndBody>(trigger));
-        m_triggerBody = trigger;
+        // Cache current config values on caller thread (avoid reading members inside closure if you want)
+        const Ogre::Vector3 gravity = m_gravity;
+        const Ogre::Real viscosity = m_viscosity;
+        const Ogre::Real waveAmplitude = m_waveAmplitude;
+        const Ogre::Real waveFrequency = m_waveFrequency;
+        const bool useRaycastPlane = m_useRaycastPlane;
+        const Ogre::Plane fluidPlane = m_fluidPlane;
 
         if (!m_bodyNotify)
             m_bodyNotify = new BodyNotify(this);
 
-        trigger->SetNotifyCallback(m_bodyNotify);
-        m_body = trigger;
+        // Cache old body (if recreating)
+        ndBodyKinematic* oldBody = m_body;
+        auto* oldTrigger = static_cast<OgreNewtBuoyancyTriggerVolume*>(m_triggerBody);
+
+        // World mutations must be on world thread / safe point
+        m_world->enqueuePhysicsAndWait(
+            [this,
+            newTrigger,
+            oldBody,
+            oldTrigger,
+            shapeCopy,
+            gravity,
+            viscosity,
+            waveAmplitude,
+            waveFrequency,
+            useRaycastPlane,
+            fluidPlane](World& w) mutable
+            {
+                // Remove old trigger/body if present
+                if (oldBody)
+                {
+                    oldBody->SetNotifyCallback(nullptr);
+                    w.destroyBody(oldBody);
+
+                    // If you own the old trigger, delete it
+                    delete oldBody;
+                }
+
+                // Configure new trigger (ND mutations)
+                newTrigger->SetGravity(ndVector(
+                    (ndFloat32)gravity.x,
+                    (ndFloat32)gravity.y,
+                    (ndFloat32)gravity.z,
+                    0.0f));
+
+                newTrigger->SetViscosity((ndFloat32)viscosity);
+                newTrigger->SetWaveAmplitude((ndFloat32)waveAmplitude);
+                newTrigger->SetWaveFrequency((ndFloat32)waveFrequency);
+
+                if (!useRaycastPlane)
+                {
+                    ndVector n((ndFloat32)fluidPlane.normal.x,
+                        (ndFloat32)fluidPlane.normal.y,
+                        (ndFloat32)fluidPlane.normal.z,
+                        0.0f);
+
+                    ndFloat32 d = (ndFloat32)fluidPlane.d;
+                    ndPlane plane(n, d);
+                    newTrigger->SetPlane(plane);
+                }
+                else
+                {
+                    newTrigger->ClearPlane();
+                }
+
+                newTrigger->SetMatrix(ndGetIdentityMatrix());
+                newTrigger->SetCollisionShape(shapeCopy);
+
+                // Install pointers
+                m_triggerBody = newTrigger;
+                m_body = newTrigger;
+
+                // Attach notify + add to world
+                newTrigger->SetNotifyCallback(m_bodyNotify);
+                w.addBody(newTrigger);
+            });
     }
 
     void BuoyancyBody::setUseRaycastPlane(bool useRaycast)

@@ -214,6 +214,7 @@
     <ClInclude Include="gameobject\DescriptionComponent.h" />
     <ClInclude Include="gameobject\DistributedComponent.h" />
     <ClInclude Include="gameobject\InputDeviceComponent.h" />
+    <ClInclude Include="gameobject\PhysicsActiveComplexVehicleComponent.h" />
     <ClInclude Include="gameobject\PhysicsActiveVehicleComponent.h" />
     <ClInclude Include="gameobject\ValueBarComponent.h" />
     <ClInclude Include="gameobject\ExitComponent.h" />
@@ -427,6 +428,7 @@
     <ClCompile Include="gameobject\DescriptionComponent.cpp" />
     <ClCompile Include="gameobject\DistributedComponent.cpp" />
     <ClCompile Include="gameobject\InputDeviceComponent.cpp" />
+    <ClCompile Include="gameobject\PhysicsActiveComplexVehicleComponent.cpp" />
     <ClCompile Include="gameobject\PhysicsActiveVehicleComponent.cpp" />
     <ClCompile Include="gameobject\ValueBarComponent.cpp" />
     <ClCompile Include="gameobject\ExitComponent.cpp" />

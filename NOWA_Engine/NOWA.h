@@ -99,6 +99,7 @@ extern "C"
 #include "gameobject/PhysicsCompoundConnectionComponent.h"
 #include "gameobject/PhysicsPlayerControllerComponent.h"
 #include "gameobject/PhysicsActiveVehicleComponent.h"
+#include "gameobject/PhysicsActiveComplexVehicleComponent.h"
 #include "gameobject/PhysicsTriggerComponent.h"
 #include "gameobject/PhysicsActiveKinematicComponent.h"
 #include "gameobject/AiLuaComponent.h"
@@ -235,8 +236,8 @@ namespace NOWA
 	typedef boost::shared_ptr<JointFlexyPipeHandleComponent> JointFlexyPipeHandleCompPtr;
 	typedef boost::shared_ptr<JointFlexyPipeSpinnerComponent> JointFlexyPipeSpinnerCompPtr;
 	typedef boost::shared_ptr<JointVehicleTireComponent> JointVehicleTireCompPtr;
-	typedef boost::shared_ptr<JointVehicleMotorComponent> JointVehicleMotorCompPtr;
-	
+	typedef boost::shared_ptr<JointComplexVehicleTireComponent> JointComplexVehicleTireCompPtr;
+
 	typedef boost::shared_ptr<PhysicsComponent> PhysicsCompPtr;
 	typedef boost::shared_ptr<PhysicsActiveComponent> PhysicsActiveCompPtr;
 	typedef boost::shared_ptr<CameraComponent> CameraCompPtr;

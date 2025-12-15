@@ -490,7 +490,6 @@ namespace NOWA
 		this->setConstraintDirection(this->constraintDirection->getVector3());
 
 		this->setActivated(this->activated->getBool());
-		this->setContinuousCollision(this->continuousCollision->getBool());
 		this->setGyroscopicTorqueEnabled(this->gyroscopicTorque->getBool());
 
 		// set user data for ogrenewt

@@ -586,8 +586,7 @@ namespace OgreNewt
 		{
 		}
 
-		OgreNewt::CollisionPrimitives::TreeCollision::TreeCollision(const OgreNewt::World* world, Ogre::v1::Entity* obj,
-			bool optimize, unsigned int id, FaceWinding fw)
+		OgreNewt::CollisionPrimitives::TreeCollision::TreeCollision(const OgreNewt::World* world, Ogre::v1::Entity* obj, bool optimize, unsigned int id, FaceWinding fw)
 			: Collision(world)
 		{
 			Ogre::Vector3 scale(1, 1, 1);
@@ -689,24 +688,41 @@ namespace OgreNewt
 					}
 
 					// Guard index range against this submesh's vertex window (vStart..vStart+vCount-1)
-					if (idx[0] >= vStart + vCount || idx[1] >= vStart + vCount || idx[2] >= vStart + vCount)
+					if (idx[0] < vStart || idx[0] >= vStart + vCount ||
+						idx[1] < vStart || idx[1] >= vStart + vCount ||
+						idx[2] < vStart || idx[2] >= vStart + vCount)
+					{
 						continue;
+					}
 
 					// Fetch positions respecting vertexStart
 					Ogre::Vector3 vtx[3];
 					for (int j = 0; j < 3; ++j)
 					{
-						const size_t vIdx = idx[j]; // indices in v1 are relative to the vertex data used
+						const size_t vIdx = idx[j] - vStart; // index inside this vertex window
 						unsigned char* ptr = vBase + (vIdx * vStride);
 						float* pos = nullptr;
 						posElem->baseVertexPointerToElement(ptr, &pos);
 						vtx[j] = Ogre::Vector3(pos[0], pos[1], pos[2]) * scale;
 					}
 
-					// Gentle extrusion for degenerate faces (ND4 optimizer-safe)
-					Ogre::Vector3 e1 = vtx[1] - vtx[0];
-					Ogre::Vector3 e2 = vtx[2] - vtx[0];
-					Ogre::Vector3 n = e1.crossProduct(e2);
+					// ---- ND4 safety: skip degenerate edges (any edge too small) ----
+					const Ogre::Real MIN_EDGE2 = 1.0e-12f;
+
+					Ogre::Vector3 e0 = vtx[1] - vtx[0];
+					Ogre::Vector3 e1 = vtx[2] - vtx[1];
+					Ogre::Vector3 e2 = vtx[0] - vtx[2];
+
+					if (e0.squaredLength() < MIN_EDGE2 ||
+						e1.squaredLength() < MIN_EDGE2 ||
+						e2.squaredLength() < MIN_EDGE2)
+					{
+						// Completely degenerate or almost-degenerate triangle, skip it
+						continue;
+					}
+
+					// ---- Optional: your "gentle extrusion" area fix can stay here ----
+					Ogre::Vector3 n = e0.crossProduct(e2);
 					if (n.squaredLength() < 1e-16f)
 					{
 						if (n.isZeroLength())
@@ -800,7 +816,7 @@ namespace OgreNewt
 
 				if (vReqs[0].type == Ogre::VET_HALF4)
 				{
-					for (size_t i = 0;i < vCount;++i)
+					for (size_t i = 0; i < vCount; ++i)
 					{
 						const Ogre::uint16* p = reinterpret_cast<const Ogre::uint16*>(vReqs[0].data);
 						verts[i] = Ogre::Vector3(Ogre::Bitwise::halfToFloat(p[0]), Ogre::Bitwise::halfToFloat(p[1]), Ogre::Bitwise::halfToFloat(p[2])) * scale;
@@ -809,7 +825,7 @@ namespace OgreNewt
 				}
 				else if (vReqs[0].type == Ogre::VET_FLOAT3)
 				{
-					for (size_t i = 0;i < vCount;++i)
+					for (size_t i = 0; i < vCount; ++i)
 					{
 						const float* p = reinterpret_cast<const float*>(vReqs[0].data);
 						verts[i] = Ogre::Vector3(p[0], p[1], p[2]) * scale;
@@ -819,6 +835,7 @@ namespace OgreNewt
 				else
 				{
 					vao->unmapAsyncTickets(vReqs);
+					continue;
 				}
 				vao->unmapAsyncTickets(vReqs);
 
@@ -838,29 +855,54 @@ namespace OgreNewt
 						if (a >= verts.size() || b >= verts.size() || c >= verts.size())
 							return;
 
-						Ogre::Vector3 v0 = verts[a], v1 = verts[b], v2 = verts[c];
-						Ogre::Vector3 e1 = v1 - v0, e2 = v2 - v0, n = e1.crossProduct(e2);
+						Ogre::Vector3 v0 = verts[a];
+						Ogre::Vector3 v1 = verts[b];
+						Ogre::Vector3 v2 = verts[c];
+
+						// ---- ND4 safety: skip degenerate edges (any edge too small) ----
+						const Ogre::Real MIN_EDGE2 = 1.0e-12f;
+
+						Ogre::Vector3 e0 = v1 - v0;
+						Ogre::Vector3 e1 = v2 - v1;
+						Ogre::Vector3 e2 = v0 - v2;
+
+						if (e0.squaredLength() < MIN_EDGE2 ||
+							e1.squaredLength() < MIN_EDGE2 ||
+							e2.squaredLength() < MIN_EDGE2)
+						{
+							// Completely degenerate or almost-degenerate triangle, skip it
+							return;
+						}
+
+						// ---- Optional: gentle extrusion for nearly-zero area ----
+						Ogre::Vector3 n = e0.crossProduct(e2);
 						if (n.squaredLength() < 1e-16f)
 						{
-							if (n.isZeroLength()) n = Ogre::Vector3::UNIT_Y;
-							else n.normalise();
-							const Ogre::Real EPS = 1e-4f;
-							v0 += n * EPS; v1 += n * EPS * 0.5f; v2 += n * EPS * 0.25f;
+							if (n.isZeroLength())
+								n = Ogre::Vector3::UNIT_Y;
+							else
+								n.normalise();
+
+							const Ogre::Real EPS = 1.0e-4f;
+							v0 += n * EPS;
+							v1 += n * EPS * 0.5f;
+							v2 += n * EPS * 0.25f;
 						}
 
 						ndVector face[3];
 						if (localFw == FW_DEFAULT)
 						{
-							face[0] = ndVector(v0.x, v0.y, v0.z, 1.f);
-							face[1] = ndVector(v1.x, v1.y, v1.z, 1.f);
-							face[2] = ndVector(v2.x, v2.y, v2.z, 1.f);
+							face[0] = ndVector(v0.x, v0.y, v0.z, 1.0f);
+							face[1] = ndVector(v1.x, v1.y, v1.z, 1.0f);
+							face[2] = ndVector(v2.x, v2.y, v2.z, 1.0f);
 						}
 						else
 						{
-							face[0] = ndVector(v0.x, v0.y, v0.z, 1.f);
-							face[1] = ndVector(v2.x, v2.y, v2.z, 1.f);
-							face[2] = ndVector(v1.x, v1.y, v1.z, 1.f);
+							face[0] = ndVector(v0.x, v0.y, v0.z, 1.0f);
+							face[1] = ndVector(v2.x, v2.y, v2.z, 1.0f);
+							face[2] = ndVector(v1.x, v1.y, v1.z, 1.0f);
 						}
+
 						meshBuilder.AddFace(&face[0].m_x, sizeof(ndVector), 3, id);
 					};
 
@@ -870,13 +912,13 @@ namespace OgreNewt
 				if (idxType == Ogre::IndexBufferPacked::IT_16BIT)
 				{
 					const uint16_t* idx = reinterpret_cast<const uint16_t*>(idxData);
-					for (size_t k = 0;k + 2 < idxCount;k += 3)
+					for (size_t k = 0; k + 2 < idxCount; k += 3)
 						emitTri(idx[k], idx[k + 1], idx[k + 2]);
 				}
 				else
 				{
 					const uint32_t* idx = reinterpret_cast<const uint32_t*>(idxData);
-					for (size_t k = 0;k + 2 < idxCount;k += 3)
+					for (size_t k = 0; k + 2 < idxCount; k += 3)
 						emitTri(idx[k], idx[k + 1], idx[k + 2]);
 				}
 
@@ -913,9 +955,7 @@ namespace OgreNewt
 				return;
 			}
 
-			// Optional: detect mirrored scale by inspecting the vertex orientation
-			FaceWinding localFw = fw; // could later come from user transform
-			// (You can add a scale argument if needed; flipping handled externally.)
+			FaceWinding localFw = fw;
 
 			const int triCount = numIndices / 3;
 
@@ -931,18 +971,35 @@ namespace OgreNewt
 				// Skip out-of-range or degenerate indices
 				if (i0 < 0 || i1 < 0 || i2 < 0 ||
 					i0 >= numVertices || i1 >= numVertices || i2 >= numVertices)
+				{
 					continue;
+				}
 
 				Ogre::Vector3 a(vertices[i0 * 3 + 0], vertices[i0 * 3 + 1], vertices[i0 * 3 + 2]);
 				Ogre::Vector3 b(vertices[i1 * 3 + 0], vertices[i1 * 3 + 1], vertices[i1 * 3 + 2]);
 				Ogre::Vector3 c(vertices[i2 * 3 + 0], vertices[i2 * 3 + 1], vertices[i2 * 3 + 2]);
 
 				// ----------------------------------------------------------------
-				// 3. Gentle extrusion for degenerate faces (ND4-safe)
+				// 3. ND4 safety: skip triangles with tiny edges (like ndPolygonSoupBuilder)
 				// ----------------------------------------------------------------
-				Ogre::Vector3 e1 = b - a;
-				Ogre::Vector3 e2 = c - a;
-				Ogre::Vector3 n = e1.crossProduct(e2);
+				const Ogre::Real MIN_EDGE2 = 1.0e-12f;
+
+				Ogre::Vector3 e0 = b - a;
+				Ogre::Vector3 e1 = c - b;
+				Ogre::Vector3 e2 = a - c;
+
+				if (e0.squaredLength() < MIN_EDGE2 ||
+					e1.squaredLength() < MIN_EDGE2 ||
+					e2.squaredLength() < MIN_EDGE2)
+				{
+					// Degenerate / collapsed triangle, skip to avoid ND4 assert
+					continue;
+				}
+
+				// ----------------------------------------------------------------
+				// 4. Gentle extrusion for nearly-zero area faces (optional)
+				// ----------------------------------------------------------------
+				Ogre::Vector3 n = e0.crossProduct(e2);
 				const Ogre::Real area2 = n.squaredLength();
 
 				if (area2 < 1e-16f)
@@ -952,14 +1009,14 @@ namespace OgreNewt
 					else
 						n.normalise();
 
-					const Ogre::Real EPS = 1e-4f;
+					const Ogre::Real EPS = 1.0e-4f;
 					a += n * EPS;
 					b += n * EPS * 0.5f;
 					c += n * EPS * 0.25f;
 				}
 
 				// ----------------------------------------------------------------
-				// 4. Add triangle to ND4 polygon soup
+				// 5. Add triangle to ND4 polygon soup
 				// ----------------------------------------------------------------
 				ndVector face[3];
 				if (localFw == FW_DEFAULT)
@@ -979,7 +1036,7 @@ namespace OgreNewt
 			}
 
 			// ----------------------------------------------------------------
-			// 5. Finalize Newton shape
+			// 6. Finalize Newton shape
 			// ----------------------------------------------------------------
 			meshBuilder.End(optimize);
 
@@ -1060,11 +1117,26 @@ namespace OgreNewt
 					std::swap(vtx[1], vtx[2]);
 
 				// ----------------------------------------------------------------
-				// 3. Degenerate-face extrusion (ND4 optimizer-safe)
+				// 3. ND4 safety: skip triangles with tiny edges (like ndPolygonSoupBuilder)
 				// ----------------------------------------------------------------
-				Ogre::Vector3 e1 = vtx[1] - vtx[0];
-				Ogre::Vector3 e2 = vtx[2] - vtx[0];
-				Ogre::Vector3 n = e1.crossProduct(e2);
+				const Ogre::Real MIN_EDGE2 = 1.0e-12f;
+
+				Ogre::Vector3 e0 = vtx[1] - vtx[0];
+				Ogre::Vector3 e1 = vtx[2] - vtx[1];
+				Ogre::Vector3 e2 = vtx[0] - vtx[2];
+
+				if (e0.squaredLength() < MIN_EDGE2 ||
+					e1.squaredLength() < MIN_EDGE2 ||
+					e2.squaredLength() < MIN_EDGE2)
+				{
+					// Degenerate / collapsed triangle, skip to avoid ND4 assert
+					continue;
+				}
+
+				// ----------------------------------------------------------------
+				// 4. Degenerate-face extrusion (ND4 optimizer-safe, almost-flat tris)
+				// ----------------------------------------------------------------
+				Ogre::Vector3 n = e0.crossProduct(e2);
 
 				if (n.squaredLength() < 1e-16f)
 				{
@@ -1073,14 +1145,14 @@ namespace OgreNewt
 					else
 						n.normalise();
 
-					const Ogre::Real EPS = 1e-4f;
+					const Ogre::Real EPS = 1.0e-4f;
 					vtx[0] += n * EPS;
 					vtx[1] += n * EPS * 0.5f;
 					vtx[2] += n * EPS * 0.25f;
 				}
 
 				// ----------------------------------------------------------------
-				// 4. Add face to Newton soup
+				// 5. Add face to Newton soup
 				// ----------------------------------------------------------------
 				ndVector face[3];
 				if (localFw == FW_DEFAULT)
@@ -1102,7 +1174,7 @@ namespace OgreNewt
 			ibuf->unlock();
 
 			// --------------------------------------------------------------------
-			// 5. Finalize ND4 collision shape
+			// 6. Finalize ND4 collision shape
 			// --------------------------------------------------------------------
 			finish(optimize);
 			meshBuilder.End(optimize);
@@ -1159,7 +1231,7 @@ namespace OgreNewt
 		}
 
 		HeightField::HeightField(const World* world, int width, int height, Ogre::Real* elevationMap,
-			Ogre::Real verticleScale, Ogre::Real horizontalScaleX, Ogre::Real horizontalScaleZ,
+			Ogre::Real verticalScale, Ogre::Real horizontalScaleX, Ogre::Real horizontalScaleZ,
 			const Ogre::Vector3& position, const Ogre::Quaternion& orientation, unsigned int shapeID)
 			: Collision(world), m_faceCount(0), m_categoryId(shapeID)
 		{
@@ -1172,11 +1244,11 @@ namespace OgreNewt
 				m_shapeInstance = nullptr;
 			}
 
-			// 1) Create Newton 4.0 heightfield shape
+			// 1) Build ND4 heightfield (try inverted diagonals like the demo)
 			ndShapeHeightfield* heightfield = new ndShapeHeightfield(
-				width,
-				height,
-				ndShapeHeightfield::m_normalDiagonals,
+				ndInt32(width),
+				ndInt32(height),
+				ndShapeHeightfield::m_invertedDiagonals,
 				ndFloat32(horizontalScaleX),
 				ndFloat32(horizontalScaleZ)
 			);
@@ -1185,26 +1257,24 @@ namespace OgreNewt
 			m_shapeInstance = new ndShapeInstance(heightfield);
 			m_col = m_shapeInstance->GetShape();
 
-			// 3) Apply local transform from position/orientation
-			{
-				ndMatrix localM;
-				OgreNewt::Converters::QuatPosToMatrix(orientation, position, localM);
-				m_shapeInstance->SetLocalMatrix(localM);
-			}
-
-			// 4) Copy elevation data with vertical scale
-			ndArray<ndFloat32>& elevations = heightfield->GetElevationMap();
+			// 3) Fill elevation map, scaled in Y
+			ndArray<ndReal>& heights = heightfield->GetElevationMap();
 			const int count = width * height;
+			ndAssert(heights.GetCount() == count);
+
 			for (int i = 0; i < count; ++i)
 			{
-				elevations[i] = ndFloat32(elevationMap[i] * verticleScale);
+				const ndFloat32 h = ndFloat32(elevationMap[i] * verticalScale);
+				heights[i] = ndReal(h);
 			}
 
-			// 5) Update AABB after setting elevation data
 			heightfield->UpdateElevationMapAabb();
 
-			// IMPORTANT: do NOT reset m_col to the raw heightfield here.
-			// m_col already points to the shape owned by m_shapeInstance.
+			// 4) Local transform (position + orientation)
+			ndMatrix localM;
+			OgreNewt::Converters::QuatPosToMatrix(orientation, position, localM);
+			localM.m_posit.m_w = ndFloat32(1.0f);
+			m_shapeInstance->SetLocalMatrix(localM);
 		}
 
 		void HeightField::setFaceId(unsigned int faceId)

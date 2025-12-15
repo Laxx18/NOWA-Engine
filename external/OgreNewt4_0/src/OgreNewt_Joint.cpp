@@ -47,54 +47,76 @@ Joint::Joint()
 
 Joint::~Joint()
 {
-    if (!m_jointPtr)
+    if (!m_world || !m_joint)
         return;
 
-    if (ndWorld* ndWorldPtr = getNdWorldFromJoint(m_joint))
-    {
-        // Use the overload your ND4 build provides; this variant works with raw*
-        ndWorldPtr->RemoveJoint(m_joint);
-    }
+    // Cache pointers (because we will clear members)
+    ndJointBilateralConstraint* joint = m_joint;
+    ndSharedPtr<ndJointBilateralConstraint> jointPtr = m_jointPtr;
+    OgreNewt::World* world = m_world;
 
-    // Clear our reference (no reset/release API; assign default)
-    m_jointPtr = ndSharedPtr<ndJointBilateralConstraint>();
+    // Clear our members immediately to prevent accidental re-use
     m_joint = nullptr;
+    m_jointPtr = ndSharedPtr<ndJointBilateralConstraint>();
+    m_world = nullptr;
+
+    // Remove on world thread / safe point
+    world->enqueuePhysicsAndWait([joint, jointPtr](OgreNewt::World& w) mutable
+        {
+            if (joint)
+            {
+                // use your wrapper so it hits assertWritableNow()
+                w.destroyJoint(joint);
+            }
+
+            // release shared after it is removed from world
+            jointPtr = ndSharedPtr<ndJointBilateralConstraint>();
+        });
 }
 
 void Joint::destroyJoint(OgreNewt::World* /*world*/)
 {
-    if (!m_jointPtr)
+    if (!m_world || !m_joint)
         return;
 
-    if (ndWorld* ndWorldPtr = getNdWorldFromJoint(m_joint))
-    {
-        // Use the overload your ND4 build provides; this variant works with raw*
-        ndWorldPtr->RemoveJoint(m_joint);
-    }
+    ndJointBilateralConstraint* joint = m_joint;
+    ndSharedPtr<ndJointBilateralConstraint> jointPtr = m_jointPtr;
 
-    // Clear our reference (no reset/release API; assign default)
-    m_jointPtr = ndSharedPtr<ndJointBilateralConstraint>();
+    // Clear now
     m_joint = nullptr;
+    m_jointPtr = ndSharedPtr<ndJointBilateralConstraint>();
+
+    m_world->enqueuePhysicsAndWait([joint, jointPtr](OgreNewt::World& w) mutable
+        {
+            if (joint)
+            {
+                w.destroyJoint(joint);
+            }
+            jointPtr = ndSharedPtr<ndJointBilateralConstraint>();
+        });
 }
 
-void Joint::SetSupportJoint(ndJointBilateralConstraint* supportJoint)
+void Joint::SetSupportJoint(OgreNewt::World* world, ndJointBilateralConstraint* supportJoint)
 {
+    m_world = world;
+
     // Wrap raw -> shared
     m_jointPtr = ndSharedPtr<ndJointBilateralConstraint>(supportJoint);
     m_joint = m_jointPtr.operator->();
-    if (!m_joint)
+    if (!m_world || !m_joint)
         return;
 
-    // Resolve ndWorld* via BodyNotify → OgreNewt::Body → World
-    if (ndWorld* ndWorldPtr = getNdWorldFromJoint(m_joint))
-    {
-        // ND4 expects a shared-ptr here
-        ndWorldPtr->AddJoint(m_jointPtr);
-    }
+    m_world->enqueuePhysicsAndWait([this](OgreNewt::World& w)
+        {
+            w.addJoint(m_jointPtr);
+        });
 
-    // Optional: set user data / destructor callback if you use it
-    // m_joint->SetUserData(this);
-    // m_joint->SetUserDestructorCallback(&Joint::destructorCallback);
+    // Optional: if you use userdata, do it on world thread as well
+    // m_world->enqueuePhysicsAndWait([this](OgreNewt::World&)
+    // {
+    //     m_joint->SetUserData(this);
+    //     m_joint->SetUserDestructorCallback(&Joint::destructorCallback);
+    // });
 }
 
 // ----------------- Pending row API (public wrapper methods) -----------------
@@ -340,7 +362,7 @@ CustomJoint::CustomJoint(unsigned int maxDOF, const Body* child, const Body* par
 
     // create our custom ND joint that calls back into this wrapper
     OgreNewtUserJoint* ujoint = new OgreNewtUserJoint(m_maxDOF, frame, b0, b1, this);
-    SetSupportJoint(ujoint);
+    SetSupportJoint(child->getWorld(), ujoint);
 
     // You must add this joint to the ND world if your world expects to own it,
     // e.g. world->AddJoint(ndSharedPtr<ndJointBilateralConstraint>(ujoint));

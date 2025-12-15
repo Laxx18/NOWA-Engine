@@ -3,14 +3,6 @@
 #include "OgreNewt_Body.h"
 #include "OgreNewt_BasicJoints.h"
 
-#ifdef __APPLE__
-#   include <Ogre/OgreLogManager.h>
-#   include <Ogre/OgreStringConverter.h>
-#else
-#   include <OgreLogManager.h>
-#   include <OgreStringConverter.h>
-#endif
-
 namespace
 {
 	ndFloat32 toRad(Ogre::Degree d)
@@ -57,9 +49,17 @@ namespace
 		outMatrix.m_posit = ndVector(pos.x, pos.y, pos.z, ndFloat32(1.0f));
 	}
 
+	OgreNewt::World* getWorldFromBodies(const OgreNewt::Body* body0, const OgreNewt::Body* body1)
+	{
+		if (body0)
+			return body0->getWorld();
+		if (body1)
+			return body1->getWorld();
+		return nullptr;
+	}
+
 	ndFloat32 OGRENEWT_LARGE_TORQUE = ndFloat32(1.0e8f);
 	const ndFloat32 OGRENEWT_LARGE_FORCE = ndFloat32(1.0e8f);
-
 }
 
 namespace OgreNewt
@@ -83,7 +83,7 @@ namespace OgreNewt
 		// This is key: prefer the iterative soft model for stability, else whole simulation can become unstable!
 		joint->SetSolverModel(m_jointIterativeSoft);
 
-		SetSupportJoint(joint);
+		SetSupportJoint(child->getWorld(), joint);
 	}
 
 	BallAndSocket::~BallAndSocket()
@@ -98,13 +98,24 @@ namespace OgreNewt
 
 	void BallAndSocket::setTwistLimits(const Ogre::Degree& minAngle, const Ogre::Degree& maxAngle)
 	{
-		if (auto* j = asNd())
-			j->SetTwistLimits(static_cast<ndFloat32>(Ogre::Radian(minAngle).valueRadians()), static_cast<ndFloat32>(Ogre::Radian(maxAngle).valueRadians()));
+		if (!m_world)
+			return;
+
+		ndJointSpherical* joint = asNd();
+		if (!joint)
+			return;
+
+		const ndFloat32 minRad = static_cast<ndFloat32>(Ogre::Radian(minAngle).valueRadians());
+		const ndFloat32 maxRad = static_cast<ndFloat32>(Ogre::Radian(maxAngle).valueRadians());
+
+		joint->SetTwistLimits(minRad, maxRad);
+
 		if (m_child)
 			m_child->unFreeze();
 		if (m_parent)
 			m_parent->unFreeze();
 	}
+
 
 	void BallAndSocket::getTwistLimits(Ogre::Degree& minAngle, Ogre::Degree& maxAngle) const
 	{
@@ -132,7 +143,10 @@ namespace OgreNewt
 	void BallAndSocket::setConeLimits(const Ogre::Degree& maxAngle)
 	{
 		if (auto* j = asNd())
+		{
 			j->SetConeLimit(static_cast<ndFloat32>(Ogre::Radian(maxAngle).valueRadians()));
+		}
+			
 		if (m_child)
 			m_child->unFreeze();
 		if (m_parent)
@@ -175,18 +189,19 @@ namespace OgreNewt
 
 	void BallAndSocket::setTwistSpringDamper(bool state, Ogre::Real springDamperRelaxation, Ogre::Real spring, Ogre::Real damper)
 	{
-		if (auto* j = asNd())
-		{
-			if (state)
-			{
-				j->SetAsSpringDamper(static_cast<ndFloat32>(springDamperRelaxation), static_cast<ndFloat32>(spring), static_cast<ndFloat32>(damper));
-			}
-			else
-			{
-				// Approximate "disable": zero stiffness/damping
-				j->SetAsSpringDamper(static_cast<ndFloat32>(springDamperRelaxation), 0.0f, 0.0f);
-			}
-		}
+		if (!m_world)
+			return;
+
+		ndJointSpherical* joint = asNd();
+		if (!joint)
+			return;
+
+		const ndFloat32 relax = static_cast<ndFloat32>(springDamperRelaxation);
+		const ndFloat32 k = state ? static_cast<ndFloat32>(spring) : 0.0f;
+		const ndFloat32 c = state ? static_cast<ndFloat32>(damper) : 0.0f;
+
+		joint->SetAsSpringDamper(relax, k, c);
+
 		if (m_child)
 			m_child->unFreeze();
 		if (m_parent)
@@ -241,9 +256,8 @@ namespace OgreNewt
 
 		// This is key: prefer the iterative soft model for stability, else whole simulation can become unstable!
 		joint->SetSolverModel(m_jointIterativeSoft);
-
 		// store for OgreNewt lifetime mgmt
-		SetSupportJoint(joint);
+		SetSupportJoint(child->getWorld(), joint);
 	}
 
 	Hinge::Hinge(const Body* child, const Body* parent, const Ogre::Vector3& childPos, const Ogre::Vector3& childPin, const Ogre::Vector3& parentPos, const Ogre::Vector3& parentPin)
@@ -267,7 +281,7 @@ namespace OgreNewt
 		// ND4 hinge can also be created from separate frames
 		ndJointHinge* const joint = new ndJointHinge(frameChild, frameParent, childBody, parentBody);
 
-		SetSupportJoint(joint);
+		SetSupportJoint(child->getWorld(), joint);
 	}
 
 	Hinge::~Hinge()
@@ -278,8 +292,17 @@ namespace OgreNewt
 	void Hinge::EnableLimits(bool state)
 	{
 		m_limitsEnabled = state;
-		if (auto* j = asNd())
-			j->SetLimitState(state);
+
+		if (!m_world)
+			return;
+
+		ndJointHinge* joint = asNd();
+		if (!joint)
+			return;
+
+		const ndInt32 enable = state ? 1 : 0;
+
+		joint->SetLimitState(enable);
 
 		if (m_body0)
 			m_body0->unFreeze();
@@ -293,7 +316,9 @@ namespace OgreNewt
 		{
 			const ndFloat32 minR = static_cast<ndFloat32>(Ogre::Radian(minAngle).valueRadians());
 			const ndFloat32 maxR = static_cast<ndFloat32>(Ogre::Radian(maxAngle).valueRadians());
+			
 			j->SetLimits(minR, maxR);
+
 		}
 		if (m_body0)
 			m_body0->unFreeze();
@@ -343,18 +368,20 @@ namespace OgreNewt
 
 	void Hinge::SetTorque(Ogre::Real torque)
 	{
-		// ND3 had EnableMotor(torque). ND4 hinge shows PD/target-angle style control.
-		// We emulate "motor torque" as viscous torque around the hinge axis by bumping damper.
-		// If you later build a motorized subclass, you can drive SetTargetAngle each step.
 		m_motorTorque = torque;
 
-		if (auto* j = asNd())
-		{
-			const ndFloat32 reg = static_cast<ndFloat32>(m_lastRegularizer);
-			const ndFloat32 spring = 0.0f;
-			const ndFloat32 damper = static_cast<ndFloat32>(std::fabs(torque));
-			j->SetAsSpringDamper(reg, spring, damper);
-		}
+		if (!m_world)
+			return;
+
+		ndJointHinge* joint = asNd();
+		if (!joint)
+			return;
+
+		const ndFloat32 reg = static_cast<ndFloat32>(m_lastRegularizer);
+		const ndFloat32 spring = 0.0f;
+		const ndFloat32 damper = static_cast<ndFloat32>(std::fabs(torque));
+
+		joint->SetAsSpringDamper(reg, spring, damper);
 
 		if (m_body0)
 			m_body0->unFreeze();
@@ -362,26 +389,22 @@ namespace OgreNewt
 			m_body1->unFreeze();
 	}
 
-	void Hinge::SetSpringAndDamping(bool enable, bool massIndependent,
-		Ogre::Real springDamperRelaxation,
-		Ogre::Real spring, Ogre::Real damper)
+	void Hinge::SetSpringAndDamping(bool enable, bool massIndependent, Ogre::Real springDamperRelaxation, Ogre::Real spring, Ogre::Real damper)
 	{
 		m_lastRegularizer = springDamperRelaxation;
 
-		if (auto* j = asNd())
-		{
-			if (enable)
-			{
-				// ND4 does not differentiate “mass independent” in this API;
-				// regularizer acts similarly to ERP/CFM tuning.
-				j->SetAsSpringDamper(static_cast<ndFloat32>(springDamperRelaxation), static_cast<ndFloat32>(spring), static_cast<ndFloat32>(damper));
-			}
-			else
-			{
-				// disable by zeroing gains
-				j->SetAsSpringDamper(static_cast<ndFloat32>(springDamperRelaxation), 0.0f, 0.0f);
-			}
-		}
+		if (!m_world)
+			return;
+
+		ndJointHinge* joint = asNd();
+		if (!joint)
+			return;
+
+		const ndFloat32 relax = static_cast<ndFloat32>(springDamperRelaxation);
+		const ndFloat32 k = enable ? static_cast<ndFloat32>(spring) : 0.0f;
+		const ndFloat32 c = enable ? static_cast<ndFloat32>(damper) : 0.0f;
+
+		joint->SetAsSpringDamper(relax, k, c);
 
 		if (m_body0)
 			m_body0->unFreeze();
@@ -392,11 +415,20 @@ namespace OgreNewt
 
 	void Hinge::SetFriction(Ogre::Real friction)
 	{
-		// ND3 had SetFriction on hinge; ND4 examples use viscous friction via SetAsSpringDamper(reg, 0, friction)
 		m_setFriction = friction;
 
-		if (auto* j = asNd())
-			j->SetAsSpringDamper(static_cast<ndFloat32>(m_lastRegularizer), 0.0f, static_cast<ndFloat32>(friction));
+		if (!m_world)
+			return;
+
+		ndJointHinge* joint = asNd();
+		if (!joint)
+			return;
+
+		const ndFloat32 reg = static_cast<ndFloat32>(m_lastRegularizer);
+		const ndFloat32 spring = 0.0f;
+		const ndFloat32 damper = static_cast<ndFloat32>(friction);
+
+		joint->SetAsSpringDamper(reg, spring, damper);
 
 		if (m_body0)
 			m_body0->unFreeze();
@@ -425,7 +457,7 @@ namespace OgreNewt
 		// This is key: prefer the iterative soft model for stability, else whole simulation can become unstable!
 		joint->SetSolverModel(m_jointIterativeSoft);
 
-		SetSupportJoint(joint);
+		SetSupportJoint(child->getWorld(), joint);
 	}
 
 	Slider::~Slider()
@@ -505,7 +537,7 @@ namespace OgreNewt
 
 		// Create the Newton 4 joint
 		ndJointGear* joint = new ndJointGear(static_cast<ndFloat32>(gearRatio), pin0, b0, pin1, b1);
-		SetSupportJoint(joint);
+		SetSupportJoint(child->getWorld(), joint);
 	}
 
 	Gear::~Gear()
@@ -529,7 +561,7 @@ namespace OgreNewt
 		OgreNewt::Converters::QuatPosToMatrix(q, pos, frame);
 
 		auto* joint = new NdUniversalAdapter(frame, b0, b1);
-		SetSupportJoint(joint);
+		SetSupportJoint(child->getWorld(), joint);
 	}
 
 	Universal::Universal(const Body* child, const Body* parent, const Ogre::Vector3& childPos, const Ogre::Vector3& childPin, const Ogre::Vector3& parentPos, const Ogre::Vector3& parentPin)
@@ -547,7 +579,7 @@ namespace OgreNewt
 		OgreNewt::Converters::QuatPosToMatrix(q, mid, frame);
 
 		auto* joint = new NdUniversalAdapter(frame, b0, b1);
-		SetSupportJoint(joint);
+		SetSupportJoint(child->getWorld(), joint);
 	}
 
 	Universal::~Universal()
@@ -717,7 +749,7 @@ namespace OgreNewt
 		frame.m_posit = ndVector(pos.x, pos.y, pos.z, 1.0f);
 
 		auto* joint = new ndJointRoller(frame, b0, b1);
-		SetSupportJoint(joint);
+		SetSupportJoint(child->getWorld(), joint);
 	}
 
 	CorkScrew::~CorkScrew()
@@ -907,14 +939,14 @@ namespace OgreNewt
 		ndBodyKinematic* b0 = child ? const_cast<ndBodyKinematic*>(child->getNewtonBody()) : nullptr;
 		ndBodyKinematic* b1 = parent ? const_cast<ndBodyKinematic*>(parent->getNewtonBody()) : child->getWorld()->getNewtonWorld()->GetSentinelBody();
 
-		ndJointCylinder* j = new ndJointCylinder(frame, b0, b1 ? b1 : nullptr);
-		SetSupportJoint(j);
+		ndJointCylinder* joint = new ndJointCylinder(frame, b0, b1 ? b1 : nullptr);
+		SetSupportJoint(child->getWorld(), joint);
 
 		// Defaults: limits disabled and no spring/damper (parity with old ctor)
-		j->SetLimitStatePosit(false);
-		j->SetLimitStateAngle(false);
-		j->SetAsSpringDamperPosit(0.1f, 0.0f, 0.0f);
-		j->SetAsSpringDamperAngle(0.1f, 0.0f, 0.0f);
+		joint->SetLimitStatePosit(false);
+		joint->SetLimitStateAngle(false);
+		joint->SetAsSpringDamperPosit(0.1f, 0.0f, 0.0f);
+		joint->SetAsSpringDamperAngle(0.1f, 0.0f, 0.0f);
 	}
 
 	SlidingContact::~SlidingContact()
@@ -1003,8 +1035,8 @@ namespace OgreNewt
 		const ndVector p0(pos1.x, pos1.y, pos1.z, 1.0f);
 		const ndVector p1(pos2.x, pos2.y, pos2.z, 1.0f);
 
-		auto* j = new ndJointFixDistance(p0, p1, b0, b1);
-		SetSupportJoint(j);
+		auto* joint = new ndJointFixDistance(p0, p1, b0, b1);
+		SetSupportJoint(child->getWorld(), joint);
 	}
 
 	PointToPoint::~PointToPoint()
@@ -1030,7 +1062,7 @@ namespace OgreNewt
 		// create the 6DoF constraint
 		auto* joint = new ndJointFix6dof(body0, body1, frame0, frame1);
 
-		SetSupportJoint(joint);
+		SetSupportJoint(child->getWorld(), joint);
 	}
 
 	Joint6Dof::~Joint6Dof()
@@ -1295,13 +1327,8 @@ namespace OgreNewt
 
 	/////////////////////////////////////////////////////////////////////////////////////////
 	
-	HingeActuator::HingeActuator(const OgreNewt::Body* child,
-		const OgreNewt::Body* parent,
-		const Ogre::Vector3& pos,
-		const Ogre::Vector3& pin,
-		const Ogre::Degree& angularRate,
-		const Ogre::Degree& minAngle,
-		const Ogre::Degree& maxAngle)
+	HingeActuator::HingeActuator(const OgreNewt::Body* child, const OgreNewt::Body* parent, const Ogre::Vector3& pos,
+		const Ogre::Vector3& pin, const Ogre::Degree& angularRate, const Ogre::Degree& minAngle, const Ogre::Degree& maxAngle)
 		: Joint()
 	{
 		// Build hinge frame from pin + position, just like ND3 (dGrammSchmidt)
@@ -1323,11 +1350,9 @@ namespace OgreNewt
 		const ndFloat32 minAngleRad = minAngle.valueRadians();
 		const ndFloat32 maxAngleRad = maxAngle.valueRadians();
 
-		ndOgreHingeActuator* const hinge =
-			new ndOgreHingeActuator(pinAndPivotFrame, b0, b1,
-				angularRateRad, minAngleRad, maxAngleRad);
+		ndOgreHingeActuator* const joint = new ndOgreHingeActuator(pinAndPivotFrame, b0, b1, angularRateRad, minAngleRad, maxAngleRad);
 
-		SetSupportJoint(hinge);
+		SetSupportJoint(child->getWorld(), joint);
 
 		// hinge->SetSolverModel(m_jointIterativeSoft);
 	}
@@ -1578,11 +1603,7 @@ namespace OgreNewt
 		//   NewtonUserJointAddLinearRow(m_joint, &matrix0.m_posit[0],
 		//                               &matrix1.m_posit[0], &matrix1.m_front[0]);
 		//
-		AddLinearRowJacobian(
-			desc,
-			&matrix0.m_posit[0],
-			&matrix1.m_posit[0],
-			&matrix1.m_front[0]);
+		AddLinearRowJacobian(desc, &matrix0.m_posit[0], &matrix1.m_posit[0], &matrix1.m_front[0]);
 
 		const ndFloat32 accel = GetMotorZeroAcceleration(desc) + currentSpeed * invTimeStep;
 		SetMotorAcceleration(desc, accel);
@@ -1622,13 +1643,8 @@ namespace OgreNewt
 		}
 	}
 
-	SliderActuator::SliderActuator(const OgreNewt::Body* child,
-		const OgreNewt::Body* parent,
-		const Ogre::Vector3& pos,
-		const Ogre::Vector3& pin,
-		Ogre::Real linearRate,
-		Ogre::Real minPosition,
-		Ogre::Real maxPosition)
+	SliderActuator::SliderActuator(const OgreNewt::Body* child, const OgreNewt::Body* parent, const Ogre::Vector3& pos, const Ogre::Vector3& pin,
+		Ogre::Real linearRate, Ogre::Real minPosition, Ogre::Real maxPosition)
 		: Joint()
 	{
 		// Same way as old OgreNewt3 code: build frame from pin + pos
@@ -1646,16 +1662,9 @@ namespace OgreNewt
 			const_cast<ndBodyKinematic*>(parent->getNewtonBody()) :
 			(child ? child->getWorld()->getNewtonWorld()->GetSentinelBody() : nullptr);
 
-		ndOgreSliderActuator* const slider =
-			new ndOgreSliderActuator(
-				pinAndPivotFrame,
-				b0,
-				b1,
-				static_cast<ndFloat32>(linearRate),
-				static_cast<ndFloat32>(minPosition),
-				static_cast<ndFloat32>(maxPosition));
+		ndOgreSliderActuator* const joint = new ndOgreSliderActuator(pinAndPivotFrame, b0, b1, static_cast<ndFloat32>(linearRate), static_cast<ndFloat32>(minPosition), static_cast<ndFloat32>(maxPosition));
 
-		SetSupportJoint(slider);
+		SetSupportJoint(child->getWorld(), joint);
 	}
 
 	SliderActuator::~SliderActuator()
@@ -1935,7 +1944,7 @@ namespace OgreNewt
 		const ndVector ndPos(pos.x, pos.y, pos.z, 1.0f);
 
 		auto* joint = new ndFlexyPipeHandle(b0, ndPin, ndPos);
-		SetSupportJoint(joint);
+		SetSupportJoint(currentBody->getWorld(), joint);
 	}
 
 	void FlexyPipeHandleJoint::setVelocity(const Ogre::Vector3& velocity, Ogre::Real dt)
@@ -1961,7 +1970,7 @@ namespace OgreNewt
 		OgreNewt::Converters::QuatPosToMatrix(q, anchorPosition, frame);
 
 		auto* joint = new ndFlexyPipeSpinner(frame, b0, b1);
-		SetSupportJoint(joint);
+		SetSupportJoint(currentBody->getWorld(), joint);
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////////////////
@@ -1997,7 +2006,7 @@ namespace OgreNewt
 		OgreNewt::Converters::QuatPosToMatrix(q, anchorPosition, frame);
 
 		auto* joint = new ndJointSlider(frame, b0, b1);
-		SetSupportJoint(joint);
+		SetSupportJoint(currentBody->getWorld(), joint);
 
 		joint->SetLimitState(true);
 		joint->SetLimits(static_cast<ndFloat32>(m_minStop), static_cast<ndFloat32>(m_maxStop));
@@ -2215,7 +2224,7 @@ namespace OgreNewt
 		// Initially disable rotation control (like old Plane2dUpVector)
 		joint->EnableControlRotation(false);
 
-		SetSupportJoint(joint);
+		SetSupportJoint(child->getWorld(), joint);
 	}
 
 	Plane2DUpVectorJoint::~Plane2DUpVectorJoint()
@@ -2285,7 +2294,7 @@ namespace OgreNewt
 		ndVector ndNormal(normal.x, normal.y, normal.z, 0.0f);
 
 		auto* joint = new ndPlaneConstraintWrapper(ndPos, ndNormal, b0, b1);
-		SetSupportJoint(joint);
+		SetSupportJoint(child->getWorld(), joint);
 	}
 
 	PlaneConstraint::~PlaneConstraint() = default;
@@ -2326,7 +2335,7 @@ namespace OgreNewt
 		// This is key: prefer the iterative soft model for stability, else whole simulation can become unstable!
 		joint->SetSolverModel(m_jointIterativeSoft);
 
-		SetSupportJoint(joint);
+		SetSupportJoint(body->getWorld(), joint);
 	}
 
 	UpVector::~UpVector()
@@ -2364,7 +2373,7 @@ namespace OgreNewt
 		ndBodyKinematic* const sentinelBody = child->getWorld()->getNewtonWorld()->GetSentinelBody();
 
 		auto* joint = new ndJointKinematicController(body, sentinelBody, attachment);
-		SetSupportJoint(joint);
+		SetSupportJoint(child->getWorld(), joint);
 
 		joint->SetControlMode(ndJointKinematicController::m_full6dof);
 	}
@@ -2376,7 +2385,7 @@ namespace OgreNewt
 		ndBodyKinematic* b1 = referenceBody ? const_cast<ndBodyKinematic*>(referenceBody->getNewtonBody()) : child->getWorld()->getNewtonWorld()->GetSentinelBody();
 
 		auto* joint = new ndJointKinematicController(b1, b0, attachment);
-		SetSupportJoint(joint);
+		SetSupportJoint(child->getWorld(), joint);
 
 		joint->SetControlMode(ndJointKinematicController::m_full6dof);
 	}
@@ -2522,16 +2531,14 @@ namespace OgreNewt
 
 	//////////////////////////////////CustomDryRollingFriction///////////////////////////////////////////////////
 
-	CustomDryRollingFriction::CustomDryRollingFriction(const Body* child,
-		const Body* parent,
-		Ogre::Real friction)
+	CustomDryRollingFriction::CustomDryRollingFriction(const Body* child, const Body* parent, Ogre::Real friction)
 	{
 		ndBodyKinematic* b0 = child ? const_cast<ndBodyKinematic*>(child->getNewtonBody()) : nullptr;
 		ndBodyKinematic* b1 = parent ? const_cast<ndBodyKinematic*>(parent->getNewtonBody()) : child->getWorld()->getNewtonWorld()->GetSentinelBody();
 
 		// create newton4 dry rolling friction joint
-		auto* j = new ndJointDryRollingFriction(b0, b1, static_cast<ndFloat32>(friction));
-		SetSupportJoint(j);
+		auto* joint = new ndJointDryRollingFriction(b0, b1, static_cast<ndFloat32>(friction));
+		SetSupportJoint(child->getWorld(), joint);
 	}
 
 	CustomDryRollingFriction::~CustomDryRollingFriction()
@@ -2764,7 +2771,7 @@ namespace OgreNewt
 		ndBodyDynamic* const pathDyn = ((ndBodyKinematic*)m_pathBody->getNewtonBody())->GetAsBodyDynamic();
 
 		auto* joint = new NdCustomPathFollowAdapter(frame, childDyn, pathDyn, &m_spline);
-		SetSupportJoint(joint);
+		SetSupportJoint(m_childBody->getWorld(), joint);
 	}
 
 	ndVector PathFollow::computeDirection(unsigned int index) const
@@ -2968,7 +2975,7 @@ namespace OgreNewt
 		ndVector linAxis(linearPin.x, linearPin.y, linearPin.z, 0.0f);
 
 		auto* joint = new ndJointWormGear(static_cast<ndFloat32>(gearRatio), rotAxis, linAxis, bRot, bLin);
-		SetSupportJoint(joint);
+		SetSupportJoint(rotationalBody->getWorld(), joint);
 	}
 
 	WormGear::~WormGear() = default;
@@ -3065,7 +3072,7 @@ namespace OgreNewt
 		auto* joint = new ndJointGearAndSlide(static_cast<ndFloat32>(gearRatio),
 			static_cast<ndFloat32>(slideRatio),
 			rotPin, bRot, linPin, bLin);
-		SetSupportJoint(joint);
+		SetSupportJoint(rotationalBody->getWorld(), joint);
 	}
 
 	CustomGearAndSlide::~CustomGearAndSlide() = default;
@@ -3086,7 +3093,7 @@ namespace OgreNewt
 		// create Newton4 pulley joint
 		auto* joint = new ndJointPulley(static_cast<ndFloat32>(pulleyRatio), body0Pin, body0, body1Pin, body1);
 
-		SetSupportJoint(joint);
+		SetSupportJoint(child->getWorld(), joint);
 	}
 
 	Pulley::~Pulley()
@@ -3386,7 +3393,7 @@ namespace OgreNewt
 				rate0Rad, min0Rad, max0Rad,
 				rate1Rad, min1Rad, max1Rad);
 
-		SetSupportJoint(joint);
+		SetSupportJoint(child->getWorld(), joint);
 	}
 
 	UniversalActuator::~UniversalActuator()
@@ -3642,7 +3649,7 @@ namespace OgreNewt
 		ndBodyKinematic* const parentBody = parent ? const_cast<ndBodyKinematic*>(parent->getNewtonBody()) : child->getWorld()->getNewtonWorld()->GetSentinelBody();
 
 		ndOgreMotorHinge* const joint = new ndOgreMotorHinge(frame, childBody, parentBody);
-		SetSupportJoint(joint);
+		SetSupportJoint(child->getWorld(), joint);
 	}
 
 	Motor::~Motor() = default;
@@ -3763,7 +3770,7 @@ namespace OgreNewt
 		ndBodyKinematic* const parentBody = parent ? const_cast<ndBodyKinematic*>(parent->getNewtonBody()) : child->getWorld()->getNewtonWorld()->GetSentinelBody();
 
 		auto* joint = new ndJointWheel(pinAndPivotFrame, childBody, parentBody, desc);
-		SetSupportJoint(joint);
+		SetSupportJoint(child->getWorld(), joint);
 	}
 
 	Wheel::Wheel(const OgreNewt::Body* child, const OgreNewt::Body* parent, const Ogre::Vector3& childPos, const Ogre::Vector3& childPin, const Ogre::Vector3& parentPos, const Ogre::Vector3& parentPin)
@@ -3784,7 +3791,7 @@ namespace OgreNewt
 		ndBodyKinematic* const parentBody = parent ? const_cast<ndBodyKinematic*>(parent->getNewtonBody()) : child->getWorld()->getNewtonWorld()->GetSentinelBody();
 
 		auto* joint = new ndJointWheel(frameChild, childBody, parentBody, desc);
-		SetSupportJoint(joint);
+		SetSupportJoint(child->getWorld(), joint);
 	}
 
 	Wheel::~Wheel()
@@ -3827,37 +3834,19 @@ namespace OgreNewt
 		return 0.0f;
 	}
 
-	///////////////////////////////////////////////////////////////////////////////////////////////////////
+	// -------------------------------------------------------------------------------------
 
 	VehicleTire::VehicleTire(OgreNewt::Body* child, OgreNewt::Body* parentBody, const Ogre::Vector3& pos, const Ogre::Vector3& pin, Vehicle* parent, Ogre::Real radius)
-		: Joint(),
-		m_vehicle(parent),
-		m_radius(radius),
-		m_tireSide(tsTireSideA),
-		m_tireSteer(tsNoSteer),
-		m_steerSide(tsSteerSideA),
-		m_tireAccel(tsNoAccel),
-		m_brakeMode(tsNoBrake)
+		: Joint()
+		, m_tireConfiguration(RayCastTire::TireConfiguration())
 	{
-		Ogre::Quaternion q = OgreNewt::Converters::grammSchmidt(pin);
-		ndMatrix pinAndPivotFrame;
-		OgreNewt::Converters::QuatPosToMatrix(q, pos, pinAndPivotFrame);
+		ndVector dir(pin.x, pin.y, pin.z, 0.0f);
+		ndMatrix pinsAndPivoFrame(ndGramSchmidtMatrix(dir));
+		pinsAndPivoFrame.m_posit = ndVector(pos.x, pos.y, pos.z, 1.0f);
 
-		// setup default descriptor similar to RayCastTire behavior
-		m_desc.m_springK = 2000.0f;
-		m_desc.m_damperC = 50.0f;
-		m_desc.m_upperStop = radius * 0.2f;
-		m_desc.m_lowerStop = -radius * 0.1f;
-		m_desc.m_regularizer = 0.1f;
-		m_desc.m_brakeTorque = 0.0f;
-		m_desc.m_steeringAngle = 0.0f;
-		m_desc.m_handBrakeTorque = 0.0f;
-
-		ndBodyKinematic* const childBody = const_cast<ndBodyKinematic*>(child->getNewtonBody());
-		ndBodyKinematic* const parentBodyK = parentBody ? const_cast<ndBodyKinematic*>(parentBody->getNewtonBody()) : nullptr;
-
-		auto* joint = new ndJointWheel(pinAndPivotFrame, childBody, parentBodyK, m_desc);
-		SetSupportJoint(joint);
+		// create a Newton custom joint (our RayCastTire) and register as support joint
+		RayCastTire* joint = new RayCastTire(child->getWorld()->getNewtonWorld(), pinsAndPivoFrame, dir, child, parentBody, parent, m_tireConfiguration, radius);
+		SetSupportJoint(child->getWorld(), joint);
 	}
 
 	VehicleTire::~VehicleTire()
@@ -3866,199 +3855,150 @@ namespace OgreNewt
 
 	void VehicleTire::setVehicleTireSide(VehicleTireSide tireSide)
 	{
-		m_tireSide = tireSide;
+		RayCastTire* joint = static_cast<RayCastTire*>(GetSupportJoint());
+
+		m_tireConfiguration.tireSide = tireSide;
+		joint->SetTireConfiguration(m_tireConfiguration);
 	}
 
-	VehicleTireSide VehicleTire::getVehicleTireSide() const
+	VehicleTireSide VehicleTire::getVehicleTireSide(void) const
 	{
-		return m_tireSide;
+		return m_tireConfiguration.tireSide;
 	}
 
 	void VehicleTire::setVehicleTireSteer(VehicleTireSteer tireSteer)
 	{
-		m_tireSteer = tireSteer;
+		RayCastTire* joint = static_cast<RayCastTire*>(GetSupportJoint());
+
+		m_tireConfiguration.tireSteer = tireSteer;
+		joint->SetTireConfiguration(m_tireConfiguration);
 	}
 
-	VehicleTireSteer VehicleTire::getVehicleTireSteer() const
+	VehicleTireSteer VehicleTire::getVehicleTireSteer(void) const
 	{
-		return m_tireSteer;
+		return m_tireConfiguration.tireSteer;
 	}
 
 	void VehicleTire::setVehicleSteerSide(VehicleSteerSide steerSide)
 	{
-		m_steerSide = steerSide;
+		RayCastTire* joint = static_cast<RayCastTire*>(GetSupportJoint());
+
+		m_tireConfiguration.steerSide = steerSide;
+		joint->SetTireConfiguration(m_tireConfiguration);
 	}
 
-	VehicleSteerSide VehicleTire::getVehicleSteerSide() const
+	VehicleSteerSide VehicleTire::getVehicleSteerSide(void) const
 	{
-		return m_steerSide;
+		return m_tireConfiguration.steerSide;
 	}
 
 	void VehicleTire::setVehicleTireAccel(VehicleTireAccel tireAccel)
 	{
-		m_tireAccel = tireAccel;
+		RayCastTire* joint = static_cast<RayCastTire*>(GetSupportJoint());
+
+		m_tireConfiguration.tireAccel = tireAccel;
+		joint->SetTireConfiguration(m_tireConfiguration);
 	}
 
-	VehicleTireAccel VehicleTire::getVehicleTireAccel() const
+	VehicleTireAccel VehicleTire::getVehicleTireAccel(void) const
 	{
-		return m_tireAccel;
+		return m_tireConfiguration.tireAccel;
 	}
 
 	void VehicleTire::setVehicleTireBrake(VehicleTireBrake brakeMode)
 	{
-		m_brakeMode = brakeMode;
+		RayCastTire* joint = static_cast<RayCastTire*>(GetSupportJoint());
+
+		m_tireConfiguration.brakeMode = brakeMode;
+		joint->SetTireConfiguration(m_tireConfiguration);
 	}
 
-	VehicleTireBrake VehicleTire::getVehicleTireBrake() const
+	VehicleTireBrake VehicleTire::getVehicleTireBrake(void) const
 	{
-		return m_brakeMode;
+		return m_tireConfiguration.brakeMode;
 	}
 
 	void VehicleTire::setLateralFriction(Ogre::Real lateralFriction)
 	{
-		m_desc.m_regularizer = static_cast<ndFloat32>(lateralFriction);
-		if (auto* j = getJoint()) j->SetInfo(m_desc);
+		RayCastTire* joint = static_cast<RayCastTire*>(GetSupportJoint());
+
+		m_tireConfiguration.lateralFriction = lateralFriction;
+		joint->SetTireConfiguration(m_tireConfiguration);
 	}
 
-	Ogre::Real VehicleTire::getLateralFriction() const
+	Ogre::Real VehicleTire::getLateralFriction(void) const
 	{
-		return m_desc.m_regularizer;
+		return m_tireConfiguration.lateralFriction;
 	}
 
 	void VehicleTire::setLongitudinalFriction(Ogre::Real longitudinalFriction)
 	{
-		// For now, use same field (Newton 4 has no separate friction in ndJointWheel)
-		m_desc.m_regularizer = static_cast<ndFloat32>(longitudinalFriction);
-		if (auto* j = getJoint()) j->SetInfo(m_desc);
+		RayCastTire* joint = static_cast<RayCastTire*>(GetSupportJoint());
+
+		m_tireConfiguration.longitudinalFriction = longitudinalFriction;
+		joint->SetTireConfiguration(m_tireConfiguration);
 	}
 
-	Ogre::Real VehicleTire::getLongitudinalFriction() const
+	Ogre::Real VehicleTire::getLongitudinalFriction(void) const
 	{
-		return m_desc.m_regularizer;
+		return m_tireConfiguration.longitudinalFriction;
 	}
 
 	void VehicleTire::setSpringLength(Ogre::Real springLength)
 	{
-		// Map to upper/lower stops
-		m_desc.m_upperStop = springLength * 0.5f;
-		m_desc.m_lowerStop = -springLength * 0.5f;
-		if (auto* j = getJoint()) j->SetInfo(m_desc);
+		RayCastTire* joint = static_cast<RayCastTire*>(GetSupportJoint());
+
+		m_tireConfiguration.springLength = springLength;
+		joint->SetTireConfiguration(m_tireConfiguration);
 	}
 
-	Ogre::Real VehicleTire::getSpringLength() const
+	Ogre::Real VehicleTire::getSpringLength(void) const
 	{
-		return m_desc.m_upperStop - m_desc.m_lowerStop;
+		return m_tireConfiguration.springLength;
 	}
 
 	void VehicleTire::setSmass(Ogre::Real smass)
 	{
-		// store but no direct ND4 mapping yet
-		m_desc.m_regularizer = static_cast<ndFloat32>(smass);
+		RayCastTire* joint = static_cast<RayCastTire*>(GetSupportJoint());
+
+		m_tireConfiguration.smass = smass;
+		joint->SetTireConfiguration(m_tireConfiguration);
 	}
 
-	Ogre::Real VehicleTire::getSmass() const
+	Ogre::Real VehicleTire::getSmass(void) const
 	{
-		return m_desc.m_regularizer;
+		return m_tireConfiguration.smass;
 	}
 
 	void VehicleTire::setSpringConst(Ogre::Real springConst)
 	{
-		m_desc.m_springK = static_cast<ndFloat32>(springConst);
-		if (auto* j = getJoint()) j->SetInfo(m_desc);
+		RayCastTire* joint = static_cast<RayCastTire*>(GetSupportJoint());
+
+		m_tireConfiguration.springConst = springConst;
+		joint->SetTireConfiguration(m_tireConfiguration);
 	}
 
-	Ogre::Real VehicleTire::getSpringConst() const
+	Ogre::Real VehicleTire::getSpringConst(void) const
 	{
-		return m_desc.m_springK;
+		return m_tireConfiguration.springConst;
 	}
 
 	void VehicleTire::setSpringDamp(Ogre::Real springDamp)
 	{
-		m_desc.m_damperC = static_cast<ndFloat32>(springDamp);
-		if (auto* j = getJoint()) j->SetInfo(m_desc);
+		RayCastTire* joint = static_cast<RayCastTire*>(GetSupportJoint());
+
+		m_tireConfiguration.springDamp = springDamp;
+		joint->SetTireConfiguration(m_tireConfiguration);
 	}
 
-	Ogre::Real VehicleTire::getSpringDamp() const
+	Ogre::Real VehicleTire::getSpringDamp(void) const
 	{
-		return m_desc.m_damperC;
+		return m_tireConfiguration.springDamp;
 	}
 
-	RayCastTire* VehicleTire::getRayCastTire()
+	RayCastTire* VehicleTire::getRayCastTire(void)
 	{
-		return (RayCastTire*)GetSupportJoint();
-	}
-
-	VehicleMotor::VehicleMotor(Vehicle* vehicle, Ogre::Real mass, Ogre::Real radius)
-		: Joint()
-		, m_vehicle(vehicle)
-		, m_mass(mass)
-		, m_radius(radius)
-	{
-		// Pre-conditions
-		if (!m_vehicle || !m_vehicle->getVehicleModel())
-		{
-			// Leave null; caller should guard if this failed.
-			SetSupportJoint(nullptr);
-			return;
-		}
-
-		// Create internal ND4 motor by using the vehicle model API (preferred in ND4)
-		ndMultiBodyVehicle* const model = m_vehicle->getVehicleModel();
-		ndMultiBodyVehicleMotor* const motor =
-			model->AddMotor(static_cast<ndFloat32>(m_mass), static_cast<ndFloat32>(m_radius));
-
-		// Track it via base Joint (so lifetime & debug fit your wrapper style)
-		SetSupportJoint(motor);
-
-		// Optionally store on the vehicle for quick access
-		m_vehicle->setMotor(motor);
-	}
-
-	VehicleMotor::~VehicleMotor()
-	{
-		// Nothing: the vehicle model owns the motor; the base Joint will not delete it.
-		// Model deletion (Vehicle dtor) will clean up the motor.
-	}
-
-	void VehicleMotor::setMaxRpm(Ogre::Real redLineRpm)
-	{
-		if (auto* j = getJoint())
-		{
-			j->SetMaxRpm(static_cast<ndFloat32>(redLineRpm));
-		}
-	}
-
-	void VehicleMotor::setOmegaAccel(Ogre::Real rpmStep)
-	{
-		if (auto* j = getJoint())
-		{
-			j->SetOmegaAccel(static_cast<ndFloat32>(rpmStep));
-		}
-	}
-
-	void VehicleMotor::setFrictionLoss(Ogre::Real newtonMeters)
-	{
-		if (auto* j = getJoint())
-		{
-			j->SetFrictionLoss(static_cast<ndFloat32>(newtonMeters));
-		}
-	}
-
-	void VehicleMotor::setTorqueAndRpm(Ogre::Real rpm, Ogre::Real torque)
-	{
-		if (auto* j = getJoint())
-		{
-			j->SetTorqueAndRpm(static_cast<ndFloat32>(rpm), static_cast<ndFloat32>(torque));
-		}
-	}
-
-	Ogre::Real VehicleMotor::getRpm() const
-	{
-		if (auto* j = getJoint())
-		{
-			return j->GetRpm();
-		}
-		return 0.0f;
+		return static_cast<RayCastTire*>(GetSupportJoint());
 	}
 
 }   // end NAMESPACE OgreNewt

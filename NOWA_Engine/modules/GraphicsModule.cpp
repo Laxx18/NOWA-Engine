@@ -516,6 +516,7 @@ namespace NOWA
         }
     }
 
+#if 0
     void GraphicsModule::enqueueAndWait(RenderCommand&& command, const char* commandName)
     {
         this->isRunningWaitClosure = true;
@@ -624,6 +625,120 @@ namespace NOWA
 
         this->isRunningWaitClosure = false;
     }
+#else
+    void GraphicsModule::enqueueAndWait(RenderCommand&& command, const char* commandName)
+    {
+        this->isRunningWaitClosure = true;
+
+        // If already on the render thread or in the middle of destroy closure, wait must not be called! Else closure of destroy etc. will be interupted! so execute directly without wait in that case.
+        // Or detect if already in a logic->render call chain
+        // Note: RenderGlobals::g_inLogicCommand has been uncommented, because its dangerous, so that a render thread operation would not be executed on render thread, because its part of logic main thread cascade
+        if (true == this->isRenderThread() && RenderGlobals::g_renderCommandDepth > 0 /*|| true == RenderGlobals::g_inLogicCommand*/)
+        {
+            try
+            {
+                // Execute immediately on current thread to break cycle
+                this->logCommandEvent(std::string("Executing command '") + commandName + "' directly on render thread with **WAIT** (re-entrant)", Ogre::LML_TRIVIAL);
+                command();
+
+                this->isRunningWaitClosure = false;
+                return;
+            }
+            catch (const std::exception& e)
+            {
+                this->logCommandEvent(std::string("Exception in direct execution of '") + commandName + "': " + e.what(), Ogre::LML_CRITICAL);
+                this->isRunningWaitClosure = false;
+                throw; // Re-throw the exception
+            }
+            catch (...)
+            {
+                this->logCommandEvent(std::string("Unknown exception in direct execution of '") + commandName + "'", Ogre::LML_CRITICAL);
+                this->isRunningWaitClosure = false;
+                throw; // Re-throw the exception
+            }
+        }
+
+        // Track that we're in a waiting state on this thread
+        this->incrementWaitDepth();
+
+        try
+        {
+            // Create a promise for this command
+            auto promise = std::make_shared<std::promise<void>>();
+            auto future = promise->get_future();
+
+            // Log the command
+            this->logCommandEvent(std::string("Enqueueing command '") + commandName + "' with **WAIT**", Ogre::LML_NORMAL);
+
+            // If we're in a nested wait, we still enqueue with the promise but we'll use a special flag
+            bool isNested = isInNestedWait() && g_waitDepth > 1; // We've already incremented waitDepth
+
+            if (true == isNested)
+            {
+                this->logCommandEvent(std::string("Command '") + commandName + "' is a nested **WAIT** call (depth: " + std::to_string(g_waitDepth) + ")", Ogre::LML_NORMAL);
+            }
+
+            // Always enqueue with a promise, even for nested commands
+            this->enqueue(std::move(command), commandName, promise);
+
+            // For the first level wait, process immediately to avoid deadlocks
+            if (false == isNested)
+            {
+                // Wait for the command to complete
+                if (true == this->isTimeoutEnabled())
+                {
+                    auto timeout = getTimeoutDuration();
+                    auto status = future.wait_for(timeout);
+
+                    if (status == std::future_status::timeout)
+                    {
+                        this->logCommandEvent(std::string("Timeout occurred waiting for command '") + commandName + "'", Ogre::LML_CRITICAL);
+
+                        // Force a full queue synchronization to recover
+                        this->processQueueSync();
+                    }
+                }
+                else
+                {
+                    // future.wait();
+                    while (future.wait_for(std::chrono::milliseconds(1)) != std::future_status::ready)
+                    {
+                        std::this_thread::yield();
+                    }
+                }
+            }
+            else
+            {
+                // For nested waits, we still track the promise but don't wait for it
+                // The outer wait will ensure all commands get processed eventually
+                this->logCommandEvent(std::string("Nested command '") + commandName + "' enqueued without blocking wait", Ogre::LML_NORMAL);
+
+                // Add to tracking for nested commands if needed
+                // trackNestedCommand(promise); // Optional: implement this to track nested promises
+            }
+        }
+        catch (const std::exception& e)
+        {
+            this->logCommandEvent(std::string("Exception waiting for command '") + commandName + "': " + e.what(), Ogre::LML_CRITICAL);
+            decrementWaitDepth();
+            this->isRunningWaitClosure = false;
+            throw;
+        }
+        catch (...)
+        {
+            this->logCommandEvent(std::string("Unknown exception waiting for command '") + commandName + "'", Ogre::LML_CRITICAL);
+            decrementWaitDepth();
+            this->isRunningWaitClosure = false;
+            throw;
+        }
+
+        decrementWaitDepth();
+        logCommandEvent(std::string("Command '") + commandName + "' completed", Ogre::LML_TRIVIAL);
+
+        this->isRunningWaitClosure = false;
+    }
+
+#endif
 
     void GraphicsModule::processQueueSync(void)
     {

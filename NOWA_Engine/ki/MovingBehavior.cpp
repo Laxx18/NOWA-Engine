@@ -1237,21 +1237,23 @@ namespace NOWA
 			Ogre::Vector3 position = this->agent->getPosition() 
 				+ (this->agent->getOrientation() * Ogre::Vector3(0.0f, this->agent->getOwner()->getSize().y / 2.0f, 0.0f));
 			// Shoot the ray in that direction
-			OgreNewt::BasicRaycast ray(this->agent->getOgreNewt(), position, position + (direction * this->obstacleAvoidanceRangeRadius), true);
+			// OgreNewt::BasicRaycast ray(this->agent->getOgreNewt(), position, position + (direction * this->obstacleAvoidanceRangeRadius), true);
+			OgreNewt::World::RaycastResult rayResult = this->agent->getOgreNewt()->raycastBlocking(position, position + (direction * this->obstacleAvoidanceRangeRadius));
+			OgreNewt::BasicRaycast::BasicRaycastInfo& info = rayResult.mInfo;
 			// Get contact result
-			OgreNewt::BasicRaycast::BasicRaycastInfo contact = ray.getFirstHit();
-			if (contact.mBody)
+			// OgreNewt::BasicRaycast::BasicRaycastInfo contact = ray.getFirstHit();
+			if (info.mBody)
 			{
-				unsigned int type = contact.mBody->getType();
+				unsigned int type = info.mBody->getType();
 				unsigned int finalType = type & this->obstaclesAvoidanceCategoryIds;
 				if (type == finalType)
 				{
 					// Create a force in the direction of the wall normal, with a magnitude of the overshoot
-					steeringForce = contact.getNormal() * contact.getDistance()/* * rayShootDistance*/;
+					steeringForce = info.getNormal() * info.getDistance()/* * rayShootDistance*/;
 
-					// Ogre::Vector3 target = contact.getBody()->getPosition() + contact.getNormal() * 2.0f;
-					// steeringForce = contact.getNormal() * 20.0f;
-					// steeringForce = this->agent->getPosition() - contact.getBody()->getPosition();
+					// Ogre::Vector3 target = info.getBody()->getPosition() + info.getNormal() * 2.0f;
+					// steeringForce = info.getNormal() * 20.0f;
+					// steeringForce = this->agent->getPosition() - info.getBody()->getPosition();
 					// steeringForce.y = 0.0f;
 					// this->wanderTarget = steeringForce;
 					/*desiredVelocity.normalise();

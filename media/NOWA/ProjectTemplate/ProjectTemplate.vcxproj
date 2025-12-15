@@ -45,14 +45,14 @@
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <CharacterSet>MultiByte</CharacterSet>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <WholeProgramOptimization>false</WholeProgramOptimization>
     <CharacterSet>MultiByte</CharacterSet>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -99,7 +99,7 @@
       <DisableSpecificWarnings>4786;4503;4251;4275;4290;4661;4996;4127;4100</DisableSpecificWarnings>
       <AdditionalOptions>/Zm1000 /bigobj %(AdditionalOptions)</AdditionalOptions>
       <UndefinePreprocessorDefinitions>OGRE_DEBUG_MODE</UndefinePreprocessorDefinitions>
-	  <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -126,7 +126,7 @@
       <IntrinsicFunctions>false</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;_SILENCE_CXX17_STRSTREAM_DEPRECATION_WARNING;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(NOWA)/NOWA_Engine/;$(NOWA)/external/Ogre2.2SDK;$(NOWA)/external/Ogre2.2SDK/VCBuild/include;$(NOWA)/external/Ogre2.2SDK/OgreMain/include;$(NOWA)/external/Ogre2.2SDK/Components/Overlay/Include;$(NOWA)/external/Ogre2.2SDK/Components/Hlms/Common/include;$(NOWA)/external/Ogre2.2SDK/Components/Hlms/Pbs/include;$(NOWA)/external/Ogre2.2SDK/Components/Hlms/Unlit/include;$(NOWA)/external/Ogre2.2SDK/Components/PlanarReflections/Include;$(NOWA)/external/Ogre2.2SDK/Components/MeshLodGenerator/Include;$(NOWA)/external/Ogre2.2SDK/Components/Atmosphere/include;$(NOWA)/external/ois/includes;$(NOWA)/external/boost;$(NOWA)/external/newton-4.00/sdk/dBrain/gpu;$(NOWA)/external/newton-4.00/sdk/dBrain;$(NOWA)/external/newton-4.00/sdk/dCollision;$(NOWA)/external/newton-4.00/sdk/dCollision/dMesh;$(NOWA)/external/newton-4.00/sdk/dCore;$(NOWA)/external/newton-4.00/sdk/dCore/tinyxml;$(NOWA)/external/newton-4.00/sdk/dModel;$(NOWA)/external/newton-4.00/sdk/dNewton;$(NOWA)/external/newton-4.00/sdk/dNewton/dIkSolver;$(NOWA)/external/newton-4.00/sdk/dNewton/dJoints;$(NOWA)/external/newton-4.00/sdk/dNewton/dModels;$(NOWA)/external/newton-4.00/sdk/dNewton/dModels/dVehicle;$(NOWA)/external/newton-4.00/sdk/dProfiler;$(NOWA)/external/OgreNewt4_0/inc;$(NOWA)/external/Ogg/include;$(NOWA)/external/Vorbis/include;$(NOWA)/external/RakNet_4_0_81/Source;$(NOWA)/NOWA_Engine/plugins/FaderPlugin/FaderPlugin/inc;$(NOWA)/external/lua-5_2/src;$(NOWA)/external/lua-5_2/LuaBind;$(NOWA)/external/OgreRecast/include;$(NOWA)/external/openal-soft-master/include/AL;$(NOWA)/external/OgreAL/include;$(NOWA)/external/fparser4.5.1;$(NOWA)/external/MeshSplitter;$(NOWA)/external/ParticleUniverse/Plugins/ParticleUniverse/include;$(NOWA)/external/MyGUIEngine/Common;$(NOWA)/external/MyGUIEngine/include;$(NOWA)/external/MyGUIEngine/Ogre2Platform/include;$(NOWA)/external/OgreProcedural/library/include;$(NOWA)/external/terra;$(NOWA)/external/GpuParticles/include;$(NOWA)/NOWA_Engine/plugins/;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-	  <EnableParallelCodeGeneration>
+      <EnableParallelCodeGeneration>
       </EnableParallelCodeGeneration>
       <EnableEnhancedInstructionSet>NotSet</EnableEnhancedInstructionSet>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -141,7 +141,7 @@
       <CompileAs>CompileAsCpp</CompileAs>
       <DisableSpecificWarnings>4786;4503;4251;4275;4290;4661;4996;4127;4100</DisableSpecificWarnings>
       <AdditionalOptions>/Zm1000 %(AdditionalOptions)</AdditionalOptions>
-	  <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>

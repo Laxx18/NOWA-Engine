@@ -10,9 +10,7 @@ Ogre implementation of Newton Game Dynamics SDK 4.0
 #include "OgreNewt_Prerequisites.h"
 #include "OgreNewt_MaterialID.h"
 #include "OgreNewt_Collision.h"
-#include "OgreMesh2.h"
 #include "OgreItem.h"
-#include "ndBezierSpline.h"
 
 namespace OgreNewt
 {
@@ -28,6 +26,9 @@ namespace OgreNewt
 		typedef OgreNewt::function<void(OgreNewt::Body*)> NodeUpdateNotifyCallback;
 		typedef OgreNewt::function<void(OgreNewt::Body*, OgreNewt::Contact*)> ContactCallback;
 		typedef OgreNewt::function<void(Ogre::SceneNode*, const Ogre::Vector3&, const Ogre::Quaternion&, bool updateRot, bool updateStatic)> RenderUpdateCallback;
+
+		friend class Vehicle;
+	public:
 
 		Body(World* world, Ogre::SceneManager* sceneManager, const OgreNewt::CollisionPtr& col, Ogre::SceneMemoryMgrTypes memoryType = Ogre::SceneMemoryMgrTypes::SCENE_DYNAMIC);
 		Body(World* world, Ogre::SceneManager* sceneManager, ndBodyKinematic* body, Ogre::SceneMemoryMgrTypes memoryType = Ogre::SceneMemoryMgrTypes::SCENE_DYNAMIC);
@@ -104,7 +105,6 @@ namespace OgreNewt
 		void enableGyroscopicTorque(bool enable);
 
 		void setMaterialGroupID(const MaterialID* materialId);
-		void setContinuousCollisionMode(unsigned state);
 		void setJointRecursiveCollision(unsigned state);
 		void setCollidable(bool collidable);
 		bool getCollidable(void) const;
@@ -121,7 +121,6 @@ namespace OgreNewt
 		void scaleCollision(const Ogre::Vector3& scale);
 
 		const OgreNewt::MaterialID* getMaterialGroupID() const;
-		int getContinuousCollisionMode() const;
 		int getJointRecursiveCollision() const;
 
 		void getPositionOrientation(Ogre::Vector3& pos, Ogre::Quaternion& orient) const;

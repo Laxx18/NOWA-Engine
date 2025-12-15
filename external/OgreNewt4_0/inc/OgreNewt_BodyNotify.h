@@ -22,6 +22,8 @@ namespace OgreNewt
 		void SetMaterialId(int id) { m_materialId = id; }
 		int  GetMaterialId() const { return m_materialId; }
 
+		void SetOgreNewtBody(Body* body) { m_ogreNewtBody = body; }
+
 		// Get the OgreNewt::Body pointer
 		Body* GetOgreNewtBody() const { return m_ogreNewtBody; }
 

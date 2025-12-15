@@ -2,60 +2,98 @@
 #include "OgreNewt_ConvexCast.h"
 #include "OgreNewt_World.h"
 #include "OgreNewt_Body.h"
+#include "OgreNewt_BodyNotify.h"
 
 namespace OgreNewt
 {
-	Convexcast::Convexcast()
-		: mFirstContactDistance(-1)
-	{
+    Convexcast::Convexcast()
+        : mFirstContactDistance(-1)
+    {
+    }
 
-	}
+    Convexcast::~Convexcast()
+    {
+    }
 
-	Convexcast::~Convexcast()
-	{
+    void Convexcast::go(const OgreNewt::World* world, const ndShapeInstance& shape, const Ogre::Vector3& startpt,
+        const Ogre::Quaternion& orientation, const Ogre::Vector3& endpt, int /*maxcontactscount*/, int /*threadIndex*/)
+    {
+        mContacts.clear();
+        mFirstContactDistance = -1;
 
-	}
+        // Convert start point + orientation to ndMatrix
+        ndMatrix matrixStart;
+        OgreNewt::Converters::QuatPosToMatrix(orientation, startpt, matrixStart);
 
-	void Convexcast::go(const OgreNewt::World* world, const ndShapeInstance& shape, const Ogre::Vector3& startpt,
-		const Ogre::Quaternion& orientation, const Ogre::Vector3& endpt, int maxcontactscount, int threadIndex)
-	{
-		mContacts.clear();
-		mFirstContactDistance = -1;
+        // Convert end point to ndVector (world-space destination of shape origin)
+        ndVector vecEnd(endpt.x, endpt.y, endpt.z, 1.0f);
 
-		// Convert start point + orientation to ndMatrix
-		ndMatrix matrixStart;
-		OgreNewt::Converters::QuatPosToMatrix(orientation, startpt, matrixStart);
+        // Perform convex cast against the world
+        ConvexCastNotify notify(this);
+        ndWorld* const ndworld = world->getNewtonWorld();
+        ndworld->ConvexCast(notify, shape, matrixStart, vecEnd);
 
-		// Convert end point to ndVector
-		ndVector vecEnd(endpt.x, endpt.y, endpt.z, 1.0f);
+        // Copy out contacts from notify's ndConvexCastNotify::m_contacts
+        const ndInt32 count = notify.GetContactCount();
+        for (ndInt32 i = 0; i < count; ++i)
+        {
+            const ndContactPoint& c = notify.GetContact(i);
 
-		// Perform convex cast
-		ConvexCastNotify notify(this);
-		world->getNewtonWorld()->ConvexCast(notify, shape, matrixStart, vecEnd);
-	}
+            // body0 may be null for loose-shape casts; world body is usually body1
+            const ndBodyKinematic* hitKBody = c.m_body0 ? c.m_body0 : c.m_body1;
+            if (!hitKBody)
+            {
+                continue;
+            }
 
-	BasicConvexcast::ConvexcastContactInfo BasicConvexcast::getInfoAt(int idx) const
-	{
-		ConvexcastContactInfo info;
-		if (idx < 0 || idx >= (int)mContacts.size())
-			return info;
+            OgreNewt::Body* ogreBody = nullptr;
 
-		const ContactInfo& ci = mContacts[idx];
-		if (ci.m_body && ci.m_body->GetNotifyCallback())
-		{
-			info.mBody = static_cast<OgreNewt::BodyNotify*>(ci.m_body->GetNotifyCallback())->GetOgreNewtBody();
-		}
+            if (ndBodyNotify* const ndNotify = hitKBody->GetNotifyCallback())
+            {
+                if (BodyNotify* const bodyNotify = dynamic_cast<BodyNotify*>(ndNotify))
+                {
+                    ogreBody = bodyNotify->GetOgreNewtBody();
+                }
+            }
 
-		info.mContactPoint.x = ci.m_point.m_x;
-		info.mContactPoint.y = ci.m_point.m_y;
-		info.mContactPoint.z = ci.m_point.m_z;
+            if (!ogreBody)
+            {
+                continue;
+            }
 
-		info.mContactNormal.x = ci.m_normal.m_x;
-		info.mContactNormal.y = ci.m_normal.m_y;
-		info.mContactNormal.z = ci.m_normal.m_z;
+            ContactInfo ci;
+            ci.m_body = ogreBody;
+            ci.m_point = Ogre::Vector3(c.m_point.m_x, c.m_point.m_y, c.m_point.m_z);
+            ci.m_normal = Ogre::Vector3(c.m_normal.m_x, c.m_normal.m_y, c.m_normal.m_z);
+            ci.m_penetration = static_cast<Ogre::Real>(c.m_penetration);
 
-		info.mContactPenetration = ci.m_penetration;
+            mContacts.push_back(ci);
+        }
 
-		return info;
-	}
+        if (count > 0 && !mContacts.empty())
+        {
+            // closest hit param in [0,1]
+            mFirstContactDistance = static_cast<Ogre::Real>(notify.GetFirstParam());
+        }
+        else
+        {
+            mFirstContactDistance = -1;
+        }
+    }
+
+    BasicConvexcast::ConvexcastContactInfo BasicConvexcast::getInfoAt(int idx) const
+    {
+        ConvexcastContactInfo info;
+        if (idx < 0 || idx >= static_cast<int>(mContacts.size()))
+            return info;
+
+        const ContactInfo& ci = mContacts[idx];
+
+        info.mBody = ci.m_body;
+        info.mContactPoint = ci.m_point;
+        info.mContactNormal = ci.m_normal;
+        info.mContactPenetration = ci.m_penetration;
+
+        return info;
+    }
 }

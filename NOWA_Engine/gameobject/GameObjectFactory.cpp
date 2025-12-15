@@ -32,6 +32,7 @@
 #include "PhysicsTriggerComponent.h"
 #include "PhysicsActiveKinematicComponent.h"
 #include "PhysicsActiveVehicleComponent.h"
+#include "PhysicsActiveComplexVehicleComponent.h"
 #include "PhysicsBuoyancyComponent.h"
 #include "AiLuaComponent.h"
 #include "AiLuaGoalComponent.h"
@@ -185,6 +186,7 @@ namespace NOWA
 		this->componentFactory.registerClass<PhysicsTriggerComponent>(PhysicsTriggerComponent::getStaticClassId(), PhysicsTriggerComponent::getStaticClassName());
 		this->componentFactory.registerClass<PhysicsActiveKinematicComponent>(PhysicsActiveKinematicComponent::getStaticClassId(), PhysicsActiveKinematicComponent::getStaticClassName());
 		this->componentFactory.registerClass<PhysicsActiveVehicleComponent>(PhysicsActiveVehicleComponent::getStaticClassId(), PhysicsActiveVehicleComponent::getStaticClassName());
+		this->componentFactory.registerClass<PhysicsActiveComplexVehicleComponent>(PhysicsActiveComplexVehicleComponent::getStaticClassId(), PhysicsActiveComplexVehicleComponent::getStaticClassName());
 		this->componentFactory.registerClass<PhysicsBuoyancyComponent>(PhysicsBuoyancyComponent::getStaticClassId(), PhysicsBuoyancyComponent::getStaticClassName());
 
 // Attention: is this correct?, since this component is also in joints now!
@@ -224,7 +226,7 @@ namespace NOWA
 		this->componentFactory.registerClass<JointFlexyPipeHandleComponent>(JointFlexyPipeHandleComponent::getStaticClassId(), JointFlexyPipeHandleComponent::getStaticClassName());
 		this->componentFactory.registerClass<JointFlexyPipeSpinnerComponent>(JointFlexyPipeSpinnerComponent::getStaticClassId(), JointFlexyPipeSpinnerComponent::getStaticClassName());
 		this->componentFactory.registerClass<JointVehicleTireComponent>(JointVehicleTireComponent::getStaticClassId(), JointVehicleTireComponent::getStaticClassName());
-		this->componentFactory.registerClass<JointVehicleMotorComponent>(JointVehicleMotorComponent::getStaticClassId(), JointVehicleMotorComponent::getStaticClassName());
+		this->componentFactory.registerClass<JointComplexVehicleTireComponent>(JointComplexVehicleTireComponent::getStaticClassId(), JointComplexVehicleTireComponent::getStaticClassName());
 		
 		// AI Components
 		this->componentFactory.registerClass<AiMoveComponent>(AiMoveComponent::getStaticClassId(), AiMoveComponent::getStaticClassName());

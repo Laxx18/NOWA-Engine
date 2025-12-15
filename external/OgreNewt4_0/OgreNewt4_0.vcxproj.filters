@@ -93,6 +93,9 @@
     <ClCompile Include="src\OgreNewt_CollisionDebugNotify.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\OgreNewt_ComplexVehicle.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="inc\OgreNewt.h">
@@ -186,6 +189,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="inc\OgreNewt_CollisionDebugNotify.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="inc\OgreNewt_ComplexVehicle.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

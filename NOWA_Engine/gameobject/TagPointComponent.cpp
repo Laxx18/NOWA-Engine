@@ -289,7 +289,7 @@ namespace NOWA
 				{
 					GameObjectPtr sourceGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->sourceId->getULong());
 					if (nullptr == sourceGameObjectPtr)
-						return false;
+						return;
 
 					// Set back reference (e.g. player/enemy that holds the weapon)
 					sourceGameObjectPtr->setConnectedGameObject(this->gameObjectPtr);

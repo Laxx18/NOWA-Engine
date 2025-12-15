@@ -46,7 +46,7 @@ namespace NOWA
 		// Resets the values, as they are volatile
 		this->vehicleDrivingManipulation->steerAngle = 0.0f;
 
-		PhysicsComponent* visitorPhysicsComponent = OgreNewt::any_cast<PhysicsComponent*>(visitor->getChassis()->getUserData());
+		PhysicsComponent* visitorPhysicsComponent = OgreNewt::any_cast<PhysicsComponent*>(visitor->getUserData());
 		if (nullptr != visitorPhysicsComponent)
 		{
 			if (nullptr != this->luaScript && this->luaScript->isCompiled() && false == this->onSteerAngleChangedFunctionName.empty())
@@ -66,7 +66,7 @@ namespace NOWA
 	{
 		this->vehicleDrivingManipulation->motorForce = 0.0f;
 
-		PhysicsComponent* visitorPhysicsComponent = OgreNewt::any_cast<PhysicsComponent*>(visitor->getChassis()->getUserData());
+		PhysicsComponent* visitorPhysicsComponent = OgreNewt::any_cast<PhysicsComponent*>(visitor->getUserData());
 		if (nullptr != visitorPhysicsComponent)
 		{
 			if (nullptr != this->luaScript && this->luaScript->isCompiled() && false == this->onMotorForceChangedFunctionName.empty())
@@ -86,7 +86,7 @@ namespace NOWA
 	{
 		this->vehicleDrivingManipulation->handBrake = 0.0f;
 
-		PhysicsComponent* visitorPhysicsComponent = OgreNewt::any_cast<PhysicsComponent*>(visitor->getChassis()->getUserData());
+		PhysicsComponent* visitorPhysicsComponent = OgreNewt::any_cast<PhysicsComponent*>(visitor->getUserData());
 		if (nullptr != visitorPhysicsComponent)
 		{
 			if (nullptr != this->luaScript && this->luaScript->isCompiled() && false == this->onHandBrakeChangedFunctionName.empty())
@@ -102,7 +102,7 @@ namespace NOWA
 	{
 		this->vehicleDrivingManipulation->brake = 0.0f;
 
-		PhysicsComponent* visitorPhysicsComponent = OgreNewt::any_cast<PhysicsComponent*>(visitor->getChassis()->getUserData());
+		PhysicsComponent* visitorPhysicsComponent = OgreNewt::any_cast<PhysicsComponent*>(visitor->getUserData());
 		if (nullptr != visitorPhysicsComponent)
 		{
 			if (nullptr != this->luaScript && this->luaScript->isCompiled() && false == this->onBrakeChangedFunctionName.empty())
@@ -334,6 +334,11 @@ namespace NOWA
 
 		if (false == notSimulating)
 		{
+			if (nullptr != this->physicsBody)
+			{
+				static_cast<OgreNewt::Vehicle*>(this->physicsBody)->Update(dt);
+			}
+
 			if (true == this->isVehicleTippedOver())
 			{
 				if (this->isVehicleStuck(dt))
@@ -548,7 +553,8 @@ namespace NOWA
 												collisionOrientation, calculatedMassOrigin, this->gameObjectPtr->getCategoryId());
 		});
 
-		this->physicsBody = new OgreNewt::Vehicle(this->ogreNewt, this->gameObjectPtr->getSceneManager(), this->gameObjectPtr->getDefaultDirection(), collisionPtr, weightedMass, this->massOrigin->getVector3(), this->collisionPosition->getVector3(), new PhysicsVehicleCallback(this->gameObjectPtr.get(), this->gameObjectPtr->getLuaScript(), this->ogreNewt,
+		this->physicsBody = new OgreNewt::Vehicle(this->ogreNewt, this->gameObjectPtr->getSceneManager(), this->gameObjectPtr->getDefaultDirection(), collisionPtr, weightedMass, 
+												  this->collisionPosition->getVector3(), this->massOrigin->getVector3(), this->gravity->getVector3(), new PhysicsVehicleCallback(this->gameObjectPtr.get(), this->gameObjectPtr->getLuaScript(), this->ogreNewt,
 												  this->onSteerAngleChangedFunctionName->getString(), this->onMotorForceChangedFunctionName->getString(), this->onHandBrakeChangedFunctionName->getString(), 
 												  this->onBrakeChangedFunctionName->getString(), this->onTireContactFunctionName->getString()));
 
@@ -583,7 +589,6 @@ namespace NOWA
 		// this->physicsBody->setNodeUpdateNotify<PhysicsActiveComponent>(&PhysicsActiveComponent::updateCallback, this);
 
 		this->setActivated(this->activated->getBool());
-		this->setContinuousCollision(this->continuousCollision->getBool());
 		this->setGyroscopicTorqueEnabled(this->gyroscopicTorque->getBool());
 
 		// set user data for ogrenewt
@@ -610,6 +615,10 @@ namespace NOWA
 
 	bool PhysicsActiveVehicleComponent::isVehicleTippedOver(void)
 	{
+		if (nullptr == this->physicsBody)
+		{
+			return false;
+		}
 		// Get the car's current orientation
 		Ogre::Quaternion currentOrientation = this->physicsBody->getOrientation();
 

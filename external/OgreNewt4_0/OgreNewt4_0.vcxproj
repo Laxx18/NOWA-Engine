@@ -419,6 +419,7 @@
     <ClCompile Include="src\OgreNewt_CollisionDebugNotify.cpp" />
     <ClCompile Include="src\OgreNewt_CollisionPrimitives.cpp" />
     <ClCompile Include="src\OgreNewt_CollisionSerializer.cpp" />
+    <ClCompile Include="src\OgreNewt_ComplexVehicle.cpp" />
     <ClCompile Include="src\OgreNewt_ContactCallback.cpp" />
     <ClCompile Include="src\OgreNewt_ContactJoint.cpp" />
     <ClCompile Include="src\OgreNewt_ContactNotify.cpp" />
@@ -456,6 +457,7 @@
     <ClInclude Include="inc\OgreNewt_CollisionDebugNotify.h" />
     <ClInclude Include="inc\OgreNewt_CollisionPrimitives.h" />
     <ClInclude Include="inc\OgreNewt_CollisionSerializer.h" />
+    <ClInclude Include="inc\OgreNewt_ComplexVehicle.h" />
     <ClInclude Include="inc\OgreNewt_ContactCallback.h" />
     <ClInclude Include="inc\OgreNewt_ContactJoint.h" />
     <ClInclude Include="inc\OgreNewt_ContactNotify.h" />

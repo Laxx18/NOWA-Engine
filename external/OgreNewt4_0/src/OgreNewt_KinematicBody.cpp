@@ -3,44 +3,47 @@
 #include "OgreNewt_World.h"
 #include "OgreNewt_Collision.h"
 #include "OgreNewt_Tools.h"
-#include "OgreNewt_BodyNotify.h"
 
 using namespace OgreNewt;
 
 KinematicBody::KinematicBody(World* world, Ogre::SceneManager* sceneManager, const OgreNewt::CollisionPtr& col, Ogre::SceneMemoryMgrTypes memoryType)
-    : Body(world, sceneManager, memoryType),
-    m_kinematicContactCallback(nullptr)
+    : Body(world, sceneManager, memoryType)
+    , m_kinematicContactCallback(nullptr)
 {
-    // Create an ndMatrix from Ogre Quaternion + Position
+    if (!m_world)
+        return;
+
+    // Create initial matrix from cached transform
     ndMatrix matrix;
     Converters::QuatPosToMatrix(m_curRotation, m_curPosit, matrix);
 
-    // Create a kinematic body
+    // Create body (caller thread is fine for allocation/setup)
     m_body = new ndBodyKinematic();
     m_body->SetMatrix(matrix);
-    ndShapeInstance* srcInst = col->getShapeInstance();
-    if (srcInst)
-    {
-        // Copy instance, including its local matrix (HeightField offset, etc.)
-        ndShapeInstance shapeInst(*srcInst);
-        m_body->SetCollisionShape(shapeInst);
-    }
-    else
-    {
-        // fallback: build instance from raw shape with identity local matrix
-        ndShapeInstance shapeInst(col->getNewtonCollision());
-        m_body->SetCollisionShape(shapeInst);
-    }
 
-    // Attach to Newton world
-    m_world->getNewtonWorld()->AddBody(m_body);
+    // Build shape instance (caller thread is fine)
+    ndShapeInstance shapeInst =
+        col->getShapeInstance()
+        ? ndShapeInstance(*col->getShapeInstance())
+        : ndShapeInstance(col->getNewtonCollision());
 
-    // Attach the Body (this) as notify callback (Body inherits ndBodyNotify)
-    m_body->SetNotifyCallback(m_bodyNotify);
+    m_body->SetCollisionShape(shapeInst);
 
-    // Apply default damping settings
-    setLinearDamping(m_world->getDefaultLinearDamping() * (60.0f / m_world->getUpdateFPS()));
-    setAngularDamping(m_world->getDefaultAngularDamping() * (60.0f / m_world->getUpdateFPS()));
+    // Ensure notify exists (matches your other constructors)
+    if (!m_bodyNotify)
+        m_bodyNotify = new BodyNotify(this);
+
+    // World mutations must be queued
+    m_world->enqueuePhysicsAndWait([this](World& w)
+        {
+            m_body->SetNotifyCallback(m_bodyNotify);
+            w.addBody(m_body);
+
+            // Damping: only if this is actually a dynamic body
+            // For kinematic, ND may ignore damping; keep it for API consistency but guard it.
+            setLinearDamping(w.getDefaultLinearDamping() * (60.0f / w.getUpdateFPS()));
+            setAngularDamping(w.getDefaultAngularDamping() * (60.0f / w.getUpdateFPS()));
+        });
 }
 
 KinematicBody::~KinematicBody()

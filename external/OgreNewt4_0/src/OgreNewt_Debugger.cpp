@@ -170,23 +170,35 @@ namespace OgreNewt
 			m_raycastsnode->setListener(this);
 		}
 
-		const ndBodyListView& bodyList = m_world->getNewtonWorld()->GetBodyList();
-		const ndArray<ndBodyKinematic*>& view = bodyList.GetView();
+		std::vector<OgreNewt::Body*> bodies;
+		bodies.reserve(256);
 
-		for (ndInt32 i = ndInt32(view.GetCount()) - 1; i >= 0; --i)
-		{
-			ndBodyKinematic* const ndBody = view[i];
-			if (auto* notify = ndBody->GetNotifyCallback())
+		m_world->enqueuePhysicsAndWait([&bodies](World& w)
 			{
-				if (auto* ogreNotify = dynamic_cast<BodyNotify*>(notify))
-				{
-					if (auto* ogreBody = ogreNotify->GetOgreNewtBody())
-						processBody(ogreBody);
-				}
-			}
-		}
+				const ndBodyListView& bodyList = w.getNewtonWorld()->GetBodyList();
+				const ndArray<ndBodyKinematic*>& view = bodyList.GetView();
 
-		// delete old entries
+				for (ndInt32 i = ndInt32(view.GetCount()) - 1; i >= 0; --i)
+				{
+					ndBodyKinematic* const ndBody = view[i];
+					if (!ndBody) continue;
+
+					if (auto* notify = ndBody->GetNotifyCallback())
+					{
+						if (auto* ogreNotify = dynamic_cast<BodyNotify*>(notify))
+						{
+							if (auto* ogreBody = ogreNotify->GetOgreNewtBody())
+								bodies.push_back(ogreBody);
+						}
+					}
+				}
+			});
+
+		// Now do the OGRE-side work outside the physics closure
+		for (OgreNewt::Body* b : bodies)
+			processBody(b);
+
+		// keep your existing cleanup logic unchanged...
 		BodyDebugDataMap newbodymap;
 		for (BodyDebugDataMap::iterator it = m_cachemap.begin(); it != m_cachemap.end(); it++)
 		{
@@ -196,10 +208,7 @@ namespace OgreNewt
 			{
 				Ogre::ManualObject* mo = it->second.m_lines;
 				if (mo)
-				{
 					m_sceneManager->destroyManualObject(mo);
-					mo = nullptr;
-				}
 			}
 		}
 		m_cachemap.swap(newbodymap);
@@ -425,12 +434,9 @@ namespace OgreNewt
 
 		line->end();
 
-		m_world->deferAfterPhysics([this, line]()
-			{
-				mRecordedRaycastObjects.push_back(line);
-				if (m_raycastsnode)
-					m_raycastsnode->attachObject(line);
-			});
+		mRecordedRaycastObjects.push_back(line);
+		if (m_raycastsnode)
+			m_raycastsnode->attachObject(line);
 	}
 
 	void Debugger::addHitBody(const OgreNewt::Body* body)
@@ -469,12 +475,9 @@ namespace OgreNewt
 
 		line->end();
 
-		m_world->deferAfterPhysics([this, line]()
-			{
-				mRecordedRaycastObjects.push_back(line);
-				if (m_raycastsnode)
-					m_raycastsnode->attachObject(line);
-			});
+		mRecordedRaycastObjects.push_back(line);
+		if (m_raycastsnode)
+			m_raycastsnode->attachObject(line);
 	}
 
 	// ----------------- raycast-debugging -----------------------
@@ -545,12 +548,9 @@ namespace OgreNewt
 		line->line(0, 1);
 		line->end();
 
-		m_world->deferAfterPhysics([this, line]()
-			{
-				mRecordedRaycastObjects.push_back(line);
-				if (m_raycastsnode)
-					m_raycastsnode->attachObject(line);
-			});
+		mRecordedRaycastObjects.push_back(line);
+		if (m_raycastsnode)
+			m_raycastsnode->attachObject(line);
 	}
 
 	void Debugger::addConvexRay(const ndShape* col, const Ogre::Vector3& startpt, const Ogre::Quaternion& colori, const Ogre::Vector3& endpt)
@@ -589,12 +589,9 @@ namespace OgreNewt
 
 		line->end();
 
-		m_world->deferAfterPhysics([this, line]()
-			{
-				mRecordedRaycastObjects.push_back(line);
-				if (m_raycastsnode)
-					m_raycastsnode->attachObject(line);
-			});
+		mRecordedRaycastObjects.push_back(line);
+		if (m_raycastsnode)
+			m_raycastsnode->attachObject(line);
 	}
 
 }   // end namespace OgreNewt

@@ -4,7 +4,6 @@
 #include "defines.h"
 
 #include <functional>
-#include <queue>
 #include <mutex>
 #include <future>
 #include <chrono>
@@ -13,7 +12,6 @@
 #include <vector>
 #include <array>
 #include <thread>
-#include <atomic>
 
 #include "utilities/MathHelper.h"
 #include "utilities/concurrentqueue.h"

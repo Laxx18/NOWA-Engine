@@ -33,7 +33,6 @@ namespace NOWA
 		gravitySourceCategory(new Variant(PhysicsActiveComponent::AttrGravitySourceCategory(), Ogre::String(), this->attributes)),
 		linearDamping(new Variant(PhysicsActiveComponent::AttrLinearDamping(), Ogre::Real(0.1f), this->attributes)),
 		angularDamping(new Variant(PhysicsActiveComponent::AttrAngularDamping(), Ogre::Vector3(0.1f, 0.1f, 0.1f), this->attributes)),
-		continuousCollision(new Variant(PhysicsActiveComponent::AttrContinuousCollision(), false, this->attributes)),
 		maxSpeed(new Variant(PhysicsActiveComponent::AttrMaxSpeed(), Ogre::Real(5.0f), this->attributes)),
 		speed(new Variant(PhysicsActiveComponent::AttrSpeed(), Ogre::Real(1.0f), this->attributes)),
 		minSpeed(new Variant(PhysicsActiveComponent::AttrMinSpeed(), Ogre::Real(1.0f), this->attributes)),
@@ -196,11 +195,6 @@ namespace NOWA
 			this->constraintDirection->setValue(XMLConverter::getAttribVector3(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "ContinuousCollision")
-		{
-			this->continuousCollision->setValue(XMLConverter::getAttribBool(propertyElement, "data", false));
-			propertyElement = propertyElement->next_sibling("property");
-		}
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Speed")
 		{
 			this->speed->setValue(XMLConverter::getAttribReal(propertyElement, "data", 1.0f));
@@ -288,7 +282,6 @@ namespace NOWA
 		clonedCompPtr->setGravity(this->gravity->getVector3());
 		clonedCompPtr->setGravitySourceCategory(this->gravitySourceCategory->getString());
 		clonedCompPtr->setConstraintDirection(this->constraintDirection->getVector3());
-		clonedCompPtr->setContinuousCollision(this->continuousCollision->getBool());
 		clonedCompPtr->setSpeed(this->speed->getReal());
 		clonedCompPtr->setMinSpeed(this->minSpeed->getReal());
 		clonedCompPtr->setMaxSpeed(this->maxSpeed->getReal());
@@ -477,118 +470,6 @@ namespace NOWA
 		return true;
 	}
 
-#if 0
-	bool PhysicsActiveComponent::createDynamicBody(void)
-	{
-		// If a default pose name is set, first set the animation, this is used, because e.g. the T-pose may extend the convex hull to much
-		//if (!this->defaultPoseName.empty())
-		//{
-		//	Ogre::v1::AnimationState* animationState = this->gameObjectPtr->getEntity()->getAnimationState(this->defaultPoseName);
-		//	if (nullptr != animationState)
-		//	{
-		//		//animationState->setEnabled(true);
-		//		//// animationState->setTimePosition(0.1f);
-		//		//animationState->addTime(0.5f);
-		//		//// Ogre::v1::Animation* defaultAnimation = this->gameObjectPtr->getEntity()->getSkeleton()->getAnimation(this->defaultPoseName);
-		//		//// defaultAnimation->apply(this->gameObjectPtr->getEntity()->getSkeleton(), 0.5f);
-		//		//this->gameObjectPtr->getEntity()->addSoftwareAnimationRequest(false);
-		//		//this->gameObjectPtr->getEntity()->getAllAnimationStates()->_notifyDirty();
-		//		//this->gameObjectPtr->getEntity()->_updateAnimation();
-		//		// this->gameObjectPtr->getEntity()->getMesh()->createAnimation(this->defaultPoseName, animationState->getLength());
-		//		// this->gameObjectPtr->getEntity()->getMesh()->getAnimation(this->defaultPoseName)->apply(0.1f);
-		//		// this->gameObjectPtr->getEntity()->getMesh()->getAnimation(this->defaultPoseName)->_keyFrameListChanged();
-		//	}
-		//	else
-		//	{
-		//		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsActiveComponent]: There is no such default pose name: " + this->defaultPoseName
-		//			+ " for game object: " + this->gameObjectPtr->getName());
-		//	}
-		//}
-		
-		Ogre::Vector3 inertia = Ogre::Vector3(1.0f, 1.0f, 1.0f);
-
-		Ogre::Quaternion collisionOrientation = Ogre::Quaternion::IDENTITY; // this->gameObjectPtr->getSceneNode()->getOrientation();
-		if (Ogre::Vector3::ZERO != this->collisionDirection->getVector3())
-		{
-			collisionOrientation = MathHelper::getInstance()->degreesToQuat(this->collisionDirection->getVector3());
-		}
-
-		Ogre::Vector3 calculatedMassOrigin = Ogre::Vector3::ZERO;
-
-		OgreNewt::CollisionPtr collisionPtr;
-
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsActiveComponent::createDynamicCollision", _4(&inertia, collisionOrientation, &calculatedMassOrigin, &collisionPtr),
-		{
-			collisionPtr = this->createDynamicCollision(inertia, this->collisionSize->getVector3(), this->collisionPosition->getVector3(),
-				collisionOrientation, calculatedMassOrigin, this->gameObjectPtr->getCategoryId());
-		});
-		
-		this->physicsBody = new OgreNewt::Body(this->ogreNewt, this->gameObjectPtr->getSceneManager(), collisionPtr);
-
-		NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->registerRenderCallbackForBody(this->physicsBody);
-		
-		if (Ogre::Vector3::ZERO != this->massOrigin->getVector3())
-		{
-			calculatedMassOrigin = this->massOrigin->getVector3();
-		}
-		
-		this->physicsBody->setGravity(this->gravity->getVector3());
-		
-		Ogre::Real weightedMass = this->mass->getReal(); /** scale.x * scale.y * scale.z;*/ // scale is not used anymore, because if big game objects are scaled down, the mass is to low!
-
-		// set mass origin
-		this->physicsBody->setCenterOfMass(calculatedMassOrigin);
-
-		if (this->collisionType->getListSelectedValue() == "ConvexHull")
-		{
-			this->physicsBody->setConvexIntertialMatrix(inertia, calculatedMassOrigin);
-		}
-
-		// Apply mass and scale to inertia (the bigger the object, the more mass)
-		inertia *= weightedMass;
-		this->physicsBody->setMassMatrix(weightedMass, inertia);
-
-		if (this->linearDamping->getReal() != 0.0f)
-		{
-			this->physicsBody->setLinearDamping(this->linearDamping->getReal());
-		}
-		if (this->angularDamping->getVector3() != Ogre::Vector3::ZERO)
-		{
-			this->physicsBody->setAngularDamping(this->angularDamping->getVector3());
-		}
-
-		this->physicsBody->setCustomForceAndTorqueCallback<PhysicsActiveComponent>(&PhysicsActiveComponent::moveCallback, this);
-
-		// For fixed Update: Does not work, called to often
-		// this->physicsBody->setNodeUpdateNotify<PhysicsActiveComponent>(&PhysicsActiveComponent::updateCallback, this);
-
-		this->setContinuousCollision(this->continuousCollision->getBool());
-		this->setGyroscopicTorqueEnabled(this->gyroscopicTorque->getBool());
-
-		// set user data for ogrenewt
-		this->physicsBody->setUserData(OgreNewt::Any(dynamic_cast<PhysicsComponent*>(this)));
-		this->physicsBody->attachNode(this->gameObjectPtr->getSceneNode());
-
-		this->setPosition(this->initialPosition);
-		this->setOrientation(this->initialOrientation);
-
-		// Must be set after body set its position! And also the current orientation (initialOrientation) must be correct! Else weird rotation behavior occurs
-		this->setConstraintAxis(this->constraintAxis->getVector3());
-		// Pin the object stand in pose and not fall down
-		this->setConstraintDirection(this->constraintDirection->getVector3());
-
-		this->setCollidable(this->collidable->getBool());
-
-		this->physicsBody->setType(this->gameObjectPtr->getCategoryId());
-
-		const auto materialId = AppStateManager::getSingletonPtr()->getGameObjectController()->getMaterialID(this->gameObjectPtr.get(), this->ogreNewt);
-		this->physicsBody->setMaterialGroupID(materialId);
-
-		this->setActivated(this->activated->getBool());
-
-		return true;
-	}
-#else
 	bool PhysicsActiveComponent::createDynamicBody(void)
 	{
 		// Always snapshot the current transform as "initial" for this body
@@ -657,7 +538,6 @@ namespace NOWA
 
 		return true;
 	}
-#endif
 
 	void PhysicsActiveComponent::createSoftBody(void)
 	{
@@ -692,6 +572,7 @@ namespace NOWA
 		}
 
 		this->physicsBody = new OgreNewt::Body(this->ogreNewt, this->gameObjectPtr->getSceneManager(), deformableCollisionPtr);
+
 		this->physicsBody->setGravity(this->gravity->getVector3());
 		NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->registerRenderCallbackForBody(this->physicsBody);
 
@@ -859,6 +740,7 @@ namespace NOWA
 		this->collisionPtr = OgreNewt::CollisionPtr(col);
 
 		this->physicsBody = new OgreNewt::Body(this->ogreNewt, this->gameObjectPtr->getSceneManager(), this->collisionPtr);
+
 		NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->registerRenderCallbackForBody(this->physicsBody);
 
 		this->physicsBody->setGravity(this->gravity->getVector3());
@@ -874,7 +756,6 @@ namespace NOWA
 		this->setConstraintDirection(this->getConstraintDirection());
 
 		this->setActivated(this->activated->getBool());
-		this->setContinuousCollision(this->continuousCollision->getBool());
 		this->setGyroscopicTorqueEnabled(this->gyroscopicTorque->getBool());
 
 		this->physicsBody->setType(this->gameObjectPtr->getCategoryId());
@@ -1510,20 +1391,6 @@ namespace NOWA
 	{
 		return this->constraintAxis->getVector3();
 	}
-	
-	void PhysicsActiveComponent::setContinuousCollision(bool continuousCollision)
-	{
-		this->continuousCollision->setValue(continuousCollision);
-		if (nullptr != this->physicsBody)
-		{
-			this->physicsBody->setContinuousCollisionMode(true == continuousCollision ? 1 : 0);
-		}
-	}
-		
-	bool PhysicsActiveComponent::getContinuousCollision(void) const
-	{
-		return this->continuousCollision->getBool();
-	}
 		
 	void PhysicsActiveComponent::setAsSoftBody(bool asSoftBody)
 	{
@@ -1658,10 +1525,6 @@ namespace NOWA
 		{
 			this->applyForce(attribute->getVector3());
 		}
-		else if (PhysicsActiveComponent::AttrContinuousCollision() == attribute->getName())
-		{
-			this->setContinuousCollision(attribute->getBool());
-		}
 		else if (PhysicsActiveComponent::AttrSpeed() == attribute->getName())
 		{
 			this->speed->setValue(attribute->getReal());
@@ -1786,12 +1649,6 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("name", "ConstraintDirection"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->constraintDirection->getVector3())));
 		propertiesXML->append_node(propertyXML);
-		
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "ContinuousCollision"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->continuousCollision->getBool())));
-		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
@@ -1868,6 +1725,11 @@ namespace NOWA
 
 	PhysicsActiveComponent::ContactData PhysicsActiveComponent::getContactBelow(int index, const Ogre::Vector3& offset, bool forceDrawLine, unsigned int categoryIds, bool useLocalOrientation)
 	{
+		if (nullptr == this->physicsBody)
+		{
+			return ContactData();
+		}
+
 		GameObject* gameObject = nullptr;
 		Ogre::Real height = 500.0f; // Default invalid value for checking
 		Ogre::Real slope = 0.0f;
@@ -1896,7 +1758,10 @@ namespace NOWA
 		}
 
 		// Create ray along the rotated downward direction
-		OgreNewt::BasicRaycast ray(this->ogreNewt, charPoint, rayEndPoint, true);
+		// OgreNewt::BasicRaycast ray(this->ogreNewt, charPoint, rayEndPoint, true);
+
+		OgreNewt::World::RaycastResult rayResult = this->ogreNewt->raycastBlocking(charPoint, rayEndPoint);
+		OgreNewt::BasicRaycast::BasicRaycastInfo& info = rayResult.mInfo;
 
 		if (this->bShowDebugData || forceDrawLine)
 		{
@@ -1945,7 +1810,7 @@ namespace NOWA
 			}
 		}
 
-		OgreNewt::BasicRaycast::BasicRaycastInfo info = ray.getFirstHit();
+		// OgreNewt::BasicRaycast::BasicRaycastInfo info = ray.getFirstHit();
 		if (info.mBody)
 		{
 			unsigned int type = info.mBody->getType();
@@ -1985,6 +1850,11 @@ namespace NOWA
 
 	PhysicsActiveComponent::ContactData PhysicsActiveComponent::getContactAhead(int index, const Ogre::Vector3& offset, Ogre::Real length, bool forceDrawLine, unsigned int categoryIds)
 	{
+		if (nullptr == this->physicsBody)
+		{
+			return ContactData();
+		}
+
 		GameObject* gameObject = nullptr;
 		Ogre::Real height = 500.0f;
 		Ogre::Real slope = 0.0f;
@@ -2036,7 +1906,9 @@ namespace NOWA
 		rayEndPoint = charPoint + (forwardDir * length);
 
 		// Create ray along the adjusted forward direction
-		OgreNewt::BasicRaycast ray(this->ogreNewt, charPoint, rayEndPoint, true);
+		// OgreNewt::BasicRaycast ray(this->ogreNewt, charPoint, rayEndPoint, true);
+		OgreNewt::World::RaycastResult rayResult = this->ogreNewt->raycastBlocking(charPoint, rayEndPoint);
+		OgreNewt::BasicRaycast::BasicRaycastInfo& info = rayResult.mInfo;
 		
 		if (true == this->bShowDebugData || true == forceDrawLine)
 		{
@@ -2086,7 +1958,7 @@ namespace NOWA
 		}
 
 		// get contact result
-		OgreNewt::BasicRaycast::BasicRaycastInfo info = ray.getFirstHit();
+		// OgreNewt::BasicRaycast::BasicRaycastInfo info = ray.getFirstHit();
 		if (info.mBody)
 		{
 			unsigned int type = info.mBody->getType();
@@ -2135,6 +2007,11 @@ namespace NOWA
 
 	PhysicsActiveComponent::ContactData PhysicsActiveComponent::getContactAbove(int index, const Ogre::Vector3& offset, bool forceDrawLine, unsigned int categoryIds, bool useLocalOrientation)
 	{
+		if (nullptr == this->physicsBody)
+		{
+			return ContactData();
+		}
+
 		GameObject* gameObject = nullptr;
 		Ogre::Real height = 500.0f; // Default invalid value for checking
 		Ogre::Real slope = 0.0f;
@@ -2163,7 +2040,9 @@ namespace NOWA
 		}
 
 		// Create ray along the rotated downward direction
-		OgreNewt::BasicRaycast ray(this->ogreNewt, charPoint, rayEndPoint, true);
+		// OgreNewt::BasicRaycast ray(this->ogreNewt, charPoint, rayEndPoint, true);
+		OgreNewt::World::RaycastResult rayResult = this->ogreNewt->raycastBlocking(charPoint, rayEndPoint);
+		OgreNewt::BasicRaycast::BasicRaycastInfo& info = rayResult.mInfo;
 
 		// Debug drawing
 		if (this->bShowDebugData || forceDrawLine)
@@ -2216,7 +2095,7 @@ namespace NOWA
 			}
 		}
 
-		OgreNewt::BasicRaycast::BasicRaycastInfo info = ray.getFirstHit();
+		// OgreNewt::BasicRaycast::BasicRaycastInfo info = ray.getFirstHit();
 		if (info.mBody)
 		{
 			unsigned int type = info.mBody->getType();
@@ -2255,6 +2134,11 @@ namespace NOWA
 	PhysicsActiveComponent::ContactData PhysicsActiveComponent::getContactToDirection(int index, const Ogre::Vector3& direction, const Ogre::Vector3& offset,
 		Ogre::Real from, Ogre::Real to, bool forceDrawLine, unsigned int categoryIds)
 	{
+		if (nullptr == this->physicsBody)
+		{
+			return ContactData();
+		}
+
 		GameObject* gameObject = nullptr;
 		Ogre::Real height = 500.0f;
 		Ogre::Real slope = 0.0f;
@@ -2301,7 +2185,9 @@ namespace NOWA
 		Ogre::Vector3 toPosition = position + (adjustedDirection * to);
 
 		// Create ray
-		OgreNewt::BasicRaycast ray(this->ogreNewt, fromPosition, toPosition, true);
+		// OgreNewt::BasicRaycast ray(this->ogreNewt, fromPosition, toPosition, true);
+		OgreNewt::World::RaycastResult rayResult = this->ogreNewt->raycastBlocking(fromPosition, toPosition);
+		OgreNewt::BasicRaycast::BasicRaycastInfo& info = rayResult.mInfo;
 
 		if (true == this->bShowDebugData || true == forceDrawLine)
 		{
@@ -2351,7 +2237,7 @@ namespace NOWA
 		}
 
 		// get contact result
-		OgreNewt::BasicRaycast::BasicRaycastInfo info = ray.getFirstHit();
+		// OgreNewt::BasicRaycast::BasicRaycastInfo info = ray.getFirstHit();
 		if (info.mBody)
 		{
 			unsigned int type = info.mBody->getType();
@@ -2401,6 +2287,11 @@ namespace NOWA
 	GameObject* PhysicsActiveComponent::getContact(int index, const Ogre::Vector3& direction, const Ogre::Vector3& offset, 
 		Ogre::Real from, Ogre::Real to, bool forceDrawLine, unsigned int categoryIds)
 	{
+		if (nullptr == this->physicsBody)
+		{
+			return nullptr;
+		}
+
 		GameObject* gameObject = nullptr;
 		Ogre::Real height = 500.0f;
 		Ogre::Real slope = 0.0f;
@@ -2447,7 +2338,9 @@ namespace NOWA
 		Ogre::Vector3 toPosition = position + (adjustedDirection * to);
 
 		// Create ray
-		OgreNewt::BasicRaycast ray(this->ogreNewt, fromPosition, toPosition, true);
+		// OgreNewt::BasicRaycast ray(this->ogreNewt, fromPosition, toPosition, true);
+		OgreNewt::World::RaycastResult rayResult = this->ogreNewt->raycastBlocking(fromPosition, toPosition);
+		OgreNewt::BasicRaycast::BasicRaycastInfo& info = rayResult.mInfo;
 
 		if (true == forceDrawLine)
 		{
@@ -2490,7 +2383,7 @@ namespace NOWA
 		}
 
 		// get contact result
-		OgreNewt::BasicRaycast::BasicRaycastInfo info = ray.getFirstHit();
+		// OgreNewt::BasicRaycast::BasicRaycastInfo info = ray.getFirstHit();
 		if (info.mBody)
 		{
 			unsigned int type = info.mBody->getType();
@@ -2522,6 +2415,11 @@ namespace NOWA
 
 	bool PhysicsActiveComponent::getFixedContactToDirection(int index, const Ogre::Vector3& direction, const Ogre::Vector3& offset, Ogre::Real scale, unsigned int categoryIds)
 	{
+		if (nullptr == this->physicsBody)
+		{
+			return false;
+		}
+
 		// Get the default direction (mesh forward direction)
 		Ogre::Vector3 defaultDir = this->gameObjectPtr->getDefaultDirection();
 
@@ -2563,10 +2461,13 @@ namespace NOWA
 		Ogre::Vector3 toPosition = position + (adjustedDirection * scale);
 
 		// Create ray
-		OgreNewt::BasicRaycast ray(this->ogreNewt, fromPosition, toPosition, true);
+		// OgreNewt::BasicRaycast ray(this->ogreNewt, fromPosition, toPosition, true);
 
 		// get contact result
-		OgreNewt::BasicRaycast::BasicRaycastInfo info = ray.getFirstHit();
+		// OgreNewt::BasicRaycast::BasicRaycastInfo info = ray.getFirstHit();
+
+		OgreNewt::World::RaycastResult rayResult = this->ogreNewt->raycastBlocking(fromPosition, toPosition);
+		OgreNewt::BasicRaycast::BasicRaycastInfo& info = rayResult.mInfo;
 		if (info.mBody)
 		{
 			unsigned int type = info.mBody->getType();
@@ -2598,6 +2499,11 @@ namespace NOWA
 
 	Ogre::Real PhysicsActiveComponent::determineGameObjectHeight(const Ogre::Vector3& positionOffset1, const Ogre::Vector3& positionOffset2, unsigned int categoryIds)
 	{
+		if (nullptr == this->physicsBody)
+		{
+			return 0.0f;
+		}
+
 		Ogre::Real height = 500.0f;
 
 		// Get the default direction (mesh forward direction)
@@ -2617,9 +2523,11 @@ namespace NOWA
 		Ogre::Vector3 rayEndPoint = charPoint + (localDown * 500.0f); // 500 units below
 
 		// Create ray along the rotated downward direction
-		OgreNewt::BasicRaycast ray(this->ogreNewt, charPoint, rayEndPoint, true);
-
-		OgreNewt::BasicRaycast::BasicRaycastInfo& info = ray.getFirstHit();
+		// OgreNewt::BasicRaycast ray(this->ogreNewt, charPoint, rayEndPoint, true);
+		// OgreNewt::BasicRaycast::BasicRaycastInfo& info = ray.getFirstHit();
+		OgreNewt::World::RaycastResult rayResult = this->ogreNewt->raycastBlocking(charPoint, rayEndPoint);
+		OgreNewt::BasicRaycast::BasicRaycastInfo& info = rayResult.mInfo;
+		
 		if (info.mBody)
 		{
 			unsigned int type = info.mBody->getType();
@@ -2631,8 +2539,10 @@ namespace NOWA
 				Ogre::Vector3 charPoint = this->physicsBody->getPosition() +
 					(this->physicsBody->getOrientation() * defaultRot * positionOffset2);
 
-				ray = OgreNewt::BasicRaycast(this->ogreNewt, charPoint, charPoint + rayEndPoint, true);
-				info = ray.getFirstHit();
+				// ray = OgreNewt::BasicRaycast(this->ogreNewt, charPoint, charPoint + rayEndPoint, true);
+				rayResult = this->ogreNewt->raycastBlocking(charPoint, charPoint + rayEndPoint);
+				// info = ray.getFirstHit();
+				info = rayResult.mInfo;
 				if (info.mBody)
 				{
 					if (info.mDistance * 500.0f < height)

@@ -1216,6 +1216,12 @@ namespace OgreNewt
 	class _OgreNewtExport VehicleTire : public Joint
 	{
 	public:
+		//! constructor
+		/*!
+			\param child pointer to the child rigid body.
+			\param parent pointer to the parent rigid body.
+			\param pos position of the joint in global space
+		*/
 		VehicleTire(OgreNewt::Body* child,
 			OgreNewt::Body* parentBody,
 			const Ogre::Vector3& pos,
@@ -1223,87 +1229,46 @@ namespace OgreNewt
 			Vehicle* parent,
 			Ogre::Real radius);
 
+		//! destructor.
 		virtual ~VehicleTire();
 
-		// configuration enums (kept for compatibility)
 		void setVehicleTireSide(VehicleTireSide tireSide);
-		VehicleTireSide getVehicleTireSide() const;
+		VehicleTireSide getVehicleTireSide(void) const;
 
 		void setVehicleTireSteer(VehicleTireSteer tireSteer);
-		VehicleTireSteer getVehicleTireSteer() const;
+		VehicleTireSteer getVehicleTireSteer(void) const;
 
 		void setVehicleSteerSide(VehicleSteerSide steerSide);
-		VehicleSteerSide getVehicleSteerSide() const;
+		VehicleSteerSide getVehicleSteerSide(void) const;
 
 		void setVehicleTireAccel(VehicleTireAccel tireAccel);
-		VehicleTireAccel getVehicleTireAccel() const;
+		VehicleTireAccel getVehicleTireAccel(void) const;
 
 		void setVehicleTireBrake(VehicleTireBrake brakeMode);
-		VehicleTireBrake getVehicleTireBrake() const;
+		VehicleTireBrake getVehicleTireBrake(void) const;
 
-		// physics params
 		void setLateralFriction(Ogre::Real lateralFriction);
-		Ogre::Real getLateralFriction() const;
+		Ogre::Real getLateralFriction(void) const;
 
 		void setLongitudinalFriction(Ogre::Real longitudinalFriction);
-		Ogre::Real getLongitudinalFriction() const;
+		Ogre::Real getLongitudinalFriction(void) const;
 
 		void setSpringLength(Ogre::Real springLength);
-		Ogre::Real getSpringLength() const;
+		Ogre::Real getSpringLength(void) const;
 
 		void setSmass(Ogre::Real smass);
-		Ogre::Real getSmass() const;
+		Ogre::Real getSmass(void) const;
 
 		void setSpringConst(Ogre::Real springConst);
-		Ogre::Real getSpringConst() const;
+		Ogre::Real getSpringConst(void) const;
 
 		void setSpringDamp(Ogre::Real springDamp);
-		Ogre::Real getSpringDamp() const;
+		Ogre::Real getSpringDamp(void) const;
 
-		RayCastTire* getRayCastTire();
+		RayCastTire* getRayCastTire(void);
 
-	private:
-		Vehicle* m_vehicle;
-		Ogre::Real m_radius;
-		ndWheelDescriptor m_desc;
-
-		VehicleTireSide m_tireSide;
-		VehicleTireSteer m_tireSteer;
-		VehicleSteerSide m_steerSide;
-		VehicleTireAccel m_tireAccel;
-		VehicleTireBrake m_brakeMode;
-
-		inline ndJointWheel* getJoint() const
-		{
-			return static_cast<ndJointWheel*>(GetSupportJoint());
-		}
-	};
-
-	class _OgreNewtExport VehicleMotor : public Joint
-	{
 	public:
-		// Creates an internal ND4 motor in the vehicle model (preferred API)
-		VehicleMotor(Vehicle* vehicle, Ogre::Real mass, Ogre::Real radius);
-
-		virtual ~VehicleMotor();
-
-		// ND4 motor controls
-		void setMaxRpm(Ogre::Real redLineRpm);
-		void setOmegaAccel(Ogre::Real rpmStep);
-		void setFrictionLoss(Ogre::Real newtonMeters);
-		void setTorqueAndRpm(Ogre::Real rpm, Ogre::Real torque);
-		Ogre::Real getRpm() const;
-
-		// Access to underlying ND4 joint
-		inline ndMultiBodyVehicleMotor* getJoint() const
-		{
-			return static_cast<ndMultiBodyVehicleMotor*>(GetSupportJoint());
-		}
-
-	private:
-		Vehicle* m_vehicle;
-		Ogre::Real m_mass;
-		Ogre::Real m_radius;
+		RayCastTire::TireConfiguration m_tireConfiguration;
 	};
 
 }   // end NAMESPACE OgreNewt

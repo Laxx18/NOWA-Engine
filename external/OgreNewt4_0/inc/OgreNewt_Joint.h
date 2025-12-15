@@ -54,8 +54,8 @@ namespace OgreNewt
 
         void setJointSolverModel(int model);
 
-        // NEW: take ownership of the native joint and auto-register in ND world
-        void SetSupportJoint(ndJointBilateralConstraint* supportJoint);
+        void SetSupportJoint(OgreNewt::World* world, ndJointBilateralConstraint* supportJoint);
+
         ndJointBilateralConstraint* GetSupportJoint() const { return m_joint; }
 
         // Called from native joint’s JacobianDerivative if you use the pending-row bridge
@@ -80,6 +80,8 @@ namespace OgreNewt
         ndSharedPtr<ndJointBilateralConstraint> m_jointPtr{};
         ndJointBilateralConstraint* m_joint{ nullptr };
         mutable Ogre::Real m_stiffness;
+
+        OgreNewt::World* m_world;
     };
 
     // small helper ND4 joint subclass that calls back to the wrapper

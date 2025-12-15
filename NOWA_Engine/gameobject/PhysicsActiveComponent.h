@@ -409,10 +409,6 @@ namespace NOWA
 		/*void setDefaultPoseName(const Ogre::String& defaultPoseName);
 
 		const Ogre::String getDefaultPoseName(void) const;*/
-		
-		void setContinuousCollision(bool continuousCollision);
-		
-		bool getContinuousCollision(void) const;
 
 		// can be overwritten
 		virtual void moveCallback(OgreNewt::Body* body, Ogre::Real timeStep, int threadIndex);
@@ -514,7 +510,6 @@ namespace NOWA
 		static const Ogre::String AttrMinSpeed(void) { return "Min Speed"; }
 		static const Ogre::String AttrMaxSpeed(void) { return "Max Speed"; }
 		static const Ogre::String AttrSleep(void) { return "Sleep"; }
-		static const Ogre::String AttrContinuousCollision(void) { return "Continuous Collision"; }
 		static const Ogre::String AttrLinearDamping(void) { return "Linear Damping"; }
 		static const Ogre::String AttrAngularDamping(void) { return "Angular Damping"; }
 		static const Ogre::String AttrCollisionSize(void) { return "Collision Size"; }
@@ -566,7 +561,6 @@ namespace NOWA
 		OgreNewt::UpVector* upVector;
 		OgreNewt::PlaneConstraint* planeConstraint;
 		Variant* constraintDirection;
-		Variant* continuousCollision;
 		Variant* linearDamping;
 		Variant* angularDamping;
 		Variant* constraintAxis;

@@ -3488,69 +3488,122 @@ namespace NOWA
 		Variant* springDamp;
 	};
 
-	/*******************************JointVehicleTireComponent*******************************/
+	/*******************************JointComplexVehicleTireComponent*******************************/
 
-	class JointVehicleMotorComponent : public JointComponent
+	class EXPORTED JointComplexVehicleTireComponent : public JointComponent
 	{
 	public:
-		JointVehicleMotorComponent();
-
-		virtual ~JointVehicleMotorComponent();
-
-		virtual Ogre::String getClassName() const override;
-
-		virtual Ogre::String getParentClassName() const override;
+		typedef boost::shared_ptr<JointComplexVehicleTireComponent> JointComplexVehicleTireCompPtr;
+	public:
+		JointComplexVehicleTireComponent(void);
+		virtual ~JointComplexVehicleTireComponent() override;
 
 		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
-
 		virtual bool postInit(void) override;
+
+		virtual void onRemoveComponent(void) override;
+
+		virtual bool connect(void) override;
+		virtual bool disconnect(void) override;
+
+		virtual Ogre::String getClassName(void) const override;
+		virtual Ogre::String getParentClassName(void) const override;
+
+		virtual void update(Ogre::Real dt, bool notSimulating = false) override;
+
+		virtual GameObjectCompPtr clone(GameObjectPtr clonedGameObjectPtr) override;
 
 		virtual bool createJoint(const Ogre::Vector3& customJointPosition = Ogre::Vector3::ZERO) override;
 
-		virtual void onRemoveComponent(void) override;
+		virtual void forceShowDebugData(bool activate) override;
 
 		virtual void actualizeValue(Variant* attribute) override;
 
 		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
+		virtual Ogre::Vector3 getUpdatedJointPosition(void) override;
 
 		static unsigned int getStaticClassId(void)
 		{
-			return NOWA::getIdFromName("JointVehicleMotorComponent");
+			return NOWA::getIdFromName("JointComplexVehicleTireComponent");
 		}
 
 		static Ogre::String getStaticClassName(void)
 		{
-			return "JointVehicleMotorComponent";
+			return "JointComplexVehicleTireComponent";
 		}
 
-		/**
-		 * @see  GameObjectComponent::createStaticApiForLua
-		 */
 		static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObject, luabind::class_<GameObjectController>& gameObjectController) {}
 
-		/**
-		* @see	GameObjectComponent::getStaticInfoText
-		*/
 		static Ogre::String getStaticInfoText(void)
 		{
-			return "Info: A motor, which can be attached a vehicle chassis. Requirements: A GameObject with a PhysicsActiveVehicleComponent and a base JointComponent must exist.";
+			return "Info: A tire joint that belongs to an ND4 ComplexVehicle chassis. "
+				"Requirements: A GameObject with a PhysicsActiveComplexVehicleComponent and a base JointComponent must exist.";
 		}
-	public:
-		static Ogre::String AttrMotorMass() { return "MotorMass"; }
-		static Ogre::String AttrMotorRadius() { return "MotorRadius"; }
-		static Ogre::String AttrMaxRpm() { return "MaxRpm"; }
-		static Ogre::String AttrTorque() { return "Torque"; }
-		static Ogre::String AttrOmegaAccel() { return "OmegaAccel"; }
-		static Ogre::String AttrFrictionLoss() { return "FrictionLoss"; }
 
-	private:
-		Variant* motorMass;
-		Variant* motorRadius;
-		Variant* maxRpm;
-		Variant* torque;
-		Variant* omegaAccel;
-		Variant* frictionLoss;
+		void setAnchorPosition(const Ogre::Vector3& anchorPosition);
+		Ogre::Vector3 getAnchorPosition(void) const;
+
+		void setPin(const Ogre::Vector3& pin);
+		Ogre::Vector3 getPin(void) const;
+
+		void setVehicleTireSide(const Ogre::String& tireSide);
+		Ogre::String getVehicleTireSide(void);
+
+		void setVehicleTireSteer(const Ogre::String& tireSteer);
+		Ogre::String getVehicleTireSteer(void);
+
+		void setVehicleSteerSide(const Ogre::String& steerSide);
+		Ogre::String getVehicleSteerSide(void);
+
+		void setVehicleTireAccel(const Ogre::String& tireAccel);
+		Ogre::String getVehicleTireAccel(void);
+
+		void setVehicleTireBrake(const Ogre::String& brakeMode);
+		Ogre::String getVehicleTireBrake(void);
+
+		void setLateralFriction(Ogre::Real lateralFriction);
+		Ogre::Real getLateralFriction(void) const;
+
+		void setLongitudinalFriction(Ogre::Real longitudinalFriction);
+		Ogre::Real getLongitudinalFriction(void) const;
+
+		void setSpringLength(Ogre::Real springLength);
+		Ogre::Real getSpringLength(void) const;
+
+		void setSpringConst(Ogre::Real springConst);
+		Ogre::Real getSpringConst(void) const;
+
+		void setSpringDamp(Ogre::Real springDamp);
+		Ogre::Real getSpringDamp(void) const;
+
+	public:
+		static const Ogre::String AttrAnchorPosition(void) { return "Anchor Position"; }
+		static const Ogre::String AttrPin(void) { return "Pin"; }
+		static const Ogre::String AttrTireSide(void) { return "Tire Side"; }
+		static const Ogre::String AttrTireSteer(void) { return "Tire Steering"; }
+		static const Ogre::String AttrSteerSide(void) { return "Steering Side"; }
+		static const Ogre::String AttrTireAccel(void) { return "Tire Acceleration"; }
+		static const Ogre::String AttrBrakeMode(void) { return "Brake Mode"; }
+		static const Ogre::String AttrLateralFriction(void) { return "Lateral Friction"; }
+		static const Ogre::String AttrLongitudinalFriction(void) { return "Longitudinal Friction"; }
+		static const Ogre::String AttrSpringLength(void) { return "Spring Length"; }
+		static const Ogre::String AttrSpringConst(void) { return "Spring Const"; }
+		static const Ogre::String AttrSpringDamp(void) { return "Spring Damping"; }
+
+	protected:
+		Variant* anchorPosition;
+		Variant* pin;
+		Variant* tireSide;
+		Variant* tireSteer;
+		Variant* steerSide;
+		Variant* tireAccel;
+		Variant* brakeMode;
+		Variant* lateralFriction;
+		Variant* longitudinalFriction;
+		Variant* springLength;
+		Variant* springConst;
+		Variant* springDamp;
 	};
 	
 }; // namespace end

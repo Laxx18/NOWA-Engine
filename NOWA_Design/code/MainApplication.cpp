@@ -57,17 +57,7 @@ void MainApplication::startSimulation(const Ogre::String& configName)
 		return;
 	}
 
-	// Add a window icon
-#if OGRE_PLATFORM == OGRE_PLATFORM_WIN32
-	HWND hwnd;
-	NOWA::Core::getSingletonPtr()->getOgreRenderWindow()->getCustomAttribute("WINDOW", (void*)&hwnd);
-	LONG iconID = (LONG)LoadIcon(GetModuleHandle(0), MAKEINTRESOURCE(IDI_ICON1));
-#if OGRE_ARCH_TYPE == OGRE_ARCHITECTURE_64
-	SetClassLong(hwnd, GCLP_HICON, iconID);
-#else
-	SetClassLong(hwnd, GCL_HICON, iconID);
-#endif
-#endif
+	NOWA::Core::getSingletonPtr()->createApplicationIcon(IDI_ICON1);
 
 	Ogre::LogManager::getSingletonPtr()->logMessage("Simulation initialized!");
 	

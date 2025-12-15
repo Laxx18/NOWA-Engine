@@ -2236,7 +2236,6 @@ namespace NOWA
 
 		if (nullptr == this->parentRagBone/* && true == this->partial*/)
 		{
-			this->physicsRagDollComponent->setContinuousCollision(this->physicsRagDollComponent->continuousCollision->getBool());
 			this->physicsRagDollComponent->setGyroscopicTorqueEnabled(this->physicsRagDollComponent->gyroscopicTorque->getBool());
 
 			this->body->setCustomForceAndTorqueCallback<PhysicsRagDollComponent>(&PhysicsActiveComponent::moveCallback, this->physicsRagDollComponent);

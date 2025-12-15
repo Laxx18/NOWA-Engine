@@ -52,27 +52,30 @@ namespace OgreNewt
 		m_bodyNotify = new BodyNotify(this);
 		m_body = new ndBodyDynamic();
 		m_body->SetMatrix(matrix);
-		
+
 		ndShapeInstance* srcInst = collisionPtr->getShapeInstance();
 		if (srcInst)
 		{
-			// Copy instance, including its local matrix (HeightField offset, etc.)
 			ndShapeInstance shapeInst(*srcInst);
 			m_body->SetCollisionShape(shapeInst);
 		}
 		else
 		{
-			// fallback: build instance from raw shape with identity local matrix
 			ndShapeInstance shapeInst(collisionPtr->getNewtonCollision());
 			m_body->SetCollisionShape(shapeInst);
 		}
 
-		m_body->SetNotifyCallback(m_bodyNotify);
+		// IMPORTANT: world mutation must be queued
+		m_world->enqueuePhysicsAndWait([this](World& w)
+			{
+				// attach notify + add to world on world thread
+				m_body->SetNotifyCallback(m_bodyNotify);
+				w.addBody(m_body);
 
-		m_world->getNewtonWorld()->AddBody(m_body);
-
-		setLinearDamping(m_world->getDefaultLinearDamping() * (60.0f / m_world->getUpdateFPS()));
-		setAngularDamping(m_world->getDefaultAngularDamping() * (60.0f / m_world->getUpdateFPS()));
+				// damping also touches the ndBody
+				setLinearDamping(w.getDefaultLinearDamping() * (60.0f / w.getUpdateFPS()));
+				setAngularDamping(w.getDefaultAngularDamping() * (60.0f / w.getUpdateFPS()));
+			});
 	}
 
 	Body::Body(World* world, Ogre::SceneManager* sceneManager, ndBodyKinematic* body, Ogre::SceneMemoryMgrTypes memoryType)
@@ -110,16 +113,19 @@ namespace OgreNewt
 		m_contactCallback(nullptr),
 		m_renderUpdateCallback(nullptr)
 	{
-		if (nullptr != m_body)
-		{
-			m_bodyNotify = new BodyNotify(this);
-			m_body->SetNotifyCallback(m_bodyNotify);
+		if (!m_body)
+			return;
 
-			m_world->getNewtonWorld()->AddBody(m_body);
+		m_bodyNotify = new BodyNotify(this);
 
-			setLinearDamping(m_world->getDefaultLinearDamping() * (60.0f / m_world->getUpdateFPS()));
-			setAngularDamping(m_world->getDefaultAngularDamping() * (60.0f / m_world->getUpdateFPS()));
-		}
+		m_world->enqueuePhysicsAndWait([this](World& w)
+			{
+				m_body->SetNotifyCallback(m_bodyNotify);
+				w.addBody(m_body);
+
+				setLinearDamping(w.getDefaultLinearDamping() * (60.0f / w.getUpdateFPS()));
+				setAngularDamping(w.getDefaultAngularDamping() * (60.0f / w.getUpdateFPS()));
+			});
 	}
 
 	Body::Body(World* world, Ogre::SceneManager* sceneManager, Ogre::SceneMemoryMgrTypes memoryType)
@@ -162,27 +168,45 @@ namespace OgreNewt
 
 	Body::~Body()
 	{
-		if (m_body)
+		// OGRE-side cleanup can stay here (render thread / main thread etc.)
+		if (m_debugCollisionLines)
 		{
-			if (nullptr != m_debugCollisionLines)
-			{
-				Ogre::SceneNode* node = ((Ogre::SceneNode*)m_debugCollisionLines->getParentNode());
-				node->detachObject(m_debugCollisionLines);
-				m_sceneManager->destroyManualObject(m_debugCollisionLines);
-				m_debugCollisionLines = nullptr;
-			}
-
-			detachNode();
-			m_sceneManager = nullptr;
-
-			m_world->getNewtonWorld()->Sync();
-
-			if (true == m_isOwner)
-			{
-				m_world->getNewtonWorld()->RemoveBody(m_body);
-				m_body = nullptr;
-			}
+			Ogre::SceneNode* node = static_cast<Ogre::SceneNode*>(m_debugCollisionLines->getParentNode());
+			node->detachObject(m_debugCollisionLines);
+			m_sceneManager->destroyManualObject(m_debugCollisionLines);
+			m_debugCollisionLines = nullptr;
 		}
+
+		detachNode();
+		m_sceneManager = nullptr;
+
+		if (!m_world || !m_body)
+			return;
+
+		// Capture what we need *before* we null out members
+		ndBodyKinematic* body = m_body;
+		BodyNotify* notify = m_bodyNotify;
+		const bool owner = m_isOwner;
+		World* world = m_world;
+
+		// Prevent accidental double-use from this point on
+		m_body = nullptr;
+		m_bodyNotify = nullptr;
+		m_world = nullptr;
+
+		// Queue the actual physics removal on the world thread.
+		// Using AndWait avoids notify pointing to a destructed Body.
+		world->enqueuePhysicsAndWait([body, notify, owner](World& w)
+			{
+				if (body)
+				{
+					// make sure Newton will not call back into freed notify/body
+					body->SetNotifyCallback(nullptr);
+
+					// remove from world
+					w.destroyBody(body);
+				}
+			});
 	}
 
 	void Body::onTransformCallback(const ndMatrix& matrix)
@@ -546,17 +570,6 @@ namespace OgreNewt
 		return Ogre::Vector3(com.m_x, com.m_y, com.m_z);
 	}
 
-	void Body::setContinuousCollisionMode(unsigned state)
-	{
-		// Not found in ND4
-	}
-
-	int Body::getContinuousCollisionMode() const
-	{
-		// Not found in ND4
-		return 0;
-	}
-
 	void Body::setJointRecursiveCollision(unsigned state)
 	{
 		// Not found in ND4
@@ -841,33 +854,50 @@ namespace OgreNewt
 
 	Body* Body::getNext() const
 	{
+		if (!m_world || !m_body)
+			return nullptr;
+
+		// m_world->assertMainThread();
+
 		const auto& bodyList = m_world->getNewtonWorld()->GetBodyList();
+
 		ndBodyList::ndNode* currentNode = nullptr;
 
 		for (ndBodyList::ndNode* node = bodyList.GetFirst(); node; node = node->GetNext())
 		{
-			// TODO: Debug this!
-			if (node->GetInfo()->GetAsBody() == m_body)
+			// IMPORTANT: reference, not copy (GetInfo() returns T&)
+			auto& bodySp = node->GetInfo(); // ndSharedPtr<ndBody>& (most likely)
+			ndBodyKinematic* const b = bodySp->GetAsBodyKinematic(); // or bodySp->GetAsBody()
+
+			if (b == m_body)
 			{
 				currentNode = node;
 				break;
 			}
 		}
 
-		if (currentNode && currentNode->GetNext())
+		if (currentNode)
 		{
-			// TODO: Debug this!
-			auto nextBody = currentNode->GetNext()->GetInfo();
-			if (nextBody)
+			ndBodyList::ndNode* nextNode = currentNode->GetNext();
+			if (nextNode)
 			{
-				ndBodyNotify* notify = nextBody->GetNotifyCallback();
-				if (notify)
+				auto& nextSp = nextNode->GetInfo();                 // ref, not copy
+				ndBodyKinematic* const nextBody = nextSp->GetAsBodyKinematic();
+				if (nextBody)
 				{
-					BodyNotify* ogreNotify = static_cast<BodyNotify*>(notify);
-					return ogreNotify->GetOgreNewtBody();
+					ndBodyNotify* notify = nextBody->GetNotifyCallback();
+					if (notify)
+					{
+						// if you’re 100% sure it's always BodyNotify, keep static_cast.
+						// Safer during debugging:
+						// if (auto* ogreNotify = dynamic_cast<BodyNotify*>(notify)) ...
+						BodyNotify* ogreNotify = static_cast<BodyNotify*>(notify);
+						return ogreNotify ? ogreNotify->GetOgreNewtBody() : nullptr;
+					}
 				}
 			}
 		}
+
 		return nullptr;
 	}
 
