@@ -22,6 +22,13 @@ namespace OgreNewt
 	class _OgreNewtExport Body : public _DestructorCallback<Body>
 	{
 	public:
+		enum class NotifyKind
+		{
+			Default,
+			Vehicle,
+			ComplexVehicle
+		};
+	public:
 		typedef OgreNewt::function<void(OgreNewt::Body*, ndFloat32 timeStep, int threadIndex)> ForceCallback;
 		typedef OgreNewt::function<void(OgreNewt::Body*)> NodeUpdateNotifyCallback;
 		typedef OgreNewt::function<void(OgreNewt::Body*, OgreNewt::Contact*)> ContactCallback;
@@ -30,8 +37,8 @@ namespace OgreNewt
 		friend class Vehicle;
 	public:
 
-		Body(World* world, Ogre::SceneManager* sceneManager, const OgreNewt::CollisionPtr& col, Ogre::SceneMemoryMgrTypes memoryType = Ogre::SceneMemoryMgrTypes::SCENE_DYNAMIC);
-		Body(World* world, Ogre::SceneManager* sceneManager, ndBodyKinematic* body, Ogre::SceneMemoryMgrTypes memoryType = Ogre::SceneMemoryMgrTypes::SCENE_DYNAMIC);
+		Body(World* world, Ogre::SceneManager* sceneManager, const OgreNewt::CollisionPtr& col, Ogre::SceneMemoryMgrTypes memoryType = Ogre::SceneMemoryMgrTypes::SCENE_DYNAMIC, NotifyKind notifyKind = NotifyKind::Default);
+		Body(World* world, Ogre::SceneManager* sceneManager, ndBodyKinematic* body, Ogre::SceneMemoryMgrTypes memoryType = Ogre::SceneMemoryMgrTypes::SCENE_DYNAMIC, NotifyKind notifyKind = NotifyKind::Default);
 		Body(World* world, Ogre::SceneManager* sceneManager, Ogre::SceneMemoryMgrTypes memoryType = Ogre::SceneMemoryMgrTypes::SCENE_DYNAMIC);
 
 		virtual ~Body();
@@ -183,6 +190,8 @@ namespace OgreNewt
 
 		void setConvexIntertialMatrix(const Ogre::Vector3& inertia, const Ogre::Vector3& massOrigin);
 
+		void setSelfCollisionGroup(unsigned int selfCollisionGroup);
+		unsigned int getSelfCollisionGroup() const;
 	protected:
 		ndBodyKinematic* m_body;
 		BodyNotify* m_bodyNotify; // Store the notification object
@@ -226,6 +235,7 @@ namespace OgreNewt
 		Ogre::SceneMemoryMgrTypes m_sceneMemoryType;
 		bool m_isOwner;
 		RenderUpdateCallback m_renderUpdateCallback;
+		unsigned int m_selfCollisionGroup;
 
 	protected:
 		static void newtonDestructor(ndBodyKinematic* body);

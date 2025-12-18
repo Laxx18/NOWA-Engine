@@ -3858,7 +3858,7 @@ namespace OgreNewt
 		RayCastTire* joint = static_cast<RayCastTire*>(GetSupportJoint());
 
 		m_tireConfiguration.tireSide = tireSide;
-		joint->SetTireConfiguration(m_tireConfiguration);
+		joint->setTireConfiguration(m_tireConfiguration);
 	}
 
 	VehicleTireSide VehicleTire::getVehicleTireSide(void) const
@@ -3871,7 +3871,7 @@ namespace OgreNewt
 		RayCastTire* joint = static_cast<RayCastTire*>(GetSupportJoint());
 
 		m_tireConfiguration.tireSteer = tireSteer;
-		joint->SetTireConfiguration(m_tireConfiguration);
+		joint->setTireConfiguration(m_tireConfiguration);
 	}
 
 	VehicleTireSteer VehicleTire::getVehicleTireSteer(void) const
@@ -3884,7 +3884,7 @@ namespace OgreNewt
 		RayCastTire* joint = static_cast<RayCastTire*>(GetSupportJoint());
 
 		m_tireConfiguration.steerSide = steerSide;
-		joint->SetTireConfiguration(m_tireConfiguration);
+		joint->setTireConfiguration(m_tireConfiguration);
 	}
 
 	VehicleSteerSide VehicleTire::getVehicleSteerSide(void) const
@@ -3897,7 +3897,7 @@ namespace OgreNewt
 		RayCastTire* joint = static_cast<RayCastTire*>(GetSupportJoint());
 
 		m_tireConfiguration.tireAccel = tireAccel;
-		joint->SetTireConfiguration(m_tireConfiguration);
+		joint->setTireConfiguration(m_tireConfiguration);
 	}
 
 	VehicleTireAccel VehicleTire::getVehicleTireAccel(void) const
@@ -3910,7 +3910,7 @@ namespace OgreNewt
 		RayCastTire* joint = static_cast<RayCastTire*>(GetSupportJoint());
 
 		m_tireConfiguration.brakeMode = brakeMode;
-		joint->SetTireConfiguration(m_tireConfiguration);
+		joint->setTireConfiguration(m_tireConfiguration);
 	}
 
 	VehicleTireBrake VehicleTire::getVehicleTireBrake(void) const
@@ -3923,7 +3923,7 @@ namespace OgreNewt
 		RayCastTire* joint = static_cast<RayCastTire*>(GetSupportJoint());
 
 		m_tireConfiguration.lateralFriction = lateralFriction;
-		joint->SetTireConfiguration(m_tireConfiguration);
+		joint->setTireConfiguration(m_tireConfiguration);
 	}
 
 	Ogre::Real VehicleTire::getLateralFriction(void) const
@@ -3936,7 +3936,7 @@ namespace OgreNewt
 		RayCastTire* joint = static_cast<RayCastTire*>(GetSupportJoint());
 
 		m_tireConfiguration.longitudinalFriction = longitudinalFriction;
-		joint->SetTireConfiguration(m_tireConfiguration);
+		joint->setTireConfiguration(m_tireConfiguration);
 	}
 
 	Ogre::Real VehicleTire::getLongitudinalFriction(void) const
@@ -3949,7 +3949,7 @@ namespace OgreNewt
 		RayCastTire* joint = static_cast<RayCastTire*>(GetSupportJoint());
 
 		m_tireConfiguration.springLength = springLength;
-		joint->SetTireConfiguration(m_tireConfiguration);
+		joint->setTireConfiguration(m_tireConfiguration);
 	}
 
 	Ogre::Real VehicleTire::getSpringLength(void) const
@@ -3962,7 +3962,7 @@ namespace OgreNewt
 		RayCastTire* joint = static_cast<RayCastTire*>(GetSupportJoint());
 
 		m_tireConfiguration.smass = smass;
-		joint->SetTireConfiguration(m_tireConfiguration);
+		joint->setTireConfiguration(m_tireConfiguration);
 	}
 
 	Ogre::Real VehicleTire::getSmass(void) const
@@ -3975,7 +3975,7 @@ namespace OgreNewt
 		RayCastTire* joint = static_cast<RayCastTire*>(GetSupportJoint());
 
 		m_tireConfiguration.springConst = springConst;
-		joint->SetTireConfiguration(m_tireConfiguration);
+		joint->setTireConfiguration(m_tireConfiguration);
 	}
 
 	Ogre::Real VehicleTire::getSpringConst(void) const
@@ -3988,7 +3988,7 @@ namespace OgreNewt
 		RayCastTire* joint = static_cast<RayCastTire*>(GetSupportJoint());
 
 		m_tireConfiguration.springDamp = springDamp;
-		joint->SetTireConfiguration(m_tireConfiguration);
+		joint->setTireConfiguration(m_tireConfiguration);
 	}
 
 	Ogre::Real VehicleTire::getSpringDamp(void) const

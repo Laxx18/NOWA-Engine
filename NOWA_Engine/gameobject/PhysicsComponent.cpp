@@ -854,35 +854,30 @@ namespace NOWA
 		{
 			Ogre::Node* node = this->gameObjectPtr ? this->gameObjectPtr->getSceneNode() : nullptr;
 
-			NOWA::AppStateManager::LogicCommand logicCommand = [this, node]()
+			boost::shared_ptr<EventDataDeleteBody> deleteBodyEvent(boost::make_shared<EventDataDeleteBody>(this->physicsBody));
+			AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(deleteBodyEvent);
+
+			// Dangerous: If there is a joint and the body is destroyed, all constraints are destroyed by newton automatically!
+			// And joint pointer will become invalid! Hence release the joints
+			unsigned int i = 0;
+			boost::shared_ptr<JointComponent> jointCompPtr = nullptr;
+			do
 			{
-				
-				boost::shared_ptr<EventDataDeleteBody> deleteBodyEvent(boost::make_shared<EventDataDeleteBody>(this->physicsBody));
-				AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(deleteBodyEvent);
-
-				// Dangerous: If there is a joint and the body is destroyed, all constraints are destroyed by newton automatically!
-				// And joint pointer will become invalid! Hence release the joints
-				unsigned int i = 0;
-				boost::shared_ptr<JointComponent> jointCompPtr = nullptr;
-				do
+				jointCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentWithOccurrence<JointComponent>(i));
+				if (nullptr != jointCompPtr)
 				{
-					jointCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentWithOccurrence<JointComponent>(i));
-					if (nullptr != jointCompPtr)
-					{
-						jointCompPtr->releaseJoint();
-						i++;
-					}
-				} while (nullptr != jointCompPtr);
+					jointCompPtr->releaseJoint();
+					i++;
+				}
+			} while (nullptr != jointCompPtr);
 
-				this->physicsBody->setRenderUpdateCallback(nullptr);
-				this->physicsBody->removeForceAndTorqueCallback();
-				this->physicsBody->removeNodeUpdateNotify();
-				this->physicsBody->detachNode();
-				this->physicsBody->removeDestructorCallback();
-				delete this->physicsBody;
-				this->physicsBody = nullptr;
-			};
-			NOWA::AppStateManager::getSingletonPtr()->enqueueAndWait(std::move(logicCommand));
+			this->physicsBody->setRenderUpdateCallback(nullptr);
+			this->physicsBody->removeForceAndTorqueCallback();
+			this->physicsBody->removeNodeUpdateNotify();
+			this->physicsBody->detachNode();
+			this->physicsBody->removeDestructorCallback();
+			delete this->physicsBody;
+			this->physicsBody = nullptr;
 
 			// Really important! Remove the tracked node, else there is a transform mess next time!
 			if (nullptr != node)

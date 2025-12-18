@@ -51,11 +51,8 @@ namespace NOWA
 		{
 			if (nullptr != this->luaScript && this->luaScript->isCompiled() && false == this->onSteerAngleChangedFunctionName.empty())
 			{
-				NOWA::AppStateManager::LogicCommand logicCommand = [this, dt]()
-				{
-					this->luaScript->callTableFunction(this->onSteerAngleChangedFunctionName, this->vehicleDrivingManipulation, dt);
-				};
-				NOWA::AppStateManager::getSingletonPtr()->enqueueAndWait(std::move(logicCommand));
+				// Is safe run in newton thread
+				this->luaScript->callTableFunction(this->onSteerAngleChangedFunctionName, this->vehicleDrivingManipulation, dt);
 				return this->vehicleDrivingManipulation->steerAngle;
 			}
 		}
@@ -71,11 +68,8 @@ namespace NOWA
 		{
 			if (nullptr != this->luaScript && this->luaScript->isCompiled() && false == this->onMotorForceChangedFunctionName.empty())
 			{
-				NOWA::AppStateManager::LogicCommand logicCommand = [this, dt]()
-				{
-					this->luaScript->callTableFunction(this->onMotorForceChangedFunctionName, this->vehicleDrivingManipulation, dt);
-				};
-				NOWA::AppStateManager::getSingletonPtr()->enqueueAndWait(std::move(logicCommand));
+				// Is safe run in newton thread
+				this->luaScript->callTableFunction(this->onMotorForceChangedFunctionName, this->vehicleDrivingManipulation, dt);
 				return this->vehicleDrivingManipulation->motorForce;
 			}
 		}
@@ -91,6 +85,7 @@ namespace NOWA
 		{
 			if (nullptr != this->luaScript && this->luaScript->isCompiled() && false == this->onHandBrakeChangedFunctionName.empty())
 			{
+				// Is safe run in newton thread
 				this->luaScript->callTableFunction(this->onHandBrakeChangedFunctionName, this->vehicleDrivingManipulation, dt);
 				return this->vehicleDrivingManipulation->handBrake;
 			}
@@ -107,11 +102,8 @@ namespace NOWA
 		{
 			if (nullptr != this->luaScript && this->luaScript->isCompiled() && false == this->onBrakeChangedFunctionName.empty())
 			{
-				NOWA::AppStateManager::LogicCommand logicCommand = [this, dt]()
-				{
-					this->luaScript->callTableFunction(this->onBrakeChangedFunctionName, this->vehicleDrivingManipulation, dt);
-				};
-				NOWA::AppStateManager::getSingletonPtr()->enqueueAndWait(std::move(logicCommand));
+				// Is safe run in newton thread
+				this->luaScript->callTableFunction(this->onBrakeChangedFunctionName, this->vehicleDrivingManipulation, dt);
 				return this->vehicleDrivingManipulation->brake;
 			}
 		}
@@ -125,11 +117,8 @@ namespace NOWA
 		{
 			if (nullptr != this->luaScript && this->luaScript->isCompiled() && false == this->onTireContactFunctionName.empty())
 			{
-				NOWA::AppStateManager::LogicCommand logicCommand = [this, tireName, hitPhysicsComponent, contactPosition, contactNormal, penetration]()
-				{
-					this->luaScript->callTableFunction(this->onTireContactFunctionName, tireName, hitPhysicsComponent, contactPosition, contactNormal, penetration);
-				};
-				NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+				// Is safe run in newton thread
+				this->luaScript->callTableFunction(this->onTireContactFunctionName, tireName, hitPhysicsComponent, contactPosition, contactNormal, penetration);
 			}
 		}
 	}
@@ -283,13 +272,17 @@ namespace NOWA
 	{
 		if (nullptr != this->physicsBody)
 		{
-			static_cast<OgreNewt::Vehicle*>(this->physicsBody)->RemoveAllTires();
+			static_cast<OgreNewt::Vehicle*>(this->physicsBody)->removeAllTires();
 		}
 	}
 
 	bool PhysicsActiveVehicleComponent::connect(void)
 	{
 		bool success = PhysicsActiveComponent::connect();
+
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PhysicsActiveVehicleComponent] Connect physics active vehicle component for game object: "
+														+ this->gameObjectPtr->getName());
+		
 
 		// Note: Since vehicle is created on the fly during connect, also its init position must be set there, instead like in physicsactivecomponent in postinit!
 		this->initialPosition = this->gameObjectPtr->getSceneNode()->getPosition();
@@ -300,6 +293,8 @@ namespace NOWA
 		// Else: E.g. if creating this component, creating body to early, lua script would be 0, because the user would add the lua script component later
 		if (false == this->createDynamicBody())
 			return false;
+
+		this->setCanDrive(this->activated->getBool());
 
 		if (nullptr != this->physicsBody && true == this->bShowDebugData)
 		{
@@ -320,7 +315,7 @@ namespace NOWA
 
 		if (nullptr != this->physicsBody)
 		{
-			static_cast<OgreNewt::Vehicle*>(this->physicsBody)->RemoveAllTires();
+			static_cast<OgreNewt::Vehicle*>(this->physicsBody)->removeAllTires();
 			delete this->physicsBody;
 			this->physicsBody = nullptr;
 		}
@@ -334,11 +329,6 @@ namespace NOWA
 
 		if (false == notSimulating)
 		{
-			if (nullptr != this->physicsBody)
-			{
-				static_cast<OgreNewt::Vehicle*>(this->physicsBody)->Update(dt);
-			}
-
 			if (true == this->isVehicleTippedOver())
 			{
 				if (this->isVehicleStuck(dt))
@@ -421,7 +411,6 @@ namespace NOWA
 	void PhysicsActiveVehicleComponent::setActivated(bool activated)
 	{
 		PhysicsActiveComponent::setActivated(activated);
-		this->setCanDrive(activated);
 	}
 
 	void PhysicsActiveVehicleComponent::setOnSteerAngleChangedFunctionName(const Ogre::String& onSteerAngleChangedFunctionName)

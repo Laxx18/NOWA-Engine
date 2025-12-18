@@ -82,6 +82,8 @@ namespace OgreNewt
 
 		ndWorld* getNewtonWorld() const { return const_cast<World*>(this); }
 
+		void setJointRecursiveCollision(const OgreNewt::Body* root, bool enable);
+
 		// ---------------------------------------------------------------------
 		// Thread identity / safe point
 		// ---------------------------------------------------------------------
@@ -294,6 +296,10 @@ namespace OgreNewt
 		// Thread identity: thread that drives update() (main thread)
 		std::thread::id m_mainThreadId;
 		std::atomic<bool> m_isSimulating{ false };
+
+		std::atomic<unsigned int> m_nextSelfCollisionGroup{ 1 };
+
+		void applySelfCollisionGroup(ndBodyKinematic* start, unsigned int group);
 	private:
 		// non-template, defined in .cpp
 		void enqueueCommandInternal(ICommand* cmd);

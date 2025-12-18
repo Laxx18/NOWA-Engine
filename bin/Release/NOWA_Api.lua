@@ -3988,6 +3988,82 @@ return {
 			}
 		}
 	},
+	ComplexVehicleDrivingManipulation =
+	{
+		type = "class",
+		description = "ComplexVehicleDrivingManipulation class",
+		childs = 
+		{
+			VehicleDrivingManipulation =
+			{
+				type = "value"
+			},
+			setSteerAngle =
+			{
+				type = "method",
+				description = "Sets the steering angle e.g. via input device.",
+				args = "(number steerAngle)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getSteerAngle =
+			{
+				type = "function",
+				description = "Gets the steering angle.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setMotorForce =
+			{
+				type = "method",
+				description = "Sets the motor force e.g. via input device.",
+				args = "(number motorForce)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getMotorForce =
+			{
+				type = "function",
+				description = "Gets the motor force.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setHandBrake =
+			{
+				type = "method",
+				description = "Sets hand brake force e.g. via input device.",
+				args = "(number handBrake)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getHandBrake =
+			{
+				type = "function",
+				description = "Gets hand brake force.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setBrake =
+			{
+				type = "method",
+				description = "Sets brake force e.g. via input device.",
+				args = "(number brake)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getBrake =
+			{
+				type = "function",
+				description = "Gets brake force.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			}
+		}
+	},
 	CompositorEffectBaseComponent =
 	{
 		type = "class",
@@ -4443,14 +4519,6 @@ return {
 				args = "()",
 				returns = "(number)",
 				valuetype = "number"
-			},
-			setContactPosition =
-			{
-				type = "method",
-				description = "Sets the contact position.",
-				args = "(Vector3 contactPosition)",
-				returns = "(nil)",
-				valuetype = "nil"
 			},
 			getPositionAndNormal =
 			{
@@ -13315,6 +13383,22 @@ return {
 				returns = "(number)",
 				valuetype = "number"
 			},
+			setTwistSpringDamper =
+			{
+				type = "method",
+				description = "Activates the twist spring with currently set spring values.",
+				args = "(boolean asSpringDamper)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setTwistSpringDamper =
+			{
+				type = "method",
+				description = "Sets the twist spring values for this joint. Note: When 'asSpringDamper' is activated the joint will use spring values for twist.",
+				args = "(boolean asSpringDamper, number springDamperRelaxation, number spring, number damper)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
 			setAnchorPosition1 =
 			{
 				type = "method",
@@ -13554,7 +13638,7 @@ return {
 	JointDryRollingFrictionComponent =
 	{
 		type = "class",
-		description = "Derived class from JointComponent. This joint is usefully to simulate the rolling friction of a rolling ball over a flat surface.  Normally this is not important for non spherical objects, but for games like poll, pinball, bolling, golf or any other where the movement of balls is the main objective the rolling friction is a real big problem. See: http://newtondynamics.com/forum/viewtopic.php?f=15&t=1187&p=8158&hilit=dry+rolling+friction",
+		description = "Derived class from JointComponent. This joint is used to simulate the rolling friction of a rolling ball over a flat surface. Normally this is not important for non-spherical objects, but for games like pool, pinball, bowling, golf or any other where the movement of balls is the main objective the rolling friction is a real big problem. See: http://newtondynamics.com/forum/viewtopic.php?f=15&t=1187&p=8158&hilit=dry+rolling+friction",
 		inherits = "JointComponent",
 		childs = 
 		{
@@ -13569,7 +13653,7 @@ return {
 			setRadius =
 			{
 				type = "method",
-				description = "Sets radius of the ball.",
+				description = "Sets the visual/logic radius of the rolling body (e.g. ball or wheel).",
 				args = "(number radius)",
 				returns = "(nil)",
 				valuetype = "nil"
@@ -13577,7 +13661,7 @@ return {
 			getRadius =
 			{
 				type = "function",
-				description = "Gets the radius of the ball.",
+				description = "Gets the visual/logic radius of the rolling body.",
 				args = "()",
 				returns = "(number)",
 				valuetype = "number"
@@ -13585,7 +13669,7 @@ return {
 			setRollingFrictionCoefficient =
 			{
 				type = "method",
-				description = "Sets the rolling friction coefficient.",
+				description = "Sets the dimensionless rolling friction coefficient. Higher values increase the rolling resistance torque.",
 				args = "(number rollingFrictionCoefficient)",
 				returns = "(nil)",
 				valuetype = "nil"
@@ -13594,6 +13678,22 @@ return {
 			{
 				type = "function",
 				description = "Gets the rolling friction coefficient.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setContactTrail =
+			{
+				type = "method",
+				description = "Sets the effective contact trail (lever arm) in world units. Acts like an effective rolling radius for the friction torque: larger values generate more rolling resistance for the same friction coefficient.",
+				args = "(number contactTrail)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getContactTrail =
+			{
+				type = "function",
+				description = "Gets the effective contact trail (lever arm) used to compute the rolling friction torque.",
 				args = "()",
 				returns = "(number)",
 				valuetype = "number"
@@ -14365,98 +14465,42 @@ return {
 				returns = "(string)",
 				valuetype = "string"
 			},
-			setPin0 =
+			setPin =
 			{
 				type = "method",
-				description = "Sets pin0 axis for the first reference body, to rotate around one dimension prependicular to the axis.",
-				args = "(Vector3 pin0)",
+				description = "Sets pin axis for the reference body, to rotate around one dimension prependicular to the axis.",
+				args = "(Vector3 pin)",
 				returns = "(nil)",
 				valuetype = "nil"
 			},
-			getPin0 =
+			getPin =
 			{
 				type = "function",
-				description = "Gets first reference body pin0 axis.",
+				description = "Gets reference body pin0 axis.",
 				args = "()",
 				returns = "(Vector3)",
 				valuetype = "Vector3"
 			},
-			setPin1 =
+			setSpeed =
 			{
 				type = "method",
-				description = "Sets pin1 axis for the second reference body, to rotate around one dimension prependicular to the axis. Note: This is optional.",
-				args = "(Vector3 pin1)",
+				description = "Sets the rotating speed.",
+				args = "(number speed)",
 				returns = "(nil)",
 				valuetype = "nil"
 			},
-			getPin1 =
+			getSpeed =
 			{
 				type = "function",
-				description = "Gets second reference body pin1 axis.",
-				args = "()",
-				returns = "(Vector3)",
-				valuetype = "Vector3"
-			},
-			setSpeed0 =
-			{
-				type = "method",
-				description = "Sets the rotating speed 0.",
-				args = "(number speed0)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			getSpeed0 =
-			{
-				type = "function",
-				description = "Gets the rotating speed 0.",
+				description = "Gets the rotating speed.",
 				args = "()",
 				returns = "(number)",
 				valuetype = "number"
 			},
-			setSpeed1 =
-			{
-				type = "method",
-				description = "Sets the rotating speed 1.",
-				args = "(number speed1)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			getSpeed1 =
+			getCurrentAngleDeg =
 			{
 				type = "function",
-				description = "Gets the rotating speed 1.",
-				args = "()",
-				returns = "(number)",
-				valuetype = "number"
-			},
-			setTorgue0 =
-			{
-				type = "method",
-				description = "Sets the torque rotation 0 for this joint.",
-				args = "(number torque0)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			getTorgue0 =
-			{
-				type = "function",
-				description = "Gets the torque rotation 0 for this joint.",
-				args = "()",
-				returns = "(number)",
-				valuetype = "number"
-			},
-			setTorgue1 =
-			{
-				type = "method",
-				description = "Sets the torque rotation 1 for this joint. Note: This is optional.",
-				args = "(number torque1)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			getTorgue1 =
-			{
-				type = "function",
-				description = "Gets the torque rotation 1 for this joint.",
+				description = "Gets the current angle in degrees.",
 				args = "()",
 				returns = "(number)",
 				valuetype = "number"
@@ -14565,6 +14609,103 @@ return {
 				args = "(boolean asSpringDamper, number springDamperRelaxation, number springK, number springD)",
 				returns = "(nil)",
 				valuetype = "nil"
+			}
+		}
+	},
+	JointPathFollowComponent =
+	{
+		type = "class",
+		description = "Derived class from JointComponent. An object attached to a list of pathes does move along the path with physics rules.",
+		inherits = "JointComponent",
+		childs = 
+		{
+			getId =
+			{
+				type = "function",
+				description = "Gets the id of this joint.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			setAnchorPosition =
+			{
+				type = "method",
+				description = "Sets anchor position where to place the joint. The anchor position is set relative to the global mesh origin.",
+				args = "(Vector3 anchorPosition)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getAnchorPosition =
+			{
+				type = "function",
+				description = "Gets joint anchor position.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			getStartMoveDirection =
+			{
+				type = "function",
+				description = "Gets the starting move direction of the game object on the path. It can be used e.g. in order to add a force in that direction, in order to start movement the game object along the path.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			getCurrentMoveDirection =
+			{
+				type = "function",
+				description = "Gets the current move direction of the game object on the path. It can be used e.g. in order to add a force in that direction, in order to continue movement the game object along the path.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			getPathLength =
+			{
+				type = "function",
+				description = "Gets the path length in meters.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			getPathProgress =
+			{
+				type = "function",
+				description = "Gets the path progress in percent.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setLoop =
+			{
+				type = "method",
+				description = "Sets whether to loop the path movement.",
+				args = "(boolean loop)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getLoop =
+			{
+				type = "function",
+				description = "Gets whether path movement is looped.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			setClockwise =
+			{
+				type = "method",
+				description = "Sets whether to move the path clockwise.",
+				args = "(boolean clockwise)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getClockwise =
+			{
+				type = "function",
+				description = "Gets whether path movement is clockwise.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
 			}
 		}
 	},
@@ -15716,38 +15857,6 @@ return {
 			{
 				type = "function",
 				description = "Gets the steering rate.",
-				args = "()",
-				returns = "(number)",
-				valuetype = "number"
-			},
-			getStartMoveDirection =
-			{
-				type = "function",
-				description = "Gets the starting move direction of the game object on the path. It can be used e.g. in order to add a force in that direction, in order to start movement the game object along the path.",
-				args = "()",
-				returns = "(Vector3)",
-				valuetype = "Vector3"
-			},
-			getCurrentMoveDirection =
-			{
-				type = "function",
-				description = "Gets the current move direction of the game object on the path. It can be used e.g. in order to add a force in that direction, in order to continue movement the game object along the path.",
-				args = "()",
-				returns = "(Vector3)",
-				valuetype = "Vector3"
-			},
-			getPathLength =
-			{
-				type = "function",
-				description = "Gets the path length in meters.",
-				args = "()",
-				returns = "(number)",
-				valuetype = "number"
-			},
-			getPathProgress =
-			{
-				type = "function",
-				description = "Gets the path progress in percent.",
 				args = "()",
 				returns = "(number)",
 				valuetype = "number"
@@ -21271,6 +21380,39 @@ return {
 			}
 		}
 	},
+	PhysicsActiveComplexVehicleComponent =
+	{
+		type = "class",
+		description = "Derived class of PhysicsActiveComplexVehicleComponent. It can be used to control a vehicle.",
+		inherits = "PhysicsActiveComponent",
+		childs = 
+		{
+			getVehicleForce =
+			{
+				type = "function",
+				description = "Gets current vehicle force.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			applyWheelie =
+			{
+				type = "method",
+				description = "Applies a wheelie stunt by putting up the front tires at the given strength.",
+				args = "(number strength)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			applyDrift =
+			{
+				type = "method",
+				description = "Applies a drift at the given strength (jump) and if left side, at the given steering strength and vice versa. Note: A high force strength is required to put the vehicle in the air, e.g. 50000NM.",
+				args = "(boolean left, number strength, number steeringStrength)",
+				returns = "(nil)",
+				valuetype = "nil"
+			}
+		}
+	},
 	PhysicsActiveComponent =
 	{
 		type = "class",
@@ -21662,22 +21804,6 @@ return {
 				returns = "(nil)",
 				valuetype = "nil"
 			},
-			setContinuousCollision =
-			{
-				type = "method",
-				description = "Sets whether to use continuous collision, if set to true, the collision hull will be slightly resized, so that a fast moving physics body will still collide with other bodies. Note: This comes with a performance impact.",
-				args = "(boolean continuousCollision)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			getContinuousCollision =
-			{
-				type = "function",
-				description = "Gets whether continuous collision mode is used.",
-				args = "()",
-				returns = "(boolean)",
-				valuetype = "boolean"
-			},
 			getUp =
 			{
 				type = "function",
@@ -22027,6 +22153,22 @@ return {
 				args = "()",
 				returns = "(number)",
 				valuetype = "number"
+			},
+			setCategories =
+			{
+				type = "method",
+				description = "Sets categories which can be managed by buoyancy (may be composed: e.g. ALL or ALL-House+Floor to get specifig game objects with physics active component to manage.",
+				args = "(string categories)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getCategories =
+			{
+				type = "function",
+				description = "Gets categories which can be managed by buoyancy.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
 			},
 			reactOnEnter =
 			{
@@ -22738,6 +22880,22 @@ return {
 				args = "(func closure, visitorGameObject)",
 				returns = "(nil)",
 				valuetype = "nil"
+			},
+			setCategories =
+			{
+				type = "method",
+				description = "Sets categories (may be composed: e.g. ALL or ALL-House+Floor to get specifig game objects with physics component to manage.",
+				args = "(string categories)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getCategories =
+			{
+				type = "function",
+				description = "Gets categories which can trigger.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
 			}
 		}
 	},
@@ -25171,6 +25329,14 @@ return {
 				args = "(SpectrumArea spectrumArea)",
 				returns = "(boolean)",
 				valuetype = "boolean"
+			},
+			getSpectrumAreaIntensity =
+			{
+				type = "function",
+				description = "Returns the current intensity (energy level) of the requested audio spectrum area. 					Use this to drive animations, physics forces or visual effects proportionally to 					how strong the band (e.g., Kick, Snare, Hi-Hat) is at the current analysis frame.",
+				args = "(SpectrumArea spectrumArea)",
+				returns = "(Ogre::Real)",
+				valuetype = "Ogre::Real"
 			}
 		}
 	},

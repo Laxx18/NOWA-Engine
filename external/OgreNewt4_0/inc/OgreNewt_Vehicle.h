@@ -60,11 +60,26 @@ namespace OgreNewt
 		{
 		}
 
-		float m_param;
+		Ogre::Real m_param;
 		ndVector m_normal;
 		const OgreNewt::Body* m_me;
 		const OgreNewt::Body* m_hitBody;
 		int m_contactID;
+	};
+
+	struct VehicleStuckState
+	{
+		Ogre::Real stuckTimer = 0.0f;     // how long we've been stuck
+		Ogre::Real rescueTimer = 0.0f;    // active rescue duration
+		Ogre::Real pulseTimer = 0.0f;     // forward/back pulse timing
+		bool  rescueActive = false;
+	};
+
+	struct RescueState
+	{
+		Ogre::Real airborneTimer = 0.0f;
+		Ogre::Real cooldown = 0.0f;
+		bool toggleDir = false;
 	};
 
 	class RayCastTire;
@@ -170,26 +185,27 @@ namespace OgreNewt
 
 		virtual void UpdateParameters() override;
 
-		void ProcessConvexContacts(OgreNewt::BasicConvexcast::ConvexcastContactInfo& info);
+		void processConvexContacts(OgreNewt::BasicConvexcast::ConvexcastContactInfo& info, Ogre::Real timestep);
 
-		ndMatrix CalculateSuspensionMatrixLocal(ndReal distance);
+		ndMatrix calculateSuspensionMatrixLocal(ndReal distance);
 		
-		ndMatrix CalculateTireMatrixAbsolute(ndReal sSide);
+		ndMatrix calculateTireMatrixAbsolute(ndReal sSide);
 
-		void ApplyBrakes(ndReal bkforce, ndConstraintDescritor& desc);
+		void applyBrakes(ndReal bkforce, ndConstraintDescritor& desc);
 
-		void LongitudinalAndLateralFriction(ndVector tireposit, ndVector lateralpin, ndReal turnfriction, ndReal sidingfriction, ndConstraintDescritor& desc);
-		
-		ndMatrix GetLocalMatrix0();
+		void longitudinalAndLateralFriction(const ndVector& contactPos, const ndVector& lateralPinIn, const ndVector& longitudinalPinIn,
+			ndReal lateralMu, ndReal longitudinalMu, ndConstraintDescritor& desc);
 
-		void SetTireConfiguration(const TireConfiguration& cfg);
-		const TireConfiguration& GetTireConfiguration(void) const;
+		ndMatrix getLocalMatrix0();
+
+		void setTireConfiguration(const TireConfiguration& cfg);
+		const TireConfiguration& getTireConfiguration(void) const;
 	protected:
 		void JacobianDerivative(ndConstraintDescritor& desc) override;
 
 	private:
-		void ProcessPreUpdate();
-		Ogre::Real ApplySuspenssionLimit();
+		void processPreUpdate(Ogre::Real timestep, int threadIndex);
+		Ogre::Real applySuspenssionLimit();
 	public:
 		Body* m_thisBody;
 		ndBodyKinematic* m_hitBody;
@@ -246,57 +262,54 @@ namespace OgreNewt
 	};
 
 	// -------------------------------------------------------------------------
-	// Vehicle – ND4 model wrapper, API similar to OgreNewt3 Vehicle
+	// Vehicle – ND4 model wrapper
 	// -------------------------------------------------------------------------
 	class _OgreNewtExport Vehicle : public OgreNewt::Body
 	{
 	public:
 		friend class RayCastTire;
-
+		friend class VehicleNotify;
 	public:
-		Vehicle(World* world,
-			Ogre::SceneManager* sceneManager,
-			const Ogre::Vector3& defaultDirection,
-			const OgreNewt::CollisionPtr& col,
-			Ogre::Real vhmass,
-			const Ogre::Vector3& collisionPosition,
-			const Ogre::Vector3& massOrigin,
-			const Ogre::Vector3& gravity,
-			VehicleCallback* vehicleCallback);
+		Vehicle(World* world, Ogre::SceneManager* sceneManager, const Ogre::Vector3& defaultDirection,
+			const OgreNewt::CollisionPtr& col, Ogre::Real vhmass, const Ogre::Vector3& collisionPosition,
+			const Ogre::Vector3& massOrigin, const Ogre::Vector3& gravity, VehicleCallback* vehicleCallback);
 
 		virtual ~Vehicle();
 
-		void AddTire(RayCastTire* tire);
-		bool RemoveTire(RayCastTire* tire);
-		void RemoveAllTires(void);
+		void addTire(RayCastTire* tire);
+		bool removeTire(RayCastTire* tire);
+		void removeAllTires(void);
 
-		Ogre::Real VectorLength(const ndVector& aVec);
+		Ogre::Real vectorLength(const ndVector& aVec);
 
-		void Update(Ogre::Real timestep);
+		// Force helper (world space)
+		ndVector rel2AbsPoint(ndBodyKinematic* vBody, const ndVector& vPointRel);
 
-		// Force helper (world space), ND3 math
-		ndVector Rel2AbsPoint(ndBodyKinematic* vBody, const ndVector& vPointRel);
+		void addForceAtPos(ndBodyKinematic* vBody, const ndVector& vForce, const ndVector& vPoint, Ogre::Real timestep);
 
-		void AddForceAtPos(ndBodyKinematic* vBody, const ndVector& vForce, const ndVector& vPoint);
-
-		void AddForceAtRelPos(ndBodyKinematic* vBody, const ndVector& vForce, const ndVector& vPoint);
+		void addForceAtRelPos(ndBodyKinematic* vBody, const ndVector& vForce, const ndVector& vPoint, Ogre::Real timestep);
 
 		void setGravity(const Ogre::Vector3& gravity);
 		Ogre::Vector3 getGravity() const;
 
 		void setCanDrive(bool canDrive);
 
-		void SetChassisMatrix(const ndMatrix& matrix);
+		void setChassisMatrix(const ndMatrix& matrix);
 
-		VehicleCallback* GetVehicleCallback(void) const;
+		VehicleCallback* getVehicleCallback(void) const;
 
 		Ogre::Vector3 getVehicleForce() const;
 
-	private:
-		void InitMassData();
-		void ApplyForceAndTorque(ndBodyKinematic* vBody, const ndVector& vForce, const ndVector& vPoint);
-		void updateDriverInput(RayCastTire* tire, Ogre::Real timestep);
+		void setUseTilting(bool tilt);
 
+		bool getUseTilting() const;
+	private:
+		void update(Ogre::Real timestep, int threadIndex);
+		void updateUnstuck(Ogre::Real timestep);
+		void updateAirborneRescue(Ogre::Real timestep);
+		void initMassData();
+		void applyForceAndTorque(ndBodyKinematic* vBody, const ndVector& vForce, const ndVector& vPoint, Ogre::Real timestep);
+		void updateDriverInput(RayCastTire* tire, Ogre::Real timestep);
 	public:
 		int m_tireCount;
 		bool m_debugtire;
@@ -313,6 +326,9 @@ namespace OgreNewt
 	private:
 		ndMatrix m_chassisMatrix;
 		VehicleCallback* m_vehicleCallback;
+		VehicleStuckState m_stuck;
+		RescueState m_rescue;
+		bool m_useTilting;
 	};
 
 } // namespace OgreNewt

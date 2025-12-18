@@ -442,6 +442,7 @@
     <ClCompile Include="src\OgreNewt_TriggerBody.cpp" />
     <ClCompile Include="src\OgreNewt_TriggerControllerManager.cpp" />
     <ClCompile Include="src\OgreNewt_Vehicle.cpp" />
+    <ClCompile Include="src\OgreNewt_VehicleNotify.cpp" />
     <ClCompile Include="src\OgreNewt_World.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -476,6 +477,7 @@
     <ClInclude Include="inc\OgreNewt_TriggerBody.h" />
     <ClInclude Include="inc\OgreNewt_TriggerControllerManager.h" />
     <ClInclude Include="inc\OgreNewt_Vehicle.h" />
+    <ClInclude Include="inc\OgreNewt_VehicleNotify.h" />
     <ClInclude Include="inc\OgreNewt_World.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

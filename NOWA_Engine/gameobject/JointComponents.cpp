@@ -14538,7 +14538,7 @@ namespace NOWA
 				OgreNewt::VehicleTire* vehicleTire = dynamic_cast<OgreNewt::VehicleTire*>(this->joint);
 				if (vehicleTire)
 				{
-					physicsActiveVehicleCompPtr->getVehicle()->RemoveTire(vehicleTire->getRayCastTire());
+					physicsActiveVehicleCompPtr->getVehicle()->removeTire(vehicleTire->getRayCastTire());
 				}
 			}
 		}
@@ -14720,7 +14720,7 @@ namespace NOWA
 			this->setSpringConst(this->springConst->getReal());
 			this->setSpringDamp(this->springDamp->getReal());
 
-			physicsActiveVehicleCompPtr->getVehicle()->AddTire(vehicleTire->getRayCastTire());
+			physicsActiveVehicleCompPtr->getVehicle()->addTire(vehicleTire->getRayCastTire());
 		}
 		
 		if (nullptr != this->gameObjectPtr)
@@ -15282,7 +15282,7 @@ namespace NOWA
 				OgreNewt::ComplexVehicleTire* vehicleTire = dynamic_cast<OgreNewt::ComplexVehicleTire*>(this->joint);
 				if (vehicleTire)
 				{
-					physicsActiveComplexVehicleCompPtr->getComplexVehicle()->RemoveTire(vehicleTire);
+					physicsActiveComplexVehicleCompPtr->getComplexVehicle()->removeTire(vehicleTire);
 				}
 			}
 		}
@@ -15476,7 +15476,7 @@ namespace NOWA
 			this->setSpringDamp(this->springDamp->getReal());
 
 			// Finally, register tire with ComplexVehicle
-			physicsActiveComplexVehicleCompPtr->getComplexVehicle()->AddTire(complexTire);
+			physicsActiveComplexVehicleCompPtr->getComplexVehicle()->addTire(complexTire);
 		}
 
 		if (nullptr != this->gameObjectPtr)

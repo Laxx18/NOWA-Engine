@@ -2465,7 +2465,7 @@ namespace NOWA
 
 	void GameObject::showBoundingBox(bool show)
 	{
-		ENQUEUE_RENDER_COMMAND_MULTI("GameObject::showBoundingBox", _1(show),
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObject::showBoundingBox", _1(show),
 		{
 			if (this->boundingBoxDraw)
 			{

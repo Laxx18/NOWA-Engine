@@ -95,14 +95,14 @@ namespace OgreNewt
             return true;
 
         // use Newton's real shape user IDs to find the pair
-        const ndUnsigned32 id0 = b0->GetCollisionShape().m_shapeMaterial.m_userId;
-        const ndUnsigned32 id1 = b1->GetCollisionShape().m_shapeMaterial.m_userId;
+        const ndInt64 id0 = b0->GetCollisionShape().m_shapeMaterial.m_userId;
+        const ndInt64 id1 = b1->GetCollisionShape().m_shapeMaterial.m_userId;
         MaterialPair* pair = m_world->findMaterialPair((int)id0, (int)id1);
         if (!pair || !pair->getContactCallback())
             return true;
 
         if (!pair->getDefaultCollidable())
-            return false;
+            return false; 
 
         // fetch OgreNewt::Body via BodyNotify on each body
         auto* n0 = dynamic_cast<BodyNotify*>(b0->GetNotifyCallback());
@@ -115,6 +115,14 @@ namespace OgreNewt
 
         if (!ob0 || !ob1)
             return true;
+
+        const unsigned int g0 = ob0->getSelfCollisionGroup();
+        const unsigned int g1 = ob1->getSelfCollisionGroup();
+        if (g0 != 0 && g0 == g1)
+        {
+            // Same articulation group => no self-collision
+            return false;
+        }
 
         // delegate to your engine callback
         return pair->getContactCallback()->onAABBOverlap(ob0, ob1, 0) != 0;

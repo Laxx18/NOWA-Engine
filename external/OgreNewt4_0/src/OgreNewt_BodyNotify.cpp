@@ -1,6 +1,7 @@
 #include "OgreNewt_Stdafx.h"
 #include "OgreNewt_BodyNotify.h"
 #include "OgreNewt_Body.h"
+#include "OgreNewt_Vehicle.h"
 
 namespace OgreNewt
 {
@@ -24,6 +25,11 @@ namespace OgreNewt
 
 	void BodyNotify::OnApplyExternalForce(ndInt32 threadIndex, ndFloat32 timestep)
 	{
+		/*if (auto* v = dynamic_cast<OgreNewt::Vehicle*>(m_ogreNewtBody))
+		{
+			v->Update(timestep);
+		}*/
+
 		if (m_ogreNewtBody)
 		{
 			m_ogreNewtBody->onForceAndTorqueCallback(timestep, threadIndex);

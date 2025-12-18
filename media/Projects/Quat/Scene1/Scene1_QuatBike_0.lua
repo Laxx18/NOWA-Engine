@@ -74,7 +74,7 @@ end
 
 Scene1_QuatBike_0["onMotorForceChanged"] = function(vehicleDrivingManipulation, dt)
     if inputDeviceModule:isActionDown(NOWA_A_UP) then
-        vehicleDrivingManipulation:setMotorForce(5000 * 120 * dt);
+        vehicleDrivingManipulation:setMotorForce(10000 * 120 * dt);
     elseif inputDeviceModule:isActionDown(NOWA_A_ACTION) then
         vehicleDrivingManipulation:setMotorForce(10000 * 120 * dt);
     elseif inputDeviceModule:isActionDown(NOWA_A_DOWN) then

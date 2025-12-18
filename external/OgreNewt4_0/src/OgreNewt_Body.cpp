@@ -9,10 +9,13 @@
 #include "OgreNewt_ContactJoint.h"
 #include "OgreNewt_ContactNotify.h"
 
+#include "OgreNewt_VehicleNotify.h"
+#include "OgreNewt_Vehicle.h"
+#include "OgreNewt_ComplexVehicle.h"
 
 namespace OgreNewt
 {
-	Body::Body(World* world, Ogre::SceneManager* sceneManager, const OgreNewt::CollisionPtr& collisionPtr, Ogre::SceneMemoryMgrTypes memoryType)
+	Body::Body(World* world, Ogre::SceneManager* sceneManager, const OgreNewt::CollisionPtr& collisionPtr, Ogre::SceneMemoryMgrTypes memoryType, NotifyKind notifyKind)
 		: m_world(world),
 		m_sceneManager(sceneManager),
 		m_sceneMemoryType(memoryType),
@@ -44,12 +47,25 @@ namespace OgreNewt
 		m_forcecallback(nullptr),
 		m_nodeupdatenotifycallback(nullptr),
 		m_contactCallback(nullptr),
-		m_renderUpdateCallback(nullptr)
+		m_renderUpdateCallback(nullptr),
+		m_selfCollisionGroup(0)
 	{
 		ndMatrix matrix(ndGetIdentityMatrix());
 		OgreNewt::Converters::QuatPosToMatrix(m_curRotation, m_curPosit, matrix);
 
-		m_bodyNotify = new BodyNotify(this);
+		switch (notifyKind)
+		{
+		case NotifyKind::Vehicle:
+			m_bodyNotify = new VehicleNotify(static_cast<Vehicle*>(this));
+			break;
+		case NotifyKind::ComplexVehicle:
+			m_bodyNotify = new ComplexVehicleNotify(static_cast<ComplexVehicle*>(this));
+			break;
+		default:
+			m_bodyNotify = new BodyNotify(this);
+			break;
+		}
+
 		m_body = new ndBodyDynamic();
 		m_body->SetMatrix(matrix);
 
@@ -78,7 +94,7 @@ namespace OgreNewt
 			});
 	}
 
-	Body::Body(World* world, Ogre::SceneManager* sceneManager, ndBodyKinematic* body, Ogre::SceneMemoryMgrTypes memoryType)
+	Body::Body(World* world, Ogre::SceneManager* sceneManager, ndBodyKinematic* body, Ogre::SceneMemoryMgrTypes memoryType, NotifyKind notifyKind)
 		: m_world(world),
 		m_sceneManager(sceneManager),
 		m_body(body),
@@ -111,12 +127,24 @@ namespace OgreNewt
 		m_forcecallback(nullptr),
 		m_nodeupdatenotifycallback(nullptr),
 		m_contactCallback(nullptr),
-		m_renderUpdateCallback(nullptr)
+		m_renderUpdateCallback(nullptr),
+		m_selfCollisionGroup(0)
 	{
 		if (!m_body)
 			return;
 
-		m_bodyNotify = new BodyNotify(this);
+		switch (notifyKind)
+		{
+		case NotifyKind::Vehicle:
+			m_bodyNotify = new VehicleNotify(static_cast<Vehicle*>(this));
+			break;
+		case NotifyKind::ComplexVehicle:
+			m_bodyNotify = new ComplexVehicleNotify(static_cast<ComplexVehicle*>(this));
+			break;
+		default:
+			m_bodyNotify = new BodyNotify(this);
+			break;
+		}
 
 		m_world->enqueuePhysicsAndWait([this](World& w)
 			{
@@ -161,7 +189,8 @@ namespace OgreNewt
 		m_forcecallback(nullptr),
 		m_nodeupdatenotifycallback(nullptr),
 		m_contactCallback(nullptr),
-		m_renderUpdateCallback(nullptr)
+		m_renderUpdateCallback(nullptr),
+		m_selfCollisionGroup(0)
 	{
 		
 	}
@@ -572,13 +601,16 @@ namespace OgreNewt
 
 	void Body::setJointRecursiveCollision(unsigned state)
 	{
-		// Not found in ND4
+		if (!m_world)
+			return;
+
+		m_world->setJointRecursiveCollision(this, state ? true : false);
 	}
 
 	int Body::getJointRecursiveCollision() const
 	{
 		// Not found in ND4
-		return 0;
+		return m_selfCollisionGroup > 0;
 	}
 
 	void Body::enableGyroscopicTorque(bool enable)
@@ -1105,4 +1137,14 @@ namespace OgreNewt
 	//	// This is a placeholder - Newton 4.0 soft body implementation differs
 	//	// Would need to use Newton 4.0's soft body/deformable API
 	//}
+
+	void Body::setSelfCollisionGroup(unsigned int selfCollisionGroup)
+	{
+		m_selfCollisionGroup = selfCollisionGroup;
+	}
+
+	unsigned int Body::getSelfCollisionGroup() const
+	{
+		return m_selfCollisionGroup;
+	}
 }

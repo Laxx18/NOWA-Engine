@@ -235,7 +235,7 @@ void World::destroyJoint(ndJointBilateralConstraint* joint)
 // Update loop: main-thread driven, ND4 uses internal worker threads.
 // Pattern: catch-up with Update(), then Sync(), then safe point work.
 // -----------------------------------------------------------------------------
-#if 1
+#if 0
 void World::update(Ogre::Real timestep)
 {
 	// optional: remember the physics thread id (main thread in your case)
@@ -273,7 +273,7 @@ void World::update(Ogre::Real timestep)
 
 	// Catch-up: restore old behavior (>=)
 	bool didStep = false;
-	while (m_timeAccumulator >= dt)
+	while (m_timeAccumulator > dt)
 	{
 		ndWorld::Update(static_cast<ndFloat32>(dt));
 		m_timeAccumulator -= dt;
@@ -289,19 +289,21 @@ void World::update(Ogre::Real timestep)
 	// One sync per frame (like demo when synchronous)
 	if (didStep)
 		ndWorld::Sync();
-	else
-		ndWorld::Sync(); // optional: keep it if you rely on a stable world even with 0 steps
+	// else
+		// ndWorld::Sync(); // optional: keep it if you rely on a stable world even with 0 steps
 
 	// Safe point AFTER sync: now workers are idle, safe to mutate/query
 	processPhysicsQueue();
 	processRaycastJobs();
 	processConvexcastJobs();
 
-	postUpdate(/*interp*/1.0f);
+	postUpdate(1.0f/*interp*/);
 
 	m_isSimulating.store(false, std::memory_order_release);
 }
-#else
+#endif
+
+#if 1
 void World::update(Ogre::Real timestep)
 {
 	m_isSimulating.store(true, std::memory_order_release);
@@ -344,7 +346,78 @@ void World::update(Ogre::Real timestep)
 	processRaycastJobs();
 	processConvexcastJobs();
 
-	postUpdate(/*interp*/1.0f);
+	postUpdate(1.0f/*interp*/);
+
+	m_isSimulating.store(false, std::memory_order_release);
+}
+#endif
+
+#if 0
+void World::update(Ogre::Real t_step)
+{
+	// Remember the thread that drives physics (your logic thread)
+	if (m_mainThreadId == std::thread::id())
+		m_mainThreadId = std::this_thread::get_id();
+
+	m_isSimulating.store(true, std::memory_order_release);
+
+	// Pause / single step
+	if (m_paused.load(std::memory_order_acquire))
+	{
+		if (!m_doSingleStep.exchange(false, std::memory_order_acq_rel))
+		{
+			// Still allow queued lifetime ops + editor queries while paused
+			processPhysicsQueue();
+			processRaycastJobs();
+			processConvexcastJobs();
+
+			m_isSimulating.store(false, std::memory_order_release);
+			return;
+		}
+		// else: allow exactly one fixed step below
+		t_step = m_fixedTimestep;
+	}
+
+	const Ogre::Real dt = m_fixedTimestep;
+	const int maxSteps = m_maxTicksPerFrames;
+
+	// Clamp / drop excessive time (same as OgreNewt3)
+	if (t_step > (dt * Ogre::Real(maxSteps)))
+		t_step = dt * Ogre::Real(maxSteps);
+
+	m_timeAccumulator += t_step;
+
+	// Safe point BEFORE stepping: apply cross-thread add/destroy, etc.
+	processPhysicsQueue();
+
+	int realUpdates = 0;
+
+	// Like OgreNewt3: >= to run exact boundary steps too
+	while (m_timeAccumulator >= dt)
+	{
+		ndWorld::Update(static_cast<ndFloat32>(dt));
+		m_timeAccumulator -= dt;
+		++realUpdates;
+
+		// If pause toggled while stepping, stop after this step
+		if (m_paused.load(std::memory_order_acquire))
+			break;
+	}
+
+	// In OgreNewt3: param = accumulator / dt
+	const Ogre::Real param = m_timeAccumulator * m_invFixedTimestep;
+
+	// ND4: Sync only if we actually stepped this frame (mirrors "wait finished")
+	if (realUpdates > 0)
+		ndWorld::Sync();
+
+	// Safe point AFTER sync: now workers are idle, safe to mutate/query
+	processPhysicsQueue();
+	processRaycastJobs();
+	processConvexcastJobs();
+
+	// Your equivalent of body->updateNode(param)
+	postUpdate(param);
 
 	m_isSimulating.store(false, std::memory_order_release);
 }
@@ -543,7 +616,8 @@ BasicConvexcast::ConvexcastContactInfo World::convexcastBlocking(
 {
 	BasicConvexcast::ConvexcastContactInfo info;
 
-	if (isMainThread())
+	// Main thread or newton work thread, execute immediately
+	if (isMainThread() || threadIndex >= 0)
 	{
 		BasicConvexcast convex(this, shape, startpt, orientation, endpt, maxContactsCount, threadIndex, ignoreBody);
 		if (convex.getContactsCount() > 0)
@@ -580,6 +654,80 @@ BasicConvexcast::ConvexcastContactInfo World::convexcastBlocking(
 		info = job.result;
 	}
 	return info;
+}
+
+void World::setJointRecursiveCollision(const OgreNewt::Body* root, bool enable)
+{
+	if (!root) return;
+
+	// must be on your world thread / safe point
+	enqueuePhysicsAndWait([root, enable](World& w)
+		{
+			ndBodyKinematic* start = root->getNewtonBody();
+			if (!start || start == w.GetSentinelBody())
+				return;
+
+			const unsigned int group = enable ? w.m_nextSelfCollisionGroup.fetch_add(1) : 0;
+			w.applySelfCollisionGroup(start, group);
+		});
+}
+
+void World::applySelfCollisionGroup(ndBodyKinematic* start, unsigned int group)
+{
+	// Build adjacency from current joint graph (no copies of ndSharedPtr!)
+	std::unordered_map<ndBodyKinematic*, std::vector<ndBodyKinematic*>> adj;
+	adj.reserve(128);
+
+	const auto& joints = GetJointList();
+	for (auto node = joints.GetFirst(); node; node = node->GetNext())
+	{
+		auto& jSp = node->GetInfo();                      // IMPORTANT: reference, not copy
+		ndJointBilateralConstraint* j = jSp.operator->(); // raw joint
+		if (!j) continue;
+
+		ndBodyKinematic* b0 = j->GetBody0();
+		ndBodyKinematic* b1 = j->GetBody1();
+
+		if (!b0 || !b1) continue;
+		if (b0 == GetSentinelBody() || b1 == GetSentinelBody()) continue;
+
+		adj[b0].push_back(b1);
+		adj[b1].push_back(b0);
+	}
+
+	// BFS over connected component
+	std::unordered_set<ndBodyKinematic*> visited;
+	visited.reserve(adj.size() + 8);
+
+	std::vector<ndBodyKinematic*> stack;
+	stack.reserve(adj.size() + 8);
+	stack.push_back(start);
+
+	while (!stack.empty())
+	{
+		ndBodyKinematic* b = stack.back();
+		stack.pop_back();
+
+		if (!b || b == GetSentinelBody()) continue;
+		if (!visited.insert(b).second) continue;
+
+		// set group on OgreNewt::Body
+		if (auto* n = dynamic_cast<OgreNewt::BodyNotify*>(b->GetNotifyCallback()))
+		{
+			if (auto* ob = n->GetOgreNewtBody())
+			{
+				ob->setSelfCollisionGroup(group);
+			}
+		}
+
+		// traverse neighbors
+		auto it = adj.find(b);
+		if (it != adj.end())
+		{
+			for (ndBodyKinematic* nb : it->second)
+				stack.push_back(nb);
+		}
+	}
 }
 
 void World::processPhysicsQueue()

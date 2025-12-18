@@ -265,7 +265,6 @@ namespace NOWA
 			return;
 		}
 
-#if 1
 		body->setRenderUpdateCallback([](Ogre::SceneNode* node, const Ogre::Vector3& pos, const Ogre::Quaternion& rot, bool updateRot, bool updateStatic)
 		{
 			if (nullptr == node)
@@ -280,53 +279,26 @@ namespace NOWA
 				return;
 			}
 
-			if (false == node->isStatic())
+			// Non-static node path (mirror Body::updateNode())
+			if (!node->isStatic())
 			{
-				NOWA::GraphicsModule::getInstance()->updateNodePosition(node, (parent->_getDerivedOrientation().Inverse() * (pos - parent->_getDerivedPosition())) / parent->_getDerivedScale());
+				const Ogre::Vector3 localPos = (parent->_getDerivedOrientation().Inverse() * (pos - parent->_getDerivedPosition())) / parent->_getDerivedScale();
+				NOWA::GraphicsModule::getInstance()->updateNodePosition(node, localPos);
+
+				if (updateRot)
+				{
+					const Ogre::Quaternion localRot = parent->_getDerivedOrientation().Inverse() * rot;
+					NOWA::GraphicsModule::getInstance()->updateNodeOrientation(node, localRot);
+				}
 			}
-			if (true == updateRot)
+			// Static node path (mirror Body::updateNode())
+			else if (updateStatic)
 			{
-				NOWA::GraphicsModule::getInstance()->updateNodeOrientation(node, parent->_getDerivedOrientation().Inverse() * rot);
-			}
-			else if (true == updateStatic)
-			{
-				NOWA::GraphicsModule::getInstance()->updateNodePosition(node, (parent->_getDerivedOrientationUpdated().Inverse() * (pos - parent->_getDerivedPositionUpdated())) / parent->_getDerivedScaleUpdated());
-				NOWA::GraphicsModule::getInstance()->updateNodeOrientation(node, parent->_getDerivedOrientationUpdated().Inverse() * rot);
+				const Ogre::Vector3 localPos = (parent->_getDerivedOrientationUpdated().Inverse() * (pos - parent->_getDerivedPositionUpdated())) / parent->_getDerivedScaleUpdated();
+				const Ogre::Quaternion localRot = parent->_getDerivedOrientationUpdated().Inverse() * rot;
+				NOWA::GraphicsModule::getInstance()->updateNodePosition(node, localPos);
+				NOWA::GraphicsModule::getInstance()->updateNodeOrientation(node, localRot);
 			}
 		});
-#else
-
-		body->setRenderUpdateCallback([](Ogre::SceneNode* node, const Ogre::Vector3& pos, const Ogre::Quaternion& rot, bool updateRot, bool updateStatic)
-			{
-				if (nullptr == node)
-				{
-					return;
-				}
-
-				Ogre::Node* parent = node->getParent();
-
-				if (nullptr == parent)
-				{
-					return;
-				}
-
-				NOWA::GraphicsModule::getInstance()->enqueue([=]() {
-
-					if (false == node->isStatic())
-					{
-						NOWA::GraphicsModule::getInstance()->updateNodePosition(node, (parent->_getDerivedOrientation().Inverse() * (pos - parent->_getDerivedPosition())) / parent->_getDerivedScale());
-					}
-					if (true == updateRot)
-					{
-						NOWA::GraphicsModule::getInstance()->updateNodeOrientation(node, parent->_getDerivedOrientation().Inverse() * rot);
-					}
-					else if (true == updateStatic)
-					{
-						NOWA::GraphicsModule::getInstance()->updateNodePosition(node, (parent->_getDerivedOrientationUpdated().Inverse() * (pos - parent->_getDerivedPositionUpdated())) / parent->_getDerivedScaleUpdated());
-						NOWA::GraphicsModule::getInstance()->updateNodeOrientation(node, parent->_getDerivedOrientationUpdated().Inverse() * rot);
-					}
-				}, "body->setRenderUpdateCallback");
-			});
-#endif
 	}
 } // namespace end
