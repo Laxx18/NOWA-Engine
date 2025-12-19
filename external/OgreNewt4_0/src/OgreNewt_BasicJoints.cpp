@@ -81,8 +81,9 @@ namespace OgreNewt
 		ndJointSpherical* joint = new ndJointSpherical(pivot, b0, b1);
 
 		// This is key: prefer the iterative soft model for stability, else whole simulation can become unstable!
-		joint->SetSolverModel(m_jointIterativeSoft);
-
+		// joint->SetSolverModel(m_jointIterativeSoft);
+		joint->SetSolverModel(m_jointkinematicOpenLoop);
+		
 		SetSupportJoint(child->getWorld(), joint);
 	}
 

@@ -22036,10 +22036,25 @@ return {
 	PhysicsActiveVehicleComponent =
 	{
 		type = "class",
-		description = "Derived class of PhysicsActiveVehicleComponent. It can be used to control a vehicle.",
-		inherits = "PhysicsActiveComponent",
+		description = "PhysicsActiveVehicleComponent class",
 		childs = 
 		{
+			setUseTilting =
+			{
+				type = "method",
+				description = "Sets whether the vehicle should use tilting behaviour depending on the tire suspension. E.g. boat in water in a curve.",
+				args = "(boolean useTilting)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getUseTilting =
+			{
+				type = "function",
+				description = "Gets whether the vehicle uses tilting behaviour depending on the tire suspension. E.g. boat in water in a curve.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
 			getVehicleForce =
 			{
 				type = "function",

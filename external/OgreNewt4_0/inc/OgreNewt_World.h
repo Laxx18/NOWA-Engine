@@ -266,7 +266,7 @@ namespace OgreNewt
 		Ogre::String m_name;
 		Ogre::Real   m_updateFPS;
 		Ogre::Real   m_fixedTimestep;
-		Ogre::Real   m_timeAccumulator;
+		double   m_timeAccumulator;
 		int          m_maxTicksPerFrames;
 		Ogre::Real   m_invFixedTimestep;
 		Ogre::Real   m_desiredFps;

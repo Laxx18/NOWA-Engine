@@ -10626,10 +10626,15 @@ namespace NOWA
 		[
 			class_<PhysicsActiveVehicleComponent, PhysicsActiveComponent>("PhysicsActiveVehicleComponent")
 			.def("getParentClassName", &PhysicsActiveVehicleComponent::getParentClassName)
+			.def("setUseTilting", &PhysicsActiveVehicleComponent::setUseTilting)
+			.def("getUseTilting", &PhysicsActiveVehicleComponent::getUseTilting)
 			.def("getVehicleForce", &PhysicsActiveVehicleComponent::getVehicleForce)
 			.def("applyWheelie", &PhysicsActiveVehicleComponent::applyWheelie)
 			.def("applyDrift", &PhysicsActiveVehicleComponent::applyDrift)
 		];
+
+		AddClassToCollection("PhysicsActiveVehicleComponent", "void setUseTilting(boolean useTilting)", "Sets whether the vehicle should use tilting behaviour depending on the tire suspension. E.g. boat in water in a curve.");
+		AddClassToCollection("PhysicsActiveVehicleComponent", "boolean getUseTilting()", "Gets whether the vehicle uses tilting behaviour depending on the tire suspension. E.g. boat in water in a curve.");
 		AddClassToCollection("PhysicsActiveVehicleComponent", "class inherits PhysicsActiveComponent", "Derived class of PhysicsActiveVehicleComponent. It can be used to control a vehicle.");
 		AddClassToCollection("PhysicsActiveVehicleComponent", "Vector3 getVehicleForce()", "Gets current vehicle force.");
 		AddClassToCollection("PhysicsActiveVehicleComponent", "void applyWheelie(number strength)", "Applies a wheelie stunt by putting up the front tires at the given strength.");

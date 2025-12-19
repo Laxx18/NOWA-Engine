@@ -397,103 +397,79 @@ namespace NOWA
 	{
 		this->markCurrentThreadAsLogicThread();
 
-		// Default 60 ticks per second
-		const Ogre::Real simulationTickCount = 1.0f / static_cast<Ogre::Real>(Core::getSingletonPtr()->getOptionDesiredSimulationUpdates());
+		const double fixedDt = 1.0 / static_cast<double>(Core::getSingletonPtr()->getOptionDesiredSimulationUpdates());
 
 		Ogre::Window* renderWindow = Core::getSingletonPtr()->getOgreRenderWindow();
 		this->setDesiredUpdates(Core::getSingletonPtr()->getOptionDesiredFramesUpdates());
 
-		Ogre::Real monitorRefreshRate = static_cast<Ogre::Real>(Core::getSingletonPtr()->getScreenRefreshRate());
-
-		if (0 == monitorRefreshRate)
-		{
-			monitorRefreshRate = static_cast<Ogre::Real>(simulationTickCount);
-		}
-
-		if (this->desiredUpdates != 0 && this->desiredUpdates <= static_cast<unsigned int>(monitorRefreshRate))
-		{
-			monitorRefreshRate = 1.0f / static_cast<Ogre::Real>(this->desiredUpdates);
-		}
-
-		// This keeps track of time (seconds to keep it easy)
 		double currentTime = static_cast<double>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001;
-
-		// Add an accumulator for fixed time step
 		double accumulator = 0.0;
-		double lastLogicFrameTime = currentTime;
 
-		// Maximum delta time to prevent spiral of death
 		const double maxDeltaTime = 0.25;
 
-		// Set the frame time in the render command queue module
-		NOWA::GraphicsModule::getInstance()->setFrameTime(simulationTickCount);
+		NOWA::GraphicsModule* gfx = NOWA::GraphicsModule::getInstance();
+		gfx->setFrameTime(static_cast<float>(fixedDt)); // seconds per fixed tick
 
 		while (false == this->bShutdown)
 		{
-			// Process signals from system
 			Ogre::WindowEventUtilities::messagePump();
 
-			// Calculate time between 2 frames
-			double newTime = static_cast<double>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001;
+			const double newTime = static_cast<double>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001;
 			double frameTime = newTime - currentTime;
 			currentTime = newTime;
 
-			// Cap the delta time to prevent spiral of death
 			frameTime = std::min(frameTime, maxDeltaTime);
-
-			// Add to accumulator
 			accumulator += frameTime;
-
-			// Calculate time since last logic frame for interpolation
-			// Is done in render thread
-			// double timeSinceLastLogicFrame = currentTime - lastLogicFrameTime;
-			// NOWA::GraphicsModule::getInstance()->setAccumTimeSinceLastLogicFrame(static_cast<Ogre::Real>(timeSinceLastLogicFrame));
 
 			if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->bSceneLoading)
 			{
 				this->activeStateStack.back()->renderUpdate(static_cast<Ogre::Real>(frameTime));
 			}
 
-			// Update with fixed time step
-			bool didUpdate = false;
-			while (accumulator >= simulationTickCount)
+			bool didFixedUpdate = false;
+
+			while (accumulator >= fixedDt)
 			{
-				// Before updating logic, begin the logic frame
-				// This advances the transform buffer
-				if (false == didUpdate)
+				if (!didFixedUpdate)
 				{
-					NOWA::GraphicsModule::getInstance()->beginLogicFrame();
-					didUpdate = true;
+					gfx->beginLogicFrame();
+					didFixedUpdate = true;
 				}
 
 				this->processAll();
 
-				// Update input devices
 				if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->bSceneLoading)
 				{
-					// Update the active state with fixed time step
-					this->activeStateStack.back()->update(simulationTickCount);
+					this->activeStateStack.back()->update(static_cast<Ogre::Real>(fixedDt));
 				}
 
-				// Update core with fixed time step
-				Core::getSingletonPtr()->updateFrameStats(simulationTickCount);
-				Core::getSingletonPtr()->update(simulationTickCount);
+				Core::getSingletonPtr()->updateFrameStats(static_cast<Ogre::Real>(fixedDt));
+				Core::getSingletonPtr()->update(static_cast<Ogre::Real>(fixedDt));
 
-				accumulator -= simulationTickCount;
-				lastLogicFrameTime = currentTime - accumulator;
+				accumulator -= fixedDt;
 			}
 
-			if (true == didUpdate)
+			// Publish interpolation alpha every frame:
+			// alpha = remainder / fixedDt
+			const float alpha = (fixedDt > 0.0) ? static_cast<float>(accumulator / fixedDt) : 0.0f;
+			gfx->publishInterpolationAlpha(alpha);
+
+			if (didFixedUpdate)
 			{
-				// End the logic frame
-				NOWA::GraphicsModule::getInstance()->endLogicFrame();
+				gfx->endLogicFrame();
+				gfx->publishLogicFrame(); // optional
 			}
 
-			// Update the renderwindow if the window is not active too, for server/client analysis
+			// If minimized / not visible, reduce CPU
 			if (false == renderWindow->isVisible() && this->renderWhenInactive)
 			{
-				// Do not burn CPU cycles unnecessary when minimized etc.
 				Ogre::Threads::Sleep(500);
+			}
+			else
+			{
+				// Optional: yield a bit so logic doesn't spin at 100% when ahead
+				if (accumulator < fixedDt)
+					std::this_thread::yield();
 			}
 		}
 	}

@@ -225,12 +225,17 @@ namespace NOWA
 
 		Ogre::Vector3 getVehicleForce(void) const;
 
+		void setUseTilting(bool useTilting);
+
+		bool getUseTilting() const;
+
 		void setCanDrive(bool canDrive);
 
 		void applyWheelie(Ogre::Real strength);
 
 		void applyDrift(bool left, Ogre::Real strength, Ogre::Real steeringStrength);
 	public:
+		static const Ogre::String AttrUseTilting(void) { return "Use Tilting"; }
 		static const Ogre::String AttrOnSteerAngleChangedFunctionName(void) { return "On Steering Angle Function Name"; }
 		static const Ogre::String AttrOnMotorForceChangedFunctionName(void) { return "On Motor Force Function Name"; }
 		static const Ogre::String AttrOnHandBrakeChangedFunctionName(void) { return "On Hand Brake Function Name"; }
@@ -239,18 +244,14 @@ namespace NOWA
 	protected:
 		virtual bool createDynamicBody(void);
 	private:
-		bool isVehicleTippedOver(void);
-		bool isVehicleStuck(Ogre::Real dt);
 		void correctVehicleOrientation(void);
 	private:
+		Variant* useTilting;
 		Variant* onSteerAngleChangedFunctionName;
 		Variant* onMotorForceChangedFunctionName;
 		Variant* onHandBrakeChangedFunctionName;
 		Variant* onBrakeChangedFunctionName;
 		Variant* onTireContactFunctionName;
-
-		Ogre::Real stuckTime;
-		Ogre::Real maxStuckTime;
 	};
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

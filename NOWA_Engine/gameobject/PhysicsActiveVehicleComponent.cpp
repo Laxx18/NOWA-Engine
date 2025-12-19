@@ -127,8 +127,7 @@ namespace NOWA
 
 	PhysicsActiveVehicleComponent::PhysicsActiveVehicleComponent()
 		: PhysicsActiveComponent(),
-		stuckTime(0.0f),
-		maxStuckTime(5.0f),
+		useTilting(new Variant(PhysicsActiveVehicleComponent::AttrUseTilting(), false, this->attributes)),
 		onSteerAngleChangedFunctionName(new Variant(PhysicsActiveVehicleComponent::AttrOnSteerAngleChangedFunctionName(), Ogre::String(""), this->attributes)),
 		onMotorForceChangedFunctionName(new Variant(PhysicsActiveVehicleComponent::AttrOnMotorForceChangedFunctionName(), Ogre::String(""), this->attributes)),
 		onHandBrakeChangedFunctionName(new Variant(PhysicsActiveVehicleComponent::AttrOnHandBrakeChangedFunctionName(), Ogre::String(""), this->attributes)),
@@ -145,6 +144,8 @@ namespace NOWA
 		this->collisionPosition->setValue(Ogre::Vector3(0.0f, 0.4f, 0.0f));
 		this->massOrigin->setValue(Ogre::Vector3(0.025f, 0.15f, 0.0f));
 		this->collisionType->setListSelectedValue("Capsule");
+
+		this->useTilting->setDescription("Sets whether the vehicle should use tilting behaviour depending on the tire suspension. E.g. boat in water in a curve.");
 
 		this->onSteerAngleChangedFunctionName->setDescription("Sets the function name to react in lua script to react when the steering angle for the specific tires shall change. E.g. onSteerAngleChanged(vehicleDrivingManipulation, dt)."
 															"The function should set in the resulting steering angle via vehicle driving manipulation object, e.g. depending on user device input.");
@@ -174,6 +175,12 @@ namespace NOWA
 	bool PhysicsActiveVehicleComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
 		PhysicsActiveComponent::parseCommonProperties(propertyElement);
+
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "UseTilting")
+		{
+			this->setUseTilting(XMLConverter::getAttribBool(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "OnSteerAngleChangedFunctionName")
 		{
@@ -232,6 +239,7 @@ namespace NOWA
 		clonedGameObjectPtr->addComponent(clonedCompPtr);
 		clonedCompPtr->setOwner(clonedGameObjectPtr);
 
+		clonedCompPtr->setUseTilting(this->useTilting->getBool());
 		clonedCompPtr->setOnSteerAngleChangedFunctionName(this->onSteerAngleChangedFunctionName->getString());
 		clonedCompPtr->setOnMotorForceChangedFunctionName(this->onMotorForceChangedFunctionName->getString());
 		clonedCompPtr->setOnHandBrakeChangedFunctionName(this->onHandBrakeChangedFunctionName->getString());
@@ -311,8 +319,6 @@ namespace NOWA
 	{
 		bool success = PhysicsActiveComponent::disconnect();
 
-		this->stuckTime = 0.0f;
-
 		if (nullptr != this->physicsBody)
 		{
 			static_cast<OgreNewt::Vehicle*>(this->physicsBody)->removeAllTires();
@@ -329,13 +335,8 @@ namespace NOWA
 
 		if (false == notSimulating)
 		{
-			if (true == this->isVehicleTippedOver())
-			{
-				if (this->isVehicleStuck(dt))
-				{
-					this->correctVehicleOrientation();
-				}
-			}
+			if (nullptr != this->physicsBody)
+			 	static_cast<OgreNewt::Vehicle*>(this->physicsBody)->update(dt, 0);
 		}
 	}
 
@@ -343,7 +344,11 @@ namespace NOWA
 	{
 		PhysicsActiveComponent::actualizeCommonValue(attribute);
 
-		if (PhysicsActiveVehicleComponent::AttrOnSteerAngleChangedFunctionName() == attribute->getName())
+		if (PhysicsActiveVehicleComponent::AttrUseTilting() == attribute->getName())
+		{
+			this->setUseTilting(attribute->getBool());
+		}
+		else if (PhysicsActiveVehicleComponent::AttrOnSteerAngleChangedFunctionName() == attribute->getName())
 		{
 			this->setOnSteerAngleChangedFunctionName(attribute->getString());
 		}
@@ -378,6 +383,12 @@ namespace NOWA
 		// 12 = bool
 
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "UseTilting"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->useTilting->getBool())));
+		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "OnSteerAngleChangedFunctionName"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->onSteerAngleChangedFunctionName->getString())));
@@ -493,6 +504,16 @@ namespace NOWA
 		return static_cast<OgreNewt::Vehicle*>(this->physicsBody)->getVehicleForce();
 	}
 
+	void PhysicsActiveVehicleComponent::setUseTilting(bool useTilting)
+	{
+		this->useTilting->setValue(useTilting);
+	}
+
+	bool PhysicsActiveVehicleComponent::getUseTilting() const
+	{
+		return this->useTilting->getBool();
+	}
+
 	void PhysicsActiveVehicleComponent::setCanDrive(bool canDrive)
 	{
 		if (nullptr != this->physicsBody)
@@ -548,6 +569,7 @@ namespace NOWA
 												  this->onBrakeChangedFunctionName->getString(), this->onTireContactFunctionName->getString()));
 
 		this->physicsBody->setGravity(this->gravity->getVector3());
+		static_cast<OgreNewt::Vehicle*>(this->physicsBody)->setUseTilting(this->useTilting->getBool());
 
 		// set mass origin
 		//this->physicsBody->setCenterOfMass(calculatedMassOrigin);
@@ -600,49 +622,6 @@ namespace NOWA
 		this->physicsBody->setMaterialGroupID(materialId);
 
 		return true;
-	}
-
-	bool PhysicsActiveVehicleComponent::isVehicleTippedOver(void)
-	{
-		if (nullptr == this->physicsBody)
-		{
-			return false;
-		}
-		// Get the car's current orientation
-		Ogre::Quaternion currentOrientation = this->physicsBody->getOrientation();
-
-		// Convert the orientation to Euler angles (roll, pitch, yaw)
-		Ogre::Radian roll;
-		Ogre::Radian pitch;
-		Ogre::Radian yaw;
-		Ogre::Matrix3 rotationMatrix;
-		currentOrientation.ToRotationMatrix(rotationMatrix);
-		rotationMatrix.ToEulerAnglesXYZ(yaw, pitch, roll);
-
-		// Define the threshold angles for tipping over (in radians)
-		Ogre::Radian maxAllowedPitch = Ogre::Degree(55.0f); // 55 degrees
-		Ogre::Radian maxAllowedRoll = Ogre::Degree(55.0f);  // 55 degrees
-
-		// Check if the car's pitch or roll exceeds the allowed thresholds
-		// return std::abs(pitch.valueRadians()) > maxAllowedPitch.valueRadians() || std::abs(roll.valueRadians()) > maxAllowedRoll.valueRadians();
-		return std::abs(pitch.valueRadians()) > maxAllowedPitch.valueRadians();
-	}
-
-	bool PhysicsActiveVehicleComponent::isVehicleStuck(Ogre::Real dt)
-	{
-		if (this->physicsBody->getVelocity().squaredLength() <= 0.1f * 0.1f)
-		{
-			this->stuckTime += dt;
-			if (this->stuckTime >= this->maxStuckTime)
-			{
-				return true;
-			}
-		}
-		else
-		{
-			this->stuckTime = 0.0f;
-		}
-		return false;
 	}
 
 	void PhysicsActiveVehicleComponent::correctVehicleOrientation(void)

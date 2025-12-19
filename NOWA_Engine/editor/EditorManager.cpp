@@ -3138,7 +3138,7 @@ namespace NOWA
 						// Rotate around the gizmo's position with local orientation
 						Ogre::Quaternion localRotation = rotation * orientation;
 						physicsComponent->setOrientation(localRotation);
-#endif
+#else
 
 						Ogre::Vector3 position = selectedGameObject.second.gameObject->getPosition();
 						Ogre::Quaternion orientation = selectedGameObject.second.gameObject->getOrientation();
@@ -3152,6 +3152,7 @@ namespace NOWA
 						// Enqueue both
 						NOWA::GraphicsModule::getInstance()->updateNodePosition(selectedGameObject.second.gameObject->getSceneNode(), newPosition);
 						NOWA::GraphicsModule::getInstance()->updateNodeOrientation(selectedGameObject.second.gameObject->getSceneNode(), newOrientation);
+#endif
 					}
 				}
 				else
@@ -3181,7 +3182,7 @@ namespace NOWA
 						Ogre::Quaternion localRotation = rotation * orientation;
 						// selectedGameObject.second.gameObject->getSceneNode()->setOrientation(localRotation);
 						NOWA::GraphicsModule::getInstance()->updateNodeOrientation(selectedGameObject.second.gameObject->getSceneNode(), localRotation);
-#endif
+#else
 
 						Ogre::Vector3 position = selectedGameObject.second.gameObject->getPosition();
 						Ogre::Quaternion orientation = selectedGameObject.second.gameObject->getOrientation();
@@ -3195,6 +3196,7 @@ namespace NOWA
 						// Enqueue both
 						NOWA::GraphicsModule::getInstance()->updateNodePosition(selectedGameObject.second.gameObject->getSceneNode(), newPosition);
 						NOWA::GraphicsModule::getInstance()->updateNodeOrientation(selectedGameObject.second.gameObject->getSceneNode(), newOrientation);
+#endif
 					}
 				}
 				i++;
@@ -3690,7 +3692,7 @@ namespace NOWA
 				}
 				else
 				{
-					physicsComponent->setPosition(this->gizmo->getPosition() + offset);
+					physicsComponent->translate(offset);
 				}
 				if (Ogre::Vector3::ZERO != normal)
 				{

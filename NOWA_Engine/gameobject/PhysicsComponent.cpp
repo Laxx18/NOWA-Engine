@@ -939,7 +939,7 @@ namespace NOWA
 		this->gameObjectPtr->setAttributePosition(this->gameObjectPtr->getSceneNode()->_getDerivedPosition() + relativePosition);
 		if (nullptr != this->physicsBody)
 		{
-			this->physicsBody->setPositionOrientation(this->physicsBody->getPosition() + relativePosition, this->getOrientation());
+			this->physicsBody->setPositionOrientation(this->gameObjectPtr->getSceneNode()->_getDerivedPosition() + relativePosition, this->getOrientation());
 		}
 	}
 
@@ -948,7 +948,8 @@ namespace NOWA
 		this->gameObjectPtr->setAttributeOrientation(this->gameObjectPtr->getSceneNode()->_getDerivedOrientation() * relativeRotation);
 		if (nullptr != this->physicsBody)
 		{
-			this->physicsBody->setPositionOrientation(this->physicsBody->getPosition(), this->getOrientation() * relativeRotation);
+			this->physicsBody->setPositionOrientation(this->gameObjectPtr->getSceneNode()->_getDerivedPosition(), 
+				this->gameObjectPtr->getSceneNode()->_getDerivedOrientation() * relativeRotation);
 		}
 	}
 

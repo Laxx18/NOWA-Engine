@@ -303,8 +303,10 @@ namespace OgreNewt
 		void setUseTilting(bool tilt);
 
 		bool getUseTilting() const;
-	private:
+
 		void update(Ogre::Real timestep, int threadIndex);
+	private:
+		
 		void updateUnstuck(Ogre::Real timestep);
 		void updateAirborneRescue(Ogre::Real timestep);
 		void initMassData();

@@ -30,7 +30,7 @@ World::World(Ogre::Real desiredFps, int maxUpdatesPerFrames, const Ogre::String&
 	, m_debugger(nullptr)
 	, m_mainThreadId()
 {
-	SetThreadCount(m_threadsRequested);
+	SetThreadCount(1);
 	setSolverModel(m_solverMode);
 	SetSubSteps(2);
 
@@ -303,50 +303,62 @@ void World::update(Ogre::Real timestep)
 }
 #endif
 
-#if 1
+#if 0
 void World::update(Ogre::Real timestep)
 {
 	m_isSimulating.store(true, std::memory_order_release);
 
-	const Ogre::Real descreteStep = m_fixedTimestep;
-	const int maxSteps = m_maxTicksPerFrames;
+	// Work in DOUBLE for all stepping math.
+	const double dtFixed = static_cast<double>(m_fixedTimestep);
+	const int    maxSteps = m_maxTicksPerFrames;
 
-	m_timeAccumulator += timestep;
+	// Clamp incoming dt to avoid spikes/spiral
+	double dt = static_cast<double>(timestep);
+	const double maxDelta = dtFixed * double(maxSteps);
+	if (dt > maxDelta)
+		dt = maxDelta;
 
-	// Safe point before stepping (lifetime ops etc.)
-	processPhysicsQueue();
-	processRaycastJobs();     // optional: allow editor picking while paused
-	processConvexcastJobs();  // optional
+	m_timeAccumulator += dt;
 
-	// throw away extra steps if too far behind
-	const Ogre::Real maxAccum = descreteStep * Ogre::Real(maxSteps);
-	if (m_timeAccumulator > maxAccum)
-	{
-		const Ogre::Real steps = Ogre::Math::Floor(m_timeAccumulator / descreteStep) - Ogre::Real(maxSteps);
-		if (steps > 0.0f)
-			m_timeAccumulator -= descreteStep * steps;
-	}
-
-	bool didStep = false;
-
-	while (m_timeAccumulator >= descreteStep)
-	{
-		ndWorld::Update((ndFloat32)descreteStep);
-		m_timeAccumulator -= descreteStep;
-		didStep = true;
-	}
-
-	const Ogre::Real interp = m_timeAccumulator / descreteStep;
-
-	if (didStep)
-		ndWorld::Sync();
-
-	// Safe point after stepping (cross-thread requests)
+	// Safe point before stepping
 	processPhysicsQueue();
 	processRaycastJobs();
 	processConvexcastJobs();
 
-	postUpdate(1.0f/*interp*/);
+	// Drop steps if too far behind (keep accumulator bounded)
+	const double maxAccum = dtFixed * double(maxSteps);
+	if (m_timeAccumulator > maxAccum)
+	{
+		const double stepsToDrop = floor(m_timeAccumulator / dtFixed) - double(maxSteps);
+		if (stepsToDrop > 0.0)
+			m_timeAccumulator -= dtFixed * stepsToDrop;
+	}
+
+	bool didStep = false;
+
+	// IMPORTANT: use > not >= to avoid “exact boundary” jitter.
+	while (m_timeAccumulator > dtFixed)
+	{
+		ndWorld::Update(static_cast<ndFloat32>(dtFixed));
+		m_timeAccumulator -= dtFixed;
+		didStep = true;
+	}
+
+	// Kill tiny drift so it can't accumulate into a rare extra/missed step
+	if (m_timeAccumulator < 1e-9)
+		m_timeAccumulator = 0.0;
+
+	const float interp = (dtFixed > 0.0) ? float(m_timeAccumulator / dtFixed) : 0.0f;
+
+	if (didStep)
+		ndWorld::Sync();
+
+	// Safe point after stepping
+	processPhysicsQueue();
+	processRaycastJobs();
+	processConvexcastJobs();
+
+	postUpdate(interp); // or postUpdate(1.0f) if you let your engine handle interpolation
 
 	m_isSimulating.store(false, std::memory_order_release);
 }
@@ -421,6 +433,40 @@ void World::update(Ogre::Real t_step)
 
 	m_isSimulating.store(false, std::memory_order_release);
 }
+#endif
+
+#if 1
+// Prevents the following issues:
+// The sim runs slow because you’re feeding OgreNewt a fixed 1 / 60 and OgreNewt is also using its own fixed timestep accumulator
+// So you re effectively doing fixed - step on fixed - step, and the inner one can easily end up stepping less often than you think
+// (especially when dt == dtFixed and you use while (accum > dtFixed)), which yields 0 physics steps some frames -> slow motion / stutter.
+void World::update(Ogre::Real timestep)
+{
+	m_isSimulating.store(true, std::memory_order_release);
+
+	// You are already calling this with fixedDt from AppStateManager.
+	const ndFloat32 dt = static_cast<ndFloat32>(timestep);
+
+	// Safe point before stepping
+	processPhysicsQueue();
+	processRaycastJobs();
+	processConvexcastJobs();
+
+	// Step exactly once (or multiple times if you want substeps explicitly)
+	ndWorld::Update(dt);
+	ndWorld::Sync();
+
+	// Safe point after stepping
+	processPhysicsQueue();
+	processRaycastJobs();
+	processConvexcastJobs();
+
+	// Publish discrete transforms (let your engine interpolation handle visuals)
+	postUpdate(1.0f);
+
+	m_isSimulating.store(false, std::memory_order_release);
+}
+
 #endif
 
 void World::postUpdate(Ogre::Real interp)

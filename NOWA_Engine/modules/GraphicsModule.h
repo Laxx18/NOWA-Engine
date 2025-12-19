@@ -334,6 +334,18 @@ namespace NOWA
 
         void processQueueSync(void);
 
+        // Called from LOGIC thread once per outer loop iteration
+        void publishInterpolationAlpha(float alpha);
+
+        // Called from LOGIC thread when a new logic snapshot/frame was published (endLogicFrame)
+        void publishLogicFrame();
+
+        // Called from RENDER thread each frame
+        float consumeInterpolationAlpha() const;
+
+        // Optional: for debugging/telemetry
+        uint64_t getLogicFrameId() const;
+
         /*
         * Bulletproof solution for nested render thread commands — in a large codebase (400,000+ LOC), accidental misuse of a promise-based render command inside another queued render command can easily cause deadlocks.
         * The Problem:
@@ -538,6 +550,8 @@ namespace NOWA
 
         void renderThreadFunction(void);
 
+        void setInterpolationWeight(float w);
+
         // Find a node's transform record
         NodeTransforms* findNodeTransforms(Ogre::Node* node);
 
@@ -558,6 +572,12 @@ namespace NOWA
 	private:
         std::thread renderThread;
         bool bRunning;
+
+        // alpha = accumulator / fixedDt  (clamped 0..1)
+        std::atomic<float> m_interpolationAlpha{ 0.0f };
+
+        // increments when logic produces a new snapshot (endLogicFrame)
+        std::atomic<uint64_t> m_logicFrameId{ 0 };
 
         std::atomic<std::thread::id> renderThreadId;
         std::mutex mutex;

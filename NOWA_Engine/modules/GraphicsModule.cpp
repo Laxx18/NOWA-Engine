@@ -70,119 +70,87 @@ namespace NOWA
 
     void GraphicsModule::renderThreadFunction(void)
     {
-        // Configure the graphics module
-        // Mark the current thread as the render thread
         this->markCurrentThreadAsRenderThread();
 
-        // Set timeout duration (e.g., 10 seconds for complex operations)
         this->setTimeoutDuration(std::chrono::milliseconds(10000));
         this->setFrameTime(NOWA::Core::getSingletonPtr()->getOptionDesiredSimulationUpdates());
 
-        // Enable or disable timeout based on build configuration
 #ifdef _DEBUG
-    // In debug builds, you might want to disable timeout for easier debugging
         this->enableTimeout(false);
-        // And set a more verbose log level
         this->setLogLevel(Ogre::LML_TRIVIAL);
-        // this->enableDebugVisualization(true);
 #else
-    // In release builds, keep timeout enabled with normal logging
-    // this->enableTimeout(false);
-    // this->setLogLevel(Ogre::LML_CRITICAL);
-       this->setLogLevel(Ogre::LML_TRIVIAL);
+        this->setLogLevel(Ogre::LML_TRIVIAL);
 #endif
 
         static int frameCount = 0;
 
-        // Render thread loop
-        // Initialize timer for frame time calculation
         Ogre::Timer timer;
         Ogre::uint64 lastFrameTime = timer.getMicroseconds();
 
         Ogre::Window* renderWindow = NOWA::Core::getSingletonPtr()->getOgreRenderWindow();
-
         const auto appStateManager = NOWA::AppStateManager::getSingletonPtr();
 
-        // Render thread loop
         while (true == this->bRunning)
         {
-            if (false == this->bRunning)
-            {
-                break;
-            }
-            // Process signals from system
             Ogre::WindowEventUtilities::messagePump();
 
-            // Calculate delta time
             Ogre::uint64 currentTime = timer.getMicroseconds();
-            Ogre::Real deltaTime = (currentTime - lastFrameTime) * 0.000001f; // Convert to seconds
+            Ogre::Real deltaTime = (currentTime - lastFrameTime) * 0.000001f;
             lastFrameTime = currentTime;
 
             GameProgressModule* gameProgressModule = appStateManager->getActiveGameProgressModuleSafe();
+            const bool isStalled = appStateManager->bStall.load();
+            const bool isSceneLoading = (gameProgressModule != nullptr) ? gameProgressModule->bSceneLoading.load() : false;
 
-            bool isStalled = appStateManager->bStall.load();
-            bool isSceneLoading = nullptr != gameProgressModule ? gameProgressModule->bSceneLoading.load() : false;
-
-            if (false == isStalled && false == isSceneLoading)
+            if (!isStalled && !isSceneLoading)
             {
                 NOWA::InputDeviceCore::getSingletonPtr()->capture(deltaTime);
             }
- 
-            // this->beginLogicFrame();
 
-            // if (true == appStateManager->bCanProcessRenderQueue)
+            if (!isStalled && !isSceneLoading)
             {
-                // Clears expired objects
                 this->advanceFrameAndDestroyOld();
-
-                // Process all waiting render commands before rendering
                 this->processAllCommands();
 
-                // Update accumulated time in render command queue
-                // This is critical for proper interpolation
-                Ogre::Real currentAccumTime = this->getAccumTimeSinceLastLogicFrame();
-                this->setAccumTimeSinceLastLogicFrame(currentAccumTime + deltaTime);
+                // >>> FIX: use alpha published by logic thread (single truth)
+                const float alpha = this->consumeInterpolationAlpha();
+                this->setInterpolationWeight(alpha); // implement/set your internal weight variable
 
-                // Calculate interpolation weight based on time since last logic frame
-                this->calculateInterpolationWeight();
+                // No more: accumTimeSinceLastLogicFrame += deltaTime
+                // No more: calculateInterpolationWeight() based on render delta
 
-                // Update transforms with interpolation
                 this->updateAllTransforms();
 
-                // Periodically dump buffer state for debugging (every 300 frames = 5 seconds at 60 FPS)
                 if (++frameCount % 300 == 0)
                 {
                     this->waitForRenderCompletion();
-                    // Uncomment for debugging
                     this->dumpBufferState();
-                    frameCount = 0;  // Reset counter
+                    frameCount = 0;
                 }
             }
 
-            if (false == isStalled)
+            if (!isStalled)
             {
-                // Perform the actual rendering
                 Ogre::Root::getSingletonPtr()->renderOneFrame();
             }
         }
 
         while (this->hasPendingRenderCommands())
         {
-            // Process any remaining commands before fully exiting, so that code cleanup like DesignState::exit can be processed on a queue, even the render game loop is already gone
             this->processAllCommands();
         }
 
         for (size_t i = 0; i < NOWA::GraphicsModule::NUM_DESTROY_SLOTS; ++i)
         {
-            // Process any remaining commands before fully exiting, so that code cleanup like DesignState::exit can be processed on a queue, even the render game loop is already gone
             this->advanceFrameAndDestroyOld();
         }
 
-        // Clear tracked nodes
-        int i = this->queue.size_approx();
+        const int i = this->queue.size_approx();
         if (i > 0)
         {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[RenderCommandQueueModule]: Illegal state, as there are still: " + Ogre::StringConverter::toString(i) + " pending commands!");
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                "[RenderCommandQueueModule]: Illegal state, as there are still: " +
+                Ogre::StringConverter::toString(i) + " pending commands!");
             throw;
         }
 
@@ -208,6 +176,47 @@ namespace NOWA
 		this->debugVisualization = false;
 		this->currentDestroySlot = 0;
 		this->isRunningWaitClosure = false;
+    }
+
+    void GraphicsModule::publishInterpolationAlpha(float alpha)
+    {
+        // Clamp hard: we never want NaNs or >1 to leak into interpolation
+        if (!(alpha == alpha)) // NaN check
+            alpha = 0.0f;
+
+        alpha = std::clamp(alpha, 0.0f, 1.0f);
+
+        // Release so render thread sees this after logic wrote it
+        m_interpolationAlpha.store(alpha, std::memory_order_release);
+    }
+
+    void GraphicsModule::publishLogicFrame()
+    {
+        // Release: marks the moment a new snapshot/buffer state is ready
+        m_logicFrameId.fetch_add(1, std::memory_order_release);
+    }
+
+    float GraphicsModule::consumeInterpolationAlpha() const
+    { 
+        // Acquire pairs with logic release stores
+        return m_interpolationAlpha.load(std::memory_order_acquire);
+    }
+
+    uint64_t GraphicsModule::getLogicFrameId() const
+    {
+        return m_logicFrameId.load(std::memory_order_acquire);
+    }
+
+    void GraphicsModule::setInterpolationWeight(float w)
+    {
+        if (!(w == w))
+        {
+            w = 0.0f;
+        }
+        w = std::clamp(w, 0.0f, 1.0f);
+
+        // CRITICAL: update the variable updateAllTransforms() actually uses
+        this->interpolationWeight = w;
     }
 
     void GraphicsModule::clearAllClosures(void)

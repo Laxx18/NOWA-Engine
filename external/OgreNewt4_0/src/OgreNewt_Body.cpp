@@ -953,6 +953,7 @@ namespace OgreNewt
 		return m_gravity;
 	}
 
+#if 0
 	void Body::updateNode(Ogre::Real interpolatParam)
 	{
 		if (!m_node)
@@ -1085,6 +1086,129 @@ namespace OgreNewt
 
 		// m_world->m_ogreMutex.unlock();
 	}
+#else
+	void Body::updateNode(Ogre::Real interpolatParam)
+	{
+		if (!m_node)
+			return;
+
+		// Never read Ogre node transforms here (render thread owns Ogre scene graph).
+		// Keep last values purely from our own stored values.
+		m_lastPosit = m_nodePosit;
+		m_lastOrientation = m_nodeRotation;
+
+		const bool hasRenderCallback = (m_renderUpdateCallback != nullptr);
+
+		if (hasRenderCallback)
+		{
+			// ------------------------------------------------------------
+			// Multithread-safe path:
+			// Publish ONLY the discrete physics result (NO interpolation here).
+			// Interpolation is handled by your engine-wide GraphicsModule alpha.
+			// ------------------------------------------------------------
+			m_nodePosit = m_curPosit;
+
+			if (m_updateRotation)
+			{
+				m_nodeRotation = m_curRotation;
+			}
+
+			// Publish WORLD/DERIVED transforms to render thread system
+			m_renderUpdateCallback(m_node, m_nodePosit, m_nodeRotation, m_updateRotation, m_validToUpdateStatic);
+
+			// Static update flag only matters for legacy direct Ogre writes, but keep behavior consistent
+			m_validToUpdateStatic = false;
+		}
+		else
+		{
+			// ------------------------------------------------------------
+			// Legacy single-thread fallback:
+			// Here interpolation is okay because you write Ogre nodes directly.
+			// ------------------------------------------------------------
+			const Ogre::Vector3 velocity = m_curPosit - m_prevPosit;
+			m_nodePosit = m_prevPosit + velocity * interpolatParam;
+
+			if (m_updateRotation)
+			{
+				Ogre::Quaternion a = m_prevRotation;
+				Ogre::Quaternion b = m_curRotation;
+				a.normalise();
+				b.normalise();
+
+				// Use shortest path to avoid occasional flip wobble
+				m_nodeRotation = Ogre::Quaternion::Slerp(interpolatParam, a, b, true);
+				m_nodeRotation.normalise();
+			}
+
+			Ogre::SceneNode* node = m_node;
+			Ogre::Node* parent = node->getParent();
+			if (parent)
+			{
+				if (!node->isStatic())
+				{
+					node->setPosition((parent->_getDerivedOrientation().Inverse() *
+						(m_nodePosit - parent->_getDerivedPosition())) / parent->_getDerivedScale());
+
+					if (m_updateRotation)
+						node->setOrientation(parent->_getDerivedOrientation().Inverse() * m_nodeRotation);
+				}
+				else if (m_validToUpdateStatic)
+				{
+					node->setPosition((parent->_getDerivedOrientationUpdated().Inverse() *
+						(m_nodePosit - parent->_getDerivedPositionUpdated())) / parent->_getDerivedScaleUpdated());
+
+					node->setOrientation(parent->_getDerivedOrientationUpdated().Inverse() * m_nodeRotation);
+				}
+			}
+
+			m_validToUpdateStatic = false;
+		}
+
+		// Always run notify/contact callbacks (vehicle needs them)
+		if (m_nodeupdatenotifycallback)
+			m_nodeupdatenotifycallback(this);
+
+		if (m_contactCallback)
+		{
+			ndBodyKinematic* const me = m_body;
+			if (me)
+			{
+				ndBodyKinematic::ndContactMap& cmap = me->GetContactMap();
+				for (ndBodyKinematic::ndContactMap::Iterator it(cmap); it; it++)
+				{
+					ndContact* const contact = *it;
+					if (!contact || !contact->IsActive())
+						continue;
+
+					ndBodyKinematic* const body0 = contact->GetBody0();
+					ndBodyKinematic* const body1 = contact->GetBody1();
+					ndBodyKinematic* const otherNd = (body0 == me) ? body1 : body0;
+					if (!otherNd)
+						continue;
+
+					OgreNewt::Body* other = nullptr;
+					if (ndBodyNotify* notify = otherNd->GetNotifyCallback())
+					{
+						if (auto* bridge = dynamic_cast<OgreNewt::ContactNotify*>(notify))
+							other = bridge->getOgreNewtBody();
+					}
+					if (!other)
+						continue;
+
+					OgreNewt::ContactJoint contactJoint(contact);
+					const ndContactPointList& pts = contact->GetContactPoints();
+					for (ndContactPointList::ndNode* n = pts.GetFirst(); n; n = n->GetNext())
+					{
+						OgreNewt::Contact ogreContact(n, &contactJoint);
+						m_contactCallback(other, &ogreContact);
+					}
+				}
+			}
+		}
+	}
+
+
+#endif
 
 	Ogre::SceneMemoryMgrTypes Body::getSceneMemoryType(void) const
 	{

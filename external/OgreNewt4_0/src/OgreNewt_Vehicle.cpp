@@ -241,10 +241,17 @@ void RayCastTire::longitudinalAndLateralFriction(const ndVector& contactPos, con
 	// Normalize (important for stable friction magnitudes)
 	lateralPin = lateralPin.Scale(ndRsqrt(len2));
 
-	const ndReal maxLat = m_tireLoad * lateralMu * 0.5f;
-
 	if (desc.m_rowsCount < m_maxDof)
 	{
+		ndReal maxLat = m_tireLoad * lateralMu;
+
+		Ogre::Real speed = m_vehicle->getVelocity().length();
+
+		if (m_handForce > 0.0f && m_tireConfiguration.tireSteer == tsNoSteer || speed < 10.0f) // rear wheels
+		{
+			maxLat = m_tireLoad * lateralMu * 0.5f;
+		}
+
 		AddLinearRowJacobian(desc, contactPos, contactPos, lateralPin);
 		SetHighFriction(desc, maxLat);
 		SetLowerFriction(desc, -maxLat);
@@ -452,12 +459,8 @@ void OgreNewt::RayCastTire::JacobianDerivative(ndConstraintDescritor& desc)
 	// ndJointBilateralConstraint::JacobianDerivative(desc);
 	m_jointBrakeForce = 0.0f;
 
-
 	ndMatrix matrix0;
 	ndMatrix matrix1;
-
-	m_body0->SetSleepState(false);
-	m_body1->SetSleepState(false);
 
 	// Calculates the position of the pivot point and the Jacobian direction vectors, in global space. 
 	CalculateGlobalMatrix(matrix0, matrix1);
@@ -678,21 +681,18 @@ void Vehicle::addForceAtPos(ndBodyKinematic* vBody, const ndVector& vForce, cons
 	const ndVector R = vPoint - rel2AbsPoint(vBody, com);
 	const ndVector torque = R.CrossProduct(vForce);
 
-	// Convert force -> impulse for this step
-	const ndVector linearImpulse = vForce.Scale(timestep);
-	const ndVector angularImpulse = torque.Scale(timestep);
-
 	const ndVector prevF = vBody->GetForce();
 	const ndVector prevT = vBody->GetTorque();
 
-	vBody->SetForce(prevF + vForce);
-	vBody->SetTorque(prevT + torque);
+	// vBody->SetForce(prevF + vForce);
+	// vBody->SetTorque(prevT + torque);
 
+
+	// Convert force -> impulse for this step
+	const ndVector linearImpulse = vForce.Scale(timestep);
+	const ndVector angularImpulse = torque.Scale(timestep);
 	// This feeds m_impulseForce/m_impulseTorque internally, which ND4 applies reliably.
-	// dyn->ApplyImpulsePair(linearImpulse, angularImpulse, timestep);
-
-	// Also wake it up when driving
-	dyn->SetSleepState(false);
+	dyn->ApplyImpulsePair(linearImpulse, angularImpulse, timestep);
 }
 
 void Vehicle::addForceAtRelPos(ndBodyKinematic* vBody, const ndVector& vForce, const ndVector& vPoint, Ogre::Real timestep)
@@ -912,7 +912,6 @@ void Vehicle::updateAirborneRescue(Ogre::Real timestep)
 	// Apply at center of mass (pure translation, no spin)
 	const ndVector angularImpulse = ndVector::m_zero;
 
-	chassis->SetSleepState(false);
 	chassis->ApplyImpulsePair(linearImpulse, angularImpulse, ndFloat32(timestep));
 
 	// Reset timers + set cooldown so it doesn't spam
@@ -939,8 +938,6 @@ void Vehicle::update(Ogre::Real timestep, int threadIndex)
 	{
 		return;
 	}
-
-	this->getNewtonBody()->SetSleepState(false);
 
 	ndMatrix localVehicleMatrix = vehicleBody->GetMatrix();
 
