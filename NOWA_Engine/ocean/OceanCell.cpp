@@ -1,6 +1,5 @@
 #include "NOWAPrecompiled.h"
 
-#if 0
 #include "OceanCell.h"
 #include "Ocean.h"
 
@@ -186,5 +185,3 @@ namespace Ogre
                      "OceanCell::getCastsShadows" );
     }
 }
-
-#endif

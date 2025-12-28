@@ -68,6 +68,7 @@ namespace NOWA
 		friend class SelectionManager;
 		friend class TagPointComponent;
 		friend class TerraComponent;
+		friend class OceanComponent;
 		friend class LuaScriptComponent;
 		friend class CameraComponent;
 	public:

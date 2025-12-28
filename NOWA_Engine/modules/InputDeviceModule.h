@@ -124,6 +124,12 @@ namespace NOWA
 
 		bool hasActiveJoyStick(void) const;
 
+		void setAnalogActionThreshold(Ogre::Real t);
+
+		Ogre::Real getAnalogActionThreshold(void) const;
+
+		Ogre::Real getSteerAxis(void); // [-1..+1]
+
 		/**
 		 * @brief		Gets the strength of the left stick horizontal moving
 		 * @return		strength, if 0 horizontal stick is not moved. When moved right values are in range (0, 1]. When moved left values are in range (0, -1].
@@ -202,6 +208,7 @@ namespace NOWA
 		JoyStickButton pressedButton;
 		Action pressedPov[4]; // two buttons of left and right Steuerkreuz can be pressed simultanously
 		std::vector<JoyStickButton> pressedButtons;
+		Ogre::Real analogActionThreshold;
 
 		Ogre::Real timeSinceLastActionDown;
 		Ogre::Real timeSinceLastActionPressed;

@@ -5,16 +5,13 @@
 #include "OgreHlmsPbs.h"
 #include "OgreHlmsManager.h"
 #include "OgreHlmsPbsDatablock.h"
-#include "OgreHlmsSamplerblock.h"
 #include "GpuParticles/Hlms/HlmsParticle.h"
 #include "OgreArchiveManager.h"
 #include "OgreFrameStats.h"
 #include "OgreRectangle2D.h"
-#include "OgreCodec.h"
 #include "OgreHlmsDiskCache.h"
 #include "OgreAbiUtils.h"
 #include "Compositor/OgreCompositorManager2.h"
-#include "Compositor/Pass/PassQuad/OgreCompositorPassQuadDef.h"
 
 #include "ocean/OgreHlmsOcean.h"
 
@@ -68,6 +65,26 @@
 #if OGRE_PROFILING
 #include "OgreProfiler.h"
 #endif
+
+namespace
+{
+	void Win32_SetCursorVisible(bool visible)
+	{
+		if (visible)
+		{
+			while (ShowCursor(TRUE) < 0) {}
+		}
+		else
+		{
+			while (ShowCursor(FALSE) >= 0) {}
+		}
+	}
+
+	void Win32_ResetCursorToArrow()
+	{
+		::SetCursor(::LoadCursor(nullptr, IDC_ARROW));
+	}
+}
 
 namespace NOWA
 {
@@ -231,6 +248,13 @@ namespace NOWA
 		{
 			return;
 		}
+
+		if (nullptr != InputDeviceCore::getSingletonPtr())
+		{
+			InputDeviceCore::getSingletonPtr()->destroyContent();
+			delete InputDeviceCore::getSingletonPtr();
+		}
+
 		Ogre::CompositorManager2* compositorManager = Ogre::Root::getSingletonPtr()->getCompositorManager2();
 
 		if (nullptr != this->myGuiWorkspace && nullptr != this->root && nullptr != compositorManager)
@@ -311,11 +335,6 @@ namespace NOWA
 		}
 
 		this->saveHlmsDiskCache();
-
-		if (nullptr != InputDeviceCore::getSingletonPtr())
-		{
-			delete InputDeviceCore::getSingletonPtr();
-		}
 
 		if (nullptr != this->root)
 		{
@@ -1117,6 +1136,7 @@ namespace NOWA
 		return std::this_thread::get_id() == this->renderThreadId;
 	}
 
+#if 0
 	void Core::registerHlms(void)
 	{
 		Ogre::String dataFolder = "../../media/";
@@ -1142,9 +1162,7 @@ namespace NOWA
 		Ogre::HlmsPbs* hlmsPbs = nullptr;
 		Ogre::HlmsTerra* hlmsTerra = nullptr;
 		HlmsWind* hlmsWind = nullptr;
-#if 0
 		Ogre::HlmsOcean* hlmsOcean = nullptr;
-#endif
 
 		Ogre::HlmsManager* hlmsManager = Ogre::Root::getSingletonPtr()->getHlmsManager();
 
@@ -1241,6 +1259,33 @@ namespace NOWA
 			hlmsPbs->reloadFrom(archivePbs, &libraryPbs);
 		}
 
+		// Ocean (D3D11 needs HLSL)
+		{
+			// Common + PBS libraries (like tutorial)
+			Ogre::Archive* archiveCommon = archiveManager.load(dataFolder + "Hlms/Common/" + shaderSyntax, "FileSystem", true);
+			Ogre::Archive* archiveCommonAny = archiveManager.load(dataFolder + "Hlms/Common/Any", "FileSystem", true);
+			Ogre::Archive* archivePbsAny = archiveManager.load(dataFolder + "Hlms/Pbs/Any", "FileSystem", true);
+			Ogre::Archive* archivePbs = archiveManager.load(dataFolder + "Hlms/Pbs/" + shaderSyntax, "FileSystem", true);
+
+			Ogre::ArchiveVec library;
+			library.push_back(archiveCommon);
+			library.push_back(archiveCommonAny);
+			library.push_back(archivePbsAny);
+			library.push_back(archivePbs);
+
+			// Ocean data folder
+			Ogre::Archive* archiveOcean = archiveManager.load(dataFolder + "Hlms/Ocean/" + shaderSyntax, "FileSystem", true);
+
+			// Ocean custom pieces ONLY (do NOT add Terra/PbsTerraShadows here)
+			Ogre::Archive* archiveOceanCustom = archiveManager.load(
+				dataFolder + "Hlms/Ocean/" + shaderSyntax + "/Custom", "FileSystem", true);
+			library.push_back(archiveOceanCustom);
+
+			// Register
+			hlmsOcean = OGRE_NEW Ogre::HlmsOcean(archiveOcean, &library);
+			hlmsManager->registerHlms(hlmsOcean);
+		}
+
 		// HlmsWind
 		{
 			// Note: HlmsWind uses HLMS_USER0
@@ -1259,64 +1304,6 @@ namespace NOWA
 			hlmsWind = OGRE_NEW HlmsWind(archivePbs, &archive);
 			hlmsManager->registerHlms(hlmsWind);
 		}
-
-#if 0
-		// Ocean
-		{
-			// Note: Ocean uses HLMS_USER2
-			// ATTENTION: GPUParticles already uses 2!! Check for other options
-			//// Register Ocean
-			//// https://forums.ogre3d.org/viewtopic.php?f=25&t=93592&hilit=ocean
-
-			//// Note a the moment only OpenGL available
-			//Ogre::Archive* archiveOcean = Ogre::ArchiveManager::getSingletonPtr()->load(dataFolder + "Hlms/Ocean/GLSL", "FileSystem", true);
-			//hlmsOcean = OGRE_NEW Ogre::HlmsOcean(archiveOcean, &libraryPbs);
-			//hlmsManager->registerHlms(hlmsOcean);
-			//WorkspaceModule::getInstance()->setHlmsOcean(hlmsOcean);
-			//hlmsOcean->setDebugOutputPath(false, false);
-
-			//Ogre::Archive* archiveLibraryCustom = Ogre::ArchiveManager::getSingletonPtr()->load(dataFolder + "Hlms/Ocean/GLSL/Custom", "FileSystem", true);
-			//libraryPbs.push_back(archiveLibraryCustom);
-			//hlmsPbs->reloadFrom(archivePbs, &libraryPbs);
-
-			/*
-			when you have a reflection probe, set it
-			Ogre::HlmsOcean* hlmsOcean = static_cast<Ogre::HlmsOcean*>( Ogre::Root::getSingletonPtr()->getHlmsManager()->getHlms( Ogre::HLMS_USER2 ) );
-			hlmsOcean->setEnvProbe( probeTexture );
-			*/
-
-// Attention Debug and check this, if all pathes are correct
-			//Create & Register HlmsTerra
-			//Get the path to all the subdirectories used by HlmsTerra
-			Ogre::HlmsOcean::getDefaultPaths(mainFolderPath, libraryFoldersPaths);
-			Ogre::Archive* archiveOcean = archiveManager.load(dataFolder + mainFolderPath, "FileSystem", true);
-
-			Ogre::ArchiveVec archiveOceanLibraryFolders;
-			libraryFolderPathIt = libraryFoldersPaths.begin();
-			libraryFolderPathEn = libraryFoldersPaths.end();
-			while (libraryFolderPathIt != libraryFolderPathEn)
-			{
-				Ogre::Archive *archiveLibrary = archiveManager.load(dataFolder + *libraryFolderPathIt, "FileSystem", true);
-				archiveOceanLibraryFolders.push_back(archiveLibrary);
-				++libraryFolderPathIt;
-			}
-
-			//Create and register the terra Hlms
-			hlmsOcean = OGRE_NEW Ogre::HlmsOcean(archiveOcean, &archiveOceanLibraryFolders);
-			hlmsManager->registerHlms(hlmsOcean);
-
-			//Add Terra's piece files that customize the PBS implementation.
-			//These pieces are coded so that they will be activated when
-			//we set the HlmsPbsTerraShadows listener and there's an active Terra
-			//(see Tutorial_TerrainGameState::createScene01)
-			Ogre::Hlms* hlmsPbs = hlmsManager->getHlms(Ogre::HLMS_PBS);
-			Ogre::Archive* archivePbs = hlmsPbs->getDataFolder();
-			Ogre::ArchiveVec libraryPbs = hlmsPbs->getPiecesLibraryAsArchiveVec();
-			libraryPbs.push_back(Ogre::ArchiveManager::getSingletonPtr()->load(dataFolder + "Hlms/Ocean/" + shaderSyntax + "/Custom", "FileSystem", true));
-			hlmsPbs->reloadFrom(archivePbs, &libraryPbs);
-
-		}
-#endif
 
 		// HlmsParticles
 		{
@@ -1340,9 +1327,7 @@ namespace NOWA
 				hlmsUnlit->setTextureBufferDefaultSize(512 * 1024);
 				hlmsTerra->setTextureBufferDefaultSize(512 * 1024);
 				hlmsWind->setTextureBufferDefaultSize(512 * 1024);
-#if 0
 				hlmsOcean->setTextureBufferDefaultSize(512 * 1024);
-#endif
 			}
 		}
 
@@ -1350,6 +1335,7 @@ namespace NOWA
 		hlmsPbs->setDebugOutputPath(false, false);
 		hlmsUnlit->setDebugOutputPath(false, false);
 		hlmsTerra->setDebugOutputPath(false, false);
+		hlmsOcean->setDebugOutputPath(true, true);
 
 		// Set shader cache for faster loading
 		this->loadHlmsDiskCache();
@@ -1436,6 +1422,199 @@ namespace NOWA
 			 Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, decalNormalId);
 #endif
 	}
+#endif
+
+	void Core::registerHlms(void)
+	{
+		Ogre::String dataFolder = "../../media/";
+		Ogre::RenderSystem* renderSystem = this->root->getRenderSystem();
+
+		Ogre::String rsName = renderSystem->getName();
+
+		Ogre::String shaderSyntax = "GLSL";
+		if (rsName == "OpenGL ES 2.x Rendering Subsystem")
+			shaderSyntax = "GLSLES";
+		else if (rsName == "Direct3D11 Rendering Subsystem")
+			shaderSyntax = "HLSL";
+		else if (rsName == "Metal Rendering Subsystem")
+			shaderSyntax = "Metal";
+
+		//At this point rootHlmsFolder should be a valid path to the Hlms data folder
+
+		Ogre::HlmsUnlit* hlmsUnlit = nullptr;
+		Ogre::HlmsPbs* hlmsPbs = nullptr;
+		Ogre::HlmsTerra* hlmsTerra = nullptr;
+		HlmsWind* hlmsWind = nullptr;
+		Ogre::HlmsOcean* hlmsOcean = nullptr;
+
+		Ogre::HlmsManager* hlmsManager = Ogre::Root::getSingletonPtr()->getHlmsManager();
+
+		//For retrieval of the paths to the different folders needed
+		Ogre::String mainFolderPath;
+		Ogre::StringVector libraryFoldersPaths;
+		Ogre::StringVector::const_iterator libraryFolderPathIt;
+		Ogre::StringVector::const_iterator libraryFolderPathEn;
+
+		Ogre::ArchiveManager& archiveManager = Ogre::ArchiveManager::getSingleton();
+
+		// HlmsUnlit
+		{
+			//Get the path to all the subdirectories used by HlmsUnlit
+			Ogre::HlmsUnlit::getDefaultPaths(mainFolderPath, libraryFoldersPaths);
+			Ogre::Archive* archiveUnlit = archiveManager.load(dataFolder + mainFolderPath, "FileSystem", true);
+			Ogre::ArchiveVec archiveUnlitLibraryFolders;
+			libraryFolderPathIt = libraryFoldersPaths.begin();
+			libraryFolderPathEn = libraryFoldersPaths.end();
+			while (libraryFolderPathIt != libraryFolderPathEn)
+			{
+				Ogre::Archive* archiveLibrary = archiveManager.load(dataFolder + *libraryFolderPathIt, "FileSystem", true);
+				archiveUnlitLibraryFolders.push_back(archiveLibrary);
+				++libraryFolderPathIt;
+			}
+
+			//Create and register the unlit Hlms
+			hlmsUnlit = OGRE_NEW Ogre::HlmsUnlit(archiveUnlit, &archiveUnlitLibraryFolders);
+			hlmsManager->registerHlms(hlmsUnlit);
+		}
+
+		// HlmsPbs
+		{
+			Ogre::HlmsPbs::getDefaultPaths(mainFolderPath, libraryFoldersPaths);
+			Ogre::Archive* archivePbs = archiveManager.load(dataFolder + mainFolderPath, "FileSystem", true);
+
+			//Get the library archive(s)
+			Ogre::ArchiveVec archivePbsLibraryFolders;
+			libraryFolderPathIt = libraryFoldersPaths.begin();
+			libraryFolderPathEn = libraryFoldersPaths.end();
+			while (libraryFolderPathIt != libraryFolderPathEn)
+			{
+				Ogre::Archive* archiveLibrary = archiveManager.load(dataFolder + *libraryFolderPathIt, "FileSystem", true);
+				archivePbsLibraryFolders.push_back(archiveLibrary);
+				++libraryFolderPathIt;
+			}
+#if 0
+			// If no fog is used in scene, causes white flickering, hence it has been deactivated
+			Ogre::Archive* archiveFog = archiveManager.load(dataFolder + "Hlms/Fog/Any", "FileSystem", true);
+			archivePbsLibraryFolders.push_back(archiveFog);
+#endif
+
+			// Create and register
+			hlmsPbs = OGRE_NEW Ogre::HlmsPbs(archivePbs, &archivePbsLibraryFolders);
+
+			this->baseListenerContainer = new HlmsBaseListenerContainer();
+			hlmsPbs->setListener(this->baseListenerContainer);
+			hlmsManager->registerHlms(hlmsPbs);
+
+			// hlmsPbs->setIndustryCompatible(true);
+		}
+
+		// HlmsTerra
+		{
+			// Note: Terra uses HLMS_USER3
+
+			//Get the path to all the subdirectories used by HlmsTerra
+			Ogre::HlmsTerra::getDefaultPaths(mainFolderPath, libraryFoldersPaths);
+
+			Ogre::Archive* archiveTerra = archiveManager.load(dataFolder + mainFolderPath, "FileSystem", true);
+
+			Ogre::ArchiveVec archiveTerraLibraryFolders;
+			libraryFolderPathIt = libraryFoldersPaths.begin();
+			libraryFolderPathEn = libraryFoldersPaths.end();
+			while (libraryFolderPathIt != libraryFolderPathEn)
+			{
+				Ogre::Archive* archiveLibrary = archiveManager.load(dataFolder + *libraryFolderPathIt, "FileSystem", true);
+				archiveTerraLibraryFolders.push_back(archiveLibrary);
+				++libraryFolderPathIt;
+			}
+
+			//Create and register the terra Hlms
+			hlmsTerra = OGRE_NEW Ogre::HlmsTerra(archiveTerra, &archiveTerraLibraryFolders);
+			hlmsManager->registerHlms(hlmsTerra);
+
+			//Add Terra's piece files that customize the PBS implementation.
+			//These pieces are coded so that they will be activated when
+			//we set the HlmsPbsTerraShadows listener and there's an active Terra
+			//(see Tutorial_TerrainGameState::createScene01)
+			Ogre::Hlms* hlmsPbs = hlmsManager->getHlms(Ogre::HLMS_PBS);
+			Ogre::Archive* archivePbs = hlmsPbs->getDataFolder();
+			Ogre::ArchiveVec libraryPbs = hlmsPbs->getPiecesLibraryAsArchiveVec();
+			libraryPbs.push_back(Ogre::ArchiveManager::getSingletonPtr()->load(dataFolder + "Hlms/Terra/" + shaderSyntax + "/PbsTerraShadows", "FileSystem", true));
+			hlmsPbs->reloadFrom(archivePbs, &libraryPbs);
+		}
+
+		// Ocean
+		{
+			Ogre::String mainFolderPath;
+			Ogre::StringVector libraryFolders;
+
+			Ogre::HlmsOcean::getDefaultPaths(mainFolderPath, libraryFolders);
+
+			Ogre::Archive* archiveOcean = archiveManager.load(dataFolder + mainFolderPath, "FileSystem", true);
+
+			Ogre::ArchiveVec libraries;
+			for (const auto& path : libraryFolders)
+			{
+				libraries.push_back(archiveManager.load(dataFolder + path, "FileSystem", true));
+			}
+
+			hlmsOcean = OGRE_NEW Ogre::HlmsOcean(archiveOcean, &libraries);
+			hlmsManager->registerHlms(hlmsOcean);
+		}
+
+		// HlmsWind
+		{
+			// Note: HlmsWind uses HLMS_USER0
+			HlmsWind::getDefaultPaths(mainFolderPath, libraryFoldersPaths);
+
+			Ogre::ArchiveVec archive;
+
+			for (Ogre::String str : libraryFoldersPaths)
+			{
+				Ogre::Archive* archiveLibrary = Ogre::ArchiveManager::getSingleton().load(dataFolder + str, "FileSystem", true);
+				archive.push_back(archiveLibrary);
+			}
+
+			Ogre::Archive* archivePbs = Ogre::ArchiveManager::getSingleton().load(dataFolder + mainFolderPath, "FileSystem", true);
+			// Create and register the wind Hlms
+			hlmsWind = OGRE_NEW HlmsWind(archivePbs, &archive);
+			hlmsManager->registerHlms(hlmsWind);
+		}
+
+		// HlmsParticles
+		{
+			// Note: HlmsParticles uses HLMS_USER2
+
+			//Create and register the Gpu Particles Hlms
+			HlmsParticle::registerHlms(dataFolder, dataFolder);
+		}
+
+		if (renderSystem->getName() == "Direct3D11 Rendering Subsystem")
+		{
+			//Set lower limits 512kb instead of the default 4MB per Hlms in D3D 11.0
+			//and below to avoid saturating AMD's discard limit (8MB) or
+			//saturate the PCIE bus in some low end machines.
+			bool supportsNoOverwriteOnTextureBuffers;
+			renderSystem->getCustomAttribute("MapNoOverwriteOnDynamicBufferSRV", &supportsNoOverwriteOnTextureBuffers);
+
+			if (!supportsNoOverwriteOnTextureBuffers)
+			{
+				hlmsPbs->setTextureBufferDefaultSize(512 * 1024);
+				hlmsUnlit->setTextureBufferDefaultSize(512 * 1024);
+				hlmsTerra->setTextureBufferDefaultSize(512 * 1024);
+				hlmsWind->setTextureBufferDefaultSize(512 * 1024);
+				hlmsOcean->setTextureBufferDefaultSize(512 * 1024);
+			}
+		}
+
+		// Disable the nasty shader cache files creation on exe dir
+		hlmsPbs->setDebugOutputPath(false, false);
+		hlmsUnlit->setDebugOutputPath(false, false);
+		hlmsTerra->setDebugOutputPath(false, false);
+		hlmsOcean->setDebugOutputPath(true, true);
+
+		// Set shader cache for faster loading
+		this->loadHlmsDiskCache();
+	}
 
 	void Core::refreshHlms(bool useFog, bool useWind, bool useTerra, bool useOcean)
 	{
@@ -1457,9 +1636,7 @@ namespace NOWA
 		}
 
 
-#if 0
 		Ogre::HlmsOcean* hlmsOcean = nullptr;
-#endif
 
 		Ogre::HlmsManager* hlmsManager = Ogre::Root::getSingletonPtr()->getHlmsManager();
 
@@ -1546,62 +1723,41 @@ namespace NOWA
 			hlmsPbs->reloadFrom(archivePbs, &archive);
 		}
 
-#if 0
 		// Ocean
+		if (true == useOcean)
 		{
-			// Note: Ocean uses HLMS_USER2
-			//// Register Ocean
-			//// https://forums.ogre3d.org/viewtopic.php?f=25&t=93592&hilit=ocean
+			Ogre::Archive* archiveOcean =
+				Ogre::ArchiveManager::getSingletonPtr()->load(
+					dataFolder + "Hlms/Ocean/GLSL", "FileSystem", true);
 
-			//// Note a the moment only OpenGL available
-			//Ogre::Archive* archiveOcean = Ogre::ArchiveManager::getSingletonPtr()->load(dataFolder + "Hlms/Ocean/GLSL", "FileSystem", true);
-			//hlmsOcean = OGRE_NEW Ogre::HlmsOcean(archiveOcean, &libraryPbs);
-			//hlmsManager->registerHlms(hlmsOcean);
-			//WorkspaceModule::getInstance()->setHlmsOcean(hlmsOcean);
-			//hlmsOcean->setDebugOutputPath(false, false);
+			// IMPORTANT: build the library list similar to PBS/Terra,
+			// and then add Ocean's Custom folder.
+			Ogre::ArchiveVec libraryOcean;
 
-			//Ogre::Archive* archiveLibraryCustom = Ogre::ArchiveManager::getSingletonPtr()->load(dataFolder + "Hlms/Ocean/GLSL/Custom", "FileSystem", true);
-			//libraryPbs.push_back(archiveLibraryCustom);
-			//hlmsPbs->reloadFrom(archivePbs, &libraryPbs);
+			// These are typically required by most HLMS implementations:
+			// (If your Ocean shaders include common/pbs pieces, keep these.
+			//  If not, you can remove them — but the author setup usually expects them.)
+			libraryOcean.push_back(Ogre::ArchiveManager::getSingletonPtr()->load(
+				dataFolder + "Hlms/Common/GLSL", "FileSystem", true));
+			libraryOcean.push_back(Ogre::ArchiveManager::getSingletonPtr()->load(
+				dataFolder + "Hlms/Common/Any", "FileSystem", true));
+			libraryOcean.push_back(Ogre::ArchiveManager::getSingletonPtr()->load(
+				dataFolder + "Hlms/Pbs/GLSL", "FileSystem", true));
+			libraryOcean.push_back(Ogre::ArchiveManager::getSingletonPtr()->load(
+				dataFolder + "Hlms/Pbs/Any", "FileSystem", true));
 
-			/*
-			when you have a reflection probe, set it
-			Ogre::HlmsOcean* hlmsOcean = static_cast<Ogre::HlmsOcean*>( Ogre::Root::getSingletonPtr()->getHlmsManager()->getHlms( Ogre::HLMS_USER2 ) );
-			hlmsOcean->setEnvProbe( probeTexture );
-			*/
+			// Author explicitly adds this:
+			Ogre::Archive* archiveLibraryCustom =
+				Ogre::ArchiveManager::getSingletonPtr()->load(
+					dataFolder + "Hlms/Ocean/GLSL/Custom", "FileSystem", true);
+			libraryOcean.push_back(archiveLibraryCustom);
 
-// Attention Debug and check this, if all pathes are correct
-			//Create & Register HlmsTerra
-			//Get the path to all the subdirectories used by HlmsTerra
-			Ogre::HlmsOcean::getDefaultPaths(mainFolderPath, libraryFoldersPaths);
-			Ogre::Archive* archiveOcean = archiveManager.load(dataFolder + mainFolderPath, "FileSystem", true);
-
-			Ogre::ArchiveVec archiveOceanLibraryFolders;
-			libraryFolderPathIt = libraryFoldersPaths.begin();
-			libraryFolderPathEn = libraryFoldersPaths.end();
-			while (libraryFolderPathIt != libraryFolderPathEn)
-			{
-				Ogre::Archive *archiveLibrary = archiveManager.load(dataFolder + *libraryFolderPathIt, "FileSystem", true);
-				archiveOceanLibraryFolders.push_back(archiveLibrary);
-				++libraryFolderPathIt;
-			}
-
-			//Create and register the terra Hlms
-			hlmsOcean = OGRE_NEW Ogre::HlmsOcean(archiveOcean, &archiveOceanLibraryFolders);
+			hlmsOcean = OGRE_NEW Ogre::HlmsOcean(archiveOcean, &libraryOcean);
 			hlmsManager->registerHlms(hlmsOcean);
 
-			//Add Terra's piece files that customize the PBS implementation.
-			//These pieces are coded so that they will be activated when
-			//we set the HlmsPbsTerraShadows listener and there's an active Terra
-			//(see Tutorial_TerrainGameState::createScene01)
-			Ogre::Hlms* hlmsPbs = hlmsManager->getHlms(Ogre::HLMS_PBS);
-			Ogre::Archive* archivePbs = hlmsPbs->getDataFolder();
-			Ogre::ArchiveVec libraryPbs = hlmsPbs->getPiecesLibraryAsArchiveVec();
-			libraryPbs.push_back(Ogre::ArchiveManager::getSingletonPtr()->load(dataFolder + "Hlms/Ocean/" + shaderSyntax + "/Custom", "FileSystem", true));
-			hlmsPbs->reloadFrom(archivePbs, &libraryPbs);
-
+			// optional, but consistent with your other hlms:
+			hlmsOcean->setDebugOutputPath(false, false);
 		}
-#endif
 	}
 
 	void Core::initMyGui(Ogre::SceneManager* sceneManager, Ogre::Camera* camera, const Ogre::String& logName)
@@ -1830,10 +1986,16 @@ namespace NOWA
 			boost::shared_ptr<EventDataWindowChanged> eventDataWindowChanged(new EventDataWindowChanged());
 			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataWindowChanged);
 		}
+
 		HWND handle;
 		NOWA::Core::getSingletonPtr()->getOgreRenderWindow()->getCustomAttribute("WINDOW", &handle);
+
+		// BEFORE minimize: show OS cursor, hide MyGUI cursor
+		Win32_SetCursorVisible(true);
+		setMyGuiPointerVisible(false);
+		ClipCursor(nullptr);
+
 		ShowWindow(handle, SW_FORCEMINIMIZE);
-		//AnimateWindow(handle, 200, AW_BLEND);
 	}
 
 	size_t Core::getWindowHandle(void) const
@@ -1854,6 +2016,11 @@ namespace NOWA
 		HWND handle;
 		NOWA::Core::getSingletonPtr()->getOgreRenderWindow()->getCustomAttribute("WINDOW", &handle);
 		SetWindowPos(handle, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOSIZE | SWP_SHOWWINDOW | SWP_NOMOVE);
+
+		// Enforce "active" cursor state (if you expect focus now)
+		Win32_ResetCursorToArrow();
+		Win32_SetCursorVisible(false);
+		setMyGuiPointerVisible(true);
 	}
 
 	void Core::windowResized(Ogre::Window* renderWindow)
@@ -1873,6 +2040,10 @@ namespace NOWA
 			const OIS::MouseState& ms = InputDeviceCore::getSingletonPtr()->getMouse()->getMouseState();
 			ms.width = width;
 			ms.height = height;
+
+			Win32_ResetCursorToArrow();
+			Win32_SetCursorVisible(false);
+			setMyGuiPointerVisible(true);
 		}
 	}
 
@@ -1890,6 +2061,10 @@ namespace NOWA
 				boost::shared_ptr<EventDataWindowChanged> eventDataWindowChanged(new EventDataWindowChanged());
 				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataWindowChanged);
 			}
+
+			Win32_ResetCursorToArrow();
+			Win32_SetCursorVisible(false);
+			setMyGuiPointerVisible(true);
 			// this->root->getRenderSystem()->validateDevice(true);
 		}
 	}
@@ -1929,23 +2104,53 @@ namespace NOWA
 		}
 	}
 
+	void Core::setMyGuiPointerVisible(bool visible)
+	{
+		ENQUEUE_RENDER_COMMAND_MULTI("Core::setMyGuiPointerVisible", _1(visible),
+			{
+				if (MyGUI::PointerManager::getInstancePtr())
+					MyGUI::PointerManager::getInstance().setVisible(visible);
+			});
+	}
+
 	void Core::windowFocusChange(Ogre::Window* renderWindow)
 	{
-		if (renderWindow == this->renderWindow)
-		{
-			this->renderWindow->setFocused(renderWindow->isFocused());
+		if (renderWindow != this->renderWindow)
+			return;
 
-			if (AppStateManager::getSingletonPtr() && AppStateManager::getSingletonPtr()->getAppStatesCount() > 0)
-			{
-				if (nullptr != NOWA::AppStateManager::getSingletonPtr()->getEventManager())
-				{
-					boost::shared_ptr<EventDataWindowChanged> eventDataWindowChanged(new EventDataWindowChanged());
-					NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataWindowChanged);
-				}
-			}
-			// this->root->getRenderSystem()->validateDevice(true);
+		const bool focused = renderWindow->isFocused();
+		this->renderWindow->setFocused(focused);
+
+		if (!focused)
+		{
+			// App not active -> show OS cursor, hide MyGUI cursor
+			Win32_SetCursorVisible(true);
+			setMyGuiPointerVisible(false);
+
+			// Optional but recommended if you do mouse confinement:
+			ClipCursor(nullptr);
+		}
+		else
+		{
+			// App active -> hide OS cursor, show MyGUI cursor
+			Win32_ResetCursorToArrow();
+			Win32_SetCursorVisible(false);
+			setMyGuiPointerVisible(true);
+
+			// If you use confinement, restore it here.
+			// ClipCursor(&rect);
+		}
+
+		// Your existing event
+		if (AppStateManager::getSingletonPtr() &&
+			AppStateManager::getSingletonPtr()->getAppStatesCount() > 0 &&
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager())
+		{
+			boost::shared_ptr<EventDataWindowChanged> eventDataWindowChanged(new EventDataWindowChanged());
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataWindowChanged);
 		}
 	}
+
 
 	bool Core::checkStorage(const DWORDLONG diskSpaceNeeded, DWORDLONG& thisDiscSpace)
 	{

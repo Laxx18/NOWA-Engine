@@ -3,8 +3,8 @@
 @insertpiece( SetCompatibilityLayer )
 
 layout(std140) uniform;
-#define FRAG_COLOR		0
-layout(location = FRAG_COLOR, index = 0) out vec4 outColour;
+#define FRAG_Colour		0
+layout(location = FRAG_Colour, index = 0) out vec4 outColour;
 
 in block
 {
@@ -26,8 +26,8 @@ void main()
 @insertpiece( SetCompatibilityLayer )
 
 layout(std140) uniform;
-#define FRAG_COLOR		0
-layout(location = FRAG_COLOR, index = 0) out vec4 outColour;
+#define FRAG_Colour		0
+layout(location = FRAG_Colour, index = 0) out vec4 outColour;
 
 @property( hlms_vpos )
 in vec4 gl_FragCoord;

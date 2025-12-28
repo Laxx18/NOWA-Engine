@@ -398,48 +398,58 @@ namespace NOWA
 		this->markCurrentThreadAsLogicThread();
 
 		const double fixedDt = 1.0 / static_cast<double>(Core::getSingletonPtr()->getOptionDesiredSimulationUpdates());
+		const double maxDeltaTime = 0.25;
+
+		// How many fixed steps we're allowed to run per loop iteration before we drop backlog.
+		// Use your existing "maxTicksPerFrames" concept if you have one; 5-8 is typical.
+		const int maxStepsPerFrame = 5;
 
 		Ogre::Window* renderWindow = Core::getSingletonPtr()->getOgreRenderWindow();
 		this->setDesiredUpdates(Core::getSingletonPtr()->getOptionDesiredFramesUpdates());
 
+		// Time in seconds
 		double currentTime = static_cast<double>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001;
 		double accumulator = 0.0;
 
-		const double maxDeltaTime = 0.25;
-
 		NOWA::GraphicsModule* gfx = NOWA::GraphicsModule::getInstance();
-		gfx->setFrameTime(static_cast<float>(fixedDt)); // seconds per fixed tick
+		gfx->setFrameTime(static_cast<Ogre::Real>(fixedDt)); // seconds per logic tick
 
 		while (false == this->bShutdown)
 		{
 			Ogre::WindowEventUtilities::messagePump();
 
+			// Measure real dt
 			const double newTime = static_cast<double>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001;
 			double frameTime = newTime - currentTime;
 			currentTime = newTime;
 
+			// Prevent spiral-of-death on big hitches
 			frameTime = std::min(frameTime, maxDeltaTime);
 			accumulator += frameTime;
 
+			// Variable-rate render-side update (UI/editor etc.)
 			if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->bSceneLoading)
 			{
 				this->activeStateStack.back()->renderUpdate(static_cast<Ogre::Real>(frameTime));
 			}
 
-			bool didFixedUpdate = false;
+			bool didUpdate = false;
+			int steps = 0;
 
-			while (accumulator >= fixedDt)
+			// Run at most maxStepsPerFrame fixed steps
+			while (accumulator >= fixedDt && steps < maxStepsPerFrame)
 			{
-				if (!didFixedUpdate)
+				if (!didUpdate)
 				{
 					gfx->beginLogicFrame();
-					didFixedUpdate = true;
+					didUpdate = true;
 				}
 
 				this->processAll();
 
 				if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->bSceneLoading)
 				{
+					// Fixed-step update (DesignState -> ogreNewt->updateFixed(dt) etc.)
 					this->activeStateStack.back()->update(static_cast<Ogre::Real>(fixedDt));
 				}
 
@@ -447,29 +457,36 @@ namespace NOWA
 				Core::getSingletonPtr()->update(static_cast<Ogre::Real>(fixedDt));
 
 				accumulator -= fixedDt;
+				++steps;
 			}
 
-			// Publish interpolation alpha every frame:
-			// alpha = remainder / fixedDt
+			// If we're still behind after max steps, DROP backlog to avoid slow-motion.
+			// This keeps the game responsive under heavy physics load.
+			//if (accumulator >= fixedDt)
+			//{
+			//	// keep only the remainder for alpha, drop the rest
+			//	accumulator = std::fmod(accumulator, fixedDt);
+			//}
+
+			if (accumulator >= fixedDt)
+			{
+				// Drop backlog hard: keep at most one tick remainder for alpha stability
+				accumulator = fixedDt * 0.5; // or 0.0 if you prefer snappier behavior
+			}
+
+			// Publish alpha for render interpolation every frame
 			const float alpha = (fixedDt > 0.0) ? static_cast<float>(accumulator / fixedDt) : 0.0f;
 			gfx->publishInterpolationAlpha(alpha);
 
-			if (didFixedUpdate)
+			if (didUpdate)
 			{
 				gfx->endLogicFrame();
-				gfx->publishLogicFrame(); // optional
+				gfx->publishLogicFrame(); // optional debug/telemetry
 			}
 
-			// If minimized / not visible, reduce CPU
 			if (false == renderWindow->isVisible() && this->renderWhenInactive)
 			{
 				Ogre::Threads::Sleep(500);
-			}
-			else
-			{
-				// Optional: yield a bit so logic doesn't spin at 100% when ahead
-				if (accumulator < fixedDt)
-					std::this_thread::yield();
 			}
 		}
 	}

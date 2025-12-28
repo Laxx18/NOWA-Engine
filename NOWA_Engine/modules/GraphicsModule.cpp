@@ -73,7 +73,9 @@ namespace NOWA
         this->markCurrentThreadAsRenderThread();
 
         this->setTimeoutDuration(std::chrono::milliseconds(10000));
-        this->setFrameTime(NOWA::Core::getSingletonPtr()->getOptionDesiredSimulationUpdates());
+        
+        const float fixedDt = 1.0f / float(NOWA::Core::getSingletonPtr()->getOptionDesiredSimulationUpdates());
+        this->setFrameTime(fixedDt);
 
 #ifdef _DEBUG
         this->enableTimeout(false);

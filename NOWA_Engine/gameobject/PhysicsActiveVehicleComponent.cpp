@@ -335,8 +335,7 @@ namespace NOWA
 
 		if (false == notSimulating)
 		{
-			if (nullptr != this->physicsBody)
-			 	static_cast<OgreNewt::Vehicle*>(this->physicsBody)->update(dt, 0);
+
 		}
 	}
 
@@ -538,6 +537,24 @@ namespace NOWA
 		else
 		{
 			this->applyOmegaForce(this->getOrientation() * Ogre::Vector3(0.0f, -steeringStrength, 0.0f));
+		}
+	}
+
+	bool PhysicsActiveVehicleComponent::isAirborne(void) const
+	{
+		if (nullptr != this->physicsBody)
+		{
+			return static_cast<OgreNewt::Vehicle*>(this->physicsBody)->isAirborne();
+		}
+
+		return false;
+	}
+
+	void PhysicsActiveVehicleComponent::applyPitch(Ogre::Real strength, Ogre::Real dt)
+	{
+		if (nullptr != this->physicsBody)
+		{
+			return static_cast<OgreNewt::Vehicle*>(this->physicsBody)->applyPitch(strength, dt);
 		}
 	}
 

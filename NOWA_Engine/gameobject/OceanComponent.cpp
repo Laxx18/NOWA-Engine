@@ -1,7 +1,5 @@
 #include "NOWAPrecompiled.h"
 
-#if 0
-
 #include "OceanComponent.h"
 #include "GameObjectController.h"
 #include "utilities/XMLConverter.h"
@@ -9,6 +7,10 @@
 #include "modules/WorkspaceModule.h"
 #include "ocean/OgreHlmsOcean.h"
 #include "ocean/OgreHlmsOceanDatablock.h"
+#include "WorkspaceComponents.h"
+#include "main/Core.h"
+
+#include "main/AppStateManager.h"
 
 namespace NOWA
 {
@@ -33,18 +35,8 @@ namespace NOWA
 	OceanComponent::~OceanComponent()
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[OceanComponent] Destructor ocean component for game object: " + this->gameObjectPtr->getName());
-		if (nullptr != this->datablock)
-		{
-			Ogre::Hlms* hlmsUnlit = Ogre::Root::getSingletonPtr()->getHlmsManager()->getHlms(Ogre::HLMS_UNLIT);
-			hlmsUnlit->destroyDatablock(this->datablock->getName());
-			this->datablock = nullptr;
-		}
-		if (nullptr != this->ocean)
-		{
-			this->gameObjectPtr->getSceneNode()->detachObject(this->ocean);
-			delete this->ocean;
-			this->ocean = nullptr;
-		}
+		
+		this->destroyOcean();
 	}
 
 	bool OceanComponent::init(rapidxml::xml_node<>*& propertyElement)
@@ -108,13 +100,34 @@ namespace NOWA
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[OceanComponent] Init ocean component for game object: " + this->gameObjectPtr->getName());
 
+		this->gameObjectPtr->setDoNotDestroyMovableObject(true);
+
+		this->gameObjectPtr->setUseReflection(false);
+		this->gameObjectPtr->getAttribute(GameObject::AttrUseReflection())->setVisible(false);
+		this->gameObjectPtr->getAttribute(GameObject::AttrMeshName())->setVisible(false);
+		this->gameObjectPtr->getAttribute(GameObject::AttrScale())->setVisible(false);
+
+		this->gameObjectPtr->getAttribute(GameObject::AttrCastShadows())->setVisible(false);
+		this->gameObjectPtr->getAttribute(GameObject::AttrDynamic())->setVisible(false);
+		this->gameObjectPtr->getAttribute(GameObject::AttrClampY())->setVisible(false);
+
 		this->createOcean();
 		return true;
 	}
 
+	bool OceanComponent::connect(void)
+	{
+		return false;
+	}
+
+	bool OceanComponent::disconnect(void)
+	{
+		return false;
+	}
+
 	void OceanComponent::update(Ogre::Real dt, bool notSimulating)
 	{
-		// if (false == notSimulating)
+		if (false == notSimulating)
 		{
 			this->ocean->update();
 		}
@@ -123,36 +136,9 @@ namespace NOWA
 
 	void OceanComponent::createOcean(void)
 	{
-		
-// Attention: When camera changed event must be triggered, to set the new camera for the ocean
+		// Attention: When camera changed event must be triggered, to set the new camera for the ocean
 		if (nullptr == this->ocean)
 		{
-			// Register Ocean
-			// https://forums.ogre3d.org/viewtopic.php?f=25&t=93592&hilit=ocean
-
-			//Ogre::HlmsPbs* hlmsPbs = WorkspaceModule::getInstance()->getHlmsPbs();
-			//Ogre::ArchiveVec libraryPbs = hlmsPbs->getPiecesLibraryAsArchiveVec();
-			//Ogre::Archive* archivePbs = hlmsPbs->getDataFolder();
-
-			//Ogre::String dataFolder = "../../media/";
-			//// Note a the moment only OpenGL available
-			//Ogre::Archive* archiveOcean = Ogre::ArchiveManager::getSingletonPtr()->load(dataFolder + "Hlms/Ocean/GLSL", "FileSystem", true);
-			//Ogre::HlmsOcean* hlmsOcean = OGRE_NEW Ogre::HlmsOcean(archiveOcean, &libraryPbs);
-			//WorkspaceModule::getInstance()->getHlmsManager()->registerHlms(hlmsOcean);
-			//WorkspaceModule::getInstance()->setHlmsOcean(hlmsOcean);
-			//hlmsOcean->setDebugOutputPath(false, false);
-
-			//Ogre::Archive* archiveLibraryCustom = Ogre::ArchiveManager::getSingletonPtr()->load(dataFolder + "Hlms/Ocean/GLSL/Custom", "FileSystem", true);
-			//libraryPbs.push_back(archiveLibraryCustom);
-			//hlmsPbs->reloadFrom(archivePbs, &libraryPbs);
-
-			/*
-			when you have a reflection probe, set it
-			Ogre::HlmsOcean* hlmsOcean = static_cast<Ogre::HlmsOcean*>( Ogre::Root::getSingletonPtr()->getHlmsManager()->getHlms( Ogre::HLMS_USER2 ) );
-			hlmsOcean->setEnvProbe( probeTexture );
-			*/
-
-
 			//Create ocean
 			this->ocean = new Ogre::Ocean(Ogre::Id::generateNewId<Ogre::MovableObject>(), &this->gameObjectPtr->getSceneManager()->_getEntityMemoryManager(Ogre::SCENE_STATIC),
 				this->gameObjectPtr->getSceneManager(), 0, Ogre::Root::getSingletonPtr()->getCompositorManager2(),
@@ -165,17 +151,23 @@ namespace NOWA
 			Ogre::Vector2 size = Ogre::Vector2(200, 200);
 			this->ocean->create(center, size);
 
-			Ogre::TexturePtr probeTexture = Ogre::TextureManager::getSingletonPtr()->getByName("oceanData.dds");
-			if (probeTexture.isNull())
-			{
-				probeTexture = Ogre::TextureManager::getSingleton().load("oceanData.dds", Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, Ogre::TEX_TYPE_3D);
-			}
+			
+			auto* hlmsOcean = static_cast<Ogre::HlmsOcean*>(
+				Ogre::Root::getSingleton().getHlmsManager()->getHlms(Ogre::HLMS_USER1));
+
+			hlmsOcean->setOceanDataTextureName("oceanData.dds");
+			hlmsOcean->setWeightTextureName("weight.dds");
+
+
+			// IMPORTANT: do NOT set oceanDataTex as env probe!
+			// hlmsOcean->setEnvProbe( ... ) must be a cubemap probe (optional).
+
+			// Optional: only if you actually have a cubemap probe texture:
+			//// Ogre::TextureGpu* probeCube = ...;
+			//// hlmsOcean->setEnvProbe(probeCube);
 
 			if (nullptr == this->datablock)
 			{
-				Ogre::HlmsOcean* hlmsOcean = WorkspaceModule::getInstance()->getHlmsOcean();
-				hlmsOcean->setEnvProbe(probeTexture);
-
 				Ogre::String datablockName = "Ocean";
 				this->datablock = static_cast<Ogre::HlmsOceanDatablock*>(hlmsOcean->createDatablock(datablockName, datablockName, Ogre::HlmsMacroblock(),
 					Ogre::HlmsBlendblock(), Ogre::HlmsParamVec()));
@@ -191,13 +183,83 @@ namespace NOWA
 			this->ocean->setStatic(true);
 			this->gameObjectPtr->setDynamic(false);
 			this->gameObjectPtr->getSceneNode()->attachObject(this->ocean);
-			this->gameObjectPtr->setDynamic(false);
+			this->ocean->setCastShadows(false);
 
 			this->gameObjectPtr->init(this->ocean);
 			// Register after the component has been created
 			AppStateManager::getSingletonPtr()->getGameObjectController()->registerGameObject(gameObjectPtr);
-			// this->ocean->update();
+
+			WorkspaceBaseComponent* workspaceBaseComponent = WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent();
+			if (nullptr != workspaceBaseComponent)
+			{
+				if (false == workspaceBaseComponent->getUseOcean())
+				{
+					workspaceBaseComponent->setUseOcean(true);
+				}
+			}
 		}
+	}
+
+	void OceanComponent::destroyOcean(void)
+	{
+		if (this->ocean == nullptr)
+			return;
+
+		auto ocean = this->ocean;
+		// auto hlmsPbsTerraShadows = this->hlmsPbsTerraShadows;
+		// auto terraWorkspaceListener = this->terraWorkspaceListener;
+		auto gameObjectPtr = this->gameObjectPtr;
+
+		// Optional: get components that might become unavailable
+		auto core = Core::getSingletonPtr();
+		auto appState = AppStateManager::getSingletonPtr();
+		auto workspaceModule = WorkspaceModule::getInstance();
+		auto workspaceBaseComponent = workspaceModule->getPrimaryWorkspaceComponent();
+		auto datablock = this->datablock;
+
+		// Clear pointers on *this* immediately
+		this->ocean = nullptr;
+		this->datablock = nullptr;
+		// this->hlmsPbsTerraShadows = nullptr;
+		// this->terraWorkspaceListener = nullptr;
+
+		ENQUEUE_DESTROY_COMMAND("OceanComponent::destroyOcean", _6(ocean, gameObjectPtr, core, appState, workspaceBaseComponent, datablock),
+			{
+				if (ocean)
+				{
+					if (workspaceBaseComponent && appState && !appState->bShutdown)
+					{
+						workspaceBaseComponent->setUseOcean(false);
+						/*if (terraWorkspaceListener)
+						{
+							workspaceBaseComponent->getWorkspace()->removeListener(terraWorkspaceListener);
+							delete terraWorkspaceListener;
+						}*/
+					}
+
+					if (gameObjectPtr && gameObjectPtr->movableObject)
+					{
+						if (nullptr != datablock)
+						{
+							Ogre::Hlms* hlmsUnlit = Ogre::Root::getSingletonPtr()->getHlmsManager()->getHlms(Ogre::HLMS_UNLIT);
+							hlmsUnlit->destroyDatablock(datablock->getName());
+							datablock = nullptr;
+						}
+						if (nullptr != ocean)
+						{
+							gameObjectPtr->getSceneNode()->detachObject(ocean);
+							delete ocean;
+							ocean = nullptr;
+						}
+
+						if (gameObjectPtr->boundingBoxDraw && gameObjectPtr->sceneManager)
+						{
+							gameObjectPtr->sceneManager->destroyWireAabb(gameObjectPtr->boundingBoxDraw);
+							gameObjectPtr->boundingBoxDraw = nullptr;
+						}
+					}
+				}
+			});
 	}
 
 	void OceanComponent::actualizeValue(Variant* attribute)
@@ -241,9 +303,7 @@ namespace NOWA
 		// 12 = bool
 		GameObjectComponent::writeXML(propertiesXML, doc);
 
-		xml_node<>*
-
-		/*propertyXML = doc.allocate_node(node_element, "property");
+		/* xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "9"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "Diffuse"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->diffuseColor->getVector3())));
@@ -287,6 +347,23 @@ namespace NOWA
 			this->light->setVisible(activated);
 		}
 	}*/
+
+	void OceanComponent::onRemoveComponent(void)
+	{
+		GameObjectComponent::onRemoveComponent();
+
+		WorkspaceBaseComponent* workspaceBaseComponent = WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent();
+		if (nullptr != workspaceBaseComponent && false == AppStateManager::getSingletonPtr()->bShutdown)
+		{
+			workspaceBaseComponent->setUseTerra(false);
+		}
+
+		this->gameObjectPtr->getAttribute(GameObject::AttrUseReflection())->setVisible(true);
+		this->gameObjectPtr->getAttribute(GameObject::AttrMeshName())->setVisible(true);
+		this->gameObjectPtr->getAttribute(GameObject::AttrScale())->setVisible(true);
+
+		this->gameObjectPtr->getAttribute(GameObject::AttrDynamic())->setVisible(true);
+	}
 
 	Ogre::String OceanComponent::getClassName(void) const
 	{
@@ -392,11 +469,9 @@ namespace NOWA
 		return 	this->showDummyEntity->getBool();
 	}*/
 
-	Ogre::Ocean* OceanComponent::getOgreOcean(void) const
+	Ogre::Ocean* OceanComponent::getOcean(void) const
 	{
 		return this->ocean;
 	}
 
 }; // namespace end
-
-#endif

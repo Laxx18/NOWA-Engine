@@ -28,12 +28,11 @@ THE SOFTWARE.
 #ifndef _OgreHlmsOcean_H_
 #define _OgreHlmsOcean_H_
 
-#if 0
-
 #include "OgreHlmsBufferManager.h"
 #include "OgreConstBufferPool.h"
 #include "OgreMatrix4.h"
-#include "OgreHeaderPrefix.h"
+#include "OgreTextureGpu.h"
+#include "OgreRootLayout.h"
 
 namespace Ogre
 {
@@ -94,7 +93,8 @@ namespace Ogre
 
         struct PassData
         {
-            FastArray<Texture*> shadowMaps;
+            /// Shadow textures are TextureGpu in Ogre-Next
+            FastArray<TextureGpu *> shadowMaps;
             FastArray<float>    vertexShaderSharedBuffer;
             FastArray<float>    pixelShaderSharedBuffer;
 
@@ -111,7 +111,7 @@ namespace Ogre
         uint32                  mCurrentPassBuffer;     /// Resets every to zero every new frame.
 
         TexBufferPacked         *mGridBuffer;
-        TexBufferPacked         *mGlobalLightListBuffer;
+        ReadOnlyBufferPacked    *mGlobalLightListBuffer;
 
         ConstBufferPool::BufferPool const *mLastBoundPool;
 
@@ -123,21 +123,26 @@ namespace Ogre
         ShadowFilter mShadowFilter;
         AmbientLightMode mAmbientLightMode;
 
-        Ogre::TexturePtr mProbe;
+	    Ogre::TextureGpu *mProbe;
 
-        virtual const HlmsCache* createShaderCacheEntry( uint32 renderableHash,
-                                                         const HlmsCache &passCache,
-                                                         uint32 finalHash,
-                                                         const QueuedRenderable &queuedRenderable );
+	    /// Resource names used to bind the ocean simulation textures.
+	    /// Default values match the sample media: "oceanData.dds" and "weight.dds".
+	    String mOceanDataTextureName;
+	    String mWeightTextureName;
 
-        virtual HlmsDatablock* createDatablockImpl( IdString datablockName,
-                                                    const HlmsMacroblock *macroblock,
-                                                    const HlmsBlendblock *blendblock,
-                                                    const HlmsParamVec &paramVec );
+        const HlmsCache *createShaderCacheEntry( uint32 renderableHash, const HlmsCache &passCache,
+                                                 uint32 finalHash,
+                                                 const QueuedRenderable &queuedRenderable,
+                                                 HlmsCache *reservedStubEntry,
+                                                 const size_t tid ) override;
 
-        virtual void calculateHashForPreCreate( Renderable *renderable, PiecesMap *inOutPieces );
+        HlmsDatablock *createDatablockImpl( IdString datablockName, const HlmsMacroblock *macroblock,
+                                            const HlmsBlendblock *blendblock,
+                                            const HlmsParamVec &paramVec ) override;
 
-        virtual void destroyAllBuffers(void);
+        void calculateHashForPreCreate( Renderable *renderable, PiecesMap *inOutPieces ) override;
+
+        void destroyAllBuffers() override;
 
         FORCEINLINE uint32 fillBuffersFor( const HlmsCache *cache,
                                            const QueuedRenderable &queuedRenderable,
@@ -146,31 +151,37 @@ namespace Ogre
 
     public:
         HlmsOcean( Archive *dataFolder, ArchiveVec *libraryFolders );
-        virtual ~HlmsOcean();
+        ~HlmsOcean() override;
 
-        virtual void _changeRenderSystem( RenderSystem *newRs );
+        void _changeRenderSystem( RenderSystem *newRs ) override;
+
+        /// Ocean HLMS doesn't require special barrier logic; keep default behaviour.
+        void analyzeBarriers( BarrierSolver &barrierSolver,
+                              ResourceTransitionArray &resourceTransitions,
+                              Camera *renderingCamera, const bool bCasterPass ) override;
 
         /// Not supported
         virtual void setOptimizationStrategy( OptimizationStrategy optimizationStrategy ) {}
 
-        virtual HlmsCache preparePassHash( const Ogre::CompositorShadowNode *shadowNode,
-                                           bool casterPass, bool dualParaboloid,
-                                           SceneManager *sceneManager );
+        HlmsCache preparePassHash( const Ogre::CompositorShadowNode *shadowNode, bool casterPass,
+                                   bool dualParaboloid, SceneManager *sceneManager ) override;
 
-        virtual uint32 fillBuffersFor( const HlmsCache *cache, const QueuedRenderable &queuedRenderable,
-                                       bool casterPass, uint32 lastCacheHash,
-                                       uint32 lastTextureHash );
+        uint32 fillBuffersFor( const HlmsCache *cache, const QueuedRenderable &queuedRenderable,
+                               bool casterPass, uint32 lastCacheHash,
+                               uint32 lastTextureHash ) override;
 
-        virtual uint32 fillBuffersForV1( const HlmsCache *cache,
-                                         const QueuedRenderable &queuedRenderable,
-                                         bool casterPass, uint32 lastCacheHash,
-                                         CommandBuffer *commandBuffer );
-        virtual uint32 fillBuffersForV2( const HlmsCache *cache,
-                                         const QueuedRenderable &queuedRenderable,
-                                         bool casterPass, uint32 lastCacheHash,
-                                         CommandBuffer *commandBuffer );
+        uint32 fillBuffersForV1( const HlmsCache *cache, const QueuedRenderable &queuedRenderable,
+                                 bool casterPass, uint32 lastCacheHash,
+                                 CommandBuffer *commandBuffer ) override;
+        uint32 fillBuffersForV2( const HlmsCache *cache, const QueuedRenderable &queuedRenderable,
+                                 bool casterPass, uint32 lastCacheHash,
+                                 CommandBuffer *commandBuffer ) override;
 
-        virtual void frameEnded(void);
+        void postCommandBufferExecution( CommandBuffer *commandBuffer ) override;
+
+        void setupRootLayout(RootLayout& rootLayout, size_t tid) override;
+
+        void frameEnded() override;
 
         void setDebugPssmSplits( bool bDebug );
         bool getDebugPssmSplits(void) const                 { return mDebugPssmSplits; }
@@ -181,7 +192,23 @@ namespace Ogre
         void setAmbientLightMode( AmbientLightMode mode );
         AmbientLightMode getAmbientLightMode(void) const    { return mAmbientLightMode; }
 
-        void setEnvProbe( Ogre::TexturePtr probe );
+        /// Sets the environment probe cubemap used for reflections.
+        /// Can be nullptr to disable.
+        void setEnvProbe( TextureGpu *probe );
+
+	        /// Overrides the resource name of the 3D texture used by the ocean shader.
+	        /// Default: "oceanData.dds"
+	        void setOceanDataTextureName( const String &name ) { mOceanDataTextureName = name; }
+	        const String& getOceanDataTextureName() const { return mOceanDataTextureName; }
+
+	        /// Overrides the resource name of the 2D weight texture used by the ocean shader.
+	        /// Default: "weight.dds"
+	        void setWeightTextureName( const String &name ) { mWeightTextureName = name; }
+	        const String& getWeightTextureName() const { return mWeightTextureName; }
+
+        /// Same helper as other Hlms implementations (e.g. HlmsTerra) to populate
+        /// the default data folder + library folders based on the active RenderSystem.
+        static void getDefaultPaths( String &outDataFolderPath, StringVector &outLibraryFoldersPaths );
     };
 
     struct OceanProperty
@@ -230,9 +257,5 @@ namespace Ogre
     /** @} */
 
 }
-
-#include "OgreHeaderSuffix.h"
-
-#endif
 
 #endif

@@ -104,7 +104,7 @@ namespace NOWA
 
 	InputDeviceCore::~InputDeviceCore()
 	{
-		this->destroyContent();
+
 	}
 
 	InputDeviceCore* InputDeviceCore::getSingletonPtr(void)

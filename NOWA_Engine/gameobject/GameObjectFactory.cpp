@@ -154,7 +154,7 @@ namespace NOWA
 		this->componentFactory.registerClass<TagChildNodeComponent>(TagChildNodeComponent::getStaticClassId(), TagChildNodeComponent::getStaticClassName());
 		this->componentFactory.registerClass<RibbonTrailComponent>(RibbonTrailComponent::getStaticClassId(), RibbonTrailComponent::getStaticClassName());
 		this->componentFactory.registerClass<LuaScriptComponent>(LuaScriptComponent::getStaticClassId(), LuaScriptComponent::getStaticClassName());
-		// this->componentFactory.registerClass<OceanComponent>(OceanComponent::getStaticClassId(), OceanComponent::getStaticClassName());
+		this->componentFactory.registerClass<OceanComponent>(OceanComponent::getStaticClassId(), OceanComponent::getStaticClassName());
 		this->componentFactory.registerClass<TerraComponent>(TerraComponent::getStaticClassId(), TerraComponent::getStaticClassName());
 		this->componentFactory.registerClass<MeshDecalComponent>(MeshDecalComponent::getStaticClassId(), MeshDecalComponent::getStaticClassName());
 		this->componentFactory.registerClass<DecalComponent>(DecalComponent::getStaticClassId(), DecalComponent::getStaticClassName());

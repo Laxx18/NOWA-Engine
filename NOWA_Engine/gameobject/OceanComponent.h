@@ -3,8 +3,6 @@
 
 #include "GameObjectComponent.h"
 
-#if 0
-
 #include "ocean/Ocean.h"
 
 namespace NOWA
@@ -23,6 +21,21 @@ namespace NOWA
 		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
 		virtual bool postInit(void) override;
+
+		/**
+		 * @see		GameObjectComponent::connect
+		 */
+		virtual bool connect(void) override;
+
+		/**
+		 * @see		GameObjectComponent::disconnect
+		 */
+		virtual bool disconnect(void) override;
+
+		/**
+		* @see		GameObjectComponent::onRemoveComponent
+		*/
+		virtual void onRemoveComponent(void) override;
 
 		virtual Ogre::String getClassName(void) const override;
 
@@ -95,7 +108,9 @@ namespace NOWA
 
 		bool getShowDummyEntity(void) const;*/
 
-		Ogre::Ocean* getOgreOcean(void) const;
+		Ogre::Ocean* getOcean(void) const;
+
+		void createOcean(void);
 	public:
 		static const Ogre::String AttrDiffuseColor(void) { return "Diffuse Color"; }
 		static const Ogre::String AttrSpecularColor(void) { return "Specular Color"; }
@@ -107,7 +122,8 @@ namespace NOWA
 		// static const Ogre::String AttrAttenuationRadius(void) { return "Att-Radius"; }
 		// static const Ogre::String AttrAttenuationLumThreshold(void) { return "Att-LumThreshold"; }
 	private:
-		void createOcean(void);
+
+		void destroyOcean(void);
 	private:
 		Ogre::Ocean* ocean;
 		Ogre::HlmsDatablock* datablock;
@@ -123,7 +139,5 @@ namespace NOWA
 	};
 
 }; //namespace end
-
-#endif
 
 #endif

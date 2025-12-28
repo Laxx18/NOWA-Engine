@@ -234,6 +234,12 @@ namespace NOWA
 		void applyWheelie(Ogre::Real strength);
 
 		void applyDrift(bool left, Ogre::Real strength, Ogre::Real steeringStrength);
+
+		bool isAirborne(void) const;
+
+		// Apply angular impulse (stable + timestep aware)
+		// strength is in "torque-like" units; start with something like 1500..6000 depending on mass
+		void applyPitch(Ogre::Real strength, Ogre::Real dt);
 	public:
 		static const Ogre::String AttrUseTilting(void) { return "Use Tilting"; }
 		static const Ogre::String AttrOnSteerAngleChangedFunctionName(void) { return "On Steering Angle Function Name"; }

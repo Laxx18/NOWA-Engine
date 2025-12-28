@@ -240,7 +240,7 @@
 					<property type="9" name="Gravity" data="0 -19.8 0"/>
 					<property type="7" name="GravitySourceCategory" data="Planet"/>
 					<property type="9" name="ConstraintDirection" data="0 0 0"/>
-					<property type="12" name="ContinuousCollision" data="false"/>
+					
 					<property type="6" name="Speed" data="10"/>
 					<property type="6" name="MinSpeed" data="1"/>
 					<property type="6" name="MaxSpeed" data="10"/>
@@ -490,7 +490,7 @@
 					<property type="9" name="Gravity" data="0 -19.8 0"/>
 					<property type="7" name="GravitySourceCategory" data="Planet"/>
 					<property type="9" name="ConstraintDirection" data="-0.42766 -0.28785 -0.85688"/>
-					<property type="12" name="ContinuousCollision" data="false"/>
+					
 					<property type="6" name="Speed" data="4"/>
 					<property type="6" name="MinSpeed" data="1"/>
 					<property type="6" name="MaxSpeed" data="4"/>
@@ -572,7 +572,7 @@
 					<property type="9" name="Gravity" data="0 -19.8 0"/>
 					<property type="7" name="GravitySourceCategory" data="Planet"/>
 					<property type="9" name="ConstraintDirection" data="-0.3289 -0.64731 -0.68761"/>
-					<property type="12" name="ContinuousCollision" data="false"/>
+					
 					<property type="6" name="Speed" data="3"/>
 					<property type="6" name="MinSpeed" data="1"/>
 					<property type="6" name="MaxSpeed" data="3"/>
@@ -670,7 +670,7 @@
 					<property type="9" name="Gravity" data="0 -19.8 0"/>
 					<property type="7" name="GravitySourceCategory" data="Planet"/>
 					<property type="9" name="ConstraintDirection" data="-0.42997 -0.54738 -0.71798"/>
-					<property type="12" name="ContinuousCollision" data="false"/>
+					
 					<property type="6" name="Speed" data="1"/>
 					<property type="6" name="MinSpeed" data="1"/>
 					<property type="6" name="MaxSpeed" data="5"/>

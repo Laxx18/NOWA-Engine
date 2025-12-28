@@ -1803,6 +1803,7 @@ void DesignState::update(Ogre::Real dt)
 	if (true == this->simulating)
 	{
 		this->ogreNewt->update(dt);
+		// this->ogreNewt->updateFixed(dt);
 	}
 	// NOWA::LuaScriptApi::getInstance()->update(dt);
 

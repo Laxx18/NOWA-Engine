@@ -1,26 +1,19 @@
 #include "NOWAPrecompiled.h"
 
-#if 0
 #include "Ocean.h"
 
-#include "OgreImage.h"
-#include "OgreTextureManager.h"
-#include "OgreHardwarePixelBuffer.h"
+#include "OgreImage2.h"
+#include "OgreTextureGpuManager.h"
 
 #include "OgreCamera.h"
 #include "OgreSceneManager.h"
 #include "Compositor/OgreCompositorManager2.h"
-#include "Compositor/OgreCompositorWorkspace.h"
-#include "Compositor/OgreCompositorChannel.h"
-#include "OgreMaterialManager.h"
-#include "OgreTechnique.h"
-#include "OgreRenderTexture.h"
 
 namespace Ogre
 {
-    Ocean::Ocean( IdType id, ObjectMemoryManager *objectMemoryManager,
-                  SceneManager *sceneManager, uint8 renderQueueId,
-                  CompositorManager2 *compositorManager, Camera *camera ) :
+    Ocean::Ocean( IdType id, ObjectMemoryManager *objectMemoryManager, SceneManager *sceneManager,
+                  uint8 renderQueueId, CompositorManager2 *compositorManager,
+                  const Camera *camera ) :
         MovableObject( id, objectMemoryManager, sceneManager, renderQueueId ),
         m_width( 0u ),
         m_depth( 0u ),
@@ -354,5 +347,3 @@ namespace Ogre
         return movType;
     }
 }
-
-#endif

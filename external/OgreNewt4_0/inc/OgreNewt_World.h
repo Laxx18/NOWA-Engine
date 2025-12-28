@@ -35,8 +35,10 @@ namespace OgreNewt
 		World(Ogre::Real desiredFps = 100.0f, int maxUpdatesPerFrames = 5, const Ogre::String& name = "main");
 		~World() override;
 
-		void update(Ogre::Real t_step);
-		void postUpdate(Ogre::Real interp);
+		void update(Ogre::Real timestep);
+
+		void updateFixed(Ogre::Real timestep);
+
 		void recover();
 		int getVersion() const;
 
@@ -177,6 +179,8 @@ namespace OgreNewt
 			fut.wait(); // blocks until world thread pumps queue
 		}
 	private:
+		void postUpdate(Ogre::Real interp);
+
 		void recoverInternal();
 		void internalCleanUp();
 

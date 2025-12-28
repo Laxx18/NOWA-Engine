@@ -32,7 +32,8 @@ World::World(Ogre::Real desiredFps, int maxUpdatesPerFrames, const Ogre::String&
 {
 	SetThreadCount(1);
 	setSolverModel(m_solverMode);
-	SetSubSteps(2);
+	SetSubSteps(1);
+	setUpdateFPS(desiredFps, maxUpdatesPerFrames);
 
 	m_defaultMatID = new OgreNewt::MaterialID(this, 0);
 
@@ -231,211 +232,6 @@ void World::destroyJoint(ndJointBilateralConstraint* joint)
 	RemoveJoint(joint);
 }
 
-// -----------------------------------------------------------------------------
-// Update loop: main-thread driven, ND4 uses internal worker threads.
-// Pattern: catch-up with Update(), then Sync(), then safe point work.
-// -----------------------------------------------------------------------------
-#if 0
-void World::update(Ogre::Real timestep)
-{
-	// optional: remember the physics thread id (main thread in your case)
-	if (m_mainThreadId == std::thread::id())
-		m_mainThreadId = std::this_thread::get_id();
-
-	m_isSimulating.store(true, std::memory_order_release);
-
-	// Pause / single step
-	if (m_paused.load(std::memory_order_acquire))
-	{
-		if (!m_doSingleStep.exchange(false, std::memory_order_acq_rel))
-		{
-			// Still allow queued lifetime ops + editor queries while paused
-			processPhysicsQueue();
-			processRaycastJobs();
-			processConvexcastJobs();
-
-			m_isSimulating.store(false, std::memory_order_release);
-			return;
-		}
-	}
-
-	const Ogre::Real dt = m_fixedTimestep;
-	const int maxSteps = m_maxTicksPerFrames;
-
-	// Clamp / drop excessive time (same as your old loop)
-	if (timestep > (dt * Ogre::Real(maxSteps)))
-		timestep = dt * Ogre::Real(maxSteps);
-
-	m_timeAccumulator += timestep;
-
-	// Safe point BEFORE stepping: apply cross-thread add/destroy, etc.
-	processPhysicsQueue();
-
-	// Catch-up: restore old behavior (>=)
-	bool didStep = false;
-	while (m_timeAccumulator > dt)
-	{
-		ndWorld::Update(static_cast<ndFloat32>(dt));
-		m_timeAccumulator -= dt;
-		didStep = true;
-
-		if (m_paused.load(std::memory_order_acquire))
-			break;
-	}
-
-	// Interpolation factor for rendering
-	const Ogre::Real interp = m_timeAccumulator * m_invFixedTimestep;
-
-	// One sync per frame (like demo when synchronous)
-	if (didStep)
-		ndWorld::Sync();
-	// else
-		// ndWorld::Sync(); // optional: keep it if you rely on a stable world even with 0 steps
-
-	// Safe point AFTER sync: now workers are idle, safe to mutate/query
-	processPhysicsQueue();
-	processRaycastJobs();
-	processConvexcastJobs();
-
-	postUpdate(1.0f/*interp*/);
-
-	m_isSimulating.store(false, std::memory_order_release);
-}
-#endif
-
-#if 0
-void World::update(Ogre::Real timestep)
-{
-	m_isSimulating.store(true, std::memory_order_release);
-
-	// Work in DOUBLE for all stepping math.
-	const double dtFixed = static_cast<double>(m_fixedTimestep);
-	const int    maxSteps = m_maxTicksPerFrames;
-
-	// Clamp incoming dt to avoid spikes/spiral
-	double dt = static_cast<double>(timestep);
-	const double maxDelta = dtFixed * double(maxSteps);
-	if (dt > maxDelta)
-		dt = maxDelta;
-
-	m_timeAccumulator += dt;
-
-	// Safe point before stepping
-	processPhysicsQueue();
-	processRaycastJobs();
-	processConvexcastJobs();
-
-	// Drop steps if too far behind (keep accumulator bounded)
-	const double maxAccum = dtFixed * double(maxSteps);
-	if (m_timeAccumulator > maxAccum)
-	{
-		const double stepsToDrop = floor(m_timeAccumulator / dtFixed) - double(maxSteps);
-		if (stepsToDrop > 0.0)
-			m_timeAccumulator -= dtFixed * stepsToDrop;
-	}
-
-	bool didStep = false;
-
-	// IMPORTANT: use > not >= to avoid “exact boundary” jitter.
-	while (m_timeAccumulator > dtFixed)
-	{
-		ndWorld::Update(static_cast<ndFloat32>(dtFixed));
-		m_timeAccumulator -= dtFixed;
-		didStep = true;
-	}
-
-	// Kill tiny drift so it can't accumulate into a rare extra/missed step
-	if (m_timeAccumulator < 1e-9)
-		m_timeAccumulator = 0.0;
-
-	const float interp = (dtFixed > 0.0) ? float(m_timeAccumulator / dtFixed) : 0.0f;
-
-	if (didStep)
-		ndWorld::Sync();
-
-	// Safe point after stepping
-	processPhysicsQueue();
-	processRaycastJobs();
-	processConvexcastJobs();
-
-	postUpdate(interp); // or postUpdate(1.0f) if you let your engine handle interpolation
-
-	m_isSimulating.store(false, std::memory_order_release);
-}
-#endif
-
-#if 0
-void World::update(Ogre::Real t_step)
-{
-	// Remember the thread that drives physics (your logic thread)
-	if (m_mainThreadId == std::thread::id())
-		m_mainThreadId = std::this_thread::get_id();
-
-	m_isSimulating.store(true, std::memory_order_release);
-
-	// Pause / single step
-	if (m_paused.load(std::memory_order_acquire))
-	{
-		if (!m_doSingleStep.exchange(false, std::memory_order_acq_rel))
-		{
-			// Still allow queued lifetime ops + editor queries while paused
-			processPhysicsQueue();
-			processRaycastJobs();
-			processConvexcastJobs();
-
-			m_isSimulating.store(false, std::memory_order_release);
-			return;
-		}
-		// else: allow exactly one fixed step below
-		t_step = m_fixedTimestep;
-	}
-
-	const Ogre::Real dt = m_fixedTimestep;
-	const int maxSteps = m_maxTicksPerFrames;
-
-	// Clamp / drop excessive time (same as OgreNewt3)
-	if (t_step > (dt * Ogre::Real(maxSteps)))
-		t_step = dt * Ogre::Real(maxSteps);
-
-	m_timeAccumulator += t_step;
-
-	// Safe point BEFORE stepping: apply cross-thread add/destroy, etc.
-	processPhysicsQueue();
-
-	int realUpdates = 0;
-
-	// Like OgreNewt3: >= to run exact boundary steps too
-	while (m_timeAccumulator >= dt)
-	{
-		ndWorld::Update(static_cast<ndFloat32>(dt));
-		m_timeAccumulator -= dt;
-		++realUpdates;
-
-		// If pause toggled while stepping, stop after this step
-		if (m_paused.load(std::memory_order_acquire))
-			break;
-	}
-
-	// In OgreNewt3: param = accumulator / dt
-	const Ogre::Real param = m_timeAccumulator * m_invFixedTimestep;
-
-	// ND4: Sync only if we actually stepped this frame (mirrors "wait finished")
-	if (realUpdates > 0)
-		ndWorld::Sync();
-
-	// Safe point AFTER sync: now workers are idle, safe to mutate/query
-	processPhysicsQueue();
-	processRaycastJobs();
-	processConvexcastJobs();
-
-	// Your equivalent of body->updateNode(param)
-	postUpdate(param);
-
-	m_isSimulating.store(false, std::memory_order_release);
-}
-#endif
-
-#if 1
 // Prevents the following issues:
 // The sim runs slow because you’re feeding OgreNewt a fixed 1 / 60 and OgreNewt is also using its own fixed timestep accumulator
 // So you re effectively doing fixed - step on fixed - step, and the inner one can easily end up stepping less often than you think
@@ -453,7 +249,16 @@ void World::update(Ogre::Real timestep)
 	processConvexcastJobs();
 
 	// Step exactly once (or multiple times if you want substeps explicitly)
-	ndWorld::Update(dt);
+	// ndWorld::Update(dt);
+	// ndWorld::Sync();
+
+	const int subSteps = 2;
+	const ndFloat32 subDt = dt / ndFloat32(subSteps);
+	for (int i = 0; i < subSteps; ++i)
+	{
+		ndWorld::Update(subDt);
+	}
+
 	ndWorld::Sync();
 
 	// Safe point after stepping
@@ -467,7 +272,57 @@ void World::update(Ogre::Real timestep)
 	m_isSimulating.store(false, std::memory_order_release);
 }
 
-#endif
+// -----------------------------------------------------------------------------
+// Update loop: main-thread driven, ND4 uses internal worker threads.
+// Pattern: catch-up with Update(), then Sync(), then safe point work.
+// -----------------------------------------------------------------------------
+
+void World::updateFixed(Ogre::Real timestep)
+{
+	m_isSimulating.store(true, std::memory_order_release);
+
+	const double dtFixed = double(m_fixedTimestep);
+	const int    maxSteps = m_maxTicksPerFrames;
+
+	double dt = double(timestep);
+	const double maxDelta = dtFixed * double(maxSteps);
+	if (dt > maxDelta) dt = maxDelta;
+
+	m_timeAccumulator += dt;
+
+	processPhysicsQueue();
+	processRaycastJobs();
+	processConvexcastJobs();
+
+	constexpr double eps = 1e-12;
+
+	// bound accumulator
+	int pendingSteps = int(std::floor((m_timeAccumulator + eps) / dtFixed));
+	if (pendingSteps > maxSteps)
+	{
+		const int drop = pendingSteps - maxSteps;
+		m_timeAccumulator -= dtFixed * double(drop);
+		pendingSteps = maxSteps;
+	}
+
+	while (m_timeAccumulator + eps >= dtFixed)
+	{
+		ndWorld::Update((ndFloat32)dtFixed);
+		ndWorld::Sync(); // barrier per step
+		m_timeAccumulator -= dtFixed;
+	}
+
+	if (m_timeAccumulator < eps) m_timeAccumulator = 0.0;
+
+	const float interp = (dtFixed > 0.0) ? float(m_timeAccumulator / dtFixed) : 0.0f;
+
+	processPhysicsQueue();
+	processRaycastJobs();
+	processConvexcastJobs();
+
+	postUpdate(interp);   // World interpolates or exposes interpolated transforms
+	m_isSimulating.store(false, std::memory_order_release);
+}
 
 void World::postUpdate(Ogre::Real interp)
 {

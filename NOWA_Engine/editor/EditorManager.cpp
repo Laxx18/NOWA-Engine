@@ -635,7 +635,7 @@ namespace NOWA
 					else if (GameObject::OCEAN == this->type)
 					{
 						// Add the ocean component
-						// NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, OceanComponent::getStaticClassName());
+						NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, OceanComponent::getStaticClassName());
 						gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
 					}
 					else if (GameObject::TERRA == this->type)
@@ -3692,7 +3692,7 @@ namespace NOWA
 				}
 				else
 				{
-					physicsComponent->translate(offset);
+					physicsComponent->setPosition(selectedGameObject.second.gameObject->getPosition() + offset);
 				}
 				if (Ogre::Vector3::ZERO != normal)
 				{

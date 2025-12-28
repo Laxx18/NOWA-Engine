@@ -32,6 +32,7 @@ namespace NOWA
 	public:
 		friend class CompositorEffectBaseComponent;
 		friend class TerraComponent;
+		friend class OceanComponent;
 		friend class WorkspaceModule;
 
 		WorkspaceBaseComponent();
@@ -315,6 +316,9 @@ namespace NOWA
 
 	private:
 		void reconnectAllNodes(void);
+
+		void updateOceanEnvProbe(void);
+
 	protected:
 		Variant* backgroundColor;
 		Variant* viewportRect;
@@ -362,12 +366,8 @@ namespace NOWA
 		// Special: Only a TerraComponent can manipulate this value
 		bool useTerra;
 		Ogre::Terra* terra;
-
 		// Special: Only a OceanComponent can manipulate this value
 		bool useOcean;
-#if 0
-		Ogre::Ocean* ocean;
-#endif
 
 		Ogre::HlmsListener* hlmsListener;
 

@@ -28,13 +28,8 @@ THE SOFTWARE.
 #ifndef _OgreHlmsOceanDatablock_H_
 #define _OgreHlmsOceanDatablock_H_
 
-#if 0
-
 #include "OgreHlmsDatablock.h"
-#include "OgreHlmsTextureManager.h"
 #include "OgreConstBufferPool.h"
-#include "OgreVector4.h"
-#include "OgreHeaderPrefix.h"
 
 namespace Ogre
 {
@@ -89,12 +84,12 @@ namespace Ogre
         /// the inverse of the specular's fresnel to maintain energy conservation.
         /// This has the nice side effect that to achieve a perfect mirror effect,
         /// you just need to raise the fresnel term to 1; which is very intuitive
-        /// to artists (specially if using colored fresnel)
+        /// to artists (specially if using coloured fresnel)
         ///
         /// When using this BRDF, the diffuse fresnel will be calculated differently,
-        /// causing the diffuse component to still affect the color even when
+        /// causing the diffuse component to still affect the colour even when
         /// the fresnel = 1 (although subtly). To achieve a perfect mirror you will
-        /// have to set the fresnel to 1 *and* the diffuse color to black;
+        /// have to set the fresnel to 1 *and* the diffuse colour to black;
         /// which can be unintuitive for artists.
         ///
         /// This BRDF is very useful for representing surfaces with complex refractions
@@ -121,16 +116,16 @@ namespace Ogre
         friend class HlmsOcean;
 
     protected:
-        float   mDeepColorR, mDeepColorG, mDeepColorB;
+        float   mDeepColourR, mDeepColourG, mDeepColourB;
         float   _padding0;
-        float   mShallowColorR, mShallowColorG, mShallowColorB;
+        float   mShallowColourR, mShallowColourG, mShallowColourB;
         float   mWavesScale;
 
         /// @see OceanBrdf::OceanBrdf
         uint32  mBrdf;
 
         void scheduleConstBufferUpdate(void);
-        virtual void uploadToConstBuffer( char *dstPtr );
+        virtual void uploadToConstBuffer(char* dstPtr, uint8 dirtyFlags);
 
     public:
         HlmsOceanDatablock( IdString name, HlmsOcean *creator,
@@ -139,11 +134,11 @@ namespace Ogre
                           const HlmsParamVec &params );
         virtual ~HlmsOceanDatablock();
 
-        void setDeepColor( const Vector3 &deepColor );
-        Vector3 getDeepColor(void) const;
+        void setDeepColour( const Vector3 &deepColour );
+        Vector3 getDeepColour(void) const;
 
-        void setShallowColor( const Vector3 &shallowColor );
-        Vector3 getShallowColor(void) const;
+        void setShallowColour( const Vector3 &shallowColour );
+        Vector3 getShallowColour(void) const;
 
         void setWavesScale( float scale );
         float getWavesScale() const;
@@ -168,7 +163,5 @@ namespace Ogre
 }
 
 #include "OgreHeaderSuffix.h"
-
-#endif
 
 #endif

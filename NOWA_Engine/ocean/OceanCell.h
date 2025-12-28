@@ -2,8 +2,6 @@
 #ifndef _OgreOceanCell_H_
 #define _OgreOceanCell_H_
 
-#if 0
-
 #include "OgrePrerequisites.h"
 #include "OgreRenderable.h"
 
@@ -30,7 +28,7 @@ namespace Ogre
 
     public:
         OceanCell( Ocean *parentOcean );
-        virtual ~OceanCell();
+        ~OceanCell() override;
 
         bool getUseSkirts(void) const                   { return m_useSkirts; }
 
@@ -57,13 +55,11 @@ namespace Ogre
         void uploadToGpu( uint32 * RESTRICT_ALIAS gpuPtr ) const;
 
         //Renderable overloads
-        virtual const LightList& getLights(void) const;
-        virtual void getRenderOperation( v1::RenderOperation& op, bool casterPass );
-        virtual void getWorldTransforms( Matrix4* xform ) const;
-        virtual bool getCastsShadows(void) const;
+        const LightList &getLights() const override;
+        void             getRenderOperation( v1::RenderOperation &op, bool casterPass ) override;
+        void             getWorldTransforms( Matrix4 *xform ) const override;
+        bool             getCastsShadows() const override;
     };
 }
-
-#endif
 
 #endif

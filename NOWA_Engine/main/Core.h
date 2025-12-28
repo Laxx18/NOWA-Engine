@@ -793,6 +793,8 @@ namespace NOWA
 		void setRenderThreadId(std::thread::id id);
 
 		bool isInRenderThread(void) const;
+
+		void setMyGuiPointerVisible(bool visible);
 	public:
 
 		enum PhysicsType

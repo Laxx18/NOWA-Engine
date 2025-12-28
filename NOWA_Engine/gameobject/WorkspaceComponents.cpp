@@ -25,6 +25,7 @@
 #include "Compositor/OgreCompositorWorkspaceListener.h"
 
 #include "TerraShadowMapper.h"
+#include "ocean/OgreHlmsOcean.h"
 
 // #define GPU_PARTICLES
 
@@ -386,6 +387,22 @@ namespace NOWA
 		return true;
 	}
 
+	void WorkspaceBaseComponent::updateOceanEnvProbe()
+	{
+		if (false == this->useOcean)
+			return;
+
+		if (nullptr == this->hlmsManager)
+			return;
+
+		Ogre::Hlms* base = this->hlmsManager->getHlms(Ogre::HLMS_USER1);
+		if (nullptr == base)
+			return;
+
+		Ogre::HlmsOcean* hlmsOcean = static_cast<Ogre::HlmsOcean*>(base);
+		hlmsOcean->setEnvProbe(this->cubemapTexture); // TextureGpu* (nullptr is allowed)
+	}
+
 	void WorkspaceBaseComponent::internalInitWorkspaceData(void)
 	{
 		Ogre::String workspacePostfix = Ogre::StringConverter::toString(this->gameObjectPtr->getId());
@@ -612,6 +629,9 @@ namespace NOWA
 						// Render window
 						this->externalChannels[0] = Core::getSingletonPtr()->getOgreRenderWindow()->getTexture();
 						this->externalChannels[1] = this->cubemapTexture;
+
+						// For ocean
+						this->updateOceanEnvProbe();
 					}
 					else
 					{
@@ -748,8 +768,17 @@ namespace NOWA
 			{
 				textureManager->destroyTexture(this->cubemapTexture);
 				this->cubemapTexture = nullptr;
+				this->updateOceanEnvProbe();
 			}
-
+#if 0
+			if (true == this->useOcean && this->hlmsManager)
+			{
+				Ogre::HlmsOcean* hlmsOcean =
+					dynamic_cast<Ogre::HlmsOcean*>(this->hlmsManager->getHlms(Ogre::HLMS_USER1));
+				if (hlmsOcean)
+					hlmsOcean->setEnvProbe(nullptr);
+			}
+#endif
 			if (nullptr != this->workspace)
 			{
 				if (nullptr != this->planarReflectionsWorkspaceListener)

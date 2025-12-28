@@ -584,7 +584,7 @@
 					<property type="9" name="Gravity" data="0 0 0"/>
 					<property type="7" name="GravitySourceCategory" data=""/>
 					<property type="9" name="ConstraintDirection" data="0 0 1"/>
-					<property type="12" name="ContinuousCollision" data="false"/>
+					
 					<property type="6" name="Speed" data="1"/>
 					<property type="6" name="MinSpeed" data="1"/>
 					<property type="6" name="MaxSpeed" data="5"/>
@@ -725,7 +725,7 @@
 					<property type="9" name="Gravity" data="0 0 0"/>
 					<property type="7" name="GravitySourceCategory" data=""/>
 					<property type="9" name="ConstraintDirection" data="0 0 0"/>
-					<property type="12" name="ContinuousCollision" data="false"/>
+					
 					<property type="6" name="Speed" data="1"/>
 					<property type="6" name="MinSpeed" data="1"/>
 					<property type="6" name="MaxSpeed" data="5"/>
@@ -815,7 +815,7 @@
 					<property type="9" name="Gravity" data="0 0 0"/>
 					<property type="7" name="GravitySourceCategory" data=""/>
 					<property type="9" name="ConstraintDirection" data="0 0 0"/>
-					<property type="12" name="ContinuousCollision" data="true"/>
+					
 					<property type="6" name="Speed" data="1"/>
 					<property type="6" name="MinSpeed" data="1"/>
 					<property type="6" name="MaxSpeed" data="5"/>
@@ -987,7 +987,7 @@
 					<property type="9" name="Gravity" data="0 0 0"/>
 					<property type="7" name="GravitySourceCategory" data=""/>
 					<property type="9" name="ConstraintDirection" data="0 0 0"/>
-					<property type="12" name="ContinuousCollision" data="false"/>
+					
 					<property type="6" name="Speed" data="1"/>
 					<property type="6" name="MinSpeed" data="1"/>
 					<property type="6" name="MaxSpeed" data="5"/>
@@ -1142,7 +1142,7 @@
 					<property type="9" name="Gravity" data="0 0 0"/>
 					<property type="7" name="GravitySourceCategory" data=""/>
 					<property type="9" name="ConstraintDirection" data="0 0 0"/>
-					<property type="12" name="ContinuousCollision" data="false"/>
+					
 					<property type="6" name="Speed" data="150"/>
 					<property type="6" name="MinSpeed" data="1"/>
 					<property type="6" name="MaxSpeed" data="150"/>
@@ -1208,7 +1208,7 @@
 					<property type="9" name="Gravity" data="0 0 0"/>
 					<property type="7" name="GravitySourceCategory" data=""/>
 					<property type="9" name="ConstraintDirection" data="0 0 0"/>
-					<property type="12" name="ContinuousCollision" data="false"/>
+					
 					<property type="6" name="Speed" data="1"/>
 					<property type="6" name="MinSpeed" data="1"/>
 					<property type="6" name="MaxSpeed" data="5"/>
@@ -1274,7 +1274,7 @@
 					<property type="9" name="Gravity" data="0 0 0"/>
 					<property type="7" name="GravitySourceCategory" data=""/>
 					<property type="9" name="ConstraintDirection" data="0 0 0"/>
-					<property type="12" name="ContinuousCollision" data="false"/>
+					
 					<property type="6" name="Speed" data="1"/>
 					<property type="6" name="MinSpeed" data="1"/>
 					<property type="6" name="MaxSpeed" data="5"/>
@@ -1440,7 +1440,7 @@
 					<property type="9" name="Gravity" data="0 0 0"/>
 					<property type="7" name="GravitySourceCategory" data=""/>
 					<property type="9" name="ConstraintDirection" data="0 0 0"/>
-					<property type="12" name="ContinuousCollision" data="false"/>
+					
 					<property type="6" name="Speed" data="1"/>
 					<property type="6" name="MinSpeed" data="1"/>
 					<property type="6" name="MaxSpeed" data="5"/>
@@ -1606,7 +1606,7 @@
 					<property type="9" name="Gravity" data="0 0 0"/>
 					<property type="7" name="GravitySourceCategory" data=""/>
 					<property type="9" name="ConstraintDirection" data="1 0 1"/>
-					<property type="12" name="ContinuousCollision" data="false"/>
+					
 					<property type="6" name="Speed" data="15"/>
 					<property type="6" name="MinSpeed" data="20"/>
 					<property type="6" name="MaxSpeed" data="20"/>
@@ -1831,7 +1831,7 @@
 					<property type="9" name="Gravity" data="0 0 0"/>
 					<property type="7" name="GravitySourceCategory" data=""/>
 					<property type="9" name="ConstraintDirection" data="0 0 0"/>
-					<property type="12" name="ContinuousCollision" data="false"/>
+					
 					<property type="6" name="Speed" data="1"/>
 					<property type="6" name="MinSpeed" data="1"/>
 					<property type="6" name="MaxSpeed" data="5"/>

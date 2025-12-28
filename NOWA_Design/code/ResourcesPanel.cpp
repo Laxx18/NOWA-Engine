@@ -1274,7 +1274,6 @@ void ResourcesPanelTextures::notifyTreeNodeSelected(MyGUI::TreeControl* treeCont
 
 	ENQUEUE_RENDER_COMMAND("ResourcesPanelTextures::notifyTreeNodeSelected",
 	{
-		// Ogre::TexturePtr texturePtr = Ogre::TextureManager::getSingleton().getByName(this->selectedText);
 		// if (nullptr != texturePtr)
 		{
 			// Does not work, because only textures of mygui are added somehow, and even create texture creates texture, but internal pointer is zero

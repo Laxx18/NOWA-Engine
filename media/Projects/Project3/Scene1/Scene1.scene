@@ -36,7 +36,7 @@
 		<fog mode="none" start="0" end="0" density="0"/>
 		<bounds mostLeftNearPosition="-50 -75 -50" mostRightFarPosition="50 75 50"/>
 	</environment>
-	<OgreNewt solverModel="4" multithreadSolverOnSingleIsland="0" broadPhaseAlgorithm="0" threadCount="1" desiredFps="120" defaultLinearDamping="0.1">
+	<OgreNewt solverModel="4" multithreadSolverOnSingleIsland="0" broadPhaseAlgorithm="0" threadCount="1" desiredFps="60" defaultLinearDamping="0.1">
 		<defaultAngularDamping x="0.1" y="0.1" z="0.1"/>
 		<globalGravity x="0" y="-19.8" z="0"/>
 	</OgreNewt>

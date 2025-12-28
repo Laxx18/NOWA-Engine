@@ -19,7 +19,7 @@
 		<fog mode="none" start="0" end="0" density="0"/>
 		<bounds mostLeftNearPosition="-47.9354 -10.6192 -72.6092" mostRightFarPosition="82.5096 168.301 30.0399"/>
 	</environment>
-	<OgreNewt solverModel="4" multithreadSolverOnSingleIsland="0" broadPhaseAlgorithm="0" threadCount="4" desiredFps="120" defaultLinearDamping="0.1">
+	<OgreNewt solverModel="4" multithreadSolverOnSingleIsland="0" broadPhaseAlgorithm="0" threadCount="4" desiredFps="60" defaultLinearDamping="0.1">
 		<defaultAngularDamping x="0.1" y="0.1" z="0.1"/>
 		<globalGravity x="0" y="-26.8" z="0"/>
 	</OgreNewt>
@@ -347,7 +347,7 @@
 					<property type="9" name="Gravity" data="0 -26.8 0"/>
 					<property type="7" name="GravitySourceCategory" data=""/>
 					<property type="9" name="ConstraintDirection" data="0 0 0"/>
-					<property type="12" name="ContinuousCollision" data="false"/>
+					
 					<property type="6" name="Speed" data="1"/>
 					<property type="6" name="MaxSpeed" data="5"/>
 					<property type="7" name="CollisionType" data="ConvexHull"/>

@@ -243,6 +243,7 @@ void RayCastTire::longitudinalAndLateralFriction(const ndVector& contactPos, con
 
 	if (desc.m_rowsCount < m_maxDof)
 	{
+#if 0
 		ndReal maxLat = m_tireLoad * lateralMu;
 
 		Ogre::Real speed = m_vehicle->getVelocity().length();
@@ -251,6 +252,18 @@ void RayCastTire::longitudinalAndLateralFriction(const ndVector& contactPos, con
 		{
 			maxLat = m_tireLoad * lateralMu * 0.5f;
 		}
+#else
+		// If this is a steering tire, boost grip with speed (arcade help)
+		if (m_tireConfiguration.tireSteer == tsSteer)
+		{
+			const Ogre::Real speed = m_vehicle->getVelocity().length(); // make sure this is in m/s
+			const Ogre::Real mul = calcArcadeGripMul(speed, Ogre::Real(25.0f), Ogre::Real(2.2f)); // tune
+			lateralMu *= mul;
+		}
+
+		const ndReal maxLat = m_tireLoad * lateralMu;
+
+#endif
 
 		AddLinearRowJacobian(desc, contactPos, contactPos, lateralPin);
 		SetHighFriction(desc, maxLat);
@@ -307,7 +320,7 @@ void RayCastTire::processPreUpdate(Ogre::Real timestep, int threadIndex)
 
 	const ndShapeInstance& tireShape = *m_collision;
 
-	OgreNewt::BasicConvexcast convex(world, tireShape, startpt, orientation, endpt, 1,  0, m_thisBody);
+	OgreNewt::BasicConvexcast convex(world, tireShape, startpt, orientation, endpt, 1, threadIndex, m_thisBody);
 
 	// BasicConvexcast::ConvexcastContactInfo info = world->convexcastBlocking(tireShape, startpt, orientation, endpt, m_thisBody, 1, threadIndex);
 	BasicConvexcast::ConvexcastContactInfo info;
@@ -550,6 +563,18 @@ void OgreNewt::RayCastTire::JacobianDerivative(ndConstraintDescritor& desc)
 			m_isOnContact = false;
 		}
 	}
+}
+
+Ogre::Real RayCastTire::calcArcadeGripMul(Ogre::Real speed, Ogre::Real speedRef, Ogre::Real maxMul)
+{
+	// speedRef ~ where you want "full help" (e.g. 25 m/s ~ 90 km/h)
+	if (speedRef <= 0.0f) return 1.0f;
+
+	const Ogre::Real t = Ogre::Math::Clamp(speed / speedRef, Ogre::Real(0.0f), Ogre::Real(1.0f));
+	// Smoothstep-ish
+	const Ogre::Real s = t * t * (Ogre::Real(3.0f) - Ogre::Real(2.0f) * t);
+
+	return Ogre::Math::Clamp(Ogre::Real(1.0f) + s * (maxMul - Ogre::Real(1.0f)), Ogre::Real(1.0f), maxMul);
 }
 
 // -----------------------------------------------------------------------------
@@ -919,112 +944,43 @@ void Vehicle::updateAirborneRescue(Ogre::Real timestep)
 	m_rescue.cooldown = Ogre::Real(1.0f); // tune 0.8..2.0
 }
 
-void Vehicle::update(Ogre::Real timestep, int threadIndex)
+bool Vehicle::isAirborne() const
 {
-	if (false == m_canDrive)
-	{
-		return;
-	}
-
-	if (false == m_initMassDataDone)
-	{
-		initMassData();
-		m_initMassDataDone = true;
-	}
-
-	// === OnUpdateTransform(root bone) equivalent ===
-	ndBodyKinematic* const vehicleBody = this->getNewtonBody();
-	if (nullptr == vehicleBody)
-	{
-		return;
-	}
-
-	ndMatrix localVehicleMatrix = vehicleBody->GetMatrix();
-
-	Ogre::Quaternion vehicleOrient;
-	Ogre::Vector3 vehiclePos;
-	OgreNewt::Converters::MatrixToQuatPos(&localVehicleMatrix[0][0], vehicleOrient, vehiclePos);
-
-	// --- update tire transforms and spin ---
+	int contacts = 0;
 	for (ndList<RayCastTire*>::ndNode* node = m_tires.GetFirst(); node; node = node->GetNext())
 	{
-		RayCastTire* tire = node->GetInfo();
-		if (!tire || !tire->m_thisBody)
-		{
-			continue;
-		}
-
-		Ogre::Real sign = 1.0f;
-		if (tire->m_pin.m_x != 0.0f)
-		{
-			sign = tire->m_pin.m_x;
-		}
-		else if (tire->m_pin.m_y != 0.0f)
-		{
-			sign = tire->m_pin.m_y;
-		}
-		else if (tire->m_pin.m_z != 0.0f)
-		{
-			sign = tire->m_pin.m_z;
-		}
-
-		ndMatrix absoluteTireMatrix = tire->calculateTireMatrixAbsolute(1.0f * sign) * ndYawMatrix(-90.0f * ndDegreeToRad * sign);
-
-		ndVector atireposit = tire->m_globalTireMatrix.m_posit;
-		atireposit.m_y -= tire->m_posit_y - tire->m_radius * 0.5f;
-
-		Ogre::Quaternion globalTireOrient;
-		Ogre::Vector3 notUsedTirePos;
-		OgreNewt::Converters::MatrixToQuatPos(&absoluteTireMatrix[0][0], globalTireOrient, notUsedTirePos);
-
-		Ogre::Quaternion localTireOrient;
-		Ogre::Vector3 localTirePos;
-		OgreNewt::Converters::MatrixToQuatPos(&tire->m_localTireMatrix[0][0], localTireOrient, localTirePos);
-
-		tire->m_thisBody->m_curPosit = vehiclePos + (vehicleOrient * localTirePos);
-		tire->m_thisBody->m_curRotation = vehicleOrient * globalTireOrient * localTireOrient.Inverse();
-
-		tire->m_thisBody->m_prevPosit = tire->m_thisBody->m_curPosit;
-		tire->m_thisBody->m_prevRotation = tire->m_thisBody->m_curRotation;
-
-		// The "tire body" is only a visual/proxy body in the raycast vehicle.
-		// If actual ND bodies for wheels are created, they must be driven by the vehicle
-		// model; otherwise they will roll/tilt away because there is no physical constraint.
-		// We hard-sync the Newton body transform here to keep the wheels attached.
-		if (ndBodyKinematic* const tireBody = tire->m_thisBody->getNewtonBody())
-		{
-			ndMatrix m;
-			OgreNewt::Converters::QuatPosToMatrix(tire->m_thisBody->m_curRotation, tire->m_thisBody->m_curPosit, m);
-			tireBody->SetMatrix(m);
-
-			// avoid accumulating drift from the solver
-			tireBody->SetVelocity(ndVector::m_zero);
-			tireBody->SetOmega(ndVector::m_zero);
-		}
-
-		// Spin behaviour in the air
-		if (false == tire->m_isOnContactEx)
-		{
-			if (tire->m_spinAngle > 0.0f)
-			{
-				tire->m_spinAngle = tire->m_spinAngle - 0.00001f;
-			}
-			else if (tire->m_spinAngle < 0.0f)
-			{
-				tire->m_spinAngle = tire->m_spinAngle + 0.00001f;
-			}
-		}
-		else
-		{
-			tire->m_spinAngle = 0.0f;
-		}
-
-		updateDriverInput(tire, timestep);
-		tire->processPreUpdate(timestep, threadIndex);
+		RayCastTire* t = node->GetInfo();
+		if (t && t->m_isOnContactEx)
+			++contacts;
 	}
+	// tune threshold: <=1 contact feels airborne enough for tricks
+	return contacts <= 1;
+}
 
-	// updateUnstuck(timestep);
-	updateAirborneRescue(timestep);
+void Vehicle::applyPitch(Ogre::Real strength, Ogre::Real timestep)
+{
+	// pitchInput: -1..+1 (e.g. stick up/down)
+	if (Ogre::Math::Abs(strength) < 1e-4f)
+		return;
+
+	ndBodyDynamic* dyn = this->getNewtonBody() ? this->getNewtonBody()->GetAsBodyDynamic() : nullptr;
+	if (!dyn)
+		return;
+
+	if (!isAirborne())
+	 	return;
+
+	// Local right axis = pitch axis
+	const ndMatrix m = dyn->GetMatrix();
+	ndVector right = m.m_right;
+	right.m_w = 0.0f;
+
+	// Apply angular impulse (stable + timestep aware)
+	// strength is in "torque-like" units; start with something like 1500..6000 depending on mass
+	const ndVector angularImpulse = right.Scale((ndFloat32)(strength * timestep));
+	const ndVector linearImpulse = ndVector::m_zero;
+
+	dyn->ApplyImpulsePair(linearImpulse, angularImpulse, (ndFloat32)timestep);
 }
 
 // -----------------------------------------------------------------------------
@@ -1066,6 +1022,109 @@ void Vehicle::updateDriverInput(RayCastTire* tire, Ogre::Real timestep)
 		else
 		{
 			tire->m_brakeForce = 0.0f;
+		}
+	}
+}
+
+void Vehicle::physicsPreUpdate(Ogre::Real timestep, int threadIndex)
+{
+	if (!m_canDrive)
+		return;
+
+	if (!m_initMassDataDone)
+	{
+		initMassData();
+		m_initMassDataDone = true;
+	}
+
+	// IMPORTANT:
+	// Do NOT read Ogre scene nodes here.
+	// Use physics state only.
+
+	// Driver input should already be stored in member vars (steer/throttle/brake),
+	// so just apply it to tires here.
+	for (ndList<RayCastTire*>::ndNode* node = m_tires.GetFirst(); node; node = node->GetNext())
+	{
+		RayCastTire* tire = node->GetInfo();
+		if (!tire) continue;
+
+		updateDriverInput(tire, timestep);     // must not touch Ogre nodes
+		tire->processPreUpdate(timestep, threadIndex); // raycast + suspension + forces
+	}
+
+	updateAirborneRescue(timestep);
+
+	updateUnstuck(timestep);
+}
+
+void Vehicle::physicsOnTransform(const ndMatrix& localMatrix)
+{
+	if (!m_canDrive)
+		return;
+
+	// Update chassis cached transform from physics result
+	Ogre::Quaternion vehicleOrient;
+	Ogre::Vector3 vehiclePos;
+	OgreNewt::Converters::MatrixToQuatPos(&localMatrix[0][0], vehicleOrient, vehiclePos);
+
+	// Store into your chassis Body wrapper fields (or into Vehicle members)
+	// NOTE: do NOT call updateNode() here if it touches Ogre scene graph on the physics thread.
+	// Just store the pose; your render-thread sync should consume it later.
+	m_curPosit = vehiclePos;
+	m_curRotation = vehicleOrient;
+	m_prevPosit = m_curPosit;
+	m_prevRotation = m_curRotation;
+
+	// Now update tire proxy bodies EXACTLY like ND3 did.
+	for (ndList<RayCastTire*>::ndNode* node = m_tires.GetFirst(); node; node = node->GetNext())
+	{
+		RayCastTire* tire = node->GetInfo();
+		if (!tire || !tire->m_thisBody)
+			continue;
+
+		Ogre::Real sign = 1.0f;
+		if (tire->m_pin.m_x != 0.0f) sign = tire->m_pin.m_x;
+		else if (tire->m_pin.m_y != 0.0f) sign = tire->m_pin.m_y;
+		else if (tire->m_pin.m_z != 0.0f) sign = tire->m_pin.m_z;
+
+		ndMatrix absoluteTireMatrix =
+			tire->calculateTireMatrixAbsolute(1.0f * sign) *
+			ndYawMatrix(-90.0f * ndDegreeToRad * sign);
+
+		Ogre::Quaternion globalTireOrient;
+		Ogre::Vector3 notUsedTirePos;
+		OgreNewt::Converters::MatrixToQuatPos(&absoluteTireMatrix[0][0], globalTireOrient, notUsedTirePos);
+
+		Ogre::Quaternion localTireOrient;
+		Ogre::Vector3 localTirePos;
+		OgreNewt::Converters::MatrixToQuatPos(&tire->m_localTireMatrix[0][0], localTireOrient, localTirePos);
+
+		tire->m_thisBody->m_curPosit = vehiclePos + (vehicleOrient * localTirePos);
+		tire->m_thisBody->m_curRotation = vehicleOrient * globalTireOrient * localTireOrient.Inverse();
+
+		tire->m_thisBody->m_prevPosit = tire->m_thisBody->m_curPosit;
+		tire->m_thisBody->m_prevRotation = tire->m_thisBody->m_curRotation;
+
+		// Keep this (as you demanded)
+		if (ndBodyKinematic* const tireBody = tire->m_thisBody->getNewtonBody())
+		{
+			ndMatrix m;
+			OgreNewt::Converters::QuatPosToMatrix(tire->m_thisBody->m_curRotation,
+				tire->m_thisBody->m_curPosit, m);
+			tireBody->SetMatrix(m);
+			tireBody->SetVelocity(ndVector::m_zero);
+			tireBody->SetOmega(ndVector::m_zero);
+		}
+
+		// Air spin damping (same as ND3)
+		if (!tire->m_isOnContactEx)
+		{
+			if (tire->m_spinAngle > 0.0f) tire->m_spinAngle -= 0.00001f;
+			else if (tire->m_spinAngle < 0.0f) tire->m_spinAngle += 0.00001f;
+		}
+		else
+		{
+			tire->m_spinAngle = 0.0f;
 		}
 	}
 }

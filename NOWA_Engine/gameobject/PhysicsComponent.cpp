@@ -783,54 +783,53 @@ namespace NOWA
 
 	OgreNewt::CollisionPtr PhysicsComponent::createHeightFieldCollision(Ogre::Terra* terra)
 	{
-		OgreNewt::CollisionPtr col;
+		int sizeX = (int)terra->getXZDimensions().x;   // width
+		int sizeZ = (int)terra->getXZDimensions().y;   // height
 
-		int sizeX = (int)terra->getXZDimensions().x;
-		int sizeZ = (int)terra->getXZDimensions().y;
+		auto* elevation = new Ogre::Real[sizeX * sizeZ];
+		std::fill(elevation, elevation + sizeX * sizeZ, 0.0f);
 
-		Ogre::Vector3 center = terra->getTerrainOrigin() + (Ogre::Vector3(terra->getXZDimensions().x, /*is not required: terra->getHeight()*/0, terra->getXZDimensions().y) / 2.0f);
+		const Ogre::Vector3 origin = terra->getTerrainOrigin();
 
-		int startX = (int)terra->getTerrainOrigin().x;
-		int endX = (int)terra->getTerrainOrigin().x * -1 + (int)center.x * 2;
+		// IMPORTANT: choose the correct cell size.
+		// If Terra spacing is not 1.0, use the actual spacing.
+		// If you don't have it, keep 1.0 for now.
+		const Ogre::Real cellSizeX = 1.0f;
+		const Ogre::Real cellSizeZ = 1.0f;
 
-		int startZ = (int)terra->getTerrainOrigin().z;
-		int endZ = (int)terra->getTerrainOrigin().z * -1 + (int)center.z * 2;
-
-		// terra->setLocalAabb(Ogre::Aabb::newFromExtents(newMin, newMax));
-
-		Ogre::Real* elevation = new Ogre::Real[sizeX * sizeZ];
-
-		int xx = 0;
-		int zz = 0;
-
-		for (int x = startX; x < endX; x++)
+		for (int z = 0; z < sizeZ; ++z)
 		{
-			for (int z = startZ; z < endZ; z++)
+			for (int x = 0; x < sizeX; ++x)
 			{
-				Ogre::Vector3 pos((Ogre::Real)x, 0.0f, (Ogre::Real)z);
-				bool res = terra->getHeightAt(pos);
-				xx = (x - (int)terra->getTerrainOrigin().x);
-				zz = (z - (int)terra->getTerrainOrigin().z);
-				elevation[zz * sizeZ + xx] = pos.y;
+				Ogre::Vector3 p(origin.x + x * cellSizeX, 0.0f, origin.z + z * cellSizeZ);
+				bool ok = terra->getHeightAt(p);  // p.y gets filled
+
+				// If sampling fails, keep 0 (or clamp), but do NOT leave it uninitialized
+				const Ogre::Real h = ok ? p.y : 0.0f;
+
+				elevation[z * sizeX + x] = h; // stride = sizeX !!
 			}
 		}
 
-		Ogre::Real cellSize = 1.0f;
-
-		char* attibutesCol = new char[sizeX * sizeZ];
-		memset(attibutesCol, 0, sizeX * sizeZ * sizeof(char));
-
 		Ogre::Quaternion orientation = Ogre::Quaternion::IDENTITY;
-		Ogre::Vector3 position = Ogre::Vector3(terra->getTerrainOrigin().x - this->gameObjectPtr->getPosition().x, this->gameObjectPtr->getPosition().y, terra->getTerrainOrigin().z - this->gameObjectPtr->getPosition().z);
 
-		col = OgreNewt::CollisionPtr(
-			new OgreNewt::CollisionPrimitives::HeightField(this->ogreNewt, sizeX, sizeZ, elevation, 1.0f /* cellSize */, cellSize * 1.0f, cellSize * 1.0f,
-				position, orientation, this->gameObjectPtr->getCategoryId())); // move the collision hull to x = -184 and z = -184 as origin
+		// Watch this: position should usually be ZERO if you attach the body at terrain origin.
+		// Double transforms are a common bug here.
+		Ogre::Vector3 position = Ogre::Vector3::ZERO;
 
+		auto col = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::HeightField(
+				this->ogreNewt,
+				sizeX, sizeZ,
+				elevation,
+				/*verticalScale*/ 1.0f,
+				/*horizontalScaleX*/ cellSizeX,
+				/*horizontalScaleZ*/ cellSizeZ,
+				position, orientation,
+				this->gameObjectPtr->getCategoryId()
+			)
+		);
 
 		delete[] elevation;
-		delete[] attibutesCol;
-
 		return col;
 	}
 

@@ -22071,15 +22071,22 @@ return {
 				returns = "(nil)",
 				valuetype = "nil"
 			},
-			applyDrift =
+			applyPitch =
 			{
 				type = "method",
 				description = "Applies a drift at the given strength (jump) and if left side, at the given steering strength and vice versa. Note: A high force strength is required to put the vehicle in the air, e.g. 50000NM.",
 				args = "(boolean left, number strength, number steeringStrength)",
 				returns = "(nil)",
 				valuetype = "nil"
-			}
-		}
+			},
+			applyDrift =
+			{
+				type = "method",
+				description = "Apply angular impulse (stable + timestep aware). Strength is in 'torque - like' units; start with something like 1500..6000 depending on mass.",
+				args = "(number strength, number dt)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
 	},
 	PhysicsArtifactComponent =
 	{

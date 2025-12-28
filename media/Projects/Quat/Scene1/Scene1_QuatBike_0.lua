@@ -24,6 +24,8 @@ Scene1_QuatBike_0["connect"] = function(gameObject)
     skidSound = player:getSimpleSoundComponentFromIndex(1);
     
     inputDeviceModule = player:getInputDeviceComponent():getInputDeviceModule();
+	
+	inputDeviceModule:setAnalogActionThreshold(0.55)
 end
 
 Scene1_QuatBike_0["disconnect"] = function()
@@ -31,6 +33,7 @@ Scene1_QuatBike_0["disconnect"] = function()
 end
 
 Scene1_QuatBike_0["update"] = function(dt)
+    -- log("inAir: " .. toString(physicsActiveVehicleComponent:isAirborne()));
     --log("vel: " .. toString(physicsActiveVehicleComponent:getVelocity():squaredLength()));
     local motion = physicsActiveVehicleComponent:getVelocity():squaredLength() + 40;
     if motion > 40 + (0.2 * 0.2) then
@@ -47,39 +50,40 @@ end
 
 
 Scene1_QuatBike_0["onSteeringAngleChanged"] = function(vehicleDrivingManipulation, dt)
-    if inputDeviceModule:isActionDown(NOWA_A_LEFT) then
-        if (steerAmount <= 45) then
-            steerAmount = steerAmount + dt * 30;
-        end
-        vehicleDrivingManipulation:setSteerAngle(steerAmount);
-    elseif inputDeviceModule:isActionDown(NOWA_A_RIGHT) then
-        if (steerAmount >= -45) then
-            steerAmount = steerAmount - dt * 30;
-        end
-        
-        --var heading = physicsActiveVehicleComponent:getOrientation().getYaw(false).valueRadians();
-        --var pitch = physicsActiveVehicleComponent:getOrientation().getPitch(false).valueRadians();
-            
-    vehicleDrivingManipulation:setSteerAngle(steerAmount);
-    else
-        if (steerAmount > 0) then
-            steerAmount = steerAmount - dt * 30;
-            vehicleDrivingManipulation:setSteerAngle(steerAmount);
-        elseif (steerAmount < 0) then
-            steerAmount = steerAmount + dt * 30;
-            vehicleDrivingManipulation:setSteerAngle(steerAmount);
-        end
+    local maxAngle = 45.0 -- degrees
+
+    -- unified analog axis from keyboard OR left stick: [-1..1]
+    local axis = inputDeviceModule:getSteerAxis()
+
+    -- Optional: clamp (just in case)
+    if axis > 1.0 then axis = 1.0 end
+    if axis < -1.0 then axis = -1.0 end
+
+    -- Optional: small deadzone on Lua side (extra safety)
+    local dz = 0.10
+    if math.abs(axis) < dz then
+        axis = 0.0
     end
+
+    -- Smooth steering to feel vehicle-like (not twitchy)
+    -- Higher response = faster steering, lower = more stable
+    local response = 10.0
+    local targetAngle = -axis * maxAngle
+    steerAmount = steerAmount + (targetAngle - steerAmount) * (1.0 - math.exp(-response * dt))
+
+    vehicleDrivingManipulation:setSteerAngle(steerAmount)
 end
 
 Scene1_QuatBike_0["onMotorForceChanged"] = function(vehicleDrivingManipulation, dt)
     if inputDeviceModule:isActionDown(NOWA_A_UP) then
         vehicleDrivingManipulation:setMotorForce(10000 * 120 * dt);
-    elseif inputDeviceModule:isActionDown(NOWA_A_ACTION) then
-        vehicleDrivingManipulation:setMotorForce(10000 * 120 * dt);
     elseif inputDeviceModule:isActionDown(NOWA_A_DOWN) then
         vehicleDrivingManipulation:setMotorForce(-4500 * 120 * dt);
     end
+    
+     if inputDeviceModule:isActionDown(NOWA_A_ACTION) then
+         physicsActiveVehicleComponent:applyPitch(-100, dt);
+     end
 end
 
 Scene1_QuatBike_0["onHandBrakeChanged"] = function(vehicleDrivingManipulation, dt)

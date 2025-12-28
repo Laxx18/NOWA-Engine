@@ -1,6 +1,67 @@
 ﻿#include "NOWAPrecompiled.h"
 #include "InputDeviceModule.h"
 
+namespace
+{
+	Ogre::Real Clamp1(Ogre::Real v)
+	{
+		return Ogre::Math::Clamp(v, -1.0f, 1.0f);
+	}
+
+	// Maps raw stick [-1..1] to a MUCH less sensitive steering [-1..1].
+	// - deadzone: exact 0 around center
+	// - precisionZone: first part outside deadzone where output stays very small
+	// - precisionMaxOut: maximum output magnitude at the end of precisionZone
+	//
+	// Example good defaults:
+	// deadzone = 0.10
+	// precisionZone = 0.25
+	// precisionMaxOut = 0.10  (=> first 25% only reaches 10% output)
+	Ogre::Real MapSteeringPrecision(Ogre::Real in, Ogre::Real deadzone, Ogre::Real precisionZone, Ogre::Real precisionMaxOut)
+	{
+		in = Clamp1(in);
+
+		const Ogre::Real a = Ogre::Math::Abs(in);
+		if (a <= deadzone)
+			return 0.0f;
+
+		const Ogre::Real sign = (in < 0.0f) ? -1.0f : 1.0f;
+
+		// Normalize to t in [0..1] after deadzone
+		const Ogre::Real t = (a - deadzone) / (1.0f - deadzone);
+
+		// Precision zone in t-space
+		const Ogre::Real p = Ogre::Math::Clamp(precisionZone, 0.0f, 0.999f);
+
+		Ogre::Real out = 0.0f;
+
+		if (t <= p)
+		{
+			// Very gentle near center: linear to precisionMaxOut
+			const Ogre::Real u = t / p; // 0..1
+			out = u * precisionMaxOut;
+		}
+		else
+		{
+			// After precision zone: ramp from precisionMaxOut to 1.0 with smoothstep
+			const Ogre::Real u = (t - p) / (1.0f - p); // 0..1
+			const Ogre::Real smooth = u * u * (3.0f - 2.0f * u); // smoothstep
+			out = precisionMaxOut + (1.0f - precisionMaxOut) * smooth;
+		}
+
+		return sign * Clamp1(out);
+	}
+
+	Ogre::Real ApplyNotch(Ogre::Real v, Ogre::Real notch)
+	{
+		// If outside notch, subtract it so output starts at 0 exactly at notch
+		const Ogre::Real a = Ogre::Math::Abs(v);
+		if (a <= notch) return 0.0f;
+		const Ogre::Real sign = (v < 0.0f) ? -1.0f : 1.0f;
+		return sign * (a - notch);
+	}
+}
+
 namespace NOWA
 {
 	InputDeviceModule::InputDeviceModule(const Ogre::String& deviceName, bool isKeyboard, OIS::Object* deviceObject)
@@ -1015,6 +1076,34 @@ namespace NOWA
 		return InputDeviceCore::getSingletonPtr()->getJoystick(0) != nullptr;
 	}
 
+	void InputDeviceModule::setAnalogActionThreshold(Ogre::Real t)
+	{
+		this->analogActionThreshold = Ogre::Math::Clamp(t, 0.0f, 1.0f);
+	}
+
+	Ogre::Real InputDeviceModule::getAnalogActionThreshold(void) const
+	{
+		return this->analogActionThreshold;
+	}
+
+	Ogre::Real InputDeviceModule::getSteerAxis(void)
+	{
+		// Keyboard device: compose LEFT/RIGHT keys into an axis
+		if (InputDeviceCore::getSingletonPtr()->getKeyboardInputDeviceModules().front() == this)
+		{
+			const bool left = InputDeviceCore::getSingletonPtr()->getKeyboard()->isKeyDown(this->getMappedKey(InputDeviceModule::LEFT));
+			const bool right = InputDeviceCore::getSingletonPtr()->getKeyboard()->isKeyDown(this->getMappedKey(InputDeviceModule::RIGHT));
+
+			if (left && !right)  return -1.0f;
+			if (right && !left)  return  1.0f;
+			return 0.0f;
+		}
+
+		// Joystick: return analog stick directly
+		return Ogre::Math::Clamp(this->leftStickMovement.x, -1.0f, 1.0f);
+	}
+
+
 	void InputDeviceModule::clearKeyMapping(unsigned short tilIndex)
 	{
 		if (tilIndex > this->keyboardMapping.size())
@@ -1118,70 +1207,59 @@ namespace NOWA
 	{
 		bool somethingDown = false;
 
-		// Keyboard can only be the first player, but what if there are 2 joysticks?
-		// TODO: Need DeviceInputComponent to control, which player has which device, with device name etc.
+		// Keyboard can only be the first player ...
 		if (InputDeviceCore::getSingletonPtr()->getKeyboardInputDeviceModules().front() == this)
-		// if (InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule() == this)
 		{
 			somethingDown |= InputDeviceCore::getSingletonPtr()->getKeyboard()->isKeyDown(this->getMappedKey(action));
-			if (true == somethingDown)
-			{
-				int i = 0;
-				i = 1;
-			}
 			return somethingDown;
 		}
 
-		// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[InputDeviceModule]: down: " + Ogre::StringConverter::toString(action) 
-		// 	+ " mapped: " +  Ogre::StringConverter::toString(this->getMappedKey(action)));
-		
+		// ==============================
+		// JOYSTICK PATH
+		// ==============================
 
-		// TODO: What about right stick??
+		// IMPORTANT:
+		// Treat analog stick as "action down" only if it crosses a threshold.
+		// Otherwise tiny stick drift / tiny deflection triggers LEFT/RIGHT immediately.
+		const Ogre::Real actionThreshold = this->analogActionThreshold; // new member, see below
 
 		if (InputDeviceModule::UP == action)
 		{
-			if (0.0f != this->leftStickMovement.y)
-				somethingDown |= this->leftStickMovement.y < 0.0f;
+			if (Ogre::Math::Abs(this->leftStickMovement.y) >= actionThreshold)
+				somethingDown |= (this->leftStickMovement.y < 0.0f);
 			else
-				somethingDown |= this->pressedPov[0] == Action::UP;
+				somethingDown |= (this->pressedPov[0] == Action::UP);
 		}
 		else if (InputDeviceModule::DOWN == action)
 		{
-			if (0.0f != this->leftStickMovement.y)
-				somethingDown |= this->leftStickMovement.y > 0.0f;
+			if (Ogre::Math::Abs(this->leftStickMovement.y) >= actionThreshold)
+				somethingDown |= (this->leftStickMovement.y > 0.0f);
 			else
-				somethingDown |= this->pressedPov[0] == Action::DOWN;
+				somethingDown |= (this->pressedPov[0] == Action::DOWN);
 		}
-		if (InputDeviceModule::LEFT == action)
+		else if (InputDeviceModule::LEFT == action)
 		{
-			if (0.0f != this->leftStickMovement.x)
-				somethingDown |= this->leftStickMovement.x < 0.0f;
+			if (Ogre::Math::Abs(this->leftStickMovement.x) >= actionThreshold)
+				somethingDown |= (this->leftStickMovement.x < 0.0f);
 			else
-				somethingDown |= this->pressedPov[1] == Action::LEFT;
+				somethingDown |= (this->pressedPov[1] == Action::LEFT);
 		}
 		else if (InputDeviceModule::RIGHT == action)
 		{
-			if (0.0f != this->leftStickMovement.x)
-				somethingDown |= this->leftStickMovement.x > 0.0f;
+			if (Ogre::Math::Abs(this->leftStickMovement.x) >= actionThreshold)
+				somethingDown |= (this->leftStickMovement.x > 0.0f);
 			else
-				somethingDown |= this->pressedPov[1] == Action::RIGHT;
+				somethingDown |= (this->pressedPov[1] == Action::RIGHT);
 		}
 		else
 		{
-			// Only evaluate, if some button actually has been pressed
+			// Other actions: use mapped button (your existing behavior)
 			if (JoyStickButton::BUTTON_NONE != this->pressedButton)
-				somethingDown |= this->pressedButton == this->getMappedButton(action);
-		}
-
-		if (true == somethingDown)
-		{
-			int i = 0;
-			i = 1;
+				somethingDown |= this->isButtonDown(this->getMappedButton(action));
 		}
 
 		return somethingDown;
 	}
-
 
 	bool InputDeviceModule::isKeyDown(OIS::KeyCode keyCode) const
 	{
@@ -1325,150 +1403,189 @@ namespace NOWA
 
 		const OIS::JoyStickState& joystickState = joyStick->getJoyStickState();
 
-		// Evaluate Steuerkreuz: Note two axes can be pushed simultanously like up and left, hence use array here from 0 to 1
+		// ----------------------------
+		// Helpers (local, no header changes)
+		// ----------------------------
+		auto clamp1 = [](Ogre::Real v) -> Ogre::Real
+			{
+				return Ogre::Math::Clamp(v, -1.0f, 1.0f);
+			};
+
+		auto applyDeadzone = [&](Ogre::Real v, Ogre::Real deadzone) -> Ogre::Real
+			{
+				if (Ogre::Math::Abs(v) < deadzone)
+					return 0.0f;
+				return v;
+			};
+
+		// Makes tiny stick motions less aggressive (good for steering feel)
+		// expo = 0.0 -> linear, expo = 0.5 -> softer center, expo = 0.7 -> very soft center
+		auto applyExpo = [&](Ogre::Real v, Ogre::Real expo) -> Ogre::Real
+			{
+				const Ogre::Real a = Ogre::Math::Abs(v);
+				const Ogre::Real s = (v < 0.0f) ? -1.0f : 1.0f;
+				const Ogre::Real cubic = a * a * a;
+				const Ogre::Real out = (1.0f - expo) * a + expo * cubic;
+				return s * out;
+			};
+
+		// This is the KEY for your sensitivity issue:
+		// Only treat stick as a DIGITAL button if pushed far enough.
+		// Small deflections will NOT trigger BUTTON_LEFT_STICK_LEFT/RIGHT.
+		const Ogre::Real stickDigitalThreshold = 0.55f; // try 0.45..0.75 depending on taste
+		const Ogre::Real stickExpo = 0.70f;             // try 0.35..0.70 for steering feel
+
+		// ----------------------------
+		// POV / D-Pad
+		// ----------------------------
 		this->pressedPov[0] = Action::NONE;
 		this->pressedPov[1] = Action::NONE;
 		this->pressedPov[2] = Action::NONE;
 		this->pressedPov[3] = Action::NONE;
 
-		if (joystickState.mPOV[0].direction & OIS::Pov::North)
-		{
-			this->pressedPov[0] = Action::UP;
-			this->pressedButtons.emplace_back(BUTTON_LEFT_STICK_UP);
-			foundButton = BUTTON_LEFT_STICK_UP;
-		}
-		else if (joystickState.mPOV[0].direction & OIS::Pov::South)
-		{
-			this->pressedPov[0] = Action::DOWN;
-			this->pressedButtons.emplace_back(BUTTON_LEFT_STICK_DOWN);
-			foundButton = BUTTON_LEFT_STICK_DOWN;
-		}
+		// Keep your existing POV behavior, but guard indices
 
-		// Attention: is this correct with .mPOV[1]?, must it be 0?
-		if (joystickState.mPOV[1].direction & OIS::Pov::West)
+		if (joystickState.mPOV[0].direction & OIS::Pov::West)
 		{
 			this->pressedPov[1] = Action::LEFT;
 			this->pressedButtons.emplace_back(BUTTON_LEFT_STICK_LEFT);
 			foundButton = BUTTON_LEFT_STICK_LEFT;
 		}
-		else if (joystickState.mPOV[1].direction & OIS::Pov::East)
+		else if (joystickState.mPOV[0].direction & OIS::Pov::East)
 		{
 			this->pressedPov[1] = Action::RIGHT;
 			this->pressedButtons.emplace_back(BUTTON_LEFT_STICK_RIGHT);
 			foundButton = BUTTON_LEFT_STICK_RIGHT;
 		}
 
-		// Right stick
+		// Right stick POV handling (only if you actually have those POVs)
 		if (joystickState.mPOV[2].direction & OIS::Pov::North)
 		{
-			// What is the action here?
-			// this->pressedPov[2] = Action::UP;
+			this->pressedPov[1] = Action::UP;
 			this->pressedButtons.emplace_back(BUTTON_RIGHT_STICK_UP);
 			foundButton = BUTTON_RIGHT_STICK_UP;
 		}
 		else if (joystickState.mPOV[2].direction & OIS::Pov::South)
 		{
-			// What is the action here?
-			// this->pressedPov[2] = Action::DOWN;
+			this->pressedPov[1] = Action::DOWN;
 			this->pressedButtons.emplace_back(BUTTON_RIGHT_STICK_DOWN);
 			foundButton = BUTTON_RIGHT_STICK_DOWN;
 		}
 
 		if (joystickState.mPOV[3].direction & OIS::Pov::West)
 		{
-			// What is the action here?
-			// this->pressedPov[3] = Action::LEFT;
 			this->pressedButtons.emplace_back(BUTTON_RIGHT_STICK_LEFT);
 			foundButton = BUTTON_RIGHT_STICK_LEFT;
 		}
 		else if (joystickState.mPOV[3].direction & OIS::Pov::East)
 		{
-			// What is the action here?
-			// this->pressedPov[3] = Action::RIGHT;
 			this->pressedButtons.emplace_back(BUTTON_RIGHT_STICK_RIGHT);
 			foundButton = BUTTON_RIGHT_STICK_RIGHT;
 		}
 
-		// Receive the full analog range of the axes, and so have to implement the
-		// own dead zone. This is an empirical value, since some joysticks have more
-		// jitter or creep around the center point than others. Only 8% of the
-		// range are used as the dead zone, but generally you would want to give the user the
-		// option to change this.
+		// ----------------------------
+		// Analog sticks (MAIN FIX AREA)
+		// ----------------------------
+		// IMPORTANT: keep your original scaling assumption and just fix sensitivity.
+		// (Your statement: "Before it didn't steer at rest" -> center is fine.)
 
-		// -1.f for full down to +1.f for full up.
-		this->leftStickMovement.y = (Ogre::Real)joystickState.mAxes[0].abs / 32767.0f;
-		// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[DesignState]: moveHorizontal " + Ogre::StringConverter::toString(moveHorizontal));
-		if (Ogre::Math::Abs(this->leftStickMovement.y) < this->joyStickDeadZone)
-		{
-			this->leftStickMovement.y = 0.0f;
-		}
-		else if (this->leftStickMovement.y < 0.0f)
+		// Left stick Y (up/down)  axis 0 in your code
+		this->leftStickMovement.y = clamp1(static_cast<Ogre::Real>(joystickState.mAxes[0].abs) / 32767.0f);
+		this->leftStickMovement.y = applyDeadzone(this->leftStickMovement.y, this->joyStickDeadZone);
+		this->leftStickMovement.y = applyExpo(this->leftStickMovement.y, stickExpo);
+
+		// Only generate DIGITAL button if pushed far enough:
+		if (this->leftStickMovement.y <= -stickDigitalThreshold)
 		{
 			this->pressedButtons.emplace_back(BUTTON_LEFT_STICK_UP);
 			foundButton = BUTTON_LEFT_STICK_UP;
 		}
-		else if (this->leftStickMovement.y > 0.0f)
+		else if (this->leftStickMovement.y >= stickDigitalThreshold)
 		{
 			this->pressedButtons.emplace_back(BUTTON_LEFT_STICK_DOWN);
 			foundButton = BUTTON_LEFT_STICK_DOWN;
 		}
 
-		// Range is -1.f for full left to +1.f for full right
-		this->leftStickMovement.x = (Ogre::Real)joystickState.mAxes[1].abs / 32767.0f;
-		// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[DesignState]: moveVertical " + Ogre::StringConverter::toString(moveVertical));
-		if (Ogre::Math::Abs(this->leftStickMovement.x) < this->joyStickDeadZone)
-		{
-			this->leftStickMovement.x = 0.0f;
-		}
-		else if (this->leftStickMovement.x < 0.0f)
+		// Range is -1..+1
+		Ogre::Real rawLX = Ogre::Math::Clamp(static_cast<Ogre::Real>(joystickState.mAxes[1].abs) / 32767.0f, -1.0f, 1.0f);
+
+		rawLX = ApplyNotch(rawLX, 0.10f);               // <- makes first ~10% do nothing
+		rawLX = rawLX / (1.0f - 0.10f);                 // renormalize back to [-1..1]
+		rawLX = Clamp1(rawLX);
+
+		// HARD precision steering mapping (this is the fix)
+		this->leftStickMovement.x = MapSteeringPrecision(
+			rawLX,
+			/*deadzone*/        0.18f,
+			/*precisionZone*/   0.55f,
+			/*precisionMaxOut*/ 0.08f
+		);
+
+		// IMPORTANT: do NOT create digital LEFT/RIGHT buttons from small analog values.
+		// If you still need menu navigation, only trigger digital when REALLY pushed:
+		const Ogre::Real digitalThreshold = 0.90f;
+		if (this->leftStickMovement.x <= -digitalThreshold)
 		{
 			this->pressedButtons.emplace_back(BUTTON_LEFT_STICK_LEFT);
 			foundButton = BUTTON_LEFT_STICK_LEFT;
 		}
-		else if (this->leftStickMovement.x > 0.0f)
+		else if (this->leftStickMovement.x >= digitalThreshold)
 		{
 			this->pressedButtons.emplace_back(BUTTON_LEFT_STICK_RIGHT);
 			foundButton = BUTTON_LEFT_STICK_RIGHT;
 		}
 
-		// -1.f for full down to +1.f for full up.
-		this->rightStickMovement.y = (Ogre::Real)joystickState.mAxes[2].abs / 32767.0f;
-		// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[DesignState]: moveHorizontal " + Ogre::StringConverter::toString(moveHorizontal));
-		if (Ogre::Math::Abs(this->rightStickMovement.y) < this->joyStickDeadZone)
-		{
-			this->rightStickMovement.y = 0.0f;
-		}
-		else if (this->rightStickMovement.y < 0.0f)
+
+		// Right stick Y axis 2
+		this->rightStickMovement.y = clamp1(static_cast<Ogre::Real>(joystickState.mAxes[2].abs) / 32767.0f);
+		this->rightStickMovement.y = applyDeadzone(this->rightStickMovement.y, this->joyStickDeadZone);
+		this->rightStickMovement.y = applyExpo(this->rightStickMovement.y, stickExpo);
+
+		if (this->rightStickMovement.y <= -stickDigitalThreshold)
 		{
 			this->pressedButtons.emplace_back(BUTTON_RIGHT_STICK_UP);
 			foundButton = BUTTON_RIGHT_STICK_UP;
 		}
-		else if (this->rightStickMovement.y > 0.0f)
+		else if (this->rightStickMovement.y >= stickDigitalThreshold)
 		{
 			this->pressedButtons.emplace_back(BUTTON_RIGHT_STICK_DOWN);
 			foundButton = BUTTON_RIGHT_STICK_DOWN;
 		}
 
-		// Range is -1.f for full left to +1.f for full right
-		this->rightStickMovement.x = (Ogre::Real)joystickState.mAxes[3].abs / 32767.0f;
-		// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[DesignState]: moveVertical " + Ogre::StringConverter::toString(moveVertical));
-		if (Ogre::Math::Abs(this->rightStickMovement.x) < this->joyStickDeadZone)
-		{
-			this->rightStickMovement.x = 0.0f;
-		}
-		else if (this->rightStickMovement.x < 0.0f)
+		// Range is -1..+1
+		Ogre::Real rawRX = Ogre::Math::Clamp(static_cast<Ogre::Real>(joystickState.mAxes[3].abs) / 32767.0f, -1.0f, 1.0f);
+
+		rawRX = ApplyNotch(rawRX, 0.10f);               // <- makes first ~10% do nothing
+		rawRX = rawRX / (1.0f - 0.10f);                 // renormalize back to [-1..1]
+		rawRX = Clamp1(rawRX);
+
+		// HARD precision steering mapping (same as left stick)
+		this->rightStickMovement.x = MapSteeringPrecision(
+			rawRX,
+			/*deadzone*/        0.18f,
+			/*precisionZone*/   0.55f,
+			/*precisionMaxOut*/ 0.08f
+		);
+
+		// Only generate digital button when REALLY pushed (optional)
+		if (this->rightStickMovement.x <= -digitalThreshold)
 		{
 			this->pressedButtons.emplace_back(BUTTON_RIGHT_STICK_LEFT);
 			foundButton = BUTTON_RIGHT_STICK_LEFT;
 		}
-		else if (this->rightStickMovement.x > 0.0f)
+		else if (this->rightStickMovement.x >= digitalThreshold)
 		{
 			this->pressedButtons.emplace_back(BUTTON_RIGHT_STICK_RIGHT);
 			foundButton = BUTTON_RIGHT_STICK_RIGHT;
 		}
 
+
+		// ----------------------------
+		// Physical controller buttons
+		// ----------------------------
 		unsigned short j = 0;
-		for (std::vector<bool>::const_iterator i = joyStick->getJoyStickState().mButtons.begin(), e = joyStick->getJoyStickState().mButtons.end(); i != e; ++i)
+		for (std::vector<bool>::const_iterator i = joystickState.mButtons.begin(),
+			e = joystickState.mButtons.end(); i != e; ++i)
 		{
 			if (*i == true)
 			{
@@ -1480,8 +1597,7 @@ namespace NOWA
 
 		// Note: Buttons have priority and will overwrite pov
 		this->pressedButton = foundButton;
-
-		// Here invent function: getPressedKey() in which a bitmask of keys is returned in a form of a vector to check which keys had been pressed at once
 	}
+
 
 } // namespace end

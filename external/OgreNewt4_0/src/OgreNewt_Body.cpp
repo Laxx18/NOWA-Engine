@@ -953,7 +953,7 @@ namespace OgreNewt
 		return m_gravity;
 	}
 
-#if 0
+#if 1
 	void Body::updateNode(Ogre::Real interpolatParam)
 	{
 		if (!m_node)

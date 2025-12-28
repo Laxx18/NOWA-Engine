@@ -2,8 +2,6 @@
 #ifndef _OgreOcean_H_
 #define _OgreOcean_H_
 
-#if 0
-
 #include "OgrePrerequisites.h"
 #include "OgreMovableObject.h"
 #include "OgreShaderParams.h"
@@ -49,14 +47,11 @@ namespace Ogre
         std::vector<OceanCell*>  m_collectedCells[2];
         size_t                     m_currentCell;
 
-        Ogre::TexturePtr    m_heightMapTex;
-        Ogre::TexturePtr    m_normalMapTex;
-
         Vector3             m_prevLightDir;
 
-        //Ogre stuff
-        CompositorManager2      *m_compositorManager;
-        Camera                  *m_camera;
+        // Ogre stuff
+        CompositorManager2 *m_compositorManager;
+        Camera const *      m_camera;
 
         inline OceanGridPoint worldToGrid( const Vector3 &vPos ) const;
         inline Vector2 gridToWorld( const OceanGridPoint &gPos ) const;
@@ -69,8 +64,8 @@ namespace Ogre
 
     public:
         Ocean( IdType id, ObjectMemoryManager *objectMemoryManager, SceneManager *sceneManager,
-               uint8 renderQueueId, CompositorManager2 *compositorManager, Camera *camera );
-        ~Ocean();
+               uint8 renderQueueId, CompositorManager2 *compositorManager, const Camera *camera );
+        ~Ocean() override;
 
         /** Must be called every frame so we can check the camera's position
             (passed in the constructor) and update our visible batches (and LODs).
@@ -87,17 +82,15 @@ namespace Ogre
         void setDatablock( HlmsDatablock *datablock );
 
         //MovableObject overloads
-        const String& getMovableType(void) const;
+        const String &getMovableType() const override;
 
-        Camera* getCamera() const                       { return m_camera; }
-        void setCamera( Camera *camera )                { m_camera = camera; }
+        const Camera *getCamera() const { return m_camera; }
+        void          setCamera( const Camera *camera ) { m_camera = camera; }
 
         const Vector2& getXZDimensions(void) const      { return m_xzDimensions; }
         const Vector2& getXZInvDimensions(void) const   { return m_xzInvDimensions; }
         const Vector3& getOceanOrigin(void) const     { return m_OceanOrigin; }
     };
 }
-
-#endif
 
 #endif

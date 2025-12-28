@@ -1433,6 +1433,9 @@ namespace NOWA
 			// .def("toAngleAxis", (void(Quaternion::*)(Radian&, Vector3&) const) &Quaternion::ToAngleAxis)
 			.def("getPressedButton", &InputDeviceModule::getPressedButton)
 			.def("getPressedButtons", &getPressedButtons)
+			.def("setAnalogActionThreshold", &InputDeviceModule::setAnalogActionThreshold)
+			.def("getAnalogActionThreshold", &InputDeviceModule::getAnalogActionThreshold)
+			.def("getSteerAxis", &InputDeviceModule::getSteerAxis)
 		];
 
 		object globalVars = globals(lua);
@@ -1464,6 +1467,9 @@ namespace NOWA
 		AddClassToCollection("InputDeviceModule", "bool areButtonsDown3(JoyStickButton button1, JoyStickButton button2, JoyStickButton button3, JoyStickButton button4)", "Gets whether four specific joystick buttons are down at the same time.");
 		AddClassToCollection("InputDeviceModule", "JoyStickButton getPressedButton()", "Gets the currently pressed joystick button.");
 		AddClassToCollection("InputDeviceModule", "Table[number][JoyStickButton] getPressedButtons()", "Gets the currently simultanously pressed joystick buttons.");
+		AddClassToCollection("InputDeviceModule", "void setAnalogActionThreshold(float t)", "Sets the threshold for treating stick as digital actions (LEFT/RIGHT/UP/DOWN).");
+		AddClassToCollection("InputDeviceModule", "float getAnalogActionThreshold()", "Gets the threshold for treating stick as digital actions (LEFT/RIGHT/UP/DOWN).");
+		AddClassToCollection("InputDeviceModule", "float getSteerAxis()", "Returns steering axis in [-1..1] from keyboard or left stick.");
 
 		// For both
 		globalVars["NOWA_A_UP"] = InputDeviceModule::UP;
@@ -10631,6 +10637,8 @@ namespace NOWA
 			.def("getVehicleForce", &PhysicsActiveVehicleComponent::getVehicleForce)
 			.def("applyWheelie", &PhysicsActiveVehicleComponent::applyWheelie)
 			.def("applyDrift", &PhysicsActiveVehicleComponent::applyDrift)
+			.def("applyPitch", &PhysicsActiveVehicleComponent::applyPitch)
+			.def("isAirborne", &PhysicsActiveVehicleComponent::isAirborne)
 		];
 
 		AddClassToCollection("PhysicsActiveVehicleComponent", "void setUseTilting(boolean useTilting)", "Sets whether the vehicle should use tilting behaviour depending on the tire suspension. E.g. boat in water in a curve.");
@@ -10638,8 +10646,12 @@ namespace NOWA
 		AddClassToCollection("PhysicsActiveVehicleComponent", "class inherits PhysicsActiveComponent", "Derived class of PhysicsActiveVehicleComponent. It can be used to control a vehicle.");
 		AddClassToCollection("PhysicsActiveVehicleComponent", "Vector3 getVehicleForce()", "Gets current vehicle force.");
 		AddClassToCollection("PhysicsActiveVehicleComponent", "void applyWheelie(number strength)", "Applies a wheelie stunt by putting up the front tires at the given strength.");
-		AddClassToCollection("PhysicsActiveVehicleComponent", "void applyDrift(boolean left, number strength, number steeringStrength)", "Applies a drift at the given strength (jump) and if left side, at the given steering strength and vice versa. Note: A high force strength is required to put the vehicle in the air, e.g. 50000NM.");
+		AddClassToCollection("PhysicsActiveVehicleComponent", "void applyPitch(boolean left, number strength, number steeringStrength)", "Applies a drift at the given strength (jump) and if left side, at the given steering strength and vice versa. Note: A high force strength is required to put the vehicle in the air, e.g. 50000NM.");
+		AddClassToCollection("PhysicsActiveVehicleComponent", "void applyDrift(number strength, number dt)", "Apply angular impulse (stable + timestep aware). Strength is in 'torque - like' units; start with something like 1500..6000 depending on mass.");
+		AddClassToCollection("PhysicsActiveVehicleComponent", "boolean isAirborne", "Gets whether the vehicle is in air.");
 
+		// Apply angular impulse (stable + timestep aware)
+		// strength is in "torque-like" units; start with something like 1500..6000 depending on mass
 		module(lua)
 		[
 			class_<VehicleDrivingManipulation>("VehicleDrivingManipulation")

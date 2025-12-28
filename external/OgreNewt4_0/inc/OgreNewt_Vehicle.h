@@ -206,6 +206,7 @@ namespace OgreNewt
 	private:
 		void processPreUpdate(Ogre::Real timestep, int threadIndex);
 		Ogre::Real applySuspenssionLimit();
+		Ogre::Real calcArcadeGripMul(Ogre::Real speed, Ogre::Real speedRef, Ogre::Real maxMul);
 	public:
 		Body* m_thisBody;
 		ndBodyKinematic* m_hitBody;
@@ -304,7 +305,11 @@ namespace OgreNewt
 
 		bool getUseTilting() const;
 
-		void update(Ogre::Real timestep, int threadIndex);
+		bool isAirborne() const;
+
+		// Apply angular impulse (stable + timestep aware)
+		// strength is in "torque-like" units; start with something like 1500..6000 depending on mass
+		void applyPitch(Ogre::Real strength, Ogre::Real timestep);
 	private:
 		
 		void updateUnstuck(Ogre::Real timestep);
@@ -312,6 +317,8 @@ namespace OgreNewt
 		void initMassData();
 		void applyForceAndTorque(ndBodyKinematic* vBody, const ndVector& vForce, const ndVector& vPoint, Ogre::Real timestep);
 		void updateDriverInput(RayCastTire* tire, Ogre::Real timestep);
+		void physicsPreUpdate(Ogre::Real timestep, int threadIndex);
+		void physicsOnTransform(const ndMatrix& localMatrix);
 	public:
 		int m_tireCount;
 		bool m_debugtire;
