@@ -197,6 +197,8 @@ namespace NOWA
 		this->activated->setValue(activated);
 		if (nullptr != this->baseCamera)
 		{
+			NOWA::GraphicsModule::getInstance()->removeTrackedCamera(this->baseCamera->getCamera());
+
 			if (true == activated)
 			{
 				AppStateManager::getSingletonPtr()->getCameraManager()->addCameraBehavior(this->activeCamera, this->baseCamera);

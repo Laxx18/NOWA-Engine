@@ -4271,7 +4271,7 @@ namespace NOWA
 			// this->undoAll();
 			this->undo();
 		}
-		// Physics simulation will be corrupt!
+
 		if (nullptr != AppStateManager::getSingletonPtr()->getOgreNewtModule()->getOgreNewt())
 		{
 			AppStateManager::getSingletonPtr()->getOgreNewtModule()->getOgreNewt()->cleanUp();

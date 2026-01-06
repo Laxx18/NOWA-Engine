@@ -36,11 +36,12 @@ namespace NOWA
 	void BaseCamera::onSetData(void)
 	{
 		this->firstTimeValueSet = true;
+		NOWA::GraphicsModule::getInstance()->removeTrackedCamera(this->camera);
 	}
 
 	void BaseCamera::onClearData(void)
 	{
-
+		NOWA::GraphicsModule::getInstance()->removeTrackedCamera(this->camera);
 	}
 
 	void BaseCamera::postInitialize(Ogre::Camera* camera)

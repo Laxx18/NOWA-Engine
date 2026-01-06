@@ -12385,6 +12385,30 @@ return {
 				args = "()",
 				returns = "(Table[number][JoyStickButton])",
 				valuetype = "Table[number][JoyStickButton]"
+			},
+			setAnalogActionThreshold =
+			{
+				type = "method",
+				description = "Sets the threshold for treating stick as digital actions (LEFT/RIGHT/UP/DOWN).",
+				args = "(number t)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getAnalogActionThreshold =
+			{
+				type = "function",
+				description = "Gets the threshold for treating stick as digital actions (LEFT/RIGHT/UP/DOWN).",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			getSteerAxis =
+			{
+				type = "function",
+				description = "Returns steering axis in [-1..1] from keyboard or left stick.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
 			}
 		}
 	},

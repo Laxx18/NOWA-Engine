@@ -4,6 +4,9 @@
 #include "GameObjectComponent.h"
 
 #include "ocean/Ocean.h"
+#include "ocean/OgreHlmsOceanDatablock.h"
+
+#include "main/EventManager.h"
 
 namespace NOWA
 {
@@ -78,64 +81,75 @@ namespace NOWA
 
 		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
-		/*virtual void setActivated(bool activated) override;
+		void setCameraId(unsigned long cameraId);
 
-		void setDiffuseColor(const Ogre::Vector3& diffuseColor);
+		unsigned int geCameraId(void) const;
 
-		Ogre::Vector3 getDiffuseColor(void) const;
 
-		void setSpecularColor(const Ogre::Vector3& specularColor);
+		// Ocean visual settings (saved/loaded + live-updatable)
+		void setDeepColour(const Ogre::Vector3& deepColour);
+		Ogre::Vector3 getDeepColour(void) const;
 
-		Ogre::Vector3 getSpecularColor(void) const;
+		void setShallowColour(const Ogre::Vector3& shallowColour);
+		Ogre::Vector3 getShallowColour(void) const;
 
-		void setPowerScale(Ogre::Real powerScale);
+		void setBrdf(const Ogre::String& brdf);
+		Ogre::String getBrdf(void) const;
 
-		Ogre::Real getPowerScale(void) const;
+		// Shader-side detail scale (HlmsOceanDatablock::setWavesScale)
+		void setShaderWavesScale(Ogre::Real wavesScale);
+		Ogre::Real getShaderWavesScale(void) const;
 
-		void setDirection(const Ogre::Vector3& direction);
+		// Amplitude (Ocean::setWavesIntensity)
+		void setWavesIntensity(Ogre::Real intensity);
+		Ogre::Real getWavesIntensity(void) const;
 
-		Ogre::Vector3 getDirection(void) const;
+		// Texture tiling / wave size (Ocean::setWavesScale)
+		void setOceanWavesScale(Ogre::Real wavesScale);
+		Ogre::Real getOceanWavesScale(void) const;
 
-		void setAffectParentNode(bool affectParentNode);
+		void setOceanSize(const Ogre::Vector2& size);
+		Ogre::Vector2 getOceanSize(void) const;
 
-		bool getAffectParentNode(void) const;
-
-		void setCastShadows(bool castShadows);
-
-		bool getCastShadows(void) const;
-
-		void setShowDummyEntity(bool showDummyEntity);
-
-		bool getShowDummyEntity(void) const;*/
+		void setOceanCenter(const Ogre::Vector3& center);
+		Ogre::Vector3 getOceanCenter(void) const;
 
 		Ogre::Ocean* getOcean(void) const;
 
 		void createOcean(void);
 	public:
-		static const Ogre::String AttrDiffuseColor(void) { return "Diffuse Color"; }
-		static const Ogre::String AttrSpecularColor(void) { return "Specular Color"; }
-		static const Ogre::String AttrPowerScale(void) { return "Power Scale"; }
-		static const Ogre::String AttrDirection(void) { return "Direction"; }
-		static const Ogre::String AttrAffectParentNode(void) { return "Affect Node"; }
-		static const Ogre::String AttrCastShadows(void) { return "Cast Shadows"; }
-		static const Ogre::String AttrShowDummyEntity(void) { return "Show Dummy Entity"; }
-		// static const Ogre::String AttrAttenuationRadius(void) { return "Att-Radius"; }
-		// static const Ogre::String AttrAttenuationLumThreshold(void) { return "Att-LumThreshold"; }
+		static const Ogre::String AttrCameraId(void) { return "Camera Id"; }
+		static const Ogre::String AttrDeepColour(void) { return "Deep Colour"; }
+		static const Ogre::String AttrShallowColour(void) { return "Shallow Colour"; }
+		static const Ogre::String AttrBrdf(void) { return "BRDF"; }
+		static const Ogre::String AttrShaderWavesScale(void) { return "Shader Waves Scale"; }
+		static const Ogre::String AttrWavesIntensity(void) { return "Waves Intensity"; }
+		static const Ogre::String AttrOceanWavesScale(void) { return "Ocean Waves Scale"; }
+		static const Ogre::String AttrOceanSize(void) { return "Ocean Size"; }
+		static const Ogre::String AttrOceanCenter(void) { return "Ocean Center"; }
 	private:
 
 		void destroyOcean(void);
+
+		void handleSwitchCamera(EventDataPtr eventData);
+
+		Ogre::String mapOceanBrdfToString(Ogre::OceanBrdf::OceanBrdf brdf);
+		Ogre::OceanBrdf::OceanBrdf mapStringToOceanBrdf(const Ogre::String& strBrdf);
 	private:
 		Ogre::Ocean* ocean;
 		Ogre::HlmsDatablock* datablock;
-		// Variant* lightType;
-		//Variant* diffuseColor;
-		//Variant* specularColor;
-		//Variant* powerScale;
-		//Variant* direction;
-		//Variant* affectParentNode;
-		//Variant* castShadows;
-		//// ShowDummyEntity will neither be loaded nor saved
-		//Variant* showDummyEntity;
+		bool postInitDone;
+		Ogre::Camera* usedCamera;
+
+		Variant* cameraId;
+		Variant* deepColour;
+		Variant* shallowColour;
+		Variant* brdf;
+		Variant* shaderWavesScale;
+		Variant* wavesIntensity;
+		Variant* oceanWavesScale;
+		Variant* oceanSize;
+		Variant* oceanCenter;
 	};
 
 }; //namespace end

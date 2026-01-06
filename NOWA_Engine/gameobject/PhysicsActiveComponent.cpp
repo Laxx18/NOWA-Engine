@@ -1760,8 +1760,8 @@ namespace NOWA
 		// Create ray along the rotated downward direction
 		// OgreNewt::BasicRaycast ray(this->ogreNewt, charPoint, rayEndPoint, true);
 
-		OgreNewt::World::RaycastResult rayResult = this->ogreNewt->raycastBlocking(charPoint, rayEndPoint);
-		OgreNewt::BasicRaycast::BasicRaycastInfo& info = rayResult.mInfo;
+		OgreNewt::BasicRaycast ray(this->ogreNewt, charPoint, rayEndPoint, true);
+		OgreNewt::BasicRaycast::BasicRaycastInfo info = ray.getFirstHit();
 
 		if (this->bShowDebugData || forceDrawLine)
 		{
@@ -1907,8 +1907,8 @@ namespace NOWA
 
 		// Create ray along the adjusted forward direction
 		// OgreNewt::BasicRaycast ray(this->ogreNewt, charPoint, rayEndPoint, true);
-		OgreNewt::World::RaycastResult rayResult = this->ogreNewt->raycastBlocking(charPoint, rayEndPoint);
-		OgreNewt::BasicRaycast::BasicRaycastInfo& info = rayResult.mInfo;
+		OgreNewt::BasicRaycast ray(this->ogreNewt, charPoint, rayEndPoint, true);
+		OgreNewt::BasicRaycast::BasicRaycastInfo info = ray.getFirstHit();
 		
 		if (true == this->bShowDebugData || true == forceDrawLine)
 		{
@@ -2041,8 +2041,8 @@ namespace NOWA
 
 		// Create ray along the rotated downward direction
 		// OgreNewt::BasicRaycast ray(this->ogreNewt, charPoint, rayEndPoint, true);
-		OgreNewt::World::RaycastResult rayResult = this->ogreNewt->raycastBlocking(charPoint, rayEndPoint);
-		OgreNewt::BasicRaycast::BasicRaycastInfo& info = rayResult.mInfo;
+		OgreNewt::BasicRaycast ray(this->ogreNewt, charPoint, rayEndPoint, true);
+		OgreNewt::BasicRaycast::BasicRaycastInfo info = ray.getFirstHit();
 
 		// Debug drawing
 		if (this->bShowDebugData || forceDrawLine)
@@ -2186,8 +2186,8 @@ namespace NOWA
 
 		// Create ray
 		// OgreNewt::BasicRaycast ray(this->ogreNewt, fromPosition, toPosition, true);
-		OgreNewt::World::RaycastResult rayResult = this->ogreNewt->raycastBlocking(fromPosition, toPosition);
-		OgreNewt::BasicRaycast::BasicRaycastInfo& info = rayResult.mInfo;
+		OgreNewt::BasicRaycast ray(this->ogreNewt, fromPosition, toPosition, true);
+		OgreNewt::BasicRaycast::BasicRaycastInfo info = ray.getFirstHit();
 
 		if (true == this->bShowDebugData || true == forceDrawLine)
 		{
@@ -2339,8 +2339,8 @@ namespace NOWA
 
 		// Create ray
 		// OgreNewt::BasicRaycast ray(this->ogreNewt, fromPosition, toPosition, true);
-		OgreNewt::World::RaycastResult rayResult = this->ogreNewt->raycastBlocking(fromPosition, toPosition);
-		OgreNewt::BasicRaycast::BasicRaycastInfo& info = rayResult.mInfo;
+		OgreNewt::BasicRaycast ray(this->ogreNewt, fromPosition, toPosition, true);
+		OgreNewt::BasicRaycast::BasicRaycastInfo info = ray.getFirstHit();
 
 		if (true == forceDrawLine)
 		{
@@ -2466,8 +2466,8 @@ namespace NOWA
 		// get contact result
 		// OgreNewt::BasicRaycast::BasicRaycastInfo info = ray.getFirstHit();
 
-		OgreNewt::World::RaycastResult rayResult = this->ogreNewt->raycastBlocking(fromPosition, toPosition);
-		OgreNewt::BasicRaycast::BasicRaycastInfo& info = rayResult.mInfo;
+		OgreNewt::BasicRaycast ray(this->ogreNewt, fromPosition, toPosition, true);
+		OgreNewt::BasicRaycast::BasicRaycastInfo info = ray.getFirstHit();
 		if (info.mBody)
 		{
 			unsigned int type = info.mBody->getType();
@@ -2525,8 +2525,8 @@ namespace NOWA
 		// Create ray along the rotated downward direction
 		// OgreNewt::BasicRaycast ray(this->ogreNewt, charPoint, rayEndPoint, true);
 		// OgreNewt::BasicRaycast::BasicRaycastInfo& info = ray.getFirstHit();
-		OgreNewt::World::RaycastResult rayResult = this->ogreNewt->raycastBlocking(charPoint, rayEndPoint);
-		OgreNewt::BasicRaycast::BasicRaycastInfo& info = rayResult.mInfo;
+		OgreNewt::BasicRaycast ray(this->ogreNewt, charPoint, rayEndPoint, true);
+		OgreNewt::BasicRaycast::BasicRaycastInfo info = ray.getFirstHit();
 		
 		if (info.mBody)
 		{
@@ -2540,9 +2540,8 @@ namespace NOWA
 					(this->physicsBody->getOrientation() * defaultRot * positionOffset2);
 
 				// ray = OgreNewt::BasicRaycast(this->ogreNewt, charPoint, charPoint + rayEndPoint, true);
-				rayResult = this->ogreNewt->raycastBlocking(charPoint, charPoint + rayEndPoint);
-				// info = ray.getFirstHit();
-				info = rayResult.mInfo;
+				OgreNewt::BasicRaycast ray2(this->ogreNewt, charPoint, charPoint + rayEndPoint, true);
+				info = ray2.getFirstHit();
 				if (info.mBody)
 				{
 					if (info.mDistance * 500.0f < height)

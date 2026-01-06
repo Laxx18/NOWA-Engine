@@ -1567,7 +1567,7 @@ void GpuParticleSystemWorld::uploadToGpuParticleWorld(float elapsedTime)
     OGRE_ASSERT_LOW( (size_t)(particleWorldBuffer - particleWorldBufferStart) * sizeof(float) <=
                      mParticleWorldBuffer->getTotalSizeBytes() );
 
-    // TODO: is setting rest of the memory necessary?
+    // TODO: is setting rest of the memory necessary? 
     //Fill the remaining bytes with 0
     memset( particleWorldBuffer, 0, mParticleWorldBuffer->getTotalSizeBytes() -
             (static_cast<size_t>(particleWorldBuffer - particleWorldBufferStart) * sizeof(float)) );

@@ -223,282 +223,40 @@ ndMatrix RayCastTire::getLocalMatrix0()
 	return m_localMatrix0;
 }
 
-//void RayCastTire::longitudinalAndLateralFriction(const ndVector& contactPos, const ndVector& lateralPinIn, const ndVector& /*longitudinalPinIn*/, ndReal lateralMu,
-//	ndReal /*longitudinalMu*/, ndConstraintDescritor& desc)
-//{
-//	if (m_tireLoad <= ndReal(0.0f))
-//		return;
-//
-//	// Direction must be a pure vector
-//	ndVector lateralPin = lateralPinIn;
-//	lateralPin.m_w = ndFloat32(0.0f);
-//
-//	// Guard against zero-length dir (would trigger diag > 0 asserts)
-//	const ndFloat32 len2 = lateralPin.DotProduct(lateralPin).GetScalar();
-//	if (len2 < ndFloat32(1.0e-8f))
-//		return;
-//
-//	// Normalize (important for stable friction magnitudes)
-//	lateralPin = lateralPin.Scale(ndRsqrt(len2));
-//
-//	if (desc.m_rowsCount < m_maxDof)
-//	{
-//#if 1
-//		ndReal maxLat = m_tireLoad * lateralMu;
-//
-//		Ogre::Real speed = m_vehicle->getVelocity().length();
-//
-//		if (m_handForce > 0.0f && m_tireConfiguration.tireSteer == tsNoSteer || speed < 10.0f) // rear wheels
-//		{
-//			maxLat = m_tireLoad * lateralMu * 0.5f;
-//		}
-//		else
-//		{
-//			// If this is a steering tire, boost grip with speed (arcade help)
-//			if (m_tireConfiguration.tireSteer == tsSteer)
-//			{
-//				const Ogre::Real mul = calcArcadeGripMul(speed, Ogre::Real(25.0f), Ogre::Real(2.2f)); // tune
-//				maxLat = m_tireLoad * lateralMu * mul;
-//			}
-//		}
-//#else
-//		// If this is a steering tire, boost grip with speed (arcade help)
-//		if (m_tireConfiguration.tireSteer == tsSteer)
-//		{
-//			const Ogre::Real speed = m_vehicle->getVelocity().length(); // make sure this is in m/s
-//			const Ogre::Real mul = calcArcadeGripMul(speed, Ogre::Real(25.0f), Ogre::Real(2.2f)); // tune
-//			lateralMu *= mul;
-//		}
-//
-//		const ndReal maxLat = m_tireLoad * lateralMu;
-//
-//#endif
-//
-//		AddLinearRowJacobian(desc, contactPos, contactPos, lateralPin);
-//		SetHighFriction(desc, maxLat);
-//		SetLowerFriction(desc, -maxLat);
-//	}
-//}
-
-//void RayCastTire::longitudinalAndLateralFriction(
-//	const ndVector& contactPos,
-//	const ndVector& lateralPinIn,
-//	const ndVector& longitudinalPinIn,
-//	ndReal lateralMu,
-//	ndReal /*longitudinalMu*/,
-//	ndConstraintDescritor& desc)
-//{
-//	if (m_tireLoad <= ndReal(0.0f))
-//		return;
-//
-//	// Pure vectors
-//	ndVector lat = lateralPinIn;      lat.m_w = ndFloat32(0.0f);
-//	ndVector lon = longitudinalPinIn; lon.m_w = ndFloat32(0.0f);
-//
-//	// Normalize lateral
-//	const ndFloat32 latLen2 = lat.DotProduct(lat).GetScalar();
-//	if (latLen2 < ndFloat32(1.0e-8f))
-//		return;
-//	lat = lat.Scale(ndRsqrt(latLen2));
-//
-//	// Normalize longitudinal (if valid) and remove any longitudinal component from lateral.
-//	// This prevents the lateral row from acting like a brake when steering/leaning.
-//	const ndFloat32 lonLen2 = lon.DotProduct(lon).GetScalar();
-//	if (lonLen2 > ndFloat32(1.0e-8f))
-//	{
-//		lon = lon.Scale(ndRsqrt(lonLen2));
-//		lat = lat - lon.Scale(lat.DotProduct(lon).GetScalar());
-//
-//		const ndFloat32 latLen2b = lat.DotProduct(lat).GetScalar();
-//		if (latLen2b < ndFloat32(1.0e-8f))
-//			return;
-//		lat = lat.Scale(ndRsqrt(latLen2b));
-//	}
-//
-//	if (desc.m_rowsCount >= m_maxDof)
-//		return;
-//
-//	// ----------------------------
-//	// Your existing behavior/tuning
-//	// ----------------------------
-//	ndReal maxLat = m_tireLoad * lateralMu;
-//
-//	// Rear wheels only, and only when NOT handbraking:
-//	if (m_tireConfiguration.tireSteer == tsNoSteer && m_handForce <= ndReal(0.0f))
-//	{
-//		// speed already computed above in your function
-//		// Start reducing rear lateral above ~15 m/s, fully applied at ~30 m/s
-//		const ndReal t = ndClamp((ndReal(speed) - ndReal(15.0f)) / ndReal(15.0f), ndReal(0.0f), ndReal(1.0f));
-//
-//		// linear lerp: 1.0 -> 0.75
-//		const ndReal rearHighSpeedFactor = ndReal(1.0f) + (ndReal(0.75f) - ndReal(1.0f)) * t;
-//
-//		maxLat *= rearHighSpeedFactor;
-//	}
-//
-//
-//	const Ogre::Real speed = m_vehicle->getVelocity().length();
-//
-//	// Your original behavior (keep it, since it worked best for you)
-//	if ((m_handForce > ndReal(0.0f) && m_tireConfiguration.tireSteer == tsNoSteer) || speed < Ogre::Real(10.0f))
-//	{
-//		maxLat *= ndReal(0.5f);
-//	}
-//	else
-//	{
-//		if (m_tireConfiguration.tireSteer == tsSteer)
-//		{
-//			const Ogre::Real mul = calcArcadeGripMul(speed, Ogre::Real(25.0f), Ogre::Real(2.2f));
-//			maxLat *= (ndReal)mul;
-//		}
-//	}
-//
-//	// Lateral friction row ONLY (do NOT add longitudinal row unless you implement rolling constraint)
-//	AddLinearRowJacobian(desc, contactPos, contactPos, lat);
-//	SetHighFriction(desc, maxLat);
-//	SetLowerFriction(desc, -maxLat);
-//}
-
-void RayCastTire::longitudinalAndLateralFriction(
-	const ndVector& contactPos,
-	const ndVector& lateralPinIn,
-	const ndVector& longitudinalPinIn,
-	ndReal lateralMu,
-	ndReal /*longitudinalMu*/,
-	ndConstraintDescritor& desc)
+void RayCastTire::longitudinalAndLateralFriction(const ndVector& contactPos, const ndVector& lateralPinIn, const ndVector& /*longitudinalPinIn*/, ndReal lateralMu,
+	ndReal /*longitudinalMu*/, ndConstraintDescritor& desc)
 {
 	if (m_tireLoad <= ndReal(0.0f))
 		return;
 
-	// Pure vectors
-	ndVector lat = lateralPinIn;
-	ndVector lon = longitudinalPinIn;
-	lat.m_w = ndFloat32(0.0f);
-	lon.m_w = ndFloat32(0.0f);
+	// Direction must be a pure vector
+	ndVector lateralPin = lateralPinIn;
+	lateralPin.m_w = ndFloat32(0.0f);
 
-	// Normalize lateral
-	const ndFloat32 latLen2 = lat.DotProduct(lat).GetScalar();
-	if (latLen2 < ndFloat32(1.0e-8f))
-		return;
-	lat = lat.Scale(ndRsqrt(latLen2));
-
-	// If we have a valid longitudinal pin, remove its component from lateral
-	// to prevent the lateral row from acting like a brake.
-	const ndFloat32 lonLen2 = lon.DotProduct(lon).GetScalar();
-	if (lonLen2 > ndFloat32(1.0e-8f))
-	{
-		lon = lon.Scale(ndRsqrt(lonLen2));
-
-		// Gram–Schmidt: lat = lat - proj_lon(lat)
-		lat = lat - lon.Scale(lat.DotProduct(lon).GetScalar());
-
-		const ndFloat32 latLen2b = lat.DotProduct(lat).GetScalar();
-		if (latLen2b < ndFloat32(1.0e-8f))
-			return;
-		lat = lat.Scale(ndRsqrt(latLen2b));
-	}
-
-	if (desc.m_rowsCount >= m_maxDof)
+	// Guard against zero-length dir (would trigger diag > 0 asserts)
+	const ndFloat32 len2 = lateralPin.DotProduct(lateralPin).GetScalar();
+	if (len2 < ndFloat32(1.0e-8f))
 		return;
 
-	// Base lateral grip
+	// Normalize (important for stable friction magnitudes)
+	lateralPin = lateralPin.Scale(ndRsqrt(len2));
+
 	ndReal maxLat = m_tireLoad * lateralMu;
 
-	// Speed (same source as your existing code)
-	const Ogre::Real speed = m_vehicle->getVelocity().length();
+	Ogre::Real speed = m_vehicle->getVelocity().length();
 
-	if (speed < 5.0f) // rear wheels
+	if (m_handForce > 0.0f && m_tireConfiguration.tireSteer == tsNoSteer || speed < 10.0f) // rear wheels
 	{
-		maxLat = m_tireLoad * lateralMu * 0.1f;
-	}
-	else
-	{
-
-		// ------------------------------------------------------------
-		// Rear high-speed stabilizer (prevents 180°/270° snap spins)
-		// Only for non-steering tires, and only when NOT handbraking.
-		//
-		// Starts at 15 m/s, fully applied at 30 m/s:
-		// maxLat *= lerp(1.0 -> 0.75, t)
-		// ------------------------------------------------------------
-		if (m_tireConfiguration.tireSteer == tsNoSteer && m_handForce <= ndReal(0.0f))
-		{
-			const ndReal t = ndClamp(
-				(ndReal(speed) - ndReal(15.0f)) / ndReal(15.0f),
-				ndReal(0.0f),
-				ndReal(1.0f));
-
-			const ndReal rearHighSpeedFactor =
-				ndReal(1.0f) + (ndReal(0.75f) - ndReal(1.0f)) * t;
-
-			maxLat *= rearHighSpeedFactor;
-		}
-
-		// ------------------------------------------------------------
-		// Your existing behavior/tuning:
-		// - rear tires lose lateral when handbrake OR low speed
-		// - steering tires gain grip with speed (arcade help)
-		// ------------------------------------------------------------
-		if (m_handForce > ndReal(0.0f) && m_tireConfiguration.tireSteer == tsNoSteer)
-		{
-			maxLat *= ndReal(0.5f);
-		}
-		else
-		{
-			//if (m_tireConfiguration.tireSteer == tsSteer)
-			//{
-			//	Ogre::Real mul = calcArcadeGripMul(speed, Ogre::Real(25.0f), Ogre::Real(2.2f));
-
-			//	// Optional safety cap to avoid “front bites too hard -> snap spin”
-			//	// Uncomment if needed:
-			//	// mul = Ogre::Math::Clamp(mul, Ogre::Real(1.0f), Ogre::Real(1.6f));
-
-			//	maxLat *= (ndReal)mul;
-			//}
-			// Low-speed softness (mainly needed for steering tires so you can pull away while turning)
-			if (m_tireConfiguration.tireSteer == tsSteer)
-			{
-				// 0 m/s -> 0.08, 6 m/s -> 1.0  (tune these)
-				const ndReal tLow = ndClamp(ndReal(speed) / ndReal(6.0f), ndReal(0.0f), ndReal(1.0f));
-				const ndReal lowSpeedFactor = ndReal(0.08f) + (ndReal(1.0f) - ndReal(0.08f)) * tLow;
-				maxLat *= lowSpeedFactor;
-			}
-		}
+		maxLat = m_tireLoad * lateralMu * 0.5f;
 	}
 
-	// Lateral friction row only
-	AddLinearRowJacobian(desc, contactPos, contactPos, lat);
-	SetHighFriction(desc, maxLat);
-	SetLowerFriction(desc, -maxLat);
-}
-
-void RayCastTire::longitudinalAndLateralFriction2(ndVector tireposit, ndVector lateralpin, ndReal turnfriction, ndReal sidingfriction, ndConstraintDescritor& desc)
-{
-	if (desc.m_rowsCount >= m_maxDof)
-		return;
-
-	ndReal invMag2 = 0.0f;
-	ndReal frictionCircleMag = 0.0f;
-	ndReal lateralFrictionForceMag = 0.0f;
-	ndReal longitudinalFrictionForceMag = 0.0f;
-
-	if (m_tireLoad > 0.0f)
+	if (desc.m_rowsCount < m_maxDof)
 	{
-		frictionCircleMag = m_tireLoad * turnfriction;
-		lateralFrictionForceMag = frictionCircleMag;
-		
-		longitudinalFrictionForceMag = m_tireLoad * sidingfriction;
-		
-		invMag2 = frictionCircleMag / ndSqrt(lateralFrictionForceMag * lateralFrictionForceMag + longitudinalFrictionForceMag * longitudinalFrictionForceMag);
-		
-		lateralFrictionForceMag = lateralFrictionForceMag * invMag2;
-
-		AddLinearRowJacobian(desc, tireposit, tireposit, lateralpin);
-		SetHighFriction(desc, lateralFrictionForceMag);
-		SetLowerFriction(desc, -lateralFrictionForceMag);
+		AddLinearRowJacobian(desc, contactPos, contactPos, lateralPin);
+		SetHighFriction(desc, maxLat);
+		SetLowerFriction(desc, -maxLat);
 	}
 }
-
 
 void RayCastTire::processPreUpdate(Ogre::Real timestep, int threadIndex)
 {
@@ -512,10 +270,10 @@ void RayCastTire::processPreUpdate(Ogre::Real timestep, int threadIndex)
 	m_isOnContactEx = false;
 	m_penetration = 0.0f;
 
-	ndMatrix bodyMatrix = m_body0->GetMatrix();
+	ndMatrix vehiclyMatrix = m_body0->GetMatrix();
 	const ndMatrix& localMatrix0 = GetLocalMatrix0();
 
-	ndMatrix absoluteChassisMatrix(bodyMatrix * localMatrix0);
+	ndMatrix absoluteChassisMatrix(vehiclyMatrix * localMatrix0);
 
 	m_frameLocalMatrix = m_localMatrix0;
 
@@ -538,6 +296,12 @@ void RayCastTire::processPreUpdate(Ogre::Real timestep, int threadIndex)
 	ndVector p0 = curSuspenssionMatrix.m_posit;
 	ndVector p1 = mRayDestination;
 
+	//const ndVector localCast = m_frameLocalMatrix.m_up.Scale(-tiredist); // direction in local suspension frame (vector)
+	//ndVector p0 = curSuspenssionMatrix.m_posit;
+	//ndVector p1 = p0 + curSuspenssionMatrix.RotateVector(localCast);
+	//p0.m_w = ndFloat32(1.0f);
+	//p1.m_w = ndFloat32(1.0f);
+
 	const Ogre::Vector3 startpt(p0.m_x, p0.m_y, p0.m_z);
 	const Ogre::Vector3 endpt(p1.m_x, p1.m_y, p1.m_z);
 
@@ -551,7 +315,6 @@ void RayCastTire::processPreUpdate(Ogre::Real timestep, int threadIndex)
 
 	OgreNewt::BasicConvexcast convex(world, tireShape, startpt, orientation, endpt, 1, threadIndex, m_thisBody);
 
-	// BasicConvexcast::ConvexcastContactInfo info = world->convexcastBlocking(tireShape, startpt, orientation, endpt, m_thisBody, 1, threadIndex);
 	BasicConvexcast::ConvexcastContactInfo info;
 	OgreNewt::Body* m_hitOgreNewtBody = nullptr;
 
@@ -627,13 +390,16 @@ void RayCastTire::processPreUpdate(Ogre::Real timestep, int threadIndex)
 		if (m_posit_y < ndFloat32(0.0f))
 			m_posit_y = ndFloat32(0.0f);
 
-
-
-
 		ndVector mChassisVelocity = m_vehicle->getNewtonBody()->GetVelocity();
 		ndVector mChassisOmega = m_vehicle->getNewtonBody()->GetOmega();
 
 		m_TireAxelPosit = absoluteChassisMatrix.TransformVector(m_hardPoint - m_frameLocalMatrix.m_up.Scale(m_posit_y));
+
+		// ND4: axle position is a POINT => include translation
+		//const ndVector localAxle = (m_hardPoint - m_frameLocalMatrix.m_up.Scale(m_posit_y)); // local point in chassis frame
+		//m_TireAxelPosit = absoluteChassisMatrix.m_posit + absoluteChassisMatrix.RotateVector(localAxle);
+		//m_TireAxelPosit.m_w = ndFloat32(1.0f);
+
 		m_LocalAxelPosit = m_TireAxelPosit - absoluteChassisMatrix.m_posit;
 		m_TireAxelVeloc = mChassisVelocity + mChassisOmega.CrossProduct(m_LocalAxelPosit);
 
@@ -701,8 +467,12 @@ void OgreNewt::RayCastTire::JacobianDerivative(ndConstraintDescritor& desc)
 	// ndJointBilateralConstraint::JacobianDerivative(desc);
 	m_jointBrakeForce = 0.0f;
 
+
 	ndMatrix matrix0;
 	ndMatrix matrix1;
+
+	// m_body0->SetSleepState(false);
+	// m_body1->SetSleepState(false);
 
 	// Calculates the position of the pivot point and the Jacobian direction vectors, in global space. 
 	CalculateGlobalMatrix(matrix0, matrix1);
@@ -762,13 +532,10 @@ void OgreNewt::RayCastTire::JacobianDerivative(ndConstraintDescritor& desc)
 				latMu *= (Ogre::Real(1.0f) - slipFactor * Ogre::Real(0.75f));
 			}
 
-			
 			longitudinalAndLateralFriction(m_hitContact, m_lateralPin,
 				m_longitudinalPin,                    // unused in lateral-only version
 				latMu,  // side grip
 				m_tireConfiguration.longitudinalFriction, desc);
-
-			// longitudinalAndLateralFriction2(m_TireAxelPosit, m_lateralPin, m_tireConfiguration.longitudinalFriction, latMu, desc);
 
 			m_isOnContact = false;
 		}
@@ -794,18 +561,6 @@ void OgreNewt::RayCastTire::JacobianDerivative(ndConstraintDescritor& desc)
 			m_isOnContact = false;
 		}
 	}
-}
-
-Ogre::Real RayCastTire::calcArcadeGripMul(Ogre::Real speed, Ogre::Real speedRef, Ogre::Real maxMul)
-{
-	// speedRef ~ where you want "full help" (e.g. 25 m/s ~ 90 km/h)
-	if (speedRef <= 0.0f) return 1.0f;
-
-	const Ogre::Real t = Ogre::Math::Clamp(speed / speedRef, Ogre::Real(0.0f), Ogre::Real(1.0f));
-	// Smoothstep-ish
-	const Ogre::Real s = t * t * (Ogre::Real(3.0f) - Ogre::Real(2.0f) * t);
-
-	return Ogre::Math::Clamp(Ogre::Real(1.0f) + s * (maxMul - Ogre::Real(1.0f)), Ogre::Real(1.0f), maxMul);
 }
 
 // -----------------------------------------------------------------------------
@@ -914,15 +669,31 @@ Ogre::Real Vehicle::vectorLength(const ndVector& aVec)
 	return ndSqrt(aVec[0] * aVec[0] + aVec[1] * aVec[1] + aVec[2] * aVec[2]);
 }
 
+#if 0
 ndVector Vehicle::rel2AbsPoint(ndBodyKinematic* vBody, const ndVector& vPointRel)
 {
-	ndMatrix M = vBody->GetMatrix();
-	ndVector P, A;
+    const ndMatrix M = vBody->GetMatrix();
 
-	P = ndVector(vPointRel[0], vPointRel[1], vPointRel[2], 1.0f);
-	A = M.TransformVector(P);
-	return ndVector(A.m_x, A.m_y, A.m_z, 0.0f);
+    // ND4: TransformVector ignores translation. This is a POINT.
+    const ndVector local(vPointRel.m_x, vPointRel.m_y, vPointRel.m_z, ndFloat32(0.0f));
+    ndVector worldP = M.m_posit + M.RotateVector(local);
+    worldP.m_w = ndFloat32(1.0f);
+    return worldP;
 }
+#else
+ndVector Vehicle::rel2AbsPoint(ndBodyKinematic* vBody, const ndVector& vPointRel)
+{
+	const ndMatrix M = vBody->GetMatrix();
+
+	// ND4: TransformVector ignores translation.
+	// For a POINT: worldP = M.m_posit + M.RotateVector(localOffset)
+	ndVector v(vPointRel.m_x, vPointRel.m_y, vPointRel.m_z, ndFloat32(0.0f));
+	ndVector worldP = M.m_posit + M.RotateVector(v);
+	worldP.m_w = ndFloat32(0.0f);
+	return worldP;
+}
+
+#endif
 
 void Vehicle::addForceAtPos(ndBodyKinematic* vBody, const ndVector& vForce, const ndVector& vPoint, Ogre::Real timestep)
 {
@@ -937,18 +708,23 @@ void Vehicle::addForceAtPos(ndBodyKinematic* vBody, const ndVector& vForce, cons
 	const ndVector R = vPoint - rel2AbsPoint(vBody, com);
 	const ndVector torque = R.CrossProduct(vForce);
 
+	// Convert force -> impulse for this step
+	// const ndVector linearImpulse = vForce.Scale(timestep);
+	// const ndVector angularImpulse = torque.Scale(timestep);
+
 	const ndVector prevF = vBody->GetForce();
 	const ndVector prevT = vBody->GetTorque();
 
-	// vBody->SetForce(prevF + vForce);
-	// vBody->SetTorque(prevT + torque);
+	vBody->SetForce(prevF + vForce);
+	vBody->SetTorque(prevT + torque);
 
+	//ndVector newF = vBody->GetForce();
 
-	// Convert force -> impulse for this step
-	const ndVector linearImpulse = vForce.Scale(timestep);
-	const ndVector angularImpulse = torque.Scale(timestep);
-	// This feeds m_impulseForce/m_impulseTorque internally, which ND4 applies reliably.
-	dyn->ApplyImpulsePair(linearImpulse, angularImpulse, timestep);
+	//// This feeds m_impulseForce/m_impulseTorque internally, which ND4 applies reliably.
+	//dyn->ApplyImpulsePair(linearImpulse, angularImpulse, timestep);
+
+	// Also wake it up when driving
+	// dyn->SetSleepState(false);
 }
 
 void Vehicle::addForceAtRelPos(ndBodyKinematic* vBody, const ndVector& vForce, const ndVector& vPoint, Ogre::Real timestep)
@@ -1168,6 +944,7 @@ void Vehicle::updateAirborneRescue(Ogre::Real timestep)
 	// Apply at center of mass (pure translation, no spin)
 	const ndVector angularImpulse = ndVector::m_zero;
 
+	// chassis->SetSleepState(false);
 	chassis->ApplyImpulsePair(linearImpulse, angularImpulse, ndFloat32(timestep));
 
 	// Reset timers + set cooldown so it doesn't spam
@@ -1175,43 +952,98 @@ void Vehicle::updateAirborneRescue(Ogre::Real timestep)
 	m_rescue.cooldown = Ogre::Real(1.0f); // tune 0.8..2.0
 }
 
-bool Vehicle::isAirborne() const
+void Vehicle::update(Ogre::Real timestep, int threadIndex)
 {
-	int contacts = 0;
+	if (false == m_canDrive)
+	{
+		return;
+	}
+
+	if (false == m_initMassDataDone)
+	{
+		initMassData();
+		m_initMassDataDone = true;
+	}
+
+	// === OnUpdateTransform(root bone) equivalent ===
+	ndBodyKinematic* const vehicleBody = this->getNewtonBody();
+	if (nullptr == vehicleBody)
+	{
+		return;
+	}
+
+	// this->getNewtonBody()->SetSleepState(false);
+
+	ndMatrix localVehicleMatrix = vehicleBody->GetMatrix();
+
+	Ogre::Quaternion vehicleOrient;
+	Ogre::Vector3 vehiclePos;
+	OgreNewt::Converters::MatrixToQuatPos(&localVehicleMatrix[0][0], vehicleOrient, vehiclePos);
+
+	// --- update tire transforms and spin ---
 	for (ndList<RayCastTire*>::ndNode* node = m_tires.GetFirst(); node; node = node->GetNext())
 	{
-		RayCastTire* t = node->GetInfo();
-		if (t && t->m_isOnContactEx)
-			++contacts;
+		RayCastTire* tire = node->GetInfo();
+		if (!tire || !tire->m_thisBody)
+			continue;
+
+		// --- Compute the desired visual pose (your existing math kept) ---
+		Ogre::Real sign = 1.0f;
+		if (tire->m_pin.m_x != 0.0f)      sign = tire->m_pin.m_x;
+		else if (tire->m_pin.m_y != 0.0f) sign = tire->m_pin.m_y;
+		else if (tire->m_pin.m_z != 0.0f) sign = tire->m_pin.m_z;
+
+		ndMatrix localVehicleMatrix = vehicleBody->GetMatrix();
+
+		Ogre::Quaternion vehicleOrient;
+		Ogre::Vector3 vehiclePos;
+		OgreNewt::Converters::MatrixToQuatPos(&localVehicleMatrix[0][0], vehicleOrient, vehiclePos);
+
+		ndMatrix absoluteTireMatrix =
+			tire->calculateTireMatrixAbsolute(1.0f * sign) *
+			ndYawMatrix(-90.0f * ndDegreeToRad * sign);
+
+		Ogre::Quaternion globalTireOrient;
+		Ogre::Vector3 notUsedTirePos;
+		OgreNewt::Converters::MatrixToQuatPos(&absoluteTireMatrix[0][0], globalTireOrient, notUsedTirePos);
+
+		Ogre::Quaternion localTireOrient;
+		Ogre::Vector3 localTirePos;
+		OgreNewt::Converters::MatrixToQuatPos(&tire->m_localTireMatrix[0][0], localTireOrient, localTirePos);
+
+		const Ogre::Vector3 tireWorldPos = vehiclePos + (vehicleOrient * localTirePos);
+		const Ogre::Quaternion tireWorldRot = vehicleOrient * globalTireOrient * localTireOrient.Inverse();
+
+		// --- CRITICAL CHANGE ---
+		// Do NOT touch OgreNewt::Body interpolation members here (m_cur/m_prev),
+		// and do NOT call updateNode() here.
+		// Only hard-sync the Newton tire body (this MUST remain, as you said).
+		if (ndBodyKinematic* const tireBody = tire->m_thisBody->getNewtonBody())
+		{
+			ndMatrix m;
+			OgreNewt::Converters::QuatPosToMatrix(tireWorldRot, tireWorldPos, m);
+
+			tireBody->SetMatrix(m);
+			tireBody->SetVelocity(ndVector::m_zero);
+			tireBody->SetOmega(ndVector::m_zero);
+		}
+
+		// Spin behaviour in the air (unchanged)
+		if (false == tire->m_isOnContactEx)
+		{
+			if (tire->m_spinAngle > 0.0f)      tire->m_spinAngle -= 0.00001f;
+			else if (tire->m_spinAngle < 0.0f) tire->m_spinAngle += 0.00001f;
+		}
+		else
+		{
+			tire->m_spinAngle = 0.0f;
+		}
+
+		updateDriverInput(tire, timestep);
+		tire->processPreUpdate(timestep, threadIndex);
 	}
-	// tune threshold: <=1 contact feels airborne enough for tricks
-	return contacts <= 1;
-}
 
-void Vehicle::applyPitch(Ogre::Real strength, Ogre::Real timestep)
-{
-	// pitchInput: -1..+1 (e.g. stick up/down)
-	if (Ogre::Math::Abs(strength) < 1e-4f)
-		return;
-
-	ndBodyDynamic* dyn = this->getNewtonBody() ? this->getNewtonBody()->GetAsBodyDynamic() : nullptr;
-	if (!dyn)
-		return;
-
-	if (!isAirborne())
-	 	return;
-
-	// Local right axis = pitch axis
-	const ndMatrix m = dyn->GetMatrix();
-	ndVector right = m.m_right;
-	right.m_w = 0.0f;
-
-	// Apply angular impulse (stable + timestep aware)
-	// strength is in "torque-like" units; start with something like 1500..6000 depending on mass
-	const ndVector angularImpulse = right.Scale((ndFloat32)(strength * timestep));
-	const ndVector linearImpulse = ndVector::m_zero;
-
-	dyn->ApplyImpulsePair(linearImpulse, angularImpulse, (ndFloat32)timestep);
+	updateAirborneRescue(timestep);
 }
 
 // -----------------------------------------------------------------------------
@@ -1253,109 +1085,6 @@ void Vehicle::updateDriverInput(RayCastTire* tire, Ogre::Real timestep)
 		else
 		{
 			tire->m_brakeForce = 0.0f;
-		}
-	}
-}
-
-void Vehicle::physicsPreUpdate(Ogre::Real timestep, int threadIndex)
-{
-	if (!m_canDrive)
-		return;
-
-	if (!m_initMassDataDone)
-	{
-		initMassData();
-		m_initMassDataDone = true;
-	}
-
-	// IMPORTANT:
-	// Do NOT read Ogre scene nodes here.
-	// Use physics state only.
-
-	// Driver input should already be stored in member vars (steer/throttle/brake),
-	// so just apply it to tires here.
-	for (ndList<RayCastTire*>::ndNode* node = m_tires.GetFirst(); node; node = node->GetNext())
-	{
-		RayCastTire* tire = node->GetInfo();
-		if (!tire) continue;
-
-		updateDriverInput(tire, timestep);     // must not touch Ogre nodes
-		tire->processPreUpdate(timestep, threadIndex); // raycast + suspension + forces
-	}
-
-	updateAirborneRescue(timestep);
-
-	updateUnstuck(timestep);
-}
-
-void Vehicle::physicsOnTransform(const ndMatrix& localMatrix)
-{
-	if (!m_canDrive)
-		return;
-
-	// Update chassis cached transform from physics result
-	Ogre::Quaternion vehicleOrient;
-	Ogre::Vector3 vehiclePos;
-	OgreNewt::Converters::MatrixToQuatPos(&localMatrix[0][0], vehicleOrient, vehiclePos);
-
-	// Store into your chassis Body wrapper fields (or into Vehicle members)
-	// NOTE: do NOT call updateNode() here if it touches Ogre scene graph on the physics thread.
-	// Just store the pose; your render-thread sync should consume it later.
-	m_curPosit = vehiclePos;
-	m_curRotation = vehicleOrient;
-	m_prevPosit = m_curPosit;
-	m_prevRotation = m_curRotation;
-
-	// Now update tire proxy bodies EXACTLY like ND3 did.
-	for (ndList<RayCastTire*>::ndNode* node = m_tires.GetFirst(); node; node = node->GetNext())
-	{
-		RayCastTire* tire = node->GetInfo();
-		if (!tire || !tire->m_thisBody)
-			continue;
-
-		Ogre::Real sign = 1.0f;
-		if (tire->m_pin.m_x != 0.0f) sign = tire->m_pin.m_x;
-		else if (tire->m_pin.m_y != 0.0f) sign = tire->m_pin.m_y;
-		else if (tire->m_pin.m_z != 0.0f) sign = tire->m_pin.m_z;
-
-		ndMatrix absoluteTireMatrix =
-			tire->calculateTireMatrixAbsolute(1.0f * sign) *
-			ndYawMatrix(-90.0f * ndDegreeToRad * sign);
-
-		Ogre::Quaternion globalTireOrient;
-		Ogre::Vector3 notUsedTirePos;
-		OgreNewt::Converters::MatrixToQuatPos(&absoluteTireMatrix[0][0], globalTireOrient, notUsedTirePos);
-
-		Ogre::Quaternion localTireOrient;
-		Ogre::Vector3 localTirePos;
-		OgreNewt::Converters::MatrixToQuatPos(&tire->m_localTireMatrix[0][0], localTireOrient, localTirePos);
-
-		tire->m_thisBody->m_curPosit = vehiclePos + (vehicleOrient * localTirePos);
-		tire->m_thisBody->m_curRotation = vehicleOrient * globalTireOrient * localTireOrient.Inverse();
-
-		tire->m_thisBody->m_prevPosit = tire->m_thisBody->m_curPosit;
-		tire->m_thisBody->m_prevRotation = tire->m_thisBody->m_curRotation;
-
-		// Keep this (as you demanded)
-		if (ndBodyKinematic* const tireBody = tire->m_thisBody->getNewtonBody())
-		{
-			ndMatrix m;
-			OgreNewt::Converters::QuatPosToMatrix(tire->m_thisBody->m_curRotation,
-				tire->m_thisBody->m_curPosit, m);
-			tireBody->SetMatrix(m);
-			tireBody->SetVelocity(ndVector::m_zero);
-			tireBody->SetOmega(ndVector::m_zero);
-		}
-
-		// Air spin damping (same as ND3)
-		if (!tire->m_isOnContactEx)
-		{
-			if (tire->m_spinAngle > 0.0f) tire->m_spinAngle -= 0.00001f;
-			else if (tire->m_spinAngle < 0.0f) tire->m_spinAngle += 0.00001f;
-		}
-		else
-		{
-			tire->m_spinAngle = 0.0f;
 		}
 	}
 }

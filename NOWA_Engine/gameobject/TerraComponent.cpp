@@ -2,15 +2,12 @@
 #include "TerraComponent.h"
 #include "GameObjectController.h"
 #include "utilities/XMLConverter.h"
-#include "utilities/MathHelper.h"
 #include "camera/CameraManager.h"
 #include "modules/WorkspaceModule.h"
-#include "main/ProcessManager.h"
 #include "main/AppStateManager.h"
 #include "main/Core.h"
 #include "LightDirectionalComponent.h"
 #include "PhysicsTerrainComponent.h"
-#include "DatablockTerraComponent.h"
 #include "CameraComponent.h"
 #include "WorkspaceComponents.h"
 
@@ -176,19 +173,6 @@ namespace NOWA
 
 	GameObjectCompPtr TerraComponent::clone(GameObjectPtr clonedGameObjectPtr)
 	{
-		/*TerraCompPtr clonedCompPtr(boost::make_shared<TerraComponent>());
-
-		
-		clonedCompPtr->setHeightMap(this->heightMap->getString());
-		clonedCompPtr->setDimensions(this->dimensions->getVector3());
-		clonedCompPtr->setLightId(this->lightId->getULong());
-
-		clonedGameObjectPtr->addComponent(clonedCompPtr);
-		clonedCompPtr->setOwner(clonedGameObjectPtr);
-
-		GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
-		return clonedCompPtr;*/
-
 		return nullptr;
 	}
 
@@ -239,12 +223,6 @@ namespace NOWA
 
 	bool TerraComponent::onCloned(void)
 	{
-		// Search for the prior id of the cloned game object and set the new id and set the new id, if not found set better 0, else the game objects may be corrupt!
-		/*GameObjectPtr lightGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getClonedGameObjectFromPriorId(this->lightId->getULong());
-		if (nullptr != lightGameObjectPtr)
-			this->setLightId(lightGameObjectPtr->getId());
-		else
-			this->setLightId(0);*/
 		return true;
 	}
 
@@ -346,7 +324,35 @@ namespace NOWA
 		WorkspaceBaseComponent* workspaceBaseComponent = WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent();
 		if (nullptr != workspaceBaseComponent)
 		{
-			this->createTerra();
+			boost::shared_ptr<EventDataSwitchCamera> castEventData = boost::static_pointer_cast<EventDataSwitchCamera>(eventData);
+			unsigned long id = std::get<0>(castEventData->getCameraGameObjectData());
+			unsigned int index = std::get<1>(castEventData->getCameraGameObjectData());
+			bool active = std::get<2>(castEventData->getCameraGameObjectData());
+
+			// if a camera has been set as active, go through all game objects and set all camera components as active false
+			if (true == active)
+			{
+				auto gameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects();
+				for (auto& it = gameObjects->begin(); it != gameObjects->end(); ++it)
+				{
+					GameObject* gameObject = it->second.get();
+					if (id != gameObject->getId())
+					{
+						auto cameraComponent = NOWA::makeStrongPtr(gameObject->getComponent<CameraComponent>());
+						if (nullptr != cameraComponent)
+						{
+							Ogre::String s1 = cameraComponent->getCamera()->getName();
+							Ogre::String s2 = this->usedCamera ? this->usedCamera->getName() : "null";
+
+							if (true == cameraComponent->isActivated() && cameraComponent->getCamera() != this->usedCamera)
+							{
+								this->destroyTerra();
+								this->createTerra();
+							}
+						}
+					}
+				}
+			}
 		}
 	}
 

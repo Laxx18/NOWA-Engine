@@ -648,7 +648,7 @@ namespace NOWA
 
 			this->internalCreateCompositorNode();
 
-			if (true == this->useTerra)
+			if (true == this->useTerra || this->useOcean)
 			{
 				unsigned char channelCount = 1;
 				if (true == this->canUseReflection)
@@ -786,7 +786,7 @@ namespace NOWA
 					this->workspace->removeListener(this->planarReflectionsWorkspaceListener);
 				}
 
-				if (true == this->useTerra)
+				if (true == this->useTerra || true == this->useOcean)
 				{
 					unsigned short externalInputTextureId = 1;
 					if (true == this->canUseReflection)

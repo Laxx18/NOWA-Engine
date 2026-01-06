@@ -12,8 +12,6 @@
 #include "ndWorld.h"
 
 #include <atomic>
-#include <condition_variable>
-#include <deque>
 #include <future>
 #include <functional>
 #include <map>
@@ -105,35 +103,6 @@ namespace OgreNewt
 
 		void destroyJoint(ndJointBilateralConstraint* joint);
 
-		// ---------------------------------------------------------------------
-		// Blocking raycast / convexcast (safe from any thread)
-		// These are executed in the safe point inside update().
-		// ---------------------------------------------------------------------
-		struct RaycastResult
-		{
-			OgreNewt::BasicRaycast::BasicRaycastInfo mInfo;
-
-			RaycastResult(void)
-			{
-				mInfo.mBody = nullptr;
-				mInfo.mDistance = 0.0f;
-				mInfo.mNormal = Ogre::Vector3::ZERO;
-			}
-		};
-
-		RaycastResult raycastBlocking(const Ogre::Vector3& fromPosition, const Ogre::Vector3& toPosition, OgreNewt::Body* ignoreBody = nullptr);
-
-		BasicConvexcast::ConvexcastContactInfo convexcastBlocking(
-			const ndShapeInstance& shape,
-			const Ogre::Vector3& startpt,
-			const Ogre::Quaternion& orientation,
-			const Ogre::Vector3& endpt,
-			OgreNewt::Body* ignoreBody,
-			int maxContactsCount = 16,
-			int threadIndex = 0);
-
-		void processRaycastJobs(void);
-		void processConvexcastJobs(void);
 
 		// ND4 hooks (kept minimal)
 		void PreUpdate(ndFloat32 timestep) override;
@@ -216,54 +185,7 @@ namespace OgreNewt
 
 		void processPhysicsQueue();
 	private:
-		struct RaycastJob
-		{
-			Ogre::Vector3 mFrom;
-			Ogre::Vector3 mTo;
-			OgreNewt::Body* mIgnoreBody;
 
-			RaycastResult mResult;
-			bool mDone;
-
-			std::mutex mMutex;
-			std::condition_variable mCondVar;
-
-			RaycastJob(void)
-				: mFrom(Ogre::Vector3::ZERO)
-				, mTo(Ogre::Vector3::ZERO)
-				, mIgnoreBody(nullptr)
-				, mDone(false)
-			{
-			}
-		};
-
-		struct ConvexcastJob
-		{
-			const ndShapeInstance* shape;
-			Ogre::Vector3 startpt;
-			Ogre::Quaternion orientation;
-			Ogre::Vector3 endpt;
-			OgreNewt::Body* ignoreBody;
-			int maxContactsCount;
-			int threadIndex;
-
-			BasicConvexcast::ConvexcastContactInfo result;
-			bool hasHit;
-
-			bool done;
-			std::mutex mtx;
-			std::condition_variable cv;
-
-			ConvexcastJob()
-				: shape(nullptr)
-				, ignoreBody(nullptr)
-				, maxContactsCount(0)
-				, threadIndex(0)
-				, hasHit(false)
-				, done(false)
-			{
-			}
-		};
 
 	private:
 		// Timing
@@ -292,10 +214,6 @@ namespace OgreNewt
 		std::atomic<bool> m_paused{ false };
 		std::atomic<bool> m_doSingleStep{ false };
 
-		// Jobs
-		std::mutex m_jobsMutex;
-		std::vector<std::shared_ptr<RaycastJob>> m_pendingRaycastJobs;
-		std::deque<ConvexcastJob*> m_pendingConvexcastJobs;
 
 		// Thread identity: thread that drives update() (main thread)
 		std::thread::id m_mainThreadId;

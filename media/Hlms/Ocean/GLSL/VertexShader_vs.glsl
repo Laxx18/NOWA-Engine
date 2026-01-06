@@ -23,7 +23,7 @@ layout(std140) uniform;
 	in uint drawId;
 @end
 
-@insertpiece( custom_vs_attributes )
+// @insertpiece( custom_vs_attributes )
 
 out block
 {

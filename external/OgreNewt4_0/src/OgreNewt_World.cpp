@@ -233,7 +233,7 @@ void World::destroyJoint(ndJointBilateralConstraint* joint)
 }
 
 // Prevents the following issues:
-// The sim runs slow because you’re feeding OgreNewt a fixed 1 / 60 and OgreNewt is also using its own fixed timestep accumulator
+// The sim runs slow because youï¿½re feeding OgreNewt a fixed 1 / 60 and OgreNewt is also using its own fixed timestep accumulator
 // So you re effectively doing fixed - step on fixed - step, and the inner one can easily end up stepping less often than you think
 // (especially when dt == dtFixed and you use while (accum > dtFixed)), which yields 0 physics steps some frames -> slow motion / stutter.
 void World::update(Ogre::Real timestep)
@@ -245,9 +245,7 @@ void World::update(Ogre::Real timestep)
 
 	// Safe point before stepping
 	processPhysicsQueue();
-	processRaycastJobs();
-	processConvexcastJobs();
-
+	
 	// Step exactly once (or multiple times if you want substeps explicitly)
 	// ndWorld::Update(dt);
 	// ndWorld::Sync();
@@ -263,9 +261,7 @@ void World::update(Ogre::Real timestep)
 
 	// Safe point after stepping
 	processPhysicsQueue();
-	processRaycastJobs();
-	processConvexcastJobs();
-
+	
 	// Publish discrete transforms (let your engine interpolation handle visuals)
 	postUpdate(1.0f);
 
@@ -291,9 +287,7 @@ void World::updateFixed(Ogre::Real timestep)
 	m_timeAccumulator += dt;
 
 	processPhysicsQueue();
-	processRaycastJobs();
-	processConvexcastJobs();
-
+	
 	constexpr double eps = 1e-12;
 
 	// bound accumulator
@@ -317,9 +311,7 @@ void World::updateFixed(Ogre::Real timestep)
 	const float interp = (dtFixed > 0.0) ? float(m_timeAccumulator / dtFixed) : 0.0f;
 
 	processPhysicsQueue();
-	processRaycastJobs();
-	processConvexcastJobs();
-
+	
 	postUpdate(interp);   // World interpolates or exposes interpolated transforms
 	m_isSimulating.store(false, std::memory_order_release);
 }
@@ -403,159 +395,12 @@ void World::PostUpdate(ndFloat32 /*timestep*/)
 // -----------------------------------------------------------------------------
 // Blocking raycast job system (safe from any thread)
 // -----------------------------------------------------------------------------
-void World::processRaycastJobs(void)
-{
-	std::vector<std::shared_ptr<RaycastJob>> jobs;
-	{
-		std::lock_guard<std::mutex> lock(m_jobsMutex);
-		jobs.swap(m_pendingRaycastJobs);
-	}
 
-	for (auto& job : jobs)
-	{
-		OgreNewt::BasicRaycast ray(this, job->mFrom, job->mTo, true);
-		OgreNewt::BasicRaycast::BasicRaycastInfo info = ray.getFirstHit();
-		job->mResult.mInfo = info;
-
-		{
-			std::lock_guard<std::mutex> guard(job->mMutex);
-			job->mDone = true;
-		}
-		job->mCondVar.notify_one();
-	}
-}
-
-World::RaycastResult World::raycastBlocking(const Ogre::Vector3& fromPosition, const Ogre::Vector3& toPosition, OgreNewt::Body* /*ignoreBody*/)
-{
-	if (isMainThread())
-	{
-		World::RaycastResult result;
-		OgreNewt::BasicRaycast ray(this, fromPosition, toPosition, true);
-		result.mInfo = ray.getFirstHit();
-		return result;
-	}
-
-	std::shared_ptr<RaycastJob> job = std::make_shared<RaycastJob>();
-	job->mFrom = fromPosition;
-	job->mTo = toPosition;
-
-	{
-		std::lock_guard<std::mutex> lock(m_jobsMutex);
-		m_pendingRaycastJobs.push_back(job);
-	}
-
-	std::unique_lock<std::mutex> lock(job->mMutex);
-	job->mCondVar.wait(lock, [job]()
-		{
-			return job->mDone;
-		});
-
-	return job->mResult;
-}
 
 // -----------------------------------------------------------------------------
 // Blocking convexcast job system (safe from any thread)
 // -----------------------------------------------------------------------------
-void World::processConvexcastJobs(void)
-{
-	std::deque<ConvexcastJob*> jobs;
-	{
-		std::lock_guard<std::mutex> lock(m_jobsMutex);
-		jobs.swap(m_pendingConvexcastJobs);
-	}
 
-	for (ConvexcastJob* job : jobs)
-	{
-		if (!job || !job->shape)
-		{
-			if (job)
-			{
-				std::lock_guard<std::mutex> lk(job->mtx);
-				job->hasHit = false;
-				job->done = true;
-				job->cv.notify_one();
-			}
-			continue;
-		}
-
-		BasicConvexcast convex(
-			this,
-			*job->shape,
-			job->startpt,
-			job->orientation,
-			job->endpt,
-			job->maxContactsCount,
-			job->threadIndex,
-			job->ignoreBody);
-
-		if (convex.getContactsCount() > 0)
-		{
-			job->result = convex.getInfoAt(0);
-			job->hasHit = (job->result.mBody != nullptr);
-		}
-		else
-		{
-			job->hasHit = false;
-		}
-
-		{
-			std::lock_guard<std::mutex> lk(job->mtx);
-			job->done = true;
-		}
-		job->cv.notify_one();
-	}
-}
-
-BasicConvexcast::ConvexcastContactInfo World::convexcastBlocking(
-	const ndShapeInstance& shape,
-	const Ogre::Vector3& startpt,
-	const Ogre::Quaternion& orientation,
-	const Ogre::Vector3& endpt,
-	OgreNewt::Body* ignoreBody,
-	int maxContactsCount,
-	int threadIndex)
-{
-	BasicConvexcast::ConvexcastContactInfo info;
-
-	// Main thread or newton work thread, execute immediately
-	if (isMainThread() || threadIndex >= 0)
-	{
-		BasicConvexcast convex(this, shape, startpt, orientation, endpt, maxContactsCount, threadIndex, ignoreBody);
-		if (convex.getContactsCount() > 0)
-			info = convex.getInfoAt(0);
-		return info;
-	}
-
-	ConvexcastJob job;
-	job.shape = &shape;
-	job.startpt = startpt;
-	job.orientation = orientation;
-	job.endpt = endpt;
-	job.ignoreBody = ignoreBody;
-	job.maxContactsCount = maxContactsCount;
-	job.threadIndex = threadIndex;
-	job.hasHit = false;
-	job.done = false;
-
-	{
-		std::lock_guard<std::mutex> lock(m_jobsMutex);
-		m_pendingConvexcastJobs.push_back(&job);
-	}
-
-	{
-		std::unique_lock<std::mutex> lock(job.mtx);
-		while (!job.done)
-		{
-			job.cv.wait(lock);
-		}
-	}
-
-	if (job.hasHit)
-	{
-		info = job.result;
-	}
-	return info;
-}
 
 void World::setJointRecursiveCollision(const OgreNewt::Body* root, bool enable)
 {

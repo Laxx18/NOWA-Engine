@@ -1509,7 +1509,7 @@ namespace NOWA
 		// Range is -1..+1
 		Ogre::Real rawLX = Ogre::Math::Clamp(static_cast<Ogre::Real>(joystickState.mAxes[1].abs) / 32767.0f, -1.0f, 1.0f);
 
-		rawLX = ApplyNotch(rawLX, 0.10f);               // <- makes first ~10% do nothing
+		// rawLX = ApplyNotch(rawLX, 0.10f);               // <- makes first ~10% do nothing
 		rawLX = rawLX / (1.0f - 0.10f);                 // renormalize back to [-1..1]
 		rawLX = Clamp1(rawLX);
 
@@ -1555,7 +1555,7 @@ namespace NOWA
 		// Range is -1..+1
 		Ogre::Real rawRX = Ogre::Math::Clamp(static_cast<Ogre::Real>(joystickState.mAxes[3].abs) / 32767.0f, -1.0f, 1.0f);
 
-		rawRX = ApplyNotch(rawRX, 0.10f);               // <- makes first ~10% do nothing
+		// rawRX = ApplyNotch(rawRX, 0.10f);               // <- makes first ~10% do nothing
 		rawRX = rawRX / (1.0f - 0.10f);                 // renormalize back to [-1..1]
 		rawRX = Clamp1(rawRX);
 

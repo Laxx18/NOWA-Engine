@@ -193,9 +193,6 @@ namespace OgreNewt
 
 		void applyBrakes(ndReal bkforce, ndConstraintDescritor& desc);
 
-		void longitudinalAndLateralFriction(const ndVector& contactPos, const ndVector& lateralPinIn, const ndVector& longitudinalPinIn,
-			ndReal lateralMu, ndReal longitudinalMu, ndConstraintDescritor& desc);
-
 		ndMatrix getLocalMatrix0();
 
 		void setTireConfiguration(const TireConfiguration& cfg);
@@ -207,6 +204,12 @@ namespace OgreNewt
 		void processPreUpdate(Ogre::Real timestep, int threadIndex);
 		Ogre::Real applySuspenssionLimit();
 		Ogre::Real calcArcadeGripMul(Ogre::Real speed, Ogre::Real speedRef, Ogre::Real maxMul);
+
+		void longitudinalAndLateralFriction(const ndVector& contactPos, const ndVector& lateralPinIn, const ndVector& longitudinalPinIn,
+			ndReal lateralMu, ndReal longitudinalMu, ndConstraintDescritor& desc);
+
+		void longitudinalAndLateralFriction2(ndVector tireposit, ndVector lateralpin, ndReal turnfriction, ndReal sidingfriction, ndConstraintDescritor& desc);
+
 	public:
 		Body* m_thisBody;
 		ndBodyKinematic* m_hitBody;

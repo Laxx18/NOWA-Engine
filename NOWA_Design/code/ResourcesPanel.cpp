@@ -209,6 +209,8 @@ void ResourcesPanelMeshes::shutdown()
 {
 	this->meshesTree->eventTreeNodePrepare -= newDelegate(this, &ResourcesPanelMeshes::notifyTreeNodePrepare);
 	this->meshesTree->eventTreeNodeSelected -= newDelegate(this, &ResourcesPanelMeshes::notifyTreeNodeSelected);
+
+	BaseLayout::shutdown();
 }
 
 void ResourcesPanelMeshes::editTextChange(MyGUI::Widget* sender)
@@ -508,7 +510,7 @@ void ResourcesPanelMeshPreview::initialise()
 
 void ResourcesPanelMeshPreview::shutdown()
 {
-
+	BaseLayout::shutdown();
 }
 
 void ResourcesPanelMeshPreview::actualizeMesh(void)
@@ -591,6 +593,8 @@ void ResourcesPanelGameObjects::shutdown()
 	this->resourcesSearchEdit->eventMouseButtonClick -= MyGUI::newDelegate(this, &ResourcesPanelGameObjects::onMouseClick);
 	this->gameObjectsTree->eventTreeNodeSelected -= newDelegate(this, &ResourcesPanelGameObjects::notifyTreeNodeSelected);
 	this->gameObjectsTree->eventKeyButtonPressed -= newDelegate(this, &ResourcesPanelGameObjects::keyButtonPressed);
+
+	BaseLayout::shutdown();
 }
 
 void ResourcesPanelGameObjects::editTextChange(MyGUI::Widget* sender)
@@ -1003,6 +1007,8 @@ void ResourcesPanelDataBlocks::shutdown()
 	this->dataBlocksTree->eventTreeNodeSelected -= newDelegate(this, &ResourcesPanelDataBlocks::notifyTreeNodeSelected);
 	this->dataBlocksTree->eventKeyButtonPressed -= newDelegate(this, &ResourcesPanelDataBlocks::notifyKeyButtonPressed);
 	this->dataBlocksTree->eventTreeNodeContextMenu -= newDelegate(this, &ResourcesPanelDataBlocks::notifyTreeContextMenu);
+
+	BaseLayout::shutdown();
 }
 
 void ResourcesPanelDataBlocks::editTextChange(MyGUI::Widget* sender)
@@ -1196,6 +1202,8 @@ void ResourcesPanelTextures::shutdown()
 	this->texturesTree->eventTreeNodeSelected -= newDelegate(this, &ResourcesPanelTextures::notifyTreeNodeSelected);
 	this->texturesTree->eventKeyButtonPressed -= newDelegate(this, &ResourcesPanelTextures::notifyKeyButtonPressed);
 	this->texturesTree->eventTreeNodeContextMenu -= newDelegate(this, &ResourcesPanelTextures::notifyTreeContextMenu);
+
+	BaseLayout::shutdown();
 }
 
 void ResourcesPanelTextures::editTextChange(MyGUI::Widget* sender)

@@ -24,12 +24,12 @@ Scene1_QuatBike_0["connect"] = function(gameObject)
     skidSound = player:getSimpleSoundComponentFromIndex(1);
     
     inputDeviceModule = player:getInputDeviceComponent():getInputDeviceModule();
-	
-	inputDeviceModule:setAnalogActionThreshold(0.55)
+    
+    inputDeviceModule:setAnalogActionThreshold(0.55)
 end
 
 Scene1_QuatBike_0["disconnect"] = function()
-    AppStateManager:getGameObjectController():undoAll();
+    --AppStateManager:getGameObjectController():undoAll();
 end
 
 Scene1_QuatBike_0["update"] = function(dt)

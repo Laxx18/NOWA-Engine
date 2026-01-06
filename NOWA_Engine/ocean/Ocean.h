@@ -27,6 +27,13 @@ namespace Ogre
     {
         friend class OceanCell;
 
+        struct SavedState
+        {
+            RenderableArray m_renderables;
+            size_t m_currentCell;
+            Camera const* m_camera;
+        };
+
         std::vector<float>          m_heightMap;
         uint32                      m_width;
         uint32                      m_depth; //PNG's Height
@@ -43,15 +50,16 @@ namespace Ogre
         Vector3     m_OceanOrigin;
         uint32      m_basePixelDimension;
 
-        std::vector<OceanCell>   m_OceanCells;
+        std::vector<OceanCell>   m_OceanCells[2];
         std::vector<OceanCell*>  m_collectedCells[2];
         size_t                     m_currentCell;
 
         Vector3             m_prevLightDir;
 
         // Ogre stuff
-        CompositorManager2 *m_compositorManager;
-        Camera const *      m_camera;
+        CompositorManager2* m_compositorManager;
+        Camera const*       m_camera;
+        SavedState          m_savedState;
 
         inline OceanGridPoint worldToGrid( const Vector3 &vPos ) const;
         inline Vector2 gridToWorld( const OceanGridPoint &gPos ) const;
@@ -63,8 +71,9 @@ namespace Ogre
         void optimizeCellsAndAdd(void);
 
     public:
-        Ocean( IdType id, ObjectMemoryManager *objectMemoryManager, SceneManager *sceneManager,
-               uint8 renderQueueId, CompositorManager2 *compositorManager, const Camera *camera );
+        Ocean(IdType id, ObjectMemoryManager* objectMemoryManager, SceneManager* sceneManager,
+               uint8 renderQueueId, CompositorManager2* compositorManager, const Camera* camera);
+
         ~Ocean() override;
 
         /** Must be called every frame so we can check the camera's position
@@ -81,15 +90,35 @@ namespace Ogre
         /// load must already have been called.
         void setDatablock( HlmsDatablock *datablock );
 
+        void setCamera(Ogre::Camera* camera);
+
         //MovableObject overloads
         const String &getMovableType() const override;
 
         const Camera *getCamera() const { return m_camera; }
         void          setCamera( const Camera *camera ) { m_camera = camera; }
 
+        /// Swaps current state with a saved one. Useful for rendering shadow maps
+        void _swapSavedState(void);
+
         const Vector2& getXZDimensions(void) const      { return m_xzDimensions; }
         const Vector2& getXZInvDimensions(void) const   { return m_xzInvDimensions; }
         const Vector3& getOceanOrigin(void) const     { return m_OceanOrigin; }
+    };
+
+    // Factory so SceneManager::destroyMovableObject() works for type "Ocean"
+    class OceanFactory : public MovableObjectFactory
+    {
+    public:
+        static const String FACTORY_TYPE_NAME;
+
+        const String& getType(void) const override;
+
+    protected:
+        MovableObject* createInstanceImpl(IdType id, ObjectMemoryManager* objectMemoryManager, SceneManager* manager, const NameValuePairList* params) override;
+
+    public:
+        void destroyInstance(MovableObject* obj) override;
     };
 }
 

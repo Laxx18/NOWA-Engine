@@ -32,7 +32,7 @@ namespace NOWA
 		this->firstTimeMoveValueSet = true;
 		if (this->sceneNode)
 		{
-			ENQUEUE_RENDER_COMMAND("ThirdPersonCamera::onSetData",
+			ENQUEUE_RENDER_COMMAND_WAIT("ThirdPersonCamera::onSetData",
 			{
 				this->camera->setPosition(this->sceneNode->_getDerivedPositionUpdated());
 				this->camera->setOrientation(this->sceneNode->_getDerivedOrientationUpdated());
@@ -42,6 +42,12 @@ namespace NOWA
 		{
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ThirdPersonCamera]: Warning cannot use the game object component for init positioning of the camera, since it is NULL.");
 		}
+		NOWA::GraphicsModule::getInstance()->removeTrackedCamera(this->camera);
+	}
+
+	void ThirdPersonCamera::onClearData(void)
+	{
+		NOWA::GraphicsModule::getInstance()->removeTrackedCamera(this->camera);
 	}
 
 	void ThirdPersonCamera::setOffsetPosition(const Ogre::Vector3& offsetPosition)

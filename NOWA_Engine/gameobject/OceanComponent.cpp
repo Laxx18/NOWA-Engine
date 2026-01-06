@@ -6,10 +6,8 @@
 #include "camera/CameraManager.h"
 #include "modules/WorkspaceModule.h"
 #include "ocean/OgreHlmsOcean.h"
-#include "ocean/OgreHlmsOceanDatablock.h"
 #include "WorkspaceComponents.h"
-#include "main/Core.h"
-
+#include "CameraComponent.h"
 #include "main/AppStateManager.h"
 
 namespace NOWA
@@ -20,22 +18,40 @@ namespace NOWA
 	OceanComponent::OceanComponent()
 		: GameObjectComponent(),
 		ocean(nullptr),
-		datablock(nullptr)
-		/*diffuseColor(new Variant(OceanComponent::AttrDiffuseColor(), Ogre::Vector3::UNIT_SCALE, this->attributes)),
-		specularColor(new Variant(OceanComponent::AttrSpecularColor(), Ogre::Vector3::UNIT_SCALE, this->attributes)),
-		powerScale(new Variant(OceanComponent::AttrPowerScale(), 1.0f, this->attributes)),
-		direction(new Variant(OceanComponent::AttrDirection(), Ogre::Vector3::ZERO, this->attributes)),
-		affectParentNode(new Variant(OceanComponent::AttrAffectParentNode(), true, this->attributes)),
-		castShadows(new Variant(OceanComponent::AttrCastShadows(), true, this->attributes)),
-		showDummyEntity(new Variant(OceanComponent::AttrShowDummyEntity(), false, this->attributes))*/
+		datablock(nullptr),
+		postInitDone(false),
+		usedCamera(nullptr),
+		cameraId(new Variant(OceanComponent::AttrCameraId(), static_cast<unsigned long>(0), this->attributes, true)),
+		deepColour(new Variant(OceanComponent::AttrDeepColour(), Ogre::Vector3(0.0f, 0.03f, 0.05f), this->attributes)),
+		shallowColour(new Variant(OceanComponent::AttrShallowColour(), Ogre::Vector3(0.0f, 0.08f, 0.1f), this->attributes)),
+		brdf(new Variant(OceanComponent::AttrBrdf(),
+			{ "Default", "CookTorrance", "BlinnPhong",
+			  "DefaultUncorrelated", "DefaultSeparateDiffuseFresnel",
+			  "CookTorranceSeparateDiffuseFresnel", "BlinnPhongSeparateDiffuseFresnel" }, this->attributes)),
+		shaderWavesScale(new Variant(OceanComponent::AttrShaderWavesScale(), 1.0f, this->attributes)),
+		wavesIntensity(new Variant(OceanComponent::AttrWavesIntensity(), 0.8f, this->attributes)),
+		oceanWavesScale(new Variant(OceanComponent::AttrOceanWavesScale(), 1.6f, this->attributes)),
+		oceanSize(new Variant(OceanComponent::AttrOceanSize(), Ogre::Vector2(200.0f, 200.0f), this->attributes)),
+		oceanCenter(new Variant(OceanComponent::AttrOceanCenter(), Ogre::Vector3::ZERO, this->attributes))
 	{
-		
+		this->cameraId->setDescription("The optional camera game object id which can be set. E.g. useful if the MinimapComponent is involved, to set the minimap camera, so that ocean is painted correctly on minimap. Can be left of, default is the main active camera.");
+
+		this->deepColour->setDescription("Ocean deep water colour (Vector3 RGB).");
+		this->shallowColour->setDescription("Ocean shallow water colour (Vector3 RGB).");
+		this->brdf->setDescription("Ocean BRDF model (enum as integer, e.g. BlinnPhong).");
+		this->shaderWavesScale->setDescription("Shader-side wave/detail scale.");
+		this->wavesIntensity->setDescription("Wave amplitude/intensity.");
+		this->oceanWavesScale->setDescription("Wave/tiling scale.");
+		this->oceanSize->setDescription("Ocean size in world units (Vector2).");
+		this->oceanCenter->setDescription("Ocean center position in world space (Vector3).");
 	}
 
 	OceanComponent::~OceanComponent()
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[OceanComponent] Destructor ocean component for game object: " + this->gameObjectPtr->getName());
 		
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &OceanComponent::handleSwitchCamera), EventDataSwitchCamera::getStaticEventType());
+
 		this->destroyOcean();
 	}
 
@@ -43,67 +59,71 @@ namespace NOWA
 	{
 		GameObjectComponent::init(propertyElement);
 
-		/*if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Diffuse")
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "CameraId")
 		{
-			this->diffuseColor->setValue(XMLConverter::getAttribVector3(propertyElement, "data", Ogre::Vector3::UNIT_SCALE));
+			this->cameraId->setValue(XMLConverter::getAttribUnsignedLong(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Specular")
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "DeepColour")
 		{
-			this->specularColor->setValue(XMLConverter::getAttribVector3(propertyElement, "data", Ogre::Vector3::UNIT_SCALE));
+			this->deepColour->setValue(XMLConverter::getAttribVector3(propertyElement, "data", Ogre::Vector3(0.0f, 0.2f, 0.4f)));
 			propertyElement = propertyElement->next_sibling("property");
 		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "PowerScale")
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "ShallowColour")
 		{
-			this->powerScale->setValue(XMLConverter::getAttribReal(propertyElement, "data", 1.0f));
+			this->shallowColour->setValue(XMLConverter::getAttribVector3(propertyElement, "data", Ogre::Vector3(0.0f, 0.6f, 0.8f)));
 			propertyElement = propertyElement->next_sibling("property");
 		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Direction")
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Brdf")
 		{
-			this->direction->setValue(XMLConverter::getAttribVector3(propertyElement, "data", Ogre::Vector3::ZERO));
+			this->brdf->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AffectParentNode")
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "ShaderWavesScale")
 		{
-			this->affectParentNode->setValue(XMLConverter::getAttribBool(propertyElement, "data", false));
+			this->shaderWavesScale->setValue(XMLConverter::getAttribReal(propertyElement, "data", 1.0f));
 			propertyElement = propertyElement->next_sibling("property");
 		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "CastShadows")
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "WavesIntensity")
 		{
-			this->castShadows->setValue(XMLConverter::getAttribBool(propertyElement, "data", true));
+			this->wavesIntensity->setValue(XMLConverter::getAttribReal(propertyElement, "data", 0.8f));
 			propertyElement = propertyElement->next_sibling("property");
-		}*/
+		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "OceanWavesScale")
+		{
+			this->oceanWavesScale->setValue(XMLConverter::getAttribReal(propertyElement, "data", 1.6f));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Size")
+		{
+			this->oceanSize->setValue(XMLConverter::getAttribVector2(propertyElement, "data", Ogre::Vector2(200.0f, 200.0f)));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Center")
+		{
+			this->oceanCenter->setValue(XMLConverter::getAttribVector3(propertyElement, "data", Ogre::Vector3::ZERO));
+			propertyElement = propertyElement->next_sibling("property");
+		}
 		return true;
 	}
 
 	GameObjectCompPtr OceanComponent::clone(GameObjectPtr clonedGameObjectPtr)
 	{
-		OceanCompPtr clonedCompPtr(boost::make_shared<OceanComponent>());
-
-		
-		/*clonedCompPtr->setDiffuseColor(this->diffuseColor->getVector3());
-		clonedCompPtr->setSpecularColor(this->specularColor->getVector3());
-		clonedCompPtr->setPowerScale(this->powerScale->getReal());
-		clonedCompPtr->setDirection(this->direction->getVector3());
-		clonedCompPtr->setAffectParentNode(this->affectParentNode->getBool());
-		clonedCompPtr->setCastShadows(this->castShadows->getBool());
-		clonedCompPtr->setShowDummyEntity(this->showDummyEntity->getBool());*/
-
-		clonedGameObjectPtr->addComponent(clonedCompPtr);
-		clonedCompPtr->setOwner(clonedGameObjectPtr);
-
-		GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
-		return clonedCompPtr;
+		return nullptr;
 	}
 
 	bool OceanComponent::postInit(void)
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[OceanComponent] Init ocean component for game object: " + this->gameObjectPtr->getName());
 
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &OceanComponent::handleSwitchCamera), EventDataSwitchCamera::getStaticEventType());
+
 		this->gameObjectPtr->setDoNotDestroyMovableObject(true);
 
-		this->gameObjectPtr->setUseReflection(false);
-		this->gameObjectPtr->getAttribute(GameObject::AttrUseReflection())->setVisible(false);
+		// this->gameObjectPtr->setUseReflection(false);
+		// this->gameObjectPtr->getAttribute(GameObject::AttrUseReflection())->setVisible(false);
 		this->gameObjectPtr->getAttribute(GameObject::AttrMeshName())->setVisible(false);
 		this->gameObjectPtr->getAttribute(GameObject::AttrScale())->setVisible(false);
 
@@ -111,185 +131,296 @@ namespace NOWA
 		this->gameObjectPtr->getAttribute(GameObject::AttrDynamic())->setVisible(false);
 		this->gameObjectPtr->getAttribute(GameObject::AttrClampY())->setVisible(false);
 
+		this->postInitDone = true;
+
 		this->createOcean();
 		return true;
 	}
 
+	void OceanComponent::handleSwitchCamera(EventDataPtr eventData)
+	{
+		// When camera changed event must be triggered, to set the new camera for the ocean
+		WorkspaceBaseComponent* workspaceBaseComponent = WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent();
+		if (nullptr != workspaceBaseComponent)
+		{
+			boost::shared_ptr<EventDataSwitchCamera> castEventData = boost::static_pointer_cast<EventDataSwitchCamera>(eventData);
+			unsigned long id = std::get<0>(castEventData->getCameraGameObjectData());
+			unsigned int index = std::get<1>(castEventData->getCameraGameObjectData());
+			bool active = std::get<2>(castEventData->getCameraGameObjectData());
+
+			// if a camera has been set as active, go through all game objects and set all camera components as active false
+			if (true == active)
+			{
+				auto gameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects();
+				for (auto& it = gameObjects->begin(); it != gameObjects->end(); ++it)
+				{
+					GameObject* gameObject = it->second.get();
+					if (id != gameObject->getId())
+					{
+						auto cameraComponent = NOWA::makeStrongPtr(gameObject->getComponent<CameraComponent>());
+						if (nullptr != cameraComponent)
+						{
+							Ogre::String s1 = cameraComponent->getCamera()->getName();
+							Ogre::String s2 = this->usedCamera ? this->usedCamera->getName() : "null";
+
+							if (true == cameraComponent->isActivated() && cameraComponent->getCamera() != this->usedCamera)
+							{
+								this->destroyOcean();
+								this->createOcean();
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
 	bool OceanComponent::connect(void)
 	{
-		return false;
+		return true;
 	}
 
 	bool OceanComponent::disconnect(void)
 	{
-		return false;
+		Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
+		NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
+
+		return true;
 	}
 
 	void OceanComponent::update(Ogre::Real dt, bool notSimulating)
 	{
 		if (false == notSimulating)
 		{
-			this->ocean->update();
+			auto closureFunction = [this](Ogre::Real weight)
+				{
+					this->ocean->update();
+				};
+			Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
+			NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
 		}
-		
 	}
 
 	void OceanComponent::createOcean(void)
 	{
-		// Attention: When camera changed event must be triggered, to set the new camera for the ocean
-		if (nullptr == this->ocean)
+		if (nullptr == this->ocean && nullptr != AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera() && true == this->postInitDone)
 		{
-			//Create ocean
-			this->ocean = new Ogre::Ocean(Ogre::Id::generateNewId<Ogre::MovableObject>(), &this->gameObjectPtr->getSceneManager()->_getEntityMemoryManager(Ogre::SCENE_STATIC),
-				this->gameObjectPtr->getSceneManager(), 0, Ogre::Root::getSingletonPtr()->getCompositorManager2(),
-				AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera());
-
-			this->ocean->setCastShadows(false);
-			this->ocean->setName(this->gameObjectPtr->getName());
-
-			Ogre::Vector3 center = Ogre::Vector3::ZERO;
-			Ogre::Vector2 size = Ogre::Vector2(200, 200);
-			this->ocean->create(center, size);
-
-			
-			auto* hlmsOcean = static_cast<Ogre::HlmsOcean*>(
-				Ogre::Root::getSingleton().getHlmsManager()->getHlms(Ogre::HLMS_USER1));
-
-			hlmsOcean->setOceanDataTextureName("oceanData.dds");
-			hlmsOcean->setWeightTextureName("weight.dds");
-
-
-			// IMPORTANT: do NOT set oceanDataTex as env probe!
-			// hlmsOcean->setEnvProbe( ... ) must be a cubemap probe (optional).
-
-			// Optional: only if you actually have a cubemap probe texture:
-			//// Ogre::TextureGpu* probeCube = ...;
-			//// hlmsOcean->setEnvProbe(probeCube);
-
-			if (nullptr == this->datablock)
+			ENQUEUE_RENDER_COMMAND("OceanComponent::createOcean",
 			{
-				Ogre::String datablockName = "Ocean";
-				this->datablock = static_cast<Ogre::HlmsOceanDatablock*>(hlmsOcean->createDatablock(datablockName, datablockName, Ogre::HlmsMacroblock(),
-					Ogre::HlmsBlendblock(), Ogre::HlmsParamVec()));
-
-				// static_cast<Ogre::HlmsOceanDatablock*>(this->datablock)->setDeepColour
-				// static_cast<Ogre::HlmsOceanDatablock*>(this->datablock)->setShallowColour
-				// static_cast<Ogre::HlmsOceanDatablock*>(this->datablock)->setShallowColour
-				// static_cast<Ogre::HlmsOceanDatablock*>(this->datablock)->setWavesScale
-
-				this->ocean->setDatablock(this->datablock);
-			}
-
-			this->ocean->setStatic(true);
-			this->gameObjectPtr->setDynamic(false);
-			this->gameObjectPtr->getSceneNode()->attachObject(this->ocean);
-			this->ocean->setCastShadows(false);
-
-			this->gameObjectPtr->init(this->ocean);
-			// Register after the component has been created
-			AppStateManager::getSingletonPtr()->getGameObjectController()->registerGameObject(gameObjectPtr);
-
-			WorkspaceBaseComponent* workspaceBaseComponent = WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent();
-			if (nullptr != workspaceBaseComponent)
-			{
-				if (false == workspaceBaseComponent->getUseOcean())
+				if (this->cameraId->getULong() != 0)
 				{
-					workspaceBaseComponent->setUseOcean(true);
+					GameObjectPtr cameraGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->cameraId->getULong());
+					if (nullptr != cameraGameObjectPtr)
+					{
+						auto& cameraCompPtr = NOWA::makeStrongPtr(cameraGameObjectPtr->getComponent<CameraComponent>());
+						if (nullptr != cameraCompPtr)
+						{
+							this->usedCamera = cameraCompPtr->getCamera();
+						}
+					}
 				}
-			}
+				else
+				{
+					this->usedCamera = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
+				}
+
+				// Create ocean
+				this->ocean = new Ogre::Ocean(Ogre::Id::generateNewId<Ogre::MovableObject>(), &this->gameObjectPtr->getSceneManager()->_getEntityMemoryManager(Ogre::SCENE_DYNAMIC),
+					this->gameObjectPtr->getSceneManager(), 0, Ogre::Root::getSingletonPtr()->getCompositorManager2(), this->usedCamera);
+
+				this->ocean->setCastShadows(false);
+				this->ocean->setName(this->gameObjectPtr->getName());
+
+				Ogre::Vector3 center = this->oceanCenter->getVector3();
+				Ogre::Vector2 size = this->oceanSize->getVector2();
+				this->ocean->create(center, size);
+
+				// Runtime wave parameters (Ocean side)
+				this->ocean->setWavesIntensity(this->wavesIntensity->getReal());
+				this->ocean->setWavesScale(this->oceanWavesScale->getReal());
+
+				auto* hlmsOcean = static_cast<Ogre::HlmsOcean*>(Ogre::Root::getSingleton().getHlmsManager()->getHlms(Ogre::HLMS_USER1));
+
+				hlmsOcean->setOceanDataTextureName("oceanData.dds");
+				hlmsOcean->setWeightTextureName("weight.dds");
+
+				// IMPORTANT: do NOT set oceanDataTex as env probe!
+				// hlmsOcean->setEnvProbe( ... ) must be a cubemap probe (optional).
+
+				// Optional: only if you actually have a cubemap probe texture:
+				//// Ogre::TextureGpu* probeCube = ...;
+				//// hlmsOcean->setEnvProbe(probeCube);
+
+				if (nullptr == this->datablock)
+				{
+					Ogre::String datablockName = "Ocean_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
+					this->datablock = static_cast<Ogre::HlmsOceanDatablock*>(hlmsOcean->createDatablock(datablockName, datablockName, Ogre::HlmsMacroblock(), Ogre::HlmsBlendblock(), Ogre::HlmsParamVec()));
+
+					this->ocean->setDatablock(this->datablock);
+
+					static_cast<Ogre::HlmsOceanDatablock*>(this->datablock)->setDeepColour(this->deepColour->getVector3());
+					static_cast<Ogre::HlmsOceanDatablock*>(this->datablock)->setShallowColour(this->shallowColour->getVector3());
+
+					static_cast<Ogre::HlmsOceanDatablock*>(this->datablock)->setBrdf(this->mapStringToOceanBrdf(this->brdf->getListSelectedValue()));
+
+					// Shader-side detail scale
+					static_cast<Ogre::HlmsOceanDatablock*>(this->datablock)->setWavesScale(this->shaderWavesScale->getReal());
+				}
+
+				this->ocean->setStatic(false);
+				this->gameObjectPtr->setDynamic(true);
+				this->gameObjectPtr->getSceneNode()->attachObject(this->ocean);
+
+				this->gameObjectPtr->init(this->ocean);
+				// Register after the component has been created
+				AppStateManager::getSingletonPtr()->getGameObjectController()->registerGameObject(gameObjectPtr);
+
+				WorkspaceBaseComponent* workspaceBaseComponent = WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent();
+				if (nullptr != workspaceBaseComponent)
+				{
+					if (false == workspaceBaseComponent->getUseOcean())
+					{
+						workspaceBaseComponent->setUseOcean(true);
+					}
+				}
+			});
 		}
 	}
 
 	void OceanComponent::destroyOcean(void)
 	{
-		if (this->ocean == nullptr)
+		if (nullptr == this->ocean)
+		{
 			return;
+		}
 
-		auto ocean = this->ocean;
-		// auto hlmsPbsTerraShadows = this->hlmsPbsTerraShadows;
-		// auto terraWorkspaceListener = this->terraWorkspaceListener;
-		auto gameObjectPtr = this->gameObjectPtr;
+		Ogre::Ocean* ocean = this->ocean;
+		GameObjectPtr gameObjectPtr = this->gameObjectPtr;
+		Ogre::HlmsDatablock* datablock = this->datablock;
 
-		// Optional: get components that might become unavailable
-		auto core = Core::getSingletonPtr();
-		auto appState = AppStateManager::getSingletonPtr();
-		auto workspaceModule = WorkspaceModule::getInstance();
-		auto workspaceBaseComponent = workspaceModule->getPrimaryWorkspaceComponent();
-		auto datablock = this->datablock;
+		WorkspaceModule* workspaceModule = WorkspaceModule::getInstance();
+		WorkspaceBaseComponent* workspaceBaseComponent = nullptr;
+		if (nullptr != workspaceModule)
+		{
+			workspaceBaseComponent = workspaceModule->getPrimaryWorkspaceComponent();
+		}
+
+		AppStateManager* appState = AppStateManager::getSingletonPtr();
 
 		// Clear pointers on *this* immediately
 		this->ocean = nullptr;
 		this->datablock = nullptr;
-		// this->hlmsPbsTerraShadows = nullptr;
-		// this->terraWorkspaceListener = nullptr;
 
-		ENQUEUE_DESTROY_COMMAND("OceanComponent::destroyOcean", _6(ocean, gameObjectPtr, core, appState, workspaceBaseComponent, datablock),
+		NOWA::GraphicsModule::DestroyCommand destroyCommand =
+			[ocean, gameObjectPtr, workspaceBaseComponent, appState, datablock]() mutable
 			{
-				if (ocean)
+				if (nullptr != workspaceBaseComponent)
 				{
-					if (workspaceBaseComponent && appState && !appState->bShutdown)
+					if (nullptr != appState && false == appState->bShutdown)
 					{
 						workspaceBaseComponent->setUseOcean(false);
-						/*if (terraWorkspaceListener)
-						{
-							workspaceBaseComponent->getWorkspace()->removeListener(terraWorkspaceListener);
-							delete terraWorkspaceListener;
-						}*/
-					}
-
-					if (gameObjectPtr && gameObjectPtr->movableObject)
-					{
-						if (nullptr != datablock)
-						{
-							Ogre::Hlms* hlmsUnlit = Ogre::Root::getSingletonPtr()->getHlmsManager()->getHlms(Ogre::HLMS_UNLIT);
-							hlmsUnlit->destroyDatablock(datablock->getName());
-							datablock = nullptr;
-						}
-						if (nullptr != ocean)
-						{
-							gameObjectPtr->getSceneNode()->detachObject(ocean);
-							delete ocean;
-							ocean = nullptr;
-						}
-
-						if (gameObjectPtr->boundingBoxDraw && gameObjectPtr->sceneManager)
-						{
-							gameObjectPtr->sceneManager->destroyWireAabb(gameObjectPtr->boundingBoxDraw);
-							gameObjectPtr->boundingBoxDraw = nullptr;
-						}
 					}
 				}
-			});
+
+				if (nullptr != ocean)
+				{
+					if (true == ocean->isAttached())
+					{
+						Ogre::SceneNode* parentNode = ocean->getParentSceneNode();
+						if (nullptr != parentNode)
+						{
+							parentNode->detachObject(ocean);
+						}
+					}
+					else if (nullptr != gameObjectPtr && nullptr != gameObjectPtr->getSceneNode())
+					{
+						// Defensive: detach from GO node if it is still there (even if ocean thinks it's not attached)
+						gameObjectPtr->getSceneNode()->detachObject(ocean);
+					}
+
+					// Created with factory not with scene manager, so manual delete!
+					delete ocean;
+					ocean = nullptr;
+				}
+
+				if (nullptr != gameObjectPtr)
+				{
+					gameObjectPtr->movableObject = nullptr;
+				}
+
+				if (nullptr != gameObjectPtr && nullptr != gameObjectPtr->sceneManager && nullptr != gameObjectPtr->boundingBoxDraw)
+				{
+					gameObjectPtr->sceneManager->destroyWireAabb(gameObjectPtr->boundingBoxDraw);
+					gameObjectPtr->boundingBoxDraw = nullptr;
+				}
+
+				if (nullptr != datablock)
+				{
+					Ogre::Hlms* hlms = Ogre::Root::getSingleton().getHlmsManager()->getHlms(Ogre::HLMS_USER1);
+					if (nullptr != hlms)
+					{
+						Ogre::HlmsDatablock* db = hlms->getDatablock(datablock->getName());
+						if (nullptr != db)
+						{
+							auto& linkedRenderables = db->getLinkedRenderables();
+							if (true == linkedRenderables.empty())
+							{
+								db->getCreator()->destroyDatablock(db->getName());
+							}
+						}
+					}
+
+					datablock = nullptr;
+				}
+			};
+
+		GraphicsModule::getInstance()->enqueueDestroy(destroyCommand, "OceanComponent::destroyOcean");
 	}
 
 	void OceanComponent::actualizeValue(Variant* attribute)
 	{
 		GameObjectComponent::actualizeValue(attribute);
 
-		/*if (OceanComponent::AttrDiffuseColor() == attribute->getName())
+		if (OceanComponent::AttrCameraId() == attribute->getName())
 		{
-			this->setDiffuseColor(attribute->getVector3());
+			this->setCameraId(attribute->getULong());
 		}
-		else if (OceanComponent::AttrSpecularColor() == attribute->getName())
+		else if (OceanComponent::AttrDeepColour() == attribute->getName())
 		{
-			this->setSpecularColor(attribute->getVector3());
+			this->setDeepColour(attribute->getVector3());
 		}
-		else if (OceanComponent::AttrPowerScale() == attribute->getName())
+		else if (OceanComponent::AttrShallowColour() == attribute->getName())
 		{
-			this->setPowerScale(attribute->getReal());
+			this->setShallowColour(attribute->getVector3());
 		}
-		else if (OceanComponent::AttrDirection() == attribute->getName())
+		else if (OceanComponent::AttrBrdf() == attribute->getName())
 		{
-			this->setDirection(attribute->getVector3());
+			this->setBrdf(attribute->getListSelectedValue());
 		}
-		else if (OceanComponent::AttrAffectParentNode() == attribute->getName())
+		else if (OceanComponent::AttrShaderWavesScale() == attribute->getName())
 		{
-			this->setAffectParentNode(attribute->getBool());
+			this->setShaderWavesScale(attribute->getReal());
 		}
-		else if (OceanComponent::AttrCastShadows() == attribute->getName())
+		else if (OceanComponent::AttrWavesIntensity() == attribute->getName())
 		{
-			this->setCastShadows(attribute->getBool());
-		}*/
+			this->setWavesIntensity(attribute->getReal());
+		}
+		else if (OceanComponent::AttrOceanWavesScale() == attribute->getName())
+		{
+			this->setShaderWavesScale(attribute->getReal());
+		}
+		else if (OceanComponent::AttrOceanSize() == attribute->getName())
+		{
+			this->setOceanSize(attribute->getVector2());
+			this->destroyOcean();
+			this->createOcean();
+		}
+		else if (OceanComponent::AttrOceanCenter() == attribute->getName())
+		{
+			this->setOceanCenter(attribute->getVector3());
+			this->destroyOcean();
+			this->createOcean();
+		}
 	}
 
 	void OceanComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
@@ -303,41 +434,66 @@ namespace NOWA
 		// 12 = bool
 		GameObjectComponent::writeXML(propertiesXML, doc);
 
-		/* xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "9"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "Diffuse"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->diffuseColor->getVector3())));
+		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "CameraId"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->cameraId->getULong())));
 		propertiesXML->append_node(propertyXML);
 
+		// DeepColour
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "9"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "Specular"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->specularColor->getVector3())));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "DeepColour"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->deepColour->getVector3())));
 		propertiesXML->append_node(propertyXML);
 
+		// ShallowColour
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "9"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "ShallowColour"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->shallowColour->getVector3())));
+		propertiesXML->append_node(propertyXML);
+
+		// Brdf
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "Brdf"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->brdf->getListSelectedValue())));
+		propertiesXML->append_node(propertyXML);
+
+		// ShaderWavesScale
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "PowerScale"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->powerScale->getReal())));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "ShaderWavesScale"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->shaderWavesScale->getReal())));
 		propertiesXML->append_node(propertyXML);
 
+		// WavesIntensity
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "WavesIntensity"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->wavesIntensity->getReal())));
+		propertiesXML->append_node(propertyXML);
+
+		// OceanWavesScale
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "OceanWavesScale"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->oceanWavesScale->getReal())));
+		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "8"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "Size"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->oceanSize->getVector2())));
+		propertiesXML->append_node(propertyXML);
+	
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "9"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "Direction"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->direction->getVector3())));
-		propertiesXML->append_node(propertyXML);
-
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "AffectParentNode"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->affectParentNode->getBool())));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "Center"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->oceanCenter->getVector3())));
 		propertiesXML->append_node(propertyXML);
 		
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "CastShadows"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->castShadows->getBool())));
-		propertiesXML->append_node(propertyXML);*/
 	}
 
 	/*void OceanComponent::setActivated(bool activated)
@@ -375,99 +531,232 @@ namespace NOWA
 		return "GameObjectComponent";
 	}
 
-	/*void OceanComponent::setDiffuseColor(const Ogre::Vector3& diffuseColor)
+	Ogre::String OceanComponent::mapOceanBrdfToString(Ogre::OceanBrdf::OceanBrdf brdf)
 	{
-		this->diffuseColor->setValue(diffuseColor);
-		if (nullptr != this->light)
+		// Detect flags & base BRDF (mask is defined in OceanBrdf enum)
+		const uint32_t flags = static_cast<uint32_t>(brdf);
+		const uint32_t base = flags & Ogre::OceanBrdf::BRDF_MASK;
+
+		const bool uncorrelated = (flags & Ogre::OceanBrdf::FLAG_UNCORRELATED) != 0u;
+		const bool sepDiffuse = (flags & Ogre::OceanBrdf::FLAG_SPERATE_DIFFUSE_FRESNEL) != 0u;
+
+		// Prefer the combined/flagged names first
+		if (base == Ogre::OceanBrdf::Default && uncorrelated)
+			return "DefaultUncorrelated";
+		if (base == Ogre::OceanBrdf::Default && sepDiffuse)
+			return "DefaultSeparateDiffuseFresnel";
+		if (base == Ogre::OceanBrdf::CookTorrance && sepDiffuse)
+			return "CookTorranceSeparateDiffuseFresnel";
+		if (base == Ogre::OceanBrdf::BlinnPhong && sepDiffuse)
+			return "BlinnPhongSeparateDiffuseFresnel";
+
+		// Base names
+		if (base == Ogre::OceanBrdf::CookTorrance)
+			return "CookTorrance";
+		if (base == Ogre::OceanBrdf::BlinnPhong)
+			return "BlinnPhong";
+
+		return "Default";
+	}
+
+	Ogre::OceanBrdf::OceanBrdf OceanComponent::mapStringToOceanBrdf(const Ogre::String& strBrdf)
+	{
+		uint32_t brdf = Ogre::OceanBrdf::Default;
+
+		if ("CookTorrance" == strBrdf)
+			brdf = Ogre::OceanBrdf::CookTorrance;
+		else if ("BlinnPhong" == strBrdf)
+			brdf = Ogre::OceanBrdf::BlinnPhong;
+		else if ("DefaultUncorrelated" == strBrdf)
+			brdf = Ogre::OceanBrdf::Default | Ogre::OceanBrdf::FLAG_UNCORRELATED;
+		else if ("DefaultSeparateDiffuseFresnel" == strBrdf)
+			brdf = Ogre::OceanBrdf::Default | Ogre::OceanBrdf::FLAG_SPERATE_DIFFUSE_FRESNEL;
+		else if ("CookTorranceSeparateDiffuseFresnel" == strBrdf)
+			brdf = Ogre::OceanBrdf::CookTorrance | Ogre::OceanBrdf::FLAG_SPERATE_DIFFUSE_FRESNEL;
+		else if ("BlinnPhongSeparateDiffuseFresnel" == strBrdf)
+			brdf = Ogre::OceanBrdf::BlinnPhong | Ogre::OceanBrdf::FLAG_SPERATE_DIFFUSE_FRESNEL;
+
+		return static_cast<Ogre::OceanBrdf::OceanBrdf>(brdf);
+	}
+
+	void OceanComponent::setCameraId(unsigned long cameraId)
+	{
+		this->cameraId->setValue(cameraId);
+
+		this->destroyOcean();
+		this->createOcean();
+	}
+
+	void OceanComponent::setDeepColour(const Ogre::Vector3& deepColour)
+	{
+		this->deepColour->setValue(deepColour);
+
+		if (nullptr != this->datablock)
 		{
-			this->light->setDiffuseColour(this->diffuseColor->getVector3().x, this->diffuseColor->getVector3().y, this->diffuseColor->getVector3().z);
+			const Ogre::Vector3 c = deepColour;
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("OceanComponent::setDeepColour", _1(c),
+			{
+				if (nullptr != this->datablock)
+				{
+					static_cast<Ogre::HlmsOceanDatablock*>(this->datablock)->setDeepColour(c);
+				}
+			});
 		}
 	}
 
-	Ogre::Vector3 OceanComponent::getDiffuseColor(void) const
+	Ogre::Vector3 OceanComponent::getDeepColour(void) const
 	{
-		return this->diffuseColor->getVector3();
+		return this->deepColour->getVector3();
 	}
 
-	void OceanComponent::setSpecularColor(const Ogre::Vector3& specularColor)
+	void OceanComponent::setShallowColour(const Ogre::Vector3& shallowColour)
 	{
-		this->specularColor->setValue(specularColor);
-		if (nullptr != this->light)
+		this->shallowColour->setValue(shallowColour);
+
+		if (nullptr != this->datablock)
 		{
-			this->light->setSpecularColour(this->specularColor->getVector3().x, this->specularColor->getVector3().y, this->specularColor->getVector3().z);
+			const Ogre::Vector3 c = shallowColour;
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("OceanComponent::setShallowColour", _1(c),
+			{
+				if (nullptr != this->datablock)
+				{
+					static_cast<Ogre::HlmsOceanDatablock*>(this->datablock)->setShallowColour(c);
+				}
+			});
 		}
 	}
 
-	Ogre::Vector3 OceanComponent::getSpecularColor(void) const
+	Ogre::Vector3 OceanComponent::getShallowColour(void) const
 	{
-		return this->specularColor->getVector3();
+		return this->shallowColour->getVector3();
 	}
 
-	void OceanComponent::setPowerScale(Ogre::Real powerScale)
+	void OceanComponent::setBrdf(const Ogre::String& brdfStr)
 	{
-		this->powerScale->setValue(powerScale);
-		if (nullptr != this->light)
+		// Keep Variant in sync
+		if (this->brdf)
+			this->brdf->setListSelectedValue(brdfStr);
+
+		if (!this->datablock)
+			return;
+
+		const Ogre::OceanBrdf::OceanBrdf brdfFlags = this->mapStringToOceanBrdf(brdfStr);
+
+		// Apply on render thread (match your macro name/signature)
+		ENQUEUE_RENDER_COMMAND_MULTI("OceanComponent::setBrdf", _1(brdfFlags),
 		{
-			this->light->setPowerScale(this->powerScale->getReal());
+			auto* oceanDb = static_cast<Ogre::HlmsOceanDatablock*>(this->datablock);
+			if (oceanDb)
+				oceanDb->setBrdf(brdfFlags);
+		});
+	}
+
+	Ogre::String OceanComponent::getBrdf(void) const
+	{
+		if (this->brdf)
+			return this->brdf->getListSelectedValue();
+		return "Default";
+	}
+
+	void OceanComponent::setShaderWavesScale(Ogre::Real wavesScale)
+	{
+		if (wavesScale < Ogre::Real(0.0f))
+			wavesScale = Ogre::Real(0.0f);
+
+		this->shaderWavesScale->setValue(wavesScale);
+
+		if (nullptr != this->datablock)
+		{
+			const Ogre::Real s = wavesScale;
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("OceanComponent::setShaderWavesScale", _1(s),
+			{
+				if (nullptr != this->datablock)
+				{
+					static_cast<Ogre::HlmsOceanDatablock*>(this->datablock)->setWavesScale(s);
+				}
+			});
 		}
 	}
 
-	Ogre::Real OceanComponent::getPowerScale(void) const
+	Ogre::Real OceanComponent::getShaderWavesScale(void) const
 	{
-		return this->powerScale->getReal();
+		return this->shaderWavesScale->getReal();
 	}
 
-	void OceanComponent::setDirection(const Ogre::Vector3& direction)
+	void OceanComponent::setWavesIntensity(Ogre::Real intensity)
 	{
-		this->direction->setValue(direction);
-		if (nullptr != this->light)
+		if (intensity < Ogre::Real(0.0f))
+			intensity = Ogre::Real(0.0f);
+
+		this->wavesIntensity->setValue(intensity);
+
+		if (nullptr != this->ocean)
 		{
-			this->light->setDirection(this->direction->getVector3());
+			const Ogre::Real s = intensity;
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("OceanComponent::setWavesIntensity", _1(s),
+			{
+				if (nullptr != this->ocean)
+				{
+					this->ocean->setWavesIntensity(s);
+				}
+			});
 		}
 	}
 
-	Ogre::Vector3 OceanComponent::getDirection(void) const
+	Ogre::Real OceanComponent::getWavesIntensity(void) const
 	{
-		return this->direction->getVector3();
+		return this->wavesIntensity->getReal();
 	}
 
-	void OceanComponent::setAffectParentNode(bool affectParentNode)
+	void OceanComponent::setOceanWavesScale(Ogre::Real wavesScale)
 	{
-		this->affectParentNode->setValue(affectParentNode);
-		if (nullptr != this->light)
+		if (wavesScale < Ogre::Real(0.0f))
+			wavesScale = Ogre::Real(0.0f);
+
+		this->oceanWavesScale->setValue(wavesScale);
+
+		if (nullptr != this->ocean)
 		{
-			this->light->setAffectParentNode(this->affectParentNode->getBool());
+			const Ogre::Real s = wavesScale;
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("OceanComponent::setOceanWavesScale", _1(s),
+			{
+				if (nullptr != this->ocean)
+				{
+					this->ocean->setWavesScale(s);
+				}
+			});
 		}
 	}
 
-	bool OceanComponent::getAffectParentNode(void) const
+	Ogre::Real OceanComponent::getOceanWavesScale(void) const
 	{
-		return this->affectParentNode->getBool();
+		return this->oceanWavesScale->getReal();
+	}
+	
+	void OceanComponent::setOceanSize(const Ogre::Vector2& size)
+	{
+		this->oceanSize->setValue(size);
 	}
 
-	void OceanComponent::setCastShadows(bool castShadows)
+	Ogre::Vector2 OceanComponent::getOceanSize(void) const
 	{
-		this->castShadows->setValue(castShadows);
-		if (nullptr != this->light)
-		{
-			this->light->setCastShadows(this->castShadows->getBool());
-		}
+		return this->oceanSize->getVector2();
 	}
 
-	bool OceanComponent::getCastShadows(void) const
+	void OceanComponent::setOceanCenter(const Ogre::Vector3& center)
 	{
-		return this->castShadows->getBool();
+		this->oceanCenter->setValue(center);
 	}
 
-	void OceanComponent::setShowDummyEntity(bool showDummyEntity)
+	Ogre::Vector3 OceanComponent::getOceanCenter(void) const
 	{
-		this->showDummyEntity->setValue(showDummyEntity);
+		return this->oceanCenter->getVector3();
 	}
 
-	bool OceanComponent::getShowDummyEntity(void) const
+	unsigned int OceanComponent::geCameraId(void) const
 	{
-		return 	this->showDummyEntity->getBool();
-	}*/
+		return this->cameraId->getULong();
+	}
 
 	Ogre::Ocean* OceanComponent::getOcean(void) const
 	{

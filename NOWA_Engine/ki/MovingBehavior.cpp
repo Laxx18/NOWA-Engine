@@ -602,7 +602,7 @@ namespace NOWA
 					//this->rotY = 20.0;
 					Ogre::Real rnd = Ogre::Math::RangeRandom(-3.0, 3.0);
 					Ogre::Quaternion quat = Ogre::Quaternion::IDENTITY;
-					// Turn agent 70° oder -70° drehen on threaten collision
+					// Turn agent 70 oder -70 drehen on threaten collision
 					if (rnd > 0.0f)
 					{
 						quat = this->agent->getOrientation() * Ogre::Quaternion(Ogre::Degree(70.0f), Ogre::Vector3::UNIT_Y);
@@ -1238,8 +1238,9 @@ namespace NOWA
 				+ (this->agent->getOrientation() * Ogre::Vector3(0.0f, this->agent->getOwner()->getSize().y / 2.0f, 0.0f));
 			// Shoot the ray in that direction
 			// OgreNewt::BasicRaycast ray(this->agent->getOgreNewt(), position, position + (direction * this->obstacleAvoidanceRangeRadius), true);
-			OgreNewt::World::RaycastResult rayResult = this->agent->getOgreNewt()->raycastBlocking(position, position + (direction * this->obstacleAvoidanceRangeRadius));
-			OgreNewt::BasicRaycast::BasicRaycastInfo& info = rayResult.mInfo;
+			OgreNewt::BasicRaycast ray(this->agent->getOgreNewt(), position, position + (direction * this->obstacleAvoidanceRangeRadius), true);
+
+			OgreNewt::BasicRaycast::BasicRaycastInfo info = ray.getFirstHit();
 			// Get contact result
 			// OgreNewt::BasicRaycast::BasicRaycastInfo contact = ray.getFirstHit();
 			if (info.mBody)
@@ -1920,7 +1921,7 @@ namespace NOWA
 			// Get perpendicular direction for V-shape
 			Ogre::Vector3 sideDir = leaderVel.crossProduct(Ogre::Vector3::UNIT_Y).normalisedCopy();
 
-			// Find this agent’s index in the flock
+			// Find this agents index in the flock
 			auto it = std::find(this->flockingAgents.begin(), this->flockingAgents.end(), this->agent);
 			if (it == this->flockingAgents.end()) {
 				return { false, Ogre::Vector3::ZERO }; // Should not happen
@@ -2017,8 +2018,8 @@ namespace NOWA
 			{
 			if ((contact.mBody->getType() != Utilities::TERRAIN) || (contact.mBody->getType() != Utilities::SHEEP))
 			{
-			//In negative Richtung abhängig von der Position des Objektes bewegen
-			//je größer die Distanz zum Objekt, desto wenig wird sich in die entgegende Richtung bewegt
+			//In negative Richtung abhngig von der Position des Objektes bewegen
+			//je grer die Distanz zum Objekt, desto wenig wird sich in die entgegende Richtung bewegt
 			Ogre::Vector3 fencePos = Ogre::Vector3::ZERO;
 			Ogre::Quaternion fenceOrient = Ogre::Quaternion::IDENTITY;
 			contact.mBody->getPositionOrientation(fencePos, fenceOrient);
@@ -2517,7 +2518,7 @@ namespace NOWA
 				// CrowdComponent -> setGoalRadius!
 
 				/*
-				moveForward ähnlich wie mit nlerp oben!
+				moveForward hnlich wie mit nlerp oben!
 				Ogre::Vector3 lookDirection = getLookingDirection();
 				lookDirection.normalise();
 

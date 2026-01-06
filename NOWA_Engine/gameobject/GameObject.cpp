@@ -26,6 +26,7 @@
 #include "OgrePixelCountLodStrategy.h"
 
 #include <array>
+#include <unordered_set>
 
 namespace
 {
@@ -34,7 +35,91 @@ namespace
 		Ogre::HLMS_PBS, Ogre::HLMS_TOON, Ogre::HLMS_UNLIT, Ogre::HLMS_USER0,
 		Ogre::HLMS_USER1, Ogre::HLMS_USER2, Ogre::HLMS_USER3
 	};
-}
+
+	// Collect Hlms datablock names referenced by a MovableObject (Entity/Item) so we can
+	// optionally destroy them after the renderables are gone.
+	// NOTE: We only destroy datablocks when they have *no* linked renderables anymore.
+	void collectDatablockNamesFromMovable(Ogre::MovableObject* movableObject, std::unordered_set<Ogre::String>& outNames)
+	{
+		if (nullptr == movableObject)
+		{
+			return;
+		}
+
+		// v2 Item
+		if(Ogre::Item* item = dynamic_cast<Ogre::Item*>(movableObject))
+		{
+			const size_t num = item->getNumSubItems();
+			for(size_t i = 0u; i < num; ++i)
+			{
+				Ogre::HlmsDatablock* db = item->getSubItem(i)->getDatablock();
+				if (db && db->getNameStr() && !db->getNameStr()->empty())
+				{
+					outNames.insert(*db->getNameStr());
+				}
+			}
+			return;
+		}
+
+		// v1 Entity
+		if(Ogre::v1::Entity* entity = dynamic_cast<Ogre::v1::Entity*>(movableObject))
+		{
+			const size_t num = entity->getNumSubEntities();
+			for(size_t i = 0u; i < num; ++i)
+			{
+				Ogre::HlmsDatablock* db = entity->getSubEntity(i)->getDatablock();
+				if (db && db->getNameStr() && !db->getNameStr()->empty())
+				{
+					outNames.insert(*db->getNameStr());
+				}
+			}
+			return;
+		}
+
+		// Other MovableObject types (Lights, etc.) currently not handled.
+	}
+
+	void tryDestroyDatablockIfUnused(const Ogre::String& datablockName)
+	{
+		if (true == datablockName.empty())
+		{
+			return;
+		}
+
+		Ogre::HlmsManager* hlmsManager = Ogre::Root::getSingleton().getHlmsManager();
+		if (nullptr == hlmsManager)
+		{
+			return;
+		}
+
+		for (Ogre::HlmsTypes hlmsType : searchHlms)
+		{
+			Ogre::Hlms* hlms = hlmsManager->getHlms(hlmsType);
+			if (nullptr == hlms)
+			{
+				continue;
+			}
+
+			Ogre::HlmsDatablock* datablock = hlms->getDatablock( datablockName );
+			if (nullptr == datablock)
+			{
+				continue;
+			}
+
+			// Only destroy if it's not used elsewhere.
+			auto& linkedRenderables = datablock->getLinkedRenderables();
+			if(linkedRenderables.empty())
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObject] Destroying unused datablock: " + datablockName );
+
+				datablock->getCreator()->destroyDatablock(datablock->getName());
+			}
+
+			// A name can only exist in one HLMS type; stop after first hit.
+			break;
+		}
+	}
+};
 
 namespace NOWA
 {
@@ -242,6 +327,22 @@ namespace NOWA
 
 	void GameObject::destroyGameObjectResources(Ogre::SceneNode* sceneNode, Ogre::MovableObject* movableObject, Ogre::WireAabb* boundingBoxDraw, Ogre::RaySceneQuery* clampObjectQuery, Ogre::SceneManager* sceneManager)
 	{
+		if (nullptr == movableObject)
+		{
+			return;
+		}
+		
+		Ogre::String name = movableObject->getParentNode()->getName();
+
+		std::unordered_set<Ogre::String> referencedDatablockNames;
+
+		if (nullptr != movableObject)
+		{
+			// Datablocks are owned by HLMS and won't be destroyed automatically when a GameObject dies.
+			// Collect the datablocks referenced by the renderables so we can destroy them *after* the renderables are gone.
+			collectDatablockNamesFromMovable(movableObject, referencedDatablockNames);
+		}
+
 		if (nullptr != boundingBoxDraw)
 		{
 			sceneManager->destroyWireAabb(boundingBoxDraw);
@@ -252,6 +353,33 @@ namespace NOWA
 			sceneManager->destroyQuery(clampObjectQuery);
 		}
 
+		// IMPORTANT:
+		// Destroy movable object FIRST.
+		// Do NOT use hasMovableObject() – custom movables like Ocean are not reliably registered.
+		if (nullptr != movableObject)
+		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObject] Destroying movable object: " + movableObject->getName() + " (type=" + movableObject->getMovableType() + ")");
+
+			// Detach defensively (may already be detached – that's fine)
+			if (true == movableObject->isAttached())
+			{
+				Ogre::SceneNode* parentNode = movableObject->getParentSceneNode();
+				if (nullptr != parentNode)
+				{
+					parentNode->detachObject(movableObject);
+				}
+			}
+
+			sceneManager->destroyMovableObject(movableObject);
+
+			// Now that renderables are gone, safely destroy unused datablocks
+			for (const Ogre::String& datablockName : referencedDatablockNames)
+			{
+				tryDestroyDatablockIfUnused(datablockName);
+			}
+		}
+
+		// Destroy scene node AFTER movable is gone
 		if (nullptr != sceneNode)
 		{
 			auto nodeIt = sceneNode->getChildIterator();
@@ -263,21 +391,9 @@ namespace NOWA
 
 			sceneNode->detachAllObjects();
 
-			Ogre::LogManager::getSingletonPtr()->logMessage(
-				Ogre::LML_TRIVIAL,
-				"[GameObject] Destroying scene node: " + sceneNode->getName());
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObject] Destroying scene node: " + sceneNode->getName());
 
 			sceneManager->destroySceneNode(sceneNode);
-		}
-
-		if (nullptr != movableObject)
-		{
-			if (sceneManager->hasMovableObject(movableObject))
-			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObject] Destroying movable object: " + movableObject->getName());
-
-				sceneManager->destroyMovableObject(movableObject);
-			}
 		}
 	}
 

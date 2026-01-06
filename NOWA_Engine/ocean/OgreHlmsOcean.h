@@ -107,6 +107,8 @@ namespace Ogre
         HlmsSamplerblock const  *mShadowmapCmpSamplerblock; /// For depth textures & D3D11
         HlmsSamplerblock const  *mCurrentShadowmapSamplerblock;
         HlmsSamplerblock const  *mOceanSamplerblock;
+		HlmsSamplerblock const  *mOceanDataSamplerblock;
+        HlmsSamplerblock const  *mWeightSamplerblock;
 
         uint32                  mCurrentPassBuffer;     /// Resets every to zero every new frame.
 
@@ -125,10 +127,19 @@ namespace Ogre
 
 	    Ogre::TextureGpu *mProbe;
 
+        uint16 mBaseTexUnitForPass = 3u;     // 3 or 5 (Forward+)
+        uint16 mNumShadowMapsForPass = 0u;   // how many you actually bind
+        uint16 mEnvProbeTexUnitForPass = 0u; // where probe should be bound (if enabled)
+        bool   mHasEnvProbeForPass = false;
+
 	    /// Resource names used to bind the ocean simulation textures.
 	    /// Default values match the sample media: "oceanData.dds" and "weight.dds".
 	    String mOceanDataTextureName;
 	    String mWeightTextureName;
+        TextureGpu* mOceanDataTex = nullptr;
+        TextureGpu* mWeightTex = nullptr;
+        bool        mOceanTexReady = false;
+        uint32 mLastCacheHash = 0;
 
         const HlmsCache *createShaderCacheEntry( uint32 renderableHash, const HlmsCache &passCache,
                                                  uint32 finalHash,
@@ -144,11 +155,14 @@ namespace Ogre
 
         void destroyAllBuffers() override;
 
+        void notifyPropertiesMergedPreGenerationStep(const size_t tid) override;
+
         FORCEINLINE uint32 fillBuffersFor( const HlmsCache *cache,
                                            const QueuedRenderable &queuedRenderable,
                                            bool casterPass, uint32 lastCacheHash,
                                            CommandBuffer *commandBuffer, bool isV1 );
 
+        void ensureOceanTexturesLoaded();
     public:
         HlmsOcean( Archive *dataFolder, ArchiveVec *libraryFolders );
         ~HlmsOcean() override;
@@ -191,7 +205,6 @@ namespace Ogre
 
         void setAmbientLightMode( AmbientLightMode mode );
         AmbientLightMode getAmbientLightMode(void) const    { return mAmbientLightMode; }
-
         /// Sets the environment probe cubemap used for reflections.
         /// Can be nullptr to disable.
         void setEnvProbe( TextureGpu *probe );

@@ -1,40 +1,14 @@
-/*
------------------------------------------------------------------------------
-This source file is part of OGRE
-    (Object-oriented Graphics Rendering Engine)
-For the latest info, see http://www.ogre3d.org/
-
-Copyright (c) 2000-2014 Torus Knot Software Ltd
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
------------------------------------------------------------------------------
-*/
+// HlmsOceanDatablock.cpp - Fixed version matching Terra's pattern
 
 #include "NOWAPrecompiled.h"
-
 #include "OgreHlmsOceanDatablock.h"
 #include "OgreHlmsOcean.h"
 
 namespace Ogre
 {
     const size_t HlmsOceanDatablock::MaterialSizeInGpu = 4 * 2 * 4;
-    const size_t HlmsOceanDatablock::MaterialSizeInGpuAligned = alignToNextMultiple<uint32>(HlmsOceanDatablock::MaterialSizeInGpu, 4 * 4);
+    const size_t HlmsOceanDatablock::MaterialSizeInGpuAligned =
+        alignToNextMultiple<uint32>(HlmsOceanDatablock::MaterialSizeInGpu, 4 * 4);
 
     HlmsOceanDatablock::HlmsOceanDatablock(IdString name, HlmsOcean* creator,
         const HlmsMacroblock* macroblock,
@@ -51,12 +25,14 @@ namespace Ogre
         mWavesScale(1.0f),
         mBrdf(OceanBrdf::Default)
     {
+        // Request slot FIRST (like Terra does)
+        creator->requestSlot(0, this, false);
+
+        // Calculate hash (like Terra does)
         calculateHash();
 
-        // Mark as dirty initially so it gets uploaded
-        mDirtyFlags = 0xFFu;
-
-        creator->requestSlot( /*mTextureHash*/0, this, false);
+        // DON'T set mDirtyFlags or call scheduleConstBufferUpdate here
+        // The initial upload will happen automatically through HLMS system
     }
 
     HlmsOceanDatablock::~HlmsOceanDatablock()
@@ -72,19 +48,22 @@ namespace Ogre
         if (mTextureHash != hash.mHash)
         {
             mTextureHash = hash.mHash;
-            static_cast<HlmsOcean*>(mCreator)->requestSlot( /*mTextureHash*/0, this, false);
+            static_cast<HlmsOcean*>(mCreator)->requestSlot(0, this, false);
         }
     }
 
     void HlmsOceanDatablock::scheduleConstBufferUpdate()
     {
-        mDirtyFlags = 0xFFu; // we upload the whole struct for now
+        // CRITICAL: Match Terra's implementation exactly
+        // Don't manually touch mDirtyFlags - let base class handle it
         static_cast<HlmsOcean*>(mCreator)->scheduleForUpdate(this);
     }
 
     void HlmsOceanDatablock::uploadToConstBuffer(char* dstPtr, uint8 dirtyFlags)
     {
         OGRE_UNUSED(dirtyFlags);
+
+        // Copy the entire material data
         memcpy(dstPtr, &mDeepColourR, MaterialSizeInGpu);
     }
 
@@ -94,6 +73,10 @@ namespace Ogre
         mDeepColourR = deepColour.x * invPI;
         mDeepColourG = deepColour.y * invPI;
         mDeepColourB = deepColour.z * invPI;
+
+        LogManager::getSingleton().logMessage(
+            "[OceanDatablock] setDeepColour called - scheduling update");
+
         scheduleConstBufferUpdate();
     }
 

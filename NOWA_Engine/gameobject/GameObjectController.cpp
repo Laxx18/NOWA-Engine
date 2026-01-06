@@ -3562,8 +3562,9 @@ namespace NOWA
 		Ogre::Vector3 pos = Ogre::Vector3::ZERO;
 		// OgreNewt::BasicRaycast ray(ogreNewt, startPoint, endPoint, sorted);
 		// OgreNewt::BasicRaycast::BasicRaycastInfo info = ray.getFirstHit();
-		OgreNewt::World::RaycastResult rayResult = ogreNewt->raycastBlocking(startPoint, endPoint);
-		OgreNewt::BasicRaycast::BasicRaycastInfo& info = rayResult.mInfo;
+		OgreNewt::BasicRaycast ray(ogreNewt, startPoint, endPoint, sorted);
+
+		OgreNewt::BasicRaycast::BasicRaycastInfo info = ray.getFirstHit();
 		if (info.mBody)
 		{
 			unsigned int type = info.mBody->getType();
@@ -3607,8 +3608,10 @@ namespace NOWA
 		// OgreNewt::BasicRaycast ray(ogreNewt, start, end, sorted);
 		// OgreNewt::BasicRaycast::BasicRaycastInfo info = ray.getFirstHit();
 
-		OgreNewt::World::RaycastResult rayResult = ogreNewt->raycastBlocking(start, end);
-		OgreNewt::BasicRaycast::BasicRaycastInfo& info = rayResult.mInfo;
+		OgreNewt::BasicRaycast ray(ogreNewt, start, end, sorted);
+
+
+		OgreNewt::BasicRaycast::BasicRaycastInfo info = ray.getFirstHit();
 		if (info.mBody)
 		{
 			unsigned int type = info.mBody->getType();

@@ -48,6 +48,7 @@ namespace NOWA
 
 		virtual void onSetData(void);
 
+		virtual void onClearData(void);
 	private:
 		Ogre::Vector3 offsetPosition;
 		Ogre::Real cameraSpring;

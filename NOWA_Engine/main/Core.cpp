@@ -1,5 +1,6 @@
 #include "NOWAPrecompiled.h"
 #include "Core.h"
+#include "NOWAPlatform.h"
 
 #include "OgreHlmsUnlit.h"
 #include "OgreHlmsPbs.h"
@@ -14,8 +15,9 @@
 #include "Compositor/OgreCompositorManager2.h"
 
 #include "ocean/OgreHlmsOcean.h"
-
+#include "ocean/Ocean.h"
 #include "utilities/MovableText.h"
+
 #include "utilities/MathHelper.h"
 #include "modules/InputDeviceModule.h"
 #include "main/AppStateManager.h"
@@ -83,6 +85,116 @@ namespace
 	void Win32_ResetCursorToArrow()
 	{
 		::SetCursor(::LoadCursor(nullptr, IDC_ARROW));
+	}
+
+	Ogre::String fsPathToOgreString(const std::filesystem::path& p)
+	{
+#if defined(__cpp_char8_t) && __cpp_char8_t >= 201811L
+		// C++20: u8string() returns std::u8string (char8_t)
+		const std::u8string u8 = p.u8string();
+		return Ogre::String(reinterpret_cast<const char*>(u8.data()), u8.size());
+#else
+		// C++17: u8string() returns std::string
+		return p.u8string();
+#endif
+	}
+
+	// --- wildcard matching: supports '*' and '?' like "*.png" ---
+	static bool wildcardMatch(const char* pattern, const char* str)
+	{
+		// classic glob match
+		while (*pattern)
+		{
+			if (*pattern == '*')
+			{
+				// collapse multiple '*'
+				while (*pattern == '*') ++pattern;
+				if (!*pattern) return true;
+				while (*str)
+				{
+					if (wildcardMatch(pattern, str)) return true;
+					++str;
+				}
+				return false;
+			}
+			else if (*pattern == '?')
+			{
+				if (!*str) return false;
+				++pattern; ++str;
+			}
+			else
+			{
+				if (*pattern != *str) return false;
+				++pattern; ++str;
+			}
+		}
+		return *str == '\0';
+	}
+
+	void findFilesRecursive(const Ogre::String& folderPath, const Ogre::String& pattern, std::vector<Ogre::String>& out)
+	{
+		namespace fs = std::filesystem;
+		std::error_code ec;
+
+		fs::path root(folderPath);
+		if (!fs::exists(root, ec) || !fs::is_directory(root, ec))
+			return;
+
+		fs::recursive_directory_iterator it(root, fs::directory_options::skip_permission_denied, ec);
+		fs::recursive_directory_iterator end;
+
+		for (; it != end && !ec; it.increment(ec))
+		{
+			if (!it->is_regular_file(ec))
+				continue;
+
+			const fs::path& p = it->path();
+
+			// match against filename, not full path
+			const Ogre::String fileName = fsPathToOgreString(p.filename());
+
+			if (pattern.empty() || wildcardMatch(pattern.c_str(), fileName.c_str()))
+			{
+				// What should you return? Your function name says *FilePathNames*,
+				// but your scene function returned filename-only.
+				// Choose ONE of these:
+				//
+				// 1) filename only:
+				// out.push_back(fileName);
+				//
+				// 2) full path:
+				out.push_back(fsPathToOgreString(p));
+			}
+		}
+	}
+
+	void findSceneFilesRecursive(const Ogre::String& folderPath, std::vector<Ogre::String>& out)
+	{
+		namespace fs = std::filesystem;
+		std::error_code ec;
+
+		// NOTE: fs::u8path(folderPath) can also be annoying depending on standard lib.
+		// This is the most build-stable option across Win/Linux.
+		fs::path root(folderPath);
+
+		if (!fs::exists(root, ec) || !fs::is_directory(root, ec))
+			return;
+
+		fs::recursive_directory_iterator it(root, fs::directory_options::skip_permission_denied, ec);
+		fs::recursive_directory_iterator end;
+
+		for (; it != end && !ec; it.increment(ec))
+		{
+			if (!it->is_regular_file(ec))
+				continue;
+
+			const fs::path& p = it->path();
+			if (p.extension() == ".scene")
+			{
+				// Keep your old behavior: filename only
+				out.push_back(fsPathToOgreString(p.filename()));
+			}
+		}
 	}
 }
 
@@ -638,6 +750,7 @@ namespace NOWA
 		// Adds factories
 		this->root->addMovableObjectFactory(OGRE_NEW MovableTextFactory());
 		this->root->addMovableObjectFactory(OGRE_NEW Ogre::v1::Rectangle2DFactory());
+		this->root->addMovableObjectFactory(OGRE_NEW Ogre::OceanFactory());
 
 		Ogre::String resourceGroupName;
 		Ogre::String type;
@@ -1255,7 +1368,7 @@ namespace NOWA
 			Ogre::Hlms* hlmsPbs = hlmsManager->getHlms(Ogre::HLMS_PBS);
 			Ogre::Archive* archivePbs = hlmsPbs->getDataFolder();
 			Ogre::ArchiveVec libraryPbs = hlmsPbs->getPiecesLibraryAsArchiveVec();
-			libraryPbs.push_back(Ogre::ArchiveManager::getSingletonPtr()->load(dataFolder + "Hlms/Terra/" + shaderSyntax + "/PbsTerraShadows", "FileSystem", true));
+			libraryPbs.push_back(archiveManager.load(dataFolder + "Hlms/Terra/" + shaderSyntax + "/PbsTerraShadows", "FileSystem", true));
 			hlmsPbs->reloadFrom(archivePbs, &libraryPbs);
 		}
 
@@ -1529,7 +1642,7 @@ namespace NOWA
 
 			//Create and register the terra Hlms
 			hlmsTerra = OGRE_NEW Ogre::HlmsTerra(archiveTerra, &archiveTerraLibraryFolders);
-			hlmsManager->registerHlms(hlmsTerra);
+			hlmsManager->registerHlms(hlmsTerra, Ogre::HLMS_USER3);
 
 			//Add Terra's piece files that customize the PBS implementation.
 			//These pieces are coded so that they will be activated when
@@ -1538,7 +1651,7 @@ namespace NOWA
 			Ogre::Hlms* hlmsPbs = hlmsManager->getHlms(Ogre::HLMS_PBS);
 			Ogre::Archive* archivePbs = hlmsPbs->getDataFolder();
 			Ogre::ArchiveVec libraryPbs = hlmsPbs->getPiecesLibraryAsArchiveVec();
-			libraryPbs.push_back(Ogre::ArchiveManager::getSingletonPtr()->load(dataFolder + "Hlms/Terra/" + shaderSyntax + "/PbsTerraShadows", "FileSystem", true));
+			libraryPbs.push_back(archiveManager.load(dataFolder + "Hlms/Terra/" + shaderSyntax + "/PbsTerraShadows", "FileSystem", true));
 			hlmsPbs->reloadFrom(archivePbs, &libraryPbs);
 		}
 
@@ -1558,7 +1671,7 @@ namespace NOWA
 			}
 
 			hlmsOcean = OGRE_NEW Ogre::HlmsOcean(archiveOcean, &libraries);
-			hlmsManager->registerHlms(hlmsOcean);
+			hlmsManager->registerHlms(hlmsOcean, Ogre::HLMS_USER1);
 		}
 
 		// HlmsWind
@@ -1577,7 +1690,7 @@ namespace NOWA
 			Ogre::Archive* archivePbs = Ogre::ArchiveManager::getSingleton().load(dataFolder + mainFolderPath, "FileSystem", true);
 			// Create and register the wind Hlms
 			hlmsWind = OGRE_NEW HlmsWind(archivePbs, &archive);
-			hlmsManager->registerHlms(hlmsWind);
+			hlmsManager->registerHlms(hlmsWind, Ogre::HLMS_USER0);
 		}
 
 		// HlmsParticles
@@ -1700,7 +1813,7 @@ namespace NOWA
 			Ogre::Hlms* hlmsPbs = hlmsManager->getHlms(Ogre::HLMS_PBS);
 			Ogre::Archive* archivePbs = hlmsPbs->getDataFolder();
 			Ogre::ArchiveVec libraryPbs = hlmsPbs->getPiecesLibraryAsArchiveVec();
-			libraryPbs.push_back(Ogre::ArchiveManager::getSingletonPtr()->load(dataFolder + "Hlms/Terra/" + shaderSyntax + "/PbsTerraShadows", "FileSystem", true));
+			libraryPbs.push_back(archiveManager.load(dataFolder + "Hlms/Terra/" + shaderSyntax + "/PbsTerraShadows", "FileSystem", true));
 			hlmsPbs->reloadFrom(archivePbs, &libraryPbs);
 		}
 
@@ -1727,7 +1840,7 @@ namespace NOWA
 		if (true == useOcean)
 		{
 			Ogre::Archive* archiveOcean =
-				Ogre::ArchiveManager::getSingletonPtr()->load(
+				archiveManager.load(
 					dataFolder + "Hlms/Ocean/GLSL", "FileSystem", true);
 
 			// IMPORTANT: build the library list similar to PBS/Terra,
@@ -1737,18 +1850,18 @@ namespace NOWA
 			// These are typically required by most HLMS implementations:
 			// (If your Ocean shaders include common/pbs pieces, keep these.
 			//  If not, you can remove them — but the author setup usually expects them.)
-			libraryOcean.push_back(Ogre::ArchiveManager::getSingletonPtr()->load(
+			libraryOcean.push_back(archiveManager.load(
 				dataFolder + "Hlms/Common/GLSL", "FileSystem", true));
-			libraryOcean.push_back(Ogre::ArchiveManager::getSingletonPtr()->load(
+			libraryOcean.push_back(archiveManager.load(
 				dataFolder + "Hlms/Common/Any", "FileSystem", true));
-			libraryOcean.push_back(Ogre::ArchiveManager::getSingletonPtr()->load(
+			libraryOcean.push_back(archiveManager.load(
 				dataFolder + "Hlms/Pbs/GLSL", "FileSystem", true));
-			libraryOcean.push_back(Ogre::ArchiveManager::getSingletonPtr()->load(
+			libraryOcean.push_back(archiveManager.load(
 				dataFolder + "Hlms/Pbs/Any", "FileSystem", true));
 
 			// Author explicitly adds this:
 			Ogre::Archive* archiveLibraryCustom =
-				Ogre::ArchiveManager::getSingletonPtr()->load(
+				archiveManager.load(
 					dataFolder + "Hlms/Ocean/GLSL/Custom", "FileSystem", true);
 			libraryOcean.push_back(archiveLibraryCustom);
 
@@ -2400,37 +2513,19 @@ namespace NOWA
 		return false;
 	}
 
-	Ogre::String Core::getSaveGameDirectory(const Ogre::String& saveName)
+	Ogre::String Core::getSaveGameDirectory(const Ogre::String& projectName)
 	{
-#ifdef WIN32
-		HWND hWnd;
-		this->renderWindow->getCustomAttribute("WINDOW", &hWnd);
-		
-		HRESULT hr;
-		static char saveGameDirectory[MAX_PATH];
-		TCHAR userDataPath[MAX_PATH];
+		// Example: <UserData>/NOWA/<ProjectName>/
+		std::string base = NOWA::Platform::getUserDataDir();
+		std::string dir = base + "/NOWA/" + projectName;
 
-		hr = SHGetSpecialFolderPath(hWnd, userDataPath, CSIDL_APPDATA, true);
+		NOWA::Platform::ensureDirExists(dir);
 
-		strcpy(saveGameDirectory, userDataPath);
-		strcat(saveGameDirectory, "\\");
-		strcat(saveGameDirectory, saveName.data());
+		// Ensure trailing slash your code expects:
+		if (!dir.empty() && dir.back() != '/' && dir.back() != '\\')
+			dir += "/";
 
-		// Does our directory exist?
-		if (0xffffffff == GetFileAttributes(saveGameDirectory))
-		{
-			if (SHCreateDirectoryEx(hWnd, saveGameDirectory, 0) != ERROR_SUCCESS)
-			{
-				return "";
-			}
-		}
-
-		strcat(saveGameDirectory, "\\");
-		
-		return saveGameDirectory;
-#endif
-
-		return "";
+		return Ogre::String(dir);
 	}
 	
 	Ogre::String Core::getSaveFilePathName(const Ogre::String& saveName, const Ogre::String& fileEnding)
@@ -2580,50 +2675,6 @@ namespace NOWA
 		return resultPath;
 	}
 
-	void findSceneFilesRecursive(const Ogre::String& folderPath, std::vector<Ogre::String>& sceneFiles)
-	{
-		WIN32_FIND_DATA fd;
-		HANDLE hFind = ::FindFirstFile((folderPath + "/*").c_str(), &fd);
-
-		if (hFind == INVALID_HANDLE_VALUE)
-		{
-			return;
-		}
-
-		do
-		{
-			// Skip "." and ".."
-			if (strcmp(fd.cFileName, ".") == 0 || strcmp(fd.cFileName, "..") == 0)
-			{
-				continue;
-			}
-
-			Ogre::String fullPath = folderPath + "/" + fd.cFileName;
-
-			if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
-			{
-				// If it's a directory, recurse into it
-				findSceneFilesRecursive(fullPath, sceneFiles);
-			}
-			else
-			{
-				// Check if the file ends with ".scene"
-				if (fullPath.size() >= 6 && fullPath.substr(fullPath.size() - 6) == ".scene")
-				{
-					// Extract only the file name (remove folder path)
-					size_t lastSlash = fullPath.find_last_of("/\\");
-					if (lastSlash != Ogre::String::npos)
-					{
-						sceneFiles.push_back(fullPath.substr(lastSlash + 1));
-					}
-				}
-			}
-
-		} while (::FindNextFile(hFind, &fd));
-
-		::FindClose(hFind);
-	}
-
 	std::vector<Ogre::String> Core::getSceneFileNames(const Ogre::String& resourceGroupName, const Ogre::String& projectName)
 	{
 		std::vector<Ogre::String> sceneNames;
@@ -2634,44 +2685,6 @@ namespace NOWA
 		findSceneFilesRecursive(searchPath, sceneNames);
 
 		return sceneNames;
-	}
-
-	void findFilesRecursive(const Ogre::String& folderPath, const Ogre::String& pattern, std::vector<Ogre::String>& fileNames)
-	{
-		WIN32_FIND_DATA fd;
-		HANDLE hFind = ::FindFirstFile((folderPath + "/*").c_str(), &fd);
-
-		if (hFind == INVALID_HANDLE_VALUE)
-			return;
-
-		do
-		{
-			// Skip "." and ".."
-			if (strcmp(fd.cFileName, ".") == 0 || strcmp(fd.cFileName, "..") == 0)
-				continue;
-
-			Ogre::String fullPath = folderPath + "/" + fd.cFileName;
-
-			if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
-			{
-				// If it's a directory, recurse into it
-				findFilesRecursive(fullPath, pattern, fileNames);
-			}
-			else
-			{
-				// Pattern matching (simple wildcard matching for "*.pattern")
-				if (pattern == "*" ||
-					(pattern.size() > 1 && pattern[0] == '*' &&
-						fullPath.size() >= pattern.size() - 1 &&
-						fullPath.substr(fullPath.size() - (pattern.size() - 1)) == pattern.substr(1)))
-				{
-					fileNames.push_back(fullPath);
-				}
-			}
-
-		} while (::FindNextFile(hFind, &fd));
-
-		::FindClose(hFind);
 	}
 
 	std::vector<Ogre::String> Core::getFilePathNamesInProject(const Ogre::String& projectName, const Ogre::String& pattern)
@@ -2686,6 +2699,31 @@ namespace NOWA
 		return fileNames;
 	}
 
+	static std::vector<Ogre::String> listFilesByExt(const Ogre::String& absDir, const char* extWithDot)
+	{
+		namespace fs = std::filesystem;
+		std::error_code ec;
+		std::vector<Ogre::String> out;
+
+		fs::path dir = fs::u8path(absDir);
+		if (!fs::exists(dir, ec))
+		{
+			return out;
+		}
+
+		for (fs::directory_iterator it(dir, ec), end; it != end && !ec; it.increment(ec))
+		{
+			if (!it->is_regular_file(ec))
+			{
+				continue;
+			}
+			if (it->path().extension() == extWithDot)
+			{
+				out.push_back(fsPathToOgreString(it->path().filename()));
+			}
+		}
+		return out;
+	}
 
 	std::vector<Ogre::String> Core::getSceneSnapshotsInProject(const Ogre::String& projectName)
 	{
@@ -2812,8 +2850,8 @@ namespace NOWA
 
 	void Core::openFolder(const Ogre::String& filePathName)
 	{
-		Ogre::String path = NOWA::Core::getSingletonPtr()->getAbsolutePath(filePathName);
-		ShellExecute(0, "open", path.data(), 0, 0, SW_SHOWMAXIMIZED);
+		Ogre::String abs = NOWA::Core::getSingletonPtr()->getAbsolutePath(filePathName);
+		NOWA::Platform::openFolderInFileManager(abs.c_str());
 	}
 
 	void Core::displayError(LPCTSTR errorDesc, DWORD errorCode)
