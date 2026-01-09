@@ -13,6 +13,7 @@
 #include "OgreForwardClustered.h"
 #include "res/resource.h"
 #include "gameobject/LuaScriptComponent.h"
+#include "ocean/ocean.h"
 #include "gameobject/PhysicsArtifactComponent.h"
 #include "gameobject/PhysicsTerrainComponent.h"
 #include "gameobject/TerraComponent.h"
@@ -1202,6 +1203,15 @@ namespace NOWA
 						this->exportTerra(gameObject, terra, nodeXML, doc);
 					}
 				}
+				if (false == foundType)
+				{
+					Ogre::Ocean* ocean = gameObject->getMovableObject<Ogre::Ocean>();
+					if (nullptr != ocean)
+					{
+						foundType = true;
+						this->exportOcean(gameObject, ocean, nodeXML, doc);
+					}
+				}
 				if (true == foundType)
 				{
 					nodesXML->append_node(nodeXML);
@@ -1357,6 +1367,26 @@ namespace NOWA
 				xml_node<>* userDataXML = doc.allocate_node(node_element, "userData");
 				gameObject->writeXML(userDataXML, doc);
 				terraXML->append_node(userDataXML);
+			}
+		}
+	}
+
+	void DotSceneExportModule::exportOcean(GameObject* gameObject, Ogre::Ocean* ocean, rapidxml::xml_node<>* nodeXML, rapidxml::xml_document<>& doc)
+	{
+		// Ocean
+		{
+			xml_node<>* oceanXML = doc.allocate_node(node_element, "ocean");
+			oceanXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ocean->getName())));
+			oceanXML->append_attribute(doc.allocate_attribute("visible", XMLConverter::ConvertString(doc, ocean->getVisible())));
+			nodeXML->append_node(oceanXML);
+
+			this->calculateBounds(ocean->getWorldAabbUpdated());
+
+			// UserData
+			{
+				xml_node<>* userDataXML = doc.allocate_node(node_element, "userData");
+				gameObject->writeXML(userDataXML, doc);
+				oceanXML->append_node(userDataXML);
 			}
 		}
 	}

@@ -66,7 +66,7 @@ THE SOFTWARE.
     defined( _M_AMD64 ) || defined( __e2k__ )
 #    define OGRE_CPU OGRE_CPU_X86
 #elif defined( __ppc__ ) || defined( __PPC__ ) || defined( __ppc64__ ) || defined( __PPC64__ ) || \
-      defined( _M_PPC )
+    defined( _M_PPC )
 #    define OGRE_CPU OGRE_CPU_PPC
 #elif defined( __arm__ ) || defined( __arm64__ ) || defined( __aarch64__ ) || defined( _M_ARM ) || \
     defined( _M_ARM64 )
@@ -81,7 +81,8 @@ THE SOFTWARE.
 #if defined( __x86_64__ ) || defined( _M_X64 ) || defined( _M_X64 ) || defined( _M_AMD64 ) || \
     defined( __ppc64__ ) || defined( __PPC64__ ) || defined( __arm64__ ) || defined( __aarch64__ ) || \
     defined( _M_ARM64 ) || defined( __mips64 ) || defined( __mips64_ ) || defined( __alpha__ ) || \
-    defined( __ia64__ ) || defined( __e2k__ ) || defined( __s390__ ) || defined( __s390x__ )
+    defined( __ia64__ ) || defined( __e2k__ ) || defined( __s390__ ) || defined( __s390x__ ) || \
+    ( defined( __riscv ) && __riscv_xlen == 64 )
 #    define OGRE_ARCH_TYPE OGRE_ARCHITECTURE_64
 #else
 #    define OGRE_ARCH_TYPE OGRE_ARCHITECTURE_32
@@ -106,7 +107,8 @@ THE SOFTWARE.
 #elif defined( __GCCE__ )
 #    define OGRE_COMPILER OGRE_COMPILER_GCCE
 #    define OGRE_COMP_VER _MSC_VER
-//# include <staticlibinit_gcce.h> // This is a GCCE toolchain workaround needed when compiling with GCCE
+// # include <staticlibinit_gcce.h> // This is a GCCE toolchain workaround needed when compiling with
+// GCCE
 #elif defined( __WINSCW__ )
 #    define OGRE_COMPILER OGRE_COMPILER_WINSCW
 #    define OGRE_COMP_VER _MSC_VER
@@ -115,10 +117,11 @@ THE SOFTWARE.
 #    define OGRE_COMP_VER _MSC_VER
 #elif defined( __clang__ )
 #    define OGRE_COMPILER OGRE_COMPILER_CLANG
-#    define OGRE_COMP_VER ( ( (__clang_major__)*100 ) + ( __clang_minor__ * 10 ) + __clang_patchlevel__ )
+#    define OGRE_COMP_VER \
+        ( ( ( __clang_major__ ) * 100 ) + ( __clang_minor__ * 10 ) + __clang_patchlevel__ )
 #elif defined( __GNUC__ )
 #    define OGRE_COMPILER OGRE_COMPILER_GNUC
-#    define OGRE_COMP_VER ( ( (__GNUC__)*100 ) + ( __GNUC_MINOR__ * 10 ) + __GNUC_PATCHLEVEL__ )
+#    define OGRE_COMP_VER ( ( ( __GNUC__ ) * 100 ) + ( __GNUC_MINOR__ * 10 ) + __GNUC_PATCHLEVEL__ )
 #elif defined( __BORLANDC__ )
 #    define OGRE_COMPILER OGRE_COMPILER_BORL
 #    define OGRE_COMP_VER __BCPLUSPLUS__
@@ -141,8 +144,7 @@ THE SOFTWARE.
 #    if !defined( FORCEINLINE )
 #        define FORCEINLINE __inline
 #    endif
-#elif !defined( ANDROID ) && \
-    ( OGRE_COMPILER == OGRE_COMPILER_GNUC || OGRE_COMPILER == OGRE_COMPILER_CLANG )
+#elif( OGRE_COMPILER == OGRE_COMPILER_GNUC || OGRE_COMPILER == OGRE_COMPILER_CLANG )
 #    define FORCEINLINE inline __attribute__( ( always_inline ) )
 #else
 #    define FORCEINLINE __inline
@@ -197,7 +199,8 @@ THE SOFTWARE.
 // Device                                                     Simulator
 // Both requiring OS version 6.0 or greater
 #    if __ENVIRONMENT_IPHONE_OS_VERSION_MIN_REQUIRED__ >= 60000 || \
-        __IPHONE_OS_VERSION_MIN_REQUIRED >= 60000
+        __IPHONE_OS_VERSION_MIN_REQUIRED >= 60000 || \
+        ( defined( __has_builtin ) && __has_builtin( __is_target_os ) && __is_target_os( xros ) )
 #        define OGRE_PLATFORM OGRE_PLATFORM_APPLE_IOS
 #    else
 #        define OGRE_PLATFORM OGRE_PLATFORM_APPLE
@@ -217,8 +220,17 @@ THE SOFTWARE.
 #define OGRE_QUOTE( x ) OGRE_QUOTE_INPLACE( x )
 #define OGRE_WARN( x ) message( __FILE__ "(" QUOTE( __LINE__ ) ") : " x "\n" )
 
+// portable analog of __PRETTY_FUNCTION__, see also BOOST_CURRENT_FUNCTION
+#if OGRE_COMPILER == OGRE_COMPILER_GNUC || OGRE_COMPILER == OGRE_COMPILER_CLANG
+#    define OGRE_CURRENT_FUNCTION __PRETTY_FUNCTION__
+#elif OGRE_COMPILER == OGRE_COMPILER_MSVC || defined( __FUNCSIG__ )
+#    define OGRE_CURRENT_FUNCTION __FUNCSIG__
+#else  // C++11
+#    define OGRE_CURRENT_FUNCTION __func__
+#endif
+
 // For marking functions as deprecated
-#if __cplusplus >= 201402L
+#if __cplusplus >= 201402L || OGRE_COMPILER == OGRE_COMPILER_MSVC && OGRE_COMP_VER >= 1900
 #    define OGRE_DEPRECATED [[deprecated]]
 #    define OGRE_DEPRECATED_VER( x ) [[deprecated]]
 #    define OGRE_DEPRECATED_ENUM_VER( x ) [[deprecated]]
@@ -319,9 +331,17 @@ THE SOFTWARE.
 #        define OGRE_PLATFORM_LIB "libOgrePlatform.so"
 #    endif
 
+#    if OGRE_PLATFORM == OGRE_PLATFORM_APPLE || OGRE_PLATFORM == OGRE_PLATFORM_APPLE_IOS || \
+        OGRE_PLATFORM == OGRE_PLATFORM_ANDROID || defined _LIBCPP_VERSION && _LIBCPP_VERSION >= 190000
+// XCode 16.3 fails to compile our UTFString due undefined std::char_traits<ushort>
+// Same problem with Android NDK 28, actually problem caused by changes in Clang libc++ 19
+// TODO: migrate from Ogre::UTFString to C++11 std::u16string
+#        define OGRE_UNICODE_SUPPORT 0
+#    else
 // Always enable unicode support for the moment
 // Perhaps disable in old versions of gcc if necessary
-#    define OGRE_UNICODE_SUPPORT 1
+#        define OGRE_UNICODE_SUPPORT 1
+#    endif
 
 #endif
 
@@ -331,9 +351,12 @@ THE SOFTWARE.
 // No checks done at all
 #define OGRE_DEBUG_NONE 0
 // We perform basic assert checks and other non-performance intensive checks
+// This setting must NOT break the ABI. i.e. a binary compiled with OGRE_DEBUG_LOW
+// must be ABI compatible with a binary compiled without it.
 #define OGRE_DEBUG_LOW 1
 // We alter classes to add some debug variables for a bit more thorough checking
 // and also perform checks that may cause some performance hit
+// This setting or higher is allowed to break the ABI.
 #define OGRE_DEBUG_MEDIUM 2
 // We perform intensive validation without concerns for performance
 #define OGRE_DEBUG_HIGH 3
@@ -419,7 +442,7 @@ THE SOFTWARE.
 #endif
 
 #ifndef OGRE_FLEXIBILITY_LEVEL
-#    define OGRE_FLEXIBILITY_LEVEL 4
+#    define OGRE_FLEXIBILITY_LEVEL 0
 #endif
 
 #if OGRE_FLEXIBILITY_LEVEL >= 0
@@ -505,7 +528,8 @@ THE SOFTWARE.
 
 // Define whether or not Ogre compiled with NEON support.
 #    if OGRE_DOUBLE_PRECISION == 0 && OGRE_CPU == OGRE_CPU_ARM && \
-        ( defined( __aarch64__ ) || defined( __ARM_NEON__ ) || \
+        ( defined( __aarch64__ ) || defined( __arm64__ ) || defined( _M_ARM64 ) || \
+          defined( __ARM_NEON__ ) || \
           defined( _WIN32_WINNT_WIN8 ) && _WIN32_WINNT >= _WIN32_WINNT_WIN8 )
 #        define __OGRE_HAVE_NEON 1
 #    endif

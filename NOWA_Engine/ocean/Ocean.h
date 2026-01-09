@@ -5,11 +5,12 @@
 #include "OgrePrerequisites.h"
 #include "OgreMovableObject.h"
 #include "OgreShaderParams.h"
-
 #include "Ocean/OceanCell.h"
 
 namespace Ogre
 {
+	class HlmsOceanDatablock;
+
     struct OceanGridPoint
     {
         int32 x;
@@ -26,6 +27,7 @@ namespace Ogre
     class Ocean : public MovableObject
     {
         friend class OceanCell;
+        friend class HlmsOcean;
 
         struct SavedState
         {
@@ -33,6 +35,8 @@ namespace Ogre
             size_t m_currentCell;
             Camera const* m_camera;
         };
+
+        uint32 m_hlmsOceanIndex;
 
         std::vector<float>          m_heightMap;
         uint32                      m_width;
@@ -49,6 +53,13 @@ namespace Ogre
         float       m_WavesIntensity;
         Vector3     m_OceanOrigin;
         uint32      m_basePixelDimension;
+
+        bool        m_useSkirts;
+        float       m_oceanTime;
+        float       m_waveTimeScale;
+        float       m_waveFrequencyScale;
+        float       m_waveChaos;
+        bool        m_isUnderwater;
 
         std::vector<OceanCell>   m_OceanCells[2];
         std::vector<OceanCell*>  m_collectedCells[2];
@@ -70,6 +81,8 @@ namespace Ogre
 
         void optimizeCellsAndAdd(void);
 
+        void updateLocalBounds(void);
+
     public:
         Ocean(IdType id, ObjectMemoryManager* objectMemoryManager, SceneManager* sceneManager,
                uint8 renderQueueId, CompositorManager2* compositorManager, const Camera* camera);
@@ -79,7 +92,7 @@ namespace Ogre
         /** Must be called every frame so we can check the camera's position
             (passed in the constructor) and update our visible batches (and LODs).
         */
-        void update();
+        void update(Ogre::Real dt);
 
         void create(const Vector3 center, const Vector2 &dimensions);
 
@@ -87,8 +100,32 @@ namespace Ogre
 
         void setWavesScale( float scale );
 
+        /// Enable/disable skirts. Must be set before create() to affect geometry.
+        void setUseSkirts( bool useSkirts ) { m_useSkirts = useSkirts; }
+        bool getUseSkirts( void ) const { return m_useSkirts; }
+
+        /// Extra runtime controls packed into cellData.oceanTime.yzw:
+        ///  y = time scale, z = frequency scale, w = chaos
+        void setWaveTimeScale( float timeScale ) { m_waveTimeScale = timeScale; }
+        float getWaveTimeScale( void ) const { return m_waveTimeScale; }
+
+        void setWaveFrequencyScale( float freqScale ) { m_waveFrequencyScale = freqScale; }
+        float getWaveFrequencyScale( void ) const { return m_waveFrequencyScale; }
+
+        void setWaveChaos( float chaos ) { m_waveChaos = chaos; }
+        float getWaveChaos( void ) const { return m_waveChaos; }
+
+        /// True when the active camera is below the ocean surface level (with small hysteresis).
+        bool isUnderwater( void ) const { return m_isUnderwater; }
+
+        /// True when the given world position is below the ocean base surface level.
+        bool isUnderwater(const Vector3& worldPos) const;
+
+        /// True when the given SceneNode's derived position is below the ocean base surface level.
+        bool isUnderwater(const SceneNode * sceneNode) const;
+
         /// load must already have been called.
-        void setDatablock( HlmsDatablock *datablock );
+        void setDatablock( HlmsDatablock* datablock );
 
         void setCamera(Ogre::Camera* camera);
 

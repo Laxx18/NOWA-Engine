@@ -63,12 +63,14 @@ namespace Ogre
             generated yet) and the properties are before they are transformed by the templates
         @brief propertiesMergedPreGenerationStep
         @param hlms
+            @parblock
             Pointer to caller.
             WARNING: Note that any modified property WON'T BE CACHED. If you set a property based
             on external information, it will break caches.
 
             You can only set new properties that are derived from existing properties e.g. c = a + b,
             which means caching a and b will always result in c being the same value
+            @endparblock
         @param passCache
             Properties used by this pass
         @param renderableCacheProperties
@@ -200,6 +202,29 @@ namespace Ogre
         /// The Thread Idx is always Hlms::kNoTid
         virtual void hlmsTypeChanged( bool casterPass, CommandBuffer *commandBuffer,
                                       const HlmsDatablock *datablock, size_t texUnit )
+        {
+        }
+
+        /** Called from Hlms::createShaderCacheEntry after an HlmsPso is initialized. It allows to modify
+            its currently assigned macroblock. This allows to override the macroblocks for all
+            renderables within a pass. The listener can set a property or multiple properties in
+            preparePassHash which can be accessed from this method to modify input macroblock.
+            @see Hlms::applyStrongMacroblockRules.
+        @remarks
+            Given the same set of properties, the function must always return the same
+            value. Otherwise caching (i.e. HlmsDiskCache) won't work correctly.
+        @param macroblock [in/out]
+            Current macroblock. You can modify it if needed.
+        @param properties
+        */
+        virtual void applyStrongMacroblockRules( HlmsMacroblock        &macroblock,
+                                                 const HlmsPropertyVec &properties ) const
+        {
+        }
+
+        /// @copydoc HlmsListener::applyStrongMacroblockRules()
+        virtual void applyStrongBlendblockRules( HlmsBlendblock        &blendblock,
+                                                 const HlmsPropertyVec &properties ) const
         {
         }
     };

@@ -77,6 +77,51 @@ namespace Ogre
     */
     struct _OgreExport HlmsMacroblock : public BasicBlock
     {
+        /// Values stored in HlmsPsoProp::StrongMacroblockBits property. If a bit is set, it instructs
+        /// the Hlms::applyStrongMacroblockRules to update a HlmsMacroblock accordingly.
+        enum StrongMacroblockBits
+        {
+            // clang-format off
+            ScissorTestEnabled        = 1u << 0u,
+            ScissorTestDisabled       = 1u << 1u,
+            InvertScissorTest         = (ScissorTestEnabled | ScissorTestDisabled),
+
+            DepthClampEnabled         = 1u << 2u,
+            DepthClampDisabled        = 1u << 3u,
+            InvertDepthClamp          = (DepthClampEnabled | DepthClampDisabled),
+
+            DepthCheckEnabled         = 1u << 4u,
+            DepthCheckDisabled        = 1u << 5u,
+            InvertDepthCheck          = (DepthCheckEnabled | DepthCheckDisabled),
+
+            DepthWriteEnabled         = 1u << 6u,
+            DepthWriteDisabled        = 1u << 7u,
+            InvertDepthWrite          = (DepthWriteEnabled | DepthWriteDisabled),
+
+            DepthFuncMask             = 15u << 8u, // reserve 4 bits.
+            DepthFunc_ALWAYS_FAIL     = 1u << 8u,
+            DepthFunc_ALWAYS_PASS     = 2u << 8u,
+            DepthFunc_LESS            = 3u << 8u,
+            DepthFunc_LESS_EQUAL      = 4u << 8u,
+            DepthFunc_EQUAL           = 5u << 8u,
+            DepthFunc_NOT_EQUAL       = 6u << 8u,
+            DepthFunc_GREATER_EQUAL   = 7u << 8u,
+            DepthFunc_GREATER         = 8u << 8u,
+
+            CullingModeMask           = 3u << 12u, // reserve 2 bits.
+            CullingMode_NONE          = 1u << 12u,
+            CullingMode_CLOCKWISE     = 2u << 12u,
+            CullingMode_ANTICLOCKWISE = 3u << 12u,
+
+            InvertCullingMode         = 1u << 14u,
+
+            PolygonModeMask           = 3u << 15u, // reserve 2 bits.
+            PolygonMode_POINTS        = 1u << 15u,
+            PolygonMode_WIREFRAME     = 2u << 15u,
+            PolygonMode_SOLID         = 3u << 15u
+            // clang-format on
+        };
+
         bool            mScissorTestEnabled;
         bool            mDepthClamp;
         bool            mDepthCheck;
@@ -169,7 +214,53 @@ namespace Ogre
             BlendChannelForceDisabled = 0x10
         };
 
-        bool mAlphaToCoverageEnabled;
+        enum A2CSetting
+        {
+            /// Alpha to Coverage is always disabled.
+            A2cDisabled,
+            /// Alpha to Coverage is always enabled.
+            A2cEnabled,
+            /// Alpha to Coverage is enabled only if RenderTarget uses MSAA.
+            A2cEnabledMsaaOnly
+        };
+
+        // clang-format off
+#define DECLARE_BLENDFACTORS(Name, offset)              \
+        Name##Mask                     = 15u << offset, \
+        Name##_ONE                     = 1u << offset,  \
+        Name##_ZERO                    = 2u << offset,  \
+        Name##_DEST_COLOUR             = 3u << offset,  \
+        Name##_SOURCE_COLOUR           = 4u << offset,  \
+        Name##_ONE_MINUS_DEST_COLOUR   = 5u << offset,  \
+        Name##_ONE_MINUS_SOURCE_COLOUR = 6u << offset,  \
+        Name##_DEST_ALPHA              = 7u << offset,  \
+        Name##_SOURCE_ALPHA            = 8u << offset,  \
+        Name##_ONE_MINUS_DEST_ALPHA    = 9u << offset,  \
+        Name##_ONE_MINUS_SOURCE_ALPHA  = 10u << offset
+#define DECLARE_BLENDOPERATIONS(Name, offset)           \
+        Name##Mask                     = 15u << offset, \
+        Name##_ADD                     = 1u << offset,  \
+        Name##_SUBTRACT                = 2u << offset,  \
+        Name##_REVERSE_SUBTRACT        = 3u << offset,  \
+        Name##_MIN                     = 4u << offset,  \
+        Name##_MAX                     = 5u << offset
+        // clang-format on
+
+        /// Values stored in HlmsPsoProp::StrongBlendblockBits property. If a bit is set, it instructs
+        /// the Hlms::applyStrongBlendblockRules to update a HlmsBlendblock accordingly.
+        enum StrongBlendblockBits
+        {
+            DECLARE_BLENDFACTORS( SourceBlendFactor, 0 ),
+            DECLARE_BLENDFACTORS( DestBlendFactor, 4 ),
+            DECLARE_BLENDFACTORS( SourceBlendFactorAlpha, 8 ),
+            DECLARE_BLENDFACTORS( DestBlendFactorAlpha, 12 ),
+            DECLARE_BLENDOPERATIONS( BlendOperation, 16 ),
+            DECLARE_BLENDOPERATIONS( BlendOperationAlpha, 20 )
+        };
+#undef DECLARE_BLENDOPERATIONS
+#undef DECLARE_BLENDFACTORS
+
+        uint8 mAlphaToCoverage;  /// See A2CSetting
 
         /// Masks which colour channels will be writing to. Default: BlendChannelAll
         /// For some advanced effects, you may wish to turn off the writing of certain colour
@@ -178,11 +269,15 @@ namespace Ogre
         /// stencil buffer).
         uint8 mBlendChannelMask;
 
-        /// This value calculated by HlmsManager::getBlendblock
-        /// mIsTransparent = 0  -> Not transparent
-        /// mIsTransparent |= 1 -> Automatically determined as transparent
-        /// mIsTransparent |= 2 -> Forced to be considered as transparent by RenderQueue for render order
-        /// mIsTransparent = 3  -> Forced & also automatically determined as transparent
+        /// @parblock
+        /// This value calculated by HlmsManager::getBlendblock.
+        ///
+        /// - mIsTransparent = 0  -> Not transparent
+        /// - mIsTransparent |= 1 -> Automatically determined as transparent
+        /// - mIsTransparent |= 2 -> Forced to be considered as transparent by RenderQueue for render
+        /// order
+        /// - mIsTransparent = 3  -> Forced & also automatically determined as transparent
+        /// @endparblock
         uint8 mIsTransparent;
         /// Used to determine if separate alpha blending should be used for color and alpha channels
         bool mSeparateBlend;
@@ -211,7 +306,7 @@ namespace Ogre
         void calculateSeparateBlendMode();
 
         /** Sometimes you want to force the RenderQueue to render back to front even if
-            the object isn't alpha blended (e.g. you're rendering refractive materials)
+            the object isn't alpha blended (e.g., you're rendering refractive materials)
         @param bForceTransparent
             True to always render back to front, like any transparent.
             False for default behavior (opaque objects are rendered front to back, alpha
@@ -221,6 +316,21 @@ namespace Ogre
 
         bool isAutoTransparent() const { return ( mIsTransparent & 0x01u ) != 0u; }
         bool isForcedTransparent() const { return ( mIsTransparent & 0x02u ) != 0u; }
+
+        bool isAlphaToCoverage( const SampleDescription &sd ) const
+        {
+            switch( static_cast<HlmsBlendblock::A2CSetting>( mAlphaToCoverage ) )
+            {
+            case HlmsBlendblock::A2cDisabled:
+                return false;
+            case HlmsBlendblock::A2cEnabled:
+                return true;
+            case HlmsBlendblock::A2cEnabledMsaaOnly:
+                return sd.isMultisample();
+            }
+
+            return false;
+        }
 
         bool operator==( const HlmsBlendblock &_r ) const { return !( *this != _r ); }
 
@@ -239,11 +349,30 @@ namespace Ogre
                        mDestBlendFactorAlpha != _r.mDestBlendFactorAlpha ) ) ||  //
                    mBlendOperation != _r.mBlendOperation ||                      //
                    mBlendOperationAlpha != _r.mBlendOperationAlpha ||            //
-                   mAlphaToCoverageEnabled != _r.mAlphaToCoverageEnabled ||      //
+                   mAlphaToCoverage != _r.mAlphaToCoverage ||                    //
                    mBlendChannelMask != _r.mBlendChannelMask ||                  //
                    ( mIsTransparent & 0x02u ) != ( _r.mIsTransparent & 0x02u );
         }
     };
+
+    namespace CustomPieceStage
+    {
+        enum CustomPieceStage
+        {
+            PreVertexShader,  // For pieces parsed before the default Vertex Shader pieces are parses.
+            VertexShader,
+            GeometryShader,
+            HullShader,
+            DomainShader,
+            PixelShader,
+            NumCustomPieceStages
+        };
+
+        inline CustomPieceStage from( ShaderType shaderType )
+        {
+            return CustomPieceStage( shaderType + 1u );
+        }
+    }  // namespace CustomPieceStage
 
     class _OgreExport HlmsTextureExportListener
     {
@@ -285,13 +414,31 @@ namespace Ogre
     {
         friend class RenderQueue;
 
+    public:
+        struct CustomProperty
+        {
+            /// We must keep keyStr for proper serialization (e.g. saving to JSON).
+            String   keyStr;
+            IdString keyName;
+            int32    value;
+
+            CustomProperty( const String &_keyStr, int32 _value ) :
+                keyStr( _keyStr ),
+                keyName( _keyStr ),
+                value( _value )
+            {
+            }
+        };
+
+        typedef FastArray<CustomProperty> CustomPropertyArray;
+
     protected:
         // Non-hot variables first (can't put them last as HlmsDatablock may be derived and
         // it's better if mShadowConstantBias is together with the derived type's variables
         /// List of renderables currently using this datablock
         vector<Renderable *>::type mLinkedRenderables;
 
-        int32 mCustomPieceFileIdHash[NumShaderTypes];
+        int32 mCustomPieceFileIdHash[CustomPieceStage::NumCustomPieceStages];
 
         Hlms    *mCreator;
         IdString mName;
@@ -323,12 +470,16 @@ namespace Ogre
         HlmsMacroblock const *mMacroblock[2];
         HlmsBlendblock const *mBlendblock[2];
 
+        CustomPropertyArray mCustomProperties;
+
     public:
         /// When false, we won't try to have Textures become resident
         bool mAllowTextureResidencyChange;
 
     protected:
         bool  mIgnoreFlushRenderables;
+        bool  mAccurateNonUniformNormalScaling;
+        bool  mAlphaHashing;
         uint8 mAlphaTestCmp;  ///< @see CompareFunction
         bool  mAlphaTestShadowCasterOnly;
         float mAlphaTestThreshold;
@@ -364,11 +515,11 @@ namespace Ogre
             If the filename has already been previously provided, the contents must be an exact match.
         @param shaderCode
             Shader source code.
-        @param shaderType
+        @param stage
             Shader stage to be used.
         */
         void setCustomPieceCodeFromMemory( const String &filename, const String &shaderCode,
-                                           ShaderType shaderType );
+                                           CustomPieceStage::CustomPieceStage stage );
 
         /** Sets the filename of a piece file to be parsed from disk. First, before all other files.
 
@@ -379,32 +530,50 @@ namespace Ogre
             Filename of the piece file. Must be unique. Empty to disable.
             If the filename has already been previously provided, the contents must be an exact match.
         @param resourceGroup
-        @param shaderType
+        @param stage
             Shader stage to be used.
         */
         void setCustomPieceFile( const String &filename, const String &resourceGroup,
-                                 ShaderType shaderType );
+                                 CustomPieceStage::CustomPieceStage stage );
 
         /// Returns the internal ID generated by setCustomPieceFile() and setCustomPieceCodeFromMemory().
         /// All calls with the same filename share the same ID. This ID is a deterministic hash.
         /// Returns 0 if unset.
-        int32 getCustomPieceFileIdHash( ShaderType shaderType ) const;
+        int32 getCustomPieceFileIdHash( CustomPieceStage::CustomPieceStage stage ) const;
 
         /// Returns the filename argument set to setCustomPieceFile() and setCustomPieceCodeFromMemory().
-        const String &getCustomPieceFileStr( ShaderType shaderType ) const;
+        const String &getCustomPieceFileStr( CustomPieceStage::CustomPieceStage stage ) const;
+
+        /** Sets properties to be used by this datablock. This is useful when you want to activate
+            custom shader code for specific materials (i.e. via setCustomPieceFile() or customized Hlms
+            implementations).
+            If you set a property whose name conflicts with an internal name used by the Hlms
+            implementation, shader generation will likely be invalid.
+        @remarks
+            Calling this function triggers HlmsDatablock::flushRenderables.
+        @param properties
+            Properties to set. Order does not matter.
+        @param bSwap
+            True if we should swap the contents of properties with out container.
+        */
+        void setCustomProperties( CustomPropertyArray &properties, bool bSwap );
+
+        const CustomPropertyArray &getCustomProperties() const { return mCustomProperties; }
 
         /** Sets a new macroblock that matches the same parameter as the input.
             Decreases the reference count of the previously set one.
             Runs an O(N) search to get the right block.
             Calling this function triggers a HlmsDatablock::flushRenderables
         @param macroblock
-            @see HlmsManager::getMacroblock
+            see HlmsManager::getMacroblock
         @param casterBlock
             True to directly set the macroblock to be used during the shadow mapping's caster pass.
-            Note that when false, it will automatically reset the caster's block according to
-            HlmsManager::setShadowMappingUseBackFaces setting.
+            When false, the value of overrideCasterBlock becomes relevant.
+        @param overrideCasterBlock
+            If true and casterBlock = false, the caster block will also be set to the input value.
         */
-        void setMacroblock( const HlmsMacroblock &macroblock, bool casterBlock = false );
+        void setMacroblock( const HlmsMacroblock &macroblock, bool casterBlock = false,
+                            bool overrideCasterBlock = true );
 
         /** Sets the macroblock from the given pointer that was already
             retrieved from the HlmsManager. Unlike the other overload,
@@ -414,22 +583,27 @@ namespace Ogre
             A valid block. The reference count is increased inside this function.
         @param casterBlock
             True to directly set the macroblock to be used during the shadow mapping's caster pass.
-            Note that when false, it will automatically reset the caster's block according to
-            HlmsManager::setShadowMappingUseBackFaces setting.
+            When false, the value of overrideCasterBlock becomes relevant.
+        @param overrideCasterBlock
+            If true and casterBlock = false, the caster block will also be set to the input value.
         */
-        void setMacroblock( const HlmsMacroblock *macroblock, bool casterBlock = false );
+        void setMacroblock( const HlmsMacroblock *macroblock, bool casterBlock = false,
+                            bool overrideCasterBlock = true );
 
         /** Sets a new blendblock that matches the same parameter as the input.
             Decreases the reference count of the previous mBlendblock.
             Runs an O(N) search to get the right block.
             Calling this function triggers a HlmsDatablock::flushRenderables
         @param blendblock
-            @see HlmsManager::getBlendblock
+            see HlmsManager::getBlendblock
         @param casterBlock
             True to directly set the blendblock to be used during the shadow mapping's caster pass.
-            Note that when false, it will reset the caster block to the same as the regular one.
+            When false, the value of overrideCasterBlock becomes relevant.
+        @param overrideCasterBlock
+            If true and casterBlock = false, the caster block will also be set to the input value.
         */
-        void setBlendblock( const HlmsBlendblock &blendblock, bool casterBlock = false );
+        void setBlendblock( const HlmsBlendblock &blendblock, bool casterBlock = false,
+                            bool overrideCasterBlock = true );
 
         /** Sets the blendblock from the given pointer that was already
             retrieved from the HlmsManager. Unlike the other overload,
@@ -439,9 +613,12 @@ namespace Ogre
             A valid block. The reference count is increased inside this function.
         @param casterBlock
             True to directly set the blendblock to be used during the shadow mapping's caster pass.
-            Note that when false, it will reset the caster block to the same as the regular one.
+            When false, the value of overrideCasterBlock becomes relevant.
+        @param overrideCasterBlock
+            If true and casterBlock = false, the caster block will also be set to the input value.
         */
-        void setBlendblock( const HlmsBlendblock *blendblock, bool casterBlock = false );
+        void setBlendblock( const HlmsBlendblock *blendblock, bool casterBlock = false,
+                            bool overrideCasterBlock = true );
 
         const HlmsMacroblock *getMacroblock( bool casterBlock = false ) const
         {
@@ -451,6 +628,78 @@ namespace Ogre
         {
             return mBlendblock[casterBlock];
         }
+
+        /** When objects are scaled by non-uniform values, normals tend to get skewed or deformed
+            causing wrong lighting.
+
+            This setting enables the use of additional math in the vertex shader to ensure normals
+            are properly scaled in these situations.
+
+            Calling this function triggers a HlmsDatablock::flushRenderables.
+        @remark
+            This setting would make more sense to be per object (or ideally autodetect when scale
+            factor isn't uniform) but this is expensive to perform. Therefore the setting lives
+            in the material instead, which is the best next thing.
+        @par
+        @remark
+            Due to the way the math works, the normal isn't exactly the same even if there is no scaling
+            involved. This is particularly noticeable with normal-offset bias in directional lights
+            shadow mapping, as the shadow displaces a little bit.
+        @par
+        @remark
+            Non-uniform scaling is when the scale is not the same for all axes.
+            Examples of non-uniform scaling:
+            @code
+                node->setScale( 2.0f, 5.0f, 0.02f );
+                node->setScale( 1.0f, 5.0f, 1.0f );
+            @endcode
+            Examples of uniform scaling:
+            @code
+                node->setScale( 1.0f, 1.0f, 1.0f );
+                node->setScale( 3.0f, 3.0f, 3.0f );
+            @endcode
+        @par
+        @remark
+            For more info see:
+              - https://x.com/iquilezles/status/1866219178409316362
+              - https://www.shadertoy.com/view/3s33zj
+              - https://github.com/graphitemaster/normals_revisited
+        @param bAccurate
+            True to enable the additional math for correction.
+            False otherwise (default value).
+        */
+        void setAccurateNonUniformNormalScaling( bool bAccurate );
+
+        bool getAccurateNonUniformNormalScaling() const { return mAccurateNonUniformNormalScaling; }
+
+        /** Uses a trick to *mimic* true Order Independent Transparency alpha blending.
+            The advantage of this method is that it is compatible with depth buffer writes
+            and is order independent.
+
+            Calling this function triggers a HlmsDatablock::flushRenderables
+        @remarks
+            @parblock
+            For best results:
+
+            @code
+                // Disable alpha test (default).
+                datablock->setAlphaTest( CMPF_ALWAYS_PASS );
+                // Do NOT enable alpha blending in the HlmsBlendblock (default).
+                HlmsBlendblock blendblock;
+                blendblock.setBlendType( SBT_REPLACE );
+                // Recommended: Enable A2C when using MSAA.
+                blendblock.mAlphaToCoverage = Ogre::HlmsBlendblock::A2cEnabledMsaaOnly;
+                datablock->setBlendblock( blendblock );
+
+                datablock->setAlphaHashing( true );
+            @endcode
+            @endparblock
+        @param bAlphaHashing
+            True to enable alpha hashing.
+        */
+        void setAlphaHashing( bool bAlphaHashing );
+
+        bool getAlphaHashing() const { return mAlphaHashing; }
 
         /** Sets the alpha test to the given compare function. CMPF_ALWAYS_PASS means disabled.
             @see mAlphaTestThreshold.
@@ -483,13 +732,15 @@ namespace Ogre
         virtual void setAlphaTestThreshold( float threshold );
         float        getAlphaTestThreshold() const { return mAlphaTestThreshold; }
 
-        /// @see Hlms::getNameStr. This operations is NOT fast. Might return null
+        /// @see Hlms::getNameStr. This operation is NOT fast. Might return null
         /// (if the datablock was removed from the Hlms but somehow is still alive)
         const String *getNameStr() const;
 
-        /// @see Hlms::getFilenameAndResourceGroup. This operations is NOT fast. Might return
+        /// @see Hlms::getFilenameAndResourceGroup. This operation is NOT fast. Might return
         /// null (if the datablock was removed from the Hlms but somehow is still alive)
+        /// @par
         /// Usage:
+        /// @code
         ///     String const *filename;
         ///     String const *resourceGroup;
         ///     datablock->getFilenameAndResourceGroup( &filename, &resourceGroup );
@@ -497,6 +748,7 @@ namespace Ogre
         ///     {
         ///         //Valid filename & resource group.
         ///     }
+        /// @endcode
         void getFilenameAndResourceGroup( String const **outFilename,
                                           String const **outResourceGroup ) const;
 

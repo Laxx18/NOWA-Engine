@@ -43,7 +43,7 @@ namespace MyGUI
 			mMacroBlock.mDepthCheck = false;
 			mMacroBlock.mDepthWrite = false;
 
-			mBlendBlock.mAlphaToCoverageEnabled = false;
+			mBlendBlock.mAlphaToCoverage = false;
 			mBlendBlock.mSourceBlendFactor = Ogre::SBF_SOURCE_ALPHA;
 			mBlendBlock.mDestBlendFactor = Ogre::SBF_ONE_MINUS_SOURCE_ALPHA;
 

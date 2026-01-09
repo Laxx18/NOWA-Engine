@@ -146,6 +146,11 @@ namespace ParticleUniverse
 		    */
 			//virtual void visitRenderables(Ogre::Renderable::Visitor* visitor,
 			//	bool debugRenderables = false) {/* No implementation */};
+
+			Ogre::ParticleType::ParticleType getParticleType() const override
+			{
+				return Ogre::ParticleType::NotParticle;
+			}
 	};
 
 }

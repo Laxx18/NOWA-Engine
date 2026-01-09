@@ -1,0 +1,68 @@
+// Minimal underwater post material
+
+fragment_program NOWA/UnderwaterPost_ps_HLSL hlsl
+{
+    source UnderwaterPost_ps.hlsl
+    target ps_5_0 ps_4_0
+    entry_point main
+}
+
+fragment_program NOWA/UnderwaterPost_ps_GLSL glsl
+{
+    source UnderwaterPost_ps.glsl
+    default_params
+    {
+        param_named rt0 int 0
+    }
+}
+
+fragment_program NOWA/UnderwaterPost_ps_VK glslvk
+{
+    source UnderwaterPost_ps.glsl
+}
+
+fragment_program NOWA/UnderwaterPost_ps unified
+{
+    delegate NOWA/UnderwaterPost_ps_GLSL
+    delegate NOWA/UnderwaterPost_ps_VK
+    delegate NOWA/UnderwaterPost_ps_HLSL
+
+    default_params
+    {
+        param_named underwaterFactor float 1.0
+        param_named waterTint float3 0.05 0.25 0.35
+        param_named distortion float 0.002
+        param_named contrast float 0.85
+        param_named saturation float 0.85
+        param_named vignette float 0.25
+
+        param_named_auto timeSeconds time 0.5
+    }
+}
+
+material NOWA/UnderwaterPost
+{
+    technique
+    {
+        pass
+        {
+            depth_check off
+            depth_write off
+            cull_hardware none
+
+            vertex_program_ref Ogre/Compositor/Quad_vs
+            {
+            }
+
+            fragment_program_ref NOWA/UnderwaterPost_ps
+            {
+            }
+
+            texture_unit rt0
+            {
+                tex_address_mode clamp
+                filtering bilinear
+            }
+        }
+    }
+}

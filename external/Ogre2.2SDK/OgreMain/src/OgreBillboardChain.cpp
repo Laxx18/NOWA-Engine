@@ -597,7 +597,7 @@ namespace Ogre
                         laste = e;
 
                     }  // element
-                }      // segment valid?
+                }  // segment valid?
 
             }  // each segment
 
@@ -725,6 +725,10 @@ namespace Ogre
         //-----------------------------------------------------------------------
         const LightList &BillboardChain::getLights() const { return queryLights(); }
         //-----------------------------------------------------------------------
+        Ogre::ParticleType::ParticleType BillboardChain::getParticleType() const
+        {
+            return Ogre::ParticleType::NotParticle;
+        }
         //-----------------------------------------------------------------------
         String BillboardChainFactory::FACTORY_TYPE_NAME = "BillboardChain";
         //-----------------------------------------------------------------------

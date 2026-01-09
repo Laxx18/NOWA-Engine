@@ -1658,200 +1658,185 @@ namespace NOWA
 		propertiesXML->append_node(propertyXML);
 	}
 
-	void DatablockPbsComponent::internalSetTextureName(Ogre::PbsTextureTypes pbsTextureType, Ogre::CommonTextureTypes::CommonTextureTypes textureType, Variant* attribute, const Ogre::String& textureName)
+	void DatablockPbsComponent::internalSetTextureName(Ogre::PbsTextureTypes pbsTextureType,
+		Ogre::CommonTextureTypes::CommonTextureTypes textureType,
+		Variant* attribute,
+		const Ogre::String& textureName)
 	{
-		NOWA::GraphicsModule::RenderCommand renderCommand = [this, pbsTextureType, textureType, attribute, textureName]()
-		{
-			Ogre::TextureGpuManager * hlmsTextureManager = Ogre::Root::getSingletonPtr()->getRenderSystem()->getTextureGpuManager();
-
-			Ogre::String previousTextureName = attribute->getString();
-
-			// If the data block component has just been created, get texture name from existing data block
-			Ogre::String tempTextureName = textureName;
-
-			if (Ogre::PBSM_REFLECTION != pbsTextureType)
+		NOWA::GraphicsModule::RenderCommand renderCommand =
+			[this, pbsTextureType, textureType, attribute, textureName]()
 			{
-				// If the data block component has just been created, get texture name from existing data block
-				if (true == newlyCreated && nullptr != this->datablock)
+				Ogre::TextureGpuManager* hlmsTextureManager =
+					Ogre::Root::getSingletonPtr()->getRenderSystem()->getTextureGpuManager();
+
+				Ogre::String previousTextureName = attribute->getString();
+
+				Ogre::String tempTextureName = textureName;
+
+				// ------------------------------------------------------------
+				// Attribute / UI handling
+				// ------------------------------------------------------------
+				if (Ogre::PBSM_REFLECTION != pbsTextureType)
 				{
-					tempTextureName = this->getPbsTextureName(this->datablock, pbsTextureType);
-				}
-				attribute->setValue(tempTextureName);
-				this->addAttributeFilePathData(attribute);
-			}
-			else
-			{
-				// If dynamic cubemap is used, skip texture creation as a reflection scenario with dynamic cubemap and camera is used!
-				if ("cubemap" == textureName)
-				{
-					attribute->getList().clear();
-					attribute->getList().emplace_back("cubemap");
-					attribute->setListSelectedValue("cubemap");
-					attribute->setReadOnly(true);
-					return;
+					if (true == newlyCreated && nullptr != this->datablock)
+					{
+						tempTextureName = this->getPbsTextureName(this->datablock, pbsTextureType);
+					}
+
+					attribute->setValue(tempTextureName);
+					this->addAttributeFilePathData(attribute);
 				}
 				else
 				{
-					this->setReflectionTextureNames();
-					attribute->setListSelectedValue(textureName);
-					attribute->setReadOnly(false);
-
-					/*Ogre::TextureGpu* reflectionTexture = datablock->getTexture(pbsTextureType);
-					if (nullptr != reflectionTexture)
+					// Dynamic cubemap handled by workspace
+					if ("cubemap" == textureName)
 					{
-						hlmsTextureManager->destroyTexture(reflectionTexture);
-					}*/
+						attribute->getList().clear();
+						attribute->getList().emplace_back("cubemap");
+						attribute->setListSelectedValue("cubemap");
+						attribute->setReadOnly(true);
+						return;
+					}
+					else
+					{
+						this->setReflectionTextureNames();
+						attribute->setListSelectedValue(textureName);
+						attribute->setReadOnly(false);
+
+						// Explicit clear
+						if (textureName.empty() && nullptr != this->datablock)
+						{
+							this->datablock->setTexture(Ogre::PBSM_REFLECTION, static_cast<Ogre::TextureGpu*>(nullptr));
+							return;
+						}
+					}
 				}
-			}
 
-			// Store the old texture name as user data
-			if (false == tempTextureName.empty())
-			{
-				attribute->addUserData("OldTexture", tempTextureName);
-			}
-			else if (nullptr != this->datablock)
-			{
-				attribute->addUserData("OldTexture", this->getPbsTextureName(this->datablock, pbsTextureType));
-			}
+				// ------------------------------------------------------------
+				// Store previous texture
+				// ------------------------------------------------------------
+				if (false == tempTextureName.empty())
+				{
+					attribute->addUserData("OldTexture", tempTextureName);
+				}
+				else if (nullptr != this->datablock)
+				{
+					attribute->addUserData("OldTexture",
+						this->getPbsTextureName(this->datablock, pbsTextureType));
+				}
 
-			if (nullptr != this->datablock /*&& false == newlyCreated*/)
-			{
-				// If no texture has been loaded, but still the data block has an internal one, get this one and remove it manually!
+				if (nullptr == this->datablock)
+					return;
+
 				if (true == attribute->getUserDataValue("OldTexture").empty())
 				{
 					tempTextureName = this->getPbsTextureName(this->datablock, pbsTextureType);
 					attribute->addUserData(tempTextureName);
 				}
 
-				// createOrRetrieveTexture crashes, when texture alias name is empty
 				Ogre::String oldTextureName = attribute->getUserDataValue("OldTexture");
-				if (false == oldTextureName.empty())
+				if (true == oldTextureName.empty())
+					return;
+
+				// ------------------------------------------------------------
+				// Resource validation (skip RTT cubemap)
+				// ------------------------------------------------------------
+				if (Ogre::PBSM_REFLECTION != pbsTextureType && false == Ogre::ResourceGroupManager::getSingleton().resourceExistsInAnyGroup(oldTextureName))
 				{
-					if (false == Ogre::ResourceGroupManager::getSingleton().resourceExistsInAnyGroup(oldTextureName))
-					{
-						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DatablockPbsComponent] Cannot set texture: '" + oldTextureName +
-							"', because it does not exist in any resource group! for game object: " + this->gameObjectPtr->getName());
-						attribute->setValue(previousTextureName);
-						this->addAttributeFilePathData(attribute);
-						return;
-					}
+					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DatablockPbsComponent] Cannot set texture: '" + oldTextureName +
+						"', because it does not exist in any resource group! for game object: " + this->gameObjectPtr->getName());
 
-					Ogre::uint32 textureFlags = Ogre::TextureFlags::AutomaticBatching;
-
-					if (this->datablock->suggestUsingSRGB(pbsTextureType))
-					{
-						textureFlags |= Ogre::TextureFlags::PrefersLoadingFromFileAsSRGB;
-					}
-
-					Ogre::TextureTypes::TextureTypes internalTextureType = Ogre::TextureTypes::Type2D;
-					if (Ogre::PBSM_REFLECTION == pbsTextureType)
-					{
-						textureFlags |= ~Ogre::TextureFlags::AutomaticBatching;
-						textureFlags |= Ogre::TextureFlags::RenderToTexture;
-						textureFlags |= Ogre::TextureFlags::AllowAutomipmaps;
-						internalTextureType = Ogre::TextureTypes::TypeCube;
-					}
-
-					Ogre::uint32 filters = Ogre::TextureFilter::FilterTypes::TypeGenerateDefaultMipmaps;
-					filters |= this->datablock->suggestFiltersForType(pbsTextureType);
-
-					// Really important: createOrRetrieveTexture when its created, its width/height is 0 etc. so the texture is just prepared
-					// it will be filled with correct data when setDataBlock is called
-					Ogre::TextureGpu* texture = hlmsTextureManager->createOrRetrieveTexture(oldTextureName,
-						Ogre::GpuPageOutStrategy::SaveToSystemRam, textureFlags, internalTextureType,
-						Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, filters, 0u);
-
-					// Check if its a valid texture
-					if (nullptr != texture)
-					{
-						if (Ogre::PBSM_REFLECTION == pbsTextureType)
-						{
-							texture->setResolution(1024u, 1024u);
-							texture->setNumMipmaps(Ogre::PixelFormatGpuUtils::getMaxMipmapCount(1024u, 1024u));
-							texture->setPixelFormat(Ogre::PFG_RGBA8_UNORM_SRGB);
-						}
-
-						if (nullptr != texture)
-						{
-							try
-							{
-								texture->scheduleTransitionTo(Ogre::GpuResidency::Resident);
-								/*if (false == this->newlyCreated)
-								{
-									hlmsTextureManager->waitForStreamingCompletion();
-								}*/
-							}
-							catch (const Ogre::Exception& exception)
-							{
-								Ogre::LogManager::getSingleton().logMessage(exception.getFullDescription(), Ogre::LML_CRITICAL);
-								Ogre::LogManager::getSingleton().logMessage("[DatablockPbsComponent] Error: Could not set texture: '" + oldTextureName + "' For game object: " + this->gameObjectPtr->getName(), Ogre::LML_CRITICAL);
-								attribute->setValue(previousTextureName);
-								this->addAttributeFilePathData(attribute);
-								return;
-							}
-						}
-
-						// Note: width may be 0, when create or retrieve is called, if its a heavy resolution texture. So the width/height becomes available after waitForData, if its still 0, texture is invalid!
-						if (0 == texture->getWidth())
-						{
-							hlmsTextureManager->waitForStreamingCompletion();
-						}
-						// Invalid texture skip
-						if (0 == texture->getWidth())
-						{
-							 attribute->setValue(previousTextureName);
-							 this->addAttributeFilePathData(attribute);
-							 return;
-						}
-						// If texture has been removed, set null texture, so that it will be removed from data block
-						if (true == tempTextureName.empty())
-						{
-							hlmsTextureManager->destroyTexture(texture);
-							texture = nullptr;
-							return;
-						}
-
-						const Ogre::HlmsSamplerblock* tempSamplerBlock = this->datablock->getSamplerblock(pbsTextureType);
-						if (nullptr != tempSamplerBlock)
-						{
-							Ogre::HlmsSamplerblock samplerblock(*tempSamplerBlock);
-							samplerblock.mU = Ogre::TAM_WRAP;
-							samplerblock.mV = Ogre::TAM_WRAP;
-							samplerblock.mW = Ogre::TAM_WRAP;
-
-							samplerblock.mMinFilter = Ogre::FO_ANISOTROPIC;
-							samplerblock.mMagFilter = Ogre::FO_ANISOTROPIC;
-							samplerblock.mMipFilter = Ogre::FO_ANISOTROPIC;
-							samplerblock.mMaxAnisotropy = 1; // test also with -1;
-
-							this->datablock->setTexture(pbsTextureType, texture, &samplerblock);
-						}
-						else
-						{
-							Ogre::HlmsSamplerblock samplerblock;
-							samplerblock.mU = Ogre::TAM_WRAP;
-							samplerblock.mV = Ogre::TAM_WRAP;
-							samplerblock.mW = Ogre::TAM_WRAP;
-
-							samplerblock.mMinFilter = Ogre::FO_ANISOTROPIC;
-							samplerblock.mMagFilter = Ogre::FO_ANISOTROPIC;
-							samplerblock.mMipFilter = Ogre::FO_ANISOTROPIC;
-							samplerblock.mMaxAnisotropy = 1; // test also with -1;
-
-							this->datablock->setSamplerblock(pbsTextureType, samplerblock);
-							this->datablock->setTexture(pbsTextureType, texture, &samplerblock);
-
-							// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DatablockPbsComponent] Can not apply texture for this datablock, because it has no sampler block for game object: " + this->gameObjectPtr->getName());
-						}
-					}
-					else
-					{
-						attribute->setValue("");
-						attribute->removeUserData("OldTexture");
-					}
+					attribute->setValue(previousTextureName);
+					this->addAttributeFilePathData(attribute);
+					return;
 				}
-			}
-		};
+
+				// ------------------------------------------------------------
+				// Texture creation
+				// ------------------------------------------------------------
+				Ogre::uint32 textureFlags = 0;
+
+				if (this->datablock->suggestUsingSRGB(pbsTextureType))
+				{
+					textureFlags |= Ogre::TextureFlags::PrefersLoadingFromFileAsSRGB;
+				}
+
+				Ogre::TextureTypes::TextureTypes internalTextureType = Ogre::TextureTypes::Type2D;
+				if (Ogre::PBSM_REFLECTION == pbsTextureType)
+				{
+					internalTextureType = Ogre::TextureTypes::TypeCube;
+				}
+
+				Ogre::uint32 filters = Ogre::TextureFilter::FilterTypes::TypeGenerateDefaultMipmaps;
+				filters |= this->datablock->suggestFiltersForType(pbsTextureType);
+
+				Ogre::TextureGpu* texture = hlmsTextureManager->createOrRetrieveTexture(oldTextureName, Ogre::GpuPageOutStrategy::SaveToSystemRam,
+						textureFlags, internalTextureType, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, filters, 0u);
+
+				if (nullptr == texture)
+				{
+					attribute->setValue("");
+					attribute->removeUserData("OldTexture");
+					return;
+				}
+
+				try
+				{
+					texture->scheduleTransitionTo(Ogre::GpuResidency::Resident);
+				}
+				catch (const Ogre::Exception& exception)
+				{
+					Ogre::LogManager::getSingleton().logMessage(exception.getFullDescription(), Ogre::LML_CRITICAL);
+					Ogre::LogManager::getSingleton().logMessage( "[DatablockPbsComponent] Error: Could not set texture: '" + oldTextureName + 
+						"' For game object: " + this->gameObjectPtr->getName(), Ogre::LML_CRITICAL);
+
+					attribute->setValue(previousTextureName);
+					this->addAttributeFilePathData(attribute);
+					return;
+				}
+
+				if (0 == texture->getWidth())
+				{
+					hlmsTextureManager->waitForStreamingCompletion();
+				}
+
+				if (0 == texture->getWidth())
+				{
+					attribute->setValue(previousTextureName);
+					this->addAttributeFilePathData(attribute);
+					return;
+				}
+				// If texture has been removed, set null texture, so that it will be removed from data block
+				if (true == tempTextureName.empty())
+				{
+					hlmsTextureManager->destroyTexture(texture);
+					texture = nullptr;
+					return;
+				}
+
+				// ------------------------------------------------------------
+				// Bind to datablock (never destroy shared textures!)
+				// ------------------------------------------------------------
+				const Ogre::HlmsSamplerblock* tempSamplerBlock = this->datablock->getSamplerblock(pbsTextureType);
+
+				Ogre::HlmsSamplerblock samplerblock;
+				if (nullptr != tempSamplerBlock)
+				{
+					samplerblock = *tempSamplerBlock;
+				}
+
+				samplerblock.mU = Ogre::TAM_WRAP;
+				samplerblock.mV = Ogre::TAM_WRAP;
+				samplerblock.mW = Ogre::TAM_WRAP;
+
+				samplerblock.mMinFilter = Ogre::FO_ANISOTROPIC;
+				samplerblock.mMagFilter = Ogre::FO_ANISOTROPIC;
+				samplerblock.mMipFilter = Ogre::FO_ANISOTROPIC;
+				samplerblock.mMaxAnisotropy = 1;
+
+				this->datablock->setTexture(pbsTextureType, texture, &samplerblock);
+			};
+
 		NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DatablockPbsComponent::internalSetTextureName");
 	}
 
@@ -2685,6 +2670,51 @@ namespace NOWA
 	
 	void DatablockPbsComponent::setReflectionTextureName(const Ogre::String& reflectionTextureName)
 	{
+		static const Ogre::String backupKey = "BackupReflectionTextureName";
+		static const Ogre::String emptyMarker = "__NOWA_EMPTY__";
+
+		if (nullptr == this->reflectionTextureName)
+			return;
+
+		Ogre::String currentName = this->reflectionTextureName->getListSelectedValue();
+
+		// Handle transition TO dynamic cubemap
+		if ("cubemap" == reflectionTextureName && "cubemap" != currentName)
+		{
+			// Store current static selection for later restoration
+			if (true == currentName.empty())
+			{
+				this->reflectionTextureName->addUserData(backupKey, emptyMarker);
+			}
+			else
+			{
+				this->reflectionTextureName->addUserData(backupKey, currentName);
+			}
+		}
+		// Handle transition FROM dynamic cubemap to empty
+		else if (true == reflectionTextureName.empty() && "cubemap" == currentName)
+		{
+			// Restore previous static selection if one existed
+			Ogre::String backupName = this->reflectionTextureName->getUserDataValue(backupKey);
+			if (false == backupName.empty())
+			{
+				this->reflectionTextureName->removeUserData(backupKey);
+
+				if (emptyMarker == backupName)
+				{
+					// Was previously empty, clear it
+					this->internalSetTextureName(Ogre::PBSM_REFLECTION, Ogre::CommonTextureTypes::EnvMap, this->reflectionTextureName, Ogre::String());
+				}
+				else
+				{
+					// Restore previous static cubemap
+					this->internalSetTextureName(Ogre::PBSM_REFLECTION, Ogre::CommonTextureTypes::EnvMap, this->reflectionTextureName, backupName);
+				}
+				return;
+			}
+		}
+
+		// Normal texture name assignment
 		this->internalSetTextureName(Ogre::PBSM_REFLECTION, Ogre::CommonTextureTypes::EnvMap, this->reflectionTextureName, reflectionTextureName);
 	}
 

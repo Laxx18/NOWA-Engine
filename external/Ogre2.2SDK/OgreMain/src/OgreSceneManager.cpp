@@ -31,7 +31,7 @@ THE SOFTWARE.
 
 #include "Animation/OgreSkeletonDef.h"
 #include "Animation/OgreSkeletonInstance.h"
-#include "Animation/OgreTagPoint.h"
+#include "Animation/OgreTagPoint2.h"
 #include "Compositor/OgreCompositorShadowNode.h"
 #include "Compositor/Pass/PassScene/OgreCompositorPassSceneDef.h"
 #include "Math/Array/OgreBooleanMask.h"
@@ -76,6 +76,8 @@ THE SOFTWARE.
 #include "OgreTextureGpuManager.h"
 #include "OgreViewport.h"
 #include "OgreWireAabb.h"
+#include "ParticleSystem/OgreParticleSystem2.h"
+#include "ParticleSystem/OgreParticleSystemManager2.h"
 #include "Threading/OgreBarrier.h"
 #include "Threading/OgreUniformScalableTask.h"
 
@@ -131,6 +133,8 @@ namespace Ogre
         mDecalsNormalsTex( 0 ),
         mDecalsEmissiveTex( 0 ),
         mEnvFeatures( 0u ),
+        mParticleSystemManager2(
+            new ParticleSystemManager2( this, Root::getSingleton().getParticleSystemManager2() ) ),
         mCamerasInProgress( 0 ),
         mCurrentViewport0( 0 ),
         mCurrentPass( 0 ),
@@ -165,6 +169,7 @@ namespace Ogre
         mFindVisibleObjects( true ),
         mNumWorkerThreads( std::max<size_t>( numWorkerThreads, 1u ) ),
         mForceMainThread( numWorkerThreads == 0u ? true : false ),
+        mPrepareParticleFx( false ),
         mUpdateBoundsRequest( 0 ),
         mUserTask( 0 ),
         mRequestType( NUM_REQUESTS ),
@@ -193,6 +198,7 @@ namespace Ogre
                                                           &mForwardPlusMemoryManager[SCENE_DYNAMIC] );
         mForwardPlusMemoryManager[SCENE_DYNAMIC]._setTwin( SCENE_DYNAMIC,
                                                            &mForwardPlusMemoryManager[SCENE_STATIC] );
+        mParticleSysDefMemoryManager._setTwin( SCENE_STATIC, 0 );
 
         Root *root = Root::getSingletonPtr();
         if( root )
@@ -271,8 +277,11 @@ namespace Ogre
         mForwardPlusSystem = 0;
         mForwardPlusImpl = 0;
 
-        OGRE_DELETE mSky;
-        mSky = 0;
+        if( mSky )
+        {
+            destroyRectangle2D( mSky );
+            mSky = 0;
+        }
 
         OGRE_DELETE mRadialDensityMask;
         mRadialDensityMask = 0;
@@ -309,6 +318,8 @@ namespace Ogre
 
         mRenderQueue = 0;
         mAutoParamDataSource = 0;
+
+        delete mParticleSystemManager2;
 
         stopWorkerThreads();
     }
@@ -511,6 +522,8 @@ namespace Ogre
         }
 
         mLightMemoryManager.defragment();
+        // Do not defragment mParticleSysDefMemoryManager
+        mParticleSysMemoryManager.defragment();
         // Skeletons are more complex because the new slot count must be multiple bonesPerDepth
         // mSkeletonAnimationManager.defragment();
         mTagPointNodeMemoryManager.defragment();
@@ -526,6 +539,8 @@ namespace Ogre
         }
 
         mLightMemoryManager.shrinkToFit();
+        // Do not defragment mParticleSysDefMemoryManager
+        mParticleSysMemoryManager.shrinkToFit();
         // Skeletons are more complex because the new slot count must be multiple bonesPerDepth
         // mSkeletonAnimationManager.shrinkToFit();
         mTagPointNodeMemoryManager.shrinkToFit();
@@ -776,6 +791,56 @@ namespace Ogre
         destroyAllMovableObjectsByType( ParticleSystemFactory::FACTORY_TYPE_NAME );
     }
     //-----------------------------------------------------------------------
+    ParticleSystemDef *SceneManager::createParticleSystemDef( const String &name )
+    {
+        return mParticleSystemManager2->createParticleSystemDef( name );
+    }
+    //-----------------------------------------------------------------------
+    ParticleSystem2 *SceneManager::createParticleSystem2( ParticleSystemDef *systemDef )
+    {
+        NameValuePairList params;
+        params.insert( { "", Ogre::StringConverter::toString( (uintptr_t)systemDef ) } );
+        return static_cast<ParticleSystem2 *>( createMovableObject(
+            ParticleSystem2Factory::FACTORY_TYPE_NAME, &mParticleSysMemoryManager, &params ) );
+    }
+    //-----------------------------------------------------------------------
+    ParticleSystem2 *SceneManager::createParticleSystem2( const String &templateDefName )
+    {
+        return createParticleSystem2( mParticleSystemManager2->getParticleSystemDef( templateDefName ) );
+    }
+    //-----------------------------------------------------------------------
+    void SceneManager::destroyParticleSystem2( ParticleSystem2 *obj )
+    {
+        return destroyMovableObject( obj );
+    }
+    //-----------------------------------------------------------------------
+    void SceneManager::destroyAllParticleSystems2()
+    {
+        MovableObjectCollection *objectMap =
+            getMovableObjectCollection( ParticleSystem2Factory::FACTORY_TYPE_NAME );
+        {
+            OGRE_LOCK_MUTEX( objectMap->mutex );
+            objectMap->movableObjects.clear();
+        }
+
+        mParticleSystemManager2->destroyAllParticleSystems();
+    }
+    //-----------------------------------------------------------------------
+    BillboardSet *SceneManager::createBillboardSet2()
+    {
+        return mParticleSystemManager2->createBillboardSet();
+    }
+    //-----------------------------------------------------------------------
+    void SceneManager::destroyBillboardSet2( BillboardSet *billboardSet )
+    {
+        return mParticleSystemManager2->destroyBillboardSet( billboardSet );
+    }
+    //-----------------------------------------------------------------------
+    void SceneManager::destroyAllBillboardSets2()
+    {
+        return mParticleSystemManager2->destroyAllBillboardSets();
+    }
+    //-----------------------------------------------------------------------
     void SceneManager::clearScene( bool deleteIndestructibleToo, bool reattachCameras )
     {
         destroyAllMovableObjects();
@@ -1018,8 +1083,7 @@ namespace Ogre
         {
             if( !mSky )
             {
-                mSky = OGRE_NEW Rectangle2D( Id::generateNewId<MovableObject>(),
-                                             &mEntityMemoryManager[SCENE_STATIC], this );
+                mSky = createRectangle2D( SCENE_STATIC );
                 // We can't use BT_DYNAMIC_* because the scene may be rendered from multiple cameras
                 // in the same frame, and dynamic supports only one set of values per frame
                 mSky->initialize( BT_DEFAULT,
@@ -1084,9 +1148,11 @@ namespace Ogre
         else
         {
             if( mSky )
+            {
                 mSky->detachFromParent();
-            OGRE_DELETE mSky;
-            mSky = 0;
+                destroyRectangle2D( mSky );
+                mSky = 0;
+            }
             if( mSkyMaterial )
             {
                 materialManager.remove( mSkyMaterial );
@@ -1618,9 +1684,9 @@ namespace Ogre
         mRenderQueue->warmUpShadersCollect( realFirstRq, realLastRq, casterPass );
     }
     //-----------------------------------------------------------------------
-    void SceneManager::_warmUpShadersTrigger()
+    void SceneManager::_warmUpShadersTrigger( bool casterPass )
     {
-        mRenderQueue->warmUpShadersTrigger( mDestRenderSystem );
+        mRenderQueue->warmUpShadersTrigger( mDestRenderSystem, casterPass );
     }
     //-----------------------------------------------------------------------
     void SceneManager::_fireWarmUpShadersCompile()
@@ -1655,6 +1721,20 @@ namespace Ogre
         }
     }
     //-----------------------------------------------------------------------
+    void SceneManager::_fireParticleSystemManager2Update()
+    {
+        mRequestType = PARTICLE_SYSTEM_MANAGER2;
+
+        if( mForceMainThread )
+            updateWorkerThreadImpl( 0 );
+        else
+        {
+            mWorkerThreadsBarrier->sync();  // Fire threads.
+            mWorkerThreadsBarrier->sync();  // Wait them to complete stage 01.
+            mWorkerThreadsBarrier->sync();  // Wait them to complete stage 02.
+        }
+    }
+    //-----------------------------------------------------------------------
     void SceneManager::_frameEnded() { mRenderQueue->frameEnded(); }
     //-----------------------------------------------------------------------
     void SceneManager::_setDestinationRenderSystem( RenderSystem *sys )
@@ -1673,6 +1753,10 @@ namespace Ogre
     //-----------------------------------------------------------------------
     void SceneManager::_releaseManualHardwareResources()
     {
+        // release indirect buffers in render queue
+        if( mRenderQueue )
+            mRenderQueue->_releaseManualHardwareResources();
+
         // release hardware resources inside all movable objects
         OGRE_LOCK_MUTEX( mMovableObjectCollectionMapMutex );
         for( MovableObjectCollectionMap::iterator ci = mMovableObjectCollectionMap.begin(),
@@ -2089,6 +2173,8 @@ namespace Ogre
                 ObjectData objData;
                 const size_t totalObjs = memoryManager->getFirstObjectData( objData, i );
 
+                const uint8 currRqId = static_cast<uint8>( i );
+
                 // Skip if totalObjs == 0u. Profiling shows there is considerable gains.
                 // Too much (255 queues, most of them empty, multiples scene passes...)
                 if( totalObjs > 0u )
@@ -2108,8 +2194,6 @@ namespace Ogre
 
                     MovableObject::cullFrustum( numObjs, objData, camera, outVisibleObjects,
                                                 preparedData );
-
-                    const uint8 currRqId = static_cast<uint8>( i );
 
                     if( mRenderQueue->getRenderQueueMode( currRqId ) == RenderQueue::FAST &&
                         request.addToRenderQueue )
@@ -2139,6 +2223,14 @@ namespace Ogre
 
                         outVisibleObjects.clear();
                     }
+                }
+
+                if( mRenderQueue->getRenderQueueMode( currRqId ) == RenderQueue::PARTICLE_SYSTEM &&
+                    request.addToRenderQueue )
+                {
+                    mParticleSystemManager2->_addToRenderQueue( threadIdx, mNumWorkerThreads,
+                                                                mRenderQueue, currRqId, visibilityMask,
+                                                                !request.casterPass );
                 }
             }
 
@@ -2624,7 +2716,14 @@ namespace Ogre
         OgreProfileGroup( "updateSceneGraph", OGREPROF_GENERAL );
 
         // Update controllers
-        ControllerManager::getSingleton().updateAllControllers();
+        ControllerManager &controllerManager = ControllerManager::getSingleton();
+        controllerManager.updateAllControllers();
+
+        {
+            const Real timeSinceLast = controllerManager.getFrameTimeSource()->getValue();
+            mParticleSystemManager2->prepareForUpdate( timeSinceLast );
+            mPrepareParticleFx = true;
+        }
 
         highLevelCull();
         _applySceneAnimations();
@@ -2633,6 +2732,8 @@ namespace Ogre
         updateAllTagPoints();
         updateAllBounds( mEntitiesMemoryManagerUpdateList );
         updateAllBounds( mLightsMemoryManagerCulledList );
+
+        mPrepareParticleFx = false;
 
         {
             // Auto-track nodes
@@ -2674,17 +2775,7 @@ namespace Ogre
 
         buildLightList();
 
-        // Reset the list of render RQs for all cameras that are in a PASS_SCENE (except shadow passes)
-        uint8 numRqs = 0;
-        {
-            ObjectMemoryManagerVec::const_iterator itor = mEntitiesMemoryManagerCulledList.begin();
-            ObjectMemoryManagerVec::const_iterator endt = mEntitiesMemoryManagerCulledList.end();
-            while( itor != endt )
-            {
-                numRqs = (uint8)std::max<size_t>( numRqs, ( *itor )->_getTotalRenderQueues() );
-                ++itor;
-            }
-        }
+        mParticleSystemManager2->update();
 
         // Reset these
         mStaticMinDepthLevelDirty = std::numeric_limits<uint16>::max();
@@ -3678,6 +3769,34 @@ namespace Ogre
             ++it;
         }
 
+        {
+            // Calculate the particles
+            // Everything will be treated as const (we have no ConstObjectData structure).
+            ObjectMemoryManager *objMemoryManager =
+                const_cast<ObjectMemoryManager *>( &mParticleSysDefMemoryManager );
+            const size_t numRenderQueues = objMemoryManager->getNumRenderQueues();
+
+            // TODO: Send this to worker threads (dark_sylinc)
+
+            size_t firstRq = std::min<size_t>( _firstRq, numRenderQueues );
+            size_t lastRq = std::min<size_t>( _lastRq, numRenderQueues );
+
+            for( size_t i = firstRq; i < lastRq; ++i )
+            {
+                AxisAlignedBox tmpBox;
+
+                ObjectData objData;
+                const size_t numObjs = objMemoryManager->getFirstObjectData( objData, i );
+
+                MovableObject::calculateCastersBox(
+                    numObjs, objData,
+                    ( viewportVisibilityMask & getVisibilityMask() ) |
+                        ( viewportVisibilityMask & ~VisibilityFlags::RESERVED_VISIBILITY_FLAGS ),
+                    &tmpBox );
+                retVal.merge( tmpBox );
+            }
+        }
+
         return retVal;
     }
     //---------------------------------------------------------------------
@@ -4301,6 +4420,31 @@ namespace Ogre
         }
     }
     //---------------------------------------------------------------------
+    String SceneManager::deduceMovableObjectName( const MovableObject *movableObject )
+    {
+        String meshName = movableObject->getName();
+        if( !meshName.empty() )
+            return meshName;
+
+        {
+            const Item *item = dynamic_cast<const Item *>( movableObject );
+            if( item && item->getMesh() )
+                return item->getMesh()->getName();
+        }
+        {
+            const v1::Entity *entity = dynamic_cast<const v1::Entity *>( movableObject );
+            if( entity && entity->getMesh() )
+                return entity->getMesh()->getName();
+        }
+        {
+            const ParticleSystem2 *ps2 = dynamic_cast<const ParticleSystem2 *>( movableObject );
+            if( ps2 && ps2->getParticleSystemDef() )
+                return ps2->getParticleSystemDef()->getName();
+        }
+
+        return "[Unknown MovableObject type: " + movableObject->getMovableType() + "]";
+    }
+    //---------------------------------------------------------------------
     void SceneManager::_renderSingleObject( Renderable *pRend, const MovableObject *pMovableObject,
                                             bool casterPass, bool dualParaboloid )
     {
@@ -4598,6 +4742,8 @@ namespace Ogre
             break;
         case UPDATE_ALL_ANIMATIONS:
             updateAllAnimationsThread( threadIdx );
+            if( mPrepareParticleFx )
+                mParticleSystemManager2->_prepareParallel();
             break;
         case UPDATE_ALL_TRANSFORMS:
             updateAllTransformsThread( mUpdateTransformRequest, threadIdx );
@@ -4628,6 +4774,12 @@ namespace Ogre
             break;
         case PARALLEL_HLMS_COMPILE:
             mRenderQueue->_compileShadersThread( threadIdx );
+            break;
+        case PARTICLE_SYSTEM_MANAGER2:
+            mParticleSystemManager2->_updateParallel01( threadIdx, mNumWorkerThreads );
+            if( !mForceMainThread )
+                mWorkerThreadsBarrier->sync();
+            mParticleSystemManager2->_updateParallel02( threadIdx, mNumWorkerThreads );
             break;
         case USER_UNIFORM_SCALABLE_TASK:
             mUserTask->execute( threadIdx, mNumWorkerThreads );

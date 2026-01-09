@@ -214,6 +214,8 @@ namespace NOWA
 				NOWA::GraphicsModule::getInstance()->clearAllClosures();
 				this->activeStateStack.back()->exit();
 
+				this->bStall = true;
+
 				AppState* oldState = this->activeStateStack.back();
 				InputDeviceCore::getSingletonPtr()->removeKeyListener(oldState);
 				InputDeviceCore::getSingletonPtr()->removeMouseListener(oldState);
@@ -489,6 +491,8 @@ namespace NOWA
 				Ogre::Threads::Sleep(500);
 			}
 		}
+
+		this->bStall = true;
 	}
 
 	void AppStateManager::internalChangeAppState(AppState* state, bool initial)
@@ -828,6 +832,7 @@ namespace NOWA
 	{
 		if (true == Core::getSingletonPtr()->getIsGame())
 		{
+			this->bStall = true;
 			// NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.2f));
 			// Creates the delay process and changes the scene at another tick. Note, this is necessary
 			// because changing the scene destroys all game objects and its components.

@@ -331,7 +331,7 @@ namespace Ogre
 
         bool hasMinVersion( int minMajor, int minMinor, int minRel ) const
         {
-            return major > minMajor || ( major == minMajor && minor >= minMinor ) ||
+            return major > minMajor || ( major == minMajor && minor > minMinor ) ||
                    ( major == minMajor && minor == minMinor && release >= minRel );
         }
     };
@@ -358,8 +358,9 @@ namespace Ogre
         GPU_MOZILLA = 15,  // WebGL on Mozilla/Firefox based browser
         GPU_WEBKIT = 16,   // WebGL on WebKit/Chrome base browser
         GPU_IMGTEC = 17,   // PowerVR
+        GPU_SAMSUNG = 18,  // Samsung Xclipse
         /// placeholder
-        GPU_VENDOR_COUNT = 18
+        GPU_VENDOR_COUNT = 19
     };
 
     /** singleton class for storing the capabilities of the graphics card.

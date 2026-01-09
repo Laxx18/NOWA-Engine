@@ -2233,6 +2233,11 @@ namespace NOWA
 		return makeStrongPtr<TerraComponent>(gameObject->getComponent<TerraComponent>()).get();
 	}
 
+	OceanComponent* getOceanComponent(GameObject* gameObject)
+	{
+		return makeStrongPtr<OceanComponent>(gameObject->getComponent<OceanComponent>()).get();
+	}
+
 	JointComponent* getJointComponent(GameObject* gameObject)
 	{
 		return makeStrongPtr<JointComponent>(gameObject->getComponent<JointComponent>()).get();
@@ -2888,6 +2893,11 @@ namespace NOWA
 		return makeStrongPtr<TerraComponent>(gameObject->getComponentFromName<TerraComponent>(name)).get();
 	}
 
+	OceanComponent* getOceanComponentFromName(GameObject* gameObject, const Ogre::String& name)
+	{
+		return makeStrongPtr<OceanComponent>(gameObject->getComponentFromName<OceanComponent>(name)).get();
+	}
+
 	JointComponent* getJointComponentFromName(GameObject* gameObject, const Ogre::String& name)
 	{
 		return makeStrongPtr<JointComponent>(gameObject->getComponentFromName<JointComponent>(name)).get();
@@ -3382,6 +3392,7 @@ namespace NOWA
 		gameObject.def("getDatablockUnlitComponent", &getDatablockUnlitComponent);
 		gameObject.def("getDatablockTerraComponent", &getDatablockTerraComponent);
 		gameObject.def("getTerraComponent", &getTerraComponent);
+		gameObject.def("getOceanComponent", &getOceanComponent);
 		gameObject.def("getJointComponent", &getJointComponent);
 		gameObject.def("getJointHingeComponent", &getJointHingeComponent);
 		gameObject.def("getJointTargetTransformComponent", &getJointTargetTransformComponent);
@@ -3525,6 +3536,7 @@ namespace NOWA
 		gameObject.def("getDatablockUnlitComponentFromName", &getDatablockUnlitComponentFromName);
 		gameObject.def("getDatablockTerraComponentFromName", &getDatablockTerraComponentFromName);
 		gameObject.def("getTerraComponentFromName", &getTerraComponentFromName);
+		gameObject.def("getOceanComponentFromName", &getOceanComponentFromName);
 		gameObject.def("getJointComponentFromName", &getJointComponentFromName);
 		gameObject.def("getJointHingeComponentFromName", &getJointHingeComponentFromName);
 		gameObject.def("getJointTargetTransformComponentFromName", &getJointTargetTransformComponentFromName);
@@ -3684,6 +3696,7 @@ namespace NOWA
 		AddClassToCollection("GameObject", "DatablockUnlitComponent getDatablockUnlitComponent()", "Gets the datablock unlit (without lighting) component.");
 		AddClassToCollection("GameObject", "DatablockTerraComponent getDatablockTerraComponent()", "Gets the datablock terra component.");
 		AddClassToCollection("GameObject", "TerraComponent getTerraComponent()", "Gets the terra component.");
+		AddClassToCollection("GameObject", "OceanComponent getOceanComponent()", "Gets the ocean component.");
 		AddClassToCollection("GameObject", "JointComponent getJointComponent()", "Gets the joint root component. Requirements: A physics component.");
 		AddClassToCollection("GameObject", "JointHingeComponent getJointHingeComponent()", "Gets the joint hinge component. Requirements: A physics active component.");
 		AddClassToCollection("GameObject", "JointTargetTransformComponent getJointTargetTransformComponent()", "Gets the joint target transform component. Requirements: A physics active component.");
@@ -3816,6 +3829,7 @@ namespace NOWA
 		AddClassToCollection("GameObject", "DatablockUnlitComponent getDatablockUnlitComponentFromName(String name)", "Gets the datablock unlit (without lighting) component.");
 		AddClassToCollection("GameObject", "DatablockTerraComponent getDatablockTerraComponentFromName(String name)", "Gets the datablock terra component.");
 		AddClassToCollection("GameObject", "TerraComponent getTerraComponentFromName(String name)", "Gets the terra component.");
+		AddClassToCollection("GameObject", "OceanComponent getOceanComponentFromName(String name)", "Gets the ocean component.");
 		AddClassToCollection("GameObject", "JointComponent getJointComponentFromName(String name)", "Gets the joint root component. Requirements: A physics component.");
 		AddClassToCollection("GameObject", "JointHingeComponent getJointHingeComponentFromName(String name)", "Gets the joint hinge component. Requirements: A physics active component.");
 		AddClassToCollection("GameObject", "JointTargetTransformComponent getJointTargetTransformComponentFromName(String name)", "Gets the joint target transform component. Requirements: A physics active component.");
@@ -4937,6 +4951,7 @@ namespace NOWA
 		gameObjectController.def("castDatablockUnlitComponent", &GameObjectController::cast<DatablockUnlitComponent>);
 		gameObjectController.def("castDatablockTerraComponent", &GameObjectController::cast<DatablockTerraComponent>);
 		gameObjectController.def("castTerraComponent", &GameObjectController::cast<TerraComponent>);
+		gameObjectController.def("castOceanComponent", &GameObjectController::cast<OceanComponent>);
 		gameObjectController.def("castJointComponent", &GameObjectController::cast<JointComponent>);
 		gameObjectController.def("castJointHingeComponent", &GameObjectController::cast<JointHingeComponent>);
 		gameObjectController.def("castJointTargetTransformComponent", &GameObjectController::cast<JointTargetTransformComponent>);
@@ -5102,6 +5117,7 @@ namespace NOWA
 		AddClassToCollection("GameObjectController", "DatablockUnlitComponent castDatablockUnlitComponent(DatablockUnlitComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "DatablockTerraComponent castDatablockTerraComponent(DatablockTerraComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "TerraComponent castTerraComponent(TerraComponent other)", "Casts an incoming type from function for lua auto completion.");
+		AddClassToCollection("GameObjectController", "OceanComponent castOceanComponent(OceanComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "JointComponent castJointComponent(JointComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "JointHingeComponent castJointHingeComponent(JointHingeComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "JointTargetTransformComponent castJointTargetTransformComponent(JointTargetTransformComponent other)", "Casts an incoming type from function for lua auto completion.");
@@ -8766,6 +8782,60 @@ namespace NOWA
 		AddClassToCollection("TerraComponent", "void modifyTerrainLoop(Vector3 position, number strength, number loopCount)", "Abreviation for modifying the terrain at the given position and strength and loop of times. It calles all necessary other methods internally in order to satisfy undo/redo feature");
 		AddClassToCollection("TerraComponent", "void smoothTerrainLoop(Vector3 position, number strength, number loopCount)", "Abreviation for smoothing the terrain at the given position and strength and loop of times. It calles all necessary other methods internally in order to satisfy undo/redo feature");
 		AddClassToCollection("TerraComponent", "void paintTerrainLoop(Vector3 position, number intensity, number imageLayer, number loopCount)", "Abreviation for painting the terrain at the given position and strength and loop of times. It calles all necessary other methods internally in order to satisfy undo/redo feature");
+	}
+
+	void bindOceanComponent(lua_State* lua)
+	{
+		module(lua)
+		[
+			class_<OceanComponent, GameObjectComponent>("OceanComponent")
+			.def("getParentClassName", &OceanComponent::getParentClassName)
+
+			.def("setUseSkirts", &OceanComponent::setUseSkirts)
+			.def("getUseSkirts", &OceanComponent::getUseSkirts)
+
+			.def("setWavesIntensity", &OceanComponent::setWavesIntensity)
+			.def("getWavesIntensity", &OceanComponent::getWavesIntensity)
+
+			.def("setOceanWavesScale", &OceanComponent::setOceanWavesScale)
+			.def("getOceanWavesScale", &OceanComponent::getOceanWavesScale)
+
+			.def("setShaderWavesScale", &OceanComponent::setShaderWavesScale)
+			.def("getShaderWavesScale", &OceanComponent::getShaderWavesScale)
+
+			.def("setWaveTimeScale", &OceanComponent::setWaveTimeScale)
+			.def("getWaveTimeScale", &OceanComponent::getWaveTimeScale)
+
+			.def("setWaveFrequencyScale", &OceanComponent::setWaveFrequencyScale)
+			.def("getWaveFrequencyScale", &OceanComponent::getWaveFrequencyScale)
+
+			.def("setWaveChaos", &OceanComponent::setWaveChaos)
+			.def("getWaveChaos", &OceanComponent::getWaveChaos)
+
+			.def("isCameraUnderwater", &OceanComponent::isCameraUnderwater)
+
+			.def("isPositionUnderWater", (bool (OceanComponent::*)(const Ogre::Vector3&) const) &OceanComponent::isUnderWater)
+			.def("isGameObjectUnderWater", (bool (OceanComponent::*)(GameObject*)) &OceanComponent::isUnderWater)
+		];
+
+		AddClassToCollection("OceanComponent", "class inherits GameObjectComponent", OceanComponent::getStaticInfoText());
+		AddClassToCollection("OceanComponent", "void setUseSkirts(boolean useSkirts)", "Enables or disables ocean skirts to hide cracks between ocean LOD cells.");
+		AddClassToCollection("OceanComponent", "boolean getUseSkirts()", "Returns whether ocean skirts are enabled.");
+		AddClassToCollection("OceanComponent", "void setWavesIntensity(number intensity)", "Sets the overall wave amplitude which controls how high the waves are.");
+		AddClassToCollection("OceanComponent", "number getWavesIntensity()", "Gets the overall wave amplitude.");
+		AddClassToCollection("OceanComponent", "void setOceanWavesScale(number scale)", "Sets the large scale wave size where higher values produce larger and slower swells.");
+		AddClassToCollection("OceanComponent", "number getOceanWavesScale()", "Gets the large scale wave size.");
+		AddClassToCollection("OceanComponent", "void setShaderWavesScale(number scale)", "Sets the shader wave detail scale which controls fine surface detail.");
+		AddClassToCollection("OceanComponent", "number getShaderWavesScale()", "Gets the shader wave detail scale.");
+		AddClassToCollection("OceanComponent", "void setWaveTimeScale(number timeScale)", "Sets the wave animation speed multiplier.");
+		AddClassToCollection("OceanComponent", "number getWaveTimeScale()", "Gets the wave animation speed multiplier.");
+		AddClassToCollection("OceanComponent", "void setWaveFrequencyScale(number frequencyScale)", "Sets the wave frequency which controls how dense the wave pattern is.");
+		AddClassToCollection("OceanComponent", "number getWaveFrequencyScale()", "Gets the wave frequency scale.");
+		AddClassToCollection("OceanComponent", "void setWaveChaos(number chaos)", "Adds non uniform chaotic motion to waves to reduce repetitive patterns.");
+		AddClassToCollection("OceanComponent", "number getWaveChaos()", "Gets the wave chaos amount.");
+		AddClassToCollection("OceanComponent", "boolean isCameraUnderwater()", "Gets whether the in the ocean active camera is under water.");
+		AddClassToCollection("OceanComponent", "boolean isPositionUnderwater(Vector3 position)", "Gets whether the given position is under water.");
+		AddClassToCollection("OceanComponent", "boolean isGameObjectUnderWater(GameObject gameObject)", "Gets whether the given game object is under water.");
 	}
 
 	Ogre::String getId2(JointComponent* instance)
@@ -13211,6 +13281,7 @@ namespace NOWA
 				bindCompositorEffects(this->lua);
 				bindDatablockComponent(this->lua);
 				bindTerraComponent(this->lua);
+				bindOceanComponent(this->lua);
 				bindGameObjectTitleComponent(this->lua);
 				bindParticleUniverseComponent(this->lua);
 				bindPlayerControllerComponents(this->lua);

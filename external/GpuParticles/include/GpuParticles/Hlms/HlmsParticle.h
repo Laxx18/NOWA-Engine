@@ -74,7 +74,7 @@ public:
         mParticleListener.setHlms(this);
 
         mTexUnitSlotStart = 6u;
-        mSamplerUnitSlotStart = 6u;
+        // mSamplerUnitSlotStart = 6u;
 
 //        mReservedTexSlots = 2u;
     }
@@ -88,11 +88,16 @@ public:
 
     void calculateHashForPreCreate(Ogre::Renderable* renderable, Ogre::PiecesMap* inOutPieces) override;
 
-    void notifyPropertiesMergedPreGenerationStep(void) {
+    PropertiesMergeStatus notifyPropertiesMergedPreGenerationStep(size_t tid, Ogre::PiecesMap* inOutPieces)
+    {
+        PropertiesMergeStatus status = notifyPropertiesMergedPreGenerationStep(tid, inOutPieces);
 
-        HlmsUnlit::notifyPropertiesMergedPreGenerationStep(kNoTid);
+        if (status == PropertiesMergeStatusError)
+            return status;
 
-        // setTextureReg(Ogre::VertexShader, "texParticleData", ParticleDataTexSlot);
+        setTextureReg(Ogre::VertexShader, "texParticleData", ParticleDataTexSlot);
+
+        return status;
     }
 
     static void getAdditionalDefaultPaths(Ogre::String &outDataFolderPath, Ogre::StringVector& outLibraryFoldersPaths, bool withHlmsPathPrefix = true) {

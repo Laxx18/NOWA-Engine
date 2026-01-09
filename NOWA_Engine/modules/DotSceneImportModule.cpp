@@ -1512,6 +1512,13 @@ namespace NOWA
 				this->processTerra(pElement, pNode, justSetValues);
 			pElement = pElement->next_sibling("terra");
 		}
+		// Process ocean (*)
+		pElement = xmlNode->first_node("ocean");
+		while (pElement)
+		{
+			this->processOcean(pElement, pNode, justSetValues);
+			pElement = pElement->next_sibling("ocean");
+		}
 
 		if (this->showProgress)
 		{
@@ -2129,7 +2136,7 @@ namespace NOWA
 		}
 	}
 
-	void NOWA::DotSceneImportModule::processTerra(rapidxml::xml_node<>* xmlNode, Ogre::SceneNode* parent, bool justSetValues)
+	void DotSceneImportModule::processTerra(rapidxml::xml_node<>* xmlNode, Ogre::SceneNode* parent, bool justSetValues)
 	{
 		// Process attributes
 		Ogre::String name = XMLConverter::getAttrib(xmlNode, "name");
@@ -2187,6 +2194,78 @@ namespace NOWA
 							GameObjectPtr existingGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(existingGameObjectId);
 
 							gameObjectPtr = GameObjectFactory::getInstance()->createOrSetGameObjectFromXML(pElement, this->sceneManager, parent, nullptr, GameObject::TERRA,
+								this->scenePath, this->forceCreation, false, existingGameObjectPtr);
+
+							foundId = true;
+						}
+						else
+						{
+							propertyElement = propertyElement->next_sibling("property");
+						}
+					} while (nullptr != propertyElement && false == foundId);
+				}
+			}
+		}
+	}
+
+	void DotSceneImportModule::processOcean(rapidxml::xml_node<>* xmlNode, Ogre::SceneNode* parent, bool justSetValues)
+	{
+		// Process attributes
+		Ogre::String name = XMLConverter::getAttrib(xmlNode, "name");
+		Ogre::String id = XMLConverter::getAttrib(xmlNode, "id");
+
+		bool castShadows = false; // Shadows must not be casted for ocean, else ugly crash shader cache is created
+		bool visible = XMLConverter::getAttribBool(xmlNode, "visible", true);
+
+		parent->setStatic(false);
+
+		unsigned long missingGameObjectId = 0;
+		if (true == justSetValues && false == this->missingGameObjectIds.empty())
+		{
+			rapidxml::xml_node<>* userDataElement = xmlNode->first_node("userData");
+			if (userDataElement)
+			{
+				rapidxml::xml_node<>* propertyElement = userDataElement->first_node("property");
+				this->findGameObjectId(propertyElement, missingGameObjectId);
+			}
+		}
+
+		GameObjectPtr gameObjectPtr = nullptr;
+
+		// Check if the entity element has user data, for game object creation
+		rapidxml::xml_node<>* pElement = xmlNode->first_node("userData");
+
+		// Maybe create, if its an already missing game object id
+		if (false == justSetValues || missingGameObjectId != 0)
+		{
+			if (pElement)
+			{
+				gameObjectPtr = GameObjectFactory::getInstance()->createOrSetGameObjectFromXML(pElement, this->sceneManager, parent, nullptr, GameObject::OCEAN,
+					this->scenePath, this->forceCreation, false);
+
+				if (nullptr != gameObjectPtr)
+				{
+					this->parsedGameObjectIds.emplace_back(gameObjectPtr->getId());
+				}
+			}
+		}
+		else
+		{
+			bool foundId = false;
+			if (pElement)
+			{
+				rapidxml::xml_node<>* propertyElement = pElement->first_node("property");
+				if (nullptr != propertyElement)
+				{
+					do
+					{
+						Ogre::String attrib = XMLConverter::getAttrib(propertyElement, "name");
+						if (propertyElement && attrib == "Id")
+						{
+							unsigned long existingGameObjectId = XMLConverter::getAttribUnsignedLong(propertyElement, "data");
+							GameObjectPtr existingGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(existingGameObjectId);
+
+							gameObjectPtr = GameObjectFactory::getInstance()->createOrSetGameObjectFromXML(pElement, this->sceneManager, parent, nullptr, GameObject::OCEAN,
 								this->scenePath, this->forceCreation, false, existingGameObjectPtr);
 
 							foundId = true;

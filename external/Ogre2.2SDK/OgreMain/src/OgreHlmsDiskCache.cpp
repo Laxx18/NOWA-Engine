@@ -45,7 +45,7 @@ THE SOFTWARE.
 
 namespace Ogre
 {
-    static const uint16 c_hlmsDiskCacheVersion = 5u;
+    static const uint16 c_hlmsDiskCacheVersion = 6u;
 
     HlmsDiskCache::HlmsDiskCache( HlmsManager *hlmsManager ) :
         mTemplatesOutOfDate( false ),
@@ -137,7 +137,7 @@ namespace Ogre
             {
                 bool bCacheable = true;
 
-                for( size_t i = 0u; i < NumShaderTypes; ++i )
+                for( size_t i = 0u; i < CustomPieceStage::NumCustomPieceStages; ++i )
                 {
                     const int32 customPieceName =
                         hlms->getProperty( itor->mergedCache.setProperties,
@@ -177,7 +177,7 @@ namespace Ogre
 
                 bool bCacheable = true;
 
-                for( size_t i = 0u; i < NumShaderTypes; ++i )
+                for( size_t i = 0u; i < CustomPieceStage::NumCustomPieceStages; ++i )
                 {
                     const int32 customPieceName =
                         hlms->getProperty( hlms->mRenderableCache[renderableIdx].setProperties,
@@ -206,6 +206,9 @@ namespace Ogre
         uint32 numEntries;
         const HlmsDiskCache::SourceCode *sourceCode;
         bool templatesOutOfDate;
+        bool exceptionFound;                   // GUARDED_BY( mutex )
+        std::exception_ptr threadedException;  // GUARDED_BY( mutex )
+        LightweightMutex mutex;
 
         CompilerJobParams( Hlms *_hlms, const HlmsDiskCache::SourceCodeVec &_sourceCode,
                            bool _templatesOutOfDate ) :
@@ -213,7 +216,8 @@ namespace Ogre
             currentEntry( 0u ),
             numEntries( static_cast<uint32>( _sourceCode.size() ) ),
             sourceCode( _sourceCode.data() ),
-            templatesOutOfDate( _templatesOutOfDate )
+            templatesOutOfDate( _templatesOutOfDate ),
+            exceptionFound( false )
         {
         }
     };
@@ -250,20 +254,37 @@ namespace Ogre
             if( idx >= numEntries )
                 break;
 
-            // Compile shaders
-            if( !templatesOutOfDate )
+            try
             {
-                // Templates haven't changed, send the Hlms-processed shader code for compilation
-                hlms->_compileShaderFromPreprocessedSource( sourceCode[idx].mergedCache,
-                                                            sourceCode[idx].sourceFile, idx, threadIdx );
+                // Compile shaders
+                if( !templatesOutOfDate )
+                {
+                    // Templates haven't changed, send the Hlms-processed shader code for compilation
+                    hlms->_compileShaderFromPreprocessedSource(
+                        sourceCode[idx].mergedCache, sourceCode[idx].sourceFile, idx, threadIdx );
+                }
+                else
+                {
+                    // Templates have changed, they need to be run through the Hlms
+                    // preprocessor again before they can be compiled again
+                    Hlms::ShaderCodeCache shaderCodeCache( sourceCode[idx].mergedCache.pieces );
+                    shaderCodeCache.mergedCache.setProperties =
+                        sourceCode[idx].mergedCache.setProperties;
+                    hlms->compileShaderCode( shaderCodeCache, idx, threadIdx );
+                }
             }
-            else
+            catch( Exception & )
             {
-                // Templates have changed, they need to be run through the Hlms
-                // preprocessor again before they can be compiled again
-                Hlms::ShaderCodeCache shaderCodeCache( sourceCode[idx].mergedCache.pieces );
-                shaderCodeCache.mergedCache.setProperties = sourceCode[idx].mergedCache.setProperties;
-                hlms->compileShaderCode( shaderCodeCache, idx, threadIdx );
+                ScopedLock lock( jobParams.mutex );
+                // We can only report one exception.
+                if( !jobParams.exceptionFound )
+                {
+                    // Force the other threads to stop iterating. We're aborting.
+                    jobParams.currentEntry.store( jobParams.numEntries,
+                                                  std::memory_order::memory_order_relaxed );
+                    jobParams.exceptionFound = true;
+                    jobParams.threadedException = std::current_exception();
+                }
             }
         }
     }
@@ -288,7 +309,8 @@ namespace Ogre
             LogManager::getSingleton().logMessage(
                 "INFO: The cached Hlms is for shader profile in '" + mShaderProfile +
                 "' but it does not match the current one '" + hlms->getShaderProfile() +
-                "'. This increases loading times." );
+                "'. HlmsDiskCache won't be applied." );
+            return;
         }
 
         if( !mTemplatesOutOfDate &&
@@ -372,7 +394,7 @@ namespace Ogre
             CompilerJobParams jobParams( hlms, mCache.sourceCode, mTemplatesOutOfDate );
 
             // Compile shaders
-            if( hlms->getRenderSystem()->supportsMultithreadedShaderCompliation() && numThreads > 1u )
+            if( hlms->getRenderSystem()->supportsMultithreadedShaderCompilation() && numThreads > 1u )
             {
                 hlms->_setNumThreads( numThreads );
 
@@ -390,6 +412,12 @@ namespace Ogre
             else
             {
                 _compileShadersThread( jobParams, Hlms::kNoTid );
+            }
+
+            if( jobParams.exceptionFound )
+            {
+                hlms->clearShaderCache();
+                std::rethrow_exception( jobParams.threadedException );
             }
 
             hlms->_setShadersGenerated( jobParams.numEntries );
@@ -594,7 +622,7 @@ namespace Ogre
                 write( dataStream, itor->macroblock.mCullMode );
                 write( dataStream, itor->macroblock.mPolygonMode );
 
-                write( dataStream, itor->blendblock.mAlphaToCoverageEnabled );
+                write( dataStream, itor->blendblock.mAlphaToCoverage );
                 write( dataStream, itor->blendblock.mBlendChannelMask );
                 write<uint8>( dataStream, itor->blendblock.mIsTransparent & 0x02u );
                 write( dataStream, itor->blendblock.mSeparateBlend );
@@ -825,7 +853,7 @@ namespace Ogre
                 read( dataStream, pso.macroblock.mCullMode );
                 read( dataStream, pso.macroblock.mPolygonMode );
 
-                read( dataStream, pso.blendblock.mAlphaToCoverageEnabled );
+                read( dataStream, pso.blendblock.mAlphaToCoverage );
                 read( dataStream, pso.blendblock.mBlendChannelMask );
                 read( dataStream, pso.blendblock.mIsTransparent );
                 read( dataStream, pso.blendblock.mSeparateBlend );

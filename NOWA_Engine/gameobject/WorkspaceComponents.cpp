@@ -7,6 +7,7 @@
 #include "main/Core.h"
 #include "main/AppStateManager.h"
 #include "CameraComponent.h"
+#include "OceanComponent.h"
 #include "camera/BaseCamera.h"
 #include "PlanarReflectionComponent.h"
 #include "ReflectionCameraComponent.h"
@@ -140,6 +141,7 @@ namespace NOWA
 		shadowSplitFade(new Variant(WorkspaceBaseComponent::AttrShadowSplitFade(), Ogre::Real(0.313f), this->attributes)),
 		shadowSplitPadding(new Variant(WorkspaceBaseComponent::AttrShadowSplitPadding(), Ogre::Real(1.0f), this->attributes)),
 		cameraComponent(nullptr),
+		oceanComponent(nullptr),
 		workspace(nullptr),
 		msaaLevel(1),
 		oldBackgroundColor(backgroundColor->getVector3()),
@@ -156,6 +158,7 @@ namespace NOWA
 		useTerra(false),
 		terra(nullptr),
 		useOcean(false),
+		oceanUnderwaterActive(false),
 		hlmsListener(nullptr),
 		hlmsWind(nullptr),
 		involvedInSplitScreen(false)
@@ -179,6 +182,7 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[WorkspaceBaseComponent] Destructor workspace base component for game object: " + this->gameObjectPtr->getName());
 		
 		this->cameraComponent = nullptr;
+		this->oceanComponent = nullptr;
 
 		// Send event, that component has been deleted
 		boost::shared_ptr<EventDataDeleteWorkspaceComponent> eventDataDeleteWorkspaceComponent(new EventDataDeleteWorkspaceComponent(this->gameObjectPtr->getId()));
@@ -387,22 +391,6 @@ namespace NOWA
 		return true;
 	}
 
-	void WorkspaceBaseComponent::updateOceanEnvProbe()
-	{
-		if (false == this->useOcean)
-			return;
-
-		if (nullptr == this->hlmsManager)
-			return;
-
-		Ogre::Hlms* base = this->hlmsManager->getHlms(Ogre::HLMS_USER1);
-		if (nullptr == base)
-			return;
-
-		Ogre::HlmsOcean* hlmsOcean = static_cast<Ogre::HlmsOcean*>(base);
-		hlmsOcean->setEnvProbe(this->cubemapTexture); // TextureGpu* (nullptr is allowed)
-	}
-
 	void WorkspaceBaseComponent::internalInitWorkspaceData(void)
 	{
 		Ogre::String workspacePostfix = Ogre::StringConverter::toString(this->gameObjectPtr->getId());
@@ -410,6 +398,7 @@ namespace NOWA
 		this->renderingNodeName = "NOWARenderingNode" + workspacePostfix;
 		this->finalRenderingNodeName = "NOWAFinalCompositionNode" + workspacePostfix;
 
+		this->underwaterNodeName = "NOWAUnderwaterNode" + workspacePostfix;
 		if (true == this->usePlanarReflection->getBool())
 		{
 			this->planarReflectionReflectiveRenderingNode = "PlanarReflectionsReflectiveRenderingNode" + workspacePostfix;
@@ -629,9 +618,6 @@ namespace NOWA
 						// Render window
 						this->externalChannels[0] = Core::getSingletonPtr()->getOgreRenderWindow()->getTexture();
 						this->externalChannels[1] = this->cubemapTexture;
-
-						// For ocean
-						this->updateOceanEnvProbe();
 					}
 					else
 					{
@@ -768,7 +754,6 @@ namespace NOWA
 			{
 				textureManager->destroyTexture(this->cubemapTexture);
 				this->cubemapTexture = nullptr;
-				this->updateOceanEnvProbe();
 			}
 #if 0
 			if (true == this->useOcean && this->hlmsManager)
@@ -1139,6 +1124,15 @@ namespace NOWA
 		{
 			this->hlmsWind->addTime(dt);
 		}
+
+		// Switch workspace graph when the camera crosses the water line.
+		// We only rebuild when the state toggles to avoid heavy work every frame.
+		const bool underwaterNow = this->useOcean && this->oceanComponent && this->oceanComponent->isCameraUnderwater();
+		if( underwaterNow != this->oceanUnderwaterActive )
+		{
+			this->oceanUnderwaterActive = underwaterNow;
+			this->createWorkspace();
+		}
 	}
 
 	void WorkspaceBaseComponent::baseCreateWorkspace(Ogre::CompositorWorkspaceDef* workspaceDef)
@@ -1152,6 +1146,10 @@ namespace NOWA
 		{
 			this->msaaLevel = 1;
 		}
+
+		const bool oceanUnderwater = this->useOcean && this->oceanComponent && this->oceanComponent->isCameraUnderwater();
+		if( oceanUnderwater )
+			this->createUnderwaterNode();
 
 		unsigned int output = 2;
 
@@ -1187,14 +1185,19 @@ namespace NOWA
 		// Without Hdr
 		if (false == this->useHdr->getBool())
 		{
-			if (true == this->useDistortion->getBool())
+			const Ogre::String &sceneOutputNode =
+				(true == this->useDistortion->getBool()) ? this->distortionNode : this->renderingNodeName;
+
+			if( oceanUnderwater )
 			{
-				workspaceDef->connect(this->distortionNode, 0, this->finalRenderingNodeName, 1);
+				workspaceDef->connect(sceneOutputNode, 0, this->underwaterNodeName, 0);
+				workspaceDef->connect(this->underwaterNodeName, 0, this->finalRenderingNodeName, 1);
 			}
 			else
 			{
-				workspaceDef->connect(this->renderingNodeName, 0, this->finalRenderingNodeName, 1);
+				workspaceDef->connect(sceneOutputNode, 0, this->finalRenderingNodeName, 1);
 			}
+
 			workspaceDef->connectExternal(0, this->finalRenderingNodeName, 0);
 		}
 		else
@@ -1212,7 +1215,15 @@ namespace NOWA
 
 				workspaceDef->connect(this->renderingNodeName, 2, "NOWAHdrPostprocessingNode", 1);
 				workspaceDef->connect(this->renderingNodeName, 1, "NOWAHdrPostprocessingNode", 2);
-				workspaceDef->connect("NOWAHdrPostprocessingNode", 0, this->finalRenderingNodeName, 1);
+				if( oceanUnderwater )
+				{
+					workspaceDef->connect("NOWAHdrPostprocessingNode", 0, this->underwaterNodeName, 0);
+					workspaceDef->connect(this->underwaterNodeName, 0, this->finalRenderingNodeName, 1);
+				}
+				else
+				{
+					workspaceDef->connect("NOWAHdrPostprocessingNode", 0, this->finalRenderingNodeName, 1);
+				}
 				workspaceDef->connectExternal(0, this->finalRenderingNodeName, 0);
 			}
 			else
@@ -1230,7 +1241,15 @@ namespace NOWA
 				workspaceDef->connect("NOWAHdrMsaaResolve", 0, "NOWAHdrPostprocessingNode", 0);
 				workspaceDef->connect(this->renderingNodeName, 2, "NOWAHdrPostprocessingNode", 1);
 				workspaceDef->connect(this->renderingNodeName, 1, "NOWAHdrPostprocessingNode", 2);
-				workspaceDef->connect("NOWAHdrPostprocessingNode", 0, this->finalRenderingNodeName, 1);
+				if( oceanUnderwater )
+				{
+					workspaceDef->connect("NOWAHdrPostprocessingNode", 0, this->underwaterNodeName, 0);
+					workspaceDef->connect(this->underwaterNodeName, 0, this->finalRenderingNodeName, 1);
+				}
+				else
+				{
+					workspaceDef->connect("NOWAHdrPostprocessingNode", 0, this->finalRenderingNodeName, 1);
+				}
 				workspaceDef->connectExternal(0, this->finalRenderingNodeName, 0);
 			}
 		}
@@ -1479,6 +1498,64 @@ namespace NOWA
 		}
 	}
 
+	void WorkspaceBaseComponent::createUnderwaterNode(void)
+	{
+		// This node is only needed when an OceanComponent is active and the camera is underwater.
+		// It is inserted between the scene output (or HDR post) and the final composition node.
+		if( false == this->useOcean || nullptr == this->oceanComponent )
+			return;
+
+		if( false == this->oceanComponent->isCameraUnderwater() )
+			return;
+
+		if( this->underwaterNodeName.empty() )
+			return;
+
+		if( true == this->compositorManager->hasNodeDefinition( this->underwaterNodeName ) )
+			return;
+
+		Ogre::CompositorNodeDef * compositorNodeDefinition =
+			compositorManager->addNodeDefinition( this->underwaterNodeName );
+
+		unsigned int textureIndex = 0;
+		compositorNodeDefinition->addTextureSourceName( "rt0", textureIndex,
+			Ogre::TextureDefinitionBase::TEXTURE_INPUT );
+
+		// Output
+		Ogre::TextureDefinitionBase::TextureDefinition* outTexDef = compositorNodeDefinition->addTextureDefinition("rt_output");
+		outTexDef->width = 0.0f;  // target_width
+		outTexDef->height = 0.0f; // target_height
+		outTexDef->format = Ogre::PFG_RGBA16_FLOAT;
+		outTexDef->depthBufferFormat = Ogre::PFG_D32_FLOAT;
+		outTexDef->preferDepthTexture = true;
+		outTexDef->textureFlags = Ogre::TextureFlags::RenderToTexture;
+		
+		// IMPORTANT: add a RenderTargetViewDef for rt_output (otherwise addTargetPass("rt_output") will crash)
+		Ogre::RenderTargetViewDef * rtv = compositorNodeDefinition->addRenderTextureView("rt_output");
+		Ogre::RenderTargetViewEntry attachment;
+		attachment.textureName = "rt_output";
+		rtv->colourAttachments.push_back(attachment);
+
+		compositorNodeDefinition->setNumTargetPass( 1u );
+
+		Ogre::CompositorTargetDef* targetDef =
+			compositorNodeDefinition->addTargetPass("rt_output");
+
+		// Render Quad (default: copy). Replace the material with your own underwater material if desired.
+		{
+			Ogre::CompositorPassQuadDef * passQuad =
+				static_cast<Ogre::CompositorPassQuadDef*>( targetDef->addPass( Ogre::PASS_QUAD ) );
+			passQuad->setAllLoadActions( Ogre::LoadAction::DontCare );
+			passQuad->mMaterialName = "NOWA/UnderwaterPost";
+			passQuad->addQuadTextureSource( 0u, "rt0" );
+			passQuad->mProfilingId = "NOWA_Underwater_Post_Pass_Quad";
+		}
+
+		// Output channels
+		compositorNodeDefinition->mapOutputChannel( 0u, "rt_output" );
+	}
+
+
 	void WorkspaceBaseComponent::addWorkspace(Ogre::CompositorWorkspaceDef* workspaceDef)
 	{
 		// Threadsafe from the outside
@@ -1518,6 +1595,11 @@ namespace NOWA
 	Ogre::String WorkspaceBaseComponent::getDistortionNode(void) const
 	{
 		return this->distortionNode;
+	}
+
+Ogre::String WorkspaceBaseComponent::getUnderwaterNode(void) const
+	{
+		return this->underwaterNodeName;
 	}
 
 	void WorkspaceBaseComponent::changeBackgroundColor(const Ogre::ColourValue& backgroundColor)
@@ -2178,6 +2260,9 @@ namespace NOWA
 
 		this->superSampling->setValue(superSampling);
 
+
+		this->oceanUnderwaterActive = this->useOcean && this->oceanComponent && this->oceanComponent->isCameraUnderwater();
+
 		this->createWorkspace();
 	}
 
@@ -2330,9 +2415,18 @@ namespace NOWA
 		return this->useTerra;
 	}
 
-	void WorkspaceBaseComponent::setUseOcean(bool useOcean)
+	void WorkspaceBaseComponent::setUseOcean(bool useOcean, OceanComponent* oceanComponent)
 	{
 		this->useOcean = useOcean;
+
+		if (true == useOcean)
+		{
+			this->oceanComponent = oceanComponent;
+		}
+		else
+		{
+			this->oceanComponent = nullptr;
+		}
 
 		this->createWorkspace();
 	}

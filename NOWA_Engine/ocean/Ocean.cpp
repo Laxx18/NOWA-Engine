@@ -1,9 +1,11 @@
 #include "NOWAPrecompiled.h"
 
 #include "Ocean.h"
-
+#include "OgreHlmsOcean.h"
 #include "OgreCamera.h"
 #include "OgreSceneManager.h"
+#include "OgreRoot.h"
+#include "OgreTimer.h"
 #include "Compositor/OgreCompositorManager2.h"
 
 namespace Ogre
@@ -39,6 +41,7 @@ namespace Ogre
 
     Ocean::Ocean(IdType id, ObjectMemoryManager* objectMemoryManager, SceneManager* sceneManager, uint8 renderQueueId, CompositorManager2* compositorManager, const Camera* camera)
         : MovableObject(id, objectMemoryManager, sceneManager, renderQueueId),
+        m_hlmsOceanIndex(std::numeric_limits<uint32>::max()),
         m_width(0u),
         m_depth(0u),
         m_depthWidthRatio(1.0f),
@@ -52,6 +55,12 @@ namespace Ogre
         m_WavesIntensity(0.5f),
         m_OceanOrigin(Vector3::ZERO),
         m_basePixelDimension(256u),
+        m_useSkirts(true),
+        m_oceanTime(0.0f),
+        m_waveTimeScale(1.0f),
+        m_waveFrequencyScale(1.0f),
+        m_waveChaos(0.0f),
+        m_isUnderwater(false),
         m_currentCell(0u),
         m_prevLightDir(Vector3::ZERO),
         m_compositorManager(compositorManager),
@@ -61,6 +70,14 @@ namespace Ogre
     //-----------------------------------------------------------------------------------
     Ocean::~Ocean()
     {
+        if (!m_OceanCells[0].empty() && m_OceanCells[0].back().getDatablock())
+        {
+            HlmsDatablock* datablock = m_OceanCells[0].back().getDatablock();
+            OGRE_ASSERT_HIGH(dynamic_cast<HlmsOcean*>(datablock->getCreator()));
+            HlmsOcean* hlms = static_cast<HlmsOcean*>(datablock->getCreator());
+            hlms->_unlinkOcean(this);
+        }
+
         for (size_t i = 0u; i < 2u; ++i)
             m_OceanCells[i].clear();
     }
@@ -175,15 +192,55 @@ namespace Ogre
 
         m_collectedCells[0].clear();
     }
-    //-----------------------------------------------------------------------------------
-    void Ocean::update()
+
+    void Ocean::updateLocalBounds(void)
     {
+        const float dimX = std::max(m_xzDimensions.x, 0.001f);
+        const float dimZ = std::max(m_xzDimensions.y, 0.001f);
+        const float halfX = dimX * 0.5f;
+        const float halfZ = dimZ * 0.5f;
+
+        // cover wave peaks (pick a conservative multiplier)
+        const float halfY = std::max(1.0f, m_height * 2.0f);
+
+        const Vector3 center(m_OceanOrigin.x + halfX, m_OceanOrigin.y, m_OceanOrigin.z + halfZ);
+        const Vector3 halfSize(halfX, halfY, halfZ);
+
+        Aabb aabb;
+        aabb.mCenter = center;
+        aabb.mHalfSize = halfSize;
+
+        setLocalAabb(aabb);
+    }
+
+    //-----------------------------------------------------------------------------------
+    void Ocean::update(Ogre::Real dt)
+    {
+        // This is the ONLY time value that goes into the shader
+        m_oceanTime += dt;
+
+        const float wrapTime = 21600.0f; // 6 hours
+        if (m_oceanTime > wrapTime)
+            m_oceanTime -= wrapTime;
+
+        m_WavesIntensity = std::max(m_WavesIntensity, 0.001f);
         m_height = m_WavesIntensity * 0.9 + 0.1; //from 10% to 100%, less than 10 looks too flat
 
         mRenderables.clear();
         m_currentCell = 0;
 
         Vector3 camPos = m_camera->getDerivedPosition();
+
+        // Determine whether camera is underwater. We use a small hysteresis to avoid flickering at the waterline.
+        // Surface level is the ocean base Y (same as cellData.pos.y).
+        const float surfaceY = m_OceanOrigin.y;
+        const float hysteresis = 0.05f;
+        const float enterUnder = surfaceY - hysteresis;
+        const float leaveUnder = surfaceY + hysteresis;
+        if( !m_isUnderwater )
+            m_isUnderwater = camPos.y < enterUnder;
+        else
+            m_isUnderwater = camPos.y < leaveUnder;
 
         const int32 basePixelDimension = static_cast<int32>(m_basePixelDimension);
         const int32 vertPixelDimension = static_cast<int32>(float(m_basePixelDimension) * m_depthWidthRatio);
@@ -218,7 +275,7 @@ namespace Ogre
 
         optimizeCellsAndAdd();
 
-        m_currentCell = 16u; //The first 16 cells don't use skirts.
+        m_currentCell = 20u; //The first 16 + 4 (oceanTime) cells don't use skirts.
 
         const uint32 maxRes = std::max(m_width, m_depth);
         //TODO: When we're too far (outside the Ocean), just display a 4x4 grid or something like that.
@@ -290,6 +347,8 @@ namespace Ogre
 
             optimizeCellsAndAdd();
         }
+
+        updateLocalBounds();
     }
 
     //-----------------------------------------------------------------------------------
@@ -350,22 +409,52 @@ namespace Ogre
 
             while (itor != end)
             {
-                itor->initialize(vaoManager, (itor - begin) >= 16u);
+                // 16 + 4 because of oceanTime
+                itor->initialize(vaoManager, m_useSkirts && (itor - begin) >= 20u);
                 ++itor;
             }
         }
+
+        updateLocalBounds();
     }
     //-----------------------------------------------------------------------------------
-    void Ocean::setWavesIntensity(float intensity) {
+    void Ocean::setWavesIntensity(float intensity)
+    {
         m_WavesIntensity = intensity;
     }
     //-----------------------------------------------------------------------------------
-    void Ocean::setWavesScale(float scale) {
+    void Ocean::setWavesScale(float scale)
+    {
+        scale = std::max(scale, 0.0001f);
         m_uvScale = 1.0f / scale;
+    }
+	//-----------------------------------------------------------------------------------
+    bool Ocean::isUnderwater(const Vector3& worldPos) const
+    {
+        return worldPos.y < m_OceanOrigin.y;
+    }
+	//-----------------------------------------------------------------------------------
+    bool Ocean::isUnderwater(const SceneNode* sceneNode) const
+    {
+        if (!sceneNode)
+        {
+            return false;
+        }
+
+        return isUnderwater(sceneNode->_getDerivedPosition());
     }
     //-----------------------------------------------------------------------------------
     void Ocean::setDatablock(HlmsDatablock* datablock)
     {
+        if (!datablock && !m_OceanCells[0].empty() && m_OceanCells[0].back().getDatablock())
+        {
+            // Unsetting the datablock. We have no way of unlinking later on. Do it now
+            HlmsDatablock* oldDatablock = m_OceanCells[0].back().getDatablock();
+            OGRE_ASSERT_HIGH(dynamic_cast<HlmsOcean*>(oldDatablock->getCreator()));
+            HlmsOcean* hlms = static_cast<HlmsOcean*>(oldDatablock->getCreator());
+            hlms->_unlinkOcean(this);
+        }
+
         for (size_t i = 0u; i < 2u; ++i)
         {
             std::vector<OceanCell>::iterator itor = m_OceanCells[i].begin();
@@ -376,6 +465,14 @@ namespace Ogre
                 itor->setDatablock(datablock);
                 ++itor;
             }
+        }
+
+        // Add linking logic
+        if (m_hlmsOceanIndex == std::numeric_limits<uint32>::max())
+        {
+            OGRE_ASSERT_HIGH(dynamic_cast<HlmsOcean*>(datablock->getCreator()));
+            HlmsOcean* hlms = static_cast<HlmsOcean*>(datablock->getCreator());
+            hlms->_linkOcean(this);
         }
     }
     //-----------------------------------------------------------------------------------

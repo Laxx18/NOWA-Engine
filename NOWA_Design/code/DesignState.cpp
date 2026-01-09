@@ -2449,7 +2449,7 @@ bool DesignState::keyReleased(const OIS::KeyEvent &keyEventRef)
 		}
 	}
 
-	if (true == validScene)
+	if (true == validScene && nullptr != this->editorManager)
 	{
 		this->editorManager->handleKeyRelease(keyEventRef);
 	}
@@ -2681,13 +2681,16 @@ bool DesignState::mousePressed(const OIS::MouseEvent& evt, OIS::MouseButtonID id
 
 	if (true == validScene)
 	{
-		// Snapshot camera orientation when used pressed the right mouse key
-		if (evt.state.buttonDown(OIS::MB_Right))
+		if (nullptr != this->editorManager)
 		{
-			this->editorManager->snapshotCameraOrientation();
-		}
+			// Snapshot camera orientation when used pressed the right mouse key
+			if (evt.state.buttonDown(OIS::MB_Right))
+			{
+				this->editorManager->snapshotCameraOrientation();
+			}
 
-		this->editorManager->handleMousePress(evt, id);
+			this->editorManager->handleMousePress(evt, id);
+		}
 
 		if (this->editorManager->getSelectionManager()->getSelectedGameObjects().size() == 1)
 		{
@@ -2737,6 +2740,7 @@ bool DesignState::mouseReleased(const OIS::MouseEvent &evt, OIS::MouseButtonID i
 	{
 		this->editorManager->handleMouseRelease(evt, id);
 	}
+
 	if (false == this->simulating && false == this->bQuit && true == validScene)
 	{
 		if (id == OIS::MB_Left && nullptr != editorManager 

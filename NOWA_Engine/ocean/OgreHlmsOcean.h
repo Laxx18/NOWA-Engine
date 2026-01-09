@@ -31,12 +31,15 @@ THE SOFTWARE.
 #include "OgreHlmsBufferManager.h"
 #include "OgreConstBufferPool.h"
 #include "OgreMatrix4.h"
+#include "OgreHlmsPbs.h"
 #include "OgreTextureGpu.h"
 #include "OgreRootLayout.h"
 
 namespace Ogre
 {
     class CompositorShadowNode;
+    class Ocean;
+
     struct QueuedRenderable;
 
     /** \addtogroup Component
@@ -51,7 +54,7 @@ namespace Ogre
     /** Physically based shading implementation specfically designed for
         OpenGL 3+, D3D11 and other RenderSystems which support uniform buffers.
     */
-    class HlmsOcean : public HlmsBufferManager, public ConstBufferPool
+    class HlmsOcean : public HlmsPbs
     {
     public:
         enum ShadowFilter
@@ -110,6 +113,8 @@ namespace Ogre
 		HlmsSamplerblock const  *mOceanDataSamplerblock;
         HlmsSamplerblock const  *mWeightSamplerblock;
 
+        FastArray<Ocean*>       mLinkedOceans;
+
         uint32                  mCurrentPassBuffer;     /// Resets every to zero every new frame.
 
         TexBufferPacked         *mGridBuffer;
@@ -141,11 +146,11 @@ namespace Ogre
         bool        mOceanTexReady = false;
         uint32 mLastCacheHash = 0;
 
-        const HlmsCache *createShaderCacheEntry( uint32 renderableHash, const HlmsCache &passCache,
-                                                 uint32 finalHash,
-                                                 const QueuedRenderable &queuedRenderable,
-                                                 HlmsCache *reservedStubEntry,
-                                                 const size_t tid ) override;
+        const HlmsCache *createShaderCacheEntry(uint32 renderableHash, const HlmsCache& passCache,
+                                            uint32                  finalHash,
+                                            const QueuedRenderable& queuedRenderable,
+                                            HlmsCache* reservedStubEntry, uint64 deadline,
+                                            size_t tid) override;
 
         HlmsDatablock *createDatablockImpl( IdString datablockName, const HlmsMacroblock *macroblock,
                                             const HlmsBlendblock *blendblock,
@@ -153,9 +158,11 @@ namespace Ogre
 
         void calculateHashForPreCreate( Renderable *renderable, PiecesMap *inOutPieces ) override;
 
+        void calculateHashFor(Renderable* renderable, uint32& outHash, uint32& outCasterHash) override;
+
         void destroyAllBuffers() override;
 
-        void notifyPropertiesMergedPreGenerationStep(const size_t tid) override;
+        PropertiesMergeStatus notifyPropertiesMergedPreGenerationStep(size_t tid, PiecesMap* inOutPieces) override;
 
         FORCEINLINE uint32 fillBuffersFor( const HlmsCache *cache,
                                            const QueuedRenderable &queuedRenderable,
@@ -166,6 +173,9 @@ namespace Ogre
     public:
         HlmsOcean( Archive *dataFolder, ArchiveVec *libraryFolders );
         ~HlmsOcean() override;
+
+        void _linkOcean(Ocean* ocean);
+        void _unlinkOcean(Ocean* ocean);
 
         void _changeRenderSystem( RenderSystem *newRs ) override;
 
@@ -191,11 +201,11 @@ namespace Ogre
                                  bool casterPass, uint32 lastCacheHash,
                                  CommandBuffer *commandBuffer ) override;
 
-        void postCommandBufferExecution( CommandBuffer *commandBuffer ) override;
-
         void setupRootLayout(RootLayout& rootLayout, size_t tid) override;
 
         void frameEnded() override;
+
+        void postCommandBufferExecution(CommandBuffer* commandBuffer) override;
 
         void setDebugPssmSplits( bool bDebug );
         bool getDebugPssmSplits(void) const                 { return mDebugPssmSplits; }
@@ -207,21 +217,30 @@ namespace Ogre
         AmbientLightMode getAmbientLightMode(void) const    { return mAmbientLightMode; }
         /// Sets the environment probe cubemap used for reflections.
         /// Can be nullptr to disable.
-        void setEnvProbe( TextureGpu *probe );
+        void setEnvProbe( TextureGpu* probe );
 
-	        /// Overrides the resource name of the 3D texture used by the ocean shader.
-	        /// Default: "oceanData.dds"
-	        void setOceanDataTextureName( const String &name ) { mOceanDataTextureName = name; }
-	        const String& getOceanDataTextureName() const { return mOceanDataTextureName; }
+        void setEnvProbe(const Ogre::String& textureName);
 
-	        /// Overrides the resource name of the 2D weight texture used by the ocean shader.
-	        /// Default: "weight.dds"
-	        void setWeightTextureName( const String &name ) { mWeightTextureName = name; }
-	        const String& getWeightTextureName() const { return mWeightTextureName; }
+	    /// Overrides the resource name of the 3D texture used by the ocean shader.
+	    /// Default: "oceanData.dds"
+	    void setOceanDataTextureName( const String &name ) { mOceanDataTextureName = name; }
+	    const String& getOceanDataTextureName() const { return mOceanDataTextureName; }
+
+	    /// Overrides the resource name of the 2D weight texture used by the ocean shader.
+	    /// Default: "weight.dds"
+	    void setWeightTextureName( const String &name ) { mWeightTextureName = name; }
+	    const String& getWeightTextureName() const { return mWeightTextureName; }
 
         /// Same helper as other Hlms implementations (e.g. HlmsTerra) to populate
         /// the default data folder + library folders based on the active RenderSystem.
         static void getDefaultPaths( String &outDataFolderPath, StringVector &outLibraryFoldersPaths );
+    protected:
+        // Add diagnostic tracking
+        size_t mLastAllocatedPassBufferSize = 0;
+        size_t mLastWrittenPassBufferSize = 0;
+
+        // Safety validation
+        void validatePassBufferState() const;
     };
 
     struct OceanProperty
@@ -231,6 +250,9 @@ namespace Ogre
         static const IdString SignedIntTex;
         static const IdString MaterialsPerBuffer;
         static const IdString DebugPssmSplits;
+
+        /// Number of extra constant buffer slots reserved for AtmosphereComponent.
+        static const IdString AtmosphereNumConstBuffers;
 
         static const IdString UseSkirts;
 
@@ -268,7 +290,6 @@ namespace Ogre
 
     /** @} */
     /** @} */
-
 }
 
 #endif

@@ -51,6 +51,11 @@ namespace NOWA
 		/// Implementation of Ogre::SimpleRenderable
 		virtual float getSquaredViewDepth(const Ogre::Camera* cam) const;
 
+		Ogre::ParticleType::ParticleType getParticleType() const override
+		{
+			return Ogre::ParticleType::NotParticle;
+		}
+
 	protected:
 		/// Maximum capacity of the currently allocated vertex buffer.
 		size_t vertexBufferCapacity;

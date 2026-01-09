@@ -82,7 +82,7 @@ namespace Ogre
 
 #define OGRE_UNUSED_VAR( x ) ( (void)x )
 
-#if __cplusplus >= 201703L
+#if __cplusplus >= 201703L || defined( _MSVC_LANG ) && _MSVC_LANG >= 201703L
 #    define OGRE_FALLTHROUGH [[fallthrough]]
 #else
 #    if OGRE_COMPILER == OGRE_COMPILER_CLANG
@@ -106,8 +106,8 @@ namespace Ogre
     /** Software floating point type.
     @note Not valid as a pointer to GPU buffers / parameters
     */
-    typedef float        Real;
-    typedef uint32       RealAsUint;
+    typedef float  Real;
+    typedef uint32 RealAsUint;
 #endif
 
     /** In order to avoid finger-aches :)
@@ -139,6 +139,7 @@ namespace Ogre
     class AxisAlignedBox;
     class AxisAlignedBoxSceneQuery;
     class Barrier;
+    class BillboardSet;
     class Bone;
     class BoneMemoryManager;
     struct BoneTransform;
@@ -172,6 +173,7 @@ namespace Ogre
     struct DescriptorSetUav;
     class DynLib;
     class DynLibManager;
+    class EmitterDefData;
     class ErrorDialog;
     class ExternalTextureSourceManager;
     class Factory;
@@ -246,11 +248,15 @@ namespace Ogre
     class ObjectMemoryManager;
     class Particle;
     class ParticleAffector;
+    class ParticleAffector2;
     class ParticleAffectorFactory;
     class ParticleEmitter;
     class ParticleEmitterFactory;
     class ParticleSystem;
+    class ParticleSystem2;
+    class ParticleSystemDef;
     class ParticleSystemManager;
+    class ParticleSystemManager2;
     class ParticleSystemRenderer;
     class ParticleSystemRendererFactory;
     class ParticleVisualData;
@@ -525,7 +531,7 @@ namespace Ogre
     }
 
     template <typename T>
-    CustomMemoryStringT( T ) operator+( const T *l, const CustomMemoryStringT( T ) & o )
+    CustomMemoryStringT( T ) operator+( const T * l, const CustomMemoryStringT( T ) & o )
     {
         return CustomMemoryStringT( T )( l ) += o;
     }

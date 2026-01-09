@@ -66,6 +66,9 @@ THE SOFTWARE.
 #include "Compositor/Pass/PassUav/OgreCompositorPassUavDef.h"
 #include "Compositor/Pass/PassWarmUp/OgreCompositorPassWarmUpDef.h"
 #include "Compositor/Pass/OgreCompositorPassProvider.h"
+#include "ParticleSystem/OgreParticleSystem2.h"
+#include "ParticleSystem/OgreParticleSystemManager2.h"
+#include "ParticleSystem/OgreParticleAffector2.h"
 
 namespace Ogre{
 
@@ -827,10 +830,28 @@ namespace Ogre{
                     }
                     else
                     {
-                        if(!getBoolean(prop->values.front(), &blendblock.mAlphaToCoverageEnabled))
+                        bool a2cEnabled;
+                        if( getBoolean( prop->values.front(), &a2cEnabled ) )
                         {
-                            compiler->addError(ScriptCompiler::CE_INVALIDPARAMETERS, prop->file, prop->line,
-                                               "alpha_to_coverage argument must be \"true\", \"false\", \"yes\", \"no\", \"on\", or \"off\"");
+                            blendblock.mAlphaToCoverage =
+                                a2cEnabled ? HlmsBlendblock::A2cEnabled : HlmsBlendblock::A2cDisabled;
+                        }
+                        else
+                        {
+                            String val;
+                            if( getString( prop->values.front(), &val ) )
+                            {
+                                if( val == "msaa_only" )
+                                    blendblock.mAlphaToCoverage = HlmsBlendblock::A2cEnabledMsaaOnly;
+                            }
+
+                            if( blendblock.mAlphaToCoverage != HlmsBlendblock::A2cEnabledMsaaOnly )
+                            {
+                                compiler->addError(
+                                    ScriptCompiler::CE_INVALIDPARAMETERS, prop->file, prop->line,
+                                    "alpha_to_coverage argument must be \"msaa_only\", \"true\", "
+                                    "\"false\", \"yes\", \"no\", \"on\", or \"off\"" );
+                            }
                         }
                     }
                     break;
@@ -2173,10 +2194,28 @@ namespace Ogre{
                     }
                     else
                     {
-                        if(!getBoolean(prop->values.front(), &blendblock.mAlphaToCoverageEnabled))
+                        bool a2cEnabled;
+                        if( getBoolean( prop->values.front(), &a2cEnabled ) )
                         {
-                            compiler->addError(ScriptCompiler::CE_INVALIDPARAMETERS, prop->file, prop->line,
-                                               "alpha_to_coverage argument must be \"true\", \"false\", \"yes\", \"no\", \"on\", or \"off\"");
+                            blendblock.mAlphaToCoverage =
+                                a2cEnabled ? HlmsBlendblock::A2cEnabled : HlmsBlendblock::A2cDisabled;
+                        }
+                        else
+                        {
+                            String val;
+                            if( getString( prop->values.front(), &val ) )
+                            {
+                                if( val == "msaa_only" )
+                                    blendblock.mAlphaToCoverage = HlmsBlendblock::A2cEnabledMsaaOnly;
+                            }
+
+                            if( blendblock.mAlphaToCoverage != HlmsBlendblock::A2cEnabledMsaaOnly )
+                            {
+                                compiler->addError(
+                                    ScriptCompiler::CE_INVALIDPARAMETERS, prop->file, prop->line,
+                                    "alpha_to_coverage argument must be \"msaa_only\", \"true\", "
+                                    "\"false\", \"yes\", \"no\", \"on\", or \"off\"" );
+                            }
                         }
                     }
                     break;
@@ -6271,6 +6310,255 @@ namespace Ogre{
     }
 
     /**************************************************************************
+     * ParticleSystemTranslator2
+     *************************************************************************/
+    ParticleSystemTranslator2::ParticleSystemTranslator2() : mSystem( 0 ), mIsParsing( false ) {}
+
+    class ParsingScope
+    {
+        bool &mIsParsing;
+
+    public:
+        ParsingScope( bool &isParsing ) : mIsParsing( isParsing ) { mIsParsing = true; }
+        ~ParsingScope() { mIsParsing = false; }
+    };
+
+    void ParticleSystemTranslator2::translate( ScriptCompiler *compiler, const AbstractNodePtr &node )
+    {
+        ObjectAbstractNode *obj = static_cast<ObjectAbstractNode *>( node.get() );
+        // Find the name
+        if( obj->name.empty() )
+        {
+            compiler->addError( ScriptCompiler::CE_OBJECTNAMEEXPECTED, obj->file, obj->line );
+            return;
+        }
+
+        // Allocate the particle system
+        CreateParticleSystemScriptCompilerEvent evt( obj->file, obj->name,
+                                                     compiler->getResourceGroup() );
+        bool processed = compiler->_fireEvent( &evt, (void *)&mSystem );
+
+        if( !processed )
+        {
+            mSystem =
+                Root::getSingleton().getParticleSystemManager2()->createParticleSystemDef( obj->name );
+        }
+
+        if( !mSystem )
+        {
+            compiler->addError( ScriptCompiler::CE_OBJECTALLOCATIONERROR, obj->file, obj->line );
+            return;
+        }
+
+        mSystem->_notifyOrigin( obj->file );
+
+        obj->context = Any( mSystem );
+
+        ParsingScope parsingScope( mIsParsing );
+        for( AbstractNodeList::iterator i = obj->children.begin(); i != obj->children.end(); ++i )
+        {
+            if( ( *i )->type == ANT_PROPERTY )
+            {
+                PropertyAbstractNode *prop = static_cast<PropertyAbstractNode *>( ( *i ).get() );
+                switch( prop->id )
+                {
+                case ID_MATERIAL:
+                    if( prop->values.empty() )
+                    {
+                        compiler->addError( ScriptCompiler::CE_STRINGEXPECTED, prop->file, prop->line );
+                        return;
+                    }
+                    else
+                    {
+                        if( prop->values.front()->type == ANT_ATOM )
+                        {
+                            String name = ( (AtomAbstractNode *)prop->values.front().get() )->value;
+
+                            ProcessResourceNameScriptCompilerEvent locEvt(
+                                ProcessResourceNameScriptCompilerEvent::MATERIAL, name );
+                            compiler->_fireEvent( &locEvt, 0 );
+
+                            if( !mSystem->setParameter( "material", locEvt.mName ) )
+                            {
+                                compiler->addError(
+                                    ScriptCompiler::CE_INVALIDPARAMETERS, prop->file, prop->line,
+                                    "material property could not be set with material \"" +
+                                        locEvt.mName + "\"" );
+                            }
+                        }
+                    }
+                    break;
+                default:
+                    if( prop->values.empty() )
+                    {
+                        compiler->addError( ScriptCompiler::CE_STRINGEXPECTED, prop->file, prop->line );
+                        return;
+                    }
+                    else
+                    {
+                        String name = prop->name, value;
+
+                        // Glob the values together
+                        for( AbstractNodeList::iterator it = prop->values.begin();
+                             it != prop->values.end(); ++it )
+                        {
+                            if( ( *it )->type == ANT_ATOM )
+                            {
+                                if( value.empty() )
+                                    value = ( (AtomAbstractNode *)( *it ).get() )->value;
+                                else
+                                    value = value + " " + ( (AtomAbstractNode *)( *it ).get() )->value;
+                            }
+                            else
+                            {
+                                compiler->addError( ScriptCompiler::CE_INVALIDPARAMETERS, prop->file,
+                                                    prop->line );
+                                return;
+                            }
+                        }
+
+                        mSystem->setParameter( name, value );
+                    }
+                }
+            }
+            else
+            {
+                processNode( compiler, *i );
+            }
+        }
+    }
+
+    /**************************************************************************
+     * ParticleEmitterTranslator2
+     *************************************************************************/
+    ParticleEmitterTranslator2::ParticleEmitterTranslator2() : mEmitter( 0 ) {}
+    //-------------------------------------------------------------------------
+    void ParticleEmitterTranslator2::translate( ScriptCompiler *compiler, const AbstractNodePtr &node )
+    {
+        ObjectAbstractNode *obj = static_cast<ObjectAbstractNode *>( node.get() );
+
+        // Must have a type as the first value
+        if( obj->values.empty() )
+        {
+            compiler->addError( ScriptCompiler::CE_STRINGEXPECTED, obj->file, obj->line );
+            return;
+        }
+
+        String type;
+        if( !getString( obj->values.front(), &type ) )
+        {
+            compiler->addError( ScriptCompiler::CE_INVALIDPARAMETERS, obj->file, obj->line );
+            return;
+        }
+
+        ParticleSystemDef *system = any_cast<ParticleSystemDef *>( obj->parent->context );
+        mEmitter = system->addEmitter( type );
+
+        ParticleEmitter *emitter = mEmitter->asParticleEmitter();
+
+        for( AbstractNodeList::iterator i = obj->children.begin(); i != obj->children.end(); ++i )
+        {
+            if( ( *i )->type == ANT_PROPERTY )
+            {
+                PropertyAbstractNode *prop = static_cast<PropertyAbstractNode *>( ( *i ).get() );
+                String value;
+
+                // Glob the values together
+                for( AbstractNodeList::iterator it = prop->values.begin(); it != prop->values.end();
+                     ++it )
+                {
+                    if( ( *it )->type == ANT_ATOM )
+                    {
+                        if( value.empty() )
+                            value = ( (AtomAbstractNode *)( *it ).get() )->value;
+                        else
+                            value = value + " " + ( (AtomAbstractNode *)( *it ).get() )->value;
+                    }
+                    else
+                    {
+                        compiler->addError( ScriptCompiler::CE_INVALIDPARAMETERS, prop->file,
+                                            prop->line );
+                        break;
+                    }
+                }
+
+                if( !emitter->setParameter( prop->name, value ) )
+                {
+                    compiler->addError( ScriptCompiler::CE_INVALIDPARAMETERS, prop->file, prop->line );
+                }
+            }
+            else
+            {
+                processNode( compiler, *i );
+            }
+        }
+    }
+
+    /**************************************************************************
+     * ParticleAffectorTranslator
+     *************************************************************************/
+    ParticleAffectorTranslator2::ParticleAffectorTranslator2() : mAffector( 0 ) {}
+    //-------------------------------------------------------------------------
+    void ParticleAffectorTranslator2::translate( ScriptCompiler *compiler, const AbstractNodePtr &node )
+    {
+        ObjectAbstractNode *obj = static_cast<ObjectAbstractNode *>( node.get() );
+
+        // Must have a type as the first value
+        if( obj->values.empty() )
+        {
+            compiler->addError( ScriptCompiler::CE_STRINGEXPECTED, obj->file, obj->line );
+            return;
+        }
+
+        String type;
+        if( !getString( obj->values.front(), &type ) )
+        {
+            compiler->addError( ScriptCompiler::CE_INVALIDPARAMETERS, obj->file, obj->line );
+            return;
+        }
+
+        ParticleSystemDef *system = any_cast<ParticleSystemDef *>( obj->parent->context );
+        mAffector = system->addAffector( type );
+
+        for( AbstractNodeList::iterator i = obj->children.begin(); i != obj->children.end(); ++i )
+        {
+            if( ( *i )->type == ANT_PROPERTY )
+            {
+                PropertyAbstractNode *prop = static_cast<PropertyAbstractNode *>( ( *i ).get() );
+                String value;
+
+                // Glob the values together
+                for( AbstractNodeList::iterator it = prop->values.begin(); it != prop->values.end();
+                     ++it )
+                {
+                    if( ( *it )->type == ANT_ATOM )
+                    {
+                        if( value.empty() )
+                            value = ( (AtomAbstractNode *)( *it ).get() )->value;
+                        else
+                            value = value + " " + ( (AtomAbstractNode *)( *it ).get() )->value;
+                    }
+                    else
+                    {
+                        compiler->addError( ScriptCompiler::CE_INVALIDPARAMETERS, prop->file,
+                                            prop->line );
+                        break;
+                    }
+                }
+
+                if( !mAffector->setParameter( prop->name, value ) )
+                {
+                    compiler->addError( ScriptCompiler::CE_INVALIDPARAMETERS, prop->file, prop->line );
+                }
+            }
+            else
+            {
+                processNode( compiler, *i );
+            }
+        }
+    }
+
+    /**************************************************************************
      * CompositorTextureBaseTranslator
      *************************************************************************/
     void CompositorTextureBaseTranslator::translateTextureProperty( TextureDefinitionBase *defBase,
@@ -6699,7 +6987,14 @@ namespace Ogre{
         if(!processed)
         {
             CompositorManager2 *compositorMgr = Root::getSingleton().getCompositorManager2();
-            mWorkspaceDef = compositorMgr->addWorkspaceDefinition( obj->name );
+            try
+            {
+                mWorkspaceDef = compositorMgr->addWorkspaceDefinition( obj->name );
+            }
+            catch( Exception & )
+            {
+                mWorkspaceDef = 0;
+            }
         }
 
         if(mWorkspaceDef == 0)
@@ -7028,7 +7323,14 @@ namespace Ogre{
         if(!processed)
         {
             CompositorManager2 *compositorMgr = Root::getSingleton().getCompositorManager2();
-            mNodeDef = compositorMgr->addNodeDefinition( obj->name );
+            try
+            {
+                mNodeDef = compositorMgr->addNodeDefinition( obj->name );
+            }
+            catch( Exception & )
+            {
+                mNodeDef = 0;
+            }
         }
 
         if(mNodeDef == 0)
@@ -8267,17 +8569,6 @@ namespace Ogre{
 
         uint8 shadowMapSupportedLightTypes = 0;
 
-        size_t numPasses = 0;
-        for(AbstractNodeList::iterator i = obj->children.begin(); i != obj->children.end(); ++i)
-        {
-            if((*i)->type == ANT_OBJECT)
-            {
-                ObjectAbstractNode *nodeObj = reinterpret_cast<ObjectAbstractNode*>( i->get() );
-                if( !nodeObj->abstract && nodeObj->id == ID_PASS )
-                    ++numPasses;
-            }
-        }
-
         String lightTypeStr;
         AbstractNodeList::const_iterator namesIt = obj->values.begin();
         for( size_t j=0; j<obj->values.size() + 1; ++j )
@@ -9194,6 +9485,37 @@ namespace Ogre{
                         }
                     }
                     break;
+                case ID_MIP_RANGE:
+                    if(prop->values.empty())
+                    {
+                        compiler->addError(ScriptCompiler::CE_NUMBEREXPECTED, prop->file, prop->line);
+                    }
+                    else if(prop->values.size() != 2)
+                    {
+                        compiler->addError(ScriptCompiler::CE_FEWERPARAMETERSEXPECTED, prop->file, prop->line,
+                                           "mip_range must have exactly 2 arguments");
+                    }
+                    else
+                    {
+                        AbstractNodeList::const_iterator it1 = prop->values.begin();
+                        AbstractNodeList::const_iterator it0 = it1++;
+
+                        uint32 mipLevelStart = 0u;
+                        uint32 numMiplevels = 1u;
+                        if( getUInt( *it0, &mipLevelStart ) && getUInt( *it1, &numMiplevels ) )
+                        {
+                            passDepthCopy->mMipLevelStart = uint8_t( mipLevelStart );
+                            passDepthCopy->mNumMiplevels = uint8_t( numMiplevels );
+                        }
+                        else
+                        {
+                            compiler->addError( ScriptCompiler::CE_INVALIDPARAMETERS, prop->file,
+                                                prop->line,
+                                                ( *it0 )->getValue() + " " + ( *it1 )->getValue() +
+                                                    " expecting two integers: mip_start num_mipmaps" );
+                        }
+                    }
+                break;
                 case ID_IDENTIFIER:
                 case ID_FLUSH_COMMAND_BUFFERS:
                 case ID_NUM_INITIAL:
@@ -10989,6 +11311,22 @@ namespace Ogre{
                         }
                     }
                     break;
+                case ID_AUTOGEN_INPUT_MIPMAPS:
+                    if( prop->values.size() != 1u )
+                    {
+                        compiler->addError( ScriptCompiler::CE_STRINGEXPECTED, prop->file, prop->line );
+                        return;
+                    }
+                    else
+                    {
+                        AbstractNodeList::const_iterator it0 = prop->values.begin();
+                        if( !getBoolean( *it0, &passIbl->mAutogenInputMipmaps ) )
+                        {
+                            compiler->addError( ScriptCompiler::CE_STRINGEXPECTED, prop->file,
+                                                prop->line, "Boolean expected" );
+                        }
+                    }
+                    break;
                 // case ID_VIEWPORT:
                 case ID_IDENTIFIER:
                 case ID_FLUSH_COMMAND_BUFFERS:
@@ -11754,12 +12092,27 @@ namespace Ogre{
                 translator = &mGpuProgramTranslator;
             else if(obj->id == ID_SHARED_PARAMS)
                 translator = &mSharedParamsTranslator;
-            else if(obj->id == ID_PARTICLE_SYSTEM)
-                translator = &mParticleSystemTranslator;
-            else if(obj->id == ID_EMITTER)
-                translator = &mParticleEmitterTranslator;
-            else if(obj->id == ID_AFFECTOR)
-                translator = &mParticleAffectorTranslator;
+            else if( obj->id == ID_PARTICLE_SYSTEM )
+            {
+                if( !obj->file.empty() && obj->file.back() == '2' )
+                    translator = &mParticleSystemTranslator2;
+                else
+                    translator = &mParticleSystemTranslator;
+            }
+            else if( obj->id == ID_EMITTER )
+            {
+                if( mParticleSystemTranslator2.isParsing() )
+                    translator = &mParticleEmitterTranslator2;
+                else
+                    translator = &mParticleEmitterTranslator;
+            }
+            else if( obj->id == ID_AFFECTOR )
+            {
+                if( mParticleSystemTranslator2.isParsing() )
+                    translator = &mParticleAffectorTranslator2;
+                else
+                    translator = &mParticleAffectorTranslator;
+            }
             else if(obj->id == ID_WORKSPACE)
                 translator = &mCompositorWorkspaceTranslator;
             else if(obj->id == ID_COMPOSITOR_NODE)

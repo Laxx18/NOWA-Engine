@@ -191,17 +191,7 @@ namespace Ogre
 
             vpSize[i] = Vector4( left, top, width, height );
             scissors[i] = Vector4( scLeft, scTop, scWidth, scHeight );
-
-            #if 0
-                    LogManager::getSingleton().logMessage(
-                LML_CRITICAL, "Pass: " + mDefinition->mProfilingId + " has viewport count: " +
-                                  Ogre::StringConverter::toString( numViewports ) +
-                                  " size: " +
-                                  Ogre::StringConverter::toString( vpSize[i] ) );
-            #endif
         }
-
-
 
         renderSystem->beginRenderPassDescriptor(
             mRenderPassDesc, mAnyTargetTexture, mAnyMipLevel, vpSize, scissors, numViewports,
@@ -320,9 +310,37 @@ namespace Ogre
                                    rtv->preferDepthTexture, rtv->depthBufferFormat );
         }
 
+        if( mDefinition->mSkipLoadStoreSemantics )
+        {
+            // Set everything to dont_care since validation must not complain.
+            const size_t numColourEntries = renderPassDesc->getNumColourEntries();
+            for( size_t i = 0u; i < numColourEntries; ++i )
+            {
+                renderPassDesc->mColour[i].loadAction = LoadAction::DontCare;
+                renderPassDesc->mColour[i].storeAction = StoreAction::DontCare;
+            }
+            renderPassDesc->mDepth.loadAction = LoadAction::DontCare;
+            renderPassDesc->mDepth.storeAction = StoreAction::DontCare;
+            renderPassDesc->mStencil.loadAction = LoadAction::DontCare;
+            renderPassDesc->mStencil.storeAction = StoreAction::DontCare;
+        }
+
         postRenderPassDescriptorSetup( renderPassDesc );
 
-        renderPassDesc->entriesModified( RenderPassDescriptor::All );
+        try
+        {
+            renderPassDesc->entriesModified( RenderPassDescriptor::All );
+        }
+        catch( Exception &e )
+        {
+            LogManager::getSingleton().logMessage(
+                "The compositor pass '" + mDefinition->mProfilingId + "' from Node: '" +
+                    mParentNode->getDefinition()->getNameStr() + "' in Workspace: '" +
+                    mParentNode->getWorkspace()->getDefinition()->getNameStr() +
+                    "' threw the following Exception: " + e.getFullDescription(),
+                LML_CRITICAL );
+            throw;
+        }
     }
     //-----------------------------------------------------------------------------------
     void CompositorPass::setupRenderPassTarget( RenderPassTargetBase *renderPassTargetAttachment,

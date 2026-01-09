@@ -97,6 +97,11 @@ namespace NOWA
 		/** @copydoc Renderable::getCastsShadows. */
 		virtual bool getCastsShadows(void) const { return false; }
 
+		Ogre::ParticleType::ParticleType getParticleType() const override
+		{
+			return Ogre::ParticleType::NotParticle;
+		}
+
 	protected:
 		//called from Ogre::Renderable
 		Ogre::OperationType operationType;

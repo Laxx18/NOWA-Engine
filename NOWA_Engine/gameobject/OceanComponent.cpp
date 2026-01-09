@@ -28,11 +28,17 @@ namespace NOWA
 			{ "Default", "CookTorrance", "BlinnPhong",
 			  "DefaultUncorrelated", "DefaultSeparateDiffuseFresnel",
 			  "CookTorranceSeparateDiffuseFresnel", "BlinnPhongSeparateDiffuseFresnel" }, this->attributes)),
+		reflectionTextureName(new Variant(OceanComponent::AttrReflectionTexture(), std::vector<Ogre::String>(), this->attributes)),
 		shaderWavesScale(new Variant(OceanComponent::AttrShaderWavesScale(), 1.0f, this->attributes)),
 		wavesIntensity(new Variant(OceanComponent::AttrWavesIntensity(), 0.8f, this->attributes)),
 		oceanWavesScale(new Variant(OceanComponent::AttrOceanWavesScale(), 1.6f, this->attributes)),
 		oceanSize(new Variant(OceanComponent::AttrOceanSize(), Ogre::Vector2(200.0f, 200.0f), this->attributes)),
 		oceanCenter(new Variant(OceanComponent::AttrOceanCenter(), Ogre::Vector3::ZERO, this->attributes))
+,
+		useSkirts(new Variant(OceanComponent::AttrUseSkirts(), true, this->attributes)),
+		waveTimeScale(new Variant(OceanComponent::AttrWaveTimeScale(), 1.0f, this->attributes)),
+		waveFrequencyScale(new Variant(OceanComponent::AttrWaveFrequencyScale(), 1.0f, this->attributes)),
+		waveChaos(new Variant(OceanComponent::AttrWaveChaos(), 0.0f, this->attributes))
 	{
 		this->cameraId->setDescription("The optional camera game object id which can be set. E.g. useful if the MinimapComponent is involved, to set the minimap camera, so that ocean is painted correctly on minimap. Can be left of, default is the main active camera.");
 
@@ -44,6 +50,14 @@ namespace NOWA
 		this->oceanWavesScale->setDescription("Wave/tiling scale.");
 		this->oceanSize->setDescription("Ocean size in world units (Vector2).");
 		this->oceanCenter->setDescription("Ocean center position in world space (Vector3).");
+
+		this->useSkirts->setDescription("Enables skirts on far ocean cells to hide LOD cracks (may slightly change silhouette).");
+		this->waveTimeScale->setDescription("Global time scale for wave scrolling (1.0 = default).");
+		this->waveFrequencyScale->setDescription("Global frequency scale for wave UVs (1.0 = default).");
+		this->waveChaos->setDescription("Adds additional time-varying rotation/scale offsets for more chaotic movement (0.0 = off).");
+
+		this->reflectionTextureName->setDescription("Reflection cubemap texture used for ocean specular reflections (Skies/*.dds).");
+		this->setReflectionTextureNames();
 	}
 
 	OceanComponent::~OceanComponent()
@@ -79,6 +93,11 @@ namespace NOWA
 			this->brdf->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "ReflectionTextureName")
+		{
+			this->reflectionTextureName->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "ShaderWavesScale")
 		{
 			this->shaderWavesScale->setValue(XMLConverter::getAttribReal(propertyElement, "data", 1.0f));
@@ -92,6 +111,27 @@ namespace NOWA
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "OceanWavesScale")
 		{
 			this->oceanWavesScale->setValue(XMLConverter::getAttribReal(propertyElement, "data", 1.6f));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "UseSkirts")
+		{
+			this->useSkirts->setValue(XMLConverter::getAttribBool(propertyElement, "data", true));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "WaveTimeScale")
+		{
+			this->waveTimeScale->setValue(XMLConverter::getAttribReal(propertyElement, "data", 1.0f));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "WaveFrequencyScale")
+		{
+			this->waveFrequencyScale->setValue(XMLConverter::getAttribReal(propertyElement, "data", 1.0f));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "WaveChaos")
+		{
+			this->waveChaos->setValue(XMLConverter::getAttribReal(propertyElement, "data", 0.0f));
 			propertyElement = propertyElement->next_sibling("property");
 		}
 
@@ -130,6 +170,10 @@ namespace NOWA
 		this->gameObjectPtr->getAttribute(GameObject::AttrCastShadows())->setVisible(false);
 		this->gameObjectPtr->getAttribute(GameObject::AttrDynamic())->setVisible(false);
 		this->gameObjectPtr->getAttribute(GameObject::AttrClampY())->setVisible(false);
+
+		// Populate reflection texture dropdown and apply selection
+		this->setReflectionTextureNames();
+		this->setReflectionTextureName(this->reflectionTextureName->getListSelectedValue());
 
 		this->postInitDone = true;
 
@@ -192,9 +236,9 @@ namespace NOWA
 	{
 		if (false == notSimulating)
 		{
-			auto closureFunction = [this](Ogre::Real weight)
+			auto closureFunction = [this, dt](Ogre::Real weight)
 				{
-					this->ocean->update();
+					this->ocean->update(dt);
 				};
 			Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
 			NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
@@ -231,6 +275,8 @@ namespace NOWA
 				this->ocean->setCastShadows(false);
 				this->ocean->setName(this->gameObjectPtr->getName());
 
+				// IMPORTANT: must be set before create() because it affects cell geometry
+				this->ocean->setUseSkirts(this->useSkirts->getBool());
 				Ogre::Vector3 center = this->oceanCenter->getVector3();
 				Ogre::Vector2 size = this->oceanSize->getVector2();
 				this->ocean->create(center, size);
@@ -239,17 +285,17 @@ namespace NOWA
 				this->ocean->setWavesIntensity(this->wavesIntensity->getReal());
 				this->ocean->setWavesScale(this->oceanWavesScale->getReal());
 
+				this->ocean->setWaveTimeScale(this->waveTimeScale->getReal());
+				this->ocean->setWaveFrequencyScale(this->waveFrequencyScale->getReal());
+				this->ocean->setWaveChaos(this->waveChaos->getReal());
+
 				auto* hlmsOcean = static_cast<Ogre::HlmsOcean*>(Ogre::Root::getSingleton().getHlmsManager()->getHlms(Ogre::HLMS_USER1));
 
 				hlmsOcean->setOceanDataTextureName("oceanData.dds");
 				hlmsOcean->setWeightTextureName("weight.dds");
 
-				// IMPORTANT: do NOT set oceanDataTex as env probe!
-				// hlmsOcean->setEnvProbe( ... ) must be a cubemap probe (optional).
-
-				// Optional: only if you actually have a cubemap probe texture:
-				//// Ogre::TextureGpu* probeCube = ...;
-				//// hlmsOcean->setEnvProbe(probeCube);
+				hlmsOcean->setAmbientLightMode(this->mapPbsLightModeToOceanMapMode(NOWA::WorkspaceModule::getInstance()->getAmbientLightMode()));
+				hlmsOcean->setShadowSettings(this->mapPbsShadowSettingsToOceanShadowSettings(NOWA::WorkspaceModule::getInstance()->getShadowQuality()));
 
 				if (nullptr == this->datablock)
 				{
@@ -258,13 +304,13 @@ namespace NOWA
 
 					this->ocean->setDatablock(this->datablock);
 
-					static_cast<Ogre::HlmsOceanDatablock*>(this->datablock)->setDeepColour(this->deepColour->getVector3());
-					static_cast<Ogre::HlmsOceanDatablock*>(this->datablock)->setShallowColour(this->shallowColour->getVector3());
+					this->datablock->setDeepColour(this->deepColour->getVector3());
+					this->datablock->setShallowColour(this->shallowColour->getVector3());
 
-					static_cast<Ogre::HlmsOceanDatablock*>(this->datablock)->setBrdf(this->mapStringToOceanBrdf(this->brdf->getListSelectedValue()));
+					this->datablock->setBrdf(this->mapStringToOceanBrdf(this->brdf->getListSelectedValue()));
 
 					// Shader-side detail scale
-					static_cast<Ogre::HlmsOceanDatablock*>(this->datablock)->setWavesScale(this->shaderWavesScale->getReal());
+					this->datablock->setWavesScale(this->shaderWavesScale->getReal());
 				}
 
 				this->ocean->setStatic(false);
@@ -272,19 +318,97 @@ namespace NOWA
 				this->gameObjectPtr->getSceneNode()->attachObject(this->ocean);
 
 				this->gameObjectPtr->init(this->ocean);
+
+				this->ocean->update(0.0f);
 				// Register after the component has been created
 				AppStateManager::getSingletonPtr()->getGameObjectController()->registerGameObject(gameObjectPtr);
 
 				WorkspaceBaseComponent* workspaceBaseComponent = WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent();
 				if (nullptr != workspaceBaseComponent)
 				{
-					if (false == workspaceBaseComponent->getUseOcean())
-					{
-						workspaceBaseComponent->setUseOcean(true);
-					}
+					workspaceBaseComponent->setUseOcean(true, this);
 				}
 			});
 		}
+	}
+
+	void OceanComponent::setEnvTexture(const Ogre::String& envTextureName)
+	{
+		Ogre::Root* root = Ogre::Root::getSingletonPtr();
+		if (nullptr == root)
+			return;
+
+		const Ogre::String tex = envTextureName;
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("OceanComponent::setEnvTexture", _1(tex),
+		{
+			Ogre::Root* rootLocal = Ogre::Root::getSingletonPtr();
+			if (nullptr == rootLocal)
+				return;
+
+			auto* hlmsOcean = static_cast<Ogre::HlmsOcean*>(rootLocal->getHlmsManager()->getHlms(Ogre::HLMS_USER1));
+		if (hlmsOcean)
+				hlmsOcean->setEnvProbe(tex);
+		});
+	}
+
+	void OceanComponent::setReflectionTextureNames(void)
+	{
+		if (nullptr == this->reflectionTextureName)
+			return;
+
+		const Ogre::String prevSelected = this->reflectionTextureName->getListSelectedValue();
+
+		std::vector<Ogre::String> compatibleSkyNames;
+		compatibleSkyNames.reserve(64u);
+		compatibleSkyNames.emplace_back("");
+
+		try
+		{
+			if (Ogre::ResourceGroupManager::getSingleton().resourceGroupExists("Skies"))
+		{
+				Ogre::StringVectorPtr skyNames = Ogre::ResourceGroupManager::getSingleton().findResourceNames("Skies", "*.dds");
+				if (false == skyNames.isNull())
+				{
+					for (auto it = skyNames->cbegin(); it != skyNames->cend(); ++it)
+						compatibleSkyNames.emplace_back(*it);
+				}
+			}
+		}
+		catch (const Ogre::Exception& e)
+		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+				"[OceanComponent] setReflectionTextureNames exception: " + e.getFullDescription());
+		}
+
+		this->reflectionTextureName->getList().clear();
+		this->reflectionTextureName->setValue(compatibleSkyNames);
+
+		// Keep selection (even if it is not currently present in the list)
+		this->reflectionTextureName->setListSelectedValue(prevSelected);
+	}
+
+	void OceanComponent::setReflectionTextureName(const Ogre::String& textureName)
+	{
+		if (nullptr != this->reflectionTextureName)
+			this->reflectionTextureName->setListSelectedValue(textureName);
+
+		// Apply to HLMS (global)
+		this->setEnvTexture(textureName);
+		}
+
+	Ogre::String OceanComponent::getReflectionTextureName(void) const
+	{
+		if (nullptr != this->reflectionTextureName)
+			return this->reflectionTextureName->getListSelectedValue();
+		return "";
+	}
+
+	void OceanComponent::actualizeShading(void)
+	{
+		auto* hlmsOcean = static_cast<Ogre::HlmsOcean*>(Ogre::Root::getSingleton().getHlmsManager()->getHlms(Ogre::HLMS_USER1));
+
+		hlmsOcean->setAmbientLightMode(this->mapPbsLightModeToOceanMapMode(NOWA::WorkspaceModule::getInstance()->getAmbientLightMode()));
+		hlmsOcean->setShadowSettings(this->mapPbsShadowSettingsToOceanShadowSettings(NOWA::WorkspaceModule::getInstance()->getShadowQuality()));
 	}
 
 	void OceanComponent::destroyOcean(void)
@@ -318,7 +442,7 @@ namespace NOWA
 				{
 					if (nullptr != appState && false == appState->bShutdown)
 					{
-						workspaceBaseComponent->setUseOcean(false);
+						workspaceBaseComponent->setUseOcean(false, nullptr);
 					}
 				}
 
@@ -397,9 +521,13 @@ namespace NOWA
 		{
 			this->setBrdf(attribute->getListSelectedValue());
 		}
+		else if (OceanComponent::AttrReflectionTexture() == attribute->getName())
+		{
+			this->setReflectionTextureName(attribute->getListSelectedValue());
+		}
 		else if (OceanComponent::AttrShaderWavesScale() == attribute->getName())
 		{
-			this->setShaderWavesScale(attribute->getReal());
+			this->setOceanWavesScale(attribute->getReal());
 		}
 		else if (OceanComponent::AttrWavesIntensity() == attribute->getName())
 		{
@@ -461,6 +589,13 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->brdf->getListSelectedValue())));
 		propertiesXML->append_node(propertyXML);
 
+		// ReflectionTextureName
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "ReflectionTextureName"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->reflectionTextureName->getListSelectedValue())));
+		propertiesXML->append_node(propertyXML);
+
 		// ShaderWavesScale
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
@@ -480,6 +615,34 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "OceanWavesScale"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->oceanWavesScale->getReal())));
+		propertiesXML->append_node(propertyXML);
+
+		// UseSkirts
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "UseSkirts"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->useSkirts->getBool())));
+		propertiesXML->append_node(propertyXML);
+
+		// WaveTimeScale
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "WaveTimeScale"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->waveTimeScale->getReal())));
+		propertiesXML->append_node(propertyXML);
+
+		// WaveFrequencyScale
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "WaveFrequencyScale"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->waveFrequencyScale->getReal())));
+		propertiesXML->append_node(propertyXML);
+
+		// WaveChaos
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "WaveChaos"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->waveChaos->getReal())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
@@ -577,6 +740,58 @@ namespace NOWA
 			brdf = Ogre::OceanBrdf::BlinnPhong | Ogre::OceanBrdf::FLAG_SPERATE_DIFFUSE_FRESNEL;
 
 		return static_cast<Ogre::OceanBrdf::OceanBrdf>(brdf);
+	}
+
+	Ogre::HlmsOcean::AmbientLightMode OceanComponent::mapPbsLightModeToOceanMapMode(Ogre::HlmsPbs::AmbientLightMode pbsMode)
+	{
+		using P = Ogre::HlmsPbs;
+		using O = Ogre::HlmsOcean;
+
+		switch (pbsMode)
+		{
+		case P::AmbientAutoNormal:
+			return O::AmbientAuto;
+		case P::AmbientFixed:
+			return O::AmbientFixed;
+		case P::AmbientHemisphereNormal:
+			return O::AmbientHemisphere;
+
+			// Ocean doesn't support spherical harmonics.
+			// Best fallback is Auto (it will pick Fixed vs Hemisphere based on upper/lower,
+			// and disable if both are black).
+		case P::AmbientSh:
+		case P::AmbientShMonochrome:
+			return O::AmbientFixed;
+		case P::AmbientNone:
+			return O::AmbientNone;
+
+		default:
+			return O::AmbientAuto;
+		}
+	}
+
+	Ogre::HlmsOcean::ShadowFilter OceanComponent::mapPbsShadowSettingsToOceanShadowSettings(Ogre::HlmsPbs::ShadowFilter pbsFilter)
+	{
+		using P = Ogre::HlmsPbs;
+		using O = Ogre::HlmsOcean;
+
+		switch (pbsFilter)
+		{
+		case P::PCF_2x2: return O::PCF_2x2;
+		case P::PCF_3x3: return O::PCF_3x3;
+		case P::PCF_4x4: return O::PCF_4x4;
+
+			// Ocean doesn't support 5x5 / 6x6; clamp to best available
+		case P::PCF_5x5:
+		case P::PCF_6x6:
+			return O::PCF_4x4;
+
+			// Ocean doesn't support ESM; fall back to highest PCF quality
+		case P::ExponentialShadowMaps:
+			return O::PCF_4x4;
+		default:
+			return O::PCF_3x3;
+		}
 	}
 
 	void OceanComponent::setCameraId(unsigned long cameraId)
@@ -733,6 +948,104 @@ namespace NOWA
 		return this->oceanWavesScale->getReal();
 	}
 	
+	void OceanComponent::setUseSkirts(bool useSkirts)
+	{
+		this->useSkirts->setValue(useSkirts);
+
+		// Needs rebuild to change geometry, handled by caller (actualizeValue)
+		if (nullptr != this->ocean)
+		{
+			const bool s = useSkirts;
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("OceanComponent::setUseSkirts", _1(s),
+			{
+				if (nullptr != this->ocean)
+				{
+					this->ocean->setUseSkirts(s);
+				}
+			});
+		}
+	}
+
+	bool OceanComponent::getUseSkirts(void) const
+	{
+		return this->useSkirts->getBool();
+	}
+
+	void OceanComponent::setWaveTimeScale(Ogre::Real timeScale)
+	{
+		if (timeScale < Ogre::Real(0.0f))
+			timeScale = Ogre::Real(0.0f);
+
+		this->waveTimeScale->setValue(timeScale);
+
+		if (nullptr != this->ocean)
+		{
+			const Ogre::Real s = timeScale;
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("OceanComponent::setWaveTimeScale", _1(s),
+			{
+				if (nullptr != this->ocean)
+				{
+					this->ocean->setWaveTimeScale(s);
+				}
+			});
+		}
+	}
+
+	Ogre::Real OceanComponent::getWaveTimeScale(void) const
+	{
+		return this->waveTimeScale->getReal();
+	}
+
+	void OceanComponent::setWaveFrequencyScale(Ogre::Real freqScale)
+	{
+		if (freqScale < Ogre::Real(0.0f))
+			freqScale = Ogre::Real(0.0f);
+
+		this->waveFrequencyScale->setValue(freqScale);
+
+		if (nullptr != this->ocean)
+		{
+			const Ogre::Real s = freqScale;
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("OceanComponent::setWaveFrequencyScale", _1(s),
+			{
+				if (nullptr != this->ocean)
+				{
+					this->ocean->setWaveFrequencyScale(s);
+				}
+			});
+		}
+	}
+
+	Ogre::Real OceanComponent::getWaveFrequencyScale(void) const
+	{
+		return this->waveFrequencyScale->getReal();
+	}
+
+	void OceanComponent::setWaveChaos(Ogre::Real chaos)
+	{
+		if (chaos < Ogre::Real(0.0f))
+			chaos = Ogre::Real(0.0f);
+
+		this->waveChaos->setValue(chaos);
+
+		if (nullptr != this->ocean)
+		{
+			const Ogre::Real s = chaos;
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("OceanComponent::setWaveChaos", _1(s),
+			{
+				if (nullptr != this->ocean)
+				{
+					this->ocean->setWaveChaos(s);
+				}
+			});
+		}
+	}
+
+	Ogre::Real OceanComponent::getWaveChaos(void) const
+	{
+		return this->waveChaos->getReal();
+	}
+
 	void OceanComponent::setOceanSize(const Ogre::Vector2& size)
 	{
 		this->oceanSize->setValue(size);
@@ -761,6 +1074,38 @@ namespace NOWA
 	Ogre::Ocean* OceanComponent::getOcean(void) const
 	{
 		return this->ocean;
+	}
+
+	Ogre::HlmsOceanDatablock* OceanComponent::getDatablock(void) const
+	{
+		return this->datablock;
+	}
+
+	bool OceanComponent::isCameraUnderwater(void) const
+	{
+		if (nullptr != this->ocean)
+		{
+			return this->ocean->isUnderwater();
+		}
+		return false;
+	}
+
+	bool OceanComponent::isUnderWater(const Ogre::Vector3& position) const
+	{
+		if (nullptr != this->ocean)
+		{
+			return this->ocean->isUnderwater(position);
+		}
+		return false;
+	}
+
+	bool OceanComponent::isUnderWater(GameObject* gameObject)
+	{
+		if (nullptr != this->ocean && nullptr != gameObject)
+		{
+			return this->ocean->isUnderwater(gameObject->getPosition());
+		}
+		return false;
 	}
 
 }; // namespace end

@@ -447,7 +447,9 @@ namespace NOWA
 			configFile << "FileSystem=../../media/NOWA/Scripts/terra/GLSL\n";
 			configFile << "FileSystem=../../media/NOWA/Scripts/terra/HLSL\n";
 			configFile << "FileSystem=../../media/NOWA/Scripts/terra/Metal\n";
-			configFile << "#FileSystem=../../media/NOWA/Scripts/ocean/textures\n";
+			configFile << "FileSystem=../../media/NOWA/Scripts/ocean\n";
+			configFile << "FileSystem=../../media/NOWA/Scripts/ocean/textures\n";
+			configFile << "FileSystem=../../media/NOWA/Scripts/ocean/HLSL\n";
 			configFile << "FileSystem=../../media/NOWA/Scripts/SMAA\n";
 			configFile << "FileSystem=../../media/NOWA/Scripts/SMAA/GLSL\n";
 			configFile << "FileSystem=../../media/NOWA/Scripts/SMAA/HLSL\n";

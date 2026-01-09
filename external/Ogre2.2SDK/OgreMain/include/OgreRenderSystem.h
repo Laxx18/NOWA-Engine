@@ -216,7 +216,7 @@ namespace Ogre
         /// Returns true if RenderSystem supports multithreaded shader and PSO compilation.
         /// Support depends on the API, our implementation, and CMake setting
         /// OGRE_SHADER_COMPILATION_THREADING_MODE with which OgreNext was built.
-        virtual bool supportsMultithreadedShaderCompliation() const;
+        virtual bool supportsMultithreadedShaderCompilation() const;
 
         /** Create an object for performing hardware occlusion queries.
          */
@@ -287,8 +287,23 @@ namespace Ogre
          */
         virtual void shutdown();
 
-        /** Some render systems have moments when GPU device is temporarily unavailable,
-            for example when D3D11 device is lost, or when iOS app is in background, etc.
+        /** Returns true if device was lost and the application should destroy and recreate
+            the device and all device depended resources using validateDevice() call. Note,
+            that initial device lost condition detection is asynchronous, and can be reported
+            by any 3D API call, resulting in RenderingApiException that should be catched.
+            Device lost conditions are reported by 3D APIs as
+            - Direct3D 9: D3DERR_DEVICELOST
+            - Direct3D 10+: DXGI_ERROR_DEVICE_REMOVED/_RESET/_HUNG/etc
+            - Vulkan: VK_ERROR_DEVICE_LOST
+            - OpenGL[ES]: GL_CONTEXT_LOST
+            - Metal: MTLCommandBufferErrorDeviceRemoved/AccessRevoked, MTLDeviceWasRemovedNotification
+         */
+        virtual bool isDeviceLost() { return false; }
+
+        /** Checks if device was lost and recreates it with all depended resources.
+            Optionally elects best physical device even if current device was not lost.
+            Without forceDeviceElection param this function is pretty lightweight
+            and is automatically called by Ogre on start of each frame.
          */
         virtual bool validateDevice( bool forceDeviceElection = false ) { return true; }
 
@@ -316,16 +331,15 @@ namespace Ogre
             See TextureFlags::TextureFlags.
             Relevant flags are:
                 NotTexture
+                RenderToTexture
                 Uav
-        @param depthTextureFlags
-            Only used if format is a colour pixel format.
-            Same as textureFlags, but for associated depth buffer if format.
+                RenderWindowSpecific
         @return
             Supported sample description for requested FSAA mode, with graceful downgrading.
         */
         virtual SampleDescription validateSampleDescription( const SampleDescription &sampleDesc,
-                                                             PixelFormatGpu format, uint32 textureFlags,
-                                                             uint32 depthTextureFlags );
+                                                             PixelFormatGpu           format,
+                                                             uint32                   textureFlags );
 
         /** Creates a new rendering window.
         @remarks
@@ -891,7 +905,45 @@ namespace Ogre
 
         virtual void executeResourceTransition( const ResourceTransitionArray &rstCollection ) {}
 
-        virtual void _hlmsPipelineStateObjectCreated( HlmsPso *newPso ) {}
+        /** PSO creation on Vulkan could be skipped after exhausting per-frame time budget.
+
+            Every frame we have a time budget for compiling PSOs. For example, 8ms.
+            If we spend more than 8ms compiling shaders and PSOs, we abort those and will attempt to
+            compile them on the next frame. Any object that uses such uncompiled PSO will not appear
+            on screen.
+
+            Example: if each PSO takes 1ms to compile and we have 10 PSOs left, then we'll
+            compile 8 PSOs, and the other 2 will be compiled on the next frame.
+            If a single PSO takes 20ms, then only that PSO will be compiled (we can't stop mid-compile).
+            If each PSO takes 1.2ms, we'll compile 7 PSOs. Because at the 6th PSO we will have taken
+            7.2ms, which is below the deadline, and after the 7th PSO we will have taken 8.4ms.
+            This happens because we can't actually predict how long a PSO will take.
+
+            This feature reduces stutter by allocating an aproximate maximum time we spend compiling. But
+            it trades off in visual glitches/artifacts until all PSOs are done.
+            This feature is important on Android to reduce the number of ANRs.
+        @remark
+            IMPORTANT: Techniques that rely on running a shader once (e.g. to fill a texture) may end
+            up uninitialized if the PSO doesn't compile on time. It's best to disable this feature
+            when doing such tasks or to monitor getIncompletePsoRequestsCounter() and retry.
+        @remark
+            When PSOs are deferred due to this feature, it will be logged. Keep an eye on Ogre.log.
+        @param ms
+            Time deadline in milliseconds.
+        */
+        void   setPsoRequestsTimeout( uint32 ms ) { mPsoRequestsTimeout = ms; }
+        uint32 getPsoRequestsTimeout() const { return mPsoRequestsTimeout; }
+
+        /// The amount of PSOs that remain uncompiled because they've exceeded the time budget.
+        /// See setPsoRequestsTimeout(). This value gets reset to 0 at the beginning of every frame.
+        uint32 getIncompletePsoRequestsCounter() const { return mIncompletePsoRequestsCounterFrame; }
+        void   _notifyIncompletePsoRequests( uint32 count );
+
+        /// return false for recoverable errors, for example for exhausted per-frame time budget
+        virtual bool _hlmsPipelineStateObjectCreated( HlmsPso *newPso, uint64 deadline = UINT64_MAX )
+        {
+            return true;
+        }
         virtual void _hlmsPipelineStateObjectDestroyed( HlmsPso *pso ) {}
         virtual void _hlmsMacroblockCreated( HlmsMacroblock *newBlock ) {}
         virtual void _hlmsMacroblockDestroyed( HlmsMacroblock *block ) {}
@@ -1547,6 +1599,32 @@ namespace Ogre
 
         BarrierSolver &getBarrierSolver() { return mBarrierSolver; }
 
+        /** Loads the pipeline cache from disk.
+        @param stream The source stream, optional, starts with struct PipelineCachePrefixHeader
+        */
+        virtual void loadPipelineCache( DataStreamPtr stream );
+        /** Saves the pipeline cache to disk.
+        @param stream The destination stream
+        */
+        virtual void savePipelineCache( DataStreamPtr stream ) const;
+
+        /// When serializing pipeline cache data to the file, we use a header that is filled with
+        /// enough information to be able to validate the data, with the pipeline cache data following
+        /// immediately afterwards. https://zeux.io/2019/07/17/serializing-pipeline-cache/#fn:1
+        struct PipelineCachePrefixHeader
+        {
+            uint32_t magic;     // an arbitrary magic header to make sure this is actually our file
+            uint32_t dataSize;  // equal to *pDataSize returned by vkGetPipelineCacheData
+            uint64_t dataHash;  // a hash of pipeline cache data, including the header
+
+            uint32_t vendorID;       // equal to VkPhysicalDeviceProperties::vendorID
+            uint32_t deviceID;       // equal to VkPhysicalDeviceProperties::deviceID
+            uint32_t driverVersion;  // equal to VkPhysicalDeviceProperties::driverVersion
+            uint32_t driverABI;      // equal to sizeof(void*)
+
+            uint8_t uuid[16];  // equal to VkPhysicalDeviceProperties::pipelineCacheUUID
+        };
+
     protected:
         void destroyAllRenderPassDescriptors();
 
@@ -1668,6 +1746,10 @@ namespace Ogre
 
         bool mReverseDepth;
         bool mInvertedClipSpaceY;
+
+        uint32 mPsoRequestsTimeout;  // ms, per frame, or 0 to disable
+        /// Amount of PSO incomplete requests during this frame.
+        uint32 mIncompletePsoRequestsCounterFrame;
     };
     /** @} */
     /** @} */

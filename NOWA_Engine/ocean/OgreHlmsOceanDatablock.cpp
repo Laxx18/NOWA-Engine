@@ -1,4 +1,4 @@
-// HlmsOceanDatablock.cpp - Fixed version matching Terra's pattern
+#include "OgreHlmsOceanDatablock.cpp.inc"
 
 #include "NOWAPrecompiled.h"
 #include "OgreHlmsOceanDatablock.h"

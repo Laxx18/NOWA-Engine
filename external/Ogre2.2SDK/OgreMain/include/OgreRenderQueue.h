@@ -89,9 +89,19 @@ namespace Ogre
         LightweightMutex     mMutex;
         Semaphore            mSemaphore;
         std::atomic<bool>    mKeepCompiling;
+        std::atomic<uint32>  mCompilationIncompleteCounter;  // at least one was skipped.
+        // 16ms in the future, or UINT64_MAX. This contains the current deadline.
+        uint64 mCompilationDeadline;
+        // The 16ms in the future, or UINT64_MAX. This value is set only once per frame.
+        // mCompilationDeadline contains the current value being used (which may be different
+        // if deadline must be disabled).
+        uint64 mMasterDeadline;
+        bool   mDeadlineSet;
 
         bool               mExceptionFound;     // GUARDED_BY( mMutex )
         std::exception_ptr mThreadedException;  // GUARDED_BY( mMutex )
+
+        void setupDeadline( Root &root, SceneManager &sceneManager, bool casterPass );
 
     public:
         ParallelHlmsCompileQueue();
@@ -99,22 +109,29 @@ namespace Ogre
         inline void pushRequest( const Request &&request )
         {
             ScopedLock lock( mMutex );
+            request.reservedStubEntry->flags = HLMS_CACHE_FLAGS_COMPILATION_REQUESTED;
             mRequests.emplace_back( request );
             mSemaphore.increment();
         }
 
-        inline void pushWarmUpRequest( const Request &&request ) { mRequests.emplace_back( request ); }
+        inline void pushWarmUpRequest( const Request &&request )
+        {
+            request.reservedStubEntry->flags = HLMS_CACHE_FLAGS_COMPILATION_REQUESTED;
+            mRequests.emplace_back( request );
+        }
+
+        void frameEnded();
 
         /** Starts worker threads (job queue) so they start accepting work every time pushRequest()
             gets called and will keep compiling those shaders until stopAndWait() is called.
 
             The work is done in updateThread() and is in charge of compiling shaders AND generating PSOs.
         @remarks
-            This function must not be called if RenderSystem::supportsMultithreadedShaderCompliation
+            This function must not be called if RenderSystem::supportsMultithreadedShaderCompilation
             is false.
         @param sceneManager
         */
-        void start( SceneManager *sceneManager );
+        void start( Root *root, SceneManager *sceneManager, bool casterPass );
         /** Signals worker threads we won't be submitting more work, so they should stop once they're
             done compiling all pending shaders / PSOs.
 
@@ -130,14 +147,14 @@ namespace Ogre
         /// and fires all threads to compile the shaders and PSOs in parallel.
         ///
         /// It will wait until all threads are done.
-        void fireWarmUpParallel( SceneManager *sceneManager );
+        void fireWarmUpParallel( Root *root, SceneManager *sceneManager, bool casterPass );
 
         /// The actual work done by fireWarmUpParallel().
         void updateWarmUpThread( size_t threadIdx, HlmsManager *hlmsManager,
                                  const HlmsCache *passCaches );
 
         /// Serial alternative of fireWarmUpParallel() + updateWarmUpThread() for when
-        /// RenderSystem::supportsMultithreadedShaderCompliation is false.
+        /// RenderSystem::supportsMultithreadedShaderCompilation is false.
         void warmUpSerial( HlmsManager *hlmsManager, const HlmsCache *passCaches );
     };
 
@@ -159,7 +176,8 @@ namespace Ogre
             Rectangle2D:        10 \n
             v1::Entity:         110 \n
             v1::Rectangle2D:    110 \n
-            ParticleSystem:     110 \n
+            ParticleSystem (v1):110 \n
+            ParticleSystem (v2):kParticleSystemDefaultRenderQueueId \n
             [.. more unlisted ..]
         @remarks
             By default, the render queues have the following mode set: \n
@@ -193,7 +211,11 @@ namespace Ogre
             /// of homogeneous and heterogenous meshes, with many different kinds
             /// of materials and textures.
             /// Only v2 Items can be put in this queue.
-            FAST
+            FAST,
+
+            /// Renders ParticleSystemDef (i.e. ParticleFX2 plugin).
+            /// Don't put v1 Particle Systems here.
+            PARTICLE_SYSTEM,
         };
 
         enum RqSortMode
@@ -282,6 +304,12 @@ namespace Ogre
         void renderES2( RenderSystem *rs, bool casterPass, bool dualParaboloid,
                         HlmsCache passCache[HLMS_MAX], const RenderQueueGroup &renderQueueGroup );
 
+        uint8 *renderParticles( RenderSystem *rs, bool casterPass, HlmsCache passCache[],
+                                const RenderQueueGroup   &renderQueueGroup,
+                                ParallelHlmsCompileQueue *parallelCompileQueue,
+                                IndirectBufferPacked *indirectBuffer, uint8 *indirectDraw,
+                                uint8 *startIndirectDraw );
+
         /// Renders in a compatible way with GL 3.3 and D3D11. Can only render V2 objects
         /// (i.e. Items, VertexArrayObject)
         unsigned char *renderGL3( RenderSystem *rs, bool casterPass, bool dualParaboloid,
@@ -298,6 +326,8 @@ namespace Ogre
     public:
         RenderQueue( HlmsManager *hlmsManager, SceneManager *sceneManager, VaoManager *vaoManager );
         ~RenderQueue();
+
+        void _releaseManualHardwareResources();
 
         /// Empty the queue - should only be called by SceneManagers.
         void clear();
@@ -371,7 +401,7 @@ namespace Ogre
         @param casterPass
         */
         void warmUpShadersCollect( uint8 firstRq, uint8 lastRq, bool casterPass );
-        void warmUpShadersTrigger( RenderSystem *rs );
+        void warmUpShadersTrigger( RenderSystem *rs, bool casterPass );
 
         void _warmUpShadersThread( size_t threadIdx );
 

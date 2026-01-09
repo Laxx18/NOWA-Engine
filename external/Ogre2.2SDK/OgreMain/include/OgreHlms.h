@@ -43,6 +43,7 @@ THE SOFTWARE.
 namespace Ogre
 {
     class CompositorShadowNode;
+    class ConfigFile;
     struct QueuedRenderable;
     typedef vector<Archive *>::type ArchiveVec;
 
@@ -90,11 +91,11 @@ namespace Ogre
 
         enum PrecisionMode
         {
-            /// midf datatype maps to float (i.e. 32-bit)
+            /// midf datatype maps to float (i.e., 32-bit)
             /// This setting is always supported
             PrecisionFull32,
 
-            /// midf datatype maps to float16_t (i.e. forced 16-bit)
+            /// midf datatype maps to float16_t (i.e., forced 16-bit)
             ///
             /// It forces the driver to produce 16-bit code, even if unoptimal
             /// Great for testing quality downgrades caused by 16-bit support
@@ -251,6 +252,8 @@ namespace Ogre
 
         static LightweightMutex msGlobalMutex;
 
+        static bool msHasParticleFX2Plugin;
+
     public:
         struct Library
         {
@@ -270,6 +273,8 @@ namespace Ogre
         LightGatheringMode mLightGatheringMode;
         bool               mStaticBranchingLights;
         bool               mShaderCodeCacheDirty;
+        uint8              mParticleSystemConstSlot;
+        uint8              mParticleSystemSlot;
         uint16             mNumLightsLimit;
         uint16             mNumAreaApproxLightsLimit;
         uint16             mNumAreaLtcLightsLimit;
@@ -288,16 +293,29 @@ namespace Ogre
 
         HlmsDatablockMap mDatablocks;
 
-        String        mShaderProfile;  ///< "glsl", "glsles", "hlsl"
+        /// This is what we tell the RenderSystem to compile as.
+        ///
+        /// For example if we set at the same time:
+        ///     - mShaderProfile = "metal"
+        ///     - mShaderSyntax = "hlsl"
+        ///     - mShaderFileExt = ".glsl"
+        ///
+        /// Then we will:
+        ///     - Look for *.hlsl files.
+        ///     - Tell the Hlms parser that it is glsl, i.e. `@property( syntax == glsl )`.
+        ///     - Tell the RenderSystem to compile it as Metal.
+        String mShaderProfile;  //< "glsl", "glslvk", "hlsl", "metal"
+        /// This is what we tell the Hlms parser what the syntax is.
         IdString      mShaderSyntax;
         IdStringVec   mRsSpecificExtensions;
         String const *mShaderTargets[NumShaderTypes];  ///[0] = "vs_4_0", etc. Only used by D3D
-        String        mShaderFileExt;                  ///< Either glsl or hlsl
-        String        mOutputPath;
-        bool          mDebugOutput;
-        bool          mDebugOutputProperties;
-        uint8         mPrecisionMode;  ///< See PrecisionMode
-        bool          mFastShaderBuildHack;
+        /// This is the extension we look for. e.g. .glsl, .hlsl, etc.
+        String mShaderFileExt;
+        String mOutputPath;
+        bool   mDebugOutput;
+        bool   mDebugOutputProperties;
+        uint8  mPrecisionMode;  ///< See PrecisionMode
+        bool   mFastShaderBuildHack;
 
     public:
         struct DatablockCustomPieceFile
@@ -443,18 +461,13 @@ namespace Ogre
 
         void dumpProperties( std::ofstream &outFile, size_t tid );
 
-        /** Modifies the PSO's macroblock if there are reasons to do that, and creates
-            a strong reference to the macroblock that the PSO will own.
-        @param pso [in/out]
-            PSO to (potentially) modify.
-        */
-        void applyStrongMacroblockRules( HlmsPso &pso );
-
         virtual void setupRootLayout( RootLayout &rootLayout, size_t tid ) = 0;
 
         HighLevelGpuProgramPtr compileShaderCode( const String &source,
                                                   const String &debugFilenameOutput, uint32 finalHash,
                                                   ShaderType shaderType, size_t tid );
+
+        void parseCustomPiece( const int32 customPieceName, const size_t tid );
 
     public:
         void _compileShaderFromPreprocessedSource( const RenderableCache &mergedCache,
@@ -496,15 +509,33 @@ namespace Ogre
         virtual const HlmsCache *createShaderCacheEntry( uint32           renderableHash,
                                                          const HlmsCache &passCache, uint32 finalHash,
                                                          const QueuedRenderable &queuedRenderable,
-                                                         HlmsCache              *reservedStubEntry,
-                                                         size_t                  threadIdx );
+                                                         HlmsCache *reservedStubEntry, uint64 deadline,
+                                                         size_t threadIdx );
 
-        /// This function gets called right before starting parsing all templates, and after
-        /// the renderable properties have been merged with the pass properties.
-        ///
-        /// Warning: For the HlmsDiskCache to work properly, this function should not rely
-        /// on member variables or other state. All state info should come from getProperty()
-        virtual void notifyPropertiesMergedPreGenerationStep( size_t tid );
+        enum PropertiesMergeStatus
+        {
+            PropertiesMergeStatusOk,
+            PropertiesMergeStatusWarning,
+            PropertiesMergeStatusError
+        };
+
+        /** This function gets called right before starting parsing all templates, and after
+            the renderable properties have been merged with the pass properties.
+
+            Warning: For the HlmsDiskCache to work properly, this function should not rely
+            on member variables or other state. All state info should come from getProperty().
+        @param tid
+            Thread idx of caller.
+        @param inOutPieces [in/out]
+            An array of size inOutPieces[NumShaderTypes]. Can be modified.
+            Warning: Do not later modify these pieces, or else HlmsDiskCache may be unable to
+            recompile the cache from outdated templates.
+        @return
+            If inconsistencies or errors were encountered.
+            Returning PropertiesMergeStatusError will raise an exception.
+        */
+        virtual PropertiesMergeStatus notifyPropertiesMergedPreGenerationStep( size_t     tid,
+                                                                               PiecesMap *inOutPieces );
 
         virtual HlmsDatablock *createDatablockImpl( IdString              datablockName,
                                                     const HlmsMacroblock *macroblock,
@@ -530,7 +561,7 @@ namespace Ogre
         HlmsCache preparePassHashBase( const Ogre::CompositorShadowNode *shadowNode, bool casterPass,
                                        bool dualParaboloid, SceneManager *sceneManager );
 
-        HlmsPassPso getPassPsoForScene( SceneManager *sceneManager );
+        HlmsPassPso getPassPsoForScene( SceneManager *sceneManager, const bool bForceCullNone );
 
         /// OpenGL sets texture binding slots from C++
         /// All other APIs set the slots from shader.
@@ -553,6 +584,33 @@ namespace Ogre
         /// Returns the hash of the property Full32/Half16/Relaxed.
         /// See Hlms::getSupportedPrecisionMode
         int32 getSupportedPrecisionModeHash() const;
+
+        /// Apply rules for macroblock and blendblock stored in HlmsPso and create strong refs if needed.
+        void applyStrongBlockRules( HlmsPso &pso, const size_t tid );
+
+        /** Gets a chance to modify a PSO's macroblock. Caller will check if this function has modified
+            the macroblock, and if so, it creates a strong reference to the macroblock that the PSO will
+            own.
+
+            The implementation can set a single or multiple properties from preparePassHash which are
+            then interpreted by applyStrongMacroblockRules. Note that the properties MUST be consistently
+            translated to macroblock modifications. In other words, given the same set of properties,
+            the function must always return the same value. Otherwise caching (i.e. HlmsDiskCache) won't
+            work correctly.
+
+            The default implementation uses HlmsPsoProp::StrongMacroblockBits property to any combination
+            of HlmsMacroblock::StrongMacroblockBits values. Overrides can override this behavior, either
+            by ignoring the property completely, or changing its meaning. However they must be
+            deterministic and consistent otherwise caching will break.
+        @param macroblock [in/out]
+        @param tid
+        */
+
+        virtual void applyStrongMacroblockRules( HlmsMacroblock &macroblock, const size_t tid ) const;
+
+        /// See applyStrongMacroblockRules(). This affects the blendblock instead and uses
+        ///	HlmsBlendblock::StrongBlendblockBits.
+        virtual void applyStrongBlendblockRules( HlmsBlendblock &blendblock, const size_t tid ) const;
 
     public:
         /**
@@ -579,7 +637,7 @@ namespace Ogre
         /// Call as early as possible.
         void setPrecisionMode( PrecisionMode precisionMode );
 
-        /// Returns requested precision mode (i.e. value passed to setPrecisionMode)
+        /// Returns requested precision mode (i.e., value passed to setPrecisionMode)
         /// See getSupportedPrecisionMode
         PrecisionMode getPrecisionMode() const;
 
@@ -590,6 +648,9 @@ namespace Ogre
 
         /// Returns true if shaders are being compiled with Fast Shader Build Hack (D3D11 only)
         bool getFastShaderBuildHack() const;
+
+        uint8 getParticleSystemConstSlot() const { return mParticleSystemConstSlot; }
+        uint8 getParticleSystemSlot() const { return mParticleSystemSlot; }
 
         /** Non-caster directional lights are hardcoded into shaders. This means that if you
             have 6 directional lights and then you add a 7th one, a whole new set of shaders
@@ -605,6 +666,7 @@ namespace Ogre
 
             @see    setAreaLightForwardSettings
         @param maxLights
+            @parblock
             Maximum number of non-caster directional lights. 0 to allow unlimited number of lights,
             at the cost of shader recompilations when directional lights are added or removed.
 
@@ -616,6 +678,7 @@ namespace Ogre
 
             Beware of setting this value too high (e.g. 65535) as the amount of memory space is limited
             (we cannot exceed 64kb, including unrelated data to lighting, but required to the pass)
+            @endparblock
          */
         void   setMaxNonCasterDirectionalLights( uint16 maxLights );
         uint16 getMaxNonCasterDirectionalLights() const { return mNumLightsLimit; }
@@ -642,12 +705,9 @@ namespace Ogre
             If multiple atlas support is needed, using Texture2DArrays may be a good solution,
             although it is currently untested and may need additional fixes to get it working
 
-        @param maxShadowMapLights
-            Maximum number of shadow-caster spot and point lights.
-            0 to allow unlimited number of lights, at the cost of shader recompilations
-            when spot or point  lights are added or removed or their combination are changed.
-
-            Default value is 0.
+        @param staticBranchingLights
+            True to evalute number of lights in the shader using static branching (less shader variants).
+            False to recompile the shader more often (more variants, but better optimized shaders).
          */
         virtual void setStaticBranchingLights( bool staticBranchingLights );
         bool         getStaticBranchingLights() const { return mStaticBranchingLights; }
@@ -658,8 +718,16 @@ namespace Ogre
         /// If this value returns false, then HlmsDiskCache doesn't need saving.
         bool isShaderCodeCacheDirty() const { return mShaderCodeCacheDirty; }
 
+        static void _setHasParticleFX2Plugin( bool bHasPfx2Plugin )
+        {
+            msHasParticleFX2Plugin = bHasPfx2Plugin;
+        }
+
+        static bool hasParticleFX2Plugin() { return msHasParticleFX2Plugin; }
+
         /** Area lights use regular Forward.
         @param areaLightsApproxLimit
+            @parblock
             Maximum number of area approx lights that will be considered by the shader.
             Default value is 1.
             Use 0 to disable area lights.
@@ -670,6 +738,7 @@ namespace Ogre
 
             Beware of setting this value too high (e.g. 65535) as the amount of memory space is limited
             (we cannot exceed 64kb, including unrelated data to lighting, but required to the pass)
+            @endparblock
         @param areaLightsLtcLimit
             Same as areaLightsApproxLimit, but for LTC lights
         */
@@ -746,9 +815,9 @@ namespace Ogre
             useful for UI editors which want to enumerate all existing datablocks and
             display its name to the user.
         @param macroblockRef
-            @see HlmsManager::getMacroblock
+            see HlmsManager::getMacroblock
         @param blendblockRef
-            @see HlmsManager::getBlendblock
+            see HlmsManager::getBlendblock
         @param paramVec
             Key - String Value list of paramters. MUST BE SORTED.
         @param visibleToManager
@@ -788,8 +857,10 @@ namespace Ogre
         /// contain an empty string.
         /// The reason this String doesn't live in HlmsDatablock is to prevent
         /// cache trashing (datablocks are hot iterated every frame, and the
-        /// filename & resource groups are rarely ever used)
+        /// filename & resource groups are rarely ever used).
+        /// @par
         /// Usage:
+        /// @code
         ///     String const *filename;
         ///     String const *resourceGroup;
         ///     datablock->getFilenameAndResourceGroup( &filename, &resourceGroup );
@@ -797,6 +868,7 @@ namespace Ogre
         ///     {
         ///         //Valid filename & resource group.
         ///     }
+        /// @endcode
         void getFilenameAndResourceGroup( IdString name, String const **outFilename,
                                           String const **outResourceGroup ) const;
 
@@ -827,12 +899,14 @@ namespace Ogre
         */
         static bool findParamInVec( const HlmsParamVec &paramVec, IdString key, String &inOut );
 
+    protected:
+        void setupSharedBasicProperties( Renderable *renderable, const bool bCasterPass );
+
+    public:
         /** Called by the renderable when either it changes the material,
-            or its properties change (e.g. the mesh' uvs are stripped)
+            or its properties change (e.g., the mesh's uvs are stripped)
         @param renderable
             The renderable the material will be used on.
-        @param movableObject
-            The MovableObject the material will be used on (usually the parent of renderable)
         @param outHash
             A hash. This hash references property parameters that are already cached.
         */
@@ -883,8 +957,10 @@ namespace Ogre
         /** Called by ParallelHlmsCompileQueue to finish the job started in getMaterial()
         @param passCache
             See lastReturnedValue from getMaterial()
-        @param cacheEntry
+        @param reservedStubEntry
             The stub cache entry (return value of getMaterial()) to fill.
+        @param deadline
+            Deadline in ms, after which long shader compilation could be skipped to avoid frame stutter.
         @param queuedRenderable
             See getMaterial()
         @param renderableHash
@@ -892,7 +968,7 @@ namespace Ogre
         @param tid
             Thread idx of caller
         */
-        void compileStubEntry( const HlmsCache &passCache, HlmsCache *reservedStubEntry,
+        void compileStubEntry( const HlmsCache &passCache, HlmsCache *reservedStubEntry, uint64 deadline,
                                QueuedRenderable queuedRenderable, uint32 renderableHash,
                                uint32 finalHash, size_t tid );
 
@@ -1024,8 +1100,8 @@ namespace Ogre
         /** See HlmsDatablock::setCustomPieceCodeFromMemory & HlmsDatablock::setCustomPieceFile.
         @param filename
             Name of the file.
-        @param shaderCode
-            The contents of the file.
+        @param resourceGroup
+            The name of the resource group in which to look for the file.
         */
         void _addDatablockCustomPieceFile( const String &filename, const String &resourceGroup );
 
@@ -1044,7 +1120,7 @@ namespace Ogre
             See _addDatablockCustomPieceFile() overload.
             Unlike the other overload, file not found errors are ignored.
         @param resourceGroup
-            See _addDatablockCustomPieceFile() overload.
+            The name of the resource group in which to look for the file.
         @param templateHash
             The expected hash of the file. File won't be added if the hash does not match.
         @return
@@ -1054,6 +1130,12 @@ namespace Ogre
                                                                   const String &resourceGroup,
                                                                   const uint64  sourceCodeHash[2] );
 
+        /**
+                @param filename
+                    Name of the file.
+                @param sourceCode
+                    The contents of the file.
+         */
         void _addDatablockCustomPieceFileFromMemory( const String &filename, const String &sourceCode );
 
         bool isDatablockCustomPieceFileCacheable( int32 filenameHashId ) const;
@@ -1065,6 +1147,31 @@ namespace Ogre
         getDatablockCustomPieceData( int32 filenameHashId ) const;
 
         virtual void _changeRenderSystem( RenderSystem *newRs );
+
+        /// Same as the other getDefaultPaths() overload but it automatically fills
+        /// the hlmsTypeName param.
+        void getDefaultPaths( String &outDataFolderPath, StringVector &outLibraryFoldersPaths,
+                              const ConfigFile &configFile );
+
+        /** Same as HlmsPbs::getDefaultPaths but retrieves the files & folders from cfg file.
+            The syntax is as follows:
+            @code
+                [pbs]
+                Library=Hlms/Common/[SHADER_SYNTAX]
+                Library=Hlms/Common/Any
+                Library=Hlms/Pbs/Any
+                Library=Hlms/Pbs/Any/Atmosphere
+                Library=Hlms/Pbs/Any/Main
+                Main=Hlms/Pbs/[SHADER_SYNTAX]
+            @endcode
+        @param outDataFolderPath
+        @param outLibraryFoldersPaths
+        @param configFile
+        @param hlmsTypeName
+            Name of the Hlms. e.g. "pbs", "unlit". See getTypeNameStr().
+        */
+        static void getDefaultPaths( String &outDataFolderPath, StringVector &outLibraryFoldersPaths,
+                                     const ConfigFile &configFile, const String &hlmsTypeName );
 
         RenderSystem *getRenderSystem() const { return mRenderSystem; }
 
@@ -1146,6 +1253,7 @@ namespace Ogre
         static const IdString EmulateClipDistances;
         static const IdString DualParaboloidMapping;
         static const IdString InstancedStereo;
+        static const IdString ViewMatrix;
         static const IdString StaticBranchLights;
         static const IdString StaticBranchShadowMapLights;
         static const IdString NumShadowMapLights;
@@ -1162,6 +1270,7 @@ namespace Ogre
         static const IdString UseUvBaking;
         static const IdString UvBaking;
         static const IdString BakeLightingOnly;
+        static const IdString MsaaSamples;
         static const IdString GenNormalsGBuf;
         static const IdString PrePass;
         static const IdString UsePrePass;
@@ -1187,6 +1296,16 @@ namespace Ogre
         static const IdString DecalsNormals;
         static const IdString DecalsEmissive;
         static const IdString FwdPlusCubemapSlotOffset;
+        static const IdString BlueNoise;
+        static const IdString ParticleSystem;
+        // Change per Object (specific to Particles)
+        static const IdString ParticleType;
+        static const IdString ParticleTypePoint;
+        static const IdString ParticleTypeOrientedCommon;
+        static const IdString ParticleTypeOrientedSelf;
+        static const IdString ParticleTypePerpendicularCommon;
+        static const IdString ParticleTypePerpendicularSelf;
+        static const IdString ParticleRotation;
 
         static const IdString Forward3D;
         static const IdString ForwardClustered;
@@ -1200,10 +1319,12 @@ namespace Ogre
         static const IdString AlphaTestShadowCasterOnly;
         static const IdString AlphaBlend;
         static const IdString AlphaToCoverage;
+        static const IdString AlphaHash;
+        static const IdString AccurateNonUniformNormalScaling;
         // Per material. Related with SsRefractionsAvailable
         static const IdString ScreenSpaceRefractions;
-        static const IdString
-            _DatablockCustomPieceShaderName[NumShaderTypes];  // Do not set/get directly.
+        // Do not set/get directly.
+        static const IdString _DatablockCustomPieceShaderName[CustomPieceStage::NumCustomPieceStages];
 
         // Standard depth range is being used instead of reverse Z.
         static const IdString NoReverseDepth;
@@ -1212,12 +1333,10 @@ namespace Ogre
         static const IdString Syntax;
         static const IdString Hlsl;
         static const IdString Glsl;
-        static const IdString Glsles;
         static const IdString Glslvk;
         static const IdString Hlslvk;
         static const IdString Metal;
         static const IdString GL3Plus;
-        static const IdString GLES;
         static const IdString iOS;
         static const IdString macOS;
         static const IdString GLVersion;
@@ -1240,6 +1359,24 @@ namespace Ogre
         static const IdString Macroblock;
         static const IdString Blendblock;
         static const IdString InputLayoutId;
+
+        /// The property holds the bits from StrongMacroblockBits enum to indicate the override of the
+        /// HlmsPso's macroblock. This can be used to override all macroblocks from all renderables
+        /// rendered by current pass. Note that the implementation doesn't need to use this property. It
+        /// can introduce its own property or mechanism for the overrides. There are couple of details
+        /// necessary to keep in mind if implementing own mechanism:
+        /// * the values are cached are stored in HlmsDiskCache
+        /// * the implementation must be consistent between setting the flags and interpreting them
+        /// * if a value changed its meaning, the cache must be manually deleted as Ogre cannot detect
+        ///   such changes!
+        /// * It is not sufficient to just set HlmsPassPso::NeedStrongMacroblock in
+        ///   HlmsPassPso::strongBasicBlocks as it will lead to the same PassCache values. It is
+        ///   necessary to indicate the override fully and distinguish between 2 different overrides by
+        ///   setting a property with value describing the override (bit mask) or setting multiple
+        ///   properties (a property per specific override).
+        static const IdString StrongMacroblockBits;
+        /// Similar to StrongMacroblockBits but used for overrides of Blendblocks.
+        static const IdString StrongBlendblockBits;
     };
 
     struct _OgreExport HlmsBasePieces

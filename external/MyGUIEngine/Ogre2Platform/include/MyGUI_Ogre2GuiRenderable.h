@@ -22,6 +22,11 @@ namespace MyGUI
 
 		virtual const Ogre::LightList& getLights( void ) const;
 
+		Ogre::ParticleType::ParticleType getParticleType() const override
+		{
+			return Ogre::ParticleType::NotParticle;
+		}
+
 	private:
 		Ogre::v1::RenderOperation mRenderOperation;
 		mutable Ogre::Matrix4 mTransform;

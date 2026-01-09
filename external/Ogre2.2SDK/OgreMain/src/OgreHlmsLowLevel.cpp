@@ -65,7 +65,7 @@ namespace Ogre
     const HlmsCache *HlmsLowLevel::createShaderCacheEntry( uint32 renderableHash,
                                                            const HlmsCache &passCache, uint32 finalHash,
                                                            const QueuedRenderable &queuedRenderable,
-                                                           HlmsCache *reservedStubEntry,
+                                                           HlmsCache *reservedStubEntry, uint64 deadline,
                                                            const size_t tid )
     {
         Renderable *renderable = queuedRenderable.renderable;
@@ -98,7 +98,22 @@ namespace Ogre
         if( pass->hasFragmentProgram() )
             pso.pixelShader = pass->getFragmentProgram();
 
-        bool casterPass = getProperty( tid, HlmsBaseProp::ShadowCaster ) != 0;
+        bool casterPass = getProperty( passCache.setProperties, HlmsBaseProp::ShadowCaster ) != 0;
+
+        // Set the properties from pass cache
+        mT[tid].setProperties.clear();
+        mT[tid].setProperties.reserve( passCache.setProperties.size() );
+        {
+            // Now copy the properties from the pass (one by one, since be must maintain the order)
+            HlmsPropertyVec::const_iterator itor = passCache.setProperties.begin();
+            HlmsPropertyVec::const_iterator endt = passCache.setProperties.end();
+
+            while( itor != endt )
+            {
+                setProperty( tid, itor->keyName, itor->value );
+                ++itor;
+            }
+        }
 
         const HlmsDatablock *datablock = queuedRenderable.renderable->getDatablock();
         pso.macroblock = datablock->getMacroblock( casterPass );
@@ -128,9 +143,9 @@ namespace Ogre
             pso.enablePrimitiveRestart = false;
         }
 
-        applyStrongMacroblockRules( pso );
+        applyStrongBlockRules( pso, tid );
 
-        mRenderSystem->_hlmsPipelineStateObjectCreated( &pso );
+        mRenderSystem->_hlmsPipelineStateObjectCreated( &pso, (uint64)-1 );
 
         if( reservedStubEntry )
         {

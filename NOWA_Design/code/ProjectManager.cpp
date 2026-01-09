@@ -582,6 +582,14 @@ void ProjectManager::internalApplySettings(void)
 		this->sceneManager->setShadowColour(Ogre::ColourValue(this->projectParameter.shadowColor.r, this->projectParameter.shadowColor.g, this->projectParameter.shadowColor.b, 1.0f));
 		NOWA::WorkspaceModule::getInstance()->setShadowQuality(static_cast<Ogre::HlmsPbs::ShadowFilter>(this->projectParameter.shadowQualityIndex), true);
 		NOWA::WorkspaceModule::getInstance()->setAmbientLightMode(static_cast<Ogre::HlmsPbs::AmbientLightMode>(this->projectParameter.ambientLightModeIndex));
+
+		const auto& oceanComponents = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectComponents<NOWA::OceanComponent>();
+
+		// Ocean must set new values for ambient, shadows
+		for (size_t i = 0; i < oceanComponents.size(); i++)
+		{
+			oceanComponents[i]->actualizeShading();
+		}
 	});
 
 	// Sent event that scene has been modified

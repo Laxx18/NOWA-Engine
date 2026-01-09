@@ -926,8 +926,6 @@ namespace Ogre
                 ID_TARGET_ORIENTATION_MODE,
                 ID_TARGET_FORMAT,
             //  ID_GAMMA,
-                ID_NO_GAMMA,
-                ID_NO_FSAA,
                 ID_MSAA,
                 ID_MSAA_AUTO,
                 ID_EXPLICIT_RESOLVE,
@@ -1071,10 +1069,14 @@ namespace Ogre
                     ID_KERNEL_RADIUS,
                     ID_GAUSS_DEVIATION,
 
+                    // Used by PASS_DEPTHCOPY.
+                    ID_MIP_RANGE,
+
                     //Used by IBL_SPECULAR
                     ID_SAMPLES_PER_ITERATION,
                     ID_SAMPLES_SINGLE_ITERATION_FALLBACK,
                     ID_FORCE_MIPMAP_FALLBACK,
+                    ID_AUTOGEN_INPUT_MIPMAPS,
 
                     //Used by WARM_UP
                     ID_MODE,

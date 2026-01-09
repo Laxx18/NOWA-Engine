@@ -32,6 +32,8 @@ THE SOFTWARE.
 
 #include "OgreWorkarounds.h"
 
+#include "OgreStringConverter.h"
+
 namespace Ogre
 {
 #ifdef OGRE_VK_WORKAROUND_ADRENO_UBO64K
@@ -50,8 +52,14 @@ namespace Ogre
 #ifdef OGRE_VK_WORKAROUND_ADRENO_618_0VERTEX_INDIRECT
     bool Workarounds::mAdreno618_0VertexIndirect = true;
 #endif
+#ifdef OGRE_VK_WORKAROUND_ADRENO_6xx_READONLY_IS_TBUFFER
+    bool Workarounds::mAdreno6xxReadOnlyIsTBuffer = false;
+#endif
 #ifdef OGRE_VK_WORKAROUND_PVR_ALIGNMENT
     uint32 Workarounds::mPowerVRAlignment = 0u;
+#endif
+#ifdef OGRE_VK_WORKAROUND_BROKEN_VKPIPELINECACHE
+    bool Workarounds::mBrokenVkPipelineCache = false;
 #endif
 
     void Workarounds::dump( String &outStr )
@@ -75,9 +83,17 @@ namespace Ogre
         outStr += "\n - mAdreno618_0VertexIndirect: " +
                   StringConverter::toString( Workarounds::mAdreno618_0VertexIndirect );
 #endif
+#ifdef OGRE_VK_WORKAROUND_ADRENO_6xx_READONLY_IS_TBUFFER
+        outStr += "\n - mAdreno6xxReadOnlyIsTBuffer: " +
+                  StringConverter::toString( Workarounds::mAdreno6xxReadOnlyIsTBuffer );
+#endif
 #ifdef OGRE_VK_WORKAROUND_PVR_ALIGNMENT
         outStr +=
             "\n - mPowerVRAlignment: " + StringConverter::toString( Workarounds::mPowerVRAlignment );
+#endif
+#ifdef OGRE_VK_WORKAROUND_BROKEN_VKPIPELINECACHE
+        outStr += "\n - mBrokenVkPipelineCache: " +
+                  StringConverter::toString( Workarounds::mBrokenVkPipelineCache );
 #endif
     }
 }  // namespace Ogre

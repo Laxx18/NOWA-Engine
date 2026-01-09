@@ -16,6 +16,12 @@ class Ogre::v1::Entity;
 class Ogre::Item;
 class OgreNewt::World;
 
+namespace Ogre
+{
+	class Ocean;
+	class Terra;
+}
+
 namespace NOWA
 {
 	class GameObject;
@@ -59,6 +65,8 @@ namespace NOWA
 		void exportManualObject(GameObject* gameObject, Ogre::ManualObject* manualObject, rapidxml::xml_node<>* nodeXML, rapidxml::xml_document<>& doc);
 
 		void exportTerra(GameObject* gameObject, Ogre::Terra* terra, rapidxml::xml_node<>* nodeXML, rapidxml::xml_document<>& doc);
+
+		void exportOcean(GameObject* gameObject, Ogre::Ocean* ocean, rapidxml::xml_node<>* nodeXML, rapidxml::xml_document<>& doc);
 
 		void exportGroup(const std::vector<unsigned long>& gameObjectIds, const Ogre::String& fileName, const Ogre::String& resourceGroupName);
 

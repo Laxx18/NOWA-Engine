@@ -198,25 +198,26 @@ namespace NOWA
 			dynamicSmoothValue = this->smoothValue * dt * 1000.0f; // Faster deceleration
 		}
 
+		// Apply low-pass filter
 		moveValue = NOWA::MathHelper::getInstance()->lowPassFilter(moveValue, this->lastMoveValue, dynamicSmoothValue);
 
-		if (moveValue.length() > 0.0001f)
+		// Clamp tiny drift, but DO NOT reset the filter state in a way that prevents ramp-up
+		const Ogre::Real eps2 = 1e-10f;
+		if (moveValue.squaredLength() < eps2)
 		{
-			// Transform moveValue from local to world space using camera orientation
-			Ogre::Vector3 worldMove = this->camera->getOrientation() * moveValue;
+			moveValue = Ogre::Vector3::ZERO;
+		}
 
-			// Calculate new world position
+		// Always update lastMoveValue so the filter can ramp smoothly
+		this->lastMoveValue = moveValue;
+
+		// Apply movement whenever we actually have something to apply
+		if (moveValue != Ogre::Vector3::ZERO)
+		{
+			Ogre::Vector3 worldMove = this->camera->getOrientation() * moveValue;
 			Ogre::Vector3 newPosition = this->camera->getPosition() + worldMove;
 
-			// Update the position in the current transform buffer
-			// This is thread-safe because it's happening in the logic thread
 			NOWA::GraphicsModule::getInstance()->updateCameraPosition(this->camera, newPosition);
-
-			this->lastMoveValue = moveValue;
-		}
-		else
-		{
-			this->lastMoveValue = Ogre::Vector3::ZERO;
 		}
 	}
 

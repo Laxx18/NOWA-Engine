@@ -23,7 +23,7 @@ namespace NOWA
 		hlmsManager(nullptr),
 		compositorManager(nullptr),
 		shadowFilter(Ogre::HlmsPbs::PCF_4x4),
-		ambientLightMode(Ogre::HlmsPbs::AmbientAuto),
+		ambientLightMode(Ogre::HlmsPbs::AmbientAutoNormal),
 		splitScreenScenarioActive(false)
 	{
 		// Get hlms data

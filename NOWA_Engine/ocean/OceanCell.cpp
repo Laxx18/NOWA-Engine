@@ -6,8 +6,9 @@
 #include "Vao/OgreVaoManager.h"
 #include "Vao/OgreVertexArrayObject.h"
 
-#include "OgreRoot.h"
-#include "OgreTimer.h"
+#include <cmath>
+#include <limits>
+
 
 namespace Ogre
 {
@@ -41,7 +42,6 @@ namespace Ogre
         assert(mVaoPerLod[VpNormal].empty() && "Already initialized!");
         m_vaoManager = vaoManager;
         m_useSkirts = useSkirts;
-
         //Setup bufferless vao
         VertexBufferPackedVec vertexBuffers;
         VertexArrayObject* vao = vaoManager->createVertexArrayObject(
@@ -74,9 +74,9 @@ namespace Ogre
         horizontalPixelDim = std::max(horizontalPixelDim, 2u);
         verticalPixelDim = std::max(verticalPixelDim, 2u);
 
-        if (m_useSkirts)
+        if( m_useSkirts )
         {
-            //Add two extra vertices & two extra rows for the skirts.
+            // Add two extra vertices & two extra rows for the skirts.
             horizontalPixelDim += 2u;
             verticalPixelDim += 2u;
         }
@@ -142,25 +142,44 @@ namespace Ogre
         //uvec4 numVertsPerLine
         gpuPtr[0] = m_verticesPerLine;
         gpuPtr[1] = m_lodLevel;
-        gpuPtr[2] = vao->getPrimitiveCount() / m_verticesPerLine - 2u;
+        gpuPtr[2] = (vao->getPrimitiveCount() / m_verticesPerLine) - 2u;
         gpuPtr[3] = *reinterpret_cast<uint32*>(&m_parentOcean->m_uvScale);
+        // 4 bytes
 
         //ivec4 xzTexPosBounds
         ((int32 * RESTRICT_ALIAS)gpuPtr)[4] = m_gridX;
         ((int32 * RESTRICT_ALIAS)gpuPtr)[5] = m_gridZ;
-        ((uint32 * RESTRICT_ALIAS)gpuPtr)[6] = m_parentOcean->m_width - 1u;
-        ((uint32 * RESTRICT_ALIAS)gpuPtr)[7] = m_parentOcean->m_depth - 1u;
+        ((int32 * RESTRICT_ALIAS)gpuPtr)[6] = m_parentOcean->m_width - 1u;
+        ((int32 * RESTRICT_ALIAS)gpuPtr)[7] = m_parentOcean->m_depth - 1u;
+        // 8 bytes
 
         ((float* RESTRICT_ALIAS)gpuPtr)[8] = m_parentOcean->m_OceanOrigin.x;
         ((float* RESTRICT_ALIAS)gpuPtr)[9] = m_parentOcean->m_OceanOrigin.y;
         ((float* RESTRICT_ALIAS)gpuPtr)[10] = m_parentOcean->m_OceanOrigin.z;
-        const float oceanTime = Root::getSingleton().getTimer()->getMilliseconds() * 0.001f;
-        ((float* RESTRICT_ALIAS)gpuPtr)[11] = oceanTime;
+        ((float* RESTRICT_ALIAS)gpuPtr)[11] = m_parentOcean->m_invWidth;
+        // 12 bytes
 
         ((float* RESTRICT_ALIAS)gpuPtr)[12] = m_parentOcean->m_xzRelativeSize.x;
         ((float* RESTRICT_ALIAS)gpuPtr)[13] = m_parentOcean->m_height;
         ((float* RESTRICT_ALIAS)gpuPtr)[14] = m_parentOcean->m_xzRelativeSize.y;
         ((float* RESTRICT_ALIAS)gpuPtr)[15] = m_parentOcean->m_invDepth;
+        // 16 bytes
+
+        ((float* RESTRICT_ALIAS)gpuPtr)[16] = m_parentOcean->m_oceanTime;
+        ((float* RESTRICT_ALIAS)gpuPtr)[17] = m_parentOcean->m_waveTimeScale;
+        ((float* RESTRICT_ALIAS)gpuPtr)[18] = m_parentOcean->m_waveFrequencyScale;
+        // Pack an "underwater" flag into the sign of oceanTime.w.
+        // IMPORTANT: -0.0f compares as false in HLSL for (x < 0), so we enforce a tiny magnitude when underwater.
+        float chaosPacked = std::fabs( m_parentOcean->m_waveChaos );
+        if( m_parentOcean->m_isUnderwater )
+        {
+            const float minMag = std::numeric_limits<float>::min();
+            if( chaosPacked < minMag )
+                chaosPacked = minMag;
+            chaosPacked = -chaosPacked;
+        }
+        ((float* RESTRICT_ALIAS)gpuPtr)[19] = chaosPacked;
+        // 20 bytes
     }
     //-----------------------------------------------------------------------
     const LightList& OceanCell::getLights(void) const

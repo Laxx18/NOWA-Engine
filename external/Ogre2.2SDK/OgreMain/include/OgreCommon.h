@@ -130,7 +130,18 @@ namespace Ogre
         OT_PATCH_29_CONTROL_POINT = 35,
         OT_PATCH_30_CONTROL_POINT = 36,
         OT_PATCH_31_CONTROL_POINT = 37,
-        OT_PATCH_32_CONTROL_POINT = 38
+        OT_PATCH_32_CONTROL_POINT = 38,
+        // max valid base OT_ = (1 << 6) - 1
+        /// Mark that the index buffer contains adjacency information
+        OT_DETAIL_ADJACENCY_BIT = 1 << 6,
+        /// like OT_POINT_LIST but with adjacency information for the geometry shader
+        OT_LINE_LIST_ADJ = OT_LINE_LIST | OT_DETAIL_ADJACENCY_BIT,
+        /// like OT_LINE_STRIP but with adjacency information for the geometry shader
+        OT_LINE_STRIP_ADJ = OT_LINE_STRIP | OT_DETAIL_ADJACENCY_BIT,
+        /// like OT_TRIANGLE_LIST but with adjacency information for the geometry shader
+        OT_TRIANGLE_LIST_ADJ = OT_TRIANGLE_LIST | OT_DETAIL_ADJACENCY_BIT,
+        /// like OT_TRIANGLE_STRIP but with adjacency information for the geometry shader
+        OT_TRIANGLE_STRIP_ADJ = OT_TRIANGLE_STRIP | OT_DETAIL_ADJACENCY_BIT
     };
 
     /** Comparison functions used for the depth/stencil buffer operations and
@@ -1056,6 +1067,7 @@ namespace Ogre
 
         void setMsaa( uint8 msaa, MsaaPatterns::MsaaPatterns pattern = MsaaPatterns::Undefined );
 
+        /// Use isMultisample() instead. This only returns if it's not CSAA/EQAA/etc.
         bool isMsaa() const;
 
         /** Set CSAA by NVIDIA's marketing names e.g.
@@ -1157,6 +1169,38 @@ namespace Ogre
     inline size_t alignToPreviousMult( size_t offset, size_t alignment )
     {
         return ( offset / alignment ) * alignment;
+    }
+
+#if defined( __has_builtin )
+#    define OGRE_HAS_BUILTIN( x ) __has_builtin( x )
+#else
+#    define OGRE_HAS_BUILTIN( x ) 0
+#endif
+
+    /// Performs the same as std::bit_cast
+    /// i.e. the same as reinterpret_cast but without breaking strict aliasing rules
+    template <class Dest, class Source>
+#if OGRE_HAS_BUILTIN( __builtin_bit_cast ) || _MSC_VER >= 1928
+    constexpr
+#else
+    inline
+#endif
+        Dest
+        bit_cast( const Source &source )
+    {
+#if OGRE_HAS_BUILTIN( __builtin_bit_cast ) || _MSC_VER >= 1928
+        return __builtin_bit_cast( Dest, source );
+#else
+        static_assert( sizeof( Dest ) == sizeof( Source ),
+                       "bit_cast requires source and destination to be the same size" );
+        static_assert( std::is_trivially_copyable<Dest>::value,
+                       "bit_cast requires the destination type to be copyable" );
+        static_assert( std::is_trivially_copyable<Source>::value,
+                       "bit_cast requires the source type to be copyable" );
+        Dest dest;
+        memcpy( &dest, &source, sizeof( dest ) );
+        return dest;
+#endif
     }
 }  // namespace Ogre
 

@@ -34,6 +34,7 @@ THE SOFTWARE.
 #include "Compositor/Pass/PassScene/OgreCompositorPassSceneDef.h"
 #include "OgreBitset.inl"
 #include "OgreCamera.h"
+#include "OgreConfigFile.h"
 #include "OgreDepthBuffer.h"
 #include "OgreFileSystem.h"
 #include "OgreForward3D.h"
@@ -50,6 +51,7 @@ THE SOFTWARE.
 #include "OgreRootLayout.h"
 #include "OgreSceneManager.h"
 #include "OgreViewport.h"
+#include "ParticleSystem/OgreParticleSystem2.h"
 #include "Vao/OgreVaoManager.h"
 #include "Vao/OgreVertexArrayObject.h"
 
@@ -58,6 +60,9 @@ THE SOFTWARE.
 #endif
 #if OGRE_PLATFORM == OGRE_PLATFORM_APPLE_IOS
 #    include "iOS/macUtils.h"
+#endif
+#if OGRE_PLATFORM == OGRE_PLATFORM_WINRT && !defined( __cplusplus_winrt )
+#    include <winrt/Windows.Storage.h>
 #endif
 
 #include "Hash/MurmurHash3.h"
@@ -130,6 +135,7 @@ namespace Ogre
     const IdString HlmsBaseProp::EmulateClipDistances = IdString( "hlms_emulate_clip_distances" );
     const IdString HlmsBaseProp::DualParaboloidMapping = IdString( "hlms_dual_paraboloid_mapping" );
     const IdString HlmsBaseProp::InstancedStereo = IdString( "hlms_instanced_stereo" );
+    const IdString HlmsBaseProp::ViewMatrix = IdString( "hlms_view_matrix" );
     const IdString HlmsBaseProp::StaticBranchLights = IdString( "hlms_static_branch_lights" );
     const IdString HlmsBaseProp::StaticBranchShadowMapLights =
         IdString( "hlms_static_branch_shadow_map_lights" );
@@ -147,6 +153,7 @@ namespace Ogre
     const IdString HlmsBaseProp::UseUvBaking = IdString( "hlms_use_uv_baking" );
     const IdString HlmsBaseProp::UvBaking = IdString( "hlms_uv_baking" );
     const IdString HlmsBaseProp::BakeLightingOnly = IdString( "hlms_bake_lighting_only" );
+    const IdString HlmsBaseProp::MsaaSamples = IdString( "hlms_msaa_samples" );
     const IdString HlmsBaseProp::GenNormalsGBuf = IdString( "hlms_gen_normals_gbuffer" );
     const IdString HlmsBaseProp::PrePass = IdString( "hlms_prepass" );
     const IdString HlmsBaseProp::UsePrePass = IdString( "hlms_use_prepass" );
@@ -176,6 +183,18 @@ namespace Ogre
     const IdString HlmsBaseProp::DecalsEmissive = IdString( "hlms_decals_emissive" );
     const IdString HlmsBaseProp::FwdPlusCubemapSlotOffset =
         IdString( "hlms_forwardplus_cubemap_slot_offset" );
+    const IdString HlmsBaseProp::BlueNoise = IdString( "hlms_blue_noise" );
+    const IdString HlmsBaseProp::ParticleSystem = IdString( "hlms_particle_system" );
+    const IdString HlmsBaseProp::ParticleType = IdString( "hlms_particle_type" );
+    const IdString HlmsBaseProp::ParticleTypePoint = IdString( "particle_type_point" );
+    const IdString HlmsBaseProp::ParticleTypeOrientedCommon =
+        IdString( "particle_type_oriented_common" );
+    const IdString HlmsBaseProp::ParticleTypeOrientedSelf = IdString( "particle_type_oriented_self" );
+    const IdString HlmsBaseProp::ParticleTypePerpendicularCommon =
+        IdString( "particle_type_perpendicular_common" );
+    const IdString HlmsBaseProp::ParticleTypePerpendicularSelf =
+        IdString( "particle_type_perpendicular_self" );
+    const IdString HlmsBaseProp::ParticleRotation = IdString( "hlms_particle_rotation" );
     const IdString HlmsBaseProp::Forward3D = IdString( "forward3d" );
     const IdString HlmsBaseProp::ForwardClustered = IdString( "forward_clustered" );
     const IdString HlmsBaseProp::VPos = IdString( "hlms_vpos" );
@@ -188,14 +207,21 @@ namespace Ogre
     const IdString HlmsBaseProp::AlphaTestShadowCasterOnly = IdString( "alpha_test_shadow_caster_only" );
     const IdString HlmsBaseProp::AlphaBlend = IdString( "hlms_alphablend" );
     const IdString HlmsBaseProp::AlphaToCoverage = IdString( "hlms_alpha_to_coverage" );
+    const IdString HlmsBaseProp::AlphaHash = IdString( "hlms_alpha_hash" );
+    const IdString HlmsBaseProp::AccurateNonUniformNormalScaling =
+        IdString( "hlms_accurate_non_uniform_normal_scaling" );
     const IdString HlmsBaseProp::ScreenSpaceRefractions = IdString( "hlms_screen_space_refractions" );
     // We use a different convention because it's a really private property that ideally
     // shouldn't be exposed to users.
-    const IdString HlmsBaseProp::_DatablockCustomPieceShaderName[NumShaderTypes] = {
-        IdString( "_DatablockCustomPieceShaderNameVS" ), IdString( "_DatablockCustomPieceShaderNamePS" ),
-        IdString( "_DatablockCustomPieceShaderNameGS" ), IdString( "_DatablockCustomPieceShaderNameHS" ),
-        IdString( "_DatablockCustomPieceShaderNameDS" )
-    };
+    const IdString
+        HlmsBaseProp::_DatablockCustomPieceShaderName[CustomPieceStage::NumCustomPieceStages] = {
+            IdString( "_DatablockCustomPieceShaderNamePRE" ),
+            IdString( "_DatablockCustomPieceShaderNameVS" ),
+            IdString( "_DatablockCustomPieceShaderNamePS" ),
+            IdString( "_DatablockCustomPieceShaderNameGS" ),
+            IdString( "_DatablockCustomPieceShaderNameHS" ),
+            IdString( "_DatablockCustomPieceShaderNameDS" ),
+        };
 
     const IdString HlmsBaseProp::NoReverseDepth = IdString( "hlms_no_reverse_depth" );
     const IdString HlmsBaseProp::ReadOnlyIsTex = IdString( "hlms_readonly_is_tex" );
@@ -204,12 +230,10 @@ namespace Ogre
     const IdString HlmsBaseProp::Syntax         = IdString( "syntax" );
     const IdString HlmsBaseProp::Hlsl           = IdString( "hlsl" );
     const IdString HlmsBaseProp::Glsl           = IdString( "glsl" );
-    const IdString HlmsBaseProp::Glsles         = IdString( "glsles" );
     const IdString HlmsBaseProp::Glslvk         = IdString( "glslvk" );
     const IdString HlmsBaseProp::Hlslvk         = IdString( "hlslvk" );
     const IdString HlmsBaseProp::Metal          = IdString( "metal" );
     const IdString HlmsBaseProp::GL3Plus        = IdString( "GL3+" );
-    const IdString HlmsBaseProp::GLES           = IdString( "GLES" );
     const IdString HlmsBaseProp::iOS            = IdString( "iOS" );
     const IdString HlmsBaseProp::macOS          = IdString( "macOS" );
     const IdString HlmsBaseProp::PrecisionMode  = IdString( "precision_mode" );
@@ -240,6 +264,8 @@ namespace Ogre
     const IdString HlmsPsoProp::Macroblock = IdString( "PsoMacroblock" );
     const IdString HlmsPsoProp::Blendblock = IdString( "PsoBlendblock" );
     const IdString HlmsPsoProp::InputLayoutId = IdString( "InputLayoutId" );
+    const IdString HlmsPsoProp::StrongMacroblockBits = IdString( "StrongMacroblockBits" );
+    const IdString HlmsPsoProp::StrongBlendblockBits = IdString( "StrongBlendblockBits" );
 
     const String ShaderFiles[] = { "VertexShader_vs", "PixelShader_ps", "GeometryShader_gs",
                                    "HullShader_hs", "DomainShader_ds" };
@@ -263,6 +289,7 @@ namespace Ogre
 #endif
 
     LightweightMutex Hlms::msGlobalMutex;
+    bool Hlms::msHasParticleFX2Plugin = false;
 
     Hlms::Hlms( HlmsTypes type, const String &typeName, Archive *dataFolder,
                 ArchiveVec *libraryFolders ) :
@@ -272,6 +299,8 @@ namespace Ogre
         mLightGatheringMode( LightGatherForward ),
         mStaticBranchingLights( false ),
         mShaderCodeCacheDirty( false ),
+        mParticleSystemConstSlot( 0u ),
+        mParticleSystemSlot( 0u ),
         mNumLightsLimit( 0u ),
         mNumAreaApproxLightsLimit( 1u ),
         mNumAreaLtcLightsLimit( 1u ),
@@ -290,7 +319,7 @@ namespace Ogre
         mDebugOutput( false ),
 #endif
 #if OGRE_DEBUG_MODE >= OGRE_DEBUG_HIGH
-        mDebugOutputProperties( true ),
+        mDebugOutputProperties( false ),
 #else
         mDebugOutputProperties( false ),
 #endif
@@ -323,10 +352,12 @@ namespace Ogre
 
 #if OGRE_PLATFORM == OGRE_PLATFORM_APPLE || OGRE_PLATFORM == OGRE_PLATFORM_APPLE_IOS
         mOutputPath = macCachePath() + '/';
-#endif
-#if OGRE_PLATFORM == OGRE_PLATFORM_WINRT
+#elif OGRE_PLATFORM == OGRE_PLATFORM_WINRT && defined( __cplusplus_winrt )
         mOutputPath = fileSystemPathToString(
             Windows::Storage::ApplicationData::Current->TemporaryFolder->Path->Data() );
+#elif OGRE_PLATFORM == OGRE_PLATFORM_WINRT && !defined( __cplusplus_winrt )
+        mOutputPath = fileSystemPathToString(
+            winrt::Windows::Storage::ApplicationData::Current().TemporaryFolder().Path().c_str() );
 #endif
     }
     //-----------------------------------------------------------------------------------
@@ -1083,7 +1114,7 @@ namespace Ogre
                 if( subString.startWith( counterVar ) )
                 {
                     char tmp[16];
-                    sprintf( tmp, "%lu", (unsigned long)passNum );
+                    std::snprintf( tmp, sizeof( tmp ), "%lu", (unsigned long)passNum );
                     outBuffer += tmp;
                     itor += static_cast<ptrdiff_t>( counterVar.size() + 1u );
                 }
@@ -1571,7 +1602,7 @@ namespace Ogre
 
                     //@value & @counter write, the others are invisible
                     char tmp[16];
-                    sprintf( tmp, "%i", op1Value );
+                    std::snprintf( tmp, sizeof( tmp ), "%i", op1Value );
                     outBuffer += tmp;
 
                     if( keyword == 0 )
@@ -1642,16 +1673,10 @@ namespace Ogre
         {
             setProperty( tid, HlmsBaseProp::GL3Plus, mRenderSystem->getNativeShadingLanguageVersion() );
         }
-        else if( mShaderProfile == "glsles" )  // TODO: String comparision
-        {
-            setProperty( tid, HlmsBaseProp::GLES, mRenderSystem->getNativeShadingLanguageVersion() );
-        }
 
         setProperty( tid, HlmsBaseProp::Syntax, static_cast<int32>( mShaderSyntax.getU32Value() ) );
         setProperty( tid, HlmsBaseProp::Hlsl, static_cast<int32>( HlmsBaseProp::Hlsl.getU32Value() ) );
         setProperty( tid, HlmsBaseProp::Glsl, static_cast<int32>( HlmsBaseProp::Glsl.getU32Value() ) );
-        setProperty( tid, HlmsBaseProp::Glsles,
-                     static_cast<int32>( HlmsBaseProp::Glsles.getU32Value() ) );
         setProperty( tid, HlmsBaseProp::Glslvk,
                      static_cast<int32>( HlmsBaseProp::Glslvk.getU32Value() ) );
         setProperty( tid, HlmsBaseProp::Hlslvk,
@@ -1865,6 +1890,18 @@ namespace Ogre
 
         mDataFolder = newDataFolder;
         enumeratePieceFiles();
+
+        // Reload datablock pieces (those that can be reloaded from disk).
+        for( auto &itor : mDatablockCustomPieceFiles )
+        {
+            DatablockCustomPieceFile &datablockCustomPiece = itor.second;
+            if( datablockCustomPiece.isCacheable() )
+            {
+                const DataStreamPtr stream = ResourceGroupManager::getSingleton().openResource(
+                    datablockCustomPiece.filename, datablockCustomPiece.resourceGroup );
+                datablockCustomPiece.sourceCode = stream->getAsString();
+            }
+        }
     }
     //-----------------------------------------------------------------------------------
     ArchiveVec Hlms::getPiecesLibraryAsArchiveVec() const
@@ -2011,7 +2048,7 @@ namespace Ogre
     //-----------------------------------------------------------------------------------
     HlmsCache *Hlms::addStubShaderCache( uint32 hash )
     {
-        HlmsCache cache( hash, mType, HlmsPso() );
+        HlmsCache cache( hash, mType, HLMS_CACHE_FLAGS_COMPILATION_REQUIRED, HlmsPso() );
         HlmsCacheVec::iterator it =
             std::lower_bound( mShaderCache.begin(), mShaderCache.end(), &cache, OrderCacheByHash );
 
@@ -2029,7 +2066,7 @@ namespace Ogre
     {
         ScopedLock lock( mMutex );
 
-        HlmsCache cache( hash, mType, pso );
+        HlmsCache cache( hash, mType, HLMS_CACHE_FLAGS_NONE, pso );
         HlmsCacheVec::iterator it =
             std::lower_bound( mShaderCache.begin(), mShaderCache.end(), &cache, OrderCacheByHash );
 
@@ -2045,7 +2082,7 @@ namespace Ogre
     //-----------------------------------------------------------------------------------
     const HlmsCache *Hlms::getShaderCache( uint32 hash ) const
     {
-        HlmsCache cache( hash, mType, HlmsPso() );
+        HlmsCache cache( hash, mType, HLMS_CACHE_FLAGS_NONE, HlmsPso() );
         HlmsCacheVec::const_iterator it =
             std::lower_bound( mShaderCache.begin(), mShaderCache.end(), &cache, OrderCacheByHash );
 
@@ -2069,8 +2106,10 @@ namespace Ogre
         while( itor != endt )
         {
             mRenderSystem->_hlmsPipelineStateObjectDestroyed( &( *itor )->pso );
-            if( ( *itor )->pso.pass.hasStrongMacroblock() )
+            if( ( *itor )->pso.strongBlocks & HlmsPso::HasStrongMacroblock )
                 mHlmsManager->destroyMacroblock( ( *itor )->pso.macroblock );
+            if( ( *itor )->pso.strongBlocks & HlmsPso::HasStrongBlendblock )
+                mHlmsManager->destroyBlendblock( ( *itor )->pso.blendblock );
 
             delete *itor;
             ++itor;
@@ -2168,52 +2207,251 @@ namespace Ogre
                        sizeof( "\n\tDONE DUMPING PIECES\n#endif\n" ) - 1u );
     }
     //-----------------------------------------------------------------------------------
-    void Hlms::applyStrongMacroblockRules( HlmsPso &pso )
+    void Hlms::applyStrongBlockRules( HlmsPso &pso, const size_t tid )
     {
-        if( !pso.macroblock->mDepthCheck )
-        {
-            // Depth check is already off, we don't need to hold a strong reference.
-            pso.pass.strongMacroblockBits &= ~HlmsPassPso::NoDepthBuffer;
-        }
-        if( !pso.macroblock->mDepthWrite )
-        {
-            // Depth writes is already off, we don't need to hold a strong reference.
-            pso.pass.strongMacroblockBits &= ~HlmsPassPso::ForceDisableDepthWrites;
-        }
-        if( pso.macroblock->mCullMode == CULL_NONE )
-        {
-            // Without culling there's nothing to invert, we don't need to hold a strong reference.
-            pso.pass.strongMacroblockBits &= ~HlmsPassPso::InvertVertexWinding;
-        }
-        if( pso.macroblock->mDepthClamp )
-        {
-            // Macroblock already enabled depth clamp, we don't need to hold a strong reference.
-            pso.pass.strongMacroblockBits &= ~HlmsPassPso::ForceDepthClamp;
-        }
+        OGRE_ASSERT_LOW( pso.strongBlocks == 0 );
 
-        if( pso.pass.hasStrongMacroblock() )
+        // Modify a macroblock if needed.
+        HlmsMacroblock macroblock = *pso.macroblock;
+        macroblock.mRsData = nullptr;
+        // Allow the listener to modify a macroblock.
+        mListener->applyStrongMacroblockRules( macroblock, mT[tid].setProperties );
+        // Allow the implementation (inherited classes) to modify a macroblock.
+        applyStrongMacroblockRules( macroblock, tid );
+        OGRE_ASSERT_LOW( macroblock.mRsData == nullptr &&
+                         "Implementation override must not reassign a macroblock!" );
+
+        // Modify a blendblock if needed.
+        HlmsBlendblock blendblock = *pso.blendblock;
+        blendblock.mRsData = nullptr;
+        // Allow the listener to modify a blendblock.
+        mListener->applyStrongBlendblockRules( blendblock, mT[tid].setProperties );
+        // Allow the implementation (inherited classes) to modify a blendblock.
+        applyStrongBlendblockRules( blendblock, tid );
+        OGRE_ASSERT_LOW( blendblock.mRsData == nullptr &&
+                         "Implementation override must not reassign a blendblock!" );
+
+        const bool bNeedsStrongMacroblock = macroblock != *pso.macroblock;
+        const bool bNeedsStrongBlendblock = blendblock != *pso.blendblock;
+        if( bNeedsStrongMacroblock || bNeedsStrongBlendblock )
         {
-            HlmsMacroblock prepassMacroblock = *pso.macroblock;
-
-            // This pass has no depth buffer, disable check and keep a hard copy (strong ref.)
-            if( pso.pass.strongMacroblockBits & HlmsPassPso::NoDepthBuffer )
-                prepassMacroblock.mDepthCheck = false;
-            // This is a depth prepass, disable depth writes and keep a hard copy (strong ref.)
-            if( pso.pass.strongMacroblockBits & HlmsPassPso::ForceDisableDepthWrites )
-                prepassMacroblock.mDepthWrite = false;
-            // We need to invert culling mode.
-            if( pso.pass.strongMacroblockBits & HlmsPassPso::InvertVertexWinding )
-            {
-                prepassMacroblock.mCullMode =
-                    prepassMacroblock.mCullMode == CULL_CLOCKWISE ? CULL_ANTICLOCKWISE : CULL_CLOCKWISE;
-            }
-            // Force depth clamp. Probably a directional shadow caster pass
-            if( pso.pass.strongMacroblockBits & HlmsPassPso::ForceDepthClamp )
-                prepassMacroblock.mDepthClamp = true;
-
-            // mHlmsManager->getMacroblock may be called from different Hlms implementations
+            // mHlmsManager->getMacroblock or mHlmsManager->getBlendblock may be
+            // called from different Hlms implementations.
             ScopedLock lock( msGlobalMutex );
-            pso.macroblock = mHlmsManager->getMacroblock( prepassMacroblock );
+
+            if( bNeedsStrongMacroblock )
+            {
+                pso.macroblock = mHlmsManager->getMacroblock( macroblock );
+                pso.strongBlocks |= HlmsPso::HasStrongMacroblock;
+            }
+
+            if( bNeedsStrongBlendblock )
+            {
+                pso.blendblock = mHlmsManager->getBlendblock( blendblock );
+                pso.strongBlocks |= HlmsPso::HasStrongBlendblock;
+            }
+        }
+    }
+    //-----------------------------------------------------------------------------------
+    void Hlms::applyStrongMacroblockRules( HlmsMacroblock &macroblock, const size_t tid ) const
+    {
+        const uint32 strongMacroblockBits =
+            bit_cast<uint32_t>( getProperty( tid, HlmsPsoProp::StrongMacroblockBits ) );
+        if( strongMacroblockBits == 0 )
+            return;
+
+        // HlmsMacroblock::mScissorTestEnabled
+        if( ( strongMacroblockBits & HlmsMacroblock::InvertScissorTest ) ==
+            HlmsMacroblock::InvertScissorTest )
+        {
+            macroblock.mScissorTestEnabled = !macroblock.mScissorTestEnabled;
+        }
+        else if( strongMacroblockBits & HlmsMacroblock::ScissorTestEnabled )
+            macroblock.mScissorTestEnabled = true;
+        else if( strongMacroblockBits & HlmsMacroblock::ScissorTestDisabled )
+            macroblock.mScissorTestEnabled = false;
+
+        // HlmsMacroblock::mDepthClamp
+        if( ( strongMacroblockBits & HlmsMacroblock::InvertDepthClamp ) ==
+            HlmsMacroblock::InvertDepthClamp )
+        {
+            macroblock.mDepthClamp = !macroblock.mDepthClamp;
+        }
+        else if( strongMacroblockBits & HlmsMacroblock::DepthClampEnabled )
+            macroblock.mDepthClamp = true;
+        else if( strongMacroblockBits & HlmsMacroblock::DepthClampDisabled )
+            macroblock.mDepthClamp = false;
+
+        // HlmsMacroblock::mDepthCheck
+        if( ( strongMacroblockBits & HlmsMacroblock::InvertDepthCheck ) ==
+            HlmsMacroblock::InvertDepthCheck )
+        {
+            macroblock.mDepthCheck = !macroblock.mDepthCheck;
+        }
+        else if( strongMacroblockBits & HlmsMacroblock::DepthCheckEnabled )
+            macroblock.mDepthCheck = true;
+        else if( strongMacroblockBits & HlmsMacroblock::DepthCheckDisabled )
+            macroblock.mDepthCheck = false;
+
+        // HlmsMacroblock::mDepthWrite
+        if( ( strongMacroblockBits & HlmsMacroblock::InvertDepthWrite ) ==
+            HlmsMacroblock::InvertDepthWrite )
+        {
+            macroblock.mDepthWrite = !macroblock.mDepthWrite;
+        }
+        else if( strongMacroblockBits & HlmsMacroblock::DepthWriteEnabled )
+            macroblock.mDepthWrite = true;
+        else if( strongMacroblockBits & HlmsMacroblock::DepthWriteDisabled )
+            macroblock.mDepthWrite = false;
+
+        // HlmsMacroblock::mDepthFunc
+        static_assert( ( HlmsMacroblock::DepthFunc_ALWAYS_FAIL >> 8u ) - 1 == CMPF_ALWAYS_FAIL,
+                       "DepthFunc_ALWAYS_FAIL doesn't match the CMPF_ALWAYS_FAIL." );
+        static_assert( ( HlmsMacroblock::DepthFunc_ALWAYS_PASS >> 8u ) - 1 == CMPF_ALWAYS_PASS,
+                       "DepthFunc_ALWAYS_PASS doesn't match the CMPF_ALWAYS_PASS." );
+        static_assert( ( HlmsMacroblock::DepthFunc_LESS >> 8u ) - 1 == CMPF_LESS,
+                       "DepthFunc_LESS doesn't match the CMPF_LESS." );
+        static_assert( ( HlmsMacroblock::DepthFunc_LESS_EQUAL >> 8u ) - 1 == CMPF_LESS_EQUAL,
+                       "DepthFunc_LESS_EQUAL doesn't match the CMPF_LESS_EQUAL." );
+        static_assert( ( HlmsMacroblock::DepthFunc_EQUAL >> 8u ) - 1 == CMPF_EQUAL,
+                       "DepthFunc_EQUAL doesn't match the CMPF_EQUAL." );
+        static_assert( ( HlmsMacroblock::DepthFunc_NOT_EQUAL >> 8u ) - 1 == CMPF_NOT_EQUAL,
+                       "DepthFunc_NOT_EQUAL doesn't match the CMPF_NOT_EQUAL." );
+        static_assert( ( HlmsMacroblock::DepthFunc_GREATER_EQUAL >> 8u ) - 1 == CMPF_GREATER_EQUAL,
+                       "DepthFunc_GREATER_EQUAL doesn't match the CMPF_GREATER_EQUAL." );
+        static_assert( ( HlmsMacroblock::DepthFunc_GREATER >> 8u ) - 1 == CMPF_GREATER,
+                       "DepthFunc_GREATER doesn't match the CMPF_GREATER." );
+        static_assert( NUM_COMPARE_FUNCTIONS == 8,
+                       "CompareFunction enum has been changed. Update the "
+                       "Hlms::applyStrongMacroblockRules implementation." );
+        const uint32 depthFunc = ( strongMacroblockBits & HlmsMacroblock::DepthFuncMask );
+        if( depthFunc > 0 )
+            macroblock.mDepthFunc = static_cast<CompareFunction>( ( depthFunc >> 8u ) - 1 );
+
+        // HlmsMacroblock::mCullMode
+        static_assert( ( HlmsMacroblock::CullingMode_NONE >> 12u ) == CULL_NONE,
+                       "CullingMode_NONE doesn't match the CULL_NONE." );
+        static_assert( ( HlmsMacroblock::CullingMode_CLOCKWISE >> 12u ) == CULL_CLOCKWISE,
+                       "CullingMode_CLOCKWISE doesn't match the CULL_CLOCKWISE." );
+        static_assert( ( HlmsMacroblock::CullingMode_ANTICLOCKWISE >> 12u ) == CULL_ANTICLOCKWISE,
+                       "CullingMode_ANTICLOCKWISE doesn't match the CULL_ANTICLOCKWISE." );
+        const uint32 cullingMode = ( strongMacroblockBits & HlmsMacroblock::CullingModeMask );
+        if( cullingMode > 0u )
+            macroblock.mCullMode = static_cast<CullingMode>( cullingMode >> 12u );
+
+        if( strongMacroblockBits & HlmsMacroblock::InvertCullingMode &&
+            macroblock.mCullMode != CULL_NONE )
+        {
+            macroblock.mCullMode =
+                macroblock.mCullMode == CULL_CLOCKWISE ? CULL_ANTICLOCKWISE : CULL_CLOCKWISE;
+        }
+
+        // HlmsMacroblock::mPolygonMode
+        static_assert( ( HlmsMacroblock::PolygonMode_POINTS >> 15u ) == PM_POINTS,
+                       "PolygonMode_POINTS doesn't match the PM_POINTS." );
+        static_assert( ( HlmsMacroblock::PolygonMode_WIREFRAME >> 15u ) == PM_WIREFRAME,
+                       "PolygonMode_WIREFRAME doesn't match the PM_WIREFRAME." );
+        static_assert( ( HlmsMacroblock::PolygonMode_SOLID >> 15u ) == PM_SOLID,
+                       "PolygonMode_SOLID doesn't match the PM_SOLID." );
+        const uint32 polygonMode = ( strongMacroblockBits & HlmsMacroblock::PolygonModeMask );
+        if( polygonMode > 0 )
+            macroblock.mPolygonMode = static_cast<PolygonMode>( polygonMode >> 16u );
+    }
+    //-----------------------------------------------------------------------------------
+    void Hlms::applyStrongBlendblockRules( HlmsBlendblock &blendblock, const size_t tid ) const
+    {
+        const uint32 strongBlendblockBits =
+            bit_cast<uint32_t>( getProperty( tid, HlmsPsoProp::StrongBlendblockBits ) );
+        if( strongBlendblockBits == 0 )
+            return;
+
+        static_assert( HlmsBlendblock::SourceBlendFactor_ONE - 1 == SBF_ONE,
+                       "SourceBlendFactor_ONE doesn't match the SBF_ONE." );
+        static_assert( HlmsBlendblock::SourceBlendFactor_ZERO - 1 == SBF_ZERO,
+                       "SourceBlendFactor_ZERO doesn't match the SBF_ZERO." );
+        static_assert( HlmsBlendblock::SourceBlendFactor_DEST_COLOUR - 1 == SBF_DEST_COLOUR,
+                       "SourceBlendFactor_DEST_COLOUR doesn't match the SBF_DEST_COLOUR." );
+        static_assert( HlmsBlendblock::SourceBlendFactor_SOURCE_COLOUR - 1 == SBF_SOURCE_COLOUR,
+                       "SourceBlendFactor_SOURCE_COLOUR doesn't match the SBF_SOURCE_COLOUR." );
+        static_assert(
+            HlmsBlendblock::SourceBlendFactor_ONE_MINUS_DEST_COLOUR - 1 == SBF_ONE_MINUS_DEST_COLOUR,
+            "SourceBlendFactor_ONE_MINUS_DEST_COLOUR doesn't match the SBF_ONE_MINUS_DEST_COLOUR." );
+        static_assert(
+            HlmsBlendblock::SourceBlendFactor_ONE_MINUS_SOURCE_COLOUR - 1 == SBF_ONE_MINUS_SOURCE_COLOUR,
+            "SourceBlendFactor_ONE_MINUS_SOURCE_COLOUR doesn't match the SBF_ONE_MINUS_SOURCE_COLOUR." );
+        static_assert( HlmsBlendblock::SourceBlendFactor_DEST_ALPHA - 1 == SBF_DEST_ALPHA,
+                       "SourceBlendFactor_DEST_ALPHA doesn't match the SBF_DEST_ALPHA." );
+        static_assert( HlmsBlendblock::SourceBlendFactor_SOURCE_ALPHA - 1 == SBF_SOURCE_ALPHA,
+                       "SourceBlendFactor_SOURCE_ALPHA doesn't match the SBF_SOURCE_ALPHA." );
+        static_assert(
+            HlmsBlendblock::SourceBlendFactor_ONE_MINUS_DEST_ALPHA - 1 == SBF_ONE_MINUS_DEST_ALPHA,
+            "SourceBlendFactor_ONE_MINUS_DEST_ALPHA doesn't match the SBF_ONE_MINUS_DEST_ALPHA." );
+        static_assert(
+            HlmsBlendblock::SourceBlendFactor_ONE_MINUS_SOURCE_ALPHA - 1 == SBF_ONE_MINUS_SOURCE_ALPHA,
+            "SourceBlendFactor_ONE_MINUS_SOURCE_ALPHA doesn't match the SBF_ONE_MINUS_SOURCE_ALPHA." );
+
+        // HlmsBlendblock::mSourceBlendFactor
+        const uint32 sourceBlendFactor =
+            ( strongBlendblockBits & HlmsBlendblock::SourceBlendFactorMask );
+        if( sourceBlendFactor > 0 )
+        {
+            blendblock.mSourceBlendFactor =
+                static_cast<SceneBlendFactor>( ( sourceBlendFactor >> 0u ) - 1u );
+        }
+
+        // HlmsBlendblock::mDestBlendFactor
+        const uint32 destBlendFactor = ( strongBlendblockBits & HlmsBlendblock::DestBlendFactorMask );
+        if( destBlendFactor > 0 )
+        {
+            blendblock.mDestBlendFactor =
+                static_cast<SceneBlendFactor>( ( destBlendFactor >> 4u ) - 1u );
+        }
+
+        // HlmsBlendblock::mSourceBlendFactorAlpha
+        const uint32 sourceBlendFactorAplha =
+            ( strongBlendblockBits & HlmsBlendblock::SourceBlendFactorAlphaMask );
+        if( sourceBlendFactorAplha > 0 )
+        {
+            blendblock.mSourceBlendFactorAlpha =
+                static_cast<SceneBlendFactor>( ( sourceBlendFactorAplha >> 8u ) - 1u );
+        }
+
+        // HlmsBlendblock::mDestBlendFactorAlpha
+        const uint32 destBlendFactorAlpha =
+            ( strongBlendblockBits & HlmsBlendblock::DestBlendFactorAlphaMask );
+        if( destBlendFactorAlpha > 0 )
+        {
+            blendblock.mDestBlendFactorAlpha =
+                static_cast<SceneBlendFactor>( ( destBlendFactorAlpha >> 12u ) - 1u );
+        }
+
+        static_assert( ( HlmsBlendblock::BlendOperation_ADD - 1 ) >> 16u == SBO_ADD,
+                       "BlendOperation_ADD doesn't match the SBO_ADD." );
+        static_assert( ( HlmsBlendblock::BlendOperation_SUBTRACT - 1 ) >> 16u == SBO_SUBTRACT,
+                       "BlendOperation_SUBTRACT doesn't match the SBO_SUBTRACT." );
+        static_assert(
+            ( HlmsBlendblock::BlendOperation_REVERSE_SUBTRACT - 1 ) >> 16u == SBO_REVERSE_SUBTRACT,
+            "BlendOperation_REVERSE_SUBTRACT doesn't match the SBO_REVERSE_SUBTRACT." );
+        static_assert( ( HlmsBlendblock::BlendOperation_MIN - 1 ) >> 16u == SBO_MIN,
+                       "BlendOperation_MIN doesn't match the SBO_MIN." );
+        static_assert( ( HlmsBlendblock::BlendOperation_MAX - 1 ) >> 16u == SBO_MAX,
+                       "BlendOperation_MAX doesn't match the SBO_MAX." );
+
+        // HlmsBlendblock::mBlendOperation
+        const uint32 blendOperation = ( strongBlendblockBits & HlmsBlendblock::BlendOperationMask );
+        if( blendOperation > 0 )
+        {
+            blendblock.mBlendOperation =
+                static_cast<SceneBlendOperation>( ( blendOperation >> 16u ) - 1u );
+        }
+
+        // HlmsBlendblock::mBlendOperationAlpha
+        const uint32 blendOperationAlpha =
+            ( strongBlendblockBits & HlmsBlendblock::BlendOperationAlphaMask );
+        if( blendOperationAlpha > 0 )
+        {
+            blendblock.mBlendOperationAlpha =
+                static_cast<SceneBlendOperation>( ( blendOperationAlpha >> 20u ) - 1u );
         }
     }
     //-----------------------------------------------------------------------------------
@@ -2311,6 +2549,28 @@ namespace Ogre
         mShaderCodeCacheDirty = true;
     }
     //-----------------------------------------------------------------------------------
+    void Hlms::parseCustomPiece( const int32 customPieceName, const size_t tid )
+    {
+        // Parse custom arbitrary shader piece specified by the datablock.
+        DatablockCustomPieceFileMap::const_iterator it =
+            mDatablockCustomPieceFiles.find( customPieceName );
+        OGRE_ASSERT_LOW( it != mDatablockCustomPieceFiles.end() );
+
+        String inString = it->second.sourceCode;
+        String outString;
+
+        this->parseMath( inString, outString, tid );
+        while( outString.find( "@foreach" ) != String::npos )
+        {
+            this->parseForEach( outString, inString, tid );
+            inString.swap( outString );
+        }
+        this->parseProperties( outString, inString, tid );
+        this->parseUndefPieces( inString, outString, tid );
+        this->collectPieces( outString, inString, tid );
+        this->parseCounter( inString, outString, tid );
+    }
+    //-----------------------------------------------------------------------------------
     void Hlms::compileShaderCode( ShaderCodeCache &codeCache, const uint32 shaderCounter,
                                   const size_t tid )
     {
@@ -2335,11 +2595,6 @@ namespace Ogre
                     setProperty( tid, HlmsBaseProp::GL3Plus,
                                  mRenderSystem->getNativeShadingLanguageVersion() );
                 }
-                else if( mShaderProfile == "glsles" )  // TODO: String comparision
-                {
-                    setProperty( tid, HlmsBaseProp::GLES,
-                                 mRenderSystem->getNativeShadingLanguageVersion() );
-                }
 
                 setProperty( tid, HlmsBaseProp::Syntax,
                              static_cast<int32>( mShaderSyntax.getU32Value() ) );
@@ -2347,8 +2602,6 @@ namespace Ogre
                              static_cast<int32>( HlmsBaseProp::Hlsl.getU32Value() ) );
                 setProperty( tid, HlmsBaseProp::Glsl,
                              static_cast<int32>( HlmsBaseProp::Glsl.getU32Value() ) );
-                setProperty( tid, HlmsBaseProp::Glsles,
-                             static_cast<int32>( HlmsBaseProp::Glsles.getU32Value() ) );
                 setProperty( tid, HlmsBaseProp::Glslvk,
                              static_cast<int32>( HlmsBaseProp::Glslvk.getU32Value() ) );
                 setProperty( tid, HlmsBaseProp::Hlslvk,
@@ -2389,31 +2642,16 @@ namespace Ogre
                         dumpProperties( debugDumpFile, tid );
                 }
 
-                const int32 customPieceName =
-                    getProperty( tid, HlmsBaseProp::_DatablockCustomPieceShaderName[i] );
-                if( customPieceName )
+                if( i == VertexShader )
                 {
-                    // Parse custom arbitrary shader piece specified by the datablock.
-                    DatablockCustomPieceFileMap::const_iterator it =
-                        mDatablockCustomPieceFiles.find( customPieceName );
-                    OGRE_ASSERT_LOW( it != mDatablockCustomPieceFiles.end() );
-
-                    String inString = it->second.sourceCode;
-                    String outString;
-
-                    this->parseMath( inString, outString, tid );
-                    while( outString.find( "@foreach" ) != String::npos )
-                    {
-                        this->parseForEach( outString, inString, tid );
-                        inString.swap( outString );
-                    }
-                    this->parseProperties( outString, inString, tid );
-                    this->parseUndefPieces( inString, outString, tid );
-                    this->collectPieces( outString, inString, tid );
-                    this->parseCounter( inString, outString, tid );
+                    const int32 customPieceName =
+                        getProperty( tid, HlmsBaseProp::_DatablockCustomPieceShaderName
+                                              [CustomPieceStage::PreVertexShader] );
+                    if( customPieceName )
+                        parseCustomPiece( customPieceName, tid );
                 }
 
-                // Library piece files first
+                // Library piece files first.
                 LibraryVec::const_iterator itor = mLibrary.begin();
                 LibraryVec::const_iterator endt = mLibrary.end();
 
@@ -2422,6 +2660,13 @@ namespace Ogre
                     processPieces( itor->dataFolder, itor->pieceFiles[i], tid );
                     ++itor;
                 }
+
+                const CustomPieceStage::CustomPieceStage customPieceStage =
+                    CustomPieceStage::from( ShaderType( i ) );
+                const int32 customPieceName =
+                    getProperty( tid, HlmsBaseProp::_DatablockCustomPieceShaderName[customPieceStage] );
+                if( customPieceName )
+                    parseCustomPiece( customPieceName, tid );
 
                 // Main piece files
                 processPieces( mDataFolder, mPieceFiles[i], tid );
@@ -2489,7 +2734,8 @@ namespace Ogre
     const HlmsCache *Hlms::createShaderCacheEntry( uint32 renderableHash, const HlmsCache &passCache,
                                                    uint32 finalHash,
                                                    const QueuedRenderable &queuedRenderable,
-                                                   HlmsCache *reservedStubEntry, const size_t tid )
+                                                   HlmsCache *reservedStubEntry, uint64 deadline,
+                                                   const size_t tid )
     {
         OgreProfileExhaustive( "Hlms::createShaderCacheEntry" );
 
@@ -2528,13 +2774,33 @@ namespace Ogre
                 setProperty( tid, *itor++, 1 );
         }
 
-        notifyPropertiesMergedPreGenerationStep( tid );
+        ShaderCodeCache codeCache( renderableCache.pieces );
+
+        const PropertiesMergeStatus status =
+            notifyPropertiesMergedPreGenerationStep( tid, codeCache.mergedCache.pieces );
+        if( status != PropertiesMergeStatusOk )
+        {
+            const HlmsDatablock *datablock = queuedRenderable.renderable->getDatablock();
+            const String meshName =
+                SceneManager::deduceMovableObjectName( queuedRenderable.movableObject );
+
+            LogManager::getSingleton().logMessage(
+                "[tid = " + StringConverter::toString( tid ) + "] datablock '" +
+                *datablock->getNameStr() + "' from MovableObject '" + meshName +
+                "' has issues. See previous log entries matching the same tid." );
+
+            if( status == PropertiesMergeStatusError )
+            {
+                OGRE_EXCEPT( Exception::ERR_INVALID_STATE,
+                             "Errors encountered while generating shaders. See Ogre.log",
+                             "Hlms::createShaderCacheEntry" );
+            }
+        }
         mListener->propertiesMergedPreGenerationStep( this, passCache, renderableCache.setProperties,
                                                       renderableCache.pieces, mT[tid].setProperties,
                                                       queuedRenderable, tid );
 
         // Retrieve the shader code from the code cache
-        ShaderCodeCache codeCache( renderableCache.pieces );
         unsetProperty( tid, HlmsPsoProp::Macroblock );
         unsetProperty( tid, HlmsPsoProp::Blendblock );
         unsetProperty( tid, HlmsPsoProp::InputLayoutId );
@@ -2583,7 +2849,7 @@ namespace Ogre
         pso.blendblock = datablock->getBlendblock( casterPass );
         pso.pass = passCache.pso.pass;
 
-        applyStrongMacroblockRules( pso );
+        applyStrongBlockRules( pso, tid );
 
         const size_t numGlobalClipDistances = (size_t)getProperty( tid, HlmsBaseProp::PsoClipDistances );
         pso.clipDistances = static_cast<uint8>( ( 1u << numGlobalClipDistances ) - 1u );
@@ -2618,7 +2884,7 @@ namespace Ogre
         LogManager::getSingleton().logMessage(
             "Compiling new PSO for datablock: " + datablock->getName().getFriendlyText(), LML_TRIVIAL );
 #endif
-        mRenderSystem->_hlmsPipelineStateObjectCreated( &pso );
+        bool rsPsoCreated = mRenderSystem->_hlmsPipelineStateObjectCreated( &pso, deadline );
 
         if( reservedStubEntry )
         {
@@ -2627,7 +2893,12 @@ namespace Ogre
                              !reservedStubEntry->pso.tesselationHullShader &&
                              !reservedStubEntry->pso.tesselationDomainShader &&
                              !reservedStubEntry->pso.pixelShader && "Race condition?" );
-            reservedStubEntry->pso = pso;
+            if( rsPsoCreated )
+                reservedStubEntry->pso = pso;
+            reservedStubEntry->flags =
+                !rsPsoCreated && reservedStubEntry->flags == HLMS_CACHE_FLAGS_COMPILATION_REQUESTED
+                    ? HLMS_CACHE_FLAGS_COMPILATION_REQUIRED  // recoverable error (timeout?), reschedule
+                    : HLMS_CACHE_FLAGS_NONE;
         }
 
         const HlmsCache *retVal =
@@ -2638,7 +2909,65 @@ namespace Ogre
         return retVal;
     }
     //-----------------------------------------------------------------------------------
-    void Hlms::notifyPropertiesMergedPreGenerationStep( const size_t tid ) {}
+    Hlms::PropertiesMergeStatus Hlms::notifyPropertiesMergedPreGenerationStep( const size_t tid,
+                                                                               PiecesMap *inOutPieces )
+    {
+        if( getProperty( tid, HlmsBaseProp::AlphaToCoverage ) == HlmsBlendblock::A2cEnabledMsaaOnly )
+        {
+            if( getProperty( tid, HlmsBaseProp::MsaaSamples ) <= 1 )
+                setProperty( tid, HlmsBaseProp::AlphaToCoverage, 0 );
+        }
+
+        // Pass cache data cannot cache pieces, so it stored shadow maps' UV values as raw
+        // floating point in the properties. We can now turn it into pieces.
+        const int32 numShadowMapLights = getProperty( tid, HlmsBaseProp::NumShadowMapLights );
+
+        char tmpBuffer[64];
+        LwString propName( LwString::FromEmptyPointer( tmpBuffer, sizeof( tmpBuffer ) ) );
+
+        char tmpBuffer2[32];
+        LwString valueStr( LwString::FromEmptyPointer( tmpBuffer2, sizeof( tmpBuffer2 ) ) );
+
+        propName = "hlms_shadowmap";
+        const size_t basePropNameSize = propName.size();
+
+        for( int32 i = 0; i < numShadowMapLights; ++i )
+        {
+            propName.resize( basePropNameSize );
+            propName.a( i );  // hlms_shadowmap0
+
+            const size_t basePropSize = propName.size();
+
+            const uint32 kNumSuffixes = 6u;
+            const char *suffixes[kNumSuffixes] = { "_uv_min_x",    "_uv_min_y",  //
+                                                   "_uv_max_x",    "_uv_max_y",
+                                                   "_uv_length_x", "_uv_length_y" };
+
+            for( uint32 j = 0; j < kNumSuffixes; ++j )
+            {
+                propName.resize( basePropSize );
+                propName.a( suffixes[j] );
+
+                const IdString propNameHash = propName.c_str();
+
+                const int32_t value = getProperty( tid, propNameHash, -1 );
+                if( value != -1 )
+                {
+                    const float fValue = bit_cast<float>( value );
+
+                    valueStr.clear();
+                    valueStr.a( fValue );
+
+                    const PiecesMap::value_type v = { propNameHash, valueStr.c_str() };
+
+                    for( size_t k = 0u; k < NumShaderTypes; ++k )
+                        inOutPieces[k].insert( v );
+                }
+            }
+        }
+
+        return PropertiesMergeStatusOk;
+    }
     //-----------------------------------------------------------------------------------
     uint16 Hlms::calculateHashForV1( Renderable *renderable )
     {
@@ -2740,6 +3069,87 @@ namespace Ogre
         }
     }
     //-----------------------------------------------------------------------------------
+    void Hlms::setupSharedBasicProperties( Renderable *renderable, const bool bCasterPass )
+    {
+        HlmsDatablock *datablock = renderable->getDatablock();
+
+        for( size_t i = 0u; i < CustomPieceStage::NumCustomPieceStages; ++i )
+        {
+            const int32 filenameHashId = datablock->getCustomPieceFileIdHash(
+                static_cast<CustomPieceStage::CustomPieceStage>( i ) );
+            if( filenameHashId )
+                setProperty( kNoTid, HlmsBaseProp::_DatablockCustomPieceShaderName[i], filenameHashId );
+        }
+
+        {
+            const HlmsDatablock::CustomPropertyArray &customProperties =
+                datablock->getCustomProperties();
+            for( const HlmsDatablock::CustomProperty &property : customProperties )
+                setProperty( kNoTid, property.keyName, property.value );
+        }
+
+        setProperty( kNoTid, HlmsBaseProp::AlphaTest, datablock->getAlphaTest() != CMPF_ALWAYS_PASS );
+        setProperty( kNoTid, HlmsBaseProp::AlphaTestShadowCasterOnly,
+                     datablock->getAlphaTestShadowCasterOnly() );
+        setProperty( kNoTid, HlmsBaseProp::AlphaBlend,
+                     datablock->getBlendblock( bCasterPass )->isAutoTransparent() );
+        setProperty( kNoTid, HlmsBaseProp::AlphaToCoverage,
+                     datablock->getBlendblock( bCasterPass )->mAlphaToCoverage );
+        if( datablock->getAlphaHashing() )
+            setProperty( kNoTid, HlmsBaseProp::AlphaHash, 1 );
+
+        if( renderable->getUseIdentityWorldMatrix() )
+            setProperty( kNoTid, HlmsBaseProp::IdentityWorld, 1 );
+
+        if( renderable->getParticleType() != ParticleType::NotParticle )
+        {
+            setProperty( kNoTid, HlmsBaseProp::ParticleSystem, 1 );
+            setProperty( kNoTid, HlmsBaseProp::VertexId, 1 );
+
+            IdString particleTypeName;
+            switch( renderable->getParticleType() )
+            {
+            case ParticleType::NotParticle:
+            case ParticleType::Point:
+                particleTypeName = HlmsBaseProp::ParticleTypePoint;
+                break;
+            case ParticleType::OrientedCommon:
+                particleTypeName = HlmsBaseProp::ParticleTypeOrientedCommon;
+                break;
+            case ParticleType::OrientedSelf:
+                particleTypeName = HlmsBaseProp::ParticleTypeOrientedSelf;
+                break;
+            case ParticleType::PerpendicularCommon:
+                particleTypeName = HlmsBaseProp::ParticleTypePerpendicularCommon;
+                break;
+            case ParticleType::PerpendicularSelf:
+                particleTypeName = HlmsBaseProp::ParticleTypePerpendicularSelf;
+                break;
+            }
+
+            setProperty( kNoTid, HlmsBaseProp::ParticleType,
+                         static_cast<int32>( particleTypeName.getU32Value() ) );
+            setProperty( kNoTid, particleTypeName,
+                         static_cast<int32>( particleTypeName.getU32Value() ) );
+
+            const ParticleSystemDef *systemDef = ParticleSystemDef::castFromRenderable( renderable );
+
+            setProperty( kNoTid, HlmsBaseProp::ParticleRotation,
+                         static_cast<int32>( systemDef->getRotationType() ) );
+
+            setProperty( kNoTid, HlmsBaseProp::Colour, 1 );
+
+            // The UVs are autogenerated so set UvCount0 to indicate it's available.
+            // However we don't set HlmsBaseProp::UvCount because it's autogenerated.
+            setProperty( kNoTid, HlmsBaseProp::UvCount0, 2 );
+        }
+
+        if( renderable->getUseIdentityViewProjMatrixIsDynamic() )
+            setProperty( kNoTid, HlmsBaseProp::IdentityViewProjDynamic, 1 );
+        else if( renderable->getUseIdentityProjection() )
+            setProperty( kNoTid, HlmsBaseProp::IdentityViewProj, 1 );
+    }
+    //-----------------------------------------------------------------------------------
     void Hlms::calculateHashFor( Renderable *renderable, uint32 &outHash, uint32 &outCasterHash )
     {
         OgreProfileExhaustive( "Hlms::calculateHashFor" );
@@ -2760,36 +3170,12 @@ namespace Ogre
 
         setProperty( kNoTid, HlmsBaseProp::UvCount, numTexCoords );
 
+        setupSharedBasicProperties( renderable, false );
+
         HlmsDatablock *datablock = renderable->getDatablock();
 
-        for( size_t i = 0u; i < NumShaderTypes; ++i )
-        {
-            const int32 filenameHashId =
-                datablock->getCustomPieceFileIdHash( static_cast<ShaderType>( i ) );
-            if( filenameHashId )
-                setProperty( kNoTid, HlmsBaseProp::_DatablockCustomPieceShaderName[i], filenameHashId );
-        }
-
-        setProperty( kNoTid, HlmsBaseProp::AlphaTest, datablock->getAlphaTest() != CMPF_ALWAYS_PASS );
-        setProperty( kNoTid, HlmsBaseProp::AlphaTestShadowCasterOnly,
-                     datablock->getAlphaTestShadowCasterOnly() );
-        setProperty( kNoTid, HlmsBaseProp::AlphaBlend,
-                     datablock->getBlendblock( false )->isAutoTransparent() );
-        setProperty( kNoTid, HlmsBaseProp::AlphaToCoverage,
-                     datablock->getBlendblock( false )->mAlphaToCoverageEnabled );
-
-        if( renderable->getUseIdentityWorldMatrix() )
-            setProperty( kNoTid, HlmsBaseProp::IdentityWorld, 1 );
-
-        if( renderable->getUseIdentityViewProjMatrixIsDynamic() )
-            setProperty( kNoTid, HlmsBaseProp::IdentityViewProjDynamic, 1 );
-        else if( renderable->getUseIdentityProjection() )
-            setProperty( kNoTid, HlmsBaseProp::IdentityViewProj, 1 );
-
-        setProperty( kNoTid, HlmsPsoProp::Macroblock,
-                     renderable->getDatablock()->getMacroblock( false )->mLifetimeId );
-        setProperty( kNoTid, HlmsPsoProp::Blendblock,
-                     renderable->getDatablock()->getBlendblock( false )->mLifetimeId );
+        setProperty( kNoTid, HlmsPsoProp::Macroblock, datablock->getMacroblock( false )->mLifetimeId );
+        setProperty( kNoTid, HlmsPsoProp::Blendblock, datablock->getBlendblock( false )->mLifetimeId );
 
         PiecesMap pieces[NumShaderTypes];
         if( datablock->getAlphaTest() != CMPF_ALWAYS_PASS )
@@ -2807,7 +3193,7 @@ namespace Ogre
         setProperty( kNoTid, HlmsBaseProp::AlphaBlend,
                      datablock->getBlendblock( true )->isAutoTransparent() );
         setProperty( kNoTid, HlmsBaseProp::AlphaToCoverage,
-                     datablock->getBlendblock( true )->mAlphaToCoverageEnabled );
+                     datablock->getBlendblock( true )->mAlphaToCoverage );
         PiecesMap piecesCaster[NumShaderTypes];
         if( datablock->getAlphaTest() != CMPF_ALWAYS_PASS )
         {
@@ -2821,10 +3207,8 @@ namespace Ogre
             setProperty( kNoTid, HlmsPsoProp::InputLayoutId, vao->getInputLayoutId() );
         }
         calculateHashForPreCaster( renderable, piecesCaster, pieces );
-        setProperty( kNoTid, HlmsPsoProp::Macroblock,
-                     renderable->getDatablock()->getMacroblock( true )->mLifetimeId );
-        setProperty( kNoTid, HlmsPsoProp::Blendblock,
-                     renderable->getDatablock()->getBlendblock( true )->mLifetimeId );
+        setProperty( kNoTid, HlmsPsoProp::Macroblock, datablock->getMacroblock( true )->mLifetimeId );
+        setProperty( kNoTid, HlmsPsoProp::Blendblock, datablock->getBlendblock( true )->mLifetimeId );
         uint32 renderableCasterHash = this->addRenderableCache( mT[kNoTid].setProperties, piecesCaster );
 
         outHash = renderableHash;
@@ -2849,6 +3233,10 @@ namespace Ogre
     {
         if( !mRenderSystem->isReverseDepth() )
             setProperty( kNoTid, HlmsBaseProp::NoReverseDepth, 1 );
+
+        const CompositorPass *pass = sceneManager->getCurrentCompositorPass();
+
+        bool bForceCullNone = false;
 
         if( !casterPass )
         {
@@ -2931,40 +3319,24 @@ namespace Ogre
                             setProperty( kNoTid, propName.c_str(), 1 );
                         }
 
-                        float intPart, fractPart;
+                        propName.resize( basePropSize );
+                        propName.a( "_uv_min_x" );
+                        setProperty( kNoTid, propName.c_str(),
+                                     bit_cast<int32_t>( (float)shadowTexDef->uvOffset.x ) );
 
-                        fractPart = modff( (float)shadowTexDef->uvOffset.x, &intPart );
                         propName.resize( basePropSize );
-                        propName.a( "_uv_min_x_int" );
-                        setProperty( kNoTid, propName.c_str(), (int32)intPart );
-                        propName.resize( basePropSize );
-                        propName.a( "_uv_min_x_fract" );
-                        setProperty( kNoTid, propName.c_str(), (int32)( fractPart * 100000.0f ) );
+                        propName.a( "_uv_min_y" );
+                        setProperty( kNoTid, propName.c_str(),
+                                     bit_cast<int32_t>( (float)shadowTexDef->uvOffset.y ) );
 
-                        fractPart = modff( (float)shadowTexDef->uvOffset.y, &intPart );
+                        const Vector2 uvMax = shadowTexDef->uvOffset + shadowTexDef->uvLength;
                         propName.resize( basePropSize );
-                        propName.a( "_uv_min_y_int" );
-                        setProperty( kNoTid, propName.c_str(), (int32)intPart );
-                        propName.resize( basePropSize );
-                        propName.a( "_uv_min_y_fract" );
-                        setProperty( kNoTid, propName.c_str(), (int32)( fractPart * 100000.0f ) );
+                        propName.a( "_uv_max_x" );
+                        setProperty( kNoTid, propName.c_str(), bit_cast<int32_t>( (float)uvMax.x ) );
 
-                        Vector2 uvMax = shadowTexDef->uvOffset + shadowTexDef->uvLength;
-                        fractPart = modff( (float)uvMax.x, &intPart );
                         propName.resize( basePropSize );
-                        propName.a( "_uv_max_x_int" );
-                        setProperty( kNoTid, propName.c_str(), (int32)intPart );
-                        propName.resize( basePropSize );
-                        propName.a( "_uv_max_x_fract" );
-                        setProperty( kNoTid, propName.c_str(), (int32)( fractPart * 100000.0f ) );
-
-                        fractPart = modff( (float)uvMax.y, &intPart );
-                        propName.resize( basePropSize );
-                        propName.a( "_uv_max_y_int" );
-                        setProperty( kNoTid, propName.c_str(), (int32)intPart );
-                        propName.resize( basePropSize );
-                        propName.a( "_uv_max_y_fract" );
-                        setProperty( kNoTid, propName.c_str(), (int32)( fractPart * 100000.0f ) );
+                        propName.a( "_uv_max_y" );
+                        setProperty( kNoTid, propName.c_str(), bit_cast<int32_t>( (float)uvMax.y ) );
 
                         propName.resize( basePropSize );
                         propName.a( "_array_idx" );
@@ -2973,21 +3345,15 @@ namespace Ogre
                         const Light *light = shadowNode->getLightAssociatedWith( shadowMapTexIdx );
                         if( useStaticBranchShadowMapLights )
                         {
-                            fractPart = modff( (float)shadowTexDef->uvLength.x, &intPart );
                             propName.resize( basePropSize );
-                            propName.a( "_uv_length_x_int" );
-                            setProperty( kNoTid, propName.c_str(), (int32)intPart );
-                            propName.resize( basePropSize );
-                            propName.a( "_uv_length_x_fract" );
-                            setProperty( kNoTid, propName.c_str(), (int32)( fractPart * 100000.0f ) );
+                            propName.a( "_uv_length_x" );
+                            setProperty( kNoTid, propName.c_str(),
+                                         bit_cast<int32_t>( (float)shadowTexDef->uvLength.x ) );
 
-                            fractPart = modff( (float)shadowTexDef->uvLength.y, &intPart );
                             propName.resize( basePropSize );
-                            propName.a( "_uv_length_y_int" );
-                            setProperty( kNoTid, propName.c_str(), (int32)intPart );
-                            propName.resize( basePropSize );
-                            propName.a( "_uv_length_y_fract" );
-                            setProperty( kNoTid, propName.c_str(), (int32)( fractPart * 100000.0f ) );
+                            propName.a( "_uv_length_y" );
+                            setProperty( kNoTid, propName.c_str(),
+                                         bit_cast<int32_t>( (float)shadowTexDef->uvLength.y ) );
 
                             if( light->getType() == Light::LT_DIRECTIONAL )
                             {
@@ -3018,23 +3384,15 @@ namespace Ogre
                                 propName.a( "_is_point_light" );
                                 setProperty( kNoTid, propName.c_str(), 1 );
 
-                                fractPart = modff( (float)shadowTexDef->uvLength.x, &intPart );
                                 propName.resize( basePropSize );
-                                propName.a( "_uv_length_x_int" );
-                                setProperty( kNoTid, propName.c_str(), (int32)intPart );
-                                propName.resize( basePropSize );
-                                propName.a( "_uv_length_x_fract" );
+                                propName.a( "_uv_length_x" );
                                 setProperty( kNoTid, propName.c_str(),
-                                             (int32)( fractPart * 100000.0f ) );
+                                             bit_cast<int32_t>( (float)shadowTexDef->uvLength.x ) );
 
-                                fractPart = modff( (float)shadowTexDef->uvLength.y, &intPart );
                                 propName.resize( basePropSize );
-                                propName.a( "_uv_length_y_int" );
-                                setProperty( kNoTid, propName.c_str(), (int32)intPart );
-                                propName.resize( basePropSize );
-                                propName.a( "_uv_length_y_fract" );
+                                propName.a( "_uv_length_y" );
                                 setProperty( kNoTid, propName.c_str(),
-                                             (int32)( fractPart * 100000.0f ) );
+                                             bit_cast<int32_t>( (float)shadowTexDef->uvLength.y ) );
                             }
                             else if( light->getType() == Light::LT_SPOTLIGHT )
                             {
@@ -3084,8 +3442,6 @@ namespace Ogre
                 setProperty( kNoTid, HlmsBaseProp::ShadowUsesDepthTexture, usesDepthTextures );
             }
 
-            const CompositorPass *pass = sceneManager->getCurrentCompositorPass();
-
             if( pass && pass->getType() == PASS_SCENE )
             {
                 OGRE_ASSERT_HIGH(
@@ -3094,6 +3450,7 @@ namespace Ogre
                     static_cast<const CompositorPassSceneDef *>( pass->getDefinition() );
                 if( passSceneDef->mUvBakingSet != 0xFF )
                 {
+                    bForceCullNone = true;
                     setProperty( kNoTid, HlmsBaseProp::UseUvBaking, 1 );
                     setProperty( kNoTid, HlmsBaseProp::UvBaking, passSceneDef->mUvBakingSet );
                     if( passSceneDef->mBakeLightingOnly )
@@ -3340,8 +3697,6 @@ namespace Ogre
         {
             setProperty( kNoTid, HlmsBaseProp::ShadowCaster, 1 );
 
-            const CompositorPass *pass = sceneManager->getCurrentCompositorPass();
-
             if( pass )
             {
                 const uint32 shadowMapIdx = pass->getDefinition()->mShadowMapIdx;
@@ -3410,6 +3765,12 @@ namespace Ogre
                 setProperty( kNoTid, HlmsBaseProp::UseSsr, 1 );
         }
 
+        if( pass && pass->getAnyTargetTexture() )
+        {
+            setProperty( kNoTid, HlmsBaseProp::MsaaSamples,
+                         pass->getAnyTargetTexture()->getSampleDescription().getColourSamples() );
+        }
+
         if( sceneManager->getCurrentRefractionsTexture() != 0 )
         {
             setProperty( kNoTid, HlmsBaseProp::VPos, 1 );
@@ -3420,7 +3781,7 @@ namespace Ogre
         mListener->preparePassHash( shadowNode, casterPass, dualParaboloid, sceneManager, this );
 
         PassCache passCache;
-        passCache.passPso = getPassPsoForScene( sceneManager );
+        passCache.passPso = getPassPsoForScene( sceneManager, bForceCullNone );
         passCache.properties = mT[kNoTid].setProperties;
 
         assert( mPassCache.size() <= HlmsBits::PassMask &&
@@ -3434,18 +3795,21 @@ namespace Ogre
 
         const uint32 hash = static_cast<uint32>( it - mPassCache.begin() ) << HlmsBits::PassShift;
 
-        HlmsCache retVal( hash, mType, HlmsPso() );
+        HlmsCache retVal( hash, mType, HLMS_CACHE_FLAGS_NONE, HlmsPso() );
         retVal.setProperties = mT[kNoTid].setProperties;
         retVal.pso.pass = passCache.passPso;
 
         return retVal;
     }
     //-----------------------------------------------------------------------------------
-    HlmsPassPso Hlms::getPassPsoForScene( SceneManager *sceneManager )
+    HlmsPassPso Hlms::getPassPsoForScene( SceneManager *sceneManager, const bool bForceCullNone )
     {
         const RenderPassDescriptor *renderPassDesc = mRenderSystem->getCurrentPassDescriptor();
 
         HlmsPassPso passPso;
+
+        uint32 strongMacroblockBits =
+            bit_cast<uint32_t>( getProperty( kNoTid, HlmsPsoProp::StrongMacroblockBits ) );
 
         // Needed so that memcmp in HlmsPassPso::operator == works correctly
         silent_memset( &passPso, 0, sizeof( HlmsPassPso ) );
@@ -3478,25 +3842,30 @@ namespace Ogre
         }
         else
         {
-            passPso.strongMacroblockBits |= HlmsPassPso::NoDepthBuffer;
+            strongMacroblockBits |= HlmsMacroblock::DepthCheckDisabled;
         }
 
         passPso.adapterId = 1;  // TODO: Ask RenderSystem current adapter ID.
 
         if( sceneManager->getCurrentPrePassMode() == PrePassUse )
-            passPso.strongMacroblockBits |= HlmsPassPso::ForceDisableDepthWrites;
+            strongMacroblockBits |= HlmsMacroblock::DepthWriteDisabled;
 
         if( sceneManager->getCamerasInProgress().renderingCamera->getNeedsDepthClamp() )
-            passPso.strongMacroblockBits |= HlmsPassPso::ForceDepthClamp;
+            strongMacroblockBits |= HlmsMacroblock::DepthClampEnabled;
+
+        if( bForceCullNone )
+            strongMacroblockBits |= HlmsMacroblock::CullingMode_NONE;
 
         const bool invertVertexWinding = mRenderSystem->getInvertVertexWinding();
 
         if( ( renderPassDesc->requiresTextureFlipping() && !invertVertexWinding ) ||
             ( !renderPassDesc->requiresTextureFlipping() && invertVertexWinding ) )
         {
-            passPso.strongMacroblockBits |= HlmsPassPso::InvertVertexWinding;
+            strongMacroblockBits |= HlmsMacroblock::InvertCullingMode;
         }
 
+        setProperty( kNoTid, HlmsPsoProp::StrongMacroblockBits,
+                     bit_cast<int32_t>( strongMacroblockBits ) );
         return passPso;
     }
     //-----------------------------------------------------------------------------------
@@ -3585,8 +3954,8 @@ namespace Ogre
                 // Low level is a special case because it doesn't (yet?) support parallel compilation
                 if( !parallelQueue || mType == HLMS_LOW_LEVEL )
                 {
-                    lastReturnedValue = createShaderCacheEntry( hash[0], passCache, finalHash,
-                                                                queuedRenderable, nullptr, kNoTid );
+                    lastReturnedValue = createShaderCacheEntry(
+                        hash[0], passCache, finalHash, queuedRenderable, nullptr, UINT64_MAX, kNoTid );
                 }
                 else
                 {
@@ -3598,17 +3967,26 @@ namespace Ogre
                         { &passCache, stubEntry, queuedRenderable, hash[0], finalHash } );
                 }
             }
+            else if( lastReturnedValue->flags == HLMS_CACHE_FLAGS_COMPILATION_REQUIRED )
+            {
+                // Stub entry was created for previous frame, but compilation was skipped
+                // due to exhausted time budget, and attempt should be repeated
+                HlmsCache *stubEntry = const_cast<HlmsCache *>( lastReturnedValue );
+
+                parallelQueue->pushRequest(
+                    { &passCache, stubEntry, queuedRenderable, hash[0], finalHash } );
+            }
         }
 
         return lastReturnedValue;
     }
     //-----------------------------------------------------------------------------------
     void Hlms::compileStubEntry( const HlmsCache &passCache, HlmsCache *reservedStubEntry,
-                                 QueuedRenderable queuedRenderable, uint32 renderableHash,
-                                 uint32 finalHash, size_t tid )
+                                 uint64 deadline, QueuedRenderable queuedRenderable,
+                                 uint32 renderableHash, uint32 finalHash, size_t tid )
     {
         createShaderCacheEntry( renderableHash, passCache, finalHash, queuedRenderable,
-                                reservedStubEntry, tid );
+                                reservedStubEntry, deadline, tid );
     }
     //-----------------------------------------------------------------------------------
     uint32 Hlms::getMaterialSerial01( uint32 lastReturnedValue, const HlmsCache &passCache,
@@ -3645,6 +4023,15 @@ namespace Ogre
                         { reinterpret_cast<const HlmsCache *>( passCacheIdx ), stubEntry,
                           queuedRenderable, hash[0], finalHash } );
                 }
+            }
+            else if( shaderCache->flags == HLMS_CACHE_FLAGS_COMPILATION_REQUIRED )
+            {
+                // Stub entry was created for previous frame, but compilation was skipped
+                // due to exhausted time budget, and attempt should be repeated.
+                HlmsCache *stubEntry = const_cast<HlmsCache *>( shaderCache );
+
+                parallelQueue.pushWarmUpRequest( { reinterpret_cast<const HlmsCache *>( passCacheIdx ),
+                                                   stubEntry, queuedRenderable, hash[0], finalHash } );
             }
         }
 
@@ -3819,8 +4206,8 @@ namespace Ogre
                     mFastShaderBuildHack = StringConverter::parseBool( itor->second.currentValue );
             }
 
-            // Prefer glslvk over hlslvk over glsl, and glsl over glsles
-            const String shaderProfiles[6] = { "hlsl", "glsles", "glsl", "hlslvk", "glslvk", "metal" };
+            // Prefer glslvk over hlslvk over glsl
+            const String shaderProfiles[6] = { "hlsl", "glsl", "hlslvk", "glslvk", "metal" };
             const RenderSystemCapabilities *capabilities = mRenderSystem->getCapabilities();
 
             for( size_t i = 0; i < 6; ++i )
@@ -3885,6 +4272,39 @@ namespace Ogre
 
             if( !mDefaultDatablock )
                 mDefaultDatablock = createDefaultDatablock();
+        }
+    }
+    //-----------------------------------------------------------------------------------
+    void Hlms::getDefaultPaths( String &outDataFolderPath, StringVector &outLibraryFoldersPaths,
+                                const ConfigFile &configFile )
+    {
+        getDefaultPaths( outDataFolderPath, outLibraryFoldersPaths, configFile, mTypeNameStr );
+    }
+    //-----------------------------------------------------------------------------------
+    void Hlms::getDefaultPaths( String &outDataFolderPath, StringVector &outLibraryFoldersPaths,
+                                const ConfigFile &configFile, const String &hlmsTypeName )
+    {
+        outLibraryFoldersPaths = configFile.getMultiSetting( "Library", hlmsTypeName );
+        outDataFolderPath = configFile.getSetting( "Main", hlmsTypeName );
+
+        // We need to know what RenderSystem is currently in use, as the
+        // name of the compatible shading language is part of the path
+        Ogre::RenderSystem *renderSystem = Ogre::Root::getSingleton().getRenderSystem();
+        Ogre::String shaderSyntax = "GLSL";
+        if( renderSystem->getName() == "Direct3D11 Rendering Subsystem" )
+            shaderSyntax = "HLSL";
+        else if( renderSystem->getName() == "Metal Rendering Subsystem" )
+            shaderSyntax = "Metal";
+        for( String &libraryPath : outLibraryFoldersPaths )
+        {
+            const size_t pos = libraryPath.find( "[SHADER_SYNTAX]" );
+            if( pos != String::npos )
+                libraryPath.replace( pos, sizeof( "[SHADER_SYNTAX]" ) - 1u, shaderSyntax );
+        }
+        {
+            const size_t pos = outDataFolderPath.find( "[SHADER_SYNTAX]" );
+            if( pos != String::npos )
+                outDataFolderPath.replace( pos, sizeof( "[SHADER_SYNTAX]" ) - 1u, shaderSyntax );
         }
     }
     //-----------------------------------------------------------------------------------

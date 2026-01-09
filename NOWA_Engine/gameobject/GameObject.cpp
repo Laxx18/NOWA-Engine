@@ -16,6 +16,9 @@
 #include "main/AppStateManager.h"
 #include "main/Events.h"
 #include "main/Core.h"
+#include "ocean/Ocean.h"
+#include "ocean/OgreHlmsOcean.h"
+#include "ocean/OgreHlmsOceanDatablock.h"
 
 #include "OgreMeshManager2.h"
 #include "OgreConfigFile.h"
@@ -587,7 +590,7 @@ namespace NOWA
 		{
 			NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
 			{
-				Ogre::v1::Entity * entity = this->getMovableObjectUnsafe<Ogre::v1::Entity>();
+				Ogre::v1::Entity * entity = this->getMovableObject<Ogre::v1::Entity>();
 				if (nullptr != entity)
 				{
 					this->meshName->setValue(entity->getMesh()->getName());
@@ -2051,10 +2054,20 @@ namespace NOWA
 								WorkspaceBaseComponent* workspaceBaseComponent = WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent();
 								if (nullptr != workspaceBaseComponent)
 								{
-									pbsDatablock->setTexture(static_cast<Ogre::uint8>(Ogre::PBSM_REFLECTION), workspaceBaseComponent->getDynamicCubemapTexture());
-									pbsDatablock->setWorkflow(Ogre::HlmsPbsDatablock::SpecularAsFresnelWorkflow);
-									pbsDatablock->setFresnel(Ogre::Vector3(1.0f, 1.0f, 1.0f), true);
-									this->setDataBlockPbsReflectionTextureName("cubemap");
+									Ogre::TextureGpu* cubemapTex =
+										workspaceBaseComponent->getDynamicCubemapTexture();
+									if (nullptr != cubemapTex)
+									{
+										pbsDatablock->setTexture(Ogre::PBSM_REFLECTION, cubemapTex);
+										pbsDatablock->setWorkflow(Ogre::HlmsPbsDatablock::SpecularAsFresnelWorkflow);
+										pbsDatablock->setFresnel(Ogre::Vector3(1.0f, 1.0f, 1.0f), true);
+										this->setDataBlockPbsReflectionTextureName("cubemap");
+									}
+									else
+									{
+										pbsDatablock->setWorkflow(Ogre::HlmsPbsDatablock::SpecularAsFresnelWorkflow);
+										pbsDatablock->setFresnel(Ogre::Vector3(1.0f, 1.0f, 1.0f), true);
+									}
 								}
 							}
 							else
@@ -2062,7 +2075,7 @@ namespace NOWA
 								auto reflectionTexture = pbsDatablock->getTexture(Ogre::PbsTextureTypes::PBSM_REFLECTION);
 								if (nullptr != reflectionTexture)
 								{
-									pbsDatablock->setTexture(static_cast<Ogre::uint8>(Ogre::PBSM_REFLECTION), nullptr);
+									pbsDatablock->setTexture(Ogre::PBSM_REFLECTION, static_cast<Ogre::TextureGpu*>(nullptr));
 									this->setDataBlockPbsReflectionTextureName("");
 								}
 							}
@@ -2070,10 +2083,10 @@ namespace NOWA
 					}
 				}
 			});
-
 		}
-		else
+		else if (GameObject::ENTITY == this->type)
 		{
+			// Similar pattern for entities
 			ENQUEUE_RENDER_COMMAND("GameObject::setUseReflection2",
 			{
 				Ogre::v1::Entity * entity = this->getMovableObject<Ogre::v1::Entity>();
@@ -2089,11 +2102,16 @@ namespace NOWA
 								WorkspaceBaseComponent* workspaceBaseComponent = WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent();
 								if (nullptr != workspaceBaseComponent)
 								{
-									pbsDatablock->setTexture(Ogre::PBSM_REFLECTION, workspaceBaseComponent->getDynamicCubemapTexture());
-									pbsDatablock->setWorkflow(Ogre::HlmsPbsDatablock::SpecularAsFresnelWorkflow);
-									pbsDatablock->setFresnel(Ogre::Vector3(1.0f, 1.0f, 1.0f), true);
-									pbsDatablock->setRoughness(0.001f);
-									this->setDataBlockPbsReflectionTextureName("cubemap");
+									Ogre::TextureGpu* cubemapTex =
+										workspaceBaseComponent->getDynamicCubemapTexture();
+									if (nullptr != cubemapTex)
+									{
+										pbsDatablock->setTexture(Ogre::PBSM_REFLECTION, cubemapTex);
+										pbsDatablock->setWorkflow(Ogre::HlmsPbsDatablock::SpecularAsFresnelWorkflow);
+										pbsDatablock->setFresnel(Ogre::Vector3(1.0f, 1.0f, 1.0f), true);
+										pbsDatablock->setRoughness(0.001f);
+										this->setDataBlockPbsReflectionTextureName("cubemap");
+									}
 								}
 							}
 							else
@@ -2101,10 +2119,44 @@ namespace NOWA
 								auto reflectionTexture = pbsDatablock->getTexture(Ogre::PbsTextureTypes::PBSM_REFLECTION);
 								if (nullptr != reflectionTexture)
 								{
-									pbsDatablock->setTexture(static_cast<Ogre::uint8>(Ogre::PBSM_REFLECTION), nullptr);
+									pbsDatablock->setTexture(Ogre::PBSM_REFLECTION, static_cast<Ogre::TextureGpu*>(nullptr));
 									this->setDataBlockPbsReflectionTextureName("");
 								}
 							}
+						}
+					}
+				}
+			});
+		}
+		else if (GameObject::OCEAN == this->type)
+		{
+			ENQUEUE_RENDER_COMMAND("GameObject::setUseReflection3",
+			{
+				// Ocean uses HlmsOcean, not PBS datablocks
+				if (true == this->useReflection->getBool())
+				{
+					WorkspaceBaseComponent* workspaceBaseComponent = WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent();
+					if (nullptr != workspaceBaseComponent)
+					{
+						Ogre::TextureGpu* cubemapTex =
+							workspaceBaseComponent->getDynamicCubemapTexture();
+						if (nullptr != cubemapTex)
+						{
+							auto* hlmsOcean = static_cast<Ogre::HlmsOcean*>(Ogre::Root::getSingleton().getHlmsManager()->getHlms(Ogre::HLMS_USER1));
+							if (hlmsOcean)
+							{
+								hlmsOcean->setEnvProbe(cubemapTex);
+								this->setDataBlockPbsReflectionTextureName("cubemap");
+							}
+						}
+					}
+					else
+					{
+						auto* hlmsOcean = static_cast<Ogre::HlmsOcean*>(Ogre::Root::getSingleton().getHlmsManager()->getHlms(Ogre::HLMS_USER1));
+						if (hlmsOcean)
+						{
+							hlmsOcean->setEnvProbe(static_cast<Ogre::TextureGpu*>(nullptr));
+							this->setDataBlockPbsReflectionTextureName("");
 						}
 					}
 				}

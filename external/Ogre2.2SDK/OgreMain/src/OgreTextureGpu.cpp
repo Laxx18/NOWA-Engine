@@ -30,6 +30,7 @@ THE SOFTWARE.
 
 #include "OgreTextureGpu.h"
 
+#include "OgreDepthBuffer.h"
 #include "OgreException.h"
 #include "OgreLogManager.h"
 #include "OgreLwString.h"
@@ -450,13 +451,9 @@ namespace Ogre
                 uint32 msaaTextureFlags = TextureFlags::NotTexture;
                 if( hasMsaaExplicitResolves() )
                     msaaTextureFlags = mTextureFlags;
-                uint32 depthFormatTextureFlags = 0u;
-                if( !getPreferDepthTexture() )
-                    depthFormatTextureFlags = TextureFlags::NotTexture;
 
                 mSampleDescription = mTextureManager->getRenderSystem()->validateSampleDescription(
-                    mRequestedSampleDescription, mPixelFormat, msaaTextureFlags,
-                    depthFormatTextureFlags );
+                    mRequestedSampleDescription, mPixelFormat, msaaTextureFlags );
             }
             if( !( mSampleDescription == mRequestedSampleDescription ) )
                 notifyAllListenersTextureChanged( TextureGpuListener::FsaaSettingAlteredByApi, 0 );
@@ -672,6 +669,8 @@ namespace Ogre
         assert( this != dst || !srcBox.overlaps( dstBox ) );
         assert( srcMipLevel < this->getNumMipmaps() && dstMipLevel < dst->getNumMipmaps() );
         OGRE_ASSERT_LOW( ( this->getOrientationMode() & 0x01 ) == ( dst->getOrientationMode() & 0x01 ) );
+        OGRE_ASSERT_LOW( !this->isTilerMemoryless() );
+        OGRE_ASSERT_LOW( !dst->isTilerMemoryless() );
     }
     //-----------------------------------------------------------------------------------
     void TextureGpu::_setDepthBufferDefaults( uint16 depthBufferPoolId, bool preferDepthTexture,
@@ -916,6 +915,8 @@ namespace Ogre
         if( this->getInternalWidth() == colourTarget->getInternalWidth() &&
             this->getInternalHeight() == colourTarget->getInternalHeight() &&
             this->getSampleDescription() == colourTarget->getSampleDescription() &&
+            this->isTilerMemoryless() ==
+                ( colourTarget->getDepthBufferPoolId() == DepthBuffer::POOL_MEMORYLESS ) &&
             this->isRenderWindowSpecific() == colourTarget->isRenderWindowSpecific() )
         {
             return true;

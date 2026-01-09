@@ -3,6 +3,15 @@
 
 @insertpiece( DefaultTerraHeaderPS )
 
+// ---------------------------------------------------------------------
+// SAFETY: objLightMask fallback
+// Terra / PBS may reference objLightMask even when fine light masks are off
+// ---------------------------------------------------------------------
+#ifndef OGRE_HAS_OBJ_LIGHT_MASK
+    #define OGRE_HAS_OBJ_LIGHT_MASK
+    uint objLightMask = 0xFFFFFFFFu;
+#endif
+
 @insertpiece( OceanMaterialStructDecl )
 @insertpiece( OceanMaterialDecl )
 
@@ -40,8 +49,8 @@ struct PS_OUTPUT
 // Textures
 // -------------------------------------------------------------------------
 
-Texture3D terrainData    : register(t0);
-Texture2D terrainShadows   : register(t1);
+Texture3D terrainData;
+Texture2D terrainShadows;
 
 SamplerState terrainDataSampler    : register(s0);
 SamplerState terrainShadowsSampler : register(s1);
@@ -54,8 +63,9 @@ SamplerState terrainShadowsSampler : register(s1);
 @end
 
 @property( envprobe_map )
-    TextureCube texEnvProbeMap : register(t70);
-    SamplerState texEnvProbeMapSampler : register(s70);
+    TextureCube texEnvProbeMap;
+
+    SamplerState texEnvProbeMapSampler : register( s15 );
 @end
 
 @property( hlms_lights_spot_textured )
@@ -72,27 +82,6 @@ SamplerState terrainShadowsSampler : register(s1);
 
 @insertpiece( DeclShadowMapMacros )
 @insertpiece( DeclShadowSamplingFuncs )
-
-#ifndef BRDF
-INLINE midf3 BRDF(
-    midf3 lightDir,
-    midf3 lightDiffuse,
-    midf3 lightSpecular,
-    PixelData pixelData PASSBUF_ARG_DECL )
-{
-    // Ogre convention: lightDir points FROM light -> surface
-    midf3 L = normalize( -lightDir );
-    midf3 N = pixelData.normal;
-
-    midf NdotL = saturate( dot( N, L ) );
-
-    // Simple Lambert + reduced specular to avoid bright spots
-    midf3 diffuse  = pixelData.diffuse.xyz * lightDiffuse * NdotL;
-    midf3 specular = lightSpecular * pow( NdotL, _h(32.0f) ) * _h(0.2);
-
-    return diffuse + specular * pixelData.F0;
-}
-#endif
 
 // -------------------------------------------------------------------------
 // Pixel Shader
@@ -148,33 +137,31 @@ Ocean_VSPS inPs
     @insertpiece( custom_ps_posSampleNormal )
 
     // -------------------------------------------------------------
-    // Pixel-only ocean normal reconstruction
-    // -------------------------------------------------------------
+	// Pixel-only ocean normal reconstruction (match GLSL exactly)
+	// -------------------------------------------------------------
 
-    // Tangent-space normal from texture
-    float3 nNormalTS;
-    nNormalTS.xy = textureValue.xy * 2.0f - 1.0f;
-    nNormalTS.xy *= waveIntensity;
-    nNormalTS.z  = 1.0f;
+	// Tangent-space normal from texture
+	float3 nNormalTS;
+	nNormalTS.xy = textureValue.xy * 2.0f - 1.0f;
+	nNormalTS.xy *= waveIntensity;
+	nNormalTS.z  = 1.0f;
 
-    // Geometric normal (WORLD)
-    float3 geomNormalWS = float3( 0.0f, 1.0f, 0.0f );
+	// Geometric normal is always +Y (WORLD)
+	float3 geomNormal = float3( 0.0f, 1.0f, 0.0f );
 
-    // Convert to VIEW space
-    float3 geomNormalVS = normalize( mul( geomNormalWS, (float3x3)passBuf.view ) );
+	// Convert geom normal to VIEW space exactly like GLSL: geomNormal * mat3(passBuf.view)
+	geomNormal = normalize( mul( geomNormal, (float3x3)passBuf.view ) );
 
-    // Camera X axis in VIEW space
-    float3 viewSpaceUnitX = float3(passBuf.view._11, passBuf.view._21, passBuf.view._31 );
+	// GLSL: vec3( view[0].x, view[1].x, view[2].x )  == first ROW of view matrix (x across columns)
+	float3 viewSpaceUnitX = float3( passBuf.view._11, passBuf.view._12, passBuf.view._13 );
 
-    // Build stable TBN in VIEW space
-    float3 vTangent  = normalize( cross( geomNormalVS, viewSpaceUnitX ) );
-    float3 vBinormal = cross( vTangent, geomNormalVS );
+	// TBN (same cross order as GLSL)
+	float3 vTangent  = normalize( cross( geomNormal, viewSpaceUnitX ) );
+	float3 vBinormal = cross( vTangent, geomNormal );
 
-    // Order: (binormal, tangent, normal)
-    float3x3 TBN = float3x3(vBinormal, vTangent, geomNormalVS );
-
-    // Final view-space normal
-    nNormal = normalize( mul( nNormalTS, TBN ) ); // match GLSL column semantics
+	// GLSL: nNormal = normalize( TBN * nNormalTS ); with TBN columns (vBinormal, vTangent, geomNormal)
+	// Do the equivalent explicitly (no matrix layout pitfalls):
+	nNormal = normalize( vBinormal * nNormalTS.x + vTangent * nNormalTS.y + geomNormal * nNormalTS.z );
 
     // ---------------------------------------------------------------------
     // Shadows
@@ -214,6 +201,8 @@ Ocean_VSPS inPs
     pixelData.diffuse  = midf4( diffuseCol );
     pixelData.specular = midf3( 1.0f, 1.0f, 1.0f );
     pixelData.F0       = F0;
+	pixelData.viewDir = viewDir;
+	pixelData.NdotV   = NdotV;
 
     // roughness handling
     @property( hlms_forwardplus )
@@ -225,14 +214,23 @@ Ocean_VSPS inPs
 
     pixelData.roughness = max( midf_c( 0.002f ), pixelData.perceptualRoughness * pixelData.perceptualRoughness );
 
-    midf3 finalColour = diffuseCol.xyz * _h(0.1f);
+    // ---------------------------------------------------------------------
+	// Ambient (matches how HlmsOcean sets properties in calculateHashForPreCreate)
+	// ---------------------------------------------------------------------
+	midf3 finalColour = midf3( 0.0f, 0.0f, 0.0f );
 
-    @property( !ambient_fixed )
-        finalColour += pixelData.diffuse.xyz * passBuf.ambientUpperHemi.xyz;
-    @end
-    @property( ambient_fixed )
-        finalColour = passBuf.ambientUpperHemi.xyz * @insertpiece( kD ).xyz;
-    @end
+	@property( ambient_fixed )
+		// Upper hemi only
+		finalColour = passBuf.ambientUpperHemi.xyz * @insertpiece( kD ).xyz;
+	@end
+
+	@property( ambient_hemisphere )
+		// Blend between lower & upper based on normal vs hemisphere direction.
+		// nNormal is view-space in your shader, and passBuf.ambientHemisphereDir is also view-space.
+		midf hemi = saturate( dot( nNormal, passBuf.ambientHemisphereDir.xyz ) * _h(0.5f) + _h(0.5f) );
+		midf3 ambientHemi = lerp( passBuf.ambientLowerHemi.xyz, passBuf.ambientUpperHemi.xyz, hemi );
+		finalColour = ambientHemi * @insertpiece( kD ).xyz;
+	@end
 
     @insertpiece( DeclareObjLightMask )
     @insertpiece( custom_ps_preLights )
@@ -240,36 +238,39 @@ Ocean_VSPS inPs
     // ---------------------------------------------------------------------
     // Directional Lights
     // ---------------------------------------------------------------------
+	
+	@property( !custom_disable_directional_lights )
+		@property( hlms_lights_directional || hlms_lights_directional_non_caster )
 
-    @property( hlms_lights_directional || hlms_lights_directional_non_caster )
+			@property( hlms_lights_directional )
+				finalColour += BRDF(
+					passBuf.lights[0].position.xyz,
+					passBuf.lights[0].diffuse.xyz,
+					passBuf.lights[0].specular.xyz,
+					pixelData PASSBUF_ARG
+				) @insertpiece( DarkenWithShadowFirstLight );
+			@end
 
-        @property( hlms_lights_directional )
-            finalColour += BRDF(
-                passBuf.lights[0].position.xyz,
-                passBuf.lights[0].diffuse.xyz,
-                passBuf.lights[0].specular.xyz,
-                pixelData PASSBUF_ARG
-            ) * fShadow;
-        @end
+			@foreach( hlms_lights_directional, n, 1 )
+				finalColour += BRDF(
+					passBuf.lights[@n].position.xyz,
+					passBuf.lights[@n].diffuse.xyz,
+					passBuf.lights[@n].specular.xyz,
+					pixelData PASSBUF_ARG
+				) @insertpiece( DarkenWithShadow );
+			@end
 
-        @foreach( hlms_lights_directional, n, 1 )
-            finalColour += BRDF(
-                passBuf.lights[@n].position.xyz,
-                passBuf.lights[@n].diffuse.xyz,
-                passBuf.lights[@n].specular.xyz,
-                pixelData PASSBUF_ARG
-            ) @insertpiece( DarkenWithShadow );
-        @end
+			@foreach( hlms_lights_directional_non_caster, n, hlms_lights_directional )
+				finalColour += BRDF(
+					passBuf.lights[@n].position.xyz,
+					passBuf.lights[@n].diffuse.xyz,
+					passBuf.lights[@n].specular.xyz,
+					pixelData PASSBUF_ARG
+				);
+			@end
 
-        @foreach( hlms_lights_directional_non_caster, n, hlms_lights_directional )
-            finalColour += BRDF(
-                passBuf.lights[@n].position.xyz,
-                passBuf.lights[@n].diffuse.xyz,
-                passBuf.lights[@n].specular.xyz,
-                pixelData PASSBUF_ARG
-            );
-        @end
-    @end
+		@end
+	@end
 
     // ---------------------------------------------------------------------
     // Point and Spot Lights
@@ -341,6 +342,42 @@ Ocean_VSPS inPs
     @end
 
     @insertpiece( forward3dLighting )
+	
+	// ---------------------------------------------------------------------
+	// Env probe / IBL
+	// ---------------------------------------------------------------------
+    @property( envprobe_map )
+        // Simple environment reflection contribution.
+        // View-space vectors:
+        float3 reflDirView  = reflect( -viewDir, nNormal );
+
+        // Convert to world-space using inverse view rotation (row-vector convention in this shader).
+        float3x3 invViewRot = transpose( (float3x3)passBuf.view );
+        float3 reflDirWorld = normalize( mul( reflDirView, invViewRot ) );
+
+        float3 envCol = texEnvProbeMap.Sample( texEnvProbeMapSampler, reflDirWorld ).xyz;
+
+        // Schlick Fresnel using F0 from material (dielectric by default in your material decl).
+        float oneMinusNdotV = 1.0f - NdotV;
+        float fresnelTerm   = oneMinusNdotV * oneMinusNdotV * oneMinusNdotV * oneMinusNdotV * oneMinusNdotV;
+        float3 F = lerp( F0.xyz, float3( 1.0f, 1.0f, 1.0f ), fresnelTerm );
+
+        // Add reflection as specular lighting term.
+        finalColour += envCol * F;
+    @end
+
+	// ---------------------------------------------------------------------	
+	// ---------------------------------------------------------------------
+	// Atmosphere / fog
+	// ---------------------------------------------------------------------
+	float3 outColour = finalColour;
+
+	// If these pieces expect a specific variable name, keep outColour exactly.
+	@insertpiece( ApplyAtmosphere )
+	@insertpiece( ApplyFog )
+
+	finalColour = outColour;
+
 
     // ---------------------------------------------------------------------
     // Output

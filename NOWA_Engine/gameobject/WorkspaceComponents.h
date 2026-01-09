@@ -20,6 +20,7 @@
 namespace NOWA
 {
 	class CameraComponent;
+	class OceanComponent;
 	class PlanarReflectionsWorkspaceListener;
 	// class HlmsFogListener;
 	// class HlmsDebugLogListener;
@@ -259,10 +260,14 @@ namespace NOWA
 
 		virtual void createDistortionNode(void);
 
+		virtual void createUnderwaterNode(void);
+
 		virtual void addWorkspace(Ogre::CompositorWorkspaceDef* workspaceDef);
 
 		Ogre::String getDistortionNode(void) const;
 
+
+		Ogre::String getUnderwaterNode(void) const;
 		void changeBackgroundColor(const Ogre::ColourValue& backgroundColor);
 
 		unsigned char getMSAA(void);
@@ -310,14 +315,12 @@ namespace NOWA
 
 		void setUseTerra(bool useTerra);
 
-		void setUseOcean(bool useOcean);
+		void setUseOcean(bool useOcean, OceanComponent* oceanComponent);
 
 		void createSSAONoiseTexture(void);
 
 	private:
 		void reconnectAllNodes(void);
-
-		void updateOceanEnvProbe(void);
 
 	protected:
 		Variant* backgroundColor;
@@ -340,6 +343,7 @@ namespace NOWA
 		bool canUseReflection;
 		
 		CameraComponent* cameraComponent;
+		OceanComponent* oceanComponent;
 		Ogre::CompositorWorkspace* workspace;
 		Ogre::String workspaceName;
 		Ogre::String renderingNodeName;
@@ -368,6 +372,13 @@ namespace NOWA
 		Ogre::Terra* terra;
 		// Special: Only a OceanComponent can manipulate this value
 		bool useOcean;
+
+		/// True if the current workspace graph was built in "ocean underwater" mode.
+		/// We use this to rebuild the workspace only when the state toggles.
+		bool oceanUnderwaterActive;
+
+		/// Optional compositor node inserted between the scene output and the final node when underwater.
+		Ogre::String underwaterNodeName;
 
 		Ogre::HlmsListener* hlmsListener;
 

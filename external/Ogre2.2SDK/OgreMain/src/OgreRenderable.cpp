@@ -110,6 +110,11 @@ namespace Ogre
         setDatablock( hlmsManager->getDatablock( datablockName ) );
     }
     //-----------------------------------------------------------------------------------
+    ParticleType::ParticleType Renderable::getParticleType() const
+    {
+        return ParticleType::NotParticle;
+    }
+    //-----------------------------------------------------------------------------------
     void Renderable::setDatablock( HlmsDatablock *datablock )
     {
         if( mHlmsDatablock != datablock )

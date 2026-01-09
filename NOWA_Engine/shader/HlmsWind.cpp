@@ -96,11 +96,17 @@ namespace NOWA
 		this->noiseSamplerBlock = nullptr;
 	}
 
-	void HlmsWind::notifyPropertiesMergedPreGenerationStep(size_t tid)
+	Ogre::Hlms::PropertiesMergeStatus HlmsWind::notifyPropertiesMergedPreGenerationStep(size_t tid, Ogre::PiecesMap* inOutPieces)
 	{
-		HlmsPbs::notifyPropertiesMergedPreGenerationStep(tid);
+		PropertiesMergeStatus status =
+			HlmsPbs::notifyPropertiesMergedPreGenerationStep(tid, inOutPieces);
+
+		if (status == PropertiesMergeStatusError)
+			return status;
 
 		setTextureReg(tid, Ogre::VertexShader, "texPerlinNoise", 14);
+
+		return status;
 	}
 
 	Ogre::uint32 HlmsWind::fillBuffersForV1(const Ogre::HlmsCache* cache, const Ogre::QueuedRenderable& queuedRenderable, bool casterPass, Ogre::uint32 lastCacheHash, Ogre::CommandBuffer* commandBuffer)

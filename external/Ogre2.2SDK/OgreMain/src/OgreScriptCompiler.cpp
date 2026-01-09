@@ -1235,8 +1235,6 @@ namespace Ogre
         mIds["target_height_scaled"] = ID_TARGET_HEIGHT_SCALED;
         mIds["target_orientation_mode"] = ID_TARGET_ORIENTATION_MODE;
         mIds["target_format"] = ID_TARGET_FORMAT;
-        mIds["no_gamma"] = ID_NO_GAMMA;
-        mIds["no_fsaa"] = ID_NO_FSAA;
         mIds["msaa"] = ID_MSAA;
         mIds["msaa_auto"] = ID_MSAA_AUTO;
         mIds["explicit_resolve"] = ID_EXPLICIT_RESOLVE;
@@ -1366,9 +1364,12 @@ namespace Ogre
         mIds["kernel_radius"] = ID_KERNEL_RADIUS;
         mIds["gauss_deviation"] = ID_GAUSS_DEVIATION;
 
+        mIds["mip_range"] = ID_MIP_RANGE;
+
         mIds["samples_per_iteration"] = ID_SAMPLES_PER_ITERATION;
         mIds["samples_single_iteration_fallback"] = ID_SAMPLES_SINGLE_ITERATION_FALLBACK;
         mIds["force_mipmap_fallback"] = ID_FORCE_MIPMAP_FALLBACK;
+        mIds["autogen_input_mipmaps"] = ID_AUTOGEN_INPUT_MIPMAPS;
 
         mIds["mode"] = ID_MODE;
 
@@ -1707,6 +1708,7 @@ namespace Ogre
         mScriptPatterns.push_back( "*.program" );
         mScriptPatterns.push_back( "*.material" );
         mScriptPatterns.push_back( "*.particle" );
+        mScriptPatterns.push_back( "*.particle2" );
         mScriptPatterns.push_back( "*.compositor" );
         mScriptPatterns.push_back( "*.os" );
         ResourceGroupManager::getSingleton()._registerScriptLoader( this );

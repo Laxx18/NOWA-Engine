@@ -46,8 +46,12 @@ THE SOFTWARE.
 #include "OgreSceneManager.h"
 #include "OgreSceneManagerEnumerator.h"
 #include "OgreTechnique.h"
+#include "OgreTimer.h"
+#include "ParticleSystem/OgreParticleSystem2.h"
+#include "Vao/OgreConstBufferPacked.h"
 #include "Vao/OgreIndexBufferPacked.h"
 #include "Vao/OgreIndirectBufferPacked.h"
+#include "Vao/OgreReadOnlyBufferPacked.h"
 #include "Vao/OgreVaoManager.h"
 #include "Vao/OgreVertexArrayObject.h"
 
@@ -55,7 +59,7 @@ namespace Ogre
 {
     AtomicScalar<uint32> v1::RenderOperation::MeshIndexId( 0 );
 
-    const HlmsCache c_dummyCache( 0, HLMS_MAX, HlmsPso() );
+    const HlmsCache c_dummyCache( 0, HLMS_MAX, HLMS_CACHE_FLAGS_NONE, HlmsPso() );
 
     // clang-format off
     const int RqBits::SubRqIdBits           = 3;
@@ -108,24 +112,36 @@ namespace Ogre
             setRenderQueueMode( static_cast<uint8>( i ), V1_FAST );
         for( size_t i = 225; i < 256u; ++i )
             setRenderQueueMode( static_cast<uint8>( i ), V1_FAST );
+
+        setRenderQueueMode( kParticleSystemDefaultRenderQueueId, PARTICLE_SYSTEM );
     }
     //---------------------------------------------------------------------
     RenderQueue::~RenderQueue()
     {
+        _releaseManualHardwareResources();
+
         delete mCommandBuffer;
+    }
+    //-----------------------------------------------------------------------
+    void RenderQueue::_releaseManualHardwareResources()
+    {
+        mCommandBuffer->clear();
 
-        assert( mUsedIndirectBuffers.empty() );
-
-        IndirectBufferPackedVec::const_iterator itor = mFreeIndirectBuffers.begin();
-        IndirectBufferPackedVec::const_iterator endt = mFreeIndirectBuffers.end();
-
-        while( itor != endt )
+        for( IndirectBufferPacked *buf : mUsedIndirectBuffers )
         {
-            if( ( *itor )->getMappingState() != MS_UNMAPPED )
-                ( *itor )->unmap( UO_UNMAP_ALL );
-            mVaoManager->destroyIndirectBuffer( *itor );
-            ++itor;
+            if( buf->getMappingState() != MS_UNMAPPED )
+                buf->unmap( UO_UNMAP_ALL );
+            mVaoManager->destroyIndirectBuffer( buf );
         }
+        mUsedIndirectBuffers.clear();
+
+        for( IndirectBufferPacked *buf : mFreeIndirectBuffers )
+        {
+            if( buf->getMappingState() != MS_UNMAPPED )
+                buf->unmap( UO_UNMAP_ALL );
+            mVaoManager->destroyIndirectBuffer( buf );
+        }
+        mFreeIndirectBuffers.clear();
     }
     //-----------------------------------------------------------------------
     IndirectBufferPacked *RenderQueue::getIndirectBuffer( size_t numDraws )
@@ -263,7 +279,7 @@ namespace Ogre
         // TODO: Account for skeletal animation in any of the hashes (preferently on the material side)
         // TODO: Account for auto instancing animation in any of the hashes
 
-#define OGRE_RQ_HASH( x, bits, shift ) ( uint64( (x)&OGRE_RQ_MAKE_MASK( ( bits ) ) ) << ( shift ) )
+#define OGRE_RQ_HASH( x, bits, shift ) ( uint64( ( x ) & OGRE_RQ_MAKE_MASK( ( bits ) ) ) << ( shift ) )
 
         uint64 hash;
         if( !transparent )
@@ -310,7 +326,7 @@ namespace Ogre
 
         const size_t numWorkerThreads = mSceneManager->getNumWorkerThreads();
         const bool bUseMultithreadedShaderCompliation =
-            mRoot->getRenderSystem()->supportsMultithreadedShaderCompliation() &&
+            mRoot->getRenderSystem()->supportsMultithreadedShaderCompilation() &&
             mSceneManager->getNumWorkerThreads() > 1u;
 
         for( size_t i = 0; i < HLMS_MAX; ++i )
@@ -340,32 +356,39 @@ namespace Ogre
 
         rs->setCurrentPassIterationCount( 1 );
 
-        size_t numNeededDraws = 0;
+        size_t numNeededDraws = 0u;
+        size_t numNeededV2Draws = 0u;
+        size_t numNeededParticleDraws = 0u;
         for( size_t i = firstRq; i < lastRq; ++i )
         {
             if( mRenderQueues[i].mMode == FAST )
             {
-                QueuedRenderableArrayPerThread::const_iterator itor =
-                    mRenderQueues[i].mQueuedRenderablesPerThread.begin();
-                QueuedRenderableArrayPerThread::const_iterator endt =
-                    mRenderQueues[i].mQueuedRenderablesPerThread.end();
-
-                while( itor != endt )
+                for( const ThreadRenderQueue &threadRenderQueue :
+                     mRenderQueues[i].mQueuedRenderablesPerThread )
                 {
-                    numNeededDraws += itor->q.size();
-                    ++itor;
+                    numNeededV2Draws += threadRenderQueue.q.size();
+                }
+            }
+            else if( mRenderQueues[i].mMode == PARTICLE_SYSTEM )
+            {
+                for( const ThreadRenderQueue &threadRenderQueue :
+                     mRenderQueues[i].mQueuedRenderablesPerThread )
+                {
+                    numNeededParticleDraws += threadRenderQueue.q.size();
                 }
             }
         }
+
+        numNeededDraws = numNeededV2Draws + numNeededParticleDraws;
 
         mCommandBuffer->setCurrentRenderSystem( rs );
 
         ParallelHlmsCompileQueue *parallelCompileQueue = 0;
 
-        if( rs->supportsMultithreadedShaderCompliation() && mSceneManager->getNumWorkerThreads() > 1u )
+        if( rs->supportsMultithreadedShaderCompilation() && mSceneManager->getNumWorkerThreads() > 1u )
         {
             parallelCompileQueue = &mParallelHlmsCompileQueue;
-            mParallelHlmsCompileQueue.start( mSceneManager );
+            mParallelHlmsCompileQueue.start( mRoot, mSceneManager, casterPass );
         }
 
         bool supportsIndirectBuffers = mVaoManager->supportsIndirectBuffers();
@@ -463,7 +486,13 @@ namespace Ogre
                 renderGL3V1( rs, casterPass, dualParaboloid, mPassCache, mRenderQueues[i],
                              parallelCompileQueue );
             }
-            else if( numNeededDraws > 0 /*&& mRenderQueues[i].mMode == FAST*/ )
+            else if( numNeededParticleDraws > 0 && mRenderQueues[i].mMode == PARTICLE_SYSTEM )
+            {
+                indirectDraw =
+                    renderParticles( rs, casterPass, mPassCache, mRenderQueues[i], parallelCompileQueue,
+                                     indirectBuffer, indirectDraw, startIndirectDraw );
+            }
+            else if( numNeededV2Draws > 0 /*&& mRenderQueues[i].mMode == FAST*/ )
             {
                 indirectDraw =
                     renderGL3( rs, casterPass, dualParaboloid, mPassCache, mRenderQueues[i],
@@ -552,12 +581,12 @@ namespace Ogre
         OgreProfileEndGroup( "RenderQueue::warmUpShadersCollect", OGREPROF_RENDERING );
     }
     //-----------------------------------------------------------------------
-    void RenderQueue::warmUpShadersTrigger( RenderSystem *rs )
+    void RenderQueue::warmUpShadersTrigger( RenderSystem *rs, bool casterPass )
     {
         OgreProfileBeginGroup( "RenderQueue::warmUpShadersTrigger", OGREPROF_RENDERING );
 
-        if( rs->supportsMultithreadedShaderCompliation() && mSceneManager->getNumWorkerThreads() > 1u )
-            mParallelHlmsCompileQueue.fireWarmUpParallel( mSceneManager );
+        if( rs->supportsMultithreadedShaderCompilation() && mSceneManager->getNumWorkerThreads() > 1u )
+            mParallelHlmsCompileQueue.fireWarmUpParallel( mRoot, mSceneManager, casterPass );
         else
             mParallelHlmsCompileQueue.warmUpSerial( mHlmsManager, mPendingPassCaches.data() );
 
@@ -626,6 +655,184 @@ namespace Ogre
         mLastVertexData = lastVertexData;
         mLastIndexData = lastIndexData;
         mLastTextureHash = lastTextureHash;
+    }
+    //-----------------------------------------------------------------------
+    uint8 *RenderQueue::renderParticles( RenderSystem *rs, const bool casterPass, HlmsCache passCache[],
+                                         const RenderQueueGroup &renderQueueGroup,
+                                         ParallelHlmsCompileQueue *parallelCompileQueue,
+                                         IndirectBufferPacked *indirectBuffer, uint8 *indirectDraw,
+                                         uint8 *startIndirectDraw )
+    {
+        uint32 lastVaoName = mLastVaoName;
+        HlmsCache const *lastHlmsCache = &c_dummyCache;
+        uint32 lastHlmsCacheHash = 0;
+
+        int baseInstanceAndIndirectBuffers = 0;
+        if( mVaoManager->supportsIndirectBuffers() )
+            baseInstanceAndIndirectBuffers = 2;
+        else if( mVaoManager->supportsBaseInstance() )
+            baseInstanceAndIndirectBuffers = 1;
+
+        const bool isUsingInstancedStereo = mSceneManager->isUsingInstancedStereo();
+        const uint32 instancesPerDraw = isUsingInstancedStereo ? 2u : 1u;
+        const uint32 baseInstanceShift = isUsingInstancedStereo ? 1u : 0u;
+
+        CbDrawCall *drawCmd = 0;
+
+        RenderingMetrics stats;
+
+        uint8 particleSystemSlot[HLMS_MAX][2];
+        for( size_t i = 0u; i < HLMS_MAX; ++i )
+        {
+            Hlms *hlms = mHlmsManager->getHlms( static_cast<HlmsTypes>( i ) );
+            if( hlms )
+            {
+                particleSystemSlot[i][0] = hlms->getParticleSystemConstSlot();
+                particleSystemSlot[i][1] = hlms->getParticleSystemSlot();
+            }
+            else
+            {
+                particleSystemSlot[i][0] = 0u;
+                particleSystemSlot[i][1] = 0u;
+            }
+        }
+
+        const QueuedRenderableArray &queuedRenderables = renderQueueGroup.mQueuedRenderables;
+
+        QueuedRenderableArray::const_iterator itor = queuedRenderables.begin();
+        QueuedRenderableArray::const_iterator endt = queuedRenderables.end();
+
+        while( itor != endt )
+        {
+            const QueuedRenderable &queuedRenderable = *itor;
+            const VertexArrayObjectArray &vaos = queuedRenderable.renderable->getVaos( VpNormal );
+
+            VertexArrayObject *vao = vaos[0];
+            const HlmsDatablock *datablock = queuedRenderable.renderable->getDatablock();
+
+            const HlmsTypes hlmsType = static_cast<HlmsTypes>( datablock->mType );
+            Hlms *hlms = mHlmsManager->getHlms( hlmsType );
+
+            lastHlmsCacheHash = lastHlmsCache->hash;
+            const HlmsCache *hlmsCache =
+                hlms->getMaterial( lastHlmsCache, passCache[datablock->mType], queuedRenderable,
+                                   casterPass, parallelCompileQueue );
+            if( lastHlmsCacheHash != hlmsCache->hash )
+            {
+                CbPipelineStateObject *psoCmd = mCommandBuffer->addCommand<CbPipelineStateObject>();
+                *psoCmd = CbPipelineStateObject( &hlmsCache->pso );
+                lastHlmsCache = hlmsCache;
+
+                // Flush the Vao when changing shaders. Needed by D3D11/12 & possibly Vulkan
+                lastVaoName = 0;
+            }
+
+            const ParticleSystemDef *systemDef =
+                ParticleSystemDef::castFromRenderable( queuedRenderable.renderable );
+
+            const uint32 baseInstance = hlms->fillBuffersForV2( hlmsCache, queuedRenderable, casterPass,
+                                                                lastHlmsCacheHash, mCommandBuffer );
+
+            ConstBufferPacked *particleCommonBuffer = systemDef->_getGpuCommonBuffer();
+            *mCommandBuffer->addCommand<CbShaderBuffer>() =
+                CbShaderBuffer( VertexShader, particleSystemSlot[hlmsType][0], particleCommonBuffer, 0,
+                                (uint32)particleCommonBuffer->getTotalSizeBytes() );
+            ReadOnlyBufferPacked *particleDataBuffer = systemDef->_getGpuDataBuffer();
+            *mCommandBuffer->addCommand<CbShaderBuffer>() =
+                CbShaderBuffer( VertexShader, particleSystemSlot[hlmsType][1], particleDataBuffer, 0,
+                                (uint32)particleDataBuffer->getTotalSizeBytes() );
+
+            // We always break the commands (because we re-bind particleDataBuffer for every draw)
+            {
+                // Different mesh, vertex buffers or layout. Make a new draw call.
+                //(or also the the Hlms made a batch-breaking command)
+
+                OGRE_ASSERT_MEDIUM( vao->getVaoName() != 0u &&
+                                    "Invalid Vao name! This can happen if a BT_IMMUTABLE buffer was "
+                                    "recently created and VaoManager::_beginFrame() wasn't called" );
+
+                if( lastVaoName != vao->getVaoName() )
+                {
+                    *mCommandBuffer->addCommand<CbVao>() = CbVao( vao );
+                    *mCommandBuffer->addCommand<CbIndirectBuffer>() = CbIndirectBuffer( indirectBuffer );
+                    lastVaoName = vao->getVaoName();
+                }
+
+                void *offset = reinterpret_cast<void *>(
+                    static_cast<ptrdiff_t>( indirectBuffer->_getFinalBufferStart() ) +
+                    ( indirectDraw - startIndirectDraw ) );
+
+                if( vao->getIndexBuffer() )
+                {
+                    CbDrawCallIndexed *drawCall = mCommandBuffer->addCommand<CbDrawCallIndexed>();
+                    *drawCall = CbDrawCallIndexed( baseInstanceAndIndirectBuffers, vao, offset );
+                    drawCmd = drawCall;
+                }
+                else
+                {
+                    CbDrawCallStrip *drawCall = mCommandBuffer->addCommand<CbDrawCallStrip>();
+                    *drawCall = CbDrawCallStrip( baseInstanceAndIndirectBuffers, vao, offset );
+                    drawCmd = drawCall;
+                }
+
+                stats.mDrawCount += 1u;
+            }
+
+            // Different mesh, but same vertex buffers & layouts. Advance indirection buffer.
+            ++drawCmd->numDraws;
+
+            if( vao->mIndexBuffer )
+            {
+                CbDrawIndexed *drawIndexedPtr = reinterpret_cast<CbDrawIndexed *>( indirectDraw );
+                indirectDraw += sizeof( CbDrawIndexed );
+
+                drawIndexedPtr->primCount = vao->mPrimCount;
+                drawIndexedPtr->instanceCount = instancesPerDraw;
+                drawIndexedPtr->firstVertexIndex =
+                    uint32( vao->mIndexBuffer->_getFinalBufferStart() + vao->mPrimStart );
+                drawIndexedPtr->baseVertex = uint32( vao->mBaseVertexBuffer->_getFinalBufferStart() );
+                drawIndexedPtr->baseInstance = baseInstance << baseInstanceShift;
+            }
+            else
+            {
+                CbDrawStrip *drawStripPtr = reinterpret_cast<CbDrawStrip *>( indirectDraw );
+                indirectDraw += sizeof( CbDrawStrip );
+
+                drawStripPtr->primCount = vao->mPrimCount;
+                drawStripPtr->instanceCount = instancesPerDraw;
+                drawStripPtr->firstVertexIndex =
+                    uint32( vao->mBaseVertexBuffer->_getFinalBufferStart() + vao->mPrimStart );
+                drawStripPtr->baseInstance = baseInstance << baseInstanceShift;
+            }
+
+            stats.mInstanceCount += instancesPerDraw;
+
+            switch( vao->getOperationType() )
+            {
+            case OT_TRIANGLE_LIST:
+                stats.mFaceCount += ( vao->mPrimCount / 3u ) * instancesPerDraw;
+                break;
+            case OT_TRIANGLE_STRIP:
+            case OT_TRIANGLE_FAN:
+                stats.mFaceCount += ( vao->mPrimCount - 2u ) * instancesPerDraw;
+                break;
+            default:
+                break;
+            }
+
+            stats.mVertexCount += vao->mPrimCount * instancesPerDraw;
+
+            ++itor;
+        }
+
+        rs->_addMetrics( stats );
+
+        mLastVaoName = lastVaoName;
+        mLastVertexData = 0;
+        mLastIndexData = 0;
+        mLastTextureHash = 0;
+
+        return indirectDraw;
     }
     //-----------------------------------------------------------------------
     unsigned char *RenderQueue::renderGL3( RenderSystem *rs, bool casterPass, bool dualParaboloid,
@@ -985,9 +1192,37 @@ namespace Ogre
         mParallelHlmsCompileQueue.updateThread( threadIdx, mHlmsManager );
     }
     //-----------------------------------------------------------------------
-    void ParallelHlmsCompileQueue::start( SceneManager *sceneManager )
+    void ParallelHlmsCompileQueue::setupDeadline( Root &root, SceneManager &sceneManager,
+                                                  bool casterPass )
+    {
+        // Single threaded has no deadline support. This is because pending shaders
+        // are resent into the parallel queue, which does not exist.
+        // In theory, single threaded could support them, but it's not implemented.
+        const bool bUseDeadlines = root.getRenderSystem()->supportsMultithreadedShaderCompilation() &&
+                                   sceneManager.getNumWorkerThreads() > 1u && !casterPass;
+
+        if( !mDeadlineSet && bUseDeadlines )
+        {
+            const uint32 timeout = root.getRenderSystem()->getPsoRequestsTimeout();
+            if( timeout == 0u )
+                mMasterDeadline = UINT64_MAX;
+            else
+                mMasterDeadline = root.getTimer()->getMilliseconds() + timeout;
+            mDeadlineSet = true;
+        }
+        if( !bUseDeadlines )
+            mCompilationDeadline = UINT64_MAX;
+        else
+            mCompilationDeadline = mMasterDeadline;
+        mCompilationIncompleteCounter = 0;
+    }
+    //-----------------------------------------------------------------------
+    void ParallelHlmsCompileQueue::frameEnded() { mDeadlineSet = false; }
+    //-----------------------------------------------------------------------
+    void ParallelHlmsCompileQueue::start( Root *root, SceneManager *sceneManager, bool casterPass )
     {
         mKeepCompiling = true;
+        setupDeadline( *root, *sceneManager, casterPass );
         sceneManager->_fireParallelHlmsCompile();
     }
     //-----------------------------------------------------------------------
@@ -999,6 +1234,10 @@ namespace Ogre
         mKeepCompiling.store( false, std::memory_order::memory_order_relaxed );
         mSemaphore.increment( static_cast<uint32_t>( sceneManager->getNumWorkerThreads() ) );
         sceneManager->waitForParallelHlmsCompile();
+
+        Root::getSingleton().getRenderSystem()->_notifyIncompletePsoRequests(
+            mCompilationIncompleteCounter );
+        mCompilationIncompleteCounter = 0;
 
         // No need to use mMutex because we guarantee no write access from other threads
         // after this point.
@@ -1015,8 +1254,10 @@ namespace Ogre
         }
     }
     //-----------------------------------------------------------------------
-    void ParallelHlmsCompileQueue::fireWarmUpParallel( SceneManager *sceneManager )
+    void ParallelHlmsCompileQueue::fireWarmUpParallel( Root *root, SceneManager *sceneManager,
+                                                       bool casterPass )
     {
+        setupDeadline( *root, *sceneManager, casterPass );
         sceneManager->_fireWarmUpShadersCompile();
         OGRE_ASSERT_LOW( mRequests.empty() );  // Should be empty, whether we found an exception or not.
         // See comments in ParallelHlmsCompileQueue::stopAndWait implementation.
@@ -1055,8 +1296,15 @@ namespace Ogre
             try
             {
                 hlms->compileStubEntry( passCaches[reinterpret_cast<size_t>( request.passCache )],
-                                        request.reservedStubEntry, request.queuedRenderable,
-                                        request.renderableHash, request.finalHash, threadIdx );
+                                        request.reservedStubEntry, mCompilationDeadline,
+                                        request.queuedRenderable, request.renderableHash,
+                                        request.finalHash, threadIdx );
+
+                if( request.reservedStubEntry->flags == HLMS_CACHE_FLAGS_COMPILATION_REQUIRED )
+                {
+                    mCompilationIncompleteCounter.fetch_add( 1,
+                                                             std::memory_order::memory_order_relaxed );
+                }
             }
             catch( Exception & )
             {
@@ -1074,13 +1322,21 @@ namespace Ogre
     //-----------------------------------------------------------------------
     void ParallelHlmsCompileQueue::warmUpSerial( HlmsManager *hlmsManager, const HlmsCache *passCaches )
     {
+        // Single threaded has no deadline support. This is because pending shaders
+        // are resent into the parallel queue, which does not exist.
+        // In theory, single threaded could support them, but it's not implemented.
+        mCompilationDeadline = UINT64_MAX;
+        mCompilationIncompleteCounter = 0;
+
         for( const Request &request : mRequests )
         {
             const HlmsDatablock *datablock = request.queuedRenderable.renderable->getDatablock();
             Hlms *hlms = hlmsManager->getHlms( static_cast<HlmsTypes>( datablock->mType ) );
             hlms->compileStubEntry( passCaches[reinterpret_cast<size_t>( request.passCache )],
-                                    request.reservedStubEntry, request.queuedRenderable,
-                                    request.renderableHash, request.finalHash, 0u );
+                                    request.reservedStubEntry, mCompilationDeadline,
+                                    request.queuedRenderable, request.renderableHash, request.finalHash,
+                                    0u );
+            OGRE_ASSERT_LOW( request.reservedStubEntry->flags == HLMS_CACHE_FLAGS_NONE );
         }
 
         mRequests.clear();
@@ -1152,8 +1408,13 @@ namespace Ogre
                 try
                 {
                     hlms->compileStubEntry( *request.passCache, request.reservedStubEntry,
-                                            request.queuedRenderable, request.renderableHash,
-                                            request.finalHash, threadIdx );
+                                            mCompilationDeadline, request.queuedRenderable,
+                                            request.renderableHash, request.finalHash, threadIdx );
+                    if( request.reservedStubEntry->flags == HLMS_CACHE_FLAGS_COMPILATION_REQUIRED )
+                    {
+                        mCompilationIncompleteCounter.fetch_add(
+                            1, std::memory_order::memory_order_relaxed );
+                    }
                 }
                 catch( Exception & )
                 {
@@ -1240,6 +1501,8 @@ namespace Ogre
         mFreeIndirectBuffers.insert( mFreeIndirectBuffers.end(), mUsedIndirectBuffers.begin(),
                                      mUsedIndirectBuffers.end() );
         mUsedIndirectBuffers.clear();
+
+        mParallelHlmsCompileQueue.frameEnded();
     }
     //-----------------------------------------------------------------------
     void RenderQueue::setRenderQueueMode( uint8 rqId, Modes newMode )
@@ -1267,6 +1530,10 @@ namespace Ogre
     ParallelHlmsCompileQueue::ParallelHlmsCompileQueue() :
         mSemaphore( 0u ),
         mKeepCompiling( false ),
+        mCompilationIncompleteCounter( 0u ),
+        mCompilationDeadline( 0u ),
+        mMasterDeadline( 0u ),
+        mDeadlineSet( false ),
         mExceptionFound( false )
     {
     }

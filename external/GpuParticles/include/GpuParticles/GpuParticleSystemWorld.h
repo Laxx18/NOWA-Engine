@@ -53,6 +53,11 @@ public:
         virtual bool getCastsShadows(void) const;
         //        virtual bool getUseIdentityWorldMatrix(void) const          { return true; }
 
+        Ogre::ParticleType::ParticleType getParticleType() const override
+        {
+            return Ogre::ParticleType::NotParticle;
+        }
+
         void clearCachedData()
         {
             mCachedInstanceIndexes.clear();

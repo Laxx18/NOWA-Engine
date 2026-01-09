@@ -110,7 +110,9 @@ namespace Ogre
         mTexProjRelative( false ),
         mTexProjRelativeOrigin( Vector3::ZERO ),
         mReverseDepth( true ),
-        mInvertedClipSpaceY( false )
+        mInvertedClipSpaceY( false ),
+        mPsoRequestsTimeout( 0u ),
+        mIncompletePsoRequestsCounterFrame( 0u )
     {
         mEventNames.push_back( "RenderSystemCapabilitiesCreated" );
     }
@@ -675,6 +677,9 @@ namespace Ogre
         if( !preferDepthTexture )
             textureFlags |= TextureFlags::NotTexture | TextureFlags::DiscardableContent;
 
+        if( colourTexture->getDepthBufferPoolId() == DepthBuffer::POOL_MEMORYLESS )
+            textureFlags |= TextureFlags::TilerMemoryless;
+
         char tmpBuffer[64];
         LwString depthBufferName( LwString::FromEmptyPointer( tmpBuffer, sizeof( tmpBuffer ) ) );
         depthBufferName.a( "DepthBuffer_", Id::generateNewId<TextureGpu>() );
@@ -800,6 +805,7 @@ namespace Ogre
     void RenderSystem::_beginFrameOnce()
     {
         _resetMetrics();
+        mIncompletePsoRequestsCounterFrame = 0u;
         mVaoManager->_beginFrame();
     }
     //-----------------------------------------------------------------------
@@ -811,8 +817,7 @@ namespace Ogre
     //-----------------------------------------------------------------------
     SampleDescription RenderSystem::validateSampleDescription( const SampleDescription &sampleDesc,
                                                                PixelFormatGpu format,
-                                                               uint32 textureFlags,
-                                                               uint32 depthTextureFlags )
+                                                               uint32 textureFlags )
     {
         SampleDescription retVal( sampleDesc.getMaxSamples(), sampleDesc.getMsaaPattern() );
         return retVal;
@@ -1116,6 +1121,12 @@ namespace Ogre
         case OT_TRIANGLE_FAN:
             mMetrics.mFaceCount += ( primCount - 2u );
             break;
+        case OT_TRIANGLE_LIST_ADJ:
+            mMetrics.mFaceCount += ( primCount / 6 );
+            break;
+        case OT_TRIANGLE_STRIP_ADJ:
+            mMetrics.mFaceCount += ( primCount / 2 - 2 );
+            break;
         default:
             break;
         }
@@ -1248,7 +1259,7 @@ namespace Ogre
     //-----------------------------------------------------------------------
     size_t RenderSystem::getNumPriorityConfigOptions() const { return 0u; }
     //-----------------------------------------------------------------------
-    bool RenderSystem::supportsMultithreadedShaderCompliation() const { return false; }
+    bool RenderSystem::supportsMultithreadedShaderCompilation() const { return false; }
     //-----------------------------------------------------------------------
     void RenderSystem::destroyHardwareOcclusionQuery( HardwareOcclusionQuery *hq )
     {
@@ -1365,6 +1376,23 @@ namespace Ogre
     void RenderSystem::setGlobalInstanceVertexBufferVertexDeclaration( v1::VertexDeclaration *val )
     {
         mGlobalInstanceVertexBufferVertexDeclaration = val;
+    }
+    //---------------------------------------------------------------------
+    void RenderSystem::loadPipelineCache( DataStreamPtr stream ) {}
+    //---------------------------------------------------------------------
+    void RenderSystem::savePipelineCache( DataStreamPtr stream ) const {}
+    //---------------------------------------------------------------------
+    void RenderSystem::_notifyIncompletePsoRequests( uint32 count )
+    {
+        if( count > 0u )
+        {
+            LogManager::getSingleton().logMessage(
+                "Deferred to next frame " + StringConverter::toString( count ) +
+                " PSO creation requests after exceeding " +
+                StringConverter::toString( mPsoRequestsTimeout ) + "ms time budget" );
+        }
+
+        mIncompletePsoRequestsCounterFrame += count;
     }
     //---------------------------------------------------------------------
     bool RenderSystem::startGpuDebuggerFrameCapture( Window *window )
