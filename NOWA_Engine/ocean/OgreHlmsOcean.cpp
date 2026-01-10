@@ -472,14 +472,13 @@ namespace Ogre
         if (brdf & OceanBrdf::FLAG_SPERATE_DIFFUSE_FRESNEL)
             setProperty(kNoTid, PbsProperty::FresnelSeparateDiffuse, 1);
 
-        // ---- CRITICAL: Env probe hook (like Terra) ----
+        // ---- Env probe hook (like Terra) ----
         if (mProbe)
         {
             setProperty(kNoTid, PbsProperty::NumTextures, 1);
             setTextureProperty(kNoTid, PbsProperty::EnvProbeMap, dynamic_cast<HlmsPbsDatablock*>(datablock), PBSM_REFLECTION);
 
-            setProperty(kNoTid, PbsProperty::EnvProbeMap,
-                static_cast<int32>(mProbe->getName().getU32Value()));
+            setProperty(kNoTid, PbsProperty::EnvProbeMap, static_cast<int32>(mProbe->getName().getU32Value()));
         }
 
         // Ocean uses procedural normals
@@ -507,18 +506,21 @@ namespace Ogre
     {
         mT[kNoTid].setProperties.clear();
 
+        // Get atmosphere FIRST (before any properties)
+        mAtmosphere = sceneManager ? sceneManager->getAtmosphere() : nullptr;
+
+        // Set atmosphere properties EARLY (before preparePassHashBase)
         if (!casterPass && mAtmosphere && mAtmosphere->providesHlmsCode())
         {
-            // Enable atmosphere & aerial perspective
+            // These properties enable the shader pieces
             setProperty(kNoTid, "hlms_atmosphere", 1);
             setProperty(kNoTid, "hlms_aerial_perspective", 1);
 
-            // Enable fog (Terra-style)
+            // Fog support (Terra-style)
             const FogMode fogMode = sceneManager->getFogMode();
             if (fogMode != FOG_NONE)
             {
                 setProperty(kNoTid, "hlms_fog", 1);
-
                 if (fogMode == FOG_EXP)
                     setProperty(kNoTid, "hlms_fog_exp", 1);
                 else if (fogMode == FOG_EXP2)
@@ -530,27 +532,26 @@ namespace Ogre
 
         if (casterPass)
         {
-            HlmsCache retVal = Hlms::preparePassHashBase(shadowNode, casterPass,
-                dualParaboloid, sceneManager);
+            HlmsCache retVal = Hlms::preparePassHashBase(shadowNode, casterPass, dualParaboloid, sceneManager);
             return retVal;
         }
 
-        // -- - Atmosphere component(Terra / PBS style) -- -
-        // We must pull it from the SceneManager each pass because we do NOT call HlmsPbs::preparePassHash.
-        mAtmosphere = sceneManager ? sceneManager->getAtmosphere() : nullptr;
-
         // --- Env probe setup ---
-        const bool hasProbe = (mProbe != nullptr);
-        setProperty(kNoTid, OceanProperty::EnvProbeMap, hasProbe ? 1 : 0);
+		const bool hasProbe = (mProbe != nullptr);
+		setProperty(kNoTid, OceanProperty::EnvProbeMap, hasProbe ? 1 : 0);
 
-        // --- CRITICAL: Atmosphere setup BEFORE preparePassHashBase ---
-        uint32 atmosphereCbCount = 0u;
-        if (mAtmosphere)
-        {
-            // Const buffers: pass=0, material=1, instance=2. Atmosphere starts at 3.
-            atmosphereCbCount = mAtmosphere->preparePassHash(this, 3u);
-        }
-        setProperty(kNoTid, OceanProperty::AtmosphereNumConstBuffers, static_cast<int32>(atmosphereCbCount));
+		// Atmosphere setup BEFORE preparePassHashBase ---
+		uint32 atmosphereCbCount = 0u;
+		uint32 numPassConstBuffers = 3u; // pass=0, material=1, instance=2
+		if (mAtmosphere && mAtmosphere->providesHlmsCode())
+		{
+			// Atmosphere const buffers start at slot 3
+			atmosphereCbCount = mAtmosphere->preparePassHash(this, 3u);
+			numPassConstBuffers += atmosphereCbCount;
+		}
+		setProperty(kNoTid, OceanProperty::AtmosphereNumConstBuffers, static_cast<int32>(atmosphereCbCount));
+		// This is what the shared HLMS pieces (Terra/PBS/Atmosphere) often key off.
+		setProperty(kNoTid, PbsProperty::NumPassConstBuffers, static_cast<int32>(numPassConstBuffers));
 
         // Shadow setup
         if (shadowNode && !casterPass)
@@ -668,7 +669,6 @@ namespace Ogre
         int32 numShadowMapLights = getProperty(kNoTid, HlmsBaseProp::NumShadowMapLights);
         int32 numPssmSplits = getProperty(kNoTid, HlmsBaseProp::PssmSplits);
 
-        // CRITICAL: Calculate buffer size properly
         size_t mapSize = 0;
 
         // mat4 viewProj + mat4 view
@@ -724,15 +724,17 @@ namespace Ogre
             dualParaboloid, sceneManager);
         mapSize = alignToNextMultiple<uint32>(mapSize, 16);
 
-        //// Add atmosphere buffer size if present
-        if (mAtmosphere && mAtmosphere->providesHlmsCode())
-        {
-            const size_t atmosphereSize = atmosphereCbCount * 256u;
-            mapSize += atmosphereSize;
-            mapSize = alignToNextMultiple<uint32>(mapSize, 16);
-        }
+		//// Add atmosphere buffer size if present.
+		//// We align the start of the atmosphere region to 256 bytes (safe for D3D12 CBV rules
+		//// and matches how Atmosphere usually expects packing).
+		//if (mAtmosphere && mAtmosphere->providesHlmsCode() && atmosphereCbCount)
+		//{
+		//	mapSize = alignToNextMultiple<uint32>(mapSize, 256u);
+		//	mapSize += size_t(atmosphereCbCount) * 256u;
+		//	mapSize = alignToNextMultiple<uint32>(mapSize, 16u);
+		//}
 
-        // Create/get pass buffer with correct size
+		// Create/get pass buffer with correct size
         const size_t maxBufferSize = std::max<size_t>(8 * 1024, mapSize);
 
         if (mCurrentPassBuffer >= mPassBuffers.size())
@@ -742,7 +744,6 @@ namespace Ogre
 
         ConstBufferPacked* passBuffer = mPassBuffers[mCurrentPassBuffer++];
 
-        // CRITICAL: Only map what we actually need
         float* passBufferPtr = reinterpret_cast<float*>(passBuffer->map(0, mapSize));
         const float* startupPtr = passBufferPtr;
 
@@ -761,6 +762,19 @@ namespace Ogre
                 for (size_t i = 0; i < padFloats; ++i)
                     *ptr++ = 0.0f;
             };
+
+        // Helper to align to 256-byte boundaries (important before atmosphere CB region)
+		auto alignPassPtr256 = [&](float*& ptr)
+			{
+				const size_t bytesSoFar = size_t(ptr - startupPtr) * sizeof(float);
+				const size_t alignedBytes = alignToNextMultiple<uint32>(static_cast<uint32>(bytesSoFar), 256u);
+				const size_t padBytes = alignedBytes - bytesSoFar;
+				const size_t padFloats = padBytes / sizeof(float);
+				for (size_t i = 0; i < padFloats; ++i)
+				{
+					*ptr++ = 0.0f;
+				}
+			};
 
         // ===== VERTEX SHADER DATA =====
 
@@ -1015,8 +1029,8 @@ namespace Ogre
             passBufferPtr = mListener->preparePassBuffer(shadowNode, casterPass, dualParaboloid, sceneManager, passBufferPtr);
         }
 
-        // Final alignment
-        alignPassPtr16(passBufferPtr);
+		// Final alignment
+		alignPassPtr16(passBufferPtr);
 
         // Verify we didn't overflow
         const size_t bytesWritten = (passBufferPtr - startupPtr) * sizeof(float);
@@ -1089,17 +1103,24 @@ namespace Ogre
         *commandBuffer->addCommand<CbShaderBuffer>() = CbShaderBuffer(VertexShader, 0u, passBuffer, 0u, passBuffer->getTotalSizeBytes());
         *commandBuffer->addCommand<CbShaderBuffer>() = CbShaderBuffer(PixelShader, 0u, passBuffer, 0u, passBuffer->getTotalSizeBytes());
 
-        //// Bind Atmosphere const buffers (slots 3..)
-        //// Required when the shaders include ApplyAtmosphere / ApplyAerialPerspective pieces.
-        //if (!casterPass && mAtmosphere && mAtmosphere->providesHlmsCode())
-        //{
-        //    uint32 constBufferSlot = 3u;
-        //    constBufferSlot += mAtmosphere->bindConstBuffers(commandBuffer, constBufferSlot);
-        //}
-
         // If HLMS type changes, we must (re)bind all shared resources.
         if (OGRE_EXTRACT_HLMS_TYPE_FROM_CACHE_HASH(lastCacheHash) != mType)
         {
+            // ----------------------------
+           // Atmosphere const buffers (Terra/PBS-compatible binding)
+           // Must be bound when HLMS type changes, AFTER shared resources
+           // ----------------------------
+            if (!casterPass && mAtmosphere && mAtmosphere->providesHlmsCode())
+            {
+                // PBS layout:
+                // 0 = pass buffer
+                // 1 = material buffer
+                // 2 = instance buffer
+                // 3+ = lighting / atmosphere
+                uint32 constBufferSlot = 3u;
+                mAtmosphere->bindConstBuffers(commandBuffer, constBufferSlot);
+            }
+
             // ----------------------------
             // Ocean baked textures (bind fixed)
             // Your HLSL setup effectively expects them at t0/t1 with samplers s0/s1.
@@ -1159,21 +1180,6 @@ namespace Ogre
             uint16 listenerTexUnit = 16u; // because we hard-bind env probe at t15
             mListener->hlmsTypeChanged(casterPass, commandBuffer, datablock, listenerTexUnit);
 
-            // ----------------------------
-            // Atmosphere const buffers (Terra/PBS-compatible binding)
-            // Must be bound when HLMS type changes, AFTER shared resources
-            // ----------------------------
-            if (!casterPass && mAtmosphere && mAtmosphere->providesHlmsCode())
-            {
-                // PBS layout:
-                // 0 = pass buffer
-                // 1 = material buffer
-                // 2 = instance buffer
-                // 3+ = lighting / atmosphere
-                uint32 constBufferSlot = 3u;
-                mAtmosphere->bindConstBuffers(commandBuffer, constBufferSlot);
-            }
-
             // Reset caches (same spirit as Terra/Pbs)
             mLastTextureHash = 0u;
             mLastMovableObject = 0u;
@@ -1209,7 +1215,7 @@ namespace Ogre
             // Switch to the next mapped const buffer
             currentMappedConstBuffer = mapNextConstBuffer(commandBuffer);
 
-            // CRITICAL: after switching buffers, rebind instance buffer (VS/PS slot 2),
+            // After switching buffers, rebind instance buffer (VS/PS slot 2),
             // otherwise GPU still reads the old buffer -> holes.
             if (mCurrentConstBuffer < mConstBuffers.size())
             {
@@ -1532,9 +1538,7 @@ namespace Ogre
         // IMPORTANT: disable AutomaticBatching for cubemaps
         if (false == Ogre::ResourceGroupManager::getSingleton().resourceExistsInAnyGroup(textureName))
         {
-            Ogre::LogManager::getSingletonPtr()->logMessage(
-                Ogre::LML_CRITICAL,
-                "[HlmsOcean] Cannot set env probe: '" + textureName + "', because it does not exist in any resource group!");
+            Ogre::LogManager::getSingletonPtr()->logMessage( Ogre::LML_CRITICAL, "[HlmsOcean] Cannot set env probe: '" + textureName + "', because it does not exist in any resource group!");
             mProbe = nullptr;
             return;
         }
@@ -1556,9 +1560,7 @@ namespace Ogre
 
         if (nullptr == envTexture)
         {
-            Ogre::LogManager::getSingletonPtr()->logMessage(
-                Ogre::LML_CRITICAL,
-                "[HlmsOcean] Failed to create env probe texture: '" + textureName + "'");
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[HlmsOcean] Failed to create env probe texture: '" + textureName + "'");
             return;
         }
 

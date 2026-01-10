@@ -965,7 +965,11 @@ namespace NOWA
 
 			auto closureFunction2 = [this, dt](Ogre::Real weight)
 			{
-				const Ogre::Vector3 sunDir(Ogre::Quaternion(Ogre::Radian(this->azimuth), Ogre::Vector3::UNIT_Y) * Ogre::Vector3(cosf(fabsf(this->timeOfDay)), -sinf(fabsf(this->timeOfDay)), 0.0).normalisedCopy());
+				const float sunAngle = this->timeOfDay * Ogre::Math::PI; // [-PI..PI]
+				const Ogre::Vector3 localSunDir(cosf(sunAngle), -sinf(sunAngle), 0.0f);
+
+				// Apply azimuth around Y like before
+				const Ogre::Vector3 sunDir((Ogre::Quaternion(Ogre::Radian(this->azimuth), Ogre::Vector3::UNIT_Y) * localSunDir).normalisedCopy());
 
 				// this->lightDirectionalComponent->getOgreLight()->setDirection(sunDir);
 				Ogre::Quaternion newOrientation = MathHelper::getInstance()->faceDirectionSlerp(this->lightDirectionalComponent->getOwner()->getSceneNode()->getOrientation(), sunDir, lightDirectionalComponent->getOwner()->getDefaultDirection(), dt, 60.0f);
@@ -973,6 +977,7 @@ namespace NOWA
 				// Not used, because multpile presets and updatePreset is used
 				// this->atmosphereNpr->setSunDir(this->lightDirectionalComponent->getOgreLight()->getDerivedDirectionUpdated(), this->timeOfDay / Ogre::Math::PI);
 				this->atmosphereNpr->updatePreset(sunDir, this->timeOfDay/* / Ogre::Math::PI*/);
+				this->atmosphereNpr->_update(this->gameObjectPtr->getSceneManager(), NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera());
 			};
 			id = this->gameObjectPtr->getName() + this->getClassName() + "::update2" + Ogre::StringConverter::toString(this->index);
 			NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction2, false);

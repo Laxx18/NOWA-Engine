@@ -1,7 +1,15 @@
-// Ocean material & decl pieces.
-// This file exists because Terra's TerraMaterialDecl is Metal-only in modern Ogre-Next.
-// Ocean needs its own material data without colliding with PBS' struct Material.
+// Ocean structs/pieces for NOWA-Engine Ogre-Next HLMS Ocean.
+//
+// IMPORTANT:
+// We DO NOT declare a separate OceanMaterialBuf cbuffer because slot b1 is already used by
+// Terra/PBS MaterialBuf. Declaring another cbuffer at b1 causes a collision.
+//
+// Instead, we extend Terra's Material struct via @insertpiece( custom_materialBuffer )
+// (declared below), so Ocean material parameters live inside MaterialBuf.
 
+// ---------------------------------------------------------------------
+// Extend Terra/PBS Material struct (MaterialBuf @ slot 1)
+// ---------------------------------------------------------------------
 @piece( OceanMaterialStructDecl )
 struct OceanMaterial
 {
@@ -24,44 +32,34 @@ struct OceanMaterial
 //------------------------------------------------------------
 // Vertex -> Pixel interface
 //------------------------------------------------------------
+@pset( texcoord, 0 )
+
 @piece( Ocean_VStoPS_block )
-    float3 pos            : TEXCOORD0;
-    float  waveHeight     : TEXCOORD1;
-    float  wavesIntensity : TEXCOORD2;
-    
-    float2 uv0            : TEXCOORD3;
-    float3 uv1            : TEXCOORD4;
-    float3 uv2            : TEXCOORD5;
-    float3 uv3            : TEXCOORD6;
-    float3 uv4            : TEXCOORD7;
-    
-    float3 blendWeight    : TEXCOORD8;
+    // Ocean-specific data ONLY
+    INTERPOLANT( float3 pos,            @counter(texcoord) );
+    INTERPOLANT( float  waveHeight,     @counter(texcoord) );
+    INTERPOLANT( float  wavesIntensity, @counter(texcoord) );
 
-    @property( hlms_num_shadow_map_lights >= 1 )
-        @property( !hlms_shadowmap0_is_point_light )
-            float4 posL0 : TEXCOORD9;
-        @end
-    @end
-    
-    @property( hlms_num_shadow_map_lights >= 2 )
-        @property( !hlms_shadowmap1_is_point_light )
-            float4 posL1 : TEXCOORD10;
-        @end
-    @end
-    
-    @property( hlms_num_shadow_map_lights >= 3 )
-        @property( !hlms_shadowmap2_is_point_light )
-            float4 posL2 : TEXCOORD11;
-        @end
-    @end
-    
-    @property( hlms_pssm_splits )
-        float depth : TEXCOORD12;
-    @end
-    
-    float3 wpos : TEXCOORD13;
+    INTERPOLANT( float2 uv0,            @counter(texcoord) );
+    INTERPOLANT( float3 uv1,            @counter(texcoord) );
+    INTERPOLANT( float3 uv2,            @counter(texcoord) );
+    INTERPOLANT( float3 uv3,            @counter(texcoord) );
+    INTERPOLANT( float3 uv4,            @counter(texcoord) );
 
-    float3 normal : TEXCOORD14;
+    INTERPOLANT( float3 blendWeight,    @counter(texcoord) );
+    INTERPOLANT( float3 wpos,           @counter(texcoord) );
+	
+	// TODO: Normals required? Maybe other shader need them? See also VertexShader.hlsl.
+	// INTERPOLANT( float3 normal,         @counter(texcoord) );
+	
+
+    // Let HLMS/Terra own shadows, fog, etc.
+    @insertpiece( VStoPS_block )
 @end
+
+
+
+
+
 
 

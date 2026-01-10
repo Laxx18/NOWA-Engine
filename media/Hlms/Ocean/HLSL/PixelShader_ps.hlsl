@@ -114,23 +114,38 @@ Ocean_VSPS inPs
     textureValue = lerp(textureValue, textureValue2, inPs.blendWeight.x);
     textureValue = lerp(textureValue, textureValue3, inPs.blendWeight.y);
     textureValue = lerp(textureValue, textureValue4, inPs.blendWeight.z);
+	
+	// -------------------------------------------------------------
+	// Wave factors (SAFE)
+	// -------------------------------------------------------------
+	float waveIntensity = saturate( inPs.wavesIntensity );
+	float waveFactor    = saturate( inPs.waveHeight ) * waveIntensity;
 
-    float waveIntensity = inPs.wavesIntensity;
+	// -------------------------------------------------------------
+	// Foam (defined ONCE, bounded)
+	// -------------------------------------------------------------
+	float foam = pow( saturate( textureValue.w ), 2.0f ) * waveFactor * 0.5f;
+	foam = saturate( foam );
 
-    float foam = pow( textureValue.w, 3.0f - waveIntensity ) * 0.5f * waveIntensity * waveIntensity;
+	// Roughness: smoother water with less foam influence
+	ROUGHNESS = lerp( 0.02f, 0.3f, foam );
 
-    ROUGHNESS = 0.02f + foam;
+	// -------------------------------------------------------------
+	// Base water colour (goes into diffuseCol for lighting)
+	// -------------------------------------------------------------
+	diffuseCol.xyz = lerp( oceanMaterial.deepColour.xyz, oceanMaterial.shallowColour.xyz, waveFactor * 0.7f );
 
-    diffuseCol.xyz = lerp( oceanMaterial.deepColour.xyz, oceanMaterial.shallowColour.xyz, inPs.waveHeight * waveIntensity );
+	// Foam replaces colour (NOT additive!)
+	float3 foamColour = float3( 0.9f, 0.9f, 0.9f );
+	diffuseCol.xyz = lerp( diffuseCol.xyz, foamColour, foam );
 
-    diffuseCol.w = 1.0f;
-    // Reduce foam contribution to avoid bright spots
-    diffuseCol.xyz += foam * 0.5;
+	// Alpha (keep as before)
+	diffuseCol.w = 1.0f;
 
     F0 = make_float_fresnel( 0.03f );
 
     nNormal.xy = textureValue.xy * 2.0f - 1.0f;
-    nNormal.xy *= waveIntensity;
+    nNormal.xy *= waveFactor;
     float dotXY = dot( nNormal.xy, nNormal.xy );
     nNormal.z = 1.0f; // match GLSL
 
@@ -143,7 +158,7 @@ Ocean_VSPS inPs
 	// Tangent-space normal from texture
 	float3 nNormalTS;
 	nNormalTS.xy = textureValue.xy * 2.0f - 1.0f;
-	nNormalTS.xy *= waveIntensity;
+	nNormalTS.xy *= waveFactor;
 	nNormalTS.z  = 1.0f;
 
 	// Geometric normal is always +Y (WORLD)
@@ -190,29 +205,22 @@ Ocean_VSPS inPs
     // -------------------------------------------------------------
     // View direction & PixelData (ALWAYS VALID)
     // -------------------------------------------------------------
-    float3 viewPos = inPs.pos; // already in view space
-    float3 viewDir = normalize( -viewPos );
-    float  NdotV   = clamp( dot( nNormal, viewDir ), 0.0f, 1.0f );
+    float3 viewPos = inPs.pos;
+	float3 viewDir = normalize( -viewPos );
+	float  NdotV   = saturate( dot( nNormal, viewDir ) );
 
-    PixelData pixelData;
+	PixelData pixelData;
 
-    // core data
-    pixelData.normal   = nNormal;
-    pixelData.diffuse  = midf4( diffuseCol );
-    pixelData.specular = midf3( 1.0f, 1.0f, 1.0f );
-    pixelData.F0       = F0;
-	pixelData.viewDir = viewDir;
-	pixelData.NdotV   = NdotV;
+	pixelData.normal   = nNormal;
+	pixelData.diffuse  = midf4( diffuseCol );
+	pixelData.specular = midf3( 1.0f, 1.0f, 1.0f ); // Full specular for water
+	pixelData.F0       = F0;
+	pixelData.viewDir  = viewDir;
+	pixelData.NdotV    = NdotV;
 
-    // roughness handling
-    @property( hlms_forwardplus )
-        pixelData.perceptualRoughness = midf_c( 0.15f );
-    @end
-    @property( !hlms_forwardplus )
-        pixelData.perceptualRoughness = ROUGHNESS;
-    @end
-
-    pixelData.roughness = max( midf_c( 0.002f ), pixelData.perceptualRoughness * pixelData.perceptualRoughness );
+	// Roughness: smoother for better reflections
+	pixelData.perceptualRoughness = midf_c( ROUGHNESS );
+	pixelData.roughness = max( midf_c( 0.002f ), pixelData.perceptualRoughness * pixelData.perceptualRoughness );
 
     // ---------------------------------------------------------------------
 	// Ambient (matches how HlmsOcean sets properties in calculateHashForPreCreate)
@@ -347,62 +355,78 @@ Ocean_VSPS inPs
 	// Env probe / IBL
 	// ---------------------------------------------------------------------
     @property( envprobe_map )
-        // Simple environment reflection contribution.
-        // View-space vectors:
-        float3 reflDirView  = reflect( -viewDir, nNormal );
-
-        // Convert to world-space using inverse view rotation (row-vector convention in this shader).
-        float3x3 invViewRot = transpose( (float3x3)passBuf.view );
-        float3 reflDirWorld = normalize( mul( reflDirView, invViewRot ) );
-
-        float3 envCol = texEnvProbeMap.Sample( texEnvProbeMapSampler, reflDirWorld ).xyz;
-
-        // Schlick Fresnel using F0 from material (dielectric by default in your material decl).
-        float oneMinusNdotV = 1.0f - NdotV;
-        float fresnelTerm   = oneMinusNdotV * oneMinusNdotV * oneMinusNdotV * oneMinusNdotV * oneMinusNdotV;
-        float3 F = lerp( F0.xyz, float3( 1.0f, 1.0f, 1.0f ), fresnelTerm );
-
-        // Add reflection as specular lighting term.
-        finalColour += envCol * F;
-    @end
-
-	// ---------------------------------------------------------------------	
-	// ---------------------------------------------------------------------
-	// Atmosphere / fog
-	// ---------------------------------------------------------------------
-	float3 outColour = finalColour;
-
-	// If these pieces expect a specific variable name, keep outColour exactly.
-	@insertpiece( ApplyAtmosphere )
-	@insertpiece( ApplyFog )
-
-	finalColour = outColour;
-
-
+		// Reflection is the PRIMARY color source for water!
+		float3 reflDirView  = reflect( -viewDir, nNormal );
+		
+		float3x3 invViewRot = transpose( (float3x3)passBuf.view );
+		float3 reflDirWorld = normalize( mul( reflDirView, invViewRot ) );
+		
+		// Sample environment with roughness-based mip level
+		float reflectionLod = pixelData.perceptualRoughness * 7.0f; // Adjust based on your cubemap mips
+		float3 envCol = texEnvProbeMap.SampleLevel( texEnvProbeMapSampler, reflDirWorld, reflectionLod ).xyz;
+		
+		// Fresnel for reflections (water reflects more at grazing angles)
+		float oneMinusNdotV = 1.0f - NdotV;
+		float fresnelTerm   = oneMinusNdotV * oneMinusNdotV * oneMinusNdotV * oneMinusNdotV * oneMinusNdotV;
+		
+		// Water has strong fresnel effect
+		float fresnelFactor = lerp( 0.02f, 1.0f, fresnelTerm );
+		
+		// Reflections are the MAIN color for water
+		finalColour += envCol * fresnelFactor * 0.8f; // Strong reflection contribution
+	@end
+	
     // ---------------------------------------------------------------------
     // Output
     // ---------------------------------------------------------------------
                 
-    @property( !hw_gamma_write )
-        float3 outRgb = sqrt( finalColour );
-    @end
-    @property( hw_gamma_write )
-        float3 outRgb = finalColour;
-    @end
+	finalColour = saturate( finalColour );
+				
+    float3 outRgb;
 
-    outPs.colour0.xyz = outRgb;
-    
-    @property( hlms_alphablend )
-        @property( use_texture_alpha )
-            outPs.colour0.w = oceanMaterial.F0.w * diffuseCol.w;
-        @end
-        @property( !use_texture_alpha )
-            outPs.colour0.w = oceanMaterial.F0.w;
-        @end
-    @end
-    @property( !hlms_alphablend )
-        outPs.colour0.w = 1.0f;
-    @end
+	@property( atmosky_npr )
+		@property( hlms_fog )
+			const float3 cameraPos = float3(
+				atmoSettings.skyLightAbsorption.w,
+				atmoSettings.sunAbsorption.w,
+				atmoSettings.cameraDisplacement.w );
+
+			const float distToCamera = length( inPs.wpos - cameraPos );
+
+			// exp2 fog (matches AtmosphereNpr's style)
+			const float transmittance = exp2( -atmoSettings.fogDensity * distToCamera );
+			float fogAmount = saturate( 1.0f - transmittance );
+
+			// Optional "fog break"
+			const float brightness = max( finalColour.x, max( finalColour.y, finalColour.z ) );
+			const float breakFactor =
+				saturate( (brightness - atmoSettings.fogBreakMinBrightness) * atmoSettings.fogBreakFalloff );
+			fogAmount *= (1.0f - breakFactor);
+
+			finalColour = lerp( finalColour, inPs.fog.xyz, fogAmount );
+		@end
+	@end
+
+	@property( !hw_gamma_write )
+		outRgb = sqrt( finalColour );
+	@end
+	@property( hw_gamma_write )
+		outRgb = finalColour;
+	@end
+
+	outPs.colour0.xyz = outRgb;
+		
+		@property( hlms_alphablend )
+		@property( use_texture_alpha )
+			outPs.colour0.w = diffuseCol.w;
+		@end
+		@property( !use_texture_alpha )
+			outPs.colour0.w = 1.0f;
+		@end
+	@end
+	@property( !hlms_alphablend )
+		outPs.colour0.w = 1.0f;
+	@end
 
     @property( debug_pssm_splits )
         outPs.colour0.xyz = lerp( outPs.colour0.xyz, debugPssmSplit.xyz, 0.2f );

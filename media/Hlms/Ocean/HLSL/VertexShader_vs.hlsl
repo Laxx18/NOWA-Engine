@@ -70,7 +70,6 @@ Ocean_VSPS main( VS_INPUT input )
     float3 worldPos;
     worldPos.xz = (float2)uVertexPos * cellData.scale.xz + cellData.pos.xz;
 
-    outVs.wavesIntensity = cellData.scale.y;
 
     float timer = cellData.oceanTime.x;
     float timeScale = cellData.oceanTime.y;
@@ -78,6 +77,9 @@ Ocean_VSPS main( VS_INPUT input )
     float chaosPacked = cellData.oceanTime.w;
     bool  isUnderwater = chaosPacked < 0.0f;
     float chaos = abs(chaosPacked);
+	
+	// outVs.wavesIntensity = cellData.scale.y;
+	outVs.wavesIntensity = timeScale;
 
     // ----------------------------------------------------
     // CONTINUOUS TIME
@@ -170,9 +172,14 @@ Ocean_VSPS main( VS_INPUT input )
         outVs.depth = outVs.gl_Position.z;
     @end
 
-    float3 normalWS = float3(0.0f, 1.0f, 0.0f);
-    outVs.normal = normalize( mul( float4(normalWS, 0.0f), passBuf.view ).xyz );
-    outVs.wpos = worldPos.xyz;
+	// TODO: Normals required? Maybe other shader need them? See also Structs_piece_vs_piece_ps.hlsl.
+    // float3 normalWS = float3(0.0f, 1.0f, 0.0f);
+    // outVs.normal = normalize( mul( float4(normalWS, 0.0f), passBuf.view ).xyz );
+    // outVs.wpos = worldPos.xyz;
+	
+	@property( atmosky_npr )
+		@insertpiece( DoAtmosphereNprSky )
+	@end
 
     @insertpiece( custom_vs_posExecution )
 
