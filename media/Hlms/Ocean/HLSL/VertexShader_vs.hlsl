@@ -25,11 +25,13 @@ struct Ocean_VSPS
 // Textures
 // -------------------------------------------------------------------------
 
-Texture3D terrainData;
-Texture2D blendMap;
+Texture3D terrainData : register(t@value(terrainData));
+Texture2D blendMap    : register(t@value(blendMap));
 
-SamplerState samplerState0 : register(s0);
-SamplerState samplerState1 : register(s1);
+SamplerState samplerState0 : register(s@value(terrainData));
+SamplerState samplerState1 : register(s@value(blendMap));
+
+
 
 @insertpiece( custom_vs_uniformDeclaration )
 
@@ -157,13 +159,18 @@ Ocean_VSPS main( VS_INPUT input )
     float invWidth = rcp( (float)(cellData.xzTexPosBounds.z + 1) );
     outVs.uv0.xy = (float2)uVertexPos * float2( invWidth, cellData.scale.w );
     
-    @insertpiece( ShadowReceive )
+    // ---------------------------------------------------------------------
+	// Shadow receive (explicit) - because @insertpiece( ShadowReceive ) is empty
+	// ---------------------------------------------------------------------
+	@foreach( hlms_num_shadow_map_lights, n )
+		@property( !hlms_shadowmap@n_is_point_light )
+			// Project worldPos into shadow texture space
+			outVs.posL@n = mul( float4( worldPos.xyz, 1.0f ), passBuf.shadowRcv[@n].texViewProj );
 
-    @foreach( hlms_num_shadow_map_lights, n )
-        @property( !hlms_shadowmap@n_is_point_light )
-            outVs.posL@n.z = outVs.posL@n.z * passBuf.shadowRcv[@n].shadowDepthRange.y * 0.5f + 0.5f;
-        @end
-    @end
+			// Match Ogre's expected depth mapping (your original line)
+			outVs.posL@n.z = outVs.posL@n.z * passBuf.shadowRcv[@n].shadowDepthRange.y * 0.5f + 0.5f;
+		@end
+	@end
     
     outVs.pos = mul( float4(worldPos.xyz, 1.0f), passBuf.view ).xyz;
     outVs.gl_Position = mul( float4(worldPos.xyz, 1.0f), passBuf.viewProj );
@@ -175,7 +182,8 @@ Ocean_VSPS main( VS_INPUT input )
 	// TODO: Normals required? Maybe other shader need them? See also Structs_piece_vs_piece_ps.hlsl.
     // float3 normalWS = float3(0.0f, 1.0f, 0.0f);
     // outVs.normal = normalize( mul( float4(normalWS, 0.0f), passBuf.view ).xyz );
-    // outVs.wpos = worldPos.xyz;
+	
+    outVs.wpos = worldPos.xyz;
 	
 	@property( atmosky_npr )
 		@insertpiece( DoAtmosphereNprSky )

@@ -48,25 +48,33 @@ struct PS_OUTPUT
 // -------------------------------------------------------------------------
 // Textures
 // -------------------------------------------------------------------------
-
-Texture3D terrainData;
-Texture2D terrainShadows;
-
-SamplerState terrainDataSampler    : register(s0);
-SamplerState terrainShadowsSampler : register(s1);
-
-@insertpiece( DeclShadowSamplers )
-
+// -----------------------------
+// Forward+ SRV + Sampler layout (DX11/Ogre)
+// -----------------------------
 @property( hlms_forwardplus )
-    Buffer<uint>   f3dGrid;
-    Buffer<float4> f3dLightList;
+    // Forward+ buffers (always t0/t1)
+    Buffer<float4> f3dLightList : register(t0);
+    Buffer<uint>   f3dGrid      : register(t1);
+
+    // Ocean textures (dynamic registers based on C++ properties)
+    Texture3D terrainData : register(t@value(terrainData));
+    Texture2D blendMap    : register(t@value(blendMap));
+
+    SamplerState terrainDataSampler : register(s@value(terrainData));
+    SamplerState blendMapSampler    : register(s@value(blendMap));
 @end
 
-@property( envprobe_map )
-    TextureCube texEnvProbeMap;
+@property( !hlms_forwardplus )
+    // No Forward+ - ocean textures start at t0
+    Texture3D terrainData : register(t@value(terrainData));
+    Texture2D blendMap    : register(t@value(blendMap));
 
-    SamplerState texEnvProbeMapSampler : register( s15 );
+    SamplerState terrainDataSampler : register(s@value(terrainData));
+    SamplerState blendMapSampler    : register(s@value(blendMap));
 @end
+
+// Shadows handled by PBS pieces (DO NOT manually declare texShadowMap here)
+@insertpiece( DeclShadowSamplers )
 
 @property( hlms_lights_spot_textured )
     @insertpiece( DeclQuat_zAxis )
@@ -156,47 +164,49 @@ Ocean_VSPS inPs
 	// -------------------------------------------------------------
 
 	// Tangent-space normal from texture
+	// -------------------------------------------------------------
+	// PBS-compatible ocean normal reconstruction (VIEW SPACE)
+	// -------------------------------------------------------------
+
+	// Tangent-space normal from texture
 	float3 nNormalTS;
 	nNormalTS.xy = textureValue.xy * 2.0f - 1.0f;
 	nNormalTS.xy *= waveFactor;
 	nNormalTS.z  = 1.0f;
 
-	// Geometric normal is always +Y (WORLD)
-	float3 geomNormal = float3( 0.0f, 1.0f, 0.0f );
+	// Geometric normal in WORLD
+	float3 geomNormalW = float3( 0.0f, 1.0f, 0.0f );
 
-	// Convert geom normal to VIEW space exactly like GLSL: geomNormal * mat3(passBuf.view)
-	geomNormal = normalize( mul( geomNormal, (float3x3)passBuf.view ) );
+	// Transform geometric normal to VIEW space
+	float3 geomNormalVS = normalize( mul( geomNormalW, (float3x3)passBuf.view ) );
 
-	// GLSL: vec3( view[0].x, view[1].x, view[2].x )  == first ROW of view matrix (x across columns)
-	float3 viewSpaceUnitX = float3( passBuf.view._11, passBuf.view._12, passBuf.view._13 );
+	// Pick a stable tangent in WORLD (same as Terra)
+	float3 worldX = float3( 1.0f, 0.0f, 0.0f );
+	float3 tangentW = normalize( cross( geomNormalW, worldX ) );
 
-	// TBN (same cross order as GLSL)
-	float3 vTangent  = normalize( cross( geomNormal, viewSpaceUnitX ) );
-	float3 vBinormal = cross( vTangent, geomNormal );
+	// Transform tangent to VIEW space
+	float3 tangentVS = normalize( mul( tangentW, (float3x3)passBuf.view ) );
 
-	// GLSL: nNormal = normalize( TBN * nNormalTS ); with TBN columns (vBinormal, vTangent, geomNormal)
-	// Do the equivalent explicitly (no matrix layout pitfalls):
-	nNormal = normalize( vBinormal * nNormalTS.x + vTangent * nNormalTS.y + geomNormal * nNormalTS.z );
+	// Binormal in VIEW space
+	float3 binormalVS = cross( tangentVS, geomNormalVS );
+
+	// Build TBN in VIEW space
+	float3x3 TBNvs = float3x3( binormalVS, tangentVS, geomNormalVS );
+
+	// Final PBS normal
+	nNormal = normalize( mul( nNormalTS, TBNvs ) );
 
     // ---------------------------------------------------------------------
-    // Shadows
-    // ---------------------------------------------------------------------
+	// Shadows (Ocean doesn't need terrain shadow texture)
+	// ---------------------------------------------------------------------
 
-    @property( terra_enabled )
-        // TODO: Is this required for terra shadows?
-        float fTerrainShadow = terrainShadows.Sample( terrainShadowsSampler, inPs.uv0.xy ).x;
-    @end
+	// If there are no directional shadow maps at all, PBS' DoDirectionalShadowMaps doesn't declare fShadow.
+	// Provide a default so the rest of the shader can always multiply by it.
+	@property( !(hlms_pssm_splits || (!hlms_pssm_splits && hlms_num_shadow_map_lights && hlms_lights_directional)) )
+	   midf fShadow = _h( 1.0 );
+	@end
 
-    // If there are no directional shadow maps at all, PBS' DoDirectionalShadowMaps doesn't declare fShadow.
-    // Provide a default so the rest of the shader can always multiply by it.
-    @property( !(hlms_pssm_splits || (!hlms_pssm_splits && hlms_num_shadow_map_lights && hlms_lights_directional)) )
-       midf fShadow = _h( 1.0 );
-    @end
-
-    @insertpiece(DoDirectionalShadowMaps)
-    @property( terra_enabled )
-        fShadow *= fTerrainShadow;
-    @end
+	@insertpiece(DoDirectionalShadowMaps)
 
     // ---------------------------------------------------------------------
     // Lighting
@@ -212,9 +222,10 @@ Ocean_VSPS inPs
 	PixelData pixelData;
 
 	pixelData.normal   = nNormal;
-	pixelData.diffuse  = midf4( diffuseCol );
-	pixelData.specular = midf3( 1.0f, 1.0f, 1.0f ); // Full specular for water
-	pixelData.F0       = F0;
+	pixelData.diffuse = midf4( diffuseCol * _h(0.31830988618f) );
+	// PBS uses F0 for specular, not pixelData.specular
+	pixelData.specular = midf3( 0.0f, 0.0f, 0.0f );
+	pixelData.F0       = make_float_fresnel( 0.02f ); // water approx. 0.02
 	pixelData.viewDir  = viewDir;
 	pixelData.NdotV    = NdotV;
 
@@ -228,16 +239,13 @@ Ocean_VSPS inPs
 	midf3 finalColour = midf3( 0.0f, 0.0f, 0.0f );
 
 	@property( ambient_fixed )
-		// Upper hemi only
-		finalColour = passBuf.ambientUpperHemi.xyz * @insertpiece( kD ).xyz;
+		finalColour = passBuf.ambientUpperHemi.xyz * pixelData.diffuse.xyz;
 	@end
 
 	@property( ambient_hemisphere )
-		// Blend between lower & upper based on normal vs hemisphere direction.
-		// nNormal is view-space in your shader, and passBuf.ambientHemisphereDir is also view-space.
 		midf hemi = saturate( dot( nNormal, passBuf.ambientHemisphereDir.xyz ) * _h(0.5f) + _h(0.5f) );
 		midf3 ambientHemi = lerp( passBuf.ambientLowerHemi.xyz, passBuf.ambientUpperHemi.xyz, hemi );
-		finalColour = ambientHemi * @insertpiece( kD ).xyz;
+		finalColour = ambientHemi * pixelData.diffuse.xyz;
 	@end
 
     @insertpiece( DeclareObjLightMask )
@@ -246,7 +254,6 @@ Ocean_VSPS inPs
     // ---------------------------------------------------------------------
     // Directional Lights
     // ---------------------------------------------------------------------
-	
 	@property( !custom_disable_directional_lights )
 		@property( hlms_lights_directional || hlms_lights_directional_non_caster )
 
@@ -279,102 +286,107 @@ Ocean_VSPS inPs
 
 		@end
 	@end
+	
 
-    // ---------------------------------------------------------------------
-    // Point and Spot Lights
-    // ---------------------------------------------------------------------
-    
-    @property( hlms_lights_point || hlms_lights_spot )
-        float3 lightDir;
-        float fDistance;
-        midf3 tmpColour;
-        float spotCosAngle;
-    @end
 
-    // Point lights
-    @foreach( hlms_lights_point, n, hlms_lights_directional_non_caster )
-        lightDir = passBuf.lights[@n].position - inPs.pos;
-        fDistance = length( lightDir );
-        if( fDistance <= passBuf.lights[@n].attenuation.x )
-        {
-            lightDir *= 1.0f / fDistance;
-            tmpColour = BRDF(
-                lightDir,
-                passBuf.lights[@n].diffuse.xyz,
-                passBuf.lights[@n].specular.xyz,
-                pixelData PASSBUF_ARG
-            ) @insertpiece( DarkenWithShadowPoint );
-            float atten = 1.0f / (0.5f + (passBuf.lights[@n].attenuation.y + passBuf.lights[@n].attenuation.z * fDistance) * fDistance );
-            finalColour += tmpColour * atten;
-        }
-    @end
+	// ---------------------------------------------------------------------
+	// Point and Spot Lights (non-Forward+ path only)
+	// ---------------------------------------------------------------------
+	@property( !hlms_forwardplus )
+		@property( hlms_lights_point || hlms_lights_spot )
+			float3 lightDir;
+			float fDistance;
+			midf3 tmpColour;
+			float spotCosAngle;
+		@end
 
-    // Spot lights
-    @foreach( hlms_lights_spot, n, hlms_lights_point )
-    
-        lightDir = passBuf.lights[@n].position - inPs.pos;
-        fDistance = length( lightDir );
-        
-        @property( !hlms_lights_spot_textured )
-            spotCosAngle = dot( normalize( inPs.pos - passBuf.lights[@n].position ), passBuf.lights[@n].spotDirection );
-        @end
-        
-        @property( hlms_lights_spot_textured )
-            spotCosAngle = dot( normalize( inPs.pos - passBuf.lights[@n].position ), zAxis( passBuf.lights[@n].spotQuaternion ) );
-        @end
-        
-        if( fDistance <= passBuf.lights[@n].attenuation.x && spotCosAngle >= passBuf.lights[@n].spotParams.y )
-        {
-            lightDir *= 1.0f / fDistance;
-            
-            @property( hlms_lights_spot_textured )
-                float3 posInLightSpace = qmul( spotQuaternion[@value(spot_params)], inPs.pos );
-                float spotAtten = texSpotLight.Sample( samplerState[@value(spot_params)], normalize( posInLightSpace ).xy ).x;
-            @end
-            
-            @property( !hlms_lights_spot_textured )
-                float spotAtten = saturate( (spotCosAngle - passBuf.lights[@n].spotParams.y) * passBuf.lights[@n].spotParams.x );
-                spotAtten = pow( spotAtten, passBuf.lights[@n].spotParams.z );
-            @end
-            
-            tmpColour = BRDF(
-                lightDir,
-                passBuf.lights[@n].diffuse.xyz,
-                passBuf.lights[@n].specular.xyz,
-                pixelData PASSBUF_ARG
-            ) @insertpiece( DarkenWithShadow );
-            
-            float atten = 1.0f / (0.5f + (passBuf.lights[@n].attenuation.y + passBuf.lights[@n].attenuation.z * fDistance) * fDistance );
-            finalColour += tmpColour * (atten * spotAtten);
-        }
-    @end
+		// Point lights
+		@foreach( hlms_lights_point, n, hlms_lights_directional_non_caster )
+			lightDir = passBuf.lights[@n].position - inPs.pos;
+			fDistance = length( lightDir );
+			if( fDistance <= passBuf.lights[@n].attenuation.x )
+			{
+				lightDir *= 1.0f / fDistance;
+				tmpColour = BRDF(
+					lightDir,
+					passBuf.lights[@n].diffuse.xyz,
+					passBuf.lights[@n].specular.xyz,
+					pixelData PASSBUF_ARG
+				) @insertpiece( DarkenWithShadowPoint );
+				float atten = 1.0f / (0.5f + (passBuf.lights[@n].attenuation.y + passBuf.lights[@n].attenuation.z * fDistance) * fDistance );
+				finalColour += tmpColour * atten;
+			}
+		@end
 
-    @insertpiece( forward3dLighting )
+		// Spot lights
+		@foreach( hlms_lights_spot, n, hlms_lights_point )
+			lightDir = passBuf.lights[@n].position - inPs.pos;
+			fDistance = length( lightDir );
+			
+			@property( !hlms_lights_spot_textured )
+				spotCosAngle = dot( normalize( inPs.pos - passBuf.lights[@n].position ), passBuf.lights[@n].spotDirection );
+			@end
+			
+			@property( hlms_lights_spot_textured )
+				spotCosAngle = dot( normalize( inPs.pos - passBuf.lights[@n].position ), zAxis( passBuf.lights[@n].spotQuaternion ) );
+			@end
+			
+			if( fDistance <= passBuf.lights[@n].attenuation.x && spotCosAngle >= passBuf.lights[@n].spotParams.y )
+			{
+				lightDir *= 1.0f / fDistance;
+				
+				@property( hlms_lights_spot_textured )
+					float3 posInLightSpace = qmul( spotQuaternion[@value(spot_params)], inPs.pos );
+					float spotAtten = texSpotLight.Sample( samplerState[@value(spot_params)], normalize( posInLightSpace ).xy ).x;
+				@end
+				
+				@property( !hlms_lights_spot_textured )
+					float spotAtten = saturate( (spotCosAngle - passBuf.lights[@n].spotParams.y) * passBuf.lights[@n].spotParams.x );
+					spotAtten = pow( spotAtten, passBuf.lights[@n].spotParams.z );
+				@end
+				
+				tmpColour = BRDF(
+					lightDir,
+					passBuf.lights[@n].diffuse.xyz,
+					passBuf.lights[@n].specular.xyz,
+					pixelData PASSBUF_ARG
+				) @insertpiece( DarkenWithShadow );
+				
+				float atten = 1.0f / (0.5f + (passBuf.lights[@n].attenuation.y + passBuf.lights[@n].attenuation.z * fDistance) * fDistance );
+				finalColour += tmpColour * (atten * spotAtten);
+			}
+		@end
+	@end
+		
+	// Forward+ lights (point/spot in Forward+ mode)
+	@property( hlms_forwardplus )
+		@insertpiece( forward3dLighting )
+	@end
 	
 	// ---------------------------------------------------------------------
-	// Env probe / IBL
+	// Env probe / IBL -> Pbs seems do apply that already
 	// ---------------------------------------------------------------------
-    @property( envprobe_map )
-		// Reflection is the PRIMARY color source for water!
-		float3 reflDirView  = reflect( -viewDir, nNormal );
+    // @property( envprobe_map )
+		// // Reflection is the PRIMARY color source for water!
+		// float3 reflDirView  = reflect( -viewDir, nNormal );
 		
-		float3x3 invViewRot = transpose( (float3x3)passBuf.view );
-		float3 reflDirWorld = normalize( mul( reflDirView, invViewRot ) );
+		// float3x3 invViewRot = transpose( (float3x3)passBuf.view );
+		// float3 reflDirWorld = normalize( mul( reflDirView, invViewRot ) );
 		
-		// Sample environment with roughness-based mip level
-		float reflectionLod = pixelData.perceptualRoughness * 7.0f; // Adjust based on your cubemap mips
-		float3 envCol = texEnvProbeMap.SampleLevel( texEnvProbeMapSampler, reflDirWorld, reflectionLod ).xyz;
+		// // Sample environment with roughness-based mip level
+		// float reflectionLod = pixelData.perceptualRoughness * 7.0f; // Adjust based on your cubemap mips
+		// float3 envCol = texEnvProbeMap.SampleLevel( texEnvProbeMapSampler, reflDirWorld, reflectionLod ).xyz;
 		
-		// Fresnel for reflections (water reflects more at grazing angles)
-		float oneMinusNdotV = 1.0f - NdotV;
-		float fresnelTerm   = oneMinusNdotV * oneMinusNdotV * oneMinusNdotV * oneMinusNdotV * oneMinusNdotV;
+		// // Fresnel for reflections (water reflects more at grazing angles)
+		// float oneMinusNdotV = 1.0f - NdotV;
+		// float fresnelTerm   = oneMinusNdotV * oneMinusNdotV * oneMinusNdotV * oneMinusNdotV * oneMinusNdotV;
 		
-		// Water has strong fresnel effect
-		float fresnelFactor = lerp( 0.02f, 1.0f, fresnelTerm );
+		// // Water has strong fresnel effect
+		// float fresnelFactor = lerp( 0.02f, 1.0f, fresnelTerm );
 		
-		// Reflections are the MAIN color for water
-		finalColour += envCol * fresnelFactor * 0.8f; // Strong reflection contribution
-	@end
+		// // Reflections are the MAIN color for water
+		// finalColour += envCol * fresnelFactor * 0.8f; // Strong reflection contribution
+	// @end
 	
     // ---------------------------------------------------------------------
     // Output
@@ -386,26 +398,25 @@ Ocean_VSPS inPs
 
 	@property( atmosky_npr )
 		@property( hlms_fog )
-			const float3 cameraPos = float3(
-				atmoSettings.skyLightAbsorption.w,
-				atmoSettings.sunAbsorption.w,
-				atmoSettings.cameraDisplacement.w );
+			// Terra-style: view-space distance (camera at origin)
+			const float distToCamera = length( inPs.pos.xyz );
 
-			const float distToCamera = length( inPs.wpos - cameraPos );
+			const midf luminance = dot( finalColour.xyz,
+										midf3_c( _h(0.212655), _h(0.715158), _h(0.072187) ) );
 
-			// exp2 fog (matches AtmosphereNpr's style)
-			const float transmittance = exp2( -atmoSettings.fogDensity * distToCamera );
-			float fogAmount = saturate( 1.0f - transmittance );
+			const midf lumFogWeight =
+				max( exp2( atmoSettings.fogBreakFalloff * luminance +
+						   atmoSettings.fogBreakMinBrightness ),
+					 _h( 0.0 ) );
 
-			// Optional "fog break"
-			const float brightness = max( finalColour.x, max( finalColour.y, finalColour.z ) );
-			const float breakFactor =
-				saturate( (brightness - atmoSettings.fogBreakMinBrightness) * atmoSettings.fogBreakFalloff );
-			fogAmount *= (1.0f - breakFactor);
+			midf fogWeight = midf_c( exp2( -distToCamera * atmoSettings.fogDensity ) );
+			fogWeight = lerp( _h(1.0), fogWeight, lumFogWeight );
 
-			finalColour = lerp( finalColour, inPs.fog.xyz, fogAmount );
+			// NOTE: same blend direction as Terra
+			finalColour.xyz = lerp( inPs.fog.xyz, finalColour.xyz, fogWeight );
 		@end
 	@end
+
 
 	@property( !hw_gamma_write )
 		outRgb = sqrt( finalColour );

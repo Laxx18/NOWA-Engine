@@ -23,7 +23,7 @@ struct OceanMaterial
 @end
 
 @piece( OceanMaterialDecl )
-    CONST_BUFFER( OceanMaterialBuf, 1 )
+    CONST_BUFFER( OceanMaterialBuf, 10 )
     {
         OceanMaterial oceanMaterial;
     };
