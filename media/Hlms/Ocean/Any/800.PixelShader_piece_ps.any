@@ -1,0 +1,178 @@
+// Ocean header for PS - Exact Terra pattern
+
+// CRITICAL: Undefine PBS pieces BEFORE DefaultHeaderPS tries to use them
+@undefpiece( MaterialStructDecl )
+@undefpiece( InstanceStructDecl )
+
+@piece( DefaultOceanHeaderPS )
+    @insertpiece( DefaultHeaderPS )
+    @property( !hlms_shadowcaster )
+        @insertpiece( OceanMaterialStructDecl )
+        @insertpiece( OceanInstanceStructDecl )
+    @else
+        @insertpiece( DeclShadowCasterMacros )
+        @property( hlms_shadowcaster_point || exponential_shadow_maps )
+            @insertpiece( PassStructDecl )
+        @end
+    @end
+
+    @property( !hlms_prepass && needs_view_dir )
+        @insertpiece( DeclareBRDF )
+    @end
+@end
+
+//-----------------------------------------------------------------------------
+//		BODY CODE (Following Terra's exact pattern)
+//-----------------------------------------------------------------------------
+
+@piece( DefaultOceanBodyPS )
+    // Ocean material reference
+    #define oceanMaterial materialArray[0]
+    
+    @property( hlms_fine_light_mask || hlms_forwardplus_fine_light_mask )
+        uint objLightMask = 0xFFFFFFFFu;
+    @end
+    
+    @insertpiece( custom_ps_posMaterialLoad )
+    
+    // ===== DECLARE PixelData FIRST =====
+    PixelData pixelData;
+    
+    float4 diffuseCol;
+    float_fresnel F0;
+    float ROUGHNESS;
+    float3 nNormal;
+
+    // ===== Sample ocean texture data =====
+    float4 textureValue  = terrainData.SampleLevel(terrainDataSampler, float3(inPs.uv1.xy, inPs.uv1.z), 0);
+    float4 textureValue2 = terrainData.SampleLevel(terrainDataSampler, float3(inPs.uv2.xy, inPs.uv2.z), 0);
+    float4 textureValue3 = terrainData.SampleLevel(terrainDataSampler, float3(inPs.uv3.xy, inPs.uv3.z), 0);
+    float4 textureValue4 = terrainData.SampleLevel(terrainDataSampler, float3(inPs.uv4.xy, inPs.uv4.z), 0);
+
+    textureValue = lerp(textureValue, textureValue2, inPs.blendWeight.x);
+    textureValue = lerp(textureValue, textureValue3, inPs.blendWeight.y);
+    textureValue = lerp(textureValue, textureValue4, inPs.blendWeight.z);
+    
+    // ===== Wave calculations =====
+    float waveIntensity = saturate( inPs.wavesIntensity );
+    float waveFactor    = saturate( inPs.waveHeight ) * waveIntensity;
+    
+    // ===== Foam calculation =====
+    float foam = pow( saturate( textureValue.w ), 2.0f ) * waveFactor * 0.5f;
+    foam = saturate( foam );
+    
+    ROUGHNESS = lerp( 0.02f, 0.3f, foam );
+    
+    // ===== Base water color =====
+    diffuseCol.xyz = lerp( oceanMaterial.deepColour.xyz, oceanMaterial.shallowColour.xyz, waveFactor * 0.7f );
+    float3 foamColour = float3( 0.9f, 0.9f, 0.9f );
+    diffuseCol.xyz = lerp( diffuseCol.xyz, foamColour, foam );
+    diffuseCol.w = 1.0f;
+
+    F0 = make_float_fresnel( 0.03f );
+    
+    // ===== Normal =====
+    nNormal = normalize( inPs.normal );
+    
+    @insertpiece( custom_ps_posSampleNormal )
+
+    // // ===== Populate pixelData BEFORE lighting =====
+    // pixelData.normal   = nNormal;
+    // // DON'T divide by PI here - the BRDF does it internally!
+    // pixelData.diffuse = midf4( diffuseCol );
+    // pixelData.specular = midf3( 0.0f, 0.0f, 0.0f );
+    // pixelData.F0       = make_float_fresnel( 0.02f );
+    // pixelData.viewDir  = normalize( -inPs.pos );
+    // pixelData.NdotV    = saturate( dot( nNormal, pixelData.viewDir ) );
+    // pixelData.perceptualRoughness = midf_c( ROUGHNESS );
+    // pixelData.roughness = max( midf_c( 0.002f ), pixelData.perceptualRoughness * pixelData.perceptualRoughness );
+	
+	// ===== Populate pixelData BEFORE lighting =====
+    pixelData.normal   = nNormal;
+    pixelData.diffuse = midf4( diffuseCol );
+    // Water is highly specular!
+    pixelData.specular = midf3( 1.0f, 1.0f, 1.0f );
+    pixelData.F0       = make_float_fresnel( 0.02f );
+    pixelData.viewDir  = normalize( -inPs.pos );
+    pixelData.NdotV    = saturate( dot( nNormal, pixelData.viewDir ) );
+    pixelData.perceptualRoughness = midf_c( ROUGHNESS );
+    pixelData.roughness = max( midf_c( 0.002f ), pixelData.perceptualRoughness * pixelData.perceptualRoughness );
+	
+	// ===== Populate pixelData BEFORE lighting =====
+    // pixelData.normal   = nNormal;
+    // // Water has low diffuse (mostly absorbed)
+    // pixelData.diffuse = midf4( diffuseCol * _h(0.3) );  // Reduce diffuse
+    // // Water is highly specular!
+    // pixelData.specular = midf3( 1.0f, 1.0f, 1.0f );
+    // // Water F0 is around 0.02 (you have this correct)
+    // pixelData.F0       = make_float_fresnel( 0.02f );
+    // pixelData.viewDir  = normalize( -inPs.pos );
+    // pixelData.NdotV    = saturate( dot( nNormal, pixelData.viewDir ) );
+    // pixelData.perceptualRoughness = midf_c( ROUGHNESS );
+    // pixelData.roughness = max( midf_c( 0.002f ), pixelData.perceptualRoughness * pixelData.perceptualRoughness );
+
+    // ===== Shadow calculation =====
+    @insertpiece( DoDirectionalShadowMaps )
+    
+    @property( !(hlms_pssm_splits || (!hlms_pssm_splits && hlms_num_shadow_map_lights && hlms_lights_directional)) )
+        midf fShadow = _h( 1.0f );
+    @end
+
+    // ===== Lighting Header - declares finalColour and other vars =====
+    @insertpiece( LightingHeader )
+
+    @insertpiece( custom_ps_preLights )
+
+    // ===== DIRECTIONAL LIGHTS =====
+    @property( !custom_disable_directional_lights )
+        @insertpiece( DoDirectionalLights )
+    @end
+
+    // ===== POINT LIGHTS =====
+    @insertpiece( DoPointLights )
+
+    // ===== SPOT LIGHTS =====
+    @insertpiece( DoSpotLights )
+
+    // ===== FORWARD+ LIGHTING =====
+    @insertpiece( forward3dLighting )
+
+    // ===== AMBIENT LIGHTING (only once!) =====
+    @property( ambient_hemisphere )
+        midf3 ambientHemi = lerp( midf3_c( passBuf.ambientLowerHemi.xyz ), 
+                                  midf3_c( passBuf.ambientUpperHemi.xyz ), 
+                                  ambientWD );
+        finalColour += ambientHemi * pixelData.diffuse.xyz;
+    @end
+    
+    @property( ambient_fixed )
+        finalColour += midf3_c( passBuf.ambientUpperHemi.xyz ) * pixelData.diffuse.xyz;
+    @end
+
+    // ===== FOG =====
+    @property( hlms_fog )
+        const float distToCamera = length( inPs.pos.xyz );
+        const midf luminance = dot( finalColour.xyz, midf3_c( _h(0.212655), _h(0.715158), _h(0.072187) ) );
+        const midf lumFogWeight = max( exp2( atmoSettings.fogBreakFalloff * luminance + atmoSettings.fogBreakMinBrightness ), _h( 0.0 ) );
+        midf fogWeight = midf_c( exp2( -distToCamera * atmoSettings.fogDensity ) );
+        fogWeight = lerp( _h(1.0), fogWeight, lumFogWeight );
+        finalColour.xyz = lerp( inPs.fog.xyz, finalColour.xyz, fogWeight );
+    @end
+
+    // ===== OUTPUT =====
+    @property( !hw_gamma_write )
+        outPs.colour0.xyz = sqrt( finalColour );  // Linear to gamma
+    @else
+        outPs.colour0.xyz = finalColour;
+    @end
+    
+    outPs.colour0.w = 1.0f;
+
+    @property( debug_pssm_splits )
+        outPs.colour0.xyz = lerp( outPs.colour0.xyz, debugPssmSplit.xyz, _h(0.2f) );
+    @end
+    
+    @property( hlms_gen_normals_gbuffer )
+        outPs.normals = midf4_c( pixelData.normal * _h( 0.5 ) + _h( 0.5 ), 1.0 );
+    @end
+@end

@@ -1,3 +1,4 @@
+#include "NOWAPrecompiled.h"
 #include "HlmsBaseListenerContainer.h"
 #include <algorithm>
 

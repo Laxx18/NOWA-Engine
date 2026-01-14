@@ -435,68 +435,65 @@ namespace NOWA
 		this->ocean = nullptr;
 		this->datablock = nullptr;
 
-		NOWA::GraphicsModule::DestroyCommand destroyCommand =
-			[ocean, gameObjectPtr, workspaceBaseComponent, appState, datablock]() mutable
+		NOWA::GraphicsModule::DestroyCommand destroyCommand = [ocean, gameObjectPtr, workspaceBaseComponent, appState, datablock]() mutable
+		{
+			if (nullptr != workspaceBaseComponent)
 			{
-				if (nullptr != workspaceBaseComponent)
+				if (nullptr != appState && false == appState->bShutdown)
 				{
-					if (nullptr != appState && false == appState->bShutdown)
+					workspaceBaseComponent->setUseOcean(false, nullptr);
+				}
+			}
+
+			if (nullptr != ocean)
+			{
+				if (true == ocean->isAttached())
+				{
+					Ogre::SceneNode* parentNode = ocean->getParentSceneNode();
+					if (nullptr != parentNode)
 					{
-						workspaceBaseComponent->setUseOcean(false, nullptr);
+						parentNode->detachObject(ocean);
 					}
 				}
-
-				if (nullptr != ocean)
+				else if (nullptr != gameObjectPtr && nullptr != gameObjectPtr->getSceneNode())
 				{
-					if (true == ocean->isAttached())
+					gameObjectPtr->getSceneNode()->detachObject(ocean);
+				}
+
+				delete ocean;
+				ocean = nullptr;
+			}
+
+			if (nullptr != gameObjectPtr)
+			{
+				gameObjectPtr->movableObject = nullptr;
+			}
+
+			if (nullptr != gameObjectPtr && nullptr != gameObjectPtr->sceneManager &&
+				nullptr != gameObjectPtr->boundingBoxDraw)
+			{
+				gameObjectPtr->sceneManager->destroyWireAabb(gameObjectPtr->boundingBoxDraw);
+				gameObjectPtr->boundingBoxDraw = nullptr;
+			}
+
+			if (nullptr != datablock)
+			{
+				Ogre::Hlms* hlms = Ogre::Root::getSingleton().getHlmsManager()->getHlms(Ogre::HLMS_USER1);
+				if (nullptr != hlms)
+				{
+					Ogre::HlmsDatablock* db = hlms->getDatablock(datablock->getName());
+					if (nullptr != db)
 					{
-						Ogre::SceneNode* parentNode = ocean->getParentSceneNode();
-						if (nullptr != parentNode)
+						auto& linkedRenderables = db->getLinkedRenderables();
+						if (true == linkedRenderables.empty())
 						{
-							parentNode->detachObject(ocean);
+							db->getCreator()->destroyDatablock(db->getName());
 						}
 					}
-					else if (nullptr != gameObjectPtr && nullptr != gameObjectPtr->getSceneNode())
-					{
-						// Defensive: detach from GO node if it is still there (even if ocean thinks it's not attached)
-						gameObjectPtr->getSceneNode()->detachObject(ocean);
-					}
-
-					// Created with factory not with scene manager, so manual delete!
-					delete ocean;
-					ocean = nullptr;
 				}
-
-				if (nullptr != gameObjectPtr)
-				{
-					gameObjectPtr->movableObject = nullptr;
-				}
-
-				if (nullptr != gameObjectPtr && nullptr != gameObjectPtr->sceneManager && nullptr != gameObjectPtr->boundingBoxDraw)
-				{
-					gameObjectPtr->sceneManager->destroyWireAabb(gameObjectPtr->boundingBoxDraw);
-					gameObjectPtr->boundingBoxDraw = nullptr;
-				}
-
-				if (nullptr != datablock)
-				{
-					Ogre::Hlms* hlms = Ogre::Root::getSingleton().getHlmsManager()->getHlms(Ogre::HLMS_USER1);
-					if (nullptr != hlms)
-					{
-						Ogre::HlmsDatablock* db = hlms->getDatablock(datablock->getName());
-						if (nullptr != db)
-						{
-							auto& linkedRenderables = db->getLinkedRenderables();
-							if (true == linkedRenderables.empty())
-							{
-								db->getCreator()->destroyDatablock(db->getName());
-							}
-						}
-					}
-
-					datablock = nullptr;
-				}
-			};
+				datablock = nullptr;
+			}
+		};
 
 		GraphicsModule::getInstance()->enqueueDestroy(destroyCommand, "OceanComponent::destroyOcean");
 	}

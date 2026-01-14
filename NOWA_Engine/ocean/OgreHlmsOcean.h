@@ -104,8 +104,6 @@ namespace Ogre
             Matrix4 viewMatrix;
         };
 
-        PassData                mPreparedPass;
-        ConstBufferPackedVec    mPassBuffers;
         HlmsSamplerblock const  *mShadowmapSamplerblock;    /// GL3+ only when not using depth textures
         HlmsSamplerblock const  *mShadowmapCmpSamplerblock; /// For depth textures & D3D11
         HlmsSamplerblock const  *mCurrentShadowmapSamplerblock;
@@ -114,11 +112,6 @@ namespace Ogre
         HlmsSamplerblock const  *mWeightSamplerblock;
 
         FastArray<Ocean*>       mLinkedOceans;
-
-        uint32                  mCurrentPassBuffer;     /// Resets every to zero every new frame.
-
-        TexBufferPacked         *mGridBuffer;
-        ReadOnlyBufferPacked    *mGlobalLightListBuffer;
 
         ConstBufferPool::BufferPool const *mLastBoundPool;
 
@@ -160,8 +153,6 @@ namespace Ogre
 
         void calculateHashFor(Renderable* renderable, uint32& outHash, uint32& outCasterHash) override;
 
-        void destroyAllBuffers() override;
-
         PropertiesMergeStatus notifyPropertiesMergedPreGenerationStep(size_t tid, PiecesMap* inOutPieces) override;
 
         FORCEINLINE uint32 fillBuffersFor( const HlmsCache *cache,
@@ -179,16 +170,8 @@ namespace Ogre
 
         void _changeRenderSystem( RenderSystem *newRs ) override;
 
-        /// Ocean HLMS doesn't require special barrier logic; keep default behaviour.
-        void analyzeBarriers( BarrierSolver &barrierSolver,
-                              ResourceTransitionArray &resourceTransitions,
-                              Camera *renderingCamera, const bool bCasterPass ) override;
-
         /// Not supported
         virtual void setOptimizationStrategy( OptimizationStrategy optimizationStrategy ) {}
-
-        HlmsCache preparePassHash( const Ogre::CompositorShadowNode *shadowNode, bool casterPass,
-                                   bool dualParaboloid, SceneManager *sceneManager ) override;
 
         uint32 fillBuffersFor( const HlmsCache *cache, const QueuedRenderable &queuedRenderable,
                                bool casterPass, uint32 lastCacheHash,
@@ -200,12 +183,6 @@ namespace Ogre
         uint32 fillBuffersForV2( const HlmsCache *cache, const QueuedRenderable &queuedRenderable,
                                  bool casterPass, uint32 lastCacheHash,
                                  CommandBuffer *commandBuffer ) override;
-
-        void setupRootLayout(RootLayout& rootLayout, size_t tid) override;
-
-        void frameEnded() override;
-
-        void postCommandBufferExecution(CommandBuffer* commandBuffer) override;
 
         void setDebugPssmSplits( bool bDebug );
         bool getDebugPssmSplits(void) const                 { return mDebugPssmSplits; }
@@ -238,9 +215,6 @@ namespace Ogre
         // Add diagnostic tracking
         size_t mLastAllocatedPassBufferSize = 0;
         size_t mLastWrittenPassBufferSize = 0;
-
-        // Safety validation
-        void validatePassBufferState() const;
     };
 
     struct OceanProperty

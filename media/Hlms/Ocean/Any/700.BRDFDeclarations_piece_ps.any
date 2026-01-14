@@ -1,0 +1,42 @@
+// Ocean BRDF Declarations
+// This file provides the BRDF function that Ocean's pixel shader needs
+
+@piece( DeclareBRDF )
+// -------- BRDF (Bidirectional Reflectance Distribution Function) --------
+// Simplified BRDF for water - we don't need the full PBS complexity
+
+INLINE midf3 BRDF( midf3 lightDir, midf3 lightDiffuse, midf3 lightSpecular, PixelData pixelData PASSBUF_ARG_DECL )
+{
+    midf3 halfWay = normalize( lightDir + pixelData.viewDir );
+    midf NdotL = saturate( dot( pixelData.normal, lightDir ) );
+    midf NdotH = saturate( dot( pixelData.normal, halfWay ) );
+    midf VdotH = saturate( dot( pixelData.viewDir, halfWay ) );
+    
+    // Lambertian diffuse
+    midf3 diffuseTerm = pixelData.diffuse.xyz * NdotL;
+    
+    // Cook-Torrance specular (simplified for water)
+    midf alpha = pixelData.roughness * pixelData.roughness;
+    midf alphaSq = alpha * alpha;
+    
+    // GGX Distribution
+    midf denom = NdotH * NdotH * (alphaSq - _h(1.0)) + _h(1.0);
+    midf D = alphaSq / (midf_c(3.14159265359) * denom * denom);
+    
+    // Schlick-GGX Geometry (simplified)
+    midf k = alpha * _h(0.5);
+    midf G_V = pixelData.NdotV / (pixelData.NdotV * (_h(1.0) - k) + k);
+    midf G_L = NdotL / (NdotL * (_h(1.0) - k) + k);
+    midf G = G_V * G_L;
+    
+    // Fresnel (Schlick approximation)
+    midf fresnel = pow( _h(1.0) - VdotH, _h(5.0) );
+    float_fresnel F = lerp( pixelData.F0, make_float_fresnel(_h(1.0)), fresnel );
+    
+    // Combine specular terms
+    midf3 specularTerm = midf3_c(F) * (D * G) / max( _h(4.0) * pixelData.NdotV * NdotL, _h(0.001) );
+    
+    // Water is mostly specular, less diffuse
+    return (diffuseTerm * midf3_c(lightDiffuse) * _h(0.3)) + (specularTerm * midf3_c(lightSpecular) * NdotL);
+}
+@end

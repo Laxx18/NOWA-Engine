@@ -557,10 +557,7 @@
     <ClCompile Include="ocean\OceanCell.cpp" />
     <ClCompile Include="ocean\OgreHlmsOcean.cpp" />
     <ClCompile Include="ocean\OgreHlmsOceanDatablock.cpp" />
-    <ClCompile Include="shader\HlmsBaseListenerContainer.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
+    <ClCompile Include="shader\HlmsBaseListenerContainer.cpp" />
     <ClCompile Include="shader\HlmsFog.cpp" />
     <ClCompile Include="shader\HlmsWind.cpp" />
     <ClCompile Include="utilities\AnimationBlender.cpp" />

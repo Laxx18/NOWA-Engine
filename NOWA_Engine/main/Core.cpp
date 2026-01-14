@@ -1539,6 +1539,8 @@ namespace NOWA
 
 	void Core::registerHlms(void)
 	{
+		this->baseListenerContainer = new HlmsBaseListenerContainer();
+
 		Ogre::String dataFolder = "../../media/";
 		Ogre::RenderSystem* renderSystem = this->root->getRenderSystem();
 
@@ -1613,9 +1615,6 @@ namespace NOWA
 
 			// Create and register
 			hlmsPbs = OGRE_NEW Ogre::HlmsPbs(archivePbs, &archivePbsLibraryFolders);
-
-			this->baseListenerContainer = new HlmsBaseListenerContainer();
-			hlmsPbs->setListener(this->baseListenerContainer);
 			hlmsManager->registerHlms(hlmsPbs);
 
 			// hlmsPbs->setIndustryCompatible(true);
@@ -1670,6 +1669,7 @@ namespace NOWA
 				libraries.push_back(archiveManager.load(dataFolder + path, "FileSystem", true));
 			}
 
+			// In your initialization code where you create HlmsOcean:
 			hlmsOcean = OGRE_NEW Ogre::HlmsOcean(archiveOcean, &libraries);
 			hlmsManager->registerHlms(hlmsOcean, Ogre::HLMS_USER1);
 		}

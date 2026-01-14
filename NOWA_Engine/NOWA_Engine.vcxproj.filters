@@ -589,9 +589,6 @@
     <ClInclude Include="shader\HlmsFog.h">
       <Filter>shader</Filter>
     </ClInclude>
-    <ClInclude Include="shader\HlmsBaseListenerContainer.h">
-      <Filter>shader</Filter>
-    </ClInclude>
     <ClInclude Include="utilities\LuaObserver.h">
       <Filter>utilities</Filter>
     </ClInclude>
@@ -648,6 +645,9 @@
     </ClInclude>
     <ClInclude Include="main\NOWAPlatform.h">
       <Filter>main</Filter>
+    </ClInclude>
+    <ClInclude Include="shader\HlmsBaseListenerContainer.h">
+      <Filter>shader</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -1155,9 +1155,6 @@
     <ClCompile Include="shader\HlmsFog.cpp">
       <Filter>shader</Filter>
     </ClCompile>
-    <ClCompile Include="shader\HlmsBaseListenerContainer.cpp">
-      <Filter>shader</Filter>
-    </ClCompile>
     <ClCompile Include="utilities\LuaObserver.cpp">
       <Filter>utilities</Filter>
     </ClCompile>
@@ -1214,6 +1211,9 @@
     </ClCompile>
     <ClCompile Include="main\NOWAPlatform.cpp">
       <Filter>main</Filter>
+    </ClCompile>
+    <ClCompile Include="shader\HlmsBaseListenerContainer.cpp">
+      <Filter>shader</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

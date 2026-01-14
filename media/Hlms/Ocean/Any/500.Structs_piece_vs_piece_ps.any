@@ -1,0 +1,119 @@
+// Ocean HLMS structs - Terra-style (completely independent from PBS material system)
+
+@piece( OceanMaterialStructDecl )
+//Uniforms that change per Item/Entity, but change very infrequently
+struct Material
+{
+    // Ocean datablock colours
+    float4 deepColour;
+    float4 shallowColour;
+
+    // Keep these for compatibility
+    float4 kD;
+    float4 roughness;
+    float4 metalness;
+    float4 detailOffsetScale[4];
+
+    @property( syntax != metal )
+        uint4 indices0_7;
+        uint4 indices8_15;
+        uint4 indices16_24;
+    @else
+        ushort diffuseIdx;
+        ushort weightMapIdx;
+        ushort detailMapIdx0;
+        ushort detailMapIdx1;
+        ushort detailMapIdx2;
+        ushort detailMapIdx3;
+        ushort detailNormMapIdx0;
+        ushort detailNormMapIdx1;
+        ushort detailNormMapIdx2;
+        ushort detailNormMapIdx3;
+        ushort detailRoughnessIdx0;
+        ushort detailRoughnessIdx1;
+        ushort detailRoughnessIdx2;
+        ushort detailRoughnessIdx3;
+        ushort detailMetalnessIdx0;
+        ushort detailMetalnessIdx1;
+        ushort detailMetalnessIdx2;
+        ushort detailMetalnessIdx3;
+        ushort envMapIdx;
+    @end
+
+    @insertpiece( custom_materialBuffer )
+};
+
+@property( syntax != metal )
+    CONST_BUFFER( MaterialBuf, 1 )
+    {
+        Material materialArray[1];
+    };
+@end
+@end
+
+@property( syntax == metal )
+    @piece( OceanMaterialDecl )
+        , constant Material *materialArray [[buffer(CONST_SLOT_START+1)]]
+    @end
+@end
+
+@piece( OceanInstanceStructDecl )
+struct CellData
+{
+    //.x = numVertsPerLine
+    //.y = lodLevel
+    //.z = vao->getPrimitiveCount() / m_verticesPerLine - 2u
+    //.w = skirtY (float -> packed via asfloat)
+    uint4 numVertsPerLine;
+
+    int4   xzTexPosBounds;  // XZXZ
+    float4 pos;             // .w contains 1.0 / xzTexPosBounds.z (optional)
+    float4 scale;           // .w contains 1.0 / xzTexPosBounds.w (optional)
+
+    // Ocean-specific: time controls for wave movement
+    float4 oceanTime;
+};
+
+@property( syntax != metal )
+    CONST_BUFFER( InstanceBuffer, 2 )
+    {
+        CellData cellDataArray[256];
+    };
+@end
+@end
+
+@property( syntax == metal )
+    @piece( OceanInstanceDecl )
+        , constant CellData *cellDataArray [[buffer(CONST_SLOT_START+2)]]
+    @end
+@end
+
+// Reset texcoord to 0 for every shader stage
+@pset( texcoord, 0 )
+
+@piece( Ocean_VStoPS_block )
+    // Ocean core data
+    INTERPOLANT( float3 pos,            @counter(texcoord) );
+    INTERPOLANT( float3 normal,         @counter(texcoord) );
+    INTERPOLANT( float3 wpos,           @counter(texcoord) );
+
+    INTERPOLANT( float  waveHeight,     @counter(texcoord) );
+    INTERPOLANT( float  wavesIntensity, @counter(texcoord) );
+
+    INTERPOLANT( float2 uv0,            @counter(texcoord) );
+    INTERPOLANT( float3 uv1,            @counter(texcoord) );
+    INTERPOLANT( float3 uv2,            @counter(texcoord) );
+    INTERPOLANT( float3 uv3,            @counter(texcoord) );
+    INTERPOLANT( float3 uv4,            @counter(texcoord) );
+
+    INTERPOLANT( float3 blendWeight,    @counter(texcoord) );
+
+    // Let PBS handle shadows, fog, etc.
+    @insertpiece( VStoPS_block )
+@end
+
+// Disable fine light mask for Ocean (we don't need it)
+@undefpiece( DeclareObjLightMask )
+@property( hlms_fine_light_mask || hlms_forwardplus_fine_light_mask )
+    @piece( DeclareObjLightMask )uint objLightMask = 0xFFFFFFFFu;@end
+@end

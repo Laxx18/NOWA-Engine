@@ -479,10 +479,9 @@ namespace NOWA
 				{
 					this->hlmsPbsTerraShadows = new Ogre::HlmsPbsTerraShadows();
 					this->hlmsPbsTerraShadows->setTerra(this->terra);
+
 					// Set the PBS listener so regular objects also receive terrain shadows
 					Core::getSingletonPtr()->getBaseListenerContainer()->addConcreteListener(this->hlmsPbsTerraShadows);
-					// Ogre::Hlms *hlmsPbs = Ogre::Root::getSingletonPtr()->getHlmsManager()->getHlms( Ogre::HLMS_PBS );
-					// hlmsPbs->setListener(this->hlmsPbsTerraShadows);
 				}
 
 				this->terra->setVisible(this->gameObjectPtr->getAttribute(GameObject::AttrVisible())->getBool());

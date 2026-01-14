@@ -39,6 +39,8 @@ THE SOFTWARE.
 #include "OgreAtmosphereComponent.h"
 #include <OgreRoot.h>
 #include <OgreTextureGpuManager.h>
+#include "Cubemaps/OgreParallaxCorrectedCubemap.h"
+#include "OgreIrradianceVolume.h"
 
 #include "OgreSceneManager.h"
 #include "Compositor/OgreCompositorShadowNode.h"
@@ -95,7 +97,6 @@ namespace Ogre
         mOceanDataTex(0),
         mWeightTex(0),
         mOceanTexReady(false),
-        mCurrentPassBuffer(0),
         mLastBoundPool(0),
         mLastTextureHash(0),
         mLastMovableObject(0),
@@ -157,19 +158,6 @@ namespace Ogre
     }
 
     //-----------------------------------------------------------------------------------
-    void HlmsOcean::analyzeBarriers(BarrierSolver& barrierSolver, ResourceTransitionArray& resourceTransitions, Camera* renderingCamera, const bool bCasterPass)
-    {
-        // Ocean is currently GLSL-only in this integration and relies on the same
-        // resource usage patterns as PBS/Terra. If you migrate the remaining legacy
-        // v1 textures (oceanData.dds / weight.dds) to TextureGpu, you may want to
-        // add explicit transitions here.
-        (void)barrierSolver;
-        (void)resourceTransitions;
-        (void)renderingCamera;
-        (void)bCasterPass;
-    }
-
-    //-----------------------------------------------------------------------------------
     void HlmsOcean::getDefaultPaths(String& outDataFolderPath, StringVector& outLibraryFoldersPaths)
     {
         RenderSystem* renderSystem = Root::getSingleton().getRenderSystem();
@@ -185,89 +173,17 @@ namespace Ogre
         outLibraryFoldersPaths.push_back("Hlms/Common/" + shaderSyntax);
         outLibraryFoldersPaths.push_back("Hlms/Common/Any");
 
-        // 2. Ocean EARLY hooks (must be before Terra!)
-        outLibraryFoldersPaths.push_back("Hlms/Ocean/Any");
-
-        // 3. PBS (BRDF, shadows, lighting)
+        // 2. PBS (BRDF, shadows, lighting)
         outLibraryFoldersPaths.push_back("Hlms/Pbs/Any");
         outLibraryFoldersPaths.push_back("Hlms/Pbs/Any/Main");
         outLibraryFoldersPaths.push_back("Hlms/Pbs/Any/Atmosphere");
         outLibraryFoldersPaths.push_back("Hlms/Pbs/" + shaderSyntax);
 
-        // 4. Terra (CellData, grid rendering)
-        outLibraryFoldersPaths.push_back("Hlms/Terra/Any");
-        outLibraryFoldersPaths.push_back("Hlms/Terra/" + shaderSyntax);
-        // Causes pixelshader trouble 
-        // outLibraryFoldersPaths.push_back("Hlms/Terra/" + shaderSyntax + "/PbsTerraShadows");
-
-        // 5. Ocean HLSL custom + main
-        outLibraryFoldersPaths.push_back("Hlms/Ocean/" + shaderSyntax + "/Custom");
+        // 3. Ocean HLSL custom + main
+        outLibraryFoldersPaths.push_back("Hlms/Ocean/Any");
 
         outDataFolderPath = "Hlms/Ocean/" + shaderSyntax;
     }
-
-    void HlmsOcean::validatePassBufferState() const
-    {
-        LogManager::getSingleton().logMessage(
-            "[HlmsOcean] Pass Buffer Diagnostics:",
-            LML_NORMAL);
-
-        LogManager::getSingleton().logMessage(
-            "  Current pass buffer index: " +
-            StringConverter::toString(mCurrentPassBuffer),
-            LML_NORMAL);
-
-        LogManager::getSingleton().logMessage(
-            "  Total pass buffers: " +
-            StringConverter::toString(mPassBuffers.size()),
-            LML_NORMAL);
-
-        if (mCurrentPassBuffer > 0 && mCurrentPassBuffer <= mPassBuffers.size())
-        {
-            ConstBufferPacked* buffer = mPassBuffers[mCurrentPassBuffer - 1];
-
-            LogManager::getSingleton().logMessage(
-                "  Last allocated size: " +
-                StringConverter::toString(mLastAllocatedPassBufferSize),
-                LML_NORMAL);
-
-            LogManager::getSingleton().logMessage(
-                "  Last written size: " +
-                StringConverter::toString(mLastWrittenPassBufferSize),
-                LML_NORMAL);
-
-            LogManager::getSingleton().logMessage(
-                "  Buffer total size: " +
-                StringConverter::toString(buffer->getTotalSizeBytes()),
-                LML_NORMAL);
-
-            LogManager::getSingleton().logMessage(
-                "  Mapping state: " +
-                StringConverter::toString(buffer->getMappingState()),
-                LML_NORMAL);
-
-            if (mLastWrittenPassBufferSize > mLastAllocatedPassBufferSize)
-            {
-                LogManager::getSingleton().logMessage(
-                    "  ERROR: Buffer overflow detected!",
-                    LML_CRITICAL);
-            }
-        }
-
-        LogManager::getSingleton().logMessage(
-            "  Atmosphere enabled: " +
-            StringConverter::toString(mAtmosphere != nullptr),
-            LML_NORMAL);
-
-        if (mAtmosphere)
-        {
-            LogManager::getSingleton().logMessage(
-                "  Atmosphere provides code: " +
-                StringConverter::toString(mAtmosphere->providesHlmsCode()),
-                LML_NORMAL);
-        }
-    }
-
     //-----------------------------------------------------------------------------------
     HlmsOcean::~HlmsOcean()
     {
@@ -309,7 +225,7 @@ namespace Ogre
         {
             samplerblock.mMinFilter = FO_POINT;
             samplerblock.mMagFilter = FO_POINT;
-            samplerblock.mMipFilter = FO_NONE;
+            samplerblock.mMipFilter = FO_LINEAR;
 
             if (!mShadowmapSamplerblock)
             {
@@ -319,7 +235,7 @@ namespace Ogre
 
         samplerblock.mMinFilter = FO_LINEAR;
         samplerblock.mMagFilter = FO_LINEAR;
-        samplerblock.mMipFilter = FO_NONE;
+        samplerblock.mMipFilter = FO_LINEAR;
         samplerblock.mCompareFunction = CMPF_LESS_EQUAL;
 
         if (!mShadowmapCmpSamplerblock)
@@ -329,6 +245,7 @@ namespace Ogre
 
         // --- Ocean samplers (IMPORTANT: create once, reuse forever) ---
         // Ocean data volume: point sampling is usually correct for “data textures”
+        // For ocean data (3D texture):
         if (!mOceanDataSamplerblock)
         {
             HlmsSamplerblock sb;
@@ -339,12 +256,11 @@ namespace Ogre
             sb.mMinFilter = FO_LINEAR;
             sb.mMagFilter = FO_LINEAR;
             sb.mMipFilter = FO_NONE;
-            sb.mMaxAnisotropy = 8.0f;
 
             mOceanDataSamplerblock = mHlmsManager->getSamplerblock(sb);
         }
 
-        // Weight map: typically linear is fine
+        // For weight map (2D texture - this can keep aniso):
         if (!mWeightSamplerblock)
         {
             HlmsSamplerblock sb;
@@ -355,7 +271,7 @@ namespace Ogre
             sb.mMinFilter = FO_LINEAR;
             sb.mMagFilter = FO_LINEAR;
             sb.mMipFilter = FO_LINEAR;
-            sb.mMaxAnisotropy = 8.0f;
+            sb.mMaxAnisotropy = 8.0f;  // OK for 2D textures
 
             mWeightSamplerblock = mHlmsManager->getSamplerblock(sb);
         }
@@ -419,7 +335,6 @@ namespace Ogre
             {
                 psParams->setNamedConstant("texEnvProbeMap", texUnit++);
             }
-
         }
 
         GpuProgramParametersSharedPtr vsParams = retVal->pso.vertexShader->getDefaultParameters();
@@ -442,23 +357,22 @@ namespace Ogre
     //-----------------------------------------------------------------------------------
     void HlmsOcean::calculateHashForPreCreate(Renderable* renderable, PiecesMap* inOutPieces)
     {
+        assert(dynamic_cast<OceanCell*>(renderable) &&
+            "This Hlms can only be used on an Ocean object!");
+
         OceanCell* cell = static_cast<OceanCell*>(renderable);
-        HlmsOceanDatablock* datablock =
-            static_cast<HlmsOceanDatablock*>(renderable->getDatablock());
+        HlmsOceanDatablock* datablock = static_cast<HlmsOceanDatablock*>(renderable->getDatablock());
+
+        // Terra sets this to disable vertex shader normal bias (we don't have world normals in VS)
+        setProperty(kNoTid, "skip_normal_offset_bias_vs", 1);
 
         setProperty(kNoTid, OceanProperty::UseSkirts, cell->getUseSkirts());
 
-        // ---- PBS core (DO NOT REMOVE) ----
+        // PBS properties (exactly like Terra)
         setProperty(kNoTid, PbsProperty::FresnelScalar, 1);
         setProperty(kNoTid, PbsProperty::FresnelWorkflow, 0);
         setProperty(kNoTid, PbsProperty::MetallicWorkflow, 1);
         setProperty(kNoTid, PbsProperty::ReceiveShadows, 1);
-        setProperty(kNoTid, "hlms_vpos", 1);
-        setProperty(kNoTid, "skip_normal_offset_bias_vs", 1);
-
-        // setProperty(kNoTid, "terra_enabled", 1);
-
-        // setProperty(kNoTid, "hlms_normal", 1);
 
         // ---- BRDF ----
         uint32 brdf = datablock->getBrdf();
@@ -476,17 +390,19 @@ namespace Ogre
         if (brdf & OceanBrdf::FLAG_SPERATE_DIFFUSE_FRESNEL)
             setProperty(kNoTid, PbsProperty::FresnelSeparateDiffuse, 1);
 
-        // ---- Env probe hook (like Terra) ----
+
+        // Ocean uses procedural normals, not texture normals
+        setProperty(kNoTid, PbsProperty::NormalMap, 0);
+
+        // No detail maps
+        setProperty(kNoTid, PbsProperty::FirstValidDetailMapNm, 4);
+
+        // Env probe
         if (mProbe)
         {
-            setProperty(kNoTid, PbsProperty::NumTextures, 1);
-            setTextureProperty(kNoTid, PbsProperty::EnvProbeMap, dynamic_cast<HlmsPbsDatablock*>(datablock), PBSM_REFLECTION);
-
-            setProperty(kNoTid, PbsProperty::EnvProbeMap, static_cast<int32>(mProbe->getName().getU32Value()));
+            setProperty(kNoTid, PbsProperty::EnvProbeMap,
+                static_cast<int32>(mProbe->getName().getU32Value()));
         }
-
-        // Ocean uses procedural normals
-        setProperty(kNoTid, PbsProperty::NormalMap, 0);
     }
     //-----------------------------------------------------------------------------------
     void HlmsOcean::calculateHashFor(Renderable* renderable, uint32& outHash, uint32& outCasterHash)
@@ -506,568 +422,6 @@ namespace Ogre
         }
     }
     //-----------------------------------------------------------------------------------
-    HlmsCache HlmsOcean::preparePassHash(const CompositorShadowNode* shadowNode, bool casterPass, bool dualParaboloid, SceneManager* sceneManager)
-    {
-        mT[kNoTid].setProperties.clear();
-
-        // Get atmosphere FIRST (before any properties)
-        mAtmosphere = sceneManager ? sceneManager->getAtmosphere() : nullptr;
-
-        // Set atmosphere properties EARLY (before preparePassHashBase)
-        if (!casterPass && mAtmosphere && mAtmosphere->providesHlmsCode())
-        {
-            // These properties enable the shader pieces
-            setProperty(kNoTid, "hlms_atmosphere", 1);
-            setProperty(kNoTid, "hlms_aerial_perspective", 1);
-
-            // Fog support (Terra-style)
-            const FogMode fogMode = sceneManager->getFogMode();
-            if (fogMode != FOG_NONE)
-            {
-                setProperty(kNoTid, "hlms_fog", 1);
-                if (fogMode == FOG_EXP)
-                    setProperty(kNoTid, "hlms_fog_exp", 1);
-                else if (fogMode == FOG_EXP2)
-                    setProperty(kNoTid, "hlms_fog_exp2", 1);
-                else if (fogMode == FOG_LINEAR)
-                    setProperty(kNoTid, "hlms_fog_linear", 1);
-            }
-        }
-
-        if (casterPass)
-        {
-            HlmsCache retVal = Hlms::preparePassHashBase(shadowNode, casterPass, dualParaboloid, sceneManager);
-            return retVal;
-        }
-
-        // --- Env probe setup ---
-        const bool hasProbe = (mProbe != nullptr);
-        setProperty(kNoTid, OceanProperty::EnvProbeMap, hasProbe ? 1 : 0);
-
-        // Atmosphere setup BEFORE preparePassHashBase ---
-        uint32 atmosphereCbCount = 0u;
-        uint32 numPassConstBuffers = 3u; // pass=0, material=1, instance=2
-        if (mAtmosphere && mAtmosphere->providesHlmsCode())
-        {
-            // Atmosphere const buffers start at slot 3
-            atmosphereCbCount = mAtmosphere->preparePassHash(this, 3u);
-            numPassConstBuffers += atmosphereCbCount;
-        }
-        setProperty(kNoTid, OceanProperty::AtmosphereNumConstBuffers, static_cast<int32>(atmosphereCbCount));
-        // This is what the shared HLMS pieces (Terra/PBS/Atmosphere) often key off.
-        setProperty(kNoTid, PbsProperty::NumPassConstBuffers, static_cast<int32>(numPassConstBuffers));
-
-        // Shadow setup
-        if (shadowNode && !casterPass)
-        {
-            const RenderSystemCapabilities* capabilities = mRenderSystem->getCapabilities();
-            if (capabilities->hasCapability(RSC_TEXTURE_GATHER))
-            {
-                setProperty(kNoTid, HlmsBaseProp::TexGather, 1);
-            }
-
-            if (mShadowFilter == PCF_3x3)
-            {
-                setProperty(kNoTid, OceanProperty::Pcf3x3, 1);
-                setProperty(kNoTid, OceanProperty::PcfIterations, 4);
-            }
-            else if (mShadowFilter == PCF_4x4)
-            {
-                setProperty(kNoTid, OceanProperty::Pcf4x4, 1);
-                setProperty(kNoTid, OceanProperty::PcfIterations, 9);
-            }
-            else
-            {
-                setProperty(kNoTid, OceanProperty::PcfIterations, 1);
-            }
-
-            if (mDebugPssmSplits)
-            {
-                int32 numPssmSplits = 0;
-                const vector<Real>::type* pssmSplits = shadowNode->getPssmSplits(0);
-                if (pssmSplits)
-                {
-                    numPssmSplits = static_cast<int32>(pssmSplits->size() - 1);
-                    if (numPssmSplits > 0)
-                    {
-                        setProperty(kNoTid, OceanProperty::DebugPssmSplits, 1);
-                    }
-                }
-            }
-        }
-
-        // Ambient light setup
-        AmbientLightMode ambientMode = mAmbientLightMode;
-        ColourValue upperHemisphere = sceneManager->getAmbientLightUpperHemisphere();
-        ColourValue lowerHemisphere = sceneManager->getAmbientLightLowerHemisphere();
-        const float envMapScale = upperHemisphere.a;
-        upperHemisphere.a = lowerHemisphere.a = 1.0;
-
-        if (!casterPass)
-        {
-            if (mAmbientLightMode == AmbientAuto)
-            {
-                if (upperHemisphere == lowerHemisphere)
-                {
-                    ambientMode = (upperHemisphere == ColourValue::Black) ?
-                        AmbientNone : AmbientFixed;
-                }
-                else
-                {
-                    ambientMode = AmbientHemisphere;
-                }
-            }
-
-            if (ambientMode == AmbientFixed)
-                setProperty(kNoTid, OceanProperty::AmbientFixed, 1);
-            if (ambientMode == AmbientHemisphere)
-                setProperty(kNoTid, OceanProperty::AmbientHemisphere, 1);
-            if (envMapScale != 1.0f)
-                setProperty(kNoTid, OceanProperty::EnvMapScale, 1);
-        }
-
-        setProperty(kNoTid, OceanProperty::FresnelScalar, 1);
-        setProperty(kNoTid, OceanProperty::MetallicWorkflow, 1);
-
-        // Call base implementation
-        HlmsCache retVal = Hlms::preparePassHashBase(shadowNode, casterPass,
-            dualParaboloid, sceneManager);
-
-        // Adjust directional lights for shadows
-        if (getProperty(kNoTid, HlmsBaseProp::LightsDirNonCaster) > 0)
-        {
-            int32 shadowCasterDirectional = getProperty(kNoTid, HlmsBaseProp::LightsDirectional);
-            shadowCasterDirectional = std::max(shadowCasterDirectional, 1);
-            setProperty(kNoTid, HlmsBaseProp::ShadowCasterDirectional, shadowCasterDirectional);
-        }
-
-        setProperty(kNoTid, HlmsBaseProp::LightsDirectional, 1);
-
-        // Get viewport and capabilities
-        Viewport* viewport = mRenderSystem->getCurrentRenderViewports();
-        const RenderSystemCapabilities* capabilities = mRenderSystem->getCapabilities();
-        setProperty(kNoTid, OceanProperty::HwGammaRead,
-            capabilities->hasCapability(RSC_HW_GAMMA));
-        setProperty(kNoTid, OceanProperty::HwGammaWrite,
-            capabilities->hasCapability(RSC_HW_GAMMA));
-        setProperty(kNoTid, OceanProperty::SignedIntTex,
-            capabilities->hasCapability(RSC_TEXTURE_SIGNED_INT));
-
-        retVal.setProperties = mT[kNoTid].setProperties;
-
-        auto camerasInProgress = sceneManager->getCamerasInProgress();
-        const Camera* camera = camerasInProgress.renderingCamera;
-        Matrix4 viewMatrix = camera->getViewMatrix(true);
-        Matrix4 projectionMatrix = camera->getProjectionMatrixWithRSDepth();
-
-        TextureGpu* renderTarget = viewport->getCurrentTarget();
-        if (renderTarget->requiresTextureFlipping())
-        {
-            projectionMatrix[1][0] = -projectionMatrix[1][0];
-            projectionMatrix[1][1] = -projectionMatrix[1][1];
-            projectionMatrix[1][2] = -projectionMatrix[1][2];
-            projectionMatrix[1][3] = -projectionMatrix[1][3];
-        }
-
-        // Get light counts
-        int32 numLights = getProperty(kNoTid, HlmsBaseProp::LightsSpot);
-        int32 numDirectionalLights = getProperty(kNoTid, HlmsBaseProp::LightsDirNonCaster);
-        int32 numShadowMapLights = getProperty(kNoTid, HlmsBaseProp::NumShadowMapLights);
-        int32 numPssmSplits = getProperty(kNoTid, HlmsBaseProp::PssmSplits);
-
-        size_t mapSize = 0;
-
-        // mat4 viewProj + mat4 view
-        mapSize += (16 + 16) * 4;
-
-        // Forward+ buffers
-        mGridBuffer = nullptr;
-        mGlobalLightListBuffer = nullptr;
-        ForwardPlusBase* forwardPlus = sceneManager->_getActivePassForwardPlus();
-        if (forwardPlus)
-        {
-            mapSize += forwardPlus->getConstBufferSize();
-            mGridBuffer = forwardPlus->getGridBuffer(camera);
-            mGlobalLightListBuffer = forwardPlus->getGlobalLightListBuffer(camera);
-        }
-
-        // Shadow map data: mat4 + vec2 + vec2 per shadow map
-        mapSize += ((16 + 2 + 2 + 4) * numShadowMapLights) * 4;
-
-        // mat3 invViewMatCubemap (3 vec4s)
-        mapSize += (4 * 3) * 4;
-
-        // Ambient lighting
-        if (ambientMode == AmbientFixed || ambientMode == AmbientHemisphere ||
-            envMapScale != 1.0f)
-        {
-            mapSize += 4 * 4; // vec3 + padding
-        }
-        if (ambientMode == AmbientHemisphere)
-        {
-            mapSize += 8 * 4; // vec3 + padding + vec3 + padding
-        }
-
-        // PSSM splits
-        mapSize += numPssmSplits * 4;
-        mapSize = alignToNextMultiple<uint32>(mapSize, 16);
-
-        // Light data
-        if (shadowNode)
-        {
-            // 6 variables * 4 (padded vec3) * 4 (bytes) * numLights
-            mapSize += (6 * 4 * 4) * numLights;
-        }
-        else
-        {
-            // 3 variables * 4 (padded vec3) * 4 (bytes) * numDirectionalLights
-            mapSize += (3 * 4 * 4) * numDirectionalLights;
-        }
-
-        mapSize = alignToNextMultiple<uint32>(mapSize, 16);
-
-        mapSize += mListener->getPassBufferSize(shadowNode, casterPass,
-            dualParaboloid, sceneManager);
-        mapSize = alignToNextMultiple<uint32>(mapSize, 16);
-
-        //// Add atmosphere buffer size if present.
-        //// We align the start of the atmosphere region to 256 bytes (safe for D3D12 CBV rules
-        //// and matches how Atmosphere usually expects packing).
-        //if (mAtmosphere && mAtmosphere->providesHlmsCode() && atmosphereCbCount)
-        //{
-        //	mapSize = alignToNextMultiple<uint32>(mapSize, 256u);
-        //	mapSize += size_t(atmosphereCbCount) * 256u;
-        //	mapSize = alignToNextMultiple<uint32>(mapSize, 16u);
-        //}
-
-        // Create/get pass buffer with correct size
-        const size_t maxBufferSize = std::max<size_t>(8 * 1024, mapSize);
-
-        if (mCurrentPassBuffer >= mPassBuffers.size())
-        {
-            mPassBuffers.push_back(mVaoManager->createConstBuffer(maxBufferSize, BT_DYNAMIC_PERSISTENT, 0, false));
-        }
-
-        ConstBufferPacked* passBuffer = mPassBuffers[mCurrentPassBuffer++];
-
-        float* passBufferPtr = reinterpret_cast<float*>(passBuffer->map(0, mapSize));
-        const float* startupPtr = passBufferPtr;
-
-        // Clear mapped region for deterministic behavior
-        const size_t numFloatsToClear = mapSize / sizeof(float);
-        std::fill_n(passBufferPtr, numFloatsToClear, 0.0f);
-
-        // Helper to align to 16-byte boundaries
-        auto alignPassPtr16 = [&](float*& ptr)
-            {
-                const size_t bytesSoFar = size_t(ptr - startupPtr) * sizeof(float);
-                const size_t alignedBytes = alignToNextMultiple<uint32>(
-                    static_cast<uint32>(bytesSoFar), 16u);
-                const size_t padBytes = alignedBytes - bytesSoFar;
-                const size_t padFloats = padBytes / sizeof(float);
-                for (size_t i = 0; i < padFloats; ++i)
-                    *ptr++ = 0.0f;
-            };
-
-        // Helper to align to 256-byte boundaries (important before atmosphere CB region)
-        auto alignPassPtr256 = [&](float*& ptr)
-            {
-                const size_t bytesSoFar = size_t(ptr - startupPtr) * sizeof(float);
-                const size_t alignedBytes = alignToNextMultiple<uint32>(static_cast<uint32>(bytesSoFar), 256u);
-                const size_t padBytes = alignedBytes - bytesSoFar;
-                const size_t padFloats = padBytes / sizeof(float);
-                for (size_t i = 0; i < padFloats; ++i)
-                {
-                    *ptr++ = 0.0f;
-                }
-            };
-
-        // ===== VERTEX SHADER DATA =====
-
-        // mat4 viewProj
-        Matrix4 viewProjMatrix = projectionMatrix * viewMatrix;
-        for (size_t i = 0; i < 16; ++i)
-            *passBufferPtr++ = (float)viewProjMatrix[0][i];
-
-        mPreparedPass.viewMatrix = viewMatrix;
-        mPreparedPass.shadowMaps.clear();
-
-        // mat4 view
-        for (size_t i = 0; i < 16; ++i)
-            *passBufferPtr++ = (float)viewMatrix[0][i];
-
-        // Shadow map data
-        size_t shadowMapTexIdx = 0;
-        const auto& contiguousShadowMapTex = shadowNode ?
-            shadowNode->getContiguousShadowMapTex() :
-            TextureGpuVec();
-
-        if (shadowNode)
-        {
-            for (int32 i = 0; i < numShadowMapLights; ++i)
-            {
-                while (!shadowNode->isShadowMapIdxActive(shadowMapTexIdx))
-                    ++shadowMapTexIdx;
-
-                // mat4 shadowRcv[i].texViewProj
-                Matrix4 viewProjTex = shadowNode->getViewProjectionMatrix(shadowMapTexIdx);
-                for (size_t j = 0; j < 16; ++j)
-                    *passBufferPtr++ = (float)viewProjTex[0][j];
-
-                // vec2 shadowDepthRange
-                Real fNear, fFar;
-                shadowNode->getMinMaxDepthRange(shadowMapTexIdx, fNear, fFar);
-                const Real depthRange = fFar - fNear;
-                *passBufferPtr++ = fNear;
-                *passBufferPtr++ = 1.0f / depthRange;
-                *passBufferPtr++ = 0.0f; // Padding
-                *passBufferPtr++ = 0.0f;
-
-                // vec2 invShadowMapSize
-                size_t shadowMapTexContigIdx =
-                    shadowNode->getIndexToContiguousShadowMapTex(shadowMapTexIdx);
-
-                const uint32 texWidth = contiguousShadowMapTex[shadowMapTexContigIdx]->getWidth();
-                const uint32 texHeight = contiguousShadowMapTex[shadowMapTexContigIdx]->getHeight();
-                *passBufferPtr++ = 1.0f / texWidth;
-                *passBufferPtr++ = 1.0f / texHeight;
-                *passBufferPtr++ = static_cast<float>(texWidth);
-                *passBufferPtr++ = static_cast<float>(texHeight);
-
-                ++shadowMapTexIdx;
-            }
-        }
-
-        // ===== PIXEL SHADER DATA =====
-
-        // mat3 invViewMatCubemap
-        Matrix3 viewMatrix3, invViewMatrixCubemap;
-        viewMatrix.extract3x3Matrix(viewMatrix3);
-        invViewMatrixCubemap = viewMatrix3;
-        invViewMatrixCubemap[0][2] = -invViewMatrixCubemap[0][2];
-        invViewMatrixCubemap[1][2] = -invViewMatrixCubemap[1][2];
-        invViewMatrixCubemap[2][2] = -invViewMatrixCubemap[2][2];
-        invViewMatrixCubemap = invViewMatrixCubemap.Inverse();
-
-        for (size_t i = 0; i < 9; ++i)
-        {
-            *passBufferPtr++ = (float)invViewMatrixCubemap[0][i];
-            if (!((i + 1) % 3))
-                ++passBufferPtr; // Padding to vec4
-        }
-
-        // Ambient data
-        if (ambientMode == AmbientFixed || ambientMode == AmbientHemisphere ||
-            envMapScale != 1.0f)
-        {
-            *passBufferPtr++ = static_cast<float>(upperHemisphere.r);
-            *passBufferPtr++ = static_cast<float>(upperHemisphere.g);
-            *passBufferPtr++ = static_cast<float>(upperHemisphere.b);
-            *passBufferPtr++ = envMapScale;
-        }
-
-        if (ambientMode == AmbientHemisphere)
-        {
-            *passBufferPtr++ = static_cast<float>(lowerHemisphere.r);
-            *passBufferPtr++ = static_cast<float>(lowerHemisphere.g);
-            *passBufferPtr++ = static_cast<float>(lowerHemisphere.b);
-            *passBufferPtr++ = 1.0f;
-
-            Vector3 hemisphereDir = viewMatrix3 *
-                sceneManager->getAmbientLightHemisphereDir();
-            hemisphereDir.normalise();
-            *passBufferPtr++ = static_cast<float>(hemisphereDir.x);
-            *passBufferPtr++ = static_cast<float>(hemisphereDir.y);
-            *passBufferPtr++ = static_cast<float>(hemisphereDir.z);
-            *passBufferPtr++ = 1.0f;
-        }
-
-        // PSSM splits
-        for (int32 i = 0; i < numPssmSplits; ++i)
-            *passBufferPtr++ = (*shadowNode->getPssmSplits(0))[i + 1];
-
-        passBufferPtr += alignToNextMultiple(numPssmSplits, 4) - numPssmSplits;
-
-        // Light data (directional and shadow-casting lights)
-        if (numShadowMapLights > 0)
-        {
-            size_t shadowLightIdx = 0;
-            size_t nonShadowLightIdx = 0;
-            const LightListInfo& globalLightList = sceneManager->getGlobalLightList();
-            const LightClosestArray& lights = shadowNode->getShadowCastingLights();
-            const CompositorShadowNode::LightsBitSet& affectedLights =
-                shadowNode->getAffectedLightsBitSet();
-
-            int32 shadowCastingDirLights = getProperty(kNoTid,
-                HlmsBaseProp::LightsDirectional);
-
-            for (int32 i = 0; i < numLights; ++i)
-            {
-                Light const* light = nullptr;
-
-                if (i >= shadowCastingDirLights && i < numDirectionalLights)
-                {
-                    while (affectedLights[nonShadowLightIdx])
-                        ++nonShadowLightIdx;
-                    light = globalLightList.lights[nonShadowLightIdx++];
-                }
-                else
-                {
-                    while (!lights[shadowLightIdx].light)
-                        ++shadowLightIdx;
-                    light = lights[shadowLightIdx++].light;
-                }
-
-                Vector4 lightPos4 = light->getAs4DVector();
-                Vector3 lightPos;
-
-                if (light->getType() == Light::LT_DIRECTIONAL)
-                    lightPos = viewMatrix3 * Vector3(lightPos4.x, lightPos4.y, lightPos4.z);
-                else
-                    lightPos = viewMatrix * Vector3(lightPos4.x, lightPos4.y, lightPos4.z);
-
-                // vec3 position + padding
-                *passBufferPtr++ = lightPos.x;
-                *passBufferPtr++ = lightPos.y;
-                *passBufferPtr++ = lightPos.z;
-                ++passBufferPtr;
-
-                // vec3 diffuse + padding
-                ColourValue color = light->getDiffuseColour() * light->getPowerScale();
-                *passBufferPtr++ = color.r;
-                *passBufferPtr++ = color.g;
-                *passBufferPtr++ = color.b;
-                ++passBufferPtr;
-
-                // vec3 specular + padding
-                color = light->getSpecularColour() * light->getPowerScale();
-                *passBufferPtr++ = color.r;
-                *passBufferPtr++ = color.g;
-                *passBufferPtr++ = color.b;
-                ++passBufferPtr;
-
-                // vec3 attenuation + padding
-                *passBufferPtr++ = light->getAttenuationRange();
-                *passBufferPtr++ = light->getAttenuationLinear();
-                *passBufferPtr++ = light->getAttenuationQuadric();
-                ++passBufferPtr;
-
-                // vec3 spotDirection + padding
-                Vector3 spotDir = viewMatrix3 * light->getDerivedDirection();
-                *passBufferPtr++ = spotDir.x;
-                *passBufferPtr++ = spotDir.y;
-                *passBufferPtr++ = spotDir.z;
-                ++passBufferPtr;
-
-                // vec3 spotParams + padding
-                Radian innerAngle = light->getSpotlightInnerAngle();
-                Radian outerAngle = light->getSpotlightOuterAngle();
-                *passBufferPtr++ = 1.0f / (cosf(innerAngle.valueRadians() * 0.5f) -
-                    cosf(outerAngle.valueRadians() * 0.5f));
-                *passBufferPtr++ = cosf(outerAngle.valueRadians() * 0.5f);
-                *passBufferPtr++ = light->getSpotlightFalloff();
-                ++passBufferPtr;
-            }
-        }
-        else
-        {
-            // Only directional lights (no shadow maps)
-            const LightListInfo& globalLightList = sceneManager->getGlobalLightList();
-
-            for (int32 i = 0; i < numDirectionalLights; ++i)
-            {
-                Vector4 lightPos4 = globalLightList.lights[i]->getAs4DVector();
-                Vector3 lightPos = viewMatrix3 *
-                    Vector3(lightPos4.x, lightPos4.y, lightPos4.z);
-
-                *passBufferPtr++ = lightPos.x;
-                *passBufferPtr++ = lightPos.y;
-                *passBufferPtr++ = lightPos.z;
-                ++passBufferPtr;
-
-                ColourValue color = globalLightList.lights[i]->getDiffuseColour() *
-                    globalLightList.lights[i]->getPowerScale();
-                *passBufferPtr++ = color.r;
-                *passBufferPtr++ = color.g;
-                *passBufferPtr++ = color.b;
-                ++passBufferPtr;
-
-                color = globalLightList.lights[i]->getSpecularColour() *
-                    globalLightList.lights[i]->getPowerScale();
-                *passBufferPtr++ = color.r;
-                *passBufferPtr++ = color.g;
-                *passBufferPtr++ = color.b;
-                ++passBufferPtr;
-            }
-        }
-
-        // Store shadow maps
-        if (shadowNode)
-        {
-            mPreparedPass.shadowMaps.reserve(contiguousShadowMapTex.size());
-            for (auto* tex : contiguousShadowMapTex)
-                mPreparedPass.shadowMaps.push_back(tex);
-        }
-
-        // Forward+ data
-        if (forwardPlus)
-        {
-            RenderPassDescriptor* renderPassDesc =
-                mRenderSystem->getCurrentPassDescriptor();
-            const bool isInstancedStereo = false;
-            forwardPlus->fillConstBufferData(
-                sceneManager->getCurrentViewport0(),
-                renderPassDesc->requiresTextureFlipping(),
-                renderTarget->getHeight(),
-                mShaderSyntax,
-                isInstancedStereo,
-                passBufferPtr);
-
-            passBufferPtr += forwardPlus->getConstBufferSize() >> 2;
-        }
-
-        // Align before custom listener data
-        alignPassPtr16(passBufferPtr);
-
-        // Let listener fill its data
-        if (mListener)
-        {
-            passBufferPtr = mListener->preparePassBuffer(shadowNode, casterPass, dualParaboloid, sceneManager, passBufferPtr);
-        }
-
-        // Final alignment
-        alignPassPtr16(passBufferPtr);
-
-        // Verify we didn't overflow
-        const size_t bytesWritten = (passBufferPtr - startupPtr) * sizeof(float);
-        if (bytesWritten > mapSize)
-        {
-            OGRE_EXCEPT(Exception::ERR_INTERNAL_ERROR,
-                "Pass buffer overflow! Written: " +
-                StringConverter::toString(bytesWritten) +
-                " bytes, allocated: " + StringConverter::toString(mapSize),
-                "HlmsOcean::preparePassHash");
-        }
-
-        // Unmap the buffer
-        passBuffer->unmap(UO_KEEP_PERSISTENT);
-
-        // Reset state
-        mLastTextureHash = 0;
-        mLastMovableObject = nullptr;
-        mLastBoundPool = nullptr;
-
-        if (mShadowmapSamplerblock &&
-            !getProperty(kNoTid, HlmsBaseProp::ShadowUsesDepthTexture))
-            mCurrentShadowmapSamplerblock = mShadowmapSamplerblock;
-        else
-            mCurrentShadowmapSamplerblock = mShadowmapCmpSamplerblock;
-
-        uploadDirtyDatablocks();
-
-        return retVal;
-    }
-    //-----------------------------------------------------------------------------------
     uint32 HlmsOcean::fillBuffersFor(const HlmsCache* cache, const QueuedRenderable& queuedRenderable, bool casterPass, uint32 lastCacheHash, uint32 lastTextureHash)
     {
         OGRE_EXCEPT(Exception::ERR_NOT_IMPLEMENTED,
@@ -1084,184 +438,242 @@ namespace Ogre
     //-----------------------------------------------------------------------------------
     uint32 HlmsOcean::fillBuffersForV2(const HlmsCache* cache, const QueuedRenderable& queuedRenderable, bool casterPass, uint32 lastCacheHash, CommandBuffer* commandBuffer)
     {
-        return fillBuffersFor(cache, queuedRenderable, casterPass,
-            lastCacheHash, commandBuffer, false);
+        return fillBuffersFor(cache, queuedRenderable, casterPass, lastCacheHash, commandBuffer, false);
     }
     //-----------------------------------------------------------------------------------
     // ============================================================================
     // Bind Ocean textures EVERY frame, not just on movable change
     // ============================================================================
-    uint32 HlmsOcean::fillBuffersFor(const HlmsCache* cache, const QueuedRenderable& queuedRenderable, bool casterPass, uint32 lastCacheHash, CommandBuffer* commandBuffer, bool isV1)
+    uint32 HlmsOcean::fillBuffersFor(const HlmsCache* cache,
+        const QueuedRenderable& queuedRenderable,
+        bool casterPass, uint32 lastCacheHash,
+        CommandBuffer* commandBuffer, bool isV1)
     {
-        OGRE_UNUSED(cache);
-        OGRE_UNUSED(isV1);
-
         const HlmsOceanDatablock* datablock =
             static_cast<const HlmsOceanDatablock*>(queuedRenderable.renderable->getDatablock());
 
-        if (mCurrentPassBuffer == 0u)
-            return 0u;
-
-        // ----------------------------
-        // Bind pass buffer (VS/PS slot 0)
-        // ----------------------------
-        ConstBufferPacked* passBuffer = mPassBuffers[mCurrentPassBuffer - 1u];
-        *commandBuffer->addCommand<CbShaderBuffer>() = CbShaderBuffer(VertexShader, 0u, passBuffer, 0u, passBuffer->getTotalSizeBytes());
-        *commandBuffer->addCommand<CbShaderBuffer>() = CbShaderBuffer(PixelShader, 0u, passBuffer, 0u, passBuffer->getTotalSizeBytes());
-
-        // If HLMS type changes, we must (re)bind all shared resources.
+        // Changed HLMS type? Rebind everything
         if (OGRE_EXTRACT_HLMS_TYPE_FROM_CACHE_HASH(lastCacheHash) != mType)
         {
-            // ----------------------------
-           // Atmosphere const buffers (Terra/PBS-compatible binding)
-           // Must be bound when HLMS type changes, AFTER shared resources
-           // ----------------------------
-            if (!casterPass && mAtmosphere && mAtmosphere->providesHlmsCode())
+            // 1. Bind pass buffer (slot 0) - exactly like Terra
+            ConstBufferPacked* passBuffer = mPassBuffers[mCurrentPassBuffer - 1];
+            *commandBuffer->addCommand<CbShaderBuffer>() = CbShaderBuffer(
+                VertexShader, 0, passBuffer, 0, (uint32)passBuffer->getTotalSizeBytes());
+            *commandBuffer->addCommand<CbShaderBuffer>() =
+                CbShaderBuffer(PixelShader, 0, passBuffer, 0, (uint32)passBuffer->getTotalSizeBytes());
+
+            uint32 constBufferSlot = 3u;
+
+            // 2. Bind light buffers (slots 3,4,5) - Terra does this!
+            if (mUseLightBuffers)
             {
-                // PBS layout:
-                // 0 = pass buffer
-                // 1 = material buffer
-                // 2 = instance buffer
-                // 3+ = lighting / atmosphere
-                uint32 constBufferSlot = 3u;
-                mAtmosphere->bindConstBuffers(commandBuffer, constBufferSlot);
+                ConstBufferPacked* light0Buffer = mLight0Buffers[mCurrentPassBuffer - 1];
+                *commandBuffer->addCommand<CbShaderBuffer>() = CbShaderBuffer(
+                    VertexShader, 3, light0Buffer, 0, (uint32)light0Buffer->getTotalSizeBytes());
+                *commandBuffer->addCommand<CbShaderBuffer>() = CbShaderBuffer(
+                    PixelShader, 3, light0Buffer, 0, (uint32)light0Buffer->getTotalSizeBytes());
+
+                ConstBufferPacked* light1Buffer = mLight1Buffers[mCurrentPassBuffer - 1];
+                *commandBuffer->addCommand<CbShaderBuffer>() = CbShaderBuffer(
+                    VertexShader, 4, light1Buffer, 0, (uint32)light1Buffer->getTotalSizeBytes());
+                *commandBuffer->addCommand<CbShaderBuffer>() = CbShaderBuffer(
+                    PixelShader, 4, light1Buffer, 0, (uint32)light1Buffer->getTotalSizeBytes());
+
+                ConstBufferPacked* light2Buffer = mLight2Buffers[mCurrentPassBuffer - 1];
+                *commandBuffer->addCommand<CbShaderBuffer>() = CbShaderBuffer(
+                    VertexShader, 5, light2Buffer, 0, (uint32)light2Buffer->getTotalSizeBytes());
+                *commandBuffer->addCommand<CbShaderBuffer>() = CbShaderBuffer(
+                    PixelShader, 5, light2Buffer, 0, (uint32)light2Buffer->getTotalSizeBytes());
+
+                constBufferSlot = 6u;
             }
 
-            ensureOceanTexturesLoaded();
+            size_t texUnit = mReservedTexBufferSlots;
 
-            const bool forwardPlusEnabled = (getProperty(kNoTid, HlmsBaseProp::ForwardPlus) != 0);
-
-            // ----------------------------
-            // Forward+ buffers (if active) - REQUIRED when hlms_forwardplus is on
-            // Shader expects: t0 = f3dLightList, t1 = f3dGrid
-            // ----------------------------
-            if (forwardPlusEnabled)
+            if (!casterPass)
             {
-                if (mGlobalLightListBuffer && mGridBuffer)
+                // 3. Atmosphere const buffers - Terra does this
+                constBufferSlot += mAtmosphere->bindConstBuffers(commandBuffer, constBufferSlot);
+
+                // 4. Forward+ buffers - Terra does this
+                if (mGridBuffer)
                 {
-                    *commandBuffer->addCommand<CbShaderBuffer>() = CbShaderBuffer(PixelShader, 0u, mGlobalLightListBuffer, 0u, 0u); // t0
-                    *commandBuffer->addCommand<CbShaderBuffer>() = CbShaderBuffer(PixelShader, 1u, mGridBuffer, 0u, 0u);           // t1
+                    *commandBuffer->addCommand<CbShaderBuffer>() =
+                        CbShaderBuffer(PixelShader, (uint16)texUnit++, mGlobalLightListBuffer, 0, 0);
+                    *commandBuffer->addCommand<CbShaderBuffer>() =
+                        CbShaderBuffer(PixelShader, (uint16)texUnit++, mGridBuffer, 0, 0);
+                }
+
+                // 5. Ocean textures in reserved slots - like Terra's heightmap
+                texUnit += mReservedTexSlots;  // Skip to after our reserved slots
+
+                // Pre-pass textures (Terra handles these)
+                if (!mPrePassTextures->empty())
+                {
+                    *commandBuffer->addCommand<CbTexture>() =
+                        CbTexture((uint16)texUnit++, (*mPrePassTextures)[0], 0);
+                    *commandBuffer->addCommand<CbTexture>() =
+                        CbTexture((uint16)texUnit++, (*mPrePassTextures)[1], 0);
+                }
+
+                if (mPrePassMsaaDepthTexture)
+                {
+                    *commandBuffer->addCommand<CbTexture>() =
+                        CbTexture((uint16)texUnit++, mPrePassMsaaDepthTexture, 0);
+                }
+
+                if (mSsrTexture)
+                {
+                    *commandBuffer->addCommand<CbTexture>() =
+                        CbTexture((uint16)texUnit++, mSsrTexture, 0);
+                }
+
+                // Irradiance volume (Terra handles this)
+                if (mIrradianceVolume)
+                {
+                    TextureGpu* irradianceTex = mIrradianceVolume->getIrradianceVolumeTexture();
+                    const HlmsSamplerblock* samplerblock = mIrradianceVolume->getIrradSamplerblock();
+                    *commandBuffer->addCommand<CbTexture>() =
+                        CbTexture((uint16)texUnit, irradianceTex, samplerblock);
+                    ++texUnit;
+                }
+
+                // Area light masks (Terra handles these)
+                if (mUsingAreaLightMasks)
+                {
+                    *commandBuffer->addCommand<CbTexture>() =
+                        CbTexture((uint16)texUnit, mAreaLightMasks, mAreaLightMasksSamplerblock);
+                    ++texUnit;
+                }
+
+                if (mLtcMatrixTexture)
+                {
+                    *commandBuffer->addCommand<CbTexture>() =
+                        CbTexture((uint16)texUnit, mLtcMatrixTexture, mAreaLightMasksSamplerblock);
+                    ++texUnit;
+                }
+
+                // Decals (Terra handles these)
+                for (size_t i = 0; i < 3u; ++i)
+                {
+                    if (mDecalsTextures[i] && (i != 2u || !mDecalsDiffuseMergedEmissive))
+                    {
+                        *commandBuffer->addCommand<CbTexture>() =
+                            CbTexture((uint16)texUnit, mDecalsTextures[i], mDecalsSamplerblock);
+                        ++texUnit;
+                    }
+                }
+
+                // 6. Shadow maps - Terra does this!
+                FastArray<TextureGpu*>::const_iterator itor = mPreparedPass.shadowMaps.begin();
+                FastArray<TextureGpu*>::const_iterator end = mPreparedPass.shadowMaps.end();
+                while (itor != end)
+                {
+                    *commandBuffer->addCommand<CbTexture>() =
+                        CbTexture((uint16)texUnit, *itor, mCurrentShadowmapSamplerblock);
+                    ++texUnit;
+                    ++itor;
+                }
+
+                // 7. Parallax corrected cubemap - Terra does this
+                if (mParallaxCorrectedCubemap && !mParallaxCorrectedCubemap->isRendering())
+                {
+                    TextureGpu* pccTexture = mParallaxCorrectedCubemap->getBindTexture();
+                    const HlmsSamplerblock* samplerblock =
+                        mParallaxCorrectedCubemap->getBindTrilinearSamplerblock();
+                    *commandBuffer->addCommand<CbTexture>() =
+                        CbTexture((uint16)texUnit, pccTexture, samplerblock);
+                    ++texUnit;
                 }
             }
 
-            // HLMS Forward+ uses:
-            // t0 = f3dLightList
-            // t1 = f3dGrid
-            const uint16 oceanTexStart = forwardPlusEnabled ? 2u : 0u;
+            mLastDescTexture = 0;
+            mLastDescSampler = 0;
+            mLastMovableObject = 0;
+            mLastBoundPool = 0;
 
-            // =======================
-            // Ocean textures
-            // =======================
-            if (mOceanTexReady && mOceanDataTex && mWeightTex)
+            // 8. Bind instance buffer (slot 2) - Terra does this
+            if (mCurrentConstBuffer < mConstBuffers.size() &&
+                (size_t)((mCurrentMappedConstBuffer - mStartMappedConstBuffer) + 4) <=
+                mCurrentConstBufferSize)
             {
-                // terrainData -> t2 (Forward+) or t0 (no Forward+)
-                *commandBuffer->addCommand<CbTexture>() = CbTexture(oceanTexStart + 0u, mOceanDataTex, mOceanDataSamplerblock);
-
-                // blendMap -> t3 (Forward+) or t1 (no Forward+)
-                *commandBuffer->addCommand<CbTexture>() = CbTexture(oceanTexStart + 1u, mWeightTex, mWeightSamplerblock);
+                *commandBuffer->addCommand<CbShaderBuffer>() =
+                    CbShaderBuffer(VertexShader, 2, mConstBuffers[mCurrentConstBuffer], 0, 0);
+                *commandBuffer->addCommand<CbShaderBuffer>() =
+                    CbShaderBuffer(PixelShader, 2, mConstBuffers[mCurrentConstBuffer], 0, 0);
             }
 
-            // =======================
-            // Shadow maps
-            // =======================
-            uint16 texUnit = oceanTexStart + 2u;
-
-            for (TextureGpu* shadowTex : mPreparedPass.shadowMaps)
-            {
-                *commandBuffer->addCommand<CbTexture>() = CbTexture(texUnit++, shadowTex, mCurrentShadowmapSamplerblock);
-            }
-
-            // =======================
-            // Env probe
-            // =======================
-            if (mProbe)
-            {
-                *commandBuffer->addCommand<CbTexture>() = CbTexture(15u, mProbe, mOceanSamplerblock);
-            }
-
-            // ----------------------------
-            // Bind instance buffer (VS/PS slot 2)
-            // ----------------------------
-            if (mCurrentConstBuffer < mConstBuffers.size())
-            {
-                *commandBuffer->addCommand<CbShaderBuffer>() = CbShaderBuffer(VertexShader, 2u, mConstBuffers[mCurrentConstBuffer], 0u, 0u);
-                *commandBuffer->addCommand<CbShaderBuffer>() = CbShaderBuffer(PixelShader, 2u, mConstBuffers[mCurrentConstBuffer], 0u, 0u);
-            }
-
-            // HLMS callback
-            // mListener->hlmsTypeChanged(casterPass, commandBuffer, datablock, 0u);
-
-            uint16 listenerTexUnit = 16u; // because we hard-bind env probe at t15
-            mListener->hlmsTypeChanged(casterPass, commandBuffer, datablock, listenerTexUnit);
-
-            // Reset caches (same spirit as Terra/Pbs)
-            mLastTextureHash = 0u;
-            mLastMovableObject = 0u;
-            mLastBoundPool = 0u;
+            mListener->hlmsTypeChanged(casterPass, commandBuffer, datablock, 0u);
         }
 
-        // ----------------------------
-        // Bind material buffer if pool changed (PS slot 1)
-        // ----------------------------
+        // 9. Bind material buffer if pool changed (slot 1) - Terra does this
         if (mLastBoundPool != datablock->getAssignedPool())
         {
             const ConstBufferPool::BufferPool* newPool = datablock->getAssignedPool();
-            const uint32 materialSlot = datablock->getAssignedSlot();
-            const uint32 materialOffset = materialSlot * HlmsOceanDatablock::MaterialSizeInGpuAligned;
-
-            const uint32 fullSize = newPool->materialBuffer->getTotalSizeBytes();
-
-            *commandBuffer->addCommand<CbShaderBuffer>() = CbShaderBuffer(PixelShader, 10u, newPool->materialBuffer, materialOffset, fullSize - materialOffset);
-
+            *commandBuffer->addCommand<CbShaderBuffer>() =
+                CbShaderBuffer(VertexShader, 1, newPool->materialBuffer, 0,
+                    (uint32)newPool->materialBuffer->getTotalSizeBytes());
+            *commandBuffer->addCommand<CbShaderBuffer>() =
+                CbShaderBuffer(PixelShader, 1, newPool->materialBuffer, 0,
+                    (uint32)newPool->materialBuffer->getTotalSizeBytes());
             mLastBoundPool = newPool;
         }
 
-        // ----------------------------
-        // Per-draw data upload into instance const buffer
-        // ----------------------------
-        // ----------------------------
-        // Per-draw data upload into instance const buffer
-        // ----------------------------
-        static constexpr uint32 kU32PerCell = 20u;      // matches generated CellData
-        static constexpr uint32 kMaxCells = 256u;     // matches "CellData cellDataArray[256]"
+        // 10. Bind Ocean textures if movable changed - like Terra's heightmap binding
+        if (mLastMovableObject != queuedRenderable.movableObject)
+        {
+            ensureOceanTexturesLoaded();
+
+            if (mOceanTexReady && mOceanDataTex && mWeightTex)
+            {
+                // Bind at the BEGINNING of texture slots (mTexBufUnitSlotEnd is where F3D ends)
+                *commandBuffer->addCommand<CbTexture>() =
+                    CbTexture(mTexBufUnitSlotEnd + 0u, mOceanDataTex, mOceanDataSamplerblock);
+                *commandBuffer->addCommand<CbTexture>() =
+                    CbTexture(mTexBufUnitSlotEnd + 1u, mWeightTex, mWeightSamplerblock);
+            }
+
+            mLastMovableObject = queuedRenderable.movableObject;
+        }
+
+        // --------------------------------------------------------------------
+        // 11. Upload per-cell instance data  (Terra-correct, hole-free)
+        // --------------------------------------------------------------------
+        static constexpr uint32 kU32PerCell = 20u;   // must match CellData in shader
+        static constexpr uint32 kMaxCells = 256u;  // must match CellData cellDataArray[256]
 
         uint32* RESTRICT_ALIAS currentMappedConstBuffer = mCurrentMappedConstBuffer;
 
-        size_t usedU32 = static_cast<size_t>(currentMappedConstBuffer - mStartMappedConstBuffer);
-        size_t usedCells = usedU32 / kU32PerCell;
+        // How many uint32s are already used in this draw
+        const size_t usedU32 = (size_t)(currentMappedConstBuffer - mStartMappedConstBuffer);
+        const size_t usedCells = usedU32 / kU32PerCell;
 
-        // IMPORTANT: cap to 256 (shader array size)
-        if (usedCells >= kMaxCells || usedU32 + kU32PerCell > mCurrentConstBufferSize)
+        // We must flush if either:
+        //  1) GPU constant buffer would overflow
+        //  2) Shader CellData[256] would overflow (THIS was missing!)
+        const bool mustFlush = (usedCells >= kMaxCells) || (usedU32 + kU32PerCell > mCurrentConstBufferSize);
+
+        if (mustFlush)
         {
             currentMappedConstBuffer = mapNextConstBuffer(commandBuffer);
-
-            // Rebind instance buffer (VS/PS slot 2) after switching
-            if (mCurrentConstBuffer < mConstBuffers.size())
-            {
-                *commandBuffer->addCommand<CbShaderBuffer>() =
-                    CbShaderBuffer(VertexShader, 2u, mConstBuffers[mCurrentConstBuffer], 0u, 0u);
-                *commandBuffer->addCommand<CbShaderBuffer>() =
-                    CbShaderBuffer(PixelShader, 2u, mConstBuffers[mCurrentConstBuffer], 0u, 0u);
-            }
-
-            // Reset counters for new buffer
-            usedU32 = static_cast<size_t>(currentMappedConstBuffer - mStartMappedConstBuffer);
-            usedCells = usedU32 / kU32PerCell;
         }
 
-        // Compute drawId BEFORE we advance the pointer
-        const uint32 drawId = static_cast<uint32>(usedCells);
+        // After flush, recalc
+        const size_t newUsedU32 = (size_t)(currentMappedConstBuffer - mStartMappedConstBuffer);
+        const size_t newUsedCells = newUsedU32 / kU32PerCell;
 
-        // HARD ASSERT to catch this on CPU instead of crashing the GPU
+        // This is the drawId used by the shader
+        const uint32 drawId = static_cast<uint32>(newUsedCells);
         OGRE_ASSERT_LOW(drawId < kMaxCells);
 
+        // Upload this OceanCell
         const OceanCell* oceanCell = static_cast<const OceanCell*>(queuedRenderable.renderable);
         oceanCell->uploadToGpu(currentMappedConstBuffer);
         currentMappedConstBuffer += kU32PerCell;
 
         mCurrentMappedConstBuffer = currentMappedConstBuffer;
-        mLastMovableObject = queuedRenderable.movableObject;
 
+        // Return drawId (used by vertex shader to index CellData[])
         return drawId;
     }
 
@@ -1275,8 +687,12 @@ namespace Ogre
         // Load 3D ocean data
         try
         {
-            mOceanDataTex = texMgr->createOrRetrieveTexture(mOceanDataTextureName, GpuPageOutStrategy::Discard, static_cast<TextureFlags::TextureFlags>(0),
+            TextureFlags::TextureFlags flags = TextureFlags::Reinterpretable;
+
+            mOceanDataTex = texMgr->createOrRetrieveTexture(mOceanDataTextureName, GpuPageOutStrategy::Discard, flags,
                 TextureTypes::Type3D, ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME);
+
+            mOceanDataTex->setNumMipmaps(1);
 
             if (!mOceanDataTex)
             {
@@ -1286,13 +702,15 @@ namespace Ogre
 
             mOceanDataTex->scheduleTransitionTo(GpuResidency::Resident);
 
-            /* LogManager::getSingleton().logMessage(
+           /* LogManager::getSingleton().logMessage(
                  "[HlmsOcean] oceanData.dds dimensions: " +
                  StringConverter::toString(mOceanDataTex->getWidth()) + "x" +
                  StringConverter::toString(mOceanDataTex->getHeight()) + "x" +
                  StringConverter::toString(mOceanDataTex->getDepth()));*/
 
             LogManager::getSingleton().logMessage("[HlmsOcean] Ocean data texture created: " + mOceanDataTextureName);
+
+           
         }
         catch (const Exception& e)
         {
@@ -1339,30 +757,9 @@ namespace Ogre
             }
         }
     }
-
     //-----------------------------------------------------------------------------------
-    void HlmsOcean::destroyAllBuffers(void)
-    {
-        mCurrentPassBuffer = 0;
-
-        {
-            ConstBufferPackedVec::const_iterator itor = mPassBuffers.begin();
-            ConstBufferPackedVec::const_iterator end = mPassBuffers.end();
-
-            while (itor != end)
-            {
-                if ((*itor)->getMappingState() != MS_UNMAPPED)
-                    (*itor)->unmap(UO_UNMAP_ALL);
-                mVaoManager->destroyConstBuffer(*itor);
-                ++itor;
-            }
-
-            mPassBuffers.clear();
-        }
-    }
-    //-----------------------------------------------------------------------------------
-#if 0
-    Ogre::Hlms::PropertiesMergeStatus HlmsOcean::notifyPropertiesMergedPreGenerationStep(size_t tid, PiecesMap* inOutPieces)
+    Hlms::PropertiesMergeStatus HlmsOcean::notifyPropertiesMergedPreGenerationStep(
+        const size_t tid, PiecesMap* inOutPieces)
     {
         PropertiesMergeStatus status =
             HlmsPbs::notifyPropertiesMergedPreGenerationStep(tid, inOutPieces);
@@ -1370,193 +767,22 @@ namespace Ogre
         if (status == PropertiesMergeStatusError)
             return status;
 
+        // Exactly like Terra: set texture registers AFTER Forward+ slots
         int32 texSlotsStart = 0;
-
-        // EXACTLY like Terra: Forward+ consumes texture slots (TexBuffer),
-        // so the "first free texture slot" is after f3dGrid.
         if (getProperty(tid, HlmsBaseProp::ForwardPlus))
             texSlotsStart = getProperty(tid, "f3dGrid") + 1;
 
-        // ---- Ocean textures MUST be the FIRST ones ----
-        // So they become 0/1 when ForwardPlus is off, and shift when it's on (like Terra).
+        // Ocean textures go in the first reserved slots (0 and 1 in our mReservedTexSlots = 2)
         setTextureReg(tid, VertexShader, "terrainData", texSlotsStart + 0);
         setTextureReg(tid, VertexShader, "blendMap", texSlotsStart + 1);
 
-        // Ocean PS also samples them (your pixel shader declares them too)
-        setTextureReg(tid, PixelShader, "terrainData", texSlotsStart + 0);
-        setTextureReg(tid, PixelShader, "blendMap", texSlotsStart + 1);
-
-        // ---- Shadows: start AFTER Ocean textures (if used by your pieces) ----
-        // Terra does terrainNormals/terrainShadows here; you need the equivalent
-        // if your ocean shader pieces declare shadow textures by name.
-        // If you use the standard "texShadowMap0..n" path, ensure those regs start at texSlotsStart+2.
         if (!getProperty(tid, HlmsBaseProp::ShadowCaster))
         {
-            // This loop only works if your shadow decl uses texShadowMap0..N.
-            // If your pieces use different names, rename accordingly.
-            const int32 numShadowMapLights = getProperty(tid, HlmsBaseProp::NumShadowMapLights);
-            const int32 numPssmSplits = std::max<int32>(1, getProperty(tid, HlmsBaseProp::PssmSplits));
-            const int32 numShadowMaps = std::max<int32>(0, numShadowMapLights * numPssmSplits);
-
-            int32 baseShadow = texSlotsStart + 2;
-            for (int32 i = 0; i < numShadowMaps; ++i)
-            {
-                Ogre::String name = "texShadowMap" + Ogre::StringConverter::toString(i);
-                setTextureReg(tid, PixelShader, name.c_str(), baseShadow + i);
-            }
+            setTextureReg(tid, PixelShader, "terrainData", texSlotsStart + 0);
+            setTextureReg(tid, PixelShader, "blendMap", texSlotsStart + 1);
         }
-
-        // Env probe - ALWAYS at a fixed slot to avoid conflicts
-        if (getProperty(tid, OceanProperty::EnvProbeMap))
-        {
-            // Use fixed slot 15 for ocean env probe
-            setTextureReg(tid, PixelShader, "texEnvProbeMap", 15);
-            setProperty(tid, "envMapRegSampler", 15);
-        }
-
-        // Samplers start at 2 (after ocean's s0/s1)
-        setProperty(tid, "samplerStateStart", 2);
-
-        const int32 numShadowMapLights = getProperty(tid, HlmsBaseProp::NumShadowMapLights);
-        const int32 numPssmSplits = std::max<int32>(1, getProperty(tid, HlmsBaseProp::PssmSplits));
-        const int32 numShadowMaps = std::max<int32>(0, numShadowMapLights * numPssmSplits);
-
-        int32 totalSamplers = numShadowMaps;
-        if (getProperty(tid, OceanProperty::EnvProbeMap))
-            totalSamplers += 1;
-
-        setProperty(tid, "num_samplers", totalSamplers);
 
         return status;
-    }
-#else
-    Hlms::PropertiesMergeStatus HlmsOcean::notifyPropertiesMergedPreGenerationStep(const size_t tid, PiecesMap* inOutPieces)
-    {
-        PropertiesMergeStatus status = HlmsPbs::notifyPropertiesMergedPreGenerationStep(tid, inOutPieces);
-
-        if (status == PropertiesMergeStatusError)
-            return status;
-
-        int32 texSlotsStart = 0;
-
-        // Forward+ uses t0=f3dLightList, t1=f3dGrid
-        if (getProperty(tid, HlmsBaseProp::ForwardPlus))
-            texSlotsStart = getProperty(tid, "f3dGrid") + 1; // Start after f3dGrid
-
-        // Set ocean texture properties (shader uses @value(terrainData), etc.)
-        setTextureReg(tid, VertexShader, "terrainData", texSlotsStart + 0);
-        setTextureReg(tid, VertexShader, "blendMap", texSlotsStart + 1);
-        setTextureReg(tid, PixelShader, "terrainData", texSlotsStart + 0);
-        setTextureReg(tid, PixelShader, "blendMap", texSlotsStart + 1);
-
-        // DO NOT manually set shadow registers - PBS DeclShadowSamplers handles this
-        // The shadow system will auto-assign registers after your ocean textures
-
-        return status;
-    }
-
-#endif
-    //-----------------------------------------------------------------------------------
-    void HlmsOcean::setupRootLayout(RootLayout& rootLayout, size_t tid)
-    {
-        DescBindingRange* set0 = rootLayout.mDescBindingRanges[0];
-
-        // Const buffers: 0 = pass, 1 = material, 2 = instance, 3+ = atmosphere
-        set0[DescBindingTypes::ConstBuffer].start = 0u;
-        const uint32 atmoCbCount = static_cast<uint32>(
-            std::max<int32>(0, getProperty(tid, OceanProperty::AtmosphereNumConstBuffers)));
-        set0[DescBindingTypes::ConstBuffer].end = 3u + atmoCbCount;
-
-        // Forward+ buffers (if active)
-        if (getProperty(tid, HlmsBaseProp::ForwardPlus))
-        {
-            set0[DescBindingTypes::ReadOnlyBuffer].start = 0u;
-            set0[DescBindingTypes::ReadOnlyBuffer].end =
-                static_cast<uint16>(getProperty(tid, "f3dLightList") + 1u);
-
-            set0[DescBindingTypes::TexBuffer].start =
-                static_cast<uint16>(getProperty(tid, "f3dGrid"));
-            set0[DescBindingTypes::TexBuffer].end =
-                static_cast<uint16>(set0[DescBindingTypes::TexBuffer].start + 1u);
-        }
-        else
-        {
-            set0[DescBindingTypes::ReadOnlyBuffer].start = 0u;
-            set0[DescBindingTypes::ReadOnlyBuffer].end = 0u;
-            set0[DescBindingTypes::TexBuffer].start = 0u;
-            set0[DescBindingTypes::TexBuffer].end = 0u;
-        }
-
-        // Texture slots: terrainData (0), blendMap (1), shadows (2+), env probe (15)
-        const uint16 ocean0 = (uint16)getProperty(tid, "terrainData");
-        const uint16 ocean1 = (uint16)getProperty(tid, "blendMap");
-
-        uint16 start = std::min(ocean0, ocean1);
-        uint16 end = std::max(ocean0, ocean1) + 1;
-
-        // Include shadow maps
-        const int32 numShadowMapLights = getProperty(tid, HlmsBaseProp::NumShadowMapLights);
-        const int32 numPssmSplits = std::max<int32>(1, getProperty(tid, HlmsBaseProp::PssmSplits));
-        const uint16 numShadowMaps = (uint16)std::max<int32>(0, numShadowMapLights * numPssmSplits);
-
-        end = std::max<uint16>(end, (uint16)(start + 2 + numShadowMaps));
-
-        // Include env probe at slot 15
-        if (getProperty(tid, OceanProperty::EnvProbeMap))
-        {
-            const uint16 probe = 15;
-            end = std::max<uint16>(end, (uint16)(probe + 1));
-        }
-
-        set0[DescBindingTypes::Texture].start = start;
-        set0[DescBindingTypes::Texture].end = end;
-
-        set0[DescBindingTypes::Sampler].start = start;
-        set0[DescBindingTypes::Sampler].end = end;
-
-        rootLayout.mBaked[1] = false;
-    }
-    //-----------------------------------------------------------------------------------
-    void HlmsOcean::postCommandBufferExecution(CommandBuffer* commandBuffer)
-    {
-        // Ocean doesn't need special command buffer post-processing like Terra does
-        // (Terra uploads heightmap data here). Just ensure we call the base class.
-
-        // If your base class HlmsPbs has postCommandBufferExecution, call it:
-        // HlmsPbs::postCommandBufferExecution(commandBuffer);
-
-        // Otherwise, leave empty - the crash is likely from buffer size issues,
-        // not from this function itself
-    }
-    void HlmsOcean::frameEnded(void)
-    {
-        HlmsPbs::frameEnded();
-
-        // validatePassBufferState();
-
-        // Reset counter
-        mCurrentPassBuffer = 0;
-
-        // Ensure all buffers are properly unmapped
-        for (size_t i = 0; i < mPassBuffers.size(); ++i)
-        {
-            ConstBufferPacked* buffer = mPassBuffers[i];
-            if (buffer && buffer->getMappingState() != MS_UNMAPPED)
-            {
-                try
-                {
-                    buffer->unmap(UO_UNMAP_ALL);
-                }
-                catch (const Exception& e)
-                {
-                    LogManager::getSingleton().logMessage("[HlmsOcean] Exception unmapping buffer: " + e.getDescription(), LML_CRITICAL);
-                }
-            }
-        }
-
-        // Reset diagnostics
-        mLastAllocatedPassBufferSize = 0;
-        mLastWrittenPassBufferSize = 0;
     }
     //-----------------------------------------------------------------------------------
     void HlmsOcean::setDebugPssmSplits(bool bDebug)
