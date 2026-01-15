@@ -5,11 +5,11 @@
 struct Material
 {
     // Ocean datablock colours
-    float4 deepColour;
-    float4 shallowColour;
+    float4 deepColour;    // deepColour.w = alpha
+    float4 shallowColour; // shallowColour.w = waveScale
 
-    // Keep these for compatibility
-    float4 kD;
+    // Keep these for compatibility with Terra pattern
+    float4 kD;          // .w is shadowConstantBias (important!)
     float4 roughness;
     float4 metalness;
     float4 detailOffsetScale[4];
@@ -88,7 +88,7 @@ struct CellData
     @end
 @end
 
-// Reset texcoord to 0 for every shader stage
+//Reset texcoord to 0 for every shader stage (since values are preserved).
 @pset( texcoord, 0 )
 
 @piece( Ocean_VStoPS_block )

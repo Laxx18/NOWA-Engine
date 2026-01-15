@@ -300,7 +300,15 @@ namespace NOWA
 				if (nullptr == this->datablock)
 				{
 					Ogre::String datablockName = "Ocean_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
-					this->datablock = static_cast<Ogre::HlmsOceanDatablock*>(hlmsOcean->createDatablock(datablockName, datablockName, Ogre::HlmsMacroblock(), Ogre::HlmsBlendblock(), Ogre::HlmsParamVec()));
+
+					Ogre::HlmsBlendblock blendblock;
+					blendblock.mAlphaToCoverage = 0;
+					blendblock.mIsTransparent = 1;  // Use alpha!
+					blendblock.mSourceBlendFactor = Ogre::SBF_SOURCE_ALPHA;
+					blendblock.mDestBlendFactor = Ogre::SBF_ONE_MINUS_SOURCE_ALPHA;
+					blendblock.setBlendType(Ogre::SBT_TRANSPARENT_ALPHA);
+
+					this->datablock = static_cast<Ogre::HlmsOceanDatablock*>(hlmsOcean->createDatablock(datablockName, datablockName, Ogre::HlmsMacroblock(), blendblock, Ogre::HlmsParamVec()));
 
 					this->ocean->setDatablock(this->datablock);
 

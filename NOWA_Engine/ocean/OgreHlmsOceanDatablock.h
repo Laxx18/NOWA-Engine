@@ -116,9 +116,13 @@ namespace Ogre
         friend class HlmsOcean;
 
     protected:
-        float   mDeepColourR, mDeepColourG, mDeepColourB;
-        float   _padding0;
-        float   mShallowColourR, mShallowColourG, mShallowColourB;
+        float   mDeepColourR;
+        float   mDeepColourG;
+        float   mDeepColourB;
+        float   mAlpha;
+        float   mShallowColourR;
+        float   mShallowColourG;
+        float   mShallowColourB;
         float   mWavesScale;
 
         /// @see OceanBrdf::OceanBrdf
@@ -139,6 +143,9 @@ namespace Ogre
 
         void setShallowColour( const Vector3 &shallowColour );
         Vector3 getShallowColour(void) const;
+
+        void setAlpha(float alpha);
+        float getAlpha(void) const;
 
         void setWavesScale( float scale );
         float getWavesScale() const;

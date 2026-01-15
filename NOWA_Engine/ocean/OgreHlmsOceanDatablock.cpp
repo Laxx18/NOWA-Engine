@@ -18,7 +18,7 @@ namespace Ogre
         mDeepColourR(0.0f),
         mDeepColourG(0.03f * 0.318309886f), // Max Diffuse = 1 / PI
         mDeepColourB(0.05f * 0.318309886f),
-        _padding0(0.0f),
+        mAlpha(0.3f),
         mShallowColourR(0.0f),
         mShallowColourG(0.08f * 0.318309886f),
         mShallowColourB(0.1f * 0.318309886f),
@@ -97,6 +97,17 @@ namespace Ogre
     Vector3 HlmsOceanDatablock::getShallowColour() const
     {
         return Vector3(mShallowColourR, mShallowColourG, mShallowColourB) * Ogre::Math::PI;
+    }
+
+    void HlmsOceanDatablock::setAlpha(float alpha)
+    {
+        mAlpha = alpha;
+        scheduleConstBufferUpdate();
+    }
+
+    float HlmsOceanDatablock::getAlpha(void) const
+    {
+        return mAlpha;
     }
 
     void HlmsOceanDatablock::setWavesScale(float scale)

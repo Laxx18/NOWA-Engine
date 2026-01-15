@@ -830,6 +830,25 @@ namespace NOWA
 	void AtmosphereComponent::onRemoveComponent(void)
 	{
 		GameObjectComponent::onRemoveComponent();
+
+		if (this->atmosphereNpr == nullptr)
+		{
+			return;
+		}
+
+		auto atmosphereNpr = this->atmosphereNpr;
+
+		// Clear pointers on *this* immediately
+		this->atmosphereNpr = nullptr;
+
+		ENQUEUE_RENDER_COMMAND_WAIT("TerraComponent::destroyTerra", _1(atmosphereNpr),
+		{
+			if (atmosphereNpr)
+			{
+				delete atmosphereNpr;
+				atmosphereNpr = nullptr;
+			}
+		});
 	}
 
 	bool AtmosphereComponent::connect(void)
@@ -860,7 +879,7 @@ namespace NOWA
 			presets.back().envmapScale = this->envmapScales[i]->getReal();
 		}
 
-		ENQUEUE_RENDER_COMMAND_MULTI("AtmosphereComponent::connect", _1(presets),
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("AtmosphereComponent::connect", _1(presets),
 		{
 			this->atmosphereNpr->setPresets(presets);
 		});
@@ -886,7 +905,7 @@ namespace NOWA
 			this->update(0.016, false);
 		}
 
-		ENQUEUE_RENDER_COMMAND("AtmosphereComponent::disconnect",
+		ENQUEUE_RENDER_COMMAND_WAIT("AtmosphereComponent::disconnect",
 		{
 			this->lightDirectionalComponent->getOgreLight()->setDirection(this->oldLightDirection);
 		});
