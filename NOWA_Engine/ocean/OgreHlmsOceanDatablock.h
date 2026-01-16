@@ -28,8 +28,20 @@ THE SOFTWARE.
 #ifndef _OgreHlmsOceanDatablock_H_
 #define _OgreHlmsOceanDatablock_H_
 
+#include "OgreHlmsOceanPrerequisites.h"
 #include "OgreHlmsDatablock.h"
 #include "OgreConstBufferPool.h"
+
+// ADD THIS: Texture base class support
+#define _OgreHlmsTextureBaseClassExport
+#define OGRE_HLMS_TEXTURE_BASE_CLASS HlmsOceanBaseTextureDatablock
+#define OGRE_HLMS_TEXTURE_BASE_MAX_TEX NUM_OCEAN_TEXTURE_TYPES
+#define OGRE_HLMS_CREATOR_CLASS HlmsOcean
+#include "OgreHlmsTextureBaseClass.h"
+#undef _OgreHlmsTextureBaseClassExport
+#undef OGRE_HLMS_TEXTURE_BASE_CLASS
+#undef OGRE_HLMS_TEXTURE_BASE_MAX_TEX
+#undef OGRE_HLMS_CREATOR_CLASS
 
 namespace Ogre
 {
@@ -39,94 +51,109 @@ namespace Ogre
     /** \addtogroup Resources
     *  @{
     */
-
     namespace OceanBrdf
     {
-    enum OceanBrdf
-    {
-        FLAG_UNCORRELATED                           = 0x80000000,
-        FLAG_SPERATE_DIFFUSE_FRESNEL                = 0x40000000,
-        BRDF_MASK                                   = 0x00000FFF,
+        enum OceanBrdf
+        {
+            FLAG_UNCORRELATED                           = 0x80000000,
+            FLAG_SPERATE_DIFFUSE_FRESNEL                = 0x40000000,
+            BRDF_MASK                                   = 0x00000FFF,
 
-        /// Most physically accurate BRDF we have. Good for representing
-        /// the majority of materials.
-        /// Uses:
-        ///     * Roughness/Distribution/NDF term: GGX
-        ///     * Geometric/Visibility term: Smith GGX Height-Correlated
-        ///     * Normalized Disney Diffuse BRDF,see
-        ///         "Moving Frostbite to Physically Based Rendering" from
-        ///         Sebastien Lagarde & Charles de Rousiers
-        Default         = 0x00000000,
+            /// Most physically accurate BRDF we have. Good for representing
+            /// the majority of materials.
+            /// Uses:
+            ///     * Roughness/Distribution/NDF term: GGX
+            ///     * Geometric/Visibility term: Smith GGX Height-Correlated
+            ///     * Normalized Disney Diffuse BRDF,see
+            ///         "Moving Frostbite to Physically Based Rendering" from
+            ///         Sebastien Lagarde & Charles de Rousiers
+            Default         = 0x00000000,
 
-        /// Implements Cook-Torrance BRDF.
-        /// Uses:
-        ///     * Roughness/Distribution/NDF term: Beckmann
-        ///     * Geometric/Visibility term: Cook-Torrance
-        ///     * Lambertian Diffuse.
-        ///
-        /// Ideal for silk (use high roughness values), synthetic fabric
-        CookTorrance    = 0x00000001,
+            /// Implements Cook-Torrance BRDF.
+            /// Uses:
+            ///     * Roughness/Distribution/NDF term: Beckmann
+            ///     * Geometric/Visibility term: Cook-Torrance
+            ///     * Lambertian Diffuse.
+            ///
+            /// Ideal for silk (use high roughness values), synthetic fabric
+            CookTorrance    = 0x00000001,
 
-        /// Implements Normalized Blinn Phong using a normalization
-        /// factor of (n + 8) / (8 * pi)
-        /// The main reason to use this BRDF is performance. It's cheap.
-        BlinnPhong      = 0x00000002,
+            /// Implements Normalized Blinn Phong using a normalization
+            /// factor of (n + 8) / (8 * pi)
+            /// The main reason to use this BRDF is performance. It's cheap.
+            BlinnPhong      = 0x00000002,
 
-        /// Same as Default, but the geometry term is not height-correlated
-        /// which most notably causes edges to be dimmer and is less correct.
-        /// Unity (Marmoset too?) use an uncorrelated term, so you may want to
-        /// use this BRDF to get the closest look for a nice exchangeable
-        /// pipeline workflow.
-        DefaultUncorrelated             = Default|FLAG_UNCORRELATED,
+            /// Same as Default, but the geometry term is not height-correlated
+            /// which most notably causes edges to be dimmer and is less correct.
+            /// Unity (Marmoset too?) use an uncorrelated term, so you may want to
+            /// use this BRDF to get the closest look for a nice exchangeable
+            /// pipeline workflow.
+            DefaultUncorrelated             = Default|FLAG_UNCORRELATED,
 
-        /// Same as Default but the fresnel of the diffuse is calculated
-        /// differently. Normally the diffuse component would be multiplied against
-        /// the inverse of the specular's fresnel to maintain energy conservation.
-        /// This has the nice side effect that to achieve a perfect mirror effect,
-        /// you just need to raise the fresnel term to 1; which is very intuitive
-        /// to artists (specially if using coloured fresnel)
-        ///
-        /// When using this BRDF, the diffuse fresnel will be calculated differently,
-        /// causing the diffuse component to still affect the colour even when
-        /// the fresnel = 1 (although subtly). To achieve a perfect mirror you will
-        /// have to set the fresnel to 1 *and* the diffuse colour to black;
-        /// which can be unintuitive for artists.
-        ///
-        /// This BRDF is very useful for representing surfaces with complex refractions
-        /// and reflections like glass, transparent plastics, fur, and surface with
-        /// refractions and multiple rescattering that cannot be represented well
-        /// with the default BRDF.
-        DefaultSeparateDiffuseFresnel   = Default|FLAG_SPERATE_DIFFUSE_FRESNEL,
+            /// Same as Default but the fresnel of the diffuse is calculated
+            /// differently. Normally the diffuse component would be multiplied against
+            /// the inverse of the specular's fresnel to maintain energy conservation.
+            /// This has the nice side effect that to achieve a perfect mirror effect,
+            /// you just need to raise the fresnel term to 1; which is very intuitive
+            /// to artists (specially if using coloured fresnel)
+            ///
+            /// When using this BRDF, the diffuse fresnel will be calculated differently,
+            /// causing the diffuse component to still affect the colour even when
+            /// the fresnel = 1 (although subtly). To achieve a perfect mirror you will
+            /// have to set the fresnel to 1 *and* the diffuse colour to black;
+            /// which can be unintuitive for artists.
+            ///
+            /// This BRDF is very useful for representing surfaces with complex refractions
+            /// and reflections like glass, transparent plastics, fur, and surface with
+            /// refractions and multiple rescattering that cannot be represented well
+            /// with the default BRDF.
+            DefaultSeparateDiffuseFresnel   = Default|FLAG_SPERATE_DIFFUSE_FRESNEL,
 
-        /// @see DefaultSeparateDiffuseFresnel. This is the same
-        /// but the Cook Torrance model is used instead.
-        ///
-        /// Ideal for shiny objects like glass toy marbles, some types of rubber.
-        /// silk, synthetic fabric.
-        CookTorranceSeparateDiffuseFresnel  = CookTorrance|FLAG_SPERATE_DIFFUSE_FRESNEL,
+            /// @see DefaultSeparateDiffuseFresnel. This is the same
+            /// but the Cook Torrance model is used instead.
+            ///
+            /// Ideal for shiny objects like glass toy marbles, some types of rubber.
+            /// silk, synthetic fabric.
+            CookTorranceSeparateDiffuseFresnel  = CookTorrance|FLAG_SPERATE_DIFFUSE_FRESNEL,
 
-        BlinnPhongSeparateDiffuseFresnel    = BlinnPhong|FLAG_SPERATE_DIFFUSE_FRESNEL,
-    };
+            BlinnPhongSeparateDiffuseFresnel    = BlinnPhong|FLAG_SPERATE_DIFFUSE_FRESNEL,
+        };
     }
 
-    /** Contains information needed by Ocean (Physically Based Shading) for OpenGL 3+ & D3D11+
+    /** 
+     * Contains information needed by Ocean (Physically Based Shading) for OpenGL 3+ & D3D11+
     */
-    class HlmsOceanDatablock : public HlmsDatablock, public ConstBufferPoolUser
+    class HlmsOceanDatablock : public HlmsOceanBaseTextureDatablock
     {
         friend class HlmsOcean;
 
     protected:
-        float   mDeepColourR;
-        float   mDeepColourG;
-        float   mDeepColourB;
-        float   mAlpha;
-        float   mShallowColourR;
-        float   mShallowColourG;
-        float   mShallowColourB;
-        float   mWavesScale;
+        // CRITICAL: Memory layout MUST match shader struct exactly!
+        // struct Material in shader:
+        //   float4 deepColour;
+        //   float4 shallowColour;
+        //   float4 kD;
+        //   float4 roughness;
+        //   float4 metalness;
+        //   float4 detailOffsetScale[4];
+        //   uint4 indices0_7;
+        //   uint4 indices8_15;
+        //   uint4 indices16_24;
+
+        Vector4 mDeepColour;        // RGB + padding
+        Vector4 mShallowColour;     // RGB + waveScale
+        Vector4 mkD;                // XYZ + shadowConstantBias
+        Vector4 mRoughness;         // Ocean doesn't use these but shader expects them
+        Vector4 mMetalness;         // Ocean doesn't use these but shader expects them
+        Vector4 mDetailOffsetScale[4]; // Ocean doesn't use these but shader expects them
+        uint32  mIndices0_7[4];     // Ocean doesn't use these but shader expects them
+        uint32  mIndices8_15[4];    // Ocean doesn't use these but shader expects them
+        uint32  mIndices16_24[4];   // Ocean doesn't use these but shader expects them
 
         /// @see OceanBrdf::OceanBrdf
         uint32  mBrdf;
+
+        void cloneImpl(HlmsDatablock* datablock) const override;
 
         void scheduleConstBufferUpdate(void);
         virtual void uploadToConstBuffer(char* dstPtr, uint8 dirtyFlags);
@@ -144,11 +171,11 @@ namespace Ogre
         void setShallowColour( const Vector3 &shallowColour );
         Vector3 getShallowColour(void) const;
 
-        void setAlpha(float alpha);
-        float getAlpha(void) const;
-
         void setWavesScale( float scale );
         float getWavesScale() const;
+
+        void setShadowConstantBias(float bias);
+        float getShadowConstantBias() const;
 
         /// Overloaded to tell it's unsupported
         virtual void setAlphaTestThreshold( float threshold );
@@ -160,8 +187,12 @@ namespace Ogre
 
         virtual void calculateHash();
 
-        static const size_t MaterialSizeInGpu;
-        static const size_t MaterialSizeInGpuAligned;
+        // Size calculation: 
+        // deepColour(16) + shallowColour(16) + kD(16) + roughness(16) + metalness(16) 
+        // + detailOffsetScale[4](64) + indices0_7(16) + indices8_15(16) + indices16_24(16)
+        // = 192 bytes
+        static const size_t MaterialSizeInGpu = 192;
+        static const size_t MaterialSizeInGpuAligned = 192; // Already aligned to 16
     };
 
     /** @} */

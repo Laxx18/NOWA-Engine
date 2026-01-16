@@ -117,38 +117,59 @@ void main()
 	// ===== Wave calculations =====
 	float waveIntensity = clamp( inPs.wavesIntensity, 0.0, 1.0 );
 	float waveFactor    = clamp( inPs.waveHeight, 0.0, 1.0 ) * waveIntensity;
-	
+
 	// ===== Foam calculation =====
 	float foam = pow( clamp( textureValue.w, 0.0, 1.0 ), 2.0 ) * waveFactor * 0.5;
 	foam = clamp( foam, 0.0, 1.0 );
-	
-	ROUGHNESS = mix( 0.02, 0.3, foam );
-	
+
+	// Roughness
+	ROUGHNESS = mix( 0.04, 0.7, foam );
+
 	// ===== Base water color =====
 	diffuseCol.xyz = mix( material.deepColour.xyz, material.shallowColour.xyz, waveFactor * 0.7 );
-	vec3 foamColour = vec3( 0.9, 0.9, 0.9 );
+	vec3 foamColour = vec3( 0.82, 0.86, 0.9 );
 	diffuseCol.xyz = mix( diffuseCol.xyz, foamColour, foam );
 	diffuseCol.w = 1.0;
 
-	/// Apply the material's diffuse over the textures
+	// ===== Normal calculation =====
+	// Normal from texture (baked waves)
+	vec3 nNormal;
+	nNormal.xy = textureValue.xy * 2.0 - 1.0;
+	nNormal.xy *= waveIntensity;
+	nNormal.z  = 1.0;
+	nNormal    = normalize( nNormal );
+
+	// Flat ocean surface normal in VIEW space
+	vec3 geomNormal = vec3( 0.0, 1.0, 0.0 );
+	geomNormal = normalize( mat3( passBuf.view ) * geomNormal );
+
+	// View-space unit X axis (from view matrix)
+	vec3 viewSpaceUnitX = vec3(
+		passBuf.view[0].x,
+		passBuf.view[1].x,
+		passBuf.view[2].x
+	);
+
+	// Build stable TBN (NO derivatives!)
+	vec3 tangent   = normalize( cross( geomNormal, viewSpaceUnitX ) );
+	vec3 bitangent = cross( tangent, geomNormal );
+
+	// Transform normal from texture into view space
+	nNormal = normalize(
+		bitangent * nNormal.x +
+		tangent   * nNormal.y +
+		geomNormal * nNormal.z
+	);
+
+	@insertpiece( custom_ps_posSampleNormal )
+
+	// Apply material's diffuse
 	diffuseCol.xyz *= material.kD.xyz;
 
-	// Calculate F0 from metalness, and dim kD as metalness gets bigger.
-	float metalness = 0.0; // Water is non-metallic
-	F0 = mix( vec3( 0.02 ), @insertpiece( kD ).xyz * 3.14159, metalness );
-	@insertpiece( kD ).xyz = @insertpiece( kD ).xyz - @insertpiece( kD ).xyz * metalness;
-
-	// ===== Normal from wave texture =====
-	vec3 normalTS = textureValue.xyz * 2.0 - 1.0;
-	
-	// Build TBN matrix
-	vec3 geomNormal = normalize( inPs.normal );
-	vec3 viewSpaceUnitX = vec3( passBuf.view[0].x, passBuf.view[1].x, passBuf.view[2].x );
-	vec3 vTangent = normalize( cross( geomNormal, viewSpaceUnitX ) );
-	vec3 vBinormal = cross( vTangent, geomNormal );
-	mat3 TBN = mat3( vBinormal, vTangent, geomNormal );
-	
-	nNormal = normalize( TBN * normalTS );
+	// Fresnel - water (non-metallic)
+	float metalness = 0.0;
+	F0 = mix( vec3( 0.03 ), material.kD.xyz * 3.14159, metalness );
+	material.kD.xyz = material.kD.xyz - material.kD.xyz * metalness;
 
 	// ===== Shadows =====
 	@property( !(hlms_pssm_splits || (!hlms_pssm_splits && hlms_num_shadow_map_lights && hlms_lights_directional)) )

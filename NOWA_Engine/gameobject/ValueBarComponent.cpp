@@ -287,7 +287,7 @@ namespace NOWA
 			}
 
 			// Capture all the data you need in the lambda
-			auto closureFunction = [this](Ogre::Real weight)
+			auto closureFunction = [this](Ogre::Real renderDt)
 			// ENQUEUE_RENDER_COMMAND("ValueBarComponent::update",
 			{
 				this->indices = 0;

@@ -1793,7 +1793,7 @@ namespace NOWA
 			{
 				// ENQUEUE_RENDER_COMMAND_MULTI("PhysicsActiveComponent::getContactBelow::Draw", _3(it, charPoint, rayEndPoint),
 				// {
-				auto closureFunction = [this, it, charPoint, rayEndPoint](Ogre::Real weight)
+				auto closureFunction = [this, it, charPoint, rayEndPoint](Ogre::Real renderDt)
 				{
 					Ogre::ManualObject* debugLineObject = it->second.second;
 					debugLineObject->clear();
@@ -1940,7 +1940,7 @@ namespace NOWA
 			{
 				// ENQUEUE_RENDER_COMMAND_MULTI("PhysicsActiveComponent::getContactAhead::Draw", _3(it, charPoint, rayEndPoint),
 				// {
-				auto closureFunction = [this, it, charPoint, rayEndPoint](Ogre::Real weight)
+				auto closureFunction = [this, it, charPoint, rayEndPoint](Ogre::Real renderDt)
 					{
 						Ogre::ManualObject* debugLineObject = it->second.second;
 						debugLineObject->clear();
@@ -2078,7 +2078,7 @@ namespace NOWA
 			{
 				// ENQUEUE_RENDER_COMMAND_MULTI("PhysicsActiveComponent::getContactAbove::Draw", _3(it, charPoint, rayEndPoint),
 				// {
-				auto closureFunction = [this, it, charPoint, rayEndPoint](Ogre::Real weight)
+				auto closureFunction = [this, it, charPoint, rayEndPoint](Ogre::Real renderDt)
 				{
 					Ogre::ManualObject* debugLineObject = it->second.second;
 					debugLineObject->clear();
@@ -2219,7 +2219,7 @@ namespace NOWA
 			{
 				// ENQUEUE_RENDER_COMMAND_MULTI("PhysicsActiveComponent::getContactToDirection::Draw", _3(it, charPoint, rayEndPoint),
 				// {
-				auto closureFunction = [this, it, fromPosition, toPosition](Ogre::Real weight)
+				auto closureFunction = [this, it, fromPosition, toPosition](Ogre::Real renderDt)
 					{
 						Ogre::ManualObject* debugLineObject = it->second.second;
 						debugLineObject->clear();
@@ -2365,7 +2365,7 @@ namespace NOWA
 			{
 				// ENQUEUE_RENDER_COMMAND_MULTI("PhysicsActiveComponent::getContact::Draw", _3(it, charPoint, rayEndPoint),
 				// {
-				auto closureFunction = [this, it, fromPosition, toPosition](Ogre::Real weight)
+				auto closureFunction = [this, it, fromPosition, toPosition](Ogre::Real renderDt)
 				{
 					Ogre::ManualObject* debugLineObject = it->second.second;
 					debugLineObject->clear();

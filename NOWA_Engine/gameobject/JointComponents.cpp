@@ -4846,7 +4846,7 @@ namespace NOWA
 
 	void JointSpringComponent::drawLine(const Ogre::Vector3& startPosition, const Ogre::Vector3& endPosition)
 	{
-		auto closureFunction = [this, startPosition, endPosition](Ogre::Real weight)
+		auto closureFunction = [this, startPosition, endPosition](Ogre::Real renderDt)
 		{
 			// Draw a 3D line between these points for visual effect
 			this->dragLineObject->clear();
@@ -9915,7 +9915,7 @@ namespace NOWA
 			return;
 		}
 
-		auto closureFunction = [this](Ogre::Real weight)
+		auto closureFunction = [this](Ogre::Real renderDt)
 		{
 			auto* pathFollow = dynamic_cast<OgreNewt::PathFollow*>(this->joint);
 			if (!pathFollow)

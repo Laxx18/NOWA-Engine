@@ -28,6 +28,7 @@ namespace NOWA
         interpolationWeight(0.0f),
         accumTimeSinceLastLogicFrame(0.0f),
         frameTime(1.0f / 60.0f),
+        currentRenderDt(0.0f),
         debugVisualization(false),
         currentDestroySlot(0),
         isRunningWaitClosure(false),
@@ -100,6 +101,9 @@ namespace NOWA
             Ogre::Real deltaTime = (currentTime - lastFrameTime) * 0.000001f;
             lastFrameTime = currentTime;
 
+            // Store the render deltaTime for closures to use
+            this->currentRenderDt = deltaTime;
+
             GameProgressModule* gameProgressModule = appStateManager->getActiveGameProgressModuleSafe();
             const bool isStalled = appStateManager->bStall.load();
             const bool isSceneLoading = (gameProgressModule != nullptr) ? gameProgressModule->bSceneLoading.load() : false;
@@ -114,7 +118,7 @@ namespace NOWA
                 this->advanceFrameAndDestroyOld();
                 this->processAllCommands();
 
-                // >>> FIX: use alpha published by logic thread (single truth)
+                // Uses alpha published by logic thread (single truth)
                 const float alpha = this->consumeInterpolationAlpha();
                 this->setInterpolationWeight(alpha); // implement/set your internal weight variable
 
@@ -129,6 +133,10 @@ namespace NOWA
                     this->dumpBufferState();
                     frameCount = 0;
                 }
+            }
+            else
+            {
+                this->clearAllClosures();
             }
 
             if (!isStalled)
@@ -155,6 +163,8 @@ namespace NOWA
                 Ogre::StringConverter::toString(i) + " pending commands!");
             throw;
         }
+        
+        this->clearAllClosures();
 
         this->trackedNodes.clear();
         this->trackedCameras.clear();
@@ -226,13 +236,13 @@ namespace NOWA
         // Clear the concurrent queue - drain all pending commands
         ClosureCommand command;
         size_t clearedCommands = 0;
-        while (closureQueue.try_dequeue(consumerToken, command))
+        while (this->closureQueue.try_dequeue(consumerToken, command))
         {
             ++clearedCommands;
         }
 
         // Clear all persistent closures
-        persistentClosures.clear();
+        this->persistentClosures.clear();
 
         // Log the cleanup for debugging
         if (clearedCommands > 0)
@@ -1543,7 +1553,7 @@ namespace NOWA
         }
     }
 
-    void GraphicsModule::processClosureCommands(Ogre::Real interpolationWeight)
+    void GraphicsModule::processClosureCommands(void)
     {
         // Process all available commands in the queue
         ClosureCommand command;
@@ -1555,7 +1565,7 @@ namespace NOWA
 
         while (processedCount < maxCommandsPerFrame && this->closureQueue.try_dequeue(consumerToken, command))
         {
-            this->processSingleCommand(command, interpolationWeight);
+            this->processSingleCommand(command, this->currentRenderDt);
             ++processedCount;
         }
 
@@ -1566,7 +1576,7 @@ namespace NOWA
         }
     }
 
-    void GraphicsModule::executeActiveClosures(Ogre::Real interpolationWeight)
+    void GraphicsModule::executeActiveClosures(void)
     {
         // Execute all persistent closures
         auto it = this->persistentClosures.begin();
@@ -1576,7 +1586,7 @@ namespace NOWA
             {
                 try
                 {
-                    it->second.closureFunc(interpolationWeight);
+                    it->second.closureFunc(this->currentRenderDt);
                     ++it;
                 }
                 catch (const std::exception& e)
@@ -1593,13 +1603,13 @@ namespace NOWA
         }
     }
 
-    void GraphicsModule::updateAndExecuteClosures(Ogre::Real interpolationWeight)
+    void GraphicsModule::updateAndExecuteClosures(void)
     {
         // First process all queued commands
-        this->processClosureCommands(interpolationWeight);
+        this->processClosureCommands();
 
         // Then execute all active closures
-        this->executeActiveClosures(interpolationWeight);
+        this->executeActiveClosures();
     }
 
     void GraphicsModule::processSingleCommand(const ClosureCommand& command, Ogre::Real interpolationWeight)
@@ -2057,7 +2067,7 @@ namespace NOWA
         }
 
         // Update and execute all closures - completely lock-free
-        this->updateAndExecuteClosures(this->interpolationWeight);
+        this->updateAndExecuteClosures();
     }
 
     void GraphicsModule::calculateInterpolationWeight(void)

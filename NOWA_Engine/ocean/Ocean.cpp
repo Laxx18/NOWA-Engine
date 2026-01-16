@@ -217,15 +217,14 @@ namespace Ogre
     void Ocean::update(Ogre::Real dt)
     {
         // This is the ONLY time value that goes into the shader
-        m_oceanTime += dt;
+        m_oceanTime += dt * m_waveTimeScale;
 
-        const float wrapTime = 21600.0f; // 6 hours
-        if (m_oceanTime > wrapTime)
-            m_oceanTime -= wrapTime;
+        if (m_oceanTime > 100000.0f)
+            m_oceanTime -= 100000.0f;
 
         m_WavesIntensity = std::max(m_WavesIntensity, 0.001f);
-        m_height = m_WavesIntensity * 0.9 + 0.1; //from 10% to 100%, less than 10 looks too flat
-
+        m_height = m_WavesIntensity * 0.9 + 0.1;
+        
         mRenderables.clear();
         m_currentCell = 0;
 

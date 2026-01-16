@@ -116,6 +116,9 @@ namespace NOWA
 	void SSAOComponent::onRemoveComponent(void)
 	{
 		GameObjectComponent::onRemoveComponent();
+
+		Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
+		NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
 	}
 
 	void SSAOComponent::update(Ogre::Real dt, bool notSimulating)
@@ -124,7 +127,7 @@ namespace NOWA
 		{
 			if (true == this->activated->getBool())
 			{
-				auto closureFunction = [this](Ogre::Real weight)
+				auto closureFunction = [this](Ogre::Real renderDt)
 				{
 					Ogre::GpuProgramParametersSharedPtr psParams = this->passSSAO->getFragmentProgramParameters();
 					Ogre::Camera* camera = this->cameraComponent->getCamera();

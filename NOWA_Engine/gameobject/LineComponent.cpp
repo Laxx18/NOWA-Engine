@@ -240,7 +240,7 @@ namespace NOWA
 			this->createLine();
 		}
 
-		auto closureFunction = [this, startPosition, endPosition](Ogre::Real weight)
+		auto closureFunction = [this, startPosition, endPosition](Ogre::Real renderDt)
 		{
 			// Draw a 3D line between these points for visual effect
 			this->lineObject->clear();

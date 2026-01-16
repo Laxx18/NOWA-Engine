@@ -437,7 +437,7 @@ namespace NOWA
 
 		GameObjectPtr clonedGameObject;
 
-		auto closureFunction = [this, &clonedGameObject, originalGameObjectPtr, originalGameObjectName, parentNode, targetId, targetPosition, targetOrientation, targetScale, cloneDatablock, callback](Ogre::Real weight)
+		auto closureFunction = [this, &clonedGameObject, originalGameObjectPtr, originalGameObjectName, parentNode, targetId, targetPosition, targetOrientation, targetScale, cloneDatablock, callback](Ogre::Real renderDt)
 			{
 				// 1. Perform the synchronous cloning and callback on the Render Thread
 				clonedGameObject = this->internalClone(originalGameObjectPtr, parentNode, targetId, targetPosition, targetOrientation, targetScale, cloneDatablock);
@@ -479,7 +479,7 @@ namespace NOWA
 			return;
 		}
 
-		auto closureFunction = [this, originalGameObjectPtr, originalGameObjectId, parentNode, targetId, targetPosition, targetOrientation, targetScale, cloneDatablock, callback](Ogre::Real weight)
+		auto closureFunction = [this, originalGameObjectPtr, originalGameObjectId, parentNode, targetId, targetPosition, targetOrientation, targetScale, cloneDatablock, callback](Ogre::Real renderDt)
 			{
 				GameObjectPtr clonedGameObject = this->internalClone(originalGameObjectPtr, parentNode, targetId, targetPosition, targetOrientation, targetScale, cloneDatablock);
 

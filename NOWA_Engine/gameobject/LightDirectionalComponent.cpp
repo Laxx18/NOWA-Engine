@@ -125,6 +125,9 @@ namespace NOWA
 	{
 		GameObjectComponent::onRemoveComponent();
 
+		Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
+		NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
+
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[LightDirectionalComponent] Destructor light directional component for game object: " + this->gameObjectPtr->getName());
 		if (nullptr != this->light)
 		{
@@ -181,7 +184,7 @@ namespace NOWA
 				{
 					if (nullptr != this->light)
 					{
-						auto closureFunction = [this](Ogre::Real weight)
+						auto closureFunction = [this](Ogre::Real renderDt)
 						{
 							// Actualize the ambient light, when the direction changed
 							this->gameObjectPtr->getSceneManager()->setAmbientLight(this->gameObjectPtr->getSceneManager()->getAmbientLightUpperHemisphere(),

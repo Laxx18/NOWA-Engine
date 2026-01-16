@@ -158,6 +158,12 @@ namespace NOWA
 	{
 		GameObjectComponent::onRemoveComponent();
 
+		Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update1" + Ogre::StringConverter::toString(this->index);
+		NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
+
+		id = this->gameObjectPtr->getName() + this->getClassName() + "::update2" + Ogre::StringConverter::toString(this->index);
+		NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
+
 		WorkspaceBaseComponent* workspaceBaseComponent = WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent();
 		if (nullptr != workspaceBaseComponent && false == AppStateManager::getSingletonPtr()->bShutdown)
 		{
@@ -236,7 +242,7 @@ namespace NOWA
 			const float lightEpsilon = 0.0f;
 			if (nullptr != this->sunLight)
 			{
-				auto closureFunction = [this, lightEpsilon](Ogre::Real weight)
+				auto closureFunction = [this, lightEpsilon](Ogre::Real renderDt)
 				{
 					this->terra->update(this->sunLight->getDerivedDirectionUpdated(), lightEpsilon);
 				};
@@ -245,7 +251,7 @@ namespace NOWA
 			}
 			else
 			{
-				auto closureFunction = [this, lightEpsilon](Ogre::Real weight)
+				auto closureFunction = [this, lightEpsilon](Ogre::Real renderDt)
 				{
 					this->terra->update(Ogre::Vector3::ZERO, lightEpsilon);
 				};

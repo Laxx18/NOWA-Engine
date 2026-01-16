@@ -831,17 +831,17 @@ namespace NOWA
 		{
 			if (true == this->justAdded)
 			{
-				this->timeToGo -= dt;
-			/*	if (this->timeToGo <= 1.0f)
-					this->editBoxes[0]->setVisible(true);*/
-				if (this->timeToGo < 1e-3f)
+				auto closureFunction = [this](Ogre::Real renderDt)
 				{
-					this->timeToGo = 0.0f;
-					this->justAdded = false;
-				}
+					this->timeToGo -= renderDt;
+					/*	if (this->timeToGo <= 1.0f)
+							this->editBoxes[0]->setVisible(true);*/
+					if (this->timeToGo < 1e-3f)
+					{
+						this->timeToGo = 0.0f;
+						this->justAdded = false;
+					}
 
-				auto closureFunction = [this](Ogre::Real weight)
-				{
 					// Scroll the textbox by this much..
 					Ogre::Real progress = (this->durationSec->getReal() - this->timeToGo) / this->durationSec->getReal();
 

@@ -672,7 +672,7 @@ namespace NOWA
 			}
 			else
 			{
-				auto closureFunction = [this](Ogre::Real weight)
+				auto closureFunction = [this](Ogre::Real renderDt)
 				{
 					for (size_t i = 0; i < this->spriteAnimationIndices.size(); i++)
 					{

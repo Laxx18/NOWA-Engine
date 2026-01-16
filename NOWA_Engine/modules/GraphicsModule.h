@@ -528,13 +528,13 @@ namespace NOWA
         void removeTrackedClosure(const Ogre::String& uniqueName);
 
         // Called from render thread - processes all queued commands
-        void processClosureCommands(Ogre::Real interpolationWeight);
+        void processClosureCommands(void);
 
         // Called from render thread - executes all active closures
-        void executeActiveClosures(Ogre::Real interpolationWeight);
+        void executeActiveClosures(void);
 
         // Combined method called from render thread
-        void updateAndExecuteClosures(Ogre::Real interpolationWeight);
+        void updateAndExecuteClosures();
 	public:
         static constexpr size_t NUM_DESTROY_SLOTS = 4;
 
@@ -578,6 +578,8 @@ namespace NOWA
 
         // increments when logic produces a new snapshot (endLogicFrame)
         std::atomic<uint64_t> m_logicFrameId{ 0 };
+
+        Ogre::Real currentRenderDt;
 
         std::atomic<std::thread::id> renderThreadId;
         std::mutex mutex;

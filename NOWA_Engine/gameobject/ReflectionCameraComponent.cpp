@@ -147,7 +147,7 @@ namespace NOWA
 			{
 				if (true == this->dummyEntity->isVisible())
 				{
-					auto closureFunction = [this](Ogre::Real weight)
+					auto closureFunction = [this](Ogre::Real renderDt)
 					{
 						this->dummyEntity->setVisible(false);
 					};
@@ -159,7 +159,7 @@ namespace NOWA
 					// If its not the active camera
 					if (false == this->dummyEntity->isVisible())
 					{
-						auto closureFunction = [this](Ogre::Real weight)
+						auto closureFunction = [this](Ogre::Real renderDt)
 						{
 							this->dummyEntity->setVisible(true);
 						};

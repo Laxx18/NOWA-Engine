@@ -1,6 +1,5 @@
-// Ocean header for PS - Exact Terra pattern
+// Ocean Pixel Shader - Matches Terra's exact structure
 
-// CRITICAL: Undefine PBS pieces BEFORE DefaultHeaderPS tries to use them
 @undefpiece( MaterialStructDecl )
 @undefpiece( InstanceStructDecl )
 
@@ -28,8 +27,6 @@
 //-----------------------------------------------------------------------------
 
 @piece( DefaultOceanBodyPS )
-    PixelData pixelData;
-
     @property( hlms_emulate_clip_distances && hlms_global_clip_planes && hlms_pso_clip_distances && syntax == glslvk)
         @foreach( hlms_pso_clip_distances, n )
             if( inPs.clipDistance@n < 0.0 )
@@ -45,6 +42,8 @@
     @end
     
     @insertpiece( custom_ps_posMaterialLoad )
+	
+	PixelData pixelData;
 
     // ===== Sample ocean texture data =====
     float4 textureValue  = OGRE_SampleF16( terrainData, terrainDataSampler, float3(inPs.uv1.xy, inPs.uv1.z) );
@@ -56,7 +55,25 @@
     textureValue = lerp(textureValue, textureValue3, inPs.blendWeight.y);
     textureValue = lerp(textureValue, textureValue4, inPs.blendWeight.z);
     
-    // ===== Wave calculations =====
+	// =====================================================
+	// FOAM + WATER
+	// =====================================================
+
+	// Wave intensity
+	// float waveIntensity = inPs.wavesIntensity;´
+	// // Foam: GLSL curve
+	// float foam = pow( saturate( textureValue.w ), 3.0f - waveIntensity ) * 0.45f * waveIntensity * waveIntensity;
+	// // Roughness:fixed base + foam
+	// float ROUGHNESS = 0.2f + foam;
+
+	// // Water color: fake scattering via wave height
+	// float4 diffuseCol;
+	// diffuseCol.xyz = lerp( oceanMaterial.deepColour.xyz, oceanMaterial.shallowColour.xyz, inPs.waveHeight * waveIntensity );
+	// // Additive foam
+	// diffuseCol.xyz += foam;
+	// diffuseCol.w = 1.0f;
+	
+	// ===== Wave calculations =====
     float waveIntensity = saturate( inPs.wavesIntensity );
     float waveFactor    = saturate( inPs.waveHeight ) * waveIntensity;
     
@@ -64,56 +81,82 @@
     float foam = pow( saturate( textureValue.w ), 2.0f ) * waveFactor * 0.5f;
     foam = saturate( foam );
     
-    float ROUGHNESS = lerp( 0.02f, 0.3f, foam );
+    // float ROUGHNESS = lerp( 0.02f, 0.3f, foam );
+	float ROUGHNESS = lerp( 0.04f, 0.7f, foam );
     
-    // ===== Base water color (diffuse) =====
-    float4 diffuseCol;
+    // ===== Base water color =====
+	float4 diffuseCol;
     diffuseCol.xyz = lerp( oceanMaterial.deepColour.xyz, oceanMaterial.shallowColour.xyz, waveFactor * 0.7f );
-	
-	float waterAlpha = lerp( oceanMaterial.deepColour.w, 0.3f, waveFactor * 0.7f );
-	
-    float3 foamColour = float3( 0.9f, 0.9f, 0.9f );
+    float3 foamColour = float3( 0.82f, 0.86f, 0.9f );
     diffuseCol.xyz = lerp( diffuseCol.xyz, foamColour, foam );
-	diffuseCol.w = lerp( waterAlpha, 1.0f, foam );
+    diffuseCol.w = 1.0f;
 
-    // ===== Normal from wave texture =====
-    midf3 normalTS = midf3_c( textureValue.xyz * 2.0 - 1.0 );
+	// ===== Normal calculation =====
+
+	// Normal from texture (baked waves)
+	midf3 nNormal;
+	nNormal.xy = textureValue.xy * 2.0f - 1.0f;
+	nNormal.xy *= waveIntensity;
+	nNormal.z  = _h( 1.0f );
+	nNormal    = normalize( nNormal );
+
+	// Flat ocean surface normal in VIEW space
+	midf3 geomNormal = midf3_c( 0.0f, 1.0f, 0.0f );
+	geomNormal = normalize( mul( geomNormal, toMidf3x3( passBuf.view ) ) );
+
+	// View-space unit X axis (from view matrix)
+	midf3 viewSpaceUnitX = midf3_c(
+		passBuf.view[0].x,
+		passBuf.view[1].x,
+		passBuf.view[2].x
+	);
+
+	// Build stable TBN (NO derivatives!)
+	midf3 tangent   = normalize( cross( geomNormal, viewSpaceUnitX ) );
+	midf3 bitangent = cross( tangent, geomNormal );
+
+	// Transform normal from texture into view space
+	pixelData.normal = normalize(
+		bitangent * nNormal.x +
+		tangent   * nNormal.y +
+		geomNormal * nNormal.z
+	);
+
+	@insertpiece( custom_ps_posSampleNormal )
+
+	// Diffuse (water absorbs light)
+	pixelData.diffuse = midf4( diffuseCol * _h( 0.3f ) );
+
+	// Specular (foam spreads highlights slightly)
+	float specAtten = lerp( 1.0f, 0.4f, foam );
+	pixelData.specular = midf3_c( specAtten, specAtten, specAtten );
+
+	// Fresnel - water (slightly higher than before for better reflections)
+	pixelData.F0 = make_float_fresnel( 0.03f );
+
+	// View
+	pixelData.viewDir = normalize( -inPs.pos );
+	pixelData.NdotV   = saturate( dot( pixelData.normal, pixelData.viewDir ) );
+
+	// Roughness
+	pixelData.perceptualRoughness = midf_c( ROUGHNESS );
+
+	@property( perceptual_roughness )
+		pixelData.roughness =
+			max( pixelData.perceptualRoughness * pixelData.perceptualRoughness,
+				 _h( 0.001f ) );
+	@else
+		pixelData.roughness =
+			max( pixelData.perceptualRoughness, _h( 0.001f ) );
+	@end
+
     
-    @property( !hlms_use_prepass )
-        // Build TBN matrix (similar to Terra)
-        midf3 geomNormal = normalize( midf3_c( inPs.normal ) );
-        midf3 viewSpaceUnitX = mul( midf3_c( 1, 0, 0 ), toMidf3x3( passBuf.view ) );
-        midf3 vTangent = normalize( cross( geomNormal, viewSpaceUnitX ) );
-        midf3 vBinormal = cross( vTangent, geomNormal );
-        midf3x3 TBN = buildMidf3x3( vBinormal, vTangent, geomNormal );
-        
-        pixelData.normal = normalize( mul( TBN, normalTS ) );
-    @end
-    
-    @insertpiece( custom_ps_posSampleNormal )
-    
-    // ===== Populate pixelData BEFORE lighting =====
-    pixelData.diffuse = midf4_c( diffuseCol );
-    pixelData.specular = midf3_c( 1.0f, 1.0f, 1.0f ); // Water is highly specular
-    
-    // Metalness for water (non-metallic)
-    midf metalness = _h( 0.0 );
-    pixelData.F0 = lerp( midf3_c( 0.02f, 0.02f, 0.02f ), pixelData.diffuse.xyz * _h( 3.14159f ), metalness );
-    pixelData.diffuse.xyz = pixelData.diffuse.xyz - pixelData.diffuse.xyz * metalness;
-    
-    pixelData.perceptualRoughness = midf_c( ROUGHNESS );
-    @property( perceptual_roughness )
-        pixelData.roughness = max( pixelData.perceptualRoughness * pixelData.perceptualRoughness, _h( 0.001f ) );
-    @else
-        pixelData.roughness = max( pixelData.perceptualRoughness, _h( 0.001f ) );
-    @end
-    
+    // ===== Shadow maps =====
     @property( !hlms_use_prepass )
         @insertpiece( DoDirectionalShadowMaps )
     @end
     
     @property( hlms_use_prepass )
-        // Use prepass data
         rshort2 iFragCoord = rshort2( gl_FragCoord.x,
                                       @property( !hlms_forwardplus_flipY && syntax == glsl )passBuf.windowHeight.x - @end
                                       gl_FragCoord.y );
@@ -159,7 +202,7 @@
     @end
     
     @property( !hlms_prepass )
-        // ===== Lighting Header =====
+        // ===== LIGHTING (PBS pieces handle everything) =====
         @insertpiece( LightingHeader )
 
         @insertpiece( custom_ps_preLights )
@@ -172,38 +215,26 @@
             @insertpiece( DoDirectionalLights )
         @end
 
-        // ===== POINT LIGHTS =====
         @insertpiece( DoPointLights )
-        
-        // ===== SPOT LIGHTS =====
         @insertpiece( DoSpotLights )
 
-        // ===== AREA LIGHTS =====
         @insertpiece( DoAreaApproxLights )
         @insertpiece( DoAreaLtcLights )
 
-        // ===== FORWARD+ LIGHTING =====
         @insertpiece( forward3dLighting )
 
-        // ===== ENVIRONMENT LIGHTING =====
         @property( needs_env_brdf && (use_envprobe_map || hlms_use_ssr || use_planar_reflections || vct_num_probes) )
             pixelData.envColourS = midf3_c( 0, 0, 0 );
             pixelData.envColourD = midf3_c( 0, 0, 0 );
         @end
 
-        // Voxel Cone Tracing
         @insertpiece( applyVoxelConeTracing )
 
-        // Cubemaps
         @insertpiece( forwardPlusDoCubemaps )
-        
-        // Irradiance volumes
         @insertpiece( applyIrradianceVolumes )
 
-        // Emissive (if needed for bioluminescence)
         @insertpiece( DoEmissiveLight )
 
-        // ===== Environment Probe =====
         @property( use_envprobe_map )
             @property( use_parallax_correct_cubemaps && !hlms_enable_cubemaps_auto )
                 @insertpiece( CubemapManualPcc )
@@ -213,7 +244,6 @@
             @end
         @end
 
-        // ===== Screen Space Reflections =====
         @property( hlms_use_ssr )
             float4 ssrReflection = OGRE_Load2D( ssrTexture, iFragCoord, 0 ).xyzw;
             @property( use_envprobe_map )
@@ -223,10 +253,8 @@
             @end
         @end
 
-        // ===== PLANAR REFLECTIONS (CRITICAL FOR WATER!) =====
         @insertpiece( DoPlanarReflectionsPS )
 
-        // ===== AMBIENT LIGHTING =====
         @property( ambient_hemisphere )
             @property( use_envprobe_map || hlms_use_ssr || use_planar_reflections || vct_num_probes )
                 @property( vct_num_probes )
@@ -247,18 +275,15 @@
                                             midf3_c( passBuf.ambientUpperHemi.xyz ), ambientWS );
             @end
         @end
-        
         @property( ambient_fixed && vct_num_probes )
             finalColour += vctSpecular.w == 0 ? midf3_c( 0, 0, 0 ) :
                                                 (midf3_c( passBuf.ambientUpperHemi.xyz ) * pixelData.diffuse.xyz);
         @end
 
-        // ===== APPLY ENVIRONMENT BRDF =====
         @property( needs_env_brdf )
             @insertpiece( BRDF_EnvMap )
         @end
 
-        // ===== FOG =====
         @property( hlms_fog )
             const float distToCamera = length( inPs.pos.xyz );
             const midf luminance = dot( finalColour.xyz,
@@ -280,9 +305,12 @@
             @else
                 outPs_colour0.xyz = finalColour;
             @end
-			
-			// Use the calculated alpha
-            outPs_colour0.w = diffuseCol.w;
+
+            @property( hlms_alphablend )
+                outPs_colour0.w = _h( 1.0 );
+            @else
+                outPs_colour0.w = _h( 1.0 );
+            @end
 
             @property( debug_pssm_splits )
                 outPs_colour0.xyz = lerp( outPs_colour0.xyz, debugPssmSplit.xyz, _h( 0.2f ) );
@@ -292,7 +320,6 @@
                 outPs_normals = midf4_c( pixelData.normal * _h( 0.5 ) + _h( 0.5 ), 1.0 );
             @end
         @else
-            // Prepass output
             outPs_normals = midf4_c( pixelData.normal * _h( 0.5 ) + _h( 0.5 ), 1.0 );
             @property( hlms_pssm_splits )
                 outPs_shadowRoughness = midf2_c( fShadow, (pixelData.roughness - 0.02) * 1.02040816 );

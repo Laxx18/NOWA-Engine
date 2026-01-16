@@ -342,7 +342,7 @@ namespace NOWA
 	{
 		if (_info.update)
 		{
-			auto closureFunction = [this, _info, _data](Ogre::Real weight)
+			auto closureFunction = [this, _info, _data](Ogre::Real renderDt)
 			{
 				if (!_data->isEmpty())
 				{
@@ -375,7 +375,7 @@ namespace NOWA
 
 		if (_info.drag && nullptr != _data->getInfo())
 		{
-			auto closureFunction = [this, _info, _data](Ogre::Real weight)
+			auto closureFunction = [this, _info, _data](Ogre::Real renderDt)
 			{
 				mImageBack->setItemName("None");
 				mImageBorder->setItemName("None");
@@ -400,7 +400,7 @@ namespace NOWA
 		}
 		else
 		{
-			auto closureFunction = [this, _info, _data](Ogre::Real weight)
+			auto closureFunction = [this, _info, _data](Ogre::Real renderDt)
 			{
 				if (_info.active)
 				{

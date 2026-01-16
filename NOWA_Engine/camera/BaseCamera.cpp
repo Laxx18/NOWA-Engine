@@ -164,7 +164,7 @@ namespace NOWA
 
 		if (this->camera->getProjectionType() == Ogre::PT_ORTHOGRAPHIC)
 		{
-			auto closureFunction = [this, moveValue](Ogre::Real weight)
+			auto closureFunction = [this, moveValue](Ogre::Real renderDt)
 			{
 				Ogre::Real height = this->camera->getOrthoWindowHeight() + moveValue.z;
 				// min window size

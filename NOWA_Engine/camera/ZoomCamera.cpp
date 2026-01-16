@@ -167,7 +167,7 @@ namespace NOWA
 
 	void ZoomCamera::zoomCamera(void)
 	{
-		auto closureFunction = [this](Ogre::Real weight)
+		auto closureFunction = [this](Ogre::Real renderDt)
 		{
 			// Find the required size based on the desired position and smoothly transition to that size.
 			Ogre::Real requiredSize = calcRequiredSize();

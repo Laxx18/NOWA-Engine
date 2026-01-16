@@ -304,7 +304,7 @@ namespace NOWA
 
 	void ViewportGrid::updateOrtho()
 	{
-		auto closureFunction = [this](Ogre::Real weight)
+		auto closureFunction = [this](Ogre::Real renderDt)
 		{
 			// Screen dimensions
 			int width = Core::getSingletonPtr()->getOgreRenderWindow()->getWidth();
@@ -454,7 +454,7 @@ namespace NOWA
 
 	void ViewportGrid::updatePersp()
 	{
-		auto closureFunction = [this](Ogre::Real weight)
+		auto closureFunction = [this](Ogre::Real renderDt)
 		{
 			//! @todo Calculate the spacing multiplier
 			Ogre::Real mult = 1;

@@ -693,7 +693,7 @@ namespace NOWA
 		if (nullptr != this->camera)
 		{
 			// NOWA::GraphicsModule::RenderCommand renderCommand = [this, activated]()
-			auto closureFunction = [this, activated](Ogre::Real weight)
+			auto closureFunction = [this, activated](Ogre::Real renderDt)
 			{
 				if (true == this->bConnected)
 				{

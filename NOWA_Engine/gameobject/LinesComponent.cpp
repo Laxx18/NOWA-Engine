@@ -191,7 +191,7 @@ namespace NOWA
 	{
 		if (false == notSimulating)
 		{
-			auto closureFunction = [this](Ogre::Real weight)
+			auto closureFunction = [this](Ogre::Real renderDt)
 			{
 				for (unsigned int i = 0; i < this->linesCount->getUInt(); i++)
 				{

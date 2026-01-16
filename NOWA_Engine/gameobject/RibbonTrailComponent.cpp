@@ -318,9 +318,9 @@ namespace NOWA
 		{
 			// Is already called by ogre
 			// this->ribbonTrail->preRender(this->gameObjectPtr->getSceneManager(), Ogre::Root::getSingletonPtr()->getRenderSystem());
-			auto closureFunction = [this, dt](Ogre::Real weight)
+			auto closureFunction = [this](Ogre::Real renderDt)
 			{
-				this->ribbonTrail->_timeUpdate(dt);
+				this->ribbonTrail->_timeUpdate(renderDt);
 			};
 			Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
 			NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);

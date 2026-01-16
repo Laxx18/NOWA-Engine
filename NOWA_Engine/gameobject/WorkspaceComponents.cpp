@@ -811,6 +811,11 @@ namespace NOWA
 					this->compositorManager->removeWorkspaceDefinition(this->workspaceName);
 				}
 
+				if (true == this->compositorManager->hasNodeDefinition(this->underwaterNodeName))
+				{
+					this->compositorManager->removeNodeDefinition(this->underwaterNodeName);
+				}
+
 				if (true == this->compositorManager->hasNodeDefinition(this->renderingNodeName))
 				{
 					this->compositorManager->removeNodeDefinition(this->renderingNodeName);
@@ -1546,7 +1551,7 @@ namespace NOWA
 			Ogre::CompositorPassQuadDef * passQuad =
 				static_cast<Ogre::CompositorPassQuadDef*>( targetDef->addPass( Ogre::PASS_QUAD ) );
 			passQuad->setAllLoadActions( Ogre::LoadAction::DontCare );
-			passQuad->mMaterialName = "NOWA/UnderwaterPost";
+			passQuad->mMaterialName = "Ocean/UnderwaterPost";
 			passQuad->addQuadTextureSource( 0u, "rt0" );
 			passQuad->mProfilingId = "NOWA_Underwater_Post_Pass_Quad";
 		}

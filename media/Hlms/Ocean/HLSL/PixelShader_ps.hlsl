@@ -40,6 +40,23 @@ Texture2D blendMap    : register(t@value(blendMap));
 SamplerState terrainDataSampler : register(s@value(terrainData));
 SamplerState blendMapSampler    : register(s@value(blendMap));
 
+// Environment probe (cubemap reflection)
+@property( use_envprobe_map )
+	@property( !hlms_enable_cubemaps_auto )
+		TextureCube	texEnvProbeMap : register(t@value(texEnvProbeMap));
+	@else
+		@property( !hlms_cubemaps_use_dpm )
+			TextureCubeArray	texEnvProbeMap : register(t@value(texEnvProbeMap));
+		@else
+			Texture2DArray	texEnvProbeMap : register(t@value(texEnvProbeMap));
+			@insertpiece( DeclDualParaboloidFunc )
+		@end
+	@end
+	@property( envMapRegSampler < samplerStateStart )
+		SamplerState samplerState@value(envMapRegSampler) : register(s@value(envMapRegSampler));
+	@end
+@end
+
 @foreach( num_samplers, n )
     SamplerState samplerState@value(currSampler) : register(s@counter(currSampler));
 @end

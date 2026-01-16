@@ -425,7 +425,7 @@ namespace NOWA
 
 		if (this->source != nullptr)
 		{
-			auto closureFunction = [this, time](Ogre::Real weight)
+			auto closureFunction = [this, time](Ogre::Real renderDt)
 			{
 				bool weightChange = false;
 				if (this->timeleft > 0.0f)

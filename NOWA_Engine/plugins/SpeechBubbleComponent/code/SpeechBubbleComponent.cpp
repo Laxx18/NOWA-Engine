@@ -260,7 +260,7 @@ namespace NOWA
 				return;
 			}
 
-			auto closureFunction = [this, dt](Ogre::Real weight)
+			auto closureFunction = [this, dt](Ogre::Real renderDt)
 			{
 				this->indices = 0;
 				if (this->manualObject->getNumSections() > 0)
@@ -377,6 +377,9 @@ namespace NOWA
 	void SpeechBubbleComponent::onRemoveComponent(void)
 	{
 		GameObjectComponent::onRemoveComponent();
+
+		Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
+		NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
 
 		if (nullptr != this->gameObjectTitleComponent)
 		{

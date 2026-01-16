@@ -143,7 +143,7 @@ namespace NOWA
 		{
 			// Hide overlay safely on render thread
 			auto overlay = this->pOverlay;
-			// auto closureFunction = [this, overlay](Ogre::Real weight)
+			// auto closureFunction = [this, overlay](Ogre::Real renderDt)
 			ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("ObjectTitle::update", _1(overlay),
 			{
 				if (overlay)
@@ -194,7 +194,7 @@ namespace NOWA
 			auto overlay = this->pOverlay;
 			auto textWidth = this->textDim.x;
 
-			// auto closureFunction = [this, overlay, container, x, y, textWidth](Ogre::Real weight)
+			// auto closureFunction = [this, overlay, container, x, y, textWidth](Ogre::Real renderDt)
 			ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("ObjectTitle::update2", _5(overlay, container, x, y, textWidth),
 			{
 				if (container)

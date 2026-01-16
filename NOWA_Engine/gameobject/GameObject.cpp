@@ -18,6 +18,7 @@
 #include "main/Core.h"
 #include "ocean/Ocean.h"
 #include "ocean/OgreHlmsOcean.h"
+#include "OceanComponent.h"
 #include "ocean/OgreHlmsOceanDatablock.h"
 
 #include "OgreMeshManager2.h"
@@ -2102,8 +2103,7 @@ namespace NOWA
 								WorkspaceBaseComponent* workspaceBaseComponent = WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent();
 								if (nullptr != workspaceBaseComponent)
 								{
-									Ogre::TextureGpu* cubemapTex =
-										workspaceBaseComponent->getDynamicCubemapTexture();
+									Ogre::TextureGpu* cubemapTex = workspaceBaseComponent->getDynamicCubemapTexture();
 									if (nullptr != cubemapTex)
 									{
 										pbsDatablock->setTexture(Ogre::PBSM_REFLECTION, cubemapTex);
@@ -2136,17 +2136,28 @@ namespace NOWA
 				if (true == this->useReflection->getBool())
 				{
 					WorkspaceBaseComponent* workspaceBaseComponent = WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent();
+
 					if (nullptr != workspaceBaseComponent)
 					{
-						Ogre::TextureGpu* cubemapTex =
-							workspaceBaseComponent->getDynamicCubemapTexture();
+						Ogre::TextureGpu* cubemapTex = workspaceBaseComponent->getDynamicCubemapTexture();
 						if (nullptr != cubemapTex)
 						{
-							auto* hlmsOcean = static_cast<Ogre::HlmsOcean*>(Ogre::Root::getSingleton().getHlmsManager()->getHlms(Ogre::HLMS_USER1));
-							if (hlmsOcean)
+							// Get OceanComponent (you already know it exists if type is Ocean)
+							auto oceanCompPtr = NOWA::makeStrongPtr(this->getComponent<OceanComponent>());
+
+							if (nullptr != oceanCompPtr)
 							{
-								hlmsOcean->setEnvProbe(cubemapTex);
-								this->setDataBlockPbsReflectionTextureName("cubemap");
+								Ogre::HlmsOceanDatablock* oceanDatablock = oceanCompPtr->getDatablock();
+
+								if (nullptr != oceanDatablock)
+								{
+									auto* hlmsOcean = static_cast<Ogre::HlmsOcean*>(Ogre::Root::getSingleton().getHlmsManager()->getHlms(Ogre::HLMS_USER1));
+
+									if (nullptr != hlmsOcean)
+									{
+										hlmsOcean->setDatablockEnvReflection(oceanDatablock, cubemapTex);
+									}
+								}
 							}
 						}
 					}
@@ -2155,7 +2166,7 @@ namespace NOWA
 						auto* hlmsOcean = static_cast<Ogre::HlmsOcean*>(Ogre::Root::getSingleton().getHlmsManager()->getHlms(Ogre::HLMS_USER1));
 						if (hlmsOcean)
 						{
-							hlmsOcean->setEnvProbe(static_cast<Ogre::TextureGpu*>(nullptr));
+							hlmsOcean->setDatablockEnvReflection(nullptr, "");
 							this->setDataBlockPbsReflectionTextureName("");
 						}
 					}

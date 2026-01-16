@@ -561,7 +561,7 @@ namespace NOWA
 		this->activated->setValue(activated);
 		if (nullptr != this->widget)
 		{
-			// auto closureFunction = [this, activated](Ogre::Real weight)
+			// auto closureFunction = [this, activated](Ogre::Real renderDt)
 			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("MyGUIComponent::setActivated", _1(activated),
 			{
 				this->widget->setVisible(activated);
@@ -592,7 +592,7 @@ namespace NOWA
 		this->position->setValue(position);
 		if (nullptr != this->widget)
 		{
-			// auto closureFunction = [this, position](Ogre::Real weight)
+			// auto closureFunction = [this, position](Ogre::Real renderDt)
 			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("MyGUIComponent::setRealPosition", _1(position),
 			{
 				this->widget->setRealPosition(position.x, position.y);
@@ -614,7 +614,7 @@ namespace NOWA
 		this->size->setValue(size);
 		if (nullptr != this->widget)
 		{
-			// auto closureFunction = [this, size](Ogre::Real weight)
+			// auto closureFunction = [this, size](Ogre::Real renderDt)
 			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("MyGUIComponent::setRealSize", _1(size),
 			{
 				this->widget->setRealSize(size.x, size.y);
@@ -640,7 +640,7 @@ namespace NOWA
 		if (0 == this->parentId->getULong())
 		{
 			ENQUEUE_RENDER_COMMAND_WAIT("MyGUIComponent::refreshTransform",
-			// auto closureFunction = [this](Ogre::Real weight)
+			// auto closureFunction = [this](Ogre::Real renderDt)
 			{
 				// Refresh positions and sizes
 				for (unsigned int i = 0; i < this->gameObjectPtr->getComponents()->size(); i++)
@@ -2634,7 +2634,7 @@ namespace NOWA
 				{
 					tempRadian = 0.0f;
 				}
-				auto closureFunction = [this, tempRadian](Ogre::Real weight)
+				auto closureFunction = [this, tempRadian](Ogre::Real renderDt)
 				{
 					this->rotatingSkin->setAngle(tempRadian);
 				};
@@ -5074,7 +5074,7 @@ namespace NOWA
 
 				// Actualize position and set at widget center
 // Attention: Width must be real und re-calculated?
-				auto closureFunction = [this, x, y](Ogre::Real weight)
+				auto closureFunction = [this, x, y](Ogre::Real renderDt)
 				{
 					this->widget->setRealPosition(x - static_cast<Ogre::Real>(this->widget->getWidth() / 2), y);
 				};

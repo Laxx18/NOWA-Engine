@@ -7284,6 +7284,14 @@ return {
 				returns = "(TerraComponent)",
 				valuetype = "TerraComponent"
 			},
+			getOceanComponent =
+			{
+				type = "function",
+				description = "Gets the ocean component.",
+				args = "()",
+				returns = "(OceanComponent)",
+				valuetype = "OceanComponent"
+			},
 			getJointComponent =
 			{
 				type = "function",
@@ -8315,6 +8323,14 @@ return {
 				args = "(string name)",
 				returns = "(TerraComponent)",
 				valuetype = "TerraComponent"
+			},
+			getOceanComponentFromName =
+			{
+				type = "function",
+				description = "Gets the ocean component.",
+				args = "(string name)",
+				returns = "(OceanComponent)",
+				valuetype = "OceanComponent"
 			},
 			getJointComponentFromName =
 			{
@@ -10427,6 +10443,14 @@ return {
 				args = "(TerraComponent other)",
 				returns = "(TerraComponent)",
 				valuetype = "TerraComponent"
+			},
+			castOceanComponent =
+			{
+				type = "function",
+				description = "Casts an incoming type from function for lua auto completion.",
+				args = "(OceanComponent other)",
+				returns = "(OceanComponent)",
+				valuetype = "OceanComponent"
 			},
 			castJointComponent =
 			{
@@ -20854,6 +20878,151 @@ return {
 				args = "(void)",
 				returns = "(string)",
 				valuetype = "string"
+			}
+		}
+	},
+	OceanComponent =
+	{
+		type = "class",
+		description = "OceanComponent renders a large scale animated ocean surface with LOD support and optional skirts.  Main parameters: WavesIntensity controls overall wave height. OceanWavesScale controls large slow swells. ShaderWavesScale controls fine surface detail. WaveTimeScale controls animation speed. WaveFrequencyScale controls wave density. WaveChaos adds non uniform motion to reduce repetition. UseSkirts hides cracks between ocean LOD cells and should normally be enabled. But if underwater, they will be disabled automatically.  Preset examples: Calm Lake: WavesIntensity=0.2 OceanWavesScale=1.0 ShaderWavesScale=1.0 WaveTimeScale=0.55 WaveFrequencyScale=0.65 WaveChaos=0.03 Gentle Ocean: WavesIntensity=0.55 OceanWavesScale=1.0 ShaderWavesScale=1.0 WaveTimeScale=1.0 WaveFrequencyScale=1.0 WaveChaos=0.10 Choppy Water: WavesIntensity=0.75 OceanWavesScale=0.85 ShaderWavesScale=1.15 WaveTimeScale=1.25 WaveFrequencyScale=1.45 WaveChaos=0.30 Storm Sea: WavesIntensity=1.35 OceanWavesScale=1.15 ShaderWavesScale=1.10 WaveTimeScale=1.35 WaveFrequencyScale=0.95 WaveChaos=0.45 Big Swell: WavesIntensity=1.10 OceanWavesScale=1.60 ShaderWavesScale=0.85 WaveTimeScale=0.75 WaveFrequencyScale=0.60 WaveChaos=0.12 Fantasy Water: WavesIntensity=1.60 OceanWavesScale=1.10 ShaderWavesScale=1.30 WaveTimeScale=2.10 WaveFrequencyScale=1.35 WaveChaos=0.65 ",
+		inherits = "GameObjectComponent",
+		childs = 
+		{
+			setUseSkirts =
+			{
+				type = "method",
+				description = "Enables or disables ocean skirts to hide cracks between ocean LOD cells.",
+				args = "(boolean useSkirts)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getUseSkirts =
+			{
+				type = "function",
+				description = "Returns whether ocean skirts are enabled.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			setWavesIntensity =
+			{
+				type = "method",
+				description = "Sets the overall wave amplitude which controls how high the waves are.",
+				args = "(number intensity)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getWavesIntensity =
+			{
+				type = "function",
+				description = "Gets the overall wave amplitude.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setOceanWavesScale =
+			{
+				type = "method",
+				description = "Sets the large scale wave size where higher values produce larger and slower swells.",
+				args = "(number scale)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getOceanWavesScale =
+			{
+				type = "function",
+				description = "Gets the large scale wave size.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setShaderWavesScale =
+			{
+				type = "method",
+				description = "Sets the shader wave detail scale which controls fine surface detail.",
+				args = "(number scale)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getShaderWavesScale =
+			{
+				type = "function",
+				description = "Gets the shader wave detail scale.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setWaveTimeScale =
+			{
+				type = "method",
+				description = "Sets the wave animation speed multiplier.",
+				args = "(number timeScale)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getWaveTimeScale =
+			{
+				type = "function",
+				description = "Gets the wave animation speed multiplier.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setWaveFrequencyScale =
+			{
+				type = "method",
+				description = "Sets the wave frequency which controls how dense the wave pattern is.",
+				args = "(number frequencyScale)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getWaveFrequencyScale =
+			{
+				type = "function",
+				description = "Gets the wave frequency scale.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setWaveChaos =
+			{
+				type = "method",
+				description = "Adds non uniform chaotic motion to waves to reduce repetitive patterns.",
+				args = "(number chaos)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getWaveChaos =
+			{
+				type = "function",
+				description = "Gets the wave chaos amount.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			isCameraUnderwater =
+			{
+				type = "function",
+				description = "Gets whether the in the ocean active camera is under water.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			isPositionUnderwater =
+			{
+				type = "function",
+				description = "Gets whether the given position is under water.",
+				args = "(Vector3 position)",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			isGameObjectUnderWater =
+			{
+				type = "function",
+				description = "Gets whether the given game object is under water.",
+				args = "(GameObject gameObject)",
+				returns = "(boolean)",
+				valuetype = "boolean"
 			}
 		}
 	},

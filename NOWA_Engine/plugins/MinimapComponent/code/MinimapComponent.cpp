@@ -223,7 +223,7 @@ namespace NOWA
 			{
 				if (true == this->useFogOfWar->getBool())
 				{
-					auto closureFunction = [this](Ogre::Real weight)
+					auto closureFunction = [this](Ogre::Real renderDt)
 					{
 						this->updateFogOfWarTexture(this->targetGameObject->getPosition(), this->visibilityRadius->getReal());
 					};
@@ -284,6 +284,9 @@ namespace NOWA
 	void MinimapComponent::onRemoveComponent(void)
 	{
 		GameObjectComponent::onRemoveComponent();
+
+		Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
+		NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
 
 		AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &MinimapComponent::deleteGameObjectDelegate), EventDataDeleteGameObject::getStaticEventType());
 		AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &MinimapComponent::handleUpdateBounds), EventDataBoundsUpdated::getStaticEventType());

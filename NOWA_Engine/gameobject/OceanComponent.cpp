@@ -22,8 +22,8 @@ namespace NOWA
 		postInitDone(false),
 		usedCamera(nullptr),
 		cameraId(new Variant(OceanComponent::AttrCameraId(), static_cast<unsigned long>(0), this->attributes, true)),
-		deepColour(new Variant(OceanComponent::AttrDeepColour(), Ogre::Vector3(0.0f, 0.03f, 0.05f), this->attributes)),
-		shallowColour(new Variant(OceanComponent::AttrShallowColour(), Ogre::Vector3(0.0f, 0.08f, 0.1f), this->attributes)),
+		deepColour(new Variant(OceanComponent::AttrDeepColour(), Ogre::Vector3(0.3f, 0.8f, 2.2f), this->attributes)),
+		shallowColour(new Variant(OceanComponent::AttrShallowColour(), Ogre::Vector3(0.6f, 1.4f, 2.2f), this->attributes)),
 		brdf(new Variant(OceanComponent::AttrBrdf(),
 			{ "Default", "CookTorrance", "BlinnPhong",
 			  "DefaultUncorrelated", "DefaultSeparateDiffuseFresnel",
@@ -36,14 +36,19 @@ namespace NOWA
 		oceanCenter(new Variant(OceanComponent::AttrOceanCenter(), Ogre::Vector3::ZERO, this->attributes))
 ,
 		useSkirts(new Variant(OceanComponent::AttrUseSkirts(), true, this->attributes)),
-		waveTimeScale(new Variant(OceanComponent::AttrWaveTimeScale(), 1.0f, this->attributes)),
+		waveTimeScale(new Variant(OceanComponent::AttrWaveTimeScale(), 2.0f, this->attributes)),
 		waveFrequencyScale(new Variant(OceanComponent::AttrWaveFrequencyScale(), 1.0f, this->attributes)),
 		waveChaos(new Variant(OceanComponent::AttrWaveChaos(), 0.0f, this->attributes))
 	{
 		this->cameraId->setDescription("The optional camera game object id which can be set. E.g. useful if the MinimapComponent is involved, to set the minimap camera, so that ocean is painted correctly on minimap. Can be left of, default is the main active camera.");
 
-		this->deepColour->setDescription("Ocean deep water colour (Vector3 RGB).");
-		this->shallowColour->setDescription("Ocean shallow water colour (Vector3 RGB).");
+		this->deepColour->setDescription("Ocean deep water colour (Vector3 RGB). Example values: Dark stormy ocean: 0.10 0.15 0.40, Natural deep blue ocean: 0.13 0.22 0.57, "
+			"Tropical deep water: 0.20 0.30 0.60. Use lower values for darker oceans and higher values for clearer water. Values are multiplied internally by INV_PI.");
+
+
+		this->shallowColour->setDescription("Ocean shallow water colour (Vector3 RGB). Example values: Cold shallow water: 0.25 0.50 0.80, Natural wave crests: 0.31 0.79 1.41, "
+			"Tropical turquoise water: 0.60 1.40 2.20. Use higher and more greenish values than deepColour to get bright waves and foam. Values are multiplied internally by INV_PI.");
+
 		this->brdf->setDescription("Ocean BRDF model (enum as integer, e.g. BlinnPhong).");
 		this->shaderWavesScale->setDescription("Shader-side wave/detail scale.");
 		this->wavesIntensity->setDescription("Wave amplitude/intensity.");
@@ -236,10 +241,10 @@ namespace NOWA
 	{
 		if (false == notSimulating)
 		{
-			auto closureFunction = [this, dt](Ogre::Real weight)
-				{
-					this->ocean->update(dt);
-				};
+			auto closureFunction = [this](Ogre::Real renderDt)
+			{
+				this->ocean->update(renderDt);
+			};
 			Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
 			NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
 		}
@@ -301,14 +306,7 @@ namespace NOWA
 				{
 					Ogre::String datablockName = "Ocean_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
 
-					Ogre::HlmsBlendblock blendblock;
-					blendblock.mAlphaToCoverage = 0;
-					blendblock.mIsTransparent = 1;  // Use alpha!
-					blendblock.mSourceBlendFactor = Ogre::SBF_SOURCE_ALPHA;
-					blendblock.mDestBlendFactor = Ogre::SBF_ONE_MINUS_SOURCE_ALPHA;
-					blendblock.setBlendType(Ogre::SBT_TRANSPARENT_ALPHA);
-
-					this->datablock = static_cast<Ogre::HlmsOceanDatablock*>(hlmsOcean->createDatablock(datablockName, datablockName, Ogre::HlmsMacroblock(), blendblock, Ogre::HlmsParamVec()));
+					this->datablock = static_cast<Ogre::HlmsOceanDatablock*>(hlmsOcean->createDatablock(datablockName, datablockName, Ogre::HlmsMacroblock(), Ogre::HlmsBlendblock(), Ogre::HlmsParamVec()));
 
 					this->ocean->setDatablock(this->datablock);
 
@@ -320,6 +318,13 @@ namespace NOWA
 					// Shader-side detail scale
 					this->datablock->setWavesScale(this->shaderWavesScale->getReal());
 				}
+
+				// Example json material usage:
+				/*Ogre::HlmsDatablock* datablock = WorkspaceModule::getInstance()->getHlmsManager()->getDatablock("OceanDefaultMaterial");
+				if (nullptr != datablock)
+				{
+					this->ocean->setDatablock(datablock);
+				}*/
 
 				this->ocean->setStatic(false);
 				this->gameObjectPtr->setDynamic(true);
@@ -338,25 +343,6 @@ namespace NOWA
 				}
 			});
 		}
-	}
-
-	void OceanComponent::setEnvTexture(const Ogre::String& envTextureName)
-	{
-		Ogre::Root* root = Ogre::Root::getSingletonPtr();
-		if (nullptr == root)
-			return;
-
-		const Ogre::String tex = envTextureName;
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("OceanComponent::setEnvTexture", _1(tex),
-		{
-			Ogre::Root* rootLocal = Ogre::Root::getSingletonPtr();
-			if (nullptr == rootLocal)
-				return;
-
-			auto* hlmsOcean = static_cast<Ogre::HlmsOcean*>(rootLocal->getHlmsManager()->getHlms(Ogre::HLMS_USER1));
-		if (hlmsOcean)
-				hlmsOcean->setEnvProbe(tex);
-		});
 	}
 
 	void OceanComponent::setReflectionTextureNames(void)
@@ -398,11 +384,32 @@ namespace NOWA
 	void OceanComponent::setReflectionTextureName(const Ogre::String& textureName)
 	{
 		if (nullptr != this->reflectionTextureName)
+		{
 			this->reflectionTextureName->setListSelectedValue(textureName);
+		}
 
 		// Apply to HLMS (global)
 		this->setEnvTexture(textureName);
-		}
+	}
+
+	void OceanComponent::setEnvTexture(const Ogre::String& envTextureName)
+	{
+		const Ogre::String textureName = envTextureName;
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("OceanComponent::setEnvTexture", _1(textureName),
+			{
+				Ogre::Root* rootLocal = Ogre::Root::getSingletonPtr();
+				if (nullptr == rootLocal)
+					return;
+
+				auto* hlmsOcean = static_cast<Ogre::HlmsOcean*>(Ogre::Root::getSingletonPtr()->getHlmsManager()->getHlms(Ogre::HLMS_USER1));
+
+				if (hlmsOcean)
+				{
+					// This will internally call flushRenderables()
+					hlmsOcean->setDatablockEnvReflection(this->datablock, textureName);
+				}
+			});
+	}
 
 	Ogre::String OceanComponent::getReflectionTextureName(void) const
 	{
@@ -542,6 +549,10 @@ namespace NOWA
 		{
 			this->setShaderWavesScale(attribute->getReal());
 		}
+		else if (OceanComponent::AttrWaveTimeScale() == attribute->getName())
+		{
+			this->setWaveTimeScale(attribute->getReal());
+		}
 		else if (OceanComponent::AttrOceanSize() == attribute->getName())
 		{
 			this->setOceanSize(attribute->getVector2());
@@ -675,6 +686,9 @@ namespace NOWA
 	void OceanComponent::onRemoveComponent(void)
 	{
 		GameObjectComponent::onRemoveComponent();
+
+		Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
+		NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
 
 		WorkspaceBaseComponent* workspaceBaseComponent = WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent();
 		if (nullptr != workspaceBaseComponent && false == AppStateManager::getSingletonPtr()->bShutdown)

@@ -266,6 +266,9 @@ namespace NOWA
 	void RandomImageShuffler::onRemoveComponent(void)
 	{
 		GameObjectComponent::onRemoveComponent();
+
+		Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
+		NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
 	}
 
 	void RandomImageShuffler::onOtherComponentRemoved(unsigned int index)
@@ -282,7 +285,7 @@ namespace NOWA
 	{
 		if (false == notSimulating && true == this->activated->getBool())
 		{
-			auto closureFunction = [this, dt](Ogre::Real weight)
+			auto closureFunction = [this](Ogre::Real renderDt)
 			{
 
 				// If shuffle has been started
@@ -290,7 +293,7 @@ namespace NOWA
 				{
 					// Checks if switch image, or use slide image
 
-					this->timeSinceLastImageShown += dt;
+					this->timeSinceLastImageShown += renderDt;
 					if (this->timeSinceLastImageShown >= this->displayTime->getReal() * 0.001f)
 					{
 						if (false == this->useSlideImage->getBool())
@@ -302,18 +305,18 @@ namespace NOWA
 
 					if (true == this->useSlideImage->getBool())
 					{
-						this->slideImage(dt);
+						this->slideImage(renderDt);
 					}
 				}
 				else if (true == this->stopShuffle && true == this->startShuffle && true == this->useStopDelay->getBool())
 				{
-					this->timeSinceLastImageShown += dt;
+					this->timeSinceLastImageShown += renderDt;
 
 					// If stop has been triggered but use stop delay is on, do not stop immediately, but gradually decrease speed, until it comes to an end
 
 					if (true == this->useSlideImage->getBool())
 					{
-						this->slideImage(dt);
+						this->slideImage(renderDt);
 					}
 					else
 					{
@@ -352,7 +355,7 @@ namespace NOWA
 
 				if (true == this->animating)
 				{
-					this->animateImage(dt);
+					this->animateImage(renderDt);
 				}
 			};
 			Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);

@@ -121,6 +121,9 @@ void DesignState::exit(void)
 	this->canUpdate = false;
 	this->hasStarted = false;
 
+	Ogre::String id = "DesignState::updateInfo";
+	NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
+
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleGenerateCategoriesDelegate), NOWA::EventDataGenerateCategories::getStaticEventType());
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleStopSimulation), NOWA::EventDataStopSimulation::getStaticEventType());
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleExit), EventDataExit::getStaticEventType());
@@ -1718,7 +1721,7 @@ void DesignState::updateInfo(Ogre::Real dt)
 		info += " Instances: " + Ogre::StringConverter::toString(metrics.mInstanceCount);
 		// info += " Threadcount: " + Ogre::StringConverter::toString(NOWA::Core::getSingletonPtr()->getCurrentThreadCount());
 
-		auto closureFunction = [this, info](Ogre::Real weight)
+		auto closureFunction = [this, info](Ogre::Real renderDt)
 		{
 			this->manipulationWindow->setCaption(info);
 			if (false == this->simulating)
@@ -1732,6 +1735,7 @@ void DesignState::updateInfo(Ogre::Real dt)
 			}
 		};
 		NOWA::GraphicsModule::getInstance()->updateTrackedClosure("DesignState::updateInfo", closureFunction);
+
 		this->nextInfoUpdate = 1.0f;
 	}
 	else

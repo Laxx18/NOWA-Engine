@@ -295,7 +295,7 @@ namespace NOWA
 		{
 			auto distortionPass = this->distortionPass;
 			Ogre::Real strength = this->strength->getReal();
-			auto closureFunction = [this, distortionPass, strength](Ogre::Real weight)
+			auto closureFunction = [this, distortionPass, strength](Ogre::Real renderDt)
 			{
 				// Update distortion uniform
 				Ogre::GpuProgramParametersSharedPtr psParams = distortionPass->getFragmentProgramParameters();

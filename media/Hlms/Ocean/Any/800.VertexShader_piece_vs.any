@@ -79,11 +79,6 @@
 	outVs.wavesIntensity = timeScale;
 
 	// ----------------------------------------------------
-	// CONTINUOUS TIME
-	// ----------------------------------------------------
-	timer *= timeScale;
-
-	// ----------------------------------------------------
 	// UV scale
 	// ----------------------------------------------------
 	float uvScale = asfloat( cellData.numVertsPerLine.w );
@@ -187,8 +182,52 @@
 	@insertpiece( VertexOceanTransform )
 
 	// ===== Normal (flat ocean surface for now) =====
-	float3 normalWS = float3(0.0f, 1.0f, 0.0f);
+	// float3 normalWS = float3(0.0f, 1.0f, 0.0f);
+	// outVs.normal = normalize( mul( normalWS, toFloat3x3( passBuf.view ) ) );
+	
+	// ===== World-space wave normal from height field =====
+
+	// Small step in grid space (LOD-aware)
+	float stepXZ = cellData.scale.x;
+
+	// Sample neighboring heights (same logic as main height)
+	float heightL = height; // fallback
+
+	// X offset
+	{
+		uint2 uvL = uVertexPos.xy;
+		uvL.x = max( int(uvL.x) - 1, 0 );
+		float hL = OGRE_SampleLevel(
+			terrainData, samplerState@value(terrainData),
+			float3( (float2(uvL) * cellData.scale.xz + cellData.pos.xz) * 0.24f * uvScale,
+					fmod( timer * 0.08f, 128.0f ) ),
+			0 ).z;
+		heightL = lerp( hL, height, 0.5f );
+	}
+
+	// Z offset
+	float heightD = height;
+	{
+		uint2 uvD = uVertexPos.xy;
+		uvD.y = max( int(uvD.y) - 1, 0 );
+		float hD = OGRE_SampleLevel(
+			terrainData, samplerState@value(terrainData),
+			float3( (float2(uvD) * cellData.scale.xz + cellData.pos.xz) * 0.24f * uvScale,
+					fmod( timer * 0.08f, 128.0f ) ),
+			0 ).z;
+		heightD = lerp( hD, height, 0.5f );
+	}
+
+	// Height gradients
+	float dX = (height - heightL) * cellData.scale.y;
+	float dZ = (height - heightD) * cellData.scale.y;
+
+	// Build world-space normal
+	float3 normalWS = normalize( float3( -dX, 1.0f, -dZ ) );
+
+	// Convert to view space
 	outVs.normal = normalize( mul( normalWS, toFloat3x3( passBuf.view ) ) );
+
 
 	// ===== Shadows and lighting =====
 	@insertpiece( DoShadowReceiveVS )

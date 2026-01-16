@@ -217,6 +217,9 @@ namespace NOWA
 	{
 		MyGUIComponent::onRemoveComponent();
 
+		Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
+		NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
+
 		if (nullptr != this->pickingMask)
 		{
 			delete this->pickingMask;
@@ -350,7 +353,7 @@ namespace NOWA
 
 		if (nullptr != this->widget)
 		{
-			auto closureFunction = [this](Ogre::Real weight)
+			auto closureFunction = [this](Ogre::Real renderDt)
 			{
 				MyGUI::IntCoord tileCoord(this->currentCol * static_cast<int>(this->tileSize->getVector2().x), this->currentRow * static_cast<int>(this->tileSize->getVector2().y),
 					static_cast<int>(this->tileSize->getVector2().x), static_cast<int>(this->tileSize->getVector2().y));

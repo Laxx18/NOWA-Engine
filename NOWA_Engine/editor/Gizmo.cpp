@@ -311,7 +311,7 @@ namespace NOWA
 
 		Ogre::Vector3 sphereScale(distance * fovy * 0.5f, distance * fovy * 0.5f, distance * fovy * 0.85f);
 
-		auto closureFunction = [this, sphereScale, distance, fovy](Ogre::Real weight)
+		auto closureFunction = [this, sphereScale, distance, fovy](Ogre::Real renderDt)
 		{
 			if (this->translationLineNode)
 			{
@@ -1052,7 +1052,7 @@ namespace NOWA
 
 	void Gizmo::drawLine(const Ogre::Vector3& startPosition, const Ogre::Vector3& endPosition, Ogre::Real thickness, const Ogre::String& materialName)
 	{
-		auto closureFunction = [this, startPosition, endPosition, thickness, materialName](Ogre::Real weight)
+		auto closureFunction = [this, startPosition, endPosition, thickness, materialName](Ogre::Real renderDt)
 		{
 			Ogre::Real const relativeThickness = this->sphereNode->getScale().x * thickness;
 			this->translationLine->clear();
@@ -1066,7 +1066,7 @@ namespace NOWA
 
 			if (this->translationCaption)
 			{
-				this->translationCaption->update();  // Assuming it's a render-thread safe operation
+				this->translationCaption->update();
 			}
 		};
 		Ogre::String id = "Gizmo::drawLine";
@@ -1168,7 +1168,7 @@ namespace NOWA
 		auto sphereNode = this->sphereNode;
 		auto rotationCaption = this->rotationCaption;
 
-		auto closureFunction = [rotationCircle, rotationCircleNode, selectNode, sphereNode, rotationCaption, fromAngle, toAngle, counterClockWise, thickness, materialName](Ogre::Real weight)
+		auto closureFunction = [rotationCircle, rotationCircleNode, selectNode, sphereNode, rotationCaption, fromAngle, toAngle, counterClockWise, thickness, materialName](Ogre::Real renderDt)
 		{
 			if (!rotationCircle || !rotationCircleNode || !selectNode || !sphereNode)
 				return; // Safety check to avoid null pointers

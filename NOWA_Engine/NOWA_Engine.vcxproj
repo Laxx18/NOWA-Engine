@@ -339,8 +339,10 @@
     <ClInclude Include="NOWAPrecompiled.h" />
     <ClInclude Include="ocean\Ocean.h" />
     <ClInclude Include="ocean\OceanCell.h" />
+    <ClInclude Include="ocean\OgreHlmsJsonOcean.h" />
     <ClInclude Include="ocean\OgreHlmsOcean.h" />
     <ClInclude Include="ocean\OgreHlmsOceanDatablock.h" />
+    <ClInclude Include="ocean\OgreHlmsOceanPrerequisites.h" />
     <ClInclude Include="res\resource.h" />
     <ClInclude Include="shader\HlmsBaseListenerContainer.h" />
     <ClInclude Include="shader\HlmsFog.h" />
@@ -555,6 +557,7 @@
     </ClCompile>
     <ClCompile Include="ocean\Ocean.cpp" />
     <ClCompile Include="ocean\OceanCell.cpp" />
+    <ClCompile Include="ocean\OgreHlmsJsonOcean.cpp" />
     <ClCompile Include="ocean\OgreHlmsOcean.cpp" />
     <ClCompile Include="ocean\OgreHlmsOceanDatablock.cpp" />
     <ClCompile Include="shader\HlmsBaseListenerContainer.cpp" />

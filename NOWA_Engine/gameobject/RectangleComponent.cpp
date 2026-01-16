@@ -242,7 +242,7 @@ namespace NOWA
 				return;
 			}
 
-			auto closureFunction = [this](Ogre::Real weight)
+			auto closureFunction = [this](Ogre::Real renderDt)
 			{
 				if (this->manualObject)
 				{

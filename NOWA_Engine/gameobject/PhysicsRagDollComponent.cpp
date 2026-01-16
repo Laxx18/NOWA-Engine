@@ -447,7 +447,7 @@ namespace NOWA
 				// animations working and bones match bodies transforms!!!!
 				if (nullptr != this->skeleton)
 				{
-					auto closureFunction = [this](Ogre::Real weight)
+					auto closureFunction = [this](Ogre::Real renderDt)
 					{
 						this->skeleton->setAnimationState(*this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>()->getAllAnimationStates());
 					};

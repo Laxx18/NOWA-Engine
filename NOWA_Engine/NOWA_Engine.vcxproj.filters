@@ -649,6 +649,12 @@
     <ClInclude Include="shader\HlmsBaseListenerContainer.h">
       <Filter>shader</Filter>
     </ClInclude>
+    <ClInclude Include="ocean\OgreHlmsOceanPrerequisites.h">
+      <Filter>ocean</Filter>
+    </ClInclude>
+    <ClInclude Include="ocean\OgreHlmsJsonOcean.h">
+      <Filter>ocean</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\NOWA.ico">
@@ -1214,6 +1220,9 @@
     </ClCompile>
     <ClCompile Include="shader\HlmsBaseListenerContainer.cpp">
       <Filter>shader</Filter>
+    </ClCompile>
+    <ClCompile Include="ocean\OgreHlmsJsonOcean.cpp">
+      <Filter>ocean</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

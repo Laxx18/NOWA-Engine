@@ -175,7 +175,7 @@ namespace NOWA
 		rotationValue.y = NOWA::MathHelper::getInstance()->lowPassFilter(rotationValue.y, this->lastValue.y, this->smoothValue);
 		// Silly shit, this node is as dynamic as can be, but still the assert will throw, so since this node is just for the camera, this expensive method may be called
 
-		auto closureFunction = [this, rotationValue](Ogre::Real weight)
+		auto closureFunction = [this, rotationValue](Ogre::Real renderDt)
 		{
 			this->cameraNode->_getFullTransformUpdated();
 			this->cameraNode->rotate(Ogre::Quaternion(Ogre::Degree(rotationValue.x), Ogre::Vector3::UNIT_Y), Ogre::Node::TS_WORLD);

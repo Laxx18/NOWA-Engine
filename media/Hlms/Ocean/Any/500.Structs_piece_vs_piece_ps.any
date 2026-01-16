@@ -1,14 +1,13 @@
-// Ocean HLMS structs - Terra-style (completely independent from PBS material system)
+// Ocean HLMS structs - completely independent from PBS material system
 
 @piece( OceanMaterialStructDecl )
 //Uniforms that change per Item/Entity, but change very infrequently
 struct Material
 {
     // Ocean datablock colours
-    float4 deepColour;    // deepColour.w = alpha
+    float4 deepColour;    // deepColour.w = padding // TODO could be used for something in the future...
     float4 shallowColour; // shallowColour.w = waveScale
 
-    // Keep these for compatibility with Terra pattern
     float4 kD;          // .w is shadowConstantBias (important!)
     float4 roughness;
     float4 metalness;

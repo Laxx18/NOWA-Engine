@@ -1,4 +1,3 @@
-
 #ifndef _OgreOceanCell_H_
 #define _OgreOceanCell_H_
 

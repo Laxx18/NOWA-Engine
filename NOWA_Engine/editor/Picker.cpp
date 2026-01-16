@@ -214,7 +214,7 @@ namespace NOWA
 			this->createLine();
 		}
 
-		auto closureFunction = [this, startPosition, endPosition](Ogre::Real weight)
+		auto closureFunction = [this, startPosition, endPosition](Ogre::Real renderDt)
 			{
 				if (nullptr == this->dragLineObject)
 				{
@@ -736,7 +736,7 @@ namespace NOWA
 			this->createLine();
 		}
 
-		auto closureFunction = [this, startPosition, endPosition](Ogre::Real weight)
+		auto closureFunction = [this, startPosition, endPosition](Ogre::Real renderDt)
 			{
 				if (nullptr == this->dragLineObject)
 				{

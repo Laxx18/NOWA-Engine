@@ -28,6 +28,7 @@ THE SOFTWARE.
 #ifndef _OgreHlmsOcean_H_
 #define _OgreHlmsOcean_H_
 
+#include "OgreHlmsOceanPrerequisites.h" 
 #include "OgreHlmsBufferManager.h"
 #include "OgreConstBufferPool.h"
 #include "OgreMatrix4.h"
@@ -123,8 +124,6 @@ namespace Ogre
         ShadowFilter mShadowFilter;
         AmbientLightMode mAmbientLightMode;
 
-	    Ogre::TextureGpu *mProbe;
-
         uint16 mBaseTexUnitForPass = 3u;     // 3 or 5 (Forward+)
         uint16 mNumShadowMapsForPass = 0u;   // how many you actually bind
         uint16 mEnvProbeTexUnitForPass = 0u; // where probe should be bound (if enabled)
@@ -148,6 +147,9 @@ namespace Ogre
         HlmsDatablock *createDatablockImpl( IdString datablockName, const HlmsMacroblock *macroblock,
                                             const HlmsBlendblock *blendblock,
                                             const HlmsParamVec &paramVec ) override;
+
+        void setTextureProperty(size_t tid, const char* propertyName, HlmsOceanDatablock* datablock,
+            OceanTextureTypes texType);
 
         void calculateHashForPreCreate( Renderable *renderable, PiecesMap *inOutPieces ) override;
 
@@ -184,6 +186,21 @@ namespace Ogre
                                  bool casterPass, uint32 lastCacheHash,
                                  CommandBuffer *commandBuffer ) override;
 
+#if !OGRE_NO_JSON
+        /// @copydoc Hlms::_loadJson
+        void _loadJson(const rapidjson::Value& jsonValue, const HlmsJson::NamedBlocks& blocks,
+            HlmsDatablock* datablock, const String& resourceGroup,
+            HlmsJsonListener* listener,
+            const String& additionalTextureExtension) const override;
+        /// @copydoc Hlms::_saveJson
+        void _saveJson(const HlmsDatablock* datablock, String& outString, HlmsJsonListener* listener,
+            const String& additionalTextureExtension) const override;
+
+        /// @copydoc Hlms::_collectSamplerblocks
+        void _collectSamplerblocks(set<const HlmsSamplerblock*>::type& outSamplerblocks,
+            const HlmsDatablock* datablock) const override;
+#endif
+
         void setDebugPssmSplits( bool bDebug );
         bool getDebugPssmSplits(void) const                 { return mDebugPssmSplits; }
 
@@ -192,11 +209,60 @@ namespace Ogre
 
         void setAmbientLightMode( AmbientLightMode mode );
         AmbientLightMode getAmbientLightMode(void) const    { return mAmbientLightMode; }
-        /// Sets the environment probe cubemap used for reflections.
-        /// Can be nullptr to disable.
-        void setEnvProbe( TextureGpu* probe );
 
-        void setEnvProbe(const Ogre::String& textureName);
+        /**
+         * @brief Sets the environment probe (cubemap) used for ocean reflections.
+         * Loads (or retrieves) a cubemap and assigns it to a specific ocean datablock.
+         * Passing an empty texture name clears the reflection for that datablock.
+         *
+         * Per-datablock environment probe (override)
+         * Individual ocean datablocks can override the global probe by assigning
+         * a texture to the OCEAN_REFLECTION slot.
+         *
+         * Example:
+         * @code
+         * oceanDatablockTropical->setTexture( OCEAN_REFLECTION, tropicalSkyCubemap );
+         * oceanDatablockArctic->setTexture( OCEAN_REFLECTION, arcticSkyCubemap );
+         * @endcode
+         *
+         * Characteristics:
+         * - Different ocean areas can reflect different skies
+         * - Overrides the global probe when present
+         * - Requires managing multiple cubemaps
+         * - Higher memory usage
+         *
+         * #### 3. Hybrid approach (recommended)
+         * Use a global probe as a default and override it only for special ocean areas.
+         *
+         * Example:
+         * @code
+         * // Global default
+         * hlmsOcean->setEnvProbe( defaultSkyCubemap );
+         *
+         * // Most oceans use the global sky
+         * oceanDatablock1; // defaultSkyCubemap
+         * oceanDatablock2; // defaultSkyCubemap
+         *
+         * // Special cases override the reflection
+         * oceanDatablockSunset->setTexture( OCEAN_REFLECTION, sunsetSkyCubemap );
+         * oceanDatablockStorm->setTexture( OCEAN_REFLECTION, stormSkyCubemap );
+         * @endcode
+         *
+         * Changing the global probe later will only affect datablocks that do not
+         * have a per-datablock override.
+         *
+         * ### Notes
+         * - Passing nullptr disables the global environment probe
+         * - Per-datablock textures always take priority over the global probe
+         * - Intended for static or semi-static sky reflections (not dynamic probes)
+         *
+         * @param probe Pointer to the cubemap texture used as the global environment probe,
+         *              or nullptr to disable global ocean reflections.
+         */
+        void HlmsOcean::setDatablockEnvReflection( HlmsOceanDatablock* datablock, Ogre::TextureGpu* reflectionTexture );
+
+        void HlmsOcean::setDatablockEnvReflection( HlmsOceanDatablock* datablock, const Ogre::String& textureName );
+
 
 	    /// Overrides the resource name of the 3D texture used by the ocean shader.
 	    /// Default: "oceanData.dds"

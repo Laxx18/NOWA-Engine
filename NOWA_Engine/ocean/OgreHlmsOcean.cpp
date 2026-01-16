@@ -30,6 +30,11 @@ THE SOFTWARE.
 
 #include "OgreHlmsOcean.h"
 #include "OgreHlmsOceanDatablock.h"
+
+#if !OGRE_NO_JSON
+#include "OgreHlmsJsonOcean.h"
+#endif
+
 #include "OgreHlmsManager.h"
 #include "OgreHlmsListener.h"
 #include "OgreLwString.h"
@@ -108,7 +113,7 @@ namespace Ogre
         mTypeName = "Ocean";
         mTypeNameStr = "Ocean";
 
-        // IMPORTANT: Ocean datablock size (Terra does this too)
+        // IMPORTANT: Ocean datablock size
         mBytesPerSlot = HlmsOceanDatablock::MaterialSizeInGpuAligned;
         mOptimizationStrategy = LowerGpuOverhead;
         mSetupWorldMatBuf = false;
@@ -117,12 +122,11 @@ namespace Ogre
         // Ocean uses 2 “built-in” textures in your code: terrainData + blendMap
         mReservedTexSlots = 2u;
 
-        // Terra uses this to stop base from auto-requesting slots; keep same behavior
+        // Uses this to stop base from auto-requesting slots
         mSkipRequestSlotInChangeRS = true;
 
         // Your defaults
         mLightGatheringMode = LightGatherForwardPlus;
-        mProbe = 0;
         mOceanDataTextureName = "oceanData.dds";
         mWeightTextureName = "weight.dds";
     }
@@ -156,7 +160,6 @@ namespace Ogre
 
         ocean->m_hlmsOceanIndex = std::numeric_limits<uint32>::max();
     }
-
     //-----------------------------------------------------------------------------------
     void HlmsOcean::getDefaultPaths(String& outDataFolderPath, StringVector& outLibraryFoldersPaths)
     {
@@ -330,11 +333,6 @@ namespace Ogre
                     shadowMaps.push_back(texUnit++);
                 }
             }
-
-            if (getProperty(tid, OceanProperty::EnvProbeMap))
-            {
-                psParams->setNamedConstant("texEnvProbeMap", texUnit++);
-            }
         }
 
         GpuProgramParametersSharedPtr vsParams = retVal->pso.vertexShader->getDefaultParameters();
@@ -363,18 +361,16 @@ namespace Ogre
         OceanCell* cell = static_cast<OceanCell*>(renderable);
         HlmsOceanDatablock* datablock = static_cast<HlmsOceanDatablock*>(renderable->getDatablock());
 
-        // Terra sets this to disable vertex shader normal bias (we don't have world normals in VS)
         setProperty(kNoTid, "skip_normal_offset_bias_vs", 1);
-
         setProperty(kNoTid, OceanProperty::UseSkirts, cell->getUseSkirts());
 
-        // PBS properties (exactly like Terra)
+        // PBS properties
         setProperty(kNoTid, PbsProperty::FresnelScalar, 1);
         setProperty(kNoTid, PbsProperty::FresnelWorkflow, 0);
         setProperty(kNoTid, PbsProperty::MetallicWorkflow, 1);
         setProperty(kNoTid, PbsProperty::ReceiveShadows, 1);
 
-        // ---- BRDF ----
+        // BRDF setup
         uint32 brdf = datablock->getBrdf();
         if ((brdf & OceanBrdf::BRDF_MASK) == OceanBrdf::Default)
         {
@@ -390,18 +386,28 @@ namespace Ogre
         if (brdf & OceanBrdf::FLAG_SPERATE_DIFFUSE_FRESNEL)
             setProperty(kNoTid, PbsProperty::FresnelSeparateDiffuse, 1);
 
-
-        // Ocean uses procedural normals, not texture normals
         setProperty(kNoTid, PbsProperty::NormalMap, 0);
-
-        // No detail maps
         setProperty(kNoTid, PbsProperty::FirstValidDetailMapNm, 4);
 
-        // Env probe
-        if (mProbe)
+        // ===== ENV PROBE SETUP (PER-DATABLOCK ONLY) =====
+
+        bool hasEnvMap = false;
+
+        if (datablock->mTexturesDescSet)
         {
-            setProperty(kNoTid, PbsProperty::EnvProbeMap,
-                static_cast<int32>(mProbe->getName().getU32Value()));
+            const TextureGpu* reflectionTexture = datablock->getTexture(OCEAN_REFLECTION);
+            if (reflectionTexture)
+            {
+                hasEnvMap = true;
+
+                setTextureProperty( kNoTid, OceanProperty::EnvProbeMap, datablock, OCEAN_REFLECTION );
+
+                // Hazard prevention hash (same as Terra)
+                setProperty( kNoTid, OceanProperty::EnvProbeMap, static_cast<int32>(reflectionTexture->getName().getU32Value()) );
+
+                setProperty( kNoTid, PbsProperty::NumTextures, int32(datablock->mTexturesDescSet->mTextures.size() - (hasEnvMap ? 1 : 0) )
+                );
+            }
         }
     }
     //-----------------------------------------------------------------------------------
@@ -455,7 +461,7 @@ namespace Ogre
         // Changed HLMS type? Rebind everything
         if (OGRE_EXTRACT_HLMS_TYPE_FROM_CACHE_HASH(lastCacheHash) != mType)
         {
-            // 1. Bind pass buffer (slot 0) - exactly like Terra
+            // 1. Bind pass buffer (slot 0)
             ConstBufferPacked* passBuffer = mPassBuffers[mCurrentPassBuffer - 1];
             *commandBuffer->addCommand<CbShaderBuffer>() = CbShaderBuffer(
                 VertexShader, 0, passBuffer, 0, (uint32)passBuffer->getTotalSizeBytes());
@@ -464,7 +470,7 @@ namespace Ogre
 
             uint32 constBufferSlot = 3u;
 
-            // 2. Bind light buffers (slots 3,4,5) - Terra does this!
+            // 2. Bind light buffers (slots 3,4,5)
             if (mUseLightBuffers)
             {
                 ConstBufferPacked* light0Buffer = mLight0Buffers[mCurrentPassBuffer - 1];
@@ -492,10 +498,10 @@ namespace Ogre
 
             if (!casterPass)
             {
-                // 3. Atmosphere const buffers - Terra does this
+                // 3. Atmosphere const buffers
                 constBufferSlot += mAtmosphere->bindConstBuffers(commandBuffer, constBufferSlot);
 
-                // 4. Forward+ buffers - Terra does this
+                // 4. Forward+ buffers
                 if (mGridBuffer)
                 {
                     *commandBuffer->addCommand<CbShaderBuffer>() =
@@ -504,10 +510,10 @@ namespace Ogre
                         CbShaderBuffer(PixelShader, (uint16)texUnit++, mGridBuffer, 0, 0);
                 }
 
-                // 5. Ocean textures in reserved slots - like Terra's heightmap
-                texUnit += mReservedTexSlots;  // Skip to after our reserved slots
+                // 5. Skip to after our reserved slots
+                texUnit += mReservedTexSlots;
 
-                // Pre-pass textures (Terra handles these)
+                // Pre-pass textures
                 if (!mPrePassTextures->empty())
                 {
                     *commandBuffer->addCommand<CbTexture>() =
@@ -528,7 +534,7 @@ namespace Ogre
                         CbTexture((uint16)texUnit++, mSsrTexture, 0);
                 }
 
-                // Irradiance volume (Terra handles this)
+                // Irradiance volume
                 if (mIrradianceVolume)
                 {
                     TextureGpu* irradianceTex = mIrradianceVolume->getIrradianceVolumeTexture();
@@ -538,7 +544,7 @@ namespace Ogre
                     ++texUnit;
                 }
 
-                // Area light masks (Terra handles these)
+                // Area light masks
                 if (mUsingAreaLightMasks)
                 {
                     *commandBuffer->addCommand<CbTexture>() =
@@ -553,7 +559,7 @@ namespace Ogre
                     ++texUnit;
                 }
 
-                // Decals (Terra handles these)
+                // Decals
                 for (size_t i = 0; i < 3u; ++i)
                 {
                     if (mDecalsTextures[i] && (i != 2u || !mDecalsDiffuseMergedEmissive))
@@ -564,7 +570,7 @@ namespace Ogre
                     }
                 }
 
-                // 6. Shadow maps - Terra does this!
+                // 6. Shadow maps
                 FastArray<TextureGpu*>::const_iterator itor = mPreparedPass.shadowMaps.begin();
                 FastArray<TextureGpu*>::const_iterator end = mPreparedPass.shadowMaps.end();
                 while (itor != end)
@@ -575,7 +581,7 @@ namespace Ogre
                     ++itor;
                 }
 
-                // 7. Parallax corrected cubemap - Terra does this
+                // 7. Parallax corrected cubemap
                 if (mParallaxCorrectedCubemap && !mParallaxCorrectedCubemap->isRendering())
                 {
                     TextureGpu* pccTexture = mParallaxCorrectedCubemap->getBindTexture();
@@ -592,7 +598,7 @@ namespace Ogre
             mLastMovableObject = 0;
             mLastBoundPool = 0;
 
-            // 8. Bind instance buffer (slot 2) - Terra does this
+            // 8. Bind instance buffer (slot 2)
             if (mCurrentConstBuffer < mConstBuffers.size() &&
                 (size_t)((mCurrentMappedConstBuffer - mStartMappedConstBuffer) + 4) <=
                 mCurrentConstBufferSize)
@@ -606,20 +612,19 @@ namespace Ogre
             mListener->hlmsTypeChanged(casterPass, commandBuffer, datablock, 0u);
         }
 
-        // 9. Bind material buffer if pool changed (slot 1) - Terra does this
+        // 9. Bind material buffer if pool changed (slot 1)
         if (mLastBoundPool != datablock->getAssignedPool())
         {
             const ConstBufferPool::BufferPool* newPool = datablock->getAssignedPool();
-            *commandBuffer->addCommand<CbShaderBuffer>() =
-                CbShaderBuffer(VertexShader, 1, newPool->materialBuffer, 0,
-                    (uint32)newPool->materialBuffer->getTotalSizeBytes());
+            *commandBuffer->addCommand<CbShaderBuffer>() = CbShaderBuffer(VertexShader, 1, newPool->materialBuffer, 0,
+                (uint32)newPool->materialBuffer->getTotalSizeBytes());
             *commandBuffer->addCommand<CbShaderBuffer>() =
                 CbShaderBuffer(PixelShader, 1, newPool->materialBuffer, 0,
                     (uint32)newPool->materialBuffer->getTotalSizeBytes());
             mLastBoundPool = newPool;
         }
 
-        // 10. Bind Ocean textures if movable changed - like Terra's heightmap binding
+        // 10. Bind Ocean textures if movable changed
         if (mLastMovableObject != queuedRenderable.movableObject)
         {
             ensureOceanTexturesLoaded();
@@ -637,20 +642,16 @@ namespace Ogre
         }
 
         // --------------------------------------------------------------------
-        // 11. Upload per-cell instance data  (Terra-correct, hole-free)
+        // 11. Upload per-cell instance data
         // --------------------------------------------------------------------
-        static constexpr uint32 kU32PerCell = 20u;   // must match CellData in shader
-        static constexpr uint32 kMaxCells = 256u;  // must match CellData cellDataArray[256]
+        static constexpr uint32 kU32PerCell = 20u;
+        static constexpr uint32 kMaxCells = 256u;
 
         uint32* RESTRICT_ALIAS currentMappedConstBuffer = mCurrentMappedConstBuffer;
 
-        // How many uint32s are already used in this draw
         const size_t usedU32 = (size_t)(currentMappedConstBuffer - mStartMappedConstBuffer);
         const size_t usedCells = usedU32 / kU32PerCell;
 
-        // We must flush if either:
-        //  1) GPU constant buffer would overflow
-        //  2) Shader CellData[256] would overflow (THIS was missing!)
         const bool mustFlush = (usedCells >= kMaxCells) || (usedU32 + kU32PerCell > mCurrentConstBufferSize);
 
         if (mustFlush)
@@ -658,22 +659,18 @@ namespace Ogre
             currentMappedConstBuffer = mapNextConstBuffer(commandBuffer);
         }
 
-        // After flush, recalc
         const size_t newUsedU32 = (size_t)(currentMappedConstBuffer - mStartMappedConstBuffer);
         const size_t newUsedCells = newUsedU32 / kU32PerCell;
 
-        // This is the drawId used by the shader
         const uint32 drawId = static_cast<uint32>(newUsedCells);
         OGRE_ASSERT_LOW(drawId < kMaxCells);
 
-        // Upload this OceanCell
         const OceanCell* oceanCell = static_cast<const OceanCell*>(queuedRenderable.renderable);
         oceanCell->uploadToGpu(currentMappedConstBuffer);
         currentMappedConstBuffer += kU32PerCell;
 
         mCurrentMappedConstBuffer = currentMappedConstBuffer;
 
-        // Return drawId (used by vertex shader to index CellData[])
         return drawId;
     }
 
@@ -767,12 +764,12 @@ namespace Ogre
         if (status == PropertiesMergeStatusError)
             return status;
 
-        // Exactly like Terra: set texture registers AFTER Forward+ slots
+        // Set texture registers AFTER Forward+ slots
         int32 texSlotsStart = 0;
         if (getProperty(tid, HlmsBaseProp::ForwardPlus))
             texSlotsStart = getProperty(tid, "f3dGrid") + 1;
 
-        // Ocean textures go in the first reserved slots (0 and 1 in our mReservedTexSlots = 2)
+        // Ocean textures
         setTextureReg(tid, VertexShader, "terrainData", texSlotsStart + 0);
         setTextureReg(tid, VertexShader, "blendMap", texSlotsStart + 1);
 
@@ -780,6 +777,39 @@ namespace Ogre
         {
             setTextureReg(tid, PixelShader, "terrainData", texSlotsStart + 0);
             setTextureReg(tid, PixelShader, "blendMap", texSlotsStart + 1);
+
+            // Set envprobe register if enabled
+            if (getProperty(tid, "use_envprobe_map"))
+            {
+                // Calculate the slot where envprobe will be bound
+                int32 envProbeSlot = texSlotsStart + 2;
+
+                // Add shadow maps count
+                envProbeSlot += static_cast<int32>(mPreparedPass.shadowMaps.size());
+
+                // Parallax corrected cubemap comes before global probe
+                if (mParallaxCorrectedCubemap && !mParallaxCorrectedCubemap->isRendering())
+                    envProbeSlot += 1;
+
+                setTextureReg(tid, PixelShader, "texEnvProbeMap", envProbeSlot);
+
+                // Set the sampler register for the environment map
+                // The sampler index should match what you set in fillBuffersFor
+                // You're using mOceanSamplerblock, which should have been registered
+                // We need to tell the shader which sampler index to use
+                if (mHasSeparateSamplers)
+                {
+                    // If you have separate samplers, you need to set the sampler register
+                    // This needs to match the sampler you bind in fillBuffersFor
+                    // For now, let's use the same index as the texture
+                    setProperty(tid, "envMapRegSampler", envProbeSlot);
+                }
+                else
+                {
+                    // Combined texture/samplers - sampler uses same register as texture
+                    setProperty(tid, "envMapRegSampler", envProbeSlot);
+                }
+            }
         }
 
         return status;
@@ -800,67 +830,119 @@ namespace Ogre
         mAmbientLightMode = mode;
     }
     //-----------------------------------------------------------------------------------
-    void HlmsOcean::setEnvProbe(TextureGpu* probe)
+    void HlmsOcean::setDatablockEnvReflection(HlmsOceanDatablock* datablock, Ogre::TextureGpu* reflectionTexture)
     {
-        mProbe = probe;
+        if (!datablock)
+            return;
+
+        // Set or clear the reflection texture on the datablock
+        datablock->setTexture(OCEAN_REFLECTION, reflectionTexture);
+
+        // Force shader recompilation for this datablock only
+        datablock->flushRenderables();
     }
     //-----------------------------------------------------------------------------------
-    void HlmsOcean::setEnvProbe(const Ogre::String& textureName)
+    void HlmsOcean::setDatablockEnvReflection( HlmsOceanDatablock* datablock, const Ogre::String& textureName )
     {
+        if (!datablock)
+            return;
+
+        // Clear reflection
+        if (textureName.empty())
+        {
+            datablock->setTexture(OCEAN_REFLECTION, nullptr);
+
+            datablock->flushRenderables();
+            return;
+        }
+
+        if (!Ogre::ResourceGroupManager::getSingleton().resourceExistsInAnyGroup(textureName))
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[HlmsOcean] Reflection cubemap does not exist: " + textureName);
+            return;
+        }
+
         Ogre::TextureGpuManager* textureManager = Ogre::Root::getSingletonPtr()->getRenderSystem()->getTextureGpuManager();
 
-        if (true == textureName.empty())
-        {
-            mProbe = nullptr;
-            return;
-        }
-
-        // --- Flags (PBS-style reflection setup, simplified for Ocean) ---
-        // IMPORTANT: disable AutomaticBatching for cubemaps
-        if (false == Ogre::ResourceGroupManager::getSingleton().resourceExistsInAnyGroup(textureName))
-        {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[HlmsOcean] Cannot set env probe: '" + textureName + "', because it does not exist in any resource group!");
-            mProbe = nullptr;
-            return;
-        }
-
-        Ogre::uint32 textureFlags = 0;
-        textureFlags |= Ogre::TextureFlags::PrefersLoadingFromFileAsSRGB;
+        Ogre::uint32 textureFlags = Ogre::TextureFlags::PrefersLoadingFromFileAsSRGB;
         textureFlags &= ~Ogre::TextureFlags::AutomaticBatching;
 
         Ogre::uint32 filters = Ogre::TextureFilter::FilterTypes::TypeGenerateDefaultMipmaps;
 
-        Ogre::TextureGpu* envTexture = textureManager->createOrRetrieveTexture(
-            textureName,
-            Ogre::GpuPageOutStrategy::SaveToSystemRam,
-            textureFlags,
-            Ogre::TextureTypes::TypeCube,
-            Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME,
-            filters,
-            0u);
+        Ogre::TextureGpu* cubemap = textureManager->createOrRetrieveTexture(textureName, Ogre::GpuPageOutStrategy::SaveToSystemRam, textureFlags,
+                Ogre::TextureTypes::TypeCube, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, filters, 0u);
 
-        if (nullptr == envTexture)
+        if (!cubemap)
         {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[HlmsOcean] Failed to create env probe texture: '" + textureName + "'");
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[HlmsOcean] Failed to create reflection cubemap: " + textureName);
             return;
         }
 
-        try
-        {
-            envTexture->scheduleTransitionTo(Ogre::GpuResidency::Resident);
-            textureManager->waitForStreamingCompletion();
-        }
-        catch (const Ogre::Exception& e)
-        {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, e.getFullDescription());
-            return;
-        }
+        cubemap->scheduleTransitionTo(Ogre::GpuResidency::Resident);
+        textureManager->waitForStreamingCompletion();
 
-        this->setEnvProbe(envTexture);
+        // Assign to THIS datablock only
+        datablock->setTexture(OCEAN_REFLECTION, cubemap);
+
+        datablock->flushRenderables();
     }
+#if !OGRE_NO_JSON
+    //-----------------------------------------------------------------------------------
+    void HlmsOcean::_loadJson(const rapidjson::Value& jsonValue, const HlmsJson::NamedBlocks& blocks,
+        HlmsDatablock* datablock, const String& resourceGroup,
+        HlmsJsonListener* listener,
+        const String& additionalTextureExtension) const
+    {
+        HlmsJsonOcean jsonOcean(mHlmsManager, mRenderSystem->getTextureGpuManager());
+        jsonOcean.loadMaterial(jsonValue, blocks, datablock, resourceGroup);
+    }
+    //-----------------------------------------------------------------------------------
+    void HlmsOcean::_saveJson(const HlmsDatablock* datablock, String& outString,
+        HlmsJsonListener* listener,
+        const String& additionalTextureExtension) const
+    {
+        //        HlmsJsonOcean jsonOCean( mHlmsManager );
+        //        jsonOCean.saveMaterial( datablock, outString );
+    }
+    //-----------------------------------------------------------------------------------
+    void HlmsOcean::_collectSamplerblocks(set<const HlmsSamplerblock*>::type& outSamplerblocks,
+        const HlmsDatablock* datablock) const
+    {
+        HlmsJsonOcean::collectSamplerblocks(datablock, outSamplerblocks);
+    }
+#endif
     //-----------------------------------------------------------------------------------
     HlmsDatablock* HlmsOcean::createDatablockImpl(IdString datablockName, const HlmsMacroblock* macroblock, const HlmsBlendblock* blendblock, const HlmsParamVec& paramVec)
     {
         return OGRE_NEW HlmsOceanDatablock(datablockName, this, macroblock, blendblock, paramVec);
+    }
+    //-----------------------------------------------------------------------------------
+    void HlmsOcean::setTextureProperty(size_t tid, const char* propertyName, HlmsOceanDatablock* datablock, OceanTextureTypes texType)
+    {
+        uint8 idx = datablock->getIndexToDescriptorTexture(texType);
+        if (idx != NUM_OCEAN_TEXTURE_TYPES)
+        {
+            char tmpData[64];
+            LwString propName = LwString::FromEmptyPointer(tmpData, sizeof(tmpData));
+
+            propName = propertyName;  // diffuse_map
+
+            const size_t basePropSize = propName.size();  // diffuse_map
+
+            // Sets envprobe_map = idx + 1
+            setProperty(tid, propertyName, idx + 1);
+
+            propName.resize(basePropSize);
+            propName.a("_idx");  // envprobe_map_idx
+            setProperty(tid, propName.c_str(), idx);
+
+            if (mHasSeparateSamplers)
+            {
+                const uint8 samplerIdx = datablock->getIndexToDescriptorSampler(texType);
+                propName.resize(basePropSize);
+                propName.a("_sampler");  // envprobe_map_sampler
+                setProperty(tid, propName.c_str(), samplerIdx);
+            }
+        }
     }
 }

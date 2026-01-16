@@ -223,7 +223,7 @@ namespace NOWA
 				}
 				else
 				{
-					auto closureFunction = [this, particleUniverseData](Ogre::Real weight)
+					auto closureFunction = [this, particleUniverseData](Ogre::Real renderDt)
 					{
 						particleUniverseData.second.particle->stop();
 					};

@@ -831,17 +831,23 @@ namespace NOWA
 	{
 		GameObjectComponent::onRemoveComponent();
 
+		Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update1" + Ogre::StringConverter::toString(this->index);
+		NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
+
+		id = this->gameObjectPtr->getName() + this->getClassName() + "::update2" + Ogre::StringConverter::toString(this->index);
+		NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
+
 		if (this->atmosphereNpr == nullptr)
 		{
 			return;
 		}
 
-		auto atmosphereNpr = this->atmosphereNpr;
+		Ogre::AtmosphereNpr* atmosphereNpr = this->atmosphereNpr;
 
 		// Clear pointers on *this* immediately
 		this->atmosphereNpr = nullptr;
 
-		ENQUEUE_RENDER_COMMAND_WAIT("TerraComponent::destroyTerra", _1(atmosphereNpr),
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("TerraComponent::destroyTerra", _1(&atmosphereNpr),
 		{
 			if (atmosphereNpr)
 			{
@@ -922,7 +928,7 @@ namespace NOWA
 			Ogre::SceneManager* sceneManager = this->gameObjectPtr->getSceneManager();
 			// Reupdate ambient light for better render results and getting rid of strange flimmer. See: https://forums.ogre3d.org/viewtopic.php?t=96576&start=25
 
-			auto closureFunction = [this, sceneManager](Ogre::Real weight)
+			auto closureFunction = [this, sceneManager](Ogre::Real renderDt)
 			{
 				sceneManager->setAmbientLight(sceneManager->getAmbientLightUpperHemisphere() /** 1.5f*/,
 					sceneManager->getAmbientLightLowerHemisphere(),
@@ -982,7 +988,7 @@ namespace NOWA
 			this->azimuth += this->timeMultiplicator->getReal() * dt; // azimuth multiplier?
 			this->azimuth = fmodf(this->azimuth, Ogre::Math::TWO_PI);
 
-			auto closureFunction2 = [this, dt](Ogre::Real weight)
+			auto closureFunction2 = [this](Ogre::Real renderDt)
 			{
 				const float sunAngle = this->timeOfDay * Ogre::Math::PI; // [-PI..PI]
 				const Ogre::Vector3 localSunDir(cosf(sunAngle), -sinf(sunAngle), 0.0f);
@@ -991,7 +997,7 @@ namespace NOWA
 				const Ogre::Vector3 sunDir((Ogre::Quaternion(Ogre::Radian(this->azimuth), Ogre::Vector3::UNIT_Y) * localSunDir).normalisedCopy());
 
 				// this->lightDirectionalComponent->getOgreLight()->setDirection(sunDir);
-				Ogre::Quaternion newOrientation = MathHelper::getInstance()->faceDirectionSlerp(this->lightDirectionalComponent->getOwner()->getSceneNode()->getOrientation(), sunDir, lightDirectionalComponent->getOwner()->getDefaultDirection(), dt, 60.0f);
+				Ogre::Quaternion newOrientation = MathHelper::getInstance()->faceDirectionSlerp(this->lightDirectionalComponent->getOwner()->getSceneNode()->getOrientation(), sunDir, lightDirectionalComponent->getOwner()->getDefaultDirection(), renderDt, 60.0f);
 				this->lightDirectionalComponent->getOwner()->getSceneNode()->_setDerivedOrientation(newOrientation);
 				// Not used, because multpile presets and updatePreset is used
 				// this->atmosphereNpr->setSunDir(this->lightDirectionalComponent->getOgreLight()->getDerivedDirectionUpdated(), this->timeOfDay / Ogre::Math::PI);
