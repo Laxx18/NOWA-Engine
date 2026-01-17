@@ -285,47 +285,7 @@ namespace Ogre
 
     struct OceanProperty
     {
-        static const IdString HwGammaRead;
-        static const IdString HwGammaWrite;
-        static const IdString SignedIntTex;
-        static const IdString MaterialsPerBuffer;
-        static const IdString DebugPssmSplits;
-
-        /// Number of extra constant buffer slots reserved for AtmosphereComponent.
-        static const IdString AtmosphereNumConstBuffers;
-
         static const IdString UseSkirts;
-
-        static const char *EnvProbeMap;
-
-        static const IdString FresnelScalar;
-        static const IdString MetallicWorkflow;
-        static const IdString ReceiveShadows;
-
-        static const IdString DetailOffsets0;
-        static const IdString DetailOffsets1;
-        static const IdString DetailOffsets2;
-        static const IdString DetailOffsets3;
-
-        static const IdString DetailMapsDiffuse;
-        static const IdString DetailMapsNormal;
-        static const IdString FirstValidDetailMapNm;
-
-        static const IdString Pcf3x3;
-        static const IdString Pcf4x4;
-        static const IdString PcfIterations;
-
-        static const IdString EnvMapScale;
-        static const IdString AmbientFixed;
-        static const IdString AmbientHemisphere;
-
-        static const IdString BrdfDefault;
-        static const IdString BrdfCookTorrance;
-        static const IdString BrdfBlinnPhong;
-        static const IdString FresnelSeparateDiffuse;
-        static const IdString GgxHeightCorrelated;
-
-        static const IdString *DetailOffsetsPtrs[4];
     };
 
     /** @} */

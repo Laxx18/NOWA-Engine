@@ -38,7 +38,7 @@ INLINE midf3 BRDF( midf3 lightDir, midf3 lightDiffuse, midf3 lightSpecular, Pixe
 	midf3 Rs = ( fresnelS * RG ) * pixelData.specular.xyz;
 
 	//Diffuse BRDF (Normalized Disney) - Apply 1/PI here!
-	midf3 kD = pixelData.diffuse.xyz * _h( 0.31830988618f ); // 1/PI
+	midf3 kD = pixelData.diffuse.xyz;
 	
 	midf energyBias	= pixelData.perceptualRoughness * _h( 0.5 );
 	midf energyFactor	= lerp( _h( 1.0 ), _h( 1.0 / 1.51 ), pixelData.perceptualRoughness );

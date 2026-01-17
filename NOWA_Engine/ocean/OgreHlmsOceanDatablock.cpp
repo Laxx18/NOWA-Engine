@@ -98,12 +98,18 @@ namespace Ogre
         static_cast<HlmsOcean*>(mCreator)->scheduleForUpdate(this);
     }
     //-----------------------------------------------------------------------------------
+    // In HlmsOceanDatablock.cpp - Fix uploadToConstBuffer:
+
     void HlmsOceanDatablock::uploadToConstBuffer(char* dstPtr, uint8 dirtyFlags)
     {
-        OGRE_UNUSED(dirtyFlags);
-
-        // CRITICAL: Copy the ENTIRE Material struct (192 bytes)
-        // This MUST match the shader struct layout exactly!
+        // Check dirty flags and update descriptor sets if needed
+        // This is what triggers calculateHashForPreCreate when textures change for reflection texture!
+        if (dirtyFlags & (ConstBufferPool::DirtyTextures | ConstBufferPool::DirtySamplers))
+        {
+            // Must be called first so mTexIndices[i] gets updated before uploading to GPU.
+            updateDescriptorSets((dirtyFlags & ConstBufferPool::DirtyTextures) != 0,
+                (dirtyFlags & ConstBufferPool::DirtySamplers) != 0);
+        }
 
         // Copy deepColour (16 bytes)
         memcpy(dstPtr, &mDeepColour, sizeof(Vector4));
@@ -217,5 +223,12 @@ namespace Ogre
     uint32 HlmsOceanDatablock::getBrdf() const
     {
         return mBrdf;
+    }
+    //-----------------------------------------------------------------------------------
+    bool HlmsOceanDatablock::suggestUsingSRGB(OceanTextureTypes type) const
+    {
+        if (type == OCEAN_REFLECTION)
+            return true;
+        return false;
     }
 }

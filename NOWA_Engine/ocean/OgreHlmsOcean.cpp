@@ -62,34 +62,7 @@ THE SOFTWARE.
 
 namespace Ogre
 {
-    const IdString OceanProperty::HwGammaRead = IdString("hw_gamma_read");
-    const IdString OceanProperty::HwGammaWrite = IdString("hw_gamma_write");
-    const IdString OceanProperty::SignedIntTex = IdString("signed_int_textures");
-    const IdString OceanProperty::MaterialsPerBuffer = IdString("materials_per_buffer");
-    const IdString OceanProperty::DebugPssmSplits = IdString("debug_pssm_splits");
-    const IdString OceanProperty::AtmosphereNumConstBuffers = IdString("atmosphere_num_const_buffers");
-
     const IdString OceanProperty::UseSkirts = IdString("use_skirts");
-
-    const char* OceanProperty::EnvProbeMap = "envprobe_map";
-
-    const IdString OceanProperty::FresnelScalar = IdString("fresnel_scalar");
-    const IdString OceanProperty::MetallicWorkflow = IdString("metallic_workflow");
-    const IdString OceanProperty::ReceiveShadows = IdString("receive_shadows");
-
-    const IdString OceanProperty::Pcf3x3 = IdString("pcf_3x3");
-    const IdString OceanProperty::Pcf4x4 = IdString("pcf_4x4");
-    const IdString OceanProperty::PcfIterations = IdString("pcf_iterations");
-
-    const IdString OceanProperty::EnvMapScale = IdString("envmap_scale");
-    const IdString OceanProperty::AmbientFixed = IdString("ambient_fixed");
-    const IdString OceanProperty::AmbientHemisphere = IdString("ambient_hemisphere");
-
-    const IdString OceanProperty::BrdfDefault = IdString("BRDF_Default");
-    const IdString OceanProperty::BrdfCookTorrance = IdString("BRDF_CookTorrance");
-    const IdString OceanProperty::BrdfBlinnPhong = IdString("BRDF_BlinnPhong");
-    const IdString OceanProperty::FresnelSeparateDiffuse = IdString("fresnel_separate_diffuse");
-    const IdString OceanProperty::GgxHeightCorrelated = IdString("GGX_height_correlated");
 
     HlmsOcean::HlmsOcean(Archive* dataFolder, ArchiveVec* libraryFolders) :
         HlmsPbs(dataFolder, libraryFolders),
@@ -389,25 +362,54 @@ namespace Ogre
         setProperty(kNoTid, PbsProperty::NormalMap, 0);
         setProperty(kNoTid, PbsProperty::FirstValidDetailMapNm, 4);
 
-        // ===== ENV PROBE SETUP (PER-DATABLOCK ONLY) =====
+        // ===== ENV PROBE SETUP =====
 
-        bool hasEnvMap = false;
+        // Check if reflection texture is set
+        // In HlmsOcean::calculateHashForPreCreate - Replace the env probe section:
+
+// ===== ENV PROBE SETUP (CRITICAL FIX FOR OCEAN) =====
+
+        const TextureGpu* reflectionTexture = datablock->getTexture(OCEAN_REFLECTION);
 
         if (datablock->mTexturesDescSet)
         {
-            const TextureGpu* reflectionTexture = datablock->getTexture(OCEAN_REFLECTION);
-            if (reflectionTexture)
+            bool hasReflection = (reflectionTexture != nullptr);
+
+            // Calculate NumTextures (exclude env map from count)
+            bool envMap = datablock->getTexture(OCEAN_REFLECTION) != 0;
+            setProperty(kNoTid, PbsProperty::NumTextures,
+                int32(datablock->mTexturesDescSet->mTextures.size() - envMap));
+
+            if (hasReflection)
             {
-                hasEnvMap = true;
+                // Set the texture property (sets envprobe_map_idx)
+                setTextureProperty(kNoTid, PbsProperty::EnvProbeMap, datablock, OCEAN_REFLECTION);
 
-                setTextureProperty( kNoTid, OceanProperty::EnvProbeMap, datablock, OCEAN_REFLECTION );
+                // Set envprobe_map to NON-ZERO
+                // This is what triggers the shader to declare texEnvProbeMap
+                setProperty(kNoTid, PbsProperty::EnvProbeMap,
+                    static_cast<int32>(reflectionTexture->getName().getU32Value()));
 
-                // Hazard prevention hash (same as Terra)
-                setProperty( kNoTid, OceanProperty::EnvProbeMap, static_cast<int32>(reflectionTexture->getName().getU32Value()) );
+                // Set TargetEnvprobeMap to DIFFERENT value to enable manual probe
+                setProperty(kNoTid, PbsProperty::TargetEnvprobeMap, 0);
 
-                setProperty( kNoTid, PbsProperty::NumTextures, int32(datablock->mTexturesDescSet->mTextures.size() - (hasEnvMap ? 1 : 0) )
-                );
+                // Enable env map usage
+                // PBS's notifyPropertiesMergedPreGenerationStep will see envprobe_map != 0
+                // and envprobe_map != target_envprobe_map, so it will set UseEnvProbeMap = 1
             }
+            else
+            {
+                // No reflection - make sure properties are cleared
+                setProperty(kNoTid, PbsProperty::EnvProbeMap, 0);
+                setProperty(kNoTid, PbsProperty::TargetEnvprobeMap, 0);
+            }
+        }
+        else
+        {
+            // No descriptor set = no textures at all
+            setProperty(kNoTid, PbsProperty::NumTextures, 0);
+            setProperty(kNoTid, PbsProperty::EnvProbeMap, 0);
+            setProperty(kNoTid, PbsProperty::TargetEnvprobeMap, 0);
         }
     }
     //-----------------------------------------------------------------------------------
@@ -426,6 +428,8 @@ namespace Ogre
         {
             Hlms::calculateHashFor(renderable, outHash, outCasterHash);
         }
+
+        datablock->loadAllTextures();
     }
     //-----------------------------------------------------------------------------------
     uint32 HlmsOcean::fillBuffersFor(const HlmsCache* cache, const QueuedRenderable& queuedRenderable, bool casterPass, uint32 lastCacheHash, uint32 lastTextureHash)
@@ -624,6 +628,42 @@ namespace Ogre
             mLastBoundPool = newPool;
         }
 
+        // ===== BIND PER-DATABLOCK TEXTURES (CRITICAL FOR REFLECTION) =====
+        if (!casterPass || datablock->getAlphaTest() != CMPF_ALWAYS_PASS)
+        {
+            if (datablock->mTexturesDescSet != mLastDescTexture)
+            {
+                if (datablock->mTexturesDescSet)
+                {
+                    size_t texUnit = mTexUnitSlotStart;
+
+                    // Bind all textures in descriptor set (including reflection cubemap)
+                    *commandBuffer->addCommand<CbTextures>() =
+                        CbTextures((uint16)texUnit, std::numeric_limits<uint16>::max(),
+                            datablock->mTexturesDescSet);
+
+                    if (!mHasSeparateSamplers)
+                    {
+                        *commandBuffer->addCommand<CbSamplers>() =
+                            CbSamplers((uint16)texUnit, datablock->mSamplersDescSet);
+                    }
+                }
+
+                mLastDescTexture = datablock->mTexturesDescSet;
+            }
+
+            if (datablock->mSamplersDescSet != mLastDescSampler && mHasSeparateSamplers)
+            {
+                if (datablock->mSamplersDescSet)
+                {
+                    size_t texUnit = mTexUnitSlotStart;
+                    *commandBuffer->addCommand<CbSamplers>() =
+                        CbSamplers((uint16)texUnit, datablock->mSamplersDescSet);
+                    mLastDescSampler = datablock->mSamplersDescSet;
+                }
+            }
+        }
+
         // 10. Bind Ocean textures if movable changed
         if (mLastMovableObject != queuedRenderable.movableObject)
         {
@@ -769,7 +809,7 @@ namespace Ogre
         if (getProperty(tid, HlmsBaseProp::ForwardPlus))
             texSlotsStart = getProperty(tid, "f3dGrid") + 1;
 
-        // Ocean textures
+        // ONLY set registers for Ocean-specific shared textures
         setTextureReg(tid, VertexShader, "terrainData", texSlotsStart + 0);
         setTextureReg(tid, VertexShader, "blendMap", texSlotsStart + 1);
 
@@ -778,38 +818,7 @@ namespace Ogre
             setTextureReg(tid, PixelShader, "terrainData", texSlotsStart + 0);
             setTextureReg(tid, PixelShader, "blendMap", texSlotsStart + 1);
 
-            // Set envprobe register if enabled
-            if (getProperty(tid, "use_envprobe_map"))
-            {
-                // Calculate the slot where envprobe will be bound
-                int32 envProbeSlot = texSlotsStart + 2;
-
-                // Add shadow maps count
-                envProbeSlot += static_cast<int32>(mPreparedPass.shadowMaps.size());
-
-                // Parallax corrected cubemap comes before global probe
-                if (mParallaxCorrectedCubemap && !mParallaxCorrectedCubemap->isRendering())
-                    envProbeSlot += 1;
-
-                setTextureReg(tid, PixelShader, "texEnvProbeMap", envProbeSlot);
-
-                // Set the sampler register for the environment map
-                // The sampler index should match what you set in fillBuffersFor
-                // You're using mOceanSamplerblock, which should have been registered
-                // We need to tell the shader which sampler index to use
-                if (mHasSeparateSamplers)
-                {
-                    // If you have separate samplers, you need to set the sampler register
-                    // This needs to match the sampler you bind in fillBuffersFor
-                    // For now, let's use the same index as the texture
-                    setProperty(tid, "envMapRegSampler", envProbeSlot);
-                }
-                else
-                {
-                    // Combined texture/samplers - sampler uses same register as texture
-                    setProperty(tid, "envMapRegSampler", envProbeSlot);
-                }
-            }
+            // DO NOT set texEnvProbeMap register here - descriptor sets handle it
         }
 
         return status;
@@ -842,46 +851,81 @@ namespace Ogre
         datablock->flushRenderables();
     }
     //-----------------------------------------------------------------------------------
-    void HlmsOcean::setDatablockEnvReflection( HlmsOceanDatablock* datablock, const Ogre::String& textureName )
+    void HlmsOcean::setDatablockEnvReflection(HlmsOceanDatablock* datablock, const Ogre::String& textureName)
     {
         if (!datablock)
             return;
+
+        LogManager::getSingleton().logMessage(
+            "[HlmsOcean::setDatablockEnvReflection] Setting reflection: " +
+            (textureName.empty() ? "(clearing)" : textureName));
 
         // Clear reflection
         if (textureName.empty())
         {
             datablock->setTexture(OCEAN_REFLECTION, nullptr);
-
+            // Force shader recompilation for this datablock only
             datablock->flushRenderables();
+            LogManager::getSingleton().logMessage("[HlmsOcean] Reflection cleared, flushed renderables");
             return;
         }
 
+        // Check if texture exists
         if (!Ogre::ResourceGroupManager::getSingleton().resourceExistsInAnyGroup(textureName))
         {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[HlmsOcean] Reflection cubemap does not exist: " + textureName);
+            Ogre::LogManager::getSingletonPtr()->logMessage(
+                Ogre::LML_CRITICAL,
+                "[HlmsOcean] ERROR: Reflection cubemap does not exist: " + textureName);
             return;
         }
 
-        Ogre::TextureGpuManager* textureManager = Ogre::Root::getSingletonPtr()->getRenderSystem()->getTextureGpuManager();
+        Ogre::TextureGpuManager* textureManager =
+            Ogre::Root::getSingletonPtr()->getRenderSystem()->getTextureGpuManager();
 
         Ogre::uint32 textureFlags = Ogre::TextureFlags::PrefersLoadingFromFileAsSRGB;
         textureFlags &= ~Ogre::TextureFlags::AutomaticBatching;
 
-        Ogre::uint32 filters = Ogre::TextureFilter::FilterTypes::TypeGenerateDefaultMipmaps;
+        Ogre::uint32 filters = Ogre::TextureFilter::TypeGenerateDefaultMipmaps;
 
-        Ogre::TextureGpu* cubemap = textureManager->createOrRetrieveTexture(textureName, Ogre::GpuPageOutStrategy::SaveToSystemRam, textureFlags,
-                Ogre::TextureTypes::TypeCube, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, filters, 0u);
+        Ogre::TextureGpu* cubemap = textureManager->createOrRetrieveTexture(
+            textureName,
+            Ogre::GpuPageOutStrategy::SaveToSystemRam,
+            textureFlags,
+            Ogre::TextureTypes::TypeCube,
+            Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME,
+            filters,
+            0u);
 
         if (!cubemap)
         {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[HlmsOcean] Failed to create reflection cubemap: " + textureName);
+            Ogre::LogManager::getSingletonPtr()->logMessage(
+                Ogre::LML_CRITICAL,
+                "[HlmsOcean] ERROR: Failed to create reflection cubemap: " + textureName);
             return;
         }
 
+        LogManager::getSingleton().logMessage("[HlmsOcean] Scheduling transition to Resident...");
         cubemap->scheduleTransitionTo(Ogre::GpuResidency::Resident);
+
+        LogManager::getSingleton().logMessage("[HlmsOcean] Waiting for streaming...");
         textureManager->waitForStreamingCompletion();
 
-        // Assign to THIS datablock only
+        // Verify it loaded
+        LogManager::getSingleton().logMessage(
+            "[HlmsOcean] Cubemap loaded - Type: " +
+            StringConverter::toString(cubemap->getTextureType()) +
+            " Width: " + StringConverter::toString(cubemap->getWidth()) +
+            " Height: " + StringConverter::toString(cubemap->getHeight()));
+
+        if (cubemap->getWidth() == 0 || cubemap->getTextureType() != Ogre::TextureTypes::TypeCube)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(
+                Ogre::LML_CRITICAL,
+                "[HlmsOcean] ERROR: Cubemap invalid after loading!");
+            return;
+        }
+
+        // Set texture on datablock
         datablock->setTexture(OCEAN_REFLECTION, cubemap);
 
         datablock->flushRenderables();
@@ -925,22 +969,23 @@ namespace Ogre
             char tmpData[64];
             LwString propName = LwString::FromEmptyPointer(tmpData, sizeof(tmpData));
 
-            propName = propertyName;  // diffuse_map
+            propName = propertyName;  // "envprobe_map"
+            const size_t basePropSize = propName.size();
 
-            const size_t basePropSize = propName.size();  // diffuse_map
-
-            // Sets envprobe_map = idx + 1
+            // In the template we subtract the "+1" for the index.
+            // We need to increment it now otherwise @property( envprobe_map )
+            // can translate to @property( 0 ) which is not what we want.
             setProperty(tid, propertyName, idx + 1);
 
             propName.resize(basePropSize);
-            propName.a("_idx");  // envprobe_map_idx
+            propName.a("_idx");  // "envprobe_map_idx"
             setProperty(tid, propName.c_str(), idx);
 
             if (mHasSeparateSamplers)
             {
                 const uint8 samplerIdx = datablock->getIndexToDescriptorSampler(texType);
                 propName.resize(basePropSize);
-                propName.a("_sampler");  // envprobe_map_sampler
+                propName.a("_sampler");  // "envprobe_map_sampler"
                 setProperty(tid, propName.c_str(), samplerIdx);
             }
         }

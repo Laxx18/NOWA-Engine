@@ -8,6 +8,70 @@
 #include "TerraComponent.h"
 #include "main/AppStateManager.h"
 
+namespace
+{
+	enum TerraSemantic
+	{
+		Diffuse,
+		DetailDiffuse,
+		DetailNormal,
+		DetailRoughness,
+		DetailMetalness,
+		Reflection,
+		Unsupported
+	};
+
+	TerraSemantic getTerraSemantic(Ogre::TerraTextureTypes t)
+	{
+		if (t == Ogre::TERRA_DIFFUSE)
+			return TerraSemantic::Diffuse;
+
+		if (t >= Ogre::TERRA_DETAIL0 && t <= Ogre::TERRA_DETAIL3)
+			return TerraSemantic::DetailDiffuse;
+
+		if (t >= Ogre::TERRA_DETAIL0_NM && t <= Ogre::TERRA_DETAIL3_NM)
+			return TerraSemantic::DetailNormal;
+
+		if (t >= Ogre::TERRA_DETAIL_ROUGHNESS0 && t <= Ogre::TERRA_DETAIL_ROUGHNESS3)
+			return TerraSemantic::DetailRoughness;
+
+		if (t >= Ogre::TERRA_DETAIL_METALNESS0 && t <= Ogre::TERRA_DETAIL_METALNESS3)
+			return TerraSemantic::DetailMetalness;
+
+		if (t == Ogre::TERRA_REFLECTION)
+			return TerraSemantic::Reflection;
+
+		return TerraSemantic::Unsupported;
+	}
+
+	Ogre::PbsTextureTypes mapTerraToPbsSamplerSource(Ogre::TerraTextureTypes terraType)
+	{
+		switch (getTerraSemantic(terraType))
+		{
+		case TerraSemantic::Diffuse:
+			return Ogre::PBSM_DIFFUSE;
+
+		case TerraSemantic::DetailDiffuse:
+			return Ogre::PBSM_DETAIL0; // policy template only
+
+		case TerraSemantic::DetailNormal:
+			return Ogre::PBSM_DETAIL0_NM; // policy template only
+
+		case TerraSemantic::DetailRoughness:
+			return Ogre::PBSM_ROUGHNESS; // shared slot
+
+		case TerraSemantic::DetailMetalness:
+			return Ogre::PBSM_METALLIC; // <- this is what you asked for
+
+		case TerraSemantic::Reflection:
+			return Ogre::PBSM_REFLECTION;
+
+		default:
+			return Ogre::NUM_PBSM_TEXTURE_TYPES;
+		}
+	}
+}
+
 namespace NOWA
 {
 	using namespace rapidxml;
@@ -958,7 +1022,7 @@ namespace NOWA
 
 	void DatablockTerraComponent::internalSetTextureName(Ogre::TerraTextureTypes terraTextureType, Ogre::CommonTextureTypes::CommonTextureTypes textureType, Variant* attribute, const Ogre::String& textureName)
 	{
-		ENQUEUE_RENDER_COMMAND_MULTI("DatablockTerraComponent::internalSetTextureName", _4(terraTextureType, textureType, attribute, textureName),
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this, terraTextureType, textureType, attribute, textureName]()
 		{
 			Ogre::TextureGpuManager * hlmsTextureManager = Ogre::Root::getSingletonPtr()->getRenderSystem()->getTextureGpuManager();
 
@@ -1096,7 +1160,21 @@ namespace NOWA
 							texture = nullptr;
 						}
 
-						Ogre::HlmsSamplerblock samplerblock(*datablock->getSamplerblock(terraTextureType));
+						const Ogre::PbsTextureTypes pbsType = mapTerraToPbsSamplerSource(terraTextureType);
+
+						if (pbsType == Ogre::NUM_PBSM_TEXTURE_TYPES)
+						{
+							return;
+						}
+
+						const Ogre::HlmsSamplerblock* src = datablock->getSamplerblock(pbsType);
+
+						if (nullptr == src)
+						{
+							return;
+						}
+
+						Ogre::HlmsSamplerblock samplerblock(*src);
 						if (terraTextureType >= Ogre::TERRA_DETAIL0 && terraTextureType <= Ogre::TERRA_DETAIL_METALNESS3)
 						{
 							//Detail maps default to wrap mode.
@@ -1119,7 +1197,8 @@ namespace NOWA
 					}
 				}
 			}
-		});
+		};
+		NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DatablockTerraComponent::internalSetTextureName");
 	}
 
 	void DatablockTerraComponent::setBrdf(const Ogre::String& brdf)

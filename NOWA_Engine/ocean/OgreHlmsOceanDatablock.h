@@ -185,6 +185,8 @@ namespace Ogre
         void setBrdf( OceanBrdf::OceanBrdf brdf );
         uint32 getBrdf(void) const;
 
+        bool suggestUsingSRGB(OceanTextureTypes type) const;
+
         virtual void calculateHash();
 
         // Size calculation: 

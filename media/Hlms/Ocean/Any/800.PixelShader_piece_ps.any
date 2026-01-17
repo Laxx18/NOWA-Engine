@@ -81,8 +81,10 @@
     float foam = pow( saturate( textureValue.w ), 2.0f ) * waveFactor * 0.5f;
     foam = saturate( foam );
     
-    // float ROUGHNESS = lerp( 0.02f, 0.3f, foam );
-	float ROUGHNESS = lerp( 0.04f, 0.7f, foam );
+    
+	// float ROUGHNESS = lerp( 0.04f, 0.7f, foam );
+	
+	float ROUGHNESS = lerp( 0.01f, 0.5f, foam );
     
     // ===== Base water color =====
 	float4 diffuseCol;
@@ -125,14 +127,24 @@
 	@insertpiece( custom_ps_posSampleNormal )
 
 	// Diffuse (water absorbs light)
-	pixelData.diffuse = midf4( diffuseCol * _h( 0.3f ) );
+	// pixelData.diffuse = midf4( diffuseCol * _h( 0.05f ) );
+	
+	// Option 1: Very dark water (still has some color absorption)
+	pixelData.diffuse = midf4( diffuseCol * _h( 0.01f ) );
+
+	// Option 2: Pure reflective water (no diffuse, only reflections)
+	// pixelData.diffuse = midf4_c( 0.0f, 0.0f, 0.0f, 1.0f );
 
 	// Specular (foam spreads highlights slightly)
-	float specAtten = lerp( 1.0f, 0.4f, foam );
+	// float specAtten = lerp( 1.0f, 0.4f, foam );
+	// pixelData.specular = midf3_c( specAtten, specAtten, specAtten );
+	
+	// Boost specular, only reduce for heavy foam
+	float specAtten = lerp( 1.5f, 0.6f, foam );  // Boosted from 1.0->1.5, 0.4->0.6
 	pixelData.specular = midf3_c( specAtten, specAtten, specAtten );
 
 	// Fresnel - water (slightly higher than before for better reflections)
-	pixelData.F0 = make_float_fresnel( 0.03f );
+	pixelData.F0 = make_float_fresnel( 0.08f );
 
 	// View
 	pixelData.viewDir = normalize( -inPs.pos );
@@ -261,18 +273,21 @@
                     if( vctSpecular.w == 0 )
                     {
                 @end
-                        pixelData.envColourS += lerp( midf3_c( passBuf.ambientLowerHemi.xyz ),
-                                                      midf3_c( passBuf.ambientUpperHemi.xyz ), ambientWD );
-                        pixelData.envColourD += lerp( midf3_c( passBuf.ambientLowerHemi.xyz ),
-                                                      midf3_c( passBuf.ambientUpperHemi.xyz ), ambientWS );
+                        // Reduce ambient contribution when we have reflections (50% less)
+				pixelData.envColourS += lerp( midf3_c( passBuf.ambientLowerHemi.xyz ),
+											  midf3_c( passBuf.ambientUpperHemi.xyz ), ambientWD );
+											  // * _h( 0.5 );
+				pixelData.envColourD += lerp( midf3_c( passBuf.ambientLowerHemi.xyz ),
+											  midf3_c( passBuf.ambientUpperHemi.xyz ), ambientWS );
+											  // * _h( 0.5 );
                 @property( vct_num_probes )
                     }
                 @end
             @else
                 pixelData.envColourS = lerp( midf3_c( passBuf.ambientLowerHemi.xyz ),
-                                            midf3_c( passBuf.ambientUpperHemi.xyz ), ambientWD );
+                                            midf3_c( passBuf.ambientUpperHemi.xyz ), ambientWD ) * _h( 0.5 );
                 pixelData.envColourD = lerp( midf3_c( passBuf.ambientLowerHemi.xyz ),
-                                            midf3_c( passBuf.ambientUpperHemi.xyz ), ambientWS );
+                                            midf3_c( passBuf.ambientUpperHemi.xyz ), ambientWS ) * _h( 0.5 );
             @end
         @end
         @property( ambient_fixed && vct_num_probes )

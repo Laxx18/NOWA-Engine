@@ -44,16 +44,16 @@ SamplerState blendMapSampler    : register(s@value(blendMap));
 @property( use_envprobe_map )
 	@property( !hlms_enable_cubemaps_auto )
 		TextureCube	texEnvProbeMap : register(t@value(texEnvProbeMap));
+		SamplerState samplerState@value(envMapRegSampler) : register(s@value(envMapRegSampler));
 	@else
 		@property( !hlms_cubemaps_use_dpm )
-			TextureCubeArray	texEnvProbeMap : register(t@value(texEnvProbeMap));
+			TextureCubeArray texEnvProbeMap : register(t@value(texEnvProbeMap));
+			SamplerState samplerState@value(envMapRegSampler) : register(s@value(envMapRegSampler));
 		@else
-			Texture2DArray	texEnvProbeMap : register(t@value(texEnvProbeMap));
+			Texture2DArray texEnvProbeMap : register(t@value(texEnvProbeMap));
+			SamplerState samplerState@value(envMapRegSampler) : register(s@value(envMapRegSampler));
 			@insertpiece( DeclDualParaboloidFunc )
 		@end
-	@end
-	@property( envMapRegSampler < samplerStateStart )
-		SamplerState samplerState@value(envMapRegSampler) : register(s@value(envMapRegSampler));
 	@end
 @end
 
