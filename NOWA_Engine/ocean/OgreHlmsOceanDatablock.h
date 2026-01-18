@@ -202,6 +202,11 @@ namespace Ogre
         void setBrdf( OceanBrdf::OceanBrdf brdf );
         uint32 getBrdf(void) const;
 
+        /// Sets water transparency (0.0 = fully transparent, 1.0 = fully opaque)
+        /// Automatically enables/disables transparency mode and updates blend blocks
+        void setTransparency(float transparency);
+        float getTransparency() const;
+
         bool suggestUsingSRGB(OceanTextureTypes type) const;
 
         virtual void calculateHash();

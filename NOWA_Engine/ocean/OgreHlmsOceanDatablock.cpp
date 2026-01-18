@@ -27,7 +27,7 @@ namespace Ogre
         mDeepColour(0.0f, 0.03f * 0.318309886f, 0.05f * 0.318309886f, 1.0f),  // .w = reflectionStrength
         mShallowColour(0.0f, 0.08f * 0.318309886f, 0.1f * 0.318309886f, 1.0f), // .w = waveScale
         mkD(1.0f, 1.0f, 1.0f, 0.0f), // White diffuse, shadowBias = 0
-        mRoughness(0.01f, 0.5f, 0.0f, 0.0f), // x=baseRoughness, y=foamRoughness
+        mRoughness(0.01f, 0.5f, 1.0f, 0.0f), // x=baseRoughness, y=foamRoughness, z=1.0f (fully opaque by default) 
         mMetalness(0.5f, 0.01f, 1.0f, 0.0f), // x=ambientReduction, y=diffuseScale, z=foamIntensity
         mBrdf(OceanBrdf::Default)
     {
@@ -285,6 +285,55 @@ namespace Ogre
     uint32 HlmsOceanDatablock::getBrdf() const
     {
         return mBrdf;
+    }
+    //-----------------------------------------------------------------------------------
+    void HlmsOceanDatablock::setTransparency(float transparency)
+    {
+        transparency = Math::Clamp(transparency, 0.0f, 1.0f);
+
+        // Determine if transparency should be enabled
+        bool shouldEnable = (transparency < 1.0f);
+
+        // Store in mRoughness.z
+        if (mRoughness.z != transparency)
+        {
+            mRoughness.z = transparency;
+
+            if (shouldEnable)
+            {
+                // Use ONE/ONE blending for additive transparency (better for water)
+                HlmsBlendblock blendblock;
+                blendblock.mSourceBlendFactor = SBF_ONE;
+                blendblock.mDestBlendFactor = SBF_ONE_MINUS_SOURCE_ALPHA;
+                blendblock.mBlendOperation = SBO_ADD;
+                blendblock.setForceTransparentRenderOrder(true); // Force transparent queue
+                blendblock.setBlendType(SBT_REPLACE);
+                setBlendblock(blendblock, false, true);
+
+                HlmsMacroblock macro;
+                macro.mDepthCheck = true;     // still test depth
+                macro.mDepthWrite = true;    // CRITICAL: do NOT write depth
+                macro.mDepthFunc = CMPF_LESS_EQUAL;
+                setMacroblock(macro, false, true);
+            }
+            else
+            {
+                // Opaque
+                HlmsBlendblock blendblock;
+                blendblock.mSourceBlendFactor = SBF_ONE;
+                blendblock.mDestBlendFactor = SBF_ZERO;
+                setBlendblock(blendblock, false, true);
+            }
+            // Force shader recompilation
+            flushRenderables();
+
+            scheduleConstBufferUpdate();
+        }
+    }
+    //-----------------------------------------------------------------------------------
+    float HlmsOceanDatablock::getTransparency() const
+    {
+        return mRoughness.z;
     }
     //-----------------------------------------------------------------------------------
     bool HlmsOceanDatablock::suggestUsingSRGB(OceanTextureTypes type) const

@@ -58,6 +58,7 @@
 	// ===== CONFIGURABLE PARAMETERS FROM DATABLOCK =====
 	float baseRoughness    = oceanMaterial.roughness.x;
 	float foamRoughness    = oceanMaterial.roughness.y;
+	float transparency     = oceanMaterial.roughness.z;
 	float ambientReduction = oceanMaterial.metalness.x;
 	float diffuseScale     = oceanMaterial.metalness.y;
 	float foamIntensity    = oceanMaterial.metalness.z;
@@ -109,7 +110,8 @@
 	@insertpiece( custom_ps_posSampleNormal )
 
 	// ===== Diffuse (configurable scale) =====
-	pixelData.diffuse = midf4( diffuseCol * midf_c( diffuseScale ) );
+	// pixelData.diffuse = midf4( diffuseCol * midf_c( diffuseScale ) );
+	pixelData.diffuse = midf4( diffuseCol * midf_c( diffuseScale * transparency ) );
 
 	// ===== Specular (boost for reflections, reduced by foam) =====
 	float specAtten = lerp( 1.5f, 0.6f, foam );

@@ -423,6 +423,8 @@ namespace NOWA
 					this->datablock->setDiffuseScale(diffuseScale->getReal());
 					this->datablock->setFoamIntensity(foamIntensity->getReal());
 
+					this->datablock->setTransparency(0.5f);
+
 
 					this->datablock->setBrdf(this->mapStringToOceanBrdf(this->brdf->getListSelectedValue()));
 

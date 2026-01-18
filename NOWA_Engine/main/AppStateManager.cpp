@@ -212,9 +212,9 @@ namespace NOWA
 			while (false == this->activeStateStack.empty())
 			{
 				NOWA::GraphicsModule::getInstance()->clearAllClosures();
-				this->activeStateStack.back()->exit();
 
 				this->bStall = true;
+				this->activeStateStack.back()->exit();
 
 				AppState* oldState = this->activeStateStack.back();
 				InputDeviceCore::getSingletonPtr()->removeKeyListener(oldState);

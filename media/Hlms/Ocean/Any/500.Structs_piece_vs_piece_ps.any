@@ -9,7 +9,7 @@ struct Material
     float4 shallowColour; // RGB = shallow color, W = waveScale
 
     float4 kD;          // RGB = (unused), W = shadowConstantBias
-    float4 roughness;   // X = baseRoughness, Y = foamRoughness, ZW = unused
+    float4 roughness;   // X = baseRoughness, Y = foamRoughness, Z = transparency, W = unused
     float4 metalness;   // X = ambientReduction, Y = diffuseScale, Z = foamIntensity, W = unused
     float4 detailOffsetScale[4];
 

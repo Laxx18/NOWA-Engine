@@ -22,7 +22,8 @@ namespace NOWA
 		fovy(new Variant(ReflectionCameraComponent::AttrFovy(), 90.0f, this->attributes)),
 		orthographic(new Variant(ReflectionCameraComponent::AttrOrthographic(), false, this->attributes)),
 		fixedYawAxis(new Variant(ReflectionCameraComponent::AttrFixedYawAxis(), false, this->attributes)),
-		cubeTextureSize(new Variant(ReflectionCameraComponent::AttrCubeTextureSize(), { "256", "512", "1024" }, this->attributes))
+		cubeTextureSize(new Variant(ReflectionCameraComponent::AttrCubeTextureSize(), { "256", "512", "1024" }, this->attributes)),
+		showDummyEntity(new Variant(ReflectionCameraComponent::AttrShowDummyEntity(), false, this->attributes))
 	{
 		this->fovy->setDescription("Field Of View (FOV) is the angle made between the frustum's position, and the edges "
 			"of the 'screen' onto which the scene is projected.High values(90 + degrees) result in a wide - angle, "
@@ -84,7 +85,11 @@ namespace NOWA
 			this->cubeTextureSize->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
-
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "ShowDummyEntity")
+		{
+			this->showDummyEntity->setValue(XMLConverter::getAttribBool(propertyElement, "data", false));
+			propertyElement = propertyElement->next_sibling("property");
+		}
 		return true;
 	}
 
@@ -95,6 +100,15 @@ namespace NOWA
 
 	bool ReflectionCameraComponent::connect(void)
 	{
+		if (nullptr != this->dummyEntity)
+		{
+			bool visible = this->showDummyEntity->getBool();
+			ENQUEUE_RENDER_COMMAND_MULTI("ReflectionCameraComponent::connect", _1(visible),
+				{
+					if (this->dummyEntity)
+						this->dummyEntity->setVisible(visible);
+				});
+		}
 
 		return GameObjectComponent::connect();
 	}
@@ -143,29 +157,18 @@ namespace NOWA
 	{
 		if (false == notSimulating)
 		{
-			if (nullptr != dummyEntity && true == this->hideEntity)
+			if (nullptr != dummyEntity)
 			{
-				if (true == this->dummyEntity->isVisible())
+				bool shouldBeVisible = this->showDummyEntity->getBool();
+
+				if (shouldBeVisible != this->dummyEntity->isVisible())
 				{
-					auto closureFunction = [this](Ogre::Real renderDt)
-					{
-						this->dummyEntity->setVisible(false);
-					};
-					Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update1" + Ogre::StringConverter::toString(this->index);
-					NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
-				}
-				else
-				{
-					// If its not the active camera
-					if (false == this->dummyEntity->isVisible())
-					{
-						auto closureFunction = [this](Ogre::Real renderDt)
+					auto closureFunction = [this, shouldBeVisible](Ogre::Real renderDt)
 						{
-							this->dummyEntity->setVisible(true);
+							this->dummyEntity->setVisible(shouldBeVisible);
 						};
-						Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update2" + Ogre::StringConverter::toString(this->index);
-						NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
-					}
+					Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::updateVisibility" + Ogre::StringConverter::toString(this->index);
+					NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
 				}
 			}
 		}
@@ -230,6 +233,10 @@ namespace NOWA
 		{
 			this->setCubeTextureSize(attribute->getListSelectedValue());
 		}
+		else if (ReflectionCameraComponent::AttrShowDummyEntity() == attribute->getName())
+		{
+			this->setShowDummyEntity(attribute->getBool());
+		}
 	}
 
 	void ReflectionCameraComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
@@ -277,6 +284,12 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "CubeTextureSize"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->cubeTextureSize->getListSelectedValue())));
+		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "ShowDummyEntity"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->showDummyEntity->getBool())));
 		propertiesXML->append_node(propertyXML);
 	}
 
@@ -397,6 +410,23 @@ namespace NOWA
 	Ogre::String ReflectionCameraComponent::getCubeTextureSize(void) const
 	{
 		return this->cubeTextureSize->getListSelectedValue();
+	}
+
+	void ReflectionCameraComponent::setShowDummyEntity(bool showDummyEntity)
+	{
+		this->showDummyEntity->setValue(showDummyEntity);
+		if (nullptr != this->dummyEntity)
+		{
+			ENQUEUE_RENDER_COMMAND_MULTI("ReflectionCameraComponent::setShowDummyEntity", _1(showDummyEntity),
+				{
+					this->dummyEntity->setVisible(showDummyEntity);
+				});
+		}
+	}
+
+	bool ReflectionCameraComponent::getShowDummyEntity(void) const
+	{
+		return this->showDummyEntity->getBool();
 	}
 
 }; // namespace end

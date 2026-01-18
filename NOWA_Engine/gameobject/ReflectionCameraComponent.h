@@ -116,6 +116,9 @@ namespace NOWA
 
 		Ogre::String getCubeTextureSize(void) const;
 
+		void setShowDummyEntity(bool showDummyEntity);
+		bool getShowDummyEntity(void) const;
+
 		Ogre::Camera* getCamera(void) const;
 	public:
 		static const Ogre::String AttrNearClipDistance(void) { return "Near Clip Distance"; }
@@ -124,6 +127,7 @@ namespace NOWA
 		static const Ogre::String AttrFovy(void) { return "Fovy"; }
 		static const Ogre::String AttrFixedYawAxis(void) { return "Fixed Yaw Axis"; }
 		static const Ogre::String AttrCubeTextureSize(void) { return "Cube Texture Size"; }
+		static const Ogre::String AttrShowDummyEntity(void) { return "Show Dummy Entity"; }
 	private:
 		void createCamera(void);
 	private:
@@ -137,6 +141,7 @@ namespace NOWA
 		Variant* fovy;
 		Variant* fixedYawAxis;
 		Variant* cubeTextureSize;
+		Variant* showDummyEntity;
 		
 		bool hideEntity;
 		WorkspaceBaseComponent* workspaceBaseComponent;

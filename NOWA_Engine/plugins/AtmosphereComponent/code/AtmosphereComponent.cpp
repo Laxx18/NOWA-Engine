@@ -1,4 +1,4 @@
-#include "NOWAPrecompiled.h"
+﻿#include "NOWAPrecompiled.h"
 #include "AtmosphereComponent.h"
 #include "utilities/XMLConverter.h"
 #include "utilities/MathHelper.h"
@@ -923,96 +923,91 @@ namespace NOWA
 	{
 		if (false == notSimulating)
 		{
-			Ogre::String time = getCurrentTimeOfDay();
-
 			Ogre::SceneManager* sceneManager = this->gameObjectPtr->getSceneManager();
-			// Reupdate ambient light for better render results and getting rid of strange flimmer. See: https://forums.ogre3d.org/viewtopic.php?t=96576&start=25
 
 			auto closureFunction = [this, sceneManager](Ogre::Real renderDt)
-			{
-				sceneManager->setAmbientLight(sceneManager->getAmbientLightUpperHemisphere() /** 1.5f*/,
-					sceneManager->getAmbientLightLowerHemisphere(),
-					sceneManager->getAmbientLightHemisphereDir());
-			};
+				{
+					sceneManager->setAmbientLight(sceneManager->getAmbientLightUpperHemisphere(),
+						sceneManager->getAmbientLightLowerHemisphere(),
+						sceneManager->getAmbientLightHemisphereDir());
+				};
 			Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update1" + Ogre::StringConverter::toString(this->index);
 			NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
 
-			//sceneManager->setAmbientLight(sceneManager->getAmbientLightUpperHemisphere() /** 1.5f*/,
-			//							  	sceneManager->getAmbientLightLowerHemisphere(),
-			//							   -this->lightDirectionalComponent->getOgreLight()->getDerivedDirectionUpdated() + Ogre::Vector3::UNIT_Y * 0.2f);
-			
-
-
-			//this->timeOfDay += this->timeMultiplicator->getReal() * dt;
-			//if (this->timeOfDay >= Ogre::Math::PI)
-			//{
-			//	this->timeOfDay = -Ogre::Math::PI + std::fmod(this->timeOfDay, Ogre::Math::PI);
-			//}
-
-			//this->azimuth += this->timeMultiplicator->getReal() * dt; // azimuth multiplier?
-			//this->azimuth = fmodf(this->azimuth, Ogre::Math::TWO_PI);
-
-			//this->atmosphereNpr->updatePreset(sunDir, this->timeOfDay / Ogre::Math::PI);
-
-			// Issue: Since ranges are not equal, short ranges will durate longer as longer ranges
-
-			// Day has 4 zones aka 6 hours. See @setStartTime table
-			Ogre::Real stabilisationFactor = 0.0f;
-			if (this->timeOfDay >= 0.0f && this->timeOfDay <= 0.5f)
+			// Calculate stabilization factor BEFORE modifying timeOfDay
+			Ogre::Real stabilisationFactor = 1.0f;  // Default
+			if (this->timeOfDay >= 0.0f && this->timeOfDay < 0.5f)
 			{
-				// 6 hours
-				stabilisationFactor = 6.0f / 6.0f;
+				stabilisationFactor = 6.0f / 6.0f;  // 6 hours
 			}
-			else if (this->timeOfDay > 0.5f && this->timeOfDay <= 1.0f)
+			else if (this->timeOfDay >= 0.5f && this->timeOfDay < 1.0f)
 			{
-				// 9 hours
-				stabilisationFactor = 6.0f / 9.0f;
+				stabilisationFactor = 6.0f / 6.0f;  // 6 hours (12:00-18:00)
 			}
 			else if (this->timeOfDay >= -1.0f && this->timeOfDay < -0.5f)
 			{
-				// 3 hours
-				stabilisationFactor = 6.0f / 3.0f;
+				stabilisationFactor = 6.0f / 6.0f;  // 6 hours (18:00-24:00)
 			}
 			else if (this->timeOfDay >= -0.5f && this->timeOfDay < 0.0f)
 			{
-				// 6 hours
-				stabilisationFactor = 6.0f / 6.0f;
+				stabilisationFactor = 6.0f / 6.0f;  // 6 hours
 			}
 
+			// Update time of day
 			this->timeOfDay += this->timeMultiplicator->getReal() * stabilisationFactor * dt;
+
+			// Smooth wrap to avoid teleport (critical!)
 			if (this->timeOfDay >= 1.0f)
 			{
-				this->timeOfDay = -1.0f + std::fmod(this->timeOfDay, 1.0f);
+				this->timeOfDay = -1.0f + (this->timeOfDay - 1.0f);
+			}
+			else if (this->timeOfDay < -1.0f)
+			{
+				this->timeOfDay = 1.0f + (this->timeOfDay + 1.0f);
 			}
 
-			this->azimuth += this->timeMultiplicator->getReal() * dt; // azimuth multiplier?
+			this->azimuth += this->timeMultiplicator->getReal() * dt;
 			this->azimuth = fmodf(this->azimuth, Ogre::Math::TWO_PI);
 
 			auto closureFunction2 = [this](Ogre::Real renderDt)
-			{
-				const float sunAngle = this->timeOfDay * Ogre::Math::PI; // [-PI..PI]
-				const Ogre::Vector3 localSunDir(cosf(sunAngle), -sinf(sunAngle), 0.0f);
+				{
+					const float sunAngle = this->timeOfDay * Ogre::Math::PI;
+					const Ogre::Vector3 localSunDir(cosf(sunAngle), -sinf(sunAngle), 0.0f);
+					const Ogre::Vector3 sunDir((Ogre::Quaternion(Ogre::Radian(this->azimuth), Ogre::Vector3::UNIT_Y) * localSunDir).normalisedCopy());
 
-				// Apply azimuth around Y like before
-				const Ogre::Vector3 sunDir((Ogre::Quaternion(Ogre::Radian(this->azimuth), Ogre::Vector3::UNIT_Y) * localSunDir).normalisedCopy());
+					Ogre::Quaternion newOrientation = MathHelper::getInstance()->faceDirectionSlerp(
+						this->lightDirectionalComponent->getOwner()->getSceneNode()->getOrientation(),
+						sunDir,
+						lightDirectionalComponent->getOwner()->getDefaultDirection(),
+						renderDt,
+						60.0f);
+					this->lightDirectionalComponent->getOwner()->getSceneNode()->_setDerivedOrientation(newOrientation);
 
-				// this->lightDirectionalComponent->getOgreLight()->setDirection(sunDir);
-				Ogre::Quaternion newOrientation = MathHelper::getInstance()->faceDirectionSlerp(this->lightDirectionalComponent->getOwner()->getSceneNode()->getOrientation(), sunDir, lightDirectionalComponent->getOwner()->getDefaultDirection(), renderDt, 60.0f);
-				this->lightDirectionalComponent->getOwner()->getSceneNode()->_setDerivedOrientation(newOrientation);
-				// Not used, because multpile presets and updatePreset is used
-				// this->atmosphereNpr->setSunDir(this->lightDirectionalComponent->getOgreLight()->getDerivedDirectionUpdated(), this->timeOfDay / Ogre::Math::PI);
-				this->atmosphereNpr->updatePreset(sunDir, this->timeOfDay/* / Ogre::Math::PI*/);
-				this->atmosphereNpr->_update(this->gameObjectPtr->getSceneManager(), NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera());
-			};
+					// AtmosphereNpr expects [0..1), NOT [-1..1]
+					float atmosphereTime01 = (this->timeOfDay + 1.0f) * 0.5f;
+
+					// Clamp defensively (important!)
+					atmosphereTime01 = Ogre::Math::Clamp(atmosphereTime01, 0.0f, 0.999999f);
+
+					this->atmosphereNpr->updatePreset(sunDir, atmosphereTime01);
+
+					this->atmosphereNpr->_update(this->gameObjectPtr->getSceneManager(),
+						NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera());
+				};
 			id = this->gameObjectPtr->getName() + this->getClassName() + "::update2" + Ogre::StringConverter::toString(this->index);
 			NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction2, false);
 
 			if (true == this->bShowDebugData)
 			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AtmosphereComponent] Time: " + time + " timeOfDayNormalized: " + Ogre::StringConverter::toString(this->timeOfDay));
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AtmosphereComponent] OgreLight PowerScale: " + Ogre::StringConverter::toString(this->lightDirectionalComponent->getOgreLight()->getPowerScale()));
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AtmosphereComponent] Preset SunPower: " + Ogre::StringConverter::toString(this->atmosphereNpr->getPreset().sunPower));
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AtmosphereComponent] Preset LinkedLightPower: " + Ogre::StringConverter::toString(this->atmosphereNpr->getPreset().linkedLightPower));
+				Ogre::String time = getCurrentTimeOfDay();  // <-- MOVED HERE!
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+					"[AtmosphereComponent] Time: " + time + " timeOfDayNormalized: " + Ogre::StringConverter::toString(this->timeOfDay));
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+					"[AtmosphereComponent] OgreLight PowerScale: " + Ogre::StringConverter::toString(this->lightDirectionalComponent->getOgreLight()->getPowerScale()));
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+					"[AtmosphereComponent] Preset SunPower: " + Ogre::StringConverter::toString(this->atmosphereNpr->getPreset().sunPower));
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+					"[AtmosphereComponent] Preset LinkedLightPower: " + Ogre::StringConverter::toString(this->atmosphereNpr->getPreset().linkedLightPower));
 			}
 		}
 	}
@@ -1054,21 +1049,27 @@ namespace NOWA
 				minutes = 0;
 			}
 			Ogre::Real factor = (hours + (minutes / 60.0f));
-			if (factor >= 6.0f && factor <= 12.0f)
+
+			// New Mapping - put evening hours in negative range
+			if (factor >= 6.0f && factor < 12.0f)
 			{
+				// Morning: 6:00 to 12:00 -> 0.0 to 0.5
 				normalizedTime = Interpolator::getInstance()->linearInterpolation(factor, 6.0f, 12.0f, 0.0f, 0.5f);
 			}
-			else if (factor > 12.0f && factor <= 21.0f)
+			else if (factor >= 12.0f && factor < 18.0f)
 			{
-				normalizedTime = Interpolator::getInstance()->linearInterpolation(factor, 12.0f, 21.0f, 0.5f, 1.0f);
+				// Afternoon: 12:00 to 18:00 -> 0.5 to 1.0
+				normalizedTime = Interpolator::getInstance()->linearInterpolation(factor, 12.0f, 18.0f, 0.5f, 1.0f);
 			}
-			else if (factor > 21.0f && factor < 24.0f)
+			else if (factor >= 18.0f && factor < 24.0f)
 			{
-				normalizedTime = Interpolator::getInstance()->linearInterpolation(factor, 21.0f, 24.0f, -1.0f, -0.5f);
+				// Evening: 18:00 to 24:00 -> -1.0 to -0.5
+				normalizedTime = Interpolator::getInstance()->linearInterpolation(factor, 18.0f, 24.0f, -1.0f, -0.5f);
 			}
 			else if (factor >= 0.0f && factor < 6.0f)
 			{
-				normalizedTime = Interpolator::getInstance()->linearInterpolation(factor, 0.0f, 6.0f, -0.5f, -0.0f);
+				// Night: 0:00 to 6:00 -> -0.5 to 0.0
+				normalizedTime = Interpolator::getInstance()->linearInterpolation(factor, 0.0f, 6.0f, -0.5f, 0.0f);
 			}
 		}
 		return normalizedTime;
@@ -1077,27 +1078,32 @@ namespace NOWA
 	Ogre::String AtmosphereComponent::getCurrentTimeOfDay(void)
 	{
 		Ogre::String time = "";
-
 		Ogre::Real value = 0.0f;
 
-		if (this->timeOfDay >= 0.0f && this->timeOfDay <= 0.5f)
+		if (this->timeOfDay >= 0.0f && this->timeOfDay < 0.5f)
 		{
+			// Morning: 0.0 to 0.5 → 6:00 to 12:00
 			value = Interpolator::getInstance()->linearInterpolation(this->timeOfDay, 0.0f, 0.5f, 6.0f, 12.0f);
 		}
-		else if (this->timeOfDay > 0.5f && this->timeOfDay <= 1.0f)
+		else if (this->timeOfDay >= 0.5f && this->timeOfDay < 1.0f)
 		{
-			value = Interpolator::getInstance()->linearInterpolation(this->timeOfDay, 0.5f, 1.0f, 12.0f, 21.0f);
+			// Afternoon: 0.5 to 1.0 → 12:00 to 18:00 (CHANGED from 21:00!)
+			value = Interpolator::getInstance()->linearInterpolation(this->timeOfDay, 0.5f, 1.0f, 12.0f, 18.0f);
 		}
 		else if (this->timeOfDay >= -1.0f && this->timeOfDay < -0.5f)
 		{
-			value = Interpolator::getInstance()->linearInterpolation(this->timeOfDay, -1.0f, -0.5f, 21.0f, 24.0f);
+			// Evening: -1.0 to -0.5 → 18:00 to 24:00 (CHANGED from 21:00!)
+			value = Interpolator::getInstance()->linearInterpolation(this->timeOfDay, -1.0f, -0.5f, 18.0f, 24.0f);
 		}
 		else if (this->timeOfDay >= -0.5f && this->timeOfDay < 0.0f)
 		{
-			value = Interpolator::getInstance()->linearInterpolation(this->timeOfDay, -0.5f, -0.0f, 0.0f, 6.0f);
+			// Night: -0.5 to 0.0 → 0:00 to 6:00
+			value = Interpolator::getInstance()->linearInterpolation(this->timeOfDay, -0.5f, 0.0f, 0.0f, 6.0f);
 		}
 
-		int hours = value;
+		int hours = static_cast<int>(value);
+		if (hours >= 24)
+			hours = 0;
 
 		time += (hours < 10 ? "0" + Ogre::StringConverter::toString(hours) : Ogre::StringConverter::toString(hours)) + ":";
 		int minutes = static_cast<int>(value * 60) % 60;
@@ -2011,7 +2017,7 @@ namespace NOWA
 		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "void setPresetCount(unsigned int presetCount)", "Sets the count of the atmosphere presets.");
 		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "unsigned int getPresetCount()", "Gets the count of the atmosphere presets.");
 
-		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "void setTime(unsigned int index, �string time)", "Sets the time for the preset in the format hh:mm, e.g. 16:45. The time must be in range [0; 24[.");
+		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "void setTime(unsigned int index, ´string time)", "Sets the time for the preset in the format hh:mm, e.g. 16:45. The time must be in range [0; 24[.");
 		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "string getTime(unsigned int index)", "Gets the time for the preset in the format hh:mm, e.g. 16:45. The time must be in range [0; 24[.");
 		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "void setDensityCoefficient(unsigned int index, float densityCoefficient)", " Sets the time for the preset in the format hh:mm, e.g. 16:45. The time must be in range [0; 24[.");
 		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "float getDensityCoefficient(unsigned int index)", "Gets the normalized time for the preset. The time must be in range [-1; 1] where range [-1; 0] is night and [0; 1] is day.");
