@@ -147,6 +147,25 @@ namespace NOWA
 		void setOceanCenter(const Ogre::Vector3& center);
 		Ogre::Vector3 getOceanCenter(void) const;
 
+		void setReflectionStrength(Ogre::Real v);
+		Ogre::Real getReflectionStrength(void) const;
+
+		void setBaseRoughness(Ogre::Real v);
+		Ogre::Real getBaseRoughness(void) const;
+
+		void setFoamRoughness(Ogre::Real v);
+		Ogre::Real getFoamRoughness(void) const;
+
+		void setAmbientReduction(Ogre::Real v);
+		Ogre::Real getAmbientReduction(void) const;
+
+		void setDiffuseScale(Ogre::Real v);
+		Ogre::Real getDiffuseScale(void) const;
+
+		void setFoamIntensity(Ogre::Real v);
+		Ogre::Real getFoamIntensity(void) const;
+
+
 		Ogre::Ocean* getOcean(void) const;
 
 		Ogre::HlmsOceanDatablock* getDatablock(void) const;
@@ -184,6 +203,12 @@ namespace NOWA
         static const Ogre::String AttrWaveTimeScale(void) { return "Wave Time Scale"; }
         static const Ogre::String AttrWaveFrequencyScale(void) { return "Wave Frequency Scale"; }
         static const Ogre::String AttrWaveChaos(void) { return "Wave Chaos"; }
+		static const Ogre::String AttrReflectionStrength(void) { return "Reflection Strength"; }
+		static const Ogre::String AttrBaseRoughness(void) { return "Base Roughness"; }
+		static const Ogre::String AttrFoamRoughness(void) { return "Foam Roughness"; }
+		static const Ogre::String AttrAmbientReduction(void) { return "Ambient Reduction"; }
+		static const Ogre::String AttrDiffuseScale(void) { return "Diffuse Scale"; }
+		static const Ogre::String AttrFoamIntensity(void) { return "Foam Intensity"; }
         static const Ogre::String AttrReflectionTexture(void) { return "Reflection Texture"; }
 	private:
 
@@ -218,6 +243,12 @@ namespace NOWA
         Variant* waveTimeScale;
         Variant* waveFrequencyScale;
         Variant* waveChaos;
+		Variant* reflectionStrength;
+		Variant* baseRoughness;
+		Variant* foamRoughness;
+		Variant* ambientReduction;
+		Variant* diffuseScale;
+		Variant* foamIntensity;
 		Variant* reflectionTextureName;
 	};
 

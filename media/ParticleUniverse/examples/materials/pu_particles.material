@@ -582,3 +582,13 @@ hlms ParticleUniverse/Pentagram_02 unlit
 	scene_blend add
     diffuse_map pump_pentagram_02.png
 }
+
+hlms Water/Wake unlit
+{
+	depth_write off
+	scene_blend alpha_blend
+	// Optional, if you want it later:
+	// alpha_test greater_equal 64
+
+	diffuse_map wake.png
+}

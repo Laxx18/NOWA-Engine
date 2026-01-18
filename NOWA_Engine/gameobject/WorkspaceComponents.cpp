@@ -413,6 +413,11 @@ namespace NOWA
 
 	bool WorkspaceBaseComponent::createWorkspace(void)
 	{
+		if (nullptr == this->gameObjectPtr)
+		{
+			return true;
+		}
+
 		Ogre::String name = this->gameObjectPtr->getName();
 
 		// NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.5f));

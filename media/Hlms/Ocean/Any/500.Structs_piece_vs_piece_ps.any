@@ -5,12 +5,12 @@
 struct Material
 {
     // Ocean datablock colours
-    float4 deepColour;    // deepColour.w = padding // TODO could be used for something in the future...
-    float4 shallowColour; // shallowColour.w = waveScale
+    float4 deepColour;    // RGB = deep color, W = reflectionStrength
+    float4 shallowColour; // RGB = shallow color, W = waveScale
 
-    float4 kD;          // .w is shadowConstantBias (important!)
-    float4 roughness;
-    float4 metalness;
+    float4 kD;          // RGB = (unused), W = shadowConstantBias
+    float4 roughness;   // X = baseRoughness, Y = foamRoughness, ZW = unused
+    float4 metalness;   // X = ambientReduction, Y = diffuseScale, Z = foamIntensity, W = unused
     float4 detailOffsetScale[4];
 
     @property( syntax != metal )

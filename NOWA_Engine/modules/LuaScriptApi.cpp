@@ -8787,55 +8787,219 @@ namespace NOWA
 	void bindOceanComponent(lua_State* lua)
 	{
 		module(lua)
-		[
-			class_<OceanComponent, GameObjectComponent>("OceanComponent")
-			.def("getParentClassName", &OceanComponent::getParentClassName)
+			[
+				class_<OceanComponent, GameObjectComponent>("OceanComponent")
+					.def("getParentClassName", &OceanComponent::getParentClassName)
 
-			.def("setUseSkirts", &OceanComponent::setUseSkirts)
-			.def("getUseSkirts", &OceanComponent::getUseSkirts)
+					// ===== Geometry / LOD =====
+					.def("setUseSkirts", &OceanComponent::setUseSkirts)
+					.def("getUseSkirts", &OceanComponent::getUseSkirts)
 
-			.def("setWavesIntensity", &OceanComponent::setWavesIntensity)
-			.def("getWavesIntensity", &OceanComponent::getWavesIntensity)
+					// ===== Wave shape =====
+					.def("setWavesIntensity", &OceanComponent::setWavesIntensity)
+					.def("getWavesIntensity", &OceanComponent::getWavesIntensity)
 
-			.def("setOceanWavesScale", &OceanComponent::setOceanWavesScale)
-			.def("getOceanWavesScale", &OceanComponent::getOceanWavesScale)
+					.def("setOceanWavesScale", &OceanComponent::setOceanWavesScale)
+					.def("getOceanWavesScale", &OceanComponent::getOceanWavesScale)
 
-			.def("setShaderWavesScale", &OceanComponent::setShaderWavesScale)
-			.def("getShaderWavesScale", &OceanComponent::getShaderWavesScale)
+					.def("setShaderWavesScale", &OceanComponent::setShaderWavesScale)
+					.def("getShaderWavesScale", &OceanComponent::getShaderWavesScale)
 
-			.def("setWaveTimeScale", &OceanComponent::setWaveTimeScale)
-			.def("getWaveTimeScale", &OceanComponent::getWaveTimeScale)
+					// ===== Wave animation =====
+					.def("setWaveTimeScale", &OceanComponent::setWaveTimeScale)
+					.def("getWaveTimeScale", &OceanComponent::getWaveTimeScale)
 
-			.def("setWaveFrequencyScale", &OceanComponent::setWaveFrequencyScale)
-			.def("getWaveFrequencyScale", &OceanComponent::getWaveFrequencyScale)
+					.def("setWaveFrequencyScale", &OceanComponent::setWaveFrequencyScale)
+					.def("getWaveFrequencyScale", &OceanComponent::getWaveFrequencyScale)
 
-			.def("setWaveChaos", &OceanComponent::setWaveChaos)
-			.def("getWaveChaos", &OceanComponent::getWaveChaos)
+					.def("setWaveChaos", &OceanComponent::setWaveChaos)
+					.def("getWaveChaos", &OceanComponent::getWaveChaos)
 
-			.def("isCameraUnderwater", &OceanComponent::isCameraUnderwater)
+					// ===== Shading / reflection =====
+					.def("setReflectionStrength", &OceanComponent::setReflectionStrength)
+					.def("getReflectionStrength", &OceanComponent::getReflectionStrength)
 
-			.def("isPositionUnderWater", (bool (OceanComponent::*)(const Ogre::Vector3&) const) &OceanComponent::isUnderWater)
-			.def("isGameObjectUnderWater", (bool (OceanComponent::*)(GameObject*)) &OceanComponent::isUnderWater)
-		];
+					.def("setBaseRoughness", &OceanComponent::setBaseRoughness)
+					.def("getBaseRoughness", &OceanComponent::getBaseRoughness)
 
-		AddClassToCollection("OceanComponent", "class inherits GameObjectComponent", OceanComponent::getStaticInfoText());
-		AddClassToCollection("OceanComponent", "void setUseSkirts(boolean useSkirts)", "Enables or disables ocean skirts to hide cracks between ocean LOD cells.");
-		AddClassToCollection("OceanComponent", "boolean getUseSkirts()", "Returns whether ocean skirts are enabled.");
-		AddClassToCollection("OceanComponent", "void setWavesIntensity(number intensity)", "Sets the overall wave amplitude which controls how high the waves are.");
-		AddClassToCollection("OceanComponent", "number getWavesIntensity()", "Gets the overall wave amplitude.");
-		AddClassToCollection("OceanComponent", "void setOceanWavesScale(number scale)", "Sets the large scale wave size where higher values produce larger and slower swells.");
-		AddClassToCollection("OceanComponent", "number getOceanWavesScale()", "Gets the large scale wave size.");
-		AddClassToCollection("OceanComponent", "void setShaderWavesScale(number scale)", "Sets the shader wave detail scale which controls fine surface detail.");
-		AddClassToCollection("OceanComponent", "number getShaderWavesScale()", "Gets the shader wave detail scale.");
-		AddClassToCollection("OceanComponent", "void setWaveTimeScale(number timeScale)", "Sets the wave animation speed multiplier.");
-		AddClassToCollection("OceanComponent", "number getWaveTimeScale()", "Gets the wave animation speed multiplier.");
-		AddClassToCollection("OceanComponent", "void setWaveFrequencyScale(number frequencyScale)", "Sets the wave frequency which controls how dense the wave pattern is.");
-		AddClassToCollection("OceanComponent", "number getWaveFrequencyScale()", "Gets the wave frequency scale.");
-		AddClassToCollection("OceanComponent", "void setWaveChaos(number chaos)", "Adds non uniform chaotic motion to waves to reduce repetitive patterns.");
-		AddClassToCollection("OceanComponent", "number getWaveChaos()", "Gets the wave chaos amount.");
-		AddClassToCollection("OceanComponent", "boolean isCameraUnderwater()", "Gets whether the in the ocean active camera is under water.");
-		AddClassToCollection("OceanComponent", "boolean isPositionUnderwater(Vector3 position)", "Gets whether the given position is under water.");
-		AddClassToCollection("OceanComponent", "boolean isGameObjectUnderWater(GameObject gameObject)", "Gets whether the given game object is under water.");
+					.def("setFoamRoughness", &OceanComponent::setFoamRoughness)
+					.def("getFoamRoughness", &OceanComponent::getFoamRoughness)
+
+					.def("setAmbientReduction", &OceanComponent::setAmbientReduction)
+					.def("getAmbientReduction", &OceanComponent::getAmbientReduction)
+
+					.def("setDiffuseScale", &OceanComponent::setDiffuseScale)
+					.def("getDiffuseScale", &OceanComponent::getDiffuseScale)
+
+					.def("setFoamIntensity", &OceanComponent::setFoamIntensity)
+					.def("getFoamIntensity", &OceanComponent::getFoamIntensity)
+
+					// ===== Water colours =====
+					.def("setDeepColour", &OceanComponent::setDeepColour)
+					.def("getDeepColour", &OceanComponent::getDeepColour)
+
+					.def("setShallowColour", &OceanComponent::setShallowColour)
+					.def("getShallowColour", &OceanComponent::getShallowColour)
+
+					// ===== Queries =====
+					.def("isCameraUnderwater", &OceanComponent::isCameraUnderwater)
+					.def("isPositionUnderWater",
+						(bool (OceanComponent::*)(const Ogre::Vector3&) const)
+						& OceanComponent::isUnderWater)
+					.def("isGameObjectUnderWater",
+						(bool (OceanComponent::*)(GameObject*))
+						& OceanComponent::isUnderWater)
+			];
+
+		// ==================== Class info ====================
+
+		AddClassToCollection("OceanComponent",
+			"class inherits GameObjectComponent",
+			OceanComponent::getStaticInfoText());
+
+		// ==================== Geometry / LOD ====================
+
+		AddClassToCollection("OceanComponent",
+			"void setUseSkirts(boolean useSkirts)",
+			"Enables or disables skirts on distant ocean cells to hide LOD cracks.");
+
+		AddClassToCollection("OceanComponent",
+			"boolean getUseSkirts()",
+			"Returns whether ocean skirts are enabled.");
+
+		// ==================== Wave shape ====================
+
+		AddClassToCollection("OceanComponent",
+			"void setWavesIntensity(number intensity)",
+			"Sets the wave amplitude which controls vertical displacement and wave height.");
+
+		AddClassToCollection("OceanComponent",
+			"number getWavesIntensity()",
+			"Returns the current wave amplitude.");
+
+		AddClassToCollection("OceanComponent",
+			"void setOceanWavesScale(number scale)",
+			"Sets the overall wave size and wavelength. Higher values create large, slow swells.");
+
+		AddClassToCollection("OceanComponent",
+			"number getOceanWavesScale()",
+			"Returns the wave size / wavelength scale.");
+
+		AddClassToCollection("OceanComponent",
+			"void setShaderWavesScale(number scale)",
+			"Sets the shader-side wave detail scale controlling fine surface detail and ripples.");
+
+		AddClassToCollection("OceanComponent",
+			"number getShaderWavesScale()",
+			"Returns the shader-side wave detail scale.");
+
+		// ==================== Wave animation ====================
+
+		AddClassToCollection("OceanComponent",
+			"void setWaveTimeScale(number timeScale)",
+			"Sets the global wave animation speed multiplier (1.0 = default).");
+
+		AddClassToCollection("OceanComponent",
+			"number getWaveTimeScale()",
+			"Returns the wave animation speed multiplier.");
+
+		AddClassToCollection("OceanComponent",
+			"void setWaveFrequencyScale(number frequencyScale)",
+			"Sets the wave frequency controlling how dense the wave pattern is.");
+
+		AddClassToCollection("OceanComponent",
+			"number getWaveFrequencyScale()",
+			"Returns the wave frequency scale.");
+
+		AddClassToCollection("OceanComponent",
+			"void setWaveChaos(number chaos)",
+			"Adds time-varying chaotic motion to reduce visible repetition in waves.");
+
+		AddClassToCollection("OceanComponent",
+			"number getWaveChaos()",
+			"Returns the wave chaos amount.");
+
+		// ==================== Shading / reflection ====================
+
+		AddClassToCollection("OceanComponent",
+			"void setReflectionStrength(number strength)",
+			"Sets the intensity of specular environment reflections on the water surface.");
+
+		AddClassToCollection("OceanComponent",
+			"number getReflectionStrength()",
+			"Returns the reflection strength.");
+
+		AddClassToCollection("OceanComponent",
+			"void setBaseRoughness(number roughness)",
+			"Sets the base water surface roughness controlling reflection sharpness.");
+
+		AddClassToCollection("OceanComponent",
+			"number getBaseRoughness()",
+			"Returns the base water surface roughness.");
+
+		AddClassToCollection("OceanComponent",
+			"void setFoamRoughness(number roughness)",
+			"Sets the roughness of foam areas, affecting highlight softness.");
+
+		AddClassToCollection("OceanComponent",
+			"number getFoamRoughness()",
+			"Returns the foam roughness.");
+
+		AddClassToCollection("OceanComponent",
+			"void setAmbientReduction(number reduction)",
+			"Reduces the contribution of ambient lighting on the ocean surface.");
+
+		AddClassToCollection("OceanComponent",
+			"number getAmbientReduction()",
+			"Returns the ambient light reduction factor.");
+
+		AddClassToCollection("OceanComponent",
+			"void setDiffuseScale(number scale)",
+			"Sets the diffuse lighting contribution on the water surface.");
+
+		AddClassToCollection("OceanComponent",
+			"number getDiffuseScale()",
+			"Returns the diffuse lighting scale.");
+
+		AddClassToCollection("OceanComponent",
+			"void setFoamIntensity(number intensity)",
+			"Sets the overall intensity and visibility of foam.");
+
+		AddClassToCollection("OceanComponent",
+			"number getFoamIntensity()",
+			"Returns the foam intensity.");
+
+		// ==================== Water colours ====================
+
+		AddClassToCollection("OceanComponent",
+			"void setDeepColour(Vector3 colour)",
+			"Sets the deep water colour used for shading large water depths.");
+
+		AddClassToCollection("OceanComponent",
+			"Vector3 getDeepColour()",
+			"Returns the deep water colour.");
+
+		AddClassToCollection("OceanComponent",
+			"void setShallowColour(Vector3 colour)",
+			"Sets the shallow water colour used for wave crests and foam.");
+
+		AddClassToCollection("OceanComponent",
+			"Vector3 getShallowColour()",
+			"Returns the shallow water colour.");
+
+		// ==================== Queries ====================
+
+		AddClassToCollection("OceanComponent",
+			"boolean isCameraUnderwater()",
+			"Returns whether the active ocean camera is currently underwater.");
+
+		AddClassToCollection("OceanComponent",
+			"boolean isPositionUnderWater(Vector3 position)",
+			"Returns whether the given world position is underwater.");
+
+		AddClassToCollection("OceanComponent",
+			"boolean isGameObjectUnderWater(GameObject gameObject)",
+			"Returns whether the given game object is underwater.");
 	}
 
 	Ogre::String getId2(JointComponent* instance)

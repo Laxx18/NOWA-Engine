@@ -2040,7 +2040,7 @@ namespace NOWA
 
 		if (GameObject::ITEM == this->type || GameObject::PLANE == this->type)
 		{
-			ENQUEUE_RENDER_COMMAND("GameObject::setUseReflection1",
+			ENQUEUE_RENDER_COMMAND_WAIT("GameObject::setUseReflection1",
 			{
 				Ogre::Item * item = this->getMovableObjectUnsafe<Ogre::Item>();
 				if (nullptr != item)
@@ -2088,7 +2088,7 @@ namespace NOWA
 		else if (GameObject::ENTITY == this->type)
 		{
 			// Similar pattern for entities
-			ENQUEUE_RENDER_COMMAND("GameObject::setUseReflection2",
+			ENQUEUE_RENDER_COMMAND_WAIT("GameObject::setUseReflection2",
 			{
 				Ogre::v1::Entity * entity = this->getMovableObject<Ogre::v1::Entity>();
 				if (nullptr != entity)
@@ -2130,48 +2130,49 @@ namespace NOWA
 		}
 		else if (GameObject::OCEAN == this->type)
 		{
-			ENQUEUE_RENDER_COMMAND("GameObject::setUseReflection3",
-			{
-				// Ocean uses HlmsOcean, not PBS datablocks
-				if (true == this->useReflection->getBool())
+			NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
 				{
-					WorkspaceBaseComponent* workspaceBaseComponent = WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent();
-
-					if (nullptr != workspaceBaseComponent)
+					// Ocean uses HlmsOcean, not PBS datablocks
+					if (true == this->useReflection->getBool())
 					{
-						Ogre::TextureGpu* cubemapTex = workspaceBaseComponent->getDynamicCubemapTexture();
-						if (nullptr != cubemapTex)
+						WorkspaceBaseComponent* workspaceBaseComponent = WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent();
+
+						if (nullptr != workspaceBaseComponent)
 						{
-							// Get OceanComponent (you already know it exists if type is Ocean)
-							auto oceanCompPtr = NOWA::makeStrongPtr(this->getComponent<OceanComponent>());
-
-							if (nullptr != oceanCompPtr)
+							Ogre::TextureGpu* cubemapTex = workspaceBaseComponent->getDynamicCubemapTexture();
+							if (nullptr != cubemapTex)
 							{
-								Ogre::HlmsOceanDatablock* oceanDatablock = oceanCompPtr->getDatablock();
+								// Get OceanComponent (you already know it exists if type is Ocean)
+								auto oceanCompPtr = NOWA::makeStrongPtr(this->getComponent<OceanComponent>());
 
-								if (nullptr != oceanDatablock)
+								if (nullptr != oceanCompPtr)
 								{
-									auto* hlmsOcean = static_cast<Ogre::HlmsOcean*>(Ogre::Root::getSingleton().getHlmsManager()->getHlms(Ogre::HLMS_USER1));
+									Ogre::HlmsOceanDatablock* oceanDatablock = oceanCompPtr->getDatablock();
 
-									if (nullptr != hlmsOcean)
+									if (nullptr != oceanDatablock)
 									{
-										hlmsOcean->setDatablockEnvReflection(oceanDatablock, cubemapTex);
+										auto* hlmsOcean = static_cast<Ogre::HlmsOcean*>(Ogre::Root::getSingleton().getHlmsManager()->getHlms(Ogre::HLMS_USER1));
+
+										if (nullptr != hlmsOcean)
+										{
+											hlmsOcean->setDatablockEnvReflection(oceanDatablock, cubemapTex);
+										}
 									}
 								}
 							}
 						}
-					}
-					else
-					{
-						auto* hlmsOcean = static_cast<Ogre::HlmsOcean*>(Ogre::Root::getSingleton().getHlmsManager()->getHlms(Ogre::HLMS_USER1));
-						if (hlmsOcean)
+						else
 						{
-							hlmsOcean->setDatablockEnvReflection(nullptr, "");
-							this->setDataBlockPbsReflectionTextureName("");
+							auto* hlmsOcean = static_cast<Ogre::HlmsOcean*>(Ogre::Root::getSingleton().getHlmsManager()->getHlms(Ogre::HLMS_USER1));
+							if (hlmsOcean)
+							{
+								hlmsOcean->setDatablockEnvReflection(nullptr, "");
+								this->setDataBlockPbsReflectionTextureName("");
+							}
 						}
 					}
-				}
-			});
+				};
+			NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObject::setUseReflection3");
 		}
 	}
 

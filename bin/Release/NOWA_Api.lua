@@ -20891,7 +20891,7 @@ return {
 			setUseSkirts =
 			{
 				type = "method",
-				description = "Enables or disables ocean skirts to hide cracks between ocean LOD cells.",
+				description = "Enables or disables skirts on distant ocean cells to hide LOD cracks.",
 				args = "(boolean useSkirts)",
 				returns = "(nil)",
 				valuetype = "nil"
@@ -20907,7 +20907,7 @@ return {
 			setWavesIntensity =
 			{
 				type = "method",
-				description = "Sets the overall wave amplitude which controls how high the waves are.",
+				description = "Sets the wave amplitude which controls vertical displacement and wave height.",
 				args = "(number intensity)",
 				returns = "(nil)",
 				valuetype = "nil"
@@ -20915,7 +20915,7 @@ return {
 			getWavesIntensity =
 			{
 				type = "function",
-				description = "Gets the overall wave amplitude.",
+				description = "Returns the current wave amplitude.",
 				args = "()",
 				returns = "(number)",
 				valuetype = "number"
@@ -20923,7 +20923,7 @@ return {
 			setOceanWavesScale =
 			{
 				type = "method",
-				description = "Sets the large scale wave size where higher values produce larger and slower swells.",
+				description = "Sets the overall wave size and wavelength. Higher values create large, slow swells.",
 				args = "(number scale)",
 				returns = "(nil)",
 				valuetype = "nil"
@@ -20931,7 +20931,7 @@ return {
 			getOceanWavesScale =
 			{
 				type = "function",
-				description = "Gets the large scale wave size.",
+				description = "Returns the wave size / wavelength scale.",
 				args = "()",
 				returns = "(number)",
 				valuetype = "number"
@@ -20939,7 +20939,7 @@ return {
 			setShaderWavesScale =
 			{
 				type = "method",
-				description = "Sets the shader wave detail scale which controls fine surface detail.",
+				description = "Sets the shader-side wave detail scale controlling fine surface detail and ripples.",
 				args = "(number scale)",
 				returns = "(nil)",
 				valuetype = "nil"
@@ -20947,7 +20947,7 @@ return {
 			getShaderWavesScale =
 			{
 				type = "function",
-				description = "Gets the shader wave detail scale.",
+				description = "Returns the shader-side wave detail scale.",
 				args = "()",
 				returns = "(number)",
 				valuetype = "number"
@@ -20955,7 +20955,7 @@ return {
 			setWaveTimeScale =
 			{
 				type = "method",
-				description = "Sets the wave animation speed multiplier.",
+				description = "Sets the global wave animation speed multiplier (1.0 = default).",
 				args = "(number timeScale)",
 				returns = "(nil)",
 				valuetype = "nil"
@@ -20963,7 +20963,7 @@ return {
 			getWaveTimeScale =
 			{
 				type = "function",
-				description = "Gets the wave animation speed multiplier.",
+				description = "Returns the wave animation speed multiplier.",
 				args = "()",
 				returns = "(number)",
 				valuetype = "number"
@@ -20971,7 +20971,7 @@ return {
 			setWaveFrequencyScale =
 			{
 				type = "method",
-				description = "Sets the wave frequency which controls how dense the wave pattern is.",
+				description = "Sets the wave frequency controlling how dense the wave pattern is.",
 				args = "(number frequencyScale)",
 				returns = "(nil)",
 				valuetype = "nil"
@@ -20979,7 +20979,7 @@ return {
 			getWaveFrequencyScale =
 			{
 				type = "function",
-				description = "Gets the wave frequency scale.",
+				description = "Returns the wave frequency scale.",
 				args = "()",
 				returns = "(number)",
 				valuetype = "number"
@@ -20987,7 +20987,7 @@ return {
 			setWaveChaos =
 			{
 				type = "method",
-				description = "Adds non uniform chaotic motion to waves to reduce repetitive patterns.",
+				description = "Adds time-varying chaotic motion to reduce visible repetition in waves.",
 				args = "(number chaos)",
 				returns = "(nil)",
 				valuetype = "nil"
@@ -20995,23 +20995,151 @@ return {
 			getWaveChaos =
 			{
 				type = "function",
-				description = "Gets the wave chaos amount.",
+				description = "Returns the wave chaos amount.",
 				args = "()",
 				returns = "(number)",
 				valuetype = "number"
 			},
+			setReflectionStrength =
+			{
+				type = "method",
+				description = "Sets the intensity of specular environment reflections on the water surface.",
+				args = "(number strength)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getReflectionStrength =
+			{
+				type = "function",
+				description = "Returns the reflection strength.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setBaseRoughness =
+			{
+				type = "method",
+				description = "Sets the base water surface roughness controlling reflection sharpness.",
+				args = "(number roughness)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getBaseRoughness =
+			{
+				type = "function",
+				description = "Returns the base water surface roughness.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setFoamRoughness =
+			{
+				type = "method",
+				description = "Sets the roughness of foam areas, affecting highlight softness.",
+				args = "(number roughness)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getFoamRoughness =
+			{
+				type = "function",
+				description = "Returns the foam roughness.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setAmbientReduction =
+			{
+				type = "method",
+				description = "Reduces the contribution of ambient lighting on the ocean surface.",
+				args = "(number reduction)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getAmbientReduction =
+			{
+				type = "function",
+				description = "Returns the ambient light reduction factor.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setDiffuseScale =
+			{
+				type = "method",
+				description = "Sets the diffuse lighting contribution on the water surface.",
+				args = "(number scale)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getDiffuseScale =
+			{
+				type = "function",
+				description = "Returns the diffuse lighting scale.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setFoamIntensity =
+			{
+				type = "method",
+				description = "Sets the overall intensity and visibility of foam.",
+				args = "(number intensity)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getFoamIntensity =
+			{
+				type = "function",
+				description = "Returns the foam intensity.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setDeepColour =
+			{
+				type = "method",
+				description = "Sets the deep water colour used for shading large water depths.",
+				args = "(Vector3 colour)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getDeepColour =
+			{
+				type = "function",
+				description = "Returns the deep water colour.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			setShallowColour =
+			{
+				type = "method",
+				description = "Sets the shallow water colour used for wave crests and foam.",
+				args = "(Vector3 colour)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getShallowColour =
+			{
+				type = "function",
+				description = "Returns the shallow water colour.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
 			isCameraUnderwater =
 			{
 				type = "function",
-				description = "Gets whether the in the ocean active camera is under water.",
+				description = "Returns whether the active ocean camera is currently underwater.",
 				args = "()",
 				returns = "(boolean)",
 				valuetype = "boolean"
 			},
-			isPositionUnderwater =
+			isPositionUnderWater =
 			{
 				type = "function",
-				description = "Gets whether the given position is under water.",
+				description = "Returns whether the given world position is underwater.",
 				args = "(Vector3 position)",
 				returns = "(boolean)",
 				valuetype = "boolean"
@@ -21019,7 +21147,7 @@ return {
 			isGameObjectUnderWater =
 			{
 				type = "function",
-				description = "Gets whether the given game object is under water.",
+				description = "Returns whether the given game object is underwater.",
 				args = "(GameObject gameObject)",
 				returns = "(boolean)",
 				valuetype = "boolean"

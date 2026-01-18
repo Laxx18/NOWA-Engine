@@ -128,29 +128,16 @@ namespace Ogre
         friend class HlmsOcean;
 
     protected:
-        // CRITICAL: Memory layout MUST match shader struct exactly!
-        // struct Material in shader:
-        //   float4 deepColour;
-        //   float4 shallowColour;
-        //   float4 kD;
-        //   float4 roughness;
-        //   float4 metalness;
-        //   float4 detailOffsetScale[4];
-        //   uint4 indices0_7;
-        //   uint4 indices8_15;
-        //   uint4 indices16_24;
-
-        Vector4 mDeepColour;        // RGB + padding
+        Vector4 mDeepColour;        // RGB + reflectionStrength
         Vector4 mShallowColour;     // RGB + waveScale
-        Vector4 mkD;                // XYZ + shadowConstantBias
-        Vector4 mRoughness;         // Ocean doesn't use these but shader expects them
-        Vector4 mMetalness;         // Ocean doesn't use these but shader expects them
-        Vector4 mDetailOffsetScale[4]; // Ocean doesn't use these but shader expects them
-        uint32  mIndices0_7[4];     // Ocean doesn't use these but shader expects them
-        uint32  mIndices8_15[4];    // Ocean doesn't use these but shader expects them
-        uint32  mIndices16_24[4];   // Ocean doesn't use these but shader expects them
+        Vector4 mkD;                // RGB + shadowConstantBias
+        Vector4 mRoughness;         // x=baseRoughness, y=foamRoughness, z=unused, w=unused
+        Vector4 mMetalness;         // x=ambientReduction, y=diffuseScale, z=foamIntensity, w=unused
+        Vector4 mDetailOffsetScale[4];
+        uint32  mIndices0_7[4];
+        uint32  mIndices8_15[4];
+        uint32  mIndices16_24[4];
 
-        /// @see OceanBrdf::OceanBrdf
         uint32  mBrdf;
 
         void cloneImpl(HlmsDatablock* datablock) const override;
@@ -170,6 +157,36 @@ namespace Ogre
 
         void setShallowColour( const Vector3 &shallowColour );
         Vector3 getShallowColour(void) const;
+
+        // ===== Reflection =====
+        /// Controls strength of cubemap reflections (0.0 = none, 1.0 = full)
+        /// Stored in deepColour.w
+        void setReflectionStrength(float strength);
+        float getReflectionStrength() const;
+
+        // ===== Roughness =====
+        /// Base roughness for calm water (typically 0.01-0.05)
+        void setBaseRoughness(float roughness);
+        float getBaseRoughness() const;
+
+        /// Roughness for foamy water (typically 0.3-0.7)
+        void setFoamRoughness(float roughness);
+        float getFoamRoughness() const;
+
+        // ===== Ambient & Diffuse =====
+        /// Reduction factor for ambient hemisphere when reflections are active (0.0 = none, 1.0 = 50% reduction)
+        void setAmbientReduction(float reduction);
+        float getAmbientReduction() const;
+
+        /// Scale factor for diffuse color (0.0 = pure reflective, 1.0 = full diffuse)
+        void setDiffuseScale(float scale);
+        float getDiffuseScale() const;
+
+        // ===== Foam =====
+        /// Controls foam intensity (0.0 = no foam, 1.0 = full foam)
+        void setFoamIntensity(float intensity);
+        float getFoamIntensity() const;
+
 
         void setWavesScale( float scale );
         float getWavesScale() const;

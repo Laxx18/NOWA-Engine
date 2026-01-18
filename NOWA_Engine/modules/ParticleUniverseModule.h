@@ -73,6 +73,7 @@ namespace NOWA
 		//PUMediaPack/Woosh
 		//PUMediaPack/ElectroShield
 		//PUMediaPack/Fireplace_02
+		//Water/Wake
 		//example_028 für Vulkan! zu PerformanceLastig alle Examples!
 
 		void init(Ogre::SceneManager* sceneManager);

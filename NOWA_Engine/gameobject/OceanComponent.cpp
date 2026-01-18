@@ -33,33 +33,108 @@ namespace NOWA
 		wavesIntensity(new Variant(OceanComponent::AttrWavesIntensity(), 0.8f, this->attributes)),
 		oceanWavesScale(new Variant(OceanComponent::AttrOceanWavesScale(), 1.6f, this->attributes)),
 		oceanSize(new Variant(OceanComponent::AttrOceanSize(), Ogre::Vector2(200.0f, 200.0f), this->attributes)),
-		oceanCenter(new Variant(OceanComponent::AttrOceanCenter(), Ogre::Vector3::ZERO, this->attributes))
-,
+		oceanCenter(new Variant(OceanComponent::AttrOceanCenter(), Ogre::Vector3::ZERO, this->attributes)),
 		useSkirts(new Variant(OceanComponent::AttrUseSkirts(), true, this->attributes)),
 		waveTimeScale(new Variant(OceanComponent::AttrWaveTimeScale(), 2.0f, this->attributes)),
 		waveFrequencyScale(new Variant(OceanComponent::AttrWaveFrequencyScale(), 1.0f, this->attributes)),
-		waveChaos(new Variant(OceanComponent::AttrWaveChaos(), 0.0f, this->attributes))
+		waveChaos(new Variant(OceanComponent::AttrWaveChaos(), 0.0f, this->attributes)),
+		reflectionStrength(new Variant(AttrReflectionStrength(), 1.0f, attributes)),
+		baseRoughness(new Variant(AttrBaseRoughness(), 0.01f, attributes)),
+		foamRoughness(new Variant(AttrFoamRoughness(), 0.5f, attributes)),
+		ambientReduction(new Variant(AttrAmbientReduction(), 0.5f, attributes)),
+		diffuseScale(new Variant(AttrDiffuseScale(), 0.01f, attributes)),
+		foamIntensity(new Variant(AttrFoamIntensity(), 1.0f, attributes))
 	{
 		this->cameraId->setDescription("The optional camera game object id which can be set. E.g. useful if the MinimapComponent is involved, to set the minimap camera, so that ocean is painted correctly on minimap. Can be left of, default is the main active camera.");
 
 		this->deepColour->setDescription("Ocean deep water colour (Vector3 RGB). Example values: Dark stormy ocean: 0.10 0.15 0.40, Natural deep blue ocean: 0.13 0.22 0.57, "
 			"Tropical deep water: 0.20 0.30 0.60. Use lower values for darker oceans and higher values for clearer water. Values are multiplied internally by INV_PI.");
+		this->deepColour->addUserData(GameObject::AttrActionColorDialog());
 
 
 		this->shallowColour->setDescription("Ocean shallow water colour (Vector3 RGB). Example values: Cold shallow water: 0.25 0.50 0.80, Natural wave crests: 0.31 0.79 1.41, "
 			"Tropical turquoise water: 0.60 1.40 2.20. Use higher and more greenish values than deepColour to get bright waves and foam. Values are multiplied internally by INV_PI.");
+		this->shallowColour->addUserData(GameObject::AttrActionColorDialog());
 
 		this->brdf->setDescription("Ocean BRDF model (enum as integer, e.g. BlinnPhong).");
-		this->shaderWavesScale->setDescription("Shader-side wave/detail scale.");
-		this->wavesIntensity->setDescription("Wave amplitude/intensity.");
-		this->oceanWavesScale->setDescription("Wave/tiling scale.");
-		this->oceanSize->setDescription("Ocean size in world units (Vector2).");
-		this->oceanCenter->setDescription("Ocean center position in world space (Vector3).");
 
-		this->useSkirts->setDescription("Enables skirts on far ocean cells to hide LOD cracks (may slightly change silhouette).");
-		this->waveTimeScale->setDescription("Global time scale for wave scrolling (1.0 = default).");
-		this->waveFrequencyScale->setDescription("Global frequency scale for wave UVs (1.0 = default).");
-		this->waveChaos->setDescription("Adds additional time-varying rotation/scale offsets for more chaotic movement (0.0 = off).");
+		// ==================== Wave shape & detail ====================
+
+		this->shaderWavesScale->setDescription(
+			"Shader-side wave detail scale. Controls the frequency of fine surface detail and normals. "
+			"Lower values smooth the surface, higher values add sharper, more detailed ripples.");
+		this->shaderWavesScale->setConstraints(0.25f, 4.0f);
+
+		this->wavesIntensity->setDescription(
+			"Wave amplitude / height scale. Controls the vertical displacement of the ocean surface. "
+			"Higher values create larger waves and stronger silhouettes.");
+		this->wavesIntensity->setConstraints(0.0f, 2.0f);
+
+		this->oceanWavesScale->setDescription(
+			"Wave size / tiling scale. Controls the overall wavelength of ocean waves. "
+			"Lower values create denser, choppier waves, higher values produce large, slow swells.");
+		this->oceanWavesScale->setConstraints(0.25f, 4.0f);
+
+		// ==================== Ocean placement & geometry ====================
+
+		this->oceanSize->setDescription(
+			"Ocean size in world units. Defines the horizontal extent of the ocean surface (X/Z). "
+			"Larger values cover more area but may increase update cost.");
+
+		this->oceanCenter->setDescription(
+			"Ocean center position in world space. The ocean surface is generated symmetrically around this point.");
+
+		this->useSkirts->setDescription(
+			"Enables skirts on distant ocean cells to hide LOD cracks. "
+			"Recommended for above-water views; automatically disabled when underwater.");
+
+		// ==================== Wave animation ====================
+
+		this->waveTimeScale->setDescription(
+			"Global wave animation speed multiplier. Scales the time progression of all wave motion. "
+			"Values above 1.0 speed up the ocean, lower values slow it down.");
+		this->waveTimeScale->setConstraints(0.0f, 3.0f);
+
+		this->waveFrequencyScale->setDescription(
+			"Wave frequency scale. Controls how often wave patterns repeat across the surface. "
+			"Higher values increase wave density, lower values create broader, smoother patterns.");
+		this->waveFrequencyScale->setConstraints(0.25f, 2.5f);
+
+		this->waveChaos->setDescription(
+			"Wave chaos factor. Adds time-varying rotation and scale offsets to reduce visible repetition. "
+			"Small values add natural variation; high values create chaotic, unstable motion.");
+		this->waveChaos->setConstraints(0.0f, 1.0f);
+
+		// ==================== Reflection & shading ====================
+
+		this->reflectionStrength->setDescription(
+			"Reflection strength. Controls the intensity of specular environment reflections on the water surface. "
+			"Lower values reduce mirror-like appearance.");
+		this->reflectionStrength->setConstraints(0.0f, 1.0f);
+
+		this->baseRoughness->setDescription(
+			"Base water surface roughness. Controls the sharpness of reflections on calm water areas. "
+			"Lower values produce crisp reflections, higher values blur them.");
+		this->baseRoughness->setConstraints(0.001f, 1.0f);
+
+		this->foamRoughness->setDescription(
+			"Foam roughness. Controls reflection sharpness in foam-covered areas. "
+			"Higher values soften highlights and reduce specular intensity on foam.");
+		this->foamRoughness->setConstraints(0.001f, 1.0f);
+
+		this->ambientReduction->setDescription(
+			"Ambient light reduction factor. Reduces the contribution of ambient lighting on the ocean surface. "
+			"Useful to prevent overly bright or flat-looking water.");
+		this->ambientReduction->setConstraints(0.0f, 1.0f);
+
+		this->diffuseScale->setDescription(
+			"Diffuse lighting scale. Controls the amount of diffuse light applied to the water surface. "
+			"Water typically relies more on reflections than diffuse shading.");
+		this->diffuseScale->setConstraints(0.0f, 1.0f);
+
+		this->foamIntensity->setDescription(
+			"Foam intensity. Controls overall visibility and brightness of foam patterns on the water surface.");
+		this->foamIntensity->setConstraints(0.0f, 1.0f);
 
 		this->reflectionTextureName->setDescription("Reflection cubemap texture used for ocean specular reflections (Skies/*.dds).");
 		this->setReflectionTextureNames();
@@ -118,7 +193,6 @@ namespace NOWA
 			this->oceanWavesScale->setValue(XMLConverter::getAttribReal(propertyElement, "data", 1.6f));
 			propertyElement = propertyElement->next_sibling("property");
 		}
-
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "UseSkirts")
 		{
 			this->useSkirts->setValue(XMLConverter::getAttribBool(propertyElement, "data", true));
@@ -139,18 +213,47 @@ namespace NOWA
 			this->waveChaos->setValue(XMLConverter::getAttribReal(propertyElement, "data", 0.0f));
 			propertyElement = propertyElement->next_sibling("property");
 		}
-
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Size")
 		{
 			this->oceanSize->setValue(XMLConverter::getAttribVector2(propertyElement, "data", Ogre::Vector2(200.0f, 200.0f)));
 			propertyElement = propertyElement->next_sibling("property");
 		}
-
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Center")
 		{
 			this->oceanCenter->setValue(XMLConverter::getAttribVector3(propertyElement, "data", Ogre::Vector3::ZERO));
 			propertyElement = propertyElement->next_sibling("property");
 		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "ReflectionStrength")
+		{
+			reflectionStrength->setValue(XMLConverter::getAttribReal(propertyElement, "data", 1.0f));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "BaseRoughness")
+		{
+			baseRoughness->setValue(XMLConverter::getAttribReal(propertyElement, "data", 0.01f));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "FoamRoughness")
+		{
+			foamRoughness->setValue(XMLConverter::getAttribReal(propertyElement, "data", 0.5f));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AmbientReduction")
+		{
+			ambientReduction->setValue(XMLConverter::getAttribReal(propertyElement, "data", 0.5f));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "DiffuseScale")
+		{
+			diffuseScale->setValue(XMLConverter::getAttribReal(propertyElement, "data", 0.01f));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "FoamIntensity")
+		{
+			foamIntensity->setValue(XMLConverter::getAttribReal(propertyElement, "data", 1.0f));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+
 		return true;
 	}
 
@@ -313,10 +416,20 @@ namespace NOWA
 					this->datablock->setDeepColour(this->deepColour->getVector3());
 					this->datablock->setShallowColour(this->shallowColour->getVector3());
 
+					this->datablock->setReflectionStrength(reflectionStrength->getReal());
+					this->datablock->setBaseRoughness(baseRoughness->getReal());
+					this->datablock->setFoamRoughness(foamRoughness->getReal());
+					this->datablock->setAmbientReduction(ambientReduction->getReal());
+					this->datablock->setDiffuseScale(diffuseScale->getReal());
+					this->datablock->setFoamIntensity(foamIntensity->getReal());
+
+
 					this->datablock->setBrdf(this->mapStringToOceanBrdf(this->brdf->getListSelectedValue()));
 
 					// Shader-side detail scale
 					this->datablock->setWavesScale(this->shaderWavesScale->getReal());
+
+					this->setReflectionTextureName(this->reflectionTextureName->getListSelectedValue());
 				}
 
 				// Example json material usage:
@@ -348,7 +461,9 @@ namespace NOWA
 	void OceanComponent::setReflectionTextureNames(void)
 	{
 		if (nullptr == this->reflectionTextureName)
+		{
 			return;
+		}
 
 		const Ogre::String prevSelected = this->reflectionTextureName->getListSelectedValue();
 
@@ -359,7 +474,7 @@ namespace NOWA
 		try
 		{
 			if (Ogre::ResourceGroupManager::getSingleton().resourceGroupExists("Skies"))
-		{
+			{
 				Ogre::StringVectorPtr skyNames = Ogre::ResourceGroupManager::getSingleton().findResourceNames("Skies", "*.dds");
 				if (false == skyNames.isNull())
 				{
@@ -370,8 +485,7 @@ namespace NOWA
 		}
 		catch (const Ogre::Exception& e)
 		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
-				"[OceanComponent] setReflectionTextureNames exception: " + e.getFullDescription());
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[OceanComponent] setReflectionTextureNames exception: " + e.getFullDescription());
 		}
 
 		this->reflectionTextureName->getList().clear();
@@ -565,6 +679,30 @@ namespace NOWA
 			this->destroyOcean();
 			this->createOcean();
 		}
+		else if (AttrReflectionStrength() == attribute->getName())
+		{
+			setReflectionStrength(attribute->getReal());
+		}
+		else if (AttrBaseRoughness() == attribute->getName())
+		{
+			setBaseRoughness(attribute->getReal());
+		}
+		else if (AttrFoamRoughness() == attribute->getName())
+		{
+			setFoamRoughness(attribute->getReal());
+		}
+		else if (AttrAmbientReduction() == attribute->getName())
+		{
+			setAmbientReduction(attribute->getReal());
+		}
+		else if (AttrDiffuseScale() == attribute->getName())
+		{
+			setDiffuseScale(attribute->getReal());
+		}
+		else if (AttrFoamIntensity() == attribute->getName())
+		{
+			setFoamIntensity(attribute->getReal());
+		}
 	}
 
 	void OceanComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
@@ -672,7 +810,43 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("name", "Center"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->oceanCenter->getVector3())));
 		propertiesXML->append_node(propertyXML);
-		
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "ReflectionStrength"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->reflectionStrength->getReal())));
+		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "BaseRoughness"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->baseRoughness->getReal())));
+		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "FoamRoughness"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->foamRoughness->getReal())));
+		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "AmbientReduction"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->ambientReduction->getReal())));
+		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "DiffuseScale"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->diffuseScale->getReal())));
+		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "FoamIntensity"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->foamIntensity->getReal())));
+		propertiesXML->append_node(propertyXML);
+
 	}
 
 	/*void OceanComponent::setActivated(bool activated)
@@ -1083,6 +1257,144 @@ namespace NOWA
 	Ogre::Vector3 OceanComponent::getOceanCenter(void) const
 	{
 		return this->oceanCenter->getVector3();
+	}
+
+	void OceanComponent::setReflectionStrength(Ogre::Real strength)
+	{
+		this->reflectionStrength->setValue(strength);
+
+		if (nullptr != this->datablock)
+		{
+			const Ogre::Real s = strength;
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("OceanComponent::setReflectionStrength", _1(s),
+				{
+					if (nullptr != this->datablock)
+					{
+						static_cast<Ogre::HlmsOceanDatablock*>(this->datablock)
+							->setReflectionStrength(s);
+					}
+				});
+		}
+	}
+
+	Ogre::Real OceanComponent::getReflectionStrength(void) const
+	{
+		return this->reflectionStrength->getReal();
+	}
+
+	void OceanComponent::setBaseRoughness(Ogre::Real roughness)
+	{
+		this->baseRoughness->setValue(roughness);
+
+		if (nullptr != this->datablock)
+		{
+			const Ogre::Real r = roughness;
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("OceanComponent::setBaseRoughness", _1(r),
+				{
+					if (nullptr != this->datablock)
+					{
+						static_cast<Ogre::HlmsOceanDatablock*>(this->datablock)
+							->setBaseRoughness(r);
+					}
+				});
+		}
+	}
+
+	Ogre::Real OceanComponent::getBaseRoughness(void) const
+	{
+		return this->baseRoughness->getReal();
+	}
+
+	void OceanComponent::setFoamRoughness(Ogre::Real roughness)
+	{
+		this->foamRoughness->setValue(roughness);
+
+		if (nullptr != this->datablock)
+		{
+			const Ogre::Real r = roughness;
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("OceanComponent::setFoamRoughness", _1(r),
+				{
+					if (nullptr != this->datablock)
+					{
+						static_cast<Ogre::HlmsOceanDatablock*>(this->datablock)
+							->setFoamRoughness(r);
+					}
+				});
+		}
+	}
+
+	Ogre::Real OceanComponent::getFoamRoughness(void) const
+	{
+		return this->foamRoughness->getReal();
+	}
+
+	void OceanComponent::setAmbientReduction(Ogre::Real reduction)
+	{
+		this->ambientReduction->setValue(reduction);
+
+		if (nullptr != this->datablock)
+		{
+			const Ogre::Real r = reduction;
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("OceanComponent::setAmbientReduction", _1(r),
+				{
+					if (nullptr != this->datablock)
+					{
+						static_cast<Ogre::HlmsOceanDatablock*>(this->datablock)
+							->setAmbientReduction(r);
+					}
+				});
+		}
+	}
+
+	Ogre::Real OceanComponent::getAmbientReduction(void) const
+	{
+		return this->ambientReduction->getReal();
+	}
+
+	void OceanComponent::setDiffuseScale(Ogre::Real scale)
+	{
+		this->diffuseScale->setValue(scale);
+
+		if (nullptr != this->datablock)
+		{
+			const Ogre::Real s = scale;
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("OceanComponent::setDiffuseScale", _1(s),
+				{
+					if (nullptr != this->datablock)
+					{
+						static_cast<Ogre::HlmsOceanDatablock*>(this->datablock)
+							->setDiffuseScale(s);
+					}
+				});
+		}
+	}
+
+	Ogre::Real OceanComponent::getDiffuseScale(void) const
+	{
+		return this->diffuseScale->getReal();
+	}
+
+	void OceanComponent::setFoamIntensity(Ogre::Real intensity)
+	{
+		this->foamIntensity->setValue(intensity);
+
+		if (nullptr != this->datablock)
+		{
+			const Ogre::Real i = intensity;
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("OceanComponent::setFoamIntensity", _1(i),
+				{
+					if (nullptr != this->datablock)
+					{
+						static_cast<Ogre::HlmsOceanDatablock*>(this->datablock)
+							->setFoamIntensity(i);
+					}
+				});
+		}
+	}
+
+	Ogre::Real OceanComponent::getFoamIntensity(void) const
+	{
+		return this->foamIntensity->getReal();
 	}
 
 	unsigned int OceanComponent::geCameraId(void) const

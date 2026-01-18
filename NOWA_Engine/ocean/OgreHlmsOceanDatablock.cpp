@@ -24,26 +24,22 @@ namespace Ogre
         const HlmsBlendblock* blendblock,
         const HlmsParamVec& params) :
         HlmsOceanBaseTextureDatablock(name, creator, macroblock, blendblock, params),
-        mDeepColour(0.0f, 0.03f * 0.318309886f, 0.05f * 0.318309886f, 0.0f),
-        mShallowColour(0.0f, 0.08f * 0.318309886f, 0.1f * 0.318309886f, 1.0f),
+        mDeepColour(0.0f, 0.03f * 0.318309886f, 0.05f * 0.318309886f, 1.0f),  // .w = reflectionStrength
+        mShallowColour(0.0f, 0.08f * 0.318309886f, 0.1f * 0.318309886f, 1.0f), // .w = waveScale
         mkD(1.0f, 1.0f, 1.0f, 0.0f), // White diffuse, shadowBias = 0
-        mRoughness(0.02f, 0.02f, 0.02f, 0.02f), // Low roughness for water
-        mMetalness(0.0f, 0.0f, 0.0f, 0.0f), // Water is non-metallic
+        mRoughness(0.01f, 0.5f, 0.0f, 0.0f), // x=baseRoughness, y=foamRoughness
+        mMetalness(0.5f, 0.01f, 1.0f, 0.0f), // x=ambientReduction, y=diffuseScale, z=foamIntensity
         mBrdf(OceanBrdf::Default)
     {
         // Initialize detail offset/scale (not used but must be initialized)
         for (int i = 0; i < 4; ++i)
             mDetailOffsetScale[i] = Vector4(0.0f, 0.0f, 1.0f, 1.0f);
 
-        // Initialize indices (not used but must be initialized)
         memset(mIndices0_7, 0, sizeof(mIndices0_7));
         memset(mIndices8_15, 0, sizeof(mIndices8_15));
         memset(mIndices16_24, 0, sizeof(mIndices16_24));
 
-        // Request slot FIRST
         creator->requestSlot(0, this, false);
-
-        // Calculate hash
         calculateHash();
     }
     //-----------------------------------------------------------------------------------
@@ -177,6 +173,72 @@ namespace Ogre
     Vector3 HlmsOceanDatablock::getShallowColour() const
     {
         return Vector3(mShallowColour.x, mShallowColour.y, mShallowColour.z) * Ogre::Math::PI;
+    }
+    //-----------------------------------------------------------------------------------
+    void HlmsOceanDatablock::setReflectionStrength(float strength)
+    {
+        mDeepColour.w = Math::Clamp(strength, 0.0f, 1.0f);
+        scheduleConstBufferUpdate();
+    }
+    //-----------------------------------------------------------------------------------
+    float HlmsOceanDatablock::getReflectionStrength() const
+    {
+        return mDeepColour.w;
+    }
+    //-----------------------------------------------------------------------------------
+    void HlmsOceanDatablock::setBaseRoughness(float roughness)
+    {
+        mRoughness.x = Math::Clamp(roughness, 0.001f, 1.0f);
+        scheduleConstBufferUpdate();
+    }
+    //-----------------------------------------------------------------------------------
+    float HlmsOceanDatablock::getBaseRoughness() const
+    {
+        return mRoughness.x;
+    }
+    //-----------------------------------------------------------------------------------
+    void HlmsOceanDatablock::setFoamRoughness(float roughness)
+    {
+        mRoughness.y = Math::Clamp(roughness, 0.001f, 1.0f);
+        scheduleConstBufferUpdate();
+    }
+    //-----------------------------------------------------------------------------------
+    float HlmsOceanDatablock::getFoamRoughness() const
+    {
+        return mRoughness.y;
+    }
+    //-----------------------------------------------------------------------------------
+    void HlmsOceanDatablock::setAmbientReduction(float reduction)
+    {
+        mMetalness.x = Math::Clamp(reduction, 0.0f, 1.0f);
+        scheduleConstBufferUpdate();
+    }
+    //-----------------------------------------------------------------------------------
+    float HlmsOceanDatablock::getAmbientReduction() const
+    {
+        return mMetalness.x;
+    }
+    //-----------------------------------------------------------------------------------
+    void HlmsOceanDatablock::setDiffuseScale(float scale)
+    {
+        mMetalness.y = Math::Clamp(scale, 0.0f, 1.0f);
+        scheduleConstBufferUpdate();
+    }
+    //-----------------------------------------------------------------------------------
+    float HlmsOceanDatablock::getDiffuseScale() const
+    {
+        return mMetalness.y;
+    }
+    //-----------------------------------------------------------------------------------
+    void HlmsOceanDatablock::setFoamIntensity(float intensity)
+    {
+        mMetalness.z = Math::Clamp(intensity, 0.0f, 1.0f);
+        scheduleConstBufferUpdate();
+    }
+    //-----------------------------------------------------------------------------------
+    float HlmsOceanDatablock::getFoamIntensity() const
+    {
+        return mMetalness.z;
     }
     //-----------------------------------------------------------------------------------
     void HlmsOceanDatablock::setWavesScale(float scale)
