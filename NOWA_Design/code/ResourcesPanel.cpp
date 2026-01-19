@@ -207,10 +207,13 @@ void ResourcesPanelMeshes::initialise()
 
 void ResourcesPanelMeshes::shutdown()
 {
-	this->meshesTree->eventTreeNodePrepare -= newDelegate(this, &ResourcesPanelMeshes::notifyTreeNodePrepare);
-	this->meshesTree->eventTreeNodeSelected -= newDelegate(this, &ResourcesPanelMeshes::notifyTreeNodeSelected);
+	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelMeshes::shutdown",
+	{
+		this->meshesTree->eventTreeNodePrepare -= newDelegate(this, &ResourcesPanelMeshes::notifyTreeNodePrepare);
+		this->meshesTree->eventTreeNodeSelected -= newDelegate(this, &ResourcesPanelMeshes::notifyTreeNodeSelected);
 
-	BaseLayout::shutdown();
+		BaseLayout::shutdown();
+	});
 }
 
 void ResourcesPanelMeshes::editTextChange(MyGUI::Widget* sender)
@@ -510,7 +513,10 @@ void ResourcesPanelMeshPreview::initialise()
 
 void ResourcesPanelMeshPreview::shutdown()
 {
-	BaseLayout::shutdown();
+	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelMeshPreview::shutdown",
+	{
+		BaseLayout::shutdown();
+	});
 }
 
 void ResourcesPanelMeshPreview::actualizeMesh(void)
@@ -586,15 +592,18 @@ void ResourcesPanelGameObjects::initialise()
 
 void ResourcesPanelGameObjects::shutdown()
 {
-	this->resourcesSearchEdit->eventToolTip -= MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
-	this->resourcesSearchEdit->eventMouseLostFocus -= MyGUI::newDelegate(this, &ResourcesPanelGameObjects::mouseLostFocus);
-	this->resourcesSearchEdit->eventRootMouseChangeFocus -= MyGUI::newDelegate(this, &ResourcesPanelGameObjects::mouseRootChangeFocus);
-	this->resourcesSearchEdit->eventEditTextChange -= MyGUI::newDelegate(this, &ResourcesPanelGameObjects::editTextChange);
-	this->resourcesSearchEdit->eventMouseButtonClick -= MyGUI::newDelegate(this, &ResourcesPanelGameObjects::onMouseClick);
-	this->gameObjectsTree->eventTreeNodeSelected -= newDelegate(this, &ResourcesPanelGameObjects::notifyTreeNodeSelected);
-	this->gameObjectsTree->eventKeyButtonPressed -= newDelegate(this, &ResourcesPanelGameObjects::keyButtonPressed);
+	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelGameObjects::shutdown",
+	{
+		this->resourcesSearchEdit->eventToolTip -= MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+		this->resourcesSearchEdit->eventMouseLostFocus -= MyGUI::newDelegate(this, &ResourcesPanelGameObjects::mouseLostFocus);
+		this->resourcesSearchEdit->eventRootMouseChangeFocus -= MyGUI::newDelegate(this, &ResourcesPanelGameObjects::mouseRootChangeFocus);
+		this->resourcesSearchEdit->eventEditTextChange -= MyGUI::newDelegate(this, &ResourcesPanelGameObjects::editTextChange);
+		this->resourcesSearchEdit->eventMouseButtonClick -= MyGUI::newDelegate(this, &ResourcesPanelGameObjects::onMouseClick);
+		this->gameObjectsTree->eventTreeNodeSelected -= newDelegate(this, &ResourcesPanelGameObjects::notifyTreeNodeSelected);
+		this->gameObjectsTree->eventKeyButtonPressed -= newDelegate(this, &ResourcesPanelGameObjects::keyButtonPressed);
 
-	BaseLayout::shutdown();
+		BaseLayout::shutdown();
+	});
 }
 
 void ResourcesPanelGameObjects::editTextChange(MyGUI::Widget* sender)
@@ -1003,12 +1012,15 @@ void ResourcesPanelDataBlocks::initialise()
 
 void ResourcesPanelDataBlocks::shutdown()
 {
-	this->resourcesSearchEdit->eventEditTextChange -= MyGUI::newDelegate(this, &ResourcesPanelDataBlocks::editTextChange);
-	this->dataBlocksTree->eventTreeNodeSelected -= newDelegate(this, &ResourcesPanelDataBlocks::notifyTreeNodeSelected);
-	this->dataBlocksTree->eventKeyButtonPressed -= newDelegate(this, &ResourcesPanelDataBlocks::notifyKeyButtonPressed);
-	this->dataBlocksTree->eventTreeNodeContextMenu -= newDelegate(this, &ResourcesPanelDataBlocks::notifyTreeContextMenu);
+	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelDataBlocks::shutdown",
+	{
+		this->resourcesSearchEdit->eventEditTextChange -= MyGUI::newDelegate(this, &ResourcesPanelDataBlocks::editTextChange);
+		this->dataBlocksTree->eventTreeNodeSelected -= newDelegate(this, &ResourcesPanelDataBlocks::notifyTreeNodeSelected);
+		this->dataBlocksTree->eventKeyButtonPressed -= newDelegate(this, &ResourcesPanelDataBlocks::notifyKeyButtonPressed);
+		this->dataBlocksTree->eventTreeNodeContextMenu -= newDelegate(this, &ResourcesPanelDataBlocks::notifyTreeContextMenu);
 
-	BaseLayout::shutdown();
+		BaseLayout::shutdown();
+	});
 }
 
 void ResourcesPanelDataBlocks::editTextChange(MyGUI::Widget* sender)
@@ -1198,12 +1210,15 @@ void ResourcesPanelTextures::initialise()
 
 void ResourcesPanelTextures::shutdown()
 {
-	this->resourcesSearchEdit->eventEditTextChange -= MyGUI::newDelegate(this, &ResourcesPanelTextures::editTextChange);
-	this->texturesTree->eventTreeNodeSelected -= newDelegate(this, &ResourcesPanelTextures::notifyTreeNodeSelected);
-	this->texturesTree->eventKeyButtonPressed -= newDelegate(this, &ResourcesPanelTextures::notifyKeyButtonPressed);
-	this->texturesTree->eventTreeNodeContextMenu -= newDelegate(this, &ResourcesPanelTextures::notifyTreeContextMenu);
+	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelTextures::shutdown",
+	{
+		this->resourcesSearchEdit->eventEditTextChange -= MyGUI::newDelegate(this, &ResourcesPanelTextures::editTextChange);
+		this->texturesTree->eventTreeNodeSelected -= newDelegate(this, &ResourcesPanelTextures::notifyTreeNodeSelected);
+		this->texturesTree->eventKeyButtonPressed -= newDelegate(this, &ResourcesPanelTextures::notifyKeyButtonPressed);
+		this->texturesTree->eventTreeNodeContextMenu -= newDelegate(this, &ResourcesPanelTextures::notifyTreeContextMenu);
 
-	BaseLayout::shutdown();
+		BaseLayout::shutdown();
+	});
 }
 
 void ResourcesPanelTextures::editTextChange(MyGUI::Widget* sender)

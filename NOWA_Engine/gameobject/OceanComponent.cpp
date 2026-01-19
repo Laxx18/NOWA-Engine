@@ -397,6 +397,8 @@ namespace NOWA
 				this->ocean->setWaveFrequencyScale(this->waveFrequencyScale->getReal());
 				this->ocean->setWaveChaos(this->waveChaos->getReal());
 
+				this->ocean->setBasePixelDimension(32);
+
 				auto* hlmsOcean = static_cast<Ogre::HlmsOcean*>(Ogre::Root::getSingleton().getHlmsManager()->getHlms(Ogre::HLMS_USER1));
 
 				hlmsOcean->setOceanDataTextureName("oceanData.dds");
@@ -423,8 +425,57 @@ namespace NOWA
 					this->datablock->setDiffuseScale(diffuseScale->getReal());
 					this->datablock->setFoamIntensity(foamIntensity->getReal());
 
-					this->datablock->setTransparency(0.5f);
+					// Transparency will not work:
+					// this->datablock->setTransparency(0.5f);
 
+					/*You have THREE choices :
+
+					OPTION A : Live with minor seams(RECOMMENDED)
+						- Keep + 1 vertices
+						- Use large cells(basePixelDimension = 256)
+						- Seams are minimal and realistic
+						- Ocean looks good from normal viewing distance
+
+						OPTION B : No transparency
+						- Keep + 1 vertices
+						- setTransparency(1.0f) = fully opaque
+						- No seams because no alpha blending
+						- Ocean is solid(like in your original code)
+
+						OPTION C : Advanced mesh solution(COMPLEX)
+						- Modify vertex shader to adjust edge vertices
+						- Requires deep understanding of mesh generation
+						- Not recommended unless you're an expert*/
+
+					/*
+					RECOMMENDED SETTINGS FOR BEST RESULTS:
+
+					For Clear Water (minimal borders):
+					- setBasePixelDimension(256)
+					- setTransparency(0.4f)
+					- setBaseRoughness(0.01f)
+
+					For Realistic Ocean (balanced):
+					- setBasePixelDimension(128)
+					- setTransparency(0.6f)
+					- setBaseRoughness(0.02f)
+
+					For Murky/Deep Water:
+					- setBasePixelDimension(64)
+					- setTransparency(0.85f)
+					- setBaseRoughness(0.05f)
+
+					PERFORMANCE NOTE:
+					Larger basePixelDimension = fewer cells = better performance
+					But also less geometric detail in waves
+
+					VISUAL QUALITY:
+					The fresnel effect makes water:
+					- More transparent when looking straight down
+					- More opaque at grazing angles (horizon)
+					This is physically accurate for water!
+
+					*/
 
 					this->datablock->setBrdf(this->mapStringToOceanBrdf(this->brdf->getListSelectedValue()));
 

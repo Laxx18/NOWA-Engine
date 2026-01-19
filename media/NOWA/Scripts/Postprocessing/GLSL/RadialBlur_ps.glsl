@@ -4,8 +4,8 @@ vulkan_layout( ogre_t0 ) uniform texture2D rt0;
 vulkan( layout( ogre_s0 ) uniform sampler samplerState );
 
 vulkan( layout( ogre_P0 ) uniform Params { )
-uniform vec4	centerUVPos; //z = min, w = 1 / (max - min)
-uniform float	exponent;
+	uniform vec4	centerUVPos; //z = min, w = 1 / (max - min)
+	uniform float	exponent;
 vulkan( }; )
 
 vulkan_layout( location = 0 )

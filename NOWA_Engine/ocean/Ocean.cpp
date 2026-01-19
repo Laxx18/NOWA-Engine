@@ -6,6 +6,7 @@
 #include "OgreSceneManager.h"
 #include "OgreRoot.h"
 #include "OgreTimer.h"
+#include "OgreHlmsOceanDatablock.h"
 #include "Compositor/OgreCompositorManager2.h"
 
 namespace Ogre
@@ -212,7 +213,123 @@ namespace Ogre
 
         setLocalAabb(aabb);
     }
+    //-----------------------------------------------------------------------------------
+    void Ocean::setBasePixelDimension(uint32 basePixelDimension)
+    {
+        m_basePixelDimension = basePixelDimension;
 
+        // If ocean is already created, recreate cells with new dimension
+        if (!m_OceanCells[0].empty())
+        {
+            // Save the current datablock
+            HlmsDatablock* datablock = m_OceanCells[0].back().getDatablock();
+
+            // Recreate the cell structure
+            createOceanCells();
+
+            // Reapply datablock if we had one
+            if (datablock)
+            {
+                for (size_t i = 0u; i < 2u; ++i)
+                {
+                    std::vector<OceanCell>::iterator itor = m_OceanCells[i].begin();
+                    std::vector<OceanCell>::iterator end = m_OceanCells[i].end();
+
+                    while (itor != end)
+                    {
+                        itor->setDatablock(datablock);
+                        ++itor;
+                    }
+                }
+            }
+        }
+    }
+    //-----------------------------------------------------------------------------------
+    void Ocean::createOceanCells()
+    {
+        // Calculate how many cells we need
+        const uint32 basePixelDimension = m_basePixelDimension;
+        const uint32 vertPixelDimension = static_cast<uint32>(m_basePixelDimension * m_depthWidthRatio);
+        const uint32 maxPixelDimension = std::max(basePixelDimension, vertPixelDimension);
+        const uint32 maxRes = std::max(m_width, m_depth);
+
+        uint32 numCells = 16u; // 4x4
+        uint32 accumDim = 0u;
+        uint32 iteration = 1u;
+
+        while (accumDim < maxRes)
+        {
+            numCells += 12u; // 4x4 - 2x2
+            accumDim += maxPixelDimension * (1u << iteration);
+            ++iteration;
+        }
+
+        numCells += 12u;
+        accumDim += maxPixelDimension * (1u << iteration);
+        ++iteration;
+
+        // Resize cell arrays
+        for (size_t i = 0u; i < 2u; ++i)
+        {
+            m_OceanCells[i].clear();
+            m_OceanCells[i].resize(numCells, OceanCell(this));
+        }
+
+        // Initialize all cells
+        VaoManager* vaoManager = mManager->getDestinationRenderSystem()->getVaoManager();
+
+        for (size_t i = 0u; i < 2u; ++i)
+        {
+            std::vector<OceanCell>::iterator itor = m_OceanCells[i].begin();
+            std::vector<OceanCell>::iterator end = m_OceanCells[i].end();
+            const std::vector<OceanCell>::iterator begin = itor;
+
+            while (itor != end)
+            {
+                // Cells >= 20 use skirts (16 base cells + 4 for oceanTime)
+                itor->initialize(vaoManager, m_useSkirts && (itor - begin) >= 20u);
+                ++itor;
+            }
+        }
+    }
+    //-----------------------------------------------------------------------------------
+    void Ocean::sortCellsByDepth(const Vector3& cameraPos)
+    {
+        // Only sort if we have transparency enabled
+        if (m_OceanCells[0].empty())
+            return;
+
+        HlmsDatablock* datablock = m_OceanCells[0].back().getDatablock();
+        if (!datablock)
+            return;
+
+        HlmsOceanDatablock* oceanDB = static_cast<HlmsOceanDatablock*>(datablock);
+        if (oceanDB->getTransparency() >= 1.0f)
+            return; // Fully opaque, no sorting needed
+
+        // Sort renderables back-to-front for proper alpha blending
+        std::sort(mRenderables.begin(), mRenderables.end(),
+            [&cameraPos](const Renderable* a, const Renderable* b) -> bool
+            {
+                const OceanCell* cellA = static_cast<const OceanCell*>(a);
+                const OceanCell* cellB = static_cast<const OceanCell*>(b);
+
+                // Get cell center positions
+                Vector2 posA = cellA->getParentOcean()->gridToWorld(
+                    OceanGridPoint{ cellA->getGridX(), cellA->getGridZ() });
+                Vector2 posB = cellB->getParentOcean()->gridToWorld(
+                    OceanGridPoint{ cellB->getGridX(), cellB->getGridZ() });
+
+                Vector3 centerA(posA.x, cellA->getParentOcean()->getOceanOrigin().y, posA.y);
+                Vector3 centerB(posB.x, cellB->getParentOcean()->getOceanOrigin().y, posB.y);
+
+                float distA = cameraPos.squaredDistance(centerA);
+                float distB = cameraPos.squaredDistance(centerB);
+
+                // Sort back-to-front (farthest first)
+                return distA > distB;
+            });
+    }
     //-----------------------------------------------------------------------------------
     void Ocean::update(Ogre::Real dt)
     {
@@ -348,6 +465,12 @@ namespace Ogre
         }
 
         updateLocalBounds();
+
+        // Sort cells for proper transparency rendering
+        if (m_camera)
+        {
+            sortCellsByDepth(m_camera->getDerivedPosition());
+        }
     }
 
     //-----------------------------------------------------------------------------------
@@ -356,7 +479,7 @@ namespace Ogre
         m_OceanOrigin = center - Ogre::Vector3(dimensions.x, 0, dimensions.y) * 0.5f;
         m_xzDimensions = dimensions;
         m_xzInvDimensions = 1.0f / m_xzDimensions;
-        m_basePixelDimension = 64u;
+        m_basePixelDimension = 64u; // Default value
 
         m_width = 4096;
         m_depth = 4096;
@@ -367,52 +490,8 @@ namespace Ogre
         m_xzRelativeSize = m_xzDimensions / Vector2(static_cast<Real>(m_width),
             static_cast<Real>(m_depth));
 
-        {
-            //Find out how many OceanCells we need. I think this might be
-            //solved analitically with a power series. But my math is rusty.
-            const uint32 basePixelDimension = m_basePixelDimension;
-            const uint32 vertPixelDimension = static_cast<uint32>(m_basePixelDimension *
-                m_depthWidthRatio);
-            const uint32 maxPixelDimension = std::max(basePixelDimension, vertPixelDimension);
-            const uint32 maxRes = std::max(m_width, m_depth);
-
-            uint32 numCells = 16u; //4x4
-            uint32 accumDim = 0u;
-            uint32 iteration = 1u;
-            while (accumDim < maxRes)
-            {
-                numCells += 12u; //4x4 - 2x2
-                accumDim += maxPixelDimension * (1u << iteration);
-                ++iteration;
-            }
-
-            numCells += 12u;
-            accumDim += maxPixelDimension * (1u << iteration);
-            ++iteration;
-
-            for (size_t i = 0u; i < 2u; ++i)
-            {
-                m_OceanCells[i].clear();
-                m_OceanCells[i].resize(numCells, OceanCell(this));
-            }
-        }
-
-        VaoManager* vaoManager = mManager->getDestinationRenderSystem()->getVaoManager();
-
-        for (size_t i = 0u; i < 2u; ++i)
-        {
-            std::vector<OceanCell>::iterator itor = m_OceanCells[i].begin();
-            std::vector<OceanCell>::iterator end = m_OceanCells[i].end();
-
-            const std::vector<OceanCell>::iterator begin = itor;
-
-            while (itor != end)
-            {
-                // 16 + 4 because of oceanTime
-                itor->initialize(vaoManager, m_useSkirts && (itor - begin) >= 20u);
-                ++itor;
-            }
-        }
+        // Use the new createOceanCells() method instead of inline code
+        createOceanCells();
 
         updateLocalBounds();
     }

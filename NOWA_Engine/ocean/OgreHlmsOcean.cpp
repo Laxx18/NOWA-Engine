@@ -337,6 +337,21 @@ namespace Ogre
         setProperty(kNoTid, "skip_normal_offset_bias_vs", 1);
         setProperty(kNoTid, OceanProperty::UseSkirts, cell->getUseSkirts());
 
+        float transparency = datablock->getTransparency();
+        if (transparency < 1.0f)
+        {
+            setProperty(kNoTid, HlmsBaseProp::AlphaBlend, 1);
+            setProperty(kNoTid, "hlms_alphablend", 1);
+
+            // Disable alpha testing when using blending
+            setProperty(kNoTid, HlmsBaseProp::AlphaTest, 0);
+        }
+        else
+        {
+            setProperty(kNoTid, HlmsBaseProp::AlphaBlend, 0);
+            setProperty(kNoTid, "hlms_alphablend", 0);
+        }
+
         // PBS properties
         setProperty(kNoTid, PbsProperty::FresnelScalar, 1);
         setProperty(kNoTid, PbsProperty::FresnelWorkflow, 0);
@@ -363,11 +378,6 @@ namespace Ogre
         setProperty(kNoTid, PbsProperty::FirstValidDetailMapNm, 4);
 
         // ===== ENV PROBE SETUP =====
-
-        // Check if reflection texture is set
-        // In HlmsOcean::calculateHashForPreCreate - Replace the env probe section:
-
-// ===== ENV PROBE SETUP (CRITICAL FIX FOR OCEAN) =====
 
         const TextureGpu* reflectionTexture = datablock->getTexture(OCEAN_REFLECTION);
 

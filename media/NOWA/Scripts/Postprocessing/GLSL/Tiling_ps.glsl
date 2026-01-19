@@ -4,8 +4,8 @@ vulkan_layout( ogre_t0 ) uniform texture2D RT;
 vulkan( layout( ogre_s0 ) uniform sampler samplerState );
 
 vulkan( layout( ogre_P0 ) uniform Params { )
-uniform float NumTiles;
-uniform float Threshold;
+	uniform float NumTiles;
+	uniform float Threshold;
 vulkan( }; )
 
 vulkan_layout( location = 0 )

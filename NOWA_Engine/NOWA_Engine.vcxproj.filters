@@ -601,9 +601,6 @@
     <ClInclude Include="utilities\AnimationBlenderV2.h">
       <Filter>utilities</Filter>
     </ClInclude>
-    <ClInclude Include="modules\GpuParticlesModule.h">
-      <Filter>modules</Filter>
-    </ClInclude>
     <ClInclude Include="utilities\IAnimationBlender.h">
       <Filter>utilities</Filter>
     </ClInclude>
@@ -654,6 +651,9 @@
     </ClInclude>
     <ClInclude Include="ocean\OgreHlmsJsonOcean.h">
       <Filter>ocean</Filter>
+    </ClInclude>
+    <ClInclude Include="modules\GpuParticlesModule.h">
+      <Filter>modules</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -1176,9 +1176,6 @@
     <ClCompile Include="utilities\XMLConverter.cpp">
       <Filter>utilities</Filter>
     </ClCompile>
-    <ClCompile Include="modules\GpuParticlesModule.cpp">
-      <Filter>modules</Filter>
-    </ClCompile>
     <ClCompile Include="gameobject\PhysicsActiveVehicleComponent.cpp">
       <Filter>gameobject</Filter>
     </ClCompile>
@@ -1223,6 +1220,9 @@
     </ClCompile>
     <ClCompile Include="ocean\OgreHlmsJsonOcean.cpp">
       <Filter>ocean</Filter>
+    </ClCompile>
+    <ClCompile Include="modules\GpuParticlesModule.cpp">
+      <Filter>modules</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

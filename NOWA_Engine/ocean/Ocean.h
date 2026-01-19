@@ -83,6 +83,10 @@ namespace Ogre
 
         void updateLocalBounds(void);
 
+        void createOceanCells();
+
+        void sortCellsByDepth(const Vector3& cameraPos);
+
     public:
         Ocean(IdType id, ObjectMemoryManager* objectMemoryManager, SceneManager* sceneManager,
                uint8 renderQueueId, CompositorManager2* compositorManager, const Camera* camera);
@@ -99,6 +103,12 @@ namespace Ogre
         void setWavesIntensity( float intensity );
 
         void setWavesScale( float scale );
+
+        // Add this method declaration
+        void setBasePixelDimension(uint32 basePixelDimension);
+
+        // Add getter too
+        uint32 getBasePixelDimension() const { return m_basePixelDimension; }
 
         /// Enable/disable skirts. Must be set before create() to affect geometry.
         void setUseSkirts( bool useSkirts ) { m_useSkirts = useSkirts; }

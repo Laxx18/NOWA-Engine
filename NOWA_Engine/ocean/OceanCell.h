@@ -30,6 +30,9 @@ namespace Ogre
         ~OceanCell() override;
 
         bool getUseSkirts(void) const                   { return m_useSkirts; }
+        int32 getGridX() const { return m_gridX; }
+        int32 getGridZ() const { return m_gridZ; }
+        Ocean* getParentOcean() const { return m_parentOcean; }
 
         void initialize( VaoManager *vaoManager, bool useSkirts );
 

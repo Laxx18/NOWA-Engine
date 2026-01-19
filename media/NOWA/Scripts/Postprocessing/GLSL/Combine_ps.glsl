@@ -5,7 +5,7 @@ vulkan_layout( ogre_t1 ) uniform texture2D Sum;
 vulkan( layout( ogre_s0 ) uniform sampler samplerState );
 
 vulkan( layout( ogre_P0 ) uniform Params { )
-uniform float blur;
+	uniform float blur;
 vulkan( }; )
 
 vulkan_layout( location = 0 )

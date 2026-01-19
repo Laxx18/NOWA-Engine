@@ -183,12 +183,6 @@ namespace NOWA
 		
 		this->cameraComponent = nullptr;
 		this->oceanComponent = nullptr;
-
-		// Send event, that component has been deleted
-		boost::shared_ptr<EventDataDeleteWorkspaceComponent> eventDataDeleteWorkspaceComponent(new EventDataDeleteWorkspaceComponent(this->gameObjectPtr->getId()));
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataDeleteWorkspaceComponent);
-
-		this->removeWorkspace();
 	}
 
 	bool WorkspaceBaseComponent::init(rapidxml::xml_node<>*& propertyElement)
@@ -924,7 +918,10 @@ namespace NOWA
 			WorkspaceModule::getInstance()->removeWorkspace(this->gameObjectPtr->getSceneManager(), this->cameraComponent->getCamera());
 		}
 
-		// TODO: nullWorkspace??
+		// Send event, that component has been deleted
+		boost::shared_ptr<EventDataDeleteWorkspaceComponent> eventDataDeleteWorkspaceComponent(new EventDataDeleteWorkspaceComponent(this->gameObjectPtr->getId()));
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataDeleteWorkspaceComponent);
+
 		this->removeWorkspace();
 	}
 
@@ -1145,6 +1142,162 @@ namespace NOWA
 		}
 	}
 
+	void WorkspaceBaseComponent::reconnectAllNodes(void)
+	{
+		// Threadsafe from the outside
+
+		if (nullptr != this->workspace)
+		{
+			if (true == AppStateManager::getSingletonPtr()->bShutdown)
+			{
+				return;
+			}
+
+			Ogre::CompositorWorkspaceDef* workspaceDef = this->workspace->getCompositorManager()->getWorkspaceDefinition(this->workspaceName);
+
+			workspaceDef->clearAllInterNodeConnections();
+
+			unsigned short channelRT0 = 0;
+			unsigned short channelRT1 = 1;
+			unsigned short channel = 2;
+
+			unsigned short channelOldLumRt = 0;
+			unsigned short channelDistortion = 0;
+			unsigned short channelGBufferNormals = 0;
+			unsigned short channelDepthTexture = 0;
+
+			if (true == this->useHdr->getBool())
+			{
+				channelOldLumRt = channel++;
+			}
+
+			if (true == this->useDistortion->getBool())
+			{
+				channelDistortion = channel++;
+			}
+
+			if (true == this->useSSAO->getBool())
+			{
+				channelGBufferNormals = channel++;
+				channelDepthTexture = channel++;
+			}
+
+			Ogre::IdString msaaNodeName = "NOWAHdrMsaaResolve";
+			Ogre::IdString hdrPostProcessingNodeName;
+			Ogre::IdString distortionNodeName = this->getDistortionNode();
+			if (true == this->useHdr->getBool())
+			{
+				hdrPostProcessingNodeName = "NOWAHdrPostprocessingNode";
+			}
+
+			Ogre::IdString finalRenderNodeName = this->getFinalRenderingNodeName();
+
+			const Ogre::CompositorNodeVec& nodes = this->workspace->getNodeSequence();
+
+			Ogre::IdString lastInNode;
+			Ogre::CompositorNodeVec::const_iterator it = nodes.begin();
+			Ogre::CompositorNodeVec::const_iterator en = nodes.end();
+
+			while (it != en)
+			{
+				Ogre::CompositorNode* outNode = *it;
+				Ogre::IdString outNodeName = outNode->getName();
+
+				if (outNode->getEnabled() && outNodeName != finalRenderNodeName && outNodeName != hdrPostProcessingNodeName && outNodeName != msaaNodeName && outNodeName != distortionNodeName)
+				{
+					Ogre::CompositorNodeVec::const_iterator it2 = it + 1;
+
+					while (it2 != en && (false == (*it2)->getEnabled() || (*it2)->getName() == finalRenderNodeName || (*it2)->getName() == hdrPostProcessingNodeName || (*it2)->getName() == msaaNodeName || (*it2)->getName() == distortionNodeName))
+					{
+						it2++;
+						if (it2 == en)
+						{
+							break;
+						}
+					}
+
+					if (it2 != en)
+					{
+						lastInNode = (*it2)->getName();
+						workspaceDef->connect(outNodeName, 0, lastInNode, 0);
+						workspaceDef->connect(outNodeName, 1, lastInNode, 1);
+					}
+
+					it = it2 - 1;
+				}
+
+				it++;
+			}
+
+			if (lastInNode == Ogre::IdString())
+			{
+				lastInNode = this->renderingNodeName;
+			}
+
+			if (true == this->useDistortion->getBool())
+			{
+				workspaceDef->connect(lastInNode, 0, distortionNodeName, 0);
+				workspaceDef->connect(this->renderingNodeName, channelDistortion, distortionNodeName, 1);
+			}
+
+			if (true == this->useSSAO->getBool())
+			{
+				workspaceDef->connect(this->renderingNodeName, channelGBufferNormals, finalRenderNodeName, 2);
+				workspaceDef->connect(this->renderingNodeName, channelDepthTexture, finalRenderNodeName, 3);
+			}
+
+			if (false == this->useHdr->getBool())
+			{
+				if (true == this->useDistortion->getBool())
+				{
+					workspaceDef->connect(this->distortionNode, 0, finalRenderNodeName, 1);
+				}
+				else
+				{
+					workspaceDef->connect(lastInNode, 0, finalRenderNodeName, 1);
+				}
+			}
+			else
+			{
+				if (1 == this->msaaLevel)
+				{
+					workspaceDef->connect(this->renderingNodeName, channelOldLumRt, hdrPostProcessingNodeName, 1);
+
+					if (true == this->useDistortion->getBool())
+					{
+						workspaceDef->connect(this->distortionNode, 0, hdrPostProcessingNodeName, 0);
+					}
+					else
+					{
+						workspaceDef->connect(lastInNode, 0, hdrPostProcessingNodeName, 0);
+					}
+
+					workspaceDef->connect(this->renderingNodeName, channelRT1, hdrPostProcessingNodeName, 2);
+					workspaceDef->connect(hdrPostProcessingNodeName, 0, finalRenderNodeName, 1);
+				}
+				else
+				{
+					if (true == this->useDistortion->getBool())
+					{
+						workspaceDef->connect(this->distortionNode, 0, msaaNodeName, 0);
+					}
+					else
+					{
+						workspaceDef->connect(lastInNode, 0, msaaNodeName, 0);
+					}
+
+					workspaceDef->connect(this->renderingNodeName, channelOldLumRt, msaaNodeName, 1);
+					workspaceDef->connect("NOWAHdrMsaaResolve", 0, hdrPostProcessingNodeName, 0);
+					workspaceDef->connect(this->renderingNodeName, channelOldLumRt, hdrPostProcessingNodeName, 1);
+					workspaceDef->connect(this->renderingNodeName, channelRT1, hdrPostProcessingNodeName, 2);
+					workspaceDef->connect(hdrPostProcessingNodeName, 0, finalRenderNodeName, 1);
+				}
+			}
+
+			this->workspace->reconnectAllNodes();
+		}
+	}
+
 	void WorkspaceBaseComponent::baseCreateWorkspace(Ogre::CompositorWorkspaceDef* workspaceDef)
 	{
 		// Threadsafe from the outside
@@ -1157,48 +1310,58 @@ namespace NOWA
 			this->msaaLevel = 1;
 		}
 
-		const bool oceanUnderwater = this->useOcean && this->oceanComponent && this->oceanComponent->isCameraUnderwater();
-		if( oceanUnderwater )
+		bool oceanUnderwater = this->useOcean && this->oceanComponent && this->oceanComponent->isCameraUnderwater();
+		if (true == oceanUnderwater)
+		{
 			this->createUnderwaterNode();
+		}
 
-		unsigned int output = 2;
+		// Calculate output channel indices based on enabled features
+		unsigned short channelRT0 = 0;
+		unsigned short channelRT1 = 1;
+		unsigned short channel = 2;
+
+		unsigned short channelOldLumRt = 0;
+		unsigned short channelDistortion = 0;
+		unsigned short channelGBufferNormals = 0;
+		unsigned short channelDepthTexture = 0;
+
+		if (true == this->useHdr->getBool())
+		{
+			channelOldLumRt = channel++;
+		}
 
 		if (true == this->useDistortion->getBool())
 		{
-			// 0 is out rt0
-			workspaceDef->connect(this->renderingNodeName, 0, this->distortionNode, 0);
-
-			if (true == this->useHdr->getBool())
-			{
-				output = 3;
-			}
-			// 3 is out rt_distortion
-			workspaceDef->connect(this->renderingNodeName, output, this->distortionNode, 1);
+			channelDistortion = channel++;
 		}
 
 		if (true == this->useSSAO->getBool())
 		{
-			output++;
-			workspaceDef->connect(this->renderingNodeName, output, this->finalRenderingNodeName, 2);
-			output++;
-			workspaceDef->connect(this->renderingNodeName, output, this->finalRenderingNodeName, 3);
-			output++;
-			workspaceDef->connect(this->renderingNodeName, output, this->finalRenderingNodeName, 4);
-			output++;
-			workspaceDef->connect(this->renderingNodeName, output, this->finalRenderingNodeName, 5);
-			output++;
-			workspaceDef->connect(this->renderingNodeName, output, this->finalRenderingNodeName, 6);
-			output++;
-			workspaceDef->connect(this->renderingNodeName, output, this->finalRenderingNodeName, 7);
+			channelGBufferNormals = channel++;
+			channelDepthTexture = channel++;
+		}
+
+		// Distortion is always sourced from rt0 / rt_distortion
+		if (true == this->useDistortion->getBool())
+		{
+			workspaceDef->connect(this->renderingNodeName, channelRT0, this->distortionNode, 0);
+			workspaceDef->connect(this->renderingNodeName, channelDistortion, this->distortionNode, 1);
+		}
+
+		// SSAO inputs are FIXED semantic outputs of renderingNodeName
+		if (true == this->useSSAO->getBool())
+		{
+			workspaceDef->connect(this->renderingNodeName, channelGBufferNormals, this->finalRenderingNodeName, 2);
+			workspaceDef->connect(this->renderingNodeName, channelDepthTexture, this->finalRenderingNodeName, 3);
 		}
 
 		// Without Hdr
 		if (false == this->useHdr->getBool())
 		{
-			const Ogre::String &sceneOutputNode =
-				(true == this->useDistortion->getBool()) ? this->distortionNode : this->renderingNodeName;
+			const Ogre::String& sceneOutputNode = (true == this->useDistortion->getBool()) ? this->distortionNode : this->renderingNodeName;
 
-			if( oceanUnderwater )
+			if (true == oceanUnderwater)
 			{
 				workspaceDef->connect(sceneOutputNode, 0, this->underwaterNodeName, 0);
 				workspaceDef->connect(this->underwaterNodeName, 0, this->finalRenderingNodeName, 1);
@@ -1220,12 +1383,14 @@ namespace NOWA
 				}
 				else
 				{
-					workspaceDef->connect(this->renderingNodeName, 0, "NOWAHdrPostprocessingNode", 0);
+					workspaceDef->connect(this->renderingNodeName, channelRT0, "NOWAHdrPostprocessingNode", 0);
 				}
 
-				workspaceDef->connect(this->renderingNodeName, 2, "NOWAHdrPostprocessingNode", 1);
-				workspaceDef->connect(this->renderingNodeName, 1, "NOWAHdrPostprocessingNode", 2);
-				if( oceanUnderwater )
+				// Connect oldLumRt (channel 2 when HDR is enabled)
+				workspaceDef->connect(this->renderingNodeName, channelOldLumRt, "NOWAHdrPostprocessingNode", 1);
+				workspaceDef->connect(this->renderingNodeName, channelRT1, "NOWAHdrPostprocessingNode", 2);
+
+				if (true == oceanUnderwater)
 				{
 					workspaceDef->connect("NOWAHdrPostprocessingNode", 0, this->underwaterNodeName, 0);
 					workspaceDef->connect(this->underwaterNodeName, 0, this->finalRenderingNodeName, 1);
@@ -1234,6 +1399,7 @@ namespace NOWA
 				{
 					workspaceDef->connect("NOWAHdrPostprocessingNode", 0, this->finalRenderingNodeName, 1);
 				}
+
 				workspaceDef->connectExternal(0, this->finalRenderingNodeName, 0);
 			}
 			else
@@ -1244,14 +1410,16 @@ namespace NOWA
 				}
 				else
 				{
-					workspaceDef->connect(this->renderingNodeName, 0, "NOWAHdrMsaaResolve", 0);
+					workspaceDef->connect(this->renderingNodeName, channelRT0, "NOWAHdrMsaaResolve", 0);
 				}
 
-				workspaceDef->connect(this->renderingNodeName, 2, "NOWAHdrMsaaResolve", 1);
+				// Connect oldLumRt (channel 2 when HDR is enabled)
+				workspaceDef->connect(this->renderingNodeName, channelOldLumRt, "NOWAHdrMsaaResolve", 1);
 				workspaceDef->connect("NOWAHdrMsaaResolve", 0, "NOWAHdrPostprocessingNode", 0);
-				workspaceDef->connect(this->renderingNodeName, 2, "NOWAHdrPostprocessingNode", 1);
-				workspaceDef->connect(this->renderingNodeName, 1, "NOWAHdrPostprocessingNode", 2);
-				if( oceanUnderwater )
+				workspaceDef->connect(this->renderingNodeName, channelOldLumRt, "NOWAHdrPostprocessingNode", 1);
+				workspaceDef->connect(this->renderingNodeName, channelRT1, "NOWAHdrPostprocessingNode", 2);
+
+				if (true == oceanUnderwater)
 				{
 					workspaceDef->connect("NOWAHdrPostprocessingNode", 0, this->underwaterNodeName, 0);
 					workspaceDef->connect(this->underwaterNodeName, 0, this->finalRenderingNodeName, 1);
@@ -1260,6 +1428,7 @@ namespace NOWA
 				{
 					workspaceDef->connect("NOWAHdrPostprocessingNode", 0, this->finalRenderingNodeName, 1);
 				}
+
 				workspaceDef->connectExternal(0, this->finalRenderingNodeName, 0);
 			}
 		}
@@ -1267,7 +1436,6 @@ namespace NOWA
 
 	void WorkspaceBaseComponent::createFinalRenderNode(void)
 	{
-		// Threadsafe from the outside
 		if (true == this->compositorManager->hasNodeDefinition(this->finalRenderingNodeName))
 		{
 			this->compositorManager->removeNodeDefinition(this->finalRenderingNodeName);
@@ -1277,176 +1445,188 @@ namespace NOWA
 		{
 			Ogre::CompositorNodeDef* finalNodeDef = compositorManager->addNodeDefinition(this->finalRenderingNodeName);
 
+			// SSAO Texture definitions:
+			if (true == this->useSSAO->getBool())
+			{
+				finalNodeDef->setNumLocalTextureDefinitions(4);
+
+				auto* depthCopyDef = finalNodeDef->addTextureDefinition("depthTextureCopy");
+				depthCopyDef->widthFactor = 0.5f;
+				depthCopyDef->heightFactor = 0.5f;
+				depthCopyDef->format = Ogre::PFG_R16_FLOAT;
+				depthCopyDef->textureFlags = Ogre::TextureFlags::RenderToTexture;
+
+				auto* ssaoDef = finalNodeDef->addTextureDefinition("ssaoTexture");
+				ssaoDef->widthFactor = 0.5f;
+				ssaoDef->heightFactor = 0.5f;
+				ssaoDef->format = Ogre::PFG_R16_FLOAT;
+				ssaoDef->depthBufferId = 0;
+				ssaoDef->textureFlags = Ogre::TextureFlags::RenderToTexture;
+
+				auto* blurHDef = finalNodeDef->addTextureDefinition("blurTextureHorizontal");
+				blurHDef->format = Ogre::PFG_R16_FLOAT;
+				blurHDef->depthBufferId = 0;
+				blurHDef->textureFlags = Ogre::TextureFlags::RenderToTexture;
+
+				auto* blurVDef = finalNodeDef->addTextureDefinition("blurTextureVertical");
+				blurVDef->format = Ogre::PFG_R16_FLOAT;
+				blurVDef->depthBufferId = 0;
+				blurVDef->textureFlags = Ogre::TextureFlags::RenderToTexture;
+			}
+
+			// Input textures
 			unsigned int textureIndex = 0;
 
-			finalNodeDef->addTextureSourceName("rt_output", textureIndex, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
-
-			textureIndex++;
-			finalNodeDef->addTextureSourceName("rtN", textureIndex, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
+			finalNodeDef->addTextureSourceName("rt_output", textureIndex++, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
+			finalNodeDef->addTextureSourceName("rtN", textureIndex++, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
 
 			if (true == this->useSSAO->getBool())
 			{
-				textureIndex++;
-				finalNodeDef->addTextureSourceName("gBufferNormals", textureIndex, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
-				textureIndex++;
-				finalNodeDef->addTextureSourceName("depthTexture", textureIndex, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
-				textureIndex++;
-				finalNodeDef->addTextureSourceName("depthTextureCopy", textureIndex, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
-				textureIndex++;
-				finalNodeDef->addTextureSourceName("ssaoTexture", textureIndex, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
-				textureIndex++;
-				finalNodeDef->addTextureSourceName("blurTextureHorizontal", textureIndex, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
-				textureIndex++;
-				finalNodeDef->addTextureSourceName("blurTextureVertical", textureIndex, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
+				finalNodeDef->addTextureSourceName("gBufferNormals", textureIndex++, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
+				finalNodeDef->addTextureSourceName("depthTexture", textureIndex++, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
+
+				Ogre::RenderTargetViewDef* rtv;
+
+				Ogre::RenderTargetViewEntry attachment;
+
+				rtv = finalNodeDef->addRenderTextureView("depthTextureCopy");
+				attachment.textureName = "depthTextureCopy";
+				rtv->colourAttachments.push_back(attachment);
+				rtv->depthBufferId = Ogre::DepthBuffer::POOL_NO_DEPTH;
+
+				rtv = finalNodeDef->addRenderTextureView("ssaoTexture");
+				attachment.textureName = "ssaoTexture";
+				rtv->colourAttachments.push_back(attachment);
+				rtv->depthBufferId = Ogre::DepthBuffer::POOL_NO_DEPTH;
+
+				rtv = finalNodeDef->addRenderTextureView("blurTextureHorizontal");
+				attachment.textureName = "blurTextureHorizontal";
+				rtv->colourAttachments.push_back(attachment);
+				rtv->depthBufferId = Ogre::DepthBuffer::POOL_NO_DEPTH;
+
+				rtv = finalNodeDef->addRenderTextureView("blurTextureVertical");
+				attachment.textureName = "blurTextureVertical";
+				rtv->colourAttachments.push_back(attachment);
+				rtv->depthBufferId = Ogre::DepthBuffer::POOL_NO_DEPTH;
 			}
 
+			// Target passes
 			unsigned short numTargetPass = 1;
+
+			if (true == this->useSSAO->getBool())
+			{
+				numTargetPass += 4;
+			}
 
 			finalNodeDef->setNumTargetPass(numTargetPass);
 
 			if (true == this->useSSAO->getBool())
 			{
-				finalNodeDef->setNumTargetPass(numTargetPass + 4);
-
-				// depthTextureCopy target
+				// 1. Depth downsampling
 				{
 					Ogre::CompositorTargetDef* targetDef = finalNodeDef->addTargetPass("depthTextureCopy");
 
-					// Render Quad
-					{
-						auto pass = targetDef->addPass(Ogre::PASS_QUAD);
-						Ogre::CompositorPassQuadDef* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(pass);
+					Ogre::CompositorPassQuadDef* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
 
-						passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
-						passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
-						passQuad->mMaterialName = "Ogre/Depth/DownscaleMax";
-						passQuad->addQuadTextureSource(0, "depthTexture");
-
-						passQuad->mProfilingId = "NOWA_Final_SSAO_Pass_Quad";
-					}
+					passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
+					passQuad->mMaterialName = (this->msaaLevel > 1)
+						? "Ogre/Depth/DownscaleMax_Subsample0"
+						: "Ogre/Depth/DownscaleMax";
+					passQuad->addQuadTextureSource(0, "depthTexture");
+					passQuad->mProfilingId = "NOWA_Final_SSAO_DepthDownscale_Pass_Quad";
 				}
 
-				// ssaoTexture target
+				// 2. SSAO generation
 				{
 					Ogre::CompositorTargetDef* targetDef = finalNodeDef->addTargetPass("ssaoTexture");
 
-					// Render Quad
-					{
-						auto pass = targetDef->addPass(Ogre::PASS_QUAD);
-						Ogre::CompositorPassQuadDef* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(pass);
+					Ogre::CompositorPassQuadDef* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
 
-						passQuad->mProfilingId = "NOWA_Final_SSAO_Texture_Target_Pass_Quad";
-
-						// TODO: Correct?? Or Dont Care?
-						passQuad->setAllLoadActions(Ogre::LoadAction::Clear);
-						passQuad->setAllLoadActions(Ogre::LoadAction::Load);
-						passQuad->mClearColour[0] = Ogre::ColourValue::White;
-
-						passQuad->mMaterialName = "SSAO/HS";
-						passQuad->addQuadTextureSource(0, "depthTextureCopy");
-						passQuad->addQuadTextureSource(1, "gBufferNormals");
-						passQuad->mFrustumCorners = Ogre::CompositorPassQuadDef::VIEW_SPACE_CORNERS;
-					}
+					passQuad->setAllLoadActions(Ogre::LoadAction::Clear);
+					passQuad->mClearColour[0] = Ogre::ColourValue::White;
+					passQuad->mMaterialName = "SSAO/HS";
+					passQuad->addQuadTextureSource(0, "depthTextureCopy");
+					passQuad->addQuadTextureSource(1, "gBufferNormals");
+					passQuad->mFrustumCorners = Ogre::CompositorPassQuadDef::VIEW_SPACE_CORNERS;
+					passQuad->mProfilingId = "NOWA_Final_SSAO_Generation_Pass_Quad";
 				}
 
-				// blurTextureHorizontal target
+				// 3. Horizontal blur
 				{
 					Ogre::CompositorTargetDef* targetDef = finalNodeDef->addTargetPass("blurTextureHorizontal");
 
-					// Render Quad
-					{
-						auto pass = targetDef->addPass(Ogre::PASS_QUAD);
-						Ogre::CompositorPassQuadDef* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(pass);
+					Ogre::CompositorPassQuadDef* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
 
-						passQuad->mProfilingId = "NOWA_Final_SSAO_Blur_Texture_Horizontal_Target_Pass_Quad";
-
-						passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
-						passQuad->setAllLoadActions(Ogre::LoadAction::Load);
-
-						passQuad->mMaterialName = "SSAO/BlurH";
-						passQuad->addQuadTextureSource(0, "ssaoTexture");
-						passQuad->addQuadTextureSource(1, "depthTextureCopy");
-					}
+					passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
+					passQuad->mMaterialName = "SSAO/BlurH";
+					passQuad->addQuadTextureSource(0, "ssaoTexture");
+					passQuad->addQuadTextureSource(1, "depthTextureCopy");
+					passQuad->mProfilingId = "NOWA_Final_SSAO_BlurH_Pass_Quad";
 				}
 
-				// blurTextureVertical target
+				// 4. Vertical blur
 				{
 					Ogre::CompositorTargetDef* targetDef = finalNodeDef->addTargetPass("blurTextureVertical");
 
-					// Render Quad
-					{
-						auto pass = targetDef->addPass(Ogre::PASS_QUAD);
-						Ogre::CompositorPassQuadDef* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(pass);
+					Ogre::CompositorPassQuadDef* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(
+						targetDef->addPass(Ogre::PASS_QUAD));
 
-						passQuad->mProfilingId = "NOWA_Final_SSAO_Blur_Texture_Vertical_Target_Pass_Quad";
-
-						passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
-						passQuad->setAllLoadActions(Ogre::LoadAction::Load);
-
-						passQuad->mMaterialName = "SSAO/BlurV";
-						passQuad->addQuadTextureSource(0, "blurTextureHorizontal");
-						passQuad->addQuadTextureSource(1, "depthTextureCopy");
-					}
+					passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
+					passQuad->mMaterialName = "SSAO/BlurV";
+					passQuad->addQuadTextureSource(0, "blurTextureHorizontal");
+					passQuad->addQuadTextureSource(1, "depthTextureCopy");
+					passQuad->mProfilingId = "NOWA_Final_SSAO_BlurV_Pass_Quad";
 				}
 			}
-			// SSAO End
 
 			// rt_output target
 			{
 				Ogre::CompositorTargetDef* targetDef = finalNodeDef->addTargetPass("rt_output");
 
-				// Render Quad
+				// Copy rtN to rt_output
 				{
-					auto pass = targetDef->addPass(Ogre::PASS_QUAD);
-					Ogre::CompositorPassQuadDef* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(pass);
+					Ogre::CompositorPassQuadDef* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
 
 					passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
-
 					passQuad->mMaterialName = "Ogre/Copy/4xFP32";
-					passQuad->addQuadTextureSource(0, "rtN");
 
+					passQuad->mStoreActionDepth = Ogre::StoreAction::DontCare;
+					passQuad->mStoreActionStencil = Ogre::StoreAction::DontCare;
+
+					passQuad->addQuadTextureSource(0, "rtN");
 					passQuad->mProfilingId = "NOWA_Final_rtN_Pass_Quad";
 				}
 
 				if (true == this->useSSAO->getBool())
 				{
-					// Render Quad
-					{
-						auto pass = targetDef->addPass(Ogre::PASS_QUAD);
-						Ogre::CompositorPassQuadDef* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(pass);
+					Ogre::CompositorPassQuadDef* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
 
-						passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
-						passQuad->mProfilingId = "NOWA_Final_SSAO_Apply_Pass_Quad";
-
-						passQuad->mMaterialName = "SSAO/Apply";
-						passQuad->addQuadTextureSource(0, "blurTextureVertical");
-						passQuad->addQuadTextureSource(1, "rt_output");
-					}
+					passQuad->setAllLoadActions(Ogre::LoadAction::Load);
+					passQuad->mStoreActionDepth = Ogre::StoreAction::DontCare;
+					passQuad->mStoreActionStencil = Ogre::StoreAction::DontCare;
+					passQuad->mMaterialName = "SSAO/Apply";
+					passQuad->addQuadTextureSource(0, "blurTextureVertical");
+					passQuad->addQuadTextureSource(1, "rt_output");
+					passQuad->mProfilingId = "NOWA_Final_SSAO_Apply_Pass_Quad";
 				}
 
 				if (false == this->involvedInSplitScreen)
 				{
-					// Pass custom MYGUI
-					{
-						Ogre::CompositorPassDef* passMyGUI;
-						passMyGUI = static_cast<Ogre::CompositorPassDef*>(targetDef->addPass(Ogre::PASS_CUSTOM, "MYGUI"));
-
-						passMyGUI->mProfilingId = "NOWA_Final_Render_MyGUI_Pass_Custom";
-					}
+					Ogre::CompositorPassDef* passMyGUI = static_cast<Ogre::CompositorPassDef*>(targetDef->addPass(Ogre::PASS_CUSTOM, "MYGUI"));
+					passMyGUI->mProfilingId = "NOWA_Final_Render_MyGUI_Pass_Custom";
 				}
 
-				// Render Scene
 				{
-
-					Ogre::CompositorPassSceneDef* passScene;
-					auto pass = targetDef->addPass(Ogre::PASS_SCENE);
-					passScene = static_cast<Ogre::CompositorPassSceneDef*>(pass);
+					Ogre::CompositorPassSceneDef* passScene = static_cast<Ogre::CompositorPassSceneDef*>(targetDef->addPass(Ogre::PASS_SCENE));
 
 					passScene->mProfilingId = "NOWA_Final_Render_Overlay_Pass_Scene";
-
 					passScene->mUpdateLodLists = false;
-
 					passScene->mIncludeOverlays = true;
+
+					// passScene->setAllLoadActions(Ogre::LoadAction::DontCare);
+					passScene->mStoreActionDepth = Ogre::StoreAction::DontCare;
+					passScene->mStoreActionStencil = Ogre::StoreAction::DontCare;
+
 					passScene->mFirstRQ = 254;
 					passScene->mLastRQ = 255;
 				}
@@ -1461,49 +1641,49 @@ namespace NOWA
 			if (false == this->compositorManager->hasNodeDefinition(this->distortionNode))
 			{
 				ENQUEUE_RENDER_COMMAND_WAIT("WorkspaceBaseComponent::createDistortionNode",
-				{
-					Ogre::CompositorNodeDef * compositorNodeDefinition = compositorManager->addNodeDefinition(this->distortionNode);
-
-					// rt_output is the new in texture, instead of like in the script in 2 rt_output whichs is externally connected
-					Ogre::TextureDefinitionBase::TextureDefinition * distortionTexDef = compositorNodeDefinition->addTextureDefinition("rt_output");
-					distortionTexDef->width = 0.0f; // target_width
-					distortionTexDef->height = 0.0f; // target_height
-					distortionTexDef->format = Ogre::PFG_RGBA16_FLOAT;
-					distortionTexDef->depthBufferFormat = Ogre::PFG_D32_FLOAT;
-					distortionTexDef->preferDepthTexture = true;
-					// Attention depth_pool?
-					distortionTexDef->depthBufferId = 2;
-					distortionTexDef->textureFlags = Ogre::TextureFlags::RenderToTexture;
-
-					compositorNodeDefinition->addTextureSourceName("rt0", 0, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
-					compositorNodeDefinition->addTextureSourceName("rt_distortion", 1, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
-
-					Ogre::RenderTargetViewDef * rtv = compositorNodeDefinition->addRenderTextureView("rt_output");
-					Ogre::RenderTargetViewEntry attachment;
-					attachment.textureName = "rt_output";
-					rtv->colourAttachments.push_back(attachment);
-
-					unsigned short numTargetPass = 1;
-					compositorNodeDefinition->setNumTargetPass(numTargetPass);
-
 					{
-						Ogre::CompositorTargetDef* targetDef = compositorNodeDefinition->addTargetPass("rt_output");
+						Ogre::CompositorNodeDef * compositorNodeDefinition = compositorManager->addNodeDefinition(this->distortionNode);
 
-						// Render Quad
-						{
-							Ogre::CompositorPassQuadDef* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
-							passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
-							passQuad->mMaterialName = "Distortion/Quad";
-							passQuad->addQuadTextureSource(0, "rt0");
-							passQuad->addQuadTextureSource(1, "rt_distortion");
+				// rt_output is the new in texture, instead of like in the script in 2 rt_output whichs is externally connected
+				Ogre::TextureDefinitionBase::TextureDefinition * distortionTexDef = compositorNodeDefinition->addTextureDefinition("rt_output");
+				distortionTexDef->width = 0.0f; // target_width
+				distortionTexDef->height = 0.0f; // target_height
+				distortionTexDef->format = Ogre::PFG_RGBA16_FLOAT;
+				distortionTexDef->depthBufferFormat = Ogre::PFG_D32_FLOAT;
+				distortionTexDef->preferDepthTexture = true;
+				// Attention depth_pool?
+				distortionTexDef->depthBufferId = 2;
+				distortionTexDef->textureFlags = Ogre::TextureFlags::RenderToTexture;
 
-							passQuad->mProfilingId = "NOWA_Distortion_Renter_Target_Pass_Quad";
-						}
+				compositorNodeDefinition->addTextureSourceName("rt0", 0, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
+				compositorNodeDefinition->addTextureSourceName("rt_distortion", 1, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
+
+				Ogre::RenderTargetViewDef * rtv = compositorNodeDefinition->addRenderTextureView("rt_output");
+				Ogre::RenderTargetViewEntry attachment;
+				attachment.textureName = "rt_output";
+				rtv->colourAttachments.push_back(attachment);
+
+				unsigned short numTargetPass = 1;
+				compositorNodeDefinition->setNumTargetPass(numTargetPass);
+
+				{
+					Ogre::CompositorTargetDef* targetDef = compositorNodeDefinition->addTargetPass("rt_output");
+
+					// Render Quad
+					{
+						Ogre::CompositorPassQuadDef* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
+						passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
+						passQuad->mMaterialName = "Distortion/Quad";
+						passQuad->addQuadTextureSource(0, "rt0");
+						passQuad->addQuadTextureSource(1, "rt_distortion");
+
+						passQuad->mProfilingId = "NOWA_Distortion_Renter_Target_Pass_Quad";
 					}
+				}
 
-					compositorNodeDefinition->mapOutputChannel(0, "rt_output");
-					compositorNodeDefinition->mapOutputChannel(1, "rt0");
-				});
+				compositorNodeDefinition->mapOutputChannel(0, "rt_output");
+				compositorNodeDefinition->mapOutputChannel(1, "rt0");
+					});
 			}
 		}
 	}
@@ -1512,24 +1692,24 @@ namespace NOWA
 	{
 		// This node is only needed when an OceanComponent is active and the camera is underwater.
 		// It is inserted between the scene output (or HDR post) and the final composition node.
-		if( false == this->useOcean || nullptr == this->oceanComponent )
+		if (false == this->useOcean || nullptr == this->oceanComponent)
 			return;
 
-		if( false == this->oceanComponent->isCameraUnderwater() )
+		if (false == this->oceanComponent->isCameraUnderwater())
 			return;
 
-		if( this->underwaterNodeName.empty() )
+		if (this->underwaterNodeName.empty())
 			return;
 
-		if( true == this->compositorManager->hasNodeDefinition( this->underwaterNodeName ) )
+		if (true == this->compositorManager->hasNodeDefinition(this->underwaterNodeName))
 			return;
 
-		Ogre::CompositorNodeDef * compositorNodeDefinition =
-			compositorManager->addNodeDefinition( this->underwaterNodeName );
+		Ogre::CompositorNodeDef* compositorNodeDefinition =
+			compositorManager->addNodeDefinition(this->underwaterNodeName);
 
 		unsigned int textureIndex = 0;
-		compositorNodeDefinition->addTextureSourceName( "rt0", textureIndex,
-			Ogre::TextureDefinitionBase::TEXTURE_INPUT );
+		compositorNodeDefinition->addTextureSourceName("rt0", textureIndex,
+			Ogre::TextureDefinitionBase::TEXTURE_INPUT);
 
 		// Output
 		Ogre::TextureDefinitionBase::TextureDefinition* outTexDef = compositorNodeDefinition->addTextureDefinition("rt_output");
@@ -1539,32 +1719,31 @@ namespace NOWA
 		outTexDef->depthBufferFormat = Ogre::PFG_D32_FLOAT;
 		outTexDef->preferDepthTexture = true;
 		outTexDef->textureFlags = Ogre::TextureFlags::RenderToTexture;
-		
+
 		// IMPORTANT: add a RenderTargetViewDef for rt_output (otherwise addTargetPass("rt_output") will crash)
-		Ogre::RenderTargetViewDef * rtv = compositorNodeDefinition->addRenderTextureView("rt_output");
+		Ogre::RenderTargetViewDef* rtv = compositorNodeDefinition->addRenderTextureView("rt_output");
 		Ogre::RenderTargetViewEntry attachment;
 		attachment.textureName = "rt_output";
 		rtv->colourAttachments.push_back(attachment);
 
-		compositorNodeDefinition->setNumTargetPass( 1u );
+		compositorNodeDefinition->setNumTargetPass(1u);
 
 		Ogre::CompositorTargetDef* targetDef =
 			compositorNodeDefinition->addTargetPass("rt_output");
 
 		// Render Quad (default: copy). Replace the material with your own underwater material if desired.
 		{
-			Ogre::CompositorPassQuadDef * passQuad =
-				static_cast<Ogre::CompositorPassQuadDef*>( targetDef->addPass( Ogre::PASS_QUAD ) );
-			passQuad->setAllLoadActions( Ogre::LoadAction::DontCare );
+			Ogre::CompositorPassQuadDef* passQuad =
+				static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
+			passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
 			passQuad->mMaterialName = "Ocean/UnderwaterPost";
-			passQuad->addQuadTextureSource( 0u, "rt0" );
+			passQuad->addQuadTextureSource(0u, "rt0");
 			passQuad->mProfilingId = "NOWA_Underwater_Post_Pass_Quad";
 		}
 
 		// Output channels
-		compositorNodeDefinition->mapOutputChannel( 0u, "rt_output" );
+		compositorNodeDefinition->mapOutputChannel(0u, "rt_output");
 	}
-
 
 	void WorkspaceBaseComponent::addWorkspace(Ogre::CompositorWorkspaceDef* workspaceDef)
 	{
@@ -1607,7 +1786,7 @@ namespace NOWA
 		return this->distortionNode;
 	}
 
-Ogre::String WorkspaceBaseComponent::getUnderwaterNode(void) const
+	Ogre::String WorkspaceBaseComponent::getUnderwaterNode(void) const
 	{
 		return this->underwaterNodeName;
 	}
@@ -1904,6 +2083,9 @@ Ogre::String WorkspaceBaseComponent::getUnderwaterNode(void) const
 						passQuad->mMaterialName = "Ogre/Copy/4xFP32";
 						passQuad->addQuadTextureSource(0, "rt_input");
 
+						passQuad->mStoreActionDepth = Ogre::StoreAction::DontCare;
+						passQuad->mStoreActionStencil = Ogre::StoreAction::DontCare;
+
 						passQuad->mProfilingId = "NOWA_Post_Effect_Copy_4xFP32_Input_Pass_Quad";
 					}
 				}
@@ -1934,6 +2116,9 @@ Ogre::String WorkspaceBaseComponent::getUnderwaterNode(void) const
 						passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
 						passQuad->mMaterialName = "Ogre/Copy/4xFP32";
 						passQuad->addQuadTextureSource(0, "rt_output");
+
+						passQuad->mStoreActionDepth = Ogre::StoreAction::DontCare;
+						passQuad->mStoreActionStencil = Ogre::StoreAction::DontCare;
 
 						passQuad->mProfilingId = "NOWA_Post_Effect_Copy_4xFP32_Output_Pass_Quad";
 					}
@@ -2557,200 +2742,6 @@ Ogre::String WorkspaceBaseComponent::getUnderwaterNode(void) const
 		});
 	}
 
-	void WorkspaceBaseComponent::reconnectAllNodes(void)
-	{
-		// Threadsafe from the outside
-
-		//Now that we're done, tell the instance to update itself.
-		if (nullptr != this->workspace)
-		{
-			if (true == AppStateManager::getSingletonPtr()->bShutdown)
-			{
-				return;
-			}
-
-			//Now that we're done, tell the instance to update itself.
-			// this->workspace->reconnectAllNodes();
-			// Get workspace definition, to connect everything
-			Ogre::CompositorWorkspaceDef * workspaceDef = this->workspace->getCompositorManager()->getWorkspaceDefinition(this->workspaceName);
-
-			//-------------------------------------------------------------------------------------------
-			//
-			//  METHOD 2 (the easy way):
-			//      Reconstruct the whole connection from scratch based on a copy (be it a cloned,
-			//      untouched workspace definition, a custom file, or the very own workspace instance)
-			//      but leaving the node we're disabling unplugged.
-			//      This method is much safer and easier, the **recommended** way for most usage
-			//      scenarios involving toggling compositors on and off frequently. With a few tweaks,
-			//      it can easily be adapted to complex compositors too.
-			//
-			//-------------------------------------------------------------------------------------------
-			workspaceDef->clearAllInterNodeConnections();
-
-			Ogre::IdString msaaNodeName = "NOWAHdrMsaaResolve";
-			Ogre::IdString hdrPostProcessingNodeName;
-			Ogre::IdString distortionNodeName = this->getDistortionNode();
-			if (true == this->useHdr->getBool())
-			{
-				hdrPostProcessingNodeName = "NOWAHdrPostprocessingNode";
-			}
-
-			Ogre::IdString finalRenderNodeName = this->getFinalRenderingNodeName();
-
-			const Ogre::CompositorNodeVec& nodes = this->workspace->getNodeSequence();
-
-			Ogre::IdString lastInNode;
-			Ogre::CompositorNodeVec::const_iterator it = nodes.begin();
-			Ogre::CompositorNodeVec::const_iterator en = nodes.end();
-
-			// Iterate through all effects and add them
-			// Note: combinations are possible, so one prior effect is connected to the next effect
-			while (it != en)
-			{
-				Ogre::CompositorNode* outNode = *it;
-
-				Ogre::IdString outNodeName = outNode->getName();
-
-				if (outNode->getEnabled() && outNode->getName() != finalRenderNodeName
-					&& outNode->getName() != hdrPostProcessingNodeName
-					&& outNode->getName() != msaaNodeName
-					&& outNode->getName() != distortionNodeName)
-				{
-					// Look for the next enabled node we can connect to
-					Ogre::CompositorNodeVec::const_iterator it2 = it + 1;
-
-					while (it2 != en && (false == (*it2)->getEnabled()
-							|| (*it2)->getName() == finalRenderNodeName
-							|| (*it2)->getName() == hdrPostProcessingNodeName
-							|| (*it2)->getName() == msaaNodeName)
-							|| (*it2)->getName() == distortionNodeName)
-					{
-						it2++;
-						if (it2 == en)
-						{
-							break;
-						}
-					}
-
-					if (it2 != en)
-					{
-						lastInNode = (*it2)->getName();
-						workspaceDef->connect(outNodeName, 0, lastInNode, 0);
-						workspaceDef->connect(outNodeName, 1, lastInNode, 1);
-						// Example:
-						// workspaceDef->connect("NOWASkyRenderingNode", 0, "Old Tv", 0);
-						// workspaceDef->connect("NOWASkyRenderingNode", 1, "Old Tv", 1);
-						// workspaceDef->connect("Old Tv", 0, "Glass", 0);
-						// workspaceDef->connect("Old Tv", 1, "Glass", 1);
-					}
-
-					it = it2 - 1;
-				}
-
-				it++;
-			}
-
-			if (lastInNode == Ogre::IdString())
-			{
-				lastInNode = this->renderingNodeName;
-			}
-			if (lastInNode == Ogre::IdString())
-			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[WorkspaceModule] Error: Workspacenode is null!");
-			}
-
-			unsigned int output = 2;
-
-			if (true == this->useDistortion->getBool())
-			{
-				// 0 is out rt0
-				// workspaceDef->connect(this->renderingNodeName, 0, distortionNodeName, 0);
-				workspaceDef->connect(lastInNode, 0, distortionNodeName, 0);
-
-				if (true == this->useHdr->getBool())
-				{
-					output = 3;
-				}
-				// 3 is out rt_distortion
-				workspaceDef->connect(this->renderingNodeName, output, distortionNodeName, 1);
-			}
-
-			if (true == this->useSSAO->getBool())
-			{
-				output++;
-				workspaceDef->connect(this->renderingNodeName, output, finalRenderNodeName, 2);
-				output++;
-				workspaceDef->connect(this->renderingNodeName, output, finalRenderNodeName, 3);
-				output++;
-				workspaceDef->connect(this->renderingNodeName, output, finalRenderNodeName, 4);
-				output++;
-				workspaceDef->connect(this->renderingNodeName, output, finalRenderNodeName, 5);
-				output++;
-				workspaceDef->connect(this->renderingNodeName, output, finalRenderNodeName, 6);
-				output++;
-				workspaceDef->connect(this->renderingNodeName, output, finalRenderNodeName, 7);
-
-			}
-
-			if (false == this->useHdr->getBool())
-			{
-				if (true == this->useDistortion->getBool())
-				{
-					workspaceDef->connect(this->distortionNode, 0, finalRenderNodeName, 1);
-				}
-				else
-				{
-					// Connect compositor effect Glass output 0 to final render input 1
-					workspaceDef->connect(lastInNode, 0, finalRenderNodeName, 1);
-				}
-			}
-			else
-			{
-				// Example without msaa:
-				if (1 == this->msaaLevel)
-				{
-					// Connect NOWASkyRenderingNode output 2 to NOWAHdrPostprocessingNode input 1
-					workspaceDef->connect(this->renderingNodeName, 2, hdrPostProcessingNodeName, 1);
-
-					if (true == this->useDistortion->getBool())
-					{
-						workspaceDef->connect(this->distortionNode, 0, hdrPostProcessingNodeName, 0);
-					}
-					else
-					{
-						// Connect compositor effect Glass output 0 to NOWAHdrPostprocessingNode input 0
-						workspaceDef->connect(lastInNode, 0, hdrPostProcessingNodeName, 0);
-					}
-
-					workspaceDef->connect(lastInNode, 1, hdrPostProcessingNodeName, 2);
-					workspaceDef->connect(hdrPostProcessingNodeName, 0, this->finalRenderingNodeName, 1);
-					// No connectExternal, because its already done in create workspace function, here reconnectAllNodes is sufficient
-				}
-				else
-				{
-					if (true == this->useDistortion->getBool())
-					{
-						workspaceDef->connect(this->distortionNode, 0, msaaNodeName, 0);
-					}
-					else
-					{
-						workspaceDef->connect(lastInNode, 0, msaaNodeName, 0);
-					}
-
-					workspaceDef->connect(this->renderingNodeName, 2, msaaNodeName, 1);
-					workspaceDef->connect("NOWAHdrMsaaResolve", 0, hdrPostProcessingNodeName, 0);
-					workspaceDef->connect(this->renderingNodeName, 2, hdrPostProcessingNodeName, 1);
-					workspaceDef->connect(this->renderingNodeName, 1, hdrPostProcessingNodeName, 2);
-					workspaceDef->connect(hdrPostProcessingNodeName, 0, finalRenderNodeName, 1);
-					// No connectExternal, because its already done in create workspace function, here reconnectAllNodes is sufficient
-				}
-			}
-
-			//Now that we're done, tell the instance to update itself.
-			this->workspace->reconnectAllNodes();
-		}
-	}
-
 	bool WorkspaceBaseComponent::getUseOcean(void) const
 	{
 		return this->useOcean;
@@ -3036,10 +3027,15 @@ Ogre::String WorkspaceBaseComponent::getUnderwaterNode(void) const
 				numTexturesDefinitions++;
 			}
 
+			if (true == this->useSSAO->getBool())
+			{
+				numTexturesDefinitions += 2; // Only gBufferNormals and depthTexture
+			}
+
 			compositorNodeDefinition->setNumLocalTextureDefinitions(numTexturesDefinitions);
 
 			Ogre::TextureDefinitionBase::TextureDefinition* texDef = compositorNodeDefinition->addTextureDefinition("rt0");
-			
+
 			texDef->width = 0; // target_width
 			texDef->height = 0; // target_height
 
@@ -3053,60 +3049,6 @@ Ogre::String WorkspaceBaseComponent::getUnderwaterNode(void) const
 			texDef->textureFlags = Ogre::TextureFlags::RenderToTexture | Ogre::TextureFlags::MsaaExplicitResolve;
 
 			texDef->format = Ogre::PFG_RGBA16_FLOAT;
-
-			if (true == this->useSSAO->getBool())
-			{
-				// texDef->format = Ogre::PFG_RGBA8_UNORM_SRGB;
-				// texDef->fsaa = this->msaaLevel; ?
-
-				// Add all necessary textures
-				Ogre::TextureDefinitionBase::TextureDefinition* gBufferNormalsTexDef = compositorNodeDefinition->addTextureDefinition("gBufferNormals");
-				gBufferNormalsTexDef->width = 0.0f; // target_width
-				gBufferNormalsTexDef->height = 0.0f; // target_height
-				gBufferNormalsTexDef->format = Ogre::PFG_R10G10B10A2_UNORM;
-				gBufferNormalsTexDef->textureFlags = Ogre::TextureFlags::RenderToTexture | Ogre::TextureFlags::MsaaExplicitResolve;
-
-				Ogre::TextureDefinitionBase::TextureDefinition* depthTextureTexDef = compositorNodeDefinition->addTextureDefinition("depthTexture");
-				depthTextureTexDef->width = 0.0f; // target_width
-				depthTextureTexDef->height = 0.0f; // target_height
-				depthTextureTexDef->format = Ogre::PFG_D32_FLOAT;
-				depthTextureTexDef->textureFlags = Ogre::TextureFlags::RenderToTexture /*| Ogre::TextureFlags::MsaaExplicitResolv*/;
-
-				Ogre::TextureDefinitionBase::TextureDefinition* depthTextureCopyTexDef = compositorNodeDefinition->addTextureDefinition("depthTextureCopy");
-				depthTextureCopyTexDef->width = 0.0f; // target_width
-				depthTextureCopyTexDef->height = 0.0f; // target_height
-				depthTextureCopyTexDef->widthFactor = 0.5f;
-				depthTextureCopyTexDef->heightFactor = 0.5f;
-				depthTextureCopyTexDef->format = Ogre::PFG_D32_FLOAT;
-				depthTextureCopyTexDef->textureFlags = Ogre::TextureFlags::RenderToTexture /*| Ogre::TextureFlags::MsaaExplicitResolve*/;
-				// Attention: Just a test
-				// depthTextureCopyTexDef->preferDepthTexture = true;
-				// depthTextureCopyTexDef->depthBufferFormat = Ogre::PFG_D32_FLOAT;
-				// depthTextureCopyTexDef->depthBufferId = 0;
-
-				Ogre::TextureDefinitionBase::TextureDefinition* ssaoTextureTexDef = compositorNodeDefinition->addTextureDefinition("ssaoTexture");
-				ssaoTextureTexDef->width = 0.0f; // target_width
-				ssaoTextureTexDef->height = 0.0f; // target_height
-				ssaoTextureTexDef->widthFactor = 0.5f;
-				ssaoTextureTexDef->heightFactor = 0.5f;
-				ssaoTextureTexDef->format = Ogre::PFG_R16_FLOAT;
-				ssaoTextureTexDef->depthBufferId = 0;
-				ssaoTextureTexDef->textureFlags = Ogre::TextureFlags::RenderToTexture;
-
-				Ogre::TextureDefinitionBase::TextureDefinition* blurTextureHorizontalTexDef = compositorNodeDefinition->addTextureDefinition("blurTextureHorizontal");
-				blurTextureHorizontalTexDef->width = 0.0f; // target_width
-				blurTextureHorizontalTexDef->height = 0.0f; // target_height
-				blurTextureHorizontalTexDef->format = Ogre::PFG_R16_FLOAT;
-				blurTextureHorizontalTexDef->depthBufferId = 0;
-				blurTextureHorizontalTexDef->textureFlags = Ogre::TextureFlags::RenderToTexture;
-
-				Ogre::TextureDefinitionBase::TextureDefinition* blurTextureVerticalTexDef = compositorNodeDefinition->addTextureDefinition("blurTextureVertical");
-				blurTextureVerticalTexDef->width = 0.0f; // target_width
-				blurTextureVerticalTexDef->height = 0.0f; // target_height
-				blurTextureVerticalTexDef->format = Ogre::PFG_RGBA8_UNORM_SRGB;
-				blurTextureVerticalTexDef->depthBufferId = 0;
-				blurTextureVerticalTexDef->textureFlags = Ogre::TextureFlags::RenderToTexture;
-			}
 
 			if (true == this->useDistortion->getBool())
 			{
@@ -3125,6 +3067,22 @@ Ogre::String WorkspaceBaseComponent::getUnderwaterNode(void) const
 				distortionTexDef->textureFlags = Ogre::TextureFlags::RenderToTexture;
 			}
 
+			if (true == this->useSSAO->getBool())
+			{
+				// Add all necessary textures
+				Ogre::TextureDefinitionBase::TextureDefinition* gBufferNormalsTexDef = compositorNodeDefinition->addTextureDefinition("gBufferNormals");
+				gBufferNormalsTexDef->width = 0.0f; // target_width
+				gBufferNormalsTexDef->height = 0.0f; // target_height
+				gBufferNormalsTexDef->format = Ogre::PFG_R10G10B10A2_UNORM;
+				gBufferNormalsTexDef->textureFlags = Ogre::TextureFlags::RenderToTexture | Ogre::TextureFlags::MsaaExplicitResolve;
+
+				Ogre::TextureDefinitionBase::TextureDefinition* depthTextureTexDef = compositorNodeDefinition->addTextureDefinition("depthTexture");
+				depthTextureTexDef->width = 0.0f; // target_width
+				depthTextureTexDef->height = 0.0f; // target_height
+				depthTextureTexDef->format = Ogre::PFG_D32_FLOAT;
+				depthTextureTexDef->textureFlags = Ogre::TextureFlags::RenderToTexture;
+			}
+
 			Ogre::RenderTargetViewDef* rtv = compositorNodeDefinition->addRenderTextureView("rt0");
 			Ogre::RenderTargetViewEntry attachment;
 			attachment.textureName = "rt0";
@@ -3133,16 +3091,18 @@ Ogre::String WorkspaceBaseComponent::getUnderwaterNode(void) const
 
 			if (true == this->useSSAO->getBool())
 			{
-				// rtv rt0
 				{
 					Ogre::RenderTargetViewDef* rtv = compositorNodeDefinition->getRenderTargetViewDefNonConstNoThrow("rt0");
-					Ogre::RenderTargetViewEntry attachment;
-					attachment.textureName = "rt0";
-					rtv->colourAttachments.push_back(attachment);
-					attachment.textureName = "gBufferNormals";
-					rtv->colourAttachments.push_back(attachment);
-					// rtv->depthAttachment.textureName = "depthTexture";
-					rtv->stencilAttachment.textureName = "depthTexture";
+
+					Ogre::RenderTargetViewEntry rt0Attachment;
+					rt0Attachment.textureName = "rt0";
+					rtv->colourAttachments.push_back(rt0Attachment);
+
+					Ogre::RenderTargetViewEntry normalsAttachment;
+					normalsAttachment.textureName = "gBufferNormals";
+					rtv->colourAttachments.push_back(normalsAttachment);
+
+					rtv->depthAttachment.textureName = "depthTexture";
 				}
 			}
 
@@ -3166,10 +3126,10 @@ Ogre::String WorkspaceBaseComponent::getUnderwaterNode(void) const
 			if (true == this->useHdr->getBool())
 			{
 				texDef = compositorNodeDefinition->addTextureDefinition("oldLumRt");
-				
+
 				texDef->width = 0; // target_width
 				texDef->height = 0; // target_height
-				
+
 				texDef->format = Ogre::PFG_RGBA16_FLOAT;
 				// ?? Is this necessary?
 				texDef->textureFlags = Ogre::TextureFlags::RenderToTexture; // Here also | Ogre::TextureFlags::MsaaExplicitResolve;??
@@ -3225,7 +3185,7 @@ Ogre::String WorkspaceBaseComponent::getUnderwaterNode(void) const
 							passClear->mStoreActionColour[0] = Ogre::StoreAction::Store;
 							passClear->mStoreActionDepth = Ogre::StoreAction::Store;
 							passClear->mStoreActionStencil = Ogre::StoreAction::Store;
-							
+
 							passClear->mProfilingId = "NOWA_Pbs_Split_Clear_Pass_Clear";
 						}
 					}
@@ -3253,7 +3213,7 @@ Ogre::String WorkspaceBaseComponent::getUnderwaterNode(void) const
 						passScene->setAllLoadActions(Ogre::LoadAction::Clear);
 						passScene->mStoreActionDepth = Ogre::StoreAction::DontCare;
 						passScene->mStoreActionStencil = Ogre::StoreAction::DontCare;
-						
+
 						// passScene->mFirstRQ = 10;
 						// passScene->mLastRQ = 253;
 
@@ -3313,7 +3273,7 @@ Ogre::String WorkspaceBaseComponent::getUnderwaterNode(void) const
 					passScene->mProfilingId = "NOWA_Pbs_Distortion_Pass_Scene";
 
 					passScene->setAllLoadActions(Ogre::LoadAction::Clear);
-					
+
 					passScene->mClearColour[0] = Ogre::ColourValue(0.5f, 0.5f, 0.0f, 0.0f);
 
 					passScene->mUpdateLodLists = false;
@@ -3326,31 +3286,27 @@ Ogre::String WorkspaceBaseComponent::getUnderwaterNode(void) const
 				this->createDistortionNode();
 			}
 
-			// Output channels
-			unsigned short outputChannel = 0;
+			// ===== Output channels =====
+			unsigned short outputChannelCount = 2; // rt0, rt1
 
-			if (false == this->useHdr->getBool())
+			if (true == this->useHdr->getBool())
 			{
-				outputChannel = 2;
-			}
-			else
-			{
-				outputChannel = 3;
+				outputChannelCount++; // oldLumRt
 			}
 
 			if (true == this->useDistortion->getBool())
 			{
-				outputChannel++;
+				outputChannelCount++; // rt_distortion
 			}
 
 			if (true == this->useSSAO->getBool())
 			{
-				outputChannel += 6;
+				outputChannelCount += 2; // gBufferNormals, depthTexture
 			}
 
-			compositorNodeDefinition->setNumOutputChannels(outputChannel);
+			compositorNodeDefinition->setNumOutputChannels(outputChannelCount);
 
-			outputChannel = 0;
+			unsigned short outputChannel = 0;
 
 			compositorNodeDefinition->mapOutputChannel(outputChannel++, "rt0"); // 0
 			compositorNodeDefinition->mapOutputChannel(outputChannel++, "rt1"); // 1
@@ -3367,11 +3323,7 @@ Ogre::String WorkspaceBaseComponent::getUnderwaterNode(void) const
 			if (true == this->useSSAO->getBool())
 			{
 				compositorNodeDefinition->mapOutputChannel(outputChannel++, "gBufferNormals"); // 4
-				compositorNodeDefinition->mapOutputChannel(outputChannel++, "depthTexture"); // 5
-				compositorNodeDefinition->mapOutputChannel(outputChannel++, "depthTextureCopy"); // 6
-				compositorNodeDefinition->mapOutputChannel(outputChannel++, "ssaoTexture"); // 7
-				compositorNodeDefinition->mapOutputChannel(outputChannel++, "blurTextureHorizontal"); // 8
-				compositorNodeDefinition->mapOutputChannel(outputChannel++, "blurTextureVertical"); // 9
+				compositorNodeDefinition->mapOutputChannel(outputChannel++, "depthTexture");   // 5
 			}
 		}
 

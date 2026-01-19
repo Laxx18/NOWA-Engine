@@ -43,6 +43,8 @@ in block
 	@end
 @end
 
+@insertpiece( custom_ps_output_types )
+
 @property( !hlms_shadowcaster )
 
 @property( hlms_use_prepass )
@@ -62,6 +64,7 @@ in block
 
 @insertpiece( DeclPlanarReflTextures )
 @insertpiece( DeclAreaApproxTextures )
+@insertpiece( DeclBlueNoiseTexture )
 
 @property( hlms_vpos )
 in vec4 gl_FragCoord;

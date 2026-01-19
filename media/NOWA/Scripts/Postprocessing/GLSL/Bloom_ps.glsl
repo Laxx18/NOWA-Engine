@@ -10,8 +10,8 @@ vulkan_layout( ogre_t1 ) uniform texture2D Blur1;
 vulkan( layout( ogre_s0 ) uniform sampler samplerState );
 
 vulkan( layout( ogre_P0 ) uniform Params { )
-uniform float OriginalImageWeight;
-uniform float BlurWeight;
+	uniform float OriginalImageWeight;
+	uniform float BlurWeight;
 vulkan( }; )
 
 vulkan_layout( location = 0 )

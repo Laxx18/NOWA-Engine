@@ -1,6 +1,6 @@
 @property( syntax != glslvk )
 	@property( GL3+ >= 430 )
-	#version 430
+		#version 430
 	@else
 		#version 420
 		#extension GL_ARB_arrays_of_arrays: enable

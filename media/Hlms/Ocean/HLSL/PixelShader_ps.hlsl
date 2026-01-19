@@ -40,6 +40,10 @@ Texture2D blendMap    : register(t@value(blendMap));
 SamplerState terrainDataSampler : register(s@value(terrainData));
 SamplerState blendMapSampler    : register(s@value(blendMap));
 
+@insertpiece( DeclPlanarReflTextures )
+@insertpiece( DeclAreaApproxTextures )
+@insertpiece( DeclBlueNoiseTexture )
+
 // Environment probe (cubemap reflection)
 @property( use_envprobe_map )
 	@property( !hlms_enable_cubemaps_auto )

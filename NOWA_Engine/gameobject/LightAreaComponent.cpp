@@ -560,7 +560,7 @@ namespace NOWA
 	{
 		if (nullptr != this->light)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI("LightAreaComponent::setActivated", _1(activated), {
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("LightAreaComponent::setActivated", _1(activated), {
 				this->light->setVisible(activated);
 			});
 		}
@@ -590,7 +590,7 @@ namespace NOWA
 		this->diffuseColor->setValue(diffuseColor);
 		if (nullptr != this->light)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI("LightAreaComponent::setDiffuseColor", _1(diffuseColor),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("LightAreaComponent::setDiffuseColor", _1(diffuseColor),
 			{
 				this->light->setDiffuseColour(diffuseColor.x, diffuseColor.y, diffuseColor.z);
 				if (nullptr != this->datablock)
@@ -611,7 +611,7 @@ namespace NOWA
 		this->specularColor->setValue(specularColor);
 		if (nullptr != this->light)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI("LightAreaComponent::setSpecularColor", _1(specularColor),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("LightAreaComponent::setSpecularColor", _1(specularColor),
 			{
 				this->light->setSpecularColour(specularColor.x, specularColor.y, specularColor.z);
 			});
@@ -630,7 +630,7 @@ namespace NOWA
 		this->powerScale->setValue(powerScale);
 		if (nullptr != this->light)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI("LightAreaComponent::setPowerScale", _1(powerScale),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("LightAreaComponent::setPowerScale", _1(powerScale),
 			{
 				this->light->setPowerScale(powerScale);
 			});
@@ -647,7 +647,7 @@ namespace NOWA
 		this->direction->setValue(direction);
 		if (nullptr != this->light)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI("LightAreaComponent::setDirection", _1(direction),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("LightAreaComponent::setDirection", _1(direction),
 			{
 				this->light->setDirection(direction.normalisedCopy());
 			});
@@ -664,7 +664,7 @@ namespace NOWA
 		this->affectParentNode->setValue(affectParentNode);
 		if (nullptr != this->light)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI("LightAreaComponent::setAffectParentNode", _1(affectParentNode),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("LightAreaComponent::setAffectParentNode", _1(affectParentNode),
 			{
 				this->light->setAffectParentNode(affectParentNode);
 			});
@@ -681,7 +681,7 @@ namespace NOWA
 		this->castShadows->setValue(castShadows);
 		if (nullptr != this->light)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI("LightAreaComponent::setCastShadows", _1(castShadows),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("LightAreaComponent::setCastShadows", _1(castShadows),
 			{
 				this->light->setCastShadows(castShadows);
 			});
@@ -698,7 +698,7 @@ namespace NOWA
 		this->attenuationRadius->setValue(attenuationValues);
 		if (nullptr != this->light)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI("LightAreaComponent::setAttenuationRadius", _1(attenuationValues),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("LightAreaComponent::setAttenuationRadius", _1(attenuationValues),
 			{
 				this->light->setAttenuationBasedOnRadius(attenuationValues.x, attenuationValues.y);
 			});
@@ -725,7 +725,7 @@ namespace NOWA
 		this->rectSize->setValue(tempRectSize);
 		if (nullptr != this->light)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI("LightAreaComponent::setRectSize", _2(tempRectSize, rectSize),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("LightAreaComponent::setRectSize", _2(tempRectSize, rectSize),
 			{
 				this->light->setRectSize(tempRectSize);
 				this->gameObjectPtr->getSceneNode()->setScale(rectSize.x, rectSize.y, 1.0f);
@@ -744,7 +744,7 @@ namespace NOWA
 		if (nullptr != this->light)
 		{
 			// TODO: Wait?
-			ENQUEUE_RENDER_COMMAND_MULTI("LightAreaComponent::setTextureName", _1(textureName),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("LightAreaComponent::setTextureName", _1(textureName),
 				{
 				if (true == textureName.empty())
 				{
@@ -824,7 +824,7 @@ namespace NOWA
 		this->diffuseMipStart->setValue(diffuseMipStart);
 		if (nullptr != this->light)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI("LightAreaComponent::setDiffuseMipStart", _1(diffuseMipStart),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("LightAreaComponent::setDiffuseMipStart", _1(diffuseMipStart),
 			{
 				this->light->mTexLightMaskDiffuseMipStart = (Ogre::uint16)(diffuseMipStart * 65535); // (Ogre::uint16)(0.95f * 65535);
 			});
@@ -841,7 +841,7 @@ namespace NOWA
 		this->doubleSided->setValue(doubleSided);
 		if (nullptr != this->light)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI("LightAreaComponent::setDoubleSided", _1(doubleSided),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("LightAreaComponent::setDoubleSided", _1(doubleSided),
 			{
 				this->light->setDoubleSided(doubleSided);
 			});
@@ -859,7 +859,7 @@ namespace NOWA
 		this->areaLightType->setListSelectedValue(areaLightType);
 		if (nullptr != this->light)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI("LightAreaComponent::setAreaLightType", _1(areaLightType),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("LightAreaComponent::setAreaLightType", _1(areaLightType),
 			{
 				if ("Area Approximation" == areaLightType)
 				{

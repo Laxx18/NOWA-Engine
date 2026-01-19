@@ -146,7 +146,7 @@ namespace NOWA
 		if (nullptr != this->dummyEntity)
 		{
 			bool visible = this->showDummyEntity->getBool() && this->gameObjectPtr->isVisible();
-			ENQUEUE_RENDER_COMMAND_MULTI("LightDirectionalComponent::connect setVisible", _1(visible),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("LightDirectionalComponent::connect setVisible", _1(visible),
 			{
 				this->dummyEntity->setVisible(visible);
 			});
@@ -348,7 +348,7 @@ namespace NOWA
 	{
 		if (nullptr != this->light)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI("LightDirectionalComponent::setActivated", _1(activated),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("LightDirectionalComponent::setActivated", _1(activated),
 			{
 				this->light->setVisible(activated);
 			});
@@ -379,7 +379,7 @@ namespace NOWA
 		this->diffuseColor->setValue(diffuseColor);
 		if (nullptr != this->light)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI("LightDirectionalComponent::setDiffuseColor", _1(diffuseColor),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("LightDirectionalComponent::setDiffuseColor", _1(diffuseColor),
 			{
 				this->light->setDiffuseColour(this->diffuseColor->getVector3().x, this->diffuseColor->getVector3().y, this->diffuseColor->getVector3().z);
 			});
@@ -396,7 +396,7 @@ namespace NOWA
 		this->specularColor->setValue(specularColor);
 		if (nullptr != this->light)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI("LightDirectionalComponent::setSpecularColor", _1(specularColor),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("LightDirectionalComponent::setSpecularColor", _1(specularColor),
 			{
 				this->light->setSpecularColour(this->specularColor->getVector3().x, this->specularColor->getVector3().y, this->specularColor->getVector3().z);
 			});
@@ -413,7 +413,7 @@ namespace NOWA
 		this->powerScale->setValue(powerScale);
 		if (nullptr != this->light)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI("LightDirectionalComponent::setPowerScale", _1(powerScale),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("LightDirectionalComponent::setPowerScale", _1(powerScale),
 			{
 				this->light->setPowerScale(powerScale);
 			});
@@ -430,7 +430,7 @@ namespace NOWA
 		this->direction->setValue(direction);
 		if (nullptr != this->light)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI("LightDirectionalComponent::setDirection", _1(direction),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("LightDirectionalComponent::setDirection", _1(direction),
 			{
 				this->light->setDirection(this->direction->getVector3());
 				// Actualize the ambient light, when the direction changed
@@ -467,7 +467,7 @@ namespace NOWA
 		this->attenuationRadius->setValue(attenuationRadius);
 		if (nullptr != this->light)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI("LightDirectionalComponent::setAttenuationRadius", _1(attenuationRadius),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("LightDirectionalComponent::setAttenuationRadius", _1(attenuationRadius),
 			{
 				this->light->setAttenuationBasedOnRadius(this->attenuationRadius->getReal(), this->attenuationLumThreshold->getReal());
 			});
@@ -484,7 +484,7 @@ namespace NOWA
 		this->attenuationLumThreshold->setValue(attenuationLumThreshold);
 		if (nullptr != this->light)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI("LightDirectionalComponent::setAttenuationLumThreshold", _1(attenuationLumThreshold),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("LightDirectionalComponent::setAttenuationLumThreshold", _1(attenuationLumThreshold),
 			{
 				this->light->setAttenuationBasedOnRadius(this->attenuationRadius->getReal(), this->attenuationLumThreshold->getReal());
 			});
@@ -501,7 +501,7 @@ namespace NOWA
 		this->castShadows->setValue(castShadows);
 		if (nullptr != this->light)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI("LightDirectionalComponent::setCastShadows", _1(castShadows),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("LightDirectionalComponent::setCastShadows", _1(castShadows),
 			{
 				this->light->setCastShadows(castShadows);
 			});

@@ -6,11 +6,6 @@ struct PS_INPUT
 	float2 uv0;
 };
 
-struct Params
-{
-	float weight;
-};
-
 constexpr constant float2 usedTexelED[8] =
 {
 	float2( -1, -1 ),
@@ -32,7 +27,7 @@ fragment float4 main_metal
 	constant float2 &vTexelSize			[[buffer(PARAMETER_SLOT)]]
 )
 {
-	float4 cAvgColor = params.weight * RT.sample( samplerState, inPs.uv0 );
+	float4 cAvgColor = 9 * RT.sample( samplerState, inPs.uv0 );
 
 	for(int t=0; t<8; t++)
 		cAvgColor -= RT.sample( samplerState, inPs.uv0 + vTexelSize * usedTexelED[t] );

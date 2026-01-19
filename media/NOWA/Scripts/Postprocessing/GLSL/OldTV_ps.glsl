@@ -18,15 +18,15 @@ vulkan( layout( ogre_s1 ) uniform sampler samplerState1 );
 vulkan( layout( ogre_s2 ) uniform sampler samplerState2 );
 
 vulkan( layout( ogre_P0 ) uniform Params { )
-uniform float distortionFreq;
-uniform float distortionScale;
-uniform float distortionRoll;
-uniform float interference;
-uniform float frameLimit;
-uniform float frameShape;
-uniform float frameSharpness;
-uniform float time_0_X;
-uniform float sin_time_0_X;
+	uniform float distortionFreq;
+	uniform float distortionScale;
+	uniform float distortionRoll;
+	uniform float interference;
+	uniform float frameLimit;
+	uniform float frameShape;
+	uniform float frameSharpness;
+	uniform float time_0_X;
+	uniform float sin_time_0_X;
 vulkan( }; )
 
 void main()

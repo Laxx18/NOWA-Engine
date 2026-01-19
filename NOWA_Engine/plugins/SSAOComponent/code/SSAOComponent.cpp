@@ -248,117 +248,120 @@ namespace NOWA
 		}
 		this->cameraComponent = cameraCompPtr.get();
 
-		//We need to create SSAO kernel samples and noise texture
-		//Generate kernel samples first
-		float kernelSamples[64][4];
-		for (size_t i = 0; i < 64u; ++i)
+		ENQUEUE_RENDER_COMMAND_WAIT("WorkspaceBaseComponent::createSSAONoiseTexture",
 		{
-			Ogre::Vector3 sample = Ogre::Vector3(Ogre::Math::RangeRandom(-1.0f, 1.0f), Ogre::Math::RangeRandom(-1.0f, 1.0f), Ogre::Math::RangeRandom(0.0f, 1.0f));
-
-			sample.normalise();
-
-			float scale = (float)i / 64.0f;
-			scale = Ogre::Math::lerp(0.3f, 1.0f, scale * scale);
-			sample = sample * scale;
-
-			kernelSamples[i][0] = sample.x;
-			kernelSamples[i][1] = sample.y;
-			kernelSamples[i][2] = sample.z;
-			kernelSamples[i][3] = 1.0f;
-		}
-
-		//Next generate noise texture
-		Ogre::Root* root = Core::getSingletonPtr()->getOgreRoot();
-		Ogre::TextureGpuManager* textureManager = root->getRenderSystem()->getTextureGpuManager();
-
-		Ogre::TextureGpu* noiseTexture = nullptr;
-
-		if (false == textureManager->hasTextureResource("noiseTextureSSAO", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME))
-		{
-			noiseTexture = textureManager->createTexture("noiseTextureSSAO", Ogre::GpuPageOutStrategy::SaveToSystemRam, 0, Ogre::TextureTypes::Type2D);
-			noiseTexture->setResolution(2u, 2u);
-			noiseTexture->setPixelFormat(Ogre::PFG_RGBA8_SNORM);
-			noiseTexture->_transitionTo(Ogre::GpuResidency::Resident, (Ogre::uint8*)0);
-			noiseTexture->_setNextResidencyStatus(Ogre::GpuResidency::Resident);
-
-			Ogre::StagingTexture* stagingTexture = textureManager->getStagingTexture(2u, 2u, 1u, 1u, Ogre::PFG_RGBA8_SNORM);
-			stagingTexture->startMapRegion();
-			Ogre::TextureBox texBox = stagingTexture->mapRegion(2u, 2u, 1u, 1u, Ogre::PFG_RGBA8_SNORM);
-
-			for (size_t j = 0; j < texBox.height; ++j)
+			//We need to create SSAO kernel samples and noise texture
+			//Generate kernel samples first
+			float kernelSamples[64][4];
+			for (size_t i = 0; i < 64u; ++i)
 			{
-				for (size_t i = 0; i < texBox.width; ++i)
-				{
-					Ogre::Vector3 noise = Ogre::Vector3(Ogre::Math::RangeRandom(-1.0f, 1.0f), Ogre::Math::RangeRandom(-1.0f, 1.0f), 0.0f);
-					noise.normalise();
+				Ogre::Vector3 sample = Ogre::Vector3(Ogre::Math::RangeRandom(-1.0f, 1.0f), Ogre::Math::RangeRandom(-1.0f, 1.0f), Ogre::Math::RangeRandom(0.0f, 1.0f));
 
-					Ogre::uint8* pixelData = reinterpret_cast<Ogre::uint8*>(texBox.at(i, j, 0));
-					pixelData[0] = Ogre::Bitwise::floatToSnorm8(noise.x);
-					pixelData[1] = Ogre::Bitwise::floatToSnorm8(noise.y);
-					pixelData[2] = Ogre::Bitwise::floatToSnorm8(noise.z);
-					pixelData[3] = Ogre::Bitwise::floatToSnorm8(1.0f);
-				}
+				sample.normalise();
+
+				float scale = (float)i / 64.0f;
+				scale = Ogre::Math::lerp(0.3f, 1.0f, scale * scale);
+				sample = sample * scale;
+
+				kernelSamples[i][0] = sample.x;
+				kernelSamples[i][1] = sample.y;
+				kernelSamples[i][2] = sample.z;
+				kernelSamples[i][3] = 1.0f;
 			}
 
-			stagingTexture->stopMapRegion();
-			stagingTexture->upload(texBox, noiseTexture, 0, 0, 0);
-			textureManager->removeStagingTexture(stagingTexture);
-			stagingTexture = 0;
-		}
-		else
-		{
-			noiseTexture = textureManager->findTextureNoThrow("noiseTextureSSAO");
-		}
+			//Next generate noise texture
+			Ogre::Root* root = Core::getSingletonPtr()->getOgreRoot();
+			Ogre::TextureGpuManager* textureManager = root->getRenderSystem()->getTextureGpuManager();
 
-		//---------------------------------------------------------------------------------
-		//Get GpuProgramParametersSharedPtr to set uniforms that we need
-		Ogre::MaterialPtr material = std::static_pointer_cast<Ogre::Material>(Ogre::MaterialManager::getSingleton().load("SSAO/HS", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME));
+			Ogre::TextureGpu* noiseTexture = nullptr;
 
-		Ogre::Pass* pass = material->getTechnique(0)->getPass(0);
-		this->passSSAO = pass;
-		Ogre::GpuProgramParametersSharedPtr psParams = pass->getFragmentProgramParameters();
+			if (false == textureManager->hasTextureResource("noiseTextureSSAO", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME))
+			{
+				noiseTexture = textureManager->createTexture("noiseTextureSSAO", Ogre::GpuPageOutStrategy::SaveToSystemRam, 0, Ogre::TextureTypes::Type2D);
+				noiseTexture->setResolution(2u, 2u);
+				noiseTexture->setPixelFormat(Ogre::PFG_RGBA8_SNORM);
+				noiseTexture->_transitionTo(Ogre::GpuResidency::Resident, (Ogre::uint8*)0);
+				noiseTexture->_setNextResidencyStatus(Ogre::GpuResidency::Resident);
 
-		//Lets set uniforms for shader
-		//Set texture uniform for noise
-		Ogre::TextureUnitState* noiseTextureState = pass->getTextureUnitState("noiseTextureSSAO");
-		noiseTextureState->setTexture(noiseTexture);
+				Ogre::StagingTexture* stagingTexture = textureManager->getStagingTexture(2u, 2u, 1u, 1u, Ogre::PFG_RGBA8_SNORM);
+				stagingTexture->startMapRegion();
+				Ogre::TextureBox texBox = stagingTexture->mapRegion(2u, 2u, 1u, 1u, Ogre::PFG_RGBA8_SNORM);
 
-		//Reconstruct position from depth. Position is needed in SSAO
-		//We need to set the parameters based on camera to the
-		//shader so that the un-projection works as expected
-		Ogre::Vector2 projectionAB = this->cameraComponent->getCamera()->getProjectionParamsAB();
-		//The division will keep "linearDepth" in the shader in the [0; 1] range.
-		projectionAB.y /= this->cameraComponent->getFarClipDistance();
-		psParams->setNamedConstant("projectionParams", projectionAB);
+				for (size_t j = 0; j < texBox.height; ++j)
+				{
+					for (size_t i = 0; i < texBox.width; ++i)
+					{
+						Ogre::Vector3 noise = Ogre::Vector3(Ogre::Math::RangeRandom(-1.0f, 1.0f), Ogre::Math::RangeRandom(-1.0f, 1.0f), 0.0f);
+						noise.normalise();
 
-		//Set other uniforms
-		psParams->setNamedConstant("kernelRadius", this->kernelRadius->getReal());
+						Ogre::uint8* pixelData = reinterpret_cast<Ogre::uint8*>(texBox.at(i, j, 0));
+						pixelData[0] = Ogre::Bitwise::floatToSnorm8(noise.x);
+						pixelData[1] = Ogre::Bitwise::floatToSnorm8(noise.y);
+						pixelData[2] = Ogre::Bitwise::floatToSnorm8(noise.z);
+						pixelData[3] = Ogre::Bitwise::floatToSnorm8(1.0f);
+					}
+				}
 
-		psParams->setNamedConstant("noiseScale", Ogre::Vector2((Core::getSingletonPtr()->getOgreRenderWindow()->getWidth() * 0.5f) / 2.0f,
-								   (Core::getSingletonPtr()->getOgreRenderWindow()->getHeight() * 0.5f) / 2.0f));
-		psParams->setNamedConstant("invKernelSize", 1.0f / 64.0f);
-		psParams->setNamedConstant("sampleDirs", (float*)kernelSamples, 64, 4);
+				stagingTexture->stopMapRegion();
+				stagingTexture->upload(texBox, noiseTexture, 0, 0, 0);
+				textureManager->removeStagingTexture(stagingTexture);
+				stagingTexture = 0;
+			}
+			else
+			{
+				noiseTexture = textureManager->findTextureNoThrow("noiseTextureSSAO");
+			}
 
-		//Set blur shader uniforms
-		Ogre::MaterialPtr materialBlurH = std::static_pointer_cast<Ogre::Material>(Ogre::MaterialManager::getSingleton().load("SSAO/BlurH", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME));
+			//---------------------------------------------------------------------------------
+			//Get GpuProgramParametersSharedPtr to set uniforms that we need
+			Ogre::MaterialPtr material = std::static_pointer_cast<Ogre::Material>(Ogre::MaterialManager::getSingleton().load("SSAO/HS", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME));
 
-		Ogre::Pass* passBlurH = materialBlurH->getTechnique(0)->getPass(0);
-		Ogre::GpuProgramParametersSharedPtr psParamsBlurH = passBlurH->getFragmentProgramParameters();
-		psParamsBlurH->setNamedConstant("projectionParams", projectionAB);
+			Ogre::Pass* pass = material->getTechnique(0)->getPass(0);
+			this->passSSAO = pass;
+			Ogre::GpuProgramParametersSharedPtr psParams = pass->getFragmentProgramParameters();
 
-		Ogre::MaterialPtr materialBlurV = std::static_pointer_cast<Ogre::Material>(Ogre::MaterialManager::getSingleton().load("SSAO/BlurV", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME));
+			//Lets set uniforms for shader
+			//Set texture uniform for noise
+			Ogre::TextureUnitState* noiseTextureState = pass->getTextureUnitState("noiseTextureSSAO");
+			noiseTextureState->setTexture(noiseTexture);
 
-		Ogre::Pass* passBlurV = materialBlurV->getTechnique(0)->getPass(0);
-		Ogre::GpuProgramParametersSharedPtr psParamsBlurV = passBlurV->getFragmentProgramParameters();
-		psParamsBlurV->setNamedConstant("projectionParams", projectionAB);
+			//Reconstruct position from depth. Position is needed in SSAO
+			//We need to set the parameters based on camera to the
+			//shader so that the un-projection works as expected
+			Ogre::Vector2 projectionAB = this->cameraComponent->getCamera()->getProjectionParamsAB();
+			//The division will keep "linearDepth" in the shader in the [0; 1] range.
+			projectionAB.y /= this->cameraComponent->getFarClipDistance();
+			psParams->setNamedConstant("projectionParams", projectionAB);
 
-		//Set apply shader uniforms
-		Ogre::MaterialPtr materialApply = std::static_pointer_cast<Ogre::Material>(Ogre::MaterialManager::getSingleton().load("SSAO/Apply", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME));
+			//Set other uniforms
+			psParams->setNamedConstant("kernelRadius", this->kernelRadius->getReal());
 
-		Ogre::Pass* passApply = materialApply->getTechnique(0)->getPass(0);
-		this->passApplySSAO = passApply;
-		Ogre::GpuProgramParametersSharedPtr psParamsApply = passApply->getFragmentProgramParameters();
-		psParamsApply->setNamedConstant("powerScale", this->powerScale->getReal());
+			psParams->setNamedConstant("noiseScale", Ogre::Vector2((Core::getSingletonPtr()->getOgreRenderWindow()->getWidth() * 0.5f) / 2.0f,
+										(Core::getSingletonPtr()->getOgreRenderWindow()->getHeight() * 0.5f) / 2.0f));
+			psParams->setNamedConstant("invKernelSize", 1.0f / 64.0f);
+			psParams->setNamedConstant("sampleDirs", (float*)kernelSamples, 64, 4);
+
+			//Set blur shader uniforms
+			Ogre::MaterialPtr materialBlurH = std::static_pointer_cast<Ogre::Material>(Ogre::MaterialManager::getSingleton().load("SSAO/BlurH", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME));
+
+			Ogre::Pass* passBlurH = materialBlurH->getTechnique(0)->getPass(0);
+			Ogre::GpuProgramParametersSharedPtr psParamsBlurH = passBlurH->getFragmentProgramParameters();
+			psParamsBlurH->setNamedConstant("projectionParams", projectionAB);
+
+			Ogre::MaterialPtr materialBlurV = std::static_pointer_cast<Ogre::Material>(Ogre::MaterialManager::getSingleton().load("SSAO/BlurV", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME));
+
+			Ogre::Pass* passBlurV = materialBlurV->getTechnique(0)->getPass(0);
+			Ogre::GpuProgramParametersSharedPtr psParamsBlurV = passBlurV->getFragmentProgramParameters();
+			psParamsBlurV->setNamedConstant("projectionParams", projectionAB);
+
+			//Set apply shader uniforms
+			Ogre::MaterialPtr materialApply = std::static_pointer_cast<Ogre::Material>(Ogre::MaterialManager::getSingleton().load("SSAO/Apply", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME));
+
+			Ogre::Pass* passApply = materialApply->getTechnique(0)->getPass(0);
+			this->passApplySSAO = passApply;
+			Ogre::GpuProgramParametersSharedPtr psParamsApply = passApply->getFragmentProgramParameters();
+			psParamsApply->setNamedConstant("powerScale", this->powerScale->getReal());
+		});
 	}
 
 	bool SSAOComponent::canStaticAddComponent(GameObject* gameObject)

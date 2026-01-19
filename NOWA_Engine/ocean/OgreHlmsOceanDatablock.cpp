@@ -291,42 +291,48 @@ namespace Ogre
     {
         transparency = Math::Clamp(transparency, 0.0f, 1.0f);
 
-        // Determine if transparency should be enabled
         bool shouldEnable = (transparency < 1.0f);
 
-        // Store in mRoughness.z
         if (mRoughness.z != transparency)
         {
             mRoughness.z = transparency;
 
             if (shouldEnable)
             {
-                // Use ONE/ONE blending for additive transparency (better for water)
+                // Enable alpha blending
                 HlmsBlendblock blendblock;
-                blendblock.mSourceBlendFactor = SBF_ONE;
+                blendblock.mSourceBlendFactor = SBF_SOURCE_ALPHA;
                 blendblock.mDestBlendFactor = SBF_ONE_MINUS_SOURCE_ALPHA;
                 blendblock.mBlendOperation = SBO_ADD;
-                blendblock.setForceTransparentRenderOrder(true); // Force transparent queue
-                blendblock.setBlendType(SBT_REPLACE);
+                blendblock.setForceTransparentRenderOrder(true);
+                blendblock.setBlendType(SBT_TRANSPARENT_ALPHA);
                 setBlendblock(blendblock, false, true);
 
+                // Keep depth testing but disable depth writes for proper transparency
                 HlmsMacroblock macro;
-                macro.mDepthCheck = true;     // still test depth
-                macro.mDepthWrite = true;    // CRITICAL: do NOT write depth
+                macro.mDepthCheck = true;
+                macro.mDepthWrite = true;  // Keep true - ocean needs depth buffer
                 macro.mDepthFunc = CMPF_LESS_EQUAL;
+                macro.mCullMode = CULL_NONE;  // Render both sides for underwater view
                 setMacroblock(macro, false, true);
             }
             else
             {
-                // Opaque
+                // Opaque mode
                 HlmsBlendblock blendblock;
                 blendblock.mSourceBlendFactor = SBF_ONE;
                 blendblock.mDestBlendFactor = SBF_ZERO;
                 setBlendblock(blendblock, false, true);
-            }
-            // Force shader recompilation
-            flushRenderables();
 
+                HlmsMacroblock macro;
+                macro.mDepthCheck = true;
+                macro.mDepthWrite = true;
+                macro.mDepthFunc = CMPF_LESS_EQUAL;
+                macro.mCullMode = CULL_CLOCKWISE;
+                setMacroblock(macro, false, true);
+            }
+
+            flushRenderables();
             scheduleConstBufferUpdate();
         }
     }

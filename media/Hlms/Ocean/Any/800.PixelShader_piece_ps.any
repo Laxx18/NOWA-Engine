@@ -22,6 +22,13 @@
     @end
 @end
 
+// Override shadow handling to prevent the bug
+@undefpiece( DoDirectionalShadowMaps )
+@piece( DoDirectionalShadowMaps )
+    // Ocean uses simple shadow approach, not shadow maps
+    midf fShadow = _h( 1.0f );
+@end
+
 //-----------------------------------------------------------------------------
 //		BODY CODE (Following Terra's exact pattern)
 //-----------------------------------------------------------------------------
@@ -89,8 +96,8 @@
 	nNormal.z  = _h( 1.0f );
 	nNormal    = normalize( nNormal );
 
-	midf3 geomNormal = midf3_c( 0.0f, 1.0f, 0.0f );
-	geomNormal = normalize( mul( geomNormal, toMidf3x3( passBuf.view ) ) );
+	// Use the ACTUAL normal from vertex shader, not a hardcoded flat normal
+	midf3 geomNormal = normalize( midf3_c( inPs.normal ) );
 
 	midf3 viewSpaceUnitX = midf3_c(
 		passBuf.view[0].x,
@@ -232,6 +239,14 @@
         @insertpiece( DoPlanarReflectionsPS )
 
         @property( ambient_hemisphere )
+			@property( ambient_hemisphere_inverted )
+				float tmpAmbientWS = ambientWD;
+				float tmpAmbientWD = ambientWS;
+			@else
+				float tmpAmbientWS = ambientWS;
+				float tmpAmbientWD = ambientWD;
+			@end
+		
             @property( use_envprobe_map || hlms_use_ssr || use_planar_reflections || vct_num_probes )
                 @property( vct_num_probes )
                     if( vctSpecular.w == 0 )
@@ -239,17 +254,17 @@
                 @end
                         // Configurable ambient reduction
 						pixelData.envColourS += lerp( midf3_c( passBuf.ambientLowerHemi.xyz ),
-													  midf3_c( passBuf.ambientUpperHemi.xyz ), ambientWD ) * midf_c( 1.0 - ambientReduction * 0.5 );
+													  midf3_c( passBuf.ambientUpperHemi.xyz ), tmpAmbientWD ) * midf_c( 1.0 - ambientReduction * 0.5 );
 						pixelData.envColourD += lerp( midf3_c( passBuf.ambientLowerHemi.xyz ),
-													  midf3_c( passBuf.ambientUpperHemi.xyz ), ambientWS ) * midf_c( 1.0 - ambientReduction * 0.5 );
+													  midf3_c( passBuf.ambientUpperHemi.xyz ), tmpAmbientWS ) * midf_c( 1.0 - ambientReduction * 0.5 );
                 @property( vct_num_probes )
                     }
                 @end
             @else
                 pixelData.envColourS = lerp( midf3_c( passBuf.ambientLowerHemi.xyz ),
-                                            midf3_c( passBuf.ambientUpperHemi.xyz ), ambientWD );
+                                            midf3_c( passBuf.ambientUpperHemi.xyz ), tmpAmbientWD );
                 pixelData.envColourD = lerp( midf3_c( passBuf.ambientLowerHemi.xyz ),
-                                            midf3_c( passBuf.ambientUpperHemi.xyz ), ambientWS );
+                                            midf3_c( passBuf.ambientUpperHemi.xyz ), tmpAmbientWS );
             @end
         @end
         
@@ -289,10 +304,20 @@
             @end
 
             @property( hlms_alphablend )
-                outPs_colour0.w = _h( 1.0 );
-            @else
-                outPs_colour0.w = _h( 1.0 );
-            @end
+				// Fresnel-based transparency for realistic water
+				float fresnelFactor = pow(1.0 - pixelData.NdotV, 3.0);
+				float baseAlpha = transparency;
+				
+				// More transparent at steep viewing angles, more opaque at grazing angles
+				float finalAlpha = lerp(baseAlpha, 1.0, fresnelFactor * 0.7);
+				
+				// Foam areas should be more opaque
+				finalAlpha = lerp(finalAlpha, 1.0, foam * 0.5);
+				
+				outPs_colour0.w = _h(finalAlpha);
+			@else
+				outPs_colour0.w = _h(1.0);
+			@end
 
             @property( debug_pssm_splits )
                 outPs_colour0.xyz = lerp( outPs_colour0.xyz, debugPssmSplit.xyz, _h( 0.2f ) );

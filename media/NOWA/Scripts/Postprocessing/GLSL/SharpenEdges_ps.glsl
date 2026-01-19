@@ -5,7 +5,6 @@ vulkan( layout( ogre_s0 ) uniform sampler samplerState );
 
 vulkan( layout( ogre_P0 ) uniform Params { )
 	uniform vec2 vTexelSize;
-	uniform float weight;
 vulkan( }; )
 
 vulkan_layout( location = 0 )
@@ -31,7 +30,7 @@ void main()
 		vec2( 1,  1)
 	);
 
-	vec4 cAvgColor = weight * texture( vkSampler2D( RT, samplerState ), inPs.uv0 );
+	vec4 cAvgColor = 9.0 * texture( vkSampler2D( RT, samplerState ), inPs.uv0 );
 
 	for(int t=0; t<8; t++)
 	{

@@ -2119,10 +2119,9 @@ namespace NOWA
 
     void GraphicsModule::logCommandEvent(const Ogre::String& message, Ogre::LogMessageLevel level) const
     {
-        // TODO: REmoved log flooding
-        return;
+        // if (level >= this->logLevel)
 
-        if (level >= this->logLevel)
+        if (level == Ogre::LML_CRITICAL)
         {
             std::stringstream ss;
             ss << "[RenderCommandQueue] "

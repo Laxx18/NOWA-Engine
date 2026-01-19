@@ -20,12 +20,12 @@ vulkan( layout( ogre_s2 ) uniform sampler samplerState2 );
 vulkan( layout( ogre_s3 ) uniform sampler samplerState3 );
 
 vulkan( layout( ogre_P0 ) uniform Params { )
-uniform float time_cycle_period;
-uniform float flicker;
-uniform float DirtFrequency;
-uniform vec3 luminance;
-uniform float frameJitter;
-uniform float lumiShift;
+	uniform float time_cycle_period;
+	uniform float flicker;
+	uniform float DirtFrequency;
+	uniform vec3 luminance;
+	uniform float frameJitter;
+	uniform float lumiShift;
 vulkan( }; )
 
 vec2 calcSpriteAddr(vec2 texCoord, float DirtFrequency1, float period)

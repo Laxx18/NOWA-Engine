@@ -23,10 +23,9 @@ namespace NOWA
 	}
 
 	void GpuParticlesModule::init(Ogre::SceneManager* sceneManager, Ogre::uint32 maxParticles, Ogre::uint16 maxEmitterInstances, Ogre::uint16 maxEmitterCores,
-								  Ogre::uint16 bucketSize, Ogre::uint16 gpuThreadsPerGroup)
+		Ogre::uint16 bucketSize, Ogre::uint16 gpuThreadsPerGroup)
 	{
-		// if (nullptr != this->gpuParticleSystemResourceManager)
-		if (nullptr != this->sceneManager)
+		if (nullptr != this->gpuParticleSystemResourceManager)
 		{
 			this->destroyContent();
 		}
@@ -54,7 +53,7 @@ namespace NOWA
 		// TODO check with true, if compositor does work
 		bool useDepthTexture = true;
 
-	// Compositor is needed only in case of useDepthTexture == true.
+		// Compositor is needed only in case of useDepthTexture == true.
 		Ogre::IdString depthTextureCompositorNode = "NOWAFinalCompositionNode1111111112";
 		Ogre::IdString depthTextureId = "depthTextureCopy";
 
@@ -66,7 +65,7 @@ namespace NOWA
 #else
 
 		this->gpuParticleSystemWorld = OGRE_NEW GpuParticleSystemWorld(Ogre::Id::generateNewId<Ogre::MovableObject>(), &this->sceneManager->_getEntityMemoryManager(Ogre::SCENE_DYNAMIC),
-																	   this->sceneManager, 15, hlmsParticleListener, affectors, false);
+			this->sceneManager, 15, hlmsParticleListener, affectors, false);
 #endif
 
 
@@ -113,29 +112,29 @@ namespace NOWA
 			this->gpuParticleSystemResourceManager = nullptr;
 
 			ENQUEUE_RENDER_COMMAND_MULTI_WAIT_NO_THIS("GpuParticlesModule::destroyContent", _5(sceneNode, sceneManager, gpuParticleSystemWorld, gpuParticleSystemJsonManager, gpuParticleSystemResourceManager),
-			{
-				if (sceneNode)
 				{
-					sceneNode->detachObject(gpuParticleSystemWorld);
-					NOWA::GraphicsModule::getInstance()->removeTrackedNode(sceneNode);
-					sceneManager->destroySceneNode(sceneNode);
-				}
+					if (sceneNode)
+					{
+						sceneNode->detachObject(gpuParticleSystemWorld);
+						NOWA::GraphicsModule::getInstance()->removeTrackedNode(sceneNode);
+						sceneManager->destroySceneNode(sceneNode);
+					}
 
-				if (nullptr != gpuParticleSystemWorld)
-				{
-					delete gpuParticleSystemWorld;
-				}
-				
-				if (nullptr != gpuParticleSystemJsonManager)
-				{
-					delete gpuParticleSystemJsonManager;
-				}
+					if (nullptr != gpuParticleSystemWorld)
+					{
+						delete gpuParticleSystemWorld;
+					}
 
-				if (nullptr != gpuParticleSystemResourceManager)
-				{
-					delete gpuParticleSystemResourceManager;
-				}
-			});
+					if (nullptr != gpuParticleSystemJsonManager)
+					{
+						delete gpuParticleSystemJsonManager;
+					}
+
+					if (nullptr != gpuParticleSystemResourceManager)
+					{
+						delete gpuParticleSystemResourceManager;
+					}
+				});
 		}
 	}
 

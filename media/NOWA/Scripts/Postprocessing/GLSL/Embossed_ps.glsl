@@ -5,9 +5,8 @@ vulkan( layout( ogre_s0 ) uniform sampler samplerState );
 
 vulkan_layout( location = 0 )
 out vec4 fragColour;
-vulkan_layout( location = 0 )
-uniform float weight;
 
+vulkan_layout( location = 0 )
 in block
 {
 	vec2 uv0;
@@ -20,6 +19,6 @@ void main()
     Color.rgb = vec3(0.5);
 	Color -= texture( vkSampler2D( RT, samplerState ), inPs.uv0 - 0.001 ) * 2.0;
 	Color += texture( vkSampler2D( RT, samplerState ), inPs.uv0 + 0.001 ) * 2.0;
-    Color.rgb = vec3((Color.r+Color.g+Color.b)/weight);
+    Color.rgb = vec3((Color.r+Color.g+Color.b)/3.0);
     fragColour = Color;
 }

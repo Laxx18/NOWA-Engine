@@ -65,7 +65,7 @@ fragment @insertpiece( output_type ) main_metal
 		, uint gl_SampleMask [[sample_mask]]
 	@end
 	// START UNIFORM DECLARATION
-	@property( !hlms_shadowcaster || alpha_test )
+	@property( !hlms_shadowcaster || alpha_test || hlms_alpha_hash )
 		@insertpiece( PassDecl )
 		@insertpiece( OceanMaterialDecl )
 		@insertpiece( PccManualProbeDecl )
@@ -100,6 +100,7 @@ fragment @insertpiece( output_type ) main_metal
 
 	@insertpiece( DeclPlanarReflTextures )
 	@insertpiece( DeclAreaApproxTextures )
+	@insertpiece( DeclBlueNoiseTexture )
 
 	@property( irradiance_volumes )
 		, texture3d<midf>	irradianceVolume		[[texture(@value(irradianceVolume))]]

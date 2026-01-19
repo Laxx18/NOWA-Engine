@@ -4,8 +4,8 @@ vulkan_layout( ogre_t0 ) uniform texture2D Image;
 vulkan( layout( ogre_s0 ) uniform sampler samplerState );
 
 vulkan( layout( ogre_P0 ) uniform Params { )
-uniform float scale;
-uniform float pixelSize;
+	uniform float scale;
+	uniform float pixelSize;
 vulkan( }; )
 
 vulkan_layout( location = 0 )

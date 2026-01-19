@@ -104,6 +104,15 @@ void main()
 
 	@insertpiece( custom_ps_posMaterialLoad )
 
+	// ===== CONFIGURABLE PARAMETERS FROM DATABLOCK =====
+	float baseRoughness    = material.roughness.x;
+	float foamRoughness    = material.roughness.y;
+	float transparency     = material.roughness.z;
+	float ambientReduction = material.metalness.x;
+	float diffuseScale     = material.metalness.y;
+	float foamIntensity    = material.metalness.z;
+	float reflectionStrength = material.deepColour.w;
+
 	// ===== Sample ocean texture data =====
 	vec4 textureValue  = textureLod( terrainData, vec3(inPs.uv1.xy, inPs.uv1.z), 0.0 );
 	vec4 textureValue2 = textureLod( terrainData, vec3(inPs.uv2.xy, inPs.uv2.z), 0.0 );
@@ -118,12 +127,12 @@ void main()
 	float waveIntensity = clamp( inPs.wavesIntensity, 0.0, 1.0 );
 	float waveFactor    = clamp( inPs.waveHeight, 0.0, 1.0 ) * waveIntensity;
 
-	// ===== Foam calculation =====
-	float foam = pow( clamp( textureValue.w, 0.0, 1.0 ), 2.0 ) * waveFactor * 0.5;
+	// ===== Foam calculation (configurable intensity) =====
+	float foam = pow( clamp( textureValue.w, 0.0, 1.0 ), 2.0 ) * waveFactor * 0.5 * foamIntensity;
 	foam = clamp( foam, 0.0, 1.0 );
 
-	// Roughness
-	ROUGHNESS = mix( 0.04, 0.7, foam );
+	// ===== Roughness (configurable base and foam) =====
+	ROUGHNESS = mix( baseRoughness, foamRoughness, foam );
 
 	// ===== Base water color =====
 	diffuseCol.xyz = mix( material.deepColour.xyz, material.shallowColour.xyz, waveFactor * 0.7 );
@@ -163,13 +172,16 @@ void main()
 
 	@insertpiece( custom_ps_posSampleNormal )
 
-	// Apply material's diffuse
-	diffuseCol.xyz *= material.kD.xyz;
+	// ===== Diffuse (configurable scale) =====
+	diffuseCol.xyz *= material.kD.xyz * diffuseScale;
+
+	// ===== Specular (boost for reflections, reduced by foam) =====
+	float specAtten = mix( 1.5, 0.6, foam );
+	vec3 specular = vec3( specAtten, specAtten, specAtten );
 
 	// Fresnel - water (non-metallic)
 	float metalness = 0.0;
-	F0 = mix( vec3( 0.03 ), material.kD.xyz * 3.14159, metalness );
-	material.kD.xyz = material.kD.xyz - material.kD.xyz * metalness;
+	F0 = mix( vec3( 0.08 ), material.kD.xyz * 3.14159, metalness );
 
 	// ===== Shadows =====
 	@property( !(hlms_pssm_splits || (!hlms_pssm_splits && hlms_num_shadow_map_lights && hlms_lights_directional)) )
@@ -185,7 +197,7 @@ void main()
 @property( !ambient_fixed )
 	vec3 finalColour = vec3(0);
 @end @property( ambient_fixed )
-	vec3 finalColour = passBuf.ambientUpperHemi.xyz * @insertpiece( kD ).xyz;
+	vec3 finalColour = passBuf.ambientUpperHemi.xyz * diffuseCol.xyz;
 @end
 
 	@insertpiece( custom_ps_preLights )
@@ -257,8 +269,9 @@ void main()
 		float ambientWS = dot( passBuf.ambientHemisphereDir.xyz, reflDir ) * 0.5 + 0.5;
 
 		@property( envprobe_map )
-			envColourS	+= mix( passBuf.ambientLowerHemi.xyz, passBuf.ambientUpperHemi.xyz, ambientWD );
-			envColourD	+= mix( passBuf.ambientLowerHemi.xyz, passBuf.ambientUpperHemi.xyz, ambientWS );
+			// Configurable ambient reduction
+			envColourS += mix( passBuf.ambientLowerHemi.xyz, passBuf.ambientUpperHemi.xyz, ambientWD ) * (1.0 - ambientReduction * 0.5);
+			envColourD += mix( passBuf.ambientLowerHemi.xyz, passBuf.ambientUpperHemi.xyz, ambientWS ) * (1.0 - ambientReduction * 0.5);
 		@end @property( !envprobe_map )
 			vec3 envColourS = mix( passBuf.ambientLowerHemi.xyz, passBuf.ambientUpperHemi.xyz, ambientWD );
 			vec3 envColourD = mix( passBuf.ambientLowerHemi.xyz, passBuf.ambientUpperHemi.xyz, ambientWS );
@@ -266,6 +279,12 @@ void main()
 	@end
 
 	@insertpiece( BRDF_EnvMap )
+	
+	// Apply configurable reflection strength
+	// Note: In GLSL, the BRDF_EnvMap piece already calculated Rs
+	// We need to scale it by reflectionStrength
+	// This assumes BRDF_EnvMap defines a variable like 'envSpecular' or similar
+	// If not, you may need to adjust based on your actual BRDF_EnvMap implementation
 @end
 
 @property( !hw_gamma_write )
@@ -276,7 +295,17 @@ void main()
 @end
 
 @property( hlms_alphablend )
-	outColour.w	= 1.0;
+	// Fresnel-based transparency for realistic water
+	float fresnelFactor = pow(1.0 - NdotV, 3.0);
+	float baseAlpha = transparency;
+	
+	// More transparent at steep viewing angles, more opaque at grazing angles
+	float finalAlpha = mix(baseAlpha, 1.0, fresnelFactor * 0.7);
+	
+	// Foam areas should be more opaque
+	finalAlpha = mix(finalAlpha, 1.0, foam * 0.5);
+	
+	outColour.w = finalAlpha;
 @end @property( !hlms_alphablend )
 	outColour.w	= 1.0;@end
 

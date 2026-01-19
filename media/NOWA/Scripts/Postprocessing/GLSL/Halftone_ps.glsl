@@ -10,10 +10,10 @@ in block
 } inPs;
 
 vulkan( layout( ogre_P0 ) uniform Params { )
-uniform vec2 numTiles;
-uniform vec2 iNumTiles;
-uniform vec2 iNumTiles2;
-uniform vec4 lum;
+	uniform vec2 numTiles;
+	uniform vec2 iNumTiles;
+	uniform vec2 iNumTiles2;
+	uniform vec4 lum;
 vulkan( }; )
 
 vulkan_layout( ogre_t0 ) uniform texture2D RT;
