@@ -22,13 +22,6 @@
     @end
 @end
 
-// Override shadow handling to prevent the bug
-@undefpiece( DoDirectionalShadowMaps )
-@piece( DoDirectionalShadowMaps )
-    // Ocean uses simple shadow approach, not shadow maps
-    midf fShadow = _h( 1.0f );
-@end
-
 //-----------------------------------------------------------------------------
 //		BODY CODE (Following Terra's exact pattern)
 //-----------------------------------------------------------------------------

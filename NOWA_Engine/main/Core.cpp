@@ -1622,9 +1622,6 @@ namespace NOWA
 
 		// HlmsTerra
 		{
-			// Note: Terra uses HLMS_USER3
-
-			//Get the path to all the subdirectories used by HlmsTerra
 			Ogre::HlmsTerra::getDefaultPaths(mainFolderPath, libraryFoldersPaths);
 
 			Ogre::Archive* archiveTerra = archiveManager.load(dataFolder + mainFolderPath, "FileSystem", true);
@@ -1639,14 +1636,10 @@ namespace NOWA
 				++libraryFolderPathIt;
 			}
 
-			//Create and register the terra Hlms
 			hlmsTerra = OGRE_NEW Ogre::HlmsTerra(archiveTerra, &archiveTerraLibraryFolders);
 			hlmsManager->registerHlms(hlmsTerra, Ogre::HLMS_USER3);
 
-			//Add Terra's piece files that customize the PBS implementation.
-			//These pieces are coded so that they will be activated when
-			//we set the HlmsPbsTerraShadows listener and there's an active Terra
-			//(see Tutorial_TerrainGameState::createScene01)
+			// Add Terra's piece files to PBS
 			Ogre::Hlms* hlmsPbs = hlmsManager->getHlms(Ogre::HLMS_PBS);
 			Ogre::Archive* archivePbs = hlmsPbs->getDataFolder();
 			Ogre::ArchiveVec libraryPbs = hlmsPbs->getPiecesLibraryAsArchiveVec();
@@ -1672,6 +1665,12 @@ namespace NOWA
 			// In your initialization code where you create HlmsOcean:
 			hlmsOcean = OGRE_NEW Ogre::HlmsOcean(archiveOcean, &libraries);
 			hlmsManager->registerHlms(hlmsOcean, Ogre::HLMS_USER1);
+
+			Ogre::Hlms* hlmsPbs = hlmsManager->getHlms(Ogre::HLMS_PBS);
+			Ogre::Archive* archivePbs = hlmsPbs->getDataFolder();
+			Ogre::ArchiveVec libraryPbs = hlmsPbs->getPiecesLibraryAsArchiveVec();
+			libraryPbs.push_back(archiveManager.load(dataFolder + "Hlms/Ocean/" + shaderSyntax, "FileSystem", true));
+			hlmsPbs->reloadFrom(archivePbs, &libraryPbs);
 		}
 
 		// HlmsWind

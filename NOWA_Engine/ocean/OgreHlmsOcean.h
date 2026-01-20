@@ -273,6 +273,8 @@ namespace Ogre
 	    /// Default: "weight.dds"
 	    void setWeightTextureName( const String &name ) { mWeightTextureName = name; }
 	    const String& getWeightTextureName() const { return mWeightTextureName; }
+         
+        FastArray<Ocean*>       getLinkedOceans() { return mLinkedOceans; };
 
         /// Same helper as other Hlms implementations (e.g. HlmsTerra) to populate
         /// the default data folder + library folders based on the active RenderSystem.

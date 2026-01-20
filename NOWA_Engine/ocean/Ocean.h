@@ -65,8 +65,6 @@ namespace Ogre
         std::vector<OceanCell*>  m_collectedCells[2];
         size_t                     m_currentCell;
 
-        Vector3             m_prevLightDir;
-
         // Ogre stuff
         CompositorManager2* m_compositorManager;
         Camera const*       m_camera;

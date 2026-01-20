@@ -469,12 +469,24 @@ namespace Ogre
         bool casterPass, uint32 lastCacheHash,
         CommandBuffer* commandBuffer, bool isV1)
     {
+        if (mBufferSize == 0)
+            return 0;
+
+        if (mCurrentPassBuffer == 0)
+        {
+            // Return lastCacheHash to indicate we couldn't process this renderable
+            // It will be retried on the next frame when buffers are ready
+            return lastCacheHash;
+        }
+
         const HlmsOceanDatablock* datablock =
             static_cast<const HlmsOceanDatablock*>(queuedRenderable.renderable->getDatablock());
 
         // Changed HLMS type? Rebind everything
         if (OGRE_EXTRACT_HLMS_TYPE_FROM_CACHE_HASH(lastCacheHash) != mType)
         {
+           
+
             // 1. Bind pass buffer (slot 0)
             ConstBufferPacked* passBuffer = mPassBuffers[mCurrentPassBuffer - 1];
             *commandBuffer->addCommand<CbShaderBuffer>() = CbShaderBuffer(

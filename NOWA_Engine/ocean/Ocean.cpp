@@ -63,7 +63,6 @@ namespace Ogre
         m_waveChaos(0.0f),
         m_isUnderwater(false),
         m_currentCell(0u),
-        m_prevLightDir(Vector3::ZERO),
         m_compositorManager(compositorManager),
         m_camera(camera)
     {
@@ -467,10 +466,10 @@ namespace Ogre
         updateLocalBounds();
 
         // Sort cells for proper transparency rendering
-        if (m_camera)
+        /*if (m_camera)
         {
             sortCellsByDepth(m_camera->getDerivedPosition());
-        }
+        }*/
     }
 
     //-----------------------------------------------------------------------------------

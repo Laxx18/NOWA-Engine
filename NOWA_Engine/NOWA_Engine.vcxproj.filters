@@ -655,6 +655,9 @@
     <ClInclude Include="modules\GpuParticlesModule.h">
       <Filter>modules</Filter>
     </ClInclude>
+    <ClInclude Include="ocean\OceanWorkspaceListener.h">
+      <Filter>ocean</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\NOWA.ico">
@@ -1223,6 +1226,9 @@
     </ClCompile>
     <ClCompile Include="modules\GpuParticlesModule.cpp">
       <Filter>modules</Filter>
+    </ClCompile>
+    <ClCompile Include="ocean\OceanWorkspaceListener.cpp">
+      <Filter>ocean</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

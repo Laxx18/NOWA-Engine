@@ -252,6 +252,6 @@ namespace NOWA
 		Variant* reflectionTextureName;
 	};
 
-}; //namespace end
+} //namespace end
 
 #endif

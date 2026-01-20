@@ -896,6 +896,9 @@ namespace NOWA
 	{
 		GameObjectComponent::onRemoveComponent();
 
+		Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
+		NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
+
 		GameObjectPtr reflectionCameraGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->reflectionCameraGameObjectId->getULong());
 		if (nullptr != reflectionCameraGameObjectPtr)
 		{
@@ -1127,18 +1130,26 @@ namespace NOWA
 
 	void WorkspaceBaseComponent::update(Ogre::Real dt, bool notSimulating)
 	{
-		if (nullptr != this->hlmsWind && false == notSimulating)
+		if (false == notSimulating)
 		{
-			this->hlmsWind->addTime(dt);
-		}
+			auto closureFunction = [this](Ogre::Real renderDt)
+			{
+				if (nullptr != this->hlmsWind)
+				{
+					this->hlmsWind->addTime(renderDt);
+				}
 
-		// Switch workspace graph when the camera crosses the water line.
-		// We only rebuild when the state toggles to avoid heavy work every frame.
-		const bool underwaterNow = this->useOcean && this->oceanComponent && this->oceanComponent->isCameraUnderwater();
-		if( underwaterNow != this->oceanUnderwaterActive )
-		{
-			this->oceanUnderwaterActive = underwaterNow;
-			this->createWorkspace();
+				// Switch workspace graph when the camera crosses the water line.
+				// We only rebuild when the state toggles to avoid heavy work every frame.
+				const bool underwaterNow = this->useOcean && this->oceanComponent && this->oceanComponent->isCameraUnderwater();
+				if (underwaterNow != this->oceanUnderwaterActive)
+				{
+					this->oceanUnderwaterActive = underwaterNow;
+					this->createWorkspace();
+				}
+			};
+			Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
+			NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
 		}
 	}
 

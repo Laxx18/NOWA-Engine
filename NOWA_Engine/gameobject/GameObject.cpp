@@ -1263,11 +1263,14 @@ namespace NOWA
 
 		for (size_t i = 0; i < this->dataBlocks.size(); i++)
 		{
-			propertyXML = doc.allocate_node(node_element, "property");
-			propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "DataBlock" + Ogre::StringConverter::toString(i))));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->dataBlocks[i]->getString())));
-			propertiesXML->append_node(propertyXML);
+			if (nullptr != this->dataBlocks[i])
+			{
+				propertyXML = doc.allocate_node(node_element, "property");
+				propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+				propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "DataBlock" + Ogre::StringConverter::toString(i))));
+				propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->dataBlocks[i]->getString())));
+				propertiesXML->append_node(propertyXML);
+			}
 		}
 		
 		for (const auto& component : this->gameObjectComponents)
