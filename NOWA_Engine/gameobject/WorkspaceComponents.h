@@ -230,6 +230,10 @@ namespace NOWA
 		void setInvolvedInSplitScreen(bool involvedInSplitScreen);
 
 		bool getInvolvedInSplitScreen(void) const;
+
+		void setUseDepthTexture(bool useDepthTexture);
+
+		bool getUseDepthTexture(void) const;
 	public:
 		static const Ogre::String AttrBackgroundColor(void) { return "Background Color"; }
 		static const Ogre::String AttrViewportRect(void) { return "Viewport Rect"; }
@@ -247,6 +251,7 @@ namespace NOWA
 		static const Ogre::String AttrShadowSplitBlend(void) { return "Shadow Split Blend"; }
 		static const Ogre::String AttrShadowSplitFade(void) { return "Shadow Split Fade"; }
 		static const Ogre::String AttrShadowSplitPadding(void) { return "Shadow Split Padding"; }
+		static Ogre::String AttrUseDepthTexture(void) { return "Use Depth Texture"; }
 	protected:
 		virtual void internalInitWorkspaceData(void);
 
@@ -339,6 +344,7 @@ namespace NOWA
 		Variant* shadowSplitBlend;
 		Variant* shadowSplitFade;
 		Variant* shadowSplitPadding;
+		Variant* useDepthTexture;
 
 		bool canUseReflection;
 		

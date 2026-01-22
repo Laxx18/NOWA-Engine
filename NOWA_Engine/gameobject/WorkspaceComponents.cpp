@@ -140,6 +140,7 @@ namespace NOWA
 		shadowSplitBlend(new Variant(WorkspaceBaseComponent::AttrShadowSplitBlend(), Ogre::Real(0.125f), this->attributes)),
 		shadowSplitFade(new Variant(WorkspaceBaseComponent::AttrShadowSplitFade(), Ogre::Real(0.313f), this->attributes)),
 		shadowSplitPadding(new Variant(WorkspaceBaseComponent::AttrShadowSplitPadding(), Ogre::Real(1.0f), this->attributes)),
+		useDepthTexture(new Variant(WorkspaceBaseComponent::AttrUseDepthTexture(), false, this->attributes)),
 		cameraComponent(nullptr),
 		oceanComponent(nullptr),
 		workspace(nullptr),
@@ -284,6 +285,11 @@ namespace NOWA
 			this->shadowSplitPadding->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "UseDepthTexture")
+		{
+			this->useDepthTexture->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
 		return true;
 	}
 
@@ -361,7 +367,7 @@ namespace NOWA
 
 	bool WorkspaceBaseComponent::disconnect(void)
 	{
-		ENQUEUE_RENDER_COMMAND("WorkspaceBaseComponent::disconnect",
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
 		{
 			if (nullptr != this->workspace)
 			{
@@ -380,7 +386,8 @@ namespace NOWA
 			}
 
 			this->reconnectAllNodes();
-		});
+		};
+		NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObject::disconnect");
 
 		return true;
 	}
@@ -996,6 +1003,10 @@ namespace NOWA
 		{
 			this->setShadowSplitPadding(attribute->getReal());
 		}
+		else if (WorkspaceBaseComponent::AttrUseDepthTexture() == attribute->getName())
+		{
+			this->setUseDepthTexture(attribute->getBool());
+		}
 	}
 
 	void WorkspaceBaseComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
@@ -1116,6 +1127,12 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("name", "ShadowSplitPadding"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->shadowSplitPadding->getReal())));
 		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "UseDepthTexture"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->useDepthTexture->getBool())));
+		propertiesXML->append_node(propertyXML);
 	}
 
 	Ogre::String WorkspaceBaseComponent::getClassName(void) const
@@ -1177,21 +1194,27 @@ namespace NOWA
 			unsigned short channelGBufferNormals = 0;
 			unsigned short channelDepthTexture = 0;
 
-			if (true == this->useHdr->getBool())
-			{
-				channelOldLumRt = channel++;  // channel becomes 3
-			}
+			bool needsDepthTexture = this->useSSAO->getBool() || this->useDepthTexture->getBool();
 
-			if (true == this->useDistortion->getBool())
-			{
-				channelDistortion = channel++;  // channel becomes 4
-			}
+    if (true == this->useHdr->getBool())
+    {
+        channelOldLumRt = channel++;
+    }
 
-			if (true == this->useSSAO->getBool())
-			{
-				channelGBufferNormals = channel++;  // e.g., 4 (if HDR+Distortion off) or higher
-				channelDepthTexture = channel++;
-			}
+    if (true == this->useDistortion->getBool())
+    {
+        channelDistortion = channel++;
+    }
+
+    if (true == this->useSSAO->getBool())
+    {
+        channelGBufferNormals = channel++;
+    }
+
+    if (true == needsDepthTexture)
+    {
+        channelDepthTexture = channel++;
+    }
 
 			Ogre::IdString msaaNodeName = "NOWAHdrMsaaResolve";
 			Ogre::IdString hdrPostProcessingNodeName;
@@ -1337,19 +1360,25 @@ namespace NOWA
 		unsigned short channelGBufferNormals = 0;
 		unsigned short channelDepthTexture = 0;
 
+		bool needsDepthTexture = this->useSSAO->getBool() || this->useDepthTexture->getBool();
+
 		if (true == this->useHdr->getBool())
 		{
-			channelOldLumRt = channel++;  // channel becomes 3
+			channelOldLumRt = channel++;
 		}
 
 		if (true == this->useDistortion->getBool())
 		{
-			channelDistortion = channel++;  // channel becomes 4
+			channelDistortion = channel++;
 		}
 
 		if (true == this->useSSAO->getBool())
 		{
-			channelGBufferNormals = channel++;  // e.g., 4 (if HDR+Distortion off) or higher
+			channelGBufferNormals = channel++;
+		}
+
+		if (true == needsDepthTexture)
+		{
 			channelDepthTexture = channel++;
 		}
 
@@ -1452,15 +1481,27 @@ namespace NOWA
 			this->compositorManager->removeNodeDefinition(this->finalRenderingNodeName);
 		}
 
+		bool needsDepthTexture = this->useSSAO->getBool() || this->useDepthTexture->getBool();
+
 		if (false == this->compositorManager->hasNodeDefinition(this->finalRenderingNodeName))
 		{
 			Ogre::CompositorNodeDef* finalNodeDef = compositorManager->addNodeDefinition(this->finalRenderingNodeName);
 
+			unsigned short numLocalTextures = 0;
+
 			// SSAO Texture definitions:
 			if (true == this->useSSAO->getBool())
 			{
-				finalNodeDef->setNumLocalTextureDefinitions(4);
+				numLocalTextures = 4; // depthTextureCopy, ssaoTexture, blurH, blurV
+			}
 
+			if (numLocalTextures > 0)
+			{
+				finalNodeDef->setNumLocalTextureDefinitions(numLocalTextures);
+			}
+
+			if (true == this->useSSAO->getBool())
+			{
 				auto* depthCopyDef = finalNodeDef->addTextureDefinition("depthTextureCopy");
 				depthCopyDef->width = 0;
 				depthCopyDef->height = 0;
@@ -1508,9 +1549,16 @@ namespace NOWA
 			{
 				finalNodeDef->addTextureSourceName("gBufferNormals", textureIndex++, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
 				finalNodeDef->addTextureSourceName("depthTexture", textureIndex++, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
+			}
+			else if (true == this->useDepthTexture->getBool())
+			{
+				// Generic depth texture input (without SSAO)
+				finalNodeDef->addTextureSourceName("depthTexture", textureIndex++, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
+			}
 
+			if (true == this->useSSAO->getBool())
+			{
 				Ogre::RenderTargetViewDef* rtv;
-
 				Ogre::RenderTargetViewEntry attachment;
 
 				rtv = finalNodeDef->addRenderTextureView("depthTextureCopy");
@@ -1592,8 +1640,7 @@ namespace NOWA
 				{
 					Ogre::CompositorTargetDef* targetDef = finalNodeDef->addTargetPass("blurTextureVertical");
 
-					Ogre::CompositorPassQuadDef* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(
-						targetDef->addPass(Ogre::PASS_QUAD));
+					Ogre::CompositorPassQuadDef* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
 
 					passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
 					passQuad->mMaterialName = "SSAO/BlurV";
@@ -1609,7 +1656,7 @@ namespace NOWA
 
 				if (true == this->useSSAO->getBool())
 				{
-					// Apply SSAO directly - no need to copy first since SSAO/Apply will write the final result
+					// Apply SSAO directly
 					Ogre::CompositorPassQuadDef* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
 
 					passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
@@ -1617,12 +1664,12 @@ namespace NOWA
 					passQuad->mStoreActionStencil = Ogre::StoreAction::DontCare;
 					passQuad->mMaterialName = "SSAO/Apply";
 					passQuad->addQuadTextureSource(0, "blurTextureVertical");
-					passQuad->addQuadTextureSource(1, "rtN");  // Scene color INPUT
+					passQuad->addQuadTextureSource(1, "rtN");
 					passQuad->mProfilingId = "NOWA_Final_SSAO_Apply_Pass_Quad";
 				}
 				else
 				{
-					// Copy rtN to rt_output (only when SSAO is disabled)
+					// Copy rtN to rt_output
 					Ogre::CompositorPassQuadDef* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
 
 					passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
@@ -1645,11 +1692,8 @@ namespace NOWA
 					passScene->mProfilingId = "NOWA_Final_Render_Overlay_Pass_Scene";
 					passScene->mUpdateLodLists = false;
 					passScene->mIncludeOverlays = true;
-
-					// passScene->setAllLoadActions(Ogre::LoadAction::DontCare);
 					passScene->mStoreActionDepth = Ogre::StoreAction::DontCare;
 					passScene->mStoreActionStencil = Ogre::StoreAction::DontCare;
-
 					passScene->mFirstRQ = 254;
 					passScene->mLastRQ = 255;
 				}
@@ -1664,49 +1708,49 @@ namespace NOWA
 			if (false == this->compositorManager->hasNodeDefinition(this->distortionNode))
 			{
 				ENQUEUE_RENDER_COMMAND_WAIT("WorkspaceBaseComponent::createDistortionNode",
-					{
-						Ogre::CompositorNodeDef * compositorNodeDefinition = compositorManager->addNodeDefinition(this->distortionNode);
-
-				// rt_output is the new in texture, instead of like in the script in 2 rt_output whichs is externally connected
-				Ogre::TextureDefinitionBase::TextureDefinition * distortionTexDef = compositorNodeDefinition->addTextureDefinition("rt_output");
-				distortionTexDef->width = 0.0f; // target_width
-				distortionTexDef->height = 0.0f; // target_height
-				distortionTexDef->format = Ogre::PFG_RGBA16_FLOAT;
-				distortionTexDef->depthBufferFormat = Ogre::PFG_D32_FLOAT;
-				distortionTexDef->preferDepthTexture = true;
-				// Attention depth_pool?
-				distortionTexDef->depthBufferId = 2;
-				distortionTexDef->textureFlags = Ogre::TextureFlags::RenderToTexture;
-
-				compositorNodeDefinition->addTextureSourceName("rt0", 0, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
-				compositorNodeDefinition->addTextureSourceName("rt_distortion", 1, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
-
-				Ogre::RenderTargetViewDef * rtv = compositorNodeDefinition->addRenderTextureView("rt_output");
-				Ogre::RenderTargetViewEntry attachment;
-				attachment.textureName = "rt_output";
-				rtv->colourAttachments.push_back(attachment);
-
-				unsigned short numTargetPass = 1;
-				compositorNodeDefinition->setNumTargetPass(numTargetPass);
-
 				{
-					Ogre::CompositorTargetDef* targetDef = compositorNodeDefinition->addTargetPass("rt_output");
+					Ogre::CompositorNodeDef * compositorNodeDefinition = compositorManager->addNodeDefinition(this->distortionNode);
 
-					// Render Quad
+					// rt_output is the new in texture, instead of like in the script in 2 rt_output whichs is externally connected
+					Ogre::TextureDefinitionBase::TextureDefinition * distortionTexDef = compositorNodeDefinition->addTextureDefinition("rt_output");
+					distortionTexDef->width = 0.0f; // target_width
+					distortionTexDef->height = 0.0f; // target_height
+					distortionTexDef->format = Ogre::PFG_RGBA16_FLOAT;
+					distortionTexDef->depthBufferFormat = Ogre::PFG_D32_FLOAT;
+					distortionTexDef->preferDepthTexture = true;
+					// Attention depth_pool?
+					distortionTexDef->depthBufferId = 2;
+					distortionTexDef->textureFlags = Ogre::TextureFlags::RenderToTexture;
+
+					compositorNodeDefinition->addTextureSourceName("rt0", 0, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
+					compositorNodeDefinition->addTextureSourceName("rt_distortion", 1, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
+
+					Ogre::RenderTargetViewDef * rtv = compositorNodeDefinition->addRenderTextureView("rt_output");
+					Ogre::RenderTargetViewEntry attachment;
+					attachment.textureName = "rt_output";
+					rtv->colourAttachments.push_back(attachment);
+
+					unsigned short numTargetPass = 1;
+					compositorNodeDefinition->setNumTargetPass(numTargetPass);
+
 					{
-						Ogre::CompositorPassQuadDef* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
-						passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
-						passQuad->mMaterialName = "Distortion/Quad";
-						passQuad->addQuadTextureSource(0, "rt0");
-						passQuad->addQuadTextureSource(1, "rt_distortion");
+						Ogre::CompositorTargetDef* targetDef = compositorNodeDefinition->addTargetPass("rt_output");
 
-						passQuad->mProfilingId = "NOWA_Distortion_Renter_Target_Pass_Quad";
+						// Render Quad
+						{
+							Ogre::CompositorPassQuadDef* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
+							passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
+							passQuad->mMaterialName = "Distortion/Quad";
+							passQuad->addQuadTextureSource(0, "rt0");
+							passQuad->addQuadTextureSource(1, "rt_distortion");
+
+							passQuad->mProfilingId = "NOWA_Distortion_Renter_Target_Pass_Quad";
+						}
 					}
-				}
 
-				compositorNodeDefinition->mapOutputChannel(0, "rt_output");
-				compositorNodeDefinition->mapOutputChannel(1, "rt0");
-					});
+					compositorNodeDefinition->mapOutputChannel(0, "rt_output");
+					compositorNodeDefinition->mapOutputChannel(1, "rt0");
+				});
 			}
 		}
 	}
@@ -1727,12 +1771,10 @@ namespace NOWA
 		if (true == this->compositorManager->hasNodeDefinition(this->underwaterNodeName))
 			return;
 
-		Ogre::CompositorNodeDef* compositorNodeDefinition =
-			compositorManager->addNodeDefinition(this->underwaterNodeName);
+		Ogre::CompositorNodeDef* compositorNodeDefinition = compositorManager->addNodeDefinition(this->underwaterNodeName);
 
 		unsigned int textureIndex = 0;
-		compositorNodeDefinition->addTextureSourceName("rt0", textureIndex,
-			Ogre::TextureDefinitionBase::TEXTURE_INPUT);
+		compositorNodeDefinition->addTextureSourceName("rt0", textureIndex, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
 
 		// Output
 		Ogre::TextureDefinitionBase::TextureDefinition* outTexDef = compositorNodeDefinition->addTextureDefinition("rt_output");
@@ -1751,8 +1793,7 @@ namespace NOWA
 
 		compositorNodeDefinition->setNumTargetPass(1u);
 
-		Ogre::CompositorTargetDef* targetDef =
-			compositorNodeDefinition->addTargetPass("rt_output");
+		Ogre::CompositorTargetDef* targetDef = compositorNodeDefinition->addTargetPass("rt_output");
 
 		// Render Quad (default: copy). Replace the material with your own underwater material if desired.
 		{
@@ -2564,6 +2605,7 @@ namespace NOWA
 
 		if (true == useSSAO)
 		{
+			this->setUseDepthTexture(true);
 			this->createSSAONoiseTexture();
 		}
 		
@@ -2920,6 +2962,16 @@ namespace NOWA
 		return this->involvedInSplitScreen;
 	}
 
+	void WorkspaceBaseComponent::setUseDepthTexture(bool useDepthTexture)
+	{
+		this->useDepthTexture->setValue(useDepthTexture);
+	}
+
+	bool WorkspaceBaseComponent::getUseDepthTexture(void) const
+	{
+		return this->useDepthTexture->getBool();
+	}
+
 	void WorkspaceBaseComponent::updateShadowGlobalBias(void)
 	{
 		Ogre::CompositorShadowNodeDef * node = this->compositorManager->getShadowNodeDefinitionNonConst(WorkspaceModule::getInstance()->shadowNodeName);
@@ -3051,9 +3103,17 @@ namespace NOWA
 				numTexturesDefinitions++;
 			}
 
+			// Depth texture is created if SSAO OR generic depth is enabled
+			bool needsDepthTexture = this->useSSAO->getBool() || this->useDepthTexture->getBool();
+
 			if (true == this->useSSAO->getBool())
 			{
-				numTexturesDefinitions += 2; // Only gBufferNormals and depthTexture
+				numTexturesDefinitions++; // gBufferNormals (only for SSAO)
+			}
+
+			if (true == needsDepthTexture)
+			{
+				numTexturesDefinitions++; // depthTexture (for SSAO or generic use)
 			}
 
 			compositorNodeDefinition->setNumLocalTextureDefinitions(numTexturesDefinitions);
@@ -3106,8 +3166,11 @@ namespace NOWA
 					gBufferNormalsTexDef->fsaa = Ogre::StringConverter::toString(this->msaaLevel);
 					gBufferNormalsTexDef->textureFlags |= Ogre::TextureFlags::MsaaExplicitResolve;
 				}
+			}
 
-				// depthTexture - NO explicit_resolve
+			// Depth texture for SSAO or generic depth effects
+			if (true == needsDepthTexture)
+			{
 				Ogre::TextureDefinitionBase::TextureDefinition* depthTextureTexDef = compositorNodeDefinition->addTextureDefinition("depthTexture");
 				depthTextureTexDef->width = 0;
 				depthTextureTexDef->height = 0;
@@ -3118,7 +3181,6 @@ namespace NOWA
 				if (this->msaaLevel > 1)
 				{
 					depthTextureTexDef->fsaa = Ogre::StringConverter::toString(this->msaaLevel);
-					// No MsaaExplicitResolve for depth - matches Ogre's script
 				}
 			}
 
@@ -3130,13 +3192,16 @@ namespace NOWA
 
 			if (true == this->useSSAO->getBool())
 			{
-				{
-					Ogre::RenderTargetViewEntry normalsAttachment;
-					normalsAttachment.textureName = "gBufferNormals";
-					rtv->colourAttachments.push_back(normalsAttachment);
+				// MRT: rt0 + gBufferNormals
+				Ogre::RenderTargetViewEntry normalsAttachment;
+				normalsAttachment.textureName = "gBufferNormals";
+				rtv->colourAttachments.push_back(normalsAttachment);
+			}
 
-					rtv->depthAttachment.textureName = "depthTexture";
-				}
+			if (true == needsDepthTexture)
+			{
+				// Attach depth texture
+				rtv->depthAttachment.textureName = "depthTexture";
 			}
 
 			texDef = compositorNodeDefinition->addTextureDefinition("rt1");
@@ -3258,7 +3323,8 @@ namespace NOWA
 						passScene->mStoreActionDepth = Ogre::StoreAction::DontCare;
 						passScene->mStoreActionStencil = Ogre::StoreAction::DontCare;
 
-						if (true == this->useSSAO->getBool())
+						// Store depth if we need depth texture (for SSAO or generic use)
+						if (true == needsDepthTexture)
 						{
 							passScene->mStoreActionDepth = Ogre::StoreAction::Store;
 						}
@@ -3353,7 +3419,12 @@ namespace NOWA
 
 			if (true == this->useSSAO->getBool())
 			{
-				outputChannelCount += 2; // gBufferNormals, depthTexture
+				outputChannelCount++; // gBufferNormals
+			}
+
+			if (true == needsDepthTexture)
+			{
+				outputChannelCount++; // depthTexture
 			}
 
 			compositorNodeDefinition->setNumOutputChannels(outputChannelCount);
@@ -3374,8 +3445,12 @@ namespace NOWA
 
 			if (true == this->useSSAO->getBool())
 			{
-				compositorNodeDefinition->mapOutputChannel(outputChannel++, "gBufferNormals"); // 4
-				compositorNodeDefinition->mapOutputChannel(outputChannel++, "depthTexture");   // 5
+				compositorNodeDefinition->mapOutputChannel(outputChannel++, "gBufferNormals");
+			}
+
+			if (true == needsDepthTexture)
+			{
+				compositorNodeDefinition->mapOutputChannel(outputChannel++, "depthTexture");
 			}
 		}
 
@@ -3583,9 +3658,17 @@ namespace NOWA
 				numTexturesDefinitions++;
 			}
 
+			// Depth texture is created if SSAO OR generic depth is enabled
+			bool needsDepthTexture = this->useSSAO->getBool() || this->useDepthTexture->getBool();
+
 			if (true == this->useSSAO->getBool())
 			{
-				numTexturesDefinitions += 2; // gBufferNormals and depthTexture
+				numTexturesDefinitions++; // gBufferNormals (only for SSAO)
+			}
+
+			if (true == needsDepthTexture)
+			{
+				numTexturesDefinitions++; // depthTexture (for SSAO or generic use)
 			}
 
 			compositorNodeDefinition->setNumLocalTextureDefinitions(numTexturesDefinitions);
@@ -3632,8 +3715,11 @@ namespace NOWA
 					gBufferNormalsTexDef->fsaa = Ogre::StringConverter::toString(this->msaaLevel);
 					gBufferNormalsTexDef->textureFlags |= Ogre::TextureFlags::MsaaExplicitResolve;
 				}
+			}
 
-				// depthTexture - NO explicit_resolve
+			// Depth texture for SSAO or generic depth effects
+			if (true == needsDepthTexture)
+			{
 				Ogre::TextureDefinitionBase::TextureDefinition* depthTextureTexDef = compositorNodeDefinition->addTextureDefinition("depthTexture");
 				depthTextureTexDef->width = 0;
 				depthTextureTexDef->height = 0;
@@ -3654,10 +3740,15 @@ namespace NOWA
 
 			if (true == this->useSSAO->getBool())
 			{
+				// MRT: rt0 + gBufferNormals
 				Ogre::RenderTargetViewEntry normalsAttachment;
 				normalsAttachment.textureName = "gBufferNormals";
 				rtv->colourAttachments.push_back(normalsAttachment);
+			}
 
+			if (true == needsDepthTexture)
+			{
+				// Attach depth texture
 				rtv->depthAttachment.textureName = "depthTexture";
 			}
 
@@ -3705,6 +3796,10 @@ namespace NOWA
 			if (true == this->useDistortion->getBool())
 			{
 				numTargetPass++;
+			}
+			if (true == this->useSSAO->getBool())
+			{
+				numTargetPass += 4;
 			}
 
 			compositorNodeDefinition->setNumTargetPass(numTargetPass);
@@ -3758,7 +3853,8 @@ namespace NOWA
 
 					passScene->setAllLoadActions(Ogre::LoadAction::Clear);
 
-					if (true == this->useSSAO->getBool())
+					// Store depth if we need depth texture (for SSAO or generic use)
+					if (true == needsDepthTexture)
 					{
 						passScene->mStoreActionDepth = Ogre::StoreAction::Store;
 					}
@@ -3800,15 +3896,18 @@ namespace NOWA
 					passQuad->mMaterialName = "NOWASkyPostprocess";
 					passQuad->mFrustumCorners = Ogre::CompositorPassQuadDef::CAMERA_DIRECTION;
 
-					// For SSAO: Load the existing content, don't clear
+					// For SSAO or depth texture: Load the existing content, don't clear
 					// The sky writes to rt0 (color) but the normals buffer should be preserved
 					// since the sky is at infinite distance and shouldn't affect SSAO
-					if (true == this->useSSAO->getBool())
+					if (true == this->useSSAO->getBool() || true == needsDepthTexture)
 					{
 						passQuad->setAllLoadActions(Ogre::LoadAction::Load);
 						passQuad->mStoreActionColour[0] = Ogre::StoreAction::Store;
-						// Don't modify the normals buffer - sky is at infinity
-						passQuad->mStoreActionColour[1] = Ogre::StoreAction::Store;
+						if (true == this->useSSAO->getBool())
+						{
+							// Don't modify the normals buffer - sky is at infinity
+							passQuad->mStoreActionColour[1] = Ogre::StoreAction::Store;
+						}
 						passQuad->mStoreActionDepth = Ogre::StoreAction::Store;
 					}
 
@@ -3833,6 +3932,13 @@ namespace NOWA
 						passScene->setAllLoadActions(Ogre::LoadAction::Load);
 						passScene->mStoreActionColour[0] = Ogre::StoreAction::StoreOrResolve;
 						passScene->mStoreActionColour[1] = Ogre::StoreAction::StoreOrResolve;
+						passScene->mStoreActionDepth = Ogre::StoreAction::Store;
+					}
+					else if (true == needsDepthTexture)
+					{
+						// Even without SSAO, if we need depth texture, store depth
+						passScene->setAllLoadActions(Ogre::LoadAction::Load);
+						passScene->mStoreActionColour[0] = Ogre::StoreAction::StoreOrResolve;
 						passScene->mStoreActionDepth = Ogre::StoreAction::Store;
 					}
 
@@ -3888,7 +3994,12 @@ namespace NOWA
 
 			if (true == this->useSSAO->getBool())
 			{
-				outputChannelCount += 2; // gBufferNormals, depthTexture
+				outputChannelCount++; // gBufferNormals
+			}
+
+			if (true == needsDepthTexture)
+			{
+				outputChannelCount++; // depthTexture
 			}
 
 			compositorNodeDefinition->setNumOutputChannels(outputChannelCount);
@@ -3910,6 +4021,10 @@ namespace NOWA
 			if (true == this->useSSAO->getBool())
 			{
 				compositorNodeDefinition->mapOutputChannel(outputChannel++, "gBufferNormals");
+			}
+
+			if (true == needsDepthTexture)
+			{
 				compositorNodeDefinition->mapOutputChannel(outputChannel++, "depthTexture");
 			}
 		}
@@ -4217,9 +4332,17 @@ namespace NOWA
 				numTexturesDefinitions++;
 			}
 
+			// Depth texture is created if SSAO OR generic depth is enabled
+			bool needsDepthTexture = this->useSSAO->getBool() || this->useDepthTexture->getBool();
+
 			if (true == this->useSSAO->getBool())
 			{
-				numTexturesDefinitions += 2; // gBufferNormals and depthTexture
+				numTexturesDefinitions++; // gBufferNormals (only for SSAO)
+			}
+
+			if (true == needsDepthTexture)
+			{
+				numTexturesDefinitions++; // depthTexture (for SSAO or generic use)
 			}
 
 			compositorNodeDefinition->setNumLocalTextureDefinitions(numTexturesDefinitions);
@@ -4265,8 +4388,11 @@ namespace NOWA
 					gBufferNormalsTexDef->fsaa = Ogre::StringConverter::toString(this->msaaLevel);
 					gBufferNormalsTexDef->textureFlags |= Ogre::TextureFlags::MsaaExplicitResolve;
 				}
+			}
 
-				// depthTexture - NO explicit_resolve
+			// Depth texture for SSAO or generic depth effects
+			if (true == needsDepthTexture)
+			{
 				Ogre::TextureDefinitionBase::TextureDefinition* depthTextureTexDef = compositorNodeDefinition->addTextureDefinition("depthTexture");
 				depthTextureTexDef->width = 0;
 				depthTextureTexDef->height = 0;
@@ -4287,10 +4413,15 @@ namespace NOWA
 
 			if (true == this->useSSAO->getBool())
 			{
+				// MRT: rt0 + gBufferNormals
 				Ogre::RenderTargetViewEntry normalsAttachment;
 				normalsAttachment.textureName = "gBufferNormals";
 				rtv->colourAttachments.push_back(normalsAttachment);
+			}
 
+			if (true == needsDepthTexture)
+			{
+				// Attach depth texture
 				rtv->depthAttachment.textureName = "depthTexture";
 			}
 			else
@@ -4343,6 +4474,10 @@ namespace NOWA
 			{
 				numTargetPass++;
 			}
+			if (true == this->useSSAO->getBool())
+			{
+				numTargetPass += 4;
+			}
 
 			compositorNodeDefinition->setNumTargetPass(numTargetPass);
 
@@ -4388,6 +4523,11 @@ namespace NOWA
 					{
 						passScene->mClearColour[1] = Ogre::ColourValue(0.5f, 0.5f, 1.0f, 1.0f);
 						passScene->mStoreActionColour[1] = Ogre::StoreAction::StoreOrResolve;
+					}
+
+					// Store depth if we need depth texture (for SSAO or generic use)
+					if (true == needsDepthTexture)
+					{
 						passScene->mStoreActionDepth = Ogre::StoreAction::Store;
 					}
 					else
@@ -4429,13 +4569,16 @@ namespace NOWA
 					passQuad->mMaterialName = "NOWABackgroundScroll";
 					passQuad->mFrustumCorners = Ogre::CompositorPassQuadDef::NO_CORNERS;
 
-					// For SSAO: Load the existing content, don't clear
-					if (true == this->useSSAO->getBool())
+					// For SSAO or depth texture: Load the existing content, don't clear
+					if (true == this->useSSAO->getBool() || true == needsDepthTexture)
 					{
 						passQuad->setAllLoadActions(Ogre::LoadAction::Load);
 						passQuad->mStoreActionColour[0] = Ogre::StoreAction::Store;
-						// Don't modify the normals buffer - background is at infinity
-						passQuad->mStoreActionColour[1] = Ogre::StoreAction::Store;
+						if (true == this->useSSAO->getBool())
+						{
+							// Don't modify the normals buffer - background is at infinity
+							passQuad->mStoreActionColour[1] = Ogre::StoreAction::Store;
+						}
 						passQuad->mStoreActionDepth = Ogre::StoreAction::Store;
 					}
 
@@ -4460,6 +4603,13 @@ namespace NOWA
 						passScene->setAllLoadActions(Ogre::LoadAction::Load);
 						passScene->mStoreActionColour[0] = Ogre::StoreAction::StoreOrResolve;
 						passScene->mStoreActionColour[1] = Ogre::StoreAction::StoreOrResolve;
+						passScene->mStoreActionDepth = Ogre::StoreAction::Store;
+					}
+					else if (true == needsDepthTexture)
+					{
+						// Even without SSAO, if we need depth texture, store depth
+						passScene->setAllLoadActions(Ogre::LoadAction::Load);
+						passScene->mStoreActionColour[0] = Ogre::StoreAction::StoreOrResolve;
 						passScene->mStoreActionDepth = Ogre::StoreAction::Store;
 					}
 
@@ -4515,7 +4665,12 @@ namespace NOWA
 
 			if (true == this->useSSAO->getBool())
 			{
-				outputChannelCount += 2; // gBufferNormals, depthTexture
+				outputChannelCount++; // gBufferNormals
+			}
+
+			if (true == needsDepthTexture)
+			{
+				outputChannelCount++; // depthTexture
 			}
 
 			compositorNodeDefinition->setNumOutputChannels(outputChannelCount);
@@ -4537,6 +4692,10 @@ namespace NOWA
 			if (true == this->useSSAO->getBool())
 			{
 				compositorNodeDefinition->mapOutputChannel(outputChannel++, "gBufferNormals");
+			}
+
+			if (true == needsDepthTexture)
+			{
 				compositorNodeDefinition->mapOutputChannel(outputChannel++, "depthTexture");
 			}
 
