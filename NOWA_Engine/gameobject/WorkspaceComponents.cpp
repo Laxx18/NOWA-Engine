@@ -1179,17 +1179,17 @@ namespace NOWA
 
 			if (true == this->useHdr->getBool())
 			{
-				channelOldLumRt = channel++;
+				channelOldLumRt = channel++;  // channel becomes 3
 			}
 
 			if (true == this->useDistortion->getBool())
 			{
-				channelDistortion = channel++;
+				channelDistortion = channel++;  // channel becomes 4
 			}
 
 			if (true == this->useSSAO->getBool())
 			{
-				channelGBufferNormals = channel++;
+				channelGBufferNormals = channel++;  // e.g., 4 (if HDR+Distortion off) or higher
 				channelDepthTexture = channel++;
 			}
 
@@ -1339,17 +1339,17 @@ namespace NOWA
 
 		if (true == this->useHdr->getBool())
 		{
-			channelOldLumRt = channel++;
+			channelOldLumRt = channel++;  // channel becomes 3
 		}
 
 		if (true == this->useDistortion->getBool())
 		{
-			channelDistortion = channel++;
+			channelDistortion = channel++;  // channel becomes 4
 		}
 
 		if (true == this->useSSAO->getBool())
 		{
-			channelGBufferNormals = channel++;
+			channelGBufferNormals = channel++;  // e.g., 4 (if HDR+Distortion off) or higher
 			channelDepthTexture = channel++;
 		}
 
@@ -1462,26 +1462,39 @@ namespace NOWA
 				finalNodeDef->setNumLocalTextureDefinitions(4);
 
 				auto* depthCopyDef = finalNodeDef->addTextureDefinition("depthTextureCopy");
+				depthCopyDef->width = 0;
+				depthCopyDef->height = 0;
 				depthCopyDef->widthFactor = 0.5f;
 				depthCopyDef->heightFactor = 0.5f;
 				depthCopyDef->format = Ogre::PFG_R16_FLOAT;
+				depthCopyDef->depthBufferId = Ogre::DepthBuffer::POOL_NO_DEPTH;
 				depthCopyDef->textureFlags = Ogre::TextureFlags::RenderToTexture;
 
 				auto* ssaoDef = finalNodeDef->addTextureDefinition("ssaoTexture");
+				ssaoDef->width = 0;
+				ssaoDef->height = 0;
 				ssaoDef->widthFactor = 0.5f;
 				ssaoDef->heightFactor = 0.5f;
 				ssaoDef->format = Ogre::PFG_R16_FLOAT;
-				ssaoDef->depthBufferId = 0;
+				ssaoDef->depthBufferId = Ogre::DepthBuffer::POOL_NO_DEPTH;
 				ssaoDef->textureFlags = Ogre::TextureFlags::RenderToTexture;
 
 				auto* blurHDef = finalNodeDef->addTextureDefinition("blurTextureHorizontal");
+				blurHDef->width = 0;
+				blurHDef->height = 0;
+				blurHDef->widthFactor = 1.0f;
+				blurHDef->heightFactor = 1.0f;
 				blurHDef->format = Ogre::PFG_R16_FLOAT;
-				blurHDef->depthBufferId = 0;
+				blurHDef->depthBufferId = Ogre::DepthBuffer::POOL_NO_DEPTH;
 				blurHDef->textureFlags = Ogre::TextureFlags::RenderToTexture;
 
 				auto* blurVDef = finalNodeDef->addTextureDefinition("blurTextureVertical");
+				blurVDef->width = 0;
+				blurVDef->height = 0;
+				blurVDef->widthFactor = 1.0f;
+				blurVDef->heightFactor = 1.0f;
 				blurVDef->format = Ogre::PFG_R16_FLOAT;
-				blurVDef->depthBufferId = 0;
+				blurVDef->depthBufferId = Ogre::DepthBuffer::POOL_NO_DEPTH;
 				blurVDef->textureFlags = Ogre::TextureFlags::RenderToTexture;
 			}
 
@@ -1594,31 +1607,30 @@ namespace NOWA
 			{
 				Ogre::CompositorTargetDef* targetDef = finalNodeDef->addTargetPass("rt_output");
 
-				// Copy rtN to rt_output
+				if (true == this->useSSAO->getBool())
 				{
+					// Apply SSAO directly - no need to copy first since SSAO/Apply will write the final result
 					Ogre::CompositorPassQuadDef* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
 
 					passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
-					passQuad->mMaterialName = "Ogre/Copy/4xFP32";
-
-					passQuad->mStoreActionDepth = Ogre::StoreAction::DontCare;
-					passQuad->mStoreActionStencil = Ogre::StoreAction::DontCare;
-
-					passQuad->addQuadTextureSource(0, "rtN");
-					passQuad->mProfilingId = "NOWA_Final_rtN_Pass_Quad";
-				}
-
-				if (true == this->useSSAO->getBool())
-				{
-					Ogre::CompositorPassQuadDef* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
-
-					passQuad->setAllLoadActions(Ogre::LoadAction::Load);
 					passQuad->mStoreActionDepth = Ogre::StoreAction::DontCare;
 					passQuad->mStoreActionStencil = Ogre::StoreAction::DontCare;
 					passQuad->mMaterialName = "SSAO/Apply";
 					passQuad->addQuadTextureSource(0, "blurTextureVertical");
-					passQuad->addQuadTextureSource(1, "rt_output");
+					passQuad->addQuadTextureSource(1, "rtN");  // Scene color INPUT
 					passQuad->mProfilingId = "NOWA_Final_SSAO_Apply_Pass_Quad";
+				}
+				else
+				{
+					// Copy rtN to rt_output (only when SSAO is disabled)
+					Ogre::CompositorPassQuadDef* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
+
+					passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
+					passQuad->mMaterialName = "Ogre/Copy/4xFP32";
+					passQuad->mStoreActionDepth = Ogre::StoreAction::DontCare;
+					passQuad->mStoreActionStencil = Ogre::StoreAction::DontCare;
+					passQuad->addQuadTextureSource(0, "rtN");
+					passQuad->mProfilingId = "NOWA_Final_rtN_Pass_Quad";
 				}
 
 				if (false == this->involvedInSplitScreen)
@@ -2639,7 +2651,7 @@ namespace NOWA
 
 	void WorkspaceBaseComponent::createSSAONoiseTexture(void)
 	{
-		ENQUEUE_RENDER_COMMAND_WAIT("WorkspaceBaseComponent::createSSAONoiseTexture",
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
 		{
 			//We need to create SSAO kernel samples and noise texture
 			//Generate kernel samples first
@@ -2666,9 +2678,9 @@ namespace NOWA
 
 			Ogre::TextureGpu* noiseTexture = nullptr;
 
-			if (false == textureManager->hasTextureResource("noiseTextureSSAO", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME))
+			if (false == textureManager->hasTextureResource("noiseTexture", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME))
 			{
-				noiseTexture = textureManager->createTexture("noiseTextureSSAO", Ogre::GpuPageOutStrategy::SaveToSystemRam, 0, Ogre::TextureTypes::Type2D);
+				noiseTexture = textureManager->createTexture("noiseTexture", Ogre::GpuPageOutStrategy::SaveToSystemRam, 0, Ogre::TextureTypes::Type2D);
 				noiseTexture->setResolution(2u, 2u);
 				noiseTexture->setPixelFormat(Ogre::PFG_RGBA8_SNORM);
 				noiseTexture->_transitionTo(Ogre::GpuResidency::Resident, (Ogre::uint8*)0);
@@ -2700,7 +2712,7 @@ namespace NOWA
 			}
 			else
 			{
-				noiseTexture = textureManager->findTextureNoThrow("noiseTextureSSAO");
+				noiseTexture = textureManager->findTextureNoThrow("noiseTexture");
 			}
 
 			//---------------------------------------------------------------------------------
@@ -2712,7 +2724,7 @@ namespace NOWA
 
 			//Lets set uniforms for shader
 			//Set texture uniform for noise
-			Ogre::TextureUnitState* noiseTextureState = pass->getTextureUnitState("noiseTextureSSAO");
+			Ogre::TextureUnitState* noiseTextureState = pass->getTextureUnitState("noiseTexture");
 			noiseTextureState->setTexture(noiseTexture);
 
 			//Reconstruct position from depth. Position is needed in SSAO
@@ -2750,7 +2762,8 @@ namespace NOWA
 			Ogre::Pass* passApply = materialApply->getTechnique(0)->getPass(0);
 			Ogre::GpuProgramParametersSharedPtr psParamsApply = passApply->getFragmentProgramParameters();
 			psParamsApply->setNamedConstant("powerScale", 3.0f);
-		});
+		};
+		NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "WorkspaceBaseComponent::createSSAONoiseTexture");
 	}
 
 	bool WorkspaceBaseComponent::getUseOcean(void) const
@@ -3080,18 +3093,33 @@ namespace NOWA
 
 			if (true == this->useSSAO->getBool())
 			{
-				// Add all necessary textures
+				// gBufferNormals - with explicit_resolve
 				Ogre::TextureDefinitionBase::TextureDefinition* gBufferNormalsTexDef = compositorNodeDefinition->addTextureDefinition("gBufferNormals");
-				gBufferNormalsTexDef->width = 0.0f; // target_width
-				gBufferNormalsTexDef->height = 0.0f; // target_height
+				gBufferNormalsTexDef->width = 0;
+				gBufferNormalsTexDef->height = 0;
+				gBufferNormalsTexDef->widthFactor = this->superSampling->getReal();
+				gBufferNormalsTexDef->heightFactor = this->superSampling->getReal();
 				gBufferNormalsTexDef->format = Ogre::PFG_R10G10B10A2_UNORM;
-				gBufferNormalsTexDef->textureFlags = Ogre::TextureFlags::RenderToTexture | Ogre::TextureFlags::MsaaExplicitResolve;
+				gBufferNormalsTexDef->textureFlags = Ogre::TextureFlags::RenderToTexture;
+				if (this->msaaLevel > 1)
+				{
+					gBufferNormalsTexDef->fsaa = Ogre::StringConverter::toString(this->msaaLevel);
+					gBufferNormalsTexDef->textureFlags |= Ogre::TextureFlags::MsaaExplicitResolve;
+				}
 
+				// depthTexture - NO explicit_resolve
 				Ogre::TextureDefinitionBase::TextureDefinition* depthTextureTexDef = compositorNodeDefinition->addTextureDefinition("depthTexture");
-				depthTextureTexDef->width = 0.0f; // target_width
-				depthTextureTexDef->height = 0.0f; // target_height
+				depthTextureTexDef->width = 0;
+				depthTextureTexDef->height = 0;
+				depthTextureTexDef->widthFactor = this->superSampling->getReal();
+				depthTextureTexDef->heightFactor = this->superSampling->getReal();
 				depthTextureTexDef->format = Ogre::PFG_D32_FLOAT;
 				depthTextureTexDef->textureFlags = Ogre::TextureFlags::RenderToTexture;
+				if (this->msaaLevel > 1)
+				{
+					depthTextureTexDef->fsaa = Ogre::StringConverter::toString(this->msaaLevel);
+					// No MsaaExplicitResolve for depth - matches Ogre's script
+				}
 			}
 
 			Ogre::RenderTargetViewDef* rtv = compositorNodeDefinition->addRenderTextureView("rt0");
@@ -3103,12 +3131,6 @@ namespace NOWA
 			if (true == this->useSSAO->getBool())
 			{
 				{
-					Ogre::RenderTargetViewDef* rtv = compositorNodeDefinition->getRenderTargetViewDefNonConstNoThrow("rt0");
-
-					Ogre::RenderTargetViewEntry rt0Attachment;
-					rt0Attachment.textureName = "rt0";
-					rtv->colourAttachments.push_back(rt0Attachment);
-
 					Ogre::RenderTargetViewEntry normalsAttachment;
 					normalsAttachment.textureName = "gBufferNormals";
 					rtv->colourAttachments.push_back(normalsAttachment);
@@ -3184,21 +3206,26 @@ namespace NOWA
 				Ogre::CompositorTargetDef* targetDef = compositorNodeDefinition->addTargetPass("rt0");
 
 				{
-					// if (true == this->canUseSplitscreen)
+					// Clear Pass
 					{
-						// Clear Pass
+						Ogre::CompositorPassClearDef* passClear;
+						auto pass = targetDef->addPass(Ogre::PASS_CLEAR);
+						passClear = static_cast<Ogre::CompositorPassClearDef*>(pass);
+
+						passClear->mClearColour[0] = Ogre::ColourValue(0.2f, 0.4f, 0.6f);
+
+						if (true == this->useSSAO->getBool())
 						{
-							Ogre::CompositorPassClearDef* passClear;
-							auto pass = targetDef->addPass(Ogre::PASS_CLEAR);
-							passClear = static_cast<Ogre::CompositorPassClearDef*>(pass);
-
-							passClear->mClearColour[0] = Ogre::ColourValue(0.2f, 0.4f, 0.6f);
-							passClear->mStoreActionColour[0] = Ogre::StoreAction::Store;
-							passClear->mStoreActionDepth = Ogre::StoreAction::Store;
-							passClear->mStoreActionStencil = Ogre::StoreAction::Store;
-
-							passClear->mProfilingId = "NOWA_Pbs_Split_Clear_Pass_Clear";
+							// Clear the normals buffer to a neutral value (0.5, 0.5, 1.0 = normal pointing up in tangent space)
+							passClear->mClearColour[1] = Ogre::ColourValue(0.5f, 0.5f, 1.0f, 1.0f);
+							passClear->mStoreActionColour[1] = Ogre::StoreAction::Store;
 						}
+
+						passClear->mStoreActionColour[0] = Ogre::StoreAction::Store;
+						passClear->mStoreActionDepth = Ogre::StoreAction::Store;
+						passClear->mStoreActionStencil = Ogre::StoreAction::Store;
+
+						passClear->mProfilingId = "NOWA_Pbs_Split_Clear_Pass_Clear";
 					}
 
 					// Render Scene
@@ -3221,21 +3248,31 @@ namespace NOWA
 						passScene->mClearColour[0] = color;
 						passScene->mStoreActionColour[0] = Ogre::StoreAction::StoreOrResolve; // Ogre::StoreAction::StoreAndMultisampleResolve; causes a crash, why? Because MSAA must be switched on!
 
+						if (true == this->useSSAO->getBool())
+						{
+							passScene->mClearColour[1] = Ogre::ColourValue(0.5f, 0.5f, 1.0f, 1.0f);
+							passScene->mStoreActionColour[1] = Ogre::StoreAction::StoreOrResolve;
+						}
+
 						passScene->setAllLoadActions(Ogre::LoadAction::Clear);
 						passScene->mStoreActionDepth = Ogre::StoreAction::DontCare;
 						passScene->mStoreActionStencil = Ogre::StoreAction::DontCare;
 
-						// passScene->mFirstRQ = 10;
-						// passScene->mLastRQ = 253;
+						if (true == this->useSSAO->getBool())
+						{
+							passScene->mStoreActionDepth = Ogre::StoreAction::Store;
+						}
+						else
+						{
+							passScene->mStoreActionDepth = Ogre::StoreAction::DontCare;
+						}
+						passScene->mStoreActionStencil = Ogre::StoreAction::DontCare;
 
 						if (true == this->usePlanarReflection->getBool())
 						{
 							// Used to identify this pass wants planar reflections
 							passScene->mIdentifier = 25001;
 						}
-
-						passScene->mIncludeOverlays = false;
-						passScene->mUpdateLodLists = true;
 
 						//https://forums.ogre3d.org/viewtopic.php?t=93636
 						//https://forums.ogre3d.org/viewtopic.php?t=94748
@@ -3251,6 +3288,9 @@ namespace NOWA
 						{
 							passScene->mGenNormalsGBuf = true;
 						}
+
+						passScene->mIncludeOverlays = false;
+						passScene->mUpdateLodLists = true;
 					}
 				}
 			}
@@ -3259,6 +3299,7 @@ namespace NOWA
 			{
 				Ogre::CompositorTargetDef* targetDef = compositorNodeDefinition->addTargetPass("oldLumRt");
 
+				// Clear
 				{
 					Ogre::CompositorPassClearDef* passClear;
 					auto pass = targetDef->addPass(Ogre::PASS_CLEAR);
@@ -3382,9 +3423,6 @@ namespace NOWA
 							passScene->mStoreActionColour[0] = Ogre::StoreAction::StoreOrResolve; // Ogre::StoreAction::StoreAndMultisampleResolve; causes a crash, why?
 							passScene->mStoreActionDepth = Ogre::StoreAction::DontCare;
 							passScene->mStoreActionStencil = Ogre::StoreAction::DontCare;
-
-							// passScene->mFirstRQ = 10;
-							// passScene->mLastRQ = 253;
 
 							passScene->mIncludeOverlays = false;
 
@@ -3533,18 +3571,29 @@ namespace NOWA
 		{
 			Ogre::CompositorNodeDef* compositorNodeDefinition = this->compositorManager->addNodeDefinition(this->renderingNodeName);
 
-			unsigned short numTexturesDefinitions = 0;
-			if (false == this->useHdr->getBool())
+			unsigned short numTexturesDefinitions = 2;
+
+			if (true == this->useHdr->getBool())
 			{
-				numTexturesDefinitions = 2;
+				numTexturesDefinitions++;
 			}
-			else
+
+			if (true == this->useDistortion->getBool())
 			{
-				numTexturesDefinitions = 3;
+				numTexturesDefinitions++;
 			}
+
+			if (true == this->useSSAO->getBool())
+			{
+				numTexturesDefinitions += 2; // gBufferNormals and depthTexture
+			}
+
 			compositorNodeDefinition->setNumLocalTextureDefinitions(numTexturesDefinitions);
 
 			Ogre::TextureDefinitionBase::TextureDefinition* texDef = compositorNodeDefinition->addTextureDefinition("rt0");
+
+			texDef->width = 0;
+			texDef->height = 0;
 
 			if (this->superSampling->getReal() <= 0.0f)
 			{
@@ -3554,48 +3603,70 @@ namespace NOWA
 			texDef->widthFactor = this->superSampling->getReal();
 			texDef->heightFactor = this->superSampling->getReal();
 			texDef->textureFlags = Ogre::TextureFlags::RenderToTexture | Ogre::TextureFlags::MsaaExplicitResolve;
-
-			texDef->width = 0; // target_width
-			texDef->height = 0; // target_height
-			
-			// For SSAO necessary?
-			// texDef->format = Ogre::PFG_RGBA8_UNORM_SRGB;
 			texDef->format = Ogre::PFG_RGBA16_FLOAT;
 
 			if (true == this->useDistortion->getBool())
 			{
-				texDef->depthBufferFormat = Ogre::PFG_D32_FLOAT;
-				// texDef->depthBufferId = 2;
-				// texDef->preferDepthTexture = true;
-
 				Ogre::TextureDefinitionBase::TextureDefinition* distortionTexDef = compositorNodeDefinition->addTextureDefinition("rt_distortion");
-				distortionTexDef->width = 0.0f; // target_width
-				distortionTexDef->height = 0.0f; // target_height
+				distortionTexDef->width = 0.0f;
+				distortionTexDef->height = 0.0f;
 				distortionTexDef->format = Ogre::PFG_RGBA16_FLOAT;
 				distortionTexDef->depthBufferFormat = Ogre::PFG_D32_FLOAT;
 				distortionTexDef->preferDepthTexture = true;
-				// Attention depth_pool?
 				distortionTexDef->depthBufferId = 2;
 				distortionTexDef->textureFlags = Ogre::TextureFlags::RenderToTexture;
+			}
 
+			if (true == this->useSSAO->getBool())
+			{
+				// gBufferNormals - with explicit_resolve
+				Ogre::TextureDefinitionBase::TextureDefinition* gBufferNormalsTexDef = compositorNodeDefinition->addTextureDefinition("gBufferNormals");
+				gBufferNormalsTexDef->width = 0;
+				gBufferNormalsTexDef->height = 0;
+				gBufferNormalsTexDef->widthFactor = this->superSampling->getReal();
+				gBufferNormalsTexDef->heightFactor = this->superSampling->getReal();
+				gBufferNormalsTexDef->format = Ogre::PFG_R10G10B10A2_UNORM;
+				gBufferNormalsTexDef->textureFlags = Ogre::TextureFlags::RenderToTexture;
+				if (this->msaaLevel > 1)
+				{
+					gBufferNormalsTexDef->fsaa = Ogre::StringConverter::toString(this->msaaLevel);
+					gBufferNormalsTexDef->textureFlags |= Ogre::TextureFlags::MsaaExplicitResolve;
+				}
+
+				// depthTexture - NO explicit_resolve
+				Ogre::TextureDefinitionBase::TextureDefinition* depthTextureTexDef = compositorNodeDefinition->addTextureDefinition("depthTexture");
+				depthTextureTexDef->width = 0;
+				depthTextureTexDef->height = 0;
+				depthTextureTexDef->widthFactor = this->superSampling->getReal();
+				depthTextureTexDef->heightFactor = this->superSampling->getReal();
+				depthTextureTexDef->format = Ogre::PFG_D32_FLOAT;
+				depthTextureTexDef->textureFlags = Ogre::TextureFlags::RenderToTexture;
+				if (this->msaaLevel > 1)
+				{
+					depthTextureTexDef->fsaa = Ogre::StringConverter::toString(this->msaaLevel);
+				}
 			}
 
 			Ogre::RenderTargetViewDef* rtv = compositorNodeDefinition->addRenderTextureView("rt0");
 			Ogre::RenderTargetViewEntry attachment;
 			attachment.textureName = "rt0";
 			rtv->colourAttachments.push_back(attachment);
-			rtv->depthBufferId = Ogre::DepthBuffer::POOL_DEFAULT;
+
+			if (true == this->useSSAO->getBool())
+			{
+				Ogre::RenderTargetViewEntry normalsAttachment;
+				normalsAttachment.textureName = "gBufferNormals";
+				rtv->colourAttachments.push_back(normalsAttachment);
+
+				rtv->depthAttachment.textureName = "depthTexture";
+			}
 
 			texDef = compositorNodeDefinition->addTextureDefinition("rt1");
-			
-			texDef->width = 0; // target_width
-			texDef->height = 0; // target_height
-			
+			texDef->width = 0;
+			texDef->height = 0;
 			texDef->widthFactor = this->superSampling->getReal();
 			texDef->heightFactor = this->superSampling->getReal();
 			texDef->format = Ogre::PFG_RGBA16_FLOAT;
-			// texDef->format = Ogre::PFG_RGBA8_UNORM_SRGB;
-			// texDef->msaa = this->msaaLevel;
 			texDef->textureFlags = Ogre::TextureFlags::RenderToTexture | Ogre::TextureFlags::MsaaExplicitResolve;
 
 			rtv = compositorNodeDefinition->addRenderTextureView("rt1");
@@ -3606,11 +3677,10 @@ namespace NOWA
 			if (true == this->useHdr->getBool())
 			{
 				texDef = compositorNodeDefinition->addTextureDefinition("oldLumRt");
-				texDef->width = 0.0f;
-				texDef->height = 0.0f;
+				texDef->width = 0;
+				texDef->height = 0;
 				texDef->format = Ogre::PFG_RGBA16_FLOAT;
 				texDef->textureFlags = Ogre::TextureFlags::RenderToTexture;
-				texDef->depthBufferId = Ogre::DepthBuffer::POOL_DEFAULT;
 
 				rtv = compositorNodeDefinition->addRenderTextureView("oldLumRt");
 				attachment.textureName = "oldLumRt";
@@ -3624,7 +3694,7 @@ namespace NOWA
 				Ogre::RenderTargetViewEntry attachment;
 				attachment.textureName = "rt_distortion";
 				rtv->colourAttachments.push_back(attachment);
-				// rtv->depthBufferId = 2;
+				rtv->depthBufferId = 2;
 			}
 
 			unsigned short numTargetPass = 1;
@@ -3636,179 +3706,194 @@ namespace NOWA
 			{
 				numTargetPass++;
 			}
+
 			compositorNodeDefinition->setNumTargetPass(numTargetPass);
 
+			// rt0 target
 			{
 				Ogre::CompositorTargetDef* targetDef = compositorNodeDefinition->addTargetPass("rt0");
+
+				// Clear Pass
 				{
-					// if (true == this->canUseSplitscreen)
+					Ogre::CompositorPassClearDef* passClear;
+					auto pass = targetDef->addPass(Ogre::PASS_CLEAR);
+					passClear = static_cast<Ogre::CompositorPassClearDef*>(pass);
+
+					passClear->mClearColour[0] = Ogre::ColourValue(0.2f, 0.4f, 0.6f);
+
+					if (true == this->useSSAO->getBool())
 					{
-						// Clear Pass
-						{
-							Ogre::CompositorPassClearDef* passClear;
-							auto pass = targetDef->addPass(Ogre::PASS_CLEAR);
-							passClear = static_cast<Ogre::CompositorPassClearDef*>(pass);
-
-							passClear->mClearColour[0] = Ogre::ColourValue(0.2f, 0.4f, 0.6f);
-							// passClear->setAllStoreActions(Ogre::StoreAction::Store);
-							passClear->mStoreActionColour[0] = Ogre::StoreAction::Store;
-							passClear->mStoreActionDepth = Ogre::StoreAction::Store;
-							passClear->mStoreActionStencil = Ogre::StoreAction::Store;
-
-							passClear->mProfilingId = "NOWA_Sky_Split_Clear_Pass_Clear";
-						}
+						// Clear the normals buffer to a neutral value
+						passClear->mClearColour[1] = Ogre::ColourValue(0.5f, 0.5f, 1.0f, 1.0f);
+						passClear->mStoreActionColour[1] = Ogre::StoreAction::Store;
 					}
 
-					// Render Scene
+					passClear->mStoreActionColour[0] = Ogre::StoreAction::Store;
+					passClear->mStoreActionDepth = Ogre::StoreAction::Store;
+					passClear->mStoreActionStencil = Ogre::StoreAction::Store;
+
+					passClear->mProfilingId = "NOWA_Sky_Clear_Pass_Clear";
+				}
+
+				// First Render Scene (RQ 0-2, before sky)
+				{
+					Ogre::CompositorPassSceneDef* passScene;
+					auto pass = targetDef->addPass(Ogre::PASS_SCENE);
+					passScene = static_cast<Ogre::CompositorPassSceneDef*>(pass);
+
+					if (true == this->canUseReflection)
 					{
-						Ogre::CompositorPassSceneDef* passScene;
-						auto pass = targetDef->addPass(Ogre::PASS_SCENE);
-						passScene = static_cast<Ogre::CompositorPassSceneDef*>(pass);
+						passScene->mExposedTextures.emplace_back(Ogre::IdString("rt1"));
+					}
 
-						passScene->mProfilingId = "NOWA_Sky_Before_Sky_Pass_Scene";
+					Ogre::ColourValue color(this->backgroundColor->getVector3().x, this->backgroundColor->getVector3().y, this->backgroundColor->getVector3().z);
+					passScene->mClearColour[0] = color;
+					passScene->mStoreActionColour[0] = Ogre::StoreAction::StoreOrResolve;
 
-						Ogre::ColourValue color(0.2f, 0.4f, 0.6f);
-						// passScene->setAllClearColours(color);
-						passScene->setAllLoadActions(Ogre::LoadAction::Clear);
-						passScene->mClearColour[0] = color;
+					if (true == this->useSSAO->getBool())
+					{
+						passScene->mClearColour[1] = Ogre::ColourValue(0.5f, 0.5f, 1.0f, 1.0f);
+						passScene->mStoreActionColour[1] = Ogre::StoreAction::StoreOrResolve;
+					}
 
-						// passScene->setAllStoreActions(Ogre::StoreAction::StoreOrResolve);
-						passScene->mStoreActionColour[0] = Ogre::StoreAction::StoreOrResolve; // Ogre::StoreAction::StoreAndMultisampleResolve; causes a crash, why?
+					passScene->setAllLoadActions(Ogre::LoadAction::Clear);
+
+					if (true == this->useSSAO->getBool())
+					{
+						passScene->mStoreActionDepth = Ogre::StoreAction::Store;
+					}
+					else
+					{
 						passScene->mStoreActionDepth = Ogre::StoreAction::DontCare;
-						passScene->mStoreActionStencil = Ogre::StoreAction::DontCare;
-
-// Attention: There is another place with shadow!
-						passScene->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
-
-						passScene->mFirstRQ = 0;
-						passScene->mLastRQ = 2;
-
-						// passScene->setVisibilityMask(AppStateManager::getSingletonPtr()->getGameObjectController()->getCategoryId(this->gameObjectPtr->getCategory()));
-						// passScene->setVisibilityMask(0xFFFFFFFF & (~this->gameObjectPtr->getMaskId()));
-
-						if (true == this->usePlanarReflection->getBool())
-						{
-							// Used to identify this pass wants planar reflections
-							passScene->mIdentifier = 25001;
-						}
-
-						// passScene->setAllStoreActions(Ogre::StoreAction::StoreOrResolve);
-						/*passScene->mStoreActionColour[0] = Ogre::StoreAction::StoreOrResolve;
-						*/
-
-						if (true == this->canUseReflection)
-						{
-							//Our materials in this pass will be using this cubemap,
-							//so we need to expose it to the pass.
-							//Note: Even if it "just works" without exposing, the reason for
-							//exposing is to ensure compatibility with Vulkan & D3D12.
-
-							passScene->mExposedTextures.emplace_back(Ogre::IdString("rt1"));
-						}
-						passScene->mIncludeOverlays = false;
 					}
+					passScene->mStoreActionStencil = Ogre::StoreAction::DontCare;
 
-					//https://forums.ogre3d.org/viewtopic.php?t=93636
-					//https://forums.ogre3d.org/viewtopic.php?t=94748
-
-					// Sky quad
+					if (true == this->usePlanarReflection->getBool())
 					{
-						Ogre::CompositorPassQuadDef* passQuad;
-
-						auto pass = targetDef->addPass(Ogre::PASS_QUAD);
-						passQuad = static_cast<Ogre::CompositorPassQuadDef*>(pass);
-
-						passQuad->mMaterialName = "NOWASkyPostprocess";
-						passQuad->mFrustumCorners = Ogre::CompositorPassQuadDef::CAMERA_DIRECTION;
-
-						passQuad->mProfilingId = "NOWA_Sky_Pass_Quad";
+						passScene->mIdentifier = 25001;
 					}
 
-					// Render Scene
+					passScene->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
+					passScene->mProfilingId = "NOWA_Sky_Render_Scene_Pass_Scene";
+					passScene->mCameraName = this->cameraComponent->getCamera()->getName();
+
+					if (true == this->useSSAO->getBool())
 					{
-						Ogre::CompositorPassSceneDef* passScene;
-						auto pass = targetDef->addPass(Ogre::PASS_SCENE);
-						passScene = static_cast<Ogre::CompositorPassSceneDef*>(pass);
-
-						passScene->mIncludeOverlays = false;
-						passScene->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
-						passScene->mShadowNodeRecalculation = Ogre::ShadowNodeRecalculation::SHADOW_NODE_REUSE;
-						passScene->mFirstRQ = 2;
-
-						// passScene->setVisibilityMask(0xFFFFFFFF & (~this->gameObjectPtr->getMaskId()));
-
-						passScene->mProfilingId = "NOWA_Sky_After_Sky_Pass_Scene";
+						passScene->mGenNormalsGBuf = true;
 					}
+
+					passScene->mIncludeOverlays = false;
+					passScene->mUpdateLodLists = true;
+					passScene->mFirstRQ = 0;
+					passScene->mLastRQ = 2;
 				}
 
-				if (true == this->useHdr->getBool())
+				// Sky quad pass
+				// NOTE: The sky doesn't generate normals - it renders at infinite distance
+				// so SSAO shouldn't affect it anyway. The normals buffer will retain
+				// the values from the first scene pass for those pixels.
 				{
-					Ogre::CompositorTargetDef* targetDef = compositorNodeDefinition->addTargetPass("oldLumRt");
+					Ogre::CompositorPassQuadDef* passQuad;
+					auto pass = targetDef->addPass(Ogre::PASS_QUAD);
+					passQuad = static_cast<Ogre::CompositorPassQuadDef*>(pass);
 
-					// Clear
+					passQuad->mMaterialName = "NOWASkyPostprocess";
+					passQuad->mFrustumCorners = Ogre::CompositorPassQuadDef::CAMERA_DIRECTION;
+
+					// For SSAO: Load the existing content, don't clear
+					// The sky writes to rt0 (color) but the normals buffer should be preserved
+					// since the sky is at infinite distance and shouldn't affect SSAO
+					if (true == this->useSSAO->getBool())
 					{
-						Ogre::CompositorPassClearDef* passClear;
-						auto pass = targetDef->addPass(Ogre::PASS_CLEAR);
-						passClear = static_cast<Ogre::CompositorPassClearDef*>(pass);
-
-						passClear->mNumInitialPasses = 1;
-						passClear->mClearColour[0] = Ogre::ColourValue(0.01f, 0.01f, 0.01f, 1.0f);
-
-						passClear->mProfilingId = "NOWA_Sky_Hdr_Pass_Clear";
+						passQuad->setAllLoadActions(Ogre::LoadAction::Load);
+						passQuad->mStoreActionColour[0] = Ogre::StoreAction::Store;
+						// Don't modify the normals buffer - sky is at infinity
+						passQuad->mStoreActionColour[1] = Ogre::StoreAction::Store;
+						passQuad->mStoreActionDepth = Ogre::StoreAction::Store;
 					}
+
+					passQuad->mProfilingId = "NOWA_Sky_Pass_Quad";
 				}
 
-				if (true == this->useDistortion->getBool())
+				// Second Render Scene (RQ 2+, after sky)
 				{
-					Ogre::CompositorTargetDef* targetDef = compositorNodeDefinition->addTargetPass("rt_distortion");
+					Ogre::CompositorPassSceneDef* passScene;
+					auto pass = targetDef->addPass(Ogre::PASS_SCENE);
+					passScene = static_cast<Ogre::CompositorPassSceneDef*>(pass);
 
-					// Render Scene for distortion
+					passScene->mIncludeOverlays = false;
+					passScene->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
+					passScene->mShadowNodeRecalculation = Ogre::ShadowNodeRecalculation::SHADOW_NODE_REUSE;
+					passScene->mFirstRQ = 2;
+
+					// For SSAO: This pass also generates normals for objects after the sky
+					if (true == this->useSSAO->getBool())
 					{
-						Ogre::CompositorPassSceneDef* passScene;
-						auto pass = targetDef->addPass(Ogre::PASS_SCENE);
-						passScene = static_cast<Ogre::CompositorPassSceneDef*>(pass);
-
-						passScene->mProfilingId = "NOWA_Sky_Distortion_Pass_Scene";
-
-						passScene->setAllLoadActions(Ogre::LoadAction::Clear);
-						passScene->mClearColour[0] = Ogre::ColourValue(0.5f, 0.5f, 0.0f, 0.0f);
-
-						passScene->mUpdateLodLists = false;
-
-						passScene->mIncludeOverlays = false;
-						passScene->mFirstRQ = 16;
-						passScene->mLastRQ = 17;
+						passScene->mGenNormalsGBuf = true;
+						passScene->setAllLoadActions(Ogre::LoadAction::Load);
+						passScene->mStoreActionColour[0] = Ogre::StoreAction::StoreOrResolve;
+						passScene->mStoreActionColour[1] = Ogre::StoreAction::StoreOrResolve;
+						passScene->mStoreActionDepth = Ogre::StoreAction::Store;
 					}
 
-					this->createDistortionNode();
+					passScene->mProfilingId = "NOWA_Sky_After_Sky_Pass_Scene";
 				}
 			}
 
-			// Output channels
-			unsigned short outputChannel = 0;
+			if (true == this->useHdr->getBool())
+			{
+				Ogre::CompositorTargetDef* targetDef = compositorNodeDefinition->addTargetPass("oldLumRt");
 
-			if (false == this->useHdr->getBool())
-			{
-				outputChannel = 2;
-			}
-			else
-			{
-				outputChannel = 3;
-			}
+				Ogre::CompositorPassClearDef* passClear;
+				auto pass = targetDef->addPass(Ogre::PASS_CLEAR);
+				passClear = static_cast<Ogre::CompositorPassClearDef*>(pass);
 
-			/*if (true == this->canUseSplitscreen)
-			{
-				outputChannel++;
-			}*/
+				passClear->mNumInitialPasses = 1;
+				passClear->mClearColour[0] = Ogre::ColourValue(0.01f, 0.01f, 0.01f, 1.0f);
+
+				passClear->mProfilingId = "NOWA_Sky_Hdr_Pass_Clear";
+			}
 
 			if (true == this->useDistortion->getBool())
 			{
-				outputChannel++;
+				Ogre::CompositorTargetDef* targetDef = compositorNodeDefinition->addTargetPass("rt_distortion");
+
+				Ogre::CompositorPassSceneDef* passScene;
+				auto pass = targetDef->addPass(Ogre::PASS_SCENE);
+				passScene = static_cast<Ogre::CompositorPassSceneDef*>(pass);
+
+				passScene->mProfilingId = "NOWA_Sky_Distortion_Pass_Scene";
+				passScene->setAllLoadActions(Ogre::LoadAction::Clear);
+				passScene->mClearColour[0] = Ogre::ColourValue(0.5f, 0.5f, 0.0f, 0.0f);
+				passScene->mUpdateLodLists = false;
+				passScene->mIncludeOverlays = false;
+				passScene->mFirstRQ = 16;
+				passScene->mLastRQ = 17;
+
+				this->createDistortionNode();
 			}
 
-			compositorNodeDefinition->setNumOutputChannels(outputChannel);
+			// ===== Output channels =====
+			unsigned short outputChannelCount = 2; // rt0, rt1
 
-			outputChannel = 0;
+			if (true == this->useHdr->getBool())
+			{
+				outputChannelCount++;
+			}
+
+			if (true == this->useDistortion->getBool())
+			{
+				outputChannelCount++;
+			}
+
+			if (true == this->useSSAO->getBool())
+			{
+				outputChannelCount += 2; // gBufferNormals, depthTexture
+			}
+
+			compositorNodeDefinition->setNumOutputChannels(outputChannelCount);
+
+			unsigned short outputChannel = 0;
 
 			compositorNodeDefinition->mapOutputChannel(outputChannel++, "rt0");
 			compositorNodeDefinition->mapOutputChannel(outputChannel++, "rt1");
@@ -3822,16 +3907,19 @@ namespace NOWA
 				compositorNodeDefinition->mapOutputChannel(outputChannel++, "rt_distortion");
 			}
 
-			this->createFinalRenderNode();
-
-			// For VR: disable this line and use NOWAPbsRenderingNodeVR
-			// this->changeViewportRect(0, this->viewportRect->getVector4());
-
-			if (true == this->externalChannels.empty())
+			if (true == this->useSSAO->getBool())
 			{
-				this->externalChannels.resize(1);
-				this->externalChannels[0] = Core::getSingletonPtr()->getOgreRenderWindow()->getTexture();
+				compositorNodeDefinition->mapOutputChannel(outputChannel++, "gBufferNormals");
+				compositorNodeDefinition->mapOutputChannel(outputChannel++, "depthTexture");
 			}
+		}
+
+		this->createFinalRenderNode();
+
+		if (true == this->externalChannels.empty())
+		{
+			this->externalChannels.resize(1);
+			this->externalChannels[0] = Core::getSingletonPtr()->getOgreRenderWindow()->getTexture();
 		}
 
 		if (true == this->usePlanarReflection->getBool())
@@ -4117,15 +4205,23 @@ namespace NOWA
 		{
 			Ogre::CompositorNodeDef* compositorNodeDefinition = this->compositorManager->addNodeDefinition(this->renderingNodeName);
 
-			unsigned short numTexturesDefinitions = 0;
-			if (false == this->useHdr->getBool())
+			unsigned short numTexturesDefinitions = 2; // rt0, rt1
+
+			if (true == this->useHdr->getBool())
 			{
-				numTexturesDefinitions = 2;
+				numTexturesDefinitions++;
 			}
-			else
+
+			if (true == this->useDistortion->getBool())
 			{
-				numTexturesDefinitions = 3;
+				numTexturesDefinitions++;
 			}
+
+			if (true == this->useSSAO->getBool())
+			{
+				numTexturesDefinitions += 2; // gBufferNormals and depthTexture
+			}
+
 			compositorNodeDefinition->setNumLocalTextureDefinitions(numTexturesDefinitions);
 
 			Ogre::TextureDefinitionBase::TextureDefinition* texDef = compositorNodeDefinition->addTextureDefinition("rt0");
@@ -4135,49 +4231,79 @@ namespace NOWA
 				this->superSampling->setValue(1.0f);
 			}
 
-			texDef->width = 0; // target_width
-			texDef->height = 0; // target_height
-
+			texDef->width = 0;
+			texDef->height = 0;
 			texDef->widthFactor = this->superSampling->getReal();
 			texDef->heightFactor = this->superSampling->getReal();
 			texDef->textureFlags = Ogre::TextureFlags::RenderToTexture | Ogre::TextureFlags::MsaaExplicitResolve;
-
-			// For SSAO necessary?
-			// texDef->format = Ogre::PFG_RGBA8_UNORM_SRGB;
 			texDef->format = Ogre::PFG_RGBA16_FLOAT;
 
 			if (true == this->useDistortion->getBool())
 			{
-				// texDef->depthBufferFormat = Ogre::PFG_D32_FLOAT;
-				// texDef->depthBufferId = 2;
-				// texDef->preferDepthTexture = true;
-
 				Ogre::TextureDefinitionBase::TextureDefinition* distortionTexDef = compositorNodeDefinition->addTextureDefinition("rt_distortion");
-				distortionTexDef->width = 0.0f; // target_width
-				distortionTexDef->height = 0.0f; // target_height
-				distortionTexDef->format = Ogre::PFG_RGBA8_UNORM_SRGB;
+				distortionTexDef->width = 0.0f;
+				distortionTexDef->height = 0.0f;
+				distortionTexDef->format = Ogre::PFG_RGBA16_FLOAT;
 				distortionTexDef->depthBufferFormat = Ogre::PFG_D32_FLOAT;
 				distortionTexDef->preferDepthTexture = true;
-				// Attention depth_pool?
 				distortionTexDef->depthBufferId = 2;
 				distortionTexDef->textureFlags = Ogre::TextureFlags::RenderToTexture;
+			}
+
+			if (true == this->useSSAO->getBool())
+			{
+				// gBufferNormals - with explicit_resolve
+				Ogre::TextureDefinitionBase::TextureDefinition* gBufferNormalsTexDef = compositorNodeDefinition->addTextureDefinition("gBufferNormals");
+				gBufferNormalsTexDef->width = 0;
+				gBufferNormalsTexDef->height = 0;
+				gBufferNormalsTexDef->widthFactor = this->superSampling->getReal();
+				gBufferNormalsTexDef->heightFactor = this->superSampling->getReal();
+				gBufferNormalsTexDef->format = Ogre::PFG_R10G10B10A2_UNORM;
+				gBufferNormalsTexDef->textureFlags = Ogre::TextureFlags::RenderToTexture;
+				if (this->msaaLevel > 1)
+				{
+					gBufferNormalsTexDef->fsaa = Ogre::StringConverter::toString(this->msaaLevel);
+					gBufferNormalsTexDef->textureFlags |= Ogre::TextureFlags::MsaaExplicitResolve;
+				}
+
+				// depthTexture - NO explicit_resolve
+				Ogre::TextureDefinitionBase::TextureDefinition* depthTextureTexDef = compositorNodeDefinition->addTextureDefinition("depthTexture");
+				depthTextureTexDef->width = 0;
+				depthTextureTexDef->height = 0;
+				depthTextureTexDef->widthFactor = this->superSampling->getReal();
+				depthTextureTexDef->heightFactor = this->superSampling->getReal();
+				depthTextureTexDef->format = Ogre::PFG_D32_FLOAT;
+				depthTextureTexDef->textureFlags = Ogre::TextureFlags::RenderToTexture;
+				if (this->msaaLevel > 1)
+				{
+					depthTextureTexDef->fsaa = Ogre::StringConverter::toString(this->msaaLevel);
+				}
 			}
 
 			Ogre::RenderTargetViewDef* rtv = compositorNodeDefinition->addRenderTextureView("rt0");
 			Ogre::RenderTargetViewEntry attachment;
 			attachment.textureName = "rt0";
 			rtv->colourAttachments.push_back(attachment);
-			rtv->depthBufferId = Ogre::DepthBuffer::POOL_DEFAULT;
+
+			if (true == this->useSSAO->getBool())
+			{
+				Ogre::RenderTargetViewEntry normalsAttachment;
+				normalsAttachment.textureName = "gBufferNormals";
+				rtv->colourAttachments.push_back(normalsAttachment);
+
+				rtv->depthAttachment.textureName = "depthTexture";
+			}
+			else
+			{
+				rtv->depthBufferId = Ogre::DepthBuffer::POOL_DEFAULT;
+			}
 
 			texDef = compositorNodeDefinition->addTextureDefinition("rt1");
-			
-			texDef->width = 0; // target_width
-			texDef->height = 0; // target_height
-			
+			texDef->width = 0;
+			texDef->height = 0;
 			texDef->widthFactor = this->superSampling->getReal();
 			texDef->heightFactor = this->superSampling->getReal();
 			texDef->format = Ogre::PFG_RGBA16_FLOAT;
-			// texDef->msaa = this->msaaLevel;
 			texDef->textureFlags = Ogre::TextureFlags::RenderToTexture | Ogre::TextureFlags::MsaaExplicitResolve;
 
 			rtv = compositorNodeDefinition->addRenderTextureView("rt1");
@@ -4192,7 +4318,6 @@ namespace NOWA
 				texDef->height = 0.0f;
 				texDef->format = Ogre::PFG_RGBA16_FLOAT;
 				texDef->textureFlags = Ogre::TextureFlags::RenderToTexture;
-				texDef->depthBufferId = Ogre::DepthBuffer::POOL_DEFAULT;
 
 				rtv = compositorNodeDefinition->addRenderTextureView("oldLumRt");
 				attachment.textureName = "oldLumRt";
@@ -4206,7 +4331,7 @@ namespace NOWA
 				Ogre::RenderTargetViewEntry attachment;
 				attachment.textureName = "rt_distortion";
 				rtv->colourAttachments.push_back(attachment);
-				// rtv->depthBufferId = 2;
+				rtv->depthBufferId = 2;
 			}
 
 			unsigned short numTargetPass = 1;
@@ -4218,185 +4343,209 @@ namespace NOWA
 			{
 				numTargetPass++;
 			}
+
 			compositorNodeDefinition->setNumTargetPass(numTargetPass);
 
+			// rt0 target
 			{
 				Ogre::CompositorTargetDef* targetDef = compositorNodeDefinition->addTargetPass("rt0");
 
+				// Clear Pass
 				{
-					// if (true == this->canUseSplitscreen)
-					{
-						// Clear Pass
-						{
-							Ogre::CompositorPassClearDef* passClear;
-							auto pass = targetDef->addPass(Ogre::PASS_CLEAR);
-							passClear = static_cast<Ogre::CompositorPassClearDef*>(pass);
+					Ogre::CompositorPassClearDef* passClear;
+					auto pass = targetDef->addPass(Ogre::PASS_CLEAR);
+					passClear = static_cast<Ogre::CompositorPassClearDef*>(pass);
 
-							passClear->mClearColour[0] = Ogre::ColourValue(0.2f, 0.4f, 0.6f);
-							// passClear->setAllStoreActions(Ogre::StoreAction::Store);
-							passClear->mStoreActionColour[0] = Ogre::StoreAction::Store;
-							passClear->mStoreActionDepth = Ogre::StoreAction::Store;
-							passClear->mStoreActionStencil = Ogre::StoreAction::Store;
-							passClear->mProfilingId = "NOWA_Background_Split_Pass_Clear";
-						}
+					passClear->mClearColour[0] = Ogre::ColourValue(0.2f, 0.4f, 0.6f);
+
+					if (true == this->useSSAO->getBool())
+					{
+						// Clear the normals buffer to a neutral value
+						passClear->mClearColour[1] = Ogre::ColourValue(0.5f, 0.5f, 1.0f, 1.0f);
+						passClear->mStoreActionColour[1] = Ogre::StoreAction::Store;
 					}
 
-					// Render Scene
+					passClear->mStoreActionColour[0] = Ogre::StoreAction::Store;
+					passClear->mStoreActionDepth = Ogre::StoreAction::Store;
+					passClear->mStoreActionStencil = Ogre::StoreAction::Store;
+
+					passClear->mProfilingId = "NOWA_Background_Clear_Pass_Clear";
+				}
+
+				// First Render Scene (RQ 0-2, before background)
+				{
+					Ogre::CompositorPassSceneDef* passScene;
+					auto pass = targetDef->addPass(Ogre::PASS_SCENE);
+					passScene = static_cast<Ogre::CompositorPassSceneDef*>(pass);
+
+					Ogre::ColourValue color(0.2f, 0.4f, 0.6f);
+					passScene->setAllLoadActions(Ogre::LoadAction::Clear);
+					passScene->mClearColour[0] = color;
+
+					passScene->mStoreActionColour[0] = Ogre::StoreAction::StoreOrResolve;
+
+					if (true == this->useSSAO->getBool())
 					{
-						Ogre::CompositorPassSceneDef* passScene;
-						auto pass = targetDef->addPass(Ogre::PASS_SCENE);
-						passScene = static_cast<Ogre::CompositorPassSceneDef*>(pass);
-
-						Ogre::ColourValue color(0.2f, 0.4f, 0.6f);
-						// passScene->setAllClearColours(color);
-						passScene->setAllLoadActions(Ogre::LoadAction::Clear);
-						passScene->mClearColour[0] = color;
-
-						// passScene->setAllStoreActions(Ogre::StoreAction::StoreOrResolve);
-						passScene->mStoreActionColour[0] = Ogre::StoreAction::StoreOrResolve; // Ogre::StoreAction::StoreAndMultisampleResolve; causes a crash, why?
+						passScene->mClearColour[1] = Ogre::ColourValue(0.5f, 0.5f, 1.0f, 1.0f);
+						passScene->mStoreActionColour[1] = Ogre::StoreAction::StoreOrResolve;
+						passScene->mStoreActionDepth = Ogre::StoreAction::Store;
+					}
+					else
+					{
 						passScene->mStoreActionDepth = Ogre::StoreAction::DontCare;
-						passScene->mStoreActionStencil = Ogre::StoreAction::DontCare;
-						passScene->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
+					}
+					passScene->mStoreActionStencil = Ogre::StoreAction::DontCare;
 
-						passScene->mFirstRQ = 0;
-						passScene->mLastRQ = 2;
+					passScene->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
+					passScene->mFirstRQ = 0;
+					passScene->mLastRQ = 2;
 
-						if (true == this->usePlanarReflection->getBool())
-						{
-							// Used to identify this pass wants planar reflections
-							passScene->mIdentifier = 25001;
-						}
+					if (true == this->usePlanarReflection->getBool())
+					{
+						passScene->mIdentifier = 25001;
+					}
 
-						passScene->mProfilingId = "NOWA_Background_Before_Background_Pass_Scene";
+					passScene->mProfilingId = "NOWA_Background_Before_Background_Pass_Scene";
 
-						// passScene->setAllStoreActions(Ogre::StoreAction::StoreOrResolve);
+					if (true == this->canUseReflection)
+					{
+						passScene->mExposedTextures.emplace_back(Ogre::IdString("rt1"));
+					}
+
+					passScene->mIncludeOverlays = false;
+
+					if (true == this->useSSAO->getBool())
+					{
+						passScene->mGenNormalsGBuf = true;
+					}
+				}
+
+				// Background quad pass
+				// NOTE: The background doesn't generate normals - it's at infinite distance
+				// so SSAO shouldn't affect it. The normals buffer will retain
+				// the values from the first scene pass for those pixels.
+				{
+					Ogre::CompositorPassQuadDef* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
+					passQuad->mMaterialName = "NOWABackgroundScroll";
+					passQuad->mFrustumCorners = Ogre::CompositorPassQuadDef::NO_CORNERS;
+
+					// For SSAO: Load the existing content, don't clear
+					if (true == this->useSSAO->getBool())
+					{
+						passQuad->setAllLoadActions(Ogre::LoadAction::Load);
+						passQuad->mStoreActionColour[0] = Ogre::StoreAction::Store;
+						// Don't modify the normals buffer - background is at infinity
+						passQuad->mStoreActionColour[1] = Ogre::StoreAction::Store;
+						passQuad->mStoreActionDepth = Ogre::StoreAction::Store;
+					}
+
+					passQuad->mProfilingId = "NOWABackgroundScroll_Pass_Quad";
+				}
+
+				// Second Render Scene (RQ 2+, after background)
+				{
+					Ogre::CompositorPassSceneDef* passScene;
+					auto pass = targetDef->addPass(Ogre::PASS_SCENE);
+					passScene = static_cast<Ogre::CompositorPassSceneDef*>(pass);
+
+					passScene->mIncludeOverlays = false;
+					passScene->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
+					passScene->mShadowNodeRecalculation = Ogre::ShadowNodeRecalculation::SHADOW_NODE_REUSE;
+					passScene->mFirstRQ = 2;
+
+					// For SSAO: This pass also generates normals for objects after the background
+					if (true == this->useSSAO->getBool())
+					{
+						passScene->mGenNormalsGBuf = true;
+						passScene->setAllLoadActions(Ogre::LoadAction::Load);
 						passScene->mStoreActionColour[0] = Ogre::StoreAction::StoreOrResolve;
-						
-
-						if (true == this->canUseReflection)
-						{
-							//Our materials in this pass will be using this cubemap,
-							//so we need to expose it to the pass.
-							//Note: Even if it "just works" without exposing, the reason for
-							//exposing is to ensure compatibility with Vulkan & D3D12.
-
-							passScene->mExposedTextures.emplace_back(Ogre::IdString("rt1"));
-						}
-
-						passScene->mIncludeOverlays = false;
+						passScene->mStoreActionColour[1] = Ogre::StoreAction::StoreOrResolve;
+						passScene->mStoreActionDepth = Ogre::StoreAction::Store;
 					}
 
-					//https://forums.ogre3d.org/viewtopic.php?t=93636
-					//https://forums.ogre3d.org/viewtopic.php?t=94748
-
-					const Ogre::CompositorPassQuadDef::FrustumCorners corners = Ogre::CompositorPassQuadDef::NO_CORNERS;
-
-					// Background quad
-					{
-						Ogre::CompositorPassQuadDef* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
-						passQuad->mMaterialName = "NOWABackgroundScroll";
-						passQuad->mFrustumCorners = corners;
-
-						passQuad->mProfilingId = "NOWABackgroundScroll_Pass_Quad";
-					}
-
-					// Render Scene
-					{
-						Ogre::CompositorPassSceneDef* passScene;
-						auto pass = targetDef->addPass(Ogre::PASS_SCENE);
-						passScene = static_cast<Ogre::CompositorPassSceneDef*>(pass);
-						passScene->mIncludeOverlays = false;
-						passScene->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
-						passScene->mShadowNodeRecalculation = Ogre::ShadowNodeRecalculation::SHADOW_NODE_REUSE;
-						passScene->mFirstRQ = 2;
-
-						passScene->mProfilingId = "NOWA_Background_After_Background_Pass_Scene";
-					}
+					passScene->mProfilingId = "NOWA_Background_After_Background_Pass_Scene";
 				}
+			}
 
-				if (true == this->useHdr->getBool())
-				{
-					Ogre::CompositorTargetDef* targetDef = compositorNodeDefinition->addTargetPass("oldLumRt");
+			if (true == this->useHdr->getBool())
+			{
+				Ogre::CompositorTargetDef* targetDef = compositorNodeDefinition->addTargetPass("oldLumRt");
 
-					{
-						Ogre::CompositorPassClearDef* passClear;
-						auto pass = targetDef->addPass(Ogre::PASS_CLEAR);
-						passClear = static_cast<Ogre::CompositorPassClearDef*>(pass);
+				Ogre::CompositorPassClearDef* passClear;
+				auto pass = targetDef->addPass(Ogre::PASS_CLEAR);
+				passClear = static_cast<Ogre::CompositorPassClearDef*>(pass);
 
-						passClear->mNumInitialPasses = 1;
-						passClear->mClearColour[0] = Ogre::ColourValue(0.01f, 0.01f, 0.01f, 1.0f);
-						passClear->mProfilingId = "NOWA_Background_Hdr_Pass_Clear";
-					}
-				}
+				passClear->mNumInitialPasses = 1;
+				passClear->mClearColour[0] = Ogre::ColourValue(0.01f, 0.01f, 0.01f, 1.0f);
 
-				if (true == this->useDistortion->getBool())
-				{
-					Ogre::CompositorTargetDef* targetDef = compositorNodeDefinition->addTargetPass("rt_distortion");
+				passClear->mProfilingId = "NOWA_Background_Hdr_Pass_Clear";
+			}
 
-					// Render Scene for distortion
-					{
-						Ogre::CompositorPassSceneDef* passScene;
-						auto pass = targetDef->addPass(Ogre::PASS_SCENE);
-						passScene = static_cast<Ogre::CompositorPassSceneDef*>(pass);
+			if (true == this->useDistortion->getBool())
+			{
+				Ogre::CompositorTargetDef* targetDef = compositorNodeDefinition->addTargetPass("rt_distortion");
 
-						passScene->mProfilingId = "NOWA_Background_Distortion_Pass_Scene";
+				Ogre::CompositorPassSceneDef* passScene;
+				auto pass = targetDef->addPass(Ogre::PASS_SCENE);
+				passScene = static_cast<Ogre::CompositorPassSceneDef*>(pass);
 
-						passScene->setAllLoadActions(Ogre::LoadAction::Clear);
-						passScene->mClearColour[0] = Ogre::ColourValue(0.5f, 0.5f, 0.0f, 0.0f);
+				passScene->mProfilingId = "NOWA_Background_Distortion_Pass_Scene";
+				passScene->setAllLoadActions(Ogre::LoadAction::Clear);
+				passScene->mClearColour[0] = Ogre::ColourValue(0.5f, 0.5f, 0.0f, 0.0f);
+				passScene->mUpdateLodLists = false;
+				passScene->mIncludeOverlays = false;
+				passScene->mFirstRQ = 16;
+				passScene->mLastRQ = 17;
 
-						passScene->mUpdateLodLists = false;
+				this->createDistortionNode();
+			}
 
-						passScene->mIncludeOverlays = false;
-						passScene->mFirstRQ = 16;
-						passScene->mLastRQ = 17;
-					}
+			// ===== Output channels =====
+			unsigned short outputChannelCount = 2; // rt0, rt1
 
-					this->createDistortionNode();
-				}
+			if (true == this->useHdr->getBool())
+			{
+				outputChannelCount++;
+			}
 
-				// Output channels
-				unsigned short outputChannel = 0;
+			if (true == this->useDistortion->getBool())
+			{
+				outputChannelCount++;
+			}
 
-				if (false == this->useHdr->getBool())
-				{
-					outputChannel = 2;
-				}
-				else
-				{
-					outputChannel = 3;
-				}
+			if (true == this->useSSAO->getBool())
+			{
+				outputChannelCount += 2; // gBufferNormals, depthTexture
+			}
 
-				if (true == this->useDistortion->getBool())
-				{
-					outputChannel++;
-				}
+			compositorNodeDefinition->setNumOutputChannels(outputChannelCount);
 
-				compositorNodeDefinition->setNumOutputChannels(outputChannel);
+			unsigned short outputChannel = 0;
 
-				outputChannel = 0;
+			compositorNodeDefinition->mapOutputChannel(outputChannel++, "rt0");
+			compositorNodeDefinition->mapOutputChannel(outputChannel++, "rt1");
 
-				compositorNodeDefinition->mapOutputChannel(outputChannel++, "rt0");
-				compositorNodeDefinition->mapOutputChannel(outputChannel++, "rt1");
+			if (true == this->useHdr->getBool())
+			{
+				compositorNodeDefinition->mapOutputChannel(outputChannel++, "oldLumRt");
+			}
+			if (true == this->useDistortion->getBool())
+			{
+				compositorNodeDefinition->mapOutputChannel(outputChannel++, "rt_distortion");
+			}
 
-				if (true == this->useHdr->getBool())
-				{
-					compositorNodeDefinition->mapOutputChannel(outputChannel++, "oldLumRt");
-				}
-				if (true == this->useDistortion->getBool())
-				{
-					compositorNodeDefinition->mapOutputChannel(outputChannel++, "rt_distortion");
-				}
+			if (true == this->useSSAO->getBool())
+			{
+				compositorNodeDefinition->mapOutputChannel(outputChannel++, "gBufferNormals");
+				compositorNodeDefinition->mapOutputChannel(outputChannel++, "depthTexture");
+			}
 
-				this->createFinalRenderNode();
+			this->createFinalRenderNode();
 
-				// For VR: disable this line and use NOWAPbsRenderingNodeVR
-				// this->changeViewportRect(0, this->viewportRect->getVector4());
-
-				if (true == this->externalChannels.empty())
-				{
-					this->externalChannels.resize(1);
-					this->externalChannels[0] = Core::getSingletonPtr()->getOgreRenderWindow()->getTexture();
-				}
+			if (true == this->externalChannels.empty())
+			{
+				this->externalChannels.resize(1);
+				this->externalChannels[0] = Core::getSingletonPtr()->getOgreRenderWindow()->getTexture();
 			}
 
 			if (true == this->usePlanarReflection->getBool())
@@ -4413,70 +4562,59 @@ namespace NOWA
 					{
 						Ogre::CompositorTargetDef* targetDef = compositorNodeDefinition->addTargetPass("rt_renderwindow");
 
+						// Render Scene
 						{
-							// Render Scene
-							{
-								Ogre::CompositorPassSceneDef* passScene;
-								auto pass = targetDef->addPass(Ogre::PASS_SCENE);
-								passScene = static_cast<Ogre::CompositorPassSceneDef*>(pass);
-								passScene->mProfilingId = "NOWA_Background_PlanarReflection_Pass_Scene";
+							Ogre::CompositorPassSceneDef* passScene;
+							auto pass = targetDef->addPass(Ogre::PASS_SCENE);
+							passScene = static_cast<Ogre::CompositorPassSceneDef*>(pass);
+							passScene->mProfilingId = "NOWA_Background_PlanarReflection_Pass_Scene";
 
-								Ogre::ColourValue color(0.2f, 0.4f, 0.6f);
-								// passScene->setAllClearColours(color);
-								passScene->setAllLoadActions(Ogre::LoadAction::Clear);
-								passScene->mClearColour[0] = color;
+							Ogre::ColourValue color(0.2f, 0.4f, 0.6f);
+							passScene->setAllLoadActions(Ogre::LoadAction::Clear);
+							passScene->mClearColour[0] = color;
 
-								// passScene->setAllStoreActions(Ogre::StoreAction::StoreOrResolve);
-								passScene->mStoreActionColour[0] = Ogre::StoreAction::StoreOrResolve; // Ogre::StoreAction::StoreAndMultisampleResolve; causes a crash, why?
-								passScene->mStoreActionDepth = Ogre::StoreAction::DontCare;
-								passScene->mStoreActionStencil = Ogre::StoreAction::DontCare;
+							passScene->mStoreActionColour[0] = Ogre::StoreAction::StoreOrResolve;
+							passScene->mStoreActionDepth = Ogre::StoreAction::DontCare;
+							passScene->mStoreActionStencil = Ogre::StoreAction::DontCare;
 
-								passScene->mFirstRQ = 0;
-								passScene->mLastRQ = 2;
+							passScene->mFirstRQ = 0;
+							passScene->mLastRQ = 2;
 
-								passScene->mIncludeOverlays = false;
+							passScene->mIncludeOverlays = false;
+							passScene->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
+						}
 
-								// passScene->mVisibilityMask = 0xfffffffe;
-
-								//https://forums.ogre3d.org/viewtopic.php?t=93636
-								//https://forums.ogre3d.org/viewtopic.php?t=94748
-								passScene->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
-							}
-
-							// Add background image passes
-							Ogre::String strMaterialName = "NOWABackgroundScroll";
-							
+						// Background quad
+						{
 							Ogre::CompositorPassQuadDef* passQuad;
 							auto pass = targetDef->addPass(Ogre::PASS_QUAD);
 							passQuad = static_cast<Ogre::CompositorPassQuadDef*>(pass);
 
-							passQuad->mMaterialName = strMaterialName;
-							passQuad->mProfilingId = "NOWA_Background_Background_Pass_Scene";
+							passQuad->mMaterialName = "NOWABackgroundScroll";
+							passQuad->mProfilingId = "NOWA_Background_Background_Pass_Quad";
+						}
 
-							// Render Scene
-							{
-								Ogre::CompositorPassSceneDef* passScene;
-								auto pass = targetDef->addPass(Ogre::PASS_SCENE);
-								passScene = static_cast<Ogre::CompositorPassSceneDef*>(pass);
+						// Render Scene (after background)
+						{
+							Ogre::CompositorPassSceneDef* passScene;
+							auto pass = targetDef->addPass(Ogre::PASS_SCENE);
+							passScene = static_cast<Ogre::CompositorPassSceneDef*>(pass);
 
-								passScene->mIncludeOverlays = false;
-								passScene->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
-								passScene->mShadowNodeRecalculation = Ogre::ShadowNodeRecalculation::SHADOW_NODE_REUSE;
-								passScene->mFirstRQ = 2;
-								passScene->mProfilingId = "NOWA_Background_Before_Background_Pass_Scene";
-							}
+							passScene->mIncludeOverlays = false;
+							passScene->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
+							passScene->mShadowNodeRecalculation = Ogre::ShadowNodeRecalculation::SHADOW_NODE_REUSE;
+							passScene->mFirstRQ = 2;
+							passScene->mProfilingId = "NOWA_Background_After_Background_Pass_Scene";
+						}
 
-							// Generate Mipmaps
-							{
-								Ogre::CompositorPassMipmapDef* passMipmap;
-								passMipmap = static_cast<Ogre::CompositorPassMipmapDef*>(targetDef->addPass(Ogre::PASS_MIPMAP));
+						// Generate Mipmaps
+						{
+							Ogre::CompositorPassMipmapDef* passMipmap;
+							passMipmap = static_cast<Ogre::CompositorPassMipmapDef*>(targetDef->addPass(Ogre::PASS_MIPMAP));
 
-								passMipmap->mMipmapGenerationMethod = Ogre::CompositorPassMipmapDef::ComputeHQ;
+							passMipmap->mMipmapGenerationMethod = Ogre::CompositorPassMipmapDef::ComputeHQ;
 
-								passMipmap->mProfilingId = "NOWA_Background_Pass_Mipmap";
-
-								// ATTENTION: What here with splitting??
-							}
+							passMipmap->mProfilingId = "NOWA_Background_Pass_Mipmap";
 						}
 					}
 				}
@@ -4485,7 +4623,7 @@ namespace NOWA
 
 		Ogre::String strMaterialName = "NOWABackgroundScroll";
 		this->materialBackgroundPtr = Ogre::MaterialManager::getSingletonPtr()->getByName(strMaterialName);
-			
+
 		if (true == this->materialBackgroundPtr.isNull())
 		{
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[WorkspaceBackgroundComponent] Could not set: " + this->workspaceName + " because the material: '" + strMaterialName + "' does not exist!");

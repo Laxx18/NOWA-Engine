@@ -1722,7 +1722,7 @@ namespace NOWA
 		hlmsPbs->setDebugOutputPath(false, false);
 		hlmsUnlit->setDebugOutputPath(false, false);
 		hlmsTerra->setDebugOutputPath(false, false);
-		hlmsOcean->setDebugOutputPath(true, true);
+		hlmsOcean->setDebugOutputPath(false, false);
 
 		// Set shader cache for faster loading
 		this->loadHlmsDiskCache();

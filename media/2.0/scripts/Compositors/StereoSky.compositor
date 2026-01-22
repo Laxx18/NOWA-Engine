@@ -1,0 +1,83 @@
+compositor_node StereoSkyRenderingNode
+{
+	in 0 rt_renderwindow
+
+	target rt_renderwindow
+	{
+		pass clear
+		{
+			//Get executed on the first eye
+			execution_mask			0x01
+			//Don't be affected by the modifier, apply to the whole screen
+			viewport_modifier_mask	0x00
+
+			colour_value			0.2 0.4 0.6 1
+
+			// Only write to the MSAA surface (don't resolve!)
+			// because overlays due to a legacy problem break the pass
+			// thus if we resolve now, we'll resolve twice
+			store
+			{
+				colour	store
+				depth	store
+				stencil	store
+			}
+
+			profiling_id "Clear both eyes"
+		}
+		
+		//Render opaque stuff
+		pass render_scene
+		{
+			// Fixes the splitscreen
+			//load
+			//{
+			//	all				clear
+			//	clear_colour	0.2 0.4 0.6 1
+			//}
+			overlays	off
+			rq_first	0
+			rq_last		2
+			
+			//Get executed in all eyes
+			execution_mask			0xff
+			//Be affected by the modifier, so we render just to a portion of the screen.
+			viewport_modifier_mask	0xff
+
+			profiling_id "Opaque Objects"
+		}
+		
+		//Render sky after opaque stuff (performance optimization)
+		pass render_quad
+		{
+			quad_normals	camera_direction
+			material SkyPostprocess
+
+			profiling_id "Sky"
+			
+			//Get executed in all eyes
+			execution_mask			0xff
+			//Be affected by the modifier, so we render just to a portion of the screen.
+			viewport_modifier_mask	0xff
+		}
+		
+		//Render transparent stuff after sky
+		pass render_scene
+		{
+			overlays	on
+			rq_first	2
+			
+			//Get executed in all eyes
+			execution_mask			0xff
+			//Get executed on the first eye
+			viewport_modifier_mask	0x01
+
+			profiling_id "Transparents"
+		}
+	}
+}
+
+workspace StereoSkyRenderingWorkspace
+{
+	connect_output StereoSkyRenderingNode 0
+}

@@ -1,19 +1,13 @@
-// Ocean Pixel Shader - Matches Terra's exact structure
+// Ocean Pixel Shader - No shadow casting or receiving
 
 @undefpiece( MaterialStructDecl )
 @undefpiece( InstanceStructDecl )
 
 @piece( DefaultOceanHeaderPS )
     @insertpiece( DefaultHeaderPS )
-    @property( !hlms_shadowcaster )
-        @insertpiece( OceanMaterialStructDecl )
-        @insertpiece( OceanInstanceStructDecl )
-    @else
-        @insertpiece( DeclShadowCasterMacros )
-        @property( hlms_shadowcaster_point || exponential_shadow_maps )
-            @insertpiece( PassStructDecl )
-        @end
-    @end
+
+    @insertpiece( OceanMaterialStructDecl )
+    @insertpiece( OceanInstanceStructDecl )
 
     @property( !hlms_prepass && needs_view_dir )
         @insertpiece( DeclareBRDF )
@@ -23,12 +17,12 @@
 @end
 
 //-----------------------------------------------------------------------------
-//		BODY CODE (Following Terra's exact pattern)
+//		BODY CODE
 //-----------------------------------------------------------------------------
 
 @piece( DefaultOceanBodyPS )
     @property( hlms_emulate_clip_distances && hlms_global_clip_planes && hlms_pso_clip_distances && syntax == glslvk)
-        @foreach( hlms_pso_clip_distances, n )
+        @foreach( hlms_pssm_splits, n )
             if( inPs.clipDistance@n < 0.0 )
                 discard;
         @end
@@ -110,7 +104,6 @@
 	@insertpiece( custom_ps_posSampleNormal )
 
 	// ===== Diffuse (configurable scale) =====
-	// pixelData.diffuse = midf4( diffuseCol * midf_c( diffuseScale ) );
 	pixelData.diffuse = midf4( diffuseCol * midf_c( diffuseScale * transparency ) );
 
 	// ===== Specular (boost for reflections, reduced by foam) =====
@@ -133,65 +126,15 @@
 		pixelData.roughness = max( pixelData.perceptualRoughness, _h( 0.001f ) );
 	@end
 
-    // ===== Shadow maps =====
-    @property( !hlms_use_prepass )
-        @insertpiece( DoDirectionalShadowMaps )
-    @end
-    
-    @property( hlms_use_prepass )
-        rshort2 iFragCoord = rshort2( gl_FragCoord.x,
-                                      @property( !hlms_forwardplus_flipY && syntax == glsl )passBuf.windowHeight.x - @end
-                                      gl_FragCoord.y );
-        
-        @property( hlms_use_prepass_msaa )
-            uint sampleMask = uint( gl_SampleMaskIn0 );
-            float msaaDepth;
-            uint subsampleDepthMask;
-            float pixelDepthZ;
-            float pixelDepthW;
-            float2 pixelDepthZW;
-            float pixelDepth;
-            int intPixelDepth;
-            int intMsaaDepth;
-            int ulpError = int( lerp( 200.0, 5.0, gl_FragCoord.z ) );
-            @foreach( hlms_use_prepass_msaa, n )
-                pixelDepthZW = interpolateAtSample( inPs.zwDepth, @n );
-                pixelDepthZ = pixelDepthZW.x;
-                pixelDepthW = pixelDepthZW.y;
-                pixelDepth = pixelDepthZ / pixelDepthW;
-                msaaDepth = OGRE_Load2DMS( gBuf_depthTexture, iFragCoord.xy, @n ).x;
-                intPixelDepth = floatBitsToInt( pixelDepth );
-                intMsaaDepth = floatBitsToInt( msaaDepth );
-                subsampleDepthMask = (abs( intPixelDepth - intMsaaDepth ) <= ulpError) ? 0xffffffffu : ~(1u << @nu);
-                sampleMask &= subsampleDepthMask;
-            @end
-            
-            sampleMask = sampleMask == 0u ? 1u : sampleMask;
-            int gBufSubsample = int( findLSB( sampleMask ) );
-            
-            pixelData.normal = normalize( OGRE_Load2DMSF16( gBuf_normals, iFragCoord, gBufSubsample ).xyz * _h( 2.0 ) - _h( 1.0 ) );
-            midf2 shadowRoughness = OGRE_Load2DMSF16( gBuf_shadowRoughness, iFragCoord, gBufSubsample ).xy;
-        @else
-            pixelData.normal = normalize( OGRE_Load2DF16( gBuf_normals, iFragCoord, 0 ).xyz * _h( 2.0 ) - _h( 1.0 ) );
-            midf2 shadowRoughness = OGRE_Load2DF16( gBuf_shadowRoughness, iFragCoord, 0 ).xy;
-        @end
-        
-        midf fShadow = shadowRoughness.x;
-        
-        @property( roughness_map )
-            pixelData.roughness = shadowRoughness.y * 0.98 + 0.02;
-        @end
-    @end
-    
     @property( !hlms_prepass )
+        // ===== Ocean doesn't receive shadows - always fully lit =====
+        midf fShadow = _h( 1.0 );
+        
         // ===== LIGHTING =====
         @insertpiece( LightingHeader )
         @insertpiece( custom_ps_preLights )
 
         @property( !custom_disable_directional_lights )
-            @property( !(hlms_pssm_splits || (!hlms_pssm_splits && hlms_num_shadow_map_lights && hlms_lights_directional)) )
-                midf fShadow = _h( 1.0f );
-            @end
             @insertpiece( DoDirectionalLights )
         @end
 
@@ -321,12 +264,7 @@
             @end
         @else
             outPs_normals = midf4_c( pixelData.normal * _h( 0.5 ) + _h( 0.5 ), 1.0 );
-            @property( hlms_pssm_splits )
-                outPs_shadowRoughness = midf2_c( fShadow, (pixelData.roughness - 0.02) * 1.02040816 );
-            @end
-            @property( !hlms_pssm_splits )
-                outPs_shadowRoughness = midf2_c( 1.0, (pixelData.roughness - 0.02) * 1.02040816 );
-            @end
+            outPs_shadowRoughness = midf2_c( 1.0, (pixelData.roughness - 0.02) * 1.02040816 );
         @end
     @end
 @end

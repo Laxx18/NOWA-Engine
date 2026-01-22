@@ -111,30 +111,33 @@ namespace NOWA
 			this->gpuParticleSystemJsonManager = nullptr;
 			this->gpuParticleSystemResourceManager = nullptr;
 
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT_NO_THIS("GpuParticlesModule::destroyContent", _5(sceneNode, sceneManager, gpuParticleSystemWorld, gpuParticleSystemJsonManager, gpuParticleSystemResourceManager),
+			// Use a WAIT version to ensure complete destruction
+			// NOWA::GraphicsModule::RenderCommand renderCommand = [sceneNode, sceneManager, gpuParticleSystemWorld, gpuParticleSystemJsonManager, gpuParticleSystemResourceManager]()
+			// ENQUEUE_RENDER_COMMAND_MULTI_WAIT_NO_THIS("GpuParticlesModule::destroyContent", _5(sceneNode, sceneManager, gpuParticleSystemWorld, gpuParticleSystemJsonManager, gpuParticleSystemResourceManager),
+			// {
+				if (sceneNode)
 				{
-					if (sceneNode)
-					{
-						sceneNode->detachObject(gpuParticleSystemWorld);
-						NOWA::GraphicsModule::getInstance()->removeTrackedNode(sceneNode);
-						sceneManager->destroySceneNode(sceneNode);
-					}
+					sceneNode->detachObject(gpuParticleSystemWorld);
+					NOWA::GraphicsModule::getInstance()->removeTrackedNode(sceneNode);
+					sceneManager->destroySceneNode(sceneNode);
+				}
 
-					if (nullptr != gpuParticleSystemWorld)
-					{
-						delete gpuParticleSystemWorld;
-					}
+				if (nullptr != gpuParticleSystemWorld)
+				{
+					delete gpuParticleSystemWorld;
+				}
 
-					if (nullptr != gpuParticleSystemJsonManager)
-					{
-						delete gpuParticleSystemJsonManager;
-					}
+				if (nullptr != gpuParticleSystemJsonManager)
+				{
+					delete gpuParticleSystemJsonManager;
+				}
 
-					if (nullptr != gpuParticleSystemResourceManager)
-					{
-						delete gpuParticleSystemResourceManager;
-					}
-				});
+				if (nullptr != gpuParticleSystemResourceManager)
+				{
+					delete gpuParticleSystemResourceManager;
+				}
+			// };
+			// NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GpuParticlesModule::destroyContent");
 		}
 	}
 

@@ -498,9 +498,7 @@ namespace NOWA
 
 				this->gameObjectPtr->init(this->ocean);
 
-				hlmsOcean->_changeRenderSystem(Ogre::Root::getSingletonPtr()->getRenderSystem());
-
-				// this->ocean->update(0.0f);
+				this->ocean->update(0.0f);
 				// Register after the component has been created
 				AppStateManager::getSingletonPtr()->getGameObjectController()->registerGameObject(gameObjectPtr);
 

@@ -153,7 +153,7 @@ namespace NOWA
 		static const Ogre::String AttrKernelRadius(void) { return "Kernel Radius"; }
 		static const Ogre::String AttrPowerScale(void) { return "Power Scale"; }
 	private:
-		void createSSAOTexture(void);
+		void initializeSSAOShaders(void);
 	private:
 		Ogre::String name;
 
@@ -162,6 +162,8 @@ namespace NOWA
 
 		Ogre::Pass* passSSAO;
 		Ogre::Pass* passApplySSAO;
+		Ogre::Pass* passBlurH;
+		Ogre::Pass* passBlurV;
 		CameraComponent* cameraComponent;
 	};
 

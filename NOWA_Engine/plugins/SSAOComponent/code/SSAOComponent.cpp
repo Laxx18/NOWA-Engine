@@ -20,8 +20,10 @@ namespace NOWA
 		passSSAO(nullptr),
 		passApplySSAO(nullptr),
 		cameraComponent(nullptr),
+		passBlurH(nullptr),
+		passBlurV(nullptr),
 		kernelRadius(new Variant(SSAOComponent::AttrKernelRadius(), 1.0f, this->attributes)),
-		powerScale(new Variant(SSAOComponent::AttrPowerScale(), 1.5f, this->attributes))
+		powerScale(new Variant(SSAOComponent::AttrPowerScale(), 3.0f, this->attributes))
 	{
 		this->kernelRadius->setConstraints(0.5f, 6.0f);
 		this->powerScale->setConstraints(1.0f, 6.0f);
@@ -91,7 +93,17 @@ namespace NOWA
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[SSAOComponent] Init component for game object: " + this->gameObjectPtr->getName());
 
-		this->createSSAOTexture();
+		this->initializeSSAOShaders();
+
+		auto& workspaceBaseCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<WorkspaceBaseComponent>());
+		if (nullptr != workspaceBaseCompPtr)
+		{
+			this->workspaceBaseComponent = workspaceBaseCompPtr.get();
+			if (false == this->workspaceBaseComponent->getUseSSAO())
+			{
+				this->workspaceBaseComponent->setUseSSAO(true);
+			}
+		}
 
 		return true;
 	}
@@ -100,7 +112,7 @@ namespace NOWA
 	{
 		GameObjectComponent::connect();
 
-		return false;
+		return true;
 	}
 
 	bool SSAOComponent::disconnect(void)
@@ -110,7 +122,7 @@ namespace NOWA
 		Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
 		NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
 
-		return false;
+		return true;
 	}
 
 	void SSAOComponent::onRemoveComponent(void)
@@ -123,28 +135,27 @@ namespace NOWA
 
 	void SSAOComponent::update(Ogre::Real dt, bool notSimulating)
 	{
-		if (false == notSimulating)
+		if (false == notSimulating && true == this->activated->getBool())
 		{
-			if (true == this->activated->getBool())
+			// Only update if we have valid shader passes
+			if (nullptr == this->passSSAO || nullptr == this->passApplySSAO)
 			{
-				auto closureFunction = [this](Ogre::Real renderDt)
+				return;
+			}
+
+			auto closureFunction = [this](Ogre::Real renderDt)
 				{
+					// Update kernel radius
 					Ogre::GpuProgramParametersSharedPtr psParams = this->passSSAO->getFragmentProgramParameters();
-					Ogre::Camera* camera = this->cameraComponent->getCamera();
-	//#if OGRE_NO_VIEWPORT_ORIENTATIONMODE == 0
-	//				// We don't render to render window directly, thus we need to get the projection
-	//				// matrix with phone orientation disable when calculating SSAO
-	//				camera->setOrientationMode(Ogre::OR_DEGREE_0);
-	//#endif
-					psParams->setNamedConstant("projection", camera->getProjectionMatrix());
 					psParams->setNamedConstant("kernelRadius", this->kernelRadius->getReal());
 
+					// Update power scale
 					Ogre::GpuProgramParametersSharedPtr psParamsApply = this->passApplySSAO->getFragmentProgramParameters();
 					psParamsApply->setNamedConstant("powerScale", this->powerScale->getReal());
 				};
-				Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
-				NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
-			}
+
+			Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
+			NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
 		}
 	}
 
@@ -238,130 +249,66 @@ namespace NOWA
 		
 	}
 
-	void SSAOComponent::createSSAOTexture(void)
+	void SSAOComponent::initializeSSAOShaders(void)
 	{
-		auto cameraCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<CameraComponent>());
-		if (nullptr == cameraCompPtr)
-		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[SSAOComponent] Cannot create ssao shader, because there is no camera component for game object: " + this->gameObjectPtr->getName());
-			return;
-		}
-		this->cameraComponent = cameraCompPtr.get();
-
-		ENQUEUE_RENDER_COMMAND_WAIT("WorkspaceBaseComponent::createSSAONoiseTexture",
-		{
-			//We need to create SSAO kernel samples and noise texture
-			//Generate kernel samples first
-			float kernelSamples[64][4];
-			for (size_t i = 0; i < 64u; ++i)
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
 			{
-				Ogre::Vector3 sample = Ogre::Vector3(Ogre::Math::RangeRandom(-1.0f, 1.0f), Ogre::Math::RangeRandom(-1.0f, 1.0f), Ogre::Math::RangeRandom(0.0f, 1.0f));
+				// Get the SSAO material passes - these should already be loaded by the workspace
+				Ogre::MaterialPtr material = std::static_pointer_cast<Ogre::Material>(
+					Ogre::MaterialManager::getSingleton().getByName("SSAO/HS", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME));
 
-				sample.normalise();
-
-				float scale = (float)i / 64.0f;
-				scale = Ogre::Math::lerp(0.3f, 1.0f, scale * scale);
-				sample = sample * scale;
-
-				kernelSamples[i][0] = sample.x;
-				kernelSamples[i][1] = sample.y;
-				kernelSamples[i][2] = sample.z;
-				kernelSamples[i][3] = 1.0f;
-			}
-
-			//Next generate noise texture
-			Ogre::Root* root = Core::getSingletonPtr()->getOgreRoot();
-			Ogre::TextureGpuManager* textureManager = root->getRenderSystem()->getTextureGpuManager();
-
-			Ogre::TextureGpu* noiseTexture = nullptr;
-
-			if (false == textureManager->hasTextureResource("noiseTextureSSAO", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME))
-			{
-				noiseTexture = textureManager->createTexture("noiseTextureSSAO", Ogre::GpuPageOutStrategy::SaveToSystemRam, 0, Ogre::TextureTypes::Type2D);
-				noiseTexture->setResolution(2u, 2u);
-				noiseTexture->setPixelFormat(Ogre::PFG_RGBA8_SNORM);
-				noiseTexture->_transitionTo(Ogre::GpuResidency::Resident, (Ogre::uint8*)0);
-				noiseTexture->_setNextResidencyStatus(Ogre::GpuResidency::Resident);
-
-				Ogre::StagingTexture* stagingTexture = textureManager->getStagingTexture(2u, 2u, 1u, 1u, Ogre::PFG_RGBA8_SNORM);
-				stagingTexture->startMapRegion();
-				Ogre::TextureBox texBox = stagingTexture->mapRegion(2u, 2u, 1u, 1u, Ogre::PFG_RGBA8_SNORM);
-
-				for (size_t j = 0; j < texBox.height; ++j)
+				if (material.isNull())
 				{
-					for (size_t i = 0; i < texBox.width; ++i)
-					{
-						Ogre::Vector3 noise = Ogre::Vector3(Ogre::Math::RangeRandom(-1.0f, 1.0f), Ogre::Math::RangeRandom(-1.0f, 1.0f), 0.0f);
-						noise.normalise();
-
-						Ogre::uint8* pixelData = reinterpret_cast<Ogre::uint8*>(texBox.at(i, j, 0));
-						pixelData[0] = Ogre::Bitwise::floatToSnorm8(noise.x);
-						pixelData[1] = Ogre::Bitwise::floatToSnorm8(noise.y);
-						pixelData[2] = Ogre::Bitwise::floatToSnorm8(noise.z);
-						pixelData[3] = Ogre::Bitwise::floatToSnorm8(1.0f);
-					}
+					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[SSAOComponent] SSAO/HS material not found!");
+					return;
 				}
 
-				stagingTexture->stopMapRegion();
-				stagingTexture->upload(texBox, noiseTexture, 0, 0, 0);
-				textureManager->removeStagingTexture(stagingTexture);
-				stagingTexture = 0;
-			}
-			else
-			{
-				noiseTexture = textureManager->findTextureNoThrow("noiseTextureSSAO");
-			}
+				this->passSSAO = material->getTechnique(0)->getPass(0);
 
-			//---------------------------------------------------------------------------------
-			//Get GpuProgramParametersSharedPtr to set uniforms that we need
-			Ogre::MaterialPtr material = std::static_pointer_cast<Ogre::Material>(Ogre::MaterialManager::getSingleton().load("SSAO/HS", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME));
+				// Get blur passes
+				Ogre::MaterialPtr materialBlurH = std::static_pointer_cast<Ogre::Material>(
+					Ogre::MaterialManager::getSingleton().getByName("SSAO/BlurH", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME));
+				if (!materialBlurH.isNull())
+				{
+					this->passBlurH = materialBlurH->getTechnique(0)->getPass(0);
+				}
 
-			Ogre::Pass* pass = material->getTechnique(0)->getPass(0);
-			this->passSSAO = pass;
-			Ogre::GpuProgramParametersSharedPtr psParams = pass->getFragmentProgramParameters();
+				Ogre::MaterialPtr materialBlurV = std::static_pointer_cast<Ogre::Material>(
+					Ogre::MaterialManager::getSingleton().getByName("SSAO/BlurV", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME));
+				if (!materialBlurV.isNull())
+				{
+					this->passBlurV = materialBlurV->getTechnique(0)->getPass(0);
+				}
 
-			//Lets set uniforms for shader
-			//Set texture uniform for noise
-			Ogre::TextureUnitState* noiseTextureState = pass->getTextureUnitState("noiseTextureSSAO");
-			noiseTextureState->setTexture(noiseTexture);
+				// Get apply pass
+				Ogre::MaterialPtr materialApply = std::static_pointer_cast<Ogre::Material>(
+					Ogre::MaterialManager::getSingleton().getByName("SSAO/Apply", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME));
 
-			//Reconstruct position from depth. Position is needed in SSAO
-			//We need to set the parameters based on camera to the
-			//shader so that the un-projection works as expected
-			Ogre::Vector2 projectionAB = this->cameraComponent->getCamera()->getProjectionParamsAB();
-			//The division will keep "linearDepth" in the shader in the [0; 1] range.
-			projectionAB.y /= this->cameraComponent->getFarClipDistance();
-			psParams->setNamedConstant("projectionParams", projectionAB);
+				if (materialApply.isNull())
+				{
+					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[SSAOComponent] SSAO/Apply material not found!");
+					return;
+				}
 
-			//Set other uniforms
-			psParams->setNamedConstant("kernelRadius", this->kernelRadius->getReal());
+				this->passApplySSAO = materialApply->getTechnique(0)->getPass(0);
 
-			psParams->setNamedConstant("noiseScale", Ogre::Vector2((Core::getSingletonPtr()->getOgreRenderWindow()->getWidth() * 0.5f) / 2.0f,
-										(Core::getSingletonPtr()->getOgreRenderWindow()->getHeight() * 0.5f) / 2.0f));
-			psParams->setNamedConstant("invKernelSize", 1.0f / 64.0f);
-			psParams->setNamedConstant("sampleDirs", (float*)kernelSamples, 64, 4);
+				// Set initial parameter values
+				if (this->passSSAO)
+				{
+					Ogre::GpuProgramParametersSharedPtr psParams = this->passSSAO->getFragmentProgramParameters();
+					psParams->setNamedConstant("kernelRadius", this->kernelRadius->getReal());
+				}
 
-			//Set blur shader uniforms
-			Ogre::MaterialPtr materialBlurH = std::static_pointer_cast<Ogre::Material>(Ogre::MaterialManager::getSingleton().load("SSAO/BlurH", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME));
+				if (this->passApplySSAO)
+				{
+					Ogre::GpuProgramParametersSharedPtr psParamsApply = this->passApplySSAO->getFragmentProgramParameters();
+					psParamsApply->setNamedConstant("powerScale", this->powerScale->getReal());
+				}
 
-			Ogre::Pass* passBlurH = materialBlurH->getTechnique(0)->getPass(0);
-			Ogre::GpuProgramParametersSharedPtr psParamsBlurH = passBlurH->getFragmentProgramParameters();
-			psParamsBlurH->setNamedConstant("projectionParams", projectionAB);
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[SSAOComponent] SSAO shaders initialized successfully");
+			};
 
-			Ogre::MaterialPtr materialBlurV = std::static_pointer_cast<Ogre::Material>(Ogre::MaterialManager::getSingleton().load("SSAO/BlurV", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME));
-
-			Ogre::Pass* passBlurV = materialBlurV->getTechnique(0)->getPass(0);
-			Ogre::GpuProgramParametersSharedPtr psParamsBlurV = passBlurV->getFragmentProgramParameters();
-			psParamsBlurV->setNamedConstant("projectionParams", projectionAB);
-
-			//Set apply shader uniforms
-			Ogre::MaterialPtr materialApply = std::static_pointer_cast<Ogre::Material>(Ogre::MaterialManager::getSingleton().load("SSAO/Apply", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME));
-
-			Ogre::Pass* passApply = materialApply->getTechnique(0)->getPass(0);
-			this->passApplySSAO = passApply;
-			Ogre::GpuProgramParametersSharedPtr psParamsApply = passApply->getFragmentProgramParameters();
-			psParamsApply->setNamedConstant("powerScale", this->powerScale->getReal());
-		});
+		NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "SSAOComponent::initializeSSAOShaders");
 	}
 
 	bool SSAOComponent::canStaticAddComponent(GameObject* gameObject)

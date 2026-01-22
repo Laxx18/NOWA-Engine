@@ -1,0 +1,32 @@
+{
+    "ocean":
+    {
+        "OceanExampleMaterial":
+        {
+            // === Shading model ===
+            "brdf": "default",
+
+            // === Water colours ===
+            "deep_colour":    [0.0, 0.03, 0.05],
+            "shallow_colour": [0.0, 0.08, 0.10],
+
+            // === Wave & lighting behaviour ===
+            "waves_scale": 1.0,
+
+            // === Reflection & lighting tuning ===
+            "reflection_strength": 0.85,
+            "base_roughness":      0.04,
+            "foam_roughness":      0.25,
+            "ambient_reduction":   0.6,
+            "diffuse_scale":       1.0,
+            "foam_intensity":      0.8,
+			"transparency": 	   1.0,
+
+            // === Reflection source ===
+            "reflection":
+            {
+                "texture": "SaintPetersBasilica.dds",
+            }
+        }
+    }
+}

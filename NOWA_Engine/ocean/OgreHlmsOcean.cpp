@@ -356,7 +356,6 @@ namespace Ogre
         setProperty(kNoTid, PbsProperty::FresnelScalar, 1);
         setProperty(kNoTid, PbsProperty::FresnelWorkflow, 0);
         setProperty(kNoTid, PbsProperty::MetallicWorkflow, 1);
-        setProperty(kNoTid, PbsProperty::ReceiveShadows, 1);
 
         // BRDF setup
         uint32 brdf = datablock->getBrdf();

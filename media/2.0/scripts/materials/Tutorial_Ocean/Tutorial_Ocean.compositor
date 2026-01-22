@@ -1,0 +1,116 @@
+// Ocean Shadow Node - PSSM shadows for the ocean scene
+compositor_node_shadow Tutorial_OceanShadowNode
+{
+	technique pssm
+
+	texture atlas 3072 2048 PFG_D32_FLOAT
+
+	num_splits		3
+	pssm_lambda		0.95
+	shadow_map 0 atlas uv 0.000000000000000 0.0 0.666666666666667 1.0 light 0 split 0
+	shadow_map 1 atlas uv 0.666666666666667 0.0 0.333333333333333 0.5 light 0 split 1
+	shadow_map 2 atlas uv 0.666666666666667 0.5 0.333333333333333 0.5 light 0 split 2
+
+	target atlas
+	{
+		pass clear
+		{
+			colour_value 1 1 1 1
+		}
+	}
+
+	shadow_map_target_type directional
+	{
+		shadow_map 0 1 2
+		{
+			pass render_scene
+			{
+			}
+		}
+	}
+}
+
+// Ocean Rendering Node - renders scene to texture with shadows
+compositor_node Tutorial_OceanRenderingNode
+{
+	in 0 rt_renderwindow
+
+	texture rt_output target_width target_height PFG_RGBA16_FLOAT depth_format PFG_D32_FLOAT depth_texture
+
+	target rt_output
+	{
+		pass render_scene
+		{
+			load
+			{
+				all				clear
+				clear_colour	0.2 0.4 0.6 1
+			}
+			store
+			{
+				colour	store_or_resolve
+				depth	dont_care
+				stencil	dont_care
+			}
+
+			overlays	on
+			shadows		Tutorial_OceanShadowNode
+		}
+	}
+	
+	out 0 rt_output
+}
+
+// Underwater Post-Processing Node - applies underwater effects via quad pass
+compositor_node Ocean/UnderwaterPostNode
+{
+	in 0 rt_output
+
+	target rt_output
+	{
+		pass render_quad
+		{
+			material Ocean/UnderwaterPost
+		}
+	}
+	
+	out 0 rt_output
+}
+
+// Final rendering node - outputs to render window
+compositor_node Tutorial_OceanFinalNode
+{
+	in 0 rt_input
+	in 1 rt_renderwindow
+
+	target rt_renderwindow
+	{
+		pass render_quad
+		{
+			load
+			{
+				all DontCare
+			}
+			
+			material Ogre/Copy/4xFP32
+			input 0 rt_input
+		}
+	}
+}
+
+// Standard workspace for above-water rendering with shadows
+workspace Tutorial_OceanWorkspace
+{
+	connect_external 0 Tutorial_OceanRenderingNode 0
+	connect Tutorial_OceanRenderingNode 0 Tutorial_OceanFinalNode 0
+	connect_external 0 Tutorial_OceanFinalNode 1
+}
+
+// Underwater workspace - inserts underwater post-processing, shadows still active
+workspace Tutorial_OceanUnderwaterWorkspace
+{
+	connect_external 0 Tutorial_OceanRenderingNode 0
+	connect Tutorial_OceanRenderingNode 0 Ocean/UnderwaterPostNode 0
+	connect Ocean/UnderwaterPostNode 0 Tutorial_OceanFinalNode 0
+	connect_external 0 Tutorial_OceanFinalNode 1
+}

@@ -347,10 +347,15 @@ void ProjectManager::loadProject(const Ogre::String& filePathName, unsigned shor
 	Ogre::String defaultPointer = MyGUI::PointerManager::getInstancePtr()->getDefaultPointer();
 	MyGUI::PointerManager::getInstancePtr()->setPointer("link");
 
-	ENQUEUE_RENDER_COMMAND_WAIT("ProjectManager::loadProject",
+	// Separate the destruction and initialization into TWO sequential commands
+	ENQUEUE_RENDER_COMMAND_WAIT("ProjectManager::loadProject::destroy",
 	{
 		this->destroyScene();
-	
+	});
+
+	// Now init in a separate command after destruction is complete
+	ENQUEUE_RENDER_COMMAND_WAIT("ProjectManager::loadProject::init",
+	{
 		NOWA::AppStateManager::getSingletonPtr()->getGpuParticlesModule()->init(this->sceneManager);
 	});
 

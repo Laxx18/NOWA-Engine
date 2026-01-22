@@ -1,13 +1,9 @@
-// Ocean Vertex Shader pieces
+// Ocean Vertex Shader - No shadow casting or receiving
 
 @piece( DefaultOceanHeaderVS )
 	// START UNIFORM DECLARATION
 	@insertpiece( PassStructDecl )
 	@insertpiece( OceanInstanceStructDecl )
-	@property( hlms_shadowcaster )
-		@insertpiece( OceanMaterialStructDecl )
-		#define oceanMaterial materialArray[0]
-	@end
 	@insertpiece( AtmosphereNprSkyStructDecl )
 	@insertpiece( custom_vs_uniformStructDeclaration )
 	// END UNIFORM DECLARATION
@@ -17,9 +13,7 @@
 
 @piece( VertexOceanTransform )
 	// Lighting is in view space
-	@property( !hlms_shadowcaster )
-		outVs.pos = mul( float4(worldPos.xyz, 1.0f), passBuf.view ).xyz;
-	@end
+	outVs.pos = mul( float4(worldPos.xyz, 1.0f), passBuf.view ).xyz;
 	@property( !hlms_dual_paraboloid_mapping )
 		outVs.gl_Position = mul( float4(worldPos.xyz, 1.0f), passBuf.viewProj );
 	@else
@@ -33,14 +27,14 @@
 	@end
 @end
 
-// Disable shadow receiving in vertex shader, else ugly artifacts and darker quadtratic area is visible depending on camera orientation.
+// Ocean doesn't receive or cast shadows
 @undefpiece( DoShadowReceiveVS )
 @piece( DoShadowReceiveVS )
-    // Ocean doesn't receive shadows - no-op
+    // Ocean doesn't receive shadows - empty
 @end
 
 //-----------------------------------------------------------------------------
-//		BODY CODE (Following Terra's exact pattern)
+//		BODY CODE
 //-----------------------------------------------------------------------------
 
 @piece( DefaultOceanBodyVS )
@@ -115,12 +109,11 @@
 
 	float z1_raw = timer * 0.08f;
 	float z1 = fmod(z1_raw, TEXTURE_DEPTH);
-	float z1_frac = frac(z1_raw / TEXTURE_DEPTH);  // 0 to 1 as we progress through the texture depth
+	float z1_frac = frac(z1_raw / TEXTURE_DEPTH);
 	outVs.uv1.z = z1;
 
 	float h1_curr = OGRE_SampleLevel( terrainData, samplerState@value(terrainData), float3(outVs.uv1.xy, z1), 0 ).z;
 	float h1_next = OGRE_SampleLevel( terrainData, samplerState@value(terrainData), float3(outVs.uv1.xy, fmod(z1 + 1.0f, TEXTURE_DEPTH)), 0 ).z;
-	// Blend in the last 10% before wrapping
 	float h1 = lerp(h1_curr, h1_next, smoothstep(0.9f, 1.0f, z1_frac));
 
 	// UV2
@@ -193,7 +186,7 @@
 	float stepXZ = cellData.scale.x;
 
 	// Sample neighboring heights (same logic as main height)
-	float heightL = height; // fallback
+	float heightL = height;
 
 	// X offset
 	{
@@ -230,17 +223,8 @@
 	// Convert to view space
 	outVs.normal = normalize( mul( normalWS, toFloat3x3( passBuf.view ) ) );
 
-	// ===== Shadows and lighting =====
+	// ===== No shadow calculations =====
 	@insertpiece( DoShadowReceiveVS )
-	
-	@property( hlms_shadowcaster )
-		@property( hlms_no_reverse_depth || hlms_shadowcaster_point )
-			float shadowConstantBias = oceanMaterial.kD.w;
-		@else
-			float shadowConstantBias = -oceanMaterial.kD.w;
-		@end
-		@insertpiece( DoShadowCasterVS )
-	@end
 
 	// ===== Atmosphere/fog =====
 	@insertpiece( DoAtmosphereNprSky )
@@ -255,7 +239,7 @@
 			#error "Unimplemented Feature: Using Ocean with Planar Reflections"
 		@end
 	@else
-		@property( (!hlms_shadowcaster || alpha_test || hlms_alpha_hash) && !lower_gpu_overhead )
+		@property( !lower_gpu_overhead )
 			outVs.drawId = inVs_drawId;
 		@end
 	@end
