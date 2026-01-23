@@ -1,25 +1,34 @@
-Texture2D<float4> rt0 : register(t0);
-SamplerState samp0    : register(s0);
+// ============================================================================
+// UNDERWATER POST-PROCESS SHADER WITH DEPTH TEXTURE
+// Uses Ogre's auto-bound projection parameters
+// ============================================================================
+
+Texture2D<float4> rt0          : register(t0);  // Scene color
+Texture2D<float>  depthTexture : register(t1);  // Depth buffer
+
+SamplerState samplerBilinear   : register(s0);  // For color
+SamplerState samplerPoint      : register(s1);  // For depth
 
 struct PS_INPUT
 {
     float2 uv0 : TEXCOORD0;
 };
 
-// Apply saturation adjustment
+// ============================================================================
+// UTILITY FUNCTIONS
+// ============================================================================
+
 static float3 applySaturation(float3 c, float s)
 {
     float l = dot(c, float3(0.2126f, 0.7152f, 0.0722f));
     return lerp(l.xxx, c, s);
 }
 
-// Hash function for procedural noise
 static float hash(float2 p)
 {
     return frac(sin(dot(p, float2(127.1f, 311.7f))) * 43758.5453f);
 }
 
-// Improved noise function
 static float noise(float2 p)
 {
     float2 i = floor(p);
@@ -34,7 +43,6 @@ static float noise(float2 p)
     return lerp(lerp(a, b, f.x), lerp(c, d, f.x), f.y);
 }
 
-// Fractal Brownian Motion
 static float fbm(float2 p, int octaves)
 {
     float value = 0.0f;
@@ -51,247 +59,359 @@ static float fbm(float2 p, int octaves)
     return value;
 }
 
-// Simple directional light glow instead of god rays
-static float3 getDirectionalGlow(float2 uv, float2 lightPos, float time)
+// ============================================================================
+// DEPTH LINEARIZATION - Same formula as SSAO
+// ============================================================================
+static float getLinearDepth(float rawDepth, float2 projectionParams, float farClipDistance)
 {
-    // Distance from light source
-    float2 toLight = lightPos - uv;
-    float dist = length(toLight);
+    // Avoid division by zero
+    float denom = rawDepth - projectionParams.x;
+    if (abs(denom) < 0.0001f) 
+        denom = 0.0001f;
     
-    // Simple radial gradient
-    float glow = pow(saturate(1.0f - dist * 0.8f), 3.0f);
+    // This gives normalized depth [0, 1] because projectionParams.y was divided by farClip
+    float normalizedDepth = projectionParams.y / denom;
     
-    // Add subtle animation
-    float pulse = sin(time * 0.3f) * 0.1f + 0.9f;
-    glow *= pulse;
-    
-    // Add some noise to break up the gradient
-    float glowNoise = fbm(uv * 4.0f + time * 0.05f, 2) * 0.3f + 0.7f;
-    glow *= glowNoise;
-    
-    return float3(glow, glow, glow);
+    // Convert back to world units
+    return normalizedDepth * farClipDistance;
 }
 
-// Particles
-static float getParticles(float2 uv, float time)
+// ============================================================================
+// UNDERWATER FOG - Depth-based fog with color gradient
+// ============================================================================
+static float3 calculateUnderwaterFog(
+    float3 sceneColor,
+    float linearDepth,
+    float3 waterColor,
+    float3 deepWaterColor,
+    float fogDensity,
+    float maxFogDepth
+)
 {
+    // Normalize depth for color blending
+    float normalizedDepth = saturate(linearDepth / maxFogDepth);
+    
+    // Exponential fog - more realistic
+    float fogFactor = 1.0f - exp(-fogDensity * linearDepth);
+    fogFactor = saturate(fogFactor);
+    
+    // Depth-based fog color transition
+    float3 fogColor = lerp(waterColor, deepWaterColor, pow(normalizedDepth, 0.8f));
+    
+    return lerp(sceneColor, fogColor, fogFactor);
+}
+
+// ============================================================================
+// LIGHT ABSORPTION - Red absorbs first, blue travels furthest
+// ============================================================================
+static float3 applyLightAbsorption(float3 color, float linearDepth, float absorptionScale)
+{
+    // Absorption coefficients: red > green > blue
+    float3 absorption = float3(0.4f, 0.15f, 0.05f) * absorptionScale;
+    float3 transmitted = exp(-absorption * linearDepth);
+    // Keep minimum color to avoid total blackout
+    transmitted = max(transmitted, float3(0.1f, 0.2f, 0.4f));
+    return color * transmitted;
+}
+
+// ============================================================================
+// CAUSTICS - Light patterns on surfaces (only on geometry, not in water volume)
+// ============================================================================
+static float calculateCaustics(float2 uv, float linearDepth, float time, float maxCausticDepth)
+{
+    // Only show caustics on nearby surfaces
+    float depthFactor = 1.0f - saturate(linearDepth / maxCausticDepth);
+    depthFactor = pow(depthFactor, 2.5f);  // Sharper falloff
+    
+    if (depthFactor < 0.01f)
+        return 0.0f;
+    
+    // Use world-space-like UVs based on depth for better projection
+    float2 worldUV = uv * (10.0f + linearDepth * 0.5f);
+    
+    // Multiple overlapping caustic patterns
+    float2 uv1 = worldUV + float2(time * 0.02f, time * 0.015f);
+    float2 uv2 = worldUV * 1.3f - float2(time * 0.018f, -time * 0.022f);
+    
+    // Create caustic pattern using noise
+    float c1 = noise(uv1 * 3.0f);
+    float c2 = noise(uv2 * 2.5f);
+    
+    // Combine and sharpen
+    float caustic = (c1 + c2) * 0.5f;
+    caustic = pow(caustic, 3.0f) * 4.0f;  // Sharpen the caustic pattern
+    
+    return caustic * depthFactor;
+}
+
+// ============================================================================
+// GOD RAYS - Volumetric light shafts from surface
+// ============================================================================
+static float3 calculateGodRays(float2 uv, float linearDepth, float2 sunPos, float time, float maxRayDepth)
+{
+    // Fade out with depth
+    float visibility = 1.0f - saturate(linearDepth / maxRayDepth);
+    visibility = pow(visibility, 0.5f);
+    
+    if (visibility < 0.01f)
+        return float3(0, 0, 0);
+    
+    float2 toSun = sunPos - uv;
+    float sunDist = length(toSun);
+    float2 sunDir = toSun / max(sunDist, 0.001f);
+    
+    float rayAccum = 0.0f;
+    const int NUM_SAMPLES = 16;
+    float stepSize = min(sunDist, 0.5f) / float(NUM_SAMPLES);
+    
+    for (int i = 0; i < NUM_SAMPLES; i++)
+    {
+        float2 samplePos = uv + sunDir * stepSize * float(i);
+        float rayNoise = fbm(samplePos * 3.0f + float2(time * 0.03f, time * 0.02f), 3);
+        float radialFalloff = 1.0f - saturate(float(i) / float(NUM_SAMPLES));
+        rayAccum += rayNoise * radialFalloff * radialFalloff;
+    }
+    
+    rayAccum = (rayAccum / float(NUM_SAMPLES)) * visibility;
+    
+    // Sun glow
+    float sunGlow = pow(saturate(1.0f - sunDist * 1.5f), 4.0f) * 0.4f * visibility;
+    rayAccum += sunGlow;
+    
+    return float3(0.4f, 0.7f, 0.9f) * rayAccum;
+}
+
+// ============================================================================
+// PARTICLES - Floating debris/plankton
+// ============================================================================
+static float getParticles(float2 uv, float linearDepth, float time, float maxParticleDepth)
+{
+    float visibility = 1.0f - saturate(linearDepth / maxParticleDepth);
+    visibility = pow(visibility, 0.7f);
+    
+    if (visibility < 0.01f)
+        return 0.0f;
+    
     float particles = 0.0f;
     
-    for (int p = 0; p < 40; p++)
+    for (int p = 0; p < 25; p++)
     {
         float seed = float(p);
-        float depth = hash(float2(seed, seed + 10.0f));
+        float pDepth = hash(float2(seed, seed + 10.0f));
         
-        float speedMult = 0.5f + depth * 0.5f;
+        float speedMult = 0.3f + pDepth * 0.4f;
         float2 pPos = float2(
-            frac(sin(seed * 43.0f) * 1000.0f + time * 0.05f * speedMult),
-            frac(cos(seed * 37.0f) * 1000.0f + time * 0.08f * speedMult + seed * 0.1f)
+            frac(hash(float2(seed * 43.0f, seed)) + time * 0.02f * speedMult),
+            frac(hash(float2(seed * 37.0f, seed + 5.0f)) + time * 0.03f * speedMult)
         );
         
-        pPos.x += sin(time * 2.0f + seed) * 0.02f * depth;
+        // Gentle swaying motion
+        pPos.x += sin(time * 1.5f + seed * 2.0f) * 0.015f;
+        pPos.y += cos(time * 1.2f + seed * 1.5f) * 0.01f;
         
-        float size = (0.0015f + hash(float2(seed + 5.0f, seed)) * 0.0025f) * (0.6f + depth * 0.4f);
-        
+        float size = 0.002f + hash(float2(seed + 5.0f, seed)) * 0.004f;
         float dist = length(uv - pPos);
         float particle = smoothstep(size, 0.0f, dist);
         
-        particles += particle * (0.4f + depth * 0.6f);
+        particles += particle * (0.3f + pDepth * 0.5f);
     }
     
-    return particles;
+    return particles * visibility;
 }
 
-// Bubbles
+// ============================================================================
+// BUBBLES - Rising from bottom of screen
+// ============================================================================
 static float getBubbles(float2 uv, float time)
 {
     float bubbles = 0.0f;
     
-    for (int b = 0; b < 20; b++)
+    // Flip Y so bubbles rise from bottom
+    float2 bubbleUV = float2(uv.x, 1.0f - uv.y);
+    
+    for (int b = 0; b < 12; b++)
     {
         float seed = float(b);
-        float speed = 0.12f + hash(float2(seed, seed + 1.0f)) * 0.18f;
+        float speed = 0.08f + hash(float2(seed, seed + 1.0f)) * 0.12f;
         
-        float yOffset = frac(time * speed + seed * 0.08f);
+        // Y position cycles from 0 to 1 (bottom to top in flipped coords)
+        float yOffset = frac(time * speed + hash(float2(seed * 7.0f, seed)));
+        
+        // Only show in lower 70% of screen (upper 70% in original coords)
+        if (yOffset > 0.7f) continue;
+        
         float2 bPos = float2(
-            frac(sin(seed * 23.0f) * 1000.0f),
+            hash(float2(seed * 23.0f, seed + 3.0f)),
             yOffset
         );
         
-        bPos.x += sin(time * 3.0f + seed * 6.28f) * 0.035f;
-        bPos.x += sin(time * 5.5f + seed * 3.14f) * 0.022f;
+        // Wobble as they rise
+        bPos.x += sin(time * 2.5f + seed * 4.0f) * 0.025f * (1.0f - yOffset);
         
-        float size = 0.004f + hash(float2(seed + 2.0f, seed)) * 0.005f;
-        float dist = length(uv - bPos);
+        float size = 0.004f + hash(float2(seed + 2.0f, seed)) * 0.006f;
+        float dist = length(bubbleUV - bPos);
         
-        float bubble = smoothstep(size, size * 0.3f, dist) - smoothstep(size * 1.2f, size, dist);
-        float highlight = smoothstep(size * 0.4f, 0.0f, 
-                                     length(uv - bPos + float2(size * 0.4f, -size * 0.4f)));
+        // Bubble with highlight
+        float bubble = smoothstep(size, size * 0.4f, dist);
+        float highlight = smoothstep(size * 0.5f, 0.0f, length(bubbleUV - bPos + float2(size * 0.3f, -size * 0.3f)));
         
-        bubbles += bubble * 0.7f + highlight * 1.8f;
+        bubbles += bubble * 0.5f + highlight * 0.8f;
     }
     
     return saturate(bubbles);
 }
 
+// ============================================================================
+// MAIN SHADER
+// ============================================================================
 float4 main(
     PS_INPUT inPs,
+    
+    // Core
     uniform float underwaterFactor,
     uniform float timeSeconds,
+    
+    // Colors
     uniform float3 waterTint,
     uniform float3 deepWaterTint,
+    
+    // Fog
+    uniform float fogDensity,
+    uniform float maxFogDepth,
+    
+    // Effects
+    uniform float absorptionScale,
+    uniform float godRayStrength,
+    uniform float causticStrength,
+    uniform float maxCausticDepth,
+    uniform float particleStrength,
+    uniform float maxParticleDepth,
+    uniform float bubbleStrength,
+    
+    // Visual
     uniform float distortion,
     uniform float contrast,
     uniform float saturation,
     uniform float vignette,
-    uniform float2 sunScreenPos,
-    uniform float fogStrength,
-    uniform float lightGlowStrength,
-    uniform float particleStrength,
-    uniform float bubbleStrength,
     uniform float chromaticAberration,
-    uniform float turbidity
+    
+    // Sun
+    uniform float2 sunScreenPos,
+    
+    // Depth reconstruction params (same as SSAO)
+    uniform float2 projectionParams,
+    uniform float farClipDistance
+    
 ) : SV_Target0
 {
     float2 uv = inPs.uv0;
     
-    // === VERY STRONG WAVE DISTORTION ===
-    // Layer 1: Large slow waves
-    float bigWave1 = sin(uv.x * 20.0f + timeSeconds * 0.4f) * cos(uv.y * 15.0f - timeSeconds * 0.3f);
-    float bigWave2 = cos(uv.x * 25.0f - timeSeconds * 0.35f) * sin(uv.y * 20.0f + timeSeconds * 0.38f);
+    // ========================================================================
+    // GET LINEAR DEPTH
+    // ========================================================================
+    float rawDepth = depthTexture.Sample(samplerPoint, uv).x;
+    float linearDepth = getLinearDepth(rawDepth, projectionParams, farClipDistance);
     
-    // Layer 2: Medium waves
-    float medWave1 = sin(uv.x * 35.0f + timeSeconds * 0.6f) * cos(uv.y * 30.0f);
-    float medWave2 = cos(uv.x * 40.0f) * sin(uv.y * 35.0f - timeSeconds * 0.55f);
+    // Clamp to reasonable range
+    linearDepth = clamp(linearDepth, 0.1f, farClipDistance);
     
-    // Layer 3: Small fast waves
-    float smallWave = sin(uv.x * 50.0f + uv.y * 45.0f + timeSeconds * 0.8f);
+    // ========================================================================
+    // WAVE DISTORTION
+    // ========================================================================
+    // Stronger distortion, reduced slightly at distance
+    float distortionFactor = 1.0f - saturate(linearDepth / maxFogDepth) * 0.3f;
     
-    // Layer 4: Organic turbulence
-    float turbulence = fbm(uv * 10.0f + float2(timeSeconds * 0.12f, -timeSeconds * 0.1f), 3) - 0.5f;
+    float wave1 = sin(uv.x * 15.0f + timeSeconds * 0.8f) * cos(uv.y * 12.0f - timeSeconds * 0.6f);
+    float wave2 = cos(uv.x * 20.0f - timeSeconds * 0.7f) * sin(uv.y * 18.0f + timeSeconds * 0.75f);
+    float wave3 = sin((uv.x + uv.y) * 25.0f + timeSeconds * 1.2f);
     
-    // Combine all wave layers
     float2 distortionVec = float2(
-        bigWave1 * 0.35f + medWave1 * 0.25f + smallWave * 0.15f + turbulence * 0.25f,
-        bigWave2 * 0.35f + medWave2 * 0.25f + smallWave * 0.15f + turbulence * 0.25f
-    ) * distortion * underwaterFactor;
+        wave1 * 0.5f + wave2 * 0.3f + wave3 * 0.2f,
+        wave2 * 0.5f + wave1 * 0.3f + wave3 * 0.2f
+    ) * distortion * underwaterFactor * distortionFactor;
     
-    // === CHROMATIC ABERRATION ===
-    float2 aberrationDir = normalize(uv - 0.5f);
-    float2 aberration = aberrationDir * chromaticAberration * underwaterFactor;
+    // ========================================================================
+    // CHROMATIC ABERRATION
+    // ========================================================================
+    float2 centerOffset = uv - 0.5f;
+    float aberrationAmount = chromaticAberration * length(centerOffset) * 2.0f * underwaterFactor;
+    float2 aberrationDir = normalize(centerOffset + 0.001f);
     
-    float r = rt0.Sample(samp0, uv + distortionVec + aberration).r;
-    float g = rt0.Sample(samp0, uv + distortionVec).g;
-    float b = rt0.Sample(samp0, uv + distortionVec - aberration).b;
+    float2 uvR = uv + distortionVec + aberrationDir * aberrationAmount;
+    float2 uvG = uv + distortionVec;
+    float2 uvB = uv + distortionVec - aberrationDir * aberrationAmount;
+    
+    float r = rt0.Sample(samplerBilinear, uvR).r;
+    float g = rt0.Sample(samplerBilinear, uvG).g;
+    float b = rt0.Sample(samplerBilinear, uvB).b;
     float3 col = float3(r, g, b);
     
-    // === IMPROVED FAKE FOG (NO DEPTH BUFFER) - BALANCED VERSION ===
-
-	// Calculate scene brightness/luminance
-	float brightness = dot(col, float3(0.299f, 0.587f, 0.114f));
-
-	// Brightness-based fog (REDUCED - only affects darker/distant pixels)
-	float brightnessFog = pow(1.0f - saturate(brightness * 0.8f), 3.5f); // Increased power, reduced multiplier
-
-	// Radial distance from screen center
-	float2 centerOffset = uv - 0.5f;
-	float radialDist = length(centerOffset);
-	float radialFog = pow(radialDist * 1.4f, 4.0f); // Increased power for sharper falloff
-
-	// Vertical gradient (bottom = deeper = more fog) - REDUCED
-	float verticalFog = pow(1.0f - uv.y, 4.5f) * 0.6f; // Higher power, lower multiplier
-
-	// Animated volumetric fog layers - SUBTLE
-	float2 fogFlow1 = uv * 2.5f + float2(timeSeconds * 0.018f, -timeSeconds * 0.022f);
-	float2 fogFlow2 = uv * 4.5f - float2(timeSeconds * 0.015f, timeSeconds * 0.025f);
-	float2 fogFlow3 = uv * 7.0f + float2(-timeSeconds * 0.012f, timeSeconds * 0.018f);
-
-	float volumeFog = 
-		fbm(fogFlow1, 4) * 0.2f +  // REDUCED from 0.4
-		fbm(fogFlow2, 3) * 0.15f + // REDUCED from 0.35
-		fbm(fogFlow3, 2) * 0.1f;   // REDUCED from 0.25
-
-	// Edge darkness detector - REDUCED
-	float edgeDarkness = 1.0f - saturate(brightness * 1.5f); // Reduced sensitivity
-	float edgeFogBoost = pow(edgeDarkness, 2.0f) * radialFog * 0.5f; // Added 0.5x multiplier
-
-	// === COMBINE ALL FOG LAYERS - MUCH MORE CONSERVATIVE ===
-	float totalFog = saturate(
-		brightnessFog * 0.35f +      // REDUCED from 0.55
-		radialFog * 0.15f +           // REDUCED from 0.25
-		verticalFog * 0.25f +         // REDUCED from 0.4
-		volumeFog * 0.15f +           // REDUCED from 0.3
-		edgeFogBoost * 0.2f           // REDUCED from 0.35
-	);
-
-	// GENTLER fog buildup (higher power = slower fog increase)
-	totalFog = pow(totalFog, 1.2f); // CHANGED from 0.7 (was making fog too strong)
-
-	// Multi-layer fog colors for depth perception - LESS SATURATED
-	float3 nearFogColor = waterTint * 1.3f;          // REDUCED from 2.0
-	float3 midFogColor = deepWaterTint * 1.4f;       // REDUCED from 1.8
-	float3 farFogColor = deepWaterTint * 1.0f;       // REDUCED from 1.2
-
-	// Lerp between fog layers based on fog amount
-	float3 fogColor = lerp(nearFogColor, midFogColor, saturate(totalFog * 1.2f)); // REDUCED from 1.5
-	fogColor = lerp(fogColor, farFogColor, saturate(totalFog * totalFog * 1.5f)); // REDUCED from 2.0
-
-	// Apply fog with MUCH GENTLER strength
-	float finalFogAmount = totalFog * fogStrength * underwaterFactor;
-	col = lerp(col, fogColor, saturate(finalFogAmount * 0.8f)); // REDUCED from 1.5x to 0.8x
-
-	// === DARKEN DISTANT AREAS - GENTLER ===
-	float distanceDarkening = pow(totalFog, 2.5f); // INCREASED power for gentler darkening
-	col *= lerp(1.0f, 0.5f, distanceDarkening * underwaterFactor); // REDUCED from 0.3 to 0.5 (less dark)
+    // ========================================================================
+    // LIGHT ABSORPTION (apply before fog)
+    // ========================================================================
+    col = applyLightAbsorption(col, linearDepth, absorptionScale * underwaterFactor);
     
-    // === SIMPLE DIRECTIONAL LIGHT GLOW (replaces god rays) ===
-    float3 lightGlow = getDirectionalGlow(uv, sunScreenPos, timeSeconds);
-    col += lightGlow * lightGlowStrength * underwaterFactor *
-           float3(0.4f, 0.65f, 0.85f);
+    // ========================================================================
+    // UNDERWATER FOG
+    // ========================================================================
+    col = calculateUnderwaterFog(
+        col,
+        linearDepth,
+        waterTint,
+        deepWaterTint,
+        fogDensity * underwaterFactor,
+        maxFogDepth
+    );
     
-    // === PARTICLES ===
-    float particles = getParticles(uv, timeSeconds);
-    col += particles * particleStrength * underwaterFactor * 
-           float3(0.55f, 0.68f, 0.78f);
+    // ========================================================================
+    // CAUSTICS (only on nearby surfaces)
+    // ========================================================================
+    float caustics = calculateCaustics(uv, linearDepth, timeSeconds, maxCausticDepth);
+    col += caustics * causticStrength * underwaterFactor * float3(0.5f, 0.7f, 0.9f);
     
-    // === BUBBLES ===
+    // ========================================================================
+    // GOD RAYS
+    // ========================================================================
+    float3 godRays = calculateGodRays(uv, linearDepth, sunScreenPos, timeSeconds, maxFogDepth * 0.5f);
+    col += godRays * godRayStrength * underwaterFactor;
+    
+    // ========================================================================
+    // PARTICLES
+    // ========================================================================
+    float particles = getParticles(uv, linearDepth, timeSeconds, maxParticleDepth);
+    col += particles * particleStrength * underwaterFactor * float3(0.6f, 0.75f, 0.85f);
+    
+    // ========================================================================
+    // BUBBLES
+    // ========================================================================
     float bubbles = getBubbles(uv, timeSeconds);
-    col += bubbles * bubbleStrength * underwaterFactor * 
-           float3(0.7f, 0.88f, 1.0f);
+    col += bubbles * bubbleStrength * underwaterFactor * float3(0.8f, 0.9f, 1.0f);
     
-    // === EDGE DARKENING ===
-    float edgeDarkening = pow(radialDist * 1.5f, 2.5f);
-    float edgeTint = saturate(edgeDarkening * 0.7f + totalFog * 0.3f);
-    col = lerp(col, waterTint * 1.4f, edgeTint * underwaterFactor);
+    // ========================================================================
+    // COLOR GRADING - Shift towards blue/green
+    // ========================================================================
+    col.r *= lerp(1.0f, 0.7f, underwaterFactor);
+    col.g *= lerp(1.0f, 0.9f, underwaterFactor);
+    col.b *= lerp(1.0f, 1.1f, underwaterFactor);
     
-    // === DEPTH GRADIENT ===
-    float depthGradient = pow(1.0f - uv.y, 2.5f);
-    col = lerp(col, deepWaterTint * 1.3f, depthGradient * 0.4f * underwaterFactor);
+    // ========================================================================
+    // CONTRAST
+    // ========================================================================
+    float3 midGray = float3(0.5f, 0.5f, 0.5f);
+    col = lerp(midGray, col, lerp(1.0f, contrast, underwaterFactor));
     
-    // === COLOR GRADING WITH DISTANCE ===
-	// Base color grading
-	col.r *= lerp(1.0f, 0.68f, underwaterFactor);
-	col.g *= lerp(1.0f, 0.9f, underwaterFactor);
-	col.b *= lerp(1.0f, 1.25f, underwaterFactor);
-
-	// Additional color shift with distance - MUCH GENTLER
-	col.r *= lerp(1.0f, 0.65f, totalFog * underwaterFactor); // REDUCED from 0.4
-	col.g *= lerp(1.0f, 0.8f, totalFog * underwaterFactor);  // REDUCED from 0.65
-	col.b *= lerp(1.0f, 1.05f, totalFog * underwaterFactor); // REDUCED from 1.1
-    
-    // === CONTRAST ===
-    col = (col - 0.5f) * lerp(1.0f, contrast, underwaterFactor) + 0.5f;
-    
-    // === SATURATION ===
+    // ========================================================================
+    // SATURATION
+    // ========================================================================
     col = applySaturation(col, lerp(1.0f, saturation, underwaterFactor));
     
-    // === VIGNETTE ===
-    float2 vignetteUV = (uv - 0.5f) * 1.9f;
-    float vignetteAmount = pow(saturate(1.0f - dot(vignetteUV, vignetteUV) * 0.35f), vignette);
-    col *= lerp(1.0f, vignetteAmount, underwaterFactor);
-    
-    // === TURBIDITY NOISE ===
-    float turbNoise = fbm(uv * 7.0f + timeSeconds * 0.022f, 3) * 0.045f;
-    col += turbNoise * underwaterFactor * float3(0.32f, 0.42f, 0.52f);
+    // ========================================================================
+    // VIGNETTE
+    // ========================================================================
+    float2 vignetteUV = (uv - 0.5f) * 2.0f;
+    float vignetteDist = length(vignetteUV);
+    float vignetteAmount = 1.0f - pow(saturate(vignetteDist * 0.7f), vignette);
+    col *= lerp(1.0f, vignetteAmount, underwaterFactor * 0.6f);
     
     return float4(saturate(col), 1.0f);
 }

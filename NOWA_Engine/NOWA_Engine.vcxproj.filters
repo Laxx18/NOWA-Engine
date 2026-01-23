@@ -537,9 +537,6 @@
     <ClInclude Include="main\ProjectParameter.h">
       <Filter>main</Filter>
     </ClInclude>
-    <ClInclude Include="gameobject\HdrEffectComponent.h">
-      <Filter>gameobject</Filter>
-    </ClInclude>
     <ClInclude Include="gameobject\WorkspaceComponents.h">
       <Filter>gameobject</Filter>
     </ClInclude>
@@ -655,8 +652,8 @@
     <ClInclude Include="modules\GpuParticlesModule.h">
       <Filter>modules</Filter>
     </ClInclude>
-    <ClInclude Include="ocean\OceanWorkspaceListener.h">
-      <Filter>ocean</Filter>
+    <ClInclude Include="gameobject\HdrEffectComponent.h">
+      <Filter>gameobject</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -1112,9 +1109,6 @@
     <ClCompile Include="main\ProjectParameter.cpp">
       <Filter>main</Filter>
     </ClCompile>
-    <ClCompile Include="gameobject\HdrEffectComponent.cpp">
-      <Filter>gameobject</Filter>
-    </ClCompile>
     <ClCompile Include="gameobject\WorkspaceComponents.cpp">
       <Filter>gameobject</Filter>
     </ClCompile>
@@ -1227,8 +1221,8 @@
     <ClCompile Include="modules\GpuParticlesModule.cpp">
       <Filter>modules</Filter>
     </ClCompile>
-    <ClCompile Include="ocean\OceanWorkspaceListener.cpp">
-      <Filter>ocean</Filter>
+    <ClCompile Include="gameobject\HdrEffectComponent.cpp">
+      <Filter>gameobject</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

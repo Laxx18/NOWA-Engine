@@ -1,3 +1,8 @@
+// ============================================================================
+// UNDERWATER POST-PROCESS MATERIAL WITH DEPTH TEXTURE
+// For Ogre-Next Ocean - Improved version
+// ============================================================================
+
 fragment_program UnderwaterPost_HLSL hlsl
 {
     source UnderwaterPost_ps.hlsl
@@ -11,6 +16,7 @@ fragment_program UnderwaterPost_GLSL glsl
     default_params
     {
         param_named rt0 int 0
+        param_named depthTexture int 1
     }
 }
 
@@ -20,6 +26,7 @@ fragment_program UnderwaterPost_GLSLES glsles
     default_params
     {
         param_named rt0 int 0
+        param_named depthTexture int 1
     }
 }
 
@@ -29,6 +36,7 @@ fragment_program UnderwaterPost_VK glslvk
     default_params
     {
         param_named rt0 int 0
+        param_named depthTexture int 1
     }
 }
 
@@ -48,40 +56,66 @@ fragment_program UnderwaterPost unified
 
     default_params
     {
-        // Base underwater factor (0 = no effect, 1 = full effect)
+        // ====================================================================
+        // CORE PARAMETERS
+        // ====================================================================
         param_named underwaterFactor float 1.0
+        param_named_auto timeSeconds time 0.5
         
-        // Water colors - much stronger blue/cyan tint
-        param_named waterTint float3 0.04 0.22 0.32
-        param_named deepWaterTint float3 0.01 0.1 0.18
+        // ====================================================================
+        // WATER COLORS - Tuned for realistic underwater look
+        // ====================================================================
+        param_named waterTint float3 0.1 0.35 0.45
+        param_named deepWaterTint float3 0.02 0.1 0.2
         
-        // Wave distortion - VERY STRONG for obvious movement
-        param_named distortion float 0.012
+        // ====================================================================
+        // FOG PARAMETERS - Key for depth perception
+        // ====================================================================
+        param_named fogDensity float 0.03
+        param_named maxFogDepth float 80.0
         
-        // Color adjustments - higher contrast, more desaturation
-        param_named contrast float 1.25
-        param_named saturation float 0.65
-        param_named vignette float 1.2
+        // ====================================================================
+        // LIGHT ABSORPTION
+        // ====================================================================
+        param_named absorptionScale float 0.015
         
-        // Fog/turbidity - BALANCED
-        param_named fogStrength float 1.2
-        param_named turbidity float 0.6
+        // ====================================================================
+        // GOD RAYS
+        // ====================================================================
+        param_named godRayStrength float 0.3
+        param_named sunScreenPos float2 0.5 0.1
         
-        // Simple light glow (replaces god rays and caustics)
-        param_named lightGlowStrength float 0.3
-        param_named sunScreenPos float2 0.5 0.18
+        // ====================================================================
+        // CAUSTICS - Only on nearby surfaces
+        // ====================================================================
+        param_named causticStrength float 0.15
+        param_named maxCausticDepth float 20.0
         
-        // Particles/sediment - more visible
-        param_named particleStrength float 0.45
+        // ====================================================================
+        // PARTICLES
+        // ====================================================================
+        param_named particleStrength float 0.25
+        param_named maxParticleDepth float 50.0
         
-        // Bubbles - stronger
-        param_named bubbleStrength float 0.5
+        // ====================================================================
+        // BUBBLES
+        // ====================================================================
+        param_named bubbleStrength float 0.3
         
-        // Chromatic aberration - more pronounced
+        // ====================================================================
+        // VISUAL EFFECTS
+        // ====================================================================
+        param_named distortion float 0.015
+        param_named contrast float 1.1
+        param_named saturation float 0.75
+        param_named vignette float 1.5
         param_named chromaticAberration float 0.003
         
-        // Auto time
-        param_named_auto timeSeconds time 0.5
+        // ====================================================================
+        // DEPTH RECONSTRUCTION (set from C++)
+        // ====================================================================
+        param_named projectionParams float2 0.0 0.0
+        param_named_auto farClipDistance far_clip_distance
     }
 }
 
@@ -101,40 +135,56 @@ material Ocean/UnderwaterPost
 
             fragment_program_ref UnderwaterPost
             {
-                // Override examples for different water types:
+                // ============================================================
+                // ACTIVE PRESET: BALANCED UNDERWATER
+                // ============================================================
                 
-                // CLEAR TROPICAL WATER (less movement):
-                // param_named waterTint float3 0.08 0.32 0.45
-                // param_named deepWaterTint float3 0.05 0.25 0.38
-                // param_named fogStrength float 0.8
-                // param_named distortion float 0.008
-                // param_named particleStrength float 0.2
+                // Water colors - cyan/teal tones
+                param_named waterTint float3 0.1 0.35 0.45
+                param_named deepWaterTint float3 0.02 0.1 0.2
                 
-                // MURKY/TURBID WATER (more fog):
-                // param_named waterTint float3 0.04 0.22 0.28
-                // param_named deepWaterTint float3 0.01 0.12 0.18
-                // param_named fogStrength float 1.8
-                // param_named particleStrength float 0.6
-                // param_named distortion float 0.01
+                // Fog - visible depth fog effect
+                param_named fogDensity float 0.3
+                param_named maxFogDepth float 80.0
                 
-                // DEEP OCEAN (darker, constrained visibility):
-                param_named waterTint float3 0.02 0.15 0.25
-                param_named deepWaterTint float3 0.0 0.05 0.15
-                param_named fogStrength float 2.0
-                param_named distortion float 0.02
-                param_named particleStrength float 0.6
+                // Light absorption
+                param_named absorptionScale float 0.015
+                
+                // God rays - subtle volumetric light
+                param_named godRayStrength float 0.3
+                param_named sunScreenPos float2 0.5 0.1
+                
+                // Caustics - only on close surfaces
+                param_named causticStrength float 0.15
+                param_named maxCausticDepth float 20.0
+                
+                // Particles - floating debris
+                param_named particleStrength float 0.25
+                param_named maxParticleDepth float 50.0
+                
+                // Bubbles - rising from bottom
                 param_named bubbleStrength float 0.3
                 
-                // ROUGH WATER (maximum movement):
-                // param_named distortion float 0.018
-                // param_named bubbleStrength float 0.7
-                // param_named particleStrength float 0.5
+                // Visual effects
+                param_named distortion float 0.015
+                param_named contrast float 1.1
+                param_named saturation float 0.75
+                param_named vignette float 1.5
+                param_named chromaticAberration float 0.003
             }
 
+            // Scene color texture
             texture_unit rt0
             {
                 tex_address_mode clamp
                 filtering bilinear
+            }
+            
+            // Depth texture
+            texture_unit depthTexture
+            {
+                tex_address_mode clamp
+                filtering point
             }
         }
     }

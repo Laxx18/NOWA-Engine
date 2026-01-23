@@ -102,7 +102,6 @@ namespace NOWA
 			if (false == this->workspaceBaseComponent->getUseSSAO())
 			{
 				this->workspaceBaseComponent->setUseSSAO(true);
-				this->workspaceBaseComponent->setUseDepthTexture(true);
 			}
 		}
 
