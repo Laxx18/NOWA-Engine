@@ -1,7 +1,0 @@
-
-hlms Examples/SparkParticle particle
-{
-    depth_write off
-	scene_blend add
-	diffuse_map SparkParticle.png
-}

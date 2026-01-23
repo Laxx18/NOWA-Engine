@@ -353,12 +353,6 @@ void ProjectManager::loadProject(const Ogre::String& filePathName, unsigned shor
 		this->destroyScene();
 	});
 
-	// Now init in a separate command after destruction is complete
-	ENQUEUE_RENDER_COMMAND_WAIT("ProjectManager::loadProject::init",
-	{
-		NOWA::AppStateManager::getSingletonPtr()->getGpuParticlesModule()->init(this->sceneManager);
-	});
-
 	this->additionalMeshResources.clear();
 
 	Ogre::String tempFileName = filePathName;

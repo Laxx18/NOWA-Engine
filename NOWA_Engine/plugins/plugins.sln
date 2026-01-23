@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 18
-VisualStudioVersion = 18.2.11415.280 d18.0
+VisualStudioVersion = 18.2.11415.280
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "AreaOfInterestComponent", "AreaOfInterestComponent\AreaOfInterestComponent.vcxproj", "{B44A5D54-9FAE-4174-AA40-8CB0E70713FD}"
 EndProject
@@ -26,8 +26,6 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ReferenceComponent", "ReferenceComponent\ReferenceComponent.vcxproj", "{406E22F5-C83F-4B20-828A-5011C45C8302}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Rect2DComponent", "Rect2DComponent\Rect2DComponent.vcxproj", "{57CAD8D9-4120-4CE9-A9F8-44C7B3305C3E}"
-EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GpuParticlesComponent", "GpuParticlesComponent\GpuParticlesComponent.vcxproj", "{B658BB13-4DC3-47CB-846E-A972F4D1B05A}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TransformHistoryComponent", "TransformHistoryComponent\TransformHistoryComponent.vcxproj", "{0990E680-4CC1-4D95-970E-EC42CE758BE3}"
 EndProject
@@ -131,10 +129,6 @@ Global
 		{57CAD8D9-4120-4CE9-A9F8-44C7B3305C3E}.Debug|x64.Build.0 = Debug|x64
 		{57CAD8D9-4120-4CE9-A9F8-44C7B3305C3E}.Release|x64.ActiveCfg = Release|x64
 		{57CAD8D9-4120-4CE9-A9F8-44C7B3305C3E}.Release|x64.Build.0 = Release|x64
-		{B658BB13-4DC3-47CB-846E-A972F4D1B05A}.Debug|x64.ActiveCfg = Debug|x64
-		{B658BB13-4DC3-47CB-846E-A972F4D1B05A}.Debug|x64.Build.0 = Debug|x64
-		{B658BB13-4DC3-47CB-846E-A972F4D1B05A}.Release|x64.ActiveCfg = Release|x64
-		{B658BB13-4DC3-47CB-846E-A972F4D1B05A}.Release|x64.Build.0 = Release|x64
 		{0990E680-4CC1-4D95-970E-EC42CE758BE3}.Debug|x64.ActiveCfg = Debug|x64
 		{0990E680-4CC1-4D95-970E-EC42CE758BE3}.Debug|x64.Build.0 = Debug|x64
 		{0990E680-4CC1-4D95-970E-EC42CE758BE3}.Release|x64.ActiveCfg = Release|x64

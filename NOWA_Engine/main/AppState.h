@@ -22,7 +22,6 @@
 #include "camera/CameraManager.h"
 #include "main/EventManager.h"
 #include "main/ScriptEventManager.h"
-#include "modules/GpuParticlesModule.h"
 
 namespace NOWA
 {
@@ -232,7 +231,6 @@ namespace NOWA
 		LuaScriptModule* luaScriptModule;
 		EventManager* eventManager;
 		ScriptEventManager* scriptEventManager;
-		GpuParticlesModule* gpuParticlesModule;
 
 		WorkspaceBaseComponent* workspaceBaseComponent;
 	};

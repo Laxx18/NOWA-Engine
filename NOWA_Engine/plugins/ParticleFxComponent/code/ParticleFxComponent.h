@@ -10,13 +10,15 @@ GPL v3
 #include "gameobject/GameObjectComponent.h"
 #include "main/Events.h"
 #include "OgrePlugin.h"
-#include "OgreParticleSystem.h"
+
+// Ogre-next ParticleFX2 includes
+#include "ParticleSystem/OgreParticleSystem2.h"
 
 namespace NOWA
 {
 
 	/**
-	  * @brief		Creates an Ogre FX particle effect.
+	  * @brief		Creates an Ogre-next ParticleFX2 particle effect.
 	  */
 	class EXPORTED ParticleFxComponent : public GameObjectComponent, public Ogre::Plugin
 	{
@@ -52,7 +54,7 @@ namespace NOWA
 		* @see		Ogre::Plugin::getName
 		*/
 		virtual const Ogre::String& getName() const override;
-		
+
 		/**
 		* @see		Ogre::Plugin::getAbiCookie
 		*/
@@ -87,7 +89,7 @@ namespace NOWA
 		* @see		GameObjectComponent::onRemoveComponent
 		*/
 		virtual void onRemoveComponent(void);
-		
+
 		/**
 		 * @see		GameObjectComponent::onOtherComponentRemoved
 		 */
@@ -138,35 +140,113 @@ namespace NOWA
 		*/
 		virtual bool isActivated(void) const override;
 
+		/**
+		 * @brief Sets the particle template name (material/datablock name starting with "Particle/")
+		 * @param particleTemplateName The name of the particle template
+		 */
 		void setParticleTemplateName(const Ogre::String& particleTemplateName);
 
+		/**
+		 * @brief Gets the particle template name
+		 * @return The particle template name
+		 */
 		Ogre::String getParticleTemplateName(void) const;
 
+		/**
+		 * @brief Sets whether the particle effect should repeat
+		 * @param repeat True to repeat, false otherwise
+		 */
 		void setRepeat(bool repeat);
 
+		/**
+		 * @brief Gets whether the particle effect repeats
+		 * @return True if repeating, false otherwise
+		 */
 		bool getRepeat(void) const;
 
+		/**
+		 * @brief Sets the particle play time in milliseconds
+		 * @param playTime The play time in milliseconds (0 = infinite)
+		 */
 		void setParticlePlayTimeMS(Ogre::Real playTime);
 
+		/**
+		 * @brief Gets the particle play time in milliseconds
+		 * @return The play time in milliseconds
+		 */
 		Ogre::Real getParticlePlayTimeMS(void) const;
 
+		/**
+		 * @brief Sets the particle play speed multiplier
+		 * @param playSpeed The speed multiplier (1.0 = normal)
+		 */
 		void setParticlePlaySpeed(Ogre::Real playSpeed);
 
+		/**
+		 * @brief Gets the particle play speed multiplier
+		 * @return The speed multiplier
+		 */
 		Ogre::Real getParticlePlaySpeed(void) const;
 
+		/**
+		 * @brief Sets the offset position relative to the game object
+		 * @param particleOffsetPosition The offset position
+		 */
 		void setParticleOffsetPosition(const Ogre::Vector3& particleOffsetPosition);
 
-		Ogre::Vector3 getParticleOffsetPosition(void);
+		/**
+		 * @brief Gets the offset position
+		 * @return The offset position
+		 */
+		Ogre::Vector3 getParticleOffsetPosition(void) const;
 
+		/**
+		 * @brief Sets the offset orientation (in degrees) relative to the game object
+		 * @param particleOffsetOrientation The offset orientation in degrees (pitch, yaw, roll)
+		 */
 		void setParticleOffsetOrientation(const Ogre::Vector3& particleOffsetOrientation);
 
-		Ogre::Vector3 getParticleOffsetOrientation(void);
+		/**
+		 * @brief Gets the offset orientation in degrees
+		 * @return The offset orientation in degrees
+		 */
+		Ogre::Vector3 getParticleOffsetOrientation(void) const;
 
+		/**
+		 * @brief Sets the particle scale
+		 * @param particleScale The scale vector
+		 */
 		void setParticleScale(const Ogre::Vector3& particleScale);
 
-		Ogre::Vector3 getParticleScale(void);
+		/**
+		 * @brief Gets the particle scale
+		 * @return The scale vector
+		 */
+		Ogre::Vector3 getParticleScale(void) const;
 
-		ParticleUniverse::ParticleSystem* getParticle(void) const;
+		/**
+		 * @brief Gets the Ogre ParticleSystem2 pointer
+		 * @return Pointer to the particle system, or nullptr if not created
+		 */
+		Ogre::ParticleSystem2* getParticleSystem(void) const;
+
+		/**
+		 * @brief Checks if the particle effect is currently playing
+		 * @return True if playing, false otherwise
+		 */
+		bool isPlaying(void) const;
+
+		/**
+		 * @brief Sets the global position for the particle effect
+		 * @param particlePosition The world position
+		 */
+		void setGlobalPosition(const Ogre::Vector3& particlePosition);
+
+		/**
+		 * @brief Sets the global orientation for the particle effect
+		 * @param particleOrientation The orientation in degrees
+		 */
+		void setGlobalOrientation(const Ogre::Vector3& particleOrientation);
 
 	public:
 		/**
@@ -184,7 +264,7 @@ namespace NOWA
 		{
 			return "ParticleFxComponent";
 		}
-	
+
 		/**
 		* @see		GameObjectComponent::canStaticAddComponent
 		*/
@@ -195,29 +275,71 @@ namespace NOWA
 		 */
 		static Ogre::String getStaticInfoText(void)
 		{
-			return "Usage: My usage text.";
+			return "Usage: This Component is for playing particle effects using the Ogre-next ParticleFX2 system. "
+				"Select a particle template from the list (materials starting with 'Particle/'). "
+				"Set play time to 0 for infinite duration.";
 		}
-		
+
 		/**
 		 * @see	GameObjectComponent::createStaticApiForLua
 		 */
 		static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass);
+
 	public:
-		static const Ogre::String AttrActivated(void) { return "Activated"; }
-		static const Ogre::String AttrParticleName(void) { return "Particle Name"; }
-		static const Ogre::String AttrRepeat(void) { return "Repeat"; }
-		static const Ogre::String AttrPlayTime(void) { return "Play Time"; }
-		static const Ogre::String AttrPlaySpeed(void) { return "Play Speed"; }
-		static const Ogre::String AttrOffsetPosition(void) { return "Offset Position"; }
-		static const Ogre::String AttrOffsetOrientation(void) { return "Offset Orientation"; }
-		static const Ogre::String AttrScale(void) { return "Scale"; }
+		static const Ogre::String AttrActivated(void)
+		{
+			return "Activated";
+		}
+		static const Ogre::String AttrParticleName(void)
+		{
+			return "Particle Name";
+		}
+		static const Ogre::String AttrRepeat(void)
+		{
+			return "Repeat";
+		}
+		static const Ogre::String AttrPlayTime(void)
+		{
+			return "Play Time";
+		}
+		static const Ogre::String AttrPlaySpeed(void)
+		{
+			return "Play Speed";
+		}
+		static const Ogre::String AttrOffsetPosition(void)
+		{
+			return "Offset Position";
+		}
+		static const Ogre::String AttrOffsetOrientation(void)
+		{
+			return "Offset Orientation";
+		}
+		static const Ogre::String AttrScale(void)
+		{
+			return "Scale";
+		}
+
 	private:
+		/**
+		 * @brief Creates the particle effect based on the current settings
+		 * @return True if successful, false otherwise
+		 */
 		bool createParticleEffect(void);
+
+		/**
+		 * @brief Destroys the current particle effect
+		 */
 		void destroyParticleEffect(void);
+
+		/**
+		 * @brief Gathers all available particle template names from HLMS datablocks
+		 */
+		void gatherParticleNames(void);
+
 	private:
 		Ogre::String name;
 
-		Ogre::ParticleSystem* particleSystem;
+		Ogre::ParticleSystem2* particleSystem;
 		Ogre::SceneNode* particleNode;
 		Variant* activated;
 		Variant* particleTemplateName;
@@ -230,13 +352,8 @@ namespace NOWA
 		Variant* particleScale;
 		Ogre::String oldParticleTemplateName;
 		bool oldActivated;
-
-		// fastForward ParticleSystem attribute
-		// setNonVisibleUpdateTimeout
-		// setKeepParticlesInLocalSpace
 	};
 
 }; // namespace end
 
 #endif
-

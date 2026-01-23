@@ -1055,16 +1055,6 @@ namespace NOWA
 		return this->activeStateStack.back()->scriptEventManager;
 	}
 
-	GpuParticlesModule* AppStateManager::getGpuParticlesModule(void) const
-	{
-		if (true == this->activeStateStack.empty())
-		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AppStateManager] Error getting gpu particles module, because at this time no application state (AppState) has been created! Maybe this call was to early.");
-			throw Ogre::Exception(Ogre::Exception::ERR_INTERNAL_ERROR, "[AppStateManager] Error getting gpu particles module, because at this time no application state (AppState) has been created! Maybe this call was to early.", "NOWA");
-		}
-		return this->activeStateStack.back()->gpuParticlesModule;
-	}
-
 	GameObjectController* AppStateManager::getGameObjectController(const Ogre::String& stateName)
 	{
 		AppState* appState = this->findByName(stateName);
@@ -1169,15 +1159,6 @@ namespace NOWA
 		AppState* appState = this->findByName(stateName);
 		if (nullptr != appState)
 			return appState->scriptEventManager;
-
-		return nullptr;
-	}
-
-	GpuParticlesModule* AppStateManager::getGpuParticlesModule(const Ogre::String& stateName)
-	{
-		AppState* appState = this->findByName(stateName);
-		if (nullptr != appState)
-			return appState->gpuParticlesModule;
 
 		return nullptr;
 	}

@@ -463,9 +463,6 @@ namespace NOWA
 			configFile << "FileSystem=../../media/NOWA/Scripts/HDR/GLSL\n";
 			configFile << "FileSystem=../../media/NOWA/Scripts/HDR/HLSL\n";
 			configFile << "FileSystem=../../media/NOWA/Scripts/HDR/Metal\n";
-			configFile << "FileSystem=../../media/NOWA/Scripts/GpuParticles\n";
-			configFile << "FileSystem=../../media/NOWA/Scripts/GpuParticles/HLSL\n";
-			configFile << "FileSystem=../../media/NOWA/Scripts/GpuParticles/GLSL\n";
 			configFile << "FileSystem=../../media/materials/textures\n\n";
 
 			configFile << "[NOWA_Design]\n";
@@ -515,8 +512,8 @@ namespace NOWA
 			configFile << "FileSystem=../../media/ParticleUniverse/examples/scripts\n";
 			configFile << "FileSystem=../../media/ParticleUniverse/examples/textures\n\n";
 
-			configFile << "[GpuParticles]\n";
-			configFile << "FileSystem=../../media/ParticleSystems\n\n";
+			configFile << "[ParticleFX2]\n";
+			configFile << "FileSystem=../../media/ParticleFX2\n";
 
 			configFile << "[Unlit]\n";
 			configFile << "FileSystem=../../media/materials/unlit\n\n";

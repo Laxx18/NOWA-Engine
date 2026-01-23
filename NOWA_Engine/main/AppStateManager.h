@@ -139,8 +139,6 @@ namespace NOWA
 
 		ScriptEventManager* getScriptEventManager(void) const;
 
-		GpuParticlesModule* getGpuParticlesModule(void) const;
-
 		GameObjectController* getGameObjectController(const Ogre::String& stateName);
 
 		GameProgressModule* getGameProgressModule(const Ogre::String& stateName);
@@ -164,8 +162,6 @@ namespace NOWA
 		EventManager* getEventManager(const Ogre::String& stateName);
 
 		ScriptEventManager* getScriptEventManager(const Ogre::String& stateName);
-
-		GpuParticlesModule* getGpuParticlesModule(const Ogre::String& stateName);
 
 		void enqueue(LogicCommand&& command);
 
