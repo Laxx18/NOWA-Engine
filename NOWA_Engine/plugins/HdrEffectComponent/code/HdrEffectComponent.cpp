@@ -66,10 +66,7 @@ namespace NOWA
 
 	HdrEffectComponent::~HdrEffectComponent(void)
 	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[HdrEffectComponent] Destructor hdr effect component for game object: " + this->gameObjectPtr->getName());
 
-		this->lightDirectionalComponent = nullptr;
-		this->workspaceBaseComponent = nullptr;
 	}
 
 	void HdrEffectComponent::initialise()
@@ -105,8 +102,6 @@ namespace NOWA
 	bool HdrEffectComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
 		GameObjectComponent::init(propertyElement);
-
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &HdrEffectComponent::handleHdrActivated), NOWA::EventDataHdrActivated::getStaticEventType());
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "EffectName")
 		{
@@ -169,6 +164,8 @@ namespace NOWA
 	bool HdrEffectComponent::postInit(void)
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[HdrEffectComponent] Init hdr effect component for game object: " + this->gameObjectPtr->getName());
+
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &HdrEffectComponent::handleHdrActivated), NOWA::EventDataHdrActivated::getStaticEventType());
 
 		// Get the sun light (directional light for sun power setting)
 		GameObjectPtr lightGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(GameObjectController::MAIN_LIGHT_ID);
@@ -233,8 +230,10 @@ namespace NOWA
 
 		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &HdrEffectComponent::handleHdrActivated), NOWA::EventDataHdrActivated::getStaticEventType());
 
-		// Kill all processes if component is removed (e.g. scene changed), because below a DelayProcess is involved, which would work with corrupt data.
-		NOWA::ProcessManager::getInstance()->clearAllProcesses();
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[HdrEffectComponent] Destructor hdr effect component for game object: " + this->gameObjectPtr->getName());
+
+		this->lightDirectionalComponent = nullptr;
+		this->workspaceBaseComponent = nullptr;
 
 		this->resetShining();
 	}

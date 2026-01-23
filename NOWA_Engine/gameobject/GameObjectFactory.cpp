@@ -578,7 +578,7 @@ namespace NOWA
 							componentPtr->setOwner(gameObjectPtr);
 						}
 					}
-					else
+					else if (nullptr != sceneNode)
 					{
 						ENQUEUE_RENDER_COMMAND_MULTI("GameObjectFactory::createOrSetGameObjectFromXML destroy2", _4(sceneManager, &sceneNode, gameObjectPtr, componentName),
 						{

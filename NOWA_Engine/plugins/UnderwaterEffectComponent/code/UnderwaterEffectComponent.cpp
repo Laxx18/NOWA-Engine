@@ -103,7 +103,7 @@ namespace NOWA
 
 	UnderwaterEffectComponent::~UnderwaterEffectComponent()
 	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[UnderwaterEffectComponent] Destructor underwater effect component for game object: " + this->gameObjectPtr->getName());
+		
 	}
 
 	const Ogre::String& UnderwaterEffectComponent::getName() const
@@ -124,8 +124,6 @@ namespace NOWA
 	bool UnderwaterEffectComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
 		GameObjectComponent::init(propertyElement);
-
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &UnderwaterEffectComponent::handleSwitchCamera), NOWA::EventDataSwitchCamera::getStaticEventType());
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "CameraId")
 		{
@@ -260,6 +258,8 @@ namespace NOWA
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[UnderwaterEffectComponent] Init underwater effect component for game object: " + this->gameObjectPtr->getName());
 
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &UnderwaterEffectComponent::handleSwitchCamera), NOWA::EventDataSwitchCamera::getStaticEventType());
+
 		// Apply loaded preset/values
 		this->setPresetName(this->presetName->getListSelectedValue());
 
@@ -284,6 +284,8 @@ namespace NOWA
 	void UnderwaterEffectComponent::onRemoveComponent(void)
 	{
 		GameObjectComponent::onRemoveComponent();
+
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[UnderwaterEffectComponent] Destructor underwater effect component for game object: " + this->gameObjectPtr->getName());
 
 		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &UnderwaterEffectComponent::handleSwitchCamera), NOWA::EventDataSwitchCamera::getStaticEventType());
 	}

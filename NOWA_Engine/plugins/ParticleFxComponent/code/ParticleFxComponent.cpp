@@ -38,9 +38,6 @@ namespace NOWA
 		particleOffsetOrientation(new Variant(ParticleFxComponent::AttrOffsetOrientation(), Ogre::Vector3::ZERO, this->attributes)),
 		particleScale(new Variant(ParticleFxComponent::AttrScale(), Ogre::Vector3::UNIT_SCALE, this->attributes))
 	{
-		// Gather available particle template names from HLMS datablocks
-		this->gatherParticleNames();
-
 		// Activated variable is set to false again, when particle has played and repeat is off, so tell it the gui that it must be refreshed
 		this->activated->addUserData(GameObject::AttrActionNeedRefresh());
 		this->particleInitialPlayTime->setDescription("The particle play time in milliseconds, if set to 0, the particle effect will not stop automatically.");
@@ -48,8 +45,7 @@ namespace NOWA
 
 	ParticleFxComponent::~ParticleFxComponent(void)
 	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ParticleFxComponent] Destructor particle fx component for game object: " + this->gameObjectPtr->getName());
-		this->destroyParticleEffect();
+
 	}
 
 	void ParticleFxComponent::initialise()
@@ -84,9 +80,6 @@ namespace NOWA
 
 	void ParticleFxComponent::gatherParticleNames(void)
 	{
-		if (nullptr == this->particleTemplateName)
-			return;
-
 		const Ogre::String prevSelected = this->particleTemplateName->getListSelectedValue();
 
 		std::vector<Ogre::String> names;
@@ -131,9 +124,7 @@ namespace NOWA
 		}
 		catch (const Ogre::Exception& e)
 		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(
-				Ogre::LML_CRITICAL,
-				"[ParticleFxComponent] gatherParticleNames exception: " + e.getFullDescription());
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ParticleFxComponent] gatherParticleNames exception: " + e.getFullDescription());
 		}
 
 		// Sort alphabetically (keep "" at front)
@@ -156,9 +147,6 @@ namespace NOWA
 	bool ParticleFxComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
 		GameObjectComponent::init(propertyElement);
-
-		// Refresh the particle names list
-		this->gatherParticleNames();
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Activated")
 		{
@@ -229,6 +217,9 @@ namespace NOWA
 	bool ParticleFxComponent::postInit(void)
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ParticleFxComponent] Init particle fx component for game object: " + this->gameObjectPtr->getName());
+
+		// Refresh the particle names list
+		this->gatherParticleNames();
 
 		if (true == this->particleTemplateName->getListSelectedValue().empty())
 		{
@@ -331,37 +322,37 @@ namespace NOWA
 		if (nullptr != this->particleSystem)
 		{
 			GraphicsModule::RenderCommand renderCommand = [this]()
+			{
+				try
 				{
-					try
+					// Detach from scene node if attached
+					if (nullptr != this->particleNode && this->particleSystem->isAttached())
 					{
-						// Detach from scene node if attached
-						if (nullptr != this->particleNode && this->particleSystem->isAttached())
-						{
-							this->particleNode->detachObject(this->particleSystem);
-						}
-
-						// Remove tagged resource
-						DeployResourceModule::getInstance()->removeResource(this->particleTemplateName->getListSelectedValue());
-
-						// Destroy the particle system through the scene manager
-						Ogre::SceneManager* sceneManager = this->gameObjectPtr->getSceneManager();
-						sceneManager->destroyParticleSystem2(this->particleSystem);
-
-						// Remove and destroy the scene node
-						if (nullptr != this->particleNode)
-						{
-							this->gameObjectPtr->getSceneNode()->removeAndDestroyChild(this->particleNode);
-						}
-
-						this->particleSystem = nullptr;
-						this->particleNode = nullptr;
+						this->particleNode->detachObject(this->particleSystem);
 					}
-					catch (const Ogre::Exception& e)
+
+					// Remove tagged resource
+					DeployResourceModule::getInstance()->removeResource(this->particleTemplateName->getListSelectedValue());
+
+					// Destroy the particle system through the scene manager
+					Ogre::SceneManager* sceneManager = this->gameObjectPtr->getSceneManager();
+					sceneManager->destroyParticleSystem2(this->particleSystem);
+
+					// Remove and destroy the scene node
+					if (nullptr != this->particleNode)
 					{
-						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-							"[ParticleFxComponent] Exception destroying particle effect: " + e.getFullDescription());
+						this->gameObjectPtr->getSceneNode()->removeAndDestroyChild(this->particleNode);
 					}
-				};
+
+					this->particleSystem = nullptr;
+					this->particleNode = nullptr;
+				}
+				catch (const Ogre::Exception& e)
+				{
+					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+						"[ParticleFxComponent] Exception destroying particle effect: " + e.getFullDescription());
+				}
+			};
 			NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ParticleFxComponent::destroyParticleEffect");
 		}
 		this->particlePlayTime = this->particleInitialPlayTime->getReal();
@@ -411,6 +402,9 @@ namespace NOWA
 
 		Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
 		NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
+
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ParticleFxComponent] Destructor particle fx component for game object: " + this->gameObjectPtr->getName());
+		this->destroyParticleEffect();
 	}
 
 	void ParticleFxComponent::onOtherComponentRemoved(unsigned int index)

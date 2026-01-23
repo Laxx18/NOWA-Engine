@@ -81,10 +81,7 @@ namespace NOWA
 
 	OceanEffectComponent::~OceanEffectComponent()
 	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
-			"[OceanEffectComponent] Destructor ocean effect component for game object: " + this->gameObjectPtr->getName());
 
-		this->oceanComponent = nullptr;
 	}
 
 	void OceanEffectComponent::initialise()
@@ -231,8 +228,7 @@ namespace NOWA
 
 	bool OceanEffectComponent::postInit(void)
 	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
-			"[OceanEffectComponent] Init ocean effect component for game object: " + this->gameObjectPtr->getName());
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[OceanEffectComponent] Init ocean effect component for game object: " + this->gameObjectPtr->getName());
 
 		auto& oceanCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<OceanComponent>());
 		if (nullptr != oceanCompPtr)
@@ -278,6 +274,10 @@ namespace NOWA
 	void OceanEffectComponent::onRemoveComponent(void)
 	{
 		GameObjectComponent::onRemoveComponent();
+
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[OceanEffectComponent] Destructor ocean effect component for game object: " + this->gameObjectPtr->getName());
+
+		this->oceanComponent = nullptr;
 	}
 
 	void OceanEffectComponent::onOtherComponentRemoved(unsigned int index)
