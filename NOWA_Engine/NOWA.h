@@ -125,7 +125,6 @@ extern "C"
 #include "gameobject/ReflectionCameraComponent.h"
 #include "gameObject/WorkspaceComponents.h"
 #include "gameobject/CompositorEffectComponents.h"
-#include "gameobject/HdrEffectComponent.h"
 #include "gameobject/DatablockPbsComponent.h"
 #include "gameobject/DatablockUnlitComponent.h"
 #include "gameobject/DatablockTerraComponent.h"
@@ -258,8 +257,6 @@ namespace NOWA
 	typedef boost::shared_ptr<CompositorEffectColorComponent> CompositorEffectColorCompPtr;
 	typedef boost::shared_ptr<CompositorEffectEmbossedComponent> CompositorEffectEmbossedCompPtr;
 	typedef boost::shared_ptr<CompositorEffectSharpenEdgesComponent> CompositorEffectSharpenEdgesCompPtr;
-
-	typedef boost::shared_ptr<HdrEffectComponent> HdrEffectCompPtr;
 
 	typedef boost::shared_ptr<DatablockPbsComponent> DatablockPbsCompPtr;
 	typedef boost::shared_ptr<DatablockUnlitComponent> DatablockUnlitCompPtr;

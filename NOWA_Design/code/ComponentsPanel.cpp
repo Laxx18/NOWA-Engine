@@ -380,14 +380,6 @@ void ComponentsPanelDynamic::showComponents(const Ogre::String& searchText)
 						validToEnable = true;
 					}
 				}
-				else if (NOWA::HdrEffectComponent::getStaticClassName() == tempComponentName)
-				{
-					NOWA::WorkspaceBaseCompPtr workspaceCompPtr = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::WorkspaceBaseComponent>());
-					if (nullptr != workspaceCompPtr)
-					{
-						validToEnable = true;
-					}
-				}
 				else if (Ogre::String::npos != foundJointComponent)
 				{
 					NOWA::PhysicsCompoundConnectionCompPtr physicsCompoundConnectionCompPtr = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::PhysicsCompoundConnectionComponent>());

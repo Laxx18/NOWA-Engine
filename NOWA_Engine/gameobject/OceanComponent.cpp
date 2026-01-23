@@ -300,7 +300,6 @@ namespace NOWA
 			unsigned int index = std::get<1>(castEventData->getCameraGameObjectData());
 			bool active = std::get<2>(castEventData->getCameraGameObjectData());
 
-			// if a camera has been set as active, go through all game objects and set all camera components as active false
 			if (true == active)
 			{
 				auto gameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects();

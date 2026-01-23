@@ -12,7 +12,6 @@
 #include "gameobject/PlanarReflectionComponent.h"
 #include "gameobject/TerraComponent.h"
 #include "gameObject/ExitComponent.h"
-#include "gameObject/HdrEffectComponent.h"
 #include "gameObject/LuaScriptComponent.h"
 #include "modules/WorkspaceModule.h"
 #include "OgreMeshManager2.h"

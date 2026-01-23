@@ -57,7 +57,6 @@
 #include "ReflectionCameraComponent.h"
 #include "WorkspaceComponents.h"
 #include "CompositorEffectComponents.h"
-#include "HdrEffectComponent.h"
 #include "DatablockPbsComponent.h"
 #include "DatablockUnlitComponent.h"
 #include "DatablockTerraComponent.h"
@@ -130,7 +129,6 @@ namespace NOWA
 		this->componentFactory.registerClass<WorkspaceBackgroundComponent>(WorkspaceBackgroundComponent::getStaticClassId(), WorkspaceBackgroundComponent::getStaticClassName());
 		this->componentFactory.registerClass<WorkspaceCustomComponent>(WorkspaceCustomComponent::getStaticClassId(), WorkspaceCustomComponent::getStaticClassName());
 
-		this->componentFactory.registerClass<HdrEffectComponent>(HdrEffectComponent::getStaticClassId(), HdrEffectComponent::getStaticClassName());
 		this->componentFactory.registerClass<BackgroundScrollComponent>(BackgroundScrollComponent::getStaticClassId(), BackgroundScrollComponent::getStaticClassName());
 
 		// Compositor Effects Comonents

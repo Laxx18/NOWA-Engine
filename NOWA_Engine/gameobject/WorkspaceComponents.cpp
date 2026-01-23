@@ -12,7 +12,6 @@
 #include "PlanarReflectionComponent.h"
 #include "ReflectionCameraComponent.h"
 #include "LightDirectionalComponent.h"
-#include "HdrEffectComponent.h"
 #include "CompositorEffectComponents.h"
 #include "DatablockPbsComponent.h"
 #include "Compositor/Pass/PassScene/OgreCompositorPassScene.h"
@@ -701,21 +700,9 @@ namespace NOWA
 			this->hlmsWind = dynamic_cast<HlmsWind*>(Ogre::Root::getSingleton().getHlmsManager()->getHlms(Ogre::HLMS_USER0));
 			hlmsWind->setup(this->gameObjectPtr->getSceneManager());
 
-			auto& hdrEffectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<HdrEffectComponent>());
-			if (nullptr != hdrEffectCompPtr)
-			{
-				if (false == useHdr)
-				{
-					// Reset hdr values
-					hdrEffectCompPtr->applyHdrSkyColor(Ogre::ColourValue(0.2f, 0.4f, 0.6f), 1.0f);
-					hdrEffectCompPtr->applyExposure(1.0f, 1.0f, 1.0f);
-					hdrEffectCompPtr->applyBloomThreshold(0.0f, 0.0f);
-				}
-				else
-				{
-					// hdrEffectCompPtr->setEffectName(hdrEffectCompPtr->getEffectName());
-				}
-			}
+			boost::shared_ptr<EventDataHdrActivated> eventDataHdrActivated(new EventDataHdrActivated(gameObjectPtr->getId(), false));
+			AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataHdrActivated);
+
 			// };
 			// NOWA::ProcessPtr closureProcess(new NOWA::ClosureProcess(ptrFunction));
 			// delayProcess->attachChild(closureProcess);
@@ -908,13 +895,6 @@ namespace NOWA
 			{
 				reflectionCameraCompPtr->workspaceBaseComponent = nullptr;
 			}
-		}
-
-		// Deletes also the hdr effect component, has no use anymore
-		auto& hdrEffectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<HdrEffectComponent>());
-		if (nullptr != hdrEffectCompPtr)
-		{
-			this->gameObjectPtr->deleteComponentByIndex(hdrEffectCompPtr->getIndex());
 		}
 
 		if (nullptr != this->cameraComponent)
@@ -1151,13 +1131,12 @@ namespace NOWA
 
 				if (true == underwaterNow)
 				{
-					Ogre::MaterialPtr material = Ogre::MaterialManager::getSingleton().getByName("Ocean/UnderwaterPost");
-					if (material.isNull())
+					if (this->underwaterMaterial.isNull())
 					{
 						return;
 					}
 
-					Ogre::Pass* pass = material->getTechnique(0)->getPass(0);
+					Ogre::Pass* pass = this->underwaterMaterial->getTechnique(0)->getPass(0);
 					Ogre::GpuProgramParametersSharedPtr psParams = pass->getFragmentProgramParameters();
 
 					// Update projection params from camera
@@ -1866,11 +1845,11 @@ namespace NOWA
 		// =========================================================================
 		// SET projectionParams for depth linearization
 		// =========================================================================
-		Ogre::MaterialPtr material = std::static_pointer_cast<Ogre::Material>(Ogre::MaterialManager::getSingleton().load("Ocean/UnderwaterPost",Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME));
+		this->underwaterMaterial = std::static_pointer_cast<Ogre::Material>(Ogre::MaterialManager::getSingleton().load("Ocean/UnderwaterPost",Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME));
 
-		if (false == material.isNull())
+		if (false == this->underwaterMaterial.isNull())
 		{
-			Ogre::Pass* pass = material->getTechnique(0)->getPass(0);
+			Ogre::Pass* pass = this->underwaterMaterial->getTechnique(0)->getPass(0);
 			Ogre::GpuProgramParametersSharedPtr psParams = pass->getFragmentProgramParameters();
 
 			// Get projection params from camera - SAME AS SSAO!
@@ -2609,17 +2588,11 @@ namespace NOWA
 
 		if (false == useHdr && nullptr != this->gameObjectPtr)
 		{
+			boost::shared_ptr<EventDataHdrActivated> eventDataHdrActivated(new EventDataHdrActivated(gameObjectPtr->getId(), useHdr));
+			AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataHdrActivated);
+
 			ENQUEUE_RENDER_COMMAND_MULTI("WorkspaceBaseComponent::setUseHdr", _1(useHdr),
 			{
-				auto & hdrEffectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<HdrEffectComponent>());
-				if (nullptr != hdrEffectCompPtr)
-				{
-					// Reset hdr values
-					hdrEffectCompPtr->applyHdrSkyColor(Ogre::ColourValue(0.2f, 0.4f, 0.6f), 1.0f);
-					hdrEffectCompPtr->applyExposure(1.0f, 1.0f, 1.0f);
-					hdrEffectCompPtr->applyBloomThreshold(0.0f, 0.0f);
-				}
-
 				this->gameObjectPtr->getSceneManager()->setAmbientLight(Ogre::ColourValue(0.3f, 0.5f, 0.7f), Ogre::ColourValue(0.6f, 0.45f, 0.3f), this->gameObjectPtr->getSceneManager()->getAmbientLightHemisphereDir());
 
 				// Get the sun light (directional light for sun power setting)

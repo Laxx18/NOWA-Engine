@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.2.32630.192
+# Visual Studio Version 18
+VisualStudioVersion = 18.2.11415.280 d18.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "AreaOfInterestComponent", "AreaOfInterestComponent\AreaOfInterestComponent.vcxproj", "{B44A5D54-9FAE-4174-AA40-8CB0E70713FD}"
 EndProject
@@ -70,6 +70,12 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TimeLineComponent", "TimeLineComponent\TimeLineComponent.vcxproj", "{784F7C0F-26A7-44E7-94C6-FDA9E98589A4}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TimeTriggerComponent", "TimeTriggerComponent\TimeTriggerComponent.vcxproj", "{ACB6212C-BAB6-4CA1-8D90-DAAE2430A346}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "HdrEffectComponent", "HdrEffectComponent\HdrEffectComponent.vcxproj", "{AFD06706-939D-47DD-861A-4AD53845A875}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "UnderwaterEffectComponent", "UnderwaterEffectComponent\UnderwaterEffectComponent.vcxproj", "{EC5C45F2-58BA-4234-8A1F-294F382820BF}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "OceanEffectComponent", "OceanEffectComponent\OceanEffectComponent.vcxproj", "{86E556D2-5839-427E-8066-675F2036D2DE}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -213,6 +219,18 @@ Global
 		{ACB6212C-BAB6-4CA1-8D90-DAAE2430A346}.Debug|x64.Build.0 = Debug|x64
 		{ACB6212C-BAB6-4CA1-8D90-DAAE2430A346}.Release|x64.ActiveCfg = Release|x64
 		{ACB6212C-BAB6-4CA1-8D90-DAAE2430A346}.Release|x64.Build.0 = Release|x64
+		{AFD06706-939D-47DD-861A-4AD53845A875}.Debug|x64.ActiveCfg = Debug|x64
+		{AFD06706-939D-47DD-861A-4AD53845A875}.Debug|x64.Build.0 = Debug|x64
+		{AFD06706-939D-47DD-861A-4AD53845A875}.Release|x64.ActiveCfg = Release|x64
+		{AFD06706-939D-47DD-861A-4AD53845A875}.Release|x64.Build.0 = Release|x64
+		{EC5C45F2-58BA-4234-8A1F-294F382820BF}.Debug|x64.ActiveCfg = Debug|x64
+		{EC5C45F2-58BA-4234-8A1F-294F382820BF}.Debug|x64.Build.0 = Debug|x64
+		{EC5C45F2-58BA-4234-8A1F-294F382820BF}.Release|x64.ActiveCfg = Release|x64
+		{EC5C45F2-58BA-4234-8A1F-294F382820BF}.Release|x64.Build.0 = Release|x64
+		{86E556D2-5839-427E-8066-675F2036D2DE}.Debug|x64.ActiveCfg = Debug|x64
+		{86E556D2-5839-427E-8066-675F2036D2DE}.Debug|x64.Build.0 = Debug|x64
+		{86E556D2-5839-427E-8066-675F2036D2DE}.Release|x64.ActiveCfg = Release|x64
+		{86E556D2-5839-427E-8066-675F2036D2DE}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

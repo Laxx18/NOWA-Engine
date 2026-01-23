@@ -2524,6 +2524,63 @@ namespace NOWA
 		Ogre::String deviceName;
 	};
 
+	//---------------------------------------------------------------------------------------------------------------------
+	// EventDataHdrActivated - Sent when a game object has activated or deactivated HDR rendering
+	//---------------------------------------------------------------------------------------------------------------------
+	class EventDataHdrActivated : public NOWA::BaseEventData
+	{
+	public:
+		EventDataHdrActivated(const unsigned long id, bool activated)
+			: id(id),
+			activated(activated)
+		{
+
+		}
+
+		static NOWA::EventType getStaticEventType(void)
+		{
+			return 0xe8329A10;
+		}
+
+		virtual const NOWA::EventType getEventType(void) const
+		{
+			return 0xe8329A10;
+		}
+
+		virtual void serialize(std::ostrstream& out) const
+		{
+			out << Ogre::StringConverter::toString(this->id) << " " << Ogre::StringConverter::toString(this->activated);
+		}
+
+		virtual void deserialize(std::istrstream& in)
+		{
+			in >> Ogre::StringConverter::toString(this->id) >> Ogre::StringConverter::toString(this->activated);
+		}
+
+		virtual NOWA::EventDataPtr copy() const
+		{
+			return NOWA::EventDataPtr(new EventDataHdrActivated(this->id, this->activated));
+		}
+
+		virtual const char* getName(void) const
+		{
+			return "EventDataHdrActivated";
+		}
+
+		unsigned long getGameObjectId(void) const
+		{
+			return this->id;
+		}
+
+		bool getIsActivated(void) const
+		{
+			return this->activated;
+		}
+	private:
+		unsigned long id;
+		bool activated;
+	};
+
 }; // namespace end
 
 #endif

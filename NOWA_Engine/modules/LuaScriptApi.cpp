@@ -2153,11 +2153,6 @@ namespace NOWA
 		return makeStrongPtr<CompositorEffectSharpenEdgesComponent>(gameObject->getComponent<CompositorEffectSharpenEdgesComponent>()).get();
 	}
 
-	HdrEffectComponent* getHdrEffectComponent(GameObject* gameObject)
-	{
-		return makeStrongPtr<HdrEffectComponent>(gameObject->getComponent<HdrEffectComponent>()).get();
-	}
-
 	AiMoveComponent* getAiMoveComponent(GameObject* gameObject)
 	{
 		return makeStrongPtr<AiMoveComponent>(gameObject->getComponent<AiMoveComponent>()).get();
@@ -2813,11 +2808,6 @@ namespace NOWA
 		return makeStrongPtr<CompositorEffectSharpenEdgesComponent>(gameObject->getComponentFromName<CompositorEffectSharpenEdgesComponent>(name)).get();
 	}
 
-	HdrEffectComponent* getHdrEffectComponentFromName(GameObject* gameObject, const Ogre::String& name)
-	{
-		return makeStrongPtr<HdrEffectComponent>(gameObject->getComponentFromName<HdrEffectComponent>(name)).get();
-	}
-
 	AiMoveComponent* getAiMoveComponentFromName(GameObject* gameObject, const Ogre::String& name)
 	{
 		return makeStrongPtr<AiMoveComponent>(gameObject->getComponentFromName<AiMoveComponent>(name)).get();
@@ -3386,8 +3376,6 @@ namespace NOWA
 		gameObject.def("getCompositorEffectEmbossedComponent", &getCompositorEffectEmbossedComponent);
 		gameObject.def("getCompositorEffectSharpenEdgesComponent", &getCompositorEffectSharpenEdgesComponent);
 
-		gameObject.def("getHdrEffectComponent", &getHdrEffectComponent);
-
 		gameObject.def("getDatablockPbsComponent", &getDatablockPbsComponent);
 		gameObject.def("getDatablockUnlitComponent", &getDatablockUnlitComponent);
 		gameObject.def("getDatablockTerraComponent", &getDatablockTerraComponent);
@@ -3531,7 +3519,6 @@ namespace NOWA
 		gameObject.def("getCompositorEffectColorComponentFromName", &getCompositorEffectColorComponentFromName);
 		gameObject.def("getCompositorEffectEmbossedComponentFromName", &getCompositorEffectEmbossedComponentFromName);
 		gameObject.def("getCompositorEffectSharpenEdgesComponentFromName", &getCompositorEffectSharpenEdgesComponentFromName);
-		gameObject.def("getHdrEffectComponentFromName", &getHdrEffectComponentFromName);
 		gameObject.def("getDatablockPbsComponentFromName", &getDatablockPbsComponentFromName);
 		gameObject.def("getDatablockUnlitComponentFromName", &getDatablockUnlitComponentFromName);
 		gameObject.def("getDatablockTerraComponentFromName", &getDatablockTerraComponentFromName);
@@ -3691,7 +3678,6 @@ namespace NOWA
 		AddClassToCollection("GameObject", "CompositorEffectColorComponent getCompositorEffectColorComponent()", "Gets the compositor effect color component.");
 		AddClassToCollection("GameObject", "CompositorEffectEmbossedComponent getCompositorEffectEmbossedComponent()", "Gets the compositor effect embossed component.");
 		AddClassToCollection("GameObject", "CompositorEffectSharpenEdgesComponent getCompositorEffectSharpenEdgesComponent()", "Gets the compositor effect sharpen edges component.");
-		AddClassToCollection("GameObject", "HdrEffectComponent getHdrEffectComponent()", "Gets hdr effect component.");
 		AddClassToCollection("GameObject", "DatablockPbsComponent getDatablockPbsComponent()", "Gets the datablock pbs (physically based shading) component.");
 		AddClassToCollection("GameObject", "DatablockUnlitComponent getDatablockUnlitComponent()", "Gets the datablock unlit (without lighting) component.");
 		AddClassToCollection("GameObject", "DatablockTerraComponent getDatablockTerraComponent()", "Gets the datablock terra component.");
@@ -3824,7 +3810,6 @@ namespace NOWA
 		AddClassToCollection("GameObject", "CompositorEffectColorComponent getCompositorEffectColorComponentFromName(String name)", "Gets the compositor effect color component.");
 		AddClassToCollection("GameObject", "CompositorEffectEmbossedComponent getCompositorEffectEmbossedComponentFromName(String name)", "Gets the compositor effect embossed component.");
 		AddClassToCollection("GameObject", "CompositorEffectSharpenEdgesComponent getCompositorEffectSharpenEdgesComponentFromName(String name)", "Gets the compositor effect sharpen edges component.");
-		AddClassToCollection("GameObject", "HdrEffectComponent getHdrEffectComponentFromName(String name)", "Gets hdr effect component.");
 		AddClassToCollection("GameObject", "DatablockPbsComponent getDatablockPbsComponentFromName(String name)", "Gets the datablock pbs (physically based shading) component.");
 		AddClassToCollection("GameObject", "DatablockUnlitComponent getDatablockUnlitComponentFromName(String name)", "Gets the datablock unlit (without lighting) component.");
 		AddClassToCollection("GameObject", "DatablockTerraComponent getDatablockTerraComponentFromName(String name)", "Gets the datablock terra component.");
@@ -4946,7 +4931,6 @@ namespace NOWA
 		gameObjectController.def("castCompositorEffectColorComponent", &GameObjectController::cast<CompositorEffectColorComponent>);
 		gameObjectController.def("castCompositorEffectEmbossedComponent", &GameObjectController::cast<CompositorEffectEmbossedComponent>);
 		gameObjectController.def("castCompositorEffectSharpenEdgesComponent", &GameObjectController::cast<CompositorEffectSharpenEdgesComponent>);
-		gameObjectController.def("castHdrEffectComponent", &GameObjectController::cast<HdrEffectComponent>);
 		gameObjectController.def("castDatablockPbsComponent", &GameObjectController::cast<DatablockPbsComponent>);
 		gameObjectController.def("castDatablockUnlitComponent", &GameObjectController::cast<DatablockUnlitComponent>);
 		gameObjectController.def("castDatablockTerraComponent", &GameObjectController::cast<DatablockTerraComponent>);
@@ -5112,7 +5096,6 @@ namespace NOWA
 		AddClassToCollection("GameObjectController", "CompositorEffectColorComponent castCompositorEffectColorComponent(CompositorEffectColorComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "CompositorEffectEmbossedComponent castCompositorEffectEmbossedComponent(CompositorEffectEmbossedComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "CompositorEffectSharpenEdgesComponent castCompositorEffectSharpenEdgesComponent(CompositorEffectSharpenEdgesComponent other)", "Casts an incoming type from function for lua auto completion.");
-		AddClassToCollection("GameObjectController", "HdrEffectComponent castHdrEffectComponent(HdrEffectComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "DatablockPbsComponent castDatablockPbsComponent(DatablockPbsComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "DatablockUnlitComponent castDatablockUnlitComponent(DatablockUnlitComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "DatablockTerraComponent castDatablockTerraComponent(DatablockTerraComponent other)", "Casts an incoming type from function for lua auto completion.");
@@ -8266,69 +8249,6 @@ namespace NOWA
 		AddClassToCollection("CompositorEffectSharpenEdgesComponent", "bool isActivated()", "Gets whether the compositor effect is activated or not.");
 		AddClassToCollection("CompositorEffectSharpenEdgesComponent", "void setWeight(float weight)", "Sets the sharpen edges weight.");
 		AddClassToCollection("CompositorEffectSharpenEdgesComponent", "float getWeight()", "Gets the sharpen edges weight.");
-
-
-		module(lua)
-			[
-				class_<HdrEffectComponent, GameObjectComponent>("HdrEffectComponent")
-				.def("setEffectName", &HdrEffectComponent::setEffectName)
-			.def("getEffectName", &HdrEffectComponent::getEffectName)
-			.def("setSkyColor", &HdrEffectComponent::setSkyColor)
-			.def("getSkyColor", &HdrEffectComponent::getSkyColor)
-			.def("setUpperHemisphere", &HdrEffectComponent::setUpperHemisphere)
-			.def("getUpperHemisphere", &HdrEffectComponent::getUpperHemisphere)
-			.def("setLowerHemisphere", &HdrEffectComponent::setLowerHemisphere)
-			.def("getLowerHemisphere", &HdrEffectComponent::getLowerHemisphere)
-			.def("setSunPower", &HdrEffectComponent::setSunPower)
-			.def("getSunPower", &HdrEffectComponent::getSunPower)
-			.def("setExposure", &HdrEffectComponent::setExposure)
-			.def("getExposure", &HdrEffectComponent::getExposure)
-			.def("setMinAutoExposure", &HdrEffectComponent::setMinAutoExposure)
-			.def("getMinAutoExposure", &HdrEffectComponent::getMinAutoExposure)
-			.def("setMaxAutoExposure", &HdrEffectComponent::setMaxAutoExposure)
-			.def("getMaxAutoExposure", &HdrEffectComponent::getMaxAutoExposure)
-			.def("setBloom", &HdrEffectComponent::setBloom)
-			.def("getBloom", &HdrEffectComponent::getBloom)
-			.def("setEnvMapScale", &HdrEffectComponent::setEnvMapScale)
-			.def("getEnvMapScale", &HdrEffectComponent::getEnvMapScale)
-			];
-
-		AddClassToCollection("HdrEffectComponent", "class inherits GameObjectComponent", HdrEffectComponent::getStaticInfoText());
-		// AddClassToCollection("HdrEffectComponent", "String getClassName()", "Gets the class name of this component as string.");
-		AddClassToCollection("HdrEffectComponent", "void setEffectName(string effectName)", "Sets the hdr effect name. Possible values are: "
-			"'Bright, sunny day', 'Scary Night', 'Average, slightly hazy day', 'Heavy overcast day', 'Gibbous moon night', 'JJ Abrams style', 'Custom'"
-			"Note: If any value is manipulated manually, the effect name will be set to 'Custom'.");
-		AddClassToCollection("HdrEffectComponent", "string getEffectName()", "Gets currently set effect name. Possible values are : "
-			"'Bright, sunny day', 'Scary Night', 'Average, slightly hazy day', 'Heavy overcast day', 'Gibbous moon night', 'JJ Abrams style', 'Custom'"
-			"Note: If any value is manipulated manually, the effect name will be set to 'Custom'.");
-
-		AddClassToCollection("HdrEffectComponent", "void setSkyColor(Vector3 skyColor)", "Sets sky color.");
-		AddClassToCollection("HdrEffectComponent", "Vector3 getSkyColor()", "Gets the sky color.");
-		AddClassToCollection("HdrEffectComponent", "void setUpperHemisphere(Vector3 upperHemisphere)", "Sets the ambient color when the surface normal is close to hemisphereDir.");
-		AddClassToCollection("HdrEffectComponent", "Vector3 getUpperHemisphere()", "Gets the upper hemisphere color.");
-		AddClassToCollection("HdrEffectComponent", "void setLowerHemisphere(Vector3 lowerHemisphere)", "Sets the ambient color when the surface normal is pointing away from hemisphereDir.");
-		AddClassToCollection("HdrEffectComponent", "Vector3 getLowerHemisphere()", "Gets the sky color.");
-		AddClassToCollection("HdrEffectComponent", "void setSunPower(float sunPower)", "Sets the sun power scale. Note: This is applied on the 'SunLight'.");
-		AddClassToCollection("HdrEffectComponent", "float getSunPower()", "Gets the sun power scale.");
-		AddClassToCollection("HdrEffectComponent", "void setExposure(float exposure)", "Modifies the HDR Materials for the new exposure parameters. "
-			"By default the HDR implementation will try to auto adjust the exposure based on the scene's average luminance. "
-			"If left unbounded, even the darkest scenes can look well lit and the brigthest scenes appear too normal. "
-			"These parameters are useful to prevent the auto exposure from jumping too much from one extreme to the otherand provide "
-			"a consistent experience within the same lighting conditions. (e.g.you may want to change the params when going from indoors to outdoors)"
-			"The smaller the gap between minAutoExposure & maxAutoExposure, the less the auto exposure tries to auto adjust to the scene's lighting conditions. "
-			"The first value is exposure. Valid range is [-4.9; 4.9]. Low values will make the picture darker. Higher values will make the picture brighter.");
-		AddClassToCollection("HdrEffectComponent", "float getExposure()", "Gets the exposure.");
-		AddClassToCollection("HdrEffectComponent", "void setMinAutoExposure(float minAutoExposure)", "Sets the min auto exposure. Valid range is [-4.9; 4.9]. Must be minAutoExposure <= maxAutoExposure Controls how much auto exposure darkens a bright scene. "
-			"To prevent that looking at a very bright object makes the rest of the scene really dark, use higher values.");
-		AddClassToCollection("HdrEffectComponent", "float getMinAutoExposure()", "Gets the min auto exposure.");
-		AddClassToCollection("HdrEffectComponent", "void setMaxAutoExposure(float maxAutoExposure)", "Sets max auto exposure. Valid range is [-4.9; 4.9]. Must be minAutoExposure <= maxAutoExposure Controls how much auto exposure brightens a dark scene. "
-			"To prevent that looking at a very dark object makes the rest of the scene really bright, use lower values.");
-		AddClassToCollection("HdrEffectComponent", "float getMaxAutoExposure()", "Gets max auto exposure.");
-		AddClassToCollection("HdrEffectComponent", "void setBloom(float bloom)", "Sets the bloom intensity. Scale is in lumens / 1024. Valid range is [0.01; 4.9].");
-		AddClassToCollection("HdrEffectComponent", "float getBloom()", "Gets bloom intensity.");
-		AddClassToCollection("HdrEffectComponent", "void setEnvMapScale(float envMapScale)", "Sets enivornmental scale. Its a global scale that applies to all environment maps (for relevant Hlms implementations, "
-			"like PBS). The value will be stored in upperHemisphere.a. Use 1.0 to disable.");
-		AddClassToCollection("HdrEffectComponent", "float getEnvMapScale()", "Gets the environmental map scale.");
 	}
 
 	void bindDatablockComponent(lua_State* lua)

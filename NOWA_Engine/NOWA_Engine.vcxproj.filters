@@ -652,9 +652,6 @@
     <ClInclude Include="modules\GpuParticlesModule.h">
       <Filter>modules</Filter>
     </ClInclude>
-    <ClInclude Include="gameobject\HdrEffectComponent.h">
-      <Filter>gameobject</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\NOWA.ico">
@@ -1220,9 +1217,6 @@
     </ClCompile>
     <ClCompile Include="modules\GpuParticlesModule.cpp">
       <Filter>modules</Filter>
-    </ClCompile>
-    <ClCompile Include="gameobject\HdrEffectComponent.cpp">
-      <Filter>gameobject</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
