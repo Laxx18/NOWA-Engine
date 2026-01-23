@@ -1,18 +1,24 @@
 // ============================================================================
 // UNDERWATER POST-PROCESS MATERIAL WITH DEPTH TEXTURE
-// For Ogre-Next Ocean - Improved version
+// For Ogre-Next Ocean - Improved version with depth-based effects
 // ============================================================================
 
+// ============================================================================
+// HLSL (DirectX 11/12)
+// ============================================================================
 fragment_program UnderwaterPost_HLSL hlsl
 {
-    source UnderwaterPost_ps.hlsl
+    source HLSL/UnderwaterPost_ps.hlsl
     target ps_5_0 ps_4_0
     entry_point main
 }
 
+// ============================================================================
+// GLSL (OpenGL 3.3+)
+// ============================================================================
 fragment_program UnderwaterPost_GLSL glsl
 {
-    source UnderwaterPost_ps.glsl
+    source GLSL/UnderwaterPost_ps.glsl
     default_params
     {
         param_named rt0 int 0
@@ -20,9 +26,12 @@ fragment_program UnderwaterPost_GLSL glsl
     }
 }
 
+// ============================================================================
+// GLSL ES (OpenGL ES 3.0 - Mobile)
+// ============================================================================
 fragment_program UnderwaterPost_GLSLES glsles
 {
-    source UnderwaterPost_ps.glsl
+    source GLSLES/UnderwaterPost_ps.glsl
     default_params
     {
         param_named rt0 int 0
@@ -30,9 +39,12 @@ fragment_program UnderwaterPost_GLSLES glsles
     }
 }
 
+// ============================================================================
+// Vulkan (uses GLSL with Vulkan extensions)
+// ============================================================================
 fragment_program UnderwaterPost_VK glslvk
 {
-    source UnderwaterPost_ps.glsl
+    source GLSL/UnderwaterPost_ps.glsl
     default_params
     {
         param_named rt0 int 0
@@ -40,12 +52,19 @@ fragment_program UnderwaterPost_VK glslvk
     }
 }
 
+// ============================================================================
+// Metal (macOS/iOS)
+// ============================================================================
 fragment_program UnderwaterPost_Metal metal
 {
-    source UnderwaterPost_ps.metal
+    source Metal/UnderwaterPost_ps.metal
+    entry_point main_metal
     shader_reflection_pair_hint Ogre/Compositor/Quad_vs
 }
 
+// ============================================================================
+// UNIFIED PROGRAM - Automatically selects correct shader for platform
+// ============================================================================
 fragment_program UnderwaterPost unified
 {
     delegate UnderwaterPost_GLSL
@@ -61,47 +80,47 @@ fragment_program UnderwaterPost unified
         // ====================================================================
         param_named underwaterFactor float 1.0
         param_named_auto timeSeconds time 0.5
-        
+
         // ====================================================================
         // WATER COLORS - Tuned for realistic underwater look
         // ====================================================================
         param_named waterTint float3 0.1 0.35 0.45
         param_named deepWaterTint float3 0.02 0.1 0.2
-        
+
         // ====================================================================
         // FOG PARAMETERS - Key for depth perception
         // ====================================================================
         param_named fogDensity float 0.03
         param_named maxFogDepth float 80.0
-        
+
         // ====================================================================
         // LIGHT ABSORPTION
         // ====================================================================
         param_named absorptionScale float 0.015
-        
+
         // ====================================================================
         // GOD RAYS
         // ====================================================================
         param_named godRayStrength float 0.3
         param_named sunScreenPos float2 0.5 0.1
-        
+
         // ====================================================================
         // CAUSTICS - Only on nearby surfaces
         // ====================================================================
         param_named causticStrength float 0.15
         param_named maxCausticDepth float 20.0
-        
+
         // ====================================================================
         // PARTICLES
         // ====================================================================
         param_named particleStrength float 0.25
         param_named maxParticleDepth float 50.0
-        
+
         // ====================================================================
         // BUBBLES
         // ====================================================================
         param_named bubbleStrength float 0.3
-        
+
         // ====================================================================
         // VISUAL EFFECTS
         // ====================================================================
@@ -110,7 +129,7 @@ fragment_program UnderwaterPost unified
         param_named saturation float 0.75
         param_named vignette float 1.5
         param_named chromaticAberration float 0.003
-        
+
         // ====================================================================
         // DEPTH RECONSTRUCTION (set from C++)
         // ====================================================================
@@ -119,6 +138,9 @@ fragment_program UnderwaterPost unified
     }
 }
 
+// ============================================================================
+// MAIN MATERIAL
+// ============================================================================
 material Ocean/UnderwaterPost
 {
     technique
@@ -138,33 +160,33 @@ material Ocean/UnderwaterPost
                 // ============================================================
                 // ACTIVE PRESET: BALANCED UNDERWATER
                 // ============================================================
-                
+
                 // Water colors - cyan/teal tones
                 param_named waterTint float3 0.1 0.35 0.45
                 param_named deepWaterTint float3 0.02 0.1 0.2
-                
+
                 // Fog - visible depth fog effect
                 param_named fogDensity float 0.3
                 param_named maxFogDepth float 80.0
-                
+
                 // Light absorption
                 param_named absorptionScale float 0.015
-                
+
                 // God rays - subtle volumetric light
                 param_named godRayStrength float 0.3
                 param_named sunScreenPos float2 0.5 0.1
-                
+
                 // Caustics - only on close surfaces
                 param_named causticStrength float 0.15
                 param_named maxCausticDepth float 20.0
-                
+
                 // Particles - floating debris
                 param_named particleStrength float 0.25
                 param_named maxParticleDepth float 50.0
-                
+
                 // Bubbles - rising from bottom
                 param_named bubbleStrength float 0.3
-                
+
                 // Visual effects
                 param_named distortion float 0.015
                 param_named contrast float 1.1
@@ -179,7 +201,7 @@ material Ocean/UnderwaterPost
                 tex_address_mode clamp
                 filtering bilinear
             }
-            
+
             // Depth texture
             texture_unit depthTexture
             {
