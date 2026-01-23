@@ -757,7 +757,13 @@ namespace NOWA
 		*/
 		HlmsBaseListenerContainer* getBaseListenerContainer(void) const;
 
-		void refreshHlms(bool useFog, bool useWind, bool useTerra, bool useOcean);
+		/**
+		* @brief		Sets up the HLMS system. If called for the first time, registers all HLMS types.
+		*				Then reloads PBS library with appropriate piece files (Terra, Ocean, and optionally Fog).
+		*				Call this at engine startup and when fog state changes.
+		* @param[in]	useFog	Whether to include fog piece files in PBS library
+		*/
+		void setupHlms(bool useFog = false);
 
 		void setTightMemoryBudget(void);
 

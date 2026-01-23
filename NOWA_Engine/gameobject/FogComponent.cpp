@@ -101,7 +101,7 @@ namespace NOWA
 		{
 			if (nullptr == this->fogListener)
 			{
-				Core::getSingletonPtr()->refreshHlms(true, true, true, true);
+				Core::getSingletonPtr()->setupHlms(true);
 
 				this->fogListener = new HlmsFogListener();
 				Core::getSingletonPtr()->getBaseListenerContainer()->addConcreteListener(this->fogListener);
@@ -131,7 +131,7 @@ namespace NOWA
 			Core::getSingletonPtr()->getBaseListenerContainer()->removeConcreteListener(this->fogListener);
 			this->fogListener = nullptr;
 
-			Core::getSingletonPtr()->refreshHlms(false, true, true, true);
+			Core::getSingletonPtr()->setupHlms(false);
 		}
 	}
 

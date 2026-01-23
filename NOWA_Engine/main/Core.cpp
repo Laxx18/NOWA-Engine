@@ -712,7 +712,7 @@ namespace NOWA
 		Ogre::SceneManager* dummySceneManager = this->root->createSceneManager(Ogre::ST_GENERIC, 1, "DummyScene");
 		Ogre::Camera* dummyCamera = dummySceneManager->createCamera("DummyCamera");
 
-		this->registerHlms();
+		this->setupHlms(false);
 
 		// vsync on off at runtime: http://www.ogre3d.org/forums/viewtopic.php?f=2&t=61531
 
@@ -1638,13 +1638,7 @@ namespace NOWA
 
 			hlmsTerra = OGRE_NEW Ogre::HlmsTerra(archiveTerra, &archiveTerraLibraryFolders);
 			hlmsManager->registerHlms(hlmsTerra, Ogre::HLMS_USER3);
-
-			// Add Terra's piece files to PBS
-			Ogre::Hlms* hlmsPbs = hlmsManager->getHlms(Ogre::HLMS_PBS);
-			Ogre::Archive* archivePbs = hlmsPbs->getDataFolder();
-			Ogre::ArchiveVec libraryPbs = hlmsPbs->getPiecesLibraryAsArchiveVec();
-			libraryPbs.push_back(archiveManager.load(dataFolder + "Hlms/Terra/" + shaderSyntax + "/PbsTerraShadows", "FileSystem", true));
-			hlmsPbs->reloadFrom(archivePbs, &libraryPbs);
+			// Note: Terra piece files are added to PBS in setupHlms()
 		}
 
 		// Ocean
@@ -1662,15 +1656,9 @@ namespace NOWA
 				libraries.push_back(archiveManager.load(dataFolder + path, "FileSystem", true));
 			}
 
-			// In your initialization code where you create HlmsOcean:
 			hlmsOcean = OGRE_NEW Ogre::HlmsOcean(archiveOcean, &libraries);
 			hlmsManager->registerHlms(hlmsOcean, Ogre::HLMS_USER1);
-
-			Ogre::Hlms* hlmsPbs = hlmsManager->getHlms(Ogre::HLMS_PBS);
-			Ogre::Archive* archivePbs = hlmsPbs->getDataFolder();
-			Ogre::ArchiveVec libraryPbs = hlmsPbs->getPiecesLibraryAsArchiveVec();
-			libraryPbs.push_back(archiveManager.load(dataFolder + "Hlms/Ocean/" + shaderSyntax, "FileSystem", true));
-			hlmsPbs->reloadFrom(archivePbs, &libraryPbs);
+			// Note: Ocean piece files are added to PBS in setupHlms()
 		}
 
 		// HlmsWind
@@ -1728,8 +1716,20 @@ namespace NOWA
 		this->loadHlmsDiskCache();
 	}
 
-	void Core::refreshHlms(bool useFog, bool useWind, bool useTerra, bool useOcean)
+	void Core::setupHlms(bool useFog)
 	{
+		Ogre::HlmsManager* hlmsManager = Ogre::Root::getSingletonPtr()->getHlmsManager();
+
+		// Check if HLMS is already registered (first-time setup vs. refresh)
+		bool alreadyRegistered = (hlmsManager->getHlms(Ogre::HLMS_PBS) != nullptr);
+
+		if (!alreadyRegistered)
+		{
+			// First time - do full HLMS registration
+			this->registerHlms();
+		}
+
+		// Now reload PBS library with all needed piece files
 		Ogre::String dataFolder = "../../media/";
 		Ogre::RenderSystem* renderSystem = this->root->getRenderSystem();
 
@@ -1738,7 +1738,7 @@ namespace NOWA
 		{
 			shaderSyntax = "GLSLES";
 		}
-		if (renderSystem->getName() == "Direct3D11 Rendering Subsystem")
+		else if (renderSystem->getName() == "Direct3D11 Rendering Subsystem")
 		{
 			shaderSyntax = "HLSL";
 		}
@@ -1747,129 +1747,37 @@ namespace NOWA
 			shaderSyntax = "Metal";
 		}
 
-
-		Ogre::HlmsOcean* hlmsOcean = nullptr;
-
-		Ogre::HlmsManager* hlmsManager = Ogre::Root::getSingletonPtr()->getHlmsManager();
-
-		//For retrieval of the paths to the different folders needed
-		Ogre::String mainFolderPath;
-		Ogre::StringVector libraryFoldersPaths;
-		Ogre::StringVector::const_iterator libraryFolderPathIt;
-		Ogre::StringVector::const_iterator libraryFolderPathEn;
-
 		Ogre::ArchiveManager& archiveManager = Ogre::ArchiveManager::getSingleton();
 
-		// HlmsPbs
+		// Get PBS and its data folder
+		Ogre::Hlms* hlmsPbs = hlmsManager->getHlms(Ogre::HLMS_PBS);
+		Ogre::Archive* archivePbs = hlmsPbs->getDataFolder();
+
+		// Build library with default PBS paths
+		Ogre::String mainFolderPath;
+		Ogre::StringVector libraryFoldersPaths;
+		Ogre::HlmsPbs::getDefaultPaths(mainFolderPath, libraryFoldersPaths);
+
+		Ogre::ArchiveVec library;
+		for (const auto& path : libraryFoldersPaths)
 		{
-			Ogre::HlmsPbs::getDefaultPaths(mainFolderPath, libraryFoldersPaths);
-			Ogre::Archive* archivePbs = archiveManager.load(dataFolder + mainFolderPath, "FileSystem", true);
-
-			//Get the library archive(s)
-			Ogre::ArchiveVec archivePbsLibraryFolders;
-			libraryFolderPathIt = libraryFoldersPaths.begin();
-			libraryFolderPathEn = libraryFoldersPaths.end();
-			while (libraryFolderPathIt != libraryFolderPathEn)
-			{
-				Ogre::Archive *archiveLibrary = archiveManager.load(dataFolder + *libraryFolderPathIt, "FileSystem", true);
-				archivePbsLibraryFolders.push_back(archiveLibrary);
-				++libraryFolderPathIt;
-			}
-
-			if (true == useFog)
-			{
-				Ogre::Archive* archiveFog = archiveManager.load(dataFolder + "Hlms/Fog/Any", "FileSystem", true);
-				archivePbsLibraryFolders.push_back(archiveFog);
-			}
-			Ogre::Hlms* hlmsPbs = hlmsManager->getHlms(Ogre::HLMS_PBS);
-			hlmsPbs->reloadFrom(archivePbs, &archivePbsLibraryFolders);
+			library.push_back(archiveManager.load(dataFolder + path, "FileSystem", true));
 		}
 
-		// HlmsTerra
-		if (useTerra)
+		// Always add Terra shadows piece files (Terra is always registered)
+		library.push_back(archiveManager.load(dataFolder + "Hlms/Terra/" + shaderSyntax + "/PbsTerraShadows", "FileSystem", true));
+
+		// Always add Ocean piece files (Ocean is always registered)
+		library.push_back(archiveManager.load(dataFolder + "Hlms/Ocean/" + shaderSyntax, "FileSystem", true));
+
+		// Conditionally add Fog piece files
+		if (useFog)
 		{
-			// Note: Terra uses HLMS_USER3
-
-			//Get the path to all the subdirectories used by HlmsTerra
-			Ogre::HlmsTerra::getDefaultPaths(mainFolderPath, libraryFoldersPaths);
-
-			Ogre::Archive* archiveTerra = archiveManager.load(dataFolder + mainFolderPath, "FileSystem", true);
-
-			Ogre::ArchiveVec archiveTerraLibraryFolders;
-			libraryFolderPathIt = libraryFoldersPaths.begin();
-			libraryFolderPathEn = libraryFoldersPaths.end();
-			while (libraryFolderPathIt != libraryFolderPathEn)
-			{
-				Ogre::Archive* archiveLibrary = archiveManager.load(dataFolder + *libraryFolderPathIt, "FileSystem", true);
-				archiveTerraLibraryFolders.push_back(archiveLibrary);
-				++libraryFolderPathIt;
-			}
-
-			//Add Terra's piece files that customize the PBS implementation.
-			//These pieces are coded so that they will be activated when
-			//we set the HlmsPbsTerraShadows listener and there's an active Terra
-			//(see Tutorial_TerrainGameState::createScene01)
-			Ogre::Hlms* hlmsPbs = hlmsManager->getHlms(Ogre::HLMS_PBS);
-			Ogre::Archive* archivePbs = hlmsPbs->getDataFolder();
-			Ogre::ArchiveVec libraryPbs = hlmsPbs->getPiecesLibraryAsArchiveVec();
-			libraryPbs.push_back(archiveManager.load(dataFolder + "Hlms/Terra/" + shaderSyntax + "/PbsTerraShadows", "FileSystem", true));
-			hlmsPbs->reloadFrom(archivePbs, &libraryPbs);
+			library.push_back(archiveManager.load(dataFolder + "Hlms/Fog/Any", "FileSystem", true));
 		}
 
-		// HlmsWind
-		if (true == useWind)
-		{
-			// Note: HlmsWind uses HLMS_USER0
-			HlmsWind::getDefaultPaths(mainFolderPath, libraryFoldersPaths);
-			
-			Ogre::ArchiveVec archive;
- 
-			for (Ogre::String str : libraryFoldersPaths)
-			{
-				Ogre::Archive* archiveLibrary = Ogre::ArchiveManager::getSingleton().load(dataFolder + str, "FileSystem", true);
-				archive.push_back(archiveLibrary);
-			}
- 
-			Ogre::Archive* archivePbs = Ogre::ArchiveManager::getSingleton().load(dataFolder + mainFolderPath, "FileSystem", true);
-			Ogre::Hlms* hlmsPbs = hlmsManager->getHlms(Ogre::HLMS_PBS);
-			hlmsPbs->reloadFrom(archivePbs, &archive);
-		}
-
-		// Ocean
-		if (true == useOcean)
-		{
-			Ogre::Archive* archiveOcean =
-				archiveManager.load(
-					dataFolder + "Hlms/Ocean/GLSL", "FileSystem", true);
-
-			// IMPORTANT: build the library list similar to PBS/Terra,
-			// and then add Ocean's Custom folder.
-			Ogre::ArchiveVec libraryOcean;
-
-			// These are typically required by most HLMS implementations:
-			// (If your Ocean shaders include common/pbs pieces, keep these.
-			//  If not, you can remove them — but the author setup usually expects them.)
-			libraryOcean.push_back(archiveManager.load(
-				dataFolder + "Hlms/Common/GLSL", "FileSystem", true));
-			libraryOcean.push_back(archiveManager.load(
-				dataFolder + "Hlms/Common/Any", "FileSystem", true));
-			libraryOcean.push_back(archiveManager.load(
-				dataFolder + "Hlms/Pbs/GLSL", "FileSystem", true));
-			libraryOcean.push_back(archiveManager.load(
-				dataFolder + "Hlms/Pbs/Any", "FileSystem", true));
-
-			// Author explicitly adds this:
-			Ogre::Archive* archiveLibraryCustom =
-				archiveManager.load(
-					dataFolder + "Hlms/Ocean/GLSL/Custom", "FileSystem", true);
-			libraryOcean.push_back(archiveLibraryCustom);
-
-			hlmsOcean = OGRE_NEW Ogre::HlmsOcean(archiveOcean, &libraryOcean);
-			hlmsManager->registerHlms(hlmsOcean);
-
-			// optional, but consistent with your other hlms:
-			hlmsOcean->setDebugOutputPath(false, false);
-		}
+		// Reload PBS with the complete library
+		hlmsPbs->reloadFrom(archivePbs, &library);
 	}
 
 	void Core::initMyGui(Ogre::SceneManager* sceneManager, Ogre::Camera* camera, const Ogre::String& logName)
