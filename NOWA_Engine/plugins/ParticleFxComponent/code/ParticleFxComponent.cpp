@@ -49,7 +49,7 @@ namespace NOWA
 		// Activated variable is set to false again, when particle has played and repeat is off, so tell it the gui that it must be refreshed
 		this->activated->addUserData(GameObject::AttrActionNeedRefresh());
 		this->particleInitialPlayTime->setDescription("The particle play time in milliseconds, if set to 0, the particle effect will not stop automatically.");
-		this->blendingMethod->setListSelectedValue("Alpha Hashing + A2C");
+		this->blendingMethod->setListSelectedValue("Alpha Blending");
 		this->blendingMethod->setDescription("Alpha Hashing: Fast, no sorting needed. Alpha Hashing + A2C: Best quality with MSAA. Alpha Blending: Traditional transparency.");
 	}
 
@@ -347,6 +347,17 @@ namespace NOWA
 		// Refresh the particle names list
 		this->gatherParticleNames();
 
+		Ogre::ParticleSystemManager2* particleManager = this->gameObjectPtr->getSceneManager()->getParticleSystemManager2();
+
+		// Prevents crash with to many particles:
+		// primStart + primCount must be <= 288
+		
+		// Max particles per system (NOT total systems!)
+		particleManager->setHighestPossibleQuota(
+			512,    // 16-bit index buffer quota
+			0       // 32-bit not needed unless you go crazy
+		);
+
 		if (true == this->particleTemplateName->getListSelectedValue().empty())
 		{
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ParticleFxComponent] Warning: No particle template selected for game object: " + this->gameObjectPtr->getName());
@@ -357,7 +368,7 @@ namespace NOWA
 		this->gameObjectPtr->setDynamic(true);
 		this->gameObjectPtr->getAttribute(GameObject::AttrDynamic())->setVisible(false);
 
-		this->createParticleEffect();
+		// this->createParticleEffect();
 
 		return true;
 	}
@@ -524,7 +535,8 @@ namespace NOWA
 		GameObjectComponent::disconnect();
 
 		// Stop the particle effect when disconnecting (like ParticleUniverseComponent)
-		this->stopParticleEffect();
+		// this->stopParticleEffect();
+		this->destroyParticleEffect();
 
 		this->activated->setValue(this->oldActivated);
 		this->particlePlayTime = this->particleInitialPlayTime->getReal();
@@ -845,12 +857,7 @@ namespace NOWA
 
 		if (nullptr != this->particleNode)
 		{
-			auto node = this->particleNode;
-			auto scale = particleScale;
-			ENQUEUE_RENDER_COMMAND_MULTI("ParticleFxComponent::setParticleScale", _2(node, scale),
-				{
-					node->setScale(scale);
-				});
+			NOWA::GraphicsModule::getInstance()->updateNodeScale(this->particleNode, particleScale);
 		}
 	}
 
@@ -945,7 +952,7 @@ namespace NOWA
 		}
 
 		auto particleNode = this->particleNode;
-		ENQUEUE_RENDER_COMMAND_MULTI("ParticleFxComponent::startParticleEffect", _1(particleNode),
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ParticleFxComponent::startParticleEffect", _1(particleNode),
 			{
 				if (particleNode)
 				{
@@ -964,7 +971,7 @@ namespace NOWA
 		}
 
 		auto particleNode = this->particleNode;
-		ENQUEUE_RENDER_COMMAND_MULTI("ParticleFxComponent::stopParticleEffect", _1(particleNode),
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ParticleFxComponent::stopParticleEffect", _1(particleNode),
 			{
 				if (particleNode)
 				{
@@ -1033,7 +1040,7 @@ namespace NOWA
 
 			ParticleBlendingMethod::ParticleBlendingMethod currentMethod = this->getBlendingMethod();
 
-			ENQUEUE_RENDER_COMMAND_MULTI("ParticleFxComponent::applyBlendingMethod", _2(datablock, currentMethod),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ParticleFxComponent::applyBlendingMethod", _2(datablock, currentMethod),
 				{
 					if (currentMethod == ParticleBlendingMethod::AlphaHashing ||
 						currentMethod == ParticleBlendingMethod::AlphaHashingA2C)
@@ -1091,45 +1098,41 @@ namespace NOWA
 	void ParticleFxComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
 	{
 		module(lua)
-			[
-				class_<ParticleFxComponent, GameObjectComponent>("ParticleFxComponent")
-					.def("setActivated", &ParticleFxComponent::setActivated)
-					.def("isActivated", &ParticleFxComponent::isActivated)
-					.def("setParticleTemplateName", &ParticleFxComponent::setParticleTemplateName)
-					.def("getParticleTemplateName", &ParticleFxComponent::getParticleTemplateName)
-					.def("setRepeat", &ParticleFxComponent::setRepeat)
-					.def("getRepeat", &ParticleFxComponent::getRepeat)
-					.def("setParticlePlayTimeMS", &ParticleFxComponent::setParticlePlayTimeMS)
-					.def("getParticlePlayTimeMS", &ParticleFxComponent::getParticlePlayTimeMS)
-					.def("setParticlePlaySpeed", &ParticleFxComponent::setParticlePlaySpeed)
-					.def("getParticlePlaySpeed", &ParticleFxComponent::getParticlePlaySpeed)
-					.def("setParticleOffsetPosition", &ParticleFxComponent::setParticleOffsetPosition)
-					.def("getParticleOffsetPosition", &ParticleFxComponent::getParticleOffsetPosition)
-					.def("setParticleOffsetOrientation", &ParticleFxComponent::setParticleOffsetOrientation)
-					.def("getParticleOffsetOrientation", &ParticleFxComponent::getParticleOffsetOrientation)
-					.def("setParticleScale", &ParticleFxComponent::setParticleScale)
-					.def("getParticleScale", &ParticleFxComponent::getParticleScale)
-					.def("isPlaying", &ParticleFxComponent::isPlaying)
-					.def("setGlobalPosition", &ParticleFxComponent::setGlobalPosition)
-					.def("setGlobalOrientation", &ParticleFxComponent::setGlobalOrientation)
-					.def("getNumActiveParticles", &ParticleFxComponent::getNumActiveParticles)
-					.def("getParticleQuota", &ParticleFxComponent::getParticleQuota)
-					.def("getNumEmitters", &ParticleFxComponent::getNumEmitters)
-					.def("getNumAffectors", &ParticleFxComponent::getNumAffectors)
-					.def("setBlendingMethod", &ParticleFxComponent::setBlendingMethod)
-					.def("getBlendingMethod", &ParticleFxComponent::getBlendingMethod)
-			];
+		[
+			class_<ParticleFxComponent, GameObjectComponent>("ParticleFxComponent")
+			.def("setActivated", &ParticleFxComponent::setActivated)
+			.def("isActivated", &ParticleFxComponent::isActivated)
+			.def("setParticleTemplateName", &ParticleFxComponent::setParticleTemplateName)
+			.def("getParticleTemplateName", &ParticleFxComponent::getParticleTemplateName)
+			.def("setRepeat", &ParticleFxComponent::setRepeat)
+			.def("getRepeat", &ParticleFxComponent::getRepeat)
+			.def("setParticlePlayTimeMS", &ParticleFxComponent::setParticlePlayTimeMS)
+			.def("getParticlePlayTimeMS", &ParticleFxComponent::getParticlePlayTimeMS)
+			.def("setParticlePlaySpeed", &ParticleFxComponent::setParticlePlaySpeed)
+			.def("getParticlePlaySpeed", &ParticleFxComponent::getParticlePlaySpeed)
+			.def("setParticleOffsetPosition", &ParticleFxComponent::setParticleOffsetPosition)
+			.def("getParticleOffsetPosition", &ParticleFxComponent::getParticleOffsetPosition)
+			.def("setParticleOffsetOrientation", &ParticleFxComponent::setParticleOffsetOrientation)
+			.def("getParticleOffsetOrientation", &ParticleFxComponent::getParticleOffsetOrientation)
+			.def("setParticleScale", &ParticleFxComponent::setParticleScale)
+			.def("getParticleScale", &ParticleFxComponent::getParticleScale)
+			.def("isPlaying", &ParticleFxComponent::isPlaying)
+			.def("setGlobalPosition", &ParticleFxComponent::setGlobalPosition)
+			.def("setGlobalOrientation", &ParticleFxComponent::setGlobalOrientation)
+			.def("getNumActiveParticles", &ParticleFxComponent::getNumActiveParticles)
+			.def("getParticleQuota", &ParticleFxComponent::getParticleQuota)
+			.def("getNumEmitters", &ParticleFxComponent::getNumEmitters)
+			.def("getNumAffectors", &ParticleFxComponent::getNumAffectors)
+			.def("setBlendingMethod", &ParticleFxComponent::setBlendingMethod)
+			.def("getBlendingMethod", &ParticleFxComponent::getBlendingMethod)
 
-		// Register blending method enum for Lua
-		module(lua)
+			.enum_("ParticleBlendingMethod")
 			[
-				namespace_("ParticleBlendingMethod")
-					[
-						luabind::value("AlphaHashing", ParticleBlendingMethod::AlphaHashing),
-						luabind::value("AlphaHashingA2C", ParticleBlendingMethod::AlphaHashingA2C),
-						luabind::value("AlphaBlending", ParticleBlendingMethod::AlphaBlending)
-					]
-			];
+				luabind::value("AlphaHashing", ParticleBlendingMethod::AlphaHashing),
+				luabind::value("AlphaHashingA2C", ParticleBlendingMethod::AlphaHashingA2C),
+				luabind::value("AlphaBlending", ParticleBlendingMethod::AlphaBlending)
+			]
+		];
 
 		LuaScriptApi::getInstance()->addClassToCollection("ParticleFxComponent", "class inherits GameObjectComponent", ParticleFxComponent::getStaticInfoText());
 		LuaScriptApi::getInstance()->addClassToCollection("ParticleFxComponent", "void setActivated(bool activated)", "Sets whether this component should be activated or not.");
