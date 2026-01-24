@@ -44,9 +44,13 @@ namespace OgreNewt
         */
         //   OgreNewt::CollisionPtr importCollision(Ogre::DataStreamPtr& stream, OgreNewt::World* world);
         OgreNewt::CollisionPtr importCollision(Ogre::DataStream& stream, OgreNewt::World* world);
+    private:
+        void exportPrimitive(std::ostream& os, const CollisionPtr& col);
+
+        CollisionPtr importPrimitive(std::istream& is, World* world);
+
+        CollisionPtr importPLY(std::istream& is, World* world);
     };
-
-
 }   // end NAMESPACE OgreNewt
 
 #endif

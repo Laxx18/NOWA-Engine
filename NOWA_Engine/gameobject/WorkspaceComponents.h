@@ -373,6 +373,7 @@ namespace NOWA
 		Ogre::Terra* terra;
 		// Special: Only a OceanComponent can manipulate this value
 		bool useOcean;
+		bool canUseOcean;
 
 		/// True if the current workspace graph was built in "ocean underwater" mode.
 		/// We use this to rebuild the workspace only when the state toggles.

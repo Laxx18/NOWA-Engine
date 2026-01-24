@@ -7244,14 +7244,6 @@ return {
 				returns = "(CompositorEffectSharpenEdgesComponent)",
 				valuetype = "CompositorEffectSharpenEdgesComponent"
 			},
-			getHdrEffectComponent =
-			{
-				type = "function",
-				description = "Gets hdr effect component.",
-				args = "()",
-				returns = "(HdrEffectComponent)",
-				valuetype = "HdrEffectComponent"
-			},
 			getDatablockPbsComponent =
 			{
 				type = "function",
@@ -8283,14 +8275,6 @@ return {
 				args = "(string name)",
 				returns = "(CompositorEffectSharpenEdgesComponent)",
 				valuetype = "CompositorEffectSharpenEdgesComponent"
-			},
-			getHdrEffectComponentFromName =
-			{
-				type = "function",
-				description = "Gets hdr effect component.",
-				args = "(string name)",
-				returns = "(HdrEffectComponent)",
-				valuetype = "HdrEffectComponent"
 			},
 			getDatablockPbsComponentFromName =
 			{
@@ -9340,29 +9324,21 @@ return {
 				returns = "(FollowTargetComponent)",
 				valuetype = "FollowTargetComponent"
 			},
-			getGpuParticlesComponentFromIndex =
-			{
-				type = "function",
-				description = "Gets the component by the given occurence index, since a game object may this component maybe several times.",
-				args = "(number occurrenceIndex)",
-				returns = "(GpuParticlesComponent)",
-				valuetype = "GpuParticlesComponent"
-			},
-			getGpuParticlesComponent =
+			getHdrEffectComponent =
 			{
 				type = "function",
 				description = "Gets the component. This can be used if the game object this component just once.",
 				args = "()",
-				returns = "(GpuParticlesComponent)",
-				valuetype = "GpuParticlesComponent"
+				returns = "(HdrEffectComponent)",
+				valuetype = "HdrEffectComponent"
 			},
-			getGpuParticlesComponentFromName =
+			getHdrEffectComponentFromName =
 			{
 				type = "function",
 				description = "Gets the component from name.",
 				args = "(string name)",
-				returns = "(GpuParticlesComponent)",
-				valuetype = "GpuParticlesComponent"
+				returns = "(HdrEffectComponent)",
+				valuetype = "HdrEffectComponent"
 			},
 			getInputDeviceComponent =
 			{
@@ -9555,6 +9531,22 @@ return {
 				args = "(string name)",
 				returns = "(MyGuiSpriteComponent)",
 				valuetype = "MyGuiSpriteComponent"
+			},
+			getOceanEffectComponent =
+			{
+				type = "function",
+				description = "Gets the component. This can be used if the game object has this component just once.",
+				args = "()",
+				returns = "(OceanEffectComponent)",
+				valuetype = "OceanEffectComponent"
+			},
+			getOceanEffectComponentFromName =
+			{
+				type = "function",
+				description = "Gets the component from name.",
+				args = "(string name)",
+				returns = "(OceanEffectComponent)",
+				valuetype = "OceanEffectComponent"
 			},
 			getParticleFxComponentFromIndex =
 			{
@@ -9883,6 +9875,22 @@ return {
 				args = "(string name)",
 				returns = "(TransformHistoryComponent)",
 				valuetype = "TransformHistoryComponent"
+			},
+			getUnderwaterEffectComponent =
+			{
+				type = "function",
+				description = "Gets the component. This can be used if the game object has this component just once.",
+				args = "()",
+				returns = "(UnderwaterEffectComponent)",
+				valuetype = "UnderwaterEffectComponent"
+			},
+			getUnderwaterEffectComponentFromName =
+			{
+				type = "function",
+				description = "Gets the component from name.",
+				args = "(string name)",
+				returns = "(UnderwaterEffectComponent)",
+				valuetype = "UnderwaterEffectComponent"
 			}
 		}
 	},
@@ -10403,14 +10411,6 @@ return {
 				args = "(CompositorEffectSharpenEdgesComponent other)",
 				returns = "(CompositorEffectSharpenEdgesComponent)",
 				valuetype = "CompositorEffectSharpenEdgesComponent"
-			},
-			castHdrEffectComponent =
-			{
-				type = "function",
-				description = "Casts an incoming type from function for lua auto completion.",
-				args = "(HdrEffectComponent other)",
-				returns = "(HdrEffectComponent)",
-				valuetype = "HdrEffectComponent"
 			},
 			castDatablockPbsComponent =
 			{
@@ -11276,13 +11276,13 @@ return {
 				returns = "(FollowTargetComponent)",
 				valuetype = "FollowTargetComponent"
 			},
-			castGpuParticlesComponent =
+			castHdrEffectComponent =
 			{
 				type = "function",
 				description = "Casts an incoming type from function for lua auto completion.",
-				args = "(GpuParticlesComponent other)",
-				returns = "(GpuParticlesComponent)",
-				valuetype = "GpuParticlesComponent"
+				args = "(HdrEffectComponent other)",
+				returns = "(HdrEffectComponent)",
+				valuetype = "HdrEffectComponent"
 			},
 			castInputDeviceComponent =
 			{
@@ -11363,6 +11363,14 @@ return {
 				args = "(MyGuiSpriteComponent other)",
 				returns = "(MyGuiSpriteComponent)",
 				valuetype = "MyGuiSpriteComponent"
+			},
+			castOceanEffectComponent =
+			{
+				type = "function",
+				description = "Casts an incoming type from function for lua auto completion.",
+				args = "(OceanEffectComponent other)",
+				returns = "(OceanEffectComponent)",
+				valuetype = "OceanEffectComponent"
 			},
 			castParticleFxComponent =
 			{
@@ -11475,6 +11483,14 @@ return {
 				args = "(TransformHistoryComponent other)",
 				returns = "(TransformHistoryComponent)",
 				valuetype = "TransformHistoryComponent"
+			},
+			castUnderwaterEffectComponent =
+			{
+				type = "function",
+				description = "Casts an incoming type from function for lua auto completion.",
+				args = "(UnderwaterEffectComponent other)",
+				returns = "(UnderwaterEffectComponent)",
+				valuetype = "UnderwaterEffectComponent"
 			}
 		}
 	},
@@ -11781,159 +11797,6 @@ return {
 			{
 				type = "value"
 			},
-	},
-	GpuParticlesComponent =
-	{
-		type = "class",
-		description = "This component is a particle effect system, which runs on the gpu and is really performant.",
-		inherits = "GameObjectComponent",
-		childs = 
-		{
-			setActivated =
-			{
-				type = "method",
-				description = "Sets whether this component should be activated or not (Start the particle effect).",
-				args = "(boolean activated)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			isActivated =
-			{
-				type = "function",
-				description = "Gets whether this component is activated.",
-				args = "()",
-				returns = "(boolean)",
-				valuetype = "boolean"
-			},
-			setTemplateName =
-			{
-				type = "method",
-				description = "Sets the particle template name. The name must be recognized by the resource system, else the particle effect cannot be played.",
-				args = "(string particleTemplateName)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			getTemplateName =
-			{
-				type = "function",
-				description = "Gets currently used particle template name.",
-				args = "()",
-				returns = "(string)",
-				valuetype = "string"
-			},
-			setRepeat =
-			{
-				type = "method",
-				description = "Sets whether the current particle effect should be repeated when finished.",
-				args = "(boolean repeat)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			getRepeat =
-			{
-				type = "function",
-				description = "Gets whether the current particle effect will be repeated when finished.",
-				args = "()",
-				returns = "(boolean)",
-				valuetype = "boolean"
-			},
-			setPlayTimeMS =
-			{
-				type = "method",
-				description = "Sets particle play time in milliseconds, how long the particle effect should be played.",
-				args = "(number particlePlayTimeMS)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			getPlayTimeMS =
-			{
-				type = "function",
-				description = "Gets particle play time in milliseconds.",
-				args = "()",
-				returns = "(number)",
-				valuetype = "number"
-			},
-			setOffsetPosition =
-			{
-				type = "method",
-				description = "Sets offset position of the particle effect at which it should be played away from the game object.",
-				args = "(Vector3 offsetPosition)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			getOffsetPosition =
-			{
-				type = "function",
-				description = "Gets offset position of the particle effect.",
-				args = "()",
-				returns = "(Vector3)",
-				valuetype = "Vector3"
-			},
-			setOffsetOrientation =
-			{
-				type = "method",
-				description = "Sets offset orientation (as vector3(degree, degree, degree)) of the particle effect at which it should be played away from the game object.",
-				args = "(Vector3 orientation)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			setScale =
-			{
-				type = "method",
-				description = "Sets the scale (size) of the particle effect.",
-				args = "(Vector3 scale)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			getScale =
-			{
-				type = "function",
-				description = "Gets scale of the particle effect.",
-				args = "()",
-				returns = "(Vector3)",
-				valuetype = "Vector3"
-			},
-			setPlaySpeed =
-			{
-				type = "method",
-				description = "Sets particle play speed. E.g. 2 will play the particle at double speed.",
-				args = "(number playSpeed)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			getPlaySpeed =
-			{
-				type = "function",
-				description = "Gets particle play play speed.",
-				args = "()",
-				returns = "(number)",
-				valuetype = "number"
-			},
-			isPlaying =
-			{
-				type = "function",
-				description = "Gets whether the particle is playing. Note: This affects the value of @PlayTimeMS.",
-				args = "()",
-				returns = "(boolean)",
-				valuetype = "boolean"
-			},
-			setGlobalPosition =
-			{
-				type = "method",
-				description = "Sets a global play position for the particle.",
-				args = "(Vector3 globalPosition)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			setGlobalOrientation =
-			{
-				type = "method",
-				description = "Sets a global player orientation (as vector3(degree, degree, degree)) of the particle effect.",
-				args = "(Vector3 globalOrientation)",
-				returns = "(nil)",
-				valuetype = "nil"
-			}
-		}
 	},
 	HdrEffectComponent =
 	{
@@ -21154,6 +21017,319 @@ return {
 			}
 		}
 	},
+	OceanEffectComponent =
+	{
+		type = "class",
+		description = "Usage: Controls the OceanComponent with presets and manual tuning of waves/colors/roughness/foam etc. Requirements: This component can only be set on a GameObject with OceanComponent.",
+		inherits = "GameObjectComponent",
+		childs = 
+		{
+			setPresetName =
+			{
+				type = "method",
+				description = "Sets the ocean wave preset name. Possible values are: 'Calm Lake', 'Gentle Ocean', 'Choppy Water', 'Storm Sea', 'Big Swell', 'Fantasy Water', 'Custom'. Preset examples: Calm Lake: WavesIntensity=0.2 OceanWavesScale=1.0 ShaderWavesScale=1.0 WaveTimeScale=0.55 WaveFrequencyScale=0.65 WaveChaos=0.03; Gentle Ocean: WavesIntensity=0.55 OceanWavesScale=1.0 ShaderWavesScale=1.0 WaveTimeScale=1.0 WaveFrequencyScale=1.0 WaveChaos=0.10; Choppy Water: WavesIntensity=0.75 OceanWavesScale=0.85 ShaderWavesScale=1.15 WaveTimeScale=1.25 WaveFrequencyScale=1.45 WaveChaos=0.30; Storm Sea: WavesIntensity=1.35 OceanWavesScale=1.15 ShaderWavesScale=1.10 WaveTimeScale=1.35 WaveFrequencyScale=0.95 WaveChaos=0.45; Big Swell: WavesIntensity=1.10 OceanWavesScale=1.60 ShaderWavesScale=0.85 WaveTimeScale=0.75 WaveFrequencyScale=0.60 WaveChaos=0.12; Fantasy Water: WavesIntensity=1.60 OceanWavesScale=1.10 ShaderWavesScale=1.30 WaveTimeScale=2.10 WaveFrequencyScale=1.35 WaveChaos=0.65. Note: If any value is manipulated manually, the preset name will be set to 'Custom'.",
+				args = "(string presetName)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getPresetName =
+			{
+				type = "function",
+				description = "Gets currently set preset name.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			setDeepColour =
+			{
+				type = "method",
+				description = "Sets deep colour for the ocean.",
+				args = "(Vector3 deepColour)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getDeepColour =
+			{
+				type = "function",
+				description = "Gets deep colour.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			setShallowColour =
+			{
+				type = "method",
+				description = "Sets shallow colour for the ocean.",
+				args = "(Vector3 shallowColour)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getShallowColour =
+			{
+				type = "function",
+				description = "Gets shallow colour.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			setBrdf =
+			{
+				type = "method",
+				description = "Sets BRDF string forwarded to OceanComponent::setBrdf().",
+				args = "(string brdf)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getBrdf =
+			{
+				type = "function",
+				description = "Gets BRDF string.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			setShaderWavesScale =
+			{
+				type = "method",
+				description = "Sets shader-side waves scale (datablock waves scale).",
+				args = "(number wavesScale)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getShaderWavesScale =
+			{
+				type = "function",
+				description = "Gets shader-side waves scale.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setWavesIntensity =
+			{
+				type = "method",
+				description = "Sets waves intensity/amplitude.",
+				args = "(number intensity)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getWavesIntensity =
+			{
+				type = "function",
+				description = "Gets waves intensity.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setOceanWavesScale =
+			{
+				type = "method",
+				description = "Sets ocean waves scale (tiling/wave size).",
+				args = "(number wavesScale)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getOceanWavesScale =
+			{
+				type = "function",
+				description = "Gets ocean waves scale.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setUseSkirts =
+			{
+				type = "method",
+				description = "Sets whether skirts are used.",
+				args = "(boolean useSkirts)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getUseSkirts =
+			{
+				type = "function",
+				description = "Gets whether skirts are used.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			setWaveTimeScale =
+			{
+				type = "method",
+				description = "Sets wave time scale.",
+				args = "(number timeScale)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getWaveTimeScale =
+			{
+				type = "function",
+				description = "Gets wave time scale.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setWaveFrequencyScale =
+			{
+				type = "method",
+				description = "Sets wave frequency scale.",
+				args = "(number freqScale)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getWaveFrequencyScale =
+			{
+				type = "function",
+				description = "Gets wave frequency scale.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setWaveChaos =
+			{
+				type = "method",
+				description = "Sets wave chaos.",
+				args = "(number chaos)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getWaveChaos =
+			{
+				type = "function",
+				description = "Gets wave chaos.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setOceanSize =
+			{
+				type = "method",
+				description = "Sets ocean size.",
+				args = "(Vector2 size)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getOceanSize =
+			{
+				type = "function",
+				description = "Gets ocean size.",
+				args = "()",
+				returns = "(Vector2)",
+				valuetype = "Vector2"
+			},
+			setOceanCenter =
+			{
+				type = "method",
+				description = "Sets ocean center.",
+				args = "(Vector3 center)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getOceanCenter =
+			{
+				type = "function",
+				description = "Gets ocean center.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			setReflectionStrength =
+			{
+				type = "method",
+				description = "Sets reflection strength.",
+				args = "(number v)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getReflectionStrength =
+			{
+				type = "function",
+				description = "Gets reflection strength.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setBaseRoughness =
+			{
+				type = "method",
+				description = "Sets base roughness.",
+				args = "(number v)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getBaseRoughness =
+			{
+				type = "function",
+				description = "Gets base roughness.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setFoamRoughness =
+			{
+				type = "method",
+				description = "Sets foam roughness.",
+				args = "(number v)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getFoamRoughness =
+			{
+				type = "function",
+				description = "Gets foam roughness.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setAmbientReduction =
+			{
+				type = "method",
+				description = "Sets ambient reduction.",
+				args = "(number v)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getAmbientReduction =
+			{
+				type = "function",
+				description = "Gets ambient reduction.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setDiffuseScale =
+			{
+				type = "method",
+				description = "Sets diffuse scale.",
+				args = "(number v)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getDiffuseScale =
+			{
+				type = "function",
+				description = "Gets diffuse scale.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setFoamIntensity =
+			{
+				type = "method",
+				description = "Sets foam intensity.",
+				args = "(number v)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getFoamIntensity =
+			{
+				type = "function",
+				description = "Gets foam intensity.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			}
+		}
+	},
 	OgreALModule =
 	{
 		type = "singleton",
@@ -21422,7 +21598,7 @@ return {
 	ParticleFxComponent =
 	{
 		type = "class",
-		description = "Usage: My usage text.",
+		description = "Usage: This Component is for playing particle effects using the Ogre-next ParticleFX2 system. Select a particle template from the list (materials starting with 'Particle/'). Set play time to 0 for infinite duration.",
 		inherits = "GameObjectComponent",
 		childs = 
 		{
@@ -21441,6 +21617,142 @@ return {
 				args = "()",
 				returns = "(boolean)",
 				valuetype = "boolean"
+			},
+			setParticleTemplateName =
+			{
+				type = "method",
+				description = "Sets the particle template name (without 'Particle/' prefix).",
+				args = "(string templateName)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getParticleTemplateName =
+			{
+				type = "function",
+				description = "Gets the particle template name.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			setRepeat =
+			{
+				type = "method",
+				description = "Sets whether the particle effect should repeat.",
+				args = "(boolean repeat)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getRepeat =
+			{
+				type = "function",
+				description = "Gets whether the particle effect repeats.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			setParticlePlayTimeMS =
+			{
+				type = "method",
+				description = "Sets the particle play time in milliseconds (0 = infinite).",
+				args = "(number playTime)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getParticlePlayTimeMS =
+			{
+				type = "function",
+				description = "Gets the particle play time in milliseconds.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setParticlePlaySpeed =
+			{
+				type = "method",
+				description = "Sets the particle play speed multiplier (1.0 = normal).",
+				args = "(number playSpeed)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getParticlePlaySpeed =
+			{
+				type = "function",
+				description = "Gets the particle play speed multiplier.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setParticleOffsetPosition =
+			{
+				type = "method",
+				description = "Sets the offset position relative to the game object.",
+				args = "(Vector3 position)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getParticleOffsetPosition =
+			{
+				type = "function",
+				description = "Gets the offset position.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			setParticleOffsetOrientation =
+			{
+				type = "method",
+				description = "Sets the offset orientation in degrees.",
+				args = "(Vector3 orientation)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getParticleOffsetOrientation =
+			{
+				type = "function",
+				description = "Gets the offset orientation in degrees.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			setParticleScale =
+			{
+				type = "method",
+				description = "Sets the particle scale.",
+				args = "(Vector3 scale)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getParticleScale =
+			{
+				type = "function",
+				description = "Gets the particle scale.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			isPlaying =
+			{
+				type = "function",
+				description = "Checks if the particle effect is currently playing.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			setGlobalPosition =
+			{
+				type = "method",
+				description = "Sets the global world position for the particle effect.",
+				args = "(Vector3 position)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setGlobalOrientation =
+			{
+				type = "method",
+				description = "Sets the global orientation in degrees.",
+				args = "(Vector3 orientation)",
+				returns = "(nil)",
+				valuetype = "nil"
 			}
 		}
 	},
@@ -27008,6 +27320,383 @@ return {
 	{
 		type = "class",
 		description = "Generates a procedural mesh tube."
+	},
+	UnderwaterEffectComponent =
+	{
+		type = "class",
+		description = "Usage: Enables underwater post effect via material 'Ocean/UnderwaterPost' with several predefined presets (Clear Tropical, Murky, Deep Ocean, Shallow Reef, Stormy, Balanced, Custom). Requirements: This component must be placed on a GameObject with OceanComponent.",
+		inherits = "GameObjectComponent",
+		childs = 
+		{
+			setPresetName =
+			{
+				type = "method",
+				description = "Sets the underwater preset name. Possible values are: 'Balanced Default', 'Clear Tropical Water', 'Murky / Turbid Water', 'Deep Ocean', 'Shallow Reef', 'Stormy / Rough Water', 'Custom'. Note: If any value is manipulated manually, the preset name will be set to 'Custom'.",
+				args = "(string presetName)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getPresetName =
+			{
+				type = "function",
+				description = "Gets the currently set preset name.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			setWaterTint =
+			{
+				type = "method",
+				description = "Sets water tint color.",
+				args = "(Vector3 waterTint)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getWaterTint =
+			{
+				type = "function",
+				description = "Gets water tint color.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			setDeepWaterTint =
+			{
+				type = "method",
+				description = "Sets deep water tint color.",
+				args = "(Vector3 deepWaterTint)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getDeepWaterTint =
+			{
+				type = "function",
+				description = "Gets deep water tint color.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			setFogDensity =
+			{
+				type = "method",
+				description = "Sets fog density.",
+				args = "(number fogDensity)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getFogDensity =
+			{
+				type = "function",
+				description = "Gets fog density.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setFogStart =
+			{
+				type = "method",
+				description = "Sets fog start distance (if supported by shader).",
+				args = "(number fogStart)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getFogStart =
+			{
+				type = "function",
+				description = "Gets fog start.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setMaxFogDepth =
+			{
+				type = "method",
+				description = "Sets max fog depth.",
+				args = "(number maxFogDepth)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getMaxFogDepth =
+			{
+				type = "function",
+				description = "Gets max fog depth.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setAbsorptionScale =
+			{
+				type = "method",
+				description = "Sets absorption scale.",
+				args = "(number absorptionScale)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getAbsorptionScale =
+			{
+				type = "function",
+				description = "Gets absorption scale.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setGodRayStrength =
+			{
+				type = "method",
+				description = "Sets god ray strength.",
+				args = "(number godRayStrength)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getGodRayStrength =
+			{
+				type = "function",
+				description = "Gets god ray strength.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setGodRayDensity =
+			{
+				type = "method",
+				description = "Sets god ray density (if supported by shader).",
+				args = "(number godRayDensity)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getGodRayDensity =
+			{
+				type = "function",
+				description = "Gets god ray density.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setMaxGodRayDepth =
+			{
+				type = "method",
+				description = "Sets max god ray depth (if supported by shader).",
+				args = "(number maxGodRayDepth)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getMaxGodRayDepth =
+			{
+				type = "function",
+				description = "Gets max god ray depth.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setSunScreenPos =
+			{
+				type = "method",
+				description = "Sets sun screen position for god rays.",
+				args = "(Vector2 sunScreenPos)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getSunScreenPos =
+			{
+				type = "function",
+				description = "Gets sun screen position.",
+				args = "()",
+				returns = "(Vector2)",
+				valuetype = "Vector2"
+			},
+			setCausticStrength =
+			{
+				type = "method",
+				description = "Sets caustic strength.",
+				args = "(number causticStrength)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getCausticStrength =
+			{
+				type = "function",
+				description = "Gets caustic strength.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setMaxCausticDepth =
+			{
+				type = "method",
+				description = "Sets max caustic depth.",
+				args = "(number maxCausticDepth)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getMaxCausticDepth =
+			{
+				type = "function",
+				description = "Gets max caustic depth.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setParticleStrength =
+			{
+				type = "method",
+				description = "Sets particle strength.",
+				args = "(number particleStrength)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getParticleStrength =
+			{
+				type = "function",
+				description = "Gets particle strength.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setMaxParticleDepth =
+			{
+				type = "method",
+				description = "Sets max particle depth.",
+				args = "(number maxParticleDepth)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getMaxParticleDepth =
+			{
+				type = "function",
+				description = "Gets max particle depth.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setBubbleStrength =
+			{
+				type = "method",
+				description = "Sets bubble strength.",
+				args = "(number bubbleStrength)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getBubbleStrength =
+			{
+				type = "function",
+				description = "Gets bubble strength.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setScatterDensity =
+			{
+				type = "method",
+				description = "Sets scatter density (if supported by shader).",
+				args = "(number scatterDensity)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getScatterDensity =
+			{
+				type = "function",
+				description = "Gets scatter density.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setScatterColor =
+			{
+				type = "method",
+				description = "Sets scatter color (if supported by shader).",
+				args = "(Vector3 scatterColor)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getScatterColor =
+			{
+				type = "function",
+				description = "Gets scatter color.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			setDistortion =
+			{
+				type = "method",
+				description = "Sets distortion.",
+				args = "(number distortion)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getDistortion =
+			{
+				type = "function",
+				description = "Gets distortion.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setContrast =
+			{
+				type = "method",
+				description = "Sets contrast.",
+				args = "(number contrast)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getContrast =
+			{
+				type = "function",
+				description = "Gets contrast.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setSaturation =
+			{
+				type = "method",
+				description = "Sets saturation.",
+				args = "(number saturation)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getSaturation =
+			{
+				type = "function",
+				description = "Gets saturation.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setVignette =
+			{
+				type = "method",
+				description = "Sets vignette.",
+				args = "(number vignette)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getVignette =
+			{
+				type = "function",
+				description = "Gets vignette.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setChromaticAberration =
+			{
+				type = "method",
+				description = "Sets chromatic aberration.",
+				args = "(number chromaticAberration)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getChromaticAberration =
+			{
+				type = "function",
+				description = "Gets chromatic aberration.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			}
+		}
 	},
 	UnweldVerticesModifier =
 	{

@@ -1230,8 +1230,7 @@ namespace OgreNewt
 		{
 		}
 
-		HeightField::HeightField(const World* world, int width, int height, Ogre::Real* elevationMap,
-			Ogre::Real verticalScale, Ogre::Real horizontalScaleX, Ogre::Real horizontalScaleZ,
+		HeightField::HeightField(const World* world, int width, int height, Ogre::Real* elevationMap, Ogre::Real verticalScale, Ogre::Real horizontalScaleX, Ogre::Real horizontalScaleZ,
 			const Ogre::Vector3& position, const Ogre::Quaternion& orientation, unsigned int shapeID)
 			: Collision(world), m_faceCount(0), m_categoryId(shapeID)
 		{
@@ -1245,13 +1244,8 @@ namespace OgreNewt
 			}
 
 			// 1) Build ND4 heightfield (try inverted diagonals like the demo)
-			ndShapeHeightfield* heightfield = new ndShapeHeightfield(
-				ndInt32(width),
-				ndInt32(height),
-				ndShapeHeightfield::m_invertedDiagonals,
-				ndFloat32(horizontalScaleX),
-				ndFloat32(horizontalScaleZ)
-			);
+			ndShapeHeightfield* heightfield = new ndShapeHeightfield(ndInt32(width), ndInt32(height), 
+				ndShapeHeightfield::m_invertedDiagonals, ndFloat32(horizontalScaleX), ndFloat32(horizontalScaleZ));
 
 			// 2) Wrap in shape instance
 			m_shapeInstance = new ndShapeInstance(heightfield);

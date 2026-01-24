@@ -157,6 +157,7 @@ namespace NOWA
 		useTerra(false),
 		terra(nullptr),
 		useOcean(false),
+		canUseOcean(false),
 		oceanUnderwaterActive(false),
 		hlmsListener(nullptr),
 		hlmsWind(nullptr),
@@ -334,6 +335,9 @@ namespace NOWA
 		{
 			return true;
 		}
+
+		this->canUseOcean = this->useOcean;
+
 		ENQUEUE_RENDER_COMMAND("WorkspaceBaseComponent::connect",
 		{
 			if (nullptr != this->workspace)
@@ -361,6 +365,7 @@ namespace NOWA
 	{
 		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
 		{
+			this->canUseOcean = false;
 			if (nullptr != this->workspace)
 			{
 				Ogre::CompositorWorkspaceDef* workspaceDef = this->workspace->getCompositorManager()->getWorkspaceDefinitionNoThrow(this->workspaceName);
@@ -633,7 +638,7 @@ namespace NOWA
 
 			this->internalCreateCompositorNode();
 
-			if (true == this->useTerra || this->useOcean)
+			if (true == this->useTerra || true == this->canUseOcean)
 			{
 				unsigned char channelCount = 1;
 				if (true == this->canUseReflection)
@@ -742,15 +747,6 @@ namespace NOWA
 				textureManager->destroyTexture(this->cubemapTexture);
 				this->cubemapTexture = nullptr;
 			}
-#if 0
-			if (true == this->useOcean && this->hlmsManager)
-			{
-				Ogre::HlmsOcean* hlmsOcean =
-					dynamic_cast<Ogre::HlmsOcean*>(this->hlmsManager->getHlms(Ogre::HLMS_USER1));
-				if (hlmsOcean)
-					hlmsOcean->setEnvProbe(nullptr);
-			}
-#endif
 			if (nullptr != this->workspace)
 			{
 				if (nullptr != this->planarReflectionsWorkspaceListener)
@@ -758,7 +754,7 @@ namespace NOWA
 					this->workspace->removeListener(this->planarReflectionsWorkspaceListener);
 				}
 
-				if (true == this->useTerra || true == this->useOcean)
+				if (true == this->useTerra || true == this->canUseOcean)
 				{
 					unsigned short externalInputTextureId = 1;
 					if (true == this->canUseReflection)
@@ -1122,7 +1118,7 @@ namespace NOWA
 
 				// Switch workspace graph when the camera crosses the water line.
 				// We only rebuild when the state toggles to avoid heavy work every frame.
-				const bool underwaterNow = this->useOcean && this->oceanComponent && this->oceanComponent->isCameraUnderwater();
+				const bool underwaterNow = this->canUseOcean && this->oceanComponent && this->oceanComponent->isCameraUnderwater();
 				if (underwaterNow != this->oceanUnderwaterActive)
 				{
 					this->oceanUnderwaterActive = underwaterNow;
@@ -1173,7 +1169,7 @@ namespace NOWA
 			unsigned short channelGBufferNormals = 0;
 			unsigned short channelDepthTexture = 0;
 
-			bool oceanUnderwater = this->useOcean && this->oceanComponent && this->oceanComponent->isCameraUnderwater();
+			bool oceanUnderwater = this->canUseOcean && this->oceanComponent && this->oceanComponent->isCameraUnderwater();
 
 			if (true == this->useHdr->getBool())
 			{
@@ -1372,7 +1368,7 @@ namespace NOWA
 			this->msaaLevel = 1;
 		}
 
-		bool oceanUnderwater = this->useOcean && this->oceanComponent && this->oceanComponent->isCameraUnderwater();
+		bool oceanUnderwater = this->canUseOcean && this->oceanComponent && this->oceanComponent->isCameraUnderwater();
 
 		if (true == oceanUnderwater)
 		{
@@ -1787,7 +1783,7 @@ namespace NOWA
 	void WorkspaceBaseComponent::createUnderwaterNode(void)
 	{
 		// This node is only needed when an OceanComponent is active and the camera is underwater.
-		if (false == this->useOcean || nullptr == this->oceanComponent)
+		if (false == this->canUseOcean || nullptr == this->oceanComponent)
 			return;
 		if (false == this->oceanComponent->isCameraUnderwater())
 			return;
@@ -2572,7 +2568,7 @@ namespace NOWA
 		this->superSampling->setValue(superSampling);
 
 
-		this->oceanUnderwaterActive = this->useOcean && this->oceanComponent && this->oceanComponent->isCameraUnderwater();
+		this->oceanUnderwaterActive = this->canUseOcean && this->oceanComponent && this->oceanComponent->isCameraUnderwater();
 
 		this->createWorkspace();
 	}

@@ -29,6 +29,7 @@ namespace NOWA
 		particleNode(nullptr),
 		particlePlayTime(10000.0f),
 		oldActivated(true),
+		isEmitting(false),
 		activated(new Variant(ParticleFxComponent::AttrActivated(), true, this->attributes)),
 		particleTemplateName(new Variant(ParticleFxComponent::AttrParticleName(), std::vector<Ogre::String>(), this->attributes)),
 		repeat(new Variant(ParticleFxComponent::AttrRepeat(), false, this->attributes)),
@@ -322,37 +323,37 @@ namespace NOWA
 		if (nullptr != this->particleSystem)
 		{
 			GraphicsModule::RenderCommand renderCommand = [this]()
-			{
-				try
 				{
-					// Detach from scene node if attached
-					if (nullptr != this->particleNode && this->particleSystem->isAttached())
+					try
 					{
-						this->particleNode->detachObject(this->particleSystem);
+						// Detach from scene node if attached
+						if (nullptr != this->particleNode && this->particleSystem->isAttached())
+						{
+							this->particleNode->detachObject(this->particleSystem);
+						}
+
+						// Remove tagged resource
+						DeployResourceModule::getInstance()->removeResource(this->particleTemplateName->getListSelectedValue());
+
+						// Destroy the particle system through the scene manager
+						Ogre::SceneManager* sceneManager = this->gameObjectPtr->getSceneManager();
+						sceneManager->destroyParticleSystem2(this->particleSystem);
+
+						// Remove and destroy the scene node
+						if (nullptr != this->particleNode)
+						{
+							this->gameObjectPtr->getSceneNode()->removeAndDestroyChild(this->particleNode);
+						}
+
+						this->particleSystem = nullptr;
+						this->particleNode = nullptr;
 					}
-
-					// Remove tagged resource
-					DeployResourceModule::getInstance()->removeResource(this->particleTemplateName->getListSelectedValue());
-
-					// Destroy the particle system through the scene manager
-					Ogre::SceneManager* sceneManager = this->gameObjectPtr->getSceneManager();
-					sceneManager->destroyParticleSystem2(this->particleSystem);
-
-					// Remove and destroy the scene node
-					if (nullptr != this->particleNode)
+					catch (const Ogre::Exception& e)
 					{
-						this->gameObjectPtr->getSceneNode()->removeAndDestroyChild(this->particleNode);
+						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+							"[ParticleFxComponent] Exception destroying particle effect: " + e.getFullDescription());
 					}
-
-					this->particleSystem = nullptr;
-					this->particleNode = nullptr;
-				}
-				catch (const Ogre::Exception& e)
-				{
-					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-						"[ParticleFxComponent] Exception destroying particle effect: " + e.getFullDescription());
-				}
-			};
+				};
 			NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ParticleFxComponent::destroyParticleEffect");
 		}
 		this->particlePlayTime = this->particleInitialPlayTime->getReal();
@@ -369,13 +370,12 @@ namespace NOWA
 			if (true == this->activated->getBool() && nullptr != this->particleSystem)
 			{
 				this->particlePlayTime = this->particleInitialPlayTime->getReal();
-
-				//ENQUEUE_RENDER_COMMAND("ParticleFxComponent::connect",
-				//	{
-				//		// ParticleSystem2 doesn't have prepare/start like ParticleUniverse
-				//		// It's automatically active when attached to a scene node
-				//		// The system is controlled by enabling/disabling emitters
-				//	});
+				this->startParticleEffect();
+			}
+			else if (false == this->activated->getBool() && nullptr != this->particleNode)
+			{
+				// If not activated, make sure particle is hidden/stopped
+				this->stopParticleEffect();
 			}
 		}
 
@@ -385,6 +385,9 @@ namespace NOWA
 	bool ParticleFxComponent::disconnect(void)
 	{
 		GameObjectComponent::disconnect();
+
+		// Stop the particle effect when disconnecting (like ParticleUniverseComponent)
+		this->stopParticleEffect();
 
 		this->activated->setValue(this->oldActivated);
 		this->particlePlayTime = this->particleInitialPlayTime->getReal();
@@ -431,9 +434,9 @@ namespace NOWA
 				if (nullptr != camera)
 				{
 					auto closureFunction = [this, particleManager, camera](Ogre::Real renderDt)
-					{
-						particleManager->setCameraPosition(camera->getDerivedPosition());
-					};
+						{
+							particleManager->setCameraPosition(camera->getDerivedPosition());
+						};
 					Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
 					NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
 				}
@@ -459,15 +462,20 @@ namespace NOWA
 				}
 				else
 				{
-					// Time is up - deactivate if not repeating
+					// Time is up - stop the particle effect
+					this->stopParticleEffect();
+
+					// Set activated to false, so that the particle can be activated at a later time
 					if (false == this->repeat->getBool())
 					{
+						this->isEmitting = false;
 						this->activated->setValue(false);
 					}
 					else
 					{
-						// Reset play time for repeat
+						// Reset play time for repeat and restart
 						this->particlePlayTime = this->particleInitialPlayTime->getReal();
+						this->startParticleEffect();
 					}
 				}
 			}
@@ -591,27 +599,11 @@ namespace NOWA
 		{
 			if (false == this->activated->getBool())
 			{
-				// Hide the particle system by detaching or making invisible
-				auto particleNode = this->particleNode;
-				ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ParticleFxComponent::activated false", _1(particleNode),
-					{
-						if (particleNode)
-						{
-							particleNode->setVisible(false);
-						}
-					});
+				this->stopParticleEffect();
 			}
 			else
 			{
-				// Show and reset the particle system
-				auto particleNode = this->particleNode;
-				ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ParticleFxComponent::activated true", _1(particleNode),
-					{
-						if (particleNode)
-						{
-							particleNode->setVisible(true);
-						}
-					});
+				this->startParticleEffect();
 			}
 		}
 		this->particlePlayTime = this->particleInitialPlayTime->getReal();
@@ -721,7 +713,7 @@ namespace NOWA
 
 	bool ParticleFxComponent::isPlaying(void) const
 	{
-		return this->particlePlayTime > 0.0f && this->activated->getBool();
+		return this->isEmitting && this->activated->getBool();
 	}
 
 	void ParticleFxComponent::setGlobalPosition(const Ogre::Vector3& particlePosition)
@@ -741,6 +733,93 @@ namespace NOWA
 			Ogre::Quaternion resultOrientation = this->particleNode->convertWorldToLocalOrientation(globalOrientation);
 			NOWA::GraphicsModule::getInstance()->updateNodeOrientation(this->particleNode, resultOrientation);
 		}
+	}
+
+	const Ogre::ParticleSystemDef* ParticleFxComponent::getParticleSystemDef(void) const
+	{
+		if (nullptr != this->particleSystem)
+		{
+			return this->particleSystem->getParticleSystemDef();
+		}
+		return nullptr;
+	}
+
+	size_t ParticleFxComponent::getNumActiveParticles(void) const
+	{
+		const Ogre::ParticleSystemDef* def = this->getParticleSystemDef();
+		if (nullptr != def)
+		{
+			return def->getNumSimdActiveParticles();
+		}
+		return 0;
+	}
+
+	Ogre::uint32 ParticleFxComponent::getParticleQuota(void) const
+	{
+		const Ogre::ParticleSystemDef* def = this->getParticleSystemDef();
+		if (nullptr != def)
+		{
+			return def->getQuota();
+		}
+		return 0;
+	}
+
+	size_t ParticleFxComponent::getNumEmitters(void) const
+	{
+		const Ogre::ParticleSystemDef* def = this->getParticleSystemDef();
+		if (nullptr != def)
+		{
+			return def->getNumEmitters();
+		}
+		return 0;
+	}
+
+	size_t ParticleFxComponent::getNumAffectors(void) const
+	{
+		const Ogre::ParticleSystemDef* def = this->getParticleSystemDef();
+		if (nullptr != def)
+		{
+			return def->getNumAffectors();
+		}
+		return 0;
+	}
+
+	void ParticleFxComponent::startParticleEffect(void)
+	{
+		if (nullptr == this->particleSystem || nullptr == this->particleNode)
+		{
+			return;
+		}
+
+		auto particleNode = this->particleNode;
+		ENQUEUE_RENDER_COMMAND_MULTI("ParticleFxComponent::startParticleEffect", _1(particleNode),
+			{
+				if (particleNode)
+				{
+					particleNode->setVisible(true);
+				}
+			});
+
+		this->isEmitting = true;
+	}
+
+	void ParticleFxComponent::stopParticleEffect(void)
+	{
+		if (nullptr == this->particleNode)
+		{
+			return;
+		}
+
+		auto particleNode = this->particleNode;
+		ENQUEUE_RENDER_COMMAND_MULTI("ParticleFxComponent::stopParticleEffect", _1(particleNode),
+			{
+				if (particleNode)
+				{
+					particleNode->setVisible(false);
+				}
+			});
+
+		this->isEmitting = false;
 	}
 
 	// Lua registration part
@@ -784,6 +863,10 @@ namespace NOWA
 					.def("isPlaying", &ParticleFxComponent::isPlaying)
 					.def("setGlobalPosition", &ParticleFxComponent::setGlobalPosition)
 					.def("setGlobalOrientation", &ParticleFxComponent::setGlobalOrientation)
+					.def("getNumActiveParticles", &ParticleFxComponent::getNumActiveParticles)
+					.def("getParticleQuota", &ParticleFxComponent::getParticleQuota)
+					.def("getNumEmitters", &ParticleFxComponent::getNumEmitters)
+					.def("getNumAffectors", &ParticleFxComponent::getNumAffectors)
 			];
 
 		LuaScriptApi::getInstance()->addClassToCollection("ParticleFxComponent", "class inherits GameObjectComponent", ParticleFxComponent::getStaticInfoText());
@@ -803,9 +886,13 @@ namespace NOWA
 		LuaScriptApi::getInstance()->addClassToCollection("ParticleFxComponent", "Vector3 getParticleOffsetOrientation()", "Gets the offset orientation in degrees.");
 		LuaScriptApi::getInstance()->addClassToCollection("ParticleFxComponent", "void setParticleScale(Vector3 scale)", "Sets the particle scale.");
 		LuaScriptApi::getInstance()->addClassToCollection("ParticleFxComponent", "Vector3 getParticleScale()", "Gets the particle scale.");
-		LuaScriptApi::getInstance()->addClassToCollection("ParticleFxComponent", "bool isPlaying()", "Checks if the particle effect is currently playing.");
+		LuaScriptApi::getInstance()->addClassToCollection("ParticleFxComponent", "bool isPlaying()", "Checks if the particle effect is currently playing/emitting.");
 		LuaScriptApi::getInstance()->addClassToCollection("ParticleFxComponent", "void setGlobalPosition(Vector3 position)", "Sets the global world position for the particle effect.");
 		LuaScriptApi::getInstance()->addClassToCollection("ParticleFxComponent", "void setGlobalOrientation(Vector3 orientation)", "Sets the global orientation in degrees.");
+		LuaScriptApi::getInstance()->addClassToCollection("ParticleFxComponent", "number getNumActiveParticles()", "Gets the current number of active particles.");
+		LuaScriptApi::getInstance()->addClassToCollection("ParticleFxComponent", "number getParticleQuota()", "Gets the particle quota (maximum particles allowed).");
+		LuaScriptApi::getInstance()->addClassToCollection("ParticleFxComponent", "number getNumEmitters()", "Gets the number of emitters in the particle system.");
+		LuaScriptApi::getInstance()->addClassToCollection("ParticleFxComponent", "number getNumAffectors()", "Gets the number of affectors in the particle system.");
 
 		gameObjectClass.def("getParticleFxComponentFromName", &getParticleFxComponentFromName);
 		gameObjectClass.def("getParticleFxComponent", (ParticleFxComponent * (*)(GameObject*)) & getParticleFxComponent);

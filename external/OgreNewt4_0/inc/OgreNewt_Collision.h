@@ -53,6 +53,8 @@ namespace OgreNewt
 	{
 	public:
 
+		friend class CollisionSerializer;
+
 		//! constructor
 		Collision(const World* world, bool ownsNewtonCollision = true);
 

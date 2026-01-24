@@ -248,6 +248,36 @@ namespace NOWA
 		 */
 		void setGlobalOrientation(const Ogre::Vector3& particleOrientation);
 
+		/**
+		 * @brief Gets the particle system definition (template)
+		 * @return Pointer to the particle system definition, or nullptr if not available
+		 */
+		const Ogre::ParticleSystemDef* getParticleSystemDef(void) const;
+
+		/**
+		 * @brief Gets the current number of active particles
+		 * @return Number of active particles
+		 */
+		size_t getNumActiveParticles(void) const;
+
+		/**
+		 * @brief Gets the particle quota (maximum particles allowed)
+		 * @return The particle quota
+		 */
+		Ogre::uint32 getParticleQuota(void) const;
+
+		/**
+		 * @brief Gets the number of emitters in the particle system
+		 * @return Number of emitters
+		 */
+		size_t getNumEmitters(void) const;
+
+		/**
+		 * @brief Gets the number of affectors in the particle system
+		 * @return Number of affectors
+		 */
+		size_t getNumAffectors(void) const;
+
 	public:
 		/**
 		* @see		GameObjectComponent::getStaticClassId
@@ -336,6 +366,16 @@ namespace NOWA
 		 */
 		void gatherParticleNames(void);
 
+		/**
+		 * @brief Internal helper to start the particle effect emission
+		 */
+		void startParticleEffect(void);
+
+		/**
+		 * @brief Internal helper to stop the particle effect emission
+		 */
+		void stopParticleEffect(void);
+
 	private:
 		Ogre::String name;
 
@@ -352,6 +392,7 @@ namespace NOWA
 		Variant* particleScale;
 		Ogre::String oldParticleTemplateName;
 		bool oldActivated;
+		bool isEmitting;  // Track emission state
 	};
 
 }; // namespace end
