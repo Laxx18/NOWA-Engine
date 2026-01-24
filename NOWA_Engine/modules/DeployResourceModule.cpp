@@ -450,6 +450,8 @@ namespace NOWA
 			configFile << "FileSystem=../../media/NOWA/Scripts/ocean\n";
 			configFile << "FileSystem=../../media/NOWA/Scripts/ocean/textures\n";
 			configFile << "FileSystem=../../media/NOWA/Scripts/ocean/HLSL\n";
+			configFile << "FileSystem=../../media/NOWA/Scripts/ocean/GLSL\n";
+			configFile << "FileSystem=../../media/NOWA/Scripts/ocean/Metal\n";
 			configFile << "FileSystem=../../media/NOWA/Scripts/SMAA\n";
 			configFile << "FileSystem=../../media/NOWA/Scripts/SMAA/GLSL\n";
 			configFile << "FileSystem=../../media/NOWA/Scripts/SMAA/HLSL\n";
@@ -516,7 +518,7 @@ namespace NOWA
 			configFile << "FileSystem=../../media/ParticleFX2\n";
 
 			configFile << "[Unlit]\n";
-			configFile << "FileSystem=../../media/materials/unlit\n\n";
+			configFile << "FileSystem=../../media/unlit\n\n";
 
 			configFile << "# Do not load this as a resource. It's here merely to tell the code where\n";
 			configFile << "# the Hlms templates are located\n";

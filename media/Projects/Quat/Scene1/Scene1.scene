@@ -6,7 +6,7 @@
 		<ambient>
 			<ambientLightUpperHemisphere r="0.3" g="0.5" b="0.7"/>
 			<ambientLightLowerHemisphere r="0.6" g="0.45" b="0.3" a="1"/>
-			<hemisphereDir x="0.577351" y="0.577351" z="0.57735"/>
+			<hemisphereDir x="0.577351" y="0.577351" z="0.577349"/>
 			<envmapScale x="1"/>
 		</ambient>
 		<shadows>
@@ -30,7 +30,7 @@
 		</lightFoward>
 		<mainParameter>
 			<ignoreGlobalScene value="false"/>
-			<renderDistance distance="300"/>
+			<renderDistance distance="100"/>
 			<useV2Item value="false"/>
 		</mainParameter>
 		<fog mode="none" start="0" end="0" density="0"/>
@@ -357,8 +357,8 @@
 			</entity>
 		</node>
 		<node name="MainCamera" id="4010617415">
-			<position x="-15.5315" y="7.79512" z="-14.5688"/>
-			<rotation qw="-0.121893" qx="0.0189909" qy="0.992255" qz="0.014536"/>
+			<position x="-1.59063" y="6.00915" z="-10.6154"/>
+			<rotation qw="-0.134487" qx="0.0600985" qy="0.920193" qz="0.362692"/>
 			<scale x="1" y="1" z="1"/>
 			<entity name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
@@ -387,8 +387,8 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Active" data="true"/>
-					<property type="9" name="CameraPosition" data="-1.59063 6.00915 -10.6154"/>
-					<property type="9" name="CameraOrientation" data="-43.1302 -163.775 1.02455"/>
+					<property type="9" name="CameraPosition" data="-6.66199 3.71446 -15.5045"/>
+					<property type="9" name="CameraOrientation" data="-36.7422 -124.929 0.89182"/>
 					<property type="6" name="NearClipDistance" data="0.1"/>
 					<property type="6" name="FarClipDistance" data="500"/>
 					<property type="6" name="Fovy" data="90"/>
@@ -1268,7 +1268,7 @@
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="2" name="RenderQueueIndex" data="11"/>
-					<property type="2" name="RenderDistance" data="300"/>
+					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
@@ -1357,7 +1357,7 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="6" name="Mass" data="10000"/>
-					<property type="12" name="Serialize" data="true"/>
+					<property type="12" name="Serialize" data="false"/>
 				</userData>
 			</entity>
 		</node>
@@ -1640,8 +1640,8 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
-					<property type="2" name="RenderDistance" data="300"/>
+					<property type="2" name="RenderQueueIndex" data="0"/>
+					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="0"/>
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>

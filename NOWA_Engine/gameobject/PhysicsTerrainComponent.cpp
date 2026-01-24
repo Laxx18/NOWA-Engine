@@ -105,44 +105,45 @@ namespace NOWA
 				// For more complexe objects its better to serialize the collision hull, so that the creation is a lot of faster next time
 				staticCollision = OgreNewt::CollisionPtr(this->serializeHeightFieldCollision(projectFilePath, this->gameObjectPtr->getCategoryId(), terra, overwrite));
 			}
+
+			if (nullptr == staticCollision)
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsTerrainComponent] Could create collision file for game object: "
+					+ this->gameObjectPtr->getName() + " and terrain mesh. Maybe the mesh is corrupt.");
+				staticCollision = this->createHeightFieldCollision(terra);
+			}
+
+			if (nullptr == this->physicsBody)
+			{
+				this->physicsBody = new OgreNewt::Body(this->ogreNewt, this->gameObjectPtr->getSceneManager(), staticCollision);
+
+				NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->registerRenderCallbackForBody(this->physicsBody);
+				// Set mass to 0 = infinity = static
+				this->physicsBody->setMassMatrix(0.0f, Ogre::Vector3::ZERO);
+
+				this->physicsBody->setPositionOrientation(this->initialPosition, this->initialOrientation);
+
+				// this->setPosition(this->gameObjectPtr->getSceneNode()->getPosition());
+				// this->setOrientation(this->gameObjectPtr->getSceneNode()->getOrientation());
+
+				this->physicsBody->setUserData(OgreNewt::Any(dynamic_cast<PhysicsComponent*>(this)));
+
+				// here can be the gameobjectPtr be involved
+				this->physicsBody->attachNode(this->gameObjectPtr->getSceneNode());
+
+				this->physicsBody->setType(gameObjectPtr->getCategoryId());
+
+				const auto materialId = AppStateManager::getSingletonPtr()->getGameObjectController()->getMaterialID(this->gameObjectPtr.get(), this->ogreNewt);
+				this->physicsBody->setMaterialGroupID(materialId);
+
+				this->gameObjectPtr->setDynamic(false);
+			}
+			else
+			{
+				this->physicsBody->setCollision(staticCollision);
+			}
 		};
 		NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PhysicsComponent::createHeightFieldCollision");
-
-		if (nullptr == staticCollision)
-		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsTerrainComponent] Could create collision file for game object: "
-				+ this->gameObjectPtr->getName() + " and terrain mesh. Maybe the mesh is corrupt.");
-			staticCollision = this->createHeightFieldCollision(terra);
-		}
-
-		if (nullptr == this->physicsBody)
-		{
-			this->physicsBody = new OgreNewt::Body(this->ogreNewt, this->gameObjectPtr->getSceneManager(), staticCollision);
-			NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->registerRenderCallbackForBody(this->physicsBody);
-			// Set mass to 0 = infinity = static
-			this->physicsBody->setMassMatrix(0.0f, Ogre::Vector3::ZERO);
-
-			this->physicsBody->setPositionOrientation(this->initialPosition, this->initialOrientation);
-
-			// this->setPosition(this->gameObjectPtr->getSceneNode()->getPosition());
-			// this->setOrientation(this->gameObjectPtr->getSceneNode()->getOrientation());
-
-			this->physicsBody->setUserData(OgreNewt::Any(dynamic_cast<PhysicsComponent*>(this)));
-
-			// here can be the gameobjectPtr be involved
-			this->physicsBody->attachNode(this->gameObjectPtr->getSceneNode());
-
-			this->physicsBody->setType(gameObjectPtr->getCategoryId());
-
-			const auto materialId = AppStateManager::getSingletonPtr()->getGameObjectController()->getMaterialID(this->gameObjectPtr.get(), this->ogreNewt);
-			this->physicsBody->setMaterialGroupID(materialId);
-
-			this->gameObjectPtr->setDynamic(false);
-		}
-		else
-		{
-			this->physicsBody->setCollision(staticCollision);
-		}
 	}
 
 	void PhysicsTerrainComponent::actualizeValue(Variant* attribute)

@@ -13,9 +13,23 @@ GPL v3
 
 // Ogre-next ParticleFX2 includes
 #include "ParticleSystem/OgreParticleSystem2.h"
+#include "ParticleSystem/OgreEmitter2.h"
 
 namespace NOWA
 {
+
+	/**
+	 * @brief Blending methods for particle rendering
+	 */
+	namespace ParticleBlendingMethod
+	{
+		enum ParticleBlendingMethod
+		{
+			AlphaHashing = 0,      ///< Alpha hashing without A2C
+			AlphaHashingA2C = 1,   ///< Alpha hashing with Alpha-to-Coverage (best quality with MSAA)
+			AlphaBlending = 2      ///< Traditional alpha blending
+		};
+	}
 
 	/**
 	  * @brief		Creates an Ogre-next ParticleFX2 particle effect.
@@ -278,6 +292,18 @@ namespace NOWA
 		 */
 		size_t getNumAffectors(void) const;
 
+		/**
+		 * @brief Sets the blending method for the particle effect
+		 * @param blendingMethod The blending method to use (0=AlphaHashing, 1=AlphaHashingA2C, 2=AlphaBlending)
+		 */
+		void setBlendingMethod(ParticleBlendingMethod::ParticleBlendingMethod blendingMethod);
+
+		/**
+		 * @brief Gets the current blending method
+		 * @return The current blending method
+		 */
+		ParticleBlendingMethod::ParticleBlendingMethod getBlendingMethod(void) const;
+
 	public:
 		/**
 		* @see		GameObjectComponent::getStaticClassId
@@ -348,6 +374,10 @@ namespace NOWA
 		{
 			return "Scale";
 		}
+		static const Ogre::String AttrBlendingMethod(void)
+		{
+			return "Blending Method";
+		}
 
 	private:
 		/**
@@ -376,6 +406,11 @@ namespace NOWA
 		 */
 		void stopParticleEffect(void);
 
+		/**
+		 * @brief Applies the blending method to the particle material
+		 */
+		void applyBlendingMethod(void);
+
 	private:
 		Ogre::String name;
 
@@ -390,6 +425,7 @@ namespace NOWA
 		Variant* particleOffsetPosition;
 		Variant* particleOffsetOrientation;
 		Variant* particleScale;
+		Variant* blendingMethod;
 		Ogre::String oldParticleTemplateName;
 		bool oldActivated;
 		bool isEmitting;  // Track emission state

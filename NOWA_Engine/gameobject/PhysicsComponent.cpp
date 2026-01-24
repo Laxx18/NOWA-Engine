@@ -735,6 +735,8 @@ namespace NOWA
 
 			boost::shared_ptr<NOWA::EventDataResourceCreated> eventDataResourceCreated(new NOWA::EventDataResourceCreated());
 			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataResourceCreated);
+
+			return this->collisionPtr;
 		}
 
 		if (false == overwrite)
@@ -783,17 +785,13 @@ namespace NOWA
 
 	OgreNewt::CollisionPtr PhysicsComponent::createHeightFieldCollision(Ogre::Terra* terra)
 	{
-		int sizeX = (int)terra->getXZDimensions().x;   // width
-		int sizeZ = (int)terra->getXZDimensions().y;   // height
-
+		int sizeX = (int)terra->getXZDimensions().x;
+		int sizeZ = (int)terra->getXZDimensions().y;
 		auto* elevation = new Ogre::Real[sizeX * sizeZ];
 		std::fill(elevation, elevation + sizeX * sizeZ, 0.0f);
 
 		const Ogre::Vector3 origin = terra->getTerrainOrigin();
 
-		// IMPORTANT: choose the correct cell size.
-		// If Terra spacing is not 1.0, use the actual spacing.
-		// If you don't have it, keep 1.0 for now.
 		const Ogre::Real cellSizeX = 1.0f;
 		const Ogre::Real cellSizeZ = 1.0f;
 
@@ -802,32 +800,28 @@ namespace NOWA
 			for (int x = 0; x < sizeX; ++x)
 			{
 				Ogre::Vector3 p(origin.x + x * cellSizeX, 0.0f, origin.z + z * cellSizeZ);
-				bool ok = terra->getHeightAt(p);  // p.y gets filled
+				bool ok = terra->getHeightAt(p);  // p.y gets filled with WORLD height
 
-				// If sampling fails, keep 0 (or clamp), but do NOT leave it uninitialized
-				const Ogre::Real h = ok ? p.y : 0.0f;
-
-				elevation[z * sizeX + x] = h; // stride = sizeX !!
+				// FIX: Subtract origin.y to get height relative to terrain's local origin
+				// because getHeightAt returns world height (includes m_terrainOrigin.y)
+				const Ogre::Real h = ok ? (p.y - origin.y) : 0.0f;
+				elevation[z * sizeX + x] = h;
 			}
 		}
 
 		Ogre::Quaternion orientation = Ogre::Quaternion::IDENTITY;
-
-		// Watch this: position should usually be ZERO if you attach the body at terrain origin.
-		// Double transforms are a common bug here.
-		Ogre::Vector3 position = Ogre::Vector3::ZERO;
+		// Position should be the terrain origin (including Y)
+		Ogre::Vector3 position = origin;
 
 		auto col = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::HeightField(
-				this->ogreNewt,
-				sizeX, sizeZ,
-				elevation,
-				/*verticalScale*/ 1.0f,
-				/*horizontalScaleX*/ cellSizeX,
-				/*horizontalScaleZ*/ cellSizeZ,
-				position, orientation,
-				this->gameObjectPtr->getCategoryId()
-			)
-		);
+			this->ogreNewt,
+			sizeX, sizeZ,
+			elevation,
+			/*verticalScale*/ 1.0f,
+			/*horizontalScaleX*/ cellSizeX,
+			/*horizontalScaleZ*/ cellSizeZ,
+			position, orientation,
+			this->gameObjectPtr->getCategoryId()));
 
 		delete[] elevation;
 		return col;

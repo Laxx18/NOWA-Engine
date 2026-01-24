@@ -537,8 +537,7 @@ namespace NOWA
 				return;
 			}
 
-			// TODO: Wait?
-			ENQUEUE_RENDER_COMMAND_MULTI("TerraComponent::modifyTerrainStart", _2(position, strength),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("TerraComponent::modifyTerrainStart", _2(position, strength),
 			{
 				this->terra->modifyTerrainStart(position, strength);
 			});
@@ -556,7 +555,7 @@ namespace NOWA
 			}
 
 			// TODO: Wait
-			ENQUEUE_RENDER_COMMAND_MULTI("TerraComponent::smoothTerrainStart", _2(position, strength),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("TerraComponent::smoothTerrainStart", _2(position, strength),
 			{
 				this->terra->smoothTerrainStart(position, strength);
 			});
@@ -573,7 +572,7 @@ namespace NOWA
 				return;
 			}
 			// TODO: Wait?
-			ENQUEUE_RENDER_COMMAND_MULTI("TerraComponent::paintTerrainStart", _3(position, intensity, imageLayer),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("TerraComponent::paintTerrainStart", _3(position, intensity, imageLayer),
 			{
 				this->terra->paintTerrainStart(position, intensity, imageLayer);
 			});
@@ -589,7 +588,7 @@ namespace NOWA
 				return;
 			}
 			// TODO: Wait?
-			ENQUEUE_RENDER_COMMAND_MULTI("TerraComponent::modifyTerrain", _2(position, strength),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("TerraComponent::modifyTerrain", _2(position, strength),
 			{
 				this->terra->modifyTerrain(position, strength);
 			});
@@ -605,7 +604,7 @@ namespace NOWA
 				return;
 			}
 			// TODO: Wait?
-			ENQUEUE_RENDER_COMMAND_MULTI("TerraComponent::smoothTerrain", _2(position, strength),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("TerraComponent::smoothTerrain", _2(position, strength),
 			{
 				this->terra->smoothTerrain(position, strength);
 			});
@@ -620,7 +619,7 @@ namespace NOWA
 			{
 				return;
 			}
-			ENQUEUE_RENDER_COMMAND_MULTI("TerraComponent::paintTerrain", _3(position, intensity, imageLayer),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("TerraComponent::paintTerrain", _3(position, intensity, imageLayer),
 			{
 				this->terra->paintTerrain(position, intensity, imageLayer);
 			});

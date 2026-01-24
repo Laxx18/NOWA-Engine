@@ -14,8 +14,14 @@
 #include "OgreRoot.h"
 #include "OgreHlmsManager.h"
 #include "OgreHlms.h"
+#include "OgreHlmsPbs.h"
+#include "OgreHlmsUnlit.h"
 #include "OgreSceneManager.h"
+#include "OgreResourceGroupManager.h"
 #include "ParticleSystem/OgreParticleSystemManager2.h"
+
+#include <fstream>
+#include <sstream>
 
 namespace NOWA
 {
@@ -37,11 +43,14 @@ namespace NOWA
 		particlePlaySpeed(new Variant(ParticleFxComponent::AttrPlaySpeed(), 1.0f, this->attributes)),
 		particleOffsetPosition(new Variant(ParticleFxComponent::AttrOffsetPosition(), Ogre::Vector3::ZERO, this->attributes)),
 		particleOffsetOrientation(new Variant(ParticleFxComponent::AttrOffsetOrientation(), Ogre::Vector3::ZERO, this->attributes)),
-		particleScale(new Variant(ParticleFxComponent::AttrScale(), Ogre::Vector3::UNIT_SCALE, this->attributes))
+		particleScale(new Variant(ParticleFxComponent::AttrScale(), Ogre::Vector3::UNIT_SCALE, this->attributes)),
+		blendingMethod(new Variant(ParticleFxComponent::AttrBlendingMethod(), { "Alpha Hashing", "Alpha Hashing + A2C", "Alpha Blending" }, this->attributes))
 	{
 		// Activated variable is set to false again, when particle has played and repeat is off, so tell it the gui that it must be refreshed
 		this->activated->addUserData(GameObject::AttrActionNeedRefresh());
 		this->particleInitialPlayTime->setDescription("The particle play time in milliseconds, if set to 0, the particle effect will not stop automatically.");
+		this->blendingMethod->setListSelectedValue("Alpha Hashing + A2C");
+		this->blendingMethod->setDescription("Alpha Hashing: Fast, no sorting needed. Alpha Hashing + A2C: Best quality with MSAA. Alpha Blending: Traditional transparency.");
 	}
 
 	ParticleFxComponent::~ParticleFxComponent(void)
@@ -89,35 +98,139 @@ namespace NOWA
 
 		try
 		{
-			// Search through all HLMS types for datablocks starting with "Particle/"
-			const std::array<Ogre::HlmsTypes, 7> searchHlms =
-			{
-				Ogre::HLMS_PBS, Ogre::HLMS_TOON, Ogre::HLMS_UNLIT, Ogre::HLMS_USER0,
-				Ogre::HLMS_USER1, Ogre::HLMS_USER2, Ogre::HLMS_USER3
-			};
+			// Get all .particle2 files from the ParticleFX2 resource group
+			std::vector<Ogre::String> particle2Files = Core::getSingletonPtr()->getFilePathNames(
+				"ParticleFX2", "", "*.particle2", false);
 
-			Ogre::HlmsManager* hlmsManager = Core::getSingletonPtr()->getOgreRoot()->getHlmsManager();
-
-			for (auto searchHlmsIt = searchHlms.begin(); searchHlmsIt != searchHlms.end(); ++searchHlmsIt)
+			// Parse each .particle2 file to extract particle system names
+			for (const auto& filePath : particle2Files)
 			{
-				Ogre::Hlms* hlms = hlmsManager->getHlms(*searchHlmsIt);
-				if (nullptr != hlms)
+				std::ifstream file(filePath);
+				if (file.is_open())
 				{
-					for (auto& it = hlms->getDatablockMap().cbegin(); it != hlms->getDatablockMap().cend(); ++it)
+					std::string line;
+					while (std::getline(file, line))
 					{
-						const Ogre::String& datablockName = it->second.name;
+						// Trim leading whitespace
+						size_t start = line.find_first_not_of(" \t");
+						if (start == std::string::npos)
+							continue;
 
-						// Check if the datablock name starts with "Particle/"
-						if (Ogre::StringUtil::startsWith(datablockName, "Particle/", false))
+						std::string trimmedLine = line.substr(start);
+
+						// Look for lines starting with "particle_system"
+						if (Ogre::StringUtil::startsWith(trimmedLine, "particle_system", false))
 						{
-							// Extract the name part after "Particle/"
-							Ogre::String particleName = datablockName.substr(9); // Length of "Particle/" is 9
-
-							// Check if not already in the list
-							if (std::find(names.begin(), names.end(), particleName) == names.end())
+							// Extract the particle system name after "particle_system"
+							// Format: particle_system Particle/Rain or particle_system "Particle/Rain"
+							size_t nameStart = trimmedLine.find_first_not_of(" \t", 15); // 15 = length of "particle_system"
+							if (nameStart != std::string::npos)
 							{
-								names.emplace_back(particleName);
+								std::string particleName = trimmedLine.substr(nameStart);
+
+								// Remove trailing whitespace and any trailing comments
+								size_t commentPos = particleName.find("//");
+								if (commentPos != std::string::npos)
+									particleName = particleName.substr(0, commentPos);
+
+								// Trim trailing whitespace
+								size_t end = particleName.find_last_not_of(" \t\r\n");
+								if (end != std::string::npos)
+									particleName = particleName.substr(0, end + 1);
+
+								// Remove quotes if present
+								if (!particleName.empty() && particleName.front() == '"')
+									particleName = particleName.substr(1);
+								if (!particleName.empty() && particleName.back() == '"')
+									particleName = particleName.substr(0, particleName.length() - 1);
+
+								// Check if not already in the list and not empty
+								if (!particleName.empty() &&
+									std::find(names.begin(), names.end(), particleName) == names.end())
+								{
+									names.emplace_back(particleName);
+								}
 							}
+						}
+					}
+					file.close();
+				}
+				else
+				{
+					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+						"[ParticleFxComponent] Could not open particle2 file: " + filePath);
+				}
+			}
+
+			// If no files found in default location, also try searching via Ogre resource system
+			if (names.size() <= 1)
+			{
+				Ogre::ResourceGroupManager& rgm = Ogre::ResourceGroupManager::getSingleton();
+
+				// Check if the resource group exists
+				if (rgm.resourceGroupExists("ParticleFX2"))
+				{
+					Ogre::StringVectorPtr resources = rgm.findResourceNames("ParticleFX2", "*.particle2");
+
+					for (const auto& resourceName : *resources)
+					{
+						try
+						{
+							Ogre::DataStreamPtr stream = rgm.openResource(resourceName, "ParticleFX2");
+							if (stream)
+							{
+								Ogre::String content = stream->getAsString();
+								std::istringstream iss(content);
+								std::string line;
+
+								while (std::getline(iss, line))
+								{
+									// Trim leading whitespace
+									size_t start = line.find_first_not_of(" \t");
+									if (start == std::string::npos)
+										continue;
+
+									std::string trimmedLine = line.substr(start);
+
+									// Look for lines starting with "particle_system"
+									if (Ogre::StringUtil::startsWith(trimmedLine, "particle_system", false))
+									{
+										// Extract the particle system name
+										size_t nameStart = trimmedLine.find_first_not_of(" \t", 15);
+										if (nameStart != std::string::npos)
+										{
+											std::string particleName = trimmedLine.substr(nameStart);
+
+											// Remove trailing whitespace and comments
+											size_t commentPos = particleName.find("//");
+											if (commentPos != std::string::npos)
+												particleName = particleName.substr(0, commentPos);
+
+											size_t end = particleName.find_last_not_of(" \t\r\n");
+											if (end != std::string::npos)
+												particleName = particleName.substr(0, end + 1);
+
+											// Remove quotes if present
+											if (!particleName.empty() && particleName.front() == '"')
+												particleName = particleName.substr(1);
+											if (!particleName.empty() && particleName.back() == '"')
+												particleName = particleName.substr(0, particleName.length() - 1);
+
+											if (!particleName.empty() &&
+												std::find(names.begin(), names.end(), particleName) == names.end())
+											{
+												names.emplace_back(particleName);
+											}
+										}
+									}
+								}
+								stream->close();
+							}
+						}
+						catch (const Ogre::Exception& e)
+						{
+							Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+								"[ParticleFxComponent] Could not read resource: " + resourceName + " - " + e.getDescription());
 						}
 					}
 				}
@@ -125,7 +238,13 @@ namespace NOWA
 		}
 		catch (const Ogre::Exception& e)
 		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ParticleFxComponent] gatherParticleNames exception: " + e.getFullDescription());
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+				"[ParticleFxComponent] gatherParticleNames exception: " + e.getFullDescription());
+		}
+		catch (const std::exception& e)
+		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+				"[ParticleFxComponent] gatherParticleNames std exception: " + Ogre::String(e.what()));
 		}
 
 		// Sort alphabetically (keep "" at front)
@@ -190,6 +309,11 @@ namespace NOWA
 			this->particleScale->setValue(XMLConverter::getAttribVector3(propertyElement, "data", Ogre::Vector3::UNIT_SCALE));
 			propertyElement = propertyElement->next_sibling("property");
 		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "BlendingMethod")
+		{
+			this->blendingMethod->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data", "Alpha Hashing + A2C"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
 
 		return true;
 	}
@@ -205,6 +329,7 @@ namespace NOWA
 		clonedCompPtr->setParticleOffsetPosition(this->particleOffsetPosition->getVector3());
 		clonedCompPtr->setParticleOffsetOrientation(this->particleOffsetOrientation->getVector3());
 		clonedCompPtr->setParticleScale(this->particleScale->getVector3());
+		clonedCompPtr->setBlendingMethod(this->getBlendingMethod());
 
 		clonedGameObjectPtr->addComponent(clonedCompPtr);
 		clonedCompPtr->setOwner(clonedGameObjectPtr);
@@ -260,34 +385,34 @@ namespace NOWA
 
 		if (nullptr == this->particleSystem)
 		{
-			// Construct the full datablock name (e.g., "Particle/SmokePBS")
-			Ogre::String fullDatablockName = "Particle/" + templateName;
+			// The templateName is the full particle system name from .particle2 files (e.g., "Particle/SmokePBS")
+			Ogre::String fullParticleSystemName = templateName;
 
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ParticleFxComponent::createParticleEffect", _3(&success, fullDatablockName, templateName),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ParticleFxComponent::createParticleEffect", _2(&success, fullParticleSystemName),
 				{
 					try
 					{
 						Ogre::SceneManager* sceneManager = this->gameObjectPtr->getSceneManager();
 
-						// Create the ParticleSystem2 using the datablock name
-						this->particleSystem = sceneManager->createParticleSystem2(fullDatablockName);
+						// Create the ParticleSystem2 using the particle system name from .particle2 file
+						this->particleSystem = sceneManager->createParticleSystem2(fullParticleSystemName);
 
 						if (nullptr == this->particleSystem)
 						{
 							Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-								"[ParticleFxComponent] Error: Could not create particle effect: " + fullDatablockName);
+								"[ParticleFxComponent] Error: Could not create particle effect: " + fullParticleSystemName);
 							success = false;
 						}
 
 						if (true == success)
 						{
 							// Tag resource for deployment
-							DeployResourceModule::getInstance()->tagResource(templateName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
+							DeployResourceModule::getInstance()->tagResource(fullParticleSystemName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
 
-							// Create child scene node for the particle effect
+							// Create child scene node for the particle effect (relative to game object)
 							this->particleNode = this->gameObjectPtr->getSceneNode()->createChildSceneNode();
 
-							// Set offset orientation
+							// Set offset orientation (relative to parent)
 							this->particleNode->setOrientation(MathHelper::getInstance()->degreesToQuat(this->particleOffsetOrientation->getVector3()));
 
 							// Set offset position (relative to parent)
@@ -297,6 +422,8 @@ namespace NOWA
 							this->particleNode->setScale(this->particleScale->getVector3());
 
 							// Particle effect is moving, so it must always be dynamic
+							// Set both the node AND the particle system to non-static
+							this->particleSystem->setStatic(false);
 							this->particleNode->setStatic(false);
 
 							// Attach the particle system to the node
@@ -305,6 +432,10 @@ namespace NOWA
 							// Configure render settings
 							this->particleSystem->setRenderQueueGroup(RENDER_QUEUE_PARTICLE_STUFF);
 							this->particleSystem->setCastShadows(false);
+
+							// IMPORTANT: Hide the particle node initially!
+							// It will be shown when connect() is called with activated=true
+							this->particleNode->setVisible(false);
 						}
 					}
 					catch (const Ogre::Exception& e)
@@ -314,6 +445,12 @@ namespace NOWA
 						success = false;
 					}
 				});
+
+			// Apply blending method after particle system is created
+			if (true == success && nullptr != this->particleSystem)
+			{
+				this->applyBlendingMethod();
+			}
 		}
 		return success;
 	}
@@ -518,6 +655,16 @@ namespace NOWA
 		{
 			this->setParticleScale(attribute->getVector3());
 		}
+		else if (ParticleFxComponent::AttrBlendingMethod() == attribute->getName())
+		{
+			Ogre::String selectedValue = attribute->getListSelectedValue();
+			if (selectedValue == "Alpha Hashing")
+				this->setBlendingMethod(ParticleBlendingMethod::AlphaHashing);
+			else if (selectedValue == "Alpha Hashing + A2C")
+				this->setBlendingMethod(ParticleBlendingMethod::AlphaHashingA2C);
+			else if (selectedValue == "Alpha Blending")
+				this->setBlendingMethod(ParticleBlendingMethod::AlphaBlending);
+		}
 	}
 
 	void ParticleFxComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
@@ -578,6 +725,12 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("type", "9"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "Scale"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->particleScale->getVector3())));
+		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "BlendingMethod"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->blendingMethod->getListSelectedValue())));
 		propertiesXML->append_node(propertyXML);
 	}
 
@@ -822,6 +975,102 @@ namespace NOWA
 		this->isEmitting = false;
 	}
 
+	void ParticleFxComponent::setBlendingMethod(ParticleBlendingMethod::ParticleBlendingMethod blendingMethodValue)
+	{
+		switch (blendingMethodValue)
+		{
+		case ParticleBlendingMethod::AlphaHashing:
+			this->blendingMethod->setListSelectedValue("Alpha Hashing");
+			break;
+		case ParticleBlendingMethod::AlphaHashingA2C:
+			this->blendingMethod->setListSelectedValue("Alpha Hashing + A2C");
+			break;
+		case ParticleBlendingMethod::AlphaBlending:
+			this->blendingMethod->setListSelectedValue("Alpha Blending");
+			break;
+		}
+		this->applyBlendingMethod();
+	}
+
+	ParticleBlendingMethod::ParticleBlendingMethod ParticleFxComponent::getBlendingMethod(void) const
+	{
+		Ogre::String selectedValue = this->blendingMethod->getListSelectedValue();
+		if (selectedValue == "Alpha Hashing")
+			return ParticleBlendingMethod::AlphaHashing;
+		else if (selectedValue == "Alpha Hashing + A2C")
+			return ParticleBlendingMethod::AlphaHashingA2C;
+		else
+			return ParticleBlendingMethod::AlphaBlending;
+	}
+
+	void ParticleFxComponent::applyBlendingMethod(void)
+	{
+		if (nullptr == this->particleSystem)
+		{
+			return;
+		}
+
+		const Ogre::String& particleSystemName = this->particleTemplateName->getListSelectedValue();
+		if (particleSystemName.empty())
+		{
+			return;
+		}
+
+		// The particle system name is the same as the datablock name (e.g., "Particle/SmokePBS")
+		// This is a convention in ParticleFX2 - the datablock name matches the particle_system name
+
+		try
+		{
+			Ogre::HlmsManager* hlmsManager = Core::getSingletonPtr()->getOgreRoot()->getHlmsManager();
+			Ogre::HlmsDatablock* datablock = hlmsManager->getDatablock(particleSystemName);
+
+			if (nullptr == datablock)
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+					"[ParticleFxComponent] Could not find datablock for blending: " + particleSystemName + " (this may be normal if the material uses a different name)");
+				return;
+			}
+
+			ParticleBlendingMethod::ParticleBlendingMethod currentMethod = this->getBlendingMethod();
+
+			ENQUEUE_RENDER_COMMAND_MULTI("ParticleFxComponent::applyBlendingMethod", _2(datablock, currentMethod),
+				{
+					if (currentMethod == ParticleBlendingMethod::AlphaHashing ||
+						currentMethod == ParticleBlendingMethod::AlphaHashingA2C)
+					{
+						Ogre::HlmsBlendblock blendblock = *datablock->getBlendblock();
+						blendblock.setBlendType(Ogre::SBT_REPLACE);
+						blendblock.mAlphaToCoverage = (currentMethod == ParticleBlendingMethod::AlphaHashingA2C)
+							? Ogre::HlmsBlendblock::A2cEnabledMsaaOnly
+							: Ogre::HlmsBlendblock::A2cDisabled;
+						datablock->setBlendblock(blendblock);
+
+						Ogre::HlmsMacroblock macroblock = *datablock->getMacroblock();
+						macroblock.mDepthWrite = true;
+						datablock->setMacroblock(macroblock);
+						datablock->setAlphaHashing(true);
+					}
+					else // AlphaBlending
+					{
+						Ogre::HlmsBlendblock blendblock = *datablock->getBlendblock();
+						blendblock.setBlendType(Ogre::SBT_TRANSPARENT_ALPHA);
+						blendblock.mAlphaToCoverage = Ogre::HlmsBlendblock::A2cDisabled;
+						datablock->setBlendblock(blendblock);
+
+						Ogre::HlmsMacroblock macroblock = *datablock->getMacroblock();
+						macroblock.mDepthWrite = false;
+						datablock->setMacroblock(macroblock);
+						datablock->setAlphaHashing(false);
+					}
+				});
+		}
+		catch (const Ogre::Exception& e)
+		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+				"[ParticleFxComponent] Exception applying blending method: " + e.getFullDescription());
+		}
+	}
+
 	// Lua registration part
 
 	ParticleFxComponent* getParticleFxComponent(GameObject* gameObject, unsigned int occurrenceIndex)
@@ -867,6 +1116,19 @@ namespace NOWA
 					.def("getParticleQuota", &ParticleFxComponent::getParticleQuota)
 					.def("getNumEmitters", &ParticleFxComponent::getNumEmitters)
 					.def("getNumAffectors", &ParticleFxComponent::getNumAffectors)
+					.def("setBlendingMethod", &ParticleFxComponent::setBlendingMethod)
+					.def("getBlendingMethod", &ParticleFxComponent::getBlendingMethod)
+			];
+
+		// Register blending method enum for Lua
+		module(lua)
+			[
+				namespace_("ParticleBlendingMethod")
+					[
+						luabind::value("AlphaHashing", ParticleBlendingMethod::AlphaHashing),
+						luabind::value("AlphaHashingA2C", ParticleBlendingMethod::AlphaHashingA2C),
+						luabind::value("AlphaBlending", ParticleBlendingMethod::AlphaBlending)
+					]
 			];
 
 		LuaScriptApi::getInstance()->addClassToCollection("ParticleFxComponent", "class inherits GameObjectComponent", ParticleFxComponent::getStaticInfoText());
@@ -893,6 +1155,8 @@ namespace NOWA
 		LuaScriptApi::getInstance()->addClassToCollection("ParticleFxComponent", "number getParticleQuota()", "Gets the particle quota (maximum particles allowed).");
 		LuaScriptApi::getInstance()->addClassToCollection("ParticleFxComponent", "number getNumEmitters()", "Gets the number of emitters in the particle system.");
 		LuaScriptApi::getInstance()->addClassToCollection("ParticleFxComponent", "number getNumAffectors()", "Gets the number of affectors in the particle system.");
+		LuaScriptApi::getInstance()->addClassToCollection("ParticleFxComponent", "void setBlendingMethod(ParticleBlendingMethod method)", "Sets the blending method (AlphaHashing=0, AlphaHashingA2C=1, AlphaBlending=2).");
+		LuaScriptApi::getInstance()->addClassToCollection("ParticleFxComponent", "ParticleBlendingMethod getBlendingMethod()", "Gets the current blending method.");
 
 		gameObjectClass.def("getParticleFxComponentFromName", &getParticleFxComponentFromName);
 		gameObjectClass.def("getParticleFxComponent", (ParticleFxComponent * (*)(GameObject*)) & getParticleFxComponent);
