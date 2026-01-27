@@ -118,8 +118,8 @@ particle_system Particle/JetEngine1
 {
     material        Particle/Flare
     quota           200
-    particle_width  25
-    particle_height 25
+    particle_width  2.5
+    particle_height 2.5
     cull_each       false
     renderer        billboard
     billboard_type  point
@@ -148,8 +148,8 @@ particle_system Particle/JetEngine1
 particle_system Particle/JetEngine2
 {
 	material 		Particle/Flare
-	particle_width 	15
-	particle_height	15
+	particle_width 	1.5
+	particle_height	1.5
 	cull_each		false
 	quota			200
 	renderer        billboard
@@ -194,7 +194,7 @@ particle_system Particle/Aureola
         angle           30
         emission_rate   4
         time_to_live    5
-        position        0 -100 0
+        position        0 0 0
         direction       0 1 0
         velocity_min  	0
 		velocity_max  	30
@@ -237,7 +237,6 @@ particle_system Particle/Aureola
         rotation_speed_range_end 360
     }
 }
-
 
 particle_system Particle/Swarm
 {
@@ -422,9 +421,6 @@ particle_system Particle/AnimationParticleTest
 	}
 }
 
-// Example particle systems
-
-// smoke
 particle_system Particle/SmokePBS
 {
 	material        	Particle/SmokePBS
@@ -481,12 +477,12 @@ particle_system Particle/SpherePBS : Particle/SmokePBS
 	material	Particle/SpherePBS
 }
 
-// Converted from ParticleUniverse system: advancedLodSystem
+// Converted from Particle system: advancedLodSystem
 // Original PU used smooth LOD with two techniques:
-//   - LOD0: Entity renderer (Barrel.mesh) with material ParticleUniverse/Barrel_02
-//   - LOD1: Billboard renderer with material ParticleUniverse/Barrel_01
+//   - LOD0: Entity renderer (Barrel.mesh) with material Particle/Barrel_02
+//   - LOD1: Billboard renderer with material Particle/Barrel_01
 //
-// ParticleFX2 scripts don't have an equivalent to ParticleUniverse's smooth_lod / lod_distances.
+// ParticleFX2 scripts don't have an equivalent to Particle's smooth_lod / lod_distances.
 // This conversion keeps the original system name and uses the Billboard technique (PU lod_index = 1).
 
 particle_system Particle/advancedLodSystem
@@ -528,7 +524,7 @@ particle_system Particle/advancedLodSystem
 
 particle_system Particle/explosion
 {
-    quota           300 material ParticleUniverse/Nucleus
+    quota           300 material Particle/Nucleus
     material        BaseWhite
     particle_width  1
     particle_height 1
@@ -562,7 +558,7 @@ particle_system Particle/explosion
 particle_system Particle/explosionSystem
 {
     quota           100
-    material        ParticleUniverse/Nucleus default_particle_width 0.45 default_particle_height 0.45
+    material        Particle/Nucleus default_particle_width 0.45 default_particle_height 0.45
     particle_width  1
     particle_height 1
     cull_each       true
@@ -599,7 +595,7 @@ particle_system Particle/explosionSystem
 
 particle_system Particle/lightningBolt_1
 {
-    quota           20 material ParticleUniverse/Lightning_01
+    quota           20 material Particle/Lightning_01
     material        BaseWhite
     particle_width  1
     particle_height 1
@@ -624,7 +620,7 @@ particle_system Particle/lightningBolt_1
 
 particle_system Particle/lightningBolt_2
 {
-    quota           5 material ParticleUniverse/Lightning_02
+    quota           5 material Particle/Lightning_02
     material        BaseWhite
     particle_width  1
     particle_height 1
@@ -649,7 +645,7 @@ particle_system Particle/lightningBolt_2
 
 particle_system Particle/lightningBolt_3
 {
-    quota           5 material ParticleUniverse/Lightning_03
+    quota           5 material Particle/Lightning_03
     material        BaseWhite
     particle_width  1
     particle_height 1
@@ -674,7 +670,7 @@ particle_system Particle/lightningBolt_3
 
 particle_system Particle/lightningBolt_4
 {
-    quota           5 material ParticleUniverse/Lightning_04
+    quota           5 material Particle/Lightning_04
     material        BaseWhite
     particle_width  1
     particle_height 1
@@ -702,7 +698,7 @@ particle_system Particle/lightningBolt_4
 // ============================================
 particle_system Particle/nucleus
 {
-    quota           2000 emitted_emitter_quota 100 material ParticleUniverse/Smoke default_particle_width 0.03 default_particle_height 0.03
+    quota           2000 emitted_emitter_quota 100 material Particle/Smoke default_particle_width 0.03 default_particle_height 0.03
     material        BaseWhite
     particle_width  1
     particle_height 1
@@ -815,5 +811,311 @@ particle_system Particle/Water/Wake
     {
         time0   0.0
         colour0 1.0 1.0 1.0 1.0
+    }
+}
+
+
+// Note: Some Particle features (sphere renderer, dynamic oscillation,
+// curved interpolation, observers) are not directly supported in ParticleFX2.
+// This is the closest approximation using standard ParticleFX2 features.
+
+// Technique 1: Streak particles (originally sphere renderer - using point billboard)
+particle_system Particle/Atomicity_Streaks
+{
+    material        Particle/Streak_02
+    particle_width  2.4
+    particle_height 2.4
+    cull_each       false
+    quota           40
+    billboard_type  point
+
+    // Point emitter for streaks
+    // Original had oscillating emission_rate (20 +/- 20 at 0.4Hz)
+    // Using average value of 20
+    emitter Point
+    {
+        angle           360
+        emission_rate   20
+        time_to_live    1.3
+        direction       0 0 0
+        velocity        0
+    }
+
+    // Colour affector - interpolates through blue -> orange -> black
+    // Original time_colour: 0->blue, 0.3->blue, 0.6->orange, 1->black
+    // ParticleFX2 ColourFader2 provides two-phase colour change
+    affector ColourInterpolator
+    {
+        time0           0
+        colour0         0.27 0.3 0.74 1
+
+        time1           0.3
+        colour1         0.27 0.3 0.74 1
+
+        time2           0.6
+        colour2         0.43 0.28 0.14 1
+
+        time3           1
+        colour3         0 0 0 1
+    }
+
+    // Rotation affector
+    // Original: curved linear from 3 rad/s at t=0 to 0.2 rad/s at t=1
+    // Using average rotation speed (~1.6 rad/s ≈ 90 deg/s)
+    affector Rotator
+    {
+        rotation_speed_range_start  10
+        rotation_speed_range_end    180
+        rotation_range_start        0
+        rotation_range_end          360
+    }
+
+    // Scale affector
+    // Original: curved linear 12 at t=0, 12 at t=0.8, 24 at t=1
+    // Approximating with linear scale: particles grow from 2.4 to ~28.8 (12x)
+    // then burst to 57.6 (24x) at end - using average growth
+    affector Scaler
+    {
+        rate            18
+    }
+}
+
+// Technique 2: Flare particles (outer flares)
+particle_system Particle/Atomicity_Flares
+{
+    material        Particle/Flare_04
+    particle_width  2.5
+    particle_height 2.5
+    cull_each       false
+    quota           50
+    billboard_type  point
+
+    // Outer flare emitter - faster velocity, spread out
+    emitter Point
+    {
+        angle           360
+        emission_rate   20
+        time_to_live    1
+        direction       0 1 0
+        velocity_min    6
+        velocity_max    6
+        // Original had random dimensions 0.6 to 4.5
+        // Using midpoint, actual size variation via width/height
+    }
+
+    // Core flare emitter - slower velocity, stays near center
+    emitter Point
+    {
+        angle           360
+        emission_rate   20
+        time_to_live    1
+        direction       0 1 0
+        velocity_min    0.9
+        velocity_max    0.9
+        // Original had random dimensions 1.2 to 4.5
+    }
+
+    // Colour affector - red fading to black
+    // Original time_colour: 0->red, 0.6->red, 1->black
+    affector ColourInterpolator
+    {
+        time0           0
+        colour0         1 0.3 0.3 1
+
+        time1           0.6
+        colour1         1 0.3 0.3 1
+
+        time2           1
+        colour2         0 0 0 1
+    }
+}
+
+// Combined system alternative - single system with both effects
+// Use this if you want a single particle system that combines both techniques
+particle_system Particle/Atomicity_Combined
+{
+    material        Particle/Flare_04
+    particle_width  3
+    particle_height 3
+    cull_each       false
+    quota           180
+    billboard_type  point
+
+    // Core emitter (slow, stays near center)
+    emitter Point
+    {
+        angle           360
+        emission_rate   20
+        time_to_live    1.3
+        direction       0 1 0
+        velocity_min    0
+        velocity_max    1
+        colour          0.27 0.3 0.74 1
+    }
+
+    // Flare emitter (medium speed)
+    emitter Point
+    {
+        angle           360
+        emission_rate   20
+        time_to_live    1
+        direction       0 1 0
+        velocity_min    1
+        velocity_max    6
+        colour          1 0.3 0.3 1
+    }
+
+    // Colour fading to black
+    affector ColourInterpolator
+    {
+        red             -0.5
+        green           -0.3
+        blue            -0.5
+        alpha           0
+    }
+
+    // Slight rotation for visual interest
+    affector Rotator
+    {
+        rotation_speed_range_start  30
+        rotation_speed_range_end    90
+        rotation_range_start        0
+        rotation_range_end          360
+    }
+
+    // Gentle growth
+    affector Scaler
+    {
+        rate            5
+    }
+}
+
+particle_system Particle/Beam_Core
+{
+    material        Particle/Beam_1
+    particle_width  0.9
+    particle_height 10.0          // beam length
+    cull_each       false
+    quota           40
+    billboard_type  oriented_self
+
+    // Core beam emitter
+    emitter Point
+    {
+        angle           30         // beam deviation
+        emission_rate   10
+        time_to_live    0.2
+        position        0 9 -45
+        direction       0 0 1
+        velocity        0
+    }
+
+    // Stable beam colour
+    affector ColourInterpolator
+    {
+        time0   0
+        colour0 0.8 0.9 1.0 1
+
+        time1   1
+        colour1 0.6 0.7 1.0 0.8
+    }
+
+    // Keep orientation fixed (no spin)
+    affector Rotator
+    {
+        rotation_speed_range_start  0
+        rotation_speed_range_end    0
+    }
+}
+
+particle_system Particle/Beam_Flares
+{
+    material        Particle/Beam_2
+    particle_width  0.3
+    particle_height 4.0
+    cull_each       false
+    quota           60
+    billboard_type  oriented_self
+
+    // Segmented flare emitter
+    emitter Point
+    {
+        angle           4.5
+        emission_rate   25
+        time_to_live    0.15
+        position        0 9 -45
+        direction       0 0 1
+        velocity        0
+    }
+
+    // Flickering / jumping segments
+    affector Rotator
+    {
+        rotation_speed_range_start  -180
+        rotation_speed_range_end     180
+        rotation_range_start          0
+        rotation_range_end           360
+    }
+
+    affector ColourInterpolator
+    {
+        time0   0
+        colour0 1.0 1.0 1.0 1
+
+        time1   1
+        colour1 0.8 0.9 1.0 0
+    }
+}
+
+particle_system Particle/Beam_Combined
+{
+    material        Particle/Beam_2
+    particle_width  0.6
+    particle_height 6.0
+    cull_each       false
+    quota           120
+    billboard_type  oriented_self
+
+    // Core beam emitter
+    emitter Point
+    {
+        angle           30
+        emission_rate   10
+        time_to_live    0.2
+        position        0 9 -45
+        direction       0 0 1
+        velocity        0
+        colour          0.8 0.9 1.0 1
+    }
+
+    // Flare beam emitter
+    emitter Point
+    {
+        angle           4.5
+        emission_rate   25
+        time_to_live    0.15
+        position        0 9 -45
+        direction       0 0 1
+        velocity        0
+        colour          1 1 1 1
+    }
+
+    // Fade out beam segments
+    affector ColourInterpolator
+    {
+        time0   0
+        colour0 1 1 1 1
+
+        time1   1
+        colour1 0.7 0.8 1 0
+    }
+
+    // Jumping / flickering segments
+    affector Rotator
+    {
+        rotation_speed_range_start  -180
+        rotation_speed_range_end     180
+        rotation_range_start          0
+        rotation_range_end           360
     }
 }

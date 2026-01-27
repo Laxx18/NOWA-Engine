@@ -854,8 +854,6 @@ namespace Ogre
             void setMaterial( const MaterialPtr &material ) override;
             void setDatablock( HlmsDatablock *datablock ) override;
             void _setNullDatablock() override;
-
-            Ogre::ParticleType::ParticleType getParticleType() const override;
         };
 
         /** Factory object for creating BillboardSet instances */

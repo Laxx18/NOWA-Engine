@@ -305,156 +305,160 @@ namespace NOWA
 
 	Core::~Core()
 	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[Core] Starting shutdown");
-
-		if (nullptr != this->baseListenerContainer)
+		GraphicsModule::RenderCommand renderCommand = [this]()
 		{
-			Ogre::Hlms* hlms = Core::getSingletonPtr()->getOgreRoot()->getHlmsManager()->getHlms(Ogre::HLMS_PBS);
-			Ogre::HlmsPbs* pbs = static_cast<Ogre::HlmsPbs*>(hlms);
-			pbs->setListener(nullptr);
-			delete this->baseListenerContainer;
-			this->baseListenerContainer = nullptr;
-		}
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[Core] Starting shutdown");
 
-		if (nullptr != InputDeviceCore::getSingletonPtr() && false == InputDeviceCore::getSingletonPtr()->getKeyboardInputDeviceModules().empty())
-		{
-			this->saveCustomConfiguration();
-		}
-
-		ProcessManager::getInstance()->clearAllProcesses();
-
-		if (nullptr != this->root)
-		{
-			auto factoryMovableText = this->root->getMovableObjectFactory("MovableText");
-			if (nullptr != factoryMovableText)
+			if (nullptr != this->baseListenerContainer)
 			{
-				delete factoryMovableText;
-			}
-			auto factoryRectangle2D = this->root->getMovableObjectFactory("Rectangle2D");
-			if (nullptr != factoryRectangle2D)
-			{
-				delete factoryRectangle2D;
+				Ogre::Hlms* hlms = Core::getSingletonPtr()->getOgreRoot()->getHlmsManager()->getHlms(Ogre::HLMS_PBS);
+				Ogre::HlmsPbs* pbs = static_cast<Ogre::HlmsPbs*>(hlms);
+				pbs->setListener(nullptr);
+				delete this->baseListenerContainer;
+				this->baseListenerContainer = nullptr;
 			}
 
-			Ogre::RenderSystem* renderSystem = this->root->getRenderSystem();
-			Ogre::TextureGpuManager* textureGpuManager = renderSystem->getTextureGpuManager();
-			if (nullptr != textureGpuManager)
+			if (nullptr != InputDeviceCore::getSingletonPtr() && false == InputDeviceCore::getSingletonPtr()->getKeyboardInputDeviceModules().empty())
 			{
-				textureGpuManager->setTextureGpuManagerListener(nullptr);
+				this->saveCustomConfiguration();
 			}
-		}
+
+			ProcessManager::getInstance()->clearAllProcesses();
+
+			if (nullptr != this->root)
+			{
+				auto factoryMovableText = this->root->getMovableObjectFactory("MovableText");
+				if (nullptr != factoryMovableText)
+				{
+					delete factoryMovableText;
+				}
+				auto factoryRectangle2D = this->root->getMovableObjectFactory("Rectangle2D");
+				if (nullptr != factoryRectangle2D)
+				{
+					delete factoryRectangle2D;
+				}
+
+				Ogre::RenderSystem* renderSystem = this->root->getRenderSystem();
+				Ogre::TextureGpuManager* textureGpuManager = renderSystem->getTextureGpuManager();
+				if (nullptr != textureGpuManager)
+				{
+					textureGpuManager->setTextureGpuManagerListener(nullptr);
+				}
+			}
 		
-		if (nullptr != resourceLoadingListener)
-		{
-			delete this->resourceLoadingListener;
-			this->resourceLoadingListener = nullptr;
-		}
-		if (nullptr != this->defaultEngineResourceListener)
-		{
-			delete this->defaultEngineResourceListener;
-			this->defaultEngineResourceListener = nullptr;
-		}
-
-		if (nullptr == Ogre::Root::getSingletonPtr())
-		{
-			return;
-		}
-
-		if (nullptr != InputDeviceCore::getSingletonPtr())
-		{
-			InputDeviceCore::getSingletonPtr()->destroyContent();
-			delete InputDeviceCore::getSingletonPtr();
-		}
-
-		Ogre::CompositorManager2* compositorManager = Ogre::Root::getSingletonPtr()->getCompositorManager2();
-
-		if (nullptr != this->myGuiWorkspace && nullptr != this->root && nullptr != compositorManager)
-		{
-			this->myGuiOgrePlatform->getRenderManagerPtr()->setSceneManager(nullptr);
-			compositorManager->removeWorkspace(this->myGuiWorkspace);
-			this->myGuiWorkspace = nullptr;
-		}
-		if (nullptr != this->myGui)
-		{
-			if (nullptr != this->info)
+			if (nullptr != resourceLoadingListener)
 			{
-				delete this->info;
-				this->info = nullptr;
+				delete this->resourceLoadingListener;
+				this->resourceLoadingListener = nullptr;
 			}
+			if (nullptr != this->defaultEngineResourceListener)
+			{
+				delete this->defaultEngineResourceListener;
+				this->defaultEngineResourceListener = nullptr;
+			}
+
+			if (nullptr == Ogre::Root::getSingletonPtr())
+			{
+				return;
+			}
+
+			if (nullptr != InputDeviceCore::getSingletonPtr())
+			{
+				InputDeviceCore::getSingletonPtr()->destroyContent();
+				delete InputDeviceCore::getSingletonPtr();
+			}
+
+			Ogre::CompositorManager2* compositorManager = Ogre::Root::getSingletonPtr()->getCompositorManager2();
+
+			if (nullptr != this->myGuiWorkspace && nullptr != this->root && nullptr != compositorManager)
+			{
+				this->myGuiOgrePlatform->getRenderManagerPtr()->setSceneManager(nullptr);
+				compositorManager->removeWorkspace(this->myGuiWorkspace);
+				this->myGuiWorkspace = nullptr;
+			}
+			if (nullptr != this->myGui)
+			{
+				if (nullptr != this->info)
+				{
+					delete this->info;
+					this->info = nullptr;
+				}
 			
-			this->myGui->shutdown();
-			delete this->myGui;
-			this->myGui = nullptr;
-			try
-			{
-				this->myGuiOgrePlatform->shutdown();
-			}
-			catch (...)
-			{
+				this->myGui->shutdown();
+				delete this->myGui;
+				this->myGui = nullptr;
+				try
+				{
+					this->myGuiOgrePlatform->shutdown();
+				}
+				catch (...)
+				{
 
+				}
+				delete this->myGuiOgrePlatform;
+				this->myGuiOgrePlatform = nullptr;
 			}
-			delete this->myGuiOgrePlatform;
-			this->myGuiOgrePlatform = nullptr;
-		}
 		
-		if (nullptr != this->overlaySystem)
-		{
-			delete this->overlaySystem;
-			this->overlaySystem = nullptr;
-		}
-		if (nullptr != this->pluginFactory)
-		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[Core] Deleting plugin factory");
-			delete this->pluginFactory;
-			this->pluginFactory = nullptr;
-		}
-
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[Core] Deleting pre load params of shader module");
-
-		if (nullptr != this->renderWindow)
-		{
-			Ogre::WindowEventUtilities::removeWindowEventListener(this->renderWindow, this);
-			// input manager is destroyed in windowClosed
-			this->windowClosed(this->renderWindow);
-		}
-
-		/*if (this->inputManager)	 {
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[Core] Deleting input manager");
-			OIS::InputManager::destroyInputSystem(this->inputManager);
-			this->inputManager = nullptr;
-			}*/
-		if (true == this->optionUseLuaConsole)
-		{
-			if (LuaConsole::getSingletonPtr())
+			if (nullptr != this->overlaySystem)
 			{
-				NOWA::LuaConsole::getSingletonPtr()->setVisible(false);
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[Core] Deleting lua console");
-				LuaConsole::getSingletonPtr()->shutdown();
-
-				delete LuaConsole::getSingletonPtr();
+				delete this->overlaySystem;
+				this->overlaySystem = nullptr;
 			}
-		}
-		if (true == this->optionUseLuaScript)
-		{
-			LuaScriptApi::getInstance()->destroyContent();
-		}
+			if (nullptr != this->pluginFactory)
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[Core] Deleting plugin factory");
+				delete this->pluginFactory;
+				this->pluginFactory = nullptr;
+			}
 
-		if (nullptr != this->timer)
-		{
-			delete this->timer;
-			this->timer = nullptr;
-		}
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[Core] Deleting pre load params of shader module");
 
-		this->saveHlmsDiskCache();
+			if (nullptr != this->renderWindow)
+			{
+				Ogre::WindowEventUtilities::removeWindowEventListener(this->renderWindow, this);
+				// input manager is destroyed in windowClosed
+				this->windowClosed(this->renderWindow);
+			}
 
-		if (nullptr != this->root)
-		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[Core] Deleting OgreRoot");
-			// but in Ogre, when deleting root, it will call shutdown internally and tries to shutdown a ScriptSerializer, which has not been
-			// created and not initialized with NULL, therefore crash, in the early state, when the config dialog appears, but is cancled!
-			OGRE_DELETE this->root;
-			this->root = nullptr;
-		}
+			/*if (this->inputManager)	 {
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[Core] Deleting input manager");
+				OIS::InputManager::destroyInputSystem(this->inputManager);
+				this->inputManager = nullptr;
+				}*/
+			if (true == this->optionUseLuaConsole)
+			{
+				if (LuaConsole::getSingletonPtr())
+				{
+					NOWA::LuaConsole::getSingletonPtr()->setVisible(false);
+					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[Core] Deleting lua console");
+					LuaConsole::getSingletonPtr()->shutdown();
+
+					delete LuaConsole::getSingletonPtr();
+				}
+			}
+			if (true == this->optionUseLuaScript)
+			{
+				LuaScriptApi::getInstance()->destroyContent();
+			}
+
+			if (nullptr != this->timer)
+			{
+				delete this->timer;
+				this->timer = nullptr;
+			}
+
+			this->saveHlmsDiskCache();
+
+			if (nullptr != this->root)
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[Core] Deleting OgreRoot");
+				// but in Ogre, when deleting root, it will call shutdown internally and tries to shutdown a ScriptSerializer, which has not been
+				// created and not initialized with NULL, therefore crash, in the early state, when the config dialog appears, but is cancled!
+				OGRE_DELETE this->root;
+				this->root = nullptr;
+			}
+		};
+		NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "Core::destructor");
 	}
 
 	bool Core::initialize(const CoreConfiguration& coreConfiguration)

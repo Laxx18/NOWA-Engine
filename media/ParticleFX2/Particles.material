@@ -122,3 +122,590 @@ hlms Particle/advancedLodSystem unlit
 
 	diffuse_map Barrel_01.png
 }
+
+
+hlms Particle/mp_fire_02 unlit
+{
+	depth_write off
+	scene_blend add
+	diffuse_map mp_fire_02_2x2.dds
+}
+
+hlms Particle/Bubble unlit
+{
+	depth_write off
+	scene_blend alpha_blend
+	diffuse_map pump_bubble.png
+	cull_mode none
+	diffuse 1 1 1
+}
+
+hlms Particle/BlurredBubble unlit
+{
+	depth_write off
+	scene_blend add
+	diffuse_map pump_bubble_blurred.png
+}
+
+hlms Particle/Tornado unlit
+{
+	scene_blend alpha_blend
+	depth_write off
+    diffuse_map pu_sand_336x330.png 
+}
+
+hlms Particle/Stone unlit
+{
+	depth_write off
+    diffuse_map pu_stone.png
+}
+
+hlms Particle/Circle unlit
+{
+	depth_write off
+	scene_blend alpha_blend
+    diffuse_map pu_circle.png
+}
+
+hlms Particle/Rain_01 unlit
+{
+	depth_write off
+	scene_blend add
+    diffuse_map pu_rain_01.png
+}
+
+hlms Particle/Barrel_01 unlit
+{
+	depth_write off
+    diffuse_map pu_barrel_01.png
+}
+
+hlms Particle/Barrel_02 unlit
+{
+	depth_write off
+    diffuse_map pu_barrel_02.png
+}
+
+hlms fxpression/ac3dmat1 unlit
+{
+	ambient 1 0.05 0
+    diffuse 1 0.05 0
+    diffuse_map pu_plate.png
+}
+
+hlms Particle/Flame unlit
+{
+	depth_write off
+	scene_blend add
+    diffuse_map pu_flame.png
+}
+
+material Particle/Fire
+{
+    technique
+    {
+        pass
+        {
+            lighting off
+            scene_blend add
+            depth_write off
+            texture_unit
+            {
+                texture pu_flame.png
+                tex_address_mode clamp
+                wave_xform scroll_x sine 0 0.3 0 0.15
+            }
+        }
+    }
+}
+
+hlms Particle/ExplosionFire unlit
+{
+	depth_write off
+	scene_blend add
+	// fog_override true
+    diffuse_map pu_smoke_02_128x128.png
+}
+
+hlms Particle/Nucleus unlit
+{
+	depth_write off
+	scene_blend add
+    diffuse_map pu_nucleus.png
+}
+
+hlms Particle/Debris unlit
+{
+	depth_write off
+	scene_blend add
+    diffuse_map pu_fire_01_64x64.png
+}
+
+hlms Particle/BurstFlare unlit
+{
+	depth_write off
+	scene_blend add
+    diffuse_map pu_dot_03_64x64.png
+}
+
+hlms Particle/GreenBall unlit
+{
+	depth_write off
+	scene_blend alpha_blend
+    diffuse_map pu_green_ball.png
+}
+
+hlms Particle/Crate unlit
+{
+	depth_write off
+	diffuse_map crate6.png
+}
+
+hlms Particle/Star unlit
+{
+	depth_write off
+	scene_blend add
+    diffuse_map pu_flare_12_256x256.png
+}
+
+hlms Particle/Hart unlit
+{
+	depth_write off
+	scene_blend alpha_blend
+    diffuse_map pu_hart.png
+}
+
+hlms Particle/Interpolate unlit
+{
+	depth_write off
+	scene_blend alpha_blend
+    diffuse_map interpolate.png
+}
+
+hlms Particle/Fish unlit
+{
+	depth_write off
+    diffuse_map steelhead.png
+}
+
+hlms Particle/Flare unlit
+{
+	depth_write off
+	scene_blend add
+    diffuse_map pu_flare.png
+}
+
+hlms Particle/Flare_01 unlit
+{
+	depth_write off
+	scene_blend add
+    diffuse_map pump_flare_01.png
+}
+
+hlms Particle/Flare_02 unlit
+{
+	depth_write off
+	scene_blend add
+    diffuse_map pump_flare_02.png
+}
+
+hlms Particle/Flare_03 unlit
+{
+	depth_write off
+	scene_blend add
+    diffuse_map pump_flare_03.png
+}
+
+hlms Particle/Flare_04 unlit
+{
+	depth_write off
+	scene_blend add
+    diffuse_map pump_flare_04.png
+}
+
+hlms Particle/Flare_05 unlit
+{
+	depth_write off
+	scene_blend add
+    diffuse_map pump_flare_05.png
+}
+
+hlms Particle/Flare_06 unlit
+{
+	depth_write off
+	scene_blend add
+    diffuse_map pump_flare_06.png
+}
+
+hlms Particle/RibbonTrail unlit
+{
+	scene_blend add
+	depth_write off
+	diffuse_map pu_ribbontrail.png
+}
+
+hlms Particle/Rain unlit
+{
+	depth_write off
+	scene_blend colour_blend
+    diffuse_map pu_rain.png
+}
+
+hlms Particle/Beam_1 unlit
+{
+	depth_write off
+	scene_blend add
+    diffuse_map pu_beam_01.png
+}
+
+hlms Particle/Beam_2 unlit
+{
+	scene_blend add
+	depth_write off
+    diffuse_map pu_beam_02.png 
+}
+
+hlms Particle/Streak_01 unlit
+{
+	scene_blend add
+	depth_write off
+    diffuse_map pump_streak_01.png 
+}
+
+hlms Particle/Streak_02 unlit
+{
+	scene_blend add
+	depth_write off
+    diffuse_map pump_streak_02.png 
+}
+
+hlms Particle/Streak_03 unlit
+{
+	scene_blend add
+	depth_write off
+    diffuse_map pump_streak_03.png 
+}
+
+hlms Particle/Streak_04 unlit
+{
+	scene_blend add
+	depth_write off
+    diffuse_map pump_streak_04.png 
+}
+
+hlms Particle/Watch unlit
+{
+	scene_blend add
+	depth_write off
+    diffuse_map pump_watch.png 
+}
+
+hlms Particle/Hourglass unlit
+{
+	scene_blend add
+	depth_write off
+    diffuse_map pump_hourglass.png 
+}
+
+hlms Particle/Leave unlit
+{
+	scene_blend alpha_blend
+	depth_write off
+    diffuse_map pump_leave.png 
+}
+
+hlms Particle/Smoke_01 unlit
+{
+	scene_blend add
+	depth_write off
+    diffuse_map pump_smoke_01.png 
+}
+
+hlms Particle/Smoke_11 unlit
+{
+	scene_blend alpha_blend
+	depth_write off
+    diffuse_map pump_smoke_01.png 
+}
+
+hlms Particle/Smoke unlit
+{
+	depth_write off
+	scene_blend alpha_blend
+    diffuse_map pu_smoke_02_128x128.png
+}
+
+hlms Particle/Smoke_02 unlit
+{
+	depth_write off
+	scene_blend alpha_blend
+    diffuse_map pu_smoke_brown_336x330.png
+}
+
+hlms Particle/Smoke_03 unlit
+{
+	depth_write off
+	scene_blend add
+    diffuse_map pu_smoke_brown_336x330.png
+}
+
+hlms Particle/Smoke_04 unlit
+{
+	depth_write off
+	scene_blend alpha_blend
+    diffuse_map pu_dirt_256x512.png
+}
+
+hlms Particle/Dirt_11 unlit
+{
+	depth_write off
+	scene_blend alpha_blend
+    diffuse_map pump_dirt_01.png
+}
+
+hlms Particle/Dirt_12 unlit
+{
+	depth_write off
+	scene_blend alpha_blend
+    diffuse_map pump_dirt_02.png
+}
+
+hlms Particle/Lighting unlit
+{
+	depth_write off
+	scene_blend add
+    diffuse_map pump_lighting_01.png
+}
+
+hlms Particle/Lighting_02 unlit
+{
+	depth_write off
+	scene_blend add
+    diffuse_map pump_lighting_02.png
+}
+
+hlms Particle/Lighting_03 unlit
+{
+	depth_write off
+	scene_blend add
+    diffuse_map pump_lighting_03.png
+}
+
+hlms Particle/Lightning_04 unlit
+{
+	depth_write off
+	scene_blend add
+    diffuse_map pump_lighting_04.png
+}
+
+hlms Particle/Spark_01 unlit
+{
+	depth_write off
+	scene_blend add
+    diffuse_map pump_spark_01.png
+}
+
+hlms Particle/Star_01 unlit
+{
+	depth_write off
+	scene_blend add
+    diffuse_map pump_star_01.png
+}
+
+hlms Particle/Star_02 unlit
+{
+	depth_write off
+	scene_blend add
+    diffuse_map pump_star_02.png
+}
+
+hlms Particle/Star_03 unlit
+{
+	depth_write off
+	scene_blend add
+    diffuse_map pump_star_03.png
+}
+
+hlms Particle/Star_04 unlit
+{
+	depth_write off
+	scene_blend add
+    diffuse_map pump_star_04.png
+}
+
+hlms Particle/Star_05 unlit
+{
+	depth_write off
+	scene_blend add
+    diffuse_map pump_star_05.png
+}
+
+hlms Particle/Genesis_11 unlit
+{
+	depth_write off
+	scene_blend alpha_blend
+    diffuse_map pump_genesis_01.png
+}
+
+hlms Particle/Genesis_12 unlit
+{
+	depth_write off
+	scene_blend alpha_blend
+    diffuse_map pump_genesis_02.png
+}
+
+hlms Particle/Swirl_01 unlit
+{
+	depth_write off
+	scene_blend add
+    diffuse_map pump_swirl_01.png
+}
+
+hlms Particle/Swirl_02 unlit
+{
+	depth_write off
+	scene_blend add
+    diffuse_map pump_swirl_02.png
+}
+
+hlms Particle/Swirl_03 unlit
+{
+	depth_write off
+	scene_blend add
+    diffuse_map pump_swirl_03.png
+}
+
+hlms Particle/Ring_01 unlit
+{
+	depth_write off
+	scene_blend add
+    diffuse_map pump_ring_01.png
+}
+
+hlms Particle/Ring_02 unlit
+{
+	depth_write off
+	scene_blend add
+    diffuse_map pump_ring_02.png
+}
+
+hlms Particle/Ring_03 unlit
+{
+	depth_write off
+	scene_blend add
+    diffuse_map pump_ring_03.png
+}
+
+hlms Particle/Ring_14 unlit
+{
+	depth_write off
+	scene_blend alpha_blend
+    diffuse_map pump_ring_04.png
+}
+
+hlms Particle/Ring_05 unlit
+{
+	depth_write off
+	scene_blend add
+    diffuse_map pump_ring_05.png
+}
+
+hlms Particle/Metal_01 unlit
+{
+	depth_write off
+	scene_blend add
+    diffuse_map pump_metal_01.png
+}
+
+hlms Particle/Metal_02 unlit
+{
+	depth_write off
+	scene_blend add
+    diffuse_map pump_metal_02.png
+}
+
+hlms Particle/Fire_01 unlit
+{
+	depth_write off
+	scene_blend add
+    diffuse_map pump_flame_01.png
+}
+
+hlms Particle/Fire_02 unlit
+{
+	depth_write off
+	scene_blend add
+    diffuse_map pump_flame_02.png
+}
+
+hlms Particle/Fire_03 unlit
+{
+	depth_write off
+	scene_blend add
+    diffuse_map pump_flame_03.png
+}
+
+hlms Particle/Fire_04 unlit
+{
+	depth_write off
+	scene_blend add
+    diffuse_map pump_flame_04.png
+}
+
+hlms Particle/AtlasSmoke unlit
+{
+	depth_write off
+	scene_blend alpha_blend
+    diffuse_map pump_atlas_smoke.png
+}
+
+hlms Particle/Snow_01 unlit
+{
+	depth_write off
+	scene_blend alpha_blend
+    diffuse_map pump_snow_01.png
+}
+
+hlms Particle/BBal unlit
+{
+	depth_write off
+    diffuse_map pu_bbal.png
+}
+
+hlms Particle/BioHazzard unlit
+{
+	depth_write off
+	scene_blend add
+    diffuse_map pump_biohazzard.png
+}
+
+hlms Particle/CelticKnot unlit
+{
+	depth_write off
+	scene_blend add
+    diffuse_map pump_celticknot.png
+}
+
+hlms Particle/Pentagram_01 unlit
+{
+	depth_write off
+	scene_blend add
+    diffuse_map pump_pentagram_01.png
+}
+
+hlms Particle/Pentagram_02 unlit
+{
+	depth_write off
+	scene_blend add
+    diffuse_map pump_pentagram_02.png
+}
+
+hlms Water/Wake unlit
+{
+	depth_write off
+	scene_blend alpha_blend
+	// Optional, if you want it later:
+	// alpha_test greater_equal 64
+
+	diffuse_map wake.png
+}

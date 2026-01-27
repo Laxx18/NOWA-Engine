@@ -32,6 +32,19 @@ namespace NOWA
 	}
 
 	/**
+	 * @brief Fade state for particle effect transitions
+	 */
+	namespace ParticleFadeState
+	{
+		enum ParticleFadeState
+		{
+			None = 0,        ///< No fading active
+			FadingIn = 1,    ///< Currently fading in (increasing emission rate)
+			FadingOut = 2    ///< Currently fading out (decreasing emission rate)
+		};
+	}
+
+	/**
 	  * @brief		Creates an Ogre-next ParticleFX2 particle effect.
 	  */
 	class EXPORTED ParticleFxComponent : public GameObjectComponent, public Ogre::Plugin
@@ -191,8 +204,8 @@ namespace NOWA
 		Ogre::Real getParticlePlayTimeMS(void) const;
 
 		/**
-		 * @brief Sets the particle play speed multiplier
-		 * @param playSpeed The speed multiplier (1.0 = normal)
+		 * @brief Sets the particle play speed multiplier (affects both play time and particle flow velocity)
+		 * @param playSpeed The speed multiplier (1.0 = normal, >1.0 = faster, <1.0 = slower)
 		 */
 		void setParticlePlaySpeed(Ogre::Real playSpeed);
 
@@ -230,13 +243,13 @@ namespace NOWA
 		 * @brief Sets the particle scale
 		 * @param particleScale The scale vector
 		 */
-		void setParticleScale(const Ogre::Vector3& particleScale);
+		void setParticleScale(const Ogre::Vector2& particleScale);
 
 		/**
 		 * @brief Gets the particle scale
 		 * @return The scale vector
 		 */
-		Ogre::Vector3 getParticleScale(void) const;
+		Ogre::Vector2 getParticleScale(void) const;
 
 		/**
 		 * @brief Gets the Ogre ParticleSystem2 pointer
@@ -304,6 +317,60 @@ namespace NOWA
 		 */
 		ParticleBlendingMethod::ParticleBlendingMethod getBlendingMethod(void) const;
 
+		/**
+		 * @brief Sets whether the particle effect should fade in when starting
+		 * @param fadeIn True to enable fade in, false otherwise
+		 */
+		void setFadeIn(bool fadeIn);
+
+		/**
+		 * @brief Gets whether the particle effect fades in when starting
+		 * @return True if fade in is enabled, false otherwise
+		 */
+		bool getFadeIn(void) const;
+
+		/**
+		 * @brief Sets the fade in duration in milliseconds
+		 * @param fadeInTimeMS The fade in duration in milliseconds
+		 */
+		void setFadeInTimeMS(Ogre::Real fadeInTimeMS);
+
+		/**
+		 * @brief Gets the fade in duration in milliseconds
+		 * @return The fade in duration in milliseconds
+		 */
+		Ogre::Real getFadeInTimeMS(void) const;
+
+		/**
+		 * @brief Sets whether the particle effect should fade out when stopping
+		 * @param fadeOut True to enable fade out, false otherwise
+		 */
+		void setFadeOut(bool fadeOut);
+
+		/**
+		 * @brief Gets whether the particle effect fades out when stopping
+		 * @return True if fade out is enabled, false otherwise
+		 */
+		bool getFadeOut(void) const;
+
+		/**
+		 * @brief Sets the fade out duration in milliseconds
+		 * @param fadeOutTimeMS The fade out duration in milliseconds
+		 */
+		void setFadeOutTimeMS(Ogre::Real fadeOutTimeMS);
+
+		/**
+		 * @brief Gets the fade out duration in milliseconds
+		 * @return The fade out duration in milliseconds
+		 */
+		Ogre::Real getFadeOutTimeMS(void) const;
+
+		/**
+		 * @brief Gets the current fade state
+		 * @return The current fade state (None, FadingIn, FadingOut)
+		 */
+		ParticleFadeState::ParticleFadeState getFadeState(void) const;
+
 	public:
 		/**
 		* @see		GameObjectComponent::getStaticClassId
@@ -333,7 +400,9 @@ namespace NOWA
 		{
 			return "Usage: This Component is for playing particle effects using the Ogre-next ParticleFX2 system. "
 				"Select a particle template from the list (materials starting with 'Particle/'). "
-				"Set play time to 0 for infinite duration.";
+				"Set play time to 0 for infinite duration. "
+				"Enable FadeIn/FadeOut for smooth particle transitions. "
+				"Use PlaySpeed to control how fast particles flow.";
 		}
 
 		/**
@@ -378,6 +447,22 @@ namespace NOWA
 		{
 			return "Blending Method";
 		}
+		static const Ogre::String AttrFadeIn(void)
+		{
+			return "Fade In";
+		}
+		static const Ogre::String AttrFadeInTime(void)
+		{
+			return "Fade In Time";
+		}
+		static const Ogre::String AttrFadeOut(void)
+		{
+			return "Fade Out";
+		}
+		static const Ogre::String AttrFadeOutTime(void)
+		{
+			return "Fade Out Time";
+		}
 
 	private:
 		/**
@@ -411,6 +496,71 @@ namespace NOWA
 		 */
 		void applyBlendingMethod(void);
 
+		/**
+		 * @brief Updates the fade in progress
+		 * @param dt Delta time in seconds
+		 */
+		void updateFadeIn(Ogre::Real dt);
+
+		/**
+		 * @brief Updates the fade out progress
+		 * @param dt Delta time in seconds
+		 */
+		void updateFadeOut(Ogre::Real dt);
+
+		/**
+		 * @brief Sets the emission rate factor for all emitters (0.0 to 1.0)
+		 * @param factor The emission rate factor
+		 */
+		void setEmissionRateFactor(Ogre::Real factor);
+
+		/**
+		 * @brief Applies velocity speed factor for all emitters
+		 * @param speedFactor The velocity speed factor
+		 */
+		void applyVelocitySpeedFactor(Ogre::Real speedFactor);
+
+		/**
+		 * @brief Stores the original emission rates and velocities from all emitters
+		 */
+		void storeOriginalEmissionRates(void);
+
+		/**
+		 * @brief Initiates the fade out process
+		 */
+		void beginFadeOut(void);
+
+		/**
+		 * @brief Resets cloned particle and sets current scale to an existing clone without recreating it.
+		 *
+		 * This is a key optimization that allows us to modify scale without creating
+		 * zombie clones. It reads the original values from the base template and
+		 * applies the current scale factor to them, ensuring we don't accumulate
+		 * scaling on repeated calls.
+		 *
+		 * @param particleSystemDefInstance The cloned ParticleSystemDef to modify
+		 */
+		void resetClone(Ogre::ParticleSystemDef* particleSystemDefInstance);
+
+		void restoreOriginalEmissionRates(void);
+
+		Ogre::Real getMaxTtlSecondsFromDef(const Ogre::ParticleSystemDef* def) const;
+
+		/**
+			* @brief Destroys EVERYTHING - instance, node, AND the clone.
+			*
+			* This is the "nuclear option" for cleanup. Use this when:
+			* - Component is being removed (onRemoveComponent)
+			* - Template is changing (setParticleTemplateName)
+			*
+			* This properly destroys the clone using the correct Ogre-Next API sequence:
+			* 1. clone->_destroyAllParticleSystems()
+			* 2. particleManager->destroyAllParticleSystems()
+			*
+			* @note Regular destroyParticleEffect() only destroys instance/node, NOT clone
+			*/
+		void destroyEverything(void);
+
 	private:
 		Ogre::String name;
 
@@ -426,9 +576,23 @@ namespace NOWA
 		Variant* particleOffsetOrientation;
 		Variant* particleScale;
 		Variant* blendingMethod;
-		Ogre::String oldParticleTemplateName;
+		Variant* fadeIn;
+		Variant* fadeInTime;
+		Variant* fadeOut;
+		Variant* fadeOutTime;
+
 		bool oldActivated;
 		bool isEmitting;  // Track emission state
+		ParticleFadeState::ParticleFadeState fadeState;
+		Ogre::Real fadeProgress;  // Current fade progress (0.0 to 1.0)
+		std::vector<Ogre::Real> originalEmissionRates;  // Stores original emission rates per emitter
+		std::vector<Ogre::Real> originalMinVelocities;  // Stores original min velocities per emitter
+		std::vector<Ogre::Real> originalMaxVelocities;  // Stores original max velocities per emitter
+		Ogre::String oldParticleTemplateName;
+		Ogre::String baseParticleTemplateName;
+		Ogre::String clonedDefName;
+		Ogre::Real pendingDrainTimeMs;
+		bool pendingRestartAfterDrain;
 	};
 
 }; // namespace end

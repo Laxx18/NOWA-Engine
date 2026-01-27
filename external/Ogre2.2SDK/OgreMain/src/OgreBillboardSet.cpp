@@ -890,11 +890,6 @@ namespace Ogre
             Renderable::_setNullDatablock();
         }
         //-----------------------------------------------------------------------
-        ParticleType::ParticleType BillboardSet::getParticleType() const
-        {
-            return ParticleType::NotParticle;
-        }
-        //-----------------------------------------------------------------------
         unsigned int BillboardSet::getPoolSize() const
         {
             return static_cast<unsigned int>( mBillboardPool.size() );

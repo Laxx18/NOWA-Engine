@@ -260,8 +260,6 @@ namespace Ogre
             void             getWorldTransforms( Matrix4             *) const override;
             const LightList &getLights() const override;
 
-            Ogre::ParticleType::ParticleType getParticleType() const override;
-
         protected:
             /// Maximum length of each chain
             size_t mMaxElementsPerChain;
