@@ -650,7 +650,7 @@ hlms Particle/Pentagram_02 unlit
 // bm: AlphaTransparent
 hlms Water/Wake unlit
 {
-	diffuse_map wake.png
+	diffuse_map water_wake.png
 }
 
 
