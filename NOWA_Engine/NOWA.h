@@ -333,6 +333,7 @@ namespace NOWA
 #include "modules/OgreNewtModule.h"
 #include "modules/OgreALModule.h"
 #include "modules/ParticleUniverseModule.h"
+#include "modules/ParticleFxModule.h"
 #include "modules/OgreRecastModule.h"
 #include "modules/LuaScriptApi.h"
 #include "modules/GameProgressModule.h"

@@ -324,6 +324,7 @@
     <ClInclude Include="modules\OgreALModule.h" />
     <ClInclude Include="modules\OgreNewtModule.h" />
     <ClInclude Include="modules\OgreRecastModule.h" />
+    <ClInclude Include="modules\ParticleFxModule.h" />
     <ClInclude Include="modules\ParticleUniverseModule.h" />
     <ClInclude Include="modules\RakNetModule.h" />
     <ClInclude Include="modules\SingletonModule.h" />
@@ -540,6 +541,7 @@
     <ClCompile Include="modules\OgreALModule.cpp" />
     <ClCompile Include="modules\OgreNewtModule.cpp" />
     <ClCompile Include="modules\OgreRecastModule.cpp" />
+    <ClCompile Include="modules\ParticleFxModule.cpp" />
     <ClCompile Include="modules\ParticleUniverseModule.cpp" />
     <ClCompile Include="modules\RakNetModule.cpp" />
     <ClCompile Include="modules\WorkspaceModule.cpp" />

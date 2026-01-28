@@ -1,4 +1,10 @@
-﻿#include "NOWAPrecompiled.h"
+/*
+Copyright (c) 2025 Lukas Kalinowski
+
+GPL v3
+*/
+
+#include "NOWAPrecompiled.h"
 #include "ParticleFxComponent.h"
 #include "gameobject/GameObjectController.h"
 #include "utilities/XMLConverter.h"
@@ -22,88 +28,6 @@
 #include <fstream>
 #include <sstream>
 
-// Available emitter parameters:
-/*
-"angle : The angle up to which particles may vary in their initial direction from the emitter direction, in degrees.",
-"colour : The colour of emitted particles.",
-"colour_range_start : The start of a range of colours to be assigned to emitted particles.",
-"colour_range_end : The end of a range of colours to be assigned to emitted particles.",
-"direction : The base direction of the emitter.",
-"up : The up vector of the emitter.",
-"direction_position_reference : Reference position used to calculate particle direction based on position, useful for explosions or implosions.",
-"emission_rate : The number of particles emitted per second.",
-"position : The position of the emitter relative to the particle system center.",
-"velocity : The initial velocity assigned to every particle in world units per second.",
-"velocity_min : The minimum initial velocity assigned to particles.",
-"velocity_max : The maximum initial velocity assigned to particles.",
-"time_to_live : The lifetime of each particle in seconds.",
-"time_to_live_min : The minimum lifetime of each particle in seconds.",
-"time_to_live_max : The maximum lifetime of each particle in seconds.",
-"duration : The length of time in seconds which the emitter stays enabled.",
-"duration_min : The minimum length of time in seconds which the emitter stays enabled.",
-"duration_max : The maximum length of time in seconds which the emitter stays enabled.",
-"repeat_delay : Delay in seconds before the emitter is re-enabled after disabling.",
-"repeat_delay_min : Minimum delay before the emitter is re-enabled after disabling.",
-"repeat_delay_max : Maximum delay before the emitter is re-enabled after disabling.",
-"name : The name of the emitter.",
-"emit_emitter : If enabled, this emitter emits other emitters instead of visual particles.",
-"width : Width of the emitter shape in world coordinates.",
-"height : Height of the emitter shape in world coordinates.",
-"depth : Depth of the emitter shape in world coordinates."
-*/
-
-/*******************************************************************************
- * TESTING CHECKLIST
- *******************************************************************************
- *
- * After implementing all changes, test these scenarios:
- *
- * 1. CONNECT/DISCONNECT:
- *    - Start simulation -> particle plays from beginning
- *    - Stop simulation -> particle stops
- *    - Start again -> particle plays from beginning again
- *    particlePlayTime should reset to initial value each time
- *
- * 2. PLAYTIME:
- *    - Set playtime to 5000ms, playSpeed to 1.0 -> should play for 5 seconds
- *    - Set playtime to 5000ms, playSpeed to 2.0 -> should play for 2.5 seconds
- *    - Set playtime to 5000ms, playSpeed to 0.5 -> should play for 10 seconds
- *    Time countdown must use playSpeed multiplier
- *
- * 3. REPEAT:
- *    - Enable repeat -> particle loops forever
- *    - Disable repeat -> particle plays once then stops
- *    Each loop starts from beginning
- *
- * 4. SCALE CHANGES:
- *    - Change scale during play -> should continue playing at same point
- *    - Change scale multiple times -> no memory leaks
- *    Only ONE clone should exist per GameObject
- *
- * 5. TEMPLATE CHANGES:
- *    - Change template -> old clone destroyed, new clone created
- *    - Change template multiple times -> no zombie clones
- *    Memory should not grow
- *
- * 6. COMPONENT REMOVAL:
- *    - Remove component -> everything cleaned up
- *    - Check memory -> clone should be destroyed
- *    No leaks
- *
- ******************************************************************************/
-
-/*
-	Approach:
-	Start:     0 clones
-	Scale:     1 clone (reused)
-	Scale:     1 clone (reused)
-	Scale:     1 clone (reused)
-	Template:  0 clones (destroyed), then 1 clone (new template)
-	Template:  0 clones (destroyed), then 1 clone (new template)
-
-	Remove:    0 clones (properly destroyed)
-*/
-
 namespace NOWA
 {
 	using namespace rapidxml;
@@ -112,15 +36,9 @@ namespace NOWA
 	ParticleFxComponent::ParticleFxComponent()
 		: GameObjectComponent(),
 		name("ParticleFxComponent"),
-		particleSystem(nullptr),
-		particleNode(nullptr),
-		particlePlayTime(10000.0f),
+		uniqueParticleName(""),
+		particleFxModule(nullptr),
 		oldActivated(true),
-		isEmitting(false),
-		fadeState(ParticleFadeState::None),
-		fadeProgress(0.0f),
-		pendingDrainTimeMs(0.0f),
-		pendingRestartAfterDrain(false),
 		activated(new Variant(ParticleFxComponent::AttrActivated(), true, this->attributes)),
 		particleTemplateName(new Variant(ParticleFxComponent::AttrParticleName(), std::vector<Ogre::String>(), this->attributes)),
 		repeat(new Variant(ParticleFxComponent::AttrRepeat(), false, this->attributes)),
@@ -129,18 +47,18 @@ namespace NOWA
 		particleOffsetPosition(new Variant(ParticleFxComponent::AttrOffsetPosition(), Ogre::Vector3::ZERO, this->attributes)),
 		particleOffsetOrientation(new Variant(ParticleFxComponent::AttrOffsetOrientation(), Ogre::Vector3::ZERO, this->attributes)),
 		particleScale(new Variant(ParticleFxComponent::AttrScale(), Ogre::Vector2::UNIT_SCALE, this->attributes)),
-		blendingMethod(new Variant(ParticleFxComponent::AttrBlendingMethod(), { "Alpha Hashing", "Alpha Hashing + A2C", "Alpha Blending" }, this->attributes)),
+		blendingMethod(new Variant(ParticleFxComponent::AttrBlendingMethod(), { "Alpha Hashing", "Alpha Hashing + A2C", "Alpha Blending", "Alpha Transparent", "Transparent Colour", "From Material"}, this->attributes)),
 		fadeIn(new Variant(ParticleFxComponent::AttrFadeIn(), false, this->attributes)),
 		fadeInTime(new Variant(ParticleFxComponent::AttrFadeInTime(), 1000.0f, this->attributes)),
 		fadeOut(new Variant(ParticleFxComponent::AttrFadeOut(), false, this->attributes)),
 		fadeOutTime(new Variant(ParticleFxComponent::AttrFadeOutTime(), 1000.0f, this->attributes))
 	{
-		// Activated variable is set to false again, when particle has played and repeat is off, so tell it the gui that it must be refreshed
+		// Activated variable is set to false again, when particle has played and repeat is off
 		this->activated->addUserData(GameObject::AttrActionNeedRefresh());
 		this->particleInitialPlayTime->setDescription("The particle play time in milliseconds, if set to 0, the particle effect will not stop automatically.");
 		this->particlePlaySpeed->setDescription("The particle flow speed multiplier. Values > 1.0 make particles flow faster, < 1.0 slower. Also affects play time countdown.");
-		this->blendingMethod->setListSelectedValue("Alpha Blending");
-		this->blendingMethod->setDescription("Alpha Hashing: Fast, no sorting needed. Alpha Hashing + A2C: Best quality with MSAA. Alpha Blending: Traditional transparency.");
+		this->blendingMethod->setListSelectedValue("From Material");
+		this->blendingMethod->setDescription("Alpha Hashing: Fast, no sorting needed. Alpha Hashing + A2C: Best quality with MSAA. Alpha Blending: Traditional transparency. From Material: A lookup in the corresponding is made for the configured blending method.");
 		this->fadeIn->setDescription("If enabled, the particle effect will gradually increase emission rate from 0 to max when starting.");
 		this->fadeInTime->setDescription("The fade in duration in milliseconds.");
 		this->fadeOut->setDescription("If enabled, the particle effect will gradually decrease emission rate to 0 before stopping.");
@@ -149,7 +67,6 @@ namespace NOWA
 
 	ParticleFxComponent::~ParticleFxComponent(void)
 	{
-
 	}
 
 	void ParticleFxComponent::initialise()
@@ -292,6 +209,11 @@ namespace NOWA
 		}
 	}
 
+	Ogre::String ParticleFxComponent::getUniqueParticleName(void) const
+	{
+		return "ParticleFxComp_" + this->gameObjectPtr->getName() + "_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()) + "_" + Ogre::StringConverter::toString(this->index);
+	}
+
 	bool ParticleFxComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
 		GameObjectComponent::init(propertyElement);
@@ -314,7 +236,6 @@ namespace NOWA
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "PlayTime")
 		{
 			this->particleInitialPlayTime->setValue(XMLConverter::getAttribReal(propertyElement, "data", 10000.0f));
-			this->particlePlayTime = this->particleInitialPlayTime->getReal();
 			propertyElement = propertyElement->next_sibling("property");
 		}
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "PlaySpeed")
@@ -396,16 +317,18 @@ namespace NOWA
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ParticleFxComponent] Init particle fx component for game object: " + this->gameObjectPtr->getName());
 
+		// Get the module from AppStateManager (assuming it's available there)
+		// You'll need to implement getParticleFxModule() in your AppState
+		this->particleFxModule = AppStateManager::getSingletonPtr()->getParticleFxModule();
+
+		if (nullptr == this->particleFxModule)
+		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ParticleFxComponent] Error: ParticleFxModule not available!");
+			return false;
+		}
+
 		// Refresh the particle names list
 		this->gatherParticleNames();
-
-		Ogre::ParticleSystemManager2* particleManager = this->gameObjectPtr->getSceneManager()->getParticleSystemManager2();
-
-		// Prevents crash with to many particles:
-		// primStart + primCount must be <= 288
-
-		// Max particles per system (NOT total systems!)
-		particleManager->setHighestPossibleQuota(512, 0);
 
 		if (true == this->particleTemplateName->getListSelectedValue().empty())
 		{
@@ -413,456 +336,70 @@ namespace NOWA
 			return true;
 		}
 
-		// Particle effect is moving, so it must always be dynamic, else it will not be rendered!
+		// Particle effect is moving, so it must always be dynamic
 		this->gameObjectPtr->setDynamic(true);
 		this->gameObjectPtr->getAttribute(GameObject::AttrDynamic())->setVisible(false);
+
+		// Generate unique name for this particle instance
+		this->uniqueParticleName = this->getUniqueParticleName();
 
 		return true;
 	}
 
-	bool ParticleFxComponent::createParticleEffect(void)
-	{
-		if (nullptr == this->gameObjectPtr)
-		{
-			return true;
-		}
-
-		const Ogre::String& templateName = this->particleTemplateName->getListSelectedValue();
-		if (true == templateName.empty())
-		{
-			return true;
-		}
-
-		// Clone must be unique per (GameObject, Template)
-		const Ogre::String cloneName = "ParticleFX_NOWA_" + templateName + "_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
-
-		// Template changed? Destroy EVERYTHING and start fresh
-		if (false == this->baseParticleTemplateName.empty() && this->baseParticleTemplateName != templateName)
-		{
-			this->destroyEverything();
-		}
-
-		// Already created?
-		if (nullptr != this->particleSystem)
-		{
-			return true;
-		}
-
-		GraphicsModule::RenderCommand renderCommand = [this, templateName, cloneName]()
-		{
-			Ogre::SceneManager* sceneManager = this->gameObjectPtr->getSceneManager();
-			Ogre::ParticleSystemManager2* particleManager = sceneManager->getParticleSystemManager2();
-
-			Ogre::ParticleSystemDef* particleSystemDefInstance = nullptr;
-
-			// If our clone exists, reuse it
-			if (particleManager && true == particleManager->hasParticleSystemDef(cloneName, false))
-			{
-				particleSystemDefInstance = particleManager->getParticleSystemDef(cloneName, false);
-				this->resetClone(particleSystemDefInstance);
-			}
-			else
-			{
-				Ogre::ParticleSystemDef* baseDef = particleManager->getParticleSystemDef(templateName);
-
-				try
-				{
-					particleSystemDefInstance = baseDef->clone(cloneName, particleManager);
-				}
-				catch (...)
-				{
-					particleSystemDefInstance = particleManager->getParticleSystemDef(cloneName, false);
-				}
-
-				this->resetClone(particleSystemDefInstance);
-			}
-
-			if (particleSystemDefInstance && false == particleSystemDefInstance->isInitialized())
-			{
-				Ogre::VaoManager* vaoManager = Core::getSingletonPtr()->getOgreRoot()->getRenderSystem()->getVaoManager();
-				particleSystemDefInstance->init(vaoManager);
-			}
-
-			this->particleSystem = sceneManager->createParticleSystem2(cloneName);
-			if (nullptr == this->particleSystem)
-			{
-				return;
-			}
-
-			this->particleNode = this->gameObjectPtr->getSceneNode()->createChildSceneNode();
-			this->particleNode->setOrientation(MathHelper::getInstance()->degreesToQuat(this->particleOffsetOrientation->getVector3()));
-			this->particleNode->setPosition(this->particleOffsetPosition->getVector3());
-			this->particleNode->attachObject(this->particleSystem);
-
-			this->particleSystem->setRenderQueueGroup(RENDER_QUEUE_PARTICLE_STUFF);
-			this->particleSystem->setCastShadows(false);
-
-			this->applyBlendingMethod();
-			this->storeOriginalEmissionRates();
-
-			Ogre::Real speed = this->particlePlaySpeed->getReal();
-			if (speed != 1.0f)
-			{
-				this->applyVelocitySpeedFactor(speed);
-			}
-
-			if (this->fadeIn->getBool())
-			{
-				this->fadeState = ParticleFadeState::FadingIn;
-				this->fadeProgress = 0.0f;
-				this->setEmissionRateFactor(0.0f);
-			}
-			else
-			{
-				this->fadeState = ParticleFadeState::None;
-				this->fadeProgress = 1.0f;
-			}
-		};
-		NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ParticleFxComponent::createParticleEffect");
-
-		this->clonedDefName = cloneName;
-		this->baseParticleTemplateName = templateName;
-
-		return (this->particleSystem != nullptr);
-	}
-
-	void ParticleFxComponent::destroyParticleEffect(void)
-	{
-		if (nullptr == this->particleSystem && nullptr == this->particleNode)
-		{
-			return;
-		}
-
-		GraphicsModule::RenderCommand renderCommand = [this]()
-		{
-			try
-			{
-				Ogre::SceneManager* sceneManager = this->gameObjectPtr->getSceneManager();
-
-				// IMPORTANT: Restore clone defaults so next play is not stuck at emissionRate=0 after fade out
-				this->restoreOriginalEmissionRates();
-
-				if (this->particleNode && this->particleSystem && this->particleSystem->isAttached())
-				{
-					this->particleNode->detachObject(this->particleSystem);
-				}
-
-				if (this->particleSystem)
-				{
-					sceneManager->destroyParticleSystem2(this->particleSystem);
-					this->particleSystem = nullptr;
-				}
-
-				if (this->particleNode)
-				{
-					Ogre::SceneNode* parent = this->particleNode->getParentSceneNode();
-					if (parent)
-					{
-						parent->removeAndDestroyChild(this->particleNode);
-					}
-					else
-					{
-						sceneManager->destroySceneNode(this->particleNode);
-					}
-					this->particleNode = nullptr;
-				}
-			}
-			catch (const Ogre::Exception& e)
-			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ParticleFxComponent] Exception destroying particle effect: " + e.getFullDescription());
-			}
-		};
-		NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ParticleFxComponent::destroyParticleEffect");
-
-		this->isEmitting = false;
-		this->fadeState = ParticleFadeState::None;
-		this->fadeProgress = 0.0f;
-		this->originalEmissionRates.clear();
-		this->originalMinVelocities.clear();
-		this->originalMaxVelocities.clear();
-	}
-
-	void ParticleFxComponent::destroyEverything(void)
-	{
-		// First destroy instance and node
-		this->destroyParticleEffect();
-
-		// Now destroy the clone if it exists
-		if (false == this->clonedDefName.empty())
-		{
-			GraphicsModule::RenderCommand renderCommand = [this]()
-			{
-				try
-				{
-					Ogre::SceneManager* sceneManager = this->gameObjectPtr->getSceneManager();
-					Ogre::ParticleSystemManager2* particleManager = sceneManager->getParticleSystemManager2();
-
-					if (particleManager && particleManager->hasParticleSystemDef(this->clonedDefName, false))
-					{
-						Ogre::ParticleSystemDef* clone = particleManager->getParticleSystemDef(this->clonedDefName, false);
-
-						// CRITICAL: Must destroy all instances first
-						clone->_destroyAllParticleSystems();
-
-						// Now destroy the def itself
-						particleManager->destroyAllParticleSystems();
-					}
-				}
-				catch (const Ogre::Exception& e)
-				{
-					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ParticleFxComponent] Exception destroying clone: " + e.getFullDescription());
-				}
-			};
-			NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ParticleFxComponent::destroyEverything");
-
-			this->clonedDefName.clear();
-			this->baseParticleTemplateName.clear();
-		}
-	}
-
-	void ParticleFxComponent::resetClone(Ogre::ParticleSystemDef* particleSystemDefInstance)
-	{
-		if (nullptr == particleSystemDefInstance)
-		{
-			return;
-		}
-
-		const Ogre::Vector2 scale = this->particleScale->getVector2();
-		const Ogre::Real uniformScale = (scale.x + scale.y) * 0.5f;
-
-		Ogre::SceneManager* sceneManager = this->gameObjectPtr->getSceneManager();
-		Ogre::ParticleSystemManager2* particleManager = sceneManager->getParticleSystemManager2();
-		Ogre::ParticleSystemDef* baseDef = particleManager->getParticleSystemDef(this->particleTemplateName->getListSelectedValue());
-
-		const auto& baseEmitters = baseDef->getEmitters();
-		auto& cloneEmitters = particleSystemDefInstance->getEmitters();
-
-		for (size_t i = 0; i < cloneEmitters.size() && i < baseEmitters.size(); ++i)
-		{
-			Ogre::EmitterDefData* cloneEmitter = cloneEmitters[i];
-			const Ogre::EmitterDefData* baseEmitter = baseEmitters[i];
-
-			Ogre::ParticleEmitter* cloneEmitterWrite = cloneEmitter->asParticleEmitter();
-			const Ogre::ParticleEmitter* baseEmitterRead = baseEmitter->asParticleEmitter();
-
-			// --- RESTORE BASE DEFAULTS FIRST (prevents "plays once" + prevents accumulating edits) ---
-
-			cloneEmitterWrite->setAngle(baseEmitterRead->getAngle());
-			cloneEmitterWrite->setDirection(baseEmitterRead->getDirection());
-			cloneEmitterWrite->setUp(baseEmitterRead->getUp());
-
-			cloneEmitterWrite->setColourRangeStart(baseEmitterRead->getColourRangeStart());
-			cloneEmitterWrite->setColourRangeEnd(baseEmitterRead->getColourRangeEnd());
-
-			cloneEmitterWrite->setMinTimeToLive(baseEmitterRead->getMinTimeToLive());
-			cloneEmitterWrite->setMaxTimeToLive(baseEmitterRead->getMaxTimeToLive());
-
-			cloneEmitterWrite->setEmissionRate(baseEmitterRead->getEmissionRate());
-
-			cloneEmitterWrite->setDuration(baseEmitterRead->getMinDuration(), baseEmitterRead->getMaxDuration());
-			cloneEmitterWrite->setRepeatDelay(baseEmitterRead->getMinRepeatDelay(), baseEmitterRead->getMaxRepeatDelay());
-
-			// CRITICAL: setStartTime(0) DISABLES the emitter in OGRE (see ParticleEmitter::setStartTime)
-			// So only apply base startTime, and ensure enabled state is correct afterwards.
-			const Ogre::Real baseStartTime = baseEmitterRead->getStartTime();
-			const bool baseEnabled = baseEmitterRead->getEnabled();
-
-			if (baseStartTime > 0.0f)
-			{
-				cloneEmitterWrite->setStartTime(baseStartTime);
-			}
-			else
-			{
-				cloneEmitterWrite->setEnabled(baseEnabled);
-			}
-
-			cloneEmitterWrite->resetDimensions();
-
-			Ogre::Vector2 baseDim = baseEmitter->getInitialDimensions();
-			Ogre::Vector2 scaledDim(baseDim.x * scale.x, baseDim.y * scale.y);
-			cloneEmitter->setInitialDimensions(scaledDim);
-
-			Ogre::Vector3 basePos = baseEmitterRead->getPosition();
-			cloneEmitterWrite->setPosition(basePos * uniformScale);
-
-			Ogre::Real baseMinVel = baseEmitterRead->getMinParticleVelocity();
-			Ogre::Real baseMaxVel = baseEmitterRead->getMaxParticleVelocity();
-			cloneEmitterWrite->setParticleVelocity(baseMinVel * uniformScale, baseMaxVel * uniformScale);
-
-			// Scale emitter box dimensions (guard: parameter may not exist for all emitter types)
-			const Ogre::String baseWidthStr = baseEmitterRead->getParameter("width");
-			if (false == baseWidthStr.empty())
-			{
-				Ogre::Real baseWidth = Ogre::StringConverter::parseReal(baseWidthStr);
-				cloneEmitterWrite->setParameter("width", Ogre::StringConverter::toString(baseWidth * uniformScale));
-			}
-
-			const Ogre::String baseHeightStr = baseEmitterRead->getParameter("height");
-			if (false == baseHeightStr.empty())
-			{
-				Ogre::Real baseHeight = Ogre::StringConverter::parseReal(baseHeightStr);
-				cloneEmitterWrite->setParameter("height", Ogre::StringConverter::toString(baseHeight * uniformScale));
-			}
-
-			const Ogre::String baseDepthStr = baseEmitterRead->getParameter("depth");
-			if (false == baseDepthStr.empty())
-			{
-				Ogre::Real baseDepth = Ogre::StringConverter::parseReal(baseDepthStr);
-				cloneEmitterWrite->setParameter("depth", Ogre::StringConverter::toString(baseDepth * uniformScale));
-			}
-
-			// Final sanity: if baseStartTime == 0, ensure emitter is enabled (setStartTime(0) would have disabled it)
-			if (baseStartTime <= 0.0f && true == baseEnabled)
-			{
-				cloneEmitterWrite->setEnabled(true);
-			}
-		}
-	}
-
-	void ParticleFxComponent::restoreOriginalEmissionRates(void)
-	{
-		if (nullptr == this->particleSystem)
-		{
-			return;
-		}
-
-		Ogre::ParticleSystemDef* particleSystemDef = const_cast<Ogre::ParticleSystemDef*>(this->particleSystem->getParticleSystemDef());
-		if (nullptr == particleSystemDef)
-		{
-			return;
-		}
-
-		auto& emitters = particleSystemDef->getEmitters();
-
-		for (size_t i = 0; i < emitters.size() && i < this->originalEmissionRates.size() && i < this->originalMinVelocities.size() && i < this->originalMaxVelocities.size(); ++i)
-		{
-			Ogre::ParticleEmitter* particleEmitterWrite = emitters[i]->asParticleEmitter();
-			particleEmitterWrite->setEmissionRate(this->originalEmissionRates[i]);
-			particleEmitterWrite->setParticleVelocity(this->originalMinVelocities[i], this->originalMaxVelocities[i]);
-		}
-	}
-
-	Ogre::Real ParticleFxComponent::getMaxTtlSecondsFromDef(const Ogre::ParticleSystemDef* def) const
-	{
-		if (nullptr == def)
-		{
-			return 0.0f;
-		}
-
-		Ogre::Real maxTtl = 0.0f;
-
-		const auto& emitters = def->getEmitters();
-		for (const Ogre::EmitterDefData* emitters : emitters)
-		{
-			const Ogre::ParticleEmitter* emitter = emitters->asParticleEmitter();
-			if (emitter)
-			{
-				maxTtl = std::max(maxTtl, emitter->getMaxTimeToLive());
-			}
-		}
-
-		return maxTtl;
-	}
-
-	/*
-	connect()
-	  ├─> particlePlayTime = initial
-	  ├─> fadeState = None
-	  └─> if activated:
-		  └─> startParticleEffect()
-			  ├─> destroyParticleEffect() (cleanup old)
-			  ├─> createParticleEffect()
-			  │   ├─> cloneName = "ParticleFX_NOWA_" + gameObjectID
-			  │   ├─> if clone exists:
-			  │   │   ├─> Reuse it
-			  │   │   └─> resetClone()
-			  │   └─> else:
-			  │       ├─> baseDef->clone(cloneName)
-			  │       └─> resetClone()
-			  │   
-			  │   ├─> Initialize clone if needed
-			  │   ├─> createParticleSystem2(cloneName)
-			  │   ├─> Create node
-			  │   ├─> Attach instance to node
-			  │   └─> Store: clonedDefName, baseTemplateName
-			  │   
-			  └─> isEmitting = true
-	*/
 	bool ParticleFxComponent::connect(void)
 	{
 		GameObjectComponent::connect();
 
 		this->oldActivated = this->activated->getBool();
 
-		this->particlePlayTime = this->particleInitialPlayTime->getReal();
-
-		this->pendingDrainTimeMs = 0.0f;
-		this->pendingRestartAfterDrain = false;
-
-		this->fadeState = ParticleFadeState::None;
-		this->fadeProgress = 0.0f;
-
-		if (true == this->activated->getBool())
+		if (false == this->particleTemplateName->getListSelectedValue().empty())
 		{
-			this->startParticleEffect();
+			// Create the particle in the module
+			this->recreateParticle();
+
+			if (true == this->activated->getBool())
+			{
+				this->particleFxModule->playParticleSystem(this->uniqueParticleName);
+			}
 		}
 
 		return true;
 	}
 
-	/*
-		disconnect()
-		  ├─> destroyParticleEffect()
-		  │   ├─> Detach instance
-		  │   ├─> destroyParticleSystem2()
-		  │   ├─> Destroy node
-		  │   └─> isEmitting = false
-		  ├─> activated = oldActivated
-		  └─> particlePlayTime = initial
-	*/
 	bool ParticleFxComponent::disconnect(void)
 	{
 		GameObjectComponent::disconnect();
 
-		// HARD RESET: destroy instance + node + clone def
-		this->destroyEverything();
+		// Remove the particle from the module
+		if (false == this->uniqueParticleName.empty() && nullptr != this->particleFxModule)
+		{
+			this->particleFxModule->removeParticle(this->uniqueParticleName);
+		}
 
 		// Restore editor state
 		this->activated->setValue(this->oldActivated);
-
-		// Reset runtime state
-		this->particlePlayTime = this->particleInitialPlayTime->getReal();
-		this->pendingDrainTimeMs = 0.0f;
-		this->pendingRestartAfterDrain = false;
-		this->fadeState = ParticleFadeState::None;
-		this->fadeProgress = 0.0f;
-		this->isEmitting = false;
 
 		return true;
 	}
 
 	bool ParticleFxComponent::onCloned(void)
 	{
+		// Generate a new unique name for the cloned component
+		this->uniqueParticleName = this->getUniqueParticleName();
 		return true;
 	}
 
-	/*
-		onRemoveComponent()
-		  └─> destroyEverything()
-			  ├─> destroyParticleEffect()
-			  └─> Destroy clone (see above)
-	*/
 	void ParticleFxComponent::onRemoveComponent(void)
 	{
 		GameObjectComponent::onRemoveComponent();
 
-		Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
-		NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ParticleFxComponent] Removing particle fx component for game object: " + this->gameObjectPtr->getName());
 
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ParticleFxComponent] Destructor particle fx component for game object: " + this->gameObjectPtr->getName());
-
-		// Destroy EVERYTHING including the clone
-		this->destroyEverything();
+		// Remove the particle from the module
+		if (false == this->uniqueParticleName.empty() && nullptr != this->particleFxModule)
+		{
+			this->particleFxModule->removeParticle(this->uniqueParticleName);
+		}
 	}
 
 	void ParticleFxComponent::onOtherComponentRemoved(unsigned int index)
@@ -875,133 +412,23 @@ namespace NOWA
 		// Nothing special to do
 	}
 
-	/*
-	 update(dt)
-	  ├─> Update camera position
-	  ├─> Handle fade states
-	  └─> if activated && playTime > 0:
-		  ├─> particlePlayTime -= dt * 1000 * playSpeed
-		  └─> if time expired:
-			  ├─> if repeat:
-			  │   ├─> particlePlayTime = initial
-			  │   ├─> destroyParticleEffect()
-			  │   └─> createParticleEffect()
-			  └─> else:
-				  └─> Stop (with optional fade out)
-	*/
 	void ParticleFxComponent::update(Ogre::Real dt, bool notSimulating)
 	{
-		if (notSimulating || nullptr == this->particleSystem)
+		if (notSimulating || nullptr == this->particleFxModule)
 		{
 			return;
 		}
 
-		Ogre::SceneManager* sceneManager = this->gameObjectPtr->getSceneManager();
-		Ogre::ParticleSystemManager2* particleManager = sceneManager->getParticleSystemManager2();
-		if (particleManager)
-		{
-			Ogre::Camera* camera = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
+		// Update the particle node position to follow the GameObject
+		this->updateParticleTransform();
 
-			if (nullptr != camera)
+		// Check if particle has finished playing (when not repeating)
+		if (false == this->repeat->getBool())
+		{
+			ParticleFxData* particleData = this->particleFxModule->getParticle(this->uniqueParticleName);
+			if (nullptr != particleData && false == particleData->activated && this->activated->getBool())
 			{
-				auto closureFunction = [particleManager, camera](Ogre::Real renderDt)
-					{
-						particleManager->setCameraPosition(camera->getDerivedPosition());
-					};
-				Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
-				NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
-			}
-		}
-
-		// --- Handle fade states ---
-		if (this->fadeState == ParticleFadeState::FadingIn)
-		{
-			this->updateFadeIn(dt);
-		}
-		else if (this->fadeState == ParticleFadeState::FadingOut)
-		{
-			this->updateFadeOut(dt);
-			// Do NOT return here if drain gate is handled in update()
-			// return;
-		}
-
-		// Drain gate (prevents leftovers showing on restart)
-		if (this->pendingDrainTimeMs > 0.0f)
-		{
-			this->pendingDrainTimeMs -= dt * 1000.0f;
-			if (this->pendingDrainTimeMs > 0.0f)
-			{
-				return;
-			}
-
-			this->pendingDrainTimeMs = 0.0f;
-
-			if (this->pendingRestartAfterDrain)
-			{
-				this->pendingRestartAfterDrain = false;
-
-				this->destroyParticleEffect();
-				this->createParticleEffect();
-				this->particlePlayTime = this->particleInitialPlayTime->getReal();
-				this->isEmitting = true;
-			}
-			else
-			{
-				this->stopParticleEffect();
-				this->isEmitting = false;
-				this->activated->setValue(false);
-			}
-			return;
-		}
-
-		// Particle lifetime control
-		if (false == this->activated->getBool())
-		{
-			return;
-		}
-
-		const Ogre::Real initialPlayTime = this->particleInitialPlayTime->getReal();
-
-		// Infinite playback
-		if (initialPlayTime <= 0.0f)
-		{
-			return;
-		}
-
-		this->particlePlayTime -= dt * 1000.0f * this->particlePlaySpeed->getReal();
-
-		if (this->particlePlayTime > 0.0f)
-		{
-			return;
-		}
-
-		// Time expired
-		if (this->repeat->getBool())
-		{
-			this->particlePlayTime = initialPlayTime;
-
-			if (this->fadeOut->getBool())
-			{
-				this->pendingRestartAfterDrain = true;
-				this->beginFadeOut();
-				return;
-			}
-
-			this->destroyParticleEffect();
-			this->createParticleEffect();
-			return;
-		}
-		else
-		{
-			if (this->fadeOut->getBool() && this->fadeState != ParticleFadeState::FadingOut)
-			{
-				this->pendingRestartAfterDrain = false;
-				this->beginFadeOut();
-			}
-			else if (!this->fadeOut->getBool())
-			{
-				this->stopParticleEffect();
-				this->isEmitting = false;
+				// Particle has finished, update our activated state
 				this->activated->setValue(false);
 			}
 		}
@@ -1052,6 +479,12 @@ namespace NOWA
 				this->setBlendingMethod(ParticleBlendingMethod::AlphaHashingA2C);
 			else if (selectedValue == "Alpha Blending")
 				this->setBlendingMethod(ParticleBlendingMethod::AlphaBlending);
+			else if (selectedValue == "Alpha Transparent")
+				this->setBlendingMethod(ParticleBlendingMethod::AlphaTransparent);
+			else if (selectedValue == "Transparent Colour")
+				this->setBlendingMethod(ParticleBlendingMethod::TransparentColour);
+			else if (selectedValue == "From Material")
+				this->setBlendingMethod(ParticleBlendingMethod::FromMaterial);
 		}
 		else if (ParticleFxComponent::AttrFadeIn() == attribute->getName())
 		{
@@ -1168,39 +601,19 @@ namespace NOWA
 	{
 		this->activated->setValue(activated);
 
-		if (false == this->bConnected)
+		if (false == this->bConnected || nullptr == this->particleFxModule)
 		{
-			this->particlePlayTime = this->particleInitialPlayTime->getReal();
 			return;
 		}
 
-		if (false == activated)
+		if (activated)
 		{
-			this->pendingRestartAfterDrain = false;
-
-			if (this->fadeOut->getBool() && this->fadeState != ParticleFadeState::FadingOut && nullptr != this->particleSystem)
-			{
-				this->beginFadeOut();
-			}
-			else
-			{
-				this->stopParticleEffect();
-				this->isEmitting = false;
-			}
-
-			this->particlePlayTime = this->particleInitialPlayTime->getReal();
-			return;
+			this->particleFxModule->playParticleSystem(this->uniqueParticleName);
 		}
-
-		// Activating: cancel fade/drain and start clean
-		this->pendingDrainTimeMs = 0.0f;
-		this->pendingRestartAfterDrain = false;
-		this->fadeState = ParticleFadeState::None;
-		this->fadeProgress = 1.0f;
-
-		this->startParticleEffect();
-
-		this->particlePlayTime = this->particleInitialPlayTime->getReal();
+		else
+		{
+			this->particleFxModule->stopParticleSystem(this->uniqueParticleName);
+		}
 	}
 
 	bool ParticleFxComponent::isActivated(void) const
@@ -1208,45 +621,13 @@ namespace NOWA
 		return this->activated->getBool();
 	}
 
-	/*
-		setParticleTemplateName(newTemplate)
-		  ├─> if template != current:
-		  │   ├─> Store: wasPlaying
-		  │   ├─> destroyEverything() <- Destroys clone!
-		  │   │   ├─> destroyParticleEffect()
-		  │   │   └─> if clone exists:
-		  │   │       ├─> clone->_destroyAllParticleSystems()
-		  │   │       └─> manager->destroyAllParticleSystems()
-		  │   ├─> createParticleEffect() <- Creates new clone
-		  │   └─> isEmitting = wasPlaying
-		  └─> else: do nothing
-	*/
 	void ParticleFxComponent::setParticleTemplateName(const Ogre::String& particleTemplateName)
 	{
 		this->particleTemplateName->setListSelectedValue(particleTemplateName);
 
-		if (nullptr == this->gameObjectPtr)
+		if (this->bConnected && nullptr != this->particleFxModule)
 		{
-			return;
-		}
-
-		if (false == this->bConnected)
-		{
-			this->baseParticleTemplateName = particleTemplateName;
-			return;
-		}
-
-		if (false == this->baseParticleTemplateName.empty() && this->baseParticleTemplateName != particleTemplateName)
-		{
-			const bool wasPlaying = this->activated->getBool();
-
-			this->destroyEverything();
-			this->createParticleEffect();
-
-			if (true == wasPlaying)
-			{
-				this->startParticleEffect();
-			}
+			this->recreateParticle();
 		}
 	}
 
@@ -1258,6 +639,15 @@ namespace NOWA
 	void ParticleFxComponent::setRepeat(bool repeat)
 	{
 		this->repeat->setValue(repeat);
+
+		if (this->bConnected && nullptr != this->particleFxModule)
+		{
+			ParticleFxData* particleData = this->particleFxModule->getParticle(this->uniqueParticleName);
+			if (particleData)
+			{
+				particleData->repeat = repeat;
+			}
+		}
 	}
 
 	bool ParticleFxComponent::getRepeat(void) const
@@ -1268,7 +658,16 @@ namespace NOWA
 	void ParticleFxComponent::setParticlePlayTimeMS(Ogre::Real playTime)
 	{
 		this->particleInitialPlayTime->setValue(playTime);
-		this->particlePlayTime = playTime;
+
+		if (this->bConnected && nullptr != this->particleFxModule)
+		{
+			ParticleFxData* particleData = this->particleFxModule->getParticle(this->uniqueParticleName);
+			if (particleData)
+			{
+				particleData->particleInitialPlayTime = playTime;
+				particleData->particlePlayTime = playTime;
+			}
+		}
 	}
 
 	Ogre::Real ParticleFxComponent::getParticlePlayTimeMS(void) const
@@ -1279,7 +678,11 @@ namespace NOWA
 	void ParticleFxComponent::setParticlePlaySpeed(Ogre::Real playSpeed)
 	{
 		this->particlePlaySpeed->setValue(playSpeed);
-		this->applyVelocitySpeedFactor(playSpeed);
+
+		if (this->bConnected && nullptr != this->particleFxModule)
+		{
+			this->particleFxModule->setPlaySpeed(this->uniqueParticleName, playSpeed);
+		}
 	}
 
 	Ogre::Real ParticleFxComponent::getParticlePlaySpeed(void) const
@@ -1291,9 +694,9 @@ namespace NOWA
 	{
 		this->particleOffsetPosition->setValue(particleOffsetPosition);
 
-		if (nullptr != this->particleNode)
+		if (this->bConnected && nullptr != this->particleFxModule)
 		{
-			NOWA::GraphicsModule::getInstance()->updateNodePosition(this->particleNode, particleOffsetPosition);
+			this->updateParticleTransform();
 		}
 	}
 
@@ -1306,9 +709,9 @@ namespace NOWA
 	{
 		this->particleOffsetOrientation->setValue(particleOffsetOrientation);
 
-		if (nullptr != this->particleNode)
+		if (this->bConnected && nullptr != this->particleFxModule)
 		{
-			NOWA::GraphicsModule::getInstance()->updateNodeOrientation(this->particleNode, MathHelper::getInstance()->degreesToQuat(particleOffsetOrientation));
+			this->updateParticleTransform();
 		}
 	}
 
@@ -1317,40 +720,14 @@ namespace NOWA
 		return this->particleOffsetOrientation->getVector3();
 	}
 
-	/*
-		setParticleScale(newScale)
-		  ├─> Store: wasPlaying, remainingTime
-		  ├─> destroyParticleEffect() (instance only)
-		  ├─> createParticleEffect()
-		  │   └─> resetClone() <- Modifies existing clone
-		  ├─> isEmitting = wasPlaying
-		  └─> particlePlayTime = remainingTime
-	*/
 	void ParticleFxComponent::setParticleScale(const Ogre::Vector2& scale)
 	{
 		this->particleScale->setValue(scale);
 
-		if (nullptr == this->particleSystem)
+		if (this->bConnected && nullptr != this->particleFxModule)
 		{
-			return;
+			this->particleFxModule->setScale(this->uniqueParticleName, scale);
 		}
-
-		// Store state to preserve it
-		bool wasPlaying = this->isEmitting && this->activated->getBool();
-		Ogre::Real remainingTime = this->particlePlayTime;
-
-		// Destroy instance (but not clone)
-		this->destroyParticleEffect();
-
-		// Recreate with new scale (reuses existing clone via resetClone)
-		this->createParticleEffect();
-
-		// Restore state
-		if (true == wasPlaying)
-		{
-			this->isEmitting = true;
-		}
-		this->particlePlayTime = remainingTime;
 	}
 
 	Ogre::Vector2 ParticleFxComponent::getParticleScale(void) const
@@ -1360,48 +737,58 @@ namespace NOWA
 
 	Ogre::ParticleSystem2* ParticleFxComponent::getParticleSystem(void) const
 	{
-		return this->particleSystem;
+		if (nullptr != this->particleFxModule)
+		{
+			ParticleFxData* particleData = this->particleFxModule->getParticle(this->uniqueParticleName);
+			if (particleData)
+			{
+				return particleData->particleSystem;
+			}
+		}
+		return nullptr;
 	}
 
 	bool ParticleFxComponent::isPlaying(void) const
 	{
-		return this->isEmitting && this->activated->getBool();
+		if (nullptr != this->particleFxModule)
+		{
+			return this->particleFxModule->isPlaying(this->uniqueParticleName);
+		}
+		return false;
 	}
 
 	void ParticleFxComponent::setGlobalPosition(const Ogre::Vector3& particlePosition)
 	{
-		if (nullptr != this->particleNode)
+		if (nullptr != this->particleFxModule)
 		{
-			Ogre::Vector3 resultPosition = this->particleNode->convertWorldToLocalPosition(particlePosition);
-			NOWA::GraphicsModule::getInstance()->updateNodePosition(this->particleNode, resultPosition);
+			this->particleFxModule->setGlobalPosition(this->uniqueParticleName, particlePosition);
 		}
 	}
 
 	void ParticleFxComponent::setGlobalOrientation(const Ogre::Vector3& particleOrientation)
 	{
-		if (nullptr != this->particleNode)
+		if (nullptr != this->particleFxModule)
 		{
-			Ogre::Quaternion globalOrientation = MathHelper::getInstance()->degreesToQuat(particleOrientation);
-			Ogre::Quaternion resultOrientation = this->particleNode->convertWorldToLocalOrientation(globalOrientation);
-			NOWA::GraphicsModule::getInstance()->updateNodeOrientation(this->particleNode, resultOrientation);
+			Ogre::Quaternion quat = MathHelper::getInstance()->degreesToQuat(particleOrientation);
+			this->particleFxModule->setGlobalOrientation(this->uniqueParticleName, quat);
 		}
 	}
 
 	const Ogre::ParticleSystemDef* ParticleFxComponent::getParticleSystemDef(void) const
 	{
-		if (nullptr != this->particleSystem)
+		Ogre::ParticleSystem2* ps = this->getParticleSystem();
+		if (nullptr != ps)
 		{
-			return this->particleSystem->getParticleSystemDef();
+			return ps->getParticleSystemDef();
 		}
 		return nullptr;
 	}
 
 	size_t ParticleFxComponent::getNumActiveParticles(void) const
 	{
-		const Ogre::ParticleSystemDef* particleSystemDef = this->getParticleSystemDef();
-		if (nullptr != particleSystemDef)
+		if (nullptr != this->particleFxModule)
 		{
-			return particleSystemDef->getNumSimdActiveParticles();
+			return this->particleFxModule->getNumActiveParticles(this->uniqueParticleName);
 		}
 		return 0;
 	}
@@ -1436,27 +823,9 @@ namespace NOWA
 		return 0;
 	}
 
-	void ParticleFxComponent::startParticleEffect(void)
+	void ParticleFxComponent::setBlendingMethod(ParticleBlendingMethod::ParticleBlendingMethod blendingMethod)
 	{
-		// Destroy old instance
-		this->destroyParticleEffect();
-
-		// Create new instance (reuses existing clone)
-		this->createParticleEffect();
-
-		this->particlePlayTime = this->particleInitialPlayTime->getReal();
-		this->isEmitting = true;
-	}
-
-	void ParticleFxComponent::stopParticleEffect(void)
-	{
-		this->destroyParticleEffect();
-		this->isEmitting = false;
-	}
-
-	void ParticleFxComponent::setBlendingMethod(ParticleBlendingMethod::ParticleBlendingMethod blendingMethodValue)
-	{
-		switch (blendingMethodValue)
+		switch (blendingMethod)
 		{
 		case ParticleBlendingMethod::AlphaHashing:
 			this->blendingMethod->setListSelectedValue("Alpha Hashing");
@@ -1467,8 +836,27 @@ namespace NOWA
 		case ParticleBlendingMethod::AlphaBlending:
 			this->blendingMethod->setListSelectedValue("Alpha Blending");
 			break;
+		case ParticleBlendingMethod::AlphaTransparent:
+			this->blendingMethod->setListSelectedValue("Alpha Transparent");
+			break;
+		case ParticleBlendingMethod::TransparentColour:
+			this->blendingMethod->setListSelectedValue("Transparent Colour");
+			break;
+		case ParticleBlendingMethod::FromMaterial:
+			this->blendingMethod->setListSelectedValue("From Material");
+			break;
 		}
-		this->applyBlendingMethod();
+
+		// is done in createPartcleSystem
+		/*if (this->bConnected && nullptr != this->particleFxModule)
+		{
+			ParticleFxData* particleData = this->particleFxModule->getParticle(this->uniqueParticleName);
+			if (particleData)
+			{
+				particleData->blendingMethod = blendingMethod;
+				this->particleFxModule->applyBlendingMethod(*particleData);
+			}
+		}*/
 	}
 
 	ParticleBlendingMethod::ParticleBlendingMethod ParticleFxComponent::getBlendingMethod(void) const
@@ -1482,15 +870,40 @@ namespace NOWA
 		{
 			return ParticleBlendingMethod::AlphaHashingA2C;
 		}
-		else
+		else if (selectedValue == "Alpha Blending")
 		{
 			return ParticleBlendingMethod::AlphaBlending;
+		}
+		else if (selectedValue == "Alpha Transparent")
+		{
+			return ParticleBlendingMethod::AlphaTransparent;
+		}
+		else if (selectedValue == "Transparent Colour")
+		{
+			return ParticleBlendingMethod::TransparentColour;
+		}
+		else if (selectedValue == "From Material")
+		{
+			return ParticleBlendingMethod::FromMaterial;
+		}
+		else
+		{
+			return ParticleBlendingMethod::AlphaBlending;  // Default
 		}
 	}
 
 	void ParticleFxComponent::setFadeIn(bool fadeIn)
 	{
 		this->fadeIn->setValue(fadeIn);
+
+		if (this->bConnected && nullptr != this->particleFxModule)
+		{
+			ParticleFxData* particleData = this->particleFxModule->getParticle(this->uniqueParticleName);
+			if (particleData)
+			{
+				particleData->fadeIn = fadeIn;
+			}
+		}
 	}
 
 	bool ParticleFxComponent::getFadeIn(void) const
@@ -1501,6 +914,15 @@ namespace NOWA
 	void ParticleFxComponent::setFadeInTimeMS(Ogre::Real fadeInTimeMS)
 	{
 		this->fadeInTime->setValue(fadeInTimeMS);
+
+		if (this->bConnected && nullptr != this->particleFxModule)
+		{
+			ParticleFxData* particleData = this->particleFxModule->getParticle(this->uniqueParticleName);
+			if (particleData)
+			{
+				particleData->fadeInTimeMS = fadeInTimeMS;
+			}
+		}
 	}
 
 	Ogre::Real ParticleFxComponent::getFadeInTimeMS(void) const
@@ -1511,6 +933,15 @@ namespace NOWA
 	void ParticleFxComponent::setFadeOut(bool fadeOut)
 	{
 		this->fadeOut->setValue(fadeOut);
+
+		if (this->bConnected && nullptr != this->particleFxModule)
+		{
+			ParticleFxData* particleData = this->particleFxModule->getParticle(this->uniqueParticleName);
+			if (particleData)
+			{
+				particleData->fadeOut = fadeOut;
+			}
+		}
 	}
 
 	bool ParticleFxComponent::getFadeOut(void) const
@@ -1521,6 +952,15 @@ namespace NOWA
 	void ParticleFxComponent::setFadeOutTimeMS(Ogre::Real fadeOutTimeMS)
 	{
 		this->fadeOutTime->setValue(fadeOutTimeMS);
+
+		if (this->bConnected && nullptr != this->particleFxModule)
+		{
+			ParticleFxData* particleData = this->particleFxModule->getParticle(this->uniqueParticleName);
+			if (particleData)
+			{
+				particleData->fadeOutTimeMS = fadeOutTimeMS;
+			}
+		}
 	}
 
 	Ogre::Real ParticleFxComponent::getFadeOutTimeMS(void) const
@@ -1530,233 +970,89 @@ namespace NOWA
 
 	ParticleFadeState::ParticleFadeState ParticleFxComponent::getFadeState(void) const
 	{
-		return this->fadeState;
-	}
-
-	void ParticleFxComponent::storeOriginalEmissionRates(void)
-	{
-		this->originalEmissionRates.clear();
-		this->originalMinVelocities.clear();
-		this->originalMaxVelocities.clear();
-
-		if (nullptr == this->particleSystem)
-			return;
-
-		const Ogre::ParticleSystemDef* particleSystemDef = this->particleSystem->getParticleSystemDef();
-		if (nullptr == particleSystemDef)
+		if (nullptr != this->particleFxModule)
 		{
-			return;
-		}
-
-		const auto& emitters = particleSystemDef->getEmitters();
-		this->originalEmissionRates.reserve(emitters.size());
-		this->originalMinVelocities.reserve(emitters.size());
-		this->originalMaxVelocities.reserve(emitters.size());
-
-		for (const Ogre::EmitterDefData* emitter : emitters)
-		{
-			const Ogre::ParticleEmitter* particleEmitterRead = emitter->asParticleEmitter();
-			this->originalEmissionRates.push_back(particleEmitterRead->getEmissionRate());
-			this->originalMinVelocities.push_back(particleEmitterRead->getMinParticleVelocity());
-			this->originalMaxVelocities.push_back(particleEmitterRead->getMaxParticleVelocity());
-		}
-	}
-
-	void ParticleFxComponent::setEmissionRateFactor(Ogre::Real factor)
-	{
-		if (nullptr == this->particleSystem)
-		{
-			return;
-		}
-
-		Ogre::ParticleSystemDef* particleSystemDef = const_cast<Ogre::ParticleSystemDef*>(this->particleSystem->getParticleSystemDef());
-		if (nullptr == particleSystemDef)
-		{
-			return;
-		}
-
-		auto& emitters = particleSystemDef->getEmitters();
-
-		for (size_t i = 0; i < emitters.size() && i < this->originalEmissionRates.size(); ++i)
-		{
-			Ogre::ParticleEmitter* particleEmitterWrite = emitters[i]->asParticleEmitter();
-			Ogre::Real newRate = this->originalEmissionRates[i] * factor;
-			particleEmitterWrite->setEmissionRate(newRate);
-		}
-	}
-
-	void ParticleFxComponent::applyVelocitySpeedFactor(Ogre::Real speedFactor)
-	{
-		if (nullptr == this->particleSystem)
-		{
-			return;
-		}
-
-		Ogre::ParticleSystemDef* particleSystemDef = const_cast<Ogre::ParticleSystemDef*>(this->particleSystem->getParticleSystemDef());
-		if (nullptr == particleSystemDef)
-		{
-			return;
-		}
-
-		auto& emitters = particleSystemDef->getEmitters();
-
-		for (size_t i = 0; i < emitters.size() && i < this->originalMinVelocities.size(); ++i)
-		{
-			Ogre::ParticleEmitter* particleEmitterWrite = emitters[i]->asParticleEmitter();
-			Ogre::Real newMinVel = this->originalMinVelocities[i] * speedFactor;
-			Ogre::Real newMaxVel = this->originalMaxVelocities[i] * speedFactor;
-			particleEmitterWrite->setParticleVelocity(newMinVel, newMaxVel);
-		}
-	}
-
-	void ParticleFxComponent::updateFadeIn(Ogre::Real dt)
-	{
-		if (this->fadeState != ParticleFadeState::FadingIn)
-		{
-			return;
-		}
-
-		const Ogre::Real fadeInTimeSeconds = this->fadeInTime->getReal() / 1000.0f;
-
-		if (fadeInTimeSeconds <= 0.0f)
-		{
-			// Instant fade in
-			this->fadeProgress = 1.0f;
-			this->fadeState = ParticleFadeState::None;
-			this->setEmissionRateFactor(1.0f);
-			return;
-		}
-
-		// Advance fade progress
-		this->fadeProgress += (dt * this->particlePlaySpeed->getReal()) / fadeInTimeSeconds;
-
-		if (this->fadeProgress >= 1.0f)
-		{
-			this->fadeProgress = 1.0f;
-			this->fadeState = ParticleFadeState::None;
-		}
-
-		// Apply smooth easing (ease-in-out)
-		Ogre::Real easedProgress = this->fadeProgress * this->fadeProgress * (3.0f - 2.0f * this->fadeProgress);
-
-		this->setEmissionRateFactor(easedProgress);
-	}
-
-	void ParticleFxComponent::updateFadeOut(Ogre::Real dt)
-	{
-		const Ogre::Real fadeOutMs = this->fadeOutTime->getReal(); // whatever you use
-		if (fadeOutMs <= 0.0f)
-		{
-			this->fadeProgress = 0.0f;
-			this->setEmissionRateFactor(0.0f);
-		}
-		else
-		{
-			this->fadeProgress -= (dt * 1000.0f) / fadeOutMs;
-			if (this->fadeProgress < 0.0f)
-				this->fadeProgress = 0.0f;
-
-			this->setEmissionRateFactor(this->fadeProgress);
-		}
-
-		// Once fully faded, start drain exactly once
-		if (this->fadeProgress <= 0.0f && this->pendingDrainTimeMs <= 0.0f)
-		{
-			const Ogre::ParticleSystemDef* def = nullptr;
-			if (this->particleSystem)
-				def = this->particleSystem->getParticleSystemDef();
-
-			const Ogre::Real maxTtlSec = this->getMaxTtlSecondsFromDef(def);
-			this->pendingDrainTimeMs = (maxTtlSec * 1000.0f) + 50.0f;
-		}
-	}
-
-	void ParticleFxComponent::beginFadeOut(void)
-	{
-		if (this->fadeState == ParticleFadeState::FadingOut)
-		{
-			return;
-		}
-
-		this->fadeState = ParticleFadeState::FadingOut;
-
-		if (this->fadeProgress <= 0.0f)
-		{
-			this->fadeProgress = 1.0f;
-		}
-
-		// Drain will be armed by updateFadeOut once fadeProgress reaches 0
-		this->pendingDrainTimeMs = 0.0f;
-	}
-
-	void ParticleFxComponent::applyBlendingMethod(void)
-	{
-		if (nullptr == this->particleSystem)
-		{
-			return;
-		}
-
-		Ogre::ParticleSystem2* particleSystem2 = this->particleSystem;
-
-		auto particleSystemDef = particleSystem2->getParticleSystemDef();
-		if (nullptr == particleSystemDef)
-		{
-			return;
-		}
-
-		const Ogre::String& materialName = particleSystemDef->getMaterialName();
-		if (true == materialName.empty())
-		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ParticleFxComponent] Particle system has no material assigned.");
-			return;
-		}
-
-		Ogre::HlmsManager* hlmsManager = Core::getSingletonPtr()->getOgreRoot()->getHlmsManager();
-
-		Ogre::HlmsDatablock* datablock = hlmsManager->getDatablock(materialName);
-
-		if (nullptr == datablock)
-		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ParticleFxComponent] Could not find datablock for particle material: " + materialName);
-			return;
-		}
-
-		const ParticleBlendingMethod::ParticleBlendingMethod currentMethod = this->getBlendingMethod();
-
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ParticleFxComponent::applyBlendingMethod", _2(datablock, currentMethod),
+			ParticleFxData* particleData = this->particleFxModule->getParticle(this->uniqueParticleName);
+			if (particleData)
 			{
-				if (currentMethod == ParticleBlendingMethod::AlphaHashing || currentMethod == ParticleBlendingMethod::AlphaHashingA2C)
-				{
-					Ogre::HlmsBlendblock blendblock = *datablock->getBlendblock();
-					blendblock.setBlendType(Ogre::SBT_REPLACE);
-					blendblock.mAlphaToCoverage = (currentMethod == ParticleBlendingMethod::AlphaHashingA2C)
-							? Ogre::HlmsBlendblock::A2cEnabledMsaaOnly
-							: Ogre::HlmsBlendblock::A2cDisabled;
-					datablock->setBlendblock(blendblock);
-
-					Ogre::HlmsMacroblock macroblock = *datablock->getMacroblock();
-					macroblock.mDepthWrite = true;
-					datablock->setMacroblock(macroblock);
-
-					datablock->setAlphaHashing(true);
-				}
-				else // Alpha blending
-				{
-					Ogre::HlmsBlendblock blendblock = *datablock->getBlendblock();
-					blendblock.setBlendType(Ogre::SBT_TRANSPARENT_ALPHA);
-					blendblock.mAlphaToCoverage = Ogre::HlmsBlendblock::A2cDisabled;
-					datablock->setBlendblock(blendblock);
-
-					Ogre::HlmsMacroblock macroblock = *datablock->getMacroblock();
-					macroblock.mDepthWrite = false;
-					datablock->setMacroblock(macroblock);
-
-					datablock->setAlphaHashing(false);
-				}
-			});
+				return particleData->fadeState;
+			}
+		}
+		return ParticleFadeState::None;
 	}
 
-	// Lua registration part
+	void ParticleFxComponent::updateParticleTransform(void)
+	{
+		if (nullptr == this->particleFxModule || nullptr == this->gameObjectPtr)
+		{
+			return;
+		}
+
+		ParticleFxData* particleData = this->particleFxModule->getParticle(this->uniqueParticleName);
+		if (nullptr == particleData || nullptr == particleData->particleNode)
+		{
+			return;
+		}
+
+		// Calculate world position
+		Ogre::Vector3 worldPos = this->gameObjectPtr->getSceneNode()->_getDerivedPosition() + this->gameObjectPtr->getSceneNode()->_getDerivedOrientation() * this->particleOffsetPosition->getVector3();
+
+		// Calculate world orientation
+		Ogre::Quaternion worldOrient = this->gameObjectPtr->getSceneNode()->_getDerivedOrientation() * MathHelper::getInstance()->degreesToQuat(this->particleOffsetOrientation->getVector3());
+
+		this->particleFxModule->setGlobalPosition(this->uniqueParticleName, worldPos);
+		this->particleFxModule->setGlobalOrientation(this->uniqueParticleName, worldOrient);
+	}
+
+	void ParticleFxComponent::recreateParticle(void)
+	{
+		if (nullptr == this->particleFxModule)
+		{
+			return;
+		}
+
+		const Ogre::String& templateName = this->particleTemplateName->getListSelectedValue();
+		if (true == templateName.empty())
+		{
+			return;
+		}
+
+		// Remember if it was playing
+		bool wasPlaying = this->activated->getBool();
+
+		// Remove old particle if exists
+		this->particleFxModule->removeParticle(this->uniqueParticleName);
+
+		// Create new particle with current settings
+		Ogre::Quaternion orientation = MathHelper::getInstance()->degreesToQuat(this->particleOffsetOrientation->getVector3());
+
+		this->particleFxModule->createParticleSystem(
+			this->uniqueParticleName,
+			templateName,
+			this->particleInitialPlayTime->getReal(),
+			orientation,
+			this->particleOffsetPosition->getVector3(),
+			this->particleScale->getVector2(),
+			this->repeat->getBool(),
+			this->particlePlaySpeed->getReal(),
+			this->getBlendingMethod(),
+			this->fadeIn->getBool(),
+			this->fadeInTime->getReal(),
+			this->fadeOut->getBool(),
+			this->fadeOutTime->getReal()
+		);
+
+		// Update transform to match GameObject
+		this->updateParticleTransform();
+
+		// Restore playing state
+		if (wasPlaying)
+		{
+			this->particleFxModule->playParticleSystem(this->uniqueParticleName);
+		}
+	}
+
+	// ========== LUA API ==========
 
 	ParticleFxComponent* getParticleFxComponent(GameObject* gameObject, unsigned int occurrenceIndex)
 	{
@@ -1817,14 +1113,9 @@ namespace NOWA
 					[
 						luabind::value("AlphaHashing", ParticleBlendingMethod::AlphaHashing),
 						luabind::value("AlphaHashingA2C", ParticleBlendingMethod::AlphaHashingA2C),
-						luabind::value("AlphaBlending", ParticleBlendingMethod::AlphaBlending)
-					]
-
-					.enum_("ParticleFadeState")
-					[
-						luabind::value("None", ParticleFadeState::None),
-						luabind::value("FadingIn", ParticleFadeState::FadingIn),
-						luabind::value("FadingOut", ParticleFadeState::FadingOut)
+						luabind::value("AlphaBlending", ParticleBlendingMethod::AlphaBlending),
+						luabind::value("AlphaTransparent", ParticleBlendingMethod::AlphaTransparent),
+						luabind::value("FromMaterial", ParticleBlendingMethod::FromMaterial)
 					]
 			];
 
@@ -1852,7 +1143,7 @@ namespace NOWA
 		LuaScriptApi::getInstance()->addClassToCollection("ParticleFxComponent", "number getParticleQuota()", "Gets the particle quota (maximum particles allowed).");
 		LuaScriptApi::getInstance()->addClassToCollection("ParticleFxComponent", "number getNumEmitters()", "Gets the number of emitters in the particle system.");
 		LuaScriptApi::getInstance()->addClassToCollection("ParticleFxComponent", "number getNumAffectors()", "Gets the number of affectors in the particle system.");
-		LuaScriptApi::getInstance()->addClassToCollection("ParticleFxComponent", "void setBlendingMethod(ParticleBlendingMethod method)", "Sets the blending method (AlphaHashing=0, AlphaHashingA2C=1, AlphaBlending=2).");
+		LuaScriptApi::getInstance()->addClassToCollection("ParticleFxComponent", "void setBlendingMethod(ParticleBlendingMethod method)", "Sets the blending method (AlphaHashing=0, AlphaHashingA2C=1, AlphaBlending=2, AlphaTransparent=3, FromMaterial=4).");
 		LuaScriptApi::getInstance()->addClassToCollection("ParticleFxComponent", "ParticleBlendingMethod getBlendingMethod()", "Gets the current blending method.");
 		LuaScriptApi::getInstance()->addClassToCollection("ParticleFxComponent", "void setFadeIn(bool fadeIn)", "Sets whether the particle effect should fade in when starting.");
 		LuaScriptApi::getInstance()->addClassToCollection("ParticleFxComponent", "bool getFadeIn()", "Gets whether the particle effect fades in when starting.");
@@ -1866,7 +1157,6 @@ namespace NOWA
 
 		gameObjectClass.def("getParticleFxComponentFromName", &getParticleFxComponentFromName);
 		gameObjectClass.def("getParticleFxComponent", (ParticleFxComponent * (*)(GameObject*)) & getParticleFxComponent);
-		// If its desired to create several of this components for one game object
 		gameObjectClass.def("getParticleFxComponentFromIndex", (ParticleFxComponent * (*)(GameObject*, unsigned int)) & getParticleFxComponent);
 
 		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "ParticleFxComponent getParticleFxComponentFromIndex(unsigned int occurrenceIndex)", "Gets the component by the given occurence index, since a game object may this component maybe several times.");
@@ -1879,8 +1169,7 @@ namespace NOWA
 
 	bool ParticleFxComponent::canStaticAddComponent(GameObject* gameObject)
 	{
-		// No constraints so far, just add
 		return true;
 	}
 
-}; //namespace end
+}; // namespace end

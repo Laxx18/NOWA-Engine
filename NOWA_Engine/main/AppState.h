@@ -16,6 +16,7 @@
 #include "modules/MeshDecalGeneratorModule.h"
 #include "modules/GameProgressModule.h"
 #include "modules/ParticleUniverseModule.h"
+#include "modules/ParticleFxModule.h"
 #include "modules/LuaScriptModule.h"
 #include "modules/GraphicsModule.h"
 #include "gameobject/GameObjectController.h"
@@ -228,6 +229,7 @@ namespace NOWA
 		CameraManager* cameraManager;
 		OgreRecastModule* ogreRecastModule;
 		ParticleUniverseModule* particleUniverseModule;
+		ParticleFxModule* particleFxModule;
 		LuaScriptModule* luaScriptModule;
 		EventManager* eventManager;
 		ScriptEventManager* scriptEventManager;

@@ -34,53 +34,53 @@ hlms ParticleUniverse/Tornado unlit
 {
 	scene_blend alpha_blend
 	depth_write off
-    diffuse_map pu_sand_336x330.png 
+    diffuse_map p_sand_336x330.png 
 }
 
 hlms ParticleUniverse/Stone unlit
 {
 	depth_write off
-    diffuse_map pu_stone.png
+    diffuse_map p_stone.png
 }
 
 hlms ParticleUniverse/Circle unlit
 {
 	depth_write off
 	scene_blend alpha_blend
-    diffuse_map pu_circle.png
+    diffuse_map p_circle.png
 }
 
 hlms ParticleUniverse/Rain_01 unlit
 {
 	depth_write off
 	scene_blend add
-    diffuse_map pu_rain_01.png
+    diffuse_map p_rain_01.png
 }
 
 hlms ParticleUniverse/Barrel_01 unlit
 {
 	depth_write off
-    diffuse_map pu_barrel_01.png
+    diffuse_map p_barrel_01.png
 }
 
 hlms ParticleUniverse/Barrel_02 unlit
 {
 	depth_write off
-    diffuse_map pu_barrel_02.png
+    diffuse_map p_barrel_02.png
 }
 
 hlms fxpression/ac3dmat1 unlit
 {
 	ambient 1 0.05 0
     diffuse 1 0.05 0
-    diffuse_map pu_plate.png
+    diffuse_map p_plate.png
 }
 
 hlms ParticleUniverse/Flame unlit
 {
 	depth_write off
 	scene_blend add
-    diffuse_map pu_flame.png
+    diffuse_map p_flame.png
 }
 
 material ParticleUniverse/Fire
@@ -94,7 +94,7 @@ material ParticleUniverse/Fire
             depth_write off
             texture_unit
             {
-                texture pu_flame.png
+                texture p_flame.png
                 tex_address_mode clamp
                 wave_xform scroll_x sine 0 0.3 0 0.15
             }
@@ -107,35 +107,35 @@ hlms ParticleUniverse/ExplosionFire unlit
 	depth_write off
 	scene_blend add
 	// fog_override true
-    diffuse_map pu_smoke_02_128x128.png
+    diffuse_map p_smoke_02_128x128.png
 }
 
 hlms ParticleUniverse/Nucleus unlit
 {
 	depth_write off
 	scene_blend add
-    diffuse_map pu_nucleus.png
+    diffuse_map p_nucleus.png
 }
 
 hlms ParticleUniverse/Debris unlit
 {
 	depth_write off
 	scene_blend add
-    diffuse_map pu_fire_01_64x64.png
+    diffuse_map p_fire_01_64x64.png
 }
 
 hlms ParticleUniverse/BurstFlare unlit
 {
 	depth_write off
 	scene_blend add
-    diffuse_map pu_dot_03_64x64.png
+    diffuse_map p_dot_03_64x64.png
 }
 
 hlms ParticleUniverse/GreenBall unlit
 {
 	depth_write off
 	scene_blend alpha_blend
-    diffuse_map pu_green_ball.png
+    diffuse_map p_green_ball.png
 }
 
 hlms ParticleUniverse/Crate unlit
@@ -148,14 +148,14 @@ hlms ParticleUniverse/Star unlit
 {
 	depth_write off
 	scene_blend add
-    diffuse_map pu_flare_12_256x256.png
+    diffuse_map p_flare_12_256x256.png
 }
 
 hlms ParticleUniverse/Hart unlit
 {
 	depth_write off
 	scene_blend alpha_blend
-    diffuse_map pu_hart.png
+    diffuse_map p_hart.png
 }
 
 hlms ParticleUniverse/Interpolate unlit
@@ -175,7 +175,7 @@ hlms ParticleUniverse/Flare unlit
 {
 	depth_write off
 	scene_blend add
-    diffuse_map pu_flare.png
+    diffuse_map p_flare.png
 }
 
 hlms ParticleUniverse/Flare_01 unlit
@@ -224,28 +224,28 @@ hlms ParticleUniverse/RibbonTrail unlit
 {
 	scene_blend add
 	depth_write off
-	diffuse_map pu_ribbontrail.png
+	diffuse_map p_ribbontrail.png
 }
 
 hlms ParticleUniverse/Rain unlit
 {
 	depth_write off
 	scene_blend colour_blend
-    diffuse_map pu_rain.png
+    diffuse_map p_rain.png
 }
 
 hlms ParticleUniverse/Beam_1 unlit
 {
 	depth_write off
 	scene_blend add
-    diffuse_map pu_beam_01.png
+    diffuse_map p_beam_01.png
 }
 
 hlms ParticleUniverse/Beam_2 unlit
 {
 	scene_blend add
 	depth_write off
-    diffuse_map pu_beam_02.png 
+    diffuse_map p_beam_02.png 
 }
 
 hlms ParticleUniverse/Streak_01 unlit
@@ -315,28 +315,28 @@ hlms ParticleUniverse/Smoke unlit
 {
 	depth_write off
 	scene_blend alpha_blend
-    diffuse_map pu_smoke_02_128x128.png
+    diffuse_map p_smoke_02_128x128.png
 }
 
 hlms ParticleUniverse/Smoke_02 unlit
 {
 	depth_write off
 	scene_blend alpha_blend
-    diffuse_map pu_smoke_brown_336x330.png
+    diffuse_map p_smoke_brown_336x330.png
 }
 
 hlms ParticleUniverse/Smoke_03 unlit
 {
 	depth_write off
 	scene_blend add
-    diffuse_map pu_smoke_brown_336x330.png
+    diffuse_map p_smoke_brown_336x330.png
 }
 
 hlms ParticleUniverse/Smoke_04 unlit
 {
 	depth_write off
 	scene_blend alpha_blend
-    diffuse_map pu_dirt_256x512.png
+    diffuse_map p_dirt_256x512.png
 }
 
 hlms ParticleUniverse/Dirt_11 unlit
@@ -552,7 +552,7 @@ hlms ParticleUniverse/Snow_01 unlit
 hlms ParticleUniverse/BBal unlit
 {
 	depth_write off
-    diffuse_map pu_bbal.png
+    diffuse_map p_bbal.png
 }
 
 hlms ParticleUniverse/BioHazzard unlit

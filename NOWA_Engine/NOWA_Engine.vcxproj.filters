@@ -649,6 +649,9 @@
     <ClInclude Include="ocean\OgreHlmsJsonOcean.h">
       <Filter>ocean</Filter>
     </ClInclude>
+    <ClInclude Include="modules\ParticleFxModule.h">
+      <Filter>modules</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\NOWA.ico">
@@ -1211,6 +1214,9 @@
     </ClCompile>
     <ClCompile Include="ocean\OgreHlmsJsonOcean.cpp">
       <Filter>ocean</Filter>
+    </ClCompile>
+    <ClCompile Include="modules\ParticleFxModule.cpp">
+      <Filter>modules</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

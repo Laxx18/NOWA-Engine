@@ -1,4 +1,4 @@
-/*
+﻿/*
 Copyright (c) 2025 Lukas Kalinowski
 
 GPL v3
@@ -10,39 +10,10 @@ GPL v3
 #include "gameobject/GameObjectComponent.h"
 #include "main/Events.h"
 #include "OgrePlugin.h"
-
-// Ogre-next ParticleFX2 includes
-#include "ParticleSystem/OgreParticleSystem2.h"
-#include "ParticleSystem/OgreEmitter2.h"
+#include "modules/ParticleFxModule.h"
 
 namespace NOWA
 {
-
-	/**
-	 * @brief Blending methods for particle rendering
-	 */
-	namespace ParticleBlendingMethod
-	{
-		enum ParticleBlendingMethod
-		{
-			AlphaHashing = 0,      ///< Alpha hashing without A2C
-			AlphaHashingA2C = 1,   ///< Alpha hashing with Alpha-to-Coverage (best quality with MSAA)
-			AlphaBlending = 2      ///< Traditional alpha blending
-		};
-	}
-
-	/**
-	 * @brief Fade state for particle effect transitions
-	 */
-	namespace ParticleFadeState
-	{
-		enum ParticleFadeState
-		{
-			None = 0,        ///< No fading active
-			FadingIn = 1,    ///< Currently fading in (increasing emission rate)
-			FadingOut = 2    ///< Currently fading out (decreasing emission rate)
-		};
-	}
 
 	/**
 	  * @brief		Creates an Ogre-next ParticleFX2 particle effect.
@@ -288,27 +259,58 @@ namespace NOWA
 		size_t getNumActiveParticles(void) const;
 
 		/**
-		 * @brief Gets the particle quota (maximum particles allowed)
+		 * @brief Gets the particle quota
 		 * @return The particle quota
 		 */
 		Ogre::uint32 getParticleQuota(void) const;
 
 		/**
-		 * @brief Gets the number of emitters in the particle system
+		 * @brief Gets the number of emitters
 		 * @return Number of emitters
 		 */
 		size_t getNumEmitters(void) const;
 
 		/**
-		 * @brief Gets the number of affectors in the particle system
+		 * @brief Gets the number of affectors
 		 * @return Number of affectors
 		 */
 		size_t getNumAffectors(void) const;
 
 		/**
-		 * @brief Sets the blending method for the particle effect
-		 * @param blendingMethod The blending method to use (0=AlphaHashing, 1=AlphaHashingA2C, 2=AlphaBlending)
-		 */
+		 * @brief Sets the blending method for particle rendering
+		 * @param blendingMethod The blending method to use
+		 * WHEN TO USE EACH MODE:
+
+		1. AlphaHashing (0)
+		   - Use for: Grass, leaves, fences, cutout effects
+		   - Texture: Any texture, creates stipple pattern
+		   - Depth write: ON
+		   - Performance: Best
+		   - Quality: Dithered/stippled look
+
+		2. AlphaHashingA2C (1)
+		   - Use for: Same as AlphaHashing but better quality
+		   - Texture: Any texture
+		   - Depth write: ON
+		   - Performance: Good (requires MSAA)
+		   - Quality: Smoother edges with MSAA
+
+		3. AlphaBlending (2) - SBT_ADD
+		   - Use for: Rain, fire, sparks, stars, explosions, glows
+		   - Texture: White/bright on BLACK background (no alpha channel needed)
+		   - Depth write: OFF
+		   - Performance: Good
+		   - Quality: Smooth, glowing effect
+		   - Black (0,0,0) becomes transparent
+
+		4. AlphaTransparent (3) - SBT_TRANSPARENT_ALPHA
+		   - Use for: Smoke, clouds, semi-transparent sprites
+		   - Texture: MUST have proper alpha channel
+		   - Depth write: OFF
+		   - Performance: Good
+		   - Quality: True smooth transparency
+		   - Uses texture's alpha channel for transparency
+		*/
 		void setBlendingMethod(ParticleBlendingMethod::ParticleBlendingMethod blendingMethod);
 
 		/**
@@ -402,8 +404,41 @@ namespace NOWA
 				"Select a particle template from the list (materials starting with 'Particle/'). "
 				"Set play time to 0 for infinite duration. "
 				"Enable FadeIn/FadeOut for smooth particle transitions. "
-				"Use PlaySpeed to control how fast particles flow.";
+				"Use PlaySpeed to control how fast particles flow."
+				"\n\n"
+				"WHEN TO USE EACH MODE:\n"
+				"\n"
+				"1. AlphaHashing (0)\n"
+				"   - Use for: Grass, leaves, fences, cutout effects\n"
+				"   - Texture: Any texture, creates stipple pattern\n"
+				"   - Depth write: ON\n"
+				"   - Performance: Best\n"
+				"   - Quality: Dithered/stippled look\n"
+				"\n"
+				"2. AlphaHashingA2C (1)\n"
+				"   - Use for: Same as AlphaHashing but better quality\n"
+				"   - Texture: Any texture\n"
+				"   - Depth write: ON\n"
+				"   - Performance: Good (requires MSAA)\n"
+				"   - Quality: Smoother edges with MSAA\n"
+				"\n"
+				"3. AlphaBlending (2) - SBT_ADD\n"
+				"   - Use for: Rain, fire, sparks, stars, explosions, glows\n"
+				"   - Texture: White/bright on BLACK background (no alpha channel needed)\n"
+				"   - Depth write: OFF\n"
+				"   - Performance: Good\n"
+				"   - Quality: Smooth, glowing effect\n"
+				"   - Black (0,0,0) becomes transparent\n"
+				"\n"
+				"4. AlphaTransparent (3) - SBT_TRANSPARENT_ALPHA\n"
+				"   - Use for: Smoke, clouds, semi-transparent sprites\n"
+				"   - Texture: MUST have proper alpha channel\n"
+				"   - Depth write: OFF\n"
+				"   - Performance: Good\n"
+				"   - Quality: True smooth transparency\n"
+				"   - Uses texture's alpha channel for transparency";
 		}
+
 
 		/**
 		 * @see	GameObjectComponent::createStaticApiForLua
@@ -466,110 +501,34 @@ namespace NOWA
 
 	private:
 		/**
-		 * @brief Creates the particle effect based on the current settings
-		 * @return True if successful, false otherwise
-		 */
-		bool createParticleEffect(void);
-
-		/**
-		 * @brief Destroys the current particle effect
-		 */
-		void destroyParticleEffect(void);
-
-		/**
 		 * @brief Gathers all available particle template names from HLMS datablocks
 		 */
 		void gatherParticleNames(void);
 
 		/**
-		 * @brief Internal helper to start the particle effect emission
+		 * @brief Gets the unique particle name for this component instance
+		 * @return The unique particle name
 		 */
-		void startParticleEffect(void);
+		Ogre::String getUniqueParticleName(void) const;
 
 		/**
-		 * @brief Internal helper to stop the particle effect emission
+		 * @brief Updates the particle node's transform to follow the GameObject
 		 */
-		void stopParticleEffect(void);
+		void updateParticleTransform(void);
 
 		/**
-		 * @brief Applies the blending method to the particle material
+		 * @brief Recreates the particle with current settings
 		 */
-		void applyBlendingMethod(void);
-
-		/**
-		 * @brief Updates the fade in progress
-		 * @param dt Delta time in seconds
-		 */
-		void updateFadeIn(Ogre::Real dt);
-
-		/**
-		 * @brief Updates the fade out progress
-		 * @param dt Delta time in seconds
-		 */
-		void updateFadeOut(Ogre::Real dt);
-
-		/**
-		 * @brief Sets the emission rate factor for all emitters (0.0 to 1.0)
-		 * @param factor The emission rate factor
-		 */
-		void setEmissionRateFactor(Ogre::Real factor);
-
-		/**
-		 * @brief Applies velocity speed factor for all emitters
-		 * @param speedFactor The velocity speed factor
-		 */
-		void applyVelocitySpeedFactor(Ogre::Real speedFactor);
-
-		/**
-		 * @brief Stores the original emission rates and velocities from all emitters
-		 */
-		void storeOriginalEmissionRates(void);
-
-		/**
-		 * @brief Initiates the fade out process
-		 */
-		void beginFadeOut(void);
-
-		/**
-		 * @brief Resets cloned particle and sets current scale to an existing clone without recreating it.
-		 *
-		 * This is a key optimization that allows us to modify scale without creating
-		 * zombie clones. It reads the original values from the base template and
-		 * applies the current scale factor to them, ensuring we don't accumulate
-		 * scaling on repeated calls.
-		 *
-		 * @param particleSystemDefInstance The cloned ParticleSystemDef to modify
-		 */
-		void resetClone(Ogre::ParticleSystemDef* particleSystemDefInstance);
-
-		void restoreOriginalEmissionRates(void);
-
-		Ogre::Real getMaxTtlSecondsFromDef(const Ogre::ParticleSystemDef* def) const;
-
-		/**
-			* @brief Destroys EVERYTHING - instance, node, AND the clone.
-			*
-			* This is the "nuclear option" for cleanup. Use this when:
-			* - Component is being removed (onRemoveComponent)
-			* - Template is changing (setParticleTemplateName)
-			*
-			* This properly destroys the clone using the correct Ogre-Next API sequence:
-			* 1. clone->_destroyAllParticleSystems()
-			* 2. particleManager->destroyAllParticleSystems()
-			*
-			* @note Regular destroyParticleEffect() only destroys instance/node, NOT clone
-			*/
-		void destroyEverything(void);
+		void recreateParticle(void);
 
 	private:
 		Ogre::String name;
+		Ogre::String uniqueParticleName;  // Unique name for this component's particle in the module
+		ParticleFxModule* particleFxModule;
 
-		Ogre::ParticleSystem2* particleSystem;
-		Ogre::SceneNode* particleNode;
 		Variant* activated;
 		Variant* particleTemplateName;
 		Variant* repeat;
-		Ogre::Real particlePlayTime;
 		Variant* particleInitialPlayTime;
 		Variant* particlePlaySpeed;
 		Variant* particleOffsetPosition;
@@ -582,17 +541,6 @@ namespace NOWA
 		Variant* fadeOutTime;
 
 		bool oldActivated;
-		bool isEmitting;  // Track emission state
-		ParticleFadeState::ParticleFadeState fadeState;
-		Ogre::Real fadeProgress;  // Current fade progress (0.0 to 1.0)
-		std::vector<Ogre::Real> originalEmissionRates;  // Stores original emission rates per emitter
-		std::vector<Ogre::Real> originalMinVelocities;  // Stores original min velocities per emitter
-		std::vector<Ogre::Real> originalMaxVelocities;  // Stores original max velocities per emitter
-		Ogre::String oldParticleTemplateName;
-		Ogre::String baseParticleTemplateName;
-		Ogre::String clonedDefName;
-		Ogre::Real pendingDrainTimeMs;
-		bool pendingRestartAfterDrain;
 	};
 
 }; // namespace end

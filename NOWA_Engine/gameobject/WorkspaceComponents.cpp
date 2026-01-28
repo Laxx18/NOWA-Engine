@@ -3246,7 +3246,7 @@ namespace NOWA
 				texDef->width = 0; // target_width
 				texDef->height = 0; // target_height
 
-				texDef->format = Ogre::PFG_RGBA16_FLOAT;
+				texDef->format = Ogre::PFG_R16_FLOAT;
 				// ?? Is this necessary?
 				texDef->textureFlags = Ogre::TextureFlags::RenderToTexture; // Here also | Ogre::TextureFlags::MsaaExplicitResolve;??
 				// texDef->depthBufferId = Ogre::DepthBuffer::POOL_DEFAULT;
@@ -3295,7 +3295,7 @@ namespace NOWA
 						auto pass = targetDef->addPass(Ogre::PASS_CLEAR);
 						passClear = static_cast<Ogre::CompositorPassClearDef*>(pass);
 
-						passClear->mClearColour[0] = Ogre::ColourValue(0.2f, 0.4f, 0.6f);
+						passClear->mClearColour[0] = Ogre::ColourValue(0.2f, 0.4f, 0.6f) * 60.0f;
 
 						if (true == this->useSSAO->getBool())
 						{
@@ -3764,7 +3764,7 @@ namespace NOWA
 				texDef = compositorNodeDefinition->addTextureDefinition("oldLumRt");
 				texDef->width = 0;
 				texDef->height = 0;
-				texDef->format = Ogre::PFG_RGBA16_FLOAT;
+				texDef->format = Ogre::PFG_R16_FLOAT;
 				texDef->textureFlags = Ogre::TextureFlags::RenderToTexture;
 
 				rtv = compositorNodeDefinition->addRenderTextureView("oldLumRt");
@@ -3808,7 +3808,7 @@ namespace NOWA
 					auto pass = targetDef->addPass(Ogre::PASS_CLEAR);
 					passClear = static_cast<Ogre::CompositorPassClearDef*>(pass);
 
-					passClear->mClearColour[0] = Ogre::ColourValue(0.2f, 0.4f, 0.6f);
+					passClear->mClearColour[0] = Ogre::ColourValue(0.2f, 0.4f, 0.6f) * 60.0f;
 
 					if (true == this->useSSAO->getBool())
 					{
@@ -4408,7 +4408,7 @@ namespace NOWA
 				texDef = compositorNodeDefinition->addTextureDefinition("oldLumRt");
 				texDef->width = 0.0f;
 				texDef->height = 0.0f;
-				texDef->format = Ogre::PFG_RGBA16_FLOAT;
+				texDef->format = Ogre::PFG_R16_FLOAT;
 				texDef->textureFlags = Ogre::TextureFlags::RenderToTexture;
 
 				rtv = compositorNodeDefinition->addRenderTextureView("oldLumRt");
@@ -4452,7 +4452,7 @@ namespace NOWA
 					auto pass = targetDef->addPass(Ogre::PASS_CLEAR);
 					passClear = static_cast<Ogre::CompositorPassClearDef*>(pass);
 
-					passClear->mClearColour[0] = Ogre::ColourValue(0.2f, 0.4f, 0.6f);
+					passClear->mClearColour[0] = Ogre::ColourValue(0.2f, 0.4f, 0.6f) * 60.0f;
 
 					if (true == this->useSSAO->getBool())
 					{

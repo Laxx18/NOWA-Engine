@@ -1,44 +1,48 @@
+// ============================================================================
+// PARTICLE MATERIALS WITH AUTO-BLENDING MODE ANNOTATIONS
+// Format: // bm: <BlendingMode>
+// Modes: AlphaBlending (additive), AlphaTransparent, AlphaHashing, AlphaHashingA2C
+// ============================================================================
+
+// bm: AlphaBlending
 hlms Particle/Star unlit
 {
 	diffuse_map star.jpg
-	scene_blend add
-	depth_write off
 	cull_mode none
 }
 
+// bm: AlphaBlending
 hlms Particle/Flare unlit
 {
-	diffuse_map flare.png
-	scene_blend add
-	depth_write off
-	cull_mode none
-	// diffuse vertexcolour
+    depth_check on
+    cull_mode none
+    
+    diffuse_map flare.png
 }
 
+// bm: AlphaBlending
 hlms Particle/Flare2 unlit
 {
-	depth_write		off
-	cull_hardware	none
-
-	scene_blend		add
-
-	diffuse_map flaretrail.png
+    depth_check on
+    cull_mode none
+    
+    diffuse_map flaretrail.png
 }
 
+// bm: AlphaTransparent
 hlms Particle/Flare3 unlit
 {
-	diffuse_map flare_alpha.dds
-	scene_blend alpha_blend
-	depth_write off
-	cull_mode none
-	// diffuse vertexcolour
+    // Use alpha_blend for proper transparency
+    depth_check on
+    cull_mode none
+    
+    diffuse_map flare_alpha.dds
 }
 
+// bm: TransparentColour
 hlms Particle/FlarePointSprite unlit
 {
 	diffuse_map flare.png
-	scene_blend add
-	depth_write off
 	cull_mode none
 	// point_sprites on
 	// point_size 2
@@ -46,26 +50,33 @@ hlms Particle/FlarePointSprite unlit
 	// diffuse vertexcolour
 }
 
+// bm: AlphaTransparent
 hlms Particle/Aureola unlit
 {
-	depth_write		off
 	cull_hardware	none
-
-	scene_blend		alpha_blend
 
 	diffuse_map aureola.png
 }
 
-hlms Particle/AnimationParticleTest unlit
+// bm: AlphaBlending
+// ta: 4x4@16
+hlms Particle/AnimationExplosion unlit
 {
-	depth_write		off
-	cull_hardware	none
-
-	scene_blend		add
-	
-	diffuse_map flames_anim.png
+    cull_mode none
+    diffuse_map flames_anim.png
 }
 
+// Format:
+// ta: <rows>x<columns>@<fps>
+
+// Examples:
+// ta: 4x4@16     - 4 rows, 4 columns, 16 fps
+// ta: 4x4@20     - 4 rows, 4 columns, 20 fps (faster)
+// ta: 8x8@30     - 8 rows, 8 columns, 30 fps
+// ta: 2x4        - 2 rows, 4 columns, 16 fps (default)
+
+
+// bm: AlphaHashingA2C
 hlms Particle/SmokeUnlit unlit
 {
 	cull_mode	none
@@ -75,6 +86,7 @@ hlms Particle/SmokeUnlit unlit
 	alpha_to_coverage msaa_only
 }
 
+// bm: AlphaHashingA2C
 hlms Particle/SmokePBS pbs
 {
 	cull_mode	none
@@ -89,6 +101,7 @@ hlms Particle/SmokePBS pbs
 	normal_map Sphere_nm.png
 }
 
+// bm: AlphaHashingA2C
 hlms Particle/SpherePBS pbs
 {
 	cull_mode	none
@@ -103,16 +116,16 @@ hlms Particle/SpherePBS pbs
 	normal_map Sphere_nm.png
 }
 
+// bm: AlphaBlending
 hlms Particle/Droplet unlit
 {
-	diffuse_map basic_droplet.png
-	scene_blend colour_blend
-	depth_write off
-	cull_mode none
-	emissive 0.3 0.3 0.3
-	// diffuse vertexcolour
+    diffuse_map basic_droplet.png
+    
+    // Let the code handle blending via applyBlendingMethod
+    // Don't specify scene_blend here
 }
 
+// bm: AlphaHashingA2C
 hlms Particle/advancedLodSystem unlit
 {
 	cull_mode	none
@@ -123,83 +136,77 @@ hlms Particle/advancedLodSystem unlit
 	diffuse_map Barrel_01.png
 }
 
-
+// bm: AlphaBlending
 hlms Particle/mp_fire_02 unlit
 {
-	depth_write off
-	scene_blend add
 	diffuse_map mp_fire_02_2x2.dds
 }
 
+// bm: AlphaTransparent
 hlms Particle/Bubble unlit
 {
-	depth_write off
-	scene_blend alpha_blend
 	diffuse_map pump_bubble.png
 	cull_mode none
 	diffuse 1 1 1
 }
 
+// bm: AlphaBlending
 hlms Particle/BlurredBubble unlit
 {
-	depth_write off
-	scene_blend add
 	diffuse_map pump_bubble_blurred.png
 }
 
+// bm: AlphaTransparent
 hlms Particle/Tornado unlit
 {
-	scene_blend alpha_blend
-	depth_write off
-    diffuse_map pu_sand_336x330.png 
+    diffuse_map p_sand_336x330.png 
 }
 
+// bm: AlphaHashing
 hlms Particle/Stone unlit
 {
-	depth_write off
-    diffuse_map pu_stone.png
+    diffuse_map p_stone.png
 }
 
+// bm: AlphaTransparent
 hlms Particle/Circle unlit
 {
-	depth_write off
-	scene_blend alpha_blend
-    diffuse_map pu_circle.png
+    diffuse_map p_circle.png
 }
 
+// bm: AlphaBlending
 hlms Particle/Rain_01 unlit
 {
-	depth_write off
-	scene_blend add
-    diffuse_map pu_rain_01.png
+    diffuse_map p_rain_01.png
 }
 
+// bm: AlphaHashing
 hlms Particle/Barrel_01 unlit
 {
-	depth_write off
-    diffuse_map pu_barrel_01.png
+    diffuse_map p_barrel_01.png
 }
 
+// bm: AlphaHashing
 hlms Particle/Barrel_02 unlit
 {
-	depth_write off
-    diffuse_map pu_barrel_02.png
+    diffuse_map p_barrel_02.png
 }
 
+// bm: AlphaBlending
 hlms fxpression/ac3dmat1 unlit
 {
 	ambient 1 0.05 0
     diffuse 1 0.05 0
-    diffuse_map pu_plate.png
+    diffuse_map p_plate.png
 }
 
+// bm: AlphaBlending
 hlms Particle/Flame unlit
 {
-	depth_write off
-	scene_blend add
-    diffuse_map pu_flame.png
+    diffuse_map p_flame.png
 }
 
+// bm: AlphaBlending
 material Particle/Fire
 {
     technique
@@ -207,11 +214,9 @@ material Particle/Fire
         pass
         {
             lighting off
-            scene_blend add
-            depth_write off
             texture_unit
             {
-                texture pu_flame.png
+                texture p_flame.png
                 tex_address_mode clamp
                 wave_xform scroll_x sine 0 0.3 0 0.15
             }
@@ -219,493 +224,469 @@ material Particle/Fire
     }
 }
 
+// bm: AlphaBlending
 hlms Particle/ExplosionFire unlit
 {
-	depth_write off
-	scene_blend add
 	// fog_override true
-    diffuse_map pu_smoke_02_128x128.png
+    diffuse_map p_smoke_02_128x128.png
 }
 
+// bm: AlphaBlending
 hlms Particle/Nucleus unlit
 {
-	depth_write off
-	scene_blend add
-    diffuse_map pu_nucleus.png
+    diffuse_map p_nucleus.png
 }
 
+// bm: AlphaBlending
 hlms Particle/Debris unlit
 {
-	depth_write off
-	scene_blend add
-    diffuse_map pu_fire_01_64x64.png
+    diffuse_map p_fire_01_64x64.png
 }
 
+// bm: AlphaBlending
 hlms Particle/BurstFlare unlit
 {
-	depth_write off
-	scene_blend add
-    diffuse_map pu_dot_03_64x64.png
+    diffuse_map p_dot_03_64x64.png
 }
 
+// bm: AlphaTransparent
 hlms Particle/GreenBall unlit
 {
-	depth_write off
-	scene_blend alpha_blend
-    diffuse_map pu_green_ball.png
+    diffuse_map p_green_ball.png
 }
 
+// bm: AlphaHashing
 hlms Particle/Crate unlit
 {
-	depth_write off
 	diffuse_map crate6.png
 }
 
+// bm: AlphaBlending
 hlms Particle/Star unlit
 {
-	depth_write off
-	scene_blend add
-    diffuse_map pu_flare_12_256x256.png
+    diffuse_map p_flare_12_256x256.png
 }
 
+// bm: AlphaTransparent
 hlms Particle/Hart unlit
 {
-	depth_write off
-	scene_blend alpha_blend
-    diffuse_map pu_hart.png
+    diffuse_map p_hart.png
 }
 
+// bm: AlphaTransparent
 hlms Particle/Interpolate unlit
 {
-	depth_write off
-	scene_blend alpha_blend
     diffuse_map interpolate.png
 }
 
+// bm: AlphaHashing
 hlms Particle/Fish unlit
 {
-	depth_write off
     diffuse_map steelhead.png
 }
 
+// bm: AlphaBlending
 hlms Particle/Flare unlit
 {
-	depth_write off
-	scene_blend add
-    diffuse_map pu_flare.png
+    diffuse_map p_flare.png
 }
 
+// bm: AlphaBlending
 hlms Particle/Flare_01 unlit
 {
-	depth_write off
-	scene_blend add
     diffuse_map pump_flare_01.png
 }
 
+// bm: AlphaBlending
 hlms Particle/Flare_02 unlit
 {
-	depth_write off
-	scene_blend add
     diffuse_map pump_flare_02.png
 }
 
+// bm: AlphaBlending
 hlms Particle/Flare_03 unlit
 {
-	depth_write off
-	scene_blend add
     diffuse_map pump_flare_03.png
 }
 
+// bm: AlphaBlending
 hlms Particle/Flare_04 unlit
 {
-	depth_write off
-	scene_blend add
     diffuse_map pump_flare_04.png
 }
 
+// bm: AlphaBlending
 hlms Particle/Flare_05 unlit
 {
-	depth_write off
-	scene_blend add
     diffuse_map pump_flare_05.png
 }
 
+// bm: AlphaBlending
 hlms Particle/Flare_06 unlit
 {
-	depth_write off
-	scene_blend add
     diffuse_map pump_flare_06.png
 }
 
+// bm: AlphaBlending
 hlms Particle/RibbonTrail unlit
 {
-	scene_blend add
-	depth_write off
-	diffuse_map pu_ribbontrail.png
+	diffuse_map p_ribbontrail.png
 }
 
+// bm: AlphaBlending
 hlms Particle/Rain unlit
 {
-	depth_write off
-	scene_blend colour_blend
-    diffuse_map pu_rain.png
+    diffuse_map p_rain.png
 }
 
+// bm: AlphaBlending
 hlms Particle/Beam_1 unlit
 {
-	depth_write off
-	scene_blend add
-    diffuse_map pu_beam_01.png
+    // Additive blending - bright beam core
+    depth_check on
+    cull_mode none
+    
+    diffuse_map p_beam_01.png
 }
 
+// bm: AlphaBlending
 hlms Particle/Beam_2 unlit
 {
-	scene_blend add
-	depth_write off
-    diffuse_map pu_beam_02.png 
+    // Additive blending - flickering flares
+    depth_check on
+    cull_mode none
+    
+    diffuse_map p_beam_02.png 
 }
 
+// bm: AlphaBlending
 hlms Particle/Streak_01 unlit
 {
-	scene_blend add
-	depth_write off
     diffuse_map pump_streak_01.png 
 }
 
+// bm: AlphaBlending
 hlms Particle/Streak_02 unlit
 {
-	scene_blend add
-	depth_write off
     diffuse_map pump_streak_02.png 
 }
 
+// bm: AlphaBlending
 hlms Particle/Streak_03 unlit
 {
-	scene_blend add
-	depth_write off
     diffuse_map pump_streak_03.png 
 }
 
+// bm: AlphaBlending
 hlms Particle/Streak_04 unlit
 {
-	scene_blend add
-	depth_write off
     diffuse_map pump_streak_04.png 
 }
 
+// bm: AlphaBlending
 hlms Particle/Watch unlit
 {
-	scene_blend add
-	depth_write off
     diffuse_map pump_watch.png 
 }
 
+// bm: AlphaBlending
 hlms Particle/Hourglass unlit
 {
-	scene_blend add
-	depth_write off
     diffuse_map pump_hourglass.png 
 }
 
+// bm: AlphaTransparent
 hlms Particle/Leave unlit
 {
-	scene_blend alpha_blend
-	depth_write off
     diffuse_map pump_leave.png 
 }
 
+// bm: AlphaBlending
 hlms Particle/Smoke_01 unlit
 {
-	scene_blend add
-	depth_write off
     diffuse_map pump_smoke_01.png 
 }
 
+// bm: AlphaTransparent
 hlms Particle/Smoke_11 unlit
 {
-	scene_blend alpha_blend
-	depth_write off
     diffuse_map pump_smoke_01.png 
 }
 
+// bm: AlphaTransparent
 hlms Particle/Smoke unlit
 {
-	depth_write off
-	scene_blend alpha_blend
-    diffuse_map pu_smoke_02_128x128.png
+    diffuse_map p_smoke_02_128x128.png
 }
 
+// bm: AlphaTransparent
 hlms Particle/Smoke_02 unlit
 {
-	depth_write off
-	scene_blend alpha_blend
-    diffuse_map pu_smoke_brown_336x330.png
+    diffuse_map p_smoke_brown_336x330.png
 }
 
+// bm: AlphaBlending
 hlms Particle/Smoke_03 unlit
 {
-	depth_write off
-	scene_blend add
-    diffuse_map pu_smoke_brown_336x330.png
+    diffuse_map p_smoke_brown_336x330.png
 }
 
+// bm: AlphaTransparent
 hlms Particle/Smoke_04 unlit
 {
-	depth_write off
-	scene_blend alpha_blend
-    diffuse_map pu_dirt_256x512.png
+    diffuse_map p_dirt_256x512.png
 }
 
+// bm: AlphaTransparent
 hlms Particle/Dirt_11 unlit
 {
-	depth_write off
-	scene_blend alpha_blend
     diffuse_map pump_dirt_01.png
 }
 
+// bm: AlphaTransparent
 hlms Particle/Dirt_12 unlit
 {
-	depth_write off
-	scene_blend alpha_blend
     diffuse_map pump_dirt_02.png
 }
 
+// bm: AlphaBlending
 hlms Particle/Lighting unlit
 {
-	depth_write off
-	scene_blend add
     diffuse_map pump_lighting_01.png
 }
 
+// bm: AlphaBlending
 hlms Particle/Lighting_02 unlit
 {
-	depth_write off
-	scene_blend add
     diffuse_map pump_lighting_02.png
 }
 
+// bm: AlphaBlending
 hlms Particle/Lighting_03 unlit
 {
-	depth_write off
-	scene_blend add
     diffuse_map pump_lighting_03.png
 }
 
+// bm: AlphaBlending
 hlms Particle/Lightning_04 unlit
 {
-	depth_write off
-	scene_blend add
     diffuse_map pump_lighting_04.png
 }
 
+// bm: AlphaBlending
 hlms Particle/Spark_01 unlit
 {
-	depth_write off
-	scene_blend add
     diffuse_map pump_spark_01.png
 }
 
+// bm: AlphaBlending
 hlms Particle/Star_01 unlit
 {
-	depth_write off
-	scene_blend add
     diffuse_map pump_star_01.png
 }
 
+// bm: AlphaBlending
 hlms Particle/Star_02 unlit
 {
-	depth_write off
-	scene_blend add
     diffuse_map pump_star_02.png
 }
 
+// bm: AlphaBlending
 hlms Particle/Star_03 unlit
 {
-	depth_write off
-	scene_blend add
     diffuse_map pump_star_03.png
 }
 
+// bm: AlphaBlending
 hlms Particle/Star_04 unlit
 {
-	depth_write off
-	scene_blend add
     diffuse_map pump_star_04.png
 }
 
+// bm: AlphaBlending
 hlms Particle/Star_05 unlit
 {
-	depth_write off
-	scene_blend add
     diffuse_map pump_star_05.png
 }
 
+// bm: AlphaTransparent
 hlms Particle/Genesis_11 unlit
 {
-	depth_write off
-	scene_blend alpha_blend
     diffuse_map pump_genesis_01.png
 }
 
+// bm: AlphaTransparent
 hlms Particle/Genesis_12 unlit
 {
-	depth_write off
-	scene_blend alpha_blend
     diffuse_map pump_genesis_02.png
 }
 
+// bm: AlphaBlending
 hlms Particle/Swirl_01 unlit
 {
-	depth_write off
-	scene_blend add
     diffuse_map pump_swirl_01.png
 }
 
+// bm: AlphaBlending
 hlms Particle/Swirl_02 unlit
 {
-	depth_write off
-	scene_blend add
     diffuse_map pump_swirl_02.png
 }
 
+// bm: AlphaBlending
 hlms Particle/Swirl_03 unlit
 {
-	depth_write off
-	scene_blend add
     diffuse_map pump_swirl_03.png
 }
 
+// bm: AlphaBlending
 hlms Particle/Ring_01 unlit
 {
-	depth_write off
-	scene_blend add
     diffuse_map pump_ring_01.png
 }
 
+// bm: AlphaBlending
 hlms Particle/Ring_02 unlit
 {
-	depth_write off
-	scene_blend add
     diffuse_map pump_ring_02.png
 }
 
+// bm: AlphaBlending
 hlms Particle/Ring_03 unlit
 {
-	depth_write off
-	scene_blend add
     diffuse_map pump_ring_03.png
 }
 
+// bm: AlphaTransparent
 hlms Particle/Ring_14 unlit
 {
-	depth_write off
-	scene_blend alpha_blend
     diffuse_map pump_ring_04.png
 }
 
+// bm: AlphaBlending
 hlms Particle/Ring_05 unlit
 {
-	depth_write off
-	scene_blend add
     diffuse_map pump_ring_05.png
 }
 
+// bm: AlphaBlending
 hlms Particle/Metal_01 unlit
 {
-	depth_write off
-	scene_blend add
     diffuse_map pump_metal_01.png
 }
 
+// bm: AlphaBlending
 hlms Particle/Metal_02 unlit
 {
-	depth_write off
-	scene_blend add
     diffuse_map pump_metal_02.png
 }
 
+// bm: AlphaBlending
 hlms Particle/Fire_01 unlit
 {
-	depth_write off
-	scene_blend add
     diffuse_map pump_flame_01.png
 }
 
+// bm: AlphaBlending
 hlms Particle/Fire_02 unlit
 {
-	depth_write off
-	scene_blend add
     diffuse_map pump_flame_02.png
 }
 
+// bm: AlphaBlending
 hlms Particle/Fire_03 unlit
 {
-	depth_write off
-	scene_blend add
     diffuse_map pump_flame_03.png
 }
 
+// bm: AlphaBlending
 hlms Particle/Fire_04 unlit
 {
-	depth_write off
-	scene_blend add
     diffuse_map pump_flame_04.png
 }
 
+// bm: AlphaTransparent
 hlms Particle/AtlasSmoke unlit
 {
-	depth_write off
-	scene_blend alpha_blend
     diffuse_map pump_atlas_smoke.png
 }
 
+// bm: AlphaTransparent
 hlms Particle/Snow_01 unlit
 {
-	depth_write off
-	scene_blend alpha_blend
     diffuse_map pump_snow_01.png
 }
 
+// bm: AlphaHashing
 hlms Particle/BBal unlit
 {
-	depth_write off
-    diffuse_map pu_bbal.png
+    diffuse_map p_bbal.png
 }
 
+// bm: AlphaBlending
 hlms Particle/BioHazzard unlit
 {
-	depth_write off
-	scene_blend add
     diffuse_map pump_biohazzard.png
 }
 
+// bm: AlphaBlending
 hlms Particle/CelticKnot unlit
 {
-	depth_write off
-	scene_blend add
     diffuse_map pump_celticknot.png
 }
 
+// bm: AlphaBlending
 hlms Particle/Pentagram_01 unlit
 {
-	depth_write off
-	scene_blend add
     diffuse_map pump_pentagram_01.png
 }
 
+// bm: AlphaBlending
 hlms Particle/Pentagram_02 unlit
 {
-	depth_write off
-	scene_blend add
     diffuse_map pump_pentagram_02.png
 }
 
+// bm: AlphaTransparent
 hlms Water/Wake unlit
 {
-	depth_write off
-	scene_blend alpha_blend
-	// Optional, if you want it later:
-	// alpha_test greater_equal 64
-
 	diffuse_map wake.png
 }
+
+
+// ============================================================================
+// BLENDING MODE DECISION LOGIC
+// ============================================================================
+
+/*
+AlphaBlending (SBT_ADD) - Additive, bright effects:
+- Fire, flames, explosions (anything glowing/bright)
+- Stars, flares, sparks, lightning, lighting effects
+- Beams, streaks, trails
+- Rain (white on black)
+- Rings, swirls, watches (bright glowing effects)
+- Pentagrams, symbols (glowing mystical effects)
+- Textures with white/bright on black background
+
+AlphaTransparent (SBT_TRANSPARENT_ALPHA) - True transparency:
+- Smoke (needs soft edges, gradient transparency)
+- Dirt, leaves (natural elements with alpha)
+- Bubbles, circles (semi-transparent rounded shapes)
+- Snow (soft white particles)
+- Genesis, aureola (soft glowing clouds)
+- Hart, interpolate (sprites with alpha channel)
+- Wake (water effects)
+- Tornado (dust with transparency)
+- Textures with proper alpha channel for transparency
+
+AlphaHashing / AlphaHashingA2C - Cutout/stippled:
+- Solid objects in particles (crates, barrels, fish)
+- Hard-edged objects (stone)
+- LOD systems
+- When depth write is needed
+- Already specified with alpha_hash in material
+
+Note: Most "bright glowing" effects use AlphaBlending (additive)
+      Most "soft transparent" effects use AlphaTransparent
+      Most "solid cutout" objects use AlphaHashing
+*/

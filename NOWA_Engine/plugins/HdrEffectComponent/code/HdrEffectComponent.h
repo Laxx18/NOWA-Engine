@@ -292,6 +292,8 @@ namespace NOWA
 		void postApplySunPower(void);
 
 		void handleHdrActivated(NOWA::EventDataPtr eventData);
+
+		void refreshAllParameters(void);
 	public:
 		static const Ogre::String AttrEffectName(void) { return "Effect Name"; }
 		static const Ogre::String AttrSkyColor(void) { return "Sky Color"; }
@@ -318,6 +320,7 @@ namespace NOWA
 		Variant* envMapScale;
 		LightDirectionalComponent* lightDirectionalComponent;
 		WorkspaceBaseComponent* workspaceBaseComponent;
+		bool isApplyingPreset;
 	};
 
 }; //namespace end

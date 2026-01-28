@@ -133,6 +133,8 @@ namespace NOWA
 
 		ParticleUniverseModule* getParticleUniverseModule(void) const;
 
+		ParticleFxModule* getParticleFxModule(void) const;
+
 		LuaScriptModule* getLuaScriptModule(void) const;
 
 		EventManager* getEventManager(void) const;
@@ -156,6 +158,8 @@ namespace NOWA
 		OgreRecastModule* getOgreRecastModule(const Ogre::String& stateName);
 
 		ParticleUniverseModule* getParticleUniverseModule(const Ogre::String& stateName);
+
+		ParticleFxModule* getParticleFxModule(const Ogre::String& stateName);
 
 		LuaScriptModule* getLuaScriptModule(const Ogre::String& stateName);
 

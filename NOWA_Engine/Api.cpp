@@ -135,6 +135,7 @@ public:
 				this->ogreRecastModule->update(dt);
 				// PlayerControllerComponents are using this directly for smoke effect etc.
 				this->particleUniverseModule->update(dt);
+				this->particleFxModule->update(dt);
 			}
 		}
 

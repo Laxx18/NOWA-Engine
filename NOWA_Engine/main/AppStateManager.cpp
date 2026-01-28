@@ -1025,6 +1025,16 @@ namespace NOWA
 		return this->activeStateStack.back()->particleUniverseModule;
 	}
 
+	ParticleFxModule* AppStateManager::getParticleFxModule(void) const
+	{
+		if (true == this->activeStateStack.empty())
+		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AppStateManager] Error getting particle fx module, because at this time no application state (AppState) has been created! Maybe this call was to early.");
+			throw Ogre::Exception(Ogre::Exception::ERR_INTERNAL_ERROR, "[AppStateManager] Error getting particle fx module, because at this time no application state (AppState) has been created! Maybe this call was to early.", "NOWA");
+		}
+		return this->activeStateStack.back()->particleFxModule;
+	}
+
 	LuaScriptModule* AppStateManager::getLuaScriptModule(void) const
 	{
 		if (true == this->activeStateStack.empty())
@@ -1133,6 +1143,14 @@ namespace NOWA
 		if (nullptr != appState)
 			return appState->particleUniverseModule;
 
+		return nullptr;
+	}
+
+	ParticleFxModule* AppStateManager::getParticleFxModule(const Ogre::String& stateName)
+	{
+		AppState* appState = this->findByName(stateName);
+		if (nullptr != appState)
+			return appState->particleFxModule;
 		return nullptr;
 	}
 

@@ -870,11 +870,7 @@ namespace NOWA
 	
 	void DatablockUnlitComponent::setUseColor(bool useColor)
 	{
-		ENQUEUE_RENDER_COMMAND_MULTI("DatablockUnlitComponent::setUseColor", _1(useColor),
-		{
-			this->useColor->setValue(useColor);
-		});
-		// Trigger whether background color attribute is visible or not, depening if color is used or not
+		this->useColor->setValue(useColor);
 		this->backgroundColor->setVisible(useColor);
 	}
 	

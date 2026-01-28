@@ -755,7 +755,7 @@ void DesignState::simulate(bool pause, bool withUndo)
 		}
 		this->simulating = true;
 
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("simulate 1", _1(pause),
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this, pause]()
 		{
 			this->mainMenuBar->enableFileMenu(pause);
 			MyGUI::LayerManager::getInstance().detachFromLayer(this->manipulationWindow);
@@ -765,7 +765,8 @@ void DesignState::simulate(bool pause, bool withUndo)
 			// this->editorManager->stopSimulation(); Never do this!!!! Else because of internal undo, all set values are reset and fancy behavior will start!
 			this->playButton->setImageResource("StopImage");
 			this->enableWidgets(false);
-		});
+		};
+		NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::simulate_1");
 
 		if (nullptr != this->editorManager)
 		{
@@ -779,7 +780,7 @@ void DesignState::simulate(bool pause, bool withUndo)
 		// Must be called first, so that in case of lua error, no update is called
 		this->simulating = false;
 
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("simulate 2", _2(pause, withUndo),
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this, pause]()
 		{
 			this->mainMenuBar->enableFileMenu(pause);
 			MyGUI::LayerManager::getInstance().detachFromLayer(this->manipulationWindow);
@@ -795,7 +796,8 @@ void DesignState::simulate(bool pause, bool withUndo)
 
 				this->mainMenuBar->activateTestSelectedGameObjects(false);
 			}
-		});
+		};
+		NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::simulate_2");
 
 		if (nullptr != editorManager)
 		{
@@ -1659,70 +1661,70 @@ void DesignState::setFocus(MyGUI::Widget* sender, MyGUI::Widget* oldWidget)
 
 void DesignState::updateInfo(Ogre::Real dt)
 {
-	if (this->nextInfoUpdate <= 0.0f)
+	auto closureFunction = [this](Ogre::Real renderDt)
 	{
-		if (nullptr == this->editorManager)
+		if (this->nextInfoUpdate <= 0.0f)
 		{
-			return;
-		}
+			if (nullptr == this->editorManager)
+			{
+				return;
+			}
 
-		Ogre::String info = "Selected : " + Ogre::StringConverter::toString(this->editorManager->getSelectionManager()->getSelectedGameObjects().size());
+			Ogre::String info = "Selected : " + Ogre::StringConverter::toString(this->editorManager->getSelectionManager()->getSelectedGameObjects().size());
 
-		if (false == this->selectedMovableObjectInfo.empty())
-		{
-			info += " " + this->selectedMovableObjectInfo;
-		}
+			if (false == this->selectedMovableObjectInfo.empty())
+			{
+				info += " " + this->selectedMovableObjectInfo;
+			}
 
-		if (1 == this->editorManager->getSelectionManager()->getSelectedGameObjects().size())
-		{
-			NOWA::GameObject* gameObject = this->editorManager->getSelectionManager()->getSelectedGameObjects().cbegin()->second.gameObject;
-			if (nullptr != gameObject)
-				info += " Object Pos: " + Ogre::StringConverter::toString(gameObject->getPosition());
-		}
+			if (1 == this->editorManager->getSelectionManager()->getSelectedGameObjects().size())
+			{
+				NOWA::GameObject* gameObject = this->editorManager->getSelectionManager()->getSelectedGameObjects().cbegin()->second.gameObject;
+				if (nullptr != gameObject)
+					info += " Object Pos: " + Ogre::StringConverter::toString(gameObject->getPosition());
+			}
 
-		info += " Camera pos: " + Ogre::StringConverter::toString(NOWA::MathHelper::getInstance()->round(NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getPosition(), 2));
-		info += " orient: " + Ogre::StringConverter::toString(NOWA::MathHelper::getInstance()->round(
-			NOWA::MathHelper::getInstance()->quatToDegrees(NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getOrientation()), 2));
-		info += " speed: " + Ogre::StringConverter::toString(this->cameraMoveSpeed);
+			info += " Camera pos: " + Ogre::StringConverter::toString(NOWA::MathHelper::getInstance()->round(NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getPosition(), 2));
+			info += " orient: " + Ogre::StringConverter::toString(NOWA::MathHelper::getInstance()->round(
+				NOWA::MathHelper::getInstance()->quatToDegrees(NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getOrientation()), 2));
+			info += " speed: " + Ogre::StringConverter::toString(this->cameraMoveSpeed);
 
-		if (NOWA::EditorManager::EDITOR_PICKER_MODE == this->editorManager->getManipulationMode())
-		{
-			info += " Pick force: " + Ogre::StringConverter::toString(this->editorManager->getPickForce());
-		}
+			if (NOWA::EditorManager::EDITOR_PICKER_MODE == this->editorManager->getManipulationMode())
+			{
+				info += " Pick force: " + Ogre::StringConverter::toString(this->editorManager->getPickForce());
+			}
 
-		// Do it with tooltips etc.
-		/*if (false == this->description.empty())
-		{
-			info += " | " + this->description;
-		}*/
+			// Do it with tooltips etc.
+			/*if (false == this->description.empty())
+			{
+				info += " | " + this->description;
+			}*/
 
-		const Ogre::FrameStats* frameStats = NOWA::Core::getSingletonPtr()->getOgreRoot()->getFrameStats();
-		// Does not work in 2.1
-		// const Ogre::RenderTarget::FrameStats& stats = NOWA::Core::getSingletonPtr()->getOgreRenderWindow()->getStatistics();
+			const Ogre::FrameStats* frameStats = NOWA::Core::getSingletonPtr()->getOgreRoot()->getFrameStats();
+			// Does not work in 2.1
+			// const Ogre::RenderTarget::FrameStats& stats = NOWA::Core::getSingletonPtr()->getOgreRenderWindow()->getStatistics();
 
-		const RenderingMetrics& metrics = Ogre::Root::getSingletonPtr()->getRenderSystem()->getMetrics();
+			const RenderingMetrics& metrics = Ogre::Root::getSingletonPtr()->getRenderSystem()->getMetrics();
 
-		float avgTime = frameStats->getAvgTime();
-		char m[64];  // Increase buffer size
-		if (avgTime > 0.0f && avgTime < 1000.0f) // Prevent division by zero and extreme values
-		{
-			snprintf(m, sizeof(m), "%.2fms - %.2ffps", avgTime, 1000.0f / avgTime);
-		}
-		else
-		{
-			snprintf(m, sizeof(m), "FPS: Invalid");
-		}
-		info += " FPS: " + Ogre::String(m);
-		// Is always 0??
-		info += " Faces: " + Ogre::StringConverter::toString(metrics.mFaceCount);
-		info += " Batches: " + Ogre::StringConverter::toString(metrics.mBatchCount);
-		info += " Vertices: " + Ogre::StringConverter::toString(metrics.mVertexCount);
-		info += " Drawings: " + Ogre::StringConverter::toString(metrics.mDrawCount);
-		info += " Instances: " + Ogre::StringConverter::toString(metrics.mInstanceCount);
-		// info += " Threadcount: " + Ogre::StringConverter::toString(NOWA::Core::getSingletonPtr()->getCurrentThreadCount());
+			float avgTime = frameStats->getAvgTime();
+			char m[64];  // Increase buffer size
+			if (avgTime > 0.0f && avgTime < 1000.0f) // Prevent division by zero and extreme values
+			{
+				snprintf(m, sizeof(m), "%.2fms - %.2ffps", avgTime, 1000.0f / avgTime);
+			}
+			else
+			{
+				snprintf(m, sizeof(m), "FPS: Invalid");
+			}
+			info += " FPS: " + Ogre::String(m);
+			// Is always 0??
+			info += " Faces: " + Ogre::StringConverter::toString(metrics.mFaceCount);
+			info += " Batches: " + Ogre::StringConverter::toString(metrics.mBatchCount);
+			info += " Vertices: " + Ogre::StringConverter::toString(metrics.mVertexCount);
+			info += " Drawings: " + Ogre::StringConverter::toString(metrics.mDrawCount);
+			info += " Instances: " + Ogre::StringConverter::toString(metrics.mInstanceCount);
+			// info += " Threadcount: " + Ogre::StringConverter::toString(NOWA::Core::getSingletonPtr()->getCurrentThreadCount());
 
-		auto closureFunction = [this, info](Ogre::Real renderDt)
-		{
 			this->manipulationWindow->setCaption(info);
 			if (false == this->simulating)
 			{
@@ -1733,15 +1735,15 @@ void DesignState::updateInfo(Ogre::Real dt)
 				this->selectUndoButton->setEnabled(this->editorManager->getSelectionManager()->canSelectionUndo());
 				this->selectRedoButton->setEnabled(this->editorManager->getSelectionManager()->canSelectionRedo());
 			}
-		};
-		NOWA::GraphicsModule::getInstance()->updateTrackedClosure("DesignState::updateInfo", closureFunction);
-
-		this->nextInfoUpdate = 1.0f;
-	}
-	else
-	{
-		this->nextInfoUpdate -= dt;
-	}
+			
+			this->nextInfoUpdate = 1.0f;
+		}
+		else
+		{
+			this->nextInfoUpdate -= renderDt;
+		}
+	};
+	NOWA::GraphicsModule::getInstance()->updateTrackedClosure("DesignState::updateInfo", closureFunction);
 }
 
 void DesignState::removeGameObjects(void)
@@ -1818,6 +1820,7 @@ void DesignState::update(Ogre::Real dt)
 			// this->ogreNewt->update(dt);
 			NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->update(dt);
 			NOWA::AppStateManager::getSingletonPtr()->getParticleUniverseModule()->update(dt);
+			NOWA::AppStateManager::getSingletonPtr()->getParticleFxModule()->update(dt);
 		}
 
 		// Update the GameObjects

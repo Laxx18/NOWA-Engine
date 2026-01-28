@@ -1,4 +1,4 @@
-#include "NOWAPrecompiled.h"
+﻿#include "NOWAPrecompiled.h"
 #include "HdrEffectComponent.h"
 #include "utilities/XMLConverter.h"
 #include "modules/LuaScriptApi.h"
@@ -22,7 +22,9 @@ namespace NOWA
 	HdrEffectComponent::HdrEffectComponent()
 		: GameObjectComponent(),
 		name("HdrEffectComponent"),
-		effectName(new Variant(HdrEffectComponent::AttrEffectName(), { "Bright, sunny day", "Scary Night", "Dark Night", "Dream Night", "Average, slightly hazy day", "Heavy overcast day", "Gibbous moon night", "JJ Abrams style", "Custom" }, this->attributes)),
+		effectName(new Variant(HdrEffectComponent::AttrEffectName(), { "Bright, sunny day", "Scary Night", "Dark Night", "Dream Night", "Average, slightly hazy day", "Heavy overcast day",
+		"Gibbous moon night", "JJ Abrams style", "Black Night", "Golden Hour", "Dawn", "Dusk", "Stormy", "Underwater",
+		"Alien World", "Foggy Morning", "Desert Noon", "Arctic Day", "Neon Night", "Volcanic","Moonless Night", "Custom" }, this->attributes)),
 		skyColor(new Variant(HdrEffectComponent::AttrSkyColor(), Ogre::Vector4(0.2f, 0.4f, 0.6f, 1.0f) * 60.0f, this->attributes)),
 		upperHemisphere(new Variant(HdrEffectComponent::AttrUpperHemisphere(), Ogre::Vector4(0.3f, 0.50f, 0.7f, 1.0f) * 4.5f, this->attributes)),
 		lowerHemisphere(new Variant(HdrEffectComponent::AttrLowerHemisphere(), Ogre::Vector4(0.6f, 0.45f, 0.3f, 1.0f) * 2.925f, this->attributes)),
@@ -33,13 +35,14 @@ namespace NOWA
 		bloom(new Variant(HdrEffectComponent::AttrBloom(), 5.0f, this->attributes)),
 		envMapScale(new Variant(HdrEffectComponent::AttrEnvMapScale(), 16.0f, this->attributes)),
 		lightDirectionalComponent(nullptr),
-		workspaceBaseComponent(nullptr)
+		workspaceBaseComponent(nullptr),
+		isApplyingPreset(false)
 	{
 		this->effectName->addUserData(GameObject::AttrActionNeedRefresh());
 		this->skyColor->addUserData(GameObject::AttrActionColorDialog());
 		this->upperHemisphere->addUserData(GameObject::AttrActionColorDialog());
 		this->lowerHemisphere->addUserData(GameObject::AttrActionColorDialog());
-		this->sunPower->setConstraints(0.0f, 100.0f);
+		this->sunPower->setConstraints(0.0f, 200.0f);
 		this->bloom->setConstraints(0.0001f, 5.0f);
 
 		this->exposure->setDescription("Modifies the HDR Materials for the new exposure parameters. "
@@ -469,59 +472,76 @@ namespace NOWA
 
 	void HdrEffectComponent::applyExposure(Ogre::Real exposure, Ogre::Real minAutoExposure, Ogre::Real maxAutoExposure)
 	{
-		if (nullptr == this->workspaceBaseComponent || false == this->workspaceBaseComponent->getUseHdr() || nullptr == this->workspaceBaseComponent->getWorkspace())
+		// Get the HDR material
+		Ogre::MaterialPtr material = Ogre::MaterialManager::getSingleton().getByName(
+			"HDR/DownScale03_SumLumEnd",
+			Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME
+		);
+
+		if (material.isNull())
 		{
+			Ogre::LogManager::getSingleton().logMessage(
+				"[HdrEffectComponent] ERROR: HDR/DownScale03_SumLumEnd material not found!"
+			);
 			return;
 		}
 
-		assert(minAutoExposure <= maxAutoExposure);
+		Ogre::Pass* pass = material->getTechnique(0)->getPass(0);
+		Ogre::GpuProgramParametersSharedPtr psParams = pass->getFragmentProgramParameters();
 
-		ENQUEUE_RENDER_COMMAND_MULTI("HdrEffectComponent::applyExposure", _3(exposure, minAutoExposure, maxAutoExposure),
-			{
-				Ogre::MaterialPtr material = Ogre::MaterialManager::getSingleton().load("HDR/DownScale03_SumLumEnd", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME).staticCast<Ogre::Material>();
+		// CRITICAL: Apply the exponential transform with magic constant
+		float params[3];
+		params[0] = powf(2.0f, exposure) * 138.5833f;      // Base exposure with magic constant
+		params[1] = powf(2.0f, minAutoExposure);            // Min auto exposure (exponential)
+		params[2] = powf(2.0f, maxAutoExposure);            // Max auto exposure (exponential)
 
-				Ogre::Pass * pass = material->getTechnique(0)->getPass(0);
-				Ogre::GpuProgramParametersSharedPtr psParams = pass->getFragmentProgramParameters();
+		psParams->setNamedConstant("exposure", params, 1, 3);
 
-				const Ogre::Vector3 exposureParams(1024.0f * expf(exposure - 2.0f), 7.5f - maxAutoExposure, 7.5f - minAutoExposure);
-
-				psParams = pass->getFragmentProgramParameters();
-				psParams->setNamedConstant("exposure", exposureParams);
-			});
+		Ogre::LogManager::getSingleton().logMessage(
+			Ogre::LML_TRIVIAL,
+			"[HdrEffectComponent] Applied exposure: " +
+			Ogre::StringConverter::toString(params[0]) + ", " +
+			Ogre::StringConverter::toString(params[1]) + ", " +
+			Ogre::StringConverter::toString(params[2])
+		);
 	}
 
-	void HdrEffectComponent::applyBloomThreshold(Ogre::Real minThreshold, Ogre::Real fullColorThreshold)
+	void HdrEffectComponent::applyBloomThreshold(Ogre::Real minThreshold, Ogre::Real fullThreshold)
 	{
-		if (nullptr == this->workspaceBaseComponent || false == this->workspaceBaseComponent->getUseHdr() || nullptr == this->workspaceBaseComponent->getWorkspace())
+		Ogre::MaterialPtr material = Ogre::MaterialManager::getSingleton().getByName(
+			"HDR/BrightPass_Start",
+			Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME
+		);
+
+		if (material.isNull())
 		{
+			Ogre::LogManager::getSingleton().logMessage(
+				"[HdrEffectComponent] ERROR: HDR/BrightPass_Start material not found!"
+			);
 			return;
 		}
 
-		assert(minThreshold < fullColorThreshold);
+		Ogre::Pass* pass = material->getTechnique(0)->getPass(0);
+		Ogre::GpuProgramParametersSharedPtr psParams = pass->getFragmentProgramParameters();
 
-		ENQUEUE_RENDER_COMMAND_MULTI("HdrEffectComponent::applyBloomThreshold", _2(minThreshold, fullColorThreshold),
-			{
-				Ogre::MaterialPtr material = Ogre::MaterialManager::getSingleton().load("HDR/BrightPass_Start", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME).staticCast<Ogre::Material>();
-				Ogre::Pass * pass = material->getTechnique(0)->getPass(0);
+		float params[2];
+		params[0] = minThreshold;   // Where bloom starts
+		params[1] = fullThreshold;  // Where bloom is full
 
-				Ogre::GpuProgramParametersSharedPtr psParams = pass->getFragmentProgramParameters();
-				psParams->setNamedConstant("brightThreshold", Ogre::Vector4(minThreshold, 1.0f / (fullColorThreshold - minThreshold), 0, 0));
-			});
+		psParams->setNamedConstant("brightThreshold", params, 1, 2);
 	}
 
 	void HdrEffectComponent::setEffectName(const Ogre::String& effectName)
 	{
 		this->effectName->setListSelectedValue(effectName);
 
-		Ogre::ColourValue oldUpperHemisphere;
-		Ogre::ColourValue oldLowerHemisphere;
-
 		if ("Bright, sunny day" == effectName)
 		{
+			// Perfect summer day - intense sun, clear blue sky
 			this->skyColor->setValue(Ogre::Vector4(0.2f, 0.4f, 0.6f, 1.0f) * 60.0f);
 			this->upperHemisphere->setValue(Ogre::Vector4(0.3f, 0.50f, 0.7f, 1.0f) * 4.5f);
 			this->lowerHemisphere->setValue(Ogre::Vector4(0.6f, 0.45f, 0.3f, 1.0f) * 2.925f);
-			this->sunPower->setValue(97.0f);
+			this->sunPower->setValue(97.0f);  // × PI in render command
 			this->exposure->setValue(0.0f);
 			this->minAutoExposure->setValue(-1.0f);
 			this->maxAutoExposure->setValue(2.5f);
@@ -530,46 +550,50 @@ namespace NOWA
 		}
 		else if ("Scary Night" == effectName)
 		{
-			this->skyColor->setValue(Ogre::Vector4(0.2f, 0.4f, 0.6f, 1.0f) * 60.0f);
-			this->upperHemisphere->setValue(Ogre::Vector4(0.3f, 0.50f, 0.7f, 1.0f) * 4.5f);
-			this->lowerHemisphere->setValue(Ogre::Vector4(0.6f, 0.45f, 0.3f, 1.0f) * 2.925f);
-			this->sunPower->setValue(90.0f);
-			this->exposure->setValue(-2.0f);
-			this->minAutoExposure->setValue(-3.0f);
-			this->maxAutoExposure->setValue(2.5f);
-			this->bloom->setValue(2.674f);
-			this->envMapScale->setValue(16.0f);
+			// ACTUALLY DARK scary night - horror movie atmosphere
+			this->skyColor->setValue(Ogre::Vector4(0.02f, 0.03f, 0.08f, 1.0f) * 0.15f);  // Almost black sky
+			this->upperHemisphere->setValue(Ogre::Vector4(0.05f, 0.08f, 0.15f, 1.0f) * 0.025f);  // Barely visible ambient
+			this->lowerHemisphere->setValue(Ogre::Vector4(0.02f, 0.04f, 0.08f, 1.0f) * 0.015f);  // Nearly zero
+			this->sunPower->setValue(0.08f);  // Extremely weak moonlight (×π ≈ 0.25)
+			this->exposure->setValue(-2.5f);  // Start very dark
+			this->minAutoExposure->setValue(-4.5f);  // Allow extreme darkness
+			this->maxAutoExposure->setValue(-1.0f);  // Don't brighten much
+			this->bloom->setValue(0.5f);  // Minimal glow
+			this->envMapScale->setValue(0.1f);
 		}
 		else if ("Dark Night" == effectName)
 		{
-			this->skyColor->setValue(Ogre::Vector4(0.2f, 0.4f, 0.6f, 1.0f) * 60.0f);
-			this->upperHemisphere->setValue(Ogre::Vector4(0.3f, 0.50f, 0.7f, 1.0f) * 4.5f);
-			this->lowerHemisphere->setValue(Ogre::Vector4(0.6f, 0.45f, 0.3f, 1.0f) * 2.925f);
-			this->sunPower->setValue(30.0f);
-			this->exposure->setValue(-2.0f);
-			this->minAutoExposure->setValue(-2.5f);
-			this->maxAutoExposure->setValue(2.5f);
-			this->bloom->setValue(0.1f);
-			this->envMapScale->setValue(16.0f);
+			// Pitch black - can barely see anything
+			this->skyColor->setValue(Ogre::Vector4(0.01f, 0.01f, 0.03f, 1.0f) * 0.05f);  // Nearly zero
+			this->upperHemisphere->setValue(Ogre::Vector4(0.02f, 0.03f, 0.06f, 1.0f) * 0.01f);  // Almost nothing
+			this->lowerHemisphere->setValue(Ogre::Vector4(0.01f, 0.02f, 0.04f, 1.0f) * 0.005f);  // Zero ambient
+			this->sunPower->setValue(0.02f);  // Starlight only (×π ≈ 0.063)
+			this->exposure->setValue(-3.0f);  // Very dark start
+			this->minAutoExposure->setValue(-4.9f);  // Maximum darkness allowed
+			this->maxAutoExposure->setValue(-2.0f);  // Keep it dark
+			this->bloom->setValue(0.2f);  // Almost no bloom
+			this->envMapScale->setValue(0.02f);
 		}
 		else if ("Dream Night" == effectName)
 		{
-			this->skyColor->setValue(Ogre::Vector4(0.2f, 0.4f, 0.6f, 1.0f) * 60.0f);
-			this->upperHemisphere->setValue(Ogre::Vector4(0.3f, 0.50f, 0.7f, 1.0f) * 4.5f);
-			this->lowerHemisphere->setValue(Ogre::Vector4(0.6f, 0.45f, 0.3f, 1.0f) * 2.925f);
-			this->sunPower->setValue(97.0f);
-			this->exposure->setValue(0.1f);
-			this->minAutoExposure->setValue(-1.0f);
-			this->maxAutoExposure->setValue(2.5f);
-			this->bloom->setValue(0.001f);
-			this->envMapScale->setValue(16.0f);
+			// Surreal, ethereal moonlit scene - magical atmosphere
+			this->skyColor->setValue(Ogre::Vector4(0.2f, 0.25f, 0.4f, 1.0f) * 3.0f);
+			this->upperHemisphere->setValue(Ogre::Vector4(0.3f, 0.35f, 0.5f, 1.0f) * 0.8f);
+			this->lowerHemisphere->setValue(Ogre::Vector4(0.25f, 0.3f, 0.45f, 1.0f) * 0.5f);
+			this->sunPower->setValue(3.0f);  // (×π ≈ 9.42)
+			this->exposure->setValue(0.2f);
+			this->minAutoExposure->setValue(-0.5f);
+			this->maxAutoExposure->setValue(1.8f);
+			this->bloom->setValue(4.0f);  // Strong dreamy bloom
+			this->envMapScale->setValue(4.0f);
 		}
 		else if ("Average, slightly hazy day" == effectName)
 		{
+			// Overcast but still decent lighting - soft shadows
 			this->skyColor->setValue(Ogre::Vector4(0.2f, 0.4f, 0.6f, 1.0f) * 32.0f);
 			this->upperHemisphere->setValue(Ogre::Vector4(0.3f, 0.50f, 0.7f, 1.0f) * 3.15f);
 			this->lowerHemisphere->setValue(Ogre::Vector4(0.6f, 0.45f, 0.3f, 1.0f) * 2.0475f);
-			this->sunPower->setValue(48.0f);
+			this->sunPower->setValue(48.0f);  // (×π ≈ 150.8)
 			this->exposure->setValue(0.0f);
 			this->minAutoExposure->setValue(-2.0f);
 			this->maxAutoExposure->setValue(2.5f);
@@ -578,10 +602,11 @@ namespace NOWA
 		}
 		else if ("Heavy overcast day" == effectName)
 		{
+			// Thick cloud cover - dull, flat lighting
 			this->skyColor->setValue(Ogre::Vector4(0.4f, 0.4f, 0.4f, 1.0f) * 4.5f);
 			this->upperHemisphere->setValue(Ogre::Vector4(0.5f, 0.5f, 0.5f, 1.0f) * 0.4f);
 			this->lowerHemisphere->setValue(Ogre::Vector4(0.5f, 0.5f, 0.5f, 1.0f) * 0.365625f);
-			this->sunPower->setValue(6.0625f);
+			this->sunPower->setValue(6.0625f);  // (×π ≈ 19.05)
 			this->exposure->setValue(0.0f);
 			this->minAutoExposure->setValue(-2.5f);
 			this->maxAutoExposure->setValue(1.0f);
@@ -590,10 +615,11 @@ namespace NOWA
 		}
 		else if ("Gibbous moon night" == effectName)
 		{
+			// Bright moonlit night - you can see clearly
 			this->skyColor->setValue(Ogre::Vector4(0.27f, 0.3f, 0.6f, 1.0f) * 0.01831072f);
 			this->upperHemisphere->setValue(Ogre::Vector4(0.5f, 0.5f, 0.50f, 1.0f) * 0.003f);
 			this->lowerHemisphere->setValue(Ogre::Vector4(0.4f, 0.5f, 0.65f, 1.0f) * 0.00274222f);
-			this->sunPower->setValue(0.4f);
+			this->sunPower->setValue(0.4f);  // (×π ≈ 1.26)
 			this->exposure->setValue(0.65f);
 			this->minAutoExposure->setValue(-2.5f);
 			this->maxAutoExposure->setValue(3.0f);
@@ -602,10 +628,11 @@ namespace NOWA
 		}
 		else if ("JJ Abrams style" == effectName)
 		{
+			// Cinematic lens flare style - dramatic light shafts
 			this->skyColor->setValue(Ogre::Vector4(0.2f, 0.4f, 0.6f, 1.0f) * 6.0f);
 			this->upperHemisphere->setValue(Ogre::Vector4(0.3f, 0.50f, 0.7f, 1.0f) * 0.1125f);
 			this->lowerHemisphere->setValue(Ogre::Vector4(0.6f, 0.45f, 0.3f, 1.0f) * 0.073125f);
-			this->sunPower->setValue(4.0f);
+			this->sunPower->setValue(4.0f);  // (×π ≈ 12.57)
 			this->exposure->setValue(0.5f);
 			this->minAutoExposure->setValue(1.0f);
 			this->maxAutoExposure->setValue(2.5f);
@@ -614,35 +641,294 @@ namespace NOWA
 		}
 		else if ("Black Night" == effectName)
 		{
-			this->skyColor->setValue(Ogre::Vector4(0.27f, 0.3f, 0.6f, 1.0f) * 0.01831072f);
-			this->upperHemisphere->setValue(Ogre::Vector4(0.5f, 0.5f, 0.50f, 1.0f) * 0.003f);
-			this->lowerHemisphere->setValue(Ogre::Vector4(0.4f, 0.5f, 0.65f, 1.0f) * 0.00274222f);
-			this->sunPower->setValue(0.0f);
-			this->exposure->setValue(0.65f);
-			this->minAutoExposure->setValue(-2.0f);
-			this->maxAutoExposure->setValue(-2.0f);
+			// Complete darkness - new moon, no lights
+			this->skyColor->setValue(Ogre::Vector4(0.005f, 0.005f, 0.01f, 1.0f) * 0.02f);  // Absolute minimum
+			this->upperHemisphere->setValue(Ogre::Vector4(0.01f, 0.01f, 0.02f, 1.0f) * 0.005f);  // Nearly zero
+			this->lowerHemisphere->setValue(Ogre::Vector4(0.005f, 0.005f, 0.01f, 1.0f) * 0.002f);  // Zero
+			this->sunPower->setValue(0.0f);  // No light source
+			this->exposure->setValue(-4.0f);  // Maximum darkness
+			this->minAutoExposure->setValue(-4.9f);  // Keep it pitch black
+			this->maxAutoExposure->setValue(-3.5f);  // No brightening
 			this->bloom->setValue(0.01f);
-			this->envMapScale->setValue(0.0152587890625f);
+			this->envMapScale->setValue(0.001f);
+		}
+		// ========================================================================
+		// NEW PRESETS START HERE
+		// ========================================================================
+		else if ("Golden Hour" == effectName)
+		{
+			// Sunset/sunrise magic hour - warm, dramatic, photographer's dream
+			this->skyColor->setValue(Ogre::Vector4(0.8f, 0.5f, 0.3f, 1.0f) * 35.0f);  // Warm orange
+			this->upperHemisphere->setValue(Ogre::Vector4(0.9f, 0.7f, 0.5f, 1.0f) * 3.5f);  // Golden ambient
+			this->lowerHemisphere->setValue(Ogre::Vector4(0.7f, 0.5f, 0.4f, 1.0f) * 2.2f);  // Warm shadows
+			this->sunPower->setValue(45.0f);  // (×π ≈ 141.4) Soft sun near horizon
+			this->exposure->setValue(0.2f);
+			this->minAutoExposure->setValue(-1.5f);
+			this->maxAutoExposure->setValue(2.0f);
+			this->bloom->setValue(6.0f);  // Strong bloom for that golden glow
+			this->envMapScale->setValue(12.0f);
+		}
+		else if ("Dawn" == effectName)
+		{
+			// Early morning before sunrise - cool blues transitioning to warmth
+			this->skyColor->setValue(Ogre::Vector4(0.4f, 0.5f, 0.7f, 1.0f) * 8.0f);  // Cool blue
+			this->upperHemisphere->setValue(Ogre::Vector4(0.5f, 0.6f, 0.8f, 1.0f) * 1.5f);  // Cool upper
+			this->lowerHemisphere->setValue(Ogre::Vector4(0.7f, 0.6f, 0.5f, 1.0f) * 0.8f);  // Warmer ground
+			this->sunPower->setValue(18.0f);  // (×π ≈ 56.5) Rising sun, still weak
+			this->exposure->setValue(-0.3f);
+			this->minAutoExposure->setValue(-2.0f);
+			this->maxAutoExposure->setValue(1.5f);
+			this->bloom->setValue(3.5f);
+			this->envMapScale->setValue(5.0f);
+		}
+		else if ("Dusk" == effectName)
+		{
+			// Late evening, sun just set - purple/blue twilight
+			this->skyColor->setValue(Ogre::Vector4(0.3f, 0.35f, 0.6f, 1.0f) * 2.5f);  // Deep blue
+			this->upperHemisphere->setValue(Ogre::Vector4(0.35f, 0.4f, 0.65f, 1.0f) * 0.6f);  // Cool ambient
+			this->lowerHemisphere->setValue(Ogre::Vector4(0.4f, 0.35f, 0.5f, 1.0f) * 0.35f);  // Purplish ground
+			this->sunPower->setValue(1.2f);  // (×π ≈ 3.77) Last light remnants
+			this->exposure->setValue(-0.8f);
+			this->minAutoExposure->setValue(-3.0f);
+			this->maxAutoExposure->setValue(0.8f);
+			this->bloom->setValue(2.5f);
+			this->envMapScale->setValue(2.0f);
+		}
+		else if ("Stormy" == effectName)
+		{
+			// Storm approaching - dark, dramatic, greenish tint
+			this->skyColor->setValue(Ogre::Vector4(0.25f, 0.3f, 0.25f, 1.0f) * 2.5f);  // Greenish dark
+			this->upperHemisphere->setValue(Ogre::Vector4(0.35f, 0.4f, 0.35f, 1.0f) * 0.5f);  // Very dim
+			this->lowerHemisphere->setValue(Ogre::Vector4(0.25f, 0.3f, 0.25f, 1.0f) * 0.3f);  // Dark ground
+			this->sunPower->setValue(3.0f);  // (×π ≈ 9.42) Blocked sun
+			this->exposure->setValue(-0.5f);
+			this->minAutoExposure->setValue(-3.0f);
+			this->maxAutoExposure->setValue(0.5f);
+			this->bloom->setValue(1.5f);
+			this->envMapScale->setValue(0.3f);
+		}
+		else if ("Underwater" == effectName)
+		{
+			// Submerged - blue/green caustics, dimmed light
+			this->skyColor->setValue(Ogre::Vector4(0.1f, 0.3f, 0.4f, 1.0f) * 8.0f);  // Deep blue-green
+			this->upperHemisphere->setValue(Ogre::Vector4(0.15f, 0.35f, 0.5f, 1.0f) * 1.8f);  // Blue ambient
+			this->lowerHemisphere->setValue(Ogre::Vector4(0.05f, 0.15f, 0.25f, 1.0f) * 0.9f);  // Darker depths
+			this->sunPower->setValue(25.0f);  // (×π ≈ 78.5) Filtered sunlight
+			this->exposure->setValue(0.0f);
+			this->minAutoExposure->setValue(-1.5f);
+			this->maxAutoExposure->setValue(1.8f);
+			this->bloom->setValue(2.5f);  // Caustics glow
+			this->envMapScale->setValue(4.0f);
+		}
+		else if ("Alien World" == effectName)
+		{
+			// Sci-fi exoplanet - purple/magenta atmosphere
+			this->skyColor->setValue(Ogre::Vector4(0.6f, 0.2f, 0.7f, 1.0f) * 40.0f);  // Purple sky
+			this->upperHemisphere->setValue(Ogre::Vector4(0.7f, 0.3f, 0.8f, 1.0f) * 3.8f);  // Magenta ambient
+			this->lowerHemisphere->setValue(Ogre::Vector4(0.4f, 0.5f, 0.6f, 1.0f) * 2.5f);  // Cooler ground
+			this->sunPower->setValue(85.0f);  // (×π ≈ 267.0) Alien sun
+			this->exposure->setValue(0.1f);
+			this->minAutoExposure->setValue(-1.5f);
+			this->maxAutoExposure->setValue(2.3f);
+			this->bloom->setValue(5.5f);  // Otherworldly glow
+			this->envMapScale->setValue(14.0f);
+		}
+		else if ("Foggy Morning" == effectName)
+		{
+			// Dense fog - muted colors, low contrast, mysterious
+			this->skyColor->setValue(Ogre::Vector4(0.6f, 0.6f, 0.65f, 1.0f) * 12.0f);  // Neutral gray
+			this->upperHemisphere->setValue(Ogre::Vector4(0.55f, 0.55f, 0.6f, 1.0f) * 2.0f);  // Soft ambient
+			this->lowerHemisphere->setValue(Ogre::Vector4(0.5f, 0.5f, 0.55f, 1.0f) * 1.6f);  // Similar below
+			this->sunPower->setValue(22.0f);  // (×π ≈ 69.1) Diffused sun through fog
+			this->exposure->setValue(0.1f);
+			this->minAutoExposure->setValue(-1.2f);
+			this->maxAutoExposure->setValue(1.8f);
+			this->bloom->setValue(3.8f);  // Fog scattering glow
+			this->envMapScale->setValue(3.0f);
+		}
+		else if ("Desert Noon" == effectName)
+		{
+			// Harsh desert midday - extremely bright, heat haze
+			this->skyColor->setValue(Ogre::Vector4(0.5f, 0.6f, 0.8f, 1.0f) * 85.0f);  // Intense bright sky
+			this->upperHemisphere->setValue(Ogre::Vector4(0.8f, 0.75f, 0.7f, 1.0f) * 6.5f);  // Hot ambient
+			this->lowerHemisphere->setValue(Ogre::Vector4(0.85f, 0.7f, 0.6f, 1.0f) * 5.2f);  // Sandy reflection
+			this->sunPower->setValue(120.0f);  // (×π ≈ 377.0) Extremely bright sun
+			this->exposure->setValue(-0.5f);  // Compensate for brightness
+			this->minAutoExposure->setValue(-2.0f);
+			this->maxAutoExposure->setValue(1.5f);
+			this->bloom->setValue(6.5f);  // Heat haze bloom
+			this->envMapScale->setValue(18.0f);
+		}
+		else if ("Arctic Day" == effectName)
+		{
+			// Polar environment - bright from snow reflection, cool tones
+			this->skyColor->setValue(Ogre::Vector4(0.6f, 0.7f, 0.9f, 1.0f) * 45.0f);  // Bright cool sky
+			this->upperHemisphere->setValue(Ogre::Vector4(0.7f, 0.8f, 0.95f, 1.0f) * 4.2f);  // Cool ambient
+			this->lowerHemisphere->setValue(Ogre::Vector4(0.85f, 0.9f, 0.95f, 1.0f) * 4.8f);  // Snow reflection (higher than upper!)
+			this->sunPower->setValue(75.0f);  // (×π ≈ 235.6) Bright but low angle sun
+			this->exposure->setValue(-0.3f);
+			this->minAutoExposure->setValue(-1.8f);
+			this->maxAutoExposure->setValue(2.0f);
+			this->bloom->setValue(5.5f);  // Snow glare
+			this->envMapScale->setValue(15.0f);
+		}
+		else if ("Neon Night" == effectName)
+		{
+			// Cyberpunk city night - artificial lights, colorful
+			this->skyColor->setValue(Ogre::Vector4(0.15f, 0.1f, 0.25f, 1.0f) * 0.8f);  // Dark purple sky
+			this->upperHemisphere->setValue(Ogre::Vector4(0.3f, 0.2f, 0.4f, 1.0f) * 0.4f);  // Purple ambient
+			this->lowerHemisphere->setValue(Ogre::Vector4(0.4f, 0.15f, 0.3f, 1.0f) * 0.6f);  // Neon glow from ground
+			this->sunPower->setValue(0.5f);  // (×π ≈ 1.57) Weak moonlight
+			this->exposure->setValue(-0.5f);
+			this->minAutoExposure->setValue(-2.5f);
+			this->maxAutoExposure->setValue(1.2f);
+			this->bloom->setValue(4.5f);  // Strong bloom for neon glow
+			this->envMapScale->setValue(3.0f);
+		}
+		else if ("Volcanic" == effectName)
+		{
+			// Near active volcano - red/orange glow from lava, ash in air
+			this->skyColor->setValue(Ogre::Vector4(0.4f, 0.25f, 0.2f, 1.0f) * 8.0f);  // Ashy red-brown
+			this->upperHemisphere->setValue(Ogre::Vector4(0.5f, 0.3f, 0.25f, 1.0f) * 1.5f);  // Warm dark ambient
+			this->lowerHemisphere->setValue(Ogre::Vector4(0.8f, 0.3f, 0.2f, 1.0f) * 2.5f);  // Lava glow from below (higher!)
+			this->sunPower->setValue(15.0f);  // (×π ≈ 47.1) Sun through ash
+			this->exposure->setValue(0.1f);
+			this->minAutoExposure->setValue(-1.5f);
+			this->maxAutoExposure->setValue(2.0f);
+			this->bloom->setValue(5.0f);  // Lava glow
+			this->envMapScale->setValue(6.0f);
+		}
+		else if ("Moonless Night" == effectName)
+		{
+			// Clear night sky, no moon - darker than Scary Night but stars visible
+			this->skyColor->setValue(Ogre::Vector4(0.03f, 0.04f, 0.12f, 1.0f) * 0.08f);  // Very dark blue
+			this->upperHemisphere->setValue(Ogre::Vector4(0.06f, 0.08f, 0.15f, 1.0f) * 0.018f);  // Minimal starlight
+			this->lowerHemisphere->setValue(Ogre::Vector4(0.03f, 0.05f, 0.1f, 1.0f) * 0.01f);  // Nearly black
+			this->sunPower->setValue(0.05f);  // (×π ≈ 0.157) Starlight only
+			this->exposure->setValue(-2.8f);
+			this->minAutoExposure->setValue(-4.7f);
+			this->maxAutoExposure->setValue(-1.5f);
+			this->bloom->setValue(0.8f);  // Star twinkle
+			this->envMapScale->setValue(0.08f);
 		}
 
-		// Apply values
-		Ogre::ColourValue skyColor(this->skyColor->getVector4().x, this->skyColor->getVector4().y, this->skyColor->getVector4().z, this->skyColor->getVector4().w);
+		// Apply values (same as your original code)
+		Ogre::ColourValue skyColor(this->skyColor->getVector4().x, this->skyColor->getVector4().y,
+			this->skyColor->getVector4().z, this->skyColor->getVector4().w);
 		this->applyHdrSkyColor(skyColor, 1.0f);
-		this->applyExposure(this->exposure->getReal(), this->minAutoExposure->getReal(), this->maxAutoExposure->getReal());
-		this->applyBloomThreshold(std::max(this->bloom->getReal() - 2.0f, 0.0f), std::max(this->bloom->getReal(), 0.01f));
+		this->applyExposure(this->exposure->getReal(), this->minAutoExposure->getReal(),
+			this->maxAutoExposure->getReal());
+		this->applyBloomThreshold(std::max(this->bloom->getReal() - 2.0f, 0.0f),
+			std::max(this->bloom->getReal(), 0.01f));
 
 		ENQUEUE_RENDER_COMMAND("HdrEffectComponent::setEffectName",
 			{
-				Ogre::ColourValue ambLowerHemisphere(this->lowerHemisphere->getVector4().x, this->lowerHemisphere->getVector4().y, this->lowerHemisphere->getVector4().z, this->lowerHemisphere->getVector4().w);
-				Ogre::ColourValue ambUpperHemisphere(this->upperHemisphere->getVector4().x, this->upperHemisphere->getVector4().y, this->upperHemisphere->getVector4().z, this->upperHemisphere->getVector4().w);
+				Ogre::ColourValue ambLowerHemisphere(this->lowerHemisphere->getVector4().x,
+													 this->lowerHemisphere->getVector4().y,
+													 this->lowerHemisphere->getVector4().z);
+				Ogre::ColourValue ambUpperHemisphere(this->upperHemisphere->getVector4().x,
+													 this->upperHemisphere->getVector4().y,
+													 this->upperHemisphere->getVector4().z);
 
-				this->gameObjectPtr->getSceneManager()->setAmbientLight(ambUpperHemisphere, ambLowerHemisphere, this->gameObjectPtr->getSceneManager()->getAmbientLightHemisphereDir(), this->envMapScale->getReal());
+				this->gameObjectPtr->getSceneManager()->setAmbientLight(
+					ambUpperHemisphere, ambLowerHemisphere,
+					this->gameObjectPtr->getSceneManager()->getAmbientLightHemisphereDir(),
+					this->envMapScale->getReal()
+				);
 
 				if (nullptr != this->lightDirectionalComponent)
 				{
-					this->lightDirectionalComponent->setPowerScale(this->sunPower->getReal());
+					// CRITICAL: MULTIPLY BY PI HERE!
+					this->lightDirectionalComponent->setPowerScale(
+						this->sunPower->getReal() * Ogre::Math::PI
+					);
 				}
 			});
+	}
+
+	// ============================================================================
+	// UPDATE YOUR VARIANT DEFINITION IN CONSTRUCTOR
+	// ============================================================================
+	/*
+	effectName(new Variant(HdrEffectComponent::AttrEffectName(),
+		{
+			"Bright, sunny day",
+			"Scary Night",           // NOW ACTUALLY DARK!
+			"Dark Night",            // NOW EVEN DARKER!
+			"Dream Night",
+			"Average, slightly hazy day",
+			"Heavy overcast day",
+			"Gibbous moon night",
+			"JJ Abrams style",
+			"Black Night",           // Pitch black
+			"Golden Hour",           // NEW: Sunset/sunrise
+			"Dawn",                  // NEW: Early morning
+			"Dusk",                  // NEW: Evening twilight
+			"Stormy",                // NEW: Storm weather
+			"Underwater",            // NEW: Submerged look
+			"Alien World",           // NEW: Purple sci-fi
+			"Foggy Morning",         // NEW: Dense fog
+			"Desert Noon",           // NEW: Harsh desert
+			"Arctic Day",            // NEW: Snowy bright
+			"Neon Night",            // NEW: Cyberpunk city
+			"Volcanic",              // NEW: Lava glow
+			"Moonless Night"         // NEW: Stars only
+		},
+		this->attributes))
+	*/
+
+	// ============================================================================
+	// PRESET COMPARISON TABLE
+	// ============================================================================
+	/*
+	Preset Name         | Sun×π  | Sky Mult | Exposure | Min/Max Auto  | Mood Description
+	--------------------|--------|----------|----------|---------------|-------------------
+	Bright, sunny day   | 304.8  | 60       | 0.0      | -1.0 / 2.5    | Perfect summer
+	Scary Night         | 0.25   | 0.15     | -2.5     | -4.5 / -1.0   | HORROR DARK
+	Dark Night          | 0.063  | 0.05     | -3.0     | -4.9 / -2.0   | PITCH BLACK
+	Dream Night         | 9.42   | 3.0      | 0.2      | -0.5 / 1.8    | Surreal ethereal
+	Avg. hazy day       | 150.8  | 32       | 0.0      | -2.0 / 2.5    | Overcast normal
+	Heavy overcast      | 19.1   | 4.5      | 0.0      | -2.5 / 1.0    | Very cloudy
+	Gibbous moon        | 1.26   | 0.018    | 0.65     | -2.5 / 3.0    | Bright moonlit
+	JJ Abrams style     | 12.57  | 6.0      | 0.5      | 1.0 / 2.5     | Lens flare drama
+	Black Night         | 0.0    | 0.02     | -4.0     | -4.9 / -3.5   | Complete darkness
+	Golden Hour         | 141.4  | 35       | 0.2      | -1.5 / 2.0    | Sunset magic
+	Dawn                | 56.5   | 8.0      | -0.3     | -2.0 / 1.5    | Early morning
+	Dusk                | 3.77   | 2.5      | -0.8     | -3.0 / 0.8    | Evening twilight
+	Stormy              | 9.42   | 2.5      | -0.5     | -3.0 / 0.5    | Dark storm
+	Underwater          | 78.5   | 8.0      | 0.0      | -1.5 / 1.8    | Submerged blue
+	Alien World         | 267.0  | 40       | 0.1      | -1.5 / 2.3    | Sci-fi purple
+	Foggy Morning       | 69.1   | 12       | 0.1      | -1.2 / 1.8    | Dense fog
+	Desert Noon         | 377.0  | 85       | -0.5     | -2.0 / 1.5    | Extreme bright
+	Arctic Day          | 235.6  | 45       | -0.3     | -1.8 / 2.0    | Snowy bright
+	Neon Night          | 1.57   | 0.8      | -0.5     | -2.5 / 1.2    | Cyberpunk city
+	Volcanic            | 47.1   | 8.0      | 0.1      | -1.5 / 2.0    | Lava glow
+	Moonless Night      | 0.157  | 0.08     | -2.8     | -4.7 / -1.5   | Stars only
+	*/
+
+	void HdrEffectComponent::refreshAllParameters()
+	{
+		// Force re-application of all parameters
+		this->applyExposure(this->exposure->getReal(), this->minAutoExposure->getReal(), this->maxAutoExposure->getReal());
+
+		this->applyBloomThreshold(std::max(this->bloom->getReal() - 2.0f, 0.0f), std::max(this->bloom->getReal(), 0.01f));
+
+		Ogre::ColourValue skyColor(this->skyColor->getVector4().x, this->skyColor->getVector4().y, this->skyColor->getVector4().z, this->skyColor->getVector4().w);
+		this->applyHdrSkyColor(skyColor, 1.0f);
+
+		// Force ambient light update
+		ENQUEUE_RENDER_COMMAND("HdrEffectComponent::refreshAllParameters",
+		{
+			Ogre::ColourValue ambLowerHemisphere(this->lowerHemisphere->getVector4().x, this->lowerHemisphere->getVector4().y,this->lowerHemisphere->getVector4().z);
+			Ogre::ColourValue ambUpperHemisphere(this->upperHemisphere->getVector4().x, this->upperHemisphere->getVector4().y, this->upperHemisphere->getVector4().z );
+
+			this->gameObjectPtr->getSceneManager()->setAmbientLight(ambUpperHemisphere, ambLowerHemisphere, this->gameObjectPtr->getSceneManager()->getAmbientLightHemisphereDir(), this->envMapScale->getReal());
+
+			if (nullptr != this->lightDirectionalComponent)
+			{
+				this->lightDirectionalComponent->setPowerScale(this->sunPower->getReal() * Ogre::Math::PI);
+			}
+		});
 	}
 
 	Ogre::String HdrEffectComponent::getEffectName(void) const
@@ -653,10 +939,15 @@ namespace NOWA
 	void HdrEffectComponent::setSkyColor(const Ogre::Vector4& skyColor)
 	{
 		this->skyColor->setValue(skyColor);
-		this->effectName->setListSelectedValue("Custom");
-		Ogre::ColourValue tempSkyColor(this->skyColor->getVector4().x, this->skyColor->getVector4().y, this->skyColor->getVector4().z, this->skyColor->getVector4().w);
 
-		this->applyHdrSkyColor(tempSkyColor, 1.0f);
+		// Only switch to "Custom" if NOT applying a preset
+		if (!this->isApplyingPreset && this->effectName->getListSelectedValue() != "Custom")
+		{
+			this->effectName->setListSelectedValue("Custom");
+		}
+
+		Ogre::ColourValue color(skyColor.x, skyColor.y, skyColor.z, skyColor.w);
+		this->applyHdrSkyColor(color, 1.0f);
 	}
 
 	Ogre::Vector4 HdrEffectComponent::getSkyColor(void) const
@@ -667,12 +958,16 @@ namespace NOWA
 	void HdrEffectComponent::setUpperHemisphere(const Ogre::Vector4& upperHemisphere)
 	{
 		this->upperHemisphere->setValue(upperHemisphere);
-		this->effectName->setListSelectedValue("Custom");
+
+		if (!this->isApplyingPreset && this->effectName->getListSelectedValue() != "Custom")
+		{
+			this->effectName->setListSelectedValue("Custom");
+		}
 
 		ENQUEUE_RENDER_COMMAND_MULTI("HdrEffectComponent::setUpperHemisphere", _1(upperHemisphere),
 			{
-				Ogre::ColourValue ambLowerHemisphere(this->lowerHemisphere->getVector4().x, this->lowerHemisphere->getVector4().y, this->lowerHemisphere->getVector4().z, this->lowerHemisphere->getVector4().w);
-				Ogre::ColourValue ambUpperHemisphere(this->upperHemisphere->getVector4().x, this->upperHemisphere->getVector4().y, this->upperHemisphere->getVector4().z, this->upperHemisphere->getVector4().w);
+				Ogre::ColourValue ambLowerHemisphere(this->lowerHemisphere->getVector4().x, this->lowerHemisphere->getVector4().y, this->lowerHemisphere->getVector4().z);
+				Ogre::ColourValue ambUpperHemisphere(upperHemisphere.x, upperHemisphere.y, upperHemisphere.z);
 				this->gameObjectPtr->getSceneManager()->setAmbientLight(ambUpperHemisphere, ambLowerHemisphere, this->gameObjectPtr->getSceneManager()->getAmbientLightHemisphereDir(), this->envMapScale->getReal());
 			});
 	}
@@ -685,12 +980,16 @@ namespace NOWA
 	void HdrEffectComponent::setLowerHemisphere(const Ogre::Vector4& lowerHemisphere)
 	{
 		this->lowerHemisphere->setValue(lowerHemisphere);
-		this->effectName->setListSelectedValue("Custom");
+
+		if (!this->isApplyingPreset && this->effectName->getListSelectedValue() != "Custom")
+		{
+			this->effectName->setListSelectedValue("Custom");
+		}
 
 		ENQUEUE_RENDER_COMMAND_MULTI("HdrEffectComponent::setLowerHemisphere", _1(lowerHemisphere),
 			{
-				Ogre::ColourValue ambLowerHemisphere(this->lowerHemisphere->getVector4().x, this->lowerHemisphere->getVector4().y, this->lowerHemisphere->getVector4().z, this->lowerHemisphere->getVector4().w);
-				Ogre::ColourValue ambUpperHemisphere(this->upperHemisphere->getVector4().x, this->upperHemisphere->getVector4().y, this->upperHemisphere->getVector4().z, this->upperHemisphere->getVector4().w);
+				Ogre::ColourValue ambLowerHemisphere(lowerHemisphere.x, lowerHemisphere.y, lowerHemisphere.z);
+				Ogre::ColourValue ambUpperHemisphere(this->upperHemisphere->getVector4().x, this->upperHemisphere->getVector4().y, this->upperHemisphere->getVector4().z);
 				this->gameObjectPtr->getSceneManager()->setAmbientLight(ambUpperHemisphere, ambLowerHemisphere, this->gameObjectPtr->getSceneManager()->getAmbientLightHemisphereDir(), this->envMapScale->getReal());
 			});
 	}
@@ -703,15 +1002,20 @@ namespace NOWA
 	void HdrEffectComponent::setSunPower(Ogre::Real sunPower)
 	{
 		this->sunPower->setValue(sunPower);
-		this->effectName->setListSelectedValue("Custom");
 
-		if (nullptr != this->lightDirectionalComponent)
+		if (!this->isApplyingPreset && this->effectName->getListSelectedValue() != "Custom")
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI("HdrEffectComponent::setSunPower", _1(sunPower),
-				{
-					this->lightDirectionalComponent->setPowerScale(sunPower);
-				});
+			this->effectName->setListSelectedValue("Custom");
 		}
+
+		ENQUEUE_RENDER_COMMAND_MULTI("HdrEffectComponent::setSunPower", _1(sunPower),
+			{
+				if (nullptr != this->lightDirectionalComponent)
+				{
+					// MULTIPLY BY PI HERE
+					this->lightDirectionalComponent->setPowerScale(sunPower * Ogre::Math::PI);
+				}
+			});
 	}
 
 	Ogre::Real HdrEffectComponent::getSunPower(void) const
@@ -722,7 +1026,11 @@ namespace NOWA
 	void HdrEffectComponent::setExposure(Ogre::Real exposure)
 	{
 		this->exposure->setValue(exposure);
-		this->effectName->setListSelectedValue("Custom");
+
+		if (!this->isApplyingPreset && this->effectName->getListSelectedValue() != "Custom")
+		{
+			this->effectName->setListSelectedValue("Custom");
+		}
 
 		this->applyExposure(this->exposure->getReal(), this->minAutoExposure->getReal(), this->maxAutoExposure->getReal());
 	}
@@ -734,13 +1042,12 @@ namespace NOWA
 
 	void HdrEffectComponent::setMinAutoExposure(Ogre::Real minAutoExposure)
 	{
-		if (minAutoExposure > this->maxAutoExposure->getReal())
-		{
-			this->maxAutoExposure->setValue(minAutoExposure);
-		}
-
 		this->minAutoExposure->setValue(minAutoExposure);
-		this->effectName->setListSelectedValue("Custom");
+
+		if (!this->isApplyingPreset && this->effectName->getListSelectedValue() != "Custom")
+		{
+			this->effectName->setListSelectedValue("Custom");
+		}
 
 		this->applyExposure(this->exposure->getReal(), this->minAutoExposure->getReal(), this->maxAutoExposure->getReal());
 	}
@@ -752,13 +1059,12 @@ namespace NOWA
 
 	void HdrEffectComponent::setMaxAutoExposure(Ogre::Real maxAutoExposure)
 	{
-		if (maxAutoExposure < this->minAutoExposure->getReal())
-		{
-			this->minAutoExposure->setValue(maxAutoExposure);
-		}
-
 		this->maxAutoExposure->setValue(maxAutoExposure);
-		this->effectName->setListSelectedValue("Custom");
+
+		if (!this->isApplyingPreset && this->effectName->getListSelectedValue() != "Custom")
+		{
+			this->effectName->setListSelectedValue("Custom");
+		}
 
 		this->applyExposure(this->exposure->getReal(), this->minAutoExposure->getReal(), this->maxAutoExposure->getReal());
 	}
@@ -771,9 +1077,13 @@ namespace NOWA
 	void HdrEffectComponent::setBloom(Ogre::Real bloom)
 	{
 		this->bloom->setValue(bloom);
-		this->effectName->setListSelectedValue("Custom");
 
-		this->applyBloomThreshold(std::max(this->bloom->getReal() - 2.0f, 0.0f), std::max(this->bloom->getReal(), 0.01f));
+		if (!this->isApplyingPreset && this->effectName->getListSelectedValue() != "Custom")
+		{
+			this->effectName->setListSelectedValue("Custom");
+		}
+
+		this->applyBloomThreshold(std::max(bloom - 2.0f, 0.0f), std::max(bloom, 0.01f));
 	}
 
 	Ogre::Real HdrEffectComponent::getBloom(void) const
@@ -783,13 +1093,12 @@ namespace NOWA
 
 	void HdrEffectComponent::setEnvMapScale(Ogre::Real envMapScale)
 	{
-		if (envMapScale < 0.0f)
-		{
-			envMapScale = 0.0f;
-		}
-
 		this->envMapScale->setValue(envMapScale);
-		this->effectName->setListSelectedValue("Custom");
+
+		if (!this->isApplyingPreset && this->effectName->getListSelectedValue() != "Custom")
+		{
+			this->effectName->setListSelectedValue("Custom");
+		}
 
 		ENQUEUE_RENDER_COMMAND_MULTI("HdrEffectComponent::setEnvMapScale", _1(envMapScale),
 			{
