@@ -58,6 +58,7 @@ namespace NOWA
 		if (nullptr != this->particleManager)
 		{
 			this->particleManager->destroyAllParticleSystems();
+			this->particleManager->destroyAllBillboardSets();
 		}
 
 		this->particles.clear();
