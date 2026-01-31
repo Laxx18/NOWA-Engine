@@ -1015,16 +1015,6 @@ namespace NOWA
 		return this->activeStateStack.back()->ogreRecastModule;
 	}
 
-	ParticleUniverseModule* AppStateManager::getParticleUniverseModule(void) const
-	{
-		if (true == this->activeStateStack.empty())
-		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AppStateManager] Error getting particle universe module, because at this time no application state (AppState) has been created! Maybe this call was to early.");
-			throw Ogre::Exception(Ogre::Exception::ERR_INTERNAL_ERROR, "[AppStateManager] Error getting particle universe module, because at this time no application state (AppState) has been created! Maybe this call was to early.", "NOWA");
-		}
-		return this->activeStateStack.back()->particleUniverseModule;
-	}
-
 	ParticleFxModule* AppStateManager::getParticleFxModule(void) const
 	{
 		if (true == this->activeStateStack.empty())
@@ -1133,15 +1123,6 @@ namespace NOWA
 		AppState* appState = this->findByName(stateName);
 		if (nullptr != appState)
 			return appState->ogreRecastModule;
-
-		return nullptr;
-	}
-
-	ParticleUniverseModule* AppStateManager::getParticleUniverseModule(const Ogre::String& stateName)
-	{
-		AppState* appState = this->findByName(stateName);
-		if (nullptr != appState)
-			return appState->particleUniverseModule;
 
 		return nullptr;
 	}

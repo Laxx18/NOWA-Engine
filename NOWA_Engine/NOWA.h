@@ -92,7 +92,6 @@ extern "C"
 #include "gameobject/ExitComponent.h"
 #include "gameobject/AnimationComponent.h"
 #include "gameobject/AnimationComponentV2.h"
-#include "gameobject/ParticleUniverseComponent.h"
 #include "gameobject/PhysicsActiveCompoundComponent.h"
 #include "gameobject/PhysicsActiveDestructAbleComponent.h"
 #include "gameobject/PhysicsExplosionComponent.h"
@@ -171,7 +170,6 @@ namespace NOWA
 	typedef boost::shared_ptr<SpawnComponent> SpawnCompPtr;
 	typedef boost::shared_ptr<ExitComponent> ExitCompPtr;
 	typedef boost::shared_ptr<AnimationComponent> AnimationCompPtr;
-	typedef boost::shared_ptr<ParticleUniverseComponent> ParticleUniverseCompPtr;
 	typedef boost::shared_ptr<PhysicsActiveCompoundComponent> PhysicsActiveCompoundCompPtr;
 	typedef boost::shared_ptr<PhysicsPlayerControllerComponent> PhysicsPlayerControllerCompPtr;
 	typedef boost::shared_ptr<PhysicsActiveDestructableComponent> PhysicsActiveDestructableCompPtr;
@@ -332,7 +330,6 @@ namespace NOWA
 #include "modules/RakNetModule.h"
 #include "modules/OgreNewtModule.h"
 #include "modules/OgreALModule.h"
-#include "modules/ParticleUniverseModule.h"
 #include "modules/ParticleFxModule.h"
 #include "modules/OgreRecastModule.h"
 #include "modules/LuaScriptApi.h"

@@ -1397,107 +1397,94 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 	{
 		if (false == attribute->hasUserDataKey(NOWA::GameObject::AttrActionImage()))
 		{
-			MyGUI::ComboBox* comboBox = mWidgetClient->createWidget<MyGUI::ComboBox>("ComboBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth - 15, height), MyGUI::Align::HStretch | MyGUI::Align::Top, name);
-			comboBox->setTextColour(MyGUIHelper::getInstance()->getTextSelectColour());
-			comboBox->setMouseHitThreshold(6, 6, 3, 3);
+			// Check if autocomplete is enabled
+			bool useAutoComplete = attribute->hasUserDataKey(NOWA::GameObject::AttrActionAutoComplete());
 
-			if (attribute->getName() == NOWA::GameObject::AttrCategory())
+			if (true == useAutoComplete)
 			{
-				if (this->gameObjects.size() > 1)
-				{
-					comboBox->setEditStatic(false);
-				}
+				// Create search EditBox for filtering
+				MyGUI::EditBox* searchEdit = mWidgetClient->createWidget<MyGUI::EditBox>(
+					"EditBox",
+					MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth - 15, height),
+					MyGUI::Align::HStretch | MyGUI::Align::Top,
+					name + "_search"
+				);
+				searchEdit->setInvertSelected(false);
+				searchEdit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+				searchEdit->setMouseHitThreshold(6, 6, 3, 3);
+				searchEdit->setEditStatic(false);
+				searchEdit->setUserData(MyGUI::Any(attribute));
+				searchEdit->setNeedKeyFocus(true);
+				searchEdit->setNeedMouseFocus(true);
 
-				// Set all available categories + ability to add a new category
-				std::vector<Ogre::String> allCategories = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getAllCategoriesSoFar();
-				if (allCategories.size() > 0)
-				{
-					for (auto& category : allCategories)
-					{
-						comboBox->addItem(category);
-					}
-				}
-				this->heightCurrent += heightStep;
+				// Link to the combo box
+				searchEdit->setUserString("linkedComboName", name + "_combo");
 
-				MyGUI::TextBox* keyTextBox = mWidgetClient->createWidget<MyGUI::TextBox>("TextBox", MyGUI::IntCoord(keyLeft, heightCurrent, keyWidth, height), MyGUI::Align::Left | MyGUI::Align::Top);
-				keyTextBox->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-				keyTextBox->setTextAlign(MyGUI::Align::Left | MyGUI::Align::VCenter);
-				keyTextBox->setCaption("New Category:");
-				this->itemsText.push_back(keyTextBox);
-
-				MyGUI::EditBox* edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top, name);
-				edit->setInvertSelected(false);
-				edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-				edit->setMouseHitThreshold(6, 6, 3, 3);
-				edit->setUserData(MyGUI::Any(attribute));
-				edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
-				edit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
-				edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
-				edit->eventKeyButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onKeyButtonPressed);
-				edit->setNeedKeyFocus(true);
-				edit->setNeedMouseFocus(true);
-				// No lost focus for list, because the new is empty but in attribute a content may be exist like 'default', so when mouse hovering above a list will trigger undo commands
-				// // edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
+				// Connect events
+				searchEdit->eventEditTextChange += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onAutoCompleteTextChange);
+				searchEdit->eventKeyButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onAutoCompleteKeyPressed);
+				searchEdit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
 
 				if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionReadOnly()))
 				{
-					edit->setEnabled(false);
+					searchEdit->setEnabled(false);
 				}
 
-				this->itemsEdit.push_back(edit);
-			}
-			else if (attribute->getName() == NOWA::GameObject::AttrRenderCategory())
-			{
-				if (this->gameObjects.size() > 1)
-				{
-					comboBox->setEditStatic(false);
-				}
+				this->itemsEdit.push_back(searchEdit);
 
-				// Set all available categories + ability to add a new render category
-				std::vector<Ogre::String> allRenderCategories = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getAllRenderCategoriesSoFar();
-				if (allRenderCategories.size() > 0)
-				{
-					for (auto& renderCategory : allRenderCategories)
-					{
-						comboBox->addItem(renderCategory);
-					}
-				}
 				this->heightCurrent += heightStep;
 
-				MyGUI::TextBox* keyTextBox = mWidgetClient->createWidget<MyGUI::TextBox>("TextBox", MyGUI::IntCoord(keyLeft, heightCurrent, keyWidth, height), MyGUI::Align::Left | MyGUI::Align::Top);
-				keyTextBox->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-				keyTextBox->setTextAlign(MyGUI::Align::Left | MyGUI::Align::VCenter);
-				keyTextBox->setCaption("New Render Category:");
-				this->itemsText.push_back(keyTextBox);
+				// Create ComboBox for showing filtered results (acts as dropdown)
+				MyGUI::ComboBox* comboBox = mWidgetClient->createWidget<MyGUI::ComboBox>("ComboBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth - 15, height), 
+					MyGUI::Align::HStretch | MyGUI::Align::Top, name + "_combo");
+				comboBox->setTextColour(MyGUIHelper::getInstance()->getTextSelectColour());
+				comboBox->setMouseHitThreshold(6, 6, 3, 3);
+				comboBox->setUserData(MyGUI::Any(attribute));
+				comboBox->setNeedKeyFocus(true);
+				comboBox->setNeedMouseFocus(true);
+				comboBox->setEditReadOnly(true);
 
-				MyGUI::EditBox* edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top, name);
-				edit->setInvertSelected(false);
-				edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-				edit->setMouseHitThreshold(6, 6, 3, 3);
-				edit->setUserData(MyGUI::Any(attribute));
-				edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
-				edit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
-				edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
-				edit->eventKeyButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onKeyButtonPressed);
-				edit->setNeedKeyFocus(true);
-				edit->setNeedMouseFocus(true);
-				// No lost focus for list, because the new is empty but in attribute a content may be exist like 'default', so when mouse hovering above a list will trigger undo commands
-				// // edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
+				comboBox->setUserString("linkedSearchName", name + "_search");
+
+				// Populate with all items
+				for (unsigned int i = 0; i < static_cast<unsigned int>(attribute->getList().size()); i++)
+				{
+					comboBox->addItem(attribute->getList()[i]);
+				}
+
+				// Set current selected value
+				comboBox->setOnlyText(attribute->getListSelectedValue());
+
+				// Connect combo events
+				comboBox->eventComboChangePosition += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onAutoCompleteComboChangePosition);
+				comboBox->eventKeyButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onKeyButtonPressed);
+				comboBox->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
+				comboBox->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onAutoCompleteComboMousePressed);
 
 				if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionReadOnly()))
 				{
-					edit->setEnabled(false);
+					comboBox->setEnabled(false);
 				}
 
-				this->itemsEdit.push_back(edit);
+				this->itemsEdit.push_back(comboBox);
+
+				this->heightCurrent += heightStep;
 			}
 			else
 			{
-#if 0
-				// Set all available categories in read only, if the keyword is found e.g. Repeller Category
-				size_t found = attribute->getName().find("Category");
-				if (Ogre::String::npos != found)
+				// Original ComboBox code for non-autocomplete lists
+				MyGUI::ComboBox* comboBox = mWidgetClient->createWidget<MyGUI::ComboBox>("ComboBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth - 15, height), MyGUI::Align::HStretch | MyGUI::Align::Top, name);
+				comboBox->setTextColour(MyGUIHelper::getInstance()->getTextSelectColour());
+				comboBox->setMouseHitThreshold(6, 6, 3, 3);
+
+				if (attribute->getName() == NOWA::GameObject::AttrCategory())
 				{
+					if (this->gameObjects.size() > 1)
+					{
+						comboBox->setEditStatic(false);
+					}
+
+					// Set all available categories + ability to add a new category
 					std::vector<Ogre::String> allCategories = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getAllCategoriesSoFar();
 					if (allCategories.size() > 0)
 					{
@@ -1506,41 +1493,106 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 							comboBox->addItem(category);
 						}
 					}
+					this->heightCurrent += heightStep;
+
+					MyGUI::TextBox* keyTextBox = mWidgetClient->createWidget<MyGUI::TextBox>("TextBox", MyGUI::IntCoord(keyLeft, heightCurrent, keyWidth, height), MyGUI::Align::Left | MyGUI::Align::Top);
+					keyTextBox->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+					keyTextBox->setTextAlign(MyGUI::Align::Left | MyGUI::Align::VCenter);
+					keyTextBox->setCaption("New Category:");
+					this->itemsText.push_back(keyTextBox);
+
+					MyGUI::EditBox* edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top, name);
+					edit->setInvertSelected(false);
+					edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+					edit->setMouseHitThreshold(6, 6, 3, 3);
+					edit->setUserData(MyGUI::Any(attribute));
+					edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
+					edit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
+					edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
+					edit->eventKeyButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onKeyButtonPressed);
+					edit->setNeedKeyFocus(true);
+					edit->setNeedMouseFocus(true);
+
+					if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionReadOnly()))
+					{
+						edit->setEnabled(false);
+					}
+
+					this->itemsEdit.push_back(edit);
+				}
+				else if (attribute->getName() == NOWA::GameObject::AttrRenderCategory())
+				{
+					if (this->gameObjects.size() > 1)
+					{
+						comboBox->setEditStatic(false);
+					}
+
+					// Set all available categories + ability to add a new render category
+					std::vector<Ogre::String> allRenderCategories = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getAllRenderCategoriesSoFar();
+					if (allRenderCategories.size() > 0)
+					{
+						for (auto& renderCategory : allRenderCategories)
+						{
+							comboBox->addItem(renderCategory);
+						}
+					}
+					this->heightCurrent += heightStep;
+
+					MyGUI::TextBox* keyTextBox = mWidgetClient->createWidget<MyGUI::TextBox>("TextBox", MyGUI::IntCoord(keyLeft, heightCurrent, keyWidth, height), MyGUI::Align::Left | MyGUI::Align::Top);
+					keyTextBox->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+					keyTextBox->setTextAlign(MyGUI::Align::Left | MyGUI::Align::VCenter);
+					keyTextBox->setCaption("New Render Category:");
+					this->itemsText.push_back(keyTextBox);
+
+					MyGUI::EditBox* edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top, name);
+					edit->setInvertSelected(false);
+					edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+					edit->setMouseHitThreshold(6, 6, 3, 3);
+					edit->setUserData(MyGUI::Any(attribute));
+					edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
+					edit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
+					edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
+					edit->eventKeyButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onKeyButtonPressed);
+					edit->setNeedKeyFocus(true);
+					edit->setNeedMouseFocus(true);
+
+					if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionReadOnly()))
+					{
+						edit->setEnabled(false);
+					}
+
+					this->itemsEdit.push_back(edit);
 				}
 				else
-#endif
 				{
 					for (unsigned int i = 0; i < static_cast<unsigned int>(attribute->getList().size()); i++)
 					{
 						comboBox->addItem(attribute->getList()[i]);
 					}
 				}
+
+				comboBox->setOnlyText(attribute->getListSelectedValue());
+
+				comboBox->setEditReadOnly(true);
+				comboBox->setUserData(MyGUI::Any(attribute));
+				comboBox->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
+				comboBox->eventComboChangePosition += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyComboChangedPosition);
+				comboBox->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
+				comboBox->eventKeyButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onKeyButtonPressed);
+				comboBox->setNeedKeyFocus(true);
+				comboBox->setNeedMouseFocus(true);
+
+				if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionReadOnly()))
+				{
+					comboBox->setEnabled(false);
+				}
+
+				this->itemsEdit.push_back(comboBox);
 			}
-
-			comboBox->setOnlyText(attribute->getListSelectedValue());
-
-			comboBox->setEditReadOnly(true);
-			// edit->setTextAlign(MyGUI::Align::Left);
-			comboBox->setUserData(MyGUI::Any(attribute));
-			comboBox->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
-			comboBox->eventComboChangePosition += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyComboChangedPosition);
-			comboBox->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
-			comboBox->eventKeyButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onKeyButtonPressed);
-			comboBox->setNeedKeyFocus(true);
-			comboBox->setNeedMouseFocus(true);
-
-			if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionReadOnly()))
-			{
-				comboBox->setEnabled(false);
-			}
-
-			this->itemsEdit.push_back(comboBox);
 		}
 		else
 		{
 			MyGUI::ItemBox* itemBox = mWidgetClient->createWidget<MyGUI::ItemBox>("ItemBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth - 20, 700), MyGUI::Align::HStretch | MyGUI::Align::Top, name);
-			// itemBox->setVerticalAlignment(true);
-			// https://github.com/MyGUI/mygui/blob/master/UnitTests/UnitTest_ItemBox_Info/DemoKeeper.cpp
 			itemBox->requestCoordItem = MyGUI::newDelegate(this, &PropertiesPanelDynamic::requestCoordItem);
 			itemBox->requestCreateWidgetItem = MyGUI::newDelegate(this, &PropertiesPanelDynamic::requestCreateWidgetItem);
 			itemBox->requestDrawItem = MyGUI::newDelegate(this, &PropertiesPanelDynamic::requestDrawItem);
@@ -1560,11 +1612,6 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 					itemBox->addItem(item);
 				}
 			}
-			/*itemBox->setSize(itemBox->getSize().width - 1, itemBox->getSize().height - 1);
-			itemBox->setSize(itemBox->getSize().width + 1, itemBox->getSize().height + 1);
-
-			itemBox->redrawAllItems();
-			*/
 			this->itemsEdit.push_back(itemBox);
 		}
 		break;
@@ -2063,6 +2110,344 @@ void PropertiesPanelDynamic::showDescription(MyGUI::Widget* sender)
 	{
 		Ogre::String description = sender->getUserString("Description");
 		this->propertiesPanelInfo->setInfo(description);
+	}
+}
+
+MyGUI::ComboBox* PropertiesPanelDynamic::getLinkedComboBox(MyGUI::EditBox* searchEdit)
+{
+	Ogre::String comboName = searchEdit->getUserString("linkedComboName");
+	if (false == comboName.empty())
+	{
+		MyGUI::Widget* widget = mWidgetClient->findWidget(comboName);
+		if (nullptr != widget)
+		{
+			return widget->castType<MyGUI::ComboBox>(false);
+		}
+	}
+	return nullptr;
+}
+
+MyGUI::EditBox* PropertiesPanelDynamic::getLinkedSearchEdit(MyGUI::ComboBox* comboBox)
+{
+	Ogre::String searchName = comboBox->getUserString("linkedSearchName");
+	if (false == searchName.empty())
+	{
+		MyGUI::Widget* widget = mWidgetClient->findWidget(searchName);
+		if (nullptr != widget)
+		{
+			return widget->castType<MyGUI::EditBox>(false);
+		}
+	}
+	return nullptr;
+}
+
+void PropertiesPanelDynamic::onAutoCompleteComboMousePressed(MyGUI::Widget* sender, int left, int top, MyGUI::MouseButton id)
+{
+	MyGUI::ComboBox* comboBox = sender->castType<MyGUI::ComboBox>(false);
+	if (nullptr == comboBox)
+	{
+		return;
+	}
+
+	// Ensure current selection index is correct
+	this->syncComboSelectionFromVariant(comboBox);
+
+	// Open list
+	comboBox->setAutoHideList(true);
+	comboBox->showList();
+
+	// IMPORTANT: scroll AFTER showList()
+	comboBox->beginToItemSelected();
+}
+
+size_t PropertiesPanelDynamic::findIndexByText(MyGUI::ComboBox* comboBox, const Ogre::String& text)
+{
+	if (nullptr == comboBox)
+	{
+		return MyGUI::ITEM_NONE;
+	}
+
+	for (size_t i = 0; i < comboBox->getItemCount(); i++)
+	{
+		if (comboBox->getItemNameAt(i) == text)
+		{
+			return i;
+		}
+	}
+
+	return MyGUI::ITEM_NONE;
+}
+
+void PropertiesPanelDynamic::syncComboSelectionFromVariant(MyGUI::ComboBox* comboBox)
+{
+	if (nullptr == comboBox)
+	{
+		return;
+	}
+
+	NOWA::Variant** attribute = comboBox->getUserData<NOWA::Variant*>(false);
+	if (nullptr == attribute)
+	{
+		return;
+	}
+
+	const Ogre::String selectedValue = (*attribute)->getListSelectedValue();
+	if (true == selectedValue.empty())
+	{
+		return;
+	}
+
+	size_t idx = comboBox->findItemIndexWith(selectedValue);
+	if (MyGUI::ITEM_NONE != idx)
+	{
+		comboBox->setIndexSelected(idx);
+		comboBox->setOnlyText(selectedValue);
+	}
+}
+
+
+void PropertiesPanelDynamic::scrollComboToSelected(MyGUI::ComboBox* comboBox)
+{
+	if (nullptr == comboBox)
+	{
+		return;
+	}
+
+	size_t index = comboBox->getIndexSelected();
+	if (MyGUI::ITEM_NONE == index)
+	{
+		return;
+	}
+
+	// MyGUI ComboBox internally uses a ListBox for the drop list.
+	// In most MyGUI versions this exists:
+	MyGUI::ListBox* list = comboBox->getList();
+	if (nullptr != list)
+	{
+		list->beginToItemAt(index);
+	}
+}
+
+void PropertiesPanelDynamic::filterAutoCompleteCombo(MyGUI::EditBox* searchEdit, MyGUI::ComboBox* comboBox, const Ogre::String& filter)
+{
+	if (nullptr == comboBox)
+	{
+		return;
+	}
+
+	// Get the attribute to access original list
+	NOWA::Variant** attribute = searchEdit->getUserData<NOWA::Variant*>(false);
+	if (nullptr == attribute)
+	{
+		return;
+	}
+
+	// Clear the combo
+	comboBox->removeAllItems();
+
+	const std::vector<Ogre::String>& originalList = (*attribute)->getList();
+
+	if (true == filter.empty())
+	{
+		// Show all items if filter is empty
+		for (const auto& item : originalList)
+		{
+			comboBox->addItem(item);
+		}
+	}
+	else
+	{
+		// Use AutoCompleteSearch for fuzzy matching
+		this->autoCompleteSearch.reset();
+
+		for (const auto& item : originalList)
+		{
+			this->autoCompleteSearch.addSearchText(item);
+		}
+
+		auto& matchedResults = this->autoCompleteSearch.findMatchedItemWithInText(filter);
+
+		for (size_t i = 0; i < matchedResults.getResults().size(); i++)
+		{
+			Ogre::String matchedItem = matchedResults.getResults()[i].getMatchedItemText();
+			comboBox->addItem(matchedItem);
+		}
+	}
+
+	// If this call is NOT an internal rebuild, we are filtering due to user input.
+	// In that case, select the first entry so ArrowDown/Enter works immediately.
+	if (false == this->autoCompleteInternalUpdate)
+	{
+		if (comboBox->getItemCount() > 0)
+		{
+			comboBox->setIndexSelected(0);
+
+			// Optional: only do this if you want the combo text to change while typing
+			// comboBox->setOnlyText(comboBox->getItemNameAt(0));
+		}
+	}
+}
+
+void PropertiesPanelDynamic::onAutoCompleteTextChange(MyGUI::EditBox* sender)
+{
+	MyGUI::ComboBox* comboBox = this->getLinkedComboBox(sender);
+	if (nullptr == comboBox)
+	{
+		return;
+	}
+
+	Ogre::String filter = sender->getOnlyText();
+
+	this->autoCompleteInternalUpdate = false;
+
+	this->filterAutoCompleteCombo(sender, comboBox, filter);
+
+	comboBox->setAutoHideList(false);
+	comboBox->showList();
+	comboBox->beginToItemSelected();
+
+	// Keep typing focus on the edit box
+	MyGUI::InputManager::getInstancePtr()->setKeyFocusWidget(sender);
+
+	// Keep caret at the end (otherwise it may jump)
+	sender->setTextCursor(sender->getTextLength());
+}
+
+void PropertiesPanelDynamic::onAutoCompleteKeyPressed(MyGUI::Widget* sender, MyGUI::KeyCode key, MyGUI::Char ch)
+{
+	MyGUI::EditBox* searchEdit = sender->castType<MyGUI::EditBox>(false);
+	if (nullptr == searchEdit)
+	{
+		this->onKeyButtonPressed(sender, key, ch);
+		return;
+	}
+
+	MyGUI::ComboBox* comboBox = this->getLinkedComboBox(searchEdit);
+
+	if (key == MyGUI::KeyCode::ArrowDown)
+	{
+		if (nullptr != comboBox)
+		{
+			// Move selection down in combo
+			size_t currentIndex = comboBox->getIndexSelected();
+			size_t itemCount = comboBox->getItemCount();
+
+			if (currentIndex == MyGUI::ITEM_NONE)
+			{
+				if (itemCount > 0)
+				{
+					comboBox->setIndexSelected(0);
+					comboBox->setOnlyText(comboBox->getItemNameAt(0));
+				}
+			}
+			else if (currentIndex < itemCount - 1)
+			{
+				comboBox->setIndexSelected(currentIndex + 1);
+				comboBox->setOnlyText(comboBox->getItemNameAt(currentIndex + 1));
+			}
+		}
+	}
+	else if (key == MyGUI::KeyCode::ArrowUp)
+	{
+		if (nullptr != comboBox)
+		{
+			// Move selection up in combo
+			size_t currentIndex = comboBox->getIndexSelected();
+
+			if (currentIndex != MyGUI::ITEM_NONE && currentIndex > 0)
+			{
+				comboBox->setIndexSelected(currentIndex - 1);
+				comboBox->setOnlyText(comboBox->getItemNameAt(currentIndex - 1));
+			}
+		}
+	}
+	else if (key == MyGUI::KeyCode::Return || key == MyGUI::KeyCode::NumpadEnter)
+	{
+		if (nullptr != comboBox)
+		{
+			size_t currentIndex = comboBox->getIndexSelected();
+			if (currentIndex != MyGUI::ITEM_NONE)
+			{
+				// Accept current selection and APPLY it to Variant
+				this->onAutoCompleteComboSelectAccept(comboBox, currentIndex);
+			}
+		}
+	}
+	else if (key == MyGUI::KeyCode::Escape)
+	{
+		searchEdit->setOnlyText("");
+
+		if (nullptr != comboBox)
+		{
+			this->filterAutoCompleteCombo(searchEdit, comboBox, "");
+
+			comboBox->hideList();
+			comboBox->setAutoHideList(true);
+
+			NOWA::Variant** attribute = searchEdit->getUserData<NOWA::Variant*>(false);
+			if (nullptr != attribute)
+			{
+				comboBox->setOnlyText((*attribute)->getListSelectedValue());
+			}
+		}
+	}
+	else
+	{
+		// For other keys, call regular handler
+		this->onKeyButtonPressed(sender, key, ch);
+	}
+}
+
+void PropertiesPanelDynamic::onAutoCompleteComboChangePosition(MyGUI::ComboBox* sender, size_t index)
+{
+	if (MyGUI::ITEM_NONE == index)
+	{
+		return;
+	}
+
+	// Apply selection
+	this->notifyComboChangedPosition(sender, index);
+
+	// Close dropdown (because typing disabled autohide)
+	sender->hideList();
+	sender->setAutoHideList(true);
+
+	// Optional: clear filter text if you want
+	MyGUI::EditBox* searchEdit = this->getLinkedSearchEdit(sender);
+	if (nullptr != searchEdit)
+	{
+		this->autoCompleteInternalUpdate = true;
+		searchEdit->setOnlyText("");
+		this->autoCompleteInternalUpdate = false;
+
+		MyGUI::InputManager::getInstancePtr()->setKeyFocusWidget(searchEdit);
+		searchEdit->setTextCursor(searchEdit->getTextLength());
+	}
+}
+
+void PropertiesPanelDynamic::onAutoCompleteComboSelectAccept(MyGUI::ComboBox* sender, size_t index)
+{
+	if (index == MyGUI::ITEM_NONE)
+	{
+		return;
+	}
+
+	Ogre::String selectedItem = sender->getItemNameAt(index);
+
+	// Update the search edit box
+	MyGUI::EditBox* searchEdit = this->getLinkedSearchEdit(sender);
+	if (nullptr != searchEdit)
+	{
+		searchEdit->setOnlyText(selectedItem);
+	}
+
+	sender->hideList();
+	sender->setAutoHideList(true);
+
+	if (nullptr != searchEdit)
+	{
+		MyGUI::InputManager::getInstancePtr()->setKeyFocusWidget(searchEdit);
+		searchEdit->setTextCursor(searchEdit->getTextLength());
 	}
 }
 
@@ -2848,6 +3233,61 @@ void PropertiesPanelComponent::setNewAttributeValue(MyGUI::EditBox* sender, NOWA
 	MyGUIHelper::getInstance()->showAcceptedImage(Ogre::Vector2(sender->getAbsolutePosition().left, sender->getAbsolutePosition().top), Ogre::Vector2(10.0f, 10.0f), 1.0f);
 }
 
+void PropertiesPanelComponent::onAutoCompleteComboSelectAccept(MyGUI::ComboBox* sender, size_t index)
+{
+	if (index == MyGUI::ITEM_NONE)
+	{
+		return;
+	}
+
+	Ogre::String selectedItem = sender->getItemNameAt(index);
+
+	// Update the search edit box
+	MyGUI::EditBox* searchEdit = this->getLinkedSearchEdit(sender);
+	if (nullptr != searchEdit)
+	{
+		searchEdit->setOnlyText(selectedItem);
+	}
+
+	sender->hideList();
+	sender->setAutoHideList(true);
+
+	// Keep combobox text in sync
+	sender->setOnlyText(selectedItem);
+
+	// Apply the selection (same logic as notifyComboChangedPosition)
+	NOWA::Variant** attribute = sender->getUserData<NOWA::Variant*>();
+	if (nullptr == attribute)
+	{
+		return;
+	}
+
+	if (false == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionNoUndo()))
+	{
+		this->editorManager->snapshotOldGameObjectComponentAttribute(this->gameObjects, this->gameObjectComponents, (*attribute)->getName());
+	}
+
+	for (size_t i = 0; i < this->gameObjectComponents.size(); i++)
+	{
+		auto currentAttribute = this->gameObjectComponents[i]->getAttribute((*attribute)->getName());
+		(*attribute)->setListSelectedOldValue(currentAttribute->getListSelectedValue());
+		currentAttribute->setListSelectedValue(selectedItem);
+
+		this->gameObjectComponents[i]->actualizeValue(*attribute);
+	}
+
+	if (false == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionNoUndo()))
+	{
+		this->editorManager->snapshotNewGameObjectComponentAttribute(*attribute);
+
+		if (true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionNeedRefresh()))
+		{
+			boost::shared_ptr<EventDataRefreshPropertiesPanel> eventDataRefreshPropertiesPanel(new EventDataRefreshPropertiesPanel());
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
+		}
+	}
+}
+
 void PropertiesPanelComponent::notifyEditSelectAccept(MyGUI::EditBox* sender)
 {
 	ENQUEUE_RENDER_COMMAND_MULTI("PropertiesPanelComponent::notifyEditSelectAccept", _1(sender),
@@ -2856,8 +3296,8 @@ void PropertiesPanelComponent::notifyEditSelectAccept(MyGUI::EditBox* sender)
 		NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(1.0f);
 		NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(1.0f);
 		// Send the text box change to the game object and internally actualize the data
-		NOWA::Variant * *attribute = sender->getUserData<NOWA::Variant*>();
-		NOWA::Variant * variantCopy = (*attribute)->clone();
+		NOWA::Variant **attribute = sender->getUserData<NOWA::Variant*>();
+		NOWA::Variant *variantCopy = (*attribute)->clone();
 
 		Ogre::String editCaption = sender->getOnlyText();
 		// Range adaptation

@@ -166,7 +166,7 @@ hlms Particle/Tornado unlit
 // bm: AlphaHashing
 hlms Particle/Stone unlit
 {
-    diffuse_map p_stone.png
+    diffuse_map p_stone.jpeg
 }
 
 // bm: AlphaTransparent
@@ -651,7 +651,7 @@ hlms Particle/Pentagram_02 unlit
 }
 
 // bm: AlphaTransparent
-hlms Water/Wake unlit
+hlms Particle/Water/Wake unlit
 {
 	diffuse_map water_wake.png
 }

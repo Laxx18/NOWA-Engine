@@ -1973,16 +1973,6 @@ namespace NOWA
 		return makeStrongPtr<NavMeshComponent>(gameObject->getComponent<NavMeshComponent>()).get();
 	}
 
-	ParticleUniverseComponent* getParticleUniverseComponent(GameObject* gameObject, unsigned int occurrenceIndex)
-	{
-		return makeStrongPtr<ParticleUniverseComponent>(gameObject->getComponentWithOccurrence<ParticleUniverseComponent>(occurrenceIndex)).get();
-	}
-
-	ParticleUniverseComponent* getParticleUniverseComponent(GameObject* gameObject)
-	{
-		return makeStrongPtr<ParticleUniverseComponent>(gameObject->getComponent<ParticleUniverseComponent>()).get();
-	}
-
 	PlayerControllerComponent* getPlayerControllerComponent(GameObject* gameObject)
 	{
 		return makeStrongPtr<PlayerControllerComponent>(gameObject->getComponent<PlayerControllerComponent>()).get();
@@ -2656,11 +2646,6 @@ namespace NOWA
 	NavMeshComponent* getNavMeshComponentFromName(GameObject* gameObject, const Ogre::String& name)
 	{
 		return makeStrongPtr<NavMeshComponent>(gameObject->getComponentFromName<NavMeshComponent>(name)).get();
-	}
-
-	ParticleUniverseComponent* getParticleUniverseComponentFromName(GameObject* gameObject, const Ogre::String& name)
-	{
-		return makeStrongPtr<ParticleUniverseComponent>(gameObject->getComponentFromName<ParticleUniverseComponent>(name)).get();
 	}
 
 	PlayerControllerComponent* getPlayerControllerComponentFromName(GameObject* gameObject, const Ogre::String& name)
@@ -3417,8 +3402,6 @@ namespace NOWA
 		gameObject.def("getFadeComponent", &getFadeComponent);
 
 		gameObject.def("getNavMeshComponent", &getNavMeshComponent);
-		gameObject.def("getParticleUniverseComponent", (ParticleUniverseComponent * (*)(GameObject*)) & getParticleUniverseComponent);
-		gameObject.def("getParticleUniverseComponentFromIndex", (ParticleUniverseComponent * (*)(GameObject*, unsigned int)) & getParticleUniverseComponent);
 
 		gameObject.def("getPlayerControllerComponent", &getPlayerControllerComponent);
 		gameObject.def("getPlayerControllerJumpNRunComponent", &getPlayerControllerJumpNRunComponent);
@@ -3558,7 +3541,6 @@ namespace NOWA
 		gameObject.def("getLightAreaComponentFromName", &getLightAreaComponentFromName);
 		gameObject.def("getFadeComponentFromName", &getFadeComponentFromName);
 		gameObject.def("getNavMeshComponentFromName", &getNavMeshComponentFromName);
-		gameObject.def("getParticleUniverseComponentFromName", &getParticleUniverseComponentFromName);
 		gameObject.def("getPlayerControllerComponentFromName", &getPlayerControllerComponentFromName);
 		gameObject.def("getPlayerControllerJumpNRunComponentFromName", &getPlayerControllerJumpNRunComponentFromName);
 		gameObject.def("getPlayerControllerJumpNRunLuaComponentFromName", &getPlayerControllerJumpNRunLuaComponentFromName);
@@ -3717,8 +3699,6 @@ namespace NOWA
 		AddClassToCollection("GameObject", "LightAreaComponent getLightAreaComponent()", "Gets the light area component.");
 		AddClassToCollection("GameObject", "FadeComponent getFadeComponent()", "Gets the fade component.");
 		AddClassToCollection("GameObject", "NavMeshComponent getNavMeshComponent()", "Gets the nav mesh component. Requirements: OgreRecast navigation must be activated.");
-		AddClassToCollection("GameObject", "ParticleUniverseComponent getParticleUniverseComponent(unsigned int occurrenceIndex)", "Gets the particle universe component by the given occurence index, since a game object may have besides other components several particle universe components.");
-		AddClassToCollection("GameObject", "ParticleUniverseComponent getParticleUniverseComponentFromIndex()", "Gets the particle universe component. This can be used if the game object just has one particle universe component.");
 		AddClassToCollection("GameObject", "PlayerControllerComponent getPlayerControllerComponent()", "Gets the base player controller component. Requirements: A physics active component.");
 		AddClassToCollection("GameObject", "PlayerControllerJumpNRunComponent getPlayerControllerJumpNRunComponent()", "Gets the player controller Jump N Run component. Requirements: A physics active component.");
 		AddClassToCollection("GameObject", "PlayerControllerJumpNRunLuaComponent getPlayerControllerJumpNRunLuaComponent()", "Gets the player controller Jump N Run Lua component. Requirements: A physics active component and a LuaScriptComponent.");
@@ -3849,7 +3829,6 @@ namespace NOWA
 		AddClassToCollection("GameObject", "LightAreaComponent getLightAreaComponentFromName(String name)", "Gets the light area component.");
 		AddClassToCollection("GameObject", "FadeComponent getFadeComponentFromName(String name)", "Gets the fade component.");
 		AddClassToCollection("GameObject", "NavMeshComponent getNavMeshComponentFromName(String name)", "Gets the nav mesh component. Requirements: OgreRecast navigation must be activated.");
-		AddClassToCollection("GameObject", "ParticleUniverseComponent getParticleUniverseComponentFromName(String nameunsigned int occurrenceIndex)", "Gets the particle universe component by the given occurence index, since a game object may have besides other components several particle universe components.");
 		AddClassToCollection("GameObject", "PlayerControllerJumpNRunComponent getPlayerControllerComponentFromName(String name)", "Gets the base player controller component. Requirements: A physics active component.");
 		AddClassToCollection("GameObject", "PlayerControllerJumpNRunComponent getPlayerControllerJumpNRunComponentFromName(String name)", "Gets the player controller Jump N Run component. Requirements: A physics active component.");
 		AddClassToCollection("GameObject", "PlayerControllerJumpNRunLuaComponent getPlayerControllerJumpNRunLuaComponentFromName(String name)", "Gets the player controller Jump N Run Lua component. Requirements: A physics active component and a LuaScriptComponent.");
@@ -4970,7 +4949,6 @@ namespace NOWA
 		gameObjectController.def("castLightAreaComponent", &GameObjectController::cast<LightAreaComponent>);
 		gameObjectController.def("castFadeComponent", &GameObjectController::cast<FadeComponent>);
 		gameObjectController.def("castNavMeshComponent", &GameObjectController::cast<NavMeshComponent>);
-		gameObjectController.def("castParticleUniverseComponent", &GameObjectController::cast<ParticleUniverseComponent>);
 		gameObjectController.def("castPlayerControllerComponent", &GameObjectController::cast<PlayerControllerComponent>);
 		gameObjectController.def("castPlayerControllerJumpNRunComponent", &GameObjectController::cast<PlayerControllerJumpNRunComponent>);
 		gameObjectController.def("castPlayerControllerJumpNRunLuaComponent", &GameObjectController::cast<PlayerControllerJumpNRunLuaComponent>);
@@ -5135,7 +5113,6 @@ namespace NOWA
 		AddClassToCollection("GameObjectController", "LightAreaComponent castLightAreaComponent(LightAreaComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "FadeComponent castFadeComponent(FadeComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "NavMeshComponent castNavMeshComponent(NavMeshComponent other)", "Casts an incoming type from function for lua auto completion.");
-		AddClassToCollection("GameObjectController", "ParticleUniverseComponent castParticleUniverseComponent(ParticleUniverseComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "PlayerControllerComponent castPlayerControllerComponent(PlayerControllerComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "PlayerControllerJumpNRunComponent castPlayerControllerJumpNRunComponent(PlayerControllerJumpNRunComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "PlayerControllerJumpNRunLuaComponent castPlayerControllerJumpNRunLuaComponent(PlayerControllerJumpNRunLuaComponent other)", "Casts an incoming type from function for lua auto completion.");
@@ -6037,63 +6014,6 @@ namespace NOWA
 														  "Lua closure function gets called in order to react when a game object leaves the trigger area.");
 		AddClassToCollection("PhysicsTriggerComponent", "void setCategories(String categories)", "Sets categories (may be composed: e.g. ALL or ALL-House+Floor to get specifig game objects with physics component to manage.");
 		AddClassToCollection("PhysicsTriggerComponent", "String getCategories()", "Gets categories which can trigger.");
-	}
-
-	void bindParticleUniverseComponent(lua_State* lua)
-	{
-		module(lua)
-			[
-				class_<ParticleUniverseComponent, GameObjectComponent>("ParticleUniverseComponent")
-				// .def("getClassName", &ParticleUniverseComponent::getClassName)
-				// .def("clone", &ParticleUniverseComponent::clone)
-				// .def("getClassId", &ParticleUniverseComponent::getClassId)
-			.def("setActivated", &ParticleUniverseComponent::setActivated)
-			.def("isActivated", &ParticleUniverseComponent::isActivated)
-			.def("setTemplateName", &ParticleUniverseComponent::setParticleTemplateName)
-			.def("getTemplateName", &ParticleUniverseComponent::getParticleTemplateName)
-			.def("setRepeat", &ParticleUniverseComponent::setRepeat)
-			.def("getRepeat", &ParticleUniverseComponent::getRepeat)
-			.def("setPlayTimeMS", &ParticleUniverseComponent::setParticlePlayTimeMS)
-			.def("getPlayTimeMS", &ParticleUniverseComponent::getParticlePlayTimeMS)
-			.def("setOffsetPosition", &ParticleUniverseComponent::setParticleOffsetPosition)
-			.def("getOffsetPosition", &ParticleUniverseComponent::getParticleOffsetPosition)
-			.def("setOffsetOrientation", &ParticleUniverseComponent::setParticleOffsetOrientation)
-			.def("getOffsetOrientation", &ParticleUniverseComponent::getParticleOffsetOrientation)
-			.def("setScale", &ParticleUniverseComponent::setParticleScale)
-			.def("getScale", &ParticleUniverseComponent::getParticleScale)
-			.def("setPlaySpeed", &ParticleUniverseComponent::setParticlePlaySpeed)
-			.def("getPlaySpeed", &ParticleUniverseComponent::getParticlePlaySpeed)
-			.def("isPlaying", &ParticleUniverseComponent::isPlaying)
-			.def("setGlobalPosition", &ParticleUniverseComponent::setGlobalPosition)
-			.def("setGlobalOrientation", &ParticleUniverseComponent::setGlobalOrientation)
-			];
-
-		AddClassToCollection("ParticleUniverseComponent", "class inherits GameObjectComponent", ParticleUniverseComponent::getStaticInfoText());
-		// AddClassToCollection("ParticleUniverseComponent", "GameObjectComponent clone()", "Gets a new cloned game object component from this one.");
-		// AddClassToCollection("ParticleUniverseComponent", "String getClassName()", "Gets the class name of this component as string.");
-		// AddClassToCollection("ParticleUniverseComponent", "String getParentClassName()", "Gets the parent class name (the one this component is derived from) of this component as string.");
-		// AddClassToCollection("ParticleUniverseComponent", "number getClassId()", "Gets the class id of this component.");
-		// AddClassToCollection("ParticleUniverseComponent", "number getParentClassId()", "Gets the parent class id (the one this component is derived from) of this component.");
-		AddClassToCollection("ParticleUniverseComponent", "void setActivated(bool activated)", "Sets whether this component should be activated or not (Start the particle effect).");
-		AddClassToCollection("ParticleUniverseComponent", "bool isActivated()", "Gets whether this component is activated.");
-		AddClassToCollection("ParticleUniverseComponent", "void setTemplateName(string particleTemplateName)", "Sets the particle template name. The name must be recognized by the resource system, else the particle effect cannot be played.");
-		AddClassToCollection("ParticleUniverseComponent", "string getTemplateName()", "Gets currently used particle template name.");
-		AddClassToCollection("ParticleUniverseComponent", "void setRepeat(bool repeat)", "Sets whether the current particle effect should be repeated when finished.");
-		AddClassToCollection("ParticleUniverseComponent", "bool getRepeat()", "Gets whether the current particle effect will be repeated when finished.");
-
-		AddClassToCollection("ParticleUniverseComponent", "void setPlayTimeMS(float particlePlayTimeMS)", "Sets particle play time in milliseconds, how long the particle effect should be played.");
-		AddClassToCollection("ParticleUniverseComponent", "float getPlayTimeMS()", "Gets particle play time in milliseconds.");
-		AddClassToCollection("ParticleUniverseComponent", "void setOffsetPosition(Vector3 offsetPosition)", "Sets offset position of the particle effect at which it should be played away from the game object.");
-		AddClassToCollection("ParticleUniverseComponent", "Vector3 getOffsetPosition()", "Gets offset position of the particle effect.");
-		AddClassToCollection("ParticleUniverseComponent", "void setOffsetOrientation(Vector3 orientation)", "Sets offset orientation (as vector3(degree, degree, degree)) of the particle effect at which it should be played away from the game object.");
-		AddClassToCollection("ParticleUniverseComponent", "Vector3 getOffsetPosition()", "Gets offset orientation (as vector3(degree, degree, degree)) of the particle effect.");
-		AddClassToCollection("ParticleUniverseComponent", "void setScale(Vector3 scale)", "Sets the scale (size) of the particle effect.");
-		AddClassToCollection("ParticleUniverseComponent", "Vector3 getScale()", "Gets scale of the particle effect.");
-		AddClassToCollection("ParticleUniverseComponent", "void setPlaySpeed(float playSpeed)", "Sets particle play speed. E.g. 2 will play the particle at double speed.");
-		AddClassToCollection("ParticleUniverseComponent", "float getPlaySpeed()", "Gets particle play play speed.");
-		AddClassToCollection("ParticleUniverseComponent", "bool isPlaying()", "Gets whether the particle is playing. Note: This affects the value of @PlayTimeMS.");
-		AddClassToCollection("ParticleUniverseComponent", "void setGlobalPosition(Vector3 globalPosition)", "Sets a global play position for the particle.");
-		AddClassToCollection("ParticleUniverseComponent", "void setGlobalOrientation(Vector3 globalOrientation)", "Sets a global player orientation (as vector3(degree, degree, degree)) of the particle effect.");
 	}
 
 	Ogre::String getCategoriesId(PlayerControllerClickToPointComponent* instance)
@@ -12709,25 +12629,143 @@ namespace NOWA
 		// not required
 	}
 
-	void bindParticleUniverseModule(lua_State* lua)
+	Ogre::Real getRealField(const luabind::object& tbl, const char* key, Ogre::Real defaultValue)
 	{
-		//module(lua)
-		//[
-		//	class_<ParticleUniverseModule>("ParticleUniverseModule")
-		//	// .def("getInstance", &ParticleUniverseModule::getInstance)
-		//	.def("createParticleSystem", &ParticleUniverseModule::createParticleSystem)
-		//	.def("playParticleSystem", &ParticleUniverseModule::playParticleSystem)
-		//	.def("playAndStopFadeParticleSystem", &ParticleUniverseModule::playAndStopFadeParticleSystem)
-		//	.def("stopParticleSystem", &ParticleUniverseModule::stopParticleSystem)
-		//	.def("pauseParticleSystem", &ParticleUniverseModule::pauseParticleSystem)
-		//	.def("resumeParticleSystem", &ParticleUniverseModule::resumeParticleSystem)
-		//	.def("removeParticle", &ParticleUniverseModule::removeParticle)
-		//];
-		//object globalVars = globals(lua);
-		//globalVars["ParticleUniverseModule"] = AppStateManager::getSingletonPtr()->getParticleUniverseModule();
-
-		//AddClassToCollection("ParticleUniverseModule", "class", "ParticleUniverseModule for particle effects.");
+		luabind::object v = tbl[key];
+		if (luabind::type(v) == LUA_TNIL) return defaultValue;
+		return luabind::object_cast<Ogre::Real>(v);
 	}
+
+	bool getBoolField(const luabind::object& tbl, const char* key, bool defaultValue)
+	{
+		luabind::object v = tbl[key];
+		if (luabind::type(v) == LUA_TNIL) return defaultValue;
+		return luabind::object_cast<bool>(v);
+	}
+
+	Ogre::Vector3 getVector3Field(const luabind::object& tbl, const char* key, const Ogre::Vector3& defaultValue)
+	{
+		luabind::object v = tbl[key];
+		if (luabind::type(v) == LUA_TNIL) return defaultValue;
+		return luabind::object_cast<Ogre::Vector3>(v);
+	}
+
+	Ogre::Vector2 getVector2Field(const luabind::object& tbl, const char* key, const Ogre::Vector2& defaultValue)
+	{
+		luabind::object v = tbl[key];
+		if (luabind::type(v) == LUA_TNIL) return defaultValue;
+		return luabind::object_cast<Ogre::Vector2>(v);
+	}
+
+	Ogre::Quaternion getQuaternionField(const luabind::object& tbl, const char* key, const Ogre::Quaternion& defaultValue)
+	{
+		luabind::object v = tbl[key];
+		if (luabind::type(v) == LUA_TNIL) return defaultValue;
+		return luabind::object_cast<Ogre::Quaternion>(v);
+	}
+
+	NOWA::ParticleBlendingMethod::ParticleBlendingMethod getBlendingField(const luabind::object& tbl, const char* key, NOWA::ParticleBlendingMethod::ParticleBlendingMethod defaultValue)
+	{
+		luabind::object v = tbl[key];
+		if (luabind::type(v) == LUA_TNIL) return defaultValue;
+		return (NOWA::ParticleBlendingMethod::ParticleBlendingMethod)luabind::object_cast<int>(v);
+	}
+
+	void createParticleSystemLua(NOWA::ParticleFxModule* module, const Ogre::String& name, const Ogre::String& templateName, Ogre::Real playTimeMS, const luabind::object& params)
+	{
+		Ogre::Quaternion orientation = Ogre::Quaternion::IDENTITY;
+		Ogre::Vector3 position = Ogre::Vector3::ZERO;
+		Ogre::Vector2 scale = Ogre::Vector2::UNIT_SCALE;
+		bool repeat = false;
+		Ogre::Real playSpeed = 1.0f;
+		NOWA::ParticleBlendingMethod::ParticleBlendingMethod blendingMethod = NOWA::ParticleBlendingMethod::AlphaBlending;
+		bool fadeIn = false;
+		Ogre::Real fadeInTimeMS = 1000.0f;
+		bool fadeOut = false;
+		Ogre::Real fadeOutTimeMS = 1000.0f;
+
+		if (luabind::type(params) == LUA_TTABLE)
+		{
+			orientation = getQuaternionField(params, "orientation", Ogre::Quaternion::IDENTITY);
+			position = getVector3Field(params, "position", Ogre::Vector3::ZERO);
+			scale = getVector2Field(params, "scale", Ogre::Vector2::UNIT_SCALE);
+			repeat = getBoolField(params, "repeat", false);
+			playSpeed = getRealField(params, "playSpeed", 1.0f);
+			blendingMethod = getBlendingField(params, "blendingMethod", NOWA::ParticleBlendingMethod::AlphaBlending);
+			fadeIn = getBoolField(params, "fadeIn", false);
+			fadeInTimeMS = getRealField(params, "fadeInTimeMS", 1000.0f);
+			fadeOut = getBoolField(params, "fadeOut", false);
+			fadeOutTimeMS = getRealField(params, "fadeOutTimeMS", 1000.0f);
+		}
+
+		module->createParticleSystem(name, templateName, playTimeMS, orientation, position, scale, repeat, playSpeed, blendingMethod, fadeIn, fadeInTimeMS, fadeOut, fadeOutTimeMS);
+	}
+
+	void bindParticleFxModule(lua_State* lua)
+	{
+		module(lua)
+		[
+			class_<ParticleBlendingMethod::ParticleBlendingMethod>("ParticleBlendingMethod")
+			.enum_("ParticleBlendingMethod")
+			[
+				value("AlphaHashing", ParticleBlendingMethod::AlphaHashing),
+				value("AlphaHashingA2C", ParticleBlendingMethod::AlphaHashingA2C),
+				value("AlphaBlending", ParticleBlendingMethod::AlphaBlending),
+				value("AlphaTransparent", ParticleBlendingMethod::AlphaTransparent),
+				value("TransparentColour", ParticleBlendingMethod::TransparentColour),
+				value("FromMaterial", ParticleBlendingMethod::FromMaterial)
+			]
+		];
+
+		module(lua)
+		[
+			class_<ParticleFadeState::ParticleFadeState>("ParticleFadeState")
+			.enum_("ParticleFadeState")
+			[
+				value("None", ParticleFadeState::None),
+				value("FadingIn", ParticleFadeState::FadingIn),
+				value("FadingOut", ParticleFadeState::FadingOut)
+			]
+		];
+
+		module(lua)
+		[
+			class_<ParticleFxModule>("ParticleFxModule")
+			// Note: Luabind can up to 10 parameters, so we wrap createParticleSystem in createParticleSystemLua
+			.def("createParticleSystem", &createParticleSystemLua)
+			.def("playParticleSystem", &ParticleFxModule::playParticleSystem)
+			.def("stopParticleSystem", &ParticleFxModule::stopParticleSystem)
+			.def("pauseParticleSystem", &ParticleFxModule::pauseParticleSystem)
+			.def("resumeParticleSystem", &ParticleFxModule::resumeParticleSystem)
+			.def("getParticle", &ParticleFxModule::getParticle)
+			.def("removeParticle", &ParticleFxModule::removeParticle)
+			.def("setGlobalPosition", &ParticleFxModule::setGlobalPosition)
+			.def("setGlobalOrientation", &ParticleFxModule::setGlobalOrientation)
+			.def("setScale", &ParticleFxModule::setScale)
+			.def("setPlaySpeed", &ParticleFxModule::setPlaySpeed)
+			.def("isPlaying", &ParticleFxModule::isPlaying)
+			.def("getNumActiveParticles", &ParticleFxModule::getNumActiveParticles)
+		];
+
+		AddClassToCollection("ParticleBlendingMethod", "enum", "Particle blending method enum used by ParticleFxModule.");
+		AddClassToCollection("ParticleFadeState", "enum", "Fade state enum used internally for particle effect transitions.");
+		AddClassToCollection("ParticleFxModule", "class", "Module for creating and controlling ParticleFX effects.");
+		AddClassToCollection("ParticleFxModule", "void createParticleSystem(String name, String templateName, float playTimeMS, Quaternion orientation, Vector3 position, Vector2 scale, bool repeat, float playSpeed, "
+			"ParticleBlendingMethod blendingMethod, bool fadeIn, float fadeInTimeMS, bool fadeOut, float fadeOutTimeMS)", "Creates a particle system instance with the given settings. Lua must pass all parameters (no default values via luabind).");
+		AddClassToCollection("ParticleFxModule", "void playParticleSystem(String name)", "Start playing a particle effect.");
+		AddClassToCollection("ParticleFxModule", "void stopParticleSystem(String name)", "Stop a particle effect (with optional fade out handled internally).");
+		AddClassToCollection("ParticleFxModule", "void pauseParticleSystem(String name)", "Pause a particle effect.");
+		AddClassToCollection("ParticleFxModule", "void resumeParticleSystem(String name)", "Resume a paused particle effect.");
+		AddClassToCollection("ParticleFxModule", "ParticleFxData getParticle(String name)", "Get particle effect data by name. Returns nil if not found.");
+		AddClassToCollection("ParticleFxModule", "void removeParticle(String name)", "Remove and destroy a specific particle effect.");
+		AddClassToCollection("ParticleFxModule", "void setGlobalPosition(String name, Vector3 position)", "Set the global/world position for a particle effect.");
+		AddClassToCollection("ParticleFxModule", "void setGlobalOrientation(String name, Quaternion orientation)", "Set the global/world orientation for a particle effect.");
+		AddClassToCollection("ParticleFxModule", "void setScale(String name, Vector2 scale)", "Set the 2D scale for a particle effect.");
+		AddClassToCollection("ParticleFxModule", "void setPlaySpeed(String name, float playSpeed)", "Set the play speed multiplier (>1.0 faster, <1.0 slower).");
+		AddClassToCollection("ParticleFxModule", "bool isPlaying(String name)", "Returns true if the particle effect is currently playing.");
+		AddClassToCollection("ParticleFxModule", "int getNumActiveParticles(String name)", "Returns the number of active particles in an effect.");
+	}
+
 
 	void bindRakNetModule(lua_State* lua)
 	{
@@ -13111,8 +13149,10 @@ namespace NOWA
 			.def("getOgreNewtModule", (OgreNewtModule * (AppStateManager::*)(void) const) & AppStateManager::getOgreNewtModule)
 			.def("getOgreNewtModule2", (OgreNewtModule * (AppStateManager::*)(const Ogre::String&)) & AppStateManager::getOgreNewtModule)
 
+			.def("getParticleFxModule", (ParticleFxModule* (AppStateManager::*)(void) const) &AppStateManager::getParticleFxModule)
+			.def("getParticleFxModule2", (ParticleFxModule* (AppStateManager::*)(const Ogre::String&)) &AppStateManager::getParticleFxModule)
+
 			// .def("getOgreRecastModule", &AppStateManager::getOgreRecastModule)
-			// .def("getParticleUniverseModule", &AppStateManager::getParticleUniverseModule)
 			// .def("getRakNetModule", &AppStateManager::getRakNetModule)
 
 			.def("getScriptEventManager", (ScriptEventManager * (AppStateManager::*)(void) const) & AppStateManager::getScriptEventManager)
@@ -13147,7 +13187,7 @@ namespace NOWA
 		AddClassToCollection("AppStateManager", "OgreNewtModule getOgreNewtModule()", "Gets the module for the current AppState.");
 		AddClassToCollection("AppStateManager", "OgreNewtModule getOgreNewtModule2(String stateName)", "Gets the module for the given application state name, or null if the application state does not exist.");
 		// AddClassToCollection("AppStateManager", "OgreRecastModule getOgreRecastModule()", "Gets the module for the current AppState.");
-		// AddClassToCollection("AppStateManager", "ParticleUniverseModule getParticleUniverseModule()", "Gets the module for the current AppState.");
+		AddClassToCollection("AppStateManager", "ParticleUniverseModule getParticleFxModule()", "Gets the module for the current AppState.");
 		// AddClassToCollection("AppStateManager", "RakNetModule getRakNetModule()", "Gets the module for the current AppState.");
 		AddClassToCollection("AppStateManager", "ScriptEventManager getScriptEventManager()", "Gets the script event manager for the current AppState.");
 		AddClassToCollection("AppStateManager", "ScriptEventManager getScriptEventManager2(String stateName)", "Gets the module for the given application state name, or null if the application state does not exist.");
@@ -13367,7 +13407,6 @@ namespace NOWA
 				bindTerraComponent(this->lua);
 				bindOceanComponent(this->lua);
 				bindGameObjectTitleComponent(this->lua);
-				bindParticleUniverseComponent(this->lua);
 				bindPlayerControllerComponents(this->lua);
 				bindTagPointComponent(this->lua);
 				bindMoveMathFunctionComponent(this->lua);
@@ -13411,9 +13450,9 @@ namespace NOWA
 				bindOgreALModule(this->lua);
 				bindOgreNewtModule(this->lua);
 				bindCameraManager(this->lua);
+				bindParticleFxModule(this->lua);
 				bindOgreRecastModule(this->lua);
 				bindPagedGeometryModule(this->lua);
-				bindParticleUniverseModule(this->lua);
 				bindRakNetModule(this->lua);
 				bindShaderModule(this->lua);
 				bindSSAOCompositorModule(this->lua);

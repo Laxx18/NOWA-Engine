@@ -571,7 +571,7 @@
 					<property type="7" name="ScriptFile" data="FutureFighterJet_0.lua"/>
 					<property type="12" name="CloneScript" data="false"/>
 					<property type="12" name="HasCommonScript" data="false"/>
-					<property type="7" name="ComponentParticleUniverseComponent" data="ParticleUniverseComponent"/>
+					<property type="7" name="ComponentParticleFxComponent" data="ParticleFxComponent"/>
 					<property type="7" name="Name" data="EngineParticle"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="Activated" data="true"/>
@@ -582,7 +582,7 @@
 					<property type="9" name="OffsetPosition" data="0 0 -9"/>
 					<property type="10" name="OffsetOrientation" data="0 0 0"/>
 					<property type="9" name="Scale" data="1 1 1"/>
-					<property type="7" name="ComponentParticleUniverseComponent" data="ParticleUniverseComponent"/>
+					<property type="7" name="ComponentParticleFxComponent" data="ParticleFxComponent"/>
 					<property type="7" name="Name" data="SmokeParticle"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="Activated" data="true"/>
@@ -627,7 +627,7 @@
 					<property type="2" name="SpawnTarget" data="1543222174"/>
 					<property type="7" name="OnSpawnFunctionName" data="onLaserSpawned"/>
 					<property type="7" name="OnVanishFunctionName" data=""/>
-					<property type="7" name="ComponentParticleUniverseComponent" data="ParticleUniverseComponent"/>
+					<property type="7" name="ComponentParticleFxComponent" data="ParticleFxComponent"/>
 					<property type="7" name="Name" data="ExplosionParticle"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="Activated" data="true"/>
@@ -685,7 +685,7 @@
 					<property type="9" name="ConstraintAxis" data="0 1 0"/>
 					<property type="12" name="EnableGyroscopicTorque" data="false"/>
 					<property type="12" name="Collidable" data="false"/>
-					<property type="7" name="ComponentParticleUniverseComponent" data="ParticleUniverseComponent"/>
+					<property type="7" name="ComponentParticleFxComponent" data="ParticleFxComponent"/>
 					<property type="7" name="Name" data="FireParticle"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="Activated" data="true"/>
@@ -696,7 +696,7 @@
 					<property type="9" name="OffsetPosition" data="0 0 0"/>
 					<property type="10" name="OffsetOrientation" data="0 0 0"/>
 					<property type="9" name="Scale" data="2 2 2"/>
-					<property type="7" name="ComponentParticleUniverseComponent" data="ParticleUniverseComponent"/>
+					<property type="7" name="ComponentParticleFxComponent" data="ParticleFxComponent"/>
 					<property type="7" name="Name" data="ExplosionParticle"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="Activated" data="false"/>
@@ -952,7 +952,7 @@
 					<property type="7" name="ScriptFile" data="Level1_UfoVShape_0.lua"/>
 					<property type="12" name="CloneScript" data="false"/>
 					<property type="12" name="HasCommonScript" data="true"/>
-					<property type="7" name="ComponentParticleUniverseComponent" data="ParticleUniverseComponent"/>
+					<property type="7" name="ComponentParticleFxComponent" data="ParticleFxComponent"/>
 					<property type="7" name="Name" data="ExplosionParticle"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="Activated" data="false"/>
@@ -1110,7 +1110,7 @@
 					<property type="9" name="ConstraintAxis" data="0 0 0"/>
 					<property type="12" name="EnableGyroscopicTorque" data="false"/>
 					<property type="12" name="Collidable" data="false"/>
-					<property type="7" name="ComponentParticleUniverseComponent" data="ParticleUniverseComponent"/>
+					<property type="7" name="ComponentParticleFxComponent" data="ParticleFxComponent"/>
 					<property type="7" name="Name" data="FireParticle"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="Activated" data="true"/>
@@ -1594,7 +1594,7 @@
 					<property type="7" name="AttributeName0" data="Energy"/>
 					<property type="7" name="AttributeType0" data="Int"/>
 					<property type="7" name="AttributeValue0" data="100"/>
-					<property type="7" name="ComponentParticleUniverseComponent" data="ParticleUniverseComponent"/>
+					<property type="7" name="ComponentParticleFxComponent" data="ParticleFxComponent"/>
 					<property type="7" name="Name" data="ExplosionParticle"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="Activated" data="false"/>

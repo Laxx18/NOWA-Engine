@@ -214,7 +214,7 @@ namespace NOWA
 		 * @note								If none location parameter are set the cloned game object will take the location parameter of the original game object.
 		 *									Important: Be careful what game object you will clone due to performance reasons. When a game object e.g. is composed of a lot of heavy components
 		 *									Everything inside will be cloned. Imagine a bomb which has 4 components:
-		 *										PhysicsActiveComponent, PhysicsExplosionComponent, ParticleUniverseComponent, SimpleSoundComponent
+		 *										PhysicsActiveComponent, PhysicsExplosionComponent, ParticleFxComponent, SimpleSoundComponent
 		 *									Now each time a bomb is cloned, the heavy particle system is cloned to and the sounds. It would be better to set the bomb visible false
 		 *									and reset the position each time, a player throws the bomb, instead of cloning the bomb and deleting when thrown.
 		 *									

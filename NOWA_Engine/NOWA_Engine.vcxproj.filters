@@ -519,12 +519,6 @@
     <ClInclude Include="gameobject\LineComponent.h">
       <Filter>gameobject</Filter>
     </ClInclude>
-    <ClInclude Include="gameobject\ParticleUniverseComponent.h">
-      <Filter>gameobject</Filter>
-    </ClInclude>
-    <ClInclude Include="modules\ParticleUniverseModule.h">
-      <Filter>modules</Filter>
-    </ClInclude>
     <ClInclude Include="gameobject\CompositorEffectComponents.h">
       <Filter>gameobject</Filter>
     </ClInclude>
@@ -1087,12 +1081,6 @@
     </ClCompile>
     <ClCompile Include="gameobject\LineComponent.cpp">
       <Filter>gameobject</Filter>
-    </ClCompile>
-    <ClCompile Include="gameobject\ParticleUniverseComponent.cpp">
-      <Filter>gameobject</Filter>
-    </ClCompile>
-    <ClCompile Include="modules\ParticleUniverseModule.cpp">
-      <Filter>modules</Filter>
     </ClCompile>
     <ClCompile Include="gameobject\CompositorEffectComponents.cpp">
       <Filter>gameobject</Filter>

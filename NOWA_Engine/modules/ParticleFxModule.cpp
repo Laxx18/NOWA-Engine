@@ -40,10 +40,128 @@ namespace NOWA
 		if (nullptr != this->particleManager)
 		{
 			// Max particles per system (NOT total systems!)
-			this->particleManager->setHighestPossibleQuota(512, 0);
+			// this->particleManager->setHighestPossibleQuota(512, 0);
+			this->particleManager->setHighestPossibleQuota(8192, 0);
+		}
+
+		this->particleNames.clear();
+		this->particleNames.emplace_back("");
+
+		Ogre::ParticleSystemManager2* particleManager = sceneManager->getParticleSystemManager2();
+
+		if (nullptr == particleManager)
+		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ParticleFxModule] Cannot be used because there is no ParticleSystemManager2.");
+			return;
+		}
+
+		Ogre::ResourceGroupManager& resourceGroupManager = Ogre::ResourceGroupManager::getSingleton();
+
+		if (false == resourceGroupManager.resourceGroupExists("ParticleFX2"))
+		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ParticleFxModule] Cannot be used because there is no resource group: 'ParticleFX2'.");
+			return;
+		}
+
+		Ogre::StringVectorPtr scripts = resourceGroupManager.findResourceNames("ParticleFX2", "*.particle2");
+
+		for (const Ogre::String& scriptName : *scripts)
+		{
+			try
+			{
+				Ogre::DataStreamPtr stream = resourceGroupManager.openResource(scriptName, "ParticleFX2");
+				if (!stream)
+				{
+					continue;
+				}
+
+				std::istringstream iss(stream->getAsString());
+				std::string line;
+
+				while (std::getline(iss, line))
+				{
+					size_t start = line.find_first_not_of(" \t");
+					if (start == std::string::npos)
+					{
+						continue;
+					}
+
+					std::string trimmed = line.substr(start);
+
+					// Handle CRLF
+					if (!trimmed.empty() && trimmed.back() == '\r')
+					{
+						trimmed.pop_back();
+					}
+
+					if (!Ogre::StringUtil::startsWith(trimmed, "particle_system", false))
+					{
+						continue;
+					}
+
+					// Everything after "particle_system"
+					const size_t keywordLen = 15u;
+					size_t nameStart = trimmed.find_first_not_of(" \t", keywordLen);
+					if (nameStart == std::string::npos)
+					{
+						continue;
+					}
+
+					// Extract only the name token:
+					// stop at whitespace OR ':' (inherit) OR '{' (same-line brace)
+					size_t nameEnd = nameStart;
+					while (nameEnd < trimmed.size())
+					{
+						const char c = trimmed[nameEnd];
+						if (c == ' ' || c == '\t' || c == ':' || c == '{')
+						{
+							break;
+						}
+						++nameEnd;
+					}
+
+					std::string systemName = trimmed.substr(nameStart, nameEnd - nameStart);
+					Ogre::StringUtil::trim(systemName);
+
+					if (systemName.empty())
+					{
+						continue;
+					}
+
+					// Only list systems that actually exist (parsed & registered by Ogre)
+					if (!particleManager->hasParticleSystemDef(systemName))
+					{
+						continue;
+					}
+
+					// IMPORTANT:
+					// Do NOT filter by ParticleSystemDef::getOrigin() here.
+					// Derived systems ("A : B") can have origin pointing to base or be inconsistent.
+					// Since we're parsing *this script text*, the presence of "particle_system <name>"
+					// is already the source-of-truth for listing names from this script.
+
+					if (std::find(this->particleNames.begin(), this->particleNames.end(), systemName) == this->particleNames.end())
+					{
+						this->particleNames.emplace_back(systemName);
+					}
+				}
+			}
+			catch (...)
+			{
+			}
+		}
+
+		if (this->particleNames.size() > 2u)
+		{
+			std::sort(this->particleNames.begin() + 1u, this->particleNames.end());
 		}
 
 		this->precacheAllMaterialAnnotations();
+	}
+
+	std::vector<Ogre::String> ParticleFxModule::getAvailableParticleTemplates(void)
+	{
+		return this->particleNames;
 	}
 
 	void ParticleFxModule::destroyContent(void)
@@ -68,93 +186,95 @@ namespace NOWA
 		this->sceneManager = nullptr;
 	}
 
-	ParticleBlendingMethod::ParticleBlendingMethod ParticleFxModule::createParticleSystem(const Ogre::String& name, const Ogre::String& templateName,
+	void ParticleFxModule::createParticleSystem(const Ogre::String& name, const Ogre::String& templateName,
 		Ogre::Real playTimeMS, const Ogre::Quaternion& orientation, const Ogre::Vector3& position, const Ogre::Vector2& scale, bool repeat, Ogre::Real playSpeed, 
 		ParticleBlendingMethod::ParticleBlendingMethod blendingMethod, bool fadeIn, Ogre::Real fadeInTimeMS, bool fadeOut, Ogre::Real fadeOutTimeMS)
 	{
-		ParticleBlendingMethod::ParticleBlendingMethod detectedMode = blendingMethod;
-
-		auto it = this->particles.find(name);
-
-		if (it == this->particles.end())
+		GraphicsModule::RenderCommand renderCommand = [this, name, templateName, playTimeMS, orientation, position, scale, repeat, playSpeed,
+			blendingMethod, fadeIn, fadeInTimeMS, fadeOut, fadeOutTimeMS]()
 		{
-			// ========================================
-			// FIRST TIME CREATION
-			// ========================================
-			ParticleFxData particleData;
-			particleData.particleTemplateName = templateName;
-			particleData.particlePlayTime = playTimeMS;
-			particleData.particleInitialPlayTime = playTimeMS;
-			particleData.particlePlaySpeed = playSpeed;
-			particleData.particleOffsetOrientation = orientation;
-			particleData.particleOffsetPosition = position;
-			particleData.particleScale = scale;
+			ParticleBlendingMethod::ParticleBlendingMethod detectedMode = blendingMethod;
 
-			// Determine blending mode
-			if (blendingMethod != ParticleBlendingMethod::FromMaterial)
+			auto it = this->particles.find(name);
+
+			if (it == this->particles.end())
 			{
-				// User explicitly set mode
-				particleData.blendingMethod = blendingMethod;
-				particleData.blendingModeInitialized = true;
-				detectedMode = blendingMethod;
-			}
-			else
-			{
-				// Auto-detect from material (with caching!)
-				detectedMode = this->getBlendingModeForTemplate(templateName);
-				particleData.blendingMethod = detectedMode;
-				particleData.blendingModeInitialized = true;
-			}
+				// ========================================
+				// FIRST TIME CREATION
+				// ========================================
+				ParticleFxData particleData;
+				particleData.particleTemplateName = templateName;
+				particleData.particlePlayTime = playTimeMS;
+				particleData.particleInitialPlayTime = playTimeMS;
+				particleData.particlePlaySpeed = playSpeed;
+				particleData.particleOffsetOrientation = orientation;
+				particleData.particleOffsetPosition = position;
+				particleData.particleScale = scale;
 
-			particleData.fadeIn = fadeIn;
-			particleData.fadeInTimeMS = fadeInTimeMS;
-			particleData.fadeOut = fadeOut;
-			particleData.fadeOutTimeMS = fadeOutTimeMS;
-			particleData.repeat = repeat;
-			particleData.activated = false;
-
-			this->particles.emplace(name, particleData);
-		}
-		else
-		{
-			// ========================================
-			// PARTICLE ALREADY EXISTS (play/stop/play scenario)
-			// ========================================
-			ParticleFxData& existingData = it->second;
-
-			// Update playback parameters
-			existingData.particlePlayTime = playTimeMS;
-			existingData.particleInitialPlayTime = playTimeMS;
-			existingData.particlePlaySpeed = playSpeed;
-			existingData.repeat = repeat;
-
-			// CACHE HIT: Blending mode already set, no need to detect again!
-			if (existingData.blendingModeInitialized)
-			{
-				detectedMode = existingData.blendingMethod;
-
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
-					"[ParticleFxModule] Using cached blending mode for: " + name);
-			}
-			else
-			{
-				// First time setting blending mode for existing particle
+				// Determine blending mode
 				if (blendingMethod != ParticleBlendingMethod::FromMaterial)
 				{
-					existingData.blendingMethod = blendingMethod;
-					existingData.blendingModeInitialized = true;
+					// User explicitly set mode
+					particleData.blendingMethod = blendingMethod;
+					particleData.blendingModeInitialized = true;
 					detectedMode = blendingMethod;
 				}
 				else
 				{
+					// Auto-detect from material (with caching!)
 					detectedMode = this->getBlendingModeForTemplate(templateName);
-					existingData.blendingMethod = detectedMode;
-					existingData.blendingModeInitialized = true;
+					particleData.blendingMethod = detectedMode;
+					particleData.blendingModeInitialized = true;
+				}
+
+				particleData.fadeIn = fadeIn;
+				particleData.fadeInTimeMS = fadeInTimeMS;
+				particleData.fadeOut = fadeOut;
+				particleData.fadeOutTimeMS = fadeOutTimeMS;
+				particleData.repeat = repeat;
+				particleData.activated = false;
+
+				this->particles.emplace(name, particleData);
+			}
+			else
+			{
+				// ========================================
+				// PARTICLE ALREADY EXISTS (play/stop/play scenario)
+				// ========================================
+				ParticleFxData& existingData = it->second;
+
+				// Update playback parameters
+				existingData.particlePlayTime = playTimeMS;
+				existingData.particleInitialPlayTime = playTimeMS;
+				existingData.particlePlaySpeed = playSpeed;
+				existingData.repeat = repeat;
+
+				// CACHE HIT: Blending mode already set, no need to detect again!
+				if (existingData.blendingModeInitialized)
+				{
+					detectedMode = existingData.blendingMethod;
+
+					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ParticleFxModule] Using cached blending mode for: " + name);
+				}
+				else
+				{
+					// First time setting blending mode for existing particle
+					if (blendingMethod != ParticleBlendingMethod::FromMaterial)
+					{
+						existingData.blendingMethod = blendingMethod;
+						existingData.blendingModeInitialized = true;
+						detectedMode = blendingMethod;
+					}
+					else
+					{
+						detectedMode = this->getBlendingModeForTemplate(templateName);
+						existingData.blendingMethod = detectedMode;
+						existingData.blendingModeInitialized = true;
+					}
 				}
 			}
-		}
-
-		return detectedMode;
+		};
+		NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ParticleFxModule::createParticleSystem");
 	}
 
 	void ParticleFxModule::playParticleSystem(const Ogre::String& name)
@@ -538,7 +658,6 @@ namespace NOWA
 			particleData.particleNode = this->sceneManager->getRootSceneNode()->createChildSceneNode();
 			particleData.particleNode->attachObject(particleData.particleSystem);
 
-			particleData.particleSystem->setRenderQueueGroup(RENDER_QUEUE_PARTICLE_STUFF);
 			particleData.particleSystem->setCastShadows(false);
 
 			// Apply blending mode (existing)
@@ -562,6 +681,23 @@ namespace NOWA
 			{
 				particleData.fadeState = ParticleFadeState::None;
 				particleData.fadeProgress = 1.0f;
+			}
+
+			if (particleData.particleSystem)
+			{
+				// Log the actual render queue group ParticleSystem2 uses
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
+					"[ParticleFxModule] ParticleSystem2 '" + particleData.particleSystem->getName() +
+					"' render queue group: " +
+					Ogre::StringConverter::toString(particleData.particleSystem->getRenderQueueGroup()));
+
+				// Log the material/datablock being used
+				const Ogre::ParticleSystemDef* def = particleData.particleSystem->getParticleSystemDef();
+				if (def)
+				{
+					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
+						"[ParticleFxModule] Material: " + def->getMaterialName());
+				}
 			}
 		};
 		NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ParticleFxModule::createParticleEffect");
@@ -672,64 +808,6 @@ namespace NOWA
 		particleData.isEmitting = false;
 	}
 
-#if 0
-	void ParticleFxModule::applyBlendingMethod(ParticleFxData& particleData)
-	{
-		if (nullptr == particleData.particleSystem)
-		{
-			return;
-		}
-
-		Ogre::ParticleSystem2* particleSystem2 = particleData.particleSystem;
-
-		const Ogre::ParticleSystemDef* particleSystemDef = particleSystem2->getParticleSystemDef();
-		if (nullptr == particleSystemDef)
-		{
-			return;
-		}
-
-		Ogre::HlmsManager* hlmsManager = Core::getSingletonPtr()->getOgreRoot()->getHlmsManager();
-		Ogre::HlmsDatablock* datablock = hlmsManager->getDatablockNoDefault(particleSystemDef->getDatablockName());
-
-		if (nullptr == datablock)
-		{
-			return;
-		}
-
-		if (datablock->getCreator()->getType() == Ogre::HLMS_UNLIT)
-		{
-			Ogre::HlmsUnlitDatablock* unlitDatablock = static_cast<Ogre::HlmsUnlitDatablock*>(datablock);
-
-			switch (particleData.blendingMethod)
-			{
-			case ParticleBlendingMethod::AlphaHashing:
-				unlitDatablock->setUseAlphaFromTextures(true);
-				unlitDatablock->setAlphaTest(Ogre::CMPF_ALWAYS_PASS);
-				unlitDatablock->setAlphaHashing(true);
-				unlitDatablock->setAlphaToCoverage(false, Ogre::HlmsMacroblock::msaa_auto, false);
-				unlitDatablock->setTransparency(0.0f, Ogre::HlmsUnlitDatablock::None);
-				break;
-
-			case ParticleBlendingMethod::AlphaHashingA2C:
-				unlitDatablock->setUseAlphaFromTextures(true);
-				unlitDatablock->setAlphaTest(Ogre::CMPF_ALWAYS_PASS);
-				unlitDatablock->setAlphaHashing(true);
-				unlitDatablock->setAlphaToCoverage(true, Ogre::HlmsMacroblock::msaa_auto, false);
-				unlitDatablock->setTransparency(0.0f, Ogre::HlmsUnlitDatablock::None);
-				break;
-
-			case ParticleBlendingMethod::AlphaBlending:
-				unlitDatablock->setUseAlphaFromTextures(true);
-				unlitDatablock->setAlphaTest(Ogre::CMPF_ALWAYS_PASS);
-				unlitDatablock->setAlphaHashing(false);
-				unlitDatablock->setAlphaToCoverage(false, Ogre::HlmsMacroblock::msaa_auto, false);
-				unlitDatablock->setTransparency(1.0f, Ogre::HlmsUnlitDatablock::Transparent);
-				break;
-			}
-		}
-	}
-#endif
-
 	void ParticleFxModule::applyBlendingMethod(ParticleFxData& particleData)
 	{
 		if (nullptr == particleData.particleSystem)
@@ -756,8 +834,7 @@ namespace NOWA
 
 		if (nullptr == datablock)
 		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-				"[ParticleFxComponent] Could not find datablock for particle material: " + materialName);
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ParticleFxComponent] Could not find datablock for particle material: " + materialName);
 			return;
 		}
 

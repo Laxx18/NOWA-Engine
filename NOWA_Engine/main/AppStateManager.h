@@ -131,8 +131,6 @@ namespace NOWA
 
 		OgreRecastModule* getOgreRecastModule(void) const;
 
-		ParticleUniverseModule* getParticleUniverseModule(void) const;
-
 		ParticleFxModule* getParticleFxModule(void) const;
 
 		LuaScriptModule* getLuaScriptModule(void) const;
@@ -156,8 +154,6 @@ namespace NOWA
 		CameraManager* getCameraManager(const Ogre::String& stateName);
 
 		OgreRecastModule* getOgreRecastModule(const Ogre::String& stateName);
-
-		ParticleUniverseModule* getParticleUniverseModule(const Ogre::String& stateName);
 
 		ParticleFxModule* getParticleFxModule(const Ogre::String& stateName);
 

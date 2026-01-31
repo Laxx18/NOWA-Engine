@@ -24,7 +24,6 @@
 #include "ExitComponent.h"
 #include "AnimationComponent.h"
 #include "AnimationComponentV2.h"
-#include "ParticleUniverseComponent.h"
 #include "PhysicsActiveCompoundComponent.h"
 #include "PhysicsActiveDestructableComponent.h"
 #include "PhysicsExplosionComponent.h"
@@ -106,7 +105,6 @@ namespace NOWA
 		this->componentFactory.registerClass<ExitComponent>(ExitComponent::getStaticClassId(), ExitComponent::getStaticClassName());
 		this->componentFactory.registerClass<AnimationComponent>(AnimationComponent::getStaticClassId(), AnimationComponent::getStaticClassName());
 		this->componentFactory.registerClass<AnimationComponentV2>(AnimationComponentV2::getStaticClassId(), AnimationComponentV2::getStaticClassName());
-		this->componentFactory.registerClass<ParticleUniverseComponent>(ParticleUniverseComponent::getStaticClassId(), ParticleUniverseComponent::getStaticClassName());
 		this->componentFactory.registerClass<PlaneComponent>(PlaneComponent::getStaticClassId(), PlaneComponent::getStaticClassName());
 		this->componentFactory.registerClass<AiLuaComponent>(AiLuaComponent::getStaticClassId(), AiLuaComponent::getStaticClassName());
 		this->componentFactory.registerClass<AiLuaGoalComponent>(AiLuaGoalComponent::getStaticClassId(), AiLuaGoalComponent::getStaticClassName());

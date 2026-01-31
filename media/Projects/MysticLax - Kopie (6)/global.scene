@@ -177,7 +177,7 @@
 					<property type="12" name="RelativeToListener" data="true"/>
 					<property type="12" name="PlayWhenInMotion" data="false"/>
 					<property type="7" name="OnSpectrumAnalysisFunctionName" data=""/>
-					<property type="7" name="ComponentParticleUniverseComponent" data="ParticleUniverseComponent"/>
+					<property type="7" name="ComponentParticleFxComponent" data="ParticleFxComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -1230,7 +1230,7 @@
 					<property type="7" name="ScriptFile" data="main.lua"/>
 					<property type="12" name="CloneScript" data="false"/>
 					<property type="12" name="HasCommonScript" data="false"/>
-					<property type="7" name="ComponentParticleUniverseComponent" data="ParticleUniverseComponent"/>
+					<property type="7" name="ComponentParticleFxComponent" data="ParticleFxComponent"/>
 					<property type="7" name="Name" data="HitParticle"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>

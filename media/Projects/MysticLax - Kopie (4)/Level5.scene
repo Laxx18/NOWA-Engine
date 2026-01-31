@@ -2599,7 +2599,7 @@
 					<property type="2" name="RenderQueueIndex" data="110"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleRoofColor"/>
-					<property type="7" name="ComponentParticleUniverseComponent" data="ParticleUniverseComponent"/>
+					<property type="7" name="ComponentParticleFxComponent" data="ParticleFxComponent"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="Activated" data="true"/>
 					<property type="7" name="TemplateName" data="fireplace_02"/>
@@ -2701,7 +2701,7 @@
 					<property type="6" name="JointMaxAngleLimit" data="45"/>
 					<property type="6" name="TwistFriction" data="0.2"/>
 					<property type="6" name="ConeFriction" data="0.2"/>
-					<property type="7" name="ComponentParticleUniverseComponent" data="ParticleUniverseComponent"/>
+					<property type="7" name="ComponentParticleFxComponent" data="ParticleFxComponent"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="Activated" data="true"/>
 					<property type="7" name="TemplateName" data="fireplace_01"/>
@@ -2735,7 +2735,7 @@
 					<property type="2" name="RenderQueueIndex" data="110"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="Torch"/>
-					<property type="7" name="ComponentParticleUniverseComponent" data="ParticleUniverseComponent"/>
+					<property type="7" name="ComponentParticleFxComponent" data="ParticleFxComponent"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="Activated" data="true"/>
 					<property type="7" name="TemplateName" data="mp_torch"/>

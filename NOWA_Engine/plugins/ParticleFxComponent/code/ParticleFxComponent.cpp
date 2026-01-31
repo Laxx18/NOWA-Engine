@@ -55,6 +55,7 @@ namespace NOWA
 	{
 		// Activated variable is set to false again, when particle has played and repeat is off
 		this->activated->addUserData(GameObject::AttrActionNeedRefresh());
+		this->particleTemplateName->addUserData(GameObject::AttrActionAutoComplete());
 		this->particleInitialPlayTime->setDescription("The particle play time in milliseconds, if set to 0, the particle effect will not stop automatically.");
 		this->particlePlaySpeed->setDescription("The particle flow speed multiplier. Values > 1.0 make particles flow faster, < 1.0 slower. Also affects play time countdown.");
 		this->blendingMethod->setListSelectedValue("From Material");
@@ -97,116 +98,6 @@ namespace NOWA
 	void ParticleFxComponent::getAbiCookie(Ogre::AbiCookie& outAbiCookie)
 	{
 		outAbiCookie = Ogre::generateAbiCookie();
-	}
-
-	void ParticleFxComponent::gatherParticleNames(void)
-	{
-		const Ogre::String prevSelected = this->particleTemplateName->getListSelectedValue();
-
-		std::vector<Ogre::String> names;
-		names.reserve(256u);
-		names.emplace_back("");
-
-		Ogre::SceneManager* sceneManager = this->gameObjectPtr->getSceneManager();
-		Ogre::ParticleSystemManager2* particleManager = sceneManager->getParticleSystemManager2();
-
-		if (nullptr == particleManager)
-		{
-			return;
-		}
-
-		Ogre::ResourceGroupManager& resourceGroupManager = Ogre::ResourceGroupManager::getSingleton();
-
-		if (false == resourceGroupManager.resourceGroupExists("ParticleFX2"))
-		{
-			return;
-		}
-
-		Ogre::StringVectorPtr scripts = resourceGroupManager.findResourceNames("ParticleFX2", "*.particle2");
-
-		for (const Ogre::String& scriptName : *scripts)
-		{
-			try
-			{
-				Ogre::DataStreamPtr stream = resourceGroupManager.openResource(scriptName, "ParticleFX2");
-				if (!stream)
-				{
-					continue;
-				}
-
-				Ogre::String origin = scriptName;
-
-				std::istringstream iss(stream->getAsString());
-				std::string line;
-
-				while (std::getline(iss, line))
-				{
-					size_t start = line.find_first_not_of(" \t");
-					if (start == std::string::npos)
-					{
-						continue;
-					}
-
-					std::string trimmed = line.substr(start);
-
-					if (!Ogre::StringUtil::startsWith(trimmed, "particle_system", false))
-					{
-						continue;
-					}
-
-					size_t nameStart = trimmed.find_first_not_of(" \t", 15);
-					if (nameStart == std::string::npos)
-					{
-						continue;
-					}
-
-					std::string systemName = trimmed.substr(nameStart);
-					size_t inheritPos = systemName.find(':');
-					if (inheritPos != std::string::npos)
-					{
-						systemName = systemName.substr(0, inheritPos);
-					}
-
-					Ogre::StringUtil::trim(systemName);
-
-					if (!particleManager->hasParticleSystemDef(systemName))
-					{
-						continue;
-					}
-
-					Ogre::ParticleSystemDef* particleSystemDef = particleManager->getParticleSystemDef(systemName);
-
-					if (particleSystemDef->getOrigin() != origin)
-					{
-						continue;
-					}
-
-					if (std::find(names.begin(), names.end(), systemName) == names.end())
-					{
-						names.emplace_back(systemName);
-					}
-				}
-			}
-			catch (...)
-			{
-			}
-		}
-
-		if (names.size() > 2u)
-		{
-			std::sort(names.begin() + 1u, names.end());
-		}
-
-		this->particleTemplateName->setValue(names);
-
-		if (!prevSelected.empty() && std::find(names.begin(), names.end(), prevSelected) != names.end())
-		{
-			this->particleTemplateName->setListSelectedValue(prevSelected);
-		}
-		else if (names.size() > 1u)
-		{
-			this->particleTemplateName->setListSelectedValue(names[1]);
-		}
 	}
 
 	Ogre::String ParticleFxComponent::getUniqueParticleName(void) const
@@ -328,7 +219,7 @@ namespace NOWA
 		}
 
 		// Refresh the particle names list
-		this->gatherParticleNames();
+		this->particleTemplateName->setValue(this->particleFxModule->getAvailableParticleTemplates());
 
 		if (true == this->particleTemplateName->getListSelectedValue().empty())
 		{

@@ -25,7 +25,6 @@ namespace NOWA
 		meshDecalGeneratorModule(nullptr),
 		cameraManager(nullptr),
 		ogreRecastModule(nullptr),
-		particleUniverseModule(nullptr),
 		particleFxModule(nullptr),
 		luaScriptModule(nullptr),
 		eventManager(nullptr),
@@ -177,7 +176,6 @@ namespace NOWA
 
 				this->ogreRecastModule->update(dt);
 				// PlayerControllerComponents are using this directly for smoke effect etc.
-				this->particleUniverseModule->update(dt);
 				this->particleFxModule->update(dt);
 			}
 		}
@@ -252,7 +250,6 @@ namespace NOWA
 				this->meshDecalGeneratorModule = new MeshDecalGeneratorModule(this->appStateName);
 				this->cameraManager = new CameraManager(this->appStateName);
 				this->ogreRecastModule = new OgreRecastModule(this->appStateName);
-				this->particleUniverseModule = new ParticleUniverseModule(this->appStateName);
 				this->particleFxModule = new ParticleFxModule(this->appStateName);
 				this->luaScriptModule = new LuaScriptModule(this->appStateName);
 				this->eventManager = new EventManager(this->appStateName);
@@ -373,9 +370,7 @@ namespace NOWA
 
 				// this->gameProgressModule->destroyContent();
 				this->gameProgressModule->init(this->sceneManager);
-				// this->particleUniverseModule->destroyContent();
 				// this->particleFxModule->destroyContent();
-				this->particleUniverseModule->init(this->sceneManager);
 				this->particleFxModule->init(this->sceneManager);
 				// WorkspaceModule::getInstance()->destroyContent();
 				// Create dummy workspace, since there is no one yet created
@@ -421,10 +416,6 @@ namespace NOWA
 			this->ogreRecastModule->destroyContent();
 			delete this->ogreRecastModule;
 			this->ogreRecastModule = nullptr;
-
-			this->particleUniverseModule->destroyContent();
-			delete this->particleUniverseModule;
-			this->particleUniverseModule = nullptr;
 
 			this->particleFxModule->destroyContent();
 			delete this->particleFxModule;

@@ -159,6 +159,12 @@ namespace NOWA
 		void init(Ogre::SceneManager* sceneManager);
 
 		/**
+		 * @brief Gets all available particle templates
+		 * @return the string list of available particle templates.
+		 */
+		std::vector<Ogre::String> getAvailableParticleTemplates(void);
+
+		/**
 		 * @brief Create a new particle effect
 		 * @param name Unique name for this particle effect instance
 		 * @param templateName The particle template name (material/datablock starting with "Particle/")
@@ -207,11 +213,11 @@ namespace NOWA
 			   - Quality: True smooth transparency
 			   - Uses texture's alpha channel for transparency
 		 */
-		ParticleBlendingMethod::ParticleBlendingMethod createParticleSystem(const Ogre::String& name,
+		void createParticleSystem(const Ogre::String& name,
 			const Ogre::String& templateName,
 			Ogre::Real playTimeMS,
-			const Ogre::Quaternion& orientation = Ogre::Quaternion::IDENTITY,
-			const Ogre::Vector3& position = Ogre::Vector3::ZERO,
+			const Ogre::Quaternion& offsetOrientation = Ogre::Quaternion::IDENTITY,
+			const Ogre::Vector3& offsetPosition = Ogre::Vector3::ZERO,
 			const Ogre::Vector2& scale = Ogre::Vector2::UNIT_SCALE,
 			bool repeat = false,
 			Ogre::Real playSpeed = 1.0f,
@@ -434,6 +440,7 @@ namespace NOWA
 	private:
 		Ogre::String appStateName;
 		Ogre::SceneManager* sceneManager;
+		std::vector<Ogre::String> particleNames;
 		std::map<Ogre::String, ParticleFxData> particles;
 		Ogre::ParticleSystemManager2* particleManager;
 		// Level 1 Cache: Material name → Blending mode (persistent across all particles)

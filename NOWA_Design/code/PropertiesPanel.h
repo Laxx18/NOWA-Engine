@@ -201,6 +201,8 @@ public:
 	virtual void notifyScrollChangePosition(MyGUI::ScrollBar* sender, size_t position) = 0;
 	virtual void notifySliderMouseRelease(MyGUI::Widget* sender, int x, int y, MyGUI::MouseButton button) = 0;
 	virtual void notifySetItemBoxData(MyGUI::ItemBox* sender, const Ogre::String& resourceName) = 0;
+	virtual void onAutoCompleteComboSelectAccept(MyGUI::ComboBox* sender, size_t index);
+
 	void onMouseDoubleClick(MyGUI::Widget* sender);
 	void onMouseClick(MyGUI::Widget* sender, int left, int top, MyGUI::MouseButton id);
 	void notifyColourCancel(MyGUI::ColourPanel* sender);
@@ -220,6 +222,23 @@ public:
 	MyGUI::Widget* addSeparator(void);
 protected:
 	void showDescription(MyGUI::Widget* sender);
+
+	// Helper methods for autocomplete
+	void filterAutoCompleteCombo(MyGUI::EditBox* searchEdit, MyGUI::ComboBox* comboBox, const Ogre::String& filter);
+	MyGUI::ComboBox* getLinkedComboBox(MyGUI::EditBox* searchEdit);
+	MyGUI::EditBox* getLinkedSearchEdit(MyGUI::ComboBox* comboBox);
+
+	// size_t findItemIndexByText(MyGUI::ComboBox* comboBox, const Ogre::String& text);
+
+	// Event handlers for autocomplete
+	void onAutoCompleteTextChange(MyGUI::EditBox* sender);
+	void onAutoCompleteKeyPressed(MyGUI::Widget* sender, MyGUI::KeyCode key, MyGUI::Char ch);
+	void onAutoCompleteComboChangePosition(MyGUI::ComboBox* sender, size_t index);
+	void onAutoCompleteComboMousePressed(MyGUI::Widget* sender, int left, int top, MyGUI::MouseButton id);
+
+	size_t findIndexByText(MyGUI::ComboBox* comboBox, const Ogre::String& text);
+	void syncComboSelectionFromVariant(MyGUI::ComboBox* comboBox);
+	void scrollComboToSelected(MyGUI::ComboBox* comboBox);
 protected:
 	NOWA::EditorManager* editorManager;
 	const std::vector<NOWA::GameObject*> gameObjects;
@@ -230,6 +249,9 @@ protected:
 	int heightCurrent;
 	PropertiesPanelInfo* propertiesPanelInfo;
 	OpenSaveFileDialogExtended* openSaveFileDialog;
+	// AutoComplete support
+	NOWA::AutoCompleteSearch autoCompleteSearch;
+	bool autoCompleteInternalUpdate;
 };
 
 /////////////////////////////////////////////////////////////////////////
@@ -283,6 +305,8 @@ public:
 	virtual void notifySetItemBoxData(MyGUI::ItemBox* sender, const Ogre::String& resourceName) override;
 protected:
 	void setNewAttributeValue(MyGUI::EditBox* sender, NOWA::Variant* attribute);
+
+	void onAutoCompleteComboSelectAccept(MyGUI::ComboBox* sender, size_t index) override;
 protected:
 	std::vector<NOWA::GameObjectComponent*> gameObjectComponents;
 	MyGUI::Button* appendComponentButton;

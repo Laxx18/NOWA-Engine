@@ -1842,7 +1842,6 @@ void DesignState::update(Ogre::Real dt)
 		{
 			// this->ogreNewt->update(dt);
 			NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->update(dt);
-			NOWA::AppStateManager::getSingletonPtr()->getParticleUniverseModule()->update(dt);
 			NOWA::AppStateManager::getSingletonPtr()->getParticleFxModule()->update(dt);
 		}
 

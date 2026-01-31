@@ -2,7 +2,7 @@
 // Scale factor applied to distance-like values: 0.01
 
 // Exudes greeny particles which float upwards.
-particle_system Particle/GreenyNimbus
+particle_system GreenyNimbus
 {
     material        Particle/FlarePointSprite
     particle_width  0.35
@@ -43,7 +43,7 @@ particle_system Particle/GreenyNimbus
 }
 
 // A sparkly purple fountain.
-particle_system Particle/PurpleFountain
+particle_system PurpleFountain
 {
     material        Particle/Flare2
     particle_width  0.20
@@ -81,7 +81,7 @@ particle_system Particle/PurpleFountain
     }
 }
 
-particle_system Particle/Rain
+particle_system Rain
 {
     material        Particle/Droplet
     particle_width  0.02
@@ -118,7 +118,7 @@ particle_system Particle/Rain
     }
 }
 
-particle_system Particle/Rain_Heavy
+particle_system Rain_Heavy
 {
     material        Particle/Droplet
     particle_width  0.03
@@ -156,7 +156,7 @@ particle_system Particle/Rain_Heavy
     }
 }
 
-particle_system Particle/Rain_Drizzle
+particle_system Rain_Drizzle
 {
     material        Particle/Droplet
     particle_width  0.015
@@ -200,7 +200,7 @@ particle_system Particle/Rain_Drizzle
 // Perfect for outdoor scenes, courtyards, streets, etc.
 // ============================================================================
 
-particle_system Particle/Rain_Area
+particle_system Rain_Area
 {
     material        Particle/Droplet
     particle_width  0.02              // Same small scale as your current rain
@@ -245,7 +245,7 @@ particle_system Particle/Rain_Area
 // ----------------------------------------------------------------------------
 // RAIN_AREA_SMALL - Medium outdoor area (courtyard, parking lot)
 // ----------------------------------------------------------------------------
-particle_system Particle/Rain_Area_Small
+particle_system Rain_Area_Small
 {
     material        Particle/Droplet
     particle_width  0.02
@@ -286,7 +286,7 @@ particle_system Particle/Rain_Area_Small
 // ----------------------------------------------------------------------------
 // RAIN_AREA_LARGE - Large outdoor area (street, plaza, field)
 // ----------------------------------------------------------------------------
-particle_system Particle/Rain_Area_Large
+particle_system Rain_Area_Large
 {
     material        Particle/Droplet
     particle_width  0.02
@@ -327,7 +327,7 @@ particle_system Particle/Rain_Area_Large
 // ----------------------------------------------------------------------------
 // RAIN_AREA_HUGE - Massive area (open field, stadium)
 // ----------------------------------------------------------------------------
-particle_system Particle/Rain_Area_Huge
+particle_system Rain_Area_Huge
 {
     material        Particle/Droplet
     particle_width  0.02
@@ -372,7 +372,7 @@ particle_system Particle/Rain_Area_Huge
 // ----------------------------------------------------------------------------
 // RAIN_AREA_HEAVY - Heavy rain over large area
 // ----------------------------------------------------------------------------
-particle_system Particle/Rain_Area_Heavy
+particle_system Rain_Area_Heavy
 {
     material        Particle/Droplet
     particle_width  0.03              // Slightly thicker droplets
@@ -410,7 +410,7 @@ particle_system Particle/Rain_Area_Heavy
     }
 }
 
-particle_system Particle/JetEngine1
+particle_system JetEngine1
 {
     material        Particle/Flare
     quota           200
@@ -440,7 +440,7 @@ particle_system Particle/JetEngine1
     }
 }
 
-particle_system Particle/JetEngine2
+particle_system JetEngine2
 {
 	material 		Particle/Flare
 	particle_width 	0.015
@@ -471,7 +471,7 @@ particle_system Particle/JetEngine2
 }
 
 // Exudes aureola particles which float upwards around the model.
-particle_system Particle/Aureola
+particle_system Aureola
 {
     material        Particle/Aureola
     particle_width  2.0
@@ -528,7 +528,7 @@ particle_system Particle/Aureola
     }
 }
 
-particle_system Particle/Swarm
+particle_system Swarm
 {
 	quota	3000
 	material	Particle/Flare2
@@ -622,7 +622,7 @@ particle_system Particle/Swarm
 	}
 }
 
-particle_system Particle/StarRain
+particle_system StarRain
 {
 	quota	2000
 	material	Particle/Flare
@@ -666,7 +666,7 @@ particle_system Particle/StarRain
 	}
 }
 
-particle_system Particle/AnimationExplosion
+particle_system AnimationExplosion
 {
     quota       10
     material    Particle/AnimationExplosion
@@ -707,7 +707,7 @@ particle_system Particle/AnimationExplosion
     }
 }
 
-particle_system Particle/AnimationFire
+particle_system AnimationFire
 {
     quota       20
     material    Particle/AnimationExplosion
@@ -751,7 +751,7 @@ particle_system Particle/AnimationFire
     }
 }
 
-particle_system Particle/SmokePBS
+particle_system SmokePBS
 {
 	material        	Particle/SmokePBS
 	particle_width  	0.10
@@ -778,7 +778,7 @@ particle_system Particle/SmokePBS
    	}
 }
 
-particle_system Particle/SmokeUnlit : Particle/SmokePBS
+particle_system SmokeUnlit : Particle/SmokePBS
 {
 	material	Particle/SmokeUnlit
 
@@ -796,12 +796,12 @@ particle_system Particle/SmokeUnlit : Particle/SmokePBS
 	}
 }
 
-particle_system Particle/SpherePBS : Particle/SmokePBS
+particle_system SpherePBS : Particle/SmokePBS
 {
 	material	Particle/SpherePBS
 }
 
-particle_system Particle/advancedLodSystem
+particle_system advancedLodSystem
 {
 	quota           	100
 	material        	Particle/advancedLodSystem
@@ -835,7 +835,7 @@ particle_system Particle/advancedLodSystem
 	}
 }
 
-particle_system Particle/explosion
+particle_system explosion
 {
     quota           300 
     material        Particle/Nucleus
@@ -867,7 +867,7 @@ particle_system Particle/explosion
     }
 }
 
-particle_system Particle/explosionSystem
+particle_system explosionSystem
 {
     quota           100
     material        Particle/Nucleus
@@ -907,7 +907,7 @@ particle_system Particle/explosionSystem
     }
 }
 
-particle_system Particle/lightningBolt_1
+particle_system lightningBolt_1
 {
     quota           20 
     material        Particle/Lightning_01
@@ -931,7 +931,7 @@ particle_system Particle/lightningBolt_1
     }
 }
 
-particle_system Particle/lightningBolt_2
+particle_system lightningBolt_2
 {
     quota           5 
     material        Particle/Lightning_02
@@ -955,7 +955,7 @@ particle_system Particle/lightningBolt_2
     }
 }
 
-particle_system Particle/lightningBolt_3
+particle_system lightningBolt_3
 {
     quota           5 
     material        Particle/Lightning_03
@@ -979,7 +979,7 @@ particle_system Particle/lightningBolt_3
     }
 }
 
-particle_system Particle/lightningBolt_4
+particle_system lightningBolt_4
 {
     quota           5 
     material        Particle/Lightning_04
@@ -1003,7 +1003,7 @@ particle_system Particle/lightningBolt_4
     }
 }
 
-particle_system Particle/nucleus
+particle_system nucleus
 {
     quota           2000 
 	material Particle/Smoke 
@@ -1056,7 +1056,7 @@ particle_system Particle/nucleus
     }
 }
 
-particle_system Particle/Atomicity_Streaks
+particle_system Atomicity_Streaks
 {
     material        Particle/Streak_02
     particle_width  0.24
@@ -1103,7 +1103,7 @@ particle_system Particle/Atomicity_Streaks
     }
 }
 
-particle_system Particle/Atomicity_Flares
+particle_system Atomicity_Flares
 {
     material        Particle/Flare_04
     particle_width  0.25
@@ -1145,7 +1145,7 @@ particle_system Particle/Atomicity_Flares
     }
 }
 
-particle_system Particle/Atomicity_Combined
+particle_system Atomicity_Combined
 {
     material        Particle/Flare_04
     particle_width  0.03
@@ -1198,7 +1198,7 @@ particle_system Particle/Atomicity_Combined
     }
 }
 
-particle_system Particle/Beam_Core
+particle_system Beam_Core
 {
     material        Particle/Beam_1
     particle_width  0.009
@@ -1229,7 +1229,7 @@ particle_system Particle/Beam_Core
     }
 }
 
-particle_system Particle/Beam_Flares
+particle_system Beam_Flares
 {
     material        Particle/Beam_2
     particle_width  0.003
@@ -1268,7 +1268,7 @@ particle_system Particle/Beam_Flares
     }
 }
 
-particle_system Particle/Beam_Combined
+particle_system Beam_Combined
 {
     material        Particle/Beam_2
     particle_width  0.006
@@ -1319,7 +1319,7 @@ particle_system Particle/Beam_Combined
     }
 }
 
-particle_system Particle/Beam_Smooth
+particle_system Beam_Smooth
 {
     material        Particle/Beam_1
     particle_width  0.025
@@ -1347,7 +1347,7 @@ particle_system Particle/Beam_Smooth
     }
 }
 
-particle_system Particle/Beam_Energy
+particle_system Beam_Energy
 {
     material        Particle/Beam_1
     particle_width  0.03
@@ -1378,7 +1378,7 @@ particle_system Particle/Beam_Energy
     }
 }
 
-particle_system Particle/Beam_Lightning
+particle_system Beam_Lightning
 {
     material        Particle/Beam_2
     particle_width  0.02
@@ -1424,7 +1424,7 @@ particle_system Particle/Beam_Lightning
     }
 }
 
-particle_system Particle/Beam_Laser
+particle_system Beam_Laser
 {
     material        Particle/Beam_1
     particle_width  0.008
@@ -1452,7 +1452,7 @@ particle_system Particle/Beam_Laser
     }
 }
 
-particle_system Particle/Beam2
+particle_system Beam2
 {
     material        Particle/Beam_2        // Use your existing beam material
     quota           400                    // enough for continuity
@@ -1516,7 +1516,7 @@ particle_system Particle/Beam2
 
 // Technique 1 approximation: "Flare_04" core particles that brighten and shrink.
 // ParticleFX2 has no point gravity, so we fake "collapse" via shrinking + mild pull.
-particle_system Particle/BlackHole_Core
+particle_system BlackHole_Core
 {
     material        Particle/Flare_04
     particle_width  0.12          // 12 * 0.01
@@ -1574,7 +1574,7 @@ particle_system Particle/BlackHole_Core
 
 
 // Technique 2 approximation: oriented_self streaks that fade in/out and shrink quickly.
-particle_system Particle/BlackHole_Streaks
+particle_system BlackHole_Streaks
 {
     material        Particle/Streak_03
     particle_width  0.03          // avg(2..4)=3 => 0.03
@@ -1631,11 +1631,11 @@ particle_system Particle/BlackHole_Streaks
 }
 
 // ===========================================================
-// PU: system bubbles
+// system bubbles
 // Technique 1: ParticleUniverse/Bubble (sharp bubbles)
 // Line: (-24,-18,0) -> (48,-18,0)
 // ===========================================================
-particle_system Particle/Bubbles
+particle_system Bubbles
 {
     material        Particle/Bubble
     quota           250
@@ -1681,7 +1681,7 @@ particle_system Particle/Bubbles
     // }
 }
 
-particle_system Particle/BlurredBubbles
+particle_system BlurredBubbles
 {
     material        Particle/BlurredBubble
     quota           220
@@ -1725,10 +1725,10 @@ particle_system Particle/BlurredBubbles
 }
 
 // ===========================================================
-// PU: system burstFlare
+// system burstFlare
 // ParticleFX2 approximation: burst of flares with colour cycling and growth
 // ===========================================================
-particle_system Particle/BurstFlare
+particle_system BurstFlare
 {
     material        Particle/BurstFlare
     quota           2000
@@ -1803,7 +1803,7 @@ particle_system Particle/BurstFlare
     }
 }
 
-particle_system Particle/CanOfWorms
+particle_system CanOfWorms
 {
     quota                   2000
     emitted_emitter_quota   20
@@ -1828,7 +1828,7 @@ particle_system Particle/CanOfWorms
         velocity_min        9
         velocity_max        9
 
-        // PU: emits emitter_particle Worms
+        // emits emitter_particle Worms
         emits               emitter_particle Worms
     }
 
@@ -1858,13 +1858,13 @@ particle_system Particle/CanOfWorms
     }
 }
 
-particle_system Particle/ColouredStreaks
+particle_system ColouredStreaks
 {
     quota                   3000
     emitted_emitter_quota   30
     material                Particle/Streak_04
 
-    // PU: default_particle_width 2.1, height 24
+    // default_particle_width 2.1, height 24
     // scaled by 0.01 to match your NOWA meters
     particle_width          0.021
     particle_height         0.24
@@ -1880,36 +1880,36 @@ particle_system Particle/ColouredStreaks
     {
         emission_rate       4
         angle               0
-        // PU TTL 4..6
+        // TTL 4..6
         time_to_live        5
         time_to_live_min    4
         time_to_live_max    6
 
-        // PU velocity 0..6 => 0..0.06
+        // velocity 0..6 => 0..0.06
         direction           1 0 0
         velocity_min        0.0
         velocity_max        0.06
 
         colour              1 0 0 1
 
-        // PU: emits emitter_particle flares
+        // emits emitter_particle flares
         emits               emitter_particle flares
     }
 
-    // Secondary “flares” spawned by streaks
+    // Secondary flares spawned by streaks
     emitter Point flares
     {
         emission_rate       100
         angle               0
         time_to_live        2
 
-        // PU velocity 3 => 0.03
+        // velocity 3 => 0.03
         direction           1 0 0
         velocity_min        0.028
         velocity_max        0.032
     }
 
-    // PU colour timeline:
+    // colour timeline:
     // 0    1 0 0 1
     // 0.2  0.3 0.1 0.6 1
     // 0.4  1 1 0 1
@@ -1934,8 +1934,8 @@ particle_system Particle/ColouredStreaks
     }
 
     // PathFollower approximation:
-    // Instead of spline points, apply a gentle drift (like the path “curves” in Y/Z),
-    // and add randomness for “following a path” vibes.
+    // Instead of spline points, apply a gentle drift (like the path curves in Y/Z),
+    // and add randomness for following a path vibes.
     affector LinearForce
     {
         // Tune this to match your desired curve direction.
@@ -1957,7 +1957,7 @@ particle_system Particle/ColouredStreaks
     }
 }
 
-particle_system Particle/Crate
+particle_system Crate
 {
     material        Particle/Crate
     quota           10
@@ -1967,11 +1967,11 @@ particle_system Particle/Crate
     renderer        billboard
     billboard_type  point
 
-    // PU default dims 2.4 x 2.4 x 2.4 (depth ignored for billboards)
+    // default dims 2.4 x 2.4 x 2.4 (depth ignored for billboards)
     particle_width  2.4
     particle_height 2.4
 
-    // PU Box emitter:
+    // Box emitter:
     // box_width 12, box_height 12, box_depth 0.3
     emitter Box
     {
@@ -1979,7 +1979,7 @@ particle_system Particle/Crate
         angle           40
         time_to_live    10
 
-        // PU velocity 9
+        // velocity 9
         direction       0 1 0
         velocity_min    9
         velocity_max    9
@@ -1992,14 +1992,14 @@ particle_system Particle/Crate
         depth           0.3
     }
 
-    // PU LinearForce force_vector 0 -3 0
+    // LinearForce force_vector 0 -3 0
     affector LinearForce
     {
         force_vector      0 -3 0
         force_application add
     }
 
-    // PU Align (for box orientation) isn't available.
+    // Align (for box orientation) isn't available.
     // Optional: add rotation so they don't look perfectly static while flying.
     affector Rotator
     {
@@ -2010,7 +2010,7 @@ particle_system Particle/Crate
     }
 }
 
-particle_system Particle/Dirt
+particle_system Dirt
 {
     material        Particle/Dirt_11
     quota           3000
@@ -2021,7 +2021,7 @@ particle_system Particle/Dirt
     billboard_type      oriented_self
     billboard_origin    bottom_center
 
-    // PU default width/height
+    // default width/height
     particle_width      0.03
     particle_height     0.18
 
@@ -2030,13 +2030,13 @@ particle_system Particle/Dirt
         angle           60
         time_to_live    4
 
-        // PU velocity 0.3..0.9
+        // velocity 0.3..0.9
         direction       0 1 0
         velocity_min    0.3
         velocity_max    0.9
     }
 
-    // PU colour timeline: stays white until 0.4, then fades to transparent by 0.5
+    // colour timeline: stays white until 0.4, then fades to transparent by 0.5
     affector ColourInterpolator
     {
         time0   0.0
@@ -2053,7 +2053,7 @@ particle_system Particle/Dirt
         colour3 1 1 1 0
     }
 
-    // Approximate PU curved x/y scale down to zero.
+    // Approximate curved x/y scale down to zero.
     // ParticleFX2 ScaleInterpolator is uniform, but gives a similar "fast shrink" feel.
     affector ScaleInterpolator
     {
@@ -2081,7 +2081,7 @@ particle_system Particle/Dirt
     // }
 }
 
-particle_system Particle/DirtExplosion_Dirt
+particle_system DirtExplosion_Dirt
 {
     material            Particle/Dirt_11
     quota               30
@@ -2107,7 +2107,7 @@ particle_system Particle/DirtExplosion_Dirt
         time_to_live_min 1.8
         time_to_live_max 3.4
 
-        // PU velocity 0.03
+        // velocity 0.03
         direction       0 1 0
         velocity_min    0.03
         velocity_max    0.03
@@ -2115,7 +2115,7 @@ particle_system Particle/DirtExplosion_Dirt
         colour          0.76 0.7 0.64 1
     }
 
-    // Emitter B: smaller chips (different size range in PU)
+    // Emitter B: smaller chips (different size range)
     // We approximate by setting smaller base size and emitting similarly.
     // ParticleFX2 doesn't support per-emitter particle_width/height, so we cheat by spawning
     // a second system for chips if you want real size separation.
@@ -2136,7 +2136,7 @@ particle_system Particle/DirtExplosion_Dirt
         colour          0.76 0.7 0.64 1
     }
 
-    // PU colour multiply + fade to 0 at end
+    // colour multiply + fade to 0 at end
     affector ColourInterpolator
     {
         time0   0.0
@@ -2150,7 +2150,7 @@ particle_system Particle/DirtExplosion_Dirt
     }
 
     // Approximate per-axis curved scaling with a strong uniform curve
-    // (PU starts huge scale then collapses fast)
+    // (starts huge scale then collapses fast)
     affector ScaleInterpolator
     {
         time0   0.0
@@ -2167,7 +2167,7 @@ particle_system Particle/DirtExplosion_Dirt
     }
 }
 
-particle_system Particle/DirtExplosion_Chips
+particle_system DirtExplosion_Chips
 {
     material            Particle/Dirt_11
     quota               30
@@ -2178,7 +2178,7 @@ particle_system Particle/DirtExplosion_Chips
     billboard_type      oriented_self
     billboard_origin    bottom_center
 
-    // PU chip sizes: width 0.075..0.225 (avg ~0.15), height 0.06..0.225 (avg ~0.14)
+    // chip sizes: width 0.075..0.225 (avg ~0.15), height 0.06..0.225 (avg ~0.14)
     particle_width      0.15
     particle_height     0.14
 
@@ -2219,7 +2219,7 @@ particle_system Particle/DirtExplosion_Chips
     }
 }
 
-particle_system Particle/DirtExplosion_Smoke
+particle_system DirtExplosion_Smoke
 {
     material        Particle/Smoke_11
     quota           100
@@ -2229,7 +2229,7 @@ particle_system Particle/DirtExplosion_Smoke
 
     billboard_type  oriented_self
 
-    // PU all_particle_dimensions 0.15..0.6 => avg 0.375
+    // all_particle_dimensions 0.15..0.6 => avg 0.375
     particle_width  0.375
     particle_height 0.375
 
@@ -2239,7 +2239,7 @@ particle_system Particle/DirtExplosion_Smoke
         angle           10
         time_to_live    4
 
-        // PU velocity 9..21
+        // velocity 9..21
         direction       0 1 0
         velocity_min    9
         velocity_max    21
@@ -2247,14 +2247,14 @@ particle_system Particle/DirtExplosion_Smoke
         colour          0.32 0.3 0.2 1
     }
 
-    // PU LinearForce 0 -15 0
+    // LinearForce 0 -15 0
     affector LinearForce
     {
         force_vector      0 -15 0
         force_application add
     }
 
-    // PU multiply + fade
+    // multiply + fade
     affector ColourInterpolator
     {
         time0   0.0
@@ -2268,7 +2268,7 @@ particle_system Particle/DirtExplosion_Smoke
     }
 }
 
-particle_system Particle/ElectricBeam_Core
+particle_system ElectricBeam_Core
 {
     material        Particle/Lighting
     quota           600
@@ -2276,7 +2276,7 @@ particle_system Particle/ElectricBeam_Core
     sorted          true
     local_space     true
 
-    // PU default_particle_width 1.05 -> scaled 0.0105
+    // default_particle_width 1.05 -> scaled 0.0105
     particle_width  0.105
     // beam segment length (tune)
     particle_height 0.6
@@ -2286,15 +2286,15 @@ particle_system Particle/ElectricBeam_Core
 
     emitter Point
     {
-        // PU emission_rate 40
+        // emission_rate 40
         emission_rate   40
 
-        // PU TTL 100 is “persistent line”; for FX2 we use short TTL and high emission to look continuous
+        // TTL 100 is persistent line; for FX2 we use short TTL and high emission to look continuous
         time_to_live    0.20
 
         position        0 0 0
 
-        // Along the PU end vector (approx (60,12,0))
+        // Along the end vector (approx (60,12,0))
         direction       0.9806 0.1961 0
 
         // Choose velocity so segments populate the full beam length quickly.
@@ -2302,7 +2302,7 @@ particle_system Particle/ElectricBeam_Core
         velocity_min    3.5
         velocity_max    4.5
 
-        // Small spread like PU max_deviation
+        // Small spread like max_deviation
         angle           2.0
     }
 
@@ -2312,7 +2312,7 @@ particle_system Particle/ElectricBeam_Core
         alpha -4.0
     }
 
-    // Optional subtle “drift” to avoid perfectly straight line
+    // Optional subtle drift to avoid perfectly straight line
     affector LinearForce
     {
         force_vector      0.0 0.0 0.25
@@ -2329,7 +2329,7 @@ particle_system Particle/ElectricBeam_Core
     }
 }
 
-particle_system Particle/ElectricBeam_Noise
+particle_system ElectricBeam_Noise
 {
     material        Particle/Lighting
     quota           1200
@@ -2337,7 +2337,7 @@ particle_system Particle/ElectricBeam_Noise
     sorted          true
     local_space     true
 
-    // PU default_particle_width 0.45 -> scaled 0.0045
+    // default_particle_width 0.45 -> scaled 0.0045
     particle_width  0.45
     particle_height 0.3
 
@@ -2346,7 +2346,7 @@ particle_system Particle/ElectricBeam_Noise
 
     emitter Point
     {
-        // PU emission_rate 150
+        // emission_rate 150
         emission_rate   150
         time_to_live    0.12
 
@@ -2366,7 +2366,7 @@ particle_system Particle/ElectricBeam_Noise
         alpha -6.0
     }
 
-    // More chaotic sideways movement (approximates PU Line affector max_deviation+drift)
+    // More chaotic sideways movement (approximates Line affector max_deviation+drift)
     affector DirectionRandomiser
     {
         randomness 0.35     // tune 0.15..0.8
@@ -2379,7 +2379,7 @@ particle_system Particle/ElectricBeam_Noise
     }
 }
 
-particle_system Particle/ElectroShield_Ring
+particle_system ElectroShield_Ring
 {
     material        Particle/Spark_01
     quota           600
@@ -2390,7 +2390,7 @@ particle_system Particle/ElectroShield_Ring
     billboard_type      oriented_self
     billboard_origin    bottom_center
 
-    // PU default size: width 2.4, height 0.03 (very long thin spark)
+    // default size: width 2.4, height 0.03 (very long thin spark)
     particle_width      2.4
     particle_height     0.3
 
@@ -2398,35 +2398,35 @@ particle_system Particle/ElectroShield_Ring
     // We emit from a square band around origin and jitter heavily.
     emitter Box
     {
-        emission_rate   160          // PU circle emission_rate 16 but it's structured; use higher for continuous ring
+        emission_rate   160          // circle emission_rate 16 but it's structured; use higher for continuous ring
         time_to_live    1.0
         angle           180
         position        0 0 0
         direction       0 1 0
-        velocity_min    0.6          // PU velocity 1.2 (tune)
+        velocity_min    0.6          // velocity 1.2 (tune)
         velocity_max    1.4
 
-        // "Ring" size. If your PU radius=6 is in meters, keep 6.
+        // "Ring" size. If your radius=6 is in meters, keep 6.
         // If you scale by 0.01, set these to 0.12 etc.
         width           12.0         // diameter = 2 * radius
         height          0.15         // thin band thickness
         depth           12.0
     }
 
-    // Jitter like PU Randomiser max_deviation_x/y/z with small timestep
+    // Jitter like Randomiser max_deviation_x/y/z with small timestep
     affector DirectionRandomiser
     {
-        randomness 1.2               // tune 0.4..2.5 for “electric chaos”
+        randomness 1.2               // tune 0.4..2.5 for electric chaos
     }
 
-    // Optional: slight pull inward to keep it “shield-ish” (very subtle)
+    // Optional: slight pull inward to keep it shield-ish (very subtle)
     // affector LinearForce
     // {
     //     force_vector      0 -0.2 0
     //     force_application add
     // }
 
-    // PU colour multiply: stays visible until 0.8 then fades out
+    // colour multiply: stays visible until 0.8 then fades out
     affector ColourInterpolator
     {
         time0   0.0
@@ -2439,7 +2439,7 @@ particle_system Particle/ElectroShield_Ring
         colour2 0 0 0 0
     }
 
-    // Fast flicker (helps “electric” feel)
+    // Fast flicker (helps electric feel)
     affector Rotator
     {
         rotation_speed_range_start  -360
@@ -2449,7 +2449,7 @@ particle_system Particle/ElectroShield_Ring
     }
 }
 
-particle_system Particle/ElectroShield_Pulse
+particle_system ElectroShield_Pulse
 {
     material        Particle/Spark_01
     quota           120
@@ -2485,7 +2485,7 @@ particle_system Particle/ElectroShield_Pulse
     }
 }
 
-particle_system Particle/Explosion_Fire
+particle_system Explosion_Fire
 {
     material        Particle/Nucleus
     quota           300
@@ -2494,7 +2494,7 @@ particle_system Particle/Explosion_Fire
     local_space     true
     billboard_type  point
 
-    // PU random size 0.6..2.4 => avg 1.5
+    // random size 0.6..2.4 => avg 1.5
     particle_width  1.5
     particle_height 1.5
 
@@ -2510,7 +2510,7 @@ particle_system Particle/Explosion_Fire
         colour          1 0.5 0.3 1
     }
 
-    // PU scale curve: huge at start -> quickly down -> 0
+    // scale curve: huge at start -> quickly down -> 0
     // (We can’t do 60x initial without insane size; approximate with strong shrink curve)
     affector ScaleInterpolator
     {
@@ -2522,7 +2522,7 @@ particle_system Particle/Explosion_Fire
         scale2  0.0
     }
 
-    // Random rotation (PU TextureRotator own rotation)
+    // Random rotation (TextureRotator own rotation)
     affector Rotator
     {
         rotation_range_start            0
@@ -2545,7 +2545,7 @@ particle_system Particle/Explosion_Fire
     }
 }
 
-particle_system Particle/Explosion_Debris
+particle_system Explosion_Debris
 {
     material        Particle/Debris
     quota           100
@@ -2554,8 +2554,8 @@ particle_system Particle/Explosion_Debris
     local_space     true
     billboard_type  oriented_self
 
-    // PU random width 0.09..0.6 => avg 0.345
-    // PU random height 1.5..3 => avg 2.25
+    // random width 0.09..0.6 => avg 0.345
+    // random height 1.5..3 => avg 2.25
     particle_width  0.345
     particle_height 2.25
 
@@ -2569,7 +2569,7 @@ particle_system Particle/Explosion_Debris
         velocity_max    36
     }
 
-    // PU y_scale curve negative -> 0; in FX2 we just shrink
+    // y_scale curve negative -> 0; in FX2 we just shrink
     affector ScaleInterpolator
     {
         time0   0.0
@@ -2580,7 +2580,7 @@ particle_system Particle/Explosion_Debris
         scale2  0.0
     }
 
-    // PU Jet acceleration -0.06 (minor). We approximate with a slight downward pull.
+    // Jet acceleration -0.06 (minor). We approximate with a slight downward pull.
     affector LinearForce
     {
         force_vector      0 -3 0
@@ -2596,7 +2596,7 @@ particle_system Particle/Explosion_Debris
     }
 }
 
-particle_system Particle/Explosion_SmokeAtlas
+particle_system Explosion_SmokeAtlas
 {
     material        Particle/AtlasSmoke
     quota           300
@@ -2609,14 +2609,14 @@ particle_system Particle/Explosion_SmokeAtlas
     stacks 4
     slices 4
 
-    // PU random size 1.2..3 => avg 2.1
+    // random size 1.2..3 => avg 2.1
     particle_width  2.1
     particle_height 2.1
 
     emitter Point
     {
         emission_rate   120
-        duration        0.35          // approximates “slave bursts”
+        duration        0.35          // approximates slave bursts
         angle           360
         time_to_live    1.2
         direction       0 1 0
@@ -2636,7 +2636,7 @@ particle_system Particle/Explosion_SmokeAtlas
         scale2  0.0
     }
 
-    // Fade timeline similar to PU
+    // Fade timeline
     affector ColourInterpolator
     {
         time0   0.0
@@ -2665,7 +2665,7 @@ particle_system Particle/Explosion_SmokeAtlas
     }
 }
 
-particle_system Particle/ExplosionSystem_FireBurst
+particle_system ExplosionSystem_FireBurst
 {
     material        Particle/ExplosionFire
     quota           300
@@ -2674,7 +2674,7 @@ particle_system Particle/ExplosionSystem_FireBurst
     local_space     true
     billboard_type  point
 
-    // PU default 0.3x0.3, xyz_scale 6 => effective ~1.8x1.8
+    // default 0.3x0.3, xyz_scale 6 => effective ~1.8x1.8
     particle_width  1.8
     particle_height 1.8
 
@@ -2709,7 +2709,7 @@ particle_system Particle/ExplosionSystem_FireBurst
     }
 }
 
-particle_system Particle/ExplosionSystem_Debris
+particle_system ExplosionSystem_Debris
 {
     material        Particle/Debris
     quota           500
@@ -2718,7 +2718,7 @@ particle_system Particle/ExplosionSystem_Debris
     local_space     true
     billboard_type  oriented_self
 
-    // PU width 0.09, height 0.06..0.6 (avg ~0.33)
+    // width 0.09, height 0.06..0.6 (avg ~0.33)
     particle_width  0.09
     particle_height 0.33
 
@@ -2749,7 +2749,7 @@ particle_system Particle/ExplosionSystem_Debris
     }
 }
 
-particle_system Particle/Fireplace_01_Core
+particle_system Fireplace_01_Core
 {
     material        Particle/Fire_01
     quota           450
@@ -2758,8 +2758,8 @@ particle_system Particle/Fireplace_01_Core
     local_space     true
     billboard_type  point
 
-    // PU width 0.9..2.1 => avg 1.5
-    // PU height 0.39..1.2 => avg ~0.8
+    // width 0.9..2.1 => avg 1.5
+    // height 0.39..1.2 => avg ~0.8
     particle_width  1.5
     particle_height 0.8
 
@@ -2776,14 +2776,14 @@ particle_system Particle/Fireplace_01_Core
         velocity_min    3.0
         velocity_max    6.0
 
-        // PU box 3 x 0.12 x 3
+        // box 3 x 0.12 x 3
         width           3.0
         height          0.12
         depth           3.0
         position        0 0 0
     }
 
-    // Upward drift + slight “pull back” so it doesn’t shoot too straight
+    // Upward drift + slight pull back so it doesn’t shoot too straight
     affector LinearForce
     {
         // tune: higher Y = taller flames
@@ -2797,14 +2797,14 @@ particle_system Particle/Fireplace_01_Core
         randomness 0.35     // tune 0.2..0.7
     }
 
-    // PU x_scale -0.15 means shrink over time
+    // x_scale -0.15 means shrink over time
     affector Scaler
     {
         rate -0.15
     }
 
-    // PU colour: black -> white quickly -> black (keeps alpha 1)
-    // In practice you want alpha fade too; but keeping alpha=1 matches PU.
+    // colour: black -> white quickly -> black (keeps alpha 1)
+    // In practice you want alpha fade too; but keeping alpha=1 matches 
     affector ColourInterpolator
     {
         time0   0.0
@@ -2818,7 +2818,7 @@ particle_system Particle/Fireplace_01_Core
     }
 }
 
-particle_system Particle/Fireplace_01_Tongues
+particle_system Fireplace_01_Tongues
 {
     material        Particle/Fire_02
     quota           450
@@ -2826,7 +2826,7 @@ particle_system Particle/Fireplace_01_Tongues
     sorted          true
     local_space     true
 
-    // PU uses oriented_self
+    // uses oriented_self
     billboard_type  oriented_self
 
     particle_width  1.5
@@ -2858,7 +2858,7 @@ particle_system Particle/Fireplace_01_Tongues
         force_application add
     }
 
-    // “Follower” approximation: lower randomness than core, so shapes trail nicely
+    // Follower approximation: lower randomness than core, so shapes trail nicely
     affector DirectionRandomiser
     {
         randomness 0.22     // tune 0.1..0.4
@@ -2882,7 +2882,7 @@ particle_system Particle/Fireplace_01_Tongues
     }
 }
 
-particle_system Particle/FireSystem_Fire
+particle_system FireSystem_Fire
 {
     material        Particle/Fire_01
     quota           600
@@ -2908,7 +2908,7 @@ particle_system Particle/FireSystem_Fire
         velocity_max    2.4
     }
 
-    // Upward drift (replacement for PU gravity setup)
+    // Upward drift (replacement for gravity setup)
     affector LinearForce
     {
         force_vector      0 0.9 0
@@ -2921,7 +2921,7 @@ particle_system Particle/FireSystem_Fire
         randomness 0.18
     }
 
-    // PU xyz_scale -0.15
+    // xyz_scale -0.15
     affector Scaler
     {
         rate -0.15
@@ -2937,7 +2937,7 @@ particle_system Particle/FireSystem_Fire
     }
 }
 
-particle_system Particle/FireSystem_Smoke
+particle_system FireSystem_Smoke
 {
     material        Particle/Smoke
     quota           500
@@ -2975,7 +2975,7 @@ particle_system Particle/FireSystem_Smoke
         randomness 0.25
     }
 
-    // PU xyz_scale 0.6 (grow)
+    // xyz_scale 0.6 (grow)
     affector Scaler
     {
         rate 0.6
@@ -2991,7 +2991,7 @@ particle_system Particle/FireSystem_Smoke
     }
 }
 
-particle_system Particle/Fish_School
+particle_system Fish_School
 {
     material        Particle/Fish
     quota           200
@@ -3001,25 +3001,25 @@ particle_system Particle/Fish_School
 
     billboard_type  oriented_self
 
-    // sprite size (PU 1.2)
+    // sprite size (1.2)
     particle_width  1.2
     particle_height 1.2
 
     emitter Box
     {
-        emission_rate   80        // PU emission 20 for 2s; here do a quick fill
+        emission_rate   80        // emission 20 for 2s; here do a quick fill
         duration        2.0
         time_to_live    50.0
 
         angle           25
         position        0 0 0
 
-        // Emit mostly forward (PU direction 1,0,0)
+        // Emit mostly forward (direction 1,0,0)
         direction       1 0 0
         velocity_min    4.5
         velocity_max    6.0
 
-        // PU box 15^3; but your PU had offset position -24 0 0.
+        // box 15^3; but your had offset position -24 0 0.
         // Do that by placing the particle node at (-24,0,0) in your scene,
         // or shift here via emitter position:
         width           15
@@ -3027,13 +3027,13 @@ particle_system Particle/Fish_School
         depth           15
     }
 
-    // Gentle “wander” to fake schooling turns
+    // Gentle wander to fake schooling turns
     affector DirectionRandomiser
     {
         randomness 0.18   // tune 0.08..0.35
     }
 
-    // Mild pull downward (PU CenterGravity at 0,-6,0). This is only a crude substitute.
+    // Mild pull downward (CenterGravity at 0,-6,0). This is only a crude substitute.
     affector LinearForce
     {
         force_vector      0 -0.25 0
@@ -3048,7 +3048,7 @@ particle_system Particle/Fish_School
     }
 }
 
-particle_system Particle/FlameSystem
+particle_system FlameSystem
 {
     material        Particle/Flame
     quota           2000
@@ -3058,11 +3058,11 @@ particle_system Particle/FlameSystem
 
     billboard_type  oriented_self
 
-    // PU defaults:
+    // defaults:
     particle_width  1.35
     particle_height 1.8
 
-    // Main flame sheet emission (PU flamesEmitter)
+    // Main flame sheet emission (flamesEmitter)
     emitter Box
     {
         emission_rate   200
@@ -3089,7 +3089,7 @@ particle_system Particle/FlameSystem
         force_application add
     }
 
-    // PU SineForce: force_vector 0.9 0 0, max_frequency 3
+    // SineForce: force_vector 0.9 0 0, max_frequency 3
     // ParticleFX2 doesn't have SineForce in scripts; approximate sway with DirectionRandomiser +
     // a small constant sideways force. (If you add engine-side sine, even better.)
     affector LinearForce
@@ -3104,7 +3104,7 @@ particle_system Particle/FlameSystem
         randomness 0.28   // tune 0.15..0.45
     }
 
-    // PU Gravity(gravity=1.2) via emitted affector particles:
+    // Gravity(gravity=1.2) via emitted affector particles:
     // we approximate with a mild downward pull (optional, keep very small for flames)
     affector LinearForce
     {
@@ -3112,13 +3112,13 @@ particle_system Particle/FlameSystem
         force_application add
     }
 
-    // PU xyz_scale -0.3 (shrinks)
+    // xyz_scale -0.3 (shrinks)
     affector Scaler
     {
         rate -0.3
     }
 
-    // Colour: white to black (alpha stays 1 in PU)
+    // Colour: white to black (alpha stays 1)
     affector ColourInterpolator
     {
         time0   0.0
@@ -3138,7 +3138,7 @@ particle_system Particle/FlameSystem
     }
 }
 
-particle_system Particle/Flare_Stream
+particle_system Flare_Stream
 {
     material        Particle/Flare
     quota           1000
@@ -3152,7 +3152,7 @@ particle_system Particle/Flare_Stream
 
     emitter Box
     {
-        // PU emission_rate 1000; keep high but reasonable
+        // emission_rate 1000; keep high but reasonable
         emission_rate   400
 
         angle           360
@@ -3189,7 +3189,7 @@ particle_system Particle/Flare_Stream
     }
 }
 
-particle_system Particle/Flare_Burst
+particle_system Flare_Burst
 {
     material        Particle/Flare
     quota           400
@@ -3237,7 +3237,7 @@ particle_system Particle/Flare_Burst
     }
 }
 
-particle_system Particle/Flare2
+particle_system Flare2
 {
     material        Particle/Flare_01
     quota           5000
@@ -3251,7 +3251,7 @@ particle_system Particle/Flare2
 
     emitter Box
     {
-        // Very dense emission like PU
+        // Very dense emission like 
         emission_rate   5000
         angle           360
 
@@ -3262,7 +3262,7 @@ particle_system Particle/Flare2
         // No preferred direction; angle 360 makes it spray all around
         direction       0 1 0
 
-        // PU constant 0.06
+        // constant 0.06
         velocity_min    0.06
         velocity_max    0.06
 
@@ -3272,7 +3272,7 @@ particle_system Particle/Flare2
         height          5.0
         depth           0.10     // thin => surface-ish
 
-        // PU technique position 0 0 3
+        // technique position 0 0 3
         position        0 0 3
 
         // Grey start colour range (approx)
@@ -3286,14 +3286,14 @@ particle_system Particle/Flare2
         randomness 0.02
     }
 
-    // Optional: slow fade (PU doesn’t specify fade; keeping subtle is nice)
+    // Optional: slow fade (doesn’t specify fade; keeping subtle is nice)
     affector ColourFader
     {
         alpha -0.25
     }
 }
 
-particle_system Particle/Fireplace_02_Core
+particle_system Fireplace_02_Core
 {
     material        Particle/Fire_03
     quota           450
@@ -3302,8 +3302,8 @@ particle_system Particle/Fireplace_02_Core
     local_space     true
     billboard_type  point
 
-    // PU width 0.9..2.1 => avg 1.5
-    // PU height 0.39..1.2 => avg ~0.8
+    // width 0.9..2.1 => avg 1.5
+    // height 0.39..1.2 => avg ~0.8
     particle_width  1.5
     particle_height 0.8
 
@@ -3326,7 +3326,7 @@ particle_system Particle/Fireplace_02_Core
         position        0 0 0
     }
 
-    // Fire drift upward (PU "gravity" setup is not directly portable)
+    // Fire drift upward ("gravity" setup is not directly portable)
     affector LinearForce
     {
         force_vector      0 1.2 0
@@ -3339,13 +3339,13 @@ particle_system Particle/Fireplace_02_Core
         randomness 0.30
     }
 
-    // Shrink over lifetime (PU x_scale -0.15; y_scale random -> approximate)
+    // Shrink over lifetime (x_scale -0.15; y_scale random -> approximate)
     affector Scaler
     {
         rate -0.15
     }
 
-    // PU: black -> white quickly -> black (alpha stays 1)
+    // black -> white quickly -> black (alpha stays 1)
     affector ColourInterpolator
     {
         time0   0.0
@@ -3359,7 +3359,7 @@ particle_system Particle/Fireplace_02_Core
     }
 }
 
-particle_system Particle/Fireplace_02_Tongues
+particle_system Fireplace_02_Tongues
 {
     material        Particle/Fire_04
     quota           450
@@ -3397,7 +3397,7 @@ particle_system Particle/Fireplace_02_Tongues
         force_application add
     }
 
-    // “ParticleFollower” approximation: slightly calmer motion
+    // ParticleFollower approximation: slightly calmer motion
     affector DirectionRandomiser
     {
         randomness 0.22
@@ -3421,7 +3421,7 @@ particle_system Particle/Fireplace_02_Tongues
     }
 }
 
-particle_system Particle/Flare4_Seed
+particle_system Flare4_Seed
 {
     material        Particle/Flare
     quota           4
@@ -3445,7 +3445,7 @@ particle_system Particle/Flare4_Seed
         velocity_min    60
         velocity_max    60
 
-        // PU technique position -24 0 0
+        // technique position -24 0 0
         position        -24 0 0
         colour          1 0 1 1
     }
@@ -3457,7 +3457,7 @@ particle_system Particle/Flare4_Seed
     }
 }
 
-particle_system Particle/Flare5_Leader
+particle_system Flare5_Leader
 {
     material        Particle/Flare
     quota           600
@@ -3475,13 +3475,13 @@ particle_system Particle/Flare5_Leader
         angle           360
         time_to_live    4.0
 
-        // PU velocity 6, direction 0 0.1 0
+        // velocity 6, direction 0 0.1 0
         direction       0 1 0
         velocity_min    6.0
         velocity_max    6.0
     }
 
-    // Fake “path bends” with a combination of mild sideways push + turbulence
+    // Fake path bends with a combination of mild sideways push + turbulence
     affector LinearForce
     {
         force_vector      0.25 0 0.15
@@ -3509,7 +3509,7 @@ particle_system Particle/Flare5_Leader
     }
 }
 
-particle_system Particle/Flare5_Flares
+particle_system Flare5_Flares
 {
     material        Particle/Flare
     quota           3000
@@ -3523,7 +3523,7 @@ particle_system Particle/Flare5_Flares
 
     emitter Point
     {
-        // PU flares emission_rate 200, ttl 2, vel 2.4
+        // flares emission_rate 200, ttl 2, vel 2.4
         emission_rate   200
         angle           360
         time_to_live    2.0
@@ -3555,7 +3555,7 @@ particle_system Particle/Flare5_Flares
     }
 }
 
-particle_system Particle/Flare6
+particle_system Flare6
 {
     material        Particle/Flare
     quota           16
@@ -3567,7 +3567,7 @@ particle_system Particle/Flare6
     particle_width  3
     particle_height 3
 
-    // Spawn once at each given offset (PU add_position)
+    // Spawn once at each given offset (add_position)
     emitter Point
     {
         emission_rate   1
@@ -3618,7 +3618,7 @@ particle_system Particle/Flare6
         position        0 0 0
     }
 
-    // PU LinearForce force_vector 0 -6 0
+    // LinearForce force_vector 0 -6 0
     affector LinearForce
     {
         force_vector      0 -6 0
@@ -3626,7 +3626,7 @@ particle_system Particle/Flare6
     }
 }
 
-particle_system Particle/FlareShield_Explode
+particle_system FlareShield_Explode
 {
     material        Particle/Flare_05
     quota           200
@@ -3635,13 +3635,13 @@ particle_system Particle/FlareShield_Explode
     local_space     true
     billboard_type  point
 
-    // PU explode sizes 1.5..1.8 -> avg 1.65
+    // explode sizes 1.5..1.8 -> avg 1.65
     particle_width  1.65
     particle_height 1.65
 
     emitter Point
     {
-        // PU ExplodeFlares emission_rate 5, ttl 1, vel 6
+        // ExplodeFlares emission_rate 5, ttl 1, vel 6
         // We make it a short burst:
         emission_rate   80
         duration        0.12
@@ -3663,7 +3663,7 @@ particle_system Particle/FlareShield_Explode
     }
 }
 
-particle_system Particle/GreenBall
+particle_system GreenBall
 {
     material        Particle/GreenBallPBS
     quota           800          // 50/s * ~10s + headroom
@@ -3679,7 +3679,7 @@ particle_system Particle/GreenBall
     {
         emission_rate   50
         angle           25
-        time_to_live    3.0          // PU doesn't specify TTL; pick something sane
+        time_to_live    3.0          // doesn't specify TTL; pick something sane
         direction       0 1 0
         velocity_min    6.6
         velocity_max    6.6
@@ -3692,7 +3692,7 @@ particle_system Particle/GreenBall
     }
 }
 
-particle_system Particle/GreenBall2
+particle_system GreenBall2
 {
     material        Particle/GreenBallPBS
     quota           5000
@@ -3726,7 +3726,7 @@ particle_system Particle/GreenBall2
 	}
 }
 
-particle_system Particle/GreenBall3
+particle_system GreenBall3
 {
     material        Particle/GreenBallPBS
     quota           5000
@@ -3734,7 +3734,7 @@ particle_system Particle/GreenBall3
     sorted          true
     local_space     true
 
-    // PU billboard_type oriented_shape + origin bottom_center
+    // billboard_type oriented_shape + origin bottom_center
     billboard_type      oriented_self
     billboard_origin    bottom_center
 
@@ -3808,22 +3808,22 @@ particle_system Particle/GreenBall3
         velocity_max    6
     }
 
-    // Downward force (PU: 0 -3 0)
+    // Downward force (0 -3 0)
     affector LinearForce
     {
         force_vector      0 -3 0
         force_application add
     }
 
-    // PU Align { resize true } doesn't map directly.
-    // Approx: keep particles “visually alive” by slight growth + orientation already set.
+    // Align { resize true } doesn't map directly.
+    // Approx: keep particles visually alive by slight growth + orientation already set.
     affector Scaler
     {
         rate 0.02
     }
 }
 
-particle_system Particle/Hart
+particle_system Hart
 {
     material        Particle/Hart
     quota           1000
@@ -3839,9 +3839,9 @@ particle_system Particle/Hart
     {
         emission_rate   50
         angle           25
-        time_to_live    3            // PU did not specify ttl; choose a reasonable default
+        time_to_live    3            // did not specify ttl; choose a reasonable default
         position        3 -3 3
-        direction       0 1 0        // direction not specified in PU; pick upward-ish
+        direction       0 1 0        // direction not specified; pick upward-ish
         velocity_min    6.6
         velocity_max    6.6
     }
@@ -3853,7 +3853,7 @@ particle_system Particle/Hart
     }
 }
 
-particle_system Particle/LanternSpotlight
+particle_system LanternSpotlight
 {
     material        Particle/Flare
     quota           4000
@@ -3896,7 +3896,7 @@ particle_system Particle/LanternSpotlight
         colour_range_end    1 1 1 0.10
     }
 
-    // Slight “air shimmer” so it doesn’t look perfectly rigid
+    // Slight air shimmer so it doesn’t look perfectly rigid
     affector DirectionRandomiser
     {
         randomness  0.20
@@ -3915,7 +3915,7 @@ particle_system Particle/LanternSpotlight
     }
 }
 
-particle_system Particle/LanternCone
+particle_system LanternCone
 {
     material        Particle/Flare
     quota           300
@@ -3958,7 +3958,7 @@ particle_system Particle/LanternCone
     }
 }
 
-particle_system Particle/Hypno
+particle_system Hypno
 {
     material        Particle/Swirl_01
     quota           200
@@ -3983,7 +3983,7 @@ particle_system Particle/Hypno
         velocity_min      0.9
         velocity_max      0.9
 
-        // Flat “disc” in XY plane
+        // Flat disc in XY plane
         width             12
         height            12
         depth             0.05
@@ -4019,7 +4019,7 @@ particle_system Particle/Hypno
         rotation_speed_range_end    20
     }
 
-    // Optional: add some swirling drift (helps sell “hypno”)
+    // Optional: add some swirling drift (helps sell hypno)
     // If this is too chaotic, reduce randomness to ~0.2..0.4
     affector DirectionRandomiser
     {
@@ -4027,7 +4027,7 @@ particle_system Particle/Hypno
     }
 }
 
-particle_system Particle/Interpolate
+particle_system Interpolate
 {
     material        Particle/Interpolate
     quota           2000
@@ -4054,7 +4054,7 @@ particle_system Particle/Interpolate
         velocity_max    4.8
     }
 
-    // PU xyz_scale 0.6 (growth). ParticleFX2 uses rate/sec.
+    // xyz_scale 0.6 (growth). ParticleFX2 uses rate/sec.
     // Approx: modest growth. Tweak to taste.
     affector Scaler
     {
@@ -4062,7 +4062,7 @@ particle_system Particle/Interpolate
     }
 }
 
-particle_system Particle/Leaves
+particle_system Leaves
 {
     material        Particle/Leave
     quota           1200
@@ -4071,7 +4071,7 @@ particle_system Particle/Leaves
     local_space     false
     billboard_type  point
 
-    // PU all_particle_dimensions 3..7.5 (approx)
+    // all_particle_dimensions 3..7.5 (approx)
     particle_width  5
     particle_height 5
 
@@ -4109,7 +4109,7 @@ particle_system Particle/Leaves
         randomness  1.2
     }
 
-    // PU TextureRotator approximation
+    // TextureRotator approximation
     affector Rotator
     {
         rotation_range_start 0
@@ -4119,7 +4119,7 @@ particle_system Particle/Leaves
     }
 }
 
-particle_system Particle/LightningBolt_Smoke
+particle_system LightningBolt_Smoke
 {
     material        Particle/Smoke_01
     quota           100
@@ -4146,7 +4146,7 @@ particle_system Particle/LightningBolt_Smoke
         colour          0.46 0.06 0.82 1
     }
 
-    // Grow (PU xyz_scale 6)
+    // Grow (xyz_scale 6)
     affector Scaler
     {
         rate  1.5
@@ -4162,7 +4162,7 @@ particle_system Particle/LightningBolt_Smoke
     }
 }
 
-particle_system Particle/LineStreak
+particle_system LineStreak
 {
     material        Particle/Streak_04
     quota           250
@@ -4171,10 +4171,10 @@ particle_system Particle/LineStreak
     local_space     true
     billboard_type  oriented_self
 
-    // PU width: 0.3 .. 1.4  -> take midpoint (approx)
+    // width: 0.3 .. 1.4  -> take midpoint (approx)
     particle_width  0.85
 
-    // PU height: 6 .. 12    -> take midpoint (approx)
+    // height: 6 .. 12    -> take midpoint (approx)
     particle_height 9.0
 
     emitter Point
@@ -4186,11 +4186,11 @@ particle_system Particle/LineStreak
         velocity_min    3.0
         velocity_max    7.5
 
-        // PU colour: 1 0.84 0.45 1
+        // colour: 1 0.84 0.45 1
         colour          1 0.84 0.45 1
     }
 
-    // PU Colour affector:
+    // Colour affector:
     // time_colour 0..0.8 = white, then fades to transparent at 1.0 (multiply)
     // Approx: keep colour until 0.8, then fade out fast.
     affector ColourFader2
@@ -4209,7 +4209,7 @@ particle_system Particle/LineStreak
     }
 }
 
-particle_system Particle/mp_torch
+particle_system mp_torch
 {
     material        Particle/mp_fire_02
     quota           20
@@ -4219,12 +4219,12 @@ particle_system Particle/mp_torch
     local_space     true
     billboard_type  oriented_self
 
-    // PU: all_particle_dimensions 1.2 .. 1.8
+    // all_particle_dimensions 1.2 .. 1.8
     // ParticleFX2 can't randomize size directly -> use a reasonable midpoint.
     particle_width  1.5
     particle_height 1.5
 
-    // PU texture atlas: 2x2, random end frame range 0..3
+    // texture atlas: 2x2, random end frame range 0..3
     stacks 2
     slices 2
 
@@ -4233,18 +4233,18 @@ particle_system Particle/mp_torch
         angle           5
         emission_rate   30
 
-        // PU: ttl 0.4..0.6
+        // ttl 0.4..0.6
         time_to_live_min 0.4
         time_to_live_max 0.6
 
-        // PU: velocity 4.8..5.4
+        // velocity 4.8..5.4
         direction       0 1 0
         velocity_min    4.8
         velocity_max    5.4
     }
 
-    // PU: time_colour (0 black) -> (0.3..0.5 orange) -> (1 black)
-    // PU used multiply; in ParticleFX2 we just drive final colour directly.
+    // time_colour (0 black) -> (0.3..0.5 orange) -> (1 black)
+    // used multiply; in ParticleFX2 we just drive final colour directly.
     affector ColourInterpolator
     {
         time0   0.0
@@ -4260,7 +4260,7 @@ particle_system Particle/mp_torch
         colour3 0 0 0 1
     }
 
-    // PU: x_scale stayed ~0.3, y_scale started huge (15) then collapsed.
+    // x_scale stayed ~0.3, y_scale started huge (15) then collapsed.
     // ParticleFX2 can't do per-axis curved scaling; this is the closest "torch lick":
     // start smaller -> swell a bit -> shrink away
     affector ScaleInterpolator
@@ -4276,7 +4276,7 @@ particle_system Particle/mp_torch
     }
 }
 
-particle_system Particle/Nucleus_TestTechnique
+particle_system Nucleus_TestTechnique
 {
     quota                   2000
     emitted_emitter_quota   100
@@ -4289,7 +4289,7 @@ particle_system Particle/Nucleus_TestTechnique
     local_space             false
     billboard_type          point
 
-    // This approximates PU:
+    // This approximates
     // emitter Point: emission_rate 1 angle 60 ttl 7 vel 9 emits emitter_particle PointEmitter
     emitter Point
     {
@@ -4302,7 +4302,7 @@ particle_system Particle/Nucleus_TestTechnique
         emits           emitter_particle PointEmitter
     }
 
-    // PU: emitter Point PointEmitter: emission_rate 40 angle 360 ttl 4 vel 0.6 colour 0 0 0 0
+    // emitter Point PointEmitter: emission_rate 40 angle 360 ttl 4 vel 0.6 colour 0 0 0 0
     emitter Point PointEmitter
     {
         emission_rate   40
@@ -4313,7 +4313,7 @@ particle_system Particle/Nucleus_TestTechnique
         colour          0 0 0 0
     }
 
-    // PU Colour time curve:
+    // Colour time curve:
     // 0    0 0 0 0
     // 0.06 0 0 0 0
     // 0.1  0.1 0.1 0.1 1
@@ -4341,7 +4341,7 @@ particle_system Particle/Nucleus_TestTechnique
         colour5 0 0 0 0
     }
 
-    // PU Scale curve:
+    // Scale curve:
     // 0 -> 0.3
     // 0.4 -> 2.4
     // 1 -> 0
@@ -4358,7 +4358,7 @@ particle_system Particle/Nucleus_TestTechnique
         scale2  0.0
     }
 
-    // PU TextureRotator: rot random 1..40, speed 0.5
+    // TextureRotator: rot random 1..40, speed 0.5
     affector Rotator
     {
         rotation_range_start           1
@@ -4367,7 +4367,7 @@ particle_system Particle/Nucleus_TestTechnique
         rotation_speed_range_end       0.5
     }
 
-    // PU LinearForce exclude PointEmitter: force_vector 0 -3 0
+    // LinearForce exclude PointEmitter: force_vector 0 -3 0
     // ParticleFX2 doesn't reliably support exclude_emitter on all affectors,
     // so we apply it globally (close enough visually).
     affector LinearForce
@@ -4377,7 +4377,7 @@ particle_system Particle/Nucleus_TestTechnique
     }
 }
 
-particle_system Particle/Nucleus_Outer
+particle_system Nucleus_Outer
 {
     quota           2000
     material        Particle/Nucleus
@@ -4389,7 +4389,7 @@ particle_system Particle/Nucleus_Outer
     local_space     false
     billboard_type  point
 
-    // PU used a Slave emitter linked to PointEmitter.
+    // used a Slave emitter linked to PointEmitter.
     // Approximation: emit a similar amount of nucleus sprites continuously.
     // Tweak emission_rate to match your desired intensity.
     emitter Point
@@ -4403,7 +4403,7 @@ particle_system Particle/Nucleus_Outer
         colour          1 0.6 0.3 1
     }
 
-    // PU Scale curve:
+    // Scale curve:
     // 0 -> 1.5
     // 1 -> 0
     affector ScaleInterpolator
@@ -4415,7 +4415,7 @@ particle_system Particle/Nucleus_Outer
         scale1  0.0
     }
 
-    // PU Colour curve (multiply):
+    // Colour curve (multiply):
     // 0    1 1 1 1
     // 0.05 0.3 0.3 0.3 1
     // 1    0 0 0 1
@@ -4432,7 +4432,7 @@ particle_system Particle/Nucleus_Outer
         colour2 0 0 0 1
     }
 
-    // PU TextureRotator: rot random 1..40, speed 0.5
+    // TextureRotator: rot random 1..40, speed 0.5
     affector Rotator
     {
         rotation_range_start           1
@@ -4442,7 +4442,7 @@ particle_system Particle/Nucleus_Outer
     }
 }
 
-particle_system Particle/PsychoBurn_Streaks
+particle_system PsychoBurn_Streaks
 {
     material        Particle/Streak_01
     particle_width  4.2
@@ -4458,12 +4458,12 @@ particle_system Particle/PsychoBurn_Streaks
         emission_rate   160
         time_to_live    0.2
 
-        // PU had direction 0 0 0 (i.e. basically no movement)
+        // had direction 0 0 0 (i.e. basically no movement)
         direction       0 1 0
         velocity_min    0.0
         velocity_max    0.0
 
-        // Size of the “burn patch”
+        // Size of the burn patch
         width           9
         height          0.3
         depth           9
@@ -4478,7 +4478,7 @@ particle_system Particle/PsychoBurn_Streaks
     }
 }
 
-particle_system Particle/PsychoBurn_Tube_12
+particle_system PsychoBurn_Tube_12
 {
     material        Particle/Streak_01
     particle_width  9
@@ -4509,7 +4509,7 @@ particle_system Particle/PsychoBurn_Tube_12
     }
 }
 
-particle_system Particle/RibbonTrail_Approx
+particle_system RibbonTrail_Approx
 {
     material        Particle/RibbonTrail
     cull_each       false
@@ -4517,12 +4517,12 @@ particle_system Particle/RibbonTrail_Approx
     local_space     true
 
     // We fake a ribbon by spawning stretched quads.
-    // PU: ribbontrail_width 0.3, ribbontrail_length 18
+    // ribbontrail_width 0.3, ribbontrail_length 18
     particle_width  0.30
     particle_height 18.0
 
-    // PU: visual_particle_quota 40 (but ribbon renderer adds segments internally)
-    // With billboards, you usually need more to look “continuous”.
+    // visual_particle_quota 40 (but ribbon renderer adds segments internally)
+    // With billboards, you usually need more to look continuous.
     quota           400
 
     // This keeps each particle oriented along its own movement direction (good for streaks)
@@ -4530,22 +4530,22 @@ particle_system Particle/RibbonTrail_Approx
 
     emitter Point
     {
-        // PU: emission_rate implicit via point emitter movement; use something modest.
-        // Tune: 10..60 depending how “continuous” you want it.
+        // emission_rate implicit via point emitter movement; use something modest.
+        // Tune: 10..60 depending how continuous you want it.
         emission_rate   25
 
-        // PU: time_to_live 40
+        // time_to_live 40
         time_to_live    40
 
-        // PU: velocity 45
+        // velocity 45
         velocity_min    45
         velocity_max    45
 
-        // PU: angle 360
+        // angle 360
         angle           360
         direction       0 1 0
 
-        // PU ribbon colour_change 0.8 0.8 0.8 0.8
+        // ribbon colour_change 0.8 0.8 0.8 0.8
         colour          0.8 0.8 0.8 0.8
     }
 
@@ -4556,7 +4556,7 @@ particle_system Particle/RibbonTrail_Approx
         alpha -0.02
     }
 
-    // PU had two gravity attractors that bend the ribbon.
+    // had two gravity attractors that bend the ribbon.
     // ParticleFX2 doesn’t have positional gravity attractors, so fake it with gentle wandering.
     affector DirectionRandomiser
     {
@@ -4572,7 +4572,7 @@ particle_system Particle/RibbonTrail_Approx
         force_application add
     }
 
-    // Optional: mild twist (can help sell “ribbon-ish” motion)
+    // Optional: mild twist (can help sell ribbon-ish motion)
     affector Rotator
     {
         rotation_speed_range_start  -15
@@ -4582,7 +4582,7 @@ particle_system Particle/RibbonTrail_Approx
     }
 }
 
-particle_system Particle/RibbonTrail2_Trail
+particle_system RibbonTrail2_Trail
 {
     material        Particle/RibbonTrail
     quota           250
@@ -4597,7 +4597,7 @@ particle_system Particle/RibbonTrail2_Trail
 
     emitter Point
     {
-        // PU emission_rate 1, ttl 7, vel 12, angle 60
+        // emission_rate 1, ttl 7, vel 12, angle 60
         // We need more particles to look like a continuous trail
         emission_rate   40
         time_to_live    0.7
@@ -4622,9 +4622,9 @@ particle_system Particle/RibbonTrail2_Trail
     }
 }
 
-particle_system Particle/Smoke
+particle_system Smoke
 {
-    // PU material: ParticleUniverse/Smoke_11
+    // material: ParticleUniverse/Smoke_11
     // Your HLMS list already has: hlms Particle/Smoke_11 unlit
     material        Particle/Smoke_11
 
@@ -4634,8 +4634,8 @@ particle_system Particle/Smoke
     local_space     false
     billboard_type  point
 
-    // PU size was random 0.3..6 — FX2 can’t randomize per particle (in your feature set),
-    // so pick a mid-size. If it looks too “samey”, make 2 smoke systems with different sizes.
+    // size was random 0.3..6 — FX2 can’t randomize per particle (in your feature set),
+    // so pick a mid-size. If it looks too samey, make 2 smoke systems with different sizes.
     particle_width  2.5
     particle_height 2.5
 
@@ -4645,7 +4645,7 @@ particle_system Particle/Smoke
         angle           60
         time_to_live    30
 
-        // PU velocity 1.2..2.4
+        // velocity 1.2..2.4
         direction       0 1 0
         velocity_min    1.2
         velocity_max    2.4
@@ -4654,15 +4654,15 @@ particle_system Particle/Smoke
         colour          1 1 1 1
     }
 
-    // PU: slight constant force (it was 0 -0.003 0)
-    // Keep exactly (very subtle drift). Flip sign if your “up” is +Y and smoke should rise.
+    // slight constant force (it was 0 -0.003 0)
+    // Keep exactly (very subtle drift). Flip sign if your up is +Y and smoke should rise.
     affector LinearForce
     {
         force_vector        0 -0.003 0
         force_application   add
     }
 
-    // PU: Colour over lifetime:
+    // Colour over lifetime:
     // time_colour 0    1 0.8 0.6 0
     // time_colour 0.2  1 0.9 0.7 1
     // time_colour 1    0 0 0 0
@@ -4678,8 +4678,8 @@ particle_system Particle/Smoke
         colour2 0 0 0 0
     }
 
-    // PU: TextureRotator (random rotation 1..40, speed 0.1)
-    // FX2 rotator is usually “speed range”; keep it slow.
+    // TextureRotator (random rotation 1..40, speed 0.1)
+    // FX2 rotator is usually speed range; keep it slow.
     affector Rotator
     {
         rotation_range_start        0
@@ -4688,14 +4688,14 @@ particle_system Particle/Smoke
         rotation_speed_range_end    0.20
     }
 
-    // Approximation for PU ParticleFollower: add mild turbulence
+    // Approximation for ParticleFollower: add mild turbulence
     affector DirectionRandomiser
     {
         randomness  0.12
     }
 }
 
-particle_system Particle/Smoke2
+particle_system Smoke2
 {
     material        Particle/Smoke_02
     quota           8000
@@ -4704,18 +4704,18 @@ particle_system Particle/Smoke2
     local_space     true
     billboard_type  point
 
-    // PU default size 0.24; keep small but visible
+    // default size 0.24; keep small but visible
     particle_width  0.24
     particle_height 0.24
 
     // Approximate ForceField worldsize 30x30x30
     emitter Box
     {
-        // PU: enabled false + light triggers it later.
+        // enabled false + light triggers it later.
         // We approximate by starting enabled.
         emission_rate   2000
 
-        // PU: angle 30
+        // angle 30
         angle           30
 
         // TTL random 4..12
@@ -4726,7 +4726,7 @@ particle_system Particle/Smoke2
         velocity_min    1.5
         velocity_max    2.4
 
-        // Emit in “mostly upward” cone (you can set 0 0 0 too)
+        // Emit in mostly upward cone (you can set 0 0 0 too)
         direction       0 1 0
 
         width           30
@@ -4740,7 +4740,7 @@ particle_system Particle/Smoke2
         randomness  1.2
     }
 
-    // Very gentle drift (optional). If it “falls”, flip sign.
+    // Very gentle drift (optional). If it falls, flip sign.
     affector LinearForce
     {
         force_vector      0 0.03 0
@@ -4770,7 +4770,7 @@ particle_system Particle/Smoke2
     }
 }
 
-particle_system Particle/SnowSmall
+particle_system SnowSmall
 {
     material        Particle/Snow_01
     quota           1400
@@ -4779,30 +4779,30 @@ particle_system Particle/SnowSmall
     local_space     false
     billboard_type  point
 
-    // PU dims 0.12..0.48 -> this is the "small" layer
+    // dims 0.12..0.48 -> this is the "small" layer
     particle_width  0.18
     particle_height 0.18
 
     emitter Box
     {
-        // PU: emission_rate 50 (overall)
+        // emission_rate 50 (overall)
         emission_rate   35
 
-        // PU: ttl 20
+        // ttl 20
         time_to_live    20
 
-        // PU: velocity 1.5..2.7
+        // velocity 1.5..2.7
         velocity_min    1.5
         velocity_max    2.7
 
-        // Spawn “sheet” above the player
+        // Spawn sheet above the player
         position        0 9 0
 
-        // PU: direction 0 -1 0 + random angle 5..40
+        // direction 0 -1 0 + random angle 5..40
         direction       0 -1 0
         angle           30
 
-        // PU: box 24 x very thin x 24
+        // box 24 x very thin x 24
         width           24
         height          0.03
         depth           24
@@ -4812,14 +4812,14 @@ particle_system Particle/SnowSmall
         colour_range_end    1.00 1.00 1.00 1
     }
 
-    // Approximate “wind toggling” + flutter:
+    // Approximate wind toggling + flutter:
     // (ParticleUniverse used OnRandom to enable WindLeft/WindRight)
     affector DirectionRandomiser
     {
         randomness  0.20
     }
 
-    // Pick ONE of these as your “current wind”.
+    // Pick ONE of these as your current wind.
     // If you want the wind to change over time, toggle it in code.
     affector LinearForce
     {
@@ -4835,7 +4835,7 @@ particle_system Particle/SnowSmall
     }
 }
 
-particle_system Particle/SnowLarge
+particle_system SnowLarge
 {
     material        Particle/Snow_01
     quota           600
@@ -4844,7 +4844,7 @@ particle_system Particle/SnowLarge
     local_space     false
     billboard_type  point
 
-    // PU dims 0.12..0.48 -> this is the "large" layer
+    // dims 0.12..0.48 -> this is the "large" layer
     particle_width  0.42
     particle_height 0.42
 
@@ -4886,7 +4886,7 @@ particle_system Particle/SnowLarge
     }
 }
 
-particle_system Particle/SnowSplash
+particle_system SnowSplash
 {
     material        Particle/Snow_01
     quota           4000
@@ -4925,7 +4925,7 @@ particle_system Particle/SnowSplash
     }
 }
 
-particle_system Particle/SpiralStars
+particle_system SpiralStars
 {
     material        Particle/Flare_05
     quota           300
@@ -4934,18 +4934,18 @@ particle_system Particle/SpiralStars
     local_space     true
     billboard_type  point
 
-    // PU had varying dimensions 0.6..3.6 for the final stars
+    // had varying dimensions 0.6..3.6 for the final stars
     // Keep something in the middle; you can tune up/down.
     particle_width  1.2
     particle_height 1.2
 
-    // PU: “Point emitter” that triggers a circle + then point emitter.
+    // Point emitter that triggers a circle + then point emitter.
     // Approximation: emit directly from a thin disc area (like a ring).
     emitter Box
     {
         emission_rate   140
 
-        // PU chain uses short TTLs: 0.5 + 1.0 etc.
+        // chain uses short TTLs: 0.5 + 1.0 etc.
         time_to_live    1.0
         time_to_live_min 0.6
         time_to_live_max 1.2
@@ -4966,7 +4966,7 @@ particle_system Particle/SpiralStars
         colour_range_end    1.0 1.0 1.0 1
     }
 
-    // Add a tiny “core pulse” so it feels like something emits the spiral.
+    // Add a tiny core pulse so it feels like something emits the spiral.
     emitter Point
     {
         emission_rate   10
@@ -4978,7 +4978,7 @@ particle_system Particle/SpiralStars
         colour          1 1 1 1
     }
 
-    // Fake the “spiral” feeling: rotating sprites + slight motion jitter
+    // Fake the spiral feeling: rotating sprites + slight motion jitter
     // (This is not true orbital motion, but visually it often sells it.)
     affector Rotator
     {
@@ -4993,7 +4993,7 @@ particle_system Particle/SpiralStars
         randomness  0.35
     }
 
-    // PU colour: multiply and fade to transparent at the end
+    // colour: multiply and fade to transparent at the end
     affector ColourInterpolator
     {
         time0   0.0
@@ -5007,7 +5007,7 @@ particle_system Particle/SpiralStars
     }
 }
 
-particle_system Particle/Star
+particle_system Star
 {
     material        Particle/Star
     particle_width  0.6
@@ -5018,14 +5018,14 @@ particle_system Particle/Star
     sorted          true
     local_space     true
 
-    // PU: SphereSurface radius 3, velocity 0
+    // SphereSurface radius 3, velocity 0
     // No SphereSurface in your setup -> approximate with a box volume (6x6x6)
     emitter Box
     {
         emission_rate   250
         time_to_live    1.8
 
-        // PU velocity = 0. Keep it static and just fade/colour shift.
+        // velocity = 0. Keep it static and just fade/colour shift.
         velocity_min    0
         velocity_max    0
 
@@ -5034,11 +5034,11 @@ particle_system Particle/Star
         height          6
         depth           6
 
-        // Start colour (PU time_colour 0)
+        // Start colour (time_colour 0)
         colour          1 1 0 1
     }
 
-    // PU Colour over lifetime:
+    // Colour over lifetime:
     // 0: (1,1,0,1) -> 1: (1,0,0,0)
     // If ColourInterpolator exists in your ParticleFX2 scripts, use it:
     affector ColourInterpolator
@@ -5053,7 +5053,7 @@ particle_system Particle/Star
         colour2 1 0 0 0
     }
 
-    // Optional: if you want a tiny bit of motion (since PU had a gravity field),
+    // Optional: if you want a tiny bit of motion (since had a gravity field),
     // uncomment one of these. It's not the same, but can make it feel "alive".
 
     // affector DirectionRandomiser
@@ -5068,7 +5068,7 @@ particle_system Particle/Star
     // }
 }
 
-particle_system Particle/Star2
+particle_system Star2
 {
     material        Particle/Star
     particle_width  1.5
@@ -5092,7 +5092,7 @@ particle_system Particle/Star2
         repeat_delay    999999
     }
 
-    // PU LinearForce downward
+    // LinearForce downward
     affector LinearForce
     {
         force_vector      0 -3 0
@@ -5100,7 +5100,7 @@ particle_system Particle/Star2
     }
 }
 
-particle_system Particle/Star3
+particle_system Star3
 {
     material        Particle/Star
     particle_width  0.6
@@ -5112,7 +5112,7 @@ particle_system Particle/Star3
     local_space     true
     billboard_type  point
 
-    // PU: Circle emitter (radius 3), emission_rate 300, ttl 4, vel 0.6
+    // Circle emitter (radius 3), emission_rate 300, ttl 4, vel 0.6
     // ParticleFX2 has no Circle emitter -> approximate with a FLAT box area 6x6 (diameter) and tiny height.
     emitter Box
     {
@@ -5129,10 +5129,10 @@ particle_system Particle/Star3
         depth           6.0              // ~ radius 3 in Z
     }
 
-    // PU: Colour over lifetime
+    // Colour over lifetime
     // 0    -> green
     // 0.8  -> blue
-    // 1    -> black (still alpha 1 in PU, but visually "dark")
+    // 1    -> black (still alpha 1, but visually "dark")
     affector ColourInterpolator
     {
         time0   0.0
@@ -5145,7 +5145,7 @@ particle_system Particle/Star3
         colour2 0 0 0 1
     }
 
-    // PU: Jet affector with random acceleration 0.1..1
+    // Jet affector with random acceleration 0.1..1
     // ParticleFX2 doesn't have Jet -> approximate as a small continuous force + direction wobble.
     affector LinearForce
     {
@@ -5159,7 +5159,7 @@ particle_system Particle/Star3
     }
 }
 
-particle_system Particle/Star4
+particle_system Star4
 {
     material        Particle/Star
     particle_width  1.5
@@ -5170,7 +5170,7 @@ particle_system Particle/Star4
     billboard_type  point
     sorted          true
 
-    // PU: Box emitter (20/s, angle 10, ttl 7, vel 6, box 9 x 0.3 x 9)
+    // Box emitter (20/s, angle 10, ttl 7, vel 6, box 9 x 0.3 x 9)
     emitter Box
     {
         emission_rate   20
@@ -5188,24 +5188,24 @@ particle_system Particle/Star4
         // direction     0 1 0
     }
 
-    // --- Approximation of PU SphereCollider(flow) at position 0 12 0 radius 9 ---
-    // We can't do distance-based collision/flow in ParticleFX2, so we fake “flowing”
+    // --- Approximation of SphereCollider(flow) at position 0 12 0 radius 9 ---
+    // We can't do distance-based collision/flow in ParticleFX2, so we fake flowing
     // by adding slight lift + drift + rotation.
 
-    // Gentle lift (helps create a “wrap” feeling instead of dead-straight streaks)
+    // Gentle lift (helps create a wrap feeling instead of dead-straight streaks)
     affector LinearForce
     {
         force_vector      0 0.35 0
         force_application add
     }
 
-    // Drift / swirl (fake “flow around obstacle”)
+    // Drift / swirl (fake flow around obstacle)
     affector DirectionRandomiser
     {
         randomness  0.6
     }
 
-    // Make the stars spin a bit (optional, but looks closer to “flow” motion)
+    // Make the stars spin a bit (optional, but looks closer to flow motion)
     affector Rotator
     {
         rotation_range_start          0
@@ -5221,7 +5221,7 @@ particle_system Particle/Star4
     // }
 }
 
-particle_system Particle/Star5
+particle_system Star5
 {
     material        Particle/Star
     quota           4000
@@ -5230,11 +5230,11 @@ particle_system Particle/Star5
     local_space     false
     billboard_type  point
 
-    // PU default_particle_width/height = 3.6
+    // default_particle_width/height = 3.6
     particle_width  3.6
     particle_height 3.6
 
-    // PU Box emitter:
+    // Box emitter:
     // emission_rate 30, angle 60, ttl 10, vel 1.2..3, position 0 36 0, direction 1 -1 0, box 24^3
     emitter Box
     {
@@ -5253,14 +5253,14 @@ particle_system Particle/Star5
         depth           24
     }
 
-    // PU LinearForce force_vector 0 -36 0
+    // LinearForce force_vector 0 -36 0
     affector LinearForce
     {
         force_vector        0 -36 0
         force_application   add
     }
 
-    // PU TextureRotator use_own_rotation true
+    // TextureRotator use_own_rotation true
     affector Rotator
     {
         rotation_range_start          0
@@ -5281,11 +5281,11 @@ particle_system Particle/Star5
     */
 
     // --- OPTIONAL: particle-particle collisions ---
-    // PU InterParticleCollider usually has no equivalent in ParticleFX2.
+    // InterParticleCollider usually has no equivalent in ParticleFX2.
     // If you *do* have something like it, add it here; otherwise omit.
 }
 
-particle_system Particle/Star6
+particle_system Star6
 {
     material        Particle/Star
     particle_width  1.5
@@ -5304,7 +5304,7 @@ particle_system Particle/Star6
         velocity_min    12
         velocity_max    12
 
-        // PU: stop after 200 particles
+        // stop after 200 particles
         // 50 particles/sec * 4 sec = 200 particles total
         duration        4
 
@@ -5313,7 +5313,7 @@ particle_system Particle/Star6
     }
 }
 
-particle_system Particle/Star7
+particle_system Star7
 {
     material        Particle/Star
     particle_width  0.3
@@ -5324,7 +5324,7 @@ particle_system Particle/Star7
     sorted          true
     local_space     false
 
-    // PU Box emitter:
+    // Box emitter:
     // position 3 9 3, direction -1 -2 -1, box 9 x 0.3 x 9
     emitter Box
     {
@@ -5333,12 +5333,12 @@ particle_system Particle/Star7
 
         position        3 9 3
 
-        // PU: angle 50 + direction -1 -2 -1
+        // angle 50 + direction -1 -2 -1
         // In ParticleFX2 we approximate with angle spread around direction.
         direction       -1 -2 -1
         angle           50
 
-        // PU velocity 6
+        // velocity 6
         velocity_min    6
         velocity_max    6
 
@@ -5346,12 +5346,12 @@ particle_system Particle/Star7
         height          0.3
         depth           9
 
-        // Start colour = white (PU "colourReset" on emission)
+        // Start colour = white ("colourReset" on emission)
         colour_range_start  1 1 1 1
         colour_range_end    1 1 1 1
     }
 
-    // Gravity (PU LinearForce 0 -3 0)
+    // Gravity (LinearForce 0 -3 0)
     affector LinearForce
     {
         force_vector      0 -3 0
@@ -5364,7 +5364,7 @@ particle_system Particle/Star7
         randomness  0.25
     }
 
-    // PU collision would flash red on collision.
+    // collision would flash red on collision.
     // Not supported in ParticleFX2 script → global colour behaviour instead:
     // Keep white most of the lifetime, then fade out near the end.
     affector ColourInterpolator
@@ -5380,7 +5380,7 @@ particle_system Particle/Star7
     }
 }
 
-particle_system Particle/Star8
+particle_system Star8
 {
     material        Particle/Star
     particle_width  1.5
@@ -5397,16 +5397,16 @@ particle_system Particle/Star8
         emission_rate   2
         time_to_live    10
 
-        // PU velocity 0.03
+        // velocity 0.03
         velocity_min    0.03
         velocity_max    0.03
 
-        // PU angle 360
+        // angle 360
         angle           360
         direction       0 1 0
     }
 
-    // Approx PU Randomiser: small random changes in movement direction
+    // Approx Randomiser: small random changes in movement direction
     // If this feels too wild, drop randomness to ~0.5..1.5
     affector DirectionRandomiser
     {
@@ -5414,7 +5414,7 @@ particle_system Particle/Star8
     }
 }
 
-particle_system Particle/Teleport
+particle_system Teleport
 {
     // Base settings
     quota           600
@@ -5422,13 +5422,13 @@ particle_system Particle/Teleport
     sorted          true
     local_space     true
 
-    // --- TECHNIQUE 1: streak ring (PU: Streak_01, Circle emitter, oscillating) ---
+    // --- TECHNIQUE 1: streak ring (Streak_01, Circle emitter, oscillating) ---
     // Approx: 8 point emitters on a ring, pulsing every 2 seconds
     material        Particle/Streak_01
     billboard_type  oriented_self
 
-    particle_width  3.2    // PU: 2.4..4.2
-    particle_height 18.0   // PU: 9.6..28.8
+    particle_width  3.2    // 2.4..4.2
+    particle_height 18.0   // 9.6..28.8
 
     // 8 points around radius ~3
     emitter Point { emission_rate 25 time_to_live 0.2 duration 1.0 repeat_delay 1.0 position  3 0  0 angle 360 velocity 3 colour 0.3 0.65 0.76 1 }
@@ -5440,25 +5440,25 @@ particle_system Particle/Teleport
     emitter Point { emission_rate 25 time_to_live 0.2 duration 1.0 repeat_delay 1.0 position  2.1 0 -2.1 angle 360 velocity 3 colour 0.3 0.65 0.76 1 }
     emitter Point { emission_rate 25 time_to_live 0.2 duration 1.0 repeat_delay 1.0 position -2.1 0 -2.1 angle 360 velocity 3 colour 0.3 0.65 0.76 1 }
 
-    // Fade out (PU colour multiply to 0)
+    // Fade out (colour multiply to 0)
     affector ColourFader
     {
         alpha -6.0
     }
 
-    // --- TECHNIQUE 2: flare column (PU: Flare_04, Box emitter, oscillating) ---
+    // --- TECHNIQUE 2: flare column (Flare_04, Box emitter, oscillating) ---
     // You can keep this as a second system if you prefer, but FX2 supports multiple emitters anyway.
     // We'll approximate by adding a second material layer via a second particle_system if your FX2
     // can't mix materials per system. If it CAN'T, split this into Particle/Teleport_Column.
 
     // If your ParticleFX2 *cannot* mix materials in one particle_system, cut the block below into:
-    // particle_system Particle/Teleport_Column { ... }
+    // particle_system Teleport_Column { ... }
 
     // Column layer:
     // (Many FX2 setups assume one material per system. If yours does: split it.)
 }
 
-particle_system Particle/Teleport_Column
+particle_system Teleport_Column
 {
     material        Particle/Flare_04
     quota           200
@@ -5467,7 +5467,7 @@ particle_system Particle/Teleport_Column
     local_space     true
     billboard_type  point
 
-    // PU size: 1.44..4.8
+    // size: 1.44..4.8
     particle_width  3.0
     particle_height 3.0
 
@@ -5479,12 +5479,12 @@ particle_system Particle/Teleport_Column
         duration        1.0
         repeat_delay    1.0
 
-        // Column-ish volume (PU: box_width 4.5, box_height 18, box_depth 4.5)
+        // Column-ish volume (box_width 4.5, box_height 18, box_depth 4.5)
         width           4.5
         height          18
         depth           4.5
 
-        // no direction in PU (0 0 0)
+        // no direction in (0 0 0)
         direction       0 0 0
         velocity        0
 
@@ -5497,7 +5497,7 @@ particle_system Particle/Teleport_Column
     }
 }
 
-particle_system Particle/TimeShift_Watch
+particle_system TimeShift_Watch
 {
     material        Particle/Watch
     quota           64
@@ -5507,13 +5507,13 @@ particle_system Particle/TimeShift_Watch
     billboard_type  point
 
     // We’ll drive per-particle sizing via ranges below (if your build supports it).
-    // Otherwise keep these as the “default” size.
+    // Otherwise keep these as the default size.
     particle_width  6
     particle_height 6
 
     emitter Point
     {
-        // PU emission_rate curve: 0 -> 10 at t=0.2 -> 0 at t=3
+        // emission_rate curve: 0 -> 10 at t=0.2 -> 0 at t=3
         // Approximation: short burst early.
         emission_rate   50
         duration        0.2
@@ -5529,17 +5529,17 @@ particle_system Particle/TimeShift_Watch
         velocity_min    0.9
         velocity_max    3.0
 
-        // Approx random size 3..12 (PU all_particle_dimensions)
+        // Approx random size 3..12 (all_particle_dimensions)
         particle_width_min   3.0
         particle_width_max   12.0
         particle_height_min  3.0
         particle_height_max  12.0
 
-        // Base colour (PU emitter colour)
+        // Base colour (emitter colour)
         colour          1 0.88 0.26 1
     }
 
-    // PU multiply fade: invisible -> visible -> invisible
+    // multiply fade: invisible -> visible -> invisible
     // Implemented as alpha ramp (keeping RGB same)
     affector ColourInterpolator
     {
@@ -5553,7 +5553,7 @@ particle_system Particle/TimeShift_Watch
         colour2 1 0.88 0.26 0
     }
 
-    // PU TextureRotator (random rotation speed -2..2)
+    // TextureRotator (random rotation speed -2..2)
     affector Rotator
     {
         rotation_range_start          0
@@ -5563,7 +5563,7 @@ particle_system Particle/TimeShift_Watch
     }
 }
 
-particle_system Particle/TimeShift_Hourglass
+particle_system TimeShift_Hourglass
 {
     material        Particle/Hourglass
     quota           64
@@ -5587,7 +5587,7 @@ particle_system Particle/TimeShift_Hourglass
         velocity_min    0.9
         velocity_max    3.0
 
-        // PU size 3..9
+        // size 3..9
         particle_width_min   3.0
         particle_width_max   9.0
         particle_height_min  3.0
@@ -5617,7 +5617,7 @@ particle_system Particle/TimeShift_Hourglass
     }
 }
 
-particle_system Particle/Tornado
+particle_system Tornado
 {
     material        Particle/Tornado
     quota           1500
@@ -5642,7 +5642,7 @@ particle_system Particle/Tornado
         velocity_min    5.0
         velocity_max    7.0
 
-        // PU color ramp start-ish
+        // color ramp start-ish
         colour_range_start  1 0.9 0.7 1
         colour_range_end    1 0.45 0.45 0.9
     }
@@ -5669,7 +5669,7 @@ particle_system Particle/Tornado
         rotation_speed_range_end        180
     }
 
-    // Fade out over lifetime (approx PU colour end to transparent)
+    // Fade out over lifetime (approx colour end to transparent)
     affector ColourFader
     {
         red    -0.4
@@ -5679,7 +5679,7 @@ particle_system Particle/Tornado
     }
 }
 
-particle_system Particle/TornadoSystem
+particle_system TornadoSystem
 {
     material        Particle/Tornado
     particle_width  7.5
@@ -5690,14 +5690,14 @@ particle_system Particle/TornadoSystem
     sorted          true
     local_space     false
 
-    // PU Circle(radius 0.6) approximation: tiny box emission area
+    // Circle(radius 0.6) approximation: tiny box emission area
     emitter Box
     {
         angle           10
         emission_rate   150
         time_to_live    4
 
-        // PU velocity 18
+        // velocity 18
         velocity_min    18
         velocity_max    18
 
@@ -5706,7 +5706,7 @@ particle_system Particle/TornadoSystem
         height          0.1
         depth           1.2
 
-        // Start shooting mostly upwards (PU didn’t specify direction; tornado implies up)
+        // Start shooting mostly upwards (didn’t specify direction; tornado implies up)
         direction       0 1 0
         position        0 0 0
     }
@@ -5718,7 +5718,7 @@ particle_system Particle/TornadoSystem
         force_application   add
     }
 
-    // A subtle sideways force helps give it “lean / swirl” motion
+    // A subtle sideways force helps give it lean / swirl motion
     affector LinearForce
     {
         force_vector        1.2 0 0
@@ -5731,7 +5731,7 @@ particle_system Particle/TornadoSystem
         randomness  0.9
     }
 
-    // PU colour: 0 -> (1,0.95,0.95,1), 0.5 -> alpha 0
+    // colour: 0 -> (1,0.95,0.95,1), 0.5 -> alpha 0
     affector ColourInterpolator
     {
         time0   0.0
@@ -5744,11 +5744,11 @@ particle_system Particle/TornadoSystem
         colour2 1 0.95 0.95 0
     }
 
-    // PU Scale random 1.5..10.5 not available directly here
-    // If you want the “random size” look, use TWO stacked systems with different sizes (see note below).
+    // Scale random 1.5..10.5 not available directly here
+    // If you want the random size look, use TWO stacked systems with different sizes (see note below).
 }
 
-particle_system Particle/TornadoSystem_Stones
+particle_system TornadoSystem_Stones
 {
     material        Particle/Stone
     particle_width  1.2
@@ -5772,18 +5772,18 @@ particle_system Particle/TornadoSystem_Stones
         // Spawn from tornado center (adjust if needed)
         position        0 0 0
 
-        // Push upwards a bit so they “enter” the column
+        // Push upwards a bit so they enter the column
         direction       0 1 0
     }
 
-    // Gravity-ish pull down (PU LinearForce -36)
+    // Gravity-ish pull down (LinearForce -36)
     affector LinearForce
     {
         force_vector      0 -36 0
         force_application add
     }
 
-    // Random spin (PU GeometryRotator)
+    // Random spin (GeometryRotator)
     affector Rotator
     {
         rotation_range_start          0
@@ -5792,19 +5792,19 @@ particle_system Particle/TornadoSystem_Stones
         rotation_speed_range_end      30
     }
 
-    // PU PlaneCollider bounce is not available -> omitted
+    // PlaneCollider bounce is not available -> omitted
 }
 
 particle_system Water/Wake
 {
-    material        Water/Wake
+    material        Particle/Water/Wake
 
     quota           300
     cull_each       false
     sorted          true
     local_space     true
 
-    // PU: 1.5 x 1.5
+    // 1.5 x 1.5
     particle_width  1.5
     particle_height 1.5
 
@@ -5818,7 +5818,7 @@ particle_system Water/Wake
         angle           0
         time_to_live    4
 
-        // PU: direction -1 0 0, velocity 0..1
+        // direction -1 0 0, velocity 0..1
         direction       -1 0 0
         velocity_min    0
         velocity_max    1
@@ -5855,13 +5855,13 @@ particle_system Water/Wake
     }
 }
 
-particle_system Particle/WindyFireSystem
+particle_system WindyFireSystem
 {
-    // PU: material ParticleUniverse/Fire
+    // material ParticleUniverse/Fire
     // Pick your closest ParticleFX2 fire material:
     material        Particle/Fire_01
 
-    // PU doesn’t specify quota; pick something safe.
+    // doesn’t specify quota; pick something safe.
     quota           1200
     cull_each       false
     sorted          true
@@ -5870,13 +5870,13 @@ particle_system Particle/WindyFireSystem
     // Fire usually looks better when it can rotate freely
     billboard_type  oriented_self
 
-    // PU: default_particle_width/height = 1.8
+    // default_particle_width/height = 1.8
     particle_width  1.8
     particle_height 1.8
 
-    // --- PU Point emitter (wind toggling) approximation ---
-    // PU had observers toggling wind left/right globally.
-    // ParticleFX2 doesn’t have PU observers, so we approximate by:
+    // --- Point emitter (wind toggling) approximation ---
+    // had observers toggling wind left/right globally.
+    // ParticleFX2 doesn’t have observers, so we approximate by:
     //  - using TWO point emitters with slight left/right bias
     //  - adding DirectionRandomiser for turbulent wind
     emitter Point
@@ -5911,20 +5911,20 @@ particle_system Particle/WindyFireSystem
         direction       -0.35 1 0
     }
 
-    // --- PU Scale xyz_scale -0.15 (shrink over lifetime) ---
+    // --- Scale xyz_scale -0.15 (shrink over lifetime) ---
     affector Scaler
     {
         rate -0.15
     }
 
-    // --- “wind switching” look: turbulence per particle ---
+    // --- wind switching look: turbulence per particle ---
     affector DirectionRandomiser
     {
         // increase if you want more sideways wobble
         randomness  0.8
     }
 
-    // --- PU Colour: (1,1,1,1) -> (0,0,0,1) ---
+    // --- Colour: (1,1,1,1) -> (0,0,0,1) ---
     // Approx as fading RGB down (no alpha fade).
     affector ColourFader
     {
@@ -5935,7 +5935,7 @@ particle_system Particle/WindyFireSystem
     }
 }
 
-particle_system Particle/Woosh
+particle_system Woosh
 {
     material        Particle/Ring_14
     quota           1
@@ -5960,7 +5960,7 @@ particle_system Particle/Woosh
         direction       0 0 0
         position        0 0 0
 
-        // If your parser supports it, this makes it “one-shot”
+        // If your parser supports it, this makes it one-shot
         duration        0.01
         repeat_delay    999999
 
@@ -5969,7 +5969,7 @@ particle_system Particle/Woosh
 
     // --- Size growth ---
     // Option A (if you have Scale affector implemented)
-    affector Scale
+    affector Scaler
     {
         xyz_scale dyn_curved_linear
         {
@@ -5978,12 +5978,6 @@ particle_system Particle/Woosh
             control_point 1.0  30.0
         }
     }
-
-    // Option B (if Scale is NOT supported, but Scaler is)
-    // affector Scaler
-    // {
-    //     rate 30
-    // }
 
     // --- Fade out ---
     // Option A: ColourFader (usually available)

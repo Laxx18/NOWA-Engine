@@ -485,11 +485,7 @@ namespace NOWA
 
 		/**
 		 * @brief		Gets a list with paths for a given section. 
-		 * For example: "ParicleUniverse", would deliver: ../../media/ParticleUniverse/materials, ../../media/ParticleUniverse/models in the specified *.cfg file.
-		 * @param[in]	mx				The current mouse x coordinate
-		 * @param[in]	my				The current mouse y coordinate
-		 * @param[out]	x				The resulting mouse x coordinate
-		 * @param[out]	y				The resulting mouse y coordinate
+		 * For example: "Audio", would deliver: ../../media/Audio/machinery, ../../media/Audio/music in the specified *.cfg file.
 		 * @return		list			A list of paths to the section
 		 */
 		Ogre::StringVector getSectionPath(const Ogre::String& strSection);

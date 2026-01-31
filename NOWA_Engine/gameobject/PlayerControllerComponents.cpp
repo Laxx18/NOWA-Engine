@@ -24,7 +24,6 @@
 
 #include "modules/OgreRecastModule.h"
 #include "modules/LuaScriptApi.h"
-#include "modules/ParticleUniverseModule.h"
 #include "AiComponents.h"
 
 #include "utilities/AnimationBlender.h"
@@ -975,8 +974,6 @@ namespace NOWA
 			delete this->stateMachine;
 			this->stateMachine = nullptr;
 		}
-
-		AppStateManager::getSingletonPtr()->getParticleUniverseModule()->removeParticle("smoke" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()));
 	}
 
 	bool PlayerControllerJumpNRunComponent::init(rapidxml::xml_node<>*& propertyElement)
@@ -1165,8 +1162,6 @@ namespace NOWA
 			this->animationBlender->init(NOWA::AnimationBlender::ANIM_IDLE_1);
 			// Reset animation to T-Pose
 			this->animationBlender->setSourceEnabled(false);
-
-			AppStateManager::getSingletonPtr()->getParticleUniverseModule()->removeParticle("smoke" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()));
 		}
 
 		if (nullptr != this->stateMachine->getCurrentState())
@@ -1390,15 +1385,6 @@ namespace NOWA
 
 		if (true == activated)
 		{
-			// Add some particle effect, when player is grounded from jump
-			AppStateManager::getSingletonPtr()->getParticleUniverseModule()->createParticleSystem("smoke" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()), "smoke", 500.0f, Ogre::Quaternion::IDENTITY, this->gameObjectPtr->getPosition(), 0.05f);
-			auto particleStruct = AppStateManager::getSingletonPtr()->getParticleUniverseModule()->getParticle("smoke" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()));
-			if (nullptr != particleStruct)
-			{
-				particleStruct->particleOffsetPosition = Ogre::Vector3(0.0f, -0.1f, 0.0f);
-				particleStruct->particle->setScaleTime(10.0f);
-			}
-
 			this->animationBlender->registerAnimation(NOWA::AnimationBlender::ANIM_IDLE_1, this->animations[0]->getListSelectedValue());
 			this->animationBlender->registerAnimation(NOWA::AnimationBlender::ANIM_IDLE_2, this->animations[1]->getListSelectedValue());
 			this->animationBlender->registerAnimation(NOWA::AnimationBlender::ANIM_IDLE_3, this->animations[2]->getListSelectedValue());
@@ -2675,8 +2661,6 @@ namespace NOWA
 			this->walkSound->setPitch(0.35f);
 			this->walkSound->setGain(0.55f);
 			this->walkSound->play();
-			AppStateManager::getSingletonPtr()->getParticleUniverseModule()->getParticle("smoke" + Ogre::StringConverter::toString(this->playerController->getOwner()->getId()))->particleNode->setPosition(this->playerController->getPosition() + Ogre::Vector3(0.0f, -0.1f, 1.0f));
-			AppStateManager::getSingletonPtr()->getParticleUniverseModule()->playParticleSystem("smoke" + Ogre::StringConverter::toString(this->playerController->getOwner()->getId()));
 			this->groundedOnce = true;
 		}
 

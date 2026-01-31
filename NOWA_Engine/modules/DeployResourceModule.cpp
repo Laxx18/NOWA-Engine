@@ -507,13 +507,6 @@ namespace NOWA
 			configFile << "[Lua]\n";
 			configFile << "FileSystem=../../media/lua\n\n";
 
-			configFile << "[ParticleUniverse]\n";
-			configFile << "FileSystem=../../media/ParticleUniverse/core\n";
-			configFile << "FileSystem=../../media/ParticleUniverse/examples/materials\n";
-			configFile << "FileSystem=../../media/ParticleUniverse/examples/models\n";
-			configFile << "FileSystem=../../media/ParticleUniverse/examples/scripts\n";
-			configFile << "FileSystem=../../media/ParticleUniverse/examples/textures\n\n";
-
 			configFile << "[ParticleFX2]\n";
 			configFile << "FileSystem=../../media/ParticleFX2\n";
 

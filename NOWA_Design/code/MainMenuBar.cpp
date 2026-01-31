@@ -1741,7 +1741,6 @@ void MainMenuBar::showAboutWindow(void)
 				"<p><color value='#FFFFFF'> - OgreNewt: LGPL</color></p>"
 				"<p><color value='#FFFFFF'> - OgreProzedural: MIT</color></p>"
 				"<p><color value='#FFFFFF'> - OgreRecast: MIT</color></p>"
-				"<p><color value='#FFFFFF'> - ParticleUniverse: MIT</color></p>"
 				"<p><color value='#FFFFFF'> - TinyXML: ZLIB</color></p>"
 			);
 

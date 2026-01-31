@@ -464,9 +464,7 @@ void ComponentsPanelDynamic::showComponents(const Ogre::String& searchText)
 					}
 				}
 				// No constraints to this components, may be added as often as needed
-				else if ((NOWA::ParticleUniverseComponent::getStaticClassName() == tempComponentName)
-					|| (NOWA::SimpleSoundComponent::getStaticClassName() == tempComponentName)
-					|| (NOWA::ParticleUniverseComponent::getStaticClassName() == tempComponentName)
+				else if ((NOWA::SimpleSoundComponent::getStaticClassName() == tempComponentName)
 					|| (NOWA::SpawnComponent::getStaticClassName() == tempComponentName))
 				{
 					validToEnable = true;

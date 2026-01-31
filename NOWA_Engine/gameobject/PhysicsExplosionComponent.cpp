@@ -453,7 +453,7 @@ namespace NOWA
 			this->luaScript->setInterfaceFunctionsTemplate("--function onTimerSecondTick(originGameObject)\n--local soundComponent = originGameObject:getSimpleSoundComponent();"
 				"\n\t--soundComponent:setActivated(true);--soundComponent:connect();\n--end\n\n"
 				"--function onExplode(originGameObject)\n\t--local soundComponent = originGameObject:getSimpleSoundComponent();\n\t--soundComponent:setActivated(true);"
-				"\n\t--soundComponent:connect();\n\t--local particleComponent = originGameObject:getParticleUniverseComponent();\n\t--particleComponent:setActivated(true);"
+				"\n\t--soundComponent:connect();\n\t--local particleComponent = originGameObject:getParticleFxComponent();\n\t--particleComponent:setActivated(true);"
 				"\n\t--originGameObject:getSceneNode():setVisible(false, true);\n\t--logMessage([Lua]: gameobject translate: \" ..originGameObject:getName());"
 				"\n\t--originGameObject:getPhysicsActiveComponent() : translate(Vector3(2, 0, 0));\n\t--GameObjectController:deleteGameObject(originGameObject : getId());\n--end\n\n"
 				"--function onExplodeAffectedGameObject(originGameObject, affectedGameObject, distanceToBomb, detonationStrength)\n\t--affectedGameObject:getSceneNode():setVisible(false, true);\n--end");

@@ -144,16 +144,15 @@ namespace NOWA
 			}
 
 			auto closureFunction = [this](Ogre::Real renderDt)
-				{
-					// Update kernel radius
-					Ogre::GpuProgramParametersSharedPtr psParams = this->passSSAO->getFragmentProgramParameters();
-					psParams->setNamedConstant("kernelRadius", this->kernelRadius->getReal());
+			{
+				// Update kernel radius
+				Ogre::GpuProgramParametersSharedPtr psParams = this->passSSAO->getFragmentProgramParameters();
+				psParams->setNamedConstant("kernelRadius", this->kernelRadius->getReal());
 
-					// Update power scale
-					Ogre::GpuProgramParametersSharedPtr psParamsApply = this->passApplySSAO->getFragmentProgramParameters();
-					psParamsApply->setNamedConstant("powerScale", this->powerScale->getReal());
-				};
-
+				// Update power scale
+				Ogre::GpuProgramParametersSharedPtr psParamsApply = this->passApplySSAO->getFragmentProgramParameters();
+				psParamsApply->setNamedConstant("powerScale", this->powerScale->getReal());
+			};
 			Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
 			NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
 		}
@@ -252,62 +251,61 @@ namespace NOWA
 	void SSAOComponent::initializeSSAOShaders(void)
 	{
 		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+		{
+			// Get the SSAO material passes - these should already be loaded by the workspace
+			Ogre::MaterialPtr material = std::static_pointer_cast<Ogre::Material>(
+				Ogre::MaterialManager::getSingleton().getByName("SSAO/HS", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME));
+
+			if (material.isNull())
 			{
-				// Get the SSAO material passes - these should already be loaded by the workspace
-				Ogre::MaterialPtr material = std::static_pointer_cast<Ogre::Material>(
-					Ogre::MaterialManager::getSingleton().getByName("SSAO/HS", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME));
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[SSAOComponent] SSAO/HS material not found!");
+				return;
+			}
 
-				if (material.isNull())
-				{
-					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[SSAOComponent] SSAO/HS material not found!");
-					return;
-				}
+			this->passSSAO = material->getTechnique(0)->getPass(0);
 
-				this->passSSAO = material->getTechnique(0)->getPass(0);
+			// Get blur passes
+			Ogre::MaterialPtr materialBlurH = std::static_pointer_cast<Ogre::Material>(
+				Ogre::MaterialManager::getSingleton().getByName("SSAO/BlurH", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME));
+			if (!materialBlurH.isNull())
+			{
+				this->passBlurH = materialBlurH->getTechnique(0)->getPass(0);
+			}
 
-				// Get blur passes
-				Ogre::MaterialPtr materialBlurH = std::static_pointer_cast<Ogre::Material>(
-					Ogre::MaterialManager::getSingleton().getByName("SSAO/BlurH", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME));
-				if (!materialBlurH.isNull())
-				{
-					this->passBlurH = materialBlurH->getTechnique(0)->getPass(0);
-				}
+			Ogre::MaterialPtr materialBlurV = std::static_pointer_cast<Ogre::Material>(
+				Ogre::MaterialManager::getSingleton().getByName("SSAO/BlurV", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME));
+			if (!materialBlurV.isNull())
+			{
+				this->passBlurV = materialBlurV->getTechnique(0)->getPass(0);
+			}
 
-				Ogre::MaterialPtr materialBlurV = std::static_pointer_cast<Ogre::Material>(
-					Ogre::MaterialManager::getSingleton().getByName("SSAO/BlurV", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME));
-				if (!materialBlurV.isNull())
-				{
-					this->passBlurV = materialBlurV->getTechnique(0)->getPass(0);
-				}
+			// Get apply pass
+			Ogre::MaterialPtr materialApply = std::static_pointer_cast<Ogre::Material>(
+				Ogre::MaterialManager::getSingleton().getByName("SSAO/Apply", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME));
 
-				// Get apply pass
-				Ogre::MaterialPtr materialApply = std::static_pointer_cast<Ogre::Material>(
-					Ogre::MaterialManager::getSingleton().getByName("SSAO/Apply", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME));
+			if (materialApply.isNull())
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[SSAOComponent] SSAO/Apply material not found!");
+				return;
+			}
 
-				if (materialApply.isNull())
-				{
-					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[SSAOComponent] SSAO/Apply material not found!");
-					return;
-				}
+			this->passApplySSAO = materialApply->getTechnique(0)->getPass(0);
 
-				this->passApplySSAO = materialApply->getTechnique(0)->getPass(0);
+			// Set initial parameter values
+			if (this->passSSAO)
+			{
+				Ogre::GpuProgramParametersSharedPtr psParams = this->passSSAO->getFragmentProgramParameters();
+				psParams->setNamedConstant("kernelRadius", this->kernelRadius->getReal());
+			}
 
-				// Set initial parameter values
-				if (this->passSSAO)
-				{
-					Ogre::GpuProgramParametersSharedPtr psParams = this->passSSAO->getFragmentProgramParameters();
-					psParams->setNamedConstant("kernelRadius", this->kernelRadius->getReal());
-				}
+			if (this->passApplySSAO)
+			{
+				Ogre::GpuProgramParametersSharedPtr psParamsApply = this->passApplySSAO->getFragmentProgramParameters();
+				psParamsApply->setNamedConstant("powerScale", this->powerScale->getReal());
+			}
 
-				if (this->passApplySSAO)
-				{
-					Ogre::GpuProgramParametersSharedPtr psParamsApply = this->passApplySSAO->getFragmentProgramParameters();
-					psParamsApply->setNamedConstant("powerScale", this->powerScale->getReal());
-				}
-
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[SSAOComponent] SSAO shaders initialized successfully");
-			};
-
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[SSAOComponent] SSAO shaders initialized successfully");
+		};
 		NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "SSAOComponent::initializeSSAOShaders");
 	}
 

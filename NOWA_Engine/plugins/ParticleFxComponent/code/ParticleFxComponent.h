@@ -500,10 +500,6 @@ namespace NOWA
 		}
 
 	private:
-		/**
-		 * @brief Gathers all available particle template names from HLMS datablocks
-		 */
-		void gatherParticleNames(void);
 
 		/**
 		 * @brief Gets the unique particle name for this component instance

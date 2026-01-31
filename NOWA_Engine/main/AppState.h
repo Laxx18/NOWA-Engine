@@ -15,7 +15,6 @@
 #include "modules/MiniMapModule.h"
 #include "modules/MeshDecalGeneratorModule.h"
 #include "modules/GameProgressModule.h"
-#include "modules/ParticleUniverseModule.h"
 #include "modules/ParticleFxModule.h"
 #include "modules/LuaScriptModule.h"
 #include "modules/GraphicsModule.h"
@@ -193,7 +192,7 @@ namespace NOWA
 		AppStateListener* getAppStateManager(void) const;
 
 		/**
-		 * @brief	Initializes all necessary modules: GameProgressModule, ParticleUniverseModule, WorkspaceModule, OgreALModule
+		 * @brief	Initializes all necessary modules: GameProgressModule, ParticleFxModule, WorkspaceModule, OgreALModule
 		 *			Also adds the render queue listener for overlay.
 		 * @param[in]	initSceneManager Whether to init scene manager automatically, or the user may do it with own settings
 		 * @param[in]	initCamera Whether to init camera automatically, or the user may do it with own settings
@@ -201,7 +200,7 @@ namespace NOWA
 		void initializeModules(bool initSceneManager, bool initCamera);
 
 		/**
-		 * @brief	Destroys all modules: WorkspaceModule, CameraManager, GameObjectController, ParticleUniverseModule, GameProgressModule, LuaScriptApi, OgreALModule, Ogre graphics, OgreNewtModule
+		 * @brief	Destroys all modules: WorkspaceModule, CameraManager, GameObjectController, ParticleFxModule, GameProgressModule, LuaScriptApi, OgreALModule, Ogre graphics, OgreNewtModule
 		 *			Also removes the render queue listener from overlay.
 		 * @note	The scene manager must be valid!
 		 */
@@ -228,7 +227,6 @@ namespace NOWA
 		MeshDecalGeneratorModule* meshDecalGeneratorModule;
 		CameraManager* cameraManager;
 		OgreRecastModule* ogreRecastModule;
-		ParticleUniverseModule* particleUniverseModule;
 		ParticleFxModule* particleFxModule;
 		LuaScriptModule* luaScriptModule;
 		EventManager* eventManager;
