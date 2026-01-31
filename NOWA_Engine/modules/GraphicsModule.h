@@ -61,11 +61,11 @@ namespace NOWA
     * How the graphics resources destruction does work:
     * Logic thread (for physics/game logic).
     * Render thread (for reading transform data and drawing).
-    * If an entity/item is deleted immediately on the logic thread, the render thread might still access its transform — leading to crashes or undefined behavior.
+    * If an entity/item is deleted immediately on the logic thread, the render thread might still access its transform ï¿½ leading to crashes or undefined behavior.
     * 
     * - Logic thread writes to logicWriteSlot.
     * - Render thread reads from (logicWriteSlot + NUM_SLOTS - 2) % NUM_SLOTS to destroy.
-    * - Always skip 1–2 slots between write and destroy to ensure safety.
+    * - Always skip 1ï¿½2 slots between write and destroy to ensure safety.
     * - No cross-thread access = no mutex needed.
     * 
     * A fixed-size ring buffer (e.g., 3 or 4 slots) is used to delay destruction by a few frames. Each frame:
@@ -213,6 +213,12 @@ namespace NOWA
             bool promiseAlreadyFulfilled = false;
         };
     public:
+        void beginWorkspaceTransition(void);
+
+        void endWorkspaceTransition(void);
+
+        bool isWorkspaceTransitioning(void) const;
+
         void clearAllClosures(void);
 
         void clearSceneResources(void);
@@ -347,7 +353,7 @@ namespace NOWA
         uint64_t getLogicFrameId() const;
 
         /*
-        * Bulletproof solution for nested render thread commands — in a large codebase (400,000+ LOC), accidental misuse of a promise-based render command inside another queued render command can easily cause deadlocks.
+        * Bulletproof solution for nested render thread commands ï¿½ in a large codebase (400,000+ LOC), accidental misuse of a promise-based render command inside another queued render command can easily cause deadlocks.
         * The Problem:
         *   When entry.command() is running on the render thread, and inside that command, another command is enqueued with a promise, then wait() is called from the render thread. The render thread waits for itself => deadlock.
         *   The Solution: Detect and immediately execute nested commands if already on the render thread. 
@@ -572,6 +578,8 @@ namespace NOWA
 	private:
         std::thread renderThread;
         bool bRunning;
+
+        std::atomic<bool> workspaceTransitionInProgress{ false };
 
         // alpha = accumulator / fixedDt  (clamped 0..1)
         std::atomic<float> m_interpolationAlpha{ 0.0f };
@@ -904,7 +912,7 @@ namespace NOWA
     }, "ENQUEUE_RAYCAST1");
 
 // The do { ... } while(0) trick is mostly a C/C++ macro idiom to ensure that the macro behaves like a single statement 
-// (so you can safely put a semicolon after it and use it inside if statements without braces). But if your style prefers no do-while, that’s totally fine.
+// (so you can safely put a semicolon after it and use it inside if statements without braces). But if your style prefers no do-while, thatï¿½s totally fine.
 #define ENQUEUE_RAYCAST2(mouseX, mouseY, excludeVec, resultPos, successVar) \
     do { \
         Ogre::Vector3 resultPos##Local = Ogre::Vector3::ZERO; \

@@ -1171,7 +1171,11 @@ void DesignState::notifyEditSelectAccept(MyGUI::EditBox* sender)
 	if (sender == this->categoriesComboBox)
 	{
 		this->activeCategory = this->categoriesComboBox->getOnlyText();
-		this->editorManager->getSelectionManager()->filterCategories(this->activeCategory);
+		// Wrap editorManager access in render command for thread safety
+		ENQUEUE_RENDER_COMMAND_WAIT("DesignState::notifyEditSelectAccept_categories",
+		{
+			this->editorManager->getSelectionManager()->filterCategories(this->activeCategory);
+		});
 	}
 	else if (sender == this->findObjectEdit)
 	{
@@ -1204,7 +1208,7 @@ void DesignState::notifyEditSelectAccept(MyGUI::EditBox* sender)
 				Drawbacks of Centralizing Everything in EditorManager:
 				Monolithic EditorManager: The downside is that EditorManager could grow too large and become too complex if you add too many responsibilities to it.
 				You want to avoid making it a "god class" that handles everything, as this could lead to difficulties in debugging and maintaining the system.
-				It’s important to keep the responsibilities of EditorManager focused on editor-related operations and not everything in your game.
+				Itï¿½s important to keep the responsibilities of EditorManager focused on editor-related operations and not everything in your game.
 
 				Potential Lack of Flexibility: Moving everything into EditorManager could make the code harder to extend in the future. For instance,
 				if you wanted to change how selection or camera focus works (e.g., for a new feature or modification), you might find yourself modifying a large
@@ -1221,25 +1225,36 @@ void DesignState::notifyEditSelectAccept(MyGUI::EditBox* sender)
 				This would centralize the logic but keep the interaction points clean.
 
 				Event-driven System: Instead of pushing logic directly into the EditorManager, consider having it listen for specific events or requests 
-				(such as “camera focus,” “game object selection,” etc.) and then enqueue commands as needed.
+				(such as camera focus, game object selection, etc.) and then enqueue commands as needed.
 				This would allow EditorManager to be more reactive to the game state rather than being a catch-all for every operation.
 
 				Fazit: make the queue from the outside, if a class, has mix of logic and graphics!
 
-				It’s a good idea to centralize the logic in EditorManager to some extent, but it’s also important to keep EditorManager from becoming overly complex. Encapsulating render thread operations in EditorManager
+				It's a good idea to centralize the logic in EditorManager to some extent, but itï¿½s also important to keep EditorManager from becoming overly complex. Encapsulating render thread operations in EditorManager
 			*/
 
 
-			this->editorManager->getSelectionManager()->snapshotGameObjectSelection();
-			this->editorManager->focusCameraGameObject(gameObjectPtr.get());
-			this->editorManager->getSelectionManager()->clearSelection();
-			this->editorManager->getSelectionManager()->select(gameObjectPtr->getId());
+			// Wrap editorManager access in render command for thread safety
+			unsigned long gameObjectId = gameObjectPtr->getId();
+			auto rawGameObject = gameObjectPtr.get();
+
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DesignState::notifyEditSelectAccept_focus", _2(rawGameObject, gameObjectId),
+			{
+				this->editorManager->getSelectionManager()->snapshotGameObjectSelection();
+				this->editorManager->focusCameraGameObject(rawGameObject);
+				this->editorManager->getSelectionManager()->clearSelection();
+				this->editorManager->getSelectionManager()->select(gameObjectId);
+			});
 		}
 	}
 	else if (sender == this->constraintAxisEdit)
 	{
 		Ogre::Vector3 constraintAxis = Ogre::StringConverter::parseVector3(sender->getOnlyText());
-		this->editorManager->setConstraintAxis(constraintAxis);
+		// Wrap editorManager access in render command for thread safety
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DesignState::notifyEditSelectAccept_constraint", _1(constraintAxis),
+		{
+			this->editorManager->setConstraintAxis(constraintAxis);
+		});
 	}
 }
 
@@ -1266,16 +1281,24 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
 
 	if (this->gridButton == sender)
 	{
-		this->editorManager->setViewportGridEnabled(!this->editorManager->getViewportGridEnabled());
+		// Wrap editorManager access in render command for thread safety
+		ENQUEUE_RENDER_COMMAND_WAIT("DesignState::buttonHit_grid",
+		{
+			this->editorManager->setViewportGridEnabled(!this->editorManager->getViewportGridEnabled());
+		});
 	}
 
 	if (this->focusButton == sender)
 	{
-		if (this->editorManager->getSelectionManager()->getSelectedGameObjects().size() > 0)
+		// Wrap editorManager access in render command for thread safety
+		ENQUEUE_RENDER_COMMAND_WAIT("DesignState::buttonHit_focus",
 		{
-			// Focus the first selected object no matter how many objects are selected
-			this->editorManager->focusCameraGameObject(this->editorManager->getSelectionManager()->getSelectedGameObjects().begin()->second.gameObject);
-		}
+			if (this->editorManager->getSelectionManager()->getSelectedGameObjects().size() > 0)
+			{
+				// Focus the first selected object no matter how many objects are selected
+				this->editorManager->focusCameraGameObject(this->editorManager->getSelectionManager()->getSelectedGameObjects().begin()->second.gameObject);
+			}
+		});
 	}
 
 	if (this->selectModeCheck == sender)
@@ -1283,8 +1306,8 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
 		ENQUEUE_RENDER_COMMAND_WAIT("DesignState::buttonHit2",
 		{
 			this->selectModeCheck->setStateSelected(true);
+			this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_SELECT_MODE);
 		});
-		this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_SELECT_MODE);
 	}
 	else if (this->placeModeCheck == sender)
 	{
@@ -1300,9 +1323,8 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
 					placeModeItem->showItemChild();
 				}
 			}
+			this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_PLACE_MODE);
 		});
-
-		this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_PLACE_MODE);
 	}
 	else if (this->translateModeCheck == sender)
 	{
@@ -1318,9 +1340,8 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
 					translateModeItem->showItemChild();
 				}
 			}
+			this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_TRANSLATE_MODE);
 		});
-
-		this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_TRANSLATE_MODE);
 	}
 	else if (this->pickModeCheck == sender)
 	{
@@ -1335,8 +1356,11 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
 			});
 
 			this->simulate(false, true);
-			this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_PICKER_MODE);
-			this->editorManager->getGizmo()->setEnabled(false);
+			ENQUEUE_RENDER_COMMAND_WAIT("DesignState::buttonHit4_mode",
+			{
+				this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_PICKER_MODE);
+				this->editorManager->getGizmo()->setEnabled(false);
+			});
 		}
 	}
 	else if (this->scaleModeCheck == sender)
@@ -1344,24 +1368,24 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
 		ENQUEUE_RENDER_COMMAND_WAIT("DesignState::buttonHit5",
 		{
 			this->scaleModeCheck->setStateSelected(true);
+			this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_SCALE_MODE);
 		});
-		this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_SCALE_MODE);
 	}
 	else if (this->rotate1ModeCheck == sender)
 	{
 		ENQUEUE_RENDER_COMMAND_WAIT("DesignState::buttonHit6",
 		{
 			this->rotate1ModeCheck->setStateSelected(true);
+			this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_ROTATE_MODE1);
 		});
-		this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_ROTATE_MODE1);
 	}
 	else if (this->rotate2ModeCheck == sender)
 	{
 		ENQUEUE_RENDER_COMMAND_WAIT("DesignState::buttonHit7",
 		{
 			this->rotate2ModeCheck->setStateSelected(true);
+			this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_ROTATE_MODE2);
 		});
-		this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_ROTATE_MODE2);
 	}
 	else if (this->terrainModifyModeCheck == sender)
 	{
@@ -1370,9 +1394,8 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
 			this->terrainSmoothModeCheck->setStateSelected(false);
 			this->terrainModifyModeCheck->setStateSelected(true);
 			this->terrainPaintModeCheck->setStateSelected(false);
+			this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_TERRAIN_MODIFY_MODE);
 		});
-
-		this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_TERRAIN_MODIFY_MODE);
 	}
 	else if (this->terrainSmoothModeCheck == sender)
 	{
@@ -1381,8 +1404,8 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
 			this->terrainSmoothModeCheck->setStateSelected(true);
 			this->terrainModifyModeCheck->setStateSelected(false);
 			this->terrainPaintModeCheck->setStateSelected(false);
+			this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_TERRAIN_SMOOTH_MODE);
 		});
-		this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_TERRAIN_SMOOTH_MODE);
 	}
 	else if (this->terrainPaintModeCheck == sender)
 	{
@@ -1391,8 +1414,8 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
 			this->terrainSmoothModeCheck->setStateSelected(false);
 			this->terrainModifyModeCheck->setStateSelected(false);
 			this->terrainPaintModeCheck->setStateSelected(true);
+			this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_TERRAIN_PAINT_MODE);
 		});
-		this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_TERRAIN_PAINT_MODE);
 	}
 	else if (this->wakeButton == sender)
 	{

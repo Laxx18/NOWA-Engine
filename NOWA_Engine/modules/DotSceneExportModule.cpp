@@ -1262,8 +1262,11 @@ namespace NOWA
 
 			// SubEntity
 			{
-				for (unsigned int i = 0; i < entity->getNumSubEntities(); i++)
+				for (unsigned int i = 0; i < gameObject->getDatablockNames().size(); i++)
 				{
+					if (i >= entity->getNumSubEntities())
+						break;
+
 					Ogre::v1::SubEntity* subEntity = entity->getSubEntity(i);
 					xml_node<>* subEntityXML = doc.allocate_node(node_element, "subentity");
 					subEntityXML->append_attribute(doc.allocate_attribute("index", XMLConverter::ConvertString(doc, i)));
@@ -1308,8 +1311,11 @@ namespace NOWA
 
 			// SubItem
 			{
-				for (unsigned int i = 0; i < item->getNumSubItems(); i++)
+				for (unsigned int i = 0; i < gameObject->getDatablockNames().size(); i++)
 				{
+					if (i >= item->getNumSubItems())
+						break;
+
 					Ogre::SubItem* subItem = item->getSubItem(i);
 					xml_node<>* subEntityXML = doc.allocate_node(node_element, "subitem");
 					subEntityXML->append_attribute(doc.allocate_attribute("index", XMLConverter::ConvertString(doc, i)));

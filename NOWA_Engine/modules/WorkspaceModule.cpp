@@ -101,7 +101,7 @@ namespace NOWA
 
 	void WorkspaceModule::setShadowQuality(Ogre::HlmsPbs::ShadowFilter shadowFilter, bool recreateWorkspace)
 	{
-		ENQUEUE_RENDER_COMMAND_MULTI("WorkspaceModule::setShadowQuality", _1(shadowFilter),
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("WorkspaceModule::setShadowQuality", _1(shadowFilter),
 		{
 			this->shadowFilter = shadowFilter;
 			if (nullptr == this->pbs)
@@ -245,7 +245,7 @@ namespace NOWA
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[WorkspaceModule] cannot set ambient light mode, because there is no valid workspace. Please create first a workspace!");
 			return;
 		}
-		ENQUEUE_RENDER_COMMAND_MULTI("WorkspaceModule::setAmbientLightMode", _1(ambientLightMode),
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("WorkspaceModule::setAmbientLightMode", _1(ambientLightMode),
 		{
 			this->pbs->setAmbientLightMode(ambientLightMode);
 		});

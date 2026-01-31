@@ -53,13 +53,16 @@ namespace NOWA
 			this->destroyEverything(it->second);
 		}
 
-		// Explicitly destroy all particle system definitions
-		// before the SceneManager destructor tries to do it
-		if (nullptr != this->particleManager)
-		{
-			this->particleManager->destroyAllParticleSystems();
-			this->particleManager->destroyAllBillboardSets();
-		}
+		//// Explicitly destroy all particle system definitions
+		//// before the SceneManager destructor tries to do it
+		//if (nullptr != this->particleManager)
+		//{
+		//	this->particleManager->destroyAllParticleSystems();
+		//	this->particleManager->destroyAllBillboardSets();
+		//}
+
+		Ogre::String id = this->appStateName + "_ParticleFxModule::update";
+		NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
 
 		this->particles.clear();
 		this->sceneManager = nullptr;
@@ -348,8 +351,8 @@ namespace NOWA
 				}
 			}
 		};
-		Ogre::String id = "ParticleFxModule::update";
-		NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction);
+		Ogre::String id = this->appStateName + "_ParticleFxModule::update";
+		NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
 	}
 
 	ParticleFxData* ParticleFxModule::getParticle(const Ogre::String& name)
@@ -472,7 +475,13 @@ namespace NOWA
 		}
 
 		// Clone must be unique per template and name
-		const Ogre::String cloneName = "ParticleFX_NOWA_" + templateName + "_" + Ogre::StringConverter::toString(rand());
+		// const Ogre::String cloneName = "ParticleFX_NOWA_" + templateName + "_" + Ogre::StringConverter::toString(rand());
+
+		if (particleData.clonedDefName.empty())
+		{
+			particleData.clonedDefName = "ParticleFX_NOWA_" + templateName; // sanitize name if needed
+		}
+		const Ogre::String& cloneName = particleData.clonedDefName;
 
 		// Template changed? Destroy EVERYTHING and start fresh
 		if (false == particleData.baseParticleTemplateName.empty() && particleData.baseParticleTemplateName != templateName)

@@ -104,7 +104,7 @@ namespace NOWA
 		const Ogre::String prevSelected = this->particleTemplateName->getListSelectedValue();
 
 		std::vector<Ogre::String> names;
-		names.reserve(64u);
+		names.reserve(256u);
 		names.emplace_back("");
 
 		Ogre::SceneManager* sceneManager = this->gameObjectPtr->getSceneManager();

@@ -75,6 +75,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "UnderwaterEffectComponent",
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "OceanEffectComponent", "OceanEffectComponent\OceanEffectComponent.vcxproj", "{86E556D2-5839-427E-8066-675F2036D2DE}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PccPerPixelGridPlacementComponent", "PccPerPixelGridPlacementComponent\PccPerPixelGridPlacementComponent.vcxproj", "{E1EB6648-2042-4B66-B81D-95B3878A6862}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -225,6 +227,10 @@ Global
 		{86E556D2-5839-427E-8066-675F2036D2DE}.Debug|x64.Build.0 = Debug|x64
 		{86E556D2-5839-427E-8066-675F2036D2DE}.Release|x64.ActiveCfg = Release|x64
 		{86E556D2-5839-427E-8066-675F2036D2DE}.Release|x64.Build.0 = Release|x64
+		{E1EB6648-2042-4B66-B81D-95B3878A6862}.Debug|x64.ActiveCfg = Debug|x64
+		{E1EB6648-2042-4B66-B81D-95B3878A6862}.Debug|x64.Build.0 = Debug|x64
+		{E1EB6648-2042-4B66-B81D-95B3878A6862}.Release|x64.ActiveCfg = Release|x64
+		{E1EB6648-2042-4B66-B81D-95B3878A6862}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

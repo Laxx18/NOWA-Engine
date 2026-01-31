@@ -5,14 +5,14 @@
 // ============================================================================
 
 // bm: AlphaBlending
-hlms Particle/Star unlit
+hlms Particle/Star0 unlit
 {
 	diffuse_map star.jpg
 	cull_mode none
 }
 
 // bm: AlphaBlending
-hlms Particle/Flare unlit
+hlms Particle/Flare0 unlit
 {
     depth_check on
     cull_mode none
@@ -137,6 +137,7 @@ hlms Particle/advancedLodSystem unlit
 }
 
 // bm: AlphaBlending
+// ta: 2x2@16
 hlms Particle/mp_fire_02 unlit
 {
 	diffuse_map mp_fire_02_2x2.dds
@@ -213,7 +214,6 @@ material Particle/Fire
     {
         pass
         {
-            lighting off
             texture_unit
             {
                 texture p_flame.png
@@ -255,6 +255,20 @@ hlms Particle/GreenBall unlit
     diffuse_map p_green_ball.png
 }
 
+hlms Particle/GreenBallPBS pbs
+{
+	cull_mode	none
+
+	roughness 1.00
+	fresnel 1
+
+	alpha_hash yes
+	alpha_to_coverage msaa_only
+
+	diffuse_map p_green_ball.png
+	normal_map p_green_ball_n.png
+}
+
 // bm: AlphaHashing
 hlms Particle/Crate unlit
 {
@@ -274,6 +288,7 @@ hlms Particle/Hart unlit
 }
 
 // bm: AlphaTransparent
+// ta: 5x6@16
 hlms Particle/Interpolate unlit
 {
     diffuse_map interpolate.png
@@ -507,18 +522,6 @@ hlms Particle/Star_04 unlit
 hlms Particle/Star_05 unlit
 {
     diffuse_map pump_star_05.png
-}
-
-// bm: AlphaTransparent
-hlms Particle/Genesis_11 unlit
-{
-    diffuse_map pump_genesis_01.png
-}
-
-// bm: AlphaTransparent
-hlms Particle/Genesis_12 unlit
-{
-    diffuse_map pump_genesis_02.png
 }
 
 // bm: AlphaBlending

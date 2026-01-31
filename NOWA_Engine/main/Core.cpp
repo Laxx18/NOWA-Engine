@@ -11,6 +11,7 @@
 #include "OgreRectangle2D.h"
 #include "OgreHlmsDiskCache.h"
 #include "OgreAbiUtils.h"
+#include "ParticleSystem/OgreParticleSystemManager2.h"
 #include "Compositor/OgreCompositorManager2.h"
 
 #include "ocean/OgreHlmsOcean.h"
@@ -305,155 +306,261 @@ namespace NOWA
 
 	Core::~Core()
 	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[Core] Starting shutdown");
+		// GraphicsModule::RenderCommand renderCommand = [this]()
+		// {
 
-		if (nullptr != this->baseListenerContainer)
-		{
-			Ogre::Hlms* hlms = Core::getSingletonPtr()->getOgreRoot()->getHlmsManager()->getHlms(Ogre::HLMS_PBS);
-			Ogre::HlmsPbs* pbs = static_cast<Ogre::HlmsPbs*>(hlms);
-			pbs->setListener(nullptr);
-			delete this->baseListenerContainer;
-			this->baseListenerContainer = nullptr;
-		}
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[Core] Starting shutdown");
 
-		if (nullptr != InputDeviceCore::getSingletonPtr() && false == InputDeviceCore::getSingletonPtr()->getKeyboardInputDeviceModules().empty())
-		{
-			this->saveCustomConfiguration();
-		}
-
-		ProcessManager::getInstance()->clearAllProcesses();
-
-		if (nullptr != this->root)
-		{
-			auto factoryMovableText = this->root->getMovableObjectFactory("MovableText");
-			if (nullptr != factoryMovableText)
+			if (nullptr != this->baseListenerContainer)
 			{
-				delete factoryMovableText;
-			}
-			auto factoryRectangle2D = this->root->getMovableObjectFactory("Rectangle2D");
-			if (nullptr != factoryRectangle2D)
-			{
-				delete factoryRectangle2D;
+				Ogre::Hlms* hlms = Core::getSingletonPtr()->getOgreRoot()->getHlmsManager()->getHlms(Ogre::HLMS_PBS);
+				Ogre::HlmsPbs* pbs = static_cast<Ogre::HlmsPbs*>(hlms);
+				pbs->setListener(nullptr);
+				delete this->baseListenerContainer;
+				this->baseListenerContainer = nullptr;
 			}
 
-			Ogre::RenderSystem* renderSystem = this->root->getRenderSystem();
-			Ogre::TextureGpuManager* textureGpuManager = renderSystem->getTextureGpuManager();
-			if (nullptr != textureGpuManager)
+			if (nullptr != InputDeviceCore::getSingletonPtr() && false == InputDeviceCore::getSingletonPtr()->getKeyboardInputDeviceModules().empty())
 			{
-				textureGpuManager->setTextureGpuManagerListener(nullptr);
+				this->saveCustomConfiguration();
 			}
-		}
+
+			ProcessManager::getInstance()->clearAllProcesses();
+
+			if (nullptr != this->root)
+			{
+				auto factoryMovableText = this->root->getMovableObjectFactory("MovableText");
+				if (nullptr != factoryMovableText)
+				{
+					delete factoryMovableText;
+				}
+				auto factoryRectangle2D = this->root->getMovableObjectFactory("Rectangle2D");
+				if (nullptr != factoryRectangle2D)
+				{
+					delete factoryRectangle2D;
+				}
+
+				Ogre::RenderSystem* renderSystem = this->root->getRenderSystem();
+				Ogre::TextureGpuManager* textureGpuManager = renderSystem->getTextureGpuManager();
+				if (nullptr != textureGpuManager)
+				{
+					textureGpuManager->setTextureGpuManagerListener(nullptr);
+				}
+			}
 		
-		if (nullptr != resourceLoadingListener)
-		{
-			delete this->resourceLoadingListener;
-			this->resourceLoadingListener = nullptr;
-		}
-		if (nullptr != this->defaultEngineResourceListener)
-		{
-			delete this->defaultEngineResourceListener;
-			this->defaultEngineResourceListener = nullptr;
-		}
-
-		if (nullptr == Ogre::Root::getSingletonPtr())
-		{
-			return;
-		}
-
-		if (nullptr != InputDeviceCore::getSingletonPtr())
-		{
-			InputDeviceCore::getSingletonPtr()->destroyContent();
-			delete InputDeviceCore::getSingletonPtr();
-		}
-
-		Ogre::CompositorManager2* compositorManager = Ogre::Root::getSingletonPtr()->getCompositorManager2();
-
-		if (nullptr != this->myGuiWorkspace && nullptr != this->root && nullptr != compositorManager)
-		{
-			this->myGuiOgrePlatform->getRenderManagerPtr()->setSceneManager(nullptr);
-			compositorManager->removeWorkspace(this->myGuiWorkspace);
-			this->myGuiWorkspace = nullptr;
-		}
-		if (nullptr != this->myGui)
-		{
-			if (nullptr != this->info)
+			if (nullptr != resourceLoadingListener)
 			{
-				delete this->info;
-				this->info = nullptr;
+				delete this->resourceLoadingListener;
+				this->resourceLoadingListener = nullptr;
 			}
+			if (nullptr != this->defaultEngineResourceListener)
+			{
+				delete this->defaultEngineResourceListener;
+				this->defaultEngineResourceListener = nullptr;
+			}
+
+			if (nullptr == Ogre::Root::getSingletonPtr())
+			{
+				return;
+			}
+
+			if (nullptr != InputDeviceCore::getSingletonPtr())
+			{
+				InputDeviceCore::getSingletonPtr()->destroyContent();
+				delete InputDeviceCore::getSingletonPtr();
+			}
+
+			Ogre::CompositorManager2* compositorManager = Ogre::Root::getSingletonPtr()->getCompositorManager2();
+
+			if (nullptr != this->myGuiWorkspace && nullptr != this->root && nullptr != compositorManager)
+			{
+				this->myGuiOgrePlatform->getRenderManagerPtr()->setSceneManager(nullptr);
+				compositorManager->removeWorkspace(this->myGuiWorkspace);
+				this->myGuiWorkspace = nullptr;
+			}
+			if (nullptr != this->myGui)
+			{
+				if (nullptr != this->info)
+				{
+					delete this->info;
+					this->info = nullptr;
+				}
 			
-			this->myGui->shutdown();
-			delete this->myGui;
-			this->myGui = nullptr;
-			try
-			{
-				this->myGuiOgrePlatform->shutdown();
-			}
-			catch (...)
-			{
+				this->myGui->shutdown();
+				delete this->myGui;
+				this->myGui = nullptr;
+				try
+				{
+					this->myGuiOgrePlatform->shutdown();
+				}
+				catch (...)
+				{
 
+				}
+				delete this->myGuiOgrePlatform;
+				this->myGuiOgrePlatform = nullptr;
 			}
-			delete this->myGuiOgrePlatform;
-			this->myGuiOgrePlatform = nullptr;
-		}
 		
-		if (nullptr != this->overlaySystem)
-		{
-			delete this->overlaySystem;
-			this->overlaySystem = nullptr;
-		}
-		if (nullptr != this->pluginFactory)
-		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[Core] Deleting plugin factory");
-			delete this->pluginFactory;
-			this->pluginFactory = nullptr;
-		}
-
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[Core] Deleting pre load params of shader module");
-
-		if (nullptr != this->renderWindow)
-		{
-			Ogre::WindowEventUtilities::removeWindowEventListener(this->renderWindow, this);
-			// input manager is destroyed in windowClosed
-			this->windowClosed(this->renderWindow);
-		}
-
-		/*if (this->inputManager)	 {
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[Core] Deleting input manager");
-			OIS::InputManager::destroyInputSystem(this->inputManager);
-			this->inputManager = nullptr;
-			}*/
-		if (true == this->optionUseLuaConsole)
-		{
-			if (LuaConsole::getSingletonPtr())
+			if (nullptr != this->overlaySystem)
 			{
-				NOWA::LuaConsole::getSingletonPtr()->setVisible(false);
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[Core] Deleting lua console");
-				LuaConsole::getSingletonPtr()->shutdown();
-
-				delete LuaConsole::getSingletonPtr();
+				delete this->overlaySystem;
+				this->overlaySystem = nullptr;
 			}
-		}
-		if (true == this->optionUseLuaScript)
-		{
-			LuaScriptApi::getInstance()->destroyContent();
-		}
+			if (nullptr != this->pluginFactory)
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[Core] Deleting plugin factory");
+				delete this->pluginFactory;
+				this->pluginFactory = nullptr;
+			}
 
-		if (nullptr != this->timer)
-		{
-			delete this->timer;
-			this->timer = nullptr;
-		}
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[Core] Deleting pre load params of shader module");
 
-		this->saveHlmsDiskCache();
+			if (nullptr != this->renderWindow)
+			{
+				Ogre::WindowEventUtilities::removeWindowEventListener(this->renderWindow, this);
+				// input manager is destroyed in windowClosed
+				this->windowClosed(this->renderWindow);
+			}
 
-		if (nullptr != this->root)
+			/*if (this->inputManager)	 {
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[Core] Deleting input manager");
+				OIS::InputManager::destroyInputSystem(this->inputManager);
+				this->inputManager = nullptr;
+				}*/
+			if (true == this->optionUseLuaConsole)
+			{
+				if (LuaConsole::getSingletonPtr())
+				{
+					NOWA::LuaConsole::getSingletonPtr()->setVisible(false);
+					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[Core] Deleting lua console");
+					LuaConsole::getSingletonPtr()->shutdown();
+
+					delete LuaConsole::getSingletonPtr();
+				}
+			}
+			if (true == this->optionUseLuaScript)
+			{
+				LuaScriptApi::getInstance()->destroyContent();
+			}
+
+			if (nullptr != this->timer)
+			{
+				delete this->timer;
+				this->timer = nullptr;
+			}
+
+			this->saveHlmsDiskCache();
+
+			if (nullptr != this->root)
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
+					"[Core] Manually destroying all SceneManagers");
+
+				Ogre::SceneManagerEnumerator::SceneManagerIterator it =
+					this->root->getSceneManagerIterator();
+
+				std::vector<Ogre::SceneManager*> managers;
+				while (it.hasMoreElements())
+				{
+					managers.push_back(it.getNext());
+				}
+
+				for (Ogre::SceneManager* sm : managers)
+				{
+					if (sm)
+					{
+						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+							"[Core] Destroying SceneManager: " + sm->getName());
+
+						// This destroys ParticleSystemManager2 and all its defs
+						this->root->destroySceneManager(sm);
+					}
+				}
+
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[Core] All SceneManagers destroyed");
+
+			
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[Core] Deleting OgreRoot");
+				// but in Ogre, when deleting root, it will call shutdown internally and tries to shutdown a ScriptSerializer, which has not been
+				// created and not initialized with NULL, therefore crash, in the early state, when the config dialog appears, but is cancled!
+				
+				// Attention: Disabled until bug fixed in ogre
+				// OGRE_DELETE this->root;
+				this->root = nullptr;
+			}
+
+		// };
+		// NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "Core::destructor");
+	}
+
+	void Core::destroyScene(Ogre::SceneManager*& sceneManager)
+	{
+		if (nullptr != sceneManager)
 		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[Core] Deleting OgreRoot");
-			// but in Ogre, when deleting root, it will call shutdown internally and tries to shutdown a ScriptSerializer, which has not been
-			// created and not initialized with NULL, therefore crash, in the early state, when the config dialog appears, but is cancled!
-			OGRE_DELETE this->root;
-			this->root = nullptr;
+			auto myGuiOgrePlatform = this->myGuiOgrePlatform;
+			auto root = this->root;
+
+			// Capture sceneManager by value, so we can reset the reference after destruction
+			auto sceneMgrToDestroy = sceneManager;
+
+			// Null out on logic thread only after render thread finished destroying
+			// GraphicsModule::RenderCommand renderCommand = [myGuiOgrePlatform, root, sceneMgrToDestroy]()
+			// {
+				myGuiOgrePlatform->getRenderManagerPtr()->setSceneManager(nullptr);
+
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[Core] Destroying all cameras");
+				sceneMgrToDestroy->destroyAllCameras();
+
+				/* Optionally:
+				sceneMgrToDestroy->destroyAllLights();
+				sceneMgrToDestroy->destroyAllAnimations();
+				sceneMgrToDestroy->destroyAllAnimationStates();
+				sceneMgrToDestroy->destroyAllBillboardChains();
+				sceneMgrToDestroy->destroyAllBillboardSets();
+				sceneMgrToDestroy->destroyAllInstancedGeometry();
+				*/
+
+
+				 Ogre::SceneManagerEnumerator::SceneManagerIterator it = root->getSceneManagerIterator();
+
+				while (it.hasMoreElements())
+				{
+					Ogre::SceneManager* sm = it.getNext();
+					if (nullptr != sm)
+					{
+						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[Core] Pre-cleaning particles from SceneManager: " + sm->getName());
+
+						// Get particle manager
+						Ogre::ParticleSystemManager2* particleManager = sm->getParticleSystemManager2();
+						if (nullptr != particleManager)
+						{
+							try
+							{
+								// Destroy all particle systems manually
+								particleManager->destroyAllParticleSystems();
+
+								Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[Core] All particles destroyed for SceneManager: " + sm->getName());
+							}
+							catch (const Ogre::Exception& e)
+							{
+								Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[Core] Error destroying particles: " + e.getFullDescription());
+							}
+						}
+					}
+				}
+
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[Core] Clearing scene");
+				sceneMgrToDestroy->clearScene(true);
+
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[Core] Destroying SceneManager");
+				root->destroySceneManager(sceneMgrToDestroy);
+
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[Core] SceneManager destruction finished");
+			// };
+			// NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "Core::destroyScene");
+
+			// Reset the pointer on the logic thread after the render thread finished the destruction
+			sceneManager = nullptr;
 		}
 	}
 
@@ -1704,7 +1811,8 @@ namespace NOWA
 
 	void Core::moveWindowToTaskbar(void)
 	{
-		if (AppStateManager::getSingletonPtr()->getAppStatesCount() > 0)
+		// Check if AppStateManager is valid before accessing during potential shutdown
+		if (nullptr != AppStateManager::getSingletonPtr() && AppStateManager::getSingletonPtr()->getAppStatesCount() > 0)
 		{
 			boost::shared_ptr<EventDataWindowChanged> eventDataWindowChanged(new EventDataWindowChanged());
 			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataWindowChanged);
@@ -1730,7 +1838,8 @@ namespace NOWA
 
 	void Core::moveWindowToFront(void)
 	{
-		if (AppStateManager::getSingletonPtr()->getAppStatesCount() > 0)
+		// Check if AppStateManager is valid before accessing during potential shutdown
+		if (nullptr != AppStateManager::getSingletonPtr() && AppStateManager::getSingletonPtr()->getAppStatesCount() > 0)
 		{
 			boost::shared_ptr<EventDataWindowChanged> eventDataWindowChanged(new EventDataWindowChanged());
 			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataWindowChanged);
@@ -1750,7 +1859,8 @@ namespace NOWA
 	{
 		if (renderWindow == this->renderWindow)
 		{
-			if (AppStateManager::getSingletonPtr()->getAppStatesCount() > 0)
+			// Check if AppStateManager is valid before accessing during potential shutdown
+			if (nullptr != AppStateManager::getSingletonPtr() && AppStateManager::getSingletonPtr()->getAppStatesCount() > 0)
 			{
 				boost::shared_ptr<EventDataWindowChanged> eventDataWindowChanged(new EventDataWindowChanged());
 				AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataWindowChanged);
@@ -1779,7 +1889,8 @@ namespace NOWA
 #endif
 			this->renderWindow->windowMovedOrResized();
 
-			if (AppStateManager::getSingletonPtr()->getAppStatesCount() > 0)
+			// Check if AppStateManager is valid before accessing during potential shutdown
+			if (nullptr != AppStateManager::getSingletonPtr() && AppStateManager::getSingletonPtr()->getAppStatesCount() > 0)
 			{
 				boost::shared_ptr<EventDataWindowChanged> eventDataWindowChanged(new EventDataWindowChanged());
 				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataWindowChanged);
@@ -1796,7 +1907,8 @@ namespace NOWA
 	{
 		if (renderWindow == this->renderWindow)
 		{
-			if (AppStateManager::getSingletonPtr()->getAppStatesCount() > 0)
+			// Check if AppStateManager is valid before accessing during potential shutdown
+			if (nullptr != AppStateManager::getSingletonPtr() && AppStateManager::getSingletonPtr()->getAppStatesCount() > 0)
 			{
 				boost::shared_ptr<EventDataWindowChanged> eventDataWindowChanged(new EventDataWindowChanged());
 				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataWindowChanged);
@@ -3015,53 +3127,6 @@ namespace NOWA
 			this->dumpNodes(nodeIt.getNext(), "  " + padding);
 		}
 	}
-
-	void Core::destroyScene(Ogre::SceneManager*& sceneManager)
-	{
-		if (nullptr != sceneManager)
-		{
-			auto myGuiOgrePlatform = this->myGuiOgrePlatform;
-			auto root = this->root;
-
-			// Capture sceneManager by value, so we can reset the reference after destruction
-			auto sceneMgrToDestroy = sceneManager;
-
-			// Null out on logic thread only after render thread finished destroying
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT_NO_THIS("Core::destroyScene", _3(myGuiOgrePlatform, root, sceneMgrToDestroy),
-			{
-				myGuiOgrePlatform->getRenderManagerPtr()->setSceneManager(nullptr);
-
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[Core] Destroying all cameras");
-				sceneMgrToDestroy->destroyAllCameras();
-
-				/* Optionally:
-				sceneMgrToDestroy->destroyAllLights();
-				sceneMgrToDestroy->destroyAllAnimations();
-				sceneMgrToDestroy->destroyAllAnimationStates();
-				sceneMgrToDestroy->destroyAllBillboardChains();
-				sceneMgrToDestroy->destroyAllBillboardSets();
-				sceneMgrToDestroy->destroyAllInstancedGeometry();
-				*/
-
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[Core] Clearing scene");
-				sceneMgrToDestroy->clearScene(true);
-
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[Core] Destroying SceneManager");
-				root->destroySceneManager(sceneMgrToDestroy);
-
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[Core] SceneManager destruction finished");
-			});
-
-			// Reset the pointer on the logic thread after the render thread finished the destruction
-			sceneManager = nullptr;
-		}
-	}
-
-
-	// void Core::eventOccurred(const Ogre::String& eventName, const Ogre::NameValuePairList* parameters)
-	// {
-		// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "-----> [Core] event: " + eventName + " param value: " + parameters->find(eventName) );
-	// }
 
 	void Core::loadCustomConfiguration(const char *strFilename)
 	{

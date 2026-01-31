@@ -19,10 +19,13 @@
 #include "Compositor/Pass/PassQuad/OgreCompositorPassQuadDef.h"
 #include "Compositor/Pass/PassMipmap/OgreCompositorPassMipmapDef.h"
 #include "OgreHlmsListener.h"
+#include "OgreFrameListener.h"
+#include "Cubemaps/OgreParallaxCorrectedCubemapAuto.h"
 #include "OgreBitwise.h"
 
 #include "Compositor/OgreCompositorShadowNodeDef.h"
 #include "Compositor/OgreCompositorWorkspaceListener.h"
+#include "Compositor/Pass/PassIblSpecular/OgreCompositorPassIblSpecularDef.h"
 
 #include "TerraShadowMapper.h"
 #include "ocean/OgreHlmsOcean.h"
@@ -75,15 +78,18 @@ namespace NOWA
 
 		virtual ~PlanarReflectionsWorkspaceListener()
 		{
-
+			Ogre::String id = "PlanarReflectionsWorkspaceListener_ParticleFxModule::workspacePreUpdate";
+			NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
 		}
 
 		virtual void workspacePreUpdate(Ogre::CompositorWorkspace* workspace)
 		{
-			ENQUEUE_RENDER_COMMAND("PlanarReflectionsWorkspaceListener::workspacePreUpdate",
+			auto closureFunction = [this](Ogre::Real renderDt)
 			{
 				this->planarReflections->beginFrame();
-			});
+			};
+			Ogre::String id = "PlanarReflectionsWorkspaceListener_ParticleFxModule::workspacePreUpdate";
+			NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
 		}
 
 		virtual void passEarlyPreExecute(Ogre::CompositorPass* pass)
@@ -107,7 +113,7 @@ namespace NOWA
 			Ogre::CompositorPassScene* passScene = static_cast<Ogre::CompositorPassScene*>(pass);
 			Ogre::Camera* camera = passScene->getCamera();
 
-			ENQUEUE_RENDER_COMMAND_MULTI("PlanarReflectionsWorkspaceListener::passEarlyPreExecute", _2(camera, pass),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PlanarReflectionsWorkspaceListener::passEarlyPreExecute", _2(camera, pass),
 			{
 					// Note: The Aspect Ratio must match that of the camera we're reflecting.
 					this->planarReflections->update(camera, camera->getAutoAspectRatio()
@@ -133,6 +139,7 @@ namespace NOWA
 		useSSAO(new Variant(WorkspaceBaseComponent::AttrUseSSAO(), false, this->attributes)),
 		useDistortion(new Variant(WorkspaceBaseComponent::AttrUseDistortion(), false, this->attributes)),
 		useMSAA(new Variant(WorkspaceBaseComponent::AttrUseMSAA(), false, this->attributes)),
+		usePCC(new Variant(WorkspaceBaseComponent::AttrUsePCC(), false, this->attributes)),
 		shadowGlobalBias(new Variant(WorkspaceBaseComponent::AttrShadowGlobalBias(), Ogre::Real(1.0f), this->attributes)),
 		shadowGlobalNormalOffset(new Variant(WorkspaceBaseComponent::AttrShadowGlobalNormalOffset(), Ogre::Real(168.0f), this->attributes)),
 		shadowPSSMLambda(new Variant(WorkspaceBaseComponent::AttrShadowPSSMLambda(), Ogre::Real(0.95f), this->attributes)),
@@ -161,7 +168,9 @@ namespace NOWA
 		oceanUnderwaterActive(false),
 		hlmsListener(nullptr),
 		hlmsWind(nullptr),
-		involvedInSplitScreen(false)
+		involvedInSplitScreen(false),
+		parallaxCorrectedCubemap(nullptr),
+		workspacePccProbes(nullptr)
 	{
 		this->backgroundColor->addUserData(GameObject::AttrActionColorDialog());
 		this->superSampling->setDescription("Sets the supersampling for whole scene texture rendering. E.g. a value of 0.25 will pixelize the scene for retro Game experience.");
@@ -175,6 +184,12 @@ namespace NOWA
 		this->useMSAA->setDescription("Sets whether to use MSAA (Enhanced Subpixel Morphological Antialiasing). It can also only be used if the ogre.cfg configured anti aliasing level is higher as 1.");
 
 		this->useReflection->addUserData(GameObject::AttrActionNeedRefresh());
+
+		this->usePCC->setDescription("Enable Parallax Corrected Cubemap (PCC) system for automatic reflection probe placement. "
+			"This provides better quality reflections in interior spaces. "
+			"Cannot be used with manual reflection cameras.");
+		this->usePCC->setReadOnly(true);
+		// this->usePCC->addUserData(GameObject::AttrActionNeedRefresh());
 	}
 
 	WorkspaceBaseComponent::~WorkspaceBaseComponent()
@@ -254,6 +269,11 @@ namespace NOWA
 			this->useOcean = XMLConverter::getAttribBool(propertyElement, "data");
 			propertyElement = propertyElement->next_sibling("property");
 		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "UsePCC")
+		{
+			this->usePCC->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "ShadowGlobalBias")
 		{
 			this->shadowGlobalBias->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
@@ -330,6 +350,8 @@ namespace NOWA
 
 	bool WorkspaceBaseComponent::connect(void)
 	{
+		GraphicsModule::getInstance()->beginWorkspaceTransition();
+
 		// Only create workspace for active camera
 		if (nullptr != this->cameraComponent && false == this->cameraComponent->isActivated() && false == this->involvedInSplitScreen)
 		{
@@ -338,7 +360,7 @@ namespace NOWA
 
 		this->canUseOcean = this->useOcean;
 
-		ENQUEUE_RENDER_COMMAND("WorkspaceBaseComponent::connect",
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
 		{
 			if (nullptr != this->workspace)
 			{
@@ -357,7 +379,10 @@ namespace NOWA
 				compositorEffectComponents[i]->enableEffect(compositorEffectComponents[i]->effectName, compositorEffectComponents[i]->isActivated());
 			}
 			this->reconnectAllNodes();
-		});
+		};
+		NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObject::connect");
+
+		GraphicsModule::getInstance()->endWorkspaceTransition();
 		return true;
 	}
 
@@ -636,6 +661,20 @@ namespace NOWA
 				}
 			}
 
+			if (true == this->usePCC->getBool())
+			{
+				// PCC doesn't need a separate cubemap texture initially
+				// because ParallaxCorrectedCubemapAuto manages its own textures
+
+				// Create the probe renderer node and workspace definitions
+				this->createLocalCubemapProbeRendererNode();
+				this->createLocalCubemapsProbeWorkspace();
+
+				// Note: The actual PCC system will be created by 
+				// PccPerPixelGridPlacementComponent after workspace is ready
+			}
+
+
 			this->internalCreateCompositorNode();
 
 			if (true == this->useTerra || true == this->canUseOcean)
@@ -734,6 +773,8 @@ namespace NOWA
 		GraphicsModule::RenderCommand renderCommand = [this]()
 		{
 			this->resetReflectionForAllEntities();
+
+			this->destroyPccSystem();
 
 			Ogre::TextureGpuManager * textureManager = Ogre::Root::getSingletonPtr()->getRenderSystem()->getTextureGpuManager();
 
@@ -838,6 +879,16 @@ namespace NOWA
 					this->compositorManager->removeWorkspaceDefinition(this->planarReflectionReflectiveWorkspaceName);
 				}
 
+				if (true == this->compositorManager->hasNodeDefinition("LocalCubemapProbeRendererNode"))
+				{
+					this->compositorManager->removeNodeDefinition("LocalCubemapProbeRendererNode");
+				}
+
+				if (true == this->compositorManager->hasWorkspaceDefinition("LocalCubemapsProbeWorkspace"))
+				{
+					this->compositorManager->removeWorkspaceDefinition("LocalCubemapsProbeWorkspace");
+				}
+
 				if (nullptr != this->hlmsListener)
 				{
 					delete this->hlmsListener;
@@ -854,7 +905,7 @@ namespace NOWA
 	{
 		if (nullptr != this->workspace)
 		{
-			ENQUEUE_RENDER_COMMAND/*_WAIT*/("WorkspaceBaseComponent::nullWorkspace",
+			ENQUEUE_RENDER_COMMAND_WAIT("WorkspaceBaseComponent::nullWorkspace",
 			{
 				this->compositorManager->removeWorkspace(this->workspace);
 				this->workspace = nullptr;
@@ -948,6 +999,11 @@ namespace NOWA
 		else if (WorkspaceBaseComponent::AttrUseMSAA() == attribute->getName())
 		{
 			this->setUseMSAA(attribute->getBool());
+		}
+		else if (WorkspaceBaseComponent::AttrUsePCC() == attribute->getName())
+		{
+			// Manipulated by PccPerPixelGridPlacementComponent
+			// this->setUsePCC(attribute->getBool());
 		}
 		else if (WorkspaceBaseComponent::AttrShadowGlobalBias() == attribute->getName())
 		{
@@ -1044,6 +1100,12 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "UseMSAA"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->useMSAA->getBool())));
+		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "UsePCC"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->usePCC->getBool())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
@@ -1983,7 +2045,7 @@ namespace NOWA
 			return;
 		}
 
-		ENQUEUE_RENDER_COMMAND_MULTI("WorkspaceBaseComponent::initializeHdr", _1(fsaa),
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("WorkspaceBaseComponent::initializeHdr", _1(fsaa),
 		{
 			Ogre::String preprocessorDefines = "MSAA_INITIALIZED=1,";
 
@@ -2392,7 +2454,7 @@ namespace NOWA
 
 	void WorkspaceBaseComponent::setDataBlockPbsReflectionTextureName(GameObject* gameObject, const Ogre::String& textureName)
 	{
-		ENQUEUE_RENDER_COMMAND_MULTI("WorkspaceBaseComponent::setDataBlockPbsReflectionTextureName", _2(gameObject, textureName),
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("WorkspaceBaseComponent::setDataBlockPbsReflectionTextureName", _2(gameObject, textureName),
 		{
 			unsigned int i = 0;
 			boost::shared_ptr<DatablockPbsComponent> datablockPbsCompPtr = nullptr;
@@ -2413,7 +2475,7 @@ namespace NOWA
 	{
 		if (nullptr != this->planarReflections && false == this->planarReflectionReflectiveWorkspaceName.empty())
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI("WorkspaceBaseComponent::setPlanarMaxReflections", _9(gameObjectId, useAccurateLighting, width, height, withMipmaps, useMipmapMethodCompute, position, orientation, mirrorSize),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("WorkspaceBaseComponent::setPlanarMaxReflections", _9(gameObjectId, useAccurateLighting, width, height, withMipmaps, useMipmapMethodCompute, position, orientation, mirrorSize),
 			{
 				bool foundGameObjectId = false;
 				unsigned int planarReflectionActorIndex = 1;
@@ -2439,7 +2501,7 @@ namespace NOWA
 	{
 		if (nullptr != this->planarReflections && false == this->planarReflectionReflectiveWorkspaceName.empty())
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI("WorkspaceBaseComponent::addPlanarReflectionsActor", _9(gameObjectId, useAccurateLighting, width, height, withMipmaps, useMipmapMethodCompute, position, orientation, mirrorSize),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("WorkspaceBaseComponent::addPlanarReflectionsActor", _9(gameObjectId, useAccurateLighting, width, height, withMipmaps, useMipmapMethodCompute, position, orientation, mirrorSize),
 			{
 				bool foundGameObjectId = false;
 				unsigned int planarReflectionActorIndex = 1;
@@ -2497,7 +2559,7 @@ namespace NOWA
 
 	void WorkspaceBaseComponent::removePlanarReflectionsActor(unsigned long gameObjectId)
 	{
-		ENQUEUE_RENDER_COMMAND_MULTI("WorkspaceBaseComponent::removePlanarReflectionsActor", _1(gameObjectId),
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("WorkspaceBaseComponent::removePlanarReflectionsActor", _1(gameObjectId),
 		{
 			bool couldRemove = false;
 			for (size_t i = 0; i < this->planarReflectionActors.size(); i++)
@@ -2587,7 +2649,7 @@ namespace NOWA
 			boost::shared_ptr<EventDataHdrActivated> eventDataHdrActivated(new EventDataHdrActivated(gameObjectPtr->getId(), useHdr));
 			AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataHdrActivated);
 
-			ENQUEUE_RENDER_COMMAND_MULTI("WorkspaceBaseComponent::setUseHdr", _1(useHdr),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("WorkspaceBaseComponent::setUseHdr", _1(useHdr),
 			{
 				this->gameObjectPtr->getSceneManager()->setAmbientLight(Ogre::ColourValue(0.3f, 0.5f, 0.7f), Ogre::ColourValue(0.6f, 0.45f, 0.3f), this->gameObjectPtr->getSceneManager()->getAmbientLightHemisphereDir());
 
@@ -2732,6 +2794,16 @@ namespace NOWA
 		this->createWorkspace();
 	}
 
+	Ogre::ParallaxCorrectedCubemapAuto* WorkspaceBaseComponent::getParallaxCorrectedCubemap(void) const
+	{
+		return this->parallaxCorrectedCubemap;
+	}
+
+	void WorkspaceBaseComponent::setParallaxCorrectedCubemap(Ogre::ParallaxCorrectedCubemapAuto* pcc)
+	{
+		this->parallaxCorrectedCubemap = pcc;
+	}
+
 	void WorkspaceBaseComponent::createSSAONoiseTexture(void)
 	{
 		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
@@ -2849,9 +2921,187 @@ namespace NOWA
 		NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "WorkspaceBaseComponent::createSSAONoiseTexture");
 	}
 
+	void WorkspaceBaseComponent::createLocalCubemapProbeRendererNode(void)
+	{
+		if (false == this->compositorManager->hasNodeDefinition("LocalCubemapProbeRendererNode"))
+		{
+			Ogre::CompositorNodeDef* nodeDef = compositorManager->addNodeDefinition("LocalCubemapProbeRendererNode");
+
+			// ===== INPUT CHANNELS =====
+			// Channel 0: cubemap texture (from external)
+			// Channel 1: ibl_output (from external)
+			nodeDef->addTextureSourceName("cubemap", 0, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
+			nodeDef->addTextureSourceName("ibl_output", 1, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
+
+			// ===== LOCAL TEXTURES =====
+			nodeDef->setNumLocalTextureDefinitions(1);
+
+			auto* depthTexDef = nodeDef->addTextureDefinition("depthTexture");
+			depthTexDef->width = 0;  // Will be set by PCC system
+			depthTexDef->height = 0;
+			depthTexDef->format = Ogre::PFG_D32_FLOAT;
+			depthTexDef->textureFlags = Ogre::TextureFlags::RenderToTexture;
+			depthTexDef->depthBufferId = Ogre::DepthBuffer::POOL_DEFAULT;
+
+			// ===== RENDER TARGET VIEWS =====
+			// RTV 1: cubemap with depth attachment
+			Ogre::RenderTargetViewDef* rtvWithDepth = nodeDef->addRenderTextureView("cubemap_customRtv");
+			Ogre::RenderTargetViewEntry colourAttachment;
+			colourAttachment.textureName = "cubemap";
+			rtvWithDepth->colourAttachments.push_back(colourAttachment);
+			rtvWithDepth->depthAttachment.textureName = "depthTexture";
+
+			// RTV 2: cubemap without depth (for depth compression pass)
+			Ogre::RenderTargetViewDef* rtvNoDepth = nodeDef->addRenderTextureView("cubemap_noDepth");
+			colourAttachment.textureName = "cubemap";
+			rtvNoDepth->colourAttachments.push_back(colourAttachment);
+			rtvNoDepth->depthBufferId = Ogre::DepthBuffer::POOL_NO_DEPTH;
+
+			// ===== TARGET PASSES =====
+			// 6 faces × 2 passes each + 1 final IBL pass = 13 passes
+			nodeDef->setNumTargetPass(13);
+
+			const Ogre::uint8 cubemapFaces[6] =
+			{
+				Ogre::CubemapSide::PX, Ogre::CubemapSide::NX,
+				Ogre::CubemapSide::PY, Ogre::CubemapSide::NY,
+				Ogre::CubemapSide::PZ, Ogre::CubemapSide::NZ
+			};
+
+			unsigned short passIndex = 0;
+
+			for (int face = 0; face < 6; ++face)
+			{
+				// ===== PASS 1: Render scene to cubemap face =====
+				{
+					Ogre::CompositorTargetDef* targetDef = nodeDef->addTargetPass("cubemap_customRtv", cubemapFaces[face]);
+
+					Ogre::CompositorPassSceneDef* passScene = static_cast<Ogre::CompositorPassSceneDef*>( targetDef->addPass(Ogre::PASS_SCENE));
+
+					passScene->setAllLoadActions(Ogre::LoadAction::Clear);
+					passScene->mClearColour[0] = Ogre::ColourValue(0.2f, 0.4f, 0.6f, 1.0f);
+
+					passScene->mStoreActionColour[0] = Ogre::StoreAction::Store;
+					passScene->mStoreActionDepth = Ogre::StoreAction::Store;
+					passScene->mStoreActionStencil = Ogre::StoreAction::DontCare;
+
+					// Reorient camera for cubemap face
+					passScene->mCameraCubemapReorient = true;
+
+					// Filter what gets reflected (visibility mask 0x00000005)
+					// This prevents certain objects from appearing in reflections
+					passScene->mVisibilityMask = 0x00000005;
+
+					passScene->mIncludeOverlays = false;
+					passScene->mUpdateLodLists = true;
+
+					// Render queues 0-250 (RQ 250 is where PCC helper geometry lives)
+					passScene->mFirstRQ = 0;
+					passScene->mLastRQ = 250;
+
+					// Use shadow node with recalculation for accurate shadows
+					passScene->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
+					passScene->mShadowNodeRecalculation = Ogre::ShadowNodeRecalculation::SHADOW_NODE_RECALCULATE;
+
+					passScene->mProfilingId = "NOWA_PCC_Cubemap_Face_Pass_Scene";
+				}
+
+				// ===== PASS 2: Depth compression =====
+				{
+					Ogre::CompositorTargetDef* targetDef = nodeDef->addTargetPass("cubemap_noDepth", cubemapFaces[face]);
+
+					Ogre::CompositorPassQuadDef* passQuad = static_cast<Ogre::CompositorPassQuadDef*>( targetDef->addPass(Ogre::PASS_QUAD));
+
+					passQuad->mStoreActionDepth = Ogre::StoreAction::DontCare;
+					passQuad->mStoreActionStencil = Ogre::StoreAction::DontCare;
+
+					// passQuad->mFrustumCorners = Ogre::CompositorPassQuadDef::VIEW_SPACE_CORNERS_FAR;
+					passQuad->mFrustumCorners = Ogre::CompositorPassQuadDef::VIEW_SPACE_CORNERS;
+					passQuad->mMaterialName = "PCC/DepthCompressor";
+					passQuad->addQuadTextureSource(0, "depthTexture");
+
+					// CRITICAL: Also reorient for cubemap face
+					passQuad->mCameraCubemapReorient = true;
+
+					passQuad->mProfilingId = "NOWA_PCC_Depth_Compress_Pass_Quad";
+
+					// On the LAST face (-Z), add IBL specular generation
+					if (face == 5) // -Z is the last face
+					{
+						Ogre::CompositorPassIblSpecularDef* iblPass = static_cast<Ogre::CompositorPassIblSpecularDef*>(targetDef->addPass(Ogre::PASS_IBL_SPECULAR));
+
+						iblPass->setCubemapInput("cubemap");
+						iblPass->setCubemapOutput("ibl_output");
+						iblPass->mProfilingId = "NOWA_PCC_IBL_Specular_Gen";
+					}
+				}
+			}
+		}
+	}
+
+	void WorkspaceBaseComponent::createLocalCubemapsProbeWorkspace(void)
+	{
+		if (false == this->compositorManager->hasWorkspaceDefinition("LocalCubemapsProbeWorkspace"))
+		{
+			Ogre::CompositorWorkspaceDef* workspaceDef = this->compositorManager->addWorkspaceDefinition("LocalCubemapsProbeWorkspace");
+
+			// Connect external channels to the probe renderer node
+			// Channel 0: cubemap texture
+			workspaceDef->connectExternal(0, "LocalCubemapProbeRendererNode", 0);
+			// Channel 1: IBL output texture
+			workspaceDef->connectExternal(1, "LocalCubemapProbeRendererNode", 1);
+		}
+	}
+
+	void WorkspaceBaseComponent::destroyPccSystem()
+	{
+		ENQUEUE_RENDER_COMMAND_WAIT("WorkspaceBaseComponent::destroyPccSystem",
+		{
+			if (nullptr != this->parallaxCorrectedCubemap)
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,"[WorkspaceBaseComponent] Destroying PCC system");
+
+				// Clear from HlmsPbs
+				Ogre::HlmsManager* hlmsManager = Ogre::Root::getSingletonPtr()->getHlmsManager();
+				Ogre::HlmsPbs* hlmsPbs = static_cast<Ogre::HlmsPbs*>(
+					hlmsManager->getHlms(Ogre::HLMS_PBS));
+				hlmsPbs->setParallaxCorrectedCubemap(nullptr);
+
+				// Cast to FrameListener* before unregistering
+				Ogre::Root::getSingleton().removeFrameListener(static_cast<Ogre::FrameListener*>(this->parallaxCorrectedCubemap));
+
+				delete this->parallaxCorrectedCubemap;
+				this->parallaxCorrectedCubemap = nullptr;
+
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,"[WorkspaceBaseComponent] PCC frame listener unregistered and object deleted");
+			}
+
+			if (nullptr != this->workspacePccProbes)
+			{
+				this->compositorManager->removeWorkspace(this->workspacePccProbes);
+				this->workspacePccProbes = nullptr;
+			}
+		});
+	}
+
 	bool WorkspaceBaseComponent::getUseOcean(void) const
 	{
 		return this->useOcean;
+	}
+
+	void WorkspaceBaseComponent::setUsePCC(bool usePCC)
+	{
+		this->usePCC->setValue(usePCC);
+
+		if (nullptr != this->workspace)
+		{
+			this->createWorkspace();
+		}
+	}
+
+	bool WorkspaceBaseComponent::getUsePCC(void) const
+	{
+		return this->usePCC->getBool();
 	}
 
 	void WorkspaceBaseComponent::setReflectionCameraGameObjectId(unsigned long reflectionCameraGameObjectId)
@@ -2907,7 +3157,7 @@ namespace NOWA
 	void WorkspaceBaseComponent::setShadowGlobalBias(Ogre::Real shadowGlobalBias)
 	{
 		this->shadowGlobalBias->setValue(shadowGlobalBias); 
-		ENQUEUE_RENDER_COMMAND("WorkspaceBaseComponent::setShadowGlobalBias",
+		ENQUEUE_RENDER_COMMAND_WAIT("WorkspaceBaseComponent::setShadowGlobalBias",
 		{
 			this->updateShadowGlobalBias();
 		});
@@ -2921,7 +3171,7 @@ namespace NOWA
 	void WorkspaceBaseComponent::setShadowGlobalNormalOffset(Ogre::Real shadowGlobalNormalOffset)
 	{
 		this->shadowGlobalNormalOffset->setValue(shadowGlobalNormalOffset);
-		ENQUEUE_RENDER_COMMAND("WorkspaceBaseComponent::setShadowGlobalNormalOffset",
+		ENQUEUE_RENDER_COMMAND_WAIT("WorkspaceBaseComponent::setShadowGlobalNormalOffset",
 		{
 			this->updateShadowGlobalBias();
 		});
@@ -2935,7 +3185,7 @@ namespace NOWA
 	void WorkspaceBaseComponent::setShadowPSSMLambda(Ogre::Real shadowPssmLambda)
 	{
 		this->shadowPSSMLambda->setValue(shadowPssmLambda);
-		ENQUEUE_RENDER_COMMAND("WorkspaceBaseComponent::setShadowPSSMLambda",
+		ENQUEUE_RENDER_COMMAND_WAIT("WorkspaceBaseComponent::setShadowPSSMLambda",
 		{
 			this->updateShadowGlobalBias();
 		});
@@ -2949,7 +3199,7 @@ namespace NOWA
 	void WorkspaceBaseComponent::setShadowSplitBlend(Ogre::Real shadowSplitBlend)
 	{
 		this->shadowSplitBlend->setValue(shadowSplitBlend);
-		ENQUEUE_RENDER_COMMAND("WorkspaceBaseComponent::setShadowSplitBlend",
+		ENQUEUE_RENDER_COMMAND_WAIT("WorkspaceBaseComponent::setShadowSplitBlend",
 		{
 			this->updateShadowGlobalBias();
 		});
@@ -2963,7 +3213,7 @@ namespace NOWA
 	void WorkspaceBaseComponent::setShadowSplitFade(Ogre::Real shadowSplitFade)
 	{
 		this->shadowSplitFade->setValue(shadowSplitFade);
-		ENQUEUE_RENDER_COMMAND("WorkspaceBaseComponent::setShadowSplitFade",
+		ENQUEUE_RENDER_COMMAND_WAIT("WorkspaceBaseComponent::setShadowSplitFade",
 		{
 			this->updateShadowGlobalBias();
 		});
@@ -2977,7 +3227,7 @@ namespace NOWA
 	void WorkspaceBaseComponent::setShadowSplitPadding(Ogre::Real shadowSplitPadding)
 	{
 		this->shadowSplitPadding->setValue(shadowSplitPadding);
-		ENQUEUE_RENDER_COMMAND("WorkspaceBaseComponent::setShadowSplitPadding",
+		ENQUEUE_RENDER_COMMAND_WAIT("WorkspaceBaseComponent::setShadowSplitPadding",
 		{
 			this->updateShadowGlobalBias();
 		});
@@ -3327,6 +3577,13 @@ namespace NOWA
 							passScene->mExposedTextures.emplace_back(Ogre::IdString("rt1"));
 						}
 
+						// When PCC is active, stop rendering at RQ 250
+						// PCC helper geometry lives at RQ 250 and must not be rendered
+						if (true == this->usePCC->getBool())
+						{
+							passScene->mLastRQ = 250;
+						}
+
 						Ogre::ColourValue color(this->backgroundColor->getVector3().x, this->backgroundColor->getVector3().y, this->backgroundColor->getVector3().z);
 						passScene->mClearColour[0] = color;
 						passScene->mStoreActionColour[0] = Ogre::StoreAction::StoreOrResolve; // Ogre::StoreAction::StoreAndMultisampleResolve; causes a crash, why? Because MSAA must be switched on!
@@ -3369,6 +3626,41 @@ namespace NOWA
 
 						passScene->mIncludeOverlays = false;
 						passScene->mUpdateLodLists = true;
+					}
+
+					// ===== ADD OVERLAY PASS FOR PCC =====
+					// When PCC is active, we need a separate pass for overlays (RQ 251+)
+					if (true == this->usePCC->getBool())
+					{
+						Ogre::CompositorPassSceneDef* overlayPass = static_cast<Ogre::CompositorPassSceneDef*>(targetDef->addPass(Ogre::PASS_SCENE));
+
+						overlayPass->setAllLoadActions(Ogre::LoadAction::Load);
+						overlayPass->mStoreActionColour[0] = Ogre::StoreAction::Store;
+						overlayPass->mStoreActionDepth = Ogre::StoreAction::DontCare;
+						overlayPass->mStoreActionStencil = Ogre::StoreAction::DontCare;
+
+						if (true == this->useSSAO->getBool())
+						{
+							overlayPass->mStoreActionColour[1] = Ogre::StoreAction::Store;
+						}
+
+						overlayPass->mFirstRQ = 251;
+						// overlayPass->mLastRQ uses default (max)
+
+						overlayPass->mIncludeOverlays = false;
+						overlayPass->mUpdateLodLists = false;
+
+						// Reuse shadow cache from previous pass
+						overlayPass->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
+						overlayPass->mShadowNodeRecalculation =
+							Ogre::ShadowNodeRecalculation::SHADOW_NODE_REUSE;
+
+						overlayPass->mProfilingId = "NOWA_Pbs_PCC_Overlays_Pass_Scene";
+
+						if (true == this->usePlanarReflection->getBool())
+						{
+							overlayPass->mIdentifier = 25001;
+						}
 					}
 				}
 			}
@@ -3824,7 +4116,7 @@ namespace NOWA
 					passClear->mProfilingId = "NOWA_Sky_Clear_Pass_Clear";
 				}
 
-				// First Render Scene (RQ 0-2, before sky)
+				// Render Scene (RQ 0-2, before sky)
 				{
 					Ogre::CompositorPassSceneDef* passScene;
 					auto pass = targetDef->addPass(Ogre::PASS_SCENE);
@@ -3875,7 +4167,7 @@ namespace NOWA
 					passScene->mLastRQ = 2;
 				}
 
-				// Sky quad pass
+				// Quad pass
 				// NOTE: The sky doesn't generate normals - it renders at infinite distance
 				// so SSAO shouldn't affect it anyway. The normals buffer will retain
 				// the values from the first scene pass for those pixels.
@@ -3903,7 +4195,7 @@ namespace NOWA
 					passQuad->mProfilingId = "NOWA_Sky_Pass_Quad";
 				}
 
-				// Second Render Scene (RQ 2+, after sky)
+				// Render Scene (RQ 2+, after sky)
 				{
 					Ogre::CompositorPassSceneDef* passScene;
 					auto pass = targetDef->addPass(Ogre::PASS_SCENE);
@@ -3921,12 +4213,54 @@ namespace NOWA
 						passScene->mStoreActionColour[1] = Ogre::StoreAction::StoreOrResolve;
 					}
 
+					// When PCC is active, stop rendering at RQ 250
+					// PCC helper geometry lives at RQ 250 and must not be rendered
+					if (true == this->usePCC->getBool())
+					{
+						passScene->mLastRQ = 250;
+					}
+
 					// Even without SSAO, if we need depth texture, store depth
 					passScene->setAllLoadActions(Ogre::LoadAction::Load);
 					passScene->mStoreActionColour[0] = Ogre::StoreAction::StoreOrResolve;
 					passScene->mStoreActionDepth = Ogre::StoreAction::Store;
 
 					passScene->mProfilingId = "NOWA_Sky_After_Sky_Pass_Scene";
+				}
+
+				// ===== ADD OVERLAY PASS FOR PCC =====
+				// When PCC is active, we need a separate pass for overlays (RQ 251+)
+				if (true == this->usePCC->getBool())
+				{
+					Ogre::CompositorPassSceneDef* overlayPass = static_cast<Ogre::CompositorPassSceneDef*>(targetDef->addPass(Ogre::PASS_SCENE));
+
+					overlayPass->setAllLoadActions(Ogre::LoadAction::Load);
+					overlayPass->mStoreActionColour[0] = Ogre::StoreAction::Store;
+					overlayPass->mStoreActionDepth = Ogre::StoreAction::DontCare;
+					overlayPass->mStoreActionStencil = Ogre::StoreAction::DontCare;
+
+					if (true == this->useSSAO->getBool())
+					{
+						overlayPass->mStoreActionColour[1] = Ogre::StoreAction::Store;
+					}
+
+					overlayPass->mFirstRQ = 251;
+					// overlayPass->mLastRQ uses default (max)
+
+					overlayPass->mIncludeOverlays = false;
+					overlayPass->mUpdateLodLists = false;
+
+					// Reuse shadow cache from previous pass
+					overlayPass->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
+					overlayPass->mShadowNodeRecalculation =
+						Ogre::ShadowNodeRecalculation::SHADOW_NODE_REUSE;
+
+					overlayPass->mProfilingId = "NOWA_Pbs_PCC_Overlays_Pass_Scene";
+
+					if (true == this->usePlanarReflection->getBool())
+					{
+						overlayPass->mIdentifier = 25001;
+					}
 				}
 			}
 
@@ -4468,7 +4802,7 @@ namespace NOWA
 					passClear->mProfilingId = "NOWA_Background_Clear_Pass_Clear";
 				}
 
-				// First Render Scene (RQ 0-2, before background)
+				// Render Scene (RQ 0-2, before background)
 				{
 					Ogre::CompositorPassSceneDef* passScene;
 					auto pass = targetDef->addPass(Ogre::PASS_SCENE);
@@ -4515,7 +4849,7 @@ namespace NOWA
 					}
 				}
 
-				// Background quad pass
+				// Quad pass Background
 				// NOTE: The background doesn't generate normals - it's at infinite distance
 				// so SSAO shouldn't affect it. The normals buffer will retain
 				// the values from the first scene pass for those pixels.
@@ -4536,7 +4870,7 @@ namespace NOWA
 					passQuad->mProfilingId = "NOWABackgroundScroll_Pass_Quad";
 				}
 
-				// Second Render Scene (RQ 2+, after background)
+				// Render Scene (RQ 2+, after background)
 				{
 					Ogre::CompositorPassSceneDef* passScene;
 					auto pass = targetDef->addPass(Ogre::PASS_SCENE);
@@ -4546,6 +4880,13 @@ namespace NOWA
 					passScene->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
 					passScene->mShadowNodeRecalculation = Ogre::ShadowNodeRecalculation::SHADOW_NODE_REUSE;
 					passScene->mFirstRQ = 2;
+
+					// When PCC is active, stop rendering at RQ 250
+					// PCC helper geometry lives at RQ 250 and must not be rendered
+					if (true == this->usePCC->getBool())
+					{
+						passScene->mLastRQ = 250;
+					}
 
 					// For SSAO: This pass also generates normals for objects after the background
 					if (true == this->useSSAO->getBool())
@@ -4560,6 +4901,40 @@ namespace NOWA
 					passScene->mStoreActionDepth = Ogre::StoreAction::Store;
 					
 					passScene->mProfilingId = "NOWA_Background_After_Background_Pass_Scene";
+				}
+
+				// ===== ADD OVERLAY PASS FOR PCC =====
+				// When PCC is active, we need a separate pass for overlays (RQ 251+)
+				if (true == this->usePCC->getBool())
+				{
+					Ogre::CompositorPassSceneDef* overlayPass = static_cast<Ogre::CompositorPassSceneDef*>(targetDef->addPass(Ogre::PASS_SCENE));
+
+					overlayPass->setAllLoadActions(Ogre::LoadAction::Load);
+					overlayPass->mStoreActionColour[0] = Ogre::StoreAction::Store;
+					overlayPass->mStoreActionDepth = Ogre::StoreAction::DontCare;
+					overlayPass->mStoreActionStencil = Ogre::StoreAction::DontCare;
+
+					if (true == this->useSSAO->getBool())
+					{
+						overlayPass->mStoreActionColour[1] = Ogre::StoreAction::Store;
+					}
+
+					overlayPass->mFirstRQ = 251;
+					// overlayPass->mLastRQ uses default (max)
+
+					overlayPass->mIncludeOverlays = false;
+					overlayPass->mUpdateLodLists = false;
+
+					// Reuse shadow cache from previous pass
+					overlayPass->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
+					overlayPass->mShadowNodeRecalculation = Ogre::ShadowNodeRecalculation::SHADOW_NODE_REUSE;
+
+					overlayPass->mProfilingId = "NOWA_Pbs_PCC_Overlays_Pass_Scene";
+
+					if (true == this->usePlanarReflection->getBool())
+					{
+						overlayPass->mIdentifier = 25001;
+					}
 				}
 			}
 

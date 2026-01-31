@@ -139,7 +139,7 @@ namespace NOWA
                 this->clearAllClosures();
             }
 
-            if (!isStalled)
+            if (false == isStalled && false == this->isWorkspaceTransitioning())
             {
                 Ogre::Root::getSingletonPtr()->renderOneFrame();
             }
@@ -150,19 +150,23 @@ namespace NOWA
             this->processAllCommands();
         }
 
+        // Now it's safe to do frame advancement
         for (size_t i = 0; i < NOWA::GraphicsModule::NUM_DESTROY_SLOTS; ++i)
         {
             this->advanceFrameAndDestroyOld();
         }
 
-        const int i = this->queue.size_approx();
-        if (i > 0)
+        // Check for remaining commands
+        const int remainingCommands = this->queue.size_approx();
+        if (remainingCommands > 0)
         {
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
                 "[RenderCommandQueueModule]: Illegal state, as there are still: " +
-                Ogre::StringConverter::toString(i) + " pending commands!");
+                Ogre::StringConverter::toString(remainingCommands) + " pending commands!");
             throw;
         }
+
+        this->clearAllClosures();
         
         this->clearAllClosures();
 
@@ -229,6 +233,21 @@ namespace NOWA
 
         // CRITICAL: update the variable updateAllTransforms() actually uses
         this->interpolationWeight = w;
+    }
+
+    void GraphicsModule::beginWorkspaceTransition(void)
+    {
+        workspaceTransitionInProgress = true;
+    }
+
+    void GraphicsModule::endWorkspaceTransition(void)
+    {
+        workspaceTransitionInProgress = false;
+    }
+
+    bool GraphicsModule::isWorkspaceTransitioning(void) const
+    {
+        return workspaceTransitionInProgress;
     }
 
     void GraphicsModule::clearAllClosures(void)
@@ -871,30 +890,38 @@ namespace NOWA
     {
         this->logCommandEvent("Attempting to recover from command timeout", Ogre::LML_CRITICAL);
 
+        bool shouldProcessCommands = false;
+
         // Clear all waiting depths that might be preventing command processing
         // This is a last resort recovery mechanism
-        std::lock_guard<std::mutex> lock(mutex);
-
-        // Log the number of commands still in the queue
-        std::stringstream ss;
-        ss << "Queue has " << this->queue.size_approx() << " pending commands during timeout recovery";
-        this->logCommandEvent(ss.str(), Ogre::LML_CRITICAL);
-
-        // Reset wait depth if it's non-zero (something might have gone wrong)
-        if (g_waitDepth > 0)
         {
+            std::lock_guard<std::mutex> lock(mutex);
+
+            // Log the number of commands still in the queue
             std::stringstream ss;
-            ss << "Resetting wait depth from " << g_waitDepth << " to 0 during recovery";
+            ss << "Queue has " << this->queue.size_approx() << " pending commands during timeout recovery";
             this->logCommandEvent(ss.str(), Ogre::LML_CRITICAL);
-            g_waitDepth = 0;
-        }
 
-        // Optionally: process commands here if we're on the render thread
-        if (true == this->isRenderThread())
+            // Reset wait depth if it's non-zero (something might have gone wrong)
+            if (g_waitDepth > 0)
+            {
+                std::stringstream ss2;
+                ss2 << "Resetting wait depth from " << g_waitDepth << " to 0 during recovery";
+                this->logCommandEvent(ss2.str(), Ogre::LML_CRITICAL);
+                g_waitDepth = 0;
+            }
+
+            // Check if we should process commands on the render thread
+            shouldProcessCommands = this->isRenderThread();
+            if (shouldProcessCommands)
+            {
+                this->logCommandEvent("Processing command queue during timeout recovery", Ogre::LML_CRITICAL);
+            }
+        } // Lock released here via RAII
+
+        // Process commands outside the lock to avoid holding mutex while processing
+        if (shouldProcessCommands)
         {
-            this->logCommandEvent("Processing command queue during timeout recovery", Ogre::LML_CRITICAL);
-            // Release the lock before processing
-            lock.~lock_guard();
             this->processAllCommands();
         }
     }

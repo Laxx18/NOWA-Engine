@@ -706,34 +706,42 @@ namespace OgreNewt
 						vtx[j] = Ogre::Vector3(pos[0], pos[1], pos[2]) * scale;
 					}
 
-					// ---- ND4 safety: skip degenerate edges (any edge too small) ----
+					// ---- ND4 safety: skip degenerate triangles ----
+					// Must match Newton4's ndPolygonSoupBuilder::AddFaceIndirect checks exactly:
+					// 1. Check each edge length (loop: p0->p1->p2->p0)
+					// 2. Check cross product area using edge0 = v2-v0, edge1 = v1-v0
+
 					const Ogre::Real MIN_EDGE2 = 1.0e-12f;
+					const Ogre::Real MIN_AREA2 = 1.0e-12f;
 
-					Ogre::Vector3 e0 = vtx[1] - vtx[0];
-					Ogre::Vector3 e1 = vtx[2] - vtx[1];
-					Ogre::Vector3 e2 = vtx[0] - vtx[2];
-
-					if (e0.squaredLength() < MIN_EDGE2 ||
-						e1.squaredLength() < MIN_EDGE2 ||
-						e2.squaredLength() < MIN_EDGE2)
+					// Edge length check (same as ND4: loop through edges starting from vtx[2])
+					Ogre::Vector3 p0 = vtx[2];
+					bool edgeTooSmall = false;
+					for (int j = 0; j < 3; ++j)
 					{
-						// Completely degenerate or almost-degenerate triangle, skip it
+						Ogre::Vector3 p1 = vtx[j];
+						Ogre::Vector3 edge = p1 - p0;
+						if (edge.squaredLength() < MIN_EDGE2)
+						{
+							edgeTooSmall = true;
+							break;
+						}
+						p0 = p1;
+					}
+					if (edgeTooSmall)
+					{
 						continue;
 					}
 
-					// ---- Optional: your "gentle extrusion" area fix can stay here ----
-					Ogre::Vector3 n = e0.crossProduct(e2);
-					if (n.squaredLength() < 1e-16f)
+					// Cross product area check (exactly as ND4 does it)
+					// edge0 = vtx[2] - vtx[0], edge1 = vtx[1] - vtx[0]
+					Ogre::Vector3 edge0 = vtx[2] - vtx[0];
+					Ogre::Vector3 edge1 = vtx[1] - vtx[0];
+					Ogre::Vector3 faceNormal = edge0.crossProduct(edge1);
+					if (faceNormal.squaredLength() < MIN_AREA2)
 					{
-						if (n.isZeroLength())
-							n = Ogre::Vector3::UNIT_Y;
-						else
-							n.normalise();
-
-						const Ogre::Real EPS = 1e-4f;
-						vtx[0] += n * EPS;
-						vtx[1] += n * EPS * 0.5f;
-						vtx[2] += n * EPS * 0.25f;
+						// Degenerate triangle (collinear vertices), skip it
+						continue;
 					}
 
 					ndVector face[3];
@@ -859,34 +867,37 @@ namespace OgreNewt
 						Ogre::Vector3 v1 = verts[b];
 						Ogre::Vector3 v2 = verts[c];
 
-						// ---- ND4 safety: skip degenerate edges (any edge too small) ----
+						// ---- ND4 safety: skip degenerate triangles ----
+						// Must match Newton4's ndPolygonSoupBuilder::AddFaceIndirect checks exactly:
+						// 1. Check each edge length (loop: p0->p1->p2->p0)
+						// 2. Check cross product area using edge0 = v2-v0, edge1 = v1-v0
+
 						const Ogre::Real MIN_EDGE2 = 1.0e-12f;
+						const Ogre::Real MIN_AREA2 = 1.0e-12f;
 
-						Ogre::Vector3 e0 = v1 - v0;
-						Ogre::Vector3 e1 = v2 - v1;
-						Ogre::Vector3 e2 = v0 - v2;
-
-						if (e0.squaredLength() < MIN_EDGE2 ||
-							e1.squaredLength() < MIN_EDGE2 ||
-							e2.squaredLength() < MIN_EDGE2)
+						// Edge length check (same as ND4: loop through edges starting from v2)
+						Ogre::Vector3 vtx[3] = { v0, v1, v2 };
+						Ogre::Vector3 p0 = vtx[2];
+						for (int j = 0; j < 3; ++j)
 						{
-							// Completely degenerate or almost-degenerate triangle, skip it
-							return;
+							Ogre::Vector3 p1 = vtx[j];
+							Ogre::Vector3 edge = p1 - p0;
+							if (edge.squaredLength() < MIN_EDGE2)
+							{
+								return; // Degenerate edge, skip
+							}
+							p0 = p1;
 						}
 
-						// ---- Optional: gentle extrusion for nearly-zero area ----
-						Ogre::Vector3 n = e0.crossProduct(e2);
-						if (n.squaredLength() < 1e-16f)
+						// Cross product area check (exactly as ND4 does it)
+						// edge0 = v2 - v0, edge1 = v1 - v0
+						Ogre::Vector3 edge0 = v2 - v0;
+						Ogre::Vector3 edge1 = v1 - v0;
+						Ogre::Vector3 faceNormal = edge0.crossProduct(edge1);
+						if (faceNormal.squaredLength() < MIN_AREA2)
 						{
-							if (n.isZeroLength())
-								n = Ogre::Vector3::UNIT_Y;
-							else
-								n.normalise();
-
-							const Ogre::Real EPS = 1.0e-4f;
-							v0 += n * EPS;
-							v1 += n * EPS * 0.5f;
-							v2 += n * EPS * 0.25f;
+							// Degenerate triangle (collinear vertices), skip it
+							return;
 						}
 
 						ndVector face[3];
@@ -980,39 +991,43 @@ namespace OgreNewt
 				Ogre::Vector3 c(vertices[i2 * 3 + 0], vertices[i2 * 3 + 1], vertices[i2 * 3 + 2]);
 
 				// ----------------------------------------------------------------
-				// 3. ND4 safety: skip triangles with tiny edges (like ndPolygonSoupBuilder)
+				// 3. ND4 safety: skip degenerate triangles
+				// Must match Newton4's ndPolygonSoupBuilder::AddFaceIndirect checks exactly:
+				// 1. Check each edge length (loop: p0->p1->p2->p0)
+				// 2. Check cross product area using edge0 = v2-v0, edge1 = v1-v0
 				// ----------------------------------------------------------------
 				const Ogre::Real MIN_EDGE2 = 1.0e-12f;
+				const Ogre::Real MIN_AREA2 = 1.0e-12f;
 
-				Ogre::Vector3 e0 = b - a;
-				Ogre::Vector3 e1 = c - b;
-				Ogre::Vector3 e2 = a - c;
-
-				if (e0.squaredLength() < MIN_EDGE2 ||
-					e1.squaredLength() < MIN_EDGE2 ||
-					e2.squaredLength() < MIN_EDGE2)
+				// Edge length check (same as ND4: loop through edges starting from c)
+				Ogre::Vector3 vtx[3] = { a, b, c };
+				Ogre::Vector3 p0 = vtx[2];
+				bool edgeTooSmall = false;
+				for (int j = 0; j < 3; ++j)
 				{
-					// Degenerate / collapsed triangle, skip to avoid ND4 assert
+					Ogre::Vector3 p1 = vtx[j];
+					Ogre::Vector3 edge = p1 - p0;
+					if (edge.squaredLength() < MIN_EDGE2)
+					{
+						edgeTooSmall = true;
+						break;
+					}
+					p0 = p1;
+				}
+				if (edgeTooSmall)
+				{
 					continue;
 				}
 
-				// ----------------------------------------------------------------
-				// 4. Gentle extrusion for nearly-zero area faces (optional)
-				// ----------------------------------------------------------------
-				Ogre::Vector3 n = e0.crossProduct(e2);
-				const Ogre::Real area2 = n.squaredLength();
-
-				if (area2 < 1e-16f)
+				// Cross product area check (exactly as ND4 does it)
+				// edge0 = c - a, edge1 = b - a
+				Ogre::Vector3 edge0 = c - a;
+				Ogre::Vector3 edge1 = b - a;
+				Ogre::Vector3 faceNormal = edge0.crossProduct(edge1);
+				if (faceNormal.squaredLength() < MIN_AREA2)
 				{
-					if (n.isZeroLength())
-						n = Ogre::Vector3::UNIT_Y;
-					else
-						n.normalise();
-
-					const Ogre::Real EPS = 1.0e-4f;
-					a += n * EPS;
-					b += n * EPS * 0.5f;
-					c += n * EPS * 0.25f;
+					// Degenerate triangle (collinear vertices), skip it
+					continue;
 				}
 
 				// ----------------------------------------------------------------
@@ -1117,38 +1132,42 @@ namespace OgreNewt
 					std::swap(vtx[1], vtx[2]);
 
 				// ----------------------------------------------------------------
-				// 3. ND4 safety: skip triangles with tiny edges (like ndPolygonSoupBuilder)
+				// 3. ND4 safety: skip degenerate triangles
+				// Must match Newton4's ndPolygonSoupBuilder::AddFaceIndirect checks exactly:
+				// 1. Check each edge length (loop: p0->p1->p2->p0)
+				// 2. Check cross product area using edge0 = v2-v0, edge1 = v1-v0
 				// ----------------------------------------------------------------
 				const Ogre::Real MIN_EDGE2 = 1.0e-12f;
+				const Ogre::Real MIN_AREA2 = 1.0e-12f;
 
-				Ogre::Vector3 e0 = vtx[1] - vtx[0];
-				Ogre::Vector3 e1 = vtx[2] - vtx[1];
-				Ogre::Vector3 e2 = vtx[0] - vtx[2];
-
-				if (e0.squaredLength() < MIN_EDGE2 ||
-					e1.squaredLength() < MIN_EDGE2 ||
-					e2.squaredLength() < MIN_EDGE2)
+				// Edge length check (same as ND4: loop through edges starting from vtx[2])
+				Ogre::Vector3 p0 = vtx[2];
+				bool edgeTooSmall = false;
+				for (int j = 0; j < 3; ++j)
 				{
-					// Degenerate / collapsed triangle, skip to avoid ND4 assert
+					Ogre::Vector3 p1 = vtx[j];
+					Ogre::Vector3 edge = p1 - p0;
+					if (edge.squaredLength() < MIN_EDGE2)
+					{
+						edgeTooSmall = true;
+						break;
+					}
+					p0 = p1;
+				}
+				if (edgeTooSmall)
+				{
 					continue;
 				}
 
-				// ----------------------------------------------------------------
-				// 4. Degenerate-face extrusion (ND4 optimizer-safe, almost-flat tris)
-				// ----------------------------------------------------------------
-				Ogre::Vector3 n = e0.crossProduct(e2);
-
-				if (n.squaredLength() < 1e-16f)
+				// Cross product area check (exactly as ND4 does it)
+				// edge0 = vtx[2] - vtx[0], edge1 = vtx[1] - vtx[0]
+				Ogre::Vector3 edge0 = vtx[2] - vtx[0];
+				Ogre::Vector3 edge1 = vtx[1] - vtx[0];
+				Ogre::Vector3 faceNormal = edge0.crossProduct(edge1);
+				if (faceNormal.squaredLength() < MIN_AREA2)
 				{
-					if (n.isZeroLength())
-						n = Ogre::Vector3::UNIT_Y;
-					else
-						n.normalise();
-
-					const Ogre::Real EPS = 1.0e-4f;
-					vtx[0] += n * EPS;
-					vtx[1] += n * EPS * 0.5f;
-					vtx[2] += n * EPS * 0.25f;
+					// Degenerate triangle (collinear vertices), skip it
+					continue;
 				}
 
 				// ----------------------------------------------------------------

@@ -346,7 +346,7 @@ namespace NOWA
 			this->datablock = nullptr;
 			this->originalDatablock = nullptr;
 
-			ENQUEUE_DESTROY_COMMAND("DatablockTerraComponent::onRemoveComponent", _3(terraCopy, datablockCopy, originalDatablockCopy),
+			NOWA::GraphicsModule::RenderCommand renderCommand = [terraCopy, datablockCopy, originalDatablockCopy]()
 			{
 				if (terraCopy && originalDatablockCopy)
 				{
@@ -361,7 +361,8 @@ namespace NOWA
 						datablockCopy->getCreator()->destroyDatablock(datablockCopy->getName());
 					}
 				}
-			});
+			};
+			NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DatablockTerraComponent::onRemoveComponent");
 		}
 	}
 

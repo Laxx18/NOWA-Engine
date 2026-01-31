@@ -97,7 +97,7 @@ namespace NOWA
 			this->datablock = nullptr;
 			this->originalDatablock = nullptr;
 
-			ENQUEUE_DESTROY_COMMAND("DatablockUnlitComponent::onRemoveComponent", _5(entityCopy, itemCopy, datablockCopy, originalDatablockCopy, oldSubIndexCopy),
+			NOWA::GraphicsModule::RenderCommand renderCommand = [entityCopy, itemCopy, datablockCopy, originalDatablockCopy, oldSubIndexCopy]()
 			{
 				// Safely reset datablock for entity or item
 				if (entityCopy && originalDatablockCopy)
@@ -124,7 +124,8 @@ namespace NOWA
 						datablockCopy->getCreator()->destroyDatablock(datablockCopy->getName());
 					}
 				}
-			});
+			};
+			NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DatablockUnlitComponent::onRemoveComponent");
 		}
 
 		this->gameObjectPtr->actualizeDatablocks();

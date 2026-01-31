@@ -32,9 +32,9 @@ namespace NOWA
 						for (std::list<EventListenerDelegate>::const_iterator it = eventListenerList.cbegin(); it != eventListenerList.cend(); ++it)
 						{
 							EventListenerDelegate listener = (*it);
-							// Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[EventManager] Sending Event: " + Ogre::String(event->getName()));
-							listener(event);  // call the delegate
-						}
+						// Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[EventManager] Sending Event: " + Ogre::String(event->getName()));
+						listener(event);  // call the delegate
+					}
 					}
 					this->succeed();
 				}
@@ -54,7 +54,7 @@ namespace NOWA
 		: appStateName(appStateName),
 		activeQueue(0)
 	{
-	
+
 	}
 
 	EventManager::~EventManager()
@@ -107,25 +107,25 @@ namespace NOWA
 
 		if (0.0f == delaySec)
 		{
-			auto findIt = this->eventListeners.find(event->getEventType());
-			if (findIt != this->eventListeners.end())
-			{
+				auto findIt = this->eventListeners.find(event->getEventType());
+				if (findIt != this->eventListeners.end())
+				{
 				const EventListenerList& eventListenerList = findIt->second;
 				for (EventListenerList::const_iterator it = eventListenerList.cbegin(); it != eventListenerList.cend(); ++it)
-				{
+			{
 					EventListenerDelegate listener = (*it);
-					// Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[EventManager] Sending Event: " + Ogre::String(event->getName()));
-					listener(event);  // call the delegate
-					processed = true;
-				}
+				// Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[EventManager] Sending Event: " + Ogre::String(event->getName()));
+				listener(event);  // call the delegate
+				processed = true;
 			}
 		}
+			}
 		else
-		{
+			{
 			NOWA::ProcessPtr triggerDelayedProcess(new TriggerDelayedProcess(event, eventListeners, delaySec));
-			NOWA::ProcessManager::getInstance()->attachProcess(triggerDelayedProcess);
-			processed = true;
-		}
+				NOWA::ProcessManager::getInstance()->attachProcess(triggerDelayedProcess);
+				processed = true;
+			}
 		return processed;
 	}
 
@@ -248,25 +248,25 @@ namespace NOWA
 
 			const EventType& eventType = pEvent->getEventType();
 
-			// find all the delegate functions registered for this event
-			auto findIt = this->eventListeners.find(eventType);
-			if (findIt != this->eventListeners.end())
-			{
+			// Copy listeners while holding the lock, then release before calling delegates
+				auto findIt = this->eventListeners.find(eventType);
+				if (findIt != this->eventListeners.end())
+				{
 				const EventListenerList& eventListeners = findIt->second;
 
 				if (false == eventListeners.empty())
 				{
-					// call each listener
+			// Call delegates without holding the lock
 					for (auto it = eventListeners.begin(); it != eventListeners.end(); ++it)
-					{
+			{
 						EventListenerDelegate listener = (*it);
-						try
-						{
-							listener(pEvent);
-						}
-						catch (const std::exception& e)
-						{
-							Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[EventManager] Error using listener for event: " + Ogre::String(pEvent->getName()) + " Message: " + e.what());
+				try
+				{
+					listener(pEvent);
+				}
+				catch (const std::exception& e)
+				{
+					Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[EventManager] Error using listener for event: " + Ogre::String(pEvent->getName()) + " Message: " + e.what());
 						}
 						
 					}

@@ -164,8 +164,7 @@ namespace NOWA
 			this->originalDatablock = nullptr;
 
 			// Enqueue all changes on render thread
-			// NOWA::GraphicsModule::RenderCommand renderCommand = [entityCopy, itemCopy, datablockCopy, originalDatablockCopy, oldSubIndexCopy]()
-			ENQUEUE_DESTROY_COMMAND("DatablockPbsComponent::onRemoveComponent", _5(entityCopy, itemCopy, datablockCopy, originalDatablockCopy, oldSubIndexCopy),
+			NOWA::GraphicsModule::RenderCommand renderCommand = [entityCopy, itemCopy, datablockCopy, originalDatablockCopy, oldSubIndexCopy]()
 			{
 				// Reset datablock on entity/item
 				if (entityCopy && originalDatablockCopy)
@@ -188,8 +187,8 @@ namespace NOWA
 						datablockCopy->getCreator()->destroyDatablock(datablockCopy->getName());
 					}
 				}
-			});
-			// NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DatablockPbsComponent::onRemoveComponent");
+			};
+			NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DatablockPbsComponent::onRemoveComponent");
 		}
 
 		this->gameObjectPtr->actualizeDatablocks();

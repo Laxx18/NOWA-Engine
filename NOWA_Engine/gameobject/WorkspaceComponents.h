@@ -17,6 +17,11 @@
 
 #include "shader/HlmsWind.h"
 
+namespace Ogre
+{
+	class ParallaxCorrectedCubemapAuto;
+}
+
 namespace NOWA
 {
 	class CameraComponent;
@@ -169,6 +174,10 @@ namespace NOWA
 
 		bool getUseOcean(void) const;
 
+		void setUsePCC(bool usePCC);
+
+		bool getUsePCC(void) const;
+
 		/**
 		 * @brief Sets reflection game object id in to set for cube map reflection.
 		 * @param[in] reflectionCameraGameObjectId The reflection camera game object Id to set
@@ -230,6 +239,12 @@ namespace NOWA
 		void setInvolvedInSplitScreen(bool involvedInSplitScreen);
 
 		bool getInvolvedInSplitScreen(void) const;
+
+		Ogre::ParallaxCorrectedCubemapAuto* getParallaxCorrectedCubemap(void) const;
+
+		void setParallaxCorrectedCubemap(Ogre::ParallaxCorrectedCubemapAuto* pcc);
+
+		void destroyPccSystem(void);
 	public:
 		static const Ogre::String AttrBackgroundColor(void) { return "Background Color"; }
 		static const Ogre::String AttrViewportRect(void) { return "Viewport Rect"; }
@@ -239,6 +254,7 @@ namespace NOWA
 		static const Ogre::String AttrUseSSAO(void) { return "Use SSAO"; }
 		static const Ogre::String AttrUseDistortion(void) { return "Use Distortion"; }
 		static const Ogre::String AttrUseMSAA(void) { return "Use MSAA"; }
+		static const Ogre::String AttrUsePCC(void) { return "Use PCC"; }
 		static const Ogre::String AttrReflectionCameraGameObjectId(void) { return "Reflection Camera GameObject Id"; }
 		static const Ogre::String AttrUsePlanarReflection(void) { return "Use Planar Reflection"; }
 		static const Ogre::String AttrShadowGlobalBias(void) { return "Shadow Global Bias"; }
@@ -265,10 +281,14 @@ namespace NOWA
 
 		virtual void addWorkspace(Ogre::CompositorWorkspaceDef* workspaceDef);
 
+		virtual void createLocalCubemapProbeRendererNode(void);
+
+		virtual void createLocalCubemapsProbeWorkspace(void);
+
 		Ogre::String getDistortionNode(void) const;
 
-
 		Ogre::String getUnderwaterNode(void) const;
+
 		void changeBackgroundColor(const Ogre::ColourValue& backgroundColor);
 
 		unsigned char getMSAA(void);
@@ -334,6 +354,7 @@ namespace NOWA
 		Variant* useSSAO;
 		Variant* useDistortion;
 		Variant* useMSAA;
+		Variant* usePCC;
 		Variant* shadowGlobalBias;
 		Variant* shadowGlobalNormalOffset;
 		Variant* shadowPSSMLambda;
@@ -342,7 +363,7 @@ namespace NOWA
 		Variant* shadowSplitPadding;
 
 		bool canUseReflection;
-		
+
 		CameraComponent* cameraComponent;
 		OceanComponent* oceanComponent;
 		Ogre::CompositorWorkspace* workspace;
@@ -368,10 +389,8 @@ namespace NOWA
 		PlanarReflectionsWorkspaceListener* planarReflectionsWorkspaceListener;
 		std::vector<std::tuple<unsigned long, unsigned int, Ogre::PlanarReflectionActor*>> planarReflectionActors;
 
-		// Special: Only a TerraComponent can manipulate this value
 		bool useTerra;
 		Ogre::Terra* terra;
-		// Special: Only a OceanComponent can manipulate this value
 		bool useOcean;
 		bool canUseOcean;
 
@@ -387,9 +406,10 @@ namespace NOWA
 		HlmsWind* hlmsWind;
 
 		bool involvedInSplitScreen;
-
-
 		Ogre::MaterialPtr underwaterMaterial;
+
+		Ogre::ParallaxCorrectedCubemapAuto* parallaxCorrectedCubemap;
+		Ogre::CompositorWorkspace* workspacePccProbes;
 	};
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////////
