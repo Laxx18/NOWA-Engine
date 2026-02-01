@@ -484,8 +484,7 @@ namespace NOWA
 				// but in Ogre, when deleting root, it will call shutdown internally and tries to shutdown a ScriptSerializer, which has not been
 				// created and not initialized with NULL, therefore crash, in the early state, when the config dialog appears, but is cancled!
 				
-				// Attention: Disabled until bug fixed in ogre
-				// OGRE_DELETE this->root;
+				OGRE_DELETE this->root;
 				this->root = nullptr;
 			}
 

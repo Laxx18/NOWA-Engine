@@ -251,7 +251,7 @@ namespace NOWA
 		}
 		this->renderDistance = new Variant(GameObject::AttrRenderDistance(), static_cast<unsigned int>(1000), this->attributes, false);
 		this->lodDistance = new Variant(GameObject::AttrLodDistance(), 0, this->attributes, false);
-		this->lodLevels = new Variant(GameObject::AttrLodDistance(), 0.0f, this->attributes, false);
+		this->lodLevels = new Variant(GameObject::AttrLodLevels(), 0.0f, this->attributes, false);
 		this->lodLevels->setReadOnly(true);
 		this->shadowRenderingDistance = new Variant(GameObject::AttrShadowDistance(), static_cast<unsigned int>(300), this->attributes, false);
 
@@ -2244,44 +2244,46 @@ namespace NOWA
 		if (renderQueueIndex > 254)
 			renderQueueIndex = 254;
 
-		// [0; 100) & [200; 225) default to FAST(i.e. for v2 objects, like Items); RenderQueue ID range[100; 200) & [225; 256)
-
 		Ogre::Item* item = this->getMovableObject<Ogre::Item>();
 		if (nullptr != item)
 		{
-			if (NOWA::RENDER_QUEUE_V1_MESH == renderQueueIndex ||
-				NOWA::RENDER_QUEUE_V2_OBJECTS_ALWAYS_IN_FOREGROUND == renderQueueIndex ||
-				renderQueueIndex <= 1)
+			// Items should be in V2 ranges: [0-99] or [200-224]
+			if (renderQueueIndex >= 100 && renderQueueIndex < 200)
 			{
+				// User tried to put V2 item in V1 range, clamp to end of V2 opaque
+				renderQueueIndex = 99;
+			}
+			else if (renderQueueIndex >= 225)
+			{
+				// User tried to put V2 item in V1 transparent range, clamp to end of V2 transparent
+				renderQueueIndex = 224;
+			}
+			else if (renderQueueIndex <= 1)
+			{
+				// Pre-sky range, use default V2
 				renderQueueIndex = NOWA::RENDER_QUEUE_V2_MESH;
 			}
-
-			if (renderQueueIndex >= 100)
-				renderQueueIndex = 99;
-
-			if (renderQueueIndex < 200 && renderQueueIndex > 225)
-				renderQueueIndex = 200;
 		}
 		else
 		{
 			Ogre::v1::Entity* entity = this->getMovableObject<Ogre::v1::Entity>();
 			if (nullptr != entity)
 			{
-				if (NOWA::RENDER_QUEUE_V2_MESH == renderQueueIndex || renderQueueIndex <= 1)
+				// Entities should be in V1 ranges: [100-199] or [225-255]
+				if (renderQueueIndex < 100)
 				{
+					// User tried to put V1 entity in V2 range, clamp to start of V1 opaque
 					renderQueueIndex = NOWA::RENDER_QUEUE_V1_MESH;
 				}
-
-				if (renderQueueIndex < 100)
-					renderQueueIndex = 100;
-
-				if (renderQueueIndex >= 200 && renderQueueIndex < 225)
-					renderQueueIndex = 226;
+				else if (renderQueueIndex >= 200 && renderQueueIndex < 225)
+				{
+					// User tried to put V1 entity in V2 transparent range, clamp to start of V1 transparent
+					renderQueueIndex = 225;
+				}
 			}
 		}
 
 		this->renderQueueIndex->setValue(renderQueueIndex);
-
 		if (nullptr != this->movableObject)
 		{
 			const Ogre::uint8 queueIndex = static_cast<Ogre::uint8>(renderQueueIndex);
@@ -2380,7 +2382,7 @@ namespace NOWA
 		{
 			v1Mesh = Ogre::v1::MeshManager::getSingletonPtr()->load(
 				tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME,
-				Ogre::v1::HardwareBuffer::HBU_STATIC, Ogre::v1::HardwareBuffer::HBU_STATIC);
+				Ogre::v1::HardwareBuffer::HBU_STATIC_WRITE_ONLY, Ogre::v1::HardwareBuffer::HBU_STATIC_WRITE_ONLY, true, true);
 		}
 
 		if (!generateLodForMesh(tempMeshFile, v1Mesh, lodDistance))
@@ -2412,7 +2414,7 @@ namespace NOWA
 		{
 			v1Mesh = Ogre::v1::MeshManager::getSingletonPtr()->load(
 				tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME,
-				Ogre::v1::HardwareBuffer::HBU_STATIC, Ogre::v1::HardwareBuffer::HBU_STATIC);
+				Ogre::v1::HardwareBuffer::HBU_STATIC_WRITE_ONLY, Ogre::v1::HardwareBuffer::HBU_STATIC_WRITE_ONLY, true, true);
 		}
 
 		if (!generateLodForMesh(tempMeshFile, v1Mesh, lodDistance))

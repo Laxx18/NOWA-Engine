@@ -765,22 +765,22 @@ void DesignState::simulate(bool pause, bool withUndo)
 			// this->editorManager->stopSimulation(); Never do this!!!! Else because of internal undo, all set values are reset and fancy behavior will start!
 			this->playButton->setImageResource("StopImage");
 			this->enableWidgets(false);
+
+			if (nullptr != this->editorManager)
+			{
+				this->editorManager->setViewportGridEnabled(false);
+				this->editorManager->getGizmo()->setEnabled(false);
+				this->editorManager->startSimulation();
+			}
 		};
 		NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::simulate_1");
-
-		if (nullptr != this->editorManager)
-		{
-			this->editorManager->setViewportGridEnabled(false);
-			this->editorManager->getGizmo()->setEnabled(false);
-			this->editorManager->startSimulation();
-		}
 	}
 	else
 	{
 		// Must be called first, so that in case of lua error, no update is called
 		this->simulating = false;
 
-		NOWA::GraphicsModule::RenderCommand renderCommand = [this, pause]()
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this, pause, withUndo]()
 		{
 			this->mainMenuBar->enableFileMenu(pause);
 			MyGUI::LayerManager::getInstance().detachFromLayer(this->manipulationWindow);
@@ -796,15 +796,15 @@ void DesignState::simulate(bool pause, bool withUndo)
 
 				this->mainMenuBar->activateTestSelectedGameObjects(false);
 			}
+
+			if (nullptr != editorManager)
+			{
+				this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_SELECT_MODE);
+				// Set the state before the simulation began
+				this->editorManager->stopSimulation(withUndo);
+			}
 		};
 		NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::simulate_2");
-
-		if (nullptr != editorManager)
-		{
-			this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_SELECT_MODE);
-			// Set the state before the simulation began
-			this->editorManager->stopSimulation(withUndo);
-		}
 
 		boost::shared_ptr<EventDataRefreshResourcesPanel> eventDataRefreshResourcesPanel(new EventDataRefreshResourcesPanel());
 		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataRefreshResourcesPanel);

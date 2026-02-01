@@ -1,4 +1,4 @@
-#include "NOWAPrecompiled.h"
+﻿#include "NOWAPrecompiled.h"
 #include "WorkspaceComponents.h"
 #include "GameObjectController.h"
 #include "utilities/XMLConverter.h"
@@ -2958,7 +2958,7 @@ namespace NOWA
 			rtvNoDepth->depthBufferId = Ogre::DepthBuffer::POOL_NO_DEPTH;
 
 			// ===== TARGET PASSES =====
-			// 6 faces � 2 passes each + 1 final IBL pass = 13 passes
+			// 6 faces × 2 passes each + 1 final IBL pass = 13 passes
 			nodeDef->setNumTargetPass(13);
 
 			const Ogre::uint8 cubemapFaces[6] =
@@ -3539,29 +3539,7 @@ namespace NOWA
 				Ogre::CompositorTargetDef* targetDef = compositorNodeDefinition->addTargetPass("rt0");
 
 				{
-					// Clear Pass
-					{
-						Ogre::CompositorPassClearDef* passClear;
-						auto pass = targetDef->addPass(Ogre::PASS_CLEAR);
-						passClear = static_cast<Ogre::CompositorPassClearDef*>(pass);
-
-						passClear->mClearColour[0] = Ogre::ColourValue(0.2f, 0.4f, 0.6f) * 60.0f;
-
-						if (true == this->useSSAO->getBool())
-						{
-							// Clear the normals buffer to a neutral value (0.5, 0.5, 1.0 = normal pointing up in tangent space)
-							passClear->mClearColour[1] = Ogre::ColourValue(0.5f, 0.5f, 1.0f, 1.0f);
-							passClear->mStoreActionColour[1] = Ogre::StoreAction::Store;
-						}
-
-						passClear->mStoreActionColour[0] = Ogre::StoreAction::Store;
-						passClear->mStoreActionDepth = Ogre::StoreAction::Store;
-						passClear->mStoreActionStencil = Ogre::StoreAction::Store;
-
-						passClear->mProfilingId = "NOWA_Pbs_Split_Clear_Pass_Clear";
-					}
-
-					// Render Scene
+					// Render Scene OPAQUE V2 (RQ 0-94)
 					{
 						Ogre::CompositorPassSceneDef* passScene;
 						auto pass = targetDef->addPass(Ogre::PASS_SCENE);
@@ -3569,24 +3547,13 @@ namespace NOWA
 
 						if (true == this->canUseReflection)
 						{
-							//Our materials in this pass will be using this cubemap,
-							//so we need to expose it to the pass.
-							//Note: Even if it "just works" without exposing, the reason for
-							//exposing is to ensure compatibility with Vulkan & D3D12.
-
+							// Needed for Vulkan & D3D12
 							passScene->mExposedTextures.emplace_back(Ogre::IdString("rt1"));
-						}
-
-						// When PCC is active, stop rendering at RQ 250
-						// PCC helper geometry lives at RQ 250 and must not be rendered
-						if (true == this->usePCC->getBool())
-						{
-							passScene->mLastRQ = 250;
 						}
 
 						Ogre::ColourValue color(this->backgroundColor->getVector3().x, this->backgroundColor->getVector3().y, this->backgroundColor->getVector3().z);
 						passScene->mClearColour[0] = color;
-						passScene->mStoreActionColour[0] = Ogre::StoreAction::StoreOrResolve; // Ogre::StoreAction::StoreAndMultisampleResolve; causes a crash, why? Because MSAA must be switched on!
+						passScene->mStoreActionColour[0] = Ogre::StoreAction::StoreOrResolve;
 
 						if (true == this->useSSAO->getBool())
 						{
@@ -3595,12 +3562,9 @@ namespace NOWA
 						}
 
 						passScene->setAllLoadActions(Ogre::LoadAction::Clear);
-						passScene->mStoreActionDepth = Ogre::StoreAction::DontCare;
-						passScene->mStoreActionStencil = Ogre::StoreAction::DontCare;
 
 						// Store depth if we need depth texture (for SSAO or generic use)
 						passScene->mStoreActionDepth = Ogre::StoreAction::Store;
-					
 						passScene->mStoreActionStencil = Ogre::StoreAction::DontCare;
 
 						if (true == this->usePlanarReflection->getBool())
@@ -3609,23 +3573,129 @@ namespace NOWA
 							passScene->mIdentifier = 25001;
 						}
 
-						//https://forums.ogre3d.org/viewtopic.php?t=93636
-						//https://forums.ogre3d.org/viewtopic.php?t=94748
-
-						// Note: Terra uses also this shadow node, so it works for all kinds of lights
+						// IMPORTANT: First pass that uses shadows must NOT be set to REUSE
+						// otherwise shadow atlas may be read as Undefined at startup / after invalidation.
 						passScene->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
 
-						passScene->mProfilingId = "NOWA_Pbs_Render_Scene_Pass_Scene";
-
+						passScene->mProfilingId = "NOWA_Pbs_Render_Scene_Opaque_V2_Pass_Scene";
 						passScene->mCameraName = this->cameraComponent->getCamera()->getName();
 
 						if (true == this->useSSAO->getBool())
 						{
+							// Generate normals only for opaque geometry (recommended)
 							passScene->mGenNormalsGBuf = true;
 						}
 
 						passScene->mIncludeOverlays = false;
 						passScene->mUpdateLodLists = true;
+
+						// Render only v2 opaque range in this pass
+						passScene->mFirstRQ = 0;
+						passScene->mLastRQ = 99;
+					}
+
+					// Render Scene OPAQUE V1 (RQ 100-199) so v1::Entity is NOT drawn in transparent pass
+					{
+						Ogre::CompositorPassSceneDef* passScene;
+						auto pass = targetDef->addPass(Ogre::PASS_SCENE);
+						passScene = static_cast<Ogre::CompositorPassSceneDef*>(pass);
+
+						passScene->mIncludeOverlays = false;
+
+						passScene->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
+						passScene->mShadowNodeRecalculation = Ogre::ShadowNodeRecalculation::SHADOW_NODE_REUSE;
+
+						passScene->mCameraName = this->cameraComponent->getCamera()->getName();
+
+						passScene->mFirstRQ = 100;
+						passScene->mLastRQ = 199;
+
+						if (true == this->useSSAO->getBool())
+						{
+							passScene->mGenNormalsGBuf = true;
+							passScene->mStoreActionColour[1] = Ogre::StoreAction::StoreOrResolve;
+						}
+
+						passScene->mUpdateLodLists = false;
+
+						passScene->setAllLoadActions(Ogre::LoadAction::Load);
+						passScene->mStoreActionColour[0] = Ogre::StoreAction::StoreOrResolve;
+						passScene->mStoreActionDepth = Ogre::StoreAction::Store;
+						passScene->mStoreActionStencil = Ogre::StoreAction::DontCare;
+
+						passScene->mProfilingId = "NOWA_Pbs_Render_Scene_Opaque_V1_Pass_Scene";
+
+						if (true == this->usePlanarReflection->getBool())
+						{
+							passScene->mIdentifier = 25001;
+						}
+					}
+
+					// Render Scene TRANSPARENT V2 (RQ 200-224) for alpha-blended ParticleFX2 etc.
+					{
+						Ogre::CompositorPassSceneDef* passScene;
+						auto pass = targetDef->addPass(Ogre::PASS_SCENE);
+						passScene = static_cast<Ogre::CompositorPassSceneDef*>(pass);
+
+						passScene->mIncludeOverlays = false;
+
+						passScene->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
+						passScene->mShadowNodeRecalculation = Ogre::ShadowNodeRecalculation::SHADOW_NODE_REUSE;
+
+						passScene->mCameraName = this->cameraComponent->getCamera()->getName();
+
+						// FAST-high range. Render after v1 opaque
+						passScene->mFirstRQ = 200;
+						passScene->mLastRQ = 224;
+
+						// Do NOT generate normals for transparency; it can corrupt SSAO / normals buffer.
+						passScene->mGenNormalsGBuf = false;
+
+						passScene->mUpdateLodLists = false;
+
+						passScene->setAllLoadActions(Ogre::LoadAction::Load);
+						passScene->mStoreActionColour[0] = Ogre::StoreAction::StoreOrResolve;
+						passScene->mStoreActionDepth = Ogre::StoreAction::Store;
+						passScene->mStoreActionStencil = Ogre::StoreAction::DontCare;
+
+						passScene->mProfilingId = "NOWA_Pbs_Render_Scene_Transparent_V2_Pass_Scene";
+
+						if (true == this->usePlanarReflection->getBool())
+						{
+							passScene->mIdentifier = 25001;
+						}
+					}
+
+					// Render Scene TRANSPARENT V1 (RQ 225-255, after sky)
+					{
+						Ogre::CompositorPassSceneDef* passScene;
+						auto pass = targetDef->addPass(Ogre::PASS_SCENE);
+						passScene = static_cast<Ogre::CompositorPassSceneDef*>(pass);
+
+						passScene->mIncludeOverlays = false;
+
+						passScene->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
+						passScene->mShadowNodeRecalculation = Ogre::ShadowNodeRecalculation::SHADOW_NODE_REUSE;
+
+						passScene->mCameraName = this->cameraComponent->getCamera()->getName();
+
+						passScene->mFirstRQ = 225;
+						passScene->mLastRQ = 255;  // Covers all remaining queues including GIZMO and MAX
+
+						passScene->mGenNormalsGBuf = false;
+						passScene->mUpdateLodLists = false;
+
+						passScene->setAllLoadActions(Ogre::LoadAction::Load);
+						passScene->mStoreActionColour[0] = Ogre::StoreAction::StoreOrResolve;
+						passScene->mStoreActionDepth = Ogre::StoreAction::Store;
+						passScene->mStoreActionStencil = Ogre::StoreAction::DontCare;
+
+						passScene->mProfilingId = "NOWA_Sky_After_Pbs_Transparent_V1_Pass_Scene";
+
+						if (true == this->usePlanarReflection->getBool())
+						{
+							passScene->mIdentifier = 25001;
+						}
 					}
 
 					// ===== ADD OVERLAY PASS FOR PCC =====
@@ -3639,21 +3709,13 @@ namespace NOWA
 						overlayPass->mStoreActionDepth = Ogre::StoreAction::DontCare;
 						overlayPass->mStoreActionStencil = Ogre::StoreAction::DontCare;
 
-						if (true == this->useSSAO->getBool())
-						{
-							overlayPass->mStoreActionColour[1] = Ogre::StoreAction::Store;
-						}
-
 						overlayPass->mFirstRQ = 251;
-						// overlayPass->mLastRQ uses default (max)
 
 						overlayPass->mIncludeOverlays = false;
 						overlayPass->mUpdateLodLists = false;
 
-						// Reuse shadow cache from previous pass
 						overlayPass->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
-						overlayPass->mShadowNodeRecalculation =
-							Ogre::ShadowNodeRecalculation::SHADOW_NODE_REUSE;
+						overlayPass->mShadowNodeRecalculation = Ogre::ShadowNodeRecalculation::SHADOW_NODE_REUSE;
 
 						overlayPass->mProfilingId = "NOWA_Pbs_PCC_Overlays_Pass_Scene";
 
@@ -4116,7 +4178,7 @@ namespace NOWA
 					passClear->mProfilingId = "NOWA_Sky_Clear_Pass_Clear";
 				}
 
-				// Render Scene (RQ 0-2, before sky)
+				// Render Scene (RQ 0-1, before sky)
 				{
 					Ogre::CompositorPassSceneDef* passScene;
 					auto pass = targetDef->addPass(Ogre::PASS_SCENE);
@@ -4127,50 +4189,35 @@ namespace NOWA
 						passScene->mExposedTextures.emplace_back(Ogre::IdString("rt1"));
 					}
 
-					Ogre::ColourValue color(this->backgroundColor->getVector3().x, this->backgroundColor->getVector3().y, this->backgroundColor->getVector3().z);
-					passScene->mClearColour[0] = color;
+					// We already cleared in PASS_CLEAR
+					passScene->setAllLoadActions(Ogre::LoadAction::Load);
+
 					passScene->mStoreActionColour[0] = Ogre::StoreAction::StoreOrResolve;
+					passScene->mStoreActionDepth = Ogre::StoreAction::Store;
+					passScene->mStoreActionStencil = Ogre::StoreAction::DontCare;
 
 					if (true == this->useSSAO->getBool())
 					{
-						passScene->mClearColour[1] = Ogre::ColourValue(0.5f, 0.5f, 1.0f, 1.0f);
 						passScene->mStoreActionColour[1] = Ogre::StoreAction::StoreOrResolve;
+						passScene->mGenNormalsGBuf = true;
 					}
-
-					passScene->setAllLoadActions(Ogre::LoadAction::Clear);
-
-					// Store depth if we need depth texture (for SSAO or generic use)
-					passScene->mStoreActionDepth = Ogre::StoreAction::Store;
-					/*else
-					{
-						passScene->mStoreActionDepth = Ogre::StoreAction::DontCare;
-					}*/
-					passScene->mStoreActionStencil = Ogre::StoreAction::DontCare;
 
 					if (true == this->usePlanarReflection->getBool())
 					{
 						passScene->mIdentifier = 25001;
 					}
 
-					passScene->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
-					passScene->mProfilingId = "NOWA_Sky_Render_Scene_Pass_Scene";
+					passScene->mProfilingId = "NOWA_Sky_Render_Scene_Before_Sky_Pass_Scene";
 					passScene->mCameraName = this->cameraComponent->getCamera()->getName();
-
-					if (true == this->useSSAO->getBool())
-					{
-						passScene->mGenNormalsGBuf = true;
-					}
 
 					passScene->mIncludeOverlays = false;
 					passScene->mUpdateLodLists = true;
+
 					passScene->mFirstRQ = 0;
-					passScene->mLastRQ = 2;
+					passScene->mLastRQ = 1;
 				}
 
-				// Quad pass
-				// NOTE: The sky doesn't generate normals - it renders at infinite distance
-				// so SSAO shouldn't affect it anyway. The normals buffer will retain
-				// the values from the first scene pass for those pixels.
+				// Quad pass (Sky)
 				{
 					Ogre::CompositorPassQuadDef* passQuad;
 					auto pass = targetDef->addPass(Ogre::PASS_QUAD);
@@ -4179,57 +4226,163 @@ namespace NOWA
 					passQuad->mMaterialName = "NOWASkyPostprocess";
 					passQuad->mFrustumCorners = Ogre::CompositorPassQuadDef::CAMERA_DIRECTION;
 
-					// For SSAO or depth texture: Load the existing content, don't clear
-					// The sky writes to rt0 (color) but the normals buffer should be preserved
-					// since the sky is at infinite distance and shouldn't affect SSAO
-	
 					passQuad->setAllLoadActions(Ogre::LoadAction::Load);
 					passQuad->mStoreActionColour[0] = Ogre::StoreAction::Store;
+
 					if (true == this->useSSAO->getBool())
 					{
 						// Don't modify the normals buffer - sky is at infinity
 						passQuad->mStoreActionColour[1] = Ogre::StoreAction::Store;
 					}
+
 					passQuad->mStoreActionDepth = Ogre::StoreAction::Store;
 
 					passQuad->mProfilingId = "NOWA_Sky_Pass_Quad";
 				}
 
-				// Render Scene (RQ 2+, after sky)
+				// Render Scene OPAQUE V2 (RQ 2-94, after sky)
+				// IMPORTANT: This is the FIRST pass that uses shadows => must NOT be SHADOW_NODE_REUSE
 				{
 					Ogre::CompositorPassSceneDef* passScene;
 					auto pass = targetDef->addPass(Ogre::PASS_SCENE);
 					passScene = static_cast<Ogre::CompositorPassSceneDef*>(pass);
 
 					passScene->mIncludeOverlays = false;
-					passScene->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
-					passScene->mShadowNodeRecalculation = Ogre::ShadowNodeRecalculation::SHADOW_NODE_REUSE;
-					passScene->mFirstRQ = 2;
 
-					// For SSAO: This pass also generates normals for objects after the sky
+					passScene->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
+
+					// FIX: do NOT reuse here, atlas may be Undefined at startup / after invalidation
+					// If your Ogre has SHADOW_NODE_RECALCULATE, you can set it explicitly.
+					// passScene->mShadowNodeRecalculation = Ogre::ShadowNodeRecalculation::SHADOW_NODE_RECALCULATE;
+
+					passScene->mCameraName = this->cameraComponent->getCamera()->getName();
+
+					passScene->mFirstRQ = 2;
+					passScene->mLastRQ = 99;
+
+					passScene->setAllLoadActions(Ogre::LoadAction::Load);
+					passScene->mStoreActionColour[0] = Ogre::StoreAction::StoreOrResolve;
+					passScene->mStoreActionDepth = Ogre::StoreAction::Store;
+					passScene->mStoreActionStencil = Ogre::StoreAction::DontCare;
+
 					if (true == this->useSSAO->getBool())
 					{
 						passScene->mGenNormalsGBuf = true;
 						passScene->mStoreActionColour[1] = Ogre::StoreAction::StoreOrResolve;
 					}
 
-					// When PCC is active, stop rendering at RQ 250
-					// PCC helper geometry lives at RQ 250 and must not be rendered
-					if (true == this->usePCC->getBool())
-					{
-						passScene->mLastRQ = 250;
-					}
+					passScene->mUpdateLodLists = true;
 
-					// Even without SSAO, if we need depth texture, store depth
+					passScene->mProfilingId = "NOWA_Sky_After_Sky_Opaque_V2_Pass_Scene";
+
+					if (true == this->usePlanarReflection->getBool())
+					{
+						passScene->mIdentifier = 25001;
+					}
+				}
+
+				// Render Scene OPAQUE V1 (RQ 100-199, after sky)
+				{
+					Ogre::CompositorPassSceneDef* passScene;
+					auto pass = targetDef->addPass(Ogre::PASS_SCENE);
+					passScene = static_cast<Ogre::CompositorPassSceneDef*>(pass);
+
+					passScene->mIncludeOverlays = false;
+
+					passScene->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
+					passScene->mShadowNodeRecalculation = Ogre::ShadowNodeRecalculation::SHADOW_NODE_REUSE;
+
+					passScene->mCameraName = this->cameraComponent->getCamera()->getName();
+
+					passScene->mFirstRQ = 100;
+					passScene->mLastRQ = 199;
+
 					passScene->setAllLoadActions(Ogre::LoadAction::Load);
 					passScene->mStoreActionColour[0] = Ogre::StoreAction::StoreOrResolve;
 					passScene->mStoreActionDepth = Ogre::StoreAction::Store;
+					passScene->mStoreActionStencil = Ogre::StoreAction::DontCare;
 
-					passScene->mProfilingId = "NOWA_Sky_After_Sky_Pass_Scene";
+					if (true == this->useSSAO->getBool())
+					{
+						passScene->mGenNormalsGBuf = true;
+						passScene->mStoreActionColour[1] = Ogre::StoreAction::StoreOrResolve;
+					}
+
+					passScene->mUpdateLodLists = false;
+
+					passScene->mProfilingId = "NOWA_Sky_After_Sky_Opaque_V1_Pass_Scene";
+
+					if (true == this->usePlanarReflection->getBool())
+					{
+						passScene->mIdentifier = 25001;
+					}
+				}
+
+				// Render Scene TRANSPARENT (FAST-high) (RQ 200-224, after sky)
+				{
+					Ogre::CompositorPassSceneDef* passScene;
+					auto pass = targetDef->addPass(Ogre::PASS_SCENE);
+					passScene = static_cast<Ogre::CompositorPassSceneDef*>(pass);
+
+					passScene->mIncludeOverlays = false;
+
+					passScene->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
+					passScene->mShadowNodeRecalculation = Ogre::ShadowNodeRecalculation::SHADOW_NODE_REUSE;
+
+					passScene->mCameraName = this->cameraComponent->getCamera()->getName();
+
+					passScene->mFirstRQ = 200;
+					passScene->mLastRQ = 224;
+
+					passScene->mGenNormalsGBuf = false;
+					passScene->mUpdateLodLists = false;
+
+					passScene->setAllLoadActions(Ogre::LoadAction::Load);
+					passScene->mStoreActionColour[0] = Ogre::StoreAction::StoreOrResolve;
+					passScene->mStoreActionDepth = Ogre::StoreAction::Store;
+					passScene->mStoreActionStencil = Ogre::StoreAction::DontCare;
+
+					passScene->mProfilingId = "NOWA_Sky_After_Sky_Transparent_Pass_Scene";
+
+					if (true == this->usePlanarReflection->getBool())
+					{
+						passScene->mIdentifier = 25001;
+					}
+				}
+
+				// Render Scene TRANSPARENT V1 (RQ 225-255, after sky)
+				{
+					Ogre::CompositorPassSceneDef* passScene;
+					auto pass = targetDef->addPass(Ogre::PASS_SCENE);
+					passScene = static_cast<Ogre::CompositorPassSceneDef*>(pass);
+
+					passScene->mIncludeOverlays = false;
+
+					passScene->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
+					passScene->mShadowNodeRecalculation = Ogre::ShadowNodeRecalculation::SHADOW_NODE_REUSE;
+
+					passScene->mCameraName = this->cameraComponent->getCamera()->getName();
+
+					passScene->mFirstRQ = 225;
+					passScene->mLastRQ = 255;  // Covers all remaining queues including GIZMO and MAX
+
+					passScene->mGenNormalsGBuf = false;
+					passScene->mUpdateLodLists = false;
+
+					passScene->setAllLoadActions(Ogre::LoadAction::Load);
+					passScene->mStoreActionColour[0] = Ogre::StoreAction::StoreOrResolve;
+					passScene->mStoreActionDepth = Ogre::StoreAction::Store;
+					passScene->mStoreActionStencil = Ogre::StoreAction::DontCare;
+
+					passScene->mProfilingId = "NOWA_Sky_After_Sky_Transparent_V1_Pass_Scene";
+
+					if (true == this->usePlanarReflection->getBool())
+					{
+						passScene->mIdentifier = 25001;
+					}
 				}
 
 				// ===== ADD OVERLAY PASS FOR PCC =====
-				// When PCC is active, we need a separate pass for overlays (RQ 251+)
 				if (true == this->usePCC->getBool())
 				{
 					Ogre::CompositorPassSceneDef* overlayPass = static_cast<Ogre::CompositorPassSceneDef*>(targetDef->addPass(Ogre::PASS_SCENE));
@@ -4239,21 +4392,13 @@ namespace NOWA
 					overlayPass->mStoreActionDepth = Ogre::StoreAction::DontCare;
 					overlayPass->mStoreActionStencil = Ogre::StoreAction::DontCare;
 
-					if (true == this->useSSAO->getBool())
-					{
-						overlayPass->mStoreActionColour[1] = Ogre::StoreAction::Store;
-					}
-
 					overlayPass->mFirstRQ = 251;
-					// overlayPass->mLastRQ uses default (max)
 
 					overlayPass->mIncludeOverlays = false;
 					overlayPass->mUpdateLodLists = false;
 
-					// Reuse shadow cache from previous pass
 					overlayPass->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
-					overlayPass->mShadowNodeRecalculation =
-						Ogre::ShadowNodeRecalculation::SHADOW_NODE_REUSE;
+					overlayPass->mShadowNodeRecalculation = Ogre::ShadowNodeRecalculation::SHADOW_NODE_REUSE;
 
 					overlayPass->mProfilingId = "NOWA_Pbs_PCC_Overlays_Pass_Scene";
 
@@ -4802,32 +4947,32 @@ namespace NOWA
 					passClear->mProfilingId = "NOWA_Background_Clear_Pass_Clear";
 				}
 
-				// Render Scene (RQ 0-2, before background)
+				// Render Scene (RQ 0-1, before background) - LOAD, do NOT clear again
 				{
 					Ogre::CompositorPassSceneDef* passScene;
 					auto pass = targetDef->addPass(Ogre::PASS_SCENE);
 					passScene = static_cast<Ogre::CompositorPassSceneDef*>(pass);
 
-					Ogre::ColourValue color(0.2f, 0.4f, 0.6f);
-					passScene->setAllLoadActions(Ogre::LoadAction::Clear);
-					passScene->mClearColour[0] = color;
+					if (true == this->canUseReflection)
+					{
+						passScene->mExposedTextures.emplace_back(Ogre::IdString("rt1"));
+					}
+
+					passScene->setAllLoadActions(Ogre::LoadAction::Load);
 
 					passScene->mStoreActionColour[0] = Ogre::StoreAction::StoreOrResolve;
 
 					if (true == this->useSSAO->getBool())
 					{
-						passScene->mClearColour[1] = Ogre::ColourValue(0.5f, 0.5f, 1.0f, 1.0f);
 						passScene->mStoreActionColour[1] = Ogre::StoreAction::StoreOrResolve;
+						passScene->mGenNormalsGBuf = true;
 					}
 
-					// Store depth if we need depth texture (for SSAO or generic use)
 					passScene->mStoreActionDepth = Ogre::StoreAction::Store;
-					
 					passScene->mStoreActionStencil = Ogre::StoreAction::DontCare;
 
-					passScene->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
 					passScene->mFirstRQ = 0;
-					passScene->mLastRQ = 2;
+					passScene->mLastRQ = 1;
 
 					if (true == this->usePlanarReflection->getBool())
 					{
@@ -4835,24 +4980,13 @@ namespace NOWA
 					}
 
 					passScene->mProfilingId = "NOWA_Background_Before_Background_Pass_Scene";
-
-					if (true == this->canUseReflection)
-					{
-						passScene->mExposedTextures.emplace_back(Ogre::IdString("rt1"));
-					}
+					passScene->mCameraName = this->cameraComponent->getCamera()->getName();
 
 					passScene->mIncludeOverlays = false;
-
-					if (true == this->useSSAO->getBool())
-					{
-						passScene->mGenNormalsGBuf = true;
-					}
+					passScene->mUpdateLodLists = true;
 				}
 
 				// Quad pass Background
-				// NOTE: The background doesn't generate normals - it's at infinite distance
-				// so SSAO shouldn't affect it. The normals buffer will retain
-				// the values from the first scene pass for those pixels.
 				{
 					Ogre::CompositorPassQuadDef* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
 					passQuad->mMaterialName = "NOWABackgroundScroll";
@@ -4860,51 +4994,157 @@ namespace NOWA
 
 					passQuad->setAllLoadActions(Ogre::LoadAction::Load);
 					passQuad->mStoreActionColour[0] = Ogre::StoreAction::Store;
+
 					if (true == this->useSSAO->getBool())
 					{
 						// Don't modify the normals buffer - background is at infinity
 						passQuad->mStoreActionColour[1] = Ogre::StoreAction::Store;
 					}
+
 					passQuad->mStoreActionDepth = Ogre::StoreAction::Store;
 
 					passQuad->mProfilingId = "NOWABackgroundScroll_Pass_Quad";
 				}
 
-				// Render Scene (RQ 2+, after background)
+				// Render Scene OPAQUE V2 (RQ 2-94, after background)
 				{
 					Ogre::CompositorPassSceneDef* passScene;
 					auto pass = targetDef->addPass(Ogre::PASS_SCENE);
 					passScene = static_cast<Ogre::CompositorPassSceneDef*>(pass);
 
 					passScene->mIncludeOverlays = false;
+
 					passScene->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
 					passScene->mShadowNodeRecalculation = Ogre::ShadowNodeRecalculation::SHADOW_NODE_REUSE;
+
+					passScene->mCameraName = this->cameraComponent->getCamera()->getName();
+
 					passScene->mFirstRQ = 2;
+					passScene->mLastRQ = 99;
 
-					// When PCC is active, stop rendering at RQ 250
-					// PCC helper geometry lives at RQ 250 and must not be rendered
-					if (true == this->usePCC->getBool())
-					{
-						passScene->mLastRQ = 250;
-					}
-
-					// For SSAO: This pass also generates normals for objects after the background
 					if (true == this->useSSAO->getBool())
 					{
 						passScene->mGenNormalsGBuf = true;
 						passScene->mStoreActionColour[1] = Ogre::StoreAction::StoreOrResolve;
 					}
 
-					// Even without SSAO, if we need depth texture, store depth
+					passScene->mUpdateLodLists = true;
+
 					passScene->setAllLoadActions(Ogre::LoadAction::Load);
 					passScene->mStoreActionColour[0] = Ogre::StoreAction::StoreOrResolve;
 					passScene->mStoreActionDepth = Ogre::StoreAction::Store;
-					
-					passScene->mProfilingId = "NOWA_Background_After_Background_Pass_Scene";
+					passScene->mStoreActionStencil = Ogre::StoreAction::DontCare;
+
+					passScene->mProfilingId = "NOWA_Background_After_Background_Opaque_V2_Pass_Scene";
+
+					if (true == this->usePlanarReflection->getBool())
+					{
+						passScene->mIdentifier = 25001;
+					}
+				}
+
+				// Render Scene OPAQUE V1 (RQ 100-199, after background)
+				{
+					Ogre::CompositorPassSceneDef* passScene;
+					auto pass = targetDef->addPass(Ogre::PASS_SCENE);
+					passScene = static_cast<Ogre::CompositorPassSceneDef*>(pass);
+
+					passScene->mIncludeOverlays = false;
+
+					passScene->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
+					passScene->mShadowNodeRecalculation = Ogre::ShadowNodeRecalculation::SHADOW_NODE_REUSE;
+
+					passScene->mCameraName = this->cameraComponent->getCamera()->getName();
+
+					passScene->mFirstRQ = 100;
+					passScene->mLastRQ = 199;
+
+					if (true == this->useSSAO->getBool())
+					{
+						passScene->mGenNormalsGBuf = true;
+						passScene->mStoreActionColour[1] = Ogre::StoreAction::StoreOrResolve;
+					}
+
+					passScene->mUpdateLodLists = false;
+
+					passScene->setAllLoadActions(Ogre::LoadAction::Load);
+					passScene->mStoreActionColour[0] = Ogre::StoreAction::StoreOrResolve;
+					passScene->mStoreActionDepth = Ogre::StoreAction::Store;
+					passScene->mStoreActionStencil = Ogre::StoreAction::DontCare;
+
+					passScene->mProfilingId = "NOWA_Background_After_Background_Opaque_V1_Pass_Scene";
+
+					if (true == this->usePlanarReflection->getBool())
+					{
+						passScene->mIdentifier = 25001;
+					}
+				}
+
+				// Render Scene TRANSPARENT (FAST-high) (RQ 200-249, after background)
+				{
+					Ogre::CompositorPassSceneDef* passScene;
+					auto pass = targetDef->addPass(Ogre::PASS_SCENE);
+					passScene = static_cast<Ogre::CompositorPassSceneDef*>(pass);
+
+					passScene->mIncludeOverlays = false;
+
+					passScene->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
+					passScene->mShadowNodeRecalculation = Ogre::ShadowNodeRecalculation::SHADOW_NODE_REUSE;
+
+					passScene->mCameraName = this->cameraComponent->getCamera()->getName();
+
+					passScene->mFirstRQ = 200;
+					passScene->mLastRQ = 224;
+
+					passScene->mGenNormalsGBuf = false;
+					passScene->mUpdateLodLists = false;
+
+					passScene->setAllLoadActions(Ogre::LoadAction::Load);
+					passScene->mStoreActionColour[0] = Ogre::StoreAction::StoreOrResolve;
+					passScene->mStoreActionDepth = Ogre::StoreAction::Store;
+					passScene->mStoreActionStencil = Ogre::StoreAction::DontCare;
+
+					passScene->mProfilingId = "NOWA_Background_After_Background_Transparent_Pass_Scene";
+
+					if (true == this->usePlanarReflection->getBool())
+					{
+						passScene->mIdentifier = 25001;
+					}
+				}
+
+				// Render Scene TRANSPARENT V1 (RQ 225-224, after sky)
+				{
+					Ogre::CompositorPassSceneDef* passScene;
+					auto pass = targetDef->addPass(Ogre::PASS_SCENE);
+					passScene = static_cast<Ogre::CompositorPassSceneDef*>(pass);
+
+					passScene->mIncludeOverlays = false;
+
+					passScene->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
+					passScene->mShadowNodeRecalculation = Ogre::ShadowNodeRecalculation::SHADOW_NODE_REUSE;
+
+					passScene->mCameraName = this->cameraComponent->getCamera()->getName();
+
+					passScene->mFirstRQ = 225;
+					passScene->mLastRQ = 255;  // Covers all remaining queues including GIZMO and MAX
+
+					passScene->mGenNormalsGBuf = false;
+					passScene->mUpdateLodLists = false;
+
+					passScene->setAllLoadActions(Ogre::LoadAction::Load);
+					passScene->mStoreActionColour[0] = Ogre::StoreAction::StoreOrResolve;
+					passScene->mStoreActionDepth = Ogre::StoreAction::Store;
+					passScene->mStoreActionStencil = Ogre::StoreAction::DontCare;
+
+					passScene->mProfilingId = "NOWA_Sky_After_Background_Transparent_V1_Pass_Scene";
+
+					if (true == this->usePlanarReflection->getBool())
+					{
+						passScene->mIdentifier = 25001;
+					}
 				}
 
 				// ===== ADD OVERLAY PASS FOR PCC =====
-				// When PCC is active, we need a separate pass for overlays (RQ 251+)
 				if (true == this->usePCC->getBool())
 				{
 					Ogre::CompositorPassSceneDef* overlayPass = static_cast<Ogre::CompositorPassSceneDef*>(targetDef->addPass(Ogre::PASS_SCENE));
@@ -4914,18 +5154,11 @@ namespace NOWA
 					overlayPass->mStoreActionDepth = Ogre::StoreAction::DontCare;
 					overlayPass->mStoreActionStencil = Ogre::StoreAction::DontCare;
 
-					if (true == this->useSSAO->getBool())
-					{
-						overlayPass->mStoreActionColour[1] = Ogre::StoreAction::Store;
-					}
-
 					overlayPass->mFirstRQ = 251;
-					// overlayPass->mLastRQ uses default (max)
 
 					overlayPass->mIncludeOverlays = false;
 					overlayPass->mUpdateLodLists = false;
 
-					// Reuse shadow cache from previous pass
 					overlayPass->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
 					overlayPass->mShadowNodeRecalculation = Ogre::ShadowNodeRecalculation::SHADOW_NODE_REUSE;
 

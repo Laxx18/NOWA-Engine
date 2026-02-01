@@ -815,7 +815,7 @@ namespace NOWA
 			return;
 		}
 
-		const Ogre::ParticleSystemDef* particleSystemDef = particleData.particleSystem->getParticleSystemDef();
+		Ogre::ParticleSystemDef* particleSystemDef = const_cast<Ogre::ParticleSystemDef*>(particleData.particleSystem->getParticleSystemDef());
 		if (nullptr == particleSystemDef)
 		{
 			return;
@@ -839,11 +839,11 @@ namespace NOWA
 		}
 
 		const ParticleBlendingMethod::ParticleBlendingMethod currentMethod = particleData.blendingMethod;
+		Ogre::ParticleSystem2* ps = particleData.particleSystem;
 
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ParticleFxComponent::applyBlendingMethod", _2(datablock, currentMethod),
+		GraphicsModule::RenderCommand renderCommand = [this, datablock, currentMethod, ps, particleSystemDef]()
 		{
-			if (currentMethod == ParticleBlendingMethod::AlphaHashing ||
-				currentMethod == ParticleBlendingMethod::AlphaHashingA2C)
+			if (currentMethod == ParticleBlendingMethod::AlphaHashing || currentMethod == ParticleBlendingMethod::AlphaHashingA2C)
 			{
 				// ========================================
 				// ALPHA HASHING MODE
@@ -851,24 +851,28 @@ namespace NOWA
 				Ogre::HlmsBlendblock blendblock = *datablock->getBlendblock();
 				blendblock.setBlendType(Ogre::SBT_REPLACE);
 				blendblock.mAlphaToCoverage = (currentMethod == ParticleBlendingMethod::AlphaHashingA2C)
-						? Ogre::HlmsBlendblock::A2cEnabledMsaaOnly
-						: Ogre::HlmsBlendblock::A2cDisabled;
+					? Ogre::HlmsBlendblock::A2cEnabledMsaaOnly
+					: Ogre::HlmsBlendblock::A2cDisabled;
 				datablock->setBlendblock(blendblock);
 
 				Ogre::HlmsMacroblock macroblock = *datablock->getMacroblock();
 				macroblock.mDepthWrite = true;
+				macroblock.mDepthCheck = true;
 				datablock->setMacroblock(macroblock);
 
 				datablock->setAlphaHashing(true);
+
+				if (nullptr != ps && nullptr != particleSystemDef)
+				{
+					ps->setRenderQueueGroup(NOWA::RENDER_QUEUE_PARTICLE_STUFF);
+					particleSystemDef->setRenderQueueGroup(NOWA::RENDER_QUEUE_PARTICLE_STUFF);
+				}
 			}
 			else if (currentMethod == ParticleBlendingMethod::AlphaBlending)
 			{
 				// ========================================
 				// ADDITIVE BLENDING (SBT_ADD)
 				// ========================================
-				// Best for: Rain, fire, sparks, stars, explosions
-				// White on black textures - black becomes transparent
-
 				Ogre::HlmsBlendblock blendblock = *datablock->getBlendblock();
 				blendblock.setBlendType(Ogre::SBT_ADD);
 				blendblock.mAlphaToCoverage = Ogre::HlmsBlendblock::A2cDisabled;
@@ -880,15 +884,18 @@ namespace NOWA
 				datablock->setMacroblock(macroblock);
 
 				datablock->setAlphaHashing(false);
+
+				if (nullptr != ps && nullptr != particleSystemDef)
+				{
+					ps->setRenderQueueGroup(NOWA::RENDER_QUEUE_PARTICLE_TRANSPARENT);
+					particleSystemDef->setRenderQueueGroup(NOWA::RENDER_QUEUE_PARTICLE_TRANSPARENT);
+				}
 			}
 			else if (currentMethod == ParticleBlendingMethod::AlphaTransparent)
 			{
 				// ========================================
 				// TRADITIONAL ALPHA BLENDING (SBT_TRANSPARENT_ALPHA)
 				// ========================================
-				// Best for: Smoke, clouds, sprites with proper alpha channel
-				// Requires texture to have alpha channel!
-
 				Ogre::HlmsBlendblock blendblock = *datablock->getBlendblock();
 				blendblock.setBlendType(Ogre::SBT_TRANSPARENT_ALPHA);
 				blendblock.mAlphaToCoverage = Ogre::HlmsBlendblock::A2cDisabled;
@@ -900,6 +907,12 @@ namespace NOWA
 				datablock->setMacroblock(macroblock);
 
 				datablock->setAlphaHashing(false);
+
+				if (nullptr != ps && nullptr != particleSystemDef)
+				{
+					ps->setRenderQueueGroup(NOWA::RENDER_QUEUE_PARTICLE_TRANSPARENT);
+					particleSystemDef->setRenderQueueGroup(NOWA::RENDER_QUEUE_PARTICLE_TRANSPARENT);
+				}
 			}
 			else if (currentMethod == ParticleBlendingMethod::TransparentColour)
 			{
@@ -914,9 +927,15 @@ namespace NOWA
 				datablock->setMacroblock(macroblock);
 
 				datablock->setAlphaHashing(false);
+
+				if (nullptr != ps && nullptr != particleSystemDef)
+				{
+					ps->setRenderQueueGroup(NOWA::RENDER_QUEUE_PARTICLE_TRANSPARENT);
+					particleSystemDef->setRenderQueueGroup(NOWA::RENDER_QUEUE_PARTICLE_TRANSPARENT);
+				}
 			}
-			
-		});
+		};
+		NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ParticleFxModule::applyBlendingMethod");
 	}
 
 	void ParticleFxModule::updateFadeIn(ParticleFxData& particleData, Ogre::Real dt)

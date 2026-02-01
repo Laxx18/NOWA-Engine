@@ -344,8 +344,11 @@ namespace NOWA
 				this->sceneManager->getRenderQueue()->setRenderQueueMode(NOWA::RENDER_QUEUE_V1_MESH, Ogre::RenderQueue::Modes::V1_FAST);
 				this->sceneManager->getRenderQueue()->setSortRenderQueue(NOWA::RENDER_QUEUE_V1_MESH, sortMode);
 
-				this->sceneManager->getRenderQueue()->setRenderQueueMode(NOWA::RENDER_QUEUE_PARTICLE_STUFF, Ogre::RenderQueue::Modes::V1_FAST);
+				this->sceneManager->getRenderQueue()->setRenderQueueMode(NOWA::RENDER_QUEUE_PARTICLE_STUFF, Ogre::RenderQueue::Modes::PARTICLE_SYSTEM);
 				this->sceneManager->getRenderQueue()->setSortRenderQueue(NOWA::RENDER_QUEUE_PARTICLE_STUFF, sortMode);
+
+				this->sceneManager->getRenderQueue()->setRenderQueueMode(NOWA::RENDER_QUEUE_PARTICLE_TRANSPARENT, Ogre::RenderQueue::Modes::PARTICLE_SYSTEM);
+				this->sceneManager->getRenderQueue()->setSortRenderQueue(NOWA::RENDER_QUEUE_PARTICLE_TRANSPARENT, sortMode);
 
 				this->sceneManager->getRenderQueue()->setRenderQueueMode(NOWA::RENDER_QUEUE_LEGACY, Ogre::RenderQueue::Modes::V1_LEGACY);
 				this->sceneManager->getRenderQueue()->setSortRenderQueue(NOWA::RENDER_QUEUE_LEGACY, sortMode);

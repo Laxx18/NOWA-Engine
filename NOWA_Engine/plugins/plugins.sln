@@ -78,8 +78,13 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PccPerPixelGridPlacementComponent", "PccPerPixelGridPlacementComponent\PccPerPixelGridPlacementComponent.vcxproj", "{E1EB6648-2042-4B66-B81D-95B3878A6862}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "InstantRadiosityComponent", "InstantRadiosityComponent\InstantRadiosityComponent.vcxproj", "{304D9685-917B-421F-B832-877C0D74550D}"
+	ProjectSection(ProjectDependencies) = postProject
+		{8C12F513-DA02-465D-A01F-20B0127D8AED} = {8C12F513-DA02-465D-A01F-20B0127D8AED}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MorphAnimationComponent", "MorphAnimationComponent\MorphAnimationComponent.vcxproj", "{036FBB89-6757-4420-8C8B-962FE3B46FF0}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LightAreaOfInterestComponent", "LightAreaOfInterestComponent\LightAreaOfInterestComponent.vcxproj", "{8C12F513-DA02-465D-A01F-20B0127D8AED}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -243,6 +248,10 @@ Global
 		{036FBB89-6757-4420-8C8B-962FE3B46FF0}.Debug|x64.Build.0 = Debug|x64
 		{036FBB89-6757-4420-8C8B-962FE3B46FF0}.Release|x64.ActiveCfg = Release|x64
 		{036FBB89-6757-4420-8C8B-962FE3B46FF0}.Release|x64.Build.0 = Release|x64
+		{8C12F513-DA02-465D-A01F-20B0127D8AED}.Debug|x64.ActiveCfg = Debug|x64
+		{8C12F513-DA02-465D-A01F-20B0127D8AED}.Debug|x64.Build.0 = Debug|x64
+		{8C12F513-DA02-465D-A01F-20B0127D8AED}.Release|x64.ActiveCfg = Release|x64
+		{8C12F513-DA02-465D-A01F-20B0127D8AED}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

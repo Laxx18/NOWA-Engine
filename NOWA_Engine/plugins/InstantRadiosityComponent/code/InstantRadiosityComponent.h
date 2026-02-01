@@ -1,4 +1,4 @@
-#ifndef INSTANT_RADIOSITY_COMPONENT_H
+﻿#ifndef INSTANT_RADIOSITY_COMPONENT_H
 #define INSTANT_RADIOSITY_COMPONENT_H
 
 #include "gameobject/GameObjectComponent.h"
@@ -13,6 +13,8 @@ namespace Ogre
 
 namespace NOWA
 {
+	class LightAreaOfInterestComponent;
+
 	/**
 	  * @brief		Instant Radiosity (IR) component for Global Illumination.
 	  *				IR traces rays in CPU and creates VPLs (Virtual Point Lights) at every hit point
@@ -21,11 +23,15 @@ namespace NOWA
 	  *				- Works on dynamic objects
 	  *				- VPLs get averaged and clustered based on cluster size to improve speed
 	  *				- Can use Irradiance Volumes instead of VPLs for better performance
+	  *				- Automatically collects LightAreaOfInterestComponents for directional light ray targeting
 	  *				Tips to fight light leaking:
 	  *				- Smaller cluster sizes are more accurate but slower (more VPLs)
 	  *				- Smaller VplMaxRange is faster and leaks less but has lower illumination reach
 	  *				- Bias pushes VPL placement away from true position (not physically accurate but helps)
 	  *				- VplThreshold removes weak VPLs, improving performance
+	  *
+	  *				For directional lights to work properly in enclosed spaces (buildings), place
+	  *				LightAreaOfInterestComponent markers at windows/skylights/openings.
 	  */
 	class EXPORTED InstantRadiosityComponent : public GameObjectComponent, public Ogre::Plugin
 	{
@@ -295,6 +301,18 @@ namespace NOWA
 		Ogre::Real getIrradianceCellSize(void) const;
 
 		/**
+		 * @brief Sets whether to use scene bounds as fallback AoI when no LightAoI components exist.
+		 * @param[in] useSceneBoundsAsFallback Whether to use scene bounds
+		 */
+		void setUseSceneBoundsAsFallback(bool useSceneBoundsAsFallback);
+
+		/**
+		 * @brief Gets whether scene bounds is used as fallback AoI.
+		 * @return True if using scene bounds as fallback
+		 */
+		bool getUseSceneBoundsAsFallback(void) const;
+
+		/**
 		 * @brief Manually triggers a rebuild of the IR data.
 		 *        Call this after scene changes or when lights move significantly.
 		 */
@@ -305,6 +323,12 @@ namespace NOWA
 		 *        Use this for parameter changes that don't require full rebuild.
 		 */
 		void updateExistingVpls(void);
+
+		/**
+		 * @brief Refreshes the Areas of Interest from all LightAreaOfInterestComponents in the scene.
+		 *        Call this if you add/remove LightAoI components at runtime.
+		 */
+		void refreshAreasOfInterest(void);
 
 		/**
 		 * @brief Gets the InstantRadiosity object for advanced usage.
@@ -340,7 +364,36 @@ namespace NOWA
 		static Ogre::String getStaticInfoText(void)
 		{
 			return "Usage: Instant Radiosity for Global Illumination. Traces rays and creates Virtual Point Lights (VPLs) "
-				"at hit points to simulate indirect lighting. Works on dynamic objects. "
+				"at hit points to simulate indirect lighting. Works on dynamic objects.\n\n"
+
+				"For directional lights in enclosed spaces (buildings with windows), place LightAreaOfInterestComponent markers "
+				"at windows/openings. The AoI tells the system: \"Shoot rays HERE specifically\" - because directional light rays "
+				"come from infinity and need to know where openings are to enter a building.\n\n"
+
+				"Scenario example:\n"
+				"You have a house mesh with 3 windows. Without AoIs, directional light rays would be shot randomly and most would "
+				"hit the exterior walls, wasting computation and missing the interior.\n\n"
+
+				"Solution:\n"
+				"Create empty GameObjects at each window opening and add LightAreaOfInterestComponent.\n\n"
+
+				"Scene:\n"
+				"--> House (mesh with windows baked in)\n"
+				"--> Window1_AoI (empty GO at window position)\n"
+				"  |--> LightAreaOfInterestComponent (halfSize matches window size)\n"
+				"--> Window2_AoI\n"
+				"  |--> LightAreaOfInterestComponent\n"
+				"--> Window3_AoI\n"
+				"  |--> LightAreaOfInterestComponent\n"
+				"--> SunLight (directional)\n"
+				"--> IRController\n"
+				"  | --> InstantRadiosityComponent\n\n"
+				"When is EventDataBoundsUpdated sufficient?\n"
+				"For outdoor scenes or scenes with only point/spot lights - you don't need specific AoIs. "
+				"The scene bounds fallback works fine because:\n"
+				"- Point/spot lights have a defined position, rays radiate from there\n"
+				"- Outdoor scenes don't have \"openings\" to target\n\n"
+
 				"Requirements: Forward+ rendering with VPLs enabled. Only one instance allowed per scene.";
 		}
 
@@ -406,13 +459,19 @@ namespace NOWA
 		{
 			return "Irradiance Cell Size";
 		}
+		static const Ogre::String AttrUseSceneBoundsAsFallback(void)
+		{
+			return "Use Scene Bounds As Fallback";
+		}
 
 	private:
 		void createInstantRadiosity(void);
 		void destroyInstantRadiosity(void);
-		void updateIrradianceVolume(void);
+		void internalUpdateIrradianceVolume(void);
 		void internalBuild(void);
+		void collectAreasOfInterest(void);
 
+		void handleUpdateBounds(NOWA::EventDataPtr eventData);
 	private:
 		Ogre::String name;
 
@@ -433,10 +492,12 @@ namespace NOWA
 		Variant* enableDebugMarkers;
 		Variant* useIrradianceVolume;
 		Variant* irradianceCellSize;
+		Variant* useSceneBoundsAsFallback;
 
 		bool needsRebuild;
 		bool needsVplUpdate;
 		bool needsIrradianceVolumeUpdate;
+		Ogre::AxisAlignedBox sceneBounds;
 	};
 
 }; // namespace end

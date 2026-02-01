@@ -14,6 +14,9 @@
 #include "OgreHlmsPbs.h"
 #include "OgreRoot.h"
 
+// Hard dependency
+#include "../../LightAreaOfInterestComponent/code/LightAreaOfInterestComponent.cpp"
+
 namespace NOWA
 {
 	using namespace rapidxml;
@@ -27,6 +30,7 @@ namespace NOWA
 		needsRebuild(false),
 		needsVplUpdate(false),
 		needsIrradianceVolumeUpdate(false),
+		sceneBounds(Ogre::AxisAlignedBox::BOX_NULL),
 		activated(new Variant(InstantRadiosityComponent::AttrActivated(), true, this->attributes)),
 		numRays(new Variant(InstantRadiosityComponent::AttrNumRays(), static_cast<unsigned int>(128), this->attributes)),
 		numRayBounces(new Variant(InstantRadiosityComponent::AttrNumRayBounces(), static_cast<unsigned int>(1), this->attributes)),
@@ -40,19 +44,19 @@ namespace NOWA
 		vplIntensityRangeMultiplier(new Variant(InstantRadiosityComponent::AttrVplIntensityRangeMultiplier(), 100.0f, this->attributes)),
 		enableDebugMarkers(new Variant(InstantRadiosityComponent::AttrEnableDebugMarkers(), false, this->attributes)),
 		useIrradianceVolume(new Variant(InstantRadiosityComponent::AttrUseIrradianceVolume(), false, this->attributes)),
-		irradianceCellSize(new Variant(InstantRadiosityComponent::AttrIrradianceCellSize(), 1.5f, this->attributes))
+		irradianceCellSize(new Variant(InstantRadiosityComponent::AttrIrradianceCellSize(), 1.5f, this->attributes)),
+		useSceneBoundsAsFallback(new Variant(InstantRadiosityComponent::AttrUseSceneBoundsAsFallback(), true, this->attributes))
 	{
-		// Set constraints for properties
-		this->numRays->setDescription("Number of rays to cast. Higher values are more accurate but slower. Power of 2 recommended.");
+		this->numRays->setDescription("Number of rays to cast. Higher = more accurate but slower. Power of 2 recommended.");
 		this->numRayBounces->setDescription("Number of ray bounces for indirect light. 0-5 range.");
 		this->numRayBounces->setConstraints(0, 5);
-		this->numSpreadIterations->setDescription("Number of iterations for VPL clustering/spreading. 0-10 range.");
+		this->numSpreadIterations->setDescription("Number of iterations for VPL clustering. 0-10 range.");
 		this->numSpreadIterations->setConstraints(0, 10);
-		this->cellSize->setDescription("Cell/cluster size for VPL grouping. Smaller = more accurate but slower.");
+		this->cellSize->setDescription("Cell size for VPL grouping. Smaller = more accurate but slower.");
 		this->cellSize->setConstraints(0.001f, 100.0f);
 		this->bias->setDescription("Bias pushes VPL placement away from surfaces to reduce light leaking.");
 		this->bias->setConstraints(0.0f, 1.0f);
-		this->vplMaxRange->setDescription("Maximum range for VPLs. Smaller = faster and less leaking but lower reach.");
+		this->vplMaxRange->setDescription("Maximum range for VPLs. Smaller = faster, less leaking but lower reach.");
 		this->vplMaxRange->setConstraints(0.1f, 1000.0f);
 		this->vplPowerBoost->setDescription("Power boost multiplier for VPLs.");
 		this->vplPowerBoost->setConstraints(0.01f, 100.0f);
@@ -62,19 +66,18 @@ namespace NOWA
 		this->vplIntensityRangeMultiplier->setDescription("Multiplier when using intensity for max range.");
 		this->vplIntensityRangeMultiplier->setConstraints(0.01f, 1000.0f);
 		this->enableDebugMarkers->setDescription("Show debug markers for VPL positions.");
-		this->useIrradianceVolume->setDescription("Use Irradiance Volume instead of VPLs. Better performance but less accurate.");
+		this->useIrradianceVolume->setDescription("Use Irradiance Volume instead of VPLs.");
 		this->irradianceCellSize->setDescription("Cell size for Irradiance Volume.");
 		this->irradianceCellSize->setConstraints(0.1f, 100.0f);
+		this->useSceneBoundsAsFallback->setDescription("Use scene bounds as AoI when no LightAreaOfInterestComponents exist.");
 	}
 
 	InstantRadiosityComponent::~InstantRadiosityComponent(void)
 	{
-
 	}
 
 	void InstantRadiosityComponent::initialise()
 	{
-
 	}
 
 	const Ogre::String& InstantRadiosityComponent::getName() const
@@ -89,12 +92,10 @@ namespace NOWA
 
 	void InstantRadiosityComponent::shutdown()
 	{
-		// Do nothing here, because its called far to late and nothing is there of NOWA-Engine anymore! Use @onRemoveComponent in order to destroy something.
 	}
 
 	void InstantRadiosityComponent::uninstall()
 	{
-		// Do nothing here, because its called far to late and nothing is there of NOWA-Engine anymore! Use @onRemoveComponent in order to destroy something.
 	}
 
 	void InstantRadiosityComponent::getAbiCookie(Ogre::AbiCookie& outAbiCookie)
@@ -176,19 +177,25 @@ namespace NOWA
 			this->irradianceCellSize->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "UseSceneBoundsAsFallback")
+		{
+			this->useSceneBoundsAsFallback->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
 
 		return success;
 	}
 
 	GameObjectCompPtr InstantRadiosityComponent::clone(GameObjectPtr clonedGameObjectPtr)
 	{
-		// Only one instance allowed per scene
-		return nullptr;
+		return nullptr; // Only one instance allowed per scene
 	}
 
 	bool InstantRadiosityComponent::postInit(void)
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[InstantRadiosityComponent] Init component for game object: " + this->gameObjectPtr->getName());
+
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &InstantRadiosityComponent::handleUpdateBounds), EventDataBoundsUpdated::getStaticEventType());
 
 		if (true == this->activated->getBool())
 		{
@@ -202,10 +209,12 @@ namespace NOWA
 	{
 		GameObjectComponent::connect();
 
-		// Perform initial build after scene is loaded
 		if (nullptr != this->instantRadiosity && true == this->activated->getBool())
 		{
-			this->internalBuild();
+			this->sceneBounds.setExtents(Core::getSingletonPtr()->getCurrentSceneBoundLeftNear(), Core::getSingletonPtr()->getCurrentSceneBoundRightFar());
+
+			this->collectAreasOfInterest();
+			this->needsRebuild = true;
 		}
 
 		return true;
@@ -215,12 +224,17 @@ namespace NOWA
 	{
 		GameObjectComponent::disconnect();
 
+		Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
+		NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
+
 		return true;
 	}
 
 	void InstantRadiosityComponent::onRemoveComponent(void)
 	{
 		GameObjectComponent::onRemoveComponent();
+
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &InstantRadiosityComponent::handleUpdateBounds), EventDataBoundsUpdated::getStaticEventType());
 
 		Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
 		NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
@@ -230,32 +244,39 @@ namespace NOWA
 
 	void InstantRadiosityComponent::update(Ogre::Real dt, bool notSimulating)
 	{
-		// Handle deferred updates
 		if (nullptr != this->instantRadiosity && true == this->activated->getBool())
 		{
-			auto closureFunction = [this](Ogre::Real renderDt)
+			if (this->needsRebuild || this->needsVplUpdate || this->needsIrradianceVolumeUpdate)
 			{
-				if (this->needsRebuild)
+				auto closureFunction = [this](Ogre::Real renderDt)
 				{
-					this->internalBuild();
-					this->needsRebuild = false;
-					this->needsVplUpdate = false;
-					this->needsIrradianceVolumeUpdate = false;
-				}
-				else if (this->needsVplUpdate)
-				{
-					this->instantRadiosity->updateExistingVpls();
-					this->needsVplUpdate = false;
-				}
+					if (this->needsRebuild)
+					{
+						this->internalBuild();
+						this->needsRebuild = false;
+						this->needsVplUpdate = false;
+						this->needsIrradianceVolumeUpdate = false;
+					}
+					else if (this->needsVplUpdate)
+					{
+						this->instantRadiosity->updateExistingVpls();
+						this->needsVplUpdate = false;
 
-				if (this->needsIrradianceVolumeUpdate)
-				{
-					this->updateIrradianceVolume();
-					this->needsIrradianceVolumeUpdate = false;
-				}
-			};
-			Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
-			NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
+						if (this->needsIrradianceVolumeUpdate)
+						{
+							this->internalUpdateIrradianceVolume();
+							this->needsIrradianceVolumeUpdate = false;
+						}
+					}
+					else if (this->needsIrradianceVolumeUpdate)
+					{
+						this->internalUpdateIrradianceVolume();
+						this->needsIrradianceVolumeUpdate = false;
+					}
+				};
+				Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
+				NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
+			}
 		}
 	}
 
@@ -319,17 +340,14 @@ namespace NOWA
 		{
 			this->setIrradianceCellSize(attribute->getReal());
 		}
+		else if (InstantRadiosityComponent::AttrUseSceneBoundsAsFallback() == attribute->getName())
+		{
+			this->setUseSceneBoundsAsFallback(attribute->getBool());
+		}
 	}
 
 	void InstantRadiosityComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		// 2 = int
-		// 6 = real
-		// 7 = string
-		// 8 = vector2
-		// 9 = vector3
-		// 10 = vector4 -> also quaternion
-		// 12 = bool
 		GameObjectComponent::writeXML(propertiesXML, doc);
 
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
@@ -415,6 +433,12 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("name", "IrradianceCellSize"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->irradianceCellSize->getReal())));
 		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "UseSceneBoundsAsFallback"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->useSceneBoundsAsFallback->getBool())));
+		propertiesXML->append_node(propertyXML);
 	}
 
 	Ogre::String InstantRadiosityComponent::getClassName(void) const
@@ -434,6 +458,7 @@ namespace NOWA
 		if (true == activated && nullptr == this->instantRadiosity)
 		{
 			this->createInstantRadiosity();
+			this->collectAreasOfInterest();
 			this->needsRebuild = true;
 		}
 		else if (false == activated && nullptr != this->instantRadiosity)
@@ -449,7 +474,6 @@ namespace NOWA
 
 	void InstantRadiosityComponent::setNumRays(unsigned int numRays)
 	{
-		// Clamp to valid range (max 32768 as per Ogre sample)
 		numRays = std::max<unsigned int>(1, std::min<unsigned int>(32768, numRays));
 		this->numRays->setValue(numRays);
 
@@ -624,7 +648,11 @@ namespace NOWA
 
 		if (nullptr != this->instantRadiosity)
 		{
-			this->instantRadiosity->setEnableDebugMarkers(enableDebugMarkers);
+			NOWA::GraphicsModule::RenderCommand renderCommand = [this, enableDebugMarkers]()
+				{
+					this->instantRadiosity->setEnableDebugMarkers(enableDebugMarkers);
+				};
+			NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "InstantRadiosityComponent::setEnableDebugMarkers");
 		}
 	}
 
@@ -643,27 +671,27 @@ namespace NOWA
 		}
 
 		NOWA::GraphicsModule::RenderCommand renderCommand = [this, useIrradianceVolume]()
-		{
-			Ogre::Root* root = Ogre::Root::getSingletonPtr();
-			Ogre::HlmsManager* hlmsManager = root->getHlmsManager();
-			Ogre::HlmsPbs* hlmsPbs = static_cast<Ogre::HlmsPbs*>(hlmsManager->getHlms(Ogre::HLMS_PBS));
+			{
+				Ogre::Root* root = Ogre::Root::getSingletonPtr();
+				Ogre::HlmsManager* hlmsManager = root->getHlmsManager();
+				Ogre::HlmsPbs* hlmsPbs = static_cast<Ogre::HlmsPbs*>(hlmsManager->getHlms(Ogre::HLMS_PBS));
 
-			if (true == useIrradianceVolume)
-			{
-				if (nullptr == this->irradianceVolume)
+				if (true == useIrradianceVolume)
 				{
-					this->irradianceVolume = new Ogre::IrradianceVolume(hlmsManager);
+					if (nullptr == this->irradianceVolume)
+					{
+						this->irradianceVolume = new Ogre::IrradianceVolume(hlmsManager);
+					}
+					hlmsPbs->setIrradianceVolume(this->irradianceVolume);
+					this->instantRadiosity->setUseIrradianceVolume(true);
+					this->needsIrradianceVolumeUpdate = true;
 				}
-				hlmsPbs->setIrradianceVolume(this->irradianceVolume);
-				this->instantRadiosity->setUseIrradianceVolume(true);
-				this->needsIrradianceVolumeUpdate = true;
-			}
-			else
-			{
-				hlmsPbs->setIrradianceVolume(nullptr);
-				this->instantRadiosity->setUseIrradianceVolume(false);
-			}
-		};
+				else
+				{
+					hlmsPbs->setIrradianceVolume(nullptr);
+					this->instantRadiosity->setUseIrradianceVolume(false);
+				}
+			};
 		NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "InstantRadiosityComponent::setUseIrradianceVolume");
 	}
 
@@ -684,6 +712,16 @@ namespace NOWA
 		return this->irradianceCellSize->getReal();
 	}
 
+	void InstantRadiosityComponent::setUseSceneBoundsAsFallback(bool useSceneBoundsAsFallback)
+	{
+		this->useSceneBoundsAsFallback->setValue(useSceneBoundsAsFallback);
+	}
+
+	bool InstantRadiosityComponent::getUseSceneBoundsAsFallback(void) const
+	{
+		return this->useSceneBoundsAsFallback->getBool();
+	}
+
 	void InstantRadiosityComponent::build(void)
 	{
 		if (nullptr != this->instantRadiosity)
@@ -700,9 +738,67 @@ namespace NOWA
 		}
 	}
 
+	void InstantRadiosityComponent::refreshAreasOfInterest(void)
+	{
+		if (nullptr != this->instantRadiosity)
+		{
+			this->collectAreasOfInterest();
+			this->needsRebuild = true;
+		}
+	}
+
 	Ogre::InstantRadiosity* InstantRadiosityComponent::getInstantRadiosity(void) const
 	{
 		return this->instantRadiosity;
+	}
+
+	void InstantRadiosityComponent::collectAreasOfInterest(void)
+	{
+		if (nullptr == this->instantRadiosity)
+		{
+			return;
+		}
+
+		this->instantRadiosity->mAoI.clear();
+
+		auto gameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects();
+		unsigned int aoiCount = 0;
+
+		for (auto& it : *gameObjects)
+		{
+			auto lightAoiCompPtr = NOWA::makeStrongPtr(it.second->getComponent<LightAreaOfInterestComponent>());
+			if (nullptr != lightAoiCompPtr && lightAoiCompPtr->isActivated())
+			{
+				Ogre::Vector3 center = lightAoiCompPtr->getCenter();
+				Ogre::Vector3 halfSize = lightAoiCompPtr->getHalfSize();
+				Ogre::Real sphereRadius = lightAoiCompPtr->getSphereRadius();
+
+				this->instantRadiosity->mAoI.push_back(Ogre::InstantRadiosity::AreaOfInterest(Ogre::Aabb(center, halfSize), sphereRadius));
+				aoiCount++;
+
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[InstantRadiosityComponent] Added AoI from '" + it.second->getName() + "' at " + Ogre::StringConverter::toString(center));
+			}
+		}
+
+		if (0 == aoiCount && true == this->useSceneBoundsAsFallback->getBool())
+		{
+			if (!this->sceneBounds.isNull() && !this->sceneBounds.isInfinite())
+			{
+				Ogre::Vector3 center = this->sceneBounds.getCenter();
+				Ogre::Vector3 halfSize = this->sceneBounds.getHalfSize();
+				Ogre::Real sphereRadius = halfSize.length();
+
+				this->instantRadiosity->mAoI.push_back(Ogre::InstantRadiosity::AreaOfInterest(Ogre::Aabb(center, halfSize), sphereRadius));
+			}
+		}
+
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[InstantRadiosityComponent] Collected " + Ogre::StringConverter::toString(this->instantRadiosity->mAoI.size()) + " Areas of Interest");
+	}
+
+	void InstantRadiosityComponent::handleUpdateBounds(NOWA::EventDataPtr eventData)
+	{
+		boost::shared_ptr<NOWA::EventDataBoundsUpdated> castEventData = boost::static_pointer_cast<EventDataBoundsUpdated>(eventData);
+		this->sceneBounds.setExtents(castEventData->getCalculatedBounds().first, castEventData->getCalculatedBounds().second);
 	}
 
 	void InstantRadiosityComponent::createInstantRadiosity(void)
@@ -713,89 +809,89 @@ namespace NOWA
 		}
 
 		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
-		{
-			Ogre::SceneManager* sceneManager = this->gameObjectPtr->getSceneManager();
-			Ogre::Root* root = Ogre::Root::getSingletonPtr();
-			Ogre::HlmsManager* hlmsManager = root->getHlmsManager();
-
-			// Enable VPLs in Forward+ (required by InstantRadiosity)
-			if (nullptr != sceneManager->getForwardPlus())
 			{
-				sceneManager->getForwardPlus()->setEnableVpls(true);
-			}
-			else
-			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-					"[InstantRadiosityComponent] Forward+ is not enabled! InstantRadiosity requires Forward+ with VPLs.");
-				return;
-			}
+				Ogre::SceneManager* sceneManager = this->gameObjectPtr->getSceneManager();
+				Ogre::Root* root = Ogre::Root::getSingletonPtr();
+				Ogre::HlmsManager* hlmsManager = root->getHlmsManager();
 
-			this->instantRadiosity = new Ogre::InstantRadiosity(sceneManager, hlmsManager);
+				if (nullptr != sceneManager->getForwardPlus())
+				{
+					sceneManager->getForwardPlus()->setEnableVpls(true);
+				}
+				else
+				{
+					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+						"[InstantRadiosityComponent] Forward+ is not enabled!");
+					return;
+				}
 
-			// Apply all settings
-			this->instantRadiosity->mNumRays = static_cast<size_t>(this->numRays->getUInt());
-			this->instantRadiosity->mNumRayBounces = this->numRayBounces->getUInt();
-			this->instantRadiosity->mNumSpreadIterations = this->numSpreadIterations->getUInt();
-			this->instantRadiosity->mCellSize = this->cellSize->getReal();
-			this->instantRadiosity->mBias = this->bias->getReal();
-			this->instantRadiosity->mVplMaxRange = this->vplMaxRange->getReal();
-			this->instantRadiosity->mVplPowerBoost = this->vplPowerBoost->getReal();
-			this->instantRadiosity->mVplThreshold = this->vplThreshold->getReal();
-			this->instantRadiosity->mVplUseIntensityForMaxRange = this->vplUseIntensityForMaxRange->getBool();
-			this->instantRadiosity->mVplIntensityRangeMultiplier = this->vplIntensityRangeMultiplier->getReal();
-			this->instantRadiosity->setEnableDebugMarkers(this->enableDebugMarkers->getBool());
-			// this->instantRadiosity->mAoI.push_back()
+				this->instantRadiosity = new Ogre::InstantRadiosity(sceneManager, hlmsManager);
 
-			// Create irradiance volume if needed
-			if (true == this->useIrradianceVolume->getBool())
-			{
-				this->irradianceVolume = new Ogre::IrradianceVolume(hlmsManager);
-				Ogre::HlmsPbs* hlmsPbs = static_cast<Ogre::HlmsPbs*>(hlmsManager->getHlms(Ogre::HLMS_PBS));
-				hlmsPbs->setIrradianceVolume(this->irradianceVolume);
-				this->instantRadiosity->setUseIrradianceVolume(true);
-			}
+				this->instantRadiosity->mNumRays = static_cast<size_t>(this->numRays->getUInt());
+				this->instantRadiosity->mNumRayBounces = this->numRayBounces->getUInt();
+				this->instantRadiosity->mNumSpreadIterations = this->numSpreadIterations->getUInt();
+				this->instantRadiosity->mCellSize = this->cellSize->getReal();
+				this->instantRadiosity->mBias = this->bias->getReal();
+				this->instantRadiosity->mVplMaxRange = this->vplMaxRange->getReal();
+				this->instantRadiosity->mVplPowerBoost = this->vplPowerBoost->getReal();
+				this->instantRadiosity->mVplThreshold = this->vplThreshold->getReal();
+				this->instantRadiosity->mVplUseIntensityForMaxRange = this->vplUseIntensityForMaxRange->getBool();
+				this->instantRadiosity->mVplIntensityRangeMultiplier = this->vplIntensityRangeMultiplier->getReal();
+				this->instantRadiosity->setEnableDebugMarkers(this->enableDebugMarkers->getBool());
 
-		};
+				if (true == this->useIrradianceVolume->getBool())
+				{
+					this->irradianceVolume = new Ogre::IrradianceVolume(hlmsManager);
+					Ogre::HlmsPbs* hlmsPbs = static_cast<Ogre::HlmsPbs*>(hlmsManager->getHlms(Ogre::HLMS_PBS));
+					hlmsPbs->setIrradianceVolume(this->irradianceVolume);
+					this->instantRadiosity->setUseIrradianceVolume(true);
+				}
+
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[InstantRadiosityComponent] Created InstantRadiosity.");
+			};
+
 		NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "InstantRadiosityComponent::createInstantRadiosity");
-
-
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[InstantRadiosityComponent] Created InstantRadiosity for scene.");
 	}
 
 	void InstantRadiosityComponent::destroyInstantRadiosity(void)
 	{
-		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+		if (nullptr == this->instantRadiosity && nullptr == this->irradianceVolume)
 		{
-			if (nullptr != this->instantRadiosity)
+			return;
+		}
+
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
 			{
-				// Disable irradiance volume in HlmsPbs
-				Ogre::Root* root = Ogre::Root::getSingletonPtr();
-				if (nullptr != root)
+				if (nullptr != this->instantRadiosity)
 				{
-					Ogre::HlmsManager* hlmsManager = root->getHlmsManager();
-					if (nullptr != hlmsManager)
+					Ogre::Root* root = Ogre::Root::getSingletonPtr();
+					if (nullptr != root)
 					{
-						Ogre::HlmsPbs* hlmsPbs = static_cast<Ogre::HlmsPbs*>(hlmsManager->getHlms(Ogre::HLMS_PBS));
-						if (nullptr != hlmsPbs)
+						Ogre::HlmsManager* hlmsManager = root->getHlmsManager();
+						if (nullptr != hlmsManager)
 						{
-							hlmsPbs->setIrradianceVolume(nullptr);
+							Ogre::HlmsPbs* hlmsPbs = static_cast<Ogre::HlmsPbs*>(hlmsManager->getHlms(Ogre::HLMS_PBS));
+							if (nullptr != hlmsPbs)
+							{
+								hlmsPbs->setIrradianceVolume(nullptr);
+							}
 						}
 					}
+
+					delete this->instantRadiosity;
+					this->instantRadiosity = nullptr;
 				}
 
-				delete this->instantRadiosity;
-				this->instantRadiosity = nullptr;
-			}
+				if (nullptr != this->irradianceVolume)
+				{
+					delete this->irradianceVolume;
+					this->irradianceVolume = nullptr;
+				}
 
-			if (nullptr != this->irradianceVolume)
-			{
-				delete this->irradianceVolume;
-				this->irradianceVolume = nullptr;
-			}
-		};
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[InstantRadiosityComponent] Destroyed InstantRadiosity.");
+			};
+
 		NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "InstantRadiosityComponent::destroyInstantRadiosity");
-
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[InstantRadiosityComponent] Destroyed InstantRadiosity.");
 	}
 
 	void InstantRadiosityComponent::internalBuild(void)
@@ -805,26 +901,19 @@ namespace NOWA
 			return;
 		}
 
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[InstantRadiosityComponent] Building InstantRadiosity...");
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[InstantRadiosityComponent] Building...");
+		this->instantRadiosity->build();
 
-		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
-		{	
-			this->instantRadiosity->build();
+		if (true == this->useIrradianceVolume->getBool())
+		{
+			this->internalUpdateIrradianceVolume();
+		}
 
-			if (true == this->useIrradianceVolume->getBool())
-			{
-				this->updateIrradianceVolume();
-			}
-		};
-		NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "InstantRadiosityComponent::internalBuild");
-
-
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[InstantRadiosityComponent] InstantRadiosity build complete.");
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[InstantRadiosityComponent] Build complete.");
 	}
 
-	void InstantRadiosityComponent::updateIrradianceVolume(void)
+	void InstantRadiosityComponent::internalUpdateIrradianceVolume(void)
 	{
-		// Threadsafe from the outside
 		if (nullptr == this->instantRadiosity || nullptr == this->irradianceVolume)
 		{
 			return;
@@ -842,19 +931,19 @@ namespace NOWA
 		Ogre::Vector3 volumeOrigin;
 		Ogre::Real lightMaxPower;
 		Ogre::uint32 numBlocksX, numBlocksY, numBlocksZ;
-
 		Ogre::Real cellSize = this->irradianceCellSize->getReal();
 
-		this->instantRadiosity->suggestIrradianceVolumeParameters(Ogre::Vector3(cellSize), volumeOrigin, lightMaxPower, numBlocksX, numBlocksY, numBlocksZ);
+		this->instantRadiosity->suggestIrradianceVolumeParameters(
+			Ogre::Vector3(cellSize), volumeOrigin, lightMaxPower, numBlocksX, numBlocksY, numBlocksZ);
 
 		this->irradianceVolume->createIrradianceVolumeTexture(numBlocksX, numBlocksY, numBlocksZ);
-
-		this->instantRadiosity->fillIrradianceVolume(this->irradianceVolume, Ogre::Vector3(cellSize), volumeOrigin, lightMaxPower, false);
+		this->instantRadiosity->fillIrradianceVolume(
+			this->irradianceVolume, Ogre::Vector3(cellSize), volumeOrigin, lightMaxPower, false);
 
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[InstantRadiosityComponent] Irradiance volume updated.");
 	}
 
-	// Lua registration part
+	// Lua registration
 
 	InstantRadiosityComponent* getInstantRadiosityComponent(GameObject* gameObject, unsigned int occurrenceIndex)
 	{
@@ -904,46 +993,42 @@ namespace NOWA
 			.def("getUseIrradianceVolume", &InstantRadiosityComponent::getUseIrradianceVolume)
 			.def("setIrradianceCellSize", &InstantRadiosityComponent::setIrradianceCellSize)
 			.def("getIrradianceCellSize", &InstantRadiosityComponent::getIrradianceCellSize)
+			.def("setUseSceneBoundsAsFallback", &InstantRadiosityComponent::setUseSceneBoundsAsFallback)
+			.def("getUseSceneBoundsAsFallback", &InstantRadiosityComponent::getUseSceneBoundsAsFallback)
 			.def("build", &InstantRadiosityComponent::build)
 			.def("updateExistingVpls", &InstantRadiosityComponent::updateExistingVpls)
+			.def("refreshAreasOfInterest", &InstantRadiosityComponent::refreshAreasOfInterest)
 		];
 
 		LuaScriptApi::getInstance()->addClassToCollection("InstantRadiosityComponent", "class inherits GameObjectComponent", InstantRadiosityComponent::getStaticInfoText());
 		LuaScriptApi::getInstance()->addClassToCollection("InstantRadiosityComponent", "void setActivated(bool activated)", "Sets whether the component is activated.");
 		LuaScriptApi::getInstance()->addClassToCollection("InstantRadiosityComponent", "bool isActivated()", "Gets whether the component is activated.");
-		LuaScriptApi::getInstance()->addClassToCollection("InstantRadiosityComponent", "void setNumRays(unsigned int numRays)", "Sets the number of rays to cast (max 32768, power of 2 recommended).");
+		LuaScriptApi::getInstance()->addClassToCollection("InstantRadiosityComponent", "void setNumRays(unsigned int numRays)", "Sets the number of rays (max 32768).");
 		LuaScriptApi::getInstance()->addClassToCollection("InstantRadiosityComponent", "unsigned int getNumRays()", "Gets the number of rays.");
 		LuaScriptApi::getInstance()->addClassToCollection("InstantRadiosityComponent", "void setNumRayBounces(unsigned int numRayBounces)", "Sets the number of ray bounces (0-5).");
 		LuaScriptApi::getInstance()->addClassToCollection("InstantRadiosityComponent", "unsigned int getNumRayBounces()", "Gets the number of ray bounces.");
-		LuaScriptApi::getInstance()->addClassToCollection("InstantRadiosityComponent", "void setNumSpreadIterations(unsigned int numSpreadIterations)", "Sets the number of spread iterations for VPL clustering (0-10).");
-		LuaScriptApi::getInstance()->addClassToCollection("InstantRadiosityComponent", "unsigned int getNumSpreadIterations()", "Gets the number of spread iterations.");
-		LuaScriptApi::getInstance()->addClassToCollection("InstantRadiosityComponent", "void setCellSize(float cellSize)", "Sets the cell/cluster size. Smaller = more accurate but slower.");
+		LuaScriptApi::getInstance()->addClassToCollection("InstantRadiosityComponent", "void setCellSize(float cellSize)", "Sets the cell size.");
 		LuaScriptApi::getInstance()->addClassToCollection("InstantRadiosityComponent", "float getCellSize()", "Gets the cell size.");
-		LuaScriptApi::getInstance()->addClassToCollection("InstantRadiosityComponent", "void setBias(float bias)", "Sets the bias for VPL placement (0.0-1.0). Helps reduce light leaking.");
-		LuaScriptApi::getInstance()->addClassToCollection("InstantRadiosityComponent", "float getBias()", "Gets the bias value.");
-		LuaScriptApi::getInstance()->addClassToCollection("InstantRadiosityComponent", "void setVplMaxRange(float vplMaxRange)", "Sets the maximum range for VPLs.");
-		LuaScriptApi::getInstance()->addClassToCollection("InstantRadiosityComponent", "float getVplMaxRange()", "Gets the VPL maximum range.");
-		LuaScriptApi::getInstance()->addClassToCollection("InstantRadiosityComponent", "void setVplPowerBoost(float vplPowerBoost)", "Sets the power boost multiplier for VPLs.");
+		LuaScriptApi::getInstance()->addClassToCollection("InstantRadiosityComponent", "void setBias(float bias)", "Sets the bias (0.0-1.0).");
+		LuaScriptApi::getInstance()->addClassToCollection("InstantRadiosityComponent", "float getBias()", "Gets the bias.");
+		LuaScriptApi::getInstance()->addClassToCollection("InstantRadiosityComponent", "void setVplMaxRange(float vplMaxRange)", "Sets the VPL max range.");
+		LuaScriptApi::getInstance()->addClassToCollection("InstantRadiosityComponent", "float getVplMaxRange()", "Gets the VPL max range.");
+		LuaScriptApi::getInstance()->addClassToCollection("InstantRadiosityComponent", "void setVplPowerBoost(float vplPowerBoost)", "Sets the VPL power boost.");
 		LuaScriptApi::getInstance()->addClassToCollection("InstantRadiosityComponent", "float getVplPowerBoost()", "Gets the VPL power boost.");
-		LuaScriptApi::getInstance()->addClassToCollection("InstantRadiosityComponent", "void setVplThreshold(float vplThreshold)", "Sets the threshold for removing weak VPLs.");
+		LuaScriptApi::getInstance()->addClassToCollection("InstantRadiosityComponent", "void setVplThreshold(float vplThreshold)", "Sets the VPL threshold.");
 		LuaScriptApi::getInstance()->addClassToCollection("InstantRadiosityComponent", "float getVplThreshold()", "Gets the VPL threshold.");
-		LuaScriptApi::getInstance()->addClassToCollection("InstantRadiosityComponent", "void setVplUseIntensityForMaxRange(bool useIntensityForMaxRange)", "Sets whether to use intensity for max range calculation.");
-		LuaScriptApi::getInstance()->addClassToCollection("InstantRadiosityComponent", "bool getVplUseIntensityForMaxRange()", "Gets whether intensity is used for max range.");
-		LuaScriptApi::getInstance()->addClassToCollection("InstantRadiosityComponent", "void setVplIntensityRangeMultiplier(float vplIntensityRangeMultiplier)", "Sets the intensity range multiplier.");
-		LuaScriptApi::getInstance()->addClassToCollection("InstantRadiosityComponent", "float getVplIntensityRangeMultiplier()", "Gets the VPL intensity range multiplier.");
-		LuaScriptApi::getInstance()->addClassToCollection("InstantRadiosityComponent", "void setEnableDebugMarkers(bool enableDebugMarkers)", "Sets whether to show debug markers for VPLs.");
-		LuaScriptApi::getInstance()->addClassToCollection("InstantRadiosityComponent", "bool getEnableDebugMarkers()", "Gets whether debug markers are enabled.");
-		LuaScriptApi::getInstance()->addClassToCollection("InstantRadiosityComponent", "void setUseIrradianceVolume(bool useIrradianceVolume)", "Sets whether to use Irradiance Volume instead of VPLs.");
+		LuaScriptApi::getInstance()->addClassToCollection("InstantRadiosityComponent", "void setEnableDebugMarkers(bool enableDebugMarkers)", "Sets whether debug markers are shown.");
+		LuaScriptApi::getInstance()->addClassToCollection("InstantRadiosityComponent", "bool getEnableDebugMarkers()", "Gets whether debug markers are shown.");
+		LuaScriptApi::getInstance()->addClassToCollection("InstantRadiosityComponent", "void setUseIrradianceVolume(bool useIrradianceVolume)", "Sets whether to use irradiance volume.");
 		LuaScriptApi::getInstance()->addClassToCollection("InstantRadiosityComponent", "bool getUseIrradianceVolume()", "Gets whether irradiance volume is used.");
-		LuaScriptApi::getInstance()->addClassToCollection("InstantRadiosityComponent", "void setIrradianceCellSize(float irradianceCellSize)", "Sets the irradiance volume cell size.");
-		LuaScriptApi::getInstance()->addClassToCollection("InstantRadiosityComponent", "float getIrradianceCellSize()", "Gets the irradiance volume cell size.");
-		LuaScriptApi::getInstance()->addClassToCollection("InstantRadiosityComponent", "void build()", "Manually triggers a rebuild of the IR data. Call after scene changes.");
-		LuaScriptApi::getInstance()->addClassToCollection("InstantRadiosityComponent", "void updateExistingVpls()", "Updates existing VPLs without full rebuild. Use for parameter changes.");
+		LuaScriptApi::getInstance()->addClassToCollection("InstantRadiosityComponent", "void build()", "Manually triggers a rebuild.");
+		LuaScriptApi::getInstance()->addClassToCollection("InstantRadiosityComponent", "void updateExistingVpls()", "Updates existing VPLs without full rebuild.");
+		LuaScriptApi::getInstance()->addClassToCollection("InstantRadiosityComponent", "void refreshAreasOfInterest()", "Refreshes AoIs from all LightAreaOfInterestComponents.");
 
 		gameObjectClass.def("getInstantRadiosityComponentFromName", &getInstantRadiosityComponentFromName);
 		gameObjectClass.def("getInstantRadiosityComponent", (InstantRadiosityComponent * (*)(GameObject*)) & getInstantRadiosityComponent);
 
-		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "InstantRadiosityComponent getInstantRadiosityComponent()", "Gets the component. This can be used if the game object just has one InstantRadiosityComponent.");
+		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "InstantRadiosityComponent getInstantRadiosityComponent()", "Gets the component.");
 		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "InstantRadiosityComponent getInstantRadiosityComponentFromName(String name)", "Gets the component by name.");
 
 		gameObjectControllerClass.def("castInstantRadiosityComponent", &GameObjectController::cast<InstantRadiosityComponent>);
@@ -952,15 +1037,13 @@ namespace NOWA
 
 	bool InstantRadiosityComponent::canStaticAddComponent(GameObject* gameObject)
 	{
-		// Only allow one InstantRadiosityComponent per scene (check all game objects)
 		auto gameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects();
 		for (auto& it : *gameObjects)
 		{
 			auto instantRadiosityCompPtr = NOWA::makeStrongPtr(it.second->getComponent<InstantRadiosityComponent>());
 			if (nullptr != instantRadiosityCompPtr)
 			{
-				// Already exists in scene
-				return false;
+				return false; // Only one allowed per scene
 			}
 		}
 		return true;
