@@ -1268,8 +1268,8 @@ namespace NOWA
 				// Load V1 mesh and convert to V2
 				auto v1Mesh = Ogre::v1::MeshManager::getSingletonPtr()->load(meshName->getString(),
 					Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME,
-					Ogre::v1::HardwareBuffer::HBU_STATIC,
-					Ogre::v1::HardwareBuffer::HBU_STATIC);
+					Ogre::v1::HardwareBuffer::HBU_WRITE_ONLY,
+					Ogre::v1::HardwareBuffer::HBU_WRITE_ONLY);
 
 				// Clean up any existing V2 mesh to prevent naming conflicts
 				Ogre::ResourcePtr resourceV2 = Ogre::MeshManager::getSingletonPtr()->getResourceByName(meshName->getString());

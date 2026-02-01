@@ -134,9 +134,6 @@ namespace Ogre
         Ogre::String            m_currentHeightMapImageName;
         Ogre::Image2            m_blendWeightImage;
 
-        /// Creates the Ogre texture based on the image data.
-        /// Called by @see createHeightmap
-        void createHeightmapTexture( const Image2 &image);
         void destroyHeightmapTexture(void);
 
         /// Calls createHeightmapTexture, loads image data to our CPU-side buffers
@@ -181,6 +178,10 @@ namespace Ogre
         Terra( IdType id, ObjectMemoryManager *objectMemoryManager, SceneManager *sceneManager,
                uint8 renderQueueId, CompositorManager2 *compositorManager, Camera *camera, bool zUp );
         ~Terra();
+
+        /// Creates the Ogre texture based on the image data.
+        /// Called by @see createHeightmap
+        void createHeightmapTexture(const Image2& image);
 
         /// Sets shared resources for minimizing memory consumption wasted on temporary
         /// resources when you have more than one Terra.

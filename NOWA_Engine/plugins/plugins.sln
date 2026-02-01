@@ -86,6 +86,10 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MorphAnimationComponent", "
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LightAreaOfInterestComponent", "LightAreaOfInterestComponent\LightAreaOfInterestComponent.vcxproj", "{8C12F513-DA02-465D-A01F-20B0127D8AED}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "WaterFoamEffectComponent", "WaterFoamEffectComponent\WaterFoamEffectComponent.vcxproj", "{FF3F7998-C6E2-4600-AA45-DA2A52E30DA4}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ProceduralTerrainCreationComponent", "ProceduralTerrainCreationComponent\ProceduralTerrainCreationComponent.vcxproj", "{21D027FA-05D0-4169-B138-12682C0A0FFE}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -252,6 +256,14 @@ Global
 		{8C12F513-DA02-465D-A01F-20B0127D8AED}.Debug|x64.Build.0 = Debug|x64
 		{8C12F513-DA02-465D-A01F-20B0127D8AED}.Release|x64.ActiveCfg = Release|x64
 		{8C12F513-DA02-465D-A01F-20B0127D8AED}.Release|x64.Build.0 = Release|x64
+		{FF3F7998-C6E2-4600-AA45-DA2A52E30DA4}.Debug|x64.ActiveCfg = Debug|x64
+		{FF3F7998-C6E2-4600-AA45-DA2A52E30DA4}.Debug|x64.Build.0 = Debug|x64
+		{FF3F7998-C6E2-4600-AA45-DA2A52E30DA4}.Release|x64.ActiveCfg = Release|x64
+		{FF3F7998-C6E2-4600-AA45-DA2A52E30DA4}.Release|x64.Build.0 = Release|x64
+		{21D027FA-05D0-4169-B138-12682C0A0FFE}.Debug|x64.ActiveCfg = Debug|x64
+		{21D027FA-05D0-4169-B138-12682C0A0FFE}.Debug|x64.Build.0 = Debug|x64
+		{21D027FA-05D0-4169-B138-12682C0A0FFE}.Release|x64.ActiveCfg = Release|x64
+		{21D027FA-05D0-4169-B138-12682C0A0FFE}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
