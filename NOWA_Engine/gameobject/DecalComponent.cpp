@@ -1,10 +1,13 @@
 #include "NOWAPrecompiled.h"
 
 #include "DecalComponent.h"
+#include "modules/GraphicsModule.h"
 #include "GameObjectController.h"
 #include "utilities/XMLConverter.h"
 #include "modules/DeployResourceModule.h"
 #include "main/AppStateManager.h"
+#include "modules/DecalsModule.h"
+#include "modules/LuaScriptApi.h"
 
 namespace NOWA
 {
@@ -22,19 +25,21 @@ namespace NOWA
 		roughness(new Variant(DecalComponent::AttrRoughness(), 1.0f, this->attributes)),
 		rectSize(new Variant(DecalComponent::AttrRectSize(), Ogre::Vector3(1.0f, 1.0f, 1.0f), this->attributes))
 	{
+		this->metalness->setConstraints(0.0f, 1.0f);
+		this->roughness->setConstraints(0.0f, 1.0f);
+		this->diffuseTextureName->setDescription("Diffuse decal texture (goes into the reserved decals texture array pool). Use empty string to disable diffuse for this decal.");
+		this->normalTextureName->setDescription("Normal decal texture (RG8_SNORM in reserved pool). Use empty string to disable normals for this decal.");
+		this->emissiveTextureName->setDescription("Emissive decal texture. If empty, emissive will follow diffuse (Hlms optimisation). Use empty diffuse + empty emissive to disable emission.");
+		this->ignoreAlpha->setDescription("If true, the decal ignores alpha from the diffuse texture (treats it as fully opaque).");
+		this->metalness->setDescription("Metalness multiplier applied by the decal. Typical range 0..1.");
+		this->roughness->setDescription("Roughness multiplier applied by the decal. Typical range 0..1.");
 		this->rectSize->setDescription("Decals are 2D by nature. The depth of the decal indicates its influence on the objects."
 			"Decals are like oriented boxes, and everything inside the box will be affected by the decal.");
 	}
 
 	DecalComponent::~DecalComponent()
 	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[DecalComponent] Destructor decal component for game object: " + this->gameObjectPtr->getName());
-		if (nullptr != this->decal)
-		{
-			this->gameObjectPtr->getSceneNode()->detachObject(this->decal);
-			this->gameObjectPtr->getSceneManager()->destroyDecal(this->decal);
-			this->decal = nullptr;
-		}
+		
 	}
 
 	bool DecalComponent::init(rapidxml::xml_node<>*& propertyElement)
@@ -48,7 +53,7 @@ namespace NOWA
 		}
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "NormalTextureName")
 		{
-			this->normalTextureName->setValue(XMLConverter::getAttribVector3(propertyElement, "data"));
+			this->normalTextureName->setValue(XMLConverter::getAttrib(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "EmissiveTextureName")
@@ -83,7 +88,6 @@ namespace NOWA
 	{
 		DecalCompPtr clonedCompPtr(boost::make_shared<DecalComponent>());
 
-		
 		clonedCompPtr->setDiffuseTextureName(this->diffuseTextureName->getString());
 		clonedCompPtr->setNormalTextureName(this->normalTextureName->getString());
 		clonedCompPtr->setEmissiveTextureName(this->emissiveTextureName->getString());
@@ -107,6 +111,30 @@ namespace NOWA
 		return true;
 	}
 
+	void DecalComponent::onRemoveComponent(void)
+	{
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[DecalComponent] Destructor decal component for game object: " + this->gameObjectPtr->getName());
+		if (nullptr != this->decal)
+		{
+			AppStateManager::getSingletonPtr()->getDecalsModule()->destroyDecal(this->gameObjectPtr->getSceneManager(), this->decal);
+			this->decal = nullptr;
+		}
+	}
+
+	bool DecalComponent::connect(void)
+	{
+		GameObjectComponent::connect();
+
+		return true;
+	}
+
+	bool DecalComponent::disconnect(void)
+	{
+		GameObjectComponent::disconnect();
+
+		return true;
+	}
+
 	void DecalComponent::update(Ogre::Real dt, bool notSimulating)
 	{
 		
@@ -114,38 +142,42 @@ namespace NOWA
 
 	void DecalComponent::createDecal(void)
 	{
+		if (nullptr != this->decal)
+		{
+			return;
+		}
+
+		Ogre::SceneManager* sceneManager = this->gameObjectPtr->getSceneManager();
+		Ogre::SceneNode* sceneNode = this->gameObjectPtr->getSceneNode();
+
+		this->decal = AppStateManager::getSingletonPtr()->getDecalsModule()->createDecal(sceneManager, sceneNode);
+
 		if (nullptr == this->decal)
 		{
-			// https://forums.ogre3d.org/viewtopic.php?t=83421
-			this->decal = this->gameObjectPtr->getSceneManager()->createDecal();
-			this->decal->setQueryFlags(0);
-// Attention: is this correct?
-			// this->billboardSet->setCastShadows(false);
-			// this->billboardSet->setQueryFlags(0);
-
-			// auto data = DeployResourceModule::getInstance()->getPathAndResourceGroupFromDatablock(this->datablockName->getListSelectedValue(), Ogre::HlmsTypes::HLMS_UNLIT);
-
-			// DeployResourceModule::getInstance()->tagResource(this->datablockName->getString(), data.first, data.second);
-
-			this->gameObjectPtr->getSceneNode()->attachObject(this->decal);
-
-// Attention:
-			this->gameObjectPtr->setDoNotDestroyMovableObject(true);
-			
-// Attention: size of pictures must be the same, check it! and reject with error message box in mygui
-			this->setDiffuseTextureName(this->diffuseTextureName->getString());
-			this->setNormalTextureName(this->normalTextureName->getString());
-			this->setEmissiveTextureName(this->emissiveTextureName->getString());
-			this->setIgnoreAlpha(this->ignoreAlpha->getBool());
-			this->setMetalness(this->metalness->getReal());
-			this->setRoughness(this->roughness->getReal());
-			this->setRectSize(this->rectSize->getVector3());
-
-			this->gameObjectPtr->init(this->decal);
-
-			// Register after the component has been created
-			AppStateManager::getSingletonPtr()->getGameObjectController()->registerGameObject(gameObjectPtr);
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DecalComponent] Could not create decal for game object: " + this->gameObjectPtr->getName());
+			return;
 		}
+
+		// The GameObject owns an Ogre movable object now (do not destroy it from main thread).
+		this->gameObjectPtr->setDoNotDestroyMovableObject(true);
+
+		// Assign textures via reserved pools (Ogre-Next decals sample behaviour).
+		AppStateManager::getSingletonPtr()->getDecalsModule()->setDecalTextures(sceneManager, this->decal, this->diffuseTextureName->getString(), this->normalTextureName->getString(), this->emissiveTextureName->getString());
+
+		AppStateManager::getSingletonPtr()->getDecalsModule()->setIgnoreAlpha(this->decal, this->ignoreAlpha->getBool());
+		AppStateManager::getSingletonPtr()->getDecalsModule()->setMetalness(this->decal, this->metalness->getReal());
+		AppStateManager::getSingletonPtr()->getDecalsModule()->setRoughness(this->decal, this->roughness->getReal());
+		AppStateManager::getSingletonPtr()->getDecalsModule()->setRectSize(this->decal, this->rectSize->getVector3());
+
+		// Register movable object on render thread (keeps your original behaviour).
+		GraphicsModule::RenderCommand renderCommand = [this]()
+		{
+			this->gameObjectPtr->init(this->decal);
+		};
+		NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DecalComponent::createDecal::init");
+
+		// Register after the component has been created
+		AppStateManager::getSingletonPtr()->getGameObjectController()->registerGameObject(gameObjectPtr);
 	}
 
 	void DecalComponent::actualizeValue(Variant* attribute)
@@ -249,31 +281,10 @@ namespace NOWA
 	void DecalComponent::setDiffuseTextureName(const Ogre::String& diffuseTextureName)
 	{
 		this->diffuseTextureName->setValue(diffuseTextureName);
+
 		if (nullptr != this->decal)
 		{
-			if (false == diffuseTextureName.empty())
-			{
-				Ogre::TextureGpuManager* textureManager = Ogre::Root::getSingletonPtr()->getRenderSystem()->getTextureGpuManager();
-				
-				const Ogre::uint32 decalDiffuseId = 1;
-				//Create them and load them together to encourage loading them in burst in
-				//background thread. Hopefully the information may already be fully available
-				//by the time we call decal->setXXXTexture
-
-				/*Ogre::TextureGpu* textureDiffuse = textureManager->createOrRetrieveTexture(diffuseTextureName, Ogre::GpuPageOutStrategy::Discard,
-					Ogre::CommonTextureTypes::Diffuse, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, decalDiffuseId);*/
-
-				Ogre::TextureGpu* textureDiffuse = textureManager->createOrRetrieveTexture(diffuseTextureName, Ogre::GpuPageOutStrategy::Discard,
-					Ogre::CommonTextureTypes::Diffuse, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME);
-
-				if (nullptr != textureDiffuse)
-				{
-					textureDiffuse->scheduleTransitionTo(Ogre::GpuResidency::Resident);
-
-					this->decal->setDiffuseTexture(textureDiffuse);
-					this->gameObjectPtr->getSceneManager()->setDecalsDiffuse(textureDiffuse);
-				}
-			}
+			AppStateManager::getSingletonPtr()->getDecalsModule()->setDecalTextures(this->gameObjectPtr->getSceneManager(), this->decal, this->diffuseTextureName->getString(), this->normalTextureName->getString(), this->emissiveTextureName->getString());
 		}
 	}
 
@@ -285,63 +296,29 @@ namespace NOWA
 	void DecalComponent::setNormalTextureName(const Ogre::String& normalTextureName)
 	{
 		this->normalTextureName->setValue(normalTextureName);
+
 		if (nullptr != this->decal)
 		{
-			if (false == normalTextureName.empty())
-			{
-				const Ogre::uint32 decalNormalId = 1;
-				Ogre::TextureGpuManager* textureManager = Ogre::Root::getSingletonPtr()->getRenderSystem()->getTextureGpuManager();
-
-				/*Ogre::TextureGpu* textureNormalMap = textureManager->createOrRetrieveTexture(normalTextureName, Ogre::GpuPageOutStrategy::Discard,
-					Ogre::CommonTextureTypes::NormalMap, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, decalNormalId);*/
-
-				Ogre::TextureGpu* textureNormalMap = textureManager->createOrRetrieveTexture(normalTextureName, Ogre::GpuPageOutStrategy::Discard,
-					Ogre::CommonTextureTypes::NormalMap, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME);
-
-				if (nullptr != textureNormalMap)
-				{
-					textureNormalMap->scheduleTransitionTo(Ogre::GpuResidency::Resident);
-
-					this->decal->setNormalTexture(textureNormalMap);
-					this->gameObjectPtr->getSceneManager()->setDecalsNormals(textureNormalMap);
-				}
-			}
+			AppStateManager::getSingletonPtr()->getDecalsModule()->setDecalTextures(this->gameObjectPtr->getSceneManager(), this->decal,
+				this->diffuseTextureName->getString(),
+				this->normalTextureName->getString(),
+				this->emissiveTextureName->getString());
 		}
 	}
 
 	Ogre::String DecalComponent::getNormalTextureName(void) const
 	{
-		return this->diffuseTextureName->getString();
+		return this->normalTextureName->getString();
 	}
 	
 	void DecalComponent::setEmissiveTextureName(const Ogre::String& emissiveTextureName)
 	{
 		this->emissiveTextureName->setValue(emissiveTextureName);
+
 		if (nullptr != this->decal)
 		{
-			if (false == emissiveTextureName.empty())
-			{
-				Ogre::TextureGpuManager* textureManager = Ogre::Root::getSingletonPtr()->getRenderSystem()->getTextureGpuManager();
-
-				const Ogre::uint32 decalDiffuseId = 1;
-				//Create them and load them together to encourage loading them in burst in
-				//background thread. Hopefully the information may already be fully available
-				//by the time we call decal->setXXXTexture
-
-				/*Ogre::TextureGpu* textureEmmissive = textureManager->createOrRetrieveTexture(emissiveTextureName, Ogre::GpuPageOutStrategy::Discard,
-					Ogre::CommonTextureTypes::Diffuse, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, decalDiffuseId);*/
-
-				Ogre::TextureGpu* textureEmmissive = textureManager->createOrRetrieveTexture(emissiveTextureName, Ogre::GpuPageOutStrategy::Discard,
-					Ogre::CommonTextureTypes::Diffuse, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME);
-
-				if (nullptr != textureEmmissive)
-				{
-					textureEmmissive->scheduleTransitionTo(Ogre::GpuResidency::Resident);
-
-					this->decal->setEmissiveTexture(textureEmmissive);
-					this->gameObjectPtr->getSceneManager()->setDecalsEmissive(textureEmmissive);
-				}
-			}
+			AppStateManager::getSingletonPtr()->getDecalsModule()->setDecalTextures(this->gameObjectPtr->getSceneManager(), this->decal, this->diffuseTextureName->getString(),
+				this->normalTextureName->getString(), this->emissiveTextureName->getString());
 		}
 	}
 
@@ -355,7 +332,7 @@ namespace NOWA
 		this->ignoreAlpha->setValue(ignoreAlpha);
 		if (nullptr != this->decal)
 		{
-			this->decal->setIgnoreAlphaDiffuse(ignoreAlpha);
+			AppStateManager::getSingletonPtr()->getDecalsModule()->setIgnoreAlpha(this->decal, ignoreAlpha);
 		}
 	}
 
@@ -369,7 +346,7 @@ namespace NOWA
 		this->metalness->setValue(metalness);
 		if (nullptr != this->decal)
 		{
-			this->decal->setMetalness(metalness);
+			AppStateManager::getSingletonPtr()->getDecalsModule()->setMetalness(this->decal, metalness);
 		}
 	}
 
@@ -383,7 +360,7 @@ namespace NOWA
 		this->roughness->setValue(roughness);
 		if (nullptr != this->decal)
 		{
-			this->decal->setRoughness(roughness);
+			AppStateManager::getSingletonPtr()->getDecalsModule()->setRoughness(this->decal, roughness);
 		}
 	}
 
@@ -397,13 +374,130 @@ namespace NOWA
 		this->rectSize->setValue(rectSizeAndDimensions);
 		if (nullptr != this->decal)
 		{
-			this->decal->setRectSize(Ogre::Vector2(rectSizeAndDimensions.x, rectSizeAndDimensions.y), rectSizeAndDimensions.z);
+			AppStateManager::getSingletonPtr()->getDecalsModule()->setRectSize(this->decal, rectSizeAndDimensions);
 		}
 	}
 
 	Ogre::Vector3 DecalComponent::getRectSize(void) const
 	{
 		return this->rectSize->getVector3();
+	}
+
+	// ------------------------------------------------------------
+// DecalComponent Lua bindings (snipped)
+// ------------------------------------------------------------
+	DecalComponent* getDecalComponent(GameObject* gameObject, unsigned int occurrenceIndex)
+	{
+		return makeStrongPtr<DecalComponent>(gameObject->getComponentWithOccurrence<DecalComponent>(occurrenceIndex)).get();
+	}
+
+	DecalComponent* getDecalComponent(GameObject* gameObject)
+	{
+		return makeStrongPtr<DecalComponent>(gameObject->getComponent<DecalComponent>()).get();
+	}
+
+	DecalComponent* getDecalComponentFromName(GameObject* gameObject, const Ogre::String& name)
+	{
+		return makeStrongPtr<DecalComponent>(gameObject->getComponentFromName<DecalComponent>(name)).get();
+	}
+
+	void DecalComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
+	{
+		module(lua)
+		[
+			class_<DecalComponent, GameObjectComponent>("DecalComponent")
+			.def("setActivated", &DecalComponent::setActivated)
+			.def("isActivated", &DecalComponent::isActivated)
+
+			.def("setDiffuseTextureName", &DecalComponent::setDiffuseTextureName)
+			.def("getDiffuseTextureName", &DecalComponent::getDiffuseTextureName)
+
+			.def("setNormalTextureName", &DecalComponent::setNormalTextureName)
+			.def("getNormalTextureName", &DecalComponent::getNormalTextureName)
+
+			.def("setEmissiveTextureName", &DecalComponent::setEmissiveTextureName)
+			.def("getEmissiveTextureName", &DecalComponent::getEmissiveTextureName)
+
+			.def("setIgnoreAlpha", &DecalComponent::setIgnoreAlpha)
+			.def("getIgnoreAlpha", &DecalComponent::getIgnoreAlpha)
+
+			.def("setMetalness", &DecalComponent::setMetalness)
+			.def("getMetalness", &DecalComponent::getMetalness)
+
+			.def("setRoughness", &DecalComponent::setRoughness)
+			.def("getRoughness", &DecalComponent::getRoughness)
+
+			.def("setRectSize", &DecalComponent::setRectSize)
+			.def("getRectSize", &DecalComponent::getRectSize)
+		];
+
+		LuaScriptApi::getInstance()->addClassToCollection("DecalComponent", "class inherits GameObjectComponent", DecalComponent::getStaticInfoText());
+
+		LuaScriptApi::getInstance()->addClassToCollection("DecalComponent", "void setActivated(bool activated)",
+			"Sets whether this component is active. If deactivated, the decal is not rendered.");
+
+		LuaScriptApi::getInstance()->addClassToCollection("DecalComponent", "bool isActivated()",
+			"Gets whether this component is active.");
+
+		LuaScriptApi::getInstance()->addClassToCollection("DecalComponent", "void setDiffuseTextureName(String diffuseTextureName)",
+			"Sets the diffuse decal texture name. Uses the DecalsModule texture pool (texture arrays) internally.");
+
+		LuaScriptApi::getInstance()->addClassToCollection("DecalComponent", "String getDiffuseTextureName()",
+			"Gets the diffuse decal texture name.");
+
+		LuaScriptApi::getInstance()->addClassToCollection("DecalComponent", "void setNormalTextureName(String normalTextureName)",
+			"Sets the normal decal texture name (recommended format in Ogre-Next pools: RG8_SNORM).");
+
+		LuaScriptApi::getInstance()->addClassToCollection("DecalComponent", "String getNormalTextureName()",
+			"Gets the normal decal texture name.");
+
+		LuaScriptApi::getInstance()->addClassToCollection("DecalComponent", "void setEmissiveTextureName(String emissiveTextureName)",
+			"Sets the emissive decal texture name. If empty, emissive will automatically use the diffuse texture for optimization.");
+
+		LuaScriptApi::getInstance()->addClassToCollection("DecalComponent", "String getEmissiveTextureName()",
+			"Gets the emissive decal texture name.");
+
+		LuaScriptApi::getInstance()->addClassToCollection("DecalComponent", "void setIgnoreAlpha(bool ignoreAlpha)",
+			"If true, ignores diffuse alpha. Useful for decals that should always apply fully regardless of alpha channel.");
+
+		LuaScriptApi::getInstance()->addClassToCollection("DecalComponent", "bool getIgnoreAlpha()",
+			"Gets whether diffuse alpha is ignored.");
+
+		LuaScriptApi::getInstance()->addClassToCollection("DecalComponent", "void setMetalness(float metalness)",
+			"Sets the metalness contribution for the decal (0..1).");
+
+		LuaScriptApi::getInstance()->addClassToCollection("DecalComponent", "float getMetalness()",
+			"Gets the metalness contribution.");
+
+		LuaScriptApi::getInstance()->addClassToCollection("DecalComponent", "void setRoughness(float roughness)",
+			"Sets the roughness contribution for the decal (0..1).");
+
+		LuaScriptApi::getInstance()->addClassToCollection("DecalComponent", "float getRoughness()",
+			"Gets the roughness contribution.");
+
+		LuaScriptApi::getInstance()->addClassToCollection("DecalComponent", "void setRectSize(Vector3 rectSize)",
+			"Sets the decal projector volume size (width/height/depth) in local space. Controls how far the decal affects surfaces.");
+
+		LuaScriptApi::getInstance()->addClassToCollection("DecalComponent", "Vector3 getRectSize()",
+			"Gets the decal projector volume size.");
+
+		gameObjectClass.def("getDecalComponentFromName", &getDecalComponentFromName);
+		gameObjectClass.def("getDecalComponent", (DecalComponent * (*)(GameObject*)) & getDecalComponent);
+		// If its desired to create several of this components for one game object
+		gameObjectClass.def("getDecalComponent2", (DecalComponent * (*)(GameObject*, unsigned int)) & getDecalComponent);
+
+		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "DecalComponent getDecalComponent2(unsigned int occurrenceIndex)",
+			"Gets the component by the given occurence index, since a game object may have this component several times.");
+
+		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "DecalComponent getDecalComponent()",
+			"Gets the component. This can be used if the game object has this component just once.");
+
+		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "DecalComponent getDecalComponentFromName(String name)",
+			"Gets the component from name.");
+
+		gameObjectControllerClass.def("castDecalComponent", &GameObjectController::cast<DecalComponent>);
+		LuaScriptApi::getInstance()->addClassToCollection("GameObjectController", "DecalComponent castDecalComponent(DecalComponent other)",
+			"Casts an incoming type from function for lua auto completion.");
 	}
 
 }; // namespace end

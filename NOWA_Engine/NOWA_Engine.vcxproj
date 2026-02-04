@@ -233,7 +233,6 @@
     <ClInclude Include="gameobject\LinesComponent.h" />
     <ClInclude Include="gameobject\LuaScriptComponent.h" />
     <ClInclude Include="gameobject\ManualObjectComponent.h" />
-    <ClInclude Include="gameobject\MeshDecalComponent.h" />
     <ClInclude Include="gameobject\MoveMathFunctionComponent.h" />
     <ClInclude Include="gameobject\MyGUIComponents.h" />
     <ClInclude Include="gameobject\MyGUIControllerComponents.h" />
@@ -308,6 +307,7 @@
     <ClInclude Include="main\ServerConfigurationStateMyGui.h" />
     <ClInclude Include="gameobject\GameObject.h" />
     <ClInclude Include="modules\CommandModule.h" />
+    <ClInclude Include="modules\DecalsModule.h" />
     <ClInclude Include="modules\DeployResourceModule.h" />
     <ClInclude Include="modules\DotSceneExportModule.h" />
     <ClInclude Include="modules\DotSceneImportModule.h" />
@@ -318,7 +318,6 @@
     <ClInclude Include="modules\LuaScript.h" />
     <ClInclude Include="modules\LuaScriptApi.h" />
     <ClInclude Include="modules\LuaScriptModule.h" />
-    <ClInclude Include="modules\MeshDecalGeneratorModule.h" />
     <ClInclude Include="modules\MiniMapModule.h" />
     <ClInclude Include="modules\OgreALModule.h" />
     <ClInclude Include="modules\OgreNewtModule.h" />
@@ -367,8 +366,6 @@
     <ClInclude Include="utilities\LowPassAngleFilter.h" />
     <ClInclude Include="utilities\LuaObserver.h" />
     <ClInclude Include="utilities\MathHelper.h" />
-    <ClInclude Include="utilities\MeshDecal.h" />
-    <ClInclude Include="utilities\MeshDecalUtility.h" />
     <ClInclude Include="utilities\MeshScissor.h" />
     <ClInclude Include="utilities\MiniDump.h" />
     <ClInclude Include="utilities\MovableText.h" />
@@ -449,7 +446,6 @@
     <ClCompile Include="gameobject\LinesComponent.cpp" />
     <ClCompile Include="gameobject\LuaScriptComponent.cpp" />
     <ClCompile Include="gameobject\ManualObjectComponent.cpp" />
-    <ClCompile Include="gameobject\MeshDecalComponent.cpp" />
     <ClCompile Include="gameobject\MoveMathFunctionComponent.cpp" />
     <ClCompile Include="gameobject\MyGUIComponents.cpp" />
     <ClCompile Include="gameobject\MyGUIControllerComponents.cpp" />
@@ -516,6 +512,7 @@
     <ClCompile Include="main\ScriptEvent.cpp" />
     <ClCompile Include="main\ScriptEventManager.cpp" />
     <ClCompile Include="main\ServerConfigurationStateMyGui.cpp" />
+    <ClCompile Include="modules\DecalsModule.cpp" />
     <ClCompile Include="modules\DeployResourceModule.cpp" />
     <ClCompile Include="modules\DotSceneExportModule.cpp" />
     <ClCompile Include="modules\DotSceneImportModule.cpp" />
@@ -533,7 +530,6 @@
       <UseFullPaths Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</UseFullPaths>
     </ClCompile>
     <ClCompile Include="modules\LuaScriptModule.cpp" />
-    <ClCompile Include="modules\MeshDecalGeneratorModule.cpp" />
     <ClCompile Include="modules\MiniMapModule.cpp" />
     <ClCompile Include="modules\OgreALModule.cpp" />
     <ClCompile Include="modules\OgreNewtModule.cpp" />
@@ -574,8 +570,6 @@
     <ClCompile Include="utilities\LowPassAngleFilter.cpp" />
     <ClCompile Include="utilities\LuaObserver.cpp" />
     <ClCompile Include="utilities\MathHelper.cpp" />
-    <ClCompile Include="utilities\MeshDecal.cpp" />
-    <ClCompile Include="utilities\MeshDecalUtility.cpp" />
     <ClCompile Include="utilities\MeshScissor.cpp" />
     <ClCompile Include="utilities\MiniDump.cpp" />
     <ClCompile Include="utilities\MovableText.cpp" />

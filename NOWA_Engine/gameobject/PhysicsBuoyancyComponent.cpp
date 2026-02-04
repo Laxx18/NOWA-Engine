@@ -407,46 +407,45 @@ namespace NOWA
         OgreNewt::CollisionPtr collision;
 
         ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsBuoyancyComponent::createStaticBody", _2(&meshName, &collision),
+        {
+            Ogre::v1::Entity * entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
+            if (nullptr != entity)
             {
-                Ogre::v1::Entity * entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
-                if (nullptr != entity)
+                meshName = entity->getMesh()->getName();
+                if (Ogre::StringUtil::match(meshName, "Plane*", true))
                 {
-                    meshName = entity->getMesh()->getName();
+                    Ogre::Vector3 size = entity->getMesh()->getBounds().getSize() * this->initialScale;
+                    size.y = 0.001f;
+                    collision = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::Box(this->ogreNewt, size, this->gameObjectPtr->getCategoryId(), Ogre::Quaternion::IDENTITY, Ogre::Vector3::ZERO));
+                }
+                else
+                {
+                    collision = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::ConvexHull(this->ogreNewt, entity, this->gameObjectPtr->getCategoryId()));
+                }
+            }
+            else
+            {
+                Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
+                if (nullptr != item)
+                {
+                    meshName = item->getMesh()->getName();
                     if (Ogre::StringUtil::match(meshName, "Plane*", true))
                     {
-                        Ogre::Vector3 size = entity->getMesh()->getBounds().getSize() * this->initialScale;
+                        Ogre::Vector3 size = item->getMesh()->getAabb().getSize() * this->initialScale;
                         size.y = 0.001f;
                         collision = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::Box(this->ogreNewt, size, this->gameObjectPtr->getCategoryId(), Ogre::Quaternion::IDENTITY, Ogre::Vector3::ZERO));
                     }
                     else
                     {
-                        collision = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::ConvexHull(this->ogreNewt, entity, this->gameObjectPtr->getCategoryId()));
+                        collision = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::ConvexHull(this->ogreNewt, item, this->gameObjectPtr->getCategoryId()));
                     }
                 }
                 else
                 {
-                    Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
-                    if (nullptr != item)
-                    {
-                        meshName = item->getMesh()->getName();
-                        if (Ogre::StringUtil::match(meshName, "Plane*", true))
-                        {
-                            Ogre::Vector3 size = item->getMesh()->getAabb().getSize() * this->initialScale;
-                            size.y = 0.001f;
-                            collision = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::Box(this->ogreNewt, size, this->gameObjectPtr->getCategoryId(), Ogre::Quaternion::IDENTITY, Ogre::Vector3::ZERO));
-                        }
-                        else
-                        {
-                            collision = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::ConvexHull(this->ogreNewt, item, this->gameObjectPtr->getCategoryId()));
-                        }
-                    }
-                    else
-                    {
-                        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsTriggerComponent] Error cannot create static body, because the " "game object has no entity/item with mesh for game object: " + this->gameObjectPtr->getName());
-                        return false;
-                    }
+                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsTriggerComponent] Error cannot create static body, because the " "game object has no entity/item with mesh for game object: " + this->gameObjectPtr->getName());
                 }
-            });
+            }
+        });
 
         if (nullptr == collision)
         {

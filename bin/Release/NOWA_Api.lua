@@ -2220,6 +2220,14 @@ return {
 				returns = "(OgreNewtModule)",
 				valuetype = "OgreNewtModule"
 			},
+			getParticleFxModule =
+			{
+				type = "function",
+				description = "Gets the module for the current AppState.",
+				args = "()",
+				returns = "(ParticleUniverseModule)",
+				valuetype = "ParticleUniverseModule"
+			},
 			getScriptEventManager =
 			{
 				type = "function",
@@ -6022,6 +6030,143 @@ return {
 			}
 		}
 	},
+	DecalComponent =
+	{
+		type = "class",
+		description = "Usage: Renders a decal.",
+		inherits = "GameObjectComponent",
+		childs = 
+		{
+			setActivated =
+			{
+				type = "method",
+				description = "Sets whether this component is active. If deactivated, the decal is not rendered.",
+				args = "(boolean activated)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			isActivated =
+			{
+				type = "function",
+				description = "Gets whether this component is active.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			setDiffuseTextureName =
+			{
+				type = "method",
+				description = "Sets the diffuse decal texture name. Uses the DecalsModule texture pool (texture arrays) internally.",
+				args = "(string diffuseTextureName)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getDiffuseTextureName =
+			{
+				type = "function",
+				description = "Gets the diffuse decal texture name.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			setNormalTextureName =
+			{
+				type = "method",
+				description = "Sets the normal decal texture name (recommended format in Ogre-Next pools: RG8_SNORM).",
+				args = "(string normalTextureName)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getNormalTextureName =
+			{
+				type = "function",
+				description = "Gets the normal decal texture name.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			setEmissiveTextureName =
+			{
+				type = "method",
+				description = "Sets the emissive decal texture name. If empty, emissive will automatically use the diffuse texture for optimization.",
+				args = "(string emissiveTextureName)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getEmissiveTextureName =
+			{
+				type = "function",
+				description = "Gets the emissive decal texture name.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			setIgnoreAlpha =
+			{
+				type = "method",
+				description = "If true, ignores diffuse alpha. Useful for decals that should always apply fully regardless of alpha channel.",
+				args = "(boolean ignoreAlpha)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getIgnoreAlpha =
+			{
+				type = "function",
+				description = "Gets whether diffuse alpha is ignored.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			setMetalness =
+			{
+				type = "method",
+				description = "Sets the metalness contribution for the decal (0..1).",
+				args = "(number metalness)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getMetalness =
+			{
+				type = "function",
+				description = "Gets the metalness contribution.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setRoughness =
+			{
+				type = "method",
+				description = "Sets the roughness contribution for the decal (0..1).",
+				args = "(number roughness)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getRoughness =
+			{
+				type = "function",
+				description = "Gets the roughness contribution.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setRectSize =
+			{
+				type = "method",
+				description = "Sets the decal projector volume size (width/height/depth) in local space. Controls how far the decal affects surfaces.",
+				args = "(Vector3 rectSize)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getRectSize =
+			{
+				type = "function",
+				description = "Gets the decal projector volume size.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			}
+		}
+	},
 	Degree =
 	{
 		type = "class",
@@ -7556,22 +7701,6 @@ return {
 				returns = "(NavMeshComponent)",
 				valuetype = "NavMeshComponent"
 			},
-			getParticleUniverseComponent =
-			{
-				type = "function",
-				description = "Gets the particle universe component by the given occurence index, since a game object may have besides other components several particle universe components.",
-				args = "(number occurrenceIndex)",
-				returns = "(ParticleUniverseComponent)",
-				valuetype = "ParticleUniverseComponent"
-			},
-			getParticleUniverseComponentFromIndex =
-			{
-				type = "function",
-				description = "Gets the particle universe component. This can be used if the game object just has one particle universe component.",
-				args = "()",
-				returns = "(ParticleUniverseComponent)",
-				valuetype = "ParticleUniverseComponent"
-			},
 			getPlayerControllerComponent =
 			{
 				type = "function",
@@ -7763,14 +7892,6 @@ return {
 				args = "()",
 				returns = "(PhysicsExplosionComponent)",
 				valuetype = "PhysicsExplosionComponent"
-			},
-			getMeshDecalComponent =
-			{
-				type = "function",
-				description = "Gets the mesh decal component.",
-				args = "()",
-				returns = "(MeshDecalComponent)",
-				valuetype = "MeshDecalComponent"
 			},
 			getTagPointComponentFromIndex =
 			{
@@ -8588,14 +8709,6 @@ return {
 				returns = "(NavMeshComponent)",
 				valuetype = "NavMeshComponent"
 			},
-			getParticleUniverseComponentFromName =
-			{
-				type = "function",
-				description = "Gets the particle universe component by the given occurence index, since a game object may have besides other components several particle universe components.",
-				args = "(string namenumber occurrenceIndex)",
-				returns = "(ParticleUniverseComponent)",
-				valuetype = "ParticleUniverseComponent"
-			},
 			getPlayerControllerComponentFromName =
 			{
 				type = "function",
@@ -8763,14 +8876,6 @@ return {
 				args = "(string name)",
 				returns = "(PhysicsExplosionComponent)",
 				valuetype = "PhysicsExplosionComponent"
-			},
-			getMeshDecalComponentFromName =
-			{
-				type = "function",
-				description = "Gets the mesh decal component.",
-				args = "(string name)",
-				returns = "(MeshDecalComponent)",
-				valuetype = "MeshDecalComponent"
 			},
 			getTagPointComponentFromName =
 			{
@@ -9284,6 +9389,30 @@ return {
 				returns = "(CrowdComponent)",
 				valuetype = "CrowdComponent"
 			},
+			getDecalComponent2 =
+			{
+				type = "function",
+				description = "Gets the component by the given occurence index, since a game object may have this component several times.",
+				args = "(number occurrenceIndex)",
+				returns = "(DecalComponent)",
+				valuetype = "DecalComponent"
+			},
+			getDecalComponent =
+			{
+				type = "function",
+				description = "Gets the component. This can be used if the game object has this component just once.",
+				args = "()",
+				returns = "(DecalComponent)",
+				valuetype = "DecalComponent"
+			},
+			getDecalComponentFromName =
+			{
+				type = "function",
+				description = "Gets the component from name.",
+				args = "(string name)",
+				returns = "(DecalComponent)",
+				valuetype = "DecalComponent"
+			},
 			getDistortionComponent =
 			{
 				type = "function",
@@ -9340,6 +9469,30 @@ return {
 				returns = "(HdrEffectComponent)",
 				valuetype = "HdrEffectComponent"
 			},
+			getIESLightComponent =
+			{
+				type = "function",
+				description = "Gets the IES light component.",
+				args = "()",
+				returns = "(IESLightComponent)",
+				valuetype = "IESLightComponent"
+			},
+			getIESLightComponent =
+			{
+				type = "function",
+				description = "Gets the IES light component by occurrence index.",
+				args = "(number occurrenceIndex)",
+				returns = "(IESLightComponent)",
+				valuetype = "IESLightComponent"
+			},
+			getIESLightComponentFromName =
+			{
+				type = "function",
+				description = "Gets the IES light component by custom name.",
+				args = "(string name)",
+				returns = "(IESLightComponent)",
+				valuetype = "IESLightComponent"
+			},
 			getInputDeviceComponent =
 			{
 				type = "function",
@@ -9355,6 +9508,22 @@ return {
 				args = "(string name)",
 				returns = "(InputDeviceComponent)",
 				valuetype = "InputDeviceComponent"
+			},
+			getInstantRadiosityComponent =
+			{
+				type = "function",
+				description = "Gets the component.",
+				args = "()",
+				returns = "(InstantRadiosityComponent)",
+				valuetype = "InstantRadiosityComponent"
+			},
+			getInstantRadiosityComponentFromName =
+			{
+				type = "function",
+				description = "Gets the component by name.",
+				args = "(string name)",
+				returns = "(InstantRadiosityComponent)",
+				valuetype = "InstantRadiosityComponent"
 			},
 			getInventoryItemComponent =
 			{
@@ -9444,6 +9613,22 @@ return {
 				returns = "(KeyholeEffectComponent)",
 				valuetype = "KeyholeEffectComponent"
 			},
+			getLightAreaOfInterestComponent =
+			{
+				type = "function",
+				description = "Gets the component.",
+				args = "()",
+				returns = "(LightAreaOfInterestComponent)",
+				valuetype = "LightAreaOfInterestComponent"
+			},
+			getLightAreaOfInterestComponentFromName =
+			{
+				type = "function",
+				description = "Gets the component by name.",
+				args = "(string name)",
+				returns = "(LightAreaOfInterestComponent)",
+				valuetype = "LightAreaOfInterestComponent"
+			},
 			getLookAfterComponent =
 			{
 				type = "function",
@@ -9507,6 +9692,22 @@ return {
 				args = "(string name)",
 				returns = "(MinimapComponent)",
 				valuetype = "MinimapComponent"
+			},
+			getMorphAnimationComponentFromName =
+			{
+				type = "function",
+				description = "Gets the morph animation component by the given name. Returns nil if the component does not exist.",
+				args = "(string name)",
+				returns = "(MorphAnimationComponent)",
+				valuetype = "MorphAnimationComponent"
+			},
+			getMorphAnimationComponent =
+			{
+				type = "function",
+				description = "Gets the morph animation component. Returns nil if the component does not exist.",
+				args = "()",
+				returns = "(MorphAnimationComponent)",
+				valuetype = "MorphAnimationComponent"
 			},
 			getMyGuiSpriteComponentFromIndex =
 			{
@@ -9572,6 +9773,30 @@ return {
 				returns = "(ParticleFxComponent)",
 				valuetype = "ParticleFxComponent"
 			},
+			getPccPerPixelGridPlacementComponent =
+			{
+				type = "function",
+				description = "Gets the component. This can be used if the game object this component just once.",
+				args = "()",
+				returns = "(PccPerPixelGridPlacementComponent)",
+				valuetype = "PccPerPixelGridPlacementComponent"
+			},
+			getPccPerPixelGridPlacementComponent =
+			{
+				type = "function",
+				description = "Gets the component from occurence index.",
+				args = "(number occurrenceIndex)",
+				returns = "(PccPerPixelGridPlacementComponent)",
+				valuetype = "PccPerPixelGridPlacementComponent"
+			},
+			getPccPerPixelGridPlacementComponentFromName =
+			{
+				type = "function",
+				description = "Gets the component from name.",
+				args = "(string name)",
+				returns = "(PccPerPixelGridPlacementComponent)",
+				valuetype = "PccPerPixelGridPlacementComponent"
+			},
 			getPickerComponentFromIndex =
 			{
 				type = "function",
@@ -9595,6 +9820,22 @@ return {
 				args = "(string name)",
 				returns = "(PickerComponent)",
 				valuetype = "PickerComponent"
+			},
+			getProceduralTerrainCreationComponent =
+			{
+				type = "function",
+				description = "Gets the component.",
+				args = "()",
+				returns = "(ProceduralTerrainCreationComponent)",
+				valuetype = "ProceduralTerrainCreationComponent"
+			},
+			getProceduralTerrainCreationComponentFromName =
+			{
+				type = "function",
+				description = "Gets the component by name.",
+				args = "(string name)",
+				returns = "(ProceduralTerrainCreationComponent)",
+				valuetype = "ProceduralTerrainCreationComponent"
 			},
 			getPurePursuitComponentFromIndex =
 			{
@@ -9891,6 +10132,30 @@ return {
 				args = "(string name)",
 				returns = "(UnderwaterEffectComponent)",
 				valuetype = "UnderwaterEffectComponent"
+			},
+			getWaterFoamEffectComponentFromIndex =
+			{
+				type = "function",
+				description = "Gets the component by the given occurence index, since a game object may this component maybe several times.",
+				args = "(number occurrenceIndex)",
+				returns = "(WaterFoamEffectComponent)",
+				valuetype = "WaterFoamEffectComponent"
+			},
+			getWaterFoamEffectComponent =
+			{
+				type = "function",
+				description = "Gets the component. This can be used if the game object this component just once.",
+				args = "()",
+				returns = "(WaterFoamEffectComponent)",
+				valuetype = "WaterFoamEffectComponent"
+			},
+			getWaterFoamEffectComponentFromName =
+			{
+				type = "function",
+				description = "Gets the component from name.",
+				args = "(string name)",
+				returns = "(WaterFoamEffectComponent)",
+				valuetype = "WaterFoamEffectComponent"
 			}
 		}
 	},
@@ -10724,14 +10989,6 @@ return {
 				returns = "(NavMeshComponent)",
 				valuetype = "NavMeshComponent"
 			},
-			castParticleUniverseComponent =
-			{
-				type = "function",
-				description = "Casts an incoming type from function for lua auto completion.",
-				args = "(ParticleUniverseComponent other)",
-				returns = "(ParticleUniverseComponent)",
-				valuetype = "ParticleUniverseComponent"
-			},
 			castPlayerControllerComponent =
 			{
 				type = "function",
@@ -10907,14 +11164,6 @@ return {
 				args = "(PhysicsExplosionComponent other)",
 				returns = "(PhysicsExplosionComponent)",
 				valuetype = "PhysicsExplosionComponent"
-			},
-			castMeshDecalComponent =
-			{
-				type = "function",
-				description = "Casts an incoming type from function for lua auto completion.",
-				args = "(MeshDecalComponent other)",
-				returns = "(MeshDecalComponent)",
-				valuetype = "MeshDecalComponent"
 			},
 			castTagPointComponent =
 			{
@@ -11260,6 +11509,14 @@ return {
 				returns = "(CrowdComponent)",
 				valuetype = "CrowdComponent"
 			},
+			castDecalComponent =
+			{
+				type = "function",
+				description = "Casts an incoming type from function for lua auto completion.",
+				args = "(DecalComponent other)",
+				returns = "(DecalComponent)",
+				valuetype = "DecalComponent"
+			},
 			castDistortionComponent =
 			{
 				type = "function",
@@ -11291,6 +11548,14 @@ return {
 				args = "(InputDeviceComponent other)",
 				returns = "(InputDeviceComponent)",
 				valuetype = "InputDeviceComponent"
+			},
+			castInstantRadiosityComponent =
+			{
+				type = "function",
+				description = "Casts an incoming type from function for lua auto completion.",
+				args = "(InstantRadiosityComponent other)",
+				returns = "(InstantRadiosityComponent)",
+				valuetype = "InstantRadiosityComponent"
 			},
 			castInventoryItemComponent =
 			{
@@ -11331,6 +11596,14 @@ return {
 				args = "(KeyholeEffectComponent other)",
 				returns = "(KeyholeEffectComponent)",
 				valuetype = "KeyholeEffectComponent"
+			},
+			castLightAreaOfInterestComponent =
+			{
+				type = "function",
+				description = "Casts an incoming type from function for lua auto completion.",
+				args = "(LightAreaOfInterestComponent other)",
+				returns = "(LightAreaOfInterestComponent)",
+				valuetype = "LightAreaOfInterestComponent"
 			},
 			castLookAfterComponent =
 			{
@@ -11380,6 +11653,14 @@ return {
 				returns = "(ParticleFxComponent)",
 				valuetype = "ParticleFxComponent"
 			},
+			castPccPerPixelGridPlacementComponent =
+			{
+				type = "function",
+				description = "Casts an incoming type from function for lua auto completion.",
+				args = "(PccPerPixelGridPlacementComponent other)",
+				returns = "(PccPerPixelGridPlacementComponent)",
+				valuetype = "PccPerPixelGridPlacementComponent"
+			},
 			castPickerComponent =
 			{
 				type = "function",
@@ -11387,6 +11668,14 @@ return {
 				args = "(PickerComponent other)",
 				returns = "(PickerComponent)",
 				valuetype = "PickerComponent"
+			},
+			castProceduralTerrainCreationComponent =
+			{
+				type = "function",
+				description = "Casts an incoming type from function for lua auto completion.",
+				args = "(ProceduralTerrainCreationComponent other)",
+				returns = "(ProceduralTerrainCreationComponent)",
+				valuetype = "ProceduralTerrainCreationComponent"
 			},
 			castPurePursuitComponent =
 			{
@@ -11491,6 +11780,14 @@ return {
 				args = "(UnderwaterEffectComponent other)",
 				returns = "(UnderwaterEffectComponent)",
 				valuetype = "UnderwaterEffectComponent"
+			},
+			castWaterFoamEffectComponent =
+			{
+				type = "function",
+				description = "Casts an incoming type from function for lua auto completion.",
+				args = "(WaterFoamEffectComponent other)",
+				returns = "(WaterFoamEffectComponent)",
+				valuetype = "WaterFoamEffectComponent"
 			}
 		}
 	},
@@ -11977,6 +12274,47 @@ return {
 		type = "class",
 		description = "Modifies UV on a procedural hemisphere."
 	},
+	IESLightComponent =
+	{
+		type = "class",
+		description = "Usage: IES (Illuminating Engineering Society) light profiles for photometric lighting. Applies real-world light distribution patterns to area lights and spotlights. Requirements: LightAreaComponent or LightSpotComponent.",
+		inherits = "GameObjectComponent",
+		childs = 
+		{
+			setActivated =
+			{
+				type = "method",
+				description = "Sets whether this IES is active.",
+				args = "(boolean activated)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			isActivated =
+			{
+				type = "function",
+				description = "Gets whether this IES is active.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			setIESProfile =
+			{
+				type = "method",
+				description = "Sets the IES profile file to use for photometric lighting.",
+				args = "(string iesFileName)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getIESProfile =
+			{
+				type = "function",
+				description = "Gets the currently assigned IES profile filename.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			}
+		}
+	},
 	IcoSphereGenerator =
 	{
 		type = "class",
@@ -12424,6 +12762,199 @@ return {
 			NOWA_A_SELECT =
 			{
 				type = "value"
+			}
+		}
+	},
+	InstantRadiosityComponent =
+	{
+		type = "class",
+		description = "Usage: Instant Radiosity for Global Illumination. Traces rays and creates Virtual Point Lights (VPLs) at hit points to simulate indirect lighting. Works on dynamic objects.  For directional lights in enclosed spaces (buildings with windows), place LightAreaOfInterestComponent markers at windows/openings. The AoI tells the system: "Shoot rays HERE specifically" - because directional light rays come from infinity and need to know where openings are to enter a building.  Scenario example: You have a house mesh with 3 windows. Without AoIs, directional light rays would be shot randomly and most would hit the exterior walls, wasting computation and missing the interior.  Solution: Create empty GameObjects at each window opening and add LightAreaOfInterestComponent.  Scene: --> House (mesh with windows baked in) --> Window1_AoI (empty GO at window position)   |--> LightAreaOfInterestComponent (halfSize matches window size) --> Window2_AoI   |--> LightAreaOfInterestComponent --> Window3_AoI   |--> LightAreaOfInterestComponent --> SunLight (directional) --> IRController   | --> InstantRadiosityComponent  When is EventDataBoundsUpdated sufficient? For outdoor scenes or scenes with only point/spot lights - you don't need specific AoIs. The scene bounds fallback works fine because: - Point/spot lights have a defined position, rays radiate from there - Outdoor scenes don't have "openings" to target  Requirements: Forward+ rendering with VPLs enabled. Only one instance allowed per scene.",
+		inherits = "GameObjectComponent",
+		childs = 
+		{
+			setActivated =
+			{
+				type = "method",
+				description = "Sets whether the component is activated.",
+				args = "(boolean activated)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			isActivated =
+			{
+				type = "function",
+				description = "Gets whether the component is activated.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			setNumRays =
+			{
+				type = "method",
+				description = "Sets the number of rays (max 32768).",
+				args = "(number numRays)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getNumRays =
+			{
+				type = "function",
+				description = "Gets the number of rays.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setNumRayBounces =
+			{
+				type = "method",
+				description = "Sets the number of ray bounces (0-5).",
+				args = "(number numRayBounces)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getNumRayBounces =
+			{
+				type = "function",
+				description = "Gets the number of ray bounces.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setCellSize =
+			{
+				type = "method",
+				description = "Sets the cell size.",
+				args = "(number cellSize)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getCellSize =
+			{
+				type = "function",
+				description = "Gets the cell size.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setBias =
+			{
+				type = "method",
+				description = "Sets the bias (0.0-1.0).",
+				args = "(number bias)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getBias =
+			{
+				type = "function",
+				description = "Gets the bias.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setVplMaxRange =
+			{
+				type = "method",
+				description = "Sets the VPL max range.",
+				args = "(number vplMaxRange)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getVplMaxRange =
+			{
+				type = "function",
+				description = "Gets the VPL max range.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setVplPowerBoost =
+			{
+				type = "method",
+				description = "Sets the VPL power boost.",
+				args = "(number vplPowerBoost)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getVplPowerBoost =
+			{
+				type = "function",
+				description = "Gets the VPL power boost.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setVplThreshold =
+			{
+				type = "method",
+				description = "Sets the VPL threshold.",
+				args = "(number vplThreshold)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getVplThreshold =
+			{
+				type = "function",
+				description = "Gets the VPL threshold.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setEnableDebugMarkers =
+			{
+				type = "method",
+				description = "Sets whether debug markers are shown.",
+				args = "(boolean enableDebugMarkers)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getEnableDebugMarkers =
+			{
+				type = "function",
+				description = "Gets whether debug markers are shown.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			setUseIrradianceVolume =
+			{
+				type = "method",
+				description = "Sets whether to use irradiance volume.",
+				args = "(boolean useIrradianceVolume)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getUseIrradianceVolume =
+			{
+				type = "function",
+				description = "Gets whether irradiance volume is used.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			build =
+			{
+				type = "method",
+				description = "Manually triggers a rebuild.",
+				args = "()",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			updateExistingVpls =
+			{
+				type = "method",
+				description = "Updates existing VPLs without full rebuild.",
+				args = "()",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			refreshAreasOfInterest =
+			{
+				type = "method",
+				description = "Refreshes AoIs from all LightAreaOfInterestComponents.",
+				args = "()",
+				returns = "(nil)",
+				valuetype = "nil"
 			}
 		}
 	},
@@ -16685,6 +17216,71 @@ return {
 			}
 		}
 	},
+	LightAreaOfInterestComponent =
+	{
+		type = "class",
+		description = "Usage: Marks a light entry point (window, skylight, opening) for Instant Radiosity. Place on an empty GameObject at the opening position. The InstantRadiosityComponent will automatically use all LightAreaOfInterestComponents in the scene.  Why is this needed? You need it for directional lights in enclosed spaces (buildings with windows). The AoI tells the system: "Shoot rays HERE specifically" - because directional light rays come from infinity and need to know where the openings are to enter a building.  Scenario example: You have a house mesh with 3 windows. Without AoIs, directional light rays would be shot randomly and most would hit the exterior walls, wasting computation and missing the interior.  Solution: Create 3 empty GameObjects, position each at a window opening, add LightAreaOfInterestComponent to each. (halfSize matches window size)  --> House (mesh with windows baked in) --> Window1_AoI (empty GO at window position)   |--> LightAreaOfInterestComponent (halfSize matches window size) --> Window2_AoI   |--> LightAreaOfInterestComponent --> Window3_AoI   |--> LightAreaOfInterestComponent --> SunLight (directional) --> IRController   | --> InstantRadiosityComponent  When is EventDataBoundsUpdated sufficient? For outdoor scenes or scenes with only point/spot lights - you don't need specific AoIs. The scene bounds fallback works fine because: - Point/spot lights have a defined position, rays radiate from there - Outdoor scenes don't have "openings" to target ",
+		inherits = "GameObjectComponent",
+		childs = 
+		{
+			setActivated =
+			{
+				type = "method",
+				description = "Sets whether this AoI is active.",
+				args = "(boolean activated)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			isActivated =
+			{
+				type = "function",
+				description = "Gets whether this AoI is active.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			setHalfSize =
+			{
+				type = "method",
+				description = "Sets the half-size of the AoI box.",
+				args = "(Vector3 halfSize)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getHalfSize =
+			{
+				type = "function",
+				description = "Gets the half-size of the AoI box.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			setSphereRadius =
+			{
+				type = "method",
+				description = "Sets the sphere radius for ray tracing.",
+				args = "(number sphereRadius)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getSphereRadius =
+			{
+				type = "function",
+				description = "Gets the sphere radius.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			getCenter =
+			{
+				type = "function",
+				description = "Gets the center position (from GameObject position).",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			}
+		}
+	},
 	LightDirectionalComponent =
 	{
 		type = "class",
@@ -18209,6 +18805,191 @@ return {
 				args = "()",
 				returns = "(boolean)",
 				valuetype = "boolean"
+			}
+		}
+	},
+	MorphAnimationComponent =
+	{
+		type = "class",
+		description = "Usage: Controls morph/pose animations on v1 meshes with blend shapes. Use mathematical functions to animate pose weights over time. Can also create new poses at runtime. Requirements: v1::Entity with mesh.",
+		inherits = "GameObjectComponent",
+		childs = 
+		{
+			setActivated =
+			{
+				type = "method",
+				description = "Sets whether the morph animation is activated.",
+				args = "(boolean activated)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getActivated =
+			{
+				type = "function",
+				description = "Gets whether the morph animation is activated.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			setBoneName =
+			{
+				type = "method",
+				description = "Sets the bone name to associate with (optional).",
+				args = "(string boneName)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getBoneName =
+			{
+				type = "function",
+				description = "Gets the associated bone name.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			setPoseAnimationCount =
+			{
+				type = "method",
+				description = "Sets the number of pose animations to control.",
+				args = "(number count)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getPoseAnimationCount =
+			{
+				type = "function",
+				description = "Gets the number of pose animations.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setPoseName =
+			{
+				type = "method",
+				description = "Sets the pose name at the given index.",
+				args = "(number index, string poseName)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getPoseName =
+			{
+				type = "function",
+				description = "Gets the pose name at the given index.",
+				args = "(number index)",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			setWeightFunction =
+			{
+				type = "method",
+				description = "Sets the weight function for the pose at the given index. Example: '(sin(t) + 1) / 2'",
+				args = "(number index, string weightFunction)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getWeightFunction =
+			{
+				type = "function",
+				description = "Gets the weight function for the pose at the given index.",
+				args = "(number index)",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			setSpeed =
+			{
+				type = "method",
+				description = "Sets the speed multiplier for the pose at the given index.",
+				args = "(number index, number speed)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getSpeed =
+			{
+				type = "function",
+				description = "Gets the speed multiplier for the pose at the given index.",
+				args = "(number index)",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setTimeOffset =
+			{
+				type = "method",
+				description = "Sets the time offset for the pose at the given index.",
+				args = "(number index, number timeOffset)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getTimeOffset =
+			{
+				type = "function",
+				description = "Gets the time offset for the pose at the given index.",
+				args = "(number index)",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setPoseWeight =
+			{
+				type = "method",
+				description = "Manually sets the weight for a pose by name.",
+				args = "(string poseName, number weight)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getPoseWeight =
+			{
+				type = "function",
+				description = "Gets the current weight for a pose by name.",
+				args = "(string poseName)",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			resetTime =
+			{
+				type = "method",
+				description = "Resets the time accumulator to zero.",
+				args = "()",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getAccumulatedTime =
+			{
+				type = "function",
+				description = "Gets the current time accumulator value.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			createPose =
+			{
+				type = "function",
+				description = "Creates a new pose on the mesh. Target 0 = shared geometry, 1+ = submesh index.",
+				args = "(string poseName, unsigned number target = 0)",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			addPoseVertex =
+			{
+				type = "function",
+				description = "Adds a vertex offset to an existing pose.",
+				args = "(string poseName, number vertexIndex, Vector3 offset, Vector3 normalOffset = Vector3::ZERO)",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			removePose =
+			{
+				type = "function",
+				description = "Removes a pose from the mesh.",
+				args = "(string poseName)",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			getMeshPoseCount =
+			{
+				type = "function",
+				description = "Gets the number of poses on the mesh.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
 			}
 		}
 	},
@@ -21595,10 +22376,20 @@ return {
 			}
 		}
 	},
+	ParticleBlendingMethod =
+	{
+		type = "class",
+		description = "ParticleBlendingMethod class"
+	},
+	ParticleFadeState =
+	{
+		type = "class",
+		description = "ParticleFadeState class"
+	},
 	ParticleFxComponent =
 	{
 		type = "class",
-		description = "Usage: This Component is for playing particle effects using the Ogre-next ParticleFX2 system. Select a particle template from the list (materials starting with 'Particle/'). Set play time to 0 for infinite duration.",
+		description = "Usage: This Component is for playing particle effects using the Ogre-next ParticleFX2 system. Select a particle template from the list (materials starting with 'Particle/'). Set play time to 0 for infinite duration. Enable FadeIn/FadeOut for smooth particle transitions. Use PlaySpeed to control how fast particles flow.  WHEN TO USE EACH MODE:  1. AlphaHashing (0)    - Use for: Grass, leaves, fences, cutout effects    - Texture: Any texture, creates stipple pattern    - Depth write: ON    - Performance: Best    - Quality: Dithered/stippled look  2. AlphaHashingA2C (1)    - Use for: Same as AlphaHashing but better quality    - Texture: Any texture    - Depth write: ON    - Performance: Good (requires MSAA)    - Quality: Smoother edges with MSAA  3. AlphaBlending (2) - SBT_ADD    - Use for: Rain, fire, sparks, stars, explosions, glows    - Texture: White/bright on BLACK background (no alpha channel needed)    - Depth write: OFF    - Performance: Good    - Quality: Smooth, glowing effect    - Black (0,0,0) becomes transparent  4. AlphaTransparent (3) - SBT_TRANSPARENT_ALPHA    - Use for: Smoke, clouds, semi-transparent sprites    - Texture: MUST have proper alpha channel    - Depth write: OFF    - Performance: Good    - Quality: True smooth transparency    - Uses texture's alpha channel for transparency",
 		inherits = "GameObjectComponent",
 		childs = 
 		{
@@ -21718,7 +22509,7 @@ return {
 			{
 				type = "method",
 				description = "Sets the particle scale.",
-				args = "(Vector3 scale)",
+				args = "(Vector2 scale)",
 				returns = "(nil)",
 				valuetype = "nil"
 			},
@@ -21727,13 +22518,13 @@ return {
 				type = "function",
 				description = "Gets the particle scale.",
 				args = "()",
-				returns = "(Vector3)",
-				valuetype = "Vector3"
+				returns = "(Vector2)",
+				valuetype = "Vector2"
 			},
 			isPlaying =
 			{
 				type = "function",
-				description = "Checks if the particle effect is currently playing.",
+				description = "Checks if the particle effect is currently playing/emitting.",
 				args = "()",
 				returns = "(boolean)",
 				valuetype = "boolean"
@@ -21753,159 +22544,238 @@ return {
 				args = "(Vector3 orientation)",
 				returns = "(nil)",
 				valuetype = "nil"
+			},
+			getNumActiveParticles =
+			{
+				type = "function",
+				description = "Gets the current number of active particles.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			getParticleQuota =
+			{
+				type = "function",
+				description = "Gets the particle quota (maximum particles allowed).",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			getNumEmitters =
+			{
+				type = "function",
+				description = "Gets the number of emitters in the particle system.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			getNumAffectors =
+			{
+				type = "function",
+				description = "Gets the number of affectors in the particle system.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setBlendingMethod =
+			{
+				type = "method",
+				description = "Sets the blending method (AlphaHashing=0, AlphaHashingA2C=1, AlphaBlending=2, AlphaTransparent=3, FromMaterial=4).",
+				args = "(ParticleBlendingMethod method)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getBlendingMethod =
+			{
+				type = "function",
+				description = "Gets the current blending method.",
+				args = "()",
+				returns = "(ParticleBlendingMethod)",
+				valuetype = "ParticleBlendingMethod"
+			},
+			setFadeIn =
+			{
+				type = "method",
+				description = "Sets whether the particle effect should fade in when starting.",
+				args = "(boolean fadeIn)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getFadeIn =
+			{
+				type = "function",
+				description = "Gets whether the particle effect fades in when starting.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			setFadeInTimeMS =
+			{
+				type = "method",
+				description = "Sets the fade in duration in milliseconds.",
+				args = "(number fadeInTime)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getFadeInTimeMS =
+			{
+				type = "function",
+				description = "Gets the fade in duration in milliseconds.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setFadeOut =
+			{
+				type = "method",
+				description = "Sets whether the particle effect should fade out when stopping.",
+				args = "(boolean fadeOut)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getFadeOut =
+			{
+				type = "function",
+				description = "Gets whether the particle effect fades out when stopping.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			setFadeOutTimeMS =
+			{
+				type = "method",
+				description = "Sets the fade out duration in milliseconds.",
+				args = "(number fadeOutTime)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getFadeOutTimeMS =
+			{
+				type = "function",
+				description = "Gets the fade out duration in milliseconds.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			getFadeState =
+			{
+				type = "function",
+				description = "Gets the current fade state (None=0, FadingIn=1, FadingOut=2).",
+				args = "()",
+				returns = "(ParticleFadeState)",
+				valuetype = "ParticleFadeState"
 			}
 		}
 	},
-	ParticleUniverseComponent =
+	ParticleFxModule =
 	{
 		type = "class",
-		description = "Usage: This Component is in order for playing nice particle effects using the ParticleUniverse-Engine.",
-		inherits = "GameObjectComponent",
+		description = "Module for creating and controlling ParticleFX effects.",
 		childs = 
 		{
-			setActivated =
+			createParticleSystem =
 			{
 				type = "method",
-				description = "Sets whether this component should be activated or not (Start the particle effect).",
-				args = "(boolean activated)",
+				description = "Creates a particle system instance with the given settings. Lua must pass all parameters (no default values via luabind).",
+				args = "(string name, string templateName, number playTimeMS, Quaternion orientation, Vector3 position, Vector2 scale, boolean repeat, number playSpeed, ParticleBlendingMethod blendingMethod, boolean fadeIn, number fadeInTimeMS, boolean fadeOut, number fadeOutTimeMS)",
 				returns = "(nil)",
 				valuetype = "nil"
 			},
-			isActivated =
-			{
-				type = "function",
-				description = "Gets whether this component is activated.",
-				args = "()",
-				returns = "(boolean)",
-				valuetype = "boolean"
-			},
-			setTemplateName =
+			playParticleSystem =
 			{
 				type = "method",
-				description = "Sets the particle template name. The name must be recognized by the resource system, else the particle effect cannot be played.",
-				args = "(string particleTemplateName)",
+				description = "Start playing a particle effect.",
+				args = "(string name)",
 				returns = "(nil)",
 				valuetype = "nil"
 			},
-			getTemplateName =
-			{
-				type = "function",
-				description = "Gets currently used particle template name.",
-				args = "()",
-				returns = "(string)",
-				valuetype = "string"
-			},
-			setRepeat =
+			stopParticleSystem =
 			{
 				type = "method",
-				description = "Sets whether the current particle effect should be repeated when finished.",
-				args = "(boolean repeat)",
+				description = "Stop a particle effect (with optional fade out handled internally).",
+				args = "(string name)",
 				returns = "(nil)",
 				valuetype = "nil"
 			},
-			getRepeat =
-			{
-				type = "function",
-				description = "Gets whether the current particle effect will be repeated when finished.",
-				args = "()",
-				returns = "(boolean)",
-				valuetype = "boolean"
-			},
-			setPlayTimeMS =
+			pauseParticleSystem =
 			{
 				type = "method",
-				description = "Sets particle play time in milliseconds, how long the particle effect should be played.",
-				args = "(number particlePlayTimeMS)",
+				description = "Pause a particle effect.",
+				args = "(string name)",
 				returns = "(nil)",
 				valuetype = "nil"
 			},
-			getPlayTimeMS =
-			{
-				type = "function",
-				description = "Gets particle play time in milliseconds.",
-				args = "()",
-				returns = "(number)",
-				valuetype = "number"
-			},
-			setOffsetPosition =
+			resumeParticleSystem =
 			{
 				type = "method",
-				description = "Sets offset position of the particle effect at which it should be played away from the game object.",
-				args = "(Vector3 offsetPosition)",
+				description = "Resume a paused particle effect.",
+				args = "(string name)",
 				returns = "(nil)",
 				valuetype = "nil"
 			},
-			getOffsetPosition =
+			getParticle =
 			{
 				type = "function",
-				description = "Gets offset position of the particle effect.",
-				args = "()",
-				returns = "(Vector3)",
-				valuetype = "Vector3"
+				description = "Get particle effect data by name. Returns nil if not found.",
+				args = "(string name)",
+				returns = "(ParticleFxData)",
+				valuetype = "ParticleFxData"
 			},
-			setOffsetOrientation =
+			removeParticle =
 			{
 				type = "method",
-				description = "Sets offset orientation (as vector3(degree, degree, degree)) of the particle effect at which it should be played away from the game object.",
-				args = "(Vector3 orientation)",
+				description = "Remove and destroy a specific particle effect.",
+				args = "(string name)",
 				returns = "(nil)",
 				valuetype = "nil"
-			},
-			setScale =
-			{
-				type = "method",
-				description = "Sets the scale (size) of the particle effect.",
-				args = "(Vector3 scale)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			getScale =
-			{
-				type = "function",
-				description = "Gets scale of the particle effect.",
-				args = "()",
-				returns = "(Vector3)",
-				valuetype = "Vector3"
-			},
-			setPlaySpeed =
-			{
-				type = "method",
-				description = "Sets particle play speed. E.g. 2 will play the particle at double speed.",
-				args = "(number playSpeed)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			getPlaySpeed =
-			{
-				type = "function",
-				description = "Gets particle play play speed.",
-				args = "()",
-				returns = "(number)",
-				valuetype = "number"
-			},
-			isPlaying =
-			{
-				type = "function",
-				description = "Gets whether the particle is playing. Note: This affects the value of @PlayTimeMS.",
-				args = "()",
-				returns = "(boolean)",
-				valuetype = "boolean"
 			},
 			setGlobalPosition =
 			{
 				type = "method",
-				description = "Sets a global play position for the particle.",
-				args = "(Vector3 globalPosition)",
+				description = "Set the global/world position for a particle effect.",
+				args = "(string name, Vector3 position)",
 				returns = "(nil)",
 				valuetype = "nil"
 			},
 			setGlobalOrientation =
 			{
 				type = "method",
-				description = "Sets a global player orientation (as vector3(degree, degree, degree)) of the particle effect.",
-				args = "(Vector3 globalOrientation)",
+				description = "Set the global/world orientation for a particle effect.",
+				args = "(string name, Quaternion orientation)",
 				returns = "(nil)",
 				valuetype = "nil"
+			},
+			setScale =
+			{
+				type = "method",
+				description = "Set the 2D scale for a particle effect.",
+				args = "(string name, Vector2 scale)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setPlaySpeed =
+			{
+				type = "method",
+				description = "Set the play speed multiplier (>1.0 faster, <1.0 slower).",
+				args = "(string name, number playSpeed)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			isPlaying =
+			{
+				type = "function",
+				description = "Returns true if the particle effect is currently playing.",
+				args = "(string name)",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			getNumActiveParticles =
+			{
+				type = "function",
+				description = "Returns the number of active particles in an effect.",
+				args = "(string name)",
+				returns = "(number)",
+				valuetype = "number"
 			}
 		}
 	},
@@ -22010,6 +22880,159 @@ return {
 				args = "()",
 				returns = "(Table[Vector3])",
 				valuetype = "Table[Vector3]"
+			}
+		}
+	},
+	PccPerPixelGridPlacementComponent =
+	{
+		type = "class",
+		description = "Usage: Automatically places and manages Parallax Corrected Cubemap (PCC) reflection probes in a grid pattern throughout a defined region. The system analyzes scene geometry per-pixel to intelligently determine optimal probe placement, size, and blending for high-quality reflections in interior spaces and complex scenes.   Key Features: - Automatic probe placement: Define a region (AABB), system places probes optimally - Parallax correction: Provides accurate reflections with proper depth perception - Quality control: Adjustable overlap factor trades quality vs performance - Multiple probes: Better coverage than single cubemap, especially for interiors   Configuration: - Region Center/Half-Size: Defines the AABB volume to cover with probes - Overlap Factor: 1.0 (minimal, faster) to 2.0 (maximum quality, slower). Default: 1.25 - Probe Resolution: 128, 256, 512, or 1024 pixels. Higher = better quality but more memory - Near/Far Plane: Clipping distances for probe rendering (default: 0.02 to 10.0) - DPM vs Cubemap Arrays: Toggle rendering method (DPM is more efficient)   Requirements: - Camera component with workspace (WorkspacePbsComponent or similar) - Forward Clustered rendering must be enabled - PCC/DepthCompressor material must be available   Constraints: - Cannot be used simultaneously with ReflectionCameraComponent (mutually exclusive) - Only one PCC component per camera game object - Objects must be within the defined region to receive reflections   Performance Notes: - Probe count is automatically determined by region size and overlap factor - Memory usage: ProbeResolution × ProbeCount × 6 faces × pixel size - Higher overlap = smoother transitions but more GPU cost - Typical scene: 256x256 probes with 1.25 overlap for balanced quality/performance   Best Use Cases: - Interior environments (rooms, hallways, buildings) - Complex architectural spaces - Areas requiring accurate parallax-corrected reflections - Scenes where single cubemap reflections look incorrect",
+		inherits = "GameObjectComponent",
+		childs = 
+		{
+			setActivated =
+			{
+				type = "method",
+				description = "Activates or deactivates the PCC system. When deactivated, all probes are destroyed and reflections disabled.",
+				args = "(boolean activated)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			isActivated =
+			{
+				type = "function",
+				description = "Returns true if PCC system is currently active.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			setRegionCenter =
+			{
+				type = "method",
+				description = "Sets the world-space center position of the AABB region to be covered by PCC reflection probes. Triggers probe grid rebuild.",
+				args = "(Vector3 regionCenter)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getRegionCenter =
+			{
+				type = "function",
+				description = "Gets the current center position of the PCC probe coverage region.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			setRegionHalfSize =
+			{
+				type = "method",
+				description = "Sets the half-dimensions (extents) of the AABB region. For example, (10,5,10) creates a 20x10x20 meter region. Triggers probe grid rebuild.",
+				args = "(Vector3 regionHalfSize)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getRegionHalfSize =
+			{
+				type = "function",
+				description = "Gets the current half-size (extents) of the PCC probe coverage region.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			setOverlapFactor =
+			{
+				type = "method",
+				description = "Sets the probe overlap factor (1.0-2.0). Higher values create smoother transitions between probes but reduce performance. Default: 1.25. Triggers probe grid rebuild.",
+				args = "(Real overlapFactor)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getOverlapFactor =
+			{
+				type = "function",
+				description = "Gets the current probe overlap factor value.",
+				args = "()",
+				returns = "(Real)",
+				valuetype = "Real"
+			},
+			setProbeResolution =
+			{
+				type = "method",
+				description = "Sets the resolution of each cubemap probe in pixels (e.g., 128, 256, 512, 1024). Higher values provide better quality but use more memory. Triggers probe grid rebuild.",
+				args = "(number probeResolution)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getProbeResolution =
+			{
+				type = "function",
+				description = "Gets the current cubemap resolution per probe in pixels.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setNearPlane =
+			{
+				type = "method",
+				description = "Sets the near clipping distance for probe rendering. Smaller values capture closer details. Range: 0.01-1.0. Triggers probe grid rebuild.",
+				args = "(Real nearPlane)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getNearPlane =
+			{
+				type = "function",
+				description = "Gets the current near plane distance for probe rendering.",
+				args = "()",
+				returns = "(Real)",
+				valuetype = "Real"
+			},
+			setFarPlane =
+			{
+				type = "method",
+				description = "Sets the far clipping distance for probe rendering. Should match the maximum distance you want reflections to show. Triggers probe grid rebuild.",
+				args = "(Real farPlane)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getFarPlane =
+			{
+				type = "function",
+				description = "Gets the current far plane distance for probe rendering.",
+				args = "()",
+				returns = "(Real)",
+				valuetype = "Real"
+			},
+			setUseDpm2DArray =
+			{
+				type = "method",
+				description = "Toggles between Dual Paraboloid Mapping (true, more efficient) and Cubemap Arrays (false, better quality). Triggers full system rebuild.",
+				args = "(boolean useDpm2DArray)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getUseDpm2DArray =
+			{
+				type = "function",
+				description = "Returns true if using Dual Paraboloid Mapping, false if using Cubemap Arrays.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			forceUpdateAllProbes =
+			{
+				type = "method",
+				description = "Forces all reflection probes to re-render. Useful after significant scene changes like adding/removing objects or changing lighting.",
+				args = "()",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			rebuildProbeGrid =
+			{
+				type = "method",
+				description = "Completely rebuilds the entire probe grid based on current settings. Called automatically when region or overlap settings change.",
+				args = "()",
+				returns = "(nil)",
+				valuetype = "nil"
 			}
 		}
 	},
@@ -24232,6 +25255,487 @@ return {
 	{
 		type = "class",
 		description = "Generates a procedural path."
+	},
+	ProceduralTerrainCreationComponent =
+	{
+		type = "class",
+		description = "Usage: Generates procedural heightmap terrain for Terra using multi-octave Perlin noise.  Features: - Natural-looking hills and valleys - Procedural roads that follow terrain elevation - Drainage-based river networks - Canyon formation - Island generation - Hydraulic erosion simulation - Fully configurable parameters  Basic Parameters: - Resolution: Heightmap size (512, 1024, 2048, etc.) - Base Height: Minimum terrain elevation - Hill Amplitude: Maximum height variation - Hill Frequency: Size of terrain features (lower = larger) - Octaves: Detail layers (more = more detail) - Persistence: Roughness (0.3-0.7 typical) - Lacunarity: Detail variation (2.0 typical) - Seed: Random seed for different terrain  Road Parameters: - Enable Roads: Turn road generation on/off - Road Count: Number of roads to generate - Road Width: Width of roads - Road Depth: How deep roads cut into terrain - Road Smoothness: Blend factor (higher = smoother) - Road Curviness: How curvy roads are (0-1) - Roads Closed: Whether roads form loops  River Parameters: - Enable Rivers: Turn river generation on/off - River Count: Number of major rivers - River Width: Width of rivers - River Depth: How deep rivers carve - River Meandering: Natural meandering amount  Canyon Parameters: - Enable Canyons: Turn canyon generation on/off - Canyon Count: Number of canyons - Canyon Width: Width at the top - Canyon Depth: How deep canyons go - Canyon Steepness: Wall steepness  Island Parameters: - Enable Island: Create ocean-surrounded terrain - Island Falloff: Edge drop-off steepness - Island Size: Relative island size (0-1)  Erosion Parameters: - Enable Erosion: Apply hydraulic erosion - Erosion Iterations: Number of simulation steps - Erosion Strength: How aggressive erosion is - Sediment Capacity: Sediment carrying capacity  Tips: - Start with defaults and adjust gradually - Higher resolution = slower generation but more detail - Toggle Activated to regenerate terrain - Features work best when combined - Use different seeds for different terrain layouts",
+		inherits = "GameObjectComponent",
+		childs = 
+		{
+			setActivated =
+			{
+				type = "method",
+				description = "Sets whether to generate terrain.",
+				args = "(boolean activated)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			isActivated =
+			{
+				type = "function",
+				description = "Gets whether activated.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			setResolution =
+			{
+				type = "method",
+				description = "Sets heightmap resolution.",
+				args = "(unumber resolution)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getResolution =
+			{
+				type = "function",
+				description = "Gets resolution.",
+				args = "()",
+				returns = "(unumber)",
+				valuetype = "unumber"
+			},
+			setBaseHeight =
+			{
+				type = "method",
+				description = "Sets base height.",
+				args = "(number height)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getBaseHeight =
+			{
+				type = "function",
+				description = "Gets base height.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setHillAmplitude =
+			{
+				type = "method",
+				description = "Sets hill amplitude.",
+				args = "(number amplitude)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getHillAmplitude =
+			{
+				type = "function",
+				description = "Gets hill amplitude.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setHillFrequency =
+			{
+				type = "method",
+				description = "Sets hill frequency.",
+				args = "(number frequency)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getHillFrequency =
+			{
+				type = "function",
+				description = "Gets hill frequency.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			generateTerrain =
+			{
+				type = "method",
+				description = "Manually triggers terrain generation.",
+				args = "()",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setRoadsClosed =
+			{
+				type = "method",
+				description = "If true, generated roads tend to form loops rather than only point-to-point connections.",
+				args = "(boolean roadsClosed)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getRoadsClosed =
+			{
+				type = "function",
+				description = "Returns whether roads are generated as loops.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			setEnableRivers =
+			{
+				type = "method",
+				description = "Enables drainage-based river carving after the base terrain is generated.",
+				args = "(boolean enableRivers)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getEnableRivers =
+			{
+				type = "function",
+				description = "Returns whether river carving is enabled.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			setRiverCount =
+			{
+				type = "method",
+				description = "High-level river complexity hint. Together with RiverFlowThreshold it influences how many major rivers appear.",
+				args = "(unumber riverCount)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getRiverCount =
+			{
+				type = "function",
+				description = "Gets the river complexity hint.",
+				args = "()",
+				returns = "(unumber)",
+				valuetype = "unumber"
+			},
+			setRiverWidth =
+			{
+				type = "method",
+				description = "High-level width control for rivers. Scales river carving width (in heightmap pixels).",
+				args = "(number riverWidth)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getRiverWidth =
+			{
+				type = "function",
+				description = "Gets the high-level river width control.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setRiverDepth =
+			{
+				type = "method",
+				description = "High-level depth control for rivers. Scales the amount of erosion applied to river beds.",
+				args = "(number riverDepth)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getRiverDepth =
+			{
+				type = "function",
+				description = "Gets the high-level river depth control.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setRiverMeandering =
+			{
+				type = "method",
+				description = "Controls how much river paths can wander. 0 = strict steepest descent, 1 = more natural meandering.",
+				args = "(number riverMeandering)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getRiverMeandering =
+			{
+				type = "function",
+				description = "Gets the river meandering amount.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setRiverFlowThreshold =
+			{
+				type = "method",
+				description = "Minimum flow accumulation before carving starts. Higher = fewer, larger rivers.",
+				args = "(number riverFlowThreshold)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getRiverFlowThreshold =
+			{
+				type = "function",
+				description = "Gets the minimum flow threshold for river carving.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setRiverWidthScale =
+			{
+				type = "method",
+				description = "Fine tuning: multiplier applied to river width derived from flow. Works together with RiverWidth.",
+				args = "(number riverWidthScale)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getRiverWidthScale =
+			{
+				type = "function",
+				description = "Gets the fine-tuning river width scale.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setRiverErosionFactor =
+			{
+				type = "method",
+				description = "Fine tuning: converts flow into erosion depth. Works together with RiverDepth.",
+				args = "(number riverErosionFactor)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getRiverErosionFactor =
+			{
+				type = "function",
+				description = "Gets the flow-to-erosion factor used for rivers.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setMaxRiverDepth =
+			{
+				type = "method",
+				description = "Fine tuning: absolute clamp for how deep river beds may be carved.",
+				args = "(number maxRiverDepth)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getMaxRiverDepth =
+			{
+				type = "function",
+				description = "Gets the absolute maximum depth for river carving.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setEnableCanyons =
+			{
+				type = "method",
+				description = "Enables canyon carving. Canyons are long paths carved with a wall profile.",
+				args = "(boolean enableCanyons)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getEnableCanyons =
+			{
+				type = "function",
+				description = "Returns whether canyon carving is enabled.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			setCanyonCount =
+			{
+				type = "method",
+				description = "Number of canyon paths to generate. 0 disables canyon generation even if enabled.",
+				args = "(unumber canyonCount)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getCanyonCount =
+			{
+				type = "function",
+				description = "Gets the number of canyons to generate.",
+				args = "()",
+				returns = "(unumber)",
+				valuetype = "unumber"
+			},
+			setCanyonWidth =
+			{
+				type = "method",
+				description = "High-level canyon width multiplier that scales the min/max canyon widths.",
+				args = "(number canyonWidth)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getCanyonWidth =
+			{
+				type = "function",
+				description = "Gets the high-level canyon width multiplier.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setCanyonDepth =
+			{
+				type = "method",
+				description = "How deep canyons are carved at their center line.",
+				args = "(number canyonDepth)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getCanyonDepth =
+			{
+				type = "function",
+				description = "Gets the canyon depth.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setCanyonSteepness =
+			{
+				type = "method",
+				description = "Controls canyon wall profile. Low = more U-shaped, high = sharper V-shaped walls.",
+				args = "(number canyonSteepness)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getCanyonSteepness =
+			{
+				type = "function",
+				description = "Gets the canyon wall steepness.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setCanyonMinWidth =
+			{
+				type = "method",
+				description = "Minimum canyon width in heightmap pixels (before CanyonWidth scaling).",
+				args = "(number canyonMinWidth)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getCanyonMinWidth =
+			{
+				type = "function",
+				description = "Gets the minimum canyon width.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setCanyonMaxWidth =
+			{
+				type = "method",
+				description = "Maximum canyon width in heightmap pixels (before CanyonWidth scaling). Should be >= CanyonMinWidth.",
+				args = "(number canyonMaxWidth)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getCanyonMaxWidth =
+			{
+				type = "function",
+				description = "Gets the maximum canyon width.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setEnableIsland =
+			{
+				type = "method",
+				description = "Enables island masking. Heights fall off toward the edges to create an island-like shape.",
+				args = "(boolean enableIsland)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getEnableIsland =
+			{
+				type = "function",
+				description = "Returns whether island masking is enabled.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			setIslandFalloff =
+			{
+				type = "method",
+				description = "Controls how fast the terrain falls off toward edges. Higher = sharper coast drop.",
+				args = "(number islandFalloff)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getIslandFalloff =
+			{
+				type = "function",
+				description = "Gets island falloff strength.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setIslandSize =
+			{
+				type = "method",
+				description = "Controls island radius as fraction of the heightmap. Lower = smaller island, more ocean around.",
+				args = "(number islandSize)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getIslandSize =
+			{
+				type = "function",
+				description = "Gets island size factor.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setEnableErosion =
+			{
+				type = "method",
+				description = "Enables hydraulic erosion simulation. Expensive at high iteration counts.",
+				args = "(boolean enableErosion)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getEnableErosion =
+			{
+				type = "function",
+				description = "Returns whether erosion simulation is enabled.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			setErosionIterations =
+			{
+				type = "method",
+				description = "Number of erosion iterations/particles. Higher = smoother/more realistic, but slower.",
+				args = "(unumber erosionIterations)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getErosionIterations =
+			{
+				type = "function",
+				description = "Gets number of erosion iterations.",
+				args = "()",
+				returns = "(unumber)",
+				valuetype = "unumber"
+			},
+			setErosionStrength =
+			{
+				type = "method",
+				description = "Overall erosion strength. Higher values carve more aggressively per iteration.",
+				args = "(number erosionStrength)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getErosionStrength =
+			{
+				type = "function",
+				description = "Gets erosion strength.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setSedimentCapacity =
+			{
+				type = "method",
+				description = "How much sediment a droplet can carry before it starts depositing. Higher = more transport, less deposition.",
+				args = "(number sedimentCapacity)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getSedimentCapacity =
+			{
+				type = "function",
+				description = "Gets sediment capacity.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			}
+		}
 	},
 	PurePursuitComponent =
 	{
@@ -28621,6 +30125,39 @@ return {
 				args = "()",
 				returns = "(number)",
 				valuetype = "number"
+			}
+		}
+	},
+	WaterFoamEffectComponent =
+	{
+		type = "class",
+		description = "WaterFoamEffectComponent spawns and controls a ParticleUniverse wake/foam effect for a player.  What it does: - Looks up an OceanComponent via Ocean Id. - Checks if the owner is close enough to the ocean surface. - If touching water: creates + plays a ParticleUniverse system and keeps it on the surface. - If not touching water: stops and removes the particle system.  Typical use: - Attach this component to a Player GameObject. - Set Ocean Id to the GameObject id that owns the OceanComponent. - Use a ParticleUniverse system like 'wake' (converted from your old Water/Wake). ",
+		inherits = "GameObjectComponent",
+		childs = 
+		{
+			setActivated =
+			{
+				type = "method",
+				description = "Sets whether this component should be activated or not.",
+				args = "(boolean activated)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			isActivated =
+			{
+				type = "function",
+				description = "Gets whether this component is activated.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			getOwner =
+			{
+				type = "function",
+				description = "Gets the owner game object.",
+				args = "()",
+				returns = "(GameObject)",
+				valuetype = "GameObject"
 			}
 		}
 	},

@@ -45,6 +45,9 @@
 #include <boost/algorithm/string.hpp>
 
 #include <filesystem>
+#include <algorithm>
+#include <cstdio>
+#include <cstdlib>
 
 #ifdef WIN32
 #include <WindowsIncludes.h>
@@ -58,6 +61,7 @@
 #pragma comment(lib, "shell32")
 #else
 #include <X11/Xlib.h>
+#include <dlfcn.h>
 #endif
 
 #if OGRE_PLATFORM == OGRE_PLATFORM_WIN32
@@ -981,13 +985,11 @@ namespace NOWA
         catch( Ogre::FileNotFoundException &e )
         {
             Ogre::LogManager::getSingleton().logMessage(e.getFullDescription(), Ogre::LML_CRITICAL);
-            Ogre::LogManager::getSingleton().logMessage(
-                "WARNING: LTC matrix textures could not be loaded. Accurate specular IBL reflections "
+            Ogre::LogManager::getSingleton().logMessage("WARNING: LTC matrix textures could not be loaded. Accurate specular IBL reflections "
                 "and LTC area lights won't be available or may not function properly!",
                 Ogre::LML_CRITICAL);
         }
 
-		
 		// Create once custom temp textures for dither and half tone effect
 		this->createCustomTextures();
 
@@ -2319,14 +2321,223 @@ namespace NOWA
 
 	Ogre::String Core::getApplicationFilePathName(void)
 	{
-		HINSTANCE handleInstance = GetModuleHandle(0);
-		
 		Ogre::String result;
+
+#ifdef _WIN32
+		HINSTANCE handleInstance = GetModuleHandle(0);
+
 		char temp[255 + 1] = "";
 		memset(temp, 0, sizeof(temp));
-		::GetModuleFileName(handleInstance, &temp[0], sizeof(temp) / sizeof(unsigned short) - 1);
+		::GetModuleFileNameA(handleInstance, &temp[0], sizeof(temp) - 1);
 		result = &temp[0];
+		std::replace(result.begin(), result.end(), '\\', '/');
 		return result;
+#else
+		// Linux: /proc/self/exe
+		char buf[4096] = { 0 };
+		ssize_t len = ::readlink("/proc/self/exe", buf, sizeof(buf) - 1);
+		if (len > 0)
+		{
+			buf[len] = '\0';
+			result = buf;
+			std::replace(result.begin(), result.end(), '\\', '/');
+		}
+		return result;
+#endif
+	}
+
+	bool Core::isAbsolutePath(const Ogre::String& path)
+	{
+		if (path.empty())
+			return false;
+
+		// Windows: "C:\..." or "C:/..."
+		if (path.size() > 2)
+		{
+			const char c0 = path[0];
+			if (((c0 >= 'A' && c0 <= 'Z') || (c0 >= 'a' && c0 <= 'z')) &&
+				path[1] == ':' && (path[2] == '\\' || path[2] == '/'))
+			{
+				return true;
+			}
+		}
+
+		// UNC: "\\server\share" or "//server/share"
+		if (path.size() > 1)
+		{
+			if ((path[0] == '\\' && path[1] == '\\') || (path[0] == '/' && path[1] == '/'))
+			{
+				return true;
+			}
+		}
+
+		// Linux/mac: "/home/..."
+		if (path[0] == '/')
+			return true;
+
+		return false;
+	}
+
+	Ogre::String Core::normalizeSlashesForward(const Ogre::String& p)
+	{
+		Ogre::String out = p;
+		std::replace(out.begin(), out.end(), '\\', '/');
+		return out;
+	}
+
+	Ogre::String Core::joinPath(const Ogre::String& a, const Ogre::String& b)
+	{
+		if (a.empty())
+			return b;
+		if (b.empty())
+			return a;
+
+		Ogre::String aa = a;
+		Ogre::String bb = b;
+
+		aa = Core::normalizeSlashesForward(aa);
+		bb = Core::normalizeSlashesForward(bb);
+
+		// Remove trailing slash from a
+		if (!aa.empty() && aa.back() == '/')
+			aa.pop_back();
+
+		// Remove leading slash from b
+		while (!bb.empty() && bb.front() == '/')
+			bb.erase(bb.begin());
+
+		return aa + "/" + bb;
+	}
+
+	Ogre::String Core::getModuleDirectoryFromAddress(const void* address)
+	{
+		Ogre::String result;
+
+#ifdef _WIN32
+		HMODULE hModule = nullptr;
+
+		if (!GetModuleHandleExA(
+			GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+			reinterpret_cast<LPCSTR>(address),
+			&hModule))
+		{
+			return Ogre::String();
+		}
+
+		char path[MAX_PATH] = { 0 };
+		if (0 == GetModuleFileNameA(hModule, path, MAX_PATH))
+		{
+			return Ogre::String();
+		}
+
+		result = path;
+		result = this->normalizeSlashesForward(result);
+
+		// strip filename -> folder
+		size_t pos = result.find_last_of('/');
+		if (pos != Ogre::String::npos)
+			result = result.substr(0, pos);
+
+		return result;
+
+#else
+		Dl_info info;
+		if (0 == dladdr(address, &info))
+		{
+			// Fallback: assume plugins live next to exe in "plugins"
+			Ogre::String exe = this->getApplicationFilePathName();
+			if (exe.empty())
+				return Ogre::String();
+
+			exe = Core::normalizeSlashesForward(exe);
+			Ogre::String binDir = this->getDirectoryNameFromFilePathName(exe);
+			return Core::joinPath(binDir, "plugins");
+		}
+
+		if (nullptr == info.dli_fname)
+			return Ogre::String();
+
+		result = info.dli_fname;
+		result = Core::normalizeSlashesForward(result);
+
+		size_t pos = result.find_last_of('/');
+		if (pos != Ogre::String::npos)
+			result = result.substr(0, pos);
+
+		return result;
+#endif
+	}
+
+	Ogre::String Core::resolveToolPathFromModule(const void* address, const Ogre::String& relativeToolPath)
+	{
+		if (relativeToolPath.empty())
+			return Ogre::String();
+
+		// absolute stays absolute
+		if (true == this->isAbsolutePath(relativeToolPath))
+		{
+			Ogre::String abs = Core::normalizeSlashesForward(relativeToolPath);
+			return abs;
+		}
+
+		Ogre::String base = this->getModuleDirectoryFromAddress(address);
+		if (base.empty())
+		{
+			// last resort: treat as working-dir relative
+			return this->getAbsolutePath(relativeToolPath); // you already have this function
+		}
+
+		Ogre::String abs = Core::joinPath(base, relativeToolPath);
+		abs = Core::normalizeSlashesForward(abs);
+		return abs;
+	}
+
+	static bool containsRedirect2to1(const Ogre::String& s)
+	{
+		// very simple check
+		return (s.find("2>&1") != Ogre::String::npos);
+	}
+
+	bool Core::execAndCaptureStdout(const Ogre::String& commandLine, Ogre::String& outStdout, int& exitCode, bool captureStderr)
+	{
+		outStdout.clear();
+		exitCode = -1;
+
+		if (commandLine.empty())
+			return false;
+
+		// Capture stderr too (most python errors go there)
+		Ogre::String cmd = commandLine;
+		if (true == captureStderr && false == containsRedirect2to1(cmd))
+		{
+			cmd += " 2>&1";
+		}
+
+#ifdef _WIN32
+		FILE* pipe = _popen(cmd.c_str(), "r");
+#else
+		FILE* pipe = popen(cmd.c_str(), "r");
+#endif
+
+		if (!pipe)
+		{
+			return false;
+		}
+
+		char buffer[4096];
+		while (fgets(buffer, sizeof(buffer), pipe) != nullptr)
+		{
+			outStdout += buffer;
+		}
+
+#ifdef _WIN32
+		int rc = _pclose(pipe);
+#else
+		int rc = pclose(pipe);
+#endif
+
+		exitCode = rc;
+		return true;
 	}
 
 	Ogre::String Core::getResourcesFilePathName(void)
@@ -2852,19 +3063,38 @@ namespace NOWA
 	Ogre::String Core::getAbsolutePath(const Ogre::String& relativePath)
 	{
 		Ogre::String result;
+
+#ifdef _WIN32
 		long retval = 0;
 		char buffer[1024] = {};
 		char** lppPart = { nullptr };
-		// Retrieve the full path name for a file. The file does not need to exist.
+
 		retval = GetFullPathNameA(relativePath.c_str(), 1024, buffer, lppPart);
 		if (0 == retval)
 		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "Could not get absolute path from relative path: " + relativePath);
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+				"Could not get absolute path from relative path: " + relativePath);
 			return result;
 		}
 		result = buffer;
 		std::replace(result.begin(), result.end(), '\\', '/');
 		return result;
+#else
+		namespace fs = std::filesystem;
+		std::error_code ec;
+
+		fs::path p = fs::u8path(relativePath);
+		fs::path abs = fs::absolute(p, ec);
+		if (ec)
+		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+				"Could not get absolute path from relative path: " + relativePath);
+			return Ogre::String();
+		}
+		result = abs.u8string();
+		std::replace(result.begin(), result.end(), '\\', '/');
+		return result;
+#endif
 	}
 
 	Ogre::String Core::encode64(const Ogre::String& text, bool cipher)

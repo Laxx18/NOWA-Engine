@@ -243,9 +243,6 @@
     <ClInclude Include="utilities\MathHelper.h">
       <Filter>utilities</Filter>
     </ClInclude>
-    <ClInclude Include="utilities\MeshDecal.h">
-      <Filter>utilities</Filter>
-    </ClInclude>
     <ClInclude Include="utilities\MeshScissor.h">
       <Filter>utilities</Filter>
     </ClInclude>
@@ -450,9 +447,6 @@
     <ClInclude Include="gameobject\TerraComponent.h">
       <Filter>gameobject</Filter>
     </ClInclude>
-    <ClInclude Include="gameobject\MeshDecalComponent.h">
-      <Filter>gameobject</Filter>
-    </ClInclude>
     <ClInclude Include="gameobject\MoveMathFunctionComponent.h">
       <Filter>gameobject</Filter>
     </ClInclude>
@@ -506,12 +500,6 @@
     </ClInclude>
     <ClInclude Include="gameobject\MyGUIItemBoxComponent.h">
       <Filter>gameobject</Filter>
-    </ClInclude>
-    <ClInclude Include="utilities\MeshDecalUtility.h">
-      <Filter>utilities</Filter>
-    </ClInclude>
-    <ClInclude Include="modules\MeshDecalGeneratorModule.h">
-      <Filter>modules</Filter>
     </ClInclude>
     <ClInclude Include="camera\ZoomCamera.h">
       <Filter>camera</Filter>
@@ -644,6 +632,9 @@
       <Filter>ocean</Filter>
     </ClInclude>
     <ClInclude Include="modules\ParticleFxModule.h">
+      <Filter>modules</Filter>
+    </ClInclude>
+    <ClInclude Include="modules\DecalsModule.h">
       <Filter>modules</Filter>
     </ClInclude>
   </ItemGroup>
@@ -865,9 +856,6 @@
     <ClCompile Include="utilities\MathHelper.cpp">
       <Filter>utilities</Filter>
     </ClCompile>
-    <ClCompile Include="utilities\MeshDecal.cpp">
-      <Filter>utilities</Filter>
-    </ClCompile>
     <ClCompile Include="utilities\MeshScissor.cpp">
       <Filter>utilities</Filter>
     </ClCompile>
@@ -1016,9 +1004,6 @@
     <ClCompile Include="gameobject\TerraComponent.cpp">
       <Filter>gameobject</Filter>
     </ClCompile>
-    <ClCompile Include="gameobject\MeshDecalComponent.cpp">
-      <Filter>gameobject</Filter>
-    </ClCompile>
     <ClCompile Include="gameobject\MoveMathFunctionComponent.cpp">
       <Filter>gameobject</Filter>
     </ClCompile>
@@ -1069,12 +1054,6 @@
     </ClCompile>
     <ClCompile Include="gameobject\MyGUIItemBoxComponent.cpp">
       <Filter>gameobject</Filter>
-    </ClCompile>
-    <ClCompile Include="utilities\MeshDecalUtility.cpp">
-      <Filter>utilities</Filter>
-    </ClCompile>
-    <ClCompile Include="modules\MeshDecalGeneratorModule.cpp">
-      <Filter>modules</Filter>
     </ClCompile>
     <ClCompile Include="camera\ZoomCamera.cpp">
       <Filter>camera</Filter>
@@ -1204,6 +1183,9 @@
       <Filter>ocean</Filter>
     </ClCompile>
     <ClCompile Include="modules\ParticleFxModule.cpp">
+      <Filter>modules</Filter>
+    </ClCompile>
+    <ClCompile Include="modules\DecalsModule.cpp">
       <Filter>modules</Filter>
     </ClCompile>
   </ItemGroup>

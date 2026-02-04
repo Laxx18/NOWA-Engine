@@ -985,14 +985,14 @@ namespace NOWA
 		return this->activeStateStack.back()->ogreNewtModule;
 	}
 
-	MeshDecalGeneratorModule* AppStateManager::getMeshDecalGeneratorModule(void) const
+	DecalsModule* AppStateManager::getDecalsModule(void) const
 	{
 		if (true == this->activeStateStack.empty())
 		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AppStateManager] Error getting mesh decal generator module, because at this time no application state (AppState) has been created! Maybe this call was to early.");
-			throw Ogre::Exception(Ogre::Exception::ERR_INTERNAL_ERROR, "[AppStateManager] Error getting mesh decal generator module, because at this time no application state (AppState) has been created! Maybe this call was to early.", "NOWA");
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AppStateManager] Error getting mesh decals module, because at this time no application state (AppState) has been created! Maybe this call was to early.");
+			throw Ogre::Exception(Ogre::Exception::ERR_INTERNAL_ERROR, "[AppStateManager] Error getting mesh decals module, because at this time no application state (AppState) has been created! Maybe this call was to early.", "NOWA");
 		}
-		return this->activeStateStack.back()->meshDecalGeneratorModule;
+		return this->activeStateStack.back()->decalsModule;
 	}
 
 	CameraManager* AppStateManager::getCameraManager(void) const
@@ -1100,11 +1100,11 @@ namespace NOWA
 		return nullptr;
 	}
 
-	MeshDecalGeneratorModule* AppStateManager::getMeshDecalGeneratorModule(const Ogre::String& stateName)
+	DecalsModule* AppStateManager::getDecalsModule(const Ogre::String& stateName)
 	{
 		AppState* appState = this->findByName(stateName);
 		if (nullptr != appState)
-			return appState->meshDecalGeneratorModule;
+			return appState->decalsModule;
 
 		return nullptr;
 	}

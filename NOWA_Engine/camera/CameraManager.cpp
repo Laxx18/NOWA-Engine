@@ -75,7 +75,7 @@ namespace NOWA
 
 	unsigned int CameraManager::getCountCameras(void) const
 	{
-		return this->cameraDataMap.size();
+		return static_cast<unsigned int>(this->cameraDataMap.size());
 	}
 
 	void CameraManager::removeCameraBehavior(const Ogre::String& cameraBehaviorType)

@@ -649,10 +649,10 @@ namespace NOWA
 		if (nullptr != this->instantRadiosity)
 		{
 			NOWA::GraphicsModule::RenderCommand renderCommand = [this, enableDebugMarkers]()
-				{
-					this->instantRadiosity->setEnableDebugMarkers(enableDebugMarkers);
-				};
-			NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "InstantRadiosityComponent::setEnableDebugMarkers");
+			{
+				this->instantRadiosity->setEnableDebugMarkers(enableDebugMarkers);
+			};
+			NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "InstantRadiosityComponent::setEnableDebugMarkers");
 		}
 	}
 

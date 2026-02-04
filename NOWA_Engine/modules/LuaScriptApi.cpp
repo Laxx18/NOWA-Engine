@@ -2388,11 +2388,6 @@ namespace NOWA
 		return makeStrongPtr<FadeComponent>(gameObject->getComponent<FadeComponent>()).get();
 	}
 
-	MeshDecalComponent* getMeshDecalComponent(GameObject* gameObject)
-	{
-		return makeStrongPtr<MeshDecalComponent>(gameObject->getComponent<MeshDecalComponent>()).get();
-	}
-
 	TagPointComponent* getTagPointComponent(GameObject* gameObject, unsigned int occurrenceIndex)
 	{
 		return makeStrongPtr<TagPointComponent>(gameObject->getComponentWithOccurrence<TagPointComponent>(occurrenceIndex)).get();
@@ -3038,11 +3033,6 @@ namespace NOWA
 		return makeStrongPtr<FadeComponent>(gameObject->getComponentFromName<FadeComponent>(name)).get();
 	}
 
-	MeshDecalComponent* getMeshDecalComponentFromName(GameObject* gameObject, const Ogre::String& name)
-	{
-		return makeStrongPtr<MeshDecalComponent>(gameObject->getComponentFromName<MeshDecalComponent>(name)).get();
-	}
-
 	TagPointComponent* getTagPointComponentFromName(GameObject* gameObject, const Ogre::String& name)
 	{
 		return makeStrongPtr<TagPointComponent>(gameObject->getComponentFromName<TagPointComponent>(name)).get();
@@ -3431,7 +3421,6 @@ namespace NOWA
 		gameObject.def("getSpawnComponent", (SpawnComponent* (*)(GameObject*, unsigned int))& getSpawnComponent);
 		gameObject.def("getAiLuaComponent", &getAiLuaComponent);
 		gameObject.def("getPhysicsExplosionComponent", &getPhysicsExplosionComponent);
-		gameObject.def("getMeshDecalComponent", &getMeshDecalComponent);
 		gameObject.def("getTagPointComponent", (TagPointComponent * (*)(GameObject*)) & getTagPointComponent);
 		gameObject.def("getTagPointComponentFromIndex", (TagPointComponent * (*)(GameObject*, unsigned int)) & getTagPointComponent);
 		gameObject.def("getMoveMathFunctionComponent", &getMoveMathFunctionComponent);
@@ -3562,7 +3551,6 @@ namespace NOWA
 		gameObject.def("getSpawnComponentFromName", &getSpawnComponentFromName);
 		gameObject.def("getAiLuaComponentFromName", &getAiLuaComponentFromName);
 		gameObject.def("getPhysicsExplosionComponentFromName", &getPhysicsExplosionComponentFromName);
-		gameObject.def("getMeshDecalComponentFromName", &getMeshDecalComponentFromName);
 		gameObject.def("getTagPointComponentFromName", &getTagPointComponentFromName);
 		gameObject.def("getMoveMathFunctionComponentFromName", &getMoveMathFunctionComponentFromName);
 		gameObject.def("getTagChildNodeComponentFromName", &getTagChildNodeComponentFromName);
@@ -3723,7 +3711,6 @@ namespace NOWA
 		AddClassToCollection("GameObject", "SpawnComponent getSpawnComponent()", "Gets the spawn component.");
 		AddClassToCollection("GameObject", "AiLuaComponent getAiLuaComponent()", "Gets the ai lua script component. Requirements: A physics active component and a lua script component.");
 		AddClassToCollection("GameObject", "PhysicsExplosionComponent getPhysicsExplosionComponent()", "Gets the physics explosion component.");
-		AddClassToCollection("GameObject", "MeshDecalComponent getMeshDecalComponent()", "Gets the mesh decal component.");
 		AddClassToCollection("GameObject", "TagPointComponent getTagPointComponentFromIndex(unsigned int occurrenceIndex)", "Gets the tag point component by the given occurence index, since a game object may have besides other components several tag point components.");
 		AddClassToCollection("GameObject", "TagPointComponent getTagPointComponent()", "Gets the tag point component. This can be used if the game object just has one tag point component.");
 		AddClassToCollection("GameObject", "MoveMathFunctionComponent getMoveMathFunctionComponent()", "Gets the move math function component.");
@@ -3850,7 +3837,6 @@ namespace NOWA
 		AddClassToCollection("GameObject", "SpawnComponent getSpawnComponentFromName(String name)", "Gets the spawn component.");
 		AddClassToCollection("GameObject", "AiLuaComponent getAiLuaComponentFromName(String name)", "Gets the ai lua script component. Requirements: A physics active component and a lua script component.");
 		AddClassToCollection("GameObject", "PhysicsExplosionComponent getPhysicsExplosionComponentFromName(String name)", "Gets the physics explosion component.");
-		AddClassToCollection("GameObject", "MeshDecalComponent getMeshDecalComponentFromName(String name)", "Gets the mesh decal component.");
 		AddClassToCollection("GameObject", "TagPointComponent getTagPointComponentFromName(String name)", "Gets the tag point component.");
 		AddClassToCollection("GameObject", "MoveMathFunctionComponent getMoveMathFunctionComponentFromName(String name)", "Gets the mvoe math function component.");
 		AddClassToCollection("GameObject", "TagChildNodeComponent getTagChildNodeComponentFromName(String nameunsigned int occurrenceIndex)", "Gets the tag child node component by the given occurence index, since a game object may have besides other components several tag child node components.");
@@ -4971,7 +4957,6 @@ namespace NOWA
 		gameObjectController.def("castSpawnComponent", &GameObjectController::cast<SpawnComponent>);
 		gameObjectController.def("castAiLuaComponent", &GameObjectController::cast<AiLuaComponent>);
 		gameObjectController.def("castPhysicsExplosionComponent", &GameObjectController::cast<PhysicsExplosionComponent>);
-		gameObjectController.def("castMeshDecalComponent", &GameObjectController::cast<MeshDecalComponent>);
 		gameObjectController.def("castTagPointComponent", &GameObjectController::cast<TagPointComponent>);
 		gameObjectController.def("castMoveMathFunctionComponent", &GameObjectController::cast<MoveMathFunctionComponent>);
 		gameObjectController.def("castTagChildNodeComponent", &GameObjectController::cast<TagChildNodeComponent>);
@@ -5135,7 +5120,6 @@ namespace NOWA
 		AddClassToCollection("GameObjectController", "SpawnComponent castSpawnComponent(SpawnComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "AiLuaComponent castAiLuaComponent(AiLuaComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "PhysicsExplosionComponent castPhysicsExplosionComponent(PhysicsExplosionComponent other)", "Casts an incoming type from function for lua auto completion.");
-		AddClassToCollection("GameObjectController", "MeshDecalComponent castMeshDecalComponent(MeshDecalComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "TagPointComponent castTagPointComponent(TagPointComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "MoveMathFunctionComponent castMoveMathFunctionComponent(MoveMathFunctionComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "TagChildNodeComponent castTagChildNodeComponent(TagChildNodeComponent other)", "Casts an incoming type from function for lua auto completion.");
@@ -11719,30 +11703,6 @@ namespace NOWA
 			"Sets whether to react the agent got stuck.");
 	}
 
-	void bindMeshDecalComponent(lua_State* lua)
-	{
-		/*module(lua)
-		[
-			class_<MeshDecalComponent, GameObjectComponent>("MeshDecalComponent")
-			// .def("getClassName", &MeshDecalComponent::getClassName)
-			// .def("clone", &MeshDecalComponent::clone)
-			// .def("getClassId", &MeshDecalComponent::getClassId)
-			.def("setDatablockName", &MeshDecalComponent::setDatablockName)
-			.def("getDatablockName", &MeshDecalComponent::getDatablockName)
-			.def("setNumPartitions", &MeshDecalComponent::setNumPartitions)
-			.def("getNumPartitions", &MeshDecalComponent::getNumPartitions)
-			.def("setUpdateFrequency", &MeshDecalComponent::setUpdateFrequency)
-			.def("getUpdateFrequency", &MeshDecalComponent::getUpdateFrequency)
-			.def("setCategoryNames", &MeshDecalComponent::setCategoryNames)
-			.def("getCategoryNames", &MeshDecalComponent::getCategoryNames)
-			.def("setPosition", &MeshDecalComponent::setPosition)
-			.def("setMousePosition", &MeshDecalComponent::setMousePosition)
-			.def("setActivated", &MeshDecalComponent::setActivated)
-			.def("isActivated", &MeshDecalComponent::isActivated)
-			.def("getMeshDecal", &MeshDecalComponent::getMeshDecal)
-		];*/
-	}
-
 	Ogre::String getWidgetId(MyGUIComponent* instance)
 	{
 		return Ogre::StringConverter::toString(instance->getId());
@@ -13143,7 +13103,8 @@ namespace NOWA
 			.def("getGameProgressModule", (GameProgressModule * (AppStateManager::*)(void) const) & AppStateManager::getGameProgressModule)
 			.def("getGameProgressModule2", (GameProgressModule * (AppStateManager::*)(const Ogre::String&)) & AppStateManager::getGameProgressModule)
 
-			// .def("getMeshDecalGeneratorModule", &AppStateManager::getMeshDecalGeneratorModule)
+			// .def("getDecalsModule", (DecalsModule * (AppStateManager::*)(void) const) & AppStateManager::getDecalsModule)
+			// .def("getDecalsModule2", (DecalsModule * (AppStateManager::*)(const Ogre::String&)) & AppStateManager::getDecalsModule)
 			// .def("getMiniMapModule", &AppStateManager::getMiniMapModule)
 
 			.def("getOgreNewtModule", (OgreNewtModule * (AppStateManager::*)(void) const) & AppStateManager::getOgreNewtModule)
@@ -13181,7 +13142,8 @@ namespace NOWA
 		AddClassToCollection("AppStateManager", "GameObjectController getGameObjectController2(String stateName)", "Gets the module for the given application state name, or null if the application state does not exist.");
 		AddClassToCollection("AppStateManager", "GameProgressModule getGameProgressModule()", "Gets the module for the current AppState.");
 		AddClassToCollection("AppStateManager", "GameProgressModule getGameProgressModule2(String stateName)", "Gets the module for the given application state name, or null if the application state does not exist.");
-		// AddClassToCollection("AppStateManager", "MeshDecalGeneratorModuleModule getMeshDecalGeneratorModule()", "Gets the module for the current AppState.");
+		// AddClassToCollection("AppStateManager", "DecalsModule getDecalsModule()", "Gets the module for the current AppState.");
+		// AddClassToCollection("AppStateManager", "DecalsModule getDecalsModule2(String stateName)", "Gets the module for the given application state name, or null if the application state does not exist.");
 		// AddClassToCollection("AppStateManager", "MinMapModule getMiniMapModule()", "Gets the module for the current AppState.");
 		// AddClassToCollection("AppStateManager", "OgreALModule getOgreALModule()", "Gets the module for the current AppState.");
 		AddClassToCollection("AppStateManager", "OgreNewtModule getOgreNewtModule()", "Gets the module for the current AppState.");
@@ -13441,7 +13403,6 @@ namespace NOWA
 				bindGameProgressModule(this->lua);
 				bindGameObjectController(this->lua, gameObjectControllerClass);
 				bindAiLuaComponent(this->lua);
-				bindMeshDecalComponent(this->lua);
 				bindMyGUIComponents(this->lua);
 				// Modules
 				bindCaelumModule(this->lua);

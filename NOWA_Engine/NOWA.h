@@ -136,7 +136,6 @@ extern "C"
 #include "gameObject/LuaScriptComponent.h"
 #include "gameObject/OceanComponent.h"
 #include "gameObject/TerraComponent.h"
-#include "gameObject/MeshDecalComponent.h"
 #include "gameObject/DecalComponent.h"
 #include "gameObject/PlanarReflectionComponent.h"
 #include "gameObject/MoveMathFunctionComponent.h"
@@ -265,7 +264,6 @@ namespace NOWA
 	// typedef boost::shared_ptr<AreaOfInterestComponent> AreaOfInterestCompPtr;
 	// typedef boost::shared_ptr<OceanComponent> OceanComponentCompPtr;
 	typedef boost::shared_ptr<TerraComponent> TerraComponentCompPtr;
-	typedef boost::shared_ptr<MeshDecalComponent> MeshDecalCompPtr;
 	typedef boost::shared_ptr<DecalComponent> DecalCompPtr;
 	typedef boost::shared_ptr<PlanarReflectionComponent> PlanarReflectionCompPtr;
 	
@@ -342,8 +340,8 @@ namespace NOWA
 #include "modules/WorkspaceModule.h"
 #include "modules/DeployResourceModule.h"
 #include "modules/InputDeviceModule.h"
-#include "modules/MeshDecalGeneratorModule.h"
 #include "modules/GraphicsModule.h"
+#include "modules/DecalsModule.h"
 
 // Editor
 #include "editor/Picker.h"
@@ -372,7 +370,6 @@ namespace NOWA
 #include "utilities/ObjectTitle.h"
 #include "utilities/MovableText.h"
 #include "utilities/Outline.h"
-#include "utilities/MeshDecal.h"
 #include "utilities/MeshScissor.h"
 #include "utilities/AnimationSerializer.h"
 #include "utilities/AnimationBlender.h"

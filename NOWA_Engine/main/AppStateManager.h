@@ -125,7 +125,7 @@ namespace NOWA
 
 		OgreNewtModule* getOgreNewtModule(void) const;
 
-		MeshDecalGeneratorModule* getMeshDecalGeneratorModule(void) const;
+		DecalsModule* getDecalsModule(void) const;
 
 		CameraManager* getCameraManager(void) const;
 
@@ -149,7 +149,7 @@ namespace NOWA
 
 		OgreNewtModule* getOgreNewtModule(const Ogre::String& stateName);
 
-		MeshDecalGeneratorModule* getMeshDecalGeneratorModule(const Ogre::String& stateName);
+		DecalsModule* getDecalsModule(const Ogre::String& stateName);
 
 		CameraManager* getCameraManager(const Ogre::String& stateName);
 

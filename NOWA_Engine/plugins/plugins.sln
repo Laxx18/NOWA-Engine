@@ -90,6 +90,10 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "WaterFoamEffectComponent", 
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ProceduralTerrainCreationComponent", "ProceduralTerrainCreationComponent\ProceduralTerrainCreationComponent.vcxproj", "{21D027FA-05D0-4169-B138-12682C0A0FFE}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "NOWAAssistantComponent", "NOWAAssistantComponent\NOWAAssistantComponent.vcxproj", "{188C4E39-2BC6-444C-BB31-B9FCC53425AB}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "IESLightComponent", "IESLightComponent\IESLightComponent.vcxproj", "{B8EC3AF6-8011-4645-89C4-C78442305E05}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -264,6 +268,14 @@ Global
 		{21D027FA-05D0-4169-B138-12682C0A0FFE}.Debug|x64.Build.0 = Debug|x64
 		{21D027FA-05D0-4169-B138-12682C0A0FFE}.Release|x64.ActiveCfg = Release|x64
 		{21D027FA-05D0-4169-B138-12682C0A0FFE}.Release|x64.Build.0 = Release|x64
+		{188C4E39-2BC6-444C-BB31-B9FCC53425AB}.Debug|x64.ActiveCfg = Debug|x64
+		{188C4E39-2BC6-444C-BB31-B9FCC53425AB}.Debug|x64.Build.0 = Debug|x64
+		{188C4E39-2BC6-444C-BB31-B9FCC53425AB}.Release|x64.ActiveCfg = Release|x64
+		{188C4E39-2BC6-444C-BB31-B9FCC53425AB}.Release|x64.Build.0 = Release|x64
+		{B8EC3AF6-8011-4645-89C4-C78442305E05}.Debug|x64.ActiveCfg = Debug|x64
+		{B8EC3AF6-8011-4645-89C4-C78442305E05}.Debug|x64.Build.0 = Debug|x64
+		{B8EC3AF6-8011-4645-89C4-C78442305E05}.Release|x64.ActiveCfg = Release|x64
+		{B8EC3AF6-8011-4645-89C4-C78442305E05}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

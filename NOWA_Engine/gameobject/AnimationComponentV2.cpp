@@ -74,7 +74,7 @@ namespace NOWA
 		animationSpeed(new Variant(AnimationComponentV2::AttrSpeed(), 1.0f, this->attributes)),
 		animationRepeat(new Variant(AnimationComponentV2::AttrRepeat(), true, this->attributes))
 	{
-		
+		this->animationName->addUserData(GameObject::AttrActionAutoComplete());
 	}
 
 	AnimationComponentV2::~AnimationComponentV2(void)

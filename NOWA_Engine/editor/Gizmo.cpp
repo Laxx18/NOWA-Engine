@@ -163,8 +163,8 @@ namespace NOWA
 		// Register default category for gizmo
 		this->defaultCategory = AppStateManager::getSingletonPtr()->getGameObjectController()->registerCategory("Default");
 
-		ENQUEUE_RENDER_COMMAND("Gizmo::init",{
-
+		ENQUEUE_RENDER_COMMAND("Gizmo::init",
+		{
 			// Create the three arrows in x-y-z axes
 			// This is the main node for selected objects, at which the gizmo will be placed
 			this->selectNode = this->sceneManager->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_DYNAMIC);
@@ -1282,29 +1282,30 @@ namespace NOWA
 
 	void Gizmo::setPosition(const Ogre::Vector3& position)
 	{
-		if (this->constraintAxis == Ogre::Vector3::ZERO)
+		auto closureFunction = [this, position](Ogre::Real renderDt)
 		{
-			// this->selectNode->setPosition(position);
-			NOWA::GraphicsModule::getInstance()->updateNodePosition(this->selectNode, position, false);
-		}
-		else
-		{
-			if (this->constraintAxis.x != 0.0f)
+			if (this->constraintAxis == Ogre::Vector3::ZERO)
 			{
-				// this->selectNode->setPosition(Ogre::Vector3(this->constraintAxis.x, position.y, position.z));
-				NOWA::GraphicsModule::getInstance()->updateNodePosition(this->selectNode, Ogre::Vector3(this->constraintAxis.x, position.y, position.z), false);
+				this->selectNode->setPosition(position);
 			}
-			if (this->constraintAxis.y != 0.0f)
+			else
 			{
-				// this->selectNode->setPosition(Ogre::Vector3(position.x, this->constraintAxis.y, position.z));
-				NOWA::GraphicsModule::getInstance()->updateNodePosition(this->selectNode, Ogre::Vector3(position.x, this->constraintAxis.y, position.z), false);
+				if (this->constraintAxis.x != 0.0f)
+				{
+					this->selectNode->setPosition(Ogre::Vector3(this->constraintAxis.x, position.y, position.z));
+				}
+				if (this->constraintAxis.y != 0.0f)
+				{
+					this->selectNode->setPosition(Ogre::Vector3(position.x, this->constraintAxis.y, position.z));
+				}
+				if (this->constraintAxis.z != 0.0f)
+				{
+					this->selectNode->setPosition(Ogre::Vector3(position.x, position.y, this->constraintAxis.z));
+				}
 			}
-			if (this->constraintAxis.z != 0.0f)
-			{
-				// this->selectNode->setPosition(Ogre::Vector3(position.x, position.y, this->constraintAxis.z));
-				NOWA::GraphicsModule::getInstance()->updateNodePosition(this->selectNode, Ogre::Vector3(position.x, position.y, this->constraintAxis.z), false);
-			}
-		}
+		};
+		Ogre::String id = "Gizmo::setPosition";
+		NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction);
 	}
 
 	Ogre::Vector3 Gizmo::getPosition(void) const
@@ -1314,7 +1315,12 @@ namespace NOWA
 
 	void Gizmo::setOrientation(const Ogre::Quaternion& orientation)
 	{
-		NOWA::GraphicsModule::getInstance()->updateNodeOrientation(this->selectNode, orientation, false/*, true*/);
+		auto closureFunction = [this, orientation](Ogre::Real renderDt)
+		{
+			this->selectNode->setOrientation(orientation);
+		};
+		Ogre::String id = "Gizmo::setOrientation";
+		NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction);
 	}
 
 	Ogre::Quaternion Gizmo::getOrientation(void) const
@@ -1337,7 +1343,7 @@ namespace NOWA
 		{
 			internalTranslateVector *= Ogre::Vector3(1.0f, 1.0f, 0.0f);
 		}
-		
+
 		Ogre::Vector3 newPosition = this->selectNode->getPosition() + internalTranslateVector;
 		NOWA::GraphicsModule::getInstance()->updateNodePosition(this->selectNode, newPosition, false);
 	}

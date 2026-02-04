@@ -581,9 +581,4 @@ namespace NOWA
 		}
 	}
 
-	bool WaterFoamEffectComponent::canStaticAddComponent(GameObject* gameObject)
-	{
-		return true;
-	}
-
 }; //namespace end

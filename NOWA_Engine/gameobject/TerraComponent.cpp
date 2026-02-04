@@ -234,7 +234,7 @@ namespace NOWA
 
 	void TerraComponent::update(Ogre::Real dt, bool notSimulating)
 	{
-		if (nullptr != this->terra)
+		if (nullptr != this->terra && false == notSimulating)
 		{
 			//Force update the shadow map every frame to avoid the feeling we're "cheating" the
 			//user in this sample with higher framerates than what he may encounter in many of
@@ -520,6 +520,7 @@ namespace NOWA
 			if (nullptr != this->terra)
 			{
 				this->terra->setBrushName(this->brush->getListSelectedValue());
+				this->terra->update(Ogre::Vector3::ZERO, 0.0f);
 			}
 		});
 
@@ -1151,7 +1152,7 @@ namespace NOWA
 
 		if (nullptr != this->terra)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI("TerraComponent::setBasePixelDimension", _1(basePixelDimension),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("TerraComponent::setBasePixelDimension", _1(basePixelDimension),
 			{
 				this->terra->setBasePixelDimension(basePixelDimension);
 			});

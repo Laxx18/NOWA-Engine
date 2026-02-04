@@ -3406,8 +3406,12 @@ namespace NOWA
 			texDef->widthFactor = this->superSampling->getReal();
 			texDef->heightFactor = this->superSampling->getReal();
 			texDef->textureFlags = Ogre::TextureFlags::RenderToTexture | Ogre::TextureFlags::MsaaExplicitResolve;
-
 			texDef->format = Ogre::PFG_RGBA16_FLOAT;
+
+			if (this->msaaLevel > 1)
+			{
+				texDef->fsaa = Ogre::StringConverter::toString(this->msaaLevel);
+			}
 
 			if (true == this->useDistortion->getBool())
 			{
@@ -3482,6 +3486,11 @@ namespace NOWA
 			texDef->format = Ogre::PFG_RGBA16_FLOAT;
 			// texDef->msaa = this->msaaLevel;
 			texDef->textureFlags = Ogre::TextureFlags::RenderToTexture | Ogre::TextureFlags::MsaaExplicitResolve;
+
+			if (this->msaaLevel > 1)
+			{
+				texDef->fsaa = Ogre::StringConverter::toString(this->msaaLevel);
+			}
 
 			rtv = compositorNodeDefinition->addRenderTextureView("rt1");
 			attachment.textureName = "rt1";
@@ -4042,6 +4051,11 @@ namespace NOWA
 			texDef->textureFlags = Ogre::TextureFlags::RenderToTexture | Ogre::TextureFlags::MsaaExplicitResolve;
 			texDef->format = Ogre::PFG_RGBA16_FLOAT;
 
+			if (this->msaaLevel > 1)
+			{
+				texDef->fsaa = Ogre::StringConverter::toString(this->msaaLevel);
+			}
+
 			if (true == this->useDistortion->getBool())
 			{
 				Ogre::TextureDefinitionBase::TextureDefinition* distortionTexDef = compositorNodeDefinition->addTextureDefinition("rt_distortion");
@@ -4107,6 +4121,11 @@ namespace NOWA
 			texDef->heightFactor = this->superSampling->getReal();
 			texDef->format = Ogre::PFG_RGBA16_FLOAT;
 			texDef->textureFlags = Ogre::TextureFlags::RenderToTexture | Ogre::TextureFlags::MsaaExplicitResolve;
+
+			if (this->msaaLevel > 1)
+			{
+				texDef->fsaa = Ogre::StringConverter::toString(this->msaaLevel);
+			}
 
 			rtv = compositorNodeDefinition->addRenderTextureView("rt1");
 			attachment.textureName = "rt1";
@@ -4812,6 +4831,11 @@ namespace NOWA
 			texDef->textureFlags = Ogre::TextureFlags::RenderToTexture | Ogre::TextureFlags::MsaaExplicitResolve;
 			texDef->format = Ogre::PFG_RGBA16_FLOAT;
 
+			if (this->msaaLevel > 1)
+			{
+				texDef->fsaa = Ogre::StringConverter::toString(this->msaaLevel);
+			}
+
 			if (true == this->useDistortion->getBool())
 			{
 				Ogre::TextureDefinitionBase::TextureDefinition* distortionTexDef = compositorNodeDefinition->addTextureDefinition("rt_distortion");
@@ -4876,6 +4900,11 @@ namespace NOWA
 			texDef->heightFactor = this->superSampling->getReal();
 			texDef->format = Ogre::PFG_RGBA16_FLOAT;
 			texDef->textureFlags = Ogre::TextureFlags::RenderToTexture | Ogre::TextureFlags::MsaaExplicitResolve;
+
+			if (this->msaaLevel > 1)
+			{
+				texDef->fsaa = Ogre::StringConverter::toString(this->msaaLevel);
+			}
 
 			rtv = compositorNodeDefinition->addRenderTextureView("rt1");
 			attachment.textureName = "rt1";

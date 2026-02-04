@@ -71,7 +71,7 @@ namespace NOWA
 		animationBlender(nullptr),
 		skeletonVisualizer(nullptr)
 	{
-		
+		this->animationName->addUserData(GameObject::AttrActionAutoComplete());
 	}
 
 	AnimationComponent::~AnimationComponent()

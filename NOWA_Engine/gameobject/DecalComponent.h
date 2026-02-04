@@ -21,6 +21,12 @@ namespace NOWA
 
 		virtual bool postInit(void) override;
 
+		virtual void onRemoveComponent(void) override;
+
+		virtual bool connect(void) override;
+
+		virtual bool disconnect(void) override;
+
 		virtual Ogre::String getClassName(void) const override;
 
 		virtual Ogre::String getParentClassName(void) const override;
@@ -40,7 +46,7 @@ namespace NOWA
 		/**
 		 * @see  GameObjectComponent::createStaticApiForLua
 		 */
-		static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObject, luabind::class_<GameObjectController>& gameObjectController) { }
+		static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObject, luabind::class_<GameObjectController>& gameObjectController);
 
 		/**
 		* @see	GameObjectComponent::getStaticInfoText
@@ -89,14 +95,15 @@ namespace NOWA
 		void setRectSize(const Ogre::Vector3& rectSizeAndDimensions);
 		
 		Ogre::Vector3 getRectSize(void) const;
+
 	public:
-		static const Ogre::String AttrDiffuseTextureName(void) { return "Diffuse Tex. Name:"; }
-		static const Ogre::String AttrNormalTextureName(void) { return "Normal Tex. Name:"; }
-		static const Ogre::String AttrEmissiveTextureName(void) { return "Emissive Tex. Name:"; }
-		static const Ogre::String AttrIgnoreAlpha(void) { return "Ignore Alpha:"; }
-		static const Ogre::String AttrMetalness(void) { return "Metalness:"; }
-		static const Ogre::String AttrRoughness(void) { return "Roughness:"; }
-		static const Ogre::String AttrRectSize(void) { return "Rect size x, y, depth:"; }
+		static const Ogre::String AttrDiffuseTextureName(void) { return "Diffuse Tex. Name"; }
+		static const Ogre::String AttrNormalTextureName(void) { return "Normal Tex. Name"; }
+		static const Ogre::String AttrEmissiveTextureName(void) { return "Emissive Tex. Name"; }
+		static const Ogre::String AttrIgnoreAlpha(void) { return "Ignore Alpha"; }
+		static const Ogre::String AttrMetalness(void) { return "Metalness"; }
+		static const Ogre::String AttrRoughness(void) { return "Roughness"; }
+		static const Ogre::String AttrRectSize(void) { return "Rect size x, y, depth"; }
 	private:
 		void createDecal(void);
 	private:

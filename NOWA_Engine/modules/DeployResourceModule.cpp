@@ -513,6 +513,9 @@ namespace NOWA
 			configFile << "[Unlit]\n";
 			configFile << "FileSystem=../../media/unlit\n\n";
 
+			configFile << "[IES]\n";
+			configFile << "FileSystem=../../media/NOWA/Scripts/IesProfiles\n";
+
 			configFile << "# Do not load this as a resource. It's here merely to tell the code where\n";
 			configFile << "# the Hlms templates are located\n";
 			configFile << "[Hlms]\n";

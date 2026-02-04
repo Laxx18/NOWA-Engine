@@ -22,7 +22,7 @@ namespace NOWA
 		rakNetModule(nullptr),
 		miniMapModule(nullptr),
 		ogreNewtModule(nullptr),
-		meshDecalGeneratorModule(nullptr),
+		decalsModule(nullptr),
 		cameraManager(nullptr),
 		ogreRecastModule(nullptr),
 		particleFxModule(nullptr),
@@ -247,7 +247,7 @@ namespace NOWA
 				this->rakNetModule = new RakNetModule(this->appStateName);
 				this->miniMapModule = new MiniMapModule(this->appStateName);
 				this->ogreNewtModule = new OgreNewtModule(this->appStateName);
-				this->meshDecalGeneratorModule = new MeshDecalGeneratorModule(this->appStateName);
+				this->decalsModule = new DecalsModule(this->appStateName);
 				this->cameraManager = new CameraManager(this->appStateName);
 				this->ogreRecastModule = new OgreRecastModule(this->appStateName);
 				this->particleFxModule = new ParticleFxModule(this->appStateName);
@@ -432,8 +432,8 @@ namespace NOWA
 			delete this->miniMapModule;
 			this->miniMapModule = nullptr;
 
-			delete this->meshDecalGeneratorModule;
-			this->meshDecalGeneratorModule = nullptr;
+			delete this->decalsModule;
+			this->decalsModule = nullptr;
 
 			// Destroy all scripts for just this AppState
 			this->luaScriptModule->destroyContent();

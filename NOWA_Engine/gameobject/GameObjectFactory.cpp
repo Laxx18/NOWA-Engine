@@ -68,7 +68,6 @@
 #include "LuaScriptComponent.h"
 #include "OceanComponent.h"
 #include "TerraComponent.h"
-#include "MeshDecalComponent.h"
 #include "DecalComponent.h"
 #include "PlanarReflectionComponent.h"
 #include "MoveMathFunctionComponent.h"
@@ -152,7 +151,6 @@ namespace NOWA
 		this->componentFactory.registerClass<LuaScriptComponent>(LuaScriptComponent::getStaticClassId(), LuaScriptComponent::getStaticClassName());
 		this->componentFactory.registerClass<OceanComponent>(OceanComponent::getStaticClassId(), OceanComponent::getStaticClassName());
 		this->componentFactory.registerClass<TerraComponent>(TerraComponent::getStaticClassId(), TerraComponent::getStaticClassName());
-		this->componentFactory.registerClass<MeshDecalComponent>(MeshDecalComponent::getStaticClassId(), MeshDecalComponent::getStaticClassName());
 		this->componentFactory.registerClass<DecalComponent>(DecalComponent::getStaticClassId(), DecalComponent::getStaticClassName());
 		this->componentFactory.registerClass<PlanarReflectionComponent>(PlanarReflectionComponent::getStaticClassId(), PlanarReflectionComponent::getStaticClassName());
 		this->componentFactory.registerClass<MoveMathFunctionComponent>(MoveMathFunctionComponent::getStaticClassId(), MoveMathFunctionComponent::getStaticClassName());

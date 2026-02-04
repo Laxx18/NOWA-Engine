@@ -1069,38 +1069,16 @@ namespace Ogre
     {
         _loadInternal(nullptr, nullptr, center, dimensions, "", "", height, imageWidth, imageHeight, bMinimizeMemoryConsumption, bLowResShadow);
     }
-
     //-----------------------------------------------------------------------------------
-    void Terra::setBasePixelDimension(uint32 basePixelDimension)
-    {
-        m_basePixelDimension = basePixelDimension;
-        if (!m_heightMap.empty() && !m_terrainCells->empty())
-        {
-            HlmsDatablock* datablock = m_terrainCells[0].back().getDatablock();
-
-            calculateOptimumSkirtSize();
-            createTerrainCells();
-
-            if (datablock)
-            {
-                for (size_t i = 0u; i < 2u; ++i)
-                {
-                    for (TerrainCell& terrainCell : m_terrainCells[i])
-                        terrainCell.setDatablock(datablock);
-                }
-            }
-        }
-    }
-
-    void Terra::_loadInternal(Image2* heightMapImage, Image2* blendWeightImage, Vector3& center, Vector3& dimensions, 
+    void Terra::_loadInternal(Image2* heightMapImage, Image2* blendWeightImage, Vector3& center, Vector3& dimensions,
         const String& heightMapImageName, const String& blendWeightImageName, float height, Ogre::uint16 imageWidth, Ogre::uint16 imageHeight, bool bMinimizeMemoryConsumption, bool bLowResShadow)
     {
         // Use sign-preserving because origin in XZ plane is always from
         // bottom-left to top-right.
         // If we use toYUp, we'll start from top-right and go up and right
-        m_terrainOrigin = toYUpSignPreserving( center - dimensions * 0.5f );
-        center = toYUp( center );
-        dimensions = toYUpSignPreserving( dimensions );
+        m_terrainOrigin = toYUpSignPreserving(center - dimensions * 0.5f);
+        center = toYUp(center);
+        dimensions = toYUpSignPreserving(dimensions);
         m_dimension = dimensions;
 
         m_xzDimensions = Vector2(dimensions.x, dimensions.z);
@@ -1132,15 +1110,15 @@ namespace Ogre
             //Find out how many TerrainCells we need. I think this might be
             //solved analitically with a power series. But my math is rusty.
             const uint32 basePixelDimension = m_basePixelDimension;
-            const uint32 vertPixelDimension = static_cast<uint32>( m_basePixelDimension *
-                                                                   m_depthWidthRatio );
-            const uint32 maxPixelDimension = std::max( basePixelDimension, vertPixelDimension );
-            const uint32 maxRes = std::max( m_width, m_depth );
+            const uint32 vertPixelDimension = static_cast<uint32>(m_basePixelDimension *
+                m_depthWidthRatio);
+            const uint32 maxPixelDimension = std::max(basePixelDimension, vertPixelDimension);
+            const uint32 maxRes = std::max(m_width, m_depth);
 
             uint32 numCells = 16u; //4x4
             uint32 accumDim = 0u;
             uint32 iteration = 1u;
-            while( accumDim < maxRes )
+            while (accumDim < maxRes)
             {
                 numCells += 12u; //4x4 - 2x2
                 accumDim += maxPixelDimension * (1u << iteration);
@@ -1152,30 +1130,51 @@ namespace Ogre
             ++iteration;
 
 
-            for( size_t i = 0u; i < 2u; ++i )
+            for (size_t i = 0u; i < 2u; ++i)
             {
                 m_terrainCells[i].clear();
-                m_terrainCells[i].resize( numCells, TerrainCell( this ) );
+                m_terrainCells[i].resize(numCells, TerrainCell(this));
             }
         }
 
-        VaoManager *vaoManager = mManager->getDestinationRenderSystem()->getVaoManager();
+        VaoManager* vaoManager = mManager->getDestinationRenderSystem()->getVaoManager();
 
-        for( size_t i = 0u; i < 2u; ++i )
+        for (size_t i = 0u; i < 2u; ++i)
         {
             std::vector<TerrainCell>::iterator itor = m_terrainCells[i].begin();
             std::vector<TerrainCell>::iterator endt = m_terrainCells[i].end();
 
             const std::vector<TerrainCell>::iterator begin = itor;
 
-            while( itor != endt )
+            while (itor != endt)
             {
-                itor->initialize( vaoManager, ( itor - begin ) >= 16u );
+                itor->initialize(vaoManager, (itor - begin) >= 16u);
                 ++itor;
             }
         }
 
         createTerrainCells();
+    }
+    //-----------------------------------------------------------------------------------
+    void Terra::setBasePixelDimension(uint32 basePixelDimension)
+    {
+        m_basePixelDimension = basePixelDimension;
+        if (!m_heightMap.empty() && !m_terrainCells->empty())
+        {
+            HlmsDatablock* datablock = m_terrainCells[0].back().getDatablock();
+
+            calculateOptimumSkirtSize();
+            createTerrainCells();
+
+            if (datablock)
+            {
+                for (size_t i = 0u; i < 2u; ++i)
+                {
+                    for (TerrainCell& terrainCell : m_terrainCells[i])
+                        terrainCell.setDatablock(datablock);
+                }
+            }
+        }
     }
     //-----------------------------------------------------------------------------------
     bool Terra::getHeightAt( Vector3 &vPosArg ) const

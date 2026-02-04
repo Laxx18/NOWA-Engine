@@ -13,7 +13,7 @@
 #include "modules/RakNetModule.h"
 #include "modules/OgreNewtModule.h"
 #include "modules/MiniMapModule.h"
-#include "modules/MeshDecalGeneratorModule.h"
+#include "modules/DecalsModule.h"
 #include "modules/GameProgressModule.h"
 #include "modules/ParticleFxModule.h"
 #include "modules/LuaScriptModule.h"
@@ -224,7 +224,7 @@ namespace NOWA
 		RakNetModule* rakNetModule;
 		MiniMapModule* miniMapModule;
 		OgreNewtModule* ogreNewtModule;
-		MeshDecalGeneratorModule* meshDecalGeneratorModule;
+		DecalsModule* decalsModule;
 		CameraManager* cameraManager;
 		OgreRecastModule* ogreRecastModule;
 		ParticleFxModule* particleFxModule;

@@ -125,6 +125,11 @@ namespace NOWA
 		 */
 		bool getIsContinued(void) const;
 	public:
+		/**
+		 * @brief		Gets the singleton instance of OgreALModule.
+		 * @return		instance The singleton instance
+		 * @note		OgreALModule is not part of the AppStateManager for a given AppState. Because imagine: You play a menu music. Then the user switches to a configuration AppState, then the music would stop.
+		 */
 		static OgreALModule* getInstance();
 	private:
 		OgreALModule();

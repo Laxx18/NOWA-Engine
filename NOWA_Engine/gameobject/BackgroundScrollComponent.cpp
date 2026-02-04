@@ -183,7 +183,7 @@ namespace NOWA
 
 		ENQUEUE_RENDER_COMMAND("BackgroundScrollComponent::disconnect",
 		{
-			for (size_t i = 0; i < 9; i++)
+			for (unsigned short i = 0; i < 9; i++)
 			{
 				// Set uv back to zero
 				if (i == this->gameObjectPtr->getOccurrenceIndexFromComponent(this))
@@ -285,7 +285,7 @@ namespace NOWA
 			}
 
 			// Update the workspace background component with current scroll values
-			for (size_t i = 0; i < 9; ++i)
+			for (unsigned short i = 0; i < 9; ++i)
 			{
 				if (i == this->gameObjectPtr->getOccurrenceIndexFromComponent(this))
 				{
@@ -515,7 +515,7 @@ namespace NOWA
 		{
 			ENQUEUE_RENDER_COMMAND_MULTI("BackgroundScrollComponent::setBackgroundName", _1(backgroundName),
 			{
-				for (size_t i = 0; i < 9; i++)
+				for (unsigned short i = 0; i < 9; i++)
 				{
 					if (i == this->gameObjectPtr->getOccurrenceIndexFromComponent(this))
 					{

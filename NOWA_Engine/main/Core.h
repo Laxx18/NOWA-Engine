@@ -448,7 +448,25 @@ namespace NOWA
 
 		Ogre::String getApplicationFilePathName(void);
 
-	
+		// --- Paths ---
+		bool isAbsolutePath(const Ogre::String& path);
+		Ogre::String joinPath(const Ogre::String& a, const Ogre::String& b);
+		Ogre::String normalizeSlashesForward(const Ogre::String& p);
+
+		// Directory of the module (.dll/.so) that contains the given address
+		Ogre::String getModuleDirectoryFromAddress(const void* address);
+
+		// Resolve a tool path relative to the module directory
+		// Example:
+		//   module dir = .../bin/Release/plugins
+		//   relativeToolPath = "NOWAAssistantComponent/tools/ask_once.py"
+		//   -> .../bin/Release/plugins/NOWAAssistantComponent/tools/ask_once.py
+		Ogre::String resolveToolPathFromModule(const void* address, const Ogre::String& relativeToolPath);
+
+		// --- Exec / pipes ---
+		// Captures stdout (+stderr) of commandLine. Returns true if pipe opened.
+		// exitCode is the return code from the process (or -1 on failure).
+		bool execAndCaptureStdout(const Ogre::String& commandLine, Ogre::String& outStdout, int& exitCode, bool captureStderr = true);
 
 		/**
 		 * @brief		Gets the resources file path name. E.g. 'C:\users\***\Documents\NOWA - Engine\bin\resources'

@@ -11,19 +11,17 @@ namespace NOWA
 	class TerraComponent;
 
 	/**
-	  * @brief		Procedural Terrain Creation component for generating heightmaps for Terra.
+	  * @brief		Advanced Procedural Terrain Creation component for generating heightmaps for Terra.
 	  *				This component generates procedural terrain using multi-octave Perlin noise
-	  *				with optional roads, hills, valleys, and other features.
-	  *
-	  *				Usage: Add this component to a GameObject that has a Terra terrain.
-	  *				Configure the parameters and set Activated to true to generate the terrain.
-	  *				Each time parameters change or Activated is toggled, the terrain regenerates.
+	  *				combined with sophisticated algorithms for roads, rivers, canyons, and more.
 	  *
 	  *				Features:
 	  *				- Multi-octave Perlin noise for natural-looking terrain
-	  *				- Configurable roads with smooth integration into terrain
-	  *				- Adjustable hills, valleys, and base height
-	  *				- Road paths that follow terrain elevation
+	  *				- Configurable roads with smooth integration
+	  *				- Hydraulic erosion-based river generation
+	  *				- Canyon formation using targeted erosion
+	  *				- Island generation with radial masking
+	  *				- Particle-based erosion simulation
 	  *				- Full parameter control via Variants
 	  */
 	class EXPORTED ProceduralTerrainCreationComponent : public GameObjectComponent, public Ogre::Plugin
@@ -121,221 +119,115 @@ namespace NOWA
 		*/
 		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
-		/**
-		 * @brief Sets whether the component is activated and should generate terrain.
-		 * @param[in] activated Whether to activate and generate terrain
-		 */
+		// Basic terrain parameters
 		void setActivated(bool activated);
-
-		/**
-		 * @brief Gets whether the component is activated.
-		 * @return True if activated
-		 */
 		bool isActivated(void) const;
-
-		/**
-		 * @brief Sets the terrain resolution (width and height in pixels).
-		 * @param[in] resolution Resolution (e.g., 512, 1024, 2048)
-		 */
 		void setResolution(Ogre::uint32 resolution);
-
-		/**
-		 * @brief Gets the terrain resolution.
-		 * @return Resolution value
-		 */
 		Ogre::uint32 getResolution(void) const;
-
-		/**
-		 * @brief Sets the base height of the terrain (minimum elevation).
-		 * @param[in] baseHeight Base height in world units
-		 */
 		void setBaseHeight(Ogre::Real baseHeight);
-
-		/**
-		 * @brief Gets the base height.
-		 * @return Base height
-		 */
 		Ogre::Real getBaseHeight(void) const;
-
-		/**
-		 * @brief Sets the hill amplitude (max height variation from base).
-		 * @param[in] hillAmplitude Amplitude in world units
-		 */
 		void setHillAmplitude(Ogre::Real hillAmplitude);
-
-		/**
-		 * @brief Gets the hill amplitude.
-		 * @return Hill amplitude
-		 */
 		Ogre::Real getHillAmplitude(void) const;
-
-		/**
-		 * @brief Sets the hill frequency (controls terrain feature size).
-		 *        Lower values = larger features, higher values = smaller features.
-		 * @param[in] hillFrequency Frequency value (typically 0.001 to 0.1)
-		 */
 		void setHillFrequency(Ogre::Real hillFrequency);
-
-		/**
-		 * @brief Gets the hill frequency.
-		 * @return Hill frequency
-		 */
 		Ogre::Real getHillFrequency(void) const;
-
-		/**
-		 * @brief Sets the number of noise octaves (detail layers).
-		 *        More octaves = more detail but slower generation.
-		 * @param[in] octaves Number of octaves (1-8 recommended)
-		 */
 		void setOctaves(Ogre::uint32 octaves);
-
-		/**
-		 * @brief Gets the number of octaves.
-		 * @return Octave count
-		 */
 		Ogre::uint32 getOctaves(void) const;
-
-		/**
-		 * @brief Sets the persistence (amplitude decrease per octave).
-		 *        Lower values = smoother terrain, higher values = rougher terrain.
-		 * @param[in] persistence Persistence value (typically 0.3 to 0.7)
-		 */
 		void setPersistence(Ogre::Real persistence);
-
-		/**
-		 * @brief Gets the persistence.
-		 * @return Persistence value
-		 */
 		Ogre::Real getPersistence(void) const;
-
-		/**
-		 * @brief Sets the lacunarity (frequency multiplier per octave).
-		 *        Higher values = more variation in detail.
-		 * @param[in] lacunarity Lacunarity value (typically 2.0)
-		 */
 		void setLacunarity(Ogre::Real lacunarity);
-
-		/**
-		 * @brief Gets the lacunarity.
-		 * @return Lacunarity value
-		 */
 		Ogre::Real getLacunarity(void) const;
-
-		/**
-		 * @brief Sets the random seed for terrain generation.
-		 *        Different seeds produce different terrain.
-		 * @param[in] seed Seed value
-		 */
 		void setSeed(Ogre::uint32 seed);
-
-		/**
-		 * @brief Gets the seed.
-		 * @return Seed value
-		 */
 		Ogre::uint32 getSeed(void) const;
 
-		/**
-		 * @brief Sets whether to enable procedural roads.
-		 * @param[in] enableRoads True to generate roads
-		 */
+		// Road parameters
 		void setEnableRoads(bool enableRoads);
-
-		/**
-		 * @brief Gets whether roads are enabled.
-		 * @return True if roads enabled
-		 */
 		bool getEnableRoads(void) const;
-
-		/**
-		 * @brief Sets the number of roads to generate.
-		 * @param[in] roadCount Number of roads (1-10)
-		 */
 		void setRoadCount(Ogre::uint32 roadCount);
-
-		/**
-		 * @brief Gets the road count.
-		 * @return Number of roads
-		 */
 		Ogre::uint32 getRoadCount(void) const;
-
-		/**
-		 * @brief Sets the road width.
-		 * @param[in] roadWidth Width in world units
-		 */
 		void setRoadWidth(Ogre::Real roadWidth);
-
-		/**
-		 * @brief Gets the road width.
-		 * @return Road width
-		 */
 		Ogre::Real getRoadWidth(void) const;
-
-		/**
-		 * @brief Sets how deep roads cut into terrain.
-		 * @param[in] roadDepth Depth in world units
-		 */
 		void setRoadDepth(Ogre::Real roadDepth);
-
-		/**
-		 * @brief Gets the road depth.
-		 * @return Road depth
-		 */
 		Ogre::Real getRoadDepth(void) const;
-
-		/**
-		 * @brief Sets road smoothness multiplier (how smoothly roads blend into terrain).
-		 * @param[in] roadSmoothness Smoothness multiplier (1.0-10.0)
-		 */
 		void setRoadSmoothness(Ogre::Real roadSmoothness);
-
-		/**
-		 * @brief Gets the road smoothness.
-		 * @return Road smoothness
-		 */
 		Ogre::Real getRoadSmoothness(void) const;
-
-		/**
-		 * @brief Sets how curvy the roads are (0 = straight, 1 = very curvy).
-		 * @param[in] roadCurviness Curviness factor (0.0-1.0)
-		 */
 		void setRoadCurviness(Ogre::Real roadCurviness);
-
-		/**
-		 * @brief Gets the road curviness.
-		 * @return Road curviness
-		 */
 		Ogre::Real getRoadCurviness(void) const;
+		void setRoadsClosed(bool roadsClosed);
+		bool getRoadsClosed(void) const;
 
-		/**
-		 * @brief Manually triggers terrain generation.
-		 */
+		// River parameters
+		void setEnableRivers(bool enableRivers);
+		bool getEnableRivers(void) const;
+		void setRiverCount(Ogre::uint32 riverCount);
+		Ogre::uint32 getRiverCount(void) const;
+		void setRiverWidth(Ogre::Real riverWidth);
+		Ogre::Real getRiverWidth(void) const;
+		void setRiverDepth(Ogre::Real riverDepth);
+		Ogre::Real getRiverDepth(void) const;
+		void setRiverMeandering(Ogre::Real riverMeandering);
+		Ogre::Real getRiverMeandering(void) const;
+
+		// Canyon parameters
+		void setEnableCanyons(bool enableCanyons);
+		bool getEnableCanyons(void) const;
+		void setCanyonCount(Ogre::uint32 canyonCount);
+		Ogre::uint32 getCanyonCount(void) const;
+		void setCanyonWidth(Ogre::Real canyonWidth);
+		Ogre::Real getCanyonWidth(void) const;
+		void setCanyonDepth(Ogre::Real canyonDepth);
+		Ogre::Real getCanyonDepth(void) const;
+		void setCanyonSteepness(Ogre::Real canyonSteepness);
+		Ogre::Real getCanyonSteepness(void) const;
+
+		// Island parameters
+		void setEnableIsland(bool enableIsland);
+		bool getEnableIsland(void) const;
+		void setIslandFalloff(Ogre::Real islandFalloff);
+		Ogre::Real getIslandFalloff(void) const;
+		void setIslandSize(Ogre::Real islandSize);
+		Ogre::Real getIslandSize(void) const;
+
+		// Erosion parameters
+		void setEnableErosion(bool enableErosion);
+		bool getEnableErosion(void) const;
+		void setErosionIterations(Ogre::uint32 erosionIterations);
+		Ogre::uint32 getErosionIterations(void) const;
+		void setErosionStrength(Ogre::Real erosionStrength);
+		Ogre::Real getErosionStrength(void) const;
+		void setSedimentCapacity(Ogre::Real sedimentCapacity);
+		Ogre::Real getSedimentCapacity(void) const;
+
+		// Advanced river parameters
+		void setRiverFlowThreshold(Ogre::Real riverFlowThreshold);
+		Ogre::Real getRiverFlowThreshold(void) const;
+		void setRiverWidthScale(Ogre::Real riverWidthScale);
+		Ogre::Real getRiverWidthScale(void) const;
+		void setRiverErosionFactor(Ogre::Real riverErosionFactor);
+		Ogre::Real getRiverErosionFactor(void) const;
+		void setMaxRiverDepth(Ogre::Real maxRiverDepth);
+		Ogre::Real getMaxRiverDepth(void) const;
+
+		// Advanced canyon parameters
+		void setCanyonMinWidth(Ogre::Real canyonMinWidth);
+		Ogre::Real getCanyonMinWidth(void) const;
+		void setCanyonMaxWidth(Ogre::Real canyonMaxWidth);
+		Ogre::Real getCanyonMaxWidth(void) const;
+
 		void generateTerrain(void);
 
 	public:
-		/**
-		* @see		GameObjectComponent::getStaticClassId
-		*/
 		static unsigned int getStaticClassId(void)
 		{
 			return NOWA::getIdFromName("ProceduralTerrainCreationComponent");
 		}
 
-		/**
-		* @see		GameObjectComponent::getStaticClassName
-		*/
 		static Ogre::String getStaticClassName(void)
 		{
 			return "ProceduralTerrainCreationComponent";
 		}
 
-		/**
-		* @see		GameObjectComponent::canStaticAddComponent
-		*/
 		static bool canStaticAddComponent(GameObject* gameObject);
 
-		/**
-		 * @see	GameObjectComponent::getStaticInfoText
-		 */
 		static Ogre::String getStaticInfoText(void)
 		{
 			return "Usage: Generates procedural heightmap terrain for Terra using multi-octave Perlin noise.\n\n"
@@ -343,16 +235,17 @@ namespace NOWA
 				"Features:\n"
 				"- Natural-looking hills and valleys\n"
 				"- Procedural roads that follow terrain elevation\n"
-				"- Fully configurable parameters\n"
-				"- Real-time regeneration when parameters change\n\n"
+				"- Drainage-based river networks\n"
+				"- Canyon formation\n"
+				"- Island generation\n"
+				"- Hydraulic erosion simulation\n"
+				"- Fully configurable parameters\n\n"
 
 				"Basic Parameters:\n"
 				"- Resolution: Heightmap size (512, 1024, 2048, etc.)\n"
 				"- Base Height: Minimum terrain elevation\n"
 				"- Hill Amplitude: Maximum height variation\n"
-				"- Hill Frequency: Size of terrain features (lower = larger)\n\n"
-
-				"Advanced Parameters:\n"
+				"- Hill Frequency: Size of terrain features (lower = larger)\n"
 				"- Octaves: Detail layers (more = more detail)\n"
 				"- Persistence: Roughness (0.3-0.7 typical)\n"
 				"- Lacunarity: Detail variation (2.0 typical)\n"
@@ -364,22 +257,46 @@ namespace NOWA
 				"- Road Width: Width of roads\n"
 				"- Road Depth: How deep roads cut into terrain\n"
 				"- Road Smoothness: Blend factor (higher = smoother)\n"
-				"- Road Curviness: How curvy roads are (0-1)\n\n"
+				"- Road Curviness: How curvy roads are (0-1)\n"
+				"- Roads Closed: Whether roads form loops\n\n"
+
+				"River Parameters:\n"
+				"- Enable Rivers: Turn river generation on/off\n"
+				"- River Count: Number of major rivers\n"
+				"- River Width: Width of rivers\n"
+				"- River Depth: How deep rivers carve\n"
+				"- River Meandering: Natural meandering amount\n\n"
+
+				"Canyon Parameters:\n"
+				"- Enable Canyons: Turn canyon generation on/off\n"
+				"- Canyon Count: Number of canyons\n"
+				"- Canyon Width: Width at the top\n"
+				"- Canyon Depth: How deep canyons go\n"
+				"- Canyon Steepness: Wall steepness\n\n"
+
+				"Island Parameters:\n"
+				"- Enable Island: Create ocean-surrounded terrain\n"
+				"- Island Falloff: Edge drop-off steepness\n"
+				"- Island Size: Relative island size (0-1)\n\n"
+
+				"Erosion Parameters:\n"
+				"- Enable Erosion: Apply hydraulic erosion\n"
+				"- Erosion Iterations: Number of simulation steps\n"
+				"- Erosion Strength: How aggressive erosion is\n"
+				"- Sediment Capacity: Sediment carrying capacity\n\n"
 
 				"Tips:\n"
 				"- Start with defaults and adjust gradually\n"
 				"- Higher resolution = slower generation but more detail\n"
 				"- Toggle Activated to regenerate terrain\n"
-				"- Roads automatically follow terrain elevation\n"
+				"- Features work best when combined\n"
 				"- Use different seeds for different terrain layouts";
 		}
 
-		/**
-		 * @see	GameObjectComponent::createStaticApiForLua
-		 */
 		static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass);
 
 	public:
+		// Attribute names
 		static const Ogre::String AttrActivated(void)
 		{
 			return "Activated";
@@ -416,6 +333,7 @@ namespace NOWA
 		{
 			return "Seed";
 		}
+
 		static const Ogre::String AttrEnableRoads(void)
 		{
 			return "Enable Roads";
@@ -440,9 +358,114 @@ namespace NOWA
 		{
 			return "Road Curviness";
 		}
+		static const Ogre::String AttrRoadsClosed(void)
+		{
+			return "Roads Closed";
+		}
 
+		static const Ogre::String AttrEnableRivers(void)
+		{
+			return "Enable Rivers";
+		}
+		static const Ogre::String AttrRiverCount(void)
+		{
+			return "River Count";
+		}
+		static const Ogre::String AttrRiverWidth(void)
+		{
+			return "River Width";
+		}
+		static const Ogre::String AttrRiverDepth(void)
+		{
+			return "River Depth";
+		}
+		static const Ogre::String AttrRiverMeandering(void)
+		{
+			return "River Meandering";
+		}
+
+		static const Ogre::String AttrEnableCanyons(void)
+		{
+			return "Enable Canyons";
+		}
+		static const Ogre::String AttrCanyonCount(void)
+		{
+			return "Canyon Count";
+		}
+		static const Ogre::String AttrCanyonWidth(void)
+		{
+			return "Canyon Width";
+		}
+		static const Ogre::String AttrCanyonDepth(void)
+		{
+			return "Canyon Depth";
+		}
+		static const Ogre::String AttrCanyonSteepness(void)
+		{
+			return "Canyon Steepness";
+		}
+
+		static const Ogre::String AttrEnableIsland(void)
+		{
+			return "Enable Island";
+		}
+		static const Ogre::String AttrIslandFalloff(void)
+		{
+			return "Island Falloff";
+		}
+		static const Ogre::String AttrIslandSize(void)
+		{
+			return "Island Size";
+		}
+
+		static const Ogre::String AttrEnableErosion(void)
+		{
+			return "Enable Erosion";
+		}
+		static const Ogre::String AttrErosionIterations(void)
+		{
+			return "Erosion Iterations";
+		}
+		static const Ogre::String AttrErosionStrength(void)
+		{
+			return "Erosion Strength";
+		}
+		static const Ogre::String AttrSedimentCapacity(void)
+		{
+			return "Sediment Capacity";
+		}
+
+		static const Ogre::String AttrRiverFlowThreshold(void)
+		{
+			return "River Flow Threshold";
+		}
+
+		static const Ogre::String AttrRiverWidthScale(void)
+		{
+			return "River Width Scale";
+		}
+
+		static const Ogre::String AttrRiverErosionFactor(void)
+		{
+			return "River Erosion Factor";
+		}
+
+		static const Ogre::String AttrMaxRiverDepth(void)
+		{
+			return "Max River Depth";
+		}
+		
+		static const Ogre::String AttrCanyonMinWidth(void)
+		{
+			return "Canyon Min Width";
+		}
+
+		static const Ogre::String AttrCanyonMaxWidth(void)
+		{
+			return "Canyon Max Width";
+		}
 	private:
-		// Perlin noise generation helpers
+		// Perlin noise generation helpers (PRESERVED FROM ORIGINAL)
 		float fade(float t);
 		float lerp(float t, float a, float b);
 		float grad(int hash, float x, float y);
@@ -451,7 +474,7 @@ namespace NOWA
 		float interpolate(float a, float b, float x);
 		float perlinNoise(float x, float y);
 
-		// Road generation helpers
+		// Road generation helpers (PRESERVED FROM ORIGINAL)
 		struct RoadPoint
 		{
 			Ogre::Vector2 position;
@@ -461,11 +484,56 @@ namespace NOWA
 
 		std::vector<RoadPoint> generateRoadPath(const Ogre::Vector2& start, const Ogre::Vector2& end, int numSegments);
 		Ogre::Vector2 evaluateCatmullRom(const std::vector<Ogre::Vector2>& points, float t);
-		float applyRoadInfluence(float baseHeight, const Ogre::Vector2& position, const std::vector<std::vector<RoadPoint>>& roads);
+		void calculateRoadHeights(std::vector<std::vector<RoadPoint>>& roads, const std::vector<float>& baseTerrainHeights, Ogre::uint32 width, Ogre::uint32 height);
+		void smoothRoadHeights(std::vector<RoadPoint>& road);
+		float applyRoadCarving(float baseHeight, const Ogre::Vector2& position, const std::vector<std::vector<RoadPoint>>& roads, Ogre::uint32 width, Ogre::uint32 height);
+
+		// River generation helpers
+		struct DrainageNode
+		{
+			Ogre::Vector2 position;
+			float flow;
+			int downstreamIndex;
+			float elevation;
+		};
+
+		void generateTensorField(std::vector<Ogre::Vector2>& tensorField, Ogre::uint32 width, Ogre::uint32 height);
+		std::vector<ProceduralTerrainCreationComponent::DrainageNode> generateDrainageBasins(const std::vector<float>& heights, Ogre::uint32 width, Ogre::uint32 height);
+		void carveRivers(std::vector<float>& heights, const std::vector<DrainageNode>& nodes, Ogre::uint32 width, Ogre::uint32 height);
+
+		// Canyon generation helpers
+		struct CanyonPath
+		{
+			std::vector<Ogre::Vector2> points;
+			std::vector<float> widths;
+			std::vector<float> depths;
+		};
+
+		void generateCanyons(std::vector<CanyonPath>& canyons, Ogre::uint32 width, Ogre::uint32 height);
+		void applyCanyonsToTerrain(std::vector<float>& heights, const std::vector<CanyonPath>& canyons, Ogre::uint32 width, Ogre::uint32 height);
+
+		// Island generation
+		void applyIslandMask(std::vector<float>& heights, Ogre::uint32 width, Ogre::uint32 height);
+
+		// Hydraulic erosion (particle-based)
+		struct ErosionParticle
+		{
+			Ogre::Vector2 position;
+			Ogre::Vector2 velocity;
+			float sediment;
+			float water;
+		};
+
+		void simulateHydraulicErosion(std::vector<float>& heights, Ogre::uint32 width, Ogre::uint32 height);
+		void updateParticle(ErosionParticle& particle, std::vector<float>& heights, Ogre::uint32 width, Ogre::uint32 height);
+
+		// NEW: Utility functions
+		float getHeightBilinear(const std::vector<float>& heights, float x, float y, Ogre::uint32 width, Ogre::uint32 height);
+		Ogre::Vector2 getGradient(const std::vector<float>& heights, int x, int y, Ogre::uint32 width, Ogre::uint32 height);
+		float getDistanceToLine(const Ogre::Vector2& point, const Ogre::Vector2& lineStart, const Ogre::Vector2& lineEnd);
 
 		// Terrain generation
 		void generateProceduralTerrain(void);
-
 		Ogre::Terra* findTerraComponent(void);
 
 	private:
@@ -490,8 +558,45 @@ namespace NOWA
 		Variant* roadSmoothness;
 		Variant* roadCurviness;
 
-		// Runtime data
+		// Additional road parameter
+		Variant* roadsClosed;
+
+		// River parameters
+		Variant* enableRivers;
+		Variant* riverCount;
+		Variant* riverWidth;
+		Variant* riverDepth;
+		Variant* riverMeandering;
+
+		// Canyon parameters
+		Variant* enableCanyons;
+		Variant* canyonCount;
+		Variant* canyonWidth;
+		Variant* canyonDepth;
+		Variant* canyonSteepness;
+
+		// Island parameters
+		Variant* enableIsland;
+		Variant* islandFalloff;
+		Variant* islandSize;
+
+		// Erosion parameters
+		Variant* enableErosion;
+		Variant* erosionIterations;
+		Variant* erosionStrength;
+		Variant* sedimentCapacity;
+
+		Variant* riverFlowThreshold;
+		Variant* riverWidthScale;
+		Variant* riverErosionFactor;
+		Variant* maxRiverDepth;
+
+		Variant* canyonMinWidth;
+		Variant* canyonMaxWidth;
+
+		// Runtime data (PRESERVED FROM ORIGINAL)
 		bool terrainGenerated;
+		float cachedPixelsPerMeter;
 	};
 
 }; // namespace end

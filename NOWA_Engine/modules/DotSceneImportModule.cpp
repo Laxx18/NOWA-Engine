@@ -1268,14 +1268,18 @@ namespace NOWA
 		if (nullptr != pElement)
 			this->projectParameter.gravity = XMLConverter::parseVector3(pElement);
 
-		AppStateManager::getSingletonPtr()->getOgreNewtModule()->setGlobalGravity(this->projectParameter.gravity);
-		this->ogreNewt = AppStateManager::getSingletonPtr()->getOgreNewtModule()->createPhysics(AppStateManager::getSingletonPtr()->getCurrentAppStateName() + "_world",
-			this->projectParameter.solverModel, this->projectParameter.broadPhaseAlgorithm,
-			this->projectParameter.solverForSingleIsland, this->projectParameter.physicsThreadCount,
-			this->projectParameter.physicsUpdateRate, this->projectParameter.linearDamping, this->projectParameter.angularDamping);
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+		{
+			AppStateManager::getSingletonPtr()->getOgreNewtModule()->setGlobalGravity(this->projectParameter.gravity);
+			this->ogreNewt = AppStateManager::getSingletonPtr()->getOgreNewtModule()->createPhysics(AppStateManager::getSingletonPtr()->getCurrentAppStateName() + "_world",
+				this->projectParameter.solverModel, this->projectParameter.broadPhaseAlgorithm,
+				this->projectParameter.solverForSingleIsland, this->projectParameter.physicsThreadCount,
+				this->projectParameter.physicsUpdateRate, this->projectParameter.linearDamping, this->projectParameter.angularDamping);
+		};
+		NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DotSceneImportModule::processOgreNewt");
 	}
 
-	void NOWA::DotSceneImportModule::processOgreRecast(rapidxml::xml_node<>* xmlNode)
+	void DotSceneImportModule::processOgreRecast(rapidxml::xml_node<>* xmlNode)
 	{
 		if (nullptr != xmlNode)
 		{
