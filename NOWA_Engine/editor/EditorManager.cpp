@@ -482,7 +482,7 @@ namespace NOWA
 				Ogre::MovableObject* newMovableObject = nullptr;
 
 				if (GameObject::OCEAN != this->type && GameObject::TERRA != this->type && GameObject::DECAL != this->type
-					&& GameObject::LIGHT_AREA != this->type)
+					&& GameObject::LIGHT_AREA != this->type && GameObject::MAZE != this->type)
 				{
 					meshName = this->meshData[0];
 
@@ -530,6 +530,8 @@ namespace NOWA
 						meshName = "LightArea";
 					else if (GameObject::DECAL == this->type)
 						meshName = "Decal";
+					else if (GameObject::MAZE == this->type)
+						meshName = "Maze";
 				}
 
 				// Do not use # anymore, because its reserved in mygui as code-word the # and everything after that will be removed!
@@ -537,7 +539,7 @@ namespace NOWA
 				AppStateManager::getSingletonPtr()->getGameObjectController()->getValidatedGameObjectName(gameObjectName);
 
 				if (GameObject::OCEAN != this->type && GameObject::TERRA != this->type && GameObject::DECAL != this->type
-					&& GameObject::LIGHT_AREA != this->type)
+					&& GameObject::LIGHT_AREA != this->type && GameObject::MAZE != this->type)
 				{
 					newMovableObject->setName(gameObjectName);
 				}
@@ -644,6 +646,14 @@ namespace NOWA
 						NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, TerraComponent::getStaticClassName());
 						NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, DatablockTerraComponent::getStaticClassName());
 						gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
+					}
+					else if (GameObject::MAZE == this->type)
+					{
+						if (GameObjectFactory::getInstance()->getComponentFactory()->hasComponent("ProceduralMazeComponent"))
+						{
+							NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, "ProceduralMazeComponent");
+							gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
+						}
 					}
 				}
 			};
@@ -2785,18 +2795,13 @@ namespace NOWA
 		}
 		else if (GameObject::OCEAN == type)
 		{
-			//this->destroyTempPlaceMovableObjectNode();
-			//this->tempPlaceMovableNode = this->sceneManager->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_STATIC, Ogre::Vector3(0.0f, 0.0f, 0.0f));
-			//this->tempPlaceMovableNode->setName("TempPlaceEntityNode");
-			//std::vector<Ogre::String> meshData(1);
-			//meshData[0] = "";
-			//// Create GameObject etc. and push to undo stack
-			//this->sceneManipulationCommandModule.pushCommand(std::make_shared<AddGameObjectUndoCommand>(this->sceneManager, this->tempPlaceMovableNode, meshData, GameObject::OCEAN));
-			//// Change mode, because else, this will be always placed, because on mouse click additionally an object is placed when in place mode
-			//this->manipulationMode = EditorManager::EDITOR_SELECT_MODE;
 			this->attachMeshToPlaceNode("Node.mesh", type);
 		}
 		else if (GameObject::TERRA == type)
+		{
+			this->attachMeshToPlaceNode("Node.mesh", type);
+		}
+		else if (GameObject::MAZE == type)
 		{
 			this->attachMeshToPlaceNode("Node.mesh", type);
 		}

@@ -4011,7 +4011,7 @@ namespace NOWA
 			bool canBeV2Mesh = false;
 			if (serializerVersion == "1.100")
 			{
-				canBeV2Mesh = false;
+				canBeV2Mesh = true;
 			}
 			else if (serializerVersion == "1.8")
 			{
@@ -4044,6 +4044,15 @@ namespace NOWA
 			else if (serializerVersion == "2.1 R0 LEGACYV1")
 			{
 				canBeV2Mesh = true;
+			}
+			else if (serializerVersion == "2.1 R2")
+			{
+				canBeV2Mesh = true;
+			}
+			else
+			{
+				// Unknown version, assume v1 for safety
+				canBeV2Mesh = false;
 			}
 
 			// It must also be checked, if this kind of mesh shall be used. Because no ragdolling is possible, but pose weighting etc. is possible and its more efficient for rendering etc.

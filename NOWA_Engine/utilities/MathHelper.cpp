@@ -767,28 +767,6 @@ namespace NOWA
 		return std::move(value);
 	}
 
-	Ogre::Vector3 MathHelper::calculateGridTranslation(const Ogre::Vector3& gridFactor, const Ogre::Vector3& sourcePosition, Ogre::MovableObject* movableObject)
-	{
-		/*
-		The moveEntity method handles transforming the point from world space to local space and back, considering the entity's rotation.
-		The grid sizes for the x and z axes are used to align the entity to the grid correctly, even when it has different dimensions along these axes.
-		The entity's bounding box size is used to determine the grid sizes for snapping.
-		*/
-
-		// Transform the world point to the entity's local space
-		Ogre::Vector3 localPoint = movableObject->getParentNode()->_getDerivedOrientationUpdated().Inverse() * (sourcePosition - movableObject->getParentNode()->_getDerivedPositionUpdated());
-
-		// Round the local point to the nearest grid size, considering different sizes for x and z axes
-		localPoint.x = round(localPoint.x / gridFactor.x) * gridFactor.x;
-		localPoint.y = round(localPoint.y / gridFactor.y) * gridFactor.y;
-		localPoint.z = round(localPoint.z / gridFactor.z) * gridFactor.z;
-
-		// Transform back to world space
-		Ogre::Vector3 newPoint = movableObject->getParentNode()->_getDerivedOrientationUpdated() * localPoint + movableObject->getParentNode()->_getDerivedPositionUpdated();
-
-		return newPoint;
-	}
-
 	int MathHelper::wrappedModulo(int n, int cap)
 	{
 		if (n >= 0)
@@ -820,6 +798,24 @@ namespace NOWA
 		Ogre::Real value = Ogre::Math::ATan2(direction.z, direction.x).valueDegrees();
 
 		return std::fmod((round(value / (2.0f * Ogre::Math::PI / step)) + step), step);
+	}
+
+	Ogre::Vector3 MathHelper::calculateGridTranslation(const Ogre::Vector3& gridFactor, const Ogre::Vector3& targetWorldPosition, Ogre::MovableObject* movableObject)
+	{
+		Ogre::Vector3 newPos = targetWorldPosition;
+		Ogre::Vector3 localPoint = movableObject->getParentNode()->_getDerivedOrientationUpdated().Inverse() * (newPos - movableObject->getParentNode()->_getDerivedPositionUpdated());
+
+		// 1. Transform the world position to the object's local space (accounting for rotation)
+		// 2. Snap in local space(using the object's local dimensions)
+		// 3. Transform back to world space
+
+		// Round the local point to the nearest grid size, considering different sizes for x and z axes
+		localPoint.x = round(localPoint.x / gridFactor.x) * gridFactor.x;
+		localPoint.y = round(localPoint.y / gridFactor.y) * gridFactor.y;
+		localPoint.z = round(localPoint.z / gridFactor.z) * gridFactor.z;
+		newPos = movableObject->getParentNode()->_getDerivedOrientationUpdated() * localPoint + movableObject->getParentNode()->_getDerivedPositionUpdated();
+
+		return newPos;
 	}
 
 	Ogre::Vector3 MathHelper::getBottomCenterOfMesh(Ogre::SceneNode* sceneNode, Ogre::MovableObject* movableObject) const

@@ -19,7 +19,6 @@ namespace NOWA
 	ProceduralTerrainCreationComponent::ProceduralTerrainCreationComponent()
 		: GameObjectComponent(),
 		name("ProceduralTerrainCreationComponent"),
-		activated(new Variant(ProceduralTerrainCreationComponent::AttrActivated(), false, this->attributes)),
 		resolution(new Variant(ProceduralTerrainCreationComponent::AttrResolution(), static_cast<Ogre::uint32>(1024), this->attributes)),
 		// Base height: 0.5 = middle of terrain (Y=25m with your setup)
 		baseHeight(new Variant(ProceduralTerrainCreationComponent::AttrBaseHeight(), 0.5f, this->attributes)),
@@ -70,11 +69,10 @@ namespace NOWA
 		maxRiverDepth(new Variant(ProceduralTerrainCreationComponent::AttrMaxRiverDepth(), 10.0f, this->attributes)),
 		canyonMinWidth(new Variant(ProceduralTerrainCreationComponent::AttrCanyonMinWidth(), 5.0f, this->attributes)),
 		canyonMaxWidth(new Variant(ProceduralTerrainCreationComponent::AttrCanyonMaxWidth(), 20.0f, this->attributes)),
+		regenerate(new Variant(ProceduralTerrainCreationComponent::AttrRegenerate(), "Generate", this->attributes)),
 		terrainGenerated(false),
 		cachedPixelsPerMeter(0.0f)
 	{
-		this->activated->setDescription("Set to true to generate/regenerate the terrain. Automatically sets back to false after generation.");
-		this->activated->addUserData(NOWA::GameObject::AttrActionNeedRefresh());
 		this->resolution->setDescription("Heightmap resolution (width and height). Common values: 512, 1024, 2048.");
 		this->baseHeight->setDescription("Base terrain level [0-1]. 0.5 = center (Y=25m). Leave room above and below for hills/holes.");
 		this->hillAmplitude->setDescription("Hill height variation [0-1]. 0.1 = gentle 10% variation, 0.3 = moderate hills, 0.5 = dramatic mountains.");
@@ -145,6 +143,10 @@ namespace NOWA
 		this->erosionIterations->setConstraints(0u, 200000u);
 		this->erosionStrength->setConstraints(0.0f, 5.0f);
 		this->sedimentCapacity->setConstraints(0.0f, 50.0f);
+
+		this->regenerate->setDescription("Generate/regenerate the terrain.");
+		this->regenerate->addUserData(GameObject::AttrActionExec());
+		this->regenerate->addUserData(GameObject::AttrActionExecId(), "ProceduralTerrainCreationComponent.Regenerate");
 
 		/*
 		// Terrain
@@ -473,11 +475,7 @@ namespace NOWA
 	{
 		GameObjectComponent::actualizeValue(attribute);
 
-		if (ProceduralTerrainCreationComponent::AttrActivated() == attribute->getName())
-		{
-			this->setActivated(attribute->getBool());
-		}
-		else if (ProceduralTerrainCreationComponent::AttrResolution() == attribute->getName())
+		if (ProceduralTerrainCreationComponent::AttrResolution() == attribute->getName())
 		{
 			this->setResolution(attribute->getUInt());
 		}
@@ -789,6 +787,16 @@ namespace NOWA
 		138,236,205,93,222,114,67,29,24,72,243,141,128,195,78,66,215,61,156,180
 	};
 
+	bool ProceduralTerrainCreationComponent::executeAction(const Ogre::String& actionId, NOWA::Variant* attribute)
+	{
+		if ("ProceduralTerrainCreationComponent.Regenerate" == actionId)
+		{
+			this->generateProceduralTerrain();
+			return true;
+		}
+		return false;
+	}
+
 	float ProceduralTerrainCreationComponent::fade(float t)
 	{
 		// Improved fade function: 6t^5 - 15t^4 + 10t^3
@@ -1096,16 +1104,17 @@ namespace NOWA
 		if (roads.empty())
 			return baseHeight;
 
-		// CRITICAL: Convert road width from METERS to PIXELS
-		// Your terrain: 100m wide, 1024 pixels = 10.24 pixels per meter
-		// A 5m road = 51 pixels wide
-		float terrainWidthMeters = 100.0f;  // From your Terra dimensions
+		// Convert road width from METERS to PIXELS
+		float terrainWidthMeters = 100.0f;  // Your Terra X dimension
 		float pixelsPerMeter = static_cast<float>(width) / terrainWidthMeters;
 
-		float roadWidthMeters = this->roadWidth->getReal();      // e.g., 5 meters
-		float roadWidthPixels = roadWidthMeters * pixelsPerMeter; // e.g., 51 pixels
-		float roadDepthNormalized = this->roadDepth->getReal();   // How much to flatten (0.01-0.05 typical)
-		float smoothness = this->roadSmoothness->getReal();       // Blend zone multiplier
+		float roadWidthMeters = this->roadWidth->getReal();        // e.g., 5 meters
+		float roadWidthPixels = roadWidthMeters * pixelsPerMeter;  // e.g., ~51 pixels
+		float smoothness = this->roadSmoothness->getReal();        // Blend multiplier
+
+		// roadDepth is now in normalized height units [0-1]
+		// 0.05 = 5% of height range = noticeable cut
+		float roadDepthNorm = this->roadDepth->getReal();
 
 		// Find closest distance to any road segment
 		float minDistToRoad = std::numeric_limits<float>::max();
@@ -1119,42 +1128,42 @@ namespace NOWA
 				if (dist < minDistToRoad)
 				{
 					minDistToRoad = dist;
+					// Average height of the two road points
 					closestRoadHeight = (road[i - 1].targetHeight + road[i].targetHeight) * 0.5f;
 				}
 			}
 		}
 
 		// Define zones (in pixels)
-		float coreWidth = roadWidthPixels * 0.5f;           // Flat center of road
-		float blendWidth = roadWidthPixels * smoothness;    // Total influence zone
+		float halfWidth = roadWidthPixels * 0.5f;
+		float blendWidth = roadWidthPixels * smoothness;
 
 		if (minDistToRoad > blendWidth)
 		{
-			// Outside road influence - return original terrain
+			// Outside road influence
 			return baseHeight;
 		}
 
 		// Calculate blend factor
 		float influence = 0.0f;
-		if (minDistToRoad < coreWidth)
+		if (minDistToRoad < halfWidth)
 		{
-			// Core road area - full flattening
+			// Core road area - full effect
 			influence = 1.0f;
 		}
 		else
 		{
 			// Blend zone - smooth transition
-			float t = (minDistToRoad - coreWidth) / (blendWidth - coreWidth);
-			// Smoothstep for natural blending
-			influence = 1.0f - (t * t * (3.0f - 2.0f * t));
+			float t = (minDistToRoad - halfWidth) / (blendWidth - halfWidth);
+			influence = 1.0f - (t * t * (3.0f - 2.0f * t));  // Smoothstep
 		}
 
-		// CRITICAL: Flatten terrain to road height, don't replace entirely
-		// Road surface is slightly below the local terrain average
-		float roadSurface = closestRoadHeight - roadDepthNormalized;
+		// Road surface: flatten toward the road's local height, then cut down slightly
+		// This allows roads to follow terrain contours while being slightly depressed
+		float roadSurface = closestRoadHeight - roadDepthNorm;
 
-		// Blend: keep original terrain but pull it toward road surface
-		float result = baseHeight * (1.0f - influence) + roadSurface * influence;
+		// Blend between original terrain and road surface
+		float result = baseHeight + (roadSurface - baseHeight) * influence;
 
 		return result;
 	}
@@ -1784,206 +1793,185 @@ namespace NOWA
 			return;
 		}
 
-		NOWA::GraphicsModule::RenderCommand renderCommand = [this, terra]()
-		{
-			Ogre::uint32 width = this->resolution->getUInt(); // e.g., 1024 pixels
-			Ogre::uint32 height = this->resolution->getUInt(); 
+		Ogre::uint32 width = this->resolution->getUInt(); // e.g., 1024 pixels
+		Ogre::uint32 height = this->resolution->getUInt(); 
 
-			Ogre::Vector2 xzDimensions = terra->getXZDimensions(); // e.g., 100m x 100m
-			float terraHeightRange = terra->getHeight();
-			Ogre::Vector3 terraOrigin = terra->getTerrainOrigin();
+		Ogre::Vector2 xzDimensions = terra->getXZDimensions(); // e.g., 100m x 100m
+		float terraHeightRange = terra->getHeight();
+		Ogre::Vector3 terraOrigin = terra->getTerrainOrigin();
      
-			cachedPixelsPerMeter = static_cast<float>(width) / xzDimensions.x;  // e.g., 10.24 px/m
+		cachedPixelsPerMeter = static_cast<float>(width) / xzDimensions.x;  // e.g., 10.24 px/m
 
-			// Terra height range: terraOrigin.y to (terraOrigin.y + terraHeightRange)
-			// With your config: -25m to +75m
-			float terraMinHeight = terraOrigin.y;
-			float terraMaxHeight = terraOrigin.y + terraHeightRange;
+		// Terra height range: terraOrigin.y to (terraOrigin.y + terraHeightRange)
+		// With your config: -25m to +75m
+		float terraMinHeight = terraOrigin.y;
+		float terraMaxHeight = terraOrigin.y + terraHeightRange;
+
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
+			"[ProceduralTerrain] ========================================");
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
+			"[ProceduralTerrain] Resolution: " + Ogre::StringConverter::toString(width));
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
+			"[ProceduralTerrain] Terra XZ: " + Ogre::StringConverter::toString(xzDimensions.x) +
+			"m x " + Ogre::StringConverter::toString(xzDimensions.y) + "m");
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
+			"[ProceduralTerrain] Terra Height: " + Ogre::StringConverter::toString(terraMinHeight) +
+			"m to " + Ogre::StringConverter::toString(terraMaxHeight) + "m");
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
+			"[ProceduralTerrain] Pixels/meter: " +
+			Ogre::StringConverter::toString(width / xzDimensions.x));
+
+		// Generate base terrain
+		std::vector<float> heightData(width * height);
+
+		// Step 1: Generate raw Perlin noise (already outputs [0,1] with baseHeight/amplitude)
+		for (Ogre::uint32 y = 0; y < height; ++y)
+		{
+			for (Ogre::uint32 x = 0; x < width; ++x)
+			{
+				heightData[y * width + x] = perlinNoise(
+					static_cast<float>(x),
+					static_cast<float>(y));
+			}
+		}
+
+		// Step 2: Apply roads (modifies the noise, flattens locally)
+		std::vector<std::vector<RoadPoint>> roads;
+
+		if (this->enableRoads->getBool())
+		{
+			Ogre::uint32 numRoads = this->roadCount->getUInt();
+			float roadWidthMeters = this->roadWidth->getReal();
+			float pixelsPerMeter = width / xzDimensions.x;
 
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
-				"[ProceduralTerrain] ========================================");
+				"[ProceduralTerrain] Generating " + Ogre::StringConverter::toString(numRoads) + " road(s)");
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
-				"[ProceduralTerrain] Resolution: " + Ogre::StringConverter::toString(width));
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
-				"[ProceduralTerrain] Terra XZ: " + Ogre::StringConverter::toString(xzDimensions.x) +
-				"m x " + Ogre::StringConverter::toString(xzDimensions.y) + "m");
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
-				"[ProceduralTerrain] Terra Height: " + Ogre::StringConverter::toString(terraMinHeight) +
-				"m to " + Ogre::StringConverter::toString(terraMaxHeight) + "m");
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
-				"[ProceduralTerrain] Pixels/meter: " +
-				Ogre::StringConverter::toString(width / xzDimensions.x));
+				"[ProceduralTerrain] Road: " + Ogre::StringConverter::toString(roadWidthMeters) +
+				"m = " + Ogre::StringConverter::toString(roadWidthMeters * pixelsPerMeter) + " pixels");
 
-			// Generate base terrain
-			std::vector<float> heightData(width * height);
+			if (this->roadsClosed->getBool())
+			{
+				for (Ogre::uint32 i = 0; i < numRoads; ++i)
+				{
+					Ogre::Vector2 center(width * 0.5f, height * 0.5f);
+					float radius = std::min(width, height) * 0.25f;
 
-			// Step 1: Generate raw Perlin noise (already outputs [0,1] with baseHeight/amplitude)
+					Ogre::Vector2 start = center + Ogre::Vector2(radius, 0);
+					Ogre::Vector2 end = center + Ogre::Vector2(0, radius);
+
+					roads.push_back(generateRoadPath(start, end, 300));
+				}
+			}
+			else
+			{
+				std::mt19937 rng(this->seed->getUInt() + 999);
+				std::uniform_real_distribution<float> distX(width * 0.15f, width * 0.85f);
+				std::uniform_real_distribution<float> distY(height * 0.15f, height * 0.85f);
+
+				for (Ogre::uint32 i = 0; i < numRoads; ++i)
+				{
+					Ogre::Vector2 start(distX(rng), distY(rng));
+					Ogre::Vector2 end(distX(rng), distY(rng));
+					roads.push_back(generateRoadPath(start, end, 200));
+				}
+			}
+
+			calculateRoadHeights(roads, heightData, width, height);
+
+			// Carve roads
+			int affected = 0;
 			for (Ogre::uint32 y = 0; y < height; ++y)
 			{
 				for (Ogre::uint32 x = 0; x < width; ++x)
 				{
-					heightData[y * width + x] = perlinNoise(
-						static_cast<float>(x),
-						static_cast<float>(y));
+					int idx = y * width + x;
+					float orig = heightData[idx];
+
+					Ogre::Vector2 pos(static_cast<float>(x), static_cast<float>(y));
+					heightData[idx] = applyRoadCarving(orig, pos, roads, width, height);
+
+					if (std::abs(heightData[idx] - orig) > 0.1f)
+						affected++;
 				}
 			}
 
-			// Step 2: Apply roads (modifies the noise, flattens locally)
-			std::vector<std::vector<RoadPoint>> roads;
-
-			if (this->enableRoads->getBool())
-			{
-				Ogre::uint32 numRoads = this->roadCount->getUInt();
-				float roadWidthMeters = this->roadWidth->getReal();
-				float pixelsPerMeter = width / xzDimensions.x;
-
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
-					"[ProceduralTerrain] Generating " + Ogre::StringConverter::toString(numRoads) + " road(s)");
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
-					"[ProceduralTerrain] Road: " + Ogre::StringConverter::toString(roadWidthMeters) +
-					"m = " + Ogre::StringConverter::toString(roadWidthMeters * pixelsPerMeter) + " pixels");
-
-				if (this->roadsClosed->getBool())
-				{
-					for (Ogre::uint32 i = 0; i < numRoads; ++i)
-					{
-						Ogre::Vector2 center(width * 0.5f, height * 0.5f);
-						float radius = std::min(width, height) * 0.25f;
-
-						Ogre::Vector2 start = center + Ogre::Vector2(radius, 0);
-						Ogre::Vector2 end = center + Ogre::Vector2(0, radius);
-
-						roads.push_back(generateRoadPath(start, end, 300));
-					}
-				}
-				else
-				{
-					std::mt19937 rng(this->seed->getUInt() + 999);
-					std::uniform_real_distribution<float> distX(width * 0.15f, width * 0.85f);
-					std::uniform_real_distribution<float> distY(height * 0.15f, height * 0.85f);
-
-					for (Ogre::uint32 i = 0; i < numRoads; ++i)
-					{
-						Ogre::Vector2 start(distX(rng), distY(rng));
-						Ogre::Vector2 end(distX(rng), distY(rng));
-						roads.push_back(generateRoadPath(start, end, 200));
-					}
-				}
-
-				calculateRoadHeights(roads, heightData, width, height);
-
-				// Carve roads
-				int affected = 0;
-				for (Ogre::uint32 y = 0; y < height; ++y)
-				{
-					for (Ogre::uint32 x = 0; x < width; ++x)
-					{
-						int idx = y * width + x;
-						float orig = heightData[idx];
-
-						Ogre::Vector2 pos(static_cast<float>(x), static_cast<float>(y));
-						heightData[idx] = applyRoadCarving(orig, pos, roads, width, height);
-
-						if (std::abs(heightData[idx] - orig) > 0.1f)
-							affected++;
-					}
-				}
-
-				float percent = (affected * 100.0f) / (width * height);
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
-					"[ProceduralTerrain] Roads affected " + Ogre::StringConverter::toString(percent) + "% of terrain");
-			}
-
-			// Apply features (all your existing code stays the same!)
-			if (this->enableIsland->getBool())
-			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
-					"[ProceduralTerrain] Applying island mask...");
-				applyIslandMask(heightData, width, height);
-			}
-
-			if (this->enableCanyons->getBool())
-			{
-				std::vector<CanyonPath> canyons;
-				generateCanyons(canyons, width, height);
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
-					"[ProceduralTerrain] Carving " + Ogre::StringConverter::toString(canyons.size()) + " canyons...");
-				applyCanyonsToTerrain(heightData, canyons, width, height);
-			}
-
-			if (this->enableErosion->getBool())
-			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
-					"[ProceduralTerrain] Simulating erosion...");
-				simulateHydraulicErosion(heightData, width, height);
-			}
-
-			if (this->enableRivers->getBool())
-			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
-					"[ProceduralTerrain] Generating rivers...");
-				std::vector<Ogre::Vector2> tensorField;
-				generateTensorField(tensorField, width, height);
-				std::vector<DrainageNode> nodes = generateDrainageBasins(heightData, width, height);
-				carveRivers(heightData, nodes, width, height);
-			}
-
-			// Find height range
-			float minH = std::numeric_limits<float>::max();
-			float maxH = std::numeric_limits<float>::lowest();
-			for (const auto& h : heightData)
-			{
-				minH = std::min(minH, h);
-				maxH = std::max(maxH, h);
-			}
-
+			float percent = (affected * 100.0f) / (width * height);
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
-				"[ProceduralTerrain] Generated heights: " + Ogre::StringConverter::toString(minH) +
-				"m to " + Ogre::StringConverter::toString(maxH) + "m");
-
-			// Convert to image - DON'T renormalize, just clamp!
-			Ogre::Image2 image;
-			image.createEmptyImage(width, height, 1, Ogre::TextureTypes::Type2D, Ogre::PFG_R16_UNORM, 1);
-			Ogre::uint16* imageData = reinterpret_cast<Ogre::uint16*>(image.getData(0).data);
-
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
-				"[ProceduralTerrain] Height range: " + Ogre::StringConverter::toString(minH) +
-				" to " + Ogre::StringConverter::toString(maxH));
-
-			// Direct conversion - perlinNoise already outputs [0,1]
-			for (Ogre::uint32 i = 0; i < width * height; ++i)
-			{
-				float value = Ogre::Math::Clamp(heightData[i], 0.0f, 1.0f);
-				imageData[i] = static_cast<Ogre::uint16>(value * 65535.0f);
-			}
-
-			terra->createHeightmapTexture(image);
-
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
-				"[ProceduralTerrain] Complete!");
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
-				"[ProceduralTerrain] ========================================");
-
-			this->terrainGenerated = true;
-		};
-
-		NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "ProceduralTerrainCreationComponent::generateProceduralTerrain");
-
-		this->activated->setValue(false);
-	}
-
-	void ProceduralTerrainCreationComponent::setActivated(bool activated)
-	{
-		this->activated->setValue(activated);
-		if (true == activated)
-		{
-			this->generateProceduralTerrain();
+				"[ProceduralTerrain] Roads affected " + Ogre::StringConverter::toString(percent) + "% of terrain");
 		}
-	}
 
-	bool ProceduralTerrainCreationComponent::isActivated(void) const
-	{
-		return this->activated->getBool();
+		// Apply features (all your existing code stays the same!)
+		if (this->enableIsland->getBool())
+		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
+				"[ProceduralTerrain] Applying island mask...");
+			applyIslandMask(heightData, width, height);
+		}
+
+		if (this->enableCanyons->getBool())
+		{
+			std::vector<CanyonPath> canyons;
+			generateCanyons(canyons, width, height);
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
+				"[ProceduralTerrain] Carving " + Ogre::StringConverter::toString(canyons.size()) + " canyons...");
+			applyCanyonsToTerrain(heightData, canyons, width, height);
+		}
+
+		if (this->enableErosion->getBool())
+		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
+				"[ProceduralTerrain] Simulating erosion...");
+			simulateHydraulicErosion(heightData, width, height);
+		}
+
+		if (this->enableRivers->getBool())
+		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
+				"[ProceduralTerrain] Generating rivers...");
+			std::vector<Ogre::Vector2> tensorField;
+			generateTensorField(tensorField, width, height);
+			std::vector<DrainageNode> nodes = generateDrainageBasins(heightData, width, height);
+			carveRivers(heightData, nodes, width, height);
+		}
+
+		// Find height range
+		float minH = std::numeric_limits<float>::max();
+		float maxH = std::numeric_limits<float>::lowest();
+		for (const auto& h : heightData)
+		{
+			minH = std::min(minH, h);
+			maxH = std::max(maxH, h);
+		}
+
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
+			"[ProceduralTerrain] Generated heights: " + Ogre::StringConverter::toString(minH) +
+			"m to " + Ogre::StringConverter::toString(maxH) + "m");
+
+		// Convert to image - DON'T renormalize, just clamp!
+		Ogre::Image2 image;
+		image.createEmptyImage(width, height, 1, Ogre::TextureTypes::Type2D, Ogre::PFG_R16_UNORM, 1);
+		Ogre::uint16* imageData = reinterpret_cast<Ogre::uint16*>(image.getData(0).data);
+
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
+			"[ProceduralTerrain] Height range: " + Ogre::StringConverter::toString(minH) +
+			" to " + Ogre::StringConverter::toString(maxH));
+
+		// Direct conversion - perlinNoise already outputs [0,1]
+		for (Ogre::uint32 i = 0; i < width * height; ++i)
+		{
+			float value = Ogre::Math::Clamp(heightData[i], 0.0f, 1.0f);
+			imageData[i] = static_cast<Ogre::uint16>(value * 65535.0f);
+		}
+
+		terra->createHeightmapTexture(image);
+
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
+			"[ProceduralTerrain] Complete!");
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
+			"[ProceduralTerrain] ========================================");
+
+		this->terrainGenerated = true;
 	}
 
 	void ProceduralTerrainCreationComponent::setResolution(Ogre::uint32 resolution)
@@ -1992,8 +1980,10 @@ namespace NOWA
 		// Maximum is 4096 due to Terra's shadow mapper buffer limitation
 		// The shadow mapper allocates 4096u * 16u elements, and needs (height << 4u) elements
 		// So maximum height = 4096
-		if (resolution < 128) resolution = 128;
-		if (resolution > 4096) resolution = 4096;
+		if (resolution < 128)
+			resolution = 128;
+		if (resolution > 4096)
+			resolution = 4096;
 		this->resolution->setValue(resolution);
 	}
 
@@ -2450,8 +2440,6 @@ namespace NOWA
 		module(lua)
 		[
 			class_<ProceduralTerrainCreationComponent, GameObjectComponent>("ProceduralTerrainCreationComponent")
-			.def("setActivated", &ProceduralTerrainCreationComponent::setActivated)
-			.def("isActivated", &ProceduralTerrainCreationComponent::isActivated)
 			.def("setResolution", &ProceduralTerrainCreationComponent::setResolution)
 			.def("getResolution", &ProceduralTerrainCreationComponent::getResolution)
 			.def("setBaseHeight", &ProceduralTerrainCreationComponent::setBaseHeight)
@@ -2536,8 +2524,6 @@ namespace NOWA
 		];
 
 		LuaScriptApi::getInstance()->addClassToCollection("ProceduralTerrainCreationComponent", "class inherits GameObjectComponent", ProceduralTerrainCreationComponent::getStaticInfoText());
-		LuaScriptApi::getInstance()->addClassToCollection("ProceduralTerrainCreationComponent", "void setActivated(bool activated)", "Sets whether to generate terrain.");
-		LuaScriptApi::getInstance()->addClassToCollection("ProceduralTerrainCreationComponent", "bool isActivated()", "Gets whether activated.");
 		LuaScriptApi::getInstance()->addClassToCollection("ProceduralTerrainCreationComponent", "void setResolution(uint resolution)", "Sets heightmap resolution.");
 		LuaScriptApi::getInstance()->addClassToCollection("ProceduralTerrainCreationComponent", "uint getResolution()", "Gets resolution.");
 		LuaScriptApi::getInstance()->addClassToCollection("ProceduralTerrainCreationComponent", "void setBaseHeight(float height)", "Sets base height.");

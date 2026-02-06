@@ -208,6 +208,15 @@ namespace NOWA
 		}
 
 		/**
+		 * @brief		Executes an action for this component. Can be overridden by a component.
+		 * @return		true If executed successfully, else false
+		 */
+		virtual bool executeAction(const Ogre::String& actionId, NOWA::Variant* attribute)
+		{
+			return false;
+		}
+
+		/**
 		 * @brief	Gets the owner game object for this component.
 		 * @return	owner		The owner game object to get
 		 */

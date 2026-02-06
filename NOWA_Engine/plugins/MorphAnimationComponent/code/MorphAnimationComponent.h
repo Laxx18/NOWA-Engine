@@ -326,7 +326,21 @@ namespace NOWA
 			return "Usage: Controls morph/pose animations on v1 meshes with blend shapes. "
 				"Use mathematical functions to animate pose weights over time. "
 				"Can also create new poses at runtime. "
-				"Requirements: v1::Entity with mesh.";
+				"Requirements: v1::Entity with mesh. "
+
+				"A pose defines vertex offsets from the original mesh position. For example: "
+				"A face mesh could have poses like \"Smile\" (moves mouth vertices up), \"EyesClosed\" (moves eyelid vertices down). "
+				"A chest could have a pose like \"Open\" (moves lid vertices to open position). "
+
+				"The Problem: Poses must be baked into the mesh file during export from Blender/Maya/3DS Max. They're called: "
+				"Shape Keys in Blender, Blend Shapes in Maya, Morph Targets in 3DS Max. "
+
+				"How to Use This Component: "
+				"Option A: Mesh already has poses (from Blender export). "
+				"In Blender: Create Shape Keys on your mesh. "
+				"Export to .mesh with OgreExporter (it exports shape keys as poses). "
+				"Add MorphAnimationComponent -> poses appear in dropdown. "
+				"Set math function to animate them.";
 		}
 
 		/**
@@ -432,11 +446,6 @@ namespace NOWA
 		// Store current pose weights
 		std::map<Ogre::String, Ogre::Real> currentPoseWeights;
 	};
-
-	// Lua helper functions
-	MorphAnimationComponent* getMorphAnimationComponent(GameObject* gameObject, unsigned int occurrenceIndex);
-	MorphAnimationComponent* getMorphAnimationComponent(GameObject* gameObject);
-	MorphAnimationComponent* getMorphAnimationComponentFromName(GameObject* gameObject, const Ogre::String& name);
 
 }; // namespace end
 

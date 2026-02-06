@@ -60,7 +60,8 @@ namespace NOWA
 			DECAL,
 			BILL_BOARD,
 			BILL_BOARD_CHAIN,
-			SIMPLE_RENDERABLE
+			SIMPLE_RENDERABLE,
+			MAZE
 		};
 
 		friend class GameObjectController;
@@ -694,6 +695,12 @@ namespace NOWA
 		*/
 		void setConnectPriority(bool bConnectPriority);
 
+		/**
+		* @brief		Nulls the movable pointer. Works in conjunction with @setDoNotDestroyMovableObject.
+		* @note			Use this with care!
+		*/
+		void nullMovableObject(void);
+
 		void actualizeDatablockName(const Ogre::String& datablockName, unsigned short index);
 
 		void actualizeDatablocks(void);
@@ -923,6 +930,7 @@ namespace NOWA
 		// Attribute constants
 		static const Ogre::String AttrId(void) { return "Id"; }
 		static const Ogre::String AttrName(void) { return "Name"; }
+		static const Ogre::String AttrType(void) { return "Type"; }
 		static const Ogre::String AttrCategoryId(void) { return "Category Id"; }
 		static const Ogre::String AttrCategory(void) { return "Category"; }
 		static const Ogre::String AttrRenderCategoryId(void) { return "Render Category Id"; }
@@ -962,10 +970,18 @@ namespace NOWA
 		static const Ogre::String AttrActionGenerateLuaFunction(void) { return "GenerateLuaFunction"; }
 		static const Ogre::String AttrActionReadOnly(void) { return "ReadOnly"; }
 		static const Ogre::String AttrActionLuaScript(void) { return "LuaScript"; }
-		static Ogre::String AttrActionAutoComplete() { return "AttrActionAutoComplete"; }
+		static const Ogre::String AttrActionAutoComplete() { return "AttrActionAutoComplete"; }
+		static const Ogre::String AttrActionExec() { return "AttrActionExec"; }
+		static Ogre::String AttrActionExecId(void) { return "AttrActionExecId"; }
 
 		// Custom data strings
 		static const Ogre::String AttrCustomDataSkipCreation(void) { return "SkipCreation"; }
+
+		/**
+		 * @brief	Gets the movable object type enum to string.
+		 * @return	typeString	The movable object string to get.
+		 */
+		const char* typeToString(eType t);
 	private:
 		void destroyGameObjectResources(Ogre::SceneNode* sceneNode, Ogre::MovableObject* movableObject, Ogre::WireAabb* boundingBoxDraw, 
 			Ogre::RaySceneQuery* clampObjectQuery, Ogre::SceneManager* sceneManager);
@@ -1007,6 +1023,7 @@ namespace NOWA
 
 		Variant* id;
 		Variant* name;
+		Variant* typeName;
 		Variant* categoryId;
 		Variant* category;
 		Variant* renderCategoryId;

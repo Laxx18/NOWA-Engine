@@ -175,6 +175,13 @@ namespace NOWA
 		}
 #endif
 
+		this->typeName = new Variant(GameObject::AttrType(), Ogre::String(), this->attributes);
+
+		// set once; keep read-only for the editor
+		this->typeName->setReadOnly(false);
+		this->typeName->setValue(Ogre::String(GameObject::typeToString(this->type)));
+		this->typeName->setReadOnly(true);
+
 		this->categoryId = new Variant(GameObject::AttrCategoryId(), static_cast<unsigned int>(0), this->attributes);
 		this->renderCategoryId = new Variant(GameObject::AttrRenderCategoryId(), static_cast<unsigned int>(GameObjectController::ALL_CATEGORIES_ID), this->attributes);
 		this->meshName = new Variant(GameObject::AttrMeshName(), Ogre::String(), this->attributes);
@@ -529,6 +536,14 @@ namespace NOWA
 		}
 	}
 
+	void GameObject::nullMovableObject(void)
+	{
+		if (true == this->doNotDestroyMovableObject)
+		{
+			this->movableObject = nullptr;
+		}
+	}
+
 	void GameObject::actualizeDatablockName(const Ogre::String& datablockName, unsigned short index)
 	{
 		if (index < this->dataBlocks.size())
@@ -631,6 +646,35 @@ namespace NOWA
 		}
 
 		this->meshName->setReadOnly(true);
+	}
+
+	const char* GameObject::typeToString(GameObject::eType t)
+	{
+		switch (t)
+		{
+		case NONE:               return "NONE";
+		case ENTITY:             return "ENTITY";
+		case ITEM:               return "ITEM";
+		case SCENE_NODE:         return "SCENE_NODE";
+		case PLANE:              return "PLANE";
+		case MIRROR:             return "MIRROR";
+		case CAMERA:             return "CAMERA";
+		case REFLECTION_CAMERA:  return "REFLECTION_CAMERA";
+		case TERRA:              return "TERRA";
+		case OCEAN:              return "OCEAN";
+		case LIGHT_DIRECTIONAL:  return "LIGHT_DIRECTIONAL";
+		case LIGHT_SPOT:         return "LIGHT_SPOT";
+		case LIGHT_POINT:        return "LIGHT_POINT";
+		case LIGHT_AREA:         return "LIGHT_AREA";
+		case MANUAL_OBJECT:      return "MANUAL_OBJECT";
+		case RECTANGLE:          return "RECTANGLE";
+		case LINES:              return "LINES";
+		case DECAL:              return "DECAL";
+		case BILL_BOARD:         return "BILL_BOARD";
+		case BILL_BOARD_CHAIN:   return "BILL_BOARD_CHAIN";
+		case SIMPLE_RENDERABLE:  return "SIMPLE_RENDERABLE";
+		default:                 return "UNKNOWN";
+		}
 	}
 
 	bool GameObject::postInit(void)

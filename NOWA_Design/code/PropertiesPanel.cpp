@@ -1714,6 +1714,24 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 			button->eventMouseButtonClick += MyGUI::newDelegate(this, &PropertiesPanelDynamic::buttonHit);
 			this->itemsEdit.push_back(button);
 		}
+
+		if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionExec()))
+		{
+			MyGUI::Button* button = mWidgetClient->createWidget<MyGUI::Button>(MyGUI::WidgetStyle::Overlapped, "Button", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth - 15, height), 
+				MyGUI::Align::HStretch | MyGUI::Align::Top, "Main", name + "_exec");
+
+			button->setTextColour(MyGUIHelper::getInstance()->getImportantTextColour());
+			button->setCaption(attribute->getString());
+			button->setUserData(MyGUI::Any(attribute));
+			button->eventMouseButtonClick += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onExecButtonHit);
+
+			this->itemsEdit.push_back(button);
+
+			this->heightCurrent += heightStep;
+			mPanelCell->setClientHeight(heightCurrent);
+
+			return;
+		}
 		break;
 	}
 	}
@@ -2449,6 +2467,34 @@ void PropertiesPanelDynamic::onAutoCompleteComboSelectAccept(MyGUI::ComboBox* se
 		MyGUI::InputManager::getInstancePtr()->setKeyFocusWidget(searchEdit);
 		searchEdit->setTextCursor(searchEdit->getTextLength());
 	}
+}
+
+void PropertiesPanelDynamic::onExecButtonHit(MyGUI::Widget* sender)
+{
+	MyGUI::Button* button = sender->castType<MyGUI::Button>(false);
+	if (nullptr == button)
+	{
+		return;
+	}
+
+	NOWA::Variant** attribute = button->getUserData<NOWA::Variant*>(false);
+	if (nullptr == attribute)
+	{
+		return;
+	}
+
+	Ogre::String execId = (*attribute)->getUserDataValue(NOWA::GameObject::AttrActionExecId());
+	if (true == execId.empty())
+	{
+		return;
+	}
+
+	this->notifyExecAction((*attribute), execId);
+}
+
+void PropertiesPanelDynamic::notifyExecAction(NOWA::Variant* attribute, const Ogre::String& execId)
+{
+	// Base do nothing
 }
 
 MyGUI::Widget* PropertiesPanelDynamic::addSeparator(void)
@@ -3560,6 +3606,35 @@ void PropertiesPanelComponent::notifySetItemBoxData(MyGUI::ItemBox* sender, cons
 		this->editorManager->snapshotNewGameObjectComponentAttribute(*attribute);
 
 		if (true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionNeedRefresh()))
+		{
+			boost::shared_ptr<EventDataRefreshPropertiesPanel> eventDataRefreshPropertiesPanel(new EventDataRefreshPropertiesPanel());
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
+		}
+	}
+}
+
+void PropertiesPanelComponent::notifyExecAction(NOWA::Variant* attribute, const Ogre::String& execId)
+{
+	if (true == execId.empty())
+	{
+		return;
+	}
+
+	if (false == attribute->hasUserDataKey(NOWA::GameObject::AttrActionNoUndo()))
+	{
+		this->editorManager->snapshotOldGameObjectComponentAttribute(this->gameObjects, this->gameObjectComponents, attribute->getName());
+	}
+
+	for (size_t i = 0; i < this->gameObjectComponents.size(); i++)
+	{
+		this->gameObjectComponents[i]->executeAction(execId, attribute);
+	}
+
+	if (false == attribute->hasUserDataKey(NOWA::GameObject::AttrActionNoUndo()))
+	{
+		this->editorManager->snapshotNewGameObjectComponentAttribute(attribute);
+
+		if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionNeedRefresh()))
 		{
 			boost::shared_ptr<EventDataRefreshPropertiesPanel> eventDataRefreshPropertiesPanel(new EventDataRefreshPropertiesPanel());
 			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);

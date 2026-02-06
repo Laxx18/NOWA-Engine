@@ -41,7 +41,7 @@ namespace NOWA
 		minimumBounds(Ogre::Vector3::ZERO),
 		maximumBounds(Ogre::Vector3::ZERO),
 		raySceneQuery(nullptr),
-		activated(new Variant(VegetationComponent::AttrActivated(), true, this->attributes)),
+		regenerate(new Variant(VegetationComponent::AttrRegenerate(), "Generate", this->attributes)),
 		targetGameObjectId(new Variant(VegetationComponent::AttrTargetGameObjectId(), static_cast<unsigned long>(0), this->attributes)),
 		density(new Variant(VegetationComponent::AttrDensity(), 1.0f, this->attributes)),
 		positionXZ(new Variant(VegetationComponent::AttrPositionXZ(), Ogre::Vector2::ZERO, this->attributes)),
@@ -53,6 +53,10 @@ namespace NOWA
 		terraLayers(new Variant(VegetationComponent::AttrTerraLayers(), Ogre::String("255,255,255,255"), this->attributes)),
 		vegetationTypesCount(new Variant(VegetationComponent::AttrVegetationTypesCount(), static_cast<unsigned int>(0), this->attributes))
 	{
+		this->regenerate->setDescription("Generate/regenerate the vegetation.");
+		this->regenerate->addUserData(GameObject::AttrActionExec());
+		this->regenerate->addUserData(GameObject::AttrActionExecId(), "VegetationComponent.Regenerate");
+		
 		this->targetGameObjectId->setDescription("Sets the target game object id, which is used for planting vegetation. If not set (id = 0), the whole world is used.");
 		this->positionXZ->setDescription("Sets the x-z position of the vegetation. Combining it with scale, its possible to just vegetate a specifig area.");
 		this->scale->setDescription("Sets Scale. Combining it with position, its possible to just vegetate a specifig area. Default is 1, which is the whole area of the target game object id.");
@@ -104,12 +108,6 @@ namespace NOWA
 	bool VegetationComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
 		GameObjectComponent::init(propertyElement);
-
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Activated")
-		{
-			this->activated->setValue(XMLConverter::getAttribBool(propertyElement, "data", true));
-			propertyElement = propertyElement->next_sibling("property");
-		}
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "TargetGameObjectId")
 		{
@@ -273,11 +271,7 @@ namespace NOWA
 	{
 		GameObjectComponent::actualizeValue(attribute);
 
-		if (VegetationComponent::AttrActivated() == attribute->getName())
-		{
-			this->setActivated(attribute->getBool());
-		}
-		else if (VegetationComponent::AttrTargetGameObjectId() == attribute->getName())
+		if (VegetationComponent::AttrTargetGameObjectId() == attribute->getName())
 		{
 			this->setTargetGameObjectId(attribute->getULong());
 		}
@@ -341,12 +335,6 @@ namespace NOWA
 		GameObjectComponent::writeXML(propertiesXML, doc);
 
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "Activated"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->activated->getBool())));
-		propertiesXML->append_node(propertyXML);
-
-		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "TargetGameObjectId"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->targetGameObjectId->getULong())));
@@ -424,24 +412,6 @@ namespace NOWA
 	Ogre::String VegetationComponent::getParentClassName(void) const
 	{
 		return "GameObjectComponent";
-	}
-
-	void VegetationComponent::setActivated(bool activated)
-	{
-		this->activated->setValue(activated);
-		if (true == activated)
-		{
-			regenerateVegetation();
-		}
-		else
-		{
-			this->clearLists();
-		}
-	}
-
-	bool VegetationComponent::isActivated(void) const
-	{
-		return this->activated->getBool();
 	}
 
 	void VegetationComponent::setTargetGameObjectId(unsigned long targetGameObjectId)
@@ -635,6 +605,18 @@ namespace NOWA
 		if (index > this->vegetationMeshNames.size())
 			return "";
 		return this->vegetationMeshNames[index]->getListSelectedValue();
+	}
+
+	bool VegetationComponent::executeAction(const Ogre::String& actionId, NOWA::Variant* attribute)
+	{
+		if ("VegetationComponent.Regenerate" == actionId)
+		{
+			this->clearLists();
+			this->regenerateVegetation();
+			
+			return true;
+		}
+		return false;
 	}
 
 	void VegetationComponent::clearLists(void)
@@ -1162,11 +1144,6 @@ namespace NOWA
 
 	void VegetationComponent::regenerateVegetation()
 	{
-		if (false == this->activated->getBool())
-		{
-			return;
-		}
-
 		if (nullptr == this->gameObjectPtr)
 		{
 			return;

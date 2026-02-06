@@ -120,8 +120,6 @@ namespace NOWA
 		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
 		// Basic terrain parameters
-		void setActivated(bool activated);
-		bool isActivated(void) const;
 		void setResolution(Ogre::uint32 resolution);
 		Ogre::uint32 getResolution(void) const;
 		void setBaseHeight(Ogre::Real baseHeight);
@@ -296,11 +294,6 @@ namespace NOWA
 		static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass);
 
 	public:
-		// Attribute names
-		static const Ogre::String AttrActivated(void)
-		{
-			return "Activated";
-		}
 		static const Ogre::String AttrResolution(void)
 		{
 			return "Resolution";
@@ -464,6 +457,13 @@ namespace NOWA
 		{
 			return "Canyon Max Width";
 		}
+
+		static const Ogre::String AttrRegenerate(void)
+		{
+			return "Regenerate";
+		}
+	protected:
+		virtual bool executeAction(const Ogre::String& actionId, NOWA::Variant* attribute) override;
 	private:
 		// Perlin noise generation helpers (PRESERVED FROM ORIGINAL)
 		float fade(float t);
@@ -540,7 +540,6 @@ namespace NOWA
 		Ogre::String name;
 
 		// Terrain parameters
-		Variant* activated;
 		Variant* resolution;
 		Variant* baseHeight;
 		Variant* hillAmplitude;
@@ -593,6 +592,7 @@ namespace NOWA
 
 		Variant* canyonMinWidth;
 		Variant* canyonMaxWidth;
+		Variant* regenerate;
 
 		// Runtime data (PRESERVED FROM ORIGINAL)
 		bool terrainGenerated;

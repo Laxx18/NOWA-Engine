@@ -202,6 +202,9 @@ public:
 	virtual void notifySliderMouseRelease(MyGUI::Widget* sender, int x, int y, MyGUI::MouseButton button) = 0;
 	virtual void notifySetItemBoxData(MyGUI::ItemBox* sender, const Ogre::String& resourceName) = 0;
 	virtual void onAutoCompleteComboSelectAccept(MyGUI::ComboBox* sender, size_t index);
+	virtual void onExecButtonHit(MyGUI::Widget* sender);
+
+	virtual void notifyExecAction(NOWA::Variant* attribute, const Ogre::String& execId);
 
 	void onMouseDoubleClick(MyGUI::Widget* sender);
 	void onMouseClick(MyGUI::Widget* sender, int left, int top, MyGUI::MouseButton id);
@@ -303,6 +306,8 @@ public:
 	virtual void notifyScrollChangePosition(MyGUI::ScrollBar* sender, size_t position) override;
 	virtual void notifySliderMouseRelease(MyGUI::Widget* sender, int x, int y, MyGUI::MouseButton button) override;
 	virtual void notifySetItemBoxData(MyGUI::ItemBox* sender, const Ogre::String& resourceName) override;
+
+	virtual void PropertiesPanelComponent::notifyExecAction(NOWA::Variant* attribute, const Ogre::String& execId) override;
 protected:
 	void setNewAttributeValue(MyGUI::EditBox* sender, NOWA::Variant* attribute);
 

@@ -94,6 +94,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "NOWAAssistantComponent", "N
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "IESLightComponent", "IESLightComponent\IESLightComponent.vcxproj", "{B8EC3AF6-8011-4645-89C4-C78442305E05}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ProceduralMazeComponent", "ProceduralMazeComponent\ProceduralMazeComponent.vcxproj", "{715DB818-EA3B-4F3A-8EC9-50A9B309DE0F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -276,6 +278,10 @@ Global
 		{B8EC3AF6-8011-4645-89C4-C78442305E05}.Debug|x64.Build.0 = Debug|x64
 		{B8EC3AF6-8011-4645-89C4-C78442305E05}.Release|x64.ActiveCfg = Release|x64
 		{B8EC3AF6-8011-4645-89C4-C78442305E05}.Release|x64.Build.0 = Release|x64
+		{715DB818-EA3B-4F3A-8EC9-50A9B309DE0F}.Debug|x64.ActiveCfg = Debug|x64
+		{715DB818-EA3B-4F3A-8EC9-50A9B309DE0F}.Debug|x64.Build.0 = Debug|x64
+		{715DB818-EA3B-4F3A-8EC9-50A9B309DE0F}.Release|x64.ActiveCfg = Release|x64
+		{715DB818-EA3B-4F3A-8EC9-50A9B309DE0F}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
@@ -11,7 +11,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="code\JoystickConfigurationComponent.cpp" />
+    <ClCompile Include="code\ProceduralMazeComponent.cpp" />
     <ClCompile Include="code\NOWAPrecompiled.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
@@ -19,29 +19,28 @@
     <ClCompile Include="code\startDll.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="code\JoystickConfigurationComponent.h" />
+    <ClInclude Include="code\ProceduralMazeComponent.h" />
     <ClInclude Include="code\NOWAPrecompiled.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{6133EA3B-C913-42FF-8A41-5C510BE9A6D3}</ProjectGuid>
+    <ProjectGuid>{715DB818-EA3B-4F3A-8EC9-50A9B309DE0F}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
-    <RootNamespace>JoystickRemapComponent</RootNamespace>
+    <RootNamespace>ProceduralMazeComponent</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
-    <ProjectName>JoystickConfigurationComponent</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <CharacterSet>MultiByte</CharacterSet>
-    <PlatformToolset>v145</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <WholeProgramOptimization>false</WholeProgramOptimization>
     <CharacterSet>MultiByte</CharacterSet>
-    <PlatformToolset>v145</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -70,7 +69,7 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>WIN32;LUABIND_DYNAMIC_LINK;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;LUABIND_DYNAMIC_LINK;_SILENCE_CXX17_STRSTREAM_DEPRECATION_WARNING;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(NOWA)/NOWA_Engine/;$(NOWA)/external/Ogre2.2SDK;$(NOWA)/external/Ogre2.2SDK/VCBuild/include;$(NOWA)/external/Ogre2.2SDK/OgreMain/include;$(NOWA)/external/Ogre2.2SDK/Components/Overlay/Include;$(NOWA)/external/Ogre2.2SDK/Components/Hlms/Common/include;$(NOWA)/external/Ogre2.2SDK/Components/Hlms/Pbs/include;$(NOWA)/external/Ogre2.2SDK/Components/Hlms/Unlit/include;$(NOWA)/external/Ogre2.2SDK/Components/PlanarReflections/Include;$(NOWA)/external/Ogre2.2SDK/Components/MeshLodGenerator/Include;$(NOWA)/external/Ogre2.2SDK/Components/Atmosphere/include;$(NOWA)/external/Ogre2.2SDK/Components/SceneFormat/include;$(NOWA)/external/ois/includes;$(NOWA)/external/boost;$(NOWA)/external/newton-4.00/sdk/dBrain/gpu;$(NOWA)/external/newton-4.00/sdk/dBrain;$(NOWA)/external/newton-4.00/sdk/dCollision;$(NOWA)/external/newton-4.00/sdk/dCollision/dMesh;$(NOWA)/external/newton-4.00/sdk/dCore;$(NOWA)/external/newton-4.00/sdk/dCore/tinyxml;$(NOWA)/external/newton-4.00/sdk/dModel;$(NOWA)/external/newton-4.00/sdk/dNewton;$(NOWA)/external/newton-4.00/sdk/dNewton/dIkSolver;$(NOWA)/external/newton-4.00/sdk/dNewton/dJoints;$(NOWA)/external/newton-4.00/sdk/dNewton/dModels;$(NOWA)/external/newton-4.00/sdk/dNewton/dModels/dVehicle;$(NOWA)/external/newton-4.00/sdk/dProfiler;$(NOWA)/external/OgreNewt4_0/inc;$(NOWA)/external/Ogg/include;$(NOWA)/external/Vorbis/include;$(NOWA)/external/RakNet_4_0_81/Source;$(NOWA)/NOWA_Engine/plugins/FaderPlugin/FaderPlugin/inc;$(NOWA)/external/lua-5_2/src;$(NOWA)/external/lua-5_2/LuaBind;$(NOWA)/external/OgreRecast/include;$(NOWA)/external/openal-soft-master/include/AL;$(NOWA)/external/OgreAL/include;$(NOWA)/external/fparser4.5.1;$(NOWA)/external/MeshSplitter;$(NOWA)/external/MyGUIEngine/Common;$(NOWA)/external/MyGUIEngine/include;$(NOWA)/external/MyGUIEngine/Ogre2Platform/include;$(NOWA)/external/OgreProcedural/library/include;$(NOWA)/external/terra;$(NOWA)/NOWA_Engine/plugins/;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <FloatingPointExceptions>
       </FloatingPointExceptions>
@@ -112,8 +111,6 @@
       <LinkLibraryDependencies>false</LinkLibraryDependencies>
     </ProjectReference>
     <PostBuildEvent>
-      <Command>
-      </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -163,8 +160,6 @@
       </Command>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Command>
-      </Command>
     </PostBuildEvent>
     <ProjectReference>
       <LinkLibraryDependencies>false</LinkLibraryDependencies>

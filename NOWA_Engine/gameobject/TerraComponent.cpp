@@ -310,7 +310,7 @@ namespace NOWA
 						Ogre::LML_TRIVIAL, "[GameObject] Destroying movable object: " +
 						gameObjectPtr->movableObject->getName());
 
-					gameObjectPtr->movableObject = nullptr;
+					gameObjectPtr->nullMovableObject();
 
 					delete terra;
 

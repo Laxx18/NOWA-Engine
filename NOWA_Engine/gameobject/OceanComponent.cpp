@@ -647,7 +647,7 @@ namespace NOWA
 
 			if (nullptr != gameObjectPtr)
 			{
-				gameObjectPtr->movableObject = nullptr;
+				gameObjectPtr->nullMovableObject();
 			}
 
 			if (nullptr != gameObjectPtr && nullptr != gameObjectPtr->sceneManager &&

@@ -244,8 +244,12 @@ namespace NOWA
 		}
 
 		// Setup pose animation system
-		this->setupPoseAnimation();
-
+		GraphicsModule::RenderCommand renderCommand = [this]()
+		{
+			this->setupPoseAnimation();
+		};
+		NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MorphAnimationComponent::setupPoseAnimation");
+		
 		return true;
 	}
 
@@ -259,7 +263,11 @@ namespace NOWA
 		// Enable pose animation state if available
 		if (nullptr != this->poseAnimationState)
 		{
-			this->poseAnimationState->setEnabled(true);
+			GraphicsModule::RenderCommand renderCommand = [this]()
+			{
+				this->poseAnimationState->setEnabled(true);
+			};
+			NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MorphAnimationComponent::connect");
 		}
 
 		return true;
@@ -272,7 +280,11 @@ namespace NOWA
 		// Disable pose animation state
 		if (nullptr != this->poseAnimationState)
 		{
-			this->poseAnimationState->setEnabled(false);
+			GraphicsModule::RenderCommand renderCommand = [this]()
+			{
+				this->poseAnimationState->setEnabled(false);
+			};
+			NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MorphAnimationComponent::disconnect");
 		}
 
 		Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
@@ -759,15 +771,15 @@ namespace NOWA
 		}
 
 		NOWA::GraphicsModule::RenderCommand renderCommand = [this, poseName, target]()
-			{
-				this->mesh->createPose(target, poseName);
+		{
+			this->mesh->createPose(target, poseName);
 
-				// Refresh pose data
-				this->initializePoseData();
+			// Refresh pose data
+			this->initializePoseData();
 
-				// Re-setup animation
-				this->setupPoseAnimation();
-			};
+			// Re-setup animation
+			this->setupPoseAnimation();
+		};
 		NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MorphAnimationComponent::createPose");
 
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MorphAnimationComponent] Created pose '" + poseName + "' with target " + Ogre::StringConverter::toString(target));
@@ -825,18 +837,18 @@ namespace NOWA
 		try
 		{
 			NOWA::GraphicsModule::RenderCommand renderCommand = [this, poseName]()
-				{
-					this->mesh->removePose(poseName);
+			{
+				this->mesh->removePose(poseName);
 
-					// Remove from current weights
-					this->currentPoseWeights.erase(poseName);
+				// Remove from current weights
+				this->currentPoseWeights.erase(poseName);
 
-					// Refresh pose data
-					this->initializePoseData();
+				// Refresh pose data
+				this->initializePoseData();
 
-					// Re-setup animation
-					this->setupPoseAnimation();
-				};
+				// Re-setup animation
+				this->setupPoseAnimation();
+			};
 			NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MorphAnimationComponent::removePose");
 
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MorphAnimationComponent] Removed pose '" + poseName + "'");
@@ -937,9 +949,7 @@ namespace NOWA
 			}
 		}
 
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
-			"[MorphAnimationComponent] Found " + Ogre::StringConverter::toString(this->availablePoseNames.size())
-			+ " poses for game object: " + this->gameObjectPtr->getName());
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MorphAnimationComponent] Found " + Ogre::StringConverter::toString(this->availablePoseNames.size()) + " poses for game object: " + this->gameObjectPtr->getName());
 
 		// Update existing pose name variants with new list
 		for (size_t i = 0; i < this->poseNames.size(); i++)

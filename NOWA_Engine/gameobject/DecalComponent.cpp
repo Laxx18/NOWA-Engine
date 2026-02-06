@@ -118,6 +118,7 @@ namespace NOWA
 		{
 			AppStateManager::getSingletonPtr()->getDecalsModule()->destroyDecal(this->gameObjectPtr->getSceneManager(), this->decal);
 			this->decal = nullptr;
+			this->gameObjectPtr->nullMovableObject();
 		}
 	}
 

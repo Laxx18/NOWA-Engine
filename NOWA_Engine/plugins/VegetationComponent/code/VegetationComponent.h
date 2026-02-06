@@ -130,16 +130,6 @@ namespace NOWA
 		*/
 		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
-		/**
-		* @see		GameObjectComponent::setActivated
-		*/
-		virtual void setActivated(bool activated) override;
-
-		/**
-		* @see		GameObjectComponent::isActivated
-		*/
-		virtual bool isActivated(void) const override;
-
 		void setTargetGameObjectId(unsigned long targetGameObjectId);
 
 		unsigned long getTargetGameObjectId(void) const;
@@ -218,7 +208,6 @@ namespace NOWA
 		 */
 		static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass);
 	public:
-		static const Ogre::String AttrActivated(void) { return "Activated"; }
 		static const Ogre::String AttrTargetGameObjectId(void) { return "Target Id"; }
 		static const Ogre::String AttrDensity(void) { return "Density"; }
 		static const Ogre::String AttrPositionXZ(void) { return "Position X-Z"; }
@@ -230,6 +219,9 @@ namespace NOWA
 		static const Ogre::String AttrTerraLayers(void) { return "Terra Layers"; }
 		static const Ogre::String AttrVegetationTypesCount(void) { return "Vegetation Types Count"; }
 		static const Ogre::String AttrVegetationMeshName(void) { return "Vegetation Mesh Name "; }
+		static const Ogre::String AttrRegenerate(void) { return "Regenerate"; }
+	protected:
+		virtual bool executeAction(const Ogre::String& actionId, NOWA::Variant* attribute) override;
 	private:
 		void clearLists();
 		void regenerateVegetation();
@@ -246,7 +238,7 @@ namespace NOWA
 		Ogre::RaySceneQuery* raySceneQuery;
 		std::vector<int> terraLayerList;
 
-		Variant* activated;
+		Variant* regenerate;
 		Variant* targetGameObjectId;
 		Variant* density;
 		Variant* positionXZ;

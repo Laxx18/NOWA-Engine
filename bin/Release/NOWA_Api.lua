@@ -9645,19 +9645,19 @@ return {
 				returns = "(LookAfterComponent)",
 				valuetype = "LookAfterComponent"
 			},
-			getMeshModifyComponentFromIndex =
-			{
-				type = "function",
-				description = "Gets the component by the given occurence index, since a game object may this component maybe several times.",
-				args = "(number occurrenceIndex)",
-				returns = "(MeshModifyComponent)",
-				valuetype = "MeshModifyComponent"
-			},
 			getMeshModifyComponent =
 			{
 				type = "function",
-				description = "Gets the component. This can be used if the game object this component just once.",
+				description = "Gets the component.",
 				args = "()",
+				returns = "(MeshModifyComponent)",
+				valuetype = "MeshModifyComponent"
+			},
+			getMeshModifyComponentFromIndex =
+			{
+				type = "function",
+				description = "Gets the component by occurrence index.",
+				args = "(number occurrenceIndex)",
 				returns = "(MeshModifyComponent)",
 				valuetype = "MeshModifyComponent"
 			},
@@ -9820,6 +9820,30 @@ return {
 				args = "(string name)",
 				returns = "(PickerComponent)",
 				valuetype = "PickerComponent"
+			},
+			getProceduralMazeComponent =
+			{
+				type = "function",
+				description = "Gets the component.",
+				args = "()",
+				returns = "(ProceduralMazeComponent)",
+				valuetype = "ProceduralMazeComponent"
+			},
+			getProceduralMazeComponentFromIndex =
+			{
+				type = "function",
+				description = "Gets the component by occurrence index.",
+				args = "(number occurrenceIndex)",
+				returns = "(ProceduralMazeComponent)",
+				valuetype = "ProceduralMazeComponent"
+			},
+			getProceduralMazeComponentFromName =
+			{
+				type = "function",
+				description = "Gets the component from name.",
+				args = "(string name)",
+				returns = "(ProceduralMazeComponent)",
+				valuetype = "ProceduralMazeComponent"
 			},
 			getProceduralTerrainCreationComponent =
 			{
@@ -11668,6 +11692,14 @@ return {
 				args = "(PickerComponent other)",
 				returns = "(PickerComponent)",
 				valuetype = "PickerComponent"
+			},
+			castProceduralMazeComponent =
+			{
+				type = "function",
+				description = "Casts an incoming type from function for lua auto completion.",
+				args = "(ProceduralMazeComponent other)",
+				returns = "(ProceduralMazeComponent)",
+				valuetype = "ProceduralMazeComponent"
 			},
 			castProceduralTerrainCreationComponent =
 			{
@@ -18652,7 +18684,7 @@ return {
 	MeshModifyComponent =
 	{
 		type = "class",
-		description = "Usage: My usage text.",
+		description = "Usage: Attach to a GameObject with a mesh to enable real-time sculpting. Use left mouse button to sculpt. Ctrl+Left to invert brush effect.",
 		inherits = "GameObjectComponent",
 		childs = 
 		{
@@ -18672,13 +18704,101 @@ return {
 				returns = "(boolean)",
 				valuetype = "boolean"
 			},
-			getOwner =
+			setBrushSize =
+			{
+				type = "method",
+				description = "Sets the brush radius in world units.",
+				args = "(number size)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getBrushSize =
 			{
 				type = "function",
-				description = "Gets the owner game object.",
+				description = "Gets the brush radius.",
 				args = "()",
-				returns = "(GameObject)",
-				valuetype = "GameObject"
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setBrushIntensity =
+			{
+				type = "method",
+				description = "Sets the brush intensity (0.0 - 1.0).",
+				args = "(number intensity)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getBrushIntensity =
+			{
+				type = "function",
+				description = "Gets the brush intensity.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setBrushFalloff =
+			{
+				type = "method",
+				description = "Sets the brush falloff exponent.",
+				args = "(number falloff)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getBrushFalloff =
+			{
+				type = "function",
+				description = "Gets the brush falloff.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setBrushMode =
+			{
+				type = "method",
+				description = "Sets brush mode: 'Push', 'Pull', 'Smooth', 'Flatten', 'Pinch', 'Inflate'.",
+				args = "(string mode)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getBrushMode =
+			{
+				type = "function",
+				description = "Gets the current brush mode name.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			resetMesh =
+			{
+				type = "method",
+				description = "Resets the mesh to its original state.",
+				args = "()",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			exportMesh =
+			{
+				type = "function",
+				description = "Exports the modified mesh to a file.",
+				args = "(string fileName)",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			getVertexCount =
+			{
+				type = "function",
+				description = "Gets the number of vertices in the mesh.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			getIndexCount =
+			{
+				type = "function",
+				description = "Gets the number of indices in the mesh.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
 			}
 		}
 	},
@@ -18811,7 +18931,7 @@ return {
 	MorphAnimationComponent =
 	{
 		type = "class",
-		description = "Usage: Controls morph/pose animations on v1 meshes with blend shapes. Use mathematical functions to animate pose weights over time. Can also create new poses at runtime. Requirements: v1::Entity with mesh.",
+		description = "Usage: Controls morph/pose animations on v1 meshes with blend shapes. Use mathematical functions to animate pose weights over time. Can also create new poses at runtime. Requirements: v1::Entity with mesh. A pose defines vertex offsets from the original mesh position. For example: A face mesh could have poses like "Smile" (moves mouth vertices up), "EyesClosed" (moves eyelid vertices down). A chest could have a pose like "Open" (moves lid vertices to open position). The Problem: Poses must be baked into the mesh file during export from Blender/Maya/3DS Max. They're called: Shape Keys in Blender, Blend Shapes in Maya, Morph Targets in 3DS Max. How to Use This Component: Option A: Mesh already has poses (from Blender export). In Blender: Create Shape Keys on your mesh. Export to .mesh with OgreExporter (it exports shape keys as poses). Add MorphAnimationComponent -> poses appear in dropdown. Set math function to animate them.",
 		inherits = "GameObjectComponent",
 		childs = 
 		{
@@ -25245,6 +25365,191 @@ return {
 	{
 		type = "class",
 		description = "Generates a procedural mesh prism."
+	},
+	ProceduralMazeComponent =
+	{
+		type = "class",
+		description = "Usage: Generates a procedural 3D maze mesh. Configure dimensions, wall height, and materials. Use getSolutionPath() to get the solution.",
+		inherits = "GameObjectComponent",
+		childs = 
+		{
+			setActivated =
+			{
+				type = "method",
+				description = "Sets whether this component should be activated or not.",
+				args = "(boolean activated)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			isActivated =
+			{
+				type = "function",
+				description = "Gets whether this component is activated.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			setNumColumns =
+			{
+				type = "method",
+				description = "Sets the number of maze columns (2-100).",
+				args = "(number columns)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getNumColumns =
+			{
+				type = "function",
+				description = "Gets the number of maze columns.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setNumRows =
+			{
+				type = "method",
+				description = "Sets the number of maze rows (2-100).",
+				args = "(number rows)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getNumRows =
+			{
+				type = "function",
+				description = "Gets the number of maze rows.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setSeed =
+			{
+				type = "method",
+				description = "Sets the random seed for maze generation.",
+				args = "(number seed)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getSeed =
+			{
+				type = "function",
+				description = "Gets the random seed.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setCellSize =
+			{
+				type = "method",
+				description = "Sets the cell size in world units.",
+				args = "(number size)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getCellSize =
+			{
+				type = "function",
+				description = "Gets the cell size.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setWallHeight =
+			{
+				type = "method",
+				description = "Sets the wall height.",
+				args = "(number height)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getWallHeight =
+			{
+				type = "function",
+				description = "Gets the wall height.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setWallThickness =
+			{
+				type = "method",
+				description = "Sets the wall thickness.",
+				args = "(number thickness)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getWallThickness =
+			{
+				type = "function",
+				description = "Gets the wall thickness.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			regenerateMaze =
+			{
+				type = "method",
+				description = "Regenerates the maze with current settings.",
+				args = "()",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			regenerateMazeWithNewSeed =
+			{
+				type = "method",
+				description = "Regenerates the maze with a new random seed.",
+				args = "()",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getStartPosition =
+			{
+				type = "function",
+				description = "Gets the maze entrance position in world coordinates.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			getEndPosition =
+			{
+				type = "function",
+				description = "Gets the maze exit position in world coordinates.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			isCellPassage =
+			{
+				type = "function",
+				description = "Checks if a cell is a passage (walkable).",
+				args = "(number cellX, number cellY)",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			getTotalCells =
+			{
+				type = "function",
+				description = "Gets the total number of cells in the maze.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			getMazeWidth =
+			{
+				type = "function",
+				description = "Gets the maze width in world units.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			getMazeDepth =
+			{
+				type = "function",
+				description = "Gets the maze depth in world units.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			}
+		}
 	},
 	ProceduralMultiPath =
 	{

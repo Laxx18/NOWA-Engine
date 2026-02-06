@@ -538,12 +538,13 @@ namespace NOWA
 
 		/**
 		* @brief		Calculates the grid value for the given movable object's size and also takes the movable object orientation into account.
-		* @param[in]	step			The gridFactor to multiply the movable object's size with.
-		* @param[in]	sourcePosition	The source position vector
-		* @return		gridValue		The calculated grid value
+		* @param[in]	gridFactor			The gridFactor to multiply the movable object's size with.
+		* @param[in]	targetWorldPosition	The target world position vector
+		* @param[in]	movableObject		The target movable object to calculate the grid value for
+		* @return		result				The result grid snapped vector
 		* @note			A object will be only moved if it passes the critical distance.
 		*/
-		Ogre::Vector3 calculateGridTranslation(const Ogre::Vector3& gridFactor, const Ogre::Vector3& sourcePosition, Ogre::MovableObject* movableObject);
+		Ogre::Vector3 calculateGridTranslation(const Ogre::Vector3& gridFactor, const Ogre::Vector3& targetWorldPosition, Ogre::MovableObject* movableObject);
 		
 		/**
 		 * @brief		Gets the bottom center point of the given movable object mesh

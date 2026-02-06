@@ -327,7 +327,14 @@ void ResourcesPanelMeshes::loadMeshes(const Ogre::String& filter)
 			child = new MyGUI::TreeControl::Node("Terra", "Data");
 			parent->add(child);
 		}
-	
+		// Add Maze
+		{
+			if (NOWA::GameObjectFactory::getInstance()->getComponentFactory()->hasComponent("ProceduralMazeComponent"))
+			{
+				child = new MyGUI::TreeControl::Node("Maze", "Data");
+				parent->add(child);
+			}
+		}
 		root->add(parent);
 	}
 
@@ -464,6 +471,10 @@ void ResourcesPanelMeshes::notifyTreeNodeSelected(MyGUI::TreeControl* treeContro
 		else if ("Terra" == Ogre::String(node->getText()))
 		{
 			this->editorManager->attachOtherResourceToPlaceNode(NOWA::GameObject::TERRA);
+		}
+		else if ("Maze" == Ogre::String(node->getText()))
+		{
+			this->editorManager->attachOtherResourceToPlaceNode(NOWA::GameObject::MAZE);
 		}
 		else
 		{

@@ -102,6 +102,7 @@ namespace NOWA
 		{
 			return true;
 		}
+		return false;
 	}
 
 	void NOWAAssistantComponent::createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass)
@@ -682,14 +683,32 @@ namespace NOWA
 
 		const int k = this->topK->getInt();
 
-		std::ostringstream oss;
+		/*std::ostringstream oss;
 		oss << "\"" << py << "\" "
 			<< "\"" << scriptAbs << "\" "
 			<< "--question \"" << question << "\" "
-			<< "--k " << k;
+			<< "--k " << k;*/
 
 		Ogre::String output;
 		int exitCode = -1;
+
+		// Put log next to the script
+		Ogre::String logPath = scriptAbs;
+		size_t pos = logPath.find_last_of("/\\");
+		if (pos != Ogre::String::npos)
+			logPath = logPath.substr(0, pos + 1) + "ask_once_last.log";
+		else
+			logPath = "ask_once_last.log";
+
+		// Build command: run through cmd.exe and redirect EVERYTHING into the log
+		std::ostringstream oss;
+		oss << "cmd /c "
+			<< "\"\"" << py << "\" "
+			<< "\"" << scriptAbs << "\" "
+			<< "--question \"" << question << "\" "
+			<< "--k " << k
+			<< " > \"" << logPath << "\" 2>&1\"";
+
 
 		bool ok = NOWA::Core::getSingletonPtr()->execAndCaptureStdout(oss.str(), output, exitCode, true);
 

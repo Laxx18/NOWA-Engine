@@ -19,6 +19,7 @@ copy /b/v/y "E:\Ogre2.2SDK\VCBuild\lib\debug\RenderSystem_GL3Plus_d.lib" ".\bin\
 copy /b/v/y "E:\Ogre2.2SDK\VCBuild\lib\debug\RenderSystem_NULL_d.exp" ".\bin\Debug\libs"
 copy /b/v/y "E:\Ogre2.2SDK\VCBuild\lib\debug\RenderSystem_NULL_d.lib" ".\bin\Debug\libs"
 copy /b/v/y "E:\Ogre2.2SDK\VCBuild\lib\debug\OgreAtmosphere_d.lib" ".\bin\Debug\libs"
+copy /b/v/y "E:\Ogre2.2SDK\VCBuild\lib\debug\OgreSceneFormat_d.lib" ".\bin\Debug\libs"
 
 copy /b/v/y "E:\Ogre2.2SDK\VCBuild\bin\debug\OgreHlmsPbs_d.dll" ".\bin\Debug"
 copy /b/v/y "E:\Ogre2.2SDK\VCBuild\bin\debug\OgreHlmsUnlit_d.dll" ".\bin\Debug"
@@ -33,6 +34,7 @@ copy /b/v/y "E:\Ogre2.2SDK\VCBuild\bin\debug\RenderSystem_Direct3D11_d.dll" ".\b
 copy /b/v/y "E:\Ogre2.2SDK\VCBuild\bin\debug\RenderSystem_GL3Plus_d.dll" ".\bin\Debug"
 copy /b/v/y "E:\Ogre2.2SDK\VCBuild\bin\debug\RenderSystem_NULL_d.dll" ".\bin\Debug"
 copy /b/v/y "E:\Ogre2.2SDK\VCBuild\bin\debug\OgreAtmosphere_d.dll" ".\bin\Debug"
+copy /b/v/y "E:\Ogre2.2SDK\VCBuild\bin\debug\OgreSceneFormat_d.dll" ".\bin\Debug"
 
 
 copy /b/v/y "E:\Ogre2.2SDK\VCBuild\bin\debug\OgreHlmsPbs_d.dll" ".\bin\Debug"
@@ -58,7 +60,7 @@ copy /b/v/y "E:\Ogre2.2SDK\VCBuild\bin\debug\RenderSystem_GL3Plus_d.pdb" ".\bin\
 copy /b/v/y "E:\Ogre2.2SDK\VCBuild\bin\debug\RenderSystem_NULL_d.dll" ".\bin\Debug"
 copy /b/v/y "E:\Ogre2.2SDK\VCBuild\bin\debug\RenderSystem_NULL_d.pdb" ".\bin\Debug"
 copy /b/v/y "E:\Ogre2.2SDK\VCBuild\bin\debug\OgreAtmosphere_d.pdb" ".\bin\Debug"
-
+copy /b/v/y "E:\Ogre2.2SDK\VCBuild\bin\debug\OgreSceneFormat_d.pdb" ".\bin\Debug"
 
 copy /b/v/y "E:\Ogre2.2SDK\VCBuild\lib\release\OgreHlmsPbs.exp" ".\bin\Release\libs"
 copy /b/v/y "E:\Ogre2.2SDK\VCBuild\lib\release\OgreHlmsPbs.lib" ".\bin\Release\libs"
@@ -81,7 +83,7 @@ copy /b/v/y "E:\Ogre2.2SDK\VCBuild\lib\release\RenderSystem_GL3Plus.lib" ".\bin\
 copy /b/v/y "E:\Ogre2.2SDK\VCBuild\lib\release\RenderSystem_NULL.exp" ".\bin\Release\libs"
 copy /b/v/y "E:\Ogre2.2SDK\VCBuild\lib\release\RenderSystem_NULL.lib" ".\bin\Release\libs"
 copy /b/v/y "E:\Ogre2.2SDK\VCBuild\lib\release\OgreAtmosphere.lib" ".\bin\Release\libs"
-
+copy /b/v/y "E:\Ogre2.2SDK\VCBuild\lib\release\OgreSceneFormat.lib" ".\bin\Release\libs"
 
 copy /b/v/y "E:\Ogre2.2SDK\VCBuild\bin\release\OgreHlmsPbs.dll" ".\bin\Release"
 copy /b/v/y "E:\Ogre2.2SDK\VCBuild\bin\release\OgreHlmsUnlit.dll" ".\bin\Release"
@@ -96,6 +98,7 @@ copy /b/v/y "E:\Ogre2.2SDK\VCBuild\bin\release\RenderSystem_Direct3D11.dll" ".\b
 copy /b/v/y "E:\Ogre2.2SDK\VCBuild\bin\release\RenderSystem_GL3Plus.dll" ".\bin\Release"
 copy /b/v/y "E:\Ogre2.2SDK\VCBuild\bin\release\RenderSystem_NULL.dll" ".\bin\Release"
 copy /b/v/y "E:\Ogre2.2SDK\VCBuild\bin\release\OgreAtmosphere.dll" ".\bin\Release"
+copy /b/v/y "E:\Ogre2.2SDK\VCBuild\bin\release\OgreSceneFormat.dll" ".\bin\Release"
 
 
 robocopy "E:\Ogre2.2SDK\OgreMain" ".\external\Ogre2.2SDK\OgreMain" /E
