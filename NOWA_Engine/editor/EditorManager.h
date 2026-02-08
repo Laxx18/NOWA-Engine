@@ -30,6 +30,8 @@ namespace NOWA
 	class EXPORTED EditorManager
 	{
 	public:
+		friend class AddGameObjectUndoCommand;
+	public:
 		enum eManipulationMode
 		{
 			EDITOR_PLACE_MODE,

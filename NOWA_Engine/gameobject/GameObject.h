@@ -61,7 +61,8 @@ namespace NOWA
 			BILL_BOARD,
 			BILL_BOARD_CHAIN,
 			SIMPLE_RENDERABLE,
-			MAZE
+			MAZE,
+			WALL
 		};
 
 		friend class GameObjectController;

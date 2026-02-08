@@ -425,7 +425,7 @@ namespace NOWA
 	{
 	public:
 
-		AddGameObjectUndoCommand(Ogre::SceneManager* sceneManager, Ogre::SceneNode* placeNode, std::vector<Ogre::String> meshData, GameObject::eType type)
+		AddGameObjectUndoCommand(Ogre::SceneManager* sceneManager, Ogre::SceneNode* placeNode, std::vector<Ogre::String> meshData, GameObject::eType type, EditorManager* editorManager)
 			: sceneManager(sceneManager),
 			position(placeNode->getPosition()),
 			scale(placeNode->getScale()),
@@ -433,7 +433,8 @@ namespace NOWA
 			meshData(meshData),
 			type(type),
 			objectNode(nullptr),
-			id(0)
+			id(0),
+			editorManager(editorManager)
 		{
 			this->redo();
 		}
@@ -482,7 +483,7 @@ namespace NOWA
 				Ogre::MovableObject* newMovableObject = nullptr;
 
 				if (GameObject::OCEAN != this->type && GameObject::TERRA != this->type && GameObject::DECAL != this->type
-					&& GameObject::LIGHT_AREA != this->type && GameObject::MAZE != this->type)
+					&& GameObject::LIGHT_AREA != this->type && GameObject::MAZE != this->type && GameObject::WALL != this->type)
 				{
 					meshName = this->meshData[0];
 
@@ -532,6 +533,8 @@ namespace NOWA
 						meshName = "Decal";
 					else if (GameObject::MAZE == this->type)
 						meshName = "Maze";
+					else if (GameObject::WALL == this->type)
+						meshName = "Wall";
 				}
 
 				// Do not use # anymore, because its reserved in mygui as code-word the # and everything after that will be removed!
@@ -539,7 +542,7 @@ namespace NOWA
 				AppStateManager::getSingletonPtr()->getGameObjectController()->getValidatedGameObjectName(gameObjectName);
 
 				if (GameObject::OCEAN != this->type && GameObject::TERRA != this->type && GameObject::DECAL != this->type
-					&& GameObject::LIGHT_AREA != this->type && GameObject::MAZE != this->type)
+					&& GameObject::LIGHT_AREA != this->type && GameObject::MAZE != this->type && GameObject::WALL != this->type)
 				{
 					newMovableObject->setName(gameObjectName);
 				}
@@ -655,6 +658,17 @@ namespace NOWA
 							gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
 						}
 					}
+					else if (GameObject::WALL == this->type)
+					{
+						if (GameObjectFactory::getInstance()->getComponentFactory()->hasComponent("ProceduralWallComponent"))
+						{
+							NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, "ProceduralWallComponent");
+							gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
+
+							this->editorManager->currentPlaceType = GameObject::eType::NONE;
+							this->editorManager->manipulationMode == EditorManager::EDITOR_NO_MODE;
+						}
+					}
 				}
 			};
 			NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "AddGameObjectUndoCommand::redo");
@@ -672,6 +686,7 @@ namespace NOWA
 		std::vector<Ogre::String> meshData;
 		GameObject::eType type;
 		unsigned long id;
+		EditorManager* editorManager;
 	};
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1627,7 +1642,7 @@ namespace NOWA
 				this->applyPlaceMovableTransform();
 
 				// Create GameObject etc. and push to undo stack
-				this->sceneManipulationCommandModule.pushCommand(std::make_shared<AddGameObjectUndoCommand>(this->sceneManager, this->tempPlaceMovableNode, meshData, this->currentPlaceType));
+				this->sceneManipulationCommandModule.pushCommand(std::make_shared<AddGameObjectUndoCommand>(this->sceneManager, this->tempPlaceMovableNode, meshData, this->currentPlaceType, this));
 				// Sent event that scene has been modified
 				boost::shared_ptr<NOWA::EventDataSceneModified> eventDataSceneModified(new NOWA::EventDataSceneModified());
 				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataSceneModified);
@@ -2696,6 +2711,8 @@ namespace NOWA
 	{
 		this->manipulationMode = EDITOR_PLACE_MODE;
 
+		this->currentPlaceType = type;
+
 		// Note: Its always an entity, no matter if internally its an billboard or something else, because the entity is visible geometry for the editor!
 		if (GameObject::PLANE == type)
 		{
@@ -2805,8 +2822,11 @@ namespace NOWA
 		{
 			this->attachMeshToPlaceNode("Node.mesh", type);
 		}
-
-		this->currentPlaceType = type;
+		else if (GameObject::WALL == type)
+		{
+			this->attachMeshToPlaceNode("Node.mesh", type);
+		}
+		
 		boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(this->manipulationMode));
 		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataEditorMode);
 	}

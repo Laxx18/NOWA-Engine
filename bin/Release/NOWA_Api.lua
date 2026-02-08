@@ -9645,30 +9645,6 @@ return {
 				returns = "(LookAfterComponent)",
 				valuetype = "LookAfterComponent"
 			},
-			getMeshModifyComponent =
-			{
-				type = "function",
-				description = "Gets the component.",
-				args = "()",
-				returns = "(MeshModifyComponent)",
-				valuetype = "MeshModifyComponent"
-			},
-			getMeshModifyComponentFromIndex =
-			{
-				type = "function",
-				description = "Gets the component by occurrence index.",
-				args = "(number occurrenceIndex)",
-				returns = "(MeshModifyComponent)",
-				valuetype = "MeshModifyComponent"
-			},
-			getMeshModifyComponentFromName =
-			{
-				type = "function",
-				description = "Gets the component from name.",
-				args = "(string name)",
-				returns = "(MeshModifyComponent)",
-				valuetype = "MeshModifyComponent"
-			},
 			getMinimapComponentFromIndex =
 			{
 				type = "function",
@@ -11636,14 +11612,6 @@ return {
 				args = "(LookAfterComponent other)",
 				returns = "(LookAfterComponent)",
 				valuetype = "LookAfterComponent"
-			},
-			castMeshModifyComponent =
-			{
-				type = "function",
-				description = "Casts an incoming type from function for lua auto completion.",
-				args = "(MeshModifyComponent other)",
-				returns = "(MeshModifyComponent)",
-				valuetype = "MeshModifyComponent"
 			},
 			castMinimapComponent =
 			{
@@ -18681,127 +18649,6 @@ return {
 		type = "class",
 		description = "Performs a linear transform on a procedural mesh."
 	},
-	MeshModifyComponent =
-	{
-		type = "class",
-		description = "Usage: Attach to a GameObject with a mesh to enable real-time sculpting. Use left mouse button to sculpt. Ctrl+Left to invert brush effect.",
-		inherits = "GameObjectComponent",
-		childs = 
-		{
-			setActivated =
-			{
-				type = "method",
-				description = "Sets whether this component should be activated or not.",
-				args = "(boolean activated)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			isActivated =
-			{
-				type = "function",
-				description = "Gets whether this component is activated.",
-				args = "()",
-				returns = "(boolean)",
-				valuetype = "boolean"
-			},
-			setBrushSize =
-			{
-				type = "method",
-				description = "Sets the brush radius in world units.",
-				args = "(number size)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			getBrushSize =
-			{
-				type = "function",
-				description = "Gets the brush radius.",
-				args = "()",
-				returns = "(number)",
-				valuetype = "number"
-			},
-			setBrushIntensity =
-			{
-				type = "method",
-				description = "Sets the brush intensity (0.0 - 1.0).",
-				args = "(number intensity)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			getBrushIntensity =
-			{
-				type = "function",
-				description = "Gets the brush intensity.",
-				args = "()",
-				returns = "(number)",
-				valuetype = "number"
-			},
-			setBrushFalloff =
-			{
-				type = "method",
-				description = "Sets the brush falloff exponent.",
-				args = "(number falloff)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			getBrushFalloff =
-			{
-				type = "function",
-				description = "Gets the brush falloff.",
-				args = "()",
-				returns = "(number)",
-				valuetype = "number"
-			},
-			setBrushMode =
-			{
-				type = "method",
-				description = "Sets brush mode: 'Push', 'Pull', 'Smooth', 'Flatten', 'Pinch', 'Inflate'.",
-				args = "(string mode)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			getBrushMode =
-			{
-				type = "function",
-				description = "Gets the current brush mode name.",
-				args = "()",
-				returns = "(string)",
-				valuetype = "string"
-			},
-			resetMesh =
-			{
-				type = "method",
-				description = "Resets the mesh to its original state.",
-				args = "()",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			exportMesh =
-			{
-				type = "function",
-				description = "Exports the modified mesh to a file.",
-				args = "(string fileName)",
-				returns = "(boolean)",
-				valuetype = "boolean"
-			},
-			getVertexCount =
-			{
-				type = "function",
-				description = "Gets the number of vertices in the mesh.",
-				args = "()",
-				returns = "(number)",
-				valuetype = "number"
-			},
-			getIndexCount =
-			{
-				type = "function",
-				description = "Gets the number of indices in the mesh.",
-				args = "()",
-				returns = "(number)",
-				valuetype = "number"
-			}
-		}
-	},
 	MeshUVTransform =
 	{
 		type = "class",
@@ -25373,22 +25220,6 @@ return {
 		inherits = "GameObjectComponent",
 		childs = 
 		{
-			setActivated =
-			{
-				type = "method",
-				description = "Sets whether this component should be activated or not.",
-				args = "(boolean activated)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			isActivated =
-			{
-				type = "function",
-				description = "Gets whether this component is activated.",
-				args = "()",
-				returns = "(boolean)",
-				valuetype = "boolean"
-			},
 			setNumColumns =
 			{
 				type = "method",
@@ -25568,22 +25399,6 @@ return {
 		inherits = "GameObjectComponent",
 		childs = 
 		{
-			setActivated =
-			{
-				type = "method",
-				description = "Sets whether to generate terrain.",
-				args = "(boolean activated)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			isActivated =
-			{
-				type = "function",
-				description = "Gets whether activated.",
-				args = "()",
-				returns = "(boolean)",
-				valuetype = "boolean"
-			},
 			setResolution =
 			{
 				type = "method",

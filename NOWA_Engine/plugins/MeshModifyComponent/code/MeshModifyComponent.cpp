@@ -55,6 +55,7 @@ namespace NOWA
 		brushMode(new Variant(MeshModifyComponent::AttrBrushMode(), Ogre::String("Push"), this->attributes)),
 		category(new Variant(MeshModifyComponent::AttrCategory(), Ogre::String(), this->attributes))
 	{
+		
 	}
 
 	MeshModifyComponent::~MeshModifyComponent(void)
@@ -133,6 +134,8 @@ namespace NOWA
 		clonedGameObjectPtr->addComponent(clonedCompPtr);
 		clonedCompPtr->setOwner(clonedGameObjectPtr);
 
+		GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
+
 		return clonedCompPtr;
 	}
 
@@ -140,10 +143,11 @@ namespace NOWA
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MeshModifyComponent] Init component for game object: " + this->gameObjectPtr->getName());
 
+
+
 		// Setup brush list
 		Ogre::StringVectorPtr brushNames = Ogre::ResourceGroupManager::getSingleton().findResourceNames("Brushes", "*.png");
 		std::vector<Ogre::String> compatibleBrushNames;
-		compatibleBrushNames.push_back("Default (Smooth)"); // Add default option
 
 		if (brushNames.get())
 		{
@@ -158,6 +162,7 @@ namespace NOWA
 		{
 			this->brushName->setListSelectedValue(compatibleBrushNames[0]);
 		}
+		this->brushName->addUserData(GameObject::AttrActionImage());
 		this->brushName->addUserData(GameObject::AttrActionNoUndo());
 
 		// Setup constraints
@@ -185,7 +190,7 @@ namespace NOWA
 		NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.25f));
 		auto ptrFunction = [this]()
 		{
-			InputDeviceCore::getSingletonPtr()->addMouseListener(this, MeshModifyComponent::getStaticClassName());
+			InputDeviceCore::getSingletonPtr()->addMouseListener(this, MeshModifyComponent::getStaticClassName() + "_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()));
 		};
 		NOWA::ProcessPtr closureProcess(new NOWA::ClosureProcess(ptrFunction));
 		delayProcess->attachChild(closureProcess);
@@ -223,7 +228,7 @@ namespace NOWA
 		GameObjectComponent::onRemoveComponent();
 
 		// Remove mouse listener
-		InputDeviceCore::getSingletonPtr()->removeMouseListener(MeshModifyComponent::getStaticClassName());
+		InputDeviceCore::getSingletonPtr()->removeMouseListener(MeshModifyComponent::getStaticClassName() + "_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()));
 
 		// Destroy ray query
 		if (nullptr != this->raySceneQuery)
@@ -1212,12 +1217,9 @@ namespace NOWA
 		// Check max index
 		try
 		{
-		this->dynamicVertexBuffer = vaoManager->createVertexBuffer(
-			vertexElements,
-			this->vertexCount,
-			Ogre::BT_DEFAULT,  // Changed from BT_DYNAMIC_PERSISTENT for testing
-				vertexData,
-			true); // keepAsShadow = true
+			this->dynamicVertexBuffer = vaoManager->createVertexBuffer(vertexElements,
+				this->vertexCount, Ogre::BT_DYNAMIC_DEFAULT,  // Dynamic for updates!
+					vertexData, false); // keepAsShadow = true
 		}
 		catch (Ogre::Exception& e)
 		{
@@ -1326,39 +1328,53 @@ namespace NOWA
 			return;
 
 		// Map the buffer for writing
+		size_t floatsPerVertex = 8; // pos(3) + normal(3) + uv(2)
+		if (this->vertexFormat.hasTangent)
+		{
+			floatsPerVertex = 12; // pos(3) + normal(3) + tangent(4) + uv(2)
+		}
 		// IMPORTANT: Never read from this pointer!
-		float* RESTRICT_ALIAS gpuData = reinterpret_cast<float* RESTRICT_ALIAS>(
-			this->dynamicVertexBuffer->map(0, this->dynamicVertexBuffer->getNumElements()));
+		const size_t dataSize = this->vertexCount * floatsPerVertex * sizeof(float);
+		float* vertexData = reinterpret_cast<float*>(
+			OGRE_MALLOC_SIMD(dataSize, Ogre::MEMCATEGORY_GEOMETRY));
 
 		// Write interleaved vertex data
 		for (size_t i = 0; i < this->vertexCount; ++i)
 		{
+			size_t offset = i * floatsPerVertex;
+
 			// Position
-			*gpuData++ = this->vertices[i].x;
-			*gpuData++ = this->vertices[i].y;
-			*gpuData++ = this->vertices[i].z;
+			vertexData[offset + 0] = this->vertices[i].x;
+			vertexData[offset + 1] = this->vertices[i].y;
+			vertexData[offset + 2] = this->vertices[i].z;
 
 			// Normal
-			*gpuData++ = this->normals[i].x;
-			*gpuData++ = this->normals[i].y;
-			*gpuData++ = this->normals[i].z;
+			vertexData[offset + 3] = this->normals[i].x;
+			vertexData[offset + 4] = this->normals[i].y;
+			vertexData[offset + 5] = this->normals[i].z;
+
+			size_t nextOffset = 6;
 
 			// Tangent (if present)
 			if (this->vertexFormat.hasTangent)
 			{
-				*gpuData++ = this->tangents[i].x;
-				*gpuData++ = this->tangents[i].y;
-				*gpuData++ = this->tangents[i].z;
-				*gpuData++ = this->tangents[i].w;
+				vertexData[offset + nextOffset + 0] = this->tangents[i].x;
+				vertexData[offset + nextOffset + 1] = this->tangents[i].y;
+				vertexData[offset + nextOffset + 2] = this->tangents[i].z;
+				vertexData[offset + nextOffset + 3] = this->tangents[i].w;
+				nextOffset += 4;
 			}
 
 			// UV (unchanged)
-			*gpuData++ = this->uvCoordinates[i].x;
-			*gpuData++ = this->uvCoordinates[i].y;
+			vertexData[offset + nextOffset + 0] = this->uvCoordinates[i].x;
+			vertexData[offset + nextOffset + 1] = this->uvCoordinates[i].y;
 		}
 
 		// Unmap but keep persistent mapping
-		this->dynamicVertexBuffer->unmap(Ogre::UO_KEEP_PERSISTENT);
+		this->dynamicVertexBuffer->upload(vertexData, 0, this->vertexCount);
+
+		// Free the temporary buffer
+		OGRE_FREE_SIMD(vertexData, Ogre::MEMCATEGORY_GEOMETRY);
 	}
 
 	Ogre::Real MeshModifyComponent::calculateBrushInfluence(Ogre::Real distance, Ogre::Real brushRadius) const
@@ -1402,6 +1418,11 @@ namespace NOWA
 		Ogre::Real brushRadius = this->brushSize->getReal();
 		BrushMode mode = this->getBrushMode();
 
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
+			"[MeshModifyComponent] applyBrush called at: " + Ogre::StringConverter::toString(brushCenterLocal) +
+			", brushRadius: " + Ogre::StringConverter::toString(brushRadius) +
+			", mode: " + Ogre::StringConverter::toString(static_cast<int>(mode)));
+
 		// Invert push/pull if requested
 		if (invertEffect)
 		{
@@ -1433,6 +1454,9 @@ namespace NOWA
 				++affectedCount;
 			}
 		}
+
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
+			"[MeshModifyComponent] Affected vertices: " + Ogre::StringConverter::toString(affectedCount));
 
 		if (affectedCount == 0)
 			return;
@@ -1709,6 +1733,12 @@ namespace NOWA
 			}
 		}
 
+		if (hit)
+		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+				"[MeshModifyComponent] Raycast HIT at local pos: " + Ogre::StringConverter::toString(hitPosition));
+		}
+
 		return hit;
 	}
 
@@ -1782,7 +1812,7 @@ namespace NOWA
 			// Only apply if moved enough distance
 			Ogre::Real minDistance = this->brushSize->getReal() * 0.1f;
 			Ogre::Real currentDistance = hitPosition.distance(this->lastBrushPosition);
-			// if (currentDistance > minDistance)
+			if (currentDistance > minDistance)
 			{
 				this->lastBrushPosition = hitPosition;
 				this->applyBrush(hitPosition, this->isCtrlPressed);

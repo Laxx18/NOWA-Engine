@@ -172,6 +172,8 @@ namespace NOWA
 		clonedGameObjectPtr->addComponent(clonedCompPtr);
 		clonedCompPtr->setOwner(clonedGameObjectPtr);
 
+		GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
+
 		return clonedCompPtr;
 #else
 		return nullptr;
@@ -1313,8 +1315,8 @@ namespace NOWA
 
 	bool ProceduralMazeComponent::canStaticAddComponent(GameObject* gameObject)
 	{
-		// Can be added to any GameObject, only one instance
-		return gameObject->getComponentCount<ProceduralMazeComponent>() == 0;
+		// Cannot be added, its a special component  
+		return false;
 	}
 
 	// ==================== LUA API ====================

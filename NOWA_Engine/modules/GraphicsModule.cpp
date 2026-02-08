@@ -349,7 +349,7 @@ namespace NOWA
             try
             {
                 this->logCommandEvent(std::string("Executing command '") + commandName + "' directly on render thread", Ogre::LML_TRIVIAL);
-                command();
+                 command();
                 // this->isRunningWaitClosure = false;
                 if (promise && !wasPromiseFulfilled(promise))
                 {
