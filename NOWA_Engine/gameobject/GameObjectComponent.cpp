@@ -150,6 +150,10 @@ namespace NOWA
 		return true;
 	}
 
+	void GameObjectComponent::onAddComponent(void)
+	{
+	}
+
 	void GameObjectComponent::onRemoveComponent(void)
 	{
 		this->gameObjectPtr->getAttribute(GameObject::AttrDynamic())->setVisible(true);

@@ -25,6 +25,8 @@ GPL v3
 #include "OgreRenderSystem.h"
 #include "OgreHlmsPbsDatablock.h"
 
+#include "editor/EditorManager.h"
+
 namespace NOWA
 {
 	using namespace rapidxml;
@@ -47,6 +49,7 @@ namespace NOWA
 		isCtrlPressed(false),
 		lastBrushPosition(Ogre::Vector3::ZERO),
 		pendingUpload(false),
+		canModify(false),
 		activated(new Variant(MeshModifyComponent::AttrActivated(), true, this->attributes)),
 		brushName(new Variant(MeshModifyComponent::AttrBrushName(), this->attributes)),
 		brushSize(new Variant(MeshModifyComponent::AttrBrushSize(), 1.0f, this->attributes)),
@@ -143,7 +146,8 @@ namespace NOWA
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MeshModifyComponent] Init component for game object: " + this->gameObjectPtr->getName());
 
-
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &MeshModifyComponent::handleMeshModifyMode), NOWA::EventDataEditorMode::getStaticEventType());
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &MeshModifyComponent::handleGameObjectSelected), NOWA::EventDataGameObjectSelected::getStaticEventType());
 
 		// Setup brush list
 		Ogre::StringVectorPtr brushNames = Ogre::ResourceGroupManager::getSingleton().findResourceNames("Brushes", "*.png");
@@ -197,7 +201,7 @@ namespace NOWA
 		NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
 
 		// Create the editable mesh
-		if (!this->createEditableMesh())
+		if (false == this->createEditableMesh())
 		{
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MeshModifyComponent] Failed to create editable mesh for: " + this->gameObjectPtr->getName());
 			return false;
@@ -223,9 +227,19 @@ namespace NOWA
 		return true;
 	}
 
+	void MeshModifyComponent::onAddComponent(void)
+	{
+		boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(EditorManager::EDITOR_MESH_MODIFY_MODE));
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataEditorMode);
+		this->canModify = true;
+	}
+
 	void MeshModifyComponent::onRemoveComponent(void)
 	{
 		GameObjectComponent::onRemoveComponent();
+
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &MeshModifyComponent::handleMeshModifyMode), NOWA::EventDataEditorMode::getStaticEventType());
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &MeshModifyComponent::handleGameObjectSelected), NOWA::EventDataGameObjectSelected::getStaticEventType());
 
 		// Remove mouse listener
 		InputDeviceCore::getSingletonPtr()->removeMouseListener(MeshModifyComponent::getStaticClassName() + "_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()));
@@ -381,7 +395,9 @@ namespace NOWA
 
 			size_t size = this->brushImageWidth * this->brushImageHeight;
 			if (size == 0)
+			{
 				return;
+			}
 
 			this->brushData.resize(size, 0.0f);
 
@@ -450,17 +466,29 @@ namespace NOWA
 	{
 		Ogre::String mode = this->brushMode->getListSelectedValue();
 		if (mode == "Push")
+		{
 			return BrushMode::PUSH;
+		}
 		else if (mode == "Pull")
+		{
 			return BrushMode::PULL;
+		}
 		else if (mode == "Smooth")
+		{
 			return BrushMode::SMOOTH;
+		}
 		else if (mode == "Flatten")
+		{
 			return BrushMode::FLATTEN;
+		}
 		else if (mode == "Pinch")
+		{
 			return BrushMode::PINCH;
+		}
 		else if (mode == "Inflate")
+		{
 			return BrushMode::INFLATE;
+		}
 		return BrushMode::PUSH; // Default
 	}
 
@@ -539,21 +567,22 @@ namespace NOWA
 	{
 		bool success = true;
 		Ogre::Item* originalItem = this->gameObjectPtr->getMovableObject<Ogre::Item>();
-		if (!originalItem)
+		if (nullptr == originalItem)
 		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-				"[MeshModifyComponent] GameObject has no Item attached: " + this->gameObjectPtr->getName());
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,"[MeshModifyComponent] GameObject has no Item attached: " + this->gameObjectPtr->getName());
 			return false;
 		}
 
 		Ogre::MeshPtr originalMesh = originalItem->getMesh();
-		if (!originalMesh)
+		if (nullptr == originalMesh)
+		{
 			return false;
+		}
 
 		GraphicsModule::RenderCommand renderCommand = [this, originalItem, &success]()
 		{
 			// Extract mesh data first
-			if (!this->extractMeshData())
+			if (false == this->extractMeshData())
 			{
 				success = false;
 				return;
@@ -645,13 +674,11 @@ namespace NOWA
 		const Ogre::VertexBufferPackedVec& vertexBuffers = vao->getVertexBuffers();
 		if (vertexBuffers.empty())
 		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-				"[MeshModifyComponent] No vertex buffers found!");
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MeshModifyComponent] No vertex buffers found!");
 			return false;
 		}
 
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-			"[MeshModifyComponent] Analyzing " + Ogre::StringConverter::toString(vertexBuffers.size()) + " vertex buffer(s)");
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MeshModifyComponent] Analyzing " + Ogre::StringConverter::toString(vertexBuffers.size()) + " vertex buffer(s)");
 
 		// Iterate through all vertex elements to detect format
 		for (size_t bufIdx = 0; bufIdx < vertexBuffers.size(); ++bufIdx)
@@ -659,15 +686,14 @@ namespace NOWA
 			const Ogre::VertexBufferPacked* vb = vertexBuffers[bufIdx];
 			const Ogre::VertexElement2Vec& elements = vb->getVertexElements();
 
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-				"[MeshModifyComponent] Buffer " + Ogre::StringConverter::toString(bufIdx) + 
-				" has " + Ogre::StringConverter::toString(elements.size()) + " elements, " +
-				Ogre::StringConverter::toString(vb->getBytesPerElement()) + " bytes per vertex");
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MeshModifyComponent] Buffer " + Ogre::StringConverter::toString(bufIdx) + 
+				" has " + Ogre::StringConverter::toString(elements.size()) + " elements, " + Ogre::StringConverter::toString(vb->getBytesPerElement()) + " bytes per vertex");
 
 			for (const Ogre::VertexElement2& elem : elements)
 			{
 				Ogre::String semanticName = "UNKNOWN";
 				Ogre::String typeName = "UNKNOWN";
+
 				switch (elem.mType)
 				{
 				case Ogre::VET_FLOAT1: typeName = "FLOAT1"; break;
@@ -734,17 +760,13 @@ namespace NOWA
 					break;
 				}
 
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-					"[MeshModifyComponent]   Element: " + semanticName + " Type: " + typeName);
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MeshModifyComponent]   Element: " + semanticName + " Type: " + typeName);
 			}
 		}
 
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-			"[MeshModifyComponent] Final vertex format - Position: " + 
-			Ogre::StringConverter::toString(this->vertexFormat.hasPosition) +
-			", Normal: " + Ogre::StringConverter::toString(this->vertexFormat.hasNormal) +
-			", Tangent: " + Ogre::StringConverter::toString(this->vertexFormat.hasTangent) +
-			", QTangent: " + Ogre::StringConverter::toString(this->vertexFormat.hasQTangent) +
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MeshModifyComponent] Final vertex format - Position: " + 
+			Ogre::StringConverter::toString(this->vertexFormat.hasPosition) + ", Normal: " + Ogre::StringConverter::toString(this->vertexFormat.hasNormal) +
+			", Tangent: " + Ogre::StringConverter::toString(this->vertexFormat.hasTangent) + ", QTangent: " + Ogre::StringConverter::toString(this->vertexFormat.hasQTangent) +
 			", UV: " + Ogre::StringConverter::toString(this->vertexFormat.hasUV));
 
 		return this->vertexFormat.hasPosition;
@@ -753,12 +775,16 @@ namespace NOWA
 	bool MeshModifyComponent::extractMeshData(void)
 	{
 		Ogre::Item* originalItem = this->gameObjectPtr->getMovableObject<Ogre::Item>();
-		if (!originalItem)
+		if (nullptr == originalItem)
+		{
 			return false;
+		}
 
 		Ogre::MeshPtr mesh = originalItem->getMesh();
-		if (!mesh)
+		if (nullptr == mesh)
+		{
 			return false;
+		}
 
 		// Count total vertices and indices across all submeshes
 		unsigned int numVertices = 0;
@@ -767,14 +793,21 @@ namespace NOWA
 		for (const auto& subMesh : mesh->getSubMeshes())
 		{
 			if (subMesh->mVao[Ogre::VpNormal].empty())
+			{
 				continue;
+			}
+
 			numVertices += static_cast<unsigned int>(subMesh->mVao[Ogre::VpNormal][0]->getVertexBuffers()[0]->getNumElements());
 			if (subMesh->mVao[Ogre::VpNormal][0]->getIndexBuffer())
+			{
 				numIndices += static_cast<unsigned int>(subMesh->mVao[Ogre::VpNormal][0]->getIndexBuffer()->getNumElements());
-					}
-			
+			}
+		}
+
 		if (numVertices == 0)
-				return false;
+		{
+			return false;
+		}
 
 		this->vertexCount = numVertices;
 		this->indexCount = numIndices;
@@ -793,7 +826,9 @@ namespace NOWA
 		for (const auto& subMesh : mesh->getSubMeshes())
 		{
 			if (subMesh->mVao[Ogre::VpNormal].empty())
+			{
 				continue;
+			}
 
 			Ogre::VertexArrayObject* vao = subMesh->mVao[Ogre::VpNormal][0];
 
@@ -823,18 +858,16 @@ namespace NOWA
 			// Check if the NORMAL is actually a QTangent (SHORT4_SNORM)
 			bool isQTangent = (requests[1].type == Ogre::VET_SHORT4_SNORM);
 
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
-				"[MeshModifyComponent] SubMesh: " + Ogre::StringConverter::toString(subMeshVerticesNum) + 
-				" vertices, Position type: " + Ogre::StringConverter::toString(requests[0].type) +
-				", Normal type: " + Ogre::StringConverter::toString(requests[1].type) +
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MeshModifyComponent] SubMesh: " + Ogre::StringConverter::toString(subMeshVerticesNum) +
+				" vertices, Position type: " + Ogre::StringConverter::toString(requests[0].type) + ", Normal type: " + Ogre::StringConverter::toString(requests[1].type) +
 				", isQTangent: " + Ogre::StringConverter::toString(isQTangent));
 
 			// Extract data based on vertex format
 			for (size_t i = 0; i < subMeshVerticesNum; ++i)
 			{
 				// ========== POSITION ==========
-			if (requests[0].type == Ogre::VET_HALF4)
-			{
+				if (requests[0].type == Ogre::VET_HALF4)
+				{
 					const Ogre::uint16* posData = reinterpret_cast<const Ogre::uint16*>(requests[0].data);
 					this->vertices[i + subMeshOffset].x = Ogre::Bitwise::halfToFloat(posData[0]);
 					this->vertices[i + subMeshOffset].y = Ogre::Bitwise::halfToFloat(posData[1]);
@@ -857,7 +890,7 @@ namespace NOWA
 					// Tangent = qTangent.yAxis()
 					// Reflection = sign(qTangent.w)
 					const Ogre::int16* normData = reinterpret_cast<const Ogre::int16*>(requests[1].data);
-					
+
 					// Convert SHORT_SNORM to float: value / 32767.0f
 					Ogre::Quaternion qTangent;
 					qTangent.x = static_cast<float>(normData[0]) / 32767.0f;
@@ -885,12 +918,10 @@ namespace NOWA
 					this->normals[i + subMeshOffset].x = Ogre::Bitwise::halfToFloat(normData[0]);
 					this->normals[i + subMeshOffset].y = Ogre::Bitwise::halfToFloat(normData[1]);
 					this->normals[i + subMeshOffset].z = Ogre::Bitwise::halfToFloat(normData[2]);
-
 					// UV (HALF2)
 				}
 				else // VET_FLOAT3
-			{
-
+				{
 					// Normal (FLOAT3)
 					const float* normData = reinterpret_cast<const float*>(requests[1].data);
 					this->normals[i + subMeshOffset].x = normData[0];
@@ -898,7 +929,7 @@ namespace NOWA
 					this->normals[i + subMeshOffset].z = normData[2];
 				}
 
-					// UV (FLOAT2)
+				// UV (FLOAT2)
 				if (requests[2].type == Ogre::VET_HALF2)
 				{
 					const Ogre::uint16* uvData = reinterpret_cast<const Ogre::uint16*>(requests[2].data);
@@ -912,11 +943,11 @@ namespace NOWA
 					this->uvCoordinates[i + subMeshOffset].y = uvData[1];
 				}
 
-					// Advance pointers
-					requests[0].data += requests[0].vertexBuffer->getBytesPerElement();
-					requests[1].data += requests[1].vertexBuffer->getBytesPerElement();
-					requests[2].data += requests[2].vertexBuffer->getBytesPerElement();
-				}
+				// Advance pointers
+				requests[0].data += requests[0].vertexBuffer->getBytesPerElement();
+				requests[1].data += requests[1].vertexBuffer->getBytesPerElement();
+				requests[2].data += requests[2].vertexBuffer->getBytesPerElement();
+			}
 
 			subMeshOffset += subMeshVerticesNum;
 			vao->unmapAsyncTickets(requests);
@@ -925,32 +956,28 @@ namespace NOWA
 			Ogre::IndexBufferPacked* indexBuffer = vao->getIndexBuffer();
 			if (indexBuffer)
 			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
-					"[MeshModifyComponent] Reading index buffer: " + 
-					Ogre::StringConverter::toString(indexBuffer->getNumElements()) + " indices, " +
-					"isIndices32: " + Ogre::StringConverter::toString(this->isIndices32) +
-					", index_offset: " + Ogre::StringConverter::toString(index_offset));
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MeshModifyComponent] Reading index buffer: " + Ogre::StringConverter::toString(indexBuffer->getNumElements()) 
+					+ " indices, " + "isIndices32: " + Ogre::StringConverter::toString(this->isIndices32) + ", index_offset: " + Ogre::StringConverter::toString(index_offset));
 
 				// Try to use shadow copy first (faster, no GPU sync needed)
 				const void* shadowData = indexBuffer->getShadowCopy();
-				
+
 				if (shadowData)
 				{
-					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
-						"[MeshModifyComponent] Using shadow copy for index buffer");
-					
+					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MeshModifyComponent] Using shadow copy for index buffer");
+
 					if (this->isIndices32)
 					{
 						const Ogre::uint32* pIndices = reinterpret_cast<const Ogre::uint32*>(shadowData);
-						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
-							"[MeshModifyComponent] RAW indices (32-bit shadow): " + 
+						/*Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+							"[MeshModifyComponent] RAW indices (32-bit shadow): " +
 							Ogre::StringConverter::toString(pIndices[0]) + ", " +
 							Ogre::StringConverter::toString(pIndices[1]) + ", " +
 							Ogre::StringConverter::toString(pIndices[2]) + ", " +
 							Ogre::StringConverter::toString(pIndices[3]) + ", " +
 							Ogre::StringConverter::toString(pIndices[4]) + ", " +
-							Ogre::StringConverter::toString(pIndices[5]));
-						
+							Ogre::StringConverter::toString(pIndices[5]));*/
+
 						for (size_t i = 0; i < indexBuffer->getNumElements(); i++)
 						{
 							this->indices[addedIndices++] = pIndices[i] + index_offset;
@@ -959,15 +986,15 @@ namespace NOWA
 					else
 					{
 						const Ogre::uint16* pShortIndices = reinterpret_cast<const Ogre::uint16*>(shadowData);
-						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
-							"[MeshModifyComponent] RAW indices (16-bit shadow): " + 
+						/*Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+							"[MeshModifyComponent] RAW indices (16-bit shadow): " +
 							Ogre::StringConverter::toString(pShortIndices[0]) + ", " +
 							Ogre::StringConverter::toString(pShortIndices[1]) + ", " +
 							Ogre::StringConverter::toString(pShortIndices[2]) + ", " +
 							Ogre::StringConverter::toString(pShortIndices[3]) + ", " +
 							Ogre::StringConverter::toString(pShortIndices[4]) + ", " +
-							Ogre::StringConverter::toString(pShortIndices[5]));
-						
+							Ogre::StringConverter::toString(pShortIndices[5]));*/
+
 						for (size_t i = 0; i < indexBuffer->getNumElements(); i++)
 						{
 							this->indices[addedIndices++] = static_cast<Ogre::uint32>(pShortIndices[i]) + index_offset;
@@ -977,55 +1004,53 @@ namespace NOWA
 				else
 				{
 					// No shadow copy - use async ticket (requires GPU sync)
-					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
-						"[MeshModifyComponent] Using async ticket for index buffer (no shadow copy)");
-					
+					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MeshModifyComponent] Using async ticket for index buffer (no shadow copy)");
+
 					Ogre::AsyncTicketPtr asyncTicket = indexBuffer->readRequest(0, indexBuffer->getNumElements());
 
-				if (this->isIndices32)
-				{
-					const Ogre::uint32* pIndices = reinterpret_cast<const Ogre::uint32*>(asyncTicket->map());
-					
-						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
-							"[MeshModifyComponent] RAW indices (32-bit async): " + 
-						Ogre::StringConverter::toString(pIndices[0]) + ", " +
-						Ogre::StringConverter::toString(pIndices[1]) + ", " +
-						Ogre::StringConverter::toString(pIndices[2]) + ", " +
-						Ogre::StringConverter::toString(pIndices[3]) + ", " +
-						Ogre::StringConverter::toString(pIndices[4]) + ", " +
-						Ogre::StringConverter::toString(pIndices[5]));
-					
-					for (size_t i = 0; i < indexBuffer->getNumElements(); i++)
+					if (this->isIndices32)
 					{
-						this->indices[addedIndices++] = pIndices[i] + index_offset;
-					}
+						const Ogre::uint32* pIndices = reinterpret_cast<const Ogre::uint32*>(asyncTicket->map());
+
+						/*Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+							"[MeshModifyComponent] RAW indices (32-bit async): " +
+							Ogre::StringConverter::toString(pIndices[0]) + ", " +
+							Ogre::StringConverter::toString(pIndices[1]) + ", " +
+							Ogre::StringConverter::toString(pIndices[2]) + ", " +
+							Ogre::StringConverter::toString(pIndices[3]) + ", " +
+							Ogre::StringConverter::toString(pIndices[4]) + ", " +
+							Ogre::StringConverter::toString(pIndices[5]));*/
+
+						for (size_t i = 0; i < indexBuffer->getNumElements(); i++)
+						{
+							this->indices[addedIndices++] = pIndices[i] + index_offset;
+						}
 					}
 					else
 					{
-					const Ogre::uint16* pShortIndices = reinterpret_cast<const Ogre::uint16*>(asyncTicket->map());
-					
-						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
-							"[MeshModifyComponent] RAW indices (16-bit async): " + 
-						Ogre::StringConverter::toString(pShortIndices[0]) + ", " +
-						Ogre::StringConverter::toString(pShortIndices[1]) + ", " +
-						Ogre::StringConverter::toString(pShortIndices[2]) + ", " +
-						Ogre::StringConverter::toString(pShortIndices[3]) + ", " +
-						Ogre::StringConverter::toString(pShortIndices[4]) + ", " +
-						Ogre::StringConverter::toString(pShortIndices[5]));
-					
-					for (size_t i = 0; i < indexBuffer->getNumElements(); i++)
-					{
-						this->indices[addedIndices++] = static_cast<Ogre::uint32>(pShortIndices[i]) + index_offset;
-					}
-				}
+						const Ogre::uint16* pShortIndices = reinterpret_cast<const Ogre::uint16*>(asyncTicket->map());
 
-				asyncTicket->unmap();
-			}
+						/*Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+							"[MeshModifyComponent] RAW indices (16-bit async): " +
+							Ogre::StringConverter::toString(pShortIndices[0]) + ", " +
+							Ogre::StringConverter::toString(pShortIndices[1]) + ", " +
+							Ogre::StringConverter::toString(pShortIndices[2]) + ", " +
+							Ogre::StringConverter::toString(pShortIndices[3]) + ", " +
+							Ogre::StringConverter::toString(pShortIndices[4]) + ", " +
+							Ogre::StringConverter::toString(pShortIndices[5]));*/
+
+						for (size_t i = 0; i < indexBuffer->getNumElements(); i++)
+						{
+							this->indices[addedIndices++] = static_cast<Ogre::uint32>(pShortIndices[i]) + index_offset;
+						}
+					}
+
+					asyncTicket->unmap();
+				}
 			}
 			else
 			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-					"[MeshModifyComponent] ERROR: No index buffer found!");
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MeshModifyComponent] ERROR: No index buffer found!");
 			}
 
 			index_offset += static_cast<unsigned int>(vao->getVertexBuffers()[0]->getNumElements());
@@ -1036,28 +1061,27 @@ namespace NOWA
 		this->originalNormals = this->normals;
 		this->originalTangents = this->tangents;
 
-		// Debug: Print first few vertices and indices to verify data
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
-			"[MeshModifyComponent] === DEBUG: First 5 vertices ===");
-		for (size_t i = 0; i < std::min<size_t>(5, this->vertexCount); ++i)
-		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
-				"[MeshModifyComponent] v[" + Ogre::StringConverter::toString(i) + "] = (" +
-				Ogre::StringConverter::toString(this->vertices[i].x, 4) + ", " +
-				Ogre::StringConverter::toString(this->vertices[i].y, 4) + ", " +
-				Ogre::StringConverter::toString(this->vertices[i].z, 4) + ")");
-		}
+		//// Debug: Print first few vertices and indices to verify data
+		//Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MeshModifyComponent] === DEBUG: First 5 vertices ===");
+		//for (size_t i = 0; i < std::min<size_t>(5, this->vertexCount); ++i)
+		//{
+		//	Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+		//		"[MeshModifyComponent] v[" + Ogre::StringConverter::toString(i) + "] = (" +
+		//		Ogre::StringConverter::toString(this->vertices[i].x, 4) + ", " +
+		//		Ogre::StringConverter::toString(this->vertices[i].y, 4) + ", " +
+		//		Ogre::StringConverter::toString(this->vertices[i].z, 4) + ")");
+		//}
 
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
-			"[MeshModifyComponent] === DEBUG: First 15 indices (5 triangles) ===");
-		for (size_t i = 0; i < std::min<size_t>(15, this->indexCount); i += 3)
-		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
-				"[MeshModifyComponent] tri[" + Ogre::StringConverter::toString(i/3) + "] = " +
-				Ogre::StringConverter::toString(this->indices[i]) + ", " +
-				Ogre::StringConverter::toString(this->indices[i+1]) + ", " +
-				Ogre::StringConverter::toString(this->indices[i+2]));
-		}
+		//Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+		//	"[MeshModifyComponent] === DEBUG: First 15 indices (5 triangles) ===");
+		//for (size_t i = 0; i < std::min<size_t>(15, this->indexCount); i += 3)
+		//{
+		//	Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+		//		"[MeshModifyComponent] tri[" + Ogre::StringConverter::toString(i / 3) + "] = " +
+		//		Ogre::StringConverter::toString(this->indices[i]) + ", " +
+		//		Ogre::StringConverter::toString(this->indices[i + 1]) + ", " +
+		//		Ogre::StringConverter::toString(this->indices[i + 2]));
+		//}
 
 		// Check if any index is out of bounds
 		size_t maxIndex = 0;
@@ -1067,20 +1091,14 @@ namespace NOWA
 				maxIndex = this->indices[i];
 			if (this->indices[i] >= this->vertexCount)
 			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-					"[MeshModifyComponent] ERROR: Index " + Ogre::StringConverter::toString(i) + 
-					" = " + Ogre::StringConverter::toString(this->indices[i]) + 
-					" is >= vertexCount " + Ogre::StringConverter::toString(this->vertexCount));
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MeshModifyComponent] ERROR: Index " + Ogre::StringConverter::toString(i) +
+					" = " + Ogre::StringConverter::toString(this->indices[i]) + " is >= vertexCount " + Ogre::StringConverter::toString(this->vertexCount));
 			}
 		}
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
-			"[MeshModifyComponent] Max index value: " + Ogre::StringConverter::toString(maxIndex) +
-			", vertexCount: " + Ogre::StringConverter::toString(this->vertexCount));
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MeshModifyComponent] Max index value: " + Ogre::StringConverter::toString(maxIndex) + ", vertexCount: " + Ogre::StringConverter::toString(this->vertexCount));
 
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
-			"[MeshModifyComponent] Extracted " + Ogre::StringConverter::toString(this->vertexCount) + 
-			" vertices and " + Ogre::StringConverter::toString(this->indexCount) + " indices" +
-			(this->vertexFormat.hasTangent ? " (with tangents from QTangent)" : " (no tangents)"));
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MeshModifyComponent] Extracted " + Ogre::StringConverter::toString(this->vertexCount) +
+			" vertices and " + Ogre::StringConverter::toString(this->indexCount) + " indices" + (this->vertexFormat.hasTangent ? " (with tangents from QTangent)" : " (no tangents)"));
 
 		return true;
 	}
@@ -1092,13 +1110,11 @@ namespace NOWA
 		Ogre::VaoManager* vaoManager = renderSystem->getVaoManager();
 
 		// Create a unique name for the editable mesh
-		Ogre::String meshName = this->gameObjectPtr->getName() + "_Editable_" +
-			Ogre::StringConverter::toString(this->gameObjectPtr->getId());
+		Ogre::String meshName = this->gameObjectPtr->getName() + "_Editable_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
 
 		const Ogre::String groupName = Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME;
 
-		this->editableMesh = Ogre::MeshManager::getSingleton().createManual(
-			meshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
+		this->editableMesh = Ogre::MeshManager::getSingleton().createManual(meshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
 		// Remove existing mesh if any (Ogre-Next: remove by ResourceHandle)
 		// CRITICAL: Set the VaoManager - this is required for Ogre-Next!
 		this->editableMesh->_setVaoManager(vaoManager);
@@ -1121,13 +1137,12 @@ namespace NOWA
 					// Check if any normal map texture is set
 					Ogre::TextureGpu* normalTex = pbsDatablock->getTexture(Ogre::PBSM_NORMAL);
 					if (normalTex)
-			{
+					{
 						needsTangents = true;
-						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-							"[MeshModifyComponent] Datablock has normal map - tangents required");
+						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MeshModifyComponent] Datablock has normal map - tangents required");
 					}
+				}
 			}
-		}
 		}
 
 		// If original mesh had tangents OR datablock needs them, we include tangents
@@ -1137,10 +1152,9 @@ namespace NOWA
 		// If we need tangents but don't have them, generate them
 		if (includeTangents && !this->vertexFormat.hasTangent)
 		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-				"[MeshModifyComponent] Generating tangents (original mesh didn't have them)");
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MeshModifyComponent] Generating tangents (original mesh didn't have them)");
 
-		// Create submesh
+			// Create submesh
 			this->tangents.resize(this->vertexCount, Ogre::Vector4(1, 0, 0, 1));
 			this->originalTangents.resize(this->vertexCount, Ogre::Vector4(1, 0, 0, 1));
 			this->vertexFormat.hasTangent = true;
@@ -1156,8 +1170,7 @@ namespace NOWA
 		if (includeTangents)
 		{
 			vertexElements.push_back(Ogre::VertexElement2(Ogre::VET_FLOAT4, Ogre::VES_TANGENT));
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-				"[MeshModifyComponent] Adding TANGENT to vertex format (VET_FLOAT4)");
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MeshModifyComponent] Adding TANGENT to vertex format (VET_FLOAT4)");
 		}
 		
 		vertexElements.push_back(Ogre::VertexElement2(Ogre::VET_FLOAT2, Ogre::VES_TEXTURE_COORDINATES));
@@ -1169,15 +1182,12 @@ namespace NOWA
 			floatsPerVertex += 4; // tangent (xyzw)
 		}
 
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
-			"[MeshModifyComponent] Creating vertex buffer with " + 
-			Ogre::StringConverter::toString(floatsPerVertex) + " floats per vertex, " +
-			Ogre::StringConverter::toString(this->vertexCount) + " vertices");
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MeshModifyComponent] Creating vertex buffer with " + 
+			Ogre::StringConverter::toString(floatsPerVertex) + " floats per vertex, " + Ogre::StringConverter::toString(this->vertexCount) + " vertices");
 
 		// Prepare interleaved vertex data
 		const size_t vertexDataSize = this->vertexCount * floatsPerVertex * sizeof(float);
-		float* vertexData = reinterpret_cast<float*>(
-			OGRE_MALLOC_SIMD(vertexDataSize, Ogre::MEMCATEGORY_GEOMETRY));
+		float* vertexData = reinterpret_cast<float*>(OGRE_MALLOC_SIMD(vertexDataSize, Ogre::MEMCATEGORY_GEOMETRY));
 
 		for (size_t i = 0; i < this->vertexCount; ++i)
 		{
@@ -1210,16 +1220,13 @@ namespace NOWA
 			vertexData[offset + nextOffset + 1] = this->uvCoordinates[i].y;
 		}
 
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
-			"[MeshModifyComponent] Vertex data allocated: " + 
-			Ogre::StringConverter::toString(vertexDataSize) + " bytes");
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MeshModifyComponent] Vertex data allocated: " +  Ogre::StringConverter::toString(vertexDataSize) + " bytes");
 
 		// Check max index
 		try
 		{
-			this->dynamicVertexBuffer = vaoManager->createVertexBuffer(vertexElements,
-				this->vertexCount, Ogre::BT_DYNAMIC_DEFAULT,  // Dynamic for updates!
-					vertexData, false); // keepAsShadow = true
+			this->dynamicVertexBuffer = vaoManager->createVertexBuffer(vertexElements, this->vertexCount, Ogre::BT_DYNAMIC_DEFAULT,  // Dynamic for updates!
+					vertexData, false);
 		}
 		catch (Ogre::Exception& e)
 		{
@@ -1228,25 +1235,20 @@ namespace NOWA
 			throw e;
 		}
 
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
-			"[MeshModifyComponent] Created vertex buffer: " + 
-			Ogre::StringConverter::toString(this->dynamicVertexBuffer->getBytesPerElement()) + 
-			" bytes per element");
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MeshModifyComponent] Created vertex buffer: " +
+			Ogre::StringConverter::toString(this->dynamicVertexBuffer->getBytesPerElement()) + " bytes per element");
 
 		// Create index buffer
 		const size_t indexDataSize = this->indexCount * sizeof(Ogre::uint16);
-		Ogre::uint16* indexData = reinterpret_cast<Ogre::uint16*>(
-			OGRE_MALLOC_SIMD(indexDataSize, Ogre::MEMCATEGORY_GEOMETRY));
+		Ogre::uint16* indexData = reinterpret_cast<Ogre::uint16*>(OGRE_MALLOC_SIMD(indexDataSize, Ogre::MEMCATEGORY_GEOMETRY));
 
-			// Convert to 16-bit indices
-			for (size_t i = 0; i < this->indexCount; ++i)
-			{
+		// Convert to 16-bit indices
+		for (size_t i = 0; i < this->indexCount; ++i)
+		{
 			indexData[i] = static_cast<Ogre::uint16>(this->indices[i]);
-			}
+		}
 
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
-			"[MeshModifyComponent] Index data allocated: " + 
-			Ogre::StringConverter::toString(indexDataSize) + " bytes, " +
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MeshModifyComponent] Index data allocated: " + Ogre::StringConverter::toString(indexDataSize) + " bytes, " +
 			Ogre::StringConverter::toString(this->indexCount) + " indices");
 
 		// Create index buffer - Ogre takes ownership of indexData when keepAsShadow=true
@@ -1270,8 +1272,7 @@ namespace NOWA
 		Ogre::VertexBufferPackedVec vertexBuffers;
 		vertexBuffers.push_back(this->dynamicVertexBuffer);
 
-		Ogre::VertexArrayObject* vao = vaoManager->createVertexArrayObject(
-			vertexBuffers, this->dynamicIndexBuffer, Ogre::OT_TRIANGLE_LIST);
+		Ogre::VertexArrayObject* vao = vaoManager->createVertexArrayObject(vertexBuffers, this->dynamicIndexBuffer, Ogre::OT_TRIANGLE_LIST);
 
 		// Assign to submesh
 		subMesh->mVao[Ogre::VpNormal].push_back(vao);
@@ -1292,10 +1293,8 @@ namespace NOWA
 		this->editableMesh->_setBounds(bounds, false);
 		this->editableMesh->_setBoundingSphereRadius(bounds.getRadius());
 
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
-			"[MeshModifyComponent] Mesh bounds set: center(" + 
-			Ogre::StringConverter::toString(bounds.mCenter) + "), halfSize(" +
-			Ogre::StringConverter::toString(bounds.mHalfSize) + ")");
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MeshModifyComponent] Mesh bounds set: center(" + 
+			Ogre::StringConverter::toString(bounds.mCenter) + "), halfSize(" + Ogre::StringConverter::toString(bounds.mHalfSize) + ")");
 
 		// Create the item using the editable mesh
 		this->editableItem = this->gameObjectPtr->getSceneManager()->createItem(this->editableMesh, this->gameObjectPtr->isDynamic() ? Ogre::SCENE_DYNAMIC : Ogre::SCENE_STATIC);
@@ -1306,8 +1305,7 @@ namespace NOWA
 			Ogre::HlmsDatablock* datablock = originalItem->getSubItem(0)->getDatablock();
 			if (datablock)
 			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-					"[MeshModifyComponent] Applying datablock: " + datablock->getName().getFriendlyText());
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MeshModifyComponent] Applying datablock: " + datablock->getName().getFriendlyText());
 				this->editableItem->getSubItem(0)->setDatablock(datablock);
 			}
 		}
@@ -1315,17 +1313,17 @@ namespace NOWA
 		// Attach to scene node
 		this->gameObjectPtr->getSceneNode()->attachObject(this->editableItem);
 
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-			"[MeshModifyComponent] Created dynamic buffers successfully" +
-			Ogre::String(includeTangents ? " (with tangents)" : " (no tangents)"));
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MeshModifyComponent] Created dynamic buffers successfully" + Ogre::String(includeTangents ? " (with tangents)" : " (no tangents)"));
 
 		return true;
 	}
 
 	void MeshModifyComponent::uploadVertexData(void)
 	{
-		if (!this->dynamicVertexBuffer)
+		if (nullptr == this->dynamicVertexBuffer)
+		{
 			return;
+		}
 
 		// Map the buffer for writing
 		size_t floatsPerVertex = 8; // pos(3) + normal(3) + uv(2)
@@ -1335,8 +1333,7 @@ namespace NOWA
 		}
 		// IMPORTANT: Never read from this pointer!
 		const size_t dataSize = this->vertexCount * floatsPerVertex * sizeof(float);
-		float* vertexData = reinterpret_cast<float*>(
-			OGRE_MALLOC_SIMD(dataSize, Ogre::MEMCATEGORY_GEOMETRY));
+		float* vertexData = reinterpret_cast<float*>(OGRE_MALLOC_SIMD(dataSize, Ogre::MEMCATEGORY_GEOMETRY));
 
 		// Write interleaved vertex data
 		for (size_t i = 0; i < this->vertexCount; ++i)
@@ -1380,7 +1377,9 @@ namespace NOWA
 	Ogre::Real MeshModifyComponent::calculateBrushInfluence(Ogre::Real distance, Ogre::Real brushRadius) const
 	{
 		if (distance >= brushRadius)
+		{
 			return 0.0f;
+		}
 
 		// Normalized distance [0, 1]
 		Ogre::Real normalizedDist = distance / brushRadius;
@@ -1418,18 +1417,20 @@ namespace NOWA
 		Ogre::Real brushRadius = this->brushSize->getReal();
 		BrushMode mode = this->getBrushMode();
 
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
-			"[MeshModifyComponent] applyBrush called at: " + Ogre::StringConverter::toString(brushCenterLocal) +
-			", brushRadius: " + Ogre::StringConverter::toString(brushRadius) +
-			", mode: " + Ogre::StringConverter::toString(static_cast<int>(mode)));
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MeshModifyComponent] applyBrush called at: " + Ogre::StringConverter::toString(brushCenterLocal) +
+			", brushRadius: " + Ogre::StringConverter::toString(brushRadius) + ", mode: " + Ogre::StringConverter::toString(static_cast<int>(mode)));
 
 		// Invert push/pull if requested
 		if (invertEffect)
 		{
 			if (mode == BrushMode::PUSH)
+			{
 				mode = BrushMode::PULL;
+			}
 			else if (mode == BrushMode::PULL)
+			{
 				mode = BrushMode::PUSH;
+			}
 		}
 
 		// For smooth and flatten, we need to calculate average position/plane
@@ -1455,11 +1456,12 @@ namespace NOWA
 			}
 		}
 
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
-			"[MeshModifyComponent] Affected vertices: " + Ogre::StringConverter::toString(affectedCount));
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MeshModifyComponent] Affected vertices: " + Ogre::StringConverter::toString(affectedCount));
 
 		if (affectedCount == 0)
+		{
 			return;
+		}
 
 		averagePosition /= static_cast<Ogre::Real>(affectedCount);
 		averageNormal.normalise();
@@ -1582,8 +1584,10 @@ namespace NOWA
 
 	void MeshModifyComponent::recalculateTangents(void)
 	{
-		if (!this->vertexFormat.hasTangent)
+		if (false == this->vertexFormat.hasTangent)
+		{
 			return;
+		}
 
 		// Reset tangents
 		std::vector<Ogre::Vector3> tan1(this->vertexCount, Ogre::Vector3::ZERO);
@@ -1618,15 +1622,9 @@ namespace NOWA
 
 			Ogre::Real r = 1.0f / denom;
 
-			Ogre::Vector3 sdir(
-				(deltaV2 * edge1.x - deltaV1 * edge2.x) * r,
-				(deltaV2 * edge1.y - deltaV1 * edge2.y) * r,
-				(deltaV2 * edge1.z - deltaV1 * edge2.z) * r);
+			Ogre::Vector3 sdir((deltaV2 * edge1.x - deltaV1 * edge2.x) * r, (deltaV2 * edge1.y - deltaV1 * edge2.y) * r, (deltaV2 * edge1.z - deltaV1 * edge2.z) * r);
 
-			Ogre::Vector3 tdir(
-				(deltaU1 * edge2.x - deltaU2 * edge1.x) * r,
-				(deltaU1 * edge2.y - deltaU2 * edge1.y) * r,
-				(deltaU1 * edge2.z - deltaU2 * edge1.z) * r);
+			Ogre::Vector3 tdir((deltaU1 * edge2.x - deltaU2 * edge1.x) * r, (deltaU1 * edge2.y - deltaU2 * edge1.y) * r, (deltaU1 * edge2.z - deltaU2 * edge1.z) * r);
 
 			tan1[i0] += sdir;
 			tan1[i1] += sdir;
@@ -1668,13 +1666,13 @@ namespace NOWA
 
 			// Add each vertex as neighbor of the others
 			auto addNeighbor = [this](size_t vertex, size_t neighbor)
+			{
+				auto& neighbors = this->vertexNeighbors[vertex];
+				if (std::find(neighbors.begin(), neighbors.end(), neighbor) == neighbors.end())
 				{
-					auto& neighbors = this->vertexNeighbors[vertex];
-					if (std::find(neighbors.begin(), neighbors.end(), neighbor) == neighbors.end())
-					{
-						neighbors.push_back(neighbor);
-					}
-				};
+					neighbors.push_back(neighbor);
+				}
+			};
 
 			addNeighbor(i0, i1);
 			addNeighbor(i0, i2);
@@ -1685,12 +1683,13 @@ namespace NOWA
 		}
 	}
 
-	bool MeshModifyComponent::raycastMesh(Ogre::Real screenX, Ogre::Real screenY,
-		Ogre::Vector3& hitPosition, Ogre::Vector3& hitNormal)
+	bool MeshModifyComponent::raycastMesh(Ogre::Real screenX, Ogre::Real screenY, Ogre::Vector3& hitPosition, Ogre::Vector3& hitNormal)
 	{
 		Ogre::Camera* camera = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
-		if (!camera)
+		if (nullptr == camera)
+		{
 			return false;
+		}
 
 		Ogre::Ray ray = camera->getCameraToViewportRay(screenX, screenY);
 
@@ -1733,10 +1732,9 @@ namespace NOWA
 			}
 		}
 
-		if (hit)
+		if (true == hit)
 		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
-				"[MeshModifyComponent] Raycast HIT at local pos: " + Ogre::StringConverter::toString(hitPosition));
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MeshModifyComponent] Raycast HIT at local pos: " + Ogre::StringConverter::toString(hitPosition));
 		}
 
 		return hit;
@@ -1753,22 +1751,71 @@ namespace NOWA
 		return this->gameObjectPtr->getSceneNode()->_getFullTransform() * localPos;
 	}
 
+	void MeshModifyComponent::handleMeshModifyMode(NOWA::EventDataPtr eventData)
+	{
+		boost::shared_ptr<NOWA::EventDataEditorMode> castEventData = boost::static_pointer_cast<NOWA::EventDataEditorMode>(eventData);
+
+		if (NOWA::EditorManager::EDITOR_MESH_MODIFY_MODE == castEventData->getManipulationMode())
+		{
+			this->canModify = true;
+		}
+		else
+		{
+			this->canModify = false;
+		}
+	}
+
+	void MeshModifyComponent::handleGameObjectSelected(NOWA::EventDataPtr eventData)
+	{
+		boost::shared_ptr<NOWA::EventDataGameObjectSelected> castEventData = boost::static_pointer_cast<NOWA::EventDataGameObjectSelected>(eventData);
+
+		if (nullptr != this->gameObjectPtr)
+		{
+			if (castEventData->getGameObjectId() == this->gameObjectPtr->getId())
+			{
+				if (true == this->canModify && true == castEventData->getIsSelected())
+				{
+					NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.25f));
+					auto ptrFunction = [this]()
+						{
+							InputDeviceCore::getSingletonPtr()->addMouseListener(this, MeshModifyComponent::getStaticClassName() + "_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()));
+						};
+					NOWA::ProcessPtr closureProcess(new NOWA::ClosureProcess(ptrFunction));
+					delayProcess->attachChild(closureProcess);
+					NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
+				}
+				else
+				{
+					InputDeviceCore::getSingletonPtr()->removeMouseListener(MeshModifyComponent::getStaticClassName() + "_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()));
+				}
+			}
+		}
+	}
+
 	// ==================== MOUSE HANDLERS ====================
 
 	bool MeshModifyComponent::mousePressed(const OIS::MouseEvent& evt, OIS::MouseButtonID id)
 	{
-		if (!this->activated->getBool())
+		if (false == this->activated->getBool())
+		{
 			return false;
+		}
 
 		if (id != OIS::MB_Left)
+		{
 			return false;
+		}
 
 		// Check if clicking on GUI
 		if (MyGUI::InputManager::getInstance().getMouseFocusWidget() != nullptr)
+		{
 			return false;
+		}
 
-		if (!this->editableItem)
+		if (nullptr == this->editableItem)
+		{
 			return false;
+		}
 
 		// Get normalized screen coordinates
 		Ogre::Real screenX = 0.0f;
@@ -1791,14 +1838,20 @@ namespace NOWA
 
 	bool MeshModifyComponent::mouseMoved(const OIS::MouseEvent& evt)
 	{
-		if (!this->activated->getBool())
+		if (false == this->activated->getBool())
+		{
 			return false;
+		}
 
-		if (!this->isPressing)
+		if (false == this->isPressing)
+		{
 			return false;
+		}
 
-		if (!this->editableItem)
+		if (nullptr == this->editableItem)
+		{
 			return false;
+		}
 
 		// Get normalized screen coordinates
 		Ogre::Real screenX = 0.0f;
@@ -1827,6 +1880,12 @@ namespace NOWA
 		if (id == OIS::MB_Left)
 		{
 			this->isPressing = false;
+
+			if (nullptr != this->dynamicVertexBuffer)
+			{
+				boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
+				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGeometryModified);
+			}
 		}
 
 		return false;

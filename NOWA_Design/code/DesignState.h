@@ -64,7 +64,6 @@ private:
 	void notifyMessageBoxEnd(MyGUI::Message* sender, MyGUI::MessageBoxStyle result);
 	void notifyMessageBoxEndExit(MyGUI::Message* sender, MyGUI::MessageBoxStyle result);
 	void setFocus(MyGUI::Widget* sender, MyGUI::Widget* oldWidget);
-	void wakeSleepGameObjects(bool allGameObjects, bool sleep);
 	void simulate(bool pause, bool withUndo);
 	void generateCategories(void);
 	void updateInfo(Ogre::Real dt);
@@ -119,8 +118,7 @@ private:
 	MyGUI::Button* terrainModifyModeCheck;
 	MyGUI::Button* terrainSmoothModeCheck;
 	MyGUI::Button* terrainPaintModeCheck;
-	MyGUI::Button* wakeButton;
-	MyGUI::Button* sleepButton;
+	MyGUI::Button* meshModifyModeCheck;
 	MyGUI::Button* removeButton;
 	MyGUI::Button* copyButton;
 	MyGUI::Button* focusButton;

@@ -109,24 +109,45 @@ namespace NOWA
 		bool buttonPressed(const OIS::JoyStickEvent& e, int button);
 		bool buttonReleased(const OIS::JoyStickEvent& e, int button);
 
+		void flushPendingKeyRemovals(void);
+
+		void flushPendingMouseRemovals(void);
+
+		void flushPendingJoystickRemovals(void);
+	private:
+
 		OIS::Mouse* mouse;
 		OIS::Keyboard* keyboard;
 		OIS::InputManager* inputSystem;
 
 		std::vector<OIS::JoyStick*> joysticks;
 
-		std::map<Ogre::String, OIS::KeyListener*> keyListeners;
-		std::map<Ogre::String, OIS::MouseListener*> mouseListeners;
-		std::map<Ogre::String, OIS::JoyStickListener*> joystickListeners;
-
 		InputDeviceModule* mainInputDeviceModule;
 		std::vector<InputDeviceModule*> keyboardInputDeviceModules;
 		std::vector<InputDeviceModule*> joystickInputDeviceModules;
 
+		// Ordered stacks (deepest last -> processed first)
+		std::vector<std::pair<Ogre::String, OIS::KeyListener*>> keyListenerStack;
+		std::vector<std::pair<Ogre::String, OIS::MouseListener*>> mouseListenerStack;
+		std::vector<std::pair<Ogre::String, OIS::JoyStickListener*>> joystickListenerStack;
+
+		// Name -> index for O(1) remove
+		std::unordered_map<Ogre::String, size_t> keyListenerIndex;
+		std::unordered_map<Ogre::String, size_t> mouseListenerIndex;
+		std::unordered_map<Ogre::String, size_t> joystickListenerIndex;
+
+		// Safe removal while dispatching
+		int keyDispatchDepth;
+		int mouseDispatchDepth;
+		int joystickDispatchDepth;
+
+		std::vector<Ogre::String> pendingRemoveKeys;
+		std::vector<Ogre::String> pendingRemoveMice;
+		std::vector<Ogre::String> pendingRemoveJoysticks;
+
 		JoyStickConfig joyStickConfig;
 
 		unsigned short joystickIndex;
-		bool listenerAboutToBeRemoved;
 
 		bool bSelectDown;
 

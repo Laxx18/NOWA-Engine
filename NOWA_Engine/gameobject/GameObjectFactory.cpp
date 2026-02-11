@@ -437,7 +437,7 @@ namespace NOWA
 				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObjectFactory] Skipping creation for game object: " + sceneNode->getName() +
 					" because it will be replicated later.");
 				
-				ENQUEUE_RENDER_COMMAND_MULTI("GameObjectFactory::createOrSetGameObjectFromXML destroy", _3(sceneManager, movableObject, &sceneNode),
+				NOWA::GraphicsModule::RenderCommand renderCommand = [this, sceneManager, movableObject, &sceneNode]()
 				{
 					// also delete the already created entity, and node etc.
 					if (movableObject != nullptr && sceneManager->hasMovableObject(movableObject))
@@ -457,7 +457,9 @@ namespace NOWA
 					NOWA::GraphicsModule::getInstance()->removeTrackedNode(sceneNode);
 					sceneManager->destroySceneNode(sceneNode);
 					sceneNode = nullptr;
-				});
+				};
+				NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObjectFactory::createOrSetGameObjectFromXML destroy");
+
 				return nullptr;
 			}
 			else
@@ -576,25 +578,26 @@ namespace NOWA
 					}
 					else if (nullptr != sceneNode)
 					{
-						ENQUEUE_RENDER_COMMAND_MULTI("GameObjectFactory::createOrSetGameObjectFromXML destroy2", _4(sceneManager, &sceneNode, gameObjectPtr, componentName),
+						NOWA::GraphicsModule::RenderCommand renderCommand = [this, sceneManager, &sceneNode, gameObjectPtr, componentName]()
 						{
-							// If an error occurs, we kill the game obect and bail. We could keep going, but the game object is will only be 
-							// partially complete so it is not worth it. Note that the game object instance will be destroyed because it
-							// will fall out of scope with nothing else pointing to it.
-							sceneNode->removeAndDestroyAllChildren();
-							NOWA::GraphicsModule::getInstance()->removeTrackedNode(sceneNode);
-							sceneManager->destroySceneNode(sceneNode);
-							Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectFactory] Error: Could not create component: "
-								+ componentName + " for GameObject '" + gameObjectPtr->getName() + "'. Maybe the component has not been registered?");
-							sceneNode = nullptr;
-							return nullptr;
-						});
+								// If an error occurs, we kill the game obect and bail. We could keep going, but the game object is will only be 
+								// partially complete so it is not worth it. Note that the game object instance will be destroyed because it
+								// will fall out of scope with nothing else pointing to it.
+								sceneNode->removeAndDestroyAllChildren();
+								NOWA::GraphicsModule::getInstance()->removeTrackedNode(sceneNode);
+								sceneManager->destroySceneNode(sceneNode);
+								Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectFactory] Error: Could not create component: "
+									+ componentName + " for GameObject '" + gameObjectPtr->getName() + "'. Maybe the component has not been registered?");
+								sceneNode = nullptr;
+								return nullptr;
+						};
+						NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObjectFactory::createOrSetGameObjectFromXML destroy2");
 					}
 				}
 				else
 				{
 					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectFactory] Error: GameObject '" + gameObjectPtr->getName()
-																	+ "': Expected XML attribute: '" + XMLConverter::getAttrib(propertyElement, "name") + "' in component: '" + componentName + "'.");
+						+ "': Expected XML attribute: '" + XMLConverter::getAttrib(propertyElement, "name") + "' in component: '" + componentName + "'.");
 
 					propertyElement = propertyElement->next_sibling("property");
 				}
@@ -608,8 +611,8 @@ namespace NOWA
 				if (nullptr != existingGameObjectNamePtr)
 				{
 					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectFactory] Error: GameObject '" + existingGameObjectNamePtr->getName()
-																	+ "' already exists. It will be deleted and the newer one registered. This scenario may haben if "
-																	"somehow a local scene has the game object and the global one, kill the first one and register the second one.");
+						+ "' already exists. It will be deleted and the newer one registered. This scenario may haben if "
+						"somehow a local scene has the game object and the global one, kill the first one and register the second one.");
 					AppStateManager::getSingletonPtr()->getGameObjectController()->deleteGameObjectImmediately(existingGameObjectNamePtr->getId());
 				}
 				// Registers the game object to the controller, but do it before postInit to set a categoryID for the component
@@ -628,15 +631,16 @@ namespace NOWA
 		}
 		else
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI("GameObjectFactory::createOrSetGameObjectFromXML destroy3", _2(sceneManager, &sceneNode),
-				{
-					// If game object could not be initialized, destroy ogre data
-					sceneNode->removeAndDestroyAllChildren();
-					NOWA::GraphicsModule::getInstance()->removeTrackedNode(sceneNode);
-					sceneManager->destroySceneNode(sceneNode);
-					sceneNode = nullptr;
-				});
-			
+			NOWA::GraphicsModule::RenderCommand renderCommand = [this, sceneManager, &sceneNode]()
+			{
+				// If game object could not be initialized, destroy ogre data
+				sceneNode->removeAndDestroyAllChildren();
+				NOWA::GraphicsModule::getInstance()->removeTrackedNode(sceneNode);
+				sceneManager->destroySceneNode(sceneNode);
+				sceneNode = nullptr;
+			};
+			NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObjectFactory::createOrSetGameObjectFromXML destroy3");
+
 			return nullptr;
 		}
 
@@ -649,7 +653,7 @@ namespace NOWA
 		return gameObjectPtr;
 	}
 
-	GameObjectCompPtr GameObjectFactory::createComponent(GameObjectPtr gameObjectPtr, const Ogre::String& componentClassName)
+	GameObjectCompPtr GameObjectFactory::createComponent(GameObjectPtr gameObjectPtr, const Ogre::String& componentClassName, bool newComponent)
 	{
 		GameObjectCompPtr componentPtr(this->componentFactory.create(NOWA::getIdFromName(componentClassName)));
 
@@ -661,6 +665,10 @@ namespace NOWA
 
 			// First adds (because occurence index will be increased, if x-times the same components has been added and can be used in post init, if post init failes, remove the component again 
 			gameObjectPtr->addComponent(componentPtr);
+			if (true == newComponent)
+			{
+				componentPtr->onAddComponent();
+			}
 			if (false == componentPtr->postInit())
 			{
 				gameObjectPtr->deleteComponent(componentPtr->getClassName());

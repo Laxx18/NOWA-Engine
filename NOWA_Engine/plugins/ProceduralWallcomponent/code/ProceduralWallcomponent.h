@@ -41,7 +41,6 @@ namespace NOWA
 		enum class BuildState
 		{
 			IDLE = 0,
-			PLACING_START,
 			DRAGGING,
 			CONFIRMING
 		};
@@ -114,6 +113,11 @@ namespace NOWA
 		 * @see		GameObjectComponent::onCloned
 		 */
 		virtual bool onCloned(void) override;
+
+		/**
+		 * @see		GameObjectComponent::onAddComponent
+		 */
+		virtual void onAddComponent(void) override;
 
 		/**
 		 * @see		GameObjectComponent::onRemoveComponent
@@ -330,7 +334,9 @@ namespace NOWA
 		virtual bool keyReleased(const OIS::KeyEvent& evt) override;
 	private:
 		void createWallMesh(void);
-		void createWallMeshInternal(const std::vector<float>& vertices, const std::vector<Ogre::uint32>& indices, size_t numVertices, const Ogre::Vector3& wallOrigin);
+		void createWallMeshInternal(const std::vector<float>& wallVertices, const std::vector<Ogre::uint32>& wallIndices, size_t numWallVertices,
+			const std::vector<float>& pillarVertices, const std::vector<Ogre::uint32>& pillarIndices, size_t numPillarVertices,
+			const Ogre::Vector3& wallOrigin);
 		void destroyWallMesh(void);
 		void destroyPreviewMesh(void);
 		void updatePreviewMesh(void);
@@ -347,9 +353,30 @@ namespace NOWA
 		void addBox(Ogre::Real minX, Ogre::Real minY, Ogre::Real minZ, Ogre::Real maxX, Ogre::Real maxY, Ogre::Real maxZ, Ogre::Real uTile, Ogre::Real vTile);
 		void addQuad(const Ogre::Vector3& v0, const Ogre::Vector3& v1, const Ogre::Vector3& v2, const Ogre::Vector3& v3, const Ogre::Vector3& normal, Ogre::Real uTile, Ogre::Real vTile);
 
+		void addPillarQuad(const Ogre::Vector3& v0, const Ogre::Vector3& v1, const Ogre::Vector3& v2, const Ogre::Vector3& v3, const Ogre::Vector3& normal, Ogre::Real uTile, Ogre::Real vTile);
+
 		Ogre::Vector3 snapToGridFunc(const Ogre::Vector3& position);
 		WallStyle getWallStyleEnum(void) const;
 
+		Ogre::String getWallDataFilePath(void) const;
+
+		bool saveWallDataToFile(void);
+
+		bool loadWallDataFromFile(void);
+
+		void deleteWallDataFile(void);
+
+		void handleMeshModifyMode(NOWA::EventDataPtr eventData);
+
+		void handleGameObjectSelected(NOWA::EventDataPtr eventData);
+
+		void addInputListener(void);
+
+		void removeInputListener(void);
+
+	private:
+		static const uint32_t WALLDATA_MAGIC = 0x57414C4C;  // "WALL" in hex
+		static const uint32_t WALLDATA_VERSION = 1;
 	private:
 		Ogre::String name;
 		// Attributes
@@ -379,6 +406,10 @@ namespace NOWA
 		std::vector<Ogre::uint32> indices;
 		Ogre::uint32 currentVertexIndex;
 
+		std::vector<float> pillarVertices;
+		std::vector<Ogre::uint32> pillarIndices;
+		Ogre::uint32 currentPillarVertexIndex;
+
 		// Ogre objects
 		Ogre::MeshPtr wallMesh;
 		Ogre::Item* wallItem;
@@ -397,6 +428,17 @@ namespace NOWA
 		bool hasWallOrigin;
 		Ogre::Plane groundPlane;
 		Ogre::RaySceneQuery* groundQuery;
+
+		std::vector<float>          cachedWallVertices;
+		std::vector<Ogre::uint32>   cachedWallIndices;
+		size_t                      cachedNumWallVertices;
+
+		std::vector<float>          cachedPillarVertices;
+		std::vector<Ogre::uint32>   cachedPillarIndices;
+		size_t                      cachedNumPillarVertices;
+
+		Ogre::Vector3               cachedWallOrigin;
+		bool canModify;
 	};
 
 } // namespace NOWA

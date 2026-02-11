@@ -259,6 +259,11 @@ namespace NOWA
 			this->useMSAA->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "UsePCC")
+		{
+			this->usePCC->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "UseTerra")
 		{
 			this->useTerra = XMLConverter::getAttribBool(propertyElement, "data");
@@ -267,11 +272,6 @@ namespace NOWA
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "UseOcean")
 		{
 			this->useOcean = XMLConverter::getAttribBool(propertyElement, "data");
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "UsePCC")
-		{
-			this->usePCC->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "ShadowGlobalBias")

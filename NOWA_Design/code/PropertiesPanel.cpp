@@ -2651,7 +2651,7 @@ void PropertiesPanelGameObject::addComponent(MyGUI::MenuItem* menuItem)
 		return;
 	}
 
-	this->editorManager->addComponent(gameObjectIds, componentName);
+	this->editorManager->addComponent(gameObjectIds, componentName, true);
 
 	// Sent when a property has changed, so that the properties panel can be refreshed with new values
 	boost::shared_ptr<EventDataRefreshPropertiesPanel> eventDataRefreshPropertiesPanel(new EventDataRefreshPropertiesPanel());

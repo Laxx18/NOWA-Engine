@@ -2581,6 +2581,63 @@ namespace NOWA
 		bool activated;
 	};
 
+	//---------------------------------------------------------------------------------------------------------------------
+	// EventDataGameObjectSelected - Sent when a game object has been selected
+	//---------------------------------------------------------------------------------------------------------------------
+	class EventDataGameObjectSelected : public NOWA::BaseEventData
+	{
+	public:
+		EventDataGameObjectSelected(const unsigned long id, bool selected)
+			: id(id),
+			selected(selected)
+		{
+
+		}
+
+		static NOWA::EventType getStaticEventType(void)
+		{
+			return 0xe8329A11;
+		}
+
+		virtual const NOWA::EventType getEventType(void) const
+		{
+			return 0xe8329A11;
+		}
+
+		virtual void serialize(std::ostrstream& out) const
+		{
+			out << Ogre::StringConverter::toString(this->id) << " " << Ogre::StringConverter::toString(this->selected);
+		}
+
+		virtual void deserialize(std::istrstream& in)
+		{
+			in >> Ogre::StringConverter::toString(this->id) >> Ogre::StringConverter::toString(this->selected);
+		}
+
+		virtual NOWA::EventDataPtr copy() const
+		{
+			return NOWA::EventDataPtr(new EventDataHdrActivated(this->id, this->selected));
+		}
+
+		virtual const char* getName(void) const
+		{
+			return "EventDataGameObjectSelected";
+		}
+
+		unsigned long getGameObjectId(void) const
+		{
+			return this->id;
+		}
+
+		bool getIsSelected(void) const
+		{
+			return this->selected;
+		}
+	private:
+		unsigned long id;
+		bool selected;
+	};
+
 }; // namespace end
 
 #endif

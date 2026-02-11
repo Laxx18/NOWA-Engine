@@ -1212,6 +1212,40 @@
 			{
 				"value" : 0.2
 			}
+		},
+		"proceduralWall1" :
+		{
+			"macroblock" : "Objects_Macroblock_0",
+			"blendblock" : "Objects_Blendblock_0",
+			"shadow_const_bias" : 0.001,
+			"workflow" : "specular_fresnel",
+			"brdf" : "cook_torrance",
+			"diffuse" :
+			{
+				"value" : [3.14, 3.14, 3.14],
+				"background" : [1, 1, 1, 1],
+				"texture" : "proceduralWall1D.png",
+				"sampler" : "Objects_Sampler_5"
+			},
+			"specular" :
+			{
+				"value" : [0.1, 0.1, 0.1]
+			},
+			"fresnel" :
+			{
+				"value" : 0,
+				"mode" : "coeff"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"texture" : "proceduralWall1N.DDS",
+				"sampler" : "Objects_Sampler_5"
+			},
+			"roughness" :
+			{
+				"value" : 0.09
+			}
 		}
 	}
 }

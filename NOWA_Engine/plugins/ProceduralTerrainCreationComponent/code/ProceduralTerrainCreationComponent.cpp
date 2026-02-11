@@ -1807,17 +1807,17 @@ namespace NOWA
 		float terraMinHeight = terraOrigin.y;
 		float terraMaxHeight = terraOrigin.y + terraHeightRange;
 
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
 			"[ProceduralTerrain] ========================================");
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
 			"[ProceduralTerrain] Resolution: " + Ogre::StringConverter::toString(width));
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
 			"[ProceduralTerrain] Terra XZ: " + Ogre::StringConverter::toString(xzDimensions.x) +
 			"m x " + Ogre::StringConverter::toString(xzDimensions.y) + "m");
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
 			"[ProceduralTerrain] Terra Height: " + Ogre::StringConverter::toString(terraMinHeight) +
 			"m to " + Ogre::StringConverter::toString(terraMaxHeight) + "m");
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
 			"[ProceduralTerrain] Pixels/meter: " +
 			Ogre::StringConverter::toString(width / xzDimensions.x));
 
@@ -1844,9 +1844,9 @@ namespace NOWA
 			float roadWidthMeters = this->roadWidth->getReal();
 			float pixelsPerMeter = width / xzDimensions.x;
 
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
 				"[ProceduralTerrain] Generating " + Ogre::StringConverter::toString(numRoads) + " road(s)");
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
 				"[ProceduralTerrain] Road: " + Ogre::StringConverter::toString(roadWidthMeters) +
 				"m = " + Ogre::StringConverter::toString(roadWidthMeters * pixelsPerMeter) + " pixels");
 
@@ -1897,14 +1897,14 @@ namespace NOWA
 			}
 
 			float percent = (affected * 100.0f) / (width * height);
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
 				"[ProceduralTerrain] Roads affected " + Ogre::StringConverter::toString(percent) + "% of terrain");
 		}
 
 		// Apply features (all your existing code stays the same!)
 		if (this->enableIsland->getBool())
 		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
 				"[ProceduralTerrain] Applying island mask...");
 			applyIslandMask(heightData, width, height);
 		}
@@ -1913,21 +1913,21 @@ namespace NOWA
 		{
 			std::vector<CanyonPath> canyons;
 			generateCanyons(canyons, width, height);
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
 				"[ProceduralTerrain] Carving " + Ogre::StringConverter::toString(canyons.size()) + " canyons...");
 			applyCanyonsToTerrain(heightData, canyons, width, height);
 		}
 
 		if (this->enableErosion->getBool())
 		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
 				"[ProceduralTerrain] Simulating erosion...");
 			simulateHydraulicErosion(heightData, width, height);
 		}
 
 		if (this->enableRivers->getBool())
 		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
 				"[ProceduralTerrain] Generating rivers...");
 			std::vector<Ogre::Vector2> tensorField;
 			generateTensorField(tensorField, width, height);
@@ -1944,7 +1944,7 @@ namespace NOWA
 			maxH = std::max(maxH, h);
 		}
 
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
 			"[ProceduralTerrain] Generated heights: " + Ogre::StringConverter::toString(minH) +
 			"m to " + Ogre::StringConverter::toString(maxH) + "m");
 
@@ -1953,7 +1953,7 @@ namespace NOWA
 		image.createEmptyImage(width, height, 1, Ogre::TextureTypes::Type2D, Ogre::PFG_R16_UNORM, 1);
 		Ogre::uint16* imageData = reinterpret_cast<Ogre::uint16*>(image.getData(0).data);
 
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
 			"[ProceduralTerrain] Height range: " + Ogre::StringConverter::toString(minH) +
 			" to " + Ogre::StringConverter::toString(maxH));
 
@@ -1966,10 +1966,13 @@ namespace NOWA
 
 		terra->createHeightmapTexture(image);
 
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
 			"[ProceduralTerrain] Complete!");
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
 			"[ProceduralTerrain] ========================================");
+
+		boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGeometryModified);
 
 		this->terrainGenerated = true;
 	}

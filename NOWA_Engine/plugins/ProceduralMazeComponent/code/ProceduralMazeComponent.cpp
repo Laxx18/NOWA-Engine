@@ -1011,6 +1011,9 @@ namespace NOWA
 		this->vertices.clear();
 		this->indices.clear();
 
+		boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGeometryModified);
+
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[ProceduralMazeComponent] Generated maze " +
 			Ogre::StringConverter::toString(this->numColumns->getInt()) + "x" + Ogre::StringConverter::toString(this->numRows->getInt()) +
 			" with seed " + Ogre::StringConverter::toString(this->seed->getUInt()) + (needsTangents ? " (with tangents)" : " (no tangents)"));

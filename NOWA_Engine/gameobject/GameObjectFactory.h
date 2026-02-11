@@ -54,8 +54,9 @@ namespace NOWA
 		 * @brief		Creates a new component for this game object.
 		 * @param[in]	gameObjectPtr		The game object the create the component for
 		 * @param[in]	componentClassName	The component class name for creation
+		 * @param[in]	newComponent				Whether this component is a new one or loaded from XML
 		 */
-		GameObjectCompPtr createComponent(GameObjectPtr gameObjectPtr, const Ogre::String& componentClassName);
+		GameObjectCompPtr createComponent(GameObjectPtr gameObjectPtr, const Ogre::String& componentClassName, bool newComponent = false);
 
 	public:
 		static GameObjectFactory* getInstance();

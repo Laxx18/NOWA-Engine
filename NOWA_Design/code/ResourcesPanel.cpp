@@ -343,6 +343,14 @@ void ResourcesPanelMeshes::loadMeshes(const Ogre::String& filter)
 				parent->add(child);
 			}
 		}
+		// Add Road
+		{
+			if (NOWA::GameObjectFactory::getInstance()->getComponentFactory()->hasComponent("ProceduralRoadComponent"))
+			{
+				child = new MyGUI::TreeControl::Node("Road", "Data");
+				parent->add(child);
+			}
+		}
 		root->add(parent);
 	}
 
@@ -487,6 +495,10 @@ void ResourcesPanelMeshes::notifyTreeNodeSelected(MyGUI::TreeControl* treeContro
 		else if ("Wall" == Ogre::String(node->getText()))
 		{
 			this->editorManager->attachOtherResourceToPlaceNode(NOWA::GameObject::WALL);
+		}
+		else if ("Road" == Ogre::String(node->getText()))
+		{
+			this->editorManager->attachOtherResourceToPlaceNode(NOWA::GameObject::ROAD);
 		}
 		else
 		{

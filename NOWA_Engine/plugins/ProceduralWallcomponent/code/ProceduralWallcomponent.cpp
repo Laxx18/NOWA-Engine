@@ -6,6 +6,7 @@
 #include "main/AppStateManager.h"
 #include "main/Core.h"
 #include "main/InputDeviceCore.h"
+#include "editor/EditorManager.h"
 
 #include "OgreItem.h"
 #include "OgreMeshManager2.h"
@@ -40,7 +41,11 @@ namespace NOWA
 		continuousMode(false),
 		wallOrigin(Ogre::Vector3::ZERO),
 		hasWallOrigin(false),
-		groundQuery(nullptr)
+		groundQuery(nullptr),
+		cachedNumWallVertices(0),
+		cachedNumPillarVertices(0),
+		cachedWallOrigin(Ogre::Vector3::ZERO),
+		canModify(false)
 	{
 		this->activated = new Variant(ProceduralWallComponent::AttrActivated(), true, this->attributes);
 		this->wallHeight = new Variant(ProceduralWallComponent::AttrWallHeight(), 3.0f, this->attributes);
@@ -58,8 +63,8 @@ namespace NOWA
 		this->adaptToGround = new Variant(ProceduralWallComponent::AttrAdaptToGround(), true, this->attributes);
 		this->createPillars = new Variant(ProceduralWallComponent::AttrCreatePillars(), true, this->attributes);
 		this->pillarSize = new Variant(ProceduralWallComponent::AttrPillarSize(), 0.5f, this->attributes);
-		this->wallDatablock = new Variant(ProceduralWallComponent::AttrWallDatablock(), Ogre::String(""), this->attributes);
-		this->pillarDatablock = new Variant(ProceduralWallComponent::AttrPillarDatablock(), Ogre::String(""), this->attributes);
+		this->wallDatablock = new Variant(ProceduralWallComponent::AttrWallDatablock(), Ogre::String("proceduralWall1"), this->attributes);
+		this->pillarDatablock = new Variant(ProceduralWallComponent::AttrPillarDatablock(), Ogre::String("proceduralWall1"), this->attributes);
 		this->uvTiling = new Variant(ProceduralWallComponent::AttrUVTiling(), Ogre::Vector2(1.0f, 1.0f), this->attributes);
 		this->fencePostSpacing = new Variant(ProceduralWallComponent::AttrFencePostSpacing(), 2.0f, this->attributes);
 		this->battlementWidth = new Variant(ProceduralWallComponent::AttrBattlementWidth(), 0.5f, this->attributes);
@@ -209,26 +214,31 @@ namespace NOWA
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] Init component for game object: " + this->gameObjectPtr->getName());
 
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &ProceduralWallComponent::handleMeshModifyMode), NOWA::EventDataEditorMode::getStaticEventType());
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &ProceduralWallComponent::handleGameObjectSelected), NOWA::EventDataGameObjectSelected::getStaticEventType());
+
 		// Create raycast query for ground detection
-		this->groundQuery = this->gameObjectPtr->getSceneManager()->createRayQuery(Ogre::Ray());
+		this->groundQuery = this->gameObjectPtr->getSceneManager()->createRayQuery(Ogre::Ray(), GameObjectController::ALL_CATEGORIES_ID);
 		this->groundQuery->setSortByDistance(true);
 
 		// Setup fallback ground plane at Y=0
 		this->groundPlane = Ogre::Plane(Ogre::Vector3::UNIT_Y, 0.0f);
 
-		// If a listener has been added via key/mouse/joystick pressed, a new listener would be inserted during this iteration, which would cause a crash in mouse/key/button release iterator, hence add in next frame
-		NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.25f));
-		auto ptrFunction = [this]()
-		{
-			InputDeviceCore::getSingletonPtr()->addKeyListener(this, ProceduralWallComponent::getStaticClassName() + "_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()));
-			InputDeviceCore::getSingletonPtr()->addMouseListener(this, ProceduralWallComponent::getStaticClassName() + "_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()));
-		};
-		NOWA::ProcessPtr closureProcess(new NOWA::ClosureProcess(ptrFunction));
-		delayProcess->attachChild(closureProcess);
-		NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
-
 		// Create preview scene node
 		this->previewNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
+
+		// Load wall data from file
+		if (true == this->loadWallDataFromFile())
+		{
+			// If we successfully loaded segments, rebuild the mesh
+			if (!this->wallSegments.empty())
+			{
+				this->rebuildMesh();
+
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] Successfully loaded and rebuilt wall with " +
+					Ogre::StringConverter::toString(this->wallSegments.size()) + " segments");
+			}
+		}
 
 		return true;
 	}
@@ -252,9 +262,21 @@ namespace NOWA
 		return true;
 	}
 
+	void ProceduralWallComponent::onAddComponent(void)
+	{
+		boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(EditorManager::EDITOR_MESH_MODIFY_MODE));
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataEditorMode);
+		this->canModify = true;
+
+		this->addInputListener();
+	}
+
 	void ProceduralWallComponent::onRemoveComponent(void)
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] Destructor called");
+
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ProceduralWallComponent::handleMeshModifyMode), NOWA::EventDataEditorMode::getStaticEventType());
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ProceduralWallComponent::handleGameObjectSelected), NOWA::EventDataGameObjectSelected::getStaticEventType());
 
 		if (nullptr != this->groundQuery)
 		{
@@ -307,11 +329,7 @@ namespace NOWA
 
 	void ProceduralWallComponent::update(Ogre::Real dt, bool notSimulating)
 	{
-		// Update preview visualization during dragging
-		if (this->buildState == BuildState::DRAGGING && this->previewItem)
-		{
-			// Preview is updated in mouseMoved
-		}
+		
 	}
 
 	void ProceduralWallComponent::actualizeValue(Variant* attribute)
@@ -385,94 +403,96 @@ namespace NOWA
 		GameObjectComponent::writeXML(propertiesXML, doc);
 
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", ProceduralWallComponent::AttrActivated().c_str()));
+		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string(ProceduralWallComponent::AttrActivated().c_str())));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->activated->getBool())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", ProceduralWallComponent::AttrWallHeight().c_str()));
+		propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string(ProceduralWallComponent::AttrWallHeight().c_str())));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->wallHeight->getReal())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", ProceduralWallComponent::AttrWallThickness().c_str()));
+		propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string(ProceduralWallComponent::AttrWallThickness().c_str())));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->wallThickness->getReal())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", ProceduralWallComponent::AttrWallStyle().c_str()));
-		propertyXML->append_attribute(doc.allocate_attribute("data", this->wallStyle->getListSelectedValue().c_str()));
+		propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string(ProceduralWallComponent::AttrWallStyle().c_str())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->wallStyle->getListSelectedValue())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", ProceduralWallComponent::AttrSnapToGrid().c_str()));
+		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string(ProceduralWallComponent::AttrSnapToGrid().c_str())));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->snapToGrid->getBool())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", ProceduralWallComponent::AttrGridSize().c_str()));
+		propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string(ProceduralWallComponent::AttrGridSize().c_str())));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->gridSize->getReal())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", ProceduralWallComponent::AttrAdaptToGround().c_str()));
+		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string(ProceduralWallComponent::AttrAdaptToGround().c_str())));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->adaptToGround->getBool())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", ProceduralWallComponent::AttrCreatePillars().c_str()));
+		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string(ProceduralWallComponent::AttrCreatePillars().c_str())));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->createPillars->getBool())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", ProceduralWallComponent::AttrPillarSize().c_str()));
+		propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string(ProceduralWallComponent::AttrPillarSize().c_str())));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->pillarSize->getReal())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", ProceduralWallComponent::AttrWallDatablock().c_str()));
-		propertyXML->append_attribute(doc.allocate_attribute("data", this->wallDatablock->getString().c_str()));
+		propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string(ProceduralWallComponent::AttrWallDatablock().c_str())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->wallDatablock->getString())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", ProceduralWallComponent::AttrPillarDatablock().c_str()));
-		propertyXML->append_attribute(doc.allocate_attribute("data", this->pillarDatablock->getString().c_str()));
+		propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string(ProceduralWallComponent::AttrPillarDatablock().c_str())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->pillarDatablock->getString())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "8"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", ProceduralWallComponent::AttrUVTiling().c_str()));
+		propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string(ProceduralWallComponent::AttrUVTiling().c_str())));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->uvTiling->getVector2())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", ProceduralWallComponent::AttrFencePostSpacing().c_str()));
+		propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string(ProceduralWallComponent::AttrFencePostSpacing().c_str())));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->fencePostSpacing->getReal())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", ProceduralWallComponent::AttrBattlementWidth().c_str()));
+		propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string(ProceduralWallComponent::AttrBattlementWidth().c_str())));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->battlementWidth->getReal())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", ProceduralWallComponent::AttrBattlementHeight().c_str()));
+		propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string(ProceduralWallComponent::AttrBattlementHeight().c_str())));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->battlementHeight->getReal())));
 		propertiesXML->append_node(propertyXML);
+
+		this->saveWallDataToFile();
 	}
 
 	bool ProceduralWallComponent::canStaticAddComponent(GameObject* gameObject)
@@ -487,18 +507,54 @@ namespace NOWA
 	{
 		if (false == this->activated->getBool())
 		{
-			return false;
+			return true;
+		}
+
+		// Check if we can modify
+		if (false == this->canModify)
+		{
+			return true;
 		}
 
 		if (id != OIS::MB_Left)
 		{
-			return false;
+			return true;
 		}
 
 		// Check if clicking on GUI
 		if (MyGUI::InputManager::getInstance().getMouseFocusWidget() != nullptr)
 		{
-			return false;
+			return true;
+		}
+
+		Ogre::Vector3 internalHitPoint = Ogre::Vector3::ZERO;
+		Ogre::MovableObject* hitMovableObject = nullptr;
+		Ogre::Real closestDistance = 0.0f;
+		Ogre::Vector3 normal = Ogre::Vector3::ZERO;
+
+		// Build exclusion list - exclude our own wall and preview items
+		std::vector<Ogre::MovableObject*> excludeMovableObjects;
+
+		Ogre::Camera* camera = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
+		if (nullptr == camera)
+		{
+			return true;
+		}
+
+		// Check if mouse hit already created wall, -> then skip
+		const OIS::MouseState& ms = NOWA::InputDeviceCore::getSingletonPtr()->getMouse()->getMouseState();
+		bool hitFound = MathHelper::getInstance()->getRaycastFromPoint(ms.X.abs, ms.Y.abs, camera, Core::getSingletonPtr()->getOgreRenderWindow(), this->groundQuery, internalHitPoint, (size_t&)hitMovableObject, closestDistance, normal, &excludeMovableObjects, false);
+
+		if (true == hitFound && this->buildState == BuildState::IDLE)
+		{
+			if (this->wallItem == hitMovableObject)
+			{
+				return true;
+			}
+			if (this->previewItem == hitMovableObject)
+			{
+				return true;
+			}
 		}
 
 		// Get normalized screen coordinates
@@ -522,47 +578,36 @@ namespace NOWA
 			}
 			else if (this->buildState == BuildState::DRAGGING)
 			{
-				// Confirm current wall and potentially start new one
+				// Confirm current wall
 				this->confirmWall();
 
-				if (this->isShiftPressed)
-				{
-					// Continuous mode: start next segment from end of last
-					this->startWallPlacement(hitPosition);
-				}
+				// NOTE: confirmWall() handles starting next segment if shift is pressed
+				// DON'T call startWallPlacement() here - it's already handled in confirmWall()
 			}
+
+			return false; // handled -> do not bubble
 		}
 
-		return true;
-	}
-
-	bool ProceduralWallComponent::mouseReleased(const OIS::MouseEvent& evt, OIS::MouseButtonID id)
-	{
-		if (false == this->activated->getBool())
-		{
-			return false;
-		}
-
-		if (id == OIS::MB_Right)
-		{
-			// Cancel current wall
-			this->cancelWall();
-			return true;
-		}
-
-		return false;
+		return true; // not handled -> bubble
 	}
 
 	bool ProceduralWallComponent::mouseMoved(const OIS::MouseEvent& evt)
 	{
 		if (false == this->activated->getBool())
 		{
-			return false;
+			return true;
 		}
 
+		// Only update preview if we're actively dragging
 		if (this->buildState != BuildState::DRAGGING)
 		{
-			return false;
+			return true;
+		}
+
+		// Also check if we can still modify
+		if (false == this->canModify)
+		{
+			return true;
 		}
 
 		// Get normalized screen coordinates
@@ -574,13 +619,13 @@ namespace NOWA
 		Ogre::Vector3 hitPosition;
 		if (this->raycastGround(screenX, screenY, hitPosition))
 		{
-			if (this->snapToGrid->getBool())
+			if (true == this->snapToGrid->getBool())
 			{
 				hitPosition = this->snapToGridFunc(hitPosition);
 			}
 
-			// Constrain to axis if shift is held
-			if (this->isCtrlPressed)
+			// Constrain to axis if ctrl is held
+			if (true == this->isCtrlPressed)
 			{
 				Ogre::Vector3 delta = hitPosition - this->currentSegment.startPoint;
 				if (std::abs(delta.x) > std::abs(delta.z))
@@ -596,34 +641,69 @@ namespace NOWA
 			this->updateWallPreview(hitPosition);
 		}
 
-		return false;
+		return true; // not handled -> bubble
+	}
+
+	bool ProceduralWallComponent::mouseReleased(const OIS::MouseEvent& evt, OIS::MouseButtonID id)
+	{
+		if (false == this->activated->getBool())
+		{
+			return true;
+		}
+
+		if (id == OIS::MB_Right)
+		{
+			// Cancel current wall segment in progress
+			this->cancelWall();
+
+			// Remove listeners - user wants to stop building
+			this->removeInputListener();
+
+			return false;
+		}
+
+		return true; // not handled -> bubble
 	}
 
 	bool ProceduralWallComponent::keyPressed(const OIS::KeyEvent& evt)
 	{
+		if (false == this->activated->getBool())
+		{
+			return true; // bubble when not active
+		}
+
 		if (evt.key == OIS::KC_LSHIFT || evt.key == OIS::KC_RSHIFT)
 		{
 			this->isShiftPressed = true;
+			return false; // consume (optional)
 		}
 		else if (evt.key == OIS::KC_LCONTROL || evt.key == OIS::KC_RCONTROL)
 		{
 			this->isCtrlPressed = true;
+			return false; // consume (optional)
 		}
 		else if (evt.key == OIS::KC_ESCAPE)
 		{
 			this->cancelWall();
+			this->removeInputListener();
+			return false; // consume -> STOP DesignState ESC
 		}
 		else if (evt.key == OIS::KC_Z && this->isCtrlPressed)
 		{
-			// Undo last segment
 			this->removeLastSegment();
+			return false; // consume
 		}
 
-		return false;
+		return true; // not handled -> bubble
 	}
 
 	bool ProceduralWallComponent::keyReleased(const OIS::KeyEvent& evt)
 	{
+		if (false == this->activated->getBool())
+		{
+			return true;
+		}
+
 		if (evt.key == OIS::KC_LSHIFT || evt.key == OIS::KC_RSHIFT)
 		{
 			this->isShiftPressed = false;
@@ -633,7 +713,7 @@ namespace NOWA
 			this->isCtrlPressed = false;
 		}
 
-		return false;
+		return false;  // handled -> do not bubble
 	}
 
 	// ==================== WALL BUILDING API ====================
@@ -644,29 +724,65 @@ namespace NOWA
 		if (false == this->hasWallOrigin)
 		{
 			this->wallOrigin = worldPosition;
-			this->wallOrigin.y = this->adaptToGround->getBool() ? this->getGroundHeight(worldPosition) : 0.0f;
+			// Get actual terrain height for origin
+			if (this->adaptToGround->getBool())
+			{
+				this->wallOrigin.y = this->getGroundHeight(worldPosition);
+			}
+			else
+			{
+				this->wallOrigin.y = worldPosition.y;
+			}
 			this->hasWallOrigin = true;
+
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] Set wall origin: " + Ogre::StringConverter::toString(this->wallOrigin));
 		}
 
 		this->currentSegment.startPoint = worldPosition;
+		this->currentSegment.startPoint.y = 0.0f;
 		this->currentSegment.endPoint = worldPosition;
-		this->currentSegment.groundHeightStart = this->adaptToGround->getBool() ? this->getGroundHeight(worldPosition) : 0.0f;
+		this->currentSegment.endPoint.y = 0.0f;
+
+		// Get ground heights at start position
+		if (this->adaptToGround->getBool())
+		{
+			this->currentSegment.groundHeightStart = this->getGroundHeight(worldPosition);
+		}
+		else
+		{
+			this->currentSegment.groundHeightStart = worldPosition.y;
+		}
+
 		this->currentSegment.hasStartPillar = this->createPillars->getBool();
 		this->currentSegment.hasEndPillar = this->createPillars->getBool();
 
 		this->buildState = BuildState::DRAGGING;
 		this->lastValidPosition = worldPosition;
 
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] Started wall placement at: " + Ogre::StringConverter::toString(worldPosition));
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] Started wall placement at: " + Ogre::StringConverter::toString(worldPosition) 
+			+ ", ground height: " + Ogre::StringConverter::toString(this->currentSegment.groundHeightStart));
 	}
 
 	void ProceduralWallComponent::updateWallPreview(const Ogre::Vector3& worldPosition)
 	{
 		this->currentSegment.endPoint = worldPosition;
-		this->currentSegment.groundHeightEnd = this->adaptToGround->getBool() ? this->getGroundHeight(worldPosition) : 0.0f;
+		this->currentSegment.endPoint.y = 0.0f;
+
+		// Get ground height at end position
+		if (this->adaptToGround->getBool())
+		{
+			this->currentSegment.groundHeightEnd = this->getGroundHeight(worldPosition);
+		}
+		else
+		{
+			this->currentSegment.groundHeightEnd = worldPosition.y;
+		}
 
 		this->lastValidPosition = worldPosition;
 		this->updatePreviewMesh();
+
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] Updated preview to: " + Ogre::StringConverter::toString(worldPosition) +
+			", ground height: " + Ogre::StringConverter::toString(this->currentSegment.groundHeightEnd));
 	}
 
 	void ProceduralWallComponent::confirmWall(void)
@@ -714,8 +830,13 @@ namespace NOWA
 		}
 		else
 		{
+			// Wall building complete - remove listeners
 			this->buildState = BuildState::IDLE;
+			this->removeInputListener();
 		}
+
+		boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGeometryModified);
 
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] Confirmed wall segment, total segments: " + Ogre::StringConverter::toString(this->wallSegments.size()));
 	}
@@ -724,6 +845,10 @@ namespace NOWA
 	{
 		this->destroyPreviewMesh();
 		this->buildState = BuildState::IDLE;
+
+		// Reset shift/ctrl flags when canceling
+		this->isShiftPressed = false;
+		this->isCtrlPressed = false;
 
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] Cancelled wall placement");
 	}
@@ -761,6 +886,18 @@ namespace NOWA
 		this->destroyWallMesh();
 		this->hasWallOrigin = false;
 		this->wallOrigin = Ogre::Vector3::ZERO;
+
+		// Clear cache too
+		this->cachedWallVertices.clear();
+		this->cachedWallIndices.clear();
+		this->cachedNumWallVertices = 0;
+		this->cachedPillarVertices.clear();
+		this->cachedPillarIndices.clear();
+		this->cachedNumPillarVertices = 0;
+		this->cachedWallOrigin = Ogre::Vector3::ZERO;
+
+		// Deletes the file since cache is empty
+		this->saveWallDataToFile();
 
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] Cleared all wall segments");
 	}
@@ -806,90 +943,18 @@ namespace NOWA
 
 	Ogre::Real ProceduralWallComponent::getGroundHeight(const Ogre::Vector3& position)
 	{
+		if (false == this->adaptToGround->getBool())
+		{
+			return position.y;
+		}
+
 		// Create a ray from high above pointing down
 		Ogre::Vector3 rayOrigin = Ogre::Vector3(position.x, position.y + 1000.0f, position.z);
 		Ogre::Ray downRay(rayOrigin, Ogre::Vector3::NEGATIVE_UNIT_Y);
 
-		Ogre::Vector3 internalHitPoint = Ogre::Vector3::ZERO;
-		Ogre::MovableObject* hitMovableObject = nullptr;
-		Ogre::Real closestDistance = 0.0f;
-		Ogre::Vector3 normal = Ogre::Vector3::ZERO;
-
-		// Build exclusion list - exclude our own wall and preview items
-		std::vector<Ogre::MovableObject*> excludeMovableObjects;
-		if (this->wallItem)
-		{
-			excludeMovableObjects.emplace_back(this->wallItem);
-		}
-		if (this->previewItem)
-		{
-			excludeMovableObjects.emplace_back(this->previewItem);
-		}
-
-		// Set the ray for the query
+		// Set the ray on the query BEFORE calling MathHelper
 		this->groundQuery->setRay(downRay);
 		this->groundQuery->setSortByDistance(true);
-
-		Ogre::RaySceneQueryResult& results = this->groundQuery->execute();
-
-		Ogre::Real groundHeight = 0.0f;
-		bool foundGround = false;
-
-		for (auto& result : results)
-		{
-			if (result.movable)
-			{
-				// Skip our own wall items
-				bool isExcluded = false;
-				for (auto* excluded : excludeMovableObjects)
-				{
-					if (result.movable == excluded)
-					{
-						isExcluded = true;
-						break;
-					}
-				}
-
-				if (true == isExcluded)
-				{
-					continue;
-				}
-
-				// Found ground - calculate Y position
-				groundHeight = rayOrigin.y - result.distance;
-				foundGround = true;
-
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] Ground height at " + Ogre::StringConverter::toString(position) + " = " + Ogre::StringConverter::toString(groundHeight));
-
-				break;
-			}
-		}
-
-		// If no ground found, use position Y or fallback to 0
-		if (false == foundGround)
-		{
-			// Try plane intersection as fallback
-			std::pair<bool, Ogre::Real> planeResult = downRay.intersects(this->groundPlane);
-			if (planeResult.first && planeResult.second > 0.0f)
-			{
-				groundHeight = rayOrigin.y - planeResult.second;
-			}
-			else
-			{
-				groundHeight = position.y; // Use current position Y
-			}
-		}
-
-		return groundHeight;
-	}
-
-	bool ProceduralWallComponent::raycastGround(Ogre::Real screenX, Ogre::Real screenY, Ogre::Vector3& hitPosition)
-	{
-		Ogre::Camera* camera = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
-		if (!camera)
-			return false;
-
-		Ogre::Ray ray = camera->getCameraToViewportRay(screenX, screenY);
 
 		Ogre::Vector3 internalHitPoint = Ogre::Vector3::ZERO;
 		Ogre::MovableObject* hitMovableObject = nullptr;
@@ -908,26 +973,79 @@ namespace NOWA
 		}
 
 		// Perform raycast using MathHelper
-		MathHelper::getInstance()->getRaycastFromPoint(this->groundQuery, camera, internalHitPoint, (size_t&)hitMovableObject, closestDistance, normal, &excludeMovableObjects);
+		bool hitFound = MathHelper::getInstance()->getRaycastFromPoint(this->groundQuery, AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera(), internalHitPoint, (size_t&)hitMovableObject,
+			closestDistance, normal, &excludeMovableObjects, false);
+
+		// If we hit terrain, use that height
+		if (hitFound && hitMovableObject != nullptr)
+		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] Ground height at (" + Ogre::StringConverter::toString(position.x) + ", " +
+				Ogre::StringConverter::toString(position.z) + ") = " + Ogre::StringConverter::toString(internalHitPoint.y));
+
+			return internalHitPoint.y;
+		}
+
+		// Fallback: try plane intersection
+		std::pair<bool, Ogre::Real> planeResult = downRay.intersects(this->groundPlane);
+		if (planeResult.first && planeResult.second > 0.0f)
+		{
+			Ogre::Real groundHeight = rayOrigin.y - planeResult.second;
+
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] Ground height (plane fallback) = " + Ogre::StringConverter::toString(groundHeight));
+
+			return groundHeight;
+		}
+
+		// Last resort: return 0
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] No ground found at position, using Y=0");
+
+		return 0.0f;
+	}
+
+	bool ProceduralWallComponent::raycastGround(Ogre::Real screenX, Ogre::Real screenY, Ogre::Vector3& hitPosition)
+	{
+		Ogre::Camera* camera = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
+		if (nullptr == camera)
+		{
+			return false;
+		}
+
+		// Note: screenX and screenY are already normalized viewport coordinates (0-1)
+		// We need to convert them back to pixel coordinates for MathHelper
+		const OIS::MouseState& ms = NOWA::InputDeviceCore::getSingletonPtr()->getMouse()->getMouseState();
+
+		Ogre::Vector3 internalHitPoint = Ogre::Vector3::ZERO;
+		Ogre::MovableObject* hitMovableObject = nullptr;
+		Ogre::Real closestDistance = 0.0f;
+		Ogre::Vector3 normal = Ogre::Vector3::ZERO;
+
+		// Build exclusion list - exclude our own wall and preview items
+		std::vector<Ogre::MovableObject*> excludeMovableObjects;
+		if (this->wallItem)
+		{
+			excludeMovableObjects.emplace_back(this->wallItem);
+		}
+		if (this->previewItem)
+		{
+			excludeMovableObjects.emplace_back(this->previewItem);
+		}
+
+		// Use the MathHelper version that takes mouse coordinates
+		bool hitFound = MathHelper::getInstance()->getRaycastFromPoint(ms.X.abs, ms.Y.abs, camera, Core::getSingletonPtr()->getOgreRenderWindow(), this->groundQuery, internalHitPoint, (size_t&)hitMovableObject, closestDistance, normal, &excludeMovableObjects, false);
 
 		// If we hit something, use that position
-		if (hitMovableObject != nullptr)
+		if (hitFound && hitMovableObject != nullptr)
 		{
 			hitPosition = internalHitPoint;
-
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] Raycast hit: " + Ogre::StringConverter::toString(hitPosition) + " on object: " + hitMovableObject->getName());
-
 			return true;
 		}
 
 		// Fallback: intersect with ground plane at Y=0
+		Ogre::Ray ray = camera->getCameraToViewportRay(screenX, screenY);
 		std::pair<bool, Ogre::Real> result = ray.intersects(this->groundPlane);
 		if (result.first && result.second > 0.0f)
 		{
 			hitPosition = ray.getPoint(result.second);
-
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] Raycast fallback to ground plane: " + Ogre::StringConverter::toString(hitPosition));
-
 			return true;
 		}
 
@@ -938,7 +1056,7 @@ namespace NOWA
 
 	void ProceduralWallComponent::createWallMesh(void)
 	{
-		if (this->wallSegments.empty())
+		if (true == this->wallSegments.empty())
 		{
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[ProceduralWallComponent] createWallMesh: No segments to create");
 			return;
@@ -946,10 +1064,14 @@ namespace NOWA
 
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[ProceduralWallComponent] createWallMesh: Creating mesh for " + Ogre::StringConverter::toString(this->wallSegments.size()) + " segments");
 
-		// Clear mesh data
+		// Clear mesh data for BOTH walls and pillars
 		this->vertices.clear();
 		this->indices.clear();
 		this->currentVertexIndex = 0;
+
+		this->pillarVertices.clear();
+		this->pillarIndices.clear();
+		this->currentPillarVertexIndex = 0;
 
 		// Use stored wall origin (set when first segment was created)
 		Ogre::Vector3 wallOriginToUse = this->wallOrigin;
@@ -961,10 +1083,8 @@ namespace NOWA
 		{
 			const WallSegment& segment = this->wallSegments[segIdx];
 
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
-				"[ProceduralWallComponent] Generating segment " + Ogre::StringConverter::toString(segIdx) +
-				": start(" + Ogre::StringConverter::toString(segment.startPoint) +
-				") -> end(" + Ogre::StringConverter::toString(segment.endPoint) + ")");
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[ProceduralWallComponent] Generating segment " + Ogre::StringConverter::toString(segIdx) +
+				": start(" + Ogre::StringConverter::toString(segment.startPoint) + ") -> end(" + Ogre::StringConverter::toString(segment.endPoint) + ")");
 
 			// Create a LOCAL segment relative to wallOrigin
 			WallSegment localSegment;
@@ -996,7 +1116,7 @@ namespace NOWA
 				break;
 			}
 
-			// Generate pillars
+			// Generate pillars into SEPARATE buffers
 			if (segment.hasStartPillar)
 			{
 				Ogre::Vector3 localPos = segment.startPoint - wallOriginToUse;
@@ -1011,31 +1131,67 @@ namespace NOWA
 			}
 		}
 
-		if (this->vertices.empty())
+		if (this->vertices.empty() && this->pillarVertices.empty())
 		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-				"[ProceduralWallComponent] No vertices generated!");
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralWallComponent] No vertices generated!");
 			return;
 		}
 
-		// Create Ogre mesh
-		std::vector<float> verticesCopy = this->vertices;
-		std::vector<Ogre::uint32> indicesCopy = this->indices;
-		size_t numVertices = this->currentVertexIndex;
+		// ---- CACHE CPU DATA HERE (before anything goes to GPU) ----
+		this->cachedWallVertices = this->vertices;
+		this->cachedWallIndices = this->indices;
+		this->cachedNumWallVertices = this->currentVertexIndex;
+
+		this->cachedPillarVertices = this->pillarVertices;
+		this->cachedPillarIndices = this->pillarIndices;
+		this->cachedNumPillarVertices = this->currentPillarVertexIndex;
+
+		this->cachedWallOrigin = wallOriginToUse;
+
+		// Create Ogre mesh - copy both wall and pillar data
+		std::vector<float> wallVerticesCopy = this->vertices;
+		std::vector<Ogre::uint32> wallIndicesCopy = this->indices;
+		size_t numWallVertices = this->currentVertexIndex;
+
+		std::vector<float> pillarVerticesCopy = this->pillarVertices;
+		std::vector<Ogre::uint32> pillarIndicesCopy = this->pillarIndices;
+		size_t numPillarVertices = this->currentPillarVertexIndex;
 
 		// Execute mesh creation on render thread
-		GraphicsModule::RenderCommand renderCommand = [this, verticesCopy, indicesCopy, numVertices, wallOriginToUse]()
-			{
-				this->createWallMeshInternal(verticesCopy, indicesCopy, numVertices, wallOriginToUse);
-			};
+		GraphicsModule::RenderCommand renderCommand = [this, wallVerticesCopy, wallIndicesCopy, numWallVertices,
+		pillarVerticesCopy, pillarIndicesCopy, numPillarVertices, wallOriginToUse]()
+		{
+			this->createWallMeshInternal(wallVerticesCopy, wallIndicesCopy, numWallVertices, pillarVerticesCopy, pillarIndicesCopy, numPillarVertices, wallOriginToUse);
+		};
 		NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ProceduralWallComponent::createWallMesh");
+
+		if (nullptr == this->wallMesh || nullptr == this->wallItem)
+		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralWallComponent] No mesh/item to debug");
+			return;
+		}
+
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] === MESH DEBUG INFO ===");
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "Mesh name: " + this->wallMesh->getName());
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "Num submeshes: " + Ogre::StringConverter::toString(this->wallMesh->getNumSubMeshes()));
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "Num subitems: " + Ogre::StringConverter::toString(this->wallItem->getNumSubItems()));
+
+		for (size_t i = 0; i < this->wallItem->getNumSubItems(); ++i)
+		{
+			Ogre::SubItem* subItem = this->wallItem->getSubItem(i);
+			Ogre::HlmsDatablock* db = subItem->getDatablock();
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "SubItem " + Ogre::StringConverter::toString(i) + " datablock: " + (db ? db->getName().getFriendlyText() : "NULL"));
+		}
 
 		// Clear temporary data
 		this->vertices.clear();
 		this->indices.clear();
+		this->pillarVertices.clear();
+		this->pillarIndices.clear();
 	}
 
-	void ProceduralWallComponent::createWallMeshInternal(const std::vector<float>& vertices, const std::vector<Ogre::uint32>& indices, size_t numVertices, const Ogre::Vector3& wallOrigin)
+	void ProceduralWallComponent::createWallMeshInternal(const std::vector<float>& wallVertices, const std::vector<Ogre::uint32>& wallIndices, size_t numWallVertices,
+		const std::vector<float>& pillarVertices, const std::vector<Ogre::uint32>& pillarIndices, size_t numPillarVertices, const Ogre::Vector3& wallOrigin)
 	{
 		Ogre::Root* root = Ogre::Root::getSingletonPtr();
 		Ogre::RenderSystem* renderSystem = root->getRenderSystem();
@@ -1056,7 +1212,6 @@ namespace NOWA
 		}
 
 		this->wallMesh = Ogre::MeshManager::getSingleton().createManual(meshName, groupName);
-		Ogre::SubMesh* subMesh = this->wallMesh->createSubMesh();
 
 		// Vertex elements with tangents for normal mapping
 		Ogre::VertexElement2Vec vertexElements;
@@ -1070,98 +1225,289 @@ namespace NOWA
 		const size_t srcFloatsPerVertex = 8;
 		const size_t dstFloatsPerVertex = 12;
 
-		// Allocate and convert vertex data
-		const size_t vertexDataSize = numVertices * dstFloatsPerVertex * sizeof(float);
-		float* vertexData = reinterpret_cast<float*>(OGRE_MALLOC_SIMD(vertexDataSize, Ogre::MEMCATEGORY_GEOMETRY));
-
-		for (size_t i = 0; i < numVertices; ++i)
-		{
-			size_t srcOffset = i * srcFloatsPerVertex;
-			size_t dstOffset = i * dstFloatsPerVertex;
-
-			// Position
-			vertexData[dstOffset + 0] = vertices[srcOffset + 0];
-			vertexData[dstOffset + 1] = vertices[srcOffset + 1];
-			vertexData[dstOffset + 2] = vertices[srcOffset + 2];
-
-			// Normal
-			Ogre::Vector3 normal(vertices[srcOffset + 3], vertices[srcOffset + 4], vertices[srcOffset + 5]);
-			vertexData[dstOffset + 3] = normal.x;
-			vertexData[dstOffset + 4] = normal.y;
-			vertexData[dstOffset + 5] = normal.z;
-
-			// Calculate tangent
-			Ogre::Vector3 tangent;
-			if (std::abs(normal.y) < 0.9f)
-			{
-				tangent = Ogre::Vector3::UNIT_Y.crossProduct(normal);
-			}
-			else
-			{
-				tangent = normal.crossProduct(Ogre::Vector3::UNIT_X);
-			}
-			tangent.normalise();
-
-			vertexData[dstOffset + 6] = tangent.x;
-			vertexData[dstOffset + 7] = tangent.y;
-			vertexData[dstOffset + 8] = tangent.z;
-			vertexData[dstOffset + 9] = 1.0f;
-
-			// UV
-			vertexData[dstOffset + 10] = vertices[srcOffset + 6];
-			vertexData[dstOffset + 11] = vertices[srcOffset + 7];
-		}
-
-		// Create vertex buffer
-		Ogre::VertexBufferPacked* vertexBuffer = nullptr;
-		try
-		{
-			vertexBuffer = vaoManager->createVertexBuffer( vertexElements, numVertices, Ogre::BT_IMMUTABLE, vertexData, true);
-		}
-		catch (Ogre::Exception& e)
-		{
-			OGRE_FREE_SIMD(vertexData, Ogre::MEMCATEGORY_GEOMETRY);
-			throw e;
-		}
-
-		// Allocate index data
-		const size_t indexDataSize = indices.size() * sizeof(Ogre::uint32);
-		Ogre::uint32* indexData = reinterpret_cast<Ogre::uint32*>(OGRE_MALLOC_SIMD(indexDataSize, Ogre::MEMCATEGORY_GEOMETRY));
-		memcpy(indexData, indices.data(), indexDataSize);
-
-		// Create index buffer
-		Ogre::IndexBufferPacked* indexBuffer = nullptr;
-		try
-		{
-			indexBuffer = vaoManager->createIndexBuffer(Ogre::IndexBufferPacked::IT_32BIT, indices.size(), Ogre::BT_IMMUTABLE, indexData, true);
-		}
-		catch (Ogre::Exception& e)
-		{
-			OGRE_FREE_SIMD(indexData, Ogre::MEMCATEGORY_GEOMETRY);
-			throw e;
-		}
-
-		// Create VAO
-		Ogre::VertexBufferPackedVec vertexBuffers;
-		vertexBuffers.push_back(vertexBuffer);
-
-		Ogre::VertexArrayObject* vao = vaoManager->createVertexArrayObject(vertexBuffers, indexBuffer, Ogre::OT_TRIANGLE_LIST);
-
-		subMesh->mVao[Ogre::VpNormal].push_back(vao);
-		subMesh->mVao[Ogre::VpShadow].push_back(vao);
-
-		// Set bounds
 		Ogre::Vector3 minBounds(std::numeric_limits<float>::max());
 		Ogre::Vector3 maxBounds(std::numeric_limits<float>::lowest());
 
-		// Iterate through vertices (8 floats per vertex: pos(3) + normal(3) + uv(2))
-		const size_t floatsPerVertex = 8;
-		for (size_t i = 0; i < numVertices; ++i)
+		// ==================== SUBMESH 0: WALLS ====================
+		// ALWAYS create wall submesh, even if empty
+		Ogre::SubMesh* wallSubMesh = this->wallMesh->createSubMesh();
+
+		if (numWallVertices > 0)
 		{
-			size_t offset = i * floatsPerVertex;
-			Ogre::Vector3 pos(vertices[offset + 0], vertices[offset + 1], vertices[offset + 2]);
-			minBounds.makeFloor(pos);
-			maxBounds.makeCeil(pos);
+			// Allocate and convert vertex data
+			const size_t wallVertexDataSize = numWallVertices * dstFloatsPerVertex * sizeof(float);
+			float* wallVertexData = reinterpret_cast<float*>(OGRE_MALLOC_SIMD(wallVertexDataSize, Ogre::MEMCATEGORY_GEOMETRY));
+
+			for (size_t i = 0; i < numWallVertices; ++i)
+			{
+				size_t srcOffset = i * srcFloatsPerVertex;
+				size_t dstOffset = i * dstFloatsPerVertex;
+
+				// Position
+				wallVertexData[dstOffset + 0] = wallVertices[srcOffset + 0];
+				wallVertexData[dstOffset + 1] = wallVertices[srcOffset + 1];
+				wallVertexData[dstOffset + 2] = wallVertices[srcOffset + 2];
+
+				// Update bounds
+				Ogre::Vector3 pos(wallVertices[srcOffset + 0], wallVertices[srcOffset + 1], wallVertices[srcOffset + 2]);
+				minBounds.makeFloor(pos);
+				maxBounds.makeCeil(pos);
+
+				// Normal
+				Ogre::Vector3 normal(wallVertices[srcOffset + 3], wallVertices[srcOffset + 4], wallVertices[srcOffset + 5]);
+				wallVertexData[dstOffset + 3] = normal.x;
+				wallVertexData[dstOffset + 4] = normal.y;
+				wallVertexData[dstOffset + 5] = normal.z;
+
+				// Calculate tangent
+				Ogre::Vector3 tangent;
+				if (std::abs(normal.y) < 0.9f)
+				{
+					tangent = Ogre::Vector3::UNIT_Y.crossProduct(normal);
+				}
+				else
+				{
+					tangent = normal.crossProduct(Ogre::Vector3::UNIT_X);
+				}
+				tangent.normalise();
+
+				wallVertexData[dstOffset + 6] = tangent.x;
+				wallVertexData[dstOffset + 7] = tangent.y;
+				wallVertexData[dstOffset + 8] = tangent.z;
+				wallVertexData[dstOffset + 9] = 1.0f;
+
+				// UV
+				wallVertexData[dstOffset + 10] = wallVertices[srcOffset + 6];
+				wallVertexData[dstOffset + 11] = wallVertices[srcOffset + 7];
+			}
+
+			// Create vertex buffer
+			Ogre::VertexBufferPacked* wallVertexBuffer = nullptr;
+			try
+			{
+				wallVertexBuffer = vaoManager->createVertexBuffer(vertexElements, numWallVertices, Ogre::BT_IMMUTABLE, wallVertexData, true);
+			}
+			catch (Ogre::Exception& e)
+			{
+				OGRE_FREE_SIMD(wallVertexData, Ogre::MEMCATEGORY_GEOMETRY);
+				throw e;
+			}
+
+			// Allocate index data
+			const size_t wallIndexDataSize = wallIndices.size() * sizeof(Ogre::uint32);
+			Ogre::uint32* wallIndexData = reinterpret_cast<Ogre::uint32*>(OGRE_MALLOC_SIMD(wallIndexDataSize, Ogre::MEMCATEGORY_GEOMETRY));
+			memcpy(wallIndexData, wallIndices.data(), wallIndexDataSize);
+
+			// Create index buffer
+			Ogre::IndexBufferPacked* wallIndexBuffer = nullptr;
+			try
+			{
+				wallIndexBuffer = vaoManager->createIndexBuffer(Ogre::IndexBufferPacked::IT_32BIT, wallIndices.size(), Ogre::BT_IMMUTABLE, wallIndexData, true);
+			}
+			catch (Ogre::Exception& e)
+			{
+				OGRE_FREE_SIMD(wallIndexData, Ogre::MEMCATEGORY_GEOMETRY);
+				throw e;
+			}
+
+			// Create VAO
+			Ogre::VertexBufferPackedVec wallVertexBuffers;
+			wallVertexBuffers.push_back(wallVertexBuffer);
+
+			Ogre::VertexArrayObject* wallVao = vaoManager->createVertexArrayObject(wallVertexBuffers, wallIndexBuffer, Ogre::OT_TRIANGLE_LIST);
+
+			wallSubMesh->mVao[Ogre::VpNormal].push_back(wallVao);
+			wallSubMesh->mVao[Ogre::VpShadow].push_back(wallVao);
+		}
+		else
+		{
+			// Create empty dummy VAO for wall submesh
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] Creating empty wall submesh");
+
+			// Create minimal dummy vertex buffer (1 vertex)
+			const size_t dummyVertexDataSize = 1 * dstFloatsPerVertex * sizeof(float);
+			float* dummyVertexData = reinterpret_cast<float*>(OGRE_MALLOC_SIMD(dummyVertexDataSize, Ogre::MEMCATEGORY_GEOMETRY));
+
+			// Position (0,0,0)
+			dummyVertexData[0] = 0.0f;
+			dummyVertexData[1] = 0.0f;
+			dummyVertexData[2] = 0.0f;
+
+			// Normal (0,1,0) - pointing up
+			dummyVertexData[3] = 0.0f;
+			dummyVertexData[4] = 1.0f;
+			dummyVertexData[5] = 0.0f;
+
+			// Tangent (1,0,0,1) - pointing along X axis with handedness 1
+			dummyVertexData[6] = 1.0f;
+			dummyVertexData[7] = 0.0f;
+			dummyVertexData[8] = 0.0f;
+			dummyVertexData[9] = 1.0f;
+
+			// UV (0,0)
+			dummyVertexData[10] = 0.0f;
+			dummyVertexData[11] = 0.0f;
+
+			Ogre::VertexBufferPacked* dummyVertexBuffer = vaoManager->createVertexBuffer(vertexElements, 1, Ogre::BT_IMMUTABLE, dummyVertexData, true);
+
+			// Create dummy index buffer (empty - 0 indices)
+			Ogre::uint32* dummyIndexData = reinterpret_cast<Ogre::uint32*>(OGRE_MALLOC_SIMD(sizeof(Ogre::uint32), Ogre::MEMCATEGORY_GEOMETRY));
+			dummyIndexData[0] = 0;
+
+			Ogre::IndexBufferPacked* dummyIndexBuffer = vaoManager->createIndexBuffer(Ogre::IndexBufferPacked::IT_32BIT, 0, Ogre::BT_IMMUTABLE, dummyIndexData, true);
+
+			Ogre::VertexBufferPackedVec dummyVertexBuffers;
+			dummyVertexBuffers.push_back(dummyVertexBuffer);
+
+			Ogre::VertexArrayObject* dummyVao = vaoManager->createVertexArrayObject(dummyVertexBuffers, dummyIndexBuffer, Ogre::OT_TRIANGLE_LIST);
+
+			wallSubMesh->mVao[Ogre::VpNormal].push_back(dummyVao);
+			wallSubMesh->mVao[Ogre::VpShadow].push_back(dummyVao);
+		}
+
+		// ==================== SUBMESH 1: PILLARS ====================
+		// ALWAYS create pillar submesh, even if empty
+		Ogre::SubMesh* pillarSubMesh = this->wallMesh->createSubMesh();
+
+		if (numPillarVertices > 0)
+		{
+			// Allocate and convert vertex data
+			const size_t pillarVertexDataSize = numPillarVertices * dstFloatsPerVertex * sizeof(float);
+			float* pillarVertexData = reinterpret_cast<float*>(OGRE_MALLOC_SIMD(pillarVertexDataSize, Ogre::MEMCATEGORY_GEOMETRY));
+
+			for (size_t i = 0; i < numPillarVertices; ++i)
+			{
+				size_t srcOffset = i * srcFloatsPerVertex;
+				size_t dstOffset = i * dstFloatsPerVertex;
+
+				// Position
+				pillarVertexData[dstOffset + 0] = pillarVertices[srcOffset + 0];
+				pillarVertexData[dstOffset + 1] = pillarVertices[srcOffset + 1];
+				pillarVertexData[dstOffset + 2] = pillarVertices[srcOffset + 2];
+
+				// Update bounds
+				Ogre::Vector3 pos(pillarVertices[srcOffset + 0], pillarVertices[srcOffset + 1], pillarVertices[srcOffset + 2]);
+				minBounds.makeFloor(pos);
+				maxBounds.makeCeil(pos);
+
+				// Normal
+				Ogre::Vector3 normal(pillarVertices[srcOffset + 3], pillarVertices[srcOffset + 4], pillarVertices[srcOffset + 5]);
+				pillarVertexData[dstOffset + 3] = normal.x;
+				pillarVertexData[dstOffset + 4] = normal.y;
+				pillarVertexData[dstOffset + 5] = normal.z;
+
+				// Calculate tangent
+				Ogre::Vector3 tangent;
+				if (std::abs(normal.y) < 0.9f)
+				{
+					tangent = Ogre::Vector3::UNIT_Y.crossProduct(normal);
+				}
+				else
+				{
+					tangent = normal.crossProduct(Ogre::Vector3::UNIT_X);
+				}
+				tangent.normalise();
+
+				pillarVertexData[dstOffset + 6] = tangent.x;
+				pillarVertexData[dstOffset + 7] = tangent.y;
+				pillarVertexData[dstOffset + 8] = tangent.z;
+				pillarVertexData[dstOffset + 9] = 1.0f;
+
+				// UV
+				pillarVertexData[dstOffset + 10] = pillarVertices[srcOffset + 6];
+				pillarVertexData[dstOffset + 11] = pillarVertices[srcOffset + 7];
+			}
+
+			// Create vertex buffer
+			Ogre::VertexBufferPacked* pillarVertexBuffer = nullptr;
+			try
+			{
+				pillarVertexBuffer = vaoManager->createVertexBuffer(vertexElements, numPillarVertices, Ogre::BT_IMMUTABLE, pillarVertexData, true);
+			}
+			catch (Ogre::Exception& e)
+			{
+				OGRE_FREE_SIMD(pillarVertexData, Ogre::MEMCATEGORY_GEOMETRY);
+				throw e;
+			}
+
+			// Allocate index data
+			const size_t pillarIndexDataSize = pillarIndices.size() * sizeof(Ogre::uint32);
+			Ogre::uint32* pillarIndexData = reinterpret_cast<Ogre::uint32*>(OGRE_MALLOC_SIMD(pillarIndexDataSize, Ogre::MEMCATEGORY_GEOMETRY));
+			memcpy(pillarIndexData, pillarIndices.data(), pillarIndexDataSize);
+
+			// Create index buffer
+			Ogre::IndexBufferPacked* pillarIndexBuffer = nullptr;
+			try
+			{
+				pillarIndexBuffer = vaoManager->createIndexBuffer(Ogre::IndexBufferPacked::IT_32BIT, pillarIndices.size(), Ogre::BT_IMMUTABLE, pillarIndexData, true);
+			}
+			catch (Ogre::Exception& e)
+			{
+				OGRE_FREE_SIMD(pillarIndexData, Ogre::MEMCATEGORY_GEOMETRY);
+				throw e;
+			}
+
+			// Create VAO
+			Ogre::VertexBufferPackedVec pillarVertexBuffers;
+			pillarVertexBuffers.push_back(pillarVertexBuffer);
+
+			Ogre::VertexArrayObject* pillarVao = vaoManager->createVertexArrayObject(pillarVertexBuffers, pillarIndexBuffer, Ogre::OT_TRIANGLE_LIST);
+
+			pillarSubMesh->mVao[Ogre::VpNormal].push_back(pillarVao);
+			pillarSubMesh->mVao[Ogre::VpShadow].push_back(pillarVao);
+		}
+		else
+		{
+			// Create empty dummy VAO for pillar submesh
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] Creating empty pillar submesh");
+
+			// Create minimal dummy vertex buffer (1 vertex)
+			const size_t dummyVertexDataSize = 1 * dstFloatsPerVertex * sizeof(float);
+			float* dummyVertexData = reinterpret_cast<float*>(OGRE_MALLOC_SIMD(dummyVertexDataSize, Ogre::MEMCATEGORY_GEOMETRY));
+
+			// Position (0,0,0)
+			dummyVertexData[0] = 0.0f;
+			dummyVertexData[1] = 0.0f;
+			dummyVertexData[2] = 0.0f;
+
+			// Normal (0,1,0) - pointing up
+			dummyVertexData[3] = 0.0f;
+			dummyVertexData[4] = 1.0f;
+			dummyVertexData[5] = 0.0f;
+
+			// Tangent (1,0,0,1) - pointing along X axis with handedness 1
+			dummyVertexData[6] = 1.0f;
+			dummyVertexData[7] = 0.0f;
+			dummyVertexData[8] = 0.0f;
+			dummyVertexData[9] = 1.0f;
+
+			// UV (0,0)
+			dummyVertexData[10] = 0.0f;
+			dummyVertexData[11] = 0.0f;
+
+			Ogre::VertexBufferPacked* dummyVertexBuffer = vaoManager->createVertexBuffer(vertexElements, 1, Ogre::BT_IMMUTABLE, dummyVertexData, true);
+
+			// Create dummy index buffer (empty - 0 indices)
+			Ogre::uint32* dummyIndexData = reinterpret_cast<Ogre::uint32*>(OGRE_MALLOC_SIMD(sizeof(Ogre::uint32), Ogre::MEMCATEGORY_GEOMETRY));
+			dummyIndexData[0] = 0;
+
+			Ogre::IndexBufferPacked* dummyIndexBuffer = vaoManager->createIndexBuffer(Ogre::IndexBufferPacked::IT_32BIT, 0, Ogre::BT_IMMUTABLE, dummyIndexData, true);
+
+			Ogre::VertexBufferPackedVec dummyVertexBuffers;
+			dummyVertexBuffers.push_back(dummyVertexBuffer);
+
+			Ogre::VertexArrayObject* dummyVao = vaoManager->createVertexArrayObject(dummyVertexBuffers, dummyIndexBuffer, Ogre::OT_TRIANGLE_LIST);
+
+			pillarSubMesh->mVao[Ogre::VpNormal].push_back(dummyVao);
+			pillarSubMesh->mVao[Ogre::VpShadow].push_back(dummyVao);
+		}
+
+		// Set bounds (handle case where no vertices exist)
+		if (minBounds.x == std::numeric_limits<float>::max())
+		{
+			// No vertices at all - set default bounds
+			minBounds = Ogre::Vector3(-1, -1, -1);
+			maxBounds = Ogre::Vector3(1, 1, 1);
 		}
 
 		Ogre::Aabb bounds;
@@ -1174,17 +1520,44 @@ namespace NOWA
 		// Create item
 		this->wallItem = this->gameObjectPtr->getSceneManager()->createItem(this->wallMesh, this->gameObjectPtr->isDynamic() ? Ogre::SCENE_DYNAMIC : Ogre::SCENE_STATIC);
 
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] Created wall item");
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] Created wall item with " + Ogre::StringConverter::toString(this->wallMesh->getNumSubMeshes()) + " submeshes");
 
-		// Apply datablock
-		Ogre::String dbName = this->wallDatablock->getString();
-		if (false == dbName.empty())
+		// Apply datablocks - submesh 0 is ALWAYS walls, submesh 1 is ALWAYS pillars
+
+		// Submesh 0: Wall datablock
+		Ogre::String wallDbName = this->wallDatablock->getString();
+		if (false == wallDbName.empty())
 		{
-			Ogre::HlmsDatablock* datablock = Ogre::Root::getSingleton().getHlmsManager()->getDatablockNoDefault(dbName);
-			if (nullptr != datablock)
+			Ogre::HlmsDatablock* wallDb = Ogre::Root::getSingleton().getHlmsManager()->getDatablockNoDefault(wallDbName);
+			if (nullptr != wallDb)
 			{
-				this->wallItem->setDatablock(datablock);
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] Applied datablock: " + dbName);
+				this->wallItem->getSubItem(0)->setDatablock(wallDb);
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] Applied wall datablock: " + wallDbName);
+			}
+		}
+
+		// Submesh 1: Pillar datablock
+		Ogre::String pillarDbName = this->pillarDatablock->getString();
+		if (false == pillarDbName.empty())
+		{
+			Ogre::HlmsDatablock* pillarDb = Ogre::Root::getSingleton().getHlmsManager()->getDatablockNoDefault(pillarDbName);
+			if (nullptr != pillarDb)
+			{
+				this->wallItem->getSubItem(1)->setDatablock(pillarDb);
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] Applied pillar datablock: " + pillarDbName);
+			}
+		}
+		else
+		{
+			// Fallback: use wall datablock if no pillar datablock specified
+			if (false == wallDbName.empty())
+			{
+				Ogre::HlmsDatablock* wallDb = Ogre::Root::getSingleton().getHlmsManager()->getDatablockNoDefault(wallDbName);
+				if (nullptr != wallDb)
+				{
+					this->wallItem->getSubItem(1)->setDatablock(wallDb);
+					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] Applied wall datablock to pillars (fallback)");
+				}
 			}
 		}
 
@@ -1193,7 +1566,7 @@ namespace NOWA
 		this->gameObjectPtr->setDoNotDestroyMovableObject(true);
 		this->gameObjectPtr->init(this->wallItem);
 
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] Wall mesh created with " +  Ogre::StringConverter::toString(numVertices) + " vertices, attached to scene");
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] Wall mesh created with " + Ogre::StringConverter::toString(numWallVertices) + " wall vertices and " + Ogre::StringConverter::toString(numPillarVertices) + " pillar vertices, attached to scene");
 	}
 
 	void ProceduralWallComponent::destroyWallMesh(void)
@@ -1260,10 +1633,16 @@ namespace NOWA
 		this->indices.clear();
 		this->currentVertexIndex = 0;
 
+		// Clear pillar buffers too for preview
+		this->pillarVertices.clear();
+		this->pillarIndices.clear();
+		this->currentPillarVertexIndex = 0;
+
 		// IMPORTANT: Generate preview in LOCAL space relative to startPoint
 		WallSegment localSegment;
 		localSegment.startPoint = Ogre::Vector3::ZERO; // Start at origin
 		localSegment.endPoint = this->currentSegment.endPoint - this->currentSegment.startPoint; // Relative to start
+		localSegment.endPoint.y = 0.0f;
 		localSegment.groundHeightStart = 0.0f; // Relative ground height
 		localSegment.groundHeightEnd = this->currentSegment.groundHeightEnd - this->currentSegment.groundHeightStart;
 		localSegment.hasStartPillar = this->currentSegment.hasStartPillar;
@@ -1295,22 +1674,31 @@ namespace NOWA
 			this->generatePillar(localSegment.endPoint, localSegment.groundHeightEnd);
 		}
 
-		if (true == this->vertices.empty())
+		if (this->vertices.empty() && this->pillarVertices.empty())
 		{
 			return;
 		}
 
-		// Create preview mesh (simplified, no tangents needed for preview)
-		std::vector<float> verticesCopy = this->vertices;
-		std::vector<Ogre::uint32> indicesCopy = this->indices;
-		size_t numVertices = this->currentVertexIndex;
+		// Combine wall and pillar vertices for preview (we'll use single mesh for preview)
+		std::vector<float> combinedVertices = this->vertices;
+		std::vector<Ogre::uint32> combinedIndices = this->indices;
+
+		// Append pillar data with offset indices
+		size_t vertexOffset = this->currentVertexIndex;
+		combinedVertices.insert(combinedVertices.end(), this->pillarVertices.begin(), this->pillarVertices.end());
+		for (auto idx : this->pillarIndices)
+		{
+			combinedIndices.push_back(idx + vertexOffset);
+		}
+
+		size_t totalVertices = this->currentVertexIndex + this->currentPillarVertexIndex;
 
 		// Capture the world position for the preview node
 		Ogre::Vector3 previewPosition = this->currentSegment.startPoint;
 		previewPosition.y = this->currentSegment.groundHeightStart;
 
 		// Execute on render thread
-		GraphicsModule::RenderCommand renderCommand = [this, verticesCopy, indicesCopy, numVertices, previewPosition]()
+		GraphicsModule::RenderCommand renderCommand = [this, combinedVertices, combinedIndices, totalVertices, previewPosition]()
 		{
 			// Destroy existing preview
 			if (nullptr != this->previewItem)
@@ -1339,22 +1727,64 @@ namespace NOWA
 			this->previewMesh = Ogre::MeshManager::getSingleton().createManual(meshName, groupName);
 			Ogre::SubMesh* subMesh = this->previewMesh->createSubMesh();
 
+			// ADD TANGENTS to vertex format (same as main mesh)
 			Ogre::VertexElement2Vec vertexElements;
 			vertexElements.push_back(Ogre::VertexElement2(Ogre::VET_FLOAT3, Ogre::VES_POSITION));
 			vertexElements.push_back(Ogre::VertexElement2(Ogre::VET_FLOAT3, Ogre::VES_NORMAL));
+			vertexElements.push_back(Ogre::VertexElement2(Ogre::VET_FLOAT4, Ogre::VES_TANGENT));  // ADDED
 			vertexElements.push_back(Ogre::VertexElement2(Ogre::VET_FLOAT2, Ogre::VES_TEXTURE_COORDINATES));
 
-			const size_t vertexDataSize = verticesCopy.size() * sizeof(float);
+			// Convert from 8 floats per vertex (pos+normal+uv) to 12 floats (pos+normal+tangent+uv)
+			const size_t srcFloatsPerVertex = 8;
+			const size_t dstFloatsPerVertex = 12;
+			const size_t vertexDataSize = totalVertices * dstFloatsPerVertex * sizeof(float);
 			float* vertexData = reinterpret_cast<float*>(OGRE_MALLOC_SIMD(vertexDataSize, Ogre::MEMCATEGORY_GEOMETRY));
-			memcpy(vertexData, verticesCopy.data(), vertexDataSize);
 
-			Ogre::VertexBufferPacked* vertexBuffer = vaoManager->createVertexBuffer(vertexElements, numVertices, Ogre::BT_IMMUTABLE, vertexData, true);
+			for (size_t i = 0; i < totalVertices; ++i)
+			{
+				size_t srcOffset = i * srcFloatsPerVertex;
+				size_t dstOffset = i * dstFloatsPerVertex;
 
-			const size_t indexDataSize = indicesCopy.size() * sizeof(Ogre::uint32);
+				// Position
+				vertexData[dstOffset + 0] = combinedVertices[srcOffset + 0];
+				vertexData[dstOffset + 1] = combinedVertices[srcOffset + 1];
+				vertexData[dstOffset + 2] = combinedVertices[srcOffset + 2];
+
+				// Normal
+				Ogre::Vector3 normal(combinedVertices[srcOffset + 3], combinedVertices[srcOffset + 4], combinedVertices[srcOffset + 5]);
+				vertexData[dstOffset + 3] = normal.x;
+				vertexData[dstOffset + 4] = normal.y;
+				vertexData[dstOffset + 5] = normal.z;
+
+				// Calculate tangent
+				Ogre::Vector3 tangent;
+				if (std::abs(normal.y) < 0.9f)
+				{
+					tangent = Ogre::Vector3::UNIT_Y.crossProduct(normal);
+				}
+				else
+				{
+					tangent = normal.crossProduct(Ogre::Vector3::UNIT_X);
+				}
+				tangent.normalise();
+
+				vertexData[dstOffset + 6] = tangent.x;
+				vertexData[dstOffset + 7] = tangent.y;
+				vertexData[dstOffset + 8] = tangent.z;
+				vertexData[dstOffset + 9] = 1.0f;
+
+				// UV
+				vertexData[dstOffset + 10] = combinedVertices[srcOffset + 6];
+				vertexData[dstOffset + 11] = combinedVertices[srcOffset + 7];
+			}
+
+			Ogre::VertexBufferPacked* vertexBuffer = vaoManager->createVertexBuffer(vertexElements, totalVertices, Ogre::BT_IMMUTABLE, vertexData, true);
+
+			const size_t indexDataSize = combinedIndices.size() * sizeof(Ogre::uint32);
 			Ogre::uint32* indexData = reinterpret_cast<Ogre::uint32*>(OGRE_MALLOC_SIMD(indexDataSize, Ogre::MEMCATEGORY_GEOMETRY));
-			memcpy(indexData, indicesCopy.data(), indexDataSize);
+			memcpy(indexData, combinedIndices.data(), indexDataSize);
 
-			Ogre::IndexBufferPacked* indexBuffer = vaoManager->createIndexBuffer(Ogre::IndexBufferPacked::IT_32BIT, indicesCopy.size(), Ogre::BT_IMMUTABLE, indexData, true);
+			Ogre::IndexBufferPacked* indexBuffer = vaoManager->createIndexBuffer(Ogre::IndexBufferPacked::IT_32BIT, combinedIndices.size(), Ogre::BT_IMMUTABLE, indexData, true);
 
 			Ogre::VertexBufferPackedVec vertexBuffers;
 			vertexBuffers.push_back(vertexBuffer);
@@ -1368,11 +1798,10 @@ namespace NOWA
 			Ogre::Vector3 minBounds(std::numeric_limits<float>::max());
 			Ogre::Vector3 maxBounds(std::numeric_limits<float>::lowest());
 
-			const size_t floatsPerVertex = 8;
-			for (size_t i = 0; i < numVertices; ++i)
+			for (size_t i = 0; i < totalVertices; ++i)
 			{
-				size_t offset = i * floatsPerVertex;
-				Ogre::Vector3 pos(verticesCopy[offset + 0], verticesCopy[offset + 1], verticesCopy[offset + 2]);
+				size_t offset = i * srcFloatsPerVertex;
+				Ogre::Vector3 pos(combinedVertices[offset + 0], combinedVertices[offset + 1], combinedVertices[offset + 2]);
 				minBounds.makeFloor(pos);
 				maxBounds.makeCeil(pos);
 			}
@@ -1403,6 +1832,8 @@ namespace NOWA
 
 		this->vertices.clear();
 		this->indices.clear();
+		this->pillarVertices.clear();
+		this->pillarIndices.clear();
 	}
 
 	// ==================== GEOMETRY HELPERS ====================
@@ -1745,7 +2176,7 @@ namespace NOWA
 		Ogre::Real vTile = height * uvTile.y;
 
 		// Front face (-Z): BL, TL, TR, BR
-		this->addQuad(
+		this->addPillarQuad(  // CHANGED: was addQuad
 			Ogre::Vector3(minX, minY, minZ),  // BL
 			Ogre::Vector3(minX, maxY, minZ),  // TL
 			Ogre::Vector3(maxX, maxY, minZ),  // TR
@@ -1753,7 +2184,7 @@ namespace NOWA
 			Ogre::Vector3::NEGATIVE_UNIT_Z, uTile, vTile);
 
 		// Back face (+Z): BL, TL, TR, BR (from back view)
-		this->addQuad(
+		this->addPillarQuad(  // CHANGED
 			Ogre::Vector3(maxX, minY, maxZ),  // BL (from back)
 			Ogre::Vector3(maxX, maxY, maxZ),  // TL
 			Ogre::Vector3(minX, maxY, maxZ),  // TR
@@ -1761,7 +2192,7 @@ namespace NOWA
 			Ogre::Vector3::UNIT_Z, uTile, vTile);
 
 		// Left face (-X): BL, TL, TR, BR
-		this->addQuad(
+		this->addPillarQuad(  // CHANGED
 			Ogre::Vector3(minX, minY, maxZ),  // BL (back)
 			Ogre::Vector3(minX, maxY, maxZ),  // TL
 			Ogre::Vector3(minX, maxY, minZ),  // TR (front)
@@ -1769,7 +2200,7 @@ namespace NOWA
 			Ogre::Vector3::NEGATIVE_UNIT_X, uTile, vTile);
 
 		// Right face (+X): BL, TL, TR, BR
-		this->addQuad(
+		this->addPillarQuad(  // CHANGED
 			Ogre::Vector3(maxX, minY, minZ),  // BL (front)
 			Ogre::Vector3(maxX, maxY, minZ),  // TL
 			Ogre::Vector3(maxX, maxY, maxZ),  // TR (back)
@@ -1777,7 +2208,7 @@ namespace NOWA
 			Ogre::Vector3::UNIT_X, uTile, vTile);
 
 		// Top face (+Y): BL, TL, TR, BR
-		this->addQuad(
+		this->addPillarQuad(  // CHANGED
 			Ogre::Vector3(minX, maxY, minZ),  // BL (front-left)
 			Ogre::Vector3(minX, maxY, maxZ),  // TL (back-left)
 			Ogre::Vector3(maxX, maxY, maxZ),  // TR (back-right)
@@ -1932,6 +2363,66 @@ namespace NOWA
 		this->indices.push_back(baseIndex + 3);
 	}
 
+	void ProceduralWallComponent::addPillarQuad(const Ogre::Vector3& v0, const Ogre::Vector3& v1, const Ogre::Vector3& v2, const Ogre::Vector3& v3, const Ogre::Vector3& normal, Ogre::Real uTile, Ogre::Real vTile)
+	{
+		Ogre::uint32 baseIndex = this->currentPillarVertexIndex;
+
+		// Vertex format: pos(3) + normal(3) + uv(2) = 8 floats
+		// Expected vertex order: v0=BL, v1=TL, v2=TR, v3=BR
+
+		// Vertex 0 - bottom-left (UV 0,0)
+		this->pillarVertices.push_back(v0.x);
+		this->pillarVertices.push_back(v0.y);
+		this->pillarVertices.push_back(v0.z);
+		this->pillarVertices.push_back(normal.x);
+		this->pillarVertices.push_back(normal.y);
+		this->pillarVertices.push_back(normal.z);
+		this->pillarVertices.push_back(0.0f);
+		this->pillarVertices.push_back(0.0f);
+
+		// Vertex 1 - top-left (UV 0,vTile)
+		this->pillarVertices.push_back(v1.x);
+		this->pillarVertices.push_back(v1.y);
+		this->pillarVertices.push_back(v1.z);
+		this->pillarVertices.push_back(normal.x);
+		this->pillarVertices.push_back(normal.y);
+		this->pillarVertices.push_back(normal.z);
+		this->pillarVertices.push_back(0.0f);
+		this->pillarVertices.push_back(vTile);
+
+		// Vertex 2 - top-right (UV uTile,vTile)
+		this->pillarVertices.push_back(v2.x);
+		this->pillarVertices.push_back(v2.y);
+		this->pillarVertices.push_back(v2.z);
+		this->pillarVertices.push_back(normal.x);
+		this->pillarVertices.push_back(normal.y);
+		this->pillarVertices.push_back(normal.z);
+		this->pillarVertices.push_back(uTile);
+		this->pillarVertices.push_back(vTile);
+
+		// Vertex 3 - bottom-right (UV uTile,0)
+		this->pillarVertices.push_back(v3.x);
+		this->pillarVertices.push_back(v3.y);
+		this->pillarVertices.push_back(v3.z);
+		this->pillarVertices.push_back(normal.x);
+		this->pillarVertices.push_back(normal.y);
+		this->pillarVertices.push_back(normal.z);
+		this->pillarVertices.push_back(uTile);
+		this->pillarVertices.push_back(0.0f);
+
+		this->currentPillarVertexIndex += 4;
+
+		// Two triangles with counter-clockwise winding: 0-1-2 and 0-2-3
+		// (BL,TL,TR) and (BL,TR,BR)
+		this->pillarIndices.push_back(baseIndex + 0);
+		this->pillarIndices.push_back(baseIndex + 1);
+		this->pillarIndices.push_back(baseIndex + 2);
+
+		this->pillarIndices.push_back(baseIndex + 0);
+		this->pillarIndices.push_back(baseIndex + 2);
+		this->pillarIndices.push_back(baseIndex + 3);
+	}
+
 	Ogre::Vector3 ProceduralWallComponent::snapToGridFunc(const Ogre::Vector3& position)
 	{
 		Ogre::Real gridSz = this->gridSize->getReal();
@@ -1954,6 +2445,510 @@ namespace NOWA
 			return WallStyle::ARCH;
 		}
 		return WallStyle::SOLID;
+	}
+
+	// ==================== FILE PATH HELPERS ====================
+
+	Ogre::String ProceduralWallComponent::getWallDataFilePath(void) const
+	{
+		Ogre::String projectFilePath;
+
+		if (false == this->gameObjectPtr->getGlobal())
+		{
+			projectFilePath = Core::getSingletonPtr()->getCurrentProjectPath() + "/" +
+				Core::getSingletonPtr()->getSceneName();
+		}
+		else
+		{
+			projectFilePath = Core::getSingletonPtr()->getCurrentProjectPath();
+		}
+
+		// Create filename based on GameObject ID for uniqueness
+		Ogre::String filename = "Wall_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()) + ".walldata";
+
+		return projectFilePath + "/" + filename;
+	}
+
+	// ==================== SAVE WALL DATA ====================
+
+	bool ProceduralWallComponent::saveWallDataToFile(void)
+	{
+		/*
+		Offset  Size  Description
+		------  ----  -----------
+		0       4     Magic: 0x57414C4C ("WALL")
+		4       4     Version: 2
+		8       4     Origin X (float)
+		12      4     Origin Y (float)
+		16      4     Origin Z (float)
+		20      4     numSegments (uint32)
+		24      4     numWallVertices (uint32)
+		28      4     numWallIndices (uint32)
+		32      4     numPillarVertices (uint32)
+		36      4     numPillarIndices (uint32)
+		-- header: 40 bytes --
+
+		For each segment (34 bytes each):
+		  startPoint.x/y/z     12 bytes (3 floats)
+		  endPoint.x/y/z       12 bytes (3 floats)
+		  groundHeightStart     4 bytes (float)
+		  groundHeightEnd       4 bytes (float)
+		  hasStartPillar        1 byte  (uint8)
+		  hasEndPillar          1 byte  (uint8)
+
+		Wall vertex data:   numWallVertices   * 8 * sizeof(float)
+		Wall index data:    numWallIndices    * sizeof(uint32)
+		Pillar vertex data: numPillarVertices * 8 * sizeof(float)
+		Pillar index data:  numPillarIndices  * sizeof(uint32)
+		*/
+
+		// Need either segments or cached vertex data
+		if (this->wallSegments.empty() && this->cachedWallVertices.empty())
+		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] saveWallDataToFile: nothing to save, deleting file");
+			this->deleteWallDataFile();
+			return true;
+		}
+
+		Ogre::String filePath = this->getWallDataFilePath();
+
+		try
+		{
+			uint32_t numSegments = static_cast<uint32_t>(this->wallSegments.size());
+			uint32_t numWallVerts = static_cast<uint32_t>(this->cachedNumWallVertices);
+			uint32_t numWallIdx = static_cast<uint32_t>(this->cachedWallIndices.size());
+			uint32_t numPillarVerts = static_cast<uint32_t>(this->cachedNumPillarVertices);
+			uint32_t numPillarIdx = static_cast<uint32_t>(this->cachedPillarIndices.size());
+
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+				"[ProceduralWallComponent] saveWallDataToFile: " +
+				Ogre::StringConverter::toString(numSegments) + " segments, " +
+				Ogre::StringConverter::toString(numWallVerts) + " wall verts, " +
+				Ogre::StringConverter::toString(numWallIdx) + " wall indices, " +
+				Ogre::StringConverter::toString(numPillarVerts) + " pillar verts, " +
+				Ogre::StringConverter::toString(numPillarIdx) + " pillar indices");
+
+			const size_t floatsPerVertex = 8;  // pos(3) + normal(3) + uv(2)
+			const size_t bytesPerSegment = 34; // 3+3 floats + 2 floats + 2 bytes
+
+			size_t headerSize = 40;
+			size_t segmentDataSize = numSegments * bytesPerSegment;
+			size_t wallVertBytes = numWallVerts * floatsPerVertex * sizeof(float);
+			size_t wallIdxBytes = numWallIdx * sizeof(uint32_t);
+			size_t pillarVertBytes = numPillarVerts * floatsPerVertex * sizeof(float);
+			size_t pillarIdxBytes = numPillarIdx * sizeof(uint32_t);
+
+			size_t totalSize = headerSize + segmentDataSize + wallVertBytes + wallIdxBytes + pillarVertBytes + pillarIdxBytes;
+
+			std::vector<unsigned char> buffer(totalSize);
+			size_t off = 0;
+
+			// --- Header ---
+			uint32_t magic = WALLDATA_MAGIC;
+			uint32_t version = WALLDATA_VERSION;
+			memcpy(&buffer[off], &magic, 4); off += 4;
+			memcpy(&buffer[off], &version, 4); off += 4;
+			memcpy(&buffer[off], &this->cachedWallOrigin.x, 4);
+			off += 4;
+			memcpy(&buffer[off], &this->cachedWallOrigin.y, 4);
+			off += 4;
+			memcpy(&buffer[off], &this->cachedWallOrigin.z, 4);
+			off += 4;
+			memcpy(&buffer[off], &numSegments, 4);
+			off += 4;
+			memcpy(&buffer[off], &numWallVerts, 4);
+			off += 4;
+			memcpy(&buffer[off], &numWallIdx, 4);
+			off += 4;
+			memcpy(&buffer[off], &numPillarVerts, 4);
+			off += 4;
+			memcpy(&buffer[off], &numPillarIdx, 4);
+			off += 4;
+
+			// --- Segment data ---
+			for (const WallSegment& seg : this->wallSegments)
+			{
+				memcpy(&buffer[off], &seg.startPoint.x, 4);
+				off += 4;
+				memcpy(&buffer[off], &seg.startPoint.y, 4);
+				off += 4;
+				memcpy(&buffer[off], &seg.startPoint.z, 4);
+				off += 4;
+				memcpy(&buffer[off], &seg.endPoint.x, 4);
+				off += 4;
+				memcpy(&buffer[off], &seg.endPoint.y, 4);
+				off += 4;
+				memcpy(&buffer[off], &seg.endPoint.z, 4);
+				off += 4;
+				memcpy(&buffer[off], &seg.groundHeightStart, 4);
+				off += 4;
+				memcpy(&buffer[off], &seg.groundHeightEnd, 4);
+				off += 4;
+				uint8_t sp = seg.hasStartPillar ? 1 : 0;
+				uint8_t ep = seg.hasEndPillar ? 1 : 0;
+				buffer[off++] = sp;
+				buffer[off++] = ep;
+			}
+
+			// --- Vertex / index data (from CPU cache) ---
+			if (wallVertBytes > 0)
+			{
+				memcpy(&buffer[off], this->cachedWallVertices.data(), wallVertBytes);
+			}
+			off += wallVertBytes;
+
+			if (wallIdxBytes > 0)
+			{
+				memcpy(&buffer[off], this->cachedWallIndices.data(), wallIdxBytes);
+			}
+			off += wallIdxBytes;
+
+			if (pillarVertBytes > 0)
+			{
+				memcpy(&buffer[off], this->cachedPillarVertices.data(), pillarVertBytes);
+			}
+			off += pillarVertBytes;
+
+			if (pillarIdxBytes > 0)
+			{
+				memcpy(&buffer[off], this->cachedPillarIndices.data(), pillarIdxBytes);
+			}
+			off += pillarIdxBytes;
+
+			// --- Write file ---
+			std::ofstream outFile(filePath.c_str(), std::ios::binary);
+			if (false == outFile.is_open())
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralWallComponent] Cannot open for writing: " + filePath);
+				return false;
+			}
+
+			outFile.write(reinterpret_cast<const char*>(buffer.data()), totalSize);
+			outFile.close();
+
+			if (true == outFile.fail())
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,	"[ProceduralWallComponent] Write failed: " + filePath);
+				return false;
+			}
+
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] Saved to: " + filePath + " (" + Ogre::StringConverter::toString(totalSize) + " bytes)");
+			return true;
+		}
+		catch (const std::exception& e)
+		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralWallComponent] Exception saving: " + Ogre::String(e.what()));
+			return false;
+		}
+	}
+
+	// ==================== LOAD MESH DATA ====================
+
+	bool ProceduralWallComponent::loadWallDataFromFile(void)
+	{
+		Ogre::String filePath = this->getWallDataFilePath();
+
+		std::ifstream inFile(filePath.c_str(), std::ios::binary);
+		if (false == inFile.is_open())
+		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] No wall data file (new wall): " + filePath);
+			return true;
+		}
+
+		try
+		{
+			inFile.seekg(0, std::ios::end);
+			size_t fileSize = static_cast<size_t>(inFile.tellg());
+			inFile.seekg(0, std::ios::beg);
+
+			if (fileSize < 40)
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+					"[ProceduralWallComponent] File too small: " + filePath);
+				inFile.close();
+				return false;
+			}
+
+			std::vector<unsigned char> buffer(fileSize);
+			inFile.read(reinterpret_cast<char*>(buffer.data()), fileSize);
+			inFile.close();
+
+			if (true == inFile.fail())
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralWallComponent] Read failed: " + filePath);
+				return false;
+			}
+
+			size_t off = 0;
+
+			// --- Header ---
+			uint32_t magic, version;
+			memcpy(&magic, &buffer[off], 4); off += 4;
+			memcpy(&version, &buffer[off], 4); off += 4;
+
+			if (magic != WALLDATA_MAGIC)
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralWallComponent] Bad magic in: " + filePath);
+				return false;
+			}
+			if (version != WALLDATA_VERSION)
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralWallComponent] Unsupported version " + Ogre::StringConverter::toString(version) + " in: " + filePath);
+				return false;
+			}
+
+			Ogre::Vector3 origin;
+			memcpy(&origin.x, &buffer[off], 4); off += 4;
+			memcpy(&origin.y, &buffer[off], 4); off += 4;
+			memcpy(&origin.z, &buffer[off], 4); off += 4;
+
+			uint32_t numSegments, numWallVerts, numWallIdx, numPillarVerts, numPillarIdx;
+			memcpy(&numSegments, &buffer[off], 4); off += 4;
+			memcpy(&numWallVerts, &buffer[off], 4); off += 4;
+			memcpy(&numWallIdx, &buffer[off], 4); off += 4;
+			memcpy(&numPillarVerts, &buffer[off], 4); off += 4;
+			memcpy(&numPillarIdx, &buffer[off], 4); off += 4;
+
+			// --- Validate file size ---
+			const size_t floatsPerVertex = 8;
+			const size_t bytesPerSegment = 34;
+			size_t expectedSize = 40
+				+ (numSegments * bytesPerSegment)
+				+ (numWallVerts * floatsPerVertex * sizeof(float))
+				+ (numWallIdx * sizeof(uint32_t))
+				+ (numPillarVerts * floatsPerVertex * sizeof(float))
+				+ (numPillarIdx * sizeof(uint32_t));
+
+			if (fileSize != expectedSize)
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralWallComponent] File size mismatch: expected " +
+					Ogre::StringConverter::toString(expectedSize) + " got " + Ogre::StringConverter::toString(fileSize));
+				return false;
+			}
+
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+				"[ProceduralWallComponent] Loading: " +
+				Ogre::StringConverter::toString(numSegments) + " segments, " +
+				Ogre::StringConverter::toString(numWallVerts) + " wall verts, " +
+				Ogre::StringConverter::toString(numWallIdx) + " wall idx, " +
+				Ogre::StringConverter::toString(numPillarVerts) + " pillar verts, " +
+				Ogre::StringConverter::toString(numPillarIdx) + " pillar idx");
+
+			// --- Restore segments ---
+			this->wallSegments.clear();
+			for (uint32_t i = 0; i < numSegments; ++i)
+			{
+				WallSegment seg;
+				memcpy(&seg.startPoint.x, &buffer[off], 4);
+				off += 4;
+				memcpy(&seg.startPoint.y, &buffer[off], 4);
+				off += 4;
+				memcpy(&seg.startPoint.z, &buffer[off], 4);
+				off += 4;
+				memcpy(&seg.endPoint.x, &buffer[off], 4);
+				off += 4;
+				memcpy(&seg.endPoint.y, &buffer[off], 4);
+				off += 4;
+				memcpy(&seg.endPoint.z, &buffer[off], 4);
+				off += 4;
+				memcpy(&seg.groundHeightStart, &buffer[off], 4);
+				off += 4;
+				memcpy(&seg.groundHeightEnd, &buffer[off], 4);
+				off += 4;
+
+				seg.hasStartPillar = (buffer[off++] != 0);
+				seg.hasEndPillar = (buffer[off++] != 0);
+
+				this->wallSegments.push_back(seg);
+			}
+
+			// Restore wall origin
+			this->cachedWallOrigin = origin;
+			this->wallOrigin = origin;
+			this->hasWallOrigin = true;
+
+			// --- Restore vertex/index cache ---
+			size_t wallVertBytes = numWallVerts * floatsPerVertex * sizeof(float);
+			size_t wallIdxBytes = numWallIdx * sizeof(uint32_t);
+			size_t pillarVertBytes = numPillarVerts * floatsPerVertex * sizeof(float);
+			size_t pillarIdxBytes = numPillarIdx * sizeof(uint32_t);
+
+			this->cachedWallVertices.resize(numWallVerts * floatsPerVertex);
+			this->cachedWallIndices.resize(numWallIdx);
+			this->cachedPillarVertices.resize(numPillarVerts * floatsPerVertex);
+			this->cachedPillarIndices.resize(numPillarIdx);
+
+			if (wallVertBytes > 0)
+			{
+				memcpy(this->cachedWallVertices.data(), &buffer[off], wallVertBytes);
+			}
+			off += wallVertBytes;
+
+			if (wallIdxBytes > 0)
+			{
+				memcpy(this->cachedWallIndices.data(), &buffer[off], wallIdxBytes);
+			}
+			off += wallIdxBytes;
+
+			if (pillarVertBytes > 0)
+			{
+				memcpy(this->cachedPillarVertices.data(), &buffer[off], pillarVertBytes);
+			}
+			off += pillarVertBytes;
+
+			if (pillarIdxBytes > 0)
+			{
+				memcpy(this->cachedPillarIndices.data(), &buffer[off], pillarIdxBytes);
+			}
+			off += pillarIdxBytes;
+
+			this->cachedNumWallVertices = numWallVerts;
+			this->cachedNumPillarVertices = numPillarVerts;
+
+			// --- Recreate mesh via existing pipeline (fast path: uses cache directly) ---
+			std::vector<float>        wv = this->cachedWallVertices;
+			std::vector<Ogre::uint32> wi = this->cachedWallIndices;
+			std::vector<float>        pv = this->cachedPillarVertices;
+			std::vector<Ogre::uint32> pi = this->cachedPillarIndices;
+			size_t nwv = this->cachedNumWallVertices;
+			size_t npv = this->cachedNumPillarVertices;
+
+			GraphicsModule::RenderCommand renderCommand = [this, wv, wi, nwv, pv, pi, npv, origin]()
+			{
+				this->createWallMeshInternal(wv, wi, nwv, pv, pi, npv, origin);
+			};
+			NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ProceduralWallComponent::loadWallDataFromFile");
+
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] Load complete: " + filePath);
+			return true;
+		}
+		catch (const std::exception& e)
+		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralWallComponent] Exception loading: " + Ogre::String(e.what()));
+			return false;
+		}
+	}
+
+	// ==================== DELETE WALL DATA ====================
+
+	void ProceduralWallComponent::deleteWallDataFile(void)
+	{
+		Ogre::String filePath = this->getWallDataFilePath();
+
+		// Check if file exists before trying to delete
+		std::ifstream checkFile(filePath.c_str());
+		if (true == checkFile.good())
+		{
+			checkFile.close();
+
+			if (std::remove(filePath.c_str()) == 0)
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] Deleted wall data file: " + filePath);
+			}
+			else
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralWallComponent] Failed to delete wall data file: " + filePath);
+			}
+		}
+	}
+
+	void ProceduralWallComponent::handleMeshModifyMode(NOWA::EventDataPtr eventData)
+	{
+		boost::shared_ptr<NOWA::EventDataEditorMode> castEventData = boost::static_pointer_cast<NOWA::EventDataEditorMode>(eventData);
+
+		bool wasModifiable = this->canModify;
+
+		if (NOWA::EditorManager::EDITOR_MESH_MODIFY_MODE == castEventData->getManipulationMode())
+		{
+			this->canModify = true;
+		}
+		else
+		{
+			this->canModify = false;
+
+			// If we lost modify permission, clean up
+			if (wasModifiable)
+			{
+				this->removeInputListener();
+				if (this->buildState == BuildState::DRAGGING)
+				{
+					this->cancelWall();
+				}
+			}
+		}
+	}
+
+	void ProceduralWallComponent::handleGameObjectSelected(NOWA::EventDataPtr eventData)
+	{
+		boost::shared_ptr<NOWA::EventDataGameObjectSelected> castEventData = boost::static_pointer_cast<NOWA::EventDataGameObjectSelected>(eventData);
+
+		if (nullptr != this->gameObjectPtr)
+		{
+			if (castEventData->getGameObjectId() == this->gameObjectPtr->getId())
+			{
+				// This wall component's GameObject was selected
+				if (true == this->canModify && true == castEventData->getIsSelected())
+				{
+					// Only add listener if:
+					// 1. We can modify
+					// 2. Object is being selected (not deselected)
+					// 3. We're in IDLE state (not already building)
+					if (this->buildState == BuildState::IDLE)
+					{
+						this->addInputListener();
+					}
+				}
+				else
+				{
+					// Object deselected or can't modify - clean up
+					this->removeInputListener();
+					if (this->buildState == BuildState::DRAGGING)
+					{
+						this->cancelWall();
+					}
+				}
+			}
+			else
+			{
+				// Different object selected - clean up this component
+				this->removeInputListener();
+				if (this->buildState == BuildState::DRAGGING)
+				{
+					this->cancelWall();
+				}
+			}
+		}
+	}
+
+	void ProceduralWallComponent::addInputListener(void)
+	{
+		const Ogre::String listenerName = ProceduralWallComponent::getStaticClassName() + "_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this, listenerName]()
+		{
+			if (auto* core = InputDeviceCore::getSingletonPtr())
+			{
+				if (auto* core = InputDeviceCore::getSingletonPtr())
+				{
+					core->addKeyListener(this, listenerName);
+					core->addMouseListener(this, listenerName);
+				}
+			}
+		};
+		NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "SelectionManager::handleMousePress select");
+	}
+
+	void ProceduralWallComponent::removeInputListener(void)
+	{
+		const Ogre::String listenerName = ProceduralWallComponent::getStaticClassName() + "_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this, listenerName]()
+		{
+			if (auto* core = InputDeviceCore::getSingletonPtr())
+			{
+				core->removeKeyListener(listenerName);
+				core->removeMouseListener(listenerName);
+			}
+		};
+		NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "SelectionManager::handleMousePress select");
 	}
 
 	// ==================== ATTRIBUTE SETTERS/GETTERS ====================
@@ -2088,15 +3083,43 @@ namespace NOWA
 		if (this->wallItem && !datablock.empty())
 		{
 			GraphicsModule::RenderCommand renderCommand = [this, datablock]()
-			{
-				Ogre::HlmsDatablock* wallDB = Ogre::Root::getSingleton().getHlmsManager()->getDatablockNoDefault(datablock);
-				if (nullptr != wallDB)
 				{
-					this->wallItem->setDatablock(wallDB);
-					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] Applied wall datablock: " + datablock);
-				}
-			};
-			NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "ProceduralWallComponent::setWallDatablock");
+					// Double-check wallItem still exists
+					if (nullptr == this->wallItem)
+					{
+						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] wallItem is null, datablock will be applied on next mesh creation");
+						return;
+					}
+
+					// Verify we have at least 1 submesh
+					if (this->wallItem->getNumSubItems() < 1)
+					{
+						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+							"[ProceduralWallComponent] wallItem has no submeshes! Cannot apply wall datablock.");
+						return;
+					}
+
+					Ogre::HlmsDatablock* wallDb = Ogre::Root::getSingletonPtr()->getHlmsManager()->getDatablockNoDefault(datablock);
+					if (nullptr != wallDb)
+					{
+						// Submesh 0 is ALWAYS walls
+						this->wallItem->getSubItem(0)->setDatablock(wallDb);
+						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] Applied wall datablock: " + datablock);
+					}
+					else
+					{
+						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralWallComponent] Wall datablock not found: " + datablock);
+					}
+				};
+			// Use enqueueAndWait to ensure it executes immediately
+			NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ProceduralWallComponent::setWallDatablock");
+		}
+		else
+		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+				"[ProceduralWallComponent] Wall datablock will be applied when mesh is created (wallItem: " +
+				Ogre::StringConverter::toString(this->wallItem != nullptr) + ", datablock empty: " +
+				Ogre::StringConverter::toString(datablock.empty()) + ")");
 		}
 	}
 
@@ -2109,9 +3132,44 @@ namespace NOWA
 	{
 		this->pillarDatablock->setValue(datablock);
 
-		// Pillars are part of the main mesh, so changing pillar datablock requires rebuild
-		// OR we could create separate items for pillars - for now, just note this
-		// If you want separate pillar materials, you'd need to split into multiple submeshes
+		// Apply datablock immediately if wall exists
+		if (this->wallItem && !datablock.empty())
+		{
+			GraphicsModule::RenderCommand renderCommand = [this, datablock]()
+			{
+				// Double-check wallItem still exists (could be destroyed between check and execution)
+				if (nullptr == this->wallItem)
+				{
+					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] wallItem is null, datablock will be applied on next mesh creation");
+					return;
+				}
+
+				// Verify we have at least 2 submeshes
+				if (this->wallItem->getNumSubItems() < 2)
+				{
+					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralWallComponent] wallItem has fewer than 2 submeshes! Cannot apply pillar datablock.");
+					return;
+				}
+
+				Ogre::HlmsDatablock* pillarDb = Ogre::Root::getSingletonPtr()->getHlmsManager()->getDatablockNoDefault(datablock);
+				if (nullptr != pillarDb)
+				{
+					// Submesh 1 is ALWAYS pillars
+					this->wallItem->getSubItem(1)->setDatablock(pillarDb);
+					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] Applied pillar datablock: " + datablock);
+				}
+				else
+				{
+					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralWallComponent] Pillar datablock not found: " + datablock);
+				}
+			};
+			NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ProceduralWallComponent::setPillarDatablock");
+		}
+		else
+		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] Pillar datablock will be applied when mesh is created (wallItem: " +
+				Ogre::StringConverter::toString(this->wallItem != nullptr) + ", datablock empty: " + Ogre::StringConverter::toString(datablock.empty()) + ")");
+		}
 	}
 
 	Ogre::String ProceduralWallComponent::getPillarDatablock(void) const

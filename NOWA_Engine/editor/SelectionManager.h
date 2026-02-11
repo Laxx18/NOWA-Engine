@@ -153,7 +153,11 @@ namespace NOWA
 		bool canSelectionRedo(void);
 
 	private:
+		void queueSelectionEvent(unsigned long id, bool selected);
+
 		void handleDeleteGameObject(EventDataPtr eventData);
+
+		void applySelectInternal(GameObject* gameObject, bool bSelect);
 	private:
 		Ogre::Camera* camera;
 		Ogre::SceneManager* sceneManager;

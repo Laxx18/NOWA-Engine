@@ -74,13 +74,8 @@
             <Property key="ImageGroup" value="States"/>
 			<Property key="ModeImage" value="true"/>
         </Widget>
-        <Widget type="Button" skin="ButtonImage" position="550 5 29 26" name="wakeButton">
-            <Property key="ImageResource" value="WakeImage"/>
-            <Property key="ImageGroup" value="States"/>
-			<Property key="ModeImage" value="true"/>
-        </Widget>
-        <Widget type="Button" skin="ButtonImage" position="585 5 29 26" name="sleepButton">
-            <Property key="ImageResource" value="SleepImage"/>
+		<Widget type="Button" skin="ButtonImage" position="550 5 29 26" name="meshModifyModeCheck">
+			<Property key="ImageResource" value="MeshModifyImage"/>
             <Property key="ImageGroup" value="States"/>
 			<Property key="ModeImage" value="true"/>
         </Widget>

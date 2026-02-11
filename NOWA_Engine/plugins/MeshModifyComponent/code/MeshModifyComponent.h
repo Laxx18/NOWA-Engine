@@ -125,6 +125,11 @@ namespace NOWA
 		virtual bool onCloned(void) override;
 
 		/**
+		 * @see		GameObjectComponent::onAddComponent
+		 */
+		virtual void onAddComponent(void) override;
+
+		/**
 		 * @see		GameObjectComponent::onRemoveComponent
 		 */
 		virtual void onRemoveComponent(void);
@@ -345,6 +350,10 @@ namespace NOWA
 		 */
 		Ogre::Vector3 localToWorld(const Ogre::Vector3& localPos) const;
 
+		void handleMeshModifyMode(NOWA::EventDataPtr eventData);
+
+		void handleGameObjectSelected(NOWA::EventDataPtr eventData);
+
 	private:
 		Ogre::String name;
 
@@ -398,6 +407,7 @@ namespace NOWA
 		Variant* brushFalloff;
 		Variant* brushMode;
 		Variant* category;
+		bool canModify;
 	};
 
 }; // namespace end

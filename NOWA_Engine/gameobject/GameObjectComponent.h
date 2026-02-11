@@ -55,6 +55,11 @@ namespace NOWA
 		virtual bool onCloned(void) { return true; }
 
 		/**
+		 * @brief		Chance to react when this component is added
+		 */
+		virtual void onAddComponent(void);
+
+		/**
 		 * @brief		Chance to react when this component is removed
 		 */
 		virtual void onRemoveComponent(void);

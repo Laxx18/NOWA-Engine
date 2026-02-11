@@ -564,7 +564,7 @@ void ComponentsPanelDynamic::buttonHit(MyGUI::Widget* sender)
 			return;
 		}
 
-		this->editorManager->addComponent(gameObjectIds, componentName);
+		this->editorManager->addComponent(gameObjectIds, componentName, true);
 		if (this->index != -1)
 		{
 			this->gameObjects[0]->moveComponent(this->index + 1);

@@ -44,7 +44,7 @@ namespace NOWA
 			EDITOR_TERRAIN_MODIFY_MODE,
 			EDITOR_TERRAIN_SMOOTH_MODE,
 			EDITOR_TERRAIN_PAINT_MODE,
-			// EDITOR_PLAY_MODE,
+			EDITOR_MESH_MODIFY_MODE,
 			EDITOR_NO_MODE
 		};
 
@@ -232,7 +232,7 @@ namespace NOWA
 
 		void deleteGameObjects(const std::vector<unsigned long> gameObjectIds);
 
-		void addComponent(const std::vector<unsigned long> gameObjectIds, const Ogre::String& componentClassName);
+		void addComponent(const std::vector<unsigned long> gameObjectIds, const Ogre::String& componentClassName, bool newComponent = false);
 
 		void deleteComponent(const std::vector<unsigned long> gameObjectIds, unsigned int index);
 

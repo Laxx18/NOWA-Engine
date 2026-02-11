@@ -72,7 +72,7 @@ namespace NOWA
 
 	void DotSceneExportModule::exportScene(const Ogre::String& projectName, const Ogre::String& sceneName, const Ogre::String& sceneResourceGroupName, bool crypted)
 	{
-		ENQUEUE_RENDER_COMMAND_MULTI("DotSceneExportModule::exportScene", _4(projectName, sceneName, sceneResourceGroupName, crypted),
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this, projectName, sceneName, sceneResourceGroupName, crypted]()
 		{
 			Ogre::String projectPath = Core::getSingletonPtr()->getSectionPath(sceneResourceGroupName)[0];
 			// Announce the current scene path to core
@@ -186,12 +186,13 @@ namespace NOWA
 			file << stream.str();
 
 			file.close();
-		});
+		};
+		NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DotSceneExportModule::exportScene");
 	}
 
 	void DotSceneExportModule::saveSceneSnapshot(const Ogre::String& filePathName, bool crypted)
 	{
-		ENQUEUE_RENDER_COMMAND_MULTI("DotSceneExportModule::saveSceneSnapshot", _2(filePathName, crypted),
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this, filePathName, crypted]()
 		{
 			Ogre::String tempFilePathName = Core::getSingletonPtr()->removePartsFromString(filePathName, ".sav").second;
 			// Maybe create a folder
@@ -291,7 +292,8 @@ namespace NOWA
 			file << stream.str();
 
 			file.close();
-		});
+		};
+		NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DotSceneExportModule::saveSceneSnapshot");
 	}
 
 	void DotSceneExportModule::copyScene(const Ogre::String& oldSeneName, const Ogre::String& newSceneFilePathName, const Ogre::String& sceneResourceGroupName)

@@ -96,10 +96,12 @@ namespace NOWA
 		inputSystem(nullptr),
 		mainInputDeviceModule(nullptr),
 		joystickIndex(0),
-		listenerAboutToBeRemoved(false),
-		bSelectDown(false)
+		bSelectDown(false),
+		keyDispatchDepth(0),
+		mouseDispatchDepth(0),
+		joystickDispatchDepth(0)
 	{
-		
+
 	}
 
 	InputDeviceCore::~InputDeviceCore()
@@ -173,10 +175,21 @@ namespace NOWA
 			this->inputSystem = nullptr;
 
 			// Clear Listeners
-			this->keyListeners.clear();
-			this->mouseListeners.clear();
-			this->joystickListeners.clear();
-			this->listenerAboutToBeRemoved = false;
+			this->keyListenerStack.clear();
+			this->mouseListenerStack.clear();
+			this->joystickListenerStack.clear();
+
+			this->keyListenerIndex.clear();
+			this->mouseListenerIndex.clear();
+			this->joystickListenerIndex.clear();
+
+			this->pendingRemoveKeys.clear();
+			this->pendingRemoveMice.clear();
+			this->pendingRemoveJoysticks.clear();
+
+			this->keyDispatchDepth = 0;
+			this->mouseDispatchDepth = 0;
+			this->joystickDispatchDepth = 0;
 		}
 	}
 
@@ -323,136 +336,153 @@ namespace NOWA
 		{
 			this->joystickInputDeviceModules[i]->update(dt);
 		}
-
-		// ATTENTION: Capture called twice, see above
-		/*if (this->joysticks.size() > 0)
-		{
-			auto& itJoystick = this->joysticks.begin();
-			auto& itJoystickEnd = this->joysticks.end();
-			for (; itJoystick != itJoystickEnd; ++itJoystick)
-			{
-				(*itJoystick)->capture();
-			}
-		}*/
 	}
 
 	void InputDeviceCore::addKeyListener(OIS::KeyListener* keyListener, const Ogre::String& instanceName)
 	{
-		if (nullptr != this->keyboard)
+		if (nullptr == this->keyboard)
 		{
-			// Check for duplicate items
-			auto& itKeyListener = this->keyListeners.find(instanceName);
-			if (itKeyListener == this->keyListeners.end())
-			{
-				this->keyListeners[instanceName] = keyListener;
-			}
-			else
-			{
-				// Duplicate Item
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[InputDeviceCore] Cannot add key listener, because the instance name: " + instanceName + " does already exist!");
-				throw Ogre::Exception(Ogre::Exception::ERR_DUPLICATE_ITEM, "[InputDeviceCore] Cannot add key listener, because the instance name: " + instanceName + " does already exist!\n", "NOWA");
-			}
+			return;
 		}
+
+		auto it = this->keyListenerIndex.find(instanceName);
+		if (it != this->keyListenerIndex.end())
+		{
+			const size_t idx = it->second;
+			this->keyListenerStack[idx].second = keyListener;
+			return;
+		}
+
+		this->keyListenerStack.emplace_back(instanceName, keyListener);
+		this->keyListenerIndex[instanceName] = this->keyListenerStack.size() - 1;
 	}
 
 	void InputDeviceCore::addMouseListener(OIS::MouseListener* mouseListener, const Ogre::String& instanceName)
 	{
-		if (nullptr != this->mouse)
+		if (nullptr == this->mouse)
 		{
-			// Check for duplicate items
-			auto& itMouseListener = this->mouseListeners.find(instanceName);
-			if (itMouseListener == this->mouseListeners.end())
-			{
-				this->mouseListeners[instanceName] = mouseListener;
-			}
-			else
-			{
-				// Duplicate Item
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[InputDeviceCore] Cannot add mouse listener, because the instance name: " + instanceName + " does already exist!");
-				throw Ogre::Exception(Ogre::Exception::ERR_DUPLICATE_ITEM, "[InputDeviceCore] Cannot add mouse listener, because the instance name: " + instanceName + " does already exist!\n", "NOWA");
-			}
+			return;
 		}
+
+		auto it = this->mouseListenerIndex.find(instanceName);
+		if (it != this->mouseListenerIndex.end())
+		{
+			const size_t idx = it->second;
+			this->mouseListenerStack[idx].second = mouseListener;
+			return;
+		}
+
+		this->mouseListenerStack.emplace_back(instanceName, mouseListener);
+		this->mouseListenerIndex[instanceName] = this->mouseListenerStack.size() - 1;
 	}
 
 	void InputDeviceCore::addJoystickListener(OIS::JoyStickListener* joystickListener, const Ogre::String& instanceName)
 	{
-		if (this->joysticks.size() > 0)
+		if (true == this->joysticks.empty())
 		{
-			// Check for duplicate items
-			auto& itJoystickListener = this->joystickListeners.find(instanceName);
-			if (itJoystickListener == this->joystickListeners.end())
-			{
-				this->joystickListeners[instanceName] = joystickListener;
-			}
-			else
-			{
-				// Duplicate Item
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[InputDeviceCore] Cannot add joystick listener, because the instance name: " + instanceName + " does already exist!");
-				throw Ogre::Exception(Ogre::Exception::ERR_DUPLICATE_ITEM, "[InputDeviceCore] Cannot add joystick listener, because the instance name: " + instanceName + " does already exist!\n", "NOWA");
-			}
+			return;
 		}
+
+		auto it = this->joystickListenerIndex.find(instanceName);
+		if (it != this->joystickListenerIndex.end())
+		{
+			const size_t idx = it->second;
+			this->joystickListenerStack[idx].second = joystickListener;
+			return;
+		}
+
+		this->joystickListenerStack.emplace_back(instanceName, joystickListener);
+		this->joystickListenerIndex[instanceName] = this->joystickListenerStack.size() - 1;
 	}
 
 	void InputDeviceCore::removeKeyListener(const Ogre::String& instanceName)
 	{
-		// Check if item exists
-		auto& itKeyListener = this->keyListeners.find(instanceName);
-		if (itKeyListener != this->keyListeners.end())
+		if (this->keyDispatchDepth > 0)
 		{
-			this->listenerAboutToBeRemoved = true;
-			this->keyListeners.erase(itKeyListener);
+			this->pendingRemoveKeys.emplace_back(instanceName);
+			return;
 		}
-		else
+
+		auto it = this->keyListenerIndex.find(instanceName);
+		if (it == this->keyListenerIndex.end())
 		{
-			// Doesn't Exist
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[InputDeviceCore] Error: Could not remove key listener because the listener name: " + instanceName + " does not exist!");
-			throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[InputDeviceCore] Error: Could not remove key listener because the listener name: " + instanceName + " does not exist!\n", "NOWA");
+			return;
 		}
+
+		const size_t idx = it->second;
+		const size_t lastIdx = this->keyListenerStack.size() - 1;
+
+		if (idx != lastIdx)
+		{
+			this->keyListenerStack[idx] = this->keyListenerStack[lastIdx];
+			this->keyListenerIndex[this->keyListenerStack[idx].first] = idx;
+		}
+
+		this->keyListenerStack.pop_back();
+		this->keyListenerIndex.erase(it);
 	}
 
 	void InputDeviceCore::removeMouseListener(const Ogre::String& instanceName)
 	{
-		// Check if item exists
-		auto& itMouseListener = this->mouseListeners.find(instanceName);
-		if (itMouseListener != this->mouseListeners.end())
+		if (this->mouseDispatchDepth > 0)
 		{
-			this->listenerAboutToBeRemoved = true;
-			this->mouseListeners.erase(itMouseListener);
+			this->pendingRemoveMice.emplace_back(instanceName);
+			return;
 		}
-		else
+
+		auto it = this->mouseListenerIndex.find(instanceName);
+		if (it == this->mouseListenerIndex.end())
 		{
-			// Doesn't Exist
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[InputDeviceCore] Error: Could not remove mouse listener because the listener name: " + instanceName + " does not exist!");
-			throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[InputDeviceCore] Error: Could not remove mouse listener because the listener name: " + instanceName + " does not exist!\n", "NOWA");
+			return;
 		}
+
+		const size_t idx = it->second;
+		const size_t lastIdx = this->mouseListenerStack.size() - 1;
+
+		if (idx != lastIdx)
+		{
+			this->mouseListenerStack[idx] = this->mouseListenerStack[lastIdx];
+			this->mouseListenerIndex[this->mouseListenerStack[idx].first] = idx;
+		}
+
+		this->mouseListenerStack.pop_back();
+		this->mouseListenerIndex.erase(it);
 	}
 
 	void InputDeviceCore::removeJoystickListener(const Ogre::String& instanceName)
 	{
-		// Check if item exists
-		auto& itJoystickListener = this->joystickListeners.find(instanceName);
-		if (itJoystickListener != this->joystickListeners.end())
+		if (this->joystickDispatchDepth > 0)
 		{
-			this->listenerAboutToBeRemoved = true;
-			this->joystickListeners.erase(itJoystickListener);
+			this->pendingRemoveJoysticks.emplace_back(instanceName);
+			return;
 		}
-		else
+
+		auto it = this->joystickListenerIndex.find(instanceName);
+		if (it == this->joystickListenerIndex.end())
 		{
-			// Doesn't Exist
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[InputDeviceCore] Error: Could not remove joystick listener because the listener name: " + instanceName + " does not exist!");
+			return;
 		}
+
+		const size_t idx = it->second;
+		const size_t lastIdx = this->joystickListenerStack.size() - 1;
+
+		if (idx != lastIdx)
+		{
+			this->joystickListenerStack[idx] = this->joystickListenerStack[lastIdx];
+			this->joystickListenerIndex[this->joystickListenerStack[idx].first] = idx;
+		}
+
+		this->joystickListenerStack.pop_back();
+		this->joystickListenerIndex.erase(it);
 	}
 
 	void InputDeviceCore::removeKeyListener(OIS::KeyListener* keyListener)
 	{
-		auto& itKeyListener = this->keyListeners.begin();
-		auto& itKeyListenerEnd = this->keyListeners.end();
-		for (; itKeyListener != itKeyListenerEnd; ++itKeyListener)
+		for (size_t i = 0; i < this->keyListenerStack.size(); i++)
 		{
-			if (itKeyListener->second == keyListener)
+			if (this->keyListenerStack[i].second == keyListener)
 			{
-				this->listenerAboutToBeRemoved = true;
-				this->keyListeners.erase(itKeyListener);
+				this->removeKeyListener(this->keyListenerStack[i].first);
 				break;
 			}
 		}
@@ -460,14 +490,11 @@ namespace NOWA
 
 	void InputDeviceCore::removeMouseListener(OIS::MouseListener* mouseListener)
 	{
-		auto& itMouseListener = this->mouseListeners.begin();
-		auto& itMouseListenerEnd = this->mouseListeners.end();
-		for (; itMouseListener != itMouseListenerEnd; ++itMouseListener)
+		for (size_t i = 0; i < this->mouseListenerStack.size(); i++)
 		{
-			if (itMouseListener->second == mouseListener)
+			if (this->mouseListenerStack[i].second == mouseListener)
 			{
-				this->listenerAboutToBeRemoved = true;
-				this->mouseListeners.erase(itMouseListener);
+				this->removeMouseListener(this->mouseListenerStack[i].first);
 				break;
 			}
 		}
@@ -475,14 +502,11 @@ namespace NOWA
 
 	void InputDeviceCore::removeJoystickListener(OIS::JoyStickListener* joystickListener)
 	{
-		auto& itJoystickListener = this->joystickListeners.begin();
-		auto& itJoystickListenerEnd = this->joystickListeners.end();
-		for (; itJoystickListener != itJoystickListenerEnd; ++itJoystickListener)
+		for (size_t i = 0; i < this->joystickListenerStack.size(); i++)
 		{
-			if (itJoystickListener->second == joystickListener)
+			if (this->joystickListenerStack[i].second == joystickListener)
 			{
-				this->listenerAboutToBeRemoved = true;
-				this->joystickListeners.erase(itJoystickListener);
+				this->removeJoystickListener(this->joystickListenerStack[i].first);
 				break;
 			}
 		}
@@ -490,28 +514,38 @@ namespace NOWA
 
 	void InputDeviceCore::removeAllListeners(void)
 	{
-		this->keyListeners.clear();
-		this->mouseListeners.clear();
-		this->joystickListeners.clear();
-		this->listenerAboutToBeRemoved = true;
+		this->keyListenerStack.clear();
+		this->mouseListenerStack.clear();
+		this->joystickListenerStack.clear();
+
+		this->keyListenerIndex.clear();
+		this->mouseListenerIndex.clear();
+		this->joystickListenerIndex.clear();
+
+		this->pendingRemoveKeys.clear();
+		this->pendingRemoveMice.clear();
+		this->pendingRemoveJoysticks.clear();
 	}
 
 	void InputDeviceCore::removeAllKeyListeners(void)
 	{
-		this->keyListeners.clear();
-		this->listenerAboutToBeRemoved = true;
+		this->keyListenerStack.clear();
+		this->keyListenerIndex.clear();
+		this->pendingRemoveKeys.clear();
 	}
 
 	void InputDeviceCore::removeAllMouseListeners(void)
 	{
-		this->mouseListeners.clear();
-		this->listenerAboutToBeRemoved = true;
+		this->mouseListenerStack.clear();
+		this->mouseListenerIndex.clear();
+		this->pendingRemoveMice.clear();
 	}
 
 	void InputDeviceCore::removeAllJoystickListeners(void)
 	{
-		this->joystickListeners.clear();
-		this->listenerAboutToBeRemoved = true;
+		this->joystickListenerStack.clear();
+		this->joystickListenerIndex.clear();
+		this->pendingRemoveJoysticks.clear();
 	}
 
 	void InputDeviceCore::setWindowExtents(int width, int height)
@@ -598,15 +632,31 @@ namespace NOWA
 		//	return false;
 		//}
 
-		auto& itKeyListener = this->keyListeners.begin();
-		auto& itKeyListenerEnd = this->keyListeners.end();
-		for (; itKeyListener != itKeyListenerEnd; ++itKeyListener)
+		this->keyDispatchDepth++;
+
+		for (size_t i = this->keyListenerStack.size(); i-- > 0; )
 		{
-			if (!itKeyListener->second->keyPressed(e))
+			OIS::KeyListener* listener = this->keyListenerStack[i].second;
+			if (nullptr == listener)
 			{
-				this->listenerAboutToBeRemoved = false;
-				break;
+				continue;
 			}
+
+			if (!listener->keyPressed(e))
+			{
+				this->keyDispatchDepth--;
+				if (0 == this->keyDispatchDepth)
+				{
+					this->flushPendingKeyRemovals();
+				}
+				return true;
+			}
+		}
+
+		this->keyDispatchDepth--;
+		if (0 == this->keyDispatchDepth)
+		{
+			this->flushPendingKeyRemovals();
 		}
 
 		return true;
@@ -631,19 +681,31 @@ namespace NOWA
 			return false;
 		}*/
 
-		auto& itKeyListener = this->keyListeners.begin();
-		auto& itKeyListenerEnd = this->keyListeners.end();
-		for (; itKeyListener != itKeyListenerEnd; ++itKeyListener)
+		this->keyDispatchDepth++;
+
+		for (size_t i = this->keyListenerStack.size(); i-- > 0; )
 		{
-			if (!itKeyListener->second->keyReleased(e))
+			OIS::KeyListener* listener = this->keyListenerStack[i].second;
+			if (nullptr == listener)
 			{
-				if (true == this->listenerAboutToBeRemoved)
-				{
-					this->listenerAboutToBeRemoved = false;
-					return true;
-				}
-				break;
+				continue;
 			}
+
+			if (!listener->keyReleased(e))
+			{
+				this->keyDispatchDepth--;
+				if (0 == this->keyDispatchDepth)
+				{
+					this->flushPendingKeyRemovals();
+				}
+				return true;
+			}
+		}
+
+		this->keyDispatchDepth--;
+		if (0 == this->keyDispatchDepth)
+		{
+			this->flushPendingKeyRemovals();
 		}
 
 		return true;
@@ -664,19 +726,31 @@ namespace NOWA
 					inputMgr->injectMouseMove(mX, mY, mZ);
 			});
 
-		auto it = this->mouseListeners.begin();
-		auto end = this->mouseListeners.end();
-		for (; it != end; ++it)
+		this->mouseDispatchDepth++;
+
+		for (size_t i = this->mouseListenerStack.size(); i-- > 0; )
 		{
-			if (!it->second->mouseMoved(e))
+			OIS::MouseListener* listener = this->mouseListenerStack[i].second;
+			if (nullptr == listener)
 			{
-				if (this->listenerAboutToBeRemoved)
-				{
-					this->listenerAboutToBeRemoved = false;
-					return true;
-				}
-				break;
+				continue;
 			}
+
+			if (!listener->mouseMoved(e))
+			{
+				this->mouseDispatchDepth--;
+				if (0 == this->mouseDispatchDepth)
+				{
+					this->flushPendingMouseRemovals();
+				}
+				return true;
+			}
+		}
+
+		this->mouseDispatchDepth--;
+		if (0 == this->mouseDispatchDepth)
+		{
+			this->flushPendingMouseRemovals();
 		}
 
 		return true;
@@ -698,19 +772,31 @@ namespace NOWA
 					inputMgr->injectMousePress(mX, mY, MyGUI::MouseButton::Enum(id));
 			});
 
-		auto it = this->mouseListeners.begin();
-		auto end = this->mouseListeners.end();
-		for (; it != end; ++it)
+		this->mouseDispatchDepth++;
+
+		for (size_t i = this->mouseListenerStack.size(); i-- > 0; )
 		{
-			if (!it->second->mousePressed(e, id))
+			OIS::MouseListener* listener = this->mouseListenerStack[i].second;
+			if (nullptr == listener)
 			{
-				if (this->listenerAboutToBeRemoved)
-				{
-					this->listenerAboutToBeRemoved = false;
-					return true;
-				}
-				break;
+				continue;
 			}
+
+			if (!listener->mousePressed(e, id))
+			{
+				this->mouseDispatchDepth--;
+				if (0 == this->mouseDispatchDepth)
+				{
+					this->flushPendingMouseRemovals();
+				}
+				return true;
+			}
+		}
+
+		this->mouseDispatchDepth--;
+		if (0 == this->mouseDispatchDepth)
+		{
+			this->flushPendingMouseRemovals();
 		}
 
 		return true;
@@ -730,19 +816,31 @@ namespace NOWA
 					inputMgr->injectMouseRelease(mX, mY, MyGUI::MouseButton::Enum(id));
 			});
 
-		auto it = this->mouseListeners.begin();
-		auto end = this->mouseListeners.end();
-		for (; it != end; ++it)
+		this->mouseDispatchDepth++;
+
+		for (size_t i = this->mouseListenerStack.size(); i-- > 0; )
 		{
-			if (!it->second->mouseReleased(e, id))
+			OIS::MouseListener* listener = this->mouseListenerStack[i].second;
+			if (nullptr == listener)
 			{
-				if (this->listenerAboutToBeRemoved)
-				{
-					this->listenerAboutToBeRemoved = false;
-					return true;
-				}
-				break;
+				continue;
 			}
+
+			if (!listener->mouseReleased(e, id))
+			{
+				this->mouseDispatchDepth--;
+				if (0 == this->mouseDispatchDepth)
+				{
+					this->flushPendingMouseRemovals();
+				}
+				return true;
+			}
+		}
+
+		this->mouseDispatchDepth--;
+		if (0 == this->mouseDispatchDepth)
+		{
+			this->flushPendingMouseRemovals();
 		}
 
 		return true;
@@ -750,14 +848,31 @@ namespace NOWA
 
 	bool InputDeviceCore::povMoved(const OIS::JoyStickEvent& e, int pov)
 	{
-		auto& itJoystickListener = this->joystickListeners.begin();
-		auto& itJoystickListenerEnd = this->joystickListeners.end();
-		for (; itJoystickListener != itJoystickListenerEnd; ++itJoystickListener)
+		this->joystickDispatchDepth++;
+
+		for (size_t i = this->joystickListenerStack.size(); i-- > 0; )
 		{
-			if (!itJoystickListener->second->povMoved(e, pov))
+			OIS::JoyStickListener* listener = this->joystickListenerStack[i].second;
+			if (nullptr == listener)
 			{
-				break;
+				continue;
 			}
+
+			if (!listener->povMoved(e, pov))
+			{
+				this->joystickDispatchDepth--;
+				if (0 == this->joystickDispatchDepth)
+				{
+					this->flushPendingJoystickRemovals();
+				}
+				return true;
+			}
+		}
+
+		this->joystickDispatchDepth--;
+		if (0 == this->joystickDispatchDepth)
+		{
+			this->flushPendingJoystickRemovals();
 		}
 
 		return true;
@@ -765,14 +880,31 @@ namespace NOWA
 
 	bool InputDeviceCore::axisMoved(const OIS::JoyStickEvent& e, int axis)
 	{
-		auto& itJoystickListener = this->joystickListeners.begin();
-		auto& itJoystickListenerEnd = this->joystickListeners.end();
-		for (; itJoystickListener != itJoystickListenerEnd; ++itJoystickListener)
+		this->joystickDispatchDepth++;
+
+		for (size_t i = this->joystickListenerStack.size(); i-- > 0; )
 		{
-			if (!itJoystickListener->second->axisMoved(e, axis))
+			OIS::JoyStickListener* listener = this->joystickListenerStack[i].second;
+			if (nullptr == listener)
 			{
-				break;
+				continue;
 			}
+
+			if (!listener->axisMoved(e, axis))
+			{
+				this->joystickDispatchDepth--;
+				if (0 == this->joystickDispatchDepth)
+				{
+					this->flushPendingJoystickRemovals();
+				}
+				return true;
+			}
+		}
+
+		this->joystickDispatchDepth--;
+		if (0 == this->joystickDispatchDepth)
+		{
+			this->flushPendingJoystickRemovals();
 		}
 
 		return true;
@@ -780,14 +912,31 @@ namespace NOWA
 
 	bool InputDeviceCore::sliderMoved(const OIS::JoyStickEvent& e, int sliderID)
 	{
-		auto& itJoystickListener = this->joystickListeners.begin();
-		auto& itJoystickListenerEnd = this->joystickListeners.end();
-		for (; itJoystickListener != itJoystickListenerEnd; ++itJoystickListener)
+		this->joystickDispatchDepth++;
+
+		for (size_t i = this->joystickListenerStack.size(); i-- > 0; )
 		{
-			if (!itJoystickListener->second->sliderMoved(e, sliderID))
+			OIS::JoyStickListener* listener = this->joystickListenerStack[i].second;
+			if (nullptr == listener)
 			{
-				break;
+				continue;
 			}
+
+			if (!listener->sliderMoved(e, sliderID))
+			{
+				this->joystickDispatchDepth--;
+				if (0 == this->joystickDispatchDepth)
+				{
+					this->flushPendingJoystickRemovals();
+				}
+				return true;
+			}
+		}
+
+		this->joystickDispatchDepth--;
+		if (0 == this->joystickDispatchDepth)
+		{
+			this->flushPendingJoystickRemovals();
 		}
 
 		return true;
@@ -795,14 +944,31 @@ namespace NOWA
 
 	bool InputDeviceCore::buttonPressed(const OIS::JoyStickEvent& e, int button)
 	{
-		auto& itJoystickListener = this->joystickListeners.begin();
-		auto& itJoystickListenerEnd = this->joystickListeners.end();
-		for (; itJoystickListener != itJoystickListenerEnd; ++itJoystickListener)
+		this->joystickDispatchDepth++;
+
+		for (size_t i = this->joystickListenerStack.size(); i-- > 0; )
 		{
-			if (!itJoystickListener->second->buttonPressed(e, button))
+			OIS::JoyStickListener* listener = this->joystickListenerStack[i].second;
+			if (nullptr == listener)
 			{
-				break;
+				continue;
 			}
+
+			if (!listener->buttonPressed(e, button))
+			{
+				this->joystickDispatchDepth--;
+				if (0 == this->joystickDispatchDepth)
+				{
+					this->flushPendingJoystickRemovals();
+				}
+				return true;
+			}
+		}
+
+		this->joystickDispatchDepth--;
+		if (0 == this->joystickDispatchDepth)
+		{
+			this->flushPendingJoystickRemovals();
 		}
 
 		return true;
@@ -810,17 +976,62 @@ namespace NOWA
 
 	bool InputDeviceCore::buttonReleased(const OIS::JoyStickEvent& e, int button)
 	{
-		auto& itJoystickListener = this->joystickListeners.begin();
-		auto& itJoystickListenerEnd = this->joystickListeners.end();
-		for (; itJoystickListener != itJoystickListenerEnd; ++itJoystickListener)
+		this->joystickDispatchDepth++;
+
+		for (size_t i = this->joystickListenerStack.size(); i-- > 0; )
 		{
-			if (!itJoystickListener->second->buttonReleased(e, button))
+			OIS::JoyStickListener* listener = this->joystickListenerStack[i].second;
+			if (nullptr == listener)
 			{
-				break;
+				continue;
+			}
+
+			if (!listener->buttonReleased(e, button))
+			{
+				this->joystickDispatchDepth--;
+				if (0 == this->joystickDispatchDepth)
+				{
+					this->flushPendingJoystickRemovals();
+				}
+				return true;
 			}
 		}
 
+		this->joystickDispatchDepth--;
+		if (0 == this->joystickDispatchDepth)
+		{
+			this->flushPendingJoystickRemovals();
+		}
+
 		return true;
+	}
+
+
+	void InputDeviceCore::flushPendingKeyRemovals(void)
+	{
+		for (size_t i = 0; i < this->pendingRemoveKeys.size(); i++)
+		{
+			this->removeKeyListener(this->pendingRemoveKeys[i]);
+		}
+		this->pendingRemoveKeys.clear();
+	}
+
+	void InputDeviceCore::flushPendingMouseRemovals(void)
+	{
+		for (size_t i = 0; i < this->pendingRemoveMice.size(); i++)
+		{
+			this->removeMouseListener(this->pendingRemoveMice[i]);
+		}
+		this->pendingRemoveMice.clear();
+	}
+
+	void InputDeviceCore::flushPendingJoystickRemovals(void)
+	{
+		for (size_t i = 0; i < this->pendingRemoveJoysticks.size(); i++)
+		{
+			this->removeJoystickListener(this->pendingRemoveJoysticks[i]);
+		}
+		this->pendingRemoveJoysticks.clear();
 	}
 
 	void InputDeviceCore::addDevice(const Ogre::String& deviceName, bool isKeyboard, OIS::Object* deviceObject)

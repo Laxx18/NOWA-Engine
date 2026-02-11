@@ -512,6 +512,34 @@
 			</Index>
 		</Group>
 	</Resource>
+	<Resource type="ResourceImageSet" name="MeshModifyImage">
+		<Group name="States" texture="meshModifyButton.png" size="29 26">
+			<Index name="normal">
+				<Frame point="0 0"/>
+			</Index>
+			<Index name="highlighted">
+				<Frame point="0 26"/>
+			</Index>
+			<Index name="pushed">
+				<Frame point="0 52"/>
+			</Index>
+			<Index name="disabled">
+				<Frame point="0 78"/>
+			</Index>
+			<Index name="pushed_checked">
+				<Frame point="0 0"/>
+			</Index>
+			<Index name="disabled_checked">
+				<Frame point="0 26"/>
+			</Index>
+			<Index name="highlighted_checked">
+				<Frame point="0 52"/>
+			</Index>
+			<Index name="normal_checked">
+				<Frame point="0 78"/>
+			</Index>
+		</Group>
+	</Resource>
 	<Resource type="ResourceImageSet" name="WakeImage">
 		<Group name="States" texture="wakeButton.png" size="29 26">
 			<Index name="normal">

@@ -442,15 +442,11 @@ void DesignState::setupMyGUIWidgets(void)
 		this->terrainPaintModeCheck->setNeedToolTip(true);
 		this->terrainPaintModeCheck->setUserString("tooltip", "If a terra component is involved, please specify a brush and layer id (layer image) and then if this mode is activated, the user may point on the terrain by mouse with the selected brush.");
 		this->terrainPaintModeCheck->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+		this->meshModifyModeCheck = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("meshModifyModeCheck");
+		this->meshModifyModeCheck->setNeedToolTip(true);
+		this->meshModifyModeCheck->setUserString("tooltip", "If a mesh modify, wall, road etc. component is involved, then with this mode the corresponding selected GameObject with that component can be modified..");
+		this->meshModifyModeCheck->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
 
-		this->wakeButton = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("wakeButton");
-		this->wakeButton->setNeedToolTip(true);
-		this->wakeButton->setUserString("tooltip", "Wakes all selected game objects with physics active components, so that they are involved in physics calculation.");
-		this->wakeButton->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
-		this->sleepButton = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("sleepButton");
-		this->sleepButton->setNeedToolTip(true);
-		this->sleepButton->setUserString("tooltip", "Sets all selectedgame objects with physics active components to sleep mode, so that they are not involved in physics calculation.");
-		this->sleepButton->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
 		this->removeButton = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("removeButton");
 		this->removeButton->setNeedToolTip(true);
 		this->removeButton->setUserString("tooltip", "Removes the selected game objects from the scene.");
@@ -517,10 +513,8 @@ void DesignState::setupMyGUIWidgets(void)
 		this->terrainSmoothModeCheck->eventMouseSetFocus += MyGUI::newDelegate(this, &DesignState::setFocus);
 		this->terrainPaintModeCheck->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
 		this->terrainPaintModeCheck->eventMouseSetFocus += MyGUI::newDelegate(this, &DesignState::setFocus);
-		this->wakeButton->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
-		this->wakeButton->eventMouseSetFocus += MyGUI::newDelegate(this, &DesignState::setFocus);
-		this->sleepButton->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
-		this->sleepButton->eventMouseSetFocus += MyGUI::newDelegate(this, &DesignState::setFocus);
+		this->meshModifyModeCheck->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
+		this->meshModifyModeCheck->eventMouseSetFocus += MyGUI::newDelegate(this, &DesignState::setFocus);
 		this->removeButton->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
 		this->removeButton->eventMouseSetFocus += MyGUI::newDelegate(this, &DesignState::setFocus);
 		this->copyButton->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
@@ -548,9 +542,7 @@ void DesignState::setupMyGUIWidgets(void)
 		this->terrainModifyModeCheck->setUserString("Description", "Modifies the terrain");
 		this->terrainSmoothModeCheck->setUserString("Description", "Smooths the terrain");
 		this->terrainPaintModeCheck->setUserString("Description", "Paints on the terrain");
-
-		this->sleepButton->setUserString("Description", "Set objects sleep for physics");
-		this->wakeButton->setUserString("Description", "Wake select objects for physics");
+		this->meshModifyModeCheck->setUserString("Description", "Modifies a mesh");
 		this->removeButton->setUserString("Description", "Remove selectedobjects");
 		this->copyButton->setUserString("Description", "Copy selected objects");
 		this->focusButton->setUserString("Description", "Focus selectedobject");
@@ -679,40 +671,6 @@ void DesignState::setupMyGUIWidgets(void)
 	this->manipulationWindow->setVisible(false);
 }
 
-void DesignState::wakeSleepGameObjects(bool allGameObjects, bool sleep)
-{
-	if (true == allGameObjects)
-	{
-		const auto& gameObjects = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects();
-		for (auto& it = gameObjects->begin(); it != gameObjects->end(); it++)
-		{
-			auto& gameObject = it->second;
-			auto& physicsActiveComponent = NOWA::makeStrongPtr(gameObject->getComponent<NOWA::PhysicsActiveComponent>());
-			if (nullptr != physicsActiveComponent)
-			{
-				physicsActiveComponent->setActivated(!sleep);
-			}
-		}
-	}
-	else
-	{
-		const auto& gameObjects = this->editorManager->getSelectionManager()->getSelectedGameObjects();
-		for (auto& it = gameObjects.begin(); it != gameObjects.end(); it++)
-		{
-			auto& gameObject = it->second.gameObject;
-			auto& physicsActiveComponent = NOWA::makeStrongPtr(gameObject->getComponent<NOWA::PhysicsActiveComponent>());
-			if (nullptr != physicsActiveComponent)
-			{
-				physicsActiveComponent->setActivated(!sleep);
-			}
-		}
-	}
-	ENQUEUE_RENDER_COMMAND_WAIT("ShowProperties",
-	{
-		this->propertiesPanel->showProperties();
-	});
-}
-
 void DesignState::enableWidgets(bool enable)
 {
 	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DesignState::enableWidgets", _1(enable),
@@ -727,8 +685,6 @@ void DesignState::enableWidgets(bool enable)
 		this->gridButton->setEnabled(enable);
 		this->selectModeCheck->setEnabled(enable);
 		this->placeModeCheck->setEnabled(enable);
-		// this->wakeButton->setEnabled(enable);
-		// this->sleepButton->setEnabled(enable);
 		this->removeButton->setEnabled(enable);
 		this->copyButton->setEnabled(enable);
 
@@ -978,6 +934,7 @@ void DesignState::handleEditorMode(NOWA::EventDataPtr eventData)
 			this->terrainSmoothModeCheck->setStateSelected(false);
 			this->terrainModifyModeCheck->setStateSelected(false);
 			this->terrainPaintModeCheck->setStateSelected(false);
+			this->meshModifyModeCheck->setStateSelected(false);
 		});
 	}
 	else if (NOWA::EditorManager::EDITOR_PLACE_MODE == castEventData->getManipulationMode())
@@ -994,6 +951,8 @@ void DesignState::handleEditorMode(NOWA::EventDataPtr eventData)
 			this->terrainSmoothModeCheck->setStateSelected(false);
 			this->terrainModifyModeCheck->setStateSelected(false);
 			this->terrainPaintModeCheck->setStateSelected(false);
+			this->meshModifyModeCheck->setStateSelected(false);
+			
 		});
 	}
 }
@@ -1272,6 +1231,7 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
 		this->terrainModifyModeCheck->setStateSelected(false);
 		this->terrainSmoothModeCheck->setStateSelected(false);
 		this->terrainPaintModeCheck->setStateSelected(false);
+		this->meshModifyModeCheck->setStateSelected(false);
 	});
 
 	if (this->playButton == sender)
@@ -1394,6 +1354,7 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
 			this->terrainSmoothModeCheck->setStateSelected(false);
 			this->terrainModifyModeCheck->setStateSelected(true);
 			this->terrainPaintModeCheck->setStateSelected(false);
+			this->meshModifyModeCheck->setStateSelected(false);
 			this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_TERRAIN_MODIFY_MODE);
 		});
 	}
@@ -1404,6 +1365,7 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
 			this->terrainSmoothModeCheck->setStateSelected(true);
 			this->terrainModifyModeCheck->setStateSelected(false);
 			this->terrainPaintModeCheck->setStateSelected(false);
+			this->meshModifyModeCheck->setStateSelected(false);
 			this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_TERRAIN_SMOOTH_MODE);
 		});
 	}
@@ -1414,16 +1376,20 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
 			this->terrainSmoothModeCheck->setStateSelected(false);
 			this->terrainModifyModeCheck->setStateSelected(false);
 			this->terrainPaintModeCheck->setStateSelected(true);
+			this->meshModifyModeCheck->setStateSelected(false);
 			this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_TERRAIN_PAINT_MODE);
 		});
 	}
-	else if (this->wakeButton == sender)
+	else if (this->meshModifyModeCheck == sender)
 	{
-		this->wakeSleepGameObjects(false, false);
-	}
-	else if (this->sleepButton == sender)
-	{
-		this->wakeSleepGameObjects(false, true);
+		ENQUEUE_RENDER_COMMAND_WAIT("DesignState::buttonHit11",
+		{
+			this->terrainSmoothModeCheck->setStateSelected(false);
+			this->terrainModifyModeCheck->setStateSelected(false);
+			this->terrainPaintModeCheck->setStateSelected(false);
+			this->meshModifyModeCheck->setStateSelected(true);
+			this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_MESH_MODIFY_MODE);
+		});
 	}
 	else if (this->undoButton == sender)
 	{
@@ -2000,6 +1966,11 @@ void DesignState::showDebugCollisionLines(bool show)
 
 void DesignState::showContextMenu(int mouseX, int mouseY)
 {
+	if (this->editorManager->getManipulationMode() == NOWA::EditorManager::EDITOR_PLACE_MODE || this->editorManager->getManipulationMode() == NOWA::EditorManager::EDITOR_MESH_MODIFY_MODE)
+	{
+		return;
+	}
+
 	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DesignState::showContextMenu", _2(mouseX, mouseY),
 	{
 		this->editPopupMenu = MyGUI::Gui::getInstancePtr()->createWidget<MyGUI::MenuCtrl>("PopupMenu", mouseX, mouseY, 150, 0, MyGUI::Align::Default, "Popup", "ContextMenu");

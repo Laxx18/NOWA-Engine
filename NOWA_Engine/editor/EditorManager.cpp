@@ -466,12 +466,9 @@ namespace NOWA
 					this->scale = Ogre::Vector3::UNIT_SCALE;
 				}
 
-				ENQUEUE_RENDER_COMMAND_WAIT("AddGameObjectUndoCommand::redo setTransform",
-				{
-					this->objectNode->setPosition(this->position);
-					this->objectNode->setScale(this->scale);
-					this->objectNode->setOrientation(this->orientation);
-				});
+				this->objectNode->setPosition(this->position);
+				this->objectNode->setScale(this->scale);
+				this->objectNode->setOrientation(this->orientation);
 
 				// Only create id once, so that when undo, redo, the id is the same
 				if (0 == this->id)
@@ -483,7 +480,7 @@ namespace NOWA
 				Ogre::MovableObject* newMovableObject = nullptr;
 
 				if (GameObject::OCEAN != this->type && GameObject::TERRA != this->type && GameObject::DECAL != this->type
-					&& GameObject::LIGHT_AREA != this->type && GameObject::MAZE != this->type && GameObject::WALL != this->type)
+					&& GameObject::LIGHT_AREA != this->type && GameObject::MAZE != this->type && GameObject::WALL != this->type && GameObject::ROAD != this->type)
 				{
 					meshName = this->meshData[0];
 
@@ -535,6 +532,8 @@ namespace NOWA
 						meshName = "Maze";
 					else if (GameObject::WALL == this->type)
 						meshName = "Wall";
+					else if (GameObject::ROAD == this->type)
+						meshName = "Road";
 				}
 
 				// Do not use # anymore, because its reserved in mygui as code-word the # and everything after that will be removed!
@@ -542,7 +541,7 @@ namespace NOWA
 				AppStateManager::getSingletonPtr()->getGameObjectController()->getValidatedGameObjectName(gameObjectName);
 
 				if (GameObject::OCEAN != this->type && GameObject::TERRA != this->type && GameObject::DECAL != this->type
-					&& GameObject::LIGHT_AREA != this->type && GameObject::MAZE != this->type && GameObject::WALL != this->type)
+					&& GameObject::LIGHT_AREA != this->type && GameObject::MAZE != this->type && GameObject::WALL != this->type && GameObject::ROAD != this->type)
 				{
 					newMovableObject->setName(gameObjectName);
 				}
@@ -662,11 +661,22 @@ namespace NOWA
 					{
 						if (GameObjectFactory::getInstance()->getComponentFactory()->hasComponent("ProceduralWallComponent"))
 						{
-							NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, "ProceduralWallComponent");
+							NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, "ProceduralWallComponent", true);
 							gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
 
 							this->editorManager->currentPlaceType = GameObject::eType::NONE;
-							this->editorManager->manipulationMode == EditorManager::EDITOR_NO_MODE;
+							this->editorManager->setManipulationMode(EditorManager::EDITOR_MESH_MODIFY_MODE);
+						}
+					}
+					else if (GameObject::ROAD == this->type)
+					{
+						if (GameObjectFactory::getInstance()->getComponentFactory()->hasComponent("ProceduralRoadComponent"))
+						{
+							NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, "ProceduralRoadComponent", true);
+							gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
+
+							this->editorManager->currentPlaceType = GameObject::eType::NONE;
+							this->editorManager->setManipulationMode(EditorManager::EDITOR_MESH_MODIFY_MODE);
 						}
 					}
 				}
@@ -695,9 +705,10 @@ namespace NOWA
 	{
 	public:
 
-		AddComponentUndoCommand(std::vector<unsigned long> gameObjectIds, const Ogre::String& componentClassName)
+		AddComponentUndoCommand(std::vector<unsigned long> gameObjectIds, const Ogre::String& componentClassName, bool newComponent)
 			: gameObjectIds(gameObjectIds),
-			componentClassName(componentClassName)
+			componentClassName(componentClassName),
+			newComponent(newComponent)
 		{
 			this->componentsOccurrenceIndex.resize(this->gameObjectIds.size());
 			this->redo();
@@ -729,7 +740,7 @@ namespace NOWA
 				if (nullptr != gameObjectPtr)
 				{
 					// No post init etc. necessary, since its done inside createComponent
-					auto& gameObjectCompPtr = GameObjectFactory::getInstance()->createComponent(gameObjectPtr, this->componentClassName);
+					auto& gameObjectCompPtr = GameObjectFactory::getInstance()->createComponent(gameObjectPtr, this->componentClassName, newComponent);
 					if (nullptr != gameObjectCompPtr)
 					{
 						// Save the occurrence index for deletion
@@ -752,6 +763,7 @@ namespace NOWA
 		std::vector<unsigned long> gameObjectIds;
 		Ogre::String componentClassName;
 		std::vector<unsigned int> componentsOccurrenceIndex;
+		bool newComponent;
 	};
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2826,6 +2838,10 @@ namespace NOWA
 		{
 			this->attachMeshToPlaceNode("Node.mesh", type);
 		}
+		else if (GameObject::ROAD == type)
+		{
+			this->attachMeshToPlaceNode("Node.mesh", type);
+		}
 		
 		boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(this->manipulationMode));
 		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataEditorMode);
@@ -3679,10 +3695,16 @@ namespace NOWA
 	void EditorManager::setManipulationMode(EditorManager::eManipulationMode manipulationMode)
 	{
 		this->manipulationMode = manipulationMode;
-		if (EDITOR_SELECT_MODE == this->manipulationMode || EDITOR_PICKER_MODE == this->manipulationMode || EDITOR_PLACE_MODE == this->manipulationMode)
+		if (EDITOR_SELECT_MODE == this->manipulationMode || EDITOR_PICKER_MODE == this->manipulationMode || EDITOR_PLACE_MODE == this->manipulationMode || EDITOR_MESH_MODIFY_MODE == this->manipulationMode)
 		{
 			this->gizmo->setEnabled(false);
 			this->isGizmoMoving = false;
+
+			if (EDITOR_MESH_MODIFY_MODE == this->manipulationMode)
+			{
+				boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(this->manipulationMode));
+				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataEditorMode);
+			}
 		}
 		else if (EDITOR_TERRAIN_MODIFY_MODE == this->manipulationMode || EDITOR_TERRAIN_SMOOTH_MODE == this->manipulationMode || EDITOR_TERRAIN_PAINT_MODE == this->manipulationMode)
 		{
@@ -4079,11 +4101,11 @@ namespace NOWA
 		}
 	}
 
-	void EditorManager::addComponent(const std::vector<unsigned long> gameObjectIds, const Ogre::String& componentClassName)
+	void EditorManager::addComponent(const std::vector<unsigned long> gameObjectIds, const Ogre::String& componentClassName, bool newComponent)
 	{
 		if (gameObjectIds.size() > 0)
 		{
-			this->sceneManipulationCommandModule.pushCommand(std::make_shared<AddComponentUndoCommand>(gameObjectIds, componentClassName));
+			this->sceneManipulationCommandModule.pushCommand(std::make_shared<AddComponentUndoCommand>(gameObjectIds, componentClassName, newComponent));
 			// Sent event that scene has been modified
 			boost::shared_ptr<NOWA::EventDataSceneModified> eventDataSceneModified(new NOWA::EventDataSceneModified());
 			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataSceneModified);

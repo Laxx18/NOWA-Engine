@@ -846,28 +846,58 @@ namespace NOWA
 
 	void AppStateManager::linkInputWithCore(AppState* oldState, AppState* state)
 	{
-		if (nullptr != oldState)
+		// Everything that touches InputDeviceCore listener containers must run on render thread.
+		auto doLink = [oldState, state]()
 		{
-			InputDeviceCore::getSingletonPtr()->removeKeyListener(oldState);
-			InputDeviceCore::getSingletonPtr()->removeMouseListener(oldState);
-			InputDeviceCore::getSingletonPtr()->removeJoystickListener(oldState);
-		}
+			if (nullptr != oldState)
+			{
+				InputDeviceCore::getSingletonPtr()->removeKeyListener(oldState);
+				InputDeviceCore::getSingletonPtr()->removeMouseListener(oldState);
+				InputDeviceCore::getSingletonPtr()->removeJoystickListener(oldState);
+			}
 
-		// If a listener has been added via key/mouse/joystick pressed, a new listener would be inserted during this iteration, which would cause a crash in mouse/key/button release iterator, hence add in next frame
-		NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.25f));
-		auto ptrFunction = [this, state]()
-		{
-			// Remove first for precaution, in order to prevent duplicate state
-			InputDeviceCore::getSingletonPtr()->removeKeyListener(state);
-			InputDeviceCore::getSingletonPtr()->removeMouseListener(state);
-			InputDeviceCore::getSingletonPtr()->removeJoystickListener(state);
-			InputDeviceCore::getSingletonPtr()->addKeyListener(state, state->getName());
-			InputDeviceCore::getSingletonPtr()->addMouseListener(state, state->getName());
-			InputDeviceCore::getSingletonPtr()->addJoystickListener(state, state->getName());
+			// If a listener has been added via key/mouse/joystick pressed, a new listener would be inserted during this iteration,
+			// which would cause a crash in mouse/key/button release iterator, hence add in next frame
+			NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.25f));
+
+			auto ptrFunction = [state]()
+			{
+				if (nullptr == state)
+				{
+					return;
+				}
+
+				// Remove first for precaution, in order to prevent duplicate state
+				InputDeviceCore::getSingletonPtr()->removeKeyListener(state);
+				InputDeviceCore::getSingletonPtr()->removeMouseListener(state);
+				InputDeviceCore::getSingletonPtr()->removeJoystickListener(state);
+
+				// Keep your existing signature/order (as in your codebase)
+				InputDeviceCore::getSingletonPtr()->addKeyListener(state, state->getName());
+				InputDeviceCore::getSingletonPtr()->addMouseListener(state, state->getName());
+				InputDeviceCore::getSingletonPtr()->addJoystickListener(state, state->getName());
+			};
+
+			NOWA::ProcessPtr closureProcess(new NOWA::ClosureProcess(ptrFunction));
+			delayProcess->attachChild(closureProcess);
+
+			// Attach on render thread (because the closure touches InputDeviceCore)
+			NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
 		};
-		NOWA::ProcessPtr closureProcess(new NOWA::ClosureProcess(ptrFunction));
-		delayProcess->attachChild(closureProcess);
-		NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
+
+		// If we're already on render thread, run directly. Otherwise hop to render thread.
+		if (true == NOWA::GraphicsModule::getInstance()->isRenderThread())
+		{
+			doLink();
+		}
+		else
+		{
+			NOWA::GraphicsModule::RenderCommand renderCommand = [doLink]()
+			{
+				doLink();
+			};
+			NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "AppStateManager::linkInputWithCore");
+		}
 	}
 
 	void AppStateManager::changeAppState(const Ogre::String& stateName)
