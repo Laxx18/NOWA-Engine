@@ -147,46 +147,40 @@ namespace NOWA
 
 		if (this->alreadyCloned)
 		{
-			// Grab local copies of pointers and indices
 			Ogre::v1::Entity* entityCopy = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
 			Ogre::Item* itemCopy = nullptr;
+
 			if (nullptr == entityCopy)
 			{
 				itemCopy = this->gameObjectPtr->getMovableObject<Ogre::Item>();
 			}
 
-			auto datablockCopy = this->datablock;
-			auto originalDatablockCopy = this->originalDatablock;
+			Ogre::HlmsDatablock* datablockCopy = this->datablock;
+			Ogre::HlmsDatablock* originalDatablockCopy = this->originalDatablock;
 			size_t oldSubIndexCopy = this->oldSubIndex;
 
-			// Nullify members immediately to prevent further use
 			this->datablock = nullptr;
 			this->originalDatablock = nullptr;
 
-			// Enqueue all changes on render thread
 			NOWA::GraphicsModule::RenderCommand renderCommand = [entityCopy, itemCopy, datablockCopy, originalDatablockCopy, oldSubIndexCopy]()
 			{
-				// Reset datablock on entity/item
 				if (entityCopy && originalDatablockCopy)
 				{
 					if (oldSubIndexCopy < entityCopy->getNumSubEntities())
+					{
 						entityCopy->getSubEntity(oldSubIndexCopy)->setDatablock(originalDatablockCopy);
+					}
 				}
 				else if (itemCopy && originalDatablockCopy)
 				{
 					if (oldSubIndexCopy < itemCopy->getNumSubItems())
-						itemCopy->getSubItem(oldSubIndexCopy)->setDatablock(originalDatablockCopy);
-				}
-
-				// Destroy datablock if unused
-				if (datablockCopy)
-				{
-					const auto& linkedRenderables = datablockCopy->getLinkedRenderables();
-					if (linkedRenderables.empty())
 					{
-						datablockCopy->getCreator()->destroyDatablock(datablockCopy->getName());
+						itemCopy->getSubItem(oldSubIndexCopy)->setDatablock(originalDatablockCopy);
 					}
 				}
+
+				// Destroy ONLY if it is a NOWA runtime clone and truly unused.
+				NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->tryDestroyDatablockIfUnused(*datablockCopy->getNameStr());
 			};
 			NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DatablockPbsComponent::onRemoveComponent");
 		}
@@ -881,26 +875,20 @@ namespace NOWA
 
 		if (false == this->alreadyCloned && false == this->isCloned && nullptr != this->originalDatablock)
 		{
-			bool alreadyExists = false;
-			unsigned char index = 0;
-			do
-			{
-				try
-				{
-					alreadyExists = false;
-					this->datablock = dynamic_cast<Ogre::HlmsPbsDatablock*>(this->originalDatablock->clone(originalDataBlockName + "__"
-																			+ Ogre::StringConverter::toString(this->gameObjectPtr->getId())));
-				}
-				catch (const Ogre::Exception& exception)
-				{
-					alreadyExists = true;
-					// Already exists, try again:
-					this->datablock = dynamic_cast<Ogre::HlmsPbsDatablock*>(this->originalDatablock->clone(originalDataBlockName + "__" + Ogre::StringConverter::toString(index++)
-																			+ Ogre::StringConverter::toString(this->gameObjectPtr->getId())));
-				}
-			} while (true == alreadyExists);
+			Ogre::String originalDatablockName = originalDataBlockName;
 
-			this->alreadyCloned = true;
+			Ogre::HlmsDatablock* clonedDatablock = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->cloneDatablockUnique(
+					this->originalDatablock, originalDatablockName, this->gameObjectPtr->getId(), this->oldSubIndex);
+
+			this->datablock = dynamic_cast<Ogre::HlmsPbsDatablock*>(clonedDatablock);
+
+			// Safety: If cast fails, destroy the clone we just created (otherwise it leaks & remains registered).
+			if (nullptr == this->datablock && nullptr != clonedDatablock)
+			{
+				clonedDatablock->getCreator()->destroyDatablock(clonedDatablock->getName());
+			}
+
+			this->alreadyCloned = (nullptr != this->datablock);
 		}
 		else
 		{
@@ -969,26 +957,20 @@ namespace NOWA
 
 		if (false == this->alreadyCloned && false == this->isCloned && nullptr != this->originalDatablock)
 		{
-			bool alreadyExists = false;
-			unsigned char index = 0;
-			do
-			{
-				try
-				{
-					alreadyExists = false;
-					this->datablock = dynamic_cast<Ogre::HlmsPbsDatablock*>(this->originalDatablock->clone(originalDataBlockName + "__"
-																			+ Ogre::StringConverter::toString(this->gameObjectPtr->getId())));
-				}
-				catch (const Ogre::Exception& exception)
-				{
-					alreadyExists = true;
-					// Already exists, try again:
-					this->datablock = dynamic_cast<Ogre::HlmsPbsDatablock*>(this->originalDatablock->clone(originalDataBlockName + "__" + Ogre::StringConverter::toString(index++)
-																			+ Ogre::StringConverter::toString(this->gameObjectPtr->getId())));
-				}
-			} while (true == alreadyExists);
+			Ogre::String originalDatablockName = originalDataBlockName;
 
-			this->alreadyCloned = true;
+			Ogre::HlmsDatablock* clonedDatablock = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->cloneDatablockUnique(
+				this->originalDatablock, originalDatablockName, this->gameObjectPtr->getId(), this->oldSubIndex);
+
+			this->datablock = dynamic_cast<Ogre::HlmsPbsDatablock*>(clonedDatablock);
+
+			// Safety: If cast fails, destroy the clone we just created (otherwise it leaks & remains registered).
+			if (nullptr == this->datablock && nullptr != clonedDatablock)
+			{
+				clonedDatablock->getCreator()->destroyDatablock(clonedDatablock->getName());
+			}
+
+			this->alreadyCloned = (nullptr != this->datablock);
 		}
 		else
 		{

@@ -8557,6 +8557,8 @@ namespace NOWA
 			.def("setImageLayerId", &TerraComponent::setImageLayerId)
 			.def("getImageLayerId", &TerraComponent::getImageLayerId)
 			.def("getAllImageLayer", &getAllImageLayer)
+			.def("beginCommandTransaction", &TerraComponent::beginCommandTransaction)
+			.def("endCommandTransaction", &TerraComponent::endCommandTransaction)
 			.def("modifyTerrainStart", &TerraComponent::modifyTerrainStart)
 			.def("smoothTerrainStart", &TerraComponent::smoothTerrainStart)
 			.def("paintTerrainStart", &TerraComponent::paintTerrainStart)
@@ -8590,6 +8592,9 @@ namespace NOWA
 		AddClassToCollection("TerraComponent", "void setImageLayerId(number imageLayerId)", "Sets the image layer id for painting.");
 		AddClassToCollection("TerraComponent", "number getImageLayerId()", "Gets the used image layer id.");
 		AddClassToCollection("TerraComponent", "Table[string] getAllImageLayer()", "Gets List of all available image layer names for painting.");
+
+		AddClassToCollection("TerraComponent", "void beginCommandTransaction(string label)", "Starts a generic undo transaction. Must be paired with endCommandTransaction().");
+		AddClassToCollection("TerraComponent", "void endCommandTransaction()", "Ends a previously started undo transaction.");
 
 		AddClassToCollection("TerraComponent", "void modifyTerrainStart(Vector3 position, number strength)", "Starts modifying the terrain at the given position and strength. Must be always called once before modifyTerrain is called frequently in order to satisfy undo/redo feature.");
 		AddClassToCollection("TerraComponent", "void smoothTerrainStart(Vector3 position, number strength)", "Starts smoothing the terrain at the given position and strength. Must be always called once before msmootTerrain is called frequently in order to satisfy undo/redo feature.");

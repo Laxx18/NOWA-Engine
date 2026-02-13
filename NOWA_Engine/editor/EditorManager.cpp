@@ -1,4 +1,4 @@
-#include "NOWAPrecompiled.h"
+﻿#include "NOWAPrecompiled.h"
 #include "EditorManager.h"
 
 #include "gameobject/GameObjectController.h"
@@ -26,6 +26,8 @@
 #include "gameobject/TerraComponent.h"
 #include "gameobject/PhysicsTerrainComponent.h"
 #include "gameobject/NavMeshComponent.h"
+#include "gameobject/RoadComponentBase.h"
+#include "gameobject/WallComponentBase.h"
 #include "utilities/MathHelper.h"
 #include "modules/InputDeviceModule.h"
 #include "main/Core.h"
@@ -811,6 +813,10 @@ namespace NOWA
 					auto& gameObjectCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponentByIndex(this->index));
 					if (nullptr != gameObjectCompPtr)
 					{
+                        // Give change to react if a component has been manually deleted in a editor
+                        boost::shared_ptr<EventDataDeleteComponent> eventDataDeleteComponent(new EventDataDeleteComponent(gameObjectPtr->getId(), gameObjectCompPtr->getClassName(), gameObjectCompPtr->getIndex()));
+                        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataDeleteComponent);
+
 						gameObjectCompPtr->writeXML(propertyXML, doc);
 						gameObjectPtr->deleteComponentByIndex(this->index);
 					}
@@ -1217,24 +1223,37 @@ namespace NOWA
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	class TerrainModifyUndoCommand : public ICommand
 	{
 	public:
-		TerrainModifyUndoCommand(const std::vector<Ogre::uint16>& oldHeightData, const std::vector<Ogre::uint16>& newHeightData, TerraComponent* terraComponent, bool isAdditional = false)
+		TerrainModifyUndoCommand(const std::vector<Ogre::uint16>& oldHeightData, const std::vector<Ogre::uint16>& newHeightData, unsigned long gameObjectId, bool isAdditional = false)
 			: oldHeightData(oldHeightData),
 			newHeightData(newHeightData),
-			terraComponent(terraComponent)
+			gameObjectId(gameObjectId)
 		{
 			this->isAdditional = isAdditional;
 		}
 
 		virtual void undo(void) override
 		{
-			// TODO: Blocking?
-			ENQUEUE_RENDER_COMMAND("TerrainModifyUndoCommand::undo",
-				{
-				this->terraComponent->setHeightData(this->oldHeightData);
-			});
+			GameObjectPtr gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->gameObjectId);
+
+			if (nullptr == gameObjectPtr)
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[TerrainModifyUndoCommand] undo: GameObject not found (ID: " + Ogre::StringConverter::toString(this->gameObjectId) + ")");
+				return;
+			}
+
+			auto terraComponent = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NOWA::TerraComponent>());
+
+			if (nullptr == terraComponent)
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[TerrainModifyUndoCommand] undo: TerraComponent not found");
+				return;
+			}
+
+			terraComponent->setHeightData(this->oldHeightData);
 
 			boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
 			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGeometryModified);
@@ -1242,52 +1261,232 @@ namespace NOWA
 
 		virtual void redo(void) override
 		{
-			ENQUEUE_RENDER_COMMAND("TerrainModifyUndoCommand::redo",
+			GameObjectPtr gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->gameObjectId);
+
+			if (nullptr == gameObjectPtr)
 			{
-				this->terraComponent->setHeightData(this->newHeightData);
-			});
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[TerrainModifyUndoCommand] redo: GameObject not found (ID: " + Ogre::StringConverter::toString(this->gameObjectId) + ")");
+				return;
+			}
+
+			auto terraComponent = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NOWA::TerraComponent>());
+
+			if (nullptr == terraComponent)
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[TerrainModifyUndoCommand] redo: TerraComponent not found");
+				return;
+			}
+
+			terraComponent->setHeightData(this->newHeightData);
 
 			boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
 			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGeometryModified);
 		}
+
 	private:
 		std::vector<Ogre::uint16> oldHeightData;
 		std::vector<Ogre::uint16> newHeightData;
-		TerraComponent* terraComponent;
+		unsigned long gameObjectId;  // ← Store ID instead of pointer
+	};
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	class TerrainPaintUndoCommand : public ICommand
+	{
+	public:
+		TerrainPaintUndoCommand(const std::vector<Ogre::uint8>& oldBlendWeightData, const std::vector<Ogre::uint8>& newBlendWeightData, unsigned long gameObjectId, bool isAdditional = false)
+			: oldBlendWeightData(oldBlendWeightData),
+			newBlendWeightData(newBlendWeightData),
+			gameObjectId(gameObjectId)
+		{
+			this->isAdditional = isAdditional;
+		}
+
+		virtual void undo(void) override
+		{
+			GameObjectPtr gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->gameObjectId);
+
+			if (nullptr == gameObjectPtr)
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[TerrainPaintUndoCommand] undo: GameObject not found (ID: " + Ogre::StringConverter::toString(this->gameObjectId) + ")");
+				return;
+			}
+
+			auto terraComponent = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NOWA::TerraComponent>());
+
+			if (nullptr == terraComponent)
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[TerrainPaintUndoCommand] undo: TerraComponent not found");
+				return;
+			}
+				
+			terraComponent->setBlendWeightData(this->oldBlendWeightData);
+		}
+
+		virtual void redo(void) override
+		{
+			GameObjectPtr gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->gameObjectId);
+
+			if (nullptr == gameObjectPtr)
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,"[TerrainPaintUndoCommand] redo: GameObject not found (ID: " + Ogre::StringConverter::toString(this->gameObjectId) + ")");
+				return;
+			}
+
+			auto terraComponent = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NOWA::TerraComponent>());
+
+			if (nullptr == terraComponent)
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,"[TerrainPaintUndoCommand] redo: TerraComponent not found");
+				return;
+			}
+
+			terraComponent->setBlendWeightData(this->newBlendWeightData);
+		}
+
+	private:
+		std::vector<Ogre::uint8> oldBlendWeightData;
+		std::vector<Ogre::uint8> newBlendWeightData;
+		unsigned long gameObjectId;  // ← Store ID instead of pointer
+	};
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	class RoadModifyUndoCommand : public ICommand
+	{
+	public:
+		RoadModifyUndoCommand(const std::vector<unsigned char>& oldRoadData, const std::vector<unsigned char>& newRoadData, unsigned long gameObjectId, bool isAdditional = false)
+			: oldRoadData(oldRoadData),
+			newRoadData(newRoadData),
+			gameObjectId(gameObjectId)
+		{
+			this->isAdditional = isAdditional;
+		}
+
+		virtual void undo(void) override
+		{
+			GameObjectPtr gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->gameObjectId);
+
+			if (nullptr == gameObjectPtr)
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[RoadModifyUndoCommand] undo: GameObject not found (ID: " + Ogre::StringConverter::toString(this->gameObjectId) + ")");
+				return;
+			}
+
+			auto roadComponentBase = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NOWA::RoadComponentBase>());
+
+			if (nullptr == roadComponentBase)
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[RoadModifyUndoCommand] undo: RoadComponentBase not found");
+				return;
+			}
+
+			roadComponentBase->setRoadData(this->oldRoadData);
+
+			boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGeometryModified);
+		}
+
+		virtual void redo(void) override
+		{
+			GameObjectPtr gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->gameObjectId);
+
+			if (nullptr == gameObjectPtr)
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[RoadModifyUndoCommand] redo: GameObject not found (ID: " + Ogre::StringConverter::toString(this->gameObjectId) + ")");
+				return;
+			}
+
+			auto roadComponentBase = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NOWA::RoadComponentBase>());
+
+			if (nullptr == roadComponentBase)
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,"[RoadModifyUndoCommand] redo: RoadComponentBase not found");
+				return;
+			}
+
+			roadComponentBase->setRoadData(this->newRoadData);
+
+			boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGeometryModified);
+		}
+
+	private:
+		std::vector<unsigned char> oldRoadData;
+		std::vector<unsigned char> newRoadData;
+		unsigned long gameObjectId;  // ← Store ID instead of pointer
 	};
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	class TerrainPaintUndoCommand : public ICommand
+	class WallModifyUndoCommand : public ICommand
 	{
 	public:
-		TerrainPaintUndoCommand(const std::vector<Ogre::uint8>& oldBlendWeightData, const std::vector<Ogre::uint8>& newBlendWeightData, TerraComponent* terraComponent, bool isAdditional = false)
-			: oldBlendWeightData(oldBlendWeightData),
-			newBlendWeightData(newBlendWeightData),
-			terraComponent(terraComponent)
+		WallModifyUndoCommand(const std::vector<unsigned char>& oldWallData,
+			const std::vector<unsigned char>& newWallData,
+			unsigned long gameObjectId,  // ← Store ID, not pointer
+			bool isAdditional = false)
+			: oldWallData(oldWallData),
+			newWallData(newWallData),
+			gameObjectId(gameObjectId)  // ← Store ID
 		{
 			this->isAdditional = isAdditional;
 		}
 
 		virtual void undo(void) override
 		{
-			ENQUEUE_RENDER_COMMAND("TerrainPaintUndoCommand::undo",
+			// Look up the component fresh each time
+			GameObjectPtr gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->gameObjectId);
+
+			if (nullptr == gameObjectPtr)
 			{
-				this->terraComponent->setBlendWeightData(this->oldBlendWeightData);
-			});
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[WallModifyUndoCommand] undo: GameObject not found (ID: " + Ogre::StringConverter::toString(this->gameObjectId) + ")");
+				return;
+			}
+
+			auto wallComponentBase = NOWA::makeStrongPtr(
+				gameObjectPtr->getComponent<NOWA::WallComponentBase>());
+
+			if (nullptr == wallComponentBase)
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[WallModifyUndoCommand] undo: WallComponentBase not found");
+				return;
+			}
+
+			wallComponentBase->setWallData(this->oldWallData);
+
+			boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGeometryModified);
 		}
 
 		virtual void redo(void) override
 		{
-			ENQUEUE_RENDER_COMMAND("TerrainPaintUndoCommand::redo",
+			// Look up the component fresh each time
+			GameObjectPtr gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->gameObjectId);
+
+			if (nullptr == gameObjectPtr)
 			{
-				this->terraComponent->setBlendWeightData(this->newBlendWeightData);
-			});
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[WallModifyUndoCommand] redo: GameObject not found (ID: " + Ogre::StringConverter::toString(this->gameObjectId) + ")");
+				return;
+			}
+
+			auto wallComponentBase = NOWA::makeStrongPtr(
+				gameObjectPtr->getComponent<NOWA::WallComponentBase>());
+
+			if (nullptr == wallComponentBase)
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[WallModifyUndoCommand] redo: WallComponentBase not found");
+				return;
+			}
+
+			wallComponentBase->setWallData(this->newWallData);
+
+			boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGeometryModified);
 		}
+
 	private:
-		std::vector<Ogre::uint8> oldBlendWeightData;
-		std::vector<Ogre::uint8> newBlendWeightData;
-		TerraComponent* terraComponent;
+		std::vector<unsigned char> oldWallData;
+		std::vector<unsigned char> newWallData;
+		unsigned long gameObjectId;  // ← Store ID instead of pointer
 	};
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1344,6 +1543,8 @@ namespace NOWA
 		// Remove event listeners (safe)
 		AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &EditorManager::handleTerraModifyEnd), EventDataTerraModifyEnd::getStaticEventType());
 		AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &EditorManager::handleTerraPaintEnd), EventDataTerraPaintEnd::getStaticEventType());
+		AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &EditorManager::handleRoadModifyEnd), EventDataRoadModifyEnd::getStaticEventType());
+		AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &EditorManager::handleWallModifyEnd), EventDataWallModifyEnd::getStaticEventType());
 
 		if (nullptr != this->gizmo)
 		{
@@ -1478,6 +1679,8 @@ namespace NOWA
 
 		AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &EditorManager::handleTerraModifyEnd), EventDataTerraModifyEnd::getStaticEventType());
 		AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &EditorManager::handleTerraPaintEnd), EventDataTerraPaintEnd::getStaticEventType());
+		AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &EditorManager::handleRoadModifyEnd), EventDataRoadModifyEnd::getStaticEventType());
+		AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &EditorManager::handleWallModifyEnd), EventDataWallModifyEnd::getStaticEventType());
 	}
 
 	bool EditorManager::handleKeyPress(const OIS::KeyEvent& keyEventRef)
@@ -1807,17 +2010,17 @@ namespace NOWA
 				if (EDITOR_TERRAIN_MODIFY_MODE == this->manipulationMode)
 				{
 					auto&& heightData = this->terraComponent->modifyTerrainFinished();
-					this->snapshotTerraHeightMap(heightData.first, heightData.second, this->terraComponent);
+					this->snapshotTerraHeightMap(heightData.first, heightData.second, this->terraComponent->getOwner()->getId());
 				}
 				else if (EDITOR_TERRAIN_SMOOTH_MODE == this->manipulationMode)
 				{
 					auto&& heightData = this->terraComponent->smoothTerrainFinished();
-					this->snapshotTerraHeightMap(heightData.first, heightData.second, this->terraComponent);
+					this->snapshotTerraHeightMap(heightData.first, heightData.second, this->terraComponent->getOwner()->getId());
 				}
 				else if (EDITOR_TERRAIN_PAINT_MODE == this->manipulationMode)
 				{
 					auto&& blendWeightData = this->terraComponent->paintTerrainFinished();
-					this->snapshotTerraBlendMap(blendWeightData.first, blendWeightData.second, this->terraComponent);
+					this->snapshotTerraBlendMap(blendWeightData.first, blendWeightData.second, this->terraComponent->getOwner()->getId());
 				}
 			}
 		}
@@ -3675,6 +3878,10 @@ namespace NOWA
 		}
 
 		this->boundingBoxSize = maxCorner - minCorner;
+
+#ifdef _DEBUG
+		this->sceneManipulationCommandModule.debugCheckTransactionIntegrity();
+#endif
 	}
 
 	Ogre::SceneManager* EditorManager::getSceneManager(void) const
@@ -3700,11 +3907,6 @@ namespace NOWA
 			this->gizmo->setEnabled(false);
 			this->isGizmoMoving = false;
 
-			if (EDITOR_MESH_MODIFY_MODE == this->manipulationMode)
-			{
-				boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(this->manipulationMode));
-				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataEditorMode);
-			}
 		}
 		else if (EDITOR_TERRAIN_MODIFY_MODE == this->manipulationMode || EDITOR_TERRAIN_SMOOTH_MODE == this->manipulationMode || EDITOR_TERRAIN_PAINT_MODE == this->manipulationMode)
 		{
@@ -3753,6 +3955,9 @@ namespace NOWA
 		{
 			this->deactivatePlaceMode();
 		}
+
+		boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(this->manipulationMode));
+        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataEditorMode);
 	}
 
 	EditorManager::eManipulationMode EditorManager::getManipulationMode(void) const
@@ -4048,14 +4253,24 @@ namespace NOWA
 		this->cameraCommandModule.pushCommand(std::make_shared<CameraTransformUndoCommand>(this->camera));
 	}
 
-	void EditorManager::snapshotTerraHeightMap(const std::vector<Ogre::uint16>& oldHeightData, const std::vector<Ogre::uint16>& newHeightData, TerraComponent* terraComponent, bool isAdditionalUndo)
+	void EditorManager::snapshotTerraHeightMap(const std::vector<Ogre::uint16>& oldHeightData, const std::vector<Ogre::uint16>& newHeightData, unsigned long gameObjectId, bool isAdditionalUndo)
 	{
-		this->sceneManipulationCommandModule.pushCommand(std::make_shared<TerrainModifyUndoCommand>(oldHeightData, newHeightData, terraComponent, isAdditionalUndo));
+		this->sceneManipulationCommandModule.pushCommand(std::make_shared<TerrainModifyUndoCommand>(oldHeightData, newHeightData, gameObjectId, isAdditionalUndo));
 	}
 
-	void EditorManager::snapshotTerraBlendMap(const std::vector<Ogre::uint8>& oldBlendWeightData, const std::vector<Ogre::uint8>& newBlendWeightData, TerraComponent* terraComponent, bool isAdditionalUndo)
+	void EditorManager::snapshotTerraBlendMap(const std::vector<Ogre::uint8>& oldBlendWeightData, const std::vector<Ogre::uint8>& newBlendWeightData, unsigned long gameObjectId, bool isAdditionalUndo)
 	{
-		this->sceneManipulationCommandModule.pushCommand(std::make_shared<TerrainPaintUndoCommand>(oldBlendWeightData, newBlendWeightData, terraComponent, isAdditionalUndo));
+		this->sceneManipulationCommandModule.pushCommand(std::make_shared<TerrainPaintUndoCommand>(oldBlendWeightData, newBlendWeightData, gameObjectId, isAdditionalUndo));
+	}
+
+	void EditorManager::snapshotRoadData(const std::vector<unsigned char>& oldRoadData, const std::vector<unsigned char>& newRoadData, unsigned long gameObjectId, bool isAdditionalUndo)
+	{
+		this->sceneManipulationCommandModule.pushCommand(std::make_shared<RoadModifyUndoCommand>(oldRoadData, newRoadData, gameObjectId, isAdditionalUndo));
+	}
+
+	void EditorManager::snapshotWallData(const std::vector<unsigned char>& oldWallData, const std::vector<unsigned char>& newWallData, unsigned long gameObjectId, bool isAdditionalUndo)
+	{
+		this->sceneManipulationCommandModule.pushCommand(std::make_shared<WallModifyUndoCommand>(oldWallData, newWallData, gameObjectId, isAdditionalUndo));
 	}
 
 	void EditorManager::handleTerraModifyEnd(EventDataPtr eventData)
@@ -4069,7 +4284,7 @@ namespace NOWA
 			auto& terraComponent = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NOWA::TerraComponent>());
 			if (nullptr != terraComponent)
 			{
-				this->snapshotTerraHeightMap(castEventData->getOldHeightData(), castEventData->getNewHeightData(), terraComponent.get(), true);
+				this->snapshotTerraHeightMap(castEventData->getOldHeightData(), castEventData->getNewHeightData(), castEventData->getTerraCompId(), true);
 			}
 		}
 	}
@@ -4085,9 +4300,54 @@ namespace NOWA
 			auto& terraComponent = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NOWA::TerraComponent>());
 			if (nullptr != terraComponent)
 			{
-				this->snapshotTerraBlendMap(castEventData->getOldDetailBlendData(), castEventData->getNewDetailBlendData(), terraComponent.get(), true);
+				this->snapshotTerraBlendMap(castEventData->getOldDetailBlendData(), castEventData->getNewDetailBlendData(), castEventData->getTerraCompId(), true);
 			}
 		}
+	}
+
+	void EditorManager::handleRoadModifyEnd(EventDataPtr eventData)
+	{
+		boost::shared_ptr<EventDataRoadModifyEnd> castEventData = boost::static_pointer_cast<NOWA::EventDataRoadModifyEnd>(eventData);
+
+		GameObjectPtr gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(castEventData->getGameObjectId());
+
+		if (nullptr != gameObjectPtr)
+		{
+			auto& roadComponentBase = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NOWA::RoadComponentBase>());
+			if (nullptr != roadComponentBase)
+			{
+				this->snapshotRoadData(castEventData->getOldRoadData(), castEventData->getNewRoadData(), castEventData->getGameObjectId(), false);
+			}
+		}
+	}
+
+	void EditorManager::handleWallModifyEnd(EventDataPtr eventData)
+	{
+		boost::shared_ptr<EventDataWallModifyEnd> castEventData = boost::static_pointer_cast<NOWA::EventDataWallModifyEnd>(eventData);
+
+		GameObjectPtr gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(castEventData->getGameObjectId());
+
+		if (nullptr != gameObjectPtr)
+		{
+			auto& wallComponentBase = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NOWA::WallComponentBase>());
+			if (nullptr != wallComponentBase)
+			{
+				this->snapshotWallData(castEventData->getOldWallData(), castEventData->getNewWallData(), castEventData->getGameObjectId(), false);
+			}
+		}
+	}
+
+	void EditorManager::handleUndoTransactionBegin(EventDataPtr eventData)
+	{
+		boost::shared_ptr<EventDataCommandTransactionBegin> castEventData =
+			boost::static_pointer_cast<EventDataCommandTransactionBegin>(eventData);
+
+		this->sceneManipulationCommandModule.beginTransaction(castEventData->getLabel());
+	}
+
+	void EditorManager::handleUndoTransactionEnd(EventDataPtr eventData)
+	{
+		this->sceneManipulationCommandModule.endTransaction();
 	}
 
 	void EditorManager::deleteGameObjects(const std::vector<unsigned long> gameObjectIds)

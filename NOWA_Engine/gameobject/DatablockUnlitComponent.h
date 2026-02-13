@@ -166,11 +166,19 @@ namespace NOWA
 		static const Ogre::String AttrAnimationRotation(void) { return "Animation Rotation "; }
 	private:
 		void preReadDatablock(void);
+
 		bool readDatablockEntity(Ogre::v1::Entity* entity);
+
+		bool readDatablockItem(Ogre::Item* item);
+
 		void postReadDatablock(void);
+
 		Ogre::String getUnlitTextureName(Ogre::HlmsUnlitDatablock* datablock, unsigned char textureIndex);
+
 		void internalSetTextureName(unsigned char textureIndex, Ogre::CommonTextureTypes::CommonTextureTypes textureType, Variant* attribute, const Ogre::String& textureName);
+
 		Ogre::String mapBlendModeToString(Ogre::UnlitBlendModes blendMode);
+
 		Ogre::UnlitBlendModes mapStringToBlendMode(const Ogre::String& strBlendMode);
 	protected:
 		Variant* subEntityIndex;

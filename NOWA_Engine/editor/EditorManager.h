@@ -20,6 +20,8 @@ namespace NOWA
 	class GameObjectComponent;
 	class PhysicsActiveComponent;
 	class TerraComponent;
+	class RoadComponentBase;
+	class WallComponentBase;
 
 	/**
 	* @class EditorManager
@@ -226,9 +228,13 @@ namespace NOWA
 
 		void snapshotCameraOrientation(void);
 
-		void snapshotTerraHeightMap(const std::vector<Ogre::uint16>& oldHeightData, const std::vector<Ogre::uint16>& newHeightData, TerraComponent* terraComponent, bool isAdditionalUndo = false);
+		void snapshotTerraHeightMap(const std::vector<Ogre::uint16>& oldHeightData, const std::vector<Ogre::uint16>& newHeightData, unsigned long gameObjectId, bool isAdditionalUndo = false);
 
-		void snapshotTerraBlendMap(const std::vector<Ogre::uint8>& oldBlendWeightData, const std::vector<Ogre::uint8>& newBlendWeightData, TerraComponent* terraComponent, bool isAdditionalUndo = false);
+		void snapshotTerraBlendMap(const std::vector<Ogre::uint8>& oldBlendWeightData, const std::vector<Ogre::uint8>& newBlendWeightData, unsigned long gameObjectId, bool isAdditionalUndo = false);
+
+		void snapshotRoadData(const std::vector<unsigned char>& oldRoadData, const std::vector<unsigned char>& newRoadData, unsigned long gameObjectId, bool isAdditionalUndo = false);
+
+		void snapshotWallData(const std::vector<unsigned char>& oldWallData, const std::vector<unsigned char>& newWallData, unsigned long gameObjectId, bool isAdditionalUndo = false);
 
 		void deleteGameObjects(const std::vector<unsigned long> gameObjectIds);
 
@@ -305,6 +311,14 @@ namespace NOWA
 		void handleTerraModifyEnd(EventDataPtr eventData);
 
 		void handleTerraPaintEnd(EventDataPtr eventData);
+
+		void handleRoadModifyEnd(EventDataPtr eventData);
+
+		void handleWallModifyEnd(EventDataPtr eventData);
+
+		void handleUndoTransactionBegin(EventDataPtr eventData);
+		
+		void handleUndoTransactionEnd(EventDataPtr eventData);
 	private:
 		Ogre::SceneManager* sceneManager;
 		Ogre::Camera* camera;

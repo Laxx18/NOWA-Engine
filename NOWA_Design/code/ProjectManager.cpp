@@ -377,13 +377,25 @@ void ProjectManager::loadProject(const Ogre::String& filePathName, unsigned shor
 		this->dotSceneImportModule = new NOWA::DotSceneImportModule(this->sceneManager, nullptr, nullptr);
 	}
 
-	
 	try
 	{
 		bool success = false;
 
 		NOWA::AppStateManager::LogicCommand logicCommand = [this, &success]()
 		{
+				Ogre::ResourceGroupManager* rgm = Ogre::ResourceGroupManager::getSingletonPtr();
+
+				Ogre::LogManager::getSingletonPtr()->logMessage(
+					"Objects exists=" + Ogre::StringConverter::toString(rgm->resourceGroupExists("Objects")) +
+					" initialised=" + Ogre::StringConverter::toString(rgm->isResourceGroupInitialised("Objects")) +
+					" inited=" + Ogre::StringConverter::toString(rgm->isResourceGroupInitialised("Objects"))
+				);
+
+				Ogre::MaterialPtr testMat = Ogre::MaterialManager::getSingleton().getByName("Material/SOLID/TEX/Case3.png", "Objects");
+				Ogre::LogManager::getSingletonPtr()->logMessage(
+					"Material exists before load: " + Ogre::StringConverter::toString(!testMat.isNull())
+				);
+
 			// Internally calls invalidate cache, so that all newton data is set to default for deterministic simulations, when started again
 			success = this->dotSceneImportModule->parseScene(this->projectParameter.projectName, this->projectParameter.sceneName, "Projects", nullptr, nullptr, false);
 		};

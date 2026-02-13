@@ -216,6 +216,7 @@
     <ClInclude Include="gameobject\InputDeviceComponent.h" />
     <ClInclude Include="gameobject\PhysicsActiveComplexVehicleComponent.h" />
     <ClInclude Include="gameobject\PhysicsActiveVehicleComponent.h" />
+    <ClInclude Include="gameobject\RoadComponentBase.h" />
     <ClInclude Include="gameobject\ValueBarComponent.h" />
     <ClInclude Include="gameobject\ExitComponent.h" />
     <ClInclude Include="gameobject\FadeComponent.h" />
@@ -275,6 +276,7 @@
     <ClInclude Include="gameobject\TerraComponent.h" />
     <ClInclude Include="gameobject\Tire.h" />
     <ClInclude Include="gameobject\TransformComponent.h" />
+    <ClInclude Include="gameobject\WallComponentBase.h" />
     <ClInclude Include="gameobject\WorkspaceComponents.h" />
     <ClInclude Include="ki\Edge.h" />
     <ClInclude Include="ki\FormationBehavior.h" />

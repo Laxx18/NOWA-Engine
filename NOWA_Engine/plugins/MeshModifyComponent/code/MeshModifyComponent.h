@@ -354,6 +354,9 @@ namespace NOWA
 
 		void handleGameObjectSelected(NOWA::EventDataPtr eventData);
 
+		void addInputListener(void);
+
+		void removeInputListener(void);
 	private:
 		Ogre::String name;
 

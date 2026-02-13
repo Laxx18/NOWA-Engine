@@ -336,6 +336,13 @@ namespace NOWA
 			return false;
 		}
 
+		// Not active, skip workspace creation
+		// TODO: What todo on split screen?
+		/*if (false == this->cameraComponent->isActivated())
+		{
+            return true;
+		}*/
+
 		bool hasAnyMirror = this->hasAnyMirrorForPlanarReflections();
 
 		this->usePlanarReflection->setValue(hasAnyMirror);
@@ -3965,6 +3972,8 @@ namespace NOWA
 	bool WorkspaceSkyComponent::postInit(void)
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[WorkspaceSkyComponent] Init workspace sky component for game object: " + this->gameObjectPtr->getName());
+
+
 
 		bool success = WorkspaceBaseComponent::postInit();
 

@@ -683,7 +683,7 @@ namespace NOWA
 		{
 			// Send out event, whether is camera has been activated or not, to camera manager and other camera components, to adapt their state
 			boost::shared_ptr<EventDataSwitchCamera> eventDataSwitchCamera(new EventDataSwitchCamera(this->gameObjectPtr->getId(), this->gameObjectPtr->getIndexFromComponent(this), this->active->getBool()));
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataSwitchCamera);
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataSwitchCamera);
 		}
 	}
 
@@ -692,8 +692,7 @@ namespace NOWA
 		this->active->setValue(activated);
 		if (nullptr != this->camera)
 		{
-			// NOWA::GraphicsModule::RenderCommand renderCommand = [this, activated]()
-			auto closureFunction = [this, activated](Ogre::Real renderDt)
+			NOWA::GraphicsModule::RenderCommand renderCommand = [this, activated]()
 			{
 				if (true == this->bConnected)
 				{
@@ -724,9 +723,7 @@ namespace NOWA
 					AppStateManager::getSingletonPtr()->getCameraManager()->removeCamera(this->camera);
 				}
 			};
-			// NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "CameraComponent::setActivatedFlag");
-			Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::setActivatedFlag" + Ogre::StringConverter::toString(this->index);
-			NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction);
+			NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CameraComponent::setActivatedFlag");
 		}
 	}
 

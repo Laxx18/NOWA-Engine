@@ -1289,27 +1289,43 @@ namespace NOWA
 
 	void DotSceneExportModule::exportItem(GameObject* gameObject, Ogre::Item* item, rapidxml::xml_node<>* nodeXML, rapidxml::xml_document<>& doc)
 	{
-		// Entity
+		// Item
 		{
-			xml_node<>* entityXML = doc.allocate_node(node_element, "item");
-			entityXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, item->getName())));
+            xml_node<>* itemXML = doc.allocate_node(node_element, "item");
 
-			// No 'missing.mesh' should be stored, hence check if a mesh could not be loaded and get its original name
-			Ogre::String meshFile;
-			if (false == gameObject->getOriginalMeshNameOnLoadFailure().empty())
-				meshFile = gameObject->getOriginalMeshNameOnLoadFailure();
-			else
-				meshFile = item->getMesh()->getName();
+            Ogre::String meshName = item->getMesh()->getName();
+            Ogre::String meshFileToExport = meshName;
 
-			// Only calculate bounds for usable world entities
-			if ("LightDirectional.mesh" != meshFile && "LightPoint.mesh" != meshFile && "LightSpot.mesh" != meshFile && "Camera.mesh" != meshFile)
-				this->calculateBounds(item->getWorldAabbUpdated());
+            // Check if GameObject has a procedural mesh component
+            bool hasProceduralComponent = false;
 
-			entityXML->append_attribute(doc.allocate_attribute("meshFile", XMLConverter::ConvertString(doc, meshFile)));
-			entityXML->append_attribute(doc.allocate_attribute("castShadows", XMLConverter::ConvertString(doc, item->getCastShadows())));
-			entityXML->append_attribute(doc.allocate_attribute("visible", XMLConverter::ConvertString(doc, item->getVisible())));
+            auto components = gameObject->getComponents();
+			// Check for any component with "Procedural" prefix and "Component" suffix
+            for (size_t i = 0; i < components->size(); i++)
+            {
+                NOWA::GameObjectCompPtr component = std::get<NOWA::COMPONENT>(components->at(i));
+                if (nullptr != component)
+                {
+                    if (AppStateManager::getSingletonPtr()->getGameObjectController()->isProceduralMeshComponent(component->getClassName()))
+                    {
+                        hasProceduralComponent = true;
+                        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[DotSceneExport] Detected procedural component: " + component->getClassName());
+                        break;
+                    }
+                }
+            }
 
-			nodeXML->append_node(entityXML);
+            if (true == hasProceduralComponent)
+            {
+                meshFileToExport = "Procedural.mesh";
+            }
+
+            itemXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, item->getName())));
+            itemXML->append_attribute(doc.allocate_attribute("meshFile", XMLConverter::ConvertString(doc, meshFileToExport)));
+            itemXML->append_attribute(doc.allocate_attribute("castShadows", XMLConverter::ConvertString(doc, item->getCastShadows())));
+            itemXML->append_attribute(doc.allocate_attribute("visible", XMLConverter::ConvertString(doc, item->getVisible())));
+
+			nodeXML->append_node(itemXML);
 
 			// SubItem
 			{
@@ -1319,11 +1335,11 @@ namespace NOWA
 						break;
 
 					Ogre::SubItem* subItem = item->getSubItem(i);
-					xml_node<>* subEntityXML = doc.allocate_node(node_element, "subitem");
-					subEntityXML->append_attribute(doc.allocate_attribute("index", XMLConverter::ConvertString(doc, i)));
+					xml_node<>* subItemXML = doc.allocate_node(node_element, "subitem");
+                    subItemXML->append_attribute(doc.allocate_attribute("index", XMLConverter::ConvertString(doc, i)));
 					// Write the original datablock names from game object, not the currently applied one, because it has "__id.." at the end
-					subEntityXML->append_attribute(doc.allocate_attribute("datablockName", XMLConverter::ConvertString(doc, gameObject->getDatablockNames()[i])));
-					entityXML->append_node(subEntityXML);
+                    subItemXML->append_attribute(doc.allocate_attribute("datablockName", XMLConverter::ConvertString(doc, gameObject->getDatablockNames()[i])));
+                    itemXML->append_node(subItemXML);
 				}
 			}
 
@@ -1331,7 +1347,7 @@ namespace NOWA
 			{
 				xml_node<>* userDataXML = doc.allocate_node(node_element, "userData");
 				gameObject->writeXML(userDataXML, doc);
-				entityXML->append_node(userDataXML);
+                itemXML->append_node(userDataXML);
 			}
 		}
 	}

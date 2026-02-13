@@ -132,11 +132,13 @@ Monster0_1_0["onContactFriction"] = function(gameObject0, gameObject1, playerCon
     end
     
     if (firstTimeStart == true) then
+		terraGameObject:getTerraComponent():beginCommandTransaction("Lua Paint Terrain");
         terraGameObject:getTerraComponent():paintTerrainStart(playerContact:getPosition(), 10, 1);
         firstTimeStart = false;
     elseif (isActive == false and firstTimeEnd == true) then
         firstTimeEnd = false;
         terraGameObject:getTerraComponent():paintTerrainEnd();
+		terraGameObject:getTerraComponent():endCommandTransaction();
     end
     
     if (monsterController:getVelocity():squaredLength() > 10) then
@@ -144,4 +146,14 @@ Monster0_1_0["onContactFriction"] = function(gameObject0, gameObject1, playerCon
         --terraGameObject:getTerraComponent():paintTerrainLoop(playerContact:getPosition(), 10, 2, 1);
         terraGameObject:getTerraComponent():paintTerrain(playerContact:getPosition(), 10, 2);
     end
+	
+	-- Lua nested undo example:
+	-- cmd.beginTransaction("Create Bridge")
+
+	-- road:modifyRoadStart(...);
+	-- road:modifyRoadEnd();
+
+	-- wall:modifyWallStart(...);
+	-- wall:modifyWallEnd();
+	-- cmd.beginTransaction();
 end

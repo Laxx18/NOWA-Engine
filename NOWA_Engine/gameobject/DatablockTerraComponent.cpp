@@ -339,10 +339,9 @@ namespace NOWA
 		if (this->alreadyCloned)
 		{
 			Ogre::Terra* terraCopy = this->gameObjectPtr->getMovableObject<Ogre::Terra>();
-			auto datablockCopy = this->datablock;
-			auto originalDatablockCopy = this->originalDatablock;
+			Ogre::HlmsDatablock* datablockCopy = this->datablock;
+			Ogre::HlmsDatablock* originalDatablockCopy = this->originalDatablock;
 
-			// Nullify members to avoid use-after-free
 			this->datablock = nullptr;
 			this->originalDatablock = nullptr;
 
@@ -353,15 +352,10 @@ namespace NOWA
 					terraCopy->setDatablock(originalDatablockCopy);
 				}
 
-				if (datablockCopy)
-				{
-					const auto& linkedRenderables = datablockCopy->getLinkedRenderables();
-					if (linkedRenderables.empty())
-					{
-						datablockCopy->getCreator()->destroyDatablock(datablockCopy->getName());
-					}
-				}
+				// Destroy ONLY if it is a NOWA runtime clone and truly unused.
+				NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->tryDestroyDatablockIfUnused(*datablockCopy->getNameStr());
 			};
+
 			NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DatablockTerraComponent::onRemoveComponent");
 		}
 	}
@@ -480,8 +474,12 @@ namespace NOWA
 
 			if (false == this->alreadyCloned && nullptr != this->originalDatablock)
 			{
-				this->datablock = dynamic_cast<Ogre::HlmsTerraDatablock*>(this->originalDatablock->clone(*this->originalDatablock->getNameStr()
-					+ Ogre::StringConverter::toString(this->gameObjectPtr->getId())));
+				const Ogre::String originalDatablockName = *this->originalDatablock->getNameStr();
+
+				Ogre::HlmsDatablock* clonedDatablock = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->cloneDatablockUnique(
+						this->originalDatablock, originalDatablockName, static_cast<unsigned long>(this->gameObjectPtr->getId()), 0u);
+
+				this->datablock = dynamic_cast<Ogre::HlmsTerraDatablock*>(clonedDatablock);
 				this->alreadyCloned = true;
 			}
 			else

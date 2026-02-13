@@ -2638,6 +2638,219 @@ namespace NOWA
 		bool selected;
 	};
 
+	//---------------------------------------------------------------------------------------------------------------------
+	// EventDataRoadModifyEnd - This event is sent out if modifying road has ended
+	//---------------------------------------------------------------------------------------------------------------------
+	class EXPORTED EventDataRoadModifyEnd : public BaseEventData
+	{
+	public:
+
+		EventDataRoadModifyEnd(void)
+		{
+		}
+
+		explicit EventDataRoadModifyEnd(const std::vector<unsigned char>& oldRoadData, const std::vector<unsigned char>& newRoadData, unsigned long gameObjectId)
+			: oldRoadData(oldRoadData),
+			newRoadData(newRoadData),
+			gameObjectId(gameObjectId)
+		{
+		}
+
+		static EventType getStaticEventType(void)
+		{
+			return 0xe8329A12;
+		}
+
+		virtual const EventType getEventType(void) const
+		{
+			return 0xe8329A12;
+		}
+
+		virtual void deserialize(std::istrstream& in)
+		{
+
+		}
+
+		virtual EventDataPtr copy(void) const
+		{
+			return EventDataPtr(new EventDataRoadModifyEnd(this->oldRoadData, this->newRoadData, this->gameObjectId));
+		}
+
+		virtual void serialize(std::ostrstream& out) const
+		{
+
+		}
+
+		virtual const char* getName(void) const
+		{
+			return "EventDataRoadModifyEnd";
+		}
+
+		std::vector<unsigned char> getOldRoadData(void) const
+		{
+			return this->oldRoadData;
+		}
+
+		std::vector<unsigned char> getNewRoadData(void) const
+		{
+			return this->newRoadData;
+		}
+
+		unsigned long getGameObjectId(void) const
+		{
+			return this->gameObjectId;
+		}
+	private:
+		std::vector<unsigned char> oldRoadData;
+		std::vector<unsigned char> newRoadData;
+		unsigned long gameObjectId;
+	};
+
+	//---------------------------------------------------------------------------------------------------------------------
+	// EventDataWallModifyEnd - This event is sent out if modifying wall has ended
+	//---------------------------------------------------------------------------------------------------------------------
+	class EXPORTED EventDataWallModifyEnd : public BaseEventData
+	{
+	public:
+
+		EventDataWallModifyEnd(void)
+		{
+		}
+
+		explicit EventDataWallModifyEnd(const std::vector<unsigned char>& oldWallData, const std::vector<unsigned char>& newWallData, unsigned long gameObjectId)
+			: oldWallData(oldWallData),
+			newWallData(newWallData),
+			gameObjectId(gameObjectId)
+		{
+		}
+
+		static EventType getStaticEventType(void)
+		{
+			return 0xe8329A13;
+		}
+
+		virtual const EventType getEventType(void) const
+		{
+			return 0xe8329A13;
+		}
+
+		virtual void deserialize(std::istrstream& in)
+		{
+
+		}
+
+		virtual EventDataPtr copy(void) const
+		{
+			return EventDataPtr(new EventDataWallModifyEnd(this->oldWallData, this->newWallData, this->gameObjectId));
+		}
+
+		virtual void serialize(std::ostrstream& out) const
+		{
+
+		}
+
+		virtual const char* getName(void) const
+		{
+			return "EventDataWallModifyEnd";
+		}
+
+		std::vector<unsigned char> getOldWallData(void) const
+		{
+			return this->oldWallData;
+		}
+
+		std::vector<unsigned char> getNewWallData(void) const
+		{
+			return this->newWallData;
+		}
+
+		unsigned long getGameObjectId(void) const
+		{
+			return this->gameObjectId;
+		}
+	private:
+		std::vector<unsigned char> oldWallData;
+		std::vector<unsigned char> newWallData;
+		unsigned long gameObjectId;
+	};
+
+	//---------------------------------------------------------------------------------------------------------------------
+	// EventDataUndoTransactionBegin - This event starts an undo transaction
+	//---------------------------------------------------------------------------------------------------------------------
+	class EXPORTED EventDataCommandTransactionBegin : public BaseEventData
+	{
+	public:
+
+		EventDataCommandTransactionBegin(void)
+		{
+		}
+
+		explicit EventDataCommandTransactionBegin(const Ogre::String& label)
+			: label(label)
+		{
+		}
+
+		static EventType getStaticEventType(void)
+		{
+			return 0xBFA11221;
+		}
+
+		virtual const EventType getEventType(void) const
+		{
+			return 0xBFA11221;
+		}
+
+		virtual EventDataPtr copy(void) const
+		{
+			return EventDataPtr(new EventDataCommandTransactionBegin(this->label));
+		}
+
+		virtual const char* getName(void) const
+		{
+			return "EventDataCommandTransactionBegin";
+		}
+
+		Ogre::String getLabel(void) const
+		{
+			return this->label;
+		}
+
+	private:
+		Ogre::String label;
+	};
+
+	//---------------------------------------------------------------------------------------------------------------------
+	// EventDataUndoTransactionEnd - This event ends an undo transaction
+	//---------------------------------------------------------------------------------------------------------------------
+	class EXPORTED EventDataCommandTransactionEnd : public BaseEventData
+	{
+	public:
+
+		EventDataCommandTransactionEnd(void)
+		{
+		}
+
+		static EventType getStaticEventType(void)
+		{
+			return 0xBFA11222;
+		}
+
+		virtual const EventType getEventType(void) const
+		{
+			return 0xBFA11222;
+		}
+
+		virtual EventDataPtr copy(void) const
+		{
+			return EventDataPtr(new EventDataCommandTransactionEnd());
+		}
+
+		virtual const char* getName(void) const
+		{
+			return "EventDataCommandTransactionEnd";
+		}
+	};
+
 }; // namespace end
 
 #endif

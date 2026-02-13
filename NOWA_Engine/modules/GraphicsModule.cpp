@@ -139,7 +139,8 @@ namespace NOWA
                 this->clearAllClosures();
             }
 
-            if (false == isStalled && false == this->isWorkspaceTransitioning())
+            // isWorkspaceTransitioning causes freeze with two cameras and pressing play! -> see quat/scene1
+            if (false == isStalled /*&& false == this->isWorkspaceTransitioning()*/)
             {
                 Ogre::Root::getSingletonPtr()->renderOneFrame();
             }

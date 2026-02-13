@@ -347,8 +347,8 @@ namespace NOWA
 			return;
 		}
 
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("SplitScreenComponent::setupSplitScreen", _1(workspaceBaseCompPtr),
-		{
+		GraphicsModule::RenderCommand renderCommand = [this, workspaceBaseCompPtr]()
+        {
 			auto splitScreenComponents = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectComponents<SplitScreenComponent>();
 
 			// Only use activated components
@@ -538,15 +538,16 @@ namespace NOWA
 
 				WorkspaceModule::getInstance()->setPrimaryWorkspace2(this->gameObjectPtr->getSceneManager(), this->tempCamera, this->finalCombinedWorkspace);
 			}
-		});
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "SplitScreenComponent::setupSplitScreen");
 	}
 
 	void SplitScreenComponent::cleanupSplitScreen(void)
 	{
 		WorkspaceModule::getInstance()->setSplitScreenScenarioActive(false);
 
-		ENQUEUE_RENDER_COMMAND("SplitScreenComponent::cleanupSplitScreen",
-		{
+		GraphicsModule::RenderCommand renderCommand = [this]()
+        {
 			Ogre::CompositorManager2 * compositorManager = WorkspaceModule::getInstance()->getCompositorManager();
 
 			if (nullptr != this->tempCamera)
@@ -608,7 +609,8 @@ namespace NOWA
 			}
 			this->externalChannels.clear();
 
-		});
+		};
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "SplitScreenComponent::cleanupSplitScreen");
 	}
 
 	// Lua registration part

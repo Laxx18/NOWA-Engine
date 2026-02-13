@@ -360,7 +360,7 @@
 			<position x="-1.59063" y="6.00915" z="-10.6154"/>
 			<rotation qw="-0.134487" qx="0.0600985" qy="0.920193" qz="0.362692"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
+			<entity name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="true">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -408,9 +408,10 @@
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="6" name="ReflectionCameraGameObjectId" data="0"/>
 					<property type="12" name="UsePlanarReflection" data="false"/>
-					<property type="12" name="UseSSAO" data="true"/>
+					<property type="12" name="UseSSAO" data="false"/>
 					<property type="12" name="UseDistortion" data="false"/>
 					<property type="12" name="UseMSAA" data="false"/>
+					<property type="12" name="UsePCC" data="false"/>
 					<property type="12" name="UseTerra" data="true"/>
 					<property type="12" name="UseOcean" data="true"/>
 					<property type="6" name="ShadowGlobalBias" data="1"/>
@@ -1223,12 +1224,12 @@
 					<property type="12" name="FixedYawAxis" data="true"/>
 					<property type="12" name="ShowDummyEntity" data="false"/>
 					<property type="7" name="ExcludeRenderCategories" data="All"/>
-					<property type="7" name="ComponentWorkspacePbsComponent" data="WorkspacePbsComponent"/>
+					<property type="7" name="ComponentWorkspaceSkyComponent" data="WorkspaceSkyComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="9" name="BackgroundColor" data="0 0 0"/>
-					<property type="10" name="ViewportRect" data="0.5 0 0.5 1"/>
+					<property type="10" name="ViewportRect" data="0 0 1 1"/>
 					<property type="6" name="SuperSampling" data="1"/>
 					<property type="12" name="UseHdr" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
@@ -1237,14 +1238,16 @@
 					<property type="12" name="UseSSAO" data="false"/>
 					<property type="12" name="UseDistortion" data="false"/>
 					<property type="12" name="UseMSAA" data="false"/>
-					<property type="12" name="UseTerra" data="false"/>
-					<property type="12" name="UseOcean" data="false"/>
+					<property type="12" name="UsePCC" data="false"/>
+					<property type="12" name="UseTerra" data="true"/>
+					<property type="12" name="UseOcean" data="true"/>
 					<property type="6" name="ShadowGlobalBias" data="1"/>
 					<property type="6" name="ShadowGlobalNormalOffset" data="168"/>
 					<property type="6" name="ShadowPSSMLambda" data="0.95"/>
 					<property type="6" name="ShadowSplitBlend" data="0.125"/>
 					<property type="6" name="ShadowSplitFade" data="0.313"/>
 					<property type="6" name="ShadowSplitPadding" data="1"/>
+					<property type="7" name="SkyBoxName" data="bones_of_earth_cube.dds"/>
 				</userData>
 			</entity>
 		</node>

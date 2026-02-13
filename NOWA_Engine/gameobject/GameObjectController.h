@@ -975,12 +975,32 @@ namespace NOWA
 		 */
 		std::vector<boost::weak_ptr<LuaScriptComponent>> getManagedLuaScripts() const;
 
-	public:
-		static const unsigned int ALL_CATEGORIES_ID = 0xFFFFFFFF;
+		bool isRuntimeDatablockCloneName(const Ogre::String& datablockName);
+		
+		bool isScriptedDatablock(const Ogre::HlmsDatablock* datablock);
 
-		static const unsigned long MAIN_GAMEOBJECT_ID = 1111111111L;
-		static const unsigned long MAIN_CAMERA_ID = 1111111112L;
-		static const unsigned long MAIN_LIGHT_ID = 1111111113L;
+		// Collect Hlms datablock names referenced by a MovableObject (Entity/Item) so we can
+		// optionally destroy them after the renderables are gone.
+		// NOTE: We only destroy datablocks when they have *no* linked renderables anymore.
+		void collectDatablockNamesFromMovable(Ogre::MovableObject* movableObject, std::unordered_set<Ogre::String>& outNames);
+
+		void tryDestroyDatablockIfUnused(const Ogre::String& datablockName);
+
+		Ogre::HlmsDatablock* cloneDatablockUnique(Ogre::HlmsDatablock* originalDatablock, const Ogre::String& originalDatablockName, unsigned long gameObjectId, size_t subIndex);
+
+		bool isProceduralMeshComponent(const Ogre::String& className);
+	public:
+		static constexpr unsigned int ALL_CATEGORIES_ID = 0xFFFFFFFF;
+
+		static constexpr unsigned long MAIN_GAMEOBJECT_ID = 1111111111L;
+		static constexpr unsigned long MAIN_CAMERA_ID = 1111111112L;
+		static constexpr unsigned long MAIN_LIGHT_ID = 1111111113L;
+
+		const std::array<Ogre::HlmsTypes, 7> searchHlms =
+		{
+			Ogre::HLMS_PBS, Ogre::HLMS_TOON, Ogre::HLMS_UNLIT, Ogre::HLMS_USER0,
+			Ogre::HLMS_USER1, Ogre::HLMS_USER2, Ogre::HLMS_USER3
+		};
 	public:
 		GameObjectPtr internalClone(GameObjectPtr originalGameObjectPtr, Ogre::SceneNode* parentNode = nullptr, unsigned long targetId = 0, const Ogre::Vector3& targetPosition = Ogre::Vector3::ZERO,
 			const Ogre::Quaternion& targetOrientation = Ogre::Quaternion::IDENTITY, const Ogre::Vector3& targetScale = Ogre::Vector3(1.0f, 1.0f, 1.0f), bool cloneDatablock = true);

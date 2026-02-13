@@ -309,7 +309,7 @@ namespace NOWA
 					if (id != gameObject->getId())
 					{
 						auto cameraComponent = NOWA::makeStrongPtr(gameObject->getComponent<CameraComponent>());
-						if (nullptr != cameraComponent)
+                        if (nullptr != cameraComponent && nullptr != cameraComponent->getCamera())
 						{
 							Ogre::String s1 = cameraComponent->getCamera()->getName();
 							Ogre::String s2 = this->usedCamera ? this->usedCamera->getName() : "null";
@@ -356,8 +356,8 @@ namespace NOWA
 	{
 		if (nullptr == this->ocean && nullptr != AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera() && true == this->postInitDone)
 		{
-			ENQUEUE_RENDER_COMMAND("OceanComponent::createOcean",
-			{
+            GraphicsModule::RenderCommand renderCommand = [this]()
+            {
 				if (this->cameraId->getULong() != 0)
 				{
 					GameObjectPtr cameraGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->cameraId->getULong());
@@ -506,7 +506,8 @@ namespace NOWA
 				{
 					workspaceBaseComponent->setUseOcean(true, this);
 				}
-			});
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "OceanComponent::createOcean");
 		}
 	}
 

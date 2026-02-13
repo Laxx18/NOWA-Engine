@@ -637,6 +637,12 @@
     <ClInclude Include="modules\DecalsModule.h">
       <Filter>modules</Filter>
     </ClInclude>
+    <ClInclude Include="gameobject\RoadComponentBase.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\WallComponentBase.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\NOWA.ico">

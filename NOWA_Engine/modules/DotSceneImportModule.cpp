@@ -1584,561 +1584,559 @@ namespace NOWA
 	}
 
 	void DotSceneImportModule::processItem(rapidxml::xml_node<>* xmlNode, Ogre::SceneNode* parent, bool justSetValues)
-	{
-		// Process attributes
-		Ogre::String name = XMLConverter::getAttrib(xmlNode, "name");
-		Ogre::String id = XMLConverter::getAttrib(xmlNode, "id");
-		Ogre::String meshFile = XMLConverter::getAttrib(xmlNode, "meshFile");
-		bool castShadows = XMLConverter::getAttribBool(xmlNode, "castShadows", true);
-		bool visible = XMLConverter::getAttribBool(xmlNode, "visible", true);
-		Ogre::Real lodDistance = XMLConverter::getAttribReal(xmlNode, "lodDistance", 0.0f);
+    {
+        // Process attributes
+        Ogre::String name = XMLConverter::getAttrib(xmlNode, "name");
+        Ogre::String id = XMLConverter::getAttrib(xmlNode, "id");
+        Ogre::String meshFile = XMLConverter::getAttrib(xmlNode, "meshFile");
+        bool castShadows = XMLConverter::getAttribBool(xmlNode, "castShadows", true);
+        bool visible = XMLConverter::getAttribBool(xmlNode, "visible", true);
+        Ogre::Real lodDistance = XMLConverter::getAttribReal(xmlNode, "lodDistance", 0.0f);
 
-		Ogre::String tempMeshFile = meshFile;
-		GameObject::eType type = GameObject::ITEM;
+        // Check if this is a procedural mesh
+        bool isProceduralMesh = (meshFile == "Procedural.mesh");
 
-		if (Ogre::String::npos != tempMeshFile.find("Plane"))
-		{
-			tempMeshFile = "Missing.mesh";
-		}
+        Ogre::String tempMeshFile = meshFile;
+        GameObject::eType type = GameObject::ITEM;
 
-		float currentTime = static_cast<Ogre::Real>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001f;
-		// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[DotSceneImportModule] Parse item: " + name + " mesh: " + meshFile);
+        if (Ogre::String::npos != tempMeshFile.find("Plane"))
+        {
+            tempMeshFile = "Missing.mesh";
+        }
 
-		Ogre::Item* item = nullptr;
+        float currentTime = static_cast<Ogre::Real>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001f;
 
-		unsigned long missingGameObjectId = 0;
-		if (true == justSetValues && false == this->missingGameObjectIds.empty())
-		{
-			rapidxml::xml_node<>* propertyElement = xmlNode->first_node("property");
-			findGameObjectId(propertyElement, missingGameObjectId);
-		}
+        Ogre::Item* item = nullptr;
 
-		GraphicsModule::RenderCommand renderCommand = [this, &item, justSetValues, xmlNode, &parent, missingGameObjectId, meshFile, &tempMeshFile, name, &type, castShadows, visible]()
-		{
-			if (false == justSetValues || missingGameObjectId != 0)
-			{
-				Ogre::v1::MeshPtr v1Mesh;
-				Ogre::MeshPtr v2Mesh;
+        unsigned long missingGameObjectId = 0;
+        if (true == justSetValues && false == this->missingGameObjectIds.empty())
+        {
+            rapidxml::xml_node<>* propertyElement = xmlNode->first_node("property");
+            findGameObjectId(propertyElement, missingGameObjectId);
+        }
 
-				try
-				{
-					if ((v1Mesh = Ogre::v1::MeshManager::getSingletonPtr()->getByName(tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME)) == nullptr)
-					{
-						v1Mesh = Ogre::v1::MeshManager::getSingletonPtr()->load(tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME,
-							Ogre::v1::HardwareBuffer::HBU_STATIC_WRITE_ONLY, Ogre::v1::HardwareBuffer::HBU_STATIC_WRITE_ONLY, true, true);
-					}
+        // Only load mesh if it's NOT procedural
+        if (false == isProceduralMesh)
+        {
+            GraphicsModule::RenderCommand renderCommand = [this, &item, justSetValues, xmlNode, &parent, missingGameObjectId, meshFile, &tempMeshFile, name, &type, castShadows, visible]()
+            {
+                if (false == justSetValues || missingGameObjectId != 0)
+                {
+                    Ogre::v1::MeshPtr v1Mesh;
+                    Ogre::MeshPtr v2Mesh;
 
-					// Ogre::Root::getSingletonPtr()->renderOneFrame();
+                    try
+                    {
+                        if ((v1Mesh = Ogre::v1::MeshManager::getSingletonPtr()->getByName(tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME)) == nullptr)
+                        {
+                            v1Mesh = Ogre::v1::MeshManager::getSingletonPtr()->load(tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, Ogre::v1::HardwareBuffer::HBU_STATIC_WRITE_ONLY,
+                                                                                    Ogre::v1::HardwareBuffer::HBU_STATIC_WRITE_ONLY, true, true);
+                        }
 
-					if (nullptr == v1Mesh)
-					{
-						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[EditorManager] Error cannot create entity, because the mesh: '"
-							+ tempMeshFile + "' could not be created.");
-						return;
-					}
+                        if (nullptr == v1Mesh)
+                        {
+                            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[EditorManager] Error cannot create entity, because the mesh: '" + tempMeshFile + "' could not be created.");
+                            return;
+                        }
 
-					if ((v2Mesh = Ogre::MeshManager::getSingletonPtr()->getByName(tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME)) == nullptr)
-					{
-						v2Mesh = Ogre::MeshManager::getSingletonPtr()->createByImportingV1(tempMeshFile, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, v1Mesh.get(), true, true, true);
-					}
-					v1Mesh->unload();
+                        if ((v2Mesh = Ogre::MeshManager::getSingletonPtr()->getByName(tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME)) == nullptr)
+                        {
+                            v2Mesh = Ogre::MeshManager::getSingletonPtr()->createByImportingV1(tempMeshFile, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, v1Mesh.get(), true, true, true);
+                        }
+                        v1Mesh->unload();
+                    }
+                    catch (Ogre::Exception& e)
+                    {
+                        try
+                        {
+                            if ((v2Mesh = Ogre::MeshManager::getSingletonPtr()->getByName(tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME)) == nullptr)
+                            {
+                                v2Mesh = Ogre::MeshManager::getSingletonPtr()->load(tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME);
+                            }
+                        }
+                        catch (...)
+                        {
+                            // Plane has no mesh yet, so skip error
+                            if (Ogre::String::npos == meshFile.find("Plane"))
+                            {
+                                Ogre::String description = e.getFullDescription();
+                                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Error loading an item with the name: " + name + " and mesh file name: " + meshFile +
+                                                                                                        "! So setting 'Missing.mesh'. Details: " + description);
+                            }
+                            // Try to load the missing.mesh to attend the user, that a resource is missing
+                            try
+                            {
+                                tempMeshFile = "Missing.mesh";
+                                v1Mesh = Ogre::v1::MeshManager::getSingleton().load(tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, Ogre::v1::HardwareBuffer::HBU_STATIC,
+                                                                                    Ogre::v1::HardwareBuffer::HBU_STATIC);
 
-				}
-				catch (Ogre::Exception& e)
-				{
-					try
-					{
-						if ((v2Mesh = Ogre::MeshManager::getSingletonPtr()->getByName(tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME)) == nullptr)
-						{
-							v2Mesh = Ogre::MeshManager::getSingletonPtr()->load(tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME);
-						}
-					}
-					catch (...)
-					{
-						// Plane has no mesh yet, so skip error
-						if (Ogre::String::npos == meshFile.find("Plane"))
-						{
-							Ogre::String description = e.getFullDescription();
-							Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Error loading an item with the name: " + name + " and mesh file name: " + meshFile
-								+ "! So setting 'Missing.mesh'. Details: " + description);
-						}
-						// Try to load the missing.mesh to attend the user, that a resource is missing
-						try
-						{
-							tempMeshFile = "Missing.mesh";
-							v1Mesh = Ogre::v1::MeshManager::getSingleton().load(tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, Ogre::v1::HardwareBuffer::HBU_STATIC, Ogre::v1::HardwareBuffer::HBU_STATIC);
+                                // Destroy a potential plane v2, because an error occurs (plane with name ... already exists)
+                                Ogre::ResourcePtr resourceV2 = Ogre::MeshManager::getSingletonPtr()->getResourceByName(name);
+                                if (nullptr != resourceV2)
+                                {
+                                    Ogre::MeshManager::getSingletonPtr()->destroyResourcePool(name);
+                                    Ogre::MeshManager::getSingletonPtr()->remove(resourceV2->getHandle());
+                                }
 
-							// Destroy a potential plane v2, because an error occurs (plane with name ... already exists)
-							Ogre::ResourcePtr resourceV2 = Ogre::MeshManager::getSingletonPtr()->getResourceByName(name);
-							if (nullptr != resourceV2)
-							{
-								Ogre::MeshManager::getSingletonPtr()->destroyResourcePool(name);
-								Ogre::MeshManager::getSingletonPtr()->remove(resourceV2->getHandle());
-							}
+                                if ((v2Mesh = Ogre::MeshManager::getSingletonPtr()->getByName(tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME)) == nullptr)
+                                {
+                                    v2Mesh = Ogre::MeshManager::getSingletonPtr()->createByImportingV1(name, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, v1Mesh.get(), true, true, true);
+                                }
+                                v1Mesh->unload();
+                            }
+                            catch (Ogre::Exception& e)
+                            {
+                                Ogre::String description = e.getFullDescription();
+                                Ogre::LogManager::getSingletonPtr()->logMessage(
+                                    Ogre::LML_CRITICAL, "[DotSceneImportModule] Mesh seems to be using a mesh serializer version, which is not supported. Skipping this entity. Details: " + description);
+                                return;
+                            }
+                        }
+                    }
+                    DeployResourceModule::getInstance()->tagResource(tempMeshFile, v2Mesh->getGroup());
 
-							if ((v2Mesh = Ogre::MeshManager::getSingletonPtr()->getByName(tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME)) == nullptr)
-							{
-								v2Mesh = Ogre::MeshManager::getSingletonPtr()->createByImportingV1(name, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, v1Mesh.get(), true, true, true);
-							}
-							v1Mesh->unload();
-						}
-						catch (Ogre::Exception& e)
-						{
-							Ogre::String description = e.getFullDescription();
-							Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Mesh seems to be using a mesh serializer version, which is not supported. Skipping this entity. Details: " + description);
-							return;
-						}
-					}
-				}
-				DeployResourceModule::getInstance()->tagResource(tempMeshFile, v2Mesh->getGroup());
+                    // Always create scene dynamic and later in game object change the type, to what has been configured
+                    item = this->sceneManager->createItem(v2Mesh, Ogre::SCENE_STATIC);
+                    item->setQueryFlags(Core::getSingletonPtr()->UNUSEDMASK);
+                    item->setName(name);
+                    item->setCastShadows(castShadows);
 
-				// Always create scene dynamic and later in game object change the type, to what has been configured
-				item = this->sceneManager->createItem(v2Mesh, Ogre::SCENE_STATIC);
-				item->setQueryFlags(Core::getSingletonPtr()->UNUSEDMASK);
-				item->setName(name);
-				item->setCastShadows(castShadows);
+                    rapidxml::xml_node<>* pElement = xmlNode->first_node("userData");
+                    if (pElement)
+                    {
+                        rapidxml::xml_node<>* propertyElement = pElement->first_node("property");
+                        bool dynamic = true;
+                        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Static")
+                        {
+                            dynamic = !XMLConverter::getAttribBool(propertyElement, "data", false);
+                            propertyElement = propertyElement->next_sibling("property");
+                        }
 
-				rapidxml::xml_node<>* pElement = xmlNode->first_node("userData");
-				if (pElement)
-				{
-					rapidxml::xml_node<>* propertyElement = pElement->first_node("property");
-					bool dynamic = true;
-					if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Static")
-					{
-						dynamic = !XMLConverter::getAttribBool(propertyElement, "data", false);
-						propertyElement = propertyElement->next_sibling("property");
-					}
+                        parent->setStatic(!dynamic);
+                        item->setStatic(!dynamic);
+                    }
 
-					parent->setStatic(!dynamic);
-					item->setStatic(!dynamic);
-				}
+                    parent->attachObject(item);
+                    item->setVisible(visible);
+                }
 
-				parent->attachObject(item);
-				item->setVisible(visible);
-			}
+                // callback to react on postload
+                if (this->sceneLoaderCallback)
+                {
+                    this->sceneLoaderCallback->onPostLoadMovableObject(item);
+                }
 
-			// callback to react on postload
-			if (this->sceneLoaderCallback)
-			{
-				this->sceneLoaderCallback->onPostLoadMovableObject(item);
-			}
+                if (false == justSetValues || missingGameObjectId != 0)
+                {
+                    rapidxml::xml_node<>* pElement = xmlNode->first_node("subitem");
 
-			if (false == justSetValues || missingGameObjectId != 0)
-			{
-				rapidxml::xml_node<>* pElement = xmlNode->first_node("subitem");
+                    size_t subItemIndexCount = 0;
+                    while (pElement)
+                    {
+                        // Read either maternal name (old) or data block name (new)
+                        Ogre::String materialFile = XMLConverter::getAttrib(pElement, "datablockName");
+                        if (false == materialFile.empty())
+                        {
+                            Ogre::HlmsManager* hlmsManager = Ogre::Root::getSingleton().getHlmsManager();
+                            Ogre::HlmsDatablock* block = hlmsManager->getDatablockNoDefault(materialFile);
+                            if (nullptr != block)
+                            {
+                                item->getSubItem(subItemIndexCount)->setDatablock(materialFile);
+                                const Ogre::String* currentDatablockName = item->getSubItem(subItemIndexCount)->getDatablock()->getNameStr();
+                                if (nullptr == currentDatablockName || *currentDatablockName != materialFile)
+                                {
+                                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Warning: Could not set datablock name: " + materialFile +
+                                                                                                            ", because propably the mesh has not tangents!");
+                                }
+                            }
+                            else
+                            {
+                                // Missing data block with ? comes from NOWA resources
+                                // Since Missing.mesh has just one sub entity, do not iterate through sub entities!
+                                break;
+                            }
 
-				size_t subItemIndexCount = 0;
-				while (pElement)
-				{
-					// Read either maternal name (old) or data block name (new)
-					Ogre::String materialFile = XMLConverter::getAttrib(pElement, "datablockName");
-					if (false == materialFile.empty())
-					{
-						// Ogre::MaterialPtr materialPtr = Ogre::MaterialManager::getSingleton().getByName(materialFile);
-						// if (false == materialPtr.isNull())
-						Ogre::HlmsManager* hlmsManager = Ogre::Root::getSingleton().getHlmsManager();
-						Ogre::HlmsDatablock* block = hlmsManager->getDatablockNoDefault(materialFile);
-						if (nullptr != block)
-						{
-							item->getSubItem(subItemIndexCount)->setDatablock(materialFile);
-							const Ogre::String* currentDatablockName = item->getSubItem(subItemIndexCount)->getDatablock()->getNameStr();
-							if (nullptr == currentDatablockName || *currentDatablockName != materialFile)
-							{
-								Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Warning: Could not set datablock name: " + materialFile + ", because propably the mesh has not tangents!");
-							}
-						}
-						else
-						{
-							// Missing data block with ? comes from NOWA resources
-							/*if (subEntityIndexCount < entity->getNumSubEntities())
-							{
-								entity->getSubEntity(subEntityIndexCount)->setDatablock("Missing");
-							}*/
-							// Since Missing.mesh has just one sub entity, do not iterate through sub entities!
-							break;
-						}
+                            // callback to react on postload
+                            if (this->sceneLoaderCallback)
+                            {
+                                this->sceneLoaderCallback->onPostLoadMovableObject(item);
+                            }
+                            subItemIndexCount++;
+                        }
+                        pElement = pElement->next_sibling("subitem");
+                    }
+                }
+            };
 
-						// callback to react on postload
-						if (this->sceneLoaderCallback)
-						{
-							this->sceneLoaderCallback->onPostLoadMovableObject(item);
-						}
-						subItemIndexCount++;
-					}
-					pElement = pElement->next_sibling("subitem");
-				}
-			}
-		};
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DotSceneImportModule::processItem");
+        }
+        else
+        {
+            // Procedural mesh - log and skip mesh loading
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[DotSceneImport] Skipping procedural mesh load for: " + name + ", component will regenerate it");
+        }
 
-		NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DotSceneImportModule::processItem");
-		
-		// Check if the entity element has user data, for game object creation
-		rapidxml::xml_node<>* pElement = xmlNode->first_node("userData");
-		if (pElement)
-		{
-			GameObjectPtr gameObjectPtr = nullptr;
-			if (false == justSetValues || missingGameObjectId != 0)
-			{
-				gameObjectPtr = GameObjectFactory::getInstance()->createOrSetGameObjectFromXML(pElement, this->sceneManager, parent, item,
-					GameObject::ITEM, this->scenePath, this->forceCreation, this->bSceneParsed);
-			}
-			else
-			{
-				bool foundId = false;
-				rapidxml::xml_node<>* propertyElement = pElement->first_node("property");
-				if (nullptr != propertyElement)
-				{
-					do
-					{
-						Ogre::String attrib = XMLConverter::getAttrib(propertyElement, "name");
-						if (propertyElement && attrib == "Id")
-						{
-							unsigned long existingGameObjectId = XMLConverter::getAttribUnsignedLong(propertyElement, "data");
-							GameObjectPtr existingGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(existingGameObjectId);
-							if (nullptr == existingGameObjectPtr)
-							{
-								// Not found, is illegal do nothing
-								break;
-							}
+        // Always create GameObject (whether mesh was loaded or not)
+        rapidxml::xml_node<>* pElement = xmlNode->first_node("userData");
+        if (pElement)
+        {
+            GameObjectPtr gameObjectPtr = nullptr;
+            if (false == justSetValues || missingGameObjectId != 0)
+            {
+                // Pass item (may be nullptr for procedural meshes)
+                gameObjectPtr =
+                    GameObjectFactory::getInstance()->createOrSetGameObjectFromXML(pElement, this->sceneManager, parent, item, GameObject::ITEM, this->scenePath, this->forceCreation, this->bSceneParsed);
+            }
+            else
+            {
+                bool foundId = false;
+                rapidxml::xml_node<>* propertyElement = pElement->first_node("property");
+                if (nullptr != propertyElement)
+                {
+                    do
+                    {
+                        Ogre::String attrib = XMLConverter::getAttrib(propertyElement, "name");
+                        if (propertyElement && attrib == "Id")
+                        {
+                            unsigned long existingGameObjectId = XMLConverter::getAttribUnsignedLong(propertyElement, "data");
+                            GameObjectPtr existingGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(existingGameObjectId);
+                            if (nullptr == existingGameObjectPtr)
+                            {
+                                // Not found, is illegal do nothing
+                                break;
+                            }
 
-							gameObjectPtr = GameObjectFactory::getInstance()->createOrSetGameObjectFromXML(pElement, this->sceneManager, parent, item,
-								type, this->scenePath, this->forceCreation, this->bSceneParsed, existingGameObjectPtr);
-							foundId = true;
-						}
-						else
-						{
-							propertyElement = propertyElement->next_sibling("property");
-						}
-					} while (nullptr != propertyElement && false == foundId);
-				}
-			}
+                            gameObjectPtr = GameObjectFactory::getInstance()->createOrSetGameObjectFromXML(pElement, this->sceneManager, parent, item, type, this->scenePath, this->forceCreation,
+                                                                                                           this->bSceneParsed, existingGameObjectPtr);
+                            foundId = true;
+                        }
+                        else
+                        {
+                            propertyElement = propertyElement->next_sibling("property");
+                        }
+                    } while (nullptr != propertyElement && false == foundId);
+                }
+            }
 
-			//  bSceneParsed: When a game object is loaded an clamp y attribute set to true, a raycast is performed and the game object's y adapted.
-			//	This is useful e.g. if a player should each stand on the ground when a different scene is loaded (scene parsed), that starts at a different height. Yet its dangerous e.g.
-			//	when just a group is loaded, because this would cause in a wrong y position.
+            if (nullptr != gameObjectPtr)
+            {
+                gameObjectPtr->setOriginalMeshNameOnLoadFailure(meshFile);
+                this->parsedGameObjectIds.emplace_back(gameObjectPtr->getId());
 
-			if (nullptr != gameObjectPtr)
-			{
-				gameObjectPtr->setOriginalMeshNameOnLoadFailure(meshFile);
-				this->parsedGameObjectIds.emplace_back(gameObjectPtr->getId());
+                if ("SunLight" == gameObjectPtr->getSceneNode()->getName())
+                {
+                    this->sunLight = NOWA::makeStrongPtr(gameObjectPtr->getComponent<LightDirectionalComponent>())->getOgreLight();
+                }
+            }
 
-				if ("SunLight" == gameObjectPtr->getSceneNode()->getName())
-				{
-					this->sunLight = NOWA::makeStrongPtr(gameObjectPtr->getComponent<LightDirectionalComponent>())->getOgreLight();
-				}
-			}
+            float dt = (static_cast<Ogre::Real>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001f) - currentTime;
+        }
+    }
 
-			float dt = (static_cast<Ogre::Real>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001f) - currentTime;
-			// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[DotSceneImportModule] Parse end item: " + name + " mesh: " + meshFile + " duration: " + Ogre::StringConverter::toString(dt) + " seconds.");
-		}
-	}
+    void DotSceneImportModule::processEntity(rapidxml::xml_node<>* xmlNode, Ogre::SceneNode* parent, bool justSetValues)
+    {
+        // Process attributes
+        Ogre::String name = XMLConverter::getAttrib(xmlNode, "name");
+        Ogre::String id = XMLConverter::getAttrib(xmlNode, "id");
+        Ogre::String meshFile = XMLConverter::getAttrib(xmlNode, "meshFile");
+        bool castShadows = XMLConverter::getAttribBool(xmlNode, "castShadows", true);
+        bool visible = XMLConverter::getAttribBool(xmlNode, "visible", true);
+        Ogre::Real lodDistance = XMLConverter::getAttribReal(xmlNode, "lodDistance", 0.0f);
 
-	void DotSceneImportModule::processEntity(rapidxml::xml_node<>* xmlNode, Ogre::SceneNode* parent, bool justSetValues)
-	{
-		// Process attributes
-		Ogre::String name = XMLConverter::getAttrib(xmlNode, "name");
-		Ogre::String id = XMLConverter::getAttrib(xmlNode, "id");
-		Ogre::String meshFile = XMLConverter::getAttrib(xmlNode, "meshFile");
-		bool castShadows = XMLConverter::getAttribBool(xmlNode, "castShadows", true);
-		bool visible = XMLConverter::getAttribBool(xmlNode, "visible", true);
-		Ogre::Real lodDistance = XMLConverter::getAttribReal(xmlNode, "lodDistance", 0.0f);
+        // Check if this is a procedural mesh
+        bool isProceduralMesh = (meshFile == "Procedural.mesh");
 
-		Ogre::String tempMeshFile = meshFile;
+        Ogre::String tempMeshFile = meshFile;
 
-		float currentTime = static_cast<Ogre::Real>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001f;
-		// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[DotSceneImportModule] Parse entity: " + name + " mesh: " + meshFile);
+        float currentTime = static_cast<Ogre::Real>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001f;
 
-		// later maybe for complex objects
-		// http://www.ogre3d.org/tikiwiki/tiki-index.php?page=PixelCountLodStrategy&structure=Cookbook
-		Ogre::v1::Entity* entity = nullptr;
-		Ogre::Item* item = nullptr;
-		Ogre::v1::MeshPtr v1Mesh;
-		Ogre::MeshPtr v2Mesh;
-		GameObject::eType type = GameObject::ENTITY;
-		// Attention with hbu_static, there is also dynamic
+        Ogre::v1::Entity* entity = nullptr;
+        Ogre::Item* item = nullptr;
+        Ogre::v1::MeshPtr v1Mesh;
+        Ogre::MeshPtr v2Mesh;
+        GameObject::eType type = GameObject::ENTITY;
 
-		if (Ogre::String::npos != tempMeshFile.find("Plane"))
-		{
-			tempMeshFile = "Missing.mesh";
-		}
+        if (Ogre::String::npos != tempMeshFile.find("Plane"))
+        {
+            tempMeshFile = "Missing.mesh";
+        }
 
-		unsigned long missingGameObjectId = 0;
-		if (true == justSetValues && false == this->missingGameObjectIds.empty())
-		{
-			rapidxml::xml_node<>* userDataElement = xmlNode->first_node("userData");
-			if (userDataElement)
-			{
-				rapidxml::xml_node<>* propertyElement = userDataElement->first_node("property");
-				this->findGameObjectId(propertyElement, missingGameObjectId);
-			}
-		}
+        unsigned long missingGameObjectId = 0;
+        if (true == justSetValues && false == this->missingGameObjectIds.empty())
+        {
+            rapidxml::xml_node<>* userDataElement = xmlNode->first_node("userData");
+            if (userDataElement)
+            {
+                rapidxml::xml_node<>* propertyElement = userDataElement->first_node("property");
+                this->findGameObjectId(propertyElement, missingGameObjectId);
+            }
+        }
 
-		GraphicsModule::RenderCommand renderCommand = [this, &entity, &item, justSetValues, xmlNode, &parent, missingGameObjectId, &v1Mesh, 
-			meshFile, &tempMeshFile, &v2Mesh, name, &type, castShadows, visible]()
-		{
-			// Maybe create, if its an already missing game object id
-			if (false == justSetValues || missingGameObjectId != 0)
-			{
-				try
-				{
-					v1Mesh = Ogre::v1::MeshManager::getSingletonPtr()->load(tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, 
-						Ogre::v1::HardwareBuffer::HBU_STATIC_WRITE_ONLY, Ogre::v1::HardwareBuffer::HBU_STATIC_WRITE_ONLY, true, true);
+        // Only load mesh if it's NOT procedural
+        if (false == isProceduralMesh)
+        {
+            GraphicsModule::RenderCommand renderCommand =
+                [this, &entity, &item, justSetValues, xmlNode, &parent, missingGameObjectId, &v1Mesh, meshFile, &tempMeshFile, &v2Mesh, name, &type, castShadows, visible]()
+            {
+                // Maybe create, if its an already missing game object id
+                if (false == justSetValues || missingGameObjectId != 0)
+                {
+                    try
+                    {
+                        v1Mesh = Ogre::v1::MeshManager::getSingletonPtr()->load(tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, Ogre::v1::HardwareBuffer::HBU_STATIC_WRITE_ONLY,
+                                                                                Ogre::v1::HardwareBuffer::HBU_STATIC_WRITE_ONLY, true, true);
 
-					// This is really expensive
-					DeployResourceModule::getInstance()->tagResource(tempMeshFile, v1Mesh->getGroup());
-				}
-				catch (Ogre::Exception& e)
-				{
-					// Backward compatibility: v2 mesh has been saved as entity, instead of item
-					try
-					{
-						if ((v2Mesh = Ogre::MeshManager::getSingletonPtr()->getByName(tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME)) == nullptr)
-						{
-							v2Mesh = Ogre::MeshManager::getSingletonPtr()->load(tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME);
-						}
-					}
-					catch (...)
-					{
-						// Plane has no mesh yet, so skip error
-						if (Ogre::String::npos == meshFile.find("Plane"))
-						{
-							Ogre::String description = e.getFullDescription();
-							Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Error loading an item with the name: " + name + " and mesh file name: " + meshFile
-								+ "! So setting 'Missing.mesh'. Details: " + description);
-						}
-						// Try to load the missing.mesh to attend the user, that a resource is missing
-						try
-						{
-							tempMeshFile = "Missing.mesh";
-							v1Mesh = Ogre::v1::MeshManager::getSingleton().load(tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, Ogre::v1::HardwareBuffer::HBU_STATIC, Ogre::v1::HardwareBuffer::HBU_STATIC);
+                        DeployResourceModule::getInstance()->tagResource(tempMeshFile, v1Mesh->getGroup());
+                    }
+                    catch (Ogre::Exception& e)
+                    {
+                        // Backward compatibility: v2 mesh has been saved as entity, instead of item
+                        try
+                        {
+                            if ((v2Mesh = Ogre::MeshManager::getSingletonPtr()->getByName(tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME)) == nullptr)
+                            {
+                                v2Mesh = Ogre::MeshManager::getSingletonPtr()->load(tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME);
+                            }
+                        }
+                        catch (...)
+                        {
+                            // Plane has no mesh yet, so skip error
+                            if (Ogre::String::npos == meshFile.find("Plane"))
+                            {
+                                Ogre::String description = e.getFullDescription();
+                                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Error loading an item with the name: " + name + " and mesh file name: " + meshFile +
+                                                                                                        "! So setting 'Missing.mesh'. Details: " + description);
+                            }
+                            // Try to load the missing.mesh to attend the user, that a resource is missing
+                            try
+                            {
+                                tempMeshFile = "Missing.mesh";
+                                v1Mesh = Ogre::v1::MeshManager::getSingleton().load(tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, Ogre::v1::HardwareBuffer::HBU_STATIC,
+                                                                                    Ogre::v1::HardwareBuffer::HBU_STATIC);
 
-							// Destroy a potential plane v2, because an error occurs (plane with name ... already exists)
-							Ogre::ResourcePtr resourceV2 = Ogre::MeshManager::getSingletonPtr()->getResourceByName(name);
-							if (nullptr != resourceV2)
-							{
-								Ogre::MeshManager::getSingletonPtr()->destroyResourcePool(name);
-								Ogre::MeshManager::getSingletonPtr()->remove(resourceV2->getHandle());
-							}
+                                // Destroy a potential plane v2, because an error occurs (plane with name ... already exists)
+                                Ogre::ResourcePtr resourceV2 = Ogre::MeshManager::getSingletonPtr()->getResourceByName(name);
+                                if (nullptr != resourceV2)
+                                {
+                                    Ogre::MeshManager::getSingletonPtr()->destroyResourcePool(name);
+                                    Ogre::MeshManager::getSingletonPtr()->remove(resourceV2->getHandle());
+                                }
 
-							if ((v2Mesh = Ogre::MeshManager::getSingletonPtr()->getByName(tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME)) == nullptr)
-							{
-								v2Mesh = Ogre::MeshManager::getSingletonPtr()->createByImportingV1(name, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, v1Mesh.get(), true, true, true);
-							}
-							v1Mesh->unload();
-						}
-						catch (Ogre::Exception& e)
-						{
-							tempMeshFile = "Missing.mesh";
-							v1Mesh = Ogre::v1::MeshManager::getSingleton().load(tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, Ogre::v1::HardwareBuffer::HBU_STATIC, Ogre::v1::HardwareBuffer::HBU_STATIC);
+                                if ((v2Mesh = Ogre::MeshManager::getSingletonPtr()->getByName(tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME)) == nullptr)
+                                {
+                                    v2Mesh = Ogre::MeshManager::getSingletonPtr()->createByImportingV1(name, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, v1Mesh.get(), true, true, true);
+                                }
+                                v1Mesh->unload();
+                            }
+                            catch (Ogre::Exception& e)
+                            {
+                                tempMeshFile = "Missing.mesh";
+                                v1Mesh = Ogre::v1::MeshManager::getSingleton().load(tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, Ogre::v1::HardwareBuffer::HBU_STATIC,
+                                                                                    Ogre::v1::HardwareBuffer::HBU_STATIC);
 
-							// Destroy a potential plane v2, because an error occurs (plane with name ... already exists)
-							Ogre::ResourcePtr resourceV2 = Ogre::MeshManager::getSingletonPtr()->getResourceByName(name);
-							if (nullptr != resourceV2)
-							{
-								Ogre::MeshManager::getSingletonPtr()->destroyResourcePool(name);
-								Ogre::MeshManager::getSingletonPtr()->remove(resourceV2->getHandle());
-							}
+                                // Destroy a potential plane v2, because an error occurs (plane with name ... already exists)
+                                Ogre::ResourcePtr resourceV2 = Ogre::MeshManager::getSingletonPtr()->getResourceByName(name);
+                                if (nullptr != resourceV2)
+                                {
+                                    Ogre::MeshManager::getSingletonPtr()->destroyResourcePool(name);
+                                    Ogre::MeshManager::getSingletonPtr()->remove(resourceV2->getHandle());
+                                }
 
-							v2Mesh = Ogre::MeshManager::getSingletonPtr()->createByImportingV1(name, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, v1Mesh.get(), true, true, true);
-							v1Mesh->unload();
-							v1Mesh.setNull();
+                                v2Mesh = Ogre::MeshManager::getSingletonPtr()->createByImportingV1(name, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, v1Mesh.get(), true, true, true);
+                                v1Mesh->unload();
+                                v1Mesh.setNull();
 
-							Ogre::String description = e.getFullDescription();
-							Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Mesh seems to be using a mesh serializer version, which is not supported. Skipping this entity. Details: " + description);
-							return;
-						}
-					}
+                                Ogre::String description = e.getFullDescription();
+                                Ogre::LogManager::getSingletonPtr()->logMessage(
+                                    Ogre::LML_CRITICAL, "[DotSceneImportModule] Mesh seems to be using a mesh serializer version, which is not supported. Skipping this entity. Details: " + description);
+                                return;
+                            }
+                        }
 
-					type = GameObject::ITEM;
-					if (nullptr != v2Mesh)
-					{
-						DeployResourceModule::getInstance()->tagResource(tempMeshFile, v2Mesh->getGroup());
-					}
-				}
-			}
+                        type = GameObject::ITEM;
+                        if (nullptr != v2Mesh)
+                        {
+                            DeployResourceModule::getInstance()->tagResource(tempMeshFile, v2Mesh->getGroup());
+                        }
+                    }
+                }
 
-			if (false == justSetValues || missingGameObjectId != 0)
-			{
-				rapidxml::xml_node<>* pElement = xmlNode->first_node("userData");
-				bool dynamic = true;
-				if (pElement)
-				{
-					rapidxml::xml_node<>* propertyElement = pElement->first_node("property");
-				
-					if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Static")
-					{
-						dynamic = !XMLConverter::getAttribBool(propertyElement, "data", false);
-						propertyElement = propertyElement->next_sibling("property");
-					}
-				}
+                if (false == justSetValues || missingGameObjectId != 0)
+                {
+                    rapidxml::xml_node<>* pElement = xmlNode->first_node("userData");
+                    bool dynamic = true;
+                    if (pElement)
+                    {
+                        rapidxml::xml_node<>* propertyElement = pElement->first_node("property");
 
-				if (GameObject::ENTITY == type)
-				{
-					// Always create scene dynamic and later in game object change the type, to what has been configured
-					entity = this->sceneManager->createEntity(v1Mesh, Ogre::SCENE_STATIC);
-					entity->setQueryFlags(Core::getSingletonPtr()->UNUSEDMASK);
-					parent->setStatic(!dynamic);
-					entity->setStatic(!dynamic);
-					parent->attachObject(entity);
+                        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Static")
+                        {
+                            dynamic = !XMLConverter::getAttribBool(propertyElement, "data", false);
+                            propertyElement = propertyElement->next_sibling("property");
+                        }
+                    }
 
-					entity->setName(name);
-					entity->setCastShadows(castShadows);
-					// Note: visible must be done after attaching!
-					entity->setVisible(visible);
-				}
-				else
-				{
-					item = this->sceneManager->createItem(v2Mesh, Ogre::SCENE_STATIC);
-					item->setQueryFlags(Core::getSingletonPtr()->UNUSEDMASK);
+                    if (GameObject::ENTITY == type)
+                    {
+                        // Always create scene dynamic and later in game object change the type, to what has been configured
+                        entity = this->sceneManager->createEntity(v1Mesh, Ogre::SCENE_STATIC);
+                        entity->setQueryFlags(Core::getSingletonPtr()->UNUSEDMASK);
+                        parent->setStatic(!dynamic);
+                        entity->setStatic(!dynamic);
+                        parent->attachObject(entity);
 
-					parent->setStatic(!dynamic);
-					item->setStatic(!dynamic);
-					parent->attachObject(item);
+                        entity->setName(name);
+                        entity->setCastShadows(castShadows);
+                        // Note: visible must be done after attaching!
+                        entity->setVisible(visible);
+                    }
+                    else
+                    {
+                        item = this->sceneManager->createItem(v2Mesh, Ogre::SCENE_STATIC);
+                        item->setQueryFlags(Core::getSingletonPtr()->UNUSEDMASK);
 
-					item->setName(name);
-					item->setCastShadows(castShadows);
-					// Note: visible must be done after attaching!
-					item->setVisible(visible);
-				}
-			}
+                        parent->setStatic(!dynamic);
+                        item->setStatic(!dynamic);
+                        parent->attachObject(item);
 
-			// callback to react on postload
-			if (this->sceneLoaderCallback)
-			{
-				this->sceneLoaderCallback->onPostLoadMovableObject(entity);
-			}
+                        item->setName(name);
+                        item->setCastShadows(castShadows);
+                        // Note: visible must be done after attaching!
+                        item->setVisible(visible);
+                    }
+                }
 
-			if (false == justSetValues || missingGameObjectId != 0)
-			{
-				rapidxml::xml_node<>* pElement = xmlNode->first_node("subentity");
+                // callback to react on postload
+                if (this->sceneLoaderCallback)
+                {
+                    this->sceneLoaderCallback->onPostLoadMovableObject(entity);
+                }
 
-				size_t subEntityIndexCount = 0;
-				while (pElement)
-				{
-					// Read either maternal name (old) or data block name (new)
-					Ogre::String materialFile = XMLConverter::getAttrib(pElement, "materialName");
-					if (true == materialFile.empty())
-					{
-						materialFile = XMLConverter::getAttrib(pElement, "datablockName");
-					}
-					if (false == materialFile.empty())
-					{
-						// Ogre::MaterialPtr materialPtr = Ogre::MaterialManager::getSingleton().getByName(materialFile);
-						// if (false == materialPtr.isNull())
-						Ogre::HlmsManager* hlmsManager = Ogre::Root::getSingleton().getHlmsManager();
-						Ogre::HlmsDatablock* block = hlmsManager->getDatablockNoDefault(materialFile);
-						if (nullptr != block)
-						{
-							if (GameObject::ENTITY == type)
-							{
-								entity->getSubEntity(subEntityIndexCount)->setDatablock(materialFile);
-								const Ogre::String* currentDatablockName = entity->getSubEntity(subEntityIndexCount)->getDatablock()->getNameStr();
-								if (nullptr == currentDatablockName || *currentDatablockName != materialFile)
-								{
-									Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Warning: Could not set datablock name: " + materialFile + ", because propably the mesh has not tangents!");
-								}
-							}
-							else
-							{
-								item->getSubItem(subEntityIndexCount)->setDatablock(materialFile);
-								const Ogre::String* currentDatablockName = item->getSubItem(subEntityIndexCount)->getDatablock()->getNameStr();
-								if (nullptr == currentDatablockName || *currentDatablockName != materialFile)
-								{
-									Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Warning: Could not set datablock name: " + materialFile + ", because propably the mesh has not tangents!");
-								}
-							}
+                if (false == justSetValues || missingGameObjectId != 0)
+                {
+                    rapidxml::xml_node<>* pElement = xmlNode->first_node("subentity");
 
-						}
-						else
-						{
-							// Missing data block with ? comes from NOWA resources
-							/*if (subEntityIndexCount < entity->getNumSubEntities())
-							{
-								entity->getSubEntity(subEntityIndexCount)->setDatablock("Missing");
-							}*/
-							// Since Missing.mesh has just one sub entity, do not iterate through sub entities!
-							break;
-						}
+                    size_t subEntityIndexCount = 0;
+                    while (pElement)
+                    {
+                        // Read either maternal name (old) or data block name (new)
+                        Ogre::String materialFile = XMLConverter::getAttrib(pElement, "materialName");
+                        if (true == materialFile.empty())
+                        {
+                            materialFile = XMLConverter::getAttrib(pElement, "datablockName");
+                        }
+                        if (false == materialFile.empty())
+                        {
+                            Ogre::HlmsManager* hlmsManager = Ogre::Root::getSingleton().getHlmsManager();
+                            Ogre::HlmsDatablock* block = hlmsManager->getDatablockNoDefault(materialFile);
+                            if (nullptr != block)
+                            {
+                                if (GameObject::ENTITY == type)
+                                {
+                                    entity->getSubEntity(subEntityIndexCount)->setDatablock(materialFile);
+                                    const Ogre::String* currentDatablockName = entity->getSubEntity(subEntityIndexCount)->getDatablock()->getNameStr();
+                                    if (nullptr == currentDatablockName || *currentDatablockName != materialFile)
+                                    {
+                                        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Warning: Could not set datablock name: " + materialFile +
+                                                                                                                ", because propably the mesh has not tangents!");
+                                    }
+                                }
+                                else
+                                {
+                                    item->getSubItem(subEntityIndexCount)->setDatablock(materialFile);
+                                    const Ogre::String* currentDatablockName = item->getSubItem(subEntityIndexCount)->getDatablock()->getNameStr();
+                                    if (nullptr == currentDatablockName || *currentDatablockName != materialFile)
+                                    {
+                                        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Warning: Could not set datablock name: " + materialFile +
+                                                                                                                ", because propably the mesh has not tangents!");
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                // Missing data block with ? comes from NOWA resources
+                                // Since Missing.mesh has just one sub entity, do not iterate through sub entities!
+                                break;
+                            }
 
-						// callback to react on postload
-						if (this->sceneLoaderCallback)
-						{
-							this->sceneLoaderCallback->onPostLoadMovableObject(entity);
-						}
-						subEntityIndexCount++;
-					}
-					pElement = pElement->next_sibling("subentity");
-				}
-			}
-		};
+                            // callback to react on postload
+                            if (this->sceneLoaderCallback)
+                            {
+                                this->sceneLoaderCallback->onPostLoadMovableObject(entity);
+                            }
+                            subEntityIndexCount++;
+                        }
+                        pElement = pElement->next_sibling("subentity");
+                    }
+                }
+            };
 
-		NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DotSceneImportModule::processEntity");
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DotSceneImportModule::processEntity");
+        }
+        else
+        {
+            // Procedural mesh - log and skip mesh loading
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[DotSceneImport] Skipping procedural mesh load for entity: " + name + ", component will regenerate it");
+        }
 
-		// Check if the entity element has user data, for game object creation
-		rapidxml::xml_node<>* pElement = xmlNode->first_node("userData");
-		if (pElement)
-		{
-			GameObjectPtr gameObjectPtr = nullptr;
-			
-			if (false == justSetValues || missingGameObjectId != 0)
-			{
-				// Backward compatibility: Plane is now v2, but if its loaded as if its an entity, it must be converted to item!
-				if (GameObject::ENTITY == type)
-				{
-					gameObjectPtr = GameObjectFactory::getInstance()->createOrSetGameObjectFromXML(pElement, this->sceneManager, parent, entity,
-						type, this->scenePath, this->forceCreation, this->bSceneParsed);
-				}
-				else
-				{
-					gameObjectPtr = GameObjectFactory::getInstance()->createOrSetGameObjectFromXML(pElement, this->sceneManager, parent, item,
-						type, this->scenePath, this->forceCreation, this->bSceneParsed);
-				}
-			}
-			else
-			{
-				bool foundId = false;
-				rapidxml::xml_node<>* propertyElement = pElement->first_node("property");
-				if (nullptr != propertyElement)
-				{
-					do
-					{
-						Ogre::String attrib = XMLConverter::getAttrib(propertyElement, "name");
-						if (propertyElement && attrib == "Id")
-						{
-							unsigned long existingGameObjectId = XMLConverter::getAttribUnsignedLong(propertyElement, "data");
-							GameObjectPtr existingGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(existingGameObjectId);
+        // Always create GameObject (whether mesh was loaded or not)
+        rapidxml::xml_node<>* pElement = xmlNode->first_node("userData");
+        if (pElement)
+        {
+            GameObjectPtr gameObjectPtr = nullptr;
 
-							gameObjectPtr = GameObjectFactory::getInstance()->createOrSetGameObjectFromXML(pElement, this->sceneManager, parent, entity,
-								type, this->scenePath, this->forceCreation, this->bSceneParsed, existingGameObjectPtr);
-							foundId = true;
-						}
-						else
-						{
-							propertyElement = propertyElement->next_sibling("property");
-						}
-					} while (nullptr != propertyElement && false == foundId);
-				}
-			}
+            if (false == justSetValues || missingGameObjectId != 0)
+            {
+                // Backward compatibility: Plane is now v2, but if its loaded as if its an entity, it must be converted to item!
+                if (GameObject::ENTITY == type)
+                {
+                    gameObjectPtr = GameObjectFactory::getInstance()->createOrSetGameObjectFromXML(pElement, this->sceneManager, parent, entity, type, this->scenePath, this->forceCreation, this->bSceneParsed);
+                }
+                else
+                {
+                    gameObjectPtr = GameObjectFactory::getInstance()->createOrSetGameObjectFromXML(pElement, this->sceneManager, parent, item, type, this->scenePath, this->forceCreation, this->bSceneParsed);
+                }
+            }
+            else
+            {
+                bool foundId = false;
+                rapidxml::xml_node<>* propertyElement = pElement->first_node("property");
+                if (nullptr != propertyElement)
+                {
+                    do
+                    {
+                        Ogre::String attrib = XMLConverter::getAttrib(propertyElement, "name");
+                        if (propertyElement && attrib == "Id")
+                        {
+                            unsigned long existingGameObjectId = XMLConverter::getAttribUnsignedLong(propertyElement, "data");
+                            GameObjectPtr existingGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(existingGameObjectId);
 
-			//  bSceneParsed: When a game object is loaded an clamp y attribute set to true, a raycast is performed and the game object's y adapted.
-			//	This is useful e.g. if a player should each stand on the ground when a different world is loaded (scene parsed), that starts at a different height. Yet its dangerous e.g.
-			//	when just a group is loaded, because this would cause in a wrong y position.
+                            gameObjectPtr = GameObjectFactory::getInstance()->createOrSetGameObjectFromXML(pElement, this->sceneManager, parent, entity, type, this->scenePath, this->forceCreation,
+                                                                                                           this->bSceneParsed, existingGameObjectPtr);
+                            foundId = true;
+                        }
+                        else
+                        {
+                            propertyElement = propertyElement->next_sibling("property");
+                        }
+                    } while (nullptr != propertyElement && false == foundId);
+                }
+            }
 
-			if (nullptr != gameObjectPtr)
-			{
-				gameObjectPtr->setOriginalMeshNameOnLoadFailure(meshFile);
-				this->parsedGameObjectIds.emplace_back(gameObjectPtr->getId());
+            if (nullptr != gameObjectPtr)
+            {
+                gameObjectPtr->setOriginalMeshNameOnLoadFailure(meshFile);
+                this->parsedGameObjectIds.emplace_back(gameObjectPtr->getId());
 
-				if ("SunLight" == gameObjectPtr->getSceneNode()->getName())
-				{
-					this->sunLight = NOWA::makeStrongPtr(gameObjectPtr->getComponent<LightDirectionalComponent>())->getOgreLight();
-				}
-			}
+                if ("SunLight" == gameObjectPtr->getSceneNode()->getName())
+                {
+                    this->sunLight = NOWA::makeStrongPtr(gameObjectPtr->getComponent<LightDirectionalComponent>())->getOgreLight();
+                }
+            }
 
-			float dt = (static_cast<Ogre::Real>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001f) - currentTime;
-			// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[DotSceneImportModule] Parse end entity: " + name + " mesh: " + meshFile + " duration: " + Ogre::StringConverter::toString(dt) + " seconds");
-		}
-	}
+            float dt = (static_cast<Ogre::Real>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001f) - currentTime;
+        }
+    }
 
 	void DotSceneImportModule::processTerra(rapidxml::xml_node<>* xmlNode, Ogre::SceneNode* parent, bool justSetValues)
 	{
