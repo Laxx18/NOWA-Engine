@@ -34,8 +34,8 @@
 			<position x="0" y="37.2738" z="50"/>
 			<rotation qw="0.857167" qx="-0.515038" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="SunLight" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
-				<subentity index="0" datablockName="WhiteLine"/>
+			<item name="SunLight" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
+				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1111111113"/>
@@ -70,14 +70,14 @@
 					<property type="12" name="CastShadows" data="true"/>
 					<property type="12" name="ShowDummyEntity" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="MainCamera" id="4010617415">
 			<position x="0.78017" y="23.1385" z="26.2591"/>
 			<rotation qw="0.940472" qx="-0.339439" qy="0.0161182" qz="0.0058179"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
-				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
+			<item name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
+				<subitem index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1111111112"/>
@@ -137,14 +137,14 @@
 					<property type="6" name="ShadowSplitPadding" data="1"/>
 					<property type="7" name="SkyBoxName" data="dragontooth_ridge_night_cube.dds"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="MainGameObject" id="1366663313">
 			<position x="0" y="0" z="0"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="MainGameObject" meshFile="Node.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="WhiteLine"/>
+			<item name="MainGameObject" meshFile="Node.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1111111111"/>
@@ -166,7 +166,7 @@
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="7" name="DataBlock0" data="WhiteLine"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Plane_0" id="1695645354">
 			<position x="0" y="0" z="0"/>
@@ -221,8 +221,8 @@
 			<position x="-2.15906" y="0.0484964" z="-9.47281"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Monster01_0" meshFile="Monster01.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="Monster01"/>
+			<item name="Monster01_0" meshFile="Monster01.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="Monster01"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3759163986"/>
@@ -243,7 +243,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="Monster01"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -307,16 +307,16 @@
 					<property type="6" name="WanderRadius" data="1.2"/>
 					<property type="6" name="WanderDistance" data="10"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="FlashLight_0" id="3282595484">
 			<position x="-1.70876" y="0.496298" z="-9.40592"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="FlashLight_0" meshFile="FlashLight.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="FlashLightGlass"/>
-				<subentity index="1" datablockName="FlashLightTorch"/>
-				<subentity index="2" datablockName="FlashLightButton"/>
+			<item name="FlashLight_0" meshFile="FlashLight.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="FlashLightGlass"/>
+				<subitem index="1" datablockName="FlashLightTorch"/>
+				<subitem index="2" datablockName="FlashLightButton"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="181024561"/>
@@ -340,14 +340,14 @@
 					<property type="7" name="DataBlock1" data="FlashLightTorch"/>
 					<property type="7" name="DataBlock2" data="FlashLightButton"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="LightSpot_0" id="2422588856">
 			<position x="-1.72803" y="0.23208" z="-9.163"/>
 			<rotation qw="-1.62921e-07" qx="0" qy="1" qz="0"/>
 			<scale x="1.09191" y="1.09191" z="3"/>
-			<entity name="LightSpot_0" meshFile="LightSpot.mesh" castShadows="false" visible="true">
-				<subentity index="0" datablockName="WhiteLine"/>
+			<item name="LightSpot_0" meshFile="LightSpot.mesh" castShadows="false" visible="true">
+				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="4247252218"/>
@@ -387,7 +387,7 @@
 					<property type="6" name="NearClipDistance" data="0.1"/>
 					<property type="12" name="ShowDummyEntity" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 	</nodes>
 </scene>

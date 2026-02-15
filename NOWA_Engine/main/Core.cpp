@@ -961,7 +961,7 @@ namespace NOWA
 		// Note: If via DeployResourceModule deploy has been called for an external app, in the project folder a media folder has been created and all at the deploy timepoint created resources (meshes, json, textures) have been copied there.
 		// Also a appDeployed.cfg has been created with a resource group name called "Project", which points to that place, so if the app is started, all those textures in that folder will be preloaded at app start
 		// So scene loading times will be improved.
-		this->preLoadTextures("Project");
+		// this->preLoadTextures("Project");
 
 		try
 		{
@@ -1206,7 +1206,165 @@ namespace NOWA
 
 			archiveManager.unload(this->writeAccessFolder);
 		}
-	}
+    }
+
+    // Header: Add configuration
+    struct TexturePreloadConfig
+    {
+        std::vector<Ogre::String> resourceGroups;
+        std::vector<Ogre::String> explicitTextures; // Specific textures to force-load
+        std::vector<Ogre::String> excludePatterns;  // e.g., "*_normal.png" for normals you don't need yet
+        bool preloadNormalMaps = true;
+        bool preloadMetalnessRoughness = true;
+        size_t maxConcurrentLoads = 8; // Parallel loading limit
+    };
+
+    // Improved version
+    void Core::preLoadTextures(const TexturePreloadConfig& config)
+    {
+        ENQUEUE_RENDER_COMMAND_MULTI("Core::preLoadTextures", _1(config),
+		{
+            this->preLoadTexturesImpl(config);
+		});
+    }
+
+    void Core::preLoadTexturesImpl(const TexturePreloadConfig& config)
+    {
+        Ogre::TextureGpuManager* textureManager = Ogre::Root::getSingleton().getRenderSystem()->getTextureGpuManager();
+
+        std::vector<Ogre::String> filters = {"png", "jpg", "bmp", "tga", "gif", "tif", "dds"};
+        std::set<Ogre::TextureGpu*> texturesToLoad;
+
+        Ogre::LogManager::getSingleton().logMessage("[Core] Starting texture preload for " + Ogre::StringConverter::toString(config.resourceGroups.size()) + " resource groups");
+
+        Ogre::Timer timer;
+        size_t textureCount = 0;
+        size_t skippedCount = 0;
+
+        // 1. Collect textures to load
+        for (const auto& resourceGroupName : config.resourceGroups)
+        {
+            // Check if resource group exists
+            if (!Ogre::ResourceGroupManager::getSingleton().resourceGroupExists(resourceGroupName))
+            {
+                Ogre::LogManager::getSingleton().logMessage("[Core] Warning: Resource group '" + resourceGroupName + "' does not exist. Skipping.");
+                continue;
+            }
+
+            for (const auto& filter : filters)
+            {
+                Ogre::StringVectorPtr names = Ogre::ResourceGroupManager::getSingleton().findResourceNames(resourceGroupName, "*." + filter);
+
+                for (const auto& textureName : *names)
+                {
+                    // Skip if matches exclude pattern
+                    bool shouldExclude = false;
+                    for (const auto& pattern : config.excludePatterns)
+                    {
+                        if (Ogre::StringUtil::match(textureName, pattern))
+                        {
+                            shouldExclude = true;
+                            skippedCount++;
+                            break;
+                        }
+                    }
+                    if (shouldExclude)
+                    {
+                        continue;
+                    }
+
+                    // Skip normal/metalness maps if configured
+                    if (!config.preloadNormalMaps && (Ogre::StringUtil::endsWith(textureName, "_normal.png") || Ogre::StringUtil::endsWith(textureName, "_n.png")))
+                    {
+                        skippedCount++;
+                        continue;
+                    }
+
+                    if (!config.preloadMetalnessRoughness && (Ogre::StringUtil::endsWith(textureName, "_metalness.png") || Ogre::StringUtil::endsWith(textureName, "_roughness.png")))
+                    {
+                        skippedCount++;
+                        continue;
+                    }
+
+                    // Create or retrieve texture
+                    try
+                    {
+                        Ogre::TextureGpu* texture = textureManager->createOrRetrieveTexture(textureName, Ogre::GpuPageOutStrategy::SaveToSystemRam, Ogre::TextureFlags::AutomaticBatching, Ogre::TextureTypes::Type2D, resourceGroupName,
+                            Ogre::TextureFilter::TypeGenerateDefaultMipmaps);
+
+                        if (texture && texture->getResidencyStatus() != Ogre::GpuResidency::Resident)
+                        {
+                            texturesToLoad.insert(texture);
+                            textureCount++;
+                        }
+                    }
+                    catch (const Ogre::Exception& e)
+                    {
+                        Ogre::LogManager::getSingleton().logMessage("[Core] Failed to create texture '" + textureName + "': " + e.getFullDescription(), Ogre::LML_CRITICAL);
+                    }
+                }
+            }
+        }
+
+        // 2. Add explicit textures
+        for (const auto& textureName : config.explicitTextures)
+        {
+            try
+            {
+                Ogre::TextureGpu* texture = textureManager->findTextureNoThrow(textureName);
+                if (!texture)
+                {
+                    texture = textureManager->createOrRetrieveTexture(textureName, Ogre::GpuPageOutStrategy::SaveToSystemRam, Ogre::TextureFlags::AutomaticBatching, Ogre::TextureTypes::Type2D,
+                        Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, Ogre::TextureFilter::TypeGenerateDefaultMipmaps);
+                }
+
+                if (texture && texture->getResidencyStatus() != Ogre::GpuResidency::Resident)
+                {
+                    texturesToLoad.insert(texture);
+                    textureCount++;
+                }
+            }
+            catch (const Ogre::Exception& e)
+            {
+                Ogre::LogManager::getSingleton().logMessage("[Core] Failed to load explicit texture '" + textureName + "': " + e.getFullDescription(), Ogre::LML_CRITICAL);
+            }
+        }
+
+        Ogre::LogManager::getSingleton().logMessage("[Core] Found " + Ogre::StringConverter::toString(textureCount) + " textures to preload (skipped " + Ogre::StringConverter::toString(skippedCount) + ")");
+
+        // 3. Schedule all textures for loading
+        for (Ogre::TextureGpu* texture : texturesToLoad)
+        {
+            texture->scheduleTransitionTo(Ogre::GpuResidency::Resident);
+        }
+
+        // 4. Wait for completion
+        textureManager->waitForStreamingCompletion();
+
+        Ogre::LogManager::getSingleton().logMessage("[Core] Texture preload completed in " + Ogre::StringConverter::toString(timer.getMilliseconds()) + "ms");
+    }
+
+    // Scene-specific preloading
+    void Core::preLoadSceneTextures(const Ogre::String& sceneName)
+    {
+        TexturePreloadConfig config;
+
+        // Add scene's resource group
+        config.resourceGroups.push_back("Projects"); // or derive from scene name
+
+        // Optionally: Read from scene metadata which textures are critical
+        // config.explicitTextures = readCriticalTexturesFromScene(sceneName);
+
+        // For editor, you might want all textures
+        // For game, you might exclude some
+        if (this->isGame) // if you have such a flag
+        {
+            config.preloadNormalMaps = false;                      // Load on-demand
+            config.excludePatterns = {"*_emission*", "*_detail*"}; // Load these later
+        }
+
+        preLoadTextures(config);
+    }
 
 	Core* Core::getSingletonPtr(void)
 	{
@@ -3909,72 +4067,6 @@ namespace NOWA
 		}
 
 		return textureNames;
-	}
-
-	void Core::preLoadTextures(const Ogre::String& resourceGroupName)
-	{
-		std::vector<Ogre::String> filters = { "png", "jpg", "bmp", "tga", "gif", "tif", "dds" };
-
-		std::set<Ogre::String> textureNames;
-
-		Ogre::TextureGpuManager* textureManager = Ogre::Root::getSingleton().getRenderSystem()->getTextureGpuManager();
-
-		bool resourceGroupExisting = false;
-
-		bool skip = false;
-
-		for (auto& currentResourceGroupName : this->resourceGroupNames)
-		{
-			if (currentResourceGroupName != resourceGroupName)
-			{
-				continue;
-			}
-
-			resourceGroupExisting = true;
-
-			this->getEngineResourceListener()->scriptParseStarted("Textures", skip);
-
-			// Ogre::StringVector extensions = Ogre::Codec::getExtensions();
-			// for (Ogre::StringVector::iterator itExt = extensions.begin(); itExt != extensions.end(); ++itExt)
-			for (auto& filter : filters)
-			{
-				Ogre::StringVectorPtr names = Ogre::ResourceGroupManager::getSingletonPtr()->findResourceNames(currentResourceGroupName, "*." + filter/**itExt*/);
-				for (Ogre::StringVector::iterator itName = names->begin(); itName != names->end(); ++itName)
-				{
-					Ogre::String textureName = *itName;
-
-					Ogre::uint32 textureFlags = Ogre::TextureFlags::AutomaticBatching;
-					Ogre::uint32 filters = Ogre::TextureFilter::FilterTypes::TypeGenerateDefaultMipmaps;
-
-					// Really important: createOrRetrieveTexture when its created, its width/height is 0 etc. so the texture is just prepared
-					// it will be filled with correct data when setDataBlock is called
-					Ogre::TextureGpu* texture = textureManager->createOrRetrieveTexture(textureName,
-						Ogre::GpuPageOutStrategy::SaveToSystemRam, textureFlags, Ogre::TextureTypes::Type2D,
-						currentResourceGroupName, filters, 0u);
-
-					// Check if its a valid texture
-					if (nullptr != texture)
-					{
-						try
-						{
-							texture->scheduleTransitionTo(Ogre::GpuResidency::Resident);
-								
-						}
-						catch (const Ogre::Exception& exception)
-						{
-
-						}
-					}
-				}
-			}
-		}
-
-		if (true == resourceGroupExisting)
-		{
-			textureManager->waitForStreamingCompletion();
-
-			this->getEngineResourceListener()->scriptParseEnded("Textures ended", skip);
-		}
 	}
 
 	std::pair<bool, Ogre::String> Core::getMeshVersion(const Ogre::String& meshName)

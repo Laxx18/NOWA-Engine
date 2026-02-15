@@ -136,97 +136,97 @@ bool ProceduralRoadComponent::init(rapidxml::xml_node<>*& propertyElement)
 {
     GameObjectComponent::init(propertyElement);
 
-    if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Activated")
+    if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralRoadComponent::AttrActivated())
     {
         this->activated->setValue(XMLConverter::getAttribBool(propertyElement, "data", true));
         propertyElement = propertyElement->next_sibling("property");
     }
-    if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "RoadWidth")
+    if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralRoadComponent::AttrRoadWidth())
     {
         this->roadWidth->setValue(XMLConverter::getAttribReal(propertyElement, "data", 4.0f));
         propertyElement = propertyElement->next_sibling("property");
     }
-    if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "EdgeWidth")
+    if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralRoadComponent::AttrEdgeWidth())
     {
         this->edgeWidth->setValue(XMLConverter::getAttribReal(propertyElement, "data", 0.5f));
         propertyElement = propertyElement->next_sibling("property");
     }
-    if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "RoadStyle")
+    if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralRoadComponent::AttrRoadStyle())
     {
         this->roadStyle->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data"));
         propertyElement = propertyElement->next_sibling("property");
     }
-    if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "SnapToGrid")
+    if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralRoadComponent::AttrSnapToGrid())
     {
         this->snapToGrid->setValue(XMLConverter::getAttribBool(propertyElement, "data", false));
         propertyElement = propertyElement->next_sibling("property");
     }
-    if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "GridSize")
+    if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralRoadComponent::AttrGridSize())
     {
         this->gridSize->setValue(XMLConverter::getAttribReal(propertyElement, "data", 1.0f));
         propertyElement = propertyElement->next_sibling("property");
     }
-    if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AdaptToGround")
+    if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralRoadComponent::AttrAdaptToGround())
     {
         this->adaptToGround->setValue(XMLConverter::getAttribBool(propertyElement, "data", true));
         propertyElement = propertyElement->next_sibling("property");
     }
-    if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "HeightOffset")
+    if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralRoadComponent::AttrHeightOffset())
     {
         this->heightOffset->setValue(XMLConverter::getAttribReal(propertyElement, "data", 0.1f));
         propertyElement = propertyElement->next_sibling("property");
     }
-    if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "MaxGradient")
+    if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralRoadComponent::AttrMaxGradient())
     {
         this->maxGradient->setValue(XMLConverter::getAttribReal(propertyElement, "data", 15.0f));
         propertyElement = propertyElement->next_sibling("property");
     }
-    if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "SmoothingFactor")
+    if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralRoadComponent::AttrSmoothingFactor())
     {
         this->smoothingFactor->setValue(XMLConverter::getAttribReal(propertyElement, "data", 0.5f));
         propertyElement = propertyElement->next_sibling("property");
     }
-    if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "EnableBanking")
+    if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralRoadComponent::AttrEnableBanking())
     {
         this->enableBanking->setValue(XMLConverter::getAttribBool(propertyElement, "data", false));
         propertyElement = propertyElement->next_sibling("property");
     }
-    if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "BankingAngle")
+    if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralRoadComponent::AttrBankingAngle())
     {
         this->bankingAngle->setValue(XMLConverter::getAttribReal(propertyElement, "data", 5.0f));
         propertyElement = propertyElement->next_sibling("property");
     }
-    if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "CurveSubdivisions")
+    if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralRoadComponent::AttrCurveSubdivisions())
     {
         this->curveSubdivisions->setValue(XMLConverter::getAttribInt(propertyElement, "data", 10));
         propertyElement = propertyElement->next_sibling("property");
     }
-    if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "CenterDatablock")
+    if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralRoadComponent::AttrCenterDatablock())
     {
         this->centerDatablock->setValue(XMLConverter::getAttrib(propertyElement, "data"));
         propertyElement = propertyElement->next_sibling("property");
     }
-    if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "EdgeDatablock")
+    if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralRoadComponent::AttrEdgeDatablock())
     {
         this->edgeDatablock->setValue(XMLConverter::getAttrib(propertyElement, "data"));
         propertyElement = propertyElement->next_sibling("property");
     }
-    if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "CenterUVTiling")
+    if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralRoadComponent::AttrCenterUVTiling())
     {
         this->centerUVTiling->setValue(XMLConverter::getAttribVector2(propertyElement, "data"));
         propertyElement = propertyElement->next_sibling("property");
     }
-    if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "EdgeUVTiling")
+    if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralRoadComponent::AttrEdgeUVTiling())
     {
         this->edgeUVTiling->setValue(XMLConverter::getAttribVector2(propertyElement, "data"));
         propertyElement = propertyElement->next_sibling("property");
     }
-    if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "CurbHeight")
+    if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralRoadComponent::AttrCurbHeight())
     {
         this->curbHeight->setValue(XMLConverter::getAttribReal(propertyElement, "data", 0.15f));
         propertyElement = propertyElement->next_sibling("property");
     }
-    if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "TerrainSampleInterval")
+    if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralRoadComponent::AttrTerrainSampleInterval())
     {
         this->terrainSampleInterval->setValue(XMLConverter::getAttribReal(propertyElement, "data", 2.0f));
         propertyElement = propertyElement->next_sibling("property");

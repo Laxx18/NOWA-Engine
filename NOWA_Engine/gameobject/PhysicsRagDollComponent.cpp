@@ -37,6 +37,7 @@ namespace NOWA
 		oldAnimationId(-1)
 	{
 		this->boneConfigFile->setDescription("Name of the XML config file, no path, e.g. FlubberRagdoll.rag");
+		this->boneConfigFile->addUserData(GameObject::AttrActionFileOpenDialog(), "Models");
 		// Even if the value does not change, force resetting the same value, so that the script will re-parsed
 		// this->boneConfigFile->setUserData("ForceSet");
 
@@ -589,7 +590,7 @@ namespace NOWA
 				boost::shared_ptr<EventDataGameObjectIsInRagDollingState> eventDataGameObjectIsInRagDollingState(new EventDataGameObjectIsInRagDollingState(this->gameObjectPtr->getId(), true));
 				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGameObjectIsInRagDollingState);
 
-				if (this->rdOldState == PhysicsRagDollComponent::PARTIAL_RAGDOLLING)
+				// if (this->rdOldState == PhysicsRagDollComponent::PARTIAL_RAGDOLLING)
 				{
 					this->initialPosition = this->gameObjectPtr->getSceneNode()->getPosition();
 					this->initialScale = this->gameObjectPtr->getSceneNode()->getScale();
@@ -1588,6 +1589,11 @@ namespace NOWA
 		}
 		else if (state == "Ragdolling")
 		{
+            if (nullptr == this->gameObjectPtr)
+            {
+                return;
+            }
+
 			if (this->rdState == PhysicsRagDollComponent::RAGDOLLING)
 			{
 				return;
@@ -1950,79 +1956,55 @@ namespace NOWA
 		Ogre::Vector3 inertia;
 		Ogre::Vector3 massOrigin;
 
-		// Partial ragdolling root bone can be left off, so that position and orientation is taken from whole mesh (position, orientation)
-		// This is useful, because when attaching to a root bone, it may be that the bone is somewhat feeble and so would be the whole character!
-
-		// Store the initial orientation and position
 		if (true == partial && nullptr == parentRagBone)
-		{
-			this->initialBoneOrientation = this->physicsRagDollComponent->initialOrientation;
-			// this->ogreBone->_setDerivedOrientation(this->initialBoneOrientation);
-			this->initialBonePosition = this->physicsRagDollComponent->initialPosition;
-		}
-		else
-		{
-			// Tried several ways, but this remains the only way, rag doll bones are transformed correctly to physics collision hulls
-			Ogre::Vector3 globalPos = ogreBone->_getDerivedPosition();
-			Ogre::Quaternion globalOrient = ogreBone->_getDerivedOrientation();
-			
-			// Scaling must be applied, else if a huge scaled down character is used, a bone could be at position 4 60 -19
-			globalPos *= this->physicsRagDollComponent->initialScale;
-			globalPos = this->physicsRagDollComponent->initialOrientation * globalPos;
+        {
+            this->initialBoneOrientation = this->physicsRagDollComponent->initialOrientation;
+            this->initialBonePosition = this->physicsRagDollComponent->initialPosition;
+        }
+        else
+        {
+            Ogre::Vector3 globalPos = ogreBone->_getDerivedPosition();
+            globalPos *= this->physicsRagDollComponent->initialScale;
+            globalPos = this->physicsRagDollComponent->initialOrientation * globalPos;
+            globalPos += this->physicsRagDollComponent->initialPosition;
 
-			globalOrient = this->physicsRagDollComponent->initialOrientation * globalOrient;
-			// Set bone local position and add to world position of the character
-			globalPos += this->physicsRagDollComponent->initialPosition /*+ Ogre::Vector3(0.2f, 0.0f, 0.2f)*/;
+            this->initialBonePosition = globalPos;
 
-			// Same as:
-			// Ogre::Vector3 globalPos = this->physicsRagDollComponent->gameObjectPtr->getSceneNode()->_getFullTransform() * ogreBone->_getDerivedPosition();
-
-			this->initialBoneOrientation = globalOrient;
-			this->initialBonePosition = globalPos;
-
-			//if (nullptr != parentRagBone)
-			//{
-			//	// Ogre::Quaternion offsetOrient = (this->initialBoneOrientation.Inverse()) * this->physicsRagDollComponent->gameObjectPtr->getSceneNode()->_getDerivedOrientation();
-			//	// Ogre::Vector3 offsetPos = this->initialBoneOrientation.Inverse() * (this->physicsRagDollComponent->gameObjectPtr->getSceneNode()->_getDerivedPosition() - this->initialBonePosition);
-
-			//	// Ogre::Vector3 offsetPos = this->initialBoneOrientation.Inverse() * (this->parentRagBone->getOffset() - this->initialBonePosition);
-			//	Ogre::Vector3 offsetPos = this->initialBonePosition - Ogre::Vector3(0.0f, 0.9f, 0.0f) --> better via rootragbone;
-
-			//	// this->initialBoneOrientation = offsetOrient;
-			//	this->initialBonePosition = offsetPos;
-			//}
-		}
+            // Simply use the derived orientation directly
+            Ogre::Quaternion globalOrient = ogreBone->_getDerivedOrientation();
+            this->initialBoneOrientation = this->physicsRagDollComponent->initialOrientation * globalOrient;
+        }
 
 		// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PhysicsRagDollComponent] ##########name: "
 		// 		+ name + " pos: " + Ogre::StringConverter::toString(this->initialBonePosition) + " ori: " + Ogre::StringConverter::toString(this->initialBoneOrientation));
 
 		// Bones can have really weird nearby zero values, so trunc those ugly values
-		if (Ogre::Math::RealEqual(this->initialBonePosition.x, 0.0f))
+        if (Ogre::Math::RealEqual(this->initialBonePosition.x, 0.0f, 0.001f))
 		{
 			this->initialBonePosition.x = 0.0f;
 		}
-		if (Ogre::Math::RealEqual(this->initialBonePosition.y, 0.0f))
+        if (Ogre::Math::RealEqual(this->initialBonePosition.y, 0.0f, 0.001f))
 		{
 			this->initialBonePosition.y = 0.0f;
 		}
-		if (Ogre::Math::RealEqual(this->initialBonePosition.z, 0.0f))
+        if (Ogre::Math::RealEqual(this->initialBonePosition.z, 0.0f, 0.001f))
 		{
 			this->initialBonePosition.z = 0.0f;
 		}
 
-		if (Ogre::Math::RealEqual(this->initialBoneOrientation.x, 0.0f))
+		if (Ogre::Math::RealEqual(this->initialBoneOrientation.x, 0.0f, 0.001f))
 		{
 			this->initialBoneOrientation.x = 0.0f;
 		}
-		if (Ogre::Math::RealEqual(this->initialBoneOrientation.y, 0.0f))
+        if (Ogre::Math::RealEqual(this->initialBoneOrientation.y, 0.0f, 0.001f))
 		{
 			this->initialBoneOrientation.y = 0.0f;
 		}
-		if (Ogre::Math::RealEqual(this->initialBoneOrientation.z, 0.0f))
+        if (Ogre::Math::RealEqual(this->initialBoneOrientation.z, 0.0f, 0.001f))
 		{
 			this->initialBoneOrientation.z = 0.0f;
 		}
-		if (Ogre::Math::RealEqual(this->initialBoneOrientation.w, 0.0f))
+        if (Ogre::Math::RealEqual(this->initialBoneOrientation.w, 0.0f, 0.001f))
 		{
 			this->initialBoneOrientation.w = 0.0f;
 		}
@@ -2042,71 +2024,65 @@ namespace NOWA
 		{
 			case PhysicsRagDollComponent::RagBone::BS_BOX:
 			{
-				ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsRagDollComponent::RagBone::BoxHull", _6(size, collisionPosition, collisionOrientation, &inertia, &massOrigin, &collisionPtr),
-				{
-					OgreNewt::CollisionPrimitives::Box* col = new OgreNewt::CollisionPrimitives::Box(this->physicsRagDollComponent->ogreNewt, size, this->physicsRagDollComponent->gameObjectPtr->getCategoryId(), collisionOrientation, collisionPosition);
-					col->calculateInertialMatrix(inertia, massOrigin);
+				OgreNewt::CollisionPrimitives::Box* col = new OgreNewt::CollisionPrimitives::Box(this->physicsRagDollComponent->ogreNewt, size, this->physicsRagDollComponent->gameObjectPtr->getCategoryId(), collisionOrientation, collisionPosition);
+				col->calculateInertialMatrix(inertia, massOrigin);
 
-					collisionPtr = OgreNewt::CollisionPtr(col);
-				});
+				collisionPtr = OgreNewt::CollisionPtr(col);
 				break;
 			}
 			case PhysicsRagDollComponent::RagBone::BS_CAPSULE:
 			{
-				ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsRagDollComponent::RagBone::CapsuleHull", _6(size, collisionPosition, collisionOrientation, &inertia, &massOrigin, &collisionPtr),
-				{
-					OgreNewt::CollisionPrimitives::Capsule* col = new OgreNewt::CollisionPrimitives::Capsule(this->physicsRagDollComponent->ogreNewt, size.y, size.x, this->physicsRagDollComponent->gameObjectPtr->getCategoryId(),
-						collisionOrientation, collisionPosition);
+				OgreNewt::CollisionPrimitives::Capsule* col = new OgreNewt::CollisionPrimitives::Capsule(this->physicsRagDollComponent->ogreNewt, size.y, size.x, this->physicsRagDollComponent->gameObjectPtr->getCategoryId(),
+					collisionOrientation, collisionPosition);
 
-					col->calculateInertialMatrix(inertia, massOrigin);
-					collisionPtr = OgreNewt::CollisionPtr(col);
-				});
+				col->calculateInertialMatrix(inertia, massOrigin);
+				collisionPtr = OgreNewt::CollisionPtr(col);
 				break;
 			}
 			case PhysicsRagDollComponent::RagBone::BS_CONE:
 			{
-				ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsRagDollComponent::RagBone::ConeHull", _6(size, collisionPosition, collisionOrientation, &inertia, &massOrigin, &collisionPtr),
-				{
-					OgreNewt::CollisionPrimitives::Cone* col = new OgreNewt::CollisionPrimitives::Cone(this->physicsRagDollComponent->ogreNewt, size.y, size.x, this->physicsRagDollComponent->gameObjectPtr->getCategoryId(),
-						collisionOrientation, collisionPosition);
+				OgreNewt::CollisionPrimitives::Cone* col = new OgreNewt::CollisionPrimitives::Cone(this->physicsRagDollComponent->ogreNewt, size.y, size.x, this->physicsRagDollComponent->gameObjectPtr->getCategoryId(),
+					collisionOrientation, collisionPosition);
 
-					col->calculateInertialMatrix(inertia, massOrigin);
-					collisionPtr = OgreNewt::CollisionPtr(col);
-				});
+				col->calculateInertialMatrix(inertia, massOrigin);
+				collisionPtr = OgreNewt::CollisionPtr(col);
 				break;
 			}
 			case PhysicsRagDollComponent::RagBone::BS_CYLINDER:
 			{
-				ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsRagDollComponent::RagBone::CylinderHull", _6(size, collisionPosition, collisionOrientation, &inertia, &massOrigin, &collisionPtr),
-				{
-					OgreNewt::CollisionPrimitives::Cylinder* col = new OgreNewt::CollisionPrimitives::Cylinder(this->physicsRagDollComponent->ogreNewt, size.y, size.x, this->physicsRagDollComponent->gameObjectPtr->getCategoryId(),
-						collisionOrientation, collisionPosition);
+				OgreNewt::CollisionPrimitives::Cylinder* col = new OgreNewt::CollisionPrimitives::Cylinder(this->physicsRagDollComponent->ogreNewt, size.y, size.x, this->physicsRagDollComponent->gameObjectPtr->getCategoryId(),
+					collisionOrientation, collisionPosition);
 
-					col->calculateInertialMatrix(inertia, massOrigin);
-					collisionPtr = OgreNewt::CollisionPtr(col);
-				});
+				col->calculateInertialMatrix(inertia, massOrigin);
+				collisionPtr = OgreNewt::CollisionPtr(col);
 				break;
 			}
 			case PhysicsRagDollComponent::RagBone::BS_ELLIPSOID:
 			{
-				ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsRagDollComponent::RagBone::EllipsoidHull", _6(size, collisionPosition, collisionOrientation, &inertia, &massOrigin, &collisionPtr),
-				{
-					OgreNewt::CollisionPrimitives::Ellipsoid * col = new OgreNewt::CollisionPrimitives::Ellipsoid(this->physicsRagDollComponent->ogreNewt, size, this->physicsRagDollComponent->gameObjectPtr->getCategoryId(), collisionOrientation, collisionPosition);
-					col->calculateInertialMatrix(inertia, massOrigin);
+				OgreNewt::CollisionPrimitives::Ellipsoid * col = new OgreNewt::CollisionPrimitives::Ellipsoid(this->physicsRagDollComponent->ogreNewt, size, this->physicsRagDollComponent->gameObjectPtr->getCategoryId(), collisionOrientation, collisionPosition);
+				col->calculateInertialMatrix(inertia, massOrigin);
 
-					collisionPtr = OgreNewt::CollisionPtr(col);
-				});
+				collisionPtr = OgreNewt::CollisionPtr(col);
 				break;
 			}
 			case PhysicsRagDollComponent::RagBone::BS_CONVEXHULL:
 			{
 				if (nullptr != this->ogreBone)
 				{
-					ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsRagDollComponent::RagBone::getWeightedBoneConvexHull", _6(mesh, size, collisionOrientation, &inertia, &massOrigin, &collisionPtr),
-					{
-						collisionPtr = this->physicsRagDollComponent->getWeightedBoneConvexHull(this->ogreBone, mesh, size.x, inertia, massOrigin, this->physicsRagDollComponent->gameObjectPtr->getCategoryId(), Ogre::Vector3::ZERO, Ogre::Quaternion::IDENTITY,
-							this->physicsRagDollComponent->initialScale);
-					});
+					/*collisionPtr = this->physicsRagDollComponent->getWeightedBoneConvexHull(this->ogreBone, mesh, size.x, inertia, massOrigin, this->physicsRagDollComponent->gameObjectPtr->getCategoryId(), Ogre::Vector3::ZERO, Ogre::Quaternion::IDENTITY,
+						this->physicsRagDollComponent->initialScale);*/
+
+					/*collisionPtr = this->physicsRagDollComponent->getWeightedBoneConvexHull(this->ogreBone, mesh, size.x, inertia, massOrigin,
+                        this->physicsRagDollComponent->gameObjectPtr->getCategoryId(), collisionPosition, collisionOrientation, this->physicsRagDollComponent->initialScale);*/
+
+					// IMPORTANT:
+                    // - Hull should NOT use the primitive “half height + 270°” helper.
+                    // - Use only the XML Offset (if you want), and keep orientation identity.
+                    const Ogre::Vector3 hullOffsetPos = offset; // from XML <Bone Offset="..."> (often ZERO)
+                    const Ogre::Quaternion hullOffsetOri = Ogre::Quaternion::IDENTITY;
+
+                    collisionPtr = this->physicsRagDollComponent->getWeightedBoneConvexHull(this->ogreBone, mesh, size.x, inertia, massOrigin, this->physicsRagDollComponent->gameObjectPtr->getCategoryId(), hullOffsetPos, hullOffsetOri,
+                        this->physicsRagDollComponent->initialScale);
 				}
 				else
 				{
@@ -2425,10 +2401,7 @@ namespace NOWA
 			{
 				auto sceneNode = this->physicsRagDollComponent->gameObjectPtr->getSceneNode();
 				auto thisSceneNode = this->sceneNode;
-				ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("PhysicsRagDollComponent::RagBone::deleteRagBone", _2(sceneNode, thisSceneNode),
-				{
-					sceneNode->removeAndDestroyChild(thisSceneNode);
-				});
+				sceneNode->removeAndDestroyChild(thisSceneNode);
 			}
 			else
 			{

@@ -88,9 +88,9 @@ namespace NOWA
 		 */
 		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
-		void setSubEntityIndex(unsigned int subEntityIndex);
+		void setSubItemIndex(unsigned int subItemIndex);
 
-		unsigned int getSubEntityIndex(void) const;
+		unsigned int getSubItemIndex(void) const;
 
 		/**
 		 *   @brief Sets whether to use a specular workflow, or a metallic workflow.
@@ -692,7 +692,7 @@ namespace NOWA
 
 		void doNotCloneDataBlock(void);
 	public:
-		static const Ogre::String AttrSubEntityIndex(void) { return "Sub-Entity Index"; }
+		static const Ogre::String AttrSubItemIndex(void) { return "Sub-Item Index"; }
 		static const Ogre::String AttrWorkflow(void) { return "Workflow"; }
 		static const Ogre::String AttrMetalness(void) { return "Metalness"; }
 		static const Ogre::String AttrRoughness(void) { return "Roughness"; }
@@ -768,7 +768,7 @@ namespace NOWA
 
 		void setReflectionTextureNames(void);
 	protected:
-		Variant* subEntityIndex;
+		Variant* subItemIndex;
 		Variant* workflow; // List selection
 		Variant* metalness; // Real
 		Variant* roughness; // Real

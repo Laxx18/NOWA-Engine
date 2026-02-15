@@ -1,0 +1,1 @@
+for %%f in (*.mesh) do .\OgreMeshMagick.exe optimise %%f 

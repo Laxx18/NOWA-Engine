@@ -685,6 +685,7 @@ namespace NOWA
 					this->type = variant.type;
 					this->value = variant.value;
 					this->name = variant.name;
+                    this->userDataList = variant.userDataList;
 				}
 			}
 		}
@@ -733,6 +734,11 @@ namespace NOWA
 					return;
 				}
 			}
+		}
+
+		void copyUserData(Variant* variant)
+		{
+            this->userDataList = variant->userDataList;
 		}
 
 		void removeUserData(const Ogre::String& userDataKey)

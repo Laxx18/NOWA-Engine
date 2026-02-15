@@ -1,0 +1,1 @@
+for %%f in (*.mesh) do .\MeshMagick.exe transform -scale=0.01/0.01/0.01 %%f 

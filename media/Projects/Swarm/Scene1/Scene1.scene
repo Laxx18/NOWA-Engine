@@ -31,7 +31,7 @@
 		<mainParameter>
 			<ignoreGlobalScene value="false"/>
 			<renderDistance distance="300"/>
-			<useV2Item value="true"/>
+			<useV2Item value="false"/>
 		</mainParameter>
 		<fog mode="none" start="0" end="0" density="0"/>
 		<bounds mostLeftNearPosition="-50 -75 -50" mostRightFarPosition="50 75 50"/>
@@ -274,8 +274,8 @@
 			<position x="-34.0315" y="2.71252" z="16.1752"/>
 			<rotation qw="0.689666" qx="-0.0651103" qy="-0.718002" qz="-0.0677861"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
-				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
+			<item name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
+				<subitem index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1111111112"/>
@@ -343,14 +343,14 @@
 					<property type="7" name="ShapeMask" data="Circle_Ring.png"/>
 					<property type="6" name="Speed" data="0.2"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="SunLight" id="1479238507">
 			<position x="0" y="35" z="50"/>
 			<rotation qw="0.880476" qx="-0.364705" qy="0.279848" qz="-0.115917"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="SunLight" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
-				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
+			<item name="SunLight" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
+				<subitem index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1111111113"/>
@@ -385,14 +385,14 @@
 					<property type="12" name="CastShadows" data="true"/>
 					<property type="12" name="ShowDummyEntity" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="MainGameObject" id="1366663313">
 			<position x="0" y="0" z="0"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="MainGameObject" meshFile="Node.mesh" castShadows="true" visible="false">
-				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
+			<item name="MainGameObject" meshFile="Node.mesh" castShadows="true" visible="false">
+				<subitem index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1111111111"/>
@@ -419,7 +419,7 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="7" name="Description" data="&lt;p float='left'&gt;&lt;img width='260' height='159'&gt;pic_NOWA&lt;/img&gt; &lt;/p&gt;&lt;br/&gt;&lt;p align='center'&gt;&lt;color value='#FFFFFF'&gt;&lt;url value='www.lukas-kalinowski.com'&gt;www.lukas-kalinowski.com&lt;/url&gt;&lt;/color&gt;&lt;/p&gt;&lt;br/&gt;&lt;br/&gt;&lt;p&gt;&lt;color value='#1D6EA7'&gt;No description.&lt;/color&gt;&lt;/p&gt;  &lt;p&gt;&lt;color value='#FF0000'&gt;Hello World&lt;/color&gt;&lt;/p&gt;&amp;#10;"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="flying_bird_26" id="1300790305">
 			<position x="-21.9306" y="8.72125" z="11.4575"/>

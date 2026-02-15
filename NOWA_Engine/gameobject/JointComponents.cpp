@@ -64,9 +64,9 @@ namespace NOWA
 		targetJointCompPtr(nullptr),
 		priorId(0),
 		debugGeometryNode(nullptr),
-		debugGeometryEntity(nullptr),
+		debugGeometryItem(nullptr),
 		debugGeometryNode2(nullptr),
-		debugGeometryEntity2(nullptr),
+		debugGeometryItem2(nullptr),
 		sceneManager(nullptr),
 		useCustomStiffness(false),
 		jointAlreadyCreated(false),
@@ -104,8 +104,8 @@ namespace NOWA
 				NOWA::GraphicsModule::getInstance()->removeTrackedNode(this->debugGeometryNode);
 				this->sceneManager->destroySceneNode(this->debugGeometryNode);
 				this->debugGeometryNode = nullptr;
-				this->sceneManager->destroyMovableObject(this->debugGeometryEntity);
-				this->debugGeometryEntity = nullptr;
+				this->sceneManager->destroyMovableObject(this->debugGeometryItem);
+				this->debugGeometryItem = nullptr;
 			});
 		}
 
@@ -117,8 +117,8 @@ namespace NOWA
 				NOWA::GraphicsModule::getInstance()->removeTrackedNode(this->debugGeometryNode2);
 				this->sceneManager->destroySceneNode(this->debugGeometryNode2);
 				this->debugGeometryNode2 = nullptr;
-				this->sceneManager->destroyMovableObject(this->debugGeometryEntity2);
-				this->debugGeometryEntity2 = nullptr;
+				this->sceneManager->destroyMovableObject(this->debugGeometryItem2);
+				this->debugGeometryItem2 = nullptr;
 			});
 		}
 
@@ -649,12 +649,12 @@ namespace NOWA
 								this->debugGeometryNode->setInheritScale(false);
 								this->debugGeometryNode->setScale(0.05f, 0.05f, 0.025f);
 								this->debugGeometryNode->setName(this->getClassName() + "_Node");
-								this->debugGeometryEntity = this->sceneManager->createEntity("Arrow.mesh");
-								this->debugGeometryEntity->setName(this->getClassName() + "_Entity");
-								this->debugGeometryEntity->setDatablock("BaseRedLine");
-								this->debugGeometryEntity->setQueryFlags(0 << 0);
-								this->debugGeometryEntity->setCastShadows(false);
-								this->debugGeometryNode->attachObject(this->debugGeometryEntity);
+								this->debugGeometryItem = this->sceneManager->createItem("Arrow.mesh");
+								this->debugGeometryItem->setName(this->getClassName() + "_Item");
+								this->debugGeometryItem->setDatablock("BaseRedLine");
+								this->debugGeometryItem->setQueryFlags(0 << 0);
+								this->debugGeometryItem->setCastShadows(false);
+								this->debugGeometryNode->attachObject(this->debugGeometryItem);
 							}
 						}
 
@@ -672,12 +672,12 @@ namespace NOWA
 									// Do not inherit, because if parent node is scaled, then this scale is relative and debug data may be to small or to big
 									this->debugGeometryNode->setInheritScale(false);
 									this->debugGeometryNode->setScale(0.05f, 0.05f, 0.05f);
-									this->debugGeometryEntity = this->sceneManager->createEntity("gizmosphere.mesh");
-									this->debugGeometryEntity->setName(this->getClassName() + "_Entity");
-									this->debugGeometryEntity->setDatablock("BaseRedLine");
-									this->debugGeometryEntity->setQueryFlags(0 << 0);
-									this->debugGeometryEntity->setCastShadows(false);
-									this->debugGeometryNode->attachObject(this->debugGeometryEntity);
+									this->debugGeometryItem = this->sceneManager->createItem("gizmosphere.mesh");
+									this->debugGeometryItem->setName(this->getClassName() + "_Item");
+									this->debugGeometryItem->setDatablock("BaseRedLine");
+									this->debugGeometryItem->setQueryFlags(0 << 0);
+									this->debugGeometryItem->setCastShadows(false);
+									this->debugGeometryNode->attachObject(this->debugGeometryItem);
 								}
 							}
 						}
@@ -696,12 +696,12 @@ namespace NOWA
 										// Do not inherit, because if parent node is scaled, then this scale is relative and debug data may be to small or to big
 										this->debugGeometryNode->setInheritScale(false);
 										this->debugGeometryNode->setScale(0.05f, 0.05f, 0.05f);
-										this->debugGeometryEntity = this->sceneManager->createEntity("gizmosphere.mesh");
-										this->debugGeometryEntity->setName(this->getClassName() + "_Entity");
-										this->debugGeometryEntity->setDatablock("BaseRedLine");
-										this->debugGeometryEntity->setQueryFlags(0 << 0);
-										this->debugGeometryEntity->setCastShadows(false);
-										this->debugGeometryNode->attachObject(this->debugGeometryEntity);
+										this->debugGeometryItem = this->sceneManager->createItem("gizmosphere.mesh");
+										this->debugGeometryItem->setName(this->getClassName() + "_Item");
+										this->debugGeometryItem->setDatablock("BaseRedLine");
+										this->debugGeometryItem->setQueryFlags(0 << 0);
+										this->debugGeometryItem->setCastShadows(false);
+										this->debugGeometryNode->attachObject(this->debugGeometryItem);
 
 										this->debugGeometryNode2 = this->gameObjectPtr->getSceneNode()->createChildSceneNode(Ogre::SCENE_DYNAMIC);
 										this->debugGeometryNode2->setName(this->getClassName() + "_Node2");
@@ -709,12 +709,12 @@ namespace NOWA
 										// Do not inherit, because if parent node is scaled, then this scale is relative and debug data may be to small or to big
 										this->debugGeometryNode2->setInheritScale(false);
 										this->debugGeometryNode2->setScale(0.05f, 0.05f, 0.05f);
-										this->debugGeometryEntity2 = this->gameObjectPtr->getSceneManager()->createEntity("gizmosphere.mesh");
-										this->debugGeometryEntity2->setName(this->getClassName() + "_Entity2");
-										this->debugGeometryEntity2->setDatablock("BaseRedLine");
-										this->debugGeometryEntity2->setQueryFlags(0 << 0);
-										this->debugGeometryEntity2->setCastShadows(false);
-										this->debugGeometryNode2->attachObject(this->debugGeometryEntity2);
+										this->debugGeometryItem2 = this->gameObjectPtr->getSceneManager()->createItem("gizmosphere.mesh");
+										this->debugGeometryItem2->setName(this->getClassName() + "_Item2");
+										this->debugGeometryItem2->setDatablock("BaseRedLine");
+										this->debugGeometryItem2->setQueryFlags(0 << 0);
+										this->debugGeometryItem2->setCastShadows(false);
+										this->debugGeometryNode2->attachObject(this->debugGeometryItem2);
 									}
 								}
 							}
@@ -729,16 +729,16 @@ namespace NOWA
 						this->debugGeometryNode->detachAllObjects();
 						this->gameObjectPtr->getSceneManager()->destroySceneNode(this->debugGeometryNode);
 						this->debugGeometryNode = nullptr;
-						this->gameObjectPtr->getSceneManager()->destroyMovableObject(this->debugGeometryEntity);
-						this->debugGeometryEntity = nullptr;
+						this->gameObjectPtr->getSceneManager()->destroyMovableObject(this->debugGeometryItem);
+						this->debugGeometryItem = nullptr;
 					}
 					if (nullptr != this->debugGeometryNode2)
 					{
 						this->debugGeometryNode2->detachAllObjects();
 						this->gameObjectPtr->getSceneManager()->destroySceneNode(this->debugGeometryNode2);
 						this->debugGeometryNode2 = nullptr;
-						this->gameObjectPtr->getSceneManager()->destroyMovableObject(this->debugGeometryEntity2);
-						this->debugGeometryEntity2 = nullptr;
+						this->gameObjectPtr->getSceneManager()->destroyMovableObject(this->debugGeometryItem2);
+						this->debugGeometryItem2 = nullptr;
 					}
 				}
 			};
@@ -3397,8 +3397,8 @@ namespace NOWA
 				this->debugGeometryNode2->detachAllObjects();
 				this->gameObjectPtr->getSceneManager()->destroySceneNode(this->debugGeometryNode2);
 				this->debugGeometryNode2 = nullptr;
-				this->gameObjectPtr->getSceneManager()->destroyMovableObject(this->debugGeometryEntity2);
-				this->debugGeometryEntity2 = nullptr;
+				this->gameObjectPtr->getSceneManager()->destroyMovableObject(this->debugGeometryItem2);
+				this->debugGeometryItem2 = nullptr;
 			});
 		}
 	}
@@ -3891,12 +3891,12 @@ namespace NOWA
 //				// Do not inherit, because if parent node is scaled, then this scale is relative and debug data may be to small or to big
 //				this->debugGeometryNode->setInheritScale(false);
 //				this->debugGeometryNode->setScale(0.05f, 0.05f, 0.05f);
-//				this->debugGeometryEntity = this->sceneManager->createEntity("gizmosphere.mesh");
-//				this->debugGeometryEntity->setName("RagDollMotorDofPointEntity");
-//				this->debugGeometryEntity->setDatablock("BaseYellowLine");
-//				this->debugGeometryEntity->setQueryFlags(0 << 0);
-//				this->debugGeometryEntity->setCastShadows(false);
-//				this->debugGeometryNode->attachObject(this->debugGeometryEntity);
+//				this->debugGeometryItem = this->sceneManager->createItem("gizmosphere.mesh");
+//				this->debugGeometryItem->setName("RagDollMotorDofPointEntity");
+//				this->debugGeometryItem->setDatablock("BaseYellowLine");
+//				this->debugGeometryItem->setQueryFlags(0 << 0);
+//				this->debugGeometryItem->setCastShadows(false);
+//				this->debugGeometryNode->attachObject(this->debugGeometryItem);
 //			}
 //		}
 //		else
@@ -3906,8 +3906,8 @@ namespace NOWA
 //				this->debugGeometryNode->detachAllObjects();
 //				this->gameObjectPtr->getSceneManager()->destroySceneNode(this->debugGeometryNode);
 //				this->debugGeometryNode = nullptr;
-//				this->gameObjectPtr->getSceneManager()->destroyMovableObject(this->debugGeometryEntity);
-//				this->debugGeometryEntity = nullptr;
+//				this->gameObjectPtr->getSceneManager()->destroyMovableObject(this->debugGeometryItem);
+//				this->debugGeometryItem = nullptr;
 //			}
 //		}
 //	}

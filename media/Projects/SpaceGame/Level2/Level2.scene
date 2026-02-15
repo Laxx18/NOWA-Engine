@@ -45,8 +45,8 @@
 			<position x="0" y="0" z="0"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="MainGameObject" meshFile="Node.mesh" castShadows="true" visible="false">
-				<subentity index="0" datablockName="WhiteLine"/>
+			<item name="MainGameObject" meshFile="Node.mesh" castShadows="true" visible="false">
+				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1111111111"/>
@@ -389,14 +389,14 @@
 					<property type="7" name="ContactOnceFunctionName" data="onPlayerShieldContactOnce"/>
 					<property type="7" name="ContactScratchFunctionName" data=""/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="MainCamera" id="4010617415">
 			<position x="-5.91986e-05" y="177.732" z="-56.6475"/>
 			<rotation qw="0.707945" qx="-0.706218" qy="0.00593268" qz="0.00591823"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
-				<subentity index="0" datablockName="WhiteLine"/>
+			<item name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
+				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1111111112"/>
@@ -468,14 +468,14 @@
 					<property type="6" name="ShadowSplitPadding" data="1"/>
 					<property type="12" name="HardwareGammaEnabled" data="true"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="SunLight" id="1479238507">
 			<position x="0" y="100" z="0"/>
 			<rotation qw="0.769949" qx="-0.462634" qy="0.226353" qz="0.376713"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="SunLight" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
-				<subentity index="0" datablockName="WhiteLine"/>
+			<item name="SunLight" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
+				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1111111113"/>
@@ -510,14 +510,14 @@
 					<property type="12" name="CastShadows" data="true"/>
 					<property type="12" name="ShowDummyEntity" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="FutureFighterJet_0" id="1171646049">
 			<position x="0" y="0" z="0"/>
 			<rotation qw="-1.49012e-07" qx="0" qy="1" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="FutureFighterJet_0" meshFile="FutureFighterJet.mesh" castShadows="false" visible="true">
-				<subentity index="0" datablockName="FutureFighterJet"/>
+			<item name="FutureFighterJet_0" meshFile="FutureFighterJet.mesh" castShadows="false" visible="true">
+				<subitem index="0" datablockName="FutureFighterJet"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2248180869"/>
@@ -651,14 +651,14 @@
 					<property type="7" name="DeviceName" data="Win32InputManager"/>
 					<property type="12" name="IsExclusive" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="stone_felsite6_0" id="1544069642">
 			<position x="-20" y="0" z="-100"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="stone_felsite6_0" meshFile="stone_felsite7.mesh" castShadows="false" visible="true">
-				<subentity index="0" datablockName="/dural/environment/stone_felsite/texture"/>
+			<item name="stone_felsite6_0" meshFile="stone_felsite7.mesh" castShadows="false" visible="true">
+				<subitem index="0" datablockName="/dural/environment/stone_felsite/texture"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2557366868"/>
@@ -740,14 +740,14 @@
 					<property type="12" name="PlayWhenInMotion" data="false"/>
 					<property type="7" name="OnSpectrumAnalysisFunctionName" data=""/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Laser" id="2592548492">
 			<position x="-1.41254" y="0" z="-5.34698"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Laser" meshFile="ellipsoid.mesh" castShadows="false" visible="true">
-				<subentity index="0" datablockName="WhiteLine"/>
+			<item name="Laser" meshFile="ellipsoid.mesh" castShadows="false" visible="true">
+				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1543222174"/>
@@ -818,14 +818,14 @@
 					<property type="12" name="PlayWhenInMotion" data="false"/>
 					<property type="7" name="OnSpectrumAnalysisFunctionName" data=""/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="GameCamera" id="3648394280">
 			<position x="-2.91197e-14" y="1.64886e+22" z="1.70349e+25"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="GameCamera" meshFile="Camera.mesh" castShadows="false" visible="true">
-				<subentity index="0" datablockName="WhiteLine"/>
+			<item name="GameCamera" meshFile="Camera.mesh" castShadows="false" visible="true">
+				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1475540321"/>
@@ -925,7 +925,7 @@
 					<property type="12" name="FollowGameObjectZ" data="false"/>
 					<property type="7" name="BackgroundName" data="bkgd_6.png"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 	</nodes>
 </scene>

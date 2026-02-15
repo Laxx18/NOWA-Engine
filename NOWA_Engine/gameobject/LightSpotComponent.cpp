@@ -11,7 +11,7 @@ namespace NOWA
 	LightSpotComponent::LightSpotComponent()
 		: GameObjectComponent(),
 		light(nullptr),
-		dummyEntity(nullptr),
+		dummyItem(nullptr),
 		diffuseColor(new Variant(LightSpotComponent::AttrDiffuseColor(), Ogre::Vector3::UNIT_SCALE, this->attributes)),
 		specularColor(new Variant(LightSpotComponent::AttrSpecularColor(), Ogre::Vector3::UNIT_SCALE, this->attributes)),
 		powerScale(new Variant(LightSpotComponent::AttrPowerScale(), 3.14159f, this->attributes)),
@@ -25,7 +25,7 @@ namespace NOWA
 		castShadows(new Variant(LightSpotComponent::AttrCastShadows(), true, this->attributes)),
 		size(new Variant(LightSpotComponent::AttrSize(), Ogre::Vector3(30.0f, 40.0f, 1.0f), this->attributes)),
 		nearClipDistance(new Variant(LightSpotComponent::AttrNearClipDistance(), 0.1f, this->attributes)),
-		showDummyEntity(new Variant(LightSpotComponent::AttrShowDummyEntity(), false, this->attributes))
+		showDummyEntity(new Variant(LightSpotComponent::AttrShowDummyItem(), false, this->attributes))
 	{
 		this->diffuseColor->addUserData(GameObject::AttrActionColorDialog());
 		this->specularColor->addUserData(GameObject::AttrActionColorDialog());
@@ -47,7 +47,7 @@ namespace NOWA
 				this->gameObjectPtr->getSceneManager()->destroyMovableObject(this->light);
 			});
 			this->light = nullptr;
-			this->dummyEntity = nullptr;
+			this->dummyItem = nullptr;
 		}
 	}
 
@@ -166,12 +166,12 @@ namespace NOWA
 
 	bool LightSpotComponent::connect(void)
 	{
-		if (nullptr != this->dummyEntity)
+		if (nullptr != this->dummyItem)
 		{
 			bool visible = this->showDummyEntity->getBool() && this->gameObjectPtr->isVisible();
 			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("LightSpotComponent::connect setVisible", _1(visible),
 			{
-				this->dummyEntity->setVisible(visible);
+				this->dummyItem->setVisible(visible);
 			});
 		}
 
@@ -180,12 +180,12 @@ namespace NOWA
 
 	bool LightSpotComponent::disconnect(void)
 	{
-		if (nullptr != this->dummyEntity)
+		if (nullptr != this->dummyItem)
 		{
 			bool visible = this->gameObjectPtr->isVisible();
 			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("LightSpotComponent::disconnect setVisible", _1(visible),
 			{
-				this->dummyEntity->setVisible(visible);
+				this->dummyItem->setVisible(visible);
 			});
 		}
 
@@ -229,7 +229,7 @@ namespace NOWA
 				{
 					entity->setCastShadows(false);
 					// Borrow the entity from the game object
-					this->dummyEntity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
+					this->dummyItem = this->gameObjectPtr->getMovableObject<Ogre::Item>();
 				}
 				else
 				{
@@ -291,7 +291,7 @@ namespace NOWA
 		{
 			this->setCastShadows(attribute->getBool());
 		}
-		else if (LightSpotComponent::AttrShowDummyEntity() == attribute->getName())
+		else if (LightSpotComponent::AttrShowDummyItem() == attribute->getName())
 		{
 			this->setShowDummyEntity(attribute->getBool());
 		}

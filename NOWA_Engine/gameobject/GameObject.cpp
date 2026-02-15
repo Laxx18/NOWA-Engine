@@ -2233,7 +2233,7 @@ namespace NOWA
 		if (nullptr != this->movableObject)
 		{
 			const Ogre::uint8 queueIndex = static_cast<Ogre::uint8>(renderQueueIndex);
-			ENQUEUE_RENDER_COMMAND_MULTI("GameObject::setRenderQueueIndex", _1(queueIndex),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObject::setRenderQueueIndex", _1(queueIndex),
 			{
 				this->movableObject->setRenderQueueGroup(queueIndex);
 			});

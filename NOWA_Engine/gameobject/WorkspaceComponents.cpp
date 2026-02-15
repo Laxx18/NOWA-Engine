@@ -357,13 +357,13 @@ namespace NOWA
 
 	bool WorkspaceBaseComponent::connect(void)
 	{
-		GraphicsModule::getInstance()->beginWorkspaceTransition();
-
 		// Only create workspace for active camera
 		if (nullptr != this->cameraComponent && false == this->cameraComponent->isActivated() && false == this->involvedInSplitScreen)
 		{
 			return true;
 		}
+
+		GraphicsModule::getInstance()->beginWorkspaceTransition();
 
 		this->canUseOcean = this->useOcean;
 

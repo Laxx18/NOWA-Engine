@@ -45,8 +45,8 @@
 			<position x="13.3369" y="-0.00623345" z="-12.8906"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="House1_0" meshFile="House1.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/house1.png"/>
+			<item name="House1_0" meshFile="House1.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/house1.png"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3599910081"/>
@@ -69,18 +69,18 @@
 					<property type="12" name="Activated" data="true"/>
 					<property type="6" name="WorkspaceGameObjectId" data="1111111112"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="cg_house_a_0" id="1237958551">
 			<position x="-8.92279" y="1.16708" z="-8.68532"/>
 			<rotation qw="0.5" qx="0" qy="-0.866025" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="cg_house_a_0" meshFile="cg_house_a.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="/dural/structures/roof_shale/texture"/>
-				<subentity index="1" datablockName="/dural/structures/ossyja_inner_walls/texture"/>
-				<subentity index="2" datablockName="/dural/structures/ossyja_floor_planks/texture"/>
-				<subentity index="3" datablockName="/dural/structures/ossyja_rough_beams/texture"/>
-				<subentity index="4" datablockName="/dural/structures/ossyja_wall_cobblestone/texture"/>
+			<item name="cg_house_a_0" meshFile="cg_house_a.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="/dural/structures/roof_shale/texture"/>
+				<subitem index="1" datablockName="/dural/structures/ossyja_inner_walls/texture"/>
+				<subitem index="2" datablockName="/dural/structures/ossyja_floor_planks/texture"/>
+				<subitem index="3" datablockName="/dural/structures/ossyja_rough_beams/texture"/>
+				<subitem index="4" datablockName="/dural/structures/ossyja_wall_cobblestone/texture"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1242359790"/>
@@ -104,21 +104,21 @@
 					<property type="7" name="DataBlock3" data="/dural/structures/ossyja_rough_beams/texture"/>
 					<property type="7" name="DataBlock4" data="/dural/structures/ossyja_wall_cobblestone/texture"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="cg_house_c_0" id="1376106721">
 			<position x="-1.78199" y="1.03524" z="-52.1444"/>
 			<rotation qw="0.5" qx="0" qy="-0.866025" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="cg_house_c_0" meshFile="cg_house_c.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="/dural/structures/ossyja_post/texture"/>
-				<subentity index="1" datablockName="/dural/structures/ossyja_inner_walls/texture"/>
-				<subentity index="2" datablockName="/dural/structures/ossyja_brick/texture"/>
-				<subentity index="3" datablockName="/dural/structures/rezpa_wall/texture"/>
-				<subentity index="4" datablockName="/dural/structures/blue_floor_tile/texture"/>
-				<subentity index="5" datablockName="/dural/structures/ossyja_ceiling_tiles/texture"/>
-				<subentity index="6" datablockName="/dural/structures/ossyja_floor_planks/texture"/>
-				<subentity index="7" datablockName="/dural/structures/roof_shale/texture"/>
+			<item name="cg_house_c_0" meshFile="cg_house_c.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="/dural/structures/ossyja_post/texture"/>
+				<subitem index="1" datablockName="/dural/structures/ossyja_inner_walls/texture"/>
+				<subitem index="2" datablockName="/dural/structures/ossyja_brick/texture"/>
+				<subitem index="3" datablockName="/dural/structures/rezpa_wall/texture"/>
+				<subitem index="4" datablockName="/dural/structures/blue_floor_tile/texture"/>
+				<subitem index="5" datablockName="/dural/structures/ossyja_ceiling_tiles/texture"/>
+				<subitem index="6" datablockName="/dural/structures/ossyja_floor_planks/texture"/>
+				<subitem index="7" datablockName="/dural/structures/roof_shale/texture"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="851050103"/>
@@ -145,23 +145,23 @@
 					<property type="7" name="DataBlock6" data="/dural/structures/ossyja_floor_planks/texture"/>
 					<property type="7" name="DataBlock7" data="/dural/structures/roof_shale/texture"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="cg_house_d_0" id="1649901376">
 			<position x="36.5578" y="1.16588" z="-40.1989"/>
 			<rotation qw="-0.5" qx="0" qy="-0.866025" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="cg_house_d_0" meshFile="cg_house_d.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="/dural/structures/moraf_roof_shingles_combo/texture"/>
-				<subentity index="1" datablockName="/dural/structures/ossyja_brick_trim/texture"/>
-				<subentity index="2" datablockName="/dural/structures/foundation_brick/texture"/>
-				<subentity index="3" datablockName="/dural/structures/ossyja_floor_planks/texture"/>
-				<subentity index="4" datablockName="/dural/structures/ossyja_inner_walls/texture"/>
-				<subentity index="5" datablockName="/dural/structures/rezpa_concrete/texture"/>
-				<subentity index="6" datablockName="/dural/structures/ossyja_rough_beams/texture"/>
-				<subentity index="7" datablockName="/dural/structures/wood/textureStructure"/>
-				<subentity index="8" datablockName="/dural/structures/ossyja_wall_cobblestone/texture"/>
-				<subentity index="9" datablockName="/dural/structures/ozark_planks/texture"/>
+			<item name="cg_house_d_0" meshFile="cg_house_d.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="/dural/structures/moraf_roof_shingles_combo/texture"/>
+				<subitem index="1" datablockName="/dural/structures/ossyja_brick_trim/texture"/>
+				<subitem index="2" datablockName="/dural/structures/foundation_brick/texture"/>
+				<subitem index="3" datablockName="/dural/structures/ossyja_floor_planks/texture"/>
+				<subitem index="4" datablockName="/dural/structures/ossyja_inner_walls/texture"/>
+				<subitem index="5" datablockName="/dural/structures/rezpa_concrete/texture"/>
+				<subitem index="6" datablockName="/dural/structures/ossyja_rough_beams/texture"/>
+				<subitem index="7" datablockName="/dural/structures/wood/textureStructure"/>
+				<subitem index="8" datablockName="/dural/structures/ossyja_wall_cobblestone/texture"/>
+				<subitem index="9" datablockName="/dural/structures/ozark_planks/texture"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="532143452"/>
@@ -190,7 +190,7 @@
 					<property type="7" name="DataBlock8" data="/dural/structures/ossyja_wall_cobblestone/texture"/>
 					<property type="7" name="DataBlock9" data="/dural/structures/ozark_planks/texture"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 	</nodes>
 </scene>

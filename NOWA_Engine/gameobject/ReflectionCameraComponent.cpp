@@ -14,7 +14,7 @@ namespace NOWA
 	ReflectionCameraComponent::ReflectionCameraComponent()
 		: GameObjectComponent(),
 		camera(nullptr),
-		dummyEntity(nullptr),
+		dummyItem(nullptr),
 		hideEntity(false),
 		workspaceBaseComponent(nullptr),
 		nearClipDistance(new Variant(ReflectionCameraComponent::AttrNearClipDistance(), 0.5f, this->attributes)),
@@ -23,7 +23,7 @@ namespace NOWA
 		orthographic(new Variant(ReflectionCameraComponent::AttrOrthographic(), false, this->attributes)),
 		fixedYawAxis(new Variant(ReflectionCameraComponent::AttrFixedYawAxis(), false, this->attributes)),
 		cubeTextureSize(new Variant(ReflectionCameraComponent::AttrCubeTextureSize(), { "256", "512", "1024" }, this->attributes)),
-		showDummyEntity(new Variant(ReflectionCameraComponent::AttrShowDummyEntity(), false, this->attributes))
+		showDummyEntity(new Variant(ReflectionCameraComponent::AttrShowDummyItem(), false, this->attributes))
 	{
 		this->fovy->setDescription("Field Of View (FOV) is the angle made between the frustum's position, and the edges "
 			"of the 'screen' onto which the scene is projected.High values(90 + degrees) result in a wide - angle, "
@@ -100,13 +100,13 @@ namespace NOWA
 
 	bool ReflectionCameraComponent::connect(void)
 	{
-		if (nullptr != this->dummyEntity)
+		if (nullptr != this->dummyItem)
 		{
 			bool visible = this->showDummyEntity->getBool();
 			ENQUEUE_RENDER_COMMAND_MULTI("ReflectionCameraComponent::connect", _1(visible),
 				{
-					if (this->dummyEntity)
-						this->dummyEntity->setVisible(visible);
+					if (this->dummyItem)
+						this->dummyItem->setVisible(visible);
 				});
 		}
 
@@ -143,7 +143,7 @@ namespace NOWA
 				this->gameObjectPtr->getSceneNode()->detachObject(this->camera);
 				this->gameObjectPtr->getSceneManager()->destroyMovableObject(this->camera);
 				this->camera = nullptr;
-				this->dummyEntity = nullptr;
+				this->dummyItem = nullptr;
 			});
 		}
 
@@ -157,15 +157,15 @@ namespace NOWA
 	{
 		if (false == notSimulating)
 		{
-			if (nullptr != dummyEntity)
+			if (nullptr != dummyItem)
 			{
 				bool shouldBeVisible = this->showDummyEntity->getBool();
 
-				if (shouldBeVisible != this->dummyEntity->isVisible())
+				if (shouldBeVisible != this->dummyItem->isVisible())
 				{
 					auto closureFunction = [this, shouldBeVisible](Ogre::Real renderDt)
 						{
-							this->dummyEntity->setVisible(shouldBeVisible);
+							this->dummyItem->setVisible(shouldBeVisible);
 						};
 					Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::updateVisibility" + Ogre::StringConverter::toString(this->index);
 					NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
@@ -196,10 +196,10 @@ namespace NOWA
 				this->camera->setQueryFlags(0 << 0);
 
 				// Borrow the entity from the game object
-				this->dummyEntity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
-				if (nullptr != this->dummyEntity)
+				this->dummyItem = this->gameObjectPtr->getMovableObject<Ogre::Item>();
+				if (nullptr != this->dummyItem)
 				{
-					this->dummyEntity->setCastShadows(false);
+					this->dummyItem->setCastShadows(false);
 				}
 			});
 		}
@@ -233,7 +233,7 @@ namespace NOWA
 		{
 			this->setCubeTextureSize(attribute->getListSelectedValue());
 		}
-		else if (ReflectionCameraComponent::AttrShowDummyEntity() == attribute->getName())
+		else if (ReflectionCameraComponent::AttrShowDummyItem() == attribute->getName())
 		{
 			this->setShowDummyEntity(attribute->getBool());
 		}
@@ -415,11 +415,11 @@ namespace NOWA
 	void ReflectionCameraComponent::setShowDummyEntity(bool showDummyEntity)
 	{
 		this->showDummyEntity->setValue(showDummyEntity);
-		if (nullptr != this->dummyEntity)
+		if (nullptr != this->dummyItem)
 		{
 			ENQUEUE_RENDER_COMMAND_MULTI("ReflectionCameraComponent::setShowDummyEntity", _1(showDummyEntity),
 				{
-					this->dummyEntity->setVisible(showDummyEntity);
+					this->dummyItem->setVisible(showDummyEntity);
 				});
 		}
 	}

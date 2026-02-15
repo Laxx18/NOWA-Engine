@@ -31,7 +31,7 @@
 		<mainParameter>
 			<ignoreGlobalScene value="false"/>
 			<renderDistance distance="100"/>
-			<useV2Item value="true"/>
+			<useV2Item value="false"/>
 		</mainParameter>
 		<fog mode="none" start="0" end="0" density="0"/>
 		<bounds mostLeftNearPosition="-50 -50 -50" mostRightFarPosition="50 50 50"/>
@@ -232,8 +232,8 @@
 			<position x="-15.1461" y="18.8521" z="13.018"/>
 			<rotation qw="0.923339" qx="-0.238792" qy="-0.291128" qz="-0.0752907"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
-				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
+			<item name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
+				<subitem index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1111111112"/>
@@ -293,14 +293,14 @@
 					<property type="6" name="ShadowSplitPadding" data="1"/>
 					<property type="7" name="SkyBoxName" data="ash_hills_cube.dds"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="MainGameObject" id="1366663313">
 			<position x="0" y="0" z="0"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="MainGameObject" meshFile="Node.mesh" castShadows="true" visible="false">
-				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
+			<item name="MainGameObject" meshFile="Node.mesh" castShadows="true" visible="false">
+				<subitem index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1111111111"/>
@@ -366,14 +366,14 @@
 					<property type="12" name="Repeat" data="true"/>
 					<property type="12" name="UsePickingMask" data="true"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="SunLight" id="1479238507">
 			<position x="0" y="10" z="0"/>
 			<rotation qw="0.0783618" qx="0.29619" qy="0.350225" qz="0.88514"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="SunLight" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
-				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
+			<item name="SunLight" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
+				<subitem index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1111111113"/>
@@ -408,7 +408,7 @@
 					<property type="12" name="CastShadows" data="true"/>
 					<property type="12" name="ShowDummyEntity" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Case3_1" id="1801113118">
 			<position x="-1.52317" y="0" z="-17.4862"/>
@@ -496,8 +496,8 @@
 			<position x="-6.55578" y="19.9994" z="-6.09397"/>
 			<rotation qw="0.707107" qx="-0.707107" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="MinimapCamera" meshFile="Camera.mesh" castShadows="false" visible="true">
-				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
+			<item name="MinimapCamera" meshFile="Camera.mesh" castShadows="false" visible="true">
+				<subitem index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1794784200"/>
@@ -553,7 +553,7 @@
 					<property type="12" name="UseRoundMinimap" data="true"/>
 					<property type="12" name="RotateMinimap" data="true"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Terra_0" id="612897194">
 			<position x="0" y="0" z="0"/>

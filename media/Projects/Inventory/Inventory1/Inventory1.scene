@@ -48,8 +48,8 @@
 			<position x="-19.2278" y="2.95702" z="-12.8305"/>
 			<rotation qw="0.707107" qx="0" qy="-0.707107" qz="0"/>
 			<scale x="0.5" y="0.5" z="0.5"/>
-			<entity name="Name_30" meshFile="Coin2.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="Gold1Mat__3891592794"/>
+			<item name="Name_30" meshFile="Coin2.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="Gold1Mat__3891592794"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3891592794"/>
@@ -132,7 +132,7 @@
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="2" name="SubEntityIndex" data="0"/>
+					<property type="2" name="SubItemIndex" data="0"/>
 					<property type="7" name="Workflow" data="SpecularWorkflow"/>
 					<property type="6" name="Metalness" data="0.01"/>
 					<property type="6" name="Roughness" data="1.7"/>
@@ -181,14 +181,14 @@
 					<property type="12" name="BringToFront" data="false"/>
 					<property type="12" name="CutOff" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Name_12" id="3846770500">
 			<position x="15.2945" y="1.52864" z="-0.87851"/>
 			<rotation qw="0.707107" qx="0" qy="-0.707107" qz="0"/>
 			<scale x="0.5" y="0.5" z="0.5"/>
-			<entity name="Name_12" meshFile="Coin2.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="Gold1Mat__1721966430"/>
+			<item name="Name_12" meshFile="Coin2.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="Gold1Mat__1721966430"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1721966430"/>
@@ -271,7 +271,7 @@
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="2" name="SubEntityIndex" data="0"/>
+					<property type="2" name="SubItemIndex" data="0"/>
 					<property type="7" name="Workflow" data="SpecularWorkflow"/>
 					<property type="6" name="Metalness" data="0.01"/>
 					<property type="6" name="Roughness" data="1.7"/>
@@ -320,14 +320,14 @@
 					<property type="12" name="BringToFront" data="false"/>
 					<property type="12" name="CutOff" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Name_9" id="3612662790">
 			<position x="3.10802" y="0.721146" z="-10.6995"/>
 			<rotation qw="0.707107" qx="0" qy="-0.707107" qz="0"/>
 			<scale x="0.5" y="0.5" z="0.5"/>
-			<entity name="Name_9" meshFile="Coin2.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="Gold1Mat__1262470000"/>
+			<item name="Name_9" meshFile="Coin2.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="Gold1Mat__1262470000"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1262470000"/>
@@ -410,7 +410,7 @@
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="2" name="SubEntityIndex" data="0"/>
+					<property type="2" name="SubItemIndex" data="0"/>
 					<property type="7" name="Workflow" data="SpecularWorkflow"/>
 					<property type="6" name="Metalness" data="0.01"/>
 					<property type="6" name="Roughness" data="1.7"/>
@@ -459,14 +459,14 @@
 					<property type="12" name="BringToFront" data="false"/>
 					<property type="12" name="CutOff" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Name_20" id="3846568225">
 			<position x="5.24077" y="0.721146" z="-12.8305"/>
 			<rotation qw="0.707107" qx="0" qy="-0.707107" qz="0"/>
 			<scale x="0.5" y="0.5" z="0.5"/>
-			<entity name="Name_20" meshFile="Coin2.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="Gold1Mat__2705782115"/>
+			<item name="Name_20" meshFile="Coin2.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="Gold1Mat__2705782115"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2705782115"/>
@@ -549,7 +549,7 @@
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="2" name="SubEntityIndex" data="0"/>
+					<property type="2" name="SubItemIndex" data="0"/>
 					<property type="7" name="Workflow" data="SpecularWorkflow"/>
 					<property type="6" name="Metalness" data="0.01"/>
 					<property type="6" name="Roughness" data="1.7"/>
@@ -598,14 +598,14 @@
 					<property type="12" name="BringToFront" data="false"/>
 					<property type="12" name="CutOff" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Name_10" id="3846771370">
 			<position x="5.24077" y="0.721146" z="-10.6995"/>
 			<rotation qw="0.707107" qx="0" qy="-0.707107" qz="0"/>
 			<scale x="0.5" y="0.5" z="0.5"/>
-			<entity name="Name_10" meshFile="Coin2.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="Gold1Mat__1570142495"/>
+			<item name="Name_10" meshFile="Coin2.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="Gold1Mat__1570142495"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1570142495"/>
@@ -688,7 +688,7 @@
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="2" name="SubEntityIndex" data="0"/>
+					<property type="2" name="SubItemIndex" data="0"/>
 					<property type="7" name="Workflow" data="SpecularWorkflow"/>
 					<property type="6" name="Metalness" data="0.01"/>
 					<property type="6" name="Roughness" data="1.7"/>
@@ -737,14 +737,14 @@
 					<property type="12" name="BringToFront" data="false"/>
 					<property type="12" name="CutOff" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Name_17" id="3846769195">
 			<position x="3.10802" y="0.721146" z="-12.8305"/>
 			<rotation qw="0.707107" qx="0" qy="-0.707107" qz="0"/>
 			<scale x="0.5" y="0.5" z="0.5"/>
-			<entity name="Name_17" meshFile="Coin2.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="Gold1Mat__2398119293"/>
+			<item name="Name_17" meshFile="Coin2.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="Gold1Mat__2398119293"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2398119293"/>
@@ -827,7 +827,7 @@
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="2" name="SubEntityIndex" data="0"/>
+					<property type="2" name="SubItemIndex" data="0"/>
 					<property type="7" name="Workflow" data="SpecularWorkflow"/>
 					<property type="6" name="Metalness" data="0.01"/>
 					<property type="6" name="Roughness" data="1.7"/>
@@ -876,14 +876,14 @@
 					<property type="12" name="BringToFront" data="false"/>
 					<property type="12" name="CutOff" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="LargeWall_01_95_12" id="1282700933">
 			<position x="-6.93414" y="1.56826" z="-15.3119"/>
 			<rotation qw="0.522499" qx="0" qy="0.85264" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="LargeWall_01_95_12" meshFile="LargeWall_01_95.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="M_MasterMaterial"/>
+			<item name="LargeWall_01_95_12" meshFile="LargeWall_01_95.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="M_MasterMaterial"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="192800822"/>
@@ -918,14 +918,14 @@
 					<property type="7" name="NavigationType" data="Static Obstacle"/>
 					<property type="12" name="Walkable" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="LargeWall_01_95_11" id="1282699628">
 			<position x="-5.13539" y="1.56826" z="-11.7705"/>
 			<rotation qw="0.522499" qx="0" qy="0.85264" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="LargeWall_01_95_11" meshFile="LargeWall_01_95.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="M_MasterMaterial"/>
+			<item name="LargeWall_01_95_11" meshFile="LargeWall_01_95.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="M_MasterMaterial"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="4201422543"/>
@@ -960,7 +960,7 @@
 					<property type="7" name="NavigationType" data="Static Obstacle"/>
 					<property type="12" name="Walkable" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Terra_0" id="612897194">
 			<position x="0" y="0" z="0"/>
@@ -1050,8 +1050,8 @@
 			<position x="-9.81453" y="1.56826" z="-17.798"/>
 			<rotation qw="0.147809" qx="0" qy="0.989016" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="LargeWall_01_95_13" meshFile="LargeWall_01_95.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="M_MasterMaterial"/>
+			<item name="LargeWall_01_95_13" meshFile="LargeWall_01_95.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="M_MasterMaterial"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2216801541"/>
@@ -1086,14 +1086,14 @@
 					<property type="7" name="NavigationType" data="Static Obstacle"/>
 					<property type="12" name="Walkable" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="LargeWall_01_95_0" id="1404983586">
 			<position x="-7.02538" y="1.56826" z="-4.36101"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="LargeWall_01_95_0" meshFile="LargeWall_01_95.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="M_MasterMaterial"/>
+			<item name="LargeWall_01_95_0" meshFile="LargeWall_01_95.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="M_MasterMaterial"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1763611487"/>
@@ -1128,14 +1128,14 @@
 					<property type="7" name="NavigationType" data="Static Obstacle"/>
 					<property type="12" name="Walkable" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Name_11" id="3846771805">
 			<position x="-3.0535" y="1.56826" z="-4.38561"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Name_11" meshFile="LargeWall_01_95.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="M_MasterMaterial"/>
+			<item name="Name_11" meshFile="LargeWall_01_95.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="M_MasterMaterial"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1674802970"/>
@@ -1170,14 +1170,14 @@
 					<property type="7" name="NavigationType" data="Static Obstacle"/>
 					<property type="12" name="Walkable" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="LargeWall_01_95_5" id="1404982281">
 			<position x="6.80832" y="1.56826" z="-13.6482"/>
 			<rotation qw="0.544639" qx="0" qy="0.838671" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="LargeWall_01_95_5" meshFile="LargeWall_01_95.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="M_MasterMaterial"/>
+			<item name="LargeWall_01_95_5" meshFile="LargeWall_01_95.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="M_MasterMaterial"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3433151741"/>
@@ -1212,14 +1212,14 @@
 					<property type="7" name="NavigationType" data="Static Obstacle"/>
 					<property type="12" name="Walkable" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="MainCamera" id="4010617415">
 			<position x="1.79743" y="6.54517" z="14.8438"/>
 			<rotation qw="0.998592" qx="0.00871458" qy="-0.052334" qz="0.000456712"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
-				<subentity index="0" datablockName="WhiteLine"/>
+			<item name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
+				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1111111112"/>
@@ -1279,14 +1279,14 @@
 					<property type="6" name="ShadowSplitPadding" data="1"/>
 					<property type="7" name="SkyBoxName" data="ash_hills_cube.dds"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="SunLight" id="1479238507">
 			<position x="0" y="37.2738" z="50"/>
 			<rotation qw="0.779989" qx="-0.468665" qy="0.213583" qz="0.355462"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="SunLight" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
-				<subentity index="0" datablockName="WhiteLine"/>
+			<item name="SunLight" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
+				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1111111113"/>
@@ -1321,14 +1321,14 @@
 					<property type="12" name="CastShadows" data="true"/>
 					<property type="12" name="ShowDummyEntity" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="MainGameObject" id="1366663313">
 			<position x="0" y="0" z="0"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="MainGameObject" meshFile="Node.mesh" castShadows="true" visible="false">
-				<subentity index="0" datablockName="WhiteLine"/>
+			<item name="MainGameObject" meshFile="Node.mesh" castShadows="true" visible="false">
+				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1111111111"/>
@@ -1407,16 +1407,16 @@
 					<property type="7" name="DeviceName" data="Win32InputManager"/>
 					<property type="12" name="IsExclusive" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Flubber_1" id="2650477933">
 			<position x="4.07081" y="-9.53674e-07" z="2.56241"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Flubber_1" meshFile="Flubber.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/mouth.png"/>
-				<subentity index="1" datablockName="SOLID/TEX/eyes.png"/>
-				<subentity index="2" datablockName="SOLID/TEX/bodysurface.png__2838543028"/>
+			<item name="Flubber_1" meshFile="Flubber.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/mouth.png"/>
+				<subitem index="1" datablockName="SOLID/TEX/eyes.png"/>
+				<subitem index="2" datablockName="SOLID/TEX/bodysurface.png__2838543028"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2838543028"/>
@@ -1443,7 +1443,7 @@
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="2" name="SubEntityIndex" data="2"/>
+					<property type="2" name="SubItemIndex" data="2"/>
 					<property type="7" name="Workflow" data="SpecularWorkflow"/>
 					<property type="6" name="Metalness" data="0.01"/>
 					<property type="6" name="Roughness" data="0.5"/>
@@ -1642,16 +1642,16 @@
 					<property type="12" name="Activated" data="false"/>
 					<property type="12" name="ManuallyControlled" data="true"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Flubber_0" id="2650477498">
 			<position x="-3.76524" y="0" z="2.16407"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Flubber_0" meshFile="Flubber.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/mouth.png"/>
-				<subentity index="1" datablockName="SOLID/TEX/eyes.png"/>
-				<subentity index="2" datablockName="SOLID/TEX/bodysurface.png__2671502223"/>
+			<item name="Flubber_0" meshFile="Flubber.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/mouth.png"/>
+				<subitem index="1" datablockName="SOLID/TEX/eyes.png"/>
+				<subitem index="2" datablockName="SOLID/TEX/bodysurface.png__2671502223"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2671502223"/>
@@ -1678,7 +1678,7 @@
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="2" name="SubEntityIndex" data="2"/>
+					<property type="2" name="SubItemIndex" data="2"/>
 					<property type="7" name="Workflow" data="SpecularWorkflow"/>
 					<property type="6" name="Metalness" data="0.01"/>
 					<property type="6" name="Roughness" data="0.5"/>
@@ -1877,14 +1877,14 @@
 					<property type="12" name="Activated" data="false"/>
 					<property type="12" name="ManuallyControlled" data="true"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Name_3" id="3612665400">
 			<position x="8.42311" y="1.56826" z="-10.0193"/>
 			<rotation qw="0.544639" qx="0" qy="0.838671" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Name_3" meshFile="LargeWall_01_95.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="M_MasterMaterial"/>
+			<item name="Name_3" meshFile="LargeWall_01_95.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="M_MasterMaterial"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1019035429"/>
@@ -1919,14 +1919,14 @@
 					<property type="7" name="NavigationType" data="Static Obstacle"/>
 					<property type="12" name="Walkable" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Name_22" id="3846567355">
 			<position x="-12.3719" y="0.721146" z="-12.8305"/>
 			<rotation qw="0.707107" qx="0" qy="-0.707107" qz="0"/>
 			<scale x="0.5" y="0.5" z="0.5"/>
-			<entity name="Name_22" meshFile="Coin2.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="Gold1Mat__2928991972"/>
+			<item name="Name_22" meshFile="Coin2.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="Gold1Mat__2928991972"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2928991972"/>
@@ -2009,7 +2009,7 @@
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="2" name="SubEntityIndex" data="0"/>
+					<property type="2" name="SubItemIndex" data="0"/>
 					<property type="7" name="Workflow" data="SpecularWorkflow"/>
 					<property type="6" name="Metalness" data="0.01"/>
 					<property type="6" name="Roughness" data="1.7"/>
@@ -2058,14 +2058,14 @@
 					<property type="12" name="BringToFront" data="false"/>
 					<property type="12" name="CutOff" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Name_23" id="3846566920">
 			<position x="-12.3719" y="0.721146" z="-10.6995"/>
 			<rotation qw="0.707107" qx="0" qy="-0.707107" qz="0"/>
 			<scale x="0.5" y="0.5" z="0.5"/>
-			<entity name="Name_23" meshFile="Coin2.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="Gold1Mat__3039842720"/>
+			<item name="Name_23" meshFile="Coin2.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="Gold1Mat__3039842720"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3039842720"/>
@@ -2148,7 +2148,7 @@
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="2" name="SubEntityIndex" data="0"/>
+					<property type="2" name="SubItemIndex" data="0"/>
 					<property type="7" name="Workflow" data="SpecularWorkflow"/>
 					<property type="6" name="Metalness" data="0.01"/>
 					<property type="6" name="Roughness" data="1.7"/>
@@ -2197,14 +2197,14 @@
 					<property type="12" name="BringToFront" data="false"/>
 					<property type="12" name="CutOff" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Name_2" id="3612665835">
 			<position x="8.43992" y="1.56826" z="-6.21441"/>
 			<rotation qw="0.829038" qx="0" qy="0.559193" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Name_2" meshFile="LargeWall_01_95.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="M_MasterMaterial"/>
+			<item name="Name_2" meshFile="LargeWall_01_95.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="M_MasterMaterial"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1003966263"/>
@@ -2239,14 +2239,14 @@
 					<property type="7" name="NavigationType" data="Static Obstacle"/>
 					<property type="12" name="Walkable" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Name_26" id="3846569095">
 			<position x="6.95063" y="1.56826" z="-2.53221"/>
 			<rotation qw="0.829038" qx="0" qy="0.559193" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Name_26" meshFile="LargeWall_01_95.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="M_MasterMaterial"/>
+			<item name="Name_26" meshFile="LargeWall_01_95.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="M_MasterMaterial"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3412747772"/>
@@ -2281,14 +2281,14 @@
 					<property type="7" name="NavigationType" data="Static Obstacle"/>
 					<property type="12" name="Walkable" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Name_25" id="3846569530">
 			<position x="-0.373201" y="1.56826" z="-17.467"/>
 			<rotation qw="0.544639" qx="0" qy="0.838671" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Name_25" meshFile="LargeWall_01_95.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="M_MasterMaterial"/>
+			<item name="Name_25" meshFile="LargeWall_01_95.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="M_MasterMaterial"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3189447702"/>
@@ -2323,14 +2323,14 @@
 					<property type="7" name="NavigationType" data="Static Obstacle"/>
 					<property type="12" name="Walkable" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Name_24" id="3846569965">
 			<position x="1.24159" y="1.56826" z="-13.8381"/>
 			<rotation qw="0.544639" qx="0" qy="0.838671" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Name_24" meshFile="LargeWall_01_95.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="M_MasterMaterial"/>
+			<item name="Name_24" meshFile="LargeWall_01_95.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="M_MasterMaterial"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3102868533"/>
@@ -2365,14 +2365,14 @@
 					<property type="7" name="NavigationType" data="Static Obstacle"/>
 					<property type="12" name="Walkable" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Name_8" id="3612663225">
 			<position x="-0.230886" y="1.56826" z="-6.35101"/>
 			<rotation qw="0.829038" qx="0" qy="0.559193" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Name_8" meshFile="LargeWall_01_95.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="M_MasterMaterial"/>
+			<item name="Name_8" meshFile="LargeWall_01_95.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="M_MasterMaterial"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1211333508"/>
@@ -2407,14 +2407,14 @@
 					<property type="7" name="NavigationType" data="Static Obstacle"/>
 					<property type="12" name="Walkable" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Name_14" id="3846769630">
 			<position x="1.2584" y="1.56826" z="-10.0332"/>
 			<rotation qw="0.829038" qx="0" qy="0.559193" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Name_14" meshFile="LargeWall_01_95.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="M_MasterMaterial"/>
+			<item name="Name_14" meshFile="LargeWall_01_95.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="M_MasterMaterial"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1874569568"/>
@@ -2449,14 +2449,14 @@
 					<property type="7" name="NavigationType" data="Static Obstacle"/>
 					<property type="12" name="Walkable" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Name_1" id="3612666270">
 			<position x="-13.6117" y="1.56826" z="-18.9635"/>
 			<rotation qw="0.147809" qx="0" qy="0.989016" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Name_1" meshFile="LargeWall_01_95.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="M_MasterMaterial"/>
+			<item name="Name_1" meshFile="LargeWall_01_95.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="M_MasterMaterial"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="852955711"/>
@@ -2491,14 +2491,14 @@
 					<property type="7" name="NavigationType" data="Static Obstacle"/>
 					<property type="12" name="Walkable" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Name_31" id="3846365515">
 			<position x="15.2945" y="1.52864" z="-10.6995"/>
 			<rotation qw="0.707107" qx="0" qy="-0.707107" qz="0"/>
 			<scale x="0.5" y="0.5" z="0.5"/>
-			<entity name="Name_31" meshFile="Coin2.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="Gold1Mat__4100614460"/>
+			<item name="Name_31" meshFile="Coin2.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="Gold1Mat__4100614460"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="4100614460"/>
@@ -2581,7 +2581,7 @@
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="2" name="SubEntityIndex" data="0"/>
+					<property type="2" name="SubItemIndex" data="0"/>
 					<property type="7" name="Workflow" data="SpecularWorkflow"/>
 					<property type="6" name="Metalness" data="0.01"/>
 					<property type="6" name="Roughness" data="1.7"/>
@@ -2630,14 +2630,14 @@
 					<property type="12" name="BringToFront" data="false"/>
 					<property type="12" name="CutOff" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Name_18" id="3846767890">
 			<position x="-19.2278" y="2.95702" z="-10.6995"/>
 			<rotation qw="0.707107" qx="0" qy="-0.707107" qz="0"/>
 			<scale x="0.5" y="0.5" z="0.5"/>
-			<entity name="Name_18" meshFile="Coin2.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="Gold1Mat__2664658111"/>
+			<item name="Name_18" meshFile="Coin2.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="Gold1Mat__2664658111"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2664658111"/>
@@ -2720,7 +2720,7 @@
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="2" name="SubEntityIndex" data="0"/>
+					<property type="2" name="SubItemIndex" data="0"/>
 					<property type="7" name="Workflow" data="SpecularWorkflow"/>
 					<property type="6" name="Metalness" data="0.01"/>
 					<property type="6" name="Roughness" data="1.7"/>
@@ -2769,16 +2769,16 @@
 					<property type="12" name="BringToFront" data="false"/>
 					<property type="12" name="CutOff" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Flubber_2" id="2650476628">
 			<position x="17.0249" y="2.40405" z="7.15323"/>
 			<rotation qw="0.422618" qx="0" qy="0.906308" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Flubber_2" meshFile="Flubber.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/mouth.png"/>
-				<subentity index="1" datablockName="SOLID/TEX/eyes.png"/>
-				<subentity index="2" datablockName="SOLID/TEX/bodysurface.png__3968932022"/>
+			<item name="Flubber_2" meshFile="Flubber.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/mouth.png"/>
+				<subitem index="1" datablockName="SOLID/TEX/eyes.png"/>
+				<subitem index="2" datablockName="SOLID/TEX/bodysurface.png__3968932022"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3968932022"/>
@@ -2805,7 +2805,7 @@
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="2" name="SubEntityIndex" data="2"/>
+					<property type="2" name="SubItemIndex" data="2"/>
 					<property type="7" name="Workflow" data="SpecularWorkflow"/>
 					<property type="6" name="Metalness" data="0.01"/>
 					<property type="6" name="Roughness" data="0.5"/>
@@ -2930,7 +2930,7 @@
 					<property type="6" name="SourceId" data="1602736051"/>
 					<property type="6" name="Alpha" data="0"/>
 					<property type="6" name="Coefficient" data="1"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -2994,14 +2994,14 @@
 					<property type="7" name="Categories" data="Player"/>
 					<property type="12" name="TriggerPermanentely" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Name_0" id="3612666705">
 			<position x="15.2945" y="1.52864" z="-12.8305"/>
 			<rotation qw="0.707107" qx="0" qy="-0.707107" qz="0"/>
 			<scale x="0.5" y="0.5" z="0.5"/>
-			<entity name="Name_0" meshFile="Coin2.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="Gold1Mat__232063367"/>
+			<item name="Name_0" meshFile="Coin2.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="Gold1Mat__232063367"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="232063367"/>
@@ -3084,7 +3084,7 @@
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="2" name="SubEntityIndex" data="0"/>
+					<property type="2" name="SubItemIndex" data="0"/>
 					<property type="7" name="Workflow" data="SpecularWorkflow"/>
 					<property type="6" name="Metalness" data="0.01"/>
 					<property type="6" name="Roughness" data="1.7"/>
@@ -3133,14 +3133,14 @@
 					<property type="12" name="BringToFront" data="false"/>
 					<property type="12" name="CutOff" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Name_4" id="3612668445">
 			<position x="15.2945" y="1.52864" z="-3.00953"/>
 			<rotation qw="0.707107" qx="0" qy="-0.707107" qz="0"/>
 			<scale x="0.5" y="0.5" z="0.5"/>
-			<entity name="Name_4" meshFile="Coin2.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="Gold1Mat__1041248716"/>
+			<item name="Name_4" meshFile="Coin2.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="Gold1Mat__1041248716"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1041248716"/>
@@ -3223,7 +3223,7 @@
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="2" name="SubEntityIndex" data="0"/>
+					<property type="2" name="SubItemIndex" data="0"/>
 					<property type="7" name="Workflow" data="SpecularWorkflow"/>
 					<property type="6" name="Metalness" data="0.01"/>
 					<property type="6" name="Roughness" data="1.7"/>
@@ -3272,7 +3272,7 @@
 					<property type="12" name="BringToFront" data="false"/>
 					<property type="12" name="CutOff" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 	</nodes>
 </scene>

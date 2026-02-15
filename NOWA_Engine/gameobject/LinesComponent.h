@@ -220,7 +220,7 @@ namespace NOWA
 		Ogre::SceneNode* lineNode;
 		std::vector<Ogre::ManualObject*> lineObjects;
 		Ogre::OperationType internalOperationType;
-		Ogre::v1::Entity* dummyEntity;
+		Ogre::Item* dummyItem;
 		Variant* connected;
 		Variant* operationType;
 		Variant* castShadows;

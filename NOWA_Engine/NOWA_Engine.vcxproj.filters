@@ -643,6 +643,9 @@
     <ClInclude Include="gameobject\WallComponentBase.h">
       <Filter>gameobject</Filter>
     </ClInclude>
+    <ClInclude Include="gameobject\PhysicsRagDollComponentV2.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\NOWA.ico">
@@ -1193,6 +1196,9 @@
     </ClCompile>
     <ClCompile Include="modules\DecalsModule.cpp">
       <Filter>modules</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\PhysicsRagDollComponentV2.cpp">
+      <Filter>gameobject</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

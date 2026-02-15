@@ -4,6 +4,8 @@
 #include "main/AppStateManager.h"
 #include "main/InputDeviceCore.h"
 
+#include "Animation/OgreBone.h"
+
 #include <sstream>
 
 namespace
@@ -23,6 +25,7 @@ namespace NOWA
         currentTransformNodeIdx(0),
         currentTransformCameraIdx(0),
         currentTransformOldBoneIdx(0),
+        currentTransformBoneIdx(0),
         currentTransformPassIdx(0),
         currentTrackedDatablockIdx(0),
         interpolationWeight(0.0f),
@@ -140,7 +143,7 @@ namespace NOWA
             }
 
             // isWorkspaceTransitioning causes freeze with two cameras and pressing play! -> see quat/scene1
-            if (false == isStalled /*&& false == this->isWorkspaceTransitioning()*/)
+            if (false == isStalled && false == this->isWorkspaceTransitioning())
             {
                 Ogre::Root::getSingletonPtr()->renderOneFrame();
             }
@@ -174,6 +177,7 @@ namespace NOWA
         this->trackedNodes.clear();
         this->trackedCameras.clear();
         this->trackedOldBones.clear();
+        this->trackedBones.clear();
         this->trackedPasses.clear();
         this->trackedDatablocks.clear();
 
@@ -184,6 +188,7 @@ namespace NOWA
 		this->currentTransformNodeIdx = 0;
 		this->currentTransformCameraIdx = 0;
         this->currentTransformOldBoneIdx = 0;
+        this->currentTransformBoneIdx = 0;
         this->currentTransformPassIdx = 0;
         this->currentTrackedDatablockIdx = 0;
 
@@ -282,6 +287,8 @@ namespace NOWA
 
       this->oldBoneToIndexMap.clear();
       this->trackedOldBones.clear();
+      this->boneToIndexMap.clear();
+      this->trackedBones.clear();
 
       this->passToIndexMap.clear();
       this->trackedPasses.clear();
@@ -292,6 +299,7 @@ namespace NOWA
       this->currentTransformNodeIdx = 0;
       this->currentTransformCameraIdx = 0;
       this->currentTransformOldBoneIdx = 0;
+      this->currentTransformBoneIdx = 0;
       this->currentTransformPassIdx = 0;
       this->currentTrackedDatablockIdx = 0;
       this->interpolationWeight = 0.0f;
@@ -987,6 +995,16 @@ namespace NOWA
         return nullptr;
     }
 
+    GraphicsModule::BoneTransforms* GraphicsModule::findBoneTransforms(Ogre::Bone* bone)
+    {
+        auto it = this->boneToIndexMap.find(bone);
+        if (it != this->boneToIndexMap.end() && false == this->trackedBones.empty())
+        {
+            return &this->trackedBones[it->second];
+        }
+        return nullptr;
+    }
+
     GraphicsModule::PassTransforms* GraphicsModule::findPassTransforms(Ogre::Pass* pass)
     {
         auto it = this->passToIndexMap.find(pass);
@@ -1395,6 +1413,100 @@ namespace NOWA
         oldBoneTransforms->active = true;
     }
 
+    void GraphicsModule::addTrackedBone(Ogre::Bone* bone)
+    {
+        // Check if bone is already tracked
+        if (this->findBoneTransforms(bone))
+        {
+            return;
+        }
+
+        GraphicsModule::BoneTransforms newBoneTransform;
+        newBoneTransform.bone = bone;
+        newBoneTransform.active = true;
+        newBoneTransform.isNew = true;
+
+        // Initialize all buffers with the current bone transform
+        for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
+        {
+            newBoneTransform.transforms[i].position = bone->getPosition();
+            newBoneTransform.transforms[i].orientation = bone->getOrientation();
+        }
+
+        size_t newIndex = this->trackedBones.size();
+        this->trackedBones.push_back(std::move(newBoneTransform));
+
+        this->boneToIndexMap[bone] = newIndex;
+    }
+
+    void GraphicsModule::removeTrackedBone(Ogre::Bone* bone)
+    {
+        if (this->trackedBones.empty())
+        {
+            return;
+        }
+
+        auto it = this->boneToIndexMap.find(bone);
+        if (it != this->boneToIndexMap.end())
+        {
+            size_t indexToRemove = it->second;
+            size_t lastIndex = this->trackedBones.size() - 1;
+
+            if (indexToRemove != lastIndex)
+            {
+                this->trackedBones[indexToRemove] = std::move(this->trackedBones[lastIndex]);
+                this->boneToIndexMap[this->trackedBones[indexToRemove].bone] = indexToRemove;
+            }
+
+            this->trackedBones.pop_back();
+            this->boneToIndexMap.erase(it);
+        }
+    }
+
+
+    void GraphicsModule::updateBonePosition(Ogre::Bone* bone, const Ogre::Vector3& position)
+    {
+        GraphicsModule::BoneTransforms* boneTransforms = this->findBoneTransforms(bone);
+
+        if (nullptr == boneTransforms)
+        {
+            this->addTrackedBone(bone);
+            boneTransforms = this->findBoneTransforms(bone);
+        }
+
+        boneTransforms->transforms[this->currentTransformBoneIdx].position = position;
+        boneTransforms->active = true;
+    }
+
+    void GraphicsModule::updateBoneOrientation(Ogre::Bone* bone, const Ogre::Quaternion& orientation)
+    {
+        GraphicsModule::BoneTransforms* boneTransforms = this->findBoneTransforms(bone);
+
+        if (nullptr == boneTransforms)
+        {
+            this->addTrackedBone(bone);
+            boneTransforms = this->findBoneTransforms(bone);
+        }
+
+        boneTransforms->transforms[this->currentTransformBoneIdx].orientation = orientation;
+        boneTransforms->active = true;
+    }
+
+    void GraphicsModule::updateBoneTransform(Ogre::Bone* bone, const Ogre::Vector3& position, const Ogre::Quaternion& orientation)
+    {
+        GraphicsModule::BoneTransforms* boneTransforms = this->findBoneTransforms(bone);
+
+        if (nullptr == boneTransforms)
+        {
+            this->addTrackedBone(bone);
+            boneTransforms = this->findBoneTransforms(bone);
+        }
+
+        boneTransforms->transforms[this->currentTransformBoneIdx].position = position;
+        boneTransforms->transforms[this->currentTransformBoneIdx].orientation = orientation;
+        boneTransforms->active = true;
+    }
+
     void GraphicsModule::addTrackedPass(Ogre::Pass* pass)
     {
         if (this->findPassTransforms(pass))
@@ -1717,6 +1829,11 @@ namespace NOWA
         return (this->currentTransformOldBoneIdx + NUM_TRANSFORM_BUFFERS - 1) % NUM_TRANSFORM_BUFFERS;
     }
 
+    size_t GraphicsModule::getPreviousTransformBoneIdx(void) const
+    {
+        return (this->currentTransformBoneIdx + NUM_TRANSFORM_BUFFERS - 1) % NUM_TRANSFORM_BUFFERS;
+    }
+
     size_t GraphicsModule::getPreviousTransformPassIdx(void) const
     {
         return (this->currentTransformPassIdx + NUM_TRANSFORM_BUFFERS - 1) % NUM_TRANSFORM_BUFFERS;
@@ -1904,6 +2021,32 @@ namespace NOWA
             }
         }
 
+        // Advance bone transform buffer
+
+        size_t prevBoneIdx = this->currentTransformBoneIdx;
+        this->currentTransformBoneIdx = (this->currentTransformBoneIdx + 1) % NUM_TRANSFORM_BUFFERS;
+
+        for (auto& boneTransform : this->trackedBones)
+        {
+            if (true == boneTransform.isNew)
+            {
+                GraphicsModule::TransformData currentTransform;
+                currentTransform.position = boneTransform.bone->getPosition();
+                currentTransform.orientation = boneTransform.bone->getOrientation();
+
+                for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
+                {
+                    boneTransform.transforms[i] = currentTransform;
+                }
+
+                boneTransform.isNew = false;
+            }
+            else if (true == boneTransform.active)
+            {
+                boneTransform.transforms[this->currentTransformBoneIdx] = boneTransform.transforms[prevBoneIdx];
+            }
+        }
+
         size_t prevPassIdx = this->currentTransformPassIdx;
         this->currentTransformPassIdx = (this->currentTransformPassIdx + 1) % NUM_TRANSFORM_BUFFERS;
 
@@ -2021,7 +2164,6 @@ namespace NOWA
 
         // Update oldBone transforms
 
-
         // Get the previous buffer index
         size_t prevOldBoneIdx = this->getPreviousTransformOldBoneIdx();
 
@@ -2043,6 +2185,25 @@ namespace NOWA
                 // Apply to scene oldBone
                 oldBoneTransform.oldBone->setOrientation(interpRot);
                 oldBoneTransform.oldBone->setPosition(interpPos);
+            }
+        }
+
+        // Update bone transforms
+
+        size_t prevBoneIdx = this->getPreviousTransformBoneIdx();
+
+        for (auto& boneTransform : this->trackedBones)
+        {
+            if (true == boneTransform.active)
+            {
+                const GraphicsModule::TransformData& prevTransform = boneTransform.transforms[prevBoneIdx];
+                const GraphicsModule::TransformData& currTransform = boneTransform.transforms[this->currentTransformBoneIdx];
+
+                Ogre::Vector3 interpPos = Ogre::Math::lerp(prevTransform.position, currTransform.position, this->interpolationWeight);
+                Ogre::Quaternion interpRot = Ogre::Quaternion::nlerp(this->interpolationWeight, prevTransform.orientation, currTransform.orientation, true);
+
+                boneTransform.bone->setOrientation(interpRot);
+                boneTransform.bone->setPosition(interpPos);
             }
         }
 

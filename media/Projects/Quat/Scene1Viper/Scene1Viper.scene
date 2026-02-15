@@ -48,8 +48,8 @@
 			<position x="0" y="0" z="0"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="MainGameObject" meshFile="Node.mesh" castShadows="true" visible="false">
-				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
+			<item name="MainGameObject" meshFile="Node.mesh" castShadows="true" visible="false">
+				<subitem index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1111111111"/>
@@ -69,15 +69,15 @@
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="ViperTire_3" id="2549722659">
 			<position x="0.75972" y="0.29921" z="-7.62067"/>
 			<rotation qw="4.37114e-08" qx="0" qy="1" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="ViperTire_3" meshFile="ViperTire.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="Viper"/>
-				<subentity index="1" datablockName="Viper"/>
+			<item name="ViperTire_3" meshFile="ViperTire.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="Viper"/>
+				<subitem index="1" datablockName="Viper"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2845523085"/>
@@ -146,17 +146,17 @@
 					<property type="6" name="SpringConst" data="200"/>
 					<property type="6" name="SpringDamp" data="12"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Viper_0" id="3810697672">
 			<position x="0" y="0" z="-8.9"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Viper_0" meshFile="Viper.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="Viper"/>
-				<subentity index="1" datablockName="Viper"/>
-				<subentity index="2" datablockName="Viper"/>
-				<subentity index="3" datablockName="[Default]"/>
+			<item name="Viper_0" meshFile="Viper.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="Viper"/>
+				<subitem index="1" datablockName="Viper"/>
+				<subitem index="2" datablockName="Viper"/>
+				<subitem index="3" datablockName="[Default]"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="4174093685"/>
@@ -247,15 +247,15 @@
 					<property type="6" name="Friction" data="0.5"/>
 					<property type="6" name="SpringLength" data="6"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="ViperTire_0" id="2549723094">
 			<position x="-0.759721" y="0.299213" z="-7.62067"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="ViperTire_0" meshFile="ViperTire.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="Viper"/>
-				<subentity index="1" datablockName="Viper"/>
+			<item name="ViperTire_0" meshFile="ViperTire.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="Viper"/>
+				<subitem index="1" datablockName="Viper"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2274627691"/>
@@ -324,15 +324,15 @@
 					<property type="6" name="SpringConst" data="200"/>
 					<property type="6" name="SpringDamp" data="12"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="ViperTire_1" id="2549723529">
 			<position x="-0.759721" y="0.299213" z="-10.0049"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="ViperTire_1" meshFile="ViperTire.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="Viper"/>
-				<subentity index="1" datablockName="Viper"/>
+			<item name="ViperTire_1" meshFile="ViperTire.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="Viper"/>
+				<subitem index="1" datablockName="Viper"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="823838335"/>
@@ -401,14 +401,14 @@
 					<property type="6" name="SpringConst" data="200"/>
 					<property type="6" name="SpringDamp" data="12"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="SunLight" id="1479238507">
 			<position x="0" y="37.2738" z="50"/>
 			<rotation qw="4.63629e-08" qx="-1.54543e-08" qy="0.707107" qz="0.707107"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="SunLight" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
-				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
+			<item name="SunLight" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
+				<subitem index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1111111113"/>
@@ -441,14 +441,14 @@
 					<property type="12" name="CastShadows" data="true"/>
 					<property type="12" name="ShowDummyEntity" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="MainCamera" id="4010617415">
 			<position x="5.86645" y="2.46972" z="-10.7348"/>
 			<rotation qw="0.707438" qx="-0.122501" qy="0.685871" qz="0.11877"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
-				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
+			<item name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
+				<subitem index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1111111112"/>
@@ -504,15 +504,15 @@
 					<property type="6" name="ShadowSplitPadding" data="1"/>
 					<property type="7" name="SkyBoxName" data="elder_world_cube.dds"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="ViperTire_2" id="2549722224">
 			<position x="0.75972" y="0.29921" z="-10.0049"/>
 			<rotation qw="4.37114e-08" qx="0" qy="1" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="ViperTire_2" meshFile="ViperTire.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="Viper"/>
-				<subentity index="1" datablockName="Viper"/>
+			<item name="ViperTire_2" meshFile="ViperTire.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="Viper"/>
+				<subitem index="1" datablockName="Viper"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2208690072"/>
@@ -581,7 +581,7 @@
 					<property type="6" name="SpringConst" data="200"/>
 					<property type="6" name="SpringDamp" data="12"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Plane_0" id="1695645354">
 			<position x="0" y="0" z="0"/>

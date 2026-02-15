@@ -127,14 +127,14 @@ namespace NOWA
 		static const Ogre::String AttrFovy(void) { return "Fovy"; }
 		static const Ogre::String AttrFixedYawAxis(void) { return "Fixed Yaw Axis"; }
 		static const Ogre::String AttrCubeTextureSize(void) { return "Cube Texture Size"; }
-		static const Ogre::String AttrShowDummyEntity(void) { return "Show Dummy Entity"; }
+		static const Ogre::String AttrShowDummyItem(void) { return "Show Dummy Item"; }
 	private:
 		void createCamera(void);
 	private:
 		static bool justCreated;
 	private:
 		Ogre::Camera* camera;
-		Ogre::v1::Entity* dummyEntity;
+		Ogre::Item* dummyItem;
 		Variant* nearClipDistance;
 		Variant* farClipDistance;
 		Variant* orthographic;

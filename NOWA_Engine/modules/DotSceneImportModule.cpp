@@ -1,4 +1,4 @@
-#include "NOWAPrecompiled.h"
+﻿#include "NOWAPrecompiled.h"
 #include "DotSceneImportModule.h"
 #include "main/Core.h" // required for the progressbar when loading the scene
 #include "main/AppStateManager.h"
@@ -271,6 +271,9 @@ namespace NOWA
 		// If a saved game shall be parsed, the user can say, whether everything is crypted and needs to be decoded.
 		float currentTime = static_cast<Ogre::Real>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001f;
 
+		Core::getSingletonPtr()->preLoadSceneTextures(filePathName);
+        Ogre::LogManager::getSingleton().logMessage("[DotSceneImportModule] Texture preload: " + Ogre::StringConverter::toString(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) + "ms");
+
 		Core::getSingletonPtr()->createFolders(this->scenePath);
 
 		// Announce the current scene path to core. Do not set file path name, as it could be from a saved game, which points to a whole different location, in which there are no lua scripts etc.
@@ -350,11 +353,17 @@ namespace NOWA
 			this->parseGlobalScene(crypted);
 		}
 
-		ENQUEUE_RENDER_COMMAND_WAIT("DotSceneImportModule::postInitData",
-		{
+		ENQUEUE_RENDER_COMMAND_WAIT("DotSceneImportModule::waitForStreamingCompletion", {
+            Ogre::TextureGpuManager* textureManager = Ogre::Root::getSingletonPtr()->getRenderSystem()->getTextureGpuManager();
+            textureManager->waitForStreamingCompletion();
+
+            // NEW: Force buffer creation for all loaded meshes
+            Ogre::VaoManager* vaoManager = Ogre::Root::getSingletonPtr()->getRenderSystem()->getVaoManager();
+            // This ensures mesh buffers are batched and created
+
 			// This game objects must be initialized before all other game objects are initialized, because they may need data from this game objects, like terra needs a camera
-			this->postInitData();
-		});
+            this->postInitData();
+        });
 
 		float dt = (static_cast<Ogre::Real>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001f) - currentTime;
 		Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[DotSceneImportModule] Parse end scene: " + this->projectParameter.sceneName + " duration: " + Ogre::StringConverter::toString(dt) + " seconds");
@@ -365,13 +374,6 @@ namespace NOWA
 
 		// Clears the saved game file path name again, so that usual loading is done
 		this->savedGameFilePathName.clear();
-
-		ENQUEUE_RENDER_COMMAND_WAIT("DotSceneImportModule::waitForStreamingCompletion",
-		{
-			// Important call: If all scene relevant textures have been loaded, call this command, so that Ogre internally creates fully all textures
-			Ogre::TextureGpuManager * textureManager = Ogre::Root::getSingletonPtr()->getRenderSystem()->getTextureGpuManager();
-			textureManager->waitForStreamingCompletion();
-		});
 
 		boost::shared_ptr<EventDataSceneParsed> eventDataSceneParsed(new EventDataSceneParsed());
 		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataSceneParsed);
@@ -1583,6 +1585,7 @@ namespace NOWA
 		}
 	}
 
+#if 0
 	void DotSceneImportModule::processItem(rapidxml::xml_node<>* xmlNode, Ogre::SceneNode* parent, bool justSetValues)
     {
         // Process attributes
@@ -1832,6 +1835,191 @@ namespace NOWA
             float dt = (static_cast<Ogre::Real>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001f) - currentTime;
         }
     }
+#endif
+
+#if 1
+	void DotSceneImportModule::processItem(rapidxml::xml_node<>* xmlNode, Ogre::SceneNode* parent, bool justSetValues)
+    {
+        // Process attributes
+        Ogre::String name = XMLConverter::getAttrib(xmlNode, "name");
+        Ogre::String id = XMLConverter::getAttrib(xmlNode, "id");
+        Ogre::String meshFile = XMLConverter::getAttrib(xmlNode, "meshFile");
+        bool castShadows = XMLConverter::getAttribBool(xmlNode, "castShadows", true);
+        bool visible = XMLConverter::getAttribBool(xmlNode, "visible", true);
+        Ogre::Real lodDistance = XMLConverter::getAttribReal(xmlNode, "lodDistance", 0.0f);
+
+        bool isProceduralMesh = (meshFile == "Procedural.mesh");
+        Ogre::String tempMeshFile = meshFile;
+
+        if (Ogre::String::npos != tempMeshFile.find("Plane"))
+        {
+            tempMeshFile = "Missing.mesh";
+        }
+
+        float currentTime = static_cast<Ogre::Real>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001f;
+        Ogre::Item* item = nullptr;
+
+        unsigned long missingGameObjectId = 0;
+        if (true == justSetValues && false == this->missingGameObjectIds.empty())
+        {
+            rapidxml::xml_node<>* propertyElement = xmlNode->first_node("property");
+            findGameObjectId(propertyElement, missingGameObjectId);
+        }
+
+        // Only load mesh if it's NOT procedural
+        if (false == isProceduralMesh)
+        {
+            GraphicsModule::RenderCommand renderCommand = [this, &item, justSetValues, xmlNode, &parent, missingGameObjectId, meshFile, &tempMeshFile, name, castShadows, visible]()
+            {
+                if (false == justSetValues || missingGameObjectId != 0)
+                {
+                    // ============================================================================
+                    // OPTIMIZED MESH LOADING - V2 FIRST!
+                    // ============================================================================
+                    Ogre::MeshPtr v2Mesh = this->loadMeshV2Optimized(tempMeshFile, name, meshFile);
+
+                    if (!v2Mesh)
+                    {
+                        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Failed to load mesh: " + tempMeshFile);
+                        return;
+                    }
+
+                    DeployResourceModule::getInstance()->tagResource(tempMeshFile, v2Mesh->getGroup());
+
+                    // Create Item
+                    item = this->sceneManager->createItem(v2Mesh, Ogre::SCENE_STATIC);
+                    item->setQueryFlags(Core::getSingletonPtr()->UNUSEDMASK);
+                    item->setName(name);
+                    item->setCastShadows(castShadows);
+
+                    // Set static flag from userData
+                    rapidxml::xml_node<>* pElement = xmlNode->first_node("userData");
+                    if (pElement)
+                    {
+                        rapidxml::xml_node<>* propertyElement = pElement->first_node("property");
+                        bool dynamic = true;
+                        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Static")
+                        {
+                            dynamic = !XMLConverter::getAttribBool(propertyElement, "data", false);
+                            propertyElement = propertyElement->next_sibling("property");
+                        }
+
+                        parent->setStatic(!dynamic);
+                        item->setStatic(!dynamic);
+                    }
+
+                    parent->attachObject(item);
+                    item->setVisible(visible);
+                }
+
+                // Callback
+                if (this->sceneLoaderCallback)
+                {
+                    this->sceneLoaderCallback->onPostLoadMovableObject(item);
+                }
+
+                // Set datablocks
+                if (false == justSetValues || missingGameObjectId != 0)
+                {
+                    rapidxml::xml_node<>* pElement = xmlNode->first_node("subitem");
+                    size_t subItemIndexCount = 0;
+
+                    while (pElement)
+                    {
+                        Ogre::String materialFile = XMLConverter::getAttrib(pElement, "datablockName");
+                        if (false == materialFile.empty())
+                        {
+                            Ogre::HlmsManager* hlmsManager = Ogre::Root::getSingleton().getHlmsManager();
+                            Ogre::HlmsDatablock* block = hlmsManager->getDatablockNoDefault(materialFile);
+
+                            if (nullptr != block)
+                            {
+                                item->getSubItem(subItemIndexCount)->setDatablock(materialFile);
+
+                                const Ogre::String* currentDatablockName = item->getSubItem(subItemIndexCount)->getDatablock()->getNameStr();
+                                if (nullptr == currentDatablockName || *currentDatablockName != materialFile)
+                                {
+                                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Warning: Could not set datablock: " + materialFile);
+                                }
+                            }
+                            else
+                            {
+                                break;
+                            }
+
+                            if (this->sceneLoaderCallback)
+                            {
+                                this->sceneLoaderCallback->onPostLoadMovableObject(item);
+                            }
+                            subItemIndexCount++;
+                        }
+                        pElement = pElement->next_sibling("subitem");
+                    }
+                }
+            };
+
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DotSceneImportModule::processItem");
+        }
+        else
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[DotSceneImport] Skipping procedural mesh for: " + name);
+        }
+
+        // Create GameObject
+        rapidxml::xml_node<>* pElement = xmlNode->first_node("userData");
+        if (pElement)
+        {
+            GameObjectPtr gameObjectPtr = nullptr;
+            if (false == justSetValues || missingGameObjectId != 0)
+            {
+                gameObjectPtr = GameObjectFactory::getInstance()->createOrSetGameObjectFromXML(pElement, this->sceneManager, parent, item, GameObject::ITEM, this->scenePath, this->forceCreation, this->bSceneParsed);
+            }
+            else
+            {
+                bool foundId = false;
+                rapidxml::xml_node<>* propertyElement = pElement->first_node("property");
+
+                if (nullptr != propertyElement)
+                {
+                    do
+                    {
+                        Ogre::String attrib = XMLConverter::getAttrib(propertyElement, "name");
+                        if (propertyElement && attrib == "Id")
+                        {
+                            unsigned long existingGameObjectId = XMLConverter::getAttribUnsignedLong(propertyElement, "data");
+                            GameObjectPtr existingGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(existingGameObjectId);
+
+                            if (nullptr == existingGameObjectPtr)
+                            {
+                                break;
+                            }
+
+                            gameObjectPtr = GameObjectFactory::getInstance()->createOrSetGameObjectFromXML(pElement, this->sceneManager, parent, item, GameObject::ITEM, this->scenePath, this->forceCreation, this->bSceneParsed, existingGameObjectPtr);
+                            foundId = true;
+                        }
+                        else
+                        {
+                            propertyElement = propertyElement->next_sibling("property");
+                        }
+                    } while (nullptr != propertyElement && false == foundId);
+                }
+            }
+
+            if (nullptr != gameObjectPtr)
+            {
+                gameObjectPtr->setOriginalMeshNameOnLoadFailure(meshFile);
+                this->parsedGameObjectIds.emplace_back(gameObjectPtr->getId());
+
+                if ("SunLight" == gameObjectPtr->getSceneNode()->getName())
+                {
+                    this->sunLight = NOWA::makeStrongPtr(gameObjectPtr->getComponent<LightDirectionalComponent>())->getOgreLight();
+                }
+            }
+
+            float dt = (static_cast<Ogre::Real>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001f) - currentTime;
+        }
+    }
+#endif
 
     void DotSceneImportModule::processEntity(rapidxml::xml_node<>* xmlNode, Ogre::SceneNode* parent, bool justSetValues)
     {
@@ -2428,7 +2616,97 @@ namespace NOWA
 				} while (false == foundId && nullptr != propertyElement);
 			}
 		}
-	}
+    }
+
+    Ogre::MeshPtr DotSceneImportModule::loadMeshV2Optimized(const Ogre::String& meshName, const Ogre::String& itemName, const Ogre::String& originalMeshFile)
+    {
+        Ogre::MeshPtr v2Mesh;
+
+        // ============================================================================
+        // FAST PATH: Try to get existing V2 mesh (already loaded/converted)
+        // ============================================================================
+        v2Mesh = Ogre::MeshManager::getSingletonPtr()->getByName(meshName, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME);
+
+        if (v2Mesh)
+        {
+            // Already loaded - reuse it! (FAST!)
+            return v2Mesh;
+        }
+
+        // ============================================================================
+        // TRY V2 LOAD FIRST (for pre-converted meshes)
+        // ============================================================================
+        try
+        {
+            v2Mesh = Ogre::MeshManager::getSingletonPtr()->load(meshName, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME);
+
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[DotSceneImport] Loaded V2 mesh (fast path): " + meshName);
+
+            return v2Mesh;
+        }
+        catch (Ogre::Exception& e)
+        {
+            // V2 load failed - mesh might be LEGACYV1 or V1 format
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[DotSceneImport] V2 load failed for '" + meshName + "', trying V1 import...");
+        }
+
+        // ============================================================================
+        // SLOW PATH: V1 -> V2 CONVERSION (only for legacy meshes)
+        // ============================================================================
+        try
+        {
+            Ogre::v1::MeshPtr v1Mesh = Ogre::v1::MeshManager::getSingletonPtr()->getByName(meshName, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME);
+
+            if (!v1Mesh)
+            {
+                v1Mesh =
+                    Ogre::v1::MeshManager::getSingletonPtr()->load(meshName, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, Ogre::v1::HardwareBuffer::HBU_STATIC_WRITE_ONLY, Ogre::v1::HardwareBuffer::HBU_STATIC_WRITE_ONLY, true, true);
+            }
+
+            if (!v1Mesh)
+            {
+                throw Ogre::Exception(0, "V1 mesh load failed", "loadMeshV2Optimized");
+            }
+
+            // Import V1 -> V2 (expensive, but cached for reuse!)
+            v2Mesh = Ogre::MeshManager::getSingletonPtr()->createByImportingV1(meshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, v1Mesh.get(), true, true, true);
+
+            v1Mesh->unload();
+
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DotSceneImport] WARNING: Converted V1V2 at runtime (SLOW): " + meshName + " - Use OgreMeshTool to convert offline!");
+
+            return v2Mesh;
+        }
+        catch (Ogre::Exception& e)
+        {
+            // Both V2 and V1 failed - try Missing.mesh
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DotSceneImport] Failed to load: " + meshName + ", loading Missing.mesh");
+
+            try
+            {
+                Ogre::v1::MeshPtr missingV1 = Ogre::v1::MeshManager::getSingleton().load("Missing.mesh", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, Ogre::v1::HardwareBuffer::HBU_STATIC, Ogre::v1::HardwareBuffer::HBU_STATIC);
+
+                // Destroy conflicting V2 resource if it exists
+                Ogre::ResourcePtr resourceV2 = Ogre::MeshManager::getSingletonPtr()->getResourceByName(itemName);
+                if (resourceV2)
+                {
+                    Ogre::MeshManager::getSingletonPtr()->destroyResourcePool(itemName);
+                    Ogre::MeshManager::getSingletonPtr()->remove(resourceV2->getHandle());
+                }
+
+                v2Mesh = Ogre::MeshManager::getSingletonPtr()->createByImportingV1(itemName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, missingV1.get(), true, true, true);
+
+                missingV1->unload();
+
+                return v2Mesh;
+            }
+            catch (Ogre::Exception& e2)
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DotSceneImport] Critical error loading mesh: " + e2.getDescription());
+                return nullptr;
+            }
+        }
+    }
 
 	Ogre::SceneManager* DotSceneImportModule::getSceneManager(void) const
 	{

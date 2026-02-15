@@ -216,6 +216,7 @@
     <ClInclude Include="gameobject\InputDeviceComponent.h" />
     <ClInclude Include="gameobject\PhysicsActiveComplexVehicleComponent.h" />
     <ClInclude Include="gameobject\PhysicsActiveVehicleComponent.h" />
+    <ClInclude Include="gameobject\PhysicsRagDollComponentV2.h" />
     <ClInclude Include="gameobject\RoadComponentBase.h" />
     <ClInclude Include="gameobject\ValueBarComponent.h" />
     <ClInclude Include="gameobject\ExitComponent.h" />
@@ -429,6 +430,7 @@
     <ClCompile Include="gameobject\InputDeviceComponent.cpp" />
     <ClCompile Include="gameobject\PhysicsActiveComplexVehicleComponent.cpp" />
     <ClCompile Include="gameobject\PhysicsActiveVehicleComponent.cpp" />
+    <ClCompile Include="gameobject\PhysicsRagDollComponentV2.cpp" />
     <ClCompile Include="gameobject\ValueBarComponent.cpp" />
     <ClCompile Include="gameobject\ExitComponent.cpp" />
     <ClCompile Include="gameobject\FadeComponent.cpp" />

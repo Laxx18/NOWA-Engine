@@ -212,6 +212,16 @@ namespace NOWA
 		static const Ogre::String AttrCollisionType(void) { return "Collision Type"; }
 		static const Ogre::String AttrMass(void) { return "Mass"; }
 		static const Ogre::String AttrCollidable(void) { return "Collidable"; }
+
+    protected:
+        struct VertexExtractionJob
+        {
+            const Ogre::VertexArrayObject* vao;
+            size_t targetBoneIndex;
+            Ogre::Real minWeight;
+            Ogre::Matrix4 invMatrix;
+            std::vector<Ogre::Vector3> vertices;
+        };
 	protected:
 		OgreNewt::CollisionPtr serializeTreeCollision(const Ogre::String& scenePath, unsigned int categoryId, bool overwrite = false);
 
@@ -231,6 +241,52 @@ namespace NOWA
 		OgreNewt::CollisionPtr getWeightedBoneConvexHull(Ogre::v1::OldBone* bone, Ogre::v1::MeshPtr mesh, Ogre::Real minWeight,
 			Ogre::Vector3& inertia, Ogre::Vector3& massOrigin, unsigned int categoryId, const Ogre::Vector3& offsetPosition, const Ogre::Quaternion& offsetOrientation,
 			const Ogre::Vector3& scale = Ogre::Vector3(1.0f, 1.0f, 1.0f));
+
+		/**
+         * @brief Creates a convex hull collision shape from bone-weighted vertices (V2 API)
+         *
+         * This is the v2 replacement for getWeightedBoneConvexHull that works with
+         * Ogre::Item and Ogre::Bone instead of v1::Entity and v1::OldBone.
+         *
+         * @param bone The bone to create collision for (v2 Bone)
+         * @param item The Item containing the mesh (v2 Item, not v1 Entity)
+         * @param minWeight Minimum vertex weight to include (0.0 to 1.0)
+         * @param inertia [out] Calculated inertia tensor
+         * @param massOrigin [out] Center of mass
+         * @param categoryId Physics category ID for filtering
+         * @param offsetPosition Position offset for the collision shape
+         * @param offsetOrientation Orientation offset for the collision shape
+         * @param scale Scale factor to apply
+         * @return Collision shape pointer
+         */
+        OgreNewt::CollisionPtr getWeightedBoneConvexHullV2(Ogre::Bone* bone, Ogre::Item* item, Ogre::Real minWeight, Ogre::Vector3& inertia, Ogre::Vector3& massOrigin, unsigned int categoryId, const Ogre::Vector3& offsetPosition,
+            const Ogre::Quaternion& offsetOrientation, const Ogre::Vector3& scale);
+
+        /**
+         * @brief Find the index of a bone in the skeleton instance
+         * @param skelInstance The skeleton instance to search
+         * @param bone The bone to find
+         * @return Bone index, or size_t(-1) if not found
+         */
+        size_t findBoneIndex(Ogre::SkeletonInstance* skelInstance, Ogre::Bone* bone);
+
+        /**
+         * @brief Convert v2's SimpleMatrixAf4x3 to Matrix4
+         * @param simpleMatrix The 3x4 affine matrix to convert
+         * @return 4x4 matrix
+         */
+        Ogre::Matrix4 convertSimpleMatrixToMatrix4(const Ogre::SimpleMatrixAf4x3& simpleMatrix);
+
+        /**
+         * @brief Extract vertices from a VAO that are influenced by a specific bone
+         *
+         * @param vao The Vertex Array Object to process
+         * @param targetBoneIndex Index of the bone we're looking for
+         * @param minWeight Minimum influence weight
+         * @param invMatrix Transform matrix to apply to vertices
+         * @param vertexVector [out] Vector to append found vertices to
+         */
+        void extractVerticesFromVAO(const Ogre::VertexArrayObject* vao, size_t targetBoneIndex, Ogre::Real minWeight, const Ogre::Matrix4& invMatrix, std::vector<Ogre::Vector3>& vertexVector);
 
 		OgreNewt::CollisionPtr createHeightFieldCollision(Ogre::Terra* terra);
 	protected:

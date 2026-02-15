@@ -359,6 +359,11 @@ namespace NOWA
 				this->sceneManager->getRenderQueue()->setRenderQueueMode(NOWA::RENDER_QUEUE_V1_OBJECTS_ALWAYS_IN_FOREGROUND, Ogre::RenderQueue::Modes::V1_FAST);
 				this->sceneManager->getRenderQueue()->setSortRenderQueue(NOWA::RENDER_QUEUE_V1_OBJECTS_ALWAYS_IN_FOREGROUND, sortMode);
 
+				this->sceneManager->getRenderQueue()->setRenderQueueMode(NOWA::RENDER_QUEUE_V2_TRANSPARENT, Ogre::RenderQueue::Modes::FAST);
+                this->sceneManager->getRenderQueue()->setSortRenderQueue(NOWA::RENDER_QUEUE_V2_TRANSPARENT,
+                    Ogre::RenderQueue::StableSort // Back-to-front depth sorting
+                );
+
 				this->sceneManager->getRenderQueue()->setRenderQueueMode(NOWA::RENDER_QUEUE_GIZMO, Ogre::RenderQueue::Modes::V1_FAST);
 				this->sceneManager->getRenderQueue()->setSortRenderQueue(NOWA::RENDER_QUEUE_GIZMO, sortMode);
 

@@ -39,8 +39,8 @@
 			<position x="0" y="5" z="-2"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
-				<subentity index="0" datablockName="WhiteLine"/>
+			<item name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
+				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1111111112"/>
@@ -84,14 +84,14 @@
 					<property type="6" name="ShadowSplitFade" data="0.313"/>
 					<property type="6" name="ShadowSplitPadding" data="1"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="SunLight" id="1479238507">
 			<position x="0" y="37.2738" z="50"/>
 			<rotation qw="0.859342" qx="-0.261669" qy="0.310693" qz="0.310693"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="SunLight" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
-				<subentity index="0" datablockName="WhiteLine"/>
+			<item name="SunLight" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
+				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1111111113"/>
@@ -118,14 +118,14 @@
 					<property type="6" name="AttenuationLumThreshold" data="0.00192"/>
 					<property type="12" name="CastShadows" data="true"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="MainGameObject" id="1366663313">
 			<position x="0" y="0" z="0"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="MainGameObject" meshFile="Node.mesh" castShadows="true" visible="false">
-				<subentity index="0" datablockName="WhiteLine"/>
+			<item name="MainGameObject" meshFile="Node.mesh" castShadows="true" visible="false">
+				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1111111111"/>
@@ -167,7 +167,7 @@
 					<property type="2" name="MessageCount" data="0"/>
 					<property type="7" name="Duration" data="0.5"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 	</nodes>
 </scene>

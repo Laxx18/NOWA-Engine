@@ -999,10 +999,10 @@ namespace NOWA
 			// Creating out from root, else transform is relative, which is ugly
 			sceneNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_DYNAMIC);
 			// sceneNode->setOrientation(this->tagPointNode->getOrientation() * this->gameObjectPtr->getSceneNode()->getOrientation());
-			Ogre::v1::Entity * entity = this->gameObjectPtr->getSceneManager()->createEntity(this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>()->getMesh());
-			entity->setQueryFlags(0 << 0);
-			entity->setCastShadows(this->gameObjectPtr->getMovableObject()->getCastShadows());
-			sceneNode->attachObject(entity);
+			Ogre::Item* item = this->gameObjectPtr->getSceneManager()->createItem(this->gameObjectPtr->getMovableObject<Ogre::Item>()->getMesh());
+            item->setQueryFlags(0 << 0);
+            item->setCastShadows(this->gameObjectPtr->getMovableObject()->getCastShadows());
+            sceneNode->attachObject(item);
 			sceneNode->setScale(this->gameObjectPtr->getScale());
 		});
 

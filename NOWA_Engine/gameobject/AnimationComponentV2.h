@@ -10,7 +10,6 @@ GPL v3
 #include "gameobject/GameObjectComponent.h"
 #include "utilities/AnimationBlenderV2.h"
 #include "main/Events.h"
-#include "OgrePlugin.h"
 
 namespace Ogre
 {

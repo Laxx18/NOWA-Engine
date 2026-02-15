@@ -168,7 +168,7 @@ namespace NOWA
 		static const Ogre::String AttrOrthoWindowSize(void) { return "Ortho Window Size"; }
 		static const Ogre::String AttrFovy(void) { return "Fovy"; }
 		static const Ogre::String AttrFixedYawAxis(void) { return "Fixed Yaw Axis"; }
-		static const Ogre::String AttrShowDummyEntity(void) { return "Show Dummy Entity"; }
+		static const Ogre::String AttrShowDummyItem(void) { return "Show Dummy Item"; }
 		static const Ogre::String AttrExcludeRenderCategories(void) { return "Exclude Render Categories"; }
 
 		/**
@@ -185,7 +185,7 @@ namespace NOWA
 		static bool justCreated;
 	private:
 		Ogre::Camera* camera;
-		Ogre::v1::Entity* dummyEntity;
+		Ogre::Item* dummyItem;
 		BaseCamera* baseCamera;
 		Variant* active;
 		Variant* position;

@@ -45,8 +45,8 @@
 			<position x="0" y="0.5" z="10"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="IntroCamera" meshFile="Camera.mesh" castShadows="false" visible="true">
-				<subentity index="0" datablockName="WhiteLine"/>
+			<item name="IntroCamera" meshFile="Camera.mesh" castShadows="false" visible="true">
+				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1270707882"/>
@@ -104,7 +104,7 @@
 					<property type="6" name="ShadowSplitFade" data="0.313"/>
 					<property type="6" name="ShadowSplitPadding" data="1"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Plane_0" id="1695645354">
 			<position x="0" y="0" z="0"/>
@@ -158,8 +158,8 @@
 			<position x="0" y="10" z="0"/>
 			<rotation qw="0.996195" qx="0" qy="0" qz="-0.0871557"/>
 			<scale x="2" y="1" z="1"/>
-			<entity name="Logo" meshFile="box.mesh" castShadows="false" visible="true">
-				<subentity index="0" datablockName="WhiteLine__02713970596"/>
+			<item name="Logo" meshFile="box.mesh" castShadows="false" visible="true">
+				<subitem index="0" datablockName="WhiteLine__02713970596"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2713970596"/>
@@ -183,7 +183,7 @@
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="2" name="SubEntityIndex" data="0"/>
+					<property type="2" name="SubItemIndex" data="0"/>
 					<property type="7" name="Workflow" data="MetallicWorkflow"/>
 					<property type="6" name="Metalness" data="0.15"/>
 					<property type="6" name="Roughness" data="2"/>
@@ -340,14 +340,14 @@
 					<property type="6" name="Duration" data="5"/>
 					<property type="7" name="EaseFunction" data="easeOutBack"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="SpotLight" id="2622970567">
 			<position x="-1.8" y="0.344281" z="3"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="SpotLight" meshFile="LightSpot.mesh" castShadows="false" visible="true">
-				<subentity index="0" datablockName="WhiteLine"/>
+			<item name="SpotLight" meshFile="LightSpot.mesh" castShadows="false" visible="true">
+				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="362703469"/>
@@ -444,14 +444,14 @@
 					<property type="12" name="PlayWhenInMotion" data="false"/>
 					<property type="7" name="OnSpectrumAnalysisFunctionName" data=""/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="MainCamera" id="4010617415">
 			<position x="-2.839" y="12.3995" z="16.3987"/>
 			<rotation qw="0.968111" qx="-0.250371" qy="0.00844857" qz="0.00218495"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="true">
-				<subentity index="0" datablockName="WhiteLine"/>
+			<item name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="true">
+				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1111111112"/>
@@ -509,14 +509,14 @@
 					<property type="6" name="ShadowSplitFade" data="0.313"/>
 					<property type="6" name="ShadowSplitPadding" data="1"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="SunLight" id="1479238507">
 			<position x="0" y="12" z="0"/>
 			<rotation qw="0.770417" qx="-0.462913" qy="0.225778" qz="0.375757"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="SunLight" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
-				<subentity index="0" datablockName="WhiteLine"/>
+			<item name="SunLight" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
+				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1111111113"/>
@@ -550,14 +550,14 @@
 					<property type="12" name="CastShadows" data="true"/>
 					<property type="12" name="ShowDummyEntity" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="MainGameObject" id="1366663313">
 			<position x="0" y="0" z="0"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="MainGameObject" meshFile="Node.mesh" castShadows="true" visible="false">
-				<subentity index="0" datablockName="WhiteLine"/>
+			<item name="MainGameObject" meshFile="Node.mesh" castShadows="true" visible="false">
+				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1111111111"/>
@@ -578,7 +578,7 @@
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="7" name="DataBlock0" data="WhiteLine"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 	</nodes>
 </scene>

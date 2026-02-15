@@ -397,16 +397,16 @@ namespace OgreNewt
 			m_col = m_shapeInstance->GetShape();
 		}
 
-		ConvexHull::ConvexHull(const World* world, Ogre::Item* item, unsigned int id, const Ogre::Quaternion& orient, const Ogre::Vector3& pos,
+		ConvexHull::ConvexHull(const World* world, Ogre::Item* item, unsigned int id,
+			const Ogre::Quaternion& orient, const Ogre::Vector3& pos,
 			Ogre::Real tolerance, const Ogre::Vector3& forceScale)
 			: ConvexCollision(world)
 		{
 			OGRE_ASSERT_LOW(item);
-
 			Ogre::Vector3 scale(1, 1, 1);
+
 			if (Ogre::Node* node = item->getParentNode())
 				scale = node->_getDerivedScaleUpdated();
-
 			if (forceScale != Ogre::Vector3::ZERO)
 				scale = forceScale;
 
@@ -414,98 +414,108 @@ namespace OgreNewt
 			verts.reserve(4096);
 
 			Ogre::MeshPtr mesh = item->getMesh();
-			if (!mesh.isNull())
+			if (mesh.isNull())
 			{
-				for (Ogre::SubMesh* sub : mesh->getSubMeshes())
-				{
-					if (!sub)
-					{
-						continue;
-					}
-
-					const Ogre::VertexArrayObjectArray& vaos = sub->mVao[0]; // VpNormal
-					if (vaos.empty())
-					{
-						continue;
-					}
-
-					Ogre::VertexArrayObject* vao = vaos[0];
-
-					Ogre::VertexArrayObject::ReadRequestsVec reqs;
-					reqs.push_back(Ogre::VertexArrayObject::ReadRequests(Ogre::VES_POSITION));
-					vao->readRequests(reqs);
-					vao->mapAsyncTickets(reqs);
-
-					const Ogre::VertexBufferPacked* vb = reqs[0].vertexBuffer;
-					if (vb)
-					{
-						const size_t count = vb->getNumElements();
-						verts.reserve(verts.size() + count);
-
-						if (reqs[0].type == Ogre::VET_HALF4)
-						{
-							for (size_t i = 0; i < count; ++i)
-							{
-								const Ogre::uint16* p = reinterpret_cast<const Ogre::uint16*>(reqs[0].data);
-								Ogre::Vector3 v(Ogre::Bitwise::halfToFloat(p[0]), Ogre::Bitwise::halfToFloat(p[1]), Ogre::Bitwise::halfToFloat(p[2]));
-								reqs[0].data += vb->getBytesPerElement();
-								verts.push_back(v * scale);
-							}
-						}
-						else if (reqs[0].type == Ogre::VET_FLOAT3)
-						{
-							for (size_t i = 0; i < count; ++i)
-							{
-								const float* p = reinterpret_cast<const float*>(reqs[0].data);
-								Ogre::Vector3 v(p[0], p[1], p[2]);
-								reqs[0].data += vb->getBytesPerElement();
-								verts.push_back(v * scale);
-							}
-						}
-					}
-
-					vao->unmapAsyncTickets(reqs);
-				}
+				m_shapeInstance = nullptr;
+				m_col = nullptr;
+				return;
 			}
 
-			// Need at least 4 points
+			for (Ogre::SubMesh* sub : mesh->getSubMeshes())
+			{
+				if (!sub)
+					continue;
+
+				// Use VpNormal like the working example
+				const Ogre::VertexArrayObjectArray& vaos = sub->mVao[Ogre::VpNormal];
+				if (vaos.empty())
+					continue;
+
+				Ogre::VertexArrayObject* vao = vaos[0];
+				if (!vao)
+					continue;
+
+				// Setup read request (following working example pattern)
+				Ogre::VertexArrayObject::ReadRequestsVec requests;
+				requests.push_back(Ogre::VertexArrayObject::ReadRequests(Ogre::VES_POSITION));
+
+				vao->readRequests(requests);
+				vao->mapAsyncTickets(requests);
+
+				// ADD THIS CHECK - validate data is available!
+				if (!requests[0].data)
+				{
+					vao->unmapAsyncTickets(requests);
+					continue;
+				}
+
+				const Ogre::VertexBufferPacked* vb = requests[0].vertexBuffer;
+				if (!vb)
+				{
+					vao->unmapAsyncTickets(requests);
+					continue;
+				}
+
+				const size_t count = vb->getNumElements();
+				verts.reserve(verts.size() + count);
+
+				// Process vertices following the working example pattern
+				if (requests[0].type == Ogre::VET_HALF4)
+				{
+					for (size_t i = 0; i < count; ++i)
+					{
+						const Ogre::uint16* p = reinterpret_cast<const Ogre::uint16*>(requests[0].data);
+						Ogre::Vector3 v(
+							Ogre::Bitwise::halfToFloat(p[0]),
+							Ogre::Bitwise::halfToFloat(p[1]),
+							Ogre::Bitwise::halfToFloat(p[2])
+						);
+						verts.push_back(v * scale);
+						requests[0].data += vb->getBytesPerElement();
+					}
+				}
+				else if (requests[0].type == Ogre::VET_FLOAT3 || requests[0].type == Ogre::VET_FLOAT4)
+				{
+					for (size_t i = 0; i < count; ++i)
+					{
+						const float* p = reinterpret_cast<const float*>(requests[0].data);
+						Ogre::Vector3 v(p[0], p[1], p[2]);
+						verts.push_back(v * scale);
+						requests[0].data += vb->getBytesPerElement();
+					}
+				}
+
+				vao->unmapAsyncTickets(requests);
+			}
+
+			// Check if we got any vertices
 			if (verts.size() < 4)
 			{
-				if (m_col)
-				{
-					m_col->Release();
-					m_shapeInstance = nullptr;
-					m_col = nullptr;
-					return;
-				}
+				m_shapeInstance = nullptr;
+				m_col = nullptr;
+				return;
 			}
 
-			// Clean & convert to contiguous ndFloat32 buffer
+			// Rest of your deduplication and shape creation code...
 			const float dedupEps2 = 1e-16f;
+			std::vector<ndFloat32> points;
+			points.reserve(verts.size() * 3);
 
-			// Optional: adaptive tolerance
 			Ogre::AxisAlignedBox aabb;
 			for (const auto& v : verts)
 			{
 				if (IsFiniteVec3(v))
-				{
 					aabb.merge(v);
-				}
 			}
+
 			const Ogre::Real diag = aabb.isNull() ? Ogre::Real(1) : aabb.getSize().length();
-
 			if (tolerance <= 0)
-			{
 				tolerance = std::max<Ogre::Real>(diag * Ogre::Real(1e-4), 1e-6f);
-			}
 
-			std::vector<ndFloat32> points; points.reserve(verts.size() * 3);
 			for (const auto& v : verts)
 			{
 				if (!IsFiniteVec3(v))
-				{
 					continue;
-				}
 
 				bool dup = false;
 				for (size_t i = 0; i + 2 < points.size(); i += 3)
@@ -529,27 +539,24 @@ namespace OgreNewt
 
 			if (points.size() < 12)
 			{
-				if (m_col)
-				{
-					m_col->Release();
-					m_shapeInstance = nullptr;
-					m_col = nullptr;
-					return;
-				}
+				m_shapeInstance = nullptr;
+				m_col = nullptr;
+				return;
 			}
 
 			if (m_col)
 				m_col->Release();
 
 			const ndInt32 count = ndInt32(points.size() / 3);
-			const ndInt32 stride = ndInt32(sizeof(ndFloat32) * 3); // tightly packed XYZ floats
+			const ndInt32 stride = ndInt32(sizeof(ndFloat32) * 3);
 
-			m_shapeInstance = new ndShapeInstance(new ndShapeConvexHull(count, stride, ndFloat32(tolerance), reinterpret_cast<const ndFloat32*>(&points[0])));
-			m_col = m_shapeInstance->GetShape();
+			m_shapeInstance = new ndShapeInstance(new ndShapeConvexHull(count, stride, ndFloat32(tolerance), reinterpret_cast<const ndFloat32*>(&points[0])) );
 
 			ndMatrix localM;
 			OgreNewt::Converters::QuatPosToMatrix(orient, pos, localM);
 			m_shapeInstance->SetLocalMatrix(localM);
+
+			m_col = m_shapeInstance->GetShape();
 		}
 
 		ConvexHull::ConvexHull(const World* world, const Ogre::Vector3* verts, int vertcount, unsigned int id,
@@ -859,63 +866,63 @@ namespace OgreNewt
 				// Helper to add a triangle
 				//----------------------------------------------------------------
 				auto emitTri = [&](uint32_t a, uint32_t b, uint32_t c)
+				{
+					if (a >= verts.size() || b >= verts.size() || c >= verts.size())
+						return;
+
+					Ogre::Vector3 v0 = verts[a];
+					Ogre::Vector3 v1 = verts[b];
+					Ogre::Vector3 v2 = verts[c];
+
+					// ---- ND4 safety: skip degenerate triangles ----
+					// Must match Newton4's ndPolygonSoupBuilder::AddFaceIndirect checks exactly:
+					// 1. Check each edge length (loop: p0->p1->p2->p0)
+					// 2. Check cross product area using edge0 = v2-v0, edge1 = v1-v0
+
+					const Ogre::Real MIN_EDGE2 = 1.0e-12f;
+					const Ogre::Real MIN_AREA2 = 1.0e-12f;
+
+					// Edge length check (same as ND4: loop through edges starting from v2)
+					Ogre::Vector3 vtx[3] = { v0, v1, v2 };
+					Ogre::Vector3 p0 = vtx[2];
+					for (int j = 0; j < 3; ++j)
 					{
-						if (a >= verts.size() || b >= verts.size() || c >= verts.size())
-							return;
-
-						Ogre::Vector3 v0 = verts[a];
-						Ogre::Vector3 v1 = verts[b];
-						Ogre::Vector3 v2 = verts[c];
-
-						// ---- ND4 safety: skip degenerate triangles ----
-						// Must match Newton4's ndPolygonSoupBuilder::AddFaceIndirect checks exactly:
-						// 1. Check each edge length (loop: p0->p1->p2->p0)
-						// 2. Check cross product area using edge0 = v2-v0, edge1 = v1-v0
-
-						const Ogre::Real MIN_EDGE2 = 1.0e-12f;
-						const Ogre::Real MIN_AREA2 = 1.0e-12f;
-
-						// Edge length check (same as ND4: loop through edges starting from v2)
-						Ogre::Vector3 vtx[3] = { v0, v1, v2 };
-						Ogre::Vector3 p0 = vtx[2];
-						for (int j = 0; j < 3; ++j)
+						Ogre::Vector3 p1 = vtx[j];
+						Ogre::Vector3 edge = p1 - p0;
+						if (edge.squaredLength() < MIN_EDGE2)
 						{
-							Ogre::Vector3 p1 = vtx[j];
-							Ogre::Vector3 edge = p1 - p0;
-							if (edge.squaredLength() < MIN_EDGE2)
-							{
-								return; // Degenerate edge, skip
-							}
-							p0 = p1;
+							return; // Degenerate edge, skip
 						}
+						p0 = p1;
+					}
 
-						// Cross product area check (exactly as ND4 does it)
-						// edge0 = v2 - v0, edge1 = v1 - v0
-						Ogre::Vector3 edge0 = v2 - v0;
-						Ogre::Vector3 edge1 = v1 - v0;
-						Ogre::Vector3 faceNormal = edge0.crossProduct(edge1);
-						if (faceNormal.squaredLength() < MIN_AREA2)
-						{
-							// Degenerate triangle (collinear vertices), skip it
-							return;
-						}
+					// Cross product area check (exactly as ND4 does it)
+					// edge0 = v2 - v0, edge1 = v1 - v0
+					Ogre::Vector3 edge0 = v2 - v0;
+					Ogre::Vector3 edge1 = v1 - v0;
+					Ogre::Vector3 faceNormal = edge0.crossProduct(edge1);
+					if (faceNormal.squaredLength() < MIN_AREA2)
+					{
+						// Degenerate triangle (collinear vertices), skip it
+						return;
+					}
 
-						ndVector face[3];
-						if (localFw == FW_DEFAULT)
-						{
-							face[0] = ndVector(v0.x, v0.y, v0.z, 1.0f);
-							face[1] = ndVector(v1.x, v1.y, v1.z, 1.0f);
-							face[2] = ndVector(v2.x, v2.y, v2.z, 1.0f);
-						}
-						else
-						{
-							face[0] = ndVector(v0.x, v0.y, v0.z, 1.0f);
-							face[1] = ndVector(v2.x, v2.y, v2.z, 1.0f);
-							face[2] = ndVector(v1.x, v1.y, v1.z, 1.0f);
-						}
+					ndVector face[3];
+					if (localFw == FW_DEFAULT)
+					{
+						face[0] = ndVector(v0.x, v0.y, v0.z, 1.0f);
+						face[1] = ndVector(v1.x, v1.y, v1.z, 1.0f);
+						face[2] = ndVector(v2.x, v2.y, v2.z, 1.0f);
+					}
+					else
+					{
+						face[0] = ndVector(v0.x, v0.y, v0.z, 1.0f);
+						face[1] = ndVector(v2.x, v2.y, v2.z, 1.0f);
+						face[2] = ndVector(v1.x, v1.y, v1.z, 1.0f);
+					}
 
-						meshBuilder.AddFace(&face[0].m_x, sizeof(ndVector), 3, id);
-					};
+					meshBuilder.AddFace(&face[0].m_x, sizeof(ndVector), 3, id);
+				};
 
 				//----------------------------------------------------------------
 				// 3) Iterate triangles
@@ -1102,11 +1109,11 @@ namespace OgreNewt
 
 			const bool use32 = (indexSize == 4);
 			auto readIndex = [&](size_t i) -> uint32_t
-				{
-					return use32 ?
-						static_cast<uint32_t>(reinterpret_cast<uint32_t*>(indexDataRaw)[i]) :
-						static_cast<uint32_t>(reinterpret_cast<uint16_t*>(indexDataRaw)[i]);
-				};
+			{
+				return use32 ?
+					static_cast<uint32_t>(reinterpret_cast<uint32_t*>(indexDataRaw)[i]) :
+					static_cast<uint32_t>(reinterpret_cast<uint16_t*>(indexDataRaw)[i]);
+			};
 
 			// Optional: mirrored scale check (can be provided externally)
 			FaceWinding localFw = fw;
@@ -1263,7 +1270,7 @@ namespace OgreNewt
 			}
 
 			// 1) Build ND4 heightfield (try inverted diagonals like the demo)
-			ndShapeHeightfield* heightfield = new ndShapeHeightfield(ndInt32(width), ndInt32(height), 
+			ndShapeHeightfield* heightfield = new ndShapeHeightfield(ndInt32(width), ndInt32(height),
 				ndShapeHeightfield::m_invertedDiagonals, ndFloat32(horizontalScaleX), ndFloat32(horizontalScaleZ));
 
 			// 2) Wrap in shape instance

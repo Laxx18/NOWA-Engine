@@ -250,9 +250,9 @@ namespace NOWA
 		unsigned long priorId;
 		// Debug data
 		Ogre::SceneNode* debugGeometryNode;
-		Ogre::v1::Entity* debugGeometryEntity;
+		Ogre::Item* debugGeometryItem;
 		Ogre::SceneNode* debugGeometryNode2;
-		Ogre::v1::Entity* debugGeometryEntity2;
+		Ogre::Item* debugGeometryItem2;
 		Ogre::SceneManager* sceneManager;
 		bool useCustomStiffness;
 		bool jointAlreadyCreated;

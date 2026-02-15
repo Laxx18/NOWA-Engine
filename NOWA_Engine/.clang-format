@@ -17,8 +17,6 @@ InsertBraces: true  # Manual control - auto-insert can break macros
 AllowShortFunctionsOnASingleLine: None
 AllowShortIfStatementsOnASingleLine: Never
 AllowShortLoopsOnASingleLine: false
-AllowShortBlocksOnASingleLine: Never
-AllowShortLambdasOnASingleLine: None
 
 # ---- SPACING ----
 PointerAlignment: Left
@@ -30,7 +28,7 @@ SpaceBeforeAssignmentOperators: true
 BreakBeforeBinaryOperators: None
 
 # ---- INDENTATION ----
-NamespaceIndentation: None  # Avoid deep indentation issues
+NamespaceIndentation: All
 IndentAccessModifiers: false
 AccessModifierOffset: -4
 
@@ -47,8 +45,27 @@ BraceWrapping:
   AfterUnion: true
   BeforeCatch: true
   BeforeElse: true
-  IndentBraces: false
+  IndentBraces: true
 
 BreakConstructorInitializers: AfterColon
 ConstructorInitializerAllOnOneLineOrOnePerLine: true
 AllowAllConstructorInitializersOnNextLine: false
+
+AllowShortLambdasOnASingleLine: None
+AllowShortBlocksOnASingleLine: Never
+LambdaBodyIndentation: Signature
+
+PenaltyBreakBeforeFirstCallParameter: 1000
+PenaltyBreakOpenParenthesis: 1000
+
+BinPackArguments: true
+BinPackParameters: true
+
+AllowAllArgumentsOnNextLine: false
+AlignAfterOpenBracket: DontAlign
+
+
+
+
+
+

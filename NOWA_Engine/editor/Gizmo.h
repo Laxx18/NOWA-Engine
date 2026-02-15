@@ -83,8 +83,6 @@ namespace NOWA
 
 		void redefineThirdPlane(const Ogre::Vector3& normal, const Ogre::Vector3& position);
 
-		void _debugShowResultPlane(unsigned char planeId);
-
 		void setState(eGizmoState gizmoState);
 
 		eGizmoState getState(void) const;
@@ -101,13 +99,13 @@ namespace NOWA
 		
 		Ogre::SceneNode* getSelectedNode(void);
 
-		Ogre::v1::Entity* getArrowEntityX(void);
+		Ogre::Item* getArrowItemX(void);
 
-		Ogre::v1::Entity* getArrowEntityY(void);
+		Ogre::Item* getArrowItemY(void);
 
-		Ogre::v1::Entity* getArrowEntityZ(void);
+		Ogre::Item* getArrowItemZ(void);
 
-		Ogre::v1::Entity* getSphereEntity(void);
+		Ogre::Item* getSphereItem(void);
 
 		void drawLine(const Ogre::Vector3& startPosition, const Ogre::Vector3& endPosition, Ogre::Real thickness, const Ogre::String& materialName);
 
@@ -148,10 +146,10 @@ namespace NOWA
 		Ogre::SceneNode* sphereNode;
 		Ogre::SceneNode* selectNode;
 
-		Ogre::v1::Entity* arrowEntityX;
-		Ogre::v1::Entity* arrowEntityY;
-		Ogre::v1::Entity* arrowEntityZ;
-		Ogre::v1::Entity* sphereEntity;
+		Ogre::Item* arrowItemX;
+		Ogre::Item* arrowItemY;
+		Ogre::Item* arrowItemZ;
+		Ogre::Item* sphereItem;
 
 		Ogre::Plane firstPlane;
 		Ogre::Plane secondPlane;
@@ -179,14 +177,6 @@ namespace NOWA
 
 		ObjectTitle* translationCaption;
 		ObjectTitle* rotationCaption;
-
-		Ogre::v1::Entity* firstPlaneEntity;
-		Ogre::SceneNode* firstPlaneNode;
-		Ogre::v1::Entity* secondPlaneEntity;
-		Ogre::SceneNode* secondPlaneNode;
-		Ogre::v1::Entity* thirdPlaneEntity;
-		Ogre::SceneNode* thirdPlaneNode;
-		bool debugPlane;
 		Ogre::Vector3 constraintAxis;
 	};
 

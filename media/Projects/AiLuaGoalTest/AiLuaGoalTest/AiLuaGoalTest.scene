@@ -48,8 +48,8 @@
 			<position x="0" y="37.2738" z="50"/>
 			<rotation qw="0.76995" qx="-0.462633" qy="0.226352" qz="0.376713"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="SunLight" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
-				<subentity index="0" datablockName="WhiteLine"/>
+			<item name="SunLight" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
+				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1111111113"/>
@@ -83,14 +83,14 @@
 					<property type="12" name="CastShadows" data="true"/>
 					<property type="12" name="ShowDummyEntity" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="MainGameObject" id="1366663313">
 			<position x="0" y="0" z="0"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="MainGameObject" meshFile="Node.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="WhiteLine"/>
+			<item name="MainGameObject" meshFile="Node.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1111111111"/>
@@ -111,14 +111,14 @@
 					
 					<property type="7" name="DataBlock0" data="WhiteLine"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="MainCamera" id="4010617415">
 			<position x="-17.8309" y="8.44105" z="-27.1943"/>
 			<rotation qw="0.32069" qx="-0.120979" qy="0.878963" qz="0.331581"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
-				<subentity index="0" datablockName="WhiteLine"/>
+			<item name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
+				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1111111112"/>
@@ -176,7 +176,7 @@
 					<property type="6" name="ShadowSplitPadding" data="1"/>
 					<property type="7" name="SkyBoxName" data="ash_hills_cube.dds"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Plane_0" id="1695645354">
 			<position x="0" y="0" z="0"/>
@@ -290,7 +290,7 @@
 					<property type="7" name="ScriptFile" data="Monster01_0.lua"/>
 					<property type="12" name="CloneScript" data="true"/>
 					<property type="12" name="HasCommonScript" data="false"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -450,8 +450,8 @@
 			<position x="12.3975" y="0.0704961" z="12.4277"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="stone_wall_arc_big_0" meshFile="stone_wall_arc_big.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="stone_wall"/>
+			<item name="stone_wall_arc_big_0" meshFile="stone_wall_arc_big.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="stone_wall"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2452918183"/>
@@ -485,14 +485,14 @@
 					<property type="7" name="NavigationType" data="Static Obstacle"/>
 					<property type="12" name="Walkable" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="stone_wall_0" id="51720660">
 			<position x="4.03683" y="3.09944e-06" z="14.6905"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="3" y="1" z="1"/>
-			<entity name="stone_wall_0" meshFile="stone_wall.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="stone_wall"/>
+			<item name="stone_wall_0" meshFile="stone_wall.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="stone_wall"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3380952055"/>
@@ -526,14 +526,14 @@
 					<property type="7" name="NavigationType" data="Static Obstacle"/>
 					<property type="12" name="Walkable" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="stone_wall_1" id="51721095">
 			<position x="-4.96317" y="3.09944e-06" z="14.6905"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="3" y="1" z="1"/>
-			<entity name="stone_wall_1" meshFile="stone_wall.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="stone_wall"/>
+			<item name="stone_wall_1" meshFile="stone_wall.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="stone_wall"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="4252563213"/>
@@ -567,14 +567,14 @@
 					<property type="7" name="NavigationType" data="Static Obstacle"/>
 					<property type="12" name="Walkable" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="stone_wall_2" id="51721530">
 			<position x="-13.9632" y="3.09944e-06" z="14.6905"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="3" y="1" z="1"/>
-			<entity name="stone_wall_2" meshFile="stone_wall.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="stone_wall"/>
+			<item name="stone_wall_2" meshFile="stone_wall.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="stone_wall"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1688608439"/>
@@ -608,14 +608,14 @@
 					<property type="7" name="NavigationType" data="Static Obstacle"/>
 					<property type="12" name="Walkable" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="stone_wall_3" id="51721965">
 			<position x="-22.9632" y="3.09944e-06" z="14.6905"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="3" y="1" z="1"/>
-			<entity name="stone_wall_3" meshFile="stone_wall.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="stone_wall"/>
+			<item name="stone_wall_3" meshFile="stone_wall.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="stone_wall"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="4226621979"/>
@@ -649,14 +649,14 @@
 					<property type="7" name="NavigationType" data="Static Obstacle"/>
 					<property type="12" name="Walkable" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="stone_wall_arc_big_1" id="963371949">
 			<position x="-31.2572" y="0.0704961" z="12.4277"/>
 			<rotation qw="0.707107" qx="0" qy="-0.707107" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="stone_wall_arc_big_1" meshFile="stone_wall_arc_big.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="stone_wall"/>
+			<item name="stone_wall_arc_big_1" meshFile="stone_wall_arc_big.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="stone_wall"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3671110043"/>
@@ -690,14 +690,14 @@
 					<property type="7" name="NavigationType" data="Static Obstacle"/>
 					<property type="12" name="Walkable" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="stone_wall_4" id="51718920">
 			<position x="-33.5532" y="3.09944e-06" z="4.09497"/>
 			<rotation qw="0.707107" qx="0" qy="0.707107" qz="0"/>
 			<scale x="3" y="1" z="1"/>
-			<entity name="stone_wall_4" meshFile="stone_wall.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="stone_wall"/>
+			<item name="stone_wall_4" meshFile="stone_wall.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="stone_wall"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2190935136"/>
@@ -731,14 +731,14 @@
 					<property type="7" name="NavigationType" data="Static Obstacle"/>
 					<property type="12" name="Walkable" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="stone_wall_5" id="51719355">
 			<position x="-33.5532" y="3.09944e-06" z="-4.95136"/>
 			<rotation qw="0.707107" qx="0" qy="0.707107" qz="0"/>
 			<scale x="3" y="1" z="1"/>
-			<entity name="stone_wall_5" meshFile="stone_wall.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="stone_wall"/>
+			<item name="stone_wall_5" meshFile="stone_wall.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="stone_wall"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="85367755"/>
@@ -772,14 +772,14 @@
 					<property type="7" name="NavigationType" data="Static Obstacle"/>
 					<property type="12" name="Walkable" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="stone_wall_6" id="51719790">
 			<position x="-33.5532" y="3.09944e-06" z="-13.9183"/>
 			<rotation qw="0.707107" qx="0" qy="0.707107" qz="0"/>
 			<scale x="3" y="1" z="1"/>
-			<entity name="stone_wall_6" meshFile="stone_wall.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="stone_wall"/>
+			<item name="stone_wall_6" meshFile="stone_wall.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="stone_wall"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="768322758"/>
@@ -813,14 +813,14 @@
 					<property type="7" name="NavigationType" data="Static Obstacle"/>
 					<property type="12" name="Walkable" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="stone_wall_7" id="51720225">
 			<position x="-33.5532" y="3.09944e-06" z="-22.9031"/>
 			<rotation qw="0.707107" qx="0" qy="0.707107" qz="0"/>
 			<scale x="3" y="1" z="1"/>
-			<entity name="stone_wall_7" meshFile="stone_wall.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="stone_wall"/>
+			<item name="stone_wall_7" meshFile="stone_wall.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="stone_wall"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3665619654"/>
@@ -854,14 +854,14 @@
 					<property type="7" name="NavigationType" data="Static Obstacle"/>
 					<property type="12" name="Walkable" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="stone_wall_arc_big_2" id="963370644">
 			<position x="-31.2572" y="0.0704961" z="-31.2605"/>
 			<rotation qw="-1.62921e-07" qx="0" qy="1" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="stone_wall_arc_big_2" meshFile="stone_wall_arc_big.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="stone_wall"/>
+			<item name="stone_wall_arc_big_2" meshFile="stone_wall_arc_big.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="stone_wall"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2221741886"/>
@@ -895,14 +895,14 @@
 					<property type="7" name="NavigationType" data="Static Obstacle"/>
 					<property type="12" name="Walkable" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="stone_wall_8" id="51717180">
 			<position x="4.03683" y="3.09944e-06" z="-33.3094"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="3" y="1" z="1"/>
-			<entity name="stone_wall_8" meshFile="stone_wall.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="stone_wall"/>
+			<item name="stone_wall_8" meshFile="stone_wall.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="stone_wall"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="4085145128"/>
@@ -936,14 +936,14 @@
 					<property type="7" name="NavigationType" data="Static Obstacle"/>
 					<property type="12" name="Walkable" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="stone_wall_9" id="51717615">
 			<position x="-4.96317" y="3.09944e-06" z="-33.3094"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="3" y="1" z="1"/>
-			<entity name="stone_wall_9" meshFile="stone_wall.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="stone_wall"/>
+			<item name="stone_wall_9" meshFile="stone_wall.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="stone_wall"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3891637859"/>
@@ -977,14 +977,14 @@
 					<property type="7" name="NavigationType" data="Static Obstacle"/>
 					<property type="12" name="Walkable" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="stone_wall_10" id="1023860725">
 			<position x="-13.9632" y="3.09944e-06" z="-33.3094"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="3" y="1" z="1"/>
-			<entity name="stone_wall_10" meshFile="stone_wall.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="stone_wall"/>
+			<item name="stone_wall_10" meshFile="stone_wall.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="stone_wall"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="201042206"/>
@@ -1018,14 +1018,14 @@
 					<property type="7" name="NavigationType" data="Static Obstacle"/>
 					<property type="12" name="Walkable" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="stone_wall_11" id="1023860290">
 			<position x="-22.9632" y="3.09944e-06" z="-33.3094"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="3" y="1" z="1"/>
-			<entity name="stone_wall_11" meshFile="stone_wall.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="stone_wall"/>
+			<item name="stone_wall_11" meshFile="stone_wall.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="stone_wall"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1320671218"/>
@@ -1059,14 +1059,14 @@
 					<property type="7" name="NavigationType" data="Static Obstacle"/>
 					<property type="12" name="Walkable" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="stone_wall_arc_big_3" id="963371079">
 			<position x="12.3975" y="0.0704961" z="-31.0827"/>
 			<rotation qw="0.707107" qx="0" qy="0.707107" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="stone_wall_arc_big_3" meshFile="stone_wall_arc_big.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="stone_wall"/>
+			<item name="stone_wall_arc_big_3" meshFile="stone_wall_arc_big.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="stone_wall"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="644387140"/>
@@ -1100,14 +1100,14 @@
 					<property type="7" name="NavigationType" data="Static Obstacle"/>
 					<property type="12" name="Walkable" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="stone_wall_12" id="1023859855">
 			<position x="14.587" y="3.09944e-06" z="4.09497"/>
 			<rotation qw="0.707107" qx="0" qy="0.707107" qz="0"/>
 			<scale x="3" y="1" z="1"/>
-			<entity name="stone_wall_12" meshFile="stone_wall.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="stone_wall"/>
+			<item name="stone_wall_12" meshFile="stone_wall.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="stone_wall"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2530194115"/>
@@ -1141,14 +1141,14 @@
 					<property type="7" name="NavigationType" data="Static Obstacle"/>
 					<property type="12" name="Walkable" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="stone_wall_13" id="1023859420">
 			<position x="14.587" y="3.09944e-06" z="-4.95136"/>
 			<rotation qw="0.707107" qx="0" qy="0.707107" qz="0"/>
 			<scale x="3" y="1" z="1"/>
-			<entity name="stone_wall_13" meshFile="stone_wall.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="stone_wall"/>
+			<item name="stone_wall_13" meshFile="stone_wall.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="stone_wall"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3349427891"/>
@@ -1182,14 +1182,14 @@
 					<property type="7" name="NavigationType" data="Static Obstacle"/>
 					<property type="12" name="Walkable" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="stone_wall_14" id="1023858985">
 			<position x="14.587" y="3.09944e-06" z="-13.9183"/>
 			<rotation qw="0.707107" qx="0" qy="0.707107" qz="0"/>
 			<scale x="3" y="1" z="1"/>
-			<entity name="stone_wall_14" meshFile="stone_wall.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="stone_wall"/>
+			<item name="stone_wall_14" meshFile="stone_wall.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="stone_wall"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="483452756"/>
@@ -1223,14 +1223,14 @@
 					<property type="7" name="NavigationType" data="Static Obstacle"/>
 					<property type="12" name="Walkable" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="stone_wall_15" id="1023858550">
 			<position x="14.587" y="3.09944e-06" z="-22.9031"/>
 			<rotation qw="0.707107" qx="0" qy="0.707107" qz="0"/>
 			<scale x="3" y="1" z="1"/>
-			<entity name="stone_wall_15" meshFile="stone_wall.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="stone_wall"/>
+			<item name="stone_wall_15" meshFile="stone_wall.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="stone_wall"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="4165351860"/>
@@ -1264,7 +1264,7 @@
 					<property type="7" name="NavigationType" data="Static Obstacle"/>
 					<property type="12" name="Walkable" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Case1_3" id="1662965818">
 			<position x="-23.7749" y="0" z="-1.84959"/>

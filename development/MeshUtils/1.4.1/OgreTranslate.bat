@@ -1,0 +1,1 @@
+for %%f in (*.mesh) do .\OgreMeshMagick.exe transform -translate=0/0/0.49 %%f 

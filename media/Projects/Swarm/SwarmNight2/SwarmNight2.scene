@@ -34,8 +34,8 @@
 			<position x="-1.2561" y="0.0488288" z="19.7725"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Sheep_62" meshFile="Sheep.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/Sheep"/>
+			<item name="Sheep_62" meshFile="Sheep.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/Sheep"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1252379421"/>
@@ -56,7 +56,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/Sheep"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -112,14 +112,14 @@
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="3759163986"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Sheep_63" id="3741116770">
 			<position x="0.459701" y="0.0488288" z="19.7725"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Sheep_63" meshFile="Sheep.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/Sheep"/>
+			<item name="Sheep_63" meshFile="Sheep.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/Sheep"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3519340793"/>
@@ -140,7 +140,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/Sheep"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -196,14 +196,14 @@
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="3759163986"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Sheep_61" id="3741115900">
 			<position x="-1.98412" y="0.0488288" z="18.1091"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Sheep_61" meshFile="Sheep.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/Sheep"/>
+			<item name="Sheep_61" meshFile="Sheep.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/Sheep"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="4191191204"/>
@@ -224,7 +224,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/Sheep"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -280,14 +280,14 @@
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="3759163986"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Sheep_60" id="3741116335">
 			<position x="-0.0944815" y="0.0488288" z="17.7811"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Sheep_60" meshFile="Sheep.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/Sheep"/>
+			<item name="Sheep_60" meshFile="Sheep.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/Sheep"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1585864356"/>
@@ -308,7 +308,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/Sheep"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -364,14 +364,14 @@
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="3759163986"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="SunLight" id="1479238507">
 			<position x="0" y="37.2738" z="50"/>
 			<rotation qw="0.857167" qx="-0.515038" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="SunLight" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
-				<subentity index="0" datablockName="WhiteLine"/>
+			<item name="SunLight" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
+				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1111111113"/>
@@ -406,14 +406,14 @@
 					<property type="12" name="CastShadows" data="true"/>
 					<property type="12" name="ShowDummyEntity" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="MainCamera" id="4010617415">
 			<position x="0.78017" y="23.1385" z="26.2591"/>
 			<rotation qw="0.940472" qx="-0.339439" qy="0.0161182" qz="0.0058179"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
-				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
+			<item name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
+				<subitem index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1111111112"/>
@@ -473,14 +473,14 @@
 					<property type="6" name="ShadowSplitPadding" data="1"/>
 					<property type="7" name="SkyBoxName" data="dragontooth_ridge_night_cube.dds"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="MainGameObject" id="1366663313">
 			<position x="0" y="0" z="0"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="MainGameObject" meshFile="Node.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="WhiteLine"/>
+			<item name="MainGameObject" meshFile="Node.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1111111111"/>
@@ -502,7 +502,7 @@
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="7" name="DataBlock0" data="WhiteLine"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Plane_0" id="1695645354">
 			<position x="0" y="0" z="0"/>
@@ -557,8 +557,8 @@
 			<position x="-2.15906" y="0.0484964" z="-9.47281"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Monster01_0" meshFile="Monster01.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="Monster01"/>
+			<item name="Monster01_0" meshFile="Monster01.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="Monster01"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3759163986"/>
@@ -579,7 +579,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="Monster01"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -643,16 +643,16 @@
 					<property type="6" name="WanderRadius" data="1.2"/>
 					<property type="6" name="WanderDistance" data="10"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="FlashLight_0" id="3282595484">
 			<position x="-1.70876" y="0.496298" z="-9.40592"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="FlashLight_0" meshFile="FlashLight.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="FlashLightGlass"/>
-				<subentity index="1" datablockName="FlashLightTorch"/>
-				<subentity index="2" datablockName="FlashLightButton"/>
+			<item name="FlashLight_0" meshFile="FlashLight.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="FlashLightGlass"/>
+				<subitem index="1" datablockName="FlashLightTorch"/>
+				<subitem index="2" datablockName="FlashLightButton"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="181024561"/>
@@ -676,14 +676,14 @@
 					<property type="7" name="DataBlock1" data="FlashLightTorch"/>
 					<property type="7" name="DataBlock2" data="FlashLightButton"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="LightSpot_0" id="2422588856">
 			<position x="-1.72803" y="0.23208" z="-9.163"/>
 			<rotation qw="-1.62921e-07" qx="0" qy="1" qz="0"/>
 			<scale x="1.09191" y="1.09191" z="3"/>
-			<entity name="LightSpot_0" meshFile="LightSpot.mesh" castShadows="false" visible="true">
-				<subentity index="0" datablockName="WhiteLine"/>
+			<item name="LightSpot_0" meshFile="LightSpot.mesh" castShadows="false" visible="true">
+				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="4247252218"/>
@@ -723,14 +723,14 @@
 					<property type="6" name="NearClipDistance" data="0.1"/>
 					<property type="12" name="ShowDummyEntity" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Sheep_0" id="2575704563">
 			<position x="2.87079" y="0.0488288" z="6.4399"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Sheep_0" meshFile="Sheep.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/Sheep"/>
+			<item name="Sheep_0" meshFile="Sheep.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/Sheep"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3783027833"/>
@@ -751,7 +751,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/Sheep"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -807,14 +807,14 @@
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="3759163986"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Sheep_1" id="2575704128">
 			<position x="0.981154" y="0.0488288" z="6.76795"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Sheep_1" meshFile="Sheep.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/Sheep"/>
+			<item name="Sheep_1" meshFile="Sheep.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/Sheep"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1401236719"/>
@@ -835,7 +835,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/Sheep"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -891,14 +891,14 @@
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="3759163986"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Sheep_2" id="2575705433">
 			<position x="1.70917" y="0.0488288" z="8.43135"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Sheep_2" meshFile="Sheep.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/Sheep"/>
+			<item name="Sheep_2" meshFile="Sheep.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/Sheep"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2996761095"/>
@@ -919,7 +919,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/Sheep"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -975,14 +975,14 @@
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="3759163986"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Sheep_3" id="2575704998">
 			<position x="3.42497" y="0.0488288" z="8.43135"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Sheep_3" meshFile="Sheep.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/Sheep"/>
+			<item name="Sheep_3" meshFile="Sheep.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/Sheep"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2224508138"/>
@@ -1003,7 +1003,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/Sheep"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -1059,14 +1059,14 @@
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="3759163986"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Sheep_4" id="2575706303">
 			<position x="0.0701582" y="0.0488288" z="8.43135"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Sheep_4" meshFile="Sheep.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/Sheep"/>
+			<item name="Sheep_4" meshFile="Sheep.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/Sheep"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1907454314"/>
@@ -1087,7 +1087,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/Sheep"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -1143,14 +1143,14 @@
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="3759163986"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Sheep_5" id="2575705868">
 			<position x="-0.484024" y="0.0488288" z="6.4399"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Sheep_5" meshFile="Sheep.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/Sheep"/>
+			<item name="Sheep_5" meshFile="Sheep.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/Sheep"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2516842366"/>
@@ -1171,7 +1171,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/Sheep"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -1227,14 +1227,14 @@
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="3759163986"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Sheep_6" id="2575707173">
 			<position x="-2.37366" y="0.0488288" z="6.76795"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Sheep_6" meshFile="Sheep.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/Sheep"/>
+			<item name="Sheep_6" meshFile="Sheep.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/Sheep"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1871379045"/>
@@ -1255,7 +1255,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/Sheep"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -1311,14 +1311,14 @@
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="3759163986"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Sheep_7" id="2575706738">
 			<position x="-1.64564" y="0.0488288" z="8.43135"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Sheep_7" meshFile="Sheep.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/Sheep"/>
+			<item name="Sheep_7" meshFile="Sheep.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/Sheep"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1236265215"/>
@@ -1339,7 +1339,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/Sheep"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -1395,14 +1395,14 @@
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="3759163986"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Sheep_8" id="2575708043">
 			<position x="-1.64564" y="0.0488288" z="12.1055"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Sheep_8" meshFile="Sheep.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/Sheep"/>
+			<item name="Sheep_8" meshFile="Sheep.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/Sheep"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3972817852"/>
@@ -1423,7 +1423,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/Sheep"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -1479,14 +1479,14 @@
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="3759163986"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Sheep_9" id="2575707608">
 			<position x="0.0701582" y="0.0488288" z="12.1055"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Sheep_9" meshFile="Sheep.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/Sheep"/>
+			<item name="Sheep_9" meshFile="Sheep.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/Sheep"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3671809025"/>
@@ -1507,7 +1507,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/Sheep"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -1563,14 +1563,14 @@
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="3759163986"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Sheep_10" id="3739819600">
 			<position x="-0.484024" y="0.0488288" z="10.114"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Sheep_10" meshFile="Sheep.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/Sheep"/>
+			<item name="Sheep_10" meshFile="Sheep.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/Sheep"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2960615964"/>
@@ -1591,7 +1591,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/Sheep"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -1647,14 +1647,14 @@
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="3759163986"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Sheep_11" id="3739820035">
 			<position x="-2.37366" y="0.0488288" z="10.4421"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Sheep_11" meshFile="Sheep.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/Sheep"/>
+			<item name="Sheep_11" meshFile="Sheep.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/Sheep"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1105110116"/>
@@ -1675,7 +1675,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/Sheep"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -1731,14 +1731,14 @@
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="3759163986"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Sheep_12" id="3739820470">
 			<position x="1.19095" y="0.0488288" z="10.4421"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Sheep_12" meshFile="Sheep.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/Sheep"/>
+			<item name="Sheep_12" meshFile="Sheep.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/Sheep"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="80401499"/>
@@ -1759,7 +1759,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/Sheep"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -1815,14 +1815,14 @@
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="3759163986"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Sheep_13" id="3739820905">
 			<position x="1.91897" y="0.0488288" z="12.1055"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Sheep_13" meshFile="Sheep.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/Sheep"/>
+			<item name="Sheep_13" meshFile="Sheep.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/Sheep"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1335010962"/>
@@ -1843,7 +1843,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/Sheep"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -1899,14 +1899,14 @@
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="3759163986"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Sheep_14" id="3739821340">
 			<position x="3.63477" y="0.0488288" z="12.1055"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Sheep_14" meshFile="Sheep.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/Sheep"/>
+			<item name="Sheep_14" meshFile="Sheep.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/Sheep"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1739657726"/>
@@ -1927,7 +1927,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/Sheep"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -1983,14 +1983,14 @@
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="3759163986"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Sheep_15" id="3739821775">
 			<position x="3.08058" y="0.0488288" z="10.114"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Sheep_15" meshFile="Sheep.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/Sheep"/>
+			<item name="Sheep_15" meshFile="Sheep.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/Sheep"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2988070706"/>
@@ -2011,7 +2011,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/Sheep"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -2067,14 +2067,14 @@
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="3759163986"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Sheep_16" id="3739822210">
 			<position x="-5.43768" y="0.0488288" z="8.43135"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Sheep_16" meshFile="Sheep.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/Sheep"/>
+			<item name="Sheep_16" meshFile="Sheep.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/Sheep"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="344145694"/>
@@ -2095,7 +2095,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/Sheep"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -2151,14 +2151,14 @@
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="3759163986"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Sheep_17" id="3739822645">
 			<position x="-3.51209" y="0.0488288" z="12.1055"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Sheep_17" meshFile="Sheep.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/Sheep"/>
+			<item name="Sheep_17" meshFile="Sheep.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/Sheep"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1379589950"/>
@@ -2179,7 +2179,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/Sheep"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -2235,14 +2235,14 @@
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="3759163986"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Sheep_18" id="3739823080">
 			<position x="-5.95591" y="0.0488288" z="10.4421"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Sheep_18" meshFile="Sheep.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/Sheep"/>
+			<item name="Sheep_18" meshFile="Sheep.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/Sheep"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="877458694"/>
@@ -2263,7 +2263,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/Sheep"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -2319,14 +2319,14 @@
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="3759163986"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Sheep_19" id="3739823515">
 			<position x="-7.0767" y="0.0488288" z="8.43135"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Sheep_19" meshFile="Sheep.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/Sheep"/>
+			<item name="Sheep_19" meshFile="Sheep.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/Sheep"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2451499463"/>
@@ -2347,7 +2347,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/Sheep"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -2403,14 +2403,14 @@
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="3759163986"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Sheep_20" id="3740373355">
 			<position x="-4.06627" y="0.0488288" z="10.114"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Sheep_20" meshFile="Sheep.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/Sheep"/>
+			<item name="Sheep_20" meshFile="Sheep.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/Sheep"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2486075338"/>
@@ -2431,7 +2431,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/Sheep"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -2487,14 +2487,14 @@
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="3759163986"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Sheep_21" id="3740372920">
 			<position x="-5.22789" y="0.0488288" z="12.1055"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Sheep_21" meshFile="Sheep.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/Sheep"/>
+			<item name="Sheep_21" meshFile="Sheep.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/Sheep"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1588573984"/>
@@ -2515,7 +2515,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/Sheep"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -2571,14 +2571,14 @@
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="3759163986"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Sheep_22" id="3740374225">
 			<position x="-3.72188" y="0.0488288" z="8.43135"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Sheep_22" meshFile="Sheep.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/Sheep"/>
+			<item name="Sheep_22" meshFile="Sheep.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/Sheep"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="719592902"/>
@@ -2599,7 +2599,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/Sheep"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -2655,14 +2655,14 @@
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="3759163986"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Sheep_23" id="3740373790">
 			<position x="-4.27606" y="0.0488288" z="6.4399"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Sheep_23" meshFile="Sheep.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/Sheep"/>
+			<item name="Sheep_23" meshFile="Sheep.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/Sheep"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3237392443"/>
@@ -2683,7 +2683,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/Sheep"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -2739,14 +2739,14 @@
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="3759163986"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Sheep_24" id="3740375095">
 			<position x="-6.1657" y="0.0488288" z="6.76795"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Sheep_24" meshFile="Sheep.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/Sheep"/>
+			<item name="Sheep_24" meshFile="Sheep.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/Sheep"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2015652248"/>
@@ -2767,7 +2767,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/Sheep"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -2823,14 +2823,14 @@
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="3759163986"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Sheep_25" id="3740374660">
 			<position x="-7.63088" y="0.0488288" z="6.4399"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Sheep_25" meshFile="Sheep.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/Sheep"/>
+			<item name="Sheep_25" meshFile="Sheep.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/Sheep"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="47466242"/>
@@ -2851,7 +2851,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/Sheep"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -2907,14 +2907,14 @@
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="3759163986"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Sheep_26" id="3740375965">
 			<position x="-9.52052" y="0.0488288" z="6.76795"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Sheep_26" meshFile="Sheep.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/Sheep"/>
+			<item name="Sheep_26" meshFile="Sheep.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/Sheep"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1563386230"/>
@@ -2935,7 +2935,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/Sheep"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -2991,14 +2991,14 @@
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="3759163986"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Sheep_27" id="3740375530">
 			<position x="-8.7925" y="0.0488288" z="8.43135"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Sheep_27" meshFile="Sheep.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/Sheep"/>
+			<item name="Sheep_27" meshFile="Sheep.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/Sheep"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="4145377580"/>
@@ -3019,7 +3019,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/Sheep"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -3075,14 +3075,14 @@
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="3759163986"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Sheep_28" id="3740369875">
 			<position x="-7.63088" y="0.0488288" z="10.114"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Sheep_28" meshFile="Sheep.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/Sheep"/>
+			<item name="Sheep_28" meshFile="Sheep.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/Sheep"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2486274658"/>
@@ -3103,7 +3103,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/Sheep"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -3159,14 +3159,14 @@
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="3759163986"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Sheep_29" id="3740369440">
 			<position x="-9.52052" y="0.0488288" z="10.4421"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Sheep_29" meshFile="Sheep.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/Sheep"/>
+			<item name="Sheep_29" meshFile="Sheep.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/Sheep"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1561942271"/>
@@ -3187,7 +3187,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/Sheep"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -3243,14 +3243,14 @@
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="3759163986"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Sheep_30" id="3740170210">
 			<position x="-8.7925" y="0.0488288" z="12.1055"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Sheep_30" meshFile="Sheep.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/Sheep"/>
+			<item name="Sheep_30" meshFile="Sheep.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/Sheep"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="397346200"/>
@@ -3271,7 +3271,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/Sheep"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -3327,14 +3327,14 @@
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="3759163986"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Sheep_31" id="3740170645">
 			<position x="-7.0767" y="0.0488288" z="12.1055"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Sheep_31" meshFile="Sheep.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/Sheep"/>
+			<item name="Sheep_31" meshFile="Sheep.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/Sheep"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="248898298"/>
@@ -3355,7 +3355,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/Sheep"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -3411,14 +3411,14 @@
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="3759163986"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Sheep_32" id="3740169340">
 			<position x="-5.43768" y="0.0488288" z="16.0984"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Sheep_32" meshFile="Sheep.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/Sheep"/>
+			<item name="Sheep_32" meshFile="Sheep.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/Sheep"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3865597478"/>
@@ -3439,7 +3439,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/Sheep"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -3495,14 +3495,14 @@
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="3759163986"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Sheep_33" id="3740169775">
 			<position x="-6.1657" y="0.0488288" z="14.435"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Sheep_33" meshFile="Sheep.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/Sheep"/>
+			<item name="Sheep_33" meshFile="Sheep.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/Sheep"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3309686677"/>
@@ -3523,7 +3523,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/Sheep"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -3579,14 +3579,14 @@
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="3759163986"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Sheep_34" id="3740168470">
 			<position x="-3.51209" y="0.0488288" z="19.7725"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Sheep_34" meshFile="Sheep.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/Sheep"/>
+			<item name="Sheep_34" meshFile="Sheep.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/Sheep"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="4263169082"/>
@@ -3607,7 +3607,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/Sheep"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -3663,14 +3663,14 @@
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="3759163986"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Sheep_35" id="3740168905">
 			<position x="-3.72188" y="0.0488288" z="16.0984"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Sheep_35" meshFile="Sheep.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/Sheep"/>
+			<item name="Sheep_35" meshFile="Sheep.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/Sheep"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2949672373"/>
@@ -3691,7 +3691,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/Sheep"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -3747,14 +3747,14 @@
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="3759163986"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Sheep_36" id="3740167600">
 			<position x="-4.06627" y="0.0488288" z="17.7811"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Sheep_36" meshFile="Sheep.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/Sheep"/>
+			<item name="Sheep_36" meshFile="Sheep.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/Sheep"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1633099747"/>
@@ -3775,7 +3775,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/Sheep"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -3831,14 +3831,14 @@
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="3759163986"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Sheep_37" id="3740168035">
 			<position x="-5.95591" y="0.0488288" z="18.1091"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Sheep_37" meshFile="Sheep.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/Sheep"/>
+			<item name="Sheep_37" meshFile="Sheep.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/Sheep"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1015840021"/>
@@ -3859,7 +3859,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/Sheep"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -3915,14 +3915,14 @@
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="3759163986"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Sheep_38" id="3740173690">
 			<position x="-5.22789" y="0.0488288" z="19.7725"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Sheep_38" meshFile="Sheep.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/Sheep"/>
+			<item name="Sheep_38" meshFile="Sheep.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/Sheep"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="996250434"/>
@@ -3943,7 +3943,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/Sheep"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -3999,14 +3999,14 @@
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="3759163986"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Sheep_39" id="3740174125">
 			<position x="-7.0767" y="0.0488288" z="16.0984"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Sheep_39" meshFile="Sheep.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/Sheep"/>
+			<item name="Sheep_39" meshFile="Sheep.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/Sheep"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1473902269"/>
@@ -4027,7 +4027,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/Sheep"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -4083,14 +4083,14 @@
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="3759163986"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Sheep_40" id="3740723965">
 			<position x="-4.27606" y="0.0488288" z="14.1069"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Sheep_40" meshFile="Sheep.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/Sheep"/>
+			<item name="Sheep_40" meshFile="Sheep.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/Sheep"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="47704630"/>
@@ -4111,7 +4111,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/Sheep"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -4167,14 +4167,14 @@
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="3759163986"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Sheep_41" id="3740723530">
 			<position x="-7.63088" y="0.0488288" z="14.1069"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Sheep_41" meshFile="Sheep.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/Sheep"/>
+			<item name="Sheep_41" meshFile="Sheep.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/Sheep"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="203695799"/>
@@ -4195,7 +4195,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/Sheep"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -4251,14 +4251,14 @@
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="3759163986"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Sheep_42" id="3740723095">
 			<position x="-9.52052" y="0.0488288" z="14.435"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Sheep_42" meshFile="Sheep.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/Sheep"/>
+			<item name="Sheep_42" meshFile="Sheep.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/Sheep"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2046326027"/>
@@ -4279,7 +4279,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/Sheep"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -4335,14 +4335,14 @@
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="3759163986"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Sheep_43" id="3740722660">
 			<position x="-8.7925" y="0.0488288" z="16.0984"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Sheep_43" meshFile="Sheep.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/Sheep"/>
+			<item name="Sheep_43" meshFile="Sheep.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/Sheep"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1223433417"/>
@@ -4363,7 +4363,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/Sheep"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -4419,14 +4419,14 @@
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="3759163986"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Sheep_44" id="3740722225">
 			<position x="-7.63088" y="0.0488288" z="17.7811"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Sheep_44" meshFile="Sheep.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/Sheep"/>
+			<item name="Sheep_44" meshFile="Sheep.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/Sheep"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2150655238"/>
@@ -4447,7 +4447,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/Sheep"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -4503,14 +4503,14 @@
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="3759163986"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Sheep_45" id="3740721790">
 			<position x="-9.52052" y="0.0488288" z="18.1091"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Sheep_45" meshFile="Sheep.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/Sheep"/>
+			<item name="Sheep_45" meshFile="Sheep.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/Sheep"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3385937420"/>
@@ -4531,7 +4531,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/Sheep"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -4587,14 +4587,14 @@
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="3759163986"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Sheep_46" id="3740721355">
 			<position x="-8.7925" y="0.0488288" z="19.7725"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Sheep_46" meshFile="Sheep.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/Sheep"/>
+			<item name="Sheep_46" meshFile="Sheep.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/Sheep"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3667679415"/>
@@ -4615,7 +4615,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/Sheep"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -4671,14 +4671,14 @@
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="3759163986"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Sheep_47" id="3740720920">
 			<position x="-7.0767" y="0.0488288" z="19.7725"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Sheep_47" meshFile="Sheep.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/Sheep"/>
+			<item name="Sheep_47" meshFile="Sheep.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/Sheep"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="754021414"/>
@@ -4699,7 +4699,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/Sheep"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -4755,14 +4755,14 @@
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="3759163986"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Sheep_48" id="3740720485">
 			<position x="3.47013" y="0.0488288" z="17.7811"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Sheep_48" meshFile="Sheep.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/Sheep"/>
+			<item name="Sheep_48" meshFile="Sheep.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/Sheep"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3579878344"/>
@@ -4783,7 +4783,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/Sheep"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -4839,14 +4839,14 @@
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="3759163986"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Sheep_49" id="3740720050">
 			<position x="2.09872" y="0.0488288" z="16.0984"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Sheep_49" meshFile="Sheep.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/Sheep"/>
+			<item name="Sheep_49" meshFile="Sheep.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/Sheep"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3833040218"/>
@@ -4867,7 +4867,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/Sheep"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -4923,14 +4923,14 @@
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="3759163986"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Sheep_50" id="3740576500">
 			<position x="1.58049" y="0.0488288" z="18.1091"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Sheep_50" meshFile="Sheep.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/Sheep"/>
+			<item name="Sheep_50" meshFile="Sheep.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/Sheep"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1562333113"/>
@@ -4951,7 +4951,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/Sheep"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -5007,14 +5007,14 @@
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="3759163986"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Sheep_51" id="3740576935">
 			<position x="4.02431" y="0.0488288" z="19.7725"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Sheep_51" meshFile="Sheep.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/Sheep"/>
+			<item name="Sheep_51" meshFile="Sheep.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/Sheep"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2563793538"/>
@@ -5035,7 +5035,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/Sheep"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -5091,14 +5091,14 @@
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="3759163986"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Sheep_52" id="3740577370">
 			<position x="1.3707" y="0.0488288" z="14.435"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Sheep_52" meshFile="Sheep.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/Sheep"/>
+			<item name="Sheep_52" meshFile="Sheep.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/Sheep"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2265356811"/>
@@ -5119,7 +5119,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/Sheep"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -5175,14 +5175,14 @@
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="3759163986"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Sheep_53" id="3740577805">
 			<position x="2.30851" y="0.0488288" z="19.7725"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Sheep_53" meshFile="Sheep.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/Sheep"/>
+			<item name="Sheep_53" meshFile="Sheep.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/Sheep"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1749176870"/>
@@ -5203,7 +5203,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/Sheep"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -5259,14 +5259,14 @@
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="3759163986"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Sheep_54" id="3740574760">
 			<position x="3.81452" y="0.0488288" z="16.0984"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Sheep_54" meshFile="Sheep.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/Sheep"/>
+			<item name="Sheep_54" meshFile="Sheep.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/Sheep"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="386288182"/>
@@ -5287,7 +5287,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/Sheep"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -5343,14 +5343,14 @@
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="3759163986"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Sheep_56" id="3740575630">
 			<position x="3.26033" y="0.0488288" z="14.1069"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Sheep_56" meshFile="Sheep.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/Sheep"/>
+			<item name="Sheep_56" meshFile="Sheep.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/Sheep"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="4091351107"/>
@@ -5371,7 +5371,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/Sheep"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -5427,14 +5427,14 @@
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="3759163986"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Sheep_57" id="3740576065">
 			<position x="-0.0944815" y="0.0488288" z="14.1069"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Sheep_57" meshFile="Sheep.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/Sheep"/>
+			<item name="Sheep_57" meshFile="Sheep.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/Sheep"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="4034739442"/>
@@ -5455,7 +5455,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/Sheep"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -5511,14 +5511,14 @@
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="3759163986"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Sheep_58" id="3740573020">
 			<position x="-1.98412" y="0.0488288" z="14.435"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Sheep_58" meshFile="Sheep.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/Sheep"/>
+			<item name="Sheep_58" meshFile="Sheep.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/Sheep"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="949158091"/>
@@ -5539,7 +5539,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/Sheep"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -5595,14 +5595,14 @@
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="3759163986"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Sheep_59" id="3740573455">
 			<position x="-1.2561" y="0.0488288" z="16.0984"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Sheep_59" meshFile="Sheep.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/Sheep"/>
+			<item name="Sheep_59" meshFile="Sheep.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/Sheep"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1635403643"/>
@@ -5623,7 +5623,7 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/Sheep"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
@@ -5679,7 +5679,7 @@
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="3759163986"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 	</nodes>
 </scene>

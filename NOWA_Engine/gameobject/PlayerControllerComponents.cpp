@@ -3099,8 +3099,8 @@ namespace NOWA
 											if (nullptr == this->playerController->debugWaypointNode)
 											{
 												this->playerController->debugWaypointNode = this->playerController->getOwner()->getSceneManager()->getRootSceneNode()->createChildSceneNode();
-												Ogre::v1::Entity* entity = this->playerController->getOwner()->getSceneManager()->createEntity("Node.mesh");
-												this->playerController->debugWaypointNode->attachObject(entity);
+												Ogre::Item* item = this->playerController->getOwner()->getSceneManager()->createItem("Node.mesh");
+                                                this->playerController->debugWaypointNode->attachObject(item);
 											}
 
 											this->playerController->debugWaypointNode->setPosition(resultWaypoint);

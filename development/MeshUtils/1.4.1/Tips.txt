@@ -1,0 +1,31 @@
+boneWorldPosition = {x=0.000109000001 y=4.39940262 z=-0.151522577 }
+
+http://www.ogre3d.org/tikiwiki/tiki-index.php?page=MeshMagick
+MeshMagick.exe transform -translate=0/-4.39940262/0.151522577 goblin.mesh
+
+immer mit Differenz translieren!, also statt 4.3... -4.3....
+
+In vielen .mesh Dateien steht zu Beginn:
+[MeshSerializer_v1.8]
+Solch einen MeshSerializer gibt es garnicht, daher funktionieren keine Tools mehr wie MeshMagick, alter Ogitor etc.
+Daher umschreiben auf:
+[MeshSerializer_v1.41]
+
+
+
+MeshMagick.exe transform -translate=0/-0.4284/0 Flubber.mesh
+
+Wenn Skeleton Datei auf Version 1.80, dann zunächst OgreXMLConverter im Ordner 1.9 auf *.skeleton anwenden
+Anschließend die *.skeleton.xml in den 1.72 Ordner kopieren und dann wieder OgreXMLConverter auf die *.skeleton.xml anwenden.
+Dann hat die Skeleton Datei die Version 1.10
+
+MeshMagick.exe transform -translate=0/-0.986/0.02136 alpha_skeleton.mesh
+
+Ab und an OgreGenerateTangents in einem Ordner benutzen oder auf neue Modelle, damit diese Tangenten bekommen, wegen Performanz beim Laden in NOWA (generateTangents etc.)
+
+Downgraden:
+- in 1.8 OgreXMLConverter.exe für mesh ausführen
+- in 1.8 OgreXMLConverter.exe für skeleton ausführen
+- XML Dateien in 1.4.1 einfügen
+- in 1.4.1 OgreXMLConverter.exe für skeleton.xml ausführen -> Reihenfolge wichtig
+- in 1.4.1 OgreXMLConverter.exe für mesh.xml ausführen

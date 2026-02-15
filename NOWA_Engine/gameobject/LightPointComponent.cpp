@@ -11,7 +11,7 @@ namespace NOWA
 	LightPointComponent::LightPointComponent()
 		: GameObjectComponent(),
 		light(nullptr),
-		dummyEntity(nullptr),
+		dummyItem(nullptr),
 		diffuseColor(new Variant(LightPointComponent::AttrDiffuseColor(), Ogre::Vector3::UNIT_SCALE, this->attributes)),
 		specularColor(new Variant(LightPointComponent::AttrSpecularColor(), Ogre::Vector3::UNIT_SCALE, this->attributes)),
 		powerScale(new Variant(LightPointComponent::AttrPowerScale(), 3.14159f, this->attributes)),
@@ -23,7 +23,7 @@ namespace NOWA
 		attenuationRadius(new Variant(LightPointComponent::AttrAttenuationRadius(), 10.0f, this->attributes)),
 		attenuationLumThreshold(new Variant(LightPointComponent::AttrAttenuationLumThreshold(), 0.00192f, this->attributes)),
 		castShadows(new Variant(LightPointComponent::AttrCastShadows(), true, this->attributes)),
-		showDummyEntity(new Variant(LightPointComponent::AttrShowDummyEntity(), false, this->attributes))
+		showDummyEntity(new Variant(LightPointComponent::AttrShowDummyItem(), false, this->attributes))
 	{
 		this->diffuseColor->addUserData(GameObject::AttrActionColorDialog());
 		this->specularColor->addUserData(GameObject::AttrActionColorDialog());
@@ -43,7 +43,7 @@ namespace NOWA
 				this->gameObjectPtr->getSceneManager()->destroyMovableObject(this->light);
 			});
 			this->light = nullptr;
-			this->dummyEntity = nullptr;
+			this->dummyItem = nullptr;
 		}
 	}
 
@@ -151,12 +151,12 @@ namespace NOWA
 
 	bool LightPointComponent::connect(void)
 	{
-		if (nullptr != this->dummyEntity)
+		if (nullptr != this->dummyItem)
 		{
 			bool visible = this->showDummyEntity->getBool() && this->gameObjectPtr->isVisible();
 			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("LightPointComponent::connect setVisible", _1(visible),
 			{
-				this->dummyEntity->setVisible(visible);
+				this->dummyItem->setVisible(visible);
 			});
 		}
 
@@ -165,12 +165,12 @@ namespace NOWA
 
 	bool LightPointComponent::disconnect(void)
 	{
-		if (nullptr != this->dummyEntity)
+		if (nullptr != this->dummyItem)
 		{
 			bool visible = this->gameObjectPtr->isVisible();
 			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("LightPointComponent::disconnect setVisible", _1(visible),
 			{
-				this->dummyEntity->setVisible(visible);
+				this->dummyItem->setVisible(visible);
 			});
 		}
 
@@ -209,7 +209,7 @@ namespace NOWA
 				{
 					entity->setCastShadows(false);
 					// Borrow the entity from the game object
-					this->dummyEntity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
+					this->dummyItem = this->gameObjectPtr->getMovableObject<Ogre::Item>();
 				}
 				else
 				{

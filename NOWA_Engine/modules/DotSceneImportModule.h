@@ -197,6 +197,8 @@ namespace NOWA
 		void processTerra(rapidxml::xml_node<>* xmlNode, Ogre::SceneNode* parent, bool justSetValues = false);
 		void processOcean(rapidxml::xml_node<>* xmlNode, Ogre::SceneNode* parent, bool justSetValues = false);
 		void processPlane(rapidxml::xml_node<>* xmlNode, Ogre::SceneNode* parent, bool justSetValues = false);
+
+		Ogre::MeshPtr loadMeshV2Optimized(const Ogre::String& meshName, const Ogre::String& itemName, const Ogre::String& originalMeshFile);
 	private:
 		void parseGameObjectDelegate(EventDataPtr eventData);
 	protected:

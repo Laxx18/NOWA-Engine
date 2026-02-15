@@ -10,7 +10,7 @@ namespace NOWA
 
 	NodeComponent::NodeComponent()
 		: GameObjectComponent(),
-		dummyEntity(nullptr),
+		dummyItem(nullptr),
 		show(new Variant(NodeComponent::AttrShow(), true, this->attributes))
 	{
 
@@ -19,7 +19,7 @@ namespace NOWA
 	NodeComponent::~NodeComponent()
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[NodeComponent] Destructor node component for game object: " + this->gameObjectPtr->getName());
-		this->dummyEntity = nullptr;
+		this->dummyItem = nullptr;
 	}
 
 	bool NodeComponent::init(rapidxml::xml_node<>*& propertyElement)
@@ -53,19 +53,19 @@ namespace NOWA
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[NodeComponent] Init node component for game object: " + this->gameObjectPtr->getName());
 
-		this->dummyEntity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
+		this->dummyItem = this->gameObjectPtr->getMovableObject<Ogre::Item>();
 		
 		return true;
 	}
 
 	bool NodeComponent::connect(void)
 	{
-		if (nullptr != dummyEntity)
+		if (nullptr != dummyItem)
 		{
 			bool visible = this->show->getBool() && this->gameObjectPtr->isVisible();
 			ENQUEUE_RENDER_COMMAND_MULTI("NodeComponent::connect", _1(visible),
 			{
-				this->dummyEntity->setVisible(visible);
+				this->dummyItem->setVisible(visible);
 			});
 		}
 
@@ -74,12 +74,12 @@ namespace NOWA
 
 	bool NodeComponent::disconnect(void)
 	{
-		if (nullptr != this->dummyEntity)
+		if (nullptr != this->dummyItem)
 		{
 			bool visible = this->gameObjectPtr->isVisible();
 			ENQUEUE_RENDER_COMMAND_MULTI("NodeComponent::disconnect", _1(visible),
 			{
-				this->dummyEntity->setVisible(visible);
+				this->dummyItem->setVisible(visible);
 			});
 		}
 		return true;

@@ -45,8 +45,8 @@
 			<position x="4.33089" y="1.5" z="-2.70146"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="coin_0" meshFile="coin.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="Material/Coin"/>
+			<item name="coin_0" meshFile="coin.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="Material/Coin"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1758440971"/>
@@ -66,7 +66,7 @@
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="Material/Coin"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 	</nodes>
 </scene>

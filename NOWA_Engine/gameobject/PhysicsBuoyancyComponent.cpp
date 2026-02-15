@@ -406,9 +406,9 @@ namespace NOWA
         Ogre::String meshName;
         OgreNewt::CollisionPtr collision;
 
-        ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsBuoyancyComponent::createStaticBody", _2(&meshName, &collision),
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, &meshName, &collision]()
         {
-            Ogre::v1::Entity * entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
+            Ogre::v1::Entity* entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
             if (nullptr != entity)
             {
                 meshName = entity->getMesh()->getName();
@@ -442,10 +442,13 @@ namespace NOWA
                 }
                 else
                 {
-                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsTriggerComponent] Error cannot create static body, because the " "game object has no entity/item with mesh for game object: " + this->gameObjectPtr->getName());
+                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsTriggerComponent] Error cannot create static body, because the "
+                                                                                        "game object has no entity/item with mesh for game object: " +
+                                                                                            this->gameObjectPtr->getName());
                 }
             }
-        });
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PhysicsBuoyancyComponent::createStaticBody");
 
         if (nullptr == collision)
         {

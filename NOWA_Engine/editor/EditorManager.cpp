@@ -2180,16 +2180,15 @@ namespace NOWA
 
 			ENQUEUE_RENDER_COMMAND_MULTI("EditorManager::selectGizmo", _3(mX, mY, hitRay),
 			{
-				Ogre::v1::Entity * gizmoEntity = nullptr;
+				Ogre::Item* gizmoItem = nullptr;
 				Ogre::Vector3 result = Ogre::Vector3::ZERO;
 				Ogre::Real closestDistance = 0.0f;
 				Ogre::Vector3 normal = Ogre::Vector3::ZERO;
 
 				// MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("DebugLabel")->setCaption("");
 
-				// Check if there is an hit with an polygon of an entity
-				if (MathHelper::getInstance()->getRaycastFromPoint(mX, mY, this->camera, Core::getSingletonPtr()->getOgreRenderWindow(),
-					this->gizmoQuery, result, (size_t&)gizmoEntity, closestDistance, normal, nullptr, true))
+				// Check if there is an hit with an polygon of an item
+				if (MathHelper::getInstance()->getRaycastFromPoint(mX, mY, this->camera, Core::getSingletonPtr()->getOgreRenderWindow(), this->gizmoQuery, result, (size_t&)gizmoItem, closestDistance, normal, nullptr, true))
 				{
 					Ogre::Vector3 gizmoPosition = this->gizmo->getSelectedNode()->_getDerivedPositionUpdated();
 
@@ -2205,7 +2204,7 @@ namespace NOWA
 					Ogre::Real vY = this->gizmo->getSecondPlane().projectVector(hitRay.getDirection()).length();
 					Ogre::Real vZ = this->gizmo->getThirdPlane().projectVector(hitRay.getDirection()).length();
 
-					if (this->gizmo->getArrowEntityX() == gizmoEntity)
+					if (this->gizmo->getArrowItemX() == gizmoItem)
 					{
 						// http://www.ogre3d.org/forums/viewtopic.php?f=2&t=41739
 
@@ -2218,7 +2217,7 @@ namespace NOWA
 							this->resultPlane.redefine(gizmoDirectionY, this->gizmo->getPosition());
 						}
 					}
-					else if (this->gizmo->getArrowEntityY() == gizmoEntity)
+                    else if (this->gizmo->getArrowItemY() == gizmoItem)
 					{
 						this->gizmo->highlightYArrow();
 						vY = 10000.0f;
@@ -2227,7 +2226,7 @@ namespace NOWA
 							this->resultPlane.redefine(gizmoDirectionZ, this->gizmo->getPosition());
 						}
 					}
-					else if (this->gizmo->getArrowEntityZ() == gizmoEntity)
+                    else if (this->gizmo->getArrowItemZ() == gizmoItem)
 					{
 						this->gizmo->highlightZArrow();
 						vZ = 10000.0f;
@@ -2236,7 +2235,7 @@ namespace NOWA
 							this->resultPlane.redefine(gizmoDirectionX, this->gizmo->getPosition());
 						}
 					}
-					else if (this->gizmo->getSphereEntity() == gizmoEntity
+                    else if (this->gizmo->getSphereItem() == gizmoItem
 						&& EDITOR_ROTATE_MODE1 != this->manipulationMode && EDITOR_ROTATE_MODE2 != this->manipulationMode)
 					{
 						this->gizmo->highlightSphere();
@@ -3426,18 +3425,18 @@ namespace NOWA
 
 				if (this->translateMode == EDITOR_TRANSLATE_MODE_STACK || this->translateMode == EDITOR_TRANSLATE_MODE_STACK_ORIENTATED)
 				{
-					Ogre::v1::Entity* hitMovableObject = nullptr;
+					Ogre::Item* hitMovableObject = nullptr;
 					Ogre::Real closestDistance = 0.0f;
 
 					Ogre::Ray hitRay(gameObject->getSceneNode()->getPosition() + Ogre::Vector3(0.0f, gameObject->getSize().y * 10.0f, 0.0f), Ogre::Vector3::NEGATIVE_UNIT_Y);
 					this->placeObjectQuery->setRay(hitRay);
 
 					std::vector<Ogre::MovableObject*> excludeMovableObjects(5);
-					excludeMovableObjects[0] = gameObject->getMovableObject<Ogre::v1::Entity>();
-					excludeMovableObjects[1] = this->gizmo->getArrowEntityX();
-					excludeMovableObjects[2] = this->gizmo->getArrowEntityY();
-					excludeMovableObjects[3] = this->gizmo->getArrowEntityZ();
-					excludeMovableObjects[4] = this->gizmo->getSphereEntity();
+					excludeMovableObjects[0] = gameObject->getMovableObject<Ogre::Item>();
+					excludeMovableObjects[1] = this->gizmo->getArrowItemX();
+					excludeMovableObjects[2] = this->gizmo->getArrowItemY();
+					excludeMovableObjects[3] = this->gizmo->getArrowItemZ();
+					excludeMovableObjects[4] = this->gizmo->getSphereItem();
 
 					MathHelper::getInstance()->getRaycastFromPoint(this->placeObjectQuery, this->camera, internalHitPoint, (size_t&)hitMovableObject, closestDistance, normal, &excludeMovableObjects);
 
@@ -3446,9 +3445,9 @@ namespace NOWA
 						internalHitPoint = this->getHitPointOnFloor(hitRay);
 					}
 
-					if (auto* entity = gameObject->getMovableObject<Ogre::v1::Entity>())
+					if (auto* item = gameObject->getMovableObject<Ogre::Item>())
 					{
-						internalHitPoint += MathHelper::getInstance()->getBottomCenterOfMesh(gameObject->getSceneNode(), entity);
+						internalHitPoint += MathHelper::getInstance()->getBottomCenterOfMesh(gameObject->getSceneNode(), item);
 					}
 
 					success = true;

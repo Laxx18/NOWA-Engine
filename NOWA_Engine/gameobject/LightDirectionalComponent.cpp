@@ -12,7 +12,7 @@ namespace NOWA
 	LightDirectionalComponent::LightDirectionalComponent()
 		: GameObjectComponent(),
 		light(nullptr),
-		dummyEntity(nullptr),
+		dummyItem(nullptr),
 		oldOrientation(Ogre::Quaternion::IDENTITY),
 		transformUpdateTimer(0.0f),
 		diffuseColor(new Variant(LightDirectionalComponent::AttrDiffuseColor(), Ogre::Vector3::UNIT_SCALE, this->attributes)),
@@ -23,7 +23,7 @@ namespace NOWA
 		attenuationRadius(new Variant(LightDirectionalComponent::AttrAttenuationRadius(), 10.0f, this->attributes)),
 		attenuationLumThreshold(new Variant(LightDirectionalComponent::AttrAttenuationLumThreshold(), 0.00192f, this->attributes)),
 		castShadows(new Variant(LightDirectionalComponent::AttrCastShadows(), true, this->attributes)),
-		showDummyEntity(new Variant(LightDirectionalComponent::AttrShowDummyEntity(), false, this->attributes))
+		showDummyEntity(new Variant(LightDirectionalComponent::AttrShowDummyItem(), false, this->attributes))
 	{
 		this->diffuseColor->addUserData(GameObject::AttrActionColorDialog());
 		this->specularColor->addUserData(GameObject::AttrActionColorDialog());
@@ -137,18 +137,18 @@ namespace NOWA
 					this->gameObjectPtr->getSceneManager()->destroyMovableObject(this->light);
 				});
 			this->light = nullptr;
-			this->dummyEntity = nullptr;
+			this->dummyItem = nullptr;
 		}
 	}
 
 	bool LightDirectionalComponent::connect(void)
 	{
-		if (nullptr != this->dummyEntity)
+		if (nullptr != this->dummyItem)
 		{
 			bool visible = this->showDummyEntity->getBool() && this->gameObjectPtr->isVisible();
 			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("LightDirectionalComponent::connect setVisible", _1(visible),
 			{
-				this->dummyEntity->setVisible(visible);
+				this->dummyItem->setVisible(visible);
 			});
 		}
 
@@ -160,10 +160,10 @@ namespace NOWA
 		Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
 		NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
 
-		if (nullptr != this->dummyEntity)
+		if (nullptr != this->dummyItem)
 		{
 			bool visible = this->gameObjectPtr->isVisible();
-			this->dummyEntity->setVisible(visible);
+			this->dummyItem->setVisible(visible);
 		}
 
 		return true;
@@ -225,7 +225,7 @@ namespace NOWA
 				{
 					entity->setCastShadows(false);
 					// Borrow the entity from the game object
-					this->dummyEntity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
+					this->dummyItem = this->gameObjectPtr->getMovableObject<Ogre::Item>();
 				}
 				else
 				{

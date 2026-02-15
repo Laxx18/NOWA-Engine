@@ -74,15 +74,16 @@ namespace NOWA
 		// if source id = 0 and one was a child, remove the child! resolve groups!
 		if (false == alreadyConnected)
 		{
-			ENQUEUE_RENDER_COMMAND("TagChildNodeComponent::connect",
+            GameObjectPtr sourceGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->sourceId->getULong());
+
+            if (nullptr == sourceGameObjectPtr)
+            {
+                return false;
+            }
+
+			ENQUEUE_RENDER_COMMAND_MULTI(
+                "TagChildNodeComponent::connect", _1(sourceGameObjectPtr),
 			{
-				GameObjectPtr sourceGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->sourceId->getULong());
-
-				if (nullptr == sourceGameObjectPtr)
-				{
-					return false;
-				}
-
 				this->sourceChildNode = sourceGameObjectPtr->getSceneNode();
 
 				// Remember the old position for disconnection

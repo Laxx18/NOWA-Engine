@@ -39,8 +39,8 @@
 			<position x="19.0977" y="7.50327" z="-22.0031"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="4" y="4" z="4"/>
-			<entity name="Item_0" meshFile="bottle.mesh" castShadows="false" visible="true">
-				<subentity index="0" datablockName="Bottle1Red710527999"/>
+			<item name="Item_0" meshFile="bottle.mesh" castShadows="false" visible="true">
+				<subitem index="0" datablockName="Bottle1Red710527999"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="710527999"/>
@@ -70,7 +70,7 @@
 					<property type="12" name="ResourceName" data="EnergyItem"/>
 					<property type="7" name="ComponentDatablockPbsComponent" data="DatablockPbsComponent"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="SubEntityIndex" data="0"/>
+					<property type="2" name="SubItemIndex" data="0"/>
 					<property type="7" name="Workflow" data="SpecularAsFresnelWorkflow"/>
 					<property type="6" name="Metalness" data="1"/>
 					<property type="6" name="Roughness" data="0.837"/>
@@ -112,14 +112,14 @@
 					<property type="12" name="UseEmissiveAsLightMap" data="false"/>
 					<property type="7" name="ShadowConstBias" data="0.01"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Plattform2_0" id="2856688331">
 			<position x="-27.326" y="1.78827" z="-22"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Plattform2_0" meshFile="Plattform2.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="Material/SOLID/TEX/plattform2.png"/>
+			<item name="Plattform2_0" meshFile="Plattform2.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="Material/SOLID/TEX/plattform2.png"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="847317411"/>
@@ -144,14 +144,14 @@
 					<property type="8" name="ExitDirection" data="-1 0"/>
 					<property type="7" name="Axis" data="X,Y"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="CastlePlatform3_6" id="2113456762">
 			<position x="83.3572" y="8.62217" z="-22"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="3" y="3" z="3"/>
-			<entity name="CastlePlatform3_6" meshFile="CastlePlatform3.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="CastleWallColor"/>
+			<item name="CastlePlatform3_6" meshFile="CastlePlatform3.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="CastleWallColor"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1324531395"/>
@@ -172,14 +172,14 @@
 					<property type="6" name="Mass" data="10000"/>
 					<property type="12" name="Serialize" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Lever1_0" id="3947561985">
 			<position x="16.0036" y="22.8916" z="-22.5165"/>
 			<rotation qw="-1.15202e-07" qx="1.15202e-07" qy="0.707107" qz="0.707107"/>
 			<scale x="0.5" y="0.5" z="0.5"/>
-			<entity name="Lever1_0" meshFile="Bricks1.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="BricksColor4029566283"/>
+			<item name="Lever1_0" meshFile="Bricks1.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="BricksColor4029566283"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="4029566283"/>
@@ -197,7 +197,7 @@
 					<property type="7" name="DataBlock0" data="BricksColor"/>
 					<property type="7" name="ComponentDatablockPbsComponent" data="DatablockPbsComponent"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="SubEntityIndex" data="0"/>
+					<property type="2" name="SubItemIndex" data="0"/>
 					<property type="7" name="Workflow" data="SpecularWorkflow"/>
 					<property type="6" name="Metalness" data="0.01"/>
 					<property type="6" name="Roughness" data="3.162"/>
@@ -296,14 +296,14 @@
 					<property type="7" name="AttributeType0" data="Bool"/>
 					<property type="7" name="AttributeValue0" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="CastleArch_0" id="591936498">
 			<position x="-24.2499" y="-4.16463" z="-22"/>
 			<rotation qw="0.92388" qx="0" qy="-0.382683" qz="0"/>
 			<scale x="3" y="3" z="3"/>
-			<entity name="CastleArch_0" meshFile="CastleArch.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="CastleWallColor"/>
+			<item name="CastleArch_0" meshFile="CastleArch.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="CastleWallColor"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="319486019"/>
@@ -320,14 +320,14 @@
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleWallColor"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="CastleArch_2" id="591935628">
 			<position x="-10.9056" y="-4.14704" z="-22"/>
 			<rotation qw="0.92388" qx="0" qy="-0.382683" qz="0"/>
 			<scale x="3" y="3" z="3"/>
-			<entity name="CastleArch_2" meshFile="CastleArch.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="CastleWallColor"/>
+			<item name="CastleArch_2" meshFile="CastleArch.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="CastleWallColor"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2070784492"/>
@@ -344,14 +344,14 @@
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleWallColor"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="CastleArch_1" id="591936933">
 			<position x="-17.5247" y="-4.23499" z="-22"/>
 			<rotation qw="0.92388" qx="0" qy="-0.382683" qz="0"/>
 			<scale x="3" y="3" z="3"/>
-			<entity name="CastleArch_1" meshFile="CastleArch.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="CastleWallColor"/>
+			<item name="CastleArch_1" meshFile="CastleArch.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="CastleWallColor"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1543607221"/>
@@ -368,14 +368,14 @@
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleWallColor"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="CastlePlatform4_1" id="1863865942">
 			<position x="23.7343" y="35.3073" z="-22"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="3" y="3" z="3"/>
-			<entity name="CastlePlatform4_1" meshFile="CastlePlatform4.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="CastleWallColor"/>
+			<item name="CastlePlatform4_1" meshFile="CastlePlatform4.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="CastleWallColor"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="871527940"/>
@@ -396,14 +396,14 @@
 					<property type="6" name="Mass" data="10000"/>
 					<property type="12" name="Serialize" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="CastleTower1_1" id="1250421013">
 			<position x="23.2865" y="24.0452" z="-22.0023"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="3" y="3" z="3"/>
-			<entity name="CastleTower1_1" meshFile="CastleTower1.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="CastleWallColor"/>
+			<item name="CastleTower1_1" meshFile="CastleTower1.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="CastleWallColor"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2519289892"/>
@@ -433,14 +433,14 @@
 					<property type="12" name="JointRecursiveCollision" data="false"/>
 					<property type="6" name="Stiffness" data="0.9"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="CastleTower2_1" id="1012942768">
 			<position x="22.8779" y="31.1901" z="-22"/>
 			<rotation qw="0.707107" qx="0" qy="0.707107" qz="0"/>
 			<scale x="3" y="3" z="3"/>
-			<entity name="CastleTower2_1" meshFile="CastleTower2.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="CastleWallColor"/>
+			<item name="CastleTower2_1" meshFile="CastleTower2.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="CastleWallColor"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="4119766512"/>
@@ -461,14 +461,14 @@
 					<property type="6" name="Mass" data="10000"/>
 					<property type="12" name="Serialize" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="CastleFence2_5" id="4088017944">
 			<position x="-14.2378" y="1.37598" z="-20.4"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="4" y="4" z="4"/>
-			<entity name="CastleFence2_5" meshFile="CastleFence2.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="CastleWallColor"/>
+			<item name="CastleFence2_5" meshFile="CastleFence2.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="CastleWallColor"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3116620548"/>
@@ -485,14 +485,14 @@
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleWallColor"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="CastlePlatform6_9" id="1701500452">
 			<position x="-11.4843" y="6.02659" z="-22"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="3" y="3" z="3"/>
-			<entity name="CastlePlatform6_9" meshFile="CastlePlatform6.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="CastleWallColor"/>
+			<item name="CastlePlatform6_9" meshFile="CastlePlatform6.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="CastleWallColor"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2366448547"/>
@@ -513,14 +513,14 @@
 					<property type="6" name="Mass" data="10000"/>
 					<property type="12" name="Serialize" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="CastleFence2_6" id="4088019249">
 			<position x="-11.951" y="1.37598" z="-20.4"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="4" y="4" z="4"/>
-			<entity name="CastleFence2_6" meshFile="CastleFence2.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="CastleWallColor"/>
+			<item name="CastleFence2_6" meshFile="CastleFence2.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="CastleWallColor"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1289726841"/>
@@ -537,14 +537,14 @@
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleWallColor"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="CastleFence2_7" id="4088018814">
 			<position x="-10.1861" y="1.37598" z="-20.4"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="4" y="4" z="4"/>
-			<entity name="CastleFence2_7" meshFile="CastleFence2.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="CastleWallColor"/>
+			<item name="CastleFence2_7" meshFile="CastleFence2.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="CastleWallColor"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3443070026"/>
@@ -561,14 +561,14 @@
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleWallColor"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="CastleFenceBars_7" id="48543118">
 			<position x="-9.03553" y="1.44134" z="-20.4"/>
 			<rotation qw="-1.78814e-07" qx="0" qy="1" qz="0"/>
 			<scale x="4" y="4" z="4"/>
-			<entity name="CastleFenceBars_7" meshFile="CastleFenceBars.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="CastleFenceColor"/>
+			<item name="CastleFenceBars_7" meshFile="CastleFenceBars.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="CastleFenceColor"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="27124426"/>
@@ -585,14 +585,14 @@
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleFenceColor"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="MainCamera" id="4010617415">
 			<position x="-10.8879" y="10.9002" z="-9.85444"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
-				<subentity index="0" datablockName="WhiteLine"/>
+			<item name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
+				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="538956576"/>
@@ -668,14 +668,14 @@
 					<property type="6" name="Bloom" data="3"/>
 					<property type="6" name="EnvMapScale" data="1"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="SunLight" id="1479238507">
 			<position x="0" y="37.2738" z="-50"/>
 			<rotation qw="0.859342" qx="-0.261669" qy="0.310693" qz="0.310693"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="SunLight" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
-				<subentity index="0" datablockName="WhiteLine"/>
+			<item name="SunLight" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
+				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3041195209"/>
@@ -701,14 +701,14 @@
 					<property type="6" name="AttenuationLumThreshold" data="0.00192"/>
 					<property type="12" name="CastShadows" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="LightDirectional_0" id="3400688218">
 			<position x="-11.14" y="37" z="-2.67523"/>
 			<rotation qw="0.859342" qx="-0.261669" qy="0.310693" qz="0.310693"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="LightDirectional_0" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
-				<subentity index="0" datablockName="WhiteLine"/>
+			<item name="LightDirectional_0" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
+				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2734500024"/>
@@ -734,14 +734,14 @@
 					<property type="6" name="AttenuationLumThreshold" data="0.00192"/>
 					<property type="12" name="CastShadows" data="true"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="CastleFence2_12" id="172095906">
 			<position x="-27.6513" y="1.37598" z="-20.4"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="4" y="4" z="4"/>
-			<entity name="CastleFence2_12" meshFile="CastleFence2.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="CastleWallColor"/>
+			<item name="CastleFence2_12" meshFile="CastleFence2.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="CastleWallColor"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1940852280"/>
@@ -758,14 +758,14 @@
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleWallColor"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="CastlePlatform3_0" id="2113454152">
 			<position x="12.5859" y="5.45971" z="-22"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="3" y="3" z="3"/>
-			<entity name="CastlePlatform3_0" meshFile="CastlePlatform3.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="CastleWallColor"/>
+			<item name="CastlePlatform3_0" meshFile="CastlePlatform3.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="CastleWallColor"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2731535649"/>
@@ -786,14 +786,14 @@
 					<property type="6" name="Mass" data="10000"/>
 					<property type="12" name="Serialize" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="CastlePlatform4_0" id="1863866377">
 			<position x="5.97383" y="10.8096" z="-22"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="3" y="3" z="3"/>
-			<entity name="CastlePlatform4_0" meshFile="CastlePlatform4.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="CastleWallColor"/>
+			<item name="CastlePlatform4_0" meshFile="CastlePlatform4.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="CastleWallColor"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1077863808"/>
@@ -814,14 +814,14 @@
 					<property type="6" name="Mass" data="10000"/>
 					<property type="12" name="Serialize" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Node_0" id="4215511250">
 			<position x="-7.43889" y="11.7023" z="-22"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Node_0" meshFile="Node.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="WhiteLine"/>
+			<item name="Node_0" meshFile="Node.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3437397030"/>
@@ -840,14 +840,14 @@
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="2" name="ReferenceId" data="0"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Node_1" id="4215511685">
 			<position x="13.1632" y="11.5117" z="-22"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Node_1" meshFile="Node.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="WhiteLine"/>
+			<item name="Node_1" meshFile="Node.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="353201690"/>
@@ -866,14 +866,14 @@
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="2" name="ReferenceId" data="0"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Monster01_0" id="2507280561">
 			<position x="6.8063" y="11.4192" z="-22"/>
 			<rotation qw="0.707107" qx="0" qy="0.707107" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Monster01_0" meshFile="Monster01.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="Monster011547884300"/>
+			<item name="Monster01_0" meshFile="Monster01.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="Monster011547884300"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1547884300"/>
@@ -921,7 +921,7 @@
 					<property type="12" name="DirectionChange" data="true"/>
 					<property type="12" name="InvertDirection" data="false"/>
 					<property type="6" name="GoalRadius" data="0.2"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="AnimationActivated" data="true"/>
 					<property type="7" name="AnimationName" data="run-02"/>
@@ -947,7 +947,7 @@
 					<property type="9" name="OffsetOrientation" data="270 90 45"/>
 					<property type="7" name="ComponentDatablockPbsComponent" data="DatablockPbsComponent"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="SubEntityIndex" data="0"/>
+					<property type="2" name="SubItemIndex" data="0"/>
 					<property type="7" name="Workflow" data="SpecularWorkflow"/>
 					<property type="6" name="Metalness" data="0.01"/>
 					<property type="6" name="Roughness" data="0.06"/>
@@ -989,14 +989,14 @@
 					<property type="12" name="UseEmissiveAsLightMap" data="false"/>
 					<property type="7" name="ShadowConstBias" data="1"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="CastlePlatform2_1" id="2050455712">
 			<position x="-11.0424" y="0" z="-22"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="3" y="3" z="3"/>
-			<entity name="CastlePlatform2_1" meshFile="CastlePlatform2.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="CastleWallColor"/>
+			<item name="CastlePlatform2_1" meshFile="CastlePlatform2.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="CastleWallColor"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="685870859"/>
@@ -1017,14 +1017,14 @@
 					<property type="6" name="Mass" data="10000"/>
 					<property type="12" name="Serialize" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="CastlePlatform6_1" id="1701496972">
 			<position x="1.9977" y="2" z="-22"/>
 			<rotation qw="-2.08616e-07" qx="0" qy="1" qz="0"/>
 			<scale x="3" y="3" z="3"/>
-			<entity name="CastlePlatform6_1" meshFile="CastlePlatform6.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="CastleWallColor"/>
+			<item name="CastlePlatform6_1" meshFile="CastlePlatform6.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="CastleWallColor"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="4149253636"/>
@@ -1045,14 +1045,14 @@
 					<property type="6" name="Mass" data="10000"/>
 					<property type="12" name="Serialize" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="CastlePlatform6_0" id="1701497407">
 			<position x="-4.72449" y="2" z="-22"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="3" y="3" z="3"/>
-			<entity name="CastlePlatform6_0" meshFile="CastlePlatform6.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="CastleWallColor2409011844"/>
+			<item name="CastlePlatform6_0" meshFile="CastlePlatform6.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="CastleWallColor2409011844"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2409011844"/>
@@ -1074,7 +1074,7 @@
 					<property type="12" name="Serialize" data="false"/>
 					<property type="7" name="ComponentDatablockPbsComponent" data="DatablockPbsComponent"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="SubEntityIndex" data="0"/>
+					<property type="2" name="SubItemIndex" data="0"/>
 					<property type="7" name="Workflow" data="SpecularWorkflow"/>
 					<property type="6" name="Metalness" data="0.01"/>
 					<property type="6" name="Roughness" data="0.5"/>
@@ -1116,14 +1116,14 @@
 					<property type="12" name="UseEmissiveAsLightMap" data="false"/>
 					<property type="7" name="ShadowConstBias" data="1"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="CastlePlatform6_2" id="1701498277">
 			<position x="-4.69032" y="9.11421" z="-22"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="3" y="3" z="3"/>
-			<entity name="CastlePlatform6_2" meshFile="CastlePlatform6.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="CastleWallColor"/>
+			<item name="CastlePlatform6_2" meshFile="CastlePlatform6.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="CastleWallColor"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2223882505"/>
@@ -1144,14 +1144,14 @@
 					<property type="6" name="Mass" data="10000"/>
 					<property type="12" name="Serialize" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="CastlePlatform2_2" id="2050457017">
 			<position x="-17.6931" y="0" z="-22"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="3" y="3" z="3"/>
-			<entity name="CastlePlatform2_2" meshFile="CastlePlatform2.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="CastleWallColor"/>
+			<item name="CastlePlatform2_2" meshFile="CastlePlatform2.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="CastleWallColor"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="276235850"/>
@@ -1172,14 +1172,14 @@
 					<property type="6" name="Mass" data="10000"/>
 					<property type="12" name="Serialize" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="CastlePlatform2_3" id="2050456582">
 			<position x="-24.3533" y="0" z="-22"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="3" y="3" z="3"/>
-			<entity name="CastlePlatform2_3" meshFile="CastlePlatform2.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="CastleWallColor"/>
+			<item name="CastlePlatform2_3" meshFile="CastlePlatform2.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="CastleWallColor"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2012244422"/>
@@ -1200,14 +1200,14 @@
 					<property type="6" name="Mass" data="10000"/>
 					<property type="12" name="Serialize" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="CastleFenceBars_11" id="3936745151">
 			<position x="-26.5008" y="1.44134" z="-20.4"/>
 			<rotation qw="-1.78814e-07" qx="0" qy="1" qz="0"/>
 			<scale x="4" y="4" z="4"/>
-			<entity name="CastleFenceBars_11" meshFile="CastleFenceBars.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="CastleFenceColor"/>
+			<item name="CastleFenceBars_11" meshFile="CastleFenceBars.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="CastleFenceColor"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3786803603"/>
@@ -1224,14 +1224,14 @@
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleFenceColor"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="CastleFenceBars_0" id="48544423">
 			<position x="-24.2313" y="1.44134" z="-20.4"/>
 			<rotation qw="-1.78814e-07" qx="0" qy="1" qz="0"/>
 			<scale x="4" y="4" z="4"/>
-			<entity name="CastleFenceBars_0" meshFile="CastleFenceBars.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="CastleFenceColor"/>
+			<item name="CastleFenceBars_0" meshFile="CastleFenceBars.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="CastleFenceColor"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3151656534"/>
@@ -1248,14 +1248,14 @@
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleFenceColor"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="CastleFence2_0" id="4088020119">
 			<position x="-25.3819" y="1.37598" z="-20.4"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="4" y="4" z="4"/>
-			<entity name="CastleFence2_0" meshFile="CastleFence2.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="CastleWallColor"/>
+			<item name="CastleFence2_0" meshFile="CastleFence2.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="CastleWallColor"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="724145807"/>
@@ -1272,14 +1272,14 @@
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleWallColor"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="CastleFenceBars_1" id="48543988">
 			<position x="-21.9862" y="1.44134" z="-20.4"/>
 			<rotation qw="-1.78814e-07" qx="0" qy="1" qz="0"/>
 			<scale x="4" y="4" z="4"/>
-			<entity name="CastleFenceBars_1" meshFile="CastleFenceBars.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="CastleFenceColor"/>
+			<item name="CastleFenceBars_1" meshFile="CastleFenceBars.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="CastleFenceColor"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="513453985"/>
@@ -1296,14 +1296,14 @@
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleFenceColor"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="CastleFence2_1" id="4088019684">
 			<position x="-23.1368" y="1.37598" z="-20.4"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="4" y="4" z="4"/>
-			<entity name="CastleFence2_1" meshFile="CastleFence2.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="CastleWallColor"/>
+			<item name="CastleFence2_1" meshFile="CastleFence2.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="CastleWallColor"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2010940593"/>
@@ -1320,14 +1320,14 @@
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleWallColor"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="CastleFenceBars_2" id="48545293">
 			<position x="-19.797" y="1.44134" z="-20.4"/>
 			<rotation qw="-1.78814e-07" qx="0" qy="1" qz="0"/>
 			<scale x="4" y="4" z="4"/>
-			<entity name="CastleFenceBars_2" meshFile="CastleFenceBars.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="CastleFenceColor"/>
+			<item name="CastleFenceBars_2" meshFile="CastleFenceBars.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="CastleFenceColor"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="4015459423"/>
@@ -1344,14 +1344,14 @@
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleFenceColor"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="CastleFence2_2" id="4088020989">
 			<position x="-20.9476" y="1.37598" z="-20.4"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="4" y="4" z="4"/>
-			<entity name="CastleFence2_2" meshFile="CastleFence2.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="CastleWallColor"/>
+			<item name="CastleFence2_2" meshFile="CastleFence2.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="CastleWallColor"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="4228150081"/>
@@ -1368,14 +1368,14 @@
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleWallColor"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="CastleFenceBars_3" id="48544858">
 			<position x="-17.523" y="1.44134" z="-20.4"/>
 			<rotation qw="-1.78814e-07" qx="0" qy="1" qz="0"/>
 			<scale x="4" y="4" z="4"/>
-			<entity name="CastleFenceBars_3" meshFile="CastleFenceBars.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="CastleFenceColor"/>
+			<item name="CastleFenceBars_3" meshFile="CastleFenceBars.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="CastleFenceColor"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1270059080"/>
@@ -1392,14 +1392,14 @@
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleFenceColor"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="CastleFence2_3" id="4088020554">
 			<position x="-18.6735" y="1.37598" z="-20.4"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="4" y="4" z="4"/>
-			<entity name="CastleFence2_3" meshFile="CastleFence2.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="CastleWallColor"/>
+			<item name="CastleFence2_3" meshFile="CastleFence2.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="CastleWallColor"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3083322754"/>
@@ -1416,14 +1416,14 @@
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleWallColor"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="CastleFenceBars_4" id="48542683">
 			<position x="-15.2995" y="1.44134" z="-20.4"/>
 			<rotation qw="-1.78814e-07" qx="0" qy="1" qz="0"/>
 			<scale x="4" y="4" z="4"/>
-			<entity name="CastleFenceBars_4" meshFile="CastleFenceBars.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="CastleFenceColor"/>
+			<item name="CastleFenceBars_4" meshFile="CastleFenceBars.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="CastleFenceColor"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3174146942"/>
@@ -1440,14 +1440,14 @@
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleFenceColor"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="CastleFence2_4" id="4088018379">
 			<position x="-16.4501" y="1.37598" z="-20.4"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="4" y="4" z="4"/>
-			<entity name="CastleFence2_4" meshFile="CastleFence2.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="CastleWallColor"/>
+			<item name="CastleFence2_4" meshFile="CastleFence2.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="CastleWallColor"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1486616047"/>
@@ -1464,14 +1464,14 @@
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleWallColor"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="CastleFenceBars_5" id="48542248">
 			<position x="-13.0872" y="1.44134" z="-20.4"/>
 			<rotation qw="-1.78814e-07" qx="0" qy="1" qz="0"/>
 			<scale x="4" y="4" z="4"/>
-			<entity name="CastleFenceBars_5" meshFile="CastleFenceBars.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="CastleFenceColor"/>
+			<item name="CastleFenceBars_5" meshFile="CastleFenceBars.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="CastleFenceColor"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="627316050"/>
@@ -1488,14 +1488,14 @@
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleFenceColor"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="CastleTower1_0" id="1250420578">
 			<position x="23.156" y="9.90309" z="-22.0023"/>
 			<rotation qw="-1.62921e-07" qx="0" qy="1" qz="0"/>
 			<scale x="3" y="3" z="3"/>
-			<entity name="CastleTower1_0" meshFile="CastleTower1.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="CastleWallColor"/>
+			<item name="CastleTower1_0" meshFile="CastleTower1.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="CastleWallColor"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3444432137"/>
@@ -1516,14 +1516,14 @@
 					<property type="6" name="Mass" data="10000"/>
 					<property type="12" name="Serialize" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="CastleTower2_0" id="1012943203">
 			<position x="23.2165" y="17.083" z="-22"/>
 			<rotation qw="0.707107" qx="0" qy="0.707107" qz="0"/>
 			<scale x="3" y="3" z="3"/>
-			<entity name="CastleTower2_0" meshFile="CastleTower2.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="CastleWallColor"/>
+			<item name="CastleTower2_0" meshFile="CastleTower2.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="CastleWallColor"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2317659416"/>
@@ -1544,14 +1544,14 @@
 					<property type="6" name="Mass" data="10000"/>
 					<property type="12" name="Serialize" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="CastlePlatform3_1" id="2113454587">
 			<position x="11.3064" y="19.6049" z="-22"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="3" y="3" z="3"/>
-			<entity name="CastlePlatform3_1" meshFile="CastlePlatform3.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="CastleWallColor"/>
+			<item name="CastlePlatform3_1" meshFile="CastlePlatform3.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="CastleWallColor"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2789894883"/>
@@ -1581,14 +1581,14 @@
 					<property type="12" name="JointRecursiveCollision" data="false"/>
 					<property type="6" name="Stiffness" data="0.9"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Node_3" id="4215510815">
 			<position x="4.3751" y="19.0062" z="-22"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Node_3" meshFile="Node.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="WhiteLine"/>
+			<item name="Node_3" meshFile="Node.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3732375764"/>
@@ -1607,14 +1607,14 @@
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="2" name="ReferenceId" data="0"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Node_4" id="4215509510">
 			<position x="14.5227" y="21.8751" z="-22"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Node_4" meshFile="Node.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="WhiteLine"/>
+			<item name="Node_4" meshFile="Node.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="697476225"/>
@@ -1633,14 +1633,14 @@
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="2" name="ReferenceId" data="0"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Monster01_1" id="2507280126">
 			<position x="14.1325" y="21.7222" z="-22.0694"/>
 			<rotation qw="0.723816" qx="9.47528e-10" qy="-0.689993" qz="3.49852e-09"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Monster01_1" meshFile="Monster01.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="Monster012347403555"/>
+			<item name="Monster01_1" meshFile="Monster01.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="Monster012347403555"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2347403555"/>
@@ -1688,7 +1688,7 @@
 					<property type="12" name="DirectionChange" data="true"/>
 					<property type="12" name="InvertDirection" data="false"/>
 					<property type="6" name="GoalRadius" data="0.2"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="AnimationActivated" data="true"/>
 					<property type="7" name="AnimationName" data="run-03"/>
@@ -1697,7 +1697,7 @@
 					<property type="12" name="ShowSkeleton" data="false"/>
 					<property type="7" name="ComponentDatablockPbsComponent" data="DatablockPbsComponent"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="SubEntityIndex" data="0"/>
+					<property type="2" name="SubItemIndex" data="0"/>
 					<property type="7" name="Workflow" data="SpecularWorkflow"/>
 					<property type="6" name="Metalness" data="0.01"/>
 					<property type="6" name="Roughness" data="0.06"/>
@@ -1751,14 +1751,14 @@
 					<property type="12" name="DirectionChange" data="false"/>
 					<property type="12" name="Repeat" data="true"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="CastlePlatform6_3" id="1701497842">
 			<position x="22.6491" y="-1.28702" z="-22"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="3" y="3" z="3"/>
-			<entity name="CastlePlatform6_3" meshFile="CastlePlatform6.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="CastleWallColor"/>
+			<item name="CastlePlatform6_3" meshFile="CastlePlatform6.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="CastleWallColor"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1091790115"/>
@@ -1779,14 +1779,14 @@
 					<property type="6" name="Mass" data="10000"/>
 					<property type="12" name="Serialize" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="CastlePlatform6_4" id="1701495667">
 			<position x="29.2079" y="-1.28702" z="-22"/>
 			<rotation qw="-2.08616e-07" qx="0" qy="1" qz="0"/>
 			<scale x="3" y="3" z="3"/>
-			<entity name="CastlePlatform6_4" meshFile="CastlePlatform6.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="CastleWallColor"/>
+			<item name="CastlePlatform6_4" meshFile="CastlePlatform6.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="CastleWallColor"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3865829079"/>
@@ -1807,14 +1807,14 @@
 					<property type="6" name="Mass" data="10000"/>
 					<property type="12" name="Serialize" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="CastlePlatform3_2" id="2113455022">
 			<position x="10.3974" y="28.9983" z="-22"/>
 			<rotation qw="-1.62921e-07" qx="0" qy="1" qz="0"/>
 			<scale x="3" y="3" z="3"/>
-			<entity name="CastlePlatform3_2" meshFile="CastlePlatform3.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="CastleWallColor"/>
+			<item name="CastlePlatform3_2" meshFile="CastlePlatform3.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="CastleWallColor"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2882451829"/>
@@ -1835,14 +1835,14 @@
 					<property type="6" name="Mass" data="10000"/>
 					<property type="12" name="Serialize" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="CastlePlatform6_5" id="1701495232">
 			<position x="31.5107" y="19.1322" z="-22"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="3" y="3" z="3"/>
-			<entity name="CastlePlatform6_5" meshFile="CastlePlatform6.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="CastleWallColor"/>
+			<item name="CastlePlatform6_5" meshFile="CastlePlatform6.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="CastleWallColor"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2100162152"/>
@@ -1863,14 +1863,14 @@
 					<property type="6" name="Mass" data="10000"/>
 					<property type="12" name="Serialize" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="CastlePlatform6_6" id="1701496537">
 			<position x="38.0695" y="19.1322" z="-22"/>
 			<rotation qw="-2.08616e-07" qx="0" qy="1" qz="0"/>
 			<scale x="3" y="3" z="3"/>
-			<entity name="CastlePlatform6_6" meshFile="CastlePlatform6.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="CastleWallColor"/>
+			<item name="CastlePlatform6_6" meshFile="CastlePlatform6.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="CastleWallColor"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2803854560"/>
@@ -1891,14 +1891,14 @@
 					<property type="6" name="Mass" data="10000"/>
 					<property type="12" name="Serialize" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="CastleArch_3" id="591936063">
 			<position x="32.1501" y="6.6479" z="-22"/>
 			<rotation qw="0.92388" qx="0" qy="-0.382683" qz="0"/>
 			<scale x="9" y="9" z="9"/>
-			<entity name="CastleArch_3" meshFile="CastleArch.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="CastleWallColor"/>
+			<item name="CastleArch_3" meshFile="CastleArch.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="CastleWallColor"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3913393924"/>
@@ -1915,14 +1915,14 @@
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleWallColor"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="CastleArch_4" id="591934758">
 			<position x="37.5516" y="6.54656" z="-22"/>
 			<rotation qw="0.92388" qx="0" qy="-0.382683" qz="0"/>
 			<scale x="9" y="9" z="9"/>
-			<entity name="CastleArch_4" meshFile="CastleArch.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="CastleWallColor"/>
+			<item name="CastleArch_4" meshFile="CastleArch.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="CastleWallColor"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3209125848"/>
@@ -1939,14 +1939,14 @@
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleWallColor"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="CastlePlatform6_7" id="1701496102">
 			<position x="42.206" y="-1.28702" z="-22"/>
 			<rotation qw="-2.08616e-07" qx="0" qy="1" qz="0"/>
 			<scale x="3" y="3" z="3"/>
-			<entity name="CastlePlatform6_7" meshFile="CastlePlatform6.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="CastleWallColor"/>
+			<item name="CastlePlatform6_7" meshFile="CastlePlatform6.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="CastleWallColor"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="4250916753"/>
@@ -1967,14 +1967,14 @@
 					<property type="6" name="Mass" data="10000"/>
 					<property type="12" name="Serialize" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="CastlePlatform6_8" id="1701500887">
 			<position x="35.6472" y="-1.28702" z="-22"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="3" y="3" z="3"/>
-			<entity name="CastlePlatform6_8" meshFile="CastlePlatform6.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="CastleWallColor"/>
+			<item name="CastlePlatform6_8" meshFile="CastlePlatform6.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="CastleWallColor"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="892254063"/>
@@ -1995,14 +1995,14 @@
 					<property type="6" name="Mass" data="10000"/>
 					<property type="12" name="Serialize" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="CastlePlatform3_3" id="2113455457">
 			<position x="48.1317" y="19.5983" z="-22"/>
 			<rotation qw="-1.62921e-07" qx="0" qy="1" qz="0"/>
 			<scale x="3" y="3" z="3"/>
-			<entity name="CastlePlatform3_3" meshFile="CastlePlatform3.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="CastleWallColor"/>
+			<item name="CastlePlatform3_3" meshFile="CastlePlatform3.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="CastleWallColor"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="4154138659"/>
@@ -2023,14 +2023,14 @@
 					<property type="6" name="Mass" data="10000"/>
 					<property type="12" name="Serialize" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Node_5" id="4215509945">
 			<position x="17.4112" y="28.1521" z="-22"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Node_5" meshFile="Node.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="WhiteLine"/>
+			<item name="Node_5" meshFile="Node.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2974603806"/>
@@ -2049,14 +2049,14 @@
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="2" name="ReferenceId" data="0"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Node_6" id="4215508640">
 			<position x="3.88973" y="31.1579" z="-22"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Node_6" meshFile="Node.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="WhiteLine"/>
+			<item name="Node_6" meshFile="Node.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="500572433"/>
@@ -2075,14 +2075,14 @@
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="2" name="ReferenceId" data="0"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Monster01_2" id="2507279691">
 			<position x="7.51608" y="31.0758" z="-22"/>
 			<rotation qw="0.661504" qx="1.76341e-08" qy="-0.749942" qz="3.09331e-09"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Monster01_2" meshFile="Monster01.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="Monster012586964569"/>
+			<item name="Monster01_2" meshFile="Monster01.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="Monster012586964569"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2586964569"/>
@@ -2130,7 +2130,7 @@
 					<property type="12" name="DirectionChange" data="true"/>
 					<property type="12" name="InvertDirection" data="false"/>
 					<property type="6" name="GoalRadius" data="0.2"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="AnimationActivated" data="true"/>
 					<property type="7" name="AnimationName" data="run-01"/>
@@ -2139,7 +2139,7 @@
 					<property type="12" name="ShowSkeleton" data="false"/>
 					<property type="7" name="ComponentDatablockPbsComponent" data="DatablockPbsComponent"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="SubEntityIndex" data="0"/>
+					<property type="2" name="SubItemIndex" data="0"/>
 					<property type="7" name="Workflow" data="SpecularWorkflow"/>
 					<property type="6" name="Metalness" data="0.01"/>
 					<property type="6" name="Roughness" data="0.06"/>
@@ -2181,14 +2181,14 @@
 					<property type="12" name="UseEmissiveAsLightMap" data="false"/>
 					<property type="7" name="ShadowConstBias" data="1"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Monster01_3" id="2507279256">
 			<position x="8.01523" y="31.0792" z="-22"/>
 			<rotation qw="0.698615" qx="1.27184e-08" qy="0.715498" qz="-1.27181e-08"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Monster01_3" meshFile="Monster01.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="Monster012290636093"/>
+			<item name="Monster01_3" meshFile="Monster01.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="Monster012290636093"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2290636093"/>
@@ -2236,7 +2236,7 @@
 					<property type="12" name="DirectionChange" data="true"/>
 					<property type="12" name="InvertDirection" data="false"/>
 					<property type="6" name="GoalRadius" data="0.2"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="AnimationActivated" data="true"/>
 					<property type="7" name="AnimationName" data="run-02"/>
@@ -2245,7 +2245,7 @@
 					<property type="12" name="ShowSkeleton" data="false"/>
 					<property type="7" name="ComponentDatablockPbsComponent" data="DatablockPbsComponent"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="SubEntityIndex" data="0"/>
+					<property type="2" name="SubItemIndex" data="0"/>
 					<property type="7" name="Workflow" data="SpecularWorkflow"/>
 					<property type="6" name="Metalness" data="0.01"/>
 					<property type="6" name="Roughness" data="0.06"/>
@@ -2287,14 +2287,14 @@
 					<property type="12" name="UseEmissiveAsLightMap" data="false"/>
 					<property type="7" name="ShadowConstBias" data="1"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Monster01_4" id="2507282301">
 			<position x="9.4298" y="30.3333" z="-22"/>
 			<rotation qw="0.700688" qx="6.4377e-10" qy="0.713468" qz="5.53717e-11"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Monster01_4" meshFile="Monster01.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="Monster011222259658"/>
+			<item name="Monster01_4" meshFile="Monster01.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="Monster011222259658"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1222259658"/>
@@ -2342,7 +2342,7 @@
 					<property type="12" name="DirectionChange" data="true"/>
 					<property type="12" name="InvertDirection" data="false"/>
 					<property type="6" name="GoalRadius" data="0.2"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="AnimationActivated" data="true"/>
 					<property type="7" name="AnimationName" data="run-01"/>
@@ -2351,7 +2351,7 @@
 					<property type="12" name="ShowSkeleton" data="false"/>
 					<property type="7" name="ComponentDatablockPbsComponent" data="DatablockPbsComponent"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="SubEntityIndex" data="0"/>
+					<property type="2" name="SubItemIndex" data="0"/>
 					<property type="7" name="Workflow" data="SpecularWorkflow"/>
 					<property type="6" name="Metalness" data="0.01"/>
 					<property type="6" name="Roughness" data="0.06"/>
@@ -2393,14 +2393,14 @@
 					<property type="12" name="UseEmissiveAsLightMap" data="false"/>
 					<property type="7" name="ShadowConstBias" data="1"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="CastlePlatform3_4" id="2113455892">
 			<position x="38.3542" y="28.3097" z="-22"/>
 			<rotation qw="-1.62921e-07" qx="0" qy="1" qz="0"/>
 			<scale x="3" y="3" z="3"/>
-			<entity name="CastlePlatform3_4" meshFile="CastlePlatform3.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="CastleWallColor"/>
+			<item name="CastlePlatform3_4" meshFile="CastlePlatform3.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="CastleWallColor"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3779966437"/>
@@ -2421,14 +2421,14 @@
 					<property type="6" name="Mass" data="10000"/>
 					<property type="12" name="Serialize" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="CastlePlatform5_0" id="1975305982">
 			<position x="28.7134" y="29.9626" z="-22"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="3" y="3" z="3"/>
-			<entity name="CastlePlatform5_0" meshFile="CastlePlatform5.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="CastleWallColor"/>
+			<item name="CastlePlatform5_0" meshFile="CastlePlatform5.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="CastleWallColor"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="4074078350"/>
@@ -2449,14 +2449,14 @@
 					<property type="6" name="Mass" data="10000"/>
 					<property type="12" name="Serialize" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="CastleRoof_0" id="1348789028">
 			<position x="23.6459" y="40.5381" z="-21.9967"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="3" y="2" z="3"/>
-			<entity name="CastleRoof_0" meshFile="CastleRoof.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="CastleRoofColor"/>
+			<item name="CastleRoof_0" meshFile="CastleRoof.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="CastleRoofColor"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1102007661"/>
@@ -2477,14 +2477,14 @@
 					<property type="6" name="Mass" data="10000"/>
 					<property type="12" name="Serialize" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="SmallBall_0" id="918256782">
 			<position x="18.1667" y="36.1532" z="-22"/>
 			<rotation qw="0.826953" qx="0.016316" qy="-0.105548" qz="0.552035"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="SmallBall_0" meshFile="SmallBall.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/smallball.png"/>
+			<item name="SmallBall_0" meshFile="SmallBall.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/smallball.png"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3839658857"/>
@@ -2520,14 +2520,14 @@
 					<property type="9" name="ConstraintAxis" data="0 0 1"/>
 					<property type="12" name="EnableGyroscopicTorque" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="box1Down_0" id="128068310">
 			<position x="28.4032" y="21.5849" z="-22"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="box1Down_0" meshFile="box1Down.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="TreasureChest_D"/>
+			<item name="box1Down_0" meshFile="box1Down.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="TreasureChest_D"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1177854104"/>
@@ -2548,14 +2548,14 @@
 					<property type="6" name="Mass" data="10000"/>
 					<property type="12" name="Serialize" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="box1Up_0" id="1708039563">
 			<position x="28.4032" y="21.618" z="-21.9954"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="box1Up_0" meshFile="box1Up.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="TreasureChest_D"/>
+			<item name="box1Up_0" meshFile="box1Up.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="TreasureChest_D"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3315487087"/>
@@ -2576,14 +2576,14 @@
 					<property type="6" name="Mass" data="10000"/>
 					<property type="12" name="Serialize" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="CastleLantern_0" id="3289022220">
 			<position x="19.3405" y="31.9876" z="-19.8409"/>
 			<rotation qw="0.707107" qx="0" qy="-0.707107" qz="0"/>
 			<scale x="3" y="3" z="3"/>
-			<entity name="CastleLantern_0" meshFile="CastleLantern.mesh" castShadows="false" visible="true">
-				<subentity index="0" datablockName="CastleRoofColor"/>
+			<item name="CastleLantern_0" meshFile="CastleLantern.mesh" castShadows="false" visible="true">
+				<subitem index="0" datablockName="CastleRoofColor"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2069451359"/>
@@ -2610,14 +2610,14 @@
 					<property type="10" name="OffsetOrientation" data="0 0 0"/>
 					<property type="9" name="Scale" data="0.1 0.1 0.1"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Pedestal1_0" id="1369775769">
 			<position x="54.3186" y="18.5974" z="-22"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="3" y="3" z="3"/>
-			<entity name="Pedestal1_0" meshFile="Pedestal1.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="PedestalColor"/>
+			<item name="Pedestal1_0" meshFile="Pedestal1.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="PedestalColor"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1120790979"/>
@@ -2638,16 +2638,16 @@
 					<property type="6" name="Mass" data="10000"/>
 					<property type="12" name="Serialize" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="cg_lamp_1" id="1435232290">
 			<position x="7.91355" y="17.4384" z="-22.5"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="2" y="2" z="2"/>
-			<entity name="cg_lamp_1" meshFile="cg_lamp.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="/dural/structures/ossyja_metal_rivet/texture"/>
-				<subentity index="1" datablockName="/dural/structures/ossyja_copper_rivet/texture"/>
-				<subentity index="2" datablockName="/dural/structures/firepit_embers/texture"/>
+			<item name="cg_lamp_1" meshFile="cg_lamp.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="/dural/structures/ossyja_metal_rivet/texture"/>
+				<subitem index="1" datablockName="/dural/structures/ossyja_copper_rivet/texture"/>
+				<subitem index="2" datablockName="/dural/structures/firepit_embers/texture"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="666161545"/>
@@ -2712,14 +2712,14 @@
 					<property type="10" name="OffsetOrientation" data="0 0 0"/>
 					<property type="9" name="Scale" data="0.2 0.2 0.2"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Torch_1" id="4005391473">
 			<position x="20.0687" y="13.8305" z="-20.7485"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Torch_1" meshFile="Torch.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="/dural/items/tools/torch/texture"/>
+			<item name="Torch_1" meshFile="Torch.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="/dural/items/tools/torch/texture"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="410826962"/>
@@ -2746,14 +2746,14 @@
 					<property type="10" name="OffsetOrientation" data="0 0 0"/>
 					<property type="9" name="Scale" data="0.1 0.1 0.1"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="flying_bird_0" id="2273891719">
 			<position x="-11.1627" y="5.78825" z="-36.0185"/>
 			<rotation qw="0.891647" qx="0" qy="-0.452731" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="flying_bird_0" meshFile="flying_bird.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="/global/creatures/flying_bird/falcon"/>
+			<item name="flying_bird_0" meshFile="flying_bird.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="/global/creatures/flying_bird/falcon"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2520871418"/>
@@ -2803,7 +2803,7 @@
 					<property type="12" name="Flee" data="false"/>
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="0"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="AnimationActivated" data="true"/>
 					<property type="7" name="AnimationName" data="flap"/>
@@ -2811,14 +2811,14 @@
 					<property type="12" name="AnimationRepeat" data="true"/>
 					<property type="12" name="ShowSkeleton" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="flying_bird_1" id="2273891284">
 			<position x="-8.48831" y="5.78825" z="-31.4638"/>
 			<rotation qw="0.822834" qx="0" qy="-0.568282" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="flying_bird_1" meshFile="flying_bird.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="/global/creatures/flying_bird/falcon"/>
+			<item name="flying_bird_1" meshFile="flying_bird.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="/global/creatures/flying_bird/falcon"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3484374615"/>
@@ -2868,7 +2868,7 @@
 					<property type="12" name="Flee" data="false"/>
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="0"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="AnimationActivated" data="true"/>
 					<property type="7" name="AnimationName" data="flap"/>
@@ -2876,14 +2876,14 @@
 					<property type="12" name="AnimationRepeat" data="true"/>
 					<property type="12" name="ShowSkeleton" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="flying_bird_2" id="2273892589">
 			<position x="-5.18825" y="5.63022" z="-32.536"/>
 			<rotation qw="0.983623" qx="0" qy="-0.18024" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="flying_bird_2" meshFile="flying_bird.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="/global/creatures/flying_bird/falcon"/>
+			<item name="flying_bird_2" meshFile="flying_bird.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="/global/creatures/flying_bird/falcon"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3472852205"/>
@@ -2933,7 +2933,7 @@
 					<property type="12" name="Flee" data="false"/>
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="0"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="AnimationActivated" data="true"/>
 					<property type="7" name="AnimationName" data="flap"/>
@@ -2941,14 +2941,14 @@
 					<property type="12" name="AnimationRepeat" data="true"/>
 					<property type="12" name="ShowSkeleton" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="flying_bird_3" id="2273892154">
 			<position x="1.38731" y="5.78825" z="-35.7059"/>
 			<rotation qw="0.961168" qx="0" qy="0.275963" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="flying_bird_3" meshFile="flying_bird.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="/global/creatures/flying_bird/falcon"/>
+			<item name="flying_bird_3" meshFile="flying_bird.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="/global/creatures/flying_bird/falcon"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1156443801"/>
@@ -2998,7 +2998,7 @@
 					<property type="12" name="Flee" data="false"/>
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="0"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="AnimationActivated" data="true"/>
 					<property type="7" name="AnimationName" data="flap"/>
@@ -3006,14 +3006,14 @@
 					<property type="12" name="AnimationRepeat" data="true"/>
 					<property type="12" name="ShowSkeleton" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="flying_bird_4" id="2273889979">
 			<position x="-8.32733" y="5.70285" z="-44.7019"/>
 			<rotation qw="-0.300593" qx="0" qy="0.953753" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="flying_bird_4" meshFile="flying_bird.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="/global/creatures/flying_bird/falcon"/>
+			<item name="flying_bird_4" meshFile="flying_bird.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="/global/creatures/flying_bird/falcon"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="922588029"/>
@@ -3063,7 +3063,7 @@
 					<property type="12" name="Flee" data="false"/>
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="0"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="AnimationActivated" data="true"/>
 					<property type="7" name="AnimationName" data="flap"/>
@@ -3071,14 +3071,14 @@
 					<property type="12" name="AnimationRepeat" data="true"/>
 					<property type="12" name="ShowSkeleton" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="flying_bird_6" id="2273890849">
 			<position x="-9.16782" y="5.86087" z="-39.2527"/>
 			<rotation qw="-0.472165" qx="0" qy="0.88151" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="flying_bird_6" meshFile="flying_bird.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="/global/creatures/flying_bird/falcon"/>
+			<item name="flying_bird_6" meshFile="flying_bird.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="/global/creatures/flying_bird/falcon"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="636221705"/>
@@ -3128,7 +3128,7 @@
 					<property type="12" name="Flee" data="false"/>
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="0"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="AnimationActivated" data="true"/>
 					<property type="7" name="AnimationName" data="flap"/>
@@ -3136,14 +3136,14 @@
 					<property type="12" name="AnimationRepeat" data="true"/>
 					<property type="12" name="ShowSkeleton" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="flying_bird_5" id="2273889544">
 			<position x="-13.2585" y="5.86087" z="-36.9401"/>
 			<rotation qw="0.666296" qx="0" qy="-0.745688" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="flying_bird_5" meshFile="flying_bird.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="/global/creatures/flying_bird/falcon"/>
+			<item name="flying_bird_5" meshFile="flying_bird.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="/global/creatures/flying_bird/falcon"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3301837775"/>
@@ -3193,7 +3193,7 @@
 					<property type="12" name="Flee" data="false"/>
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="0"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="AnimationActivated" data="true"/>
 					<property type="7" name="AnimationName" data="flap"/>
@@ -3201,14 +3201,14 @@
 					<property type="12" name="AnimationRepeat" data="true"/>
 					<property type="12" name="ShowSkeleton" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="flying_bird_7" id="2273890414">
 			<position x="-2.09791" y="5.86087" z="-46.5642"/>
 			<rotation qw="-0.0297152" qx="0" qy="0.999558" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="flying_bird_7" meshFile="flying_bird.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="/global/creatures/flying_bird/falcon"/>
+			<item name="flying_bird_7" meshFile="flying_bird.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="/global/creatures/flying_bird/falcon"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3578572203"/>
@@ -3258,7 +3258,7 @@
 					<property type="12" name="Flee" data="false"/>
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="0"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="AnimationActivated" data="true"/>
 					<property type="7" name="AnimationName" data="flap"/>
@@ -3266,14 +3266,14 @@
 					<property type="12" name="AnimationRepeat" data="true"/>
 					<property type="12" name="ShowSkeleton" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="flying_bird_8" id="2273888239">
 			<position x="4.07575" y="5.86087" z="-45.7173"/>
 			<rotation qw="0.248362" qx="0" qy="0.968667" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="flying_bird_8" meshFile="flying_bird.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="/global/creatures/flying_bird/falcon"/>
+			<item name="flying_bird_8" meshFile="flying_bird.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="/global/creatures/flying_bird/falcon"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1585797719"/>
@@ -3323,7 +3323,7 @@
 					<property type="12" name="Flee" data="false"/>
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="0"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="AnimationActivated" data="true"/>
 					<property type="7" name="AnimationName" data="flap"/>
@@ -3331,14 +3331,14 @@
 					<property type="12" name="AnimationRepeat" data="true"/>
 					<property type="12" name="ShowSkeleton" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="flying_bird_15" id="1300236115">
 			<position x="9.92304" y="5.86087" z="-42.2534"/>
 			<rotation qw="0.470579" qx="0" qy="0.882358" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="flying_bird_15" meshFile="flying_bird.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="/global/creatures/flying_bird/falcon"/>
+			<item name="flying_bird_15" meshFile="flying_bird.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="/global/creatures/flying_bird/falcon"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2780563670"/>
@@ -3388,7 +3388,7 @@
 					<property type="12" name="Flee" data="false"/>
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="0"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="AnimationActivated" data="true"/>
 					<property type="7" name="AnimationName" data="flap"/>
@@ -3396,14 +3396,14 @@
 					<property type="12" name="AnimationRepeat" data="true"/>
 					<property type="12" name="ShowSkeleton" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="flying_bird_9" id="2273887804">
 			<position x="7.97392" y="5.78825" z="-31.8881"/>
 			<rotation qw="0.821112" qx="0" qy="0.570767" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="flying_bird_9" meshFile="flying_bird.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="/global/creatures/flying_bird/falcon"/>
+			<item name="flying_bird_9" meshFile="flying_bird.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="/global/creatures/flying_bird/falcon"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1525703181"/>
@@ -3453,7 +3453,7 @@
 					<property type="12" name="Flee" data="false"/>
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="0"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="AnimationActivated" data="true"/>
 					<property type="7" name="AnimationName" data="flap"/>
@@ -3461,14 +3461,14 @@
 					<property type="12" name="AnimationRepeat" data="true"/>
 					<property type="12" name="ShowSkeleton" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="flying_bird_14" id="1300235680">
 			<position x="12.0294" y="5.78825" z="-33.9938"/>
 			<rotation qw="0.71964" qx="0" qy="0.694347" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="flying_bird_14" meshFile="flying_bird.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="/global/creatures/flying_bird/falcon"/>
+			<item name="flying_bird_14" meshFile="flying_bird.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="/global/creatures/flying_bird/falcon"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1557677341"/>
@@ -3518,7 +3518,7 @@
 					<property type="12" name="Flee" data="false"/>
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="0"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="AnimationActivated" data="true"/>
 					<property type="7" name="AnimationName" data="flap"/>
@@ -3526,14 +3526,14 @@
 					<property type="12" name="AnimationRepeat" data="true"/>
 					<property type="12" name="ShowSkeleton" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="flying_bird_10" id="1300237420">
 			<position x="7.14386" y="5.86087" z="-39.2534"/>
 			<rotation qw="0.561744" qx="0" qy="0.827311" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="flying_bird_10" meshFile="flying_bird.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="/global/creatures/flying_bird/falcon"/>
+			<item name="flying_bird_10" meshFile="flying_bird.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="/global/creatures/flying_bird/falcon"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3884025675"/>
@@ -3583,7 +3583,7 @@
 					<property type="12" name="Flee" data="false"/>
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="0"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="AnimationActivated" data="true"/>
 					<property type="7" name="AnimationName" data="flap"/>
@@ -3591,14 +3591,14 @@
 					<property type="12" name="AnimationRepeat" data="true"/>
 					<property type="12" name="ShowSkeleton" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="flying_bird_13" id="1300238725">
 			<position x="7.18787" y="5.63022" z="-33.6996"/>
 			<rotation qw="0.924096" qx="0" qy="0.38216" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="flying_bird_13" meshFile="flying_bird.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="/global/creatures/flying_bird/falcon"/>
+			<item name="flying_bird_13" meshFile="flying_bird.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="/global/creatures/flying_bird/falcon"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1444966213"/>
@@ -3648,7 +3648,7 @@
 					<property type="12" name="Flee" data="false"/>
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="0"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="AnimationActivated" data="true"/>
 					<property type="7" name="AnimationName" data="flap"/>
@@ -3656,14 +3656,14 @@
 					<property type="12" name="AnimationRepeat" data="true"/>
 					<property type="12" name="ShowSkeleton" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="flying_bird_11" id="1300237855">
 			<position x="0.871378" y="5.78825" z="-31.743"/>
 			<rotation qw="0.997075" qx="0" qy="0.0764269" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="flying_bird_11" meshFile="flying_bird.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="/global/creatures/flying_bird/falcon"/>
+			<item name="flying_bird_11" meshFile="flying_bird.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="/global/creatures/flying_bird/falcon"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2637205596"/>
@@ -3713,7 +3713,7 @@
 					<property type="12" name="Flee" data="false"/>
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="0"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="AnimationActivated" data="true"/>
 					<property type="7" name="AnimationName" data="flap"/>
@@ -3721,14 +3721,14 @@
 					<property type="12" name="AnimationRepeat" data="true"/>
 					<property type="12" name="ShowSkeleton" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="flying_bird_12" id="1300238290">
 			<position x="-1.54352" y="5.70285" z="-42.871"/>
 			<rotation qw="0.0563927" qx="0" qy="0.998409" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="flying_bird_12" meshFile="flying_bird.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="/global/creatures/flying_bird/falcon"/>
+			<item name="flying_bird_12" meshFile="flying_bird.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="/global/creatures/flying_bird/falcon"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="797502886"/>
@@ -3778,7 +3778,7 @@
 					<property type="12" name="Flee" data="false"/>
 					<property type="12" name="Seek" data="false"/>
 					<property type="2" name="TargetId" data="0"/>
-					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="AnimationActivated" data="true"/>
 					<property type="7" name="AnimationName" data="flap"/>
@@ -3786,14 +3786,14 @@
 					<property type="12" name="AnimationRepeat" data="true"/>
 					<property type="12" name="ShowSkeleton" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="stone_wall_0" id="51720660">
 			<position x="2.30474" y="4.30766" z="-22"/>
 			<rotation qw="0.707107" qx="0" qy="-0.707107" qz="0"/>
 			<scale x="1" y="0.7" z="1"/>
-			<entity name="stone_wall_0" meshFile="stone_wall.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="stone_wall"/>
+			<item name="stone_wall_0" meshFile="stone_wall.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="stone_wall"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="4199192615"/>
@@ -3814,14 +3814,14 @@
 					<property type="6" name="Mass" data="10000"/>
 					<property type="12" name="Serialize" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="monster_item_scythe_0" id="2257903393">
 			<position x="7.48914" y="11.7346" z="-22"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="monster_item_scythe_0" meshFile="monster_item_scythe.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="items_mat.004"/>
+			<item name="monster_item_scythe_0" meshFile="monster_item_scythe.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="items_mat.004"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3799322873"/>
@@ -3862,14 +3862,14 @@
 					<property type="7" name="ScriptFile" data="Weapon.lua"/>
 					<property type="12" name="CloneScript" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Door_a_i_0" id="1722451614">
 			<position x="21.2452" y="21.6009" z="-22"/>
 			<rotation qw="0.707107" qx="0" qy="-0.707107" qz="0"/>
 			<scale x="2" y="2" z="2"/>
-			<entity name="Door_a_i_0" meshFile="Door_a_i.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="Missing"/>
+			<item name="Door_a_i_0" meshFile="Door_a_i.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="Missing"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1805912328"/>
@@ -3934,14 +3934,14 @@
 					<property type="12" name="PlayWhenInMotion" data="true"/>
 					<property type="7" name="OnSpectrumAnalysisFunctionName" data=""/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="StonePlate1_0" id="3135606518">
 			<position x="46.6548" y="-9.316" z="-22"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="2" y="100" z="4"/>
-			<entity name="StonePlate1_0" meshFile="StonePlate1.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="RockColor"/>
+			<item name="StonePlate1_0" meshFile="StonePlate1.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="RockColor"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="880844102"/>
@@ -3994,14 +3994,14 @@
 					<property type="12" name="JointRepeat" data="true"/>
 					<property type="12" name="JointDirectionChange" data="true"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="CastlePlatform3_5" id="2113456327">
 			<position x="55.2871" y="5.16815" z="-22"/>
 			<rotation qw="-1.62921e-07" qx="0" qy="1" qz="0"/>
 			<scale x="3" y="3" z="3"/>
-			<entity name="CastlePlatform3_5" meshFile="CastlePlatform3.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="CastleWallColor"/>
+			<item name="CastlePlatform3_5" meshFile="CastlePlatform3.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="CastleWallColor"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2563903984"/>
@@ -4022,14 +4022,14 @@
 					<property type="6" name="Mass" data="10000"/>
 					<property type="12" name="Serialize" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="CastlePlatform1_0" id="2275823122">
 			<position x="63.9988" y="3.7" z="-22"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="CastlePlatform1_0" meshFile="CastlePlatform1.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="CastleWallColor"/>
+			<item name="CastlePlatform1_0" meshFile="CastlePlatform1.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="CastleWallColor"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="4246716678"/>
@@ -4082,14 +4082,14 @@
 					<property type="12" name="JointRepeat" data="true"/>
 					<property type="12" name="JointDirectionChange" data="true"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="CastlePlatform1_1" id="2275823557">
 			<position x="66.1419" y="3.7" z="-22"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="CastlePlatform1_1" meshFile="CastlePlatform1.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="CastleWallColor"/>
+			<item name="CastlePlatform1_1" meshFile="CastlePlatform1.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="CastleWallColor"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="4215207567"/>
@@ -4142,14 +4142,14 @@
 					<property type="12" name="JointRepeat" data="true"/>
 					<property type="12" name="JointDirectionChange" data="true"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="CastlePlatform1_2" id="2275822252">
 			<position x="68.3099" y="3.7" z="-22"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="CastlePlatform1_2" meshFile="CastlePlatform1.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="CastleWallColor"/>
+			<item name="CastlePlatform1_2" meshFile="CastlePlatform1.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="CastleWallColor"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3896576585"/>
@@ -4202,14 +4202,14 @@
 					<property type="12" name="JointRepeat" data="true"/>
 					<property type="12" name="JointDirectionChange" data="true"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="CastlePlatform1_3" id="2275822687">
 			<position x="70.3866" y="3.7" z="-22"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="CastlePlatform1_3" meshFile="CastlePlatform1.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="CastleWallColor"/>
+			<item name="CastlePlatform1_3" meshFile="CastlePlatform1.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="CastleWallColor"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3138269447"/>
@@ -4262,14 +4262,14 @@
 					<property type="12" name="JointRepeat" data="true"/>
 					<property type="12" name="JointDirectionChange" data="true"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="CastlePlatform1_5" id="2275821817">
 			<position x="72.4831" y="3.7" z="-22"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="CastlePlatform1_5" meshFile="CastlePlatform1.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="CastleWallColor"/>
+			<item name="CastlePlatform1_5" meshFile="CastlePlatform1.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="CastleWallColor"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2363244712"/>
@@ -4322,14 +4322,14 @@
 					<property type="12" name="JointRepeat" data="true"/>
 					<property type="12" name="JointDirectionChange" data="true"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="CastlePlatform1_4" id="2275821382">
 			<position x="74.5687" y="3.7" z="-22"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="CastlePlatform1_4" meshFile="CastlePlatform1.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="CastleWallColor"/>
+			<item name="CastlePlatform1_4" meshFile="CastlePlatform1.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="CastleWallColor"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2273477114"/>
@@ -4382,14 +4382,14 @@
 					<property type="12" name="JointRepeat" data="true"/>
 					<property type="12" name="JointDirectionChange" data="true"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="cg_pedestal_0" id="664818545">
 			<position x="16.0197" y="22.6594" z="-23.7166"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="cg_pedestal_0" meshFile="cg_pedestal.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="/dural/structures/stone_palisade/texture"/>
+			<item name="cg_pedestal_0" meshFile="cg_pedestal.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="/dural/structures/stone_palisade/texture"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="428018327"/>
@@ -4406,14 +4406,14 @@
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="/dural/structures/stone_palisade/texture"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="coin_moraf_4" id="2516576169">
 			<position x="10.6578" y="14.015" z="-22"/>
 			<rotation qw="0.707107" qx="0.707107" qy="0" qz="0"/>
 			<scale x="10" y="10" z="10"/>
-			<entity name="coin_moraf_4" meshFile="coin_moraf.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="/dural/items/valuables/moraf_coin/textures"/>
+			<item name="coin_moraf_4" meshFile="coin_moraf.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="/dural/items/valuables/moraf_coin/textures"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1669820177"/>
@@ -4468,14 +4468,14 @@
 					<property type="7" name="ComponentActivationComponent" data="ActivationComponent"/>
 					<property type="2" name="ReferenceId" data="0"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="coin_moraf_7" id="2516574864">
 			<position x="11.309" y="14.8652" z="-22"/>
 			<rotation qw="0.707107" qx="0.707107" qy="0" qz="0"/>
 			<scale x="10" y="10" z="10"/>
-			<entity name="coin_moraf_7" meshFile="coin_moraf.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="/dural/items/valuables/moraf_coin/textures"/>
+			<item name="coin_moraf_7" meshFile="coin_moraf.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="/dural/items/valuables/moraf_coin/textures"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3305516688"/>
@@ -4530,14 +4530,14 @@
 					<property type="7" name="ComponentActivationComponent" data="ActivationComponent"/>
 					<property type="2" name="ReferenceId" data="0"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="coin_moraf_5" id="2516575734">
 			<position x="11.309" y="14.015" z="-22"/>
 			<rotation qw="0.707107" qx="0.707107" qy="0" qz="0"/>
 			<scale x="10" y="10" z="10"/>
-			<entity name="coin_moraf_5" meshFile="coin_moraf.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="/dural/items/valuables/moraf_coin/textures"/>
+			<item name="coin_moraf_5" meshFile="coin_moraf.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="/dural/items/valuables/moraf_coin/textures"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="745901235"/>
@@ -4592,14 +4592,14 @@
 					<property type="7" name="ComponentActivationComponent" data="ActivationComponent"/>
 					<property type="2" name="ReferenceId" data="0"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="coin_moraf_3" id="2516576604">
 			<position x="9.93363" y="14.015" z="-22"/>
 			<rotation qw="0.707107" qx="0.707107" qy="0" qz="0"/>
 			<scale x="10" y="10" z="10"/>
-			<entity name="coin_moraf_3" meshFile="coin_moraf.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="/dural/items/valuables/moraf_coin/textures"/>
+			<item name="coin_moraf_3" meshFile="coin_moraf.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="/dural/items/valuables/moraf_coin/textures"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3836642742"/>
@@ -4654,14 +4654,14 @@
 					<property type="7" name="ComponentActivationComponent" data="ActivationComponent"/>
 					<property type="2" name="ReferenceId" data="0"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="coin_moraf_8" id="2516581389">
 			<position x="9.93363" y="14.8652" z="-22"/>
 			<rotation qw="0.707107" qx="0.707107" qy="0" qz="0"/>
 			<scale x="10" y="10" z="10"/>
-			<entity name="coin_moraf_8" meshFile="coin_moraf.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="/dural/items/valuables/moraf_coin/textures"/>
+			<item name="coin_moraf_8" meshFile="coin_moraf.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="/dural/items/valuables/moraf_coin/textures"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3816906910"/>
@@ -4716,14 +4716,14 @@
 					<property type="7" name="ComponentActivationComponent" data="ActivationComponent"/>
 					<property type="2" name="ReferenceId" data="0"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="coin_moraf_6" id="2516575299">
 			<position x="10.6578" y="14.8652" z="-22"/>
 			<rotation qw="0.707107" qx="0.707107" qy="0" qz="0"/>
 			<scale x="10" y="10" z="10"/>
-			<entity name="coin_moraf_6" meshFile="coin_moraf.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="/dural/items/valuables/moraf_coin/textures"/>
+			<item name="coin_moraf_6" meshFile="coin_moraf.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="/dural/items/valuables/moraf_coin/textures"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3931876134"/>
@@ -4778,14 +4778,14 @@
 					<property type="7" name="ComponentActivationComponent" data="ActivationComponent"/>
 					<property type="2" name="ReferenceId" data="0"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Stairs_a_0" id="3914663340">
 			<position x="-7.91382" y="9.77897" z="-22"/>
 			<rotation qw="0.5" qx="-0.5" qy="0.5" qz="0.5"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Stairs_a_0" meshFile="Stairs_a.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="Structures"/>
+			<item name="Stairs_a_0" meshFile="Stairs_a.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="Structures"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="817980761"/>
@@ -4806,14 +4806,14 @@
 					<property type="6" name="Mass" data="10000"/>
 					<property type="12" name="Serialize" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="CastleFence2_8" id="4088016639">
 			<position x="-8.01726" y="1.37598" z="-20.4"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="4" y="4" z="4"/>
-			<entity name="CastleFence2_8" meshFile="CastleFence2.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="CastleWallColor"/>
+			<item name="CastleFence2_8" meshFile="CastleFence2.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="CastleWallColor"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="133461050"/>
@@ -4830,14 +4830,14 @@
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleWallColor"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="LightSpot_0" id="2422588856">
 			<position x="19.3124" y="31.9839" z="-19.9315"/>
 			<rotation qw="0.707107" qx="-0.707107" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="LightSpot_0" meshFile="LightSpot.mesh" castShadows="false" visible="true">
-				<subentity index="0" datablockName="WhiteLine"/>
+			<item name="LightSpot_0" meshFile="LightSpot.mesh" castShadows="false" visible="true">
+				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2683575823"/>
@@ -4869,14 +4869,14 @@
 					<property type="9" name="Size" data="300 400 1"/>
 					<property type="6" name="NearClipDistance" data="0.1"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="coin_moraf_0" id="2516577909">
 			<position x="11.309" y="13.1864" z="-22"/>
 			<rotation qw="0.707107" qx="0.707107" qy="0" qz="0"/>
 			<scale x="10" y="10" z="10"/>
-			<entity name="coin_moraf_0" meshFile="coin_moraf.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="/dural/items/valuables/moraf_coin/textures"/>
+			<item name="coin_moraf_0" meshFile="coin_moraf.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="/dural/items/valuables/moraf_coin/textures"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3591550377"/>
@@ -4931,14 +4931,14 @@
 					<property type="7" name="ComponentActivationComponent" data="ActivationComponent"/>
 					<property type="2" name="ReferenceId" data="0"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="coin_moraf_1" id="2516577474">
 			<position x="10.6578" y="13.1864" z="-22"/>
 			<rotation qw="0.707107" qx="0.707107" qy="0" qz="0"/>
 			<scale x="10" y="10" z="10"/>
-			<entity name="coin_moraf_1" meshFile="coin_moraf.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="/dural/items/valuables/moraf_coin/textures"/>
+			<item name="coin_moraf_1" meshFile="coin_moraf.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="/dural/items/valuables/moraf_coin/textures"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1139292243"/>
@@ -4993,14 +4993,14 @@
 					<property type="7" name="ComponentActivationComponent" data="ActivationComponent"/>
 					<property type="2" name="ReferenceId" data="0"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="coin_moraf_2" id="2516577039">
 			<position x="9.93363" y="13.1864" z="-22"/>
 			<rotation qw="0.707107" qx="0.707107" qy="0" qz="0"/>
 			<scale x="10" y="10" z="10"/>
-			<entity name="coin_moraf_2" meshFile="coin_moraf.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="/dural/items/valuables/moraf_coin/textures"/>
+			<item name="coin_moraf_2" meshFile="coin_moraf.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="/dural/items/valuables/moraf_coin/textures"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="4049107700"/>
@@ -5055,14 +5055,14 @@
 					<property type="7" name="ComponentActivationComponent" data="ActivationComponent"/>
 					<property type="2" name="ReferenceId" data="0"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Item_1" id="2242399742">
 			<position x="0.957284" y="11.3641" z="-22.0031"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="4" y="4" z="4"/>
-			<entity name="Item_1" meshFile="bottle.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="Bottle1Red"/>
+			<item name="Item_1" meshFile="bottle.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="Bottle1Red"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1273838101"/>
@@ -5091,7 +5091,7 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="ResourceName" data="EnergyItem"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 	</nodes>
 </scene>

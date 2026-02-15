@@ -100,6 +100,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ProceduralWallcomponent", "
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ProceduralRoadComponent", "ProceduralRoadComponent\ProceduralRoadComponent.vcxproj", "{6EB93ADC-1898-4BE7-9AEC-A04FB59C80F1}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ProceduralFoliageVolumeComponent", "ProceduralFoliageVolumeComponent\ProceduralFoliageVolumeComponent.vcxproj", "{227E4E4D-968A-457A-9503-CE7D692EB2D5}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -294,6 +296,10 @@ Global
 		{6EB93ADC-1898-4BE7-9AEC-A04FB59C80F1}.Debug|x64.Build.0 = Debug|x64
 		{6EB93ADC-1898-4BE7-9AEC-A04FB59C80F1}.Release|x64.ActiveCfg = Release|x64
 		{6EB93ADC-1898-4BE7-9AEC-A04FB59C80F1}.Release|x64.Build.0 = Release|x64
+		{227E4E4D-968A-457A-9503-CE7D692EB2D5}.Debug|x64.ActiveCfg = Debug|x64
+		{227E4E4D-968A-457A-9503-CE7D692EB2D5}.Debug|x64.Build.0 = Debug|x64
+		{227E4E4D-968A-457A-9503-CE7D692EB2D5}.Release|x64.ActiveCfg = Release|x64
+		{227E4E4D-968A-457A-9503-CE7D692EB2D5}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

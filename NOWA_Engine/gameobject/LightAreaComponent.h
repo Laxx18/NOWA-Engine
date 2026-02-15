@@ -135,7 +135,7 @@ namespace NOWA
 		static const Ogre::String AttrDirection(void) { return "Direction"; }
 		static const Ogre::String AttrAffectParentNode(void) { return "Affect Node"; }
 		static const Ogre::String AttrCastShadows(void) { return "Cast Shadows"; }
-		static const Ogre::String AttrShowDummyEntity(void) { return "Show Dummy Entity"; }
+		static const Ogre::String AttrShowDummyItem(void) { return "Show Dummy Item"; }
 		static const Ogre::String AttrAttenuationRadius(void) { return "Att-Radius"; }
 		static const Ogre::String AttrRectSize(void) { return "Rect Size"; }
 		static const Ogre::String AttrTextureName(void) { return "Texturename"; }

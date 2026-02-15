@@ -13,7 +13,7 @@ namespace NOWA
 	RectangleComponent::RectangleComponent()
 		: GameObjectComponent(),
 		lineNode(nullptr),
-		dummyEntity(nullptr),
+		dummyItem(nullptr),
 		manualObject(nullptr),
 		indices(0),
 		castShadows(new Variant(RectangleComponent::AttrCastShadows(), false, this->attributes)),
@@ -178,7 +178,7 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[RectangleComponent] Init rectangles component for game object: " + this->gameObjectPtr->getName());
 
 		// Borrow the entity from the game object
-		this->dummyEntity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
+		this->dummyItem = this->gameObjectPtr->getMovableObject<Ogre::Item>();
 
 		return true;
 	}
@@ -190,7 +190,7 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[RectangleComponent] Destructor rectangle component for game object: " + this->gameObjectPtr->getName());
 
 		this->destroyRectangles();
-		this->dummyEntity = nullptr;
+		this->dummyItem = nullptr;
 	}
 
 	bool RectangleComponent::connect(void)
@@ -203,7 +203,7 @@ namespace NOWA
 
 		ENQUEUE_RENDER_COMMAND("RectangleComponent::connect",
 		{
-			this->dummyEntity->setVisible(false);
+			this->dummyItem->setVisible(false);
 
 			if (nullptr == this->lineNode)
 			{
@@ -728,7 +728,7 @@ namespace NOWA
 		// Threadsafe from the outside
 		if (this->lineNode != nullptr)
 		{
-			this->dummyEntity->setVisible(true);
+			this->dummyItem->setVisible(true);
 			this->lineNode->detachAllObjects();
 			this->gameObjectPtr->getSceneManager()->destroyManualObject(this->manualObject);
 			this->manualObject = nullptr;

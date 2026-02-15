@@ -136,6 +136,14 @@ namespace NOWA
             bool isNew = false;
         };
 
+        struct BoneTransforms
+        {
+            Ogre::Bone* bone;
+            TransformData transforms[NUM_TRANSFORM_BUFFERS];
+            bool active = false;
+            bool isNew = false;
+        };
+
         struct PassTransforms
         {
             Ogre::Pass* pass = nullptr;
@@ -443,6 +451,21 @@ namespace NOWA
         // Update full transform for a OldBone in the current buffer
         void updateOldBoneTransform(Ogre::v1::OldBone* oldBone, const Ogre::Vector3& position, const Ogre::Quaternion& orientation);
 
+        // Add a Bone to be tracked and transformed
+        void addTrackedBone(Ogre::Bone* bone);
+
+        // Remove a Bone from tracking
+        void removeTrackedBone(Ogre::Bone* bone);
+
+        // Update position for a Bone in the current buffer
+        void updateBonePosition(Ogre::Bone* bone, const Ogre::Vector3& position);
+
+        // Update orientation for a Bone in the current buffer
+        void updateBoneOrientation(Ogre::Bone* bone, const Ogre::Quaternion& orientation);
+
+        // Update full transform for a Bone in the current buffer
+        void updateBoneTransform(Ogre::Bone* bone, const Ogre::Vector3& position, const Ogre::Quaternion& orientation);
+
         // Add a Pass to be tracked and transformed
         void addTrackedPass(Ogre::Pass* pass);
 
@@ -491,6 +514,8 @@ namespace NOWA
         size_t getPreviousTransformCameraIdx(void) const;
 
         size_t getPreviousTransformOldBoneIdx(void) const;
+
+        size_t getPreviousTransformBoneIdx(void) const;
 
         size_t getPreviousTransformPassIdx(void) const;
 
@@ -565,6 +590,8 @@ namespace NOWA
 
         OldBoneTransforms* findOldBoneTransforms(Ogre::v1::OldBone* oldBone);
 
+        BoneTransforms* findBoneTransforms(Ogre::Bone* bone);
+
         PassTransforms* findPassTransforms(Ogre::Pass* pass);
 
         TrackedDatablock* findTrackedDatablock(Ogre::HlmsDatablock* datablock);
@@ -608,6 +635,9 @@ namespace NOWA
         std::vector<OldBoneTransforms> trackedOldBones;
         std::unordered_map<Ogre::v1::OldBone*, size_t> oldBoneToIndexMap;
 
+        std::vector<BoneTransforms> trackedBones;
+        std::unordered_map<Ogre::Bone*, size_t> boneToIndexMap;
+
         std::vector<PassTransforms> trackedPasses;
         std::unordered_map<Ogre::Pass*, size_t> passToIndexMap;
 
@@ -632,6 +662,7 @@ namespace NOWA
         size_t currentTransformNodeIdx;
         size_t currentTransformCameraIdx;
         size_t currentTransformOldBoneIdx;
+        size_t currentTransformBoneIdx;
         size_t currentTransformPassIdx;
         size_t currentTrackedDatablockIdx;
         Ogre::Real interpolationWeight;

@@ -132,12 +132,12 @@ namespace NOWA
 		static const Ogre::String AttrAttenuationRadius(void) { return "Att-Radius"; }
 		static const Ogre::String AttrAttenuationLumThreshold(void) { return "Att-LumThreshold"; }
 		static const Ogre::String AttrCastShadows(void) { return "Cast Shadows"; }
-		static const Ogre::String AttrShowDummyEntity(void) { return "Show Dummy Entity"; }
+		static const Ogre::String AttrShowDummyItem(void) { return "Show Dummy Item"; }
 	private:
 		void createLight(void);
 	private:
 		Ogre::Light* light;
-		Ogre::v1::Entity* dummyEntity;
+		Ogre::Item* dummyItem;
 		// Variant* lightType;
 		Variant* diffuseColor;
 		Variant* specularColor;

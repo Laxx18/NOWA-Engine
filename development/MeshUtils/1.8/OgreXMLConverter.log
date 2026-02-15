@@ -1,0 +1,28 @@
+23:13:51: Creating resource group General
+23:13:51: Creating resource group Internal
+23:13:51: Creating resource group Autodetect
+23:13:51: Registering ResourceManager for type Mesh
+23:13:51: Registering ResourceManager for type Material
+23:13:51: Registering ResourceManager for type Skeleton
+23:13:51: Skeleton: Loading QuadBikeFull.skeleton
+23:13:51: OGRE EXCEPTION(6:FileNotFoundException): Cannot locate resource QuadBikeFull.skeleton in resource group General or any other group. in ResourceGroupManager::openResource at ..\..\OgreMain\src\OgreResourceGroupManager.cpp (line 756)
+23:13:51: Unable to load skeleton QuadBikeFull.skeleton for Mesh conversion. This Mesh will not be animated. You can ignore this message if you are using an offline tool.
+23:13:51: XMLMeshSerializer writing mesh data to QuadBikeFull.mesh.xml...
+23:13:51: Populating DOM...
+23:13:51: Writing submesh...
+23:13:51: Exporting dedicated geometry bone assignments...
+23:13:51: Dedicated geometry bone assignments exported.
+23:13:51: Submesh exported.
+23:13:51: Writing submesh...
+23:13:51: Exporting dedicated geometry bone assignments...
+23:13:51: Dedicated geometry bone assignments exported.
+23:13:51: Submesh exported.
+23:13:51: Exporting skeleton link...
+23:13:51: Skeleton link exported.
+23:13:51: Exporting shared geometry bone assignments...
+23:13:51: Shared geometry bone assignments exported.
+23:13:51: DOM populated, writing XML file..
+23:13:51: XMLMeshSerializer export successful.
+23:13:51: Unregistering ResourceManager for type Skeleton
+23:13:51: Unregistering ResourceManager for type Material
+23:13:51: Unregistering ResourceManager for type Mesh

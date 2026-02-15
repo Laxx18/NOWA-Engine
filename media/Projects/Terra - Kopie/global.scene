@@ -5,10 +5,10 @@
 			<position x="-3.25056" y="1.5693" z="-12.0015"/>
 			<rotation qw="-0.34202" qx="0" qy="-0.939693" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Flubber_0" meshFile="Flubber.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/mouth.png"/>
-				<subentity index="1" datablockName="SOLID/TEX/eyes.png"/>
-				<subentity index="2" datablockName="SOLID/TEX/bodysurface.png"/>
+			<item name="Flubber_0" meshFile="Flubber.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/mouth.png"/>
+				<subitem index="1" datablockName="SOLID/TEX/eyes.png"/>
+				<subitem index="2" datablockName="SOLID/TEX/bodysurface.png"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3762345195"/>
@@ -63,7 +63,7 @@
 					<property type="12" name="CloneScript" data="true"/>
 					<property type="12" name="HasCommonScript" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 	</nodes>
 </scene>

@@ -48,8 +48,8 @@
 			<position x="-5.46578" y="2.68892" z="-10.9545"/>
 			<rotation qw="-0.370052" qx="0.101826" qy="0.890325" qz="0.244977"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
-				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
+			<item name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
+				<subitem index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1111111112"/>
@@ -105,14 +105,14 @@
 					<property type="6" name="ShadowSplitPadding" data="1"/>
 					<property type="7" name="SkyBoxName" data="elder_world_cube.dds"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="SunLight" id="1479238507">
 			<position x="0" y="37.2738" z="50"/>
 			<rotation qw="4.63629e-08" qx="-1.54543e-08" qy="0.707107" qz="0.707107"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="SunLight" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
-				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
+			<item name="SunLight" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
+				<subitem index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1111111113"/>
@@ -145,14 +145,14 @@
 					<property type="12" name="CastShadows" data="true"/>
 					<property type="12" name="ShowDummyEntity" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="MainGameObject" id="1366663313">
 			<position x="0" y="0" z="0"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="MainGameObject" meshFile="Node.mesh" castShadows="true" visible="false">
-				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
+			<item name="MainGameObject" meshFile="Node.mesh" castShadows="true" visible="false">
+				<subitem index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1111111111"/>
@@ -172,7 +172,7 @@
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Plane_0" id="1695645354">
 			<position x="0" y="0" z="0"/>
@@ -225,9 +225,9 @@
 			<position x="-2.29202" y="1.29753" z="-8.99037"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="QuatBike_0" meshFile="QuatBike.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="racer_mat"/>
-				<subentity index="1" datablockName="qbike_mat"/>
+			<item name="QuatBike_0" meshFile="QuatBike.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="racer_mat"/>
+				<subitem index="1" datablockName="qbike_mat"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="18332077"/>
@@ -316,14 +316,14 @@
 					<property type="6" name="Friction" data="0.5"/>
 					<property type="6" name="SpringLength" data="6"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="QuatTire_1" id="4239152596">
 			<position x="-2.66932" y="1.35452" z="-8.54938"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="QuatTire_1" meshFile="QuatTire.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="qbike_mat"/>
+			<item name="QuatTire_1" meshFile="QuatTire.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="qbike_mat"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="4164246735"/>
@@ -391,14 +391,14 @@
 					<property type="6" name="SpringConst" data="200"/>
 					<property type="6" name="SpringDamp" data="12"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="QuatTire_2" id="4239153901">
 			<position x="-1.89988" y="1.35452" z="-9.41973"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="QuatTire_2" meshFile="QuatTire.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="qbike_mat"/>
+			<item name="QuatTire_2" meshFile="QuatTire.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="qbike_mat"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3537195947"/>
@@ -466,14 +466,14 @@
 					<property type="6" name="SpringConst" data="200"/>
 					<property type="6" name="SpringDamp" data="12"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="QuatTire_3" id="4239153466">
 			<position x="-2.66932" y="1.35452" z="-9.41973"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="QuatTire_3" meshFile="QuatTire.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="qbike_mat"/>
+			<item name="QuatTire_3" meshFile="QuatTire.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="qbike_mat"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3641389985"/>
@@ -541,14 +541,14 @@
 					<property type="6" name="SpringConst" data="200"/>
 					<property type="6" name="SpringDamp" data="12"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="QuatTire_4" id="4239151291">
 			<position x="-1.89988" y="1.35452" z="-8.54938"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="QuatTire_4" meshFile="QuatTire.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="qbike_mat"/>
+			<item name="QuatTire_4" meshFile="QuatTire.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="qbike_mat"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2999287965"/>
@@ -616,7 +616,7 @@
 					<property type="6" name="SpringConst" data="200"/>
 					<property type="6" name="SpringDamp" data="12"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Case1_0" id="1662965383">
 			<position x="3.45415" y="9.53674e-07" z="-8.4924"/>

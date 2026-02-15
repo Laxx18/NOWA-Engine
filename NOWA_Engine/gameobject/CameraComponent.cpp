@@ -19,7 +19,7 @@ namespace NOWA
 	CameraComponent::CameraComponent()
 		: GameObjectComponent(),
 		camera(nullptr),
-		dummyEntity(nullptr),
+		dummyItem(nullptr),
 		baseCamera(nullptr),
 		timeSinceLastUpdate(0.0f),
 		workspaceBaseComponent(nullptr),
@@ -33,7 +33,7 @@ namespace NOWA
 		orthographic(new Variant(CameraComponent::AttrOrthographic(), false, this->attributes)),
 		orthoWindowSize(new Variant(CameraComponent::AttrOrthoWindowSize(), Ogre::Vector2(10.0f, 10.0f), this->attributes)),
 		fixedYawAxis(new Variant(CameraComponent::AttrFixedYawAxis(), true, this->attributes)),
-		showDummyEntity(new Variant(CameraComponent::AttrShowDummyEntity(), false, this->attributes)),
+		showDummyEntity(new Variant(CameraComponent::AttrShowDummyItem(), false, this->attributes)),
 		excludeRenderCategories(new Variant(CameraComponent::AttrExcludeRenderCategories(), Ogre::String("All"), this->attributes))
 	{
 		this->orthographic->addUserData(GameObject::AttrActionNeedRefresh());
@@ -242,13 +242,13 @@ namespace NOWA
 	{
 		GameObjectComponent::connect();
 
-		if (nullptr != this->dummyEntity)
+		if (nullptr != this->dummyItem)
 		{
 			bool visible = this->showDummyEntity->getBool();
 			ENQUEUE_RENDER_COMMAND_MULTI("CameraComponent::connect", _1(visible),
 			{
-				if (this->dummyEntity)
-					this->dummyEntity->setVisible(visible);
+				if (this->dummyItem)
+					this->dummyItem->setVisible(visible);
 			});
 		}
 
@@ -259,23 +259,23 @@ namespace NOWA
 	{
 		GameObjectComponent::disconnect();
 
-		if (nullptr != this->dummyEntity)
+		if (nullptr != this->dummyItem)
 		{
 			Ogre::String name = this->camera->getName();
 			if (this->camera == AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera() || this->gameObjectPtr->getId() == GameObjectController::MAIN_CAMERA_ID)
 			{
 				ENQUEUE_RENDER_COMMAND("CameraComponent::disconnect1",
 				{
-					if (this->dummyEntity)
-						this->dummyEntity->setVisible(false);
+					if (this->dummyItem)
+						this->dummyItem->setVisible(false);
 				});
 			}
 			else
 			{
 				ENQUEUE_RENDER_COMMAND("CameraComponent::disconnect2",
 				{
-					if (this->dummyEntity)
-						this->dummyEntity->setVisible(true);
+					if (this->dummyItem)
+						this->dummyItem->setVisible(true);
 				});
 			}
 		}
@@ -297,7 +297,7 @@ namespace NOWA
 
 		// Copy pointers for deferred destruction
 		auto cameraCopy = this->camera;
-		auto dummyEntityCopy = this->dummyEntity;
+		auto dummyItemCopy = this->dummyItem;
 		auto gameObjectCopy = this->gameObjectPtr;
 		auto sceneManagerCopy = (gameObjectCopy) ? gameObjectCopy->getSceneManager() : nullptr;
 		auto cameraManager = NOWA::AppStateManager::getSingletonPtr()->getCameraManager();
@@ -306,11 +306,11 @@ namespace NOWA
 
 		// Nullify members immediately
 		this->camera = nullptr;
-		this->dummyEntity = nullptr;
+		this->dummyItem = nullptr;
 		this->gameObjectPtr = nullptr;
 
 		// Enqueue destruction command on render thread
-		NOWA::GraphicsModule::RenderCommand renderCommand = [this, cameraCopy, dummyEntityCopy, sceneManagerCopy, cameraManager, gameObjectCopy, workspaceBaseComponentCopy, active]()
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this, cameraCopy, dummyItemCopy, sceneManagerCopy, cameraManager, gameObjectCopy, workspaceBaseComponentCopy, active]()
 		{
 			if (cameraCopy)
 			{
@@ -423,10 +423,10 @@ namespace NOWA
 					}
 
 					// Borrow the entity from the game object
-					this->dummyEntity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
-					if (nullptr != this->dummyEntity)
+					this->dummyItem = this->gameObjectPtr->getMovableObject<Ogre::Item>();
+					if (nullptr != this->dummyItem)
 					{
-						this->dummyEntity->setCastShadows(false);
+						this->dummyItem->setCastShadows(false);
 					}
 
 					// Register camera
@@ -440,7 +440,7 @@ namespace NOWA
 							this->gameObjectPtr->getSceneManager()->destroyCamera(previousCamera);
 						}
 
-						this->dummyEntity->setVisible(false);
+						this->dummyItem->setVisible(false);
 
 						if (nullptr == this->baseCamera)
 						{
@@ -498,7 +498,7 @@ namespace NOWA
 		{
 			this->setFixedYawAxis(attribute->getBool());
 		}
-		else if (CameraComponent::AttrShowDummyEntity() == attribute->getName())
+		else if (CameraComponent::AttrShowDummyItem() == attribute->getName())
 		{
 			this->setShowDummyEntity(attribute->getBool());
 		}
@@ -696,16 +696,16 @@ namespace NOWA
 			{
 				if (true == this->bConnected)
 				{
-					this->dummyEntity->setVisible(this->showDummyEntity->getBool());
+					this->dummyItem->setVisible(this->showDummyEntity->getBool());
 				}
 				else
 				{
-					this->dummyEntity->setVisible(true);
+					this->dummyItem->setVisible(true);
 				}
 
 				if (this->camera == AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera())
 				{
-					this->dummyEntity->setVisible(false);
+					this->dummyItem->setVisible(false);
 				}
 
 				if (false == activated)

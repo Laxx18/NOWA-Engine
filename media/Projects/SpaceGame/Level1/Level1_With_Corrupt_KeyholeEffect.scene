@@ -45,8 +45,8 @@
 			<position x="0" y="0" z="0"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="MainGameObject" meshFile="Node.mesh" castShadows="true" visible="false">
-				<subentity index="0" datablockName="WhiteLine"/>
+			<item name="MainGameObject" meshFile="Node.mesh" castShadows="true" visible="false">
+				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1111111111"/>
@@ -404,14 +404,14 @@
 					<property type="12" name="DirectionChange" data="false"/>
 					<property type="12" name="Repeat" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="MainCamera" id="4010617415">
 			<position x="0" y="185.666" z="-58.3332"/>
 			<rotation qw="-0.707107" qx="0.707107" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
-				<subentity index="0" datablockName="WhiteLine"/>
+			<item name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
+				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1111111112"/>
@@ -481,14 +481,14 @@
 					<property type="12" name="FollowGameObjectZ" data="false"/>
 					<property type="7" name="BackgroundName" data="space1.jpg"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="SunLight" id="1479238507">
 			<position x="0" y="100" z="0"/>
 			<rotation qw="0.859342" qx="-0.261669" qy="0.310693" qz="0.310693"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="SunLight" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
-				<subentity index="0" datablockName="WhiteLine"/>
+			<item name="SunLight" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
+				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1111111113"/>
@@ -518,14 +518,14 @@
 					<property type="12" name="CastShadows" data="true"/>
 					<property type="12" name="ShowDummyEntity" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="FutureFighterJet_0" id="1171646049">
 			<position x="0" y="0" z="0"/>
 			<rotation qw="-1.49012e-07" qx="0" qy="1" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="FutureFighterJet_0" meshFile="FutureFighterJet.mesh" castShadows="false" visible="true">
-				<subentity index="0" datablockName="FutureFighterJet"/>
+			<item name="FutureFighterJet_0" meshFile="FutureFighterJet.mesh" castShadows="false" visible="true">
+				<subitem index="0" datablockName="FutureFighterJet"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2248180869"/>
@@ -639,14 +639,14 @@
 					<property type="10" name="OffsetOrientation" data="0 0 0"/>
 					<property type="9" name="Scale" data="3 3 3"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="stone_felsite6_0" id="1544069642">
 			<position x="-20" y="0" z="-100"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="stone_felsite6_0" meshFile="stone_felsite7.mesh" castShadows="false" visible="true">
-				<subentity index="0" datablockName="/dural/environment/stone_felsite/texture"/>
+			<item name="stone_felsite6_0" meshFile="stone_felsite7.mesh" castShadows="false" visible="true">
+				<subitem index="0" datablockName="/dural/environment/stone_felsite/texture"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2557366868"/>
@@ -719,14 +719,14 @@
 					<property type="12" name="PlayWhenInMotion" data="false"/>
 					<property type="7" name="OnSpectrumAnalysisFunctionName" data=""/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Laser" id="2592548492">
 			<position x="-1.41254" y="0" z="-5.34698"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Laser" meshFile="ellipsoid.mesh" castShadows="false" visible="true">
-				<subentity index="0" datablockName="WhiteLine"/>
+			<item name="Laser" meshFile="ellipsoid.mesh" castShadows="false" visible="true">
+				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1543222174"/>
@@ -789,14 +789,14 @@
 					<property type="12" name="PlayWhenInMotion" data="false"/>
 					<property type="7" name="OnSpectrumAnalysisFunctionName" data=""/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="GameCamera" id="3648394280">
 			<position x="-1.91698e-42" y="80" z="-35"/>
 			<rotation qw="0.706985" qx="-0.707229" qy="2.30405e-07" qz="2.30405e-07"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="GameCamera" meshFile="Camera.mesh" castShadows="false" visible="true">
-				<subentity index="0" datablockName="WhiteLine"/>
+			<item name="GameCamera" meshFile="Camera.mesh" castShadows="false" visible="true">
+				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1475540321"/>
@@ -894,16 +894,16 @@
 					<property type="12" name="FollowGameObjectZ" data="false"/>
 					<property type="7" name="BackgroundName" data="bkgd_6.png"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="UfoVShape_0" id="259813323">
 			<position x="-45.6853" y="0" z="-95.2566"/>
 			<rotation qw="-1.62921e-07" qx="0" qy="1" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="UfoVShape_0" meshFile="UfoVShape.mesh" castShadows="false" visible="true">
-				<subentity index="0" datablockName="Ufo"/>
-				<subentity index="1" datablockName="BottomLight"/>
-				<subentity index="2" datablockName="RingLights"/>
+			<item name="UfoVShape_0" meshFile="UfoVShape.mesh" castShadows="false" visible="true">
+				<subitem index="0" datablockName="Ufo"/>
+				<subitem index="1" datablockName="BottomLight"/>
+				<subitem index="2" datablockName="RingLights"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2217483413"/>
@@ -1003,14 +1003,14 @@
 					<property type="7" name="OnSpawnFunctionName" data="onLaserShip1Spawned"/>
 					<property type="7" name="OnVanishFunctionName" data=""/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="box_0" id="1710535973">
 			<position x="-4.32992" y="1" z="-90.6841"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="5"/>
-			<entity name="box_0" meshFile="box.mesh" castShadows="false" visible="true">
-				<subentity index="0" datablockName="WhiteLine__791472684"/>
+			<item name="box_0" meshFile="box.mesh" castShadows="false" visible="true">
+				<subitem index="0" datablockName="WhiteLine__791472684"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="791472684"/>
@@ -1031,7 +1031,7 @@
 					<property type="7" name="ComponentDatablockPbsComponent" data="DatablockPbsComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="SubEntityIndex" data="0"/>
+					<property type="2" name="SubItemIndex" data="0"/>
 					<property type="7" name="Workflow" data="SpecularWorkflow"/>
 					<property type="6" name="Metalness" data="0.01"/>
 					<property type="6" name="Roughness" data="1"/>
@@ -1122,14 +1122,14 @@
 					<property type="10" name="OffsetOrientation" data="0 0 0"/>
 					<property type="9" name="Scale" data="1 1 1"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Health_0" id="2814237088">
 			<position x="5.54979" y="0" z="-95.6043"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="10" y="10" z="10"/>
-			<entity name="Health_0" meshFile="Health.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="Material/SOLID/TEX/Health.png"/>
+			<item name="Health_0" meshFile="Health.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="Material/SOLID/TEX/Health.png"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1274523399"/>
@@ -1181,14 +1181,14 @@
 					<property type="12" name="PlayWhenInMotion" data="false"/>
 					<property type="7" name="OnSpectrumAnalysisFunctionName" data=""/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="SpaceGun2_0" id="3295602986">
 			<position x="-56.3671" y="2.75256" z="-150.994"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="2" y="2" z="2"/>
-			<entity name="SpaceGun2_0" meshFile="SpaceGun2.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SpaceGuns__2663873632"/>
+			<item name="SpaceGun2_0" meshFile="SpaceGun2.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SpaceGuns__2663873632"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2663873632"/>
@@ -1255,7 +1255,7 @@
 					<property type="7" name="ComponentDatablockPbsComponent" data="DatablockPbsComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="SubEntityIndex" data="0"/>
+					<property type="2" name="SubItemIndex" data="0"/>
 					<property type="7" name="Workflow" data="MetallicWorkflow"/>
 					<property type="6" name="Metalness" data="0.72"/>
 					<property type="6" name="Roughness" data="0.2"/>
@@ -1335,14 +1335,14 @@
 					<property type="7" name="OnSpawnFunctionName" data="onLaserSpaceGunSpawned"/>
 					<property type="7" name="OnVanishFunctionName" data=""/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="SpaceGun2_1" id="3295603421">
 			<position x="-42.4196" y="2.75256" z="-150.994"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="2" y="2" z="2"/>
-			<entity name="SpaceGun2_1" meshFile="SpaceGun2.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SpaceGuns__2673984934"/>
+			<item name="SpaceGun2_1" meshFile="SpaceGun2.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SpaceGuns__2673984934"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2673984934"/>
@@ -1409,7 +1409,7 @@
 					<property type="7" name="ComponentDatablockPbsComponent" data="DatablockPbsComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="SubEntityIndex" data="0"/>
+					<property type="2" name="SubItemIndex" data="0"/>
 					<property type="7" name="Workflow" data="MetallicWorkflow"/>
 					<property type="6" name="Metalness" data="0.72"/>
 					<property type="6" name="Roughness" data="0.2"/>
@@ -1489,14 +1489,14 @@
 					<property type="7" name="OnSpawnFunctionName" data="onLaserSpaceGunSpawned"/>
 					<property type="7" name="OnVanishFunctionName" data=""/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="MotherShip2_0" id="641758017">
 			<position x="-49.4316" y="2.15343" z="-148.331"/>
 			<rotation qw="-1.94707e-07" qx="0" qy="1" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="MotherShip2_0" meshFile="MotherShip2.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="MotherShip2"/>
+			<item name="MotherShip2_0" meshFile="MotherShip2.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="MotherShip2"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="481476523"/>
@@ -1632,14 +1632,14 @@
 					<property type="8" name="Alignment" data="1 1"/>
 					<property type="12" name="LookAtCamera" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Shield" id="3616857808">
 			<position x="-49.3855" y="2.44495" z="-146.858"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="30" y="20" z="50"/>
-			<entity name="Shield" meshFile="ellipsoid.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="WhiteLine__1854220515"/>
+			<item name="Shield" meshFile="ellipsoid.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="WhiteLine__1854220515"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1854220515"/>
@@ -1660,7 +1660,7 @@
 					<property type="7" name="ComponentDatablockPbsComponent" data="DatablockPbsComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="SubEntityIndex" data="0"/>
+					<property type="2" name="SubItemIndex" data="0"/>
 					<property type="7" name="Workflow" data="SpecularWorkflow"/>
 					<property type="6" name="Metalness" data="0.01"/>
 					<property type="6" name="Roughness" data="1"/>
@@ -1761,7 +1761,7 @@
 					<property type="8" name="BodyMassScale" data="1 1"/>
 					<property type="9" name="JointAnchorPosition" data="0 0 0"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 	</nodes>
 </scene>

@@ -25,8 +25,8 @@
 			<position x="0" y="37.2738" z="50"/>
 			<rotation qw="0.857167" qx="-0.515038" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="SunLight" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
-				<subentity index="0" datablockName="WhiteLine"/>
+			<item name="SunLight" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
+				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2761937112"/>
@@ -42,14 +42,14 @@
 					<property type="12" name="AffectParentNode" data="true"/>
 					<property type="12" name="CastShadows" data="true"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="MainCamera" id="3605377383">
 			<position x="0.995924" y="10.0729" z="20.9701"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
-				<subentity index="0" datablockName="WhiteLine"/>
+			<item name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
+				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3650978817"/>
@@ -66,14 +66,14 @@
 					<property type="6" name="Fovy" data="90"/>
 					<property type="12" name="Orthographic" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Case3_0" id="2171111665">
 			<position x="0" y="4" z="0"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="0.5" y="0.5" z="0.5"/>
-			<entity name="Case3_0" meshFile="Case3.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="Material/SOLID/TEX/Case3.png"/>
+			<item name="Case3_0" meshFile="Case3.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="Material/SOLID/TEX/Case3.png"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2407253532"/>
@@ -99,7 +99,7 @@
 					<property type="7" name="CollisionType" data="ConvexHull"/>
 					<property type="9" name="ConstraintAxis" data="0 0 0"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Terra_0" id="3850542282">
 			<position x="0" y="0" z="0"/>

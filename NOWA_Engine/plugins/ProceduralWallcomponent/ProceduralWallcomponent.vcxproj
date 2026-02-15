@@ -97,7 +97,7 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(NOWA)/bin/$(Configuration);$(NOWA)/bin/$(Configuration)/libs</AdditionalLibraryDirectories>
-      <AdditionalDependencies>NOWA_Engine_d.lib;OgreMain_d.lib;OIS_d.lib;OgreMeshLodGenerator_d.lib;OgreHlmsPbs_d.lib;OgreHlmsUnlit_d.lib;OgrePlanarReflections_d.lib;OgreAtmosphere_d.lib;OgreSceneFormat_d.lib;OgreNewt4_0_d.lib;RakNet_vc9_d.lib;Lua_d.lib;LuaBind_d.lib;OgreRecast_d.lib;OgreProcedural_d.lib;OgreALVC9_d.lib;OgreOverlay_d.lib;FParser_d.lib;MeshSplitter_d.lib;MyGuiEngine_d.lib;Ogre2Platform_d.lib;Rpcrt4.lib;ndNewton_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>NOWA_Engine_d.lib;OgreMain_d.lib;OIS_d.lib;OgreMeshLodGenerator_d.lib;OgreHlmsPbs_d.lib;OgreHlmsUnlit_d.lib;OgrePlanarReflections_d.lib;OgreAtmosphere_d.lib;OgreSceneFormat_d.lib;OgreNewt4_0_d.lib;RakNet_vc9_d.lib;Lua_d.lib;LuaBind_d.lib;OgreRecast_d.lib;OgreProcedural_d.lib;OgreALVC9_d.lib;OgreOverlay_d.lib;FParser_d.lib;MeshSplitter_d.lib;MyGuiEngine_d.lib;Ogre2Platform_d.lib;Rpcrt4.lib;ndNewton_d.lib;;%(AdditionalDependencies)</AdditionalDependencies>
       <ProgramDatabaseFile>$(NOWA)/bin/$(configuration)/plugins/$(TargetName).pdb</ProgramDatabaseFile>
       <OutputFile>$(TargetDir)$(TargetName)$(TargetExt)</OutputFile>
       <ImageHasSafeExceptionHandlers>

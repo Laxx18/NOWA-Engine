@@ -1,0 +1,1 @@
+for %%f in (*.mesh) do .\OgreMeshMagick.exe transform -rotate=180/0/1/0 %%f 

@@ -31,7 +31,7 @@
 		<mainParameter>
 			<ignoreGlobalScene value="false"/>
 			<renderDistance distance="300"/>
-			<useV2Item value="true"/>
+			<useV2Item value="false"/>
 		</mainParameter>
 		<fog mode="none" start="0" end="0" density="0"/>
 		<bounds mostLeftNearPosition="-50 -75 -50" mostRightFarPosition="50 75 50"/>
@@ -132,10 +132,10 @@
 			<position x="2.43253" y="-14.2265" z="10.354"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Flubber_0" meshFile="Flubber.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/mouth.png"/>
-				<subentity index="1" datablockName="SOLID/TEX/eyes.png"/>
-				<subentity index="2" datablockName="SOLID/TEX/bodysurface.png"/>
+			<item name="Flubber_0" meshFile="Flubber.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/mouth.png"/>
+				<subitem index="1" datablockName="SOLID/TEX/eyes.png"/>
+				<subitem index="2" datablockName="SOLID/TEX/bodysurface.png"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3909942265"/>
@@ -214,16 +214,16 @@
 					<property type="6" name="Friction" data="0.1"/>
 					<property type="6" name="SpringLength" data="5"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Flubber_1" id="2650477933">
 			<position x="-1.74047" y="-14.0559" z="9.72333"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Flubber_1" meshFile="Flubber.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/mouth.png"/>
-				<subentity index="1" datablockName="SOLID/TEX/eyes.png"/>
-				<subentity index="2" datablockName="SOLID/TEX/bodysurface.png"/>
+			<item name="Flubber_1" meshFile="Flubber.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="SOLID/TEX/mouth.png"/>
+				<subitem index="1" datablockName="SOLID/TEX/eyes.png"/>
+				<subitem index="2" datablockName="SOLID/TEX/bodysurface.png"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1346113917"/>
@@ -302,14 +302,14 @@
 					<property type="6" name="Friction" data="0.5"/>
 					<property type="6" name="SpringLength" data="6"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="MainCamera" id="4010617415">
 			<position x="9.11963" y="-10.2607" z="12.9176"/>
 			<rotation qw="0.890707" qx="-0.0679232" qy="0.448173" qz="0.0341768"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
-				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
+			<item name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
+				<subitem index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1111111112"/>
@@ -369,14 +369,14 @@
 					<property type="6" name="ShadowSplitPadding" data="1"/>
 					<property type="7" name="SkyBoxName" data="elder_world_cube.dds"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="SunLight" id="1479238507">
 			<position x="0" y="35" z="50"/>
 			<rotation qw="0.880476" qx="-0.364705" qy="0.279848" qz="-0.115917"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="SunLight" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
-				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
+			<item name="SunLight" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
+				<subitem index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1111111113"/>
@@ -411,14 +411,14 @@
 					<property type="12" name="CastShadows" data="true"/>
 					<property type="12" name="ShowDummyEntity" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="MainGameObject" id="1366663313">
 			<position x="0" y="0" z="0"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="MainGameObject" meshFile="Node.mesh" castShadows="true" visible="false">
-				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
+			<item name="MainGameObject" meshFile="Node.mesh" castShadows="true" visible="false">
+				<subitem index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1111111111"/>
@@ -454,7 +454,7 @@
 					<property type="12" name="UseSelectionRectangle" data="true"/>
 					<property type="12" name="ActivatePlayerController" data="true"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 	</nodes>
 </scene>

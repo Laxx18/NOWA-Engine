@@ -13,7 +13,7 @@ namespace NOWA
 	ManualObjectComponent::ManualObjectComponent()
 		: GameObjectComponent(),
 		lineNode(nullptr),
-		dummyEntity(nullptr),
+		dummyItem(nullptr),
 		manualObject(nullptr),
 		indices(0),
 		newStartPosition(Ogre::Vector3(Ogre::Math::POS_INFINITY, Ogre::Math::POS_INFINITY, Ogre::Math::POS_INFINITY)),
@@ -141,7 +141,7 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ManualObjectComponent] Init manual object component for game object: " + this->gameObjectPtr->getName());
 
 		// Borrow the entity from the game object
-		this->dummyEntity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
+		this->dummyItem = this->gameObjectPtr->getMovableObject<Ogre::Item>();
 
 		return true;
 	}
@@ -155,7 +155,7 @@ namespace NOWA
 		ENQUEUE_RENDER_COMMAND_WAIT("ManualObjectComponent::~ManualObjectComponent",
 		{
 			this->destroyLines();
-			this->dummyEntity = nullptr;
+			this->dummyItem = nullptr;
 		});
 	}
 
@@ -169,7 +169,7 @@ namespace NOWA
 
 		ENQUEUE_RENDER_COMMAND_WAIT("ManualObjectComponent::connect",
 		{
-			this->dummyEntity->setVisible(false);
+			this->dummyItem->setVisible(false);
 
 			if (nullptr == this->lineNode)
 			{
@@ -193,7 +193,7 @@ namespace NOWA
 
 		ENQUEUE_RENDER_COMMAND_WAIT("ManualObjectComponent::disconnect",
 		{
-			this->dummyEntity->setVisible(true);
+			this->dummyItem->setVisible(true);
 			this->destroyLines();
 		});
 		

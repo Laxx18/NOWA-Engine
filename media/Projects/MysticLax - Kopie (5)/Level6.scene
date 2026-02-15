@@ -31,7 +31,7 @@
 		<mainParameter>
 			<ignoreGlobalScene value="false"/>
 			<renderDistance distance="100"/>
-			<useV2Item value="true"/>
+			<useV2Item value="false"/>
 		</mainParameter>
 		<fog mode="none" start="0" end="0" density="0"/>
 		<bounds mostLeftNearPosition="-72.4437 -72.0634 -125.065" mostRightFarPosition="132.855 643.617 80.2337"/>
@@ -73,7 +73,7 @@
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="2" name="SubEntityIndex" data="2"/>
+					<property type="2" name="SubItemIndex" data="2"/>
 					<property type="7" name="Workflow" data="SpecularWorkflow"/>
 					<property type="6" name="Metalness" data="0.01"/>
 					<property type="6" name="Roughness" data="0.1"/>
@@ -123,7 +123,7 @@
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="2" name="SubEntityIndex" data="1"/>
+					<property type="2" name="SubItemIndex" data="1"/>
 					<property type="7" name="Workflow" data="SpecularWorkflow"/>
 					<property type="6" name="Metalness" data="0.01"/>
 					<property type="6" name="Roughness" data="1"/>
@@ -173,7 +173,7 @@
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="2" name="SubEntityIndex" data="0"/>
+					<property type="2" name="SubItemIndex" data="0"/>
 					<property type="7" name="Workflow" data="SpecularWorkflow"/>
 					<property type="6" name="Metalness" data="0.01"/>
 					<property type="6" name="Roughness" data="1"/>
@@ -226,8 +226,8 @@
 			<position x="-8.14904" y="12.613" z="11.2085"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
-				<subentity index="0" datablockName="WhiteLine"/>
+			<item name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
+				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1111111112"/>
@@ -297,14 +297,14 @@
 					<property type="6" name="Bloom" data="3"/>
 					<property type="6" name="EnvMapScale" data="1"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="SunLight" id="1479238507">
 			<position x="0" y="37.2738" z="50"/>
 			<rotation qw="0.859342" qx="-0.261669" qy="0.310693" qz="0.310693"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="SunLight" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
-				<subentity index="0" datablockName="WhiteLine"/>
+			<item name="SunLight" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
+				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1111111113"/>
@@ -337,16 +337,16 @@
 					<property type="12" name="CastShadows" data="true"/>
 					<property type="12" name="ShowDummyEntity" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="platform2_floating_island1_Layer1_0" id="148640650">
 			<position x="0" y="0" z="-22"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="10" y="8" z="4"/>
-			<entity name="platform2_floating_island1_Layer1_0" meshFile="platform2_floating_island1_Layer1.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="transition_grassrock"/>
-				<subentity index="1" datablockName="rocks_boulder"/>
-				<subentity index="2" datablockName="grass_clean"/>
+			<item name="platform2_floating_island1_Layer1_0" meshFile="platform2_floating_island1_Layer1.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="transition_grassrock"/>
+				<subitem index="1" datablockName="rocks_boulder"/>
+				<subitem index="2" datablockName="grass_clean"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1632150266"/>
@@ -374,14 +374,14 @@
 					<property type="6" name="Mass" data="10000"/>
 					<property type="12" name="Serialize" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="StartNorth" id="1430289374">
 			<position x="-31.4005" y="20.8837" z="-22"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="StartNorth" meshFile="Plattform2.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="Material/SOLID/TEX/plattform2.png"/>
+			<item name="StartNorth" meshFile="Plattform2.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="Material/SOLID/TEX/plattform2.png"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3342307231"/>
@@ -401,7 +401,7 @@
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="7" name="DataBlock0" data="Material/SOLID/TEX/plattform2.png"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Case3_0" id="1801113553">
 			<position x="-9.55533" y="6.96973" z="-21.6678"/>
@@ -472,8 +472,8 @@
 			<position x="26.341" y="16.048" z="-22"/>
 			<rotation qw="0.707107" qx="0" qy="0" qz="0.707107"/>
 			<scale x="2" y="2" z="10"/>
-			<entity name="trunk_low_0" meshFile="trunk_low.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="/dural/plants/trees/gnarly/texture__0580154196"/>
+			<item name="trunk_low_0" meshFile="trunk_low.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="/dural/plants/trees/gnarly/texture__0580154196"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="580154196"/>
@@ -496,7 +496,7 @@
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="2" name="SubEntityIndex" data="0"/>
+					<property type="2" name="SubItemIndex" data="0"/>
 					<property type="7" name="Workflow" data="SpecularWorkflow"/>
 					<property type="6" name="Metalness" data="0.01"/>
 					<property type="6" name="Roughness" data="0.1"/>
@@ -549,14 +549,14 @@
 					<property type="6" name="Mass" data="10000"/>
 					<property type="12" name="Serialize" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="trunk_low_1" id="3912474552">
 			<position x="31.6537" y="20.4971" z="-22"/>
 			<rotation qw="0.707107" qx="0" qy="0" qz="-0.707107"/>
 			<scale x="2" y="3" z="10"/>
-			<entity name="trunk_low_1" meshFile="trunk_low.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="/dural/plants/trees/gnarly/texture__0649813068"/>
+			<item name="trunk_low_1" meshFile="trunk_low.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="/dural/plants/trees/gnarly/texture__0649813068"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="649813068"/>
@@ -579,7 +579,7 @@
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="2" name="SubEntityIndex" data="0"/>
+					<property type="2" name="SubItemIndex" data="0"/>
 					<property type="7" name="Workflow" data="SpecularWorkflow"/>
 					<property type="6" name="Metalness" data="0.01"/>
 					<property type="6" name="Roughness" data="0.1"/>
@@ -632,7 +632,7 @@
 					<property type="6" name="Mass" data="10000"/>
 					<property type="12" name="Serialize" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="Case1_0" id="1662965383">
 			<position x="28.877" y="19.9087" z="-25.0504"/>
@@ -665,8 +665,8 @@
 			<position x="26.341" y="25.3739" z="-22"/>
 			<rotation qw="0.707107" qx="0" qy="0" qz="0.707107"/>
 			<scale x="2" y="2" z="10"/>
-			<entity name="trunk_low_2" meshFile="trunk_low.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="/dural/plants/trees/gnarly/texture__0998581392"/>
+			<item name="trunk_low_2" meshFile="trunk_low.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="/dural/plants/trees/gnarly/texture__0998581392"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="998581392"/>
@@ -689,7 +689,7 @@
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="2" name="SubEntityIndex" data="0"/>
+					<property type="2" name="SubItemIndex" data="0"/>
 					<property type="7" name="Workflow" data="SpecularWorkflow"/>
 					<property type="6" name="Metalness" data="0.01"/>
 					<property type="6" name="Roughness" data="0.1"/>
@@ -742,14 +742,14 @@
 					<property type="6" name="Mass" data="10000"/>
 					<property type="12" name="Serialize" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="trunk_low_3" id="3912475422">
 			<position x="30.8312" y="30.2764" z="-22"/>
 			<rotation qw="0.707107" qx="0" qy="0" qz="-0.707107"/>
 			<scale x="2" y="3" z="10"/>
-			<entity name="trunk_low_3" meshFile="trunk_low.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="/dural/plants/trees/gnarly/texture__01405167903"/>
+			<item name="trunk_low_3" meshFile="trunk_low.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="/dural/plants/trees/gnarly/texture__01405167903"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1405167903"/>
@@ -772,7 +772,7 @@
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="2" name="SubEntityIndex" data="0"/>
+					<property type="2" name="SubItemIndex" data="0"/>
 					<property type="7" name="Workflow" data="SpecularWorkflow"/>
 					<property type="6" name="Metalness" data="0.01"/>
 					<property type="6" name="Roughness" data="0.1"/>
@@ -825,14 +825,14 @@
 					<property type="6" name="Mass" data="10000"/>
 					<property type="12" name="Serialize" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="trunk_middle_0" id="436225020">
 			<position x="21.758" y="7.18135" z="-22"/>
 			<rotation qw="0.866025" qx="0" qy="0.5" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="trunk_middle_0" meshFile="trunk_middle.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="/dural/plants/trees/gnarly/texture"/>
+			<item name="trunk_middle_0" meshFile="trunk_middle.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="/dural/plants/trees/gnarly/texture"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3545323228"/>
@@ -858,7 +858,7 @@
 					<property type="6" name="Mass" data="10000"/>
 					<property type="12" name="Serialize" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 	</nodes>
 </scene>

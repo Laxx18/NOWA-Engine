@@ -3976,7 +3976,7 @@ void PropertiesPanelComponent::notifyColourAccept(MyGUI::ColourPanel* sender)
 
 void PropertiesPanelComponent::notifyEndDialog(tools::Dialog* sender, bool result)
 {
-	ENQUEUE_RENDER_COMMAND_MULTI("PropertiesPanelComponent::notifyEndDialog", _2(sender, result),
+	NOWA::GraphicsModule::RenderCommand renderCommand = [this, sender, result]()
 	{
 		if (true == result)
 		{
@@ -3988,6 +3988,7 @@ void PropertiesPanelComponent::notifyEndDialog(tools::Dialog* sender, bool resul
 				NOWA::Variant** copiedAttribute = sender->getMainWidget()->getUserData<NOWA::Variant*>();
 				Ogre::String tempFileName = this->openSaveFileDialog->getFileName();
 				(*copiedAttribute)->setValue(tempFileName);
+				(*copiedAttribute)->addUserData("PathToFolder", this->openSaveFileDialog->getCurrentFolder());
 
 				if (false == (*copiedAttribute)->hasUserDataKey(NOWA::GameObject::AttrActionNoUndo()))
 				{
@@ -3998,6 +3999,7 @@ void PropertiesPanelComponent::notifyEndDialog(tools::Dialog* sender, bool resul
 				for (size_t i = 0; i < this->gameObjectComponents.size(); i++)
 				{
 					auto currentAttribute = this->gameObjectComponents[i]->getAttribute((*copiedAttribute)->getName());
+					currentAttribute->copyUserData(*copiedAttribute);
 					this->gameObjectComponents[i]->actualizeValue(*copiedAttribute);
 				}
 
@@ -4023,5 +4025,6 @@ void PropertiesPanelComponent::notifyEndDialog(tools::Dialog* sender, bool resul
 			NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(1.0f);
 			NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(1.0f);
 		}
-	});
+	};
+	NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PropertiesPanelComponent::notifyEndDialog");
 }

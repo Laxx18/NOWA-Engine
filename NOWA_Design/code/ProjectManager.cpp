@@ -80,15 +80,15 @@ Ogre::Light* ProjectManager::createSunLight(void)
 			lightNode->setPosition(0, 35.0f, 50.0f);
 			lightNode->setOrientation(NOWA::MathHelper::getInstance()->degreesToQuat(Ogre::Vector3(-45.0f, 0.0f, 0.0f)));
 
-			Ogre::v1::Entity* newEntity = this->sceneManager->createEntity("LightDirectional.mesh");
-			lightNode->attachObject(newEntity);
+			Ogre::Item* newItem = this->sceneManager->createItem("LightDirectional.mesh");
+			lightNode->attachObject(newItem);
 
 			Ogre::String gameObjectName = "SunLight";
-			newEntity->setName(gameObjectName);
+			newItem->setName(gameObjectName);
 			lightNode->setName(gameObjectName);
 
 			NOWA::GameObjectPtr gameObjectPtr = NOWA::GameObjectFactory::getInstance()->createGameObject(
-				this->sceneManager, lightNode, newEntity, NOWA::GameObject::LIGHT_DIRECTIONAL,
+				this->sceneManager, lightNode, newItem, NOWA::GameObject::LIGHT_DIRECTIONAL,
 				NOWA::GameObjectController::MAIN_LIGHT_ID);
 
 			if (nullptr != gameObjectPtr)
@@ -130,14 +130,14 @@ Ogre::Camera* ProjectManager::createMainCamera(void)
 		// There must be a main camera which may not be deleted
 		Ogre::SceneNode * cameraNode = this->sceneManager->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_DYNAMIC);
 
-		Ogre::v1::Entity * newEntity = this->sceneManager->createEntity("Camera.mesh");
-		cameraNode->attachObject(newEntity);
+		Ogre::Item* newItem = this->sceneManager->createItem("Camera.mesh");
+		cameraNode->attachObject(newItem);
 
 		Ogre::String gameObjectName = "MainCamera";
-		newEntity->setName(gameObjectName);
+		newItem->setName(gameObjectName);
 		cameraNode->setName(gameObjectName);
 
-		NOWA::GameObjectPtr gameObjectPtr = NOWA::GameObjectFactory::getInstance()->createGameObject(this->sceneManager, cameraNode, newEntity, NOWA::GameObject::CAMERA, NOWA::GameObjectController::MAIN_CAMERA_ID);
+		NOWA::GameObjectPtr gameObjectPtr = NOWA::GameObjectFactory::getInstance()->createGameObject(this->sceneManager, cameraNode, newItem, NOWA::GameObject::CAMERA, NOWA::GameObjectController::MAIN_CAMERA_ID);
 		if (nullptr != gameObjectPtr)
 		{
 			// Do not permit to change the name of the sun light
@@ -174,16 +174,16 @@ void ProjectManager::createMainGameObject(void)
 		// Attention: Never set to huge coordinates like -1000 -1000 -1000, else shadows will be corrupted, because the game object would be to far away from all other game objects!
 		mainGameObjectNode->setPosition(0, 0, 0);
 
-		Ogre::v1::Entity * mainGameObjectEntity = this->sceneManager->createEntity("Node.mesh");
+		Ogre::Item* mainGameObjectItem = this->sceneManager->createItem("Node.mesh");
 		// mainGameObjectEntity->setStatic(true);
-		mainGameObjectNode->attachObject(mainGameObjectEntity);
+		mainGameObjectNode->attachObject(mainGameObjectItem);
 		mainGameObjectNode->setVisible(false);
 
 		Ogre::String gameObjectName = "MainGameObject";
-		mainGameObjectEntity->setName(gameObjectName);
+		mainGameObjectItem->setName(gameObjectName);
 		mainGameObjectNode->setName(gameObjectName);
 
-		NOWA::GameObjectPtr gameObjectPtr = NOWA::GameObjectFactory::getInstance()->createGameObject(this->sceneManager, mainGameObjectNode, mainGameObjectEntity, NOWA::GameObject::SCENE_NODE, NOWA::GameObjectController::MAIN_GAMEOBJECT_ID);
+		NOWA::GameObjectPtr gameObjectPtr = NOWA::GameObjectFactory::getInstance()->createGameObject(this->sceneManager, mainGameObjectNode, mainGameObjectItem, NOWA::GameObject::SCENE_NODE, NOWA::GameObjectController::MAIN_GAMEOBJECT_ID);
 		if (nullptr != gameObjectPtr)
 		{
 			// Do not permit to change the name of the sun light

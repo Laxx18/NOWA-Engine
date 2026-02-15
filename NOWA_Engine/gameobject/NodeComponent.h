@@ -90,7 +90,7 @@ namespace NOWA
 		static const Ogre::String AttrShow(void) { return "Show"; }
 
 	private:
-		Ogre::v1::Entity* dummyEntity;
+		Ogre::Item* dummyItem;
 
 		Variant* show;
 	};

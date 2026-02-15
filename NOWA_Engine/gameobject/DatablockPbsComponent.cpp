@@ -14,7 +14,7 @@ namespace NOWA
 
 	DatablockPbsComponent::DatablockPbsComponent()
 		: GameObjectComponent(),
-		subEntityIndex(new Variant(DatablockPbsComponent::AttrSubEntityIndex(), static_cast<unsigned int>(0), this->attributes)),
+		subItemIndex(new Variant(DatablockPbsComponent::AttrSubItemIndex(), static_cast<unsigned int>(0), this->attributes)),
 		workflow(new Variant(DatablockPbsComponent::AttrWorkflow(), { "SpecularWorkflow", "SpecularAsFresnelWorkflow", "MetallicWorkflow" }, this->attributes)),
 		metalness(new Variant(DatablockPbsComponent::AttrMetalness(), 0.818f, this->attributes)),
 		roughness(new Variant(DatablockPbsComponent::AttrRoughness(), 1.0f, this->attributes)),
@@ -85,8 +85,8 @@ namespace NOWA
 		originalMacroblock(nullptr),
 		originalBlendblock(nullptr)
 	{
-		this->subEntityIndex->setDescription("Specifies the sub entity index, for which the datablock should be shown.");
-		this->subEntityIndex->addUserData(GameObject::AttrActionNeedRefresh());
+		this->subItemIndex->setDescription("Specifies the sub entity index, for which the datablock should be shown.");
+		this->subItemIndex->addUserData(GameObject::AttrActionNeedRefresh());
 		this->workflow->addUserData(GameObject::AttrActionNeedRefresh());
 		this->diffuseColor->addUserData(GameObject::AttrActionColorDialog());
 		this->backgroundColor->addUserData(GameObject::AttrActionColorDialog());
@@ -195,9 +195,9 @@ namespace NOWA
 	{
 		GameObjectComponent::init(propertyElement);
 
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "SubEntityIndex")
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "SubItemIndex")
 		{
-			this->subEntityIndex->setValue(XMLConverter::getAttribUnsignedInt(propertyElement, "data"));
+			this->subItemIndex->setValue(XMLConverter::getAttribUnsignedInt(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Workflow")
@@ -454,7 +454,7 @@ namespace NOWA
 
 		clonedCompPtr->isCloned = true;
 		
-		clonedCompPtr->setSubEntityIndex(this->subEntityIndex->getUInt());
+		clonedCompPtr->setSubItemIndex(this->subItemIndex->getUInt());
 		clonedCompPtr->setWorkflow(this->workflow->getListSelectedValue());
 		clonedCompPtr->setMetalness(this->metalness->getReal());
 		clonedCompPtr->setRoughness(this->roughness->getReal());
@@ -821,18 +821,18 @@ namespace NOWA
 			auto& priorPbsComponent = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<DatablockPbsComponent>(DatablockPbsComponent::getStaticClassName(), i));
 			if (nullptr != priorPbsComponent && priorPbsComponent.get() != this)
 			{
-				if (this->subEntityIndex->getUInt() == priorPbsComponent->getSubEntityIndex())
+				if (this->subItemIndex->getUInt() == priorPbsComponent->getSubItemIndex())
 				{
-					this->subEntityIndex->setValue(priorPbsComponent->getSubEntityIndex() + 1);
+					this->subItemIndex->setValue(priorPbsComponent->getSubItemIndex() + 1);
 				}
 			}
 		}
 
-		if (this->subEntityIndex->getUInt() >= static_cast<unsigned int>(entity->getNumSubEntities()))
+		if (this->subItemIndex->getUInt() >= static_cast<unsigned int>(entity->getNumSubEntities()))
 		{
 			this->datablock = nullptr;
 			Ogre::String message = "[DatablockPbsComponent] Datablock reading failed, because there is no such sub entity index: "
-				+ Ogre::StringConverter::toString(this->subEntityIndex->getUInt()) + " for game object: "
+				+ Ogre::StringConverter::toString(this->subItemIndex->getUInt()) + " for game object: "
 				+ this->gameObjectPtr->getName();
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, message);
 
@@ -849,7 +849,7 @@ namespace NOWA
 		}
 
 		// Get the cloned data block, so that it can be manipulated individually
-		this->originalDatablock = dynamic_cast<Ogre::HlmsPbsDatablock*>(entity->getSubEntity(this->subEntityIndex->getUInt())->getDatablock());
+		this->originalDatablock = dynamic_cast<Ogre::HlmsPbsDatablock*>(entity->getSubEntity(this->subItemIndex->getUInt())->getDatablock());
 		// Datablock could not be received, pbs entity got unlit data block component?
 		if (nullptr == this->originalDatablock)
 		{
@@ -892,7 +892,7 @@ namespace NOWA
 		}
 		else
 		{
-			this->datablock = dynamic_cast<Ogre::HlmsPbsDatablock*>(entity->getSubEntity(this->subEntityIndex->getUInt())->getDatablock());
+			this->datablock = dynamic_cast<Ogre::HlmsPbsDatablock*>(entity->getSubEntity(this->subItemIndex->getUInt())->getDatablock());
 		}
 
 		if (nullptr == this->datablock)
@@ -902,14 +902,14 @@ namespace NOWA
 			return false;
 		}
 
-		entity->getSubEntity(this->subEntityIndex->getUInt())->setDatablock(this->datablock);
-		this->oldSubIndex = this->subEntityIndex->getUInt();
+		entity->getSubEntity(this->subItemIndex->getUInt())->setDatablock(this->datablock);
+		this->oldSubIndex = this->subItemIndex->getUInt();
 
 		const Ogre::String* finalDatablockName = this->datablock->getNameStr();
 
 		if (nullptr != finalDatablockName)
 		{
-			this->gameObjectPtr->actualizeDatablockName(*finalDatablockName, this->subEntityIndex->getUInt());
+			this->gameObjectPtr->actualizeDatablockName(*finalDatablockName, this->subItemIndex->getUInt());
 		}
 
 		this->postReadDatablock();
@@ -925,9 +925,9 @@ namespace NOWA
 			auto& priorPbsComponent = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<DatablockPbsComponent>(DatablockPbsComponent::getStaticClassName(), i));
 			if (nullptr != priorPbsComponent && priorPbsComponent.get() != this)
 			{
-				if (this->subEntityIndex->getUInt() == priorPbsComponent->getSubEntityIndex())
+				if (this->subItemIndex->getUInt() == priorPbsComponent->getSubItemIndex())
 				{
-					this->subEntityIndex->setValue(priorPbsComponent->getSubEntityIndex() + 1);
+					this->subItemIndex->setValue(priorPbsComponent->getSubItemIndex() + 1);
 				}
 			}
 		}
@@ -940,7 +940,7 @@ namespace NOWA
 		}
 
 		// Get the cloned data block, so that it can be manipulated individually
-		this->originalDatablock = dynamic_cast<Ogre::HlmsPbsDatablock*>(item->getSubItem(this->subEntityIndex->getUInt())->getDatablock());
+		this->originalDatablock = dynamic_cast<Ogre::HlmsPbsDatablock*>(item->getSubItem(this->subItemIndex->getUInt())->getDatablock());
 
 		// Store also the original name
 		Ogre::String originalDataBlockName = *this->originalDatablock->getNameStr();
@@ -974,7 +974,7 @@ namespace NOWA
 		}
 		else
 		{
-			this->datablock = dynamic_cast<Ogre::HlmsPbsDatablock*>(item->getSubItem(this->subEntityIndex->getUInt())->getDatablock());
+			this->datablock = dynamic_cast<Ogre::HlmsPbsDatablock*>(item->getSubItem(this->subItemIndex->getUInt())->getDatablock());
 		}
 
 		if (nullptr == this->datablock)
@@ -984,14 +984,14 @@ namespace NOWA
 			return false;
 		}
 
-		item->getSubItem(this->subEntityIndex->getUInt())->setDatablock(this->datablock);
-		this->oldSubIndex = this->subEntityIndex->getUInt();
+		item->getSubItem(this->subItemIndex->getUInt())->setDatablock(this->datablock);
+		this->oldSubIndex = this->subItemIndex->getUInt();
 
 		const Ogre::String* finalDatablockName = this->datablock->getNameStr();
 
 		if (nullptr != finalDatablockName)
 		{
-			this->gameObjectPtr->actualizeDatablockName(*finalDatablockName, this->subEntityIndex->getUInt());
+			this->gameObjectPtr->actualizeDatablockName(*finalDatablockName, this->subItemIndex->getUInt());
 		}
 
 		this->postReadDatablock();
@@ -1145,9 +1145,9 @@ namespace NOWA
 
 		GameObjectComponent::actualizeValue(attribute);
 
-		if (DatablockPbsComponent::AttrSubEntityIndex() == attribute->getName())
+		if (DatablockPbsComponent::AttrSubItemIndex() == attribute->getName())
 		{
-			this->setSubEntityIndex(attribute->getUInt());
+			this->setSubItemIndex(attribute->getUInt());
 		}
 		else if (DatablockPbsComponent::AttrWorkflow() == attribute->getName())
 		{
@@ -1352,8 +1352,8 @@ namespace NOWA
 
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "SubEntityIndex"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->subEntityIndex->getUInt())));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "SubItemIndex"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->subItemIndex->getUInt())));
 		propertiesXML->append_node(propertyXML);
 		
 		propertyXML = doc.allocate_node(node_element, "property");
@@ -1821,13 +1821,13 @@ namespace NOWA
 		NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DatablockPbsComponent::internalSetTextureName");
 	}
 
-	void DatablockPbsComponent::setSubEntityIndex(unsigned int subEntityIndex)
+	void DatablockPbsComponent::setSubItemIndex(unsigned int subItemIndex)
 	{
-		this->subEntityIndex->setValue(subEntityIndex);
+		this->subItemIndex->setValue(subItemIndex);
 
 		if (nullptr != this->gameObjectPtr)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DatablockPbsComponent::setSubEntityIndex", _1(&subEntityIndex),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DatablockPbsComponent::setSubItemIndex", _1(&subItemIndex),
 			{
 				// Two data block components with the same entity index can not exist
 				for (unsigned int i = 0; i < static_cast<unsigned int>(this->gameObjectPtr->getComponents()->size()); i++)
@@ -1835,9 +1835,9 @@ namespace NOWA
 					auto& priorPbsComponent = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<DatablockPbsComponent>(DatablockPbsComponent::getStaticClassName(), i));
 					if (nullptr != priorPbsComponent && priorPbsComponent.get() != this)
 					{
-						if (subEntityIndex == priorPbsComponent->getSubEntityIndex())
+						if (subItemIndex == priorPbsComponent->getSubItemIndex())
 						{
-							subEntityIndex = priorPbsComponent->getSubEntityIndex() + 1;
+							subItemIndex = priorPbsComponent->getSubItemIndex() + 1;
 						}
 					}
 				}
@@ -1846,9 +1846,9 @@ namespace NOWA
 				Ogre::Item* item = nullptr;
 				if (nullptr != entity)
 				{
-					if (subEntityIndex >= static_cast<unsigned int>(entity->getNumSubEntities()))
+					if (subItemIndex >= static_cast<unsigned int>(entity->getNumSubEntities()))
 					{
-						subEntityIndex = static_cast<unsigned int>(entity->getNumSubEntities()) - 1;
+						subItemIndex = static_cast<unsigned int>(entity->getNumSubEntities()) - 1;
 					}
 				}
 				else
@@ -1856,14 +1856,14 @@ namespace NOWA
 					item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
 					if (nullptr != item)
 					{
-						if (subEntityIndex >= static_cast<unsigned int>(item->getNumSubItems()))
+						if (subItemIndex >= static_cast<unsigned int>(item->getNumSubItems()))
 						{
-							subEntityIndex = static_cast<unsigned int>(item->getNumSubItems()) - 1;
+							subItemIndex = static_cast<unsigned int>(item->getNumSubItems()) - 1;
 						}
 					}
 				}
 
-				if (this->oldSubIndex != subEntityIndex)
+				if (this->oldSubIndex != subItemIndex)
 				{
 					// Read everything from the beginning, if a new sub index has been set
 					this->newlyCreated = true;
@@ -1894,13 +1894,13 @@ namespace NOWA
 			});
 			this->preReadDatablock();
 
-			this->oldSubIndex = subEntityIndex;
+			this->oldSubIndex = subItemIndex;
 		}
 	}
 
-	unsigned int DatablockPbsComponent::getSubEntityIndex(void) const
+	unsigned int DatablockPbsComponent::getSubItemIndex(void) const
 	{
-		return this->subEntityIndex->getUInt();
+		return this->subItemIndex->getUInt();
 	}
 	
 	void DatablockPbsComponent::setWorkflow(const Ogre::String& workflow)

@@ -8162,8 +8162,8 @@ namespace NOWA
 			class_<DatablockPbsComponent, GameObjectComponent>("DatablockPbsComponent")
 			// .def("getClassName", &DatablockPbsComponent::getClassName)
 			.def("getParentClassName", &DatablockPbsComponent::getParentClassName)
-			.def("setSubEntityIndex", &DatablockPbsComponent::setSubEntityIndex)
-			.def("getSubEntityIndex", &DatablockPbsComponent::getSubEntityIndex)
+			.def("setSubItemIndex", &DatablockPbsComponent::setSubItemIndex)
+			.def("getSubItemIndex", &DatablockPbsComponent::getSubItemIndex)
 
 			.def("setWorkflow", &DatablockPbsComponent::setWorkflow)
 			.def("getWorkflow", &DatablockPbsComponent::getWorkflow)
@@ -8270,8 +8270,8 @@ namespace NOWA
 
 		AddClassToCollection("DatablockPbsComponent", "class inherits GameObjectComponent", DatablockPbsComponent::getStaticInfoText());
 		// AddClassToCollection("DatablockPbsComponent", "String getClassName()", "Gets the class name of this component as string.");
-		AddClassToCollection("DatablockPbsComponent", "void setSubEntityIndex(int index)", "Sets the sub entity index, this data block should be used for.");
-		AddClassToCollection("DatablockPbsComponent", "int getSubEntityIndex()", "Gets the sub entity index this data block is used for.");
+		AddClassToCollection("DatablockPbsComponent", "void setSubItemIndex(int index)", "Sets the sub entity index, this data block should be used for.");
+		AddClassToCollection("DatablockPbsComponent", "int getSubItemIndex()", "Gets the sub entity index this data block is used for.");
 		AddClassToCollection("DatablockPbsComponent", "void setWorkflow(String workflow)", "Sets the data block work flow. Possible values are: 'SpecularWorkflow', 'SpecularAsFresnelWorkflow', 'MetallicWorkflow'");
 		AddClassToCollection("DatablockPbsComponent", "float getWorkflow()", "Gets the data block work flow.");
 		AddClassToCollection("DatablockPbsComponent", "void setMetalness(float metalness)", "Sets the metalness in a metallic workflow. Overrides any fresnel value. Only visible/usable when metallic workflow is active. Range: [0; 1].");
@@ -8495,16 +8495,16 @@ namespace NOWA
 				class_<DatablockUnlitComponent, GameObjectComponent>("DatablockUnlitComponent")
 				// .def("getClassName", &DatablockUnlitComponent::getClassName)
 			.def("getParentClassName", &DatablockUnlitComponent::getParentClassName)
-			.def("setSubEntityIndex", &DatablockUnlitComponent::setSubEntityIndex)
-			.def("getSubEntityIndex", &DatablockUnlitComponent::getSubEntityIndex)
+			.def("setSubItemIndex", &DatablockUnlitComponent::setSubItemIndex)
+			.def("getSubItemIndex", &DatablockUnlitComponent::getSubItemIndex)
 			.def("setBackgroundColor", &DatablockUnlitComponent::setBackgroundColor)
 			.def("getBackgroundColor", &DatablockUnlitComponent::getBackgroundColor)
 			];
 
 		AddClassToCollection("DatablockUnlitComponent", "class inherits GameObjectComponent", DatablockUnlitComponent::getStaticInfoText());
 		// AddClassToCollection("DatablockUnlitComponent", "String getClassName()", "Gets the class name of this component as string.");
-		AddClassToCollection("DatablockUnlitComponent", "void setSubEntityIndex(int index)", "Sets the sub entity index, this data block should be used for.");
-		AddClassToCollection("DatablockUnlitComponent", "int getSubEntityIndex()", "Gets the sub entity index this data block is used for.");
+		AddClassToCollection("DatablockUnlitComponent", "void setSubItemIndex(int index)", "Sets the sub entity index, this data block should be used for.");
+		AddClassToCollection("DatablockUnlitComponent", "int getSubItemIndex()", "Gets the sub entity index this data block is used for.");
 		AddClassToCollection("DatablockUnlitComponent", "void setBackgroundColor(Vector3 backgroundColor)", "Sets the diffuse background color. When no diffuse texture is present, this solid color replaces it, and can act as a background for the detail maps.");
 		AddClassToCollection("DatablockUnlitComponent", "Vector3 getBackgroundColor()", "Gets the background color.");
 	}

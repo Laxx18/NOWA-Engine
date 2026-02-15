@@ -804,7 +804,7 @@ namespace NOWA
 		* @brief		Preloads textures for the given resource group name.
 		* @param[in]	resourceGroupName	The resource group name to preload the textures for.
 		*/
-		void preLoadTextures(const Ogre::String& resourceGroupName);
+        void preLoadSceneTextures(const Ogre::String& sceneName);
 
 		std::vector<Ogre::String> getAllPluginNames(void);
 
@@ -846,6 +846,17 @@ namespace NOWA
 			UNUSEDMASK = 1 << 0,
 			GAMEOBJECTMASK = 1 << 1
 		};
+
+    private:
+        struct TexturePreloadConfig
+        {
+            std::vector<Ogre::String> resourceGroups;
+            std::vector<Ogre::String> explicitTextures; // Specific textures to force-load
+            std::vector<Ogre::String> excludePatterns;  // e.g., "*_normal.png" for normals you don't need yet
+            bool preloadNormalMaps = true;
+            bool preloadMetalnessRoughness = true;
+            size_t maxConcurrentLoads = 8; // Parallel loading limit
+        };
 	private:
 		void update(Ogre::Real dt);
 		void updateFrameStats(Ogre::Real dt);
@@ -858,6 +869,10 @@ namespace NOWA
 		void loadHlmsDiskCache(void);
 
 		void saveHlmsDiskCache(void);
+
+		void preLoadTexturesImpl(const TexturePreloadConfig& config);
+
+		void preLoadTextures(const TexturePreloadConfig& config);
 
 		template <typename T, size_t MaxNumTextures>
 		void unloadTexturesFromUnusedMaterials(Ogre::HlmsDatablock *datablock, std::set<Ogre::TextureGpu*>& usedTex, std::set<Ogre::TextureGpu*>& unusedTex);

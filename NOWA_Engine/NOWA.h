@@ -27,6 +27,9 @@ extern "C"
 #include "OgreHlmsSamplerblock.h"
 #include "OgreArchiveManager.h"
 #include "OgreAtmosphereComponent.h"
+#include "Animation/OgreBone.h"
+#include "Animation/OgreSkeletonInstance.h"
+#include "Animation/OgreSkeletonAnimation.h"
 
 // core
 #include "main/Core.h"
@@ -83,6 +86,7 @@ extern "C"
 #include "gameobject/NavMeshComponent.h"
 #include "gameobject/NavMeshTerraComponent.h"
 #include "gameobject/PhysicsRagDollComponent.h"
+#include "gameobject/PhysicsRagDollComponentV2.h"
 #include "gameobject/DistributedComponent.h"
 #include "gameobject/InputDeviceComponent.h"
 #include "gameobject/SoundComponent.h"
@@ -159,6 +163,7 @@ namespace NOWA
 	typedef boost::shared_ptr<PhysicsBuoyancyComponent> PhysicsBuoyancyCompPtr;
 	typedef boost::shared_ptr<AttributesComponent> AttributesCompPtr;
 	typedef boost::shared_ptr<PhysicsRagDollComponent> PhysicsRagDollCompPtr;
+    typedef boost::shared_ptr<PhysicsRagDollComponentV2> PhysicsRagDollV2CompPtr;
 	typedef boost::shared_ptr<DistributedComponent> DistributedCompPtr;
 	typedef boost::shared_ptr<InputDeviceComponent> InputDeviceCompPtr;
 	typedef boost::shared_ptr<NavMeshComponent> NavMeshComponentCompPtr;

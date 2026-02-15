@@ -80,9 +80,9 @@ namespace NOWA
 		*/
 		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
-		void setSubEntityIndex(unsigned int subEntityIndex);
+		void setSubItemIndex(unsigned int subItemIndex);
 
-		unsigned int getSubEntityIndex(void) const;
+		unsigned int getSubItemIndex(void) const;
 		
 		void setUseColor(bool useColor);
 
@@ -153,7 +153,7 @@ namespace NOWA
 
 		void doNotCloneDataBlock(void);
 	public:
-		static const Ogre::String AttrSubEntityIndex(void) { return "Sub-Entity Index"; }
+		static const Ogre::String AttrSubItemIndex(void) { return "Sub-Item Index"; }
 		static const Ogre::String AttrUseColor(void) { return "Use Color"; }
 		static const Ogre::String AttrBackgroundColor(void) { return "Background Color"; }
 		static const Ogre::String AttrTextureCount(void) { return "Texture Count"; }
@@ -181,7 +181,7 @@ namespace NOWA
 
 		Ogre::UnlitBlendModes mapStringToBlendMode(const Ogre::String& strBlendMode);
 	protected:
-		Variant* subEntityIndex;
+		Variant* subItemIndex;
 		Variant* useColor;
 		Variant* backgroundColor;
 		Variant* textureCount;

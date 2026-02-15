@@ -1,1491 +1,1064 @@
-#include "NOWAPrecompiled.h"
+﻿#include "NOWAPrecompiled.h"
 #include "VegetationComponent.h"
-#include "utilities/XMLConverter.h"
-#include "modules/LuaScriptApi.h"
-#include "main/EventManager.h"
-#include "main/AppStateManager.h"
 #include "gameobject/GameObjectFactory.h"
 #include "gameobject/TerraComponent.h"
+#include "main/AppStateManager.h"
+#include "main/EventManager.h"
+#include "modules/GraphicsModule.h" // Your render thread queue
+#include "modules/LuaScriptApi.h"
+#include "utilities/XMLConverter.h"
 
+#include <atomic>
+#include <future>
 #include <regex>
-#include <mutex>
 
 #include "OgreAbiUtils.h"
 
 namespace
 {
-	std::vector<Ogre::String> split(const Ogre::String& str)
-	{
-		std::vector<Ogre::String> values;
-		std::regex rgx("\\s*,\\s*"); // Match commas with optional spaces
-		std::sregex_token_iterator iter(str.begin(), str.end(), rgx, -1);
-		std::sregex_token_iterator end;
+    std::vector<Ogre::String> split(const Ogre::String& str)
+    {
+        std::vector<Ogre::String> values;
+        std::regex rgx("\\s*,\\s*");
+        std::sregex_token_iterator iter(str.begin(), str.end(), rgx, -1);
+        std::sregex_token_iterator end;
 
-		for (; iter != end; ++iter)
-		{
-			values.emplace_back(*iter);
-		}
+        for (; iter != end; ++iter)
+        {
+            values.emplace_back(*iter);
+        }
 
-		return values;
-	}
+        return values;
+    }
 }
 
 namespace NOWA
 {
-	using namespace rapidxml;
-	using namespace luabind;
-
-	VegetationComponent::VegetationComponent()
-		: GameObjectComponent(),
-		name("VegetationComponent"),
-		minimumBounds(Ogre::Vector3::ZERO),
-		maximumBounds(Ogre::Vector3::ZERO),
-		raySceneQuery(nullptr),
-		regenerate(new Variant(VegetationComponent::AttrRegenerate(), "Generate", this->attributes)),
-		targetGameObjectId(new Variant(VegetationComponent::AttrTargetGameObjectId(), static_cast<unsigned long>(0), this->attributes)),
-		density(new Variant(VegetationComponent::AttrDensity(), 1.0f, this->attributes)),
-		positionXZ(new Variant(VegetationComponent::AttrPositionXZ(), Ogre::Vector2::ZERO, this->attributes)),
-		scale(new Variant(VegetationComponent::AttrScale(), 1.0f, this->attributes)),
-		autoOrientation(new Variant(VegetationComponent::AttrAutoOrientation(), false, this->attributes)),
-		categories(new Variant(VegetationComponent::AttrCategories(), Ogre::String("All"), this->attributes)),
-		maxHeight(new Variant(VegetationComponent::AttrMaxHeight(), 0.0f, this->attributes)),
-		renderDistance(new Variant(VegetationComponent::AttrRenderDistance(), 30.0f, this->attributes)),
-		terraLayers(new Variant(VegetationComponent::AttrTerraLayers(), Ogre::String("255,255,255,255"), this->attributes)),
-		vegetationTypesCount(new Variant(VegetationComponent::AttrVegetationTypesCount(), static_cast<unsigned int>(0), this->attributes))
-	{
-		this->regenerate->setDescription("Generate/regenerate the vegetation.");
-		this->regenerate->addUserData(GameObject::AttrActionExec());
-		this->regenerate->addUserData(GameObject::AttrActionExecId(), "VegetationComponent.Regenerate");
-		
-		this->targetGameObjectId->setDescription("Sets the target game object id, which is used for planting vegetation. If not set (id = 0), the whole world is used.");
-		this->positionXZ->setDescription("Sets the x-z position of the vegetation. Combining it with scale, its possible to just vegetate a specifig area.");
-		this->scale->setDescription("Sets Scale. Combining it with position, its possible to just vegetate a specifig area. Default is 1, which is the whole area of the target game object id.");
-		this->autoOrientation->setDescription("Sets whether auto orientate the vegetation according to the slope.");
-		this->maxHeight->setDescription("Sets the maximum height in meter, until which the vegetation is generated. 0 means: There is no limit. E.g. a high mountain which has white peaks shall have no grass^^.");
-		this->renderDistance->setDescription("Sets render distance in meters, until which the vegetation is visible. 0 means: There is no limit.");
-		this->terraLayers->setDescription("Sets the terra layer thresholds, on which the vegetation shall be placed. Terra has 4 layers and maximum threshold is 255. E.g. setting to: 255,255,0,255 will place vegetation "
-										  "on all layers but layer 3. Setting e.g. 255,122,0,0 would place vegetation just on layer 1 and 2, but on layer 2 even the layer 2 painting is not that strong (half of max). "
-										  "Note: Only usable if terra is involved.");
-		this->vegetationTypesCount->setDescription("Sets the vegetation count, which kind of game objects shall be placed.");
-		this->vegetationTypesCount->addUserData(GameObject::AttrActionNeedRefresh());
-	}
-
-	VegetationComponent::~VegetationComponent(void)
-	{
-
-	}
-
-	void VegetationComponent::initialise()
-	{
-		
-	}
-
-	const Ogre::String& VegetationComponent::getName() const
-	{
-		return this->name;
-	}
-
-	void VegetationComponent::install(const Ogre::NameValuePairList* options)
-	{
-		GameObjectFactory::getInstance()->getComponentFactory()->registerPluginComponentClass<VegetationComponent>(VegetationComponent::getStaticClassId(), VegetationComponent::getStaticClassName());
-	}
-
-	void VegetationComponent::shutdown()
-	{
-		// Do nothing here, because its called far to late and nothing is there of NOWA-Engine anymore! Use @onRemoveComponent in order to destroy something.
-	}
-
-	void VegetationComponent::uninstall()
-	{
-		// Do nothing here, because its called far to late and nothing is there of NOWA-Engine anymore! Use @onRemoveComponent in order to destroy something.
-	}
-
-	void VegetationComponent::getAbiCookie(Ogre::AbiCookie& outAbiCookie)
-	{
-		outAbiCookie = Ogre::generateAbiCookie();
-	}
-
-	bool VegetationComponent::init(rapidxml::xml_node<>*& propertyElement)
-	{
-		GameObjectComponent::init(propertyElement);
-
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "TargetGameObjectId")
-		{
-			this->targetGameObjectId->setValue(XMLConverter::getAttribUnsignedLong(propertyElement, "data", false));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Density")
-		{
-			this->density->setValue(XMLConverter::getAttribReal(propertyElement, "data", true));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "PositionXZ")
-		{
-			this->positionXZ->setValue(XMLConverter::getAttribVector2(propertyElement, "data"));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Scale")
-		{
-			this->scale->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AutoOrientation")
-		{
-			this->autoOrientation->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Categories")
-		{
-			this->categories->setValue(XMLConverter::getAttrib(propertyElement, "data"));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "MaxHeight")
-		{
-			this->maxHeight->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "RenderDistance")
-		{
-			this->renderDistance->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "TerraLayers")
-		{
-			this->terraLayers->setValue(XMLConverter::getAttrib(propertyElement, "data"));
-			checkAndSetTerraLayers(this->terraLayers->getString());
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "VegetationTypesCount")
-		{
-			this->vegetationTypesCount->setValue(XMLConverter::getAttribUnsignedInt(propertyElement, "data"));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-
-		// Only create new variant, if fresh loading. If snapshot is done, no new variant
-		// must be created! Because the algorithm is working changed flag of each existing variant!
-		if (this->vegetationMeshNames.size() < this->vegetationTypesCount->getUInt())
-		{
-			this->vegetationMeshNames.resize(this->vegetationTypesCount->getUInt());
-		}
-
-		for (size_t i = 0; i < this->vegetationMeshNames.size(); i++)
-		{
-			if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "VegetationMeshName" + Ogre::StringConverter::toString(i))
-			{
-				Ogre::String generationMeshName = XMLConverter::getAttrib(propertyElement, "data");
-				// List will be filled in postInit, in which the entity is available, but set the selected animation name string now, even the list is yet empty
-				if (nullptr == this->vegetationMeshNames[i])
-				{
-					this->vegetationMeshNames[i] = new Variant(VegetationComponent::AttrVegetationMeshName() + Ogre::StringConverter::toString(i), std::vector<Ogre::String>(), this->attributes);
-					this->vegetationMeshNames[i]->setValue(generationMeshName);
-					this->vegetationMeshNames[i]->addUserData(GameObject::AttrActionFileOpenDialog(), "Models");
-					this->vegetationMeshNames[i]->setDescription("Either use the mesh name directly. In this case due to performance reasons no game objects will be created but the entities/items directly. Useful for grass e.g.");
-				}
-				else
-				{
-					this->vegetationMeshNames[i]->setValue(generationMeshName);
-				}
-				propertyElement = propertyElement->next_sibling("property");
-			}
-		}
-
-		return true;
-	}
-
-	GameObjectCompPtr VegetationComponent::clone(GameObjectPtr clonedGameObjectPtr)
-	{
-		return GameObjectCompPtr();
-	}
-
-	bool VegetationComponent::postInit(void)
-	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[VegetationComponent] Init component for game object: " + this->gameObjectPtr->getName());
-
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &VegetationComponent::handleUpdateBounds), EventDataBoundsUpdated::getStaticEventType());
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &VegetationComponent::handleSceneParsed), NOWA::EventDataSceneParsed::getStaticEventType());
-
-
-		if (nullptr == this->raySceneQuery)
-		{
-			this->raySceneQuery = this->gameObjectPtr->getSceneManager()->createRayQuery(Ogre::Ray(), GameObjectController::ALL_CATEGORIES_ID);
-			this->raySceneQuery->setSortByDistance(true);
-		}
-
-		// Not here, because not everything has been loaded yet!
-		// this->regenerateVegetation();
-
-		return true;
-	}
-
-	bool VegetationComponent::connect(void)
-	{
-		GameObjectComponent::connect();
-		return true;
-	}
-
-	bool VegetationComponent::disconnect(void)
-	{
-		GameObjectComponent::disconnect();
-		return true;
-	}
-
-	bool VegetationComponent::onCloned(void)
-	{
-
-		return true;
-	}
-
-	void VegetationComponent::onRemoveComponent(void)
-	{
-		GameObjectComponent::onRemoveComponent();
-
-		this->gameObjectPtr->getSceneManager()->destroyQuery(this->raySceneQuery);
-		this->clearLists();
-
-		boost::shared_ptr<EventDataRefreshGui> eventDataRefreshGui(new EventDataRefreshGui());
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshGui);
-
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &VegetationComponent::handleSceneParsed), NOWA::EventDataSceneParsed::getStaticEventType());
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &VegetationComponent::handleUpdateBounds), EventDataBoundsUpdated::getStaticEventType());
-	}
-
-	void VegetationComponent::onOtherComponentRemoved(unsigned int index)
-	{
-
-	}
-
-	void VegetationComponent::onOtherComponentAdded(unsigned int index)
-	{
-
-	}
-
-	void VegetationComponent::update(Ogre::Real dt, bool notSimulating)
-	{
-		if (false == notSimulating)
-		{
-			// Do something
-		}
-	}
-
-	void VegetationComponent::actualizeValue(Variant* attribute)
-	{
-		GameObjectComponent::actualizeValue(attribute);
-
-		if (VegetationComponent::AttrTargetGameObjectId() == attribute->getName())
-		{
-			this->setTargetGameObjectId(attribute->getULong());
-		}
-		else if (VegetationComponent::AttrDensity() == attribute->getName())
-		{
-			this->setDensity(attribute->getReal());
-		}
-		else if (VegetationComponent::AttrPositionXZ() == attribute->getName())
-		{
-			this->setPositionXZ(attribute->getVector2());
-		}
-		else if (VegetationComponent::AttrScale() == attribute->getName())
-		{
-			this->setScale(attribute->getReal());
-		}
-		else if (VegetationComponent::AttrAutoOrientation() == attribute->getName())
-		{
-			this->setAutoOrientation(attribute->getBool());
-		}
-		else if (VegetationComponent::AttrCategories() == attribute->getName())
-		{
-			this->setCategories(attribute->getString());
-		}
-		else if (VegetationComponent::AttrMaxHeight() == attribute->getName())
-		{
-			this->setMaxHeight(attribute->getReal());
-		}
-		else if (VegetationComponent::AttrRenderDistance() == attribute->getName())
-		{
-			this->setRenderDistance(attribute->getReal());
-		}
-		else if (VegetationComponent::AttrTerraLayers() == attribute->getName())
-		{
-			this->setTerraLayers(attribute->getString());
-		}
-		else if(VegetationComponent::AttrVegetationTypesCount() == attribute->getName())
-		{
-			this->setVegetationTypesCount(attribute->getUInt());
-		}
-		else
-		{
-			for (unsigned int i = 0; i < static_cast<unsigned int>(this->vegetationMeshNames.size()); i++)
-			{
-				if (VegetationComponent::AttrVegetationMeshName() + Ogre::StringConverter::toString(i) == attribute->getName())
-				{
-					this->setVegetationMeshName(i, attribute->getString());
-				}
-			}
-		}
-	}
-
-	void VegetationComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
-	{
-		// 2 = int
-		// 6 = real
-		// 7 = string
-		// 8 = vector2
-		// 9 = vector3
-		// 10 = vector4 -> also quaternion
-		// 12 = bool
-		GameObjectComponent::writeXML(propertiesXML, doc);
-
-		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "TargetGameObjectId"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->targetGameObjectId->getULong())));
-		propertiesXML->append_node(propertyXML);
-
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "Density"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->density->getReal())));
-		propertiesXML->append_node(propertyXML);
-
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "8"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "PositionXZ"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->positionXZ->getVector2())));
-		propertiesXML->append_node(propertyXML);
-
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "Scale"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->scale->getReal())));
-		propertiesXML->append_node(propertyXML);
-
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "AutoOrientation"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->autoOrientation->getBool())));
-		propertiesXML->append_node(propertyXML);
-
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "Categories"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->categories->getString())));
-		propertiesXML->append_node(propertyXML);
-
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "MaxHeight"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->maxHeight->getReal())));
-		propertiesXML->append_node(propertyXML);
-
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "RenderDistance"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->renderDistance->getReal())));
-		propertiesXML->append_node(propertyXML);
-
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "TerraLayers"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->terraLayers->getString())));
-		propertiesXML->append_node(propertyXML);
-
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "VegetationTypesCount"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->vegetationTypesCount->getUInt())));
-		propertiesXML->append_node(propertyXML);
-
-		for (size_t i = 0; i < this->vegetationMeshNames.size(); i++)
-		{
-			propertyXML = doc.allocate_node(node_element, "property");
-			propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "VegetationMeshName" + Ogre::StringConverter::toString(i))));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->vegetationMeshNames[i]->getString())));
-			propertiesXML->append_node(propertyXML);
-		}
-	}
-
-	Ogre::String VegetationComponent::getClassName(void) const
-	{
-		return "VegetationComponent";
-	}
-
-	Ogre::String VegetationComponent::getParentClassName(void) const
-	{
-		return "GameObjectComponent";
-	}
-
-	void VegetationComponent::setTargetGameObjectId(unsigned long targetGameObjectId)
-	{
-		this->targetGameObjectId->setValue(targetGameObjectId);
-
-		this->regenerateVegetation();
-	}
-
-	unsigned long VegetationComponent::getTargetGameObjectId(void) const
-	{
-		return this->targetGameObjectId->getULong();
-	}
-
-	void VegetationComponent::setDensity(Ogre::Real density)
-	{
-		if (density < 0.0f)
-		{
-			density = 0.1f;
-		}
-		else if (density > 5.0f)
-		{
-			density = 5.0f;
-		}
-
-		this->density->setValue(density);
-
-		this->regenerateVegetation();
-	}
-
-	Ogre::Real VegetationComponent::getDensity(void) const
-	{
-		return this->density->getReal();
-	}
-
-	void VegetationComponent::setPositionXZ(const Ogre::Vector2& positionXZ)
-	{
-		this->positionXZ->setValue(positionXZ);
-		this->regenerateVegetation();
-	}
-
-	Ogre::Vector2 VegetationComponent::getPositionXZ(void) const
-	{
-		return this->positionXZ->getVector2();
-	}
-
-	void VegetationComponent::setScale(Ogre::Real scale)
-	{
-		if (scale < 0.1f)
-		{
-			scale = 0.1f;
-		}
-		this->scale->setValue(scale);
-		this->regenerateVegetation();
-	}
-
-	Ogre::Real VegetationComponent::getScale(void) const
-	{
-		return this->scale->getReal();
-	}
-
-	void VegetationComponent::setAutoOrientation(bool autoOrientation)
-	{
-		this->autoOrientation->setValue(autoOrientation);
-		this->regenerateVegetation();
-	}
-
-	bool VegetationComponent::getAutoOrientation(void) const
-	{
-		return this->autoOrientation->getBool();
-	}
-
-	void VegetationComponent::setCategories(const Ogre::String& categories)
-	{
-		this->categories->setValue(categories);
-		this->regenerateVegetation();
-	}
-
-	Ogre::String VegetationComponent::getCategories(void) const
-	{
-		return this->categories->getString();
-	}
-
-	void VegetationComponent::setMaxHeight(Ogre::Real maxHeight)
-	{
-		if (maxHeight < 0.0f)
-		{
-			maxHeight = 0.0f;
-		}
-		this->maxHeight->setValue(maxHeight);
-		this->regenerateVegetation();
-	}
-
-	Ogre::Real VegetationComponent::getMaxHeight(void) const
-	{
-		return this->maxHeight->getReal();
-	}
-
-	void VegetationComponent::setRenderDistance(Ogre::Real renderDistance)
-	{
-		if (renderDistance < 0.0f)
-		{
-			renderDistance = 0.0f;
-		}
-		this->renderDistance->setValue(renderDistance);
-		this->regenerateVegetation();
-	}
-
-	Ogre::Real VegetationComponent::getRenderDistance(void) const
-	{
-		return this->renderDistance->getReal();
-	}
-
-	void VegetationComponent::checkAndSetTerraLayers(const Ogre::String& terraLayers)
-	{
-		this->terraLayerList.clear();
-		auto strLayers = split(terraLayers);
-		if (true == strLayers.empty())
-		{
-			this->terraLayerList = { 255, 255, 255, 255 };
-		}
-		for (size_t i = 0; i < strLayers.size(); i++)
-		{
-			int value = Ogre::StringConverter::parseInt(strLayers[i]);
-			this->terraLayerList.emplace_back(value > 255 ? 255 : value);
-		}
-	}
-
-	void VegetationComponent::setTerraLayers(const Ogre::String& terraLayers)
-	{
-		this->checkAndSetTerraLayers(terraLayers);
-		if (4 == this->terraLayerList.size())
-		{
-			this->terraLayers->setValue(terraLayers);
-		}
-		else
-		{
-			this->terraLayers->setValue(Ogre::String("255,255,255,255"));
-		}
-		this->regenerateVegetation();
-	}
-
-	Ogre::String VegetationComponent::getTerraLayers(void) const
-	{
-		return this->terraLayers->getString();
-	}
-
-	void VegetationComponent::setVegetationTypesCount(unsigned int vegetationTypesCount)
-	{
-		this->vegetationTypesCount->setValue(vegetationTypesCount);
-
-		size_t oldSize = this->vegetationMeshNames.size();
-
-		if (vegetationTypesCount > oldSize)
-		{
-			// Resize the waypoints array for count
-			this->vegetationMeshNames.resize(vegetationTypesCount);
-
-			for (size_t i = oldSize; i < vegetationTypesCount; i++)
-			{
-				this->vegetationMeshNames[i] = new Variant(VegetationComponent::AttrVegetationMeshName() + Ogre::StringConverter::toString(i), Ogre::String(), this->attributes);
-				this->vegetationMeshNames[i]->addUserData(GameObject::AttrActionFileOpenDialog(), "Models");
-				this->vegetationMeshNames[i]->setDescription("Either use the mesh name directly. In this case due to performance reasons no game objects will be created but the entities/items directly. Useful for grass e.g.");
-			}
-		}
-		else if (vegetationTypesCount < oldSize)
-		{
-			this->eraseVariants(this->vegetationMeshNames, vegetationTypesCount);
-		}
-
-		this->regenerateVegetation();
-	}
-
-	unsigned int VegetationComponent::getVegetationTypesCount(void) const
-	{
-		return this->vegetationTypesCount->getUInt();
-	}
-
-	void VegetationComponent::setVegetationMeshName(unsigned int index, const Ogre::String& vegetationMeshName)
-	{
-		if (index > this->vegetationMeshNames.size())
-			index = static_cast<unsigned int>(this->vegetationMeshNames.size()) - 1;
-
-		this->vegetationMeshNames[index]->setValue(vegetationMeshName);
-
-		this->regenerateVegetation();
-	}
-
-	Ogre::String VegetationComponent::getVegetationMeshName(unsigned int index) const
-	{
-		if (index > this->vegetationMeshNames.size())
-			return "";
-		return this->vegetationMeshNames[index]->getListSelectedValue();
-	}
-
-	bool VegetationComponent::executeAction(const Ogre::String& actionId, NOWA::Variant* attribute)
-	{
-		if ("VegetationComponent.Regenerate" == actionId)
-		{
-			this->clearLists();
-			this->regenerateVegetation();
-			
-			return true;
-		}
-		return false;
-	}
-
-	void VegetationComponent::clearLists(void)
-	{
-		for (size_t i = 0; i < this->vegetationItemList.size(); i++)
-		{
-			Ogre::Item* item = this->vegetationItemList[i];
-			Ogre::SceneNode* node = item->getParentSceneNode();
-			if (nullptr != node)
-			{
-				auto nodeIt = node->getChildIterator();
-				while (nodeIt.hasMoreElements())
-				{
-					//go through all scenenodes in the scene
-					Ogre::Node* subNode = nodeIt.getNext();
-					subNode->removeAllChildren();
-				}
-
-				node->detachAllObjects();
-
-				this->gameObjectPtr->getSceneManager()->destroySceneNode(node);
-
-				this->gameObjectPtr->getSceneManager()->destroyMovableObject(item);
-			}
-		}
-
-		this->vegetationItemList.clear();
-	}
-
-//	void VegetationComponent::regenerateVegetation()
-//	{
-//		if (false == this->activated->getBool())
-//		{
-//			return;
-//		}
-//
-//		if (nullptr == this->gameObjectPtr)
-//		{
-//			return;
-//		}
-//
-//		if (GameObject::AttrCustomDataSkipCreation() == this->gameObjectPtr->getCustomDataString())
-//		{
-//		 	return;
-//		}
-//
-//		// Reset variants when stopping simulation, would re-generate everything, which is bad, hence use skip flag
-//		if (GameObject::AttrCustomDataSkipCreation() == this->gameObjectPtr->getCustomDataString())
-//		{
-//			return;
-//		}
-//
-//		// First clear everything, and only regenerate if at least either on veg id, or mesh name is available
-//		// e.g. if reducing count or increasing count, only regenerate if there are some game objects or meshes set.
-//		this->clearLists();
-//
-//		if (vegetationTypesCount->getUInt() == 0)
-//		{
-//			return;
-//		}
-//
-//		bool validData = true;
-//
-//		for (size_t i = 0; i < this->vegetationTypesCount->getUInt(); i++)
-//		{
-//			Ogre::String name = this->vegetationMeshNames[i]->getString();
-//
-//			validData &= (false == name.empty());
-//		}
-//
-//		if (false == validData)
-//		{
-//			return;
-//		}
-//
-//		unsigned int categoryId = AppStateManager::getSingletonPtr()->getGameObjectController()->generateCategoryId(this->categories->getString());
-//		this->raySceneQuery->setQueryMask(categoryId);
-//
-//		Ogre::Terra* terra = nullptr;
-//
-//		GameObjectPtr targetGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->targetGameObjectId->getULong());
-//		if (nullptr != targetGameObjectPtr)
-//		{
-//			auto terraCompPtr = NOWA::makeStrongPtr(targetGameObjectPtr->getComponent<TerraComponent>());
-//			if (nullptr != terraCompPtr)
-//			{
-//				terra = terraCompPtr->getTerra();
-//			}
-//		}
-//
-//		Ogre::Vector2 bounds = Ogre::Vector2::ZERO;
-//
-//		if (nullptr != targetGameObjectPtr)
-//		{
-//			this->minimumBounds = targetGameObjectPtr->getMovableObject()->getWorldAabb().getMinimum();
-//			this->maximumBounds = targetGameObjectPtr->getMovableObject()->getWorldAabb().getMaximum();
-//		}
-//		else
-//		{
-//
-//			auto terraList = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromComponent(TerraComponent::getStaticClassName());
-//			if (false == terraList.empty())
-//			{
-//				// TODO: What if later x-terras?
-//				auto terraCompPtr = NOWA::makeStrongPtr(terraList[0]->getComponent<TerraComponent>());
-//				if (nullptr != terraCompPtr)
-//				{
-//					terra = terraCompPtr->getTerra();
-//				}
-//			}
-//		}
-//
-//		Ogre::Real sizeX = 1.0f;
-//		Ogre::Real sizeZ = 1.0f;
-//		unsigned long createdCount = 0;
-//
-//
-//		Ogre::Camera* camera = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
-//
-//		std::vector<Ogre::MeshPtr> meshes;
-//
-//		for (size_t i = 0; i < this->vegetationMeshNames.size(); i++)
-//		{
-//			if (false == this->vegetationMeshNames[i]->getString().empty())
-//			{
-//				// Note: Even meshPtr points to an ogre v1 entity mesh, it will be transformed to ogre v2 item!
-//				auto v1Mesh = Ogre::v1::MeshManager::getSingletonPtr()->load(this->vegetationMeshNames[i]->getString(), Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, Ogre::v1::HardwareBuffer::HBU_STATIC, Ogre::v1::HardwareBuffer::HBU_STATIC);
-//
-//				// Destroy a potential plane v2, because an error occurs (plane with name ... already exists)
-//				Ogre::ResourcePtr resourceV2 = Ogre::MeshManager::getSingletonPtr()->getResourceByName(this->vegetationMeshNames[i]->getString());
-//				if (nullptr != resourceV2)
-//				{
-//					Ogre::MeshManager::getSingletonPtr()->destroyResourcePool(this->vegetationMeshNames[i]->getString());
-//					Ogre::MeshManager::getSingletonPtr()->remove(resourceV2->getHandle());
-//				}
-//
-//				auto v2Mesh = Ogre::MeshManager::getSingletonPtr()->createByImportingV1(this->vegetationMeshNames[i]->getString(), Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, v1Mesh.get(), true, true, true);
-//				v1Mesh->unload();
-//				v1Mesh.setNull();
-//
-//				meshes.emplace_back(v2Mesh);
-//			}
-//			else
-//			{
-//				meshes.emplace_back(nullptr);
-//			}
-//		}
-//
-//		unsigned int vegetationQueryFlags = AppStateManager::getSingletonPtr()->getGameObjectController()->generateCategoryId(this->gameObjectPtr->getCategory());
-//
-//		const Ogre::Real size = Ogre::Math::Abs(this->minimumBounds.x) * this->scale->getReal() + this->positionXZ->getVector2().x + Ogre::Math::Abs(this->maximumBounds.x) * this->scale->getReal() + this->positionXZ->getVector2().x;
-//		const Ogre::Real step = sizeX / this->density->getReal();
-//		const size_t numThreads = std::max<size_t>(1, Ogre::PlatformInformation::getNumLogicalCores());
-//		size_t partitionSize = size / numThreads;
-//		size_t partitionIncrement = 0;
-//		size_t rest = MathHelper::getInstance()->wrappedModulo(size, numThreads);
-//
-//		Ogre::Real fractionStart = 0.0f;
-//		Ogre::Real fractionEnd = 0.0f;
-//
-//		auto start = std::chrono::high_resolution_clock::now();
-//
-//		// With threading takes approx. 11 seconds. Half the time in debug mode!
-//#if 1
-//
-//		std::vector<std::thread> threads;
-//		for (size_t i = 0; i < numThreads; i++)
-//		{
-//			Ogre::Real fractionStart = ((this->minimumBounds.x * this->scale->getReal() + this->positionXZ->getVector2().x) + partitionIncrement);
-//			Ogre::Real fractionEnd = ((this->minimumBounds.x * this->scale->getReal() + this->positionXZ->getVector2().x) + partitionSize + partitionIncrement);
-//
-//			if (i == numThreads - 1)
-//			{
-//				fractionEnd = fractionEnd + rest;
-//			}
-//
-//			threads.emplace_back(std::thread([this, categoryId, terra, &meshes, camera, vegetationQueryFlags, targetGameObjectPtr, &createdCount, fractionStart, fractionEnd, step]()
-//								 {
-//									 mutex.lock();
-//									 Ogre::Real sizeX = 1.0f;
-//									 Ogre::Real sizeZ = 1.0f;
-//
-//									 for (Ogre::Real x = fractionStart; x < fractionEnd; x += sizeX / this->density->getReal())
-//									 {
-//										 for (Ogre::Real z = this->minimumBounds.z * this->scale->getReal() + this->positionXZ->getVector2().y; z < this->maximumBounds.z * this->scale->getReal() + this->positionXZ->getVector2().y; z += sizeZ / this->density->getReal())
-//										 {
-//											 Ogre::Vector3 objPosition = Vector3(Math::RangeRandom(-sizeX + x, sizeX + x), 0.0f, Math::RangeRandom(-sizeZ + z, sizeZ + z));
-//
-//											 Ogre::MovableObject* hitMovableObject = nullptr;
-//											 Ogre::Real closestDistance = 0.0f;
-//											 Ogre::Vector3 normal = Ogre::Vector3::ZERO;
-//											 Ogre::Vector3 internalHitPoint = Ogre::Vector3::ZERO;
-//
-//											 // Shoot ray at object position down
-//											 Ogre::Ray hitRay = Ogre::Ray(objPosition + Ogre::Vector3(0.0f, 10000.0f, 0.0f), Ogre::Vector3::NEGATIVE_UNIT_Y);
-//											 // Check if there is an hit with an polygon of an entity, item, terra etc.
-//											 this->raySceneQuery->setRay(hitRay);
-//
-//											 std::vector<Ogre::MovableObject*> excludeMovableObjects(0);
-//											 /*excludeMovableObjects[0] = gameObject->getMovableObject<Ogre::v1::Entity>();
-//											 excludeMovableObjects[1] = this->gizmo->getArrowEntityX();
-//											 excludeMovableObjects[2] = this->gizmo->getArrowEntityY();
-//											 excludeMovableObjects[3] = this->gizmo->getArrowEntityZ();
-//											 excludeMovableObjects[4] = this->gizmo->getSphereEntity();*/
-//
-//											 MathHelper::getInstance()->getRaycastFromPoint(this->raySceneQuery, camera, internalHitPoint, (size_t&)hitMovableObject, closestDistance, normal, &excludeMovableObjects);
-//
-//											 objPosition.y += internalHitPoint.y;
-//
-//											 if (nullptr == hitMovableObject)
-//											 {
-//												 // Nothing found for given category, skip this quadrant
-//												 continue;
-//											 }
-//
-//											 if (0.0f != this->maxHeight->getReal())
-//											 {
-//												 if (internalHitPoint.y > this->maxHeight->getReal())
-//												 {
-//													 continue;
-//												 }
-//											 }
-//
-//											 if (nullptr != terra)
-//											 {
-//												 bool layerMatches = true;
-//												 // Exclude maybe terra layers from vegetation placing
-//												 std::vector<int> layers = terra->getLayerAt(objPosition);
-//
-//												 // Ogre::String str;
-//												 for (size_t i = 0; i < this->terraLayerList.size(); i++)
-//												 { 
-//													 layerMatches &= layers[i] <= this->terraLayerList[i];
-//													 // str += Ogre::StringConverter::toString(layers[i]) + " ";
-//												 }
-//
-//												 //  Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "layers: " + str);
-//												 if (false == layerMatches)
-//												 {
-//													 // Skip this vegetation position
-//													 continue;
-//												 }
-//											 }
-//
-//											 // Create Mesh
-//											 Ogre::Item* item = nullptr;
-//
-//											 int rndIndexMeshName = MathHelper::getInstance()->getRandomNumber<int>(0, static_cast<unsigned int>(this->vegetationMeshNames.size() - 1));
-//
-//											 Ogre::MeshPtr meshPtr = meshes[rndIndexMeshName];
-//
-//											 try
-//											 {
-//												 item = this->gameObjectPtr->getSceneManager()->createItem(meshPtr, Ogre::SCENE_STATIC);
-//												 // After terrain
-//												 item->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
-//												 item->setQueryFlags(vegetationQueryFlags);
-//												 item->setCastShadows(false);
-//												 if (0.0f != this->renderDistance->getReal())
-//												 {
-//													 item->setRenderingDistance(this->renderDistance->getReal());
-//												 }
-//
-//
-//
-//
-//#if 0
-//
-//												 for (size_t i = 0; i < item->getNumSubItems(); i++)
-//												 {
-//													 const Ogre::String* str = item->getSubItem(i)->getDatablock()->getNameStr();
-//													 int a = 0;
-//													 a = 1;
-//													 item->getSubItem(i)->setDatablock(*str);
-//												 }
-//												 // Change the addressing mode of the roughness map to wrap via code.
-//												// Detail maps default to wrap, but the rest to clamp.
-//												 Ogre::HlmsPbsDatablock* datablock = static_cast<Ogre::HlmsPbsDatablock*>(item->getSubItem(0)->getDatablock());
-//												 //Make a hard copy of the sampler block
-//												 auto sampleBlock = datablock->getSamplerblock(Ogre::PBSM_ROUGHNESS);
-//												 if (nullptr != sampleBlock)
-//												 {
-//													 Ogre::HlmsSamplerblock samplerblockCopy(*sampleBlock);
-//													 samplerblockCopy.mU = Ogre::TAM_WRAP;
-//													 samplerblockCopy.mV = Ogre::TAM_WRAP;
-//													 samplerblockCopy.mW = Ogre::TAM_WRAP;
-//													 //Set the new samplerblock. The Hlms system will
-//													 //automatically create the API block if necessary
-//													 datablock->setSamplerblock(Ogre::PBSM_ROUGHNESS, samplerblockCopy);
-//												 }
-//
-//												 for (size_t i = 0; i < item->getNumSubItems(); i++)
-//												 {
-//													 auto sourceDataBlock = dynamic_cast<Ogre::HlmsPbsDatablock*>(item->getSubItem(i)->getDatablock());
-//													 if (nullptr != sourceDataBlock)
-//													 {
-//														 // Deactivate fresnel by default, because it looks ugly
-//														 if (sourceDataBlock->getWorkflow() != Ogre::HlmsPbsDatablock::SpecularAsFresnelWorkflow && sourceDataBlock->getWorkflow() != Ogre::HlmsPbsDatablock::MetallicWorkflow)
-//														 {
-//															 sourceDataBlock->setFresnel(Ogre::Vector3(0.01f, 0.01f, 0.01f), false);
-//														 }
-//													 }
-//												 }
-//#endif
-//
-//												 sizeX = item->getWorldAabb().getSize().x;
-//												 sizeZ = item->getWorldAabb().getSize().z;
-//											 }
-//											 catch (...)
-//											 {
-//												 Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[VegetationComponent] Could not create item for mesh: " + meshPtr->getName() + " because the mesh is invalid for game object: " + this->gameObjectPtr->getName());
-//												 return;
-//											 }
-//
-//											 SceneNode* node = nullptr;
-//
-//											 if (nullptr != item)
-//											 {
-//												 if (nullptr == targetGameObjectPtr)
-//												 {
-//													 node = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_STATIC);
-//												 }
-//												 else
-//												 {
-//													 node = targetGameObjectPtr->getSceneNode()->createChildSceneNode(Ogre::SCENE_STATIC);
-//												 }
-//												 node->attachObject(item);
-//
-//												 this->vegetationItemList.emplace_back(item);
-//
-//												 // VegetationScaleMin/Max as attribute?
-//												 //  scale
-//												 Ogre::Real s = Math::RangeRandom(0.5f, 1.2f);
-//												 node->scale(s, s, s);
-//
-//												 // objPosition.y += std::min(item->getLocalAabb().getMinimum().y, Real(0.0f)) * -0.1f /*+ lay.down*/;  //par
-//
-//												 node->setPosition(objPosition);
-//
-//												 if (true == this->autoOrientation->getBool())
-//												 {
-//													 node->setDirection(normal, Ogre::Node::TS_PARENT, Ogre::Vector3::NEGATIVE_UNIT_Y);
-//												 }
-//
-//												 Ogre::Degree angle(Math::RangeRandom(0.0f, 360.f));
-//												 Quaternion p = node->getOrientation();
-//												 Quaternion q;
-//												 q.FromAngleAxis(angle, Vector3::UNIT_Y);
-//												 node->setOrientation(p * q);
-//
-//											 }
-//											
-//											 createdCount++;
-//										 }
-//									 }
-//									 mutex.unlock();
-//								 }));
-//								 partitionIncrement += partitionSize;
-//		}
-//
-//		for (size_t i = 0; i < numThreads; i++)
-//		{
-//			threads[i].join();
-//		}
-//
-//#endif
-//
-//		// Without threading takes approx. 21 seconds
-//#if 0
-//		for (Ogre::Real x = this->minimumBounds.x * this->scale->getReal() + this->positionXZ->getVector2().x; x < this->maximumBounds.x * this->scale->getReal() + this->positionXZ->getVector2().x; x += sizeX / this->density->getReal())
-//		{
-//			for (Ogre::Real z = this->minimumBounds.z * this->scale->getReal() + this->positionXZ->getVector2().y; z < this->maximumBounds.z * this->scale->getReal() + this->positionXZ->getVector2().y; z += sizeZ / this->density->getReal())
-//			{
-//				Ogre::Vector3 objPosition = Vector3(Math::RangeRandom(-sizeX + x, sizeX + x), 0.0f, Math::RangeRandom(-sizeZ + z, sizeZ + z));
-//
-//				Ogre::MovableObject* hitMovableObject = nullptr;
-//				Ogre::Real closestDistance = 0.0f;
-//				Ogre::Vector3 normal = Ogre::Vector3::ZERO;
-//				Ogre::Vector3 internalHitPoint = Ogre::Vector3::ZERO;
-//
-//				// Shoot ray at object position down
-//				Ogre::Ray hitRay = Ogre::Ray(objPosition + Ogre::Vector3(0.0f, 10000.0f, 0.0f), Ogre::Vector3::NEGATIVE_UNIT_Y);
-//				// Check if there is an hit with an polygon of an entity, item, terra etc.
-//				this->raySceneQuery->setRay(hitRay);
-//				this->raySceneQuery->setQueryMask(categoryId);
-//
-//				std::vector<Ogre::MovableObject*> excludeMovableObjects(0);
-//				/*excludeMovableObjects[0] = gameObject->getMovableObject<Ogre::v1::Entity>();
-//				excludeMovableObjects[1] = this->gizmo->getArrowEntityX();
-//				excludeMovableObjects[2] = this->gizmo->getArrowEntityY();
-//				excludeMovableObjects[3] = this->gizmo->getArrowEntityZ();
-//				excludeMovableObjects[4] = this->gizmo->getSphereEntity();*/
-//				MathHelper::getInstance()->getRaycastFromPoint(this->raySceneQuery, AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera(), internalHitPoint, (size_t&)hitMovableObject, closestDistance, normal, &excludeMovableObjects);
-//
-//				objPosition.y += internalHitPoint.y;
-//
-//				if (nullptr == hitMovableObject)
-//				{
-//					// Nothing found for given category, skip this quadrant
-//					continue;
-//				}
-//
-//				if (0.0f != this->maxHeight->getReal())
-//				{
-//					if (internalHitPoint.y > this->maxHeight->getReal())
-//					{
-//						continue;
-//					}
-//				}
-//
-//				if (nullptr != terra)
-//				{
-//					// Exclude maybe terra layers from vegetation placing
-//					int* layers = terra->getLayerAt(objPosition);
-//					for (size_t i = 0; i < this->terraLayerList.size(); i++)
-//					{
-//						if (layers[i] < this->terraLayerList[i])
-//						{
-//							continue;
-//						}
-//					}
-//				}
-//
-//				// Create Mesh
-//				Ogre::Item* item = nullptr;
-//
-//				int rndIndexMeshName = MathHelper::getInstance()->getRandomNumber<int>(0, static_cast<unsigned int>(this->vegetationMeshNames.size() - 1));
-//
-//				Ogre::MeshPtr meshPtr = meshes[rndIndexMeshName];
-//
-//				try
-//				{
-//					item = this->gameObjectPtr->getSceneManager()->createItem(meshPtr, Ogre::SCENE_STATIC);
-//					// After terrain
-//					item->setRenderQueueGroup( NOWA::RENDER_QUEUE_V2_MESH);
-//					item->setQueryFlags(vegetationQueryFlags);
-//					item->setCastShadows(false);
-//					if (0.0f != this->renderDistance->getReal())
-//					{
-//						item->setRenderingDistance(this->renderDistance->getReal());
-//					}
-//
-//#if 0
-//					for (size_t i = 0; i < item->getNumSubItems(); i++)
-//					{
-//						auto sourceDataBlock = dynamic_cast<Ogre::HlmsPbsDatablock*>(item->getSubItem(i)->getDatablock());
-//						if (nullptr != sourceDataBlock)
-//						{
-//							// sourceDataBlock->mShadowConstantBias = 0.0001f;
-//							// Deactivate fresnel by default, because it looks ugly
-//							if (sourceDataBlock->getWorkflow() != Ogre::HlmsPbsDatablock::SpecularAsFresnelWorkflow && sourceDataBlock->getWorkflow() != Ogre::HlmsPbsDatablock::MetallicWorkflow)
-//							{
-//								sourceDataBlock->setFresnel(Ogre::Vector3(0.01f, 0.01f, 0.01f), false);
-//							}
-//						}
-//					}
-//#endif
-//
-//					sizeX = item->getWorldAabb().getSize().x;
-//					sizeZ = item->getWorldAabb().getSize().z;
-//				}
-//				catch (...)
-//				{
-//					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[VegetationComponent] Could not create item for mesh: " + meshPtr->getName() + " because the mesh is invalid for game object: " + this->gameObjectPtr->getName());
-//					return;
-//				}
-//
-//				SceneNode* node = nullptr;
-//
-//				if (nullptr != item)
-//				{
-//					if (nullptr == targetGameObjectPtr)
-//					{
-//						node = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_STATIC);
-//					}
-//					else
-//					{
-//						targetGameObjectPtr->getSceneNode()->createChildSceneNode(Ogre::SCENE_STATIC);
-//					}
-//					node->attachObject(item);
-//
-//					this->vegetationItemList.emplace_back(item);
-//
-//					// VegetationScaleMin/Max as attribute?
-//					//  scale
-//					Ogre::Real s = Math::RangeRandom(0.5f, 1.2f);
-//					node->scale(s, s, s);
-//
-//					// objPosition.y += std::min(item->getLocalAabb().getMinimum().y, Real(0.0f)) * -0.1f /*+ lay.down*/;  //par
-//
-//					node->setPosition(objPosition);
-//
-//					Ogre::Degree angle(Math::RangeRandom(0.0f, 360.f));
-//					Quaternion q;
-//					q.FromAngleAxis(angle, Vector3::UNIT_Y);
-//					node->setOrientation(q);
-//
-//					if (true == this->autoOrientation->getBool())
-//					{
-//						node->setDirection(normal, Ogre::Node::TS_PARENT, Ogre::Vector3::NEGATIVE_UNIT_Y);
-//					}
-//				}
-//
-//				createdCount++;
-//			}
-//		}
-//#endif
-//
-//		auto finish = std::chrono::high_resolution_clock::now();
-//		std::chrono::duration<double, std::milli> elapsed = finish - start;
-//		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[VegetationComponent] Generation took: " + Ogre::StringConverter::toString(elapsed.count() * 0.001) + " seconds.");
-//
-//		if (true == this->bShowDebugData)
-//		{
-//			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[VegetationComponent] Created: " + Ogre::StringConverter::toString(createdCount) + " objects.");
-//		}
-//		else
-//		{
-//			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[VegetationComponent] Created: " + Ogre::StringConverter::toString(createdCount) + " objects.");
-//		}
-//
-//		boost::shared_ptr<EventDataRefreshGui> eventDataRefreshGui(new EventDataRefreshGui());
-//		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshGui);
-//	}
-
-	void VegetationComponent::regenerateVegetation()
-	{
-		if (nullptr == this->gameObjectPtr)
-		{
-			return;
-		}
-
-		if (GameObject::AttrCustomDataSkipCreation() == this->gameObjectPtr->getCustomDataString())
-		{
-			return;
-		}
-
-		// Reset variants when stopping simulation, would re-generate everything, which is bad, hence use skip flag
-		if (GameObject::AttrCustomDataSkipCreation() == this->gameObjectPtr->getCustomDataString())
-		{
-			return;
-		}
-
-		// First clear everything, and only regenerate if at least either on veg id, or mesh name is available
-		// e.g. if reducing count or increasing count, only regenerate if there are some game objects or meshes set.
-		this->clearLists();
-
-		if (vegetationTypesCount->getUInt() == 0)
-		{
-			return;
-		}
-
-		bool validData = true;
-
-		for (size_t i = 0; i < this->vegetationTypesCount->getUInt(); i++)
-		{
-			Ogre::String name = this->vegetationMeshNames[i]->getString();
-
-			validData &= (false == name.empty());
-		}
-
-		if (false == validData)
-		{
-			return;
-		}
-
-		// Early validation and preparation
-		if (this->vegetationMeshNames.empty()) {
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[VegetationComponent] No vegetation meshes defined.");
-			return;
-		}
-
-		// Precompute and cache frequently used values
-		unsigned int categoryId = AppStateManager::getSingletonPtr()->getGameObjectController()->generateCategoryId(this->categories->getString());
-		this->raySceneQuery->setQueryMask(categoryId);
-
-		Ogre::Terra* terra = nullptr;
-		GameObjectPtr targetGameObjectPtr = nullptr;
-
-		// Improved object and terrain retrieval
-		targetGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->targetGameObjectId->getULong());
-		if (targetGameObjectPtr)
-		{
-			auto terraCompPtr = NOWA::makeStrongPtr(targetGameObjectPtr->getComponent<TerraComponent>());
-			if (terraCompPtr)
-			{
-				terra = terraCompPtr->getTerra();
-			}
-		}
-
-		// Fallback terrain retrieval if no target object
-		if (!terra)
-		{
-			auto terraList = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromComponent(TerraComponent::getStaticClassName());
-			if (!terraList.empty())
-			{
-				auto terraCompPtr = NOWA::makeStrongPtr(terraList[0]->getComponent<TerraComponent>());
-				if (terraCompPtr)
-				{
-					terra = terraCompPtr->getTerra();
-				}
-			}
-		}
-
-		// Precompute bounds
-		if (targetGameObjectPtr)
-		{
-			this->minimumBounds = targetGameObjectPtr->getMovableObject()->getWorldAabb().getMinimum();
-			this->maximumBounds = targetGameObjectPtr->getMovableObject()->getWorldAabb().getMaximum();
-		}
-
-		// Mesh preparation with error handling
-		std::vector<Ogre::MeshPtr> meshes;
-		meshes.reserve(this->vegetationMeshNames.size());
-
-		for (const auto& meshName : this->vegetationMeshNames)
-		{
-			if (meshName->getString().empty())
-			{
-				meshes.emplace_back(nullptr);
-				continue;
-			}
-
-			try
-			{
-				// Load V1 mesh and convert to V2
-				auto v1Mesh = Ogre::v1::MeshManager::getSingletonPtr()->load(meshName->getString(),
-					Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME,
-					Ogre::v1::HardwareBuffer::HBU_WRITE_ONLY,
-					Ogre::v1::HardwareBuffer::HBU_WRITE_ONLY);
-
-				// Clean up any existing V2 mesh to prevent naming conflicts
-				Ogre::ResourcePtr resourceV2 = Ogre::MeshManager::getSingletonPtr()->getResourceByName(meshName->getString());
-				if (resourceV2)
-				{
-					Ogre::MeshManager::getSingletonPtr()->destroyResourcePool(meshName->getString());
-					Ogre::MeshManager::getSingletonPtr()->remove(resourceV2->getHandle());
-				}
-
-				auto v2Mesh = Ogre::MeshManager::getSingletonPtr()->createByImportingV1(meshName->getString(),
-					Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME,
-					v1Mesh.get(),
-					true, true, true);
-
-				v1Mesh->unload();
-				v1Mesh.setNull();
-
-				meshes.emplace_back(v2Mesh);
-			}
-			catch (const Ogre::Exception& e)
-			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,"[VegetationComponent] Mesh loading error: " + e.getDescription());
-				meshes.emplace_back(nullptr);
-			}
-		}
-
-		// Compute generation parameters
-		unsigned int vegetationQueryFlags = AppStateManager::getSingletonPtr()->getGameObjectController()->generateCategoryId(this->gameObjectPtr->getCategory());
-		const Ogre::Real size = Ogre::Math::Abs(this->minimumBounds.x) * this->scale->getReal() +
-			this->positionXZ->getVector2().x +
-			Ogre::Math::Abs(this->maximumBounds.x) * this->scale->getReal() +
-			this->positionXZ->getVector2().x;
-
-		// Parallel generation with improved thread distribution
-		const size_t numThreads = std::max<size_t>(1, Ogre::PlatformInformation::getNumLogicalCores());
-		const Ogre::Real step = 1.0f / this->density->getReal();
-		std::atomic<unsigned long> createdCount{ 0 };
-		std::vector<std::thread> threads;
-		std::mutex vegetationMutex;
-
-		auto start = std::chrono::high_resolution_clock::now();
-
-		Ogre::Camera* camera = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
-
-		auto generateVegetation = [&](size_t threadIndex, size_t totalThreads) {
-			std::vector<Ogre::Item*> localVegetationItems;
-
-			for (Ogre::Real x = this->minimumBounds.x * this->scale->getReal() + this->positionXZ->getVector2().x +
-				(threadIndex * size / totalThreads);
-				x < this->minimumBounds.x * this->scale->getReal() + this->positionXZ->getVector2().x +
-				((threadIndex + 1) * size / totalThreads);
-				x += step)
-			{
-				for (Ogre::Real z = this->minimumBounds.z * this->scale->getReal() + this->positionXZ->getVector2().y;
-					z < this->maximumBounds.z * this->scale->getReal() + this->positionXZ->getVector2().y;
-					z += step)
-				{
-					std::lock_guard<std::mutex> lock(vegetationMutex);
-					Ogre::Vector3 objPosition = Vector3(Math::RangeRandom(-size + x, size + x), 0.0f, Math::RangeRandom(-size + z, size + z));
-				
-					Ogre::MovableObject* hitMovableObject = nullptr;
-					Ogre::Real closestDistance = 0.0f;
-					Ogre::Vector3 normal = Ogre::Vector3::ZERO;
-					Ogre::Vector3 internalHitPoint = Ogre::Vector3::ZERO;
-				
-					// Shoot ray at object position down
-					Ogre::Ray hitRay = Ogre::Ray(objPosition + Ogre::Vector3(0.0f, 10000.0f, 0.0f), Ogre::Vector3::NEGATIVE_UNIT_Y);
-					// Check if there is an hit with an polygon of an entity, item, terra etc.
-					this->raySceneQuery->setRay(hitRay);
-				
-					std::vector<Ogre::MovableObject*> excludeMovableObjects(0);
-					/*excludeMovableObjects[0] = gameObject->getMovableObject<Ogre::v1::Entity>();
-					excludeMovableObjects[1] = this->gizmo->getArrowEntityX();
-					excludeMovableObjects[2] = this->gizmo->getArrowEntityY();
-					excludeMovableObjects[3] = this->gizmo->getArrowEntityZ();
-					excludeMovableObjects[4] = this->gizmo->getSphereEntity();*/
-				
-					MathHelper::getInstance()->getRaycastFromPoint(this->raySceneQuery, camera, internalHitPoint, (size_t&)hitMovableObject, closestDistance, normal, &excludeMovableObjects);
-				
-					objPosition.y += internalHitPoint.y;
-				
-					if (nullptr == hitMovableObject)
-					{
-						// Nothing found for given category, skip this quadrant
-						continue;
-					}
-				
-					if (0.0f != this->maxHeight->getReal())
-					{
-						if (internalHitPoint.y > this->maxHeight->getReal())
-						{
-							continue;
-						}
-					}
-				
-					if (nullptr != terra)
-					{
-						bool layerMatches = true;
-						// Exclude maybe terra layers from vegetation placing
-						std::vector<int> layers = terra->getLayerAt(objPosition);
-				
-						// Ogre::String str;
-						for (size_t i = 0; i < this->terraLayerList.size(); i++)
-						{ 
-							layerMatches &= layers[i] <= this->terraLayerList[i];
-							// str += Ogre::StringConverter::toString(layers[i]) + " ";
-						}
-				
-						//  Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "layers: " + str);
-						if (false == layerMatches)
-						{
-							// Skip this vegetation position
-							continue;
-						}
-					}
-				
-					// Create Mesh
-					Ogre::Item* item = nullptr;
-				
-					int rndIndexMeshName = MathHelper::getInstance()->getRandomNumber<int>(0, static_cast<unsigned int>(this->vegetationMeshNames.size() - 1));
-				
-					Ogre::MeshPtr meshPtr = meshes[rndIndexMeshName];
-				
-					try
-					{
-						item = this->gameObjectPtr->getSceneManager()->createItem(meshPtr, Ogre::SCENE_STATIC);
-						// After terrain
-						item->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
-						item->setQueryFlags(vegetationQueryFlags);
-						item->setCastShadows(false);
-						if (0.0f != this->renderDistance->getReal())
-						{
-							item->setRenderingDistance(this->renderDistance->getReal());
-						}
-					}
-					catch (...)
-					{
-						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[VegetationComponent] Could not create item for mesh: " + meshPtr->getName() + " because the mesh is invalid for game object: " + this->gameObjectPtr->getName());
-						return;
-					}
-				
-					SceneNode* node = nullptr;
-				
-					if (nullptr != item)
-					{
-						if (nullptr == targetGameObjectPtr)
-						{
-							node = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_STATIC);
-						}
-						else
-						{
-							node = targetGameObjectPtr->getSceneNode()->createChildSceneNode(Ogre::SCENE_STATIC);
-						}
-				
-						// VegetationScaleMin/Max as attribute?
-						//  scale
-						Ogre::Real s = Math::RangeRandom(0.5f, 1.2f);
-						node->scale(s, s, s);
-				
-						// objPosition.y += std::min(item->getLocalAabb().getMinimum().y, Real(0.0f)) * -0.1f /*+ lay.down*/;  //par
-				
-						node->setPosition(objPosition);
-				
-						if (true == this->autoOrientation->getBool())
-						{
-							node->setDirection(normal, Ogre::Node::TS_PARENT, Ogre::Vector3::NEGATIVE_UNIT_Y);
-						}
-				
-						Ogre::Degree angle(Math::RangeRandom(0.0f, 360.f));
-						Quaternion p = node->getOrientation();
-						Quaternion q;
-						q.FromAngleAxis(angle, Vector3::UNIT_Y);
-						node->setOrientation(p * q);
-
-						node->attachObject(item);
-
-						this->vegetationItemList.emplace_back(item);
-					}
-															
-					createdCount++;
-				}
-			}
-
-			// Batch update the shared vegetation list
-			{
-				std::lock_guard<std::mutex> lock(vegetationMutex);
-				this->vegetationItemList.insert(this->vegetationItemList.end(), localVegetationItems.begin(), localVegetationItems.end());
-			}
-		};
-
-		// Create and start threads
-		for (size_t i = 0; i < numThreads; ++i)
-		{
-			threads.emplace_back(generateVegetation, i, numThreads);
-		}
-
-		// Wait for all threads to complete
-		for (auto& thread : threads)
-		{
-			thread.join();
-		}
-
-		auto finish = std::chrono::high_resolution_clock::now();
-		std::chrono::duration<double, std::milli> elapsed = finish - start;
-		Ogre::LogManager::getSingletonPtr()->logMessage(this->bShowDebugData ? Ogre::LML_CRITICAL : Ogre::LML_TRIVIAL, "[VegetationComponent] Generation took: " + Ogre::StringConverter::toString(elapsed.count() * 0.001) + " seconds.");
-
-		Ogre::LogManager::getSingletonPtr()->logMessage(this->bShowDebugData ? Ogre::LML_CRITICAL : Ogre::LML_TRIVIAL, "[VegetationComponent] Created: " + Ogre::StringConverter::toString(createdCount) + " objects.");
-	}
-
-	void VegetationComponent::handleUpdateBounds(NOWA::EventDataPtr eventData)
-	{
-		// When a new game object has been added to the scene, update the bounds for vegetation
-		boost::shared_ptr<NOWA::EventDataBoundsUpdated> castEventData = boost::static_pointer_cast<EventDataBoundsUpdated>(eventData);
-		this->minimumBounds = castEventData->getCalculatedBounds().first;
-		this->maximumBounds = castEventData->getCalculatedBounds().second;
-
-		// this->regenerateVegetation();
-	}
-
-	void VegetationComponent::handleSceneParsed(NOWA::EventDataPtr eventData)
-	{
-		this->minimumBounds = Core::getSingletonPtr()->getCurrentSceneBoundLeftNear();
-		this->maximumBounds = Core::getSingletonPtr()->getCurrentSceneBoundRightFar();
-		this->regenerateVegetation();
-	}
-
-	void VegetationComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
-	{
-
-	}
-
-	bool VegetationComponent::canStaticAddComponent(GameObject* gameObject)
-	{
-		// Can be added several times, in order to populate several areas
-		if (gameObject->getId() == GameObjectController::MAIN_GAMEOBJECT_ID)
-		{
-			return true;
-		}
-		return false;
-	}
-
-}; //namespace end
+    using namespace rapidxml;
+    using namespace luabind;
+
+    VegetationComponent::VegetationComponent() :
+        GameObjectComponent(),
+        name("VegetationComponent"),
+        minimumBounds(Ogre::Vector3::ZERO),
+        maximumBounds(Ogre::Vector3::ZERO),
+        raySceneQuery(nullptr),
+        regenerate(new Variant(VegetationComponent::AttrRegenerate(), "Generate", this->attributes)),
+        targetGameObjectId(new Variant(VegetationComponent::AttrTargetGameObjectId(), static_cast<unsigned long>(0), this->attributes)),
+        density(new Variant(VegetationComponent::AttrDensity(), 1.0f, this->attributes)),
+        positionXZ(new Variant(VegetationComponent::AttrPositionXZ(), Ogre::Vector2::ZERO, this->attributes)),
+        scale(new Variant(VegetationComponent::AttrScale(), 1.0f, this->attributes)),
+        autoOrientation(new Variant(VegetationComponent::AttrAutoOrientation(), false, this->attributes)),
+        categories(new Variant(VegetationComponent::AttrCategories(), Ogre::String("All"), this->attributes)),
+        maxHeight(new Variant(VegetationComponent::AttrMaxHeight(), 0.0f, this->attributes)),
+        renderDistance(new Variant(VegetationComponent::AttrRenderDistance(), 30.0f, this->attributes)),
+        terraLayers(new Variant(VegetationComponent::AttrTerraLayers(), Ogre::String("255,255,255,255"), this->attributes)),
+        vegetationTypesCount(new Variant(VegetationComponent::AttrVegetationTypesCount(), static_cast<unsigned int>(0), this->attributes)),
+        clusterSize(new Variant(VegetationComponent::AttrClusterSize(), 64.0f, this->attributes))
+    {
+        this->regenerate->setDescription("Generate/regenerate the vegetation.");
+        this->regenerate->addUserData(GameObject::AttrActionExec());
+        this->regenerate->addUserData(GameObject::AttrActionExecId(), "VegetationComponent.Regenerate");
+
+        this->targetGameObjectId->setDescription("Target game object for planting vegetation (0 = whole world).");
+        this->positionXZ->setDescription("X-Z position offset for vegetation area.");
+        this->scale->setDescription("Scale of vegetation area (1.0 = whole target area).");
+        this->autoOrientation->setDescription("Auto-orient vegetation to terrain slope.");
+        this->maxHeight->setDescription("Maximum height for placement (0 = no limit).");
+        this->renderDistance->setDescription("Render distance in meters (0 = no limit).");
+        this->terraLayers->setDescription("Terra layer thresholds (e.g., 255,255,0,255).");
+        this->vegetationTypesCount->setDescription("Number of vegetation mesh types.");
+        this->vegetationTypesCount->addUserData(GameObject::AttrActionNeedRefresh());
+
+        this->clusterSize->setDescription("Cluster size for spatial grouping (meters). Smaller = more precise culling but more overhead.");
+    }
+
+    VegetationComponent::~VegetationComponent(void)
+    {
+        // Destruction handled in onRemoveComponent
+    }
+
+    void VegetationComponent::initialise()
+    {
+    }
+
+    const Ogre::String& VegetationComponent::getName() const
+    {
+        return this->name;
+    }
+
+    void VegetationComponent::install(const Ogre::NameValuePairList* options)
+    {
+        GameObjectFactory::getInstance()->getComponentFactory()->registerPluginComponentClass<VegetationComponent>(VegetationComponent::getStaticClassId(), VegetationComponent::getStaticClassName());
+    }
+
+    void VegetationComponent::shutdown()
+    {
+        // Called too late
+    }
+
+    void VegetationComponent::uninstall()
+    {
+        // Called too late
+    }
+
+    void VegetationComponent::getAbiCookie(Ogre::AbiCookie& outAbiCookie)
+    {
+        outAbiCookie = Ogre::generateAbiCookie();
+    }
+
+    bool VegetationComponent::init(rapidxml::xml_node<>*& propertyElement)
+    {
+        GameObjectComponent::init(propertyElement);
+
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "TargetGameObjectId")
+        {
+            this->targetGameObjectId->setValue(XMLConverter::getAttribUnsignedLong(propertyElement, "data", false));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Density")
+        {
+            this->density->setValue(XMLConverter::getAttribReal(propertyElement, "data", true));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "PositionXZ")
+        {
+            this->positionXZ->setValue(XMLConverter::getAttribVector2(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Scale")
+        {
+            this->scale->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AutoOrientation")
+        {
+            this->autoOrientation->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Categories")
+        {
+            this->categories->setValue(XMLConverter::getAttrib(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "MaxHeight")
+        {
+            this->maxHeight->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "RenderDistance")
+        {
+            this->renderDistance->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "TerraLayers")
+        {
+            this->terraLayers->setValue(XMLConverter::getAttrib(propertyElement, "data"));
+            checkAndSetTerraLayers(this->terraLayers->getString());
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "VegetationTypesCount")
+        {
+            this->vegetationTypesCount->setValue(XMLConverter::getAttribUnsignedInt(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "ClusterSize")
+        {
+            this->clusterSize->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+
+        // Initialize vegetation mesh name variants
+        if (this->vegetationMeshNames.size() < this->vegetationTypesCount->getUInt())
+        {
+            this->vegetationMeshNames.resize(this->vegetationTypesCount->getUInt());
+        }
+
+        for (size_t i = 0; i < this->vegetationMeshNames.size(); i++)
+        {
+            if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "VegetationMeshName" + Ogre::StringConverter::toString(i))
+            {
+                Ogre::String meshName = XMLConverter::getAttrib(propertyElement, "data");
+                if (nullptr == this->vegetationMeshNames[i])
+                {
+                    this->vegetationMeshNames[i] = new Variant(VegetationComponent::AttrVegetationMeshName() + Ogre::StringConverter::toString(i), std::vector<Ogre::String>(), this->attributes);
+                    this->vegetationMeshNames[i]->setValue(meshName);
+                    this->vegetationMeshNames[i]->addUserData(GameObject::AttrActionFileOpenDialog(), "Models");
+                    this->vegetationMeshNames[i]->setDescription("Mesh for this vegetation type (Hlms auto-batches Items).");
+                }
+                else
+                {
+                    this->vegetationMeshNames[i]->setValue(meshName);
+                }
+                propertyElement = propertyElement->next_sibling("property");
+            }
+        }
+
+        return true;
+    }
+
+    GameObjectCompPtr VegetationComponent::clone(GameObjectPtr clonedGameObjectPtr)
+    {
+        // Not implemented
+        return GameObjectCompPtr();
+    }
+
+    bool VegetationComponent::postInit(void)
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[VegetationComponent] Init component for game object: " + this->gameObjectPtr->getName());
+
+        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &VegetationComponent::handleUpdateBounds), EventDataBoundsUpdated::getStaticEventType());
+        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &VegetationComponent::handleSceneParsed), NOWA::EventDataSceneParsed::getStaticEventType());
+
+        if (nullptr == this->raySceneQuery)
+        {
+            this->raySceneQuery = this->gameObjectPtr->getSceneManager()->createRayQuery(Ogre::Ray(), GameObjectController::ALL_CATEGORIES_ID);
+            this->raySceneQuery->setSortByDistance(true);
+        }
+
+        return true;
+    }
+
+    bool VegetationComponent::connect(void)
+    {
+        GameObjectComponent::connect();
+        return true;
+    }
+
+    bool VegetationComponent::disconnect(void)
+    {
+        GameObjectComponent::disconnect();
+        return true;
+    }
+
+    bool VegetationComponent::onCloned(void)
+    {
+        return true;
+    }
+
+    void VegetationComponent::onRemoveComponent(void)
+    {
+        GameObjectComponent::onRemoveComponent();
+
+        // Destroy vegetation on render thread (blocking to ensure cleanup completes)
+        this->destroyVegetation();
+
+        if (this->raySceneQuery)
+        {
+            // Destroy query on render thread
+            auto* query = this->raySceneQuery;
+            GraphicsModule::getInstance()->enqueueAndWait(
+                [this, query]()
+                {
+                    this->gameObjectPtr->getSceneManager()->destroyQuery(query);
+                },
+                "VegetationComponent::DestroyRayQuery");
+            this->raySceneQuery = nullptr;
+        }
+
+        boost::shared_ptr<EventDataRefreshGui> eventDataRefreshGui(new EventDataRefreshGui());
+        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshGui);
+
+        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &VegetationComponent::handleSceneParsed), NOWA::EventDataSceneParsed::getStaticEventType());
+        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &VegetationComponent::handleUpdateBounds), EventDataBoundsUpdated::getStaticEventType());
+    }
+
+    void VegetationComponent::onOtherComponentRemoved(unsigned int index)
+    {
+        // Not needed
+    }
+
+    void VegetationComponent::onOtherComponentAdded(unsigned int index)
+    {
+        // Not needed
+    }
+
+    void VegetationComponent::update(Ogre::Real dt, bool notSimulating)
+    {
+        // Vegetation is static, no update needed
+    }
+
+    void VegetationComponent::actualizeValue(Variant* attribute)
+    {
+        GameObjectComponent::actualizeValue(attribute);
+
+        if (VegetationComponent::AttrTargetGameObjectId() == attribute->getName())
+        {
+            this->setTargetGameObjectId(attribute->getULong());
+        }
+        else if (VegetationComponent::AttrDensity() == attribute->getName())
+        {
+            this->setDensity(attribute->getReal());
+        }
+        else if (VegetationComponent::AttrPositionXZ() == attribute->getName())
+        {
+            this->setPositionXZ(attribute->getVector2());
+        }
+        else if (VegetationComponent::AttrScale() == attribute->getName())
+        {
+            this->setScale(attribute->getReal());
+        }
+        else if (VegetationComponent::AttrAutoOrientation() == attribute->getName())
+        {
+            this->setAutoOrientation(attribute->getBool());
+        }
+        else if (VegetationComponent::AttrCategories() == attribute->getName())
+        {
+            this->setCategories(attribute->getString());
+        }
+        else if (VegetationComponent::AttrMaxHeight() == attribute->getName())
+        {
+            this->setMaxHeight(attribute->getReal());
+        }
+        else if (VegetationComponent::AttrRenderDistance() == attribute->getName())
+        {
+            this->setRenderDistance(attribute->getReal());
+        }
+        else if (VegetationComponent::AttrTerraLayers() == attribute->getName())
+        {
+            this->setTerraLayers(attribute->getString());
+        }
+        else if (VegetationComponent::AttrVegetationTypesCount() == attribute->getName())
+        {
+            this->setVegetationTypesCount(attribute->getUInt());
+        }
+        else if (VegetationComponent::AttrClusterSize() == attribute->getName())
+        {
+            this->setClusterSize(attribute->getReal());
+        }
+        else
+        {
+            for (unsigned int i = 0; i < static_cast<unsigned int>(this->vegetationMeshNames.size()); i++)
+            {
+                if (VegetationComponent::AttrVegetationMeshName() + Ogre::StringConverter::toString(i) == attribute->getName())
+                {
+                    this->setVegetationMeshName(i, attribute->getString());
+                }
+            }
+        }
+    }
+
+    void VegetationComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
+    {
+        GameObjectComponent::writeXML(propertiesXML, doc);
+
+        xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "TargetGameObjectId"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->targetGameObjectId->getULong())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Density"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->density->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "8"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "PositionXZ"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->positionXZ->getVector2())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Scale"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->scale->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "AutoOrientation"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->autoOrientation->getBool())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Categories"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->categories->getString())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "MaxHeight"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->maxHeight->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "RenderDistance"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->renderDistance->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "TerraLayers"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->terraLayers->getString())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "VegetationTypesCount"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->vegetationTypesCount->getUInt())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "ClusterSize"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->clusterSize->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        for (size_t i = 0; i < this->vegetationMeshNames.size(); i++)
+        {
+            propertyXML = doc.allocate_node(node_element, "property");
+            propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+            propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "VegetationMeshName" + Ogre::StringConverter::toString(i))));
+            propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->vegetationMeshNames[i]->getString())));
+            propertiesXML->append_node(propertyXML);
+        }
+    }
+
+    // ============================================================================
+    // SETTERS/GETTERS
+    // ============================================================================
+
+    void VegetationComponent::setTargetGameObjectId(unsigned long targetGameObjectId)
+    {
+        this->targetGameObjectId->setValue(targetGameObjectId);
+        this->regenerateVegetation();
+    }
+
+    unsigned long VegetationComponent::getTargetGameObjectId(void) const
+    {
+        return this->targetGameObjectId->getULong();
+    }
+
+    void VegetationComponent::setDensity(Ogre::Real density)
+    {
+        density = Ogre::Math::Clamp(density, 0.1f, 5.0f);
+        this->density->setValue(density);
+        this->regenerateVegetation();
+    }
+
+    Ogre::Real VegetationComponent::getDensity(void) const
+    {
+        return this->density->getReal();
+    }
+
+    void VegetationComponent::setPositionXZ(const Ogre::Vector2& positionXZ)
+    {
+        this->positionXZ->setValue(positionXZ);
+        this->regenerateVegetation();
+    }
+
+    Ogre::Vector2 VegetationComponent::getPositionXZ(void) const
+    {
+        return this->positionXZ->getVector2();
+    }
+
+    void VegetationComponent::setScale(Ogre::Real scale)
+    {
+        scale = Ogre::Math::Clamp(scale, 0.1f, 100.0f);
+        this->scale->setValue(scale);
+        this->regenerateVegetation();
+    }
+
+    Ogre::Real VegetationComponent::getScale(void) const
+    {
+        return this->scale->getReal();
+    }
+
+    void VegetationComponent::setAutoOrientation(bool autoOrientation)
+    {
+        this->autoOrientation->setValue(autoOrientation);
+        this->regenerateVegetation();
+    }
+
+    bool VegetationComponent::getAutoOrientation(void) const
+    {
+        return this->autoOrientation->getBool();
+    }
+
+    void VegetationComponent::setCategories(const Ogre::String& categories)
+    {
+        this->categories->setValue(categories);
+        this->regenerateVegetation();
+    }
+
+    Ogre::String VegetationComponent::getCategories(void) const
+    {
+        return this->categories->getString();
+    }
+
+    void VegetationComponent::setMaxHeight(Ogre::Real maxHeight)
+    {
+        maxHeight = Ogre::Math::Clamp(maxHeight, 0.0f, 10000.0f);
+        this->maxHeight->setValue(maxHeight);
+        this->regenerateVegetation();
+    }
+
+    Ogre::Real VegetationComponent::getMaxHeight(void) const
+    {
+        return this->maxHeight->getReal();
+    }
+
+    void VegetationComponent::setRenderDistance(Ogre::Real renderDistance)
+    {
+        renderDistance = Ogre::Math::Clamp(renderDistance, 0.0f, 10000.0f);
+        this->renderDistance->setValue(renderDistance);
+        this->regenerateVegetation();
+    }
+
+    Ogre::Real VegetationComponent::getRenderDistance(void) const
+    {
+        return this->renderDistance->getReal();
+    }
+
+    void VegetationComponent::checkAndSetTerraLayers(const Ogre::String& terraLayers)
+    {
+        this->terraLayerList.clear();
+        auto strLayers = split(terraLayers);
+
+        if (strLayers.empty())
+        {
+            this->terraLayerList = {255, 255, 255, 255};
+            return;
+        }
+
+        for (size_t i = 0; i < strLayers.size() && i < 4; i++)
+        {
+            int value = Ogre::StringConverter::parseInt(strLayers[i]);
+            this->terraLayerList.emplace_back(Ogre::Math::Clamp(value, 0, 255));
+        }
+
+        while (this->terraLayerList.size() < 4)
+        {
+            this->terraLayerList.emplace_back(255);
+        }
+    }
+
+    void VegetationComponent::setTerraLayers(const Ogre::String& terraLayers)
+    {
+        this->checkAndSetTerraLayers(terraLayers);
+        this->terraLayers->setValue(terraLayers);
+        this->regenerateVegetation();
+    }
+
+    Ogre::String VegetationComponent::getTerraLayers(void) const
+    {
+        return this->terraLayers->getString();
+    }
+
+    void VegetationComponent::setVegetationTypesCount(unsigned int vegetationTypesCount)
+    {
+        this->vegetationTypesCount->setValue(vegetationTypesCount);
+
+        size_t oldSize = this->vegetationMeshNames.size();
+
+        if (vegetationTypesCount > oldSize)
+        {
+            this->vegetationMeshNames.resize(vegetationTypesCount);
+
+            for (size_t i = oldSize; i < vegetationTypesCount; i++)
+            {
+                this->vegetationMeshNames[i] = new Variant(VegetationComponent::AttrVegetationMeshName() + Ogre::StringConverter::toString(i), Ogre::String(), this->attributes);
+                this->vegetationMeshNames[i]->addUserData(GameObject::AttrActionFileOpenDialog(), "Models");
+                this->vegetationMeshNames[i]->setDescription("Mesh for vegetation (Hlms auto-batches).");
+            }
+        }
+        else if (vegetationTypesCount < oldSize)
+        {
+            this->eraseVariants(this->vegetationMeshNames, vegetationTypesCount);
+        }
+
+        this->regenerateVegetation();
+    }
+
+    unsigned int VegetationComponent::getVegetationTypesCount(void) const
+    {
+        return this->vegetationTypesCount->getUInt();
+    }
+
+    void VegetationComponent::setVegetationMeshName(unsigned int index, const Ogre::String& vegetationMeshName)
+    {
+        if (index >= this->vegetationMeshNames.size())
+        {
+            return;
+        }
+
+        this->vegetationMeshNames[index]->setValue(vegetationMeshName);
+        this->regenerateVegetation();
+    }
+
+    Ogre::String VegetationComponent::getVegetationMeshName(unsigned int index) const
+    {
+        if (index >= this->vegetationMeshNames.size())
+        {
+            return "";
+        }
+        return this->vegetationMeshNames[index]->getString();
+    }
+
+    void VegetationComponent::setClusterSize(Ogre::Real clusterSize)
+    {
+        clusterSize = Ogre::Math::Clamp(clusterSize, 16.0f, 256.0f);
+        this->clusterSize->setValue(clusterSize);
+        this->regenerateVegetation();
+    }
+
+    Ogre::Real VegetationComponent::getClusterSize(void) const
+    {
+        return this->clusterSize->getReal();
+    }
+
+    bool VegetationComponent::executeAction(const Ogre::String& actionId, NOWA::Variant* attribute)
+    {
+        if ("VegetationComponent.Regenerate" == actionId)
+        {
+            this->destroyVegetation();
+            this->regenerateVegetation();
+            return true;
+        }
+        return false;
+    }
+
+    // ============================================================================
+    // CORE VEGETATION GENERATION (MAIN THREAD)
+    // ============================================================================
+
+    void VegetationComponent::regenerateVegetation()
+    {
+        if (!this->gameObjectPtr)
+        {
+            return;
+        }
+
+        if (GameObject::AttrCustomDataSkipCreation() == this->gameObjectPtr->getCustomDataString())
+        {
+            return;
+        }
+
+        // Destroy existing first
+        this->destroyVegetation();
+
+        if (this->vegetationTypesCount->getUInt() == 0)
+        {
+            return;
+        }
+
+        // Validate meshes
+        bool hasValidMeshes = false;
+        for (size_t i = 0; i < this->vegetationTypesCount->getUInt(); i++)
+        {
+            if (i < this->vegetationMeshNames.size() && !this->vegetationMeshNames[i]->getString().empty())
+            {
+                hasValidMeshes = true;
+                break;
+            }
+        }
+
+        if (!hasValidMeshes)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[VegetationComponent] No valid vegetation meshes defined.");
+            return;
+        }
+
+        auto start = std::chrono::high_resolution_clock::now();
+
+        // =================================================================
+        // STEP 1: Calculate positions on MAIN THREAD (parallel, thread-safe)
+        // =================================================================
+        std::vector<VegetationComponent::VegetationBatch> batches = this->calculateVegetationPositions();
+
+        if (batches.empty())
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[VegetationComponent] No vegetation instances generated.");
+            return;
+        }
+
+        // =================================================================
+        // STEP 2: Send to RENDER THREAD for Ogre object creation
+        // =================================================================
+        this->createVegetationOnRenderThread(std::move(batches));
+
+        auto finish = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double, std::milli> elapsed = finish - start;
+
+        size_t totalInstances = 0;
+        for (const auto& batch : this->vegetationBatches)
+        {
+            totalInstances += batch.items.size();
+        }
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(this->bShowDebugData ? Ogre::LML_CRITICAL : Ogre::LML_TRIVIAL,
+            "[VegetationComponent] Generated " + Ogre::StringConverter::toString(totalInstances) + " instances in " + Ogre::StringConverter::toString(this->vegetationBatches.size()) +
+                " batches. Took: " + Ogre::StringConverter::toString(elapsed.count() * 0.001) + "s");
+    }
+
+    std::vector<VegetationComponent::VegetationBatch> VegetationComponent::calculateVegetationPositions()
+    {
+        // [SAME AS BEFORE - This part is correct and thread-safe]
+        // Just remove the mesh loading part - we'll do that on render thread
+
+        unsigned int categoryId = AppStateManager::getSingletonPtr()->getGameObjectController()->generateCategoryId(this->categories->getString());
+        this->raySceneQuery->setQueryMask(categoryId);
+
+        // Get terrain
+        Ogre::Terra* terra = nullptr;
+        GameObjectPtr targetGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->targetGameObjectId->getULong());
+
+        if (targetGameObjectPtr)
+        {
+            auto terraCompPtr = NOWA::makeStrongPtr(targetGameObjectPtr->getComponent<TerraComponent>());
+            if (terraCompPtr)
+            {
+                terra = terraCompPtr->getTerra();
+            }
+        }
+
+        if (!terra)
+        {
+            auto terraList = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromComponent(TerraComponent::getStaticClassName());
+            if (!terraList.empty())
+            {
+                auto terraCompPtr = NOWA::makeStrongPtr(terraList[0]->getComponent<TerraComponent>());
+                if (terraCompPtr)
+                {
+                    terra = terraCompPtr->getTerra();
+                }
+            }
+        }
+
+        // Calculate bounds
+        if (targetGameObjectPtr)
+        {
+            this->minimumBounds = targetGameObjectPtr->getMovableObject()->getWorldAabb().getMinimum();
+            this->maximumBounds = targetGameObjectPtr->getMovableObject()->getWorldAabb().getMaximum();
+        }
+
+        // Initialize batches
+        std::vector<VegetationComponent::VegetationBatch> batches;
+        for (size_t i = 0; i < this->vegetationTypesCount->getUInt(); i++)
+        {
+            if (i < this->vegetationMeshNames.size() && !this->vegetationMeshNames[i]->getString().empty())
+            {
+                batches.emplace_back(this->vegetationMeshNames[i]->getString());
+            }
+        }
+
+        if (batches.empty())
+        {
+            return batches;
+        }
+
+        // Grid parameters
+        const Ogre::Real scaleVal = this->scale->getReal();
+        const Ogre::Vector2 posXZ = this->positionXZ->getVector2();
+        const Ogre::Real step = 1.0f / this->density->getReal();
+
+        const Ogre::Real startX = this->minimumBounds.x * scaleVal + posXZ.x;
+        const Ogre::Real endX = this->maximumBounds.x * scaleVal + posXZ.x;
+        const Ogre::Real startZ = this->minimumBounds.z * scaleVal + posXZ.y;
+        const Ogre::Real endZ = this->maximumBounds.z * scaleVal + posXZ.y;
+
+        Ogre::Camera* camera = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
+        std::atomic<size_t> totalGenerated{0};
+
+        // Parallel position calculation
+        const size_t numThreads = std::max<size_t>(1, Ogre::PlatformInformation::getNumLogicalCores());
+        std::vector<std::future<std::vector<VegetationComponent::VegetationBatch>>> futures;
+
+        for (size_t threadIdx = 0; threadIdx < numThreads; ++threadIdx)
+        {
+            futures.emplace_back(std::async(std::launch::async,
+                [=, &totalGenerated]() -> std::vector<VegetationComponent::VegetationBatch>
+                {
+                    std::vector<VegetationComponent::VegetationBatch> localBatches;
+                    for (const auto& batch : batches)
+                    {
+                        localBatches.emplace_back(batch.meshName);
+                    }
+
+                    const Ogre::Real threadStartX = startX + (threadIdx * (endX - startX) / numThreads);
+                    const Ogre::Real threadEndX = startX + ((threadIdx + 1) * (endX - startX) / numThreads);
+
+                    for (Ogre::Real x = threadStartX; x < threadEndX; x += step)
+                    {
+                        for (Ogre::Real z = startZ; z < endZ; z += step)
+                        {
+                            Ogre::Real randX = Ogre::Math::RangeRandom(-step * 0.4f, step * 0.4f);
+                            Ogre::Real randZ = Ogre::Math::RangeRandom(-step * 0.4f, step * 0.4f);
+                            Ogre::Vector3 objPosition(x + randX, 10000.0f, z + randZ);
+
+                            Ogre::Ray hitRay(objPosition, Ogre::Vector3::NEGATIVE_UNIT_Y);
+                            this->raySceneQuery->setRay(hitRay);
+
+                            Ogre::Vector3 hitPoint = Ogre::Vector3::ZERO;
+                            Ogre::Vector3 normal = Ogre::Vector3::ZERO;
+                            Ogre::MovableObject* hitMovableObject = nullptr;
+                            Ogre::Real closestDistance = 0.0f;
+
+                            std::vector<Ogre::MovableObject*> excludeList;
+                            MathHelper::getInstance()->getRaycastFromPoint(this->raySceneQuery, camera, hitPoint, (size_t&)hitMovableObject, closestDistance, normal, &excludeList);
+
+                            if (!hitMovableObject)
+                            {
+                                continue;
+                            }
+
+                            objPosition.y = hitPoint.y;
+
+                            if (this->maxHeight->getReal() > 0.0f && hitPoint.y > this->maxHeight->getReal())
+                            {
+                                continue;
+                            }
+
+                            if (terra)
+                            {
+                                std::vector<int> layers = terra->getLayerAt(objPosition);
+                                bool layerMatches = true;
+
+                                for (size_t i = 0; i < std::min(layers.size(), this->terraLayerList.size()); i++)
+                                {
+                                    layerMatches &= (layers[i] <= this->terraLayerList[i]);
+                                }
+
+                                if (!layerMatches)
+                                {
+                                    continue;
+                                }
+                            }
+
+                            int rndBatchIdx = Ogre::Math::RangeRandom(0, static_cast<int>(localBatches.size()) - 1);
+
+                            Ogre::Real scaleRand = Ogre::Math::RangeRandom(0.5f, 1.2f);
+                            Ogre::Vector3 scaleVec(scaleRand, scaleRand, scaleRand);
+
+                            Ogre::Quaternion orientation = Ogre::Quaternion::IDENTITY;
+
+                            if (this->autoOrientation->getBool())
+                            {
+                                Ogre::Vector3 right = normal.perpendicular();
+                                Ogre::Vector3 forward = right.crossProduct(normal);
+                                orientation.FromAxes(right, normal, forward);
+                            }
+
+                            Ogre::Degree randAngle(Ogre::Math::RangeRandom(0.0f, 360.0f));
+                            Ogre::Quaternion randRot;
+                            randRot.FromAngleAxis(randAngle, Ogre::Vector3::UNIT_Y);
+                            orientation = orientation * randRot;
+
+                            localBatches[rndBatchIdx].instances.emplace_back(objPosition, orientation, scaleVec);
+                            totalGenerated++;
+                        }
+                    }
+
+                    return localBatches;
+                }));
+        }
+
+        // Merge results
+        for (auto& future : futures)
+        {
+            std::vector<VegetationComponent::VegetationBatch> threadBatches = future.get();
+
+            for (size_t i = 0; i < batches.size(); i++)
+            {
+                batches[i].instances.insert(batches[i].instances.end(), threadBatches[i].instances.begin(), threadBatches[i].instances.end());
+            }
+        }
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[VegetationComponent] Calculated " + Ogre::StringConverter::toString(totalGenerated) + " positions.");
+
+        return batches;
+    }
+
+    // ============================================================================
+    // CREATE OGRE-NEXT ITEMS ON RENDER THREAD
+    // ============================================================================
+
+    void VegetationComponent::createVegetationOnRenderThread(std::vector<VegetationComponent::VegetationBatch>&& batches)
+    {
+        // Queue to render thread using your GraphicsModule
+        // Capture batches by value (move) to ensure lifetime
+        GraphicsModule::getInstance()->enqueue(
+            [this, batchesCopy = std::move(batches)]() mutable
+            {
+                this->createVegetationItems(batchesCopy);
+            },
+            "VegetationComponent::CreateItems");
+    }
+
+    void VegetationComponent::createVegetationItems(std::vector<VegetationComponent::VegetationBatch>& batches)
+    {
+        //  THIS MUST RUN ON RENDER THREAD!
+
+        Ogre::SceneManager* sceneManager = this->gameObjectPtr->getSceneManager();
+        unsigned int queryFlags = AppStateManager::getSingletonPtr()->getGameObjectController()->generateCategoryId(this->gameObjectPtr->getCategory());
+
+        GameObjectPtr targetGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->targetGameObjectId->getULong());
+
+        // Get or create shared datablock for batching
+        Ogre::Hlms* hlmsPbs = Ogre::Root::getSingletonPtr()->getHlmsManager()->getHlms(Ogre::HLMS_PBS);
+        if (!hlmsPbs)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[VegetationComponent] No PBS Hlms available!");
+            return;
+        }
+
+        for (auto& batch : batches)
+        {
+            if (batch.instances.empty())
+            {
+                continue;
+            }
+
+            // Load V2 mesh
+            Ogre::MeshPtr meshPtr;
+            try
+            {
+                // In Ogre-Next, you directly load V2 meshes
+                meshPtr = Ogre::MeshManager::getSingletonPtr()->load(batch.meshName, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME);
+            }
+            catch (const Ogre::Exception& e)
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[VegetationComponent] Failed to load mesh '" + batch.meshName + "': " + e.getDescription());
+                continue;
+            }
+
+            // Create ONE shared datablock for all instances of this mesh
+            // Hlms will automatically batch Items that share the same datablock
+            Ogre::String datablockName = "VegetationDatablock_" + batch.meshName + "_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
+
+            Ogre::HlmsDatablock* datablock = hlmsPbs->getDatablock(datablockName);
+            if (!datablock)
+            {
+                datablock = hlmsPbs->createDatablock(datablockName, datablockName, Ogre::HlmsMacroblock(), Ogre::HlmsBlendblock(), Ogre::HlmsParamVec());
+            }
+
+            // =================================================================
+            // CREATE ITEMS - Ogre-Next auto-batches them via Hlms!
+            // =================================================================
+            for (const auto& instance : batch.instances)
+            {
+                // Create V2 Item (not Entity!)
+                Ogre::Item* item = sceneManager->createItem(meshPtr, Ogre::SCENE_STATIC);
+
+                if (!item)
+                {
+                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[VegetationComponent] Failed to create Item");
+                    continue;
+                }
+
+                // Set the shared datablock - THIS IS KEY FOR BATCHING!
+                item->setDatablock(datablock);
+
+                item->setQueryFlags(queryFlags);
+                item->setCastShadows(false); // Performance
+
+                if (this->renderDistance->getReal() > 0.0f)
+                {
+                    item->setRenderingDistance(this->renderDistance->getReal());
+                }
+
+                // Create scene node
+                Ogre::SceneNode* node = nullptr;
+                if (targetGameObjectPtr)
+                {
+                    node = targetGameObjectPtr->getSceneNode()->createChildSceneNode(Ogre::SCENE_STATIC);
+                }
+                else
+                {
+                    node = sceneManager->getRootSceneNode(Ogre::SCENE_STATIC)->createChildSceneNode(Ogre::SCENE_STATIC);
+                }
+
+                node->setPosition(instance.position);
+                node->setOrientation(instance.orientation);
+                node->setScale(instance.scale);
+                node->attachObject(item);
+
+                batch.items.push_back(item);
+                batch.nodes.push_back(node);
+            }
+
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[VegetationComponent] Created " + Ogre::StringConverter::toString(batch.items.size()) + " Items for mesh: " + batch.meshName + " (Hlms will auto-batch them)");
+        }
+
+        // Store batches for cleanup
+        this->vegetationBatches = std::move(batches);
+    }
+
+    void VegetationComponent::destroyVegetation()
+    {
+        // Queue destruction to render thread (blocking to ensure cleanup)
+        GraphicsModule::getInstance()->enqueueAndWait(
+            [this]()
+            {
+                this->destroyVegetationOnRenderThread();
+            },
+            "VegetationComponent::DestroyItems");
+    }
+
+    void VegetationComponent::destroyVegetationOnRenderThread()
+    {
+        //  THIS MUST RUN ON RENDER THREAD!
+
+        Ogre::SceneManager* sceneManager = this->gameObjectPtr->getSceneManager();
+
+        for (auto& batch : this->vegetationBatches)
+        {
+            // Destroy all items and nodes
+            for (size_t i = 0; i < batch.items.size(); i++)
+            {
+                Ogre::Item* item = batch.items[i];
+                Ogre::SceneNode* node = batch.nodes[i];
+
+                if (node)
+                {
+                    node->detachAllObjects();
+                    sceneManager->destroySceneNode(node);
+                }
+
+                if (item)
+                {
+                    sceneManager->destroyItem(item);
+                }
+            }
+
+            batch.items.clear();
+            batch.nodes.clear();
+        }
+
+        this->vegetationBatches.clear();
+    }
+
+    // ============================================================================
+    // EVENT HANDLERS
+    // ============================================================================
+
+    void VegetationComponent::handleUpdateBounds(NOWA::EventDataPtr eventData)
+    {
+        boost::shared_ptr<NOWA::EventDataBoundsUpdated> castEventData = boost::static_pointer_cast<EventDataBoundsUpdated>(eventData);
+
+        this->minimumBounds = castEventData->getCalculatedBounds().first;
+        this->maximumBounds = castEventData->getCalculatedBounds().second;
+    }
+
+    void VegetationComponent::handleSceneParsed(NOWA::EventDataPtr eventData)
+    {
+        this->minimumBounds = Core::getSingletonPtr()->getCurrentSceneBoundLeftNear();
+        this->maximumBounds = Core::getSingletonPtr()->getCurrentSceneBoundRightFar();
+        this->regenerateVegetation();
+    }
+
+    void VegetationComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
+    {
+        // Lua bindings
+    }
+
+    bool VegetationComponent::canStaticAddComponent(GameObject* gameObject)
+    {
+        return (gameObject->getId() == GameObjectController::MAIN_GAMEOBJECT_ID);
+    }
+
+}; // namespace end

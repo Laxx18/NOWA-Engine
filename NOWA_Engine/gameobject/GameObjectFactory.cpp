@@ -11,6 +11,7 @@
 #include "PhysicsActiveComponent.h"
 #include "PhysicsCompoundConnectionComponent.h"
 #include "PhysicsRagDollComponent.h"
+#include "PhysicsRagDollComponentV2.h"
 #include "AttributesComponent.h"
 #include "NavMeshComponent.h"
 #include "NavMeshTerraComponent.h"
@@ -171,6 +172,7 @@ namespace NOWA
 		this->componentFactory.registerClass<PhysicsTerrainComponent>(PhysicsTerrainComponent::getStaticClassId(), PhysicsTerrainComponent::getStaticClassName());
 		this->componentFactory.registerClass<PhysicsActiveComponent>(PhysicsActiveComponent::getStaticClassId(), PhysicsActiveComponent::getStaticClassName());
 		this->componentFactory.registerClass<PhysicsRagDollComponent>(PhysicsRagDollComponent::getStaticClassId(), PhysicsRagDollComponent::getStaticClassName());
+        this->componentFactory.registerClass<PhysicsRagDollComponentV2>(PhysicsRagDollComponentV2::getStaticClassId(), PhysicsRagDollComponentV2::getStaticClassName());
 		this->componentFactory.registerClass<PhysicsActiveCompoundComponent>(PhysicsActiveCompoundComponent::getStaticClassId(), PhysicsActiveCompoundComponent::getStaticClassName());
 		this->componentFactory.registerClass<PhysicsActiveDestructableComponent>(PhysicsActiveDestructableComponent::getStaticClassId(), PhysicsActiveDestructableComponent::getStaticClassName());
 		this->componentFactory.registerClass<PhysicsExplosionComponent>(PhysicsExplosionComponent::getStaticClassId(), PhysicsExplosionComponent::getStaticClassName());

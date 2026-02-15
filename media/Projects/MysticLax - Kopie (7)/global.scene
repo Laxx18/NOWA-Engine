@@ -5,8 +5,8 @@
 			<position x="-0.448465" y="0.1615" z="3.41785"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="CircleFadeGameObject_0" meshFile="Node.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
+			<item name="CircleFadeGameObject_0" meshFile="Node.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2231602614"/>
@@ -56,18 +56,18 @@
 					<property type="12" name="DirectionChange" data="false"/>
 					<property type="12" name="Repeat" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="PrehistoricLax_0" id="244932335">
 			<position x="-15.1298" y="8.51284" z="-22"/>
 			<rotation qw="0.707107" qx="0" qy="0.707107" qz="0"/>
 			<scale x="0.01" y="0.01" z="0.01"/>
-			<entity name="PrehistoricLax_0" meshFile="PrehistoricLax.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="PrehistoricLaxClothes__0929302007"/>
-				<subentity index="1" datablockName="PrehistoricLaxBody"/>
-				<subentity index="2" datablockName="PrehistoricLaxIntern"/>
-				<subentity index="3" datablockName="PrehistoricLaxEyes"/>
-				<subentity index="4" datablockName="PrehistoricLaxHair"/>
+			<item name="PrehistoricLax_0" meshFile="PrehistoricLax.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="PrehistoricLaxClothes__0929302007"/>
+				<subitem index="1" datablockName="PrehistoricLaxBody"/>
+				<subitem index="2" datablockName="PrehistoricLaxIntern"/>
+				<subitem index="3" datablockName="PrehistoricLaxEyes"/>
+				<subitem index="4" datablockName="PrehistoricLaxHair"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="929302007"/>
@@ -211,7 +211,7 @@
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="2" name="SubEntityIndex" data="0"/>
+					<property type="2" name="SubItemIndex" data="0"/>
 					<property type="7" name="Workflow" data="SpecularWorkflow"/>
 					<property type="6" name="Metalness" data="0.01"/>
 					<property type="6" name="Roughness" data="0.06"/>
@@ -268,15 +268,15 @@
 					<property type="12" name="CloneScript" data="false"/>
 					<property type="12" name="HasCommonScript" data="false"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="PlayerWeapon" id="3994693044">
 			<position x="-14.3455" y="10.9217" z="-21.6763"/>
 			<rotation qw="0.5" qx="0.5" qy="0.5" qz="0.5"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="PlayerWeapon" meshFile="short_sword.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="/dural/items/weapons/weapon_handle/texture"/>
-				<subentity index="1" datablockName="/dural/items/weapons/weapon_head/texture"/>
+			<item name="PlayerWeapon" meshFile="short_sword.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="/dural/items/weapons/weapon_handle/texture"/>
+				<subitem index="1" datablockName="/dural/items/weapons/weapon_head/texture"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2771515178"/>
@@ -400,14 +400,14 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="6" name="TargetId" data="929302007"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 		<node name="MainGameObject" id="1366663313">
 			<position x="0" y="0" z="0"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="MainGameObject" meshFile="Node.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="WhiteLine"/>
+			<item name="MainGameObject" meshFile="Node.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1111111111"/>
@@ -1245,7 +1245,7 @@
 					<property type="10" name="OffsetOrientation" data="0 0 0"/>
 					<property type="9" name="Scale" data="0.02 0.02 0.02"/>
 				</userData>
-			</entity>
+			</item>
 		</node>
 	</nodes>
 </scene>

@@ -237,7 +237,7 @@ namespace NOWA
 	protected:
 		Ogre::SceneNode* lineNode;
 		Ogre::ManualObject* manualObject;
-		Ogre::v1::Entity* dummyEntity;
+		Ogre::Item* dummyItem;
 		Variant* castShadows;
 		Variant* twoSided;
 		Variant* rectanglesCount;

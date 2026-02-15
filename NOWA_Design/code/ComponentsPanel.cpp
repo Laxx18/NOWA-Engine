@@ -351,9 +351,24 @@ void ComponentsPanelDynamic::showComponents(const Ogre::String& searchText)
 						Ogre::v1::Skeleton* skeleton = entity->getSkeleton();
 						if (nullptr != skeleton)
 						{
-							unsigned short numBones = entity->getSkeleton()->getNumBones();
+							unsigned short numBones = skeleton->getNumBones();
 							if (numBones > 0)
 								validToEnable = true;
+						}
+					}
+					else
+					{
+						Ogre::Item* item = this->gameObjects[i]->getMovableObject<Ogre::Item>();
+						if (nullptr != item)
+						{
+							// Only show TagPointComponent if there is a skeleton and bones
+							Ogre::SkeletonInstance* skeletonInstance = item->getSkeletonInstance();
+							if (nullptr != skeletonInstance)
+							{
+								unsigned short numBones = skeletonInstance->getNumBones();
+								if (numBones > 0)
+									validToEnable = true;
+							}
 						}
 					}
 				}
