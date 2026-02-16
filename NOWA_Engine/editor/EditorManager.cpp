@@ -126,7 +126,7 @@ namespace NOWA
 			}
 
 			/*boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGeometryModified);*/
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGeometryModified);*/
 		}
 
 		virtual void redo(void)
@@ -184,7 +184,7 @@ namespace NOWA
 			}
 
 			boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGeometryModified);
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGeometryModified);
 		}
 	private:
 		std::vector<EditorManager::GameObjectData> oldGameObjectDataList;
@@ -486,20 +486,7 @@ namespace NOWA
 				{
 					meshName = this->meshData[0];
 
-					if (GameObject::ITEM == this->type || GameObject::PLANE == this->type)
-					{
-						Ogre::Item* newItem = this->sceneManager->createItem(meshName, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, Ogre::SCENE_STATIC);
-						this->objectNode->attachObject(newItem);
-
-						newMovableObject = newItem;
-
-						// Copy the datablocks from place entity to new one
-						for (size_t i = 1; i < this->meshData.size(); i++)
-						{
-							newItem->getSubItem(i - 1)->setDatablock(this->meshData[i]);
-						}
-					}
-					else
+                    if (GameObject::ENTITY == this->type)
 					{
 						Ogre::v1::Entity* newEntity = this->sceneManager->createEntity(meshName, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, Ogre::SCENE_STATIC);
 						this->objectNode->attachObject(newEntity);
@@ -511,6 +498,19 @@ namespace NOWA
 						{
 							newEntity->getSubEntity(i - 1)->setDatablock(this->meshData[i]);
 						}
+					}
+					else
+					{
+                        Ogre::Item* newItem = this->sceneManager->createItem(meshName, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, Ogre::SCENE_STATIC);
+                        this->objectNode->attachObject(newItem);
+
+                        newMovableObject = newItem;
+
+                        // Copy the datablocks from place entity to new one
+                        for (size_t i = 1; i < this->meshData.size(); i++)
+                        {
+                            newItem->getSubItem(i - 1)->setDatablock(this->meshData[i]);
+                        }
 					}
 
 					// Get name without .mesh
@@ -686,7 +686,7 @@ namespace NOWA
 			NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "AddGameObjectUndoCommand::redo");
 
 			boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGeometryModified);
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGeometryModified);
 		}
 
 	private:
@@ -949,7 +949,7 @@ namespace NOWA
 			});
 
 			boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGeometryModified);
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGeometryModified);
 		}
 
 		virtual void redo(void) override
@@ -997,7 +997,7 @@ namespace NOWA
 			NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CloneGameObjectGroupUndoCommand::redo");
 
 			boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGeometryModified);
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGeometryModified);
 		}
 
 		void createGameObjects(void)
@@ -1073,7 +1073,7 @@ namespace NOWA
 			}
 
 			boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGeometryModified);
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGeometryModified);
 		}
 
 		virtual void redo(void) override
@@ -1120,7 +1120,7 @@ namespace NOWA
 			});
 
 			boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGeometryModified);
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGeometryModified);
 		}
 	private:
 		EditorManager* editorManager;
@@ -1256,7 +1256,7 @@ namespace NOWA
 			terraComponent->setHeightData(this->oldHeightData);
 
 			boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGeometryModified);
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGeometryModified);
 		}
 
 		virtual void redo(void) override
@@ -1280,7 +1280,7 @@ namespace NOWA
 			terraComponent->setHeightData(this->newHeightData);
 
 			boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGeometryModified);
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGeometryModified);
 		}
 
 	private:
@@ -1382,7 +1382,7 @@ namespace NOWA
 			roadComponentBase->setRoadData(this->oldRoadData);
 
 			boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGeometryModified);
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGeometryModified);
 		}
 
 		virtual void redo(void) override
@@ -1406,7 +1406,7 @@ namespace NOWA
 			roadComponentBase->setRoadData(this->newRoadData);
 
 			boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGeometryModified);
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGeometryModified);
 		}
 
 	private:
@@ -1454,7 +1454,7 @@ namespace NOWA
 			wallComponentBase->setWallData(this->oldWallData);
 
 			boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGeometryModified);
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGeometryModified);
 		}
 
 		virtual void redo(void) override
@@ -1480,7 +1480,7 @@ namespace NOWA
 			wallComponentBase->setWallData(this->newWallData);
 
 			boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGeometryModified);
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGeometryModified);
 		}
 
 	private:
@@ -1719,7 +1719,7 @@ namespace NOWA
 				// Here send event, that select mode is active! Create just one event with the mode! to handle all other checks to
 			}
 			boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(this->manipulationMode));
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataEditorMode);
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataEditorMode);
 		}
 
 		if (false == this->isInSimulation)
@@ -2121,7 +2121,7 @@ namespace NOWA
 						if (nullptr != navMeshComponent)
 						{
 							boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
-							NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGeometryModified);
+                            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGeometryModified);
 						}
 					}
 				}
@@ -2178,110 +2178,103 @@ namespace NOWA
 			int mX = evt.state.X.abs;
 			int mY = evt.state.Y.abs;
 
-			ENQUEUE_RENDER_COMMAND_MULTI("EditorManager::selectGizmo", _3(mX, mY, hitRay),
-			{
-				Ogre::Item* gizmoItem = nullptr;
-				Ogre::Vector3 result = Ogre::Vector3::ZERO;
-				Ogre::Real closestDistance = 0.0f;
-				Ogre::Vector3 normal = Ogre::Vector3::ZERO;
+			NOWA::GraphicsModule::RenderCommand renderCommand = [this, mX, mY, hitRay]()
+            {
+                Ogre::Item* gizmoItem = nullptr;
+                Ogre::Vector3 result = Ogre::Vector3::ZERO;
+                Ogre::Real closestDistance = 0.0f;
+                Ogre::Vector3 normal = Ogre::Vector3::ZERO;
 
-				// MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("DebugLabel")->setCaption("");
+                // Check if there is an hit with an polygon of an item
+                if (MathHelper::getInstance()->getRaycastFromPoint(mX, mY, this->camera, Core::getSingletonPtr()->getOgreRenderWindow(), this->gizmoQuery, result, (size_t&)gizmoItem, closestDistance, normal, nullptr, true))
+                {
+                    Ogre::Vector3 gizmoPosition = this->gizmo->getSelectedNode()->_getDerivedPositionUpdated();
 
-				// Check if there is an hit with an polygon of an item
-				if (MathHelper::getInstance()->getRaycastFromPoint(mX, mY, this->camera, Core::getSingletonPtr()->getOgreRenderWindow(), this->gizmoQuery, result, (size_t&)gizmoItem, closestDistance, normal, nullptr, true))
-				{
-					Ogre::Vector3 gizmoPosition = this->gizmo->getSelectedNode()->_getDerivedPositionUpdated();
+                    Ogre::Vector3 gizmoDirectionX = this->gizmo->getSelectedNode()->_getDerivedOrientationUpdated().xAxis();
+                    Ogre::Vector3 gizmoDirectionY = this->gizmo->getSelectedNode()->_getDerivedOrientationUpdated().yAxis();
+                    Ogre::Vector3 gizmoDirectionZ = this->gizmo->getSelectedNode()->_getDerivedOrientationUpdated().zAxis();
 
-					Ogre::Vector3 gizmoDirectionX = this->gizmo->getSelectedNode()->_getDerivedOrientationUpdated().xAxis();
-					Ogre::Vector3 gizmoDirectionY = this->gizmo->getSelectedNode()->_getDerivedOrientationUpdated().yAxis();
-					Ogre::Vector3 gizmoDirectionZ = this->gizmo->getSelectedNode()->_getDerivedOrientationUpdated().zAxis();
+                    this->gizmo->redefineFirstPlane(gizmoDirectionX, gizmoPosition);
+                    this->gizmo->redefineSecondPlane(gizmoDirectionY, gizmoPosition);
+                    this->gizmo->redefineThirdPlane(gizmoDirectionZ, gizmoPosition);
 
-					this->gizmo->redefineFirstPlane(gizmoDirectionX, gizmoPosition);
-					this->gizmo->redefineSecondPlane(gizmoDirectionY, gizmoPosition);
-					this->gizmo->redefineThirdPlane(gizmoDirectionZ, gizmoPosition);
+                    Ogre::Real vX = this->gizmo->getFirstPlane().projectVector(hitRay.getDirection()).length();
+                    Ogre::Real vY = this->gizmo->getSecondPlane().projectVector(hitRay.getDirection()).length();
+                    Ogre::Real vZ = this->gizmo->getThirdPlane().projectVector(hitRay.getDirection()).length();
 
-					Ogre::Real vX = this->gizmo->getFirstPlane().projectVector(hitRay.getDirection()).length();
-					Ogre::Real vY = this->gizmo->getSecondPlane().projectVector(hitRay.getDirection()).length();
-					Ogre::Real vZ = this->gizmo->getThirdPlane().projectVector(hitRay.getDirection()).length();
+                    if (this->gizmo->getArrowItemX() == gizmoItem)
+                    {
+                        // http://www.ogre3d.org/forums/viewtopic.php?f=2&t=41739
 
-					if (this->gizmo->getArrowItemX() == gizmoItem)
-					{
-						// http://www.ogre3d.org/forums/viewtopic.php?f=2&t=41739
+                        // Change the color of the arrow, when the user hovers over it
+                        this->gizmo->highlightXArrow();
+                        vX = 10000.0f;
 
-						// Change the color of the arrow, when the user hovers over it
-						this->gizmo->highlightXArrow();
-						vX = 10000.0f;
-
-						if (EDITOR_ROTATE_MODE1 == this->manipulationMode || EDITOR_ROTATE_MODE2 == this->manipulationMode)
-						{
-							this->resultPlane.redefine(gizmoDirectionY, this->gizmo->getPosition());
-						}
-					}
+                        if (EDITOR_ROTATE_MODE1 == this->manipulationMode || EDITOR_ROTATE_MODE2 == this->manipulationMode)
+                        {
+                            this->resultPlane.redefine(gizmoDirectionY, this->gizmo->getPosition());
+                        }
+                    }
                     else if (this->gizmo->getArrowItemY() == gizmoItem)
-					{
-						this->gizmo->highlightYArrow();
-						vY = 10000.0f;
-						if (EDITOR_ROTATE_MODE1 == this->manipulationMode || EDITOR_ROTATE_MODE2 == this->manipulationMode)
-						{
-							this->resultPlane.redefine(gizmoDirectionZ, this->gizmo->getPosition());
-						}
-					}
+                    {
+                        this->gizmo->highlightYArrow();
+                        vY = 10000.0f;
+                        if (EDITOR_ROTATE_MODE1 == this->manipulationMode || EDITOR_ROTATE_MODE2 == this->manipulationMode)
+                        {
+                            this->resultPlane.redefine(gizmoDirectionZ, this->gizmo->getPosition());
+                        }
+                    }
                     else if (this->gizmo->getArrowItemZ() == gizmoItem)
-					{
-						this->gizmo->highlightZArrow();
-						vZ = 10000.0f;
-						if (EDITOR_ROTATE_MODE1 == this->manipulationMode || EDITOR_ROTATE_MODE2 == this->manipulationMode)
-						{
-							this->resultPlane.redefine(gizmoDirectionX, this->gizmo->getPosition());
-						}
-					}
-                    else if (this->gizmo->getSphereItem() == gizmoItem
-						&& EDITOR_ROTATE_MODE1 != this->manipulationMode && EDITOR_ROTATE_MODE2 != this->manipulationMode)
-					{
-						this->gizmo->highlightSphere();
+                    {
+                        this->gizmo->highlightZArrow();
+                        vZ = 10000.0f;
+                        if (EDITOR_ROTATE_MODE1 == this->manipulationMode || EDITOR_ROTATE_MODE2 == this->manipulationMode)
+                        {
+                            this->resultPlane.redefine(gizmoDirectionX, this->gizmo->getPosition());
+                        }
+                    }
+                    else if (this->gizmo->getSphereItem() == gizmoItem && EDITOR_ROTATE_MODE1 != this->manipulationMode && EDITOR_ROTATE_MODE2 != this->manipulationMode)
+                    {
+                        this->gizmo->highlightSphere();
 
-						this->resultPlane.redefine(this->camera->getDerivedDirection(), gizmoPosition);
-						// MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("DebugLabel")->setCaption("Sphere Gizmo hit");
-						return;
-					}
-					else
-					{
-						this->gizmo->unHighlightGizmo();
+                        this->resultPlane.redefine(this->camera->getDerivedDirection(), gizmoPosition);
+                        return;
+                    }
+                    else
+                    {
+                        this->gizmo->unHighlightGizmo();
 
-						Ogre::Vector3 cameraBack = this->camera->getDerivedDirection();
-						cameraBack = -cameraBack;
-						this->resultPlane.redefine(cameraBack, gizmoPosition);
-						// MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("DebugLabel")->setCaption("No Gizmo hit");
-						return;
-					}
+                        Ogre::Vector3 cameraBack = this->camera->getDerivedDirection();
+                        cameraBack = -cameraBack;
+                        this->resultPlane.redefine(cameraBack, gizmoPosition);
+                        return;
+                    }
 
-					if (EDITOR_ROTATE_MODE1 != this->manipulationMode && EDITOR_ROTATE_MODE2 != this->manipulationMode)
-					{
-						if (vX < vY && vX < vZ)
-						{
-							this->resultPlane = this->gizmo->getFirstPlane();
-							// this->gizmo->_debugShowResultPlane(1);
-						}
-						else
-						{
-							if (vY < vX && vY < vZ)
-							{
-								this->resultPlane = this->gizmo->getSecondPlane();
-								// this->gizmo->_debugShowResultPlane(2);
-							}
-							else
-							{
-								this->resultPlane = this->gizmo->getThirdPlane();
-								// this->gizmo->_debugShowResultPlane(3);
-							}
-						}
-					}
-				}
-				else
-				{
-					this->gizmo->unHighlightGizmo();
-				}
-			});
+                    if (EDITOR_ROTATE_MODE1 != this->manipulationMode && EDITOR_ROTATE_MODE2 != this->manipulationMode)
+                    {
+                        if (vX < vY && vX < vZ)
+                        {
+                            this->resultPlane = this->gizmo->getFirstPlane();
+                        }
+                        else
+                        {
+                            if (vY < vX && vY < vZ)
+                            {
+                                this->resultPlane = this->gizmo->getSecondPlane();
+                            }
+                            else
+                            {
+                                this->resultPlane = this->gizmo->getThirdPlane();
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    this->gizmo->unHighlightGizmo();
+                }
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "EditorManager::selectGizmo");
 		}
 	}
 
@@ -2729,179 +2722,204 @@ namespace NOWA
 
 	// More modern version: Everything placed is now item be default instead of entity! Even animation does work for item!
 	// Unfortunately causes crash e.g. with spaceGun2.mesh
-	void EditorManager::attachMeshToPlaceNode(const Ogre::String& meshName, GameObject::eType type, Ogre::v1::Mesh* mesh)
-	{
-		// Note: Its always an entity, no matter if internally its an billboard or something else, because the entity is visible geometry for the editor!
-		this->destroyTempPlaceMovableObjectNode();
+    void EditorManager::attachMeshToPlaceNode(const Ogre::String& meshName, GameObject::eType type, Ogre::v1::Mesh* mesh)
+    {
+        // Note: Its always an entity, no matter if internally its an billboard or something else, because the entity is visible geometry for the editor!
+        this->destroyTempPlaceMovableObjectNode();
 
-		Ogre::v1::MeshPtr v1Mesh;
-		Ogre::MeshPtr v2Mesh;
+        Ogre::v1::MeshPtr v1Mesh;
+        Ogre::MeshPtr v2Mesh;
 
-		try
-		{
-			if (GameObject::PLANE == type || GameObject::MIRROR == type)
-			{
-				throw Ogre::Exception(Ogre::Exception::ERR_RT_ASSERTION_FAILED, "", "");
-			}
+        // Helper: create as Item from a v1 mesh (imports if needed)
+        auto createItemFromV1Mesh = [&](const Ogre::String& name, const Ogre::v1::MeshPtr& srcV1Mesh) -> Ogre::Item*
+        {
+            Ogre::MeshPtr importedV2Mesh;
 
-			const auto versionData = Core::getSingletonPtr()->getMeshVersion(meshName);
-			bool canBeV2Mesh = versionData.first;
-			Ogre::String version = versionData.second;
+            // Create or get the imported v2 mesh
+            if ((importedV2Mesh = Ogre::MeshManager::getSingletonPtr()->getByName(name, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME)) == nullptr)
+            {
+                importedV2Mesh = Ogre::MeshManager::getSingletonPtr()->createByImportingV1(name, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, srcV1Mesh.get(),
+                    true, // halfPos
+                    true, // halfTexCoords
+                    true  // qTangents
+                );
+            }
 
-			if ((v1Mesh = Ogre::v1::MeshManager::getSingletonPtr()->getByName(meshName, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME)) == nullptr)
-			{
-				v1Mesh = Ogre::v1::MeshManager::getSingletonPtr()->load(meshName, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME,
-																		Ogre::v1::HardwareBuffer::HBU_STATIC_WRITE_ONLY, Ogre::v1::HardwareBuffer::HBU_STATIC_WRITE_ONLY, true, true);
-			}
+            if (nullptr == importedV2Mesh)
+            {
+                return nullptr;
+            }
 
-			if (nullptr == v1Mesh)
-			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[EditorManager] Error cannot create entity, because the mesh: '"
-																+ meshName + "' could not be created.");
-				return;
-			}
+            Ogre::Item* item = this->sceneManager->createItem(importedV2Mesh);
+            item->setName("PlaceEntity");
+            item->setQueryFlags(AppStateManager::getSingletonPtr()->getGameObjectController()->getCategoryId("Default"));
+            item->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
 
-			if (false == canBeV2Mesh)
-			{
-				this->tempPlaceMovableObject = this->sceneManager->createEntity(v1Mesh);
-				this->tempPlaceMovableObject->setName("PlaceEntity");
-				this->tempPlaceMovableObject->setQueryFlags(AppStateManager::getSingletonPtr()->getGameObjectController()->getCategoryId("Default"));
-				this->tempPlaceMovableObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V1_MESH);
+            DeployResourceModule::getInstance()->tagResource(name, importedV2Mesh->getGroup());
 
-				DeployResourceModule::getInstance()->tagResource(meshName, v1Mesh->getGroup());
-			}
-			else
-			{
-				if ((v2Mesh = Ogre::MeshManager::getSingletonPtr()->getByName(meshName, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME)) == nullptr)
-				{
-					v2Mesh = Ogre::MeshManager::getSingletonPtr()->createByImportingV1(meshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, v1Mesh.get(), true, true, true);
-				}
+            return item;
+        };
 
-				v1Mesh->unload();
+        try
+        {
+            if (GameObject::PLANE == type || GameObject::MIRROR == type)
+            {
+                // These are special-cased below (mesh pointer passed in)
+                throw Ogre::Exception(Ogre::Exception::ERR_RT_ASSERTION_FAILED, "", "");
+            }
 
-				this->tempPlaceMovableObject = this->sceneManager->createItem(v2Mesh);
-				this->tempPlaceMovableObject->setName("PlaceEntity");
-				this->tempPlaceMovableObject->setQueryFlags(AppStateManager::getSingletonPtr()->getGameObjectController()->getCategoryId("Default"));
-				this->tempPlaceMovableObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
-				type = GameObject::ITEM;
+            // 1) Try V2 first (fast path)
+            if ((v2Mesh = Ogre::MeshManager::getSingletonPtr()->getByName(meshName, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME)) == nullptr)
+            {
+                v2Mesh = Ogre::MeshManager::getSingletonPtr()->load(meshName, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME);
+            }
 
-				DeployResourceModule::getInstance()->tagResource(meshName, v2Mesh->getGroup());
-			}
-		}
-		catch (Ogre::Exception&)
-		{
-			try
-			{
-				if (GameObject::PLANE == type || GameObject::MIRROR == type)
-				{
-					v2Mesh = Ogre::MeshManager::getSingletonPtr()->createByImportingV1(meshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, mesh, true, true, true);
-					mesh->unload();
-				}
-				else
-				{
-					// Maybe its a v2 mesh
-					if ((v2Mesh = Ogre::MeshManager::getSingletonPtr()->getByName(meshName, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME)) == nullptr)
-					{
-						v2Mesh = Ogre::MeshManager::getSingletonPtr()->load(meshName, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME);
-					}
-				}
-				if (nullptr == v2Mesh)
-				{
-					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[EditorManager] Error cannot create entity, because the mesh: '"
-																	+ meshName + "' could not be created.");
-					return;
-				}
+            if (nullptr != v2Mesh)
+            {
+                this->tempPlaceMovableObject = this->sceneManager->createItem(v2Mesh);
+                this->tempPlaceMovableObject->setName("PlaceEntity");
+                this->tempPlaceMovableObject->setQueryFlags(AppStateManager::getSingletonPtr()->getGameObjectController()->getCategoryId("Default"));
+                this->tempPlaceMovableObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
 
-				this->tempPlaceMovableObject = this->sceneManager->createItem(v2Mesh);
-				this->tempPlaceMovableObject->setName("PlaceEntity");
-				this->tempPlaceMovableObject->setQueryFlags(AppStateManager::getSingletonPtr()->getGameObjectController()->getCategoryId("Default"));
-				this->tempPlaceMovableObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
-				// If it is not a v1 mesh or a plane, its a v2 mesh, so set the proper type
-				if (GameObject::PLANE != type)
-				{
-					type = GameObject::ITEM;
-				}
-			}
-			catch (...)
-			{
-				return;
-			}
-		}
+                DeployResourceModule::getInstance()->tagResource(meshName, v2Mesh->getGroup());
+            }
+            else
+            {
+                // If getByName/load returned null, force fallback to v1 path
+                throw Ogre::Exception(Ogre::Exception::ERR_ITEM_NOT_FOUND, "", "");
+            }
+        }
+        catch (Ogre::Exception&)
+        {
+            // 2) V2 failed (e.g. serializer "MeshSerializer_v2.1 R2" not found) -> fallback to V1
+            try
+            {
+                if (GameObject::PLANE == type || GameObject::MIRROR == type)
+                {
+                    // Plane/Mirror come in as v1 mesh pointer
+                    if (nullptr == mesh)
+                    {
+                        return;
+                    }
 
-		Ogre::v1::Entity* tempEntity = dynamic_cast<Ogre::v1::Entity*>(this->tempPlaceMovableObject);
-		if (nullptr != tempEntity)
-		{
-			if ("Plane" == meshName)
-			{
-				if (nullptr != tempEntity)
-				{
-					tempEntity->setDatablock("GroundDirtPlane");
-				}
-			}
+                    Ogre::Item* item = nullptr;
 
-			for (size_t i = 0; i < tempEntity->getNumSubEntities(); i++)
-			{
-				auto sourceDataBlock = dynamic_cast<Ogre::HlmsPbsDatablock*>(tempEntity->getSubEntity(i)->getDatablock());
-				if (nullptr != sourceDataBlock)
-				{
-					// Deactivate fresnel by default, because it looks ugly
-					if (sourceDataBlock->getWorkflow() != Ogre::HlmsPbsDatablock::SpecularAsFresnelWorkflow && sourceDataBlock->getWorkflow() != Ogre::HlmsPbsDatablock::MetallicWorkflow)
-					{
-						sourceDataBlock->setFresnel(Ogre::Vector3(0.01f, 0.01f, 0.01f), false);
-					}
-					// sourceDataBlock->mAllowTextureResidencyChange = true;
-					// sourceDataBlock->preload();
-				}
-			}
+                    // Import that v1 mesh into v2 and create Item
+                    v1Mesh = Ogre::v1::MeshPtr(mesh);
+                    item = createItemFromV1Mesh(meshName, v1Mesh);
 
-		}
-		else
-		{
-			Ogre::Item* tempItem = dynamic_cast<Ogre::Item*>(this->tempPlaceMovableObject);
-			if (nullptr != tempItem)
-			{
-				if (GameObject::PLANE == type)
-				{
-					if (nullptr != tempItem)
-					{
-						tempItem->setDatablock("GroundDirtPlane");
-					}
-				}
-				// Change the addressing mode of the roughness map to wrap via code.
-				// Detail maps default to wrap, but the rest to clamp.
-				Ogre::HlmsPbsDatablock* datablock = static_cast<Ogre::HlmsPbsDatablock*>(tempItem->getSubItem(0)->getDatablock());
-				//Make a hard copy of the sampler block
-				auto sampleBlock = datablock->getSamplerblock(Ogre::PBSM_ROUGHNESS);
-				if (nullptr != sampleBlock)
-				{
-					Ogre::HlmsSamplerblock samplerblockCopy(*sampleBlock);
-					samplerblockCopy.mU = Ogre::TAM_WRAP;
-					samplerblockCopy.mV = Ogre::TAM_WRAP;
-					samplerblockCopy.mW = Ogre::TAM_WRAP;
-					//Set the new samplerblock. The Hlms system will
-					//automatically create the API block if necessary
-					datablock->setSamplerblock(Ogre::PBSM_ROUGHNESS, samplerblockCopy);
-				}
+                    // IMPORTANT: do not unload 'mesh' until after import
+                    mesh->unload();
 
-				for (size_t i = 0; i < tempItem->getNumSubItems(); i++)
-				{
-					auto sourceDataBlock = dynamic_cast<Ogre::HlmsPbsDatablock*>(tempItem->getSubItem(i)->getDatablock());
-					if (nullptr != sourceDataBlock)
-					{
-						// Deactivate fresnel by default, because it looks ugly
-						if (sourceDataBlock->getWorkflow() != Ogre::HlmsPbsDatablock::SpecularAsFresnelWorkflow && sourceDataBlock->getWorkflow() != Ogre::HlmsPbsDatablock::MetallicWorkflow)
-						{
-							sourceDataBlock->setFresnel(Ogre::Vector3(0.01f, 0.01f, 0.01f), false);
+                    if (nullptr == item)
+                    {
+                        return;
+                    }
 
-							tempItem->getSubItem(i)->setDatablock(tempItem->getSubItem(i)->getDatablock());
-						}
-					}
-				}
-			}
-		}
+                    this->tempPlaceMovableObject = item;
+                }
+                else
+                {
+                    // Load v1 mesh
+                    if ((v1Mesh = Ogre::v1::MeshManager::getSingletonPtr()->getByName(meshName, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME)) == nullptr)
+                    {
+                        v1Mesh = Ogre::v1::MeshManager::getSingletonPtr()->load(meshName, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, Ogre::v1::HardwareBuffer::HBU_STATIC_WRITE_ONLY, Ogre::v1::HardwareBuffer::HBU_STATIC_WRITE_ONLY,
+                            true, true);
+                    }
 
-		this->createMeshPlaceNode(type);
-	}
+                    if (nullptr == v1Mesh)
+                    {
+                        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[EditorManager] Error cannot create entity/item, because the mesh: '" + meshName + "' could not be created.");
+                        return;
+                    }
+
+                    // Prefer Item even from V1 (import)
+                    Ogre::Item* item = createItemFromV1Mesh(meshName, v1Mesh);
+
+                    if (nullptr != item)
+                    {
+                        this->tempPlaceMovableObject = item;
+                    }
+                    else
+                    {
+                        // Last resort: show it as v1 Entity
+                        this->tempPlaceMovableObject = this->sceneManager->createEntity(v1Mesh);
+                        this->tempPlaceMovableObject->setName("PlaceEntity");
+                        this->tempPlaceMovableObject->setQueryFlags(AppStateManager::getSingletonPtr()->getGameObjectController()->getCategoryId("Default"));
+                        this->tempPlaceMovableObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V1_MESH);
+
+                        DeployResourceModule::getInstance()->tagResource(meshName, v1Mesh->getGroup());
+                    }
+                }
+            }
+            catch (...)
+            {
+                return;
+            }
+        }
+
+        // ----- Your original datablock tweaks stay the same -----
+
+        Ogre::v1::Entity* tempEntity = dynamic_cast<Ogre::v1::Entity*>(this->tempPlaceMovableObject);
+        if (nullptr != tempEntity)
+        {
+            if ("Plane" == meshName)
+            {
+                tempEntity->setDatablock("GroundDirtPlane");
+            }
+
+            for (size_t i = 0; i < tempEntity->getNumSubEntities(); i++)
+            {
+                auto sourceDataBlock = dynamic_cast<Ogre::HlmsPbsDatablock*>(tempEntity->getSubEntity(i)->getDatablock());
+                if (nullptr != sourceDataBlock)
+                {
+                    // Deactivate fresnel by default, because it looks ugly
+                    if (sourceDataBlock->getWorkflow() != Ogre::HlmsPbsDatablock::SpecularAsFresnelWorkflow && sourceDataBlock->getWorkflow() != Ogre::HlmsPbsDatablock::MetallicWorkflow)
+                    {
+                        sourceDataBlock->setFresnel(Ogre::Vector3(0.01f, 0.01f, 0.01f), false);
+                    }
+                }
+            }
+        }
+        else
+        {
+            Ogre::Item* tempItem = dynamic_cast<Ogre::Item*>(this->tempPlaceMovableObject);
+            if (nullptr != tempItem)
+            {
+                if (GameObject::PLANE == type)
+                {
+                    tempItem->setDatablock("GroundDirtPlane");
+                }
+
+                // Change the addressing mode of the roughness map to wrap via code.
+                Ogre::HlmsPbsDatablock* datablock = static_cast<Ogre::HlmsPbsDatablock*>(tempItem->getSubItem(0)->getDatablock());
+                auto sampleBlock = datablock->getSamplerblock(Ogre::PBSM_ROUGHNESS);
+                if (nullptr != sampleBlock)
+                {
+                    Ogre::HlmsSamplerblock samplerblockCopy(*sampleBlock);
+                    samplerblockCopy.mU = Ogre::TAM_WRAP;
+                    samplerblockCopy.mV = Ogre::TAM_WRAP;
+                    samplerblockCopy.mW = Ogre::TAM_WRAP;
+                    datablock->setSamplerblock(Ogre::PBSM_ROUGHNESS, samplerblockCopy);
+                }
+
+                for (size_t i = 0; i < tempItem->getNumSubItems(); i++)
+                {
+                    auto sourceDataBlock = dynamic_cast<Ogre::HlmsPbsDatablock*>(tempItem->getSubItem(i)->getDatablock());
+                    if (nullptr != sourceDataBlock)
+                    {
+                        if (sourceDataBlock->getWorkflow() != Ogre::HlmsPbsDatablock::SpecularAsFresnelWorkflow && sourceDataBlock->getWorkflow() != Ogre::HlmsPbsDatablock::MetallicWorkflow)
+                        {
+                            sourceDataBlock->setFresnel(Ogre::Vector3(0.01f, 0.01f, 0.01f), false);
+                            tempItem->getSubItem(i)->setDatablock(tempItem->getSubItem(i)->getDatablock());
+                        }
+                    }
+                }
+            }
+        }
+
+        this->createMeshPlaceNode(type);
+    }
 
 	void EditorManager::createMeshPlaceNode(GameObject::eType type)
 	{
@@ -2918,7 +2936,7 @@ namespace NOWA
 		this->manipulationMode = EDITOR_PLACE_MODE;
 
 		boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(this->manipulationMode));
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataEditorMode);
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataEditorMode);
 	}
 
 	void EditorManager::attachOtherResourceToPlaceNode(GameObject::eType type)
@@ -3046,7 +3064,7 @@ namespace NOWA
 		}
 		
 		boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(this->manipulationMode));
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataEditorMode);
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataEditorMode);
 	}
 
 	void EditorManager::attachGroupToPlaceNode(const std::vector<unsigned long>& gameObjectIds)
@@ -3097,7 +3115,7 @@ namespace NOWA
 			// this center offset calculation anymore!
 
 			boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(this->manipulationMode));
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataEditorMode);
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataEditorMode);
 		}
 	}
 
@@ -3956,7 +3974,7 @@ namespace NOWA
 		}
 
 		boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(this->manipulationMode));
-        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataEditorMode);
+        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataEditorMode);
 	}
 
 	EditorManager::eManipulationMode EditorManager::getManipulationMode(void) const

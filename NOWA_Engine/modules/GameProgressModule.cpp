@@ -83,7 +83,7 @@ namespace NOWA
 			// Trigger loaded event
 			boost::shared_ptr<EventDataSceneLoaded> sceneLoadedEvent = boost::make_shared<EventDataSceneLoaded>(this->sceneChanged, this->dotSceneImportModule->getProjectParameter(), sceneParameter);
 
-			appStateMgr->getEventManager(this->appStateName)->threadSafeQueueEvent(sceneLoadedEvent);
+			appStateMgr->getEventManager(this->appStateName)->queueEvent(sceneLoadedEvent);
 
 			gameProgressModule->bSceneLoading = false;
 		}

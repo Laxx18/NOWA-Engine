@@ -752,7 +752,7 @@ namespace NOWA
 			hlmsWind->setup(this->gameObjectPtr->getSceneManager());
 
 			boost::shared_ptr<EventDataHdrActivated> eventDataHdrActivated(new EventDataHdrActivated(gameObjectPtr->getId(), false));
-			AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataHdrActivated);
+			AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataHdrActivated);
 
 			// };
 			// NOWA::ProcessPtr closureProcess(new NOWA::ClosureProcess(ptrFunction));
@@ -958,7 +958,7 @@ namespace NOWA
 
 		// Send event, that component has been deleted
 		boost::shared_ptr<EventDataDeleteWorkspaceComponent> eventDataDeleteWorkspaceComponent(new EventDataDeleteWorkspaceComponent(this->gameObjectPtr->getId()));
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataDeleteWorkspaceComponent);
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataDeleteWorkspaceComponent);
 
 		this->removeWorkspace();
 	}
@@ -2654,7 +2654,7 @@ namespace NOWA
 		if (false == useHdr && nullptr != this->gameObjectPtr)
 		{
 			boost::shared_ptr<EventDataHdrActivated> eventDataHdrActivated(new EventDataHdrActivated(gameObjectPtr->getId(), useHdr));
-			AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataHdrActivated);
+			AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataHdrActivated);
 
 			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("WorkspaceBaseComponent::setUseHdr", _1(useHdr),
 			{

@@ -1,3 +1,4 @@
+// EventManager.cpp
 #include "NOWAPrecompiled.h"
 #include "EventManager.h"
 #include "AppStateManager.h"
@@ -32,8 +33,14 @@ namespace NOWA
                         for (std::list<EventListenerDelegate>::const_iterator it = eventListenerList.cbegin(); it != eventListenerList.cend(); ++it)
                         {
                             EventListenerDelegate listener = (*it);
-                            // Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[EventManager] Sending Event: " + Ogre::String(event->getName()));
-                            listener(event); // call the delegate
+                            try
+                            {
+                                listener(event); // call the delegate
+                            }
+                            catch (const std::exception& e)
+                            {
+                                Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[EventManager] Exception in delayed trigger: " + Ogre::String(e.what()));
+                            }
                         }
                     }
                     this->succeed();
@@ -50,7 +57,7 @@ namespace NOWA
 
     GenericObjectFactory<EventData, EventType> eventFactory;
 
-    EventManager::EventManager(const Ogre::String& appStateName) : appStateName(appStateName), activeQueue(0)
+    EventManager::EventManager(const Ogre::String& appStateName) : appStateName(appStateName)
     {
     }
 
@@ -60,8 +67,10 @@ namespace NOWA
 
     bool EventManager::addListener(const EventListenerDelegate& eventDelegate, const EventType& type)
     {
+        std::lock_guard<std::mutex> lock(this->listenerMutex);
+
         EventListenerList& eventListenerList = this->eventListeners[type]; // this will find or create the entry
-        for (auto& it = eventListenerList.cbegin(); it != eventListenerList.cend(); ++it)
+        for (auto it = eventListenerList.cbegin(); it != eventListenerList.cend(); ++it)
         {
             if (eventDelegate == (*it))
             {
@@ -71,19 +80,19 @@ namespace NOWA
         }
 
         eventListenerList.push_back(eventDelegate);
-
         return true;
     }
 
     bool EventManager::removeListener(const EventListenerDelegate& eventDelegate, const EventType& type)
     {
-        bool success = false;
+        std::lock_guard<std::mutex> lock(this->listenerMutex);
 
+        bool success = false;
         auto findIt = this->eventListeners.find(type);
         if (findIt != this->eventListeners.end())
         {
             EventListenerList& listeners = findIt->second;
-            for (auto& it = listeners.cbegin(); it != listeners.cend(); ++it)
+            for (auto it = listeners.begin(); it != listeners.end(); ++it)
             {
                 if (eventDelegate == (*it))
                 {
@@ -97,94 +106,123 @@ namespace NOWA
         return success;
     }
 
-    bool EventManager::triggerEvent(const EventDataPtr& event, Ogre::Real delaySec) const
+    bool EventManager::triggerEvent(const EventDataPtr& event, Ogre::Real delaySec)
     {
+        // CRITICAL: triggerEvent must only be called from the main/logic thread
+        // because listeners execute on the calling thread
+        assert(AppStateManager::getSingletonPtr()->isLogicThread() && "triggerEvent() must be called from the main/logic thread! Use queueEvent() from other threads.");
+        
+
+        if (!event)
+        {
+            return false;
+        }
+
         bool processed = false;
 
         if (0.0f == delaySec)
         {
-            auto findIt = this->eventListeners.find(event->getEventType());
-            if (findIt != this->eventListeners.end())
+            // Copy listeners under lock, then invoke without holding lock
+            EventListenerList listenersCopy;
             {
-                const EventListenerList& eventListenerList = findIt->second;
-                for (EventListenerList::const_iterator it = eventListenerList.cbegin(); it != eventListenerList.cend(); ++it)
+                std::lock_guard<std::mutex> lock(this->listenerMutex);
+                auto findIt = this->eventListeners.find(event->getEventType());
+                if (findIt != this->eventListeners.end())
                 {
-                    EventListenerDelegate listener = (*it);
+                    listenersCopy = findIt->second;
+                }
+            }
+
+            // Invoke listeners without holding lock to avoid potential deadlocks
+            for (EventListenerList::const_iterator it = listenersCopy.cbegin(); it != listenersCopy.cend(); ++it)
+            {
+                EventListenerDelegate listener = (*it);
+                try
+                {
                     // Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[EventManager] Sending Event: " + Ogre::String(event->getName()));
                     listener(event); // call the delegate
                     processed = true;
+                }
+                catch (const std::exception& e)
+                {
+                    Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[EventManager] Exception in triggerEvent for event '" + Ogre::String(event->getName()) + "': " + Ogre::String(e.what()));
                 }
             }
         }
         else
         {
-            NOWA::ProcessPtr triggerDelayedProcess(new TriggerDelayedProcess(event, eventListeners, delaySec));
+            // Copy listeners for delayed process
+            EventListenerMap listenersCopy;
+            {
+                std::lock_guard<std::mutex> lock(this->listenerMutex);
+                listenersCopy = this->eventListeners;
+            }
+
+            NOWA::ProcessPtr triggerDelayedProcess(new TriggerDelayedProcess(event, listenersCopy, delaySec));
             NOWA::ProcessManager::getInstance()->attachProcess(triggerDelayedProcess);
             processed = true;
         }
+
         return processed;
     }
 
     bool EventManager::queueEvent(const EventDataPtr& event)
     {
-        assert(this->activeQueue >= 0);
-        assert(this->activeQueue < EVENTMANAGER_NUM_QUEUES);
-
         // Make sure the event is valid
         if (nullptr == event)
         {
-            // ERROR("Invalid event in QueueEvent()");
+            // ERROR("Invalid event in queueEvent()");
             return false;
         }
 
-        auto findIt = this->eventListeners.find(event->getEventType());
-        if (findIt != this->eventListeners.end())
-        {
-            this->queues[this->activeQueue].push_back(event);
-            // Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[EventManager] Successfully queued event: " + Ogre::String(event->getName()));
-            return true;
-        }
-        else
-        {
-            return false;
-        }
-    }
-
-    bool EventManager::threadSafeQueueEvent(const EventDataPtr& event)
-    {
-        this->realtimeEventQueue.enqueue(event);
+        // Thread-safe enqueue - can be called from any thread (render or main)
+        this->eventQueue.enqueue(event);
+        // Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[EventManager] Successfully queued event: " + Ogre::String(event->getName()));
         return true;
     }
 
     bool EventManager::abortEvent(const EventType& inType, bool allOfType)
     {
-        assert(this->activeQueue >= 0);
-        assert(this->activeQueue < EVENTMANAGER_NUM_QUEUES);
+        // Note: With lock-free queue, we must dequeue all events, filter, and re-enqueue
+        // This is less efficient than the original double-buffer approach, but maintains API compatibility
 
         bool success = false;
-        EventListenerMap::iterator findIt = this->eventListeners.find(inType);
+        std::vector<EventDataPtr> tempEvents;
 
-        if (findIt != this->eventListeners.end())
+        // Dequeue all events
+        EventDataPtr event;
+        while (this->eventQueue.try_dequeue(event))
         {
-            EventQueue& eventQueue = this->queues[this->activeQueue];
-            auto it = eventQueue.begin();
-            while (it != eventQueue.end())
+            if (event->getEventType() == inType)
             {
-                // Removing an item from the queue will invalidate the iterator, so have it point to the next member.  All
-                // work inside this loop will be done using thisIt.
-                auto thisIt = it;
-                ++it;
-
-                if ((*thisIt)->getEventType() == inType)
+                success = true;
+                if (!allOfType)
                 {
-                    eventQueue.erase(thisIt);
-                    success = true;
-                    if (!allOfType)
-                    {
-                        break;
-                    }
+                    // Found one, re-enqueue the rest
+                    break;
                 }
+                // If allOfType, don't re-enqueue this event (effectively removing it)
             }
+            else
+            {
+                // Keep this event
+                tempEvents.push_back(event);
+            }
+        }
+
+        // Continue dequeueing remaining events if we broke early
+        if (success && !allOfType)
+        {
+            while (this->eventQueue.try_dequeue(event))
+            {
+                tempEvents.push_back(event);
+            }
+        }
+
+        // Re-enqueue all kept events
+        for (const auto& evt : tempEvents)
+        {
+            this->eventQueue.enqueue(evt);
         }
 
         return success;
@@ -192,21 +230,30 @@ namespace NOWA
 
     bool EventManager::hasEvent(const EventType& type)
     {
-        EventListenerMap::iterator findIt = this->eventListeners.find(type);
-        if (findIt != this->eventListeners.end())
+        // Note: With lock-free queue, we must dequeue all events and re-enqueue them
+        // This is less efficient than the original approach, but maintains API compatibility
+
+        bool found = false;
+        std::vector<EventDataPtr> tempEvents;
+
+        // Dequeue all events, checking for the type
+        EventDataPtr event;
+        while (this->eventQueue.try_dequeue(event))
         {
-            EventQueue& eventQueue = this->queues[this->activeQueue];
-            auto it = eventQueue.begin();
-            while (it != eventQueue.end())
+            tempEvents.push_back(event);
+            if (event->getEventType() == type)
             {
-                if ((*it)->getEventType() == type)
-                {
-                    return true;
-                }
-                ++it;
+                found = true;
             }
         }
-        return false;
+
+        // Re-enqueue all events
+        for (const auto& evt : tempEvents)
+        {
+            this->eventQueue.enqueue(evt);
+        }
+
+        return found;
     }
 
     bool EventManager::update(unsigned long maxMillis)
@@ -214,56 +261,43 @@ namespace NOWA
         unsigned long currMs = Core::getSingletonPtr()->getOgreTimer()->getMilliseconds();
         unsigned long maxMs = ((maxMillis == EventManager::kINFINITE) ? (EventManager::kINFINITE) : (currMs + maxMillis));
 
-        // This section added to handle events from other threads.  Check out Chapter 20.
-        EventDataPtr realtimeEvent;
-        while (this->realtimeEventQueue.try_dequeue(realtimeEvent))
-        {
-            this->queueEvent(realtimeEvent);
+        EventDataPtr event;
+        bool processedAll = true;
 
-            currMs = Core::getSingletonPtr()->getOgreTimer()->getMilliseconds();
-            if (maxMillis != EventManager::kINFINITE)
+        // Process events from the lock-free queue
+        while (this->eventQueue.try_dequeue(event))
+        {
+            if (!event)
             {
-                if (currMs >= maxMs)
+                continue;
+            }
+
+            const EventType& eventType = event->getEventType();
+
+            // Copy listeners under lock
+            EventListenerList listenersCopy;
+            {
+                std::lock_guard<std::mutex> lock(this->listenerMutex);
+                auto findIt = this->eventListeners.find(eventType);
+                if (findIt != this->eventListeners.end())
                 {
-                    // ERROR("A realtime process is spamming the event manager!");
+                    listenersCopy = findIt->second;
                 }
             }
-        }
 
-        // swap active queues and clear the new queue after the swap
-        int queueToProcess = this->activeQueue;
-        this->activeQueue = (this->activeQueue + 1) % EVENTMANAGER_NUM_QUEUES;
-        this->queues[this->activeQueue].clear();
-
-        // Process the queue
-        while (!this->queues[queueToProcess].empty())
-        {
-            // pop the front of the queue
-            EventDataPtr pEvent = this->queues[queueToProcess].front();
-            this->queues[queueToProcess].pop_front();
-
-            const EventType& eventType = pEvent->getEventType();
-
-            // Copy listeners while holding the lock, then release before calling delegates
-            auto findIt = this->eventListeners.find(eventType);
-            if (findIt != this->eventListeners.end())
+            // Call delegates without holding the lock
+            if (false == listenersCopy.empty())
             {
-                const EventListenerList& eventListeners = findIt->second;
-
-                if (false == eventListeners.empty())
+                for (auto it = listenersCopy.begin(); it != listenersCopy.end(); ++it)
                 {
-                    // Call delegates without holding the lock
-                    for (auto it = eventListeners.begin(); it != eventListeners.end(); ++it)
+                    EventListenerDelegate listener = (*it);
+                    try
                     {
-                        EventListenerDelegate listener = (*it);
-                        try
-                        {
-                            listener(pEvent);
-                        }
-                        catch (const std::exception& e)
-                        {
-                            Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[EventManager] Error using listener for event: " + Ogre::String(pEvent->getName()) + " Message: " + e.what());
-                        }
+                        listener(event);
+                    }
+                    catch (const std::exception& e)
+                    {
+                        Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[EventManager] Exception in update for event '" + Ogre::String(event->getName()) + "': " + Ogre::String(e.what()));
                     }
                 }
             }
@@ -272,31 +306,24 @@ namespace NOWA
             currMs = Core::getSingletonPtr()->getOgreTimer()->getMilliseconds();
             if (maxMillis != EventManager::kINFINITE && currMs >= maxMs)
             {
-                // LOG("EventLoop", "Aborting event processing; time ran out");
+                // Time limit reached - there may be more events in the queue
+                processedAll = false;
+                // Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[EventManager] Aborting event processing; time ran out");
                 break;
             }
         }
 
-        // If not all events could be processed, push the remaining events to the new active queue.
-        // Note: To preserve sequencing, go back-to-front, inserting them at the head of the active queue
-        bool queueFlushed = (this->queues[queueToProcess].empty());
-        if (!queueFlushed)
-        {
-            while (!this->queues[queueToProcess].empty())
-            {
-                EventDataPtr pEvent = this->queues[queueToProcess].back();
-                this->queues[queueToProcess].pop_back();
-                this->queues[this->activeQueue].push_front(pEvent);
-            }
-        }
-
-        return queueFlushed;
+        return processedAll;
     }
 
     void EventManager::clearEvents(void)
     {
-        this->queues[0].clear();
-        this->queues[1].clear();
+        // Drain the lock-free queue
+        EventDataPtr dummy;
+        while (this->eventQueue.try_dequeue(dummy))
+        {
+            // Just dequeue and discard
+        }
     }
 
 }; // namespace end

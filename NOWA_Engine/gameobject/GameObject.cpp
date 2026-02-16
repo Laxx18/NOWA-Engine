@@ -1672,7 +1672,7 @@ namespace NOWA
 				{
 					// Send event, that component has been deleted
 					boost::shared_ptr<EventDataDeleteComponent> eventDataDeleteComponent(new EventDataDeleteComponent(this->id->getULong(), componentClassName, i));
-					NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataDeleteComponent);
+					NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataDeleteComponent);
 					// Call to give a chance to react before the component is removed
 					std::get<COMPONENT>(*it)->bTaggedForRemovement = true;
 					std::get<COMPONENT>(*it)->onRemoveComponent();

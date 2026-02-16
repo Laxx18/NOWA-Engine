@@ -1180,6 +1180,22 @@ namespace NOWA
 						vertices[i + subMeshOffset] = (orientation * (vec * scale)) + position;
 					}
 				}
+                else if (requests[0].type == Ogre::VET_FLOAT4)
+                {
+                    for (size_t i = 0; i < subMeshVerticiesNum; ++i)
+                    {
+                        const float* pos = reinterpret_cast<const float*>(requests[0].data);
+
+                        Ogre::Vector3 vec;
+                        vec.x = pos[0];
+                        vec.y = pos[1];
+                        vec.z = pos[2];
+                        // pos[3] = w (often 1.0f) -> ignore
+
+                        requests[0].data += requests[0].vertexBuffer->getBytesPerElement();
+                        vertices[i + subMeshOffset] = (orientation * (vec * scale)) + position;
+                    }
+                }
 				else
 				{
 					Ogre::LogManager::getSingletonPtr()->logMessage("[MathHelper]: Vertex Buffer type not recognised");
@@ -1326,6 +1342,22 @@ namespace NOWA
 					vertices[i + subMeshOffset] = (orientation * (vertexPosition * scale)) + position;
 				}
 			}
+            else if (requests[0].type == Ogre::VET_FLOAT4)
+            {
+                for (size_t i = 0; i < subMeshVerticesNum; ++i)
+                {
+                    const float* pos = reinterpret_cast<const float*>(requests[0].data);
+
+                    Ogre::Vector3 vec;
+                    vec.x = pos[0];
+                    vec.y = pos[1];
+                    vec.z = pos[2];
+                    // pos[3] = w (often 1.0f) -> ignore
+
+                    requests[0].data += requests[0].vertexBuffer->getBytesPerElement();
+                    vertices[i + subMeshOffset] = (orientation * (vec * scale)) + position;
+                }
+            }
 			else
 			{
 				OGRE_EXCEPT(Ogre::Exception::ERR_INVALIDPARAMS, "Unsupported vertex format!", "getMeshInformation2");
@@ -1507,6 +1539,39 @@ namespace NOWA
 					textureCoords[i + subMeshOffset] = uv; // Store texture coordinates
 				}
 			}
+            else if (requests[0].type == Ogre::VET_FLOAT4)
+            {
+                for (size_t i = 0; i < subMeshVerticesNum; ++i)
+                {
+                    // Read position data (float4: x,y,z,w) -> ignore w
+                    const float* pos = reinterpret_cast<const float*>(requests[0].data);
+                    Ogre::Vector3 vertexPosition;
+                    vertexPosition.x = pos[0];
+                    vertexPosition.y = pos[1];
+                    vertexPosition.z = pos[2];
+                    requests[0].data += requests[0].vertexBuffer->getBytesPerElement();
+
+                    // Read normal data
+                    const float* norm = reinterpret_cast<const float*>(requests[1].data);
+                    Ogre::Vector3 normal;
+                    normal.x = norm[0];
+                    normal.y = norm[1];
+                    normal.z = norm[2];
+                    requests[1].data += requests[1].vertexBuffer->getBytesPerElement();
+
+                    // Read texture coordinate data
+                    const float* texCoords = reinterpret_cast<const float*>(requests[2].data);
+                    Ogre::Vector2 uv;
+                    uv.x = texCoords[0];
+                    uv.y = texCoords[1];
+                    requests[2].data += requests[2].vertexBuffer->getBytesPerElement();
+
+                    // Apply transformations
+                    vertices[i + subMeshOffset] = (orientation * (vertexPosition * scale)) + position;
+                    normals[i + subMeshOffset] = invNormalMatrix * normal;
+                    textureCoords[i + subMeshOffset] = uv;
+                }
+            }
 			else
 			{
 				OGRE_EXCEPT(Ogre::Exception::ERR_INVALIDPARAMS, "Unsupported vertex format!", "getMeshInformation2");
@@ -1870,7 +1935,7 @@ namespace NOWA
 				}
 
 				// Exclude gizmo
-				if ("XArrowGizmoEntity" == entityName || "YArrowGizmoEntity" == entityName || "ZArrowGizmoEntity" == entityName || "SphereGizmoEntity" == entityName)
+				if ("XArrowGizmoItem" == entityName || "YArrowGizmoItem" == entityName || "ZArrowGizmoItem" == entityName || "SphereGizmoItem" == entityName)
 					continue;
 
 				// mesh data to retrieve         
@@ -1998,7 +2063,7 @@ namespace NOWA
 				}
 
 				// Exclude gizmo
-				if ("XArrowGizmoEntity" == entityName || "YArrowGizmoEntity" == entityName || "ZArrowGizmoEntity" == entityName || "SphereGizmoEntity" == entityName)
+				if ("XArrowGizmoItem" == entityName || "YArrowGizmoItem" == entityName || "ZArrowGizmoItem" == entityName || "SphereGizmoItem" == entityName)
 					continue;
 
 				// mesh data to retrieve         
@@ -2055,7 +2120,7 @@ namespace NOWA
 					Ogre::String itemName = item->getName();
 
 					// Exclude gizmo
-					if ("XArrowGizmoEntity" == itemName || "YArrowGizmoEntity" == itemName || "ZArrowGizmoEntity" == itemName || "SphereGizmoEntity" == itemName)
+					if ("XArrowGizmoItem" == itemName || "YArrowGizmoItem" == itemName || "ZArrowGizmoItem" == itemName || "SphereGizmoItem" == itemName)
 						continue;
 
 					if (nullptr != excludeMovableObjects)
@@ -2199,7 +2264,7 @@ namespace NOWA
 				Ogre::String entityName = entity->getName();
 
 				// Exclude gizmo
-				if ("XArrowGizmoEntity" == entityName || "YArrowGizmoEntity" == entityName || "ZArrowGizmoEntity" == entityName || "SphereGizmoEntity" == entityName)
+				if ("XArrowGizmoItem" == entityName || "YArrowGizmoItem" == entityName || "ZArrowGizmoItem" == entityName || "SphereGizmoItem" == entityName)
 				{
 					continue;
 				}
@@ -2265,7 +2330,7 @@ namespace NOWA
 					Ogre::String itemName = item->getName();
 
 					// Exclude gizmo
-					if ("XArrowGizmoEntity" == itemName || "YArrowGizmoEntity" == itemName || "ZArrowGizmoEntity" == itemName || "SphereGizmoEntity" == itemName)
+					if ("XArrowGizmoItem" == itemName || "YArrowGizmoItem" == itemName || "ZArrowGizmoItem" == itemName || "SphereGizmoItem" == itemName)
 					{
 						continue;
 					}
@@ -2513,7 +2578,7 @@ namespace NOWA
 				if (true == forGizmo)
 				{
 					// Only check for gizmo, no matter how far away it is, or if there are some objects covering the gizmo!
-					if ("XArrowGizmoEntity" != entityName && "YArrowGizmoEntity" != entityName && "ZArrowGizmoEntity" != entityName && "SphereGizmoEntity" != entityName)
+					if ("XArrowGizmoItem" != entityName && "YArrowGizmoItem" != entityName && "ZArrowGizmoItem" != entityName && "SphereGizmoItem" != entityName)
 						continue;
 					else
 						foundGizmo = true;
@@ -2605,7 +2670,7 @@ namespace NOWA
 					if (true == forGizmo)
 					{
 						// Only check for gizmo, no matter how far away it is, or if there are some objects covering the gizmo!
-						if ("XArrowGizmoEntity" != itemName && "YArrowGizmoEntity" != itemName && "ZArrowGizmoEntity" != itemName && "SphereGizmoEntity" != itemName)
+						if ("XArrowGizmoItem" != itemName && "YArrowGizmoItem" != itemName && "ZArrowGizmoItem" != itemName && "SphereGizmoItem" != itemName)
 							continue;
 						else
 							foundGizmo = true;

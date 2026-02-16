@@ -223,8 +223,6 @@ namespace NOWA
         // Mesh operations
         void rebuildMesh(void);
 
-        bool exportMesh(const Ogre::String& filename);
-
         // Ground adaptation
         Ogre::Real getGroundHeight(const Ogre::Vector3& position);
 
@@ -385,7 +383,10 @@ namespace NOWA
         {
             return "TerrainSampleInterval";
         }
-
+        static const Ogre::String AttrConvertToMesh(void)
+        {
+            return "Convert To Mesh";
+        }
     protected:
         // Mouse handling for interactive road building
         virtual bool mousePressed(const OIS::MouseEvent& evt, OIS::MouseButtonID id) override;
@@ -398,6 +399,7 @@ namespace NOWA
 
         virtual bool keyReleased(const OIS::KeyEvent& evt) override;
 
+        virtual bool executeAction(const Ogre::String& actionId, NOWA::Variant* attribute) override;
     private:
         void createRoadMesh(void);
 
@@ -477,6 +479,20 @@ namespace NOWA
         void removeInputListener(void);
 
         void updateModificationState(void);
+
+        /**
+         * @brief Exports the road mesh and converts the GameObject to use the static mesh file.
+         *        This is a one-way operation - the procedural data will be removed.
+         * @return True if conversion succeeded
+         */
+        bool convertToMeshApply(void);
+
+        /**
+         * @brief Exports the current road mesh to a file.
+         * @param[in] filename Full path to export location
+         * @return True if export succeeded
+         */
+        bool exportMesh(const Ogre::String& filename);
     private:
         static const uint32_t ROADDATA_MAGIC = 0x524F4144; // "ROAD" in hex
         static const uint32_t ROADDATA_VERSION = 1;
@@ -504,6 +520,7 @@ namespace NOWA
         Variant* edgeUVTiling;
         Variant* curbHeight;
         Variant* terrainSampleInterval;
+        Variant* convertToMesh;
 
         // Road segments
         std::vector<RoadSegment> roadSegments;

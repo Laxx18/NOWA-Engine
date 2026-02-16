@@ -3081,7 +3081,7 @@ void PropertiesPanelGameObject::notifyColourAccept(MyGUI::ColourPanel* sender)
 
 		// Sent when a property has changed, so that the properties panel can be refreshed with new values
 		boost::shared_ptr<EventDataRefreshPropertiesPanel> eventDataRefreshPropertiesPanel(new EventDataRefreshPropertiesPanel());
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataRefreshPropertiesPanel);
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
 	});
 }
 
@@ -3454,12 +3454,12 @@ void PropertiesPanelComponent::notifyEditSelectAccept(MyGUI::EditBox* sender)
 		if (true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionNeedRefresh()))
 		{
 			boost::shared_ptr<EventDataRefreshPropertiesPanel> eventDataRefreshPropertiesPanel(new EventDataRefreshPropertiesPanel());
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataRefreshPropertiesPanel);
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
 		}
 
 		// Sent when a property has changed, so that the properties panel can be refreshed with new values
 		// boost::shared_ptr<EventDataRefreshPropertiesPanel> eventDataRefreshPropertiesPanel(new EventDataRefreshPropertiesPanel());
-		// NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataRefreshPropertiesPanel);
+		// NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
 	});
 }
 
@@ -3728,7 +3728,7 @@ void PropertiesPanelComponent::buttonHit(MyGUI::Widget* sender)
 				{
 					// Sent when a component panel with all components should be shown
 					boost::shared_ptr<EventDataShowComponentsPanel> eventDataShowComponentsPanel(new EventDataShowComponentsPanel(index));
-					NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataShowComponentsPanel);
+					NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataShowComponentsPanel);
 				}
 			}
 			else if (button == this->deleteComponentButton)
@@ -3773,11 +3773,11 @@ void PropertiesPanelComponent::buttonHit(MyGUI::Widget* sender)
 				}
 				// Sent when a property has changed, so that the properties panel can be refreshed with new values
 				boost::shared_ptr<EventDataRefreshPropertiesPanel> eventDataRefreshPropertiesPanel(new EventDataRefreshPropertiesPanel());
-				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataRefreshPropertiesPanel);
+				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
 
 				// Regenerate categories
 				boost::shared_ptr<NOWA::EventDataGenerateCategories> eventDataGenerateCategories(new NOWA::EventDataGenerateCategories());
-				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataGenerateCategories);
+				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGenerateCategories);
 			}
 			else if (button == this->debugDataComponentButton)
 			{
@@ -3806,11 +3806,11 @@ void PropertiesPanelComponent::buttonHit(MyGUI::Widget* sender)
 
 				// Sent when a property has changed, so that the properties panel can be refreshed with new values
 				boost::shared_ptr<EventDataRefreshPropertiesPanel> eventDataRefreshPropertiesPanel(new EventDataRefreshPropertiesPanel());
-				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataRefreshPropertiesPanel);
+				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
 
 				// Regenerate categories
 				boost::shared_ptr<NOWA::EventDataGenerateCategories> eventDataGenerateCategories(new NOWA::EventDataGenerateCategories());
-				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataGenerateCategories);
+				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGenerateCategories);
 			}
 			else if (button == this->moveDownComponentButton)
 			{
@@ -3830,11 +3830,11 @@ void PropertiesPanelComponent::buttonHit(MyGUI::Widget* sender)
 
 				// Sent when a property has changed, so that the properties panel can be refreshed with new values
 				boost::shared_ptr<EventDataRefreshPropertiesPanel> eventDataRefreshPropertiesPanel(new EventDataRefreshPropertiesPanel());
-				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataRefreshPropertiesPanel);
+				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
 
 				// Regenerate categories
 				boost::shared_ptr<NOWA::EventDataGenerateCategories> eventDataGenerateCategories(new NOWA::EventDataGenerateCategories());
-				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataGenerateCategories);
+				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGenerateCategories);
 			}
 			else
 			{
@@ -3881,7 +3881,7 @@ void PropertiesPanelComponent::buttonHit(MyGUI::Widget* sender)
 				if (nullptr != attribute && true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionNeedRefresh()))
 				{
 					boost::shared_ptr<EventDataRefreshPropertiesPanel> eventDataRefreshPropertiesPanel(new EventDataRefreshPropertiesPanel());
-					NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataRefreshPropertiesPanel);
+					NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
 				}
 			}
 		}
@@ -3970,7 +3970,7 @@ void PropertiesPanelComponent::notifyColourAccept(MyGUI::ColourPanel* sender)
 
 		// Sent when a property has changed, so that the properties panel can be refreshed with new values
 		boost::shared_ptr<EventDataRefreshPropertiesPanel> eventDataRefreshPropertiesPanel(new EventDataRefreshPropertiesPanel());
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataRefreshPropertiesPanel);
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
 	});
 }
 

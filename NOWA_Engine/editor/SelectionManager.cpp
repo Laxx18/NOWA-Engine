@@ -173,7 +173,7 @@ namespace NOWA
 	void SelectionManager::queueSelectionEvent(unsigned long id, bool selected)
 	{
 		boost::shared_ptr<NOWA::EventDataGameObjectSelected> evt(new NOWA::EventDataGameObjectSelected(id, selected));
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(evt);
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(evt);
 	}
 
 	void SelectionManager::handleDeleteGameObject(EventDataPtr eventData)
@@ -369,7 +369,7 @@ namespace NOWA
 			//		this->selectionObserver->onHandleSelection(entry.second, false);
 			// 
 			//		boost::shared_ptr<NOWA::EventDataGameObjectSelected> eventDataGameObjectSelected(new NOWA::EventDataGameObjectSelected(entry.second.gameObject->getId(), false));
-			//		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataGameObjectSelected);
+			//		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGameObjectSelected);
 			//		entry.second->selected = false;
 			//		this->isSelecting = false;
 			//	}

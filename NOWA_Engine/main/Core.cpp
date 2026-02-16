@@ -1850,7 +1850,7 @@ namespace NOWA
 
 		// Send event and set bounds for current scene
 		boost::shared_ptr<EventDataBoundsUpdated> eventDataBoundsUpdated(boost::make_shared<EventDataBoundsUpdated>(this->mostLeftNearPosition, this->mostRightFarPosition));
-		AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataBoundsUpdated);
+		AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataBoundsUpdated);
 	}
 
 	Ogre::Vector3 Core::getCurrentSceneBoundLeftNear(void)

@@ -1,54 +1,10 @@
-13:08:12: Creating resource group General
-13:08:12: Creating resource group Internal
-13:08:12: Creating resource group Autodetect
-13:08:12: Registering ResourceManager for type Mesh
-13:08:12: Registering ResourceManager for type Material
-13:08:12: Registering ResourceManager for type Skeleton
-13:08:12: XMLSkeletonSerializer: reading XML data from Flubber.skeleton.xml...
-13:08:12: XMLSkeletonSerializer: Reading Bones name...
-13:08:12: XMLSkeletonSerializer: Reading Hierarchy data...
-13:08:12: XMLSkeletonSerializer: Reading Bones data...
-13:08:12: XMLSkeletonSerializer: Reading Animations data...
-13:08:12: Animation: nom: Dead et longueur: 6.36
-13:08:12: Animation: nom: Explosion et longueur: 1.52
-13:08:12: Animation: nom: Hurt1 et longueur: 1.52
-13:08:12: Animation: nom: Hurt2 et longueur: 1.52
-13:08:12: Animation: nom: Idle et longueur: 1.52
-13:08:12: Animation: nom: Jump et longueur: 1.52
-13:08:12: Animation: nom: Kick et longueur: 1.52
-13:08:12: Animation: nom: Salto et longueur: 2.36
-13:08:12: Animation: nom: WalkEast et longueur: 1.52
-13:08:12: Animation: nom: WalkNorth et longueur: 1.52
-13:08:12: Animation: nom: WalkSouth et longueur: 1.52
-13:08:12: Animation: nom: WalkWest et longueur: 1.52
-13:08:12: XMLSkeletonSerializer: Finished. Running SkeletonSerializer...
-13:08:12: Exporting bones..
-13:08:12: Bones exported.
-13:08:12: Exporting animations, count=12
-13:08:12: Exporting animation: Dead
-13:08:12: Animation exported.
-13:08:12: Exporting animation: Explosion
-13:08:12: Animation exported.
-13:08:12: Exporting animation: Hurt1
-13:08:12: Animation exported.
-13:08:12: Exporting animation: Hurt2
-13:08:12: Animation exported.
-13:08:12: Exporting animation: Idle
-13:08:12: Animation exported.
-13:08:12: Exporting animation: Jump
-13:08:12: Animation exported.
-13:08:12: Exporting animation: Kick
-13:08:12: Animation exported.
-13:08:12: Exporting animation: Salto
-13:08:12: Animation exported.
-13:08:12: Exporting animation: WalkEast
-13:08:12: Animation exported.
-13:08:12: Exporting animation: WalkNorth
-13:08:12: Animation exported.
-13:08:12: Exporting animation: WalkSouth
-13:08:12: Animation exported.
-13:08:12: Exporting animation: WalkWest
-13:08:12: Animation exported.
-13:08:12: Unregistering ResourceManager for type Skeleton
-13:08:12: Unregistering ResourceManager for type Material
-13:08:12: Unregistering ResourceManager for type Mesh
+20:03:44: Creating resource group General
+20:03:44: Creating resource group Internal
+20:03:44: Creating resource group Autodetect
+20:03:44: Registering ResourceManager for type Mesh
+20:03:44: Registering ResourceManager for type Material
+20:03:44: Registering ResourceManager for type Skeleton
+20:03:44: OGRE EXCEPTION(7:InternalErrorException): Cannot find serializer implementation for current version [MeshSerializer_v1.8] in MeshSerializer::importMesh at ..\..\..\..\OgreMain\src\OgreMeshSerializer.cpp (line 118)
+20:03:44: Unregistering ResourceManager for type Skeleton
+20:03:44: Unregistering ResourceManager for type Material
+20:03:44: Unregistering ResourceManager for type Mesh

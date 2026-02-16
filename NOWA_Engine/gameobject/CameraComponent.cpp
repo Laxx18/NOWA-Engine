@@ -323,7 +323,7 @@ namespace NOWA
 				if (true == active && false == AppStateManager::getSingletonPtr()->bShutdown)
 				{
 					boost::shared_ptr<EventDataRemoveCamera> eventDataRemoveCamera(new EventDataRemoveCamera(active, cameraCopy));
-					NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataRemoveCamera);
+					NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRemoveCamera);
 				}
 
 				if (nullptr != workspaceBaseComponentCopy && false == AppStateManager::getSingletonPtr()->bShutdown)
@@ -642,7 +642,7 @@ namespace NOWA
 					Ogre::String message = "[CameraComponent] Could not switch workspace, because this camera component has no corresponding workspace component! Affected game object: " + this->gameObjectPtr->getName();
 					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, message);
 					boost::shared_ptr<EventDataFeedback> eventDataFeedback(new EventDataFeedback(false, message));
-					NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataFeedback);
+					NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataFeedback);
 					return;
 				}
 			}
@@ -683,7 +683,7 @@ namespace NOWA
 		{
 			// Send out event, whether is camera has been activated or not, to camera manager and other camera components, to adapt their state
 			boost::shared_ptr<EventDataSwitchCamera> eventDataSwitchCamera(new EventDataSwitchCamera(this->gameObjectPtr->getId(), this->gameObjectPtr->getIndexFromComponent(this), this->active->getBool()));
-            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataSwitchCamera);
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataSwitchCamera);
 		}
 	}
 

@@ -425,7 +425,7 @@ namespace NOWA
 				{
 					this->terraInputGeomCells.emplace(id, nullptr);
 					boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
-					NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGeometryModified);
+					NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGeometryModified);
 				}
 			}
 		}
@@ -451,7 +451,7 @@ namespace NOWA
 					inputGeom = it->second;
 					this->terraInputGeomCells.erase(id);
 					boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
-					NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGeometryModified);
+					NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGeometryModified);
 
 					if (true == destroy)
 					{

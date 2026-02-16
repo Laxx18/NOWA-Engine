@@ -1972,7 +1972,7 @@ namespace NOWA
 			"[ProceduralTerrain] ========================================");
 
 		boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGeometryModified);
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGeometryModified);
 
 		this->terrainGenerated = true;
 	}

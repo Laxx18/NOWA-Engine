@@ -525,7 +525,7 @@ namespace NOWA
         }
 
 		boost::shared_ptr<NOWA::EventDataResourceCreated> eventDataResourceCreated(new NOWA::EventDataResourceCreated());
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataResourceCreated);
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataResourceCreated);
 	}
 
 	void TerraComponent::modifyTerrainStart(const Ogre::Vector3& position, float strength)

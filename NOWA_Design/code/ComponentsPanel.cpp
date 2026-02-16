@@ -593,6 +593,6 @@ void ComponentsPanelDynamic::buttonHit(MyGUI::Widget* sender)
 
 		// Sent when a component has been added, so that the properties panel can be refreshed with new values
 		boost::shared_ptr<EventDataRefreshPropertiesPanel> eventDataRefreshPropertiesPanel(new EventDataRefreshPropertiesPanel());
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataRefreshPropertiesPanel);
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
 	}
 }

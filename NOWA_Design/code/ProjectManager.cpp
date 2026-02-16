@@ -113,7 +113,7 @@ Ogre::Light* ProjectManager::createSunLight(void)
 			Ogre::String message = "[ProjectManager] Failed to create sun light: " + exception.getDescription();
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, message);
 			boost::shared_ptr<NOWA::EventDataFeedback> eventData(new NOWA::EventDataFeedback(false, message));
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventData);
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventData);
 		}
 	});
 
@@ -159,7 +159,7 @@ Ogre::Camera* ProjectManager::createMainCamera(void)
 
 			// Sent when a name has changed, so that the resources panel can be refreshed with new values
 			boost::shared_ptr<EventDataRefreshResourcesPanel> eventDataRefreshResourcesPanel(new EventDataRefreshResourcesPanel());
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataRefreshResourcesPanel);
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshResourcesPanel);
 		}
 
 	});
@@ -607,7 +607,7 @@ void ProjectManager::internalApplySettings(void)
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataSceneModified);
 
 	boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGeometryModified);
+	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGeometryModified);
 
 	// Remove .scene, if user typed
 	size_t found = this->projectParameter.sceneName.find(".scene");

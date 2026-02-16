@@ -269,7 +269,7 @@ bool ProceduralWallComponent::onCloned(void)
 void ProceduralWallComponent::onAddComponent(void)
 {
     boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(EditorManager::EDITOR_MESH_MODIFY_MODE));
-    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataEditorMode);
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataEditorMode);
 
     this->isSelected = true;
     this->addInputListener();
@@ -835,7 +835,7 @@ void ProceduralWallComponent::confirmWall(void)
 
     // ---- UNDO: Begin transaction ----
     boost::shared_ptr<NOWA::EventDataCommandTransactionBegin> eventDataUndoBegin(new NOWA::EventDataCommandTransactionBegin("Add Wall Segment"));
-    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataUndoBegin);
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataUndoBegin);
 
     // ---- UNDO: Capture state BEFORE modification ----
     std::vector<unsigned char> oldData = this->getWallData();
@@ -858,10 +858,10 @@ void ProceduralWallComponent::confirmWall(void)
     std::vector<unsigned char> newData = this->getWallData();
 
     boost::shared_ptr<EventDataWallModifyEnd> eventDataWallModifyEnd(new EventDataWallModifyEnd(oldData, newData, this->gameObjectPtr->getId()));
-    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataWallModifyEnd);
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataWallModifyEnd);
 
     boost::shared_ptr<NOWA::EventDataCommandTransactionEnd> eventDataUndoEnd(new NOWA::EventDataCommandTransactionEnd());
-    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataUndoEnd);
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataUndoEnd);
 
     // NOW handle shift-chaining using the saved state
     if (shouldChain)
@@ -934,7 +934,7 @@ void ProceduralWallComponent::removeLastSegment(void)
     std::vector<unsigned char> newData = this->getWallData();
 
     boost::shared_ptr<EventDataWallModifyEnd> eventDataWallModifyEnd(new EventDataWallModifyEnd(oldData, newData, this->gameObjectPtr->getId()));
-    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataWallModifyEnd);
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataWallModifyEnd);
 
     Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] Removed last segment, remaining: " + Ogre::StringConverter::toString(this->wallSegments.size()));
 }
@@ -971,7 +971,7 @@ void ProceduralWallComponent::clearAllSegments(void)
     std::vector<unsigned char> newData; // Empty = cleared wall
 
     boost::shared_ptr<EventDataWallModifyEnd> eventDataWallModifyEnd(new EventDataWallModifyEnd(oldData, newData, this->gameObjectPtr->getId()));
-    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataWallModifyEnd);
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataWallModifyEnd);
 
     Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] Cleared all wall segments");
 }

@@ -151,7 +151,7 @@ namespace NOWA
             // this->sphereItem->setQueryFlags(this->categorySphere);
             // Not ported
 
-            this->sphereItem->setRenderQueueGroup(NOWA::RENDER_QUEUE_GIZMO);
+            this->sphereItem->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_OBJECTS_ALWAYS_IN_FOREGROUND);
 
             this->sphereItem->setCastShadows(false);
             this->sphereNode->attachObject(this->sphereItem);
@@ -286,7 +286,7 @@ namespace NOWA
                 newArrowItemX->setName("XArrowGizmoItem");
                 newArrowItemX->setDatablock(materialNameX);
                 newArrowItemX->setQueryFlags(defaultCategory);
-                newArrowItemX->setRenderQueueGroup(NOWA::RENDER_QUEUE_GIZMO);
+                newArrowItemX->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_OBJECTS_ALWAYS_IN_FOREGROUND);
                 newArrowItemX->setCastShadows(false);
                 if (arrowNodeX)
                 {
@@ -298,7 +298,7 @@ namespace NOWA
                 newArrowItemY->setName("YArrowGizmoItem");
                 newArrowItemY->setDatablock(materialNameY);
                 newArrowItemY->setQueryFlags(defaultCategory);
-                newArrowItemY->setRenderQueueGroup(NOWA::RENDER_QUEUE_GIZMO);
+                newArrowItemY->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_OBJECTS_ALWAYS_IN_FOREGROUND);
                 newArrowItemY->setCastShadows(false);
                 if (arrowNodeY)
                 {
@@ -311,7 +311,7 @@ namespace NOWA
                 newArrowItemZ->setName("ZArrowGizmoItem");
                 newArrowItemZ->setDatablock(materialNameZ);
                 newArrowItemZ->setQueryFlags(defaultCategory);
-                newArrowItemZ->setRenderQueueGroup(NOWA::RENDER_QUEUE_GIZMO);
+                newArrowItemZ->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_OBJECTS_ALWAYS_IN_FOREGROUND);
                 newArrowItemZ->setCastShadows(false);
                 if (arrowNodeZ)
                 {
@@ -386,7 +386,7 @@ namespace NOWA
                 newArrowItemX->setName("XArrowGizmoItem");
                 newArrowItemX->setDatablock(materialNameX);
                 newArrowItemX->setQueryFlags(defaultCategory);
-                newArrowItemX->setRenderQueueGroup(NOWA::RENDER_QUEUE_GIZMO);
+                newArrowItemX->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_OBJECTS_ALWAYS_IN_FOREGROUND);
                 newArrowItemX->setCastShadows(false);
                 if (arrowNodeX)
                 {
@@ -398,7 +398,7 @@ namespace NOWA
                 newArrowItemY->setName("YArrowGizmoItem");
                 newArrowItemY->setDatablock(materialNameY);
                 newArrowItemY->setQueryFlags(defaultCategory);
-                newArrowItemY->setRenderQueueGroup(NOWA::RENDER_QUEUE_GIZMO);
+                newArrowItemY->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_OBJECTS_ALWAYS_IN_FOREGROUND);
                 newArrowItemY->setCastShadows(false);
                 if (arrowNodeY)
                 {
@@ -411,7 +411,7 @@ namespace NOWA
                 newArrowItemZ->setName("ZArrowGizmoItem");
                 newArrowItemZ->setDatablock(materialNameZ);
                 newArrowItemZ->setQueryFlags(defaultCategory);
-                newArrowItemZ->setRenderQueueGroup(NOWA::RENDER_QUEUE_GIZMO);
+                newArrowItemZ->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_OBJECTS_ALWAYS_IN_FOREGROUND);
                 newArrowItemZ->setCastShadows(false);
                 if (arrowNodeZ)
                 {
@@ -477,7 +477,7 @@ namespace NOWA
                 newArrowItemX->setName("XArrowGizmoItem");
                 newArrowItemX->setDatablock(materialNameX);
                 newArrowItemX->setQueryFlags(defaultCategory);
-                newArrowItemX->setRenderQueueGroup(NOWA::RENDER_QUEUE_GIZMO);
+                newArrowItemX->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_OBJECTS_ALWAYS_IN_FOREGROUND);
                 newArrowItemX->setCastShadows(false);
                 if (arrowNodeX)
                 {
@@ -489,7 +489,7 @@ namespace NOWA
                 newArrowItemY->setName("YArrowGizmoItem");
                 newArrowItemY->setDatablock(materialNameY);
                 newArrowItemY->setQueryFlags(defaultCategory);
-                newArrowItemY->setRenderQueueGroup(NOWA::RENDER_QUEUE_GIZMO);
+                newArrowItemY->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_OBJECTS_ALWAYS_IN_FOREGROUND);
                 newArrowItemY->setCastShadows(false);
                 if (arrowNodeY)
                 {
@@ -502,7 +502,7 @@ namespace NOWA
                 newArrowItemZ->setName("ZArrowGizmoItem");
                 newArrowItemZ->setDatablock(materialNameZ);
                 newArrowItemZ->setQueryFlags(defaultCategory);
-                newArrowItemZ->setRenderQueueGroup(NOWA::RENDER_QUEUE_GIZMO);
+                newArrowItemZ->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_OBJECTS_ALWAYS_IN_FOREGROUND);
                 newArrowItemZ->setCastShadows(false);
                 if (arrowNodeZ)
                 {

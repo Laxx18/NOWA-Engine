@@ -204,7 +204,7 @@ bool MeshModifyComponent::onCloned(void)
 void MeshModifyComponent::onAddComponent(void)
 {
     boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(EditorManager::EDITOR_MESH_MODIFY_MODE));
-    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataEditorMode);
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataEditorMode);
     this->canModify = true;
 }
 
@@ -1918,7 +1918,7 @@ bool MeshModifyComponent::mouseReleased(const OIS::MouseEvent& evt, OIS::MouseBu
         if (nullptr != this->dynamicVertexBuffer)
         {
             boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
-            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGeometryModified);
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGeometryModified);
         }
     }
 

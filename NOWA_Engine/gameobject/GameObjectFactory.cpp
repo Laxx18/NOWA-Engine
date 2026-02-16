@@ -769,7 +769,7 @@ namespace NOWA
 			AppStateManager::getSingletonPtr()->getGameObjectController()->registerGameObject(gameObjectPtr);
 
 			boost::shared_ptr<EventDataNewGameObject> newGameObjectEvent(boost::make_shared<EventDataNewGameObject>(gameObjectPtr->getId()));
-			AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(newGameObjectEvent);
+			AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(newGameObjectEvent);
 			return gameObjectPtr;
 		}
 	}

@@ -111,7 +111,7 @@ namespace NOWA
 		this->getActualizedDeviceList();
 
 		boost::shared_ptr<EventDataInputDeviceOccupied> eventDataInputDeviceOccupied(new EventDataInputDeviceOccupied(gameObjectPtr->getId(), false, this->deviceName->getListSelectedValue()));
-		AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataInputDeviceOccupied);
+		AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataInputDeviceOccupied);
 
 		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &InputDeviceComponent::handleInputDeviceOccupied), EventDataInputDeviceOccupied::getStaticEventType());
 	}

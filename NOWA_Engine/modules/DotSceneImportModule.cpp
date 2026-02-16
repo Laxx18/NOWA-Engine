@@ -376,7 +376,7 @@ namespace NOWA
 		this->savedGameFilePathName.clear();
 
 		boost::shared_ptr<EventDataSceneParsed> eventDataSceneParsed(new EventDataSceneParsed());
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataSceneParsed);
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataSceneParsed);
 
 		return true;
 	}

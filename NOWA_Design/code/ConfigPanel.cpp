@@ -124,7 +124,7 @@ void ConfigPanel::buttonHit(MyGUI::Widget* sender)
 		if (true == this->forSettings)
 		{
 			boost::shared_ptr<EventDataSceneValid> eventDataSceneValid(new EventDataSceneValid(true));
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataSceneValid);
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataSceneValid);
 		}
 	}
 	else if (this->okButton == sender)

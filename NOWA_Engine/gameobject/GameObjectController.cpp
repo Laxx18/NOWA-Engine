@@ -744,7 +744,7 @@ GameObjectPtr GameObjectController::internalClone(GameObjectPtr originalGameObje
     }
 
     boost::shared_ptr<EventDataNewGameObject> newGameObjectEvent(boost::make_shared<EventDataNewGameObject>(clonedGameObjectPtr->getId()));
-    AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->threadSafeQueueEvent(newGameObjectEvent);
+    AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->queueEvent(newGameObjectEvent);
 
     clonedGameObjectPtr->setVisible(false);
 

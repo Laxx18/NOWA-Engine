@@ -83,7 +83,7 @@ namespace NOWA
 		this->oldOrientation = this->gameObjectPtr->getOrientation();
 
 		boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGeometryModified);
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGeometryModified);
 		
 		this->manageNavMesh();
 		return true;
@@ -94,7 +94,7 @@ namespace NOWA
 		GameObjectComponent::onRemoveComponent();
 
 		boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGeometryModified);
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGeometryModified);
 	}
 
 	void NavMeshComponent::manageNavMesh(void)

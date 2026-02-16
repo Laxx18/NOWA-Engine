@@ -643,7 +643,7 @@ void MainMenuBar::notifyPopupMenuAccept(MyGUI::MenuControl* sender, MyGUI::MenuI
 			if (Ogre::String("--") != item->getCaption().asUTF8())
 			{
 				boost::shared_ptr<EventDataSceneValid> eventDataSceneValid(new EventDataSceneValid(false));
-				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataSceneValid);
+				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataSceneValid);
 				Ogre::String name = item->getCaption();
 				this->projectManager->loadProject(name, index - 9);
 				RecentFilesManager::getInstance().setActiveFile(name);

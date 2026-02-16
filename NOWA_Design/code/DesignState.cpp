@@ -763,7 +763,7 @@ void DesignState::simulate(bool pause, bool withUndo)
 		NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::simulate_2");
 
 		boost::shared_ptr<EventDataRefreshResourcesPanel> eventDataRefreshResourcesPanel(new EventDataRefreshResourcesPanel());
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataRefreshResourcesPanel);
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshResourcesPanel);
 	}
 }
 

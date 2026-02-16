@@ -546,6 +546,9 @@ namespace NOWA
 
 		// Keep selection (even if it is not currently present in the list)
 		this->reflectionTextureName->setListSelectedValue(prevSelected);
+
+		boost::shared_ptr<NOWA::EventDataResourceCreated> eventDataResourceCreated(new NOWA::EventDataResourceCreated());
+        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataResourceCreated);
 	}
 
 	void OceanComponent::setReflectionTextureName(const Ogre::String& textureName)

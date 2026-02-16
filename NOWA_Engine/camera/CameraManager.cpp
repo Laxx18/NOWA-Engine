@@ -345,7 +345,7 @@ namespace NOWA
 				{
 					Ogre::String cameraName = it->first->getName();
 					boost::shared_ptr<EventDataRemoveCameraBehavior> eventDataRemoveCamera(new EventDataRemoveCameraBehavior(it->first));
-					AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataRemoveCamera);
+					AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRemoveCamera);
 
 					behavior.cameraBehavior->onClearData();
 					delete behavior.cameraBehavior;

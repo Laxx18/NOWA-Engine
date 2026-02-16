@@ -331,7 +331,7 @@ namespace NOWA
 			OgreNewt::Body* body;
 			Ogre::v1::OldBone* ogreBone;
 			OgreNewt::UpVector* upVector;
-			Ogre::Vector3 offset;
+            Ogre::Vector3 offset;
 
 			// limits.
 			Ogre::Real limit1;
@@ -381,8 +381,8 @@ namespace NOWA
 
 		// add a joint between 2 bones.
 		void joinBones(PhysicsRagDollComponent::JointType type, RagBone* childRagBone, RagBone* parentRagBone, const Ogre::Vector3& pin,
-			const Ogre::Degree& minTwistAngle, const Ogre::Degree& maxTwistAngle, const Ogre::Degree& minTwistAngle2, const Ogre::Degree& maxTwistAngle2, 
-			const Ogre::Degree& maxConeAngle, Ogre::Real friction, bool useSpring, const Ogre::Vector3& offset);
+			const Ogre::Degree& minTwistAngle, const Ogre::Degree& maxTwistAngle, const Ogre::Degree& maxConeAngle,
+			const Ogre::Degree& minTwistAngle2, const Ogre::Degree& maxTwistAngle2, Ogre::Real friction, bool useSpring, const Ogre::Vector3& offset);
 		
 		void internalApplyState(void);
 
