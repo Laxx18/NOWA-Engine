@@ -159,7 +159,7 @@ void DeleteGameObjectsUndoCommand::deleteGameObjects(void)
                 GameObjectCompPtr gameObjectComponent = std::get<COMPONENT>(*it);
 
                 boost::shared_ptr<EventDataDeleteComponent> eventDataDeleteComponent(new EventDataDeleteComponent(gameObjectPtr->getId(), gameObjectComponent->getClassName(), gameObjectComponent->getIndex()));
-                NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataDeleteComponent);
+                NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataDeleteComponent);
             }
 
             // Write all the game object data to stream
@@ -946,7 +946,7 @@ void GameObjectController::destroyContent(std::vector<Ogre::String>& excludeGame
             {
                 // signal the event, so that other game objects have the chance to react if necessary
                 boost::shared_ptr<EventDataDeleteGameObject> deleteGameObjectEvent(boost::make_shared<EventDataDeleteGameObject>(it->second->getId()));
-                AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->triggerEvent(deleteGameObjectEvent);
+                AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->queueEvent(deleteGameObjectEvent);
                 Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObjectController] Deleting gameobject: " + it->second->getName());
                 assert((it->second != nullptr) && "[GameObjectController::deleteAllGameObjects] Gameobject not found");
                 it->second->destroy();
@@ -1105,7 +1105,7 @@ void GameObjectController::deleteGameObjectImmediately(unsigned long id)
 void GameObjectController::deleteGameObject(const unsigned long id)
 {
     boost::shared_ptr<EventDataDeleteGameObject> deleteGameObjectEvent(boost::make_shared<EventDataDeleteGameObject>(id));
-    AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->triggerEvent(deleteGameObjectEvent);
+    AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->queueEvent(deleteGameObjectEvent);
     // Do net delete immediately but push it to another list to delete later after the update process is done
     /*NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.25f));
     delayProcess->attachChild(NOWA::ProcessPtr(new DeleteDelayedProcess(this->appStateName, id)));
@@ -1120,7 +1120,7 @@ void GameObjectController::deleteGameObjectWithUndo(const unsigned long id)
 
     // Do net delete immediately but push it to another list to delete later after the update process is done
     // boost::shared_ptr<EventDataDeleteGameObject> deleteGameObjectEvent(boost::make_shared<EventDataDeleteGameObject>(id));
-    // AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->triggerEvent(deleteGameObjectEvent);
+    // AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->queueEvent(deleteGameObjectEvent);
 
     if (nullptr == this->deleteGameObjectsUndoCommand)
     {

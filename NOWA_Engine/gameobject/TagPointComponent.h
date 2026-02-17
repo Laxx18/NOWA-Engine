@@ -3,6 +3,7 @@
 
 #include "GameObjectComponent.h"
 #include "OgreTagPoint.h"
+#include "Animation/OgreTagPoint2.h"  // v2 TagPoint (Ogre::TagPoint)
 
 namespace NOWA
 {
@@ -220,8 +221,8 @@ namespace NOWA
         void connectV2Item(Ogre::Item* item);
         void setTagPointNameV2(Ogre::Item* item, const Ogre::String& tagPointName);
         void resetTagPointV2(Ogre::Item* item);
-        void updateV2TagPointTransform(void);
-        void extractBoneDerivedTransform(Ogre::Bone* bone, Ogre::Vector3& outPos, Ogre::Quaternion& outOrient);
+        // Physics update closure for V2 (registered only when source has physics)
+        void updateV2PhysicsFromTagPoint(void);
 
     private:
         // V1 members
@@ -247,6 +248,7 @@ namespace NOWA
         // V2 members
         Ogre::SkeletonInstance* skeletonInstance;
         Ogre::Bone* attachedBone;
+        Ogre::TagPoint* tagPointV2;   // The real v2 TagPoint (child of a Bone)
         Ogre::String updateClosureId;
     };
 

@@ -93,11 +93,11 @@ ProceduralWallComponent::ProceduralWallComponent() :
     this->battlementHeight->setDescription("Height of battlements above wall (Battlement style only)");
 
     // Constraints
-    this->wallHeight->addUserData(GameObject::AttrActionNeedRefresh());
+    /*this->wallHeight->addUserData(GameObject::AttrActionNeedRefresh());
     this->wallThickness->addUserData(GameObject::AttrActionNeedRefresh());
     this->wallStyle->addUserData(GameObject::AttrActionNeedRefresh());
     this->createPillars->addUserData(GameObject::AttrActionNeedRefresh());
-    this->pillarSize->addUserData(GameObject::AttrActionNeedRefresh());
+    this->pillarSize->addUserData(GameObject::AttrActionNeedRefresh());*/
 }
 
 ProceduralWallComponent::~ProceduralWallComponent()

@@ -99,8 +99,9 @@ namespace NOWA
                                             "Use this when you're finished designing the road and want optimal performance.");
         this->convertToMesh->addUserData(GameObject::AttrActionExec());
         this->convertToMesh->addUserData(GameObject::AttrActionExecId(), "ProceduralRoadComponent.ConvertToMesh");
+        this->convertToMesh->addUserData(GameObject::AttrActionNeedRefresh());
 
-        this->roadWidth->addUserData(GameObject::AttrActionNeedRefresh());
+       /* this->roadWidth->addUserData(GameObject::AttrActionNeedRefresh());
         this->edgeWidth->addUserData(GameObject::AttrActionNeedRefresh());
         this->roadStyle->addUserData(GameObject::AttrActionNeedRefresh());
         this->heightOffset->addUserData(GameObject::AttrActionNeedRefresh());
@@ -109,7 +110,7 @@ namespace NOWA
         this->centerDatablock->addUserData(GameObject::AttrActionNeedRefresh());
         this->edgeDatablock->addUserData(GameObject::AttrActionNeedRefresh());
         this->curbHeight->addUserData(GameObject::AttrActionNeedRefresh());
-        this->terrainSampleInterval->addUserData(GameObject::AttrActionNeedRefresh());
+        this->terrainSampleInterval->addUserData(GameObject::AttrActionNeedRefresh());*/
     }
 
     ProceduralRoadComponent::~ProceduralRoadComponent()
@@ -1848,7 +1849,7 @@ namespace NOWA
         }
 
         // Generate filename based on GameObject name and ID
-        Ogre::String meshName = this->gameObjectPtr->getName() + "_Road_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
+        Ogre::String meshName = this->gameObjectPtr->getName() + "_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
 
         // Ensure it has .mesh extension
         if (!Ogre::StringUtil::endsWith(meshName, ".mesh", true))
@@ -1857,8 +1858,13 @@ namespace NOWA
         }
 
         // Full path to Procedural folder
-        Ogre::String proceduralPath = "../../media/models/Procedural/";
-        Ogre::String fullPath = proceduralPath + meshName;
+        auto filePathNames = Core::getSingletonPtr()->getSectionPath("Procedural");
+
+        if (true == filePathNames.empty())
+        {
+            return false;
+        }
+        Ogre::String fullPath = filePathNames[0] + "/" + meshName;
 
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] Converting procedural road to static mesh: " + meshName);
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] Road has " + Ogre::StringConverter::toString(this->roadSegments.size()) + " segments");
@@ -1890,7 +1896,7 @@ namespace NOWA
         // We need a small delay to ensure the mesh file is fully written and available
         NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.5f));
 
-        auto conversionFunction = [capturedMeshName, capturedGameObjectPtr, capturedComponentIndex, centerDbName, edgeDbName, currentPosition, currentOrientation, currentScale]()
+        auto conversionFunction = [this, capturedMeshName, capturedGameObjectPtr, capturedComponentIndex, centerDbName, edgeDbName, currentPosition, currentOrientation, currentScale]()
         {
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] Loading converted mesh: " + capturedMeshName);
 
@@ -1917,7 +1923,7 @@ namespace NOWA
             // Create new Item from the loaded mesh on render thread
             Ogre::Item* newItem = nullptr;
 
-            NOWA::GraphicsModule::RenderCommand renderCommand = [capturedGameObjectPtr, loadedMesh, centerDbName, edgeDbName, &newItem]()
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, capturedGameObjectPtr, loadedMesh, centerDbName, edgeDbName, &newItem]()
             {
                 newItem = capturedGameObjectPtr->getSceneManager()->createItem(loadedMesh, capturedGameObjectPtr->isDynamic() ? Ogre::SCENE_DYNAMIC : Ogre::SCENE_STATIC);
 
@@ -1956,9 +1962,20 @@ namespace NOWA
                 return;
             }
 
+            // Reset road pointers
+            // this->roadItem = nullptr;
+            // this->roadMesh.reset();
+            this->destroyPreviewMesh();
+            this->destroyRoadMesh();
+
             // Update GameObject to use the new mesh
             // This will destroy the old procedural mesh and attach the new one
-            capturedGameObjectPtr->init(newItem);
+            // Assign the new mesh to GameObject - this preserves transform automatically
+            if (false == capturedGameObjectPtr->assignMesh(newItem))
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralRoadComponent] Failed to assign mesh to GameObject!");
+                return;
+            }
 
             // IMPORTANT: Restore the GameObject's transform
             // The init() might have changed it, so we restore the original position

@@ -14,7 +14,7 @@
 #include "OgreSubMesh2.h"
 #include "Vao/OgreVertexArrayObject.h"
 
-#include <unordered_map>
+#include <vector>
 
 #include "modules/LuaScriptApi.h"
 
@@ -211,20 +211,21 @@ namespace NOWA
 
     bool PhysicsRagDollComponentV2::createRagDoll(const Ogre::String& boneName)
     {
-		// ALWAYS capture the current scene node transform.
-		// V2 meshes typically use non-unit scale (e.g., 0.01 for cm→m conversion).
-            this->initialPosition = this->gameObjectPtr->getSceneNode()->getPosition();
-            this->initialScale = this->gameObjectPtr->getSceneNode()->getScale();
-            this->initialOrientation = this->gameObjectPtr->getSceneNode()->getOrientation();
+        // ALWAYS capture the current scene node transform.
+        // V2 meshes typically use non-unit scale (e.g., 0.01 for cm→m conversion).
+        this->initialPosition = this->gameObjectPtr->getSceneNode()->getPosition();
+        this->initialScale = this->gameObjectPtr->getSceneNode()->getScale();
+        this->initialOrientation = this->gameObjectPtr->getSceneNode()->getOrientation();
 
         if (true == this->boneConfigFile->getString().empty())
+        {
             return true;
+        }
 
         Ogre::DataStreamPtr stream = Ogre::ResourceGroupManager::getSingleton().openResource(this->boneConfigFile->getString());
         if (stream.isNull())
         {
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsRagDollComponentV2] Could not open bone configuration file: "
-				+ this->boneConfigFile->getString() + " for game object: " + this->gameObjectPtr->getName());
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsRagDollComponentV2] Could not open bone configuration file: " + this->boneConfigFile->getString() + " for game object: " + this->gameObjectPtr->getName());
             return false;
         }
 
@@ -239,8 +240,7 @@ namespace NOWA
         catch (const rapidxml::parse_error&)
         {
             stream->close();
-			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[PhysicsRagDollComponentV2] Could not parse configuration file: " + this->boneConfigFile->getString()
-				+ " for game object: " + this->gameObjectPtr->getName());
+            Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[PhysicsRagDollComponentV2] Could not parse configuration file: " + this->boneConfigFile->getString() + " for game object: " + this->gameObjectPtr->getName());
             return false;
         }
         stream->close();
@@ -467,10 +467,10 @@ namespace NOWA
                 {
                     auto closureFunction = [this](Ogre::Real renderDt)
                     {
+                        this->applyRagdollStateToModel();
                         this->skeletonInstance->update();
                         // Note: Order here is important! applyRagdollStateToModel must run
                         // after skeleton update, on the render thread.
-                        this->applyRagdollStateToModel();
                     };
                     Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
                     NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
@@ -611,7 +611,7 @@ namespace NOWA
                 if (this->rdState == PhysicsRagDollComponentV2::RAGDOLLING)
                 {
                     boost::shared_ptr<EventDataGameObjectIsInRagDollingState> eventDataGameObjectIsInRagDollingState(new EventDataGameObjectIsInRagDollingState(this->gameObjectPtr->getId(), true));
-                    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGameObjectIsInRagDollingState);
+                    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGameObjectIsInRagDollingState);
 
                     if (this->rdOldState == PhysicsRagDollComponentV2::PARTIAL_RAGDOLLING)
                     {
@@ -630,7 +630,7 @@ namespace NOWA
                 else if (this->rdState == PhysicsRagDollComponentV2::PARTIAL_RAGDOLLING)
                 {
                     boost::shared_ptr<EventDataGameObjectIsInRagDollingState> eventDataGameObjectIsInRagDollingState(new EventDataGameObjectIsInRagDollingState(this->gameObjectPtr->getId(), false));
-                    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGameObjectIsInRagDollingState);
+                    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGameObjectIsInRagDollingState);
 
                     this->endRagdolling();
 
@@ -659,7 +659,7 @@ namespace NOWA
                 else if (this->rdState == PhysicsRagDollComponentV2::ANIMATION)
                 {
                     boost::shared_ptr<EventDataGameObjectIsInRagDollingState> eventDataGameObjectIsInRagDollingState(new EventDataGameObjectIsInRagDollingState(this->gameObjectPtr->getId(), false));
-                    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGameObjectIsInRagDollingState);
+                    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGameObjectIsInRagDollingState);
 
                     this->endRagdolling();
 
@@ -693,7 +693,7 @@ namespace NOWA
     void PhysicsRagDollComponentV2::createInactiveRagdoll()
     {
         boost::shared_ptr<EventDataGameObjectIsInRagDollingState> eventDataGameObjectIsInRagDollingState(new EventDataGameObjectIsInRagDollingState(this->gameObjectPtr->getId(), false));
-        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGameObjectIsInRagDollingState);
+        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGameObjectIsInRagDollingState);
 
         this->partialRagdollBoneName = "";
 
@@ -777,6 +777,10 @@ namespace NOWA
             {
                 NOWA::GraphicsModule::getInstance()->updateNodePosition(this->gameObjectPtr->getSceneNode(), Ogre::Vector3(x, y, z));
             }
+            else
+            {
+                PhysicsComponent::setPosition(x, y, z);
+            }
         }
         else
         {
@@ -791,6 +795,10 @@ namespace NOWA
             if (false == this->isSimulating)
             {
                 NOWA::GraphicsModule::getInstance()->updateNodePosition(this->gameObjectPtr->getSceneNode(), position);
+            }
+            else
+            {
+                PhysicsComponent::setPosition(position);
             }
         }
         else
@@ -893,16 +901,20 @@ namespace NOWA
 
     void PhysicsRagDollComponentV2::setInitialState(void)
     {
-        size_t offset = 0;
-        if (this->rdState == PhysicsRagDollComponentV2::PARTIAL_RAGDOLLING)
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
         {
-            offset = 1;
-        }
+            size_t offset = 0;
+            if (this->rdState == PhysicsRagDollComponentV2::PARTIAL_RAGDOLLING)
+            {
+                offset = 1;
+            }
 
-        for (auto& it = this->ragDataList.cbegin() + offset; it != this->ragDataList.cend(); ++it)
-        {
-            it->ragBone->setInitialState();
-        }
+            for (auto& it = this->ragDataList.cbegin() + offset; it != this->ragDataList.cend(); ++it)
+            {
+                it->ragBone->setInitialState();
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PhysicsRagDollComponentV2::setInitialState");
     }
 
     // ============================================================================
@@ -959,14 +971,14 @@ namespace NOWA
 
         Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
 
-		// CRITICAL: Ensure skeleton derived transforms are up-to-date before creating rag bones.
-		// V2 Bone::_getLocalSpaceTransform() assumes caches are already updated (unlike V1's
-		// _getDerivedPosition() which lazily recomputes). Without this, the RagBone constructor
-		// gets stale/uninitialized position values, causing the ragdoll to explode.
-		if (nullptr != this->skeletonInstance)
-		{
-			this->skeletonInstance->update();
-		}
+        // CRITICAL: Ensure skeleton derived transforms are up-to-date before creating rag bones.
+        // V2 Bone::_getLocalSpaceTransform() assumes caches are already updated (unlike V1's
+        // _getDerivedPosition() which lazily recomputes). Without this, the RagBone constructor
+        // gets stale/uninitialized position values, causing the ragdoll to explode.
+        if (nullptr != this->skeletonInstance)
+        {
+            this->skeletonInstance->update();
+        }
 
         rapidxml::xml_node<>* boneXmlElement = bonesXmlElement->first_node("Bone");
         while (nullptr != boneXmlElement)
@@ -1018,8 +1030,7 @@ namespace NOWA
 
             if (skeletonBone.empty() && (false == first || false == partial))
             {
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsRagDollComponentV2] Error: Skeleton bone name could not be loaded from XML for: "
-					+ this->gameObjectPtr->getName());
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsRagDollComponentV2] Error: Skeleton bone name could not be loaded from XML for: " + this->gameObjectPtr->getName());
                 return false;
             }
 
@@ -1030,8 +1041,7 @@ namespace NOWA
                 Ogre::IdString boneIdString(skeletonBone);
                 if (!this->skeletonInstance->hasBone(boneIdString))
                 {
-					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsRagDollComponentV2] Error: Skeleton bone name: " + skeletonBone + " not found for game object: "
-						+ this->gameObjectPtr->getName());
+                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsRagDollComponentV2] Error: Skeleton bone name: " + skeletonBone + " not found for game object: " + this->gameObjectPtr->getName());
                     return false;
                 }
                 bone = this->skeletonInstance->getBone(boneIdString);
@@ -1047,8 +1057,7 @@ namespace NOWA
             }
             else
             {
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsRagDollComponentV2] Error: Representation name could not be loaded from XML for: "
-					+ this->gameObjectPtr->getName());
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsRagDollComponentV2] Error: Representation name could not be loaded from XML for: " + this->gameObjectPtr->getName());
                 return false;
             }
 
@@ -1656,6 +1665,8 @@ namespace NOWA
             Ogre::Quaternion boneWorldOri = nodeOri * boneSkelOri;
 
             ragBone->getBody()->setPositionOrientation(boneWorldPos, boneWorldOri);
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+                "[PhysicsRagDollComponentV2] applyModelStateToRagdoll BoneName: " + ragBone->getName() + " boneWorldPos: " + Ogre::StringConverter::toString(boneWorldPos) + " boneWorldOrientation: " + Ogre::StringConverter::toString(boneWorldOri));
         }
 
         // Set constraint axis for root body
@@ -1699,7 +1710,18 @@ namespace NOWA
         // This is needed because after setting a bone's position/orientation,
         // its _getLocalSpaceTransform() won't update until the next skeletonInstance->update().
         // By tracking what we set, child bones can use accurate parent transforms.
-        std::unordered_map<Ogre::Bone*, std::pair<Ogre::Vector3, Ogre::Quaternion>> computedSkelTransforms;
+        // (except for the root ragdoll bone which needs to track the physics body's world position).
+        //
+        // Non-root ragdoll bones get their position from the hierarchy cascade:
+        //   derivedPos = parent->derivedOri * bone->localPos + parent->derivedPos
+        // where localPos is the bind-pose offset (bone length). Physics joints ensure that
+        // body distances stay consistent with these bone lengths.
+        //
+        // V2 has no per-bone _update(), but skeletonInstance->update() (called after this
+        // function) cascades ALL derived transforms. Since ragdoll bones are manual, update()
+        // preserves our set orientation and only cascades derived transforms.
+
+        const size_t rootIdx = i; // First ragdoll bone to process (root of ragdolled portion)
 
         // IMPORTANT: Process root-to-leaf order (ragDataList is in that order from XML parsing).
         for (; i < this->ragDataList.size(); i++)
@@ -1713,63 +1735,25 @@ namespace NOWA
             Ogre::Bone* bone = ragBone->getBone();
 
             // Get physics body's world transform
-            Ogre::Vector3 bodyWorldPos = ragBone->getBody()->getPosition();
             Ogre::Quaternion bodyWorldOri = ragBone->getBody()->getOrientation();
+            Ogre::Quaternion skelOri = invNodeOri * bodyWorldOri;
+            bone->setOrientation(skelOri);
 
             // Convert world -> skeleton space (entity-local)
-            Ogre::Vector3 skelPos = invNodeOri * (bodyWorldPos - nodePos);
-            skelPos /= nodeScale;
-            Ogre::Quaternion skelOri = invNodeOri * bodyWorldOri;
-
-            // Store for children to use
-            computedSkelTransforms[bone] = std::make_pair(skelPos, skelOri);
-
-            // With setInheritOrientation(false):
-            //   The derived orientation equals what we set (local = skeleton-space).
-            //   So setting orientation to skeleton-space orientation is correct.
-            //
-            // For POSITION however, Ogre still computes derived position through the parent chain:
-            //   derivedPos = parent->derivedOri * (parent->derivedScale * bone->getPosition()) + parent->derivedPos
-            // So we must convert skeleton-space position to parent-bone-local space.
-
-            Ogre::Bone* parentBone = bone->getParent();
-            Ogre::Vector3 boneLocalPos;
-            if (parentBone)
+            // The root bone must track the physics body's world position so the
+            // entire skeleton moves with the ragdoll. All other ragdoll bones
+            // get their position from the bone hierarchy cascade using bind-pose
+            // offsets (bone lengths), which physics joints keep consistent.
+            if (i == rootIdx)
             {
-                Ogre::Vector3 parentDerivedPos;
-                Ogre::Quaternion parentDerivedOri;
-
-                // Check if we already computed this parent's transform in this frame
-                auto parentIt = computedSkelTransforms.find(parentBone);
-                if (parentIt != computedSkelTransforms.end())
-                {
-                    parentDerivedPos = parentIt->second.first;
-                    parentDerivedOri = parentIt->second.second;
-                }
-                else
-                {
-                    // Parent is not a ragdoll bone - use skeleton's stored transform
-                    extractBoneDerivedTransform(parentBone, parentDerivedPos, parentDerivedOri);
-                }
-
-                Ogre::Quaternion invParentOri = parentDerivedOri.Inverse();
-                boneLocalPos = invParentOri * (skelPos - parentDerivedPos);
-                // Note: bone hierarchy scale is typically unit scale for ragdolls
+                Ogre::Vector3 bodyWorldPos = ragBone->getBody()->getPosition();
+                Ogre::Vector3 skelPos = invNodeOri * (bodyWorldPos - nodePos);
+                skelPos /= nodeScale;
+                bone->setPosition(skelPos);
             }
-            else
-            {
-                // Root bone - skeleton space IS local space
-                boneLocalPos = skelPos;
-            }
-
-            // This runs on the render thread (inside tracked closure), so direct bone access is safe
-            bone->setPosition(boneLocalPos);
-            bone->setOrientation(skelOri);
-            // NOWA::GraphicsModule::getInstance()->updateBoneTransform(bone, boneLocalPos, skelOri);
 
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
-                "[PhysicsRagDollComponentV2] applyRagdollStateToModel BoneName: " + ragBone->getName() + " boneLocalPos: " + Ogre::StringConverter::toString(boneLocalPos) + " skelOri: " + Ogre::StringConverter::toString(skelOri));
-
+                "[PhysicsRagDollComponentV2] applyRagdollStateToModel BoneName: " + ragBone->getName() + " boneLocalPos: " + Ogre::StringConverter::toString(bone->getPosition()) + " skelOri: " + Ogre::StringConverter::toString(skelOri));
         }
 
         // Apply bone corrections
@@ -1825,7 +1809,7 @@ namespace NOWA
             // Set bones to manually controlled
             for (size_t j = 1; j < this->ragDataList.size(); j++)
             {
-                for (size_t i = 0; i < this->skeletonInstance->getNumBones(); i++)
+                for (size_t i = 1; i < this->skeletonInstance->getNumBones(); i++)
                 {
                     Ogre::Bone* bone = this->skeletonInstance->getBone(i);
 
@@ -1840,7 +1824,7 @@ namespace NOWA
                         this->skeletonInstance->setManualBone(bone, true);
                         bone->setInheritOrientation(false);
 
-                        NOWA::GraphicsModule::getInstance()->updateBoneOrientation(bone, absoluteWorldOrientation);
+                        bone->setOrientation(absoluteWorldOrientation);
 
                         this->ragDataList[j].ragBone->attachToNode();
                         break;
@@ -1852,7 +1836,7 @@ namespace NOWA
         {
             // Full ragdoll: Set ALL bones in the skeleton to manually controlled.
             // This prevents animation from overwriting our physics-driven transforms.
-            for (size_t idx = 0; idx < this->skeletonInstance->getNumBones(); idx++)
+            for (size_t idx = 1; idx < this->skeletonInstance->getNumBones(); idx++)
             {
                 Ogre::Bone* bone = this->skeletonInstance->getBone(idx);
 
@@ -1864,7 +1848,7 @@ namespace NOWA
                 this->skeletonInstance->setManualBone(bone, true);
                 bone->setInheritOrientation(false);
 
-                NOWA::GraphicsModule::getInstance()->updateBoneOrientation(bone, absoluteWorldOrientation);
+                bone->setOrientation(absoluteWorldOrientation);
             }
 
             // Attach ragdoll bones to their scene nodes (separate loop!)
@@ -2138,8 +2122,7 @@ namespace NOWA
             // for bones with unusual orientations, like Boneup with 180° X flip).
             if (this->physicsRagDollComponentV2->ragdollPositionOffset != Ogre::Vector3::ZERO)
             {
-				Ogre::Vector3 worldOffset = this->physicsRagDollComponentV2->initialOrientation
-					* (this->physicsRagDollComponentV2->initialScale * this->physicsRagDollComponentV2->ragdollPositionOffset);
+                Ogre::Vector3 worldOffset = this->physicsRagDollComponentV2->initialOrientation * (this->physicsRagDollComponentV2->initialScale * this->physicsRagDollComponentV2->ragdollPositionOffset);
                 this->initialBonePosition -= worldOffset;
             }
         }
@@ -2180,15 +2163,14 @@ namespace NOWA
         Ogre::Quaternion collisionOrientation = this->physicsRagDollComponentV2->ragdollOrientationOffset;
 
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
-			"[PhysicsRagDollComponentV2] Name: " + name + " initialBonePosition: " + Ogre::StringConverter::toString(this->initialBonePosition) + " initialBoneOrientation: " + Ogre::StringConverter::toString(this->initialBoneOrientation));
+            "[PhysicsRagDollComponentV2] Name: " + name + " initialBonePosition: " + Ogre::StringConverter::toString(this->initialBonePosition) + " initialBoneOrientation: " + Ogre::StringConverter::toString(this->initialBoneOrientation));
 
         // Create the collision shape based on the Shape attribute
         switch (shape)
         {
         case PhysicsRagDollComponentV2::RagBone::BS_BOX:
         {
-            OgreNewt::CollisionPrimitives::Box* col =
-                new OgreNewt::CollisionPrimitives::Box(this->physicsRagDollComponentV2->ogreNewt, size, this->physicsRagDollComponentV2->gameObjectPtr->getCategoryId(), collisionOrientation, collisionPosition);
+            OgreNewt::CollisionPrimitives::Box* col = new OgreNewt::CollisionPrimitives::Box(this->physicsRagDollComponentV2->ogreNewt, size, this->physicsRagDollComponentV2->gameObjectPtr->getCategoryId(), collisionOrientation, collisionPosition);
             col->calculateInertialMatrix(inertia, massOrigin);
             collisionPtr = OgreNewt::CollisionPtr(col);
             break;
@@ -2231,15 +2213,15 @@ namespace NOWA
             {
                 // V2: Use getWeightedBoneConvexHullV2 with Ogre::Bone* and Ogre::Item*
                 // Pass ragdoll offsets (not Vector3::ZERO!) so the hull is correctly positioned
-                    collisionPtr = this->physicsRagDollComponentV2->getWeightedBoneConvexHullV2(this->bone, item, size.x, inertia, massOrigin, this->physicsRagDollComponentV2->gameObjectPtr->getCategoryId(), collisionPosition,
-                        collisionOrientation, this->physicsRagDollComponentV2->initialScale);
+                collisionPtr = this->physicsRagDollComponentV2->getWeightedBoneConvexHullV2(this->bone, item, size.x, inertia, massOrigin, this->physicsRagDollComponentV2->gameObjectPtr->getCategoryId(), collisionPosition, collisionOrientation,
+                    this->physicsRagDollComponentV2->initialScale);
             }
             else
             {
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsRagDollComponentV2] Error: Cannot create a convex hull for partial ragdoll with no bone for game object: "
-					+ this->physicsRagDollComponentV2->getOwner()->getName());
-				throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[PhysicsRagDollComponentV2] Error: Cannot create a convex hull for partial ragdoll with no bone for game object: "
-					+ this->physicsRagDollComponentV2->getOwner()->getName() + "\n", "NOWA");
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                    "[PhysicsRagDollComponentV2] Error: Cannot create a convex hull for partial ragdoll with no bone for game object: " + this->physicsRagDollComponentV2->getOwner()->getName());
+                throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE,
+                    "[PhysicsRagDollComponentV2] Error: Cannot create a convex hull for partial ragdoll with no bone for game object: " + this->physicsRagDollComponentV2->getOwner()->getName() + "\n", "NOWA");
             }
             break;
         }
@@ -2619,13 +2601,18 @@ namespace NOWA
 
     void PhysicsRagDollComponentV2::RagBone::setInitialState(void)
     {
-        Ogre::Vector3 center = this->physicsRagDollComponentV2->ragDataList.cbegin()->ragBone->getBody()->getPosition();
-        if (nullptr != this->body)
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
         {
-            this->body->setPositionOrientation(center + this->initialBonePosition, this->initialBoneOrientation);
-        }
+            Ogre::Vector3 center = this->physicsRagDollComponentV2->ragDataList.cbegin()->ragBone->getBody()->getPosition();
+            if (nullptr != this->body)
+            {
+                this->body->setPositionOrientation(center + this->initialBonePosition, this->initialBoneOrientation);
+            }
 
-        NOWA::GraphicsModule::getInstance()->updateBoneTransform(this->bone, this->initialBonePosition, this->initialBoneOrientation);
+            this->bone->setPosition(this->initialBonePosition);
+            this->bone->setOrientation(this->initialBoneOrientation);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PhysicsRagDollComponentV2::RagBone::setInitialState");
     }
 
     void PhysicsRagDollComponentV2::RagBone::resetBody(void)

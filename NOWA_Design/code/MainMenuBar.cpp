@@ -655,7 +655,7 @@ void MainMenuBar::notifyPopupMenuAccept(MyGUI::MenuControl* sender, MyGUI::MenuI
 		case 19: // Close
 		{
 			boost::shared_ptr<EventDataExit> eventDataExit(new EventDataExit());
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataExit);
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataExit);
 			break;
 		}
 		case SAVE_GROUP + START_INDEX: // Save Group

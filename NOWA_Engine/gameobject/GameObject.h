@@ -78,20 +78,28 @@ namespace NOWA
 		GameObject(Ogre::SceneManager* sceneManager, Ogre::SceneNode* sceneNode, Ogre::MovableObject* movableObject, const Ogre::String& category = "Default", const Ogre::String& renderCategory = "Default",
 			bool dynamic = true, eType type = eType::ENTITY, unsigned long id = 0);
 
-		virtual ~GameObject();
+		~GameObject();
 
 		/**
 		 * @brief		Initializes the game object and its components by parsing the property element from XML
-		 * @param[in]	newEntity	Optional new entity that has been created by a component to set and overwrite this entity
-		 * @return		success		true, if all the game object could be initialised, else false
+		 * @param[in]	newMovableObject	Optional new movable object that has been created by a component to set and overwrite this entity
+		 * @return		success		true, if the game object could be initialised, else false
 		 */
-		virtual bool init(Ogre::MovableObject* newMovableObject = nullptr);
+		bool init(Ogre::MovableObject* newMovableObject = nullptr);
+
+		/**
+         * @brief Assigns a new mesh/MovableObject to this GameObject, replacing the existing one.
+         *        Preserves GameObject transform and state while swapping the visual representation.
+         * @param[in] newMovableObject The new MovableObject (typically an Ogre::Item) to assign
+         * @return True if assignment succeeded
+         */
+        bool assignMesh(Ogre::MovableObject* newMovableObject);
 
 		/**
 		 * @brief		Post initializes the game object and all its components. This is called when a game object is loaded or newly created.
 		 * @return		success			true, if the post initialisation did work, else false
 		 */
-		virtual bool postInit(void);
+		bool postInit(void);
 
 		/**
 		 * @brief		Connects a game object when all game objects and components are already post-initialized and available. This can be called manually by the @GameObjectController
@@ -99,13 +107,13 @@ namespace NOWA
 		 * @param[in]	cloned			if set to true, this connection should be used to get the target game object by its prior id, since it has been cloned
 		 * return		success			true, if the final initialisation did work, else false
 		 */
-		virtual bool connect(void);
+		bool connect(void);
 
 		/**
 		 * @brief		Disconnects data to other game objects
 		 * @return		success			true, if the disconnection did work, else false
 		 */
-		virtual bool disconnect(void);
+		bool disconnect(void);
 
 		/**
 		 * @brief		In each component @onCloned is called so that each component, that has connections to other game objects, 
@@ -113,22 +121,22 @@ namespace NOWA
 		 *				that has connection to other game objects, to get the new id when being cloned.
 		 * return		success			true, if the cloning did work, else false
 		 */
-		virtual bool onCloned(void);
+		bool onCloned(void);
 
 		/**
 		 * @brief		Destroyes the game object
 		 */
-		virtual void destroy(void);
+		void destroy(void);
 
 		/**
 		 * @brief		Pauses the game object. When the AppState is just paused.
 		 */
-		virtual void pause(void);
+		void pause(void);
 
 		/**
 		 * @brief		Resumes the game object. When the AppState is resumed.
 		 */
-		virtual void resume(void);
+		void resume(void);
 
 		/**
 		 * @brief		Called on each update tick
@@ -139,25 +147,25 @@ namespace NOWA
 		 *				This can be used e.g. for a level editor, in which there is a play mode. If the play mode is on, everything is updated. If off, only necessary data like
 		 *				game object bounding box is udpated.
 		 */
-		virtual void update(Ogre::Real dt, bool notSimulating = false);
+		void update(Ogre::Real dt, bool notSimulating = false);
 
 		/**
 		 * @brief		Actualizes the value for the given attribute
 		 * @param[in]	attribute	The attribute to trigger the actualization of a value of either the game object or a component
 		 */
-		virtual void actualizeValue(Variant* attribute);
+		void actualizeValue(Variant* attribute);
 
 		/**
 		 * @brief		Writes the attributes to XML
 		 * @param[in]	propertiesXML		The properties XML node
 		 * @param[in]	doc					The XML document
 		 */
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc);
+		void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc);
 
 		/**
 		 * @brief		Shows some debug data, if called a second time debug data will not be shown
 		 */
-		virtual void showDebugData(void);
+		void showDebugData(void);
 
 		/**
 		 * @brief		Gets if debug data is currently shown

@@ -338,7 +338,7 @@ void ProjectManager::saveProject(const Ogre::String& optionalFileName)
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataProjectManipulation);
 
 	boost::shared_ptr<EventDataSceneValid> eventDataSceneValid(new EventDataSceneValid(true));
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataSceneValid);
+	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataSceneValid);
 }
 
 void ProjectManager::loadProject(const Ogre::String& filePathName, unsigned short recentFileIndex)

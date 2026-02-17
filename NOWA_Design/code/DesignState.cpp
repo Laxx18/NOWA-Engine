@@ -708,8 +708,13 @@ void DesignState::simulate(bool pause, bool withUndo)
 		if (false == NOWA::Core::getSingletonPtr()->getIsGame())
 		{
 			NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->snapshotGameObjects();
-		}
-		this->simulating = true;
+		}		
+
+		NOWA::AppStateManager::LogicCommand logicCommand = [this]()
+		{
+			this->simulating = true;
+		};
+		NOWA::AppStateManager::getSingletonPtr()->enqueueAndWait(std::move(logicCommand));
 
 		NOWA::GraphicsModule::RenderCommand renderCommand = [this, pause]()
 		{
@@ -734,7 +739,11 @@ void DesignState::simulate(bool pause, bool withUndo)
 	else
 	{
 		// Must be called first, so that in case of lua error, no update is called
-		this->simulating = false;
+		NOWA::AppStateManager::LogicCommand logicCommand = [this]()
+		{
+			this->simulating = false;
+		};
+		NOWA::AppStateManager::getSingletonPtr()->enqueueAndWait(std::move(logicCommand));
 
 		NOWA::GraphicsModule::RenderCommand renderCommand = [this, pause, withUndo]()
 		{

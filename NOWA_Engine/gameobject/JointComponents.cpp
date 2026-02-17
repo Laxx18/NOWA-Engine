@@ -816,7 +816,7 @@ namespace NOWA
 			this->joint = nullptr;
 
 			boost::shared_ptr<EventDataDeleteJoint> deleteJointEvent(boost::make_shared<EventDataDeleteJoint>(this->getId()));
-			AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(deleteJointEvent);
+			AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(deleteJointEvent);
 
 			if (true == resetPredecessorAndTarget)
 			{

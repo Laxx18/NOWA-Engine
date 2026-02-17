@@ -31,13 +31,13 @@ namespace NOWA
         GameObjectComponent(),
         name("ProceduralFoliageVolumeComponent"),
         isDirty(true),
+        foliageLoadedFromScene(false),
         spatialHashCellSize(10.0f),
-        // GOOD DEFAULTS: Will actually work out of the box!
+        raySceneQuery(nullptr),
+        sphereSceneQuery(nullptr),
         volumeBounds(new Variant(ProceduralFoliageVolumeComponent::AttrVolumeBounds(), Ogre::Vector4(-50.0f, -50.0f, 50.0f, 50.0f), this->attributes)), // 100x100m area
         masterSeed(new Variant(ProceduralFoliageVolumeComponent::AttrMasterSeed(), static_cast<unsigned int>(12345), this->attributes)),
         gridResolution(new Variant(ProceduralFoliageVolumeComponent::AttrGridResolution(), 1.0f, this->attributes)), // 1 meter sample resolution
-        autoGenerate(new Variant(ProceduralFoliageVolumeComponent::AttrAutoGenerate(), true, this->attributes)),
-        clearOnDisconnect(new Variant(ProceduralFoliageVolumeComponent::AttrClearOnDisconnect(), false, this->attributes)),
         regenerate(new Variant(ProceduralFoliageVolumeComponent::AttrRegenerate(), "Regenerate", this->attributes)),
         clear(new Variant(ProceduralFoliageVolumeComponent::AttrClear(), "Clear", this->attributes)),
         randomizeSeed(new Variant(ProceduralFoliageVolumeComponent::AttrRandomizeSeed(), "Randomize Seed", this->attributes)),
@@ -60,8 +60,6 @@ namespace NOWA
         this->volumeBounds->setDescription("AABB volume bounds (min.x, min.z, max.x, max.z) in world space. Match your terrain size.");
         this->masterSeed->setDescription("Master seed for reproducible placement. Same seed = same vegetation.");
         this->gridResolution->setDescription("Grid sample resolution in meters. Lower = denser sampling but slower. Typical: 0.5-2.0");
-        this->autoGenerate->setDescription("Automatically generate vegetation when simulation starts (connect).");
-        this->clearOnDisconnect->setDescription("Clear vegetation when simulation stops (disconnect). Useful for iteration.");
         this->ruleCount->setDescription("Number of foliage rules (different vegetation types). Start with 1-3.");
         this->ruleCount->addUserData(GameObject::AttrActionNeedRefresh());
 
@@ -105,41 +103,27 @@ namespace NOWA
         return this->name;
     }
 
-    // ============================================================================
-    // INIT / XML SERIALIZATION
-    // ============================================================================
-
     bool ProceduralFoliageVolumeComponent::init(rapidxml::xml_node<>*& propertyElement)
     {
         GameObjectComponent::init(propertyElement);
 
-        // Load volume settings
-        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "VolumeBounds")
+        // Load volume settings (use attribute name helpers consistently)
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralFoliageVolumeComponent::AttrVolumeBounds())
         {
             this->volumeBounds->setValue(XMLConverter::getAttribVector4(propertyElement, "data"));
             propertyElement = propertyElement->next_sibling("property");
         }
-        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "MasterSeed")
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralFoliageVolumeComponent::AttrMasterSeed())
         {
             this->masterSeed->setValue(XMLConverter::getAttribUnsignedInt(propertyElement, "data"));
             propertyElement = propertyElement->next_sibling("property");
         }
-        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "GridResolution")
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralFoliageVolumeComponent::AttrGridResolution())
         {
             this->gridResolution->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
             propertyElement = propertyElement->next_sibling("property");
         }
-        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AutoGenerate")
-        {
-            this->autoGenerate->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
-            propertyElement = propertyElement->next_sibling("property");
-        }
-        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "ClearOnDisconnect")
-        {
-            this->clearOnDisconnect->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
-            propertyElement = propertyElement->next_sibling("property");
-        }
-        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "RuleCount")
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralFoliageVolumeComponent::AttrRuleCount())
         {
             this->ruleCount->setValue(XMLConverter::getAttribUnsignedInt(propertyElement, "data"));
             propertyElement = propertyElement->next_sibling("property");
@@ -161,6 +145,8 @@ namespace NOWA
             this->ruleMinSpacings.resize(count);
             this->ruleRenderDistances.resize(count);
             this->ruleLodDistances.resize(count);
+            this->ruleCategories.resize(count);
+            this->ruleClearanceDistances.resize(count);
         }
 
         this->masterSeed->setConstraints(0u, UINT32_MAX);
@@ -196,7 +182,7 @@ namespace NOWA
             }
 
             // Rule Name
-            if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "RuleName" + Ogre::StringConverter::toString(i))
+            if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == (ProceduralFoliageVolumeComponent::AttrRuleName() + Ogre::StringConverter::toString(i)))
             {
                 Ogre::String name = XMLConverter::getAttrib(propertyElement, "data");
                 if (nullptr == this->ruleNames[i])
@@ -210,7 +196,7 @@ namespace NOWA
             }
 
             // Rule Mesh Name
-            if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "RuleMeshName" + Ogre::StringConverter::toString(i))
+            if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == (ProceduralFoliageVolumeComponent::AttrRuleMeshName() + Ogre::StringConverter::toString(i)))
             {
                 Ogre::String meshName = XMLConverter::getAttrib(propertyElement, "data");
                 if (nullptr == this->ruleMeshNames[i])
@@ -224,7 +210,8 @@ namespace NOWA
                 propertyElement = propertyElement->next_sibling("property");
             }
 
-            if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "RuleResourceGroup" + Ogre::StringConverter::toString(i))
+            // Rule Resource Group
+            if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == (ProceduralFoliageVolumeComponent::AttrRuleResourceGroup() + Ogre::StringConverter::toString(i)))
             {
                 Ogre::String resourceGroup = XMLConverter::getAttrib(propertyElement, "data");
                 this->rules[i].resourceGroup = resourceGroup;
@@ -232,13 +219,13 @@ namespace NOWA
             }
 
             // Rule Density
-            if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "RuleDensity" + Ogre::StringConverter::toString(i))
+            if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == (ProceduralFoliageVolumeComponent::AttrRuleDensity() + Ogre::StringConverter::toString(i)))
             {
                 Ogre::Real density = XMLConverter::getAttribReal(propertyElement, "data");
                 if (nullptr == this->ruleDensities[i])
                 {
                     this->ruleDensities[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleDensity() + Ogre::StringConverter::toString(i), 1.0f, this->attributes);
-                    this->ruleDensities[i]->setDescription("Instances per m² (0.01 - 10.0).");
+                    this->ruleDensities[i]->setDescription("Instances per m * m (0.01 - 10.0).");
                 }
                 this->ruleDensities[i]->setValue(density);
                 this->rules[i].density = density;
@@ -246,7 +233,7 @@ namespace NOWA
             }
 
             // Rule Height Range
-            if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "RuleHeightRange" + Ogre::StringConverter::toString(i))
+            if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == (ProceduralFoliageVolumeComponent::AttrRuleHeightRange() + Ogre::StringConverter::toString(i)))
             {
                 Ogre::Vector2 range = XMLConverter::getAttribVector2(propertyElement, "data");
                 if (nullptr == this->ruleHeightRanges[i])
@@ -260,7 +247,7 @@ namespace NOWA
             }
 
             // Rule Max Slope
-            if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "RuleMaxSlope" + Ogre::StringConverter::toString(i))
+            if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == (ProceduralFoliageVolumeComponent::AttrRuleMaxSlope() + Ogre::StringConverter::toString(i)))
             {
                 Ogre::Real maxSlope = XMLConverter::getAttribReal(propertyElement, "data");
                 if (nullptr == this->ruleMaxSlopes[i])
@@ -274,7 +261,7 @@ namespace NOWA
             }
 
             // Rule Terra Layers
-            if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "RuleTerraLayers" + Ogre::StringConverter::toString(i))
+            if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == (ProceduralFoliageVolumeComponent::AttrRuleTerraLayers() + Ogre::StringConverter::toString(i)))
             {
                 Ogre::String layers = XMLConverter::getAttrib(propertyElement, "data");
                 if (nullptr == this->ruleTerraLayers[i])
@@ -288,7 +275,7 @@ namespace NOWA
             }
 
             // Rule Scale Range
-            if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "RuleScaleRange" + Ogre::StringConverter::toString(i))
+            if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == (ProceduralFoliageVolumeComponent::AttrRuleScaleRange() + Ogre::StringConverter::toString(i)))
             {
                 Ogre::Vector2 range = XMLConverter::getAttribVector2(propertyElement, "data");
                 if (nullptr == this->ruleScaleRanges[i])
@@ -302,7 +289,7 @@ namespace NOWA
             }
 
             // Rule Min Spacing
-            if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "RuleMinSpacing" + Ogre::StringConverter::toString(i))
+            if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == (ProceduralFoliageVolumeComponent::AttrRuleMinSpacing() + Ogre::StringConverter::toString(i)))
             {
                 Ogre::Real spacing = XMLConverter::getAttribReal(propertyElement, "data");
                 if (nullptr == this->ruleMinSpacings[i])
@@ -316,7 +303,7 @@ namespace NOWA
             }
 
             // Rule Render Distance
-            if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "RuleRenderDistance" + Ogre::StringConverter::toString(i))
+            if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == (ProceduralFoliageVolumeComponent::AttrRuleRenderDistance() + Ogre::StringConverter::toString(i)))
             {
                 Ogre::Real distance = XMLConverter::getAttribReal(propertyElement, "data");
                 if (nullptr == this->ruleRenderDistances[i])
@@ -330,7 +317,7 @@ namespace NOWA
             }
 
             // Rule LOD Distance
-            if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "RuleLodDistance" + Ogre::StringConverter::toString(i))
+            if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == (ProceduralFoliageVolumeComponent::AttrRuleLodDistance() + Ogre::StringConverter::toString(i)))
             {
                 Ogre::Real distance = XMLConverter::getAttribReal(propertyElement, "data");
                 if (nullptr == this->ruleLodDistances[i])
@@ -342,7 +329,39 @@ namespace NOWA
                 this->rules[i].lodDistance = distance;
                 propertyElement = propertyElement->next_sibling("property");
             }
+
+            // Rule Categories
+            if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == (ProceduralFoliageVolumeComponent::AttrRuleCategories() + Ogre::StringConverter::toString(i)))
+            {
+                Ogre::String cats = XMLConverter::getAttrib(propertyElement, "data");
+                if (nullptr == this->ruleCategories[i])
+                {
+                    this->ruleCategories[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleCategories() + Ogre::StringConverter::toString(i), Ogre::String("All"), this->attributes);
+                    this->ruleCategories[i]->setDescription("Categories mask for raycasting. 'All' = grow everywhere. 'All-House' = everywhere except on Houses. 'Ground' = only on ground objects..");
+                }
+                this->ruleCategories[i]->setValue(cats);
+                this->rules[i].categories = cats;
+                this->rules[i].categoriesId = AppStateManager::getSingletonPtr()->getGameObjectController()->generateCategoryId(cats);
+                propertyElement = propertyElement->next_sibling("property");
+            }
+
+            // Rule Clearance Distance
+            if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == (ProceduralFoliageVolumeComponent::AttrRuleClearanceDistance() + Ogre::StringConverter::toString(i)))
+            {
+                Ogre::Real dist = XMLConverter::getAttribReal(propertyElement, "data");
+                if (nullptr == this->ruleClearanceDistances[i])
+                {
+                    this->ruleClearanceDistances[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleClearanceDistance() + Ogre::StringConverter::toString(i), 0.0f, this->attributes);
+                    this->ruleClearanceDistances[i]->setDescription("Clearance buffer in meters around excluded objects. 0 = disabled.");
+                    this->ruleClearanceDistances[i]->setConstraints(0.0f, 50.0f);
+                }
+                this->ruleClearanceDistances[i]->setValue(dist);
+                this->rules[i].clearanceDistance = dist;
+                propertyElement = propertyElement->next_sibling("property");
+            }
         }
+
+        this->foliageLoadedFromScene = true;
 
         return true;
     }
@@ -351,14 +370,18 @@ namespace NOWA
     {
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralFoliageVolumeComponent] Init component for game object: " + this->gameObjectPtr->getName());
 
-        return true;
-    }
+        if (nullptr == this->raySceneQuery)
+        {
+            this->raySceneQuery = this->gameObjectPtr->getSceneManager()->createRayQuery(Ogre::Ray(), GameObjectController::ALL_CATEGORIES_ID);
+            this->raySceneQuery->setSortByDistance(true);
+        }
 
-    bool ProceduralFoliageVolumeComponent::connect(void)
-    {
-        GameObjectComponent::connect();
+        if (nullptr == this->sphereSceneQuery)
+        {
+            this->sphereSceneQuery = this->gameObjectPtr->getSceneManager()->createSphereQuery(Ogre::Sphere(), GameObjectController::ALL_CATEGORIES_ID);
+        }
 
-        if (this->autoGenerate->getBool())
+        if (true == this->foliageLoadedFromScene)
         {
             this->regenerateFoliage();
         }
@@ -366,13 +389,15 @@ namespace NOWA
         return true;
     }
 
+    bool ProceduralFoliageVolumeComponent::connect(void)
+    {
+        GameObjectComponent::connect();
+
+        return true;
+    }
+
     bool ProceduralFoliageVolumeComponent::disconnect(void)
     {
-        if (this->clearOnDisconnect->getBool())
-        {
-            this->clearFoliage();
-        }
-
         GameObjectComponent::disconnect();
         return true;
     }
@@ -391,6 +416,27 @@ namespace NOWA
     void ProceduralFoliageVolumeComponent::onRemoveComponent(void)
     {
         GameObjectComponent::onRemoveComponent();
+
+        if (this->raySceneQuery)
+        {
+            auto* query = this->raySceneQuery;
+            GraphicsModule::getInstance()->enqueueAndWait([this, query]()
+                {
+                    this->gameObjectPtr->getSceneManager()->destroyQuery(query);
+                }, "ProceduralFoliageVolumeComponent::DestroyRayQuery");
+            this->raySceneQuery = nullptr;
+        }
+
+        if (this->sphereSceneQuery)
+        {
+            auto* query = this->sphereSceneQuery;
+            GraphicsModule::getInstance()->enqueueAndWait(
+                [this, query]()
+                {
+                    this->gameObjectPtr->getSceneManager()->destroyQuery(query);
+                }, "ProceduralFoliageVolumeComponent::DestroySphereQuery");
+            this->sphereSceneQuery = nullptr;
+        }
 
         // Destroy all vegetation (blocking)
         this->clearFoliage();
@@ -430,14 +476,6 @@ namespace NOWA
         else if (ProceduralFoliageVolumeComponent::AttrGridResolution() == attribute->getName())
         {
             this->setGridResolution(attribute->getReal());
-        }
-        else if (ProceduralFoliageVolumeComponent::AttrAutoGenerate() == attribute->getName())
-        {
-            this->setAutoGenerateOnConnect(attribute->getBool());
-        }
-        else if (ProceduralFoliageVolumeComponent::AttrClearOnDisconnect() == attribute->getName())
-        {
-            this->setClearOnDisconnect(attribute->getBool());
         }
         else if (ProceduralFoliageVolumeComponent::AttrRuleCount() == attribute->getName())
         {
@@ -488,6 +526,14 @@ namespace NOWA
                 {
                     this->setRuleLodDistance(i, attribute->getReal());
                 }
+                else if (ProceduralFoliageVolumeComponent::AttrRuleCategories() + Ogre::StringConverter::toString(i) == attribute->getName())
+                {
+                    this->setRuleCategories(i, attribute->getString());
+                }
+                else if (ProceduralFoliageVolumeComponent::AttrRuleClearanceDistance() + Ogre::StringConverter::toString(i) == attribute->getName())
+                {
+                    this->setRuleClearanceDistance(i, attribute->getReal());
+                }
             }
         }
     }
@@ -499,37 +545,25 @@ namespace NOWA
         // Write volume settings
         xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
         propertyXML->append_attribute(doc.allocate_attribute("type", "10")); // Vector4
-        propertyXML->append_attribute(doc.allocate_attribute("name", "VolumeBounds"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralFoliageVolumeComponent::AttrVolumeBounds())));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->volumeBounds->getVector4())));
         propertiesXML->append_node(propertyXML);
 
         propertyXML = doc.allocate_node(node_element, "property");
         propertyXML->append_attribute(doc.allocate_attribute("type", "2")); // Unsigned int
-        propertyXML->append_attribute(doc.allocate_attribute("name", "MasterSeed"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralFoliageVolumeComponent::AttrMasterSeed())));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->masterSeed->getUInt())));
         propertiesXML->append_node(propertyXML);
 
         propertyXML = doc.allocate_node(node_element, "property");
         propertyXML->append_attribute(doc.allocate_attribute("type", "6")); // Real
-        propertyXML->append_attribute(doc.allocate_attribute("name", "GridResolution"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralFoliageVolumeComponent::AttrGridResolution())));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->gridResolution->getReal())));
         propertiesXML->append_node(propertyXML);
 
         propertyXML = doc.allocate_node(node_element, "property");
-        propertyXML->append_attribute(doc.allocate_attribute("type", "12")); // Bool
-        propertyXML->append_attribute(doc.allocate_attribute("name", "AutoGenerate"));
-        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->autoGenerate->getBool())));
-        propertiesXML->append_node(propertyXML);
-
-        propertyXML = doc.allocate_node(node_element, "property");
-        propertyXML->append_attribute(doc.allocate_attribute("type", "12")); // Bool
-        propertyXML->append_attribute(doc.allocate_attribute("name", "ClearOnDisconnect"));
-        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->clearOnDisconnect->getBool())));
-        propertiesXML->append_node(propertyXML);
-
-        propertyXML = doc.allocate_node(node_element, "property");
         propertyXML->append_attribute(doc.allocate_attribute("type", "2")); // Unsigned int
-        propertyXML->append_attribute(doc.allocate_attribute("name", "RuleCount"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralFoliageVolumeComponent::AttrRuleCount())));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->ruleCount->getUInt())));
         propertiesXML->append_node(propertyXML);
 
@@ -539,78 +573,92 @@ namespace NOWA
             // Rule Name
             propertyXML = doc.allocate_node(node_element, "property");
             propertyXML->append_attribute(doc.allocate_attribute("type", "7")); // String
-            propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "RuleName" + Ogre::StringConverter::toString(i))));
+            propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralFoliageVolumeComponent::AttrRuleName() + Ogre::StringConverter::toString(i))));
             propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->ruleNames[i]->getString())));
             propertiesXML->append_node(propertyXML);
 
             // Rule Mesh Name
             propertyXML = doc.allocate_node(node_element, "property");
-            propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-            propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "RuleMeshName" + Ogre::StringConverter::toString(i))));
+            propertyXML->append_attribute(doc.allocate_attribute("type", "7")); // String
+            propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralFoliageVolumeComponent::AttrRuleMeshName() + Ogre::StringConverter::toString(i))));
             propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->ruleMeshNames[i]->getString())));
             propertiesXML->append_node(propertyXML);
 
-            // Rule ResourceGroup
+            // Rule Resource Group
             propertyXML = doc.allocate_node(node_element, "property");
-            propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-            propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "RuleResourceGroup" + Ogre::StringConverter::toString(i))));
+            propertyXML->append_attribute(doc.allocate_attribute("type", "7")); // String
+            propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralFoliageVolumeComponent::AttrRuleResourceGroup() + Ogre::StringConverter::toString(i))));
             propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->rules[i].resourceGroup)));
             propertiesXML->append_node(propertyXML);
 
             // Rule Density
             propertyXML = doc.allocate_node(node_element, "property");
-            propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-            propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "RuleDensity" + Ogre::StringConverter::toString(i))));
+            propertyXML->append_attribute(doc.allocate_attribute("type", "6")); // Real
+            propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralFoliageVolumeComponent::AttrRuleDensity() + Ogre::StringConverter::toString(i))));
             propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->ruleDensities[i]->getReal())));
             propertiesXML->append_node(propertyXML);
 
             // Rule Height Range
             propertyXML = doc.allocate_node(node_element, "property");
             propertyXML->append_attribute(doc.allocate_attribute("type", "8")); // Vector2
-            propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "RuleHeightRange" + Ogre::StringConverter::toString(i))));
+            propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralFoliageVolumeComponent::AttrRuleHeightRange() + Ogre::StringConverter::toString(i))));
             propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->ruleHeightRanges[i]->getVector2())));
             propertiesXML->append_node(propertyXML);
 
             // Rule Max Slope
             propertyXML = doc.allocate_node(node_element, "property");
-            propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-            propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "RuleMaxSlope" + Ogre::StringConverter::toString(i))));
+            propertyXML->append_attribute(doc.allocate_attribute("type", "6")); // Real
+            propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralFoliageVolumeComponent::AttrRuleMaxSlope() + Ogre::StringConverter::toString(i))));
             propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->ruleMaxSlopes[i]->getReal())));
             propertiesXML->append_node(propertyXML);
 
             // Rule Terra Layers
             propertyXML = doc.allocate_node(node_element, "property");
-            propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-            propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "RuleTerraLayers" + Ogre::StringConverter::toString(i))));
+            propertyXML->append_attribute(doc.allocate_attribute("type", "7")); // String
+            propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralFoliageVolumeComponent::AttrRuleTerraLayers() + Ogre::StringConverter::toString(i))));
             propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->ruleTerraLayers[i]->getString())));
             propertiesXML->append_node(propertyXML);
 
             // Rule Scale Range
             propertyXML = doc.allocate_node(node_element, "property");
-            propertyXML->append_attribute(doc.allocate_attribute("type", "8"));
-            propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "RuleScaleRange" + Ogre::StringConverter::toString(i))));
+            propertyXML->append_attribute(doc.allocate_attribute("type", "8")); // Vector2
+            propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralFoliageVolumeComponent::AttrRuleScaleRange() + Ogre::StringConverter::toString(i))));
             propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->ruleScaleRanges[i]->getVector2())));
             propertiesXML->append_node(propertyXML);
 
             // Rule Min Spacing
             propertyXML = doc.allocate_node(node_element, "property");
-            propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-            propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "RuleMinSpacing" + Ogre::StringConverter::toString(i))));
+            propertyXML->append_attribute(doc.allocate_attribute("type", "6")); // Real
+            propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralFoliageVolumeComponent::AttrRuleMinSpacing() + Ogre::StringConverter::toString(i))));
             propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->ruleMinSpacings[i]->getReal())));
             propertiesXML->append_node(propertyXML);
 
             // Rule Render Distance
             propertyXML = doc.allocate_node(node_element, "property");
-            propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-            propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "RuleRenderDistance" + Ogre::StringConverter::toString(i))));
+            propertyXML->append_attribute(doc.allocate_attribute("type", "6")); // Real
+            propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralFoliageVolumeComponent::AttrRuleRenderDistance() + Ogre::StringConverter::toString(i))));
             propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->ruleRenderDistances[i]->getReal())));
             propertiesXML->append_node(propertyXML);
 
             // Rule LOD Distance
             propertyXML = doc.allocate_node(node_element, "property");
-            propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-            propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "RuleLodDistance" + Ogre::StringConverter::toString(i))));
+            propertyXML->append_attribute(doc.allocate_attribute("type", "6")); // Real
+            propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralFoliageVolumeComponent::AttrRuleLodDistance() + Ogre::StringConverter::toString(i))));
             propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->ruleLodDistances[i]->getReal())));
+            propertiesXML->append_node(propertyXML);
+
+            // Rule Categories
+            propertyXML = doc.allocate_node(node_element, "property");
+            propertyXML->append_attribute(doc.allocate_attribute("type", "7")); // String
+            propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralFoliageVolumeComponent::AttrRuleCategories() + Ogre::StringConverter::toString(i))));
+            propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->ruleCategories[i]->getString())));
+            propertiesXML->append_node(propertyXML);
+
+            // Rule Clearance Distance
+            propertyXML = doc.allocate_node(node_element, "property");
+            propertyXML->append_attribute(doc.allocate_attribute("type", "6")); // Real
+            propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralFoliageVolumeComponent::AttrRuleClearanceDistance() + Ogre::StringConverter::toString(i))));
+            propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->ruleClearanceDistances[i]->getReal())));
             propertiesXML->append_node(propertyXML);
         }
     }
@@ -647,7 +695,7 @@ namespace NOWA
             return;
         }
 
-        if (this->rules.empty())
+        if (true == this->rules.empty())
         {
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralFoliageVolume] No rules defined, skipping generation.");
             return;
@@ -661,7 +709,7 @@ namespace NOWA
         // Calculate all positions (parallel, main thread)
         std::vector<VegetationBatch> batches = this->calculateFoliagePositions();
 
-        if (batches.empty())
+        if (true == batches.empty())
         {
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralFoliageVolume] No instances generated.");
             return;
@@ -691,10 +739,10 @@ namespace NOWA
 
     std::vector<VegetationBatch> ProceduralFoliageVolumeComponent::calculateFoliagePositions()
     {
-        // Get Terra for height sampling
+        // Get Terra
         Ogre::Terra* terra = nullptr;
         auto terraList = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromComponent(TerraComponent::getStaticClassName());
-        if (!terraList.empty())
+        if (false == terraList.empty())
         {
             auto terraCompPtr = NOWA::makeStrongPtr(terraList[0]->getComponent<TerraComponent>());
             if (terraCompPtr)
@@ -703,38 +751,36 @@ namespace NOWA
             }
         }
 
-        if (!terra)
+        if (nullptr == terra)
         {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralFoliageVolume] No Terra found! Cannot generate vegetation.");
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralFoliageVolume] No Terra found!");
             return {};
         }
 
-        // Get volume bounds
         Ogre::Vector4 boundsVec = this->volumeBounds->getVector4();
         Ogre::Vector2 minXZ(boundsVec.x, boundsVec.y);
         Ogre::Vector2 maxXZ(boundsVec.z, boundsVec.w);
 
-        // Parallel generation: one future per rule
+        // ============================================================================
+        // PHASE 1: PARALLEL - Terra height/slope/layer checks
+        // ============================================================================
         std::vector<std::future<VegetationBatch>> futures;
 
         for (size_t ruleIdx = 0; ruleIdx < this->rules.size(); ruleIdx++)
         {
             const FoliageRule& rule = this->rules[ruleIdx];
 
-            if (!rule.enabled || rule.meshName.empty())
+            if (false == rule.enabled || true == rule.meshName.empty())
             {
                 continue;
             }
 
-            // Launch async task for this rule
-            futures.emplace_back(std::async(std::launch::async,
-                [=]() -> VegetationBatch
+            futures.emplace_back(std::async(std::launch::async, [=]() -> VegetationBatch
                 {
                     VegetationBatch batch;
                     batch.meshName = rule.meshName;
                     batch.ruleIndex = ruleIdx;
 
-                    // Seeded RNG for reproducibility
                     std::mt19937 rng(this->masterSeed->getUInt() + rule.seed);
                     std::uniform_real_distribution<float> dist01(0.0f, 1.0f);
 
@@ -742,51 +788,54 @@ namespace NOWA
                     const Ogre::Real stepX = resolution / rule.density;
                     const Ogre::Real stepZ = resolution / rule.density;
 
-                    // Grid sampling
                     for (Ogre::Real x = minXZ.x; x < maxXZ.x; x += stepX)
                     {
                         for (Ogre::Real z = minXZ.y; z < maxXZ.y; z += stepZ)
                         {
-                            // Add jitter for natural look
                             Ogre::Real jitterX = (dist01(rng) - 0.5f) * stepX * 0.8f;
                             Ogre::Real jitterZ = (dist01(rng) - 0.5f) * stepZ * 0.8f;
 
                             Ogre::Vector3 position(x + jitterX, 0.0f, z + jitterZ);
 
-                            // CHECK TERRA BOUNDS BEFORE SAMPLING!
-                            if (!this->isWithinTerraBounds(position, terra))
+                            // Terra bounds check
+                            if (false == this->isWithinTerraBounds(position, terra))
                             {
                                 continue;
                             }
 
-                            // Get height from Terra (now safe!)
-                            if (!terra->getHeightAt(position))
+                            // Terra height
+                            if (false == terra->getHeightAt(position))
                             {
                                 continue;
                             }
 
-                            // Calculate normal
+                            // Normal
                             Ogre::Vector3 normal = this->calculateTerrainNormal(position, terra);
 
-                            // Check if meets rule criteria
-                            if (!this->meetsTerrainCriteria(position, normal, rule, terra))
+                            // Ensure normal points up
+                            if (normal.y < 0.0f)
+                            {
+                                normal = -normal;
+                            }
+
+                            // Height/slope/layer checks (Terra only - thread safe!)
+                            if (false == this->meetsTerrainCriteria(position, normal, rule, terra))
                             {
                                 continue;
                             }
 
-                            // Check spacing
-                            if (!this->hasMinimumSpacing(position, rule, batch.instances))
+                            // Spacing check
+                            if (false == this->hasMinimumSpacing(position, rule, batch.instances))
                             {
                                 continue;
                             }
 
-                            // Create instance
+                            // Build instance
                             Ogre::Real scaleRand = Ogre::Math::lerp(rule.scaleRange.x, rule.scaleRange.y, dist01(rng));
                             Ogre::Vector3 scale = rule.uniformScale ? Ogre::Vector3(scaleRand) : Ogre::Vector3(scaleRand, scaleRand, scaleRand);
 
                             // Orientation
                             Ogre::Quaternion orientation = Ogre::Quaternion::IDENTITY;
-
                             if (rule.alignToNormal > 0.0f)
                             {
                                 // Align to terrain normal
@@ -800,7 +849,6 @@ namespace NOWA
                                 orientation.FromAxes(right, up, forward);
                             }
 
-                            // Y rotation
                             if (rule.randomYRotation)
                             {
                                 Ogre::Degree yRot(Ogre::Math::lerp(rule.yRotationRange.x, rule.yRotationRange.y, dist01(rng)));
@@ -812,21 +860,62 @@ namespace NOWA
                             batch.instances.emplace_back(position, orientation, scale, ruleIdx);
                         }
                     }
-
                     return batch;
                 }));
         }
 
-        // Collect results
+        // Collect parallel results
         std::vector<VegetationBatch> batches;
         for (auto& future : futures)
         {
             VegetationBatch batch = future.get();
-            if (!batch.instances.empty())
+            if (false == batch.instances.empty())
             {
                 batches.push_back(std::move(batch));
             }
         }
+
+        // ============================================================================
+        // PHASE 2: SEQUENTIAL - Category raycast filter (NOT thread safe!)
+        // Only runs if any rule has non-"All" category -> often zero cost!
+        // ============================================================================
+        for (auto& batch : batches)
+        {
+            const FoliageRule& rule = this->rules[batch.ruleIndex];
+
+            // Skip raycast entirely if category is "All" (most common case!)
+            if (rule.categoriesId == GameObjectController::ALL_CATEGORIES_ID)
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralFoliageVolume] Rule '" + rule.name + "' category=All, skipping raycast filter.");
+                continue;
+            }
+
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+                "[ProceduralFoliageVolume] Rule '" + rule.name + "' filtering " + Ogre::StringConverter::toString(batch.instances.size()) + " instances by category '" + rule.categories + "'...");
+
+            // Filter instances by category (sequential, single raySceneQuery)
+            std::vector<VegetationInstance> filtered;
+            filtered.reserve(batch.instances.size());
+
+            for (const auto& instance : batch.instances)
+            {
+                if (this->isCategoryAllowed(instance.position, rule))
+                {
+                    filtered.push_back(instance);
+                }
+            }
+
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+                "[ProceduralFoliageVolume] Rule '" + rule.name + "' kept " + Ogre::StringConverter::toString(filtered.size()) + " / " + Ogre::StringConverter::toString(batch.instances.size()) + " instances after category filter.");
+
+            batch.instances = std::move(filtered);
+        }
+
+        // Remove empty batches
+        batches.erase(std::remove_if(batches.begin(), batches.end(), [](const VegetationBatch& b)
+            {
+                return b.instances.empty();
+            }), batches.end());
 
         return batches;
     }
@@ -843,7 +932,7 @@ namespace NOWA
             return false;
         }
 
-        // Slope check (angle from vertical)
+        // Slope check
         Ogre::Real slope = Ogre::Math::ACos(normal.dotProduct(Ogre::Vector3::UNIT_Y)).valueDegrees();
 
         if (slope > rule.maxSlope)
@@ -860,13 +949,16 @@ namespace NOWA
         if (terra && rule.terraLayerThresholds.size() == 4)
         {
             std::vector<int> layers = terra->getLayerAt(position);
+            bool layerMatches = true;
 
             for (size_t i = 0; i < std::min(layers.size(), rule.terraLayerThresholds.size()); i++)
             {
-                if (layers[i] > rule.terraLayerThresholds[i])
-                {
-                    return false;
-                }
+                layerMatches &= (layers[i] <= rule.terraLayerThresholds[i]);
+            }
+
+            if (false == layerMatches)
+            {
+                return false;
             }
         }
 
@@ -930,12 +1022,10 @@ namespace NOWA
     void ProceduralFoliageVolumeComponent::createFoliageOnRenderThread(std::vector<VegetationBatch>&& batches)
     {
         // Queue to render thread
-        GraphicsModule::getInstance()->enqueue(
-            [this, batchesCopy = std::move(batches)]() mutable
+        GraphicsModule::getInstance()->enqueue([this, batchesCopy = std::move(batches)]() mutable
             {
                 this->createFoliageItems(batchesCopy);
-            },
-            "ProceduralFoliageVolume::CreateItems");
+            }, "ProceduralFoliageVolume::CreateItems");
     }
 
     void ProceduralFoliageVolumeComponent::createFoliageItems(std::vector<VegetationBatch>& batches)
@@ -946,7 +1036,7 @@ namespace NOWA
         {
             const FoliageRule& rule = this->rules[batch.ruleIndex];
 
-            if (batch.instances.empty())
+            if (true == batch.instances.empty())
             {
                 continue;
             }
@@ -1153,7 +1243,7 @@ namespace NOWA
             Ogre::MeshManager::getSingletonPtr()->remove(v2MeshCheck->getHandle());
         }
 
-        // Import V1→V2 with LOD
+        // Import V1->V2 with LOD
         Ogre::MeshPtr v2Mesh = Ogre::MeshManager::getSingletonPtr()->createByImportingV1(meshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, v1Mesh.get(), true, true, true);
 
         v1Mesh->unload();
@@ -1262,6 +1352,8 @@ namespace NOWA
             this->ruleMinSpacings.resize(count);
             this->ruleRenderDistances.resize(count);
             this->ruleLodDistances.resize(count);
+            this->ruleCategories.resize(count);
+            this->ruleClearanceDistances.resize(count);
 
             // Initialize new variants with SENSIBLE DEFAULTS
             for (size_t i = oldSize; i < count; i++)
@@ -1282,13 +1374,13 @@ namespace NOWA
                 this->ruleDensities[i]->setConstraints(0.01f, 10.0f);
 
                 // Height Range - UNLIMITED (ensure visibility!)
-                this->ruleHeightRanges[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleHeightRange() + Ogre::StringConverter::toString(i), Ogre::Vector2(-1000.0f, 1000.0f), // ← Unlimited!
+                this->ruleHeightRanges[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleHeightRange() + Ogre::StringConverter::toString(i), Ogre::Vector2(-1000.0f, 1000.0f), // <- Unlimited!
                     this->attributes);
                 this->ruleHeightRanges[i]->setDescription("Min/max elevation. Use -1000 to 1000 for unlimited.");
 
                 // Max Slope - PERMISSIVE (ensure visibility!)
                 this->ruleMaxSlopes[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleMaxSlope() + Ogre::StringConverter::toString(i),
-                    85.0f, // ← Almost any slope! (very permissive)
+                    85.0f, // <- Almost any slope! (very permissive)
                     this->attributes);
                 this->ruleMaxSlopes[i]->setDescription("Max slope angle. Use 85+ for nearly any terrain.");
                 this->ruleMaxSlopes[i]->setConstraints(0.0f, 90.0f);
@@ -1297,10 +1389,10 @@ namespace NOWA
                 this->ruleTerraLayers[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleTerraLayers() + Ogre::StringConverter::toString(i),
                     Ogre::String("255,255,255,255"), // All layers
                     this->attributes);
-                this->ruleTerraLayers[i]->setDescription("Layer thresholds. 255,255,255,255 = all layers allowed.");
+                this->ruleTerraLayers[i]->setDescription("Layer thresholds. 255,255,255,255 = all layers allowed. Or 255,255,255,0 -> Layer 1-3 allowed and layer 4 not.");
 
                 // Scale Range
-                this->ruleScaleRanges[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleScaleRange() + Ogre::StringConverter::toString(i), Ogre::Vector2(0.8f, 1.2f), this->attributes);
+                this->ruleScaleRanges[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleScaleRange() + Ogre::StringConverter::toString(i), Ogre::Vector2(0.4f, 0.6f), this->attributes);
                 this->ruleScaleRanges[i]->setDescription("Min/max scale for size variation.");
 
                 // Min Spacing - NO SPACING by default (ensure visibility!)
@@ -1323,6 +1415,21 @@ namespace NOWA
                     this->attributes);
                 this->ruleLodDistances[i]->setDescription("LOD distance. 0 = no LOD (simpler).");
                 this->ruleLodDistances[i]->setConstraints(0.0f, 1000.0f);
+
+                // Rule Categories
+                this->ruleCategories[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleCategories() + Ogre::StringConverter::toString(i), Ogre::String("All"), this->attributes);
+                this->ruleCategories[i]->setDescription("Categories mask for raycasting. 'All' = grow everywhere. 'All-House' = everywhere except on Houses. "
+                                                        "'Ground' = only on Ground category objects. Combine multiple with dash: 'Ground-Terrain'.");
+                this->rules[i].categories = "All";
+                this->rules[i].categoriesId = GameObjectController::ALL_CATEGORIES_ID;
+
+                this->ruleClearanceDistances[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleClearanceDistance() + Ogre::StringConverter::toString(i), 0.0f, this->attributes);
+                this->ruleClearanceDistances[i]->setDescription("Clearance buffer in meters around excluded objects (e.g. houses). 0 = disabled. Set to 2-5m to prevent branches clipping into buildings.");
+                this->ruleClearanceDistances[i]->setConstraints(0.0f, 50.0f);
+                this->rules[i].clearanceDistance = 0.0f;
+
+                // Also in shrink section:
+                this->eraseVariants(this->ruleClearanceDistances, count);
             }
         }
         else if (count < oldSize)
@@ -1338,6 +1445,8 @@ namespace NOWA
             this->eraseVariants(this->ruleMinSpacings, count);
             this->eraseVariants(this->ruleRenderDistances, count);
             this->eraseVariants(this->ruleLodDistances, count);
+            this->eraseVariants(this->ruleCategories, count);
+            this->eraseVariants(this->ruleClearanceDistances, count);
 
             this->rules.resize(count);
         }
@@ -1376,7 +1485,7 @@ namespace NOWA
         this->ruleMeshNames[index]->setValue(meshName);
         this->rules[index].meshName = meshName;
 
-        // Extract resource group from saved folder path (if available)
+        // Extract resource group from saved folder path (if available) for faster load if resource group is known
         Ogre::String folderPath = this->ruleMeshNames[index]->getUserDataValue("PathToFolder");
         if (false == folderPath.empty())
         {
@@ -1557,24 +1666,47 @@ namespace NOWA
         return this->ruleLodDistances[index]->getReal();
     }
 
-    void ProceduralFoliageVolumeComponent::setAutoGenerateOnConnect(bool autoGenerate)
+    void ProceduralFoliageVolumeComponent::setRuleCategories(unsigned int index, const Ogre::String& categories)
     {
-        this->autoGenerate->setValue(autoGenerate);
+        if (index >= this->rules.size())
+        {
+            return;
+        }
+
+        this->ruleCategories[index]->setValue(categories);
+        this->rules[index].categories = categories;
+
+        // Resolve category string -> bitmask ID (same as AreaOfInterestComponent)
+        this->rules[index].categoriesId = AppStateManager::getSingletonPtr()->getGameObjectController()->generateCategoryId(categories);
     }
 
-    bool ProceduralFoliageVolumeComponent::getAutoGenerateOnConnect(void) const
+    Ogre::String ProceduralFoliageVolumeComponent::getRuleCategories(unsigned int index) const
     {
-        return this->autoGenerate->getBool();
+        if (index >= this->rules.size())
+        {
+            return "All";
+        }
+        return this->ruleCategories[index]->getString();
     }
 
-    void ProceduralFoliageVolumeComponent::setClearOnDisconnect(bool clearOnDisconnect)
+    void ProceduralFoliageVolumeComponent::setRuleClearanceDistance(unsigned int index, Ogre::Real clearanceDistance)
     {
-        this->clearOnDisconnect->setValue(clearOnDisconnect);
+        if (index >= this->rules.size())
+        {
+            return;
+        }
+        clearanceDistance = Ogre::Math::Clamp(clearanceDistance, 0.0f, 50.0f);
+        this->ruleClearanceDistances[index]->setValue(clearanceDistance);
+        this->rules[index].clearanceDistance = clearanceDistance;
     }
 
-    bool ProceduralFoliageVolumeComponent::getClearOnDisconnect(void) const
+    Ogre::Real ProceduralFoliageVolumeComponent::getRuleClearanceDistance(unsigned int index) const
     {
-        return this->clearOnDisconnect->getBool();
+        if (index >= this->rules.size())
+        {
+            return 0.0f;
+        }
+        return this->ruleClearanceDistances[index]->getReal();
     }
 
     // Helper function
@@ -1598,10 +1730,6 @@ namespace NOWA
 
         return layers;
     }
-
-    // ============================================================================
-    // TERRA BOUNDS CHECKING - Add to .cpp file
-    // ============================================================================
 
     bool ProceduralFoliageVolumeComponent::isWithinTerraBounds(const Ogre::Vector3& position, Ogre::Terra* terra) const
     {
@@ -1646,6 +1774,90 @@ namespace NOWA
         return Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME;
     }
 
+    bool ProceduralFoliageVolumeComponent::isCategoryAllowed(const Ogre::Vector3& position, const FoliageRule& rule)
+    {
+        // Fast path
+        if (rule.categoriesId == GameObjectController::ALL_CATEGORIES_ID)
+        {
+            return true;
+        }
+
+        if (!this->raySceneQuery)
+        {
+            return true;
+        }
+
+        bool isExcludeMode = (rule.categories.find("All") != Ogre::String::npos && rule.categories.find('-') != Ogre::String::npos);
+
+        unsigned int queryMask;
+        if (isExcludeMode)
+        {
+            size_t dashPos = rule.categories.find('-');
+            Ogre::String excludedCategories = rule.categories.substr(dashPos + 1);
+            queryMask = AppStateManager::getSingletonPtr()->getGameObjectController()->generateCategoryId(excludedCategories);
+        }
+        else
+        {
+            queryMask = rule.categoriesId;
+        }
+
+        if (queryMask == 0)
+        {
+            return true;
+        }
+
+        // ── Raycast (direct hit check) ──────────────────────────────────────
+        this->raySceneQuery->setQueryMask(queryMask);
+        this->raySceneQuery->setSortByDistance(true);
+
+        Ogre::Vector3 rayOrigin = Ogre::Vector3(position.x, 10000.0f, position.z);
+        Ogre::Ray ray(rayOrigin, Ogre::Vector3::NEGATIVE_UNIT_Y);
+        this->raySceneQuery->setRay(ray);
+
+        Ogre::Vector3 hitPoint = Ogre::Vector3::ZERO;
+        Ogre::Vector3 hitNormal = Ogre::Vector3::ZERO;
+        Ogre::MovableObject* hitMovableObject = nullptr;
+        Ogre::Real closestDistance = 0.0f;
+        std::vector<Ogre::MovableObject*> excludeList;
+
+        Ogre::Camera* camera = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
+
+        MathHelper::getInstance()->getRaycastFromPoint(this->raySceneQuery, camera, hitPoint, (size_t&)hitMovableObject, closestDistance, hitNormal, &excludeList);
+
+        if (true == isExcludeMode)
+        {
+            // Direct hit -> always blocked
+            if (hitMovableObject != nullptr)
+            {
+                return false;
+            }
+
+            // ── Clearance sphere check ──────────────────────────────────────
+            // Even if no direct hit above, check if excluded object is nearby
+            if (rule.clearanceDistance > 0.0f && this->sphereSceneQuery)
+            {
+                Ogre::Sphere sphere(position, rule.clearanceDistance);
+                this->sphereSceneQuery->setSphere(sphere);
+                this->sphereSceneQuery->setQueryMask(queryMask);
+
+                Ogre::SceneQueryResultMovableList& results = this->sphereSceneQuery->execute().movables;
+
+                if (false == results.empty())
+                {
+                    // An excluded object (e.g. house) is within clearanceDistance!
+                    return false;
+                }
+            }
+
+            return true; // No direct hit, no nearby excluded objects
+        }
+        else
+        {
+            // INCLUDE mode: must hit the target category
+            return (hitMovableObject != nullptr);
+        }
+    }
+
     void ProceduralFoliageVolumeComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
     {
         // Lua bindings - can be filled in later if needed
@@ -1653,8 +1865,13 @@ namespace NOWA
 
     bool ProceduralFoliageVolumeComponent::canStaticAddComponent(GameObject* gameObject)
     {
-        // Can only be added to main game object (world-level component)
-        return (gameObject->getId() == GameObjectController::MAIN_GAMEOBJECT_ID);
+        auto terraCompPtr = NOWA::makeStrongPtr(gameObject->getComponent<TerraComponent>());
+        if (nullptr != terraCompPtr)
+        {
+            return terraCompPtr->getTerra() != nullptr;
+        }
+
+        return false;
     }
 
 }; // namespace end

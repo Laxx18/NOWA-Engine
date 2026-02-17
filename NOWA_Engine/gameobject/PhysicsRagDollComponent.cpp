@@ -575,7 +575,7 @@ namespace NOWA
                 if (this->rdState == PhysicsRagDollComponent::RAGDOLLING)
                 {
                     boost::shared_ptr<EventDataGameObjectIsInRagDollingState> eventDataGameObjectIsInRagDollingState(new EventDataGameObjectIsInRagDollingState(this->gameObjectPtr->getId(), true));
-                    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGameObjectIsInRagDollingState);
+                    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGameObjectIsInRagDollingState);
 
                     // if (this->rdOldState == PhysicsRagDollComponent::PARTIAL_RAGDOLLING)
                     {
@@ -595,7 +595,7 @@ namespace NOWA
                 else if (this->rdState == PhysicsRagDollComponent::PARTIAL_RAGDOLLING)
                 {
                     boost::shared_ptr<EventDataGameObjectIsInRagDollingState> eventDataGameObjectIsInRagDollingState(new EventDataGameObjectIsInRagDollingState(this->gameObjectPtr->getId(), false));
-                    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGameObjectIsInRagDollingState);
+                    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGameObjectIsInRagDollingState);
 
                     // Must be called, else when re-activating this state, the bones will become a mess!
                     this->endRagdolling();
@@ -628,7 +628,7 @@ namespace NOWA
                 else if (this->rdState == PhysicsRagDollComponent::ANIMATION)
                 {
                     boost::shared_ptr<EventDataGameObjectIsInRagDollingState> eventDataGameObjectIsInRagDollingState(new EventDataGameObjectIsInRagDollingState(this->gameObjectPtr->getId(), false));
-                    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGameObjectIsInRagDollingState);
+                    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGameObjectIsInRagDollingState);
 
                     // Must be called, else when re-activating this state, the bones will become a mess!
                     this->endRagdolling();
@@ -663,7 +663,7 @@ namespace NOWA
     void PhysicsRagDollComponent::createInactiveRagdoll()
     {
         boost::shared_ptr<EventDataGameObjectIsInRagDollingState> eventDataGameObjectIsInRagDollingState(new EventDataGameObjectIsInRagDollingState(this->gameObjectPtr->getId(), false));
-        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGameObjectIsInRagDollingState);
+        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGameObjectIsInRagDollingState);
 
         this->partialRagdollBoneName = "";
 
@@ -756,6 +756,10 @@ namespace NOWA
                 // this->gameObjectPtr->setAttributePosition(Ogre::Vector3(x, y, z));
                 NOWA::GraphicsModule::getInstance()->updateNodePosition(this->gameObjectPtr->getSceneNode(), Ogre::Vector3(x, y, z));
             }
+            else
+            {
+                PhysicsComponent::setPosition(x, y, z);
+            }
         }
         else
         {
@@ -771,6 +775,10 @@ namespace NOWA
             {
                 // this->gameObjectPtr->setAttributePosition(position);
                 NOWA::GraphicsModule::getInstance()->updateNodePosition(this->gameObjectPtr->getSceneNode(), position);
+            }
+            else
+            {
+                PhysicsComponent::setPosition(position);
             }
         }
         else
@@ -883,17 +891,21 @@ namespace NOWA
 
     void PhysicsRagDollComponent::setInitialState(void)
     {
-        size_t offset = 0;
-        // When partial ragdolling is active, the first bone is the main body and should not apply to rag doll!
-        if (this->rdState == PhysicsRagDollComponent::PARTIAL_RAGDOLLING)
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
         {
-            offset = 1;
-        }
+            size_t offset = 0;
+            // When partial ragdolling is active, the first bone is the main body and should not apply to rag doll!
+            if (this->rdState == PhysicsRagDollComponent::PARTIAL_RAGDOLLING)
+            {
+                offset = 1;
+            }
 
-        for (auto& it = this->ragDataList.cbegin() + offset; it != this->ragDataList.cend(); ++it)
-        {
-            it->ragBone->setInitialState();
-        }
+            for (auto& it = this->ragDataList.cbegin() + offset; it != this->ragDataList.cend(); ++it)
+            {
+                it->ragBone->setInitialState();
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PhysicsRagDollComponent::setInitialState");
     }
 
     void PhysicsRagDollComponent::setAnimationEnabled(bool animationEnabled)
@@ -1743,8 +1755,6 @@ namespace NOWA
             // This runs on the render thread (inside tracked closure), so direct bone access is safe
             bone->setPosition(boneLocalPos);
             bone->setOrientation(skelOri);
-            
-            // NOWA::GraphicsModule::getInstance()->updateOldBoneTransform(bone, boneLocalPos, skelOri);
 
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
                 "[PhysicsRagDollComponent] applyRagdollStateToModel BoneName: " + ragBone->getName() + " boneLocalPos: " + Ogre::StringConverter::toString(boneLocalPos) + " skelOri: " + Ogre::StringConverter::toString(skelOri));
@@ -1821,9 +1831,7 @@ namespace NOWA
                         bone->setManuallyControlled(true);
                         bone->setInheritOrientation(false);
                         // Set the absolute world orientation
-                        // bone->setOrientation(absoluteWorldOrientation);
-
-                        NOWA::GraphicsModule::getInstance()->updateOldBoneOrientation(bone, absoluteWorldOrientation);
+                        bone->setOrientation(absoluteWorldOrientation);
 
                         this->ragDataList[j].ragBone->attachToNode();
                         break;
@@ -1841,7 +1849,7 @@ namespace NOWA
                 Ogre::Quaternion absoluteWorldOrientation = bone->_getDerivedOrientation();
                 bone->setManuallyControlled(true);
                 bone->setInheritOrientation(false);
-                NOWA::GraphicsModule::getInstance()->updateOldBoneOrientation(bone, absoluteWorldOrientation);
+                bone->setOrientation(absoluteWorldOrientation);
             }
 
             // Attach ragdoll bones to their scene nodes
@@ -2532,15 +2540,18 @@ namespace NOWA
 
     void PhysicsRagDollComponent::RagBone::setInitialState(void)
     {
-        Ogre::Vector3 center = this->physicsRagDollComponent->ragDataList.cbegin()->ragBone->getBody()->getPosition();
-        if (nullptr != this->body)
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
         {
-            this->body->setPositionOrientation(center + this->initialBonePosition, this->initialBoneOrientation);
-        }
+            Ogre::Vector3 center = this->physicsRagDollComponent->ragDataList.cbegin()->ragBone->getBody()->getPosition();
+            if (nullptr != this->body)
+            {
+                this->body->setPositionOrientation(center + this->initialBonePosition, this->initialBoneOrientation);
+            }
 
-        // this->ogreBone->setPosition(this->initialBonePosition);
-        // this->ogreBone->setOrientation(this->initialBoneOrientation);
-        NOWA::GraphicsModule::getInstance()->updateOldBoneTransform(this->ogreBone, this->initialBonePosition, this->initialBoneOrientation);
+            this->ogreBone->setPosition(this->initialBonePosition);
+            this->ogreBone->setOrientation(this->initialBoneOrientation);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PhysicsRagDollComponent::RagBone::setInitialState");
     }
 
     OgreNewt::Body* PhysicsRagDollComponent::RagBone::getBody(void)

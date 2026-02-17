@@ -405,6 +405,61 @@ namespace NOWA
 		return true;
 	}
 
+	bool GameObject::assignMesh(Ogre::MovableObject* newMovableObject)
+    {
+        if (nullptr == newMovableObject)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObject] assignMesh failed: newMovableObject is null");
+            return false;
+        }
+
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, newMovableObject]()
+        {
+            // Assign new movable object
+            this->movableObject = newMovableObject;
+
+            // Attach to scene node
+            this->sceneNode->attachObject(this->movableObject);
+
+            // Set up movable object properties
+            this->movableObject->getUserObjectBindings().setUserAny(Ogre::Any(this));
+            this->movableObject->setQueryFlags(this->categoryId->getUInt());
+            this->movableObject->setVisibilityFlags(this->renderCategoryId->getUInt());
+
+            // Update GameObject type based on movable object type
+            if (dynamic_cast<Ogre::Item*>(this->movableObject))
+            {
+                this->type = GameObject::ITEM;
+                this->typeName->setReadOnly(false);
+                this->typeName->setValue(Ogre::String(GameObject::typeToString(this->type)));
+                this->typeName->setReadOnly(true);
+            }
+            else if (dynamic_cast<Ogre::v1::Entity*>(this->movableObject))
+            {
+                this->type = GameObject::ENTITY;
+                this->typeName->setReadOnly(false);
+                this->typeName->setValue(Ogre::String(GameObject::typeToString(this->type)));
+                this->typeName->setReadOnly(true);
+            }
+
+            // Refresh size and bounds
+            this->refreshSize(this->sceneNode->getScale());
+
+            // Set up render properties
+            this->setRenderQueueIndex(this->renderQueueIndex->getUInt());
+            this->movableObject->setRenderingDistance(this->renderDistance->getReal());
+
+
+			this->actualizeDatablocks();
+
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObject] Successfully assigned new mesh to: " + this->name->getString());
+        };
+
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObject::assignMesh");
+
+        return true;
+    }
+
 	void GameObject::refreshSize(const Ogre::Vector3& scale)
 	{
 		if (nullptr != this->movableObject)
@@ -467,7 +522,9 @@ namespace NOWA
 				Ogre::Item* item = this->getMovableObjectUnsafe<Ogre::Item>();
 				if (nullptr != item)
 				{
+                    this->meshName->setReadOnly(false);
 					this->meshName->setValue(item->getMesh()->getName());
+                    this->meshName->setReadOnly(true);
 
 					// Later check, if the entity has maybe a different type of data block as PBS, such as Toon, Unlit etc.
 					for (size_t i = 0; i < item->getNumSubItems(); i++)
@@ -509,7 +566,9 @@ namespace NOWA
 				Ogre::v1::Entity * entity = this->getMovableObject<Ogre::v1::Entity>();
 				if (nullptr != entity)
 				{
-					this->meshName->setValue(entity->getMesh()->getName());
+                    this->meshName->setReadOnly(false);
+                    this->meshName->setValue(entity->getMesh()->getName());
+                    this->meshName->setReadOnly(true);
 
 					// Later check, if the entity has maybe a different type of data block as PBS, such as Toon, Unlit etc.
 					for (size_t i = 0; i < entity->getNumSubEntities(); i++)
@@ -577,7 +636,7 @@ namespace NOWA
 		}
 	}
 
-	bool GameObject::postInit(void)
+    bool GameObject::postInit(void)
 	{
 		bool isInGame = Core::getSingletonPtr()->getIsGame();
 		for (unsigned int i = 0; i < static_cast<unsigned int>(this->gameObjectComponents.size());)

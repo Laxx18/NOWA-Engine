@@ -69,6 +69,10 @@ namespace NOWA
         Ogre::Real cullDistance; // Distance to cull entire rule (optimization)
         bool useClusterLOD;      // Enable cluster-based LOD (future)
 
+        Ogre::String categories; // e.g. "All" or "All-House" or "Ground"
+        unsigned int categoriesId;
+        Ogre::Real clearanceDistance;
+
         FoliageRule() :
             enabled(true),
             density(1.0f),
@@ -89,7 +93,10 @@ namespace NOWA
             randomYRotation(true),
             yRotationRange(Ogre::Vector2(0.0f, 360.0f)),
             cullDistance(0.0f),
-            useClusterLOD(false)
+            useClusterLOD(false),
+            categories("All"), // Default: grow everywhere
+            categoriesId(GameObjectController::ALL_CATEGORIES_ID), // Default: all categories
+            clearanceDistance(0.0f) // 0 = disabled
         {
         }
     };
@@ -320,12 +327,11 @@ namespace NOWA
         void setRuleLodDistance(unsigned int index, Ogre::Real distance);
         Ogre::Real getRuleLodDistance(unsigned int index) const;
 
-        // ========== Generation Control ==========
-        void setAutoGenerateOnConnect(bool autoGenerate);
-        bool getAutoGenerateOnConnect(void) const;
+        void setRuleCategories(unsigned int index, const Ogre::String& categories);
+        Ogre::String getRuleCategories(unsigned int index) const;
 
-        void setClearOnDisconnect(bool clearOnDisconnect);
-        bool getClearOnDisconnect(void) const;
+        void setRuleClearanceDistance(unsigned int index, Ogre::Real clearanceDistance);
+        Ogre::Real getRuleClearanceDistance(unsigned int index) const;
 
     public:
         static const Ogre::String AttrRegenerate(void)
@@ -356,15 +362,6 @@ namespace NOWA
         {
             return "Rule Count";
         }
-        static const Ogre::String AttrAutoGenerate(void)
-        {
-            return "Auto Generate On Connect";
-        }
-        static const Ogre::String AttrClearOnDisconnect(void)
-        {
-            return "Clear On Disconnect";
-        }
-
         // Rule attributes (dynamic, based on rule count)
         static const Ogre::String AttrRuleName(void)
         {
@@ -406,7 +403,18 @@ namespace NOWA
         {
             return "Rule LOD Distance ";
         }
-
+        static const Ogre::String AttrRuleCategories(void)
+        {
+            return "Rule Categories ";
+        }
+        static const Ogre::String AttrRuleClearanceDistance(void)
+        {
+            return "Rule Clearance Distance ";
+        }
+        static const Ogre::String AttrRuleResourceGroup(void)
+        {
+            return "Rule Resource Group ";
+        }
     protected:
         virtual bool executeAction(const Ogre::String& actionId, NOWA::Variant* attribute) override;
         /**
@@ -470,6 +478,8 @@ namespace NOWA
         bool isWithinTerraBounds(const Ogre::Vector3& position, Ogre::Terra* terra) const;
 
         Ogre::String extractResourceGroupFromPath(const Ogre::String& path);
+
+        bool isCategoryAllowed(const Ogre::Vector3& position, const FoliageRule& rule);
     protected:
         Ogre::String name;
 
@@ -477,8 +487,6 @@ namespace NOWA
         Variant* volumeBounds;      // AABB bounds
         Variant* masterSeed;        // Master seed for reproducibility
         Variant* gridResolution;    // Sample grid resolution (meters)
-        Variant* autoGenerate;      // Auto-generate on connect()
-        Variant* clearOnDisconnect; // Clear on disconnect()
 
         // Actions
         Variant* regenerate;
@@ -500,14 +508,20 @@ namespace NOWA
         std::vector<Variant*> ruleMinSpacings;
         std::vector<Variant*> ruleRenderDistances;
         std::vector<Variant*> ruleLodDistances;
+        std::vector<Variant*> ruleCategories;
+        std::vector<Variant*> ruleClearanceDistances;
 
         // Runtime state
         std::vector<VegetationBatch> vegetationBatches; // Render thread only after creation!
         bool isDirty;
 
+        bool foliageLoadedFromScene;
+
         // Spatial hash for spacing checks (optimization)
         std::unordered_map<int64_t, std::vector<VegetationInstance*>> spatialHash;
         Ogre::Real spatialHashCellSize;
+        Ogre::RaySceneQuery* raySceneQuery;
+        Ogre::SphereSceneQuery* sphereSceneQuery;
     };
 
 }; // namespace end
