@@ -91,7 +91,7 @@ private:
 	void handleTestSelectedGameObjects(NOWA::EventDataPtr eventData);
 	void handleMyGUIWidgetSelected(NOWA::EventDataPtr eventData);
 	void handleSceneModified(NOWA::EventDataPtr eventData);
-	void handleTerraChanged(NOWA::EventDataPtr eventData);
+	void handleGeometryChanged(NOWA::EventDataPtr eventData);
 	void handleEventDataGameObjectMadeGlobal(NOWA::EventDataPtr eventData);
 private:
 	ProjectManager* projectManager;

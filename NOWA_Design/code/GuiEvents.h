@@ -62,49 +62,6 @@ private:
 };
 
 //---------------------------------------------------------------------------------------------------------------------
-// EventDataRefreshPropertiesPanel - Sent when a property has changed, so that the properties panel can be refreshed with new values
-//---------------------------------------------------------------------------------------------------------------------
-class EventDataRefreshPropertiesPanel : public NOWA::BaseEventData
-{
-public:
-
-	EventDataRefreshPropertiesPanel(void)
-	{
-
-	}
-
-	static NOWA::EventType getStaticEventType(void)
-	{
-		return 0xeeab0002;
-	}
-
-	virtual const NOWA::EventType getEventType(void) const
-	{
-		return 0xeeab0002;
-	}
-
-	virtual void serialize(std::ostrstream& out) const
-	{
-
-	}
-
-	virtual void deserialize(std::istrstream& in)
-	{
-
-	}
-
-	virtual NOWA::EventDataPtr copy() const
-	{
-		return NOWA::EventDataPtr(new EventDataRefreshPropertiesPanel());
-	}
-
-	virtual const char* getName(void) const
-	{
-		return "EventDataRefreshPropertiesPanel";
-	}
-};
-
-//---------------------------------------------------------------------------------------------------------------------
 // EventDataRefreshResourcesPanel - Sent when a property has changed, so that the resources panel can be refreshed with new values
 //---------------------------------------------------------------------------------------------------------------------
 class EventDataRefreshResourcesPanel : public NOWA::BaseEventData

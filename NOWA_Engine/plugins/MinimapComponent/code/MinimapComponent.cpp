@@ -288,6 +288,8 @@ namespace NOWA
 		Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
 		NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
 
+		this->cameraComponent = nullptr;
+
 		AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &MinimapComponent::deleteGameObjectDelegate), EventDataDeleteGameObject::getStaticEventType());
 		AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &MinimapComponent::handleUpdateBounds), EventDataBoundsUpdated::getStaticEventType());
 
@@ -301,7 +303,10 @@ namespace NOWA
 	
 	void MinimapComponent::onOtherComponentRemoved(unsigned int index)
 	{
-		
+        if (nullptr != this->cameraComponent && index == this->cameraComponent->getIndex())
+        {
+            this->cameraComponent = nullptr;
+        }
 	}
 	
 	void MinimapComponent::onOtherComponentAdded(unsigned int index)
@@ -1134,14 +1139,14 @@ namespace NOWA
 		this->maximumBounds.y = 0.0f;
 	}
 
-	void MinimapComponent::handleTerraChanged(EventDataPtr eventData)
+	void MinimapComponent::handleGeometryChanged(EventDataPtr eventData)
 	{
 		if (nullptr == this->heightMapTexture)
 		{
 			return;
 		}
 
-		boost::shared_ptr<EventDataTerraChanged> castEventData = boost::static_pointer_cast<EventDataTerraChanged>(eventData);
+		boost::shared_ptr<EventDataGeometryChanged> castEventData = boost::static_pointer_cast<EventDataGeometryChanged>(eventData);
 
 		if (true == castEventData->getIsHeightMapChanged())
 		{

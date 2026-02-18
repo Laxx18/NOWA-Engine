@@ -96,6 +96,28 @@ namespace NOWA
         bool assignMesh(Ogre::MovableObject* newMovableObject);
 
 		/**
+         * @brief   Swaps the current movable object with a new one WITHOUT destroying the old one.
+         *          Sets all required flags on the new object (queryFlags, visibilityFlags,
+         *          userBindings, renderDistance, renderQueue, refreshSize).
+         *          The old object is detached from the scene node but kept alive in memory.
+         *          Caller is responsible for storing outOldMovableObject for later restoration.
+         * @param   newMovableObject      The new movable object to attach and activate
+         * @param   outOldMovableObject   Output: the detached old movable object (store this!)
+         */
+        void swapMovableObject(Ogre::MovableObject* newMovableObject, Ogre::MovableObject*& outOldMovableObject);
+
+        /**
+         * @brief   Restores a previously swapped-out movable object.
+         *          Detaches and destroys the current movable object, then re-attaches
+         *          the restored one with all correct flags.
+         *          Use this to undo a prior swapMovableObject call.
+         * @param   restoredMovableObject   The original movable object to restore
+         * @param   destroyCurrent          If true, destroys the current movable object (default: false,
+         *                                  because MeshModifyComponent destroys editableItem itself)
+         */
+        void restoreMovableObject(Ogre::MovableObject* restoredMovableObject, bool destroyCurrent = false);
+
+		/**
 		 * @brief		Post initializes the game object and all its components. This is called when a game object is loaded or newly created.
 		 * @return		success			true, if the post initialisation did work, else false
 		 */

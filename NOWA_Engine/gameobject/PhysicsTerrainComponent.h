@@ -78,7 +78,7 @@ namespace NOWA
 		static const Ogre::String AttrSerialize(void) { return "Serialize"; }
 	private:
 		void handleEventDataGameObjectMadeGlobal(NOWA::EventDataPtr eventData);
-		void handleTerraChanged(NOWA::EventDataPtr eventData);
+		void handleGeometryChanged(NOWA::EventDataPtr eventData);
 	private:
 		Variant* serialize;
 	};

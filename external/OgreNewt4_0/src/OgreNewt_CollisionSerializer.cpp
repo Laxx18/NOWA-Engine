@@ -318,10 +318,18 @@ namespace OgreNewt
             }
             std::istringstream ss(line);
             int n; ss >> n;
-            if (n == 3)
+
+            if (n < 3) continue; // degenerate, skip
+
+            std::vector<int> poly(n);
+            for (int k = 0; k < n; k++) ss >> poly[k];
+
+            // Fan triangulation from poly[0]
+            for (int k = 1; k < n - 1; k++)
             {
-                int a, b, c; ss >> a >> b >> c;
-                indices.push_back(a); indices.push_back(b); indices.push_back(c);
+                indices.push_back(poly[0]);
+                indices.push_back(poly[k]);
+                indices.push_back(poly[k + 1]);
             }
         }
 

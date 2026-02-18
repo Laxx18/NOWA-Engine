@@ -16,7 +16,7 @@ namespace NOWA
 		serialize(new Variant(PhysicsTerrainComponent::AttrSerialize(), true, this->attributes))
 	{
 		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &PhysicsTerrainComponent::handleEventDataGameObjectMadeGlobal), EventDataGameObjectMadeGlobal::getStaticEventType());
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &PhysicsTerrainComponent::handleTerraChanged), NOWA::EventDataTerraChanged::getStaticEventType());
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &PhysicsTerrainComponent::handleGeometryChanged), NOWA::EventDataGeometryChanged::getStaticEventType());
 	}
 
 	PhysicsTerrainComponent::~PhysicsTerrainComponent()
@@ -24,7 +24,7 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PhysicsTerrainComponent] Destructor physics terrain component for game object: " + this->gameObjectPtr->getName());
 
 		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &PhysicsTerrainComponent::handleEventDataGameObjectMadeGlobal), EventDataGameObjectMadeGlobal::getStaticEventType());
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &PhysicsTerrainComponent::handleTerraChanged), NOWA::EventDataTerraChanged::getStaticEventType());
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &PhysicsTerrainComponent::handleGeometryChanged), NOWA::EventDataGeometryChanged::getStaticEventType());
 	}
 
 	bool PhysicsTerrainComponent::init(rapidxml::xml_node<>*& propertyElement)
@@ -304,9 +304,9 @@ namespace NOWA
 		}
 	}
 
-	void PhysicsTerrainComponent::handleTerraChanged(NOWA::EventDataPtr eventData)
+	void PhysicsTerrainComponent::handleGeometryChanged(NOWA::EventDataPtr eventData)
 	{
-		boost::shared_ptr<NOWA::EventDataTerraChanged> castEventData = boost::static_pointer_cast<NOWA::EventDataTerraChanged>(eventData);
+		boost::shared_ptr<NOWA::EventDataGeometryChanged> castEventData = boost::static_pointer_cast<NOWA::EventDataGeometryChanged>(eventData);
 
 		// Event not for this state
 		if (this->gameObjectPtr->getId() != castEventData->getGameObjectId())

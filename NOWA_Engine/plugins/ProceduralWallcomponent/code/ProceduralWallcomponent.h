@@ -205,8 +205,6 @@ namespace NOWA
         // Mesh operations
         void rebuildMesh(void);
 
-        bool exportMesh(const Ogre::String& filename);
-
         // Ground adaptation
         Ogre::Real getGroundHeight(const Ogre::Vector3& position);
 
@@ -326,7 +324,10 @@ namespace NOWA
         {
             return "Battlement Height";
         }
-
+        static Ogre::String AttrConvertToMesh(void)
+        {
+            return "Convert To Mesh";
+        }
     protected:
         // Mouse handling for interactive wall building
         virtual bool mousePressed(const OIS::MouseEvent& evt, OIS::MouseButtonID id) override;
@@ -339,6 +340,7 @@ namespace NOWA
 
         virtual bool keyReleased(const OIS::KeyEvent& evt) override;
 
+        virtual bool executeAction(const Ogre::String& actionId, NOWA::Variant* attribute) override;
     private:
         void createWallMesh(void);
         void createWallMeshInternal(const std::vector<float>& wallVertices, const std::vector<Ogre::uint32>& wallIndices, size_t numWallVertices, const std::vector<float>& pillarVertices,
@@ -388,6 +390,18 @@ namespace NOWA
 
         void setWallData(const std::vector<unsigned char>& data);
 
+        /**
+         * @brief Bakes the procedural dungeon to a static .mesh file and replaces
+         *        this component with a plain MeshComponent referencing that file.
+         *        This is a one-way, irreversible operation.
+         */
+        bool convertToMeshApply(void);
+
+        /**
+         * @brief Exports the current dungeon mesh to @p filename on disk.
+         */
+        bool exportMesh(const Ogre::String& filename);
+
     private:
         static const uint32_t WALLDATA_MAGIC = 0x57414C4C; // "WALL" in hex
         static const uint32_t WALLDATA_VERSION = 1;
@@ -410,6 +424,7 @@ namespace NOWA
         Variant* fencePostSpacing;
         Variant* battlementWidth;
         Variant* battlementHeight;
+        Variant* convertToMesh;
 
         // Wall segments
         std::vector<WallSegment> wallSegments;

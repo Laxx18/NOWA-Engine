@@ -82,7 +82,7 @@ namespace NOWA
 		this->scripts.emplace(name, luaScript);
 
 		boost::shared_ptr<NOWA::EventDataResourceCreated> eventDataResourceCreated(new NOWA::EventDataResourceCreated());
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataResourceCreated);
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataResourceCreated);
 
 		return luaScript;
 	}
@@ -105,7 +105,7 @@ namespace NOWA
 		this->scripts.emplace(name, luaScript);
 
 		boost::shared_ptr<NOWA::EventDataResourceCreated> eventDataResourceCreated(new NOWA::EventDataResourceCreated());
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataResourceCreated);
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataResourceCreated);
 
 		return luaScript;
 	}
@@ -201,7 +201,7 @@ namespace NOWA
 			luaOutFile.close();
 
 			boost::shared_ptr<NOWA::EventDataResourceCreated> eventDataResourceCreated(new NOWA::EventDataResourceCreated());
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataResourceCreated);
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataResourceCreated);
 		}
 
 		if (true == deleteSourceScript)
@@ -210,7 +210,7 @@ namespace NOWA
 		}
 
 		boost::shared_ptr<NOWA::EventDataResourceCreated> eventDataResourceCreated(new NOWA::EventDataResourceCreated());
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataResourceCreated);
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataResourceCreated);
 	}
 
 	bool LuaScriptModule::checkLuaScriptFileExists(const Ogre::String& scriptName, bool isGlobal, const Ogre::String& filePath)
@@ -316,7 +316,7 @@ namespace NOWA
 					outFile.close();
 
 					boost::shared_ptr<NOWA::EventDataResourceCreated> eventDataResourceCreated(new NOWA::EventDataResourceCreated());
-					NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataResourceCreated);
+					NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataResourceCreated);
 				}
 			}
 
@@ -372,7 +372,7 @@ namespace NOWA
 					outFile.close();
 
 					boost::shared_ptr<NOWA::EventDataResourceCreated> eventDataResourceCreated(new NOWA::EventDataResourceCreated());
-					NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataResourceCreated);
+					NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataResourceCreated);
 				}
 			}
 		}
@@ -547,7 +547,7 @@ namespace NOWA
 				outFile.close();
 
 				boost::shared_ptr<NOWA::EventDataResourceCreated> eventDataResourceCreated(new NOWA::EventDataResourceCreated());
-				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataResourceCreated);
+				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataResourceCreated);
 			}
 		}
 	}

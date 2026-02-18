@@ -343,6 +343,10 @@ namespace NOWA
 		{
 			return "Regenerate";
 		}
+        static Ogre::String AttrConvertToMesh(void)
+        {
+            return "Convert To Mesh";
+        }
 	protected:
 		virtual bool executeAction(const Ogre::String& actionId, NOWA::Variant* attribute) override;
 	private:
@@ -396,6 +400,18 @@ namespace NOWA
 		 */
 		unsigned int nextRandom(void);
 
+		/**
+         * @brief Bakes the procedural dungeon to a static .mesh file and replaces
+         *        this component with a plain MeshComponent referencing that file.
+         *        This is a one-way, irreversible operation.
+         */
+        bool convertToMeshApply(void);
+
+        /**
+         * @brief Exports the current dungeon mesh to @p filename on disk.
+         */
+        bool exportMesh(const Ogre::String& filename);
+
 	private:
 		Ogre::String name;
 
@@ -433,6 +449,7 @@ namespace NOWA
 		Variant* wallDatablock;
 		Variant* ceilingDatablock;
 		Variant* regenerate;
+        Variant* convertToMesh;
 	};
 
 }; // namespace end

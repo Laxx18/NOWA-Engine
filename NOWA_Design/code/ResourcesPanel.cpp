@@ -506,7 +506,7 @@ void ResourcesPanelMeshes::notifyTreeNodeSelected(MyGUI::TreeControl* treeContro
 			size_t pos = meshName.rfind(".mesh");
 			if (Ogre::String::npos != pos)
 			{
-				this->editorManager->attachMeshToPlaceNode(meshName, NOWA::GameObject::ENTITY);
+				this->editorManager->attachMeshToPlaceNode(meshName, NOWA::GameObject::ITEM);
 				// Escape should detach, and if attached and in place mode, all other modes must be disabled
 				// when clicking in place mode in editor, a new game object etc. must be created
 			}
@@ -877,7 +877,7 @@ void ResourcesPanelGameObjects::notifyTreeNodeSelected(MyGUI::TreeControl* treeC
 		{
 			this->editorManager->deleteGameObjects(gameObjectIds);
 			this->editorManager->getSelectionManager()->clearSelection();
-			boost::shared_ptr<EventDataRefreshPropertiesPanel> eventDataRefreshPropertiesPanel(new EventDataRefreshPropertiesPanel());
+			boost::shared_ptr<NOWA::EventDataRefreshGui> eventDataRefreshPropertiesPanel(new NOWA::EventDataRefreshGui());
 			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
 
 			boost::shared_ptr<EventDataRefreshResourcesPanel> eventDataRefreshResourcesPanel(new EventDataRefreshResourcesPanel());
@@ -919,7 +919,7 @@ void ResourcesPanelGameObjects::notifyTreeNodeSelected(MyGUI::TreeControl* treeC
 	}
 
 	// Sent when game objects are selected, so that the properties panel can be refreshed with new values
-	boost::shared_ptr<EventDataRefreshPropertiesPanel> eventDataRefreshPropertiesPanel(new EventDataRefreshPropertiesPanel());
+	boost::shared_ptr<NOWA::EventDataRefreshGui> eventDataRefreshPropertiesPanel(new NOWA::EventDataRefreshGui());
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
 }
 
@@ -941,7 +941,7 @@ void ResourcesPanelGameObjects::keyButtonPressed(MyGUI::Widget* sender, MyGUI::K
 		if (gameObjectIds.size() > 0)
 		{
 			this->editorManager->deleteGameObjects(gameObjectIds);
-			boost::shared_ptr<EventDataRefreshPropertiesPanel> eventDataRefreshPropertiesPanel(new EventDataRefreshPropertiesPanel());
+			boost::shared_ptr<NOWA::EventDataRefreshGui> eventDataRefreshPropertiesPanel(new NOWA::EventDataRefreshGui());
 			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
 
 			boost::shared_ptr<EventDataRefreshResourcesPanel> eventDataRefreshResourcesPanel(new EventDataRefreshResourcesPanel());

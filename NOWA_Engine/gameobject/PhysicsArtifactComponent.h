@@ -2,6 +2,7 @@
 #define PHYSICS_ARTIFACT_COMPONENT_H
 
 #include "PhysicsComponent.h"
+#include "main/Events.h"
 
 namespace NOWA
 {
@@ -74,10 +75,31 @@ namespace NOWA
 		bool createStaticBody(void);
 
 		void changeCollisionFaceId(unsigned int id);
+
+        /**
+         * @brief Creates static body from compound collision
+         * @param collisions Vector of child collision shapes (e.g., cylinders for trees)
+         * @param collisionName Unique name for serialization (e.g., "FoliageCollision")
+         * @return true if successful
+         */
+        bool createCompoundBody(const std::vector<OgreNewt::CollisionPtr>& childCollisions, const Ogre::String& collisionName);
 	public:
 		static const Ogre::String AttrSerialize(void) { return "Serialize"; }
+
+	protected:
+        enum CollisionMode
+        {
+            COLLISION_TREE,    // TreeCollision from mesh
+            COLLISION_COMPOUND // CompoundCollision from child shapes
+        };
+
+    protected:
+        void handleGameObjectChanged(NOWA::EventDataPtr eventData);
 	protected:
 		Variant* serialize;
+        CollisionMode collisionMode;
+        Ogre::String compoundCollisionName;
+        std::vector<OgreNewt::CollisionPtr> compoundChildCollisions; // Store for recreation
 	};
 
 }; //namespace end

@@ -449,7 +449,7 @@ namespace NOWA
             this->setRenderQueueIndex(this->renderQueueIndex->getUInt());
             this->movableObject->setRenderingDistance(this->renderDistance->getReal());
 
-
+			this->dataBlocks.clear();
 			this->actualizeDatablocks();
 
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObject] Successfully assigned new mesh to: " + this->name->getString());
@@ -458,6 +458,159 @@ namespace NOWA
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObject::assignMesh");
 
         return true;
+    }
+
+	void GameObject::swapMovableObject(Ogre::MovableObject* newMovableObject, Ogre::MovableObject*& outOldMovableObject)
+    {
+        if (nullptr == newMovableObject)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObject] swapMovableObject: newMovableObject is null");
+            outOldMovableObject = nullptr;
+            return;
+        }
+
+        // Capture for lambda — outOldMovableObject is written inside enqueueAndWait
+        // so it is safe to read after the call returns (blocking).
+        Ogre::MovableObject*& outRef = outOldMovableObject;
+
+        GraphicsModule::RenderCommand renderCommand = [this, newMovableObject, &outRef]()
+        {
+            // Hand the old pointer back to caller — detach but do NOT destroy
+            outRef = this->movableObject;
+            if (outRef && outRef->getParentSceneNode())
+            {
+                this->sceneNode->detachObject(outRef);
+            }
+
+            // Install the new movable object
+            this->movableObject = newMovableObject;
+            this->sceneNode->attachObject(this->movableObject);
+
+            // Mirror everything that init() does after setting movableObject:
+            this->movableObject->getUserObjectBindings().setUserAny(Ogre::Any(this));
+            this->movableObject->setQueryFlags(this->categoryId->getUInt());
+            this->movableObject->setVisibilityFlags(this->renderCategoryId->getUInt());
+
+            this->refreshSize(this->sceneNode->getScale());
+
+            // Apply fresnel fix to new subitems, same as init()
+            if (GameObject::ITEM == this->type || GameObject::PLANE == this->type)
+            {
+                Ogre::Item* item = this->getMovableObjectUnsafe<Ogre::Item>();
+                for (size_t i = 0; i < item->getNumSubItems(); ++i)
+                {
+                    auto* db = dynamic_cast<Ogre::HlmsPbsDatablock*>(item->getSubItem(i)->getDatablock());
+                    if (db)
+                    {
+                        if (db->getWorkflow() != Ogre::HlmsPbsDatablock::SpecularAsFresnelWorkflow && db->getWorkflow() != Ogre::HlmsPbsDatablock::MetallicWorkflow)
+                        {
+                            db->setFresnel(Ogre::Vector3(0.01f, 0.01f, 0.01f), false);
+                        }
+                    }
+                }
+            }
+
+            this->setRenderQueueIndex(this->movableObject->getRenderQueueGroup());
+
+            unsigned int renderDist = static_cast<unsigned int>(this->movableObject->getRenderingDistance());
+            if (0 == renderDist)
+            {
+                renderDist = Core::getSingletonPtr()->getGlobalRenderDistance();
+                if (0 == renderDist)
+                {
+                    renderDist = 1000;
+                }
+            }
+            this->renderDistance->setValue(renderDist);
+            this->movableObject->setRenderingDistance(static_cast<Ogre::Real>(renderDist));
+
+            // Scene node binding stays valid (still same node, just new movable)
+            this->sceneNode->getUserObjectBindings().setUserAny(Ogre::Any(this));
+
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObject] swapMovableObject: swapped to '" + newMovableObject->getName() + "' on '" + this->name->getString() + "'");
+        };
+
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObject::swapMovableObject");
+    }
+
+    void GameObject::restoreMovableObject(Ogre::MovableObject* restoredMovableObject, bool destroyCurrent)
+    {
+        if (nullptr == restoredMovableObject)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObject] restoreMovableObject: restoredMovableObject is null");
+            return;
+        }
+
+        GraphicsModule::RenderCommand renderCommand = [this, restoredMovableObject, destroyCurrent]()
+        {
+            // Detach current (the editable item)
+            if (this->movableObject)
+            {
+                if (this->movableObject->getParentSceneNode())
+                {
+                    this->sceneNode->detachObject(this->movableObject);
+                }
+
+                if (destroyCurrent)
+                {
+                    // Caller said it's safe to destroy (e.g. editable mesh already removed by MeshManager)
+                    if (this->sceneManager->hasMovableObject(this->movableObject))
+                    {
+                        this->sceneManager->destroyMovableObject(this->movableObject);
+                    }
+                }
+                // If destroyCurrent==false, MeshModifyComponent destroys it itself
+                // via destroyItem() before calling restoreMovableObject
+                this->movableObject = nullptr;
+            }
+
+            // Restore the original
+            this->movableObject = restoredMovableObject;
+            this->sceneNode->attachObject(this->movableObject);
+
+            // Restore all flags — mirror init() exactly
+            this->movableObject->getUserObjectBindings().setUserAny(Ogre::Any(this));
+            this->movableObject->setQueryFlags(this->categoryId->getUInt());
+            this->movableObject->setVisibilityFlags(this->renderCategoryId->getUInt());
+
+            this->refreshSize(this->sceneNode->getScale());
+
+            if (GameObject::ITEM == this->type || GameObject::PLANE == this->type)
+            {
+                Ogre::Item* item = this->getMovableObjectUnsafe<Ogre::Item>();
+                for (size_t i = 0; i < item->getNumSubItems(); ++i)
+                {
+                    auto* db = dynamic_cast<Ogre::HlmsPbsDatablock*>(item->getSubItem(i)->getDatablock());
+                    if (db)
+                    {
+                        if (db->getWorkflow() != Ogre::HlmsPbsDatablock::SpecularAsFresnelWorkflow && db->getWorkflow() != Ogre::HlmsPbsDatablock::MetallicWorkflow)
+                        {
+                            db->setFresnel(Ogre::Vector3(0.01f, 0.01f, 0.01f), false);
+                        }
+                    }
+                }
+            }
+
+            this->setRenderQueueIndex(this->movableObject->getRenderQueueGroup());
+
+            unsigned int renderDist = static_cast<unsigned int>(this->movableObject->getRenderingDistance());
+            if (0 == renderDist)
+            {
+                renderDist = Core::getSingletonPtr()->getGlobalRenderDistance();
+                if (0 == renderDist)
+                {
+                    renderDist = 1000;
+                }
+            }
+            this->renderDistance->setValue(renderDist);
+            this->movableObject->setRenderingDistance(static_cast<Ogre::Real>(renderDist));
+
+            this->sceneNode->getUserObjectBindings().setUserAny(Ogre::Any(this));
+
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObject] restoreMovableObject: restored '" + restoredMovableObject->getName() + "' on '" + this->name->getString() + "'");
+        };
+
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObject::restoreMovableObject");
     }
 
 	void GameObject::refreshSize(const Ogre::Vector3& scale)

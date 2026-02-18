@@ -74,7 +74,8 @@ ProceduralWallComponent::ProceduralWallComponent() :
     this->fencePostSpacing = new Variant(ProceduralWallComponent::AttrFencePostSpacing(), 2.0f, this->attributes);
     this->battlementWidth = new Variant(ProceduralWallComponent::AttrBattlementWidth(), 0.5f, this->attributes);
     this->battlementHeight = new Variant(ProceduralWallComponent::AttrBattlementHeight(), 0.5f, this->attributes);
-
+    this->convertToMesh = new Variant(ProceduralWallComponent::AttrConvertToMesh(), "Convert to Mesh", this->attributes);
+        
     // Set descriptions
     this->activated->setDescription("Activate/deactivate wall building mode");
     this->wallHeight->setDescription("Height of the wall in world units");
@@ -91,13 +92,16 @@ ProceduralWallComponent::ProceduralWallComponent() :
     this->fencePostSpacing->setDescription("Spacing between fence posts (Fence style only)");
     this->battlementWidth->setDescription("Width of each battlement (Battlement style only)");
     this->battlementHeight->setDescription("Height of battlements above wall (Battlement style only)");
-
-    // Constraints
-    /*this->wallHeight->addUserData(GameObject::AttrActionNeedRefresh());
-    this->wallThickness->addUserData(GameObject::AttrActionNeedRefresh());
-    this->wallStyle->addUserData(GameObject::AttrActionNeedRefresh());
-    this->createPillars->addUserData(GameObject::AttrActionNeedRefresh());
-    this->pillarSize->addUserData(GameObject::AttrActionNeedRefresh());*/
+    this->convertToMesh->setDescription("Converts this procedural wall to a static mesh file. "
+                                        "This is a ONE-WAY operation! After conversion:\n"
+                                        "- The wall mesh is exported to the Procedural resource folder\n"
+                                        "- This ProceduralWallComponent is removed\n"
+                                        "- The GameObject will use the static mesh file\n"
+                                        "- You can no longer edit the wall procedurally\n"
+                                        "- The mesh will benefit from Ogre's graphics caching (no FPS drops)\n\n"
+                                        "Use this when you're finished designing the wall and want optimal performance.");
+    this->convertToMesh->addUserData(GameObject::AttrActionExec());
+    this->convertToMesh->addUserData(GameObject::AttrActionExecId(), "ProceduralWallComponent.ConvertToMesh");
 }
 
 ProceduralWallComponent::~ProceduralWallComponent()
@@ -735,6 +739,15 @@ bool ProceduralWallComponent::keyReleased(const OIS::KeyEvent& evt)
     return false; // handled -> do not bubble
 }
 
+bool ProceduralWallComponent::executeAction(const Ogre::String& actionId, NOWA::Variant* attribute)
+{
+    if ("ProceduralWallComponent.ConvertToMesh" == actionId)
+    {
+        return this->convertToMeshApply();
+    }
+    return true;
+}
+
 // ==================== WALL BUILDING API ====================
 
 void ProceduralWallComponent::startWallPlacement(const Ogre::Vector3& worldPosition)
@@ -988,6 +1001,173 @@ void ProceduralWallComponent::rebuildMesh(void)
     }
 
     this->createWallMesh();
+}
+
+bool ProceduralWallComponent::convertToMeshApply(void)
+{
+    if (!this->wallMesh)
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralWallComponent] convertToMeshApply: no wall mesh to export.");
+        return false;
+    }
+
+    // Generate filename based on GameObject ID
+    Ogre::String meshName = "Wall_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()) + ".mesh";
+
+    // Ensure it has .mesh extension
+    if (!Ogre::StringUtil::endsWith(meshName, ".mesh", true))
+    {
+        meshName += ".mesh";
+    }
+
+    // Full path to Procedural folder
+    auto filePathNames = Core::getSingletonPtr()->getSectionPath("Procedural");
+
+    if (true == filePathNames.empty())
+    {
+        return false;
+    }
+    Ogre::String fullPath = filePathNames[0] + "/" + meshName;
+
+    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] Converting procedural wall to static mesh: " + meshName);
+
+    // Step 1: Export the mesh
+    if (!this->exportMesh(fullPath))
+    {
+        return false;
+    }
+
+    // Step 2: Capture data needed for the delayed operation
+    Ogre::String capturedMeshName = meshName;
+    GameObjectPtr capturedGameObjectPtr = this->gameObjectPtr;
+    unsigned int capturedComponentIndex = this->getIndex();
+
+    // Store current datablocks to reapply them
+    Ogre::String firstDbName = this->wallDatablock->getString();
+    Ogre::String secondDbName = this->pillarDatablock->getString();
+
+    // Store GameObject position (important!)
+    Ogre::Vector3 currentPosition = this->gameObjectPtr->getPosition();
+    Ogre::Quaternion currentOrientation = this->gameObjectPtr->getOrientation();
+    Ogre::Vector3 currentScale = this->gameObjectPtr->getScale();
+
+    // Step 3: Schedule delayed conversion
+    // We need a small delay to ensure the mesh file is fully written and available
+    NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.5f));
+
+    auto conversionFunction = [this, capturedMeshName, capturedGameObjectPtr, capturedComponentIndex, firstDbName, secondDbName, currentPosition, currentOrientation, currentScale]()
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] Loading converted mesh: " + capturedMeshName);
+
+        // Load the exported mesh
+        Ogre::MeshPtr loadedMesh;
+        try
+        {
+            loadedMesh = Ogre::MeshManager::getSingleton().load(capturedMeshName, "Procedural");
+        }
+        catch (Ogre::Exception& e)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralWallComponent] Failed to load exported mesh: " + e.getFullDescription());
+            return;
+        }
+
+        if (loadedMesh.isNull())
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralWallComponent] Loaded mesh is null!");
+            return;
+        }
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] Mesh loaded successfully: " + Ogre::StringConverter::toString(loadedMesh->getNumSubMeshes()) + " submeshes");
+
+        // Create new Item from the loaded mesh on render thread
+        Ogre::Item* newItem = nullptr;
+
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, capturedGameObjectPtr, loadedMesh, firstDbName, secondDbName, &newItem]()
+        {
+            newItem = capturedGameObjectPtr->getSceneManager()->createItem(loadedMesh, capturedGameObjectPtr->isDynamic() ? Ogre::SCENE_DYNAMIC : Ogre::SCENE_STATIC);
+
+            // Reapply datablocks
+            if (newItem->getNumSubItems() >= 1 && !firstDbName.empty())
+            {
+                Ogre::HlmsDatablock* centerDb = Ogre::Root::getSingleton().getHlmsManager()->getDatablockNoDefault(firstDbName);
+                if (nullptr != centerDb)
+                {
+                    newItem->getSubItem(0)->setDatablock(centerDb);
+                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] Applied center datablock: " + firstDbName);
+                }
+            }
+
+            if (newItem->getNumSubItems() >= 2)
+            {
+                Ogre::String dbToUse = secondDbName.empty() ? secondDbName : firstDbName;
+                if (!dbToUse.empty())
+                {
+                    Ogre::HlmsDatablock* edgeDb = Ogre::Root::getSingleton().getHlmsManager()->getDatablockNoDefault(dbToUse);
+                    if (nullptr != edgeDb)
+                    {
+                        newItem->getSubItem(1)->setDatablock(edgeDb);
+                        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] Applied edge datablock: " + dbToUse);
+                    }
+                }
+            }
+
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] Created new Item from exported mesh");
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ProceduralWallComponent::convertToMesh_createItem");
+
+        if (nullptr == newItem)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralWallComponent] Failed to create Item from mesh!");
+            return;
+        }
+
+        this->destroyPreviewMesh();
+        this->destroyWallMesh();
+
+        // Update GameObject to use the new mesh
+        // This will destroy the old procedural mesh and attach the new one
+        // Assign the new mesh to GameObject - this preserves transform automatically
+        if (false == capturedGameObjectPtr->assignMesh(newItem))
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralWallComponent] Failed to assign mesh to GameObject!");
+            return;
+        }
+
+        // IMPORTANT: Restore the GameObject's transform
+        // The init() might have changed it, so we restore the original position
+        capturedGameObjectPtr->getSceneNode()->setPosition(currentPosition);
+        capturedGameObjectPtr->getSceneNode()->setOrientation(currentOrientation);
+        capturedGameObjectPtr->getSceneNode()->setScale(currentScale);
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] GameObject transform restored: pos=" + Ogre::StringConverter::toString(currentPosition));
+
+        // Fire event that the component is being deleted
+        boost::shared_ptr<EventDataDeleteComponent> eventDataDeleteComponent(new EventDataDeleteComponent(capturedGameObjectPtr->getId(), "ProceduralWallComponent", capturedComponentIndex));
+        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataDeleteComponent);
+
+        // Delete the ProceduralWallComponent
+        // This must be done after the mesh is loaded and GameObject is updated
+        capturedGameObjectPtr->deleteComponentByIndex(capturedComponentIndex);
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] ========================================");
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] CONVERSION COMPLETE!");
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] - ProceduralWallComponent removed");
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] - Static mesh file: " + capturedMeshName);
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] - GameObject now uses cached mesh");
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] IMPORTANT: SAVE YOUR SCENE to persist this change!");
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] ========================================");
+    };
+
+    NOWA::ProcessPtr closureProcess(new NOWA::ClosureProcess(conversionFunction));
+    delayProcess->attachChild(closureProcess);
+    NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
+
+    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] Mesh export completed. Conversion scheduled in 0.5 seconds...");
+
+    boost::shared_ptr<EventDataRefreshGui> eventDataRefreshGui(new EventDataRefreshGui());
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshGui);
+
+    return true;
 }
 
 bool ProceduralWallComponent::exportMesh(const Ogre::String& filename)

@@ -636,8 +636,8 @@ namespace NOWA
 				return;
 			}
 
-			boost::shared_ptr<EventDataTerraChanged> eventDataTerraChanged(new EventDataTerraChanged(this->gameObjectPtr->getId(), true, false));
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataTerraChanged);
+			boost::shared_ptr<EventDataGeometryChanged> eventDataGeometryChanged(new EventDataGeometryChanged(this->gameObjectPtr->getId(), true, false));
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGeometryChanged);
 
 			// Prevents undo redo in game, because of fps dropdown (heavy operation). For editor mode its ok
 			if (false == Core::getSingletonPtr()->getIsGame())
@@ -663,8 +663,8 @@ namespace NOWA
 
 		if (nullptr != this->terra)
 		{
-			boost::shared_ptr<EventDataTerraChanged> eventDataTerraChanged(new EventDataTerraChanged(this->gameObjectPtr->getId(), true, false));
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataTerraChanged);
+			boost::shared_ptr<EventDataGeometryChanged> eventDataGeometryChanged(new EventDataGeometryChanged(this->gameObjectPtr->getId(), true, false));
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGeometryChanged);
 
 			// Prevents undo redo in game, because of fps dropdown (heavy operation). For editor mode its ok
 			if (false == Core::getSingletonPtr()->getIsGame())
@@ -687,8 +687,8 @@ namespace NOWA
 		if (nullptr != this->terra)
 		{
 			// Sends event, that terra has been modified
-			boost::shared_ptr<EventDataTerraChanged> eventDataTerraChanged(new EventDataTerraChanged(this->gameObjectPtr->getId(), false, true));
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataTerraChanged);
+			boost::shared_ptr<EventDataGeometryChanged> eventDataGeometryChanged(new EventDataGeometryChanged(this->gameObjectPtr->getId(), false, true));
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGeometryChanged);
 
 			// Prevents undo redo in game, because of fps dropdown (heavy operation). For editor mode its ok
 			if (false == Core::getSingletonPtr()->getIsGame())
@@ -767,8 +767,8 @@ namespace NOWA
 			});
 
 			// Sends event, that terra has been modified
-			boost::shared_ptr<EventDataTerraChanged> eventDataTerraChanged(new EventDataTerraChanged(this->gameObjectPtr->getId(), true, false));
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataTerraChanged);
+			boost::shared_ptr<EventDataGeometryChanged> eventDataGeometryChanged(new EventDataGeometryChanged(this->gameObjectPtr->getId(), true, false));
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGeometryChanged);
 		}
 
 		return std::move(heightData);
@@ -791,8 +791,8 @@ namespace NOWA
 			});
 
 			// Sends event, that terra has been modified
-			boost::shared_ptr<EventDataTerraChanged> eventDataTerraChanged(new EventDataTerraChanged(this->gameObjectPtr->getId(), true, false));
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataTerraChanged);
+			boost::shared_ptr<EventDataGeometryChanged> eventDataGeometryChanged(new EventDataGeometryChanged(this->gameObjectPtr->getId(), true, false));
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGeometryChanged);
 		}
 		
 		return std::move(heightData);
@@ -810,8 +810,8 @@ namespace NOWA
 		if (nullptr != this->terra)
 		{
 			// Sends event, that terra has been modified
-			boost::shared_ptr<EventDataTerraChanged> eventDataTerraChanged(new EventDataTerraChanged(this->gameObjectPtr->getId(), false, true));
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataTerraChanged);
+			boost::shared_ptr<EventDataGeometryChanged> eventDataGeometryChanged(new EventDataGeometryChanged(this->gameObjectPtr->getId(), false, true));
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGeometryChanged);
 
 			ENQUEUE_RENDER_COMMAND_MULTI("TerraComponent::paintTerrainFinished", _1(&detailBlendData),
 			{
@@ -832,8 +832,8 @@ namespace NOWA
 			});
 
 			// Sends event, that terra has been modified
-			boost::shared_ptr<EventDataTerraChanged> eventDataTerraChanged(new EventDataTerraChanged(this->gameObjectPtr->getId(), true, false));
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataTerraChanged);
+			boost::shared_ptr<EventDataGeometryChanged> eventDataGeometryChanged(new EventDataGeometryChanged(this->gameObjectPtr->getId(), true, false));
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGeometryChanged);
 		}
 	}
 
@@ -847,8 +847,8 @@ namespace NOWA
 			});
 
 			// Sends event, that terra has been modified
-			boost::shared_ptr<EventDataTerraChanged> eventDataTerraChanged(new EventDataTerraChanged(this->gameObjectPtr->getId(), false, true));
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataTerraChanged);
+			boost::shared_ptr<EventDataGeometryChanged> eventDataGeometryChanged(new EventDataGeometryChanged(this->gameObjectPtr->getId(), false, true));
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGeometryChanged);
 
 		}
 	}

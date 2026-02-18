@@ -35,6 +35,7 @@ namespace NOWA
         spatialHashCellSize(10.0f),
         raySceneQuery(nullptr),
         sphereSceneQuery(nullptr),
+        physicsArtifactComponent(nullptr),
         volumeBounds(new Variant(ProceduralFoliageVolumeComponent::AttrVolumeBounds(), Ogre::Vector4(-50.0f, -50.0f, 50.0f, 50.0f), this->attributes)), // 100x100m area
         masterSeed(new Variant(ProceduralFoliageVolumeComponent::AttrMasterSeed(), static_cast<unsigned int>(12345), this->attributes)),
         gridResolution(new Variant(ProceduralFoliageVolumeComponent::AttrGridResolution(), 1.0f, this->attributes)), // 1 meter sample resolution
@@ -147,6 +148,9 @@ namespace NOWA
             this->ruleLodDistances.resize(count);
             this->ruleCategories.resize(count);
             this->ruleClearanceDistances.resize(count);
+            this->ruleCollisionEnabled.resize(count);
+            this->ruleCollisionRadius.resize(count);
+            this->ruleCollisionHeight.resize(count);
         }
 
         this->masterSeed->setConstraints(0u, UINT32_MAX);
@@ -359,6 +363,49 @@ namespace NOWA
                 this->rules[i].clearanceDistance = dist;
                 propertyElement = propertyElement->next_sibling("property");
             }
+
+            if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralFoliageVolumeComponent::AttrRuleCollisionEnabled() + Ogre::StringConverter::toString(i))
+            {
+                bool enabled = XMLConverter::getAttribBool(propertyElement, "data");
+                if (nullptr == this->ruleCollisionEnabled[i])
+                {
+                    this->ruleCollisionEnabled[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleCollisionEnabled() + Ogre::StringConverter::toString(i), false, this->attributes);
+                    this->ruleCollisionEnabled[i]->setDescription("Enable physics collision for this vegetation.");
+                }
+                this->ruleCollisionEnabled[i]->setValue(enabled);
+                this->rules[i].collisionEnabled = enabled;
+                propertyElement = propertyElement->next_sibling("property");
+            }
+
+            // Rule Collision Radius
+            if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralFoliageVolumeComponent::AttrRuleCollisionRadius() + Ogre::StringConverter::toString(i))
+            {
+                Ogre::Real radius = XMLConverter::getAttribReal(propertyElement, "data");
+                if (nullptr == this->ruleCollisionRadius[i])
+                {
+                    this->ruleCollisionRadius[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleCollisionRadius() + Ogre::StringConverter::toString(i), 0.3f, this->attributes);
+                    this->ruleCollisionRadius[i]->setDescription("Collision cylinder radius in meters (trunk thickness).");
+                    this->ruleCollisionRadius[i]->setConstraints(0.01f, 5.0f);
+                }
+                this->ruleCollisionRadius[i]->setValue(radius);
+                this->rules[i].collisionRadius = radius;
+                propertyElement = propertyElement->next_sibling("property");
+            }
+
+            // Rule Collision Height
+            if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralFoliageVolumeComponent::AttrRuleCollisionHeight() + Ogre::StringConverter::toString(i))
+            {
+                Ogre::Real height = XMLConverter::getAttribReal(propertyElement, "data");
+                if (nullptr == this->ruleCollisionHeight[i])
+                {
+                    this->ruleCollisionHeight[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleCollisionHeight() + Ogre::StringConverter::toString(i), 2.0f, this->attributes);
+                    this->ruleCollisionHeight[i]->setDescription("Collision cylinder height in meters.");
+                    this->ruleCollisionHeight[i]->setConstraints(0.1f, 20.0f);
+                }
+                this->ruleCollisionHeight[i]->setValue(height);
+                this->rules[i].collisionHeight = height;
+                propertyElement = propertyElement->next_sibling("property");
+            }
         }
 
         this->foliageLoadedFromScene = true;
@@ -417,6 +464,8 @@ namespace NOWA
     {
         GameObjectComponent::onRemoveComponent();
 
+        this->physicsArtifactComponent = nullptr;
+
         if (this->raySceneQuery)
         {
             auto* query = this->raySceneQuery;
@@ -447,7 +496,10 @@ namespace NOWA
 
     void ProceduralFoliageVolumeComponent::onOtherComponentRemoved(unsigned int index)
     {
-        // Not needed
+        if (nullptr != this->physicsArtifactComponent && index == this->physicsArtifactComponent->getIndex())
+        {
+            this->physicsArtifactComponent = nullptr;
+        }
     }
 
     void ProceduralFoliageVolumeComponent::onOtherComponentAdded(unsigned int index)
@@ -533,6 +585,18 @@ namespace NOWA
                 else if (ProceduralFoliageVolumeComponent::AttrRuleClearanceDistance() + Ogre::StringConverter::toString(i) == attribute->getName())
                 {
                     this->setRuleClearanceDistance(i, attribute->getReal());
+                }
+                else if (ProceduralFoliageVolumeComponent::AttrRuleCollisionEnabled() + Ogre::StringConverter::toString(i) == attribute->getName())
+                {
+                    this->setRuleCollisionEnabled(i, attribute->getBool());
+                }
+                else if (ProceduralFoliageVolumeComponent::AttrRuleCollisionRadius() + Ogre::StringConverter::toString(i) == attribute->getName())
+                {
+                    this->setRuleCollisionRadius(i, attribute->getReal());
+                }
+                else if (ProceduralFoliageVolumeComponent::AttrRuleCollisionHeight() + Ogre::StringConverter::toString(i) == attribute->getName())
+                {
+                    this->setRuleCollisionHeight(i, attribute->getReal());
                 }
             }
         }
@@ -660,6 +724,27 @@ namespace NOWA
             propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralFoliageVolumeComponent::AttrRuleClearanceDistance() + Ogre::StringConverter::toString(i))));
             propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->ruleClearanceDistances[i]->getReal())));
             propertiesXML->append_node(propertyXML);
+
+            // Rule Collision Enabled
+            propertyXML = doc.allocate_node(node_element, "property");
+            propertyXML->append_attribute(doc.allocate_attribute("type", "12")); // Bool
+            propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralFoliageVolumeComponent::AttrRuleCollisionEnabled() + Ogre::StringConverter::toString(i))));
+            propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->ruleCollisionEnabled[i]->getBool())));
+            propertiesXML->append_node(propertyXML);
+
+            // Rule Collision Radius
+            propertyXML = doc.allocate_node(node_element, "property");
+            propertyXML->append_attribute(doc.allocate_attribute("type", "6")); // Real
+            propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralFoliageVolumeComponent::AttrRuleCollisionRadius() + Ogre::StringConverter::toString(i))));
+            propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->ruleCollisionRadius[i]->getReal())));
+            propertiesXML->append_node(propertyXML);
+
+            // Rule Collision Height
+            propertyXML = doc.allocate_node(node_element, "property");
+            propertyXML->append_attribute(doc.allocate_attribute("type", "6")); // Real
+            propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralFoliageVolumeComponent::AttrRuleCollisionHeight() + Ogre::StringConverter::toString(i))));
+            propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->ruleCollisionHeight[i]->getReal())));
+            propertiesXML->append_node(propertyXML);
         }
     }
 
@@ -699,6 +784,13 @@ namespace NOWA
         {
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralFoliageVolume] No rules defined, skipping generation.");
             return;
+        }
+
+        // Get PhysicsArtifactComponent if exists
+        const auto& physicsArtifactCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsArtifactComponent>());
+        if (physicsArtifactCompPtr)
+        {
+            this->physicsArtifactComponent = physicsArtifactCompPtr.get();
         }
 
         // Clear existing
@@ -1026,6 +1118,9 @@ namespace NOWA
             {
                 this->createFoliageItems(batchesCopy);
             }, "ProceduralFoliageVolume::CreateItems");
+
+        // Now create physics collision (on main thread, after Items exist)
+        this->createFoliageCollision();
     }
 
     void ProceduralFoliageVolumeComponent::createFoliageItems(std::vector<VegetationBatch>& batches)
@@ -1187,6 +1282,83 @@ namespace NOWA
         this->vegetationBatches = std::move(batches);
     }
 
+    void ProceduralFoliageVolumeComponent::createFoliageCollision()
+    {
+        if (nullptr == this->physicsArtifactComponent)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralFoliageVolume] No PhysicsArtifactComponent found, skipping collision creation");
+            return;
+        }
+
+        // Check if any rule has collision enabled
+        bool anyCollisionEnabled = false;
+        for (const auto& rule : this->rules)
+        {
+            if (rule.collisionEnabled)
+            {
+                anyCollisionEnabled = true;
+                break;
+            }
+        }
+
+        if (!anyCollisionEnabled)
+        {
+            return;
+        }
+
+        auto start = std::chrono::high_resolution_clock::now();
+
+        std::vector<OgreNewt::CollisionPtr> collisions;
+        collisions.reserve(10000);
+
+        OgreNewt::World* world = AppStateManager::getSingletonPtr()->getOgreNewtModule()->getOgreNewt();
+
+        for (const auto& batch : this->vegetationBatches)
+        {
+            const FoliageRule& rule = this->rules[batch.ruleIndex];
+
+            if (!rule.collisionEnabled)
+            {
+                continue;
+            }
+
+            // Rotate cylinder 90° around Z to make it stand upright (X-axis -> Y-axis)
+            Ogre::Quaternion uprightFix(Ogre::Degree(90), Ogre::Vector3::UNIT_Z);
+
+            for (const VegetationInstance& instance : batch.instances)
+            {
+                Ogre::Quaternion correctedOrientation = instance.orientation * uprightFix;
+
+                // Shift cylinder up so its base sits at the instance position, not its center
+                Ogre::Vector3 correctedPosition = instance.position + Ogre::Vector3(0.0f, rule.collisionHeight * 0.5f, 0.0f);
+
+                OgreNewt::CollisionPtr cylinderCol =
+                    OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::Cylinder(world, rule.collisionRadius, rule.collisionHeight, this->gameObjectPtr->getCategoryId(), correctedOrientation, correctedPosition));
+
+                if (cylinderCol)
+                {
+                    collisions.push_back(cylinderCol);
+                }
+            }
+        }
+
+        if (collisions.empty())
+        {
+            return;
+        }
+
+        auto finish = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double, std::milli> elapsed = finish - start;
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+            "[ProceduralFoliageVolume] Created " + Ogre::StringConverter::toString(collisions.size()) + " collision cylinders in " + Ogre::StringConverter::toString(elapsed.count() * 0.001) + "s");
+
+        // Create compound body with serialization
+        Ogre::String collisionName = "FoliageCompound_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
+
+        this->physicsArtifactComponent->createCompoundBody(collisions, collisionName);
+    }
+
     void ProceduralFoliageVolumeComponent::generateLODForMesh(const Ogre::String& meshName, Ogre::Real lodDistance, const Ogre::String& resourceGroup)
     {
         // Check if the V2 mesh already has LOD before regenerating!
@@ -1261,8 +1433,14 @@ namespace NOWA
             [this]()
             {
                 this->destroyFoliageOnRenderThread();
-            },
-            "ProceduralFoliageVolume::DestroyItems");
+            }, "ProceduralFoliageVolume::DestroyItems");
+
+        // Clear physics collision first
+        if (this->physicsArtifactComponent && this->physicsArtifactComponent->getBody())
+        {
+            // This will destroy the compound body
+            this->physicsArtifactComponent->reCreateCollision(true);
+        }
     }
 
     void ProceduralFoliageVolumeComponent::destroyFoliageOnRenderThread()
@@ -1354,6 +1532,9 @@ namespace NOWA
             this->ruleLodDistances.resize(count);
             this->ruleCategories.resize(count);
             this->ruleClearanceDistances.resize(count);
+            this->ruleCollisionEnabled.resize(count);
+            this->ruleCollisionRadius.resize(count);
+            this->ruleCollisionHeight.resize(count);
 
             // Initialize new variants with SENSIBLE DEFAULTS
             for (size_t i = oldSize; i < count; i++)
@@ -1370,7 +1551,7 @@ namespace NOWA
                 // Rule Density - VARY BY INDEX for visual distinction
                 Ogre::Real densityVariation = 0.3f + (i * 0.2f); // 0.3, 0.5, 0.7, 0.9, ...
                 this->ruleDensities[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleDensity() + Ogre::StringConverter::toString(i), densityVariation, this->attributes);
-                this->ruleDensities[i]->setDescription("Instances per m². Trees: 0.1-0.5, Bushes: 0.5-2.0, Grass: 2.0-10.0");
+                this->ruleDensities[i]->setDescription("Instances per m * m. Trees: 0.1-0.5, Bushes: 0.5-2.0, Grass: 2.0-10.0");
                 this->ruleDensities[i]->setConstraints(0.01f, 10.0f);
 
                 // Height Range - UNLIMITED (ensure visibility!)
@@ -1428,8 +1609,23 @@ namespace NOWA
                 this->ruleClearanceDistances[i]->setConstraints(0.0f, 50.0f);
                 this->rules[i].clearanceDistance = 0.0f;
 
-                // Also in shrink section:
-                this->eraseVariants(this->ruleClearanceDistances, count);
+                // Rule Collision Enabled
+                this->ruleCollisionEnabled[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleCollisionEnabled() + Ogre::StringConverter::toString(i), false, this->attributes);
+                this->ruleCollisionEnabled[i]->setDescription("Enable physics collision for this vegetation. "
+                                                              "All instances combined into one compound body for performance.");
+                this->rules[i].collisionEnabled = false;
+
+                // Rule Collision Radius
+                this->ruleCollisionRadius[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleCollisionRadius() + Ogre::StringConverter::toString(i), 0.3f, this->attributes);
+                this->ruleCollisionRadius[i]->setDescription("Collision cylinder radius in meters (trunk/stem thickness). Trees: 0.2-0.5m, Bushes: 0.1-0.3m");
+                this->ruleCollisionRadius[i]->setConstraints(0.01f, 5.0f);
+                this->rules[i].collisionRadius = 0.3f;
+
+                // Rule Collision Height
+                this->ruleCollisionHeight[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleCollisionHeight() + Ogre::StringConverter::toString(i), 2.0f, this->attributes);
+                this->ruleCollisionHeight[i]->setDescription("Collision cylinder height in meters. Should match approximate trunk height. Trees: 2-5m, Bushes: 0.5-1.5m");
+                this->ruleCollisionHeight[i]->setConstraints(0.1f, 20.0f);
+                this->rules[i].collisionHeight = 2.0f;
             }
         }
         else if (count < oldSize)
@@ -1447,6 +1643,9 @@ namespace NOWA
             this->eraseVariants(this->ruleLodDistances, count);
             this->eraseVariants(this->ruleCategories, count);
             this->eraseVariants(this->ruleClearanceDistances, count);
+            this->eraseVariants(this->ruleCollisionEnabled, count);
+            this->eraseVariants(this->ruleCollisionRadius, count);
+            this->eraseVariants(this->ruleCollisionHeight, count);
 
             this->rules.resize(count);
         }
@@ -1707,6 +1906,65 @@ namespace NOWA
             return 0.0f;
         }
         return this->ruleClearanceDistances[index]->getReal();
+    }
+
+    void ProceduralFoliageVolumeComponent::setRuleCollisionEnabled(unsigned int index, bool enabled)
+    {
+        if (index >= this->rules.size())
+        {
+            return;
+        }
+        this->ruleCollisionEnabled[index]->setValue(enabled);
+        this->rules[index].collisionEnabled = enabled;
+    }
+
+    bool ProceduralFoliageVolumeComponent::getRuleCollisionEnabled(unsigned int index) const
+    {
+        if (index >= this->rules.size())
+        {
+            return 0.0f;
+        }
+        return this->ruleCollisionEnabled[index]->getBool();
+    }
+
+    void ProceduralFoliageVolumeComponent::setRuleCollisionRadius(unsigned int index, Ogre::Real radius)
+    {
+        if (index >= this->rules.size())
+        {
+            return;
+        }
+        radius = Ogre::Math::Clamp(radius, 0.01f, 5.0f);
+        this->ruleCollisionRadius[index]->setValue(radius);
+        this->rules[index].collisionRadius = radius;
+    }
+
+    Ogre::Real ProceduralFoliageVolumeComponent::getRuleCollisionRadius(unsigned int index) const
+    {
+        if (index >= this->rules.size())
+        {
+            return 0.0f;
+        }
+        return this->ruleCollisionRadius[index]->getReal();
+    }
+
+    void ProceduralFoliageVolumeComponent::setRuleCollisionHeight(unsigned int index, Ogre::Real height)
+    {
+        if (index >= this->rules.size())
+        {
+            return;
+        }
+        height = Ogre::Math::Clamp(height, 0.1f, 20.0f);
+        this->ruleCollisionHeight[index]->setValue(height);
+        this->rules[index].collisionHeight = height;
+    }
+
+    Ogre::Real ProceduralFoliageVolumeComponent::getRuleCollisionHeight(unsigned int index) const
+    {
+        if (index >= this->rules.size())
+        {
+            return 0.0f;
+        }
+        return this->ruleCollisionHeight[index]->getReal();
     }
 
     // Helper function

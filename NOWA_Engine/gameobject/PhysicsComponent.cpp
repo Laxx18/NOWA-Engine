@@ -38,7 +38,9 @@ namespace NOWA
     bool PhysicsComponent::postInit(void)
     {
         // If this game object has already an kind of physics component, do not add another one! Else crash, e.g. PhysicsArtifactComponent may not have an additional PhysicsActiveComponent
-        for (unsigned int i = 0; i < static_cast<unsigned int>(this->gameObjectPtr->getComponents()->size()); i++)
+
+        // Deactivated: Case: Terra with TerrainComponent and foliage with artifactcomponent
+        /*for (unsigned int i = 0; i < static_cast<unsigned int>(this->gameObjectPtr->getComponents()->size()); i++)
         {
             auto& priorPhysicsComponent = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsComponent>(i));
             if (nullptr != priorPhysicsComponent && priorPhysicsComponent.get() != this)
@@ -50,7 +52,7 @@ namespace NOWA
                 NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataFeedback);
                 return false;
             }
-        }
+        }*/
         return true;
     }
 
@@ -894,7 +896,7 @@ namespace NOWA
             saveWorldCollision.exportCollision(this->collisionPtr, serializeCollisionPath);
 
             boost::shared_ptr<NOWA::EventDataResourceCreated> eventDataResourceCreated(new NOWA::EventDataResourceCreated());
-            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataResourceCreated);
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataResourceCreated);
         }
 
         if (false == overwrite)
@@ -949,13 +951,122 @@ namespace NOWA
                     saveWorldCollision.exportCollision(this->collisionPtr, serializeCollisionPath);
 
                     boost::shared_ptr<NOWA::EventDataResourceCreated> eventDataResourceCreated(new NOWA::EventDataResourceCreated());
-                    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataResourceCreated);
+                    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataResourceCreated);
                 }
                 else
                 {
                     OgreNewt::CollisionSerializer loadWorldCollision;
                     // Import collision from file for faster loading
                     this->collisionPtr = loadWorldCollision.importCollision(streamFile, ogreNewt);
+                }
+
+                streamFile.close();
+                fclose(file);
+            }
+        }
+
+        return this->collisionPtr;
+    }
+
+    OgreNewt::CollisionPtr PhysicsComponent::serializeCompoundCollision(const Ogre::String& scenePath, const std::vector<OgreNewt::CollisionPtr>& childCollisions, const Ogre::String& collisionName, unsigned int categoryId, bool overwrite)
+    {
+        if (scenePath.empty())
+        {
+            Ogre::LogManager::getSingleton().logMessage("[PhysicsComponent] Empty scene path for compound serialization", Ogre::LML_CRITICAL);
+            return OgreNewt::CollisionPtr();
+        }
+
+        if (childCollisions.empty())
+        {
+            Ogre::LogManager::getSingleton().logMessage("[PhysicsComponent] No child collisions provided for compound", Ogre::LML_CRITICAL);
+            return OgreNewt::CollisionPtr();
+        }
+
+        Ogre::String serializeCollisionPath = scenePath + "/" + collisionName + ".ply";
+
+        // Check if serialized collision file exists
+        FILE* file = fopen(serializeCollisionPath.c_str(), "rb");
+
+        if (nullptr == file || true == overwrite)
+        {
+            if (file)
+            {
+                fclose(file);
+            }
+
+            auto start = std::chrono::high_resolution_clock::now();
+
+            // Create compound collision
+            this->collisionPtr = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::CompoundCollision(this->ogreNewt, childCollisions, categoryId));
+
+            if (nullptr == this->collisionPtr)
+            {
+                Ogre::LogManager::getSingleton().logMessage("[PhysicsComponent] Failed to create compound collision", Ogre::LML_CRITICAL);
+                return OgreNewt::CollisionPtr();
+            }
+
+            auto finish = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double, std::milli> elapsed = finish - start;
+
+            Ogre::LogManager::getSingleton().logMessage("[PhysicsComponent] Created compound with " + Ogre::StringConverter::toString(childCollisions.size()) + " children in " + Ogre::StringConverter::toString(elapsed.count() * 0.001) + "s",
+                Ogre::LML_CRITICAL);
+
+            // Serialize to .ply file
+            OgreNewt::CollisionSerializer saveCompoundCollision;
+            Ogre::LogManager::getSingleton().logMessage("[PhysicsComponent] Writing compound collision to file: " + serializeCollisionPath);
+
+            saveCompoundCollision.exportCollision(this->collisionPtr, serializeCollisionPath);
+
+            boost::shared_ptr<NOWA::EventDataResourceCreated> eventDataResourceCreated(new NOWA::EventDataResourceCreated());
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataResourceCreated);
+        }
+
+        if (false == overwrite)
+        {
+            file = fopen(serializeCollisionPath.c_str(), "rb");
+            if (nullptr == file)
+            {
+                Ogre::LogManager::getSingleton().logMessage("[PhysicsComponent] Could not open compound collision file: " + serializeCollisionPath, Ogre::LML_CRITICAL);
+
+                // Fallback: create compound directly
+                return OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::CompoundCollision(this->ogreNewt, childCollisions, categoryId));
+            }
+            else
+            {
+                Ogre::FileHandleDataStream streamFile(file, Ogre::DataStream::READ);
+
+                if (streamFile.size() <= 0)
+                {
+                    // File is trash, must be recreated
+                    auto start = std::chrono::high_resolution_clock::now();
+
+                    this->collisionPtr = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::CompoundCollision(this->ogreNewt, childCollisions, categoryId));
+
+                    if (nullptr == this->collisionPtr)
+                    {
+                        streamFile.close();
+                        fclose(file);
+                        return OgreNewt::CollisionPtr();
+                    }
+
+                    auto finish = std::chrono::high_resolution_clock::now();
+                    std::chrono::duration<double, std::milli> elapsed = finish - start;
+
+                    Ogre::LogManager::getSingleton().logMessage("[PhysicsComponent] Recreated compound (corrupted file) in " + Ogre::StringConverter::toString(elapsed.count() * 0.001) + "s");
+
+                    OgreNewt::CollisionSerializer saveCompoundCollision;
+                    saveCompoundCollision.exportCollision(this->collisionPtr, serializeCollisionPath);
+
+                    boost::shared_ptr<NOWA::EventDataResourceCreated> eventDataResourceCreated(new NOWA::EventDataResourceCreated());
+                    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataResourceCreated);
+                }
+                else
+                {
+                    // Import from file
+                    Ogre::LogManager::getSingleton().logMessage("[PhysicsComponent] Loading compound collision from: " + serializeCollisionPath);
+
+                    OgreNewt::CollisionSerializer loadCompoundCollision;
+                    this->collisionPtr = loadCompoundCollision.importCollision(streamFile, this->ogreNewt);
                 }
 
                 streamFile.close();
@@ -999,7 +1110,7 @@ namespace NOWA
             saveWorldCollision.exportCollision(this->collisionPtr, serializeCollisionPath);
 
             boost::shared_ptr<NOWA::EventDataResourceCreated> eventDataResourceCreated(new NOWA::EventDataResourceCreated());
-            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataResourceCreated);
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataResourceCreated);
 
             return this->collisionPtr;
         }
@@ -1031,7 +1142,7 @@ namespace NOWA
                     saveWorldCollision.exportCollision(this->collisionPtr, serializeCollisionPath);
 
                     boost::shared_ptr<NOWA::EventDataResourceCreated> eventDataResourceCreated(new NOWA::EventDataResourceCreated());
-                    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataResourceCreated);
+                    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataResourceCreated);
                 }
                 else
                 {

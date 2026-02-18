@@ -19,6 +19,8 @@ namespace Ogre
 
 namespace NOWA
 {
+    class PhysicsActiveComponent;
+
 	/**
 	 * @brief	Component for real-time mesh modification/sculpting.
 	 *			Allows brush-based vertex manipulation on meshes.
@@ -64,6 +66,20 @@ namespace NOWA
 				  positionType(Ogre::VET_FLOAT3), normalType(Ogre::VET_FLOAT3),
 				  tangentType(Ogre::VET_FLOAT4), uvType(Ogre::VET_FLOAT2) {}
 		};
+
+		/// Tracks geometry ranges and GPU buffers for one original submesh
+        struct SubMeshInfo
+        {
+            size_t vertexOffset = 0; ///< Start in flat vertices/normals/etc arrays
+            size_t vertexCount = 0;
+            size_t indexOffset = 0; ///< Start in flat indices array (global indices)
+            size_t indexCount = 0;
+            bool hasTangent = false;
+            size_t floatsPerVertex = 8; ///< 8 = no tangent, 12 = with tangent
+
+            Ogre::VertexBufferPacked* dynamicVertexBuffer = nullptr;
+            Ogre::IndexBufferPacked* dynamicIndexBuffer = nullptr;
+        };
 
 	public:
 		MeshModifyComponent();
@@ -229,6 +245,24 @@ namespace NOWA
 		 */
 		size_t getIndexCount(void) const;
 
+		/**
+         * @brief   Deforms the mesh at a given world-space position.
+         *          Converts to local space internally. Use this from Lua/physics callbacks.
+         * @param   worldPos        Hit position in world space (e.g. from contact)
+         * @param   invertEffect    If true, inverts the brush effect (pull instead of push)
+         */
+        void deformAtWorldPosition(const Ogre::Vector3& worldPos, bool invertEffect);
+
+        /**
+         * @brief   Deforms the mesh at a given world-space position with a transient intensity multiplier.
+         *          Useful for scaling deformation by impact force.
+         * @param   worldPos            Hit position in world space
+         * @param   impactStrength      Impact force magnitude (will be clamped to [0,1] range for intensity)
+         * @param   maxForceForFullDeform  Force value that maps to full brush intensity (prevents overflow)
+         * @param   invertEffect        If true, inverts the brush effect
+         */
+        void deformAtWorldPositionByForce(const Ogre::Vector3& worldPos, Ogre::Real impactStrength, Ogre::Real maxForceForFullDeform, bool invertEffect);
+
 	public:
 		static unsigned int getStaticClassId(void)
 		{
@@ -361,6 +395,7 @@ namespace NOWA
 		Ogre::String name;
 
 		// Editable mesh data
+        Ogre::Item* originalItem;
 		Ogre::Item* editableItem;
 		Ogre::MeshPtr editableMesh;
 		Ogre::VertexBufferPacked* dynamicVertexBuffer;
@@ -380,6 +415,8 @@ namespace NOWA
 
 		// Vertex adjacency for smoothing
 		std::vector<std::vector<size_t>> vertexNeighbors;
+
+		std::vector<SubMeshInfo> subMeshInfoList;
 
 		// Brush data (loaded from image)
 		std::vector<Ogre::Real> brushData;
@@ -411,6 +448,7 @@ namespace NOWA
 		Variant* brushMode;
 		Variant* category;
 		bool canModify;
+        PhysicsActiveComponent* physicsActiveComponent;
 	};
 
 }; // namespace end

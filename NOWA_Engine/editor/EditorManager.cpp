@@ -815,7 +815,7 @@ namespace NOWA
 					{
                         // Give change to react if a component has been manually deleted in a editor
                         boost::shared_ptr<EventDataDeleteComponent> eventDataDeleteComponent(new EventDataDeleteComponent(gameObjectPtr->getId(), gameObjectCompPtr->getClassName(), gameObjectCompPtr->getIndex()));
-                        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataDeleteComponent);
+                        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataDeleteComponent);
 
 						gameObjectCompPtr->writeXML(propertyXML, doc);
 						gameObjectPtr->deleteComponentByIndex(this->index);

@@ -128,7 +128,8 @@ Ogre::Camera* ProjectManager::createMainCamera(void)
 	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ProjectManager::createMainCamera", _1(&mainCamera),
 	{
 		// There must be a main camera which may not be deleted
-		Ogre::SceneNode * cameraNode = this->sceneManager->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_DYNAMIC);
+		Ogre::SceneNode* cameraNode = this->sceneManager->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_DYNAMIC);
+	    cameraNode->setPosition(Ogre::Vector3(0.0f, 5.0f, -2.0f));
 
 		Ogre::Item* newItem = this->sceneManager->createItem("Camera.mesh");
 		cameraNode->attachObject(newItem);
@@ -149,7 +150,7 @@ Ogre::Camera* ProjectManager::createMainCamera(void)
 			mainCamera = cameraComponentPtr->getCamera();
 			mainCamera->setName("MainCamera");
 			// Set camera a bit away from zero so that new added game objects can be seen
-			cameraComponentPtr->setCameraPosition(Ogre::Vector3(0.0f, 5.0f, -2.0f));
+			// cameraComponentPtr->setCameraPosition(Ogre::Vector3(0.0f, 5.0f, -2.0f));
 
 			NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, NOWA::WorkspacePbsComponent::getStaticClassName());
 			cameraComponentPtr->setActivated(true);
@@ -604,7 +605,7 @@ void ProjectManager::internalApplySettings(void)
 
 	// Sent event that scene has been modified
 	boost::shared_ptr<NOWA::EventDataSceneModified> eventDataSceneModified(new NOWA::EventDataSceneModified());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataSceneModified);
+	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataSceneModified);
 
 	boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGeometryModified);
@@ -754,7 +755,7 @@ bool ProjectManager::showFileOpenDialog(const Ogre::String& action, const Ogre::
 	{
 		folderMode = false;
 		boost::shared_ptr<EventDataSceneValid> eventDataSceneValid(new EventDataSceneValid(false));
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataSceneValid);
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataSceneValid);
 	}
 	else if ("" == fileMask)
 	{

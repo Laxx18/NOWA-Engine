@@ -1,4 +1,4 @@
-#include "NOWAPrecompiled.h"
+﻿#include "NOWAPrecompiled.h"
 #include "PhysicsArtifactComponent.h"
 #include "utilities/XMLConverter.h"
 #include "main/AppStateManager.h"
@@ -11,17 +11,41 @@ namespace NOWA
 
 	PhysicsArtifactComponent::PhysicsArtifactComponent()
 		: PhysicsComponent(),
+		collisionMode(COLLISION_TREE),
 		serialize(new Variant(PhysicsArtifactComponent::AttrSerialize(), false, this->attributes))
 	{
 		this->collisionType->setVisible(false);
 		this->mass->setValue(10000.0f);
 		this->mass->setDescription("Mass for physics artifact component can be used, when this component is the gravity source, else mass has no meaning and can be anything.");
+
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &PhysicsArtifactComponent::handleGameObjectChanged), NOWA::EventDataGeometryChanged::getStaticEventType());
 	}
 
 	PhysicsArtifactComponent::~PhysicsArtifactComponent()
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PhysicsArtifactComponent] Destructor physics artifact component for game object: " + this->gameObjectPtr->getName());
+        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &PhysicsArtifactComponent::handleGameObjectChanged), NOWA::EventDataGeometryChanged::getStaticEventType());
 	}
+
+	void PhysicsArtifactComponent::handleGameObjectChanged(NOWA::EventDataPtr eventData)
+    {
+        boost::shared_ptr<NOWA::EventDataGeometryChanged> castEventData = boost::static_pointer_cast<NOWA::EventDataGeometryChanged>(eventData);
+
+        // Event not for this state
+        if (this->gameObjectPtr->getId() != castEventData->getGameObjectId())
+        {
+            // Not for this game object
+            return;
+        }
+
+        if (nullptr != this->physicsBody)
+        {
+            this->destroyBody();
+            // this->destroyCollision();
+        }
+        // Must overwrite the collision file
+        this->reCreateCollision(true);
+    }
 
 	bool PhysicsArtifactComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
@@ -228,8 +252,7 @@ namespace NOWA
 				}
 				else
 				{
-					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsArtifactComponent] Error cannot create static body, because the game object has no entity/item with mesh for game object: " + this->gameObjectPtr->getName());
-					return false;
+					// Foliage type?
 				}
 			}
 		}
@@ -244,10 +267,8 @@ namespace NOWA
 
 		if (nullptr == staticCollision)
 		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsArtifactComponent] Could not create collision file for game object: "
-				+ this->gameObjectPtr->getName() + " and mesh: " + meshName + ". Maybe the mesh is corrupt.");
-			throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[PhysicsArtifactComponent] Could not create collision file for game object: "
-				+ this->gameObjectPtr->getName() + " and mesh: " + meshName + ". Maybe the mesh is corrupt.\n", "NOWA");
+            // Foliage type, it uses this component later and set compound stuff
+            staticCollision = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::Null(this->ogreNewt));
 		}
 
 		this->physicsBody = new OgreNewt::Body(this->ogreNewt, this->gameObjectPtr->getSceneManager(), staticCollision);
@@ -287,16 +308,123 @@ namespace NOWA
 				treeCollision->setFaceId(id);
 			}
 		}
-	}
+    }
+
+    bool PhysicsArtifactComponent::createCompoundBody(const std::vector<OgreNewt::CollisionPtr>& childCollisions, const Ogre::String& collisionName)
+    {
+        if (childCollisions.empty())
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsArtifactComponent] Cannot create compound: no collision shapes");
+            return false;
+        }
+
+        // Store for potential recreation
+        this->compoundChildCollisions = childCollisions;
+        this->compoundCollisionName = collisionName;
+        this->collisionMode = COLLISION_COMPOUND;
+
+        // Body already exists? Destroy it first
+        if (nullptr != this->physicsBody)
+        {
+            this->destroyBody();
+        }
+
+        this->initialPosition = this->gameObjectPtr->getSceneNode()->getPosition();
+        this->initialScale = this->gameObjectPtr->getSceneNode()->getScale();
+        this->initialOrientation = this->gameObjectPtr->getSceneNode()->getOrientation();
+
+        OgreNewt::CollisionPtr compoundCollision;
+
+        if (false == this->serialize->getBool())
+        {
+            // Create compound directly (no serialization)
+            compoundCollision = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::CompoundCollision(this->ogreNewt, childCollisions, this->gameObjectPtr->getCategoryId()));
+        }
+        else
+        {
+            // Serialize compound collision
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, childCollisions, collisionName, & compoundCollision]()
+            {
+                Ogre::String scenePath = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName();
+                compoundCollision = this->serializeCompoundCollision(scenePath, childCollisions, collisionName, this->gameObjectPtr->getCategoryId(), false);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PhysicsArtifactComponent::serializeCompoundCollision");
+        }
+
+        if (nullptr == compoundCollision)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsArtifactComponent] Failed to create compound collision");
+            return false;
+        }
+
+        // Create body
+        this->physicsBody = new OgreNewt::Body(this->ogreNewt, this->gameObjectPtr->getSceneManager(), compoundCollision);
+        NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->registerRenderCallbackForBody(this->physicsBody);
+
+        // Set mass to 0 = static
+        this->physicsBody->setMassMatrix(0.0f, Ogre::Vector3::ZERO);
+        this->physicsBody->setUserData(OgreNewt::Any(dynamic_cast<PhysicsComponent*>(this)));
+        this->physicsBody->attachNode(this->gameObjectPtr->getSceneNode());
+
+        this->setPosition(this->initialPosition);
+        this->setOrientation(this->initialOrientation);
+
+        this->physicsBody->setAutoSleep(1);
+        this->gameObjectPtr->setDynamic(false);
+        this->gameObjectPtr->getAttribute(GameObject::AttrDynamic())->setVisible(false);
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsArtifactComponent] Created compound body with " + Ogre::StringConverter::toString(childCollisions.size()) + " shapes");
+
+        return true;
+    }
 
 	void PhysicsArtifactComponent::reCreateCollision(bool overwrite)
 	{
-		Ogre::String meshName;
-		
-		if (nullptr != this->physicsBody)
-		{
-			this->destroyCollision();
-		}
+        if (COLLISION_COMPOUND == this->collisionMode)
+        {
+            // Handle compound collision recreation
+            if (this->compoundChildCollisions.empty())
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsArtifactComponent] Cannot recreate compound: no children stored");
+                return;
+            }
+
+            if (nullptr != this->physicsBody)
+            {
+                this->destroyCollision();
+            }
+
+            OgreNewt::CollisionPtr compoundCollision;
+
+            if (false == this->serialize->getBool())
+            {
+                compoundCollision = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::CompoundCollision(this->ogreNewt, this->compoundChildCollisions, this->gameObjectPtr->getCategoryId()));
+            }
+            else
+            {
+                NOWA::GraphicsModule::RenderCommand renderCommand = [this, overwrite, &compoundCollision]()
+                {
+                    Ogre::String scenePath = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName();
+                    compoundCollision = this->serializeCompoundCollision(scenePath, this->compoundChildCollisions, this->compoundCollisionName, this->gameObjectPtr->getCategoryId(), overwrite);
+                };
+                NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PhysicsArtifactComponent::recreateCompound");
+            }
+
+            if (compoundCollision)
+            {
+                this->physicsBody->setCollision(compoundCollision);
+                this->physicsBody->setMassMatrix(0.0f, Ogre::Vector3::ZERO);
+            }
+
+            return; // Exit early for compound mode
+        }
+
+        Ogre::String meshName;
+
+        if (nullptr != this->physicsBody)
+        {
+            this->destroyCollision();
+        }
 
 		// Collision for static objects
 		OgreNewt::CollisionPtr staticCollision;

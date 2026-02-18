@@ -1746,7 +1746,7 @@ namespace NOWA
 
 		virtual const char* getName(void) const
 		{
-			return "EventDataRefreshPropertiesPanel";
+			return "NOWA::EventDataRefreshGui";
 		}
 	};
 
@@ -2039,19 +2039,19 @@ namespace NOWA
 	};
 
 	//---------------------------------------------------------------------------------------------------------------------
-	// EventDataTerraChanged - This event is sent out if in terra data has changed like heightmap or blendmap
+	// EventDataGeometryChanged - This event is sent out if in game object geometry has changed (e.g. terra height map, vegetation foliage)
 	//---------------------------------------------------------------------------------------------------------------------
-	class EXPORTED EventDataTerraChanged : public BaseEventData
+	class EXPORTED EventDataGeometryChanged : public BaseEventData
 	{
 	public:
 
-		EventDataTerraChanged(void)
+		EventDataGeometryChanged(void)
 			: heightMapChanged(false),
 			blendMapChanged(false)
 		{
 		}
 
-		explicit EventDataTerraChanged(const unsigned long id, bool heightMapChanged, bool blendMapChanged)
+		explicit EventDataGeometryChanged(const unsigned long id, bool heightMapChanged, bool blendMapChanged)
 			: id(id),
 			heightMapChanged(heightMapChanged),
 			blendMapChanged(blendMapChanged)
@@ -2075,7 +2075,7 @@ namespace NOWA
 
 		virtual EventDataPtr copy(void) const
 		{
-			return EventDataPtr(new EventDataTerraChanged(this->id, this->heightMapChanged, this->blendMapChanged));
+			return EventDataPtr(new EventDataGeometryChanged(this->id, this->heightMapChanged, this->blendMapChanged));
 		}
 
 		virtual void serialize(std::ostrstream& out) const
@@ -2086,7 +2086,7 @@ namespace NOWA
 
 		virtual const char* getName(void) const
 		{
-			return "EventDataTerraChanged";
+			return "EventDataGeometryChanged";
 		}
 
 		unsigned long getGameObjectId(void) const

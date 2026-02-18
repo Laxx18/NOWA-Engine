@@ -305,7 +305,7 @@ namespace NOWA
 	private:
 		void deleteGameObjectDelegate(EventDataPtr eventData);
 		void handleUpdateBounds(EventDataPtr eventData);
-		void handleTerraChanged(EventDataPtr eventData);
+		void handleGeometryChanged(EventDataPtr eventData);
 	private:
 		Ogre::String name;
 

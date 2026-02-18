@@ -227,6 +227,17 @@ namespace NOWA
 
 		OgreNewt::CollisionPtr serializeHeightFieldCollision(const Ogre::String& scenePath, unsigned int categoryId, Ogre::Terra* terra, bool overwrite = false);
 
+		/**
+         * @brief Serializes compound collision to .ply file
+         * @param scenePath Project path for serialization
+         * @param childCollisions Vector of child collision shapes
+         * @param collisionName Name for the collision file (e.g., "FoliageCompound_123")
+         * @param categoryId Category ID for collision
+         * @param overwrite Force recreation even if file exists
+         * @return CollisionPtr to the compound collision
+         */
+        OgreNewt::CollisionPtr serializeCompoundCollision(const Ogre::String& scenePath, const std::vector<OgreNewt::CollisionPtr>& childCollisions, const Ogre::String& collisionName, unsigned int categoryId, bool overwrite = false);
+
 		OgreNewt::CollisionPtr createDynamicCollision(Ogre::Vector3& inertia, const Ogre::Vector3& collisionSize, const Ogre::Vector3& collisionPosition,
 			const Ogre::Quaternion& collisionOrientation, Ogre::Vector3& massOrigin, unsigned int categoryId);
 		

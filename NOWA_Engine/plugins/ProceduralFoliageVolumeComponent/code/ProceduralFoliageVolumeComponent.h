@@ -73,6 +73,10 @@ namespace NOWA
         unsigned int categoriesId;
         Ogre::Real clearanceDistance;
 
+        bool collisionEnabled;      // Enable physics collision
+        Ogre::Real collisionRadius; // Trunk/stem radius in meters
+        Ogre::Real collisionHeight; // Height of collision cylinder
+
         FoliageRule() :
             enabled(true),
             density(1.0f),
@@ -96,7 +100,10 @@ namespace NOWA
             useClusterLOD(false),
             categories("All"), // Default: grow everywhere
             categoriesId(GameObjectController::ALL_CATEGORIES_ID), // Default: all categories
-            clearanceDistance(0.0f) // 0 = disabled
+            clearanceDistance(0.0f), // 0 = disabled
+            collisionEnabled(false),
+            collisionRadius(0.3f), // 30cm default trunk
+            collisionHeight(2.0f) // 2m default height
         {
         }
     };
@@ -333,6 +340,14 @@ namespace NOWA
         void setRuleClearanceDistance(unsigned int index, Ogre::Real clearanceDistance);
         Ogre::Real getRuleClearanceDistance(unsigned int index) const;
 
+        void setRuleCollisionEnabled(unsigned int index, bool enabled);
+        bool getRuleCollisionEnabled(unsigned int index) const;
+        
+        void setRuleCollisionRadius(unsigned int index, Ogre::Real radius);
+        Ogre::Real getRuleCollisionRadius(unsigned int index) const;
+
+        void setRuleCollisionHeight(unsigned int index, Ogre::Real height);
+        Ogre::Real getRuleCollisionHeight(unsigned int index) const;
     public:
         static const Ogre::String AttrRegenerate(void)
         {
@@ -415,6 +430,18 @@ namespace NOWA
         {
             return "Rule Resource Group ";
         }
+        static const Ogre::String AttrRuleCollisionEnabled(void)
+        {
+            return "Rule Collision Enabled ";
+        }
+        static const Ogre::String AttrRuleCollisionRadius(void)
+        {
+            return "Rule Collision Radius ";
+        }
+        static const Ogre::String AttrRuleCollisionHeight(void)
+        {
+            return "Rule Collision Height ";
+        }
     protected:
         virtual bool executeAction(const Ogre::String& actionId, NOWA::Variant* attribute) override;
         /**
@@ -456,6 +483,8 @@ namespace NOWA
          * @brief Create Ogre Items on render thread
          */
         void createFoliageItems(std::vector<VegetationBatch>& batches);
+
+        void createFoliageCollision(void);
 
         /**
          * @brief Generate LOD for mesh (render thread)
@@ -510,6 +539,9 @@ namespace NOWA
         std::vector<Variant*> ruleLodDistances;
         std::vector<Variant*> ruleCategories;
         std::vector<Variant*> ruleClearanceDistances;
+        std::vector<Variant*> ruleCollisionEnabled;
+        std::vector<Variant*> ruleCollisionRadius;
+        std::vector<Variant*> ruleCollisionHeight;
 
         // Runtime state
         std::vector<VegetationBatch> vegetationBatches; // Render thread only after creation!
@@ -522,6 +554,7 @@ namespace NOWA
         Ogre::Real spatialHashCellSize;
         Ogre::RaySceneQuery* raySceneQuery;
         Ogre::SphereSceneQuery* sphereSceneQuery;
+        PhysicsArtifactComponent* physicsArtifactComponent;
     };
 
 }; // namespace end

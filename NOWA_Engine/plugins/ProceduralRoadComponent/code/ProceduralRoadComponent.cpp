@@ -99,18 +99,8 @@ namespace NOWA
                                             "Use this when you're finished designing the road and want optimal performance.");
         this->convertToMesh->addUserData(GameObject::AttrActionExec());
         this->convertToMesh->addUserData(GameObject::AttrActionExecId(), "ProceduralRoadComponent.ConvertToMesh");
-        this->convertToMesh->addUserData(GameObject::AttrActionNeedRefresh());
 
-       /* this->roadWidth->addUserData(GameObject::AttrActionNeedRefresh());
-        this->edgeWidth->addUserData(GameObject::AttrActionNeedRefresh());
-        this->roadStyle->addUserData(GameObject::AttrActionNeedRefresh());
-        this->heightOffset->addUserData(GameObject::AttrActionNeedRefresh());
-        this->maxGradient->addUserData(GameObject::AttrActionNeedRefresh());
-        this->smoothingFactor->addUserData(GameObject::AttrActionNeedRefresh());
-        this->centerDatablock->addUserData(GameObject::AttrActionNeedRefresh());
-        this->edgeDatablock->addUserData(GameObject::AttrActionNeedRefresh());
-        this->curbHeight->addUserData(GameObject::AttrActionNeedRefresh());
-        this->terrainSampleInterval->addUserData(GameObject::AttrActionNeedRefresh());*/
+    
     }
 
     ProceduralRoadComponent::~ProceduralRoadComponent()
@@ -715,7 +705,7 @@ namespace NOWA
             return false; // handled -> do not bubble
         }
 
-        return false; // not handled -> bubble
+        return false; // handled -> do not bubble
     }
 
     bool ProceduralRoadComponent::mouseMoved(const OIS::MouseEvent& evt)
@@ -830,7 +820,7 @@ namespace NOWA
         {
             return this->convertToMeshApply();
         }
-        return GameObjectComponent::executeAction(actionId, attribute);
+        return true;
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -1848,8 +1838,8 @@ namespace NOWA
             return false;
         }
 
-        // Generate filename based on GameObject name and ID
-        Ogre::String meshName = this->gameObjectPtr->getName() + "_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
+        // Generate filename based on GameObject ID
+        Ogre::String meshName = "Dungeon_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()) + ".mesh";
 
         // Ensure it has .mesh extension
         if (!Ogre::StringUtil::endsWith(meshName, ".mesh", true))
@@ -1883,9 +1873,6 @@ namespace NOWA
         // Store current datablocks to reapply them
         Ogre::String centerDbName = this->centerDatablock->getString();
         Ogre::String edgeDbName = this->edgeDatablock->getString();
-
-        // Store road data for potential undo (optional - you could capture this if needed)
-        std::vector<unsigned char> roadBackupData = this->getRoadData();
 
         // Store GameObject position (important!)
         Ogre::Vector3 currentPosition = this->gameObjectPtr->getPosition();
@@ -1962,9 +1949,6 @@ namespace NOWA
                 return;
             }
 
-            // Reset road pointers
-            // this->roadItem = nullptr;
-            // this->roadMesh.reset();
             this->destroyPreviewMesh();
             this->destroyRoadMesh();
 
@@ -2007,6 +1991,9 @@ namespace NOWA
         NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
 
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] Mesh export completed. Conversion scheduled in 0.5 seconds...");
+
+        boost::shared_ptr<EventDataRefreshGui> eventDataRefreshGui(new EventDataRefreshGui());
+        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshGui);
 
         return true;
     }

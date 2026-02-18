@@ -17,6 +17,7 @@ GPL v3
 #include "OgreHlmsPbs.h"
 #include "OgreItem.h"
 #include "OgreMesh2.h"
+#include "OgreMesh2Serializer.h"
 #include "OgreMeshManager2.h"
 #include "OgreRenderSystem.h"
 #include "OgreRoot.h"
@@ -43,7 +44,8 @@ namespace NOWA
           floorDatablock(new Variant(ProceduralMazeComponent::AttrFloorDatablock(), Ogre::String(""), this->attributes)),
           wallDatablock(new Variant(ProceduralMazeComponent::AttrWallDatablock(), Ogre::String(""), this->attributes)),
           ceilingDatablock(new Variant(ProceduralMazeComponent::AttrCeilingDatablock(), Ogre::String(""), this->attributes)),
-          regenerate(new Variant(ProceduralMazeComponent::AttrRegenerate(), "Generate", this->attributes))
+          regenerate(new Variant(ProceduralMazeComponent::AttrRegenerate(), "Generate", this->attributes)),
+          convertToMesh(new Variant(ProceduralMazeComponent::AttrConvertToMesh(), "Convert to Mesh", this->attributes))
     {
         this->floorDatablock->addUserData(GameObject::AttrActionFileOpenDialog(), "Models");
         this->wallDatablock->addUserData(GameObject::AttrActionFileOpenDialog(), "Models");
@@ -59,6 +61,17 @@ namespace NOWA
         this->cellSize->setConstraints(0.5f, 100.0f);
         this->wallHeight->setConstraints(0.5f, 50.0f);
         this->wallThickness->setConstraints(0.05f, 2.0f);
+
+        this->convertToMesh->setDescription("Converts this procedural maze to a static mesh file. "
+                                            "This is a ONE-WAY operation! After conversion:\n"
+                                            "- The maze mesh is exported to the Procedural resource folder\n"
+                                            "- This ProceduralMazeComponent is removed\n"
+                                            "- The GameObject will use the static mesh file\n"
+                                            "- You can no longer edit the maze procedurally\n"
+                                            "- The mesh will benefit from Ogre's graphics caching (no FPS drops)\n\n"
+                                            "Use this when you're finished designing the maze and want optimal performance.");
+        this->convertToMesh->addUserData(GameObject::AttrActionExec());
+        this->convertToMesh->addUserData(GameObject::AttrActionExecId(), "ProceduralMazeComponent.ConvertToMesh");
     }
 
     ProceduralMazeComponent::~ProceduralMazeComponent(void)
@@ -515,6 +528,11 @@ namespace NOWA
             this->regenerateMaze();
             return true;
         }
+        else if ("ProceduralMazeComponent.ConvertToMesh" == actionId)
+        {
+            return this->convertToMeshApply();
+        }
+
         return false;
     }
 
@@ -729,6 +747,215 @@ namespace NOWA
         this->randomState ^= this->randomState >> 17;
         this->randomState ^= this->randomState << 5;
         return this->randomState;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    // ConvertToMesh
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    bool ProceduralMazeComponent::convertToMeshApply(void)
+    {
+        if (!this->mazeMesh)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralMazeComponent] convertToMeshApply: no maze mesh to export.");
+            return false;
+        }
+
+        // Generate filename based on GameObject ID
+        Ogre::String meshName = "Maze_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()) + ".mesh";
+
+        // Ensure it has .mesh extension
+        if (!Ogre::StringUtil::endsWith(meshName, ".mesh", true))
+        {
+            meshName += ".mesh";
+        }
+
+        // Full path to Procedural folder
+        auto filePathNames = Core::getSingletonPtr()->getSectionPath("Procedural");
+
+        if (true == filePathNames.empty())
+        {
+            return false;
+        }
+        Ogre::String fullPath = filePathNames[0] + "/" + meshName;
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralMazeComponent] Converting procedural maze to static mesh: " + meshName);
+
+        // Step 1: Export the mesh
+        if (!this->exportMesh(fullPath))
+        {
+            return false;
+        }
+
+        // Step 2: Capture data needed for the delayed operation
+        Ogre::String capturedMeshName = meshName;
+        GameObjectPtr capturedGameObjectPtr = this->gameObjectPtr;
+        unsigned int capturedComponentIndex = this->getIndex();
+
+        // Store current datablocks to reapply them
+        Ogre::String firstDbName = this->ceilingDatablock->getString();
+        Ogre::String secondDbName = this->floorDatablock->getString();
+        Ogre::String thirdDbName = this->wallDatablock->getString();
+
+        // Store GameObject position (important!)
+        Ogre::Vector3 currentPosition = this->gameObjectPtr->getPosition();
+        Ogre::Quaternion currentOrientation = this->gameObjectPtr->getOrientation();
+        Ogre::Vector3 currentScale = this->gameObjectPtr->getScale();
+
+        // Step 3: Schedule delayed conversion
+        // We need a small delay to ensure the mesh file is fully written and available
+        NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.5f));
+
+        auto conversionFunction = [this, capturedMeshName, capturedGameObjectPtr, capturedComponentIndex, firstDbName, secondDbName, thirdDbName, currentPosition, currentOrientation, currentScale]()
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralMazeComponent] Loading converted mesh: " + capturedMeshName);
+
+            // Load the exported mesh
+            Ogre::MeshPtr loadedMesh;
+            try
+            {
+                loadedMesh = Ogre::MeshManager::getSingleton().load(capturedMeshName, "Procedural");
+            }
+            catch (Ogre::Exception& e)
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralMazeComponent] Failed to load exported mesh: " + e.getFullDescription());
+                return;
+            }
+
+            if (loadedMesh.isNull())
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralMazeComponent] Loaded mesh is null!");
+                return;
+            }
+
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralMazeComponent] Mesh loaded successfully: " + Ogre::StringConverter::toString(loadedMesh->getNumSubMeshes()) + " submeshes");
+
+            // Create new Item from the loaded mesh on render thread
+            Ogre::Item* newItem = nullptr;
+
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, capturedGameObjectPtr, loadedMesh, firstDbName, secondDbName, thirdDbName, &newItem]()
+            {
+                newItem = capturedGameObjectPtr->getSceneManager()->createItem(loadedMesh, capturedGameObjectPtr->isDynamic() ? Ogre::SCENE_DYNAMIC : Ogre::SCENE_STATIC);
+
+                // Reapply datablocks
+                if (newItem->getNumSubItems() >= 1 && !firstDbName.empty())
+                {
+                    Ogre::HlmsDatablock* centerDb = Ogre::Root::getSingleton().getHlmsManager()->getDatablockNoDefault(firstDbName);
+                    if (nullptr != centerDb)
+                    {
+                        newItem->getSubItem(0)->setDatablock(centerDb);
+                        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralMazeComponent] Applied center datablock: " + firstDbName);
+                    }
+                }
+
+                if (newItem->getNumSubItems() >= 2)
+                {
+                    Ogre::String dbToUse = secondDbName.empty() ? secondDbName : firstDbName;
+                    if (!dbToUse.empty())
+                    {
+                        Ogre::HlmsDatablock* edgeDb = Ogre::Root::getSingleton().getHlmsManager()->getDatablockNoDefault(dbToUse);
+                        if (nullptr != edgeDb)
+                        {
+                            newItem->getSubItem(1)->setDatablock(edgeDb);
+                            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralMazeComponent] Applied edge datablock: " + dbToUse);
+                        }
+                    }
+                }
+
+                if (newItem->getNumSubItems() >= 3)
+                {
+                    Ogre::String dbToUse = thirdDbName.empty() ? thirdDbName : firstDbName;
+                    if (!dbToUse.empty())
+                    {
+                        Ogre::HlmsDatablock* edgeDb = Ogre::Root::getSingleton().getHlmsManager()->getDatablockNoDefault(dbToUse);
+                        if (nullptr != edgeDb)
+                        {
+                            newItem->getSubItem(2)->setDatablock(edgeDb);
+                            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralMazeComponent] Applied edge datablock: " + dbToUse);
+                        }
+                    }
+                }
+
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralMazeComponent] Created new Item from exported mesh");
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ProceduralMazeComponent::convertToMesh_createItem");
+
+            if (nullptr == newItem)
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralMazeComponent] Failed to create Item from mesh!");
+                return;
+            }
+
+            this->destroyMazeMesh();
+
+            // Update GameObject to use the new mesh
+            // This will destroy the old procedural mesh and attach the new one
+            // Assign the new mesh to GameObject - this preserves transform automatically
+            if (false == capturedGameObjectPtr->assignMesh(newItem))
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralMazeComponent] Failed to assign mesh to GameObject!");
+                return;
+            }
+
+            // IMPORTANT: Restore the GameObject's transform
+            // The init() might have changed it, so we restore the original position
+            capturedGameObjectPtr->getSceneNode()->setPosition(currentPosition);
+            capturedGameObjectPtr->getSceneNode()->setOrientation(currentOrientation);
+            capturedGameObjectPtr->getSceneNode()->setScale(currentScale);
+
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralMazeComponent] GameObject transform restored: pos=" + Ogre::StringConverter::toString(currentPosition));
+
+            // Fire event that the component is being deleted
+            boost::shared_ptr<EventDataDeleteComponent> eventDataDeleteComponent(new EventDataDeleteComponent(capturedGameObjectPtr->getId(), "ProceduralMazeComponent", capturedComponentIndex));
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataDeleteComponent);
+
+            // Delete the ProceduralMazeComponent
+            // This must be done after the mesh is loaded and GameObject is updated
+            capturedGameObjectPtr->deleteComponentByIndex(capturedComponentIndex);
+
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralMazeComponent] ========================================");
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralMazeComponent] CONVERSION COMPLETE!");
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralMazeComponent] - ProceduralMazeComponent removed");
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralMazeComponent] - Static mesh file: " + capturedMeshName);
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralMazeComponent] - GameObject now uses cached mesh");
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralMazeComponent] IMPORTANT: SAVE YOUR SCENE to persist this change!");
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralMazeComponent] ========================================");
+        };
+
+        NOWA::ProcessPtr closureProcess(new NOWA::ClosureProcess(conversionFunction));
+        delayProcess->attachChild(closureProcess);
+        NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralMazeComponent] Mesh export completed. Conversion scheduled in 0.5 seconds...");
+
+        boost::shared_ptr<EventDataRefreshGui> eventDataRefreshGui(new EventDataRefreshGui());
+        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshGui);
+
+        return true;
+    }
+
+    bool ProceduralMazeComponent::exportMesh(const Ogre::String& filename)
+    {
+        if (!this->mazeMesh)
+        {
+            return false;
+        }
+
+        bool success = false;
+        GraphicsModule::RenderCommand cmd = [this, filename, &success]()
+        {
+            try
+            {
+                Ogre::MeshSerializer serializer(Ogre::Root::getSingletonPtr()->getRenderSystem()->getVaoManager());
+                serializer.exportMesh(this->mazeMesh.get(), filename);
+            }
+            catch (const std::exception& e)
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralMazeComponent] exportMesh exception: " + Ogre::String(e.what()));
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "ProceduralMazeComponent::exportMesh");
+        return success;
     }
 
     // ==================== MESH GENERATION ====================

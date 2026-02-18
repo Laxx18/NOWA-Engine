@@ -136,7 +136,7 @@ void DesignState::exit(void)
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleTestSelectedGameObjects), EventDataTestSelectedGameObjects::getStaticEventType());
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleMyGUIWidgetSelected), NOWA::EventDataMyGUIWidgetSelected::getStaticEventType());
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleSceneModified), NOWA::EventDataSceneModified::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleTerraChanged), NOWA::EventDataTerraChanged::getStaticEventType());
+	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleGeometryChanged), NOWA::EventDataGeometryChanged::getStaticEventType());
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleEventDataGameObjectMadeGlobal), NOWA::EventDataGameObjectMadeGlobal::getStaticEventType());
 
 	NOWA::Core::getSingletonPtr()->switchFullscreen(false, 0, 0, 0);
@@ -249,7 +249,7 @@ void DesignState::createScene(void)
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleTestSelectedGameObjects), EventDataTestSelectedGameObjects::getStaticEventType());
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleMyGUIWidgetSelected), NOWA::EventDataMyGUIWidgetSelected::getStaticEventType());
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleSceneModified), NOWA::EventDataSceneModified::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleTerraChanged), NOWA::EventDataTerraChanged::getStaticEventType());
+	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleGeometryChanged), NOWA::EventDataGeometryChanged::getStaticEventType());
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleEventDataGameObjectMadeGlobal), NOWA::EventDataGameObjectMadeGlobal::getStaticEventType());
 
 	//this->sceneManager->setAmbientLight(Ogre::ColourValue(0.3f, 0.5f, 0.7f) * 0.1f * 0.75f, Ogre::ColourValue(0.6f, 0.45f, 0.3f) * 0.065f * 0.75f, Ogre::Vector3(-1, -1, -1).normalisedCopy());
@@ -1072,13 +1072,13 @@ void DesignState::handleSceneModified(NOWA::EventDataPtr eventData)
 	});
 }
 
-void DesignState::handleTerraChanged(NOWA::EventDataPtr eventData)
+void DesignState::handleGeometryChanged(NOWA::EventDataPtr eventData)
 {
 	// Do not set changes, if undo button has pressed, because things for terra have been made back, so not changes
 	if (false == this->undoPressed)
 	{
 		this->hasSceneChanges = true;
-		ENQUEUE_RENDER_COMMAND("DesignState::handleTerraChanged",
+		ENQUEUE_RENDER_COMMAND("DesignState::handleGeometryChanged",
 		{
 			this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getProjectName() + "/" + NOWA::Core::getSingletonPtr()->getSceneName() + "*");
 		});
@@ -1765,7 +1765,7 @@ void DesignState::removeGameObjects(void)
 	{
 		this->editorManager->deleteGameObjects(gameObjectIds);
 		this->editorManager->getSelectionManager()->clearSelection();
-		boost::shared_ptr<EventDataRefreshPropertiesPanel> eventDataRefreshPropertiesPanel(new EventDataRefreshPropertiesPanel());
+		boost::shared_ptr<NOWA::EventDataRefreshGui> eventDataRefreshPropertiesPanel(new NOWA::EventDataRefreshGui());
 		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
 
 		boost::shared_ptr<EventDataRefreshResourcesPanel> eventDataRefreshResourcesPanel(new EventDataRefreshResourcesPanel());
@@ -1798,7 +1798,7 @@ void DesignState::cloneGameObjects(void)
 	}
 
 	this->editorManager->cloneGameObjects(gameObjectIds);
-	boost::shared_ptr<EventDataRefreshPropertiesPanel> eventDataRefreshPropertiesPanel(new EventDataRefreshPropertiesPanel());
+	boost::shared_ptr<NOWA::EventDataRefreshGui> eventDataRefreshPropertiesPanel(new NOWA::EventDataRefreshGui());
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
 }
 

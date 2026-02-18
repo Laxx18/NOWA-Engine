@@ -613,7 +613,7 @@ namespace NOWA
 	}
 
 	void PhysicsActiveComponent::reCreateCollision(bool overwrite)
-	{
+ 	{
 		if (nullptr == this->physicsBody)
 			return;
 
@@ -628,12 +628,12 @@ namespace NOWA
 
 		Ogre::Vector3 calculatedMassOrigin = Ogre::Vector3::ZERO;
 
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsComponent::createDynamicCollision", _3(&inertia, collisionOrientation, &calculatedMassOrigin),
-		{
-			// Set the new collision hull
-			this->physicsBody->setCollision(this->createDynamicCollision(inertia, this->collisionSize->getVector3(), this->collisionPosition->getVector3(),
-				collisionOrientation, calculatedMassOrigin, this->gameObjectPtr->getCategoryId()));
-		});
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this, &inertia, collisionOrientation, &calculatedMassOrigin]()
+        {
+            // Set the new collision hull
+            this->physicsBody->setCollision(this->createDynamicCollision(inertia, this->collisionSize->getVector3(), this->collisionPosition->getVector3(), collisionOrientation, calculatedMassOrigin, this->gameObjectPtr->getCategoryId()));
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PhysicsActiveComponent::reCreateCollision");
 
 		if (Ogre::Vector3::ZERO != this->massOrigin->getVector3())
 		{

@@ -541,7 +541,7 @@ void MainMenuBar::setVisible(bool visible)
 void MainMenuBar::callNewProject(void)
 {
 	boost::shared_ptr<EventDataSceneValid> eventDataSceneInvalid(new EventDataSceneValid(false));
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataSceneInvalid);
+	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataSceneInvalid);
 
 	this->configPanel->callForSettings(false);
 	this->configPanel->setVisible(true);
@@ -695,7 +695,7 @@ void MainMenuBar::notifyPopupMenuAccept(MyGUI::MenuControl* sender, MyGUI::MenuI
 		{
 			this->projectManager->getEditorManager()->undo();
 
-			boost::shared_ptr<EventDataRefreshPropertiesPanel> eventDataRefreshPropertiesPanel(new EventDataRefreshPropertiesPanel());
+			boost::shared_ptr<NOWA::EventDataRefreshGui> eventDataRefreshPropertiesPanel(new NOWA::EventDataRefreshGui());
 			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
 
 			boost::shared_ptr<EventDataRefreshResourcesPanel> eventDataRefreshResourcesPanel(new EventDataRefreshResourcesPanel());
@@ -706,7 +706,7 @@ void MainMenuBar::notifyPopupMenuAccept(MyGUI::MenuControl* sender, MyGUI::MenuI
 		{
 			this->projectManager->getEditorManager()->redo();
 
-			boost::shared_ptr<EventDataRefreshPropertiesPanel> eventDataRefreshPropertiesPanel(new EventDataRefreshPropertiesPanel());
+			boost::shared_ptr<NOWA::EventDataRefreshGui> eventDataRefreshPropertiesPanel(new NOWA::EventDataRefreshGui());
 			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
 
 			boost::shared_ptr<EventDataRefreshResourcesPanel> eventDataRefreshResourcesPanel(new EventDataRefreshResourcesPanel());
