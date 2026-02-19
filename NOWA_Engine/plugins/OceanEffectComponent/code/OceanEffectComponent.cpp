@@ -822,7 +822,7 @@ namespace NOWA
 
 	// Lua registration part
 
-	OceanEffectComponent* getOceanEffectComponent(GameObject* gameObject, unsigned int occurrenceIndex)
+	OceanEffectComponent* getOceanEffectComponentFromIndex(GameObject* gameObject, unsigned int occurrenceIndex)
 	{
 		return makeStrongPtr<OceanEffectComponent>(gameObject->getComponentWithOccurrence<OceanEffectComponent>(occurrenceIndex)).get();
 	}

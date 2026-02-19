@@ -111,13 +111,10 @@ namespace NOWA
             const bool isStalled = appStateManager->bStall.load();
             const bool isSceneLoading = (gameProgressModule != nullptr) ? gameProgressModule->bSceneLoading.load() : false;
 
-            if (!isStalled && !isSceneLoading)
+            if (false == isStalled && false == isSceneLoading)
             {
                 NOWA::InputDeviceCore::getSingletonPtr()->capture(deltaTime);
-            }
 
-            if (!isStalled && !isSceneLoading)
-            {
                 this->advanceFrameAndDestroyOld();
                 this->processAllCommands();
 
@@ -140,10 +137,22 @@ namespace NOWA
             else
             {
                 this->clearAllClosures();
+                this->trackedNodes.clear();
+                this->trackedCameras.clear();
+                this->trackedOldBones.clear();
+                this->trackedBones.clear();
+                this->trackedPasses.clear();
+                this->trackedDatablocks.clear();
+                this->currentTransformNodeIdx = 0;
+                this->currentTransformCameraIdx = 0;
+                this->currentTransformOldBoneIdx = 0;
+                this->currentTransformBoneIdx = 0;
+                this->currentTransformPassIdx = 0;
+                this->currentTrackedDatablockIdx = 0;
             }
 
             // isWorkspaceTransitioning causes freeze with two cameras and pressing play! -> see quat/scene1
-            if (false == isStalled && false == this->isWorkspaceTransitioning())
+            if (false == isStalled && false == this->isWorkspaceTransitioning() && false == isSceneLoading)
             {
                 Ogre::Root::getSingletonPtr()->renderOneFrame();
             }
@@ -2120,15 +2129,17 @@ namespace NOWA
                 Ogre::Vector3 interpScale = Ogre::Math::lerp(prevTransform.scale, currTransform.scale, this->interpolationWeight);
 
                 // Apply to scene node
-                if (false == nodeTransform.useDerived)
+                if (!nodeTransform.useDerived)
                 {
-                    nodeTransform.node->setOrientation(currTransform.orientation);
                     nodeTransform.node->setPosition(interpPos);
+                    nodeTransform.node->setOrientation(interpRot);
+                    nodeTransform.node->setScale(interpScale);
                 }
                 else
                 {
-                    nodeTransform.node->_setDerivedOrientation(interpRot);
                     nodeTransform.node->_setDerivedPosition(interpPos);
+                    nodeTransform.node->_setDerivedOrientation(interpRot);
+                    // Scale only on non-derived path, derived nodes inherit scale from hierarchy
                 }
 
                 nodeTransform.node->setScale(interpScale);

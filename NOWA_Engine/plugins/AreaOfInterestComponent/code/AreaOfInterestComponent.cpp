@@ -622,7 +622,7 @@ namespace NOWA
 
 	// Lua registration part
 
-	AreaOfInterestComponent* getAreaOfInterestComponent(GameObject* gameObject, unsigned int occurrenceIndex)
+	AreaOfInterestComponent* getAreaOfInterestComponentFromIndex(GameObject* gameObject, unsigned int occurrenceIndex)
 	{
 		return makeStrongPtr<AreaOfInterestComponent>(gameObject->getComponentWithOccurrence<AreaOfInterestComponent>(occurrenceIndex)).get();
 	}
@@ -637,7 +637,7 @@ namespace NOWA
 		return makeStrongPtr<AreaOfInterestComponent>(gameObject->getComponentFromName<AreaOfInterestComponent>(name)).get();
 	}
 
-	void AreaOfInterestComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObject, class_<GameObjectController>& gameObjectController)
+	void AreaOfInterestComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectController)
 	{
 		module(lua)
 		[
@@ -661,9 +661,9 @@ namespace NOWA
 		LuaScriptApi::getInstance()->addClassToCollection("AreaOfInterestComponent", "void reactOnLeave(func closure, otherGameObject)",
 							 "Sets whether to react at the moment when a game object leaves the area. Always check if the game object does exist. It may also be null.");
 
-		gameObject.def("getAreaOfInterestComponent", (AreaOfInterestComponent * (*)(GameObject*)) & getAreaOfInterestComponent);
-		gameObject.def("getAreaOfInterestComponentFromIndex", (AreaOfInterestComponent * (*)(GameObject*, unsigned int)) & getAreaOfInterestComponent);
-		gameObject.def("getAreaOfInterestComponentFromName", &getAreaOfInterestComponentFromName);
+		gameObjectClass.def("getAreaOfInterestComponent", (AreaOfInterestComponent * (*)(GameObject*)) & getAreaOfInterestComponent);
+        gameObjectClass.def("getAreaOfInterestComponentFromIndex", (AreaOfInterestComponent * (*)(GameObject*, unsigned int)) & getAreaOfInterestComponentFromIndex);
+        gameObjectClass.def("getAreaOfInterestComponentFromName", &getAreaOfInterestComponentFromName);
 
 		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "AreaOfInterestComponent getAreaOfInterestComponentFromIndex(unsigned int occurrenceIndex)", "Gets the area of interest component by the given occurence index, since a game object may have besides other components several area of interest components.");
 		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "AreaOfInterestComponent getAreaOfInterestComponent()", "Gets the area of interest component. This can be used if the game object just has one area of interest component.");

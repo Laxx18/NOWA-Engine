@@ -28,7 +28,7 @@ namespace NOWA
 		this->uniqueId = NOWA::makeUniqueID();
 
 		this->skeleton = this->item->getSkeletonInstance();
-		if (nullptr != this->skeleton)
+		if (nullptr == this->skeleton)
 		{
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[Animation BlenderV2] Cannot initialize animation blender, because the skeleton resource for item: "
 															+ item->getName() + " is missing!");

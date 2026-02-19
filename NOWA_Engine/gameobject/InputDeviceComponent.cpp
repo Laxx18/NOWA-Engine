@@ -207,7 +207,7 @@ namespace NOWA
 			this->getActualizedDeviceList();
 
 			boost::shared_ptr<EventDataInputDeviceOccupied> eventDataInputDeviceOccupied(new EventDataInputDeviceOccupied(gameObjectPtr->getId(), activated, this->deviceName->getListSelectedValue()));
-			AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataInputDeviceOccupied);
+			AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataInputDeviceOccupied);
 		}
 	}
 
@@ -252,7 +252,7 @@ namespace NOWA
 		this->bValidDevice = false;
 
 		boost::shared_ptr<EventDataInputDeviceOccupied> eventDataInputDeviceOccupied(new EventDataInputDeviceOccupied(gameObjectPtr->getId(), activated, this->deviceName->getListSelectedValue()));
-		AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataInputDeviceOccupied);
+		AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataInputDeviceOccupied);
 
 		Ogre::String oldDeviceName = this->deviceName->getListSelectedOldValue();
 		bool valid = oldDeviceName != "Choose Device" && oldDeviceName != "No Device Available" && oldDeviceName != "";

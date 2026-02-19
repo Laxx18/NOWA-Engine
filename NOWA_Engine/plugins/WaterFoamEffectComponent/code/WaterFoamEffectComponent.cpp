@@ -530,7 +530,7 @@ namespace NOWA
 
 	// Lua registration part
 
-	WaterFoamEffectComponent* getWaterFoamEffectComponent(GameObject* gameObject, unsigned int occurrenceIndex)
+	WaterFoamEffectComponent* getWaterFoamEffectComponentFromIndex(GameObject* gameObject, unsigned int occurrenceIndex)
 	{
 		return makeStrongPtr<WaterFoamEffectComponent>(gameObject->getComponentWithOccurrence<WaterFoamEffectComponent>(occurrenceIndex)).get();
 	}
@@ -562,7 +562,7 @@ namespace NOWA
 		gameObjectClass.def("getWaterFoamEffectComponentFromName", &getWaterFoamEffectComponentFromName);
 		gameObjectClass.def("getWaterFoamEffectComponent", (WaterFoamEffectComponent * (*)(GameObject*)) & getWaterFoamEffectComponent);
 		// If its desired to create several of this components for one game object
-		gameObjectClass.def("getWaterFoamEffectComponentFromIndex", (WaterFoamEffectComponent * (*)(GameObject*, unsigned int)) & getWaterFoamEffectComponent);
+		gameObjectClass.def("getWaterFoamEffectComponentFromIndex", (WaterFoamEffectComponent * (*)(GameObject*, unsigned int)) & getWaterFoamEffectComponentFromIndex);
 
 		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "WaterFoamEffectComponent getWaterFoamEffectComponentFromIndex(unsigned int occurrenceIndex)", "Gets the component by the given occurence index, since a game object may this component maybe several times.");
 		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "WaterFoamEffectComponent getWaterFoamEffectComponent()", "Gets the component. This can be used if the game object this component just once.");

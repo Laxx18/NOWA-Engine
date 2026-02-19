@@ -81,8 +81,8 @@ namespace OgreNewt
 		ndJointSpherical* joint = new ndJointSpherical(pivot, b0, b1);
 
 		// This is key: prefer the iterative soft model for stability, else whole simulation can become unstable!
-		// joint->SetSolverModel(m_jointIterativeSoft);
-		joint->SetSolverModel(m_jointkinematicOpenLoop);
+		joint->SetSolverModel(m_jointIterativeSoft);
+		// joint->SetSolverModel(m_jointkinematicOpenLoop);
 		
 		SetSupportJoint(child->getWorld(), joint);
 	}
@@ -1749,7 +1749,7 @@ namespace OgreNewt
 				q, Ogre::Vector3(anchorPosition.m_x, anchorPosition.m_y, anchorPosition.m_z), globalFrame);
 
 			CalculateLocalMatrix(globalFrame, m_localMatrix0, m_localMatrix1);
-			SetSolverModel(ndJointBilateralSolverModel::m_jointkinematicAttachment);
+			SetSolverModel(ndJointBilateralSolverModel::m_jointIterativeSoft);
 		}
 
 		void UpdateParameters() override
@@ -2918,7 +2918,7 @@ namespace OgreNewt
 			}
 
 			// Same solver mode as ndJointGear (stable)
-			SetSolverModel(ndJointBilateralSolverModel::m_jointkinematicOpenLoop);
+			SetSolverModel(ndJointBilateralSolverModel::m_jointIterativeSoft);
 		}
 
 		void UpdateParameters() override
@@ -3007,7 +3007,7 @@ namespace OgreNewt
 			}
 
 			// Use kinematic open loop (matches ndJointGear default)
-			SetSolverModel(ndJointBilateralSolverModel::m_jointkinematicOpenLoop);
+			SetSolverModel(ndJointBilateralSolverModel::m_jointIterativeSoft);
 		}
 
 		void UpdateParameters() override

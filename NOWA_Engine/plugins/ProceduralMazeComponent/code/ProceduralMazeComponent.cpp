@@ -294,69 +294,82 @@ namespace NOWA
     {
         GameObjectComponent::writeXML(propertiesXML, doc);
 
-        xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
+        xml_node<>* propertyXML = nullptr;
+
+        // Num Columns
+        propertyXML = doc.allocate_node(node_element, "property");
         propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
-        propertyXML->append_attribute(doc.allocate_attribute("name", "Num Columns"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralMazeComponent::AttrNumColumns())));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->numColumns->getInt())));
         propertiesXML->append_node(propertyXML);
 
+        // Num Rows
         propertyXML = doc.allocate_node(node_element, "property");
         propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
-        propertyXML->append_attribute(doc.allocate_attribute("name", "Num Rows"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralMazeComponent::AttrNumRows())));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->numRows->getInt())));
         propertiesXML->append_node(propertyXML);
 
+        // Seed
         propertyXML = doc.allocate_node(node_element, "property");
         propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
-        propertyXML->append_attribute(doc.allocate_attribute("name", "Seed"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralMazeComponent::AttrSeed())));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->seed->getUInt())));
         propertiesXML->append_node(propertyXML);
 
+        // Cell Size
         propertyXML = doc.allocate_node(node_element, "property");
         propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-        propertyXML->append_attribute(doc.allocate_attribute("name", "Cell Size"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralMazeComponent::AttrCellSize())));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->cellSize->getReal())));
         propertiesXML->append_node(propertyXML);
 
+        // Wall Height
         propertyXML = doc.allocate_node(node_element, "property");
         propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-        propertyXML->append_attribute(doc.allocate_attribute("name", "Wall Height"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralMazeComponent::AttrWallHeight())));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->wallHeight->getReal())));
         propertiesXML->append_node(propertyXML);
 
+        // Wall Thickness
         propertyXML = doc.allocate_node(node_element, "property");
         propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-        propertyXML->append_attribute(doc.allocate_attribute("name", "Wall Thickness"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralMazeComponent::AttrWallThickness())));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->wallThickness->getReal())));
         propertiesXML->append_node(propertyXML);
 
+        // Create Floor
         propertyXML = doc.allocate_node(node_element, "property");
         propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
-        propertyXML->append_attribute(doc.allocate_attribute("name", "Create Floor"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralMazeComponent::AttrCreateFloor())));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->createFloor->getBool())));
         propertiesXML->append_node(propertyXML);
 
+        // Create Ceiling
         propertyXML = doc.allocate_node(node_element, "property");
         propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
-        propertyXML->append_attribute(doc.allocate_attribute("name", "Create Ceiling"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralMazeComponent::AttrCreateCeiling())));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->createCeiling->getBool())));
         propertiesXML->append_node(propertyXML);
 
+        // Floor Datablock
         propertyXML = doc.allocate_node(node_element, "property");
         propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-        propertyXML->append_attribute(doc.allocate_attribute("name", "Floor Datablock"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralMazeComponent::AttrFloorDatablock())));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->floorDatablock->getString())));
         propertiesXML->append_node(propertyXML);
 
+        // Wall Datablock
         propertyXML = doc.allocate_node(node_element, "property");
         propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-        propertyXML->append_attribute(doc.allocate_attribute("name", "Wall Datablock"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralMazeComponent::AttrWallDatablock())));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->wallDatablock->getString())));
         propertiesXML->append_node(propertyXML);
 
+        // Ceiling Datablock
         propertyXML = doc.allocate_node(node_element, "property");
         propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-        propertyXML->append_attribute(doc.allocate_attribute("name", "Ceiling Datablock"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralMazeComponent::AttrCeilingDatablock())));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->ceilingDatablock->getString())));
         propertiesXML->append_node(propertyXML);
     }
@@ -1541,7 +1554,7 @@ namespace NOWA
 
     // ==================== LUA API ====================
 
-    ProceduralMazeComponent* getProceduralMazeComponent(GameObject* gameObject, unsigned int occurrenceIndex)
+    ProceduralMazeComponent* getProceduralMazeComponentFromIndex(GameObject* gameObject, unsigned int occurrenceIndex)
     {
         return makeStrongPtr<ProceduralMazeComponent>(gameObject->getComponentWithOccurrence<ProceduralMazeComponent>(occurrenceIndex)).get();
     }
@@ -1604,7 +1617,7 @@ namespace NOWA
 
         gameObjectClass.def("getProceduralMazeComponentFromName", &getProceduralMazeComponentFromName);
         gameObjectClass.def("getProceduralMazeComponent", (ProceduralMazeComponent * (*)(GameObject*)) & getProceduralMazeComponent);
-        gameObjectClass.def("getProceduralMazeComponentFromIndex", (ProceduralMazeComponent * (*)(GameObject*, unsigned int)) & getProceduralMazeComponent);
+        gameObjectClass.def("getProceduralMazeComponentFromIndex", (ProceduralMazeComponent * (*)(GameObject*, unsigned int)) & getProceduralMazeComponentFromIndex);
 
         LuaScriptApi::getInstance()->addClassToCollection("GameObject", "ProceduralMazeComponent getProceduralMazeComponent()", "Gets the component.");
         LuaScriptApi::getInstance()->addClassToCollection("GameObject", "ProceduralMazeComponent getProceduralMazeComponentFromIndex(unsigned int occurrenceIndex)", "Gets the component by occurrence index.");

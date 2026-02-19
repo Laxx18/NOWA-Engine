@@ -1127,7 +1127,7 @@ namespace NOWA
 
 	// Lua registration part
 
-	HdrEffectComponent* getHdrEffectComponent(GameObject* gameObject, unsigned int occurrenceIndex)
+	HdrEffectComponent* getHdrEffectComponentFromIndex(GameObject* gameObject, unsigned int occurrenceIndex)
 	{
 		return makeStrongPtr<HdrEffectComponent>(gameObject->getComponentWithOccurrence<HdrEffectComponent>(occurrenceIndex)).get();
 	}

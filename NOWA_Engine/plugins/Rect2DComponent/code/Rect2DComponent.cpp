@@ -291,7 +291,7 @@ namespace NOWA
 
 	// Lua registration part
 
-	Rect2DComponent* getRect2DComponent(GameObject* gameObject, unsigned int occurrenceIndex)
+	Rect2DComponent* getRect2DComponentFromIndex(GameObject* gameObject, unsigned int occurrenceIndex)
 	{
 		return makeStrongPtr<Rect2DComponent>(gameObject->getComponentWithOccurrence<Rect2DComponent>(occurrenceIndex)).get();
 	}
@@ -322,7 +322,7 @@ namespace NOWA
 		gameObjectClass.def("getRect2DComponentFromName", &getRect2DComponentFromName);
 		gameObjectClass.def("getRect2DComponent", (Rect2DComponent * (*)(GameObject*)) & getRect2DComponent);
 		// If its desired to create several of this components for one game object
-		gameObjectClass.def("getRect2DComponentFromIndex", (Rect2DComponent * (*)(GameObject*, unsigned int)) & getRect2DComponent);
+		gameObjectClass.def("getRect2DComponentFromIndex", (Rect2DComponent * (*)(GameObject*, unsigned int)) & getRect2DComponentFromIndex);
 
 		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "Rect2DComponent getRect2DComponentFromIndex(unsigned int occurrenceIndex)", "Gets the component by the given occurence index, since a game object may this component maybe several times.");
 		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "Rect2DComponent getRect2DComponent()", "Gets the component. This can be used if the game object this component just once.");

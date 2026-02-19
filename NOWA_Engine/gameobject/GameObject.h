@@ -63,7 +63,8 @@ namespace NOWA
 			SIMPLE_RENDERABLE,
 			MAZE,
 			WALL,
-			ROAD
+			ROAD,
+			DUNGEON
 		};
 
 		friend class GameObjectController;

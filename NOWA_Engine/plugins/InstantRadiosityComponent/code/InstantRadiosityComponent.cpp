@@ -945,7 +945,7 @@ namespace NOWA
 
 	// Lua registration
 
-	InstantRadiosityComponent* getInstantRadiosityComponent(GameObject* gameObject, unsigned int occurrenceIndex)
+	InstantRadiosityComponent* getInstantRadiosityComponentFromIndex(GameObject* gameObject, unsigned int occurrenceIndex)
 	{
 		return makeStrongPtr<InstantRadiosityComponent>(gameObject->getComponentWithOccurrence<InstantRadiosityComponent>(occurrenceIndex)).get();
 	}

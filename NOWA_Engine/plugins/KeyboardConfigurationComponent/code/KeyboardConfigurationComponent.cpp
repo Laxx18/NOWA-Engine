@@ -662,7 +662,7 @@ namespace NOWA
 
 	// Lua registration part
 
-	KeyboardConfigurationComponent* getKeyboardConfigurationComponent(GameObject* gameObject, unsigned int occurrenceIndex)
+	KeyboardConfigurationComponent* getKeyboardConfigurationComponentFromIndex(GameObject* gameObject, unsigned int occurrenceIndex)
 	{
 		return makeStrongPtr<KeyboardConfigurationComponent>(gameObject->getComponentWithOccurrence<KeyboardConfigurationComponent>(occurrenceIndex)).get();
 	}

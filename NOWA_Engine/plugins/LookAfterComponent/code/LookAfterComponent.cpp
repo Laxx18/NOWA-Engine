@@ -613,7 +613,7 @@ namespace NOWA
 
 	// Lua registration part
 
-	LookAfterComponent* getLookAfterComponent(GameObject* gameObject, unsigned int occurrenceIndex)
+	LookAfterComponent* getLookAfterComponentFromIndex(GameObject* gameObject, unsigned int occurrenceIndex)
 	{
 		return makeStrongPtr<LookAfterComponent>(gameObject->getComponentWithOccurrence<LookAfterComponent>(occurrenceIndex)).get();
 	}

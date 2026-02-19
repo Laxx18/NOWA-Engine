@@ -561,7 +561,7 @@ namespace NOWA
 
 	// Lua registration part
 
-	FollowTargetComponent* getFollowTargetComponent(GameObject* gameObject, unsigned int occurrenceIndex)
+	FollowTargetComponent* getFollowTargetComponentFromIndex(GameObject* gameObject, unsigned int occurrenceIndex)
 	{
 		return makeStrongPtr<FollowTargetComponent>(gameObject->getComponentWithOccurrence<FollowTargetComponent>(occurrenceIndex)).get();
 	}
@@ -621,7 +621,7 @@ namespace NOWA
 		gameObjectClass.def("getFollowTargetComponentFromName", &getFollowTargetComponentFromName);
 		gameObjectClass.def("getFollowTargetComponent", (FollowTargetComponent * (*)(GameObject*)) & getFollowTargetComponent);
 		// If its desired to create several of this components for one game object
-		gameObjectClass.def("getFollowTargetComponentFromIndex", (FollowTargetComponent * (*)(GameObject*, unsigned int)) & getFollowTargetComponent);
+		gameObjectClass.def("getFollowTargetComponentFromIndex", (FollowTargetComponent * (*)(GameObject*, unsigned int)) & getFollowTargetComponentFromIndex);
 
 		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "FollowTargetComponent getFollowTargetComponentFromIndex(unsigned int occurrenceIndex)", "Gets the component by the given occurence index, since a game object may this component maybe several times.");
 		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "FollowTargetComponent getFollowTargetComponent()", "Gets the component. This can be used if the game object this component just once.");

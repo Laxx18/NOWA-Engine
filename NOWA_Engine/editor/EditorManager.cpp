@@ -481,8 +481,8 @@ namespace NOWA
 				Ogre::String meshName;
 				Ogre::MovableObject* newMovableObject = nullptr;
 
-				if (GameObject::OCEAN != this->type && GameObject::TERRA != this->type && GameObject::DECAL != this->type
-					&& GameObject::LIGHT_AREA != this->type && GameObject::MAZE != this->type && GameObject::WALL != this->type && GameObject::ROAD != this->type)
+				if (GameObject::OCEAN != this->type && GameObject::TERRA != this->type && GameObject::DECAL != this->type && GameObject::LIGHT_AREA != this->type && GameObject::MAZE != this->type && GameObject::WALL != this->type &&
+                    GameObject::ROAD != this->type && GameObject::DUNGEON != this->type)
 				{
 					meshName = this->meshData[0];
 
@@ -536,14 +536,16 @@ namespace NOWA
 						meshName = "Wall";
 					else if (GameObject::ROAD == this->type)
 						meshName = "Road";
+                    else if (GameObject::DUNGEON == this->type)
+                        meshName = "Dungeon";
 				}
 
 				// Do not use # anymore, because its reserved in mygui as code-word the # and everything after that will be removed!
 				Ogre::String gameObjectName = meshName + "_0";
 				AppStateManager::getSingletonPtr()->getGameObjectController()->getValidatedGameObjectName(gameObjectName);
 
-				if (GameObject::OCEAN != this->type && GameObject::TERRA != this->type && GameObject::DECAL != this->type
-					&& GameObject::LIGHT_AREA != this->type && GameObject::MAZE != this->type && GameObject::WALL != this->type && GameObject::ROAD != this->type)
+				if (GameObject::OCEAN != this->type && GameObject::TERRA != this->type && GameObject::DECAL != this->type && GameObject::LIGHT_AREA != this->type && GameObject::MAZE != this->type && GameObject::WALL != this->type &&
+                    GameObject::ROAD != this->type && GameObject::DUNGEON != this->type)
 				{
 					newMovableObject->setName(gameObjectName);
 				}
@@ -681,6 +683,17 @@ namespace NOWA
 							this->editorManager->setManipulationMode(EditorManager::EDITOR_MESH_MODIFY_MODE);
 						}
 					}
+                    else if (GameObject::DUNGEON == this->type)
+                    {
+                        if (GameObjectFactory::getInstance()->getComponentFactory()->hasComponent("ProceduralDungeonComponent"))
+                        {
+                            NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, "ProceduralDungeonComponent", true);
+                            gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
+
+                            this->editorManager->currentPlaceType = GameObject::eType::NONE;
+                            this->editorManager->setManipulationMode(EditorManager::EDITOR_MESH_MODIFY_MODE);
+                        }
+                    }
 				}
 			};
 			NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "AddGameObjectUndoCommand::redo");
@@ -3062,6 +3075,10 @@ namespace NOWA
 		{
 			this->attachMeshToPlaceNode("Node.mesh", type);
 		}
+        else if (GameObject::DUNGEON == type)
+        {
+            this->attachMeshToPlaceNode("Node.mesh", type);
+        }
 		
 		boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(this->manipulationMode));
 		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataEditorMode);

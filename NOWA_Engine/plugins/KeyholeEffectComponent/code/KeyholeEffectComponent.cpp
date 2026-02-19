@@ -499,7 +499,7 @@ namespace NOWA
 
 	// Lua registration part
 
-	KeyholeEffectComponent* getKeyholeEffectComponent(GameObject* gameObject, unsigned int occurrenceIndex)
+	KeyholeEffectComponent* getKeyholeEffectComponentFromIndex(GameObject* gameObject, unsigned int occurrenceIndex)
 	{
 		return makeStrongPtr<KeyholeEffectComponent>(gameObject->getComponentWithOccurrence<KeyholeEffectComponent>(occurrenceIndex)).get();
 	}
@@ -530,7 +530,7 @@ namespace NOWA
 		gameObjectClass.def("getKeyholeEffectComponentFromName", &getKeyholeEffectComponentFromName);
 		gameObjectClass.def("getKeyholeEffectComponent", (KeyholeEffectComponent * (*)(GameObject*)) & getKeyholeEffectComponent);
 		// If its desired to create several of this components for one game object
-		gameObjectClass.def("getKeyholeEffectComponentFromIndex", (KeyholeEffectComponent * (*)(GameObject*, unsigned int)) & getKeyholeEffectComponent);
+		gameObjectClass.def("getKeyholeEffectComponentFromIndex", (KeyholeEffectComponent * (*)(GameObject*, unsigned int)) & getKeyholeEffectComponentFromIndex);
 
 		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "KeyholeEffectComponent getKeyholeEffectComponentFromIndex(unsigned int occurrenceIndex)", "Gets the component by the given occurence index, since a game object may this component maybe several times.");
 		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "KeyholeEffectComponent getKeyholeEffectComponent()", "Gets the component. This can be used if the game object this component just once.");

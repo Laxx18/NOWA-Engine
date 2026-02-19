@@ -406,6 +406,8 @@ namespace NOWA
 
 		Ogre::String getGravitySourceCategory(void) const;
 
+		void reCreateDynamicBodyForItem(Ogre::Item* item);
+
 		/*void setDefaultPoseName(const Ogre::String& defaultPoseName);
 
 		const Ogre::String getDefaultPoseName(void) const;*/

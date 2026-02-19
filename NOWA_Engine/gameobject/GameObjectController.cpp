@@ -854,13 +854,27 @@ void GameObjectController::registerGameObject(GameObjectPtr gameObjectPtr)
 
 const OgreNewt::MaterialID* GameObjectController::getMaterialID(GameObject* gameObject, OgreNewt::World* ogreNewt)
 {
-    // if its the default category get the world default category, which can be used for everything
-    /*if ("Default" == gameObjectPtr->getCategory())
-    {
-        return ogreNewt->getDefaultMaterialID();
-    }*/
-    std::map<Ogre::String, OgreNewt::MaterialID*>::const_iterator& it = this->materialIDMap.find(gameObject->getCategory());
+    Ogre::String name = gameObject->getName();
+    Ogre::String category = gameObject->getCategory();
     OgreNewt::MaterialID* pMaterialID;
+    // if its the default category get the world default category, which can be used for everything
+    if ("Default" == gameObject->getCategory())
+    {
+        std::map<Ogre::String, OgreNewt::MaterialID*>::const_iterator& it = this->materialIDMap.find(category);
+        if (it == this->materialIDMap.end())
+        {
+            pMaterialID = const_cast<OgreNewt::MaterialID*>(ogreNewt->getDefaultMaterialID());
+            this->materialIDMap.insert(std::make_pair(gameObject->getCategory(), pMaterialID));
+        }
+        else
+        {
+            pMaterialID = this->materialIDMap.find(gameObject->getCategory())->second;
+        }
+        return pMaterialID;
+    }
+
+    std::map<Ogre::String, OgreNewt::MaterialID*>::const_iterator& it = this->materialIDMap.find(category);
+   
     // if the type is not in the map, then its a new type, add a new material ID for collision
     if (it == this->materialIDMap.end())
     {

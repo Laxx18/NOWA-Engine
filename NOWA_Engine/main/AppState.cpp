@@ -240,8 +240,8 @@ namespace NOWA
 
 		if (nullptr == this->gameObjectController)
 		{
-			ENQUEUE_RENDER_COMMAND_WAIT("AppState::initializeModules new",
-			{
+			// ENQUEUE_RENDER_COMMAND_WAIT("AppState::initializeModules new",
+			// {
 				this->gameObjectController = new GameObjectController(this->appStateName);
 				this->gameProgressModule = new GameProgressModule(this->appStateName);
 				this->rakNetModule = new RakNetModule(this->appStateName);
@@ -254,7 +254,7 @@ namespace NOWA
 				this->luaScriptModule = new LuaScriptModule(this->appStateName);
 				this->eventManager = new EventManager(this->appStateName);
 				this->scriptEventManager = new ScriptEventManager(this->appStateName);
-			});
+			// });
 		}
 
 		if (true == initSceneManager)

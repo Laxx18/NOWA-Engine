@@ -240,7 +240,7 @@ namespace NOWA
 
 	// Lua registration part
 
-	LightAreaOfInterestComponent* getLightAreaOfInterestComponent(GameObject* gameObject, unsigned int occurrenceIndex)
+	LightAreaOfInterestComponent* getLightAreaOfInterestComponentFromIndex(GameObject* gameObject, unsigned int occurrenceIndex)
 	{
 		return makeStrongPtr<LightAreaOfInterestComponent>(gameObject->getComponentWithOccurrence<LightAreaOfInterestComponent>(occurrenceIndex)).get();
 	}

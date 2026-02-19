@@ -52,14 +52,18 @@ namespace NOWA
         pendingUpload(false),
         canModify(false),
         physicsActiveComponent(nullptr),
+        currentDamage(0.0f),
         activated(new Variant(MeshModifyComponent::AttrActivated(), true, this->attributes)),
         brushName(new Variant(MeshModifyComponent::AttrBrushName(), this->attributes)),
         brushSize(new Variant(MeshModifyComponent::AttrBrushSize(), 1.0f, this->attributes)),
         brushIntensity(new Variant(MeshModifyComponent::AttrBrushIntensity(), 0.1f, this->attributes)),
         brushFalloff(new Variant(MeshModifyComponent::AttrBrushFalloff(), 2.0f, this->attributes)),
         brushMode(new Variant(MeshModifyComponent::AttrBrushMode(), Ogre::String("Push"), this->attributes)),
-        category(new Variant(MeshModifyComponent::AttrCategory(), Ogre::String(), this->attributes))
+        category(new Variant(MeshModifyComponent::AttrCategory(), Ogre::String(), this->attributes)),
+        maxDamage(new NOWA::Variant(MeshModifyComponent::AttrMaxDamage(), 1.0f, this->attributes))
     {
+        this->maxDamage->setDescription("Maximum damage as a factor (0.0 - 1.0). 1.0 = fully deformable like a scrap press, 0.7 = 70% max damage.");
+        this->maxDamage->setConstraints(0.0f, 1.0f);
     }
 
     MeshModifyComponent::~MeshModifyComponent(void)
@@ -120,6 +124,11 @@ namespace NOWA
             this->category->setValue(XMLConverter::getAttrib(propertyElement, "data"));
             propertyElement = propertyElement->next_sibling("property");
         }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == MeshModifyComponent::AttrMaxDamage())
+        {
+            this->maxDamage->setValue(XMLConverter::getAttrib(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
 
         return true;
     }
@@ -134,6 +143,7 @@ namespace NOWA
         clonedCompPtr->setBrushFalloff(this->brushFalloff->getReal());
         clonedCompPtr->setBrushMode(this->getBrushModeString());
         clonedCompPtr->setCategory(this->category->getString());
+        clonedCompPtr->setMaxDamage(this->maxDamage->getReal());
 
         clonedGameObjectPtr->addComponent(clonedCompPtr);
         clonedCompPtr->setOwner(clonedGameObjectPtr);
@@ -200,10 +210,11 @@ namespace NOWA
             this->physicsActiveComponent = physicsActiveCompPtr.get();
         }
 
-        // Create the editable mesh
-        if (false == this->createEditableMesh())
+        // Slow part: extract mesh data and create editable item — but DON'T swap yet.
+        // originalItem stays as movableObject so serializer always sees Viper.mesh.
+        if (false == this->prepareEditableMesh())
         {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MeshModifyComponent] Failed to create editable mesh for: " + this->gameObjectPtr->getName());
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MeshModifyComponent] Failed to prepare editable mesh for: " + this->gameObjectPtr->getName());
             return false;
         }
 
@@ -212,40 +223,68 @@ namespace NOWA
 
     bool MeshModifyComponent::connect(void)
     {
-        // Guard: if already has an editable mesh (e.g. reconnecting), destroy first
-        /*if (nullptr != this->editableItem)
-        {
-            this->destroyEditableMesh();
-        }*/
+        this->addInputListener();
 
-        if (nullptr == this->editableItem)
+        this->currentDamage = 0.0f;
+
+        if (this->editableItem == nullptr)
         {
-            this->createEditableMesh();
+            if (false == this->prepareEditableMesh())
+            {
+                return false;
+            }
         }
 
-        this->addInputListener();
+        // Swap visual to editable
+        Ogre::MovableObject* old = nullptr;
+        this->gameObjectPtr->swapMovableObject(this->editableItem, old);
+        this->originalItem = static_cast<Ogre::Item*>(old);
+
+        this->physicsActiveComponent->reCreateDynamicBodyForItem(this->editableItem);
+
         return true;
     }
 
     bool MeshModifyComponent::disconnect(void)
     {
-        // Reset vertex data to original state (simulation ended)
-        if (!this->vertices.empty() && !this->originalVertices.empty())
+        this->removeInputListener();
+
+        this->currentDamage = 0.0f;
+
+        if (this->originalItem != nullptr)
+        {
+            // Swap original back
+            Ogre::MovableObject* old = nullptr;
+            this->gameObjectPtr->swapMovableObject(this->originalItem, old);
+            // old == editableItem, keep alive for next connect
+
+            // Rebuild physics from original BEFORE nulling the pointer
+            this->physicsActiveComponent->reCreateDynamicBodyForItem(this->originalItem);
+            this->originalItem = nullptr;
+        }
+
+        // Reset CPU data
+        if (!this->originalVertices.empty())
         {
             this->vertices = this->originalVertices;
             this->normals = this->originalNormals;
             this->tangents = this->originalTangents;
-
-            // Upload reset data to GPU on render thread
-            GraphicsModule::RenderCommand renderCommand = [this]()
+            GraphicsModule::RenderCommand cmd = [this]()
             {
                 this->uploadVertexData();
             };
-            NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MeshModifyComponent::disconnect::reset");
+            NOWA::GraphicsModule::getInstance()->enqueue(std::move(cmd), "MeshModifyComponent::disconnect::reset");
         }
 
-        this->removeInputListener();
         return true;
+    }
+
+    void MeshModifyComponent::rebuildCollision(void)
+    {
+        if (this->physicsActiveComponent && this->editableItem)
+        {
+            this->physicsActiveComponent->reCreateCollision(this->editableItem);
+        }
     }
 
     bool MeshModifyComponent::onCloned(void)
@@ -332,52 +371,72 @@ namespace NOWA
         {
             this->setCategory(attribute->getString());
         }
+        else if (MeshModifyComponent::AttrMaxDamage() == attribute->getName())
+        {
+            this->setMaxDamage(attribute->getReal());
+        }
     }
 
     void MeshModifyComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
     {
         GameObjectComponent::writeXML(propertiesXML, doc);
 
-        xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
+        xml_node<>* propertyXML = nullptr;
+
+        // Activated
+        propertyXML = doc.allocate_node(node_element, "property");
         propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
-        propertyXML->append_attribute(doc.allocate_attribute("name", "Activated"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, MeshModifyComponent::AttrActivated())));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->activated->getBool())));
         propertiesXML->append_node(propertyXML);
 
+        // Brush Name
         propertyXML = doc.allocate_node(node_element, "property");
         propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-        propertyXML->append_attribute(doc.allocate_attribute("name", "Brush Name"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, MeshModifyComponent::AttrBrushName())));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->brushName->getListSelectedValue())));
         propertiesXML->append_node(propertyXML);
 
+        // Brush Size
         propertyXML = doc.allocate_node(node_element, "property");
         propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-        propertyXML->append_attribute(doc.allocate_attribute("name", "Brush Size"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, MeshModifyComponent::AttrBrushSize())));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->brushSize->getReal())));
         propertiesXML->append_node(propertyXML);
 
+        // Brush Intensity
         propertyXML = doc.allocate_node(node_element, "property");
         propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-        propertyXML->append_attribute(doc.allocate_attribute("name", "Brush Intensity"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, MeshModifyComponent::AttrBrushIntensity())));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->brushIntensity->getReal())));
         propertiesXML->append_node(propertyXML);
 
+        // Brush Falloff
         propertyXML = doc.allocate_node(node_element, "property");
         propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-        propertyXML->append_attribute(doc.allocate_attribute("name", "Brush Falloff"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, MeshModifyComponent::AttrBrushFalloff())));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->brushFalloff->getReal())));
         propertiesXML->append_node(propertyXML);
 
+        // Brush Mode
         propertyXML = doc.allocate_node(node_element, "property");
         propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-        propertyXML->append_attribute(doc.allocate_attribute("name", "Brush Mode"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, MeshModifyComponent::AttrBrushMode())));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->brushMode->getListSelectedValue())));
         propertiesXML->append_node(propertyXML);
 
+        // Category
         propertyXML = doc.allocate_node(node_element, "property");
         propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-        propertyXML->append_attribute(doc.allocate_attribute("name", "Category"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, MeshModifyComponent::AttrCategory())));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->category->getString())));
+        propertiesXML->append_node(propertyXML);
+
+        // Max Damage
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, MeshModifyComponent::AttrMaxDamage())));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->maxDamage->getReal())));
         propertiesXML->append_node(propertyXML);
     }
 
@@ -533,6 +592,26 @@ namespace NOWA
         return this->category->getString();
     }
 
+    void MeshModifyComponent::setMaxDamage(Ogre::Real maxDamage)
+    {
+        this->maxDamage->setValue(Ogre::Math::Clamp(maxDamage, 0.0f, 1.0f));
+    }
+
+    Ogre::Real MeshModifyComponent::getMaxDamage() const
+    {
+        return this->maxDamage->getReal();
+    }
+
+    Ogre::Real MeshModifyComponent::getCurrentDamage() const
+    {
+        return this->currentDamage;
+    }
+
+    void MeshModifyComponent::resetDamage(void)
+    {
+        this->currentDamage = 0.0f;
+    }
+
     void MeshModifyComponent::resetMesh(void)
     {
         if (this->originalVertices.empty())
@@ -616,35 +695,62 @@ namespace NOWA
         {
             return;
         }
+        if (maxForceForFullDeform <= 0.0f)
+        {
+            maxForceForFullDeform = 1000.0f;
+        }
+        // Compute a [0,1] scale factor from impact strength
+        Ogre::Real intensityScale = Ogre::Math::Clamp(impactStrength / maxForceForFullDeform, 0.0f, 1.0f);
+        if (intensityScale < 0.01f)
+        {
+            // Impact too weak to matter
+            return;
+        }
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MeshModifyComponent] deformAtWorldPositionByForce: force=" + Ogre::StringConverter::toString(impactStrength) + ", scale=" + Ogre::StringConverter::toString(intensityScale) +
+                                                                               ", effectiveIntensity=" + Ogre::StringConverter::toString(intensityScale));
+        // Use intensityScale directly as intensity — do NOT multiply by brushIntensity,
+        // that double-scales and makes deformation invisible for typical impact values
+        Ogre::Real savedIntensity = this->brushIntensity->getReal();
+        this->brushIntensity->setValue(intensityScale);
+        this->deformAtWorldPosition(worldPos, invertEffect);
+        this->brushIntensity->setValue(savedIntensity);
+    }
+
+    void MeshModifyComponent::deformAtWorldPositionByForceAndNormal(const Ogre::Vector3& worldPos, const Ogre::Vector3& worldNormal, Ogre::Real impactStrength, Ogre::Real maxForceForFullDeform, bool invertEffect)
+    {
+        if (nullptr == this->editableItem)
+        {
+            return;
+        }
 
         if (maxForceForFullDeform <= 0.0f)
         {
             maxForceForFullDeform = 1000.0f;
         }
 
-        // Compute a [0,1] scale factor from impact strength
         Ogre::Real intensityScale = Ogre::Math::Clamp(impactStrength / maxForceForFullDeform, 0.0f, 1.0f);
-
         if (intensityScale < 0.01f)
         {
-            // Impact too weak to matter
             return;
         }
 
-        // Temporarily override intensity, apply brush, restore
+        Ogre::Vector3 localPos = this->worldToLocal(worldPos);
+
+        // Transform the world normal into local space (no translation, only rotation+scale)
+        Ogre::Matrix4 worldTransform = this->gameObjectPtr->getSceneNode()->_getFullTransform();
+        Ogre::Matrix3 rotScale;
+        worldTransform.extract3x3Matrix(rotScale);
+        Ogre::Vector3 localNormal = rotScale.Inverse().Transpose() * worldNormal;
+        localNormal.normalise();
+
         Ogre::Real savedIntensity = this->brushIntensity->getReal();
-        this->brushIntensity->setValue(savedIntensity * intensityScale);
-
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MeshModifyComponent] deformAtWorldPositionByForce: force=" + Ogre::StringConverter::toString(impactStrength) + ", scale=" + Ogre::StringConverter::toString(intensityScale) +
-                                                                               ", effectiveIntensity=" + Ogre::StringConverter::toString(savedIntensity * intensityScale));
-
-        this->deformAtWorldPosition(worldPos, invertEffect);
-
+        this->brushIntensity->setValue(intensityScale);
+        this->applyBrushAlongDirection(localPos, localNormal, invertEffect);
         this->brushIntensity->setValue(savedIntensity);
     }
     // ==================== PRIVATE METHODS ====================
 
-    bool MeshModifyComponent::createEditableMesh(void)
+    bool MeshModifyComponent::prepareEditableMesh(void)
     {
         Ogre::Item* originalItem = this->gameObjectPtr->getMovableObject<Ogre::Item>();
         if (nullptr == originalItem)
@@ -663,25 +769,17 @@ namespace NOWA
 
         GraphicsModule::RenderCommand renderCommand = [this, originalItem, &success]()
         {
-            if (!this->extractMeshData())
+            if (false == this->extractMeshData())
             {
                 success = false;
                 return;
             }
             this->buildVertexAdjacency();
-            if (!this->createDynamicBuffers())
+            if (false == this->createDynamicBuffers())
             {
                 success = false;
                 return;
             }
-
-            // editableItem is created but NOT yet attached (removed that from createDynamicBuffers)
-            Ogre::MovableObject* oldItem = nullptr;
-            this->gameObjectPtr->swapMovableObject(this->editableItem, oldItem);
-            this->originalItem = static_cast<Ogre::Item*>(oldItem); // store for restore
-
-            // Physics now rebuilds against editableItem (movableObject points to it)
-            this->physicsActiveComponent->reCreateCollision(true);
         };
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MeshModifyComponent::createEditableMesh");
 
@@ -692,17 +790,18 @@ namespace NOWA
     {
         GraphicsModule::RenderCommand renderCommand = [this]()
         {
-            Ogre::SceneNode* node = this->gameObjectPtr->getSceneNode();
-
-            // Detach and destroy editable item
-            if (this->editableItem)
+            // Step 1: restore original item — this detaches AND destroys editableItem (destroyCurrent=true)
+            // gameObjectPtr->movableObject points to editableItem, restoreMovableObject
+            // detaches it from scene node and destroys it cleanly before it goes dangling
+            if (this->originalItem)
             {
-                // Don't detach here — restoreMovableObject will detach via movableObject ptr
-                this->gameObjectPtr->getSceneManager()->destroyItem(this->editableItem);
-                this->editableItem = nullptr;
+                this->gameObjectPtr->restoreMovableObject(this->originalItem, /*destroyCurrent=*/true);
+                this->originalItem = nullptr;
             }
+            this->editableItem = nullptr; // already destroyed by restoreMovableObject above
 
-            // Clean up buffer references (VaoManager destroys buffers via MeshManager::remove)
+            // Step 2: unmap and release buffer references
+            // Item is gone so VAOs are no longer in flight
             for (SubMeshInfo& smInfo : this->subMeshInfoList)
             {
                 if (smInfo.dynamicVertexBuffer && smInfo.dynamicVertexBuffer->getMappingState() != Ogre::MS_UNMAPPED)
@@ -716,13 +815,14 @@ namespace NOWA
             this->dynamicVertexBuffer = nullptr;
             this->dynamicIndexBuffer = nullptr;
 
+            // Step 3: remove mesh — item is already gone so no dangling VAO references
             if (this->editableMesh)
             {
                 Ogre::MeshManager::getSingleton().remove(this->editableMesh);
                 this->editableMesh.reset();
             }
 
-            // Clear CPU data
+            // Step 4: clear CPU data
             this->vertices.clear();
             this->normals.clear();
             this->tangents.clear();
@@ -733,11 +833,9 @@ namespace NOWA
             this->originalTangents.clear();
             this->vertexNeighbors.clear();
 
-            // Then restore — destroyCurrent=false because we already destroyed editableItem above
-            if (this->originalItem)
+            // Step 5: rebuild physics from original mesh
+            if (this->physicsActiveComponent)
             {
-                this->gameObjectPtr->restoreMovableObject(this->originalItem, false);
-                this->originalItem = nullptr;
                 this->physicsActiveComponent->reCreateCollision(true);
             }
         };
@@ -1220,7 +1318,7 @@ namespace NOWA
 
             for (size_t i = 0; i < iCount; ++i)
             {
-                // Subtract vertexOffset to convert global → local index
+                // Subtract vertexOffset to convert global -> local index
                 const Ogre::uint32 localIdx = this->indices[iStart + i] - static_cast<Ogre::uint32>(vStart);
                 indexData[i] = static_cast<Ogre::uint16>(localIdx);
             }
@@ -1372,6 +1470,13 @@ namespace NOWA
 
     void MeshModifyComponent::applyBrush(const Ogre::Vector3& brushCenterLocal, bool invertEffect)
     {
+        // Check if max damage has been reached
+        if (this->currentDamage >= this->maxDamage->getReal())
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MeshModifyComponent] applyBrush: max damage reached (" + Ogre::StringConverter::toString(this->currentDamage * 100.0f) + "%), skipping.");
+            return;
+        }
+
         Ogre::Real brushRadius = this->brushSize->getReal();
         BrushMode mode = this->getBrushMode();
 
@@ -1502,6 +1607,60 @@ namespace NOWA
             this->uploadVertexData();
         };
         NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MeshModifyComponent::applyBrush");
+    }
+
+    void MeshModifyComponent::applyBrushAlongDirection(const Ogre::Vector3& brushCenterLocal, const Ogre::Vector3& direction, bool invertEffect)
+    {
+        // Check if max damage has been reached
+        if (this->currentDamage >= this->maxDamage->getReal())
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MeshModifyComponent] applyBrush: max damage reached (" + Ogre::StringConverter::toString(this->currentDamage * 100.0f) + "%), skipping.");
+            return;
+        }
+
+        Ogre::Real brushRadius = this->brushSize->getReal();
+        Ogre::Real intensity = this->brushIntensity->getReal();
+
+        // Contact normal points FROM wall TOWARD car (outward).
+        // To dent the car we must push INWARD = opposite to normal.
+        // invertEffect=false -> dent inward (default for crashes)
+        // invertEffect=true  -> push outward
+        Ogre::Vector3 deformDir = invertEffect ? direction : -direction;
+        deformDir.normalise();
+
+        size_t affectedCount = 0;
+        for (size_t i = 0; i < this->vertexCount; ++i)
+        {
+            Ogre::Real distance = this->vertices[i].distance(brushCenterLocal);
+            if (distance < brushRadius)
+            {
+                Ogre::Real influence = this->calculateBrushInfluence(distance, brushRadius) * intensity;
+                // All vertices move along the same impact direction — no spikes
+                this->vertices[i] += deformDir * influence;
+                ++affectedCount;
+            }
+        }
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MeshModifyComponent] applyBrushAlongDirection: affected=" + Ogre::StringConverter::toString(affectedCount));
+
+        if (affectedCount == 0)
+        {
+            return;
+        }
+
+        // Accumulate damage — affected vertex ratio * intensity
+        Ogre::Real damageFraction = (static_cast<Ogre::Real>(affectedCount) / static_cast<Ogre::Real>(this->vertexCount)) * intensity;
+        this->currentDamage = Ogre::Math::Clamp(this->currentDamage + damageFraction, 0.0f, 1.0f);
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MeshModifyComponent] currentDamage=" + Ogre::StringConverter::toString(this->currentDamage * 100.0f) + "%");
+
+        this->recalculateNormals();
+        this->recalculateTangents();
+
+        GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            this->uploadVertexData();
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MeshModifyComponent::applyBrushAlongDirection");
     }
 
     void MeshModifyComponent::recalculateNormals(void)
@@ -1892,7 +2051,7 @@ namespace NOWA
     {
         // Can only add to GameObjects with an Item that has exactly one SubItem
         Ogre::Item* item = gameObject->getMovableObjectUnsafe<Ogre::Item>();
-        if (item /* && item->getNumSubItems() == 1*/)
+        if (nullptr != item)
         {
             // Check that the component isn't already added
             if (gameObject->getComponentCount<MeshModifyComponent>() == 0)
@@ -1905,14 +2064,14 @@ namespace NOWA
 
     // ==================== LUA API ====================
 
-    MeshModifyComponent* getMeshModifyComponent(GameObject* gameObject, unsigned int occurrenceIndex)
-    {
-        return makeStrongPtr<MeshModifyComponent>(gameObject->getComponentWithOccurrence<MeshModifyComponent>(occurrenceIndex)).get();
-    }
-
     MeshModifyComponent* getMeshModifyComponent(GameObject* gameObject)
     {
         return makeStrongPtr<MeshModifyComponent>(gameObject->getComponent<MeshModifyComponent>()).get();
+    }
+
+    MeshModifyComponent* getMeshModifyComponentFromIndex(GameObject* gameObject, unsigned int occurrenceIndex)
+    {
+        return makeStrongPtr<MeshModifyComponent>(gameObject->getComponentWithOccurrence<MeshModifyComponent>(occurrenceIndex)).get();
     }
 
     MeshModifyComponent* getMeshModifyComponentFromName(GameObject* gameObject, const Ogre::String& name)
@@ -1922,23 +2081,32 @@ namespace NOWA
 
     void MeshModifyComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
     {
-        module(lua)[class_<MeshModifyComponent, GameObjectComponent>("MeshModifyComponent")
-                .def("setActivated", &MeshModifyComponent::setActivated)
-                .def("isActivated", &MeshModifyComponent::isActivated)
-                .def("setBrushSize", &MeshModifyComponent::setBrushSize)
-                .def("getBrushSize", &MeshModifyComponent::getBrushSize)
-                .def("setBrushIntensity", &MeshModifyComponent::setBrushIntensity)
-                .def("getBrushIntensity", &MeshModifyComponent::getBrushIntensity)
-                .def("setBrushFalloff", &MeshModifyComponent::setBrushFalloff)
-                .def("getBrushFalloff", &MeshModifyComponent::getBrushFalloff)
-                .def("setBrushMode", &MeshModifyComponent::setBrushMode)
-                .def("getBrushMode", &MeshModifyComponent::getBrushModeString)
-                .def("resetMesh", &MeshModifyComponent::resetMesh)
-                .def("exportMesh", &MeshModifyComponent::exportMesh)
-                .def("getVertexCount", &MeshModifyComponent::getVertexCount)
-                .def("getIndexCount", &MeshModifyComponent::getIndexCount)
-                .def("deformAtWorldPosition", &MeshModifyComponent::deformAtWorldPosition)
-                .def("deformAtWorldPositionByForce", &MeshModifyComponent::deformAtWorldPositionByForce)];
+        module(lua)
+        [
+            class_<MeshModifyComponent, GameObjectComponent>("MeshModifyComponent")
+            .def("setActivated", &MeshModifyComponent::setActivated)
+            .def("isActivated", &MeshModifyComponent::isActivated)
+            .def("setBrushSize", &MeshModifyComponent::setBrushSize)
+            .def("getBrushSize", &MeshModifyComponent::getBrushSize)
+            .def("setBrushIntensity", &MeshModifyComponent::setBrushIntensity)
+            .def("getBrushIntensity", &MeshModifyComponent::getBrushIntensity)
+            .def("setBrushFalloff", &MeshModifyComponent::setBrushFalloff)
+            .def("getBrushFalloff", &MeshModifyComponent::getBrushFalloff)
+            .def("setBrushMode", &MeshModifyComponent::setBrushMode)
+            .def("getBrushMode", &MeshModifyComponent::getBrushModeString)
+            .def("resetMesh", &MeshModifyComponent::resetMesh)
+            .def("exportMesh", &MeshModifyComponent::exportMesh)
+            .def("getVertexCount", &MeshModifyComponent::getVertexCount)
+            .def("getIndexCount", &MeshModifyComponent::getIndexCount)
+            .def("deformAtWorldPosition", &MeshModifyComponent::deformAtWorldPosition)
+            .def("deformAtWorldPositionByForce", &MeshModifyComponent::deformAtWorldPositionByForce)
+            .def("deformAtWorldPositionByForceAndNormal", &MeshModifyComponent::deformAtWorldPositionByForceAndNormal)
+            .def("rebuildCollision", &MeshModifyComponent::rebuildCollision)
+            .def("setMaxDamage", &MeshModifyComponent::setMaxDamage)
+            .def("getMaxDamage", &MeshModifyComponent::getMaxDamage)
+            .def("getCurrentDamage", &MeshModifyComponent::getCurrentDamage)
+            .def("resetDamage", &MeshModifyComponent::resetDamage)
+        ];
 
         LuaScriptApi::getInstance()->addClassToCollection("MeshModifyComponent", "class inherits GameObjectComponent", MeshModifyComponent::getStaticInfoText());
         LuaScriptApi::getInstance()->addClassToCollection("MeshModifyComponent", "void setActivated(bool activated)", "Sets whether this component should be activated or not.");
@@ -1955,14 +2123,36 @@ namespace NOWA
         LuaScriptApi::getInstance()->addClassToCollection("MeshModifyComponent", "bool exportMesh(String fileName)", "Exports the modified mesh to a file.");
         LuaScriptApi::getInstance()->addClassToCollection("MeshModifyComponent", "int getVertexCount()", "Gets the number of vertices in the mesh.");
         LuaScriptApi::getInstance()->addClassToCollection("MeshModifyComponent", "int getIndexCount()", "Gets the number of indices in the mesh.");
+
+        LuaScriptApi::getInstance()->addClassToCollection("MeshModifyComponent", "void setMaxDamage(Real maxDamage)",
+            "Sets the maximum damage factor (0.0 - 1.0). 1.0 = fully deformable (scrap press), "
+            "0.7 = stops deforming after 70% damage. Default is 1.0.");
+        LuaScriptApi::getInstance()->addClassToCollection("MeshModifyComponent", "Real getMaxDamage()", "Gets the maximum damage factor (0.0 - 1.0).");
+        LuaScriptApi::getInstance()->addClassToCollection("MeshModifyComponent", "Real getCurrentDamage()",
+            "Gets the current accumulated damage as a factor (0.0 - 1.0). "
+            "Can be used to trigger game events, e.g. if meshModify:getCurrentDamage() > 0.5 then explode() end");
+        LuaScriptApi::getInstance()->addClassToCollection("MeshModifyComponent", "void resetDamage()", "Resets the accumulated damage back to 0. Call this after repairing the vehicle or restarting.");
+
         LuaScriptApi::getInstance()->addClassToCollection("MeshModifyComponent", "void deformAtWorldPosition(Vector3 worldPos, bool invertEffect)",
             "Deforms the mesh at a world-space position (e.g. physics contact point). invertEffect=true pulls instead of pushes.");
         LuaScriptApi::getInstance()->addClassToCollection("MeshModifyComponent", "void deformAtWorldPositionByForce(Vector3 worldPos, Real impactStrength, Real maxForceForFullDeform, bool invertEffect)",
             "Deforms mesh scaled by impact force. impactStrength/maxForceForFullDeform = intensity multiplier [0,1].");
+        LuaScriptApi::getInstance()->addClassToCollection("MeshModifyComponent", "void rebuildCollision()", "Rebuilds collision. Can be called in lua script if e.g. vehicle hit an obstacle and is deformed and then calc new collision shape at runtime.");
+        LuaScriptApi::getInstance()->addClassToCollection("MeshModifyComponent", "void deformAtWorldPositionByForceAndNormal(Vector3 worldPos, Vector3 worldNormal, Real impactStrength, Real maxForceForFullDeform, bool invertEffect)",
+            "Deforms the mesh at a world-space contact position along the contact normal, scaled by impact force. "
+            "All affected vertices move along the same direction, producing a clean dent without spiking artifacts. "
+            "Use this instead of deformAtWorldPositionByForce when you have the contact normal available. "
+            "worldPos: contact point in world space. "
+            "worldNormal: contact normal in world space (from contact:getPositionAndNormal()). "
+            "impactStrength: impact force magnitude contact:getNormalSpeed(). "
+            "maxForceForFullDeform: force value that produces maximum deformation — tune this to match your physics scale. "
+            "invertEffect: true=dent inward (default for crashes), false=push outward. "
+            "Usage: local data = contact:getPositionAndNormal(); "
+            "meshModify:deformAtWorldPositionByForceAndNormal(data[0], data[1], contact:getNormalSpeed(), 80.0, true);");
 
-        gameObjectClass.def("getMeshModifyComponentFromName", &getMeshModifyComponentFromName);
         gameObjectClass.def("getMeshModifyComponent", (MeshModifyComponent * (*)(GameObject*)) & getMeshModifyComponent);
-        gameObjectClass.def("getMeshModifyComponentFromIndex", (MeshModifyComponent * (*)(GameObject*, unsigned int)) & getMeshModifyComponent);
+        gameObjectClass.def("getMeshModifyComponentFromIndex", (MeshModifyComponent * (*)(GameObject*, unsigned int)) & getMeshModifyComponentFromIndex);
+        gameObjectClass.def("getMeshModifyComponentFromName", &getMeshModifyComponentFromName);
 
         LuaScriptApi::getInstance()->addClassToCollection("GameObject", "MeshModifyComponent getMeshModifyComponent()", "Gets the component.");
         LuaScriptApi::getInstance()->addClassToCollection("GameObject", "MeshModifyComponent getMeshModifyComponentFromIndex(unsigned int occurrenceIndex)", "Gets the component by occurrence index.");

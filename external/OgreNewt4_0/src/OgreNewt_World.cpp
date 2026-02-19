@@ -22,7 +22,7 @@ World::World(Ogre::Real desiredFps, int maxUpdatesPerFrames, const Ogre::String&
 	, m_maxTicksPerFrames(maxUpdatesPerFrames > 0 ? maxUpdatesPerFrames : 5)
 	, m_invFixedTimestep(1.0f / m_fixedTimestep)
 	, m_desiredFps(desiredFps)
-	, m_solverMode(6)
+	, m_solverMode(4)
 	, m_threadsRequested(std::max(1u, std::thread::hardware_concurrency()))
 	, m_defaultLinearDamping(0.01f)
 	, m_defaultAngularDamping(0.05f, 0.05f, 0.05f)
@@ -30,7 +30,7 @@ World::World(Ogre::Real desiredFps, int maxUpdatesPerFrames, const Ogre::String&
 	, m_debugger(nullptr)
 	, m_mainThreadId()
 {
-	SetThreadCount(1);
+	SetThreadCount(m_threadsRequested);
 	setSolverModel(m_solverMode);
 	SetSubSteps(1);
 	setUpdateFPS(desiredFps, maxUpdatesPerFrames);
@@ -60,11 +60,7 @@ World::~World()
 		m_debugger = nullptr;
 	}
 
-	if (m_defaultMatID)
-	{
-		delete m_defaultMatID;
-		m_defaultMatID = nullptr;
-	}
+	// m_defaultMatID is destroyed elsewhere
 
 	m_materialPairs.clear();
 }
@@ -250,12 +246,14 @@ void World::update(Ogre::Real timestep)
 	// ndWorld::Update(dt);
 	// ndWorld::Sync();
 
-	const int subSteps = 2;
+	/*const int subSteps = 2;
 	const ndFloat32 subDt = dt / ndFloat32(subSteps);
 	for (int i = 0; i < subSteps; ++i)
 	{
 		ndWorld::Update(subDt);
-	}
+	}*/
+
+	ndWorld::Update(dt);
 
 	ndWorld::Sync();
 
@@ -302,7 +300,7 @@ void World::updateFixed(Ogre::Real timestep)
 	while (m_timeAccumulator + eps >= dtFixed)
 	{
 		ndWorld::Update((ndFloat32)dtFixed);
-		ndWorld::Sync(); // barrier per step
+		// ndWorld::Sync(); // barrier per step
 		m_timeAccumulator -= dtFixed;
 	}
 
@@ -318,27 +316,31 @@ void World::updateFixed(Ogre::Real timestep)
 
 void World::postUpdate(Ogre::Real interp)
 {
-	const ndBodyListView& bodyList = GetBodyList();
-	const ndArray<ndBodyKinematic*>& view = bodyList.GetView();
+	const ndArray<ndBodyKinematic*>& view = GetBodyList().GetView();
 
+	// Pass 1: publish transforms
 	for (ndInt32 i = ndInt32(view.GetCount()) - 1; i >= 0; --i)
 	{
 		ndBodyKinematic* const ndBody = view[i];
-		if (!ndBody)
-			continue;
+		if (!ndBody || ndBody->GetSleepState()) continue;
 
-		if (!ndBody->GetSleepState())
+		if (auto* notify = dynamic_cast<OgreNewt::BodyNotify*>(ndBody->GetNotifyCallback()))
 		{
-			if (auto* notify = ndBody->GetNotifyCallback())
-			{
-				if (auto* ogreNotify = dynamic_cast<BodyNotify*>(notify))
-				{
-					if (auto* ogreBody = ogreNotify->GetOgreNewtBody())
-					{
-						ogreBody->updateNode(interp);
-					}
-				}
-			}
+			if (auto* ogreBody = notify->GetOgreNewtBody())
+				ogreBody->updateNode(interp);
+		}
+	}
+
+	// Pass 2: dispatch contacts (game logic, after all transforms are published)
+	for (ndInt32 i = ndInt32(view.GetCount()) - 1; i >= 0; --i)
+	{
+		ndBodyKinematic* const ndBody = view[i];
+		if (!ndBody) continue;
+
+		if (auto* notify = dynamic_cast<OgreNewt::BodyNotify*>(ndBody->GetNotifyCallback()))
+		{
+			if (auto* ogreBody = notify->GetOgreNewtBody())
+				ogreBody->dispatchContacts();
 		}
 	}
 }

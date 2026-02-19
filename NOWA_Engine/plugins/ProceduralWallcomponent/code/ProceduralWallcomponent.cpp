@@ -515,18 +515,24 @@ bool ProceduralWallComponent::mousePressed(const OIS::MouseEvent& evt, OIS::Mous
 {
     if (false == this->activated->getBool())
     {
-        return true;
+        return true; // not handled -> bubble
     }
 
     if (id != OIS::MB_Left)
     {
-        return true;
+        return true; // not handled -> bubble
     }
 
     // Check if clicking on GUI
     if (MyGUI::InputManager::getInstance().getMouseFocusWidget() != nullptr)
     {
-        return true;
+        return true; // not handled -> bubble
+    }
+
+    Ogre::Camera* camera = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
+    if (nullptr == camera)
+    {
+        return true; // not handled -> bubble
     }
 
     Ogre::Vector3 internalHitPoint = Ogre::Vector3::ZERO;
@@ -534,14 +540,8 @@ bool ProceduralWallComponent::mousePressed(const OIS::MouseEvent& evt, OIS::Mous
     Ogre::Real closestDistance = 0.0f;
     Ogre::Vector3 normal = Ogre::Vector3::ZERO;
 
-    // Build exclusion list - exclude our own wall and preview items
+    // Build exclusion list - exclude our own road and preview items
     std::vector<Ogre::MovableObject*> excludeMovableObjects;
-
-    Ogre::Camera* camera = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
-    if (nullptr == camera)
-    {
-        return true;
-    }
 
     // Check if mouse hit already created wall, -> then skip
     const OIS::MouseState& ms = NOWA::InputDeviceCore::getSingletonPtr()->getMouse()->getMouseState();
@@ -552,11 +552,11 @@ bool ProceduralWallComponent::mousePressed(const OIS::MouseEvent& evt, OIS::Mous
     {
         if (this->wallItem == hitMovableObject)
         {
-            return true;
+            return true; // not handled -> bubble
         }
         if (this->previewItem == hitMovableObject)
         {
-            return true;
+            return true; // not handled -> bubble
         }
     }
 
@@ -592,7 +592,7 @@ bool ProceduralWallComponent::mousePressed(const OIS::MouseEvent& evt, OIS::Mous
                 this->currentSegment.hasEndPillar = this->createPillars->getBool();
 
                 this->buildState = BuildState::DRAGGING;
-                this->lastValidPosition = this->loadedWallEndpoint;
+                this->lastValidPosition = this->currentSegment.startPoint;
 
                 // Clear the flag
                 this->hasLoadedWallEndpoint = false;
@@ -601,6 +601,12 @@ bool ProceduralWallComponent::mousePressed(const OIS::MouseEvent& evt, OIS::Mous
             }
             else
             {
+                // Normal behavior: start new road at mouse position
+                if (this->snapToGrid->getBool())
+                {
+                    hitPosition = this->snapToGridFunc(hitPosition);
+                }
+
                 // Normal: start new wall at mouse position
                 this->startWallPlacement(hitPosition);
 
@@ -616,7 +622,7 @@ bool ProceduralWallComponent::mousePressed(const OIS::MouseEvent& evt, OIS::Mous
         return false;
     }
 
-    return true;
+    return false;
 }
 
 bool ProceduralWallComponent::mouseMoved(const OIS::MouseEvent& evt)
@@ -752,6 +758,13 @@ bool ProceduralWallComponent::executeAction(const Ogre::String& actionId, NOWA::
 
 void ProceduralWallComponent::startWallPlacement(const Ogre::Vector3& worldPosition)
 {
+    Ogre::Vector3 startPos = this->snapToGrid->getBool() ? this->snapToGridFunc(worldPosition) : worldPosition;
+
+    this->currentSegment.startPoint = startPos;
+    this->currentSegment.startPoint.y = 0.0f;
+    this->currentSegment.endPoint = worldPosition;
+    this->currentSegment.endPoint.y = 0.0f;
+
     // Set wall origin on first placement
     if (false == this->hasWallOrigin)
     {
@@ -769,11 +782,6 @@ void ProceduralWallComponent::startWallPlacement(const Ogre::Vector3& worldPosit
 
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] Set wall origin: " + Ogre::StringConverter::toString(this->wallOrigin));
     }
-
-    this->currentSegment.startPoint = worldPosition;
-    this->currentSegment.startPoint.y = 0.0f;
-    this->currentSegment.endPoint = worldPosition;
-    this->currentSegment.endPoint.y = 0.0f;
 
     // Get ground heights at start position
     if (this->adaptToGround->getBool())

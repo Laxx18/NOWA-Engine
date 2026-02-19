@@ -716,7 +716,7 @@ namespace NOWA
 
 	// Lua registration part
 
-	SpeechBubbleComponent* getSpeechBubbleComponent(GameObject* gameObject, unsigned int occurrenceIndex)
+	SpeechBubbleComponent* getSpeechBubbleComponentFromIndex(GameObject* gameObject, unsigned int occurrenceIndex)
 	{
 		return makeStrongPtr<SpeechBubbleComponent>(gameObject->getComponentWithOccurrence<SpeechBubbleComponent>(occurrenceIndex)).get();
 	}

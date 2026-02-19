@@ -742,7 +742,7 @@ namespace NOWA
 
 	// Lua registration part
 
-	JoystickConfigurationComponent* getJoystickConfigurationComponent(GameObject* gameObject, unsigned int occurrenceIndex)
+	JoystickConfigurationComponent* getJoystickConfigurationComponentFromIndex(GameObject* gameObject, unsigned int occurrenceIndex)
 	{
 		return makeStrongPtr<JoystickConfigurationComponent>(gameObject->getComponentWithOccurrence<JoystickConfigurationComponent>(occurrenceIndex)).get();
 	}

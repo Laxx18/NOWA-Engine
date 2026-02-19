@@ -702,7 +702,7 @@ namespace NOWA
 
 	// Lua registration part
 
-	PccPerPixelGridPlacementComponent* getPccPerPixelGridPlacementComponent(GameObject* gameObject, unsigned int occurrenceIndex)
+	PccPerPixelGridPlacementComponent* getPccPerPixelGridPlacementComponentFromIndex(GameObject* gameObject, unsigned int occurrenceIndex)
 	{
 		return makeStrongPtr<PccPerPixelGridPlacementComponent>(gameObject->getComponentWithOccurrence<PccPerPixelGridPlacementComponent>(occurrenceIndex)).get();
 	}

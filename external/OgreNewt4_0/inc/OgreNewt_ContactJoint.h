@@ -21,6 +21,22 @@
 // OgreNewt namespace.  all functions and classes use this namespace.
 namespace OgreNewt
 {
+	// Plain data snapshot — safe to copy across thread boundaries
+	struct ContactSnapshot
+	{
+		Ogre::Vector3 position;
+		Ogre::Vector3 normal;
+		Ogre::Vector3 tangentDir0;
+		Ogre::Vector3 tangentDir1;
+		Ogre::Real normalSpeed = 0.0f;
+		Ogre::Real normalImpact = 0.0f;
+		Ogre::Real tangentSpeed0 = 0.0f;
+		Ogre::Real tangentSpeed1 = 0.0f;
+		Ogre::Real penetration = 0.0f;
+		Ogre::Real closestDistance = 0.0f;
+		int        faceAttribute = 0;
+	};
+
 	//! with this class you can iterate through all contacts
 	/*!
 		this class must not be inherited or instantiated directly in any way,
@@ -151,12 +167,6 @@ namespace OgreNewt
 		//! Get the maximum tangent impact
 		Ogre::Real getContactMaxTangentImpact(int index) const;
 
-		//! Set contact pruning tolerance
-		void setContactPruningTolerance(OgreNewt::Body* body0, OgreNewt::Body* body1, Ogre::Real tolerance) const;
-
-		//! Get contact pruning tolerance
-		Ogre::Real getContactPruningTolerance(OgreNewt::Body* body0, OgreNewt::Body* body1) const;
-
 		//! Get contact penetration depth
 		Ogre::Real getContactPenetration(void) const;
 
@@ -182,6 +192,9 @@ namespace OgreNewt
 
 		//! Print contact information for debugging
 		Ogre::String print(void);
+
+		//! Snapshot all contact data into a plain struct — safe to use after Newton recycles this contact
+		ContactSnapshot createSnapshot() const;
 
 	protected:
 		ndContactPointList::ndNode* m_contactNode;

@@ -1445,7 +1445,7 @@ namespace NOWA
 
 	// Lua registration part
 
-	PurePursuitComponent* getPurePursuitComponent(GameObject* gameObject, unsigned int occurrenceIndex)
+	PurePursuitComponent* getPurePursuitComponentFromIndex(GameObject* gameObject, unsigned int occurrenceIndex)
 	{
 		return makeStrongPtr<PurePursuitComponent>(gameObject->getComponentWithOccurrence<PurePursuitComponent>(occurrenceIndex)).get();
 	}
@@ -1600,7 +1600,7 @@ namespace NOWA
 		gameObjectClass.def("getPurePursuitComponentFromName", &getPurePursuitComponentFromName);
 		gameObjectClass.def("getPurePursuitComponent", (PurePursuitComponent * (*)(GameObject*)) & getPurePursuitComponent);
 		// If its desired to create several of this components for one game object
-		gameObjectClass.def("getPurePursuitComponentFromIndex", (PurePursuitComponent * (*)(GameObject*, unsigned int)) & getPurePursuitComponent);
+		gameObjectClass.def("getPurePursuitComponentFromIndex", (PurePursuitComponent * (*)(GameObject*, unsigned int)) & getPurePursuitComponentFromIndex);
 
 		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "PurePursuitComponent getPurePursuitComponentFromIndex(unsigned int occurrenceIndex)", "Gets the component by the given occurence index, since a game object may this component maybe several times.");
 		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "PurePursuitComponent getPurePursuitComponent()", "Gets the component. This can be used if the game object this component just once.");

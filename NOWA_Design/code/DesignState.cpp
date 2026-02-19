@@ -2615,7 +2615,7 @@ bool DesignState::mouseMoved(const OIS::MouseEvent& evt)
 	{
 		if (nullptr != this->editorManager)
 		{
-			this->editorManager->handleMouseMove(evt);
+  			this->editorManager->handleMouseMove(evt);
 		}
 	}
 	return true;

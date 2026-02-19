@@ -250,7 +250,10 @@ namespace NOWA
 
 			if (true == this->activated->getBool())
 			{
-				this->particleFxModule->playParticleSystem(this->uniqueParticleName);
+                if (nullptr != particleFxModule)
+                {
+                    this->particleFxModule->playParticleSystem(this->uniqueParticleName);
+                }
 			}
 		}
 
@@ -945,7 +948,7 @@ namespace NOWA
 
 	// ========== LUA API ==========
 
-	ParticleFxComponent* getParticleFxComponent(GameObject* gameObject, unsigned int occurrenceIndex)
+	ParticleFxComponent* getParticleFxComponentFromIndex(GameObject* gameObject, unsigned int occurrenceIndex)
 	{
 		return makeStrongPtr<ParticleFxComponent>(gameObject->getComponentWithOccurrence<ParticleFxComponent>(occurrenceIndex)).get();
 	}
@@ -1048,7 +1051,7 @@ namespace NOWA
 
 		gameObjectClass.def("getParticleFxComponentFromName", &getParticleFxComponentFromName);
 		gameObjectClass.def("getParticleFxComponent", (ParticleFxComponent * (*)(GameObject*)) & getParticleFxComponent);
-		gameObjectClass.def("getParticleFxComponentFromIndex", (ParticleFxComponent * (*)(GameObject*, unsigned int)) & getParticleFxComponent);
+		gameObjectClass.def("getParticleFxComponentFromIndex", (ParticleFxComponent * (*)(GameObject*, unsigned int)) & getParticleFxComponentFromIndex);
 
 		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "ParticleFxComponent getParticleFxComponentFromIndex(unsigned int occurrenceIndex)", "Gets the component by the given occurence index, since a game object may this component maybe several times.");
 		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "ParticleFxComponent getParticleFxComponent()", "Gets the component. This can be used if the game object this component just once.");

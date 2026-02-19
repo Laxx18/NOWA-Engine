@@ -1,10 +1,10 @@
-20:03:44: Creating resource group General
-20:03:44: Creating resource group Internal
-20:03:44: Creating resource group Autodetect
-20:03:44: Registering ResourceManager for type Mesh
-20:03:44: Registering ResourceManager for type Material
-20:03:44: Registering ResourceManager for type Skeleton
-20:03:44: OGRE EXCEPTION(7:InternalErrorException): Cannot find serializer implementation for current version [MeshSerializer_v1.8] in MeshSerializer::importMesh at ..\..\..\..\OgreMain\src\OgreMeshSerializer.cpp (line 118)
-20:03:44: Unregistering ResourceManager for type Skeleton
-20:03:44: Unregistering ResourceManager for type Material
-20:03:44: Unregistering ResourceManager for type Mesh
+00:25:13: Creating resource group General
+00:25:13: Creating resource group Internal
+00:25:13: Creating resource group Autodetect
+00:25:13: Registering ResourceManager for type Mesh
+00:25:13: Registering ResourceManager for type Material
+00:25:13: Registering ResourceManager for type Skeleton
+00:25:13: OGRE EXCEPTION(7:InternalErrorException): Cannot find serializer implementation for current version [MeshSerializer_v2.1 R0 LEGACYV1] in MeshSerializer::importMesh at ..\..\..\..\OgreMain\src\OgreMeshSerializer.cpp (line 118)
+00:25:13: Unregistering ResourceManager for type Skeleton
+00:25:13: Unregistering ResourceManager for type Material
+00:25:13: Unregistering ResourceManager for type Mesh

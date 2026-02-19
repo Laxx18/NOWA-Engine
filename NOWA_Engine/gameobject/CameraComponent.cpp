@@ -694,19 +694,22 @@ namespace NOWA
 		{
 			NOWA::GraphicsModule::RenderCommand renderCommand = [this, activated]()
 			{
-				if (true == this->bConnected)
-				{
-					this->dummyItem->setVisible(this->showDummyEntity->getBool());
-				}
-				else
-				{
-					this->dummyItem->setVisible(true);
-				}
+                if (nullptr != this->dummyItem)
+                {
+                    if (true == this->bConnected)
+                    {
+                        this->dummyItem->setVisible(this->showDummyEntity->getBool());
+                    }
+                    else
+                    {
+                        this->dummyItem->setVisible(true);
+                    }
 
-				if (this->camera == AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera())
-				{
-					this->dummyItem->setVisible(false);
-				}
+                    if (this->camera == AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera())
+                    {
+                        this->dummyItem->setVisible(false);
+                    }
+                }
 
 				if (false == activated)
 				{

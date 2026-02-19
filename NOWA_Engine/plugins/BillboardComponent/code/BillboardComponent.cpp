@@ -759,7 +759,7 @@ namespace NOWA
 
 	// Lua registration part
 
-	BillboardComponent* getBillboardComponent(GameObject* gameObject, unsigned int occurrenceIndex)
+	BillboardComponent* getBillboardComponentFromIndex(GameObject* gameObject, unsigned int occurrenceIndex)
 	{
 		return makeStrongPtr<BillboardComponent>(gameObject->getComponentWithOccurrence<BillboardComponent>(occurrenceIndex)).get();
 	}

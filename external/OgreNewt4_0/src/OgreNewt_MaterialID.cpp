@@ -29,7 +29,7 @@ namespace OgreNewt
 
     MaterialID::~MaterialID()
     {
-        // Newton 4.0 doesn't require material cleanup
+
     }
 
 }

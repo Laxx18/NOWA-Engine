@@ -201,7 +201,7 @@ namespace NOWA
 
         this->rdState = PhysicsRagDollComponentV2::INACTIVE;
         boost::shared_ptr<EventDataGameObjectIsInRagDollingState> eventDataGameObjectIsInRagDollingState(new EventDataGameObjectIsInRagDollingState(this->gameObjectPtr->getId(), false));
-        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGameObjectIsInRagDollingState);
+        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGameObjectIsInRagDollingState);
         this->activated->setValue(false);
     }
 
@@ -458,19 +458,14 @@ namespace NOWA
         {
             if (this->rdState == PhysicsRagDollComponentV2::PARTIAL_RAGDOLLING || this->rdState == PhysicsRagDollComponentV2::RAGDOLLING)
             {
-                // V2: Update skeleton on render thread. Manual bones are left untouched,
-                // non-manual bones get their animation transforms.
-                // IMPORTANT: applyRagdollStateToModel must run INSIDE the render closure
-                // (same as V1) so bone transforms can be directly set and parent derived
-                // transforms are available for child bone conversion.
                 if (nullptr != this->skeletonInstance)
                 {
                     auto closureFunction = [this](Ogre::Real renderDt)
                     {
                         this->applyRagdollStateToModel();
-                        this->skeletonInstance->update();
-                        // Note: Order here is important! applyRagdollStateToModel must run
-                        // after skeleton update, on the render thread.
+                        // No skeletonInstance->update() here.
+                        // It only does resetToPose() + animation blend, NOT derived transform cascade.
+                        // The render pipeline calls Bone::updateAllTransforms() automatically.
                     };
                     Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
                     NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
@@ -613,7 +608,7 @@ namespace NOWA
                     boost::shared_ptr<EventDataGameObjectIsInRagDollingState> eventDataGameObjectIsInRagDollingState(new EventDataGameObjectIsInRagDollingState(this->gameObjectPtr->getId(), true));
                     NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGameObjectIsInRagDollingState);
 
-                    if (this->rdOldState == PhysicsRagDollComponentV2::PARTIAL_RAGDOLLING)
+                    // if (this->rdOldState == PhysicsRagDollComponentV2::PARTIAL_RAGDOLLING)
                     {
                         this->initialPosition = this->gameObjectPtr->getSceneNode()->getPosition();
                         this->initialScale = this->gameObjectPtr->getSceneNode()->getScale();
@@ -1544,7 +1539,7 @@ namespace NOWA
             this->rdState = PhysicsRagDollComponentV2::INACTIVE;
 
             boost::shared_ptr<EventDataGameObjectIsInRagDollingState> eventDataGameObjectIsInRagDollingState(new EventDataGameObjectIsInRagDollingState(this->gameObjectPtr->getId(), false));
-            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGameObjectIsInRagDollingState);
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGameObjectIsInRagDollingState);
         }
         else if (state == "Animation")
         {
@@ -1554,7 +1549,7 @@ namespace NOWA
             }
             this->rdState = PhysicsRagDollComponentV2::ANIMATION;
             boost::shared_ptr<EventDataGameObjectIsInRagDollingState> eventDataGameObjectIsInRagDollingState(new EventDataGameObjectIsInRagDollingState(this->gameObjectPtr->getId(), false));
-            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGameObjectIsInRagDollingState);
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGameObjectIsInRagDollingState);
         }
         else if (state == "Ragdolling")
         {
@@ -1570,7 +1565,7 @@ namespace NOWA
             this->rdState = PhysicsRagDollComponentV2::RAGDOLLING;
             this->animationEnabled = false;
             boost::shared_ptr<EventDataGameObjectIsInRagDollingState> eventDataGameObjectIsInRagDollingState(new EventDataGameObjectIsInRagDollingState(this->gameObjectPtr->getId(), true));
-            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGameObjectIsInRagDollingState);
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGameObjectIsInRagDollingState);
         }
         else if (state == "PartialRagdolling")
         {
@@ -1581,7 +1576,7 @@ namespace NOWA
             this->rdState = PhysicsRagDollComponentV2::PARTIAL_RAGDOLLING;
 
             boost::shared_ptr<EventDataGameObjectIsInRagDollingState> eventDataGameObjectIsInRagDollingState(new EventDataGameObjectIsInRagDollingState(this->gameObjectPtr->getId(), false));
-            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGameObjectIsInRagDollingState);
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGameObjectIsInRagDollingState);
         }
 
         if (true == this->isSimulating)
@@ -1707,23 +1702,76 @@ namespace NOWA
         Ogre::Quaternion invNodeOri = nodeOri.Inverse();
 
         // Track skeleton-space transforms we compute from physics bodies.
-        // This is needed because after setting a bone's position/orientation,
-        // its _getLocalSpaceTransform() won't update until the next skeletonInstance->update().
-        // By tracking what we set, child bones can use accurate parent transforms.
-        // (except for the root ragdoll bone which needs to track the physics body's world position).
-        //
-        // Non-root ragdoll bones get their position from the hierarchy cascade:
-        //   derivedPos = parent->derivedOri * bone->localPos + parent->derivedPos
-        // where localPos is the bind-pose offset (bone length). Physics joints ensure that
-        // body distances stay consistent with these bone lengths.
-        //
-        // V2 has no per-bone _update(), but skeletonInstance->update() (called after this
-        // function) cascades ALL derived transforms. Since ragdoll bones are manual, update()
-        // preserves our set orientation and only cascades derived transforms.
+        // V1 gets parent derived transforms live via _getDerivedPosition() after
+        // bone->_update(true,false) cascades each bone. V2 has no per-bone _update(),
+        // so we store what we compute and use it for child bone lookups.
+        std::unordered_map<Ogre::Bone*, std::pair<Ogre::Vector3, Ogre::Quaternion>> skelTransforms;
 
-        const size_t rootIdx = i; // First ragdoll bone to process (root of ragdolled portion)
+        // Get skeleton-space (derived) transform for any bone.
+        // - Already-processed ragdoll bones: return tracked value
+        // - Non-ragdoll bones (Master, intermediates): walk up to nearest known ancestor,
+        //   chain local transforms down. For skeleton root, use extractBoneDerivedTransform.
+        auto getDerivedTransform = [&skelTransforms, this](Ogre::Bone* targetBone, Ogre::Vector3& outPos, Ogre::Quaternion& outOri)
+        {
+            auto it = skelTransforms.find(targetBone);
+            if (it != skelTransforms.end())
+            {
+                outPos = it->second.first;
+                outOri = it->second.second;
+                return;
+            }
 
-        // IMPORTANT: Process root-to-leaf order (ragDataList is in that order from XML parsing).
+            // Walk UP to nearest known ancestor or skeleton root
+            std::vector<Ogre::Bone*> chain;
+            chain.push_back(targetBone);
+            Ogre::Bone* cur = targetBone->getParent();
+
+            while (cur != nullptr)
+            {
+                auto found = skelTransforms.find(cur);
+                if (found != skelTransforms.end())
+                {
+                    // Chain DOWN from known ancestor through intermediates
+                    Ogre::Vector3 pos = found->second.first;
+                    Ogre::Quaternion ori = found->second.second;
+
+                    for (int j = static_cast<int>(chain.size()) - 1; j >= 0; j--)
+                    {
+                        Ogre::Bone* b = chain[j];
+                        pos = ori * b->getPosition() + pos;
+                        ori = b->getInheritOrientation() ? (ori * b->getOrientation()) : b->getOrientation();
+                        skelTransforms[b] = std::make_pair(pos, ori);
+                    }
+                    outPos = pos;
+                    outOri = ori;
+                    return;
+                }
+                chain.push_back(cur);
+                cur = cur->getParent();
+            }
+
+            // Reached skeleton root (Master). Get its cached derived transform.
+            Ogre::Bone* root = chain.back();
+            Ogre::Vector3 pos;
+            Ogre::Quaternion ori;
+            extractBoneDerivedTransform(root, pos, ori);
+            skelTransforms[root] = std::make_pair(pos, ori);
+
+            // Chain down through remaining bones
+            for (int j = static_cast<int>(chain.size()) - 2; j >= 0; j--)
+            {
+                Ogre::Bone* b = chain[j];
+                pos = ori * b->getPosition() + pos;
+                ori = b->getInheritOrientation() ? (ori * b->getOrientation()) : b->getOrientation();
+                skelTransforms[b] = std::make_pair(pos, ori);
+            }
+            outPos = pos;
+            outOri = ori;
+        };
+
+        // Process every ragdoll bone, root-to-leaf order.
+        // Exactly mirrors V1 which does this for EVERY bone:
+        //   skelPos/skelOri from physics → convert to parent-local → setPosition/setOrientation → _update
         for (; i < this->ragDataList.size(); i++)
         {
             auto& ragBone = this->ragDataList[i].ragBone;
@@ -1734,32 +1782,44 @@ namespace NOWA
 
             Ogre::Bone* bone = ragBone->getBone();
 
-            // Get physics body's world transform
+            // Physics body → skeleton-space (same as V1)
+            Ogre::Vector3 bodyWorldPos = ragBone->getBody()->getPosition();
             Ogre::Quaternion bodyWorldOri = ragBone->getBody()->getOrientation();
-            Ogre::Quaternion skelOri = invNodeOri * bodyWorldOri;
-            bone->setOrientation(skelOri);
 
-            // Convert world -> skeleton space (entity-local)
-            // The root bone must track the physics body's world position so the
-            // entire skeleton moves with the ragdoll. All other ragdoll bones
-            // get their position from the bone hierarchy cascade using bind-pose
-            // offsets (bone lengths), which physics joints keep consistent.
-            if (i == rootIdx)
+            Ogre::Vector3 skelPos = invNodeOri * (bodyWorldPos - nodePos);
+            skelPos /= nodeScale;
+            Ogre::Quaternion skelOri = invNodeOri * bodyWorldOri;
+
+            // Track this bone's skeleton-space transform for child lookups
+            skelTransforms[bone] = std::make_pair(skelPos, skelOri);
+
+            // Convert skeleton-space → parent-local (same as V1)
+            Ogre::Bone* parentBone = bone->getParent();
+            Ogre::Vector3 boneLocalPos;
+            if (parentBone)
             {
-                Ogre::Vector3 bodyWorldPos = ragBone->getBody()->getPosition();
-                Ogre::Vector3 skelPos = invNodeOri * (bodyWorldPos - nodePos);
-                skelPos /= nodeScale;
-                bone->setPosition(skelPos);
+                Ogre::Vector3 parentPos;
+                Ogre::Quaternion parentOri;
+                getDerivedTransform(parentBone, parentPos, parentOri);
+
+                Ogre::Quaternion invParentOri = parentOri.Inverse();
+                boneLocalPos = invParentOri * (skelPos - parentPos);
+            }
+            else
+            {
+                boneLocalPos = skelPos;
             }
 
+            bone->setPosition(boneLocalPos);
+            bone->setOrientation(skelOri);
+
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
-                "[PhysicsRagDollComponentV2] applyRagdollStateToModel BoneName: " + ragBone->getName() + " boneLocalPos: " + Ogre::StringConverter::toString(bone->getPosition()) + " skelOri: " + Ogre::StringConverter::toString(skelOri));
+                "[PhysicsRagDollComponentV2] applyRagdollStateToModel BoneName: " + ragBone->getName() + " boneLocalPos: " + Ogre::StringConverter::toString(boneLocalPos) + " skelOri: " + Ogre::StringConverter::toString(skelOri));
         }
 
         // Apply bone corrections
         for (auto& boneCorrectionData : this->boneCorrectionMap)
         {
-            // V2: Extract position and orientation from the target bone's local space transform
             Ogre::Vector3 targetPos;
             Ogre::Quaternion targetOrient;
             extractBoneDerivedTransform(boneCorrectionData.second.first, targetPos, targetOrient);
@@ -1815,12 +1875,10 @@ namespace NOWA
 
                     if (bone == this->ragDataList[j].ragBone->getBone())
                     {
-                        // V2: Get derived orientation from the bone's local space transform
                         Ogre::Vector3 bonePos;
                         Ogre::Quaternion absoluteWorldOrientation;
                         extractBoneDerivedTransform(bone, bonePos, absoluteWorldOrientation);
 
-                        // V2: use setManualBone and setInheritOrientation
                         this->skeletonInstance->setManualBone(bone, true);
                         bone->setInheritOrientation(false);
 
@@ -1834,13 +1892,11 @@ namespace NOWA
         }
         else
         {
-            // Full ragdoll: Set ALL bones in the skeleton to manually controlled.
-            // This prevents animation from overwriting our physics-driven transforms.
+            // Full ragdoll: idx=1 to skip Master (skeleton root offset bone)
             for (size_t idx = 1; idx < this->skeletonInstance->getNumBones(); idx++)
             {
                 Ogre::Bone* bone = this->skeletonInstance->getBone(idx);
 
-                // V2: Get derived orientation from the bone's local space transform
                 Ogre::Vector3 bonePos;
                 Ogre::Quaternion absoluteWorldOrientation;
                 extractBoneDerivedTransform(bone, bonePos, absoluteWorldOrientation);

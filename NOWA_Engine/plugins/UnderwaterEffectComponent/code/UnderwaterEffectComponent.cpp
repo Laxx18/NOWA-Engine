@@ -1090,7 +1090,7 @@ namespace NOWA
 
 	// -------------------- Lua registration part --------------------
 
-	UnderwaterEffectComponent* getUnderwaterEffectComponent(GameObject* gameObject, unsigned int occurrenceIndex)
+	UnderwaterEffectComponent* getUnderwaterEffectComponentFromIndex(GameObject* gameObject, unsigned int occurrenceIndex)
 	{
 		return makeStrongPtr<UnderwaterEffectComponent>(gameObject->getComponentWithOccurrence<UnderwaterEffectComponent>(occurrenceIndex)).get();
 	}

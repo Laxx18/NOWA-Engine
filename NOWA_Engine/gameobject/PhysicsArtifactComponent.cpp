@@ -416,6 +416,11 @@ namespace NOWA
                 this->physicsBody->setMassMatrix(0.0f, Ogre::Vector3::ZERO);
             }
 
+			// Re-apply material group ID — reCreateCollision creates a fresh body
+            // which resets m_shapeMaterial.m_userId to 0
+            const auto materialId = AppStateManager::getSingletonPtr()->getGameObjectController()->getMaterialID(this->gameObjectPtr.get(), this->ogreNewt);
+            this->physicsBody->setMaterialGroupID(materialId);
+
             return; // Exit early for compound mode
         }
 
@@ -498,6 +503,11 @@ namespace NOWA
 		this->physicsBody->setCollision(staticCollision);
 
 		this->physicsBody->setMassMatrix(0.0f, Ogre::Vector3::ZERO);
+
+		// Re-apply material group ID — reCreateCollision creates a fresh body
+        // which resets m_shapeMaterial.m_userId to 0
+        const auto materialId = AppStateManager::getSingletonPtr()->getGameObjectController()->getMaterialID(this->gameObjectPtr.get(), this->ogreNewt);
+        this->physicsBody->setMaterialGroupID(materialId);
 	}
 
 	void PhysicsArtifactComponent::setSerialize(bool serialize)

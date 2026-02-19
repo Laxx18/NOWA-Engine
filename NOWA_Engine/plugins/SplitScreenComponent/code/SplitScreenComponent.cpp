@@ -615,7 +615,7 @@ namespace NOWA
 
 	// Lua registration part
 
-	SplitScreenComponent* getSplitScreenComponent(GameObject* gameObject, unsigned int occurrenceIndex)
+	SplitScreenComponent* getSplitScreenComponentFromIndex(GameObject* gameObject, unsigned int occurrenceIndex)
 	{
 		return makeStrongPtr<SplitScreenComponent>(gameObject->getComponentWithOccurrence<SplitScreenComponent>(occurrenceIndex)).get();
 	}
@@ -662,7 +662,7 @@ namespace NOWA
 		gameObjectClass.def("getSplitScreenComponentFromName", &getSplitScreenComponentFromName);
 		gameObjectClass.def("getSplitScreenComponent", (SplitScreenComponent * (*)(GameObject*)) & getSplitScreenComponent);
 		// If its desired to create several of this components for one game object
-		gameObjectClass.def("getSplitScreenComponentFromIndex", (SplitScreenComponent * (*)(GameObject*, unsigned int)) & getSplitScreenComponent);
+		gameObjectClass.def("getSplitScreenComponentFromIndex", (SplitScreenComponent * (*)(GameObject*, unsigned int)) & getSplitScreenComponentFromIndex);
 
 		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "SplitScreenComponent getSplitScreenComponentFromIndex(unsigned int occurrenceIndex)", "Gets the component by the given occurence index, since a game object may this component maybe several times.");
 		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "SplitScreenComponent getSplitScreenComponent()", "Gets the component. This can be used if the game object this component just once.");

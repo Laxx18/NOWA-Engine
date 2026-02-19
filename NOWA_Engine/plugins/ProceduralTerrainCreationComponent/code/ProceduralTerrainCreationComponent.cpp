@@ -631,118 +631,119 @@ namespace NOWA
 	}
 
 	void ProceduralTerrainCreationComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
-	{
-		GameObjectComponent::writeXML(propertiesXML, doc);
+    {
+        GameObjectComponent::writeXML(propertiesXML, doc);
 
-		xml_node<>*  propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "Resolution"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->resolution->getUInt())));
-		propertiesXML->append_node(propertyXML);
+        xml_node<>* propertyXML = nullptr;
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "BaseHeight"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->baseHeight->getReal())));
-		propertiesXML->append_node(propertyXML);
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", AttrResolution().c_str()));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->resolution->getUInt())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "HillAmplitude"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->hillAmplitude->getReal())));
-		propertiesXML->append_node(propertyXML);
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", AttrBaseHeight().c_str()));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->baseHeight->getReal())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "HillFrequency"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->hillFrequency->getReal())));
-		propertiesXML->append_node(propertyXML);
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", AttrHillAmplitude().c_str()));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->hillAmplitude->getReal())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "Octaves"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->octaves->getUInt())));
-		propertiesXML->append_node(propertyXML);
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", AttrHillFrequency().c_str()));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->hillFrequency->getReal())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "Persistence"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->persistence->getReal())));
-		propertiesXML->append_node(propertyXML);
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", AttrOctaves().c_str()));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->octaves->getUInt())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "Lacunarity"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->lacunarity->getReal())));
-		propertiesXML->append_node(propertyXML);
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", AttrPersistence().c_str()));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->persistence->getReal())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "Seed"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->seed->getUInt())));
-		propertiesXML->append_node(propertyXML);
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", AttrLacunarity().c_str()));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->lacunarity->getReal())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "EnableRoads"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->enableRoads->getBool())));
-		propertiesXML->append_node(propertyXML);
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", AttrSeed().c_str()));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->seed->getUInt())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "RoadCount"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->roadCount->getUInt())));
-		propertiesXML->append_node(propertyXML);
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", AttrEnableRoads().c_str()));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->enableRoads->getBool())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "RoadWidth"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->roadWidth->getReal())));
-		propertiesXML->append_node(propertyXML);
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", AttrRoadCount().c_str()));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->roadCount->getUInt())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "RoadDepth"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->roadDepth->getReal())));
-		propertiesXML->append_node(propertyXML);
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", AttrRoadWidth().c_str()));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->roadWidth->getReal())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "RoadSmoothness"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->roadSmoothness->getReal())));
-		propertiesXML->append_node(propertyXML);
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", AttrRoadDepth().c_str()));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->roadDepth->getReal())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "RoadCurviness"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->roadCurviness->getReal())));
-		propertiesXML->append_node(propertyXML);
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", AttrRoadSmoothness().c_str()));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->roadSmoothness->getReal())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "RoadsClosed"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->roadsClosed->getBool())));
-		propertiesXML->append_node(propertyXML);
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", AttrRoadCurviness().c_str()));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->roadCurviness->getReal())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "EnableRivers"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->enableRivers->getBool())));
-		propertiesXML->append_node(propertyXML);
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", AttrRoadsClosed().c_str()));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->roadsClosed->getBool())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "RiverCount"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->riverCount->getUInt())));
-		propertiesXML->append_node(propertyXML);
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", AttrEnableRivers().c_str()));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->enableRivers->getBool())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "RiverFlowThreshold"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->riverFlowThreshold->getReal())));
-		propertiesXML->append_node(propertyXML);
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", AttrRiverCount().c_str()));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->riverCount->getUInt())));
+        propertiesXML->append_node(propertyXML);
 
-	}
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", AttrRiverFlowThreshold().c_str()));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->riverFlowThreshold->getReal())));
+        propertiesXML->append_node(propertyXML);
+    }
 
 	Ogre::String ProceduralTerrainCreationComponent::getClassName(void) const
 	{
@@ -2423,7 +2424,7 @@ namespace NOWA
 	// Lua registration
 	//------------------------------------------------------------------------------------------------------
 
-	ProceduralTerrainCreationComponent* getProceduralTerrainCreationComponent(GameObject* gameObject, unsigned int occurrenceIndex)
+	ProceduralTerrainCreationComponent* getProceduralTerrainCreationComponentFromIndex(GameObject* gameObject, unsigned int occurrenceIndex)
 	{
 		return makeStrongPtr<ProceduralTerrainCreationComponent>(gameObject->getComponentWithOccurrence<ProceduralTerrainCreationComponent>(occurrenceIndex)).get();
 	}

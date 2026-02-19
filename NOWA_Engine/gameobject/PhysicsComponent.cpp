@@ -110,16 +110,24 @@ namespace NOWA
             if (GameObject::ENTITY == this->gameObjectPtr->getType())
             {
                 entity = this->gameObjectPtr->getMovableObjectUnsafe<Ogre::v1::Entity>();
-                col = new OgreNewt::CollisionPrimitives::ConvexHull(this->ogreNewt, entity, categoryId, collisionOrientation, collisionPosition, 0.001f /*, this->gameObjectPtr->getSceneNode()->getScale()*/);
+                if (nullptr != entity)
+                {
+                    col = new OgreNewt::CollisionPrimitives::ConvexHull(this->ogreNewt, entity, categoryId, collisionOrientation, collisionPosition, 0.001f /*, this->gameObjectPtr->getSceneNode()->getScale()*/);
+                }
             }
             else if (GameObject::ITEM == this->gameObjectPtr->getType())
             {
                 item = this->gameObjectPtr->getMovableObjectUnsafe<Ogre::Item>();
-                col = new OgreNewt::CollisionPrimitives::ConvexHull(this->ogreNewt, item, categoryId, collisionOrientation, collisionPosition, 0.001f /*, this->gameObjectPtr->getSceneNode()->getScale()*/);
+                if (nullptr != item)
+                {
+                    col = new OgreNewt::CollisionPrimitives::ConvexHull(this->ogreNewt, item, categoryId, collisionOrientation, collisionPosition, 0.001f /*, this->gameObjectPtr->getSceneNode()->getScale()*/);
+                }
             }
 
             if (nullptr == col)
             {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsComponent] Mesh does not exist for: " + this->gameObjectPtr->getName() 
+                    + ". This will cause a crash! Check your scene file if the gameobject has a mesh which does exist!");
                 return OgreNewt::CollisionPtr();
             }
 

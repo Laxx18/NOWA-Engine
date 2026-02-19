@@ -748,7 +748,7 @@ namespace NOWA
 
 	// Lua registration part
 
-	TimeLineComponent* getTimeLineComponent(GameObject* gameObject, unsigned int occurrenceIndex)
+	TimeLineComponent* getTimeLineComponentFromIndex(GameObject* gameObject, unsigned int occurrenceIndex)
 	{
 		return makeStrongPtr<TimeLineComponent>(gameObject->getComponentWithOccurrence<TimeLineComponent>(occurrenceIndex)).get();
 	}
@@ -785,7 +785,7 @@ namespace NOWA
 		gameObjectClass.def("getTimeLineComponentFromName", &getTimeLineComponentFromName);
 		gameObjectClass.def("getTimeLineComponent", (TimeLineComponent * (*)(GameObject*)) & getTimeLineComponent);
 		// If its desired to create several of this components for one game object
-		gameObjectClass.def("getTimeLineComponentFromIndex", (TimeLineComponent * (*)(GameObject*, unsigned int)) & getTimeLineComponent);
+		gameObjectClass.def("getTimeLineComponentFromIndex", (TimeLineComponent * (*)(GameObject*, unsigned int)) & getTimeLineComponentFromIndex);
 
 		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "TimeLineComponent getTimeLineComponentFromIndex(unsigned int occurrenceIndex)", "Gets the component by the given occurence index, since a game object may this component maybe several times.");
 		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "TimeLineComponent getTimeLineComponent()", "Gets the component. This can be used if the game object this component just once.");

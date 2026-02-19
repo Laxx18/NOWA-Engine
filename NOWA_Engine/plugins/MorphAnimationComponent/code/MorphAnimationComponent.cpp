@@ -1053,7 +1053,7 @@ namespace NOWA
 
 	// Lua registration part
 
-	MorphAnimationComponent* getMorphAnimationComponent(GameObject* gameObject, unsigned int occurrenceIndex)
+	MorphAnimationComponent* getMorphAnimationComponentFromIndex(GameObject* gameObject, unsigned int occurrenceIndex)
 	{
 		return makeStrongPtr<MorphAnimationComponent>(gameObject->getComponentWithOccurrence<MorphAnimationComponent>(occurrenceIndex)).get();
 	}

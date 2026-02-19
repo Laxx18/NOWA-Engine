@@ -323,7 +323,13 @@ namespace OgreNewt
 
 	Ogre::Real Contact::getContactMaxNormalImpact(void) const
 	{
-		return getContactForce(nullptr);
+		if (!m_contactNode)
+			return 0.0f;
+
+		const ndContactMaterial& contactPoint = m_contactNode->GetInfo();
+		// m_force is post-solver (zero at onContactOnce time)
+		// m_impact is the impulse magnitude — available immediately
+		return static_cast<Ogre::Real>(contactPoint.m_normal_Force.m_impact);
 	}
 
 	void Contact::setContactTangentFriction(Ogre::Real friction, int index) const
@@ -356,16 +362,6 @@ namespace OgreNewt
 		else if (index == 1)
 			return static_cast<Ogre::Real>(contactPoint.m_material.m_staticFriction1 * contactPoint.m_normal_Force.m_force);
 
-		return 0.0f;
-	}
-
-	void Contact::setContactPruningTolerance(OgreNewt::Body* /*body0*/, OgreNewt::Body* /*body1*/, Ogre::Real /*tolerance*/) const
-	{
-		// Newton 4.0 handles contact pruning internally
-	}
-
-	Ogre::Real Contact::getContactPruningTolerance(OgreNewt::Body* /*body0*/, OgreNewt::Body* /*body1*/) const
-	{
 		return 0.0f;
 	}
 
@@ -510,5 +506,23 @@ namespace OgreNewt
 		message += "getFaceAttribute: " + Ogre::StringConverter::toString(this->getFaceAttribute()) + " \n";
 
 		return message;
+	}
+
+	ContactSnapshot Contact::createSnapshot() const
+	{
+		ContactSnapshot snap;
+		if (!m_contactNode)
+			return snap;
+
+		getPositionAndNormal(snap.position, snap.normal, getBody0());
+		getContactTangentDirections(getBody0(), snap.tangentDir0, snap.tangentDir1);
+		snap.normalSpeed = getNormalSpeed();
+		snap.normalImpact = getContactMaxNormalImpact();
+		snap.tangentSpeed0 = getTangentSpeed(0);
+		snap.tangentSpeed1 = getTangentSpeed(1);
+		snap.penetration = getContactPenetration();
+		snap.closestDistance = getClosestDistance();
+		snap.faceAttribute = static_cast<int>(getFaceAttribute());
+		return snap;
 	}
 }

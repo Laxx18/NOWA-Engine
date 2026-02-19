@@ -228,7 +228,7 @@ namespace NOWA
 
 	// Lua registration part
 
-	SSAOComponent* getSSAOComponent(GameObject* gameObject, unsigned int occurrenceIndex)
+	SSAOComponent* getSSAOComponentFromIndex(GameObject* gameObject, unsigned int occurrenceIndex)
 	{
 		return makeStrongPtr<SSAOComponent>(gameObject->getComponentWithOccurrence<SSAOComponent>(occurrenceIndex)).get();
 	}

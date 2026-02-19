@@ -61,7 +61,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="6" name="LodLevels" data="0"/>
@@ -108,7 +108,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="6" name="LodLevels" data="0"/>
@@ -140,7 +140,7 @@
 			<rotation qw="-4.37114e-08" qx="0" qy="1" qz="0"/>
 			<scale x="0.5" y="0.4" z="0.1"/>
 			<item name="U_ramp_2" meshFile="U_ramp.mesh" castShadows="true" visible="true">
-				<subitem index="0" datablockName="[Default]__765720893"/>
+				<subitem index="0" datablockName="NOWA_RuntimeClone___Default___go_765720893__sub_0"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="765720893"/>
@@ -155,12 +155,12 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					<property type="7" name="DataBlock0" data="[Default]__765720893"/>
+					<property type="7" name="DataBlock0" data="NOWA_RuntimeClone___Default___go_765720893__sub_0"/>
 					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -227,7 +227,7 @@
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="0.5" y="0.7" z="0.1"/>
 			<item name="U_ramp_1" meshFile="U_ramp.mesh" castShadows="true" visible="true">
-				<subitem index="0" datablockName="[Default]__3875652507"/>
+				<subitem index="0" datablockName="NOWA_RuntimeClone___Default___go_3875652507__sub_0"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3875652507"/>
@@ -242,12 +242,12 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					<property type="7" name="DataBlock0" data="[Default]__3875652507"/>
+					<property type="7" name="DataBlock0" data="NOWA_RuntimeClone___Default___go_3875652507__sub_0"/>
 					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -341,7 +341,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="6" name="LodLevels" data="0"/>
@@ -357,10 +357,10 @@
 			</item>
 		</node>
 		<node name="MainCamera" id="4010617415">
-			<position x="-1.59063" y="6.00915" z="-10.6154"/>
-			<rotation qw="-0.134487" qx="0.0600985" qy="0.920193" qz="0.362692"/>
+			<position x="-6.66199" y="3.71446" z="-15.5045"/>
+			<rotation qw="-0.440899" qx="0.152248" qy="0.840373" qz="0.276046"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="true">
+			<item name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
 				<subitem index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -376,7 +376,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="6" name="LodLevels" data="0"/>
@@ -387,8 +387,8 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Active" data="true"/>
-					<property type="9" name="CameraPosition" data="-6.66199 3.71446 -15.5045"/>
-					<property type="9" name="CameraOrientation" data="-36.7422 -124.929 0.89182"/>
+					<property type="9" name="CameraPosition" data="-14.4954 5.72794 -14.9023"/>
+					<property type="9" name="CameraOrientation" data="-52.4937 171.659 1.12495"/>
 					<property type="6" name="NearClipDistance" data="0.1"/>
 					<property type="6" name="FarClipDistance" data="500"/>
 					<property type="6" name="Fovy" data="90"/>
@@ -444,7 +444,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="6" name="LodLevels" data="0"/>
@@ -486,7 +486,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="6" name="LodLevels" data="0"/>
@@ -533,7 +533,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="6" name="LodLevels" data="0"/>
@@ -666,7 +666,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="6" name="LodLevels" data="0"/>
@@ -742,7 +742,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="18332076"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="6" name="LodLevels" data="0"/>
@@ -818,7 +818,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="6" name="LodLevels" data="0"/>
@@ -894,7 +894,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="6" name="LodLevels" data="0"/>
@@ -1007,7 +1007,7 @@
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="0.5" y="0.4" z="0.1"/>
 			<item name="U_ramp_0" meshFile="U_ramp.mesh" castShadows="true" visible="true">
-				<subitem index="0" datablockName="[Default]__63488795"/>
+				<subitem index="0" datablockName="NOWA_RuntimeClone___Default___go_63488795__sub_0"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="63488795"/>
@@ -1022,12 +1022,12 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					<property type="7" name="DataBlock0" data="[Default]__63488795"/>
+					<property type="7" name="DataBlock0" data="NOWA_RuntimeClone___Default___go_63488795__sub_0"/>
 					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -1109,7 +1109,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="6" name="LodLevels" data="0"/>
@@ -1156,7 +1156,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="6" name="LodLevels" data="0"/>
@@ -1203,7 +1203,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="6" name="LodLevels" data="0"/>
@@ -1349,7 +1349,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="6" name="LodLevels" data="0"/>
@@ -1384,7 +1384,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="300"/>
 					<property type="6" name="LodDistance" data="0"/>
 					<property type="6" name="LodLevels" data="0"/>
@@ -1436,7 +1436,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="300"/>
 					<property type="6" name="LodDistance" data="0"/>
 					<property type="6" name="LodLevels" data="0"/>
@@ -1488,7 +1488,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="300"/>
 					<property type="6" name="LodDistance" data="0"/>
 					<property type="6" name="LodLevels" data="0"/>
@@ -1540,7 +1540,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="300"/>
 					<property type="6" name="LodDistance" data="0"/>
 					<property type="6" name="LodLevels" data="0"/>
@@ -1592,7 +1592,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="300"/>
 					<property type="6" name="LodDistance" data="0"/>
 					<property type="6" name="LodLevels" data="0"/>
@@ -1647,7 +1647,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="0"/>
 					<property type="6" name="LodLevels" data="0"/>
-					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="7" name="ComponentOceanComponent" data="OceanComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>

@@ -1322,6 +1322,7 @@ namespace NOWA
                 continue;
             }
 
+#if 0
             // Rotate cylinder 90° around Z to make it stand upright (X-axis -> Y-axis)
             Ogre::Quaternion uprightFix(Ogre::Degree(90), Ogre::Vector3::UNIT_Z);
 
@@ -1340,6 +1341,29 @@ namespace NOWA
                     collisions.push_back(cylinderCol);
                 }
             }
+#else
+            Ogre::Quaternion uprightFix(Ogre::Degree(90), Ogre::Vector3::UNIT_X);
+
+            for (const VegetationInstance& instance : batch.instances)
+            {
+                Ogre::Quaternion correctedOrientation = instance.orientation * uprightFix;
+
+                // Center vertically and compensate for any radial offset
+                Ogre::Vector3 correctedPosition = instance.position + Ogre::Vector3(0.0f, rule.collisionHeight, 0.0f);
+
+                // Compensate for Newton cylinder origin being offset by radius
+                // The cylinder's local X after uprightFix becomes horizontal — pull it back
+                correctedPosition -= instance.orientation * Ogre::Vector3(rule.collisionRadius * 4.0f, 0.0f, rule.collisionRadius * 4.0f);
+
+                OgreNewt::CollisionPtr cylinderCol =
+                    OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::Cylinder(world, rule.collisionRadius, rule.collisionHeight, this->gameObjectPtr->getCategoryId(), correctedOrientation, correctedPosition));
+
+                if (cylinderCol)
+                {
+                    collisions.push_back(cylinderCol);
+                }
+            }
+#endif
         }
 
         if (collisions.empty())

@@ -10774,64 +10774,116 @@ namespace NOWA
 		AddClassToCollection("ComplexVehicleDrivingManipulation", "float getBrake()", "Gets brake force.");
 	}
 
-	luabind::object getPositionAndNormal(OgreNewt::Contact* instance)
-	{
-		luabind::object obj = luabind::newtable(LuaScriptApi::getInstance()->getLua());
+	luabind::object getPositionAndNormalSnapshot(OgreNewt::ContactSnapshot* instance)
+    {
+        luabind::object obj = luabind::newtable(LuaScriptApi::getInstance()->getLua());
+        obj[0] = instance->position;
+        obj[1] = instance->normal;
+        return obj;
+    }
 
-		Ogre::Vector3 position = Ogre::Vector3::ZERO;
-		Ogre::Vector3 normal = Ogre::Vector3::ZERO;
+    luabind::object getTangentDirectionsSnapshot(OgreNewt::ContactSnapshot* instance)
+    {
+        luabind::object obj = luabind::newtable(LuaScriptApi::getInstance()->getLua());
+        obj[0] = instance->tangentDir0;
+        obj[1] = instance->tangentDir1;
+        return obj;
+    }
 
-		instance->getPositionAndNormal(position, normal, instance->getBody0());
+    Ogre::Real getNormalSpeedSnapshot(OgreNewt::ContactSnapshot* instance)
+    {
+        return instance->normalSpeed;
+    }
+    Ogre::Real getContactMaxNormalImpactSnapshot(OgreNewt::ContactSnapshot* i)
+    {
+        return i->normalImpact;
+    }
+    Ogre::Real getTangentSpeedSnapshot(OgreNewt::ContactSnapshot* i, int index)
+    {
+        return index == 0 ? i->tangentSpeed0 : i->tangentSpeed1;
+    }
+    Ogre::Real getContactPenetrationSnapshot(OgreNewt::ContactSnapshot* i)
+    {
+        return i->penetration;
+    }
+    Ogre::Real getClosestDistanceSnapshot(OgreNewt::ContactSnapshot* i)
+    {
+        return i->closestDistance;
+    }
+    int getFaceAttributeSnapshot(OgreNewt::ContactSnapshot* i)
+    {
+        return i->faceAttribute;
+    }
+    Ogre::Real getContactForceSnapshot(OgreNewt::ContactSnapshot* i)
+    {
+        return i->normalImpact;
+    }
+    Ogre::Real getContactMaxTangentImpactSnapshot(OgreNewt::ContactSnapshot* i, int index)
+    {
+        return index == 0 ? i->tangentSpeed0 : i->tangentSpeed1;
+    }
 
-		obj[0] = position;
-		obj[1] = normal;
+    Ogre::String printSnapshot(OgreNewt::ContactSnapshot* i)
+    {
+        Ogre::String msg;
+        msg += "getNormalSpeed: " + Ogre::StringConverter::toString(i->normalSpeed) + " \n";
+        msg += "getContactPosition: " + Ogre::StringConverter::toString(i->position) + " \n";
+        msg += "getContactNormal: " + Ogre::StringConverter::toString(i->normal) + " \n";
+        msg += "getTangentDirection1: " + Ogre::StringConverter::toString(i->tangentDir0) + " \n";
+        msg += "getTangentDirection2: " + Ogre::StringConverter::toString(i->tangentDir1) + " \n";
+        msg += "getTangentSpeed(0): " + Ogre::StringConverter::toString(i->tangentSpeed0) + " \n";
+        msg += "getTangentSpeed(1): " + Ogre::StringConverter::toString(i->tangentSpeed1) + " \n";
+        msg += "getContactMaxNormalImpact: " + Ogre::StringConverter::toString(i->normalImpact) + " \n";
+        msg += "getContactMaxTangentImpact(0): " + Ogre::StringConverter::toString(i->tangentSpeed0) + " \n";
+        msg += "getContactPenetration: " + Ogre::StringConverter::toString(i->penetration) + " \n";
+        msg += "getClosestDistance: " + Ogre::StringConverter::toString(i->closestDistance) + " \n";
+        msg += "getFaceAttribute: " + Ogre::StringConverter::toString(i->faceAttribute) + " \n";
+        return msg;
+    }
 
-		return obj;
-	}
-
-	luabind::object getTangentDirections(OgreNewt::Contact* instance)
-	{
-		luabind::object obj = luabind::newtable(LuaScriptApi::getInstance()->getLua());
-
-		Ogre::Vector3 direction1 = Ogre::Vector3::ZERO;
-		Ogre::Vector3 direction2 = Ogre::Vector3::ZERO;
-
-		instance->getContactTangentDirections(instance->getBody0(), direction1, direction2);
-
-		obj[0] = direction1;
-		obj[1] = direction2;
-
-		return obj;
-	}
+    // Setter stubs — only valid in onContact (non-deferred), no-ops in onContactOnce
+    void setterStubR(OgreNewt::ContactSnapshot*, Ogre::Real)
+    {
+    }
+    void setterStubI(OgreNewt::ContactSnapshot*, int, int)
+    {
+    }
+    void setterStubRI(OgreNewt::ContactSnapshot*, Ogre::Real, Ogre::Real, int)
+    {
+    }
+    void setterStubV(OgreNewt::ContactSnapshot*, const Ogre::Vector3&)
+    {
+    }
+    void setterStubTI(OgreNewt::ContactSnapshot*, Ogre::Real, int)
+    {
+    }
 
 	void bindPhysicsMaterialComponent(lua_State* lua)
 	{
-		module(lua)
+        module(lua)
 		[
-			class_<OgreNewt::Contact>("Contact")
-			.def("getNormalSpeed", &OgreNewt::Contact::getNormalSpeed)
-			// .def("getForce", &OgreNewt::Contact::getForce)
-			.def("getPositionAndNormal", &getPositionAndNormal)
-			.def("getContactTangentDirections", &getTangentDirections)
-			.def("getTangentSpeed", &OgreNewt::Contact::getTangentSpeed)
-			.def("setSoftness", &OgreNewt::Contact::setSoftness)
-			.def("setElasticity", &OgreNewt::Contact::setElasticity)
-			.def("setFrictionState", &OgreNewt::Contact::setFrictionState)
-			.def("setFrictionCoefficient", &OgreNewt::Contact::setFrictionCoef)
-			.def("setTangentAcceleration", &OgreNewt::Contact::setTangentAcceleration)
-			.def("setNormalDirection", &OgreNewt::Contact::setNormalDirection)
-			.def("setNormalAcceleration", &OgreNewt::Contact::setNormalAcceleration)
-			.def("setRotateTangentDirections", &OgreNewt::Contact::setRotateTangentDirections)
-			.def("getContactForce", &OgreNewt::Contact::getContactForce)
-			.def("getContactMaxNormalImpact", &OgreNewt::Contact::getContactMaxNormalImpact)
-			.def("setContactTangentFriction", &OgreNewt::Contact::setContactTangentFriction)
-			.def("getContactMaxTangentImpact", &OgreNewt::Contact::getContactMaxTangentImpact)
-			.def("setContactPruningTolerance", &OgreNewt::Contact::setContactPruningTolerance)
-			.def("getContactPruningTolerance", &OgreNewt::Contact::getContactPruningTolerance)
-			.def("getContactPenetration", &OgreNewt::Contact::getContactPenetration)
-			.def("getClosestDistance", &OgreNewt::Contact::getClosestDistance)
-			.def("getFaceAttribute", &OgreNewt::Contact::getFaceAttribute)
-			.def("print", &OgreNewt::Contact::print)
+			class_<OgreNewt::ContactSnapshot>("Contact")
+            .def("getNormalSpeed", &getNormalSpeedSnapshot)
+            .def("getPositionAndNormal", &getPositionAndNormalSnapshot)
+            .def("getContactTangentDirections", &getTangentDirectionsSnapshot)
+            .def("getTangentSpeed", &getTangentSpeedSnapshot)
+            .def("setSoftness", &setterStubR)
+            .def("setElasticity", &setterStubR)
+            .def("setFrictionState", &setterStubI)
+            .def("setFrictionCoefficient", &setterStubRI)
+            .def("setTangentAcceleration", &setterStubTI)
+            .def("setNormalDirection", &setterStubV)
+            .def("setNormalAcceleration", &setterStubR)
+            .def("setRotateTangentDirections", &setterStubV)
+            .def("getContactForce", &getContactForceSnapshot)
+            .def("getContactMaxNormalImpact", &getContactMaxNormalImpactSnapshot)
+            .def("setContactTangentFriction", &setterStubTI)
+            .def("getContactMaxTangentImpact", &getContactMaxTangentImpactSnapshot)
+            .def("setContactPruningTolerance", &setterStubR)
+            .def("getContactPenetration", &getContactPenetrationSnapshot)
+            .def("getClosestDistance", &getClosestDistanceSnapshot)
+            .def("getFaceAttribute", &getFaceAttributeSnapshot)
+            .def("print", &printSnapshot)
 		];
 
 		AddClassToCollection("Contact", "class", "Contact can be used, to get details information when a collision of two bodies occured and to control, what should happen with them.");
@@ -10856,7 +10908,6 @@ namespace NOWA
 		AddClassToCollection("Contact", "void setContactTangentFriction(float friction, int index)", "Sets the contact tangent friction along the surface plane. Note: State 0 makes the contact frictionless along the index tangent vector. The index 0 is for primary tangent vector or 1 for the secondary tangent.");
 		AddClassToCollection("Contact", "float getContactMaxTangentImpact()", "Gets the maximum tangent impact of the collision.");
 		AddClassToCollection("Contact", "void setContactPruningTolerance(float tolerance)", "Sets the pruning tolerance for this contact.");
-		AddClassToCollection("Contact", "float getContactPruningTolerance()", "Gets the pruning tolerance for this contact.");
 		AddClassToCollection("Contact", "float getContactPenetration()", "Gets the contact penetration.");
 		AddClassToCollection("Contact", "float getClosestDistance()", "Gets the closest distance between the two GameObjects at this contact.");
 		AddClassToCollection("Contact", "string print()", "Gets all the contact properties as string in order to print to log for debugging and analysis reasons.");

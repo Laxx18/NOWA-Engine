@@ -351,6 +351,14 @@ void ResourcesPanelMeshes::loadMeshes(const Ogre::String& filter)
 				parent->add(child);
 			}
 		}
+		// Add Dungeon
+		{
+			if (NOWA::GameObjectFactory::getInstance()->getComponentFactory()->hasComponent("ProceduralDungeonComponent"))
+			{
+				child = new MyGUI::TreeControl::Node("Dungeon", "Data");
+				parent->add(child);
+			}
+		}
 		root->add(parent);
 	}
 
@@ -499,6 +507,10 @@ void ResourcesPanelMeshes::notifyTreeNodeSelected(MyGUI::TreeControl* treeContro
 		else if ("Road" == Ogre::String(node->getText()))
 		{
 			this->editorManager->attachOtherResourceToPlaceNode(NOWA::GameObject::ROAD);
+		}
+		else if ("Dungeon" == Ogre::String(node->getText()))
+		{
+			this->editorManager->attachOtherResourceToPlaceNode(NOWA::GameObject::DUNGEON);
 		}
 		else
 		{

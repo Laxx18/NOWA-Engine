@@ -460,7 +460,7 @@ namespace NOWA
 
 	// Lua registration
 
-	IESLightComponent* getIESLightComponent(GameObject* gameObject, unsigned int occurrenceIndex)
+	IESLightComponent* getIESLightComponentFromIndex(GameObject* gameObject, unsigned int occurrenceIndex)
 	{
 		return makeStrongPtr<IESLightComponent>(gameObject->getComponentWithOccurrence<IESLightComponent>(occurrenceIndex)).get();
 	}

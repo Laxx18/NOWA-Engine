@@ -302,7 +302,7 @@ namespace NOWA
 		instance->removeQuantityFromInventory(Ogre::StringConverter::parseUnsignedLong(id), componentName, quantity, once);
 	}
 
-	InventoryItemComponent* getInventoryItemComponent(GameObject* gameObject, unsigned int occurrenceIndex)
+	InventoryItemComponent* getInventoryItemComponentFromIndex(GameObject* gameObject, unsigned int occurrenceIndex)
 	{
 		return makeStrongPtr<InventoryItemComponent>(gameObject->getComponentWithOccurrence<InventoryItemComponent>(occurrenceIndex)).get();
 	}

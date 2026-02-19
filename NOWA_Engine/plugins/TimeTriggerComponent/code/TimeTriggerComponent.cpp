@@ -362,7 +362,7 @@ namespace NOWA
 
 	// Lua registration part
 
-	TimeTriggerComponent* getTimeTriggerComponent(GameObject* gameObject, unsigned int occurrenceIndex)
+	TimeTriggerComponent* getTimeTriggerComponentFromIndex(GameObject* gameObject, unsigned int occurrenceIndex)
 	{
 		return makeStrongPtr<TimeTriggerComponent>(gameObject->getComponentWithOccurrence<TimeTriggerComponent>(occurrenceIndex)).get();
 	}
@@ -393,7 +393,7 @@ namespace NOWA
 		gameObjectClass.def("getTimeTriggerComponentFromName", &getTimeTriggerComponentFromName);
 		gameObjectClass.def("getTimeTriggerComponent", (TimeTriggerComponent * (*)(GameObject*)) & getTimeTriggerComponent);
 		// If its desired to create several of this components for one game object
-		gameObjectClass.def("getTimeTriggerComponentFromIndex", (TimeTriggerComponent * (*)(GameObject*, unsigned int)) & getTimeTriggerComponent);
+		gameObjectClass.def("getTimeTriggerComponentFromIndex", (TimeTriggerComponent * (*)(GameObject*, unsigned int)) & getTimeTriggerComponentFromIndex);
 
 		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "TimeTriggerComponent getTimeTriggerComponentFromIndex(unsigned int occurrenceIndex)", "Gets the component by the given occurence index, since a game object may this component maybe several times.");
 		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "TimeTriggerComponent getTimeTriggerComponent()", "Gets the component. This can be used if the game object this component just once.");

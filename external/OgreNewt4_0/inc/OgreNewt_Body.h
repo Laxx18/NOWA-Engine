@@ -35,6 +35,7 @@ namespace OgreNewt
 		typedef OgreNewt::function<void(Ogre::SceneNode*, const Ogre::Vector3&, const Ogre::Quaternion&, bool updateRot, bool updateStatic)> RenderUpdateCallback;
 
 		friend class Vehicle;
+		friend class World;
 	public:
 
 		Body(World* world, Ogre::SceneManager* sceneManager, const OgreNewt::CollisionPtr& col, Ogre::SceneMemoryMgrTypes memoryType = Ogre::SceneMemoryMgrTypes::SCENE_DYNAMIC, NotifyKind notifyKind = NotifyKind::Default);
@@ -192,6 +193,8 @@ namespace OgreNewt
 
 		void setSelfCollisionGroup(unsigned int selfCollisionGroup);
 		unsigned int getSelfCollisionGroup() const;
+	private:
+		void dispatchContacts();
 	protected:
 		ndBodyKinematic* m_body;
 		BodyNotify* m_bodyNotify; // Store the notification object

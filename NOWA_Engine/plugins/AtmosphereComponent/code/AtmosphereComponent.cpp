@@ -1945,7 +1945,7 @@ namespace NOWA
 
 	// Lua registration part
 
-	AtmosphereComponent* getAtmosphereComponent(GameObject* gameObject, unsigned int occurrenceIndex)
+	AtmosphereComponent* getAtmosphereComponentFromIndex(GameObject* gameObject, unsigned int occurrenceIndex)
 	{
 		return makeStrongPtr<AtmosphereComponent>(gameObject->getComponentWithOccurrence<AtmosphereComponent>(occurrenceIndex)).get();
 	}
@@ -2059,7 +2059,7 @@ namespace NOWA
 		gameObjectClass.def("getAtmosphereComponentFromName", &getAtmosphereComponentFromName);
 		gameObjectClass.def("getAtmosphereComponent", (AtmosphereComponent * (*)(GameObject*)) & getAtmosphereComponent);
 		// If its desired to create several of this components for one game object
-		gameObjectClass.def("getAtmosphereComponentFromIndex", (AtmosphereComponent * (*)(GameObject*, unsigned int)) & getAtmosphereComponent);
+		gameObjectClass.def("getAtmosphereComponentFromIndex", (AtmosphereComponent * (*)(GameObject*, unsigned int)) & getAtmosphereComponentFromIndex);
 
 		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "AtmosphereComponent getAtmosphereComponent()", "Gets the component. This can be used if the game object this component just once.");
 		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "AtmosphereComponent getAtmosphereComponentFromName(String name)", "Gets the component from name.");

@@ -196,7 +196,7 @@ namespace NOWA
 
 	// Lua registration part
 
-	ReferenceComponent* getReferenceComponent(GameObject* gameObject, unsigned int occurrenceIndex)
+	ReferenceComponent* getReferenceComponentFromIndex(GameObject* gameObject, unsigned int occurrenceIndex)
 	{
 		return makeStrongPtr<ReferenceComponent>(gameObject->getComponentWithOccurrence<ReferenceComponent>(occurrenceIndex)).get();
 	}
@@ -240,7 +240,7 @@ namespace NOWA
 		gameObjectClass.def("getReferenceComponentFromName", &getReferenceComponentFromName);
 		gameObjectClass.def("getReferenceComponent", (ReferenceComponent * (*)(GameObject*)) & getReferenceComponent);
 		// If its desired to create several of this components for one game object
-		gameObjectClass.def("getReferenceComponentFromIndex", (ReferenceComponent * (*)(GameObject*, unsigned int)) & getReferenceComponent);
+		gameObjectClass.def("getReferenceComponentFromIndex", (ReferenceComponent * (*)(GameObject*, unsigned int)) & getReferenceComponentFromIndex);
 
 		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "ReferenceComponent getReferenceComponentFromIndex(unsigned int occurrenceIndex)", "Gets the component by the given occurence index, since a game object may this component maybe several times.");
 		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "ReferenceComponent getReferenceComponent()", "Gets the component. This can be used if the game object this component just once.");

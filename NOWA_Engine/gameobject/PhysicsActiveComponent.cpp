@@ -490,10 +490,11 @@ namespace NOWA
 
 		OgreNewt::CollisionPtr collisionPtr;
 
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsActiveComponent::createDynamicCollision", _4(&inertia, collisionOrientation, &calculatedMassOrigin, &collisionPtr),
-		{
-			collisionPtr = this->createDynamicCollision(inertia,this->collisionSize->getVector3(), this->collisionPosition->getVector3(), collisionOrientation, calculatedMassOrigin, this->gameObjectPtr->getCategoryId());
-		});
+		GraphicsModule::RenderCommand renderCommand = [this, &inertia, collisionOrientation, &calculatedMassOrigin, &collisionPtr]()
+        {
+            collisionPtr = this->createDynamicCollision(inertia, this->collisionSize->getVector3(), this->collisionPosition->getVector3(), collisionOrientation, calculatedMassOrigin, this->gameObjectPtr->getCategoryId());
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PhysicsActiveComponent::createDynamicCollision");
 
 		this->physicsBody = new OgreNewt::Body(this->ogreNewt, this->gameObjectPtr->getSceneManager(), collisionPtr);
 
@@ -643,6 +644,11 @@ namespace NOWA
 		inertia *= weightedMass;
 		this->physicsBody->setMassMatrix(weightedMass, inertia);
 		this->physicsBody->setCenterOfMass(calculatedMassOrigin);
+
+		// Re-apply material group ID — reCreateCollision creates a fresh body
+        // which resets m_shapeMaterial.m_userId to 0
+        const auto materialId = AppStateManager::getSingletonPtr()->getGameObjectController()->getMaterialID(this->gameObjectPtr.get(), this->ogreNewt);
+        this->physicsBody->setMaterialGroupID(materialId);
 	}
 
 	void PhysicsActiveComponent::createCompoundBody(const std::vector<PhysicsActiveComponent*>& physicsComponentList)
@@ -1423,7 +1429,66 @@ namespace NOWA
 	Ogre::String PhysicsActiveComponent::getGravitySourceCategory(void) const
 	{
 		return this->gravitySourceCategory->getString();
-	}
+    }
+
+    void PhysicsActiveComponent::reCreateDynamicBodyForItem(Ogre::Item* item)
+    {
+        if (nullptr == item)
+        {
+            return;
+        }
+
+        // Step 1: destroy existing body and collision
+        this->destroyBody();
+        this->destroyCollision();
+
+        // Step 2: create collision from the explicit item
+        Ogre::Vector3 inertia = Ogre::Vector3(1.0f, 1.0f, 1.0f);
+        Ogre::Quaternion collisionOrientation = Ogre::Quaternion::IDENTITY;
+        if (Ogre::Vector3::ZERO != this->collisionDirection->getVector3())
+        {
+            collisionOrientation = MathHelper::getInstance()->degreesToQuat(this->collisionDirection->getVector3());
+        }
+
+        Ogre::Vector3 calculatedMassOrigin = Ogre::Vector3::ZERO;
+        OgreNewt::CollisionPtr collisionPtr;
+
+        GraphicsModule::RenderCommand renderCommand = [this, &inertia, collisionOrientation, &calculatedMassOrigin, &collisionPtr]()
+        {
+            collisionPtr = this->createDynamicCollision(inertia, this->collisionSize->getVector3(), this->collisionPosition->getVector3(), collisionOrientation, calculatedMassOrigin, this->gameObjectPtr->getCategoryId());
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PhysicsActiveComponent::reCreateCollisionForItem");
+
+        // Step 3: create new body — mirrors createDynamicBody exactly
+        this->physicsBody = new OgreNewt::Body(this->ogreNewt, this->gameObjectPtr->getSceneManager(), collisionPtr);
+        NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->registerRenderCallbackForBody(this->physicsBody);
+
+        if (Ogre::Vector3::ZERO != this->massOrigin->getVector3())
+        {
+            calculatedMassOrigin = this->massOrigin->getVector3();
+        }
+
+        Ogre::Real weightedMass = this->mass->getReal();
+        inertia *= weightedMass;
+        this->physicsBody->setMassMatrix(weightedMass, inertia);
+        this->physicsBody->setCenterOfMass(calculatedMassOrigin);
+        this->physicsBody->setGravity(this->gravity->getVector3());
+        this->physicsBody->setLinearDamping(this->linearDamping->getReal());
+        this->physicsBody->setAngularDamping(this->angularDamping->getVector3());
+        this->physicsBody->setCustomForceAndTorqueCallback<PhysicsActiveComponent>(&PhysicsActiveComponent::moveCallback, this);
+        this->physicsBody->setUserData(OgreNewt::Any(static_cast<PhysicsComponent*>(this)));
+        this->physicsBody->attachNode(this->gameObjectPtr->getSceneNode());
+        this->setPosition(this->initialPosition);
+        this->setOrientation(this->initialOrientation);
+        this->setConstraintAxis(this->constraintAxis->getVector3());
+        this->setConstraintDirection(this->constraintDirection->getVector3());
+        this->setCollidable(this->collidable->getBool());
+        this->physicsBody->setType(this->gameObjectPtr->getCategoryId());
+
+        const auto materialId = AppStateManager::getSingletonPtr()->getGameObjectController()->getMaterialID(this->gameObjectPtr.get(), this->ogreNewt);
+        this->physicsBody->setMaterialGroupID(materialId);
+        this->setActivated(this->activated->getBool());
+    }
 
 	/*void PhysicsActiveComponent::setDefaultPoseName(const Ogre::String& defaultPoseName)
 	{
@@ -3004,9 +3069,11 @@ namespace NOWA
 		
 		if (nullptr != this->gameObjectPtr->getLuaScript())
 		{
-			NOWA::AppStateManager::LogicCommand logicCommand = [this, otherPhysicsComponent, contact]()
+            // Snapshot NOW — contact ptr is dangling by logic thread execution time
+            OgreNewt::ContactSnapshot contactSnapshot = contact->createSnapshot();
+            NOWA::AppStateManager::LogicCommand logicCommand = [ this, otherPhysicsComponent, contactSnapshot]()
 			{
-				this->gameObjectPtr->getLuaScript()->callTableFunction(this->onContactFunctionName->getString(), otherPhysicsComponent->getOwner(), contact);
+                this->gameObjectPtr->getLuaScript()->callTableFunction(this->onContactFunctionName->getString(), otherPhysicsComponent->getOwner(), contactSnapshot);
 			};
 			NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 		}

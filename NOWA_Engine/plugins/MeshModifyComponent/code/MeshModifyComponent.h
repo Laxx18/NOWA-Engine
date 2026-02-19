@@ -221,6 +221,14 @@ namespace NOWA
 		void setCategory(const Ogre::String& category);
 		Ogre::String getCategory(void) const;
 
+		void setMaxDamage(Ogre::Real maxDamage);
+
+        Ogre::Real getMaxDamage() const;
+
+        Ogre::Real getCurrentDamage() const;
+
+        void resetDamage(void);
+
 		// --- Mesh Operations ---
 
 		/**
@@ -292,7 +300,7 @@ namespace NOWA
 		static const Ogre::String AttrBrushFalloff(void) { return "Brush Falloff"; }
 		static const Ogre::String AttrBrushMode(void) { return "Brush Mode"; }
 		static const Ogre::String AttrCategory(void) { return "Category"; }
-
+        static const Ogre::String AttrMaxDamage(void) { return "Max Damage"; }
 	protected:
 		virtual bool mouseMoved(const OIS::MouseEvent& evt) override;
 		virtual bool mousePressed(const OIS::MouseEvent& evt, OIS::MouseButtonID id) override;
@@ -300,10 +308,10 @@ namespace NOWA
 
 	private:
 		/**
-		 * @brief	Creates the editable mesh by cloning the original with dynamic buffers
+		 * @brief	Prepreaes the editable mesh by cloning the original with dynamic buffers
 		 * @return	True if successful
 		 */
-		bool createEditableMesh(void);
+		bool prepareEditableMesh(void);
 
 		/**
 		 * @brief	Destroys the editable mesh and cleans up resources
@@ -342,6 +350,30 @@ namespace NOWA
 		 * @param	invertEffect		If true, inverts the brush effect
 		 */
 		void applyBrush(const Ogre::Vector3& brushCenterLocal, bool invertEffect);
+
+		/**
+         * @brief   Deforms the mesh at a world-space position along a specific direction.
+         *          Unlike deformAtWorldPosition which uses per-vertex normals (causing spikes),
+         *          this function moves all affected vertices along the same direction vector,
+         *          producing a clean dent/crush effect suitable for collision deformation.
+         * @param   brushCenterLocal   Brush center in local/object space
+         * @param   direction          The direction to move vertices along (local space, will be normalised)
+         * @param   invertEffect       If true, moves vertices in the opposite direction
+         */
+        void applyBrushAlongDirection(const Ogre::Vector3& brushCenterLocal, const Ogre::Vector3& direction, bool invertEffect);
+
+		/**
+         * @brief   Deforms the mesh at a world-space position along the contact normal,
+         *          scaled by the impact force. Use this for physics collision deformation.
+         *          All affected vertices move along the same impact direction, avoiding
+         *          the spiking artifacts that occur when using per-vertex normals.
+         * @param   worldPos                  Contact point in world space (e.g. from contact:getPositionAndNormal())
+         * @param   worldNormal               Contact normal in world space (e.g. from contact:getPositionAndNormal())
+         * @param   impactStrength            The impact force magnitude (e.g. from contact:getContactMaxNormalImpact())
+         * @param   maxForceForFullDeform     The force value that produces maximum deformation (scales the intensity)
+         * @param   invertEffect              If true, deforms outward instead of inward
+         */
+        void deformAtWorldPositionByForceAndNormal(const Ogre::Vector3& worldPos, const Ogre::Vector3& worldNormal, Ogre::Real impactStrength, Ogre::Real maxForceForFullDeform, bool invertEffect);
 
 		/**
 		 * @brief	Recalculates normals for all vertices based on face normals
@@ -391,6 +423,11 @@ namespace NOWA
 		void addInputListener(void);
 
 		void removeInputListener(void);
+
+		/**
+         * @brief	Rebuilds collision. Can be called in lua script if e.g. vehicle hit an obstacle and is deformed and then calc new collision shape at runtime.
+         */
+		void rebuildCollision(void);
 	private:
 		Ogre::String name;
 
@@ -447,6 +484,10 @@ namespace NOWA
 		Variant* brushFalloff;
 		Variant* brushMode;
 		Variant* category;
+        NOWA::Variant* maxDamage; // 0.0 - 1.0, cap (e.g. 0.7 = 70% max damage)
+
+		Ogre::Real currentDamage; // 0.0 - 1.0, accumulated damage ratio
+
 		bool canModify;
         PhysicsActiveComponent* physicsActiveComponent;
 	};

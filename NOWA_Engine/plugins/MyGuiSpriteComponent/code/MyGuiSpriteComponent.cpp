@@ -763,7 +763,7 @@ namespace NOWA
 
 	// Lua registration part
 
-	MyGuiSpriteComponent* getMyGuiSpriteComponent(GameObject* gameObject, unsigned int occurrenceIndex)
+	MyGuiSpriteComponent* getMyGuiSpriteComponentFromIndex(GameObject* gameObject, unsigned int occurrenceIndex)
 	{
 		return makeStrongPtr<MyGuiSpriteComponent>(gameObject->getComponentWithOccurrence<MyGuiSpriteComponent>(occurrenceIndex)).get();
 	}
@@ -800,7 +800,7 @@ namespace NOWA
 		gameObjectClass.def("getMyGuiSpriteComponentFromName", &getMyGuiSpriteComponentFromName);
 		gameObjectClass.def("getMyGuiSpriteComponent", (MyGuiSpriteComponent * (*)(GameObject*)) & getMyGuiSpriteComponent);
 		// If its desired to create several of this components for one game object
-		gameObjectClass.def("getMyGuiSpriteComponentFromIndex", (MyGuiSpriteComponent * (*)(GameObject*, unsigned int)) & getMyGuiSpriteComponent);
+		gameObjectClass.def("getMyGuiSpriteComponentFromIndex", (MyGuiSpriteComponent * (*)(GameObject*, unsigned int)) & getMyGuiSpriteComponentFromIndex);
 
 		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "MyGuiSpriteComponent getMyGuiSpriteComponentFromIndex(unsigned int occurrenceIndex)", "Gets the component by the given occurence index, since a game object may this component maybe several times.");
 		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "MyGuiSpriteComponent getMyGuiSpriteComponent()", "Gets the component. This can be used if the game object this component just once.");

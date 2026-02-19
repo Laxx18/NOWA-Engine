@@ -3672,7 +3672,7 @@ namespace Ogre
             currentMappedTexBuffer = mStartMappedTexBuffer + currentConstOffset;
         }
 
-        *reinterpret_cast<float * RESTRICT_ALIAS>( currentMappedConstBuffer + 1 ) =
+        *reinterpret_cast<float *RESTRICT_ALIAS>( currentMappedConstBuffer + 1 ) =
             datablock->mShadowConstantBias * mConstantBiasScale;
 #if !OGRE_NO_FINE_LIGHT_MASK_GRANULARITY
         *( currentMappedConstBuffer + 2u ) = queuedRenderable.movableObject->getLightMask();

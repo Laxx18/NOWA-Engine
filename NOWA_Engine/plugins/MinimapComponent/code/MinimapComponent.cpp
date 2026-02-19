@@ -1596,7 +1596,7 @@ namespace NOWA
 
 	// Lua registration part
 
-	MinimapComponent* getMinimapComponent(GameObject* gameObject, unsigned int occurrenceIndex)
+	MinimapComponent* getMinimapComponentFromIndex(GameObject* gameObject, unsigned int occurrenceIndex)
 	{
 		return makeStrongPtr<MinimapComponent>(gameObject->getComponentWithOccurrence<MinimapComponent>(occurrenceIndex)).get();
 	}
@@ -1641,7 +1641,7 @@ namespace NOWA
 		gameObjectClass.def("getMinimapComponentFromName", &getMinimapComponentFromName);
 		gameObjectClass.def("getMinimapComponent", (MinimapComponent * (*)(GameObject*)) & getMinimapComponent);
 		// If its desired to create several of this components for one game object
-		gameObjectClass.def("getMinimapComponentFromIndex", (MinimapComponent * (*)(GameObject*, unsigned int)) & getMinimapComponent);
+		gameObjectClass.def("getMinimapComponentFromIndex", (MinimapComponent * (*)(GameObject*, unsigned int)) & getMinimapComponentFromIndex);
 
 		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "MinimapComponent getMinimapComponentFromIndex(unsigned int occurrenceIndex)", "Gets the component by the given occurence index, since a game object may this component maybe several times.");
 		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "MinimapComponent getMinimapComponent()", "Gets the component. This can be used if the game object this component just once.");

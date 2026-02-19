@@ -1102,7 +1102,7 @@ namespace NOWA
 
 	// Lua registration part
 
-	RaceGoalComponent* getRaceGoalComponent(GameObject* gameObject, unsigned int occurrenceIndex)
+	RaceGoalComponent* getRaceGoalComponentFromIndex(GameObject* gameObject, unsigned int occurrenceIndex)
 	{
 		return makeStrongPtr<RaceGoalComponent>(gameObject->getComponentWithOccurrence<RaceGoalComponent>(occurrenceIndex)).get();
 	}
@@ -1144,7 +1144,7 @@ namespace NOWA
 		gameObjectClass.def("getRaceGoalComponentFromName", &getRaceGoalComponentFromName);
 		gameObjectClass.def("getRaceGoalComponent", (RaceGoalComponent * (*)(GameObject*)) & getRaceGoalComponent);
 		// If its desired to create several of this components for one game object
-		gameObjectClass.def("getRaceGoalComponentFromIndex", (RaceGoalComponent * (*)(GameObject*, unsigned int)) & getRaceGoalComponent);
+		gameObjectClass.def("getRaceGoalComponentFromIndex", (RaceGoalComponent * (*)(GameObject*, unsigned int)) & getRaceGoalComponentFromIndex);
 
 		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "RaceGoalComponent getRaceGoalComponentFromIndex(unsigned int occurrenceIndex)", "Gets the component by the given occurence index, since a game object may this component maybe several times.");
 		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "RaceGoalComponent getRaceGoalComponent()", "Gets the component. This can be used if the game object this component just once.");
