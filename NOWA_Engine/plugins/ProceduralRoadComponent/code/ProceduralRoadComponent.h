@@ -211,6 +211,8 @@ namespace NOWA
 
         void confirmRoad(void);
 
+        void updateContinuationPoint(void);
+
         void cancelRoad(void);
 
         // Road segment management

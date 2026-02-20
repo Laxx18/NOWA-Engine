@@ -363,6 +363,29 @@ namespace NOWA
         void applyBrushAlongDirection(const Ogre::Vector3& brushCenterLocal, const Ogre::Vector3& direction, bool invertEffect);
 
 		/**
+         * @brief   Crushes vertices toward a plane defined by a direction and offset.
+         *          Unlike incremental push/pull brushes, this clamps vertices to a hard plane,
+         *          making it suitable for scrap press scenarios where geometry must not exceed
+         *          a certain boundary. Vertices beyond the crush plane are blended toward it
+         *          based on brush falloff influence.
+         * @param   brushCenterLocal      Brush center in local/object space
+         * @param   crushDirectionLocal   Direction of the crush force in local space (will be normalised)
+         * @param   crushPlaneOffset      Distance along crushDirection that defines the crush boundary.
+         *                                Vertices projected beyond this offset are clamped toward it.
+         */
+        void applyBrushCrush(const Ogre::Vector3& brushCenterLocal, const Ogre::Vector3& crushDirectionLocal, Ogre::Real crushPlaneOffset);
+
+        /**
+         * @brief   World-space wrapper for applyBrushCrush. Transforms position and direction
+         *          from world space into local object space before applying the crush.
+         *          Use this for scrap press scenarios where two physics walls press against
+         *          the vehicle from opposite sides. Call once per wall per frame.
+         * @param   worldPos                 Contact point or press origin in world space
+         * @param   worldCrushDirection      Direction of the crush force in world space
+         */
+        void crushAtWorldPosition(const Ogre::Vector3& worldPos, const Ogre::Vector3& worldCrushDirection);
+
+		/**
          * @brief   Deforms the mesh at a world-space position along the contact normal,
          *          scaled by the impact force. Use this for physics collision deformation.
          *          All affected vertices move along the same impact direction, avoiding
@@ -428,6 +451,8 @@ namespace NOWA
          * @brief	Rebuilds collision. Can be called in lua script if e.g. vehicle hit an obstacle and is deformed and then calc new collision shape at runtime.
          */
 		void rebuildCollision(void);
+
+		void startWorkerIfNeeded(void);
 	private:
 		Ogre::String name;
 
@@ -473,9 +498,6 @@ namespace NOWA
 		bool isCtrlPressed;
 		Ogre::Vector3 lastBrushPosition;
 
-		// Pending upload flag (for thread-safe updates)
-		std::atomic<bool> pendingUpload;
-
 		// Attributes
 		Variant* activated;
 		Variant* brushName;
@@ -490,6 +512,12 @@ namespace NOWA
 
 		bool canModify;
         PhysicsActiveComponent* physicsActiveComponent;
+
+		std::atomic<bool> brushInProgress{false};
+        std::atomic<bool> dirtyVertices{false}; // vertices changed, need recalc+upload
+        std::atomic<bool> workerRunning{false}; // persistent worker is alive
+                                                // Pending upload flag (for thread-safe updates)
+        std::thread workerThread;
 	};
 
 }; // namespace end

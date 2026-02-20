@@ -618,7 +618,7 @@ namespace NOWA
         // Build exclusion list - exclude our own road and preview items
         std::vector<Ogre::MovableObject*> excludeMovableObjects;
 
-        // Check if mouse hit already created road, -> then skip
+        // Check if mouse hit already created road -> then skip
         const OIS::MouseState& ms = NOWA::InputDeviceCore::getSingletonPtr()->getMouse()->getMouseState();
         bool hitFound = MathHelper::getInstance()->getRaycastFromPoint(ms.X.abs, ms.Y.abs, camera, Core::getSingletonPtr()->getOgreRenderWindow(), this->groundQuery, internalHitPoint, (size_t&)hitMovableObject, closestDistance, normal,
             &excludeMovableObjects, false);
@@ -652,16 +652,16 @@ namespace NOWA
 
             if (this->buildState == BuildState::IDLE)
             {
-                // **NEW: Check if shift is held and we have a loaded endpoint to continue from**
-                if (this->isShiftPressed && this->hasLoadedRoadEndpoint)
+                // Check if shift is held and we have an existing road to continue from
+                if (this->isShiftPressed && this->hasLoadedRoadEndpoint && !this->roadSegments.empty())
                 {
-                    // Continue from loaded road endpoint (like shift-chaining)
-                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] Continuing from loaded endpoint");
+                    // Continue from the last endpoint
+                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] Continuing from existing endpoint");
 
                     RoadControlPoint startPoint;
-                    startPoint.position = this->loadedRoadEndpoint;           // Already world XZ
-                    startPoint.position.y = 0.0f;                             // XZ-only convention
-                    startPoint.groundHeight = this->loadedRoadEndpointHeight; // Already world height
+                    startPoint.position = this->loadedRoadEndpoint;
+                    startPoint.position.y = 0.0f;
+                    startPoint.groundHeight = this->loadedRoadEndpointHeight;
                     startPoint.smoothedHeight = startPoint.groundHeight;
                     startPoint.bankingAngle = 0.0f;
                     startPoint.distFromStart = 0.0f;
@@ -674,22 +674,14 @@ namespace NOWA
                     this->buildState = BuildState::DRAGGING;
                     this->lastValidPosition = startPoint.position;
 
-                    // Clear the flag so we don't auto-continue next time
-                    this->hasLoadedRoadEndpoint = false;
-
-                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] Started continuation from loaded endpoint at: " + Ogre::StringConverter::toString(this->loadedRoadEndpoint));
+                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] Started continuation from: " + Ogre::StringConverter::toString(this->loadedRoadEndpoint));
                 }
                 else
                 {
-                    // Normal behavior: start new road at mouse position
-                    if (this->snapToGrid->getBool())
-                    {
-                        hitPosition = this->snapToGridFunc(hitPosition);
-                    }
-
+                    // Normal: start new road at mouse position
                     this->startRoadPlacement(hitPosition);
 
-                    // Clear the continuation flag (user chose to start fresh elsewhere)
+                    // Clear continuation flag when starting fresh
                     this->hasLoadedRoadEndpoint = false;
                 }
             }
@@ -697,9 +689,6 @@ namespace NOWA
             {
                 // Confirm current road
                 this->confirmRoad();
-
-                // NOTE: confirmRoad() handles starting next segment if shift is pressed
-                // DON'T call startRoadPlacement() here - it's already handled in confirmRoad()
             }
 
             return false; // handled -> do not bubble
@@ -924,6 +913,9 @@ namespace NOWA
             return;
         }
 
+        // Remember chaining state BEFORE modifying anything
+        bool shouldChain = this->isShiftPressed;
+
         boost::shared_ptr<NOWA::EventDataCommandTransactionBegin> eventDataUndoBegin(new NOWA::EventDataCommandTransactionBegin("Add Road Segment"));
         NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataUndoBegin);
 
@@ -934,7 +926,6 @@ namespace NOWA
         this->smoothHeightTransitions(this->currentSegment.controlPoints);
 
         // CRITICAL: Store the exact endpoint BEFORE adding to roadSegments
-        // This ensures perfect continuity when shift-chaining
         RoadControlPoint exactEndpoint = this->currentSegment.controlPoints.back();
 
         // Add segment
@@ -959,15 +950,13 @@ namespace NOWA
         boost::shared_ptr<NOWA::EventDataCommandTransactionEnd> eventDataUndoEnd(new NOWA::EventDataCommandTransactionEnd());
         NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataUndoEnd);
 
-        // Shift-chaining or finish
-        if (true == this->isShiftPressed)
-        {
-            // FIXED: Use the stored exact endpoint to ensure perfect continuity
-            // Construct the full world position including the smoothed height
-            Ogre::Vector3 chainStartPos = exactEndpoint.position;
-            chainStartPos.y = exactEndpoint.smoothedHeight; // Use world-space height
+        // Update continuation point for future use
+        this->updateContinuationPoint();
 
-            // Start new segment with EXACT endpoint - bypass snap-to-grid
+        // Shift-chaining or finish
+        if (shouldChain)
+        {
+            // Start new segment with EXACT endpoint
             RoadControlPoint startPoint;
             startPoint.position = exactEndpoint.position;           // Use exact XZ position
             startPoint.position.y = 0.0f;                           // Keep XZ-only convention
@@ -984,7 +973,7 @@ namespace NOWA
             this->buildState = BuildState::DRAGGING;
             this->lastValidPosition = startPoint.position;
 
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] Shift-chained to: " + Ogre::StringConverter::toString(chainStartPos));
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] Shift-chained to: " + Ogre::StringConverter::toString(exactEndpoint.position));
         }
         else
         {
@@ -994,6 +983,30 @@ namespace NOWA
         }
 
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] Confirmed road segment, total segments: " + Ogre::StringConverter::toString(this->roadSegments.size()));
+    }
+
+    void ProceduralRoadComponent::updateContinuationPoint(void)
+    {
+        if (!this->roadSegments.empty())
+        {
+            const RoadSegment& lastSegment = this->roadSegments.back();
+            if (!lastSegment.controlPoints.empty())
+            {
+                const RoadControlPoint& lastCP = lastSegment.controlPoints.back();
+
+                // Store the endpoint for potential continuation
+                this->loadedRoadEndpoint = lastCP.position;
+                this->loadedRoadEndpointHeight = lastCP.smoothedHeight;
+                this->hasLoadedRoadEndpoint = true;
+
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+                    "[ProceduralRoadComponent] Updated continuation point: " + Ogre::StringConverter::toString(this->loadedRoadEndpoint) + ", height: " + Ogre::StringConverter::toString(this->loadedRoadEndpointHeight));
+            }
+        }
+        else
+        {
+            this->hasLoadedRoadEndpoint = false;
+        }
     }
 
     void ProceduralRoadComponent::cancelRoad(void)
@@ -1051,10 +1064,13 @@ namespace NOWA
         {
             this->destroyRoadMesh();
             this->hasRoadOrigin = false;
+            this->hasLoadedRoadEndpoint = false;
         }
         else
         {
             this->rebuildMesh();
+            // Update continuation point after removing segment
+            this->updateContinuationPoint();
         }
 
         // ---- UNDO: Capture state AFTER, fire event ----
@@ -1062,6 +1078,8 @@ namespace NOWA
 
         boost::shared_ptr<EventDataRoadModifyEnd> eventDataRoadModifyEnd(new EventDataRoadModifyEnd(oldData, newData, this->gameObjectPtr->getId()));
         NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRoadModifyEnd);
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] Removed last segment, remaining: " + Ogre::StringConverter::toString(this->roadSegments.size()));
     }
 
     void ProceduralRoadComponent::clearAllSegments(void)
@@ -3547,6 +3565,12 @@ namespace NOWA
         if (shouldBeActive)
         {
             this->addInputListener();
+
+            // When entering modify mode with an existing road, set up continuation point
+            if (!this->roadSegments.empty())
+            {
+                this->updateContinuationPoint();
+            }
         }
         else
         {

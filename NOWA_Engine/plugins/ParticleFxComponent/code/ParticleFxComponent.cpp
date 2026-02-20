@@ -267,6 +267,7 @@ namespace NOWA
 		// Remove the particle from the module
 		if (false == this->uniqueParticleName.empty() && nullptr != this->particleFxModule)
 		{
+            this->particleFxModule->stopParticleSystem(this->uniqueParticleName);
 			this->particleFxModule->removeParticle(this->uniqueParticleName);
 		}
 
@@ -911,9 +912,6 @@ namespace NOWA
 			return;
 		}
 
-		// Remember if it was playing
-		bool wasPlaying = this->activated->getBool();
-
 		// Remove old particle if exists
 		this->particleFxModule->removeParticle(this->uniqueParticleName);
 
@@ -938,12 +936,6 @@ namespace NOWA
 
 		// Update transform to match GameObject
 		this->updateParticleTransform();
-
-		// Restore playing state
-		if (wasPlaying)
-		{
-			this->particleFxModule->playParticleSystem(this->uniqueParticleName);
-		}
 	}
 
 	// ========== LUA API ==========

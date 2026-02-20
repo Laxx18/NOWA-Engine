@@ -1594,7 +1594,7 @@ namespace NOWA
             this->rdState = PhysicsRagDollComponent::PARTIAL_RAGDOLLING;
 
             boost::shared_ptr<EventDataGameObjectIsInRagDollingState> eventDataGameObjectIsInRagDollingState(new EventDataGameObjectIsInRagDollingState(this->gameObjectPtr->getId(), false));
-            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGameObjectIsInRagDollingState);
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGameObjectIsInRagDollingState);
         }
 
         if (true == this->isSimulating)
@@ -1666,7 +1666,7 @@ namespace NOWA
 
             ragBone->getBody()->setPositionOrientation(boneWorldPos, boneWorldOri);
 
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PhysicsRagDollComponent] applyModelStateToRagdoll BoneName: " + ragBone->getName() + " boneWorldPos: " + Ogre::StringConverter::toString(boneWorldPos) + " boneWorldOrientation: " + Ogre::StringConverter::toString(boneWorldOri));
+            // Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PhysicsRagDollComponent] applyModelStateToRagdoll BoneName: " + ragBone->getName() + " boneWorldPos: " + Ogre::StringConverter::toString(boneWorldPos) + " boneWorldOrientation: " + Ogre::StringConverter::toString(boneWorldOri));
         }
 
         // Set constraint axis for root body, after the final position of the bodies has been set
@@ -1739,6 +1739,7 @@ namespace NOWA
                 Ogre::Quaternion parentDerivedOri = parentBone->_getDerivedOrientation();
                 Ogre::Vector3 parentDerivedPos = parentBone->_getDerivedPosition();
                 Ogre::Vector3 parentDerivedScale = parentBone->_getDerivedScale();
+                Ogre::Vector3 s = parentBone->getScale();
 
                 Ogre::Quaternion invParentOri = parentDerivedOri.Inverse();
                 boneLocalPos = invParentOri * (skelPos - parentDerivedPos);
@@ -1756,8 +1757,8 @@ namespace NOWA
             bone->setPosition(boneLocalPos);
             bone->setOrientation(skelOri);
 
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
-                "[PhysicsRagDollComponent] applyRagdollStateToModel BoneName: " + ragBone->getName() + " boneLocalPos: " + Ogre::StringConverter::toString(boneLocalPos) + " skelOri: " + Ogre::StringConverter::toString(skelOri));
+            // Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+            //     "[PhysicsRagDollComponent] applyRagdollStateToModel BoneName: " + ragBone->getName() + " boneLocalPos: " + Ogre::StringConverter::toString(boneLocalPos) + " skelOri: " + Ogre::StringConverter::toString(skelOri));
 
             // Force Ogre to recalculate derived transforms for this bone and children
             // This is CRITICAL - without this, child bones will use stale parent derived transforms

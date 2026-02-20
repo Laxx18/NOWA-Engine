@@ -193,6 +193,8 @@ namespace NOWA
 
         void confirmWall(void);
 
+        void updateContinuationPoint(void);
+
         void cancelWall(void);
 
         // Wall segment management

@@ -887,8 +887,8 @@ namespace NOWA
 
 				if (nullptr != ps && nullptr != particleSystemDef)
 				{
-					ps->setRenderQueueGroup(NOWA::RENDER_QUEUE_PARTICLE_TRANSPARENT);
-					particleSystemDef->setRenderQueueGroup(NOWA::RENDER_QUEUE_PARTICLE_TRANSPARENT);
+                    ps->setRenderQueueGroup(NOWA::RENDER_QUEUE_PARTICLE_STUFF);
+                    particleSystemDef->setRenderQueueGroup(NOWA::RENDER_QUEUE_PARTICLE_STUFF);
 				}
 			}
 			else if (currentMethod == ParticleBlendingMethod::AlphaTransparent)
@@ -910,8 +910,8 @@ namespace NOWA
 
 				if (nullptr != ps && nullptr != particleSystemDef)
 				{
-					ps->setRenderQueueGroup(NOWA::RENDER_QUEUE_PARTICLE_TRANSPARENT);
-					particleSystemDef->setRenderQueueGroup(NOWA::RENDER_QUEUE_PARTICLE_TRANSPARENT);
+                    ps->setRenderQueueGroup(NOWA::RENDER_QUEUE_PARTICLE_STUFF);
+                    particleSystemDef->setRenderQueueGroup(NOWA::RENDER_QUEUE_PARTICLE_STUFF);
 				}
 			}
 			else if (currentMethod == ParticleBlendingMethod::TransparentColour)
@@ -930,8 +930,8 @@ namespace NOWA
 
 				if (nullptr != ps && nullptr != particleSystemDef)
 				{
-					ps->setRenderQueueGroup(NOWA::RENDER_QUEUE_PARTICLE_TRANSPARENT);
-					particleSystemDef->setRenderQueueGroup(NOWA::RENDER_QUEUE_PARTICLE_TRANSPARENT);
+                    ps->setRenderQueueGroup(NOWA::RENDER_QUEUE_PARTICLE_STUFF);
+                    particleSystemDef->setRenderQueueGroup(NOWA::RENDER_QUEUE_PARTICLE_STUFF);
 				}
 			}
 		};

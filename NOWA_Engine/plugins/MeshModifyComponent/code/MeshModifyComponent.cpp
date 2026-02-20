@@ -49,10 +49,12 @@ namespace NOWA
         isPressing(false),
         isCtrlPressed(false),
         lastBrushPosition(Ogre::Vector3::ZERO),
-        pendingUpload(false),
+        brushInProgress(false),
         canModify(false),
         physicsActiveComponent(nullptr),
         currentDamage(0.0f),
+        dirtyVertices(false),
+        workerRunning(false),
         activated(new Variant(MeshModifyComponent::AttrActivated(), true, this->attributes)),
         brushName(new Variant(MeshModifyComponent::AttrBrushName(), this->attributes)),
         brushSize(new Variant(MeshModifyComponent::AttrBrushSize(), 1.0f, this->attributes)),
@@ -60,10 +62,9 @@ namespace NOWA
         brushFalloff(new Variant(MeshModifyComponent::AttrBrushFalloff(), 2.0f, this->attributes)),
         brushMode(new Variant(MeshModifyComponent::AttrBrushMode(), Ogre::String("Push"), this->attributes)),
         category(new Variant(MeshModifyComponent::AttrCategory(), Ogre::String(), this->attributes)),
-        maxDamage(new NOWA::Variant(MeshModifyComponent::AttrMaxDamage(), 1.0f, this->attributes))
+        maxDamage(new NOWA::Variant(MeshModifyComponent::AttrMaxDamage(), -1.0f, this->attributes))
     {
-        this->maxDamage->setDescription("Maximum damage as a factor (0.0 - 1.0). 1.0 = fully deformable like a scrap press, 0.7 = 70% max damage.");
-        this->maxDamage->setConstraints(0.0f, 1.0f);
+        this->maxDamage->setDescription("Maximum damage as a factor (0.0 - 1.0). Special value: -1.0 = fully deformable like a scrap press, 0.7 = 70% max damage.");
     }
 
     MeshModifyComponent::~MeshModifyComponent(void)
@@ -148,6 +149,14 @@ namespace NOWA
         clonedGameObjectPtr->addComponent(clonedCompPtr);
         clonedCompPtr->setOwner(clonedGameObjectPtr);
 
+        // Slow part: extract mesh data and create editable item — but DON'T swap yet.
+        // originalItem stays as movableObject so serializer always sees Viper.mesh.
+        if (false == clonedCompPtr->prepareEditableMesh())
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MeshModifyComponent] Failed to prepare editable mesh for: " + this->gameObjectPtr->getName());
+            return false;
+        }
+
         GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
 
         return clonedCompPtr;
@@ -226,6 +235,9 @@ namespace NOWA
         this->addInputListener();
 
         this->currentDamage = 0.0f;
+        this->dirtyVertices.store(false);
+        this->brushInProgress.store(false);
+        this->workerRunning.store(false);
 
         if (this->editableItem == nullptr)
         {
@@ -250,6 +262,11 @@ namespace NOWA
         this->removeInputListener();
 
         this->currentDamage = 0.0f;
+        this->workerRunning.store(false);
+        if (this->workerThread.joinable())
+        {
+            this->workerThread.join();
+        }
 
         if (this->originalItem != nullptr)
         {
@@ -287,6 +304,41 @@ namespace NOWA
         }
     }
 
+    void MeshModifyComponent::startWorkerIfNeeded()
+    {
+        // Only one persistent worker — if already running, just set dirty flag
+        if (this->workerRunning.exchange(true))
+        {
+            return;
+        }
+
+        this->workerThread = std::thread([this]()
+        {
+            while (this->workerRunning.load())
+            {
+                if (this->dirtyVertices.exchange(false))
+                {
+                    // Heavy CPU work
+                    this->recalculateNormals();
+                    this->recalculateTangents();
+
+                    // GPU upload on render thread
+                    GraphicsModule::RenderCommand renderCommand = [this]()
+                    {
+                        this->uploadVertexData();
+                        this->brushInProgress.store(false);
+                    };
+                    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MeshModifyComponent::worker::upload");
+                }
+                else
+                {
+                    // Nothing to do — sleep briefly to avoid busy-wait
+                    std::this_thread::sleep_for(std::chrono::milliseconds(16));
+                }
+            }
+        });
+    }
+
     bool MeshModifyComponent::onCloned(void)
     {
         return true;
@@ -305,6 +357,12 @@ namespace NOWA
 
         NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &MeshModifyComponent::handleMeshModifyMode), NOWA::EventDataEditorMode::getStaticEventType());
         NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &MeshModifyComponent::handleGameObjectSelected), NOWA::EventDataGameObjectSelected::getStaticEventType());
+
+        this->workerRunning.store(false);
+        if (this->workerThread.joinable())
+        {
+            this->workerThread.join();
+        }
 
         this->removeInputListener();
 
@@ -594,7 +652,14 @@ namespace NOWA
 
     void MeshModifyComponent::setMaxDamage(Ogre::Real maxDamage)
     {
-        this->maxDamage->setValue(Ogre::Math::Clamp(maxDamage, 0.0f, 1.0f));
+        if (maxDamage == -1.0f)
+        {
+            this->maxDamage->setValue(maxDamage);
+        }
+        else
+        {
+            this->maxDamage->setValue(Ogre::Math::Clamp(maxDamage, 0.0f, 1.0f));
+        }
     }
 
     Ogre::Real MeshModifyComponent::getMaxDamage() const
@@ -627,7 +692,6 @@ namespace NOWA
             this->tangents = this->originalTangents;
 
             // Upload to GPU (must be done on render thread)
-            // Note: You'll need to wrap this with your render thread mechanism
             this->uploadVertexData();
         };
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MeshModifyComponent::resetMesh");
@@ -1470,10 +1534,15 @@ namespace NOWA
 
     void MeshModifyComponent::applyBrush(const Ogre::Vector3& brushCenterLocal, bool invertEffect)
     {
-        // Check if max damage has been reached
-        if (this->currentDamage >= this->maxDamage->getReal())
+        // Check max damage
+        if (this->maxDamage->getReal() != -1.0f && this->currentDamage >= this->maxDamage->getReal())
         {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MeshModifyComponent] applyBrush: max damage reached (" + Ogre::StringConverter::toString(this->currentDamage * 100.0f) + "%), skipping.");
+            return;
+        }
+
+        // Skip if previous recalc still running — prevents data race
+        if (this->brushInProgress.exchange(true))
+        {
             return;
         }
 
@@ -1507,12 +1576,10 @@ namespace NOWA
         for (size_t i = 0; i < this->vertexCount; ++i)
         {
             Ogre::Real distance = this->vertices[i].distance(brushCenterLocal);
-
             if (distance < brushRadius)
             {
                 Ogre::Real influence = this->calculateBrushInfluence(distance, brushRadius);
                 affectedVertices.push_back({i, influence});
-
                 averagePosition += this->vertices[i];
                 averageNormal += this->normals[i];
                 ++affectedCount;
@@ -1523,6 +1590,7 @@ namespace NOWA
 
         if (affectedCount == 0)
         {
+            this->brushInProgress.store(false);
             return;
         }
 
@@ -1539,21 +1607,16 @@ namespace NOWA
             {
             case BrushMode::PUSH:
             {
-                // Push along vertex normal
                 this->vertices[idx] += this->normals[idx] * influence;
                 break;
             }
-
             case BrushMode::PULL:
             {
-                // Pull along vertex normal (inward)
                 this->vertices[idx] -= this->normals[idx] * influence;
                 break;
             }
-
             case BrushMode::SMOOTH:
             {
-                // Average with neighbors
                 if (idx < this->vertexNeighbors.size() && !this->vertexNeighbors[idx].empty())
                 {
                     Ogre::Vector3 neighborAvg = Ogre::Vector3::ZERO;
@@ -1562,59 +1625,53 @@ namespace NOWA
                         neighborAvg += this->vertices[neighborIdx];
                     }
                     neighborAvg /= static_cast<Ogre::Real>(this->vertexNeighbors[idx].size());
-
-                    // Blend toward neighbor average
                     this->vertices[idx] = this->vertices[idx] * (1.0f - influence) + neighborAvg * influence;
                 }
                 break;
             }
-
             case BrushMode::FLATTEN:
             {
-                // Project onto average plane
                 Ogre::Real distToPlane = averageNormal.dotProduct(this->vertices[idx] - averagePosition);
                 this->vertices[idx] -= averageNormal * distToPlane * influence;
                 break;
             }
-
             case BrushMode::PINCH:
             {
-                // Pull toward brush center
                 Ogre::Vector3 toCenter = brushCenterLocal - this->vertices[idx];
                 toCenter.normalise();
                 this->vertices[idx] += toCenter * influence;
                 break;
             }
-
             case BrushMode::INFLATE:
             {
-                // Push along own normal (scaled by distance from average)
                 this->vertices[idx] += this->normals[idx] * influence;
                 break;
             }
             }
         }
 
-        // Recalculate normals for affected area
-        this->recalculateNormals();
+        // Accumulate damage
+        Ogre::Real intensity = this->brushIntensity->getReal();
+        Ogre::Real damageFraction = (static_cast<Ogre::Real>(affectedCount) / static_cast<Ogre::Real>(this->vertexCount)) * intensity;
+        this->currentDamage = Ogre::Math::Clamp(this->currentDamage + damageFraction, 0.0f, 1.0f);
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MeshModifyComponent] currentDamage=" + Ogre::StringConverter::toString(this->currentDamage * 100.0f) + "%");
 
-        // Recalculate tangents if the mesh has them
-        this->recalculateTangents();
-
-        GraphicsModule::RenderCommand renderCommand = [this, brushCenterLocal, invertEffect]()
-        {
-            // Upload to GPU
-            this->uploadVertexData();
-        };
-        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MeshModifyComponent::applyBrush");
+        // Mark dirty — persistent worker picks this up and recalculates
+        this->dirtyVertices.store(true);
+        this->startWorkerIfNeeded();
     }
 
     void MeshModifyComponent::applyBrushAlongDirection(const Ogre::Vector3& brushCenterLocal, const Ogre::Vector3& direction, bool invertEffect)
     {
-        // Check if max damage has been reached
-        if (this->currentDamage >= this->maxDamage->getReal())
+        // Check max damage
+        if (this->maxDamage->getReal() != -1.0f && this->currentDamage >= this->maxDamage->getReal())
         {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MeshModifyComponent] applyBrush: max damage reached (" + Ogre::StringConverter::toString(this->currentDamage * 100.0f) + "%), skipping.");
+            return;
+        }
+
+        // Skip if previous recalc still running — prevents data race
+        if (this->brushInProgress.exchange(true))
+        {
             return;
         }
 
@@ -1623,8 +1680,8 @@ namespace NOWA
 
         // Contact normal points FROM wall TOWARD car (outward).
         // To dent the car we must push INWARD = opposite to normal.
-        // invertEffect=false -> dent inward (default for crashes)
-        // invertEffect=true  -> push outward
+        // invertEffect=false → dent inward (default for crashes)
+        // invertEffect=true  → push outward
         Ogre::Vector3 deformDir = invertEffect ? direction : -direction;
         deformDir.normalise();
 
@@ -1645,22 +1702,101 @@ namespace NOWA
 
         if (affectedCount == 0)
         {
+            this->brushInProgress.store(false);
             return;
         }
 
-        // Accumulate damage — affected vertex ratio * intensity
+        // Accumulate damage
         Ogre::Real damageFraction = (static_cast<Ogre::Real>(affectedCount) / static_cast<Ogre::Real>(this->vertexCount)) * intensity;
         this->currentDamage = Ogre::Math::Clamp(this->currentDamage + damageFraction, 0.0f, 1.0f);
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MeshModifyComponent] currentDamage=" + Ogre::StringConverter::toString(this->currentDamage * 100.0f) + "%");
 
-        this->recalculateNormals();
-        this->recalculateTangents();
+        // Mark dirty — persistent worker picks this up and recalculates
+        this->dirtyVertices.store(true);
+        this->startWorkerIfNeeded();
+    }
 
-        GraphicsModule::RenderCommand renderCommand = [this]()
+    void MeshModifyComponent::applyBrushCrush(const Ogre::Vector3& brushCenterLocal, const Ogre::Vector3& crushDirectionLocal, Ogre::Real crushPlaneOffset)
+    {
+        // Check max damage
+        if (this->maxDamage->getReal() != -1.0f && this->currentDamage >= this->maxDamage->getReal())
         {
-            this->uploadVertexData();
-        };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MeshModifyComponent::applyBrushAlongDirection");
+            return;
+        }
+
+        // Skip if previous recalc still running — prevents data race
+        if (this->brushInProgress.exchange(true))
+        {
+            return;
+        }
+
+        Ogre::Real brushRadius = this->brushSize->getReal();
+        Ogre::Real intensity = this->brushIntensity->getReal();
+        Ogre::Vector3 crushDir = crushDirectionLocal.normalisedCopy();
+
+        size_t affectedCount = 0;
+        for (size_t i = 0; i < this->vertexCount; ++i)
+        {
+            Ogre::Real distance = this->vertices[i].distance(brushCenterLocal);
+            if (distance >= brushRadius)
+            {
+                continue;
+            }
+
+            // Project vertex onto crush direction
+            Ogre::Real projection = crushDir.dotProduct(this->vertices[i]);
+
+            // If vertex is beyond the crush plane, clamp it toward the boundary
+            if (projection > crushPlaneOffset)
+            {
+                Ogre::Real influence = this->calculateBrushInfluence(distance, brushRadius);
+                // Blend toward crush plane — full influence = hard clamp, partial = soft
+                Ogre::Real delta = (crushPlaneOffset - projection) * influence;
+                this->vertices[i] += crushDir * delta;
+                ++affectedCount;
+            }
+        }
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MeshModifyComponent] applyBrushCrush: affected=" + Ogre::StringConverter::toString(affectedCount));
+
+        if (affectedCount == 0)
+        {
+            this->brushInProgress.store(false);
+            return;
+        }
+
+        // Accumulate damage
+        Ogre::Real damageFraction = (static_cast<Ogre::Real>(affectedCount) / static_cast<Ogre::Real>(this->vertexCount)) * intensity;
+        this->currentDamage = Ogre::Math::Clamp(this->currentDamage + damageFraction, 0.0f, 1.0f);
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MeshModifyComponent] currentDamage=" + Ogre::StringConverter::toString(this->currentDamage * 100.0f) + "%");
+
+        // Mark dirty — persistent worker picks this up and recalculates
+        this->dirtyVertices.store(true);
+        this->startWorkerIfNeeded();
+    }
+
+    void MeshModifyComponent::crushAtWorldPosition(const Ogre::Vector3& worldPos, const Ogre::Vector3& worldCrushDirection)
+    {
+        if (nullptr == this->editableItem)
+        {
+            return;
+        }
+
+        Ogre::Vector3 localPos = this->worldToLocal(worldPos);
+
+        Ogre::Matrix4 worldTransform = this->gameObjectPtr->getSceneNode()->_getFullTransform();
+        Ogre::Matrix3 rotScale;
+        worldTransform.extract3x3Matrix(rotScale);
+        Ogre::Vector3 localDir = rotScale.Transpose() * worldCrushDirection;
+        localDir.normalise();
+
+        // Project contact point onto crush direction — this is the wall surface boundary.
+        // Subtract brushSize so the plane cuts INTO the mesh, ensuring interior vertices
+        // satisfy (projection > crushPlaneOffset) and get crushed toward the wall surface.
+        Ogre::Real surfaceOffset = localDir.dotProduct(localPos);
+        Ogre::Real localCrushPlaneOffset = surfaceOffset - this->brushSize->getReal();
+
+        this->applyBrushCrush(localPos, localDir, localCrushPlaneOffset);
     }
 
     void MeshModifyComponent::recalculateNormals(void)
@@ -2106,6 +2242,8 @@ namespace NOWA
             .def("getMaxDamage", &MeshModifyComponent::getMaxDamage)
             .def("getCurrentDamage", &MeshModifyComponent::getCurrentDamage)
             .def("resetDamage", &MeshModifyComponent::resetDamage)
+            .def("applyBrushCrush", &MeshModifyComponent::applyBrushCrush)
+            .def("crushAtWorldPosition", &MeshModifyComponent::crushAtWorldPosition)
         ];
 
         LuaScriptApi::getInstance()->addClassToCollection("MeshModifyComponent", "class inherits GameObjectComponent", MeshModifyComponent::getStaticInfoText());
@@ -2125,7 +2263,7 @@ namespace NOWA
         LuaScriptApi::getInstance()->addClassToCollection("MeshModifyComponent", "int getIndexCount()", "Gets the number of indices in the mesh.");
 
         LuaScriptApi::getInstance()->addClassToCollection("MeshModifyComponent", "void setMaxDamage(Real maxDamage)",
-            "Sets the maximum damage factor (0.0 - 1.0). 1.0 = fully deformable (scrap press), "
+            "Sets the maximum damage factor (0.0 - 1.0). Special value: -1.0 = fully deformable (scrap press), "
             "0.7 = stops deforming after 70% damage. Default is 1.0.");
         LuaScriptApi::getInstance()->addClassToCollection("MeshModifyComponent", "Real getMaxDamage()", "Gets the maximum damage factor (0.0 - 1.0).");
         LuaScriptApi::getInstance()->addClassToCollection("MeshModifyComponent", "Real getCurrentDamage()",
@@ -2149,6 +2287,22 @@ namespace NOWA
             "invertEffect: true=dent inward (default for crashes), false=push outward. "
             "Usage: local data = contact:getPositionAndNormal(); "
             "meshModify:deformAtWorldPositionByForceAndNormal(data[0], data[1], contact:getNormalSpeed(), 80.0, true);");
+        LuaScriptApi::getInstance()->addClassToCollection("MeshModifyComponent", "void applyBrushCrush(Vector3 brushCenterLocal, Vector3 crushDirectionLocal, Real crushPlaneOffset)",
+            "Crushes vertices in local space toward a hard plane boundary defined by crushDirectionLocal and crushPlaneOffset. "
+            "Unlike push/pull brushes which move vertices incrementally, this clamps vertices that exceed the crush plane, "
+            "making it ideal for scrap press scenarios. "
+            "brushCenterLocal: brush origin in local/object space. "
+            "crushDirectionLocal: direction of the crush force in local space. "
+            "crushPlaneOffset: the boundary distance along crushDirectionLocal — vertices projected beyond this are crushed toward it. "
+            "Note: Respects maxDamage cap. Use crushAtWorldPosition for world-space convenience.");
+
+        LuaScriptApi::getInstance()->addClassToCollection("MeshModifyComponent", "void crushAtWorldPosition(Vector3 worldPos, Vector3 worldCrushDirection)",
+            "World-space scrap press deformation. Transforms worldPos and worldCrushDirection into local space "
+            "and applies a hard plane crush. Call this once per pressing wall per frame. "
+            "worldPos: press origin or contact point in world space. "
+            "worldCrushDirection: direction the wall is pressing from, in world space (e.g. Vector3(1,0,0) for left wall, Vector3(-1,0,0) for right wall). "
+            "Usage scrap press: "
+            "meshModify:crushAtWorldPosition(wall1:getPosition(), Vector3(1,0,0)); ");
 
         gameObjectClass.def("getMeshModifyComponent", (MeshModifyComponent * (*)(GameObject*)) & getMeshModifyComponent);
         gameObjectClass.def("getMeshModifyComponentFromIndex", (MeshModifyComponent * (*)(GameObject*, unsigned int)) & getMeshModifyComponentFromIndex);

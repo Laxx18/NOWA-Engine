@@ -540,13 +540,13 @@ bool ProceduralWallComponent::mousePressed(const OIS::MouseEvent& evt, OIS::Mous
     Ogre::Real closestDistance = 0.0f;
     Ogre::Vector3 normal = Ogre::Vector3::ZERO;
 
-    // Build exclusion list - exclude our own road and preview items
+    // Build exclusion list - exclude our own wall and preview items
     std::vector<Ogre::MovableObject*> excludeMovableObjects;
 
-    // Check if mouse hit already created wall, -> then skip
+    // Check if mouse hit already created wall -> then skip
     const OIS::MouseState& ms = NOWA::InputDeviceCore::getSingletonPtr()->getMouse()->getMouseState();
     bool hitFound = MathHelper::getInstance()->getRaycastFromPoint(ms.X.abs, ms.Y.abs, camera, Core::getSingletonPtr()->getOgreRenderWindow(), this->groundQuery, internalHitPoint, (size_t&)hitMovableObject, closestDistance, normal,
-                                                                   &excludeMovableObjects, false);
+        &excludeMovableObjects, false);
 
     if (true == hitFound && this->buildState == BuildState::IDLE)
     {
@@ -576,13 +576,12 @@ bool ProceduralWallComponent::mousePressed(const OIS::MouseEvent& evt, OIS::Mous
 
         if (this->buildState == BuildState::IDLE)
         {
-            // **NEW: Check if shift is held and we have a loaded endpoint**
-            if (this->isShiftPressed && this->hasLoadedWallEndpoint)
+            // Check if shift is held and we have an existing wall to continue from
+            if (this->isShiftPressed && this->hasLoadedWallEndpoint && !this->wallSegments.empty())
             {
-                // Continue from loaded wall endpoint
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] Continuing from loaded endpoint");
+                // Continue from the last endpoint
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] Continuing from existing endpoint");
 
-                // Start wall at the exact loaded endpoint
                 this->currentSegment.startPoint = this->loadedWallEndpoint;
                 this->currentSegment.startPoint.y = 0.0f;
                 this->currentSegment.endPoint = this->loadedWallEndpoint;
@@ -594,28 +593,20 @@ bool ProceduralWallComponent::mousePressed(const OIS::MouseEvent& evt, OIS::Mous
                 this->buildState = BuildState::DRAGGING;
                 this->lastValidPosition = this->currentSegment.startPoint;
 
-                // Clear the flag
-                this->hasLoadedWallEndpoint = false;
-
                 Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] Started continuation from: " + Ogre::StringConverter::toString(this->loadedWallEndpoint));
             }
             else
             {
-                // Normal behavior: start new road at mouse position
-                if (this->snapToGrid->getBool())
-                {
-                    hitPosition = this->snapToGridFunc(hitPosition);
-                }
-
                 // Normal: start new wall at mouse position
                 this->startWallPlacement(hitPosition);
 
-                // Clear continuation flag
+                // Clear continuation flag when starting fresh
                 this->hasLoadedWallEndpoint = false;
             }
         }
         else if (this->buildState == BuildState::DRAGGING)
         {
+            // Confirm the current segment
             this->confirmWall();
         }
 
@@ -853,6 +844,7 @@ void ProceduralWallComponent::confirmWall(void)
     // Remember if we're chaining BEFORE we modify anything
     bool shouldChain = this->isShiftPressed;
     Ogre::Vector3 chainEndPos = this->currentSegment.endPoint;
+    Ogre::Real chainEndHeight = this->currentSegment.groundHeightEnd;
 
     // ---- UNDO: Begin transaction ----
     boost::shared_ptr<NOWA::EventDataCommandTransactionBegin> eventDataUndoBegin(new NOWA::EventDataCommandTransactionBegin("Add Wall Segment"));
@@ -884,11 +876,23 @@ void ProceduralWallComponent::confirmWall(void)
     boost::shared_ptr<NOWA::EventDataCommandTransactionEnd> eventDataUndoEnd(new NOWA::EventDataCommandTransactionEnd());
     NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataUndoEnd);
 
+    // Update continuation point for future use
+    this->updateContinuationPoint();
+
     // NOW handle shift-chaining using the saved state
     if (shouldChain)
     {
         // Start next segment from END of current segment
-        this->startWallPlacement(chainEndPos);
+        this->currentSegment.startPoint = chainEndPos;
+        this->currentSegment.startPoint.y = 0.0f;
+        this->currentSegment.endPoint = chainEndPos;
+        this->currentSegment.endPoint.y = 0.0f;
+        this->currentSegment.groundHeightStart = chainEndHeight;
+        this->currentSegment.hasStartPillar = false; // Connected to previous segment
+        this->currentSegment.hasEndPillar = this->createPillars->getBool();
+
+        this->buildState = BuildState::DRAGGING;
+        this->lastValidPosition = chainEndPos;
 
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] Starting chained segment from: " + Ogre::StringConverter::toString(chainEndPos));
     }
@@ -900,7 +904,27 @@ void ProceduralWallComponent::confirmWall(void)
     }
 
     Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
-                                                    "[ProceduralWallComponent] Confirmed wall segment, total segments: " + Ogre::StringConverter::toString(this->wallSegments.size()) + ", chaining: " + Ogre::StringConverter::toString(shouldChain));
+        "[ProceduralWallComponent] Confirmed wall segment, total segments: " + Ogre::StringConverter::toString(this->wallSegments.size()) + ", chaining: " + Ogre::StringConverter::toString(shouldChain));
+}
+
+void ProceduralWallComponent::updateContinuationPoint(void)
+{
+    if (!this->wallSegments.empty())
+    {
+        const WallSegment& lastSegment = this->wallSegments.back();
+
+        // Store the endpoint for potential continuation
+        this->loadedWallEndpoint = lastSegment.endPoint;
+        this->loadedWallEndpointHeight = lastSegment.groundHeightEnd;
+        this->hasLoadedWallEndpoint = true;
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+            "[ProceduralWallComponent] Updated continuation point: " + Ogre::StringConverter::toString(this->loadedWallEndpoint) + ", height: " + Ogre::StringConverter::toString(this->loadedWallEndpointHeight));
+    }
+    else
+    {
+        this->hasLoadedWallEndpoint = false;
+    }
 }
 
 void ProceduralWallComponent::cancelWall(void)
@@ -945,10 +969,13 @@ void ProceduralWallComponent::removeLastSegment(void)
     {
         this->destroyWallMesh();
         this->hasWallOrigin = false;
+        this->hasLoadedWallEndpoint = false;
     }
     else
     {
         this->rebuildMesh();
+        // Update continuation point after removing segment
+        this->updateContinuationPoint();
     }
 
     // ---- UNDO: Capture state AFTER, fire event ----
@@ -3523,6 +3550,12 @@ void ProceduralWallComponent::updateModificationState(void)
     if (shouldBeActive)
     {
         this->addInputListener();
+
+        // When entering modify mode with an existing wall, set up continuation point
+        if (!this->wallSegments.empty())
+        {
+            this->updateContinuationPoint();
+        }
     }
     else
     {

@@ -452,6 +452,41 @@ namespace NOWA
     // update
     // ============================================================================
 
+    // ============================================================================
+    // REPLACE these 3 functions in PhysicsRagDollComponentV2.cpp
+    //
+    // ROOT CAUSE EXPLAINED:
+    //
+    // V1 OldNode with inheritOrientation=false:
+    //   derivedOri = localOri                                          (orientation: no parent)
+    //   derivedPos = parentOri * (parentScale * localPos) + parentPos  (position: STILL uses parentOri!)
+    //
+    // V2 Bone with inheritOrientation=false (via retain()):
+    //   derivedOri = localOri                                          (orientation: no parent)
+    //   derivedPos = parentScale * localPos + parentPos                (position: NO parentOri!)
+    //
+    // These are fundamentally different! V1 still rotates position by parent orientation,
+    // V2 does not. This cannot be fixed by adjusting the localPos formula alone because
+    // extractBoneDerivedTransform returns stale data computed with the wrong cascade math.
+    //
+    // SOLUTION: Keep inheritOrientation=TRUE. Then V2 cascade matches V1 exactly:
+    //   derivedOri = parentOri * localOri
+    //   derivedPos = parentOri * (parentScale * localPos) + parentPos
+    //
+    // We set LOCAL (not derived) transforms:
+    //   localOri = invParentOri * skelOri
+    //   localPos = invParentOri * (skelPos - parentPos)  [parentScale=(1,1,1)]
+    //
+    // This is the SAME math as V1 applyRagdollStateToModel.
+    // Parent transforms from extractBoneDerivedTransform are one frame stale,
+    // but with inheritOrientation=TRUE the cascade in updateAllTransforms produces
+    // correct results, so the stale data self-corrects each frame.
+    // ============================================================================
+
+    // ============================================================================
+    // 1) update
+    // ============================================================================
+
     void PhysicsRagDollComponentV2::update(Ogre::Real dt, bool notSimulating)
     {
         if (true == activated->getBool() && false == notSimulating)
@@ -463,9 +498,6 @@ namespace NOWA
                     auto closureFunction = [this](Ogre::Real renderDt)
                     {
                         this->applyRagdollStateToModel();
-                        // No skeletonInstance->update() here.
-                        // It only does resetToPose() + animation blend, NOT derived transform cascade.
-                        // The render pipeline calls Bone::updateAllTransforms() automatically.
                     };
                     Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
                     NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
@@ -1378,9 +1410,17 @@ namespace NOWA
 
             tempChildCompPtr->setPin(pin);
 
+            tempChildCompPtr->setLimitsEnabled(true);
             tempChildCompPtr->setMinMaxAngleLimit(minTwistAngle, maxTwistAngle);
-
+            tempChildCompPtr->setStiffness(0.1f);
+            // tempChildCompPtr->setSpring(useSpring);
+            // tempChildCompPtr->setMinMaxConeAngleLimit(minTwistAngle, maxTwistAngle, maxConeAngle);
             tempChildCompPtr->createJoint();
+
+            if (-1.0f != friction)
+            {
+                tempChildCompPtr->setFriction(friction);
+            }
 
             tempChildCompPtr->setJointRecursiveCollisionEnabled(false);
 
@@ -1660,8 +1700,8 @@ namespace NOWA
             Ogre::Quaternion boneWorldOri = nodeOri * boneSkelOri;
 
             ragBone->getBody()->setPositionOrientation(boneWorldPos, boneWorldOri);
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
-                "[PhysicsRagDollComponentV2] applyModelStateToRagdoll BoneName: " + ragBone->getName() + " boneWorldPos: " + Ogre::StringConverter::toString(boneWorldPos) + " boneWorldOrientation: " + Ogre::StringConverter::toString(boneWorldOri));
+            // Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+            //     "[PhysicsRagDollComponentV2] applyModelStateToRagdoll BoneName: " + ragBone->getName() + " boneWorldPos: " + Ogre::StringConverter::toString(boneWorldPos) + " boneWorldOrientation: " + Ogre::StringConverter::toString(boneWorldOri));
         }
 
         // Set constraint axis for root body
@@ -1681,6 +1721,21 @@ namespace NOWA
     // applyRagdollStateToModel
     // ============================================================================
 
+    // ============================================================================
+    // 2) applyRagdollStateToModel
+    //
+    // With inheritOrientation=TRUE (same as bind pose default), the V2 cascade is:
+    //   derivedOri = parentDerivedOri * localOri
+    //   derivedPos = parentDerivedOri * (parentDerivedScale * localPos) + parentDerivedPos
+    //
+    // Identical to V1's OldNode::updateFromParentImpl (with inheritOri=true).
+    //
+    // We want derivedOri = skelOri and derivedPos = skelPos:
+    //   localOri = invParentDerivedOri * skelOri
+    //   localPos = invParentDerivedOri * (skelPos - parentDerivedPos)
+    //   (parentDerivedScale = (1,1,1) for bones, no division needed)
+    // ============================================================================
+
     void PhysicsRagDollComponentV2::applyRagdollStateToModel(void)
     {
         if (true == this->ragDataList.empty())
@@ -1688,8 +1743,8 @@ namespace NOWA
             return;
         }
 
+        // ragDataList[0] = Hips. Master is never in ragDataList.
         size_t i = 0;
-
         if (this->rdState == PhysicsRagDollComponentV2::PARTIAL_RAGDOLLING)
         {
             i = 1;
@@ -1701,77 +1756,6 @@ namespace NOWA
         Ogre::Vector3 nodeScale = node->_getDerivedScale();
         Ogre::Quaternion invNodeOri = nodeOri.Inverse();
 
-        // Track skeleton-space transforms we compute from physics bodies.
-        // V1 gets parent derived transforms live via _getDerivedPosition() after
-        // bone->_update(true,false) cascades each bone. V2 has no per-bone _update(),
-        // so we store what we compute and use it for child bone lookups.
-        std::unordered_map<Ogre::Bone*, std::pair<Ogre::Vector3, Ogre::Quaternion>> skelTransforms;
-
-        // Get skeleton-space (derived) transform for any bone.
-        // - Already-processed ragdoll bones: return tracked value
-        // - Non-ragdoll bones (Master, intermediates): walk up to nearest known ancestor,
-        //   chain local transforms down. For skeleton root, use extractBoneDerivedTransform.
-        auto getDerivedTransform = [&skelTransforms, this](Ogre::Bone* targetBone, Ogre::Vector3& outPos, Ogre::Quaternion& outOri)
-        {
-            auto it = skelTransforms.find(targetBone);
-            if (it != skelTransforms.end())
-            {
-                outPos = it->second.first;
-                outOri = it->second.second;
-                return;
-            }
-
-            // Walk UP to nearest known ancestor or skeleton root
-            std::vector<Ogre::Bone*> chain;
-            chain.push_back(targetBone);
-            Ogre::Bone* cur = targetBone->getParent();
-
-            while (cur != nullptr)
-            {
-                auto found = skelTransforms.find(cur);
-                if (found != skelTransforms.end())
-                {
-                    // Chain DOWN from known ancestor through intermediates
-                    Ogre::Vector3 pos = found->second.first;
-                    Ogre::Quaternion ori = found->second.second;
-
-                    for (int j = static_cast<int>(chain.size()) - 1; j >= 0; j--)
-                    {
-                        Ogre::Bone* b = chain[j];
-                        pos = ori * b->getPosition() + pos;
-                        ori = b->getInheritOrientation() ? (ori * b->getOrientation()) : b->getOrientation();
-                        skelTransforms[b] = std::make_pair(pos, ori);
-                    }
-                    outPos = pos;
-                    outOri = ori;
-                    return;
-                }
-                chain.push_back(cur);
-                cur = cur->getParent();
-            }
-
-            // Reached skeleton root (Master). Get its cached derived transform.
-            Ogre::Bone* root = chain.back();
-            Ogre::Vector3 pos;
-            Ogre::Quaternion ori;
-            extractBoneDerivedTransform(root, pos, ori);
-            skelTransforms[root] = std::make_pair(pos, ori);
-
-            // Chain down through remaining bones
-            for (int j = static_cast<int>(chain.size()) - 2; j >= 0; j--)
-            {
-                Ogre::Bone* b = chain[j];
-                pos = ori * b->getPosition() + pos;
-                ori = b->getInheritOrientation() ? (ori * b->getOrientation()) : b->getOrientation();
-                skelTransforms[b] = std::make_pair(pos, ori);
-            }
-            outPos = pos;
-            outOri = ori;
-        };
-
-        // Process every ragdoll bone, root-to-leaf order.
-        // Exactly mirrors V1 which does this for EVERY bone:
-        //   skelPos/skelOri from physics → convert to parent-local → setPosition/setOrientation → _update
         for (; i < this->ragDataList.size(); i++)
         {
             auto& ragBone = this->ragDataList[i].ragBone;
@@ -1782,39 +1766,47 @@ namespace NOWA
 
             Ogre::Bone* bone = ragBone->getBone();
 
-            // Physics body → skeleton-space (same as V1)
+            // Get physics body world transform
             Ogre::Vector3 bodyWorldPos = ragBone->getBody()->getPosition();
             Ogre::Quaternion bodyWorldOri = ragBone->getBody()->getOrientation();
 
+            // Convert world -> skeleton space (same as V1)
             Ogre::Vector3 skelPos = invNodeOri * (bodyWorldPos - nodePos);
             skelPos /= nodeScale;
             Ogre::Quaternion skelOri = invNodeOri * bodyWorldOri;
 
-            // Track this bone's skeleton-space transform for child lookups
-            skelTransforms[bone] = std::make_pair(skelPos, skelOri);
-
-            // Convert skeleton-space → parent-local (same as V1)
+            // Convert skeleton-space to parent-local.
+            // With inheritOrientation=TRUE, the cascade does:
+            //   derivedPos = parentOri * localPos + parentPos
+            //   derivedOri = parentOri * localOri
+            // So to get derivedPos=skelPos, derivedOri=skelOri:
+            //   localPos = invParentOri * (skelPos - parentPos)
+            //   localOri = invParentOri * skelOri
             Ogre::Bone* parentBone = bone->getParent();
             Ogre::Vector3 boneLocalPos;
+            Ogre::Quaternion boneLocalOri;
             if (parentBone)
             {
-                Ogre::Vector3 parentPos;
-                Ogre::Quaternion parentOri;
-                getDerivedTransform(parentBone, parentPos, parentOri);
+                Ogre::Vector3 parentDerivedPos;
+                Ogre::Quaternion parentDerivedOri;
+                extractBoneDerivedTransform(parentBone, parentDerivedPos, parentDerivedOri);
 
-                Ogre::Quaternion invParentOri = parentOri.Inverse();
-                boneLocalPos = invParentOri * (skelPos - parentPos);
+                Ogre::Quaternion invParentOri = parentDerivedOri.Inverse();
+                boneLocalPos = invParentOri * (skelPos - parentDerivedPos);
+                boneLocalOri = invParentOri * skelOri;
             }
             else
             {
+                // Root bone - skeleton space IS local space
                 boneLocalPos = skelPos;
+                boneLocalOri = skelOri;
             }
 
             bone->setPosition(boneLocalPos);
-            bone->setOrientation(skelOri);
+            bone->setOrientation(boneLocalOri);
 
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
-                "[PhysicsRagDollComponentV2] applyRagdollStateToModel BoneName: " + ragBone->getName() + " boneLocalPos: " + Ogre::StringConverter::toString(boneLocalPos) + " skelOri: " + Ogre::StringConverter::toString(skelOri));
+            // Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+           //      "[PhysicsRagDollComponentV2] applyRagdollStateToModel BoneName: " + ragBone->getName() + " boneLocalPos: " + Ogre::StringConverter::toString(boneLocalPos) + " boneLocalOri: " + Ogre::StringConverter::toString(boneLocalOri));
         }
 
         // Apply bone corrections
@@ -1833,9 +1825,19 @@ namespace NOWA
     // startRagdolling
     // ============================================================================
 
+    // ============================================================================
+    // 3) startRagdolling
+    //
+    // KEY CHANGE: Do NOT call bone->setInheritOrientation(false) !
+    // Keep it TRUE so the cascade math matches V1's OldNode behavior.
+    //
+    // Instead of setting the derived orientation directly, convert to local:
+    //   localOri = invParentOri * derivedOri
+    // ============================================================================
+
     void PhysicsRagDollComponentV2::startRagdolling(void)
     {
-        // Reset all animations. Must be done, because a game object may be in the middle of an animation
+        // Reset all animations
         if (nullptr != this->skeletonInstance)
         {
             Ogre::SkeletonAnimationVec& animations = this->skeletonInstance->getAnimationsNonConst();
@@ -1875,14 +1877,9 @@ namespace NOWA
 
                     if (bone == this->ragDataList[j].ragBone->getBone())
                     {
-                        Ogre::Vector3 bonePos;
-                        Ogre::Quaternion absoluteWorldOrientation;
-                        extractBoneDerivedTransform(bone, bonePos, absoluteWorldOrientation);
-
                         this->skeletonInstance->setManualBone(bone, true);
-                        bone->setInheritOrientation(false);
-
-                        bone->setOrientation(absoluteWorldOrientation);
+                        // Do NOT call bone->setInheritOrientation(false) !
+                        // Keep TRUE so V2 cascade math matches V1
 
                         this->ragDataList[j].ragBone->attachToNode();
                         break;
@@ -1892,22 +1889,17 @@ namespace NOWA
         }
         else
         {
-            // Full ragdoll: idx=1 to skip Master (skeleton root offset bone)
+            // Full ragdoll: idx=1 to skip Master
             for (size_t idx = 1; idx < this->skeletonInstance->getNumBones(); idx++)
             {
                 Ogre::Bone* bone = this->skeletonInstance->getBone(idx);
 
-                Ogre::Vector3 bonePos;
-                Ogre::Quaternion absoluteWorldOrientation;
-                extractBoneDerivedTransform(bone, bonePos, absoluteWorldOrientation);
-
                 this->skeletonInstance->setManualBone(bone, true);
-                bone->setInheritOrientation(false);
-
-                bone->setOrientation(absoluteWorldOrientation);
+                // Do NOT call bone->setInheritOrientation(false) !
+                // Keep TRUE so V2 cascade math matches V1
             }
 
-            // Attach ragdoll bones to their scene nodes (separate loop!)
+            // Attach ragdoll bones to their scene nodes
             for (size_t j = 0; j < this->ragDataList.size(); j++)
             {
                 this->ragDataList[j].ragBone->attachToNode();
@@ -1917,6 +1909,15 @@ namespace NOWA
 
     // ============================================================================
     // endRagdolling
+    // ============================================================================
+
+    // ============================================================================
+    // REPLACE endRagdolling in PhysicsRagDollComponentV2.cpp
+    //
+    // V1 does skeleton->unload()/load() which completely resets all bones.
+    // V2 has no equivalent. We must:
+    //   1. Unset all manual bones (so resetToPose can affect them)
+    //   2. Call resetToPose() to restore bind pose positions/orientations/scales
     // ============================================================================
 
     void PhysicsRagDollComponentV2::endRagdolling(void)
@@ -1952,7 +1953,17 @@ namespace NOWA
                 }
             } while (nullptr != tagPointCompPtr);
 
-            // V2: Reset skeleton to binding pose (replaces V1's skeleton unload/reload)
+            // V2: Unset all manual bones first, so resetToPose() can reset them.
+            // resetToPose() uses manualBones mask: 0.0 = manual (skip), 1.0 = normal (reset).
+            // We must set them back to non-manual so the lerp weight becomes 1.0.
+            // Start at idx=1 to skip Master (same as startRagdolling).
+            for (size_t idx = 1; idx < this->skeletonInstance->getNumBones(); idx++)
+            {
+                Ogre::Bone* bone = this->skeletonInstance->getBone(idx);
+                this->skeletonInstance->setManualBone(bone, false);
+            }
+
+            // Now resetToPose() will actually reset all bones to bind pose
             this->skeletonInstance->resetToPose();
 
             // Reset all animations
@@ -1961,9 +1972,10 @@ namespace NOWA
             {
                 anim.setEnabled(false);
                 anim.mWeight = 0.0f;
-                anim.setFrame(0.0f);
+                anim.setTime(0.0f);
             }
         };
+
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PhysicsRagDollComponentV2::endRagdolling");
     }
 
@@ -2218,8 +2230,8 @@ namespace NOWA
         Ogre::Vector3 collisionPosition = this->physicsRagDollComponentV2->ragdollPositionOffset;
         Ogre::Quaternion collisionOrientation = this->physicsRagDollComponentV2->ragdollOrientationOffset;
 
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
-            "[PhysicsRagDollComponentV2] Name: " + name + " initialBonePosition: " + Ogre::StringConverter::toString(this->initialBonePosition) + " initialBoneOrientation: " + Ogre::StringConverter::toString(this->initialBoneOrientation));
+        // Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+        //     "[PhysicsRagDollComponentV2] Name: " + name + " initialBonePosition: " + Ogre::StringConverter::toString(this->initialBonePosition) + " initialBoneOrientation: " + Ogre::StringConverter::toString(this->initialBoneOrientation));
 
         // Create the collision shape based on the Shape attribute
         switch (shape)

@@ -3336,7 +3336,7 @@ void PropertiesPanelComponent::onAutoCompleteComboSelectAccept(MyGUI::ComboBox* 
 
 void PropertiesPanelComponent::notifyEditSelectAccept(MyGUI::EditBox* sender)
 {
-	ENQUEUE_RENDER_COMMAND_MULTI("PropertiesPanelComponent::notifyEditSelectAccept", _1(sender),
+	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PropertiesPanelComponent::notifyEditSelectAccept", _1(sender),
 	{
 		// Let the camera move again
 		NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(1.0f);

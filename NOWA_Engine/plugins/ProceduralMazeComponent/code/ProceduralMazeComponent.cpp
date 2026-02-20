@@ -949,26 +949,25 @@ namespace NOWA
 
     bool ProceduralMazeComponent::exportMesh(const Ogre::String& filename)
     {
-        if (!this->mazeMesh)
+        if (nullptr == this->mazeMesh)
         {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralMazeComponent] No mesh to export!");
             return false;
         }
 
-        bool success = false;
-        GraphicsModule::RenderCommand cmd = [this, filename, &success]()
+        try
         {
-            try
-            {
-                Ogre::MeshSerializer serializer(Ogre::Root::getSingletonPtr()->getRenderSystem()->getVaoManager());
-                serializer.exportMesh(this->mazeMesh.get(), filename);
-            }
-            catch (const std::exception& e)
-            {
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralMazeComponent] exportMesh exception: " + Ogre::String(e.what()));
-            }
-        };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "ProceduralMazeComponent::exportMesh");
-        return success;
+            Ogre::MeshSerializer serializer(Ogre::Root::getSingletonPtr()->getRenderSystem()->getVaoManager());
+            serializer.exportMesh(this->mazeMesh.get(), filename);
+
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralMazeComponent] Exported mesh to: " + filename);
+            return true;
+        }
+        catch (Ogre::Exception& e)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralMazeComponent] Export failed: " + e.getFullDescription());
+            return false;
+        }
     }
 
     // ==================== MESH GENERATION ====================
