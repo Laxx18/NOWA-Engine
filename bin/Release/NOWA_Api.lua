@@ -4656,14 +4656,6 @@ return {
 				returns = "(nil)",
 				valuetype = "nil"
 			},
-			getContactPruningTolerance =
-			{
-				type = "function",
-				description = "Gets the pruning tolerance for this contact.",
-				args = "()",
-				returns = "(number)",
-				valuetype = "number"
-			},
 			getContactPenetration =
 			{
 				type = "function",
@@ -4906,7 +4898,7 @@ return {
 		inherits = "GameObjectComponent",
 		childs = 
 		{
-			setSubEntityIndex =
+			setSubItemIndex =
 			{
 				type = "method",
 				description = "Sets the sub entity index, this data block should be used for.",
@@ -4914,7 +4906,7 @@ return {
 				returns = "(nil)",
 				valuetype = "nil"
 			},
-			getSubEntityIndex =
+			getSubItemIndex =
 			{
 				type = "function",
 				description = "Gets the sub entity index this data block is used for.",
@@ -5996,7 +5988,7 @@ return {
 		inherits = "GameObjectComponent",
 		childs = 
 		{
-			setSubEntityIndex =
+			setSubItemIndex =
 			{
 				type = "method",
 				description = "Sets the sub entity index, this data block should be used for.",
@@ -6004,7 +5996,7 @@ return {
 				returns = "(nil)",
 				valuetype = "nil"
 			},
-			getSubEntityIndex =
+			getSubItemIndex =
 			{
 				type = "function",
 				description = "Gets the sub entity index this data block is used for.",
@@ -9645,6 +9637,30 @@ return {
 				returns = "(LookAfterComponent)",
 				valuetype = "LookAfterComponent"
 			},
+			getMeshModifyComponent =
+			{
+				type = "function",
+				description = "Gets the component.",
+				args = "()",
+				returns = "(MeshModifyComponent)",
+				valuetype = "MeshModifyComponent"
+			},
+			getMeshModifyComponentFromIndex =
+			{
+				type = "function",
+				description = "Gets the component by occurrence index.",
+				args = "(number occurrenceIndex)",
+				returns = "(MeshModifyComponent)",
+				valuetype = "MeshModifyComponent"
+			},
+			getMeshModifyComponentFromName =
+			{
+				type = "function",
+				description = "Gets the component from name.",
+				args = "(string name)",
+				returns = "(MeshModifyComponent)",
+				valuetype = "MeshModifyComponent"
+			},
 			getMinimapComponentFromIndex =
 			{
 				type = "function",
@@ -9772,6 +9788,54 @@ return {
 				args = "(string name)",
 				returns = "(PccPerPixelGridPlacementComponent)",
 				valuetype = "PccPerPixelGridPlacementComponent"
+			},
+			getPhysicsRagDollComponentV22 =
+			{
+				type = "function",
+				description = "Gets the component by the given occurence index, since a game object may this component maybe several times.",
+				args = "(number occurrenceIndex)",
+				returns = "(PhysicsRagDollComponentV2)",
+				valuetype = "PhysicsRagDollComponentV2"
+			},
+			getPhysicsRagDollComponentV2 =
+			{
+				type = "function",
+				description = "Gets the component. This can be used if the game object this component just once.",
+				args = "()",
+				returns = "(PhysicsRagDollComponentV2)",
+				valuetype = "PhysicsRagDollComponentV2"
+			},
+			getPhysicsRagDollComponentV2FromName =
+			{
+				type = "function",
+				description = "Gets the component from name.",
+				args = "(string name)",
+				returns = "(PhysicsRagDollComponentV2)",
+				valuetype = "PhysicsRagDollComponentV2"
+			},
+			getPhysicsRagDollComponentV32 =
+			{
+				type = "function",
+				description = "Gets the component by the given occurrence index.",
+				args = "(number occurrenceIndex)",
+				returns = "(PhysicsRagDollComponentV3)",
+				valuetype = "PhysicsRagDollComponentV3"
+			},
+			getPhysicsRagDollComponentV3 =
+			{
+				type = "function",
+				description = "Gets the component.",
+				args = "()",
+				returns = "(PhysicsRagDollComponentV3)",
+				valuetype = "PhysicsRagDollComponentV3"
+			},
+			getPhysicsRagDollComponentV3FromName =
+			{
+				type = "function",
+				description = "Gets the component from name.",
+				args = "(string name)",
+				returns = "(PhysicsRagDollComponentV3)",
+				valuetype = "PhysicsRagDollComponentV3"
 			},
 			getPickerComponentFromIndex =
 			{
@@ -11613,6 +11677,14 @@ return {
 				returns = "(LookAfterComponent)",
 				valuetype = "LookAfterComponent"
 			},
+			castMeshModifyComponent =
+			{
+				type = "function",
+				description = "Casts an incoming type from function for lua auto completion.",
+				args = "(MeshModifyComponent other)",
+				returns = "(MeshModifyComponent)",
+				valuetype = "MeshModifyComponent"
+			},
 			castMinimapComponent =
 			{
 				type = "function",
@@ -11652,6 +11724,22 @@ return {
 				args = "(PccPerPixelGridPlacementComponent other)",
 				returns = "(PccPerPixelGridPlacementComponent)",
 				valuetype = "PccPerPixelGridPlacementComponent"
+			},
+			castPhysicsRagDollComponentV2 =
+			{
+				type = "function",
+				description = "Casts an incoming type from function for lua auto completion.",
+				args = "(PhysicsRagDollComponentV2 other)",
+				returns = "(PhysicsRagDollComponentV2)",
+				valuetype = "PhysicsRagDollComponentV2"
+			},
+			castPhysicsRagDollComponentV3 =
+			{
+				type = "function",
+				description = "Casts an incoming type.",
+				args = "(PhysicsRagDollComponentV3 other)",
+				returns = "(PhysicsRagDollComponentV3)",
+				valuetype = "PhysicsRagDollComponentV3"
 			},
 			castPickerComponent =
 			{
@@ -18649,6 +18737,207 @@ return {
 		type = "class",
 		description = "Performs a linear transform on a procedural mesh."
 	},
+	MeshModifyComponent =
+	{
+		type = "class",
+		description = "Usage: Attach to a GameObject with a mesh to enable real-time sculpting. Use left mouse button to sculpt. Ctrl+Left to invert brush effect.",
+		inherits = "GameObjectComponent",
+		childs = 
+		{
+			setActivated =
+			{
+				type = "method",
+				description = "Sets whether this component should be activated or not.",
+				args = "(boolean activated)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			isActivated =
+			{
+				type = "function",
+				description = "Gets whether this component is activated.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			setBrushSize =
+			{
+				type = "method",
+				description = "Sets the brush radius in world units.",
+				args = "(number size)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getBrushSize =
+			{
+				type = "function",
+				description = "Gets the brush radius.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setBrushIntensity =
+			{
+				type = "method",
+				description = "Sets the brush intensity (0.0 - 1.0).",
+				args = "(number intensity)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getBrushIntensity =
+			{
+				type = "function",
+				description = "Gets the brush intensity.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setBrushFalloff =
+			{
+				type = "method",
+				description = "Sets the brush falloff exponent.",
+				args = "(number falloff)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getBrushFalloff =
+			{
+				type = "function",
+				description = "Gets the brush falloff.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setBrushMode =
+			{
+				type = "method",
+				description = "Sets brush mode: 'Push', 'Pull', 'Smooth', 'Flatten', 'Pinch', 'Inflate'.",
+				args = "(string mode)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getBrushMode =
+			{
+				type = "function",
+				description = "Gets the current brush mode name.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			resetMesh =
+			{
+				type = "method",
+				description = "Resets the mesh to its original state.",
+				args = "()",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			exportMesh =
+			{
+				type = "function",
+				description = "Exports the modified mesh to a file.",
+				args = "(string fileName)",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			getVertexCount =
+			{
+				type = "function",
+				description = "Gets the number of vertices in the mesh.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			getIndexCount =
+			{
+				type = "function",
+				description = "Gets the number of indices in the mesh.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setMaxDamage =
+			{
+				type = "method",
+				description = "Sets the maximum damage factor (0.0 - 1.0). Special value: -1.0 = fully deformable (scrap press), 0.7 = stops deforming after 70% damage. Default is 1.0.",
+				args = "(Real maxDamage)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getMaxDamage =
+			{
+				type = "function",
+				description = "Gets the maximum damage factor (0.0 - 1.0).",
+				args = "()",
+				returns = "(Real)",
+				valuetype = "Real"
+			},
+			getCurrentDamage =
+			{
+				type = "function",
+				description = "Gets the current accumulated damage as a factor (0.0 - 1.0). Can be used to trigger game events, e.g. if meshModify:getCurrentDamage() > 0.5 then explode() end",
+				args = "()",
+				returns = "(Real)",
+				valuetype = "Real"
+			},
+			resetDamage =
+			{
+				type = "method",
+				description = "Resets the accumulated damage back to 0. Call this after repairing the vehicle or restarting.",
+				args = "()",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			deformAtWorldPosition =
+			{
+				type = "method",
+				description = "Deforms the mesh at a world-space position (e.g. physics contact point). invertEffect=true pulls instead of pushes.",
+				args = "(Vector3 worldPos, boolean invertEffect)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			deformAtWorldPositionByForce =
+			{
+				type = "method",
+				description = "Deforms mesh scaled by impact force. impactStrength/maxForceForFullDeform = intensity multiplier [0,1].",
+				args = "(Vector3 worldPos, Real impactStrength, Real maxForceForFullDeform, boolean invertEffect)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			rebuildCollision =
+			{
+				type = "method",
+				description = "Rebuilds collision. Can be called in lua script if e.g. vehicle hit an obstacle and is deformed and then calc new collision shape at runtime.",
+				args = "()",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			deformAtWorldPositionByForceAndNormal =
+			{
+				type = "method",
+				description = "Deforms the mesh at a world-space contact position along the contact normal, scaled by impact force. All affected vertices move along the same direction, producing a clean dent without spiking artifacts. Use this instead of deformAtWorldPositionByForce when you have the contact normal available. worldPos: contact point in world space. worldNormal: contact normal in world space (from contact:getPositionAndNormal()). impactStrength: impact force magnitude contact:getNormalSpeed(). maxForceForFullDeform: force value that produces maximum deformation — tune this to match your physics scale. invertEffect: true=dent inward (default for crashes), false=push outward. Usage: local data = contact:getPositionAndNormal(); meshModify:deformAtWorldPositionByForceAndNormal(data[0], data[1], contact:getNormalSpeed(), 80.0, true);",
+				args = "(Vector3 worldPos, Vector3 worldNormal, Real impactStrength, Real maxForceForFullDeform, boolean invertEffect)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			applyBrushCrush =
+			{
+				type = "method",
+				description = "Crushes vertices in local space toward a hard plane boundary defined by crushDirectionLocal and crushPlaneOffset. Unlike push/pull brushes which move vertices incrementally, this clamps vertices that exceed the crush plane, making it ideal for scrap press scenarios. brushCenterLocal: brush origin in local/object space. crushDirectionLocal: direction of the crush force in local space. crushPlaneOffset: the boundary distance along crushDirectionLocal — vertices projected beyond this are crushed toward it. Note: Respects maxDamage cap. Use crushAtWorldPosition for world-space convenience.",
+				args = "(Vector3 brushCenterLocal, Vector3 crushDirectionLocal, Real crushPlaneOffset)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			crushAtWorldPosition =
+			{
+				type = "method",
+				description = "World-space scrap press deformation. Transforms worldPos and worldCrushDirection into local space and applies a hard plane crush. Call this once per pressing wall per frame. worldPos: press origin or contact point in world space. worldCrushDirection: direction the wall is pressing from, in world space (e.g. Vector3(1,0,0) for left wall, Vector3(-1,0,0) for right wall). Usage scrap press: meshModify:crushAtWorldPosition(wall1:getPosition(), Vector3(1,0,0)); ",
+				args = "(Vector3 worldPos, Vector3 worldCrushDirection)",
+				returns = "(nil)",
+				valuetype = "nil"
+			}
+		}
+	},
 	MeshUVTransform =
 	{
 		type = "class",
@@ -24478,6 +24767,240 @@ return {
 			}
 		}
 	},
+	PhysicsRagDollComponentV2 =
+	{
+		type = "class",
+		description = "Usage: This component is used to create physics rag doll for Ogre::Item (V2). The ragdoll details are specified in a XML file. This component has also several states, so that it can also behave like an usual physics active component. Even a partial rag doll can be created e.g. just using the right arm of the player as rag doll.Requirements: A game object with mesh and skeleton (Ogre::Item with SkeletonInstance).",
+		inherits = "PhysicsActiveComponent",
+		childs = 
+		{
+			setVelocity =
+			{
+				type = "method",
+				description = "Sets the global linear velocity on the physics body. Note: This should only be used for initzialisation. Use @applyRequiredForceForVelocity in simualtion instead. Or it may be called if its a physics active kinematic body.",
+				args = "(Vector3 velocity)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getVelocity =
+			{
+				type = "function",
+				description = "Gets currently acting velocity on the body.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			getPosition =
+			{
+				type = "function",
+				description = "Gets the position of the physics component.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			setOrientation =
+			{
+				type = "method",
+				description = "Sets the orientation of the physics component. Attention: Never ever use this function in an update function for physics, as it will mess up parts of physics like ragdolls etc. Only use it for initialization!",
+				args = "(Quaternion orientation)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getOrientation =
+			{
+				type = "function",
+				description = "Gets the orientation of the physics component.",
+				args = "()",
+				returns = "(Quaternion)",
+				valuetype = "Quaternion"
+			},
+			setInitialState =
+			{
+				type = "method",
+				description = "If in ragdoll state, resets all bones ot its initial position and orientation.",
+				args = "()",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setAnimationEnabled =
+			{
+				type = "method",
+				description = "Enables animation for the ragdoll. That is, the bones are no more controlled manually, but transform comes from animation state.",
+				args = "(boolean enabled)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			isAnimationEnabled =
+			{
+				type = "function",
+				description = "Gets whether the ragdoll is being animated.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			setBoneConfigFile =
+			{
+				type = "method",
+				description = "Sets the bone configuration file. Which describes in XML, how the ragdoll is configure. The file must be placed in the same folder as the mesh and skeleton file. Note: The file can be exchanged at runtime, if a different ragdoll configuration is desire.",
+				args = "(string boneConfigFile)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getBoneConfigFile =
+			{
+				type = "function",
+				description = "Gets the currently applied bone config file.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			getRagDataList =
+			{
+				type = "function",
+				description = "Gets List of all configured rag bones.",
+				args = "()",
+				returns = "(Table[RagBone])",
+				valuetype = "Table[RagBone]"
+			},
+			getRagBone =
+			{
+				type = "function",
+				description = "Gets RagBone from the given name or nil, if it does not exist.",
+				args = "(string ragboneName)",
+				returns = "(RagBone)",
+				valuetype = "RagBone"
+			},
+			setBoneRotation =
+			{
+				type = "method",
+				description = "Rotates the given RagBone around the given axis by degree amount.",
+				args = "(string ragboneName, Vector3 axis, number degree)",
+				returns = "(nil)",
+				valuetype = "nil"
+			}
+		}
+	},
+	PhysicsRagDollComponentV3 =
+	{
+		type = "class",
+		description = "Usage: Articulation-based ragdoll for Ogre::Item (V2 skeleton). Uses Newton 4's ndModelArticulation for efficient ragdoll simulation (single solver pass, no self-collision). States: Inactive, Animation, Ragdolling, PartialRagdolling. Requirements: A game object with mesh and skeleton (Ogre::Item with SkeletonInstance).",
+		inherits = "PhysicsActiveComponent",
+		childs = 
+		{
+			setState =
+			{
+				type = "method",
+				description = "Sets the ragdoll state. Possible values: 'Inactive', 'Animation', 'Ragdolling', 'PartialRagdolling'.",
+				args = "(string state)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getState =
+			{
+				type = "function",
+				description = "Gets the current ragdoll state.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			setVelocity =
+			{
+				type = "method",
+				description = "Sets linear velocity on the root body.",
+				args = "(Vector3 velocity)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getVelocity =
+			{
+				type = "function",
+				description = "Gets velocity of the root body.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			getPosition =
+			{
+				type = "function",
+				description = "Gets position of the root body.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			setOrientation =
+			{
+				type = "method",
+				description = "Sets orientation. Only for initialization!",
+				args = "(Quaternion orientation)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getOrientation =
+			{
+				type = "function",
+				description = "Gets orientation of the root body.",
+				args = "()",
+				returns = "(Quaternion)",
+				valuetype = "Quaternion"
+			},
+			setInitialState =
+			{
+				type = "method",
+				description = "Resets ragdoll bones to animation pose.",
+				args = "()",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setAnimationEnabled =
+			{
+				type = "method",
+				description = "Enables/disables animation control.",
+				args = "(boolean enabled)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			isAnimationEnabled =
+			{
+				type = "function",
+				description = "Gets whether animation is enabled.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			setBoneConfigFile =
+			{
+				type = "method",
+				description = "Sets the .rag config file.",
+				args = "(string boneConfigFile)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getBoneConfigFile =
+			{
+				type = "function",
+				description = "Gets the .rag config file name.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			getBoneBody =
+			{
+				type = "function",
+				description = "Gets a ragdoll bone's Newton body by name.",
+				args = "(string ragBoneName)",
+				returns = "(Body)",
+				valuetype = "Body"
+			},
+			getOgreBone =
+			{
+				type = "function",
+				description = "Gets a ragdoll bone's Ogre bone by name.",
+				args = "(string ragBoneName)",
+				returns = "(Bone)",
+				valuetype = "Bone"
+			}
+		}
+	},
 	PhysicsTerrainComponent =
 	{
 		type = "class",
@@ -26716,6 +27239,22 @@ return {
 				args = "()",
 				returns = "(Body)",
 				valuetype = "Body"
+			},
+			getOgreBone =
+			{
+				type = "function",
+				description = "Gets the Ogre v2 bone.",
+				args = "()",
+				returns = "(Bone)",
+				valuetype = "Bone"
+			},
+			getPhysicsRagDollComponentV2 =
+			{
+				type = "function",
+				description = "Gets PhysicsRagDollComponentV2 outer class object from this rag bone.",
+				args = "()",
+				returns = "(PhysicsRagDollComponentV2)",
+				valuetype = "PhysicsRagDollComponentV2"
 			}
 		}
 	},
@@ -28555,6 +29094,22 @@ return {
 				args = "()",
 				returns = "(Table[string])",
 				valuetype = "Table[string]"
+			},
+			beginCommandTransaction =
+			{
+				type = "method",
+				description = "Starts a generic undo transaction. Must be paired with endCommandTransaction().",
+				args = "(string label)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			endCommandTransaction =
+			{
+				type = "method",
+				description = "Ends a previously started undo transaction.",
+				args = "()",
+				returns = "(nil)",
+				valuetype = "nil"
 			},
 			modifyTerrainStart =
 			{

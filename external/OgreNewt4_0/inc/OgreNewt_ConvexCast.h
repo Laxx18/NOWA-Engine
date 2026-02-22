@@ -51,12 +51,11 @@ namespace OgreNewt
             virtual ndUnsigned32 OnRayPrecastAction(const ndBody* const body, const ndShapeInstance* const) override
             {
                 OgreNewt::Body* b = nullptr;
-
-                if (body->GetNotifyCallback())
+                ndSharedPtr<ndBodyNotify>& notifyPtr = const_cast<ndBody*>(body)->GetNotifyCallback();
+                if (notifyPtr)
                 {
-                    b = static_cast<OgreNewt::BodyNotify*>(body->GetNotifyCallback())->GetOgreNewtBody();
+                    b = static_cast<OgreNewt::BodyNotify*>(*notifyPtr)->GetOgreNewtBody();
                 }
-
                 if (!b || m_owner->userPreFilterCallback(b))
                     return 1;
                 return 0;

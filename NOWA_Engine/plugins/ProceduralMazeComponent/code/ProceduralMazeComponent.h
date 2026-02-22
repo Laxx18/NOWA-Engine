@@ -436,6 +436,8 @@ namespace NOWA
 		// Random state
 		unsigned int randomState;
 
+		PhysicsArtifactComponent* physicsArtifactComponent;
+
 		// Attributes
 		Variant* numColumns;
 		Variant* numRows;

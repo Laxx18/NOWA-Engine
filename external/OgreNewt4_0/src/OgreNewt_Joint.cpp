@@ -1,54 +1,71 @@
 ﻿#include "OgreNewt_Stdafx.h"
+#include "OgreNewt_Joint.h"
 #include "OgreNewt_Body.h"
 #include "OgreNewt_BodyNotify.h"
 #include "OgreNewt_World.h"
-#include "OgreNewt_Joint.h"
 #include <float.h>
 
 using namespace OgreNewt;
 
 namespace
 {
-    // Find the ndWorld* that owns our joint by walking via BodyNotify → OgreNewt::Body → World
+    // Find the ndWorld* that owns our joint by walking via BodyNotify -> OgreNewt::Body -> World
     ndWorld* getNdWorldFromJoint(ndJointBilateralConstraint* jnt)
     {
-        if (!jnt) return nullptr;
+        if (!jnt)
+        {
+            return nullptr;
+        }
 
         auto tryBody = [](ndBodyKinematic* nbody) -> ndWorld*
+        {
+            if (!nbody)
             {
-                if (!nbody) return nullptr;
-                if (auto* notify = nbody->GetNotifyCallback())
+                return nullptr;
+            }
+
+            auto& notifyPtr = nbody->GetNotifyCallback();
+            if (!notifyPtr)
+            {
+                return nullptr;
+            }
+
+            if (auto* ogreNotify = dynamic_cast<OgreNewt::BodyNotify*>(*notifyPtr))
+            {
+                if (auto* ogreBody = ogreNotify->GetOgreNewtBody())
                 {
-                    // BodyNotify is your wrapper's notify class
-                    if (auto* ogreNotify = dynamic_cast<OgreNewt::BodyNotify*>(notify))
+                    if (auto* ogreWorld = ogreBody->getWorld())
                     {
-                        if (auto* ogreBody = ogreNotify->GetOgreNewtBody())
-                        {
-                            if (auto* ogreWorld = ogreBody->getWorld())
-                                return ogreWorld->getNewtonWorld();
-                        }
+                        return ogreWorld->getNewtonWorld();
                     }
                 }
-                return nullptr;
-            };
+            }
 
-        if (auto* w = tryBody(jnt->GetBody0())) return w;
-        if (auto* w = tryBody(jnt->GetBody1())) return w;
+            return nullptr;
+        };
+
+        if (auto* w = tryBody(jnt->GetBody0()))
+        {
+            return w;
+        }
+        if (auto* w = tryBody(jnt->GetBody1()))
+        {
+            return w;
+        }
         return nullptr;
     }
 }
 
-Joint::Joint()
-    : m_jointPtr(),
-    m_joint(nullptr),
-    m_stiffness(1.0f)
+Joint::Joint() : m_jointPtr(), m_joint(nullptr), m_stiffness(1.0f)
 {
 }
 
 Joint::~Joint()
 {
     if (!m_world || !m_joint)
+    {
         return;
+    }
 
     // Cache pointers (because we will clear members)
     ndJointBilateralConstraint* joint = m_joint;
@@ -61,7 +78,8 @@ Joint::~Joint()
     m_world = nullptr;
 
     // Remove on world thread / safe point
-    world->enqueuePhysicsAndWait([joint, jointPtr](OgreNewt::World& w) mutable
+    world->enqueuePhysicsAndWait(
+        [joint, jointPtr](OgreNewt::World& w) mutable
         {
             if (joint)
             {
@@ -77,7 +95,9 @@ Joint::~Joint()
 void Joint::destroyJoint(OgreNewt::World* /*world*/)
 {
     if (!m_world || !m_joint)
+    {
         return;
+    }
 
     ndJointBilateralConstraint* joint = m_joint;
     ndSharedPtr<ndJointBilateralConstraint> jointPtr = m_jointPtr;
@@ -86,7 +106,8 @@ void Joint::destroyJoint(OgreNewt::World* /*world*/)
     m_joint = nullptr;
     m_jointPtr = ndSharedPtr<ndJointBilateralConstraint>();
 
-    m_world->enqueuePhysicsAndWait([joint, jointPtr](OgreNewt::World& w) mutable
+    m_world->enqueuePhysicsAndWait(
+        [joint, jointPtr](OgreNewt::World& w) mutable
         {
             if (joint)
             {
@@ -104,9 +125,12 @@ void Joint::SetSupportJoint(OgreNewt::World* world, ndJointBilateralConstraint* 
     m_jointPtr = ndSharedPtr<ndJointBilateralConstraint>(supportJoint);
     m_joint = m_jointPtr.operator->();
     if (!m_world || !m_joint)
+    {
         return;
+    }
 
-    m_world->enqueuePhysicsAndWait([this](OgreNewt::World& w)
+    m_world->enqueuePhysicsAndWait(
+        [this](OgreNewt::World& w)
         {
             w.addJoint(m_jointPtr);
         });
@@ -182,7 +206,9 @@ void Joint::setRowSpringDamper(Ogre::Real stiffness, Ogre::Real springK, Ogre::R
 void Joint::applyPendingRows(ndConstraintDescritor& desc)
 {
     if (!m_joint)
+    {
         return;
+    }
 
     // iterate over pending rows and add them into the ND descriptor using ND4 helper methods
     for (const PendingRow& row : m_pendingRows)
@@ -237,12 +263,12 @@ void Joint::destructorCallback(const ndJointBilateralConstraint* /*me*/)
 
 void Joint::setCollisionState(int state) const
 {
-	m_joint->SetCollidable(state != 0);
+    m_joint->SetCollidable(state != 0);
 }
 
 int Joint::getCollisionState() const
 {
-	return m_joint->IsCollidable() ? 1 : 0;
+    return m_joint->IsCollidable() ? 1 : 0;
 }
 
 Ogre::Real Joint::getStiffness() const
@@ -268,49 +294,69 @@ void Joint::setJointForceCalculation(bool)
 OgreNewt::Body* Joint::getBody0() const
 {
     if (!m_joint)
-        return nullptr;
-
-    if (auto* notify = m_joint->GetBody0()->GetNotifyCallback())
     {
-        if (auto* bodyNotify = dynamic_cast<OgreNewt::BodyNotify*>(notify))
+        return nullptr;
+    }
+
+    if (auto* body = m_joint->GetBody0())
+    {
+        auto& notifyPtr = body->GetNotifyCallback();
+        if (notifyPtr)
         {
-            return bodyNotify->GetOgreNewtBody();
+            if (auto* bodyNotify = dynamic_cast<OgreNewt::BodyNotify*>(*notifyPtr))
+            {
+                return bodyNotify->GetOgreNewtBody();
+            }
         }
     }
+
     return nullptr;
 }
 
 OgreNewt::Body* Joint::getBody1() const
 {
     if (!m_joint)
-        return nullptr;
-
-    if (auto* notify = m_joint->GetBody1()->GetNotifyCallback())
     {
-        if (auto* bodyNotify = dynamic_cast<OgreNewt::BodyNotify*>(notify))
+        return nullptr;
+    }
+
+    if (auto* body = m_joint->GetBody1())
+    {
+        auto& notifyPtr = body->GetNotifyCallback();
+        if (notifyPtr)
         {
-            return bodyNotify->GetOgreNewtBody();
+            if (auto* bodyNotify = dynamic_cast<OgreNewt::BodyNotify*>(*notifyPtr))
+            {
+                return bodyNotify->GetOgreNewtBody();
+            }
         }
     }
+
     return nullptr;
 }
 
 void Joint::setRowMinimumFriction(Ogre::Real friction) const
 {
     if (!m_pendingRows.empty())
+    {
         m_pendingRows.back().springK = static_cast<ndFloat32>(friction); // reuse param for lower friction
+    }
 }
 
 void Joint::setRowMaximumFriction(Ogre::Real friction) const
 {
     if (!m_pendingRows.empty())
+    {
         m_pendingRows.back().springD = static_cast<ndFloat32>(friction); // reuse param for upper friction
+    }
 }
 
 Ogre::Vector3 Joint::getForce0() const
 {
     if (!m_joint)
+    {
         return Ogre::Vector3::ZERO;
+    }
 
     const ndVector f = m_joint->GetForceBody0();
     return Ogre::Vector3(f.m_x, f.m_y, f.m_z);
@@ -319,7 +365,9 @@ Ogre::Vector3 Joint::getForce0() const
 Ogre::Vector3 Joint::getTorque0() const
 {
     if (!m_joint)
+    {
         return Ogre::Vector3::ZERO;
+    }
 
     const ndVector t = m_joint->GetTorqueBody0();
     return Ogre::Vector3(t.m_x, t.m_y, t.m_z);
@@ -328,7 +376,9 @@ Ogre::Vector3 Joint::getTorque0() const
 Ogre::Vector3 Joint::getForce1() const
 {
     if (!m_joint)
+    {
         return Ogre::Vector3::ZERO;
+    }
 
     const ndVector f = m_joint->GetForceBody1();
     return Ogre::Vector3(f.m_x, f.m_y, f.m_z);
@@ -337,25 +387,28 @@ Ogre::Vector3 Joint::getForce1() const
 Ogre::Vector3 Joint::getTorque1() const
 {
     if (!m_joint)
+    {
         return Ogre::Vector3::ZERO;
+    }
 
     const ndVector t = m_joint->GetTorqueBody1();
     return Ogre::Vector3(t.m_x, t.m_y, t.m_z);
 }
 
 // ----------------- CustomJoint: construct ND joint and pass owner pointer -----------------
-CustomJoint::CustomJoint(unsigned int maxDOF, const Body* child, const Body* parent)
-    : m_maxDOF(maxDOF)
-    , m_body0(child)
-    , m_body1(parent)
+CustomJoint::CustomJoint(unsigned int maxDOF, const Body* child, const Body* parent) : m_maxDOF(maxDOF), m_body0(child), m_body1(parent)
 {
     ndBodyKinematic* b0 = nullptr;
     ndBodyKinematic* b1 = nullptr;
 
     if (child)
+    {
         b0 = const_cast<ndBodyKinematic*>(child->getNewtonBody());
+    }
     if (parent)
+    {
         b1 = const_cast<ndBodyKinematic*>(parent->getNewtonBody());
+    }
 
     // build an identity frame
     const ndMatrix frame(ndGetIdentityMatrix());
@@ -374,12 +427,12 @@ CustomJoint::~CustomJoint()
     // cleanup is handled by world or owner depending on your integration.
 }
 
-void CustomJoint::pinAndDirToLocal(const Ogre::Vector3& pinpt, const Ogre::Vector3& pindir,
-    Ogre::Quaternion& localOrient0, Ogre::Vector3& localPos0,
-    Ogre::Quaternion& localOrient1, Ogre::Vector3& localPos1) const
+void CustomJoint::pinAndDirToLocal(const Ogre::Vector3& pinpt, const Ogre::Vector3& pindir, Ogre::Quaternion& localOrient0, Ogre::Vector3& localPos0, Ogre::Quaternion& localOrient1, Ogre::Vector3& localPos1) const
 {
     if (!m_body0 || !m_body1)
+    {
         return;
+    }
 
     Ogre::Vector3 pos0, pos1;
     Ogre::Quaternion ori0, ori1;
@@ -398,12 +451,13 @@ void CustomJoint::pinAndDirToLocal(const Ogre::Vector3& pinpt, const Ogre::Vecto
     localPos1 = ori1.Inverse() * (globalPos - pos1);
 }
 
-void CustomJoint::localToGlobal(const Ogre::Quaternion& localOrient, const Ogre::Vector3& localPos,
-    Ogre::Quaternion& globalOrient, Ogre::Vector3& globalPos, int bodyIndex) const
+void CustomJoint::localToGlobal(const Ogre::Quaternion& localOrient, const Ogre::Vector3& localPos, Ogre::Quaternion& globalOrient, Ogre::Vector3& globalPos, int bodyIndex) const
 {
     const OgreNewt::Body* body = (bodyIndex == 0) ? m_body0 : m_body1;
     if (!body)
+    {
         return;
+    }
 
     Ogre::Vector3 pos;
     Ogre::Quaternion ori;
@@ -413,19 +467,19 @@ void CustomJoint::localToGlobal(const Ogre::Quaternion& localOrient, const Ogre:
     globalPos = pos + ori * localPos;
 }
 
-void CustomJoint::localToGlobalVisual(const Ogre::Quaternion& localOrient, const Ogre::Vector3& localPos,
-    Ogre::Quaternion& globalOrient, Ogre::Vector3& globalPos, int bodyIndex) const
+void CustomJoint::localToGlobalVisual(const Ogre::Quaternion& localOrient, const Ogre::Vector3& localPos, Ogre::Quaternion& globalOrient, Ogre::Vector3& globalPos, int bodyIndex) const
 {
     // Identical to localToGlobal, but could include visual offset or scale correction if needed
     localToGlobal(localOrient, localPos, globalOrient, globalPos, bodyIndex);
 }
 
-void CustomJoint::globalToLocal(const Ogre::Quaternion& globalOrient, const Ogre::Vector3& globalPos,
-    Ogre::Quaternion& localOrient, Ogre::Vector3& localPos, int bodyIndex) const
+void CustomJoint::globalToLocal(const Ogre::Quaternion& globalOrient, const Ogre::Vector3& globalPos, Ogre::Quaternion& localOrient, Ogre::Vector3& localPos, int bodyIndex) const
 {
     const OgreNewt::Body* body = (bodyIndex == 0) ? m_body0 : m_body1;
     if (!body)
+    {
         return;
+    }
 
     Ogre::Vector3 pos;
     Ogre::Quaternion ori;

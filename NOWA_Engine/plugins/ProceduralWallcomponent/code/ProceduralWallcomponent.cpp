@@ -50,7 +50,8 @@ ProceduralWallComponent::ProceduralWallComponent() :
     cachedNumWallVertices(0),
     cachedNumPillarVertices(0),
     cachedWallOrigin(Ogre::Vector3::ZERO),
-    originPositionSet(false)
+    originPositionSet(false),
+    physicsArtifactComponent(nullptr)
 {
     this->activated = new Variant(ProceduralWallComponent::AttrActivated(), true, this->attributes);
     this->wallHeight = new Variant(ProceduralWallComponent::AttrWallHeight(), 3.0f, this->attributes);
@@ -283,6 +284,8 @@ void ProceduralWallComponent::onRemoveComponent(void)
 {
     Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] Destructor called");
 
+    this->physicsArtifactComponent = nullptr;
+
     AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ProceduralWallComponent::handleMeshModifyMode), NOWA::EventDataEditorMode::getStaticEventType());
     AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ProceduralWallComponent::handleGameObjectSelected), NOWA::EventDataGameObjectSelected::getStaticEventType());
     AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ProceduralWallComponent::handleComponentManuallyDeleted), EventDataDeleteComponent::getStaticEventType());
@@ -308,6 +311,10 @@ void ProceduralWallComponent::onRemoveComponent(void)
 
 void ProceduralWallComponent::onOtherComponentRemoved(unsigned int index)
 {
+    if (nullptr != this->physicsArtifactComponent && index == this->physicsArtifactComponent->getIndex())
+    {
+        this->physicsArtifactComponent = nullptr;
+    }
 }
 void ProceduralWallComponent::onOtherComponentAdded(unsigned int index)
 {
@@ -1352,6 +1359,13 @@ void ProceduralWallComponent::createWallMesh(void)
         return;
     }
 
+     // Get PhysicsArtifactComponent if exists
+    const auto& physicsArtifactCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsArtifactComponent>());
+    if (physicsArtifactCompPtr)
+    {
+        this->physicsArtifactComponent = physicsArtifactCompPtr.get();
+    }
+
     Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[ProceduralWallComponent] createWallMesh: Creating mesh for " + Ogre::StringConverter::toString(this->wallSegments.size()) + " segments");
 
     // Clear mesh data for BOTH walls and pillars
@@ -1477,6 +1491,8 @@ void ProceduralWallComponent::createWallMesh(void)
     this->indices.clear();
     this->pillarVertices.clear();
     this->pillarIndices.clear();
+
+
 }
 
 void ProceduralWallComponent::createWallMeshInternal(const std::vector<float>& wallVertices, const std::vector<Ogre::uint32>& wallIndices, size_t numWallVertices, const std::vector<float>& pillarVertices,
@@ -1866,6 +1882,11 @@ void ProceduralWallComponent::createWallMeshInternal(const std::vector<float>& w
     this->gameObjectPtr->getSceneNode()->attachObject(this->wallItem);
     this->gameObjectPtr->setDoNotDestroyMovableObject(true);
     this->gameObjectPtr->init(this->wallItem);
+
+    if (nullptr != this->physicsArtifactComponent)
+    {
+        this->physicsArtifactComponent->reCreateCollision();
+    }
 
     Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralWallComponent] Wall mesh created with " + Ogre::StringConverter::toString(numWallVertices) + " wall vertices and " +
                                                                            Ogre::StringConverter::toString(numPillarVertices) + " pillar vertices, attached to scene");

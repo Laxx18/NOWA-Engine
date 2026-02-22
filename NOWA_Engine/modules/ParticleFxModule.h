@@ -443,7 +443,7 @@ namespace NOWA
 		std::vector<Ogre::String> particleNames;
 		std::map<Ogre::String, ParticleFxData> particles;
 		Ogre::ParticleSystemManager2* particleManager;
-		// Level 1 Cache: Material name → Blending mode (persistent across all particles)
+		// Level 1 Cache: Material name -> Blending mode (persistent across all particles)
 		std::map<Ogre::String, ParticleBlendingMethod::ParticleBlendingMethod> materialBlendingModeCache;
 		std::map<Ogre::String, TextureAtlasInfo> materialTextureAtlasCache;
 	};

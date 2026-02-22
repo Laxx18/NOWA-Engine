@@ -215,8 +215,11 @@
     <ClInclude Include="gameobject\DistributedComponent.h" />
     <ClInclude Include="gameobject\InputDeviceComponent.h" />
     <ClInclude Include="gameobject\PhysicsActiveComplexVehicleComponent.h" />
+    <ClInclude Include="gameobject\PhysicsActiveSpiderComponent.h" />
     <ClInclude Include="gameobject\PhysicsActiveVehicleComponent.h" />
+    <ClInclude Include="gameobject\PhysicsActiveVehicleComponentV2.h" />
     <ClInclude Include="gameobject\PhysicsRagDollComponentV2.h" />
+    <ClInclude Include="gameobject\PhysicsRagDollComponentV3.h" />
     <ClInclude Include="gameobject\RoadComponentBase.h" />
     <ClInclude Include="gameobject\ValueBarComponent.h" />
     <ClInclude Include="gameobject\ExitComponent.h" />
@@ -277,6 +280,7 @@
     <ClInclude Include="gameobject\TerraComponent.h" />
     <ClInclude Include="gameobject\Tire.h" />
     <ClInclude Include="gameobject\TransformComponent.h" />
+    <ClInclude Include="gameobject\VehicleDrivingManipulation.h" />
     <ClInclude Include="gameobject\WallComponentBase.h" />
     <ClInclude Include="gameobject\WorkspaceComponents.h" />
     <ClInclude Include="ki\Edge.h" />
@@ -429,8 +433,11 @@
     <ClCompile Include="gameobject\DistributedComponent.cpp" />
     <ClCompile Include="gameobject\InputDeviceComponent.cpp" />
     <ClCompile Include="gameobject\PhysicsActiveComplexVehicleComponent.cpp" />
+    <ClCompile Include="gameobject\PhysicsActiveSpiderComponent.cpp" />
     <ClCompile Include="gameobject\PhysicsActiveVehicleComponent.cpp" />
+    <ClCompile Include="gameobject\PhysicsActiveVehicleComponentV2.cpp" />
     <ClCompile Include="gameobject\PhysicsRagDollComponentV2.cpp" />
+    <ClCompile Include="gameobject\PhysicsRagDollComponentV3.cpp" />
     <ClCompile Include="gameobject\ValueBarComponent.cpp" />
     <ClCompile Include="gameobject\ExitComponent.cpp" />
     <ClCompile Include="gameobject\FadeComponent.cpp" />
@@ -489,6 +496,7 @@
     <ClCompile Include="gameobject\TerraComponent.cpp" />
     <ClCompile Include="gameobject\Tire.cpp" />
     <ClCompile Include="gameobject\TransformComponent.cpp" />
+    <ClCompile Include="gameobject\VehicleDrivingManipulation.cpp" />
     <ClCompile Include="gameobject\WorkspaceComponents.cpp" />
     <ClCompile Include="ki\Edge.cpp" />
     <ClCompile Include="ki\FormationBehavior.cpp" />

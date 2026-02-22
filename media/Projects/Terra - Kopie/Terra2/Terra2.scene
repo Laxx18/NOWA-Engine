@@ -53,7 +53,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteLine"/>
 					<property type="7" name="ComponentCameraComponent" data="CameraComponent"/>
@@ -104,7 +104,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteLine"/>
 					<property type="7" name="ComponentLightDirectionalComponent" data="LightDirectionalComponent"/>
@@ -138,7 +138,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteLine"/>
 				</userData>

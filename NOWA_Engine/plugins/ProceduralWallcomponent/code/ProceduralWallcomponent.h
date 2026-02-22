@@ -477,6 +477,8 @@ namespace NOWA
         bool hasLoadedWallEndpoint;
         Ogre::Vector3 loadedWallEndpoint;    // XZ position
         Ogre::Real loadedWallEndpointHeight; // World-space height
+
+        PhysicsArtifactComponent* physicsArtifactComponent;
     };
 
 } // namespace NOWA

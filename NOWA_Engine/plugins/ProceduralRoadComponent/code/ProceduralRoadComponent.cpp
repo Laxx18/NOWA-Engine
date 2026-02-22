@@ -76,7 +76,8 @@ namespace NOWA
         groundQuery(nullptr),
         originPositionSet(false),
         hasLoadedRoadEndpoint(false),
-        loadedRoadEndpointHeight(0.0f)
+        loadedRoadEndpointHeight(0.0f),
+        physicsArtifactComponent(nullptr)
     {
         this->roadStyle->setDescription("Style of the road to generate");
         this->roadWidth->setDescription("Width of the main road surface (meters)");
@@ -335,6 +336,8 @@ namespace NOWA
     {
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] Destructor road component for game object: " + this->gameObjectPtr->getName());
 
+        this->physicsArtifactComponent = nullptr;
+
         AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ProceduralRoadComponent::handleMeshModifyMode), NOWA::EventDataEditorMode::getStaticEventType());
         AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ProceduralRoadComponent::handleGameObjectSelected), NOWA::EventDataGameObjectSelected::getStaticEventType());
         AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ProceduralRoadComponent::handleComponentManuallyDeleted), EventDataDeleteComponent::getStaticEventType());
@@ -362,6 +365,10 @@ namespace NOWA
 
     void ProceduralRoadComponent::onOtherComponentRemoved(unsigned int index)
     {
+        if (nullptr != this->physicsArtifactComponent && index == this->physicsArtifactComponent->getIndex())
+        {
+            this->physicsArtifactComponent = nullptr;
+        }
     }
 
     void ProceduralRoadComponent::onOtherComponentAdded(unsigned int index)
@@ -2048,6 +2055,13 @@ namespace NOWA
             return;
         }
 
+         // Get PhysicsArtifactComponent if exists
+        const auto& physicsArtifactCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsArtifactComponent>());
+        if (physicsArtifactCompPtr)
+        {
+            this->physicsArtifactComponent = physicsArtifactCompPtr.get();
+        }
+
         // ---- CACHE CPU DATA HERE (before anything goes to GPU) ----
         this->cachedCenterVertices = this->centerVertices;
         this->cachedCenterIndices = this->centerIndices;
@@ -2488,6 +2502,11 @@ namespace NOWA
         this->gameObjectPtr->getSceneNode()->attachObject(this->roadItem);
         this->gameObjectPtr->setDoNotDestroyMovableObject(true);
         this->gameObjectPtr->init(this->roadItem);
+
+        if (nullptr != this->physicsArtifactComponent)
+        {
+            this->physicsArtifactComponent->reCreateCollision();
+        }
 
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
             "[ProceduralRoadComponent] Road mesh created with " + Ogre::StringConverter::toString(numCenterVerts) + " center vertices and " + Ogre::StringConverter::toString(numEdgeVerts) + " edge vertices, attached to scene");

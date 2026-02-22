@@ -1,14 +1,14 @@
 #include "OgreNewt_Stdafx.h"
 #include "OgreNewt_TriggerBody.h"
-#include "OgreNewt_Tools.h"
-#include "OgreNewt_BodyNotify.h"   // to recover OgreNewt::Body from ndBodyNotify
+#include "OgreNewt_BodyNotify.h" // to recover OgreNewt::Body from ndBodyNotify
 #include "OgreNewt_Collision.h"
+#include "OgreNewt_Tools.h"
 
-#include "ndWorld.h"
 #include "ndBodyKinematic.h"
 #include "ndBodyTriggerVolume.h"
 #include "ndShapeInstance.h"
 #include "ndSharedPtr.h"
+#include "ndWorld.h"
 
 namespace OgreNewt
 {
@@ -16,15 +16,17 @@ namespace OgreNewt
     class OgreNewtTriggerVolume : public ndBodyTriggerVolume
     {
     public:
-        OgreNewtTriggerVolume(TriggerCallback* cb)
-            : ndBodyTriggerVolume(), m_cb(cb)
+        OgreNewtTriggerVolume(TriggerCallback* cb) : ndBodyTriggerVolume(), m_cb(cb)
         {
         }
 
         void OnTriggerEnter(ndBodyKinematic* const body, ndFloat32 timestep) override
         {
             (void)timestep;
-            if (!m_cb) return;
+            if (!m_cb)
+            {
+                return;
+            }
             if (OgreNewt::Body* visitor = bodyToOgre(body))
             {
                 m_cb->OnEnter(visitor);
@@ -35,7 +37,9 @@ namespace OgreNewt
         {
             (void)timestep;
             if (!m_cb || !contact)
+            {
                 return;
+            }
 
             // The trigger itself is this ndBodyTriggerVolume (which is an ndBodyKinematic)
             ndBodyKinematic* const self = static_cast<ndBodyKinematic*>(this);
@@ -53,7 +57,9 @@ namespace OgreNewt
             }
 
             if (!otherKinematic)
+            {
                 return;
+            }
 
             if (OgreNewt::Body* visitor = bodyToOgre(otherKinematic))
             {
@@ -65,7 +71,10 @@ namespace OgreNewt
         void OnTriggerExit(ndBodyKinematic* const body, ndFloat32 timestep) override
         {
             (void)timestep;
-            if (!m_cb) return;
+            if (!m_cb)
+            {
+                return;
+            }
             if (OgreNewt::Body* visitor = bodyToOgre(body))
             {
                 m_cb->OnExit(visitor);
@@ -75,11 +84,16 @@ namespace OgreNewt
     private:
         static OgreNewt::Body* bodyToOgre(ndBodyKinematic* const body)
         {
-            if (!body) return nullptr;
-            if (ndBodyNotify* notify = body->GetNotifyCallback())
+            if (!body)
             {
-                // Your BodyNotify stores a back-pointer to OgreNewt::Body
-                if (auto* ogreNotify = dynamic_cast<BodyNotify*>(notify)) {
+                return nullptr;
+            }
+
+            ndSharedPtr<ndBodyNotify>& notifyPtr = body->GetNotifyCallback();
+            if (notifyPtr)
+            {
+                if (auto* ogreNotify = dynamic_cast<BodyNotify*>(*notifyPtr))
+                {
                     return ogreNotify->GetOgreNewtBody();
                 }
             }
@@ -91,10 +105,10 @@ namespace OgreNewt
 
     // -------- TriggerBody --------
 
-    TriggerBody::TriggerBody(World* world, Ogre::SceneManager* sceneManager, const OgreNewt::CollisionPtr& col, TriggerCallback* triggerCallback, Ogre::SceneMemoryMgrTypes memoryType)
-        : Body(world, sceneManager, memoryType)
-        , m_triggerVolume(nullptr)
-        , m_triggerCallback(triggerCallback)
+    TriggerBody::TriggerBody(World* world, Ogre::SceneManager* sceneManager, const OgreNewt::CollisionPtr& col, TriggerCallback* triggerCallback, Ogre::SceneMemoryMgrTypes memoryType) :
+        Body(world, sceneManager, memoryType),
+        m_triggerVolume(nullptr),
+        m_triggerCallback(triggerCallback)
     {
         reCreateTrigger(col);
     }
@@ -115,16 +129,18 @@ namespace OgreNewt
     void TriggerBody::reCreateTrigger(const OgreNewt::CollisionPtr& col)
     {
         if (!m_world || !col)
+        {
             return;
+        }
 
         ndShapeInstance* srcInst = col->getShapeInstance();
         if (!srcInst && !col->getNewtonCollision())
+        {
             return;
+        }
 
         // Build shape instance on caller thread (safe)
-        ndShapeInstance shapeInstance = srcInst
-            ? ndShapeInstance(*srcInst)
-            : ndShapeInstance(col->getNewtonCollision());
+        ndShapeInstance shapeInstance = srcInst ? ndShapeInstance(*srcInst) : ndShapeInstance(col->getNewtonCollision());
 
         // Allocate the new trigger on caller thread
         OgreNewtTriggerVolume* newTrigger = new OgreNewtTriggerVolume(m_triggerCallback);
@@ -135,14 +151,17 @@ namespace OgreNewt
         newTrigger->SetCollisionShape(shapeInstance);
 
         if (!m_bodyNotify)
+        {
             m_bodyNotify = new BodyNotify(this);
+        }
 
         // Cache old body pointers (if we are recreating)
         ndBodyKinematic* oldBody = m_body;
         OgreNewtTriggerVolume* oldTrigger = m_triggerVolume;
 
         // Do all world mutations on world thread / safe point
-        m_world->enqueuePhysicsAndWait([this, newTrigger, oldBody, oldTrigger](World& w) mutable
+        m_world->enqueuePhysicsAndWait(
+            [this, newTrigger, oldBody, oldTrigger](World& w) mutable
             {
                 // If there was an old trigger/body, remove it first
                 if (oldBody)

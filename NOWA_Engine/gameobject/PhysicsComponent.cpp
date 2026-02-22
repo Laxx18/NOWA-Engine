@@ -1248,6 +1248,7 @@ namespace NOWA
             this->physicsBody->removeNodeUpdateNotify();
             this->physicsBody->detachNode();
             this->physicsBody->removeDestructorCallback();
+
             delete this->physicsBody;
             this->physicsBody = nullptr;
 

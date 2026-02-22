@@ -30,7 +30,7 @@
 		</lightFoward>
 		<mainParameter>
 			<ignoreGlobalScene value="false"/>
-			<renderDistance distance="100"/>
+			<renderDistance distance="300"/>
 			<useV2Item value="false"/>
 		</mainParameter>
 		<fog mode="none" start="0" end="0" density="0"/>
@@ -42,9 +42,9 @@
 	</OgreNewt>
 	<nodes>
 		<node name="Brick1_3" id="1146681851">
-			<position x="26.6524" y="0.06703" z="23.3958"/>
+			<position x="42.7253" y="0.06703" z="37.7267"/>
 			<rotation qw="0.707107" qx="0" qy="0.707107" qz="0"/>
-			<scale x="2" y="3" z="5"/>
+			<scale x="2" y="3" z="8"/>
 			<item name="Brick1_3" meshFile="Brick1.mesh" castShadows="true" visible="true">
 				<subitem index="0" datablockName="Brick1"/>
 				<userData>
@@ -89,9 +89,9 @@
 			</item>
 		</node>
 		<node name="Brick1_2" id="1146681416">
-			<position x="26.6524" y="0.06703" z="-22.6256"/>
+			<position x="40.6145" y="0.06703" z="-43.7805"/>
 			<rotation qw="0.707107" qx="0" qy="0.707107" qz="0"/>
-			<scale x="2" y="3" z="5"/>
+			<scale x="2" y="3" z="8"/>
 			<item name="Brick1_2" meshFile="Brick1.mesh" castShadows="true" visible="true">
 				<subitem index="0" datablockName="Brick1"/>
 				<userData>
@@ -357,8 +357,8 @@
 			</item>
 		</node>
 		<node name="MainCamera" id="4010617415">
-			<position x="-6.66199" y="3.71446" z="-15.5045"/>
-			<rotation qw="-0.440899" qx="0.152248" qy="0.840373" qz="0.276046"/>
+			<position x="-14.4954" y="5.72794" z="-14.9023"/>
+			<rotation qw="0.0608936" qx="-0.0233788" qy="0.894795" qz="0.441687"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
 				<subitem index="0" datablockName="WhiteNoLightingBackground"/>
@@ -387,8 +387,8 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Active" data="true"/>
-					<property type="9" name="CameraPosition" data="-14.4954 5.72794 -14.9023"/>
-					<property type="9" name="CameraOrientation" data="-52.4937 171.659 1.12495"/>
+					<property type="9" name="CameraPosition" data="-38.2563 6.19705 2.04467"/>
+					<property type="9" name="CameraOrientation" data="-54.8839 -173.935 1.06567"/>
 					<property type="6" name="NearClipDistance" data="0.1"/>
 					<property type="6" name="FarClipDistance" data="500"/>
 					<property type="6" name="Fovy" data="90"/>
@@ -513,8 +513,8 @@
 			</item>
 		</node>
 		<node name="QuatBike_0" id="1872127996">
-			<position x="-14.4036" y="0.186288" z="-0.452292"/>
-			<rotation qw="0.710298" qx="0.000987145" qy="-0.703899" qz="-0.00129653"/>
+			<position x="-38.8773" y="0.211093" z="6.35264"/>
+			<rotation qw="0.722927" qx="0.000963508" qy="-0.690923" qz="-0.00131419"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="QuatBike_0" meshFile="QuatBike.mesh" castShadows="true" visible="true">
 				<subitem index="0" datablockName="racer_mat"/>
@@ -594,7 +594,7 @@
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="Activated" data="true"/>
+					<property type="12" name="Activated" data="false"/>
 					<property type="6" name="RotationSpeed" data="10"/>
 					<property type="6" name="GoalRadius" data="0.5"/>
 					<property type="6" name="AnimationSpeed" data="1"/>
@@ -605,7 +605,7 @@
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="Activated" data="true"/>
+					<property type="12" name="Activated" data="false"/>
 					<property type="6" name="CameraGameObjectId" data="1"/>
 					<property type="9" name="YOffset" data="0 2 0"/>
 					<property type="9" name="LookAtOffset" data="0 0 0"/>
@@ -647,8 +647,8 @@
 			</item>
 		</node>
 		<node name="QuatTire_1" id="4239152596">
-			<position x="-14.8479" y="0.244124" z="-0.823339"/>
-			<rotation qw="0.688383" qx="-0.173794" qy="-0.682107" qz="0.175083"/>
+			<position x="-39.3382" y="0.281815" z="6.0141"/>
+			<rotation qw="0.692132" qx="-0.172826" qy="-0.678303" qz="0.176038"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="QuatTire_1" meshFile="QuatTire.mesh" castShadows="true" visible="true">
 				<subitem index="0" datablockName="qbike_mat"/>
@@ -723,8 +723,8 @@
 			</item>
 		</node>
 		<node name="QuatTire_2" id="4239153901">
-			<position x="-13.9707" y="0.240835" z="-0.0618138"/>
-			<rotation qw="0.424069" qx="-0.564861" qy="-0.420008" qz="0.569817"/>
+			<position x="-38.4506" y="0.278526" z="6.76267"/>
+			<rotation qw="0.426378" qx="-0.56171" qy="-0.417664" qz="0.572923"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="QuatTire_2" meshFile="QuatTire.mesh" castShadows="true" visible="true">
 				<subitem index="0" datablockName="qbike_mat"/>
@@ -799,8 +799,8 @@
 			</item>
 		</node>
 		<node name="QuatTire_3" id="4239153466">
-			<position x="-13.9776" y="0.243755" z="-0.831217"/>
-			<rotation qw="0.452929" qx="0.542037" qy="-0.449077" qz="-0.547158"/>
+			<position x="-38.4685" y="0.281446" z="5.99379"/>
+			<rotation qw="0.455398" qx="0.539012" qy="-0.446573" qz="-0.550138"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="QuatTire_3" meshFile="QuatTire.mesh" castShadows="true" visible="true">
 				<subitem index="0" datablockName="qbike_mat"/>
@@ -875,8 +875,8 @@
 			</item>
 		</node>
 		<node name="QuatTire_4" id="4239151291">
-			<position x="-14.841" y="0.241204" z="-0.0539359"/>
-			<rotation qw="-0.222693" qx="0.668503" qy="0.220404" qz="-0.674487"/>
+			<position x="-39.3203" y="0.278895" z="6.78297"/>
+			<rotation qw="-0.223905" qx="0.664774" qy="0.219174" qz="-0.678163"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="QuatTire_4" meshFile="QuatTire.mesh" castShadows="true" visible="true">
 				<subitem index="0" datablockName="qbike_mat"/>
@@ -952,7 +952,7 @@
 		</node>
 		<node name="Case1_0" id="1662965383">
 			<position x="8.2002" y="0.0141081" z="-8.91694"/>
-			<rotation qw="0.999974" qx="-0.00719264" qy="0.000269379" qz="-0.000173646"/>
+			<rotation qw="0.999989" qx="-0.00467265" qy="0.00027011" qz="0.00031871"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="Case1_0" meshFile="Case1.mesh" castShadows="true" visible="true">
 				<subitem index="0" datablockName="Material/SOLID/TEX/case1.png"/>
@@ -1090,9 +1090,9 @@
 			</item>
 		</node>
 		<node name="Brick1_0" id="1146682286">
-			<position x="-25" y="0.06703" z="21.6843"/>
+			<position x="-45.0464" y="0.06703" z="44.1891"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
-			<scale x="2" y="3" z="4"/>
+			<scale x="2" y="3" z="8"/>
 			<item name="Brick1_0" meshFile="Brick1.mesh" castShadows="true" visible="true">
 				<subitem index="0" datablockName="Brick1"/>
 				<userData>
@@ -1137,9 +1137,9 @@
 			</item>
 		</node>
 		<node name="Brick1_1" id="1146682721">
-			<position x="24.6502" y="0.06703" z="21.6843"/>
+			<position x="42.2918" y="0.06703" z="35.0808"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
-			<scale x="2" y="3" z="4"/>
+			<scale x="2" y="3" z="8"/>
 			<item name="Brick1_1" meshFile="Brick1.mesh" castShadows="true" visible="true">
 				<subitem index="0" datablockName="Brick1"/>
 				<userData>
@@ -1263,7 +1263,7 @@
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="true"/>
+					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -1271,7 +1271,7 @@
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="2" name="RenderQueueIndex" data="11"/>
-					<property type="2" name="RenderDistance" data="100"/>
+					<property type="2" name="RenderDistance" data="300"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
@@ -1328,41 +1328,6 @@
 					<property type="12" name="Serialize" data="true"/>
 				</userData>
 			</terra>
-		</node>
-		<node name="Doorway_a_0" id="1970721611">
-			<position x="-4.5201" y="-0.00114441" z="-16.947"/>
-			<rotation qw="-0.5" qx="0" qy="0.866025" qz="0"/>
-			<scale x="1" y="1" z="1"/>
-			<item name="Doorway_a_0" meshFile="Doorway_a.mesh" castShadows="true" visible="true">
-				<subitem index="0" datablockName="StoneDungeon"/>
-				<userData>
-					<property type="7" name="Object" data="GameObject"/>
-					<property type="7" name="Id" data="1008586928"/>
-					<property type="7" name="Category" data="Default"/>
-					<property type="7" name="RenderCategory" data="All"/>
-					<property type="7" name="TagName" data=""/>
-					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="true"/>
-					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
-					<property type="9" name="DefaultDirection" data="0 0 1"/>
-					<property type="12" name="Global" data="false"/>
-					<property type="12" name="ClampY" data="false"/>
-					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="10"/>
-					<property type="2" name="RenderDistance" data="100"/>
-					<property type="6" name="LodDistance" data="100"/>
-					<property type="6" name="LodLevels" data="0"/>
-					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					<property type="7" name="DataBlock0" data="StoneDungeon"/>
-					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
-					<property type="7" name="Name" data=""/>
-					<property type="2" name="ReferenceId" data="0"/>
-					<property type="12" name="IsExpanded" data="true"/>
-					<property type="6" name="Mass" data="10000"/>
-					<property type="12" name="Serialize" data="false"/>
-				</userData>
-			</item>
 		</node>
 		<node name="Case3_27" id="1799962708">
 			<position x="-21.233" y="0.497652" z="-15.8292"/>
@@ -1470,7 +1435,7 @@
 		</node>
 		<node name="Case3_7" id="1801113988">
 			<position x="5.60162" y="0.498173" z="7.67878"/>
-			<rotation qw="-0.43255" qx="0.559413" qy="-0.558851" qz="0.433178"/>
+			<rotation qw="-0.425996" qx="0.576503" qy="-0.539782" qz="0.441369"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="Case3_7" meshFile="Case3.mesh" castShadows="true" visible="true">
 				<subitem index="0" datablockName="Material/SOLID/TEX/Case3.png"/>
@@ -1522,7 +1487,7 @@
 		</node>
 		<node name="Case3_24" id="1799964013">
 			<position x="-14.9813" y="0.503176" z="-19.6082"/>
-			<rotation qw="0.694426" qx="0.126779" qy="-0.126318" qz="-0.696953"/>
+			<rotation qw="0.694873" qx="0.12672" qy="-0.126377" qz="-0.696507"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="Case3_24" meshFile="Case3.mesh" castShadows="true" visible="true">
 				<subitem index="0" datablockName="Material/SOLID/TEX/Case3.png"/>
@@ -1574,7 +1539,7 @@
 		</node>
 		<node name="Case3_25" id="1799963578">
 			<position x="-20.035" y="-0.00187981" z="-17.2675"/>
-			<rotation qw="-0.434267" qx="-0.00091356" qy="0.900784" qz="0.000432118"/>
+			<rotation qw="-0.434267" qx="-0.000555499" qy="0.900784" qz="0.000262653"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="Case3_25" meshFile="Case3.mesh" castShadows="true" visible="true">
 				<subitem index="0" datablockName="Material/SOLID/TEX/Case3.png"/>
@@ -1643,8 +1608,8 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="0"/>
-					<property type="2" name="RenderDistance" data="100"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="300"/>
 					<property type="6" name="LodDistance" data="0"/>
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
@@ -1674,6 +1639,62 @@
 					<property type="6" name="FoamIntensity" data="1"/>
 				</userData>
 			</ocean>
+		</node>
+		<node name="Road_0" id="2482867476">
+			<position x="32.3048" y="0.173592" z="5.55042"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<item name="" meshFile="Procedural.mesh" castShadows="true" visible="true">
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="1276800755"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 -1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="300"/>
+					<property type="6" name="LodDistance" data="0"/>
+					<property type="6" name="LodLevels" data="0"/>
+					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					<property type="7" name="ComponentProceduralRoadComponent" data="ProceduralRoadComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="6" name="Road Width" data="4"/>
+					<property type="6" name="Edge Width" data="0.5"/>
+					<property type="7" name="Road Style" data="Paved"/>
+					<property type="12" name="Snap To Grid" data="false"/>
+					<property type="6" name="Grid Size" data="1"/>
+					<property type="12" name="Adapt To Ground" data="true"/>
+					<property type="6" name="Height Offset" data="0.1"/>
+					<property type="6" name="Max Gradient" data="30"/>
+					<property type="6" name="Smoothing Factor" data="0.5"/>
+					<property type="12" name="Enable Banking" data="false"/>
+					<property type="6" name="Banking Angle" data="5"/>
+					<property type="2" name="Curve Subdivisions" data="10"/>
+					<property type="7" name="Center Datablock" data="proceduralWall1"/>
+					<property type="7" name="Edge Datablock" data="Stone 4"/>
+					<property type="8" name="Center UV Tiling" data="1 1"/>
+					<property type="8" name="Edge UV Tiling" data="1 1"/>
+					<property type="6" name="CurbHeight" data="0.15"/>
+					<property type="6" name="TerrainSampleInterval" data="2"/>
+					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="6" name="Mass" data="10000"/>
+					<property type="12" name="Serialize" data="false"/>
+				</userData>
+			</item>
 		</node>
 	</nodes>
 </scene>

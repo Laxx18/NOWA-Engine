@@ -87,6 +87,7 @@ extern "C"
 #include "gameobject/NavMeshTerraComponent.h"
 #include "gameobject/PhysicsRagDollComponent.h"
 #include "gameobject/PhysicsRagDollComponentV2.h"
+#include "gameobject/PhysicsRagDollComponentV3.h"
 #include "gameobject/DistributedComponent.h"
 #include "gameobject/InputDeviceComponent.h"
 #include "gameobject/SoundComponent.h"
@@ -102,6 +103,8 @@ extern "C"
 #include "gameobject/PhysicsCompoundConnectionComponent.h"
 #include "gameobject/PhysicsPlayerControllerComponent.h"
 #include "gameobject/PhysicsActiveVehicleComponent.h"
+#include "gameobject/PhysicsActiveVehicleComponentV2.h"
+#include "gameobject/PhysicsActiveSpiderComponent.h"
 #include "gameobject/PhysicsActiveComplexVehicleComponent.h"
 #include "gameobject/PhysicsTriggerComponent.h"
 #include "gameobject/PhysicsActiveKinematicComponent.h"
@@ -164,6 +167,7 @@ namespace NOWA
 	typedef boost::shared_ptr<AttributesComponent> AttributesCompPtr;
 	typedef boost::shared_ptr<PhysicsRagDollComponent> PhysicsRagDollCompPtr;
     typedef boost::shared_ptr<PhysicsRagDollComponentV2> PhysicsRagDollV2CompPtr;
+    typedef boost::shared_ptr<PhysicsRagDollComponentV3> PhysicsRagDollV3CompPtr;
 	typedef boost::shared_ptr<DistributedComponent> DistributedCompPtr;
 	typedef boost::shared_ptr<InputDeviceComponent> InputDeviceCompPtr;
 	typedef boost::shared_ptr<NavMeshComponent> NavMeshComponentCompPtr;
@@ -182,6 +186,8 @@ namespace NOWA
 	typedef boost::shared_ptr<PhysicsTriggerComponent> PhysicsTriggerCompPtr;
 	typedef boost::shared_ptr<PhysicsActiveKinematicComponent> PhysicsActiveKinematicCompPtr;
 	typedef boost::shared_ptr<PhysicsActiveVehicleComponent> PhysicsActiveVehicleCompPtr;
+    typedef boost::shared_ptr<PhysicsActiveVehicleComponentV2> PhysicsActiveVehicleCompV2Ptr;
+    typedef boost::shared_ptr<PhysicsActiveSpiderComponent> PhysicsActiveSpiderCompPtr;
 	typedef boost::shared_ptr<AiLuaComponent> AiLuaCompPtr;
 	typedef boost::shared_ptr<AiLuaGoalComponent> AiLuaGoalCompPtr;
 	

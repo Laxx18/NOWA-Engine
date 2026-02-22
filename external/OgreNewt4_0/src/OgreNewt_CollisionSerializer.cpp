@@ -3,30 +3,30 @@
 #include "OgreNewt_CollisionPrimitives.h"
 #include "OgreNewt_World.h"
 
-#include <fstream>
-#include <sstream>
-#include <vector>
 #include <algorithm>
 #include <cctype>
 #include <cstring> // for memcmp
+#include <fstream>
+#include <sstream>
+#include <vector>
 
 // Newton 4.x
+#include "ndPolygonSoupBuilder.h"
 #include "ndShape.h"
+#include "ndShapeBox.h"
+#include "ndShapeCapsule.h"
+#include "ndShapeChamferCylinder.h"
+#include "ndShapeCone.h"
+#include "ndShapeCylinder.h"
+#include "ndShapeHeightfield.h"
 #include "ndShapeInstance.h"
 #include "ndShapeNull.h"
-#include "ndShapeBox.h"
 #include "ndShapeSphere.h"
-#include "ndShapeCylinder.h"
-#include "ndShapeCapsule.h"
-#include "ndShapeCone.h"
-#include "ndShapeChamferCylinder.h"
-#include "ndShapeHeightfield.h"
-#include "ndPolygonSoupBuilder.h"
 #include "ndShapeStatic_bvh.h"
 
 namespace
 {
-    const char kMagic[8] = { 'O','N','C','O','L','L','4','\0' };
+    const char kMagic[8] = {'O', 'N', 'C', 'O', 'L', 'L', '4', '\0'};
     const ndUnsigned32 kVersion = 1u;
 
     inline void logCritical(const Ogre::String& where, const Ogre::String& text)
@@ -41,18 +41,18 @@ namespace
     {
         // ASCII PLY starts with "ply\n"
         if (size < 4)
+        {
             return false;
+        }
         return (data[0] == 'p' && data[1] == 'l' && data[2] == 'y' && (data[3] == '\n' || data[3] == '\r'));
     }
 
-    template <class T>
-    void writeVal(std::ostream& os, const T& v)
+    template <class T> void writeVal(std::ostream& os, const T& v)
     {
         os.write(reinterpret_cast<const char*>(&v), sizeof(T));
     }
 
-    template <class T>
-    void readVal(std::istream& is, T& v)
+    template <class T> void readVal(std::istream& is, T& v)
     {
         is.read(reinterpret_cast<char*>(&v), sizeof(T));
     }
@@ -171,7 +171,9 @@ namespace OgreNewt
         case BoxPrimitiveType:
         {
             float sx, sy, sz;
-            readVal(is, sx); readVal(is, sy); readVal(is, sz);
+            readVal(is, sx);
+            readVal(is, sy);
+            readVal(is, sz);
             dest = CollisionPtr(new CollisionPrimitives::Box(world, Ogre::Vector3(sx, sy, sz), 0, Ogre::Quaternion::IDENTITY, Ogre::Vector3::ZERO));
             break;
         }
@@ -179,7 +181,9 @@ namespace OgreNewt
         case EllipsoidPrimitiveType:
         {
             float rx, ry, rz;
-            readVal(is, rx); readVal(is, ry); readVal(is, rz);
+            readVal(is, rx);
+            readVal(is, ry);
+            readVal(is, rz);
             Ogre::Vector3 size(rx * 2.0f, ry * 2.0f, rz * 2.0f);
             dest = CollisionPtr(new CollisionPrimitives::Ellipsoid(world, size, 0, Ogre::Quaternion::IDENTITY, Ogre::Vector3::ZERO));
             break;
@@ -188,7 +192,9 @@ namespace OgreNewt
         case CylinderPrimitiveType:
         {
             float r0, r1, h;
-            readVal(is, r0); readVal(is, r1); readVal(is, h);
+            readVal(is, r0);
+            readVal(is, r1);
+            readVal(is, h);
             float r = 0.5f * (r0 + r1);
             dest = CollisionPtr(new CollisionPrimitives::Cylinder(world, r, h, 0, Ogre::Quaternion::IDENTITY, Ogre::Vector3::ZERO));
             break;
@@ -197,7 +203,9 @@ namespace OgreNewt
         case CapsulePrimitiveType:
         {
             float r0, r1, h;
-            readVal(is, r0); readVal(is, r1); readVal(is, h);
+            readVal(is, r0);
+            readVal(is, r1);
+            readVal(is, h);
             float r = 0.5f * (r0 + r1);
             float fullH = h + 2.0f * r;
             dest = CollisionPtr(new CollisionPrimitives::Capsule(world, r, fullH, 0, Ogre::Quaternion::IDENTITY, Ogre::Vector3::ZERO));
@@ -207,7 +215,8 @@ namespace OgreNewt
         case ConePrimitiveType:
         {
             float r, h;
-            readVal(is, r); readVal(is, h);
+            readVal(is, r);
+            readVal(is, h);
             dest = CollisionPtr(new CollisionPrimitives::Cone(world, r, h, 0, Ogre::Quaternion::IDENTITY, Ogre::Vector3::ZERO));
             break;
         }
@@ -276,7 +285,8 @@ namespace OgreNewt
             if (line.find("element vertex") != std::string::npos)
             {
                 std::istringstream ss(line);
-                std::string a, b; ss >> a >> b >> vertexCount;
+                std::string a, b;
+                ss >> a >> b >> vertexCount;
             }
             else if (line.find("element face") != std::string::npos)
             {
@@ -308,7 +318,8 @@ namespace OgreNewt
             ss >> verts[i].x >> verts[i].y >> verts[i].z;
         }
 
-        std::vector<int> indices; indices.reserve(faceCount * 3);
+        std::vector<int> indices;
+        indices.reserve(faceCount * 3);
         for (size_t i = 0; i < faceCount; i++)
         {
             if (!std::getline(is, line))
@@ -317,12 +328,19 @@ namespace OgreNewt
                 return dest;
             }
             std::istringstream ss(line);
-            int n; ss >> n;
+            int n;
+            ss >> n;
 
-            if (n < 3) continue; // degenerate, skip
+            if (n < 3)
+            {
+                continue; // degenerate, skip
+            }
 
             std::vector<int> poly(n);
-            for (int k = 0; k < n; k++) ss >> poly[k];
+            for (int k = 0; k < n; k++)
+            {
+                ss >> poly[k];
+            }
 
             // Fan triangulation from poly[0]
             for (int k = 1; k < n - 1; k++)
@@ -366,12 +384,10 @@ namespace OgreNewt
 
     CollisionSerializer::CollisionSerializer()
     {
-
     }
 
     CollisionSerializer::~CollisionSerializer()
     {
-
     }
 
     void CollisionSerializer::exportCollision(const CollisionPtr& collision, const Ogre::String& filename)
@@ -419,7 +435,9 @@ namespace OgreNewt
     {
         CollisionPtr dest;
         if (!world)
+        {
             return dest;
+        }
 
         // slurp into memory
         const size_t size = stream.size();

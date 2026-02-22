@@ -10,5 +10,3 @@ ndVector ndVector::m_half(0.5f);
 ndVector ndVector::m_two(2.0f);
 ndVector ndVector::m_three(3.0f);
 ndVector ndVector::m_negOne(-1.0f);
-
-

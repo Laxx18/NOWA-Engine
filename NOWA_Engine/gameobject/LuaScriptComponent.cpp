@@ -490,7 +490,7 @@ namespace NOWA
 			AppStateManager::getSingletonPtr()->getLuaScriptModule()->copyScript(this->scriptFile->getString(), tempScriptFileName, false, this->gameObjectPtr->getGlobal());
 
 			boost::shared_ptr<NOWA::EventDataResourceCreated> eventDataResourceCreated(new NOWA::EventDataResourceCreated());
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataResourceCreated);
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataResourceCreated);
 
 			boost::shared_ptr<EventDataLuaScriptModfied> eventDataLuaScriptModified(new EventDataLuaScriptModfied(this->gameObjectPtr->getId(), newScriptName));
 			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataLuaScriptModified);
@@ -518,7 +518,7 @@ namespace NOWA
 				AppStateManager::getSingletonPtr()->getLuaScriptModule()->destroyScript(this->luaScript);
 
 				boost::shared_ptr<NOWA::EventDataResourceCreated> eventDataResourceCreated(new NOWA::EventDataResourceCreated());
-				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataResourceCreated);
+				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataResourceCreated);
 
 				boost::shared_ptr<EventDataLuaScriptModfied> eventDataLuaScriptModified(new EventDataLuaScriptModfied(this->gameObjectPtr->getId(), tempScriptFileName));
 				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataLuaScriptModified);

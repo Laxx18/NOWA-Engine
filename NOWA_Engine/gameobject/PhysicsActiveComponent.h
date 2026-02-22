@@ -366,6 +366,8 @@ namespace NOWA
 
 		virtual void setMass(Ogre::Real mass) override;
 
+		virtual void reCreateDynamicBodyForItem(Ogre::Item* item);
+
 		Ogre::Real getMass(void) const;
 
 		void setMassOrigin(const Ogre::Vector3& massOrigin);
@@ -405,8 +407,6 @@ namespace NOWA
 		void setGravitySourceCategory(const Ogre::String& gravitySourceCategory);
 
 		Ogre::String getGravitySourceCategory(void) const;
-
-		void reCreateDynamicBodyForItem(Ogre::Item* item);
 
 		/*void setDefaultPoseName(const Ogre::String& defaultPoseName);
 

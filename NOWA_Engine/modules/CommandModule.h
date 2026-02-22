@@ -187,7 +187,7 @@ namespace NOWA
 
 			if (true == this->transactionStack.empty())
 			{
-				// Outermost transaction → push to undo stack
+				// Outermost transaction -> push to undo stack
 				if (finishedTransaction && false == finishedTransaction->empty())
 				{
 					this->redoStack = CommandStack();

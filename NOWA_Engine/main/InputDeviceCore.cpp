@@ -13,7 +13,7 @@ namespace
  * it inserts whatever you pass as the text argument of injectKeyPress.
  * In your path, you forward OIS events across threads and you never adjust text based on modifier state.
  * If OIS delivers 'a' (or even 0) for KC_A while Shift is down, MyGUI will still insert lowercase (or nothing).
- * Because you enqueue to the render thread, even the order of “Shift down” → “A down” can be one frame apart, so relying on MyGUI’s internal modifier state is fragile.
+ * Because you enqueue to the render thread, even the order of “Shift down” -> “A down” can be one frame apart, so relying on MyGUI’s internal modifier state is fragile.
  * So this is the fix:
  */
 MyGUI::Char applyModifiers(MyGUI::Char ch, const OIS::Keyboard* kb)

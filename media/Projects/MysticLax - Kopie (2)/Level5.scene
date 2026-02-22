@@ -53,7 +53,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="Bottle1Red"/>
 					<property type="7" name="ComponentLuaScriptComponent" data="LuaScriptComponent"/>
@@ -132,7 +132,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="Material/SOLID/TEX/plattform2.png"/>
 					<property type="7" name="ComponentExitComponent" data="ExitComponent"/>
@@ -164,7 +164,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleWallColor"/>
 					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
@@ -192,7 +192,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="1805912328"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="BricksColor"/>
 					<property type="7" name="ComponentDatablockPbsComponent" data="DatablockPbsComponent"/>
@@ -316,7 +316,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleWallColor"/>
 				</userData>
@@ -340,7 +340,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleWallColor"/>
 				</userData>
@@ -364,7 +364,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleWallColor"/>
 				</userData>
@@ -388,7 +388,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleWallColor"/>
 					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
@@ -416,7 +416,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleWallColor"/>
 					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
@@ -453,7 +453,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleWallColor"/>
 					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
@@ -481,7 +481,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleWallColor"/>
 				</userData>
@@ -505,7 +505,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleWallColor"/>
 					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
@@ -533,7 +533,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleWallColor"/>
 				</userData>
@@ -557,7 +557,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleWallColor"/>
 				</userData>
@@ -581,7 +581,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleFenceColor"/>
 				</userData>
@@ -605,7 +605,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="ComponentCameraComponent" data="CameraComponent"/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -688,7 +688,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="ComponentLightDirectionalComponent" data="LightDirectionalComponent"/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -721,7 +721,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="ComponentLightDirectionalComponent" data="LightDirectionalComponent"/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -754,7 +754,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleWallColor"/>
 				</userData>
@@ -778,7 +778,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleWallColor"/>
 					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
@@ -806,7 +806,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleWallColor"/>
 					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
@@ -834,7 +834,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteLine"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
@@ -860,7 +860,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteLine"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
@@ -886,7 +886,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="Monster01"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
@@ -1009,7 +1009,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleWallColor"/>
 					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
@@ -1037,7 +1037,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleWallColor"/>
 					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
@@ -1065,7 +1065,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleWallColor"/>
 					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
@@ -1136,7 +1136,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleWallColor"/>
 					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
@@ -1164,7 +1164,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleWallColor"/>
 					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
@@ -1192,7 +1192,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleWallColor"/>
 					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
@@ -1220,7 +1220,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleFenceColor"/>
 				</userData>
@@ -1244,7 +1244,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleFenceColor"/>
 				</userData>
@@ -1268,7 +1268,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleWallColor"/>
 				</userData>
@@ -1292,7 +1292,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleFenceColor"/>
 				</userData>
@@ -1316,7 +1316,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleWallColor"/>
 				</userData>
@@ -1340,7 +1340,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleFenceColor"/>
 				</userData>
@@ -1364,7 +1364,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleWallColor"/>
 				</userData>
@@ -1388,7 +1388,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleFenceColor"/>
 				</userData>
@@ -1412,7 +1412,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleWallColor"/>
 				</userData>
@@ -1436,7 +1436,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleFenceColor"/>
 				</userData>
@@ -1460,7 +1460,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleWallColor"/>
 				</userData>
@@ -1484,7 +1484,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleFenceColor"/>
 				</userData>
@@ -1508,7 +1508,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleWallColor"/>
 					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
@@ -1536,7 +1536,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleWallColor"/>
 					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
@@ -1564,7 +1564,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleWallColor"/>
 					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
@@ -1601,7 +1601,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteLine"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
@@ -1627,7 +1627,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteLine"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
@@ -1653,7 +1653,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="Monster01"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
@@ -1771,7 +1771,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleWallColor"/>
 					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
@@ -1799,7 +1799,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleWallColor"/>
 					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
@@ -1827,7 +1827,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleWallColor"/>
 					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
@@ -1855,7 +1855,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleWallColor"/>
 					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
@@ -1883,7 +1883,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleWallColor"/>
 					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
@@ -1911,7 +1911,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleWallColor"/>
 				</userData>
@@ -1935,7 +1935,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleWallColor"/>
 				</userData>
@@ -1959,7 +1959,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleWallColor"/>
 					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
@@ -1987,7 +1987,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleWallColor"/>
 					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
@@ -2015,7 +2015,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleWallColor"/>
 					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
@@ -2043,7 +2043,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteLine"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
@@ -2069,7 +2069,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteLine"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
@@ -2095,7 +2095,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="Monster012347403555"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
@@ -2201,7 +2201,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="Monster0123474035552586964569"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
@@ -2307,7 +2307,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="Monster01234740355525869645692290636093"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
@@ -2413,7 +2413,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleWallColor"/>
 					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
@@ -2441,7 +2441,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleWallColor"/>
 					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
@@ -2469,7 +2469,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleRoofColor"/>
 					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
@@ -2497,7 +2497,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/smallball.png"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
@@ -2540,7 +2540,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="TreasureChest_D"/>
 					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
@@ -2568,7 +2568,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="TreasureChest_D"/>
 					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
@@ -2596,7 +2596,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleRoofColor"/>
 					<property type="7" name="ComponentParticleFxComponent" data="ParticleFxComponent"/>
@@ -2630,7 +2630,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="PedestalColor"/>
 					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
@@ -2660,7 +2660,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="/dural/structures/ossyja_metal_rivet/texture"/>
 					<property type="7" name="DataBlock1" data="/dural/structures/ossyja_copper_rivet/texture"/>
@@ -2732,7 +2732,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="Torch"/>
 					<property type="7" name="ComponentParticleFxComponent" data="ParticleFxComponent"/>
@@ -2766,7 +2766,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="/global/creatures/flying_bird/falcon"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
@@ -2831,7 +2831,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="/global/creatures/flying_bird/falcon"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
@@ -2896,7 +2896,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="/global/creatures/flying_bird/falcon"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
@@ -2961,7 +2961,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="/global/creatures/flying_bird/falcon"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
@@ -3026,7 +3026,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="/global/creatures/flying_bird/falcon"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
@@ -3091,7 +3091,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="/global/creatures/flying_bird/falcon"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
@@ -3156,7 +3156,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="/global/creatures/flying_bird/falcon"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
@@ -3221,7 +3221,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="/global/creatures/flying_bird/falcon"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
@@ -3286,7 +3286,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="/global/creatures/flying_bird/falcon"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
@@ -3351,7 +3351,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="/global/creatures/flying_bird/falcon"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
@@ -3416,7 +3416,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="/global/creatures/flying_bird/falcon"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
@@ -3481,7 +3481,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="/global/creatures/flying_bird/falcon"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
@@ -3546,7 +3546,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="/global/creatures/flying_bird/falcon"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
@@ -3611,7 +3611,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="/global/creatures/flying_bird/falcon"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
@@ -3676,7 +3676,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="/global/creatures/flying_bird/falcon"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
@@ -3741,7 +3741,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="/global/creatures/flying_bird/falcon"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
@@ -3806,7 +3806,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="stone_wall"/>
 					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
@@ -3834,7 +3834,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="items_mat.004"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
@@ -3882,7 +3882,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="Door_a"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
@@ -3954,7 +3954,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="RockColor"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
@@ -4014,7 +4014,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleWallColor"/>
 					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
@@ -4042,7 +4042,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleWallColor"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
@@ -4102,7 +4102,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleWallColor"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
@@ -4162,7 +4162,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleWallColor"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
@@ -4222,7 +4222,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleWallColor"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
@@ -4282,7 +4282,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleWallColor"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
@@ -4342,7 +4342,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleWallColor"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
@@ -4402,7 +4402,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="/dural/structures/stone_palisade/texture"/>
 				</userData>
@@ -4426,7 +4426,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="/dural/items/valuables/moraf_coin/textures"/>
 					<property type="7" name="ComponentTransformComponent" data="TransformComponent"/>
@@ -4488,7 +4488,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="/dural/items/valuables/moraf_coin/textures"/>
 					<property type="7" name="ComponentTransformComponent" data="TransformComponent"/>
@@ -4550,7 +4550,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="/dural/items/valuables/moraf_coin/textures"/>
 					<property type="7" name="ComponentTransformComponent" data="TransformComponent"/>
@@ -4612,7 +4612,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="/dural/items/valuables/moraf_coin/textures"/>
 					<property type="7" name="ComponentTransformComponent" data="TransformComponent"/>
@@ -4674,7 +4674,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="/dural/items/valuables/moraf_coin/textures"/>
 					<property type="7" name="ComponentTransformComponent" data="TransformComponent"/>
@@ -4736,7 +4736,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="/dural/items/valuables/moraf_coin/textures"/>
 					<property type="7" name="ComponentTransformComponent" data="TransformComponent"/>
@@ -4798,7 +4798,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="Structures"/>
 					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
@@ -4826,7 +4826,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="CastleWallColor"/>
 				</userData>
@@ -4850,7 +4850,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteLine"/>
 					<property type="7" name="ComponentLightSpotComponent" data="LightSpotComponent"/>
@@ -4889,7 +4889,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="/dural/items/valuables/moraf_coin/textures"/>
 					<property type="7" name="ComponentTransformComponent" data="TransformComponent"/>
@@ -4951,7 +4951,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="/dural/items/valuables/moraf_coin/textures"/>
 					<property type="7" name="ComponentTransformComponent" data="TransformComponent"/>
@@ -5013,7 +5013,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="/dural/items/valuables/moraf_coin/textures"/>
 					<property type="7" name="ComponentTransformComponent" data="TransformComponent"/>
@@ -5075,7 +5075,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="0"/>
 					<property type="7" name="DataBlock0" data="Bottle1Red"/>
 					<property type="7" name="ComponentLuaScriptComponent" data="LuaScriptComponent"/>

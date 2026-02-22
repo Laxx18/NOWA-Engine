@@ -44,7 +44,7 @@ namespace NOWA
 	Ogre::Real PhysicsActiveVehicleComponent::PhysicsVehicleCallback::onSteerAngleChanged(const OgreNewt::Vehicle* visitor, const OgreNewt::RayCastTire* tire, Ogre::Real dt)
 	{
 		// Resets the values, as they are volatile
-		this->vehicleDrivingManipulation->steerAngle = 0.0f;
+		this->vehicleDrivingManipulation->setSteerAngle(0.0f);
 
 		PhysicsComponent* visitorPhysicsComponent = OgreNewt::any_cast<PhysicsComponent*>(visitor->getUserData());
 		if (nullptr != visitorPhysicsComponent)
@@ -53,7 +53,7 @@ namespace NOWA
 			{
 				// Is safe run in newton thread
 				this->luaScript->callTableFunction(this->onSteerAngleChangedFunctionName, this->vehicleDrivingManipulation, dt);
-				return this->vehicleDrivingManipulation->steerAngle;
+				return this->vehicleDrivingManipulation->getSteerAngle();
 			}
 		}
 		return 0.0f;
@@ -61,7 +61,7 @@ namespace NOWA
 
 	Ogre::Real PhysicsActiveVehicleComponent::PhysicsVehicleCallback::onMotorForceChanged(const OgreNewt::Vehicle* visitor, const OgreNewt::RayCastTire* tire, Ogre::Real dt)
 	{
-		this->vehicleDrivingManipulation->motorForce = 0.0f;
+		this->vehicleDrivingManipulation->setMotorForce(0.0f);
 
 		PhysicsComponent* visitorPhysicsComponent = OgreNewt::any_cast<PhysicsComponent*>(visitor->getUserData());
 		if (nullptr != visitorPhysicsComponent)
@@ -70,7 +70,7 @@ namespace NOWA
 			{
 				// Is safe run in newton thread
 				this->luaScript->callTableFunction(this->onMotorForceChangedFunctionName, this->vehicleDrivingManipulation, dt);
-				return this->vehicleDrivingManipulation->motorForce;
+				return this->vehicleDrivingManipulation->getMotorForce();
 			}
 		}
 		return 0.0f;
@@ -78,7 +78,7 @@ namespace NOWA
 
 	Ogre::Real PhysicsActiveVehicleComponent::PhysicsVehicleCallback::onHandBrakeChanged(const OgreNewt::Vehicle* visitor, const OgreNewt::RayCastTire* tire, Ogre::Real dt)
 	{
-		this->vehicleDrivingManipulation->handBrake = 0.0f;
+		this->vehicleDrivingManipulation->setHandBrake(0.0f);
 
 		PhysicsComponent* visitorPhysicsComponent = OgreNewt::any_cast<PhysicsComponent*>(visitor->getUserData());
 		if (nullptr != visitorPhysicsComponent)
@@ -87,7 +87,7 @@ namespace NOWA
 			{
 				// Is safe run in newton thread
 				this->luaScript->callTableFunction(this->onHandBrakeChangedFunctionName, this->vehicleDrivingManipulation, dt);
-				return this->vehicleDrivingManipulation->handBrake;
+				return this->vehicleDrivingManipulation->getHandBrake();
 			}
 		}
 		return 0.0f;
@@ -95,7 +95,7 @@ namespace NOWA
 
 	Ogre::Real PhysicsActiveVehicleComponent::PhysicsVehicleCallback::onBrakeChanged(const OgreNewt::Vehicle* visitor, const OgreNewt::RayCastTire* tire, Ogre::Real dt)
 	{
-		this->vehicleDrivingManipulation->brake = 0.0f;
+        this->vehicleDrivingManipulation->setBrake(0.0f);
 
 		PhysicsComponent* visitorPhysicsComponent = OgreNewt::any_cast<PhysicsComponent*>(visitor->getUserData());
 		if (nullptr != visitorPhysicsComponent)
@@ -104,7 +104,7 @@ namespace NOWA
 			{
 				// Is safe run in newton thread
 				this->luaScript->callTableFunction(this->onBrakeChangedFunctionName, this->vehicleDrivingManipulation, dt);
-				return this->vehicleDrivingManipulation->brake;
+				return this->vehicleDrivingManipulation->getBrake();
 			}
 		}
 		return 0.0f;
@@ -330,14 +330,20 @@ namespace NOWA
 	}
 
 	void PhysicsActiveVehicleComponent::update(Ogre::Real dt, bool notSimulating)
-	{
-		PhysicsActiveComponent::update(dt, notSimulating);
+    {
+        PhysicsActiveComponent::update(dt, notSimulating);
 
-		if (false == notSimulating)
-		{
+        if (false == notSimulating && nullptr != this->physicsBody)
+        {
+            OgreNewt::Vehicle* vehicle = static_cast<OgreNewt::Vehicle*>(this->physicsBody);
 
-		}
-	}
+            // MAIN THREAD: query Lua for steer/motor/brake, cache for Newton worker.
+            vehicle->updateDriverInput(dt);
+
+            // MAIN THREAD: dispatch queued tire contact events to Lua.
+            vehicle->flushContactEvents();
+        }
+    }
 
 	void PhysicsActiveVehicleComponent::actualizeValue(Variant* attribute)
 	{
@@ -663,59 +669,4 @@ namespace NOWA
 		this->physicsBody->setOmega(Ogre::Vector3(correctionPitch.valueRadians(), 0.0f, 0.0f));
 	}
 
-	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-	VehicleDrivingManipulation::VehicleDrivingManipulation()
-		: steerAngle(0.0f),
-		motorForce(0.0f),
-		handBrake(0.0f),
-		brake(0.0f)
-	{
-
-	}
-
-	VehicleDrivingManipulation::~VehicleDrivingManipulation()
-	{
-
-	}
-
-	void VehicleDrivingManipulation::setSteerAngle(Ogre::Real steerAngle)
-	{
-		this->steerAngle = steerAngle;
-	}
-
-	Ogre::Real VehicleDrivingManipulation::getSteerAngle(void) const
-	{
-		return this->steerAngle;
-	}
-
-	void VehicleDrivingManipulation::setMotorForce(Ogre::Real motorForce)
-	{
-		this->motorForce = motorForce;
-	}
-
-	Ogre::Real VehicleDrivingManipulation::getMotorForce(void) const
-	{
-		return this->motorForce;
-	}
-
-	void VehicleDrivingManipulation::setHandBrake(Ogre::Real handBrake)
-	{
-		this->handBrake = handBrake;
-	}
-
-	Ogre::Real VehicleDrivingManipulation::getHandBrake(void) const
-	{
-		return this->handBrake;
-	}
-
-	void VehicleDrivingManipulation::setBrake(Ogre::Real brake)
-	{
-		this->brake = brake;
-	}
-
-	Ogre::Real VehicleDrivingManipulation::getBrake(void) const
-	{
-		return this->brake;
-	}
 }; // namespace end

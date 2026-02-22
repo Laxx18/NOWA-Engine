@@ -34,18 +34,28 @@ namespace NOWA
     using namespace rapidxml;
     using namespace luabind;
 
-    ProceduralMazeComponent::ProceduralMazeComponent()
-        : GameObjectComponent(), name("ProceduralMazeComponent"), gridWidth(0), gridHeight(0), mazeItem(nullptr), currentVertexIndex(0), randomState(0),
-          numColumns(new Variant(ProceduralMazeComponent::AttrNumColumns(), static_cast<int>(10), this->attributes)),
-          numRows(new Variant(ProceduralMazeComponent::AttrNumRows(), static_cast<int>(10), this->attributes)),
-          seed(new Variant(ProceduralMazeComponent::AttrSeed(), static_cast<unsigned int>(0), this->attributes)), cellSize(new Variant(ProceduralMazeComponent::AttrCellSize(), 2.0f, this->attributes)),
-          wallHeight(new Variant(ProceduralMazeComponent::AttrWallHeight(), 3.0f, this->attributes)), wallThickness(new Variant(ProceduralMazeComponent::AttrWallThickness(), 0.2f, this->attributes)),
-          createFloor(new Variant(ProceduralMazeComponent::AttrCreateFloor(), true, this->attributes)), createCeiling(new Variant(ProceduralMazeComponent::AttrCreateCeiling(), false, this->attributes)),
-          floorDatablock(new Variant(ProceduralMazeComponent::AttrFloorDatablock(), Ogre::String(""), this->attributes)),
-          wallDatablock(new Variant(ProceduralMazeComponent::AttrWallDatablock(), Ogre::String(""), this->attributes)),
-          ceilingDatablock(new Variant(ProceduralMazeComponent::AttrCeilingDatablock(), Ogre::String(""), this->attributes)),
-          regenerate(new Variant(ProceduralMazeComponent::AttrRegenerate(), "Generate", this->attributes)),
-          convertToMesh(new Variant(ProceduralMazeComponent::AttrConvertToMesh(), "Convert to Mesh", this->attributes))
+    ProceduralMazeComponent::ProceduralMazeComponent() :
+        GameObjectComponent(),
+        name("ProceduralMazeComponent"),
+        gridWidth(0),
+        gridHeight(0),
+        mazeItem(nullptr),
+        currentVertexIndex(0),
+        randomState(0),
+        physicsArtifactComponent(nullptr),
+        numColumns(new Variant(ProceduralMazeComponent::AttrNumColumns(), static_cast<int>(10), this->attributes)),
+        numRows(new Variant(ProceduralMazeComponent::AttrNumRows(), static_cast<int>(10), this->attributes)),
+        seed(new Variant(ProceduralMazeComponent::AttrSeed(), static_cast<unsigned int>(0), this->attributes)),
+        cellSize(new Variant(ProceduralMazeComponent::AttrCellSize(), 2.0f, this->attributes)),
+        wallHeight(new Variant(ProceduralMazeComponent::AttrWallHeight(), 3.0f, this->attributes)),
+        wallThickness(new Variant(ProceduralMazeComponent::AttrWallThickness(), 0.2f, this->attributes)),
+        createFloor(new Variant(ProceduralMazeComponent::AttrCreateFloor(), true, this->attributes)),
+        createCeiling(new Variant(ProceduralMazeComponent::AttrCreateCeiling(), false, this->attributes)),
+        floorDatablock(new Variant(ProceduralMazeComponent::AttrFloorDatablock(), Ogre::String(""), this->attributes)),
+        wallDatablock(new Variant(ProceduralMazeComponent::AttrWallDatablock(), Ogre::String(""), this->attributes)),
+        ceilingDatablock(new Variant(ProceduralMazeComponent::AttrCeilingDatablock(), Ogre::String(""), this->attributes)),
+        regenerate(new Variant(ProceduralMazeComponent::AttrRegenerate(), "Generate", this->attributes)),
+        convertToMesh(new Variant(ProceduralMazeComponent::AttrConvertToMesh(), "Convert to Mesh", this->attributes))
     {
         this->floorDatablock->addUserData(GameObject::AttrActionFileOpenDialog(), "Models");
         this->wallDatablock->addUserData(GameObject::AttrActionFileOpenDialog(), "Models");
@@ -220,6 +230,9 @@ namespace NOWA
     void ProceduralMazeComponent::onRemoveComponent(void)
     {
         GameObjectComponent::onRemoveComponent();
+
+        this->physicsArtifactComponent = nullptr;
+
         GraphicsModule::RenderCommand renderCommand = [this]()
         {
             this->destroyMazeMesh();
@@ -229,6 +242,10 @@ namespace NOWA
 
     void ProceduralMazeComponent::onOtherComponentRemoved(unsigned int index)
     {
+        if (nullptr != this->physicsArtifactComponent && index == this->physicsArtifactComponent->getIndex())
+        {
+            this->physicsArtifactComponent = nullptr;
+        }
     }
 
     void ProceduralMazeComponent::onOtherComponentAdded(unsigned int index)
@@ -512,6 +529,13 @@ namespace NOWA
 
     void ProceduralMazeComponent::regenerateMaze(void)
     {
+        // Get PhysicsArtifactComponent if exists
+        const auto& physicsArtifactCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsArtifactComponent>());
+        if (physicsArtifactCompPtr)
+        {
+            this->physicsArtifactComponent = physicsArtifactCompPtr.get();
+        }
+
         GraphicsModule::RenderCommand renderCommand = [this]()
         {
             this->destroyMazeMesh();
@@ -520,8 +544,7 @@ namespace NOWA
             this->createMazeMesh();
 
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralMazeComponent] Generated maze " + Ogre::StringConverter::toString(this->numColumns->getInt()) + "x" +
-                                                                                   Ogre::StringConverter::toString(this->numRows->getInt()) + " with seed " +
-                                                                                   Ogre::StringConverter::toString(this->seed->getUInt()));
+                                                                                   Ogre::StringConverter::toString(this->numRows->getInt()) + " with seed " + Ogre::StringConverter::toString(this->seed->getUInt()));
         };
         NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "ProceduralMazeComponent::regenerateMaze");
     }
@@ -1092,8 +1115,7 @@ namespace NOWA
             return false;
         };
 
-        needsTangents =
-            checkDatablockNeedsTangents(this->wallDatablock->getString()) || checkDatablockNeedsTangents(this->floorDatablock->getString()) || checkDatablockNeedsTangents(this->ceilingDatablock->getString());
+        needsTangents = checkDatablockNeedsTangents(this->wallDatablock->getString()) || checkDatablockNeedsTangents(this->floorDatablock->getString()) || checkDatablockNeedsTangents(this->ceilingDatablock->getString());
 
         // Vertex elements: Position (3) + Normal (3) + Tangent (4, optional) + UV (2)
         Ogre::VertexElement2Vec vertexElements;
@@ -1242,12 +1264,16 @@ namespace NOWA
         this->vertices.clear();
         this->indices.clear();
 
+        if (nullptr != this->physicsArtifactComponent)
+        {
+            this->physicsArtifactComponent->reCreateCollision();
+        }
+
         boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
         NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGeometryModified);
 
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[ProceduralMazeComponent] Generated maze " + Ogre::StringConverter::toString(this->numColumns->getInt()) + "x" +
-                                                                              Ogre::StringConverter::toString(this->numRows->getInt()) + " with seed " + Ogre::StringConverter::toString(this->seed->getUInt()) +
-                                                                              (needsTangents ? " (with tangents)" : " (no tangents)"));
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[ProceduralMazeComponent] Generated maze " + Ogre::StringConverter::toString(this->numColumns->getInt()) + "x" + Ogre::StringConverter::toString(this->numRows->getInt()) +
+                                                                              " with seed " + Ogre::StringConverter::toString(this->seed->getUInt()) + (needsTangents ? " (with tangents)" : " (no tangents)"));
     }
 
     void ProceduralMazeComponent::destroyMazeMesh(void)
@@ -1571,26 +1597,26 @@ namespace NOWA
     void ProceduralMazeComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
     {
         module(lua)[class_<ProceduralMazeComponent, GameObjectComponent>("ProceduralMazeComponent")
-                        .def("setNumColumns", &ProceduralMazeComponent::setNumColumns)
-                        .def("getNumColumns", &ProceduralMazeComponent::getNumColumns)
-                        .def("setNumRows", &ProceduralMazeComponent::setNumRows)
-                        .def("getNumRows", &ProceduralMazeComponent::getNumRows)
-                        .def("setSeed", &ProceduralMazeComponent::setSeed)
-                        .def("getSeed", &ProceduralMazeComponent::getSeed)
-                        .def("setCellSize", &ProceduralMazeComponent::setCellSize)
-                        .def("getCellSize", &ProceduralMazeComponent::getCellSize)
-                        .def("setWallHeight", &ProceduralMazeComponent::setWallHeight)
-                        .def("getWallHeight", &ProceduralMazeComponent::getWallHeight)
-                        .def("setWallThickness", &ProceduralMazeComponent::setWallThickness)
-                        .def("getWallThickness", &ProceduralMazeComponent::getWallThickness)
-                        .def("regenerateMaze", &ProceduralMazeComponent::regenerateMaze)
-                        .def("regenerateMazeWithNewSeed", &ProceduralMazeComponent::regenerateMazeWithNewSeed)
-                        .def("getStartPosition", &ProceduralMazeComponent::getStartPosition)
-                        .def("getEndPosition", &ProceduralMazeComponent::getEndPosition)
-                        .def("isCellPassage", &ProceduralMazeComponent::isCellPassage)
-                        .def("getTotalCells", &ProceduralMazeComponent::getTotalCells)
-                        .def("getMazeWidth", &ProceduralMazeComponent::getMazeWidth)
-                        .def("getMazeDepth", &ProceduralMazeComponent::getMazeDepth)];
+                .def("setNumColumns", &ProceduralMazeComponent::setNumColumns)
+                .def("getNumColumns", &ProceduralMazeComponent::getNumColumns)
+                .def("setNumRows", &ProceduralMazeComponent::setNumRows)
+                .def("getNumRows", &ProceduralMazeComponent::getNumRows)
+                .def("setSeed", &ProceduralMazeComponent::setSeed)
+                .def("getSeed", &ProceduralMazeComponent::getSeed)
+                .def("setCellSize", &ProceduralMazeComponent::setCellSize)
+                .def("getCellSize", &ProceduralMazeComponent::getCellSize)
+                .def("setWallHeight", &ProceduralMazeComponent::setWallHeight)
+                .def("getWallHeight", &ProceduralMazeComponent::getWallHeight)
+                .def("setWallThickness", &ProceduralMazeComponent::setWallThickness)
+                .def("getWallThickness", &ProceduralMazeComponent::getWallThickness)
+                .def("regenerateMaze", &ProceduralMazeComponent::regenerateMaze)
+                .def("regenerateMazeWithNewSeed", &ProceduralMazeComponent::regenerateMazeWithNewSeed)
+                .def("getStartPosition", &ProceduralMazeComponent::getStartPosition)
+                .def("getEndPosition", &ProceduralMazeComponent::getEndPosition)
+                .def("isCellPassage", &ProceduralMazeComponent::isCellPassage)
+                .def("getTotalCells", &ProceduralMazeComponent::getTotalCells)
+                .def("getMazeWidth", &ProceduralMazeComponent::getMazeWidth)
+                .def("getMazeDepth", &ProceduralMazeComponent::getMazeDepth)];
 
         LuaScriptApi::getInstance()->addClassToCollection("ProceduralMazeComponent", "class inherits GameObjectComponent", ProceduralMazeComponent::getStaticInfoText());
         LuaScriptApi::getInstance()->addClassToCollection("ProceduralMazeComponent", "void setNumColumns(int columns)", "Sets the number of maze columns (2-100).");
@@ -1623,8 +1649,7 @@ namespace NOWA
         LuaScriptApi::getInstance()->addClassToCollection("GameObject", "ProceduralMazeComponent getProceduralMazeComponentFromName(String name)", "Gets the component from name.");
 
         gameObjectControllerClass.def("castProceduralMazeComponent", &GameObjectController::cast<ProceduralMazeComponent>);
-        LuaScriptApi::getInstance()->addClassToCollection("GameObjectController", "ProceduralMazeComponent castProceduralMazeComponent(ProceduralMazeComponent other)",
-                                                          "Casts an incoming type from function for lua auto completion.");
+        LuaScriptApi::getInstance()->addClassToCollection("GameObjectController", "ProceduralMazeComponent castProceduralMazeComponent(ProceduralMazeComponent other)", "Casts an incoming type from function for lua auto completion.");
     }
 
 }; // namespace NOWA

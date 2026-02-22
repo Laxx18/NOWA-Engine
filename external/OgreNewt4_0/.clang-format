@@ -1,0 +1,71 @@
+BasedOnStyle: Microsoft
+BreakBeforeBraces: Allman
+IndentWidth: 4
+ColumnLimit: 250
+
+# ---- CRITICAL: PRESERVE INCLUDE ORDER ----
+SortIncludes: CaseSensitive
+IncludeBlocks: Preserve
+IncludeCategories:
+  - Regex:           'OgreNewt_Stdafx\.h'
+    Priority:        -1  # Always first
+  - Regex:           '.*'
+    Priority:        1
+
+# ---- SAFER BRACE SETTINGS ----
+InsertBraces: true  # Manual control - auto-insert can break macros
+AllowShortFunctionsOnASingleLine: None
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+
+# ---- SPACING ----
+PointerAlignment: Left
+SpaceBeforeParens: ControlStatements
+SpacesInParentheses: false
+SpacesInSquareBrackets: false
+SpaceAfterCStyleCast: false
+SpaceBeforeAssignmentOperators: true
+BreakBeforeBinaryOperators: None
+
+# ---- INDENTATION ----
+NamespaceIndentation: All
+IndentAccessModifiers: false
+AccessModifierOffset: -4
+
+# ---- NAMESPACE COMMENTS ----
+FixNamespaceComments: false  # Don't auto-add/modify namespace closing comments
+
+BraceWrapping:
+  AfterClass: true
+  AfterControlStatement: Always
+  AfterEnum: true
+  AfterFunction: true
+  AfterNamespace: true
+  AfterStruct: true
+  AfterUnion: true
+  BeforeCatch: true
+  BeforeElse: true
+  IndentBraces: true
+
+BreakConstructorInitializers: AfterColon
+ConstructorInitializerAllOnOneLineOrOnePerLine: true
+AllowAllConstructorInitializersOnNextLine: false
+
+AllowShortLambdasOnASingleLine: None
+AllowShortBlocksOnASingleLine: Never
+LambdaBodyIndentation: Signature
+
+PenaltyBreakBeforeFirstCallParameter: 1000
+PenaltyBreakOpenParenthesis: 1000
+
+BinPackArguments: true
+BinPackParameters: true
+
+AllowAllArgumentsOnNextLine: false
+AlignAfterOpenBracket: DontAlign
+
+
+
+
+
+

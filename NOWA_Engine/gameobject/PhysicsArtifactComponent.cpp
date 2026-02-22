@@ -196,6 +196,7 @@ namespace NOWA
 
 	bool PhysicsArtifactComponent::createStaticBody(void)
 	{
+        Ogre::String name = this->gameObjectPtr->getName();
 		// Body has already been created, do not do it twice!
 		if (nullptr != this->physicsBody)
 			return true;
@@ -346,7 +347,7 @@ namespace NOWA
             NOWA::GraphicsModule::RenderCommand renderCommand = [this, childCollisions, collisionName, & compoundCollision]()
             {
                 Ogre::String scenePath = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName();
-                compoundCollision = this->serializeCompoundCollision(scenePath, childCollisions, collisionName, this->gameObjectPtr->getCategoryId(), false);
+                compoundCollision = this->serializeCompoundCollision(scenePath, childCollisions, collisionName, this->gameObjectPtr->getCategoryId(), true);
             };
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PhysicsArtifactComponent::serializeCompoundCollision");
         }

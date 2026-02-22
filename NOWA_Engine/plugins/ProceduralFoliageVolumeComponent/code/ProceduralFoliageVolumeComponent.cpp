@@ -38,7 +38,7 @@ namespace NOWA
         physicsArtifactComponent(nullptr),
         volumeBounds(new Variant(ProceduralFoliageVolumeComponent::AttrVolumeBounds(), Ogre::Vector4(-50.0f, -50.0f, 50.0f, 50.0f), this->attributes)), // 100x100m area
         masterSeed(new Variant(ProceduralFoliageVolumeComponent::AttrMasterSeed(), static_cast<unsigned int>(12345), this->attributes)),
-        gridResolution(new Variant(ProceduralFoliageVolumeComponent::AttrGridResolution(), 1.0f, this->attributes)), // 1 meter sample resolution
+        gridResolution(new Variant(ProceduralFoliageVolumeComponent::AttrGridResolution(), 2.0f, this->attributes)), // 1 meter sample resolution
         regenerate(new Variant(ProceduralFoliageVolumeComponent::AttrRegenerate(), "Regenerate", this->attributes)),
         clear(new Variant(ProceduralFoliageVolumeComponent::AttrClear(), "Clear", this->attributes)),
         randomizeSeed(new Variant(ProceduralFoliageVolumeComponent::AttrRandomizeSeed(), "Randomize Seed", this->attributes)),
@@ -403,6 +403,7 @@ namespace NOWA
                     this->ruleCollisionHeight[i]->setConstraints(0.1f, 20.0f);
                 }
                 this->ruleCollisionHeight[i]->setValue(height);
+                this->ruleCollisionHeight[i]->addUserData(GameObject::AttrActionSeparator());
                 this->rules[i].collisionHeight = height;
                 propertyElement = propertyElement->next_sibling("property");
             }
@@ -791,6 +792,7 @@ namespace NOWA
         if (physicsArtifactCompPtr)
         {
             this->physicsArtifactComponent = physicsArtifactCompPtr.get();
+            this->physicsArtifactComponent->setSerialize(true);
         }
 
         // Clear existing
@@ -1032,11 +1034,6 @@ namespace NOWA
             return false;
         }
 
-        if (slope < rule.slopeRange.x || slope > rule.slopeRange.y)
-        {
-            return false;
-        }
-
         // Terra layer check
         if (terra && rule.terraLayerThresholds.size() == 4)
         {
@@ -1114,7 +1111,7 @@ namespace NOWA
     void ProceduralFoliageVolumeComponent::createFoliageOnRenderThread(std::vector<VegetationBatch>&& batches)
     {
         // Queue to render thread
-        GraphicsModule::getInstance()->enqueue([this, batchesCopy = std::move(batches)]() mutable
+        GraphicsModule::getInstance()->enqueueAndWait([this, batchesCopy = std::move(batches)]() mutable
             {
                 this->createFoliageItems(batchesCopy);
             }, "ProceduralFoliageVolume::CreateItems");
@@ -1137,10 +1134,20 @@ namespace NOWA
             }
 
             // Generate LOD
-            if (rule.lodDistance > 0.0f)
+
+            // TODO: Will not work, because we have v2 Meshes (Items) now!
+            // See what ogre says:
+            /*"Shows how to automatically generate LODs from an existing mesh.\n"
+            "The mesh must be in v1 format because the MeshLodGenerator Component\n"
+            "hasn't yet been ported to v2 interfaces\n"
+            "However meshes can be converted back and forth between v1 <-> v2\n"
+            "to get LOD generation.\n"
+            "Once LODs have been generated, LOD display can work in either v1 or v2 mode\n"
+            "The model you're looking right now is in v2 mode"*/
+            /*if (rule.lodDistance > 0.0f)
             {
                 this->generateLODForMesh(batch.meshName, rule.lodDistance, rule.resourceGroup);
-            }
+            }*/
 
             // Load mesh
             Ogre::MeshPtr meshPtr;
@@ -1322,48 +1329,29 @@ namespace NOWA
                 continue;
             }
 
-#if 0
-            // Rotate cylinder 90° around Z to make it stand upright (X-axis -> Y-axis)
+            // Rotate 90° around Z: maps Newton's X-axis -> world Y-axis (upright)
             Ogre::Quaternion uprightFix(Ogre::Degree(90), Ogre::Vector3::UNIT_Z);
 
+            // The compound body will be placed at this position in the world
+            Ogre::Vector3 bodyOrigin = this->gameObjectPtr->getPosition();
+
             for (const VegetationInstance& instance : batch.instances)
             {
                 Ogre::Quaternion correctedOrientation = instance.orientation * uprightFix;
 
-                // Shift cylinder up so its base sits at the instance position, not its center
-                Ogre::Vector3 correctedPosition = instance.position + Ogre::Vector3(0.0f, rule.collisionHeight * 0.5f, 0.0f);
+                // Convert world position -> body-local position
+                Ogre::Vector3 localPosition = instance.position - bodyOrigin;
 
-                OgreNewt::CollisionPtr cylinderCol =
-                    OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::Cylinder(world, rule.collisionRadius, rule.collisionHeight, this->gameObjectPtr->getCategoryId(), correctedOrientation, correctedPosition));
+                // Then shift center along the tree's own up axis
+                localPosition += instance.orientation * Ogre::Vector3(0.0f, rule.collisionHeight * 0.5f, 0.0f);
+
+                OgreNewt::CollisionPtr cylinderCol = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::Cylinder(world, rule.collisionRadius, rule.collisionHeight, this->gameObjectPtr->getCategoryId(), correctedOrientation, localPosition));
 
                 if (cylinderCol)
                 {
                     collisions.push_back(cylinderCol);
                 }
             }
-#else
-            Ogre::Quaternion uprightFix(Ogre::Degree(90), Ogre::Vector3::UNIT_X);
-
-            for (const VegetationInstance& instance : batch.instances)
-            {
-                Ogre::Quaternion correctedOrientation = instance.orientation * uprightFix;
-
-                // Center vertically and compensate for any radial offset
-                Ogre::Vector3 correctedPosition = instance.position + Ogre::Vector3(0.0f, rule.collisionHeight, 0.0f);
-
-                // Compensate for Newton cylinder origin being offset by radius
-                // The cylinder's local X after uprightFix becomes horizontal — pull it back
-                correctedPosition -= instance.orientation * Ogre::Vector3(rule.collisionRadius * 4.0f, 0.0f, rule.collisionRadius * 4.0f);
-
-                OgreNewt::CollisionPtr cylinderCol =
-                    OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::Cylinder(world, rule.collisionRadius, rule.collisionHeight, this->gameObjectPtr->getCategoryId(), correctedOrientation, correctedPosition));
-
-                if (cylinderCol)
-                {
-                    collisions.push_back(cylinderCol);
-                }
-            }
-#endif
         }
 
         if (collisions.empty())
@@ -1417,16 +1405,15 @@ namespace NOWA
 
         lodConfig.strategy = Ogre::LodStrategyManager::getSingleton().getDefaultStrategy();
 
-        // Set distances
-        Ogre::Real factor[10] = {0.0f};
-        for (size_t i = 0; i < lodConfig.levels.size() - 1 && i < 10; ++i)
+        // Space LOD levels evenly from lodDistance/N up to lodDistance.
+        // Level 0 = highest detail, transitions at nearest distance.
+        // Last level = lowest detail, transitions at lodDistance.
+        const size_t numLevels = lodConfig.levels.size();
+        for (size_t i = 0; i < numLevels; ++i)
         {
-            factor[i] = lodConfig.levels[i].distance / lodConfig.levels[i + 1].distance;
-        }
-
-        for (size_t i = 0; i < lodConfig.levels.size(); ++i)
-        {
-            Ogre::Real dist = (i < lodConfig.levels.size() - 1) ? lodDistance * factor[i] : lodDistance;
+            // t goes from 1/N (first level) to 1.0 (last level)
+            Ogre::Real t = static_cast<Ogre::Real>(i + 1) / static_cast<Ogre::Real>(numLevels);
+            Ogre::Real dist = lodDistance * t;
             lodConfig.levels[i].distance = lodConfig.strategy->transformUserValue(dist);
         }
 
@@ -1462,8 +1449,7 @@ namespace NOWA
         // Clear physics collision first
         if (this->physicsArtifactComponent && this->physicsArtifactComponent->getBody())
         {
-            // This will destroy the compound body
-            this->physicsArtifactComponent->reCreateCollision(true);
+            this->physicsArtifactComponent->destroyBody();
         }
     }
 
@@ -1563,7 +1549,31 @@ namespace NOWA
             // Initialize new variants with SENSIBLE DEFAULTS
             for (size_t i = oldSize; i < count; i++)
             {
-                // Rule Name - UNIQUE
+                // -----------------------------------------------------------------------
+                // Density: trees need very sparse placement, ground cover needs denser.
+                // Formula: stepX = resolution / density, so density = resolution / stepX.
+                // With resolution=2: density=0.05 -> step=40m (very sparse, ~6 trees/100x100m)
+                //                    density=0.10 -> step=20m (~25 shrubs/100x100m)
+                //                    density=0.20 -> step=10m (~100 groundcover/100x100m)
+                // The pattern scales by index: trees(0), shrubs(1), small shrubs(2), groundcover(3+)
+                // -----------------------------------------------------------------------
+                static const float densityByIndex[] = {0.05f, 0.10f, 1.0f, 2.0f, 3.0f};
+                static const float minSpacingByIndex[] = {8.0f, 3.0f, 2.0f, 1.5f, 1.0f};
+                static const float lodDistByIndex[] = {80.0f, 60.0f, 50.0f, 30.0f, 25.0f};
+                static const float renderDistByIndex[] = {100.0f, 80.0f, 70.0f, 60.0f, 50.0f};
+                static const float shadowDistByIndex[] = {60.0f, 40.0f, 30.0f, 0.0f, 0.0f};
+                static const bool collisionByIndex[] = {true, false, false, false, false};
+
+                const size_t clampedIdx = std::min(i, static_cast<size_t>(4));
+
+                const Ogre::Real defaultDensity = densityByIndex[clampedIdx];
+                const Ogre::Real defaultMinSpacing = minSpacingByIndex[clampedIdx];
+                const Ogre::Real defaultLodDist = lodDistByIndex[clampedIdx];
+                const Ogre::Real defaultRenderDist = renderDistByIndex[clampedIdx];
+                const Ogre::Real defaultShadowDist = shadowDistByIndex[clampedIdx];
+                const bool defaultCollision = collisionByIndex[clampedIdx];
+
+                // Rule Name
                 this->ruleNames[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleName() + Ogre::StringConverter::toString(i), Ogre::String("Vegetation_" + Ogre::StringConverter::toString(i)), this->attributes);
                 this->ruleNames[i]->setDescription("Display name for this vegetation type.");
 
@@ -1572,84 +1582,94 @@ namespace NOWA
                 this->ruleMeshNames[i]->addUserData(GameObject::AttrActionFileOpenDialog(), "Models");
                 this->ruleMeshNames[i]->setDescription("3D mesh file for this vegetation (.mesh).");
 
-                // Rule Density - VARY BY INDEX for visual distinction
-                Ogre::Real densityVariation = 0.3f + (i * 0.2f); // 0.3, 0.5, 0.7, 0.9, ...
-                this->ruleDensities[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleDensity() + Ogre::StringConverter::toString(i), densityVariation, this->attributes);
-                this->ruleDensities[i]->setDescription("Instances per m * m. Trees: 0.1-0.5, Bushes: 0.5-2.0, Grass: 2.0-10.0");
+                // Rule Density
+                this->ruleDensities[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleDensity() + Ogre::StringConverter::toString(i), defaultDensity, this->attributes);
+                this->ruleDensities[i]->setDescription("Placement density. Trees: 0.05-0.10, Shrubs: 0.10-0.20, Ground cover: 0.20-0.50. "
+                                                       "Step size = gridResolution / density, so lower = sparser.");
                 this->ruleDensities[i]->setConstraints(0.01f, 10.0f);
+                this->rules[i].density = defaultDensity;
 
-                // Height Range - UNLIMITED (ensure visibility!)
-                this->ruleHeightRanges[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleHeightRange() + Ogre::StringConverter::toString(i), Ogre::Vector2(-1000.0f, 1000.0f), // <- Unlimited!
-                    this->attributes);
-                this->ruleHeightRanges[i]->setDescription("Min/max elevation. Use -1000 to 1000 for unlimited.");
+                // Height Range — unlimited by default
+                this->ruleHeightRanges[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleHeightRange() + Ogre::StringConverter::toString(i), Ogre::Vector2(-1000.0f, 1000.0f), this->attributes);
+                this->ruleHeightRanges[i]->setDescription("Min/max elevation in meters. -1000/1000 = unlimited.");
+                this->rules[i].heightRange = Ogre::Vector2(-1000.0f, 1000.0f);
 
-                // Max Slope - PERMISSIVE (ensure visibility!)
-                this->ruleMaxSlopes[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleMaxSlope() + Ogre::StringConverter::toString(i),
-                    85.0f, // <- Almost any slope! (very permissive)
-                    this->attributes);
-                this->ruleMaxSlopes[i]->setDescription("Max slope angle. Use 85+ for nearly any terrain.");
+                // Max Slope — permissive default (further narrowed by slopeRange below)
+                this->ruleMaxSlopes[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleMaxSlope() + Ogre::StringConverter::toString(i), 45.0f, this->attributes);
+                this->ruleMaxSlopes[i]->setDescription("Hard maximum slope angle in degrees. Acts as a fast rejection before slopeRange check.");
                 this->ruleMaxSlopes[i]->setConstraints(0.0f, 90.0f);
+                this->rules[i].maxSlope = 45.0f;
 
-                // Terra Layers - ALL ALLOWED (ensure visibility!)
-                this->ruleTerraLayers[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleTerraLayers() + Ogre::StringConverter::toString(i),
-                    Ogre::String("255,255,255,255"), // All layers
-                    this->attributes);
-                this->ruleTerraLayers[i]->setDescription("Layer thresholds. 255,255,255,255 = all layers allowed. Or 255,255,255,0 -> Layer 1-3 allowed and layer 4 not.");
+                // Terra Layers — all layers allowed
+                this->ruleTerraLayers[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleTerraLayers() + Ogre::StringConverter::toString(i), Ogre::String("255,255,255,255"), this->attributes);
+                this->ruleTerraLayers[i]->setDescription("Layer thresholds (0-255 per channel). 255,255,255,255 = all layers. "
+                                                         "255,255,255,0 = layers 1-3 allowed, layer 4 blocked.");
+                this->rules[i].terraLayerThresholds = this->parseTerraLayers("255,255,255,255");
 
-                // Scale Range
-                this->ruleScaleRanges[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleScaleRange() + Ogre::StringConverter::toString(i), Ogre::Vector2(0.4f, 0.6f), this->attributes);
-                this->ruleScaleRanges[i]->setDescription("Min/max scale for size variation.");
+                // Scale Range — slight variation around 1.0
+                Ogre::Vector2 defaultScale = (i == 0) ? Ogre::Vector2(0.3f, 0.6f)  // trees: noticeable size variation
+                                                      : Ogre::Vector2(0.2f, 0.7f); // bushes/ground cover: subtle variation
+                this->ruleScaleRanges[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleScaleRange() + Ogre::StringConverter::toString(i), defaultScale, this->attributes);
+                this->ruleScaleRanges[i]->setDescription("Min/max scale multiplier for size variation.");
+                this->rules[i].scaleRange = defaultScale;
 
-                // Min Spacing - NO SPACING by default (ensure visibility!)
-                this->ruleMinSpacings[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleMinSpacing() + Ogre::StringConverter::toString(i),
-                    0.0f, // No spacing constraint
-                    this->attributes);
-                this->ruleMinSpacings[i]->setDescription("Min spacing between instances. 0 = no constraint.");
+                // Min Spacing — prevents clustering within a rule
+                this->ruleMinSpacings[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleMinSpacing() + Ogre::StringConverter::toString(i), defaultMinSpacing, this->attributes);
+                this->ruleMinSpacings[i]->setDescription("Minimum distance between instances of this rule (meters). "
+                                                         "Should be roughly 50-80% of the natural grid step (gridResolution / density).");
                 this->ruleMinSpacings[i]->setConstraints(0.0f, 100.0f);
+                this->rules[i].minDistanceToSame = defaultMinSpacing;
 
-                // Render Distance - GOOD DEFAULT
-                this->ruleRenderDistances[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleRenderDistance() + Ogre::StringConverter::toString(i),
-                    300.0f, // 300m visibility
-                    this->attributes);
-                this->ruleRenderDistances[i]->setDescription("Visibility distance. 0 = infinite.");
+                // Render Distance
+                this->ruleRenderDistances[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleRenderDistance() + Ogre::StringConverter::toString(i), defaultRenderDist, this->attributes);
+                this->ruleRenderDistances[i]->setDescription("Visibility distance in meters. Trees: 400m, Bushes: 150-200m, Ground cover: 60-80m.");
                 this->ruleRenderDistances[i]->setConstraints(0.0f, 10000.0f);
+                this->rules[i].renderDistance = defaultRenderDist;
 
-                // LOD Distance - DISABLED by default
-                this->ruleLodDistances[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleLodDistance() + Ogre::StringConverter::toString(i),
-                    0.0f, // No LOD by default
-                    this->attributes);
-                this->ruleLodDistances[i]->setDescription("LOD distance. 0 = no LOD (simpler).");
+                // Shadow Distance (separate from render distance for performance)
+                // Note: if your FoliageRule struct doesn't have shadowDistance yet, add it.
+                this->rules[i].shadowDistance = defaultShadowDist;
+
+                // LOD Distance — enabled by default for all rules
+                this->ruleLodDistances[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleLodDistance() + Ogre::StringConverter::toString(i), defaultLodDist, this->attributes);
+                this->ruleLodDistances[i]->setDescription("Distance at which the lowest LOD is reached. 0 = no LOD (avoid for complex meshes). "
+                                                          "Trees: 80m, Shrubs: 50-60m, Ground cover: 25-30m.");
                 this->ruleLodDistances[i]->setConstraints(0.0f, 1000.0f);
+                this->rules[i].lodDistance = defaultLodDist;
 
-                // Rule Categories
+                // Categories
                 this->ruleCategories[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleCategories() + Ogre::StringConverter::toString(i), Ogre::String("All"), this->attributes);
-                this->ruleCategories[i]->setDescription("Categories mask for raycasting. 'All' = grow everywhere. 'All-House' = everywhere except on Houses. "
-                                                        "'Ground' = only on Ground category objects. Combine multiple with dash: 'Ground-Terrain'.");
+                this->ruleCategories[i]->setDescription("'All' = grow everywhere. 'All-Obstacle' = avoid objects in Obstacle category. "
+                                                        "'Ground' = only on Ground category.");
                 this->rules[i].categories = "All";
                 this->rules[i].categoriesId = GameObjectController::ALL_CATEGORIES_ID;
 
-                this->ruleClearanceDistances[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleClearanceDistance() + Ogre::StringConverter::toString(i), 0.0f, this->attributes);
-                this->ruleClearanceDistances[i]->setDescription("Clearance buffer in meters around excluded objects (e.g. houses). 0 = disabled. Set to 2-5m to prevent branches clipping into buildings.");
+                // Clearance Distance
+                this->ruleClearanceDistances[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleClearanceDistance() + Ogre::StringConverter::toString(i), (i == 0) ? 5.0f : 1.0f, this->attributes); // trees need more clearance than bushes
+                this->ruleClearanceDistances[i]->setDescription("Buffer zone around excluded objects (meters). Trees: 4-6m, Bushes: 1-2m, 0 = disabled.");
                 this->ruleClearanceDistances[i]->setConstraints(0.0f, 50.0f);
-                this->rules[i].clearanceDistance = 0.0f;
+                this->rules[i].clearanceDistance = (i == 0) ? 5.0f : 1.0f;
 
-                // Rule Collision Enabled
-                this->ruleCollisionEnabled[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleCollisionEnabled() + Ogre::StringConverter::toString(i), false, this->attributes);
-                this->ruleCollisionEnabled[i]->setDescription("Enable physics collision for this vegetation. "
-                                                              "All instances combined into one compound body for performance.");
-                this->rules[i].collisionEnabled = false;
+                // Collision Enabled — only for trees (index 0) by default
+                this->ruleCollisionEnabled[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleCollisionEnabled() + Ogre::StringConverter::toString(i), defaultCollision, this->attributes);
+                this->ruleCollisionEnabled[i]->setDescription("Physics cylinder collision. Enable only for trees/large obstacles. "
+                                                              "Bushes and ground cover should have this off.");
+                this->rules[i].collisionEnabled = defaultCollision;
 
-                // Rule Collision Radius
-                this->ruleCollisionRadius[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleCollisionRadius() + Ogre::StringConverter::toString(i), 0.3f, this->attributes);
-                this->ruleCollisionRadius[i]->setDescription("Collision cylinder radius in meters (trunk/stem thickness). Trees: 0.2-0.5m, Bushes: 0.1-0.3m");
+                // Collision Radius
+                Ogre::Real defaultColRadius = (i == 0) ? 0.3f : 0.15f;
+                this->ruleCollisionRadius[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleCollisionRadius() + Ogre::StringConverter::toString(i), defaultColRadius, this->attributes);
+                this->ruleCollisionRadius[i]->setDescription("Collision cylinder radius (trunk thickness). Trees: 0.2-0.5m, Bushes: 0.1-0.2m.");
                 this->ruleCollisionRadius[i]->setConstraints(0.01f, 5.0f);
-                this->rules[i].collisionRadius = 0.3f;
+                this->rules[i].collisionRadius = defaultColRadius;
 
-                // Rule Collision Height
-                this->ruleCollisionHeight[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleCollisionHeight() + Ogre::StringConverter::toString(i), 2.0f, this->attributes);
-                this->ruleCollisionHeight[i]->setDescription("Collision cylinder height in meters. Should match approximate trunk height. Trees: 2-5m, Bushes: 0.5-1.5m");
+                // Collision Height
+                Ogre::Real defaultColHeight = (i == 0) ? 4.0f : 1.0f;
+                this->ruleCollisionHeight[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleCollisionHeight() + Ogre::StringConverter::toString(i), defaultColHeight, this->attributes);
+                this->ruleCollisionHeight[i]->setDescription("Collision cylinder height. Trees: 3-5m (trunk height), Bushes: 0.5-1.5m.");
                 this->ruleCollisionHeight[i]->setConstraints(0.1f, 20.0f);
-                this->rules[i].collisionHeight = 2.0f;
+                this->ruleCollisionHeight[i]->addUserData(GameObject::AttrActionSeparator());
+                this->rules[i].collisionHeight = defaultColHeight;
             }
         }
         else if (count < oldSize)

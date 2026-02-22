@@ -68,7 +68,12 @@ protected:
 		this->succeed();
 		// this->propertiesPanelView1->getScrollView()->setVRange(scrollPosition);
 			// vScrollBar->setScrollPosition(MyGUIHelper::getInstance()->getScrollPosition());
-		this->propertiesPanelView->getScrollView()->setViewOffset(MyGUI::IntPoint(this->propertiesPanelView->getScrollView()->getViewOffset().left, this->scrollPosition));
+
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            this->propertiesPanelView->getScrollView()->setViewOffset(MyGUI::IntPoint(this->propertiesPanelView->getScrollView()->getViewOffset().left, this->scrollPosition));
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "SetScrollPositionProcess::onInit");
 	}
 
 	virtual void onUpdate(float dt) override

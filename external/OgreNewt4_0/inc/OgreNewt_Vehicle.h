@@ -313,15 +313,40 @@ namespace OgreNewt
 		// Apply angular impulse (stable + timestep aware)
 		// strength is in "torque-like" units; start with something like 1500..6000 depending on mass
 		void applyPitch(Ogre::Real strength, Ogre::Real timestep);
+
+		 // Call from main thread before ndWorld::Update()
+        void updateDriverInput(Ogre::Real dt);
+
+		 void flushContactEvents();
 	private:
 		
 		void updateUnstuck(Ogre::Real timestep);
 		void updateAirborneRescue(Ogre::Real timestep);
 		void initMassData();
 		void applyForceAndTorque(ndBodyKinematic* vBody, const ndVector& vForce, const ndVector& vPoint, Ogre::Real timestep);
-		void updateDriverInput(RayCastTire* tire, Ogre::Real timestep);
+		void internalUpdateDriverInput(RayCastTire* tire, Ogre::Real timestep);
 		void physicsPreUpdate(Ogre::Real timestep, int threadIndex);
 		void physicsOnTransform(const ndMatrix& localMatrix);
+
+    private:
+        struct CachedDriverInputs
+        {
+            Ogre::Real steer{0.0f}, motor{0.0f}, handBrake{0.0f}, brake{0.0f};
+        };
+        mutable std::mutex m_driverInputMutex;
+        CachedDriverInputs m_cachedDriverInputs;
+
+		struct PendingContactEvent
+        {
+            std::string tireName;
+            OgreNewt::Body* hitBody{nullptr};
+            Ogre::Vector3 contactPosition;
+            Ogre::Vector3 contactNormal;
+            Ogre::Real penetration{0.0f};
+        };
+
+		void enqueueContactEvent(PendingContactEvent evt);
+
 	public:
 		int m_tireCount;
 		bool m_debugtire;
@@ -341,6 +366,8 @@ namespace OgreNewt
 		VehicleStuckState m_stuck;
 		RescueState m_rescue;
 		bool m_useTilting;
+        std::mutex m_contactQueueMutex;
+        std::vector<PendingContactEvent> m_contactQueue;
 	};
 
 } // namespace OgreNewt

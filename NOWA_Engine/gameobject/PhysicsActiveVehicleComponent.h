@@ -2,13 +2,12 @@
 #define PHYSICS_ACTIVE_VEHICLE_COMPONENT_H
 
 #include "PhysicsActiveComponent.h"
+#include "VehicleDrivingManipulation.h"
 #include "OgreNewt_World.h"
 #include "OgreNewt_Vehicle.h"
 
 namespace NOWA
 {
-	class VehicleDrivingManipulation;
-
 	class EXPORTED PhysicsActiveVehicleComponent : public PhysicsActiveComponent
 	{
 	public:
@@ -258,41 +257,6 @@ namespace NOWA
 		Variant* onHandBrakeChangedFunctionName;
 		Variant* onBrakeChangedFunctionName;
 		Variant* onTireContactFunctionName;
-	};
-
-	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-	class EXPORTED VehicleDrivingManipulation
-	{
-	public:
-		friend class PhysicsActiveVehicleComponent::PhysicsVehicleCallback;
-
-	public:
-		VehicleDrivingManipulation();
-
-		~VehicleDrivingManipulation();
-
-		void setSteerAngle(Ogre::Real steerAngle);
-
-		Ogre::Real getSteerAngle(void) const;
-
-		void setMotorForce(Ogre::Real motorForce);
-
-		Ogre::Real getMotorForce(void) const;
-
-		void setHandBrake(Ogre::Real handBrake);
-
-		Ogre::Real getHandBrake(void) const;
-
-		void setBrake(Ogre::Real brake);
-
-		Ogre::Real getBrake(void) const;
-
-	private:
-		Ogre::Real steerAngle;
-		Ogre::Real motorForce;
-		Ogre::Real handBrake;
-		Ogre::Real brake;
 	};
 
 }; //namespace end

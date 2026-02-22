@@ -1,0 +1,3226 @@
+/*
+Copyright (c) 2026 Lukas Kalinowski
+
+GPL v3
+*/
+
+#include "NOWAPrecompiled.h"
+#include "ProceduralDungeonComponent.h"
+#include "editor/EditorManager.h"
+#include "gameobject/GameObjectController.h"
+#include "gameobject/GameObjectFactory.h"
+#include "main/AppStateManager.h"
+#include "main/Core.h"
+#include "main/InputDeviceCore.h"
+#include "modules/GraphicsModule.h"
+#include "utilities/MathHelper.h"
+#include "utilities/XMLConverter.h"
+
+#include "OgreAbiUtils.h"
+#include "OgreHlmsManager.h"
+#include "OgreHlmsPbs.h"
+#include "OgreHlmsPbsDatablock.h"
+#include "OgreItem.h"
+#include "OgreMesh2.h"
+#include "OgreMesh2Serializer.h"
+#include "OgreMeshManager2.h"
+#include "OgreSubMesh2.h"
+#include "Vao/OgreVaoManager.h"
+#include "Vao/OgreVertexArrayObject.h"
+
+#include <algorithm>
+#include <cmath>
+#include <filesystem>
+#include <fstream>
+#include <limits>
+#include <random>
+#include <set>
+#include <system_error>
+
+namespace
+{
+    inline Ogre::Real maxValue(const Ogre::Real a, const Ogre::Real b)
+    {
+        return (a < b) ? b : a;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    // Quad emitters
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    inline void pushVertex(std::vector<float>& verts, Ogre::uint32& idx, const Ogre::Vector3& pos, const Ogre::Vector3& normal, Ogre::Real u, Ogre::Real v)
+    {
+        verts.push_back(pos.x);
+        verts.push_back(pos.y);
+        verts.push_back(pos.z);
+        verts.push_back(normal.x);
+        verts.push_back(normal.y);
+        verts.push_back(normal.z);
+        verts.push_back(u);
+        verts.push_back(v);
+        ++idx;
+    }
+
+    // Front face: CCW winding  (v0,v1,v2,v3)
+    inline void pushQuadIndices(std::vector<Ogre::uint32>& indices, Ogre::uint32 base)
+    {
+        indices.push_back(base + 0);
+        indices.push_back(base + 1);
+        indices.push_back(base + 2);
+        indices.push_back(base + 0);
+        indices.push_back(base + 2);
+        indices.push_back(base + 3);
+    }
+
+    // Back face: CW winding  (v0,v3,v2,v1) — sits 4 verts after the front face
+    inline void pushQuadIndicesBack(std::vector<Ogre::uint32>& indices, Ogre::uint32 base)
+    {
+        // base+4..+7 are the back-face duplicates with negated normal
+        indices.push_back(base + 4);
+        indices.push_back(base + 6);
+        indices.push_back(base + 5);
+        indices.push_back(base + 4);
+        indices.push_back(base + 7);
+        indices.push_back(base + 6);
+    }
+
+    // Emit 8 vertices (4 front + 4 back with negated normal) and 12 indices (2 tris each side)
+    void pushDoubleQuad(std::vector<float>& verts, std::vector<Ogre::uint32>& indices, Ogre::uint32& idx, const Ogre::Vector3& v0, const Ogre::Vector3& v1, const Ogre::Vector3& v2, const Ogre::Vector3& v3, const Ogre::Vector3& normal,
+        Ogre::Real u0, Ogre::Real u1, Ogre::Real vv0, Ogre::Real vv1)
+    {
+        Ogre::uint32 base = idx;
+        const Ogre::Vector3 nBack = -normal;
+
+        // Front face (normal outward)
+        pushVertex(verts, idx, v0, normal, u0, vv0);
+        pushVertex(verts, idx, v1, normal, u1, vv0);
+        pushVertex(verts, idx, v2, normal, u1, vv1);
+        pushVertex(verts, idx, v3, normal, u0, vv1);
+        pushQuadIndices(indices, base);
+
+        // Back face (same positions, negated normal, reversed UV u to mirror correctly)
+        pushVertex(verts, idx, v0, nBack, u1, vv0);
+        pushVertex(verts, idx, v1, nBack, u0, vv0);
+        pushVertex(verts, idx, v2, nBack, u0, vv1);
+        pushVertex(verts, idx, v3, nBack, u1, vv1);
+        pushQuadIndicesBack(indices, base);
+    }
+
+    void pushQuad(std::vector<float>& verts, std::vector<Ogre::uint32>& indices, Ogre::uint32& idx, const Ogre::Vector3& v0, const Ogre::Vector3& v1, const Ogre::Vector3& v2, const Ogre::Vector3& v3, const Ogre::Vector3& normal, Ogre::Real u0,
+        Ogre::Real u1, Ogre::Real vv0, Ogre::Real vv1)
+    {
+        Ogre::uint32 base = idx;
+
+        const Ogre::Vector3 n = Ogre::Vector3::UNIT_Y;
+        Ogre::uint32 b = idx;
+        pushVertex(verts, idx, v0, n, u0, vv0);
+        pushVertex(verts, idx, v1, n, u1, vv0);
+        pushVertex(verts, idx, v2, n, u1, vv1);
+        pushVertex(verts, idx, v3, n, u0, vv1);
+        pushQuadIndices(indices, base);
+    }
+}
+
+namespace NOWA
+{
+    using namespace rapidxml;
+    using namespace luabind;
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    // Constructor / Destructor
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    ProceduralDungeonComponent::ProceduralDungeonComponent() :
+        GameObjectComponent(),
+        name("ProceduralDungeonComponent"),
+        activated(new Variant(ProceduralDungeonComponent::AttrActivated(), true, this->attributes)),
+        seed(new Variant(ProceduralDungeonComponent::AttrSeed(), 42, this->attributes)),
+        dungeonWidth(new Variant(ProceduralDungeonComponent::AttrDungeonWidth(), 40.0f, this->attributes)),
+        dungeonDepth(new Variant(ProceduralDungeonComponent::AttrDungeonDepth(), 40.0f, this->attributes)),
+        cellSize(new Variant(ProceduralDungeonComponent::AttrCellSize(), 2.0f, this->attributes)),
+        minRoomCells(new Variant(ProceduralDungeonComponent::AttrMinRoomCells(), 3, this->attributes)),
+        maxRoomCells(new Variant(ProceduralDungeonComponent::AttrMaxRoomCells(), 8, this->attributes)),
+        corridorWidthCells(new Variant(ProceduralDungeonComponent::AttrCorridorWidthCells(), 2, this->attributes)),
+        wallHeight(new Variant(ProceduralDungeonComponent::AttrWallHeight(), 3.0f, this->attributes)),
+        addCeiling(new Variant(ProceduralDungeonComponent::AttrAddCeiling(), true, this->attributes)),
+        loopProbability(new Variant(ProceduralDungeonComponent::AttrLoopProbability(), 0.15f, this->attributes)),
+        dungeonTheme(new Variant(ProceduralDungeonComponent::AttrDungeonTheme(), {"Dungeon", "Cave", "SciFi", "Ice", "Crypt"}, this->attributes)),
+        adaptToGround(new Variant(ProceduralDungeonComponent::AttrAdaptToGround(), true, this->attributes)),
+        heightOffset(new Variant(ProceduralDungeonComponent::AttrHeightOffset(), 0.05f, this->attributes)),
+        addPillars(new Variant(ProceduralDungeonComponent::AttrAddPillars(), true, this->attributes)),
+        pillarSize(new Variant(ProceduralDungeonComponent::AttrPillarSize(), 0.3f, this->attributes)),
+        floorDatablock(new Variant(ProceduralDungeonComponent::AttrFloorDatablock(), Ogre::String("Stone 4"), this->attributes)),
+        wallDatablock(new Variant(ProceduralDungeonComponent::AttrWallDatablock(), Ogre::String("proceduralWall1"), this->attributes)),
+        ceilingDatablock(new Variant(ProceduralDungeonComponent::AttrCeilingDatablock(), Ogre::String("proceduralWall1"), this->attributes)),
+        floorUVTiling(new Variant(ProceduralDungeonComponent::AttrFloorUVTiling(), Ogre::Vector2(2.0f, 2.0f), this->attributes)),
+        wallUVTiling(new Variant(ProceduralDungeonComponent::AttrWallUVTiling(), Ogre::Vector2(1.0f, 1.0f), this->attributes)),
+        generateNow(new Variant(ProceduralDungeonComponent::AttrGenerateNow(), "Generate Now", this->attributes)),
+        convertToMesh(new Variant(ProceduralDungeonComponent::AttrConvertToMesh(), "Convert to Mesh", this->attributes)),
+        dungeonOrigin(Ogre::Vector3::ZERO),
+        hasDungeonOrigin(false),
+        originPositionSet(false),
+        currentFloorVertexIndex(0),
+        currentWallVertexIndex(0),
+        currentCeilVertexIndex(0),
+        cachedNumFloorVertices(0),
+        cachedNumWallVertices(0),
+        cachedNumCeilVertices(0),
+        dungeonItem(nullptr),
+        previewItem(nullptr),
+        previewNode(nullptr),
+        buildState(BuildState::IDLE),
+        isEditorMeshModifyMode(false),
+        isSelected(false),
+        isCtrlPressed(false),
+        isShiftPressed(false),
+        groundQuery(nullptr)
+    {
+        this->seed->setDescription("Random seed. Same value always produces the same layout.");
+        this->dungeonWidth->setDescription("Total width of the dungeon area in world units.");
+        this->dungeonDepth->setDescription("Total depth (Z) of the dungeon area in world units.");
+        this->cellSize->setDescription("World-unit size of each grid cell. Smaller = finer, more polygons.");
+        this->minRoomCells->setDescription("Minimum room dimension in cells.");
+        this->maxRoomCells->setDescription("Maximum room dimension in cells.");
+        this->corridorWidthCells->setDescription("Width of connecting corridors in cells.");
+        this->wallHeight->setDescription("Height of dungeon walls in world units.");
+        this->addCeiling->setDescription("Whether to generate a ceiling mesh (submesh 2).");
+        this->loopProbability->setDescription("Probability [0-1] of adding extra loop corridors for non-linear layouts.");
+        this->dungeonTheme->setDescription("Visual theme: Dungeon=battlement caps, Cave=variable walls+stalactites, "
+                                           "SciFi=floor channel strips, Ice=angled wall bevel, Crypt=tall battlement caps.");
+        this->adaptToGround->setDescription("Place dungeon floor at terrain height at the origin.");
+        this->heightOffset->setDescription("Additional height above terrain surface (meters).");
+        this->addPillars->setDescription("Add box pillars at inner room corners where two walls meet.");
+        this->pillarSize->setDescription("Cross-section size of corner pillars in world units.");
+        this->floorDatablock->setDescription("HLMS datablock for the floor submesh (submesh 0).");
+        this->wallDatablock->setDescription("HLMS datablock for the wall submesh (submesh 1).");
+        this->ceilingDatablock->setDescription("HLMS datablock for the ceiling submesh (submesh 2, if enabled).");
+        this->floorUVTiling->setDescription("UV tiling scale for floor geometry.");
+        this->wallUVTiling->setDescription("UV tiling scale for wall and ceiling geometry.");
+
+        this->generateNow->setDescription("Re-runs BSP generation at the current GameObject position.");
+        this->generateNow->addUserData(GameObject::AttrActionExec());
+        this->generateNow->addUserData(GameObject::AttrActionExecId(), "ProceduralDungeonComponent.GenerateNow");
+        this->generateNow->addUserData(GameObject::AttrActionNeedRefresh());
+
+        this->convertToMesh->setDescription("Converts this procedural dungeon to a static mesh file. "
+                                            "This is a ONE-WAY operation! After conversion:\n"
+                                            "- The dungeon mesh is exported to the Procedural resource folder\n"
+                                            "- This ProceduralDungeonComponent is removed\n"
+                                            "- The GameObject will use the static mesh file\n"
+                                            "- You can no longer edit the dungeon procedurally\n"
+                                            "- The mesh will benefit from Ogre's graphics caching (no FPS drops)\n\n"
+                                            "Use this when you're finished designing the dungeon and want optimal performance.");
+        this->convertToMesh->addUserData(GameObject::AttrActionExec());
+        this->convertToMesh->addUserData(GameObject::AttrActionExecId(), "ProceduralDungeonComponent.ConvertToMesh");
+    }
+
+    ProceduralDungeonComponent::~ProceduralDungeonComponent()
+    {
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    // Ogre::Plugin
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    void ProceduralDungeonComponent::install(const Ogre::NameValuePairList* options)
+    {
+        GameObjectFactory::getInstance()->getComponentFactory()->registerPluginComponentClass<ProceduralDungeonComponent>(ProceduralDungeonComponent::getStaticClassId(), ProceduralDungeonComponent::getStaticClassName());
+    }
+
+    void ProceduralDungeonComponent::initialise()
+    {
+    }
+    void ProceduralDungeonComponent::shutdown()
+    {
+    }
+    void ProceduralDungeonComponent::uninstall()
+    {
+    }
+
+    const Ogre::String& ProceduralDungeonComponent::getName() const
+    {
+        return this->name;
+    }
+
+    void ProceduralDungeonComponent::getAbiCookie(Ogre::AbiCookie& outAbiCookie)
+    {
+        outAbiCookie = Ogre::generateAbiCookie();
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    // init / postInit / connect / disconnect / clone
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    bool ProceduralDungeonComponent::init(rapidxml::xml_node<>*& propertyElement)
+    {
+        GameObjectComponent::init(propertyElement);
+
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralDungeonComponent::AttrActivated())
+        {
+            this->activated->setValue(XMLConverter::getAttribBool(propertyElement, "data", true));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralDungeonComponent::AttrSeed())
+        {
+            this->seed->setValue(XMLConverter::getAttribInt(propertyElement, "data", 42));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralDungeonComponent::AttrDungeonWidth())
+        {
+            this->dungeonWidth->setValue(XMLConverter::getAttribReal(propertyElement, "data", 40.0f));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralDungeonComponent::AttrDungeonDepth())
+        {
+            this->dungeonDepth->setValue(XMLConverter::getAttribReal(propertyElement, "data", 40.0f));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralDungeonComponent::AttrCellSize())
+        {
+            this->cellSize->setValue(XMLConverter::getAttribReal(propertyElement, "data", 2.0f));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralDungeonComponent::AttrMinRoomCells())
+        {
+            this->minRoomCells->setValue(XMLConverter::getAttribInt(propertyElement, "data", 3));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralDungeonComponent::AttrMaxRoomCells())
+        {
+            this->maxRoomCells->setValue(XMLConverter::getAttribInt(propertyElement, "data", 8));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralDungeonComponent::AttrCorridorWidthCells())
+        {
+            this->corridorWidthCells->setValue(XMLConverter::getAttribInt(propertyElement, "data", 2));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralDungeonComponent::AttrWallHeight())
+        {
+            this->wallHeight->setValue(XMLConverter::getAttribReal(propertyElement, "data", 3.0f));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralDungeonComponent::AttrAddCeiling())
+        {
+            this->addCeiling->setValue(XMLConverter::getAttribBool(propertyElement, "data", true));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralDungeonComponent::AttrLoopProbability())
+        {
+            this->loopProbability->setValue(XMLConverter::getAttribReal(propertyElement, "data", 0.15f));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralDungeonComponent::AttrDungeonTheme())
+        {
+            this->dungeonTheme->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data", "Dungeon"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralDungeonComponent::AttrAdaptToGround())
+        {
+            this->adaptToGround->setValue(XMLConverter::getAttribBool(propertyElement, "data", true));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralDungeonComponent::AttrHeightOffset())
+        {
+            this->heightOffset->setValue(XMLConverter::getAttribReal(propertyElement, "data", 0.05f));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralDungeonComponent::AttrAddPillars())
+        {
+            this->addPillars->setValue(XMLConverter::getAttribBool(propertyElement, "data", true));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralDungeonComponent::AttrPillarSize())
+        {
+            this->pillarSize->setValue(XMLConverter::getAttribReal(propertyElement, "data", 0.3f));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralDungeonComponent::AttrFloorDatablock())
+        {
+            this->floorDatablock->setValue(XMLConverter::getAttrib(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralDungeonComponent::AttrWallDatablock())
+        {
+            this->wallDatablock->setValue(XMLConverter::getAttrib(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralDungeonComponent::AttrCeilingDatablock())
+        {
+            this->ceilingDatablock->setValue(XMLConverter::getAttrib(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralDungeonComponent::AttrFloorUVTiling())
+        {
+            this->floorUVTiling->setValue(XMLConverter::getAttribVector2(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralDungeonComponent::AttrWallUVTiling())
+        {
+            this->wallUVTiling->setValue(XMLConverter::getAttribVector2(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+
+        return true;
+    }
+
+    bool ProceduralDungeonComponent::postInit(void)
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralDungeonComponent] postInit for: " + this->gameObjectPtr->getName());
+
+        AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &ProceduralDungeonComponent::handleMeshModifyMode), NOWA::EventDataEditorMode::getStaticEventType());
+        AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &ProceduralDungeonComponent::handleGameObjectSelected), NOWA::EventDataGameObjectSelected::getStaticEventType());
+        AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &ProceduralDungeonComponent::handleComponentManuallyDeleted), EventDataDeleteComponent::getStaticEventType());
+
+        this->groundQuery = this->gameObjectPtr->getSceneManager()->createRayQuery(Ogre::Ray(), GameObjectController::ALL_CATEGORIES_ID);
+        this->groundQuery->setSortByDistance(true);
+        this->groundPlane = Ogre::Plane(Ogre::Vector3::UNIT_Y, 0.0f);
+
+        this->previewNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
+
+        /*if (this->loadDungeonDataFromFile() && !this->dungeonRooms.empty())
+        {
+            this->createDungeonMesh();
+        }*/
+
+        this->generateDungeon();
+
+        return true;
+    }
+
+    bool ProceduralDungeonComponent::connect(void)
+    {
+        return true;
+    }
+
+    bool ProceduralDungeonComponent::disconnect(void)
+    {
+        this->removeInputListener();
+        this->buildState = BuildState::IDLE;
+        this->destroyPreviewMesh();
+        return true;
+    }
+
+    bool ProceduralDungeonComponent::onCloned(void)
+    {
+        return true;
+    }
+    void ProceduralDungeonComponent::onAddComponent(void)
+    {
+    }
+
+    void ProceduralDungeonComponent::onRemoveComponent(void)
+    {
+        AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ProceduralDungeonComponent::handleMeshModifyMode), NOWA::EventDataEditorMode::getStaticEventType());
+        AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ProceduralDungeonComponent::handleGameObjectSelected), NOWA::EventDataGameObjectSelected::getStaticEventType());
+        AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ProceduralDungeonComponent::handleComponentManuallyDeleted), EventDataDeleteComponent::getStaticEventType());
+
+        this->removeInputListener();
+        this->destroyPreviewMesh();
+        this->destroyDungeonMesh();
+
+        if (this->groundQuery)
+        {
+            this->gameObjectPtr->getSceneManager()->destroyQuery(this->groundQuery);
+            this->groundQuery = nullptr;
+        }
+        if (this->previewNode)
+        {
+            this->gameObjectPtr->getSceneManager()->destroySceneNode(this->previewNode);
+            this->previewNode = nullptr;
+        }
+    }
+
+    void ProceduralDungeonComponent::onOtherComponentRemoved(unsigned int index)
+    {
+    }
+    void ProceduralDungeonComponent::onOtherComponentAdded(unsigned int index)
+    {
+    }
+
+    GameObjectCompPtr ProceduralDungeonComponent::clone(GameObjectPtr clonedGameObjectPtr)
+    {
+        ProceduralDungeonComponentPtr clonedCompPtr(boost::make_shared<ProceduralDungeonComponent>());
+        clonedCompPtr->setActivated(this->activated->getBool());
+        clonedCompPtr->setSeed(this->seed->getInt());
+        clonedCompPtr->setDungeonWidth(this->dungeonWidth->getReal());
+        clonedCompPtr->setDungeonDepth(this->dungeonDepth->getReal());
+        clonedCompPtr->setCellSize(this->cellSize->getReal());
+        clonedCompPtr->setMinRoomCells(this->minRoomCells->getInt());
+        clonedCompPtr->setMaxRoomCells(this->maxRoomCells->getInt());
+        clonedCompPtr->setCorridorWidthCells(this->corridorWidthCells->getInt());
+        clonedCompPtr->setWallHeight(this->wallHeight->getReal());
+        clonedCompPtr->setAddCeiling(this->addCeiling->getBool());
+        clonedCompPtr->setLoopProbability(this->loopProbability->getReal());
+        clonedCompPtr->setDungeonTheme(this->dungeonTheme->getListSelectedValue());
+        clonedCompPtr->setAdaptToGround(this->adaptToGround->getBool());
+        clonedCompPtr->setHeightOffset(this->heightOffset->getReal());
+        clonedCompPtr->setAddPillars(this->addPillars->getBool());
+        clonedCompPtr->setPillarSize(this->pillarSize->getReal());
+        clonedCompPtr->setFloorDatablock(this->floorDatablock->getString());
+        clonedCompPtr->setWallDatablock(this->wallDatablock->getString());
+        clonedCompPtr->setCeilingDatablock(this->ceilingDatablock->getString());
+        clonedCompPtr->setFloorUVTiling(this->floorUVTiling->getVector2());
+        clonedCompPtr->setWallUVTiling(this->wallUVTiling->getVector2());
+        clonedGameObjectPtr->addComponent(clonedCompPtr);
+        clonedCompPtr->setOwner(clonedGameObjectPtr);
+        GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
+        return clonedCompPtr;
+    }
+
+    void ProceduralDungeonComponent::update(Ogre::Real dt, bool notSimulating)
+    {
+    }
+
+    void ProceduralDungeonComponent::actualizeValue(Variant* attribute)
+    {
+        GameObjectComponent::actualizeValue(attribute);
+
+        const Ogre::String& name = attribute->getName();
+
+        if (AttrSeed() == name)
+        {
+            this->setSeed(attribute->getInt());
+        }
+        else if (AttrDungeonWidth() == name)
+        {
+            this->setDungeonWidth(attribute->getReal());
+        }
+        else if (AttrDungeonDepth() == name)
+        {
+            this->setDungeonDepth(attribute->getReal());
+        }
+        else if (AttrCellSize() == name)
+        {
+            this->setCellSize(attribute->getReal());
+        }
+        else if (AttrMinRoomCells() == name)
+        {
+            this->setMinRoomCells(attribute->getInt());
+        }
+        else if (AttrMaxRoomCells() == name)
+        {
+            this->setMaxRoomCells(attribute->getInt());
+        }
+        else if (AttrCorridorWidthCells() == name)
+        {
+            this->setCorridorWidthCells(attribute->getInt());
+        }
+        else if (AttrLoopProbability() == name)
+        {
+            this->setLoopProbability(attribute->getReal());
+        }
+        else if (AttrDungeonTheme() == name)
+        {
+            this->setDungeonTheme(attribute->getListSelectedValue());
+        }
+        else if (AttrAdaptToGround() == name)
+        {
+            this->setAdaptToGround(attribute->getBool());
+        }
+        else if (AttrHeightOffset() == name)
+        {
+            this->setHeightOffset(attribute->getReal());
+        }
+        else if (AttrAddPillars() == name)
+        {
+            this->setAddPillars(attribute->getBool());
+        }
+        else if (AttrPillarSize() == name)
+        {
+            this->setPillarSize(attribute->getReal());
+        }
+        else if (AttrWallHeight() == name)
+        {
+            this->setWallHeight(attribute->getReal());
+        }
+        else if (AttrAddCeiling() == name)
+        {
+            this->setAddCeiling(attribute->getBool());
+        }
+        else if (AttrFloorDatablock() == name)
+        {
+            this->setFloorDatablock(attribute->getString());
+        }
+        else if (AttrWallDatablock() == name)
+        {
+            this->setWallDatablock(attribute->getString());
+        }
+        else if (AttrCeilingDatablock() == name)
+        {
+            this->setCeilingDatablock(attribute->getString());
+        }
+        else if (AttrFloorUVTiling() == name)
+        {
+            this->setFloorUVTiling(attribute->getVector2());
+        }
+        else if (AttrWallUVTiling() == name)
+        {
+            this->setWallUVTiling(attribute->getVector2());
+        }
+    }
+
+    void ProceduralDungeonComponent::writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc)
+    {
+        GameObjectComponent::writeXML(propertiesXML, doc);
+
+        rapidxml::xml_node<>* propertyXML = nullptr;
+
+        // Activated (bool)
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralDungeonComponent::AttrActivated())));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->activated->getBool())));
+        propertiesXML->append_node(propertyXML);
+
+        // Seed (int)
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralDungeonComponent::AttrSeed())));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->seed->getInt())));
+        propertiesXML->append_node(propertyXML);
+
+        // Dungeon Width (real)
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralDungeonComponent::AttrDungeonWidth())));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->dungeonWidth->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        // Dungeon Depth (real)
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralDungeonComponent::AttrDungeonDepth())));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->dungeonDepth->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        // Cell Size
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralDungeonComponent::AttrCellSize())));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->cellSize->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        // Min Room Cells
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralDungeonComponent::AttrMinRoomCells())));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->minRoomCells->getInt())));
+        propertiesXML->append_node(propertyXML);
+
+        // Max Room Cells
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralDungeonComponent::AttrMaxRoomCells())));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->maxRoomCells->getInt())));
+        propertiesXML->append_node(propertyXML);
+
+        // Corridor Width Cells
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralDungeonComponent::AttrCorridorWidthCells())));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->corridorWidthCells->getInt())));
+        propertiesXML->append_node(propertyXML);
+
+        // Wall Height
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralDungeonComponent::AttrWallHeight())));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->wallHeight->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        // Add Ceiling (bool)
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralDungeonComponent::AttrAddCeiling())));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->addCeiling->getBool())));
+        propertiesXML->append_node(propertyXML);
+
+        // Loop Probability
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralDungeonComponent::AttrLoopProbability())));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->loopProbability->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        // Dungeon Theme (string list)
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralDungeonComponent::AttrDungeonTheme())));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->dungeonTheme->getListSelectedValue())));
+        propertiesXML->append_node(propertyXML);
+
+        // Adapt To Ground
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralDungeonComponent::AttrAdaptToGround())));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->adaptToGround->getBool())));
+        propertiesXML->append_node(propertyXML);
+
+        // Height Offset
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralDungeonComponent::AttrHeightOffset())));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->heightOffset->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        // Add Pillars
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralDungeonComponent::AttrAddPillars())));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->addPillars->getBool())));
+        propertiesXML->append_node(propertyXML);
+
+        // Pillar Size
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralDungeonComponent::AttrPillarSize())));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->pillarSize->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        // Floor Datablock
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralDungeonComponent::AttrFloorDatablock())));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->floorDatablock->getString())));
+        propertiesXML->append_node(propertyXML);
+
+        // Wall Datablock
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralDungeonComponent::AttrWallDatablock())));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->wallDatablock->getString())));
+        propertiesXML->append_node(propertyXML);
+
+        // Ceiling Datablock
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralDungeonComponent::AttrCeilingDatablock())));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->ceilingDatablock->getString())));
+        propertiesXML->append_node(propertyXML);
+
+        // Floor UV Tiling (Vector2)
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "9"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralDungeonComponent::AttrFloorUVTiling())));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->floorUVTiling->getVector2())));
+        propertiesXML->append_node(propertyXML);
+
+        // Wall UV Tiling (Vector2)
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "9"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralDungeonComponent::AttrWallUVTiling())));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->wallUVTiling->getVector2())));
+        propertiesXML->append_node(propertyXML);
+
+        this->saveDungeonDataToFile();
+    }
+
+    bool ProceduralDungeonComponent::canStaticAddComponent(GameObject* gameObject)
+    {
+        return false;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    // Input
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    bool ProceduralDungeonComponent::mousePressed(const OIS::MouseEvent& evt, OIS::MouseButtonID id)
+    {
+        if (!this->activated->getBool() || id != OIS::MB_Left)
+        {
+            return true;
+        }
+        if (MyGUI::InputManager::getInstance().getMouseFocusWidget())
+        {
+            return true;
+        }
+
+        Ogre::Real sx = 0.0f, sy = 0.0f;
+        MathHelper::getInstance()->mouseToViewPort(evt.state.X.abs, evt.state.Y.abs, sx, sy, Core::getSingletonPtr()->getOgreRenderWindow());
+
+        Ogre::Vector3 hitPos;
+        if (this->raycastGround(sx, sy, hitPos))
+        {
+            hitPos = this->snapToGridFunc(hitPos);
+            if (this->isShiftPressed)
+            {
+                this->seed->setValue(this->seed->getInt() + 1);
+            }
+
+            std::vector<unsigned char> oldData = this->getDungeonData();
+            boost::shared_ptr<NOWA::EventDataCommandTransactionBegin> beginEvt(new NOWA::EventDataCommandTransactionBegin("Place Dungeon"));
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(beginEvt);
+
+            this->generateDungeonAtPosition(hitPos);
+
+            std::vector<unsigned char> newData = this->getDungeonData();
+            // TODO: Implement
+            // boost::shared_ptr<EventDataDungeonModifyEnd> modEvt(new EventDataDungeonModifyEnd(oldData, newData, this->gameObjectPtr->getId()));
+            // NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(modEvt);
+            boost::shared_ptr<NOWA::EventDataCommandTransactionEnd> endEvt(new NOWA::EventDataCommandTransactionEnd());
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(endEvt);
+
+            this->buildState = BuildState::GENERATED;
+        }
+        return false;
+    }
+
+    bool ProceduralDungeonComponent::mouseReleased(const OIS::MouseEvent& evt, OIS::MouseButtonID id)
+    {
+        if (!this->activated->getBool())
+        {
+            return true;
+        }
+        if (id == OIS::MB_Right)
+        {
+            this->destroyPreviewMesh();
+            this->buildState = BuildState::IDLE;
+            this->removeInputListener();
+            return false;
+        }
+        return true;
+    }
+
+    bool ProceduralDungeonComponent::mouseMoved(const OIS::MouseEvent& evt)
+    {
+        if (!this->activated->getBool() || this->buildState != BuildState::PLACING)
+        {
+            return true;
+        }
+        Ogre::Real sx = 0.0f, sy = 0.0f;
+        MathHelper::getInstance()->mouseToViewPort(evt.state.X.abs, evt.state.Y.abs, sx, sy, Core::getSingletonPtr()->getOgreRenderWindow());
+        Ogre::Vector3 hitPos;
+        if (this->raycastGround(sx, sy, hitPos))
+        {
+            this->updatePreviewMesh(this->snapToGridFunc(hitPos));
+        }
+        return true;
+    }
+
+    bool ProceduralDungeonComponent::keyPressed(const OIS::KeyEvent& evt)
+    {
+        if (!this->activated->getBool())
+        {
+            return true;
+        }
+        if (evt.key == OIS::KC_LSHIFT || evt.key == OIS::KC_RSHIFT)
+        {
+            this->isShiftPressed = true;
+            return false;
+        }
+        if (evt.key == OIS::KC_LCONTROL || evt.key == OIS::KC_RCONTROL)
+        {
+            this->isCtrlPressed = true;
+            return false;
+        }
+        if (evt.key == OIS::KC_ESCAPE)
+        {
+            this->destroyPreviewMesh();
+            this->buildState = BuildState::IDLE;
+            this->removeInputListener();
+            return false;
+        }
+        return true;
+    }
+
+    bool ProceduralDungeonComponent::keyReleased(const OIS::KeyEvent& evt)
+    {
+        if (!this->activated->getBool())
+        {
+            return true;
+        }
+        if (evt.key == OIS::KC_LSHIFT || evt.key == OIS::KC_RSHIFT)
+        {
+            this->isShiftPressed = false;
+        }
+        if (evt.key == OIS::KC_LCONTROL || evt.key == OIS::KC_RCONTROL)
+        {
+            this->isCtrlPressed = false;
+        }
+        return false;
+    }
+
+    bool ProceduralDungeonComponent::executeAction(const Ogre::String& actionId, NOWA::Variant* attribute)
+    {
+        if ("ProceduralDungeonComponent.GenerateNow" == actionId)
+        {
+            std::vector<unsigned char> oldData = this->getDungeonData();
+            boost::shared_ptr<NOWA::EventDataCommandTransactionBegin> b(new NOWA::EventDataCommandTransactionBegin("Generate Dungeon"));
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(b);
+            this->generateDungeon();
+            std::vector<unsigned char> newData = this->getDungeonData();
+            // TODO: Add event
+            // boost::shared_ptr<EventDataDungeonModifyEnd> m(new EventDataDungeonModifyEnd(oldData, newData, this->gameObjectPtr->getId()));
+            // NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(m);
+            boost::shared_ptr<NOWA::EventDataCommandTransactionEnd> e(new NOWA::EventDataCommandTransactionEnd());
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(e);
+            return true;
+        }
+        if ("ProceduralDungeonComponent.ConvertToMesh" == actionId)
+        {
+            return this->convertToMeshApply();
+        }
+        return GameObjectComponent::executeAction(actionId, attribute);
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    // BSP
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    void ProceduralDungeonComponent::splitBSP(BSPNode* node, std::mt19937& rng, int depth)
+    {
+        const int MIN_REGION = this->minRoomCells->getInt() + 2;
+        const int MAX_DEPTH = 8;
+        if (depth >= MAX_DEPTH)
+        {
+            return;
+        }
+
+        bool canH = (node->rows >= MIN_REGION * 2);
+        bool canV = (node->cols >= MIN_REGION * 2);
+        if (!canH && !canV)
+        {
+            return;
+        }
+
+        bool doH;
+        if (canH && canV)
+        {
+            doH = (node->rows > node->cols) ? (std::uniform_int_distribution<int>(0, 9)(rng) < 6) : (std::uniform_int_distribution<int>(0, 9)(rng) < 4);
+        }
+        else
+        {
+            doH = canH;
+        }
+
+        node->splitHorizontal = doH;
+        node->left = std::make_unique<BSPNode>();
+        node->right = std::make_unique<BSPNode>();
+
+        if (doH)
+        {
+            int split = std::uniform_int_distribution<int>(MIN_REGION, node->rows - MIN_REGION)(rng);
+            node->left->col = node->col;
+            node->left->row = node->row;
+            node->left->cols = node->cols;
+            node->left->rows = split;
+            node->right->col = node->col;
+            node->right->row = node->row + split;
+            node->right->cols = node->cols;
+            node->right->rows = node->rows - split;
+        }
+        else
+        {
+            int split = std::uniform_int_distribution<int>(MIN_REGION, node->cols - MIN_REGION)(rng);
+            node->left->col = node->col;
+            node->left->row = node->row;
+            node->left->cols = split;
+            node->left->rows = node->rows;
+            node->right->col = node->col + split;
+            node->right->row = node->row;
+            node->right->cols = node->cols - split;
+            node->right->rows = node->rows;
+        }
+
+        this->splitBSP(node->left.get(), rng, depth + 1);
+        this->splitBSP(node->right.get(), rng, depth + 1);
+    }
+
+    void ProceduralDungeonComponent::placeRoomInLeaf(BSPNode* node, std::vector<DungeonRoom>& rooms, std::mt19937& rng)
+    {
+        const int M = 1, minRC = this->minRoomCells->getInt(), maxRC = this->maxRoomCells->getInt();
+        int avC = node->cols - 2 * M, avR = node->rows - 2 * M;
+        if (avC < minRC || avR < minRC)
+        {
+            return;
+        }
+
+        int rc = std::uniform_int_distribution<int>(minRC, maxValue(minRC, std::min(maxRC, avC)))(rng);
+        int rr = std::uniform_int_distribution<int>(minRC, maxValue(minRC, std::min(maxRC, avR)))(rng);
+        int oc = M + std::uniform_int_distribution<int>(0, avC - rc)(rng);
+        int or_ = M + std::uniform_int_distribution<int>(0, avR - rr)(rng);
+
+        DungeonRoom room;
+        room.id = static_cast<int>(rooms.size());
+        room.col = node->col + oc;
+        room.row = node->row + or_;
+        room.cols = rc;
+        room.rows = rr;
+        room.floorHeight = 0.0f;
+        node->roomId = room.id;
+        rooms.push_back(room);
+    }
+
+    void ProceduralDungeonComponent::collectLeafRooms(BSPNode* node, std::vector<DungeonRoom>& rooms, std::mt19937& rng)
+    {
+        if (!node->left && !node->right)
+        {
+            this->placeRoomInLeaf(node, rooms, rng);
+            return;
+        }
+        if (node->left)
+        {
+            this->collectLeafRooms(node->left.get(), rooms, rng);
+        }
+        if (node->right)
+        {
+            this->collectLeafRooms(node->right.get(), rooms, rng);
+        }
+    }
+
+    int ProceduralDungeonComponent::getRandomLeafRoomId(BSPNode* node, std::mt19937& rng)
+    {
+        if (!node->left && !node->right)
+        {
+            return node->roomId;
+        }
+        bool goLeft = (std::uniform_int_distribution<int>(0, 1)(rng) == 0);
+        if (!node->left)
+        {
+            goLeft = false;
+        }
+        if (!node->right)
+        {
+            goLeft = true;
+        }
+        int id = this->getRandomLeafRoomId(goLeft ? node->left.get() : node->right.get(), rng);
+        if (id < 0)
+        {
+            BSPNode* other = goLeft ? (node->right ? node->right.get() : nullptr) : (node->left ? node->left.get() : nullptr);
+            if (other)
+            {
+                id = this->getRandomLeafRoomId(other, rng);
+            }
+        }
+        return id;
+    }
+
+    void ProceduralDungeonComponent::connectBSPSubtrees(BSPNode* node, const std::vector<DungeonRoom>& rooms, std::vector<DungeonCorridor>& corridors, std::mt19937& rng)
+    {
+        if (!node->left && !node->right)
+        {
+            return;
+        }
+        if (node->left)
+        {
+            this->connectBSPSubtrees(node->left.get(), rooms, corridors, rng);
+        }
+        if (node->right)
+        {
+            this->connectBSPSubtrees(node->right.get(), rooms, corridors, rng);
+        }
+
+        int lId = node->left ? this->getRandomLeafRoomId(node->left.get(), rng) : -1;
+        int rId = node->right ? this->getRandomLeafRoomId(node->right.get(), rng) : -1;
+        if (lId < 0 || rId < 0 || lId >= (int)rooms.size() || rId >= (int)rooms.size())
+        {
+            return;
+        }
+
+        const DungeonRoom& a = rooms[lId];
+        const DungeonRoom& b = rooms[rId];
+        DungeonCorridor c;
+        c.fromRoomId = lId;
+        c.toRoomId = rId;
+        c.bendCol = b.centerCol();
+        c.bendRow = a.centerRow();
+        corridors.push_back(c);
+    }
+
+    void ProceduralDungeonComponent::addLoopCorridors(const std::vector<DungeonRoom>& rooms, std::vector<DungeonCorridor>& corridors, std::mt19937& rng)
+    {
+        const float prob = this->loopProbability->getReal();
+        if (prob <= 0.0f || rooms.size() < 2)
+        {
+            return;
+        }
+        std::set<std::pair<int, int>> connected;
+        for (const auto& c : corridors)
+        {
+            connected.insert({std::min(c.fromRoomId, c.toRoomId), maxValue(c.fromRoomId, c.toRoomId)});
+        }
+        std::uniform_real_distribution<float> d01(0.0f, 1.0f);
+        for (int i = 0; i < (int)rooms.size(); ++i)
+        {
+            for (int j = i + 1; j < (int)rooms.size(); ++j)
+            {
+                if (connected.count({i, j}))
+                {
+                    continue;
+                }
+                if (d01(rng) < prob)
+                {
+                    DungeonCorridor c;
+                    c.fromRoomId = i;
+                    c.toRoomId = j;
+                    c.bendCol = rooms[i].centerCol();
+                    c.bendRow = rooms[j].centerRow();
+                    corridors.push_back(c);
+                    connected.insert({i, j});
+                }
+            }
+        }
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    // Grid
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    void ProceduralDungeonComponent::buildGrid(const std::vector<DungeonRoom>& rooms, const std::vector<DungeonCorridor>& corridors, std::vector<std::vector<CellType>>& grid, int gridCols, int gridRows) const
+    {
+        grid.assign(gridRows, std::vector<CellType>(gridCols, CellType::EMPTY));
+        for (const auto& room : rooms)
+        {
+            for (int r = room.row; r < room.row + room.rows; ++r)
+            {
+                for (int c = room.col; c < room.col + room.cols; ++c)
+                {
+                    if (r >= 0 && r < gridRows && c >= 0 && c < gridCols)
+                    {
+                        grid[r][c] = CellType::ROOM;
+                    }
+                }
+            }
+        }
+        int hw = this->corridorWidthCells->getInt() / 2;
+        for (const auto& cor : corridors)
+        {
+            this->markCorridor(grid, cor, rooms, hw, gridCols, gridRows);
+        }
+    }
+
+    void ProceduralDungeonComponent::markCorridor(std::vector<std::vector<CellType>>& grid, const DungeonCorridor& corridor, const std::vector<DungeonRoom>& rooms, int hw, int gridCols, int gridRows) const
+    {
+        if (corridor.fromRoomId < 0 || corridor.toRoomId < 0 || corridor.fromRoomId >= (int)rooms.size() || corridor.toRoomId >= (int)rooms.size())
+        {
+            return;
+        }
+        const DungeonRoom& a = rooms[corridor.fromRoomId];
+        int ax = a.centerCol(), az = a.centerRow();
+        int bx = corridor.bendCol, bz = corridor.bendRow;
+        const DungeonRoom& b = rooms[corridor.toRoomId];
+        int ex = b.centerCol(), ez = b.centerRow();
+
+        auto mark = [&](int c, int r)
+        {
+            if (r >= 0 && r < gridRows && c >= 0 && c < gridCols && grid[r][c] == CellType::EMPTY)
+            {
+                grid[r][c] = CellType::CORRIDOR;
+            }
+        };
+        for (int c = std::min(ax, bx); c <= maxValue(ax, bx); ++c)
+        {
+            for (int r = bz - hw; r <= bz + hw; ++r)
+            {
+                mark(c, r);
+            }
+        }
+        for (int r = std::min(bz, ez); r <= maxValue(bz, ez); ++r)
+        {
+            for (int c = bx - hw; c <= bx + hw; ++c)
+            {
+                mark(c, r);
+            }
+        }
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    // Generation entry points
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    void ProceduralDungeonComponent::generateDungeon(void)
+    {
+        Ogre::Vector3 origin = this->hasDungeonOrigin ? this->dungeonOrigin : this->gameObjectPtr->getSceneNode()->getPosition();
+        this->generateDungeonAtPosition(origin);
+    }
+
+    void ProceduralDungeonComponent::generateDungeonAtPosition(const Ogre::Vector3& worldPosition)
+    {
+        Ogre::Real floorY = this->getGroundHeight(worldPosition);
+        this->dungeonOrigin = worldPosition;
+        this->dungeonOrigin.y = floorY;
+        this->hasDungeonOrigin = true;
+
+        const int seedVal = this->seed->getInt();
+        std::mt19937 rng(static_cast<uint32_t>(seedVal));
+        const Ogre::Real cellSz = maxValue(0.1f, this->cellSize->getReal());
+        const int gridCols = maxValue(4, (int)(this->dungeonWidth->getReal() / cellSz));
+        const int gridRows = maxValue(4, (int)(this->dungeonDepth->getReal() / cellSz));
+
+        BSPNode root;
+        root.col = 0;
+        root.row = 0;
+        root.cols = gridCols;
+        root.rows = gridRows;
+        this->splitBSP(&root, rng, 0);
+
+        std::vector<DungeonRoom> rooms;
+        this->collectLeafRooms(&root, rooms, rng);
+        if (rooms.empty())
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralDungeonComponent] BSP produced no rooms!");
+            return;
+        }
+
+        for (auto& room : rooms)
+        {
+            if (this->adaptToGround->getBool())
+            {
+                Ogre::Real cx = worldPosition.x + (room.centerCol() + 0.5f) * cellSz;
+                Ogre::Real cz = worldPosition.z + (room.centerRow() + 0.5f) * cellSz;
+                room.floorHeight = this->getGroundHeight({cx, worldPosition.y, cz});
+            }
+            else
+            {
+                room.floorHeight = floorY;
+            }
+        }
+
+        std::vector<DungeonCorridor> corridors;
+        this->connectBSPSubtrees(&root, rooms, corridors, rng);
+        this->addLoopCorridors(rooms, corridors, rng);
+
+        std::vector<std::vector<CellType>> grid;
+        this->buildGrid(rooms, corridors, grid, gridCols, gridRows);
+
+        this->dungeonRooms = rooms;
+        this->dungeonCorridors = corridors;
+
+        this->floorVertices.clear();
+        this->floorIndices.clear();
+        this->currentFloorVertexIndex = 0;
+        this->wallVertices.clear();
+        this->wallIndices.clear();
+        this->currentWallVertexIndex = 0;
+        this->ceilVertices.clear();
+        this->ceilIndices.clear();
+        this->currentCeilVertexIndex = 0;
+
+        const DungeonTheme theme = this->getDungeonThemeEnum();
+        const Ogre::Real wallH = this->wallHeight->getReal();
+        const Ogre::Vector2 floorUV = this->floorUVTiling->getVector2();
+        const Ogre::Vector2 wallUV = this->wallUVTiling->getVector2();
+        Ogre::Real effWallH = (theme == DungeonTheme::CAVE) ? wallH * 0.85f : (theme == DungeonTheme::CRYPT) ? wallH * 1.2f : wallH;
+
+        this->generateFloorGeometry(grid, gridCols, gridRows, cellSz, 0.0f, floorUV);
+        if (theme == DungeonTheme::SCIFI)
+        {
+            this->generateScifiFloorChannel(grid, gridCols, gridRows, cellSz, 0.0f, floorUV);
+        }
+        this->generateWallGeometry(grid, gridCols, gridRows, cellSz, 0.0f, effWallH, wallUV, theme);
+        if (this->addCeiling->getBool() || theme == DungeonTheme::SCIFI)
+        {
+            this->generateCeilingGeometry(grid, gridCols, gridRows, cellSz, 0.0f, effWallH, wallUV);
+        }
+        if (theme == DungeonTheme::CAVE && this->addCeiling->getBool())
+        {
+            this->generateStalactites(grid, gridCols, gridRows, cellSz, 0.0f, effWallH, seedVal);
+        }
+        if (this->addPillars->getBool())
+        {
+            this->generatePillarGeometry(grid, gridCols, gridRows, cellSz, 0.0f, effWallH, this->pillarSize->getReal());
+        }
+
+        if (!this->addCeiling->getBool())
+        {
+            this->generateWallTopCaps(grid, gridCols, gridRows, cellSz, 0.0f, effWallH, wallUV);
+        }
+
+        this->cachedFloorVertices = this->floorVertices;
+        this->cachedFloorIndices = this->floorIndices;
+        this->cachedNumFloorVertices = this->currentFloorVertexIndex;
+        this->cachedWallVertices = this->wallVertices;
+        this->cachedWallIndices = this->wallIndices;
+        this->cachedNumWallVertices = this->currentWallVertexIndex;
+        this->cachedCeilVertices = this->ceilVertices;
+        this->cachedCeilIndices = this->ceilIndices;
+        this->cachedNumCeilVertices = this->currentCeilVertexIndex;
+
+        this->destroyPreviewMesh();
+        this->createDungeonMesh();
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralDungeonComponent] Generated: " + Ogre::StringConverter::toString((int)rooms.size()) + " rooms, " + Ogre::StringConverter::toString((int)corridors.size()) +
+                                                                               " corridors, " + "FV=" + Ogre::StringConverter::toString(this->cachedNumFloorVertices) + " WV=" + Ogre::StringConverter::toString(this->cachedNumWallVertices) +
+                                                                               " CV=" + Ogre::StringConverter::toString(this->cachedNumCeilVertices));
+    }
+
+    void ProceduralDungeonComponent::rebuildMesh(void)
+    {
+        if (this->dungeonRooms.empty())
+        {
+            return;
+        }
+        const Ogre::Real cellSz = maxValue(0.1f, this->cellSize->getReal());
+        const int gridCols = maxValue(4, (int)(this->dungeonWidth->getReal() / cellSz));
+        const int gridRows = maxValue(4, (int)(this->dungeonDepth->getReal() / cellSz));
+        const DungeonTheme theme = this->getDungeonThemeEnum();
+        const Ogre::Real wallH = this->wallHeight->getReal();
+        Ogre::Real effWallH = (theme == DungeonTheme::CAVE) ? wallH * 0.85f : (theme == DungeonTheme::CRYPT) ? wallH * 1.2f : wallH;
+        const Ogre::Vector2 floorUV = this->floorUVTiling->getVector2();
+        const Ogre::Vector2 wallUV = this->wallUVTiling->getVector2();
+
+        std::vector<std::vector<CellType>> grid;
+        this->buildGrid(this->dungeonRooms, this->dungeonCorridors, grid, gridCols, gridRows);
+
+        this->floorVertices.clear();
+        this->floorIndices.clear();
+        this->currentFloorVertexIndex = 0;
+        this->wallVertices.clear();
+        this->wallIndices.clear();
+        this->currentWallVertexIndex = 0;
+        this->ceilVertices.clear();
+        this->ceilIndices.clear();
+        this->currentCeilVertexIndex = 0;
+
+        this->generateFloorGeometry(grid, gridCols, gridRows, cellSz, 0.0f, floorUV);
+        if (theme == DungeonTheme::SCIFI)
+        {
+            this->generateScifiFloorChannel(grid, gridCols, gridRows, cellSz, 0.0f, floorUV);
+        }
+        this->generateWallGeometry(grid, gridCols, gridRows, cellSz, 0.0f, effWallH, wallUV, theme);
+        if (this->addCeiling->getBool() || theme == DungeonTheme::SCIFI)
+        {
+            this->generateCeilingGeometry(grid, gridCols, gridRows, cellSz, 0.0f, effWallH, wallUV);
+        }
+        if (theme == DungeonTheme::CAVE && this->addCeiling->getBool())
+        {
+            this->generateStalactites(grid, gridCols, gridRows, cellSz, 0.0f, effWallH, this->seed->getInt());
+        }
+        if (this->addPillars->getBool())
+        {
+            this->generatePillarGeometry(grid, gridCols, gridRows, cellSz, 0.0f, effWallH, this->pillarSize->getReal());
+        }
+
+        this->cachedFloorVertices = this->floorVertices;
+        this->cachedFloorIndices = this->floorIndices;
+        this->cachedNumFloorVertices = this->currentFloorVertexIndex;
+        this->cachedWallVertices = this->wallVertices;
+        this->cachedWallIndices = this->wallIndices;
+        this->cachedNumWallVertices = this->currentWallVertexIndex;
+        this->cachedCeilVertices = this->ceilVertices;
+        this->cachedCeilIndices = this->ceilIndices;
+        this->cachedNumCeilVertices = this->currentCeilVertexIndex;
+        this->createDungeonMesh();
+    }
+
+    void ProceduralDungeonComponent::clearDungeon(void)
+    {
+        this->destroyDungeonMesh();
+        this->dungeonRooms.clear();
+        this->dungeonCorridors.clear();
+        this->hasDungeonOrigin = this->originPositionSet = false;
+        this->cachedNumFloorVertices = this->cachedNumWallVertices = this->cachedNumCeilVertices = 0;
+        this->cachedFloorVertices.clear();
+        this->cachedFloorIndices.clear();
+        this->cachedWallVertices.clear();
+        this->cachedWallIndices.clear();
+        this->cachedCeilVertices.clear();
+        this->cachedCeilIndices.clear();
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    // Geometry
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    void ProceduralDungeonComponent::generateFloorGeometry(const std::vector<std::vector<CellType>>& grid, int gridCols, int gridRows, Ogre::Real cellSz, Ogre::Real floorY, const Ogre::Vector2& uvTile)
+    {
+        const Ogre::Real uS = maxValue(0.001f, uvTile.x), vS = maxValue(0.001f, uvTile.y);
+        for (int row = 0; row < gridRows; ++row)
+        {
+            for (int col = 0; col < gridCols; ++col)
+            {
+                if (grid[row][col] == CellType::EMPTY)
+                {
+                    continue;
+                }
+                Ogre::Real x0 = (Ogre::Real)col * cellSz, x1 = x0 + cellSz, z0 = (Ogre::Real)row * cellSz, z1 = z0 + cellSz;
+                this->addFloorQuad({x0, floorY, z1}, {x1, floorY, z1}, {x1, floorY, z0}, {x0, floorY, z0}, x0 / uS, x1 / uS, z0 / vS, z1 / vS);
+            }
+        }
+    }
+
+    void ProceduralDungeonComponent::generateWallTopCaps(const std::vector<std::vector<CellType>>& grid, int gridCols, int gridRows, Ogre::Real cellSz, Ogre::Real floorY, Ogre::Real wallH, const Ogre::Vector2& uvTile)
+    {
+        const Ogre::Real uS = std::max(0.001f, uvTile.x);
+        const Ogre::Real vS = std::max(0.001f, uvTile.y);
+        const Ogre::Real y1 = floorY + wallH;
+
+        auto isF = [&](int r, int c)
+        {
+            return r >= 0 && r < gridRows && c >= 0 && c < gridCols && grid[r][c] != CellType::EMPTY;
+        };
+
+        for (int row = 0; row < gridRows; ++row)
+        {
+            for (int col = 0; col < gridCols; ++col)
+            {
+                if (!isF(row, col))
+                {
+                    continue;
+                }
+                if (isF(row - 1, col) && isF(row + 1, col) && isF(row, col - 1) && isF(row, col + 1))
+                {
+                    continue;
+                }
+
+                Ogre::Real x0 = (Ogre::Real)col * cellSz, x1 = x0 + cellSz;
+                Ogre::Real z0 = (Ogre::Real)row * cellSz, z1 = z0 + cellSz;
+
+                this->addWallTopCapQuad({x0, y1, z1}, {x1, y1, z1}, {x1, y1, z0}, {x0, y1, z0}, x0 / uS, x1 / uS, z0 / vS, z1 / vS);
+            }
+        }
+    }
+
+    void ProceduralDungeonComponent::generateWallGeometry(const std::vector<std::vector<CellType>>& grid, int gridCols, int gridRows, Ogre::Real cellSz, Ogre::Real floorY, Ogre::Real wallH, const Ogre::Vector2& uvTile, DungeonTheme theme)
+    {
+        const bool bev = (theme == DungeonTheme::ICE);
+        const float ba = 0.07f * cellSz;
+        const Ogre::Real uS = std::max(0.001f, uvTile.x);
+        const Ogre::Real vS = std::max(0.001f, uvTile.y);
+        const Ogre::Real capD = cellSz * 0.25f; // top cap depth, into the room
+
+        auto isF = [&](int r, int c)
+        {
+            return r >= 0 && r < gridRows && c >= 0 && c < gridCols && grid[r][c] != CellType::EMPTY;
+        };
+
+        for (int row = 0; row < gridRows; ++row)
+        {
+            for (int col = 0; col < gridCols; ++col)
+            {
+                if (!isF(row, col))
+                {
+                    continue;
+                }
+
+                Ogre::Real x0 = (Ogre::Real)col * cellSz, x1 = x0 + cellSz;
+                Ogre::Real z0 = (Ogre::Real)row * cellSz, z1 = z0 + cellSz;
+                Ogre::Real y0 = floorY, y1 = floorY + wallH;
+                Ogre::Real uW = cellSz / uS, vT = wallH / vS, uC = capD / uS;
+
+                // North (+Z)
+                if (!isF(row + 1, col))
+                {
+                    if (bev)
+                    {
+                        this->addWallQuad({x0, y0, z1}, {x1, y0, z1}, {x1 - ba, y1, z1 - ba}, {x0 + ba, y1, z1 - ba}, {0, 0, 1}, 0, uW, 0, vT);
+                    }
+                    else
+                    {
+                        this->addWallQuad({x0, y0, z1}, {x1, y0, z1}, {x1, y1, z1}, {x0, y1, z1}, {0, 0, 1}, 0, uW, 0, vT);
+                    }
+                }
+
+                // South (-Z)
+                if (!isF(row - 1, col))
+                {
+                    if (bev)
+                    {
+                        this->addWallQuad({x1, y0, z0}, {x0, y0, z0}, {x0 - ba, y1, z0 + ba}, {x1 + ba, y1, z0 + ba}, {0, 0, -1}, 0, uW, 0, vT);
+                    }
+                    else
+                    {
+                        this->addWallQuad({x1, y0, z0}, {x0, y0, z0}, {x0, y1, z0}, {x1, y1, z0}, {0, 0, -1}, 0, uW, 0, vT);
+                    }
+                }
+
+                // East (+X)
+                if (!isF(row, col + 1))
+                {
+                    if (bev)
+                    {
+                        this->addWallQuad({x1, y0, z1}, {x1, y0, z0}, {x1 - ba, y1, z0 + ba}, {x1 - ba, y1, z1 - ba}, {1, 0, 0}, 0, uW, 0, vT);
+                    }
+                    else
+                    {
+                        this->addWallQuad({x1, y0, z1}, {x1, y0, z0}, {x1, y1, z0}, {x1, y1, z1}, {1, 0, 0}, 0, uW, 0, vT);
+                    }
+                }
+
+                // West (-X)
+                if (!isF(row, col - 1))
+                {
+                    if (bev)
+                    {
+                        this->addWallQuad({x0, y0, z0}, {x0, y0, z1}, {x0 + ba, y1, z1 - ba}, {x0 + ba, y1, z0 + ba}, {-1, 0, 0}, 0, uW, 0, vT);
+                    }
+                    else
+                    {
+                        this->addWallQuad({x0, y0, z0}, {x0, y0, z1}, {x0, y1, z1}, {x0, y1, z0}, {-1, 0, 0}, 0, uW, 0, vT);
+                    }
+                }
+            }
+        }
+    }
+
+    void ProceduralDungeonComponent::generateCeilingGeometry(const std::vector<std::vector<CellType>>& grid, int gridCols, int gridRows, Ogre::Real cellSz, Ogre::Real floorY, Ogre::Real wallH, const Ogre::Vector2& uvTile)
+    {
+        const Ogre::Real uS = maxValue(0.001f, uvTile.x), vS = maxValue(0.001f, uvTile.y), y = floorY + wallH;
+        for (int row = 0; row < gridRows; ++row)
+        {
+            for (int col = 0; col < gridCols; ++col)
+            {
+                if (grid[row][col] == CellType::EMPTY)
+                {
+                    continue;
+                }
+                Ogre::Real x0 = (Ogre::Real)col * cellSz, x1 = x0 + cellSz, z0 = (Ogre::Real)row * cellSz, z1 = z0 + cellSz;
+                this->addCeilingQuad({x0, y, z0}, {x1, y, z0}, {x1, y, z1}, {x0, y, z1}, x0 / uS, x1 / uS, z0 / vS, z1 / vS);
+            }
+        }
+    }
+
+    void ProceduralDungeonComponent::generatePillarGeometry(const std::vector<std::vector<CellType>>& grid, int gridCols, int gridRows, Ogre::Real cellSz, Ogre::Real floorY, Ogre::Real wallH, Ogre::Real pillarSz)
+    {
+        if (pillarSz < 0.01f)
+        {
+            return;
+        }
+        const Ogre::Real hp = pillarSz * 0.5f, uW = pillarSz / maxValue(0.001f, this->wallUVTiling->getVector2().x), vW = wallH / maxValue(0.001f, this->wallUVTiling->getVector2().y);
+        auto isF = [&](int r, int c)
+        {
+            return r >= 0 && r < gridRows && c >= 0 && c < gridCols && grid[r][c] != CellType::EMPTY;
+        };
+
+        for (int cRow = 0; cRow <= gridRows; ++cRow)
+        {
+            for (int cCol = 0; cCol <= gridCols; ++cCol)
+            {
+                bool sw = isF(cRow - 1, cCol - 1), se = isF(cRow - 1, cCol), nw = isF(cRow, cCol - 1), ne = isF(cRow, cCol);
+                if (!((sw && !se && !nw) || (se && !sw && !ne) || (nw && !sw && !ne) || (ne && !nw && !se)))
+                {
+                    continue;
+                }
+                Ogre::Real cx = (Ogre::Real)cCol * cellSz, cz = (Ogre::Real)cRow * cellSz;
+                Ogre::Real px0 = cx - hp, px1 = cx + hp, pz0 = cz - hp, pz1 = cz + hp, py0 = floorY, py1 = floorY + wallH;
+                this->addWallQuad({px0, py0, pz1}, {px1, py0, pz1}, {px1, py1, pz1}, {px0, py1, pz1}, {0, 0, 1}, 0, uW, 0, vW);
+                this->addWallQuad({px1, py0, pz0}, {px0, py0, pz0}, {px0, py1, pz0}, {px1, py1, pz0}, {0, 0, -1}, 0, uW, 0, vW);
+                this->addWallQuad({px1, py0, pz1}, {px1, py0, pz0}, {px1, py1, pz0}, {px1, py1, pz1}, {1, 0, 0}, 0, uW, 0, vW);
+                this->addWallQuad({px0, py0, pz0}, {px0, py0, pz1}, {px0, py1, pz1}, {px0, py1, pz0}, {-1, 0, 0}, 0, uW, 0, vW);
+                this->addWallTopCapQuad({px0, py1, pz1}, {px1, py1, pz1}, {px1, py1, pz0}, {px0, py1, pz0}, 0, uW, 0, uW);
+            }
+        }
+    }
+
+    void ProceduralDungeonComponent::generateWallCaps(const std::vector<std::vector<CellType>>& grid, int gridCols, int gridRows, Ogre::Real cellSz, Ogre::Real floorY, Ogre::Real wallH, Ogre::Real capFraction)
+    {
+        const Ogre::Real capH = wallH * capFraction;
+        const Ogre::Real capOut = cellSz * 0.12f;
+        const Ogre::Real y0 = floorY + wallH;
+        const Ogre::Real y1 = y0 + capH;
+        const Ogre::Real uS = std::max(0.001f, this->wallUVTiling->getVector2().x);
+        const Ogre::Real vS = std::max(0.001f, this->wallUVTiling->getVector2().y);
+
+        auto isF = [&](int r, int c)
+        {
+            return r >= 0 && r < gridRows && c >= 0 && c < gridCols && grid[r][c] != CellType::EMPTY;
+        };
+
+        for (int row = 0; row < gridRows; ++row)
+        {
+            for (int col = 0; col < gridCols; ++col)
+            {
+                if (!isF(row, col))
+                {
+                    continue;
+                }
+
+                // Skip fully interior cells — their tops are never visible
+                if (isF(row - 1, col) && isF(row + 1, col) && isF(row, col - 1) && isF(row, col + 1))
+                {
+                    continue;
+                }
+
+                Ogre::Real x0 = (Ogre::Real)col * cellSz, x1 = x0 + cellSz;
+                Ogre::Real z0 = (Ogre::Real)row * cellSz, z1 = z0 + cellSz;
+                Ogre::Real uW = cellSz / uS, vC = capH / vS;
+
+                // ONE full-cell top slab — covers the whole cell, no corner gaps
+                this->addWallQuad({x0, y1, z1}, {x1, y1, z1}, {x1, y1, z0}, {x0, y1, z0}, {0, 1, 0}, x0 / uS, x1 / uS, z0 / vS, z1 / vS);
+
+                // Outer vertical faces — one per empty neighbour direction
+                if (!isF(row + 1, col))
+                {
+                    this->addWallQuad({x0, y0, z1}, {x1, y0, z1}, {x1, y1, z1}, {x0, y1, z1}, {0, 0, 1}, 0, uW, 0, vC);
+                }
+                if (!isF(row - 1, col))
+                {
+                    this->addWallQuad({x1, y0, z0}, {x0, y0, z0}, {x0, y1, z0}, {x1, y1, z0}, {0, 0, -1}, 0, uW, 0, vC);
+                }
+                if (!isF(row, col + 1))
+                {
+                    this->addWallQuad({x1, y0, z1}, {x1, y0, z0}, {x1, y1, z0}, {x1, y1, z1}, {1, 0, 0}, 0, uW, 0, vC);
+                }
+                if (!isF(row, col - 1))
+                {
+                    this->addWallQuad({x0, y0, z0}, {x0, y0, z1}, {x0, y1, z1}, {x0, y1, z0}, {-1, 0, 0}, 0, uW, 0, vC);
+                }
+            }
+        }
+    }
+
+    void ProceduralDungeonComponent::generateScifiFloorChannel(const std::vector<std::vector<CellType>>& grid, int gridCols, int gridRows, Ogre::Real cellSz, Ogre::Real floorY, const Ogre::Vector2& uvTile)
+    {
+        const Ogre::Real cW = cellSz * 0.08f, cD = cellSz * 0.04f;
+        const Ogre::Real uS = maxValue(0.001f, uvTile.x), vS = maxValue(0.001f, uvTile.y);
+        auto isF = [&](int r, int c)
+        {
+            return r >= 0 && r < gridRows && c >= 0 && c < gridCols && grid[r][c] != CellType::EMPTY;
+        };
+        for (int row = 0; row < gridRows; ++row)
+        {
+            for (int col = 0; col < gridCols; ++col)
+            {
+                if (!isF(row, col))
+                {
+                    continue;
+                }
+                Ogre::Real x0 = (Ogre::Real)col * cellSz, x1 = x0 + cellSz, z0 = (Ogre::Real)row * cellSz, z1 = z0 + cellSz, y = floorY;
+                if (!isF(row + 1, col))
+                {
+                    this->addFloorQuad({x0, y - cD, z1 - cW}, {x1, y - cD, z1 - cW}, {x1, y, z1 - cW}, {x0, y, z1 - cW}, x0 / uS, x1 / uS, (z1 - cW) / vS, (z1 - cW) / vS);
+                    this->addFloorQuad({x0, y, z1 - cW}, {x1, y, z1 - cW}, {x1, y - cD, z1}, {x0, y - cD, z1}, x0 / uS, x1 / uS, (z1 - cW) / vS, z1 / vS);
+                }
+                if (!isF(row - 1, col))
+                {
+                    this->addFloorQuad({x0, y - cD, z0}, {x1, y - cD, z0}, {x1, y, z0 + cW}, {x0, y, z0 + cW}, x0 / uS, x1 / uS, z0 / vS, (z0 + cW) / vS);
+                    this->addFloorQuad({x0, y, z0 + cW}, {x1, y, z0 + cW}, {x1, y - cD, z0 + cW}, {x0, y - cD, z0 + cW}, x0 / uS, x1 / uS, (z0 + cW) / vS, (z0 + cW) / vS);
+                }
+            }
+        }
+    }
+
+    void ProceduralDungeonComponent::generateIceWallBevel(const std::vector<std::vector<CellType>>&, int, int, Ogre::Real, Ogre::Real, Ogre::Real, Ogre::Real, const Ogre::Vector2&)
+    {
+    }
+
+    float ProceduralDungeonComponent::caveHeightNoise(int col, int row, int seed)
+    {
+        uint32_t x = static_cast<uint32_t>(col * 73856093 ^ row * 19349663 ^ seed * 83492791);
+        x ^= (x >> 16);
+        x *= 0x45d9f3bu;
+        x ^= (x >> 16);
+        return (float)(x & 0xFFFFu) / 32767.5f - 1.0f;
+    }
+
+    void ProceduralDungeonComponent::generateStalactites(const std::vector<std::vector<CellType>>& grid, int gridCols, int gridRows, Ogre::Real cellSz, Ogre::Real floorY, Ogre::Real wallH, int seed)
+    {
+        const Ogre::Real ceilY = floorY + wallH, minL = wallH * 0.10f, maxL = wallH * 0.35f, maxW = cellSz * 0.25f;
+        const Ogre::Real uS = maxValue(0.001f, this->wallUVTiling->getVector2().x), vS = maxValue(0.001f, this->wallUVTiling->getVector2().y);
+        for (int row = 0; row < gridRows; ++row)
+        {
+            for (int col = 0; col < gridCols; ++col)
+            {
+                if (grid[row][col] != CellType::ROOM)
+                {
+                    continue;
+                }
+                float n = caveHeightNoise(col, row, seed);
+                if (n < 0.5f)
+                {
+                    continue;
+                }
+                Ogre::Real cx = (col + 0.5f) * cellSz, cz = (row + 0.5f) * cellSz;
+                float n2 = caveHeightNoise(col + 1, row + 1, seed + 1), n3 = caveHeightNoise(col - 1, row - 1, seed + 2);
+                Ogre::Real len = minL + (n + 1.0f) * 0.5f * (maxL - minL), hw = maxW * (0.4f + (n3 + 1.0f) * 0.3f), tipY = ceilY - len, ox = n2 * cellSz * 0.15f;
+                this->addWallQuad({cx + ox - hw, ceilY, cz}, {cx + ox + hw, ceilY, cz}, {cx + ox, tipY, cz}, {cx + ox, tipY, cz}, {0, 0, 1}, 0, hw * 2 / uS, 0, len / vS);
+                this->addWallQuad({cx + ox, ceilY, cz - hw}, {cx + ox, ceilY, cz + hw}, {cx + ox, tipY, cz}, {cx + ox, tipY, cz}, {1, 0, 0}, 0, hw * 2 / uS, 0, len / vS);
+            }
+        }
+    }
+
+    void ProceduralDungeonComponent::addFloorQuad(const Ogre::Vector3& v0, const Ogre::Vector3& v1, const Ogre::Vector3& v2, const Ogre::Vector3& v3, Ogre::Real u0, Ogre::Real u1, Ogre::Real vv0, Ogre::Real vv1)
+    {
+        pushDoubleQuad(this->floorVertices, this->floorIndices, this->currentFloorVertexIndex, v0, v1, v2, v3, Ogre::Vector3::UNIT_Y, u0, u1, vv0, vv1);
+    }
+
+    void ProceduralDungeonComponent::addWallQuad(const Ogre::Vector3& v0, const Ogre::Vector3& v1, const Ogre::Vector3& v2, const Ogre::Vector3& v3, const Ogre::Vector3& normal, Ogre::Real u0, Ogre::Real u1, Ogre::Real vv0, Ogre::Real vv1)
+    {
+        pushDoubleQuad(this->wallVertices, this->wallIndices, this->currentWallVertexIndex, v0, v1, v2, v3, normal, u0, u1, vv0, vv1);
+    }
+
+    void ProceduralDungeonComponent::addCeilingQuad(const Ogre::Vector3& v0, const Ogre::Vector3& v1, const Ogre::Vector3& v2, const Ogre::Vector3& v3, Ogre::Real u0, Ogre::Real u1, Ogre::Real vv0, Ogre::Real vv1)
+    {
+        pushDoubleQuad(this->ceilVertices, this->ceilIndices, this->currentCeilVertexIndex, v0, v1, v2, v3, -Ogre::Vector3::UNIT_Y, u0, u1, vv0, vv1);
+    }
+
+    void ProceduralDungeonComponent::addWallTopCapQuad(const Ogre::Vector3& v0, const Ogre::Vector3& v1, const Ogre::Vector3& v2, const Ogre::Vector3& v3, Ogre::Real u0, Ogre::Real u1, Ogre::Real vv0, Ogre::Real vv1)
+    {
+        pushQuad(this->wallVertices, this->wallIndices, this->currentWallVertexIndex, v0, v1, v2, v3, Ogre::Vector3::UNIT_Y, u0, u1, vv0, vv1);
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    // Mesh (VAO)
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    static Ogre::VertexBufferPacked* buildVBO(Ogre::VaoManager* vm, const std::vector<float>& sv, size_t nv)
+    {
+        Ogre::VertexElement2Vec e;
+        e.push_back(Ogre::VertexElement2(Ogre::VET_FLOAT3, Ogre::VES_POSITION));
+        e.push_back(Ogre::VertexElement2(Ogre::VET_FLOAT3, Ogre::VES_NORMAL));
+        e.push_back(Ogre::VertexElement2(Ogre::VET_FLOAT4, Ogre::VES_TANGENT));
+        e.push_back(Ogre::VertexElement2(Ogre::VET_FLOAT2, Ogre::VES_TEXTURE_COORDINATES));
+        const size_t d = 12;
+        float* vd = (float*)OGRE_MALLOC_SIMD(nv * d * sizeof(float), Ogre::MEMCATEGORY_GEOMETRY);
+        for (size_t i = 0; i < nv; ++i)
+        {
+            size_t s = i * 8, dst = i * d;
+            vd[dst + 0] = sv[s + 0];
+            vd[dst + 1] = sv[s + 1];
+            vd[dst + 2] = sv[s + 2];
+            Ogre::Vector3 n(sv[s + 3], sv[s + 4], sv[s + 5]);
+            vd[dst + 3] = n.x;
+            vd[dst + 4] = n.y;
+            vd[dst + 5] = n.z;
+            Ogre::Vector3 t = (std::abs(n.y) < 0.9f) ? Ogre::Vector3::UNIT_Y.crossProduct(n) : n.crossProduct(Ogre::Vector3::UNIT_X);
+            t.normalise();
+            vd[dst + 6] = t.x;
+            vd[dst + 7] = t.y;
+            vd[dst + 8] = t.z;
+            vd[dst + 9] = 1.0f;
+            vd[dst + 10] = sv[s + 6];
+            vd[dst + 11] = sv[s + 7];
+        }
+        return vm->createVertexBuffer(e, nv, Ogre::BT_IMMUTABLE, vd, true);
+    }
+
+    static Ogre::IndexBufferPacked* buildIBO(Ogre::VaoManager* vm, const std::vector<Ogre::uint32>& si)
+    {
+        Ogre::uint32* id = (Ogre::uint32*)OGRE_MALLOC_SIMD(si.size() * sizeof(Ogre::uint32), Ogre::MEMCATEGORY_GEOMETRY);
+        memcpy(id, si.data(), si.size() * sizeof(Ogre::uint32));
+        return vm->createIndexBuffer(Ogre::IndexBufferPacked::IT_32BIT, si.size(), Ogre::BT_IMMUTABLE, id, true);
+    }
+
+    Ogre::VertexArrayObject* ProceduralDungeonComponent::createDummyVao(Ogre::VaoManager* vm)
+    {
+        Ogre::VertexElement2Vec e;
+        e.push_back(Ogre::VertexElement2(Ogre::VET_FLOAT3, Ogre::VES_POSITION));
+        e.push_back(Ogre::VertexElement2(Ogre::VET_FLOAT3, Ogre::VES_NORMAL));
+        e.push_back(Ogre::VertexElement2(Ogre::VET_FLOAT4, Ogre::VES_TANGENT));
+        e.push_back(Ogre::VertexElement2(Ogre::VET_FLOAT2, Ogre::VES_TEXTURE_COORDINATES));
+        float* vd = (float*)OGRE_MALLOC_SIMD(3 * 12 * sizeof(float), Ogre::MEMCATEGORY_GEOMETRY);
+        memset(vd, 0, 3 * 12 * sizeof(float));
+        vd[9] = 1.0f;
+        vd[9 + 12] = 1.0f;
+        vd[9 + 24] = 1.0f;
+        Ogre::VertexBufferPacked* vb = vm->createVertexBuffer(e, 3, Ogre::BT_IMMUTABLE, vd, true);
+        Ogre::uint32* id = (Ogre::uint32*)OGRE_MALLOC_SIMD(3 * sizeof(Ogre::uint32), Ogre::MEMCATEGORY_GEOMETRY);
+        id[0] = 0;
+        id[1] = 1;
+        id[2] = 2;
+        Ogre::IndexBufferPacked* ib = vm->createIndexBuffer(Ogre::IndexBufferPacked::IT_32BIT, 3, Ogre::BT_IMMUTABLE, id, true);
+        Ogre::VertexBufferPackedVec vbv;
+        vbv.push_back(vb);
+        return vm->createVertexArrayObject(vbv, ib, Ogre::OT_TRIANGLE_LIST);
+    }
+
+    void ProceduralDungeonComponent::createDungeonMesh(void)
+    {
+        if (this->cachedNumFloorVertices == 0 && this->cachedNumWallVertices == 0)
+        {
+            return;
+        }
+        auto fv = this->cachedFloorVertices, wv = this->cachedWallVertices, cv = this->cachedCeilVertices;
+        auto fi = this->cachedFloorIndices, wi = this->cachedWallIndices, ci = this->cachedCeilIndices;
+        size_t fvc = this->cachedNumFloorVertices, wvc = this->cachedNumWallVertices, cvc = this->cachedNumCeilVertices;
+        Ogre::Vector3 origin = this->dungeonOrigin;
+        this->destroyDungeonMesh();
+        GraphicsModule::RenderCommand cmd = [this, fv, fi, fvc, wv, wi, wvc, cv, ci, cvc, origin]()
+        {
+            this->createDungeonMeshInternal(fv, fi, fvc, wv, wi, wvc, cv, ci, cvc, origin);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "ProceduralDungeonComponent::createDungeonMesh");
+    }
+
+    void ProceduralDungeonComponent::createDungeonMeshInternal(const std::vector<float>& fv, const std::vector<Ogre::uint32>& fi, size_t fvc, const std::vector<float>& wv, const std::vector<Ogre::uint32>& wi, size_t wvc, const std::vector<float>& cv,
+        const std::vector<Ogre::uint32>& ci, size_t cvc, const Ogre::Vector3& origin)
+    {
+        Ogre::Root* root = Ogre::Root::getSingletonPtr();
+        Ogre::VaoManager* vm = root->getRenderSystem()->getVaoManager();
+        const Ogre::String meshName = "DungeonMesh_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
+        this->dungeonMesh = Ogre::MeshManager::getSingleton().createManual(meshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
+
+        Ogre::Vector3 minB(std::numeric_limits<float>::max()), maxB(-std::numeric_limits<float>::max());
+        auto updateB = [&](const std::vector<float>& v, size_t n)
+        {
+            for (size_t i = 0; i < n; ++i)
+            {
+                size_t o = i * 8;
+                Ogre::Vector3 p(v[o], v[o + 1], v[o + 2]);
+                minB.makeFloor(p);
+                maxB.makeCeil(p);
+            }
+        };
+
+        auto makeSub = [&](const std::vector<float>& v, const std::vector<Ogre::uint32>& idx, size_t n) -> Ogre::SubMesh*
+        {
+            Ogre::SubMesh* sm = this->dungeonMesh->createSubMesh();
+            if (n == 0 || idx.empty())
+            {
+                auto* dv = this->createDummyVao(vm);
+                sm->mVao[Ogre::VpNormal].push_back(dv);
+                sm->mVao[Ogre::VpShadow].push_back(dv);
+                return sm;
+            }
+            updateB(v, n);
+            Ogre::VertexBufferPackedVec vbv;
+            vbv.push_back(buildVBO(vm, v, n));
+            auto* vao = vm->createVertexArrayObject(vbv, buildIBO(vm, idx), Ogre::OT_TRIANGLE_LIST);
+            sm->mVao[Ogre::VpNormal].push_back(vao);
+            sm->mVao[Ogre::VpShadow].push_back(vao);
+            return sm;
+        };
+
+        makeSub(fv, fi, fvc);
+        makeSub(wv, wi, wvc);
+        makeSub(cv, ci, cvc);
+
+        if (minB.x > maxB.x)
+        {
+            minB = Ogre::Vector3(-1, -1, -1);
+            maxB = Ogre::Vector3(1, 1, 1);
+        }
+        Ogre::Aabb bounds;
+        bounds.setExtents(minB, maxB);
+        this->dungeonMesh->_setBounds(bounds, false);
+        this->dungeonMesh->_setBoundingSphereRadius(bounds.getRadius());
+
+        this->dungeonItem = this->gameObjectPtr->getSceneManager()->createItem(this->dungeonMesh, this->gameObjectPtr->isDynamic() ? Ogre::SCENE_DYNAMIC : Ogre::SCENE_STATIC);
+
+        auto applyDb = [&](int idx, const Ogre::String& name)
+        {
+            if ((int)this->dungeonItem->getNumSubItems() <= idx || name.empty())
+            {
+                return;
+            }
+            auto* db = root->getHlmsManager()->getDatablockNoDefault(name);
+            if (db)
+            {
+                this->dungeonItem->getSubItem(idx)->setDatablock(db);
+            }
+        };
+        applyDb(0, this->floorDatablock->getString());
+        applyDb(1, this->wallDatablock->getString());
+        applyDb(2, this->ceilingDatablock->getString());
+
+        if (!this->originPositionSet)
+        {
+            this->originPositionSet = true;
+            this->gameObjectPtr->getSceneNode()->setPosition(origin);
+        }
+        this->gameObjectPtr->getSceneNode()->attachObject(this->dungeonItem);
+        this->gameObjectPtr->setDoNotDestroyMovableObject(true);
+        this->gameObjectPtr->init(this->dungeonItem);
+    }
+
+    void ProceduralDungeonComponent::destroyDungeonMesh(void)
+    {
+        if (!this->dungeonItem && !this->dungeonMesh)
+        {
+            return;
+        }
+        GraphicsModule::RenderCommand cmd = [this]()
+        {
+            if (this->dungeonItem)
+            {
+                if (this->dungeonItem->getParentSceneNode())
+                {
+                    this->dungeonItem->getParentSceneNode()->detachObject(this->dungeonItem);
+                }
+                this->gameObjectPtr->getSceneManager()->destroyItem(this->dungeonItem);
+                this->dungeonItem = nullptr;
+                this->gameObjectPtr->nullMovableObject();
+            }
+            if (this->dungeonMesh)
+            {
+                Ogre::MeshManager::getSingleton().remove(this->dungeonMesh->getHandle());
+                this->dungeonMesh.reset();
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "ProceduralDungeonComponent::destroyDungeonMesh");
+    }
+
+    void ProceduralDungeonComponent::destroyPreviewMesh(void)
+    {
+        if (!this->previewItem && !this->previewMesh)
+        {
+            return;
+        }
+        GraphicsModule::RenderCommand cmd = [this]()
+        {
+            if (this->previewItem)
+            {
+                if (this->previewItem->getParentSceneNode())
+                {
+                    this->previewItem->getParentSceneNode()->detachObject(this->previewItem);
+                }
+                this->gameObjectPtr->getSceneManager()->destroyItem(this->previewItem);
+                this->previewItem = nullptr;
+            }
+            if (this->previewMesh)
+            {
+                Ogre::MeshManager::getSingleton().remove(this->previewMesh->getHandle());
+                this->previewMesh.reset();
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "ProceduralDungeonComponent::destroyPreviewMesh");
+    }
+
+    void ProceduralDungeonComponent::updatePreviewMesh(const Ogre::Vector3& position)
+    {
+        const Ogre::Real w = this->dungeonWidth->getReal(), d = this->dungeonDepth->getReal(), wH = this->wallHeight->getReal();
+        const Ogre::Real fY = this->getGroundHeight(position);
+        std::vector<float> pv;
+        std::vector<Ogre::uint32> pi;
+        Ogre::uint32 pvi = 0;
+        auto pV = [&](float x, float y, float z, float nx, float ny, float nz)
+        {
+            pv.push_back(x);
+            pv.push_back(y);
+            pv.push_back(z);
+            pv.push_back(nx);
+            pv.push_back(ny);
+            pv.push_back(nz);
+            pv.push_back(1);
+            pv.push_back(0);
+            ++pvi;
+        };
+        auto pT = [&](Ogre::uint32 a, Ogre::uint32 b, Ogre::uint32 c)
+        {
+            pi.push_back(a);
+            pi.push_back(b);
+            pi.push_back(c);
+        };
+        Ogre::uint32 b0 = pvi;
+        pV(0, fY, 0, 0, 1, 0);
+        pV(w, fY, 0, 0, 1, 0);
+        pV(w, fY, d, 0, 1, 0);
+        pV(0, fY, d, 0, 1, 0);
+        pT(b0, b0 + 1, b0 + 2);
+        pT(b0, b0 + 2, b0 + 3);
+        b0 = pvi;
+        pV(0, fY, d, 0, 0, 1);
+        pV(w, fY, d, 0, 0, 1);
+        pV(w, fY + wH, d, 0, 0, 1);
+        pV(0, fY + wH, d, 0, 0, 1);
+        pT(b0, b0 + 1, b0 + 2);
+        pT(b0, b0 + 2, b0 + 3);
+        b0 = pvi;
+        pV(w, fY, 0, 0, 0, -1);
+        pV(0, fY, 0, 0, 0, -1);
+        pV(0, fY + wH, 0, 0, 0, -1);
+        pV(w, fY + wH, 0, 0, 0, -1);
+        pT(b0, b0 + 1, b0 + 2);
+        pT(b0, b0 + 2, b0 + 3);
+        b0 = pvi;
+        pV(w, fY, d, 1, 0, 0);
+        pV(w, fY, 0, 1, 0, 0);
+        pV(w, fY + wH, 0, 1, 0, 0);
+        pV(w, fY + wH, d, 1, 0, 0);
+        pT(b0, b0 + 1, b0 + 2);
+        pT(b0, b0 + 2, b0 + 3);
+        b0 = pvi;
+        pV(0, fY, 0, -1, 0, 0);
+        pV(0, fY, d, -1, 0, 0);
+        pV(0, fY + wH, d, -1, 0, 0);
+        pV(0, fY + wH, 0, -1, 0, 0);
+        pT(b0, b0 + 1, b0 + 2);
+        pT(b0, b0 + 2, b0 + 3);
+        size_t tv = pvi;
+        Ogre::Vector3 pp = position;
+        pp.y = fY;
+        GraphicsModule::RenderCommand cmd = [this, pv, pi, tv, pp, w, d, wH]()
+        {
+            if (this->previewItem)
+            {
+                if (this->previewItem->getParentSceneNode())
+                {
+                    this->previewItem->getParentSceneNode()->detachObject(this->previewItem);
+                }
+                this->gameObjectPtr->getSceneManager()->destroyItem(this->previewItem);
+                this->previewItem = nullptr;
+            }
+            if (this->previewMesh)
+            {
+                Ogre::MeshManager::getSingleton().remove(this->previewMesh->getHandle());
+                this->previewMesh.reset();
+            }
+            Ogre::Root* root = Ogre::Root::getSingletonPtr();
+            Ogre::VaoManager* vm = root->getRenderSystem()->getVaoManager();
+            const Ogre::String mn = "DungeonPreview_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
+            this->previewMesh = Ogre::MeshManager::getSingleton().createManual(mn, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
+            Ogre::SubMesh* sm = this->previewMesh->createSubMesh();
+            Ogre::VertexBufferPackedVec vbv;
+            vbv.push_back(buildVBO(vm, pv, tv));
+            auto* vao = vm->createVertexArrayObject(vbv, buildIBO(vm, pi), Ogre::OT_TRIANGLE_LIST);
+            sm->mVao[Ogre::VpNormal].push_back(vao);
+            sm->mVao[Ogre::VpShadow].push_back(vao);
+            Ogre::Aabb bounds;
+            bounds.setExtents({0, 0, 0}, {w, wH, d});
+            this->previewMesh->_setBounds(bounds, false);
+            this->previewMesh->_setBoundingSphereRadius(bounds.getRadius());
+            this->previewItem = this->gameObjectPtr->getSceneManager()->createItem(this->previewMesh, Ogre::SCENE_DYNAMIC);
+            Ogre::String dn = this->floorDatablock->getString();
+            if (!dn.empty())
+            {
+                auto* db = root->getHlmsManager()->getDatablockNoDefault(dn);
+                if (db)
+                {
+                    this->previewItem->getSubItem(0)->setDatablock(db);
+                }
+            }
+            this->previewNode->setPosition(pp);
+            this->previewNode->attachObject(this->previewItem);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "ProceduralDungeonComponent::updatePreviewMesh");
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    // Ground
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    Ogre::Real ProceduralDungeonComponent::getGroundHeight(const Ogre::Vector3& position)
+    {
+        if (!this->adaptToGround->getBool())
+        {
+            return position.y + this->heightOffset->getReal();
+        }
+        Ogre::Vector3 ro(position.x, position.y + 1000.0f, position.z);
+        Ogre::Ray ray(ro, Ogre::Vector3::NEGATIVE_UNIT_Y);
+        this->groundQuery->setRay(ray);
+        std::vector<Ogre::MovableObject*> ex;
+        if (this->dungeonItem)
+        {
+            ex.push_back(this->dungeonItem);
+        }
+        if (this->previewItem)
+        {
+            ex.push_back(this->previewItem);
+        }
+        Ogre::Vector3 hp;
+        Ogre::MovableObject* ho = nullptr;
+        Ogre::Real hd = 0;
+        Ogre::Vector3 hn;
+        bool hit = MathHelper::getInstance()->getRaycastFromPoint(this->groundQuery, AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera(), hp, (size_t&)ho, hd, hn, &ex, false);
+        if (hit && ho)
+        {
+            return hp.y + this->heightOffset->getReal();
+        }
+        auto p = ray.intersects(this->groundPlane);
+        if (p.first && p.second > 0)
+        {
+            return (ro.y - p.second) + this->heightOffset->getReal();
+        }
+        return position.y + this->heightOffset->getReal();
+    }
+
+    bool ProceduralDungeonComponent::raycastGround(Ogre::Real screenX, Ogre::Real screenY, Ogre::Vector3& hitPos)
+    {
+        Ogre::Camera* cam = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
+        if (!cam)
+        {
+            return false;
+        }
+        const OIS::MouseState& ms = NOWA::InputDeviceCore::getSingletonPtr()->getMouse()->getMouseState();
+        std::vector<Ogre::MovableObject*> ex;
+        if (this->dungeonItem)
+        {
+            ex.push_back(this->dungeonItem);
+        }
+        if (this->previewItem)
+        {
+            ex.push_back(this->previewItem);
+        }
+        Ogre::Vector3 hp;
+        Ogre::MovableObject* ho = nullptr;
+        Ogre::Real hd = 0;
+        Ogre::Vector3 hn;
+        bool hit = MathHelper::getInstance()->getRaycastFromPoint(ms.X.abs, ms.Y.abs, cam, Core::getSingletonPtr()->getOgreRenderWindow(), this->groundQuery, hp, (size_t&)ho, hd, hn, &ex, false);
+        if (hit && ho)
+        {
+            hitPos = hp;
+            return true;
+        }
+        Ogre::Ray r = cam->getCameraToViewportRay(screenX, screenY);
+        auto p = r.intersects(this->groundPlane);
+        if (p.first && p.second > 0)
+        {
+            hitPos = r.getPoint(p.second);
+            return true;
+        }
+        return false;
+    }
+
+    Ogre::String ProceduralDungeonComponent::getDungeonDataFilePath(void) const
+    {
+        Ogre::String projectPath;
+        if (!this->gameObjectPtr->getGlobal())
+        {
+            projectPath = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName();
+        }
+        else
+        {
+            projectPath = Core::getSingletonPtr()->getCurrentProjectPath();
+        }
+
+        Ogre::String filename = "Dungeon_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()) + ".dungeondata";
+        return projectPath + "/" + filename;
+    }
+
+    bool ProceduralDungeonComponent::saveDungeonDataToFile(void)
+    {
+        if (this->dungeonRooms.empty() && this->cachedFloorVertices.empty())
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralDungeonComponent] saveDungeonDataToFile: nothing to save, deleting file.");
+            this->deleteDungeonDataFile();
+            return true;
+        }
+
+        Ogre::String filePath = this->getDungeonDataFilePath();
+
+        try
+        {
+            const size_t FPV = 8; // floats per vertex
+
+            uint32_t numRooms = static_cast<uint32_t>(this->dungeonRooms.size());
+            uint32_t numCorr = static_cast<uint32_t>(this->dungeonCorridors.size());
+            uint32_t numFV = static_cast<uint32_t>(this->cachedNumFloorVertices);
+            uint32_t numFI = static_cast<uint32_t>(this->cachedFloorIndices.size());
+            uint32_t numWV = static_cast<uint32_t>(this->cachedNumWallVertices);
+            uint32_t numWI = static_cast<uint32_t>(this->cachedWallIndices.size());
+            uint32_t numCV = static_cast<uint32_t>(this->cachedNumCeilVertices);
+            uint32_t numCI = static_cast<uint32_t>(this->cachedCeilIndices.size());
+
+            // Header: magic(4) + version(4) + origin(12) + originSet(1) + numRooms(4) + numCorr(4)
+            //         + numFV(4) + numFI(4) + numWV(4) + numWI(4) + numCV(4) + numCI(4) = 49 bytes
+            const size_t HEADER_SIZE = 49;
+            // Each room: id(4) + col(4) + row(4) + cols(4) + rows(4) + floorHeight(4) = 24 bytes
+            const size_t ROOM_SIZE = 24;
+            // Each corridor: fromId(4) + toId(4) + bendCol(4) + bendRow(4) = 16 bytes
+            const size_t CORR_SIZE = 16;
+
+            size_t totalSize =
+                HEADER_SIZE + numRooms * ROOM_SIZE + numCorr * CORR_SIZE + numFV * FPV * sizeof(float) + numFI * sizeof(uint32_t) + numWV * FPV * sizeof(float) + numWI * sizeof(uint32_t) + numCV * FPV * sizeof(float) + numCI * sizeof(uint32_t);
+
+            std::vector<unsigned char> buf(totalSize);
+            size_t off = 0;
+
+            auto write4 = [&](uint32_t v)
+            {
+                memcpy(&buf[off], &v, 4);
+                off += 4;
+            };
+            auto writeF = [&](float v)
+            {
+                memcpy(&buf[off], &v, 4);
+                off += 4;
+            };
+
+            // Header
+            write4(DUNGEONDATA_MAGIC);
+            write4(DUNGEONDATA_VERSION);
+            writeF(this->dungeonOrigin.x);
+            writeF(this->dungeonOrigin.y);
+            writeF(this->dungeonOrigin.z);
+            buf[off++] = this->originPositionSet ? 1u : 0u;
+            write4(numRooms);
+            write4(numCorr);
+            write4(numFV);
+            write4(numFI);
+            write4(numWV);
+            write4(numWI);
+            write4(numCV);
+            write4(numCI);
+
+            // Rooms
+            for (const auto& room : this->dungeonRooms)
+            {
+                write4(static_cast<uint32_t>(room.id));
+                write4(static_cast<uint32_t>(room.col));
+                write4(static_cast<uint32_t>(room.row));
+                write4(static_cast<uint32_t>(room.cols));
+                write4(static_cast<uint32_t>(room.rows));
+                writeF(room.floorHeight);
+            }
+
+            // Corridors
+            for (const auto& corr : this->dungeonCorridors)
+            {
+                write4(static_cast<uint32_t>(corr.fromRoomId));
+                write4(static_cast<uint32_t>(corr.toRoomId));
+                write4(static_cast<uint32_t>(corr.bendCol));
+                write4(static_cast<uint32_t>(corr.bendRow));
+            }
+
+            // Floor vertex/index data
+            if (numFV > 0)
+            {
+                memcpy(&buf[off], this->cachedFloorVertices.data(), numFV * FPV * sizeof(float));
+            }
+            off += numFV * FPV * sizeof(float);
+            if (numFI > 0)
+            {
+                memcpy(&buf[off], this->cachedFloorIndices.data(), numFI * sizeof(uint32_t));
+            }
+            off += numFI * sizeof(uint32_t);
+
+            // Wall vertex/index data
+            if (numWV > 0)
+            {
+                memcpy(&buf[off], this->cachedWallVertices.data(), numWV * FPV * sizeof(float));
+            }
+            off += numWV * FPV * sizeof(float);
+            if (numWI > 0)
+            {
+                memcpy(&buf[off], this->cachedWallIndices.data(), numWI * sizeof(uint32_t));
+            }
+            off += numWI * sizeof(uint32_t);
+
+            // Ceiling vertex/index data
+            if (numCV > 0)
+            {
+                memcpy(&buf[off], this->cachedCeilVertices.data(), numCV * FPV * sizeof(float));
+            }
+            off += numCV * FPV * sizeof(float);
+            if (numCI > 0)
+            {
+                memcpy(&buf[off], this->cachedCeilIndices.data(), numCI * sizeof(uint32_t));
+            }
+            off += numCI * sizeof(uint32_t);
+
+            std::ofstream file(filePath, std::ios::binary | std::ios::trunc);
+            if (!file)
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralDungeonComponent] Cannot open file for writing: " + filePath);
+                return false;
+            }
+            file.write(reinterpret_cast<const char*>(buf.data()), static_cast<std::streamsize>(totalSize));
+
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralDungeonComponent] Saved dungeon data to: " + filePath);
+            return true;
+        }
+        catch (const std::exception& e)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralDungeonComponent] Exception saving: " + Ogre::String(e.what()));
+            return false;
+        }
+    }
+
+    bool ProceduralDungeonComponent::loadDungeonDataFromFile(void)
+    {
+        Ogre::String filePath = this->getDungeonDataFilePath();
+
+        if (!std::filesystem::exists(filePath))
+        {
+            return false;
+        }
+
+        try
+        {
+            std::ifstream file(filePath, std::ios::binary | std::ios::ate);
+            if (!file)
+            {
+                return false;
+            }
+
+            std::streamsize fileSize = file.tellg();
+            file.seekg(0, std::ios::beg);
+
+            std::vector<unsigned char> buf(static_cast<size_t>(fileSize));
+            if (!file.read(reinterpret_cast<char*>(buf.data()), fileSize))
+            {
+                return false;
+            }
+
+            const size_t HEADER_SIZE = 49;
+            if (buf.size() < HEADER_SIZE)
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralDungeonComponent] loadDungeonDataFromFile: buffer too small.");
+                return false;
+            }
+
+            size_t off = 0;
+
+            auto read4 = [&]() -> uint32_t
+            {
+                uint32_t v;
+                memcpy(&v, &buf[off], 4);
+                off += 4;
+                return v;
+            };
+            auto readF = [&]() -> float
+            {
+                float v;
+                memcpy(&v, &buf[off], 4);
+                off += 4;
+                return v;
+            };
+
+            uint32_t magic = read4();
+            uint32_t version = read4();
+            if (magic != DUNGEONDATA_MAGIC || version != DUNGEONDATA_VERSION)
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralDungeonComponent] loadDungeonDataFromFile: bad magic/version.");
+                return false;
+            }
+
+            this->dungeonOrigin.x = readF();
+            this->dungeonOrigin.y = readF();
+            this->dungeonOrigin.z = readF();
+            this->originPositionSet = (buf[off++] != 0);
+            this->hasDungeonOrigin = true;
+
+            uint32_t numRooms = read4();
+            uint32_t numCorr = read4();
+            uint32_t numFV = read4();
+            uint32_t numFI = read4();
+            uint32_t numWV = read4();
+            uint32_t numWI = read4();
+            uint32_t numCV = read4();
+            uint32_t numCI = read4();
+
+            const size_t FPV = 8;
+
+            // Rooms
+            this->dungeonRooms.clear();
+            this->dungeonRooms.reserve(numRooms);
+            for (uint32_t i = 0; i < numRooms; ++i)
+            {
+                DungeonRoom room;
+                room.id = static_cast<int>(read4());
+                room.col = static_cast<int>(read4());
+                room.row = static_cast<int>(read4());
+                room.cols = static_cast<int>(read4());
+                room.rows = static_cast<int>(read4());
+                room.floorHeight = readF();
+                this->dungeonRooms.push_back(room);
+            }
+
+            // Corridors
+            this->dungeonCorridors.clear();
+            this->dungeonCorridors.reserve(numCorr);
+            for (uint32_t i = 0; i < numCorr; ++i)
+            {
+                DungeonCorridor corr;
+                corr.fromRoomId = static_cast<int>(read4());
+                corr.toRoomId = static_cast<int>(read4());
+                corr.bendCol = static_cast<int>(read4());
+                corr.bendRow = static_cast<int>(read4());
+                this->dungeonCorridors.push_back(corr);
+            }
+
+            // Floor vertices
+            this->cachedFloorVertices.resize(numFV * FPV);
+            if (numFV > 0)
+            {
+                memcpy(this->cachedFloorVertices.data(), &buf[off], numFV * FPV * sizeof(float));
+            }
+            off += numFV * FPV * sizeof(float);
+            this->cachedFloorIndices.resize(numFI);
+            if (numFI > 0)
+            {
+                memcpy(this->cachedFloorIndices.data(), &buf[off], numFI * sizeof(uint32_t));
+            }
+            off += numFI * sizeof(uint32_t);
+            this->cachedNumFloorVertices = numFV;
+
+            // Wall vertices
+            this->cachedWallVertices.resize(numWV * FPV);
+            if (numWV > 0)
+            {
+                memcpy(this->cachedWallVertices.data(), &buf[off], numWV * FPV * sizeof(float));
+            }
+            off += numWV * FPV * sizeof(float);
+            this->cachedWallIndices.resize(numWI);
+            if (numWI > 0)
+            {
+                memcpy(this->cachedWallIndices.data(), &buf[off], numWI * sizeof(uint32_t));
+            }
+            off += numWI * sizeof(uint32_t);
+            this->cachedNumWallVertices = numWV;
+
+            // Ceiling vertices
+            this->cachedCeilVertices.resize(numCV * FPV);
+            if (numCV > 0)
+            {
+                memcpy(this->cachedCeilVertices.data(), &buf[off], numCV * FPV * sizeof(float));
+            }
+            off += numCV * FPV * sizeof(float);
+            this->cachedCeilIndices.resize(numCI);
+            if (numCI > 0)
+            {
+                memcpy(this->cachedCeilIndices.data(), &buf[off], numCI * sizeof(uint32_t));
+            }
+            off += numCI * sizeof(uint32_t);
+            this->cachedNumCeilVertices = numCV;
+
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+                "[ProceduralDungeonComponent] Loaded dungeon data from: " + filePath + " (" + Ogre::StringConverter::toString(numRooms) + " rooms, " + Ogre::StringConverter::toString(numCorr) + " corridors)");
+            return true;
+        }
+        catch (const std::exception& e)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralDungeonComponent] Exception loading dungeon data: " + Ogre::String(e.what()));
+            return false;
+        }
+    }
+
+    void ProceduralDungeonComponent::deleteDungeonDataFile(void)
+    {
+        Ogre::String filePath = this->getDungeonDataFilePath();
+
+        std::filesystem::path absolutePath = std::filesystem::absolute(filePath);
+        if (!std::filesystem::exists(absolutePath))
+        {
+            return;
+        }
+
+        std::error_code ec;
+        std::filesystem::remove(absolutePath, ec);
+        if (ec)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralDungeonComponent] deleteDungeonDataFile: " + ec.message());
+        }
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    // Undo / Redo binary serialisation
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    std::vector<unsigned char> ProceduralDungeonComponent::getDungeonData(void) const
+    {
+        std::vector<unsigned char> result;
+
+        if (this->dungeonRooms.empty() && this->cachedFloorVertices.empty())
+        {
+            return result;
+        }
+
+        const size_t FPV = 8;
+
+        uint32_t numRooms = static_cast<uint32_t>(this->dungeonRooms.size());
+        uint32_t numCorr = static_cast<uint32_t>(this->dungeonCorridors.size());
+        uint32_t numFV = static_cast<uint32_t>(this->cachedNumFloorVertices);
+        uint32_t numFI = static_cast<uint32_t>(this->cachedFloorIndices.size());
+        uint32_t numWV = static_cast<uint32_t>(this->cachedNumWallVertices);
+        uint32_t numWI = static_cast<uint32_t>(this->cachedWallIndices.size());
+        uint32_t numCV = static_cast<uint32_t>(this->cachedNumCeilVertices);
+        uint32_t numCI = static_cast<uint32_t>(this->cachedCeilIndices.size());
+
+        const size_t totalSize = 49 + numRooms * 24 + numCorr * 16 + numFV * FPV * sizeof(float) + numFI * sizeof(uint32_t) + numWV * FPV * sizeof(float) + numWI * sizeof(uint32_t) + numCV * FPV * sizeof(float) + numCI * sizeof(uint32_t);
+
+        result.resize(totalSize);
+        size_t off = 0;
+
+        auto write4 = [&](uint32_t v)
+        {
+            memcpy(&result[off], &v, 4);
+            off += 4;
+        };
+        auto writeF = [&](float v)
+        {
+            memcpy(&result[off], &v, 4);
+            off += 4;
+        };
+
+        write4(DUNGEONDATA_MAGIC);
+        write4(DUNGEONDATA_VERSION);
+        writeF(this->dungeonOrigin.x);
+        writeF(this->dungeonOrigin.y);
+        writeF(this->dungeonOrigin.z);
+        result[off++] = this->originPositionSet ? 1u : 0u;
+        write4(numRooms);
+        write4(numCorr);
+        write4(numFV);
+        write4(numFI);
+        write4(numWV);
+        write4(numWI);
+        write4(numCV);
+        write4(numCI);
+
+        for (const auto& room : this->dungeonRooms)
+        {
+            write4(static_cast<uint32_t>(room.id));
+            write4(static_cast<uint32_t>(room.col));
+            write4(static_cast<uint32_t>(room.row));
+            write4(static_cast<uint32_t>(room.cols));
+            write4(static_cast<uint32_t>(room.rows));
+            writeF(room.floorHeight);
+        }
+        for (const auto& corr : this->dungeonCorridors)
+        {
+            write4(static_cast<uint32_t>(corr.fromRoomId));
+            write4(static_cast<uint32_t>(corr.toRoomId));
+            write4(static_cast<uint32_t>(corr.bendCol));
+            write4(static_cast<uint32_t>(corr.bendRow));
+        }
+
+        if (numFV > 0)
+        {
+            memcpy(&result[off], this->cachedFloorVertices.data(), numFV * FPV * sizeof(float));
+        }
+        off += numFV * FPV * sizeof(float);
+        if (numFI > 0)
+        {
+            memcpy(&result[off], this->cachedFloorIndices.data(), numFI * sizeof(uint32_t));
+        }
+        off += numFI * sizeof(uint32_t);
+
+        if (numWV > 0)
+        {
+            memcpy(&result[off], this->cachedWallVertices.data(), numWV * FPV * sizeof(float));
+        }
+        off += numWV * FPV * sizeof(float);
+        if (numWI > 0)
+        {
+            memcpy(&result[off], this->cachedWallIndices.data(), numWI * sizeof(uint32_t));
+        }
+        off += numWI * sizeof(uint32_t);
+
+        if (numCV > 0)
+        {
+            memcpy(&result[off], this->cachedCeilVertices.data(), numCV * FPV * sizeof(float));
+        }
+        off += numCV * FPV * sizeof(float);
+        if (numCI > 0)
+        {
+            memcpy(&result[off], this->cachedCeilIndices.data(), numCI * sizeof(uint32_t));
+        }
+        off += numCI * sizeof(uint32_t);
+
+        return result;
+    }
+
+    void ProceduralDungeonComponent::setDungeonData(const std::vector<unsigned char>& data)
+    {
+        this->destroyDungeonMesh();
+
+        if (data.empty())
+        {
+            this->clearDungeon();
+            return;
+        }
+
+        const size_t HEADER_SIZE = 49;
+        if (data.size() < HEADER_SIZE)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralDungeonComponent] setDungeonData: buffer too small.");
+            return;
+        }
+
+        size_t off = 0;
+        auto read4 = [&]() -> uint32_t
+        {
+            uint32_t v;
+            memcpy(&v, &data[off], 4);
+            off += 4;
+            return v;
+        };
+        auto readF = [&]() -> float
+        {
+            float v;
+            memcpy(&v, &data[off], 4);
+            off += 4;
+            return v;
+        };
+
+        uint32_t magic = read4();
+        uint32_t version = read4();
+        if (magic != DUNGEONDATA_MAGIC || version != DUNGEONDATA_VERSION)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralDungeonComponent] setDungeonData: bad magic/version.");
+            return;
+        }
+
+        this->dungeonOrigin.x = readF();
+        this->dungeonOrigin.y = readF();
+        this->dungeonOrigin.z = readF();
+        this->originPositionSet = (data[off++] != 0);
+        this->hasDungeonOrigin = true;
+
+        uint32_t numRooms = read4(), numCorr = read4();
+        uint32_t numFV = read4(), numFI = read4();
+        uint32_t numWV = read4(), numWI = read4();
+        uint32_t numCV = read4(), numCI = read4();
+
+        const size_t FPV = 8;
+
+        this->dungeonRooms.clear();
+        for (uint32_t i = 0; i < numRooms; ++i)
+        {
+            DungeonRoom r;
+            r.id = static_cast<int>(read4());
+            r.col = static_cast<int>(read4());
+            r.row = static_cast<int>(read4());
+            r.cols = static_cast<int>(read4());
+            r.rows = static_cast<int>(read4());
+            r.floorHeight = readF();
+            this->dungeonRooms.push_back(r);
+        }
+
+        this->dungeonCorridors.clear();
+        for (uint32_t i = 0; i < numCorr; ++i)
+        {
+            DungeonCorridor c;
+            c.fromRoomId = static_cast<int>(read4());
+            c.toRoomId = static_cast<int>(read4());
+            c.bendCol = static_cast<int>(read4());
+            c.bendRow = static_cast<int>(read4());
+            this->dungeonCorridors.push_back(c);
+        }
+
+        this->cachedFloorVertices.resize(numFV * FPV);
+        if (numFV > 0)
+        {
+            memcpy(this->cachedFloorVertices.data(), &data[off], numFV * FPV * sizeof(float));
+        }
+        off += numFV * FPV * sizeof(float);
+        this->cachedFloorIndices.resize(numFI);
+        if (numFI > 0)
+        {
+            memcpy(this->cachedFloorIndices.data(), &data[off], numFI * sizeof(uint32_t));
+        }
+        off += numFI * sizeof(uint32_t);
+        this->cachedNumFloorVertices = numFV;
+
+        this->cachedWallVertices.resize(numWV * FPV);
+        if (numWV > 0)
+        {
+            memcpy(this->cachedWallVertices.data(), &data[off], numWV * FPV * sizeof(float));
+        }
+        off += numWV * FPV * sizeof(float);
+        this->cachedWallIndices.resize(numWI);
+        if (numWI > 0)
+        {
+            memcpy(this->cachedWallIndices.data(), &data[off], numWI * sizeof(uint32_t));
+        }
+        off += numWI * sizeof(uint32_t);
+        this->cachedNumWallVertices = numWV;
+
+        this->cachedCeilVertices.resize(numCV * FPV);
+        if (numCV > 0)
+        {
+            memcpy(this->cachedCeilVertices.data(), &data[off], numCV * FPV * sizeof(float));
+        }
+        off += numCV * FPV * sizeof(float);
+        this->cachedCeilIndices.resize(numCI);
+        if (numCI > 0)
+        {
+            memcpy(this->cachedCeilIndices.data(), &data[off], numCI * sizeof(uint32_t));
+        }
+        off += numCI * sizeof(uint32_t);
+        this->cachedNumCeilVertices = numCV;
+
+        if (numFV > 0 || numWV > 0)
+        {
+            this->createDungeonMesh();
+        }
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    // Event handlers
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    void ProceduralDungeonComponent::handleMeshModifyMode(NOWA::EventDataPtr eventData)
+    {
+        auto castData = boost::static_pointer_cast<EventDataEditorMode>(eventData);
+        this->isEditorMeshModifyMode = (castData->getManipulationMode() == EditorManager::EDITOR_MESH_MODIFY_MODE);
+        this->updateModificationState();
+    }
+
+    void ProceduralDungeonComponent::handleGameObjectSelected(NOWA::EventDataPtr eventData)
+    {
+        auto castData = boost::static_pointer_cast<EventDataGameObjectSelected>(eventData);
+
+        if (castData->getGameObjectId() == this->gameObjectPtr->getId())
+        {
+            this->isSelected = castData->getIsSelected();
+        }
+        else if (castData->getIsSelected())
+        {
+            this->isSelected = false;
+        }
+
+        this->updateModificationState();
+    }
+
+    void ProceduralDungeonComponent::handleComponentManuallyDeleted(NOWA::EventDataPtr eventData)
+    {
+        auto castData = boost::static_pointer_cast<EventDataDeleteComponent>(eventData);
+        if (this->gameObjectPtr->getId() == castData->getGameObjectId() && this->getClassName() == castData->getComponentName())
+        {
+            this->deleteDungeonDataFile();
+        }
+    }
+
+    void ProceduralDungeonComponent::addInputListener(void)
+    {
+        const Ogre::String listenerName = ProceduralDungeonComponent::getStaticClassName() + "_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
+
+        GraphicsModule::RenderCommand cmd = [this, listenerName]()
+        {
+            if (auto* core = InputDeviceCore::getSingletonPtr())
+            {
+                core->addKeyListener(this, listenerName);
+                core->addMouseListener(this, listenerName);
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "ProceduralDungeonComponent::addInputListener");
+    }
+
+    void ProceduralDungeonComponent::removeInputListener(void)
+    {
+        const Ogre::String listenerName = ProceduralDungeonComponent::getStaticClassName() + "_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
+
+        GraphicsModule::RenderCommand cmd = [this, listenerName]()
+        {
+            if (auto* core = InputDeviceCore::getSingletonPtr())
+            {
+                core->removeKeyListener(listenerName);
+                core->removeMouseListener(listenerName);
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "ProceduralDungeonComponent::removeInputListener");
+    }
+
+    void ProceduralDungeonComponent::updateModificationState(void)
+    {
+        bool shouldBeActive = this->activated->getBool() && this->isEditorMeshModifyMode && this->isSelected;
+
+        if (shouldBeActive)
+        {
+            if (this->buildState == BuildState::IDLE)
+            {
+                this->buildState = BuildState::PLACING;
+            }
+            this->addInputListener();
+        }
+        else
+        {
+            this->removeInputListener();
+            this->destroyPreviewMesh();
+            if (this->buildState == BuildState::PLACING)
+            {
+                this->buildState = BuildState::IDLE;
+            }
+        }
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    // Helpers
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    ProceduralDungeonComponent::DungeonTheme ProceduralDungeonComponent::getDungeonThemeEnum(void) const
+    {
+        const Ogre::String& themeStr = this->dungeonTheme->getListSelectedValue();
+        if (themeStr == "Cave")
+        {
+            return DungeonTheme::CAVE;
+        }
+        if (themeStr == "SciFi")
+        {
+            return DungeonTheme::SCIFI;
+        }
+        if (themeStr == "Ice")
+        {
+            return DungeonTheme::ICE;
+        }
+        if (themeStr == "Crypt")
+        {
+            return DungeonTheme::CRYPT;
+        }
+        return DungeonTheme::DUNGEON;
+    }
+
+    Ogre::Vector3 ProceduralDungeonComponent::snapToGridFunc(const Ogre::Vector3& position)
+    {
+        const Ogre::Real cellSz = maxValue(0.1f, this->cellSize->getReal());
+        return Ogre::Vector3(Ogre::Math::Floor(position.x / cellSz + 0.5f) * cellSz, position.y, Ogre::Math::Floor(position.z / cellSz + 0.5f) * cellSz);
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    // ConvertToMesh
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    bool ProceduralDungeonComponent::convertToMeshApply(void)
+    {
+        if (!this->dungeonMesh)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralDungeonComponent] convertToMeshApply: no dungeon mesh to export.");
+            return false;
+        }
+
+        // Generate filename based on GameObject ID
+        Ogre::String meshName = "Dungeon_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()) + ".mesh";
+
+        // Ensure it has .mesh extension
+        if (!Ogre::StringUtil::endsWith(meshName, ".mesh", true))
+        {
+            meshName += ".mesh";
+        }
+
+        // Full path to Procedural folder
+        auto filePathNames = Core::getSingletonPtr()->getSectionPath("Procedural");
+
+        if (true == filePathNames.empty())
+        {
+            return false;
+        }
+        Ogre::String fullPath = filePathNames[0] + "/" + meshName;
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralDungeonComponent] Converting procedural dungeon to static mesh: " + meshName);
+
+        // Step 1: Export the mesh
+        if (!this->exportMesh(fullPath))
+        {
+            return false;
+        }
+
+        // Step 2: Capture data needed for the delayed operation
+        Ogre::String capturedMeshName = meshName;
+        GameObjectPtr capturedGameObjectPtr = this->gameObjectPtr;
+        unsigned int capturedComponentIndex = this->getIndex();
+
+        // Store current datablocks to reapply them
+        Ogre::String firstDbName = this->ceilingDatablock->getString();
+        Ogre::String secondDbName = this->floorDatablock->getString();
+        Ogre::String thirdDbName = this->wallDatablock->getString();
+
+        // Store GameObject position (important!)
+        Ogre::Vector3 currentPosition = this->gameObjectPtr->getPosition();
+        Ogre::Quaternion currentOrientation = this->gameObjectPtr->getOrientation();
+        Ogre::Vector3 currentScale = this->gameObjectPtr->getScale();
+
+        // Step 3: Schedule delayed conversion
+        // We need a small delay to ensure the mesh file is fully written and available
+        NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.5f));
+
+        auto conversionFunction = [this, capturedMeshName, capturedGameObjectPtr, capturedComponentIndex, firstDbName, secondDbName, thirdDbName, currentPosition, currentOrientation, currentScale]()
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralDungeonComponent] Loading converted mesh: " + capturedMeshName);
+
+            // Load the exported mesh
+            Ogre::MeshPtr loadedMesh;
+            try
+            {
+                loadedMesh = Ogre::MeshManager::getSingleton().load(capturedMeshName, "Procedural");
+            }
+            catch (Ogre::Exception& e)
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralDungeonComponent] Failed to load exported mesh: " + e.getFullDescription());
+                return;
+            }
+
+            if (loadedMesh.isNull())
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralDungeonComponent] Loaded mesh is null!");
+                return;
+            }
+
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralDungeonComponent] Mesh loaded successfully: " + Ogre::StringConverter::toString(loadedMesh->getNumSubMeshes()) + " submeshes");
+
+            // Create new Item from the loaded mesh on render thread
+            Ogre::Item* newItem = nullptr;
+
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, capturedGameObjectPtr, loadedMesh, firstDbName, secondDbName, thirdDbName, &newItem]()
+            {
+                newItem = capturedGameObjectPtr->getSceneManager()->createItem(loadedMesh, capturedGameObjectPtr->isDynamic() ? Ogre::SCENE_DYNAMIC : Ogre::SCENE_STATIC);
+
+                // Reapply datablocks
+                if (newItem->getNumSubItems() >= 1 && !firstDbName.empty())
+                {
+                    Ogre::HlmsDatablock* centerDb = Ogre::Root::getSingleton().getHlmsManager()->getDatablockNoDefault(firstDbName);
+                    if (nullptr != centerDb)
+                    {
+                        newItem->getSubItem(0)->setDatablock(centerDb);
+                        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralDungeonComponent] Applied center datablock: " + firstDbName);
+                    }
+                }
+
+                if (newItem->getNumSubItems() >= 2)
+                {
+                    Ogre::String dbToUse = secondDbName.empty() ? secondDbName : firstDbName;
+                    if (!dbToUse.empty())
+                    {
+                        Ogre::HlmsDatablock* edgeDb = Ogre::Root::getSingleton().getHlmsManager()->getDatablockNoDefault(dbToUse);
+                        if (nullptr != edgeDb)
+                        {
+                            newItem->getSubItem(1)->setDatablock(edgeDb);
+                            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralDungeonComponent] Applied edge datablock: " + dbToUse);
+                        }
+                    }
+                }
+
+                if (newItem->getNumSubItems() >= 3)
+                {
+                    Ogre::String dbToUse = thirdDbName.empty() ? thirdDbName : firstDbName;
+                    if (!dbToUse.empty())
+                    {
+                        Ogre::HlmsDatablock* edgeDb = Ogre::Root::getSingleton().getHlmsManager()->getDatablockNoDefault(dbToUse);
+                        if (nullptr != edgeDb)
+                        {
+                            newItem->getSubItem(2)->setDatablock(edgeDb);
+                            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralDungeonComponent] Applied edge datablock: " + dbToUse);
+                        }
+                    }
+                }
+
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralDungeonComponent] Created new Item from exported mesh");
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ProceduralDungeonComponent::convertToMesh_createItem");
+
+            if (nullptr == newItem)
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralDungeonComponent] Failed to create Item from mesh!");
+                return;
+            }
+
+            this->destroyPreviewMesh();
+            this->destroyDungeonMesh();
+
+            // Update GameObject to use the new mesh
+            // This will destroy the old procedural mesh and attach the new one
+            // Assign the new mesh to GameObject - this preserves transform automatically
+            if (false == capturedGameObjectPtr->assignMesh(newItem))
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralDungeonComponent] Failed to assign mesh to GameObject!");
+                return;
+            }
+
+            // IMPORTANT: Restore the GameObject's transform
+            // The init() might have changed it, so we restore the original position
+            capturedGameObjectPtr->getSceneNode()->setPosition(currentPosition);
+            capturedGameObjectPtr->getSceneNode()->setOrientation(currentOrientation);
+            capturedGameObjectPtr->getSceneNode()->setScale(currentScale);
+
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralDungeonComponent] GameObject transform restored: pos=" + Ogre::StringConverter::toString(currentPosition));
+
+            // Fire event that the component is being deleted
+            boost::shared_ptr<EventDataDeleteComponent> eventDataDeleteComponent(new EventDataDeleteComponent(capturedGameObjectPtr->getId(), "ProceduralDungeonComponent", capturedComponentIndex));
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataDeleteComponent);
+
+            // Delete the ProceduralDungeonComponent
+            // This must be done after the mesh is loaded and GameObject is updated
+            capturedGameObjectPtr->deleteComponentByIndex(capturedComponentIndex);
+
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralDungeonComponent] ========================================");
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralDungeonComponent] CONVERSION COMPLETE!");
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralDungeonComponent] - ProceduralDungeonComponent removed");
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralDungeonComponent] - Static mesh file: " + capturedMeshName);
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralDungeonComponent] - GameObject now uses cached mesh");
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralDungeonComponent] IMPORTANT: SAVE YOUR SCENE to persist this change!");
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralDungeonComponent] ========================================");
+        };
+
+        NOWA::ProcessPtr closureProcess(new NOWA::ClosureProcess(conversionFunction));
+        delayProcess->attachChild(closureProcess);
+        NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralDungeonComponent] Mesh export completed. Conversion scheduled in 0.5 seconds...");
+
+        boost::shared_ptr<EventDataRefreshGui> eventDataRefreshGui(new EventDataRefreshGui());
+        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshGui);
+
+        return true;
+    }
+
+    bool ProceduralDungeonComponent::exportMesh(const Ogre::String& filename)
+    {
+        if (!this->dungeonMesh)
+        {
+            return false;
+        }
+
+        bool success = false;
+        GraphicsModule::RenderCommand cmd = [this, filename, &success]()
+        {
+            try
+            {
+                Ogre::MeshSerializer serializer(Ogre::Root::getSingletonPtr()->getRenderSystem()->getVaoManager());
+                serializer.exportMesh(this->dungeonMesh.get(), filename);
+            }
+            catch (const std::exception& e)
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralDungeonComponent] exportMesh exception: " + Ogre::String(e.what()));
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "ProceduralDungeonComponent::exportMesh");
+        return success;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    // ProceduralDungeonComponent::Attribute Setters / Getters
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    void ProceduralDungeonComponent::setActivated(bool value)
+    {
+        this->activated->setValue(value);
+    }
+
+    bool ProceduralDungeonComponent::isActivated(void) const
+    {
+        return this->activated->getBool();
+    }
+
+    void ProceduralDungeonComponent::setSeed(int value)
+    {
+        this->seed->setValue(value);
+    }
+
+    int ProceduralDungeonComponent::getSeed(void) const
+    {
+        return this->seed->getInt();
+    }
+
+    void ProceduralDungeonComponent::setDungeonWidth(Ogre::Real value)
+    {
+        this->dungeonWidth->setValue(maxValue(4.0f, value));
+    }
+
+    Ogre::Real ProceduralDungeonComponent::getDungeonWidth(void) const
+    {
+        return this->dungeonWidth->getReal();
+    }
+
+    void ProceduralDungeonComponent::setDungeonDepth(Ogre::Real value)
+    {
+        this->dungeonDepth->setValue(maxValue(4.0f, value));
+    }
+
+    Ogre::Real ProceduralDungeonComponent::getDungeonDepth(void) const
+    {
+        return this->dungeonDepth->getReal();
+    }
+
+    void ProceduralDungeonComponent::setCellSize(Ogre::Real value)
+    {
+        this->cellSize->setValue(maxValue(0.25f, value));
+    }
+
+    Ogre::Real ProceduralDungeonComponent::getCellSize(void) const
+    {
+        return this->cellSize->getReal();
+    }
+
+    void ProceduralDungeonComponent::setMinRoomCells(int value)
+    {
+        this->minRoomCells->setValue(Ogre::Math::Clamp(value, 2, 20));
+    }
+
+    int ProceduralDungeonComponent::getMinRoomCells(void) const
+    {
+        return this->minRoomCells->getInt();
+    }
+
+    void ProceduralDungeonComponent::setMaxRoomCells(int value)
+    {
+        this->maxRoomCells->setValue(Ogre::Math::Clamp(value, 3, 30));
+    }
+
+    int ProceduralDungeonComponent::getMaxRoomCells(void) const
+    {
+        return this->maxRoomCells->getInt();
+    }
+
+    void ProceduralDungeonComponent::setCorridorWidthCells(int value)
+    {
+        this->corridorWidthCells->setValue(Ogre::Math::Clamp(value, 1, 6));
+    }
+
+    int ProceduralDungeonComponent::getCorridorWidthCells(void) const
+    {
+        return this->corridorWidthCells->getInt();
+    }
+
+    void ProceduralDungeonComponent::setWallHeight(Ogre::Real value)
+    {
+        this->wallHeight->setValue(maxValue(0.5f, value));
+        this->rebuildMesh();
+    }
+
+    Ogre::Real ProceduralDungeonComponent::getWallHeight(void) const
+    {
+        return this->wallHeight->getReal();
+    }
+
+    void ProceduralDungeonComponent::setAddCeiling(bool value)
+    {
+        this->addCeiling->setValue(value);
+        this->rebuildMesh();
+    }
+
+    bool ProceduralDungeonComponent::getAddCeiling(void) const
+    {
+        return this->addCeiling->getBool();
+    }
+
+    void ProceduralDungeonComponent::setLoopProbability(Ogre::Real value)
+    {
+        this->loopProbability->setValue(Ogre::Math::Clamp(value, 0.0f, 1.0f));
+    }
+
+    Ogre::Real ProceduralDungeonComponent::getLoopProbability(void) const
+    {
+        return this->loopProbability->getReal();
+    }
+
+    void ProceduralDungeonComponent::setDungeonTheme(const Ogre::String& theme)
+    {
+        this->dungeonTheme->setListSelectedValue(theme);
+        this->rebuildMesh();
+    }
+
+    Ogre::String ProceduralDungeonComponent::getDungeonTheme(void) const
+    {
+        return this->dungeonTheme->getListSelectedValue();
+    }
+
+    void ProceduralDungeonComponent::setAdaptToGround(bool value)
+    {
+        this->adaptToGround->setValue(value);
+    }
+
+    bool ProceduralDungeonComponent::getAdaptToGround(void) const
+    {
+        return this->adaptToGround->getBool();
+    }
+
+    void ProceduralDungeonComponent::setHeightOffset(Ogre::Real value)
+    {
+        this->heightOffset->setValue(value);
+    }
+
+    Ogre::Real ProceduralDungeonComponent::getHeightOffset(void) const
+    {
+        return this->heightOffset->getReal();
+    }
+
+    void ProceduralDungeonComponent::setAddPillars(bool value)
+    {
+        this->addPillars->setValue(value);
+        this->rebuildMesh();
+    }
+
+    bool ProceduralDungeonComponent::getAddPillars(void) const
+    {
+        return this->addPillars->getBool();
+    }
+
+    void ProceduralDungeonComponent::setPillarSize(Ogre::Real value)
+    {
+        this->pillarSize->setValue(Ogre::Math::Clamp(value, 0.0f, 2.0f));
+        if (!this->dungeonRooms.empty())
+        {
+            this->rebuildMesh();
+        }
+    }
+
+    Ogre::Real ProceduralDungeonComponent::getPillarSize(void) const
+    {
+        return this->pillarSize->getReal();
+    }
+
+    void ProceduralDungeonComponent::setFloorDatablock(const Ogre::String& datablock)
+    {
+        this->floorDatablock->setValue(datablock);
+
+        if (this->dungeonItem && !datablock.empty())
+        {
+            GraphicsModule::RenderCommand cmd = [this, datablock]()
+            {
+                if (!this->dungeonItem || this->dungeonItem->getNumSubItems() < 1)
+                {
+                    return;
+                }
+                Ogre::HlmsDatablock* db = Ogre::Root::getSingletonPtr()->getHlmsManager()->getDatablockNoDefault(datablock);
+                if (db)
+                {
+                    this->dungeonItem->getSubItem(0)->setDatablock(db);
+                }
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "ProceduralDungeonComponent::setFloorDatablock");
+        }
+    }
+
+    Ogre::String ProceduralDungeonComponent::getFloorDatablock(void) const
+    {
+        return this->floorDatablock->getString();
+    }
+
+    void ProceduralDungeonComponent::setWallDatablock(const Ogre::String& datablock)
+    {
+        this->wallDatablock->setValue(datablock);
+
+        if (this->dungeonItem && !datablock.empty())
+        {
+            GraphicsModule::RenderCommand cmd = [this, datablock]()
+            {
+                if (!this->dungeonItem || this->dungeonItem->getNumSubItems() < 2)
+                {
+                    return;
+                }
+                Ogre::HlmsDatablock* db = Ogre::Root::getSingletonPtr()->getHlmsManager()->getDatablockNoDefault(datablock);
+                if (db)
+                {
+                    this->dungeonItem->getSubItem(1)->setDatablock(db);
+                }
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "ProceduralDungeonComponent::setWallDatablock");
+        }
+    }
+
+    Ogre::String ProceduralDungeonComponent::getWallDatablock(void) const
+    {
+        return this->wallDatablock->getString();
+    }
+
+    void ProceduralDungeonComponent::setCeilingDatablock(const Ogre::String& datablock)
+    {
+        this->ceilingDatablock->setValue(datablock);
+
+        if (this->dungeonItem && !datablock.empty())
+        {
+            GraphicsModule::RenderCommand cmd = [this, datablock]()
+            {
+                if (!this->dungeonItem || this->dungeonItem->getNumSubItems() < 3)
+                {
+                    return;
+                }
+                Ogre::HlmsDatablock* db = Ogre::Root::getSingletonPtr()->getHlmsManager()->getDatablockNoDefault(datablock);
+                if (db)
+                {
+                    this->dungeonItem->getSubItem(2)->setDatablock(db);
+                }
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "ProceduralDungeonComponent::setCeilingDatablock");
+        }
+    }
+
+    Ogre::String ProceduralDungeonComponent::getCeilingDatablock(void) const
+    {
+        return this->ceilingDatablock->getString();
+    }
+
+    void ProceduralDungeonComponent::setFloorUVTiling(const Ogre::Vector2& tiling)
+    {
+        this->floorUVTiling->setValue(tiling);
+        this->rebuildMesh();
+    }
+
+    Ogre::Vector2 ProceduralDungeonComponent::getFloorUVTiling(void) const
+    {
+        return this->floorUVTiling->getVector2();
+    }
+
+    void ProceduralDungeonComponent::setWallUVTiling(const Ogre::Vector2& tiling)
+    {
+        this->wallUVTiling->setValue(tiling);
+        this->rebuildMesh();
+    }
+
+    Ogre::Vector2 ProceduralDungeonComponent::getWallUVTiling(void) const
+    {
+        return this->wallUVTiling->getVector2();
+    }
+
+} // namespace NOWA

@@ -9492,7 +9492,7 @@ namespace NOWA
 	{
 		bool success = JointComponent::connect();
 
-		// New sim round → restore original "activated" if we finished last time
+		// New sim round -> restore original "activated" if we finished last time
 		if (true == this->finishedOnce)
 		{
 			this->activated->setValue(this->oldActivated);

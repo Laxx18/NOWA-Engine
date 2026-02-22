@@ -4,8 +4,8 @@
 
 namespace OgreNewt
 {
-    MaterialPair::MaterialPair(World* world, const MaterialID* mat1, const MaterialID* mat2)
-        : m_world(world),
+    MaterialPair::MaterialPair(World* world, const MaterialID* mat1, const MaterialID* mat2) :
+        m_world(world),
         id0(mat1),
         id1(mat2),
         m_contactcallback(nullptr),
@@ -41,11 +41,15 @@ namespace OgreNewt
     void MaterialPair::registerWithWorld()
     {
         if (!m_world)
+        {
             return;
+        }
 
         auto* callback = static_cast<ndContactCallback*>(m_world->getNewtonWorld()->GetContactNotify());
         if (!callback)
+        {
             return;
+        }
 
         const ndUnsigned32 idA = id0->getID();
         const ndUnsigned32 idB = id1->getID();
@@ -62,7 +66,9 @@ namespace OgreNewt
         // Register or update in Newton's internal material graph.
         callback->RegisterMaterial(newMat, idA, idB);
         if (idA != idB)
+        {
             callback->RegisterMaterial(newMat, idB, idA);
+        }
     }
 
     void MaterialPair::setDefaultSoftness(Ogre::Real softness)

@@ -245,6 +245,12 @@ namespace MyGUI
 
 			// расчитываем положение соответствующее позиции
 			// плюс пол позиции
+			float div = (((int)mScrollRange - 1) * 2);
+			if (div == 0.0f)
+			{
+				div = 0.01f;
+			}
+
 			int pos = start - (int)mSkinRangeStart + (getLineSize() - getTrackSize()) / (((int)mScrollRange - 1) * 2);
 			// высчитываем ближайшее значение и обновляем
 			pos = pos * (int)(mScrollRange - 1) / (getLineSize() - getTrackSize());

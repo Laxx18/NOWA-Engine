@@ -431,7 +431,9 @@
     <ClCompile Include="src\OgreNewt_MaterialPair.cpp" />
     <ClCompile Include="src\OgreNewt_PlayerController.cpp" />
     <ClCompile Include="src\OgreNewt_PlayerControllerBody.cpp" />
+    <ClCompile Include="src\OgreNewt_RagDollBody.cpp" />
     <ClCompile Include="src\OgreNewt_RayCast.cpp" />
+    <ClCompile Include="src\OgreNewt_SpiderBody.cpp" />
     <ClCompile Include="src\OgreNewt_Stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
@@ -443,6 +445,7 @@
     <ClCompile Include="src\OgreNewt_TriggerControllerManager.cpp" />
     <ClCompile Include="src\OgreNewt_Vehicle.cpp" />
     <ClCompile Include="src\OgreNewt_VehicleNotify.cpp" />
+    <ClCompile Include="src\OgreNewt_VehicleV2.cpp" />
     <ClCompile Include="src\OgreNewt_World.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -471,13 +474,16 @@
     <ClInclude Include="inc\OgreNewt_PlayerController.h" />
     <ClInclude Include="inc\OgreNewt_PlayerControllerBody.h" />
     <ClInclude Include="inc\OgreNewt_Prerequisites.h" />
+    <ClInclude Include="inc\OgreNewt_RagDollBody.h" />
     <ClInclude Include="inc\OgreNewt_RayCast.h" />
+    <ClInclude Include="inc\OgreNewt_SpiderBody.h" />
     <ClInclude Include="inc\OgreNewt_Stdafx.h" />
     <ClInclude Include="inc\OgreNewt_Tools.h" />
     <ClInclude Include="inc\OgreNewt_TriggerBody.h" />
     <ClInclude Include="inc\OgreNewt_TriggerControllerManager.h" />
     <ClInclude Include="inc\OgreNewt_Vehicle.h" />
     <ClInclude Include="inc\OgreNewt_VehicleNotify.h" />
+    <ClInclude Include="inc\OgreNewt_VehicleV2.h" />
     <ClInclude Include="inc\OgreNewt_World.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

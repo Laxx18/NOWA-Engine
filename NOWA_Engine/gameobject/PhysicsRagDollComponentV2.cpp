@@ -212,7 +212,7 @@ namespace NOWA
     bool PhysicsRagDollComponentV2::createRagDoll(const Ogre::String& boneName)
     {
         // ALWAYS capture the current scene node transform.
-        // V2 meshes typically use non-unit scale (e.g., 0.01 for cm→m conversion).
+        // V2 meshes typically use non-unit scale (e.g., 0.01 for cm->m conversion).
         this->initialPosition = this->gameObjectPtr->getSceneNode()->getPosition();
         this->initialScale = this->gameObjectPtr->getSceneNode()->getScale();
         this->initialOrientation = this->gameObjectPtr->getSceneNode()->getOrientation();

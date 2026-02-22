@@ -1,13 +1,12 @@
 #include "OgreNewt_Stdafx.h"
 #include "OgreNewt_ConvexCast.h"
-#include "OgreNewt_World.h"
 #include "OgreNewt_Body.h"
 #include "OgreNewt_BodyNotify.h"
+#include "OgreNewt_World.h"
 
 namespace OgreNewt
 {
-    Convexcast::Convexcast()
-        : mFirstContactDistance(-1)
+    Convexcast::Convexcast() : mFirstContactDistance(-1)
     {
     }
 
@@ -15,8 +14,7 @@ namespace OgreNewt
     {
     }
 
-    void Convexcast::go(const OgreNewt::World* world, const ndShapeInstance& shape, const Ogre::Vector3& startpt,
-        const Ogre::Quaternion& orientation, const Ogre::Vector3& endpt, int /*maxcontactscount*/, int /*threadIndex*/)
+    void Convexcast::go(const OgreNewt::World* world, const ndShapeInstance& shape, const Ogre::Vector3& startpt, const Ogre::Quaternion& orientation, const Ogre::Vector3& endpt, int /*maxcontactscount*/, int /*threadIndex*/)
     {
         mContacts.clear();
         mFirstContactDistance = -1;
@@ -38,35 +36,29 @@ namespace OgreNewt
         for (ndInt32 i = 0; i < count; ++i)
         {
             const ndContactPoint& c = notify.GetContact(i);
-
-            // body0 may be null for loose-shape casts; world body is usually body1
             const ndBodyKinematic* hitKBody = c.m_body0 ? c.m_body0 : c.m_body1;
             if (!hitKBody)
             {
                 continue;
             }
-
             OgreNewt::Body* ogreBody = nullptr;
-
-            if (ndBodyNotify* const ndNotify = hitKBody->GetNotifyCallback())
+            ndSharedPtr<ndBodyNotify>& notifyPtr = const_cast<ndBodyKinematic*>(hitKBody)->GetNotifyCallback();
+            if (notifyPtr)
             {
-                if (BodyNotify* const bodyNotify = dynamic_cast<BodyNotify*>(ndNotify))
+                if (BodyNotify* const bodyNotify = dynamic_cast<BodyNotify*>(*notifyPtr))
                 {
                     ogreBody = bodyNotify->GetOgreNewtBody();
                 }
             }
-
             if (!ogreBody)
             {
                 continue;
             }
-
             ContactInfo ci;
             ci.m_body = ogreBody;
             ci.m_point = Ogre::Vector3(c.m_point.m_x, c.m_point.m_y, c.m_point.m_z);
             ci.m_normal = Ogre::Vector3(c.m_normal.m_x, c.m_normal.m_y, c.m_normal.m_z);
             ci.m_penetration = static_cast<Ogre::Real>(c.m_penetration);
-
             mContacts.push_back(ci);
         }
 
@@ -85,7 +77,9 @@ namespace OgreNewt
     {
         ConvexcastContactInfo info;
         if (idx < 0 || idx >= static_cast<int>(mContacts.size()))
+        {
             return info;
+        }
 
         const ContactInfo& ci = mContacts[idx];
 

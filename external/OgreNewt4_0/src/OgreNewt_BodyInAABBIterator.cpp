@@ -3,12 +3,9 @@
 
 namespace OgreNewt
 {
-	BodyInAABBIterator::BodyInAABBIterator(const OgreNewt::World* world)
-		: m_world(world),
-		m_callback(nullptr)
-	{
-
-	}
+    BodyInAABBIterator::BodyInAABBIterator(const OgreNewt::World* world) : m_world(world), m_callback(nullptr)
+    {
+    }
 
     void BodyInAABBIterator::go(const Ogre::AxisAlignedBox& aabb, IteratorCallback callback, void* userdata) const
     {
@@ -24,7 +21,29 @@ namespace OgreNewt
         for (int i = 0; i < count; ++i)
         {
             const ndBody* nbody = notify.m_bodyArray[i];
-            OgreNewt::Body* body = static_cast<OgreNewt::BodyNotify*>(nbody->GetNotifyCallback())->GetOgreNewtBody();
+            if (!nbody)
+            {
+                continue;
+            }
+
+            auto& notifyPtr = const_cast<ndBody*>(nbody)->GetNotifyCallback();
+            if (!notifyPtr)
+            {
+                continue;
+            }
+
+            OgreNewt::BodyNotify* bodyNotify = dynamic_cast<OgreNewt::BodyNotify*>(*notifyPtr);
+            if (!bodyNotify)
+            {
+                continue;
+            }
+
+            OgreNewt::Body* body = bodyNotify->GetOgreNewtBody();
+            if (!body)
+            {
+                continue;
+            }
+
             m_callback(body, userdata);
         }
     }

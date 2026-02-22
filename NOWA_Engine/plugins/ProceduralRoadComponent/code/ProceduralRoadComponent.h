@@ -574,6 +574,8 @@ namespace NOWA
         bool hasLoadedRoadEndpoint;
         Ogre::Vector3 loadedRoadEndpoint;    // XZ position
         Ogre::Real loadedRoadEndpointHeight; // World-space height
+
+        PhysicsArtifactComponent* physicsArtifactComponent;
     };
 
 } // namespace NOWA

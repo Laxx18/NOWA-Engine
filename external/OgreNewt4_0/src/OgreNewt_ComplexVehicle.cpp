@@ -1,16 +1,15 @@
 ﻿#include "OgreNewt_Stdafx.h"
-#include <algorithm>
 #include "OgreNewt_ComplexVehicle.h"
 #include "OgreNewt_VehicleNotify.h"
+#include <algorithm>
 
 namespace OgreNewt
 {
     // -------------------------------------------------------------------------
     // ComplexVehicleTire
     // -------------------------------------------------------------------------
-    ComplexVehicleTire::ComplexVehicleTire(OgreNewt::Body* child, OgreNewt::Body* parentBody, const Ogre::Vector3& pos,
-        const Ogre::Vector3& pin, ComplexVehicle* parentVehicle, Axle axle, Side side, Ogre::Real radius)
-        : Joint(),
+    ComplexVehicleTire::ComplexVehicleTire(OgreNewt::Body* child, OgreNewt::Body* parentBody, const Ogre::Vector3& pos, const Ogre::Vector3& pin, ComplexVehicle* parentVehicle, Axle axle, Side side, Ogre::Real radius) :
+        Joint(),
         m_complexVehicle(parentVehicle),
         m_axle(axle),
         m_side(side),
@@ -162,9 +161,9 @@ namespace OgreNewt
     // -------------------------------------------------------------------------
     // ComplexVehicle
     // -------------------------------------------------------------------------
-    ComplexVehicle::ComplexVehicle(World* world, Ogre::SceneManager* sceneManager, const Ogre::Vector3& defaultDirection,
-        const OgreNewt::CollisionPtr& col, Ogre::Real vhmass, const Ogre::Vector3& collisionPosition, const Ogre::Vector3& massOrigin, ComplexVehicleCallback* vehicleCallback)
-        : OgreNewt::Body(world, sceneManager, col, Ogre::SceneMemoryMgrTypes::SCENE_DYNAMIC, Body::NotifyKind::ComplexVehicle),
+    ComplexVehicle::ComplexVehicle(World* world, Ogre::SceneManager* sceneManager, const Ogre::Vector3& defaultDirection, const OgreNewt::CollisionPtr& col, Ogre::Real vhmass, const Ogre::Vector3& collisionPosition, const Ogre::Vector3& massOrigin,
+        ComplexVehicleCallback* vehicleCallback) :
+        OgreNewt::Body(world, sceneManager, col, Ogre::SceneMemoryMgrTypes::SCENE_DYNAMIC, Body::NotifyKind::ComplexVehicle),
         m_driveLayout(cdlRearWheelDrive),
         m_world(world),
         m_vehicleCallback(vehicleCallback),
@@ -234,8 +233,7 @@ namespace OgreNewt
         OgreNewt::Body* tireBody = tire->getTireBody();
         if (!tireBody)
         {
-            Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL,
-                "[OgreNewt::ComplexVehicle] AddTire called with tire that has no body (m_childBody == nullptr).");
+            Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[OgreNewt::ComplexVehicle] AddTire called with tire that has no body (m_childBody == nullptr).");
             return;
         }
 
@@ -245,8 +243,7 @@ namespace OgreNewt
         ensureVehicleModel();
         if (!m_vehicleModel)
         {
-            Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL,
-                "[OgreNewt::ComplexVehicle] AddTire: m_vehicleModel is null – vehicle model was not created.");
+            Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[OgreNewt::ComplexVehicle] AddTire: m_vehicleModel is null – vehicle model was not created.");
             return;
         }
 
@@ -298,8 +295,7 @@ namespace OgreNewt
         }
     }
 
-    void ComplexVehicle::buildDrivetrain(ComplexDriveLayout layout, Ogre::Real diffMass, Ogre::Real diffRadius,
-        Ogre::Real slipOmegaLockFront, Ogre::Real slipOmegaLockRear, Ogre::Real slipOmegaLockCenter)
+    void ComplexVehicle::buildDrivetrain(ComplexDriveLayout layout, Ogre::Real diffMass, Ogre::Real diffRadius, Ogre::Real slipOmegaLockFront, Ogre::Real slipOmegaLockRear, Ogre::Real slipOmegaLockCenter)
     {
         m_driveLayout = layout;
 
@@ -325,8 +321,7 @@ namespace OgreNewt
 
             if (flJoint && frJoint)
             {
-                m_frontDiff = model->AddDifferential(static_cast<ndFloat32>(diffMass), static_cast<ndFloat32>(diffRadius),
-                    flJoint, frJoint, static_cast<ndFloat32>(slipOmegaLockFront));
+                m_frontDiff = model->AddDifferential(static_cast<ndFloat32>(diffMass), static_cast<ndFloat32>(diffRadius), flJoint, frJoint, static_cast<ndFloat32>(slipOmegaLockFront));
             }
         }
 
@@ -338,8 +333,7 @@ namespace OgreNewt
 
             if (rlJoint && rrJoint)
             {
-                m_rearDiff = model->AddDifferential(static_cast<ndFloat32>(diffMass), static_cast<ndFloat32>(diffRadius),
-                    rlJoint, rrJoint, static_cast<ndFloat32>(slipOmegaLockRear));
+                m_rearDiff = model->AddDifferential(static_cast<ndFloat32>(diffMass), static_cast<ndFloat32>(diffRadius), rlJoint, rrJoint, static_cast<ndFloat32>(slipOmegaLockRear));
             }
         }
 
@@ -348,8 +342,7 @@ namespace OgreNewt
 
         if (layout == cdlAllWheelDrive && m_frontDiff && m_rearDiff)
         {
-            m_centerDiff = model->AddDifferential(static_cast<ndFloat32>(diffMass), static_cast<ndFloat32>(diffRadius),
-                m_frontDiff, m_rearDiff, static_cast<ndFloat32>(slipOmegaLockCenter));
+            m_centerDiff = model->AddDifferential(static_cast<ndFloat32>(diffMass), static_cast<ndFloat32>(diffRadius), m_frontDiff, m_rearDiff, static_cast<ndFloat32>(slipOmegaLockCenter));
         }
 
         Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[ComplexVehicle] BuildDrivetrain finished. Layout: " + Ogre::StringConverter::toString(static_cast<int>(layout)));

@@ -49,7 +49,6 @@ namespace NOWA
         // ========== Terrain Filters ==========
         Ogre::Vector2 heightRange; // (min, max) elevation in meters
         Ogre::Real maxSlope;       // Max slope angle in degrees (0-90)
-        Ogre::Vector2 slopeRange;  // (min, max) for specific slope ranges
 
         // ========== Terra Layer Filters ==========
         std::vector<int> terraLayerThresholds; // [255,200,0,0] = place on layers 1&2
@@ -87,7 +86,6 @@ namespace NOWA
             uniformScale(true),
             heightRange(Ogre::Vector2(-FLT_MAX, FLT_MAX)),
             maxSlope(90.0f),
-            slopeRange(Ogre::Vector2(0.0f, 90.0f)),
             terraLayerThresholds({255, 255, 255, 255}),
             renderDistance(0.0f),
             lodDistance(0.0f),
@@ -285,6 +283,12 @@ namespace NOWA
         static Ogre::String getStaticClassName(void)
         {
             return "ProceduralFoliageVolumeComponent";
+        }
+
+        static Ogre::String getStaticInfoText(void)
+        {
+            return "Usage: Generates a vegetation foliage with given rules. Add some rules. Best practise: Rule 0 start with trees, "
+                   "Rule 2 other trees, Rule 3, go smaller and more dens: bushes and so on. Add a PhysicsArtifactComponent and enable rule collisions for trees for collision hulls.";
         }
 
         static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObject, luabind::class_<GameObjectController>& gameObjectController);

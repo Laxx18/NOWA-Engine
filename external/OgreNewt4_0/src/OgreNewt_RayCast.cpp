@@ -6,12 +6,7 @@ namespace OgreNewt
 {
     //============================= Raycast =============================
 
-    Raycast::Raycast()
-        : mLastBody(nullptr)
-        , mBodyAdded(false)
-        , mStart(Ogre::Vector3::ZERO)
-        , mEnd(Ogre::Vector3::ZERO)
-        , mCallback(this)
+    Raycast::Raycast() : mLastBody(nullptr), mBodyAdded(false), mStart(Ogre::Vector3::ZERO), mEnd(Ogre::Vector3::ZERO), mCallback(this)
     {
     }
 
@@ -24,8 +19,7 @@ namespace OgreNewt
         return true;
     }
 
-    Raycast::RayCastCallback::RayCastCallback(Raycast* owner)
-        : mOwner(owner)
+    Raycast::RayCastCallback::RayCastCallback(Raycast* owner) : mOwner(owner)
     {
         m_param = ndFloat32(1.0f);
         // m_contact initialized by base
@@ -37,21 +31,25 @@ namespace OgreNewt
 
     ndUnsigned32 Raycast::RayCastCallback::OnRayPrecastAction(const ndBody* const body, const ndShapeInstance* const shape)
     {
-		// TODO: Take parent OnRayPrecastAction into account?
+        // TODO: Take parent OnRayPrecastAction into account?
         // ndUnsigned32 result = ndRayCastClosestHitCallback::OnRayPrecastAction(body, shape);
 
         // Map to OgreNewt::Body via notify
         ndBodyKinematic* const kBody = const_cast<ndBody*>(body)->GetAsBodyKinematic();
         if (!kBody)
-            return 0;
-
-        if (ndBodyNotify* const notify = kBody->GetNotifyCallback())
         {
-            if (BodyNotify* const bodyNotify = dynamic_cast<BodyNotify*>(notify))
+            return 0;
+        }
+
+        if (ndSharedPtr<ndBodyNotify>& notifyPtr = kBody->GetNotifyCallback())
+        {
+            if (BodyNotify* const bodyNotify = dynamic_cast<BodyNotify*>(*notifyPtr))
             {
                 Body* ogreBody = bodyNotify->GetOgreNewtBody();
                 if (!ogreBody)
+                {
                     return 0;
+                }
 
                 mOwner->mBodyAdded = false;
                 mOwner->mLastBody = ogreBody;
@@ -72,11 +70,12 @@ namespace OgreNewt
             const ndBodyKinematic* const kBody = contact.m_body0;
             if (kBody)
             {
-                if (ndBodyNotify* const notify = kBody->GetNotifyCallback())
+                ndSharedPtr<ndBodyNotify>& notifyPtr = const_cast<ndBodyKinematic*>(kBody)->GetNotifyCallback();
+                if (notifyPtr)
                 {
-                    if (BodyNotify* const bodyNotify = dynamic_cast<BodyNotify*>(notify))
+                    if (auto* ogreNotify = dynamic_cast<BodyNotify*>(*notifyPtr))
                     {
-                        mOwner->mLastBody = bodyNotify->GetOgreNewtBody();
+                        mOwner->mLastBody = ogreNotify->GetOgreNewtBody();
                     }
                 }
             }
@@ -106,11 +105,7 @@ namespace OgreNewt
 
     //========================== BasicRaycast ===========================
 
-    BasicRaycast::BasicRaycastInfo::BasicRaycastInfo()
-        : mDistance(-1.0f)
-        , mBody(nullptr)
-        , mCollisionID(-1)
-        , mNormal(Ogre::Vector3::ZERO)
+    BasicRaycast::BasicRaycastInfo::BasicRaycastInfo() : mDistance(-1.0f), mBody(nullptr), mCollisionID(-1), mNormal(Ogre::Vector3::ZERO)
     {
     }
 
@@ -174,9 +169,7 @@ namespace OgreNewt
             BasicRaycastInfo info;
             info.mBody = mLastBody;
             info.mDistance = static_cast<Ogre::Real>(mCallback.m_param); // normalized t
-            info.mNormal = Ogre::Vector3(mCallback.m_contact.m_normal.m_x,
-                mCallback.m_contact.m_normal.m_y,
-                mCallback.m_contact.m_normal.m_z);
+            info.mNormal = Ogre::Vector3(mCallback.m_contact.m_normal.m_x, mCallback.m_contact.m_normal.m_y, mCallback.m_contact.m_normal.m_z);
             info.mCollisionID = static_cast<long>(mCallback.m_contact.m_shapeId0);
             mRayList.push_back(info);
         }

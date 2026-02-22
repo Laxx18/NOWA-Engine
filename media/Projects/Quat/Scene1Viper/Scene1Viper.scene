@@ -63,7 +63,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="300"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
@@ -91,7 +91,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="300"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
@@ -170,7 +170,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="300"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
@@ -269,7 +269,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="300"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
@@ -346,7 +346,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="300"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
@@ -422,7 +422,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="300"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
@@ -462,7 +462,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="300"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
@@ -526,7 +526,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="300"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>

@@ -1,15 +1,15 @@
 #include "OgreNewt_Stdafx.h"
 #include "OgreNewt_BuoyancyBody.h"
-#include "OgreNewt_World.h"
 #include "OgreNewt_BodyNotify.h"
+#include "OgreNewt_World.h"
 
-#include "ndWorld.h"
-#include "ndBodyKinematic.h"
 #include "ndBodyDynamic.h"
+#include "ndBodyKinematic.h"
+#include "ndBodyTriggerVolume.h"
+#include "ndContact.h"
 #include "ndShapeInstance.h"
 #include "ndSharedPtr.h"
-#include "ndContact.h"
-#include "ndBodyTriggerVolume.h"
+#include "ndWorld.h"
 
 #include <cmath>
 
@@ -21,16 +21,16 @@ namespace OgreNewt
     class OgreNewtBuoyancyTriggerVolume : public ndBodyTriggerVolume
     {
     public:
-        explicit OgreNewtBuoyancyTriggerVolume(BuoyancyForceTriggerCallback* cb)
-            : ndBodyTriggerVolume()
-            , m_cb(cb)
-            , m_gravity(0.0f, -9.81f, 0.0f, 0.0f)
-            , m_viscosity(0.99f)
-            , m_plane(ndVector::m_zero)
-            , m_hasPlane(false)
-            , m_time(0.0f)
-            , m_waveAmplitude(0.0f)
-            , m_waveFrequency(0.0f)
+        explicit OgreNewtBuoyancyTriggerVolume(BuoyancyForceTriggerCallback* cb) :
+            ndBodyTriggerVolume(),
+            m_cb(cb),
+            m_gravity(0.0f, -9.81f, 0.0f, 0.0f),
+            m_viscosity(0.99f),
+            m_plane(ndVector::m_zero),
+            m_hasPlane(false),
+            m_time(0.0f),
+            m_waveAmplitude(0.0f),
+            m_waveFrequency(0.0f)
         {
             // Make sure this kinematic body has a non-zero mass matrix to keep ND happy.
             SetMassMatrix(1.0f, 1.0f, 1.0f, 1.0f);
@@ -71,12 +71,16 @@ namespace OgreNewt
         void OnTriggerEnter(ndBodyKinematic* const body, ndFloat32 timestep) override
         {
             if (!m_hasPlane)
+            {
                 calculatePlane(body);
+            }
 
             if (m_cb)
             {
                 if (Body* visitor = bodyToOgre(body))
+                {
                     m_cb->OnEnter(visitor);
+                }
             }
         }
 
@@ -87,19 +91,22 @@ namespace OgreNewt
 
             // 2) Forward "inside" event to OgreNewt callback (Lua etc.)
             if (!m_cb || !contact)
+            {
                 return;
+            }
 
             ndBodyKinematic* const self = static_cast<ndBodyKinematic*>(this);
-            ndBodyKinematic* const otherKinematic =
-                (contact->GetBody0() != self)
-                ? contact->GetBody0()->GetAsBodyKinematic()
-                : contact->GetBody1()->GetAsBodyKinematic();
+            ndBodyKinematic* const otherKinematic = (contact->GetBody0() != self) ? contact->GetBody0()->GetAsBodyKinematic() : contact->GetBody1()->GetAsBodyKinematic();
 
             if (!otherKinematic)
+            {
                 return;
+            }
 
             if (Body* visitor = bodyToOgre(otherKinematic))
+            {
                 m_cb->OnInside(visitor);
+            }
         }
 
         void OnTriggerExit(ndBodyKinematic* const body, ndFloat32 timestep) override
@@ -107,7 +114,9 @@ namespace OgreNewt
             if (m_cb)
             {
                 if (Body* visitor = bodyToOgre(body))
+                {
                     m_cb->OnExit(visitor);
+                }
             }
         }
 
@@ -115,12 +124,17 @@ namespace OgreNewt
         static Body* bodyToOgre(ndBodyKinematic* const body)
         {
             if (!body)
-                return nullptr;
-
-            if (ndBodyNotify* notify = body->GetNotifyCallback())
             {
-                if (auto* ogreNotify = dynamic_cast<BodyNotify*>(notify))
+                return nullptr;
+            }
+
+            ndSharedPtr<ndBodyNotify>& notifyPtr = body->GetNotifyCallback();
+            if (notifyPtr)
+            {
+                if (auto* ogreNotify = dynamic_cast<BodyNotify*>(*notifyPtr))
+                {
                     return ogreNotify->GetOgreNewtBody();
+                }
             }
             return nullptr;
         }
@@ -158,41 +172,51 @@ namespace OgreNewt
         void applyBuoyancy(const ndContact* const contact, ndFloat32 timestep)
         {
             if (!contact)
+            {
                 return;
+            }
 
             ndBodyKinematic* const self = static_cast<ndBodyKinematic*>(this);
-            ndBodyKinematic* const kinBody =
-                (contact->GetBody0() != self)
-                ? contact->GetBody0()->GetAsBodyKinematic()
-                : contact->GetBody1()->GetAsBodyKinematic();
+            ndBodyKinematic* const kinBody = (contact->GetBody0() != self) ? contact->GetBody0()->GetAsBodyKinematic() : contact->GetBody1()->GetAsBodyKinematic();
 
             if (!kinBody)
+            {
                 return;
+            }
 
             ndBodyDynamic* const body = kinBody->GetAsBodyDynamic();
             if (!body)
+            {
                 return;
+            }
 
             if (!m_hasPlane)
+            {
                 calculatePlane(kinBody);
+            }
 
             if (!m_hasPlane || body->GetInvMass() == 0.0f)
+            {
                 return;
+            }
 
             ndVector mass(body->GetMassMatrix());
             const ndFloat32 bodyMass = mass.m_w;
             if (bodyMass <= 0.0f)
+            {
                 return;
+            }
 
             ndMatrix matrix(body->GetMatrix());
             ndShapeInstance& collision = body->GetCollisionShape();
 
             ndVector centerOfPressure(ndVector::m_zero);
-            ndFloat32 volume =
-                collision.CalculateBuoyancyCenterOfPresure(centerOfPressure, matrix, m_plane);
+            ndFloat32 volume = collision.CalculateBuoyancyCenterOfPresure(centerOfPressure, matrix, m_plane);
 
             if (volume <= 0.0f)
+            {
                 return;
+            }
 
             ndVector cog(body->GetCentreOfMass());
             centerOfPressure -= matrix.TransformVector(cog);
@@ -203,7 +227,9 @@ namespace OgreNewt
 
             ndFloat32 density = material.m_userParam[0].m_floatData;
             if (density <= 0.0f)
+            {
                 density = 0.7f; // "light-ish" default
+            }
 
             const ndFloat32 shapeVolume = collision.GetVolume();
             const ndFloat32 displacedVolume = density * shapeVolume;
@@ -213,7 +239,9 @@ namespace OgreNewt
             // Buoyant force is opposite to gravity.
             ndVector gravity = m_gravity;
             if (gravity.DotProduct(gravity).GetScalar() == 0.0f)
+            {
                 return;
+            }
 
             ndVector force = gravity.Scale(-displacedMass);
             ndVector torque = centerOfPressure.CrossProduct(force);
@@ -255,12 +283,12 @@ namespace OgreNewt
             }
         }
 
-        BuoyancyForceTriggerCallback* m_cb;  // not owned
+        BuoyancyForceTriggerCallback* m_cb; // not owned
 
-        ndVector  m_gravity;
+        ndVector m_gravity;
         ndFloat32 m_viscosity;
-        ndPlane   m_plane;
-        bool      m_hasPlane;
+        ndPlane m_plane;
+        bool m_hasPlane;
 
         ndFloat32 m_time;
         ndFloat32 m_waveAmplitude;
@@ -270,22 +298,22 @@ namespace OgreNewt
     // ============================================================
     // BuoyancyForceTriggerCallback (event layer only)
     // ============================================================
-    BuoyancyForceTriggerCallback::BuoyancyForceTriggerCallback(
-        Ogre::Real waterToSolidVolumeRatio,
-        Ogre::Real viscosity)
-        : m_waterToSolidVolumeRatio(waterToSolidVolumeRatio)
-        , m_viscosity(viscosity)
+    BuoyancyForceTriggerCallback::BuoyancyForceTriggerCallback(Ogre::Real waterToSolidVolumeRatio, Ogre::Real viscosity) : m_waterToSolidVolumeRatio(waterToSolidVolumeRatio), m_viscosity(viscosity)
     {
     }
 
     void BuoyancyForceTriggerCallback::OnEnter(const Body* visitor)
     {
         if (!visitor)
+        {
             return;
+        }
 
         ndShapeInstance* shape = visitor->getNewtonCollision();
         if (!shape)
+        {
             return;
+        }
 
         ndShapeMaterial mat(shape->GetMaterial());
 
@@ -333,21 +361,17 @@ namespace OgreNewt
     // ============================================================
     // BuoyancyBody implementation
     // ============================================================
-    BuoyancyBody::BuoyancyBody(
-        World* world,
-        Ogre::SceneManager* sceneManager,
-        const CollisionPtr& col,
-        BuoyancyForceTriggerCallback* buoyancyForceTriggerCallback)
-        : Body(world, sceneManager, Ogre::SceneMemoryMgrTypes::SCENE_DYNAMIC)
-        , m_fluidPlane(Ogre::Plane(Ogre::Vector3::UNIT_Y, 0.0f))
-        , m_waterToSolidVolumeRatio(1.0f)
-        , m_viscosity(0.99f)
-        , m_gravity(Ogre::Vector3(0.0f, -9.81f, 0.0f))
-        , m_useRaycastPlane(false)
-        , m_waveAmplitude(0.0f)
-        , m_waveFrequency(0.0f)
-        , m_triggerBody(nullptr)
-        , m_buoyancyForceTriggerCallback(buoyancyForceTriggerCallback)
+    BuoyancyBody::BuoyancyBody(World* world, Ogre::SceneManager* sceneManager, const CollisionPtr& col, BuoyancyForceTriggerCallback* buoyancyForceTriggerCallback) :
+        Body(world, sceneManager, Ogre::SceneMemoryMgrTypes::SCENE_DYNAMIC),
+        m_fluidPlane(Ogre::Plane(Ogre::Vector3::UNIT_Y, 0.0f)),
+        m_waterToSolidVolumeRatio(1.0f),
+        m_viscosity(0.99f),
+        m_gravity(Ogre::Vector3(0.0f, -9.81f, 0.0f)),
+        m_useRaycastPlane(false),
+        m_waveAmplitude(0.0f),
+        m_waveFrequency(0.0f),
+        m_triggerBody(nullptr),
+        m_buoyancyForceTriggerCallback(buoyancyForceTriggerCallback)
     {
         reCreateTrigger(col);
     }
@@ -365,16 +389,18 @@ namespace OgreNewt
     void BuoyancyBody::reCreateTrigger(const CollisionPtr& col)
     {
         if (!col || !m_world)
+        {
             return;
+        }
 
         ndShapeInstance* srcInst = col->getShapeInstance();
         if (!srcInst && !col->getNewtonCollision())
+        {
             return;
+        }
 
         // Build shape instance copy on caller thread (safe)
-        ndShapeInstance shapeCopy = srcInst
-            ? ndShapeInstance(*srcInst)
-            : ndShapeInstance(col->getNewtonCollision());
+        ndShapeInstance shapeCopy = srcInst ? ndShapeInstance(*srcInst) : ndShapeInstance(col->getNewtonCollision());
 
         // Allocate trigger on caller thread
         auto* newTrigger = new OgreNewtBuoyancyTriggerVolume(m_buoyancyForceTriggerCallback);
@@ -388,7 +414,9 @@ namespace OgreNewt
         const Ogre::Plane fluidPlane = m_fluidPlane;
 
         if (!m_bodyNotify)
+        {
             m_bodyNotify = new BodyNotify(this);
+        }
 
         // Cache old body (if recreating)
         ndBodyKinematic* oldBody = m_body;
@@ -396,17 +424,7 @@ namespace OgreNewt
 
         // World mutations must be on world thread / safe point
         m_world->enqueuePhysicsAndWait(
-            [this,
-            newTrigger,
-            oldBody,
-            oldTrigger,
-            shapeCopy,
-            gravity,
-            viscosity,
-            waveAmplitude,
-            waveFrequency,
-            useRaycastPlane,
-            fluidPlane](World& w) mutable
+            [this, newTrigger, oldBody, oldTrigger, shapeCopy, gravity, viscosity, waveAmplitude, waveFrequency, useRaycastPlane, fluidPlane](World& w) mutable
             {
                 // Remove old trigger/body if present
                 if (oldBody)
@@ -419,11 +437,7 @@ namespace OgreNewt
                 }
 
                 // Configure new trigger (ND mutations)
-                newTrigger->SetGravity(ndVector(
-                    (ndFloat32)gravity.x,
-                    (ndFloat32)gravity.y,
-                    (ndFloat32)gravity.z,
-                    0.0f));
+                newTrigger->SetGravity(ndVector((ndFloat32)gravity.x, (ndFloat32)gravity.y, (ndFloat32)gravity.z, 0.0f));
 
                 newTrigger->SetViscosity((ndFloat32)viscosity);
                 newTrigger->SetWaveAmplitude((ndFloat32)waveAmplitude);
@@ -431,10 +445,7 @@ namespace OgreNewt
 
                 if (!useRaycastPlane)
                 {
-                    ndVector n((ndFloat32)fluidPlane.normal.x,
-                        (ndFloat32)fluidPlane.normal.y,
-                        (ndFloat32)fluidPlane.normal.z,
-                        0.0f);
+                    ndVector n((ndFloat32)fluidPlane.normal.x, (ndFloat32)fluidPlane.normal.y, (ndFloat32)fluidPlane.normal.z, 0.0f);
 
                     ndFloat32 d = (ndFloat32)fluidPlane.d;
                     ndPlane plane(n, d);
@@ -489,7 +500,7 @@ namespace OgreNewt
     void BuoyancyBody::setFluidPlane(const Ogre::Plane& fluidPlane)
     {
         m_fluidPlane = fluidPlane;
-        m_useRaycastPlane = false;   // explicit plane: turn off raycast mode
+        m_useRaycastPlane = false; // explicit plane: turn off raycast mode
 
         if (auto* trigger = static_cast<OgreNewtBuoyancyTriggerVolume*>(m_triggerBody))
         {
@@ -510,7 +521,9 @@ namespace OgreNewt
         m_waterToSolidVolumeRatio = waterToSolidVolumeRatio;
 
         if (m_buoyancyForceTriggerCallback)
+        {
             m_buoyancyForceTriggerCallback->setWaterToSolidVolumeRatio(waterToSolidVolumeRatio);
+        }
     }
 
     Ogre::Real BuoyancyBody::getWaterToSolidVolumeRatio() const
@@ -523,10 +536,14 @@ namespace OgreNewt
         m_viscosity = viscosity;
 
         if (m_buoyancyForceTriggerCallback)
+        {
             m_buoyancyForceTriggerCallback->setViscosity(viscosity);
+        }
 
         if (auto* trigger = static_cast<OgreNewtBuoyancyTriggerVolume*>(m_triggerBody))
+        {
             trigger->SetViscosity((ndFloat32)viscosity);
+        }
     }
 
     Ogre::Real BuoyancyBody::getViscosity() const
@@ -540,11 +557,7 @@ namespace OgreNewt
 
         if (auto* trigger = static_cast<OgreNewtBuoyancyTriggerVolume*>(m_triggerBody))
         {
-            trigger->SetGravity(ndVector(
-                (ndFloat32)gravity.x,
-                (ndFloat32)gravity.y,
-                (ndFloat32)gravity.z,
-                0.0f));
+            trigger->SetGravity(ndVector((ndFloat32)gravity.x, (ndFloat32)gravity.y, (ndFloat32)gravity.z, 0.0f));
         }
     }
 
@@ -591,7 +604,9 @@ namespace OgreNewt
     void BuoyancyBody::update(Ogre::Real dt)
     {
         if (m_buoyancyForceTriggerCallback)
+        {
             m_buoyancyForceTriggerCallback->update(dt);
+        }
     }
 
 } // namespace OgreNewt

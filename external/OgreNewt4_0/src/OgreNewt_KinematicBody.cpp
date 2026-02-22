@@ -1,17 +1,17 @@
 #include "OgreNewt_Stdafx.h"
 #include "OgreNewt_KinematicBody.h"
-#include "OgreNewt_World.h"
 #include "OgreNewt_Collision.h"
 #include "OgreNewt_Tools.h"
+#include "OgreNewt_World.h"
 
 using namespace OgreNewt;
 
-KinematicBody::KinematicBody(World* world, Ogre::SceneManager* sceneManager, const OgreNewt::CollisionPtr& col, Ogre::SceneMemoryMgrTypes memoryType)
-    : Body(world, sceneManager, memoryType)
-    , m_kinematicContactCallback(nullptr)
+KinematicBody::KinematicBody(World* world, Ogre::SceneManager* sceneManager, const OgreNewt::CollisionPtr& col, Ogre::SceneMemoryMgrTypes memoryType) : Body(world, sceneManager, memoryType), m_kinematicContactCallback(nullptr)
 {
     if (!m_world)
+    {
         return;
+    }
 
     // Create initial matrix from cached transform
     ndMatrix matrix;
@@ -22,19 +22,19 @@ KinematicBody::KinematicBody(World* world, Ogre::SceneManager* sceneManager, con
     m_body->SetMatrix(matrix);
 
     // Build shape instance (caller thread is fine)
-    ndShapeInstance shapeInst =
-        col->getShapeInstance()
-        ? ndShapeInstance(*col->getShapeInstance())
-        : ndShapeInstance(col->getNewtonCollision());
+    ndShapeInstance shapeInst = col->getShapeInstance() ? ndShapeInstance(*col->getShapeInstance()) : ndShapeInstance(col->getNewtonCollision());
 
     m_body->SetCollisionShape(shapeInst);
 
     // Ensure notify exists (matches your other constructors)
     if (!m_bodyNotify)
+    {
         m_bodyNotify = new BodyNotify(this);
+    }
 
     // World mutations must be queued
-    m_world->enqueuePhysicsAndWait([this](World& w)
+    m_world->enqueuePhysicsAndWait(
+        [this](World& w)
         {
             m_body->SetNotifyCallback(m_bodyNotify);
             w.addBody(m_body);
@@ -53,7 +53,9 @@ KinematicBody::~KinematicBody()
 void KinematicBody::integrateVelocity(Ogre::Real dt)
 {
     if (!m_body)
+    {
         return;
+    }
 
     // Integrate kinematic body velocity
     m_body->IntegrateVelocity(dt);
@@ -75,11 +77,19 @@ void KinematicBody::integrateVelocity(Ogre::Real dt)
 
                 if (other)
                 {
-                    // Retrieve wrapper class
-                    Body* const otherWrapper = dynamic_cast<Body*>(other->GetNotifyCallback());
+                    auto& notifyPtr = other->GetNotifyCallback();
+                    if (!notifyPtr)
+                    {
+                        continue;
+                    }
 
-                    if (otherWrapper)
-                        m_kinematicContactCallback(otherWrapper);
+                    if (auto* ogreNotify = dynamic_cast<OgreNewt::BodyNotify*>(*notifyPtr))
+                    {
+                        if (Body* const otherWrapper = ogreNotify->GetOgreNewtBody())
+                        {
+                            m_kinematicContactCallback(otherWrapper);
+                        }
+                    }
                 }
             }
         }
