@@ -84,8 +84,8 @@ namespace
     }
 
     // Emit 8 vertices (4 front + 4 back with negated normal) and 12 indices (2 tris each side)
-    void pushDoubleQuad(std::vector<float>& verts, std::vector<Ogre::uint32>& indices, Ogre::uint32& idx, const Ogre::Vector3& v0, const Ogre::Vector3& v1, const Ogre::Vector3& v2, const Ogre::Vector3& v3, const Ogre::Vector3& normal,
-        Ogre::Real u0, Ogre::Real u1, Ogre::Real vv0, Ogre::Real vv1)
+    void pushDoubleQuad(std::vector<float>& verts, std::vector<Ogre::uint32>& indices, Ogre::uint32& idx, const Ogre::Vector3& v0, const Ogre::Vector3& v1, const Ogre::Vector3& v2, const Ogre::Vector3& v3, const Ogre::Vector3& normal, Ogre::Real u0,
+        Ogre::Real u1, Ogre::Real vv0, Ogre::Real vv1)
     {
         Ogre::uint32 base = idx;
         const Ogre::Vector3 nBack = -normal;
@@ -141,6 +141,7 @@ namespace NOWA
         maxRoomCells(new Variant(ProceduralDungeonComponent::AttrMaxRoomCells(), 8, this->attributes)),
         corridorWidthCells(new Variant(ProceduralDungeonComponent::AttrCorridorWidthCells(), 2, this->attributes)),
         wallHeight(new Variant(ProceduralDungeonComponent::AttrWallHeight(), 3.0f, this->attributes)),
+        jitter(new Variant(ProceduralDungeonComponent::AttrJitter(), 0.5f, this->attributes)),
         addCeiling(new Variant(ProceduralDungeonComponent::AttrAddCeiling(), true, this->attributes)),
         loopProbability(new Variant(ProceduralDungeonComponent::AttrLoopProbability(), 0.15f, this->attributes)),
         dungeonTheme(new Variant(ProceduralDungeonComponent::AttrDungeonTheme(), {"Dungeon", "Cave", "SciFi", "Ice", "Crypt"}, this->attributes)),
@@ -153,6 +154,11 @@ namespace NOWA
         ceilingDatablock(new Variant(ProceduralDungeonComponent::AttrCeilingDatablock(), Ogre::String("proceduralWall1"), this->attributes)),
         floorUVTiling(new Variant(ProceduralDungeonComponent::AttrFloorUVTiling(), Ogre::Vector2(2.0f, 2.0f), this->attributes)),
         wallUVTiling(new Variant(ProceduralDungeonComponent::AttrWallUVTiling(), Ogre::Vector2(1.0f, 1.0f), this->attributes)),
+        addWindows(new Variant(ProceduralDungeonComponent::AttrAddWindows(), false, this->attributes)),
+        windowProb(new Variant(ProceduralDungeonComponent::AttrWindowProb(), 0.3f, this->attributes)),
+        windowWidth(new Variant(ProceduralDungeonComponent::AttrWindowWidth(), 0.5f, this->attributes)),
+        windowHeight(new Variant(ProceduralDungeonComponent::AttrWindowHeight(), 0.4f, this->attributes)),
+        windowSill(new Variant(ProceduralDungeonComponent::AttrWindowSill(), 0.3f, this->attributes)),
         generateNow(new Variant(ProceduralDungeonComponent::AttrGenerateNow(), "Generate Now", this->attributes)),
         convertToMesh(new Variant(ProceduralDungeonComponent::AttrConvertToMesh(), "Convert to Mesh", this->attributes)),
         dungeonOrigin(Ogre::Vector3::ZERO),
@@ -182,6 +188,7 @@ namespace NOWA
         this->maxRoomCells->setDescription("Maximum room dimension in cells.");
         this->corridorWidthCells->setDescription("Width of connecting corridors in cells.");
         this->wallHeight->setDescription("Height of dungeon walls in world units.");
+        this->jitter->setDescription("Sets jitter for cave theme. A jitter value of 0.35 gives the current subtle look. 0.6–0.8 gives a very rough dramatic cave. 1.0 is extreme/chaotic.");
         this->addCeiling->setDescription("Whether to generate a ceiling mesh (submesh 2).");
         this->loopProbability->setDescription("Probability [0-1] of adding extra loop corridors for non-linear layouts.");
         this->dungeonTheme->setDescription("Visual theme: Dungeon=battlement caps, Cave=variable walls+stalactites, "
@@ -211,6 +218,22 @@ namespace NOWA
                                             "Use this when you're finished designing the dungeon and want optimal performance.");
         this->convertToMesh->addUserData(GameObject::AttrActionExec());
         this->convertToMesh->addUserData(GameObject::AttrActionExecId(), "ProceduralDungeonComponent.ConvertToMesh");
+
+        this->addWindows->setDescription("When enabled, windows are procedurally cut into eligible wall faces. "
+                                         "Windows are never placed on corridor walls or bevelled ICE theme walls.");
+
+        this->windowProb->setDescription("Probability (0-1) that any given outer wall face receives a window. "
+                                         "0 = no windows even if Add Windows is on; 1 = every eligible face gets one.");
+
+        this->windowWidth->setDescription("Width of the window hole as a fraction (0-1) of the cell width. "
+                                          "0.5 means the window occupies half the wall face horizontally.");
+
+        this->windowHeight->setDescription("Height of the window hole as a fraction (0-1) of the wall height. "
+                                           "0.4 means the window opening is 40% of the total wall height.");
+
+        this->windowSill->setDescription("Height of the window sill from the floor, expressed as a fraction (0-1) "
+                                         "of the wall height. 0.3 places the bottom of the window at 30% of wall height. "
+                                         "Ensure sill + Window Height <= 1 to avoid the window exceeding the wall top.");
     }
 
     ProceduralDungeonComponent::~ProceduralDungeonComponent()
@@ -299,6 +322,11 @@ namespace NOWA
             this->wallHeight->setValue(XMLConverter::getAttribReal(propertyElement, "data", 3.0f));
             propertyElement = propertyElement->next_sibling("property");
         }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralDungeonComponent::AttrJitter())
+        {
+            this->jitter->setValue(XMLConverter::getAttribReal(propertyElement, "data", 0.5f));
+            propertyElement = propertyElement->next_sibling("property");
+        }
         if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralDungeonComponent::AttrAddCeiling())
         {
             this->addCeiling->setValue(XMLConverter::getAttribBool(propertyElement, "data", true));
@@ -357,6 +385,31 @@ namespace NOWA
         if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralDungeonComponent::AttrWallUVTiling())
         {
             this->wallUVTiling->setValue(XMLConverter::getAttribVector2(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralDungeonComponent::AttrAddWindows())
+        {
+            this->addWindows->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralDungeonComponent::AttrWindowProb())
+        {
+            this->windowProb->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralDungeonComponent::AttrWindowWidth())
+        {
+            this->windowWidth->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralDungeonComponent::AttrWindowHeight())
+        {
+            this->windowHeight->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralDungeonComponent::AttrWindowSill())
+        {
+            this->windowSill->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
             propertyElement = propertyElement->next_sibling("property");
         }
 
@@ -449,6 +502,7 @@ namespace NOWA
         clonedCompPtr->setMaxRoomCells(this->maxRoomCells->getInt());
         clonedCompPtr->setCorridorWidthCells(this->corridorWidthCells->getInt());
         clonedCompPtr->setWallHeight(this->wallHeight->getReal());
+        clonedCompPtr->setJitter(this->jitter->getReal());
         clonedCompPtr->setAddCeiling(this->addCeiling->getBool());
         clonedCompPtr->setLoopProbability(this->loopProbability->getReal());
         clonedCompPtr->setDungeonTheme(this->dungeonTheme->getListSelectedValue());
@@ -461,6 +515,12 @@ namespace NOWA
         clonedCompPtr->setCeilingDatablock(this->ceilingDatablock->getString());
         clonedCompPtr->setFloorUVTiling(this->floorUVTiling->getVector2());
         clonedCompPtr->setWallUVTiling(this->wallUVTiling->getVector2());
+        clonedCompPtr->setAddWindows(this->addWindows->getBool());
+        clonedCompPtr->setWindowProb(this->windowProb->getReal());
+        clonedCompPtr->setWindowWidth(this->windowWidth->getReal());
+        clonedCompPtr->setWindowHeight(this->windowHeight->getReal());
+        clonedCompPtr->setWindowSill(this->windowSill->getReal());
+
         clonedGameObjectPtr->addComponent(clonedCompPtr);
         clonedCompPtr->setOwner(clonedGameObjectPtr);
         GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
@@ -533,6 +593,10 @@ namespace NOWA
         {
             this->setWallHeight(attribute->getReal());
         }
+        else if (AttrJitter() == name)
+        {
+            this->setJitter(attribute->getReal());
+        }
         else if (AttrAddCeiling() == name)
         {
             this->setAddCeiling(attribute->getBool());
@@ -556,6 +620,26 @@ namespace NOWA
         else if (AttrWallUVTiling() == name)
         {
             this->setWallUVTiling(attribute->getVector2());
+        }
+        else if (AttrAddWindows() == name)
+        {
+            this->setAddWindows(attribute->getBool());
+        }
+        else if (AttrWindowProb() == name)
+        {
+            this->setWindowProb(attribute->getReal());
+        }
+        else if (AttrWindowWidth() == name)
+        {
+            this->setWindowWidth(attribute->getReal());
+        }
+        else if (AttrWindowHeight() == name)
+        {
+            this->setWindowHeight(attribute->getReal());
+        }
+        else if (AttrWindowSill() == name)
+        {
+            this->setWindowSill(attribute->getReal());
         }
     }
 
@@ -626,6 +710,13 @@ namespace NOWA
         propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
         propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralDungeonComponent::AttrWallHeight())));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->wallHeight->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        // Jitter
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralDungeonComponent::AttrJitter())));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->jitter->getReal())));
         propertiesXML->append_node(propertyXML);
 
         // Add Ceiling (bool)
@@ -712,6 +803,41 @@ namespace NOWA
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->wallUVTiling->getVector2())));
         propertiesXML->append_node(propertyXML);
 
+        // Add Windows (bool, type "1")
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "1"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralDungeonComponent::AttrAddWindows())));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->addWindows->getBool())));
+        propertiesXML->append_node(propertyXML);
+
+        // Window Probability (Real, type "6")
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralDungeonComponent::AttrWindowProb())));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->windowProb->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        // Window Width (Real, type "6")
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralDungeonComponent::AttrWindowWidth())));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->windowWidth->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        // Window Height (Real, type "6")
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralDungeonComponent::AttrWindowHeight())));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->windowHeight->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        // Window Sill Height (Real, type "6")
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralDungeonComponent::AttrWindowSill())));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->windowSill->getReal())));
+        propertiesXML->append_node(propertyXML);
+
         this->saveDungeonDataToFile();
     }
 
@@ -728,41 +854,77 @@ namespace NOWA
     {
         if (!this->activated->getBool() || id != OIS::MB_Left)
         {
-            return true;
+            return true; // not handled -> bubble
         }
+
         if (MyGUI::InputManager::getInstance().getMouseFocusWidget())
         {
+            return true; // not handled -> bubble
+        }
+
+        Ogre::Camera* camera = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
+        if (!camera)
+        {
             return true;
         }
 
-        Ogre::Real sx = 0.0f, sy = 0.0f;
-        MathHelper::getInstance()->mouseToViewPort(evt.state.X.abs, evt.state.Y.abs, sx, sy, Core::getSingletonPtr()->getOgreRenderWindow());
+        // Exclude own mesh from raycast
+        std::vector<Ogre::MovableObject*> excludeMovableObjects;
+        if (this->dungeonItem)
+        {
+            excludeMovableObjects.push_back(this->dungeonItem);
+        }
+        if (this->previewItem)
+        {
+            excludeMovableObjects.push_back(this->previewItem);
+        }
+
+        const OIS::MouseState& ms = NOWA::InputDeviceCore::getSingletonPtr()->getMouse()->getMouseState();
+        Ogre::Vector3 dummyHit;
+        Ogre::MovableObject* hitObj = nullptr;
+        Ogre::Real hitDist = 0.0f;
+        Ogre::Vector3 hitNormal;
+        bool hitFound = MathHelper::getInstance()->getRaycastFromPoint(ms.X.abs, ms.Y.abs, camera, Core::getSingletonPtr()->getOgreRenderWindow(), this->groundQuery, dummyHit, (size_t&)hitObj, hitDist, hitNormal, &excludeMovableObjects, false);
+
+        // Don't react if we hit our own mesh
+        if (hitFound && (hitObj == this->dungeonItem || hitObj == this->previewItem))
+        {
+            return true;
+        }
+
+        Ogre::Real screenX = 0.0f, screenY = 0.0f;
+        MathHelper::getInstance()->mouseToViewPort(evt.state.X.abs, evt.state.Y.abs, screenX, screenY, Core::getSingletonPtr()->getOgreRenderWindow());
 
         Ogre::Vector3 hitPos;
-        if (this->raycastGround(sx, sy, hitPos))
+        if (this->raycastGround(screenX, screenY, hitPos))
         {
             hitPos = this->snapToGridFunc(hitPos);
+
+            // Shift: increment seed for a new layout at same position
             if (this->isShiftPressed)
             {
                 this->seed->setValue(this->seed->getInt() + 1);
             }
 
+            // boost::shared_ptr<NOWA::EventDataCommandTransactionBegin> beginEvt(new NOWA::EventDataCommandTransactionBegin("Place Dungeon"));
+            // NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(beginEvt);
+
             std::vector<unsigned char> oldData = this->getDungeonData();
-            boost::shared_ptr<NOWA::EventDataCommandTransactionBegin> beginEvt(new NOWA::EventDataCommandTransactionBegin("Place Dungeon"));
-            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(beginEvt);
 
             this->generateDungeonAtPosition(hitPos);
 
             std::vector<unsigned char> newData = this->getDungeonData();
-            // TODO: Implement
+
             // boost::shared_ptr<EventDataDungeonModifyEnd> modEvt(new EventDataDungeonModifyEnd(oldData, newData, this->gameObjectPtr->getId()));
             // NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(modEvt);
-            boost::shared_ptr<NOWA::EventDataCommandTransactionEnd> endEvt(new NOWA::EventDataCommandTransactionEnd());
-            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(endEvt);
 
-            this->buildState = BuildState::GENERATED;
+            // boost::shared_ptr<NOWA::EventDataCommandTransactionEnd> endEvt(new NOWA::EventDataCommandTransactionEnd());
+            // NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(endEvt);
+
+            this->buildState = BuildState::PLACING; // stay in placing so user can click again
         }
-        return false;
+
+        return false; // handled -> do not bubble
     }
 
     bool ProceduralDungeonComponent::mouseReleased(const OIS::MouseEvent& evt, OIS::MouseButtonID id)
@@ -771,14 +933,16 @@ namespace NOWA
         {
             return true;
         }
+
         if (id == OIS::MB_Right)
         {
             this->destroyPreviewMesh();
             this->buildState = BuildState::IDLE;
             this->removeInputListener();
-            return false;
+            return false; // handled
         }
-        return true;
+
+        return true; // not handled -> bubble
     }
 
     bool ProceduralDungeonComponent::mouseMoved(const OIS::MouseEvent& evt)
@@ -787,13 +951,15 @@ namespace NOWA
         {
             return true;
         }
-        Ogre::Real sx = 0.0f, sy = 0.0f;
-        MathHelper::getInstance()->mouseToViewPort(evt.state.X.abs, evt.state.Y.abs, sx, sy, Core::getSingletonPtr()->getOgreRenderWindow());
+
+        Ogre::Real screenX = 0.0f, screenY = 0.0f;
+        MathHelper::getInstance()->mouseToViewPort(evt.state.X.abs, evt.state.Y.abs, screenX, screenY, Core::getSingletonPtr()->getOgreRenderWindow());
         Ogre::Vector3 hitPos;
-        if (this->raycastGround(sx, sy, hitPos))
+        if (this->raycastGround(screenX, screenY, hitPos))
         {
             this->updatePreviewMesh(this->snapToGridFunc(hitPos));
         }
+
         return true;
     }
 
@@ -803,6 +969,7 @@ namespace NOWA
         {
             return true;
         }
+
         if (evt.key == OIS::KC_LSHIFT || evt.key == OIS::KC_RSHIFT)
         {
             this->isShiftPressed = true;
@@ -818,8 +985,9 @@ namespace NOWA
             this->destroyPreviewMesh();
             this->buildState = BuildState::IDLE;
             this->removeInputListener();
-            return false;
+            return false; // consume — stop DesignState ESC
         }
+
         return true;
     }
 
@@ -829,6 +997,7 @@ namespace NOWA
         {
             return true;
         }
+
         if (evt.key == OIS::KC_LSHIFT || evt.key == OIS::KC_RSHIFT)
         {
             this->isShiftPressed = false;
@@ -837,7 +1006,8 @@ namespace NOWA
         {
             this->isCtrlPressed = false;
         }
-        return false;
+
+        return false; // handled
     }
 
     bool ProceduralDungeonComponent::executeAction(const Ogre::String& actionId, NOWA::Variant* attribute)
@@ -1202,29 +1372,7 @@ namespace NOWA
         const Ogre::Vector2 wallUV = this->wallUVTiling->getVector2();
         Ogre::Real effWallH = (theme == DungeonTheme::CAVE) ? wallH * 0.85f : (theme == DungeonTheme::CRYPT) ? wallH * 1.2f : wallH;
 
-        this->generateFloorGeometry(grid, gridCols, gridRows, cellSz, 0.0f, floorUV);
-        if (theme == DungeonTheme::SCIFI)
-        {
-            this->generateScifiFloorChannel(grid, gridCols, gridRows, cellSz, 0.0f, floorUV);
-        }
-        this->generateWallGeometry(grid, gridCols, gridRows, cellSz, 0.0f, effWallH, wallUV, theme);
-        if (this->addCeiling->getBool() || theme == DungeonTheme::SCIFI)
-        {
-            this->generateCeilingGeometry(grid, gridCols, gridRows, cellSz, 0.0f, effWallH, wallUV);
-        }
-        if (theme == DungeonTheme::CAVE && this->addCeiling->getBool())
-        {
-            this->generateStalactites(grid, gridCols, gridRows, cellSz, 0.0f, effWallH, seedVal);
-        }
-        if (this->addPillars->getBool())
-        {
-            this->generatePillarGeometry(grid, gridCols, gridRows, cellSz, 0.0f, effWallH, this->pillarSize->getReal());
-        }
-
-        if (!this->addCeiling->getBool())
-        {
-            this->generateWallTopCaps(grid, gridCols, gridRows, cellSz, 0.0f, effWallH, wallUV);
-        }
+        this->generateGeometry(grid, gridCols, gridRows, cellSz, effWallH, floorUV, wallUV, theme, seedVal);
 
         this->cachedFloorVertices = this->floorVertices;
         this->cachedFloorIndices = this->floorIndices;
@@ -1250,6 +1398,8 @@ namespace NOWA
         {
             return;
         }
+
+        const int seedVal = this->seed->getInt(); // ADD THIS
         const Ogre::Real cellSz = maxValue(0.1f, this->cellSize->getReal());
         const int gridCols = maxValue(4, (int)(this->dungeonWidth->getReal() / cellSz));
         const int gridRows = maxValue(4, (int)(this->dungeonDepth->getReal() / cellSz));
@@ -1272,24 +1422,7 @@ namespace NOWA
         this->ceilIndices.clear();
         this->currentCeilVertexIndex = 0;
 
-        this->generateFloorGeometry(grid, gridCols, gridRows, cellSz, 0.0f, floorUV);
-        if (theme == DungeonTheme::SCIFI)
-        {
-            this->generateScifiFloorChannel(grid, gridCols, gridRows, cellSz, 0.0f, floorUV);
-        }
-        this->generateWallGeometry(grid, gridCols, gridRows, cellSz, 0.0f, effWallH, wallUV, theme);
-        if (this->addCeiling->getBool() || theme == DungeonTheme::SCIFI)
-        {
-            this->generateCeilingGeometry(grid, gridCols, gridRows, cellSz, 0.0f, effWallH, wallUV);
-        }
-        if (theme == DungeonTheme::CAVE && this->addCeiling->getBool())
-        {
-            this->generateStalactites(grid, gridCols, gridRows, cellSz, 0.0f, effWallH, this->seed->getInt());
-        }
-        if (this->addPillars->getBool())
-        {
-            this->generatePillarGeometry(grid, gridCols, gridRows, cellSz, 0.0f, effWallH, this->pillarSize->getReal());
-        }
+        this->generateGeometry(grid, gridCols, gridRows, cellSz, effWallH, floorUV, wallUV, theme, seedVal);
 
         this->cachedFloorVertices = this->floorVertices;
         this->cachedFloorIndices = this->floorIndices;
@@ -1321,6 +1454,40 @@ namespace NOWA
     ///////////////////////////////////////////////////////////////////////////////////////////////
     // Geometry
     ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    void ProceduralDungeonComponent::generateGeometry(const std::vector<std::vector<CellType>>& grid, int gridCols, int gridRows, Ogre::Real cellSz, Ogre::Real effWallH, const Ogre::Vector2& floorUV, const Ogre::Vector2& wallUV, DungeonTheme theme,
+        int seedVal)
+    {
+        if (theme == DungeonTheme::CAVE)
+        {
+            this->generateCaveFloorGeometry(grid, gridCols, gridRows, cellSz, 0.0f, floorUV, seedVal, this->jitter->getReal());
+            this->generateCaveWallGeometry(grid, gridCols, gridRows, cellSz, 0.0f, effWallH, wallUV, seedVal, this->jitter->getReal());
+            this->generateCaveCeilingGeometry(grid, gridCols, gridRows, cellSz, 0.0f, effWallH, wallUV, seedVal, this->jitter->getReal());
+            this->generateStalactites(grid, gridCols, gridRows, cellSz, 0.0f, effWallH, seedVal, true, this->jitter->getReal());
+        }
+        else
+        {
+            this->generateFloorGeometry(grid, gridCols, gridRows, cellSz, 0.0f, floorUV);
+            if (theme == DungeonTheme::SCIFI)
+            {
+                this->generateScifiFloorChannel(grid, gridCols, gridRows, cellSz, 0.0f, floorUV);
+            }
+            this->generateWallGeometry(grid, gridCols, gridRows, cellSz, 0.0f, effWallH, wallUV, theme);
+            if (this->addCeiling->getBool() || theme == DungeonTheme::SCIFI)
+            {
+                // 0.001f place a bit above other geometry so its not overlapped and no texture flickering
+                this->generateCeilingGeometry(grid, gridCols, gridRows, cellSz, 0.001f, effWallH, wallUV);
+            }
+            /*if (!this->addCeiling->getBool())
+            {
+                this->generateWallTopCaps(grid, gridCols, gridRows, cellSz, 0.0f, effWallH, wallUV);
+            }*/
+            if (this->addPillars->getBool())
+            {
+                this->generatePillarGeometry(grid, gridCols, gridRows, cellSz, 0.0f, effWallH, this->pillarSize->getReal());
+            }
+        }
+    }
 
     void ProceduralDungeonComponent::generateFloorGeometry(const std::vector<std::vector<CellType>>& grid, int gridCols, int gridRows, Ogre::Real cellSz, Ogre::Real floorY, const Ogre::Vector2& uvTile)
     {
@@ -1377,7 +1544,23 @@ namespace NOWA
         const float ba = 0.07f * cellSz;
         const Ogre::Real uS = std::max(0.001f, uvTile.x);
         const Ogre::Real vS = std::max(0.001f, uvTile.y);
-        const Ogre::Real capD = cellSz * 0.25f; // top cap depth, into the room
+
+        // Windows only on plain rectangular walls — not bevelled ICE, not CAVE
+        const bool doWindows = this->addWindows->getBool() && !bev;
+        const Ogre::Real winW = this->windowWidth->getReal();
+        const Ogre::Real winH = this->windowHeight->getReal();
+        const Ogre::Real winSill = this->windowSill->getReal();
+        const Ogre::Real winProb = this->windowProb->getReal();
+
+        // Deterministic per-face hash — same seed always gives same window pattern
+        auto winRng = [&](int row, int col, int dir) -> Ogre::Real
+        {
+            uint32_t h = static_cast<uint32_t>(row * 73856093 ^ col * 19349663 ^ dir * 83492791 ^ this->seed->getInt());
+            h ^= h >> 16;
+            h *= 0x45d9f3bu;
+            h ^= h >> 16;
+            return static_cast<float>(h & 0xFFFFu) / 65535.0f;
+        };
 
         auto isF = [&](int r, int c)
         {
@@ -1393,17 +1576,29 @@ namespace NOWA
                     continue;
                 }
 
-                Ogre::Real x0 = (Ogre::Real)col * cellSz, x1 = x0 + cellSz;
-                Ogre::Real z0 = (Ogre::Real)row * cellSz, z1 = z0 + cellSz;
-                Ogre::Real y0 = floorY, y1 = floorY + wallH;
-                Ogre::Real uW = cellSz / uS, vT = wallH / vS, uC = capD / uS;
+                const Ogre::Real x0 = static_cast<Ogre::Real>(col) * cellSz;
+                const Ogre::Real x1 = x0 + cellSz;
+                const Ogre::Real z0 = static_cast<Ogre::Real>(row) * cellSz;
+                const Ogre::Real z1 = z0 + cellSz;
+                const Ogre::Real y0 = floorY;
+                const Ogre::Real y1 = floorY + wallH;
+                const Ogre::Real uW = cellSz / uS;
+                const Ogre::Real vT = wallH / vS;
 
-                // North (+Z)
+                // ------------------------------------------------------------------
+                // North face (+Z)
+                // ------------------------------------------------------------------
                 if (!isF(row + 1, col))
                 {
                     if (bev)
                     {
                         this->addWallQuad({x0, y0, z1}, {x1, y0, z1}, {x1 - ba, y1, z1 - ba}, {x0 + ba, y1, z1 - ba}, {0, 0, 1}, 0, uW, 0, vT);
+                    }
+                    else if (doWindows && winRng(row, col, 0) < winProb)
+                    {
+                        this->addWallQuadWithWindow({x0, y0, z1}, {x1, y0, z1}, // bottom-left, bottom-right
+                            {x0, y1, z1}, {x1, y1, z1},                         // top-left,    top-right
+                            {0, 0, 1}, wallH, uW, vT, winW, winH, winSill);
                     }
                     else
                     {
@@ -1411,12 +1606,18 @@ namespace NOWA
                     }
                 }
 
-                // South (-Z)
+                // ------------------------------------------------------------------
+                // South face (-Z)
+                // ------------------------------------------------------------------
                 if (!isF(row - 1, col))
                 {
                     if (bev)
                     {
                         this->addWallQuad({x1, y0, z0}, {x0, y0, z0}, {x0 - ba, y1, z0 + ba}, {x1 + ba, y1, z0 + ba}, {0, 0, -1}, 0, uW, 0, vT);
+                    }
+                    else if (doWindows && winRng(row, col, 1) < winProb)
+                    {
+                        this->addWallQuadWithWindow({x1, y0, z0}, {x0, y0, z0}, {x1, y1, z0}, {x0, y1, z0}, {0, 0, -1}, wallH, uW, vT, winW, winH, winSill);
                     }
                     else
                     {
@@ -1424,12 +1625,18 @@ namespace NOWA
                     }
                 }
 
-                // East (+X)
+                // ------------------------------------------------------------------
+                // East face (+X)
+                // ------------------------------------------------------------------
                 if (!isF(row, col + 1))
                 {
                     if (bev)
                     {
                         this->addWallQuad({x1, y0, z1}, {x1, y0, z0}, {x1 - ba, y1, z0 + ba}, {x1 - ba, y1, z1 - ba}, {1, 0, 0}, 0, uW, 0, vT);
+                    }
+                    else if (doWindows && winRng(row, col, 2) < winProb)
+                    {
+                        this->addWallQuadWithWindow({x1, y0, z1}, {x1, y0, z0}, {x1, y1, z1}, {x1, y1, z0}, {1, 0, 0}, wallH, uW, vT, winW, winH, winSill);
                     }
                     else
                     {
@@ -1437,12 +1644,18 @@ namespace NOWA
                     }
                 }
 
-                // West (-X)
+                // ------------------------------------------------------------------
+                // West face (-X)
+                // ------------------------------------------------------------------
                 if (!isF(row, col - 1))
                 {
                     if (bev)
                     {
                         this->addWallQuad({x0, y0, z0}, {x0, y0, z1}, {x0 + ba, y1, z1 - ba}, {x0 + ba, y1, z0 + ba}, {-1, 0, 0}, 0, uW, 0, vT);
+                    }
+                    else if (doWindows && winRng(row, col, 3) < winProb)
+                    {
+                        this->addWallQuadWithWindow({x0, y0, z0}, {x0, y0, z1}, {x0, y1, z0}, {x0, y1, z1}, {-1, 0, 0}, wallH, uW, vT, winW, winH, winSill);
                     }
                     else
                     {
@@ -1603,10 +1816,16 @@ namespace NOWA
         return (float)(x & 0xFFFFu) / 32767.5f - 1.0f;
     }
 
-    void ProceduralDungeonComponent::generateStalactites(const std::vector<std::vector<CellType>>& grid, int gridCols, int gridRows, Ogre::Real cellSz, Ogre::Real floorY, Ogre::Real wallH, int seed)
+    void ProceduralDungeonComponent::generateStalactites(const std::vector<std::vector<CellType>>& grid, int gridCols, int gridRows, Ogre::Real cellSz, Ogre::Real floorY, Ogre::Real wallH, int seed, bool isCave, Ogre::Real jitter)
     {
-        const Ogre::Real ceilY = floorY + wallH, minL = wallH * 0.10f, maxL = wallH * 0.35f, maxW = cellSz * 0.25f;
-        const Ogre::Real uS = maxValue(0.001f, this->wallUVTiling->getVector2().x), vS = maxValue(0.001f, this->wallUVTiling->getVector2().y);
+        const Ogre::Real baseY = floorY + wallH;
+        const Ogre::Real maxDroop = wallH * jitter;
+        const Ogre::Real minL = wallH * 0.10f;
+        const Ogre::Real maxL = wallH * 0.35f;
+        const Ogre::Real maxW = cellSz * 0.25f;
+        const Ogre::Real uS = maxValue(0.001f, this->wallUVTiling->getVector2().x);
+        const Ogre::Real vS = maxValue(0.001f, this->wallUVTiling->getVector2().y);
+
         for (int row = 0; row < gridRows; ++row)
         {
             for (int col = 0; col < gridCols; ++col)
@@ -1615,18 +1834,244 @@ namespace NOWA
                 {
                     continue;
                 }
+
                 float n = caveHeightNoise(col, row, seed);
                 if (n < 0.5f)
                 {
                     continue;
                 }
-                Ogre::Real cx = (col + 0.5f) * cellSz, cz = (row + 0.5f) * cellSz;
-                float n2 = caveHeightNoise(col + 1, row + 1, seed + 1), n3 = caveHeightNoise(col - 1, row - 1, seed + 2);
-                Ogre::Real len = minL + (n + 1.0f) * 0.5f * (maxL - minL), hw = maxW * (0.4f + (n3 + 1.0f) * 0.3f), tipY = ceilY - len, ox = n2 * cellSz * 0.15f;
+
+                Ogre::Real cx = (col + 0.5f) * cellSz;
+                Ogre::Real cz = (row + 0.5f) * cellSz;
+
+                // In cave mode: compute actual ceiling Y at this cell center
+                // using the same formula as generateCaveCeilingGeometry
+                Ogre::Real ceilY;
+                if (isCave)
+                {
+                    // Average the 4 corners to get center ceiling height
+                    auto ceilH = [&](int c, int r) -> Ogre::Real
+                    {
+                        return baseY - ((caveHeightNoise(c, r, seed + 999) + 1.0f) * 0.5f) * maxDroop;
+                    };
+                    ceilY = (ceilH(col, row) + ceilH(col + 1, row) + ceilH(col, row + 1) + ceilH(col + 1, row + 1)) * 0.25f;
+                }
+                else
+                {
+                    ceilY = baseY;
+                }
+
+                float n2 = caveHeightNoise(col + 1, row + 1, seed + 1);
+                float n3 = caveHeightNoise(col - 1, row - 1, seed + 2);
+                Ogre::Real len = minL + (n + 1.0f) * 0.5f * (maxL - minL);
+                Ogre::Real hw = maxW * (0.4f + (n3 + 1.0f) * 0.3f);
+                Ogre::Real tipY = ceilY - len;
+                Ogre::Real ox = n2 * cellSz * 0.15f;
+
                 this->addWallQuad({cx + ox - hw, ceilY, cz}, {cx + ox + hw, ceilY, cz}, {cx + ox, tipY, cz}, {cx + ox, tipY, cz}, {0, 0, 1}, 0, hw * 2 / uS, 0, len / vS);
                 this->addWallQuad({cx + ox, ceilY, cz - hw}, {cx + ox, ceilY, cz + hw}, {cx + ox, tipY, cz}, {cx + ox, tipY, cz}, {1, 0, 0}, 0, hw * 2 / uS, 0, len / vS);
             }
         }
+    }
+
+    void ProceduralDungeonComponent::generateCaveFloorGeometry(const std::vector<std::vector<CellType>>& grid, int gridCols, int gridRows, Ogre::Real cellSz, Ogre::Real floorY, const Ogre::Vector2& uvTile, int seed, Ogre::Real jitter)
+    {
+        const Ogre::Real uS = maxValue(0.001f, uvTile.x);
+        const Ogre::Real vS = maxValue(0.001f, uvTile.y);
+        const Ogre::Real maxBump = cellSz * jitter;
+
+        for (int row = 0; row < gridRows; ++row)
+        {
+            for (int col = 0; col < gridCols; ++col)
+            {
+                if (grid[row][col] == CellType::EMPTY)
+                {
+                    continue;
+                }
+                Ogre::Real x0 = col * cellSz, x1 = x0 + cellSz;
+                Ogre::Real z0 = row * cellSz, z1 = z0 + cellSz;
+                Ogre::Real uU = x0 / uS, uV = x1 / uS, vU = z0 / vS, vV = z1 / vS;
+
+                // Per-corner Y displacement — always positive (bumps up from floor)
+                auto h = [&](int c, int r) -> Ogre::Real
+                {
+                    return floorY + ((caveHeightNoise(c, r, seed) + 1.0f) * 0.5f) * maxBump;
+                };
+
+                Ogre::Vector3 v0(x0, h(col, row + 1), z1);
+                Ogre::Vector3 v1(x1, h(col + 1, row + 1), z1);
+                Ogre::Vector3 v2(x1, h(col + 1, row), z0);
+                Ogre::Vector3 v3(x0, h(col, row), z0);
+
+                Ogre::Vector3 n = (v1 - v0).crossProduct(v3 - v0);
+                n.normalise();
+
+                pushDoubleQuad(this->floorVertices, this->floorIndices, this->currentFloorVertexIndex, v0, v1, v2, v3, n, uU, uV, vU, vV);
+            }
+        }
+    }
+
+    void ProceduralDungeonComponent::generateCaveCeilingGeometry(const std::vector<std::vector<CellType>>& grid, int gridCols, int gridRows, Ogre::Real cellSz, Ogre::Real floorY, Ogre::Real wallH, const Ogre::Vector2& uvTile, int seed,
+        Ogre::Real jitter)
+    {
+        const Ogre::Real uS = maxValue(0.001f, uvTile.x);
+        const Ogre::Real vS = maxValue(0.001f, uvTile.y);
+        const Ogre::Real baseY = floorY + wallH;
+        const Ogre::Real maxDroop = wallH * jitter;
+
+        for (int row = 0; row < gridRows; ++row)
+        {
+            for (int col = 0; col < gridCols; ++col)
+            {
+                if (grid[row][col] == CellType::EMPTY)
+                {
+                    continue;
+                }
+                Ogre::Real x0 = col * cellSz, x1 = x0 + cellSz;
+                Ogre::Real z0 = row * cellSz, z1 = z0 + cellSz;
+
+                // Ceiling droops downward
+                auto h = [&](int c, int r) -> Ogre::Real
+                {
+                    return baseY - ((caveHeightNoise(c, r, seed + 999) + 1.0f) * 0.5f) * maxDroop;
+                };
+
+                // Ceiling winding: same as generateCeilingGeometry
+                Ogre::Vector3 v0(x0, h(col, row), z0);
+                Ogre::Vector3 v1(x1, h(col + 1, row), z0);
+                Ogre::Vector3 v2(x1, h(col + 1, row + 1), z1);
+                Ogre::Vector3 v3(x0, h(col, row + 1), z1);
+
+                Ogre::Vector3 n = (v1 - v0).crossProduct(v3 - v0);
+                n.normalise();
+                n = -n; // ceiling faces downward
+
+                pushDoubleQuad(this->ceilVertices, this->ceilIndices, this->currentCeilVertexIndex, v0, v1, v2, v3, n, x0 / uS, x1 / uS, z0 / vS, z1 / vS);
+            }
+        }
+    }
+
+    void ProceduralDungeonComponent::generateCaveWallGeometry(const std::vector<std::vector<CellType>>& grid, int gridCols, int gridRows, Ogre::Real cellSz, Ogre::Real floorY, Ogre::Real wallH, const Ogre::Vector2& uvTile, int seed,
+        Ogre::Real jitter)
+    {
+        const Ogre::Real uS = maxValue(0.001f, uvTile.x);
+        const Ogre::Real vS = maxValue(0.001f, uvTile.y);
+        const Ogre::Real baseY = floorY + wallH;
+        const Ogre::Real maxBump = cellSz * jitter;
+        const Ogre::Real maxDroop = wallH * jitter;
+
+        auto isF = [&](int r, int c)
+        {
+            return r >= 0 && r < gridRows && c >= 0 && c < gridCols && grid[r][c] != CellType::EMPTY;
+        };
+
+        // Floor height at a grid corner (col,row) — matches generateCaveFloorGeometry
+        auto floorH = [&](int c, int r) -> Ogre::Real
+        {
+            return floorY + ((caveHeightNoise(c, r, seed) + 1.0f) * 0.5f) * maxBump;
+        };
+        // Ceiling height at a grid corner — matches generateCaveCeilingGeometry
+        auto ceilH = [&](int c, int r) -> Ogre::Real
+        {
+            return baseY - ((caveHeightNoise(c, r, seed + 999) + 1.0f) * 0.5f) * maxDroop;
+        };
+
+        for (int row = 0; row < gridRows; ++row)
+        {
+            for (int col = 0; col < gridCols; ++col)
+            {
+                if (!isF(row, col))
+                {
+                    continue;
+                }
+                Ogre::Real x0 = col * cellSz, x1 = x0 + cellSz;
+                Ogre::Real z0 = row * cellSz, z1 = z0 + cellSz;
+                Ogre::Real uW = cellSz / uS;
+
+                // North (+Z): corners at (col,row+1) and (col+1,row+1)
+                if (!isF(row + 1, col))
+                {
+                    Ogre::Real yb0 = floorH(col, row + 1);
+                    Ogre::Real yb1 = floorH(col + 1, row + 1);
+                    Ogre::Real yt0 = ceilH(col, row + 1);
+                    Ogre::Real yt1 = ceilH(col + 1, row + 1);
+                    Ogre::Real vT0 = (yt0 - yb0) / vS, vT1 = (yt1 - yb1) / vS;
+                    // Average vT for the quad UV
+                    Ogre::Real vT = (vT0 + vT1) * 0.5f;
+                    pushDoubleQuad(this->wallVertices, this->wallIndices, this->currentWallVertexIndex, {x0, yb0, z1}, {x1, yb1, z1}, {x1, yt1, z1}, {x0, yt0, z1}, {0, 0, 1}, 0, uW, 0, vT);
+                }
+                // South (-Z): corners at (col,row) and (col+1,row)
+                if (!isF(row - 1, col))
+                {
+                    Ogre::Real yb0 = floorH(col + 1, row);
+                    Ogre::Real yb1 = floorH(col, row);
+                    Ogre::Real yt0 = ceilH(col + 1, row);
+                    Ogre::Real yt1 = ceilH(col, row);
+                    Ogre::Real vT = ((yt0 - yb0) + (yt1 - yb1)) * 0.5f / vS;
+                    pushDoubleQuad(this->wallVertices, this->wallIndices, this->currentWallVertexIndex, {x1, yb0, z0}, {x0, yb1, z0}, {x0, yt1, z0}, {x1, yt0, z0}, {0, 0, -1}, 0, uW, 0, vT);
+                }
+                // East (+X): corners at (col+1,row) and (col+1,row+1)
+                if (!isF(row, col + 1))
+                {
+                    Ogre::Real yb0 = floorH(col + 1, row + 1);
+                    Ogre::Real yb1 = floorH(col + 1, row);
+                    Ogre::Real yt0 = ceilH(col + 1, row + 1);
+                    Ogre::Real yt1 = ceilH(col + 1, row);
+                    Ogre::Real vT = ((yt0 - yb0) + (yt1 - yb1)) * 0.5f / vS;
+                    pushDoubleQuad(this->wallVertices, this->wallIndices, this->currentWallVertexIndex, {x1, yb0, z1}, {x1, yb1, z0}, {x1, yt1, z0}, {x1, yt0, z1}, {1, 0, 0}, 0, uW, 0, vT);
+                }
+                // West (-X): corners at (col,row) and (col,row+1)
+                if (!isF(row, col - 1))
+                {
+                    Ogre::Real yb0 = floorH(col, row);
+                    Ogre::Real yb1 = floorH(col, row + 1);
+                    Ogre::Real yt0 = ceilH(col, row);
+                    Ogre::Real yt1 = ceilH(col, row + 1);
+                    Ogre::Real vT = ((yt0 - yb0) + (yt1 - yb1)) * 0.5f / vS;
+                    pushDoubleQuad(this->wallVertices, this->wallIndices, this->currentWallVertexIndex, {x0, yb0, z0}, {x0, yb1, z1}, {x0, yt1, z1}, {x0, yt0, z0}, {-1, 0, 0}, 0, uW, 0, vT);
+                }
+            }
+        }
+    }
+
+    void ProceduralDungeonComponent::addWallQuadWithWindow(const Ogre::Vector3& bl, const Ogre::Vector3& br, // bottom-left, bottom-right
+        const Ogre::Vector3& tl, const Ogre::Vector3& tr,                                                    // top-left, top-right
+        const Ogre::Vector3& normal, Ogre::Real wallH, Ogre::Real uW, Ogre::Real vT, Ogre::Real winW, Ogre::Real winH, Ogre::Real sill)
+    {
+        // winW, winH, sill are fractions (0..1) of cell width / wall height
+        const Ogre::Real wl = 0.5f - winW * 0.5f; // left edge of window (fraction)
+        const Ogre::Real wr = 0.5f + winW * 0.5f; // right edge
+        const Ogre::Real wb = sill;               // bottom of window (fraction of height)
+        const Ogre::Real wt = sill + winH;        // top of window
+
+        // Helper: lerp between two vec3
+        auto lerp = [](const Ogre::Vector3& a, const Ogre::Vector3& b, Ogre::Real t)
+        {
+            return a + (b - a) * t;
+        };
+
+        // 4 corner positions of window hole
+        Ogre::Vector3 wbl = lerp(lerp(bl, br, wl), lerp(tl, tr, wl), wb); // window bottom-left
+        Ogre::Vector3 wbr = lerp(lerp(bl, br, wr), lerp(tl, tr, wr), wb); // window bottom-right
+        Ogre::Vector3 wtl = lerp(lerp(bl, br, wl), lerp(tl, tr, wl), wt); // window top-left
+        Ogre::Vector3 wtr = lerp(lerp(bl, br, wr), lerp(tl, tr, wr), wt); // window top-right
+
+        // Intermediate row points
+        Ogre::Vector3 mll = lerp(bl, br, wl); // mid-left bottom
+        Ogre::Vector3 mlr = lerp(bl, br, wr); // mid-right bottom
+        Ogre::Vector3 mhl = lerp(tl, tr, wl); // mid-left top
+        Ogre::Vector3 mhr = lerp(tl, tr, wr); // mid-right top
+
+        // Bottom strip (full width, floor to sill)
+        this->addWallQuad(bl, br, lerp(br, tr, wb), lerp(bl, tl, wb), normal, 0, uW, 0, vT * wb);
+        // Left strip (sill to window top)
+        this->addWallQuad(lerp(bl, tl, wb), lerp(bl, tl, wt), wtl, wbl, normal, 0, uW * wl, vT * wb, vT * wt);
+        // Right strip
+        this->addWallQuad(wbr, wtr, lerp(br, tr, wt), lerp(br, tr, wb), normal, uW * wr, uW, vT * wb, vT * wt);
+        // Top strip (window top to wall top)
+        this->addWallQuad(lerp(bl, tl, wt), lerp(br, tr, wt), tr, tl, normal, 0, uW, vT * wt, vT);
+        // Window sill (horizontal ledge at bottom of window, single-sided facing up)
+        this->addWallTopCapQuad(wbl, wbr, wbr + normal * 0.05f, wbl + normal * 0.05f, uW * wl, uW * wr, 0, 0.05f);
     }
 
     void ProceduralDungeonComponent::addFloorQuad(const Ogre::Vector3& v0, const Ogre::Vector3& v1, const Ogre::Vector3& v2, const Ogre::Vector3& v3, Ogre::Real u0, Ogre::Real u1, Ogre::Real vv0, Ogre::Real vv1)
@@ -1646,7 +2091,7 @@ namespace NOWA
 
     void ProceduralDungeonComponent::addWallTopCapQuad(const Ogre::Vector3& v0, const Ogre::Vector3& v1, const Ogre::Vector3& v2, const Ogre::Vector3& v3, Ogre::Real u0, Ogre::Real u1, Ogre::Real vv0, Ogre::Real vv1)
     {
-        pushQuad(this->wallVertices, this->wallIndices, this->currentWallVertexIndex, v0, v1, v2, v3, Ogre::Vector3::UNIT_Y, u0, u1, vv0, vv1);
+        pushDoubleQuad(this->wallVertices, this->wallIndices, this->currentWallVertexIndex, v0, v1, v2, v3, Ogre::Vector3::UNIT_Y, u0, u1, vv0, vv1);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -2689,20 +3134,16 @@ namespace NOWA
 
         if (shouldBeActive)
         {
-            if (this->buildState == BuildState::IDLE)
-            {
-                this->buildState = BuildState::PLACING;
-            }
             this->addInputListener();
+            this->buildState = BuildState::PLACING;
         }
         else
         {
             this->removeInputListener();
             this->destroyPreviewMesh();
-            if (this->buildState == BuildState::PLACING)
-            {
-                this->buildState = BuildState::IDLE;
-            }
+            this->buildState = BuildState::IDLE;
+            this->isShiftPressed = false;
+            this->isCtrlPressed = false;
         }
     }
 
@@ -3034,13 +3475,28 @@ namespace NOWA
 
     void ProceduralDungeonComponent::setWallHeight(Ogre::Real value)
     {
-        this->wallHeight->setValue(maxValue(0.5f, value));
+        this->wallHeight->setValue(value);
         this->rebuildMesh();
     }
 
     Ogre::Real ProceduralDungeonComponent::getWallHeight(void) const
     {
         return this->wallHeight->getReal();
+    }
+
+    void ProceduralDungeonComponent::setJitter(Ogre::Real jitter)
+    {
+        if (jitter > 0.8f)
+        {
+            jitter = 0.8f;
+        }
+        this->jitter->setValue(jitter);
+        this->rebuildMesh();
+    }
+
+    Ogre::Real ProceduralDungeonComponent::getJitter(void) const
+    {
+        return this->jitter->getReal();
     }
 
     void ProceduralDungeonComponent::setAddCeiling(bool value)
@@ -3221,6 +3677,86 @@ namespace NOWA
     Ogre::Vector2 ProceduralDungeonComponent::getWallUVTiling(void) const
     {
         return this->wallUVTiling->getVector2();
+    }
+
+    bool ProceduralDungeonComponent::getAddWindows(void) const
+    {
+        return this->addWindows->getBool();
+    }
+
+    void ProceduralDungeonComponent::setAddWindows(bool addWindows)
+    {
+        this->addWindows->setValue(addWindows);
+        if (this->hasDungeonOrigin)
+        {
+            this->rebuildMesh();
+        }
+    }
+
+    // --- windowProb (Real) -------------------------------------------------------
+
+    Ogre::Real ProceduralDungeonComponent::getWindowProb(void) const
+    {
+        return this->windowProb->getReal();
+    }
+
+    void ProceduralDungeonComponent::setWindowProb(Ogre::Real windowProb)
+    {
+        // Clamp to [0, 1]
+        this->windowProb->setValue(std::max(0.0f, std::min(1.0f, windowProb)));
+        if (this->hasDungeonOrigin && this->addWindows->getBool())
+        {
+            this->rebuildMesh();
+        }
+    }
+
+    // --- windowWidth (Real) ------------------------------------------------------
+
+    Ogre::Real ProceduralDungeonComponent::getWindowWidth(void) const
+    {
+        return this->windowWidth->getReal();
+    }
+
+    void ProceduralDungeonComponent::setWindowWidth(Ogre::Real windowWidth)
+    {
+        // Clamp to (0, 1) — zero width makes no sense, 1.0 would erase the whole face
+        this->windowWidth->setValue(std::max(0.05f, std::min(0.95f, windowWidth)));
+        if (this->hasDungeonOrigin && this->addWindows->getBool())
+        {
+            this->rebuildMesh();
+        }
+    }
+
+    // --- windowHeight (Real) -----------------------------------------------------
+
+    Ogre::Real ProceduralDungeonComponent::getWindowHeight(void) const
+    {
+        return this->windowHeight->getReal();
+    }
+
+    void ProceduralDungeonComponent::setWindowHeight(Ogre::Real windowHeight)
+    {
+        this->windowHeight->setValue(std::max(0.05f, std::min(0.95f, windowHeight)));
+        if (this->hasDungeonOrigin && this->addWindows->getBool())
+        {
+            this->rebuildMesh();
+        }
+    }
+
+    // --- windowSill (Real) -------------------------------------------------------
+
+    Ogre::Real ProceduralDungeonComponent::getWindowSill(void) const
+    {
+        return this->windowSill->getReal();
+    }
+
+    void ProceduralDungeonComponent::setWindowSill(Ogre::Real windowSill)
+    {
+        this->windowSill->setValue(std::max(0.0f, std::min(0.9f, windowSill)));
+        if (this->hasDungeonOrigin && this->addWindows->getBool())
+        {
+            this->rebuildMesh();
+        }
     }
 
 } // namespace NOWA

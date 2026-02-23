@@ -1971,10 +1971,11 @@ namespace NOWA
 		this->position->setValue(position);
 
 		// Have no idea why, but interpolation cannot be used here! Else a crash does occur, later debug it!
-		ENQUEUE_RENDER_COMMAND_MULTI("GameObject::setAttributePosition", _1(position),
-		{
-			this->sceneNode->_setDerivedPosition(position);
-		});
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this, position]()
+        {
+            this->sceneNode->_setDerivedPosition(position);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "GameObject::setAttributePosition");
 
 		// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObject] setAttributePosition: " + this->getName() + ": " + Ogre::StringConverter::toString(position));
 		// NOWA::GraphicsModule::getInstance()->updateNodePosition(this->sceneNode, position);
@@ -1984,11 +1985,12 @@ namespace NOWA
 	{
 		this->scale->setValue(scale);
 		// Have no idea why, but interpolation cannot be used here! Else a crash does occur, later debug it!
-		ENQUEUE_RENDER_COMMAND_MULTI("GameObject::setAttributeScale", _1(scale),
-		{
-			this->sceneNode->setScale(scale);
-			this->refreshSize(scale);
-		});
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this, scale]()
+        {
+            this->sceneNode->setScale(scale);
+            this->refreshSize(scale);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "GameObject::setAttributeScale");
 
 		// NOWA::GraphicsModule::getInstance()->updateNodeScale(this->sceneNode, scale);
 		this->oldScale = scale;
@@ -1999,10 +2001,11 @@ namespace NOWA
 		// Set in the form degree, x-axis, y-axis, z-axis
 		this->orientation->setValue(MathHelper::getInstance()->quatToDegreesRounded(orientation));
 		// Have no idea why, but interpolation cannot be used here! Else a crash does occur, later debug it!
-		ENQUEUE_RENDER_COMMAND_MULTI("GameObject::setAttributeOrientation", _1(orientation),
-		{
-			this->sceneNode->_setDerivedOrientation(orientation);
-		});
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this, orientation]()
+        {
+            this->sceneNode->_setDerivedOrientation(orientation);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "GameObject::setAttributeOrientation");
 
 		// NOWA::GraphicsModule::getInstance()->updateNodeOrientation(this->sceneNode, orientation);
 	}

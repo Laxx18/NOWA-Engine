@@ -410,16 +410,16 @@ namespace NOWA
         void removeTrackedNode(Ogre::Node* node);
 
         // Update position for a node in the current buffer
-        void updateNodePosition(Ogre::Node* node, const Ogre::Vector3& position, bool useDerived = false);
+        void updateNodePosition(Ogre::Node* node, const Ogre::Vector3& position, bool useDerived = false, bool fireAndForget = false);
 
         // Update orientation for a node in the current buffer
-        void updateNodeOrientation(Ogre::Node* node, const Ogre::Quaternion& orientation, bool useDerived = false);
+        void updateNodeOrientation(Ogre::Node* node, const Ogre::Quaternion& orientation, bool useDerived = false, bool fireAndForget = false);
 
         // Update scale for a node in the current buffer
-        void updateNodeScale(Ogre::Node* node, const Ogre::Vector3& scale, bool useDerived = false);
+        void updateNodeScale(Ogre::Node* node, const Ogre::Vector3& scale, bool useDerived = false, bool fireAndForget = false);
 
         // Update full transform for a node in the current buffer
-        void updateNodeTransform(Ogre::Node* node, const Ogre::Vector3& position, const Ogre::Quaternion& orientation, const Ogre::Vector3& scale = Ogre::Vector3::UNIT_SCALE, bool useDerived = false);
+        void updateNodeTransform(Ogre::Node* node, const Ogre::Vector3& position, const Ogre::Quaternion& orientation, const Ogre::Vector3& scale = Ogre::Vector3::UNIT_SCALE, bool useDerived = false, bool fireAndForget = false);
 
         // Add a Camera to be tracked and transformed
         void addTrackedCamera(Ogre::Camera* camera);
@@ -428,13 +428,13 @@ namespace NOWA
         void removeTrackedCamera(Ogre::Camera* camera);
 
         // Update position for a Camera in the current buffer
-        void updateCameraPosition(Ogre::Camera* camera, const Ogre::Vector3& position);
+        void updateCameraPosition(Ogre::Camera* camera, const Ogre::Vector3& position, bool fireAndForget = false);
 
         // Update orientation for a Camera in the current buffer
-        void updateCameraOrientation(Ogre::Camera* camera, const Ogre::Quaternion& orientation);
+        void updateCameraOrientation(Ogre::Camera* camera, const Ogre::Quaternion& orientation, bool fireAndForget = false);
 
         // Update full transform for a Camera in the current buffer
-        void updateCameraTransform(Ogre::Camera* camera, const Ogre::Vector3& position, const Ogre::Quaternion& orientation);
+        void updateCameraTransform(Ogre::Camera* camera, const Ogre::Vector3& position, const Ogre::Quaternion& orientation, bool fireAndForget = false);
 
         // Add a OldBone to be tracked and transformed
         void addTrackedOldBone(Ogre::v1::OldBone* oldBone);
@@ -443,13 +443,13 @@ namespace NOWA
         void removeTrackedOldBone(Ogre::v1::OldBone* oldBone);
 
         // Update position for a OldBone in the current buffer
-        void updateOldBonePosition(Ogre::v1::OldBone* oldBone, const Ogre::Vector3& position);
+        void updateOldBonePosition(Ogre::v1::OldBone* oldBone, const Ogre::Vector3& position, bool fireAndForget = false);
 
         // Update orientation for a OldBone in the current buffer
-        void updateOldBoneOrientation(Ogre::v1::OldBone* oldBone, const Ogre::Quaternion& orientation);
+        void updateOldBoneOrientation(Ogre::v1::OldBone* oldBone, const Ogre::Quaternion& orientation, bool fireAndForget = false);
 
         // Update full transform for a OldBone in the current buffer
-        void updateOldBoneTransform(Ogre::v1::OldBone* oldBone, const Ogre::Vector3& position, const Ogre::Quaternion& orientation);
+        void updateOldBoneTransform(Ogre::v1::OldBone* oldBone, const Ogre::Vector3& position, const Ogre::Quaternion& orientation, bool fireAndForget = false);
 
         // Add a Bone to be tracked and transformed
         void addTrackedBone(Ogre::Bone* bone);
@@ -458,13 +458,13 @@ namespace NOWA
         void removeTrackedBone(Ogre::Bone* bone);
 
         // Update position for a Bone in the current buffer
-        void updateBonePosition(Ogre::Bone* bone, const Ogre::Vector3& position);
+        void updateBonePosition(Ogre::Bone* bone, const Ogre::Vector3& position, bool fireAndForget = false);
 
         // Update orientation for a Bone in the current buffer
-        void updateBoneOrientation(Ogre::Bone* bone, const Ogre::Quaternion& orientation);
+        void updateBoneOrientation(Ogre::Bone* bone, const Ogre::Quaternion& orientation, bool fireAndForget = false);
 
         // Update full transform for a Bone in the current buffer
-        void updateBoneTransform(Ogre::Bone* bone, const Ogre::Vector3& position, const Ogre::Quaternion& orientation);
+        void updateBoneTransform(Ogre::Bone* bone, const Ogre::Vector3& position, const Ogre::Quaternion& orientation, bool fireAndForget = false);
 
         // Add a Pass to be tracked and transformed
         void addTrackedPass(Ogre::Pass* pass);

@@ -566,6 +566,9 @@ namespace NOWA
 
 	bool PhysicsActiveVehicleComponent::createDynamicBody(void)
 	{
+        this->destroyCollision();
+        this->destroyBody();
+
 		Ogre::Vector3 inertia = Ogre::Vector3(1.0f, 1.0f, 1.0f);
 
 		Ogre::Quaternion collisionOrientation = Ogre::Quaternion::IDENTITY; // this->gameObjectPtr->getSceneNode()->getOrientation();

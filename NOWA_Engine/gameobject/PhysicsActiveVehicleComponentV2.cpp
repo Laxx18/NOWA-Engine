@@ -283,8 +283,8 @@ namespace NOWA
         if (this->physicsBody)
         {
             static_cast<OgreNewt::VehicleV2*>(this->physicsBody)->clearTires();
-            delete this->physicsBody;
-            this->physicsBody = nullptr;
+            this->destroyCollision();
+            this->destroyBody();
         }
 
         return success;
@@ -308,6 +308,9 @@ namespace NOWA
     // =========================================================================
     bool PhysicsActiveVehicleComponentV2::createDynamicBody(void)
     {
+        this->destroyCollision();
+        this->destroyBody();
+
         Ogre::Vector3 inertia = Ogre::Vector3(1.0f, 1.0f, 1.0f);
         Ogre::Quaternion collisionOrientation = Ogre::Quaternion::IDENTITY;
 
@@ -318,12 +321,13 @@ namespace NOWA
 
         Ogre::Vector3 calculatedMassOrigin = Ogre::Vector3::ZERO;
 
-        OgreNewt::CollisionPtr collisionPtr;
+        GraphicsModule::RenderCommand renderCommand = [this, &inertia, collisionOrientation, &calculatedMassOrigin]()
+        {
+            this->collisionPtr = this->createDynamicCollision(inertia, this->collisionSize->getVector3(), this->collisionPosition->getVector3(), collisionOrientation, calculatedMassOrigin, this->gameObjectPtr->getCategoryId());
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PhysicsActiveVehicleComponentV2::createDynamicBody");
 
-        ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsActiveVehicleComponentV2::createCollision", _4(&inertia, &collisionPtr, collisionOrientation, &calculatedMassOrigin),
-            { collisionPtr = this->createDynamicCollision(inertia, this->collisionSize->getVector3(), this->collisionPosition->getVector3(), collisionOrientation, calculatedMassOrigin, this->gameObjectPtr->getCategoryId()); });
-
-        if (!collisionPtr)
+        if (nullptr == this->collisionPtr)
         {
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsActiveVehicleComponentV2] Collision is null for: " + this->gameObjectPtr->getName());
             return false;
@@ -337,7 +341,7 @@ namespace NOWA
         const Ogre::Real weightedMass = this->mass->getReal();
         LuaScript* luaScript = this->gameObjectPtr->getLuaScript();
 
-        this->physicsBody = new OgreNewt::VehicleV2(this->ogreNewt, this->gameObjectPtr->getSceneManager(), collisionPtr, weightedMass, calculatedMassOrigin, this->gravity->getVector3(), this->gameObjectPtr->getDefaultDirection(),
+        this->physicsBody = new OgreNewt::VehicleV2(this->ogreNewt, this->gameObjectPtr->getSceneManager(), this->collisionPtr, weightedMass, calculatedMassOrigin, this->gravity->getVector3(), this->gameObjectPtr->getDefaultDirection(),
             new PhysicsVehicleV2Callback(this->gameObjectPtr.get(), luaScript, this->ogreNewt, m_onSteerAngleChangedFunctionName->getString(), m_onMotorForceChangedFunctionName->getString(), m_onHandBrakeChangedFunctionName->getString(),
                 m_onBrakeChangedFunctionName->getString()));
 
@@ -708,15 +712,9 @@ namespace NOWA
             return;
         }
 
-        // Step 1: tear down in vehicle-specific order — tires MUST go before body.
-        // (base class destroyBody() does not know about tires)
-        if (nullptr != this->physicsBody)
-        {
-            static_cast<OgreNewt::VehicleV2*>(this->physicsBody)->clearTires();
-            delete this->physicsBody;
-            this->physicsBody = nullptr;
-        }
+        // Step 1: destroy existing body and collision
         this->destroyCollision();
+        this->destroyBody();
 
         // Step 2: recreate the full Vehicle.
         // swapMovableObject() has already attached the new Ogre::Item to the scene node,

@@ -25,7 +25,7 @@ namespace NOWA
 		workspaceBaseComponent(nullptr),
 		eyeId(-1),
 		active(new Variant(CameraComponent::AttrActive(), false, this->attributes)),
-		position(new Variant(CameraComponent::AttrPosition(), Ogre::Vector3::ZERO, this->attributes)),
+        position(new Variant(CameraComponent::AttrPosition(), Ogre::Vector3(0.0f, 5.0f, -2.0f), this->attributes)),
 		orientation(new Variant(CameraComponent::AttrOrientation(), Ogre::Vector3::ZERO, this->attributes)),
 		nearClipDistance(new Variant(CameraComponent::AttrNearClipDistance(), 0.1f, this->attributes)),
 		farClipDistance(new Variant(CameraComponent::AttrFarClipDistance(), 500.0f, this->attributes)),
@@ -770,7 +770,7 @@ namespace NOWA
 
 		if (this->camera)
 		{
-			NOWA::GraphicsModule::getInstance()->updateCameraPosition(this->camera, position);
+			NOWA::GraphicsModule::getInstance()->updateCameraPosition(this->camera, position, true);
 		}
 	}
 
@@ -790,7 +790,7 @@ namespace NOWA
 
 		if (this->camera)
 		{
-			NOWA::GraphicsModule::getInstance()->updateCameraOrientation(this->camera, MathHelper::getInstance()->degreesToQuat(orientationDeg));
+			NOWA::GraphicsModule::getInstance()->updateCameraOrientation(this->camera, MathHelper::getInstance()->degreesToQuat(orientationDeg), true);
 		}
 	}
 
@@ -803,7 +803,7 @@ namespace NOWA
 		}
 		if (this->camera)
 		{
-			NOWA::GraphicsModule::getInstance()->updateCameraOrientation(this->camera, orientation);
+			NOWA::GraphicsModule::getInstance()->updateCameraOrientation(this->camera, orientation, true);
 		}
 	}
 

@@ -792,7 +792,8 @@ namespace NOWA
         if (physicsArtifactCompPtr)
         {
             this->physicsArtifactComponent = physicsArtifactCompPtr.get();
-            this->physicsArtifactComponent->setSerialize(true);
+            this->physicsArtifactComponent->getAttribute(PhysicsArtifactComponent::AttrSerialize())->setValue(false);
+            this->physicsArtifactComponent->getAttribute(PhysicsArtifactComponent::AttrSerialize())->setVisible(false);
         }
 
         // Clear existing
@@ -1153,7 +1154,7 @@ namespace NOWA
             Ogre::MeshPtr meshPtr;
             try
             {
-                meshPtr = Ogre::MeshManager::getSingletonPtr()->load(batch.meshName, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME);
+                meshPtr = Ogre::MeshManager::getSingletonPtr()->load(batch.meshName, rule.resourceGroup);
             }
             catch (const Ogre::Exception& e)
             {
@@ -1732,7 +1733,7 @@ namespace NOWA
         Ogre::String folderPath = this->ruleMeshNames[index]->getUserDataValue("PathToFolder");
         if (false == folderPath.empty())
         {
-            this->rules[index].resourceGroup = this->extractResourceGroupFromPath(folderPath);
+            this->rules[index].resourceGroup = Core::getSingletonPtr()->extractResourceGroupFromPath(folderPath);
 
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralFoliageVolume] Mesh '" + meshName + "' assigned to group: " + this->rules[index].resourceGroup);
         }
@@ -2053,27 +2054,6 @@ namespace NOWA
         // Check bounds with margin to avoid edge cases
         const Ogre::Real margin = 1.0f;
         return (position.x >= minX + margin && position.x <= maxX - margin && position.z >= minZ + margin && position.z <= maxZ - margin);
-    }
-
-    Ogre::String ProceduralFoliageVolumeComponent::extractResourceGroupFromPath(const Ogre::String& path)
-    {
-        // Path: "../../media/models/Plants"
-        // Extract: "Plants"
-
-        size_t lastSlash = path.find_last_of("/\\");
-        if (lastSlash != Ogre::String::npos)
-        {
-            Ogre::String groupName = path.substr(lastSlash + 1);
-
-            // Verify group exists
-            if (Ogre::ResourceGroupManager::getSingleton().resourceGroupExists(groupName))
-            {
-                return groupName;
-            }
-        }
-
-        // Fallback to AUTODETECT if extraction fails
-        return Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME;
     }
 
     bool ProceduralFoliageVolumeComponent::isCategoryAllowed(const Ogre::Vector3& position, const FoliageRule& rule)

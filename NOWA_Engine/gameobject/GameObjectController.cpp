@@ -650,8 +650,7 @@ GameObjectPtr GameObjectController::internalClone(GameObjectPtr originalGameObje
 
     if (Ogre::Vector3::ZERO != targetPosition)
     {
-        // clonedGameObjectPtr->setAttributePosition(targetPosition);
-        NOWA::GraphicsModule::getInstance()->updateNodePosition(clonedGameObjectPtr->getSceneNode(), targetPosition);
+        clonedGameObjectPtr->setAttributePosition(targetPosition);
     }
     else
     {
@@ -659,8 +658,7 @@ GameObjectPtr GameObjectController::internalClone(GameObjectPtr originalGameObje
     }
     if (Ogre::Quaternion::IDENTITY != targetOrientation)
     {
-        // clonedGameObjectPtr->setAttributeOrientation(targetOrientation);
-        NOWA::GraphicsModule::getInstance()->updateNodeOrientation(clonedGameObjectPtr->getSceneNode(), targetOrientation);
+        clonedGameObjectPtr->setAttributeOrientation(targetOrientation);
     }
     else
     {
@@ -668,19 +666,20 @@ GameObjectPtr GameObjectController::internalClone(GameObjectPtr originalGameObje
     }
     if (Ogre::Vector3::UNIT_SCALE != targetScale)
     {
-        // clonedGameObjectPtr->setAttributeScale(targetScale);
-        NOWA::GraphicsModule::getInstance()->updateNodeScale(clonedGameObjectPtr->getSceneNode(), targetScale);
+        clonedGameObjectPtr->setAttributeScale(targetScale);
     }
     else
     {
-        // clonedGameObjectPtr->setAttributeScale(originalGameObjectPtr->getScale());
-        NOWA::GraphicsModule::getInstance()->updateNodeScale(clonedGameObjectPtr->getSceneNode(), originalGameObjectPtr->getScale());
+        clonedGameObjectPtr->setAttributeScale(originalGameObjectPtr->getScale());
     }
+
+    assert(GraphicsModule::getInstance()->isRenderThread() && "internalClone() must be called from the render thread thread!");
 
     // 1. Get the final transform values
     Ogre::Vector3 finalPosition = (Ogre::Vector3::ZERO != targetPosition) ? targetPosition : originalGameObjectPtr->getPosition();
     Ogre::Quaternion finalOrientation = (Ogre::Quaternion::IDENTITY != targetOrientation) ? targetOrientation : originalGameObjectPtr->getOrientation();
     Ogre::Vector3 finalScale = (Ogre::Vector3::UNIT_SCALE != targetScale) ? targetScale : originalGameObjectPtr->getScale();
+
 
     // 2. Set the transform directly on the SceneNode (Local space, or World space if parented to root)
     clonedSceneNode->setPosition(finalPosition); // Assuming this is world position, or local if parented to root

@@ -412,6 +412,11 @@ namespace OgreNewt
         }
 
         // ── Process each leg ──────────────────────────────────────────────────
+        // IK is solved in world space (required for correct geometry), then the
+        // resulting positions and orientations are converted to torso-local space
+        // before storage.  Callers (e.g. updateNodeTransform on child nodes) receive
+        // parent-relative values directly – no extra conversion needed.
+        const Ogre::Quaternion chassisOrientInv = chassisOrient.Inverse();
         const int legCount = static_cast<int>(m_legs.size());
         for (int i = 0; i < legCount; ++i)
         {
@@ -423,12 +428,18 @@ namespace OgreNewt
 
             // Hip world position (chassis-local hip shifted by sway, then to world)
             leg.thighWorldPos = chassisPos + chassisOrient * (leg.hipLocalPos + swayOffset);
+            leg.footWorldPos  = chassisPos + chassisOrient * gs.posit;
 
             // Foot world position (gait posit is torso-local)
-            leg.footWorldPos = chassisPos + chassisOrient * gs.posit;
-
-            // 2-link IK → fills kneeWorldPos and all orientations
             solveIK(leg, chassisUp);
+
+            // Convert world results to torso-local (parent-relative for child scene nodes).
+            leg.thighWorldPos  = chassisOrientInv * (leg.thighWorldPos  - chassisPos);
+            leg.kneeWorldPos   = chassisOrientInv * (leg.kneeWorldPos   - chassisPos);
+            leg.footWorldPos   = chassisOrientInv * (leg.footWorldPos   - chassisPos);
+            leg.thighWorldOrient = chassisOrientInv * leg.thighWorldOrient;
+            leg.calfWorldOrient  = chassisOrientInv * leg.calfWorldOrient;
+            leg.heelWorldOrient  = chassisOrientInv * leg.heelWorldOrient;
         }
 
         // Commit the advanced time accumulator AFTER processing all legs.

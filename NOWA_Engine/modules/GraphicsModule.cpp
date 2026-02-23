@@ -574,116 +574,6 @@ namespace NOWA
         }
     }
 
-#if 0
-    void GraphicsModule::enqueueAndWait(RenderCommand&& command, const char* commandName)
-    {
-        this->isRunningWaitClosure = true;
-
-        // If already on the render thread or in the middle of destroy closure, wait must not be called! Else closure of destroy etc. will be interupted! so execute directly without wait in that case.
-        // Or detect if already in a logic->render call chain
-        // Note: RenderGlobals::g_inLogicCommand has been uncommented, because its dangerous, so that a render thread operation would not be executed on render thread, because its part of logic main thread cascade
-        if (true == this->isRenderThread()/* || true == RenderGlobals::g_inLogicCommand*/)
-        {
-            try
-            {
-                // Execute immediately on current thread to break cycle
-                this->logCommandEvent(std::string("Executing command '") + commandName + "' directly on render thread with **WAIT**", Ogre::LML_TRIVIAL);
-                command();
-
-                this->isRunningWaitClosure = false;
-                return;
-            }
-            catch (const std::exception& e)
-            {
-                this->logCommandEvent(std::string("Exception in direct execution of '") + commandName + "': " + e.what(), Ogre::LML_CRITICAL);
-                throw; // Re-throw the exception
-            }
-            catch (...)
-            {
-                this->logCommandEvent(std::string("Unknown exception in direct execution of '") + commandName + "'", Ogre::LML_CRITICAL);
-                throw; // Re-throw the exception
-            }
-        }
-
-        // Track that we're in a waiting state on this thread
-        this->incrementWaitDepth();
-
-        try
-        {
-            // Create a promise for this command
-            auto promise = std::make_shared<std::promise<void>>();
-            auto future = promise->get_future();
-
-            // Log the command
-            this->logCommandEvent(std::string("Enqueueing command '") + commandName + "' with **WAIT**", Ogre::LML_NORMAL);
-
-            // If we're in a nested wait, we still enqueue with the promise but we'll use a special flag
-            bool isNested = isInNestedWait() && g_waitDepth > 1; // We've already incremented waitDepth
-
-            if (true == isNested)
-            {
-                this->logCommandEvent(std::string("Command '") + commandName + "' is a nested **WAIT** call (depth: " + std::to_string(g_waitDepth) + ")", Ogre::LML_NORMAL);
-            }
-
-            // Always enqueue with a promise, even for nested commands
-            this->enqueue(std::move(command), commandName, promise);
-
-            // For the first level wait, process immediately to avoid deadlocks
-            if (false == isNested)
-            {
-                // Wait for the command to complete
-                if (true == this->isTimeoutEnabled())
-                {
-                    auto timeout = getTimeoutDuration();
-                    auto status = future.wait_for(timeout);
-
-                    if (status == std::future_status::timeout)
-                    {
-                        this->logCommandEvent(std::string("Timeout occurred waiting for command '") + commandName + "'", Ogre::LML_CRITICAL);
-
-                        // Force a full queue synchronization to recover
-                        this->processQueueSync();
-                    }
-                }
-                else
-                {
-                    // future.wait();
-                    while (future.wait_for(std::chrono::milliseconds(1)) != std::future_status::ready)
-                    {
-                        std::this_thread::yield();
-                    }
-
-                }
-            }
-            else
-            {
-                // For nested waits, we still track the promise but don't wait for it
-                // The outer wait will ensure all commands get processed eventually
-                this->logCommandEvent(std::string("Nested command '") + commandName + "' enqueued without blocking wait", Ogre::LML_NORMAL);
-
-                // Add to tracking for nested commands if needed
-                // trackNestedCommand(promise); // Optional: implement this to track nested promises
-            }
-        }
-        catch (const std::exception& e)
-        {
-            this->logCommandEvent(std::string("Exception waiting for command '") + commandName + "': " + e.what(), Ogre::LML_CRITICAL);
-            decrementWaitDepth();
-            throw;
-        }
-        catch (...)
-        {
-            this->logCommandEvent(std::string("Unknown exception waiting for command '") + commandName + "'", Ogre::LML_CRITICAL);
-            decrementWaitDepth();
-            throw;
-        }
-
-        decrementWaitDepth();
-        logCommandEvent(std::string("Command '") + commandName + "' completed", Ogre::LML_TRIVIAL);
-
-        this->isRunningWaitClosure = false;
-    }
-#else
     void GraphicsModule::enqueueAndWait(RenderCommand&& command, const char* commandName)
     {
         this->isRunningWaitClosure = true;
@@ -795,8 +685,6 @@ namespace NOWA
 
         this->isRunningWaitClosure = false;
     }
-
-#endif
 
     void GraphicsModule::processQueueSync(void)
     {
@@ -1103,99 +991,144 @@ namespace NOWA
         }
     }
 
-    void GraphicsModule::updateNodePosition(Ogre::Node* node, const Ogre::Vector3& position, bool useDerived)
+    void GraphicsModule::updateNodePosition(Ogre::Node* node, const Ogre::Vector3& position, bool useDerived, bool fireAndForget)
     {
         GraphicsModule::NodeTransforms* nodeTransforms = this->findNodeTransforms(node);
 
-        // If node isn't tracked yet, add it
         if (nullptr == nodeTransforms)
         {
             this->addTrackedNode(node);
             nodeTransforms = this->findNodeTransforms(node);
         }
 
-        // Update position in current buffer only
-        // This is key to the mutex-free approach - logic thread only writes to current buffer
-        nodeTransforms->transforms[this->currentTransformNodeIdx].position = position;
+        if (true == fireAndForget)
+        {
+            // Set all buffers to the same value so prev == curr, interpolation has no effect
+            for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
+            {
+                nodeTransforms->transforms[i].position = position;
+            }
+            // Force eviction after next advanceTransformBuffer
+            nodeTransforms->stableFrames = 4;
+            nodeTransforms->updatedThisFrame = false;
+        }
+        else
+        {
+            nodeTransforms->transforms[this->currentTransformNodeIdx].position = position;
+            nodeTransforms->updatedThisFrame = true;
+        }
+
         nodeTransforms->active = true;
         nodeTransforms->useDerived = useDerived;
-        nodeTransforms->updatedThisFrame = true;
 
         if (true == this->debugVisualization)
         {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[RenderCommandQueueModule]: Updated position for node: " + node->getName()
-             + " to " + Ogre::StringConverter::toString(position) + " in buffer: " + Ogre::StringConverter::toString(this->currentTransformNodeIdx));
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[RenderCommandQueueModule]: Updated position for node: " + node->getName() + " to " + Ogre::StringConverter::toString(position) +
+                                                                                    " in buffer: " + Ogre::StringConverter::toString(this->currentTransformNodeIdx) + (fireAndForget ? " [fireAndForget]" : ""));
         }
     }
 
-    void GraphicsModule::updateNodeOrientation(Ogre::Node* node, const Ogre::Quaternion& orientation, bool useDerived)
+    void GraphicsModule::updateNodeOrientation(Ogre::Node* node, const Ogre::Quaternion& orientation, bool useDerived, bool fireAndForget)
     {
         GraphicsModule::NodeTransforms* nodeTransforms = this->findNodeTransforms(node);
 
-        // If node isn't tracked yet, add it
         if (nullptr == nodeTransforms)
         {
             this->addTrackedNode(node);
             nodeTransforms = this->findNodeTransforms(node);
         }
 
-        // Update position in current buffer only
-        // This is key to the mutex-free approach - logic thread only writes to current buffer
-        nodeTransforms->transforms[this->currentTransformNodeIdx].orientation = orientation;
+        if (true == fireAndForget)
+        {
+            for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
+            {
+                nodeTransforms->transforms[i].orientation = orientation;
+            }
+            nodeTransforms->stableFrames = 4;
+            nodeTransforms->updatedThisFrame = false;
+        }
+        else
+        {
+            nodeTransforms->transforms[this->currentTransformNodeIdx].orientation = orientation;
+            nodeTransforms->updatedThisFrame = true;
+        }
+
         nodeTransforms->active = true;
         nodeTransforms->useDerived = useDerived;
-        nodeTransforms->updatedThisFrame = true;
 
         if (true == this->debugVisualization)
         {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[RenderCommandQueueModule]: Updated orientation for node: " + node->getName()
-                + " to " + Ogre::StringConverter::toString(orientation) + " in buffer: " + Ogre::StringConverter::toString(this->currentTransformNodeIdx));
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[RenderCommandQueueModule]: Updated orientation for node: " + node->getName() + " to " + Ogre::StringConverter::toString(orientation) +
+                                                                                    " in buffer: " + Ogre::StringConverter::toString(this->currentTransformNodeIdx) + (fireAndForget ? " [fireAndForget]" : ""));
         }
     }
 
-    void GraphicsModule::updateNodeScale(Ogre::Node* node, const Ogre::Vector3& scale, bool useDerived)
+    void GraphicsModule::updateNodeScale(Ogre::Node* node, const Ogre::Vector3& scale, bool useDerived, bool fireAndForget)
     {
         GraphicsModule::NodeTransforms* nodeTransforms = this->findNodeTransforms(node);
 
-        // If node isn't tracked yet, add it
         if (nullptr == nodeTransforms)
         {
             this->addTrackedNode(node);
             nodeTransforms = this->findNodeTransforms(node);
         }
 
-        // Update position in current buffer only
-        // This is key to the mutex-free approach - logic thread only writes to current buffer
-        nodeTransforms->transforms[this->currentTransformNodeIdx].scale = scale;
+        if (true == fireAndForget)
+        {
+            for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
+            {
+                nodeTransforms->transforms[i].scale = scale;
+            }
+            nodeTransforms->stableFrames = 4;
+            nodeTransforms->updatedThisFrame = false;
+        }
+        else
+        {
+            nodeTransforms->transforms[this->currentTransformNodeIdx].scale = scale;
+            nodeTransforms->updatedThisFrame = true;
+        }
+
         nodeTransforms->active = true;
         nodeTransforms->useDerived = useDerived;
-        nodeTransforms->updatedThisFrame = true;
 
         if (true == this->debugVisualization)
         {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[RenderCommandQueueModule]: Updated scale for node: " + node->getName()
-                + " to " + Ogre::StringConverter::toString(scale) + " in buffer: " + Ogre::StringConverter::toString(this->currentTransformNodeIdx));
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[RenderCommandQueueModule]: Updated scale for node: " + node->getName() + " to " + Ogre::StringConverter::toString(scale) +
+                                                                                    " in buffer: " + Ogre::StringConverter::toString(this->currentTransformNodeIdx) + (fireAndForget ? " [fireAndForget]" : ""));
         }
     }
 
-    void GraphicsModule::updateNodeTransform(Ogre::Node* node, const Ogre::Vector3& position, const Ogre::Quaternion& orientation, const Ogre::Vector3& scale, bool useDerived)
+    void GraphicsModule::updateNodeTransform(Ogre::Node* node, const Ogre::Vector3& position, const Ogre::Quaternion& orientation, const Ogre::Vector3& scale, bool useDerived, bool fireAndForget)
     {
         GraphicsModule::NodeTransforms* nodeTransforms = this->findNodeTransforms(node);
 
-        // If node isn't tracked yet, add it
         if (nullptr == nodeTransforms)
         {
             this->addTrackedNode(node);
             nodeTransforms = this->findNodeTransforms(node);
         }
 
-        // Update all transform components in current buffer
-        nodeTransforms->transforms[this->currentTransformNodeIdx].position = position;
-        nodeTransforms->transforms[this->currentTransformNodeIdx].orientation = orientation;
-        nodeTransforms->transforms[this->currentTransformNodeIdx].scale = scale;
+        if (true == fireAndForget)
+        {
+            for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
+            {
+                nodeTransforms->transforms[i].position = position;
+                nodeTransforms->transforms[i].orientation = orientation;
+                nodeTransforms->transforms[i].scale = scale;
+            }
+            nodeTransforms->stableFrames = 4;
+            nodeTransforms->updatedThisFrame = false;
+        }
+        else
+        {
+            nodeTransforms->transforms[this->currentTransformNodeIdx].position = position;
+            nodeTransforms->transforms[this->currentTransformNodeIdx].orientation = orientation;
+            nodeTransforms->transforms[this->currentTransformNodeIdx].scale = scale;
+            nodeTransforms->updatedThisFrame = true;
+        }
+
         nodeTransforms->active = true;
         nodeTransforms->useDerived = useDerived;
-        nodeTransforms->updatedThisFrame = true;
     }
 
     void GraphicsModule::addTrackedCamera(Ogre::Camera* camera)
@@ -1258,55 +1191,80 @@ namespace NOWA
         }
     }
 
-    void GraphicsModule::updateCameraPosition(Ogre::Camera* camera, const Ogre::Vector3& position)
+    void GraphicsModule::updateCameraPosition(Ogre::Camera* camera, const Ogre::Vector3& position, bool fireAndForget)
     {
         GraphicsModule::CameraTransforms* cameraTransforms = this->findCameraTransforms(camera);
 
-        // If camera isn't tracked yet, add it
         if (nullptr == cameraTransforms)
         {
             this->addTrackedCamera(camera);
             cameraTransforms = this->findCameraTransforms(camera);
         }
 
-        // Update position in current buffer only
-        // This is key to the mutex-free approach - logic thread only writes to current buffer
-        cameraTransforms->transforms[this->currentTransformCameraIdx].position = position;
+        if (true == fireAndForget)
+        {
+            for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
+            {
+                cameraTransforms->transforms[i].position = position;
+            }
+        }
+        else
+        {
+            cameraTransforms->transforms[this->currentTransformCameraIdx].position = position;
+        }
+
         cameraTransforms->active = true;
     }
 
-    void GraphicsModule::updateCameraOrientation(Ogre::Camera* camera, const Ogre::Quaternion& orientation)
+    void GraphicsModule::updateCameraOrientation(Ogre::Camera* camera, const Ogre::Quaternion& orientation, bool fireAndForget)
     {
         GraphicsModule::CameraTransforms* cameraTransforms = this->findCameraTransforms(camera);
 
-        // If camera isn't tracked yet, add it
         if (nullptr == cameraTransforms)
         {
             this->addTrackedCamera(camera);
             cameraTransforms = this->findCameraTransforms(camera);
         }
 
-        // Update orientation in current buffer only
-        // This is key to the mutex-free approach - logic thread only writes to current buffer
-        cameraTransforms->transforms[this->currentTransformCameraIdx].orientation = orientation;
+        if (true == fireAndForget)
+        {
+            for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
+            {
+                cameraTransforms->transforms[i].orientation = orientation;
+            }
+        }
+        else
+        {
+            cameraTransforms->transforms[this->currentTransformCameraIdx].orientation = orientation;
+        }
+
         cameraTransforms->active = true;
     }
 
-    void GraphicsModule::updateCameraTransform(Ogre::Camera* camera, const Ogre::Vector3& position, const Ogre::Quaternion& orientation)
+    void GraphicsModule::updateCameraTransform(Ogre::Camera* camera, const Ogre::Vector3& position, const Ogre::Quaternion& orientation, bool fireAndForget)
     {
         GraphicsModule::CameraTransforms* cameraTransforms = this->findCameraTransforms(camera);
 
-        // If camera isn't tracked yet, add it
         if (nullptr == cameraTransforms)
         {
             this->addTrackedCamera(camera);
             cameraTransforms = this->findCameraTransforms(camera);
         }
 
-        // Update position in current buffer only
-        // This is key to the mutex-free approach - logic thread only writes to current buffer
-        cameraTransforms->transforms[this->currentTransformCameraIdx].position = position;
-        cameraTransforms->transforms[this->currentTransformCameraIdx].orientation = orientation;
+        if (true == fireAndForget)
+        {
+            for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
+            {
+                cameraTransforms->transforms[i].position = position;
+                cameraTransforms->transforms[i].orientation = orientation;
+            }
+        }
+        else
+        {
+            cameraTransforms->transforms[this->currentTransformCameraIdx].position = position;
+            cameraTransforms->transforms[this->currentTransformCameraIdx].orientation = orientation;
+        }
+
         cameraTransforms->active = true;
     }
 
@@ -1370,55 +1328,80 @@ namespace NOWA
         }
     }
 
-    void GraphicsModule::updateOldBonePosition(Ogre::v1::OldBone* oldBone, const Ogre::Vector3& position)
+    void GraphicsModule::updateOldBonePosition(Ogre::v1::OldBone* oldBone, const Ogre::Vector3& position, bool fireAndForget)
     {
         GraphicsModule::OldBoneTransforms* oldBoneTransforms = this->findOldBoneTransforms(oldBone);
 
-        // If oldBone isn't tracked yet, add it
         if (nullptr == oldBoneTransforms)
         {
             this->addTrackedOldBone(oldBone);
             oldBoneTransforms = this->findOldBoneTransforms(oldBone);
         }
 
-        // Update position in current buffer only
-        // This is key to the mutex-free approach - logic thread only writes to current buffer
-        oldBoneTransforms->transforms[this->currentTransformOldBoneIdx].position = position;
+        if (true == fireAndForget)
+        {
+            for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
+            {
+                oldBoneTransforms->transforms[i].position = position;
+            }
+        }
+        else
+        {
+            oldBoneTransforms->transforms[this->currentTransformOldBoneIdx].position = position;
+        }
+
         oldBoneTransforms->active = true;
     }
 
-    void GraphicsModule::updateOldBoneOrientation(Ogre::v1::OldBone* oldBone, const Ogre::Quaternion& orientation)
+    void GraphicsModule::updateOldBoneOrientation(Ogre::v1::OldBone* oldBone, const Ogre::Quaternion& orientation, bool fireAndForget)
     {
         GraphicsModule::OldBoneTransforms* oldBoneTransforms = this->findOldBoneTransforms(oldBone);
 
-        // If oldBone isn't tracked yet, add it
         if (nullptr == oldBoneTransforms)
         {
             this->addTrackedOldBone(oldBone);
             oldBoneTransforms = this->findOldBoneTransforms(oldBone);
         }
 
-        // Update orientation in current buffer only
-        // This is key to the mutex-free approach - logic thread only writes to current buffer
-        oldBoneTransforms->transforms[this->currentTransformOldBoneIdx].orientation = orientation;
+        if (true == fireAndForget)
+        {
+            for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
+            {
+                oldBoneTransforms->transforms[i].orientation = orientation;
+            }
+        }
+        else
+        {
+            oldBoneTransforms->transforms[this->currentTransformOldBoneIdx].orientation = orientation;
+        }
+
         oldBoneTransforms->active = true;
     }
 
-    void GraphicsModule::updateOldBoneTransform(Ogre::v1::OldBone* oldBone, const Ogre::Vector3& position, const Ogre::Quaternion& orientation)
+    void GraphicsModule::updateOldBoneTransform(Ogre::v1::OldBone* oldBone, const Ogre::Vector3& position, const Ogre::Quaternion& orientation, bool fireAndForget)
     {
         GraphicsModule::OldBoneTransforms* oldBoneTransforms = this->findOldBoneTransforms(oldBone);
 
-        // If oldBone isn't tracked yet, add it
         if (nullptr == oldBoneTransforms)
         {
             this->addTrackedOldBone(oldBone);
             oldBoneTransforms = this->findOldBoneTransforms(oldBone);
         }
 
-        // Update position in current buffer only
-        // This is key to the mutex-free approach - logic thread only writes to current buffer
-        oldBoneTransforms->transforms[this->currentTransformOldBoneIdx].position = position;
-        oldBoneTransforms->transforms[this->currentTransformOldBoneIdx].orientation = orientation;
+        if (true == fireAndForget)
+        {
+            for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
+            {
+                oldBoneTransforms->transforms[i].position = position;
+                oldBoneTransforms->transforms[i].orientation = orientation;
+            }
+        }
+        else
+        {
+            oldBoneTransforms->transforms[this->currentTransformOldBoneIdx].position = position;
+            oldBoneTransforms->transforms[this->currentTransformOldBoneIdx].orientation = orientation;
+        }
+
         oldBoneTransforms->active = true;
     }
 
@@ -1472,8 +1455,7 @@ namespace NOWA
         }
     }
 
-
-    void GraphicsModule::updateBonePosition(Ogre::Bone* bone, const Ogre::Vector3& position)
+    void GraphicsModule::updateBonePosition(Ogre::Bone* bone, const Ogre::Vector3& position, bool fireAndForget)
     {
         GraphicsModule::BoneTransforms* boneTransforms = this->findBoneTransforms(bone);
 
@@ -1483,11 +1465,22 @@ namespace NOWA
             boneTransforms = this->findBoneTransforms(bone);
         }
 
-        boneTransforms->transforms[this->currentTransformBoneIdx].position = position;
+        if (true == fireAndForget)
+        {
+            for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
+            {
+                boneTransforms->transforms[i].position = position;
+            }
+        }
+        else
+        {
+            boneTransforms->transforms[this->currentTransformBoneIdx].position = position;
+        }
+
         boneTransforms->active = true;
     }
 
-    void GraphicsModule::updateBoneOrientation(Ogre::Bone* bone, const Ogre::Quaternion& orientation)
+    void GraphicsModule::updateBoneOrientation(Ogre::Bone* bone, const Ogre::Quaternion& orientation, bool fireAndForget)
     {
         GraphicsModule::BoneTransforms* boneTransforms = this->findBoneTransforms(bone);
 
@@ -1497,11 +1490,22 @@ namespace NOWA
             boneTransforms = this->findBoneTransforms(bone);
         }
 
-        boneTransforms->transforms[this->currentTransformBoneIdx].orientation = orientation;
+        if (true == fireAndForget)
+        {
+            for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
+            {
+                boneTransforms->transforms[i].orientation = orientation;
+            }
+        }
+        else
+        {
+            boneTransforms->transforms[this->currentTransformBoneIdx].orientation = orientation;
+        }
+
         boneTransforms->active = true;
     }
 
-    void GraphicsModule::updateBoneTransform(Ogre::Bone* bone, const Ogre::Vector3& position, const Ogre::Quaternion& orientation)
+    void GraphicsModule::updateBoneTransform(Ogre::Bone* bone, const Ogre::Vector3& position, const Ogre::Quaternion& orientation, bool fireAndForget)
     {
         GraphicsModule::BoneTransforms* boneTransforms = this->findBoneTransforms(bone);
 
@@ -1511,8 +1515,20 @@ namespace NOWA
             boneTransforms = this->findBoneTransforms(bone);
         }
 
-        boneTransforms->transforms[this->currentTransformBoneIdx].position = position;
-        boneTransforms->transforms[this->currentTransformBoneIdx].orientation = orientation;
+        if (true == fireAndForget)
+        {
+            for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
+            {
+                boneTransforms->transforms[i].position = position;
+                boneTransforms->transforms[i].orientation = orientation;
+            }
+        }
+        else
+        {
+            boneTransforms->transforms[this->currentTransformBoneIdx].position = position;
+            boneTransforms->transforms[this->currentTransformBoneIdx].orientation = orientation;
+        }
+
         boneTransforms->active = true;
     }
 
@@ -1913,9 +1929,18 @@ namespace NOWA
             {
                 // For new nodes, initialize all buffers with current transform
                 GraphicsModule::TransformData currentTransform;
-                currentTransform.position = nodeTransform.node->getPosition();
-                currentTransform.orientation = nodeTransform.node->getOrientation();
-                currentTransform.scale = nodeTransform.node->getScale();
+                if (true == nodeTransform.useDerived)
+                {
+                    currentTransform.position = nodeTransform.node->_getDerivedPosition();
+                    currentTransform.orientation = nodeTransform.node->_getDerivedOrientation();
+                    currentTransform.scale = nodeTransform.node->_getDerivedScale();
+                }
+                else
+                {
+                    currentTransform.position = nodeTransform.node->getPosition();
+                    currentTransform.orientation = nodeTransform.node->getOrientation();
+                    currentTransform.scale = nodeTransform.node->getScale();
+                }
 
                 for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
                 {

@@ -205,6 +205,9 @@ namespace NOWA
 
 	bool PhysicsActiveDestructableComponent::createDynamicBody(void)
 	{
+        this->destroyCollision();
+        this->destroyBody();
+
 		Ogre::Vector3 inertia = Ogre::Vector3(1.0f, 1.0f, 1.0f);
 
 		this->initialPosition = this->gameObjectPtr->getSceneNode()->getPosition();

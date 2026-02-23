@@ -324,7 +324,6 @@ namespace NOWA
         this->compoundCollisionName = collisionName;
         this->collisionMode = COLLISION_COMPOUND;
 
-        // Body already exists? Destroy it first
         if (nullptr != this->physicsBody)
         {
             this->destroyBody();
@@ -336,21 +335,12 @@ namespace NOWA
 
         OgreNewt::CollisionPtr compoundCollision;
 
-        if (false == this->serialize->getBool())
+        // Serialize compound collision
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, childCollisions, collisionName, & compoundCollision]()
         {
-            // Create compound directly (no serialization)
-            compoundCollision = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::CompoundCollision(this->ogreNewt, childCollisions, this->gameObjectPtr->getCategoryId()));
-        }
-        else
-        {
-            // Serialize compound collision
-            NOWA::GraphicsModule::RenderCommand renderCommand = [this, childCollisions, collisionName, & compoundCollision]()
-            {
-                Ogre::String scenePath = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName();
-                compoundCollision = this->serializeCompoundCollision(scenePath, childCollisions, collisionName, this->gameObjectPtr->getCategoryId(), true);
-            };
-            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PhysicsArtifactComponent::serializeCompoundCollision");
-        }
+            Ogre::String scenePath = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName();
+            compoundCollision = this->serializeCompoundCollision(scenePath, childCollisions, collisionName, this->gameObjectPtr->getCategoryId(), true);
+        };
 
         if (nullptr == compoundCollision)
         {
@@ -485,11 +475,12 @@ namespace NOWA
 		{
 			// For more complexe objects its better to serialize the collision hull, so that the creation is a lot of faster next time
 			// Note: Collision file is located in the project folder for all scenes
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsComponent::serializeTreeCollision", _2(overwrite, &staticCollision),
-			{
-				Ogre::String projectFilePath = Core::getSingletonPtr()->getCurrentProjectPath();
-				staticCollision = OgreNewt::CollisionPtr(this->serializeTreeCollision(projectFilePath, this->gameObjectPtr->getCategoryId(), overwrite));
-			});
+			NOWA::GraphicsModule::RenderCommand renderCommand = [this, overwrite, &staticCollision]()
+            {
+                Ogre::String projectFilePath = Core::getSingletonPtr()->getCurrentProjectPath();
+                staticCollision = OgreNewt::CollisionPtr(this->serializeTreeCollision(projectFilePath, this->gameObjectPtr->getCategoryId(), overwrite));
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PhysicsComponent::serializeTreeCollision");
 		}
 
 		if (nullptr == staticCollision)

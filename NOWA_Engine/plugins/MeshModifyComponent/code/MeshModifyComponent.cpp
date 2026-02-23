@@ -239,11 +239,13 @@ namespace NOWA
         this->brushInProgress.store(false);
         this->workerRunning.store(false);
 
+         this->physicsActiveComponent->destroyCollision();
+
         if (this->editableItem == nullptr)
         {
             if (false == this->prepareEditableMesh())
             {
-                return false;
+                return true;
             }
         }
 
@@ -267,6 +269,8 @@ namespace NOWA
         {
             this->workerThread.join();
         }
+
+        this->physicsActiveComponent->destroyCollision();
 
         if (this->originalItem != nullptr)
         {

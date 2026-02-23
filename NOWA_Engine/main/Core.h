@@ -490,6 +490,8 @@ namespace NOWA
 
 		std::vector<Ogre::String> getFilePathNames(const Ogre::String& resourceGroupName, const Ogre::String& folder, const Ogre::String& pattern, bool recursive = false);
 
+		Ogre::String extractResourceGroupFromPath(const Ogre::String& path);
+
 		void openFolder(const Ogre::String& filePathName);
 
 		void displayError(LPCTSTR errorDesc, DWORD errorCode);

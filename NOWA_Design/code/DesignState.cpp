@@ -221,19 +221,21 @@ void DesignState::createScene(void)
 	numThreads = std::max<size_t>(1, Ogre::PlatformInformation::getNumLogicalCores());
 #endif
 
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DesignState::createScene", _1(numThreads),
-	{
-		// Create the SceneManager, in this case a generic one
-		this->sceneManager = NOWA::Core::getSingletonPtr()->getOgreRoot()->createSceneManager(Ogre::ST_GENERIC, numThreads, "NOWA_SceneManager");
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[DesignState]: Using " + Ogre::StringConverter::toString(numThreads) + " threads.");
-		this->camera = this->sceneManager->createCamera("GamePlayCamera");
-		NOWA::Core::getSingletonPtr()->setMenuSettingsForCamera(this->camera);
-		this->camera->setPosition(this->camera->getParentSceneNode()->convertLocalToWorldPositionUpdated(Ogre::Vector3(0.0f, 5.0f, -2.0f)));
+	NOWA::GraphicsModule::RenderCommand renderCommand = [this, numThreads]()
+    {
+        // Create the SceneManager, in this case a generic one
+        this->sceneManager = NOWA::Core::getSingletonPtr()->getOgreRoot()->createSceneManager(Ogre::ST_GENERIC, numThreads, "NOWA_SceneManager");
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[DesignState]: Using " + Ogre::StringConverter::toString(numThreads) + " threads.");
+        this->camera = this->sceneManager->createCamera("GamePlayCamera");
+        NOWA::Core::getSingletonPtr()->setMenuSettingsForCamera(this->camera);
+        Ogre::Vector3 position = this->camera->getParentSceneNode()->convertLocalToWorldPositionUpdated(Ogre::Vector3(0.0f, 5.0f, -2.0f));
+        this->camera->setPosition(position);
 
-		this->camera->setNearClipDistance(0.1f);
-		this->camera->setFarClipDistance(500.0f);
-		this->camera->setQueryFlags(0 << 0);
-	});
+        this->camera->setNearClipDistance(0.1f);
+        this->camera->setFarClipDistance(500.0f);
+        this->camera->setQueryFlags(0 << 0);
+    };
+    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::createScene");
 
 	this->initializeModules(false, false);
 

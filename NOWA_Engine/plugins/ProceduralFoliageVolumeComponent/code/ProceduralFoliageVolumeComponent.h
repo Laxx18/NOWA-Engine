@@ -510,8 +510,6 @@ namespace NOWA
          */
         bool isWithinTerraBounds(const Ogre::Vector3& position, Ogre::Terra* terra) const;
 
-        Ogre::String extractResourceGroupFromPath(const Ogre::String& path);
-
         bool isCategoryAllowed(const Ogre::Vector3& position, const FoliageRule& rule);
     protected:
         Ogre::String name;

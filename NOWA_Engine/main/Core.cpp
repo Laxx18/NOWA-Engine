@@ -301,7 +301,7 @@ namespace NOWA
 		resourceLoadingListener(nullptr),
 		cryptKey(2),
 		projectEncoded(false),
-		useEntityType(true),
+		useEntityType(false),
 		baseListenerContainer(nullptr)
 	{
 		this->optionDesiredFramesUpdates = this->getScreenRefreshRate();
@@ -2335,8 +2335,6 @@ namespace NOWA
 
 		// _tprintf( TEXT("%s  (PID: %u)\n"), szProcessName, processID );
 
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "--------------->: " + Ogre::String(szProcessName));
-
 		// Release the handle to the process.
 
 		CloseHandle( hProcess );
@@ -2936,7 +2934,28 @@ namespace NOWA
 		}
 
 		return fileNames;
-	}
+    }
+
+    Ogre::String Core::extractResourceGroupFromPath(const Ogre::String& path)
+    {
+        // Path: "../../media/models/Plants"
+        // Extract: "Plants"
+
+        size_t lastSlash = path.find_last_of("/\\");
+        if (lastSlash != Ogre::String::npos)
+        {
+            Ogre::String groupName = path.substr(lastSlash + 1);
+
+            // Verify group exists
+            if (Ogre::ResourceGroupManager::getSingleton().resourceGroupExists(groupName))
+            {
+                return groupName;
+            }
+        }
+
+        // Fallback to AUTODETECT if extraction fails
+        return Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME;
+    }
 
 	void Core::openFolder(const Ogre::String& filePathName)
 	{

@@ -31,7 +31,7 @@
 		<mainParameter>
 			<ignoreGlobalScene value="false"/>
 			<renderDistance distance="100"/>
-			<useV2Item value="false"/>
+			<useV2Item value="true"/>
 		</mainParameter>
 		<fog mode="none" start="0" end="0" density="0"/>
 		<bounds mostLeftNearPosition="-51 -0.1615 -51" mostRightFarPosition="51 3.00003 51"/>

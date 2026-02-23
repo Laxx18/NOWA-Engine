@@ -120,11 +120,11 @@ namespace NOWA
 					this->oldGameObjectDataList[i].newOrientation = gameObjectPtr->getSceneNode()->getOrientation();
 
 					NOWA::GraphicsModule::getInstance()->updateNodeTransform(gameObjectPtr->getSceneNode(), this->oldGameObjectDataList[i].oldPosition,
-					 	this->oldGameObjectDataList[i].oldOrientation, this->oldGameObjectDataList[i].oldScale);
+					 	this->oldGameObjectDataList[i].oldOrientation, this->oldGameObjectDataList[i].oldScale, false, true);
 
-					gameObjectPtr->getSceneNode()->setPosition(this->oldGameObjectDataList[i].oldPosition);
+					/*gameObjectPtr->getSceneNode()->setPosition(this->oldGameObjectDataList[i].oldPosition);
                     gameObjectPtr->getSceneNode()->setScale(this->oldGameObjectDataList[i].oldScale);
-                    gameObjectPtr->getSceneNode()->setOrientation(this->oldGameObjectDataList[i].oldOrientation);
+                    gameObjectPtr->getSceneNode()->setOrientation(this->oldGameObjectDataList[i].oldOrientation);*/
 				}
 				i++;
 			}
@@ -182,11 +182,11 @@ namespace NOWA
 				{
 					// If there is no physics component set the data directly for the game object scene node
 					NOWA::GraphicsModule::getInstance()->updateNodeTransform(gameObjectPtr->getSceneNode(), this->oldGameObjectDataList[i].newPosition,
-					 	this->oldGameObjectDataList[i].newOrientation, this->oldGameObjectDataList[i].newScale);
+					 	this->oldGameObjectDataList[i].newOrientation, this->oldGameObjectDataList[i].newScale, false, true);
 
-					gameObjectPtr->getSceneNode()->setPosition(this->oldGameObjectDataList[i].newPosition);
-                    gameObjectPtr->getSceneNode()->setScale(this->oldGameObjectDataList[i].newScale);
-                    gameObjectPtr->getSceneNode()->setOrientation(this->oldGameObjectDataList[i].newOrientation);
+					// gameObjectPtr->getSceneNode()->setPosition(this->oldGameObjectDataList[i].newPosition);
+                    // gameObjectPtr->getSceneNode()->setScale(this->oldGameObjectDataList[i].newScale);
+                    // gameObjectPtr->getSceneNode()->setOrientation(this->oldGameObjectDataList[i].newOrientation);
 				}
 				i++;
 			}
@@ -3623,9 +3623,9 @@ namespace NOWA
 							selectedGameObject.second.gameObject->getSceneNode()->getPosition().z);
 					});
 
-					// Ogre::Vector3 translatePosition = selectedGameObject.second.gameObject->getSceneNode()->getPosition() + offset;
-					// NOWA::GraphicsModule::getInstance()->updateNodePosition(selectedGameObject.second.gameObject->getSceneNode(), Ogre::Vector3(selectedGameObject.second.gameObject->getSceneNode()->getPosition().x, height,
-					// 	selectedGameObject.second.gameObject->getSceneNode()->getPosition().z));
+					/*Ogre::Vector3 translatePosition = selectedGameObject.second.gameObject->getSceneNode()->getPosition() + offset;
+					NOWA::GraphicsModule::getInstance()->updateNodePosition(selectedGameObject.second.gameObject->getSceneNode(), Ogre::Vector3(selectedGameObject.second.gameObject->getSceneNode()->getPosition().x, height,
+					 	selectedGameObject.second.gameObject->getSceneNode()->getPosition().z), false, true);*/
 				}
 
 				if (GetAsyncKeyState(VK_LMENU))

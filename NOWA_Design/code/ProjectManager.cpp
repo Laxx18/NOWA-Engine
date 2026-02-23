@@ -125,45 +125,45 @@ Ogre::Camera* ProjectManager::createMainCamera(void)
 {
 	Ogre::Camera* mainCamera = nullptr;
 
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ProjectManager::createMainCamera", _1(&mainCamera),
-	{
-		// There must be a main camera which may not be deleted
-		Ogre::SceneNode* cameraNode = this->sceneManager->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_DYNAMIC);
-	    cameraNode->setPosition(Ogre::Vector3(0.0f, 5.0f, -2.0f));
+	NOWA::GraphicsModule::RenderCommand renderCommand = [this, &mainCamera]()
+    {
+        // There must be a main camera which may not be deleted
+        Ogre::SceneNode* cameraNode = this->sceneManager->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_DYNAMIC);
+        cameraNode->setPosition(Ogre::Vector3(0.0f, 5.0f, -2.0f));
 
-		Ogre::Item* newItem = this->sceneManager->createItem("Camera.mesh");
-		cameraNode->attachObject(newItem);
+        Ogre::Item* newItem = this->sceneManager->createItem("Camera.mesh");
+        cameraNode->attachObject(newItem);
 
-		Ogre::String gameObjectName = "MainCamera";
-		newItem->setName(gameObjectName);
-		cameraNode->setName(gameObjectName);
+        Ogre::String gameObjectName = "MainCamera";
+        newItem->setName(gameObjectName);
+        cameraNode->setName(gameObjectName);
 
-		NOWA::GameObjectPtr gameObjectPtr = NOWA::GameObjectFactory::getInstance()->createGameObject(this->sceneManager, cameraNode, newItem, NOWA::GameObject::CAMERA, NOWA::GameObjectController::MAIN_CAMERA_ID);
-		if (nullptr != gameObjectPtr)
-		{
-			// Do not permit to change the name of the sun light
-			gameObjectPtr->getAttribute(NOWA::GameObject::AttrName())->setReadOnly(true);
-			// Add also the light direcitional component
-			NOWA::CameraCompPtr cameraComponentPtr = boost::dynamic_pointer_cast<NOWA::CameraComponent>(
-				NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, NOWA::CameraComponent::getStaticClassName()));
+        NOWA::GameObjectPtr gameObjectPtr = NOWA::GameObjectFactory::getInstance()->createGameObject(this->sceneManager, cameraNode, newItem, NOWA::GameObject::CAMERA, NOWA::GameObjectController::MAIN_CAMERA_ID);
+        if (nullptr != gameObjectPtr)
+        {
+            // Do not permit to change the name of the sun light
+            gameObjectPtr->getAttribute(NOWA::GameObject::AttrName())->setReadOnly(true);
+            // Add also the light direcitional component
+            NOWA::CameraCompPtr cameraComponentPtr = boost::dynamic_pointer_cast<NOWA::CameraComponent>(NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, NOWA::CameraComponent::getStaticClassName()));
 
-			mainCamera = cameraComponentPtr->getCamera();
-			mainCamera->setName("MainCamera");
-			// Set camera a bit away from zero so that new added game objects can be seen
-			// cameraComponentPtr->setCameraPosition(Ogre::Vector3(0.0f, 5.0f, -2.0f));
+            mainCamera = cameraComponentPtr->getCamera();
+            mainCamera->setName("MainCamera");
+            // Set camera a bit away from zero so that new added game objects can be seen
+            cameraComponentPtr->setCameraPosition(Ogre::Vector3(0.0f, 5.0f, -2.0f));
 
-			NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, NOWA::WorkspacePbsComponent::getStaticClassName());
-			cameraComponentPtr->setActivated(true);
+            NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, NOWA::WorkspacePbsComponent::getStaticClassName());
+            cameraComponentPtr->setActivated(true);
 
-			// Register after the component has been created
-			NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->registerGameObject(gameObjectPtr);
+            // Register after the component has been created
+            NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->registerGameObject(gameObjectPtr);
 
-			// Sent when a name has changed, so that the resources panel can be refreshed with new values
-			boost::shared_ptr<EventDataRefreshResourcesPanel> eventDataRefreshResourcesPanel(new EventDataRefreshResourcesPanel());
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshResourcesPanel);
-		}
+            // Sent when a name has changed, so that the resources panel can be refreshed with new values
+            boost::shared_ptr<EventDataRefreshResourcesPanel> eventDataRefreshResourcesPanel(new EventDataRefreshResourcesPanel());
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshResourcesPanel);
+        }
+    };
+    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ProjectManager::createMainCamera");
 
-	});
 	return mainCamera;
 }
 
@@ -676,8 +676,8 @@ void ProjectManager::createDummyCamera(void)
 		camera->setNearClipDistance(0.1f);
 		camera->setFarClipDistance(500.0f);
 		camera->setQueryFlags(0 << 0);
-		// camera->setPosition(0.0f, 5.0f, -2.0f);
-		camera->setPosition(camera->getParentSceneNode()->convertLocalToWorldPositionUpdated(Ogre::Vector3(0.0f, 5.0f, -2.0f)));
+		camera->setPosition(0.0f, 5.0f, -2.0f);
+		// camera->setPosition(camera->getParentSceneNode()->convertLocalToWorldPositionUpdated(Ogre::Vector3(0.0f, 5.0f, -2.0f)));
 
 		NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->init("CameraManager1", camera);
 		auto baseCamera = new NOWA::BaseCamera(NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getCameraBehaviorId());

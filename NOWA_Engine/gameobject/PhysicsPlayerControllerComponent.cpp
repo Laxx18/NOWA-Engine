@@ -523,6 +523,9 @@ namespace NOWA
 			return true;
 		}
 
+		this->destroyCollision();
+        this->destroyBody();
+
 		Ogre::Vector3 inertia = Ogre::Vector3(1.0f, 1.0f, 1.0f);
 		Ogre::Vector3 calculatedMassOrigin = Ogre::Vector3::ZERO;
 

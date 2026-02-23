@@ -284,23 +284,24 @@ namespace NOWA
 
 		if (true == initCamera)
 		{
-			ENQUEUE_RENDER_COMMAND_WAIT("AppState::initializeModules camera",
-			{
-				this->camera = this->sceneManager->createCamera(this->appStateName + "_Camera");
-				NOWA::Core::getSingletonPtr()->setMenuSettingsForCamera(this->camera);
-				this->camera->setFOVy(Ogre::Degree(90.0f));
-				this->camera->setNearClipDistance(0.1f);
-				this->camera->setFarClipDistance(500.0f);
-				this->camera->setQueryFlags(0 << 0);
-				this->camera->setPosition(0.0f, 5.0f, -2.0f);
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+            {
+                this->camera = this->sceneManager->createCamera(this->appStateName + "_Camera");
+                NOWA::Core::getSingletonPtr()->setMenuSettingsForCamera(this->camera);
+                this->camera->setFOVy(Ogre::Degree(90.0f));
+                this->camera->setNearClipDistance(0.1f);
+                this->camera->setFarClipDistance(500.0f);
+                this->camera->setQueryFlags(0 << 0);
+                this->camera->setPosition(0.0f, 5.0f, -2.0f);
 
-				// this->cameraManager->destroyContent();
-				this->cameraManager->init("CameraManager1", this->camera);
-				auto baseCamera = new BaseCamera(this->cameraManager->getCameraBehaviorId());
-				this->cameraManager->addCameraBehavior(this->camera, baseCamera);
+                // this->cameraManager->destroyContent();
+                this->cameraManager->init("CameraManager1", this->camera);
+                auto baseCamera = new BaseCamera(this->cameraManager->getCameraBehaviorId());
+                this->cameraManager->addCameraBehavior(this->camera, baseCamera);
 
-				this->cameraManager->setActiveCameraBehavior(this->camera, baseCamera->getBehaviorType());
-			});
+                this->cameraManager->setActiveCameraBehavior(this->camera, baseCamera->getBehaviorType());
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "AppState::initializeModules camera");
 		}
 
 		if (nullptr == this->sceneManager)

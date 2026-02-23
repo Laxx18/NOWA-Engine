@@ -865,7 +865,15 @@ namespace NOWA
         }
         else
         {
-            meshName = this->gameObjectPtr->getMovableObjectUnsafe<Ogre::Item>()->getMesh()->getName();
+            Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
+            if (nullptr != item)
+            {
+                meshName = item->getMesh()->getName();
+            }
+            else
+            {
+                return OgreNewt::CollisionPtr();
+            }
         }
 
         serializeCollisionPath += "/";
@@ -1210,11 +1218,9 @@ namespace NOWA
     {
         if (nullptr != this->physicsBody)
         {
-            // this->physicsBody->setCollision(OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::Null(this->ogreNewt)));
+            Ogre::String name = this->gameObjectPtr->getMovableObject()->getName();
             if (nullptr != this->collisionPtr)
             {
-                // Newton does it already, if body is destroyed, so its prohibited to do it!
-                // this->collisionPtr->getNewtonCollision()->Release();
                 this->collisionPtr.reset();
             }
         }

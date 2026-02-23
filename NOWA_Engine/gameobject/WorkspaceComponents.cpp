@@ -3062,33 +3062,33 @@ namespace NOWA
 
 	void WorkspaceBaseComponent::destroyPccSystem()
 	{
-		ENQUEUE_RENDER_COMMAND_WAIT("WorkspaceBaseComponent::destroyPccSystem",
-		{
-			if (nullptr != this->parallaxCorrectedCubemap)
-			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,"[WorkspaceBaseComponent] Destroying PCC system");
+        GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            if (nullptr != this->parallaxCorrectedCubemap)
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[WorkspaceBaseComponent] Destroying PCC system");
 
-				// Clear from HlmsPbs
-				Ogre::HlmsManager* hlmsManager = Ogre::Root::getSingletonPtr()->getHlmsManager();
-				Ogre::HlmsPbs* hlmsPbs = static_cast<Ogre::HlmsPbs*>(
-					hlmsManager->getHlms(Ogre::HLMS_PBS));
-				hlmsPbs->setParallaxCorrectedCubemap(nullptr);
+                // Clear from HlmsPbs
+                Ogre::HlmsManager* hlmsManager = Ogre::Root::getSingletonPtr()->getHlmsManager();
+                Ogre::HlmsPbs* hlmsPbs = static_cast<Ogre::HlmsPbs*>(hlmsManager->getHlms(Ogre::HLMS_PBS));
+                hlmsPbs->setParallaxCorrectedCubemap(nullptr);
 
-				// Cast to FrameListener* before unregistering
-				Ogre::Root::getSingleton().removeFrameListener(static_cast<Ogre::FrameListener*>(this->parallaxCorrectedCubemap));
+                // Cast to FrameListener* before unregistering
+                Ogre::Root::getSingleton().removeFrameListener(static_cast<Ogre::FrameListener*>(this->parallaxCorrectedCubemap));
 
-				delete this->parallaxCorrectedCubemap;
-				this->parallaxCorrectedCubemap = nullptr;
+                delete this->parallaxCorrectedCubemap;
+                this->parallaxCorrectedCubemap = nullptr;
 
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,"[WorkspaceBaseComponent] PCC frame listener unregistered and object deleted");
-			}
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[WorkspaceBaseComponent] PCC frame listener unregistered and object deleted");
+            }
 
-			if (nullptr != this->workspacePccProbes)
-			{
-				this->compositorManager->removeWorkspace(this->workspacePccProbes);
-				this->workspacePccProbes = nullptr;
-			}
-		});
+            if (nullptr != this->workspacePccProbes)
+            {
+                this->compositorManager->removeWorkspace(this->workspacePccProbes);
+                this->workspacePccProbes = nullptr;
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "WorkspaceBaseComponent::destroyPccSystem");
 	}
 
 	bool WorkspaceBaseComponent::getUseOcean(void) const

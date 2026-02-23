@@ -80,7 +80,7 @@ namespace NOWA
          */
         struct DungeonRoom
         {
-            int id = -1;                   ///< Unique index into ProceduralDungeonComponent::dungeonRooms
+            int id = -1;                   ///< Unique index into dungeonRooms
             int col = 0;                   ///< Left column  (inclusive)
             int row = 0;                   ///< Top row      (inclusive)
             int cols = 0;                  ///< Width  in cells
@@ -348,6 +348,9 @@ namespace NOWA
         void setWallHeight(Ogre::Real height);
         Ogre::Real getWallHeight(void) const;
 
+        void setJitter(Ogre::Real jitter);
+        Ogre::Real getJitter(void) const;
+
         void setAddCeiling(bool add);
         bool getAddCeiling(void) const;
 
@@ -383,6 +386,26 @@ namespace NOWA
 
         void setWallUVTiling(const Ogre::Vector2& tiling);
         Ogre::Vector2 getWallUVTiling(void) const;
+
+        bool getAddWindows(void) const;
+
+        void setAddWindows(bool addWindows);
+
+        Ogre::Real getWindowProb(void) const;
+
+        void setWindowProb(Ogre::Real windowProb);
+
+        Ogre::Real getWindowWidth(void) const;
+
+        void setWindowWidth(Ogre::Real windowWidth);
+
+        Ogre::Real getWindowHeight(void) const;
+
+        void setWindowHeight(Ogre::Real windowHeight);
+
+        Ogre::Real getWindowSill(void) const;
+
+        void setWindowSill(Ogre::Real windowSill);
 
         // -------------------------------------------------------------------------
         // Undo / Redo binary serialisation (mirrors RoadComponentBase interface)
@@ -432,6 +455,10 @@ namespace NOWA
         {
             return "Wall Height";
         }
+        static Ogre::String AttrJitter(void)
+        {
+            return "Jitter";
+        }
         static Ogre::String AttrAddCeiling(void)
         {
             return "Add Ceiling";
@@ -479,6 +506,26 @@ namespace NOWA
         static Ogre::String AttrWallUVTiling(void)
         {
             return "Wall UV Tiling";
+        }
+        static Ogre::String AttrAddWindows()
+        {
+            return "Add Windows";
+        }
+        static Ogre::String AttrWindowProb()
+        {
+            return "Window Probability";
+        }
+        static Ogre::String AttrWindowWidth()
+        {
+            return "Window Width";
+        }
+        static Ogre::String AttrWindowHeight()
+        {
+            return "Window Height";
+        }
+        static Ogre::String AttrWindowSill()
+        {
+            return "Window Sill Height";
         }
         static Ogre::String AttrGenerateNow(void)
         {
@@ -577,6 +624,8 @@ namespace NOWA
         // Geometry generation
         // -------------------------------------------------------------------------
 
+        void generateGeometry(const std::vector<std::vector<CellType>>& grid, int gridCols, int gridRows, Ogre::Real cellSz, Ogre::Real effWallH, const Ogre::Vector2& floorUV, const Ogre::Vector2& wallUV, DungeonTheme theme, int seedVal);
+
         /**
          * @brief Generates floor quads for every ROOM/CORRIDOR cell in the grid.
          */
@@ -632,7 +681,16 @@ namespace NOWA
          * @brief Adds small stalactite quads dropping from the ceiling (CAVE theme).
          *        Uses a hash of (col, row, seed) to decide per-cell placement and length.
          */
-        void generateStalactites(const std::vector<std::vector<CellType>>& grid, int gridCols, int gridRows, Ogre::Real cellSz, Ogre::Real floorY, Ogre::Real wallH, int seed);
+        void generateStalactites(const std::vector<std::vector<CellType>>& grid, int gridCols, int gridRows, Ogre::Real cellSz, Ogre::Real floorY, Ogre::Real wallH, int seed, bool isCave, Ogre::Real jitter);
+
+        void generateCaveFloorGeometry(const std::vector<std::vector<CellType>>& grid, int gridCols, int gridRows, Ogre::Real cellSz, Ogre::Real floorY, const Ogre::Vector2& uvTile, int seed, Ogre::Real jitter);
+
+        void generateCaveCeilingGeometry(const std::vector<std::vector<CellType>>& grid, int gridCols, int gridRows, Ogre::Real cellSz, Ogre::Real floorY, Ogre::Real wallH, const Ogre::Vector2& uvTile, int seed, Ogre::Real jitter);
+
+        void generateCaveWallGeometry(const std::vector<std::vector<CellType>>& grid, int gridCols, int gridRows, Ogre::Real cellSz, Ogre::Real floorY, Ogre::Real wallH, const Ogre::Vector2& uvTile, int seed, Ogre::Real jitter);
+
+        void addWallQuadWithWindow(const Ogre::Vector3& bl, const Ogre::Vector3& br, const Ogre::Vector3& tl, const Ogre::Vector3& tr, const Ogre::Vector3& normal, Ogre::Real wallH, Ogre::Real uW, Ogre::Real vT, Ogre::Real winW, Ogre::Real winH,
+            Ogre::Real sill);
 
         // -------------------------------------------------------------------------
         // Low-level quad emitters
@@ -764,6 +822,7 @@ namespace NOWA
         Variant* maxRoomCells;
         Variant* corridorWidthCells;
         Variant* wallHeight;
+        Variant* jitter;
         Variant* addCeiling;
         Variant* loopProbability;
         Variant* dungeonTheme;
@@ -776,6 +835,11 @@ namespace NOWA
         Variant* ceilingDatablock;
         Variant* floorUVTiling;
         Variant* wallUVTiling;
+        Variant* addWindows;
+        Variant* windowProb;
+        Variant* windowWidth;
+        Variant* windowHeight;
+        Variant* windowSill;
         Variant* generateNow;
         Variant* convertToMesh;
 
