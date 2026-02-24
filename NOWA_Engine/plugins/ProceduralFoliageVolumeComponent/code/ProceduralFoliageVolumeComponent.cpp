@@ -8,14 +8,14 @@
 #include "modules/LuaScriptApi.h"
 #include "utilities/XMLConverter.h"
 
-#include "OgreMeshManager2.h"
 #include "OgreConfigFile.h"
+#include "OgreHlmsPbsPrerequisites.h"
 #include "OgreLodConfig.h"
 #include "OgreLodStrategyManager.h"
-#include "OgreMeshLodGenerator.h"
 #include "OgreMesh2Serializer.h"
+#include "OgreMeshLodGenerator.h"
+#include "OgreMeshManager2.h"
 #include "OgrePixelCountLodStrategy.h"
-#include "OgreHlmsPbsPrerequisites.h"
 
 #include "OgreAbiUtils.h"
 
@@ -61,6 +61,7 @@ namespace NOWA
         this->volumeBounds->setDescription("AABB volume bounds (min.x, min.z, max.x, max.z) in world space. Match your terrain size.");
         this->masterSeed->setDescription("Master seed for reproducible placement. Same seed = same vegetation.");
         this->gridResolution->setDescription("Grid sample resolution in meters. Lower = denser sampling but slower. Typical: 0.5-2.0");
+        this->ruleCount->addUserData(GameObject::AttrActionSeparator());
         this->ruleCount->setDescription("Number of foliage rules (different vegetation types). Start with 1-3.");
         this->ruleCount->addUserData(GameObject::AttrActionNeedRefresh());
 
@@ -146,6 +147,8 @@ namespace NOWA
             this->ruleMinSpacings.resize(count);
             this->ruleRenderDistances.resize(count);
             this->ruleLodDistances.resize(count);
+            this->ruleCastShadows.resize(count);
+            this->ruleShadowDistances.resize(count);
             this->ruleCategories.resize(count);
             this->ruleClearanceDistances.resize(count);
             this->ruleCollisionEnabled.resize(count);
@@ -334,6 +337,34 @@ namespace NOWA
                 propertyElement = propertyElement->next_sibling("property");
             }
 
+            // Rule Cast Shadows
+            if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralFoliageVolumeComponent::AttrRuleCastShadows() + Ogre::StringConverter::toString(i))
+            {
+                bool enabled = XMLConverter::getAttribBool(propertyElement, "data");
+                if (nullptr == this->ruleCastShadows[i])
+                {
+                    this->ruleCastShadows[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleCastShadows() + Ogre::StringConverter::toString(i), false, this->attributes);
+                    this->ruleCastShadows[i]->setDescription("Enable shadow casts.");
+                }
+                this->ruleCastShadows[i]->setValue(enabled);
+                this->rules[i].castShadows = enabled;
+                propertyElement = propertyElement->next_sibling("property");
+            }
+
+            // Rule Shadow Distance
+            if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == (ProceduralFoliageVolumeComponent::AttrRuleShadowDistance() + Ogre::StringConverter::toString(i)))
+            {
+                Ogre::Real distance = XMLConverter::getAttribReal(propertyElement, "data");
+                if (nullptr == this->ruleShadowDistances[i])
+                {
+                    this->ruleShadowDistances[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleShadowDistance() + Ogre::StringConverter::toString(i), 0.0f, this->attributes);
+                    this->ruleShadowDistances[i]->setDescription("The shadow distance in meters.");
+                }
+                this->ruleShadowDistances[i]->setValue(distance);
+                this->rules[i].shadowDistance = distance;
+                propertyElement = propertyElement->next_sibling("property");
+            }
+
             // Rule Categories
             if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == (ProceduralFoliageVolumeComponent::AttrRuleCategories() + Ogre::StringConverter::toString(i)))
             {
@@ -364,6 +395,7 @@ namespace NOWA
                 propertyElement = propertyElement->next_sibling("property");
             }
 
+            // Rule Collision Enabled
             if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralFoliageVolumeComponent::AttrRuleCollisionEnabled() + Ogre::StringConverter::toString(i))
             {
                 bool enabled = XMLConverter::getAttribBool(propertyElement, "data");
@@ -470,10 +502,12 @@ namespace NOWA
         if (this->raySceneQuery)
         {
             auto* query = this->raySceneQuery;
-            GraphicsModule::getInstance()->enqueueAndWait([this, query]()
+            GraphicsModule::getInstance()->enqueueAndWait(
+                [this, query]()
                 {
                     this->gameObjectPtr->getSceneManager()->destroyQuery(query);
-                }, "ProceduralFoliageVolumeComponent::DestroyRayQuery");
+                },
+                "ProceduralFoliageVolumeComponent::DestroyRayQuery");
             this->raySceneQuery = nullptr;
         }
 
@@ -484,7 +518,8 @@ namespace NOWA
                 [this, query]()
                 {
                     this->gameObjectPtr->getSceneManager()->destroyQuery(query);
-                }, "ProceduralFoliageVolumeComponent::DestroySphereQuery");
+                },
+                "ProceduralFoliageVolumeComponent::DestroySphereQuery");
             this->sphereSceneQuery = nullptr;
         }
 
@@ -578,6 +613,14 @@ namespace NOWA
                 else if (ProceduralFoliageVolumeComponent::AttrRuleLodDistance() + Ogre::StringConverter::toString(i) == attribute->getName())
                 {
                     this->setRuleLodDistance(i, attribute->getReal());
+                }
+                else if (ProceduralFoliageVolumeComponent::AttrRuleCastShadows() + Ogre::StringConverter::toString(i) == attribute->getName())
+                {
+                    this->setRuleCastShadows(i, attribute->getBool());
+                }
+                else if (ProceduralFoliageVolumeComponent::AttrRuleShadowDistance() + Ogre::StringConverter::toString(i) == attribute->getName())
+                {
+                    this->setRuleShadowDistance(i, attribute->getReal());
                 }
                 else if (ProceduralFoliageVolumeComponent::AttrRuleCategories() + Ogre::StringConverter::toString(i) == attribute->getName())
                 {
@@ -710,6 +753,20 @@ namespace NOWA
             propertyXML->append_attribute(doc.allocate_attribute("type", "6")); // Real
             propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralFoliageVolumeComponent::AttrRuleLodDistance() + Ogre::StringConverter::toString(i))));
             propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->ruleLodDistances[i]->getReal())));
+            propertiesXML->append_node(propertyXML);
+
+            // Rule Cast Shadows
+            propertyXML = doc.allocate_node(node_element, "property");
+            propertyXML->append_attribute(doc.allocate_attribute("type", "12")); // Bool
+            propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralFoliageVolumeComponent::AttrRuleCastShadows() + Ogre::StringConverter::toString(i))));
+            propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->ruleCastShadows[i]->getBool())));
+            propertiesXML->append_node(propertyXML);
+
+            // Rule Shadow Distance
+            propertyXML = doc.allocate_node(node_element, "property");
+            propertyXML->append_attribute(doc.allocate_attribute("type", "6")); // Real
+            propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralFoliageVolumeComponent::AttrRuleShadowDistance() + Ogre::StringConverter::toString(i))));
+            propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->ruleShadowDistances[i]->getReal())));
             propertiesXML->append_node(propertyXML);
 
             // Rule Categories
@@ -870,7 +927,8 @@ namespace NOWA
                 continue;
             }
 
-            futures.emplace_back(std::async(std::launch::async, [=]() -> VegetationBatch
+            futures.emplace_back(std::async(std::launch::async,
+                [=]() -> VegetationBatch
                 {
                     VegetationBatch batch;
                     batch.meshName = rule.meshName;
@@ -1007,10 +1065,12 @@ namespace NOWA
         }
 
         // Remove empty batches
-        batches.erase(std::remove_if(batches.begin(), batches.end(), [](const VegetationBatch& b)
-            {
-                return b.instances.empty();
-            }), batches.end());
+        batches.erase(std::remove_if(batches.begin(), batches.end(),
+                          [](const VegetationBatch& b)
+                          {
+                              return b.instances.empty();
+                          }),
+            batches.end());
 
         return batches;
     }
@@ -1111,13 +1171,15 @@ namespace NOWA
 
     void ProceduralFoliageVolumeComponent::createFoliageOnRenderThread(std::vector<VegetationBatch>&& batches)
     {
-        // Queue to render thread
-        GraphicsModule::getInstance()->enqueueAndWait([this, batchesCopy = std::move(batches)]() mutable
+        // Render thread: create items and nodes only
+        GraphicsModule::getInstance()->enqueueAndWait(
+            [this, batchesCopy = std::move(batches)]() mutable
             {
                 this->createFoliageItems(batchesCopy);
-            }, "ProceduralFoliageVolume::CreateItems");
+            },
+            "ProceduralFoliageVolume::CreateItems");
 
-        // Now create physics collision (on main thread, after Items exist)
+        // Physics (also main thread)
         this->createFoliageCollision();
     }
 
@@ -1288,6 +1350,11 @@ namespace NOWA
         }
 
         this->vegetationBatches = std::move(batches);
+
+        // CORRECT: called from render thread, same thread as _updateSceneGraph.
+        // Notifying the static root cascades dirty flag to ALL static children
+        // and their attached Items, causing their world AABBs to be recalculated.
+        sceneManager->notifyStaticDirty(sceneManager->getRootSceneNode(Ogre::SCENE_STATIC));
     }
 
     void ProceduralFoliageVolumeComponent::createFoliageCollision()
@@ -1445,9 +1512,9 @@ namespace NOWA
             [this]()
             {
                 this->destroyFoliageOnRenderThread();
-            }, "ProceduralFoliageVolume::DestroyItems");
+            },
+            "ProceduralFoliageVolume::DestroyItems");
 
-        // Clear physics collision first
         if (this->physicsArtifactComponent && this->physicsArtifactComponent->getBody())
         {
             this->physicsArtifactComponent->destroyBody();
@@ -1456,7 +1523,7 @@ namespace NOWA
 
     void ProceduralFoliageVolumeComponent::destroyFoliageOnRenderThread()
     {
-        //  RUNS ON RENDER THREAD! 
+        //  RUNS ON RENDER THREAD!
 
         Ogre::SceneManager* sceneManager = this->gameObjectPtr->getSceneManager();
 
@@ -1481,6 +1548,8 @@ namespace NOWA
         }
 
         this->vegetationBatches.clear();
+
+         sceneManager->notifyStaticDirty(sceneManager->getRootSceneNode(Ogre::SCENE_STATIC));
     }
 
     // ============================================================================
@@ -1541,6 +1610,8 @@ namespace NOWA
             this->ruleMinSpacings.resize(count);
             this->ruleRenderDistances.resize(count);
             this->ruleLodDistances.resize(count);
+            this->ruleCastShadows.resize(count);
+            this->ruleShadowDistances.resize(count);
             this->ruleCategories.resize(count);
             this->ruleClearanceDistances.resize(count);
             this->ruleCollisionEnabled.resize(count);
@@ -1564,6 +1635,7 @@ namespace NOWA
                 static const float renderDistByIndex[] = {100.0f, 80.0f, 70.0f, 60.0f, 50.0f};
                 static const float shadowDistByIndex[] = {60.0f, 40.0f, 30.0f, 0.0f, 0.0f};
                 static const bool collisionByIndex[] = {true, false, false, false, false};
+                static const bool castShadowsByIndex[] = {true, false, false, false, false};
 
                 const size_t clampedIdx = std::min(i, static_cast<size_t>(4));
 
@@ -1573,6 +1645,7 @@ namespace NOWA
                 const Ogre::Real defaultRenderDist = renderDistByIndex[clampedIdx];
                 const Ogre::Real defaultShadowDist = shadowDistByIndex[clampedIdx];
                 const bool defaultCollision = collisionByIndex[clampedIdx];
+                const bool defaultCastShadows = castShadowsByIndex[clampedIdx];
 
                 // Rule Name
                 this->ruleNames[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleName() + Ogre::StringConverter::toString(i), Ogre::String("Vegetation_" + Ogre::StringConverter::toString(i)), this->attributes);
@@ -1627,16 +1700,23 @@ namespace NOWA
                 this->ruleRenderDistances[i]->setConstraints(0.0f, 10000.0f);
                 this->rules[i].renderDistance = defaultRenderDist;
 
-                // Shadow Distance (separate from render distance for performance)
-                // Note: if your FoliageRule struct doesn't have shadowDistance yet, add it.
-                this->rules[i].shadowDistance = defaultShadowDist;
-
                 // LOD Distance — enabled by default for all rules
                 this->ruleLodDistances[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleLodDistance() + Ogre::StringConverter::toString(i), defaultLodDist, this->attributes);
                 this->ruleLodDistances[i]->setDescription("Distance at which the lowest LOD is reached. 0 = no LOD (avoid for complex meshes). "
                                                           "Trees: 80m, Shrubs: 50-60m, Ground cover: 25-30m.");
                 this->ruleLodDistances[i]->setConstraints(0.0f, 1000.0f);
                 this->rules[i].lodDistance = defaultLodDist;
+
+                // Cast Shadows - Should not be used for grass etc. only for trees
+                this->ruleCastShadows[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleCastShadows() + Ogre::StringConverter::toString(i), defaultCastShadows, this->attributes);
+                this->ruleCastShadows[i]->setDescription("Whether to cast shadows. Should not be used for grass etc. only for trees.");
+                this->rules[i].castShadows = defaultCastShadows;
+
+                // Shadow Distance
+                this->ruleShadowDistances[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleShadowDistance() + Ogre::StringConverter::toString(i), defaultShadowDist, this->attributes);
+                this->ruleShadowDistances[i]->setDescription("Distance til which shadows shall be rendered (if cast shadows is enabled).");
+                this->ruleShadowDistances[i]->setConstraints(0.0f, 1000.0f);
+                this->rules[i].shadowDistance = defaultShadowDist;
 
                 // Categories
                 this->ruleCategories[i] = new Variant(ProceduralFoliageVolumeComponent::AttrRuleCategories() + Ogre::StringConverter::toString(i), Ogre::String("All"), this->attributes);
@@ -1686,6 +1766,8 @@ namespace NOWA
             this->eraseVariants(this->ruleMinSpacings, count);
             this->eraseVariants(this->ruleRenderDistances, count);
             this->eraseVariants(this->ruleLodDistances, count);
+            this->eraseVariants(this->ruleCastShadows, count);
+            this->eraseVariants(this->ruleShadowDistances, count);
             this->eraseVariants(this->ruleCategories, count);
             this->eraseVariants(this->ruleClearanceDistances, count);
             this->eraseVariants(this->ruleCollisionEnabled, count);
@@ -1910,6 +1992,45 @@ namespace NOWA
         return this->ruleLodDistances[index]->getReal();
     }
 
+    void ProceduralFoliageVolumeComponent::setRuleCastShadows(unsigned int index, bool castShadows)
+    {
+        if (index >= this->rules.size())
+        {
+            return;
+        }
+        this->ruleCastShadows[index]->setValue(castShadows);
+        this->rules[index].castShadows = castShadows;
+    }
+
+    bool ProceduralFoliageVolumeComponent::getRuleCastShadows(unsigned int index) const
+    {
+        if (index >= this->rules.size())
+        {
+            return 0.0f;
+        }
+        return this->ruleCastShadows[index]->getBool();
+    }
+
+    void ProceduralFoliageVolumeComponent::setRuleShadowDistance(unsigned int index, Ogre::Real shadowDistance)
+    {
+        if (index >= this->rules.size())
+        {
+            return;
+        }
+        shadowDistance = Ogre::Math::Clamp(shadowDistance, 0.0f, 1000.0f);
+        this->ruleShadowDistances[index]->setValue(shadowDistance);
+        this->rules[index].shadowDistance = shadowDistance;
+    }
+
+    Ogre::Real ProceduralFoliageVolumeComponent::getRuleShadowDistance(unsigned int index) const
+    {
+        if (index >= this->rules.size())
+        {
+            return 0.0f;
+        }
+        return this->ruleShadowDistances[index]->getReal();
+    }
+
     void ProceduralFoliageVolumeComponent::setRuleCategories(unsigned int index, const Ogre::String& categories)
     {
         if (index >= this->rules.size())
@@ -2058,86 +2179,59 @@ namespace NOWA
 
     bool ProceduralFoliageVolumeComponent::isCategoryAllowed(const Ogre::Vector3& position, const FoliageRule& rule)
     {
-        // Fast path
-        if (rule.categoriesId == GameObjectController::ALL_CATEGORIES_ID)
-        {
-            return true;
-        }
-
         if (!this->raySceneQuery)
         {
             return true;
         }
 
-        bool isExcludeMode = (rule.categories.find("All") != Ogre::String::npos && rule.categories.find('-') != Ogre::String::npos);
-
-        unsigned int queryMask;
-        if (isExcludeMode)
-        {
-            size_t dashPos = rule.categories.find('-');
-            Ogre::String excludedCategories = rule.categories.substr(dashPos + 1);
-            queryMask = AppStateManager::getSingletonPtr()->getGameObjectController()->generateCategoryId(excludedCategories);
-        }
-        else
-        {
-            queryMask = rule.categoriesId;
-        }
-
-        if (queryMask == 0)
+        // Pure "All" — no filtering needed
+        if (rule.categoriesId == GameObjectController::ALL_CATEGORIES_ID)
         {
             return true;
         }
 
-        // ── Raycast (direct hit check) ──────────────────────────────────────
+        const bool isExcludeMode = (rule.categories.find("All") != Ogre::String::npos && rule.categories.find('-') != Ogre::String::npos);
+
+        unsigned int queryMask;
+        bool allowIfHit;
+
+        if (isExcludeMode)
+        {
+            // Cast against only the excluded bits — hit means blocked
+            queryMask = ~rule.categoriesId; // e.g. "All-Obstacle" -> 0x00000002 = only Obstacle
+            allowIfHit = false;
+
+            // Sphere clearance check first (cheaper than raycast)
+            if (rule.clearanceDistance > 0.0f && this->sphereSceneQuery)
+            {
+                this->sphereSceneQuery->setSphere(Ogre::Sphere(position, rule.clearanceDistance));
+                this->sphereSceneQuery->setQueryMask(queryMask);
+                if (!this->sphereSceneQuery->execute().movables.empty())
+                {
+                    return false;
+                }
+            }
+        }
+        else
+        {
+            // Include mode: cast against allowed bits — must hit to place
+            queryMask = rule.categoriesId;
+            allowIfHit = true;
+        }
+
         this->raySceneQuery->setQueryMask(queryMask);
         this->raySceneQuery->setSortByDistance(true);
+        this->raySceneQuery->setRay(Ogre::Ray(Ogre::Vector3(position.x, 10000.0f, position.z), Ogre::Vector3::NEGATIVE_UNIT_Y));
 
-        Ogre::Vector3 rayOrigin = Ogre::Vector3(position.x, 10000.0f, position.z);
-        Ogre::Ray ray(rayOrigin, Ogre::Vector3::NEGATIVE_UNIT_Y);
-        this->raySceneQuery->setRay(ray);
-
-        Ogre::Vector3 hitPoint = Ogre::Vector3::ZERO;
-        Ogre::Vector3 hitNormal = Ogre::Vector3::ZERO;
-        Ogre::MovableObject* hitMovableObject = nullptr;
+        Ogre::Vector3 hitPoint, hitNormal;
+        Ogre::MovableObject* hitObject = nullptr;
         Ogre::Real closestDistance = 0.0f;
         std::vector<Ogre::MovableObject*> excludeList;
 
         Ogre::Camera* camera = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
+        MathHelper::getInstance()->getRaycastFromPoint(this->raySceneQuery, camera, hitPoint, (size_t&)hitObject, closestDistance, hitNormal, &excludeList);
 
-        MathHelper::getInstance()->getRaycastFromPoint(this->raySceneQuery, camera, hitPoint, (size_t&)hitMovableObject, closestDistance, hitNormal, &excludeList);
-
-        if (true == isExcludeMode)
-        {
-            // Direct hit -> always blocked
-            if (hitMovableObject != nullptr)
-            {
-                return false;
-            }
-
-            // ── Clearance sphere check ──────────────────────────────────────
-            // Even if no direct hit above, check if excluded object is nearby
-            if (rule.clearanceDistance > 0.0f && this->sphereSceneQuery)
-            {
-                Ogre::Sphere sphere(position, rule.clearanceDistance);
-                this->sphereSceneQuery->setSphere(sphere);
-                this->sphereSceneQuery->setQueryMask(queryMask);
-
-                Ogre::SceneQueryResultMovableList& results = this->sphereSceneQuery->execute().movables;
-
-                if (false == results.empty())
-                {
-                    // An excluded object (e.g. house) is within clearanceDistance!
-                    return false;
-                }
-            }
-
-            return true; // No direct hit, no nearby excluded objects
-        }
-        else
-        {
-            // INCLUDE mode: must hit the target category
-            return (hitMovableObject != nullptr);
-        }
+        return allowIfHit ? (hitObject != nullptr) : (hitObject == nullptr);
     }
 
     void ProceduralFoliageVolumeComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)

@@ -221,16 +221,17 @@ namespace NOWA
 	
 	void LineComponent::createLine(void)
 	{
-		ENQUEUE_RENDER_COMMAND_WAIT("LineComponent::createLine",
-		{
-			this->lineNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
-			// this->lineObject = new Ogre::v1::ManualObject(0, &this->sceneManager->_getEntityMemoryManager(Ogre::SCENE_DYNAMIC), this->sceneManager);
-			this->lineObject = this->gameObjectPtr->getSceneManager()->createManualObject();
-			this->lineObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
-			this->lineObject->setName("Line_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()));
-			this->lineObject->setQueryFlags(0 << 0);
-			this->lineNode->attachObject(this->lineObject);
-		});
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            this->lineNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
+            // this->lineObject = new Ogre::v1::ManualObject(0, &this->sceneManager->_getEntityMemoryManager(Ogre::SCENE_DYNAMIC), this->sceneManager);
+            this->lineObject = this->gameObjectPtr->getSceneManager()->createManualObject();
+            this->lineObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
+            this->lineObject->setName("Line_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()));
+            this->lineObject->setQueryFlags(0 << 0);
+            this->lineNode->attachObject(this->lineObject);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "LineComponent::createLine");
 	}
 
 	void LineComponent::drawLine(const Ogre::Vector3& startPosition, const Ogre::Vector3& endPosition)
@@ -266,18 +267,19 @@ namespace NOWA
 			Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
 			NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
 
-			ENQUEUE_RENDER_COMMAND_WAIT("LineComponent::destroyLine",
-			{
-				this->lineNode->detachAllObjects();
-				if (this->lineObject != nullptr)
-				{
-					this->gameObjectPtr->getSceneManager()->destroyManualObject(this->lineObject);
-					// delete this->lineObject;
-					this->lineObject = nullptr;
-				}
-				this->lineNode->getParentSceneNode()->removeAndDestroyChild(this->lineNode);
-				this->lineNode = nullptr;
-			});
+			NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+            {
+                this->lineNode->detachAllObjects();
+                if (this->lineObject != nullptr)
+                {
+                    this->gameObjectPtr->getSceneManager()->destroyManualObject(this->lineObject);
+                    // delete this->lineObject;
+                    this->lineObject = nullptr;
+                }
+                this->lineNode->getParentSceneNode()->removeAndDestroyChild(this->lineNode);
+                this->lineNode = nullptr;
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "LineComponent::destroyLine");
 		}
 	}
 

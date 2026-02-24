@@ -136,6 +136,14 @@ namespace NOWA
             bool splitHorizontal = false;
         };
 
+        struct DungeonStaircase
+        {
+            int gridCol;
+            int gridRow;
+            int fromLevel; // 0-based level index this stair ascends FROM
+            Ogre::Vector3 worldPos;
+        };
+
     public:
         ProceduralDungeonComponent();
         virtual ~ProceduralDungeonComponent();
@@ -351,6 +359,9 @@ namespace NOWA
         void setJitter(Ogre::Real jitter);
         Ogre::Real getJitter(void) const;
 
+        Ogre::Real getFloorDepth() const;
+        void setFloorDepth(Ogre::Real depth);
+
         void setAddCeiling(bool add);
         bool getAddCeiling(void) const;
 
@@ -407,6 +418,21 @@ namespace NOWA
 
         void setWindowSill(Ogre::Real windowSill);
 
+        void setLevelCount(unsigned int levelCount);
+
+        unsigned int getLevelCount(void) const;
+
+        void setStairsProbability(Ogre::Real stairsProbability);
+
+        Ogre::Real getStairsProbability(void) const;
+
+        void setAddStairs(bool add);
+        bool getAddStairs(void) const;
+
+        void setStairHeight(Ogre::Real stairHeight);
+
+        Ogre::Real getStairHeight(void) const;
+
         // -------------------------------------------------------------------------
         // Undo / Redo binary serialisation (mirrors RoadComponentBase interface)
         // -------------------------------------------------------------------------
@@ -458,6 +484,10 @@ namespace NOWA
         static Ogre::String AttrJitter(void)
         {
             return "Jitter";
+        }
+        static Ogre::String AttrFloorDepth()
+        {
+            return "Floor Depth";
         }
         static Ogre::String AttrAddCeiling(void)
         {
@@ -526,6 +556,22 @@ namespace NOWA
         static Ogre::String AttrWindowSill()
         {
             return "Window Sill Height";
+        }
+        static Ogre::String AttrLevelCount()
+        {
+            return "Level Count";
+        }
+        static Ogre::String AttrStairsProbability()
+        {
+            return "Stairs Probability";
+        }
+        static Ogre::String AttrAddStairs(void)
+        {
+            return "Add Stairs";
+        }
+        static Ogre::String AttrStairHeight()
+        {
+            return "Stair Height";
         }
         static Ogre::String AttrGenerateNow(void)
         {
@@ -624,12 +670,14 @@ namespace NOWA
         // Geometry generation
         // -------------------------------------------------------------------------
 
-        void generateGeometry(const std::vector<std::vector<CellType>>& grid, int gridCols, int gridRows, Ogre::Real cellSz, Ogre::Real effWallH, const Ogre::Vector2& floorUV, const Ogre::Vector2& wallUV, DungeonTheme theme, int seedVal);
+        void generateGeometry(const std::vector<std::vector<CellType>>& grid, int gridCols, int gridRows, Ogre::Real cellSz, Ogre::Real effWallH, const Ogre::Vector2& floorUV, const Ogre::Vector2& wallUV, DungeonTheme theme,
+            int seedVal, Ogre::Real floorY = 0.0f);
 
         /**
          * @brief Generates floor quads for every ROOM/CORRIDOR cell in the grid.
          */
-        void generateFloorGeometry(const std::vector<std::vector<CellType>>& grid, int gridCols, int gridRows, Ogre::Real cellSz, Ogre::Real floorY, const Ogre::Vector2& uvTile);
+        void generateFloorGeometry(const std::vector<std::vector<CellType>>& grid, int gridCols, int gridRows, Ogre::Real cellSz, Ogre::Real floorY, const Ogre::Vector2& uvTile,
+            const std::vector<std::pair<int, int>>& holeCells);
 
         /**
          * @brief Generates wall quads for every floor cell that borders an EMPTY cell.
@@ -641,7 +689,7 @@ namespace NOWA
         /**
          * @brief Generates ceiling quads covering every floor cell.
          */
-        void generateCeilingGeometry(const std::vector<std::vector<CellType>>& grid, int gridCols, int gridRows, Ogre::Real cellSz, Ogre::Real floorY, Ogre::Real wallH, const Ogre::Vector2& uvTile);
+        void generateCeilingGeometry(const std::vector<std::vector<CellType>>& grid, int gridCols, int gridRows, Ogre::Real cellSz, Ogre::Real floorY, Ogre::Real wallH, const Ogre::Vector2& uvTile, const std::vector<std::pair<int, int>>& holeCells);
 
         /**
          * @brief Optionally places box pillars at inner room corners.
@@ -716,6 +764,10 @@ namespace NOWA
         void addCeilingQuad(const Ogre::Vector3& v0, const Ogre::Vector3& v1, const Ogre::Vector3& v2, const Ogre::Vector3& v3, Ogre::Real u0, Ogre::Real u1, Ogre::Real vv0, Ogre::Real vv1);
 
         void addWallTopCapQuad(const Ogre::Vector3& v0, const Ogre::Vector3& v1, const Ogre::Vector3& v2, const Ogre::Vector3& v3, Ogre::Real u0, Ogre::Real u1, Ogre::Real vv0, Ogre::Real vv1);
+
+        std::pair<int, int> pickStaircaseCell(const std::vector<std::vector<CellType>>& grid, int gridCols, int gridRows, int levelIndex) const;
+
+        void generateStaircaseGeometry(const DungeonStaircase& stair, Ogre::Real cellSz, Ogre::Real wallH, const Ogre::Vector2& uvTile);
 
         // -------------------------------------------------------------------------
         // Mesh lifecycle
@@ -823,6 +875,7 @@ namespace NOWA
         Variant* corridorWidthCells;
         Variant* wallHeight;
         Variant* jitter;
+        Variant* floorDepth;
         Variant* addCeiling;
         Variant* loopProbability;
         Variant* dungeonTheme;
@@ -840,6 +893,10 @@ namespace NOWA
         Variant* windowWidth;
         Variant* windowHeight;
         Variant* windowSill;
+        Variant* levelCount;
+        Variant* stairsProbability;
+        Variant* addStairs;
+        Variant* stairHeight;
         Variant* generateNow;
         Variant* convertToMesh;
 
@@ -878,6 +935,11 @@ namespace NOWA
         std::vector<float> cachedCeilVertices;
         std::vector<Ogre::uint32> cachedCeilIndices;
         size_t cachedNumCeilVertices;
+
+        std::vector<DungeonStaircase> dungeonStaircases;
+        std::vector<std::vector<std::vector<CellType>>> levelGrids; // [level][row][col]
+        std::vector<std::pair<int, int>> pendingCeilingHoles;
+        std::vector<std::pair<int, int>> pendingFloorHoles;
 
         // ---- Ogre objects --------------------------------------------------------
         Ogre::MeshPtr dungeonMesh;

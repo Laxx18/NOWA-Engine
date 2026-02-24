@@ -28,6 +28,9 @@ namespace NOWA
 		this->kernelRadius->setConstraints(0.5f, 6.0f);
 		this->powerScale->setConstraints(1.0f, 6.0f);
 
+		this->activated->setValue(true);
+        this->activated->setVisible(false);
+
 		this->effectName = "SSAO";
 	}
 
@@ -135,7 +138,7 @@ namespace NOWA
 
 	void SSAOComponent::update(Ogre::Real dt, bool notSimulating)
 	{
-		if (false == notSimulating && true == this->activated->getBool())
+		// if (false == notSimulating && true == this->activated->getBool())
 		{
 			// Only update if we have valid shader passes
 			if (nullptr == this->passSSAO || nullptr == this->passApplySSAO)

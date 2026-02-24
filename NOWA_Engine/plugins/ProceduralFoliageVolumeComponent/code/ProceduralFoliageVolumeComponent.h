@@ -338,6 +338,12 @@ namespace NOWA
         void setRuleLodDistance(unsigned int index, Ogre::Real distance);
         Ogre::Real getRuleLodDistance(unsigned int index) const;
 
+        void setRuleCastShadows(unsigned int index, bool castShadows);
+        bool getRuleCastShadows(unsigned int index) const;
+
+        void setRuleShadowDistance(unsigned int index, Ogre::Real shadowDistance);
+        Ogre::Real getRuleShadowDistance(unsigned int index) const;
+
         void setRuleCategories(unsigned int index, const Ogre::String& categories);
         Ogre::String getRuleCategories(unsigned int index) const;
 
@@ -421,6 +427,14 @@ namespace NOWA
         static const Ogre::String AttrRuleLodDistance(void)
         {
             return "Rule LOD Distance ";
+        }
+        static const Ogre::String AttrRuleCastShadows(void)
+        {
+            return "Rule Cast Shadows ";
+        }
+        static const Ogre::String AttrRuleShadowDistance(void)
+        {
+            return "Rule Shadow Distance ";
         }
         static const Ogre::String AttrRuleCategories(void)
         {
@@ -539,6 +553,8 @@ namespace NOWA
         std::vector<Variant*> ruleMinSpacings;
         std::vector<Variant*> ruleRenderDistances;
         std::vector<Variant*> ruleLodDistances;
+        std::vector<Variant*> ruleCastShadows;
+        std::vector<Variant*> ruleShadowDistances;
         std::vector<Variant*> ruleCategories;
         std::vector<Variant*> ruleClearanceDistances;
         std::vector<Variant*> ruleCollisionEnabled;

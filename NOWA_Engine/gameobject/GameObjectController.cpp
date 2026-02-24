@@ -2917,7 +2917,7 @@ unsigned int GameObjectController::generateCategoryId(const Ogre::String& catego
             // Ogre::StringUtil::toLowerCase(categoryName);
             unsigned int currentCategoryId = this->getCategoryId(*it);
             // if there is no such category throw an exception to warn the developer
-            if (currentCategoryId == -1)
+            if (currentCategoryId == 0)
             {
                 Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectController] Warning could not find category id for " + *it);
                 currentCategoryId = 0;

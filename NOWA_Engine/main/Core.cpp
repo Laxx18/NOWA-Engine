@@ -4298,12 +4298,12 @@ namespace NOWA
 #if OGRE_PLATFORM != OGRE_PLATFORM_APPLE_IOS && \
 OGRE_PLATFORM != OGRE_PLATFORM_ANDROID && \
 OGRE_ARCH_TYPE != OGRE_ARCHITECTURE_32
-			textureGpuManager->setStagingTextureMaxBudgetBytes(256u * 2048u * 2048u);
+            textureGpuManager->setStagingTextureMaxBudgetBytes(256u * 1024u * 1024u);
 #else
 			textureGpuManager->setStagingTextureMaxBudgetBytes(128u * 1024u * 1024u);
 #endif
-			textureGpuManager->setWorkerThreadMaxPreloadBytes(256u * 2048u * 2048u);
-			textureGpuManager->setWorkerThreadMaxPerStagingTextureRequestBytes(64u * 2048u * 2048u);
+            textureGpuManager->setWorkerThreadMaxPreloadBytes(256u * 1024u * 1024u);
+            textureGpuManager->setWorkerThreadMaxPerStagingTextureRequestBytes(64u * 1024u * 1024u);
 
 			textureGpuManager->setWorkerThreadMinimumBudget(this->defaultBudget);
 		}
@@ -4359,6 +4359,12 @@ OGRE_ARCH_TYPE != OGRE_ARCHITECTURE_32
         size_t textureBytesCpu, textureBytesGpu, usedStagingTextureBytes, availableStagingTextureBytes;
         textureGpuManager->getMemoryStats( textureBytesCpu, textureBytesGpu,
                                            usedStagingTextureBytes, availableStagingTextureBytes );
+
+		// Don't count texture memory twice if it's already included in VaoManager
+        if (outIncludingTextures)
+        {
+            capacityBytes -= textureBytesGpu + usedStagingTextureBytes + availableStagingTextureBytes;
+        }
 
         text.clear();
         text.a( "\nGPU StagingTextures. In use: ",

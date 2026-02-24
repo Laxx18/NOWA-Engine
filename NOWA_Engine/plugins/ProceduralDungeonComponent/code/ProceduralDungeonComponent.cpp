@@ -142,6 +142,7 @@ namespace NOWA
         corridorWidthCells(new Variant(ProceduralDungeonComponent::AttrCorridorWidthCells(), 2, this->attributes)),
         wallHeight(new Variant(ProceduralDungeonComponent::AttrWallHeight(), 3.0f, this->attributes)),
         jitter(new Variant(ProceduralDungeonComponent::AttrJitter(), 0.5f, this->attributes)),
+        floorDepth(new Variant(AttrFloorDepth(), 0.02f, this->attributes)),
         addCeiling(new Variant(ProceduralDungeonComponent::AttrAddCeiling(), true, this->attributes)),
         loopProbability(new Variant(ProceduralDungeonComponent::AttrLoopProbability(), 0.15f, this->attributes)),
         dungeonTheme(new Variant(ProceduralDungeonComponent::AttrDungeonTheme(), {"Dungeon", "Cave", "SciFi", "Ice", "Crypt"}, this->attributes)),
@@ -159,6 +160,10 @@ namespace NOWA
         windowWidth(new Variant(ProceduralDungeonComponent::AttrWindowWidth(), 0.5f, this->attributes)),
         windowHeight(new Variant(ProceduralDungeonComponent::AttrWindowHeight(), 0.4f, this->attributes)),
         windowSill(new Variant(ProceduralDungeonComponent::AttrWindowSill(), 0.3f, this->attributes)),
+        levelCount(new Variant(AttrLevelCount(), 1, this->attributes)),
+        stairsProbability(new Variant(AttrStairsProbability(), 0.15f, this->attributes)),
+        addStairs(new Variant(AttrAddStairs(), true, this->attributes)),
+        stairHeight(new Variant(AttrStairHeight(), 0.15f, this->attributes)),
         generateNow(new Variant(ProceduralDungeonComponent::AttrGenerateNow(), "Generate Now", this->attributes)),
         convertToMesh(new Variant(ProceduralDungeonComponent::AttrConvertToMesh(), "Convert to Mesh", this->attributes)),
         dungeonOrigin(Ogre::Vector3::ZERO),
@@ -189,6 +194,7 @@ namespace NOWA
         this->corridorWidthCells->setDescription("Width of connecting corridors in cells.");
         this->wallHeight->setDescription("Height of dungeon walls in world units.");
         this->jitter->setDescription("Sets jitter for cave theme. A jitter value of 0.35 gives the current subtle look. 0.6–0.8 gives a very rough dramatic cave. 1.0 is extreme/chaotic.");
+        this->floorDepth->setDescription("Visual thickness of the floor slab in world units. Adds a bottom face and border edges so the floor doesn't look paper-thin.");
         this->addCeiling->setDescription("Whether to generate a ceiling mesh (submesh 2).");
         this->loopProbability->setDescription("Probability [0-1] of adding extra loop corridors for non-linear layouts.");
         this->dungeonTheme->setDescription("Visual theme: Dungeon=battlement caps, Cave=variable walls+stalactites, "
@@ -234,6 +240,11 @@ namespace NOWA
         this->windowSill->setDescription("Height of the window sill from the floor, expressed as a fraction (0-1) "
                                          "of the wall height. 0.3 places the bottom of the window at 30% of wall height. "
                                          "Ensure sill + Window Height <= 1 to avoid the window exceeding the wall top.");
+
+        this->levelCount->setDescription("Number of dungeon levels stacked vertically. Each level is generated with the same width/depth/seed but offset vertically. Levels connect via staircases.");
+        this->stairsProbability->setDescription("Probability (0-1) that a given ROOM cell gets an upward staircase. Only one staircase per level is placed — the first cell that passes the check.");
+        this->addStairs->setDescription("If connections between floor levels are created, this controls whether to add stairs geometry, or maybe the designer has its own stairs.");
+        this->stairHeight->setDescription("Height of each stair step as a fraction of wall height. Total stair run = wallHeight / stairHeight steps.");
     }
 
     ProceduralDungeonComponent::~ProceduralDungeonComponent()
@@ -327,6 +338,11 @@ namespace NOWA
             this->jitter->setValue(XMLConverter::getAttribReal(propertyElement, "data", 0.5f));
             propertyElement = propertyElement->next_sibling("property");
         }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralDungeonComponent::AttrFloorDepth())
+        {
+            this->floorDepth->setValue(XMLConverter::getAttribReal(propertyElement, "data", 0.02f));
+            propertyElement = propertyElement->next_sibling("property");
+        }
         if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralDungeonComponent::AttrAddCeiling())
         {
             this->addCeiling->setValue(XMLConverter::getAttribBool(propertyElement, "data", true));
@@ -410,6 +426,27 @@ namespace NOWA
         if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralDungeonComponent::AttrWindowSill())
         {
             this->windowSill->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralDungeonComponent::AttrLevelCount())
+        {
+            this->levelCount->setValue(XMLConverter::getAttribUnsignedInt(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralDungeonComponent::AttrStairsProbability())
+        {
+            this->stairsProbability->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralDungeonComponent::AttrAddStairs())
+        {
+            this->addStairs->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralDungeonComponent::AttrStairHeight())
+        {
+            this->stairHeight->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
             propertyElement = propertyElement->next_sibling("property");
         }
 
@@ -503,6 +540,7 @@ namespace NOWA
         clonedCompPtr->setCorridorWidthCells(this->corridorWidthCells->getInt());
         clonedCompPtr->setWallHeight(this->wallHeight->getReal());
         clonedCompPtr->setJitter(this->jitter->getReal());
+        clonedCompPtr->setFloorDepth(this->floorDepth->getReal());
         clonedCompPtr->setAddCeiling(this->addCeiling->getBool());
         clonedCompPtr->setLoopProbability(this->loopProbability->getReal());
         clonedCompPtr->setDungeonTheme(this->dungeonTheme->getListSelectedValue());
@@ -520,7 +558,11 @@ namespace NOWA
         clonedCompPtr->setWindowWidth(this->windowWidth->getReal());
         clonedCompPtr->setWindowHeight(this->windowHeight->getReal());
         clonedCompPtr->setWindowSill(this->windowSill->getReal());
-
+        clonedCompPtr->setLevelCount(this->levelCount->getUInt());
+        clonedCompPtr->setStairsProbability(this->stairsProbability->getReal());
+        clonedCompPtr->setAddStairs(this->addStairs->getBool());
+        clonedCompPtr->setStairHeight(this->stairHeight->getReal());
+               
         clonedGameObjectPtr->addComponent(clonedCompPtr);
         clonedCompPtr->setOwner(clonedGameObjectPtr);
         GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
@@ -597,6 +639,10 @@ namespace NOWA
         {
             this->setJitter(attribute->getReal());
         }
+        else if (AttrFloorDepth() == name)
+        {
+            this->setFloorDepth(attribute->getReal());
+        }
         else if (AttrAddCeiling() == name)
         {
             this->setAddCeiling(attribute->getBool());
@@ -640,6 +686,22 @@ namespace NOWA
         else if (AttrWindowSill() == name)
         {
             this->setWindowSill(attribute->getReal());
+        }
+        else if (AttrLevelCount() == name)
+        {
+            this->setLevelCount(attribute->getUInt());
+        }
+        else if (AttrStairsProbability() == name)
+        {
+            this->setStairsProbability(attribute->getReal());
+        }
+        else if (AttrAddStairs() == name)
+        {
+            this->setAddStairs(attribute->getBool());
+        }
+        else if (AttrStairHeight() == name)
+        {
+            this->setStairHeight(attribute->getReal());
         }
     }
 
@@ -717,6 +779,13 @@ namespace NOWA
         propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
         propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralDungeonComponent::AttrJitter())));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->jitter->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        // Floor Depth
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralDungeonComponent::AttrFloorDepth())));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->floorDepth->getReal())));
         propertiesXML->append_node(propertyXML);
 
         // Add Ceiling (bool)
@@ -803,9 +872,9 @@ namespace NOWA
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->wallUVTiling->getVector2())));
         propertiesXML->append_node(propertyXML);
 
-        // Add Windows (bool, type "1")
+        // Add Windows (bool, type "12")
         propertyXML = doc.allocate_node(node_element, "property");
-        propertyXML->append_attribute(doc.allocate_attribute("type", "1"));
+        propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
         propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralDungeonComponent::AttrAddWindows())));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->addWindows->getBool())));
         propertiesXML->append_node(propertyXML);
@@ -836,6 +905,34 @@ namespace NOWA
         propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
         propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralDungeonComponent::AttrWindowSill())));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->windowSill->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        // Level Count (Real, type "2")
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralDungeonComponent::AttrLevelCount())));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->levelCount->getUInt())));
+        propertiesXML->append_node(propertyXML);
+
+        // Stairs Probability (Real, type "6")
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralDungeonComponent::AttrStairsProbability())));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->stairsProbability->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        // Add Stairs (bool, type "12")
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralDungeonComponent::AttrAddStairs())));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->addStairs->getBool())));
+        propertiesXML->append_node(propertyXML);
+
+        // Stair Height (Real, type "6")
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ProceduralDungeonComponent::AttrStairHeight())));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->stairHeight->getReal())));
         propertiesXML->append_node(propertyXML);
 
         this->saveDungeonDataToFile();
@@ -1312,50 +1409,19 @@ namespace NOWA
         this->hasDungeonOrigin = true;
 
         const int seedVal = this->seed->getInt();
-        std::mt19937 rng(static_cast<uint32_t>(seedVal));
         const Ogre::Real cellSz = maxValue(0.1f, this->cellSize->getReal());
         const int gridCols = maxValue(4, (int)(this->dungeonWidth->getReal() / cellSz));
         const int gridRows = maxValue(4, (int)(this->dungeonDepth->getReal() / cellSz));
+        const DungeonTheme theme = this->getDungeonThemeEnum();
+        const Ogre::Real wallH = this->wallHeight->getReal();
+        const Ogre::Vector2 floorUV = this->floorUVTiling->getVector2();
+        const Ogre::Vector2 wallUV = this->wallUVTiling->getVector2();
+        const Ogre::Real effWallH = (theme == DungeonTheme::CAVE) ? wallH * 0.85f : (theme == DungeonTheme::CRYPT) ? wallH * 1.2f : wallH;
+        const Ogre::Real floorDepth = std::max(0.005f, this->floorDepth->getReal());
+        const Ogre::Real levelSpacing = effWallH + floorDepth;
+        const int numLevels = std::max(1, this->levelCount->getInt());
 
-        BSPNode root;
-        root.col = 0;
-        root.row = 0;
-        root.cols = gridCols;
-        root.rows = gridRows;
-        this->splitBSP(&root, rng, 0);
-
-        std::vector<DungeonRoom> rooms;
-        this->collectLeafRooms(&root, rooms, rng);
-        if (rooms.empty())
-        {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralDungeonComponent] BSP produced no rooms!");
-            return;
-        }
-
-        for (auto& room : rooms)
-        {
-            if (this->adaptToGround->getBool())
-            {
-                Ogre::Real cx = worldPosition.x + (room.centerCol() + 0.5f) * cellSz;
-                Ogre::Real cz = worldPosition.z + (room.centerRow() + 0.5f) * cellSz;
-                room.floorHeight = this->getGroundHeight({cx, worldPosition.y, cz});
-            }
-            else
-            {
-                room.floorHeight = floorY;
-            }
-        }
-
-        std::vector<DungeonCorridor> corridors;
-        this->connectBSPSubtrees(&root, rooms, corridors, rng);
-        this->addLoopCorridors(rooms, corridors, rng);
-
-        std::vector<std::vector<CellType>> grid;
-        this->buildGrid(rooms, corridors, grid, gridCols, gridRows);
-
-        this->dungeonRooms = rooms;
-        this->dungeonCorridors = corridors;
-
+        // Clear everything
         this->floorVertices.clear();
         this->floorIndices.clear();
         this->currentFloorVertexIndex = 0;
@@ -1365,14 +1431,133 @@ namespace NOWA
         this->ceilVertices.clear();
         this->ceilIndices.clear();
         this->currentCeilVertexIndex = 0;
+        this->levelGrids.clear();
+        this->dungeonStaircases.clear();
+        this->dungeonRooms.clear();
+        this->dungeonCorridors.clear();
 
-        const DungeonTheme theme = this->getDungeonThemeEnum();
-        const Ogre::Real wallH = this->wallHeight->getReal();
-        const Ogre::Vector2 floorUV = this->floorUVTiling->getVector2();
-        const Ogre::Vector2 wallUV = this->wallUVTiling->getVector2();
-        Ogre::Real effWallH = (theme == DungeonTheme::CAVE) ? wallH * 0.85f : (theme == DungeonTheme::CRYPT) ? wallH * 1.2f : wallH;
+        // Keep per-level rooms for floorHeight bookkeeping
+        std::vector<std::vector<DungeonRoom>> allRooms(numLevels);
+        std::vector<std::vector<DungeonCorridor>> allCorridors(numLevels);
 
-        this->generateGeometry(grid, gridCols, gridRows, cellSz, effWallH, floorUV, wallUV, theme, seedVal);
+        // =========================================================
+        // PASS 1 — build ALL grids before picking any staircases
+        // =========================================================
+        for (int lvl = 0; lvl < numLevels; ++lvl)
+        {
+            const Ogre::Real lvlFloorY = floorY + static_cast<Ogre::Real>(lvl) * levelSpacing;
+
+            std::mt19937 lvlRng(static_cast<uint32_t>(seedVal + lvl * 999983));
+            BSPNode lvlRoot;
+            lvlRoot.col = 0;
+            lvlRoot.row = 0;
+            lvlRoot.cols = gridCols;
+            lvlRoot.rows = gridRows;
+            this->splitBSP(&lvlRoot, lvlRng, 0);
+
+            this->collectLeafRooms(&lvlRoot, allRooms[lvl], lvlRng);
+            if (allRooms[lvl].empty())
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralDungeonComponent] BSP produced no rooms for level " + Ogre::StringConverter::toString(lvl) + "!");
+                // Push empty grid so indices stay consistent
+                this->levelGrids.push_back({});
+                continue;
+            }
+
+            for (auto& room : allRooms[lvl])
+            {
+                if (this->adaptToGround->getBool() && lvl == 0)
+                {
+                    Ogre::Real cx = worldPosition.x + (room.centerCol() + 0.5f) * cellSz;
+                    Ogre::Real cz = worldPosition.z + (room.centerRow() + 0.5f) * cellSz;
+                    room.floorHeight = this->getGroundHeight({cx, worldPosition.y, cz});
+                }
+                else
+                {
+                    room.floorHeight = lvlFloorY;
+                }
+            }
+
+            this->connectBSPSubtrees(&lvlRoot, allRooms[lvl], allCorridors[lvl], lvlRng);
+            this->addLoopCorridors(allRooms[lvl], allCorridors[lvl], lvlRng);
+
+            std::vector<std::vector<CellType>> lvlGrid;
+            this->buildGrid(allRooms[lvl], allCorridors[lvl], lvlGrid, gridCols, gridRows);
+            this->levelGrids.push_back(lvlGrid);
+
+            if (lvl == 0)
+            {
+                this->dungeonRooms = allRooms[lvl];
+                this->dungeonCorridors = allCorridors[lvl];
+            }
+        }
+
+        // =========================================================
+        // PASS 2 — now ALL grids exist, pick staircases safely
+        // =========================================================
+        for (int lvl = 0; lvl < numLevels - 1; ++lvl)
+        {
+            if (this->levelGrids[lvl].empty() || this->levelGrids[lvl + 1].empty())
+            {
+                continue;
+            }
+
+            auto [sc, sr] = this->pickStaircaseCell(this->levelGrids[lvl], gridCols, gridRows, lvl);
+
+            if (sc >= 0)
+            {
+                DungeonStaircase stair;
+                stair.gridCol = sc;
+                stair.gridRow = sr;
+                stair.fromLevel = lvl;
+                stair.worldPos = Ogre::Vector3(sc * cellSz + cellSz * 0.5f, floorY + static_cast<Ogre::Real>(lvl) * levelSpacing, sr * cellSz);
+                this->dungeonStaircases.push_back(stair);
+            }
+        }
+
+        // =========================================================
+        // PASS 3 — generate geometry for each level
+        // =========================================================
+        for (int lvl = 0; lvl < numLevels; ++lvl)
+        {
+            if (this->levelGrids[lvl].empty())
+            {
+                continue;
+            }
+
+            const Ogre::Real lvlFloorY = floorY + static_cast<Ogre::Real>(lvl) * levelSpacing;
+
+            // Ceiling holes: staircase going UP from this level
+            this->pendingCeilingHoles.clear();
+            for (const auto& s : this->dungeonStaircases)
+            {
+                if (s.fromLevel == lvl)
+                {
+                    this->pendingCeilingHoles.push_back({s.gridCol, s.gridRow});
+                }
+            }
+
+            // Floor holes: staircase arriving FROM level below
+            this->pendingFloorHoles.clear();
+            for (const auto& s : this->dungeonStaircases)
+            {
+                if (s.fromLevel == lvl - 1)
+                {
+                    this->pendingFloorHoles.push_back({s.gridCol, s.gridRow});
+                }
+            }
+
+            this->generateGeometry(this->levelGrids[lvl], gridCols, gridRows, cellSz, effWallH, floorUV, wallUV, theme, seedVal + lvl, lvlFloorY);
+
+            // Staircase geometry for stairs starting on this level
+            for (const auto& stair : this->dungeonStaircases)
+            {
+                if (stair.fromLevel == lvl)
+                {
+                    this->generateStaircaseGeometry(stair, cellSz, levelSpacing, wallUV);
+                }
+            }
+        }
 
         this->cachedFloorVertices = this->floorVertices;
         this->cachedFloorIndices = this->floorIndices;
@@ -1387,8 +1572,9 @@ namespace NOWA
         this->destroyPreviewMesh();
         this->createDungeonMesh();
 
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralDungeonComponent] Generated: " + Ogre::StringConverter::toString((int)rooms.size()) + " rooms, " + Ogre::StringConverter::toString((int)corridors.size()) +
-                                                                               " corridors, " + "FV=" + Ogre::StringConverter::toString(this->cachedNumFloorVertices) + " WV=" + Ogre::StringConverter::toString(this->cachedNumWallVertices) +
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralDungeonComponent] Generated " + Ogre::StringConverter::toString(numLevels) + " level(s): " + Ogre::StringConverter::toString((int)this->dungeonRooms.size()) +
+                                                                               " rooms (L0), " + Ogre::StringConverter::toString((int)this->dungeonStaircases.size()) + " staircases, " +
+                                                                               "FV=" + Ogre::StringConverter::toString(this->cachedNumFloorVertices) + " WV=" + Ogre::StringConverter::toString(this->cachedNumWallVertices) +
                                                                                " CV=" + Ogre::StringConverter::toString(this->cachedNumCeilVertices));
     }
 
@@ -1399,18 +1585,18 @@ namespace NOWA
             return;
         }
 
-        const int seedVal = this->seed->getInt(); // ADD THIS
+        const int seedVal = this->seed->getInt();
         const Ogre::Real cellSz = maxValue(0.1f, this->cellSize->getReal());
         const int gridCols = maxValue(4, (int)(this->dungeonWidth->getReal() / cellSz));
         const int gridRows = maxValue(4, (int)(this->dungeonDepth->getReal() / cellSz));
         const DungeonTheme theme = this->getDungeonThemeEnum();
         const Ogre::Real wallH = this->wallHeight->getReal();
-        Ogre::Real effWallH = (theme == DungeonTheme::CAVE) ? wallH * 0.85f : (theme == DungeonTheme::CRYPT) ? wallH * 1.2f : wallH;
+        const Ogre::Real effWallH = (theme == DungeonTheme::CAVE) ? wallH * 0.85f : (theme == DungeonTheme::CRYPT) ? wallH * 1.2f : wallH;
         const Ogre::Vector2 floorUV = this->floorUVTiling->getVector2();
         const Ogre::Vector2 wallUV = this->wallUVTiling->getVector2();
 
-        std::vector<std::vector<CellType>> grid;
-        this->buildGrid(this->dungeonRooms, this->dungeonCorridors, grid, gridCols, gridRows);
+        const Ogre::Real floorDepth = std::max(0.005f, this->floorDepth->getReal());
+        const Ogre::Real levelSpacing = effWallH + floorDepth; // ceiling of N never touches floor of N+1
 
         this->floorVertices.clear();
         this->floorIndices.clear();
@@ -1422,7 +1608,54 @@ namespace NOWA
         this->ceilIndices.clear();
         this->currentCeilVertexIndex = 0;
 
-        this->generateGeometry(grid, gridCols, gridRows, cellSz, effWallH, floorUV, wallUV, theme, seedVal);
+        // If we have cached level grids use them directly — no BSP rebuild needed
+        const int numLevels = (int)this->levelGrids.size();
+
+        if (numLevels == 0)
+        {
+            // Fallback: single level from dungeonRooms (old saves / single-level case)
+            std::vector<std::vector<CellType>> grid;
+            this->buildGrid(this->dungeonRooms, this->dungeonCorridors, grid, gridCols, gridRows);
+            this->pendingCeilingHoles.clear();
+            this->generateGeometry(grid, gridCols, gridRows, cellSz, effWallH, floorUV, wallUV, theme, seedVal, 0.0f);
+        }
+        else
+        {
+            this->dungeonStaircases.clear();
+
+            for (int lvl = 0; lvl < numLevels; ++lvl)
+            {
+                const Ogre::Real lvlFloorY = static_cast<Ogre::Real>(lvl) * levelSpacing;
+                const std::vector<std::vector<CellType>>& lvlGrid = this->levelGrids[lvl];
+
+                // Recompute staircases deterministically from cached grids
+                this->pendingCeilingHoles.clear();
+                if (lvl < numLevels - 1)
+                {
+                    auto [sc, sr] = this->pickStaircaseCell(lvlGrid, gridCols, gridRows, lvl);
+                    if (sc >= 0)
+                    {
+                        DungeonStaircase stair;
+                        stair.gridCol = sc;
+                        stair.gridRow = sr;
+                        stair.fromLevel = lvl;
+                        stair.worldPos = Ogre::Vector3(sc * cellSz + cellSz * 0.5f, lvlFloorY, sr * cellSz + cellSz * 0.5f);
+                        this->dungeonStaircases.push_back(stair);
+                        this->pendingCeilingHoles.push_back({sc, sr});
+                    }
+                }
+
+                this->generateGeometry(lvlGrid, gridCols, gridRows, cellSz, effWallH, floorUV, wallUV, theme, seedVal + lvl, lvlFloorY);
+
+                for (const auto& stair : this->dungeonStaircases)
+                {
+                    if (stair.fromLevel == lvl)
+                    {
+                        this->generateStaircaseGeometry(stair, cellSz, levelSpacing, wallUV);
+                    }
+                }
+            }
+        }
 
         this->cachedFloorVertices = this->floorVertices;
         this->cachedFloorIndices = this->floorIndices;
@@ -1441,6 +1674,9 @@ namespace NOWA
         this->destroyDungeonMesh();
         this->dungeonRooms.clear();
         this->dungeonCorridors.clear();
+        this->levelGrids.clear();
+        this->dungeonStaircases.clear(); 
+        this->pendingCeilingHoles.clear();
         this->hasDungeonOrigin = this->originPositionSet = false;
         this->cachedNumFloorVertices = this->cachedNumWallVertices = this->cachedNumCeilVertices = 0;
         this->cachedFloorVertices.clear();
@@ -1456,52 +1692,102 @@ namespace NOWA
     ///////////////////////////////////////////////////////////////////////////////////////////////
 
     void ProceduralDungeonComponent::generateGeometry(const std::vector<std::vector<CellType>>& grid, int gridCols, int gridRows, Ogre::Real cellSz, Ogre::Real effWallH, const Ogre::Vector2& floorUV, const Ogre::Vector2& wallUV, DungeonTheme theme,
-        int seedVal)
+        int seedVal, Ogre::Real floorY)
     {
         if (theme == DungeonTheme::CAVE)
         {
-            this->generateCaveFloorGeometry(grid, gridCols, gridRows, cellSz, 0.0f, floorUV, seedVal, this->jitter->getReal());
-            this->generateCaveWallGeometry(grid, gridCols, gridRows, cellSz, 0.0f, effWallH, wallUV, seedVal, this->jitter->getReal());
-            this->generateCaveCeilingGeometry(grid, gridCols, gridRows, cellSz, 0.0f, effWallH, wallUV, seedVal, this->jitter->getReal());
-            this->generateStalactites(grid, gridCols, gridRows, cellSz, 0.0f, effWallH, seedVal, true, this->jitter->getReal());
+            this->generateCaveFloorGeometry(grid, gridCols, gridRows, cellSz, floorY, floorUV, seedVal, this->jitter->getReal());
+            this->generateCaveWallGeometry(grid, gridCols, gridRows, cellSz, floorY, effWallH, wallUV, seedVal, this->jitter->getReal());
+            this->generateCaveCeilingGeometry(grid, gridCols, gridRows, cellSz, floorY, effWallH, wallUV, seedVal, this->jitter->getReal());
+            this->generateStalactites(grid, gridCols, gridRows, cellSz, floorY, effWallH, seedVal, true, this->jitter->getReal());
         }
         else
         {
-            this->generateFloorGeometry(grid, gridCols, gridRows, cellSz, 0.0f, floorUV);
+            // In generateGeometry, replace generateFloorGeometry call:
+            // For upper levels the staircase opening cell needs a floor hole too —
+            // pendingCeilingHoles holds the staircase cell for THIS level's ceiling,
+            // but the upper level's floor hole is from the level BELOW's staircase.
+            // Pass pendingFloorHoles separately via member, same pattern as ceiling.
+            this->generateFloorGeometry(grid, gridCols, gridRows, cellSz, floorY, floorUV, this->pendingFloorHoles);
+
             if (theme == DungeonTheme::SCIFI)
             {
-                this->generateScifiFloorChannel(grid, gridCols, gridRows, cellSz, 0.0f, floorUV);
+                this->generateScifiFloorChannel(grid, gridCols, gridRows, cellSz, floorY, floorUV);
             }
-            this->generateWallGeometry(grid, gridCols, gridRows, cellSz, 0.0f, effWallH, wallUV, theme);
+            this->generateWallGeometry(grid, gridCols, gridRows, cellSz, floorY, effWallH, wallUV, theme);
             if (this->addCeiling->getBool() || theme == DungeonTheme::SCIFI)
             {
-                // 0.001f place a bit above other geometry so its not overlapped and no texture flickering
-                this->generateCeilingGeometry(grid, gridCols, gridRows, cellSz, 0.001f, effWallH, wallUV);
+                this->generateCeilingGeometry(grid, gridCols, gridRows, cellSz, floorY + 0.001f, effWallH, wallUV, this->pendingCeilingHoles);
             }
-            /*if (!this->addCeiling->getBool())
-            {
-                this->generateWallTopCaps(grid, gridCols, gridRows, cellSz, 0.0f, effWallH, wallUV);
-            }*/
             if (this->addPillars->getBool())
             {
-                this->generatePillarGeometry(grid, gridCols, gridRows, cellSz, 0.0f, effWallH, this->pillarSize->getReal());
+                this->generatePillarGeometry(grid, gridCols, gridRows, cellSz, floorY, effWallH, this->pillarSize->getReal());
             }
         }
     }
 
-    void ProceduralDungeonComponent::generateFloorGeometry(const std::vector<std::vector<CellType>>& grid, int gridCols, int gridRows, Ogre::Real cellSz, Ogre::Real floorY, const Ogre::Vector2& uvTile)
+    void ProceduralDungeonComponent::generateFloorGeometry(const std::vector<std::vector<CellType>>& grid, int gridCols, int gridRows, Ogre::Real cellSz, Ogre::Real floorY, const Ogre::Vector2& uvTile,
+        const std::vector<std::pair<int, int>>& holeCells)
     {
-        const Ogre::Real uS = maxValue(0.001f, uvTile.x), vS = maxValue(0.001f, uvTile.y);
+        const Ogre::Real uS = maxValue(0.001f, uvTile.x);
+        const Ogre::Real vS = maxValue(0.001f, uvTile.y);
+        const Ogre::Real depth = std::max(0.005f, this->floorDepth->getReal());
+        const Ogre::Real yTop = floorY;
+        const Ogre::Real yBot = floorY - depth;
+
+        auto isF = [&](int r, int c)
+        {
+            return r >= 0 && r < gridRows && c >= 0 && c < gridCols && grid[r][c] != CellType::EMPTY;
+        };
+        auto isHoleCell = [&](int r, int c)
+        {
+            for (const auto& hc : holeCells)
+            {
+                if (hc.first == c && hc.second == r)
+                {
+                    return true;
+                }
+            }
+            return false;
+        };
+
         for (int row = 0; row < gridRows; ++row)
         {
             for (int col = 0; col < gridCols; ++col)
             {
-                if (grid[row][col] == CellType::EMPTY)
+                if (!isF(row, col) || isHoleCell(row, col))
                 {
                     continue;
                 }
-                Ogre::Real x0 = (Ogre::Real)col * cellSz, x1 = x0 + cellSz, z0 = (Ogre::Real)row * cellSz, z1 = z0 + cellSz;
-                this->addFloorQuad({x0, floorY, z1}, {x1, floorY, z1}, {x1, floorY, z0}, {x0, floorY, z0}, x0 / uS, x1 / uS, z0 / vS, z1 / vS);
+
+                Ogre::Real x0 = col * cellSz, x1 = x0 + cellSz;
+                Ogre::Real z0 = row * cellSz, z1 = z0 + cellSz;
+                Ogre::Real u0 = x0 / uS, u1 = x1 / uS, v0 = z0 / vS, v1 = z1 / vS;
+                Ogre::Real uW = cellSz / uS, vD = depth / vS;
+
+                // Top face (upward)
+                this->addFloorQuad({x0, yTop, z1}, {x1, yTop, z1}, {x1, yTop, z0}, {x0, yTop, z0}, u0, u1, v0, v1);
+
+                // Bottom face (downward) — single-sided, only visible from below
+                pushQuad(this->floorVertices, this->floorIndices, this->currentFloorVertexIndex, {x0, yBot, z0}, {x1, yBot, z0}, {x1, yBot, z1}, {x0, yBot, z1}, -Ogre::Vector3::UNIT_Y, u0, u1, v0, v1);
+
+                // Border edges — only where there is no neighbour (exposed slab edge)
+                if (!isF(row + 1, col)) // North
+                {
+                    this->addWallQuad({x0, yBot, z1}, {x1, yBot, z1}, {x1, yTop, z1}, {x0, yTop, z1}, {0, 0, 1}, 0, uW, 0, vD);
+                }
+                if (!isF(row - 1, col)) // South
+                {
+                    this->addWallQuad({x1, yBot, z0}, {x0, yBot, z0}, {x0, yTop, z0}, {x1, yTop, z0}, {0, 0, -1}, 0, uW, 0, vD);
+                }
+                if (!isF(row, col + 1)) // East
+                {
+                    this->addWallQuad({x1, yBot, z1}, {x1, yBot, z0}, {x1, yTop, z0}, {x1, yTop, z1}, {1, 0, 0}, 0, uW, 0, vD);
+                }
+                if (!isF(row, col - 1)) // West
+                {
+                    this->addWallQuad({x0, yBot, z0}, {x0, yBot, z1}, {x0, yTop, z1}, {x0, yTop, z0}, {-1, 0, 0}, 0, uW, 0, vD);
+                }
             }
         }
     }
@@ -1666,9 +1952,13 @@ namespace NOWA
         }
     }
 
-    void ProceduralDungeonComponent::generateCeilingGeometry(const std::vector<std::vector<CellType>>& grid, int gridCols, int gridRows, Ogre::Real cellSz, Ogre::Real floorY, Ogre::Real wallH, const Ogre::Vector2& uvTile)
+    void ProceduralDungeonComponent::generateCeilingGeometry(const std::vector<std::vector<CellType>>& grid, int gridCols, int gridRows, Ogre::Real cellSz, Ogre::Real floorY, Ogre::Real wallH, const Ogre::Vector2& uvTile,
+        const std::vector<std::pair<int, int>>& holeCells)
     {
-        const Ogre::Real uS = maxValue(0.001f, uvTile.x), vS = maxValue(0.001f, uvTile.y), y = floorY + wallH;
+        const Ogre::Real uS = maxValue(0.001f, uvTile.x);
+        const Ogre::Real vS = maxValue(0.001f, uvTile.y);
+        const Ogre::Real y = floorY + wallH;
+
         for (int row = 0; row < gridRows; ++row)
         {
             for (int col = 0; col < gridCols; ++col)
@@ -1677,7 +1967,24 @@ namespace NOWA
                 {
                     continue;
                 }
-                Ogre::Real x0 = (Ogre::Real)col * cellSz, x1 = x0 + cellSz, z0 = (Ogre::Real)row * cellSz, z1 = z0 + cellSz;
+
+                // Skip cells that have a staircase hole punched through them
+                bool isHole = false;
+                for (const auto& hc : holeCells)
+                {
+                    if (hc.first == col && hc.second == row)
+                    {
+                        isHole = true;
+                        break;
+                    }
+                }
+                if (isHole)
+                {
+                    continue;
+                }
+
+                Ogre::Real x0 = (Ogre::Real)col * cellSz, x1 = x0 + cellSz;
+                Ogre::Real z0 = (Ogre::Real)row * cellSz, z1 = z0 + cellSz;
                 this->addCeilingQuad({x0, y, z0}, {x1, y, z0}, {x1, y, z1}, {x0, y, z1}, x0 / uS, x1 / uS, z0 / vS, z1 / vS);
             }
         }
@@ -2072,6 +2379,152 @@ namespace NOWA
         this->addWallQuad(lerp(bl, tl, wt), lerp(br, tr, wt), tr, tl, normal, 0, uW, vT * wt, vT);
         // Window sill (horizontal ledge at bottom of window, single-sided facing up)
         this->addWallTopCapQuad(wbl, wbr, wbr + normal * 0.05f, wbl + normal * 0.05f, uW * wl, uW * wr, 0, 0.05f);
+    }
+
+    // Returns the single staircase cell for a given level, or {-1,-1} if none
+    std::pair<int, int> ProceduralDungeonComponent::pickStaircaseCell(const std::vector<std::vector<CellType>>& grid, int gridCols, int gridRows, int levelIndex) const
+    {
+        const Ogre::Real prob = this->stairsProbability->getReal();
+
+        // Get the next level's grid for cross-level validation
+        const std::vector<std::vector<CellType>>* nextGrid = nullptr;
+        if (levelIndex + 1 < (int)this->levelGrids.size())
+        {
+            nextGrid = &this->levelGrids[levelIndex + 1];
+        }
+
+        auto isF = [&](const std::vector<std::vector<CellType>>& g, int r, int c) -> bool
+        {
+            return r >= 0 && r < gridRows && c >= 0 && c < gridCols && g[r][c] != CellType::EMPTY;
+        };
+
+        // A cell is safe for stairs if it is interior on its own grid:
+        // all 4 cardinal neighbours must be non-empty so no wall face borders the cell
+        auto isInterior = [&](const std::vector<std::vector<CellType>>& g, int r, int c) -> bool
+        {
+            return isF(g, r - 1, c) && isF(g, r + 1, c) && isF(g, r, c - 1) && isF(g, r, c + 1);
+        };
+
+        for (int row = 1; row < gridRows - 1; ++row)
+        {
+            for (int col = 1; col < gridCols - 1; ++col)
+            {
+                // Must be a room cell on current level
+                if (grid[row][col] != CellType::ROOM)
+                {
+                    continue;
+                }
+
+                // Must be interior on current level — not touching any wall
+                if (!isInterior(grid, row, col))
+                {
+                    continue;
+                }
+
+                // Must also be a valid non-empty cell on the next level
+                // so the upper landing is inside the upper dungeon, not floating outside
+                if (nextGrid && !isF(*nextGrid, row, col))
+                {
+                    continue;
+                }
+
+                // Must also be interior on the next level — landing not at a wall edge
+                if (nextGrid && !isInterior(*nextGrid, row, col))
+                {
+                    continue;
+                }
+
+                // Deterministic hash
+                uint32_t h = static_cast<uint32_t>(row * 73856093 ^ col * 19349663 ^ levelIndex * 41111111 ^ this->seed->getInt());
+                h ^= h >> 16;
+                h *= 0x45d9f3bu;
+                h ^= h >> 16;
+                float r = static_cast<float>(h & 0xFFFFu) / 65535.0f;
+
+                if (r < prob)
+                {
+                    return {col, row};
+                }
+            }
+        }
+        return {-1, -1};
+    }
+
+    void ProceduralDungeonComponent::generateStaircaseGeometry(const DungeonStaircase& stair, Ogre::Real cellSz, Ogre::Real totalHeight, const Ogre::Vector2& uvTile)
+    {
+        if (false == this->addStairs->getBool())
+        {
+            return;
+        }
+
+        const Ogre::Real uS = std::max(0.001f, uvTile.x);
+        const Ogre::Real vS = std::max(0.001f, uvTile.y);
+        const int steps = std::max(2, (int)(1.0f / this->stairHeight->getReal()));
+        const Ogre::Real stepH = totalHeight / static_cast<Ogre::Real>(steps);
+        const Ogre::Real stepD = cellSz / static_cast<Ogre::Real>(steps);
+        const Ogre::Real stairW = cellSz * 0.7f;
+        const Ogre::Real hw = stairW * 0.5f;
+
+        // Staircase sits exactly within its hole cell — no offset, fits z0..z0+cellSz
+        const Ogre::Real baseX = stair.worldPos.x; // cell center X
+        const Ogre::Real baseY = stair.worldPos.y; // lower level floor Y
+        const Ogre::Real baseZ = stair.worldPos.z; // cell front edge (z0)
+        const Ogre::Real topY = baseY + totalHeight;
+
+        const Ogre::Real x0 = baseX - hw;
+        const Ogre::Real x1 = baseX + hw;
+        const Ogre::Real endZ = baseZ + cellSz; // cell back edge (z1)
+        const Ogre::Real uW = stairW / uS;
+        const Ogre::Real vFull = totalHeight / vS;
+
+        // ---- Steps ----
+        for (int s = 0; s < steps; ++s)
+        {
+            const Ogre::Real sy0 = baseY + s * stepH;
+            const Ogre::Real sy1 = baseY + (s + 1) * stepH;
+            const Ogre::Real sz0 = baseZ + s * stepD;
+            const Ogre::Real sz1 = baseZ + (s + 1) * stepD;
+            const Ogre::Real vH = stepH / vS;
+            const Ogre::Real vD = stepD / vS;
+
+            // Tread — horizontal top of step
+            this->addWallTopCapQuad({x0, sy1, sz0}, {x1, sy1, sz0}, {x1, sy1, sz1}, {x0, sy1, sz1}, 0, uW, 0, vD);
+
+            // Riser — vertical front face
+            this->addWallQuad({x0, sy0, sz0}, {x1, sy0, sz0}, {x1, sy1, sz0}, {x0, sy1, sz0}, {0, 0, -1}, 0, uW, 0, vH);
+        }
+
+        // ---- Back wall — full height, at back edge of cell ----
+        this->addWallQuad({x1, baseY, endZ}, {x0, baseY, endZ}, {x0, topY, endZ}, {x1, topY, endZ}, {0, 0, 1}, 0, uW, 0, vFull);
+
+        // ---- Left side wall — stair-profile per step (floor to step top) ----
+        for (int s = 0; s < steps; ++s)
+        {
+            const Ogre::Real sy1 = baseY + (s + 1) * stepH;
+            const Ogre::Real sz0 = baseZ + s * stepD;
+            const Ogre::Real sz1 = baseZ + (s + 1) * stepD;
+            const Ogre::Real vH = (s + 1) * stepH / vS;
+            const Ogre::Real ud0 = (sz0 - baseZ) / uS;
+            const Ogre::Real ud1 = (sz1 - baseZ) / uS;
+
+            this->addWallQuad({x0, baseY, sz0}, {x0, baseY, sz1}, {x0, sy1, sz1}, {x0, sy1, sz0}, {-1, 0, 0}, ud0, ud1, 0, vH);
+        }
+
+        // ---- Right side wall — mirror ----
+        for (int s = 0; s < steps; ++s)
+        {
+            const Ogre::Real sy1 = baseY + (s + 1) * stepH;
+            const Ogre::Real sz0 = baseZ + s * stepD;
+            const Ogre::Real sz1 = baseZ + (s + 1) * stepD;
+            const Ogre::Real vH = (s + 1) * stepH / vS;
+            const Ogre::Real ud0 = (sz0 - baseZ) / uS;
+            const Ogre::Real ud1 = (sz1 - baseZ) / uS;
+
+            this->addWallQuad({x1, baseY, sz1}, {x1, baseY, sz0}, {x1, sy1, sz0}, {x1, sy1, sz1}, {1, 0, 0}, ud0, ud1, 0, vH);
+        }
+
+        // ---- Under-stair bottom face — closes the staircase box from below ----
+        pushQuad(this->wallVertices, this->wallIndices, this->currentWallVertexIndex, {x0, baseY, baseZ}, {x1, baseY, baseZ}, {x1, baseY, endZ}, {x0, baseY, endZ}, -Ogre::Vector3::UNIT_Y, 0, uW, 0, cellSz / vS);
     }
 
     void ProceduralDungeonComponent::addFloorQuad(const Ogre::Vector3& v0, const Ogre::Vector3& v1, const Ogre::Vector3& v2, const Ogre::Vector3& v3, Ogre::Real u0, Ogre::Real u1, Ogre::Real vv0, Ogre::Real vv1)
@@ -3476,7 +3929,10 @@ namespace NOWA
     void ProceduralDungeonComponent::setWallHeight(Ogre::Real value)
     {
         this->wallHeight->setValue(value);
-        this->rebuildMesh();
+        if (true == this->hasDungeonOrigin)
+        {
+            this->rebuildMesh();
+        }
     }
 
     Ogre::Real ProceduralDungeonComponent::getWallHeight(void) const
@@ -3491,7 +3947,10 @@ namespace NOWA
             jitter = 0.8f;
         }
         this->jitter->setValue(jitter);
-        this->rebuildMesh();
+        if (true == this->hasDungeonOrigin)
+        {
+            this->rebuildMesh();
+        }
     }
 
     Ogre::Real ProceduralDungeonComponent::getJitter(void) const
@@ -3499,10 +3958,35 @@ namespace NOWA
         return this->jitter->getReal();
     }
 
+    Ogre::Real ProceduralDungeonComponent::getFloorDepth() const
+    {
+        return Ogre::Real();
+    }
+
+    void ProceduralDungeonComponent::setFloorDepth(Ogre::Real depth)
+    {
+        if (depth < 0.0f)
+        {
+            depth = 0.02f;
+        }
+        if (depth > 0.2f)
+        {
+            depth = 0.2f;
+        }
+        this->floorDepth->setValue(depth);
+        if (true == this->hasDungeonOrigin)
+        {
+            this->rebuildMesh();
+        }
+    }
+
     void ProceduralDungeonComponent::setAddCeiling(bool value)
     {
         this->addCeiling->setValue(value);
-        this->rebuildMesh();
+        if (true == this->hasDungeonOrigin)
+        {
+            this->rebuildMesh();
+        }
     }
 
     bool ProceduralDungeonComponent::getAddCeiling(void) const
@@ -3513,6 +3997,10 @@ namespace NOWA
     void ProceduralDungeonComponent::setLoopProbability(Ogre::Real value)
     {
         this->loopProbability->setValue(Ogre::Math::Clamp(value, 0.0f, 1.0f));
+        if (true == this->hasDungeonOrigin)
+        {
+            this->rebuildMesh();
+        }
     }
 
     Ogre::Real ProceduralDungeonComponent::getLoopProbability(void) const
@@ -3523,7 +4011,10 @@ namespace NOWA
     void ProceduralDungeonComponent::setDungeonTheme(const Ogre::String& theme)
     {
         this->dungeonTheme->setListSelectedValue(theme);
-        this->rebuildMesh();
+        if (true == this->hasDungeonOrigin)
+        {
+            this->rebuildMesh();
+        }
     }
 
     Ogre::String ProceduralDungeonComponent::getDungeonTheme(void) const
@@ -3534,6 +4025,10 @@ namespace NOWA
     void ProceduralDungeonComponent::setAdaptToGround(bool value)
     {
         this->adaptToGround->setValue(value);
+        if (true == this->hasDungeonOrigin)
+        {
+            this->rebuildMesh();
+        }
     }
 
     bool ProceduralDungeonComponent::getAdaptToGround(void) const
@@ -3544,6 +4039,10 @@ namespace NOWA
     void ProceduralDungeonComponent::setHeightOffset(Ogre::Real value)
     {
         this->heightOffset->setValue(value);
+        if (true == this->hasDungeonOrigin)
+        {
+            this->rebuildMesh();
+        }
     }
 
     Ogre::Real ProceduralDungeonComponent::getHeightOffset(void) const
@@ -3554,7 +4053,10 @@ namespace NOWA
     void ProceduralDungeonComponent::setAddPillars(bool value)
     {
         this->addPillars->setValue(value);
-        this->rebuildMesh();
+        if (true == this->hasDungeonOrigin)
+        {
+            this->rebuildMesh();
+        }
     }
 
     bool ProceduralDungeonComponent::getAddPillars(void) const
@@ -3660,7 +4162,10 @@ namespace NOWA
     void ProceduralDungeonComponent::setFloorUVTiling(const Ogre::Vector2& tiling)
     {
         this->floorUVTiling->setValue(tiling);
-        this->rebuildMesh();
+        if (true == this->hasDungeonOrigin)
+        {
+            this->rebuildMesh();
+        }
     }
 
     Ogre::Vector2 ProceduralDungeonComponent::getFloorUVTiling(void) const
@@ -3671,7 +4176,10 @@ namespace NOWA
     void ProceduralDungeonComponent::setWallUVTiling(const Ogre::Vector2& tiling)
     {
         this->wallUVTiling->setValue(tiling);
-        this->rebuildMesh();
+        if (true == this->hasDungeonOrigin)
+        {
+            this->rebuildMesh();
+        }
     }
 
     Ogre::Vector2 ProceduralDungeonComponent::getWallUVTiling(void) const
@@ -3687,7 +4195,7 @@ namespace NOWA
     void ProceduralDungeonComponent::setAddWindows(bool addWindows)
     {
         this->addWindows->setValue(addWindows);
-        if (this->hasDungeonOrigin)
+        if (true == this->hasDungeonOrigin)
         {
             this->rebuildMesh();
         }
@@ -3752,11 +4260,84 @@ namespace NOWA
 
     void ProceduralDungeonComponent::setWindowSill(Ogre::Real windowSill)
     {
-        this->windowSill->setValue(std::max(0.0f, std::min(0.9f, windowSill)));
+        if (windowSill < 0.0f)
+        {
+            windowSill = 0.0f;
+        }
+        else if (windowSill > 0.9f)
+        {
+            windowSill = 0.9f;
+        }
+
         if (this->hasDungeonOrigin && this->addWindows->getBool())
         {
             this->rebuildMesh();
         }
+    }
+
+    void ProceduralDungeonComponent::setLevelCount(unsigned int levelCount)
+    {
+        if (levelCount > 20)
+        {
+            levelCount = 20;
+        }
+
+        this->levelCount->setValue(levelCount);
+        this->generateDungeon();
+    }
+
+    unsigned int ProceduralDungeonComponent::getLevelCount(void) const
+    {
+        return this->levelCount->getUInt();
+    }
+
+    void ProceduralDungeonComponent::setStairsProbability(Ogre::Real stairsProbability)
+    {
+        if (stairsProbability < 0.0f)
+        {
+            stairsProbability = 0.0f;
+        }
+        else if (stairsProbability > 0.4f)
+        {
+            stairsProbability = 0.4f;
+        }
+    }
+
+    Ogre::Real ProceduralDungeonComponent::getStairsProbability(void) const
+    {
+        return this->stairsProbability->getReal();
+    }
+
+    void ProceduralDungeonComponent::setAddStairs(bool add)
+    {
+        this->addStairs->setValue(add);
+    }
+
+    bool ProceduralDungeonComponent::getAddStairs(void) const
+    {
+        return this->addStairs->getBool();
+    }
+
+    void ProceduralDungeonComponent::setStairHeight(Ogre::Real stairHeight)
+    {
+        if (stairHeight < 0.1f)
+        {
+            stairHeight = 0.1f;
+        }
+        else if (stairHeight > 0.4f)
+        {
+            stairHeight = 0.4f;
+        }
+
+        if (true == this->hasDungeonOrigin)
+        {
+            this->rebuildMesh();
+        }
+    }
+
+    Ogre::Real ProceduralDungeonComponent::getStairHeight(void) const
+    {
+        return this->stairHeight->getReal();
     }
 
 } // namespace NOWA
