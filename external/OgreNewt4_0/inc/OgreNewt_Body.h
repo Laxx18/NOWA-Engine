@@ -193,6 +193,8 @@ namespace OgreNewt
 
 		void setSelfCollisionGroup(unsigned int selfCollisionGroup);
 		unsigned int getSelfCollisionGroup() const;
+
+		void setBodyNotify(BodyNotify* bodyNotify);
 	private:
 		void dispatchContacts();
 	protected:

@@ -1,624 +1,423 @@
-/* OgreNewt_SpiderBody.cpp
- *
- * Procedural gait ported from ndQuadSpiderPlayer / ndProdeduralGaitGenerator.
- * 2-link analytical IK replaces the Newton IK effector joints.
- * All positions are in TORSO-LOCAL space throughout the gait system; they are
- * transformed to world space only at the end of computeLegTransforms().
- */
+/*
+    OgreNewt_SpiderBody.cpp
+
+    Corrections vs previous version:
+      - Update/PostUpdate on SpiderModelNotify (ndModelNotify), not on ndModelArticulation
+      - SetAsSpringDamper(regularizer, spring, damper)  — no bool
+      - AddLimb(parentNode, ndSharedPtr<ndBody>, ndSharedPtr<ndJoint>)
+      - AddCloseLoop(ndSharedPtr<ndJoint>)  for effectors + upVector
+      - SetMassMatrix(mass, shapeInstance)  — engine computes inertia
+      - model->SetNotifyCallback(ndSharedPtr<ndModelNotify>) sets the notify
+*/
 
 #include "OgreNewt_Stdafx.h"
 #include "OgreNewt_SpiderBody.h"
-#include "OgreNewt_World.h"
-#include "ndNewton.h"
+#include "OgreNewt_Tools.h"
+#include <OgreSceneNode.h>
 
-#include <algorithm>
-#include <cmath>
+using namespace OgreNewt;
+using namespace OgreNewt::SpiderConstants;
 
-namespace OgreNewt
+// ─────────────────────────────────────────────────────────────────────────────
+//  Internal helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Pin-and-pivot matrix: X column = pinAxis, position = pivot
+static ndMatrix pinMatrix(const ndVector& pivot, const ndVector& pinAxis)
 {
-    // =========================================================================
-    // SpiderMovementManipulation
-    // =========================================================================
-    SpiderMovementManipulation::SpiderMovementManipulation() : m_stride(0.0f), m_omega(0.0f), m_bodySwayX(0.0f), m_bodySwayZ(0.0f)
-    {
-    }
+    ndMatrix m = ndGramSchmidtMatrix(pinAxis);
+    m.m_posit = pivot;
+    m.m_posit.m_w = 1.0f;
+    return m;
+}
 
-    void SpiderMovementManipulation::setStride(Ogre::Real v)
-    {
-        m_stride = v;
-    }
-    Ogre::Real SpiderMovementManipulation::getStride() const
-    {
-        return m_stride;
-    }
-    void SpiderMovementManipulation::setOmega(Ogre::Real v)
-    {
-        m_omega = v;
-    }
-    Ogre::Real SpiderMovementManipulation::getOmega() const
-    {
-        return m_omega;
-    }
-    void SpiderMovementManipulation::setBodySwayX(Ogre::Real v)
-    {
-        m_bodySwayX = v;
-    }
-    Ogre::Real SpiderMovementManipulation::getBodySwayX() const
-    {
-        return m_bodySwayX;
-    }
-    void SpiderMovementManipulation::setBodySwayZ(Ogre::Real v)
-    {
-        m_bodySwayZ = v;
-    }
-    Ogre::Real SpiderMovementManipulation::getBodySwayZ() const
-    {
-        return m_bodySwayZ;
-    }
+// Capsule matrix: X column = long axis direction, position = centre
+static ndMatrix capsuleMatrix(const ndVector& centre, const ndVector& dir)
+{
+    ndMatrix m = ndGramSchmidtMatrix(dir);
+    m.m_posit = centre;
+    m.m_posit.m_w = 1.0f;
+    return m;
+}
 
-    // =========================================================================
-    // SpiderBody – constructor / destructor
-    // =========================================================================
-    SpiderBody::SpiderBody(OgreNewt::World* world, Ogre::SceneManager* sceneManager, OgreNewt::CollisionPtr collision, Ogre::Real mass, const Ogre::Vector3& massOrigin, const Ogre::Vector3& /*gravity*/, const Ogre::Vector3& defaultDirection,
-        SpiderCallback* callback) :
-        Body(world, sceneManager, collision),
-        m_callback(callback),
-        m_defaultDirection(defaultDirection),
-        m_walkCycleDuration(2.0f),
-        m_stepHeight(0.2f),
-        m_timeAcc(0.0f),
-        m_canMove(true)
-    {
-        ndBodyDynamic* ndBody = static_cast<ndBodyDynamic*>(m_body);
-        ndShapeInstance& shapeInst = ndBody->GetCollisionShape();
-        ndBody->SetMassMatrix(static_cast<ndFloat32>(mass), shapeInst);
+static ndBodyDynamic* makeCapsuleBody(ndFloat32 radius, ndFloat32 length, ndFloat32 mass, const ndMatrix& mat)
+{
+    ndShapeInstance inst(new ndShapeCapsule(radius, radius, length));
+    auto* body = new ndBodyDynamic();
+    body->SetCollisionShape(inst);
+    body->SetMassMatrix(mass, inst); // engine computes inertia from shape
+    body->SetMatrix(mat);
+    return body;
+}
 
-        if (massOrigin != Ogre::Vector3::ZERO)
+static OgreNewt::Body* wrapBody(OgreNewt::World* world, ndBodyDynamic* ndBody, Ogre::SceneManager* sceneManager, Ogre::SceneNode* node = nullptr)
+{
+    // Non-owning: ndSharedPtr inside articulation owns the ndBodyDynamic
+    auto* ogreBody = new OgreNewt::Body(world, sceneManager, ndBody);
+    ogreBody->setBodyNotify(new OgreNewt::BodyNotify(ogreBody));
+    if (node)
+    {
+        ogreBody->attachNode(node);
+    }
+    return ogreBody;
+}
+
+static ndVector defaultFootLocal(int legIndex)
+{
+    ndFloat32 x = (legIndex < 2) ? LEG_OFFSET_X_FRONT : LEG_OFFSET_X_REAR;
+    ndFloat32 z = (legIndex == 0 || legIndex == 2) ? LEG_OFFSET_Z_RIGHT : LEG_OFFSET_Z_LEFT;
+    ndFloat32 reach = (THIGH_LENGTH + CALF_LENGTH) * 0.9f;
+    return ndVector(x, -reach * 0.5f, z * 2.2f, 0.0f);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  SpiderModelNotify
+// ─────────────────────────────────────────────────────────────────────────────
+SpiderModelNotify::SpiderModelNotify(SpiderArticulation* model) : ndModelNotify(), m_model(model)
+{
+}
+
+void SpiderModelNotify::Update(ndFloat32 timestep)
+{
+    if (!m_model || !m_model->torsoNd)
+    {
+        return;
+    }
+    updateGait(timestep);
+    applyEffectors();
+}
+
+void SpiderModelNotify::updateGait(ndFloat32 timestep)
+{
+    const ndFloat32 stride = m_stride.load(std::memory_order_relaxed);
+    const ndFloat32 omega = m_omega.load(std::memory_order_relaxed);
+    const ndMatrix torsoMat = m_model->torsoNd->GetMatrix();
+    const ndFloat32 airEnd = WALK_DURATION * PHASE_SHIFT;
+
+    for (int i = 0; i < 4; ++i)
+    {
+        LegGaitState& g = m_model->legGait[i];
+
+        g.cycleTime += timestep;
+        if (g.cycleTime >= WALK_DURATION)
         {
-            ndBody->SetCentreOfMass(ndVector(static_cast<ndFloat32>(massOrigin.x), static_cast<ndFloat32>(massOrigin.y), static_cast<ndFloat32>(massOrigin.z), ndFloat32(1.0f)));
+            g.cycleTime -= WALK_DURATION;
         }
-    }
 
-    SpiderBody::~SpiderBody()
-    {
-        delete m_callback;
-        m_callback = nullptr;
-    }
-
-    // =========================================================================
-    // Leg registration
-    // =========================================================================
-    void SpiderBody::addLegChain(Ogre::SceneNode* thigh, Ogre::SceneNode* calf, Ogre::SceneNode* heel, const Ogre::Vector3& hipLocalPos, const Ogre::Vector3& footRestLocal, Ogre::Real thighLength, Ogre::Real calfLength, Ogre::Real swivelSign,
-        int boneAxis)
-    {
-        LegChainInfo leg;
-        leg.thigh = thigh;
-        leg.calf = calf;
-        leg.heel = heel;
-        leg.hipLocalPos = hipLocalPos;
-        leg.footRestLocal = footRestLocal;
-        leg.thighLength = std::max(thighLength, 0.05f);
-        leg.calfLength = std::max(calfLength, 0.05f);
-        leg.swivelSign = (swivelSign >= 0.0f) ? 1.0f : -1.0f;
-        leg.boneAxis = Ogre::Math::Clamp(boneAxis, 0, 2);
-        m_legs.push_back(leg);
-
-        // Initialise gait state with the heel's rest position.
-        LegGaitState gs;
-        gs.base = footRestLocal;
-        gs.posit = footRestLocal;
-        gs.start = footRestLocal;
-        gs.end = footRestLocal;
-        gs.a0 = footRestLocal.y;
-        gs.a1 = 0.0f;
-        gs.a2 = 0.0f;
-        gs.time = 0.0f;
-        gs.maxTime = 1.0f;
-        m_gait.push_back(gs);
-
-        // Ensure the gait sequence vector has an entry for this leg.
-        const int idx = static_cast<int>(m_legs.size()) - 1;
-        if (static_cast<int>(m_gaitSequence.size()) <= idx)
+        // Per-leg phase-shifted time
+        ndFloat32 t = g.cycleTime - i * WALK_DURATION * PHASE_SHIFT;
+        if (t < 0.0f)
         {
-            m_gaitSequence.push_back(idx);
+            t += WALK_DURATION;
         }
-    }
 
-    void SpiderBody::clearLegs()
-    {
-        m_legs.clear();
-        m_gait.clear();
-        m_gaitSequence.clear();
-        m_timeAcc = 0.0f;
-    }
-
-    // =========================================================================
-    // Gait phase query  (mirrors ndProdeduralGaitGenerator::GetState)
-    // =========================================================================
-    SpiderBody::GaitPhase SpiderBody::getGaitPhase(int legIndex, Ogre::Real timestep) const
-    {
-        // Phase offset from gait sequence: each entry is 0..legCount-1.
-        // We use the same 0.25-per-slot convention as ndQuadSpiderPlayer.
-        const int seqVal = (legIndex < static_cast<int>(m_gaitSequence.size())) ? m_gaitSequence[legIndex] : legIndex;
-
-        const Ogre::Real sequenceOffset = 0.25f * static_cast<Ogre::Real>(seqVal);
-        const Ogre::Real t0 = std::fmod(m_timeAcc + sequenceOffset * m_walkCycleDuration, m_walkCycleDuration);
-        const Ogre::Real t1 = t0 + timestep;
-
-        // Air phase: [0 .. 25% of cycle]
-        const Ogre::Real airEnd = 0.25f * m_walkCycleDuration;
-        const Ogre::Real cycleEnd = m_walkCycleDuration;
-
-        if (t0 <= airEnd)
+        // Compute neutral foot position in world space this frame
+        ndVector restLocal = m_model->defaultFootLocal[i];
+        restLocal.m_x += stride * 0.5f;
+        if (ndAbs(omega) > 1e-4f)
         {
-            return (t1 > airEnd) ? GaitPhase::airToGround : GaitPhase::onAir;
+            ndMatrix yaw = ndYawMatrix(omega * timestep);
+            restLocal = yaw.TransformVector(restLocal);
         }
-        // Ground phase: [25% .. 100%]
-        if (t0 <= cycleEnd)
+        ndVector restWorld = torsoMat.TransformVector(restLocal);
+        restWorld.m_w = 0.0f;
+
+        switch (g.phase)
         {
-            return (t1 > cycleEnd) ? GaitPhase::groundToAir : GaitPhase::onGround;
-        }
-        return GaitPhase::onGround; // fallback (shouldn't happen)
-    }
-
-    // =========================================================================
-    // Leg integration  (mirrors ndProdeduralGaitGenerator::IntegrateLeg)
-    // All positions in TORSO-LOCAL space.
-    // =========================================================================
-    void SpiderBody::integrateLeg(int i, Ogre::Real timestep)
-    {
-        LegGaitState& gs = m_gait[i];
-        const Ogre::Real stride = m_manip.m_stride;
-        const Ogre::Real omega = m_manip.m_omega;
-
-        const Ogre::Real airDuration = 0.25f * m_walkCycleDuration;
-        const Ogre::Real groundDuration = 0.75f * m_walkCycleDuration;
-
-        switch (getGaitPhase(i, timestep))
+        case LegPhase::onGround:
         {
-        // ── Lift-off transition: foot leaves ground, swing phase begins ──────
-        case GaitPhase::groundToAir:
-        {
-            // Target = rest position + half-stride forward.
-            // Forward is along m_defaultDirection in chassis-local space.
-            Ogre::Vector3 target = gs.base;
-            target += m_defaultDirection * (stride * 0.5f);
-
-            gs.start = gs.posit;
-            gs.end = target;
-            gs.maxTime = airDuration;
-            gs.time = 0.0f;
-
-            // Parabolic arch coefficients (quadratic in normalised time):
-            //   y(t) = a0 + a1*t + a2*t^2   (t in [0,1])
-            // Passes through y0 at t=0, y1 at t=1, peaks at h = 0.5*(y0+y1)+stepHeight.
-            const Ogre::Real y0 = gs.start.y;
-            const Ogre::Real y1 = gs.end.y;
-            const Ogre::Real h = 0.5f * (y0 + y1) + m_stepHeight;
-            gs.a0 = y0;
-            gs.a1 = 4.0f * (h - y0) - (y1 - y0);
-            gs.a2 = y1 - y0 - gs.a1;
-
-            // posit unchanged this transition frame
+            ndVector delta = restWorld - g.restPos;
+            ndFloat32 distSq = delta.DotProduct(delta).GetScalar();
+            if (ndAbs(stride) > 0.01f && distSq > (WALK_STRIDE * 0.5f) * (WALK_STRIDE * 0.5f))
+            {
+                g.liftPos = g.restPos;
+                g.phase = LegPhase::groundToAir;
+            }
+            else
+            {
+                // Foot slowly tracks target while grounded
+                g.restPos = g.restPos + (restWorld - g.restPos) * 0.05f;
+            }
             break;
         }
 
-        // ── Swing (air): interpolate along parabolic arc ─────────────────────
-        case GaitPhase::onAir:
+        case LegPhase::groundToAir:
         {
-            gs.time += timestep;
-            const Ogre::Real param = (gs.maxTime > 0.0f) ? std::min(gs.time / gs.maxTime, 1.0f) : 1.0f;
+            g.landPos = restWorld;
+            ndFloat32 liftY = g.liftPos.m_y;
+            ndFloat32 landY = g.landPos.m_y;
+            ndFloat32 peakY = ndMax(liftY, landY) + m_swingAmplitude;
+            ndFloat32 T2 = airEnd * 0.5f;
 
-            const Ogre::Vector3 step = gs.end - gs.start;
-            gs.posit = gs.start + step * param;
-            gs.posit.y = gs.a0 + gs.a1 * param + gs.a2 * param * param;
+            g.arcA0 = liftY;
+            g.arcA2 = 2.0f * (liftY - 2.0f * peakY + landY) / (airEnd * airEnd);
+            g.arcA1 = (peakY - g.arcA0 - g.arcA2 * T2 * T2) / T2;
+            g.phase = LegPhase::onAir;
             break;
         }
 
-        // ── Touch-down transition: finish last air frame, set up ground slide ─
-        case GaitPhase::airToGround:
-        {
-            // Finish the remaining air integration so the foot lands smoothly.
-            gs.time += timestep;
+        case LegPhase::onAir:
+            if (t >= airEnd)
             {
-                const Ogre::Real param = (gs.maxTime > 0.0f) ? std::min(gs.time / gs.maxTime, 1.0f) : 1.0f;
-                const Ogre::Vector3 step = gs.end - gs.start;
-                gs.posit = gs.start + step * param;
-                gs.posit.y = gs.a0 + gs.a1 * param + gs.a2 * param * param;
+                g.restPos = g.landPos;
+                g.phase = LegPhase::airToGround;
             }
+            break;
 
-            // Set up ground phase: foot target = rest - half-stride behind,
-            // rotated by omega * groundDuration to account for turning.
-            Ogre::Vector3 target = gs.base;
-            target -= m_defaultDirection * (stride * 0.5f);
-
-            const Ogre::Real angle = omega * groundDuration;
-            const Ogre::Quaternion yawRot(Ogre::Radian(angle), Ogre::Vector3::UNIT_Y);
-            target = yawRot * target;
-
-            gs.start = gs.posit;
-            gs.end = target;
-            gs.maxTime = groundDuration;
-            gs.time = 0.0f;
+        case LegPhase::airToGround:
+            g.phase = LegPhase::onGround;
             break;
         }
-
-        // ── Ground (stance): foot slides backward as body advances ───────────
-        case GaitPhase::onGround:
-        default:
-        {
-            gs.time += timestep;
-            const Ogre::Real param = (gs.maxTime > 0.0f) ? std::min(gs.time / gs.maxTime, 1.0f) : 1.0f;
-            gs.posit = gs.start + (gs.end - gs.start) * param;
-            break;
-        }
-        }
     }
+}
 
-    // =========================================================================
-    // IK helpers
-    // =========================================================================
-    Ogre::Quaternion SpiderBody::buildBoneOrient(const Ogre::Vector3& boneDir, const Ogre::Vector3& upHint, int boneAxis)
+ndVector SpiderModelNotify::computeFootTarget(int leg) const
+{
+    const LegGaitState& g = m_model->legGait[leg];
+
+    if (g.phase == LegPhase::onAir || g.phase == LegPhase::groundToAir)
     {
-        // Build an orthonormal frame whose primary column = boneDir.
-        // upHint is used to anchor the "up" direction so roll stays stable.
-        const Ogre::Vector3 primary = boneDir.normalisedCopy();
-
-        // right = primary × upHint  (cross in this order keeps right pointing
-        // consistently away from the body for default Y-up bones)
-        Ogre::Vector3 right = primary.crossProduct(upHint);
-        if (right.squaredLength() < 1e-6f)
+        const ndFloat32 airEnd = WALK_DURATION * PHASE_SHIFT;
+        ndFloat32 t = m_model->legGait[leg].cycleTime - leg * WALK_DURATION * PHASE_SHIFT;
+        if (t < 0.0f)
         {
-            // Degenerate (primary || upHint): pick a different reference.
-            const Ogre::Vector3 alt = (std::abs(primary.x) < 0.9f) ? Ogre::Vector3::UNIT_X : Ogre::Vector3::UNIT_Z;
-            right = primary.crossProduct(alt);
+            t += WALK_DURATION;
         }
-        right.normalise();
+        t = ndClamp(t, 0.0f, airEnd);
 
-        const Ogre::Vector3 upActual = right.crossProduct(primary).normalisedCopy();
-
-        // Build matrix columns so column[boneAxis] = primary.
-        Ogre::Matrix3 mat;
-        switch (boneAxis)
-        {
-        default:
-        case 1: // Y is the bone direction (Blender default, most common)
-            mat.SetColumn(0, right);
-            mat.SetColumn(1, primary);
-            mat.SetColumn(2, upActual);
-            break;
-        case 0: // X is the bone direction
-            mat.SetColumn(0, primary);
-            mat.SetColumn(1, upActual);
-            mat.SetColumn(2, right);
-            break;
-        case 2: // Z is the bone direction
-            mat.SetColumn(0, upActual);
-            mat.SetColumn(1, right);
-            mat.SetColumn(2, primary);
-            break;
-        }
-
-        Ogre::Quaternion q(mat);
-        q.normalise();
-        return q;
+        ndFloat32 u = t / airEnd;
+        ndVector pos = g.liftPos + (g.landPos - g.liftPos) * u;
+        pos.m_y = g.arcA0 + g.arcA1 * t + g.arcA2 * t * t;
+        return pos;
     }
 
-    void SpiderBody::solveIK(LegChainInfo& leg, const Ogre::Vector3& chassisUp)
+    return g.restPos;
+}
+
+void SpiderModelNotify::applyEffectors()
+{
+    const ndMatrix torsoMat = m_model->torsoNd->GetMatrix();
+    const ndMatrix torsoInv = torsoMat.OrthoInverse();
+
+    for (int i = 0; i < 4; ++i)
     {
-        // thighWorldPos and footWorldPos must be set by the caller
-        // before this function is invoked.
-        const Ogre::Vector3& hip = leg.thighWorldPos;
-        const Ogre::Real L1 = leg.thighLength;
-        const Ogre::Real L2 = leg.calfLength;
-        const Ogre::Real eps = 1e-4f;
-
-        // ── Clamp target to reachable workspace ──────────────────────────────
+        if (!m_model->effectors[i])
         {
-            const Ogre::Vector3 toFoot = leg.footWorldPos - hip;
-            const Ogre::Real dist = toFoot.length();
-            const Ogre::Real maxR = L1 + L2 - eps;
-            const Ogre::Real minR = std::abs(L1 - L2) + eps;
-            if (dist > maxR)
-            {
-                leg.footWorldPos = hip + toFoot.normalisedCopy() * maxR;
-            }
-            else if (dist < minR && dist > eps)
-            {
-                leg.footWorldPos = hip + toFoot.normalisedCopy() * minR;
-            }
+            continue;
         }
 
-        const Ogre::Vector3 hipToFoot = leg.footWorldPos - hip;
-        const Ogre::Real d = hipToFoot.length();
+        ndVector worldTarget = computeFootTarget(i);
+        ndVector localTarget = torsoInv.TransformVector(worldTarget);
+        m_model->effectors[i]->SetLocalTargetPosition(localTarget);
 
-        // Direction hip → foot
-        const Ogre::Vector3 fwd = (d > eps) ? hipToFoot / d : m_defaultDirection;
+        // Swivel knee outward
+        ndFloat32 swivelSign = (i == 0 || i == 2) ? 1.0f : -1.0f;
+        m_model->effectors[i]->SetSwivelAngle(30.0f * ndDegreeToRad * swivelSign);
 
-        // ── Law of cosines: angle at hip ─────────────────────────────────────
-        const Ogre::Real cosA = (d * d + L1 * L1 - L2 * L2) / (2.0f * d * L1);
-        const Ogre::Real angle = std::acos(Ogre::Math::Clamp(cosA, -1.0f, 1.0f));
-
-        // ── Swivel / bend direction ───────────────────────────────────────────
-        // Project out the forward component from chassisUp to get the "bend plane up".
-        Ogre::Vector3 bendDir = chassisUp - fwd * fwd.dotProduct(chassisUp);
-        if (bendDir.squaredLength() < eps * eps)
+        // Couple heel angle to knee angle
+        if (m_model->kneeJoints[i] && m_model->heelJoints[i])
         {
-            // fwd is parallel to chassisUp: fall back to a lateral reference.
-            const Ogre::Vector3 alt = (std::abs(fwd.x) < 0.9f) ? Ogre::Vector3::UNIT_X : Ogre::Vector3::UNIT_Z;
-            bendDir = fwd.crossProduct(alt).crossProduct(fwd);
+            ndFloat32 kneeAngle = m_model->kneeJoints[i]->GetAngle();
+            m_model->heelJoints[i]->SetTargetAngle(-kneeAngle * 0.5f);
         }
-        bendDir.normalise();
-        bendDir *= leg.swivelSign;
-
-        // ── Knee position ─────────────────────────────────────────────────────
-        leg.kneeWorldPos = hip + fwd * (std::cos(angle) * L1) + bendDir * (std::sin(angle) * L1);
-
-        // ── Build bone orientations using an up-hint for roll stability ───────
-        const Ogre::Vector3& upHint = chassisUp;
-
-        {
-            const Ogre::Vector3 dir = (leg.kneeWorldPos - hip).normalisedCopy();
-            leg.thighWorldOrient = buildBoneOrient(dir, upHint, leg.boneAxis);
-        }
-        {
-            const Ogre::Vector3 dir = (leg.footWorldPos - leg.kneeWorldPos).normalisedCopy();
-            leg.calfWorldOrient = buildBoneOrient(dir, upHint, leg.boneAxis);
-        }
-        // Heel orientation follows calf (foot lies flat, no terrain alignment needed
-        // for a purely visual rig; can be overridden later for terrain adaptation).
-        leg.heelWorldOrient = leg.calfWorldOrient;
     }
+}
 
-    // =========================================================================
-    // computeLegTransforms  (logic thread, once per frame)
-    // =========================================================================
-    void SpiderBody::computeLegTransforms(Ogre::Real dt)
+// ─────────────────────────────────────────────────────────────────────────────
+//  SpiderBody
+// ─────────────────────────────────────────────────────────────────────────────
+SpiderBody::SpiderBody(OgreNewt::World* world) : m_world(world)
+{
+    m_model = new SpiderArticulation();
+    m_notify = new SpiderModelNotify(m_model);
+    // SetNotifyCallback takes ndSharedPtr<ndModelNotify>; m_notify stays valid
+    // as long as we hold m_model, which lives until world teardown.
+    m_model->SetNotifyCallback(ndSharedPtr<ndModelNotify>(m_notify));
+}
+
+SpiderBody::~SpiderBody()
+{
+    // m_model is owned by ndWorld after AddModel(); do not delete here.
+    // m_notify is owned by ndSharedPtr inside m_model; do not delete here.
+    delete m_torsoBody;
+    for (auto& lw : m_legWrappers)
     {
-        if (m_legs.empty())
-        {
-            return;
-        }
-
-        const Ogre::Vector3 chassisPos = this->getPosition();
-        const Ogre::Quaternion chassisOrient = this->getOrientation();
-        const Ogre::Vector3 chassisUp = chassisOrient * Ogre::Vector3::UNIT_Y;
-
-        // ── Advance gait time accumulator (mirrors CalculateTime) ─────────────
-        // Compute next time first, process legs with the current accumulator,
-        // then commit the new value – matching ndProdeduralGaitGenerator::CalculatePose.
-        const Ogre::Real nextTimeAcc = [&]()
-        {
-            const Ogre::Real angle0 = m_timeAcc * Ogre::Math::TWO_PI / m_walkCycleDuration;
-            const Ogre::Real deltaAngle = dt * Ogre::Math::TWO_PI / m_walkCycleDuration;
-            Ogre::Real angle1 = angle0 + deltaAngle;
-            while (angle1 > Ogre::Math::TWO_PI)
-            {
-                angle1 -= Ogre::Math::TWO_PI;
-            }
-            while (angle1 < 0.0f)
-            {
-                angle1 += Ogre::Math::TWO_PI;
-            }
-            return angle1 * m_walkCycleDuration / Ogre::Math::TWO_PI;
-        }();
-
-        // ── Body sway offset in chassis-local space ───────────────────────────
-        // Mirrors ndBodySwingControl applying m_x / m_z offset to each effector.
-        Ogre::Vector3 swayOffset;
-        {
-            std::lock_guard<std::mutex> lock(m_manipMutex);
-            swayOffset = Ogre::Vector3(-m_cachedManip.bodySwayX, 0.0f, -m_cachedManip.bodySwayZ);
-        }
-
-        // ── Process each leg ──────────────────────────────────────────────────
-        // IK is solved in world space (required for correct geometry), then the
-        // resulting positions and orientations are converted to torso-local space
-        // before storage.  Callers (e.g. updateNodeTransform on child nodes) receive
-        // parent-relative values directly – no extra conversion needed.
-        const Ogre::Quaternion chassisOrientInv = chassisOrient.Inverse();
-        const int legCount = static_cast<int>(m_legs.size());
-        for (int i = 0; i < legCount; ++i)
-        {
-            LegChainInfo& leg = m_legs[i];
-            LegGaitState& gs = m_gait[i];
-
-            // Gait tick (updates gs.posit in torso-local space)
-            integrateLeg(i, dt);
-
-            // Hip world position (chassis-local hip shifted by sway, then to world)
-            leg.thighWorldPos = chassisPos + chassisOrient * (leg.hipLocalPos + swayOffset);
-            leg.footWorldPos  = chassisPos + chassisOrient * gs.posit;
-
-            // Foot world position (gait posit is torso-local)
-            solveIK(leg, chassisUp);
-
-            // Convert world results to torso-local (parent-relative for child scene nodes).
-            leg.thighWorldPos  = chassisOrientInv * (leg.thighWorldPos  - chassisPos);
-            leg.kneeWorldPos   = chassisOrientInv * (leg.kneeWorldPos   - chassisPos);
-            leg.footWorldPos   = chassisOrientInv * (leg.footWorldPos   - chassisPos);
-            leg.thighWorldOrient = chassisOrientInv * leg.thighWorldOrient;
-            leg.calfWorldOrient  = chassisOrientInv * leg.calfWorldOrient;
-            leg.heelWorldOrient  = chassisOrientInv * leg.heelWorldOrient;
-        }
-
-        // Commit the advanced time accumulator AFTER processing all legs.
-        m_timeAcc = nextTimeAcc;
+        delete lw.thigh;
+        delete lw.calf;
+        delete lw.heel;
+        delete lw.contact;
     }
+}
 
-    // =========================================================================
-    // applyLocomotionImpulses  (Newton worker thread)
-    // Mirrors ndController::Update impulse logic from ndBasicModel.
-    // =========================================================================
-    void SpiderBody::applyLocomotionImpulses(Ogre::Real dt)
+void SpiderBody::buildTorso(const ndMatrix& spawn, Ogre::SceneManager* sceneManager, Ogre::SceneNode* torsoNode)
+{
+    ndShapeInstance inst(new ndShapeBox(TORSO_SIZE_X, TORSO_SIZE_Y, TORSO_SIZE_Z));
+
+    auto* torsoNd = new ndBodyDynamic();
+    torsoNd->SetCollisionShape(inst);
+    torsoNd->SetMassMatrix(TORSO_MASS, inst);
+    torsoNd->SetMatrix(spawn);
+    m_model->torsoNd = torsoNd;
+
+    m_model->AddRootBody(ndSharedPtr<ndBody>(torsoNd));
+
+    // UpVector — close loop, keeps torso upright
+    ndBodyKinematic* sentinel = m_world->getNewtonWorld()->GetSentinelBody();
+    m_model->AddCloseLoop(ndSharedPtr<ndJointBilateralConstraint>(new ndJointUpVector(ndVector(0.0f, 1.0f, 0.0f, 0.0f), torsoNd, sentinel)), "upVector");
+
+    m_torsoBody = wrapBody(m_world, torsoNd, sceneManager, torsoNode);
+}
+
+void SpiderBody::buildLeg(int legIndex, Ogre::SceneManager* sceneManager, Ogre::SceneNode* thighNode, Ogre::SceneNode* calfNode, Ogre::SceneNode* heelNode)
+{
+    ndModelArticulation::ndNode* const treeRoot = m_model->GetRoot();
+    const ndMatrix torsoMat = m_model->torsoNd->GetMatrix();
+
+    const ndFloat32 sideSign = (legIndex == 0 || legIndex == 2) ? 1.0f : -1.0f;
+    const ndFloat32 frontSign = (legIndex < 2) ? 1.0f : -1.0f;
+
+    // ── World-space anchor points ─────────────────────────────────────────────
+    ndVector hipLocal(frontSign * LEG_OFFSET_X_FRONT, LEG_OFFSET_Y, sideSign * LEG_OFFSET_Z_RIGHT, 1.0f);
+    ndVector hipWorld = torsoMat.TransformVector(hipLocal);
+    hipWorld.m_w = 1.0f;
+
+    ndVector thighDir = ndVector(0.3f * sideSign, -0.9f, 0.0f, 0.0f).Normalize();
+    ndVector kneeWorld = hipWorld + thighDir * THIGH_LENGTH;
+    kneeWorld.m_w = 1.0f;
+    ndVector thighCentre = hipWorld + thighDir * (THIGH_LENGTH * 0.5f);
+    thighCentre.m_w = 1.0f;
+
+    ndVector calfDir = ndVector(0.05f * sideSign, -0.999f, 0.0f, 0.0f).Normalize();
+    ndVector ankleWorld = kneeWorld + calfDir * CALF_LENGTH;
+    ankleWorld.m_w = 1.0f;
+    ndVector calfCentre = kneeWorld + calfDir * (CALF_LENGTH * 0.5f);
+    calfCentre.m_w = 1.0f;
+
+    ndVector heelDir(0.0f, -1.0f, 0.0f, 0.0f);
+    ndVector footWorld = ankleWorld + heelDir * HEEL_LENGTH;
+    footWorld.m_w = 1.0f;
+    ndVector heelCentre = ankleWorld + heelDir * (HEEL_LENGTH * 0.5f);
+    heelCentre.m_w = 1.0f;
+
+    ndVector contactCentre = footWorld + heelDir * (CONTACT_LENGTH * 0.5f);
+    contactCentre.m_w = 1.0f;
+
+    // ── Bodies ────────────────────────────────────────────────────────────────
+    auto* thighNd = makeCapsuleBody(THIGH_RADIUS, THIGH_LENGTH, THIGH_MASS, capsuleMatrix(thighCentre, thighDir));
+    auto* calfNd = makeCapsuleBody(CALF_RADIUS, CALF_LENGTH, CALF_MASS, capsuleMatrix(calfCentre, calfDir));
+    auto* heelNd = makeCapsuleBody(HEEL_RADIUS, HEEL_LENGTH, HEEL_MASS, capsuleMatrix(heelCentre, heelDir));
+    auto* contactNd = makeCapsuleBody(CONTACT_RADIUS, CONTACT_LENGTH, CONTACT_MASS, capsuleMatrix(contactCentre, heelDir));
+
+    m_model->thighNd[legIndex] = thighNd;
+    m_model->calfNd[legIndex] = calfNd;
+    m_model->heelNd[legIndex] = heelNd;
+    m_model->contactNd[legIndex] = contactNd;
+
+    // ── Joints ────────────────────────────────────────────────────────────────
+    // Hinge axis is the torso lateral direction (Z in world frame at spawn)
+    ndVector hingeAxis = torsoMat.m_front; // Newton Z column
+
+    // Hip spherical — frame just needs the pivot position
+    ndMatrix hipFrame = ndGetIdentityMatrix();
+    hipFrame.m_posit = hipWorld;
+
+    auto hipPtr = ndSharedPtr<ndJointBilateralConstraint>(new ndIkJointSpherical(hipFrame, thighNd, m_model->torsoNd));
+
+    // Knee IK hinge — X column = hinge axis
+    auto kneePtr = ndSharedPtr<ndJointBilateralConstraint>(new ndIkJointHinge(pinMatrix(kneeWorld, hingeAxis), calfNd, thighNd));
+    auto* kneeRaw = static_cast<ndIkJointHinge*>(kneePtr.operator->());
+    kneeRaw->SetLimits(CALF_MIN_ANGLE, CALF_MAX_ANGLE);
+    m_model->kneeJoints[legIndex] = kneeRaw;
+
+    // Ankle hinge — spring-damper, corrected API: no bool
+    auto heelPtr = ndSharedPtr<ndJointBilateralConstraint>(new ndJointHinge(pinMatrix(ankleWorld, hingeAxis), heelNd, calfNd));
+    auto* heelRaw = static_cast<ndJointHinge*>(heelPtr.operator->());
+    heelRaw->SetAsSpringDamper(HEEL_REGULARIZER, HEEL_SPRING, HEEL_DAMPER);
+    m_model->heelJoints[legIndex] = heelRaw;
+
+    // Contact slider — spring-damper, pin axis = slide direction
+    auto contactPtr = ndSharedPtr<ndJointBilateralConstraint>(new ndJointSlider(pinMatrix(footWorld, heelDir), contactNd, heelNd));
+    static_cast<ndJointSlider*>(contactPtr.operator->())->SetAsSpringDamper(CONTACT_REGULARIZER, CONTACT_SPRING, CONTACT_DAMPER);
+
+    // ── AddLimb — build tree ──────────────────────────────────────────────────
+    auto* thighNode_ = m_model->AddLimb(treeRoot, ndSharedPtr<ndBody>(thighNd), hipPtr);
+    auto* calfNode_ = m_model->AddLimb(thighNode_, ndSharedPtr<ndBody>(calfNd), kneePtr);
+    auto* heelNode_ = m_model->AddLimb(calfNode_, ndSharedPtr<ndBody>(heelNd), heelPtr);
+    auto* contactNode_ = m_model->AddLimb(heelNode_, ndSharedPtr<ndBody>(contactNd), contactPtr);
+    (void)contactNode_;
+
+    // ── IK effector — close loop ──────────────────────────────────────────────
+    // Frame expressed in torso-local space; X = effector pin (use heelDir in local)
+    ndMatrix torsoInv = torsoMat.OrthoInverse();
+    ndVector contactLocal = torsoInv.TransformVector(contactCentre);
+    contactLocal.m_w = 1.0f;
+    ndMatrix effectorFrame = ndGramSchmidtMatrix(torsoInv.TransformVector(heelDir).Normalize());
+    effectorFrame.m_posit = contactLocal;
+
+    // TODO: Wrong constructor call!
+    // auto effectorPtr = ndSharedPtr<ndJointBilateralConstraint>(new ndIkSwivelPositionEffector(effectorFrame, contactNd, m_model->torsoNd));
+    // m_model->effectors[legIndex] = static_cast<ndIkSwivelPositionEffector*>(effectorPtr.operator->());
+    // m_model->AddCloseLoop(effectorPtr);
+
+    // ── Gait init ─────────────────────────────────────────────────────────────
+    m_model->defaultFootLocal[legIndex] = defaultFootLocal(legIndex);
+
+    LegGaitState& gs = m_model->legGait[legIndex];
+    gs.restPos = contactCentre;
+    gs.restPos.m_w = 0.0f;
+    gs.phase = LegPhase::onGround;
+    gs.cycleTime = legIndex * WALK_DURATION * PHASE_SHIFT;
+
+    // ── Ogre wrappers ─────────────────────────────────────────────────────────
+    m_legWrappers[legIndex].thigh = wrapBody(m_world, thighNd, sceneManager, thighNode);
+    m_legWrappers[legIndex].calf = wrapBody(m_world, calfNd, sceneManager, calfNode);
+    m_legWrappers[legIndex].heel = wrapBody(m_world, heelNd, sceneManager, heelNode);
+    m_legWrappers[legIndex].contact = wrapBody(m_world, contactNd, nullptr);
+}
+
+void SpiderBody::create(Ogre::SceneManager* sceneManager, Ogre::SceneNode* torsoNode, const std::array<Ogre::SceneNode*, 12>& legNodes, const ndMatrix& spawnMatrix)
+{
+    if (m_created)
     {
-        if (!m_canMove)
-        {
-            return;
-        }
-
-        // Read cached values – written by main thread, never call Lua here.
-        CachedManip cached;
-        {
-            std::lock_guard<std::mutex> lock(m_manipMutex);
-            cached = m_cachedManip;
-        }
-
-        if (!isOnGround())
-        {
-            return;
-        }
-
-        ndBodyDynamic* ndBody = static_cast<ndBodyDynamic*>(m_body);
-        const Ogre::Quaternion orient = this->getOrientation();
-        const Ogre::Vector3 forward = orient * m_defaultDirection;
-        const Ogre::Vector3 up = orient * Ogre::Vector3::UNIT_Y;
-        const Ogre::Vector3 vel = this->getVelocity();
-
-        Ogre::Real mass;
-        Ogre::Vector3 inertia;
-        this->getMassMatrix(mass, inertia);
-
-        // Forward drive
-        if (std::abs(cached.stride) > 0.001f)
-        {
-            const Ogre::Real targetSpeed = cached.stride * 4.0f;
-            const Ogre::Real currentSpeed = forward.dotProduct(vel);
-            const Ogre::Real deltaSpeed = targetSpeed - currentSpeed;
-            const Ogre::Vector3 driveImpulse = forward * (deltaSpeed * mass * 0.3f);
-
-            ndBody->ApplyImpulsePair(ndVector(driveImpulse.x, driveImpulse.y, driveImpulse.z, 0.0f), ndVector::m_zero, static_cast<ndFloat32>(dt));
-        }
-        else
-        {
-            const Ogre::Real fwdSpd = forward.dotProduct(vel);
-            if (std::abs(fwdSpd) > 0.01f)
-            {
-                const Ogre::Vector3 brakeImpulse = -forward * (fwdSpd * mass * 0.5f * dt);
-                ndBody->ApplyImpulsePair(ndVector(brakeImpulse.x, brakeImpulse.y, brakeImpulse.z, 0.0f), ndVector::m_zero, static_cast<ndFloat32>(dt));
-            }
-        }
-
-        // Lateral grip
-        {
-            const Ogre::Vector3 lateral = forward.crossProduct(up);
-            const Ogre::Real latSpd = lateral.dotProduct(vel);
-            const Ogre::Vector3 gripImpulse = -lateral * (latSpd * mass * 0.8f);
-            ndBody->ApplyImpulsePair(ndVector(gripImpulse.x, gripImpulse.y, gripImpulse.z, 0.0f), ndVector::m_zero, static_cast<ndFloat32>(dt));
-        }
-
-        // Yaw
-        if (std::abs(cached.omega) > 0.001f)
-        {
-            const Ogre::Vector3 omega = this->getOmega();
-            const Ogre::Real currentYaw = up.dotProduct(omega);
-            const Ogre::Real deltaYaw = cached.omega - currentYaw;
-            const Ogre::Real inertiaDotUp = inertia.dotProduct(Ogre::Vector3(std::abs(up.x), std::abs(up.y), std::abs(up.z)));
-            const Ogre::Vector3 yawImpulse = up * (deltaYaw * inertiaDotUp * 0.5f);
-
-            ndBody->ApplyImpulsePair(ndVector::m_zero, ndVector(yawImpulse.x, yawImpulse.y, yawImpulse.z, 0.0f), static_cast<ndFloat32>(dt));
-        }
+        return;
     }
 
-    // =========================================================================
-    // isOnGround  (mirrors VehicleV2::isOnGround)
-    // =========================================================================
-    bool SpiderBody::isOnGround() const
+    buildTorso(spawnMatrix, sceneManager, torsoNode);
+
+    for (int i = 0; i < 4; ++i)
     {
-        const ndBodyKinematic* ndBody = static_cast<const ndBodyKinematic*>(m_body);
-        if (!ndBody)
-        {
-            return false;
-        }
-        ndBodyKinematic::ndContactMap::Iterator it(const_cast<ndBodyKinematic*>(ndBody)->GetContactMap());
-        for (it.Begin(); it; it++)
-        {
-            const ndContact* c = it.GetNode()->GetInfo();
-            if (c && c->IsActive())
-            {
-                return true;
-            }
-        }
-        return false;
+        buildLeg(i, sceneManager, legNodes[i * 3 + 0], legNodes[i * 3 + 1], legNodes[i * 3 + 2]);
     }
 
-    // New method – called from main thread
-    void SpiderBody::updateMovementInput(Ogre::Real dt)
+    // ndWorld::AddModel calls AddBodiesAndJointsToWorld() internally
+    m_world->getNewtonWorld()->AddModel(m_model);
+
+    m_created = true;
+}
+
+void SpiderBody::setStride(float s)
+{
+    if (m_notify)
     {
-        if (!m_callback)
-        {
-            return;
-        }
-
-        // Reset manip, call the Lua callback on the MAIN THREAD.
-        m_manip.m_stride = 0.0f;
-        m_manip.m_omega = 0.0f;
-        m_manip.m_bodySwayX = 0.0f;
-        m_manip.m_bodySwayZ = 0.0f;
-
-        m_callback->onMovementChanged(&m_manip, dt);
-
-        // Cache the result so the Newton thread can read it safely.
-        {
-            std::lock_guard<std::mutex> lock(m_manipMutex);
-            m_cachedManip.stride = m_manip.m_stride;
-            m_cachedManip.omega = m_manip.m_omega;
-            m_cachedManip.bodySwayX = m_manip.m_bodySwayX;
-            m_cachedManip.bodySwayZ = m_manip.m_bodySwayZ;
-        }
+        m_notify->setStride(static_cast<ndFloat32>(s));
     }
+}
 
-    // =========================================================================
-    // Setters / getters
-    // =========================================================================
-    const std::vector<LegChainInfo>& SpiderBody::getLegChains() const
+void SpiderBody::setOmega(float o)
+{
+    if (m_notify)
     {
-        return m_legs;
+        m_notify->setOmega(static_cast<ndFloat32>(o));
     }
+}
 
-    const std::vector<LegGaitState>& SpiderBody::getGaitStates() const
+void SpiderBody::setPosition(const Ogre::Vector3& pos)
+{
+    if (!m_created)
     {
-        return m_gait;
+        return;
     }
-
-    void SpiderBody::setCanMove(bool v)
-    {
-        m_canMove = v;
-    }
-
-    bool SpiderBody::getCanMove() const
-    {
-        return m_canMove;
-    }
-
-    void SpiderBody::setWalkCycleDuration(Ogre::Real d)
-    {
-        m_walkCycleDuration = std::max(0.1f, d);
-    }
-
-    Ogre::Real SpiderBody::getWalkCycleDuration() const
-    {
-        return m_walkCycleDuration;
-    }
-
-    void SpiderBody::setStepHeight(Ogre::Real h)
-    {
-        m_stepHeight = h;
-    }
-
-    Ogre::Real SpiderBody::getStepHeight() const
-    {
-        return m_stepHeight;
-    }
-
-    void SpiderBody::setGaitSequence(const std::vector<int>& seq)
-    {
-        m_gaitSequence = seq;
-    }
-
-    const std::vector<int>& SpiderBody::getGaitSequence() const
-    {
-        return m_gaitSequence;
-    }
-
-} // namespace OgreNewt
+    ndMatrix mat = m_model->torsoNd->GetMatrix();
+    mat.m_posit = ndVector(pos.x, pos.y, pos.z, 1.0f);
+    m_model->SetTransform(mat); // moves all bodies maintaining relative poses
+}

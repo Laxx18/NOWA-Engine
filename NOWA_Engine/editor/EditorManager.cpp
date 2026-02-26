@@ -3948,7 +3948,7 @@ namespace NOWA
 		{
 			this->gizmo->setEnabled(false);
 			this->isGizmoMoving = false;
-
+            this->selectionManager->clearSelection();
 		}
 		else if (EDITOR_TERRAIN_MODIFY_MODE == this->manipulationMode || EDITOR_TERRAIN_SMOOTH_MODE == this->manipulationMode || EDITOR_TERRAIN_PAINT_MODE == this->manipulationMode)
 		{

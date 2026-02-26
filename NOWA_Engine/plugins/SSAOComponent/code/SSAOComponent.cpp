@@ -22,7 +22,7 @@ namespace NOWA
 		cameraComponent(nullptr),
 		passBlurH(nullptr),
 		passBlurV(nullptr),
-		kernelRadius(new Variant(SSAOComponent::AttrKernelRadius(), 1.0f, this->attributes)),
+		kernelRadius(new Variant(SSAOComponent::AttrKernelRadius(), 3.0f, this->attributes)),
 		powerScale(new Variant(SSAOComponent::AttrPowerScale(), 3.0f, this->attributes))
 	{
 		this->kernelRadius->setConstraints(0.5f, 6.0f);
@@ -93,23 +93,35 @@ namespace NOWA
 	}
 
 	bool SSAOComponent::postInit(void)
-	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[SSAOComponent] Init component for game object: " + this->gameObjectPtr->getName());
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[SSAOComponent] Init component for game object: " + this->gameObjectPtr->getName());
 
-		this->initializeSSAOShaders();
+        auto cameraCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<CameraComponent>());
+        // Constraints: Can only be placed under a camera object and only once
+        if (nullptr != cameraCompPtr)
+        {
+            this->cameraComponent = cameraCompPtr.get();
+        }
+        else
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[SSAOComponent] Cannot use SSAO, because there is no camera compone for this game object: " + this->gameObjectPtr->getName());
+            return false;
+        }
 
-		auto& workspaceBaseCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<WorkspaceBaseComponent>());
-		if (nullptr != workspaceBaseCompPtr)
-		{
-			this->workspaceBaseComponent = workspaceBaseCompPtr.get();
-			if (false == this->workspaceBaseComponent->getUseSSAO())
-			{
-				this->workspaceBaseComponent->setUseSSAO(true);
-			}
-		}
+        this->initializeSSAOShaders();
 
-		return true;
-	}
+        auto& workspaceBaseCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<WorkspaceBaseComponent>());
+        if (nullptr != workspaceBaseCompPtr)
+        {
+            this->workspaceBaseComponent = workspaceBaseCompPtr.get();
+            if (false == this->workspaceBaseComponent->getUseSSAO())
+            {
+                this->workspaceBaseComponent->setUseSSAO(true);
+            }
+        }
+
+        return true;
+    }
 
 	bool SSAOComponent::connect(void)
 	{
@@ -138,27 +150,24 @@ namespace NOWA
 
 	void SSAOComponent::update(Ogre::Real dt, bool notSimulating)
 	{
-		// if (false == notSimulating && true == this->activated->getBool())
+		// Only update if we have valid shader passes
+		if (nullptr == this->passSSAO || nullptr == this->passApplySSAO)
 		{
-			// Only update if we have valid shader passes
-			if (nullptr == this->passSSAO || nullptr == this->passApplySSAO)
-			{
-				return;
-			}
-
-			auto closureFunction = [this](Ogre::Real renderDt)
-			{
-				// Update kernel radius
-				Ogre::GpuProgramParametersSharedPtr psParams = this->passSSAO->getFragmentProgramParameters();
-				psParams->setNamedConstant("kernelRadius", this->kernelRadius->getReal());
-
-				// Update power scale
-				Ogre::GpuProgramParametersSharedPtr psParamsApply = this->passApplySSAO->getFragmentProgramParameters();
-				psParamsApply->setNamedConstant("powerScale", this->powerScale->getReal());
-			};
-			Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
-			NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
+			return;
 		}
+
+		auto closureFunction = [this](Ogre::Real renderDt)
+		{
+            // Must be set EVERY FRAME - compositor resets these each frame
+            Ogre::GpuProgramParametersSharedPtr psParams = this->passSSAO->getFragmentProgramParameters();
+            psParams->setNamedConstant("projection", this->cameraComponent->getCamera()->getProjectionMatrixWithRSDepth());
+            psParams->setNamedConstant("kernelRadius", this->kernelRadius->getReal());
+
+            Ogre::GpuProgramParametersSharedPtr psParamsApply = this->passApplySSAO->getFragmentProgramParameters();
+            psParamsApply->setNamedConstant("powerScale", this->powerScale->getReal());
+		};
+		Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
+		NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
 	}
 
 	void SSAOComponent::actualizeValue(Variant* attribute)
@@ -252,65 +261,63 @@ namespace NOWA
 	}
 
 	void SSAOComponent::initializeSSAOShaders(void)
-	{
-		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
-		{
-			// Get the SSAO material passes - these should already be loaded by the workspace
-			Ogre::MaterialPtr material = std::static_pointer_cast<Ogre::Material>(
-				Ogre::MaterialManager::getSingleton().getByName("SSAO/HS", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME));
+    {
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            // Get the SSAO material passes - these should already be loaded by the workspace
+            Ogre::MaterialPtr material = std::static_pointer_cast<Ogre::Material>(Ogre::MaterialManager::getSingleton().getByName("SSAO/HS", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME));
 
-			if (material.isNull())
-			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[SSAOComponent] SSAO/HS material not found!");
-				return;
-			}
+            if (material.isNull())
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[SSAOComponent] SSAO/HS material not found!");
+                return;
+            }
 
-			this->passSSAO = material->getTechnique(0)->getPass(0);
+            this->passSSAO = material->getTechnique(0)->getPass(0);
 
-			// Get blur passes
-			Ogre::MaterialPtr materialBlurH = std::static_pointer_cast<Ogre::Material>(
-				Ogre::MaterialManager::getSingleton().getByName("SSAO/BlurH", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME));
-			if (!materialBlurH.isNull())
-			{
-				this->passBlurH = materialBlurH->getTechnique(0)->getPass(0);
-			}
+            // Get blur passes
+            Ogre::MaterialPtr materialBlurH = std::static_pointer_cast<Ogre::Material>(Ogre::MaterialManager::getSingleton().getByName("SSAO/BlurH", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME));
+            if (!materialBlurH.isNull())
+            {
+                this->passBlurH = materialBlurH->getTechnique(0)->getPass(0);
+            }
 
-			Ogre::MaterialPtr materialBlurV = std::static_pointer_cast<Ogre::Material>(
-				Ogre::MaterialManager::getSingleton().getByName("SSAO/BlurV", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME));
-			if (!materialBlurV.isNull())
-			{
-				this->passBlurV = materialBlurV->getTechnique(0)->getPass(0);
-			}
+            Ogre::MaterialPtr materialBlurV = std::static_pointer_cast<Ogre::Material>(Ogre::MaterialManager::getSingleton().getByName("SSAO/BlurV", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME));
+            if (!materialBlurV.isNull())
+            {
+                this->passBlurV = materialBlurV->getTechnique(0)->getPass(0);
+            }
 
-			// Get apply pass
-			Ogre::MaterialPtr materialApply = std::static_pointer_cast<Ogre::Material>(
-				Ogre::MaterialManager::getSingleton().getByName("SSAO/Apply", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME));
+            // Get apply pass
+            Ogre::MaterialPtr materialApply = std::static_pointer_cast<Ogre::Material>(Ogre::MaterialManager::getSingleton().getByName("SSAO/Apply", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME));
 
-			if (materialApply.isNull())
-			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[SSAOComponent] SSAO/Apply material not found!");
-				return;
-			}
+            if (materialApply.isNull())
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[SSAOComponent] SSAO/Apply material not found!");
+                return;
+            }
 
-			this->passApplySSAO = materialApply->getTechnique(0)->getPass(0);
+            this->passApplySSAO = materialApply->getTechnique(0)->getPass(0);
 
-			// Set initial parameter values
-			if (this->passSSAO)
-			{
-				Ogre::GpuProgramParametersSharedPtr psParams = this->passSSAO->getFragmentProgramParameters();
-				psParams->setNamedConstant("kernelRadius", this->kernelRadius->getReal());
-			}
+            // Set initial parameter values
+            if (this->passSSAO)
+            {
+                Ogre::GpuProgramParametersSharedPtr psParams = this->passSSAO->getFragmentProgramParameters();
+                psParams->setNamedConstant("kernelRadius", this->kernelRadius->getReal());
+            }
 
-			if (this->passApplySSAO)
-			{
-				Ogre::GpuProgramParametersSharedPtr psParamsApply = this->passApplySSAO->getFragmentProgramParameters();
-				psParamsApply->setNamedConstant("powerScale", this->powerScale->getReal());
-			}
+            if (this->passSSAO)
+            {
+                Ogre::GpuProgramParametersSharedPtr psParams = this->passSSAO->getFragmentProgramParameters();
+                Ogre::Matrix4 proj = this->cameraComponent->getCamera()->getProjectionMatrixWithRSDepth();
+                psParams->setNamedConstant("projection", proj);
+                psParams->setNamedConstant("kernelRadius", this->kernelRadius->getReal());
+            }
 
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[SSAOComponent] SSAO shaders initialized successfully");
-		};
-		NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "SSAOComponent::initializeSSAOShaders");
-	}
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[SSAOComponent] SSAO shaders initialized successfully");
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "SSAOComponent::initializeSSAOShaders");
+    }
 
 	bool SSAOComponent::canStaticAddComponent(GameObject* gameObject)
 	{

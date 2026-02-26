@@ -1155,6 +1155,23 @@ namespace OgreNewt
         return m_selfCollisionGroup;
     }
 
+    void Body::setBodyNotify(BodyNotify* bodyNotify)
+    {
+        if (nullptr != m_bodyNotify)
+        {
+            delete m_bodyNotify;
+        }
+
+        m_bodyNotify = bodyNotify;
+
+        m_world->enqueuePhysicsAndWait(
+            [this](World& w)
+            {
+                // attach notify + add to world on world thread
+                m_body->SetNotifyCallback(m_bodyNotify);
+            });
+    }
+
     void Body::dispatchContacts()
     {
         if (!m_contactCallback)

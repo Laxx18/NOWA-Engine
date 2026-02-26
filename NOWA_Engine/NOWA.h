@@ -187,7 +187,7 @@ namespace NOWA
 	typedef boost::shared_ptr<PhysicsActiveKinematicComponent> PhysicsActiveKinematicCompPtr;
 	typedef boost::shared_ptr<PhysicsActiveVehicleComponent> PhysicsActiveVehicleCompPtr;
     typedef boost::shared_ptr<PhysicsActiveVehicleComponentV2> PhysicsActiveVehicleCompV2Ptr;
-    typedef boost::shared_ptr<PhysicsActiveSpiderComponent> PhysicsActiveSpiderCompPtr;
+    // typedef boost::shared_ptr<PhysicsActiveSpiderComponent> PhysicsActiveSpiderCompPtr;
 	typedef boost::shared_ptr<AiLuaComponent> AiLuaCompPtr;
 	typedef boost::shared_ptr<AiLuaGoalComponent> AiLuaGoalCompPtr;
 	
