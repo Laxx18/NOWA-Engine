@@ -2774,7 +2774,7 @@ bool DesignState::mouseReleased(const OIS::MouseEvent &evt, OIS::MouseButtonID i
 						}
 					}*/
 
-					// if (true == selectedGameObjectsChanged)
+					if (this->editorManager->getManipulationMode() != NOWA::EditorManager::EDITOR_MESH_MODIFY_MODE)
 					{
 						// Show properties (only when selection changed, because showProperties is an heavy operation!)
 						ENQUEUE_RENDER_COMMAND_WAIT("Mouse Release ShowProperties",

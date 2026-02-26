@@ -259,7 +259,7 @@ void PropertiesPanel::showProperties(unsigned int componentIndex)
 
 	// Get data from selected game objects for properties panel
 
-	ENQUEUE_RENDER_COMMAND_MULTI("PropertiesPanel::showProperties", _1(componentIndex),
+	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PropertiesPanel::showProperties", _1(componentIndex),
 	{
 		// First clear the properties
 		this->clearProperties();

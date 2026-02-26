@@ -187,7 +187,7 @@ namespace NOWA
 		this->componentFactory.registerClass<PhysicsActiveKinematicComponent>(PhysicsActiveKinematicComponent::getStaticClassId(), PhysicsActiveKinematicComponent::getStaticClassName());
 		this->componentFactory.registerClass<PhysicsActiveVehicleComponent>(PhysicsActiveVehicleComponent::getStaticClassId(), PhysicsActiveVehicleComponent::getStaticClassName());
         this->componentFactory.registerClass<PhysicsActiveVehicleComponentV2>(PhysicsActiveVehicleComponentV2::getStaticClassId(), PhysicsActiveVehicleComponentV2::getStaticClassName());
-        // this->componentFactory.registerClass<PhysicsActiveSpiderComponent>(PhysicsActiveSpiderComponent::getStaticClassId(), PhysicsActiveSpiderComponent::getStaticClassName());
+        this->componentFactory.registerClass<PhysicsActiveSpiderComponent>(PhysicsActiveSpiderComponent::getStaticClassId(), PhysicsActiveSpiderComponent::getStaticClassName());
 		this->componentFactory.registerClass<PhysicsActiveComplexVehicleComponent>(PhysicsActiveComplexVehicleComponent::getStaticClassId(), PhysicsActiveComplexVehicleComponent::getStaticClassName());
 		this->componentFactory.registerClass<PhysicsBuoyancyComponent>(PhysicsBuoyancyComponent::getStaticClassId(), PhysicsBuoyancyComponent::getStaticClassName());
 
