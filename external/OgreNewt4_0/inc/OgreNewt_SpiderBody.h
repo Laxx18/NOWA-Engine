@@ -82,6 +82,9 @@ namespace OgreNewt
         Ogre::Vector3 heelPos{};
         Ogre::Quaternion heelOrient;
         bool valid{false};
+        float thighLen{1.0f};
+        float calfLen{1.0f};
+        float heelLen{1.0f};
     };
 
     // ─────────────────────────────────────────────────────────────────────────────
@@ -190,6 +193,9 @@ namespace OgreNewt
         // Transform cache written by PostTransformUpdate, read by main thread
         mutable std::mutex transformMutex;
         std::array<LegTransformCache, MAX_LEGS> cachedTransforms{};
+
+        ndFloat32 thighLenArr[MAX_LEGS]{};
+        ndFloat32 calfLenArr[MAX_LEGS]{};
     };
 
     // ─────────────────────────────────────────────────────────────────────────────

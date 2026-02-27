@@ -86,7 +86,43 @@
 			},
 			"SpecularWorkflow" :
 			{
-				"value" : [1, 0, 0]
+				"value" : [1, 1, 1]
+			}
+		},
+		
+		"GreenLine" :
+		{
+			"macroblock" : "NOWA2_Macroblock_0",
+			"blendblock" : "NOWA2_Blendblock_0",
+			"shadow_const_bias" : 0.01,
+			"workflow" : "SpecularWorkflow",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [0, 1, 0],
+				"background" : [0, 1, 0, 1]
+			},
+			"SpecularWorkflow" :
+			{
+				"value" : [1, 1, 1]
+			}
+		},
+		
+		"BlueLine" :
+		{
+			"macroblock" : "NOWA2_Macroblock_0",
+			"blendblock" : "NOWA2_Blendblock_0",
+			"shadow_const_bias" : 0.01,
+			"workflow" : "SpecularWorkflow",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [0, 0, 1],
+				"background" : [0, 0, 1, 1]
+			},
+			"SpecularWorkflow" :
+			{
+				"value" : [1, 1, 1]
 			}
 		},
 		

@@ -69,17 +69,17 @@ namespace NOWA
     // Default per-leg positions for a 4-legged spider facing +X
     // =========================================================================
     static const Ogre::Vector3 k_defaultHipPos[PhysicsActiveSpiderComponent::MAX_LEGS] = {
-        Ogre::Vector3(0.3f, 0.0f, -0.3f),  // 0 Front-Left
-        Ogre::Vector3(0.3f, 0.0f, 0.3f),   // 1 Front-Right
-        Ogre::Vector3(-0.3f, 0.0f, -0.3f), // 2 Rear-Left
-        Ogre::Vector3(-0.3f, 0.0f, 0.3f)   // 3 Rear-Right
+        Ogre::Vector3(0.3f, -0.15f, -0.3f),   // 0 Front-Left
+        Ogre::Vector3(0.3f, -0.15f, 0.3f), // 1 Front-Right
+        Ogre::Vector3(-0.3f, -0.15f, -0.3f), // 2 Rear-Left
+        Ogre::Vector3(0.3f, -0.15f, 0.3f)  // 3 Rear-Right
     };
 
     static const Ogre::Vector3 k_defaultFootRestPos[PhysicsActiveSpiderComponent::MAX_LEGS] = {
-        Ogre::Vector3(0.5f, -0.4f, -0.6f),
-        Ogre::Vector3(0.5f, -0.4f, 0.6f),
-        Ogre::Vector3(-0.5f, -0.4f, -0.6f),
-        Ogre::Vector3(-0.5f, -0.4f, 0.6f)
+        Ogre::Vector3(0.55f, -0.55f, -0.65f), 
+        Ogre::Vector3(0.55f, -0.55f, 0.65f), 
+        Ogre::Vector3(-0.55f, -0.55f, -0.65f),
+        Ogre::Vector3(-0.55f, -0.55f, 0.65f)
     };
 
     // =========================================================================
@@ -94,7 +94,7 @@ namespace NOWA
         m_calfResourceGroup(Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME),
         m_heelResourceGroup(Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME),
         m_onMovementChangedFunctionName(new Variant(PhysicsActiveSpiderComponent::AttrOnMovementChangedFunctionName(), Ogre::String(""), this->attributes)),
-        m_walkCycleDuration(new Variant(PhysicsActiveSpiderComponent::AttrWalkCycleDuration(), Ogre::Real(2.0f), this->attributes)),
+        m_walkCycleDuration(new Variant(PhysicsActiveSpiderComponent::AttrWalkCycleDuration(), Ogre::Real(1.0f), this->attributes)),
         m_stepHeight(new Variant(PhysicsActiveSpiderComponent::AttrStepHeight(), Ogre::Real(0.2f), this->attributes)),
         m_gaitSequence(new Variant(PhysicsActiveSpiderComponent::AttrGaitSequence(), Ogre::String("3,1,2,0"), this->attributes)),
         m_legBoneAxis(new Variant(PhysicsActiveSpiderComponent::AttrLegBoneAxis(), std::vector<Ogre::String>({"Y", "X", "Z"}), this->attributes)),
@@ -106,7 +106,7 @@ namespace NOWA
         m_thighMeshName->addUserData(GameObject::AttrActionFileOpenDialog(), "Models");
         m_thighMeshName->setDescription("Mesh for all 4 upper-leg (thigh) segments. "
                                         "Mesh origin MUST be at the HIP joint. "
-                                        "Mesh must extend along LegBoneAxis (default Y). "
+                                        "Mesh must extend along LegBoneAxis (default X). "
                                         "Bone length derived automatically from the mesh AABB.");
 
         m_calfMeshName->addUserData(GameObject::AttrActionFileOpenDialog(), "Models");
@@ -130,8 +130,8 @@ namespace NOWA
         m_walkCycleDuration->setDescription("Full gait cycle duration in seconds (default 2.0). Shorter = faster steps.");
         m_stepHeight->setDescription("Foot arc height during swing (default 0.2 m).");
         m_gaitSequence->setDescription("Comma-separated phase order.  4-legs: '3,1,2,0'  2-legs: '1,0'  6-legs: '5,2,4,1,3,0'.");
-        m_legBoneAxis->setDescription("Axis along which each mesh bone extends. Y = Blender/GLTF default.");
-        m_legBoneAxis->setListSelectedValue("Y");
+        m_legBoneAxis->setDescription("Axis along which each mesh extends (default direction axis if mesh is placed in the editor). X = default.");
+        m_legBoneAxis->setListSelectedValue("X");
 
         m_legMeshScale->setDescription("Uniform scale applied to all 12 leg segment nodes (default 1.0). "
                                        "Use < 1.0 to shrink large meshes (e.g. 0.1 for a cylinder meant for big objects), "
@@ -149,13 +149,34 @@ namespace NOWA
         this->collisionSize->setValue(Ogre::Vector3::ZERO);
         this->collisionPosition->setValue(Ogre::Vector3::ZERO);
         this->collisionType->setListSelectedValue("ConvexHull");
-        this->angularDamping->setValue(Ogre::Vector3(0.7f, 0.05f, 0.7f));
+        // this->angularDamping->setValue(Ogre::Vector3(0.7f, 0.05f, 0.7f));
+        this->angularDamping->setValue(Ogre::Vector3(2.0f, 0.1f, 2.0f));
+       
         this->linearDamping->setValue(0.1f);
 
         for (int i = 0; i < MAX_LEGS; ++i)
         {
             m_legVisuals[i] = LegVisual();
         }
+
+        /*
+        
+        Option 1 — Increase spawn Y in the scene (simplest)
+        Just move the spider game object higher in the editor. The IK will pull legs to the ground automatically. Try Y = 1.5 or 2.0 instead of 0.9.
+        Option 2 — Increase foot rest Y drop (more leg length below torso)
+        xml<property type="10" name="LegFootRestPos_0" data="0.55 -0.75 -0.65"/>
+        <property type="10" name="LegFootRestPos_1" data="0.55 -0.75 0.65"/>
+        <property type="10" name="LegFootRestPos_2" data="-0.55 -0.75 -0.65"/>
+        <property type="10" name="LegFootRestPos_3" data="-0.55 -0.75 0.65"/>
+        This tells the IK the rest position of the feet is further below the torso, so the torso rides higher.
+        Option 3 — Lower the hip attachment points
+        xml<property type="10" name="LegHipPos_0" data="0.3 -0.25 -0.3"/>
+        <property type="10" name="LegHipPos_1" data="0.3 -0.25 0.3"/>
+        <property type="10" name="LegHipPos_2" data="-0.3 -0.25 -0.3"/>
+        <property type="10" name="LegHipPos_3" data="-0.3 -0.25 0.3"/>
+        Moving hips lower on the torso gives the legs more downward reach.
+        The most effective combination: increase spawn Y to ~1.5, and increase the foot rest Y to -0.75. The physics will naturally settle the torso at the equilibrium height where all four feet touch the ground with the legs at their comfortable bent angle.
+        */
     }
 
     PhysicsActiveSpiderComponent::~PhysicsActiveSpiderComponent()
@@ -458,11 +479,20 @@ namespace NOWA
         Ogre::Vector3 calfLocalPos[MAX_LEGS];
         Ogre::Vector3 heelLocalPos[MAX_LEGS];
 
+        // Match the physics capsule centre positions:
         for (int i = 0; i < MAX_LEGS; ++i)
         {
-            thighLocalPos[i] = m_legHipPos[i]->getVector3();
-            heelLocalPos[i] = m_legFootRestPos[i]->getVector3();
-            calfLocalPos[i] = (thighLocalPos[i] + heelLocalPos[i]) * 0.5f;
+            const Ogre::Vector3 hip = m_legHipPos[i]->getVector3();
+            const Ogre::Vector3 foot = m_legFootRestPos[i]->getVector3();
+            const Ogre::Vector3 dir = (foot - hip).normalisedCopy();
+            const Ogre::Real hipToFoot = (foot - hip).length();
+            const Ogre::Real thighLen = (m_thighBoneLength->getReal() > 0.0f) ? m_thighBoneLength->getReal() : hipToFoot * 0.5f;
+            const Ogre::Real calfLen = (m_calfBoneLength->getReal() > 0.0f) ? m_calfBoneLength->getReal() : hipToFoot * 0.5f;
+            const Ogre::Vector3 knee = hip + dir * thighLen;
+            const Ogre::Vector3 ankle = knee + dir * calfLen;
+            thighLocalPos[i] = hip + dir * (thighLen * 0.5f);              // thigh capsule centre
+            calfLocalPos[i] = knee + dir * (calfLen * 0.5f);               // calf capsule centre
+            heelLocalPos[i] = ankle + Ogre::Vector3(0.0f, -0.0125f, 0.0f); // heel capsule centre
         }
 
         Ogre::SceneNode* torsoNode = this->gameObjectPtr->getSceneNode();
@@ -495,6 +525,28 @@ namespace NOWA
             {
                 success = false;
                 return;
+            }
+
+            // Measure natural length of the bone mesh along its long axis (Y for Capsule.mesh)
+            // so we can scale nodes to match physics capsule length in updateLegNodes.
+            if (thighMeshPtr)
+            {
+                const Ogre::Aabb aabb = thighMeshPtr->getAabb();
+                Ogre::Real len = 0.0f;
+                const int ba = boneAxisFromString(m_legBoneAxis->getString());
+                if (ba == 0)
+                {
+                    len = aabb.mHalfSize.x * 2.0f;
+                }
+                else if (ba == 2)
+                {
+                    len = aabb.mHalfSize.z * 2.0f;
+                }
+                else
+                {
+                    len = aabb.mHalfSize.y * 2.0f;
+                }
+                m_meshNaturalLength = (len > 0.001f) ? len : 1.0f;
             }
 
             // ── Apply all render properties from the root torso GameObject ─────
@@ -644,6 +696,7 @@ namespace NOWA
                 }
                 success = false;
             }
+
         };
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PhysicsActiveSpiderComponent::createLegMeshes");
 
@@ -746,7 +799,7 @@ namespace NOWA
             // Otherwise auto-compute as half the hip-to-foot distance (equal thigh/calf segments),
             // matching Newton's approach of deriving length from actual joint positions.
             const Ogre::Real hipToFoot = (footRestLocal - hipLocalPos).length();
-            const Ogre::Real autoLen = hipToFoot * 0.5f;
+            const Ogre::Real autoLen = hipToFoot * 0.6f;
             const Ogre::Real thighLen = (m_thighBoneLength->getReal() > 0.0f) ? m_thighBoneLength->getReal() : autoLen;
             const Ogre::Real calfLen  = (m_calfBoneLength->getReal() > 0.0f)  ? m_calfBoneLength->getReal()  : autoLen;
 
@@ -785,20 +838,44 @@ namespace NOWA
         spider->fireLuaCallback(static_cast<float>(dt));
 
         const int legCount = spider->getActiveLegCount();
-
         std::array<OgreNewt::LegTransformCache, MAX_LEGS> snap;
         for (int i = 0; i < legCount && i < MAX_LEGS; ++i)
         {
             snap[i] = spider->getCachedLegTransform(i);
         }
 
-        // Need torso world transform to convert leg world positions to torso-local.
-        // The torso SceneNode IS the gameObject node.
         Ogre::SceneNode* torsoNode = this->gameObjectPtr->getSceneNode();
 
-        auto closureFunction = [this, legCount, snap, torsoNode](Ogre::Real)
+        // Capsule.mesh: origin at bottom, extends along +Y.
+        // Newton capsule long axis = local X.
+        // Fix 1: rotate -90 around Z so mesh Y → capsule X.
+        // Fix 2: shift node back by halfLen along capsule X so mesh bottom aligns
+        //         with capsule start instead of capsule center.
+        const int boneAxis = boneAxisFromString(m_legBoneAxis->getString());
+
+        // Rotation to align mesh long axis with capsule X:
+        Ogre::Quaternion boneCorrection = Ogre::Quaternion::IDENTITY;
+        switch (boneAxis)
         {
-            // Torso world transform at render time
+        case 0:
+            boneCorrection = Ogre::Quaternion::IDENTITY;
+            break;
+        case 1:
+            boneCorrection = Ogre::Quaternion(Ogre::Degree(-90.0f), Ogre::Vector3::UNIT_Z);
+            break;
+        case 2:
+            boneCorrection = Ogre::Quaternion(Ogre::Degree(90.0f), Ogre::Vector3::UNIT_Y);
+            break;
+        }
+
+        // Does the mesh have its origin at one end (not center)?
+        // Capsule.mesh from Newton demo: origin at bottom → true.
+        // Bone.mesh (centered): false.
+        const bool originAtEnd = (boneAxis == 1);
+
+        const Ogre::Real natLen = m_meshNaturalLength;
+        auto closureFunction = [this, legCount, snap, torsoNode, boneCorrection, originAtEnd, natLen](Ogre::Real)
+        {
             const Ogre::Vector3 torsoWorldPos = torsoNode->_getDerivedPosition();
             const Ogre::Quaternion torsoWorldOrient = torsoNode->_getDerivedOrientation();
             const Ogre::Quaternion torsoWorldOrientInv = torsoWorldOrient.Inverse();
@@ -813,20 +890,43 @@ namespace NOWA
 
                 const LegVisual& lv = m_legVisuals[i];
 
-                // Convert world → torso-local for each segment
-                auto toLocal = [&](const Ogre::Vector3& worldPos, const Ogre::Quaternion& worldOrient, Ogre::SceneNode* node)
+                auto toLocal = [&](const Ogre::Vector3& worldPos, const Ogre::Quaternion& worldOrient, Ogre::SceneNode* node, float segLen)
                 {
                     if (!node)
                     {
                         return;
                     }
-                    node->setPosition(torsoWorldOrientInv * (worldPos - torsoWorldPos));
-                    node->setOrientation(torsoWorldOrientInv * worldOrient);
+
+                    // Capsule orientation in torso-local space
+                    const Ogre::Quaternion capsuleLocal = torsoWorldOrientInv * worldOrient;
+
+                    // Physics body position in torso-local space = capsule center
+                    Ogre::Vector3 localPos = torsoWorldOrientInv * (worldPos - torsoWorldPos);
+
+                    if (originAtEnd && segLen > 0.001f)
+                    {
+                        // Mesh origin is at the end (bottom). After boneCorrection,
+                        // mesh +Y maps to capsule +X. The end of the capsule in
+                        // torso-local space is: center - capsuleX * halfLen.
+                        // We want node at the END, not the center, so subtract halfLen:
+                        const Ogre::Vector3 capsuleX = capsuleLocal * Ogre::Vector3::UNIT_X;
+                        localPos -= capsuleX * (segLen * 0.5f);
+                    }
+
+                    node->setPosition(localPos);
+                    node->setOrientation(capsuleLocal * boneCorrection);
+
+                    // Scale mesh to match physics capsule length
+                    if (segLen > 0.001f && natLen > 0.001f)
+                    {
+                        const float s = static_cast<float>(segLen) / static_cast<float>(natLen);
+                        node->setScale(Ogre::Vector3(s, s, s));
+                    }
                 };
 
-                toLocal(tc.thighPos, tc.thighOrient, lv.thighNode);
-                toLocal(tc.calfPos, tc.calfOrient, lv.calfNode);
-                toLocal(tc.heelPos, tc.heelOrient, lv.heelNode);
+                toLocal(tc.thighPos, tc.thighOrient, lv.thighNode, tc.thighLen);
+                toLocal(tc.calfPos, tc.calfOrient, lv.calfNode, tc.calfLen);
+                toLocal(tc.heelPos, tc.heelOrient, lv.heelNode, tc.heelLen);
             }
         };
 
@@ -1138,7 +1238,7 @@ namespace NOWA
     }
     Ogre::String PhysicsActiveSpiderComponent::getLegBoneAxis(void) const
     {
-        return m_legBoneAxis->getString();
+        return m_legBoneAxis->getListSelectedValue();
     }
 
     void PhysicsActiveSpiderComponent::setLegMeshScale(Ogre::Real scale)
@@ -1264,7 +1364,7 @@ namespace NOWA
         }
         else if (attribute->getName() == AttrLegBoneAxis())
         {
-            this->setLegBoneAxis(attribute->getString());
+            this->setLegBoneAxis(attribute->getListSelectedValue());
         }
         else if (attribute->getName() == AttrLegMeshScale())
         {
@@ -1344,7 +1444,7 @@ namespace NOWA
         writeReal(AttrWalkCycleDuration(), m_walkCycleDuration->getReal());
         writeReal(AttrStepHeight(), m_stepHeight->getReal());
         writeString(AttrGaitSequence(), m_gaitSequence->getString());
-        writeString(AttrLegBoneAxis(), m_legBoneAxis->getString());
+        writeString(AttrLegBoneAxis(), m_legBoneAxis->getListSelectedValue());
         writeReal(AttrLegMeshScale(), m_legMeshScale->getReal());
         writeReal(AttrThighBoneLength(), m_thighBoneLength->getReal());
         writeReal(AttrCalfBoneLength(), m_calfBoneLength->getReal());
@@ -1387,7 +1487,7 @@ namespace NOWA
         cloned->setWalkCycleDuration(m_walkCycleDuration->getReal());
         cloned->setStepHeight(m_stepHeight->getReal());
         cloned->setGaitSequence(m_gaitSequence->getString());
-        cloned->setLegBoneAxis(m_legBoneAxis->getString());
+        cloned->setLegBoneAxis(m_legBoneAxis->getListSelectedValue());
         cloned->setLegMeshScale(m_legMeshScale->getReal());
         cloned->setThighBoneLength(m_thighBoneLength->getReal());
         cloned->setCalfBoneLength(m_calfBoneLength->getReal());

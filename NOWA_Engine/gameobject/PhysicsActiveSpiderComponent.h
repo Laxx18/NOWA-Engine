@@ -280,6 +280,7 @@ namespace NOWA
 
         // ── Internally created visuals ────────────────────────────────────────
         LegVisual m_legVisuals[MAX_LEGS];
+        Ogre::Real m_meshNaturalLength{1.0f};
 
     };
 

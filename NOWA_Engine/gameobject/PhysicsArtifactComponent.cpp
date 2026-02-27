@@ -371,6 +371,11 @@ namespace NOWA
 
 	void PhysicsArtifactComponent::reCreateCollision(bool overwrite)
 	{
+        if (nullptr == this->physicsBody)
+		{
+			return;
+		}
+
         if (COLLISION_COMPOUND == this->collisionMode)
         {
             // Handle compound collision recreation

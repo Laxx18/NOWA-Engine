@@ -2851,6 +2851,61 @@ namespace NOWA
 		}
 	};
 
+	class EXPORTED EventDataMeshEditModifyEnd : public BaseEventData
+    {
+    public:
+        EventDataMeshEditModifyEnd()
+        {
+        }
+        explicit EventDataMeshEditModifyEnd(const std::vector<unsigned char>& oldData, const std::vector<unsigned char>& newData, unsigned long gameObjectId)
+			: oldData(oldData),
+			newData(newData),
+			gameObjectId(gameObjectId)
+        {
+        }
+
+        static EventType getStaticEventType()
+        {
+            return 0x4D455348;
+        }
+        virtual const EventType getEventType() const override
+        {
+            return 0x4D455348;
+        }
+        virtual EventDataPtr copy() const override
+        {
+            return EventDataPtr(new EventDataMeshEditModifyEnd(oldData, newData, gameObjectId));
+        }
+        virtual void deserialize(std::istrstream&) override
+        {
+        }
+        virtual void serialize(std::ostrstream&) const override
+        {
+        }
+        virtual const char* getName() const override
+        {
+            return "EventDataMeshEditModifyEnd";
+        }
+
+        const std::vector<unsigned char>& getOldData() const
+        {
+            return oldData;
+        }
+        const std::vector<unsigned char>& getNewData() const
+        {
+            return newData;
+        }
+        unsigned long getGameObjectId() const
+        {
+            return gameObjectId;
+        }
+
+    private:
+        std::vector<unsigned char> oldData;
+		std::vector<unsigned char> newData;
+        unsigned long gameObjectId = 0;
+    };
+
 }; // namespace end
 
 #endif

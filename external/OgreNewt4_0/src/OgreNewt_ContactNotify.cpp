@@ -107,6 +107,16 @@ namespace OgreNewt
             return true;
         }
 
+        // ── Suppress intra-articulation collisions ────────────────────────────────
+        // Both bodies belonging to the same ndModelArticulation means they are part
+        // of the same spider (or any articulated model). No self-collision.
+        ndModel* model0 = b0->GetModel();
+        ndModel* model1 = b1->GetModel();
+        if (model0 && model0 == model1)
+        {
+            return false;
+        }
+
         // use Newton's real shape user IDs to find the pair
         const ndInt64 id0 = b0->GetCollisionShape().m_shapeMaterial.m_userId;
         const ndInt64 id1 = b1->GetCollisionShape().m_shapeMaterial.m_userId;

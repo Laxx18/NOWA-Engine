@@ -8,7 +8,7 @@ GPL v3
 #define MESHEDITCOMPONENT_H
 
 #include "OgrePlugin.h"
-#include "gameobject/GameObjectComponent.h"
+#include "gameobject/MeshEditComponentBase.h"
 #include "main/Events.h"
 
 #include <set>
@@ -47,11 +47,17 @@ namespace NOWA
      *          Keyboard (active in non-OBJECT mode):
      *           G      : Grab — move selection along camera plane. LMB/Enter=confirm, RMB/Esc=cancel.
      *           X      : Delete selected topology.
-     *           A      : Toggle select-all / deselect-all.
+     *           E      : Extrude selected faces (Face mode).
+     *           I      : Subdivide selected faces (Face mode) / selected edges or vertices.
+     *           F      : Flip normals of entire mesh.
+     *           B      : Toggle sculpt-brush mode (Vertex mode only).
+     *           A      : Toggle select-all / deselect-all (Ctrl+A).
+     *           Ctrl+I : Subdivide ALL faces.
+     *           Ctrl+N : Recalculate normals (smooth, area-weighted).
      *           Ctrl+Z : Undo (up to 16 levels).
      *           Esc    : Cancel grab OR deselect-all.
      */
-    class EXPORTED MeshEditComponent : public GameObjectComponent, public Ogre::Plugin, public OIS::MouseListener, public OIS::KeyListener
+    class EXPORTED MeshEditComponent : public MeshEditComponentBase, public Ogre::Plugin, public OIS::MouseListener, public OIS::KeyListener
     {
     public:
         typedef boost::shared_ptr<MeshEditComponent> MeshEditComponentPtr;
@@ -123,15 +129,6 @@ namespace NOWA
             }
         };
 
-        struct MeshSnapshot
-        {
-            std::vector<Ogre::Vector3> vertices;
-            std::vector<Ogre::Vector3> normals;
-            std::vector<Ogre::Vector4> tangents;
-            std::vector<Ogre::Vector2> uvCoordinates;
-            std::vector<Ogre::uint32> indices;
-        };
-
     public:
         MeshEditComponent();
         virtual ~MeshEditComponent();
@@ -201,10 +198,32 @@ namespace NOWA
         void subdivideSelectedFaces(void);
         void extrudeSelectedFaces(Ogre::Real amount = 0.1f);
 
-        // ── Undo ──────────────────────────────────────────────────────────────
-        void undo(void);
-        bool canUndo(void) const;
-        void pushUndoSnapshot(void);
+        /// Subdivides every face in the mesh uniformly (no selection required).
+        void subdivideAll(void);
+
+        /**
+         * @brief Mirrors the mesh across the chosen axis and welds the seam.
+         * @param axis One of "+X", "-X", "+Y", "-Y", "+Z", "-Z".
+         *             The sign indicates which half of the mesh is kept as the source;
+         *             the reflected copy is appended and the shared edge is welded.
+         */
+        void mirrorMesh(const Ogre::String& axis);
+
+        /**
+         * @brief Bakes the scene-node's current world scale into vertex positions,
+         *        then resets the node scale to (1,1,1).
+         *        Useful before export or physics setup when an accidental scale exists.
+         */
+        void applyScale(void);
+
+        // ── Undo (EditorManager integration) ─────────────────────────────────
+        /// Serialise current CPU mesh state to a flat byte buffer.
+        std::vector<unsigned char> getMeshData(void) const;
+        /// Restore CPU mesh state from a previously serialised buffer, then rebuild GPU buffers.
+        void setMeshData(const std::vector<unsigned char>& data);
+        /// Fire EventDataMeshEditModifyEnd so EditorManager pushes one undo entry.
+        /// @param oldData  Snapshot captured BEFORE the modification.
+        void fireUndoEvent(const std::vector<unsigned char>& oldData);
 
         // ── Brush API (mirrors MeshModifyComponent) ───────────────────────────
         void setBrushName(const Ogre::String& brushName);
@@ -218,6 +237,14 @@ namespace NOWA
         void setBrushMode(const Ogre::String& mode);
         Ogre::String getBrushModeString(void) const;
         BrushMode getBrushMode(void) const;
+
+        // ── Extrude parameter ─────────────────────────────────────────────────
+        void setExtrudeAmount(Ogre::Real amount);
+        Ogre::Real getExtrudeAmount(void) const;
+
+        // ── Mirror axis parameter ─────────────────────────────────────────────
+        void setMirrorAxis(const Ogre::String& axis);
+        Ogre::String getMirrorAxis(void) const;
 
         // ── Export / Apply ────────────────────────────────────────────────────
         bool exportMesh(const Ogre::String& fileNameOverride = "");
@@ -247,11 +274,18 @@ namespace NOWA
                    "Modes: Object / Vertex / Edge / Face. "
                    "G = Grab (move along camera plane). "
                    "During Grab: X/Y/Z = lock to world axis (press same axis twice to return to free movement). "
-                   "Enter or LMB = Confirm. Esc or RMB = Cancel (restores original positions). "
+                   "Enter or LMB = Confirm grab. Esc or RMB = Cancel grab (restores original positions). "
                    "X = Delete selection. "
-                   "A = Toggle Select All / Deselect All. "
-                   "Ctrl+Z = Undo (up to 16 levels, snapshot before destructive ops). "
-                   "Press 'Apply Mesh' to save edited mesh as a new .mesh asset.";
+                   "E = Extrude selected faces (Face mode). "
+                   "I = Subdivide selected. Ctrl+I = Subdivide entire mesh. "
+                   "F = Flip normals. Ctrl+N = Recalculate normals. "
+                   "B = Toggle sculpt-brush mode (Vertex mode). "
+                   "Ctrl+A = Toggle Select All / Deselect All. "
+                   "Ctrl+Z = Undo (up to 16 levels, one entry per operation or confirmed grab/brush stroke). "
+                   "Buttons: Weld Vertices, Flip Normals, Recalculate Normals, "
+                   "Subdivide Selected, Extrude Selected (uses Extrude Amount), "
+                   "Subdivide All, Mirror Mesh (uses Mirror Axis), Apply Scale. "
+                   "Press 'Apply Mesh' to save the edited mesh as a new .mesh asset.";
         }
         static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass);
 
@@ -316,6 +350,88 @@ namespace NOWA
         {
             return "MeshEditComponent.CancelEdit";
         }
+        static const Ogre::String AttrWeldVertices(void)
+        {
+            return "Weld Vertices";
+        }
+        static const Ogre::String ActionWeldVertices(void)
+        {
+            return "MeshEditComponent.WeldVertices";
+        }
+
+        // ── Normals ───────────────────────────────────────────────────────────
+        static const Ogre::String AttrFlipNormals(void)
+        {
+            return "Flip Normals";
+        }
+        static const Ogre::String ActionFlipNormals(void)
+        {
+            return "MeshEditComponent.FlipNormals";
+        }
+        static const Ogre::String AttrRecalcNormals(void)
+        {
+            return "Recalculate Normals";
+        }
+        static const Ogre::String ActionRecalcNormals(void)
+        {
+            return "MeshEditComponent.RecalcNormals";
+        }
+
+        // ── Subdivide ─────────────────────────────────────────────────────────
+        static const Ogre::String AttrSubdivideFaces(void)
+        {
+            return "Subdivide Selected";
+        }
+        static const Ogre::String ActionSubdivideFaces(void)
+        {
+            return "MeshEditComponent.SubdivideFaces";
+        }
+        static const Ogre::String AttrSubdivideAll(void)
+        {
+            return "Subdivide All";
+        }
+        static const Ogre::String ActionSubdivideAll(void)
+        {
+            return "MeshEditComponent.SubdivideAll";
+        }
+
+        // ── Extrude ───────────────────────────────────────────────────────────
+        static const Ogre::String AttrExtrudeAmount(void)
+        {
+            return "Extrude Amount";
+        }
+        static const Ogre::String AttrExtrudeFaces(void)
+        {
+            return "Extrude Selected";
+        }
+        static const Ogre::String ActionExtrudeFaces(void)
+        {
+            return "MeshEditComponent.ExtrudeFaces";
+        }
+
+        // ── Mirror ────────────────────────────────────────────────────────────
+        static const Ogre::String AttrMirrorAxis(void)
+        {
+            return "Mirror Axis";
+        }
+        static const Ogre::String AttrMirrorMesh(void)
+        {
+            return "Mirror Mesh";
+        }
+        static const Ogre::String ActionMirrorMesh(void)
+        {
+            return "MeshEditComponent.MirrorMesh";
+        }
+
+        // ── Apply Scale ───────────────────────────────────────────────────────
+        static const Ogre::String AttrApplyScale(void)
+        {
+            return "Apply Scale";
+        }
+        static const Ogre::String ActionApplyScale(void)
+        {
+            return "MeshEditComponent.ApplyScale";
+        }
 
     protected:
         // OIS::MouseListener
@@ -379,6 +495,10 @@ namespace NOWA
         // ── Helpers ───────────────────────────────────────────────────────────
         Ogre::String buildDefaultOutputName(void) const;
 
+        /// Algorithm-only merge — no undo event fired. Used internally by
+        /// mirrorMesh() and the public mergeByDistance() which wraps it.
+        void mergeByDistance_noUndo(Ogre::Real threshold);
+
     private:
         Ogre::String componentName;
 
@@ -408,10 +528,6 @@ namespace NOWA
         std::set<size_t> selectedVertices;
         std::set<EdgeKey> selectedEdges;
         std::set<size_t> selectedFaces;
-
-        // Undo
-        static constexpr size_t MAX_UNDO_LEVELS = 16;
-        std::vector<MeshSnapshot> undoStack;
 
         // Grab tool state
         ActiveTool activeTool;
@@ -455,13 +571,34 @@ namespace NOWA
         Variant* xRayOverlay;
         Variant* vertexMarkerSize;
         Variant* outputFileName;
-        Variant* applyMeshButton;
+        Variant* weldButton;
+        // ── Normals ───────────────────────────────────────────────────────────
+        Variant* flipNormalsButton;
+        Variant* recalcNormalsButton;
+        // ── Subdivide ─────────────────────────────────────────────────────────
+        Variant* subdivideFacesButton;
+        Variant* subdivideAllButton;
+        // ── Extrude ───────────────────────────────────────────────────────────
+        Variant* extrudeAmount;
+        Variant* extrudeFacesButton;
+        // ── Mirror ────────────────────────────────────────────────────────────
+        Variant* mirrorAxis;
+        Variant* mirrorMeshButton;
+        // ── Apply Scale ───────────────────────────────────────────────────────
+        Variant* applyScaleButton;
+        // ── Brush ─────────────────────────────────────────────────────────────
         Variant* brushName;
         Variant* brushSize;
         Variant* brushIntensity;
         Variant* brushFalloff;
         Variant* brushMode;
+        // ── Export / misc ─────────────────────────────────────────────────────
+        Variant* applyMeshButton;
         Variant* cancelEditButton;
+
+        // Undo snapshots for multi-tick operations
+        std::vector<unsigned char> grabUndoData;  ///< captured at beginGrab
+        std::vector<unsigned char> brushUndoData; ///< captured at brush stroke start
     };
 
 }; // namespace NOWA

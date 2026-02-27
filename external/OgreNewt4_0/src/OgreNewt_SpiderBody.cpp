@@ -339,42 +339,41 @@ void SpiderModelNotify::Update(ndFloat32 timestep)
         return;
     }
 
-    // Keep torso awake
     m_model->torsoNd->SetSleepState(false);
 
-    if (!m_model->canMove.load(std::memory_order_relaxed))
+    // Gait advancement only when commanded to move
+    if (m_model->canMove.load(std::memory_order_relaxed))
     {
-        return;
+        const ndFloat32 stride = m_model->stride.load(std::memory_order_relaxed);
+        const ndFloat32 omega = m_model->omega.load(std::memory_order_relaxed);
+        const ndFloat32 nextTime = advanceTime(m_timeAcc, timestep);
+
+        for (int i = 0; i < m_model->activeLegCount; ++i)
+        {
+            LegGaitPhase state = getState(i, m_timeAcc, timestep);
+            integrateLeg(i, state, stride, omega, timestep);
+        }
+
+        m_timeAcc = nextTime;
     }
 
-    const ndFloat32 stride = m_model->stride.load(std::memory_order_relaxed);
-    const ndFloat32 omega = m_model->omega.load(std::memory_order_relaxed);
-
-    // ── Advance gait clock (matches ndProdeduralGaitGenerator::CalculatePose) ─
-    const ndFloat32 nextTime = advanceTime(m_timeAcc, timestep);
-
-    for (int i = 0; i < m_model->activeLegCount; ++i)
-    {
-        LegGaitPhase state = getState(i, m_timeAcc, timestep);
-        integrateLeg(i, state, stride, omega, timestep);
-    }
-
-    m_timeAcc = nextTime;
-
-    // ── Drive effectors ───────────────────────────────────────────────────────
+    // ALWAYS apply effectors — this is what holds the legs up even when standing still.
+    // Without this, IK constraints receive no target and legs collapse under gravity.
     applyEffectors();
 }
 
 void SpiderModelNotify::PostTransformUpdate(ndFloat32 /*timestep*/)
 {
-    // Capture leg body transforms into the thread-safe cache so the
-    // main thread can push them to GraphicsModule.
     std::lock_guard<std::mutex> lock(m_model->transformMutex);
 
     for (int i = 0; i < m_model->activeLegCount; ++i)
     {
         LegTransformCache& tc = m_model->cachedTransforms[i];
         tc.valid = true;
+
+        tc.thighLen = m_model->thighLenArr[i];
+        tc.calfLen = m_model->calfLenArr[i];
+        tc.heelLen = m_model->calfLenArr[i]; // heel visual = same length as calf
 
         if (m_model->thighNd[i])
         {
@@ -384,9 +383,9 @@ void SpiderModelNotify::PostTransformUpdate(ndFloat32 /*timestep*/)
         {
             ndMatrixToOgre(m_model->calfNd[i]->GetMatrix(), tc.calfPos, tc.calfOrient);
         }
-        if (m_model->heelNd[i])
+        if (m_model->contactNd[i])
         {
-            ndMatrixToOgre(m_model->heelNd[i]->GetMatrix(), tc.heelPos, tc.heelOrient);
+            ndMatrixToOgre(m_model->contactNd[i]->GetMatrix(), tc.heelPos, tc.heelOrient);
         }
     }
 }
@@ -482,14 +481,13 @@ ndBodyDynamic* SpiderBody::getTorsoNd() const
 }
 
 void SpiderBody::addLegChain(Ogre::SceneNode* thighNode, Ogre::SceneNode* calfNode, Ogre::SceneNode* heelNode, const Ogre::Vector3& hipLocalOgre, const Ogre::Vector3& footRestLocalOgre, float thighLen, float calfLen, float swivelSign,
-    int /*boneAxis*/) // boneAxis affects visual only, not physics
+    int /*boneAxis*/)
 {
     if (m_finalized)
     {
         return;
     }
 
-    // Use m_artModel->torsoNd directly — always valid after constructor
     ndBodyDynamic* const torsoNd = m_artModel->torsoNd;
     if (!torsoNd)
     {
@@ -511,8 +509,6 @@ void SpiderBody::addLegChain(Ogre::SceneNode* thighNode, Ogre::SceneNode* calfNo
     ndVector hipWorld = torsoMat.TransformVector(hipLocal);
     hipWorld.m_w = 1.0f;
 
-    // Compute knee and ankle world positions from hip→foot direction.
-    // The direction is from hip toward the foot rest position (projected to world space).
     ndVector footRestWorld = torsoMat.TransformVector(footRestLocal);
     footRestWorld.m_w = 0.0f;
 
@@ -525,36 +521,76 @@ void SpiderBody::addLegChain(Ogre::SceneNode* thighNode, Ogre::SceneNode* calfNo
     }
     totalLen = ndSqrt(totalLen);
 
-    // Split direction: thigh goes along hip→foot for thighLen, then calf continues
     ndVector legDir = hipToFoot.Scale(ndFloat32(1.0f) / totalLen);
 
-    ndVector kneeWorld = hipWorld + legDir.Scale(thighLen);
-    ndVector ankleWorld = kneeWorld + legDir.Scale(calfLen);
+    // ── Outward direction from body centre through hip (horizontal only) ──────
+    // Tells the knee which side to bend toward.
+    ndVector hipHoriz(hipLocal.m_x, 0.0f, hipLocal.m_z, 0.0f);
+    ndFloat32 hipHorizLen = ndSqrt(hipHoriz.DotProduct(hipHoriz).GetScalar());
+    ndVector outward = (hipHorizLen > 1e-6f) ? hipHoriz.Scale(ndFloat32(1.0f) / hipHorizLen) : ndVector(1.0f, 0.0f, 0.0f, 0.0f);
+    outward.m_w = 0.0f;
+
+    // ── Hinge axis: perpendicular to legDir, in the plane of legDir and outward ─
+    ndVector hingeAxis = legDir.CrossProduct(outward);
+    ndFloat32 haLen = ndSqrt(hingeAxis.DotProduct(hingeAxis).GetScalar());
+    if (haLen < 1e-6f)
+    {
+        hingeAxis = ndVector(0.0f, 0.0f, 1.0f, 0.0f);
+    }
+    else
+    {
+        hingeAxis = hingeAxis.Scale(ndFloat32(1.0f) / haLen);
+    }
+    hingeAxis.m_w = 0.0f;
+
+    // ── 2-link IK: find bent knee position using law of cosines ──────────────
+    ndFloat32 cosA = (thighLen * thighLen + totalLen * totalLen - calfLen * calfLen) / (2.0f * thighLen * totalLen);
+    cosA = ndClamp(cosA, ndFloat32(-1.0f), ndFloat32(1.0f));
+    ndFloat32 sinA = ndSqrt(ndMax(ndFloat32(0.0f), ndFloat32(1.0f) - cosA * cosA));
+
+    ndVector perpDir = hingeAxis.CrossProduct(legDir);
+    ndFloat32 perpLen = ndSqrt(perpDir.DotProduct(perpDir).GetScalar());
+    if (perpLen > 1e-6f)
+    {
+        perpDir = perpDir.Scale(ndFloat32(1.0f) / perpLen);
+    }
+    perpDir.m_w = 0.0f;
+
+    ndVector thighDir = legDir.Scale(cosA) + perpDir.Scale(sinA);
+    thighDir.m_w = 0.0f;
+
+    ndVector kneeWorld = hipWorld + thighDir.Scale(thighLen);
     kneeWorld.m_w = 1.0f;
+
+    ndVector kneeToFoot = footRestWorld - kneeWorld;
+    kneeToFoot.m_w = 0.0f;
+    ndFloat32 ktfLen = ndSqrt(kneeToFoot.DotProduct(kneeToFoot).GetScalar());
+    ndVector calfDir = (ktfLen > 1e-6f) ? kneeToFoot.Scale(ndFloat32(1.0f) / ktfLen) : legDir;
+    calfDir.m_w = 0.0f;
+
+    ndVector ankleWorld = kneeWorld + calfDir.Scale(calfLen);
     ankleWorld.m_w = 1.0f;
 
-    // Use upward direction, ndGramSchmidtMatrix handles it correctly
-    ndVector heelDir(0.0f, -1.0f, 0.0f, 0.0f);  // keep for position math
-    ndVector heelDirUp(0.0f, 1.0f, 0.0f, 0.0f); // use this for matrix construction
+    // ── Heel/contact geometry ─────────────────────────────────────────────────
+    ndVector heelDir(0.0f, -1.0f, 0.0f, 0.0f);  // position math only
+    ndVector heelDirUp(0.0f, 1.0f, 0.0f, 0.0f); // matrix construction
 
     ndVector footWorld = ankleWorld + heelDir.Scale(Dim::CONTACT_LENGTH * 0.5f);
     footWorld.m_w = 1.0f;
 
-    ndVector thighCentre = hipWorld + legDir.Scale(thighLen * 0.5f);
-    ndVector calfCentre = kneeWorld + legDir.Scale(calfLen * 0.5f);
+    ndVector thighCentre = hipWorld + thighDir.Scale(thighLen * 0.5f);
+    ndVector calfCentre = kneeWorld + calfDir.Scale(calfLen * 0.5f);
     ndVector heelCentre = ankleWorld + heelDir.Scale(Dim::CONTACT_LENGTH * 0.25f);
     ndVector contactCentre = ankleWorld + heelDir.Scale(Dim::CONTACT_LENGTH * 0.75f);
-
     thighCentre.m_w = calfCentre.m_w = heelCentre.m_w = contactCentre.m_w = 1.0f;
 
-    // Capsule radii derived from bone lengths (thin limbs)
     const ndFloat32 thighRadius = ndMax(thighLen * 0.08f, 0.015f);
     const ndFloat32 calfRadius = ndMax(calfLen * 0.07f, 0.012f);
     const ndFloat32 heelRadius = Dim::CONTACT_RADIUS;
 
     // ── Create physics bodies ─────────────────────────────────────────────────
-    auto* thighNd = makeCapsule(thighRadius, thighLen, Dim::THIGH_MASS, thighCentre, legDir);
-    auto* calfNd = makeCapsule(calfRadius, calfLen, Dim::CALF_MASS, calfCentre, legDir);
+    auto* thighNd = makeCapsule(thighRadius, thighLen, Dim::THIGH_MASS, thighCentre, thighDir);
+    auto* calfNd = makeCapsule(calfRadius, calfLen, Dim::CALF_MASS, calfCentre, calfDir);
     auto* heelNd = makeCapsule(heelRadius, Dim::CONTACT_LENGTH, Dim::HEEL_MASS, heelCentre, heelDirUp);
     auto* contactNd = makeCapsule(heelRadius, Dim::CONTACT_LENGTH, Dim::CONTACT_MASS, contactCentre, heelDirUp);
 
@@ -563,22 +599,19 @@ void SpiderBody::addLegChain(Ogre::SceneNode* thighNode, Ogre::SceneNode* calfNo
     m_artModel->heelNd[legIndex] = heelNd;
     m_artModel->contactNd[legIndex] = contactNd;
 
-    // ── Hinge axis = torso's lateral direction (Z in world frame at spawn) ─────
-    ndVector hingeAxis = torsoMat.m_front; // Newton convention: m_front = X forward
-
-    // ── Hip spherical joint (ball socket) — matches ndJointSpherical in Newton demo ──
+    // ── Hip spherical joint ───────────────────────────────────────────────────
     ndMatrix hipFrame = ndGetIdentityMatrix();
     hipFrame.m_posit = hipWorld;
     auto hipJoint = ndSharedPtr<ndJointBilateralConstraint>(new ndJointSpherical(hipFrame, thighNd, torsoNd));
 
-    // ── Knee IK hinge — with limits ───────────────────────────────────────────
+    // ── Knee IK hinge — hingeAxis already computed above ─────────────────────
     auto kneeJoint = ndSharedPtr<ndJointBilateralConstraint>(new ndIkJointHinge(pinMatrix(kneeWorld, hingeAxis), calfNd, thighNd));
     auto* kneeRaw = static_cast<ndIkJointHinge*>(kneeJoint.operator->());
     kneeRaw->SetLimitState(true);
     kneeRaw->SetLimits(-80.0f * ndDegreeToRad, 60.0f * ndDegreeToRad);
     m_artModel->kneeJoints[legIndex] = kneeRaw;
 
-    // ── Ankle hinge — spring-damper (matches Newton demo exactly) ─────────────
+    // ── Ankle hinge — spring-damper ───────────────────────────────────────────
     auto heelJoint = ndSharedPtr<ndJointBilateralConstraint>(new ndJointHinge(pinMatrix(ankleWorld, hingeAxis), heelNd, calfNd));
     auto* heelRaw = static_cast<ndJointHinge*>(heelJoint.operator->());
     heelRaw->SetAsSpringDamper(Dim::HEEL_REG, Dim::HEEL_SPRING, Dim::HEEL_DAMPER);
@@ -592,65 +625,35 @@ void SpiderBody::addLegChain(Ogre::SceneNode* thighNode, Ogre::SceneNode* calfNo
     contactRaw->SetAsSpringDamper(Dim::CONTACT_REG, Dim::CONTACT_SPRING, Dim::CONTACT_DAMPER);
 
     // ── Build articulation tree ───────────────────────────────────────────────
-    // Root is already set; legs hang off it.
     ndModelArticulation::ndNode* const rootNode = m_artModel->GetRoot();
     auto* thighNode_ = m_artModel->AddLimb(rootNode, ndSharedPtr<ndBody>(thighNd), hipJoint);
     auto* calfNode_ = m_artModel->AddLimb(thighNode_, ndSharedPtr<ndBody>(calfNd), kneeJoint);
     auto* heelNode_ = m_artModel->AddLimb(calfNode_, ndSharedPtr<ndBody>(heelNd), heelJoint);
     (void)m_artModel->AddLimb(heelNode_, ndSharedPtr<ndBody>(contactNd), contactJoint);
 
-    // ── IK effector (close loop) — CORRECT CONSTRUCTOR ────────────────────────
-    //
-    //  ndIkSwivelPositionEffector(
-    //      pinAndPivotParentInGlobalSpace,  <- torso orientation + hip socket world pos
-    //      parentBody (torso),
-    //      childPivotInGlobalSpace,         <- foot/contact point world pos
-    //      childBody (heel))
-    //
-    //  Mirrors Newton's demo:
-    //      effectPivot = rootBody->GetMatrix();
-    //      effectPivot.m_posit = thighMatrix.m_posit;   // hip socket in world
-    //      effectOffset = footMesh->CalculateGlobalMatrix().m_posit;  // foot world pos
-    //      new ndIkSwivelPositionEffector(effectPivot, rootBody, effectOffset, heelBody)
-
+    // ── IK effector (close loop) ──────────────────────────────────────────────
     ndMatrix effectPivot = torsoMat;
     effectPivot.m_posit = hipWorld;
     effectPivot.m_posit.m_w = 1.0f;
 
-    // The foot pivot on the child (heel body) is the bottom of the contact area
-    ndVector effectorChildPivot = ankleWorld; // ankle / end-of-heel world pos
+    ndVector effectorChildPivot = ankleWorld;
     effectorChildPivot.m_w = 1.0f;
 
-    auto effJoint = ndSharedPtr<ndJointBilateralConstraint>(new ndIkSwivelPositionEffector(effectPivot, // parent pivot frame (world): torso orient + hip pos
-        torsoNd,                                                                                        // parent body
-        effectorChildPivot,                                                                             // child pivot (world): foot position
-        heelNd));                                                                                       // child body (heel, NOT contact)
+    auto effJoint = ndSharedPtr<ndJointBilateralConstraint>(new ndIkSwivelPositionEffector(effectPivot, torsoNd, effectorChildPivot, heelNd));
 
     auto* effRaw = static_cast<ndIkSwivelPositionEffector*>(effJoint.operator->());
-
-    // Match Newton's demo effector settings exactly
     effRaw->SetLinearSpringDamper(Dim::EFF_REG, Dim::EFF_SPRING, Dim::EFF_DAMPER);
     effRaw->SetAngularSpringDamper(Dim::EFF_REG, Dim::EFF_SPRING, Dim::EFF_DAMPER);
-    // And the workspace minimum of 0.0f causes singularity when the foot is near the hip:
     effRaw->SetWorkSpaceConstraints(0.05f, (thighLen + calfLen) * 0.9f);
 
-    // was: ndAbs(500.0f * Dim::THIGH_MASS * Dim::GRAVITY_MAG)  →  ~1225 N
-    // use torso mass to get a meaningful limit:
     const ndFloat32 effStrength = 500.0f * ndFloat32(m_pendingMass) * Dim::GRAVITY_MAG;
-    // with mass=20: 500 * 20 * 9.8 = 98000 N — much more reasonable for articulation
     effRaw->SetMaxForce(effStrength);
     effRaw->SetMaxTorque(effStrength);
 
     m_artModel->effectors[legIndex] = effRaw;
-
-    // AddCloseLoop — no label argument (was buggy in previous version)
     m_artModel->AddCloseLoop(effJoint);
 
-    // ── Initialise gait state from effector's rest position ───────────────────
-    // GetEffectorPosit() returns foot position in the effector's LocalMatrix1 frame
-    // (hip-pivot local space). This is the "base" that all gait positions are
-    // relative to — exactly as Newton does with:
-    //   m_pose[i].m_base = leg.m_effector->GetEffectorPosit();
+    // ── Initialise gait pose from effector rest position ──────────────────────
     LegPose& pose = m_artModel->legPose[legIndex];
     pose.base = effRaw->GetEffectorPosit();
     pose.posit = pose.base;
@@ -665,34 +668,12 @@ void SpiderBody::addLegChain(Ogre::SceneNode* thighNode, Ogre::SceneNode* calfNo
     m_artModel->legPhase[legIndex] = LegGaitPhase::onGround;
     m_artModel->legCycleTime[legIndex] = ndFloat32(legIndex) * 0.25f * m_artModel->duration;
 
+    m_artModel->thighLenArr[legIndex] = thighLen;
+    m_artModel->calfLenArr[legIndex] = calfLen;
+
     m_artModel->activeLegCount = legIndex + 1;
 
-    // ── Ogre visual wrappers ──────────────────────────────────────────────────
-    // We create minimal OgreNewt::Body wrappers so the scene nodes get
-    // their transforms updated via the standard BodyNotify mechanism.
-    // NOTE: OgreNewt::Body constructor may add the ndBodyDynamic to the
-    // Newton world automatically.  If Newton complains about double-add
-    // when AddModel is called, remove each leg body from the world first:
-    //   m_world->getNewtonWorld()->RemoveBody(thighNd);  etc.
-    // then call world->AddModel(m_artModel) which re-adds via the articulation.
-
-    /*auto makeWrapper = [this](ndBodyDynamic* nd, Ogre::SceneNode* node) -> OgreNewt::Body*
-    {
-        if (!node)
-        {
-            return nullptr;
-        }
-        auto* wrapper = new OgreNewt::Body(m_world, nullptr, nd);
-        wrapper->setBodyNotify(new OgreNewt::BodyNotify(wrapper));
-        wrapper->attachNode(node);
-        return wrapper;
-    };
-
-    m_legWrappers[legIndex].thigh = makeWrapper(thighNd, thighNode);
-    m_legWrappers[legIndex].calf = makeWrapper(calfNd, calfNode);
-    m_legWrappers[legIndex].heel = makeWrapper(heelNd, heelNode);*/
-
-    // At the bottom of addLegChain, just store the scene nodes for PostTransformUpdate
+    // ── Store scene nodes for PostTransformUpdate ─────────────────────────────
     m_legWrappers[legIndex].thighNode = thighNode;
     m_legWrappers[legIndex].calfNode = calfNode;
     m_legWrappers[legIndex].heelNode = heelNode;
@@ -712,9 +693,11 @@ void SpiderBody::finalizeModel()
     m_isOwner = true;
     m_gravity = m_pendingGravity;
 
-    // Attach BodyNotify so OnApplyExternalForce fires the force callback.
-    // Do NOT call w.addBody() — AddModel handles everything.
-    torsoNd->SetNotifyCallback(m_bodyNotify);
+    // Empty constructor left m_bodyNotify null — create it now that m_body is valid
+    if (!m_bodyNotify)
+    {
+        m_bodyNotify = new BodyNotify(this);
+    }
 
     // ── UpVector — keeps torso upright ────────────────────────────────────────
     ndBodyKinematic* sentinel = m_world->getNewtonWorld()->GetSentinelBody();
@@ -730,6 +713,27 @@ void SpiderBody::finalizeModel()
         {
             m_world->getNewtonWorld()->AddModel(m_artModel);
             m_artModel->AddBodiesAndJointsToWorld();
+            // Set AFTER world registration so it isn't overwritten
+            m_artModel->torsoNd->SetNotifyCallback(m_bodyNotify);
+
+            // Disable collision between all bodies within the articulation.
+            // Without this, torso<->leg and leg<->leg contacts generate huge impulses.
+            // m_artModel->SetSelfCollision(false);
+
+            // Give all leg bodies a dedicated material ID that has no collision pair
+            // registered with itself — Newton will skip them via GetMaterial returning null.
+            const ndUnsigned32 legMatId = 0xFFFFFFFF; // reserved "spider limb" ID, register no pair for it
+            for (int i = 0; i < m_artModel->activeLegCount; ++i)
+            {
+                if (m_artModel->thighNd[i])
+                {
+                    m_artModel->thighNd[i]->GetCollisionShape().m_shapeMaterial.m_userId = legMatId;
+                }
+                if (m_artModel->calfNd[i])
+                {
+                    m_artModel->calfNd[i]->GetCollisionShape().m_shapeMaterial.m_userId = legMatId;
+                }
+            }
         });
 
     m_finalized = true;

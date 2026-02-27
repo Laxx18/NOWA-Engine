@@ -316,6 +316,8 @@ namespace NOWA
 
 		void handleWallModifyEnd(EventDataPtr eventData);
 
+		void handleMeshEditModifyEnd(EventDataPtr eventData);
+
 		void handleUndoTransactionBegin(EventDataPtr eventData);
 		
 		void handleUndoTransactionEnd(EventDataPtr eventData);
