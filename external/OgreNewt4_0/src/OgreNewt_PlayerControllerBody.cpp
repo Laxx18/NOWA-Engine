@@ -68,49 +68,33 @@ namespace OgreNewt
             return;
         }
 
-        // Build local axis on caller thread (pure math, safe)
         ndMatrix localAxis(ndGetIdentityMatrix());
         localAxis[0] = ndVector(0.0f, 1.0f, 0.0f, 0.0f);
-
-        // Make sure direction is valid and orthonormal-ish
         ndVector forward(m_direction.x, m_direction.y, m_direction.z, 0.0f);
-        // (optional) normalize if you aren't guaranteed normalized already
-        // forward = forward.Normalize();
-
         localAxis[1] = forward;
         localAxis[2] = localAxis[0].CrossProduct(localAxis[1]);
 
-        // Create player controller body (allocation is ok on caller thread)
-        auto* playerBody = new OgreNewtPlayerController(this, localAxis, ndFloat32(m_mass), ndFloat32(m_radius), ndFloat32(m_height), ndFloat32(m_stepHeight));
-
-        // Compute start matrix (caller thread ok)
         ndMatrix start;
         OgreNewt::Converters::QuatPosToMatrix(startOrientation, startPosition, start);
 
-        // Tie into OgreNewt::Body base immediately (Ogre-side bookkeeping)
-        m_body = playerBody;
-        m_player = playerBody;
+        auto* playerBody = new OgreNewtPlayerController(this, localAxis, (ndFloat32)m_mass, (ndFloat32)m_radius, (ndFloat32)m_height, (ndFloat32)m_stepHeight);
 
-        if (!m_bodyNotify)
+        m_bodyPtr = ndSharedPtr<ndBody>(playerBody); // sole owner
+        m_player = playerBody;                       // typed convenience pointer
+
+        if (!m_bodyNotifyPtr)
         {
-            m_bodyNotify = new BodyNotify(this);
+            m_bodyNotifyPtr = ndSharedPtr<ndBodyNotify>(new BodyNotify(this));
         }
 
-        // All ND4 mutations + world add must be queued
         m_world->enqueuePhysicsAndWait(
             [this, start](World& w)
             {
-                // Set transform on world thread
-                m_body->SetMatrix(start);
-
-                // Attach notify callback on world thread
-                m_body->SetNotifyCallback(m_bodyNotify);
-
-                // Add to world through wrapper (enforces safe point)
-                w.addBody(m_body);
+                getNewtonBody()->SetMatrix(start);
+                getNewtonBody()->SetNotifyCallback(m_bodyNotifyPtr);
+                w.addBody(m_bodyPtr);
             });
 
-        // Ogre-side category / type bookkeeping (no ND touch)
         setType(m_categoryId);
     }
 

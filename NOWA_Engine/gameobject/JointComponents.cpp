@@ -14692,16 +14692,9 @@ namespace NOWA
 			return false;
 		}
 
-		// this->predecessorJointCompPtr->setJointRecursiveCollisionEnabled(false);
-		// this->setJointRecursiveCollisionEnabled(false);
-
 		this->joint = new OgreNewt::VehicleTire(this->body, predecessorBody, this->jointPosition, this->pin->getVector3(), physicsActiveVehicleCompPtr->getVehicle(), this->getOwner()->getSize().y / 2.0f);
 
-		// Attention: in Hinge this is used at last:
-		// this->body->getOrientation()* this->pin->getVector3()
-
 		this->joint->setBodyMassScale(this->bodyMassScale->getVector2().x, this->bodyMassScale->getVector2().y);
-
 		this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 
 		OgreNewt::VehicleTire* vehicleTire = dynamic_cast<OgreNewt::VehicleTire*>(this->joint);

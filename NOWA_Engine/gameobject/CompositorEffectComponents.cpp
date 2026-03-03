@@ -88,11 +88,19 @@ namespace NOWA
 	void CompositorEffectBaseComponent::handleWorkspaceComponentDeleted(NOWA::EventDataPtr eventData)
 	{
 		boost::shared_ptr<EventDataDeleteWorkspaceComponent> castEventData = boost::static_pointer_cast<EventDataDeleteWorkspaceComponent>(eventData);
-		// Found the game object
-		if (this->workspaceGameObjectId->getULong() == castEventData->getGameObjectId())
-		{
-			this->workspaceBaseComponent = nullptr;
-		}
+
+		GameProgressModule* gameProgressModule = AppStateManager::getSingletonPtr()->getActiveGameProgressModuleSafe();
+        const bool isStalled = AppStateManager::getSingletonPtr()->bStall.load();
+        const bool isSceneLoading = (gameProgressModule != nullptr) ? gameProgressModule->bSceneLoading.load() : true;
+
+        if (false == isStalled && false == isSceneLoading)
+        {
+            // Found the game object
+            if (this->workspaceGameObjectId->getULong() == castEventData->getGameObjectId())
+            {
+                this->workspaceBaseComponent = nullptr;
+            }
+        }
 	}
 
 	void CompositorEffectBaseComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
@@ -208,7 +216,7 @@ namespace NOWA
 		if (nullptr != node)
 		{
 			// TODO: Wait?
-			ENQUEUE_RENDER_COMMAND_MULTI("CompositorEffectBaseComponent::enableEffect", _2(node, enabled),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectBaseComponent::enableEffect", _2(node, enabled),
 			{
 				node->setEnabled(enabled);
 			});
@@ -389,7 +397,7 @@ namespace NOWA
 		if (nullptr != this->passes[3])
 		{
 			// TODO: Wait?
-			ENQUEUE_RENDER_COMMAND_MULTI("CompositorEffectBloomComponent::setImageWeight", _1(imageWeight),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectBloomComponent::setImageWeight", _1(imageWeight),
 			{
 				this->passes[3]->getFragmentProgramParameters()->setNamedConstant("OriginalImageWeight", imageWeight);
 			});
@@ -408,7 +416,7 @@ namespace NOWA
 		if (nullptr != this->passes[3])
 		{
 			// TODO: Wait?
-			ENQUEUE_RENDER_COMMAND_MULTI("CompositorEffectBloomComponent::setBlurWeight", _1(blurWeight),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectBloomComponent::setBlurWeight", _1(blurWeight),
 			{
 				this->passes[3]->getFragmentProgramParameters()->setNamedConstant("BlurWeight", blurWeight);
 			});
@@ -537,7 +545,7 @@ namespace NOWA
 		if (nullptr != this->pass)
 		{
 			// TODO: Wait?
-			ENQUEUE_RENDER_COMMAND_MULTI("CompositorEffectGlassComponent::setGlassWeight", _1(glassWeight),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectGlassComponent::setGlassWeight", _1(glassWeight),
 			{
 				this->pass->getFragmentProgramParameters()->setNamedConstant("GlassWeight", glassWeight);
 			});
@@ -805,7 +813,7 @@ namespace NOWA
 		if (nullptr != this->pass)
 		{
 			// TODO: Wait?
-			ENQUEUE_RENDER_COMMAND_MULTI("CompositorEffectOldTvComponent::setDistortionFrequency", _1(distortionFrequency),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectOldTvComponent::setDistortionFrequency", _1(distortionFrequency),
 			{
 				this->pass->getFragmentProgramParameters()->setNamedConstant("distortionFreq", distortionFrequency);
 			});
@@ -823,7 +831,7 @@ namespace NOWA
 		if (nullptr != this->pass)
 		{
 			// TODO: Wait?
-			ENQUEUE_RENDER_COMMAND_MULTI("CompositorEffectOldTvComponent::setDistortionScale", _1(distortionScale),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectOldTvComponent::setDistortionScale", _1(distortionScale),
 			{
 				this->pass->getFragmentProgramParameters()->setNamedConstant("distortionScale", distortionScale);
 			});
@@ -841,7 +849,7 @@ namespace NOWA
 		if (nullptr != this->pass)
 		{
 			// TODO: Wait?
-			ENQUEUE_RENDER_COMMAND_MULTI("CompositorEffectOldTvComponent::setDistortionRoll", _1(distortionRoll),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectOldTvComponent::setDistortionRoll", _1(distortionRoll),
 			{
 				this->pass->getFragmentProgramParameters()->setNamedConstant("distortionRoll", distortionRoll);
 			});
@@ -859,7 +867,7 @@ namespace NOWA
 		if (nullptr != this->pass)
 		{
 			// TODO: Wait?
-			ENQUEUE_RENDER_COMMAND_MULTI("CompositorEffectOldTvComponent::setInterference", _1(interference),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectOldTvComponent::setInterference", _1(interference),
 			{
 				this->pass->getFragmentProgramParameters()->setNamedConstant("interference", interference);
 			});
@@ -877,7 +885,7 @@ namespace NOWA
 		if (nullptr != this->pass)
 		{
 			// TODO: Wait?
-			ENQUEUE_RENDER_COMMAND_MULTI("CompositorEffectOldTvComponent::setFrameLimit", _1(frameLimit),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectOldTvComponent::setFrameLimit", _1(frameLimit),
 			{
 				this->pass->getFragmentProgramParameters()->setNamedConstant("frameLimit", frameLimit);
 			});
@@ -895,7 +903,7 @@ namespace NOWA
 		if (nullptr != this->pass)
 		{
 			// TODO: Wait?
-			ENQUEUE_RENDER_COMMAND_MULTI("CompositorEffectOldTvComponent::setFrameShape", _1(frameShape),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectOldTvComponent::setFrameShape", _1(frameShape),
 			{
 				this->pass->getFragmentProgramParameters()->setNamedConstant("frameShape", frameShape);
 			});
@@ -913,7 +921,7 @@ namespace NOWA
 		if (nullptr != this->pass)
 		{
 			// TODO: Wait?
-			ENQUEUE_RENDER_COMMAND_MULTI("CompositorEffectOldTvComponent::setFrameSharpness", _1(frameSharpness),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectOldTvComponent::setFrameSharpness", _1(frameSharpness),
 			{
 				this->pass->getFragmentProgramParameters()->setNamedConstant("frameSharpness", frameSharpness);
 			});
@@ -931,7 +939,7 @@ namespace NOWA
 		if (nullptr != this->pass)
 		{
 			// TODO: Wait?
-			ENQUEUE_RENDER_COMMAND_MULTI("CompositorEffectOldTvComponent::setTime", _1(time),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectOldTvComponent::setTime", _1(time),
 			{
 				// this->pass->getFragmentProgramParameters()->setNamedConstant("time_0_X", time);
 				this->pass->getFragmentProgramParameters()->setNamedConstantFromTime("time_0_X", static_cast<Ogre::Real>(time));
@@ -950,7 +958,7 @@ namespace NOWA
 		if (nullptr != this->pass)
 		{
 			// TODO: Wait?
-			ENQUEUE_RENDER_COMMAND_MULTI("CompositorEffectOldTvComponent::setSinusTime", _1(sinusTime),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectOldTvComponent::setSinusTime", _1(sinusTime),
 			{
 				// this->pass->getFragmentProgramParameters()->setNamedConstant("sin_time_0_X", sinusTime);
 				this->pass->getFragmentProgramParameters()->setNamedConstantFromTime("sin_time_0_X", static_cast<Ogre::Real>(sinusTime));
@@ -1077,7 +1085,7 @@ namespace NOWA
 		if (nullptr != this->pass)
 		{
 			// TODO: Wait?
-			ENQUEUE_RENDER_COMMAND_MULTI("CompositorEffectBlackAndWhiteComponent::setColor", _1(color),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectBlackAndWhiteComponent::setColor", _1(color),
 			{
 				this->pass->getFragmentProgramParameters()->setNamedConstant("color", color);
 			});
@@ -1202,7 +1210,7 @@ namespace NOWA
 		if (nullptr != this->pass)
 		{
 			// TODO: Wait?
-			ENQUEUE_RENDER_COMMAND_MULTI("CompositorEffectColorComponent::setColor", _1(color),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectColorComponent::setColor", _1(color),
 			{
 				this->pass->getFragmentProgramParameters()->setNamedConstant("color", color);
 			});
@@ -1326,7 +1334,7 @@ namespace NOWA
 		if (nullptr != this->pass)
 		{
 			// TODO: Wait?
-			ENQUEUE_RENDER_COMMAND_MULTI("CompositorEffectEmbossedComponent::setWeight", _1(weight),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectEmbossedComponent::setWeight", _1(weight),
 			{
 				this->pass->getFragmentProgramParameters()->setNamedConstant("weight", weight);
 			});
@@ -1453,7 +1461,7 @@ namespace NOWA
 		if (nullptr != this->pass)
 		{
 			// TODO: Wait?
-			ENQUEUE_RENDER_COMMAND_MULTI("CompositorEffectSharpenEdgesComponent::setWeight", _1(weight),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectSharpenEdgesComponent::setWeight", _1(weight),
 			{
 				this->pass->getFragmentProgramParameters()->setNamedConstant("weight", weight);
 			});

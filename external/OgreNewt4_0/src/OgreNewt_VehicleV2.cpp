@@ -75,27 +75,15 @@ namespace OgreNewt
         m_frontTireCount(0),
         m_rearTireCount(0)
     {
-        // ── Mass / inertia ────────────────────────────────────────────────────────
-        // m_body is the protected ndBodyDynamic* in OgreNewt::Body.
-        ndBodyDynamic* ndBody = static_cast<ndBodyDynamic*>(m_body);
+        ndBodyDynamic* ndBody = (*m_bodyPtr)->GetAsBodyDynamic();
+        ndAssert(ndBody); // must be dynamic for a vehicle
 
         ndShapeInstance& shapeInst = ndBody->GetCollisionShape();
+        ndBody->SetMassMatrix((ndFloat32)mass, shapeInst);
 
-        // Use the same overload as ndBasicModel:
-        //   SetMassMatrix(mass, shapeInstance)
-        // This lets Newton derive Ixx/Iyy/Izz directly from the collision geometry.
-        //
-        // The older two-step approach (CalculateInertia() → SetMassMatrix(mass, matrix))
-        // is WRONG: CalculateInertia() returns a unit-mass matrix, so passing it together
-        // with `mass` leaves the inertia un-scaled, producing near-zero rotational
-        // resistance and causing the vehicle to tip over at the first impulse.
-        ndBody->SetMassMatrix(static_cast<ndFloat32>(mass), shapeInst);
-
-        // ── Centre of mass ────────────────────────────────────────────────────────
         if (massOrigin != Ogre::Vector3::ZERO)
         {
-            ndVector com(static_cast<ndFloat32>(massOrigin.x), static_cast<ndFloat32>(massOrigin.y), static_cast<ndFloat32>(massOrigin.z), ndFloat32(1.0f));
-
+            ndVector com((ndFloat32)massOrigin.x, (ndFloat32)massOrigin.y, (ndFloat32)massOrigin.z, 1.0f);
             ndBody->SetCentreOfMass(com);
         }
     }
@@ -354,7 +342,7 @@ namespace OgreNewt
 
     bool VehicleV2::isOnGround() const
     {
-        const ndBodyKinematic* ndBody = static_cast<const ndBodyKinematic*>(m_body);
+        const ndBodyKinematic* ndBody = getNewtonBody();
         if (!ndBody)
         {
             return false;
@@ -387,7 +375,7 @@ namespace OgreNewt
     // brakeForce and handBrake cancel the forward velocity component.
     void VehicleV2::applyLongitudinalImpulse(Ogre::Real motorForce, Ogre::Real brakeForce, Ogre::Real handBrake, Ogre::Real dt)
     {
-        ndBodyDynamic* ndBody = static_cast<ndBodyDynamic*>(m_body);
+        ndBodyDynamic* ndBody = getNewtonBody()->GetAsBodyDynamic();
 
         const Ogre::Quaternion orient = this->getOrientation();
         const Ogre::Vector3 forward = orient * m_defaultDirection; // respects mesh orientation
@@ -428,7 +416,7 @@ namespace OgreNewt
     // how real Ackermann/front-wheel steering works.
     void VehicleV2::applyLateralImpulse(Ogre::Real handBrake, Ogre::Real dt)
     {
-        ndBodyDynamic* ndBody = static_cast<ndBodyDynamic*>(m_body);
+        ndBodyDynamic* ndBody = getNewtonBody()->GetAsBodyDynamic();
 
         const Ogre::Quaternion orient = this->getOrientation();
         const Ogre::Vector3 forward = orient * m_defaultDirection;
@@ -484,7 +472,7 @@ namespace OgreNewt
             return; // front axle not yet known (no tires registered)
         }
 
-        ndBodyDynamic* ndBody = static_cast<ndBodyDynamic*>(m_body);
+        ndBodyDynamic* ndBody = getNewtonBody()->GetAsBodyDynamic();
 
         const Ogre::Quaternion orient = this->getOrientation();
         const Ogre::Vector3 forward = orient * m_defaultDirection;

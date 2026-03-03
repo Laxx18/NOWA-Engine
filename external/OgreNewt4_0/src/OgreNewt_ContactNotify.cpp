@@ -5,13 +5,178 @@
 #include "OgreNewt_ContactCallback.h"
 #include "OgreNewt_ContactJoint.h"
 #include "OgreNewt_MaterialPair.h"
+#include "OgreNewt_World.h"
 #include "ndBodyKinematic.h"
 #include "ndContact.h"
 
 namespace OgreNewt
 {
-    ContactNotify::ContactNotify(OgreNewt::World* world) : ndContactCallback(), m_ogreNewtBody(nullptr), m_userData(nullptr), m_world(world)
+    // =========================================================================
+    // Internal helpers
+    // =========================================================================
+
+    // Resolve an OgreNewt::Body* from an ndBodyKinematic via BodyNotify.
+    // Returns nullptr for Newton-internal bodies (tree-mesh faces, sentinel, etc.)
+    // that have no OgreNewt wrapper attached.
+    // Body pointers must come from function arguments, NOT from GetBody0/GetBody1
+    // -- see the ABI note in the header.
+    static OgreNewt::Body* resolveOgreBody(const ndBodyKinematic* b)
     {
+        if (!b)
+        {
+            return nullptr;
+        }
+
+        auto& np = const_cast<ndBodyKinematic*>(b)->GetNotifyCallback();
+        if (!np)
+        {
+            return nullptr;
+        }
+
+        if (auto* bn = dynamic_cast<OgreNewt::BodyNotify*>(*np))
+        {
+            return bn->GetOgreNewtBody();
+        }
+
+        return nullptr;
+    }
+
+    // Resolve the self-collision group from an ndBodyKinematic.
+    // Returns 0 for bodies without an OgreNewt wrapper.
+    static unsigned int resolveCollisionGroup(const ndBodyKinematic* b)
+    {
+        OgreNewt::Body* ob = resolveOgreBody(b);
+        return ob ? ob->getSelfCollisionGroup() : 0u;
+    }
+
+    // =========================================================================
+    // OgreNewtMaterial
+    // =========================================================================
+
+    // Called by ndContactCallback's PRIVATE dispatcher for every active contact.
+    // We do NOT call GetBody0/GetBody1 here (inline ABI hazard).
+    // m_id0/m_id1 were baked at RegisterMaterial time so we look up the
+    // MaterialPair directly.
+    void OgreNewtMaterial::OnContactCallback(const ndContact* const contact, ndFloat32 timestep) const
+    {
+        if (!contact || !m_world)
+        {
+            return;
+        }
+
+        MaterialPair* pair = m_world->findMaterialPair((int)m_id0, (int)m_id1);
+        if (!pair)
+        {
+            return;
+        }
+
+        // Update ndMaterial physics properties from the OgreNewt MaterialPair.
+        // const_cast is intentional: these are mutable physics-state fields.
+        OgreNewtMaterial* self = const_cast<OgreNewtMaterial*>(this);
+        self->m_restitution = static_cast<ndFloat32>(pair->getDefaultElasticity());
+        self->m_softness = static_cast<ndFloat32>(pair->getDefaultSoftness());
+        self->m_staticFriction0 = static_cast<ndFloat32>(pair->getDefaultStaticFriction());
+        self->m_staticFriction1 = static_cast<ndFloat32>(pair->getDefaultStaticFriction());
+        self->m_dynamicFriction0 = static_cast<ndFloat32>(pair->getDefaultKineticFriction());
+        self->m_dynamicFriction1 = static_cast<ndFloat32>(pair->getDefaultKineticFriction());
+        self->m_skinMargin = static_cast<ndFloat32>(pair->getDefaultSurfaceThickness());
+
+        if (pair->getContactCallback())
+        {
+            pair->getContactCallback()->contactsProcess(ContactJoint(const_cast<ndContact*>(contact)), timestep, 0);
+        }
+    }
+
+    // Called by ndContactCallback's private dispatcher during broad-phase for
+    // NEW contact pairs. Body pointers arrive as direct function arguments --
+    // never via GetBody0/GetBody1 -- so they are always correct regardless of ABI.
+    bool OgreNewtMaterial::OnAabbOverlap(const ndBodyKinematic* const body0, const ndBodyKinematic* const body1) const
+    {
+        if (!body0 || !body1)
+        {
+            return true;
+        }
+
+        // Self-collision group suppression.
+        // Bodies in the same non-zero group do not collide with each other
+        // (used for ragdolls, articulations, compound vehicles, etc.)
+        const unsigned int g0 = resolveCollisionGroup(body0);
+        const unsigned int g1 = resolveCollisionGroup(body1);
+        if (g0 != 0u && g0 == g1)
+        {
+            return false;
+        }
+
+        if (!m_world)
+        {
+            return true;
+        }
+
+        MaterialPair* pair = m_world->findMaterialPair((int)m_id0, (int)m_id1);
+        if (!pair)
+        {
+            return true;
+        }
+
+        if (!pair->getDefaultCollidable())
+        {
+            return false;
+        }
+
+        if (!pair->getContactCallback())
+        {
+            return true;
+        }
+
+        // Resolve OgreNewt::Body* for the user callback.
+        // Safe: we have raw body ptrs from function arguments, not from inline getters.
+        OgreNewt::Body* ob0 = resolveOgreBody(body0);
+        OgreNewt::Body* ob1 = resolveOgreBody(body1);
+        if (!ob0 || !ob1)
+        {
+            // One or both bodies are Newton-internal (no OgreNewt wrapper).
+            // Allow the collision -- nothing user-side to suppress it.
+            return true;
+        }
+
+        return pair->getContactCallback()->onAABBOverlap(ob0, ob1, 0) != 0;
+    }
+
+    // Called by ndContactCallback's private dispatcher for compound shape pairs.
+    // We do NOT call GetBody0/GetBody1 -- see the ABI note.
+    // Body pointers cannot be reconstructed safely here, so we pass nullptr to
+    // the user callback and let them decide based on sub-shape instances alone.
+    bool OgreNewtMaterial::OnAabbOverlap(const ndContact* const contact, ndFloat32 /*timestep*/, const ndShapeInstance& inst0, const ndShapeInstance& inst1) const
+    {
+        /*if (!contact || !m_world)
+        {
+            return true;
+        }
+
+        MaterialPair* pair = m_world->findMaterialPair((int)m_id0, (int)m_id1);
+        if (!pair || !pair->getContactCallback())
+        {
+            return true;
+        }
+
+        return pair->getContactCallback()->onCompoundSubShapeOverlap(nullptr, nullptr, &inst0, &inst1);*/
+
+        return true;
+    }
+
+    // =========================================================================
+    // ContactNotify
+    // =========================================================================
+
+    ContactNotify::ContactNotify(OgreNewt::World* world) : ndContactCallback(), m_world(world), m_ogreNewtBody(nullptr), m_userData(nullptr)
+    {
+        // Wire up the fallback material so virtual dispatch reaches our overrides
+        // even for contacts whose shape-material IDs have no registered pair.
+        m_fallbackMaterial.m_world = world;
+        m_fallbackMaterial.m_id0 = 0;
+        m_fallbackMaterial.m_id1 = 0;
+
+        // Sensible physics defaults for the fallback.
         m_fallbackMaterial.m_restitution = 0.4f;
         m_fallbackMaterial.m_staticFriction0 = 0.9f;
         m_fallbackMaterial.m_staticFriction1 = 0.9f;
@@ -26,196 +191,71 @@ namespace OgreNewt
         m_localMaterials.clear();
     }
 
+    // Wraps the incoming ndApplicationMaterial in an OgreNewtMaterial that carries
+    // m_id0, m_id1, and m_world. Because ndContactCallback calls Clone() on the
+    // registered material each time a new contact is created, every live contact
+    // gets an OgreNewtMaterial whose callbacks can look up the MaterialPair without
+    // ever calling GetBody0/GetBody1.
     ndApplicationMaterial& ContactNotify::RegisterMaterial(const ndApplicationMaterial& material, ndUnsigned32 id0, ndUnsigned32 id1)
     {
-        auto key = std::make_pair(std::min(id0, id1), std::max(id0, id1));
-        auto& entry = m_localMaterials[key];
-        entry = material;
+        const ndUnsigned32 lo = std::min(id0, id1);
+        const ndUnsigned32 hi = std::max(id0, id1);
+        auto key = std::make_pair(lo, hi);
 
-        // Call base class method to actually add to Newton's internal graph
-        ndApplicationMaterial& matRef = ndContactCallback::RegisterMaterial(entry, id0, id1);
+        OgreNewtMaterial& entry = m_localMaterials[key];
 
-        // Also register reverse order, because Newton sometimes hashes differently
-        // if (id0 != id1)
-        //   ndContactCallback::RegisterMaterial(entry, id1, id0);
+        // Copy base ndApplicationMaterial properties from caller.
+        static_cast<ndApplicationMaterial&>(entry) = material;
 
-        return matRef;
+        // Bake our extra fields so Clone() produces a fully-wired OgreNewtMaterial.
+        entry.m_id0 = lo;
+        entry.m_id1 = hi;
+        entry.m_world = m_world;
+
+        // Delegate to ndContactCallback which stores a Clone() of 'entry' in its
+        // internal material graph. Because entry is OgreNewtMaterial, Clone()
+        // returns OgreNewtMaterial -- preserving id0/id1/world on every contact.
+        return ndContactCallback::RegisterMaterial(entry, id0, id1);
     }
 
+    // Newton calls this once per contact to pick the ndMaterial* stored on
+    // ndContact::m_material. That pointer is cast to ndApplicationMaterial* and
+    // its virtual OnContactCallback is dispatched.
+    //
+    // ndContactCallback::GetMaterial NEVER returns nullptr -- for unregistered
+    // pairs it returns &m_defaultMaterial, which is a plain ndApplicationMaterial
+    // whose virtual methods are all no-ops. We intercept that case and substitute
+    // our OgreNewtMaterial fallback so virtual dispatch always reaches our overrides.
     ndMaterial* ContactNotify::GetMaterial(const ndContact* const contact, const ndShapeInstance& inst0, const ndShapeInstance& inst1) const
     {
-        ndMaterial* mat = ndContactCallback::GetMaterial(contact, inst0, inst1);
-        if (mat)
+        const ndUnsigned32 id0 = ndUnsigned32(inst0.GetMaterial().m_userId);
+        const ndUnsigned32 id1 = ndUnsigned32(inst1.GetMaterial().m_userId);
+
+        ndMaterial* mat = ndContactCallback::GetMaterial(id0, id1);
+
+        // ndMaterial is not polymorphic. The graph always stores ndApplicationMaterial*
+        // (either our OgreNewtMaterial or the base-class default), so static_cast is safe.
+        // Then dynamic_cast on the polymorphic ndApplicationMaterial* to detect our subclass.
+        ndApplicationMaterial* appMat = static_cast<ndApplicationMaterial*>(mat);
+        if (dynamic_cast<OgreNewtMaterial*>(appMat))
         {
-            return mat;
+            return appMat;
         }
 
-        // fallback if nothing found (for safety)
+        // The base class returned its internal m_defaultMaterial (plain
+        // ndApplicationMaterial -- no pair was registered). Return our
+        // OgreNewtMaterial fallback so virtual dispatch reaches our overrides.
+        // Update ids so OnContactCallback can look up any catch-all MaterialPair
+        // the user may have registered under (0, 0).
+        m_fallbackMaterial.m_id0 = std::min(id0, id1);
+        m_fallbackMaterial.m_id1 = std::max(id0, id1);
+        m_fallbackMaterial.m_world = m_world;
         return &m_fallbackMaterial;
     }
 
-    void ContactNotify::OnContactCallback(const ndContact* const contact, ndFloat32 timestep) const
-    {
-        if (!contact)
-        {
-            return;
-        }
-
-        // Get actual Newton material
-        ndMaterial* const mat = const_cast<ndMaterial*>(contact->GetMaterial());
-        if (!mat)
-        {
-            return;
-        }
-
-        // --- use Newton's real shape IDs ---
-        const ndUnsigned32 id0 = contact->GetBody0()->GetCollisionShape().m_shapeMaterial.m_userId;
-        const ndUnsigned32 id1 = contact->GetBody1()->GetCollisionShape().m_shapeMaterial.m_userId;
-
-        // look up in your engine map
-        MaterialPair* pair = m_world->findMaterialPair((int)id0, (int)id1);
-        if (!pair)
-        {
-            return;
-        }
-
-        mat->m_restitution = static_cast<ndFloat32>(pair->getDefaultElasticity());
-        mat->m_softness = static_cast<ndFloat32>(pair->getDefaultSoftness());
-        mat->m_staticFriction0 = static_cast<ndFloat32>(pair->getDefaultStaticFriction());
-        mat->m_staticFriction1 = static_cast<ndFloat32>(pair->getDefaultStaticFriction());
-        mat->m_dynamicFriction0 = static_cast<ndFloat32>(pair->getDefaultKineticFriction());
-        mat->m_dynamicFriction1 = static_cast<ndFloat32>(pair->getDefaultKineticFriction());
-        mat->m_skinMargin = static_cast<ndFloat32>(pair->getDefaultSurfaceThickness());
-
-        if (pair->getContactCallback())
-        {
-            pair->getContactCallback()->contactsProcess(ContactJoint(const_cast<ndContact*>(contact)), timestep, 0);
-        }
-    }
-
-    bool ContactNotify::OnAabbOverlap(const ndContact* const contact, ndFloat32) const
-    {
-        if (!contact)
-        {
-            return true;
-        }
-
-        ndBodyKinematic* b0 = contact->GetBody0();
-        ndBodyKinematic* b1 = contact->GetBody1();
-        if (!b0 || !b1)
-        {
-            return true;
-        }
-
-        // ── Suppress intra-articulation collisions ────────────────────────────────
-        // Both bodies belonging to the same ndModelArticulation means they are part
-        // of the same spider (or any articulated model). No self-collision.
-        ndModel* model0 = b0->GetModel();
-        ndModel* model1 = b1->GetModel();
-        if (model0 && model0 == model1)
-        {
-            return false;
-        }
-
-        // use Newton's real shape user IDs to find the pair
-        const ndInt64 id0 = b0->GetCollisionShape().m_shapeMaterial.m_userId;
-        const ndInt64 id1 = b1->GetCollisionShape().m_shapeMaterial.m_userId;
-        MaterialPair* pair = m_world->findMaterialPair((int)id0, (int)id1);
-        if (!pair || !pair->getContactCallback())
-        {
-            return true;
-        }
-
-        if (!pair->getDefaultCollidable())
-        {
-            return false;
-        }
-
-        auto& notifyPtr0 = b0->GetNotifyCallback();
-        auto& notifyPtr1 = b1->GetNotifyCallback();
-
-        if (!notifyPtr0 || !notifyPtr1)
-        {
-            return true;
-        }
-
-        BodyNotify* n0 = dynamic_cast<BodyNotify*>(*notifyPtr0);
-        BodyNotify* n1 = dynamic_cast<BodyNotify*>(*notifyPtr1);
-
-        if (!n0 || !n1)
-        {
-            return true;
-        }
-
-        OgreNewt::Body* ob0 = n0->GetOgreNewtBody();
-        OgreNewt::Body* ob1 = n1->GetOgreNewtBody();
-
-        if (!ob0 || !ob1)
-        {
-            return true;
-        }
-
-        const unsigned int g0 = ob0->getSelfCollisionGroup();
-        const unsigned int g1 = ob1->getSelfCollisionGroup();
-        if (g0 != 0 && g0 == g1)
-        {
-            // Same articulation group => no self-collision
-            return false;
-        }
-
-        // delegate to your engine callback
-        return pair->getContactCallback()->onAABBOverlap(ob0, ob1, 0) != 0;
-    }
-
-    bool ContactNotify::OnCompoundSubShapeOverlap(const ndContact* const contact, ndFloat32, const ndShapeInstance* const subA, const ndShapeInstance* const subB) const
-    {
-        if (!contact)
-        {
-            return true; // allow by default
-        }
-
-        ndBodyKinematic* b0 = contact->GetBody0();
-        ndBodyKinematic* b1 = contact->GetBody1();
-        if (!b0 || !b1)
-        {
-            return true;
-        }
-
-        // use Newton's real shape user IDs to find the pair
-        const ndUnsigned32 id0 = b0->GetCollisionShape().m_shapeMaterial.m_userId;
-        const ndUnsigned32 id1 = b1->GetCollisionShape().m_shapeMaterial.m_userId;
-        MaterialPair* pair = m_world->findMaterialPair((int)id0, (int)id1);
-        if (!pair || !pair->getContactCallback())
-        {
-            return true;
-        }
-
-        auto& notifyPtr0 = b0->GetNotifyCallback();
-        auto& notifyPtr1 = b1->GetNotifyCallback();
-
-        if (!notifyPtr0 || !notifyPtr1)
-        {
-            return true;
-        }
-
-        BodyNotify* n0 = dynamic_cast<BodyNotify*>(*notifyPtr0);
-        BodyNotify* n1 = dynamic_cast<BodyNotify*>(*notifyPtr1);
-
-        if (!n0 || !n1)
-        {
-            return true;
-        }
-
-        OgreNewt::Body* ob0 = n0->GetOgreNewtBody();
-        OgreNewt::Body* ob1 = n1->GetOgreNewtBody();
-        if (!ob0 || !ob1)
-        {
-            return true;
-        }
-
-        // delegate to your engine callback (return whether to keep this sub-shape contact)
-        return pair->getContactCallback()->onCompoundSubShapeOverlap(ob0, ob1, subA, subB);
-    }
+    // =========================================================================
+    // Backward-compat accessors
+    // =========================================================================
 
     void ContactNotify::setOgreNewtBody(OgreNewt::Body* body)
     {
@@ -236,4 +276,5 @@ namespace OgreNewt
     {
         return m_userData;
     }
-}
+
+} // namespace OgreNewt

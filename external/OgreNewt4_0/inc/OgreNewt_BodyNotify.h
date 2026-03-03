@@ -11,30 +11,48 @@ Ogre implementation of Newton Game Dynamics SDK 4.0
 
 namespace OgreNewt
 {
-	class Body;
+    class Body;
 
-	class _OgreNewtExport BodyNotify : public ndBodyNotify
-	{
-	public:
-		BodyNotify(Body* ogreNewtBody);
-		virtual ~BodyNotify();
+    class _OgreNewtExport BodyNotify : public ndBodyNotify
+    {
+    public:
+        BodyNotify(Body* ogreNewtBody);
+        virtual ~BodyNotify();
 
-		void SetMaterialId(int id) { m_materialId = id; }
-		int  GetMaterialId() const { return m_materialId; }
+        void SetMaterialId(int id)
+        {
+            m_materialId = id;
+        }
+        int GetMaterialId() const
+        {
+            return m_materialId;
+        }
 
-		void SetOgreNewtBody(Body* body) { m_ogreNewtBody = body; }
+        void SetOgreNewtBody(Body* body)
+        {
+            m_ogreNewtBody = body;
+        }
 
-		// Get the OgreNewt::Body pointer
-		Body* GetOgreNewtBody() const { return m_ogreNewtBody; }
+        // Get the OgreNewt::Body pointer
+        Body* GetOgreNewtBody() const
+        {
+            return m_ogreNewtBody;
+        }
 
-		// Newton 4.0 notification callbacks
-		virtual void OnTransform(ndFloat32 timestep, const ndMatrix& matrix) override;
-		virtual void OnApplyExternalForce(ndInt32 threadIndex, ndFloat32 timestep) override;
+        // Newton 4.0 notification callbacks
+        virtual void OnTransform(ndFloat32 timestep, const ndMatrix& matrix) override;
+        virtual void OnApplyExternalForce(ndInt32 threadIndex, ndFloat32 timestep) override;
 
-	private:
-		Body* m_ogreNewtBody;
-		int m_materialId { 0 };
-	};
+        // Called from World::PostUpdate() (Newton's own thread, all workers quiesced).
+        // Copies the Body's live cur/prev transform fields into the snap fields so the
+        // main thread can safely read them from Body::updateNode() without racing against
+        // Newton's substep worker threads.
+        void CaptureTransform();
+
+    private:
+        Body* m_ogreNewtBody;
+        int m_materialId{0};
+    };
 }
 
 #endif

@@ -36,10 +36,11 @@ namespace OgreNewt
 
 		friend class Vehicle;
 		friend class World;
+        friend class BodyNotify;
 	public:
 
 		Body(World* world, Ogre::SceneManager* sceneManager, const OgreNewt::CollisionPtr& col, Ogre::SceneMemoryMgrTypes memoryType = Ogre::SceneMemoryMgrTypes::SCENE_DYNAMIC, NotifyKind notifyKind = NotifyKind::Default);
-		Body(World* world, Ogre::SceneManager* sceneManager, ndBodyKinematic* body, Ogre::SceneMemoryMgrTypes memoryType = Ogre::SceneMemoryMgrTypes::SCENE_DYNAMIC, NotifyKind notifyKind = NotifyKind::Default);
+        Body(World* world, Ogre::SceneManager* sceneManager, ndSharedPtr<ndBody> bodyPtr, Ogre::SceneMemoryMgrTypes memoryType = Ogre::SceneMemoryMgrTypes::SCENE_DYNAMIC, NotifyKind notifyKind = NotifyKind::Default);
 		Body(World* world, Ogre::SceneManager* sceneManager, Ogre::SceneMemoryMgrTypes memoryType = Ogre::SceneMemoryMgrTypes::SCENE_DYNAMIC);
 
 		virtual ~Body();
@@ -52,7 +53,10 @@ namespace OgreNewt
 		void* getUserData() const { return m_userdata; }
 #endif
 
-		ndBodyKinematic* getNewtonBody() const { return m_body; }
+		virtual ndBodyKinematic* getNewtonBody() const
+        {
+            return *m_bodyPtr ? const_cast<ndBody*>(*m_bodyPtr)->GetAsBodyKinematic() : nullptr;
+        }
 
 		Ogre::SceneNode* getOgreNode() const { return m_node; }
 		Ogre::ManualObject* getDebugCollisionLines() { return m_debugCollisionLines; }
@@ -194,12 +198,14 @@ namespace OgreNewt
 		void setSelfCollisionGroup(unsigned int selfCollisionGroup);
 		unsigned int getSelfCollisionGroup() const;
 
-		void setBodyNotify(BodyNotify* bodyNotify);
+		void setBodyNotify(ndSharedPtr<ndBodyNotify> bodyNotifyPtr);
 	private:
 		void dispatchContacts();
+
+		void captureTransformSnapshot();
 	protected:
-		ndBodyKinematic* m_body;
-		BodyNotify* m_bodyNotify; // Store the notification object
+        ndSharedPtr<ndBody> m_bodyPtr;
+        ndSharedPtr<ndBodyNotify> m_bodyNotifyPtr; // Store the notification object
 		const MaterialID* m_matid;
 		World* m_world;
 		Ogre::Vector3 m_gravity;
@@ -214,6 +220,14 @@ namespace OgreNewt
 		Ogre::Quaternion m_curRotation;
 		Ogre::Quaternion m_prevRotation;
 		Ogre::Quaternion m_lastOrientation;
+
+		// ── Transform snapshot (written by PostUpdate on Newton's thread,
+        //    read by main thread in updateNode — no race) ──────────────────
+        Ogre::Vector3 m_snapCurPosit;
+        Ogre::Vector3 m_snapPrevPosit;
+        Ogre::Quaternion m_snapCurRotation;
+        Ogre::Quaternion m_snapPrevRotation;
+        bool m_snapUpdateRotation;
 
 #ifndef OGRENEWT_NO_OGRE_ANY
 		OgreNewt::Any m_userdata;

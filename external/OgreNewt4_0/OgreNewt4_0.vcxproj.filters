@@ -12,16 +12,7 @@
     <ClCompile Include="src\OgreNewt_BasicJoints.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\OgreNewt_Body.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\OgreNewt_BodyInAABBIterator.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\OgreNewt_Collision.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\OgreNewt_CollisionPrimitives.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\OgreNewt_CollisionSerializer.cpp">
@@ -57,9 +48,6 @@
     <ClCompile Include="src\OgreNewt_Tools.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\OgreNewt_World.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\OgreNewt_PlayerController.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -84,9 +72,6 @@
     <ClCompile Include="src\OgreNewt_BodyNotify.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\OgreNewt_ContactNotify.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\ndVehicleCommon.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -106,6 +91,21 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\OgreNewt_SpiderBody.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\OgreNewt_World.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\OgreNewt_Body.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\OgreNewt_ContactNotify.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\OgreNewt_Collision.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\OgreNewt_CollisionPrimitives.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

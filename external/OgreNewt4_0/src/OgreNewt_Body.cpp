@@ -1,4 +1,4 @@
-#include "OgreNewt_Stdafx.h"
+﻿#include "OgreNewt_Stdafx.h"
 #include "OgreNewt_Body.h"
 #include "OgreNewt_BodyNotify.h"
 #include "OgreNewt_Collision.h"
@@ -15,6 +15,9 @@
 
 namespace OgreNewt
 {
+    // ─────────────────────────────────────────────────────────────────────────────
+    // Constructor 1 — creates its own ndBodyDynamic (the normal path)
+    // ─────────────────────────────────────────────────────────────────────────────
     Body::Body(World* world, Ogre::SceneManager* sceneManager, const OgreNewt::CollisionPtr& collisionPtr, Ogre::SceneMemoryMgrTypes memoryType, NotifyKind notifyKind) :
         m_world(world),
         m_sceneManager(sceneManager),
@@ -22,13 +25,7 @@ namespace OgreNewt
         m_categoryType(0),
         m_node(nullptr),
         m_matid(nullptr),
-        m_bodyNotify(nullptr), // Initialize notification object
-#ifndef OGRENEWT_NO_OGRE_ANY
-        m_userdata(),
-        m_userdata2(),
-#else
-        m_userdata(nullptr),
-#endif
+        m_bodyPtr(new ndBodyDynamic()),
         m_nodePosit(Ogre::Vector3::ZERO),
         m_curPosit(Ogre::Vector3::ZERO),
         m_prevPosit(Ogre::Vector3::ZERO),
@@ -39,6 +36,13 @@ namespace OgreNewt
         m_lastOrientation(Ogre::Quaternion::IDENTITY),
         m_updateRotation(false),
         m_validToUpdateStatic(false),
+        // Snap fields mirror live fields. captureTransformSnapshot() keeps them in
+        // sync once physics starts (called from World::PostUpdate on Newton's thread).
+        m_snapCurPosit(Ogre::Vector3::ZERO),
+        m_snapPrevPosit(Ogre::Vector3::ZERO),
+        m_snapCurRotation(Ogre::Quaternion::IDENTITY),
+        m_snapPrevRotation(Ogre::Quaternion::IDENTITY),
+        m_snapUpdateRotation(false),
         m_memoryType(memoryType),
         m_debugCollisionLines(nullptr),
         m_debugCollisionItem(nullptr),
@@ -50,66 +54,54 @@ namespace OgreNewt
         m_renderUpdateCallback(nullptr),
         m_selfCollisionGroup(0)
     {
-        ndMatrix matrix(ndGetIdentityMatrix());
-        OgreNewt::Converters::QuatPosToMatrix(m_curRotation, m_curPosit, matrix);
-
         switch (notifyKind)
         {
         case NotifyKind::Vehicle:
-            m_bodyNotify = new VehicleNotify(static_cast<Vehicle*>(this));
+            m_bodyNotifyPtr = new VehicleNotify(static_cast<Vehicle*>(this));
             break;
         case NotifyKind::ComplexVehicle:
-            m_bodyNotify = new ComplexVehicleNotify(static_cast<ComplexVehicle*>(this));
+            m_bodyNotifyPtr = new ComplexVehicleNotify(static_cast<ComplexVehicle*>(this));
             break;
         default:
-            m_bodyNotify = new BodyNotify(this);
+            m_bodyNotifyPtr = new BodyNotify(this);
             break;
         }
 
-        m_body = new ndBodyDynamic();
-        m_body->SetMatrix(matrix);
+        ndMatrix matrix(ndGetIdentityMatrix());
+        OgreNewt::Converters::QuatPosToMatrix(m_curRotation, m_curPosit, matrix);
+        getNewtonBody()->SetMatrix(matrix);
 
         ndShapeInstance* srcInst = collisionPtr->getShapeInstance();
         if (srcInst)
         {
-            ndShapeInstance shapeInst(*srcInst);
-            m_body->SetCollisionShape(shapeInst);
+            getNewtonBody()->SetCollisionShape(ndShapeInstance(*srcInst));
         }
         else
         {
-            ndShapeInstance shapeInst(collisionPtr->getNewtonCollision());
-            m_body->SetCollisionShape(shapeInst);
+            getNewtonBody()->SetCollisionShape(ndShapeInstance(collisionPtr->getNewtonCollision()));
         }
 
-        // IMPORTANT: world mutation must be queued
         m_world->enqueuePhysicsAndWait(
             [this](World& w)
             {
-                // attach notify + add to world on world thread
-                m_body->SetNotifyCallback(m_bodyNotify);
-                w.addBody(m_body);
-
-                // damping also touches the ndBody
+                getNewtonBody()->SetNotifyCallback(m_bodyNotifyPtr); // pass SharedPtr directly
+                w.addBody(m_bodyPtr);                                // pass m_bodyPtr, not getNewtonBody()
                 setLinearDamping(w.getDefaultLinearDamping() * (60.0f / w.getUpdateFPS()));
                 setAngularDamping(w.getDefaultAngularDamping() * (60.0f / w.getUpdateFPS()));
             });
     }
 
-    Body::Body(World* world, Ogre::SceneManager* sceneManager, ndBodyKinematic* body, Ogre::SceneMemoryMgrTypes memoryType, NotifyKind notifyKind) :
+    // ─────────────────────────────────────────────────────────────────────────────
+    // Constructor 2 — wraps an externally-created ndBodyKinematic raw pointer
+    // ─────────────────────────────────────────────────────────────────────────────
+    Body::Body(World* world, Ogre::SceneManager* sceneManager, ndSharedPtr<ndBody> bodyPtr, Ogre::SceneMemoryMgrTypes memoryType, NotifyKind notifyKind) :
         m_world(world),
         m_sceneManager(sceneManager),
-        m_body(body),
+        m_bodyPtr(bodyPtr),
         m_sceneMemoryType(memoryType),
         m_categoryType(0),
         m_node(nullptr),
         m_matid(nullptr),
-        m_bodyNotify(nullptr), // Initialize notification object
-#ifndef OGRENEWT_NO_OGRE_ANY
-        m_userdata(),
-        m_userdata2(),
-#else
-        m_userdata(nullptr),
-#endif
         m_nodePosit(Ogre::Vector3::ZERO),
         m_curPosit(Ogre::Vector3::ZERO),
         m_prevPosit(Ogre::Vector3::ZERO),
@@ -120,6 +112,11 @@ namespace OgreNewt
         m_lastOrientation(Ogre::Quaternion::IDENTITY),
         m_updateRotation(false),
         m_validToUpdateStatic(false),
+        m_snapCurPosit(Ogre::Vector3::ZERO),
+        m_snapPrevPosit(Ogre::Vector3::ZERO),
+        m_snapCurRotation(Ogre::Quaternion::IDENTITY),
+        m_snapPrevRotation(Ogre::Quaternion::IDENTITY),
+        m_snapUpdateRotation(false),
         m_memoryType(memoryType),
         m_debugCollisionLines(nullptr),
         m_debugCollisionItem(nullptr),
@@ -131,50 +128,42 @@ namespace OgreNewt
         m_renderUpdateCallback(nullptr),
         m_selfCollisionGroup(0)
     {
-        if (!m_body)
-        {
-            return;
-        }
 
         switch (notifyKind)
         {
         case NotifyKind::Vehicle:
-            m_bodyNotify = new VehicleNotify(static_cast<Vehicle*>(this));
+            m_bodyNotifyPtr = new VehicleNotify(static_cast<Vehicle*>(this));
             break;
         case NotifyKind::ComplexVehicle:
-            m_bodyNotify = new ComplexVehicleNotify(static_cast<ComplexVehicle*>(this));
+            m_bodyNotifyPtr = new ComplexVehicleNotify(static_cast<ComplexVehicle*>(this));
             break;
         default:
-            m_bodyNotify = new BodyNotify(this);
+            m_bodyNotifyPtr = new BodyNotify(this);
             break;
         }
 
         m_world->enqueuePhysicsAndWait(
             [this](World& w)
             {
-                m_body->SetNotifyCallback(m_bodyNotify);
-                w.addBody(m_body);
-
+                getNewtonBody()->SetNotifyCallback(m_bodyNotifyPtr); // pass SharedPtr directly
+                w.addBody(m_bodyPtr);                                // pass m_bodyPtr, not getNewtonBody()
                 setLinearDamping(w.getDefaultLinearDamping() * (60.0f / w.getUpdateFPS()));
                 setAngularDamping(w.getDefaultAngularDamping() * (60.0f / w.getUpdateFPS()));
             });
     }
 
+    // ─────────────────────────────────────────────────────────────────────────────
+    // Constructor 3 — deferred: subclass sets getNewtonBody() / getNewtonBody() later
+    // ─────────────────────────────────────────────────────────────────────────────
     Body::Body(World* world, Ogre::SceneManager* sceneManager, Ogre::SceneMemoryMgrTypes memoryType) :
         m_world(world),
         m_sceneManager(sceneManager),
-        m_body(nullptr),
-        m_bodyNotify(nullptr), // Initialize notification object
+        m_bodyPtr(),
+        m_bodyNotifyPtr(),
         m_sceneMemoryType(memoryType),
         m_categoryType(0),
         m_node(nullptr),
         m_matid(nullptr),
-#ifndef OGRENEWT_NO_OGRE_ANY
-        m_userdata(),
-        m_userdata2(),
-#else
-        m_userdata(nullptr),
-#endif
         m_nodePosit(Ogre::Vector3::ZERO),
         m_curPosit(Ogre::Vector3::ZERO),
         m_prevPosit(Ogre::Vector3::ZERO),
@@ -185,6 +174,11 @@ namespace OgreNewt
         m_lastOrientation(Ogre::Quaternion::IDENTITY),
         m_updateRotation(false),
         m_validToUpdateStatic(false),
+        m_snapCurPosit(Ogre::Vector3::ZERO),
+        m_snapPrevPosit(Ogre::Vector3::ZERO),
+        m_snapCurRotation(Ogre::Quaternion::IDENTITY),
+        m_snapPrevRotation(Ogre::Quaternion::IDENTITY),
+        m_snapUpdateRotation(false),
         m_memoryType(memoryType),
         m_debugCollisionLines(nullptr),
         m_debugCollisionItem(nullptr),
@@ -196,52 +190,47 @@ namespace OgreNewt
         m_renderUpdateCallback(nullptr),
         m_selfCollisionGroup(0)
     {
+        // getNewtonBody() intentionally empty — subclass initialises them.
     }
 
+    // ─────────────────────────────────────────────────────────────────────────────
+    // Destructor
+    // ─────────────────────────────────────────────────────────────────────────────
     Body::~Body()
     {
-        // OGRE-side cleanup can stay here (render thread / main thread etc.)
         if (m_debugCollisionLines)
         {
-            Ogre::SceneNode* node = static_cast<Ogre::SceneNode*>(m_debugCollisionLines->getParentNode());
+            auto* node = static_cast<Ogre::SceneNode*>(m_debugCollisionLines->getParentNode());
             node->detachObject(m_debugCollisionLines);
             m_sceneManager->destroyManualObject(m_debugCollisionLines);
             m_debugCollisionLines = nullptr;
         }
-
         detachNode();
         m_sceneManager = nullptr;
 
-        if (!m_world || !m_body)
+        if (!m_world || !m_bodyPtr)
         {
             return;
         }
 
-        // Capture what we need *before* we null out members
-        ndBodyKinematic* body = m_body;
-        BodyNotify* notify = m_bodyNotify;
-        const bool owner = m_isOwner;
-        World* world = m_world;
-
-        // Prevent accidental double-use from this point on
-        m_body = nullptr;
-        m_bodyNotify = nullptr;
-        m_world = nullptr;
-
-        // Queue the actual physics removal on the world thread.
-        // Using AndWait avoids notify pointing to a destructed Body.
-        world->enqueuePhysicsAndWait(
-            [body, notify, owner](World& w)
+        // Sever Newton -> OgreNewt back-pointer
+        auto& np = (*m_bodyPtr)->GetNotifyCallback();
+        if (np)
+        {
+            if (auto* bn = dynamic_cast<BodyNotify*>(*np))
             {
-                if (body)
-                {
-                    // make sure Newton will not call back into freed notify/body
-                    body->SetNotifyCallback(nullptr);
+                bn->SetOgreNewtBody(nullptr);
+            }
+        }
 
-                    // remove from world
-                    w.destroyBody(body);
-                }
-            });
+        // Capture ONLY m_bodyPtr — that's the one thing PostUpdate needs to RemoveBody.
+        // m_bodyNotifyPtr is owned by Newton via SetNotifyCallback; do NOT move it here.
+        ndSharedPtr<ndBody> bodyPtr = std::move(m_bodyPtr);
+        World* world = m_world;
+        m_world = nullptr;
+        // m_bodyNotifyPtr left intact — Newton drops it when body is removed
+
+        world->destroyBody(std::move(bodyPtr)); // ONE call, queue owns last ref
     }
 
     void Body::onTransformCallback(const ndMatrix& matrix)
@@ -282,6 +271,27 @@ namespace OgreNewt
         }
     }
 
+    // Called from BodyNotify::CaptureTransform(), which is called from World::PostUpdate().
+    // PostUpdate() runs on Newton's own thread after ALL substep worker threads have
+    // finished. It is therefore safe to read the live cur/prev fields here and copy them
+    // into the snap fields that the main thread will read from Body::updateNode().
+    //
+    // Threading guarantee:
+    //   - Workers write  m_curPosit / m_prevPosit / m_curRotation / m_prevRotation
+    //     during the step (OnTransform callbacks).
+    //   - PostUpdate()   writes m_snap* fields here (workers already done).
+    //   - Main thread    reads  m_snap* fields in updateNode() / interalPostUpdate().
+    //     By the time main thread runs interalPostUpdate(), the next frame's Update()
+    //     has already Sync()'d the step that wrote these snaps → no race.
+    void Body::captureTransformSnapshot()
+    {
+        m_snapCurPosit = m_curPosit;
+        m_snapPrevPosit = m_prevPosit;
+        m_snapCurRotation = m_curRotation;
+        m_snapPrevRotation = m_prevRotation;
+        m_snapUpdateRotation = m_updateRotation;
+    }
+
     void Body::standardForceCallback(OgreNewt::Body* me, float timestep, int threadIndex)
     {
         Ogre::Real mass;
@@ -310,6 +320,9 @@ namespace OgreNewt
     {
         m_node = node;
         m_updateRotation = updateRotation;
+        // Sync snap fields so the first updateNode() call (below) has correct data.
+        // Physics hasn't started yet so cur/prev are the spawn position set by the caller.
+        captureTransformSnapshot();
         updateNode(1.0f);
 
         m_lastPosit = m_node->getPosition();
@@ -389,64 +402,64 @@ namespace OgreNewt
 
     void Body::freeze()
     {
-        if (!m_body)
+        if (!getNewtonBody())
         {
             return;
         }
 
-        m_body->SetSleepState(true);
+        getNewtonBody()->SetSleepState(true);
     }
 
     void Body::unFreeze()
     {
-        if (!m_body)
+        if (!getNewtonBody())
         {
             return;
         }
 
-        m_body->SetSleepState(false);
+        getNewtonBody()->SetSleepState(false);
     }
 
     bool Body::isFreezed()
     {
-        if (!m_body)
+        if (!getNewtonBody())
         {
             return false;
         }
 
-        return m_body->GetSleepState();
+        return getNewtonBody()->GetSleepState();
     }
 
     void Body::setAutoSleep(int flag)
     {
-        if (!m_body)
+        if (!getNewtonBody())
         {
             return;
         }
 
         // use newtondynamics4 final api
-        m_body->SetAutoSleep(flag != 0);
+        getNewtonBody()->SetAutoSleep(flag != 0);
     }
 
     int Body::getAutoSleep()
     {
-        if (!m_body)
+        if (!getNewtonBody())
         {
             return 0;
         }
 
-        return m_body->GetAutoSleep() ? 1 : 0;
+        return getNewtonBody()->GetAutoSleep() ? 1 : 0;
     }
 
     void Body::scaleCollision(const Ogre::Vector3& scale)
     {
-        ndShapeInstance& collision = m_body->GetCollisionShape();
+        ndShapeInstance& collision = getNewtonBody()->GetCollisionShape();
         collision.SetScale(ndVector(scale.x, scale.y, scale.z, ndFloat32(0.0f)));
     }
 
     void Body::setPositionOrientation(const Ogre::Vector3& pos, const Ogre::Quaternion& orient, int threadIndex)
     {
-        if (m_body)
+        if (getNewtonBody())
         {
             m_curPosit = pos;
             m_prevPosit = pos;
@@ -454,9 +467,18 @@ namespace OgreNewt
             m_prevRotation = orient;
             m_validToUpdateStatic = true;
 
+            // Keep snap fields in sync: main-thread code (updateNode) reads snaps.
+            // This is a direct main-thread write so no race — physics is either not
+            // running yet, or this is a teleport that overwrites both live and snap.
+            m_snapCurPosit = pos;
+            m_snapPrevPosit = pos;
+            m_snapCurRotation = orient;
+            m_snapPrevRotation = orient;
+            m_snapUpdateRotation = m_updateRotation;
+
             ndMatrix matrix;
             OgreNewt::Converters::QuatPosToMatrix(orient, pos, matrix);
-            m_body->SetMatrix(matrix);
+            getNewtonBody()->SetMatrix(matrix);
 
             updateNode(1.0f);
         }
@@ -464,21 +486,21 @@ namespace OgreNewt
 
     void Body::setMassMatrix(Ogre::Real mass, const Ogre::Vector3& inertia)
     {
-        if (m_body)
+        if (getNewtonBody())
         {
             ndMatrix inertiaMatrix(ndGetIdentityMatrix());
             inertiaMatrix[0][0] = inertia.x;
             inertiaMatrix[1][1] = inertia.y;
             inertiaMatrix[2][2] = inertia.z;
-            m_body->SetMassMatrix(ndFloat32(mass), inertiaMatrix);
+            getNewtonBody()->SetMassMatrix(ndFloat32(mass), inertiaMatrix);
         }
     }
 
     void Body::setConvexIntertialMatrix(const Ogre::Vector3& inertia, const Ogre::Vector3& massOrigin)
     {
-        if (m_body)
+        if (getNewtonBody())
         {
-            ndShapeInstance& collision = m_body->GetCollisionShape();
+            ndShapeInstance& collision = getNewtonBody()->GetCollisionShape();
             ndVector inertiaVec(inertia.x, inertia.y, inertia.z, ndFloat32(0.0f));
             ndVector originVec(massOrigin.x, massOrigin.y, massOrigin.z, ndFloat32(0.0f));
             // collision.CalculateInertia(inertiaVec, originVec);
@@ -504,27 +526,24 @@ namespace OgreNewt
 
     void Body::setCollision(const OgreNewt::CollisionPtr& col)
     {
-        if (!m_body)
+        if (!getNewtonBody())
         {
             return;
         }
 
+        // The Collision always has a valid ndShapeInstance now (no old-model fallback).
         ndShapeInstance* srcInst = col->getShapeInstance();
         if (srcInst)
         {
+            // Deep-copy the instance so the body owns its own independent copy.
             ndShapeInstance shapeInst(*srcInst);
-            m_body->SetCollisionShape(shapeInst);
-        }
-        else
-        {
-            ndShapeInstance shapeInst(col->getNewtonCollision());
-            m_body->SetCollisionShape(shapeInst);
+            getNewtonBody()->SetCollisionShape(shapeInst);
         }
     }
 
     ndShapeInstance* Body::getNewtonCollision(void) const
     {
-        return &m_body->GetCollisionShape();
+        return &getNewtonBody()->GetCollisionShape();
     }
 
     void Body::getPositionOrientation(Ogre::Vector3& pos, Ogre::Quaternion& orient) const
@@ -562,7 +581,7 @@ namespace OgreNewt
     Ogre::AxisAlignedBox Body::getAABB() const
     {
         ndVector minBox, maxBox;
-        m_body->GetAABB(minBox, maxBox);
+        getNewtonBody()->GetAABB(minBox, maxBox);
         Ogre::AxisAlignedBox box;
         box.setMinimum(minBox.m_x, minBox.m_y, minBox.m_z);
         box.setMaximum(maxBox.m_x, maxBox.m_y, maxBox.m_z);
@@ -571,75 +590,86 @@ namespace OgreNewt
 
     void Body::getMassMatrix(Ogre::Real& mass, Ogre::Vector3& inertia) const
     {
-        ndVector inertiaVec = m_body->GetMassMatrix();
+        ndVector inertiaVec = getNewtonBody()->GetMassMatrix();
         mass = inertiaVec.m_w;
         inertia = Ogre::Vector3(inertiaVec.m_x, inertiaVec.m_y, inertiaVec.m_z);
     }
 
     Ogre::Real Body::getMass() const
     {
-        return m_body->GetMassMatrix().m_w;
+        return getNewtonBody()->GetMassMatrix().m_w;
     }
 
     Ogre::Vector3 Body::getInertia() const
     {
-        ndVector inertiaVec = m_body->GetMassMatrix();
+        ndVector inertiaVec = getNewtonBody()->GetMassMatrix();
         return Ogre::Vector3(inertiaVec.m_x, inertiaVec.m_y, inertiaVec.m_z);
     }
 
     void Body::getInvMass(Ogre::Real& mass, Ogre::Vector3& inertia) const
     {
-        ndVector invMassVec = m_body->GetInvMass();
+        ndVector invMassVec = getNewtonBody()->GetInvMass();
         mass = invMassVec.m_w;
         inertia = Ogre::Vector3(invMassVec.m_x, invMassVec.m_y, invMassVec.m_z);
     }
 
     Ogre::Vector3 Body::getOmega() const
     {
-        ndVector omega = m_body->GetOmega();
+        ndVector omega = getNewtonBody()->GetOmega();
         return Ogre::Vector3(omega.m_x, omega.m_y, omega.m_z);
     }
 
     Ogre::Vector3 Body::getVelocity() const
     {
-        ndVector velocity = m_body->GetVelocity();
+        ndVector velocity = getNewtonBody()->GetVelocity();
         return Ogre::Vector3(velocity.m_x, velocity.m_y, velocity.m_z);
     }
 
     Ogre::Vector3 Body::getVelocityAtPoint(const Ogre::Vector3& point) const
     {
         ndVector pointVec(point.x, point.y, point.z, ndFloat32(1.0f));
-        ndVector velocityOut = m_body->GetVelocityAtPoint(pointVec);
+        ndVector velocityOut = getNewtonBody()->GetVelocityAtPoint(pointVec);
         return Ogre::Vector3(velocityOut.m_x, velocityOut.m_y, velocityOut.m_z);
     }
 
     Ogre::Vector3 Body::getForce() const
     {
-        ndVector force = m_body->GetForce();
+        ndVector force = getNewtonBody()->GetForce();
         return Ogre::Vector3(force.m_x, force.m_y, force.m_z);
     }
 
     Ogre::Vector3 Body::getTorque() const
     {
-        ndVector torque = m_body->GetTorque();
+        ndVector torque = getNewtonBody()->GetTorque();
         return Ogre::Vector3(torque.m_x, torque.m_y, torque.m_z);
+    }
+
+    Ogre::Real Body::getLinearDamping() const
+    {
+        return getNewtonBody()->GetLinearDamping();
     }
 
     Ogre::Vector3 Body::getAngularDamping() const
     {
-        ndVector damping = m_body->GetAngularDamping();
+        ndVector damping = getNewtonBody()->GetAngularDamping();
         return Ogre::Vector3(damping.m_x, damping.m_y, damping.m_z);
+    }
+
+    Ogre::Vector3 Body::calculateInverseDynamicsForce(Ogre::Real timestep, Ogre::Vector3 desiredVelocity)
+    {
+        // TODO: What is the function for that?
+        return Ogre::Vector3();
     }
 
     void Body::setCenterOfMass(const Ogre::Vector3& centerOfMass)
     {
         ndVector com(centerOfMass.x, centerOfMass.y, centerOfMass.z, ndFloat32(1.0f));
-        m_body->SetCentreOfMass(com);
+        getNewtonBody()->SetCentreOfMass(com);
     }
 
     Ogre::Vector3 Body::getCenterOfMass() const
     {
-        const ndVector com = m_body->GetCentreOfMass();
+        const ndVector com = getNewtonBody()->GetCentreOfMass();
         return Ogre::Vector3(com.m_x, com.m_y, com.m_z);
     }
 
@@ -662,7 +692,7 @@ namespace OgreNewt
     void Body::enableGyroscopicTorque(bool enable)
     {
         // TODO: What here?
-        // m_body->SetGyroMode(enable);
+        // getNewtonBody()->SetGyroMode(enable);
         // ND4 has much more complexity, for now leave it as is.
     }
 
@@ -671,7 +701,7 @@ namespace OgreNewt
         m_matid = materialId ? materialId : m_world->getDefaultMaterialID();
         const int id = m_matid ? m_matid->getID() : 0;
 
-        ndSharedPtr<ndBodyNotify>& notifyPtr = m_body->GetNotifyCallback();
+        ndSharedPtr<ndBodyNotify>& notifyPtr = getNewtonBody()->GetNotifyCallback();
         if (notifyPtr)
         {
             if (auto* ogreNotify = dynamic_cast<BodyNotify*>(*notifyPtr))
@@ -680,11 +710,10 @@ namespace OgreNewt
             }
         }
 
-        // Must set on physics thread � Newton uses its own internal copy of the shape
         m_world->enqueuePhysicsAndWait(
             [this, id](World& w)
             {
-                ndShapeInstance& shape = m_body->GetCollisionShape();
+                ndShapeInstance& shape = getNewtonBody()->GetCollisionShape();
                 shape.m_shapeMaterial.m_userId = static_cast<ndUnsigned32>(id);
             });
     }
@@ -703,13 +732,13 @@ namespace OgreNewt
 
     void Body::setCollidable(bool collidable)
     {
-        ndShapeInstance& collision = m_body->GetCollisionShape();
+        ndShapeInstance& collision = getNewtonBody()->GetCollisionShape();
         collision.SetCollisionMode(collidable);
     }
 
     bool Body::getCollidable(void) const
     {
-        const ndShapeInstance& collision = m_body->GetCollisionShape();
+        const ndShapeInstance& collision = getNewtonBody()->GetCollisionShape();
         return collision.GetCollisionMode();
     }
 
@@ -749,26 +778,26 @@ namespace OgreNewt
 
     void Body::setBodyAngularVelocity(const Ogre::Vector3& desiredOmega, Ogre::Real timestep)
     {
-        ndVector bodyOmega = m_body->GetOmega();
+        ndVector bodyOmega = getNewtonBody()->GetOmega();
         ndVector dDesiredOmega(desiredOmega.x, desiredOmega.y, desiredOmega.z, ndFloat32(0.0f));
 
         ndVector omegaError = dDesiredOmega - bodyOmega;
 
-        ndMatrix bodyInertia = m_body->CalculateInertiaMatrix();
+        ndMatrix bodyInertia = getNewtonBody()->CalculateInertiaMatrix();
         ndVector angularImpulse = bodyInertia.RotateVector(omegaError);
 
         ndVector linearImpulse(ndFloat32(0.0f));
-        m_body->ApplyImpulsePair(linearImpulse, angularImpulse, timestep);
+        getNewtonBody()->ApplyImpulsePair(linearImpulse, angularImpulse, timestep);
     }
 
     void Body::setForce(const Ogre::Vector3& force)
     {
-        if (!m_body)
+        if (!getNewtonBody())
         {
             return;
         }
 
-        if (auto* dyn = m_body->GetAsBodyDynamic())
+        if (auto* dyn = getNewtonBody()->GetAsBodyDynamic())
         {
             ndVector f((ndFloat32)force.x, (ndFloat32)force.y, (ndFloat32)force.z, 0.0f);
             dyn->SetForce(f);
@@ -777,12 +806,12 @@ namespace OgreNewt
 
     void Body::setTorque(const Ogre::Vector3& torque)
     {
-        if (!m_body)
+        if (!getNewtonBody())
         {
             return;
         }
 
-        if (auto* dyn = m_body->GetAsBodyDynamic())
+        if (auto* dyn = getNewtonBody()->GetAsBodyDynamic())
         {
             ndVector t((ndFloat32)torque.x, (ndFloat32)torque.y, (ndFloat32)torque.z, 0.0f);
             dyn->SetTorque(t);
@@ -791,12 +820,12 @@ namespace OgreNewt
 
     void Body::addForce(const Ogre::Vector3& force)
     {
-        if (!m_body)
+        if (!getNewtonBody())
         {
             return;
         }
 
-        if (auto* dyn = m_body->GetAsBodyDynamic())
+        if (auto* dyn = getNewtonBody()->GetAsBodyDynamic())
         {
             // accumulate previous + new
             ndVector prev = dyn->GetForce();
@@ -807,12 +836,12 @@ namespace OgreNewt
 
     void Body::addTorque(const Ogre::Vector3& torque)
     {
-        if (!m_body)
+        if (!getNewtonBody())
         {
             return;
         }
 
-        if (auto* dyn = m_body->GetAsBodyDynamic())
+        if (auto* dyn = getNewtonBody()->GetAsBodyDynamic())
         {
             ndVector prev = dyn->GetTorque();
             ndVector t((ndFloat32)torque.x, (ndFloat32)torque.y, (ndFloat32)torque.z, 0.0f);
@@ -822,12 +851,12 @@ namespace OgreNewt
 
     void Body::addImpulse(const Ogre::Vector3& deltav, const Ogre::Vector3& posit, Ogre::Real timeStep)
     {
-        if (!m_body)
+        if (!getNewtonBody())
         {
             return;
         }
 
-        if (auto* dyn = m_body->GetAsBodyDynamic())
+        if (auto* dyn = getNewtonBody()->GetAsBodyDynamic())
         {
             ndVector v((ndFloat32)deltav.x, (ndFloat32)deltav.y, (ndFloat32)deltav.z, 0.0f);
             ndVector p((ndFloat32)posit.x, (ndFloat32)posit.y, (ndFloat32)posit.z, 1.0f);
@@ -837,12 +866,12 @@ namespace OgreNewt
 
     void Body::setLinearDamping(Ogre::Real damp)
     {
-        if (!m_body)
+        if (!getNewtonBody())
         {
             return;
         }
 
-        if (auto* dyn = m_body->GetAsBodyDynamic())
+        if (auto* dyn = getNewtonBody()->GetAsBodyDynamic())
         {
             dyn->SetLinearDamping(static_cast<ndFloat32>(damp));
         }
@@ -850,12 +879,12 @@ namespace OgreNewt
 
     void Body::setAngularDamping(const Ogre::Vector3& damp)
     {
-        if (!m_body)
+        if (!getNewtonBody())
         {
             return;
         }
 
-        if (auto* dyn = m_body->GetAsBodyDynamic())
+        if (auto* dyn = getNewtonBody()->GetAsBodyDynamic())
         {
             ndVector d(static_cast<ndFloat32>(damp.x), static_cast<ndFloat32>(damp.y), static_cast<ndFloat32>(damp.z), 0.0f);
             dyn->SetAngularDamping(d);
@@ -864,26 +893,26 @@ namespace OgreNewt
 
     void Body::setOmega(const Ogre::Vector3& omega)
     {
-        if (!m_body)
+        if (!getNewtonBody())
         {
             return;
         }
 
         ndVector w(static_cast<ndFloat32>(omega.x), static_cast<ndFloat32>(omega.y), static_cast<ndFloat32>(omega.z), 0.0f);
 
-        m_body->SetOmega(w);
+        getNewtonBody()->SetOmega(w);
     }
 
     void Body::setVelocity(const Ogre::Vector3& vel)
     {
-        if (!m_body)
+        if (!getNewtonBody())
         {
             return;
         }
 
         ndVector v(static_cast<ndFloat32>(vel.x), static_cast<ndFloat32>(vel.y), static_cast<ndFloat32>(vel.z), 0.0f);
 
-        m_body->SetVelocity(v);
+        getNewtonBody()->SetVelocity(v);
     }
 
     void Body::showDebugCollision(bool isStatic, bool show, const Ogre::ColourValue& color)
@@ -957,7 +986,7 @@ namespace OgreNewt
 
     Body* Body::getNext() const
     {
-        if (!m_world || !m_body)
+        if (!m_world || !getNewtonBody())
         {
             return nullptr;
         }
@@ -974,7 +1003,7 @@ namespace OgreNewt
             auto& bodySp = node->GetInfo();                          // ndSharedPtr<ndBody>& (most likely)
             ndBodyKinematic* const b = bodySp->GetAsBodyKinematic(); // or bodySp->GetAsBody()
 
-            if (b == m_body)
+            if (b == getNewtonBody())
             {
                 currentNode = node;
                 break;
@@ -993,7 +1022,7 @@ namespace OgreNewt
                     ndSharedPtr<ndBodyNotify>& notifyPtr = nextBody->GetNotifyCallback();
                     if (notifyPtr)
                     {
-                        // if you�re 100% sure it's always BodyNotify, keep static_cast.
+                        // if you’re 100% sure it's always BodyNotify, keep static_cast.
                         // Safer during debugging:
                         // if (auto* ogreNotify = dynamic_cast<BodyNotify*>(notify)) ...
                         BodyNotify* ogreNotify = dynamic_cast<BodyNotify*>(*notifyPtr);
@@ -1036,17 +1065,19 @@ namespace OgreNewt
         m_lastPosit = m_node->getPosition();
         m_lastOrientation = m_node->getOrientation();
 
-        const Ogre::Vector3 velocity = m_curPosit - m_prevPosit;
-        m_nodePosit = m_prevPosit + velocity * interpolatParam;
+        // Read from snap fields (written by PostUpdate on Newton's thread, NOT from the
+        // live m_curPosit / m_prevPosit which worker threads may still be writing).
+        const Ogre::Vector3 velocity = m_snapCurPosit - m_snapPrevPosit;
+        m_nodePosit = m_snapPrevPosit + velocity * interpolatParam;
 
-        if (m_updateRotation)
+        if (m_snapUpdateRotation)
         {
-            m_nodeRotation = Ogre::Quaternion::Slerp(interpolatParam, m_prevRotation, m_curRotation);
+            m_nodeRotation = Ogre::Quaternion::Slerp(interpolatParam, m_snapPrevRotation, m_snapCurRotation);
         }
 
         Ogre::Vector3 nodePosit = m_nodePosit;
         Ogre::Quaternion nodeRot = m_nodeRotation;
-        bool updateRot = m_updateRotation;
+        bool updateRot = m_snapUpdateRotation;
         bool updateStatic = m_validToUpdateStatic;
         Ogre::SceneNode* node = m_node;
         Ogre::Node* parent = node->getParent();
@@ -1060,7 +1091,7 @@ namespace OgreNewt
         {
             if (nullptr != m_renderUpdateCallback)
             {
-                m_renderUpdateCallback(m_node, m_nodePosit, m_nodeRotation, m_updateRotation, m_validToUpdateStatic);
+                m_renderUpdateCallback(m_node, m_nodePosit, m_nodeRotation, m_snapUpdateRotation, m_validToUpdateStatic);
             }
             else
             {
@@ -1076,7 +1107,7 @@ namespace OgreNewt
         {
             if (nullptr != m_renderUpdateCallback)
             {
-                m_renderUpdateCallback(m_node, m_nodePosit, m_nodeRotation, m_updateRotation, m_validToUpdateStatic);
+                m_renderUpdateCallback(m_node, m_nodePosit, m_nodeRotation, m_snapUpdateRotation, m_validToUpdateStatic);
             }
             else
             {
@@ -1100,12 +1131,12 @@ namespace OgreNewt
 
     void Body::clampAngularVelocity(Ogre::Real clampValue)
     {
-        ndVector omega = m_body->GetOmega();
+        ndVector omega = getNewtonBody()->GetOmega();
         ndFloat32 mag2 = omega.DotProduct(omega).GetScalar();
         if (mag2 > (clampValue * clampValue))
         {
             omega = omega.Normalize().Scale(clampValue);
-            m_body->SetOmega(omega);
+            getNewtonBody()->SetOmega(omega);
         }
     }
 
@@ -1155,20 +1186,19 @@ namespace OgreNewt
         return m_selfCollisionGroup;
     }
 
-    void Body::setBodyNotify(BodyNotify* bodyNotify)
+    void Body::setBodyNotify(ndSharedPtr<ndBodyNotify> bodyNotifyPtr)
     {
-        if (nullptr != m_bodyNotify)
+        if (!m_world || !m_bodyPtr)
         {
-            delete m_bodyNotify;
+            return;
         }
 
-        m_bodyNotify = bodyNotify;
+        m_bodyNotifyPtr = std::move(bodyNotifyPtr); // move, not copy
 
         m_world->enqueuePhysicsAndWait(
             [this](World& w)
             {
-                // attach notify + add to world on world thread
-                m_body->SetNotifyCallback(m_bodyNotify);
+                getNewtonBody()->SetNotifyCallback(m_bodyNotifyPtr);
             });
     }
 
@@ -1179,7 +1209,7 @@ namespace OgreNewt
             return;
         }
 
-        ndBodyKinematic* const me = m_body;
+        ndBodyKinematic* const me = getNewtonBody();
         if (!me)
         {
             return;

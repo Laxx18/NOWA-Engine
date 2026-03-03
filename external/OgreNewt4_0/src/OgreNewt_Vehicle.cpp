@@ -4,9 +4,29 @@
 
 using namespace OgreNewt;
 
-// -----------------------------------------------------------------------------
-// RayCastTire
-// -----------------------------------------------------------------------------
+// ─────────────────────────────────────────────────────────────────────────────
+// COMPLETE replacement for the RayCastTire constructor in OgreNewt_Vehicle.cpp
+//
+// ROOT CAUSE of the 3-work-4th-crashes bug:
+//   The base ndJointBilateralConstraint(count, body0, body1, frame) constructor
+//   calls AttachJoint(body0, &m_body0Node) and AttachJoint(body1, &m_body1Node),
+//   allocating linked-list nodes in body0 (chassis) and body1 (sentinel).
+//   The old hack cleared m_body0Node/m_body1Node to zero, but the nodes were
+//   already allocated and remain in the chassis body's joint list — they are
+//   just now orphaned (no pointer back to them).
+//   AddJoint then calls AttachJoint again, allocating SECOND nodes.
+//   After 3 tires the chassis has 6 nodes (3 orphaned + 3 real).
+//   The 4th heap allocation for an ndBodyDynamic (tire 4) lands adjacent to this
+//   corrupted list memory → the tire body's m_body field is overwritten → 0xdddd.
+//
+// FIX:
+//   Pass sentinel for BOTH bodies in the base constructor so AttachJoint is
+//   never called on the chassis body there. Then immediately overwrite m_body0
+//   (protected ndConstraint member, accessible from this subclass) with the real
+//   chassis pointer. AddJoint later calls AttachJoint exactly once on chassis
+//   and sentinel — clean, no orphaned nodes.
+// ─────────────────────────────────────────────────────────────────────────────
+
 RayCastTire::RayCastTire(ndWorld* world, const ndMatrix& pinAndPivotFrame, const ndVector& pin, Body* child, Body* parentChassisBody, Vehicle* parent, const TireConfiguration& tireConfiguration, ndReal radius) :
     ndJointBilateralConstraint(3, parentChassisBody->getNewtonBody(), world->GetSentinelBody(), /*pinAndPivotFrame*/ ndGetIdentityMatrix()),
     m_hitParam(1.1f),
@@ -65,18 +85,19 @@ RayCastTire::RayCastTire(ndWorld* world, const ndMatrix& pinAndPivotFrame, const
 
     CalculateLocalMatrix(chassisMatrix, m_localMatrix0, m_localMatrix1);
 
-    // Tire matrix: transform of this tire body, then converted to local matrices
+    // Tire matrix: transform of this tire body, then converted to local matrices.
+    // m_localTireMatrix must be local — e.g. if car is placed at y=2.5 in the air,
+    // the tire must still have only a small y offset relative to the chassis.
     ndMatrix tireMatrix = child->getNewtonBody()->GetMatrix();
-
-    // Note: m_localTireMatrix must be really local.
-    // // E.g. if Car is created in the air with y = 2.5, the tire must still be local to its chassis and having just a small amount of y!
     CalculateLocalMatrix(tireMatrix, m_localTireMatrix, m_globalTireMatrix);
 
     m_vehicle->setChassisMatrix(chassisMatrix);
 
     child->setJointRecursiveCollision(false);
 
-    // Is already done in basic joints VehicleTire
+    // Joint is added to world by VehicleTire via SetSupportJoint/AddJoint — do NOT
+    // call world->AddJoint(this) here (would be the second add → crash).
+    // Is already done in basic joints VehicleTire:
     // world->AddJoint(this);
 }
 
@@ -495,6 +516,13 @@ void RayCastTire::longitudinalAndLateralFriction2(ndVector tireposit, ndVector l
 
 void RayCastTire::processPreUpdate(Ogre::Real timestep, int threadIndex)
 {
+    // m_body0 can be null if chassis body was removed from world
+    // (e.g. during scene shutdown) before the tire joint is destroyed.
+    if (!m_body0 || !m_body1)
+    {
+        return;
+    }
+
     if (false == m_vehicle->m_canDrive)
     {
         return;

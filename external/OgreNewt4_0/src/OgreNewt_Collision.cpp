@@ -5,70 +5,70 @@
 
 namespace OgreNewt
 {
-    Collision::Collision(const World* world, bool ownsNewtonCollision) : m_col(nullptr), m_OwnsNewtonCollision(ownsNewtonCollision), m_world(world)
+
+    // ------------------------------------------------------------------
+    // Default constructor -- empty collision, subclass fills m_shapeInstancePtr
+    // ------------------------------------------------------------------
+    Collision::Collision(const World* world) :
+        m_shapeInstancePtr(),
+        m_world(world)
     {
     }
 
-    Collision::Collision(const Collision& shape, bool ownsNewtonCollision) : m_col(shape.m_col), m_OwnsNewtonCollision(ownsNewtonCollision), m_world(shape.m_world)
+    // ------------------------------------------------------------------
+    // Copy constructor -- shares the ndSharedPtr (refcount incremented)
+    // Both Collision objects keep the ndShapeInstance alive.
+    // ------------------------------------------------------------------
+    Collision::Collision(const Collision& shape) :
+        m_shapeInstancePtr(shape.m_shapeInstancePtr), // share ownership
+        m_world(shape.m_world)
     {
-        if (m_col && ownsNewtonCollision)
-        {
-            m_col = m_col->AddRef();
-        }
     }
 
-    Collision::Collision(ndShape* collision, const World* world, bool ownsNewtonCollision) : m_col(collision), m_OwnsNewtonCollision(ownsNewtonCollision), m_world(world)
+    Collision::Collision(const World* world, const ndSharedPtr<ndShapeInstance> shapeInstancePtr)
+        : m_shapeInstancePtr(shapeInstancePtr),
+        m_world(world)
     {
-        if (m_col && ownsNewtonCollision)
-        {
-            m_col = m_col->AddRef();
-        }
     }
 
+    // ------------------------------------------------------------------
+    // Destructor -- ndSharedPtr handles cleanup automatically.
+    // When the last Collision sharing this ndShapeInstance is destroyed,
+    // the ndShapeInstance (and its internal ndShape) are freed.
+    // ------------------------------------------------------------------
     Collision::~Collision()
     {
-        if (m_world->getNewtonWorld() && m_col && m_OwnsNewtonCollision)
-        {
-            m_col->Release();
-            m_col = nullptr;
-        }
+        // m_shapeInstancePtr destructor runs automatically (RAII).
     }
 
+    // ------------------------------------------------------------------
+    // getUserID
+    // ------------------------------------------------------------------
     long Collision::getUserID() const
     {
-        if (m_col)
+        const ndShape* shape = getNewtonConstCollision();
+        if (shape)
         {
-            ndShapeInfo info = m_col->GetShapeInfo();
+            ndShapeInfo info = shape->GetShapeInfo();
             return info.m_collisionType;
         }
         return 0;
     }
 
-    void Collision::makeUnique()
-    {
-        if (m_col)
-        {
-            const ndShape* newCol = m_col->AddRef();
-            if (m_OwnsNewtonCollision)
-            {
-                m_col->Release();
-            }
-            m_col = newCol;
-            m_OwnsNewtonCollision = true;
-        }
-    }
-
+    // ------------------------------------------------------------------
+    // getAABB -- uses the shape instance (respects scale & local matrix)
+    // ------------------------------------------------------------------
     Ogre::AxisAlignedBox Collision::getAABB(const Ogre::Quaternion& orient, const Ogre::Vector3& pos) const
     {
         Ogre::AxisAlignedBox box;
 
-        if (m_col)
+        if (m_shapeInstancePtr)
         {
             ndMatrix matrix;
             OgreNewt::Converters::QuatPosToMatrix(orient, pos, matrix);
 
             ndVector p0, p1;
-            m_col->CalculateAabb(matrix, p0, p1);
+            m_shapeInstancePtr->CalculateAabb(matrix, p0, p1);
 
             box.setMinimum(Ogre::Vector3(p0.m_x, p0.m_y, p0.m_z));
             box.setMaximum(Ogre::Vector3(p1.m_x, p1.m_y, p1.m_z));
@@ -76,6 +76,9 @@ namespace OgreNewt
         return box;
     }
 
+    // ------------------------------------------------------------------
+    // getCollisionPrimitiveType (static)
+    // ------------------------------------------------------------------
     CollisionPrimitiveType Collision::getCollisionPrimitiveType(const ndShape* col)
     {
         if (!col)
@@ -83,35 +86,38 @@ namespace OgreNewt
             return NullPrimitiveType;
         }
 
-        if (const_cast<ndShape*>(col)->GetAsShapeBox())
+        // const_cast is needed because ND4's GetAs* methods are non-const.
+        ndShape* nc = const_cast<ndShape*>(col);
+
+        if (nc->GetAsShapeBox())
         {
             return BoxPrimitiveType;
         }
-        if (const_cast<ndShape*>(col)->GetAsShapeSphere())
+        if (nc->GetAsShapeSphere())
         {
             return EllipsoidPrimitiveType;
         }
-        if (const_cast<ndShape*>(col)->GetAsShapeCylinder())
+        if (nc->GetAsShapeCylinder())
         {
             return CylinderPrimitiveType;
         }
-        if (const_cast<ndShape*>(col)->GetAsShapeCapsule())
+        if (nc->GetAsShapeCapsule())
         {
             return CapsulePrimitiveType;
         }
-        if (const_cast<ndShape*>(col)->GetAsShapeCone())
+        if (nc->GetAsShapeCone())
         {
             return ConePrimitiveType;
         }
-        if (const_cast<ndShape*>(col)->GetAsShapeConvexHull())
+        if (nc->GetAsShapeConvexHull())
         {
             return ConvexHullPrimitiveType;
         }
-        if (const_cast<ndShape*>(col)->GetAsShapeCompound())
+        if (nc->GetAsShapeCompound())
         {
             return CompoundCollisionPrimitiveType;
         }
-        if (const_cast<ndShape*>(col)->GetAsShapeStaticMesh())
+        if (nc->GetAsShapeStaticMesh())
         {
             return TreeCollisionPrimitiveType;
         }
@@ -119,14 +125,20 @@ namespace OgreNewt
         return NullPrimitiveType;
     }
 
+    // ------------------------------------------------------------------
+    // scaleCollision -- operates on the shape instance
+    // ------------------------------------------------------------------
     void Collision::scaleCollision(const Ogre::Vector3& scale)
     {
-        ndShapeInstance* collision = this->getShapeInstance();
-        if (nullptr != collision)
+        if (m_shapeInstancePtr)
         {
-            collision->SetScale(ndVector(scale.x, scale.y, scale.z, ndFloat32(0.0f)));
+            m_shapeInstancePtr->SetScale(ndVector(scale.x, scale.y, scale.z, ndFloat32(0.0f)));
         }
     }
+
+    // ==================================================================
+    // ConvexCollision
+    // ==================================================================
 
     ConvexCollision::ConvexCollision(const OgreNewt::World* world) : Collision(world)
     {
@@ -146,32 +158,34 @@ namespace OgreNewt
 
     Ogre::Real ConvexCollision::calculateVolume() const
     {
-        if (m_col)
+        const ndShape* shape = getNewtonConstCollision();
+        if (shape)
         {
-            return Ogre::Real(m_col->GetVolume());
+            return Ogre::Real(shape->GetVolume());
         }
         return 0.0f;
     }
 
     void ConvexCollision::calculateInertialMatrix(Ogre::Vector3& inertia, Ogre::Vector3& offset) const
     {
-        if (m_col)
+        const ndShape* shape = getNewtonConstCollision();
+        if (shape)
         {
             ndMatrix alignMatrix(ndGetIdentityMatrix());
             ndVector localScale(ndFloat32(1.0f), ndFloat32(1.0f), ndFloat32(1.0f), ndFloat32(1.0f));
             ndMatrix matrix(ndGetIdentityMatrix());
 
-            ndMatrix inertiaMatrix = m_col->CalculateInertiaAndCenterOfMass(alignMatrix, localScale, matrix);
+            ndMatrix inertiaMatrix = shape->CalculateInertiaAndCenterOfMass(alignMatrix, localScale, matrix);
 
-            // Extract diagonal inertia values from the returned matrix
+            // Diagonal = principal inertia, position row = center of mass
             inertia.x = inertiaMatrix[0][0];
             inertia.y = inertiaMatrix[1][1];
             inertia.z = inertiaMatrix[2][2];
 
-            // The center of mass is in the position part of the returned matrix
             offset.x = inertiaMatrix[3][0];
             offset.y = inertiaMatrix[3][1];
             offset.z = inertiaMatrix[3][2];
         }
     }
-}
+
+} // namespace OgreNewt

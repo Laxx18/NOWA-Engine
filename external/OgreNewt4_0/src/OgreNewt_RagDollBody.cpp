@@ -33,12 +33,11 @@ namespace OgreNewt
     //
     // Uses Body(world, sceneManager, collision) which creates a real
     // ndBodyDynamic with BodyNotify, adds to world, etc.
-    // m_body is ALWAYS valid after construction.
+    // body is ALWAYS valid after construction.
     // ========================================================================
 
     RagDollBody::RagDollBody(World* world, Ogre::SceneManager* sceneManager, const OgreNewt::CollisionPtr& rootCollision, const RagConfig& config, Ogre::Item* item, Ogre::SceneNode* sceneNode) :
-        Body(world, sceneManager, rootCollision) // Creates real m_body with BodyNotify!
-        ,
+        Body(world, sceneManager, rootCollision), // Creates real body with BodyNotify!
         m_item(item),
         m_skeletonInstance(nullptr),
         m_sceneNode(sceneNode),
@@ -59,7 +58,7 @@ namespace OgreNewt
         {
             endRagdolling();
         }
-        // ~Body() handles destroying m_body (the root body)
+        // ~Body() handles destroying body (the root body)
     }
 
     // ========================================================================
@@ -151,7 +150,7 @@ namespace OgreNewt
     //   3. world->AddModel(model)
     //   4. model->AddBodiesAndJointsToWorld()
     //
-    // The root body ('this'/m_body) is already in the world from the Body
+    // The root body ('this'/body) is already in the world from the Body
     // constructor. We must remove it FIRST, then let the articulation re-add
     // all bodies together.
     //
@@ -206,7 +205,7 @@ namespace OgreNewt
             if (i == 0)
             {
                 // Root bone: create a NEW ndBodyDynamic for the articulation.
-                // m_body (from Body constructor) stays as the "inactive state" body.
+                // body (from Body constructor) stays as the "inactive state" body.
                 // The articulation root is separate to avoid ndSharedPtr ownership conflicts.
                 ndBodyDynamic* rootNd = new ndBodyDynamic();
                 rootNd->SetMatrix(ndMat);
@@ -225,7 +224,7 @@ namespace OgreNewt
 
                 rootNd->SetMassMatrix(boneDef.mass, rootNd->GetCollisionShape());
 
-                // Copy notify from m_body so force callbacks work
+                // Copy notify from body so force callbacks work
                 ndSharedPtr<ndBodyNotify> notify(new BodyNotify(this));
                 rootNd->SetNotifyCallback(notify);
 
@@ -351,14 +350,16 @@ namespace OgreNewt
         m_world->enqueuePhysicsAndWait(
             [this](World& w)
             {
-                // Freeze m_body (inactive-state body) so it doesn't interfere
-                m_body->SetSleepState(true);
+                // Freeze body (inactive-state body) so it doesn't interfere
+                getNewtonBody()->SetSleepState(true);
 
                 // Add articulation model + all bodies/joints to world
                 ndWorld* ndW = w.getNewtonWorld();
                 ndSharedPtr<ndModel> modelPtr(m_articulation);
                 ndW->AddModel(modelPtr);
-                m_articulation->AddBodiesAndJointsToWorld();
+
+                // TODO: What is the equivalent? Look at newton demo! -> Ah its gone. See forum and spiderbody (finalizeModel).
+                // m_articulation->AddBodiesAndJointsToWorld();
             });
 
         Ogre::LogManager::getSingleton().logMessage("[RagDollBody] Articulation created: " + Ogre::StringConverter::toString(m_ragBones.size()) + " bodies");
@@ -378,10 +379,11 @@ namespace OgreNewt
                 [this](World& w)
                 {
                     // Remove all articulation bodies and joints from world
-                    m_articulation->RemoveBodiesAndJointsFromWorld();
+                    // TODO: What is the equivalent? Look at newton demo! -> Ah its gone. See forum and spiderbody (finalizeModel).
+                    // m_articulation->RemoveBodiesAndJointsFromWorld();
 
-                    // Wake m_body back up (it was frozen during ragdolling)
-                    m_body->SetSleepState(false);
+                    // Wake body back up (it was frozen during ragdolling)
+                    getNewtonBody()->SetSleepState(false);
                 });
             m_articulation = nullptr;
         }
@@ -594,7 +596,7 @@ namespace OgreNewt
     {
         releaseConstraintAxis();
 
-        if (axis == Ogre::Vector3::ZERO || !m_body)
+        if (axis == Ogre::Vector3::ZERO || !getNewtonBody())
         {
             return;
         }

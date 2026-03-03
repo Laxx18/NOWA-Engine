@@ -5,9 +5,7 @@
 
 namespace OgreNewt
 {
-    BodyNotify::BodyNotify(Body* ogreNewtBody)
-        : ndBodyNotify(ndVector(ogreNewtBody->getGravity().x, ogreNewtBody->getGravity().y, ogreNewtBody->getGravity().z, 1.0f)), 
-        m_ogreNewtBody(ogreNewtBody)
+    BodyNotify::BodyNotify(Body* ogreNewtBody) : ndBodyNotify(ndVector(ogreNewtBody->getGravity().x, ogreNewtBody->getGravity().y, ogreNewtBody->getGravity().z, 1.0f)), m_ogreNewtBody(ogreNewtBody)
     {
     }
 
@@ -28,6 +26,16 @@ namespace OgreNewt
         if (m_ogreNewtBody)
         {
             m_ogreNewtBody->onForceAndTorqueCallback(timestep, threadIndex);
+        }
+    }
+
+    // Called from World::PostUpdate() — Newton's own thread, all substep workers done.
+    // Snapshot live transform fields into snap fields so the main thread reads stable data.
+    void BodyNotify::CaptureTransform()
+    {
+        if (m_ogreNewtBody)
+        {
+            m_ogreNewtBody->captureTransformSnapshot();
         }
     }
 }

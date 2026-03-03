@@ -139,51 +139,36 @@ namespace OgreNewt
             return;
         }
 
-        // Build shape instance on caller thread (safe)
         ndShapeInstance shapeInstance = srcInst ? ndShapeInstance(*srcInst) : ndShapeInstance(col->getNewtonCollision());
 
-        // Allocate the new trigger on caller thread
         OgreNewtTriggerVolume* newTrigger = new OgreNewtTriggerVolume(m_triggerCallback);
-
-        // Build initial matrix (identity for now)
-        ndMatrix matrix(ndGetIdentityMatrix());
-        newTrigger->SetMatrix(matrix);
+        newTrigger->SetMatrix(ndGetIdentityMatrix());
         newTrigger->SetCollisionShape(shapeInstance);
 
-        if (!m_bodyNotify)
+        if (!m_bodyNotifyPtr)
         {
-            m_bodyNotify = new BodyNotify(this);
+            m_bodyNotifyPtr = ndSharedPtr<ndBodyNotify>(new BodyNotify(this));
         }
 
-        // Cache old body pointers (if we are recreating)
-        ndBodyKinematic* oldBody = m_body;
-        OgreNewtTriggerVolume* oldTrigger = m_triggerVolume;
+        // Capture OLD SharedPtr by value — keeps old body alive until lambda exits
+        ndSharedPtr<ndBody> oldBodyPtr = m_bodyPtr;
 
-        // Do all world mutations on world thread / safe point
+        // NEW SharedPtr takes ownership
+        m_bodyPtr = ndSharedPtr<ndBody>(newTrigger);
+        m_triggerVolume = newTrigger;
+
         m_world->enqueuePhysicsAndWait(
-            [this, newTrigger, oldBody, oldTrigger](World& w) mutable
+            [this, newTrigger, oldBodyPtr](World& w) mutable
             {
-                // If there was an old trigger/body, remove it first
-                if (oldBody)
+                if (oldBodyPtr)
                 {
-                    oldBody->SetNotifyCallback(nullptr);
-                    w.destroyBody(oldBody);
-
-                    // If we own it, delete it (most trigger volumes are owned here)
-                    // Adjust this if your ownership differs.
-                    delete oldBody;
+                    // Sever old notify before removal
+                    (*oldBodyPtr)->GetNotifyCallback() = ndSharedPtr<ndBodyNotify>();
+                    w.destroyBody(std::move(oldBodyPtr));
                 }
-
-                // Install new trigger as our active body
-                m_triggerVolume = newTrigger;
-                m_body = newTrigger;
-
-                // Attach notify + add to world
-                m_body->SetNotifyCallback(m_bodyNotify);
-                w.addBody(m_body);
+                newTrigger->SetNotifyCallback(m_bodyNotifyPtr);
+                w.addBody(m_bodyPtr);
             });
-
-        // Note: triggers usually don't need damping/mass (fine)
     }
 
     TriggerCallback* TriggerBody::getTriggerCallback(void) const
@@ -195,9 +180,9 @@ namespace OgreNewt
     {
         // ND3: NewtonBodyIntegrateVelocity(m_body, dt);
         // ND4: integrate on the kinematic body
-        if (m_body)
+        if (getNewtonBody())
         {
-            m_body->IntegrateVelocity(ndFloat32(dt));
+            getNewtonBody()->IntegrateVelocity(ndFloat32(dt));
         }
     }
 

@@ -6,41 +6,35 @@
 
 using namespace OgreNewt;
 
-KinematicBody::KinematicBody(World* world, Ogre::SceneManager* sceneManager, const OgreNewt::CollisionPtr& col, Ogre::SceneMemoryMgrTypes memoryType) : Body(world, sceneManager, memoryType), m_kinematicContactCallback(nullptr)
+KinematicBody::KinematicBody(World* world, Ogre::SceneManager* sceneManager, const OgreNewt::CollisionPtr& col, Ogre::SceneMemoryMgrTypes memoryType) :
+    Body(world, sceneManager, memoryType) // Constructor 3 — deferred
+    ,
+    m_kinematicContactCallback(nullptr)
 {
     if (!m_world)
     {
         return;
     }
 
-    // Create initial matrix from cached transform
+    // This IS the first (and only) owner
+    m_bodyPtr = ndSharedPtr<ndBody>(new ndBodyKinematic());
+    m_bodyNotifyPtr = ndSharedPtr<ndBodyNotify>(new BodyNotify(this));
+
+    ndBodyKinematic* kb = getNewtonBody();
+
     ndMatrix matrix;
     Converters::QuatPosToMatrix(m_curRotation, m_curPosit, matrix);
+    kb->SetMatrix(matrix);
 
-    // Create body (caller thread is fine for allocation/setup)
-    m_body = new ndBodyKinematic();
-    m_body->SetMatrix(matrix);
+    // Set collision shape ONCE
+    ndShapeInstance* src = col->getShapeInstance();
+    kb->SetCollisionShape(src ? ndShapeInstance(*src) : ndShapeInstance(col->getNewtonCollision()));
 
-    // Build shape instance (caller thread is fine)
-    ndShapeInstance shapeInst = col->getShapeInstance() ? ndShapeInstance(*col->getShapeInstance()) : ndShapeInstance(col->getNewtonCollision());
-
-    m_body->SetCollisionShape(shapeInst);
-
-    // Ensure notify exists (matches your other constructors)
-    if (!m_bodyNotify)
-    {
-        m_bodyNotify = new BodyNotify(this);
-    }
-
-    // World mutations must be queued
     m_world->enqueuePhysicsAndWait(
         [this](World& w)
         {
-            m_body->SetNotifyCallback(m_bodyNotify);
-            w.addBody(m_body);
-
-            // Damping: only if this is actually a dynamic body
-            // For kinematic, ND may ignore damping; keep it for API consistency but guard it.
+            getNewtonBody()->SetNotifyCallback(m_bodyNotifyPtr);
+            w.addBody(m_bodyPtr);
             setLinearDamping(w.getDefaultLinearDamping() * (60.0f / w.getUpdateFPS()));
             setAngularDamping(w.getDefaultAngularDamping() * (60.0f / w.getUpdateFPS()));
         });
@@ -52,18 +46,16 @@ KinematicBody::~KinematicBody()
 
 void KinematicBody::integrateVelocity(Ogre::Real dt)
 {
-    if (!m_body)
+    if (!getNewtonBody())
     {
         return;
     }
 
-    // Integrate kinematic body velocity
-    m_body->IntegrateVelocity(dt);
+    getNewtonBody()->IntegrateVelocity(dt);
 
-    // Handle contact callbacks if defined
     if (m_kinematicContactCallback)
     {
-        ndBodyKinematic::ndContactMap& contacts = m_body->GetContactMap();
+        ndBodyKinematic::ndContactMap& contacts = getNewtonBody()->GetContactMap();
         ndBodyKinematic::ndContactMap::Iterator it(contacts);
 
         for (it.Begin(); it; it++)
@@ -73,7 +65,7 @@ void KinematicBody::integrateVelocity(Ogre::Real dt)
             {
                 ndBodyKinematic* const body0 = contact->GetBody0();
                 ndBodyKinematic* const body1 = contact->GetBody1();
-                ndBodyKinematic* const other = (body0 == m_body) ? body1 : body0;
+                ndBodyKinematic* const other = (body0 == getNewtonBody()) ? body1 : body0;
 
                 if (other)
                 {

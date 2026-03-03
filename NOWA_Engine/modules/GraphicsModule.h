@@ -403,6 +403,8 @@ namespace NOWA
 
         bool waitForFutureWithTimeout(std::future<void>& future, const std::chrono::milliseconds& timeout, const char* commandName);
 
+        bool isSceneValid(void);
+
         // Add a node to be tracked and transformed
         void addTrackedNode(Ogre::Node* node);
 
