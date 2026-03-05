@@ -281,28 +281,44 @@ void World::destroyJoint(ndSharedPtr<ndJointBilateralConstraint> joint)
 
 void World::update(Ogre::Real timestep)
 {
-    m_isSimulating.store(true, std::memory_order_release);
-
-    const ndFloat32 dt = static_cast<ndFloat32>(timestep);
+    struct SimGuard
+    {
+        std::atomic<bool>& f;
+        SimGuard(std::atomic<bool>& f) : f(f)
+        {
+            f.store(true, std::memory_order_release);
+        }
+        ~SimGuard()
+        {
+            f.store(false, std::memory_order_release);
+        }
+    } guard(m_isSimulating);
 
     processPhysicsQueue();
-
-    ndWorld::Update(dt);
-    // Not necessary is done in ND4 update already.
-    // ndWorld::Sync();
-
+    ndWorld::Update(static_cast<ndFloat32>(timestep));
+    Sync();
     processPhysicsQueue();
-
     interalPostUpdate(1.0f);
-
-    m_isSimulating.store(false, std::memory_order_release);
 }
 
 void World::updateFixed(Ogre::Real timestep)
 {
-    m_isSimulating.store(true, std::memory_order_release);
+    // RAII guard so m_isSimulating is ALWAYS reset, even if an exception fires
+    struct SimGuard
+    {
+        std::atomic<bool>& f;
+        SimGuard(std::atomic<bool>& f) : f(f)
+        {
+            f.store(true, std::memory_order_release);
+        }
+        ~SimGuard()
+        {
+            f.store(false, std::memory_order_release);
+        }
+    } guard(m_isSimulating);
 
     const double dtFixed = double(m_fixedTimestep);
+
     const int maxSteps = m_maxTicksPerFrames;
 
     double dt = double(timestep);
@@ -313,8 +329,6 @@ void World::updateFixed(Ogre::Real timestep)
 
     m_timeAccumulator += dt;
 
-    // Apply pending world mutations (add/remove bodies) BEFORE stepping.
-    // Safe here: Newton's workers are idle, no step is in flight.
     processPhysicsQueue();
 
     constexpr double eps = 1e-12;
@@ -337,27 +351,25 @@ void World::updateFixed(Ogre::Real timestep)
         m_timeAccumulator = 0.0;
     }
 
-    // Not necessary is done in ND4 update already.
-    // ndWorld::Sync();
+    // *** THE CRITICAL FIX ***
+    // Last ndWorld::Update() fired an async tick that is still running.
+    // Must wait before touching ndFreeListAlloc in processPhysicsQueue().
+    Sync();
 
-    // NOW safe: all worker threads are done. Apply any mutations that were
-    // enqueued during Update (contact callbacks, game logic responses, etc.)
     processPhysicsQueue();
 
     const float interp = (dtFixed > 0.0) ? float(m_timeAccumulator / dtFixed) : 0.0f;
     interalPostUpdate(interp);
-
-    m_isSimulating.store(false, std::memory_order_release);
 }
+
 void World::interalPostUpdate(Ogre::Real interp)
 {
     const ndArray<ndBodyKinematic*>& view = GetBodyList().GetView();
 
-    // Pass 1: publish transforms
     for (ndInt32 i = ndInt32(view.GetCount()) - 1; i >= 0; --i)
     {
         ndBodyKinematic* const ndBody = view[i];
-        if (!ndBody || ndBody->GetSleepState())
+        if (!ndBody || !ndBody->GetScene() || ndBody->GetSleepState())
         {
             continue;
         }
@@ -368,46 +380,26 @@ void World::interalPostUpdate(Ogre::Real interp)
             continue;
         }
 
-        if (auto* notify = dynamic_cast<OgreNewt::BodyNotify*>(*notifyPtr))
-        {
-            if (auto* ogreBody = notify->GetOgreNewtBody())
-            {
-                ogreBody->updateNode(interp);
-            }
-        }
-    }
-
-    // Pass 2: dispatch contacts (after all transforms are published)
-    for (ndInt32 i = ndInt32(view.GetCount()) - 1; i >= 0; --i)
-    {
-        ndBodyKinematic* const ndBody = view[i];
-        if (!ndBody)
+        auto* notify = dynamic_cast<OgreNewt::BodyNotify*>(*notifyPtr);
+        if (!notify)
         {
             continue;
         }
 
-        auto& notifyPtr = ndBody->GetNotifyCallback();
-        if (!notifyPtr)
+        auto* ogreBody = notify->GetOgreNewtBody();
+        if (!ogreBody)
         {
             continue;
         }
 
-        if (auto* notify = dynamic_cast<OgreNewt::BodyNotify*>(*notifyPtr))
-        {
-            if (auto* ogreBody = notify->GetOgreNewtBody())
-            {
-                ogreBody->dispatchContacts();
-            }
-        }
+        // One pass: update transform AND dispatch contacts
+        ogreBody->updateNode(interp);
+        ogreBody->dispatchContacts();
     }
 }
 
 void World::recoverInternal()
 {
-    // Flush zombie bodies from a previous simulation run that were never removed
-    // by PostUpdate (because update() wasn't called after stop). Without this,
-    // Newton steps with dead body pointers still in its scene → crash in
-    // CalculateContacts / GetNotifyCallback on freed/stale ndBodyKinematic.
     flushDeadBodies();
 
     for (auto node = GetBodyList().GetFirst(); node; node = node->GetNext())
@@ -420,10 +412,18 @@ void World::recoverInternal()
             continue;
         }
 
+        // Skip static/infinite-mass bodies — they never moved
+        if (b->GetInvMass() == 0.0f)
+        {
+            continue;
+        }
+
         if (ndBodyDynamic* dyn = b->GetAsBodyDynamic())
         {
             const ndMatrix m = b->GetMatrix();
             dyn->SetMatrixUpdateScene(m);
+            dyn->SetVelocity(ndVector::m_zero);
+            dyn->SetOmega(ndVector::m_zero);
             dyn->SetAutoSleep(true);
             dyn->SetSleepState(false);
         }
@@ -477,38 +477,6 @@ void World::PostUpdate(ndFloat32 /*timestep*/)
         }
         // Keep the shared_ptr alive one more PostUpdate cycle for the LRU window.
         m_deadBodiesFree.push_back(std::move(bodyPtr));
-    }
-
-    // ── Step 3: snapshot transforms into Body::m_snap* fields ───────────────────
-    // Worker threads have written m_curPosit / m_prevPosit / m_curRotation /
-    // m_prevRotation via OnTransform callbacks during the step. We are now on
-    // Newton's own thread with all workers quiesced, so it is safe to read those
-    // live fields and copy them into the snap fields.
-    //
-    // The main thread reads ONLY the snap fields (in Body::updateNode()), never the
-    // live fields. By the time interalPostUpdate() runs, the NEXT frame's Update()
-    // has already called Sync() which waited for this PostUpdate to complete —
-    // so the snaps are always fully written before the main thread reads them.
-    // Result: zero-Sync() update loop with no transform data races.
-    const ndArray<ndBodyKinematic*>& view = GetBodyList().GetView();
-    for (ndInt32 i = ndInt32(view.GetCount()) - 1; i >= 0; --i)
-    {
-        ndBodyKinematic* const ndBody = view[i];
-        if (!ndBody || ndBody->GetSleepState())
-        {
-            continue;
-        }
-
-        auto& notifyPtr = ndBody->GetNotifyCallback();
-        if (!notifyPtr)
-        {
-            continue;
-        }
-
-        if (auto* notify = dynamic_cast<OgreNewt::BodyNotify*>(*notifyPtr))
-        {
-            notify->CaptureTransform(); // copies live → snap fields on Body
-        }
     }
 }
 

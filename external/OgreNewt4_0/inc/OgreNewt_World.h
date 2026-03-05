@@ -129,25 +129,23 @@ namespace OgreNewt
 			enqueueCommandInternal(cmd);
 		}
 
-		template <class Fn>
-		void enqueuePhysicsAndWait(Fn&& fn)
-		{
-			using FnT = std::decay_t<Fn>;
+		template <class Fn> void enqueuePhysicsAndWait(Fn&& fn)
+        {
+            if (!m_isSimulating.load(std::memory_order_acquire))
+            {
+                // Workers idle: run directly, no synchronization needed.
+                fn(*this);
+                return;
+            }
 
-			if (isMainThread() || !isSimulating())
-			{
-				fn(*this);
-				return;
-			}
-
-			auto done = std::make_shared<std::promise<void>>();
-			auto fut = done->get_future();
-
-			ICommand* cmd = new Command<FnT>(FnT(std::forward<Fn>(fn)), done);
-			enqueueCommandInternal(cmd);
-
-			fut.wait(); // blocks until world thread pumps queue
-		}
+            // We ARE inside update() but the caller is on the main thread
+            // (e.g. a contact callback dispatched from interalPostUpdate,
+            //  or a game-logic response during processPhysicsQueue).
+            // Sync() already ran earlier in this update() frame, so workers
+            // are idle right now. Just run directly — no queue needed.
+            ndAssert(isMainThread() && "enqueuePhysicsAndWait called from Newton's thread - use enqueuePhysics (no-wait) instead");
+            fn(*this);
+        }
 	private:
 		void interalPostUpdate(Ogre::Real interp);
 

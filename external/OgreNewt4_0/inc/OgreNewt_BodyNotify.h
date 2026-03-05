@@ -43,12 +43,6 @@ namespace OgreNewt
         virtual void OnTransform(ndFloat32 timestep, const ndMatrix& matrix) override;
         virtual void OnApplyExternalForce(ndInt32 threadIndex, ndFloat32 timestep) override;
 
-        // Called from World::PostUpdate() (Newton's own thread, all workers quiesced).
-        // Copies the Body's live cur/prev transform fields into the snap fields so the
-        // main thread can safely read them from Body::updateNode() without racing against
-        // Newton's substep worker threads.
-        void CaptureTransform();
-
     private:
         Body* m_ogreNewtBody;
         int m_materialId{0};

@@ -1120,11 +1120,14 @@ namespace NOWA
 
 						const Ogre::Real inertia = std::max(hitBodyInertia.z, std::max(hitBodyInertia.x, hitBodyInertia.y));
 
-						this->kinematicController = new OgreNewt::KinematicController(this->hitBody, bodyPos);
-						this->kinematicController->setPickingMode(/*linearPlusAngularFriction*/ 4);
-
-						this->kinematicController->setMaxLinearFriction(hitBody->getMass() * linearFrictionAccel);
-						this->kinematicController->setMaxAngularFriction(inertia * angularFrictionAccel);
+						NOWA::AppStateManager::LogicCommand logicCommand = [this, bodyPos, inertia, angularFrictionAccel, linearFrictionAccel]()
+                        {
+                            this->kinematicController = new OgreNewt::KinematicController(this->hitBody, bodyPos);
+                            this->kinematicController->setPickingMode(/*linearPlusAngularFriction*/ 4);
+                            this->kinematicController->setMaxLinearFriction(hitBody->getMass() * linearFrictionAccel);
+                            this->kinematicController->setMaxAngularFriction(inertia * angularFrictionAccel);
+                        };
+                        NOWA::AppStateManager::getSingletonPtr()->enqueueAndWait(std::move(logicCommand));
 					}
 
 					this->dragging = true;

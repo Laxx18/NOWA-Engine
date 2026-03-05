@@ -202,7 +202,6 @@ namespace OgreNewt
 	private:
 		void dispatchContacts();
 
-		void captureTransformSnapshot();
 	protected:
         ndSharedPtr<ndBody> m_bodyPtr;
         ndSharedPtr<ndBodyNotify> m_bodyNotifyPtr; // Store the notification object
@@ -220,14 +219,6 @@ namespace OgreNewt
 		Ogre::Quaternion m_curRotation;
 		Ogre::Quaternion m_prevRotation;
 		Ogre::Quaternion m_lastOrientation;
-
-		// ── Transform snapshot (written by PostUpdate on Newton's thread,
-        //    read by main thread in updateNode — no race) ──────────────────
-        Ogre::Vector3 m_snapCurPosit;
-        Ogre::Vector3 m_snapPrevPosit;
-        Ogre::Quaternion m_snapCurRotation;
-        Ogre::Quaternion m_snapPrevRotation;
-        bool m_snapUpdateRotation;
 
 #ifndef OGRENEWT_NO_OGRE_ANY
 		OgreNewt::Any m_userdata;

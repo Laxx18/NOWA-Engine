@@ -28,14 +28,4 @@ namespace OgreNewt
             m_ogreNewtBody->onForceAndTorqueCallback(timestep, threadIndex);
         }
     }
-
-    // Called from World::PostUpdate() — Newton's own thread, all substep workers done.
-    // Snapshot live transform fields into snap fields so the main thread reads stable data.
-    void BodyNotify::CaptureTransform()
-    {
-        if (m_ogreNewtBody)
-        {
-            m_ogreNewtBody->captureTransformSnapshot();
-        }
-    }
 }

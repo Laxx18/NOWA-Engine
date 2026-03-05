@@ -36,13 +36,6 @@ namespace OgreNewt
         m_lastOrientation(Ogre::Quaternion::IDENTITY),
         m_updateRotation(false),
         m_validToUpdateStatic(false),
-        // Snap fields mirror live fields. captureTransformSnapshot() keeps them in
-        // sync once physics starts (called from World::PostUpdate on Newton's thread).
-        m_snapCurPosit(Ogre::Vector3::ZERO),
-        m_snapPrevPosit(Ogre::Vector3::ZERO),
-        m_snapCurRotation(Ogre::Quaternion::IDENTITY),
-        m_snapPrevRotation(Ogre::Quaternion::IDENTITY),
-        m_snapUpdateRotation(false),
         m_memoryType(memoryType),
         m_debugCollisionLines(nullptr),
         m_debugCollisionItem(nullptr),
@@ -112,11 +105,6 @@ namespace OgreNewt
         m_lastOrientation(Ogre::Quaternion::IDENTITY),
         m_updateRotation(false),
         m_validToUpdateStatic(false),
-        m_snapCurPosit(Ogre::Vector3::ZERO),
-        m_snapPrevPosit(Ogre::Vector3::ZERO),
-        m_snapCurRotation(Ogre::Quaternion::IDENTITY),
-        m_snapPrevRotation(Ogre::Quaternion::IDENTITY),
-        m_snapUpdateRotation(false),
         m_memoryType(memoryType),
         m_debugCollisionLines(nullptr),
         m_debugCollisionItem(nullptr),
@@ -174,11 +162,6 @@ namespace OgreNewt
         m_lastOrientation(Ogre::Quaternion::IDENTITY),
         m_updateRotation(false),
         m_validToUpdateStatic(false),
-        m_snapCurPosit(Ogre::Vector3::ZERO),
-        m_snapPrevPosit(Ogre::Vector3::ZERO),
-        m_snapCurRotation(Ogre::Quaternion::IDENTITY),
-        m_snapPrevRotation(Ogre::Quaternion::IDENTITY),
-        m_snapUpdateRotation(false),
         m_memoryType(memoryType),
         m_debugCollisionLines(nullptr),
         m_debugCollisionItem(nullptr),
@@ -271,27 +254,6 @@ namespace OgreNewt
         }
     }
 
-    // Called from BodyNotify::CaptureTransform(), which is called from World::PostUpdate().
-    // PostUpdate() runs on Newton's own thread after ALL substep worker threads have
-    // finished. It is therefore safe to read the live cur/prev fields here and copy them
-    // into the snap fields that the main thread will read from Body::updateNode().
-    //
-    // Threading guarantee:
-    //   - Workers write  m_curPosit / m_prevPosit / m_curRotation / m_prevRotation
-    //     during the step (OnTransform callbacks).
-    //   - PostUpdate()   writes m_snap* fields here (workers already done).
-    //   - Main thread    reads  m_snap* fields in updateNode() / interalPostUpdate().
-    //     By the time main thread runs interalPostUpdate(), the next frame's Update()
-    //     has already Sync()'d the step that wrote these snaps → no race.
-    void Body::captureTransformSnapshot()
-    {
-        m_snapCurPosit = m_curPosit;
-        m_snapPrevPosit = m_prevPosit;
-        m_snapCurRotation = m_curRotation;
-        m_snapPrevRotation = m_prevRotation;
-        m_snapUpdateRotation = m_updateRotation;
-    }
-
     void Body::standardForceCallback(OgreNewt::Body* me, float timestep, int threadIndex)
     {
         Ogre::Real mass;
@@ -322,7 +284,6 @@ namespace OgreNewt
         m_updateRotation = updateRotation;
         // Sync snap fields so the first updateNode() call (below) has correct data.
         // Physics hasn't started yet so cur/prev are the spawn position set by the caller.
-        captureTransformSnapshot();
         updateNode(1.0f);
 
         m_lastPosit = m_node->getPosition();
@@ -466,15 +427,6 @@ namespace OgreNewt
             m_curRotation = orient;
             m_prevRotation = orient;
             m_validToUpdateStatic = true;
-
-            // Keep snap fields in sync: main-thread code (updateNode) reads snaps.
-            // This is a direct main-thread write so no race — physics is either not
-            // running yet, or this is a teleport that overwrites both live and snap.
-            m_snapCurPosit = pos;
-            m_snapPrevPosit = pos;
-            m_snapCurRotation = orient;
-            m_snapPrevRotation = orient;
-            m_snapUpdateRotation = m_updateRotation;
 
             ndMatrix matrix;
             OgreNewt::Converters::QuatPosToMatrix(orient, pos, matrix);
@@ -1065,19 +1017,17 @@ namespace OgreNewt
         m_lastPosit = m_node->getPosition();
         m_lastOrientation = m_node->getOrientation();
 
-        // Read from snap fields (written by PostUpdate on Newton's thread, NOT from the
-        // live m_curPosit / m_prevPosit which worker threads may still be writing).
-        const Ogre::Vector3 velocity = m_snapCurPosit - m_snapPrevPosit;
-        m_nodePosit = m_snapPrevPosit + velocity * interpolatParam;
+        const Ogre::Vector3 velocity = m_curPosit - m_prevPosit;
+        m_nodePosit = m_prevPosit + velocity * interpolatParam;
 
-        if (m_snapUpdateRotation)
+        if (m_updateRotation)
         {
-            m_nodeRotation = Ogre::Quaternion::Slerp(interpolatParam, m_snapPrevRotation, m_snapCurRotation);
+            m_nodeRotation = Ogre::Quaternion::Slerp(interpolatParam, m_prevRotation, m_curRotation);
         }
 
         Ogre::Vector3 nodePosit = m_nodePosit;
         Ogre::Quaternion nodeRot = m_nodeRotation;
-        bool updateRot = m_snapUpdateRotation;
+        bool updateRot = m_updateRotation;
         bool updateStatic = m_validToUpdateStatic;
         Ogre::SceneNode* node = m_node;
         Ogre::Node* parent = node->getParent();
@@ -1091,7 +1041,7 @@ namespace OgreNewt
         {
             if (nullptr != m_renderUpdateCallback)
             {
-                m_renderUpdateCallback(m_node, m_nodePosit, m_nodeRotation, m_snapUpdateRotation, m_validToUpdateStatic);
+                m_renderUpdateCallback(m_node, m_nodePosit, m_nodeRotation, m_updateRotation, m_validToUpdateStatic);
             }
             else
             {
@@ -1107,7 +1057,7 @@ namespace OgreNewt
         {
             if (nullptr != m_renderUpdateCallback)
             {
-                m_renderUpdateCallback(m_node, m_nodePosit, m_nodeRotation, m_snapUpdateRotation, m_validToUpdateStatic);
+                m_renderUpdateCallback(m_node, m_nodePosit, m_nodeRotation, m_updateRotation, m_validToUpdateStatic);
             }
             else
             {
