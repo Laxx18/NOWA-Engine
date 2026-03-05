@@ -837,12 +837,14 @@ namespace NOWA
 
         spider->fireLuaCallback(static_cast<float>(dt));
 
-        const int legCount = spider->getActiveLegCount();
+        int legCount = spider->getActiveLegCount();
         std::array<OgreNewt::LegTransformCache, MAX_LEGS> snap;
-        for (int i = 0; i < legCount && i < MAX_LEGS; ++i)
+        /*for (int i = 0; i < legCount && i < MAX_LEGS; ++i)
         {
             snap[i] = spider->getCachedLegTransform(i);
-        }
+        }*/
+
+        spider->snapshotTransforms(snap, legCount);
 
         Ogre::SceneNode* torsoNode = this->gameObjectPtr->getSceneNode();
 

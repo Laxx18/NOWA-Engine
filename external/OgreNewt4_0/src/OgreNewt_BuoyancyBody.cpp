@@ -1,4 +1,4 @@
-#include "OgreNewt_Stdafx.h"
+﻿#include "OgreNewt_Stdafx.h"
 #include "OgreNewt_BuoyancyBody.h"
 #include "OgreNewt_BodyNotify.h"
 #include "OgreNewt_World.h"
@@ -324,7 +324,7 @@ namespace OgreNewt
 
     void BuoyancyForceTriggerCallback::OnInside(const Body* /*visitor*/)
     {
-        // No physics here � ND4 trigger already handles buoyancy.
+        // No physics here – ND4 trigger already handles buoyancy.
         // Derived classes (PhysicsBuoyancyTriggerCallback) use this for Lua callbacks only.
     }
 
@@ -399,57 +399,44 @@ namespace OgreNewt
             return;
         }
 
-        // Build shape instance copy on caller thread (safe)
         ndShapeInstance shapeCopy = srcInst ? ndShapeInstance(*srcInst) : ndShapeInstance(col->getNewtonCollision());
 
-        // Allocate trigger on caller thread
         auto* newTrigger = new OgreNewtBuoyancyTriggerVolume(m_buoyancyForceTriggerCallback);
 
-        // Cache current config values on caller thread (avoid reading members inside closure if you want)
+        // capture config values
         const Ogre::Vector3 gravity = m_gravity;
         const Ogre::Real viscosity = m_viscosity;
         const Ogre::Real waveAmplitude = m_waveAmplitude;
         const Ogre::Real waveFrequency = m_waveFrequency;
-        const bool useRaycastPlane = m_useRaycastPlane;
+        const bool useRaycast = m_useRaycastPlane;
         const Ogre::Plane fluidPlane = m_fluidPlane;
 
-        if (!m_bodyNotify)
+        if (!m_bodyNotifyPtr)
         {
-            m_bodyNotify = new BodyNotify(this);
+            m_bodyNotifyPtr = ndSharedPtr<ndBodyNotify>(new BodyNotify(this));
         }
 
-        // Cache old body (if recreating)
-        ndBodyKinematic* oldBody = m_body;
-        auto* oldTrigger = static_cast<OgreNewtBuoyancyTriggerVolume*>(m_triggerBody);
+        ndSharedPtr<ndBody> oldBodyPtr = m_bodyPtr; // keep old body alive in lambda
+        m_bodyPtr = ndSharedPtr<ndBody>(newTrigger);
+        m_triggerBody = newTrigger;
 
-        // World mutations must be on world thread / safe point
         m_world->enqueuePhysicsAndWait(
-            [this, newTrigger, oldBody, oldTrigger, shapeCopy, gravity, viscosity, waveAmplitude, waveFrequency, useRaycastPlane, fluidPlane](World& w) mutable
+            [this, newTrigger, oldBodyPtr, shapeCopy, gravity, viscosity, waveAmplitude, waveFrequency, useRaycast, fluidPlane](World& w) mutable
             {
-                // Remove old trigger/body if present
-                if (oldBody)
+                if (oldBodyPtr)
                 {
-                    oldBody->SetNotifyCallback(nullptr);
-                    w.destroyBody(oldBody);
-
-                    // If you own the old trigger, delete it
-                    delete oldBody;
+                    (*oldBodyPtr)->GetNotifyCallback() = ndSharedPtr<ndBodyNotify>();
+                    w.destroyBody(std::move(oldBodyPtr)); // SharedPtr — correct
                 }
 
-                // Configure new trigger (ND mutations)
                 newTrigger->SetGravity(ndVector((ndFloat32)gravity.x, (ndFloat32)gravity.y, (ndFloat32)gravity.z, 0.0f));
-
                 newTrigger->SetViscosity((ndFloat32)viscosity);
                 newTrigger->SetWaveAmplitude((ndFloat32)waveAmplitude);
                 newTrigger->SetWaveFrequency((ndFloat32)waveFrequency);
-
-                if (!useRaycastPlane)
+                if (!useRaycast)
                 {
                     ndVector n((ndFloat32)fluidPlane.normal.x, (ndFloat32)fluidPlane.normal.y, (ndFloat32)fluidPlane.normal.z, 0.0f);
-
-                    ndFloat32 d = (ndFloat32)fluidPlane.d;
-                    ndPlane plane(n, d);
-                    newTrigger->SetPlane(plane);
+                    newTrigger->SetPlane(ndPlane(n, (ndFloat32)fluidPlane.d));
                 }
                 else
                 {
@@ -458,14 +445,8 @@ namespace OgreNewt
 
                 newTrigger->SetMatrix(ndGetIdentityMatrix());
                 newTrigger->SetCollisionShape(shapeCopy);
-
-                // Install pointers
-                m_triggerBody = newTrigger;
-                m_body = newTrigger;
-
-                // Attach notify + add to world
-                newTrigger->SetNotifyCallback(m_bodyNotify);
-                w.addBody(newTrigger);
+                newTrigger->SetNotifyCallback(m_bodyNotifyPtr); // SharedPtr — correct
+                w.addBody(m_bodyPtr);
             });
     }
 

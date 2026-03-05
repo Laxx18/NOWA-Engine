@@ -40,35 +40,19 @@ namespace OgreNewt
 
     void MaterialPair::registerWithWorld()
     {
-        if (!m_world)
-        {
-            return;
-        }
-
-        auto* callback = static_cast<ndContactCallback*>(m_world->getNewtonWorld()->GetContactNotify());
-        if (!callback)
-        {
-            return;
-        }
-
-        const ndUnsigned32 idA = id0->getID();
-        const ndUnsigned32 idB = id1->getID();
-
-        ndApplicationMaterial newMat;
-        newMat.m_softness = static_cast<ndFloat32>(m_defaultSoftness);
-        newMat.m_restitution = static_cast<ndFloat32>(m_defaultElasticity);
-        newMat.m_staticFriction0 = static_cast<ndFloat32>(m_defaultStaticFriction);
-        newMat.m_staticFriction1 = static_cast<ndFloat32>(m_defaultStaticFriction);
-        newMat.m_dynamicFriction0 = static_cast<ndFloat32>(m_defaultKineticFriction);
-        newMat.m_dynamicFriction1 = static_cast<ndFloat32>(m_defaultKineticFriction);
-        newMat.m_skinMargin = static_cast<ndFloat32>(m_defaultSurfaceThickness);
-
-        // Register or update in Newton's internal material graph.
-        callback->RegisterMaterial(newMat, idA, idB);
-        if (idA != idB)
-        {
-            callback->RegisterMaterial(newMat, idB, idA);
-        }
+        // Nothing to do here.
+        //
+        // Previously this cast to ndContactCallback* and called RegisterMaterial()
+        // to populate Newton's internal m_materialGraph red-black tree. That caused
+        // crashes because ndContactCallback lives in ndModel_d.dll and accesses
+        // m_materialGraph at byte offsets baked into that DLL — offsets that can
+        // differ from OgreNewt's view of the object layout due to alignment padding
+        // in ndContactNotify.
+        //
+        // OgreNewt's ContactNotify overrides ALL virtual callbacks and uses
+        // m_world->findMaterialPair() (the OgreNewt-side map, populated via
+        // World::registerMaterialPair() called from the MaterialPair constructor).
+        // Newton's m_materialGraph is never consulted, so we never need to populate it.
     }
 
     void MaterialPair::setDefaultSoftness(Ogre::Real softness)

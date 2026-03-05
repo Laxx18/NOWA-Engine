@@ -145,7 +145,7 @@
       <FloatingPointExceptions>
       </FloatingPointExceptions>
       <FloatingPointModel>Fast</FloatingPointModel>
-      <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
+      <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
       <IntrinsicFunctions>true</IntrinsicFunctions>
@@ -195,7 +195,7 @@
     </Midl>
     <ClCompile>
       <AdditionalIncludeDirectories>$(NOWA)/external/newton-4.00/sdk/dBrain/gpu;$(NOWA)/external/newton-4.00/sdk/dBrain;$(NOWA)/external/newton-4.00/sdk/dCollision;$(NOWA)/external/newton-4.00/sdk/dCollision/dMesh;$(NOWA)/external/newton-4.00/sdk/dCore;$(NOWA)/external/newton-4.00/sdk/dCore/tinyxml;$(NOWA)/external/newton-4.00/sdk/dModel;$(NOWA)/external/newton-4.00/sdk/dNewton;$(NOWA)/external/newton-4.00/sdk/dNewton/dIkSolver;$(NOWA)/external/newton-4.00/sdk/dNewton/dJoints;$(NOWA)/external/newton-4.00/sdk/dNewton/dModels;$(NOWA)/external/newton-4.00/sdk/dNewton/dModels/dVehicle;$(NOWA)/external/newton-4.00/sdk/dProfiler;$(NOWA)/external/Ogre2.2SDK/;$(NOWA)/external/Ogre2.2SDK/OgreMain/include/;$(NOWA)/external/Ogre2.2SDK/VCBuild/include/;$(NOWA)/external/Ogre2.2SDK/Components/Overlay/Include/;$(NOWA)/external/Ogre2.2SDK/Components/Hlms/Pbs/include/;$(NOWA)/external/Ogre2.2SDK/Components/Hlms/Unlit/include/;$(NOWA)/external/Ogre2.2SDK/Components/Hlms/Common/include/;$(NOWA)/external/boost;.\inc</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>_OGRENEWT_EXPORTS;_OGRENEWT_DYNAMIC;WIN32;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_OGRENEWT_EXPORTS;_OGRENEWT_DYNAMIC;D_NEWTON_USE_AVX2_OPTION;WIN32;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ExceptionHandling>Sync</ExceptionHandling>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
@@ -216,7 +216,7 @@
       <FloatingPointExceptions>
       </FloatingPointExceptions>
       <FloatingPointModel>Fast</FloatingPointModel>
-      <EnableEnhancedInstructionSet>NotSet</EnableEnhancedInstructionSet>
+      <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
       <IntrinsicFunctions>true</IntrinsicFunctions>
@@ -291,7 +291,7 @@
       <FavorSizeOrSpeed>Neither</FavorSizeOrSpeed>
       <OmitFramePointers>true</OmitFramePointers>
       <FloatingPointModel>Fast</FloatingPointModel>
-      <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
+      <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <DisableSpecificWarnings>4786;4503;4251;4275;4290;4661;4996;4127;4100</DisableSpecificWarnings>
     </ClCompile>
@@ -347,7 +347,7 @@
       <Optimization>MaxSpeed</Optimization>
       <InlineFunctionExpansion>Default</InlineFunctionExpansion>
       <AdditionalIncludeDirectories>$(NOWA)/external/newton-4.00/sdk/dBrain/gpu;$(NOWA)/external/newton-4.00/sdk/dBrain;$(NOWA)/external/newton-4.00/sdk/dCollision;$(NOWA)/external/newton-4.00/sdk/dCollision/dMesh;$(NOWA)/external/newton-4.00/sdk/dCore;$(NOWA)/external/newton-4.00/sdk/dCore/tinyxml;$(NOWA)/external/newton-4.00/sdk/dModel;$(NOWA)/external/newton-4.00/sdk/dNewton;$(NOWA)/external/newton-4.00/sdk/dNewton/dIkSolver;$(NOWA)/external/newton-4.00/sdk/dNewton/dJoints;$(NOWA)/external/newton-4.00/sdk/dNewton/dModels;$(NOWA)/external/newton-4.00/sdk/dNewton/dModels/dVehicle;$(NOWA)/external/newton-4.00/sdk/dProfiler;$(NOWA)/external/Ogre2.2SDK/;$(NOWA)/external/Ogre2.2SDK/OgreMain/include/;$(NOWA)/external/Ogre2.2SDK/VCBuild/include/;$(NOWA)/external/Ogre2.2SDK/Components/Overlay/Include/;$(NOWA)/external/Ogre2.2SDK/Components/Hlms/Pbs/include/;$(NOWA)/external/Ogre2.2SDK/Components/Hlms/Unlit/include/;$(NOWA)/external/Ogre2.2SDK/Components/Hlms/Common/include/;$(NOWA)/external/boost;.\inc</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>_OGRENEWT_EXPORTS;_OGRENEWT_DYNAMIC;NDEBUG;WIN32;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_OGRENEWT_EXPORTS;_OGRENEWT_DYNAMIC;D_NEWTON_USE_AVX2_OPTION;NDEBUG;WIN32;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ExceptionHandling>Sync</ExceptionHandling>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
@@ -366,7 +366,7 @@
       <FavorSizeOrSpeed>Neither</FavorSizeOrSpeed>
       <OmitFramePointers>true</OmitFramePointers>
       <FloatingPointModel>Fast</FloatingPointModel>
-      <EnableEnhancedInstructionSet>NotSet</EnableEnhancedInstructionSet>
+      <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <DisableSpecificWarnings>4786;4503;4251;4275;4290;4661;4996;4127;4100;26429;26400;26495;26440;26447</DisableSpecificWarnings>
       <ShowIncludes>false</ShowIncludes>

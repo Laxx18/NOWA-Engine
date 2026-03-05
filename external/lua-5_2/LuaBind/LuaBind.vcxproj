@@ -130,7 +130,7 @@
       <SDLCheck>
       </SDLCheck>
       <AdditionalIncludeDirectories>$(NOWA)/external/lua-5_2/src;$(NOWA)/external/boost;$(ProjectDir);luabind/</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>%(PreprocessorDefinitions);LUABIND_DYNAMIC_LINK;LUABIND_BUILDING;_HAS_AUTO_PTR_ETC=1</PreprocessorDefinitions>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);LUABIND_DYNAMIC_LINK;D_NEWTON_USE_AVX2_OPTION;LUABIND_BUILDING;_HAS_AUTO_PTR_ETC=1</PreprocessorDefinitions>
       <IgnoreStandardIncludePath>false</IgnoreStandardIncludePath>
       <UndefinePreprocessorDefinitions>_XSTDDEF_;LUA_CORE;LUA_LIB</UndefinePreprocessorDefinitions>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
@@ -204,7 +204,7 @@
       <SDLCheck>
       </SDLCheck>
       <AdditionalIncludeDirectories>$(NOWA)/external/lua-5_2/src;$(NOWA)/external/boost;$(ProjectDir);luabind/</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>%(PreprocessorDefinitions);LUABIND_DYNAMIC_LINK;LUABIND_BUILDING;_HAS_AUTO_PTR_ETC=1</PreprocessorDefinitions>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);LUABIND_DYNAMIC_LINK;D_NEWTON_USE_AVX2_OPTION;LUABIND_BUILDING;_HAS_AUTO_PTR_ETC=1</PreprocessorDefinitions>
       <UndefinePreprocessorDefinitions>_XSTDDEF_;LUA_CORE;LUA_LIB</UndefinePreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <MinimalRebuild>false</MinimalRebuild>

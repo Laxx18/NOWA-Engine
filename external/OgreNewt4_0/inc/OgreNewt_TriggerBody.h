@@ -1,10 +1,10 @@
 #ifndef _INCLUDE_OGRENEWT_TRIGGER_BODY
 #define _INCLUDE_OGRENEWT_TRIGGER_BODY
 
-#include "OgreNewt_Prerequisites.h"
 #include "OgreNewt_Body.h"
-#include "OgreNewt_World.h"
+#include "OgreNewt_Prerequisites.h"
 #include "OgreNewt_TriggerControllerManager.h"
+#include "OgreNewt_World.h"
 
 #include "ndContact.h"
 
@@ -24,11 +24,7 @@ namespace OgreNewt
             \param triggerCallback heap-allocated callback (will be released in destructor)
             \param memoryType Ogre memory type
         */
-        TriggerBody(World* world,
-            Ogre::SceneManager* sceneManager,
-            const OgreNewt::CollisionPtr& col,
-            TriggerCallback* triggerCallback,
-            Ogre::SceneMemoryMgrTypes memoryType = Ogre::SceneMemoryMgrTypes::SCENE_DYNAMIC);
+        TriggerBody(World* world, Ogre::SceneManager* sceneManager, const OgreNewt::CollisionPtr& col, TriggerCallback* triggerCallback, Ogre::SceneMemoryMgrTypes memoryType = Ogre::SceneMemoryMgrTypes::SCENE_DYNAMIC);
 
         virtual ~TriggerBody();
 

@@ -3,7 +3,7 @@
 
     Architecture mirrors Newton Dynamics 4 ndQuadSpiderPlayer demo exactly:
 
-      SpiderArticulation  — ndModelArticulation subclass, holds raw ptrs to bodies/joints
+      SpiderArticulation  — ndModelArticulation subclass, holds all bodies/joints
       SpiderModelNotify   — ndModelNotify subclass, runs gait + IK each physics step
       SpiderBody          — public OgreNewt wrapper (inherits OgreNewt::Body for the torso)
 
@@ -14,7 +14,7 @@
       - positions live in effector LOCAL space (hip-pivot frame, from GetEffectorPosit())
 
     Body sway mirrors ndBodySwingControl:
-      localMatrix.TransformVector(posit) → apply sway → UntransformVector → SetLocalTargetPosition
+      localMatrix.TransformVector(posit) -> apply sway -> UntransformVector -> SetLocalTargetPosition
 
     Effector constructor used correctly:
       ndIkSwivelPositionEffector(
@@ -22,6 +22,15 @@
           parentBody (torso),
           childPivotInGlobalSpace,          // foot/contact world pos
           childBody (heel))
+
+    Threading model:
+      - ALL Newton allocations (bodies, shapes, joints) happen inside
+        enqueuePhysicsAndWait() in finalizeModel(), on Newton's own thread.
+        This avoids races with ndFreeListAlloc which is NOT thread-safe from outside.
+      - addLegChain() does pure math and stashes PendingLeg — zero Newton calls.
+      - stride/omega/sway/canMove are std::atomic — no mutex needed.
+      - cachedTransforms are guarded by transformMutex (physics writes, main reads).
+      - anyLegOnGround is std::atomic<bool> written by PostTransformUpdate.
 */
 #pragma once
 
@@ -43,9 +52,9 @@
 namespace OgreNewt
 {
 
-    // ─────────────────────────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
     //  Gait phase state (per leg)
-    // ─────────────────────────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
     enum class LegGaitPhase
     {
         onGround,
@@ -68,11 +77,10 @@ namespace OgreNewt
         ndFloat32 a2;
     };
 
-    // ─────────────────────────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
     //  Leg transform cache — written by physics thread (PostTransformUpdate),
-    //  read by main thread (component::updateLegNodes).
-    //  Protected by a mutex; only 4 legs and small structs so contention is minimal.
-    // ─────────────────────────────────────────────────────────────────────────────
+    //  read by main thread (component::updateLegNodes), guarded by transformMutex.
+    // ─────────────────────────────────────────────────────────────────────────
     struct LegTransformCache
     {
         Ogre::Vector3 thighPos{};
@@ -87,9 +95,9 @@ namespace OgreNewt
         float heelLen{1.0f};
     };
 
-    // ─────────────────────────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
     //  Lua-facing movement manipulation (main-thread read/write only)
-    // ─────────────────────────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
     class _OgreNewtExport SpiderMovementManipulation
     {
     public:
@@ -126,16 +134,15 @@ namespace OgreNewt
             return m_bodySwayZ;
         }
 
-        // Internal: copy into atomics on SpiderModelNotify
         float m_stride = 0.0f;
         float m_omega = 0.0f;
-        float m_bodySwayX = 0.0f; // lateral lean (cosmetic)
-        float m_bodySwayZ = 0.0f; // forward tilt (cosmetic)
+        float m_bodySwayX = 0.0f;
+        float m_bodySwayZ = 0.0f;
     };
 
-    // ─────────────────────────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
     //  Callback interface
-    // ─────────────────────────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
     class _OgreNewtExport SpiderCallback
     {
     public:
@@ -144,155 +151,171 @@ namespace OgreNewt
         virtual void onMovementChanged(SpiderMovementManipulation* manip, float dt) = 0;
     };
 
-    // ─────────────────────────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
     //  SpiderArticulation — articulated model tree (no per-step logic here)
-    // ─────────────────────────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
     class SpiderArticulation : public ndModelArticulation
     {
     public:
         SpiderArticulation() = default;
         ~SpiderArticulation() override = default;
 
-        // Torso
-        ndBodyDynamic* torsoNd{nullptr};
-
-        // Leg bodies (raw ptrs into ndSharedPtr-owned objects in the tree)
         static constexpr int MAX_LEGS = 4;
+
+        // ── Pending leg geometry — filled by addLegChain, consumed by finalizeModel ──
+        struct PendingLeg
+        {
+            ndVector hipWorld;
+            ndVector kneeWorld;
+            ndVector ankleWorld;
+            ndVector footWorld; // contact capsule bottom
+            ndVector thighDir;
+            ndVector calfDir;
+            ndVector hingeAxis;
+            ndVector thighCentre;
+            ndVector calfCentre;
+            ndVector heelCentre;
+            ndVector contactCentre;
+            ndFloat32 thighLen = 0.0f;
+            ndFloat32 calfLen = 0.0f;
+            ndFloat32 thighRadius = 0.0f;
+            ndFloat32 calfRadius = 0.0f;
+            ndMatrix effectPivot;   // torso orient + hip socket world pos
+            ndVector effChildPivot; // ankle world pos
+            ndFloat32 effStrength = 0.0f;
+            // Visual nodes (Ogre-owned, not Newton)
+            Ogre::SceneNode* thighNode = nullptr;
+            Ogre::SceneNode* calfNode = nullptr;
+            Ogre::SceneNode* heelNode = nullptr;
+        };
+        std::vector<PendingLeg> pendingLegs; // cleared by finalizeModel after enqueue
+
+        // ── Physics bodies (raw observer ptrs — owned by articulation tree) ──
+        ndBodyDynamic* torsoNd{nullptr};
         std::array<ndBodyDynamic*, MAX_LEGS> thighNd{};
         std::array<ndBodyDynamic*, MAX_LEGS> calfNd{};
         std::array<ndBodyDynamic*, MAX_LEGS> heelNd{};
         std::array<ndBodyDynamic*, MAX_LEGS> contactNd{};
 
-        // Joints
+        // ── Joint raw observer ptrs (for Update() hot path) ──────────────────
         std::array<ndIkSwivelPositionEffector*, MAX_LEGS> effectors{};
         std::array<ndIkJointHinge*, MAX_LEGS> kneeJoints{};
         std::array<ndJointHinge*, MAX_LEGS> heelJoints{};
 
-        // Gait state — only written/read by SpiderModelNotify (physics thread)
+        // ── Owning shared ptrs — keep joints alive for the model's lifetime ──
+        // AddLimb/AddCloseLoop may or may not keep a ref internally; we always do.
+        std::array<ndSharedPtr<ndJointBilateralConstraint>, MAX_LEGS> hipJointPtrs;
+        std::array<ndSharedPtr<ndJointBilateralConstraint>, MAX_LEGS> kneeJointPtrs;
+        std::array<ndSharedPtr<ndJointBilateralConstraint>, MAX_LEGS> heelJointPtrs;
+        std::array<ndSharedPtr<ndJointBilateralConstraint>, MAX_LEGS> contactJointPtrs;
+        std::array<ndSharedPtr<ndJointBilateralConstraint>, MAX_LEGS> effectorPtrs;
+        ndSharedPtr<ndJointBilateralConstraint> upVectorJoint;
+
+        // ── Gait state — only written/read by SpiderModelNotify (physics thread) ──
         std::array<LegPose, MAX_LEGS> legPose{};
         std::array<LegGaitPhase, MAX_LEGS> legPhase{};
         std::array<ndFloat32, MAX_LEGS> legCycleTime{};
+        ndFloat32 thighLenArr[MAX_LEGS]{};
+        ndFloat32 calfLenArr[MAX_LEGS]{};
 
-        // Gait configuration (set once before simulation)
-        ndFloat32 duration{2.0f};     // total cycle duration (s)
-        ndFloat32 airFraction{0.25f}; // fraction of cycle that is air phase
+        // ── Gait configuration (set once before simulation, main thread) ─────
+        ndFloat32 duration{2.0f};
+        ndFloat32 airFraction{0.25f};
         std::array<int, MAX_LEGS> gaitSequence{3, 1, 2, 0};
         int activeLegCount{0};
+        ndFloat32 stepHeight{0.20f};
 
-        // Stride / omega: written by main thread (fireLuaCallback), read by physics thread.
-        // Body sway: same threading model.
+        // ── Cross-thread: main writes, physics reads ──────────────────────────
         std::atomic<ndFloat32> stride{0.0f};
         std::atomic<ndFloat32> omega{0.0f};
         std::atomic<ndFloat32> bodySwayX{0.0f};
         std::atomic<ndFloat32> bodySwayZ{0.0f};
         std::atomic<bool> canMove{true};
 
-        // Step height (set once via setStepHeight, read by physics thread — stable value)
-        ndFloat32 stepHeight{0.20f};
-
-        // Transform cache written by PostTransformUpdate, read by main thread
+        // ── Cross-thread: physics writes, main reads ──────────────────────────
+        // transformMutex guards cachedTransforms (bulk struct copy needs atomicity).
+        // anyLegOnGround is a single bool — std::atomic suffices.
         mutable std::mutex transformMutex;
         std::array<LegTransformCache, MAX_LEGS> cachedTransforms{};
-
-        ndFloat32 thighLenArr[MAX_LEGS]{};
-        ndFloat32 calfLenArr[MAX_LEGS]{};
+        std::atomic<bool> anyLegOnGround{false};
     };
 
-    // ─────────────────────────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
     //  SpiderModelNotify — gait engine, runs on physics thread
-    //  Faithfully ports ndProdeduralGaitGenerator + ndGeneratorWalkGait + ndBodySwingControl
-    // ─────────────────────────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
     class SpiderModelNotify : public ndModelNotify
     {
     public:
         explicit SpiderModelNotify(SpiderArticulation* model);
         ~SpiderModelNotify() override = default;
 
-        // Called by Newton every physics step (physics thread)
         void Update(ndFloat32 timestep) override;
-
-        // Called by Newton after transform integration (physics thread)
-        // Captures leg body world transforms into the cache.
         void PostTransformUpdate(ndFloat32 timestep) override;
 
     private:
-        // Compute next timeAcc (angular wrap — matches Newton's CalculateTime)
         ndFloat32 advanceTime(ndFloat32 current, ndFloat32 timestep) const;
-
-        // Determine the transition state for a given leg this tick.
-        // Matches Newton's ndProdeduralGaitGenerator::GetState.
         LegGaitPhase getState(int legIndex, ndFloat32 timeAcc, ndFloat32 timestep) const;
-
-        // Integrate one leg's gait pose. Matches IntegrateLeg.
         void integrateLeg(int legIndex, LegGaitPhase state, ndFloat32 stride, ndFloat32 omega, ndFloat32 timestep);
-
-        // Apply gait poses to effectors (including body sway + swivel + knee coupling).
-        // Matches ndController::Update logic.
         void applyEffectors();
 
         SpiderArticulation* m_model{nullptr};
-        ndFloat32 m_timeAcc{0.0f}; // global gait clock
+        ndFloat32 m_timeAcc{0.0f};
     };
 
-    // ─────────────────────────────────────────────────────────────────────────────
-    //  SpiderBody — OgreNewt wrapper (IS the torso OgreNewt::Body)
-    // ─────────────────────────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
+    //  SpiderBody — OgreNewt wrapper (IS-A OgreNewt::Body for the torso)
+    // ─────────────────────────────────────────────────────────────────────────
     class _OgreNewtExport SpiderBody : public OgreNewt::Body
     {
     public:
-        //! Create torso physics body and empty articulated model.
-        //! Call addLegChain() for each leg, then finalizeModel() before simulation.
         SpiderBody(OgreNewt::World* world, Ogre::SceneManager* sceneManager, const OgreNewt::CollisionPtr& collision, float mass, const Ogre::Vector3& massOrigin, const Ogre::Vector3& gravity, const Ogre::Vector3& defaultDirection,
             const Ogre::Vector3& initialPosition, const Ogre::Quaternion& initialOrientation, SpiderCallback* callback);
 
-        ~SpiderBody() override;
+        ~SpiderBody();
 
-        //! Build one leg chain. Matches ndController::CreateArticulatedModel leg loop.
-        //! hipLocal / footRestLocal are in TORSO-LOCAL space.
-        //! thighLen / calfLen are bone lengths (physics capsule lengths).
-        //! swivelSign: +1 for right legs, -1 for left legs.
-        //! boneAxis: 0=X, 1=Y, 2=Z — long axis of provided capsule (ignored for physics
-        //!   capsule orientation which is always derived from the joint chain).
+        // Torso is owned by articulation, not by m_bodyPtr.
+        ndBodyKinematic* getNewtonBody() const override
+        {
+            return m_artModel ? m_artModel->torsoNd : nullptr;
+        }
+
+        // Register one leg. hipLocal / footRestLocal are in TORSO-LOCAL space.
+        // Pure math + stash — no Newton allocations. Safe to call from main thread
+        // before finalizeModel() / before simulation starts ticking.
         void addLegChain(Ogre::SceneNode* thighNode, Ogre::SceneNode* calfNode, Ogre::SceneNode* heelNode, const Ogre::Vector3& hipLocal, const Ogre::Vector3& footRestLocal, float thighLen, float calfLen, float swivelSign, int boneAxis);
 
-        //! Must be called once after all addLegChain() calls.
-        //! Creates the ndModelArticulation notify and adds model to world.
+        // Call once after all addLegChain() calls.
+        // All Newton allocations happen here, deferred via enqueuePhysicsAndWait.
         void finalizeModel();
 
-        //! Remove all legs (called on disconnect before destruction).
+        // Remove leg visual node references (called on disconnect).
         void clearLegs();
 
-        // ── Gait parameters ───────────────────────────────────────────────────────
+        // ── Gait parameters ───────────────────────────────────────────────────
         void setWalkCycleDuration(float seconds);
         void setStepHeight(float meters);
         void setGaitSequence(const std::vector<int>& seq);
         void setCanMove(bool b);
 
-        //! Fire the Lua callback (main thread). Reads manip values → pushes to atomics.
+        // Fire Lua callback (main thread). Reads manip -> pushes to atomics.
         void fireLuaCallback(float dt);
 
-        //! Read cached leg transforms (main thread, after physics step).
+        // Read cached leg transforms (main thread).
         const LegTransformCache& getCachedLegTransform(int legIndex) const;
         int getActiveLegCount() const;
-
         bool isFinalized() const
         {
             return m_finalized;
         }
-
         bool isOnGround() const;
 
-    private:
-        // Returns the torso ndBodyDynamic. Valid only after finalizeModel().
-        ndBodyDynamic* getTorsoNd() const;
+        void snapshotTransforms(std::array<OgreNewt::LegTransformCache, SpiderArticulation::MAX_LEGS>& out, int& legCountOut) const;
 
     private:
+        SpiderArticulation* m_artModel{nullptr};
+        ndSharedPtr<ndModel> m_artModelSharedPtr; // keeps model alive after AddModel()
+        SpiderModelNotify* m_notify{nullptr};     // owned by ndSharedPtr inside m_artModel
 
-        SpiderArticulation* m_artModel{nullptr}; // owned by ndWorld after finalizeModel()
-        SpiderModelNotify* m_notify{nullptr};    // owned by ndSharedPtr inside m_artModel
-
-        // OgreNewt wrappers for leg segment visuals
-        // These do NOT add to world (bodies are owned by the articulation)
         struct LegWrappers
         {
             Ogre::SceneNode* thighNode{nullptr};
@@ -301,8 +324,11 @@ namespace OgreNewt
         };
         std::array<LegWrappers, SpiderArticulation::MAX_LEGS> m_legWrappers{};
 
-        SpiderCallback* m_callback{nullptr}; // owned externally (PhysicsSpiderCallback)
+        SpiderCallback* m_callback{nullptr};
         SpiderMovementManipulation m_manip;
+
+        // Spawn matrix computed once in constructor, used by addLegChain
+        ndMatrix m_spawnMatrix;
 
         OgreNewt::CollisionPtr m_pendingCollision;
         float m_pendingMass{20.0f};

@@ -4151,7 +4151,11 @@ namespace NOWA
         // Physics simulation will be corrupt!
         if (nullptr != AppStateManager::getSingletonPtr()->getOgreNewtModule()->getOgreNewt())
         {
-            AppStateManager::getSingletonPtr()->getOgreNewtModule()->getOgreNewt()->recover();
+            NOWA::AppStateManager::LogicCommand logicCommand = [this]()
+            {
+                AppStateManager::getSingletonPtr()->getOgreNewtModule()->getOgreNewt()->recover();
+            };
+            NOWA::AppStateManager::getSingletonPtr()->enqueueAndWait(std::move(logicCommand));
         }
 
         this->oldGameObjectDataList.clear();
@@ -4202,7 +4206,11 @@ namespace NOWA
 
         if (nullptr != AppStateManager::getSingletonPtr()->getOgreNewtModule()->getOgreNewt())
         {
-            AppStateManager::getSingletonPtr()->getOgreNewtModule()->getOgreNewt()->cleanUp();
+            NOWA::AppStateManager::LogicCommand logicCommand = [this]()
+            {
+                AppStateManager::getSingletonPtr()->getOgreNewtModule()->getOgreNewt()->cleanUp();
+            };
+            NOWA::AppStateManager::getSingletonPtr()->enqueueAndWait(std::move(logicCommand));
         }
     }
 

@@ -5,7 +5,7 @@
 
 #include <algorithm>
 #include <cctype>
-#include <cstring> // for memcmp
+#include <cstring>
 #include <fstream>
 #include <sstream>
 #include <vector>
@@ -39,7 +39,6 @@ namespace
 
     inline bool hasPlyHeader(const char* data, size_t size)
     {
-        // ASCII PLY starts with "ply\n"
         if (size < 4)
         {
             return false;
@@ -56,7 +55,57 @@ namespace
     {
         is.read(reinterpret_cast<char*>(&v), sizeof(T));
     }
-}
+
+    // ── Triangle validation (same logic as in OgreNewt_Collision.cpp) ─────────
+    // Rejects degenerate triangles AND triangles whose face normal is nearly
+    // parallel to one of their own edges, which triggers Newton 4's
+    // GenerateConvexCap assert during contact resolution.
+    static bool isValidSoupTriangle(const Ogre::Vector3& v0, const Ogre::Vector3& v1, const Ogre::Vector3& v2)
+    {
+        const float MIN_EDGE2 = 1.0e-10f;
+        const Ogre::Vector3 e01 = v1 - v0;
+        const Ogre::Vector3 e12 = v2 - v1;
+        const Ogre::Vector3 e20 = v0 - v2;
+        if (e01.squaredLength() < MIN_EDGE2)
+        {
+            return false;
+        }
+        if (e12.squaredLength() < MIN_EDGE2)
+        {
+            return false;
+        }
+        if (e20.squaredLength() < MIN_EDGE2)
+        {
+            return false;
+        }
+
+        const Ogre::Vector3 cross = e01.crossProduct(-e20);
+        const float MIN_AREA2 = 1.0e-10f;
+        if (cross.squaredLength() < MIN_AREA2)
+        {
+            return false;
+        }
+
+        const float MAX_DOT = 0.17f;
+        const Ogre::Vector3 normal = cross.normalisedCopy();
+        const Ogre::Vector3 edges[3] = {e01, e12, e20};
+        for (const Ogre::Vector3& e : edges)
+        {
+            const float len = e.length();
+            if (len < 1.0e-8f)
+            {
+                return false;
+            }
+            if (std::abs(normal.dotProduct(e / len)) > MAX_DOT)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+} // anonymous namespace
 
 namespace OgreNewt
 {
@@ -72,7 +121,6 @@ namespace OgreNewt
         const CollisionPrimitiveType type = Collision::getCollisionPrimitiveType(shape);
         writeVal(os, static_cast<ndUnsigned32>(type));
 
-        // Extract parameters from ndShapeInfo where possible
         ndShapeInfo info = shape->GetShapeInfo();
 
         switch (type)
@@ -87,7 +135,6 @@ namespace OgreNewt
             break;
 
         case EllipsoidPrimitiveType:
-            // Sphere radius stored three times to allow non-uniform scaling round-trip later if needed
             writeVal(os, info.m_sphere.m_radius);
             writeVal(os, info.m_sphere.m_radius);
             writeVal(os, info.m_sphere.m_radius);
@@ -143,7 +190,6 @@ namespace OgreNewt
             break;
         }
 
-        // not yet supported in this compact format:
         case ConvexHullPrimitiveType:
         case TreeCollisionPrimitiveType:
         case CompoundCollisionPrimitiveType:
@@ -184,8 +230,7 @@ namespace OgreNewt
             readVal(is, rx);
             readVal(is, ry);
             readVal(is, rz);
-            Ogre::Vector3 size(rx * 2.0f, ry * 2.0f, rz * 2.0f);
-            dest = CollisionPtr(new CollisionPrimitives::Ellipsoid(world, size, 0, Ogre::Quaternion::IDENTITY, Ogre::Vector3::ZERO));
+            dest = CollisionPtr(new CollisionPrimitives::Ellipsoid(world, Ogre::Vector3(rx * 2.0f, ry * 2.0f, rz * 2.0f), 0, Ogre::Quaternion::IDENTITY, Ogre::Vector3::ZERO));
             break;
         }
 
@@ -195,8 +240,7 @@ namespace OgreNewt
             readVal(is, r0);
             readVal(is, r1);
             readVal(is, h);
-            float r = 0.5f * (r0 + r1);
-            dest = CollisionPtr(new CollisionPrimitives::Cylinder(world, r, h, 0, Ogre::Quaternion::IDENTITY, Ogre::Vector3::ZERO));
+            dest = CollisionPtr(new CollisionPrimitives::Cylinder(world, 0.5f * (r0 + r1), h, 0, Ogre::Quaternion::IDENTITY, Ogre::Vector3::ZERO));
             break;
         }
 
@@ -207,8 +251,7 @@ namespace OgreNewt
             readVal(is, r1);
             readVal(is, h);
             float r = 0.5f * (r0 + r1);
-            float fullH = h + 2.0f * r;
-            dest = CollisionPtr(new CollisionPrimitives::Capsule(world, r, fullH, 0, Ogre::Quaternion::IDENTITY, Ogre::Vector3::ZERO));
+            dest = CollisionPtr(new CollisionPrimitives::Capsule(world, r, h + 2.0f * r, 0, Ogre::Quaternion::IDENTITY, Ogre::Vector3::ZERO));
             break;
         }
 
@@ -239,32 +282,27 @@ namespace OgreNewt
             readVal(is, sx);
             readVal(is, sz);
             std::vector<float> elev(size_t(w) * size_t(h));
-
             for (size_t i = 0; i < elev.size(); ++i)
             {
                 readVal(is, elev[i]);
             }
-
             dest = CollisionPtr(new CollisionPrimitives::HeightField(world, w, h, elev.data(), 1.0f, sx, sz, Ogre::Vector3::ZERO, Ogre::Quaternion::IDENTITY, 0));
-
             break;
         }
 
-        // not yet supported:
         case ConvexHullPrimitiveType:
         case TreeCollisionPrimitiveType:
         case CompoundCollisionPrimitiveType:
         case ConcaveHullPrimitiveType:
         default:
             logCritical("importPrimitive", "Deserializer for this collision type not implemented yet.");
-            // dest stays empty
             break;
         }
 
         return dest;
     }
 
-    // Minimal ASCII PLY reader (vertices + triangular faces only)
+    // ── PLY importer ──────────────────────────────────────────────────────────
     CollisionPtr CollisionSerializer::importPLY(std::istream& is, World* world)
     {
         CollisionPtr dest;
@@ -273,7 +311,6 @@ namespace OgreNewt
         size_t vertexCount = 0, faceCount = 0;
         bool headerDone = false;
 
-        // Read header
         if (!std::getline(is, line) || line.rfind("ply", 0) != 0)
         {
             logCritical("importPLY", "Invalid PLY header.");
@@ -300,6 +337,7 @@ namespace OgreNewt
                 break;
             }
         }
+
         if (!headerDone)
         {
             logCritical("importPLY", "PLY header not terminated (no end_header).");
@@ -307,7 +345,7 @@ namespace OgreNewt
         }
 
         std::vector<Ogre::Vector3> verts(vertexCount);
-        for (size_t i = 0; i < vertexCount; i++)
+        for (size_t i = 0; i < vertexCount; ++i)
         {
             if (!std::getline(is, line))
             {
@@ -318,9 +356,10 @@ namespace OgreNewt
             ss >> verts[i].x >> verts[i].y >> verts[i].z;
         }
 
+        // Collect triangulated indices (fan triangulation for polygons)
         std::vector<int> indices;
         indices.reserve(faceCount * 3);
-        for (size_t i = 0; i < faceCount; i++)
+        for (size_t i = 0; i < faceCount; ++i)
         {
             if (!std::getline(is, line))
             {
@@ -330,20 +369,18 @@ namespace OgreNewt
             std::istringstream ss(line);
             int n;
             ss >> n;
-
             if (n < 3)
             {
-                continue; // degenerate, skip
+                continue;
             }
 
             std::vector<int> poly(n);
-            for (int k = 0; k < n; k++)
+            for (int k = 0; k < n; ++k)
             {
                 ss >> poly[k];
             }
 
-            // Fan triangulation from poly[0]
-            for (int k = 1; k < n - 1; k++)
+            for (int k = 1; k < n - 1; ++k)
             {
                 indices.push_back(poly[0]);
                 indices.push_back(poly[k]);
@@ -359,33 +396,48 @@ namespace OgreNewt
 
         ndPolygonSoupBuilder soup;
         soup.Begin();
-        for (size_t i = 0; i < indices.size(); i += 3)
+        size_t totalFacesAdded = 0;
+
+        for (size_t i = 0; i + 2 < indices.size(); i += 3)
         {
-            ndVector f[3];
-            for (int j = 0; j < 3; j++)
+            const int a = indices[i + 0];
+            const int b = indices[i + 1];
+            const int c = indices[i + 2];
+
+            if (a < 0 || b < 0 || c < 0 || a >= (int)verts.size() || b >= (int)verts.size() || c >= (int)verts.size())
             {
-                const Ogre::Vector3& v = verts[indices[i + j]];
-                f[j] = ndVector(v.x, v.y, v.z, 1.0f);
+                continue;
             }
-            soup.AddFace(&f[0].m_x, sizeof(ndVector), 3, 0);
+
+            if (!isValidSoupTriangle(verts[a], verts[b], verts[c]))
+            {
+                continue;
+            }
+
+            ndVector f[3];
+            f[0] = ndVector(verts[a].x, verts[a].y, verts[a].z, 1.0f);
+            f[1] = ndVector(verts[b].x, verts[b].y, verts[b].z, 1.0f);
+            f[2] = ndVector(verts[c].x, verts[c].y, verts[c].z, 1.0f);
+            soup.AddFace(&f[0], 3, 0);
+            ++totalFacesAdded;
         }
+
+        if (totalFacesAdded == 0)
+        {
+            logCritical("importPLY", "PLY has no valid triangles after filtering.");
+            return dest;
+        }
+
         soup.End(true);
 
         ndShape* shape = new ndShapeStatic_bvh(soup);
-        dest = CollisionPtr(new Collision(shape, world, true));
-
-        ndShapeInstance* shapeInstance = new ndShapeInstance(shape);
-
-        dest->m_shapeInstance = shapeInstance;
-        dest->m_col = dest->m_shapeInstance->GetShape();
-
+        dest = CollisionPtr(new Collision(world, ndSharedPtr<ndShapeInstance>(new ndShapeInstance(shape))));
         return dest;
     }
 
     CollisionSerializer::CollisionSerializer()
     {
     }
-
     CollisionSerializer::~CollisionSerializer()
     {
     }
@@ -398,27 +450,22 @@ namespace OgreNewt
             return;
         }
 
-        // if filename ends with .ply and we have an ndShapeInstance available (ND4), try SavePLY
         Ogre::String lower = filename;
         std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
         const bool writePly = Ogre::StringUtil::endsWith(lower, ".ply");
 
         if (writePly)
         {
-            // Access ndShapeInstance if your Collision stores it (friend access allowed).
-            if (collision->m_shapeInstance)
+            if (collision->getShapeInstance())
             {
-                collision->m_shapeInstance->SavePLY(filename.c_str());
+                collision->getShapeInstance()->SavePLY(filename.c_str());
                 return;
             }
-
-            // fall back: approximate by exporting triangles from ndShapeInfo is non-trivial.
-            // For now, if no instance, we just log an error and bail.
-            logCritical("exportCollision", "PLY export requires ndShapeInstance (SavePLY). Define OGRENEWT_HAS_SHAPE_INSTANCE and store it in Collision.");
+            logCritical("exportCollision", "PLY export requires ndShapeInstance (SavePLY). "
+                                           "Define OGRENEWT_HAS_SHAPE_INSTANCE and store it in Collision.");
             return;
         }
 
-        // our custom compact binary format (ND4)
         std::ofstream os(filename.c_str(), std::ios::binary);
         if (!os.good())
         {
@@ -439,7 +486,6 @@ namespace OgreNewt
             return dest;
         }
 
-        // slurp into memory
         const size_t size = stream.size();
         if (size == 0)
         {
@@ -451,19 +497,16 @@ namespace OgreNewt
         std::vector<char> buffer(size);
         stream.read(buffer.data(), size);
 
-        // detect PLY ASCII
         if (hasPlyHeader(buffer.data(), buffer.size()))
         {
             std::stringbuf sb;
             sb.sputn(buffer.data(), std::streamsize(buffer.size()));
             std::istream is(&sb);
             dest = importPLY(is, world);
-
             stream.close();
             return dest;
         }
 
-        // Otherwise expect our compact binary
         if (size < sizeof(kMagic) + sizeof(kVersion))
         {
             logCritical("importCollision", "Serialized collision too small.");
@@ -494,7 +537,6 @@ namespace OgreNewt
         }
 
         dest = importPrimitive(is, world);
-
         stream.close();
         return dest;
     }

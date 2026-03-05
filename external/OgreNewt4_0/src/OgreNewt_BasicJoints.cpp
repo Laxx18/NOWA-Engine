@@ -3990,8 +3990,8 @@ namespace OgreNewt
         ndMatrix pinsAndPivoFrame(ndGramSchmidtMatrix(dir));
         pinsAndPivoFrame.m_posit = ndVector(pos.x, pos.y, pos.z, 1.0f);
 
-        // create a Newton custom joint (our RayCastTire) and register as support joint
         RayCastTire* joint = new RayCastTire(child->getWorld()->getNewtonWorld(), pinsAndPivoFrame, dir, child, parentBody, parent, m_tireConfiguration, radius);
+
         SetSupportJoint(child->getWorld(), joint);
     }
 

@@ -36,10 +36,11 @@ namespace OgreNewt
 
 		friend class Vehicle;
 		friend class World;
+        friend class BodyNotify;
 	public:
 
 		Body(World* world, Ogre::SceneManager* sceneManager, const OgreNewt::CollisionPtr& col, Ogre::SceneMemoryMgrTypes memoryType = Ogre::SceneMemoryMgrTypes::SCENE_DYNAMIC, NotifyKind notifyKind = NotifyKind::Default);
-		Body(World* world, Ogre::SceneManager* sceneManager, ndBodyKinematic* body, Ogre::SceneMemoryMgrTypes memoryType = Ogre::SceneMemoryMgrTypes::SCENE_DYNAMIC, NotifyKind notifyKind = NotifyKind::Default);
+        Body(World* world, Ogre::SceneManager* sceneManager, ndSharedPtr<ndBody> bodyPtr, Ogre::SceneMemoryMgrTypes memoryType = Ogre::SceneMemoryMgrTypes::SCENE_DYNAMIC, NotifyKind notifyKind = NotifyKind::Default);
 		Body(World* world, Ogre::SceneManager* sceneManager, Ogre::SceneMemoryMgrTypes memoryType = Ogre::SceneMemoryMgrTypes::SCENE_DYNAMIC);
 
 		virtual ~Body();
@@ -52,7 +53,10 @@ namespace OgreNewt
 		void* getUserData() const { return m_userdata; }
 #endif
 
-		ndBodyKinematic* getNewtonBody() const { return m_body; }
+		virtual ndBodyKinematic* getNewtonBody() const
+        {
+            return *m_bodyPtr ? const_cast<ndBody*>(*m_bodyPtr)->GetAsBodyKinematic() : nullptr;
+        }
 
 		Ogre::SceneNode* getOgreNode() const { return m_node; }
 		Ogre::ManualObject* getDebugCollisionLines() { return m_debugCollisionLines; }
@@ -194,12 +198,13 @@ namespace OgreNewt
 		void setSelfCollisionGroup(unsigned int selfCollisionGroup);
 		unsigned int getSelfCollisionGroup() const;
 
-		void setBodyNotify(BodyNotify* bodyNotify);
+		void setBodyNotify(ndSharedPtr<ndBodyNotify> bodyNotifyPtr);
 	private:
 		void dispatchContacts();
+
 	protected:
-		ndBodyKinematic* m_body;
-		BodyNotify* m_bodyNotify; // Store the notification object
+        ndSharedPtr<ndBody> m_bodyPtr;
+        ndSharedPtr<ndBodyNotify> m_bodyNotifyPtr; // Store the notification object
 		const MaterialID* m_matid;
 		World* m_world;
 		Ogre::Vector3 m_gravity;

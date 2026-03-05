@@ -856,6 +856,19 @@ namespace NOWA
         return true;
     }
 
+    bool GraphicsModule::isSceneValid(void)
+    {
+        GameProgressModule* gameProgressModule = AppStateManager::getSingletonPtr()->getActiveGameProgressModuleSafe();
+        const bool isStalled = AppStateManager::getSingletonPtr()->bStall.load();
+        const bool isSceneLoading = (gameProgressModule != nullptr) ? gameProgressModule->bSceneLoading.load() : true;
+
+        if (false == isStalled && false == isSceneLoading)
+        {
+            return true;
+        }
+        return false;
+    }
+
     GraphicsModule::NodeTransforms* GraphicsModule::findNodeTransforms(Ogre::Node* node)
     {
         // O(1) lookup using the hash map

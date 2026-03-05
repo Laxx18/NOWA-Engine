@@ -56,75 +56,60 @@ namespace
     }
 }
 
-Joint::Joint() : m_jointPtr(), m_joint(nullptr), m_stiffness(1.0f)
+Joint::Joint()
+    : m_jointPtr(),
+    m_stiffness(1.0f)
 {
 }
 
 Joint::~Joint()
 {
-    if (!m_world || !m_joint)
+    if (!m_world || !m_jointPtr)
     {
         return;
     }
 
-    // Cache pointers (because we will clear members)
-    ndJointBilateralConstraint* joint = m_joint;
-    ndSharedPtr<ndJointBilateralConstraint> jointPtr = m_jointPtr;
+    ndSharedPtr<ndJointBilateralConstraint> jointPtr = std::move(m_jointPtr);
     OgreNewt::World* world = m_world;
-
-    // Clear our members immediately to prevent accidental re-use
-    m_joint = nullptr;
-    m_jointPtr = ndSharedPtr<ndJointBilateralConstraint>();
     m_world = nullptr;
 
-    // Remove on world thread / safe point
     world->enqueuePhysicsAndWait(
-        [joint, jointPtr](OgreNewt::World& w) mutable
+        [jointPtr](OgreNewt::World& w) mutable
         {
-            if (joint)
+            if (*jointPtr && (*jointPtr)->IsInWorld())
             {
-                // use your wrapper so it hits assertWritableNow()
-                w.destroyJoint(joint);
+                w.destroyJoint(jointPtr);
             }
-
-            // release shared after it is removed from world
-            jointPtr = ndSharedPtr<ndJointBilateralConstraint>();
+            jointPtr = ndSharedPtr<ndJointBilateralConstraint>(); // release
         });
 }
 
-void Joint::destroyJoint(OgreNewt::World* /*world*/)
+void Joint::destroyJoint(OgreNewt::World*)
 {
-    if (!m_world || !m_joint)
+    if (!m_world || !m_jointPtr)
     {
         return;
     }
 
-    ndJointBilateralConstraint* joint = m_joint;
-    ndSharedPtr<ndJointBilateralConstraint> jointPtr = m_jointPtr;
-
-    // Clear now
-    m_joint = nullptr;
-    m_jointPtr = ndSharedPtr<ndJointBilateralConstraint>();
+    ndSharedPtr<ndJointBilateralConstraint> jointPtr = std::move(m_jointPtr);
 
     m_world->enqueuePhysicsAndWait(
-        [joint, jointPtr](OgreNewt::World& w) mutable
+        [jointPtr](OgreNewt::World& w) mutable
         {
-            if (joint)
+            if (*jointPtr && (*jointPtr)->IsInWorld())
             {
-                w.destroyJoint(joint);
+                w.destroyJoint(jointPtr); // SharedPtr — correct
             }
             jointPtr = ndSharedPtr<ndJointBilateralConstraint>();
         });
 }
 
-void Joint::SetSupportJoint(OgreNewt::World* world, ndJointBilateralConstraint* supportJoint)
+void Joint::SetSupportJoint(OgreNewt::World* world, ndSharedPtr<ndJointBilateralConstraint> jointPtr)
 {
     m_world = world;
+    m_jointPtr = std::move(jointPtr);
 
-    // Wrap raw -> shared
-    m_jointPtr = ndSharedPtr<ndJointBilateralConstraint>(supportJoint);
-    m_joint = m_jointPtr.operator->();
-    if (!m_world || !m_joint)
+    if (!m_world || !m_jointPtr)
     {
         return;
     }
@@ -134,13 +119,6 @@ void Joint::SetSupportJoint(OgreNewt::World* world, ndJointBilateralConstraint* 
         {
             w.addJoint(m_jointPtr);
         });
-
-    // Optional: if you use userdata, do it on world thread as well
-    // m_world->enqueuePhysicsAndWait([this](OgreNewt::World&)
-    // {
-    //     m_joint->SetUserData(this);
-    //     m_joint->SetUserDestructorCallback(&Joint::destructorCallback);
-    // });
 }
 
 // ----------------- Pending row API (public wrapper methods) -----------------
@@ -205,7 +183,7 @@ void Joint::setRowSpringDamper(Ogre::Real stiffness, Ogre::Real springK, Ogre::R
 // ----------------- applyPendingRows: called from ND joint's JacobianDerivative -----------------
 void Joint::applyPendingRows(ndConstraintDescritor& desc)
 {
-    if (!m_joint)
+    if (!m_jointPtr)
     {
         return;
     }
@@ -217,15 +195,15 @@ void Joint::applyPendingRows(ndConstraintDescritor& desc)
         {
         case PendingRow::LINEAR:
         {
-            m_joint->AddLinearRowJacobian(desc, row.p0, row.p1, row.dir);
-            m_joint->SetLowerFriction(desc, row.springK);
-            m_joint->SetHighFriction(desc, row.springD);
+            m_jointPtr->AddLinearRowJacobian(desc, row.p0, row.p1, row.dir);
+            m_jointPtr->SetLowerFriction(desc, row.springK);
+            m_jointPtr->SetHighFriction(desc, row.springD);
             break;
         }
         case PendingRow::ANGULAR:
         {
             // call ND4 helper to add angular row:
-            m_joint->AddAngularRowJacobian(desc, row.dir, row.relAngle);
+            m_jointPtr->AddAngularRowJacobian(desc, row.dir, row.relAngle);
 
             // set per-row params similarly (see comment above)
             break;
@@ -240,15 +218,15 @@ void Joint::applyPendingRows(ndConstraintDescritor& desc)
             // fallback: add linear row with direction = linear0? It's complicated — better to add explicit helper if ND4 provides it.
             // As a safe fallback we add three linear rows using linear0..linear1 vectors as jacobian.
             // NOTE: this fallback is simplistic. Adjust per your needs.
-            m_joint->AddLinearRowJacobian(desc, row.linear0, row.linear1, row.linear0); // placeholder usage
+            m_jointPtr->AddLinearRowJacobian(desc, row.linear0, row.linear1, row.linear0); // placeholder usage
             // and angular rows:
-            m_joint->AddAngularRowJacobian(desc, row.angular0, ndFloat32(0.0f));
+            m_jointPtr->AddAngularRowJacobian(desc, row.angular0, ndFloat32(0.0f));
             break;
         }
         }
     }
 
-    m_joint->SetDiagonalRegularizer(desc, static_cast<ndFloat32>(m_stiffness));
+    m_jointPtr->SetDiagonalRegularizer(desc, static_cast<ndFloat32>(m_stiffness));
 
     // done with pending rows for this Jacobian pass
     m_pendingRows.clear();
@@ -263,12 +241,12 @@ void Joint::destructorCallback(const ndJointBilateralConstraint* /*me*/)
 
 void Joint::setCollisionState(int state) const
 {
-    m_joint->SetCollidable(state != 0);
+    m_jointPtr->SetCollidable(state != 0);
 }
 
 int Joint::getCollisionState() const
 {
-    return m_joint->IsCollidable() ? 1 : 0;
+    return m_jointPtr->IsCollidable() ? 1 : 0;
 }
 
 Ogre::Real Joint::getStiffness() const
@@ -293,12 +271,12 @@ void Joint::setJointForceCalculation(bool)
 
 OgreNewt::Body* Joint::getBody0() const
 {
-    if (!m_joint)
+    if (!m_jointPtr)
     {
         return nullptr;
     }
 
-    if (auto* body = m_joint->GetBody0())
+    if (auto* body = m_jointPtr->GetBody0())
     {
         auto& notifyPtr = body->GetNotifyCallback();
         if (notifyPtr)
@@ -315,12 +293,12 @@ OgreNewt::Body* Joint::getBody0() const
 
 OgreNewt::Body* Joint::getBody1() const
 {
-    if (!m_joint)
+    if (!m_jointPtr)
     {
         return nullptr;
     }
 
-    if (auto* body = m_joint->GetBody1())
+    if (auto* body = m_jointPtr->GetBody1())
     {
         auto& notifyPtr = body->GetNotifyCallback();
         if (notifyPtr)
@@ -353,50 +331,53 @@ void Joint::setRowMaximumFriction(Ogre::Real friction) const
 
 Ogre::Vector3 Joint::getForce0() const
 {
-    if (!m_joint)
+    if (!m_jointPtr)
     {
         return Ogre::Vector3::ZERO;
     }
 
-    const ndVector f = m_joint->GetForceBody0();
+    const ndVector f = m_jointPtr->GetForceBody0();
     return Ogre::Vector3(f.m_x, f.m_y, f.m_z);
 }
 
 Ogre::Vector3 Joint::getTorque0() const
 {
-    if (!m_joint)
+    if (!m_jointPtr)
     {
         return Ogre::Vector3::ZERO;
     }
 
-    const ndVector t = m_joint->GetTorqueBody0();
+    const ndVector t = m_jointPtr->GetTorqueBody0();
     return Ogre::Vector3(t.m_x, t.m_y, t.m_z);
 }
 
 Ogre::Vector3 Joint::getForce1() const
 {
-    if (!m_joint)
+    if (!m_jointPtr)
     {
         return Ogre::Vector3::ZERO;
     }
 
-    const ndVector f = m_joint->GetForceBody1();
+    const ndVector f = m_jointPtr->GetForceBody1();
     return Ogre::Vector3(f.m_x, f.m_y, f.m_z);
 }
 
 Ogre::Vector3 Joint::getTorque1() const
 {
-    if (!m_joint)
+    if (!m_jointPtr)
     {
         return Ogre::Vector3::ZERO;
     }
 
-    const ndVector t = m_joint->GetTorqueBody1();
+    const ndVector t = m_jointPtr->GetTorqueBody1();
     return Ogre::Vector3(t.m_x, t.m_y, t.m_z);
 }
 
 // ----------------- CustomJoint: construct ND joint and pass owner pointer -----------------
-CustomJoint::CustomJoint(unsigned int maxDOF, const Body* child, const Body* parent) : m_maxDOF(maxDOF), m_body0(child), m_body1(parent)
+CustomJoint::CustomJoint(unsigned int maxDOF, const Body* child, const Body* parent)
+    : m_maxDOF(maxDOF),
+    m_body0(child),
+    m_body1(parent)
 {
     ndBodyKinematic* b0 = nullptr;
     ndBodyKinematic* b1 = nullptr;

@@ -5,9 +5,7 @@
 
 namespace OgreNewt
 {
-    BodyNotify::BodyNotify(Body* ogreNewtBody)
-        : ndBodyNotify(ndVector(ogreNewtBody->getGravity().x, ogreNewtBody->getGravity().y, ogreNewtBody->getGravity().z, 1.0f)), 
-        m_ogreNewtBody(ogreNewtBody)
+    BodyNotify::BodyNotify(Body* ogreNewtBody) : ndBodyNotify(ndVector(ogreNewtBody->getGravity().x, ogreNewtBody->getGravity().y, ogreNewtBody->getGravity().z, 1.0f)), m_ogreNewtBody(ogreNewtBody)
     {
     }
 

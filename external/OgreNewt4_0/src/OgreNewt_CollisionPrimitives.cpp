@@ -18,6 +18,65 @@ namespace
     {
         return std::isfinite(v.x) && std::isfinite(v.y) && std::isfinite(v.z);
     }
+
+    bool isValidSoupTriangle(const Ogre::Vector3& v0, const Ogre::Vector3& v1, const Ogre::Vector3& v2)
+    {
+        // ── 1. Degenerate edges ──────────────────────────────────────────────────
+        const float MIN_EDGE2 = 1.0e-10f; // slightly more conservative than 1e-12
+        const Ogre::Vector3 e01 = v1 - v0;
+        const Ogre::Vector3 e12 = v2 - v1;
+        const Ogre::Vector3 e20 = v0 - v2;
+
+        if (e01.squaredLength() < MIN_EDGE2)
+        {
+            return false;
+        }
+        if (e12.squaredLength() < MIN_EDGE2)
+        {
+            return false;
+        }
+        if (e20.squaredLength() < MIN_EDGE2)
+        {
+            return false;
+        }
+
+        // ── 2. Degenerate area ───────────────────────────────────────────────────
+        const Ogre::Vector3 cross = e01.crossProduct(-e20); // == (v1-v0) x (v2-v0)
+        const float MIN_AREA2 = 1.0e-10f;
+        if (cross.squaredLength() < MIN_AREA2)
+        {
+            return false;
+        }
+
+        // ── 3. Newton 4 GenerateConvexCap assert guard ───────────────────────────
+        // The assert fires when an adjacent face's unit normal has a dot product
+        // ≥ 0.2 with the shared edge direction.  If THIS face's normal is nearly
+        // parallel to any of its own edges, it WILL trigger that assert when it
+        // appears as the "adjacent" face of some neighbor.  Discard it now.
+        //
+        // Threshold 0.17 gives a small margin below Newton's 0.2 to account for
+        // floating point and the transform in CalculateGlobalNormal.
+        const float MAX_NORMAL_EDGE_DOT = 0.17f;
+
+        const Ogre::Vector3 normal = cross.normalisedCopy();
+
+        const Ogre::Vector3 edges[3] = {e01, e12, e20};
+        for (const Ogre::Vector3& e : edges)
+        {
+            const float len = e.length();
+            if (len < 1.0e-8f)
+            {
+                return false; // shouldn't reach here after check 1, but be safe
+            }
+            const float d = std::abs(normal.dotProduct(e / len));
+            if (d > MAX_NORMAL_EDGE_DOT)
+            {
+                return false; // this face would trigger GenerateConvexCap assert
+            }
+        }
+
+        return true;
+    }
 }
 
 namespace OgreNewt
@@ -26,14 +85,7 @@ namespace OgreNewt
     {
         Null::Null(const OgreNewt::World* world) : Collision(world)
         {
-            if (m_col)
-            {
-                m_col->Release();
-            }
-
-            m_shapeInstance = new ndShapeInstance(new ndShapeNull());
-
-            m_col = m_shapeInstance->GetShape();
+            m_shapeInstancePtr = ndSharedPtr<ndShapeInstance>(new ndShapeInstance(new ndShapeNull()));
         }
 
         // --------------------------------
@@ -46,18 +98,11 @@ namespace OgreNewt
 
         Box::Box(const World* world, const Ogre::Vector3& size, unsigned int id, const Ogre::Quaternion& orient, const Ogre::Vector3& pos) : ConvexCollision(world)
         {
-            if (m_col)
-            {
-                m_col->Release();
-            }
-
-            m_shapeInstance = new ndShapeInstance(new ndShapeBox(ndFloat32(size.x), ndFloat32(size.y), ndFloat32(size.z)));
+            m_shapeInstancePtr = ndSharedPtr<ndShapeInstance>(new ndShapeInstance(new ndShapeBox(ndFloat32(size.x), ndFloat32(size.y), ndFloat32(size.z))));
 
             ndMatrix localM;
             OgreNewt::Converters::QuatPosToMatrix(orient, pos, localM);
-            m_shapeInstance->SetLocalMatrix(localM);
-
-            m_col = m_shapeInstance->GetShape();
+            m_shapeInstancePtr->SetLocalMatrix(localM);
         }
 
         // --------------------------------
@@ -70,33 +115,26 @@ namespace OgreNewt
 
         Ellipsoid::Ellipsoid(const World* world, const Ogre::Vector3& size, unsigned int id, const Ogre::Quaternion& orient, const Ogre::Vector3& pos) : ConvexCollision(world)
         {
-            if (m_col)
-            {
-                m_col->Release();
-            }
-
             ndMatrix localM;
             OgreNewt::Converters::QuatPosToMatrix(orient, pos, localM);
 
             if ((size.x == size.y) && (size.y == size.z))
             {
                 // Uniform sphere: use size.x as radius (same as ND3)
-                m_shapeInstance = new ndShapeInstance(new ndShapeSphere(ndFloat32(size.x)));
+                 m_shapeInstancePtr = ndSharedPtr<ndShapeInstance>(new ndShapeInstance(new ndShapeSphere(ndFloat32(size.x))));
 
-                m_shapeInstance->SetLocalMatrix(localM);
+                m_shapeInstancePtr->SetLocalMatrix(localM);
             }
             else
             {
                 const Ogre::Real radius = std::min(std::min(size.x, size.y), size.z);
                 const Ogre::Vector3 scale = Ogre::Vector3(size.x / radius, size.y / radius, size.z / radius);
 
-                m_shapeInstance = new ndShapeInstance(new ndShapeSphere(ndFloat32(radius)));
+                m_shapeInstancePtr = ndSharedPtr<ndShapeInstance>(new ndShapeInstance(new ndShapeSphere(ndFloat32(radius))));
 
-                m_shapeInstance->SetLocalMatrix(localM);
-                m_shapeInstance->SetScale(ndVector(ndFloat32(scale.x), ndFloat32(scale.y), ndFloat32(scale.z), ndFloat32(1.0f)));
+                m_shapeInstancePtr->SetLocalMatrix(localM);
+                m_shapeInstancePtr->SetScale(ndVector(ndFloat32(scale.x), ndFloat32(scale.y), ndFloat32(scale.z), ndFloat32(1.0f)));
             }
-
-            m_col = m_shapeInstance->GetShape();
         }
 
         // --------------------------------
@@ -109,18 +147,11 @@ namespace OgreNewt
 
         Cylinder::Cylinder(const World* world, Ogre::Real radius, Ogre::Real height, unsigned int id, const Ogre::Quaternion& orient, const Ogre::Vector3& pos) : ConvexCollision(world)
         {
-            if (m_col)
-            {
-                m_col->Release();
-            }
-
-            m_shapeInstance = new ndShapeInstance(new ndShapeCylinder(ndFloat32(radius), ndFloat32(radius), ndFloat32(height)));
+           m_shapeInstancePtr = ndSharedPtr<ndShapeInstance>(new ndShapeInstance(new ndShapeCylinder(ndFloat32(radius), ndFloat32(radius), ndFloat32(height))));
 
             ndMatrix localM;
             OgreNewt::Converters::QuatPosToMatrix(orient, pos, localM);
-            m_shapeInstance->SetLocalMatrix(localM);
-
-            m_col = m_shapeInstance->GetShape();
+            m_shapeInstancePtr->SetLocalMatrix(localM);
         }
 
         // --------------------------------
@@ -133,34 +164,20 @@ namespace OgreNewt
 
         Capsule::Capsule(const World* world, Ogre::Real radius, Ogre::Real height, unsigned int id, const Ogre::Quaternion& orient, const Ogre::Vector3& pos) : ConvexCollision(world)
         {
-            if (m_col)
-            {
-                m_col->Release();
-            }
-
-            m_shapeInstance = new ndShapeInstance(new ndShapeCapsule(ndFloat32(radius), ndFloat32(radius), ndFloat32(height - (radius * 2.0f))));
+            m_shapeInstancePtr = ndSharedPtr<ndShapeInstance>(new ndShapeInstance(new ndShapeCapsule(ndFloat32(radius), ndFloat32(radius), ndFloat32(height - (radius * 2.0f)))));
 
             ndMatrix localM;
             OgreNewt::Converters::QuatPosToMatrix(orient, pos, localM);
-            m_shapeInstance->SetLocalMatrix(localM);
-
-            m_col = m_shapeInstance->GetShape();
+            m_shapeInstancePtr->SetLocalMatrix(localM);
         }
 
         Capsule::Capsule(const World* world, const Ogre::Vector3& size, unsigned int id, const Ogre::Quaternion& orient, const Ogre::Vector3& pos) : ConvexCollision(world)
         {
-            if (m_col)
-            {
-                m_col->Release();
-            }
-
-            m_shapeInstance = new ndShapeInstance(new ndShapeCapsule(ndFloat32(size.x), ndFloat32(size.z), ndFloat32(size.y)));
+            m_shapeInstancePtr = ndSharedPtr<ndShapeInstance>(new ndShapeInstance(new ndShapeCapsule(ndFloat32(size.x), ndFloat32(size.z), ndFloat32(size.y))));
 
             ndMatrix localM;
             OgreNewt::Converters::QuatPosToMatrix(orient, pos, localM);
-            m_shapeInstance->SetLocalMatrix(localM);
-
-            m_col = m_shapeInstance->GetShape();
+            m_shapeInstancePtr->SetLocalMatrix(localM);
         }
 
         // --------------------------------
@@ -173,18 +190,11 @@ namespace OgreNewt
 
         Cone::Cone(const World* world, Ogre::Real radius, Ogre::Real height, unsigned int id, const Ogre::Quaternion& orient, const Ogre::Vector3& pos) : ConvexCollision(world)
         {
-            if (m_col)
-            {
-                m_col->Release();
-            }
-
-            m_shapeInstance = new ndShapeInstance(new ndShapeCone(ndFloat32(radius), ndFloat32(height)));
+            m_shapeInstancePtr = ndSharedPtr<ndShapeInstance>(new ndShapeInstance(new ndShapeCone(ndFloat32(radius), ndFloat32(height))));
 
             ndMatrix localM;
             OgreNewt::Converters::QuatPosToMatrix(orient, pos, localM);
-            m_shapeInstance->SetLocalMatrix(localM);
-
-            m_col = m_shapeInstance->GetShape();
+            m_shapeInstancePtr->SetLocalMatrix(localM);
         }
 
         // --------------------------------
@@ -197,18 +207,11 @@ namespace OgreNewt
 
         ChamferCylinder::ChamferCylinder(const World* world, Ogre::Real radius, Ogre::Real height, unsigned int id, const Ogre::Quaternion& orient, const Ogre::Vector3& pos) : ConvexCollision(world)
         {
-            if (m_col)
-            {
-                m_col->Release();
-            }
-
-            m_shapeInstance = new ndShapeInstance(new ndShapeChamferCylinder(ndFloat32(radius), ndFloat32(height)));
+            m_shapeInstancePtr = ndSharedPtr<ndShapeInstance>(new ndShapeInstance(new ndShapeChamferCylinder(ndFloat32(radius), ndFloat32(height))));
 
             ndMatrix localM;
             OgreNewt::Converters::QuatPosToMatrix(orient, pos, localM);
-            m_shapeInstance->SetLocalMatrix(localM);
-
-            m_col = m_shapeInstance->GetShape();
+            m_shapeInstancePtr->SetLocalMatrix(localM);
         }
 
         ConvexHull::ConvexHull(const World* world) : ConvexCollision(world)
@@ -233,8 +236,6 @@ namespace OgreNewt
             Ogre::v1::MeshPtr mesh = obj->getMesh();
             if (mesh.isNull())
             {
-                m_shapeInstance = nullptr;
-                m_col = nullptr;
                 return;
             }
 
@@ -272,8 +273,6 @@ namespace OgreNewt
             }
             if (totalVerts < 4)
             {
-                m_shapeInstance = nullptr;
-                m_col = nullptr;
                 return;
             }
 
@@ -392,26 +391,17 @@ namespace OgreNewt
 
             if (points.size() < 12)
             { // < 4 points
-                m_shapeInstance = nullptr;
-                m_col = nullptr;
                 return;
-            }
-
-            if (m_col)
-            {
-                m_col->Release();
             }
 
             const ndInt32 count = ndInt32(points.size() / 3);
             const ndInt32 stride = ndInt32(sizeof(ndFloat32) * 3); // tightly packed floats
 
-            m_shapeInstance = new ndShapeInstance(new ndShapeConvexHull(count, stride, ndFloat32(tolerance), reinterpret_cast<const ndFloat32*>(&points[0])));
+            m_shapeInstancePtr = ndSharedPtr<ndShapeInstance>(new ndShapeInstance(new ndShapeConvexHull(count, stride, ndFloat32(tolerance), reinterpret_cast<const ndFloat32*>(&points[0]))));
 
             ndMatrix localM;
             OgreNewt::Converters::QuatPosToMatrix(orient, pos, localM);
-            m_shapeInstance->SetLocalMatrix(localM);
-
-            m_col = m_shapeInstance->GetShape();
+            m_shapeInstancePtr->SetLocalMatrix(localM);
         }
 
         ConvexHull::ConvexHull(const World* world, Ogre::Item* item, unsigned int id, const Ogre::Quaternion& orient, const Ogre::Vector3& pos, Ogre::Real tolerance, const Ogre::Vector3& forceScale) : ConvexCollision(world)
@@ -434,8 +424,6 @@ namespace OgreNewt
             Ogre::MeshPtr mesh = item->getMesh();
             if (mesh.isNull())
             {
-                m_shapeInstance = nullptr;
-                m_col = nullptr;
                 return;
             }
 
@@ -511,8 +499,6 @@ namespace OgreNewt
             // Check if we got any vertices
             if (verts.size() < 4)
             {
-                m_shapeInstance = nullptr;
-                m_col = nullptr;
                 return;
             }
 
@@ -565,43 +551,26 @@ namespace OgreNewt
 
             if (points.size() < 12)
             {
-                m_shapeInstance = nullptr;
-                m_col = nullptr;
                 return;
-            }
-
-            if (m_col)
-            {
-                m_col->Release();
             }
 
             const ndInt32 count = ndInt32(points.size() / 3);
             const ndInt32 stride = ndInt32(sizeof(ndFloat32) * 3);
 
-            m_shapeInstance = new ndShapeInstance(new ndShapeConvexHull(count, stride, ndFloat32(tolerance), reinterpret_cast<const ndFloat32*>(&points[0])));
+            m_shapeInstancePtr = ndSharedPtr<ndShapeInstance>(new ndShapeInstance(new ndShapeConvexHull(count, stride, ndFloat32(tolerance), reinterpret_cast<const ndFloat32*>(&points[0]))));
 
             ndMatrix localM;
             OgreNewt::Converters::QuatPosToMatrix(orient, pos, localM);
-            m_shapeInstance->SetLocalMatrix(localM);
-
-            m_col = m_shapeInstance->GetShape();
+            m_shapeInstancePtr->SetLocalMatrix(localM);
         }
 
         ConvexHull::ConvexHull(const World* world, const Ogre::Vector3* verts, int vertcount, unsigned int id, const Ogre::Quaternion& orient, const Ogre::Vector3& pos, Ogre::Real tolerance) : ConvexCollision(world)
         {
-            if (m_col)
-            {
-                m_col->Release();
-            }
+            m_shapeInstancePtr = ndSharedPtr<ndShapeInstance>(new ndShapeInstance(new ndShapeConvexHull(vertcount, sizeof(Ogre::Vector3), ndFloat32(tolerance), (ndFloat32*)&verts[0].x)));
 
-            m_shapeInstance = new ndShapeInstance(new ndShapeConvexHull(vertcount, sizeof(Ogre::Vector3), ndFloat32(tolerance), (ndFloat32*)&verts[0].x));
-            m_col = m_shapeInstance->GetShape();
-
-            {
-                ndMatrix localM;
-                OgreNewt::Converters::QuatPosToMatrix(orient, pos, localM);
-                m_shapeInstance->SetLocalMatrix(localM);
-            }
+            ndMatrix localM;
+            OgreNewt::Converters::QuatPosToMatrix(orient, pos, localM);
+            m_shapeInstancePtr->SetLocalMatrix(localM);
         }
 
         ConcaveHull::ConcaveHull(const World* world) : ConvexCollision(world)
@@ -619,6 +588,89 @@ namespace OgreNewt
         {
         }
 
+        // ─────────────────────────────────────────────────────────────────────────────
+        // Shared triangle validation helper used by all TreeCollision constructors.
+        //
+        // Put this in a static anonymous namespace at the top of OgreNewt_Collision.cpp
+        // (above all the TreeCollision constructors), replacing all the old inline
+        // MIN_EDGE2 / MIN_AREA2 checks.
+        //
+        // Why the extra normal-vs-edge dot check exists:
+        //   Newton 4's ndShapeConvexPolygon::GenerateConvexCap() asserts:
+        //       edge.DotProduct(adjacentFaceNormal) < 0.2f
+        //   for every shared edge between two adjacent soup faces.
+        //   If face B's unit normal is nearly PARALLEL to one of face B's own edges,
+        //   then any face A that shares that edge will trigger the assert during
+        //   CalculatePolySoupToHullContactsDescrete. The assert fires in debug builds;
+        //   in release it silently produces garbage contact normals.
+        //
+        //   This commonly happens in ProceduralRoadComponent at tight miter joins where
+        //   Catmull-Rom spline geometry produces long thin triangles whose long axis
+        //   aligns nearly with the face normal.
+        //
+        //   We detect and discard such triangles BEFORE AddFace, which is the only
+        //   safe fix — the assert is inside Newton's BVH traversal, not accessible
+        //   from OgreNewt.
+        //
+        //   Threshold 0.17 gives a margin below Newton's 0.2 to account for floating
+        //   point error and the CalculateGlobalNormal transform (invScale + rotation).
+        // ─────────────────────────────────────────────────────────────────────────────
+
+        namespace
+        {
+            static bool isValidSoupTriangle(const Ogre::Vector3& v0, const Ogre::Vector3& v1, const Ogre::Vector3& v2)
+            {
+                // 1. Reject degenerate edges
+                const float MIN_EDGE2 = 1.0e-10f;
+                const Ogre::Vector3 e01 = v1 - v0;
+                const Ogre::Vector3 e12 = v2 - v1;
+                const Ogre::Vector3 e20 = v0 - v2;
+                if (e01.squaredLength() < MIN_EDGE2)
+                {
+                    return false;
+                }
+                if (e12.squaredLength() < MIN_EDGE2)
+                {
+                    return false;
+                }
+                if (e20.squaredLength() < MIN_EDGE2)
+                {
+                    return false;
+                }
+
+                // 2. Reject degenerate area
+                const Ogre::Vector3 cross = e01.crossProduct(-e20); // (v1-v0) x (v2-v0)
+                const float MIN_AREA2 = 1.0e-10f;
+                if (cross.squaredLength() < MIN_AREA2)
+                {
+                    return false;
+                }
+
+                // 3. Reject triangles whose normal is nearly parallel to one of their
+                //    own edges — these trigger Newton 4's GenerateConvexCap assert.
+                const float MAX_DOT = 0.17f;
+                const Ogre::Vector3 normal = cross.normalisedCopy();
+                const Ogre::Vector3 edges[3] = {e01, e12, e20};
+                for (const Ogre::Vector3& e : edges)
+                {
+                    const float len = e.length();
+                    if (len < 1.0e-8f)
+                    {
+                        return false;
+                    }
+                    if (std::abs(normal.dotProduct(e / len)) > MAX_DOT)
+                    {
+                        return false;
+                    }
+                }
+
+                return true;
+            }
+        } // anonymous namespace
+
+        // ─────────────────────────────────────────────────────────────────────────────
+        // TreeCollision — v1::Entity
+        // ─────────────────────────────────────────────────────────────────────────────
         OgreNewt::CollisionPrimitives::TreeCollision::TreeCollision(const OgreNewt::World* world, Ogre::v1::Entity* obj, bool optimize, unsigned int id, FaceWinding fw) : Collision(world)
         {
             Ogre::Vector3 scale(1, 1, 1);
@@ -627,16 +679,10 @@ namespace OgreNewt
                 scale = node->_getDerivedScaleUpdated();
             }
 
-            // Flip winding if mirrored scale
             FaceWinding localFw = fw;
             if (scale.x * scale.y * scale.z < 0.0f)
             {
                 localFw = (fw == FW_DEFAULT) ? FW_REVERSE : FW_DEFAULT;
-            }
-
-            if (m_col)
-            {
-                m_col->Release();
             }
 
             ndPolygonSoupBuilder meshBuilder;
@@ -644,6 +690,7 @@ namespace OgreNewt
 
             Ogre::v1::MeshPtr mesh = obj->getMesh();
             const unsigned short subCount = mesh->getNumSubMeshes();
+            size_t totalFacesAdded = 0;
 
             for (unsigned short i = 0; i < subCount; ++i)
             {
@@ -653,7 +700,6 @@ namespace OgreNewt
                     continue;
                 }
 
-                // --- Resolve vertex data (shared counted only once per sub that uses it) ---
                 Ogre::v1::VertexData* vData = sub->useSharedVertices ? mesh->sharedVertexData[0] : sub->vertexData[0];
                 if (!vData)
                 {
@@ -666,7 +712,6 @@ namespace OgreNewt
                     continue;
                 }
 
-                // Respect vertexStart when addressing vertices
                 const size_t vStart = vData->vertexStart;
                 const size_t vCount = vData->vertexCount;
 
@@ -679,7 +724,6 @@ namespace OgreNewt
                 unsigned char* vBase = static_cast<unsigned char*>(vBuf->lock(Ogre::v1::HardwareBuffer::HBL_READ_ONLY));
                 const size_t vStride = vBuf->getVertexSize();
 
-                // --- Resolve index data (respect indexStart / indexCount) ---
                 Ogre::v1::IndexData* iData = sub->indexData[0];
                 if (!iData)
                 {
@@ -695,8 +739,8 @@ namespace OgreNewt
                 }
 
                 const bool use32 = (iBuf->getType() == Ogre::v1::HardwareIndexBuffer::IT_32BIT);
-                const size_t iStart = iData->indexStart; // first index to read
-                const size_t iCount = iData->indexCount; // how many indices to read
+                const size_t iStart = iData->indexStart;
+                const size_t iCount = iData->indexCount;
 
                 if (iCount < 3)
                 {
@@ -706,16 +750,10 @@ namespace OgreNewt
 
                 unsigned char* iBase = static_cast<unsigned char*>(iBuf->lock(Ogre::v1::HardwareBuffer::HBL_READ_ONLY));
 
-                const size_t indexSize = iBuf->getIndexSize();
-                // Safety: indexSize must match use32
-                // assert((use32 && indexSize==4) || (!use32 && indexSize==2));
-
                 const size_t triCount = iCount / 3;
 
-                // --- Iterate triangles via index buffer ---
                 for (size_t t = 0; t < triCount; ++t)
                 {
-                    // Read 3 indices with indexStart offset
                     unsigned int idx[3];
                     if (use32)
                     {
@@ -732,58 +770,23 @@ namespace OgreNewt
                         idx[2] = src[iStart + t * 3 + 2];
                     }
 
-                    // Guard index range against this submesh's vertex window (vStart..vStart+vCount-1)
                     if (idx[0] < vStart || idx[0] >= vStart + vCount || idx[1] < vStart || idx[1] >= vStart + vCount || idx[2] < vStart || idx[2] >= vStart + vCount)
                     {
                         continue;
                     }
 
-                    // Fetch positions respecting vertexStart
                     Ogre::Vector3 vtx[3];
                     for (int j = 0; j < 3; ++j)
                     {
-                        const size_t vIdx = idx[j] - vStart; // index inside this vertex window
-                        unsigned char* ptr = vBase + (vIdx * vStride);
+                        const size_t vIdx = idx[j] - vStart;
+                        unsigned char* ptr = vBase + vIdx * vStride;
                         float* pos = nullptr;
                         posElem->baseVertexPointerToElement(ptr, &pos);
                         vtx[j] = Ogre::Vector3(pos[0], pos[1], pos[2]) * scale;
                     }
 
-                    // ---- ND4 safety: skip degenerate triangles ----
-                    // Must match Newton4's ndPolygonSoupBuilder::AddFaceIndirect checks exactly:
-                    // 1. Check each edge length (loop: p0->p1->p2->p0)
-                    // 2. Check cross product area using edge0 = v2-v0, edge1 = v1-v0
-
-                    const Ogre::Real MIN_EDGE2 = 1.0e-12f;
-                    const Ogre::Real MIN_AREA2 = 1.0e-12f;
-
-                    // Edge length check (same as ND4: loop through edges starting from vtx[2])
-                    Ogre::Vector3 p0 = vtx[2];
-                    bool edgeTooSmall = false;
-                    for (int j = 0; j < 3; ++j)
+                    if (!isValidSoupTriangle(vtx[0], vtx[1], vtx[2]))
                     {
-                        Ogre::Vector3 p1 = vtx[j];
-                        Ogre::Vector3 edge = p1 - p0;
-                        if (edge.squaredLength() < MIN_EDGE2)
-                        {
-                            edgeTooSmall = true;
-                            break;
-                        }
-                        p0 = p1;
-                    }
-                    if (edgeTooSmall)
-                    {
-                        continue;
-                    }
-
-                    // Cross product area check (exactly as ND4 does it)
-                    // edge0 = vtx[2] - vtx[0], edge1 = vtx[1] - vtx[0]
-                    Ogre::Vector3 edge0 = vtx[2] - vtx[0];
-                    Ogre::Vector3 edge1 = vtx[1] - vtx[0];
-                    Ogre::Vector3 faceNormal = edge0.crossProduct(edge1);
-                    if (faceNormal.squaredLength() < MIN_AREA2)
-                    {
-                        // Degenerate triangle (collinear vertices), skip it
                         continue;
                     }
 
@@ -801,18 +804,30 @@ namespace OgreNewt
                         face[2] = ndVector(vtx[1].x, vtx[1].y, vtx[1].z, 1.0f);
                     }
 
-                    meshBuilder.AddFace(&face[0].m_x, sizeof(ndVector), 3, id);
+                    meshBuilder.AddFace(&face[0], 3, id);
+                    ++totalFacesAdded;
                 }
 
                 vBuf->unlock();
                 iBuf->unlock();
             }
 
-            meshBuilder.End(optimize);
-            m_shapeInstance = new ndShapeInstance(new ndShapeStatic_bvh(meshBuilder));
-            m_col = m_shapeInstance->GetShape();
+            if (totalFacesAdded == 0)
+            {
+                Ogre::LogManager::getSingleton().logMessage("OgreNewt::TreeCollision (Entity) - WARNING: mesh '" + mesh->getName() + "' produced zero valid triangles. Creating empty collision shape.", Ogre::LML_CRITICAL);
+                meshBuilder.End(false);
+            }
+            else
+            {
+                meshBuilder.End(optimize);
+            }
+
+            m_shapeInstancePtr = ndSharedPtr<ndShapeInstance>(new ndShapeInstance(new ndShapeStatic_bvh(meshBuilder)));
         }
 
+        // ─────────────────────────────────────────────────────────────────────────────
+        // TreeCollision — Ogre::Item  (v2)
+        // ─────────────────────────────────────────────────────────────────────────────
         TreeCollision::TreeCollision(const World* world, Ogre::Item* item, bool optimize, unsigned int id, FaceWinding fw) : Collision(world)
         {
             m_categoryId = id;
@@ -823,9 +838,8 @@ namespace OgreNewt
             {
                 ndPolygonSoupBuilder dummy;
                 dummy.Begin();
-                dummy.End(optimize);
-                m_shapeInstance = new ndShapeInstance(new ndShapeStatic_bvh(dummy));
-                m_col = m_shapeInstance->GetShape();
+                dummy.End(false);
+                m_shapeInstancePtr = ndSharedPtr<ndShapeInstance>(new ndShapeInstance(new ndShapeStatic_bvh(dummy)));
                 return;
             }
 
@@ -843,16 +857,15 @@ namespace OgreNewt
 
             ndPolygonSoupBuilder meshBuilder;
             meshBuilder.Begin();
+            size_t totalFacesAdded = 0;
 
-            //--------------------------------------------------------------------
-            // Iterate submeshes
-            //--------------------------------------------------------------------
             for (Ogre::SubMesh* subMesh : mesh->getSubMeshes())
             {
                 if (!subMesh)
                 {
                     continue;
                 }
+
                 const Ogre::VertexArrayObjectArray& vaos = subMesh->mVao[0];
                 if (vaos.empty())
                 {
@@ -866,9 +879,7 @@ namespace OgreNewt
                     continue;
                 }
 
-                //----------------------------------------------------------------
-                // 1) Read vertices (async)
-                //----------------------------------------------------------------
+                // --- read positions ---
                 Ogre::VertexArrayObject::ReadRequestsVec vReqs;
                 vReqs.push_back(Ogre::VertexArrayObject::ReadRequests(Ogre::VES_POSITION));
                 vao->readRequests(vReqs);
@@ -877,6 +888,7 @@ namespace OgreNewt
                 const Ogre::VertexBufferPacked* vb = vReqs[0].vertexBuffer;
                 const size_t vCount = vb ? vb->getNumElements() : 0;
                 std::vector<Ogre::Vector3> verts(vCount);
+                bool formatOk = true;
 
                 if (vReqs[0].type == Ogre::VET_HALF4)
                 {
@@ -887,7 +899,7 @@ namespace OgreNewt
                         vReqs[0].data += vb->getBytesPerElement();
                     }
                 }
-                else if (vReqs[0].type == Ogre::VET_FLOAT3)
+                else if (vReqs[0].type == Ogre::VET_FLOAT3 || vReqs[0].type == Ogre::VET_FLOAT4)
                 {
                     for (size_t i = 0; i < vCount; ++i)
                     {
@@ -898,22 +910,25 @@ namespace OgreNewt
                 }
                 else
                 {
-                    vao->unmapAsyncTickets(vReqs);
-                    continue;
+                    Ogre::LogManager::getSingleton().logMessage("OgreNewt::TreeCollision (Item) - WARNING: submesh of '" + mesh->getName() + "' has unrecognised position vertex format " + Ogre::StringConverter::toString(vReqs[0].type) +
+                                                                    ". Expected VET_FLOAT3, VET_FLOAT4 or VET_HALF4. Submesh skipped.",
+                        Ogre::LML_CRITICAL);
+                    formatOk = false;
                 }
+
                 vao->unmapAsyncTickets(vReqs);
 
-                //----------------------------------------------------------------
-                // 2) Read index buffer (async)
-                //----------------------------------------------------------------
+                if (!formatOk || vCount == 0)
+                {
+                    continue;
+                }
+
+                // --- read indices ---
                 Ogre::IndexBufferPacked::IndexType idxType = indexBuffer->getIndexType();
                 Ogre::AsyncTicketPtr ticket = indexBuffer->readRequest(0, indexBuffer->getNumElements());
                 const void* idxData = ticket->map();
                 const size_t idxCount = indexBuffer->getNumElements();
 
-                //----------------------------------------------------------------
-                // Helper to add a triangle
-                //----------------------------------------------------------------
                 auto emitTri = [&](uint32_t a, uint32_t b, uint32_t c)
                 {
                     if (a >= verts.size() || b >= verts.size() || c >= verts.size())
@@ -921,40 +936,12 @@ namespace OgreNewt
                         return;
                     }
 
-                    Ogre::Vector3 v0 = verts[a];
-                    Ogre::Vector3 v1 = verts[b];
-                    Ogre::Vector3 v2 = verts[c];
+                    const Ogre::Vector3& v0 = verts[a];
+                    const Ogre::Vector3& v1 = verts[b];
+                    const Ogre::Vector3& v2 = verts[c];
 
-                    // ---- ND4 safety: skip degenerate triangles ----
-                    // Must match Newton4's ndPolygonSoupBuilder::AddFaceIndirect checks exactly:
-                    // 1. Check each edge length (loop: p0->p1->p2->p0)
-                    // 2. Check cross product area using edge0 = v2-v0, edge1 = v1-v0
-
-                    const Ogre::Real MIN_EDGE2 = 1.0e-12f;
-                    const Ogre::Real MIN_AREA2 = 1.0e-12f;
-
-                    // Edge length check (same as ND4: loop through edges starting from v2)
-                    Ogre::Vector3 vtx[3] = {v0, v1, v2};
-                    Ogre::Vector3 p0 = vtx[2];
-                    for (int j = 0; j < 3; ++j)
+                    if (!isValidSoupTriangle(v0, v1, v2))
                     {
-                        Ogre::Vector3 p1 = vtx[j];
-                        Ogre::Vector3 edge = p1 - p0;
-                        if (edge.squaredLength() < MIN_EDGE2)
-                        {
-                            return; // Degenerate edge, skip
-                        }
-                        p0 = p1;
-                    }
-
-                    // Cross product area check (exactly as ND4 does it)
-                    // edge0 = v2 - v0, edge1 = v1 - v0
-                    Ogre::Vector3 edge0 = v2 - v0;
-                    Ogre::Vector3 edge1 = v1 - v0;
-                    Ogre::Vector3 faceNormal = edge0.crossProduct(edge1);
-                    if (faceNormal.squaredLength() < MIN_AREA2)
-                    {
-                        // Degenerate triangle (collinear vertices), skip it
                         return;
                     }
 
@@ -972,12 +959,10 @@ namespace OgreNewt
                         face[2] = ndVector(v1.x, v1.y, v1.z, 1.0f);
                     }
 
-                    meshBuilder.AddFace(&face[0].m_x, sizeof(ndVector), 3, id);
+                    meshBuilder.AddFace(&face[0], 3, id);
+                    ++totalFacesAdded;
                 };
 
-                //----------------------------------------------------------------
-                // 3) Iterate triangles
-                //----------------------------------------------------------------
                 if (idxType == Ogre::IndexBufferPacked::IT_16BIT)
                 {
                     const uint16_t* idx = reinterpret_cast<const uint16_t*>(idxData);
@@ -998,102 +983,59 @@ namespace OgreNewt
                 ticket->unmap();
             }
 
-            //--------------------------------------------------------------------
-            // Finish
-            //--------------------------------------------------------------------
-            finish(optimize);
-            meshBuilder.End(optimize);
-            m_shapeInstance = new ndShapeInstance(new ndShapeStatic_bvh(meshBuilder));
-            m_col = m_shapeInstance->GetShape();
-        }
-
-        OgreNewt::CollisionPrimitives::TreeCollision::TreeCollision(const OgreNewt::World* world, int numVertices, int numIndices, const float* vertices, const int* indices, bool optimize, unsigned int id, FaceWinding fw) : Collision(world)
-        {
-            if (m_col)
+            if (totalFacesAdded == 0)
             {
-                m_col->Release();
+                Ogre::LogManager::getSingleton().logMessage("OgreNewt::TreeCollision (Item) - WARNING: mesh '" + mesh->getName() + "' produced zero valid triangles. Creating empty collision shape.", Ogre::LML_CRITICAL);
+                meshBuilder.End(false);
+            }
+            else
+            {
+                meshBuilder.End(optimize);
             }
 
+            finish(optimize);
+            m_shapeInstancePtr = ndSharedPtr<ndShapeInstance>(new ndShapeInstance(new ndShapeStatic_bvh(meshBuilder)));
+        }
+
+        // ─────────────────────────────────────────────────────────────────────────────
+        // TreeCollision — float* vertices + int* indices
+        // ─────────────────────────────────────────────────────────────────────────────
+        OgreNewt::CollisionPrimitives::TreeCollision::TreeCollision(const OgreNewt::World* world, int numVertices, int numIndices, const float* vertices, const int* indices, bool optimize, unsigned int id, FaceWinding fw) : Collision(world)
+        {
             ndPolygonSoupBuilder meshBuilder;
             meshBuilder.Begin();
 
-            // ----------------------------------------------------------------
-            // 1. Basic validation
-            // ----------------------------------------------------------------
             if (!vertices || !indices || numVertices <= 0 || numIndices < 3)
             {
-                meshBuilder.End(optimize);
-                m_shapeInstance = new ndShapeInstance(new ndShapeStatic_bvh(meshBuilder));
-                m_col = m_shapeInstance->GetShape();
+                meshBuilder.End(false);
+                m_shapeInstancePtr = ndSharedPtr<ndShapeInstance>(new ndShapeInstance(new ndShapeStatic_bvh(meshBuilder)));
                 return;
             }
 
             FaceWinding localFw = fw;
-
             const int triCount = numIndices / 3;
+            size_t totalFacesAdded = 0;
 
-            // ----------------------------------------------------------------
-            // 2. Build triangles from index triplets
-            // ----------------------------------------------------------------
             for (int i = 0; i < triCount; ++i)
             {
                 const int i0 = indices[i * 3 + 0];
                 const int i1 = indices[i * 3 + 1];
                 const int i2 = indices[i * 3 + 2];
 
-                // Skip out-of-range or degenerate indices
                 if (i0 < 0 || i1 < 0 || i2 < 0 || i0 >= numVertices || i1 >= numVertices || i2 >= numVertices)
                 {
                     continue;
                 }
 
-                Ogre::Vector3 a(vertices[i0 * 3 + 0], vertices[i0 * 3 + 1], vertices[i0 * 3 + 2]);
-                Ogre::Vector3 b(vertices[i1 * 3 + 0], vertices[i1 * 3 + 1], vertices[i1 * 3 + 2]);
-                Ogre::Vector3 c(vertices[i2 * 3 + 0], vertices[i2 * 3 + 1], vertices[i2 * 3 + 2]);
+                Ogre::Vector3 a(vertices[i0 * 3], vertices[i0 * 3 + 1], vertices[i0 * 3 + 2]);
+                Ogre::Vector3 b(vertices[i1 * 3], vertices[i1 * 3 + 1], vertices[i1 * 3 + 2]);
+                Ogre::Vector3 c(vertices[i2 * 3], vertices[i2 * 3 + 1], vertices[i2 * 3 + 2]);
 
-                // ----------------------------------------------------------------
-                // 3. ND4 safety: skip degenerate triangles
-                // Must match Newton4's ndPolygonSoupBuilder::AddFaceIndirect checks exactly:
-                // 1. Check each edge length (loop: p0->p1->p2->p0)
-                // 2. Check cross product area using edge0 = v2-v0, edge1 = v1-v0
-                // ----------------------------------------------------------------
-                const Ogre::Real MIN_EDGE2 = 1.0e-12f;
-                const Ogre::Real MIN_AREA2 = 1.0e-12f;
-
-                // Edge length check (same as ND4: loop through edges starting from c)
-                Ogre::Vector3 vtx[3] = {a, b, c};
-                Ogre::Vector3 p0 = vtx[2];
-                bool edgeTooSmall = false;
-                for (int j = 0; j < 3; ++j)
-                {
-                    Ogre::Vector3 p1 = vtx[j];
-                    Ogre::Vector3 edge = p1 - p0;
-                    if (edge.squaredLength() < MIN_EDGE2)
-                    {
-                        edgeTooSmall = true;
-                        break;
-                    }
-                    p0 = p1;
-                }
-                if (edgeTooSmall)
+                if (!isValidSoupTriangle(a, b, c))
                 {
                     continue;
                 }
 
-                // Cross product area check (exactly as ND4 does it)
-                // edge0 = c - a, edge1 = b - a
-                Ogre::Vector3 edge0 = c - a;
-                Ogre::Vector3 edge1 = b - a;
-                Ogre::Vector3 faceNormal = edge0.crossProduct(edge1);
-                if (faceNormal.squaredLength() < MIN_AREA2)
-                {
-                    // Degenerate triangle (collinear vertices), skip it
-                    continue;
-                }
-
-                // ----------------------------------------------------------------
-                // 5. Add triangle to ND4 polygon soup
-                // ----------------------------------------------------------------
                 ndVector face[3];
                 if (localFw == FW_DEFAULT)
                 {
@@ -1108,18 +1050,28 @@ namespace OgreNewt
                     face[2] = ndVector(b.x, b.y, b.z, 1.0f);
                 }
 
-                meshBuilder.AddFace(&face[0].m_x, sizeof(ndVector), 3, id);
+                meshBuilder.AddFace(&face[0], 3, id);
+                ++totalFacesAdded;
             }
 
-            // ----------------------------------------------------------------
-            // 6. Finalize Newton shape
-            // ----------------------------------------------------------------
-            meshBuilder.End(optimize);
+            if (totalFacesAdded == 0)
+            {
+                Ogre::LogManager::getSingleton().logMessage("OgreNewt::TreeCollision (float*/int*) - WARNING: input produced zero valid triangles."
+                                                            " Creating empty collision shape.",
+                    Ogre::LML_CRITICAL);
+                meshBuilder.End(false);
+            }
+            else
+            {
+                meshBuilder.End(optimize);
+            }
 
-            m_shapeInstance = new ndShapeInstance(new ndShapeStatic_bvh(meshBuilder));
-            m_col = m_shapeInstance->GetShape();
+            m_shapeInstancePtr = ndSharedPtr<ndShapeInstance>(new ndShapeInstance(new ndShapeStatic_bvh(meshBuilder)));
         }
 
+        // ─────────────────────────────────────────────────────────────────────────────
+        // TreeCollision — Ogre::Vector3* vertices + v1::IndexData*
+        // ─────────────────────────────────────────────────────────────────────────────
         TreeCollision::TreeCollision(const World* world, int numVertices, Ogre::Vector3* vertices, Ogre::v1::IndexData* indexData, bool optimize, unsigned int id, FaceWinding fw) : Collision(world)
         {
             m_categoryId = id;
@@ -1128,15 +1080,11 @@ namespace OgreNewt
             ndPolygonSoupBuilder meshBuilder;
             meshBuilder.Begin();
 
-            // --------------------------------------------------------------------
-            // 1. Validate input
-            // --------------------------------------------------------------------
             if (!vertices || numVertices <= 0 || !indexData || !indexData->indexBuffer)
             {
                 finish(optimize);
-                meshBuilder.End(optimize);
-                m_shapeInstance = new ndShapeInstance(new ndShapeStatic_bvh(meshBuilder));
-                m_col = m_shapeInstance->GetShape();
+                meshBuilder.End(false);
+                m_shapeInstancePtr = ndSharedPtr<ndShapeInstance>(new ndShapeInstance(new ndShapeStatic_bvh(meshBuilder)));
                 return;
             }
 
@@ -1147,9 +1095,8 @@ namespace OgreNewt
             if (indexCount < 3)
             {
                 finish(optimize);
-                meshBuilder.End(optimize);
-                m_shapeInstance = new ndShapeInstance(new ndShapeStatic_bvh(meshBuilder));
-                m_col = m_shapeInstance->GetShape();
+                meshBuilder.End(false);
+                m_shapeInstancePtr = ndSharedPtr<ndShapeInstance>(new ndShapeInstance(new ndShapeStatic_bvh(meshBuilder)));
                 return;
             }
 
@@ -1158,19 +1105,16 @@ namespace OgreNewt
             assert(indexSize == 2 || indexSize == 4);
 
             void* indexDataRaw = ibuf->lock(Ogre::v1::HardwareBuffer::HBL_READ_ONLY);
-
             const bool use32 = (indexSize == 4);
+
             auto readIndex = [&](size_t i) -> uint32_t
             {
                 return use32 ? static_cast<uint32_t>(reinterpret_cast<uint32_t*>(indexDataRaw)[i]) : static_cast<uint32_t>(reinterpret_cast<uint16_t*>(indexDataRaw)[i]);
             };
 
-            // Optional: mirrored scale check (can be provided externally)
             FaceWinding localFw = fw;
+            size_t totalFacesAdded = 0;
 
-            // --------------------------------------------------------------------
-            // 2. Iterate through triangles
-            // --------------------------------------------------------------------
             for (size_t t = 0; t < triCount; ++t)
             {
                 const uint32_t i0 = readIndex(indexStart + t * 3 + 0);
@@ -1182,58 +1126,18 @@ namespace OgreNewt
                     continue;
                 }
 
-                Ogre::Vector3 vtx[3];
-                vtx[0] = vertices[i0];
-                vtx[1] = vertices[i1];
-                vtx[2] = vertices[i2];
+                Ogre::Vector3 vtx[3] = {vertices[i0], vertices[i1], vertices[i2]};
 
                 if (localFw == FW_REVERSE)
                 {
                     std::swap(vtx[1], vtx[2]);
                 }
 
-                // ----------------------------------------------------------------
-                // 3. ND4 safety: skip degenerate triangles
-                // Must match Newton4's ndPolygonSoupBuilder::AddFaceIndirect checks exactly:
-                // 1. Check each edge length (loop: p0->p1->p2->p0)
-                // 2. Check cross product area using edge0 = v2-v0, edge1 = v1-v0
-                // ----------------------------------------------------------------
-                const Ogre::Real MIN_EDGE2 = 1.0e-12f;
-                const Ogre::Real MIN_AREA2 = 1.0e-12f;
-
-                // Edge length check (same as ND4: loop through edges starting from vtx[2])
-                Ogre::Vector3 p0 = vtx[2];
-                bool edgeTooSmall = false;
-                for (int j = 0; j < 3; ++j)
-                {
-                    Ogre::Vector3 p1 = vtx[j];
-                    Ogre::Vector3 edge = p1 - p0;
-                    if (edge.squaredLength() < MIN_EDGE2)
-                    {
-                        edgeTooSmall = true;
-                        break;
-                    }
-                    p0 = p1;
-                }
-                if (edgeTooSmall)
+                if (!isValidSoupTriangle(vtx[0], vtx[1], vtx[2]))
                 {
                     continue;
                 }
 
-                // Cross product area check (exactly as ND4 does it)
-                // edge0 = vtx[2] - vtx[0], edge1 = vtx[1] - vtx[0]
-                Ogre::Vector3 edge0 = vtx[2] - vtx[0];
-                Ogre::Vector3 edge1 = vtx[1] - vtx[0];
-                Ogre::Vector3 faceNormal = edge0.crossProduct(edge1);
-                if (faceNormal.squaredLength() < MIN_AREA2)
-                {
-                    // Degenerate triangle (collinear vertices), skip it
-                    continue;
-                }
-
-                // ----------------------------------------------------------------
-                // 5. Add face to Newton soup
-                // ----------------------------------------------------------------
                 ndVector face[3];
                 if (localFw == FW_DEFAULT)
                 {
@@ -1248,19 +1152,26 @@ namespace OgreNewt
                     face[2] = ndVector(vtx[1].x, vtx[1].y, vtx[1].z, 1.0f);
                 }
 
-                meshBuilder.AddFace(&face[0].m_x, sizeof(ndVector), 3, id);
+                meshBuilder.AddFace(&face[0], 3, id);
+                ++totalFacesAdded;
             }
 
             ibuf->unlock();
 
-            // --------------------------------------------------------------------
-            // 6. Finalize ND4 collision shape
-            // --------------------------------------------------------------------
-            finish(optimize);
-            meshBuilder.End(optimize);
+            if (totalFacesAdded == 0)
+            {
+                Ogre::LogManager::getSingleton().logMessage("OgreNewt::TreeCollision (Vector3*/IndexData*) - WARNING: input produced zero valid triangles."
+                                                            " Creating empty collision shape.",
+                    Ogre::LML_CRITICAL);
+                meshBuilder.End(false);
+            }
+            else
+            {
+                meshBuilder.End(optimize);
+            }
 
-            m_shapeInstance = new ndShapeInstance(new ndShapeStatic_bvh(meshBuilder));
-            m_col = m_shapeInstance->GetShape();
+            finish(optimize);
+            m_shapeInstancePtr = ndSharedPtr<ndShapeInstance>(new ndShapeInstance(new ndShapeStatic_bvh(meshBuilder)));
         }
 
         void TreeCollision::start(unsigned int id)
@@ -1314,23 +1225,11 @@ namespace OgreNewt
             m_faceCount(0),
             m_categoryId(shapeID)
         {
-            if (m_col)
-            {
-                m_col->Release();
-            }
-
-            if (m_shapeInstance)
-            {
-                delete m_shapeInstance;
-                m_shapeInstance = nullptr;
-            }
-
             // 1) Build ND4 heightfield (try inverted diagonals like the demo)
             ndShapeHeightfield* heightfield = new ndShapeHeightfield(ndInt32(width), ndInt32(height), ndShapeHeightfield::m_invertedDiagonals, ndFloat32(horizontalScaleX), ndFloat32(horizontalScaleZ));
 
             // 2) Wrap in shape instance
-            m_shapeInstance = new ndShapeInstance(heightfield);
-            m_col = m_shapeInstance->GetShape();
+            m_shapeInstancePtr = ndSharedPtr<ndShapeInstance>(new ndShapeInstance(heightfield));
 
             // 3) Fill elevation map, scaled in Y
             ndArray<ndReal>& heights = heightfield->GetElevationMap();
@@ -1349,7 +1248,7 @@ namespace OgreNewt
             ndMatrix localM;
             OgreNewt::Converters::QuatPosToMatrix(orientation, position, localM);
             localM.m_posit.m_w = ndFloat32(1.0f);
-            m_shapeInstance->SetLocalMatrix(localM);
+            m_shapeInstancePtr->SetLocalMatrix(localM);
         }
 
         void HeightField::setFaceId(unsigned int faceId)
@@ -1368,11 +1267,6 @@ namespace OgreNewt
 
         CompoundCollision::CompoundCollision(const World* world, std::vector<OgreNewt::CollisionPtr> col_array, unsigned int id) : Collision(world)
         {
-            if (m_col)
-            {
-                m_col->Release();
-            }
-
             ndShapeCompound* compound = new ndShapeCompound();
             compound->BeginAddRemove();
 
@@ -1401,8 +1295,7 @@ namespace OgreNewt
 
             compound->EndAddRemove();
 
-            m_shapeInstance = new ndShapeInstance(compound);
-            m_col = m_shapeInstance->GetShape();
+            m_shapeInstancePtr = ndSharedPtr<ndShapeInstance>(new ndShapeInstance(compound));
         }
 
         Pyramid::Pyramid(const World* world) : ConvexCollision(world)
@@ -1429,18 +1322,11 @@ namespace OgreNewt
             vertices[idx++] = (size.y * 2.0f / 3.0f);
             vertices[idx++] = 0.0f;
 
-            if (m_col)
-            {
-                m_col->Release();
-            }
-
-            m_shapeInstance = new ndShapeInstance(new ndShapeConvexHull(5, sizeof(ndFloat32) * 3, ndFloat32(tolerance), vertices));
+            m_shapeInstancePtr = ndSharedPtr<ndShapeInstance>(new ndShapeInstance(new ndShapeConvexHull(5, sizeof(ndFloat32) * 3, ndFloat32(tolerance), vertices)));
 
             ndMatrix localM;
             OgreNewt::Converters::QuatPosToMatrix(orient, pos, localM);
-            m_shapeInstance->SetLocalMatrix(localM);
-
-            m_col = m_shapeInstance->GetShape();
+            m_shapeInstancePtr->SetLocalMatrix(localM);;
         }
 
     } // end namespace CollisionPrimitives

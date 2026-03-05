@@ -25,6 +25,8 @@
 	#include <OgreCamera.h>
 	#include <OgreHardwareBufferManager.h>
 
+    #include "ndTypes.h"
+
 	#ifndef OGRENEWT_NO_OGRE_ANY
 		// #include <OgreAny.h>
 		#include "OgreNewt_Any.h"

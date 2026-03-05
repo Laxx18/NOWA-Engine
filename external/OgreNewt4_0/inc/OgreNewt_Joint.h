@@ -52,11 +52,12 @@ namespace OgreNewt
         void setRowAcceleration(Ogre::Real accel) const;
         void setRowSpringDamper(Ogre::Real stiffness, Ogre::Real springK, Ogre::Real springD) const;
 
-        void setJointSolverModel(int model);
+        void SetSupportJoint(OgreNewt::World* world, ndSharedPtr<ndJointBilateralConstraint> jointPtr);
 
-        void SetSupportJoint(OgreNewt::World* world, ndJointBilateralConstraint* supportJoint);
-
-        ndJointBilateralConstraint* GetSupportJoint() const { return m_joint; }
+        ndJointBilateralConstraint* GetSupportJoint() const
+        {
+            return const_cast<ndJointBilateralConstraint*>(*m_jointPtr);
+        }
 
         // Called from native joint’s JacobianDerivative if you use the pending-row bridge
         void applyPendingRows(ndConstraintDescritor& desc);
@@ -76,9 +77,8 @@ namespace OgreNewt
         };
         mutable std::vector<PendingRow> m_pendingRows;
 
-        // NEW: shared ownership + cached raw
+        // Shared ownership
         ndSharedPtr<ndJointBilateralConstraint> m_jointPtr{};
-        ndJointBilateralConstraint* m_joint{ nullptr };
         mutable Ogre::Real m_stiffness;
 
         OgreNewt::World* m_world;

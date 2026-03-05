@@ -571,7 +571,7 @@ void PropertiesPanelInfo::setInfo(const Ogre::String& info)
 
 void PropertiesPanelInfo::listData(NOWA::GameObject* gameObject)
 {
-	ENQUEUE_RENDER_COMMAND_MULTI("PropertiesPanelInfo::listData", _1(gameObject),
+	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PropertiesPanelInfo::listData", _1(gameObject),
 	{
 		const int height = 26;
 		const int heightStep = 28;
@@ -910,7 +910,7 @@ PropertiesPanelDynamic::~PropertiesPanelDynamic()
 
 	if (openSaveFileDialogPtr)
 	{
-		ENQUEUE_RENDER_COMMAND_MULTI("PropertiesPanelDynamic::~PropertiesPanelDynamic", _1(openSaveFileDialogPtr),
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PropertiesPanelDynamic::~PropertiesPanelDynamic", _1(openSaveFileDialogPtr),
 		{
 			delete openSaveFileDialogPtr;
 		});
@@ -993,7 +993,7 @@ void PropertiesPanelDynamic::shutdown()
 
 void PropertiesPanelDynamic::setVisibleCount(unsigned int count)
 {
-	ENQUEUE_RENDER_COMMAND_MULTI("PropertiesPanelDynamic::setVisibleCount", _1(count),
+	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PropertiesPanelDynamic::setVisibleCount", _1(count),
 	{
 		const int heightStep = 28;
 		int heightCurrent = 0;
@@ -2068,7 +2068,7 @@ void PropertiesPanelDynamic::onKeyButtonPressed(MyGUI::Widget* sender, MyGUI::Ke
 	// Adds new line if shift + enter is pressed
 	else if (MyGUI::InputManager::getInstance().isShiftPressed() && code == MyGUI::KeyCode::Return)
 	{
-		ENQUEUE_RENDER_COMMAND_MULTI("PropertiesPanelDynamic::onKeyButtonPressed", _1(sender),
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PropertiesPanelDynamic::onKeyButtonPressed", _1(sender),
 		{
 			MyGUI::EditBox * editBox = sender->castType<MyGUI::EditBox>(false);
 			if (nullptr != editBox && true == editBox->getEditMultiLine())
@@ -2106,7 +2106,7 @@ void PropertiesPanelDynamic::onMouseDoubleClick(MyGUI::Widget* sender)
 		MyGUI::EditBox* editBox = sender->getParent()->castType<MyGUI::EditBox>(false);
 		if (nullptr != editBox)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI("PropertiesPanelDynamic::onMouseDoubleClick", _1(editBox),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PropertiesPanelDynamic::onMouseDoubleClick", _1(editBox),
 			{
 				editBox->setTextSelection(0, editBox->getCaption().size());
 			});
@@ -2962,7 +2962,7 @@ void PropertiesPanelGameObject::buttonHit(MyGUI::Widget* sender)
 	MyGUI::Button* button = sender->castType<MyGUI::Button>();
 	if (nullptr != button)
 	{
-		ENQUEUE_RENDER_COMMAND_MULTI("PropertiesPanelGameObject::buttonHit", _1(button),
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PropertiesPanelGameObject::buttonHit", _1(button),
 		{
 			NOWA::Variant** attribute = button->getUserData<NOWA::Variant*>(false);
 			// ColorDialog handling

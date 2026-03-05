@@ -26,6 +26,12 @@ namespace OgreNewt
 
         bool OnAabbOverlap(const ndContact* const contact, ndFloat32 timestep) const override;
 
+        // This override MUST exist — without it, Newton falls through to the base
+        // ndContactCallback::OnAabbOverlap(body0,body1) which reads GetCollisionShape()
+        // on internal Newton primitives (TreeCollision face bodies) that have no valid
+        // shape instance → null reference → garbage key → corrupt tree traversal → crash.
+        bool OnAabbOverlap(const ndBodyKinematic* const body0, const ndBodyKinematic* const body1) const override;
+
         bool OnCompoundSubShapeOverlap(const ndContact* const contact, ndFloat32 timestep, const ndShapeInstance* const subShapeA, const ndShapeInstance* const subShapeB) const override;
 
         // OgreNewt helper bridge
