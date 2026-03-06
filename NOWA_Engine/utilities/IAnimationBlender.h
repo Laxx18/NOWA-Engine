@@ -139,7 +139,7 @@ namespace NOWA
 		* @param[in]	skipLogging		Whether to skip the internal logging.
 		* @return		A string list with all animation names. If none found, empty list will be delivered.
 		*/
-		virtual std::vector<Ogre::String> getAllAvailableAnimationNames(bool skipLogging = true) const = 0;
+		virtual std::vector<Ogre::String> getAllAvailableAnimationNames(bool skipLogging = true) = 0;
 
 		/**
 		* @brief		Blends from the current animation to the new given one.
@@ -197,6 +197,79 @@ namespace NOWA
 		virtual void blendAndContinue(AnimID animationId) = 0;
 
 		virtual void blendAndContinue(const Ogre::String& animationName) = 0;
+
+        /**
+         * @brief  Starts an overlay animation on top of the current one using per-bone weights.
+         *         Useful for upper-body actions (attacks, reloads) while legs keep playing locomotion.
+         * @param  animationId    The one-shot or looping animation to overlay
+         * @param  blendInTime    How long to fade the overlay in (seconds)
+         */
+        virtual void setOverlayAnimation(AnimID animationId, Ogre::Real blendInTime = 0.2f) = 0;
+
+        virtual void setOverlayAnimation(const Ogre::String& animationName, Ogre::Real blendInTime = 0.2f) = 0;
+
+        /**
+         * @brief  Fades out and removes the current overlay animation.
+         * @param  blendOutTime   How long to fade the overlay out (seconds)
+         */
+        virtual void clearOverlayAnimation(Ogre::Real blendOutTime = 0.2f) = 0;
+
+        /**
+         * @brief  Returns true if an overlay animation is currently active.
+         */
+        virtual bool isOverlayAnimationActive(void) const = 0;
+
+		struct BlendSpaceEntry
+        {
+            AnimID animationId;
+            Ogre::Real parameter; // e.g. speed value this clip represents
+        };
+
+		/**
+         * @class BlendSpaceEntryList
+         * @brief Lua-constructible list of blend space entries. Build it once in
+         *        connect(), keep it as a variable, and pass it to driveBlendSpace()
+         *        every frame from execute().
+         */
+        class EXPORTED BlendSpaceEntryList
+        {
+        public:
+            void add(AnimID animationId, Ogre::Real parameter)
+            {
+                BlendSpaceEntry entry;
+                entry.animationId = animationId;
+                entry.parameter = parameter;
+                this->entries.push_back(entry);
+            }
+
+            void clear()
+            {
+                this->entries.clear();
+            }
+
+            size_t size() const
+            {
+                return this->entries.size();
+            }
+
+            const std::vector<BlendSpaceEntry>& getEntries() const
+            {
+                return this->entries;
+            }
+
+        private:
+            std::vector<BlendSpaceEntry> entries;
+        };
+
+        /**
+         * @brief  Drives a 1D blend space. Finds the two clips bracketing the given
+         *         parameter value and blends between them by setting their weights.
+         *         Call this every frame from Lua instead of blend/blendExclusive.
+         * @param  parameter     Current value (e.g. character speed 0..10)
+         * @param  entries       Sorted list of {animId, parameterValue} pairs.
+         *                       Must have at least 2 entries, sorted by parameter ascending.
+         */
+        virtual void driveBlendSpace(Ogre::Real parameter, const IAnimationBlender::BlendSpaceEntryList& entryList) = 0;
 
 		/**
 		* @brief		Adds time to the animation blender to keep the animation process running.
@@ -260,6 +333,10 @@ namespace NOWA
 		virtual void setDebugLog(bool debugLog) = 0;
 
 		virtual void setSourceEnabled(bool bEnable) = 0;
+
+		virtual void setAnimationSpeed(Ogre::Real speed) = 0;
+
+		virtual Ogre::Real getAnimationSpeed(void) const = 0;
 
 		/**
 		 * @brief		Adds the animation blender observer to react when an animation, that is started via blendAndContinue is finished.

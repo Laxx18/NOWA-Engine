@@ -53,12 +53,12 @@ World::~World()
 {
     Sync();
 
-    // Drain dead-body queues BEFORE CleanUp() → ndFreeListAlloc::Flush().
+    // Drain dead-body queues BEFORE CleanUp() -> ndFreeListAlloc::Flush().
     //
     // m_deadBodiesFree holds bodies already RemoveBody'd — we own the last ref.
     // Clearing here returns their memory to Newton's pool first; Flush() then
     // walks it cleanly.  Without this, Flush() frees them while our shared_ptrs
-    // still exist → the Free() is called again when the vectors destruct → crash.
+    // still exist -> the Free() is called again when the vectors destruct -> crash.
     //
     // deadBodies queue holds bodies not yet RemoveBody'd — dropping the ref here
     // leaves Newton's scene list as the last owner; CleanUp()'s while-loop removes
@@ -223,7 +223,7 @@ void OgreNewt::World::processPhysicsQueue()
     // bodies whose internal state (m_sceneNode, notify ptrs) is already dead.
     flushDeadBodies();
 
-    // Body lifetime is owned exclusively by destroyBody() → PostUpdate().
+    // Body lifetime is owned exclusively by destroyBody() -> PostUpdate().
     // m_pendingBodyFree is gone.
     ICommand* cmd = nullptr;
     while (m_impl->q.try_dequeue(cmd))
@@ -244,7 +244,7 @@ void World::addBody(const ndSharedPtr<ndBody>& bodyPtr)
     }
     // Passes the SAME control block Newton already knows about.
     // Never construct ndSharedPtr<ndBody>(rawPtr) — that makes a second
-    // independent control block → double-free.
+    // independent control block -> double-free.
     AddBody(bodyPtr);
 }
 
@@ -587,7 +587,7 @@ void World::flushDeadBodies()
     // Without this, zombie bodies from a previous simulation run stay physically
     // inside Newton's scene across a stop/restart cycle. When the new run's first
     // step calls CalculateContacts on the stale contacts those zombies own, Newton
-    // accesses their dead internal state (m_sceneNode, notify ptrs) → crash.
+    // accesses their dead internal state (m_sceneNode, notify ptrs) -> crash.
     ndSharedPtr<ndBody> bodyPtr;
     while (m_impl->deadBodies.try_dequeue(bodyPtr))
     {

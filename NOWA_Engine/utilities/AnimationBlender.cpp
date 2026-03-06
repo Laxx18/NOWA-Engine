@@ -54,7 +54,7 @@ namespace NOWA
 		this->internalInit(animationName, loop);
 	}
 
-	std::vector<Ogre::String> AnimationBlender::getAllAvailableAnimationNames(bool skipLogging) const
+	std::vector<Ogre::String> AnimationBlender::getAllAvailableAnimationNames(bool skipLogging)
 	{
 		std::vector<Ogre::String> animationNames;
 
@@ -634,7 +634,28 @@ namespace NOWA
 
 		this->internalBlend(animationName, BlendingTransition::BlendSwitch, 0.2f, false);
 		this->complete = false;
-	}
+    }
+
+    void AnimationBlender::setOverlayAnimation(AnimID animationId, Ogre::Real blendInTime)
+    {
+    }
+
+    void AnimationBlender::setOverlayAnimation(const Ogre::String& animationName, Ogre::Real blendInTime)
+    {
+    }
+
+    void AnimationBlender::clearOverlayAnimation(Ogre::Real blendOutTime)
+    {
+    }
+
+    bool AnimationBlender::isOverlayAnimationActive(void) const
+    {
+        return false;
+    }
+
+    void AnimationBlender::driveBlendSpace(Ogre::Real parameter, const IAnimationBlender::BlendSpaceEntryList& entries)
+    {
+    }
 
 	Ogre::Real AnimationBlender::getProgress()
 	{
@@ -988,7 +1009,17 @@ namespace NOWA
 				this->source->setEnabled(bEnable);
 			});
 		}
-	}
+    }
+
+    void AnimationBlender::setAnimationSpeed(Ogre::Real speed)
+    {
+		// TODO
+    }
+
+    Ogre::Real AnimationBlender::getAnimationSpeed(void) const
+    {
+        return 1.0f;
+    }
 
 	void AnimationBlender::addAnimationBlenderObserver(IAnimationBlenderObserver* observer)
 	{

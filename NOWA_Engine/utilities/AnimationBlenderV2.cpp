@@ -1,4 +1,4 @@
-#include "NOWAPrecompiled.h"
+﻿#include "NOWAPrecompiled.h"
 #include "AnimationBlenderV2.h"
 #include "main/AppStateManager.h"
 
@@ -21,9 +21,14 @@ namespace NOWA
 		previousDuration(0.0f),
 		loop(false),
 		previousLoop(false),
-		complete(false),
+        complete(false),
+        canAnimate(true),
 		debugLog(false),
-		canAnimate(true)
+        currentSpeed(1.0f),
+        overlaySource(nullptr),
+        overlayTimeleft(0.0f),
+        overlayDuration(0.0f),
+        overlayBlendingOut(false)
 	{
 		this->uniqueId = NOWA::makeUniqueID();
 
@@ -60,7 +65,7 @@ namespace NOWA
 		this->internalInit(animationName, loop);
 	}
 
-	std::vector<Ogre::String> AnimationBlenderV2::getAllAvailableAnimationNames(bool skipLogging) const
+	std::vector<Ogre::String> AnimationBlenderV2::getAllAvailableAnimationNames(bool skipLogging)
 	{
 		std::vector<Ogre::String> animationNames;
 
@@ -80,6 +85,9 @@ namespace NOWA
 			anim.mWeight = 0.0f;
 			anim.setTime(0.0f);
 			animationNames.emplace_back(anim.getName().getFriendlyText());
+
+			// Capture the authored frame rate before anything modifies it
+            this->baseFrameRates.insert(std::make_pair(anim.getName().getFriendlyText(), anim.mFrameRate));
 
 			if (false == skipLogging)
 			{
@@ -110,17 +118,24 @@ namespace NOWA
 		}
 		
 		// set current animation
-		if (true == this->skeleton->hasAnimation(animationName))
-		{
-			this->source = this->skeleton->getAnimation(animationName);
-			this->source->setEnabled(true);
-			this->source->mWeight = 1.0f;
-			this->timeleft = 0.0f;
-			this->duration = this->source->getDuration();
-			this->target = nullptr;
-			this->complete = false;
-			this->loop = loop;
-		}
+        if (true == this->skeleton->hasAnimation(animationName))
+        {
+            this->source = this->skeleton->getAnimation(animationName);
+            this->source->setEnabled(true);
+            this->source->mWeight = 1.0f;
+            this->timeleft = 0.0f;
+            this->duration = this->source->getDuration();
+            this->target = nullptr;
+            this->complete = false;
+            this->loop = loop;
+
+            // Apply current speed to the freshly assigned source
+            auto it = this->baseFrameRates.find(animationName);
+            if (it != this->baseFrameRates.end())
+            {
+                this->source->mFrameRate = it->second * this->currentSpeed;
+            }
+        }
 	}
 	
 	void AnimationBlenderV2::blend(AnimID animationId, BlendingTransition transition, Ogre::Real duration, bool loop)
@@ -338,80 +353,106 @@ namespace NOWA
 		}
 
 		// TODO Wait?
-		ENQUEUE_RENDER_COMMAND_MULTI/*_WAIT*/("AnimationBlenderV2::internalBlend", _4(animationName, transition, duration, loop),
-		{
-			this->loop = loop;
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, animationName, transition, duration, loop]()
+        {
+            this->loop = loop;
 
-			if (transition == AnimationBlenderV2::BlendSwitch)
-			{
-				if (this->source != nullptr)
-				{
-					this->source->setEnabled(false);
-				}
-				Ogre::SkeletonInstance* skeleton = this->item->getSkeletonInstance();
-				this->source = skeleton->getAnimation(animationName);
-				this->source->setEnabled(true);
-				this->source->mWeight = 1.0f;
-				this->source->setTime(0.0f);
-				this->timeleft = 0.0f;
-			}
-			else
-			{
-				auto newTarget = this->skeleton->getAnimation(animationName);
+            if (transition == AnimationBlenderV2::BlendSwitch)
+            {
+                if (this->source != nullptr)
+                {
+                    this->source->setEnabled(false);
+                }
 
-				if (this->timeleft > 0.0f)
-				{
-					// oops, weren't finished yet
-					if (newTarget == this->target)
-					{
-						// nothing to do! (ignoring duration here)
-					}
-					else if (newTarget == this->source)
-					{
-						// going back to the source state, so let's switch
-						this->source = this->target;
-						this->target = newTarget;
-						this->timeleft = this->duration - this->timeleft; // i'm ignoring the new duration here
-					}
-					else
-					{
-						// ok, newTarget is really new, so either we simply replace the target with this one, or
-						// we make the target the new source 
-						// Attention:
-						if (this->timeleft < this->duration * 0.5f)
-							// if (this->timeleft <= this->duration)
-							{
-							// simply replace the target with this one
-							this->target->setEnabled(false);
-							this->target->mWeight = 0.0f;
-						}
-						else
-						{
-							// old target becomes new source
-							this->source->setEnabled(false);
-							this->source->mWeight = 0.0f;
-							this->source = this->target;
-						}
-						this->target = newTarget;
-						this->target->setEnabled(true);
-						this->target->mWeight = 1.0f - this->timeleft / this->duration;
-						this->target->setTime(0.0f);
-					}
-				}
-				else
-				{
-					// assert( target == 0, "target should be 0 when not blending" )
-					// this->source->setEnabled(true);
-					// this->source->setWeight(1.0f);
-					this->transition = transition;
-					this->timeleft = this->duration = duration;
-					this->target = newTarget;
-					this->target->setEnabled(true);
-					this->target->mWeight = 0.0f;
-					this->target->setTime(0.0f);
-				}
-			}
-		});
+                Ogre::SkeletonInstance* skeleton = this->item->getSkeletonInstance();
+                this->source = skeleton->getAnimation(animationName);
+                this->source->setEnabled(true);
+                this->source->mWeight = 1.0f;
+                this->source->setTime(0.0f);
+                this->timeleft = 0.0f;
+
+                // Apply speed to the new source
+                auto itS = this->baseFrameRates.find(animationName);
+                if (itS != this->baseFrameRates.end())
+                {
+                    this->source->mFrameRate = itS->second * this->currentSpeed;
+                }
+            }
+            else
+            {
+                auto newTarget = this->skeleton->getAnimation(animationName);
+
+                if (this->timeleft > 0.0f)
+                {
+                    if (newTarget == this->target)
+                    {
+                        // nothing to do
+                    }
+                    else if (newTarget == this->source)
+                    {
+                        // reversing — source and target swap roles, timeleft mirrors
+                        this->source = this->target;
+                        this->target = newTarget;
+                        this->timeleft = this->duration - this->timeleft;
+                        // no speed change needed — both were already at currentSpeed
+                    }
+                    else
+                    {
+                        // genuinely new target mid-blend
+                        if (this->timeleft < this->duration * 0.5f)
+                        {
+                            this->target->setEnabled(false);
+                            this->target->mWeight = 0.0f;
+                        }
+                        else
+                        {
+                            this->source->setEnabled(false);
+                            this->source->mWeight = 0.0f;
+                            this->source = this->target;
+                        }
+                        this->target = newTarget;
+                        this->target->setEnabled(true);
+                        this->target->mWeight = 1.0f - this->timeleft / this->duration;
+                        this->target->setTime(0.0f);
+
+                        // Apply speed to the new target
+                        auto itT = this->baseFrameRates.find(animationName);
+                        if (itT != this->baseFrameRates.end())
+                        {
+                            this->target->mFrameRate = itT->second * this->currentSpeed;
+                        }
+                    }
+                }
+                else
+                {
+                    // Normal fresh blend start
+                    this->transition = transition;
+                    this->timeleft = this->duration = duration;
+                    this->target = newTarget;
+                    this->target->setEnabled(true);
+                    this->target->mWeight = 0.0f;
+
+                    // Apply speed to the new target
+                    auto itT = this->baseFrameRates.find(animationName);
+                    if (itT != this->baseFrameRates.end())
+                    {
+                        this->target->mFrameRate = itT->second * this->currentSpeed;
+                    }
+
+                    // Phase-sync for looping locomotion blends
+                    if (this->source->mLoop && loop && this->source->getNumFrames() > 0.0f && this->target->getNumFrames() > 0.0f)
+                    {
+                        Ogre::Real sourcePhase = this->source->getCurrentFrame() / this->source->getNumFrames();
+                        this->target->setFrame(sourcePhase * this->target->getNumFrames());
+                    }
+                    else
+                    {
+                        this->target->setTime(0.0f);
+                    }
+                }
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "AnimationBlenderV2::internalBlend");
 	}
 
 	void AnimationBlenderV2::addTime(Ogre::Real time)
@@ -434,23 +475,34 @@ namespace NOWA
 					if (this->timeleft <= 0.0f)
 					{
 						// finish blending
-						this->source->setEnabled(false);
-						this->source->mWeight = 0.0f;
-						this->source = this->target;
-						this->source->setEnabled(true);
-						this->source->mWeight = 0.0f;
-						this->target = nullptr;
+                        this->source->setEnabled(false);
+                        this->source->mWeight = 0.0f;
+                        this->source = this->target;
+                        this->source->setEnabled(true);
+                        this->source->mWeight = 1.0f;
+                        this->target = nullptr;
+
+						// In addTime, when timeleft crosses zero:
+                        if (this->transition == BlendingTransition::BlendThenAnimate)
+                        {
+                            // Blend phase complete, animation is now live from frame 0
+                            // Notify separately if needed — e.g. a separate onAnimationStarted observer
+                            // For now, just ensure target starts cleanly
+                            this->source->setFrame(0.0f); // after source = target assignment
+                        }
 					}
 					else
 					{
 						// still blending, advance weights
-						this->source->mWeight = this->timeleft / this->duration;
-						this->target->mWeight = 1.0f - this->timeleft / this->duration;
+                        Ogre::Real t = 1.0f - (this->timeleft / this->duration); // 0->1 as blend progresses
+                        Ogre::Real smooth = t * t * (3.0f - 2.0f * t);           // smoothstep formula
+                        this->source->mWeight = 1.0f - smooth;
+                        this->target->mWeight = smooth;
 						weightChange = true;
-						if (this->transition == AnimationBlenderV2::BlendWhileAnimating)
-						{
-							this->target->addTime(time);
-						}
+                        if (this->transition == AnimationBlenderV2::BlendWhileAnimating || this->transition == AnimationBlenderV2::BlendThenAnimate)
+                        {
+                            this->target->addTime(time);
+                        }
 					}
 				}
 
@@ -458,20 +510,79 @@ namespace NOWA
 				if (this->source->getCurrentTime() >= this->source->getDuration() - 0.05f)
 				{
 					this->complete = true;
-					if (nullptr != this->previousSource)
-					{
-						this->source = this->previousSource;
-						this->loop = this->previousLoop;
-						this->transition = this->previousTransition;
-						this->duration = this->previousDuration;
-						this->previousSource = nullptr;
+                    if (nullptr != this->previousSource)
+                    {
+                        this->source->setEnabled(false);
+                        this->source->mWeight = 0.0f;
 
-						this->internalInit(this->source->getName().getFriendlyText());
+                        this->source = this->previousSource;
+                        this->loop = this->previousLoop;
+                        this->transition = this->previousTransition;
+                        this->duration = this->previousDuration;
+                        this->previousSource = nullptr;
+                        this->target = nullptr;
+                        this->timeleft = 0.0f;
+                        this->complete = false;
 
-						this->blend(this->source->getName().getFriendlyText(), this->transition, this->duration, this->loop);
+                        this->source->setEnabled(true);
+                        this->source->mWeight = 1.0f;
+                        this->source->setTime(0.0f);
+                        this->source->setLoop(this->loop);
 
-						this->source->setFrame(this->source->getDuration() * 0.5f);
-					}
+                        // Reapply current speed — previousSource may not have been touched since last speed change
+                        auto it = this->baseFrameRates.find(this->source->getName().getFriendlyText());
+                        if (it != this->baseFrameRates.end())
+                        {
+                            this->source->mFrameRate = it->second * this->currentSpeed;
+                        }
+
+						// ---- Overlay animation driving ----
+                        if (nullptr != this->overlaySource)
+                        {
+                            if (false == this->overlayBlendingOut)
+                            {
+                                // Blend-in phase: weight 0 -> 1
+                                if (this->overlayTimeleft > 0.0f)
+                                {
+                                    this->overlayTimeleft -= time;
+                                    this->overlaySource->mWeight = (this->overlayTimeleft <= 0.0f) ? 1.0f : 1.0f - (this->overlayTimeleft / this->overlayDuration);
+                                }
+
+                                // Advance the overlay animation
+                                this->overlaySource->addTime(time);
+
+                                // Non-looping overlay finished on its own — auto-clear
+                                if (false == this->overlaySource->mLoop && this->overlaySource->getCurrentTime() >= this->overlaySource->getDuration() - 0.05f)
+                                {
+                                    this->overlaySource->setOverrideBoneWeightsOnAllAnimations(1.0f, true);
+                                    this->overlaySource->setEnabled(false);
+                                    this->overlaySource->mWeight = 0.0f;
+                                    this->overlaySource = nullptr;
+                                }
+                            }
+                            else
+                            {
+                                // Blend-out phase: weight 1 -> 0
+                                if (this->overlayTimeleft > 0.0f)
+                                {
+                                    this->overlayTimeleft -= time;
+
+                                    if (this->overlayTimeleft <= 0.0f)
+                                    {
+                                        // Fully blended out — shut down
+                                        this->overlaySource->setEnabled(false);
+                                        this->overlaySource->mWeight = 0.0f;
+                                        this->overlaySource = nullptr;
+                                    }
+                                    else
+                                    {
+                                        this->overlaySource->mWeight = this->overlayTimeleft / this->overlayDuration;
+                                        this->overlaySource->addTime(time);
+                                    }
+                                }
+                            }
+                        }
+                    }
 
 					// Notifies all observers that the animation has finished
 					this->notifyObservers();
@@ -592,7 +703,7 @@ namespace NOWA
 		this->previousTransition = this->transition;
 		this->previousDuration = this->duration;
 
-		this->internalBlend(it2->second, BlendingTransition::BlendSwitch, 0.2f, false);
+		this->internalBlend(it2->second, BlendingTransition::BlendWhileAnimating, 0.2f, false);
 		this->complete = false;
 	}
 
@@ -622,12 +733,176 @@ namespace NOWA
 
 		this->internalBlend(animationName, BlendingTransition::BlendSwitch, 0.2f, false);
 		this->complete = false;
-	}
+    }
+
+    void AnimationBlenderV2::setOverlayAnimation(AnimID animationId, Ogre::Real blendInTime)
+    {
+        auto it = this->mappedAnimations.find(animationId);
+        if (it == this->mappedAnimations.end())
+        {
+            return;
+        }
+        this->internalSetOverlayAnimation(it->second, blendInTime);
+    }
+
+    void AnimationBlenderV2::setOverlayAnimation(const Ogre::String& animationName, Ogre::Real blendInTime)
+    {
+        if (animationName.empty())
+        {
+            return;
+        }
+        this->internalSetOverlayAnimation(animationName, blendInTime);
+    }
+
+	void AnimationBlenderV2::internalSetOverlayAnimation(const Ogre::String& animationName, Ogre::Real blendInTime)
+    {
+        if (false == this->canAnimate)
+        {
+            return;
+        }
+
+        if (false == this->skeleton->hasAnimation(animationName))
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AnimationBlenderV2] setOverlayAnimation: animation '" + animationName + "' not found.");
+            return;
+        }
+
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, animationName, blendInTime]()
+        {
+            // Clean up any existing overlay first
+            if (nullptr != this->overlaySource)
+            {
+                // Restore all animations' bone weights before replacing
+                this->overlaySource->setOverrideBoneWeightsOnAllAnimations(1.0f, true);
+                this->overlaySource->setEnabled(false);
+                this->overlaySource->mWeight = 0.0f;
+                this->overlaySource = nullptr;
+            }
+
+            this->overlaySource = this->skeleton->getAnimation(animationName);
+            this->overlaySource->setEnabled(true);
+            this->overlaySource->mWeight = 0.0f; // will be driven by addTime
+            this->overlaySource->setTime(0.0f);
+            this->overlaySource->setLoop(false);
+
+            // Apply current playback speed
+            auto it = this->baseFrameRates.find(animationName);
+            if (it != this->baseFrameRates.end())
+            {
+                this->overlaySource->mFrameRate = it->second * this->currentSpeed;
+            }
+
+            // Key call: read which bones THIS animation uses and zero those exact
+            // bones on ALL other animations (active and inactive).
+            // Using the AllAnimations variant so any animation blended in later
+            // while the overlay is still active also gets the correct bone weights.
+            this->overlaySource->setOverrideBoneWeightsOnAllAnimations(0.0f, true);
+
+            this->overlayDuration = (blendInTime > 0.0f) ? blendInTime : 0.001f;
+            this->overlayTimeleft = this->overlayDuration;
+            this->overlayBlendingOut = false;
+        };
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "AnimationBlenderV2::setOverlayAnimation");
+    }
+
+    void AnimationBlenderV2::clearOverlayAnimation(Ogre::Real blendOutTime)
+    {
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, blendOutTime]()
+        {
+            if (nullptr == this->overlaySource)
+            {
+                return;
+            }
+
+            // Restore all animations' bone weights so the main animation
+            // fully controls those bones again during blend-out
+            this->overlaySource->setOverrideBoneWeightsOnAllAnimations(1.0f, true);
+
+            this->overlayBlendingOut = true;
+            this->overlayDuration = (blendOutTime > 0.0f) ? blendOutTime : 0.001f;
+            this->overlayTimeleft = this->overlayDuration;
+        };
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "AnimationBlenderV2::clearOverlayAnimation");
+    }
+
+    bool AnimationBlenderV2::isOverlayAnimationActive(void) const
+    {
+        return nullptr != this->overlaySource;
+    }
+
+    void AnimationBlenderV2::driveBlendSpace(Ogre::Real parameter, const IAnimationBlender::BlendSpaceEntryList& entryList)
+    {
+        const auto& entries = entryList.getEntries();
+        if (entries.size() < 2 || false == this->canAnimate)
+        {
+            return;
+        }
+
+        // Clamp parameter to the defined range
+        Ogre::Real clampedParam = std::max(entries.front().parameter, std::min(entries.back().parameter, parameter));
+
+        // Find the two bracketing entries
+        size_t upperIdx = 1;
+        while (upperIdx < entries.size() - 1 && entries[upperIdx].parameter < clampedParam)
+        {
+            ++upperIdx;
+        }
+
+        const BlendSpaceEntry& lower = entries[upperIdx - 1];
+        const BlendSpaceEntry& upper = entries[upperIdx];
+
+        // Compute normalized blend factor between the two clips
+        Ogre::Real range = upper.parameter - lower.parameter;
+        Ogre::Real t = (range > 0.0f) ? (clampedParam - lower.parameter) / range : 0.0f;
+
+        // Apply smoothstep for natural feel
+        t = t * t * (3.0f - 2.0f * t);
+
+        // Get animation names
+        auto itLower = this->mappedAnimations.find(lower.animationId);
+        auto itUpper = this->mappedAnimations.find(upper.animationId);
+        if (itLower == this->mappedAnimations.end() || itUpper == this->mappedAnimations.end())
+        {
+            return;
+        }
+
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, itLowerSecond = itLower->second, itUpperSecond = itUpper->second, t]()
+        {
+            // Disable everything first
+            for (auto& anim : this->skeleton->getAnimationsNonConst())
+            {
+                if (anim.getName().getFriendlyText() != itLowerSecond && anim.getName().getFriendlyText() != itUpperSecond)
+                {
+                    anim.setEnabled(false);
+                    anim.mWeight = 0.0f;
+                }
+            }
+
+            auto* lowerAnim = this->skeleton->getAnimation(itLowerSecond);
+            auto* upperAnim = this->skeleton->getAnimation(itUpperSecond);
+
+            lowerAnim->setEnabled(true);
+            lowerAnim->mWeight = 1.0f - t;
+
+            upperAnim->setEnabled(true);
+            upperAnim->mWeight = t;
+
+            // Keep source pointer on the dominant clip for getLength() etc.
+            this->source = (t < 0.5f) ? lowerAnim : upperAnim;
+            this->target = nullptr;
+            this->timeleft = 0.0f;
+        };
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "AnimationBlenderV2::driveBlendSpace");
+    }
 
 	Ogre::Real AnimationBlenderV2::getProgress()
-	{
-		return this->timeleft / this->duration;
-	}
+    {
+        if (this->duration <= 0.0f)
+        {
+            return 0.0f;
+        }
+        return this->timeleft / this->duration;
+    }
 
 	Ogre::SkeletonAnimation* AnimationBlenderV2::getSource()
 	{
@@ -678,26 +953,46 @@ namespace NOWA
 	}
 
 	bool AnimationBlenderV2::isAnimationActive(AnimID animationId)
-	{
-		bool active = false;
-		if (true == this->mappedAnimations.empty())
-			return active;
+    {
+        if (nullptr == this->skeleton)
+        {
+            return false;
+        }
 
-		if (nullptr == this->source)
-			return active;
+        auto it = this->mappedAnimations.find(animationId);
+        if (it == this->mappedAnimations.end())
+        {
+            return false;
+        }
 
-		auto it = this->mappedAnimations.find(animationId);
-		if (it != this->mappedAnimations.end())
-		{
-			active = this->source->getName().getFriendlyText() == it->second;
-		}
-		return active;
-	}
+        // Check Ogre's actual active list, not just our bookkeeping
+        const Ogre::IdString nameId(it->second);
+        for (const Ogre::SkeletonAnimation* anim : this->skeleton->getActiveAnimations())
+        {
+            if (anim->getName() == nameId)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
 
 	bool AnimationBlenderV2::isAnyAnimationActive(void)
-	{
-		return false == this->source->getEnabled() && false == this->target->getEnabled();
-	}
+    {
+        if (nullptr == this->source)
+        {
+            return false;
+        }
+        if (this->source->getEnabled())
+        {
+            return true;
+        }
+        if (nullptr != this->target && this->target->getEnabled())
+        {
+            return true;
+        }
+        return false;
+    }
 
 	bool AnimationBlenderV2::isTargetAnimationActive(AnimID animationId)
 	{
@@ -714,15 +1009,15 @@ namespace NOWA
 			active = this->target->getName().getFriendlyText() == it->second;
 		}
 		return active;
-	}
+    }
 
 	void AnimationBlenderV2::gameObjectIsInRagDollStateDelegate(EventDataPtr eventData)
 	{
 		boost::shared_ptr<EventDataGameObjectIsInRagDollingState> castEventData = boost::static_pointer_cast<NOWA::EventDataGameObjectIsInRagDollingState>(eventData);
 		Ogre::Item* item = this->item;
 
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("AnimationBlenderV2::gameObjectIsInRagDollStateDelegate", _2(castEventData, item),
-		{
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this, castEventData, item]()
+        {
 			if (nullptr != item)
 			{
 				// if this game object has an physics rag doll component and its in ragdolling state, no animation must be processed, else the skeleton will throw apart!
@@ -736,7 +1031,8 @@ namespace NOWA
 					}
 				}
 			}
-		});
+		};
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "AnimationBlenderV2::gameObjectIsInRagDollStateDelegate");
 	}
 	
 	Ogre::SkeletonAnimation* AnimationBlenderV2::getAnimationState(AnimID animationId)
@@ -803,10 +1099,11 @@ namespace NOWA
 	{
 		if (nullptr != this->source)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI("AnimationBlenderV2::setTimePosition", _1(timePosition),
-			{
-				this->source->setTime(timePosition);
-			});
+			NOWA::GraphicsModule::RenderCommand renderCommand = [this, timePosition]()
+            {
+                this->source->setTime(timePosition);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "AnimationBlenderV2::setTimePosition");
 		}
 	}
 
@@ -833,10 +1130,11 @@ namespace NOWA
 	{
 		if (nullptr != this->source)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI("AnimationBlenderV2::setWeight", _1(weight),
-			{
-				this->source->mWeight = weight;
-			});
+			NOWA::GraphicsModule::RenderCommand renderCommand = [this, weight]()
+            {
+                this->source->mWeight = weight;
+            };
+            NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "AnimationBlenderV2::setWeight");
 		}
 	}
 
@@ -874,10 +1172,11 @@ namespace NOWA
 
 		if (nullptr != this->skeleton)
 		{
-			ENQUEUE_RENDER_COMMAND("AnimationBlenderV2::resetBones",
-			{
-				this->skeleton->resetToPose();
-			});
+			NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+            {
+                this->skeleton->resetToPose();
+            };
+            NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "AnimationBlenderV2::resetBones");
 		}
 	}
 
@@ -890,12 +1189,44 @@ namespace NOWA
 	{
 		if (nullptr != this->source)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI("AnimationBlenderV2::setSourceEnabled", _1(bEnable),
-			{
-				this->source->setEnabled(bEnable);
-			});
+			NOWA::GraphicsModule::RenderCommand renderCommand = [this, bEnable]()
+            {
+                this->source->setEnabled(bEnable);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "AnimationBlenderV2::setSourceEnabled");
 		}
 	}
+
+	void AnimationBlenderV2::setAnimationSpeed(Ogre::Real speed)
+    {
+        this->currentSpeed = speed; // store on main thread so internalBlend can read it
+
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, speed]()
+        {
+            if (nullptr != this->source)
+            {
+                auto it = this->baseFrameRates.find(this->source->getName().getFriendlyText());
+                if (it != this->baseFrameRates.end())
+                {
+                    this->source->mFrameRate = it->second * speed;
+                }
+            }
+            if (nullptr != this->target)
+            {
+                auto it = this->baseFrameRates.find(this->target->getName().getFriendlyText());
+                if (it != this->baseFrameRates.end())
+                {
+                    this->target->mFrameRate = it->second * speed;
+                }
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "AnimationBlenderV2::setAnimationSpeed");
+    }
+
+    Ogre::Real AnimationBlenderV2::getAnimationSpeed(void) const
+    {
+        return this->currentSpeed;
+    }
 
 	void AnimationBlenderV2::addAnimationBlenderObserver(IAnimationBlenderObserver* observer)
 	{
@@ -937,7 +1268,7 @@ namespace NOWA
 
 	queueAnimationFinishedCallback :
 
-	This function adds a callback to the deferredCallbacks queue.It is called inside notifyObservers to add each observer�s callback.
+	This function adds a callback to the deferredCallbacks queue.It is called inside notifyObservers to add each observer’s callback.
 
 	processDeferredCallbacks :
 
@@ -951,7 +1282,7 @@ namespace NOWA
 
 	Sequential Callback Execution: Since the callbacks are queued up in the deferredCallbacks vector, they will execute in the order they were added. In your Lua code, each reactOnAnimationFinished callback will be executed only after the corresponding animation completes.
 
-	Processing Deferred Callbacks After notifyObservers: The key point is that the notifyObservers function calls processDeferredCallbacks after notifying all observers. This ensures that once the animation finishes and all observers are notified, the deferred callbacks (which could include other animation transitions) are processed in sequence. This guarantees that the inner animation won�t be triggered until the previous one finishes.
+	Processing Deferred Callbacks After notifyObservers: The key point is that the notifyObservers function calls processDeferredCallbacks after notifying all observers. This ensures that once the animation finishes and all observers are notified, the deferred callbacks (which could include other animation transitions) are processed in sequence. This guarantees that the inner animation won’t be triggered until the previous one finishes.
 
 	Key Points to Ensure Timing:
 	Animation Completion and Callback: Make sure that the first animation has fully completed before the second one is triggered. This relies on how reactOnAnimationFinished works in your system. If it fires at the right moment (i.e., when the animation is actually finished and ready for the next action), everything will stay in sync.
@@ -1004,9 +1335,10 @@ namespace NOWA
 			IAnimationBlenderObserver* observer = *it;
 
 			// Enqueue the observer's callback to be executed later
-			this->queueAnimationFinishedCallback([observer]() {
+			this->queueAnimationFinishedCallback([observer]()
+			{
 				observer->onAnimationFinished();
-				});
+			});
 
 			// Handle one-time observers
 			if (observer->shouldReactOneTime())

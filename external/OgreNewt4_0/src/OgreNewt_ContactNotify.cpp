@@ -120,7 +120,7 @@ namespace OgreNewt
     // Called by Newton BEFORE a contact object exists (two AABBs newly overlap).
     // MUST be overridden — without it the base ndContactCallback::OnAabbOverlap
     // runs and calls GetCollisionShape() on internal Newton primitives (TreeCollision
-    // face bodies) that have no valid shape instance → null ref → crash.
+    // face bodies) that have no valid shape instance -> null ref -> crash.
     bool ContactNotify::OnAabbOverlap(const ndBodyKinematic* const body0, const ndBodyKinematic* const body1) const
     {
         if (!body0 || !body1)

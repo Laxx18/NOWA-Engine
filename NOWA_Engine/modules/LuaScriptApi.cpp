@@ -5220,7 +5220,7 @@ namespace NOWA
 			.def("getReferenceId", &getReferenceId)
 			.def("getOccurrenceIndex", &GameObjectComponent::getOccurrenceIndex)
 			.def("getIndex", &GameObjectComponent::getIndex)
-			];
+		];
 
 		AddClassToCollection("GameObjectComponent", "class", "This is the base class for all components.");
 		AddClassToCollection("GameObjectComponent", "GameObject getOwner()", "Gets owner game object of this component.");
@@ -5239,9 +5239,9 @@ namespace NOWA
 		AddClassToCollection("GameObjectComponent", "number getIndex()", "Gets the index of game object component (at which position the component is in the list.");
 
 		module(lua)
-			[
-				class_<NodeComponent, GameObjectComponent>("NodeComponent")
-			];
+		[
+			class_<NodeComponent, GameObjectComponent>("NodeComponent")
+		];
 	}
 
 	luabind::object getAllAvailableAnimationNames(AnimationBlender* instance, bool skipLogging)
@@ -5270,6 +5270,15 @@ namespace NOWA
 		AddClassToCollection("AnimationState", "float getTimePosition()", "Gets the current time position of this animation state.");
 		AddClassToCollection("AnimationState", "float getLength()", "Gets the animation length.");
 		AddClassToCollection("AnimationState", "void setTimePosition(float timePosition)", "Sets the time position of this animation state.");
+
+		module(lua)
+		[
+			class_<IAnimationBlender::BlendSpaceEntryList>("BlendSpaceEntryList")
+            .def(constructor<>())
+            .def("add", &IAnimationBlender::BlendSpaceEntryList::add)
+            .def("clear", &IAnimationBlender::BlendSpaceEntryList::clear)
+            .def("size", &IAnimationBlender::BlendSpaceEntryList::size)
+		];
 
 		module(lua)
 		[
@@ -5310,6 +5319,13 @@ namespace NOWA
 			.def("getWeight", &IAnimationBlender::getWeight)
 			.def("resetBones", &IAnimationBlender::resetBones)
 			.def("setDebugLog", &IAnimationBlender::setDebugLog)
+            .def("setOverlayAnimation1", (void (IAnimationBlender::*)(IAnimationBlender::AnimID, Ogre::Real))&IAnimationBlender::setOverlayAnimation)
+            .def("setOverlayAnimation2", (void (IAnimationBlender::*)(const Ogre::String&, Ogre::Real))&IAnimationBlender::setOverlayAnimation)
+            .def("clearOverlayAnimation", &IAnimationBlender::clearOverlayAnimation)
+            .def("isOverlayAnimationActive", &IAnimationBlender::isOverlayAnimationActive)
+            .def("setAnimationSpeed", &IAnimationBlender::setAnimationSpeed)
+            .def("getAnimationSpeed", &IAnimationBlender::getAnimationSpeed)
+            .def("driveBlendSpace", &IAnimationBlender::driveBlendSpace)
 		];
 
 		module(lua)
@@ -5416,11 +5432,6 @@ namespace NOWA
 		module(lua)
 		[
 			class_<AnimationBlenderV2, IAnimationBlender>("AnimationBlenderV2")
-			/*.def("getSource", &AnimationBlenderV2::getSource)
-			.def("getTarget", &AnimationBlenderV2::getTarget)
-			.def("getBone", &AnimationBlenderV2::getBone)
-			.def("getLocalToWorldPosition", &AnimationBlenderV2::getLocalToWorldPosition)
-			.def("getLocalToWorldOrientation", &AnimationBlenderV2::getLocalToWorldOrientation)*/
 		];
 
 		AddClassToCollection("AnimationBlender", "class", "This class can be used for more complex animations and transitions between them.");
@@ -5527,15 +5538,52 @@ namespace NOWA
 		AddClassToCollection("AnimationBlender", "bool hasAnimation(String animationName)", "Gets whether the given animation name does exist.");
 		AddClassToCollection("AnimationBlender", "bool isAnimationActive(String animationName)", "Gets whether the given animation name is being currently played.");
 		AddClassToCollection("AnimationBlender", "bool isAnyAnimationActive()", "Gets whether any animation is currently played.");
-		// AddClassToCollection("AnimationBlender", "void setSpeed(float speed)", "Sets the animation speed. E.g. setting speed = 2, the animation will be played two times faster.");
-		// AddClassToCollection("AnimationBlender", "float getSpeed()", "Gets the animation speed.");
-		// AddClassToCollection("AnimationBlender", "void setRepeat(bool repeat)", "Sets whether to repeat the animation.");
-		// AddClassToCollection("AnimationBlender", "bool getRepeat()", "Gets gets whether the animation is played in a loop.");
 		AddClassToCollection("AnimationBlender", "void setTimePosition(float timePosition)", "Sets the time position for the animation.");
 		AddClassToCollection("AnimationBlender", "float getTimePosition()", "Gets the current animation time position.");
 		AddClassToCollection("AnimationBlender", "float getLength()", "Gets the animation length.");
 		AddClassToCollection("AnimationBlender", "void setWeight(float weight)", "Sets the animation weight. The more less the weight the more less all bones are moved");
 		AddClassToCollection("AnimationBlender", "float getWeight()", "Gets the current animation weight.");
+
+		AddClassToCollection("AnimationBlender", "void setOverlayAnimation1(AnimID animationId, float blendInTime)",
+            "Starts an overlay animation on top of the current one using per-bone weights. "
+            "Useful for upper-body actions (attacks, reloads) while legs keep playing locomotion. "
+            "Non-looping overlays auto-clear when they finish.");
+
+        AddClassToCollection("AnimationBlender", "void setOverlayAnimation2(String animationName, float blendInTime)",
+            "Starts an overlay animation by name on top of the current one using per-bone weights. "
+            "Useful for upper-body actions (attacks, reloads) while legs keep playing locomotion. "
+            "Non-looping overlays auto-clear when they finish.");
+
+        AddClassToCollection("AnimationBlender", "void clearOverlayAnimation(float blendOutTime)",
+            "Fades out and removes the current overlay animation over the given blend-out time in seconds. "
+            "Required for looping overlays. Non-looping overlays clear themselves automatically.");
+
+        AddClassToCollection("AnimationBlender", "bool isOverlayAnimationActive()", "Returns true if an overlay animation is currently active (blending in, playing, or blending out).");
+
+        AddClassToCollection("AnimationBlender", "void setAnimationSpeed(float speed)",
+            "Sets the playback speed multiplier for the current source and target animations. "
+            "1.0 = normal speed, 2.0 = double speed, 0.5 = half speed. "
+            "The base frame rate per animation is preserved internally so calling this multiple times is safe. "
+            "When using this, pass raw dt to addTime() instead of scaling it manually.");
+
+        AddClassToCollection("AnimationBlender", "float getAnimationSpeed()", "Gets the currently active playback speed multiplier. Default is 1.0.");
+
+		AddClassToCollection("BlendSpaceEntryList", "class",
+            "A sorted list of animation/parameter pairs used to drive a 1D blend space. "
+            "Build it once in connect() and reuse it every frame in execute().");
+        AddClassToCollection("BlendSpaceEntryList", "void add(AnimID animationId, float parameter)",
+            "Adds an entry to the blend space. Entries must be added in ascending parameter order. "
+            "animationId is the animation clip, parameter is the value at which this clip is fully active "
+            "(e.g. 0.0 for idle, 3.0 for walk, 8.0 for run).");
+        AddClassToCollection("BlendSpaceEntryList", "void clear()", "Removes all entries from the list.");
+        AddClassToCollection("BlendSpaceEntryList", "int size()", "Returns the number of entries currently in the list.");
+
+        AddClassToCollection("AnimationBlender", "void driveBlendSpace(float parameter, BlendSpaceEntryList entries)",
+            "Drives a 1D blend space every frame. Finds the two clips whose parameter values bracket "
+            "the given parameter and blends between them using a smoothstep curve. "
+            "Replaces manual idle/walk/run branching logic with a single call. "
+            "The source pointer is kept on the dominant clip so getLength() and getTimePosition() remain valid. "
+            "Call addTime(dt) as normal after this.");
 	}
 
 	void addAttributeBool(AttributesComponent* instance, const Ogre::String& name, bool value)

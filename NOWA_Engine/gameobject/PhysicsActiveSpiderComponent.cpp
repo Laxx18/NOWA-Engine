@@ -850,7 +850,7 @@ namespace NOWA
 
         // Capsule.mesh: origin at bottom, extends along +Y.
         // Newton capsule long axis = local X.
-        // Fix 1: rotate -90 around Z so mesh Y → capsule X.
+        // Fix 1: rotate -90 around Z so mesh Y -> capsule X.
         // Fix 2: shift node back by halfLen along capsule X so mesh bottom aligns
         //         with capsule start instead of capsule center.
         const int boneAxis = boneAxisFromString(m_legBoneAxis->getString());
@@ -871,7 +871,7 @@ namespace NOWA
         }
 
         // Does the mesh have its origin at one end (not center)?
-        // Capsule.mesh from Newton demo: origin at bottom → true.
+        // Capsule.mesh from Newton demo: origin at bottom -> true.
         // Bone.mesh (centered): false.
         const bool originAtEnd = (boneAxis == 1);
 

@@ -17,7 +17,7 @@ using namespace OgreNewt;
 //   AddJoint then calls AttachJoint again, allocating SECOND nodes.
 //   After 3 tires the chassis has 6 nodes (3 orphaned + 3 real).
 //   The 4th heap allocation for an ndBodyDynamic (tire 4) lands adjacent to this
-//   corrupted list memory → the tire body's m_body field is overwritten → 0xdddd.
+//   corrupted list memory -> the tire body's m_body field is overwritten -> 0xdddd.
 //
 // FIX:
 //   Pass sentinel for BOTH bodies in the base constructor so AttachJoint is
@@ -96,7 +96,7 @@ RayCastTire::RayCastTire(ndWorld* world, const ndMatrix& pinAndPivotFrame, const
     child->setJointRecursiveCollision(false);
 
     // Joint is added to world by VehicleTire via SetSupportJoint/AddJoint — do NOT
-    // call world->AddJoint(this) here (would be the second add → crash).
+    // call world->AddJoint(this) here (would be the second add -> crash).
     // Is already done in basic joints VehicleTire:
     // world->AddJoint(this);
 }

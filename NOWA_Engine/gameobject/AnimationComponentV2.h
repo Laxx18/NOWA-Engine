@@ -17,6 +17,135 @@ namespace Ogre
 	class Bone;
 }
 
+/*
+
+-- ============================================================
+-- Setup (in connect)
+-- ============================================================
+
+animationBlender:registerAnimation(AnimID.ANIM_IDLE_1,    "Idle")
+animationBlender:registerAnimation(AnimID.ANIM_WALK_NORTH, "Walk")
+animationBlender:registerAnimation(AnimID.ANIM_RUN,        "Run")
+animationBlender:registerAnimation(AnimID.ANIM_ATTACK_1,   "Melee_attack")
+animationBlender:registerAnimation(AnimID.ANIM_ATTACK_2,   "Melee_attack2")
+animationBlender:registerAnimation(AnimID.ANIM_SHOOT,      "Shoot")
+animationBlender:registerAnimation(AnimID.ANIM_DEAD_1,     "Dead")
+
+animationBlender:init1(AnimID.ANIM_IDLE_1, true)
+
+-- ============================================================
+-- setAnimationSpeed / getAnimationSpeed
+-- ============================================================
+
+-- Double speed globally (e.g. slow-mo reversal, haste buff)
+animationBlender:setAnimationSpeed(2.0)
+log("Current speed: " .. animationBlender:getAnimationSpeed()) -- 2.0
+
+-- Now just pass raw dt - speed is baked into mFrameRate internally
+-- animationBlender:addTime(dt)
+
+-- Restore normal speed
+animationBlender:setAnimationSpeed(1.0)
+
+-- ============================================================
+-- setOverlayAnimation — non-looping one-shot (auto-clears)
+-- ============================================================
+
+-- Fire a melee attack overlay on the upper body while walk loop
+-- keeps playing on the legs. blendInTime = 0.15 seconds.
+-- Since Melee_attack is non-looping it will auto-clear when done.
+animationBlender:setOverlayAnimation1(AnimID.ANIM_ATTACK_1, 0.15)
+
+-- String variant:
+-- animationBlender:setOverlayAnimation2("Melee_attack", 0.15)
+
+-- Guard against spamming a new overlay before the current one finishes:
+if animationBlender:isOverlayAnimationActive() == false then
+    animationBlender:setOverlayAnimation1(AnimID.ANIM_ATTACK_2, 0.15)
+end
+
+-- ============================================================
+-- setOverlayAnimation — looping overlay (must be cleared manually)
+-- ============================================================
+
+-- Start a looping aim/shoot overlay (upper body only)
+animationBlender:setOverlayAnimation1(AnimID.ANIM_SHOOT, 0.2)
+
+-- Later, when the player stops aiming, fade it out over 0.2s
+animationBlender:clearOverlayAnimation(0.2)
+
+-- ============================================================
+-- Chaining overlay with blendAndContinue
+-- ============================================================
+
+-- Play a pickup animation, then return to whatever was playing before,
+-- while an attack overlay can still fire independently on upper body
+animationBlender:blendAndContinue1(AnimID.ANIM_PICKUP_1)
+
+playerController:reactOnAnimationFinished(function()
+    log("Pickup finished, resuming previous animation")
+    -- overlay is independent — it may still be active here
+end, true)
+
+-- ============================================================
+-- Typical execute loop pattern
+-- ============================================================
+
+-- execute = function(gameObject, dt)
+
+    -- Speed changes respond immediately to gameplay state
+    if (isSlowMotion) then
+        animationBlender:setAnimationSpeed(0.3)
+    elseif (isHasted) then
+        animationBlender:setAnimationSpeed(1.8)
+    else
+        animationBlender:setAnimationSpeed(1.0)
+    end
+
+    -- Overlay attack on upper body, locomotion continues on legs
+    if (InputDeviceModule:isActionDown(NOWA_A_ATTACK_1) and
+        animationBlender:isOverlayAnimationActive() == false) then
+        animationBlender:setOverlayAnimation1(AnimID.ANIM_ATTACK_1, 0.1)
+    end
+
+    -- Advance animation with raw dt — speed is handled by setAnimationSpeed
+    animationBlender:addTime(dt)
+
+-- end
+
+Scenario 2:
+
+-- ============================================================
+-- connect() — build the blend space once, store as variable
+-- ============================================================
+
+locomotionBlendSpace = BlendSpaceEntryList.new()
+locomotionBlendSpace:add(AnimID.ANIM_IDLE_1,     0.0)   -- standing still
+locomotionBlendSpace:add(AnimID.ANIM_WALK_NORTH,  3.0)   -- walking
+locomotionBlendSpace:add(AnimID.ANIM_RUN,         8.0)   -- running
+
+animationBlender:init1(AnimID.ANIM_IDLE_1, true)
+
+-- ============================================================
+-- execute(gameObject, dt) — drive it every frame
+-- ============================================================
+
+local velocity = playerController:getPhysicsComponent():getVelocity()
+-- Use only horizontal speed for the blend parameter
+local horizontalSpeed = math.sqrt(velocity.x * velocity.x + velocity.z * velocity.z)
+
+animationBlender:driveBlendSpace(horizontalSpeed, locomotionBlendSpace)
+
+-- Overlay attacks on upper body independently — blend space keeps running on legs
+if (InputDeviceModule:isActionDown(NOWA_A_ATTACK_1) and
+    animationBlender:isOverlayAnimationActive() == false) then
+    animationBlender:setOverlayAnimation1(AnimID.ANIM_ATTACK_1, 0.1)
+end
+
+-- Always advance with raw dt
+animationBlender:addTime(dt)
+*/
+
 namespace NOWA
 {
 	/**

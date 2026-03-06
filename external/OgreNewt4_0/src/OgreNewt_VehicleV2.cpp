@@ -275,9 +275,9 @@ namespace OgreNewt
         const Ogre::Real step = speed * dt;
 
         // Steer quaternion around chassis +Y, applied in chassis space before localOrient.
-        // m_currentSteerAngle is the raw Degree→Radian conversion of steerDeg:
-        //   steerDeg < 0 (right turn) → negative rad → Ry(negative) takes +X toward +Z → tire faces right ✓
-        //   steerDeg > 0 (left  turn) → positive rad → Ry(positive) takes +X toward -Z → tire faces left  ✓
+        // m_currentSteerAngle is the raw Degree->Radian conversion of steerDeg:
+        //   steerDeg < 0 (right turn) -> negative rad -> Ry(negative) takes +X toward +Z -> tire faces right ✓
+        //   steerDeg > 0 (left  turn) -> positive rad -> Ry(positive) takes +X toward -Z -> tire faces left  ✓
         const Ogre::Quaternion steerQ(Ogre::Radian(m_currentSteerAngle), Ogre::Vector3::UNIT_Y);
 
         for (TireInfoV2& tire : m_tires)

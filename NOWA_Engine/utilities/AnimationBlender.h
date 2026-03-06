@@ -29,7 +29,7 @@ namespace NOWA
 		
 		virtual void init(const Ogre::String& animationName, bool loop = true) override;
 
-		virtual std::vector<Ogre::String> getAllAvailableAnimationNames(bool skipLogging) const override;
+		virtual std::vector<Ogre::String> getAllAvailableAnimationNames(bool skipLogging = true) override;
 
 		virtual void blend(AnimID animationId, BlendingTransition transition, Ogre::Real duration, bool loop) override;
 		
@@ -62,6 +62,16 @@ namespace NOWA
 		virtual void blendAndContinue(AnimID animationId) override;
 
 		virtual void blendAndContinue(const Ogre::String& animationName) override;
+
+		virtual void setOverlayAnimation(AnimID animationId, Ogre::Real blendInTime = 0.2f) override;
+
+        virtual void setOverlayAnimation(const Ogre::String& animationName, Ogre::Real blendInTime = 0.2f) override;
+
+        virtual void clearOverlayAnimation(Ogre::Real blendOutTime = 0.2f) override;
+
+        virtual bool isOverlayAnimationActive(void) const override;
+
+		virtual void driveBlendSpace(Ogre::Real parameter, const IAnimationBlender::BlendSpaceEntryList& entryList) override;
 
 		virtual void addTime(Ogre::Real time) override;
 
@@ -98,6 +108,10 @@ namespace NOWA
 		virtual void setDebugLog(bool debugLog) override;
 
 		virtual void setSourceEnabled(bool bEnable) override;
+
+		virtual void setAnimationSpeed(Ogre::Real speed) override;
+
+		virtual Ogre::Real getAnimationSpeed(void) const override;
 
 		virtual void addAnimationBlenderObserver(IAnimationBlenderObserver* observer) override;
 

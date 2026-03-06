@@ -35,7 +35,7 @@ namespace NOWA
 		
 		virtual void init(const Ogre::String& animationName, bool loop = true) override;
 
-		virtual std::vector<Ogre::String> getAllAvailableAnimationNames(bool skipLogging = true) const override;
+		virtual std::vector<Ogre::String> getAllAvailableAnimationNames(bool skipLogging = true) override;
 
 		virtual void blend(AnimID animationId, BlendingTransition transition, Ogre::Real duration, bool loop) override;
 		
@@ -68,6 +68,16 @@ namespace NOWA
 		virtual void blendAndContinue(AnimID animationId) override;
 
 		virtual void blendAndContinue(const Ogre::String& animationName) override;
+
+		virtual void setOverlayAnimation(AnimID animationId, Ogre::Real blendInTime = 0.2f) override;
+
+        virtual void setOverlayAnimation(const Ogre::String& animationName, Ogre::Real blendInTime = 0.2f) override;
+
+        virtual void clearOverlayAnimation(Ogre::Real blendOutTime = 0.2f) override;
+
+        virtual bool isOverlayAnimationActive(void) const override;
+
+		virtual void driveBlendSpace(Ogre::Real parameter, const IAnimationBlender::BlendSpaceEntryList& entryList) override;
 
 		virtual void addTime(Ogre::Real time) override;
 
@@ -105,6 +115,10 @@ namespace NOWA
 
 		virtual void setSourceEnabled(bool bEnable) override;
 
+		virtual void setAnimationSpeed(Ogre::Real speed) override;
+
+		virtual Ogre::Real getAnimationSpeed(void) const;
+
 		virtual void addAnimationBlenderObserver(IAnimationBlenderObserver* observer) override;
 
 		virtual void removeAnimationBlenderObserver(IAnimationBlenderObserver* observer) override;
@@ -136,7 +150,8 @@ namespace NOWA
 		void internalInit(const Ogre::String& animationName, bool loop = true);
 		void internalBlend(const Ogre::String& animationName, BlendingTransition transition, Ogre::Real duration, bool loop = true);
 		Ogre::SkeletonAnimation* internalGetAnimationState(const Ogre::String& animationName);
-		bool isTargetAnimationActive(AnimID animationId);
+        bool isTargetAnimationActive(AnimID animationId);
+        void internalSetOverlayAnimation(const Ogre::String& animationName, Ogre::Real blendInTime);
 
 		void gameObjectIsInRagDollStateDelegate(EventDataPtr eventData);
 	private:
@@ -156,18 +171,25 @@ namespace NOWA
 		bool previousLoop;
 		
 		Ogre::Real timeleft;
-		bool complete;
+        std::atomic<bool> complete;
+        std::atomic<bool> canAnimate;
 
 		bool debugLog;
 
 		std::map<AnimID, Ogre::String> mappedAnimations;
+        std::map<Ogre::String, Ogre::Real> baseFrameRates;
+        Ogre::Real currentSpeed;
 
 		std::vector<IAnimationBlenderObserver*> animationBlenderObservers;
 		// Deferred callback queue
 		std::vector<std::function<void()>> deferredCallbacks;
-		bool canAnimate;
 
 		unsigned long uniqueId;
+
+		Ogre::SkeletonAnimation* overlaySource;
+        Ogre::Real overlayTimeleft;
+        Ogre::Real overlayDuration;
+        bool overlayBlendingOut;
 	};
 
 }; // namespace end
