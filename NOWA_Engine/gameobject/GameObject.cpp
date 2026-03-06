@@ -54,7 +54,9 @@ namespace NOWA
 		bShowDebugData(false),
 		luaScript(nullptr),
 		bConnectPriority(false),
-		timeSinceLastUpdate(2.0f)
+		timeSinceLastUpdate(2.0f),
+        cachedLuaScriptComponent(nullptr),
+        cachedAiLuaComponent(nullptr)
 	{
 		this->name = new Variant(GameObject::AttrName(), "Default", this->attributes);
 		if (0 == id)
@@ -241,11 +243,11 @@ namespace NOWA
 			this->clampObjectQuery = nullptr;
 			this->sceneManager = nullptr;
 
-			// Attention: No this may be used here, because its in the destructor!
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObject::~GameObject", _5(sceneNode, movableObject, boundingBoxDraw, clampObjectQuery, sceneManager),
-			{
+            NOWA::GraphicsModule::DestroyCommand destroyCommand = [this, sceneNode, movableObject, boundingBoxDraw, clampObjectQuery, sceneManager]() mutable
+            {
 				this->destroyGameObjectResources(sceneNode, movableObject, boundingBoxDraw, clampObjectQuery, sceneManager);
-			});
+            };
+            GraphicsModule::getInstance()->enqueueDestroy(destroyCommand, "GameObject::~GameObject");
 		}
 	}
 
@@ -758,7 +760,17 @@ namespace NOWA
 		}
 
 		this->meshName->setReadOnly(true);
-	}
+    }
+
+    LuaScriptComponent* GameObject::getCachedLuaScriptComponent(void) const
+    {
+        return this->cachedLuaScriptComponent;
+    }
+
+    AiLuaComponent* GameObject::getCachedAiLuaComponent(void) const
+    {
+        return this->cachedAiLuaComponent;
+    }
 
 	const char* GameObject::typeToString(GameObject::eType t)
 	{
@@ -809,24 +821,31 @@ namespace NOWA
 				i++;
 			}
 		}
+
+		// Cache frequently-looked-up component raw pointers once, after all components are alive.
+        // getComponent<T>() scans + locks; these avoid that cost on every hot-path call.
+        this->cachedLuaScriptComponent = NOWA::makeStrongPtr(this->getComponent<LuaScriptComponent>()).get();
+        this->cachedAiLuaComponent = NOWA::makeStrongPtr(this->getComponent<AiLuaComponent>()).get(); 
+
 		return true;
 	}
 
 	void GameObject::resetVariants(void)
-	{
-		Ogre::String oldCustomString = this->getCustomDataString();
-		this->setCustomDataString(GameObject::AttrCustomDataSkipCreation());
+    {
+        Ogre::String oldCustomString = this->getCustomDataString();
+        this->setCustomDataString(GameObject::AttrCustomDataSkipCreation());
 
-		for (unsigned int i = 0; i < static_cast<unsigned int>(this->gameObjectComponents.size()); i++)
-		{
-			auto gameObjectCompPtr = std::get<COMPONENT>(this->gameObjectComponents[i]);
+        LuaScriptComponent* luaScriptRaw = this->cachedLuaScriptComponent;
 
-			auto luaScriptComponent = boost::dynamic_pointer_cast<LuaScriptComponent>(gameObjectCompPtr);
-			if (nullptr == luaScriptComponent)
-			{
-				std::get<COMPONENT>(this->gameObjectComponents[i])->resetVariants();
-			}
-		}
+        for (unsigned int i = 0; i < static_cast<unsigned int>(this->gameObjectComponents.size()); i++)
+        {
+            auto gameObjectCompPtr = std::get<COMPONENT>(this->gameObjectComponents[i]);
+
+            if (gameObjectCompPtr.get() != luaScriptRaw)
+            {
+                gameObjectCompPtr->resetVariants();
+            }
+        }
 
 		// Resets all variants so that all setter of all this game object and all its components are called
 		for (size_t i = 0; i < this->attributes.size(); i++)
@@ -872,92 +891,93 @@ namespace NOWA
 	}
 
 	bool GameObject::connectPriority(void)
-	{
-		// Connects all components prior, because this whole game object has the flag set
-		if (true == this->bConnectPriority)
-		{
-			// Process all priority connect components
-			for (const auto& component : this->gameObjectComponents)
-			{
-				const GameObjectCompPtr gameObjectCompPtr = std::get<COMPONENT>(component);
-				gameObjectCompPtr->bConnectPriority = true;
+    {
+        LuaScriptComponent* luaScriptRaw = this->cachedLuaScriptComponent;
+        AiLuaComponent* aiLuaRaw = this->cachedAiLuaComponent;
 
-				// Get a possible lua script from corresponding component
-				bool luaScriptNoCompileErrors = true;
-				// Problem: When lua script is connected first and intialisations done inside, e.g. ragdoll etc. no ragdoll is yet available, so only compile
+        if (true == this->bConnectPriority)
+        {
+            for (const auto& component : this->gameObjectComponents)
+            {
+                const GameObjectCompPtr gameObjectCompPtr = std::get<COMPONENT>(component);
+                gameObjectCompPtr->bConnectPriority = true;
 
-				auto luaScriptCompPtr = boost::dynamic_pointer_cast<LuaScriptComponent>(gameObjectCompPtr);
-				auto aiLuaCompPtr = boost::dynamic_pointer_cast<AiLuaComponent>(gameObjectCompPtr);
-				if (nullptr != luaScriptCompPtr)
-				{
-					// If its a lua script component, compile it before all other components, because the lua script must be compiled and is maybe invalid, so that other components can react on that
-					luaScriptNoCompileErrors = luaScriptCompPtr->compileScript();
-				}
-				else if (nullptr == aiLuaCompPtr)
-				{
-					gameObjectCompPtr->bConnectedSuccess = gameObjectCompPtr->connect();
-				}
-			}
-		}
-		else
-		{
-			// Process all priority connect components
-			for (const auto& component : this->gameObjectComponents)
-			{
-				const GameObjectCompPtr gameObjectCompPtr = std::get<COMPONENT>(component);
-				auto luaScriptCompPtr = boost::dynamic_pointer_cast<LuaScriptComponent>(gameObjectCompPtr);
-				auto aiLuaCompPtr = boost::dynamic_pointer_cast<AiLuaComponent>(gameObjectCompPtr);
-				if (nullptr == luaScriptCompPtr && nullptr == aiLuaCompPtr)
-				{
-					if (true == gameObjectCompPtr->getConnectPriority())
-					{
-						gameObjectCompPtr->bConnectedSuccess = gameObjectCompPtr->connect();
-					}
-				}
-			}
-		}
-		return true;
-	}
+                bool luaScriptNoCompileErrors = true;
+
+                if (gameObjectCompPtr.get() == luaScriptRaw)
+                {
+                    luaScriptNoCompileErrors = luaScriptRaw->compileScript();
+                }
+                else if (gameObjectCompPtr.get() != aiLuaRaw)
+                {
+                    gameObjectCompPtr->bConnectedSuccess = gameObjectCompPtr->connect();
+                }
+            }
+        }
+        else
+        {
+            for (const auto& component : this->gameObjectComponents)
+            {
+                const GameObjectCompPtr gameObjectCompPtr = std::get<COMPONENT>(component);
+
+                // BEFORE: two dynamic_pointer_casts per element
+                // AFTER: two raw pointer comparisons
+                if (gameObjectCompPtr.get() != luaScriptRaw && gameObjectCompPtr.get() != aiLuaRaw)
+                {
+                    if (true == gameObjectCompPtr->getConnectPriority())
+                    {
+                        gameObjectCompPtr->bConnectedSuccess = gameObjectCompPtr->connect();
+                    }
+                }
+            }
+        }
+        return true;
+    }
 
 	bool GameObject::connect(void)
-	{
-		// Get a possible lua script from corresponding component
-		boost::shared_ptr<LuaScriptComponent> luaScriptCompPtr;
-		bool luaScriptNoCompileErrors = true;
-		// Problem: When lua script is connected first and intialisations done inside, e.g. ragdoll etc. no ragdoll is yet available, so only compile
-		
-		luaScriptCompPtr = NOWA::makeStrongPtr(this->getComponent<LuaScriptComponent>());
-		if (nullptr != luaScriptCompPtr)
-		{
-			// If its a lua script component, compile it before all other components, because the lua script must be compiled and is maybe invalid, so that other components can react on that
-			if (false == luaScriptCompPtr->getLuaScript()->isCompiled())
-			{
-				luaScriptNoCompileErrors = luaScriptCompPtr->compileScript();
-			}
-		}
+    {
+        // Use cached raw pointers — no component scan, no atomic refcount lock.
+        // These are set once in postInit() and cleared in destroy().
+        LuaScriptComponent* luaScriptRaw = this->cachedLuaScriptComponent;
+        AiLuaComponent* aiLuaRaw = this->cachedAiLuaComponent;
 
-		boost::shared_ptr<AiLuaComponent> aiLuaCompPtr = NOWA::makeStrongPtr(this->getComponent<AiLuaComponent>());
-		
-		if (true == luaScriptNoCompileErrors)
-		{
-			for (const auto& component : this->gameObjectComponents)
-			{
-				const GameObjectCompPtr gameObjectCompPtr = std::get<COMPONENT>(component);
-				if (true == gameObjectCompPtr->getConnectPriority())
-				{
-					continue;
-				}
+        // Problem: When lua script is connected first and initialisations done inside,
+        // e.g. ragdoll etc. no ragdoll is yet available, so only compile here.
+        bool luaScriptNoCompileErrors = true;
 
-				// Connect all, but lua script and ai lua components, they are handled separately in GameObjectController @managedLuaScripts
-				if (luaScriptCompPtr != gameObjectCompPtr && aiLuaCompPtr != gameObjectCompPtr)
-				{
-					gameObjectCompPtr->bConnectedSuccess = gameObjectCompPtr->connect();
-				}
-			}
-		}
+        if (nullptr != luaScriptRaw)
+        {
+            // Compile before all other components so that other components can react on compile errors
+            if (false == luaScriptRaw->getLuaScript()->isCompiled())
+            {
+                luaScriptNoCompileErrors = luaScriptRaw->compileScript();
+            }
+        }
 
-		return true;
-	}
+        if (true == luaScriptNoCompileErrors)
+        {
+            for (const auto& component : this->gameObjectComponents)
+            {
+                const GameObjectCompPtr gameObjectCompPtr = std::get<COMPONENT>(component);
+
+                if (true == gameObjectCompPtr->getConnectPriority())
+                {
+                    continue;
+                }
+
+                // Connect all components except LuaScriptComponent and AiLuaComponent —
+                // those are handled separately in GameObjectController @managedLuaScripts.
+                // Raw pointer comparison replaces the old shared_ptr != shared_ptr comparison,
+                // which internally did two atomic loads. This is a plain pointer compare.
+                if (gameObjectCompPtr.get() != luaScriptRaw && gameObjectCompPtr.get() != aiLuaRaw)
+                {
+                    gameObjectCompPtr->bConnectedSuccess = gameObjectCompPtr->connect();
+                }
+            }
+        }
+
+        return true;
+    }
 
 	bool GameObject::disconnect(void)
 	{
@@ -985,6 +1005,10 @@ namespace NOWA
 
 	void GameObject::destroy(void)
 	{
+        // Clear caches before components are torn down
+        this->cachedLuaScriptComponent = nullptr;
+        this->cachedAiLuaComponent = nullptr;
+
 		for (auto& it = this->gameObjectComponents.cbegin(); it != this->gameObjectComponents.cend(); ++it)
 		{
 			std::get<COMPONENT>(*it)->bTaggedForRemovement = true;
@@ -1922,6 +1946,10 @@ namespace NOWA
 			}
 		}
 
+		// Refresh cached pointers after any component removal
+        this->cachedLuaScriptComponent = NOWA::makeStrongPtr(this->getComponent<LuaScriptComponent>()).get();
+        this->cachedAiLuaComponent = NOWA::makeStrongPtr(this->getComponent<AiLuaComponent>()).get();
+
 		return found;
 	}
 
@@ -2832,12 +2860,16 @@ namespace NOWA
 				return this->attributes[i].second;
 			}
 		}
-		// In game object not found, check all components
-		for (auto& it = this->gameObjectComponents.cbegin(); it != this->gameObjectComponents.end(); ++it)
-		{
-			return std::get<COMPONENT>(*it)->getAttribute(attributeName);
-		}
-		return nullptr;
+        // Not found in game object — search all components.
+        for (const auto& component : this->gameObjectComponents)
+        {
+            Variant* v = std::get<COMPONENT>(component)->getAttribute(attributeName);
+            if (nullptr != v)
+            {
+                return v;
+            }
+        }
+        return nullptr;
 	}
 
 	std::vector<std::pair<Ogre::String, Variant*>>& GameObject::getAttributes(void)

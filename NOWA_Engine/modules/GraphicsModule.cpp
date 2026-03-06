@@ -37,7 +37,9 @@ namespace NOWA
         isRunningWaitClosure(false),
         closureQueue(),
         producerToken(closureQueue),
-        consumerToken(closureQueue)
+        consumerToken(closureQueue),
+        stallRequested(false),
+        stallAcknowledged(false)
     {
         // Reserve some space for tracked nodes to avoid frequent reallocations
         this->trackedNodes.reserve(100);
@@ -98,13 +100,28 @@ namespace NOWA
 
         while (true == this->bRunning)
         {
-            Ogre::WindowEventUtilities::messagePump();
+            // ── STALL HANDSHAKE ─────────────────────────────────────────────────────
+            // Must be FIRST: logic thread may have called requestStall() and is waiting
+            // to finish the previous iteration before it touches vectors.
+            if (this->stallRequested.load(std::memory_order_acquire))
+            {
+                // Acknowledge: we are at a frame boundary, not inside any vector loop
+                this->stallAcknowledged.store(true, std::memory_order_release);
+
+                // Park here while logic thread does clearSceneResources() / state switch
+                while (this->stallRequested.load(std::memory_order_acquire))
+                {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                }
+
+                // Logic thread called releaseStall() — resume normal rendering
+                this->stallAcknowledged.store(false, std::memory_order_release);
+                continue;
+            }
 
             Ogre::uint64 currentTime = timer.getMicroseconds();
             Ogre::Real deltaTime = (currentTime - lastFrameTime) * 0.000001f;
             lastFrameTime = currentTime;
-
-            // Store the render deltaTime for closures to use
             this->currentRenderDt = deltaTime;
 
             GameProgressModule* gameProgressModule = appStateManager->getActiveGameProgressModuleSafe();
@@ -114,17 +131,11 @@ namespace NOWA
             if (false == isStalled && false == isSceneLoading)
             {
                 NOWA::InputDeviceCore::getSingletonPtr()->capture(deltaTime);
-
                 this->advanceFrameAndDestroyOld();
                 this->processAllCommands();
 
-                // Uses alpha published by logic thread (single truth)
                 const float alpha = this->consumeInterpolationAlpha();
-                this->setInterpolationWeight(alpha); // implement/set your internal weight variable
-
-                // No more: accumTimeSinceLastLogicFrame += deltaTime
-                // No more: calculateInterpolationWeight() based on render delta
-
+                this->setInterpolationWeight(alpha);
                 this->updateAllTransforms();
 
                 if (++frameCount % 300 == 0)
@@ -136,22 +147,13 @@ namespace NOWA
             }
             else
             {
+                // Stalled or scene loading.
+                // Vector clears are now exclusively the logic thread's job,
+                // done safely inside requestStall()/clearSceneResources()/releaseStall().
+                // Only clear closure state here — it is render-thread-owned.
                 this->clearAllClosures();
-                this->trackedNodes.clear();
-                this->trackedCameras.clear();
-                this->trackedOldBones.clear();
-                this->trackedBones.clear();
-                this->trackedPasses.clear();
-                this->trackedDatablocks.clear();
-                this->currentTransformNodeIdx = 0;
-                this->currentTransformCameraIdx = 0;
-                this->currentTransformOldBoneIdx = 0;
-                this->currentTransformBoneIdx = 0;
-                this->currentTransformPassIdx = 0;
-                this->currentTrackedDatablockIdx = 0;
             }
 
-            // isWorkspaceTransitioning causes freeze with two cameras and pressing play! -> see quat/scene1
             if (false == isStalled && false == this->isWorkspaceTransitioning() && false == isSceneLoading)
             {
                 Ogre::Root::getSingletonPtr()->renderOneFrame();
@@ -179,8 +181,6 @@ namespace NOWA
             throw;
         }
 
-        this->clearAllClosures();
-        
         this->clearAllClosures();
 
         this->trackedNodes.clear();
@@ -336,170 +336,143 @@ namespace NOWA
 
     void GraphicsModule::enqueue(RenderCommand&& command, const char* commandName, std::shared_ptr<std::promise<void>> promise)
     {
-        // Make sure we have a valid command
         if (!command)
         {
-            // If we have a promise, fulfill it to prevent deadlock
-            if (promise && false == this->wasPromiseFulfilled(promise))
+            // Null command — fulfill the promise immediately so the caller doesn't hang.
+            if (promise)
             {
                 try
                 {
                     promise->set_value();
-                    this->markPromiseFulfilled(promise);
                 }
-                catch (...)
-                {
-                    // Ignore any exceptions from setting the value
+                catch (const std::future_error&)
+                { /* already set, harmless */
                 }
             }
             return;
         }
 
-        // If we're already on the render thread AND processing a command, 
-        // execute this command immediately rather than enqueuing it
-
-        // Note: RenderGlobals::g_inLogicCommand has been uncommented, because its dangerous, so that a render thread operation would not be executed on render thread, because its part of logic main thread cascade
-        if (true == this->isRenderThread()/* || true == RenderGlobals::g_inLogicCommand*/)
+        if (true == this->isRenderThread())
         {
-            // Log direct execution
-            this->logCommandEvent("Executing command directly on render thread", Ogre::LML_TRIVIAL);
-
+            this->logCommandEvent(std::string("Executing '") + commandName + "' directly on render thread", Ogre::LML_TRIVIAL);
             try
             {
-                this->logCommandEvent(std::string("Executing command '") + commandName + "' directly on render thread", Ogre::LML_TRIVIAL);
-                 command();
-                // this->isRunningWaitClosure = false;
-                if (promise && !wasPromiseFulfilled(promise))
+                command();
+                if (promise)
                 {
-                    promise->set_value();
-                    this->markPromiseFulfilled(promise);
+                    try
+                    {
+                        promise->set_value();
+                    }
+                    catch (const std::future_error&)
+                    { /* already set */
+                    }
                 }
             }
             catch (const std::exception& e)
             {
-                this->logCommandEvent(std::string("Exception caught in direct command execution: ") + e.what(), Ogre::LML_CRITICAL);
-                if (promise && !wasPromiseFulfilled(promise))
+                this->logCommandEvent(std::string("Exception in direct execution: ") + e.what(), Ogre::LML_CRITICAL);
+                if (promise)
                 {
                     try
                     {
                         promise->set_exception(std::current_exception());
-                        this->markPromiseFulfilled(promise);
                     }
-                    catch (...) {
-                        // Ignore any exceptions from setting the exception
+                    catch (const std::future_error&)
+                    { /* already set */
                     }
                 }
-                // We don't rethrow here - we contain the exception within the command
             }
             catch (...)
             {
-                this->logCommandEvent("Unknown exception caught in direct command execution", Ogre::LML_CRITICAL);
-                if (promise && !wasPromiseFulfilled(promise))
+                this->logCommandEvent("Unknown exception in direct execution", Ogre::LML_CRITICAL);
+                if (promise)
                 {
                     try
                     {
                         promise->set_exception(std::current_exception());
-                        this->markPromiseFulfilled(promise);
                     }
-                    catch (...) {
-                        // Ignore any exceptions from setting the exception
+                    catch (const std::future_error&)
+                    { /* already set */
                     }
                 }
-                // We don't rethrow here - we contain the exception within the command
             }
+            return;
         }
-        else
-        {
-            // Normal behavior - enqueue for later execution
-            CommandEntry entry;
-            entry.command = std::move(command);
-            entry.completionPromise = promise;
-            entry.promiseAlreadyFulfilled = false;
 
-            this->queue.enqueue(std::move(entry));
+        // Normal path — enqueue for render thread to process
+        CommandEntry entry;
+        entry.command = std::move(command);
+        entry.completionPromise = promise;
+        this->queue.enqueue(std::move(entry));
 
-            // Log enqueuing
-            this->logCommandEvent("Command " + Ogre::String(commandName) + " enqueued for later execution queue size : " + Ogre::StringConverter::toString(this->queue.size_approx()), Ogre::LML_TRIVIAL);
-        }
+        this->logCommandEvent("Command " + Ogre::String(commandName) + " enqueued, queue size: " + Ogre::StringConverter::toString(this->queue.size_approx()), Ogre::LML_TRIVIAL);
     }
 
     void GraphicsModule::processAllCommands(void)
     {
-        // Safety check that we're on the render thread
         if (false == this->isRenderThread())
         {
             this->logCommandEvent("processAllCommands called from non-render thread!", Ogre::LML_CRITICAL);
             return;
         }
 
-        // Increment render command depth to detect nested command executions
         g_renderCommandDepth++;
 
-        // Process all commands in the queue
         CommandEntry entry;
-        bool processedAnyCommands = false;
-
         while (this->pop(entry))
         {
-            processedAnyCommands = true;
             try
             {
-                // Execute the command (which may enqueue more commands if inside a render command)
                 if (entry.command)
                 {
-                    int i = this->queue.size_approx();
-                    this->logCommandEvent("Executing command from processAllCommands. New queue size: " + Ogre::StringConverter::toString(this->queue.size_approx()), Ogre::LML_TRIVIAL);
+                    this->logCommandEvent("Executing command, queue size: " + Ogre::StringConverter::toString(this->queue.size_approx()), Ogre::LML_TRIVIAL);
                     entry.command();
-
                     this->isRunningWaitClosure = false;
                 }
 
-                // Set the promise value if it exists and hasn't been fulfilled yet
-                if (entry.completionPromise && false == this->wasPromiseFulfilled(entry.completionPromise))
+                if (entry.completionPromise)
                 {
-                    entry.completionPromise->set_value();
-                    this->markPromiseFulfilled(entry.completionPromise);
+                    try
+                    {
+                        entry.completionPromise->set_value();
+                    }
+                    catch (const std::future_error&)
+                    { /* already set inside command */
+                    }
                 }
             }
             catch (const std::exception& e)
             {
                 this->logCommandEvent(std::string("Exception in processAllCommands: ") + e.what(), Ogre::LML_CRITICAL);
-
-                // Set exception on the promise if it exists
-                if (entry.completionPromise && false == this->wasPromiseFulfilled(entry.completionPromise))
+                if (entry.completionPromise)
                 {
                     try
                     {
                         entry.completionPromise->set_exception(std::current_exception());
-                        this->markPromiseFulfilled(entry.completionPromise);
                     }
-                    catch (...) { /* Ignore exceptions from setting the exception */ }
+                    catch (const std::future_error&)
+                    { /* already set */
+                    }
                 }
             }
             catch (...)
             {
                 this->logCommandEvent("Unknown exception in processAllCommands", Ogre::LML_CRITICAL);
-
-                // Set exception on the promise if it exists
-                if (entry.completionPromise && false == this->wasPromiseFulfilled(entry.completionPromise))
+                if (entry.completionPromise)
                 {
                     try
                     {
                         entry.completionPromise->set_exception(std::current_exception());
-                        this->markPromiseFulfilled(entry.completionPromise);
                     }
-                    catch (...) { /* Ignore exceptions from setting the exception */ }
+                    catch (const std::future_error&)
+                    { /* already set */
+                    }
                 }
             }
         }
 
-        // Cleanup fulfilled promises occasionally (when we've processed at least one command)
-        if (true == processedAnyCommands)
-        {
-            this->cleanupFulfilledPromises();
-        }
-
-        // Decrement render command depth
+        // cleanupFulfilledPromises() call removed — tracking system eliminated
         g_renderCommandDepth--;
     }
 
@@ -559,80 +532,59 @@ namespace NOWA
         return this->queue.size_approx() > 0;
     }
 
-    void GraphicsModule::cleanupFulfilledPromises()
-    {
-        // Only clean up if we have a significant number of fulfilled promises stored
-        if (this->fulfilledPromises.size() > 1000)
-        {
-            std::lock_guard<std::mutex> lock(this->fulfilledMutex);
-
-            std::stringstream ss;
-            ss << "Cleaning up " << fulfilledPromises.size() << " fulfilled promises";
-            this->logCommandEvent(ss.str(), Ogre::LML_NORMAL);
-
-            this->fulfilledPromises.clear();
-        }
-    }
-
     void GraphicsModule::enqueueAndWait(RenderCommand&& command, const char* commandName)
     {
         this->isRunningWaitClosure = true;
 
-        // If already on the render thread or in the middle of destroy closure, wait must not be called! Else closure of destroy etc. will be interupted! so execute directly without wait in that case.
-        // Or detect if already in a logic->render call chain
-        // Note: RenderGlobals::g_inLogicCommand has been uncommented, because its dangerous, so that a render thread operation would not be executed on render thread, because its part of logic main thread cascade
-        if (true == this->isRenderThread() && RenderGlobals::g_renderCommandDepth > 0 /*|| true == RenderGlobals::g_inLogicCommand*/)
+        // ── Render-thread re-entrant path ─────────────────────────────────────
+        if (true == this->isRenderThread() && RenderGlobals::g_renderCommandDepth > 0)
         {
             try
             {
-                // Execute immediately on current thread to break cycle
-                this->logCommandEvent(std::string("Executing command '") + commandName + "' directly on render thread with **WAIT** (re-entrant)", Ogre::LML_TRIVIAL);
+                this->logCommandEvent(std::string("Executing '") + commandName + "' directly on render thread with **WAIT** (re-entrant)", Ogre::LML_TRIVIAL);
                 command();
 
+                this->flushDeferredDestroyCommands(); // <- flush before clearing flag
                 this->isRunningWaitClosure = false;
                 return;
             }
             catch (const std::exception& e)
             {
                 this->logCommandEvent(std::string("Exception in direct execution of '") + commandName + "': " + e.what(), Ogre::LML_CRITICAL);
+                this->flushDeferredDestroyCommands(); // <- flush even on exception
                 this->isRunningWaitClosure = false;
-                throw; // Re-throw the exception
+                throw;
             }
             catch (...)
             {
                 this->logCommandEvent(std::string("Unknown exception in direct execution of '") + commandName + "'", Ogre::LML_CRITICAL);
+                this->flushDeferredDestroyCommands(); // <- flush even on exception
                 this->isRunningWaitClosure = false;
-                throw; // Re-throw the exception
+                throw;
             }
         }
 
-        // Track that we're in a waiting state on this thread
+        // ── Normal path (logic thread → render thread) ────────────────────────
         this->incrementWaitDepth();
 
         try
         {
-            // Create a promise for this command
             auto promise = std::make_shared<std::promise<void>>();
             auto future = promise->get_future();
 
-            // Log the command
-            this->logCommandEvent(std::string("Enqueueing command '") + commandName + "' with **WAIT**", Ogre::LML_NORMAL);
+            this->logCommandEvent(std::string("Enqueueing '") + commandName + "' with **WAIT**", Ogre::LML_NORMAL);
 
-            // If we're in a nested wait, we still enqueue with the promise but we'll use a special flag
-            bool isNested = isInNestedWait() && g_waitDepth > 1; // We've already incremented waitDepth
+            bool isNested = isInNestedWait() && g_waitDepth > 1;
 
-            if (true == isNested)
+            if (isNested)
             {
-                this->logCommandEvent(std::string("Command '") + commandName + "' is a nested **WAIT** call (depth: " + std::to_string(g_waitDepth) + ")", Ogre::LML_NORMAL);
+                this->logCommandEvent(std::string("Command '") + commandName + "' is a nested **WAIT** (depth: " + std::to_string(g_waitDepth) + ")", Ogre::LML_NORMAL);
             }
 
-            // Always enqueue with a promise, even for nested commands
             this->enqueue(std::move(command), commandName, promise);
 
-            // For the first level wait, process immediately to avoid deadlocks
             if (false == isNested)
             {
-                // Wait for the command to complete
                 if (true == this->isTimeoutEnabled())
                 {
                     auto timeout = getTimeoutDuration();
@@ -640,15 +592,12 @@ namespace NOWA
 
                     if (status == std::future_status::timeout)
                     {
-                        this->logCommandEvent(std::string("Timeout occurred waiting for command '") + commandName + "'", Ogre::LML_CRITICAL);
-
-                        // Force a full queue synchronization to recover
+                        this->logCommandEvent(std::string("Timeout waiting for '") + commandName + "'", Ogre::LML_CRITICAL);
                         this->processQueueSync();
                     }
                 }
                 else
                 {
-                    // future.wait();
                     while (future.wait_for(std::chrono::milliseconds(1)) != std::future_status::ready)
                     {
                         std::this_thread::yield();
@@ -657,32 +606,30 @@ namespace NOWA
             }
             else
             {
-                // For nested waits, we still track the promise but don't wait for it
-                // The outer wait will ensure all commands get processed eventually
                 this->logCommandEvent(std::string("Nested command '") + commandName + "' enqueued without blocking wait", Ogre::LML_NORMAL);
-
-                // Add to tracking for nested commands if needed
-                // trackNestedCommand(promise); // Optional: implement this to track nested promises
             }
         }
         catch (const std::exception& e)
         {
-            this->logCommandEvent(std::string("Exception waiting for command '") + commandName + "': " + e.what(), Ogre::LML_CRITICAL);
-            decrementWaitDepth();
+            this->logCommandEvent(std::string("Exception waiting for '") + commandName + "': " + e.what(), Ogre::LML_CRITICAL);
+            this->decrementWaitDepth();
+            this->flushDeferredDestroyCommands(); // <- flush even on exception
             this->isRunningWaitClosure = false;
             throw;
         }
         catch (...)
         {
-            this->logCommandEvent(std::string("Unknown exception waiting for command '") + commandName + "'", Ogre::LML_CRITICAL);
-            decrementWaitDepth();
+            this->logCommandEvent(std::string("Unknown exception waiting for '") + commandName + "'", Ogre::LML_CRITICAL);
+            this->decrementWaitDepth();
+            this->flushDeferredDestroyCommands(); // <- flush even on exception
             this->isRunningWaitClosure = false;
             throw;
         }
 
-        decrementWaitDepth();
-        logCommandEvent(std::string("Command '") + commandName + "' completed", Ogre::LML_TRIVIAL);
+        this->decrementWaitDepth();
+        this->logCommandEvent(std::string("Command '") + commandName + "' completed", Ogre::LML_TRIVIAL);
 
+        this->flushDeferredDestroyCommands(); // <- flush on normal completion
         this->isRunningWaitClosure = false;
     }
 
@@ -711,22 +658,6 @@ namespace NOWA
         this->logCommandEvent("Waiting for queue sync point", Ogre::LML_NORMAL);
         syncFuture.wait();
         this->logCommandEvent("Queue sync point completed", Ogre::LML_NORMAL);
-    }
-
-    void GraphicsModule::markPromiseFulfilled(const std::shared_ptr<std::promise<void>>& promise)
-    {
-        if (!promise) return;
-
-        std::lock_guard<std::mutex> lock(this->fulfilledMutex);
-        this->fulfilledPromises.insert(promise);
-    }
-
-    bool GraphicsModule::wasPromiseFulfilled(const std::shared_ptr<std::promise<void>>& promise)
-    {
-        if (!promise) return true;
-
-        std::lock_guard<std::mutex> lock(this->fulfilledMutex);
-        return fulfilledPromises.find(promise) != this->fulfilledPromises.end();
     }
 
     void GraphicsModule::markCurrentThreadAsRenderThread()
@@ -854,6 +785,25 @@ namespace NOWA
             return false;
         }
         return true;
+    }
+
+    void GraphicsModule::requestStall()
+    {
+        // Signal the render thread to pause at the next safe boundary (top of loop)
+        stallRequested.store(true, std::memory_order_release);
+
+        // Wait until render thread confirms it has exited any vector-touching code
+        while (!stallAcknowledged.load(std::memory_order_acquire))
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+        // Now safe: render thread is parked, won't touch tracked vectors until releaseStall()
+    }
+
+    void GraphicsModule::releaseStall()
+    {
+        stallRequested.store(false, std::memory_order_release);
+        // Render thread will see this on its next spin, clear m_stallAcknowledged, and resume
     }
 
     bool GraphicsModule::isSceneValid(void)
@@ -1790,21 +1740,25 @@ namespace NOWA
         this->executeActiveClosures();
     }
 
-    void GraphicsModule::processSingleCommand(const ClosureCommand& command, Ogre::Real interpolationWeight)
+    void GraphicsModule::processSingleCommand(const ClosureCommand& command, Ogre::Real renderDt)
     {
         if (command.isRemoval)
         {
-            // Handle removal command
+            // Removal: parameter not used — closure is unregistered, not called
             this->removePersistentClosure(command.uniqueName);
         }
         else if (command.fireAndForget)
         {
-            // Execute fire-and-forget closure immediately
+            // Execute immediately with the render-thread delta time.
+            // renderDt is NOT an interpolation weight — it is elapsed seconds
+            // since the last render frame, used by closures for time-based effects
+            // (e.g. fading, animation ticking). It has nothing to do with the
+            // logic-snapshot interpolation alpha managed by interpolationWeight.
             if (command.closureFunc)
             {
                 try
                 {
-                    command.closureFunc(interpolationWeight);
+                    command.closureFunc(renderDt);
                 }
                 catch (const std::exception& e)
                 {
@@ -1814,7 +1768,9 @@ namespace NOWA
         }
         else
         {
-            // Handle persistent closure
+            // Persistent closure: parameter not used here either — the closure
+            // is only registered/updated now; renderDt is supplied when it is
+            // actually *called* each frame inside executeActiveClosures().
             if (command.isUpdate)
             {
                 this->updatePersistentClosure(command.uniqueName, command.closureFunc);
@@ -2177,10 +2133,8 @@ namespace NOWA
                 {
                     nodeTransform.node->_setDerivedPosition(interpPos);
                     nodeTransform.node->_setDerivedOrientation(interpRot);
-                    // Scale only on non-derived path, derived nodes inherit scale from hierarchy
+                    // Comment says: "Scale only on non-derived path"
                 }
-
-                nodeTransform.node->setScale(interpScale);
             }
         }
 
@@ -2342,7 +2296,19 @@ namespace NOWA
 
     void GraphicsModule::endLogicFrame(void)
     {
-       
+        // Marks the logic snapshot as complete and announces it to the render thread.
+        // Must be called exactly once after all fixed-step updates for a given outer
+        // loop iteration have finished — i.e. after the last update(fixedDt) call
+        // and after publishInterpolationAlpha() has been called for this iteration.
+        //
+        // Pair with beginLogicFrame(), which opens the snapshot by advancing the
+        // transform buffer. Do NOT call endLogicFrame() without a preceding
+        // beginLogicFrame() in the same outer loop iteration.
+        //
+        // publishInterpolationAlpha() is intentionally NOT called here because alpha
+        // must be published every outer loop iteration (even when no fixed steps ran),
+        // whereas endLogicFrame() is only called when at least one step ran.
+        this->publishLogicFrame();
     }
 
     void GraphicsModule::setLogLevel(Ogre::LogMessageLevel level)
@@ -2386,18 +2352,23 @@ namespace NOWA
 
     void GraphicsModule::enqueueDestroy(GraphicsModule::DestroyCommand destroyCommand, const char* commandName)
     {
-        // If about to destroy, to not delay destruction!
+        // Engine shutting down: bypass ring-buffer, execute immediately with wait.
         if (false == this->bRunning)
         {
             this->enqueueAndWait(std::move(destroyCommand), commandName);
             return;
         }
 
-        // Important: enqueueAndWait has most priority and my not be interrupted by destroy command, because:
-        // For example unloading a whole application, is better todo in a wait command, so that the logic main thread must wait, until the rendering thread has freed all resources
-        // So if the flag is set, nothing is enqueued for destruction
+        // A wait closure is in flight on the render thread. We cannot push into
+        // destroySlots right now because the render thread owns the slot state
+        // during command execution. Defer until enqueueAndWait() finishes, then
+        // flushDeferredDestroyCommands() will move them into the ring-buffer safely.
         if (true == this->isRunningWaitClosure)
         {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
+                "[GraphicsModule] Deferring destroy '" + Ogre::String(commandName) + "' (wait closure in flight, " + Ogre::StringConverter::toString(this->deferredDestroyCommands.size() + 1) + " total deferred)");
+
+            this->deferredDestroyCommands.emplace_back(std::move(destroyCommand), commandName);
             return;
         }
 

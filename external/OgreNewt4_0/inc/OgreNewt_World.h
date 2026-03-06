@@ -111,6 +111,7 @@ namespace OgreNewt
 		void OnSubStepPostUpdate(ndFloat32 timestep) override;
 
 		void flushDeadBodies();
+
 	public:
 		template <class Fn>
 		void enqueuePhysics(Fn&& fn)
@@ -183,8 +184,8 @@ namespace OgreNewt
 		};
 
 		void processPhysicsQueue();
-	private:
 
+		void applySelfCollisionGroup(ndBodyKinematic* start, unsigned int group);
 
 	private:
 		// Timing
@@ -220,7 +221,7 @@ namespace OgreNewt
 
 		std::atomic<unsigned int> m_nextSelfCollisionGroup{ 1 };
 
-		void applySelfCollisionGroup(ndBodyKinematic* start, unsigned int group);
+		bool outerLoopActive;
 	private:
 		// non-template, defined in .cpp
 		void enqueueCommandInternal(ICommand* cmd);

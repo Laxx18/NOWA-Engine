@@ -679,7 +679,6 @@ namespace NOWA
 				datablock = nullptr;
 			}
 		};
-
 		GraphicsModule::getInstance()->enqueueDestroy(destroyCommand, "OceanComponent::destroyOcean");
 	}
 

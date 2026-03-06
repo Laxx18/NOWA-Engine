@@ -2017,9 +2017,44 @@ namespace NOWA
         return obj;
     }
 
-    Ogre::String getJointIdV2(PhysicsRagDollComponentV2::RagBone* instance)
+    Ogre::String getJointId(PhysicsRagDollComponentV2::RagBone* instance)
     {
         return Ogre::StringConverter::toString(instance->getJointId());
+    }
+
+    JointComponent* getRagJointComponent(PhysicsRagDollComponentV2::RagBone* ragBone)
+    {
+        return ragBone->getJointComponent().get();
+    }
+
+    JointHingeComponent* getRagJointHingeComponent(PhysicsRagDollComponentV2::RagBone* ragBone)
+    {
+        return boost::dynamic_pointer_cast<JointHingeComponent>(ragBone->getJointComponent()).get();
+    }
+
+    JointUniversalComponent* getRagJointUniversalComponent(PhysicsRagDollComponentV2::RagBone* ragBone)
+    {
+        return boost::dynamic_pointer_cast<JointUniversalComponent>(ragBone->getJointComponent()).get();
+    }
+
+    JointBallAndSocketComponent* getRagJointBallAndSocketComponent(PhysicsRagDollComponentV2::RagBone* ragBone)
+    {
+        return boost::dynamic_pointer_cast<JointBallAndSocketComponent>(ragBone->getJointComponent()).get();
+    }
+
+    JointHingeActuatorComponent* getRagJointHingeActuatorComponent(PhysicsRagDollComponentV2::RagBone* ragBone)
+    {
+        return boost::dynamic_pointer_cast<JointHingeActuatorComponent>(ragBone->getJointComponent()).get();
+    }
+
+    JointUniversalActuatorComponent* getRagJointUniversalActuatorComponent(PhysicsRagDollComponentV2::RagBone* ragBone)
+    {
+        return boost::dynamic_pointer_cast<JointUniversalActuatorComponent>(ragBone->getJointComponent()).get();
+    }
+
+    JointKinematicComponent* getRagJointKinematicComponent(PhysicsRagDollComponentV2::RagBone* ragBone)
+    {
+        return boost::dynamic_pointer_cast<JointKinematicComponent>(ragBone->getSecondJointComponent()).get();
     }
 
     void PhysicsRagDollComponentV2::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
@@ -2041,25 +2076,36 @@ namespace NOWA
                 .def("getRagDataList", &getRagDataListV2)
                 .def("getRagBone", &PhysicsRagDollComponentV2::getRagBone)
                 .def("setBoneRotation", &PhysicsRagDollComponentV2::setBoneRotation)
-                .scope[class_<PhysicsRagDollComponentV2::RagBone>("RagBone")
-                        .def("getName", &PhysicsRagDollComponentV2::RagBone::getName)
-                        .def("getPosition", &PhysicsRagDollComponentV2::RagBone::getPosition)
-                        .def("setOrientation", &PhysicsRagDollComponentV2::RagBone::setOrientation)
-                        .def("getOrientation", &PhysicsRagDollComponentV2::RagBone::getOrientation)
-                        .def("setInitialState", &PhysicsRagDollComponentV2::RagBone::setInitialState)
-                        .def("getOgreBone", &PhysicsRagDollComponentV2::RagBone::getBone)
-                        .def("getParentRagBone", &PhysicsRagDollComponentV2::RagBone::getParentRagBone)
-                        .def("getInitialBonePosition", &PhysicsRagDollComponentV2::RagBone::getInitialBonePosition)
-                        .def("getInitialBoneOrientation", &PhysicsRagDollComponentV2::RagBone::getInitialBoneOrientation)
-                        .def("getPhysicsRagDollComponentV2", &PhysicsRagDollComponentV2::RagBone::getPhysicsRagDollComponent)
-                        .def("getRagPose", &PhysicsRagDollComponentV2::RagBone::getRagPose)
-                        .def("applyPose", &PhysicsRagDollComponentV2::RagBone::applyPose)
-                        .def("applyRequiredForceForVelocity", &PhysicsRagDollComponentV2::RagBone::applyRequiredForceForVelocity)
-                        .def("applyOmegaForce", &PhysicsRagDollComponentV2::RagBone::applyOmegaForce)
-                        .def("applyOmegaForceRotateTo", &PhysicsRagDollComponentV2::RagBone::applyOmegaForceRotateTo)
-                        .def("getSize", &PhysicsRagDollComponentV2::RagBone::getBodySize)
-                        .def("getJointId", &getJointIdV2)
-                        .def("getBody", &PhysicsRagDollComponentV2::RagBone::getBody)]];
+                .scope
+                [
+                    class_<PhysicsRagDollComponentV2::RagBone>("RagBone")
+                    .def("getName", &PhysicsRagDollComponentV2::RagBone::getName)
+                    .def("getPosition", &PhysicsRagDollComponentV2::RagBone::getPosition)
+                    .def("setOrientation", &PhysicsRagDollComponentV2::RagBone::setOrientation)
+                    .def("getOrientation", &PhysicsRagDollComponentV2::RagBone::getOrientation)
+                    .def("setInitialState", &PhysicsRagDollComponentV2::RagBone::setInitialState)
+                    .def("getOgreBone", &PhysicsRagDollComponentV2::RagBone::getBone)
+                    .def("getParentRagBone", &PhysicsRagDollComponentV2::RagBone::getParentRagBone)
+                    .def("getInitialBonePosition", &PhysicsRagDollComponentV2::RagBone::getInitialBonePosition)
+                    .def("getInitialBoneOrientation", &PhysicsRagDollComponentV2::RagBone::getInitialBoneOrientation)
+                    .def("getPhysicsRagDollComponentV2", &PhysicsRagDollComponentV2::RagBone::getPhysicsRagDollComponent)
+                    .def("getRagPose", &PhysicsRagDollComponentV2::RagBone::getRagPose)
+                    .def("applyPose", &PhysicsRagDollComponentV2::RagBone::applyPose)
+                    .def("applyRequiredForceForVelocity", &PhysicsRagDollComponentV2::RagBone::applyRequiredForceForVelocity)
+                    .def("applyOmegaForce", &PhysicsRagDollComponentV2::RagBone::applyOmegaForce)
+                    .def("applyOmegaForceRotateTo", &PhysicsRagDollComponentV2::RagBone::applyOmegaForceRotateTo)
+                    .def("getSize", &PhysicsRagDollComponentV2::RagBone::getBodySize)
+                    .def("getJointId", &getJointId)
+                    .def("getBody", &PhysicsRagDollComponentV2::RagBone::getBody)
+                    .def("getJointComponent", &getRagJointComponent)
+                    .def("getJointHingeComponent", &getRagJointHingeComponent)
+                    .def("getJointUniversalComponent", &getRagJointUniversalComponent)
+                    .def("getJointBallAndSocketComponent", &getRagJointBallAndSocketComponent)
+                    .def("getJointHingeActuatorComponent", &getRagJointHingeActuatorComponent)
+                    .def("getJointUniversalActuatorComponent", &getRagJointUniversalActuatorComponent)
+                    .def("getJointKinematicComponent", &getRagJointKinematicComponent)
+                ]
+        ];
 
         LuaScriptApi::getInstance()->addClassToCollection("PhysicsRagDollComponentV2", "class inherits PhysicsActiveComponent", PhysicsRagDollComponentV2::getStaticInfoText());
         LuaScriptApi::getInstance()->addClassToCollection("PhysicsRagDollComponentV2", "void setVelocity(Vector3 velocity)",
@@ -2081,6 +2127,19 @@ namespace NOWA
         LuaScriptApi::getInstance()->addClassToCollection("PhysicsRagDollComponentV2", "RagBone getRagBone(String ragboneName)", "Gets RagBone from the given name or nil, if it does not exist.");
         LuaScriptApi::getInstance()->addClassToCollection("PhysicsRagDollComponentV2", "void setBoneRotation(String ragboneName, Vector3 axis, float degree)", "Rotates the given RagBone around the given axis by degree amount.");
 
+
+        LuaScriptApi::getInstance()->addClassToCollection("RagBone", "JointComponent getJointComponent()", "Gets the base joint component that connects this rag bone with another one for rag doll constraints or nil, if it does not exist.");
+        LuaScriptApi::getInstance()->addClassToCollection("RagBone", "JointHingeComponent getJointHingeComponent()",
+            "Gets the joint hinge component that connects this rag bone with another one for rag doll constraints or nil, if it does not exist.");
+        LuaScriptApi::getInstance()->addClassToCollection("RagBone", "JointComponent getJointUniversalComponent()",
+            "Gets the joint universal (double hinge) component that connects this rag bone with another one for rag doll constraints or nil, if it does not exist.");
+        LuaScriptApi::getInstance()->addClassToCollection("RagBone", "JointComponent getJointBallAndSocketComponent()",
+            "Gets the joint ball and socket component that connects this rag bone with another one for rag doll constraints or nil, if it does not exist.");
+        LuaScriptApi::getInstance()->addClassToCollection("RagBone", "JointComponent getJointHingeActuatorComponent()",
+            "Gets the joint hinge actuator component that connects this rag bone with another one for rag doll constraints or nil, if it does not exist.");
+        LuaScriptApi::getInstance()->addClassToCollection("RagBone", "JointComponent getJointUniversalActuatorComponent()",
+            "Gets the joint universal actuator (double hinge actuator) component that connects this rag bone with another one for rag doll constraints or nil, if it does not exist.");
+		
         LuaScriptApi::getInstance()->addClassToCollection("RagBone", "class", "The inner class RagBone represents one physically controlled rag bone.");
         LuaScriptApi::getInstance()->addClassToCollection("RagBone", "String getName()", "Gets name of this bone, that has been specified in the bone config file.");
         LuaScriptApi::getInstance()->addClassToCollection("RagBone", "Vector3 getPosition()", "Gets the position of this rag bone in global space.");

@@ -83,7 +83,7 @@ namespace NOWA
 		typedef boost::shared_ptr<PhysicsCompoundConnectionComponent> PhysicsCompoundConnectionCompPtr;
 		typedef boost::shared_ptr<LuaScriptComponent> LuaScriptCompPtr;
 
-		typedef std::map<unsigned long, GameObjectPtr> GameObjects;
+		typedef std::unordered_map<unsigned long, GameObjectPtr> GameObjects;
 	public:
 		/**
 		* @class ITriggerSphereQueryObserver
@@ -328,6 +328,12 @@ namespace NOWA
 		 * @return		gameObjects	The map with all game objects for read only operations. If nothing can be found, an empty list will be delivered.
 		 */
 		GameObjects const* getGameObjects(void) const;
+
+		/**
+         * @brief		Gets all game objects in the as list for manipulation, which is faster.
+         * @return		gameObjects	The list with all game objects for read only operations. If nothing can be found, an empty list will be delivered.
+         */
+		const std::vector<GameObjectPtr>& getGameObjectsList(void) const;
 
 		/**
 		 * @brief		Gets all game objects belonging to the given category name.
@@ -1028,7 +1034,8 @@ namespace NOWA
 
 		// active objects are not coming from the scene loader and are more in the hand of the developer
 		// and they are updated() corresponding their update() function whereas passive objects are not
-		GameObjects* gameObjects;
+        GameObjects* gameObjects;                   // unordered_map: id -> ptr, for O(1) lookup
+        std::vector<GameObjectPtr> gameObjectsList; // flat array: for cache-friendly iteration
 
 		// name, id, occupied
 		std::map<Ogre::String, std::pair<unsigned int, bool>> typeDBMap;

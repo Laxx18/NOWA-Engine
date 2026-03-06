@@ -66,49 +66,43 @@ namespace NOWA
 		}
 
 	protected:
-		virtual void onInit(void) override
-		{
-			this->succeed();
+        virtual void onInit(void) override
+        {
+            this->succeed();
 
-			boost::shared_ptr<EventDataLuaScriptModfied> eventDataLuaScriptModified(new EventDataLuaScriptModfied(0L, ""));
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataLuaScriptModified);
+            boost::shared_ptr<EventDataLuaScriptModfied> eventDataLuaScriptModified(new EventDataLuaScriptModfied(0L, ""));
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataLuaScriptModified);
 
-			// Must abort all processes, if state is about to being changed, not that a prior state make e.g. delayed undo for all game objects at the same time
-			ProcessManager::getInstance()->abortAllProcesses(true);
+            ProcessManager::getInstance()->abortAllProcesses(true);
 
-			GraphicsModule::getInstance()->clearSceneResources();
+            // ── SAFE VECTOR CLEAR ───────────────────────────────────────────────────
+            // requestStall() blocks until the render thread finishes its current
+            // iteration and confirms it is not inside updateAllTransforms() or any
+            // other vector-reading code. Only then is clearSceneResources() safe.
+            auto* graphicsModule = GraphicsModule::getInstance();
+            graphicsModule->requestStall();
+            graphicsModule->clearSceneResources();
+            graphicsModule->releaseStall();
 
-			// NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.25f));
-			
-			switch(this->stateOperation)
-			{
-				case eAppStateOperation::ChangeAppState:
-				{
-					AppStateManager::getSingletonPtr()->internalChangeAppState(this->state);
-					break;
-				}
-				case eAppStateOperation::PushAppState:
-				{
-					AppStateManager::getSingletonPtr()->internalPushAppState(this->state);
-					break;
-				}
-				case eAppStateOperation::PopAppState:
-				{
-					AppStateManager::getSingletonPtr()->internalPopAppState();
-					break;
-				}
-				case eAppStateOperation::PopAllAndPushAppState:
-				{
-					AppStateManager::getSingletonPtr()->internalPopAllAndPushAppState(this->state);
-					break;
-				}
-				case eAppStateOperation::ExitGame:
-				{
-					AppStateManager::getSingletonPtr()->internalExitGame();
-					break;
-				}
-			}
-		}
+            switch (this->stateOperation)
+            {
+            case eAppStateOperation::ChangeAppState:
+                AppStateManager::getSingletonPtr()->internalChangeAppState(this->state);
+                break;
+            case eAppStateOperation::PushAppState:
+                AppStateManager::getSingletonPtr()->internalPushAppState(this->state);
+                break;
+            case eAppStateOperation::PopAppState:
+                AppStateManager::getSingletonPtr()->internalPopAppState();
+                break;
+            case eAppStateOperation::PopAllAndPushAppState:
+                AppStateManager::getSingletonPtr()->internalPopAllAndPushAppState(this->state);
+                break;
+            case eAppStateOperation::ExitGame:
+                AppStateManager::getSingletonPtr()->internalExitGame();
+                break;
+            }
+        }
 
 		virtual void onUpdate(float dt) override
 		{
@@ -396,104 +390,83 @@ namespace NOWA
 	}
 
 	void AppStateManager::multiThreadedRendering(void)
-	{
-		this->markCurrentThreadAsLogicThread();
+    {
+        this->markCurrentThreadAsLogicThread();
 
-		const double fixedDt = 1.0 / static_cast<double>(Core::getSingletonPtr()->getOptionDesiredSimulationUpdates());
-		const double maxDeltaTime = 0.25;
+        const double fixedDt = 1.0 / static_cast<double>(Core::getSingletonPtr()->getOptionDesiredSimulationUpdates());
+        const double maxDeltaTime = 0.25;
+        const int maxStepsPerFrame = 5;
 
-		// How many fixed steps we're allowed to run per loop iteration before we drop backlog.
-		// Use your existing "maxTicksPerFrames" concept if you have one; 5-8 is typical.
-		const int maxStepsPerFrame = 5;
+        Ogre::Window* renderWindow = Core::getSingletonPtr()->getOgreRenderWindow();
+        this->setDesiredUpdates(Core::getSingletonPtr()->getOptionDesiredFramesUpdates());
 
-		Ogre::Window* renderWindow = Core::getSingletonPtr()->getOgreRenderWindow();
-		this->setDesiredUpdates(Core::getSingletonPtr()->getOptionDesiredFramesUpdates());
+        double currentTime = static_cast<double>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001;
+        double accumulator = 0.0;
 
-		// Time in seconds
-		double currentTime = static_cast<double>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001;
-		double accumulator = 0.0;
+        NOWA::GraphicsModule* gfx = NOWA::GraphicsModule::getInstance();
+        gfx->setFrameTime(static_cast<Ogre::Real>(fixedDt));
 
-		NOWA::GraphicsModule* gfx = NOWA::GraphicsModule::getInstance();
-		gfx->setFrameTime(static_cast<Ogre::Real>(fixedDt)); // seconds per logic tick
+        while (false == this->bShutdown)
+        {
+            Ogre::WindowEventUtilities::messagePump();
 
-		while (false == this->bShutdown)
-		{
-			Ogre::WindowEventUtilities::messagePump();
+            const double newTime = static_cast<double>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001;
+            double frameTime = newTime - currentTime;
+            currentTime = newTime;
 
-			// Measure real dt
-			const double newTime = static_cast<double>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001;
-			double frameTime = newTime - currentTime;
-			currentTime = newTime;
+            frameTime = std::min(frameTime, maxDeltaTime);
+            accumulator += frameTime;
 
-			// Prevent spiral-of-death on big hitches
-			frameTime = std::min(frameTime, maxDeltaTime);
-			accumulator += frameTime;
+            if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->bSceneLoading)
+            {
+                this->activeStateStack.back()->renderUpdate(static_cast<Ogre::Real>(frameTime));
+            }
 
-			// Variable-rate render-side update (UI/editor etc.)
-			if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->bSceneLoading)
-			{
-				this->activeStateStack.back()->renderUpdate(static_cast<Ogre::Real>(frameTime));
-			}
+            bool didUpdate = false;
+            int steps = 0;
 
-			bool didUpdate = false;
-			int steps = 0;
+            while (accumulator >= fixedDt && steps < maxStepsPerFrame)
+            {
+                if (!didUpdate)
+                {
+                    gfx->beginLogicFrame();
+                    didUpdate = true;
+                }
 
-			// Run at most maxStepsPerFrame fixed steps
-			while (accumulator >= fixedDt && steps < maxStepsPerFrame)
-			{
-				if (!didUpdate)
-				{
-					gfx->beginLogicFrame();
-					didUpdate = true;
-				}
+                this->processAll();
 
-				this->processAll();
+                if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->bSceneLoading)
+                {
+                    // The outer loop already steps time in fixedDt increments.
+                    // AppState::update() must call ogreNewt->update(fixedDt), NOT
+                    // updateWithInternalAccumulator() — that function owns its own
+                    // accumulator and must never be driven from inside this loop.
+                    this->activeStateStack.back()->update(static_cast<Ogre::Real>(fixedDt));
+                }
 
-				if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->bSceneLoading)
-				{
-					// Fixed-step update (DesignState -> ogreNewt->updateFixed(dt) etc.)
-					this->activeStateStack.back()->update(static_cast<Ogre::Real>(fixedDt));
-				}
+                Core::getSingletonPtr()->updateFrameStats(static_cast<Ogre::Real>(fixedDt));
+                Core::getSingletonPtr()->update(static_cast<Ogre::Real>(fixedDt));
 
-				Core::getSingletonPtr()->updateFrameStats(static_cast<Ogre::Real>(fixedDt));
-				Core::getSingletonPtr()->update(static_cast<Ogre::Real>(fixedDt));
+                accumulator -= fixedDt;
+                ++steps;
+            }
 
-				accumulator -= fixedDt;
-				++steps;
-			}
+            if (accumulator >= fixedDt)
+            {
+                accumulator = fixedDt * 0.5;
+            }
 
-			// If we're still behind after max steps, DROP backlog to avoid slow-motion.
-			// This keeps the game responsive under heavy physics load.
-			//if (accumulator >= fixedDt)
-			//{
-			//	// keep only the remainder for alpha, drop the rest
-			//	accumulator = std::fmod(accumulator, fixedDt);
-			//}
+            const float alpha = (fixedDt > 0.0) ? static_cast<float>(accumulator / fixedDt) : 0.0f;
+            gfx->publishInterpolationAlpha(alpha);
 
-			if (accumulator >= fixedDt)
-			{
-				// Drop backlog hard: keep at most one tick remainder for alpha stability
-				accumulator = fixedDt * 0.5; // or 0.0 if you prefer snappier behavior
-			}
+            if (false == renderWindow->isVisible() && this->renderWhenInactive)
+            {
+                Ogre::Threads::Sleep(500);
+            }
+        }
 
-			// Publish alpha for render interpolation every frame
-			const float alpha = (fixedDt > 0.0) ? static_cast<float>(accumulator / fixedDt) : 0.0f;
-			gfx->publishInterpolationAlpha(alpha);
-
-			if (didUpdate)
-			{
-				gfx->endLogicFrame();
-				gfx->publishLogicFrame(); // optional debug/telemetry
-			}
-
-			if (false == renderWindow->isVisible() && this->renderWhenInactive)
-			{
-				Ogre::Threads::Sleep(500);
-			}
-		}
-
-		this->bStall = true;
-	}
+        this->bStall = true;
+    }
 
 	void AppStateManager::internalChangeAppState(AppState* state, bool initial)
 	{

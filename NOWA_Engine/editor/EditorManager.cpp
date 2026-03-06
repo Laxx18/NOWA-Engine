@@ -1288,7 +1288,7 @@ namespace NOWA
     private:
         std::vector<Ogre::uint16> oldHeightData;
         std::vector<Ogre::uint16> newHeightData;
-        unsigned long gameObjectId; // ← Store ID instead of pointer
+        unsigned long gameObjectId; // <- Store ID instead of pointer
     };
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1348,7 +1348,7 @@ namespace NOWA
     private:
         std::vector<Ogre::uint8> oldBlendWeightData;
         std::vector<Ogre::uint8> newBlendWeightData;
-        unsigned long gameObjectId; // ← Store ID instead of pointer
+        unsigned long gameObjectId; // <- Store ID instead of pointer
     };
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1414,7 +1414,7 @@ namespace NOWA
     private:
         std::vector<unsigned char> oldRoadData;
         std::vector<unsigned char> newRoadData;
-        unsigned long gameObjectId; // ← Store ID instead of pointer
+        unsigned long gameObjectId; // <- Store ID instead of pointer
     };
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1423,11 +1423,11 @@ namespace NOWA
     {
     public:
         WallModifyUndoCommand(const std::vector<unsigned char>& oldWallData, const std::vector<unsigned char>& newWallData,
-            unsigned long gameObjectId, // ← Store ID, not pointer
+            unsigned long gameObjectId, // <- Store ID, not pointer
             bool isAdditional = false) :
             oldWallData(oldWallData),
             newWallData(newWallData),
-            gameObjectId(gameObjectId) // ← Store ID
+            gameObjectId(gameObjectId) // <- Store ID
         {
             this->isAdditional = isAdditional;
         }
@@ -1485,7 +1485,7 @@ namespace NOWA
     private:
         std::vector<unsigned char> oldWallData;
         std::vector<unsigned char> newWallData;
-        unsigned long gameObjectId; // ← Store ID instead of pointer
+        unsigned long gameObjectId; // <- Store ID instead of pointer
     };
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

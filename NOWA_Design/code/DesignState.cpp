@@ -1806,11 +1806,14 @@ void DesignState::cloneGameObjects(void)
 
 void DesignState::update(Ogre::Real dt)
 {
-	if (true == this->simulating)
-	{
-		this->ogreNewt->update(dt);
-		// this->ogreNewt->updateFixed(dt);
-	}
+    if (true == this->simulating)
+    {
+        // update(dt) fires exactly one Newton step with the given dt.
+        // The outer fixed-step loop in AppStateManager already manages
+        // the time accumulator, so dt here is always exactly fixedDt.
+        // (e.g. from a single-threaded loop without an outer accumulator).
+        this->ogreNewt->update(dt);
+    }
 	// NOWA::LuaScriptApi::getInstance()->update(dt);
 
 	if (true == this->validScene && false == NOWA::AppStateManager::getSingletonPtr()->getGameProgressModule()->bSceneLoading)

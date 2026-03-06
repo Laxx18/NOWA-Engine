@@ -128,21 +128,22 @@ namespace NOWA
 	}
 
 	bool GameObjectComponent::connect(void)
-	{
-		// If this game object has a lua script component, and it could not be compiled, its dangerous to connect this game object
-		auto luaScriptComponent = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<LuaScriptComponent>());
-		if (nullptr != luaScriptComponent)
-		{
-			if (true == luaScriptComponent->getLuaScript()->hasCompileError())
-			{
-				return false;
-			}
-		}
+    {
+        // Use the cached raw pointer set in postInit() — no component scan, no atomic refcount lock.
+        // If this game object has a lua script component, and it could not be compiled, its dangerous to connect this game object
+        LuaScriptComponent* luaScriptRaw = this->gameObjectPtr->getCachedLuaScriptComponent();
+        if (nullptr != luaScriptRaw)
+        {
+            if (true == luaScriptRaw->getLuaScript()->hasCompileError())
+            {
+                return false;
+            }
+        }
 
-		this->bConnected = true;
+        this->bConnected = true;
 
-		return true;
-	}
+        return true;
+    }
 
 	bool GameObjectComponent::disconnect(void)
 	{
@@ -351,17 +352,22 @@ namespace NOWA
 	}
 
 	void GameObjectComponent::resetVariants()
-	{
-		for (size_t i = 0; i < this->attributes.size(); i++)
-		{
-			// Only set old values for all attributes, that have changed in simulation, or if custom data string is set to change all attributes for this component
-			if (true == this->attributes[i].second->hasChanged() || customDataString == GameObjectComponent::AttrCustomDataNewCreation())
-			{
-				this->actualizeValue(this->attributes[i].second);
-			}
-			this->attributes[i].second->resetChange();
-		}
-	}
+    {
+        // Hoist the string construction and comparison out of the loop.
+        // AttrCustomDataNewCreation() returned a temporary Ogre::String on every iteration before.
+        const bool forceAll = (this->customDataString == GameObjectComponent::AttrCustomDataNewCreation());
+
+        for (size_t i = 0; i < this->attributes.size(); i++)
+        {
+            // Only set old values for all attributes, that have changed in simulation,
+            // or if custom data string is set to change all attributes for this component
+            if (true == this->attributes[i].second->hasChanged() || forceAll)
+            {
+                this->actualizeValue(this->attributes[i].second);
+            }
+            this->attributes[i].second->resetChange();
+        }
+    }
 
 	void GameObjectComponent::resetChanges()
 	{

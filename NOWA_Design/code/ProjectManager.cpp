@@ -413,7 +413,7 @@ void ProjectManager::loadProject(const Ogre::String& filePathName, unsigned shor
 
 			// Trigger for main menu bar, that the recent list will be updated via this event
 			boost::shared_ptr<EventDataSceneValid> eventDataSceneValid(new EventDataSceneValid(false));
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataSceneValid);
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataSceneValid);
 
 			this->createDummyCamera();
 

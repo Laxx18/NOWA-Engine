@@ -14,6 +14,7 @@ namespace NOWA
 	// Always define the classes outside the class to specify typedefs, that are available to other classes
 	class GameObjectComponent;
 	class GameObject;
+    class AiLuaComponent;
 	class LuaScript;
 
 	typedef boost::shared_ptr<GameObject> GameObjectPtr;
@@ -768,6 +769,11 @@ namespace NOWA
 		{
 			return this->movableObject;
 		}
+
+		 // Fast accessors for components that are checked by many systems every frame
+        LuaScriptComponent* getCachedLuaScriptComponent(void) const;
+
+        AiLuaComponent* getCachedAiLuaComponent(void) const;
 		
 		/**
 		 * @brief		Gets the component weak pointer from component id.
@@ -814,23 +820,22 @@ namespace NOWA
 		 * @tparam		ComponentType				The concrete component type to calculate its count.
 		 * @return		The count or 0 if does not exist.
 		 */
-		template <class ComponentType>
-		unsigned short getComponentCount(void)
-		{
-			unsigned short count = 0;
-			for (const auto& component : this->gameObjectComponents)
-			{
-				GameObjectCompPtr baseCompPtr(std::get<COMPONENT>(component));
-				// Cast from base the the sub type
-				boost::shared_ptr<ComponentType> subCompPtr(boost::dynamic_pointer_cast<ComponentType>(baseCompPtr));
-				if (nullptr != subCompPtr)
-				{
-					count++;
-				}
-			}
+        template <class ComponentType> unsigned short getComponentCount(void)
+        {
+            unsigned short count = 0;
+            const unsigned int targetId = ComponentType::getStaticClassId();
 
-			return count;
-		}
+            for (const auto& component : this->gameObjectComponents)
+            {
+                // Check all three id slots — same logic getComponent<T>() already uses.
+                // Pure integer comparisons, zero RTTI, zero heap traffic.
+                if (std::get<CLASS_ID>(component) == targetId || std::get<PARENT_CLASS_ID>(component) == targetId || std::get<PARENT_PARENT_CLASS_ID>(component) == targetId)
+                {
+                    count++;
+                }
+            }
+            return count;
+        }
 
 		/**
 		 * @brief		Gets the component type count from the given component name.
@@ -1053,6 +1058,12 @@ namespace NOWA
 		Ogre::MovableObject* movableObject;
 		eType type;
 		Ogre::RaySceneQuery* clampObjectQuery;
+
+		// Cached raw non-owning pointers — set in postInit(), cleared in destroy()
+        // Safe because these components cannot outlive the GameObject that owns them.
+        // Use these instead of getComponent<T>() in any hot path.
+        LuaScriptComponent* cachedLuaScriptComponent;
+        AiLuaComponent* cachedAiLuaComponent;
 
 		Variant* id;
 		Variant* name;

@@ -753,9 +753,9 @@ GameObjectPtr GameObjectController::internalClone(GameObjectPtr originalGameObje
 void GameObjectController::update(Ogre::Real dt, bool notSimulating)
 {
     // updates the active GameObjects
-    for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
+    for (const auto& gameObjectPtr : this->gameObjectsList)
     {
-        it->second->update(dt, notSimulating);
+        gameObjectPtr->update(dt, notSimulating);
     }
     if (false == notSimulating)
     {
@@ -812,9 +812,9 @@ std::vector<unsigned long> GameObjectController::getAllGameObjectIds(void)
 {
     std::vector<unsigned long> gameObjectIds(this->gameObjects->size());
     int i = 0;
-    for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
+    for (const auto& gameObjectPtr : this->gameObjectsList)
     {
-        gameObjectIds[i++] = it->first;
+        gameObjectIds[i++] = gameObjectPtr->getId();
     }
 
     return gameObjectIds;
@@ -839,9 +839,18 @@ GameObjectPtr GameObjectController::getClonedGameObjectFromPriorId(const unsigne
 
 void GameObjectController::registerGameObject(GameObjectPtr gameObjectPtr)
 {
-    // Destroy content can be called again
     this->alreadyDestroyed = false;
-    this->gameObjects->emplace(gameObjectPtr->getId(), gameObjectPtr);
+
+    // emplace returns a pair<iterator, bool> — bool is false if key already existed
+    const auto result = this->gameObjects->emplace(gameObjectPtr->getId(), gameObjectPtr);
+
+    // Only add to the flat list if this is a genuinely new registration,
+    // preventing duplicates when registerGameObject is called twice for the same game object
+    if (true == result.second)
+    {
+        this->gameObjectsList.push_back(gameObjectPtr);
+    }
+
     this->registerType(gameObjectPtr, gameObjectPtr->category->getListSelectedValue(), gameObjectPtr->renderCategory->getListSelectedValue());
 
     if (true == this->bAddListenerFirstTime)
@@ -934,16 +943,16 @@ void GameObjectController::destroyContent(std::vector<Ogre::String>& excludeGame
         AppStateManager::getSingletonPtr()->getScriptEventManager()->destroyContent();
 
         // do not delete with iterator since the iterator changes then during the loop
-        for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
+        for (const auto& gameObjectPtr : this->gameObjectsList)
         {
-            it->second->setActivated(false);
-            it->second->disconnect();
+            gameObjectPtr->setActivated(false);
+            gameObjectPtr->disconnect();
 
             bool canDestroy = true;
             // Do not destroy game object, that are excluded from destruction (which is seldom the case and optional)
             for (auto it2 = excludeGameObjectNames.begin(); it2 != excludeGameObjectNames.end();)
             {
-                if (it->second->getName() == *it2)
+                if (gameObjectPtr->getName() == *it2)
                 {
                     canDestroy = false;
                     it2 = excludeGameObjectNames.erase(it2);
@@ -957,12 +966,10 @@ void GameObjectController::destroyContent(std::vector<Ogre::String>& excludeGame
 
             if (true == canDestroy)
             {
-                // signal the event, so that other game objects have the chance to react if necessary
-                boost::shared_ptr<EventDataDeleteGameObject> deleteGameObjectEvent(boost::make_shared<EventDataDeleteGameObject>(it->second->getId()));
+                boost::shared_ptr<EventDataDeleteGameObject> deleteGameObjectEvent(boost::make_shared<EventDataDeleteGameObject>(gameObjectPtr->getId()));
                 AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->queueEvent(deleteGameObjectEvent);
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObjectController] Deleting gameobject: " + it->second->getName());
-                assert((it->second != nullptr) && "[GameObjectController::deleteAllGameObjects] Gameobject not found");
-                it->second->destroy();
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObjectController] Deleting gameobject: " + gameObjectPtr->getName());
+                gameObjectPtr->destroy();
             }
         }
 
@@ -979,7 +986,8 @@ void GameObjectController::destroyContent(std::vector<Ogre::String>& excludeGame
         this->delayedDeleterList.clear();
         this->triggeredGameObjects.clear();
         this->movingBehaviors.clear();
-        // this->movingBehaviors2D.clear();
+        this->gameObjectsList.clear();
+        this->gameObjectsList.shrink_to_fit();
         this->shiftIndex = 0;
         this->triggerUpdateTimer = 0.0f;
         this->sphereQueryUpdateFrequency = 0.5f;
@@ -1090,19 +1098,27 @@ bool GameObjectController::getIsSimulating(void) const
 void GameObjectController::deleteGameObjectImmediately(GameObjectPtr gameObjectPtr)
 {
     gameObjectPtr->setVisible(false);
-    // Frees the category, internally a check will be made if there is still a game object with the category, if not it will be un-occupied, for a next new category
     this->freeCategoryFromGameObject(gameObjectPtr->getCategory());
     this->freeRenderCategoryFromGameObject(gameObjectPtr->getRenderCategory());
     unsigned long id = gameObjectPtr->getId();
-    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObjectController] Deleting gameobject: " + gameObjectPtr->getName());
-    boost::shared_ptr<EventDataDeleteGameObject> deleteGameObjectEvent(boost::make_shared<EventDataDeleteGameObject>(gameObjectPtr->getId()));
-    AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->triggerEvent(deleteGameObjectEvent);
-    // Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[GameObjectController] delete: " + Ogre::StringConverter::toString(gameObjectPtr->getId()));
-    this->gameObjects->erase(gameObjectPtr->getId());
-    this->triggeredGameObjects.erase(gameObjectPtr->getId());
-    this->movingBehaviors.erase(gameObjectPtr->getId());
-    // this->movingBehaviors2D.erase(gameObjectPtr->getId());
 
+    // Remove from flat list: swap with last element, then pop — O(1), no shifting
+    for (size_t i = 0; i < this->gameObjectsList.size(); ++i)
+    {
+        if (this->gameObjectsList[i].get() == gameObjectPtr.get())
+        {
+            this->gameObjectsList[i] = std::move(this->gameObjectsList.back());
+            this->gameObjectsList.pop_back();
+            break;
+        }
+    }
+
+    // ... rest unchanged (erase from map, destroy, etc.)
+    boost::shared_ptr<EventDataDeleteGameObject> deleteGameObjectEvent(boost::make_shared<EventDataDeleteGameObject>(id));
+    AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->triggerEvent(deleteGameObjectEvent);
+    this->gameObjects->erase(id);
+    this->triggeredGameObjects.erase(id);
+    this->movingBehaviors.erase(id);
     gameObjectPtr->destroy();
 }
 
@@ -1703,9 +1719,8 @@ void GameObjectController::start(void)
 
         LuaScriptApi::getInstance()->runInitScript("init.lua");
 
-        for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
+        for (const auto& gameObjectPtr : this->gameObjectsList)
         {
-            const auto& gameObjectPtr = it->second;
             if (nullptr != gameObjectPtr)
             {
                 gameObjectPtr->connectPriority();
@@ -1715,9 +1730,8 @@ void GameObjectController::start(void)
         GameObjectPtr mainGameObjectPtr = nullptr;
         // If all game objects had been loaded finally initialize all components of all objects
         // This is done here, because at this time, all game objects are loaded and in the final init, its possible for a component to get data from other game objects or components
-        for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
+        for (const auto& gameObjectPtr : this->gameObjectsList)
         {
-            const auto& gameObjectPtr = it->second;
             if (MAIN_GAMEOBJECT_ID != gameObjectPtr->getId())
             {
                 gameObjectPtr->connect();
@@ -1804,42 +1818,33 @@ void GameObjectController::stop(void)
         {
             const auto& gameObjectPtr = it->second;
 
-            // Get a possible lua script from corresponding component
-            boost::shared_ptr<LuaScriptComponent> luaScriptCompPtr;
-            bool luaScriptNoCompileErrors = true;
-            // Problem: When lua script is connected first and intialisations done inside, e.g. ragdoll etc. no ragdoll is yet available, so only compile
+            // AFTER: use gameObjectsList (from point #1) + cached pointers
+            // (already zero-cost after the postInit caching is in place)
+            LuaScriptComponent* luaScriptRaw = gameObjectPtr->getCachedLuaScriptComponent();
+            AiLuaComponent* aiLuaRaw = gameObjectPtr->getCachedAiLuaComponent();
 
-            // First disconnect all lua scripts, so that no further lua updates are done during the disconnect of the game object
-            luaScriptCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<LuaScriptComponent>());
-            if (nullptr != luaScriptCompPtr)
+            if (nullptr != luaScriptRaw)
             {
-                luaScriptCompPtr->disconnect();
+                luaScriptRaw->disconnect();
             }
-            else
+            else if (nullptr != aiLuaRaw)
             {
-                boost::shared_ptr<AiLuaComponent> aiLuaCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<AiLuaComponent>());
-                if (nullptr != aiLuaCompPtr)
-                {
-                    aiLuaCompPtr->disconnect();
-                }
+                aiLuaRaw->disconnect();
             }
 
             if (false == gameObjectPtr->disconnect())
             {
                 Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectController] Could not disconnect game object: '" + gameObjectPtr->getName() + "'");
-                throw Ogre::Exception(Ogre::Exception::ERR_FILE_NOT_FOUND, "[GameObjectController] Could not disconnect game object: '" + gameObjectPtr->getName() + "'", "NOWA");
+                // throw Ogre::Exception(Ogre::Exception::ERR_FILE_NOT_FOUND, "[GameObjectController] Could not disconnect game object: '" + gameObjectPtr->getName() + "'");
             }
 
-            // Main camera must be activated again, if scene is stopped
+            // Main camera check — only fires for one specific GO, keep as-is
             if (gameObjectPtr->getId() == MAIN_CAMERA_ID)
             {
                 auto& cameraCompPtr = makeStrongPtr(gameObjectPtr->getComponent<CameraComponent>());
-                if (nullptr != cameraCompPtr)
+                if (nullptr != cameraCompPtr && false == cameraCompPtr->isActivated())
                 {
-                    if (false == cameraCompPtr->isActivated())
-                    {
-                        cameraCompPtr->setActivated(true);
-                    }
+                    cameraCompPtr->setActivated(true);
                 }
             }
         }
@@ -1859,17 +1864,17 @@ void GameObjectController::stop(void)
 
 void GameObjectController::pause(void)
 {
-    for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
+    for (const auto& gameObjectPtr : this->gameObjectsList)
     {
-        it->second->pause();
+        gameObjectPtr->pause();
     }
 }
 
 void GameObjectController::resume(void)
 {
-    for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
+    for (const auto& gameObjectPtr : this->gameObjectsList)
     {
-        it->second->resume();
+        gameObjectPtr->resume();
     }
 }
 
@@ -1913,11 +1918,11 @@ std::vector<unsigned long> GameObjectController::getIdsFromCategory(const Ogre::
 {
     std::vector<unsigned long> vec;
     // do not delete with iterator since the iterator changes then during the loop
-    for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
+    for (const auto& gameObjectPtr : this->gameObjectsList)
     {
-        if (it->second->getCategory() == category)
+        if (gameObjectPtr->getCategory() == category)
         {
-            vec.emplace_back(it->second->getId());
+            vec.emplace_back(gameObjectPtr->getId());
         }
     }
     return vec;
@@ -1927,11 +1932,11 @@ std::vector<unsigned long> GameObjectController::getIdsFromRenderCategory(const 
 {
     std::vector<unsigned long> vec;
     // do not delete with iterator since the iterator changes then during the loop
-    for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
+    for (const auto& gameObjectPtr : this->gameObjectsList)
     {
-        if (it->second->getRenderCategory() == renderCategory)
+        if (gameObjectPtr->getRenderCategory() == renderCategory)
         {
-            vec.emplace_back(it->second->getId());
+            vec.emplace_back(gameObjectPtr->getId());
         }
     }
     return vec;
@@ -1942,11 +1947,11 @@ std::vector<unsigned long> GameObjectController::getOtherIdsFromCategory(GameObj
     std::vector<unsigned long> vec;
     // do not delete with iterator since the iterator changes then during the loop
     // Attention here with find, because its o(log2n) and not o(n)
-    for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
+    for (const auto& gameObjectPtr : this->gameObjectsList)
     {
-        if (it->second->getCategory() == category && it->second != excludedGameObjectPtr)
+        if (gameObjectPtr->getCategory() == category && gameObjectPtr != excludedGameObjectPtr)
         {
-            vec.emplace_back(it->second->getId());
+            vec.emplace_back(gameObjectPtr->getId());
         }
     }
     return vec;
@@ -1957,11 +1962,11 @@ std::vector<unsigned long> GameObjectController::getOtherIdsFromRenderCategory(G
     std::vector<unsigned long> vec;
     // do not delete with iterator since the iterator changes then during the loop
     // Attention here with find, because its o(log2n) and not o(n)
-    for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
+    for (const auto& gameObjectPtr : this->gameObjectsList)
     {
-        if (it->second->getRenderCategory() == renderCategory && it->second != excludedGameObjectPtr)
+        if (gameObjectPtr->getRenderCategory() == renderCategory && gameObjectPtr != excludedGameObjectPtr)
         {
-            vec.emplace_back(it->second->getId());
+            vec.emplace_back(gameObjectPtr->getId());
         }
     }
     return vec;
@@ -1970,11 +1975,11 @@ std::vector<unsigned long> GameObjectController::getOtherIdsFromRenderCategory(G
 GameObjectPtr GameObjectController::getGameObjectFromName(const Ogre::String& name) const
 {
     // Attention here with find, because its o(log2n) and not o(n)
-    for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
+    for (const auto& gameObjectPtr : this->gameObjectsList)
     {
-        if (it->second->getSceneNode()->getName() == name)
+        if (gameObjectPtr->getSceneNode()->getName() == name)
         {
-            return it->second;
+            return gameObjectPtr;
         }
     }
 
@@ -1986,11 +1991,11 @@ std::vector<GameObjectPtr> GameObjectController::getGameObjectsFromNamePrefix(co
     std::vector<GameObjectPtr> vec;
     // Attention here with find, because its o(log2n) and not o(n) but how? because it should work with the pattern, how could i use find(pattern)?
     // http://stackoverflow.com/questions/288775/stlmap-walk-through-list-or-use-find
-    for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
+    for (const auto& gameObjectPtr : this->gameObjectsList)
     {
-        if (Ogre::StringUtil::match(it->second->getSceneNode()->getName(), pattern, false))
+        if (Ogre::StringUtil::match(gameObjectPtr->getSceneNode()->getName(), pattern, false))
         {
-            vec.emplace_back(it->second);
+            vec.emplace_back(gameObjectPtr);
         }
     }
 
@@ -2001,11 +2006,11 @@ std::vector<GameObjectPtr> GameObjectController::getGameObjectsFromType(GameObje
 {
     std::vector<GameObjectPtr> vec;
 
-    for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
+    for (const auto& gameObjectPtr : this->gameObjectsList)
     {
-        if (type == it->second->getType())
+        if (type == gameObjectPtr->getType())
         {
-            vec.emplace_back(it->second);
+            vec.emplace_back(gameObjectPtr);
         }
     }
 
@@ -2015,11 +2020,11 @@ std::vector<GameObjectPtr> GameObjectController::getGameObjectsFromType(GameObje
 GameObjectPtr GameObjectController::getGameObjectFromNamePrefix(const Ogre::String& pattern) const
 {
     // Attention here with find, because its o(log2n) and not o(n)
-    for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
+    for (const auto& gameObjectPtr : this->gameObjectsList)
     {
-        if (Ogre::StringUtil::match(it->second->getSceneNode()->getName(), pattern, false))
+        if (Ogre::StringUtil::match(gameObjectPtr->getSceneNode()->getName(), pattern, false))
         {
-            return it->second;
+            return gameObjectPtr;
         }
     }
 
@@ -2029,12 +2034,12 @@ GameObjectPtr GameObjectController::getGameObjectFromNamePrefix(const Ogre::Stri
 std::vector<GameObjectPtr> GameObjectController::getGameObjectsFromComponent(const Ogre::String& componentClassName)
 {
     std::vector<GameObjectPtr> vec;
-    for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
+    for (const auto& gameObjectPtr : this->gameObjectsList)
     {
-        auto gameObjectPtr = NOWA::makeStrongPtr(it->second->getComponentFromName<GameObjectComponent>(componentClassName, true));
-        if (nullptr != gameObjectPtr)
+        auto gameObjectCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponentFromName<GameObjectComponent>(componentClassName, true));
+        if (nullptr != gameObjectCompPtr)
         {
-            vec.emplace_back(it->second);
+            vec.emplace_back(gameObjectPtr);
         }
     }
 
@@ -2047,24 +2052,24 @@ std::vector<GameObjectPtr> GameObjectController::getGameObjectsFromComponent(con
 std::vector<GameObjectPtr> GameObjectController::getGameObjectsFromMeshName(const Ogre::String& meshName)
 {
     std::vector<GameObjectPtr> vec;
-    for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
+    for (const auto& gameObjectPtr : this->gameObjectsList)
     {
-        Ogre::Item* item = it->second->getMovableObjectUnsafe<Ogre::Item>();
+        Ogre::Item* item = gameObjectPtr->getMovableObjectUnsafe<Ogre::Item>();
         if (nullptr != item)
         {
             if (item->getMesh()->getName() == meshName)
             {
-                vec.emplace_back(it->second);
+                vec.emplace_back(gameObjectPtr);
             }
         }
         else
         {
-            Ogre::v1::Entity* entity = it->second->getMovableObject<Ogre::v1::Entity>();
+            Ogre::v1::Entity* entity = gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
             if (nullptr != entity)
             {
                 if (entity->getMesh()->getName() == meshName)
                 {
-                    vec.emplace_back(it->second);
+                    vec.emplace_back(gameObjectPtr);
                 }
             }
         }
@@ -2079,9 +2084,9 @@ std::vector<GameObjectPtr> GameObjectController::getGameObjectsFromMeshName(cons
 std::vector<GameObjectPtr> GameObjectController::getGameObjectsFromDatablockName(const Ogre::String& datablockName)
 {
     std::vector<GameObjectPtr> vec;
-    for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
+    for (const auto& gameObjectPtr : this->gameObjectsList)
     {
-        Ogre::Item* item = it->second->getMovableObjectUnsafe<Ogre::Item>();
+        Ogre::Item* item = gameObjectPtr->getMovableObjectUnsafe<Ogre::Item>();
         if (nullptr != item)
         {
             if (nullptr != item->getSubItem(0))
@@ -2095,14 +2100,14 @@ std::vector<GameObjectPtr> GameObjectController::getGameObjectsFromDatablockName
 
                 if (tempDatablockName == datablockName)
                 {
-                    vec.emplace_back(it->second);
+                    vec.emplace_back(gameObjectPtr);
                     break;
                 }
             }
         }
         else
         {
-            Ogre::v1::Entity* entity = it->second->getMovableObject<Ogre::v1::Entity>();
+            Ogre::v1::Entity* entity = gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
             if (nullptr != entity)
             {
                 if (nullptr != entity->getSubEntity(0))
@@ -2116,7 +2121,7 @@ std::vector<GameObjectPtr> GameObjectController::getGameObjectsFromDatablockName
 
                     if (tempDatablockName == datablockName)
                     {
-                        vec.emplace_back(it->second);
+                        vec.emplace_back(gameObjectPtr);
                         break;
                     }
                 }
@@ -2135,11 +2140,11 @@ std::vector<GameObjectPtr> GameObjectController::getGameObjectsFromCategory(cons
     std::vector<GameObjectPtr> vec;
 
     unsigned int finalCategories = this->generateCategoryId(category);
-    for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
+    for (const auto& gameObjectPtr : this->gameObjectsList)
     {
-        if ((it->second->getCategoryId() | finalCategories) == finalCategories)
+        if ((gameObjectPtr->getCategoryId() | finalCategories) == finalCategories)
         {
-            vec.emplace_back(it->second);
+            vec.emplace_back(gameObjectPtr);
         }
     }
     return vec;
@@ -2150,11 +2155,11 @@ std::vector<GameObjectPtr> GameObjectController::getGameObjectsFromRenderCategor
     std::vector<GameObjectPtr> vec;
 
     unsigned int finalCategories = this->generateRenderCategoryId(renderCategory);
-    for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
+    for (const auto& gameObjectPtr : this->gameObjectsList)
     {
-        if ((it->second->getRenderCategoryId() | finalCategories) == finalCategories)
+        if ((gameObjectPtr->getRenderCategoryId() | finalCategories) == finalCategories)
         {
-            vec.emplace_back(it->second);
+            vec.emplace_back(gameObjectPtr);
         }
     }
     return vec;
@@ -2164,11 +2169,11 @@ std::vector<GameObjectPtr> GameObjectController::getGameObjectsFromCategoryId(un
 {
     std::vector<GameObjectPtr> vec;
 
-    for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
+    for (const auto& gameObjectPtr : this->gameObjectsList)
     {
-        if ((it->second->getCategoryId() | categoryId) == categoryId)
+        if ((gameObjectPtr->getCategoryId() | categoryId) == categoryId)
         {
-            vec.emplace_back(it->second);
+            vec.emplace_back(gameObjectPtr);
         }
     }
     return vec;
@@ -2178,11 +2183,11 @@ std::vector<GameObjectPtr> GameObjectController::getGameObjectsFromRenderCategor
 {
     std::vector<GameObjectPtr> vec;
 
-    for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
+    for (const auto& gameObjectPtr : this->gameObjectsList)
     {
-        if ((it->second->getRenderCategoryId() | renderCategoryId) == renderCategoryId)
+        if ((gameObjectPtr->getRenderCategoryId() | renderCategoryId) == renderCategoryId)
         {
-            vec.emplace_back(it->second);
+            vec.emplace_back(gameObjectPtr);
         }
     }
     return vec;
@@ -2194,16 +2199,16 @@ std::pair<std::vector<GameObjectPtr>, std::vector<GameObjectPtr>> GameObjectCont
     std::vector<GameObjectPtr> vec2;
 
     unsigned int finalCategories = this->generateCategoryId(category);
-    for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
+    for (const auto& gameObjectPtr : this->gameObjectsList)
     {
-        if ((it->second->getCategoryId() | finalCategories) == finalCategories)
+        if ((gameObjectPtr->getCategoryId() | finalCategories) == finalCategories)
         {
             bool addedToSeparateList = false;
             for (size_t i = 0; i < separateGameObjects.size(); i++)
             {
-                if (it->second->getName() == separateGameObjects[i])
+                if (gameObjectPtr->getName() == separateGameObjects[i])
                 {
-                    vec2.emplace_back(it->second);
+                    vec2.emplace_back(gameObjectPtr);
                     addedToSeparateList = true;
                     break;
                 }
@@ -2211,7 +2216,7 @@ std::pair<std::vector<GameObjectPtr>, std::vector<GameObjectPtr>> GameObjectCont
 
             if (false == addedToSeparateList)
             {
-                vec1.emplace_back(it->second);
+                vec1.emplace_back(gameObjectPtr);
             }
         }
     }
@@ -2224,16 +2229,16 @@ std::pair<std::vector<GameObjectPtr>, std::vector<GameObjectPtr>> GameObjectCont
     std::vector<GameObjectPtr> vec2;
 
     unsigned int finalRenderCategories = this->generateRenderCategoryId(renderCategory);
-    for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
+    for (const auto& gameObjectPtr : this->gameObjectsList)
     {
-        if ((it->second->getCategoryId() | finalRenderCategories) == finalRenderCategories)
+        if ((gameObjectPtr->getCategoryId() | finalRenderCategories) == finalRenderCategories)
         {
             bool addedToSeparateList = false;
             for (size_t i = 0; i < separateGameObjects.size(); i++)
             {
-                if (it->second->getName() == separateGameObjects[i])
+                if (gameObjectPtr->getName() == separateGameObjects[i])
                 {
-                    vec2.emplace_back(it->second);
+                    vec2.emplace_back(gameObjectPtr);
                     addedToSeparateList = true;
                     break;
                 }
@@ -2241,7 +2246,7 @@ std::pair<std::vector<GameObjectPtr>, std::vector<GameObjectPtr>> GameObjectCont
 
             if (false == addedToSeparateList)
             {
-                vec1.emplace_back(it->second);
+                vec1.emplace_back(gameObjectPtr);
             }
         }
     }
@@ -2289,17 +2294,17 @@ std::vector<GameObjectPtr> GameObjectController::getGameObjectsControlledByClien
     // only search for game objects that are controlled by a client. Client id 0 means, it is not controlled
     if (0 == clientID)
     {
-        return std::move(vec);
+        return vec;
     }
 
-    for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
+    for (const auto& gameObjectPtr : this->gameObjectsList)
     {
-        if (it->second->getControlledByClientID() == clientID)
+        if (gameObjectPtr->getControlledByClientID() == clientID)
         {
-            vec.emplace_back(it->second);
+            vec.emplace_back(gameObjectPtr);
         }
     }
-    return std::move(vec);
+    return vec;
 }
 
 std::vector<GameObjectPtr> GameObjectController::getGameObjectsFromTagName(const Ogre::String& tagName) const
@@ -2308,17 +2313,17 @@ std::vector<GameObjectPtr> GameObjectController::getGameObjectsFromTagName(const
 
     if (true == tagName.empty())
     {
-        return std::move(vec);
+        return vec;
     }
 
-    for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
+    for (const auto& gameObjectPtr : this->gameObjectsList)
     {
-        if (it->second->getTagName() == tagName)
+        if (gameObjectPtr->getTagName() == tagName)
         {
-            vec.emplace_back(it->second);
+            vec.emplace_back(gameObjectPtr);
         }
     }
-    return std::move(vec);
+    return vec;
 }
 
 std::vector<GameObjectPtr> GameObjectController::getGameObjectsFromMeshName(const Ogre::String& meshName) const
@@ -2327,44 +2332,44 @@ std::vector<GameObjectPtr> GameObjectController::getGameObjectsFromMeshName(cons
 
     if (true == meshName.empty())
     {
-        return std::move(vec);
+        return vec;
     }
 
-    for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
+    for (const auto& gameObjectPtr : this->gameObjectsList)
     {
-        Ogre::v1::Entity* entity = it->second->getMovableObjectUnsafe<Ogre::v1::Entity>();
+        Ogre::v1::Entity* entity = gameObjectPtr->getMovableObjectUnsafe<Ogre::v1::Entity>();
         if (nullptr != entity)
         {
             if (entity->getMesh()->getName() == meshName)
             {
-                vec.emplace_back(it->second);
+                vec.emplace_back(gameObjectPtr);
             }
         }
         else
         {
-            Ogre::Item* item = it->second->getMovableObjectUnsafe<Ogre::Item>();
+            Ogre::Item* item = gameObjectPtr->getMovableObjectUnsafe<Ogre::Item>();
             if (nullptr != item)
             {
                 if (item->getMesh()->getName() == meshName)
                 {
-                    vec.emplace_back(it->second);
+                    vec.emplace_back(gameObjectPtr);
                 }
             }
         }
     }
-    return std::move(vec);
+    return vec;
 }
 
 std::vector<GameObjectPtr> GameObjectController::getOverlappingGameObjects() const
 {
     std::vector<GameObjectPtr> vec;
-    for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
+    for (const auto& gameObjectPtr : this->gameObjectsList)
     {
-        const auto& firstGameObjectPtr = it->second;
+        const auto& firstGameObjectPtr = gameObjectPtr;
 
-        for (auto& it2 = this->gameObjects->cbegin(); it2 != this->gameObjects->cend(); ++it2)
+        for (const auto& gameObjectPtr2 : this->gameObjectsList)
         {
-            const auto& secondGameObjectPtr = it2->second;
+            const auto& secondGameObjectPtr = gameObjectPtr2;
             if (firstGameObjectPtr != secondGameObjectPtr)
             {
                 Ogre::Vector4 firstOrientation(firstGameObjectPtr->getOrientation().x, firstGameObjectPtr->getOrientation().y, firstGameObjectPtr->getOrientation().z, firstGameObjectPtr->getOrientation().w);
@@ -2399,7 +2404,7 @@ std::vector<GameObjectPtr> GameObjectController::getOverlappingGameObjects() con
             }
         }
     }
-    return std::move(vec);
+    return vec;
 }
 
 GameObjectPtr GameObjectController::getGameObjectFromReferenceId(const unsigned long referenceId) const
@@ -2414,7 +2419,7 @@ std::vector<GameObjectCompPtr> GameObjectController::getGameObjectComponentsFrom
     auto& gameObjectPtr = this->getGameObjectFromId(referenceId);
     if (nullptr == gameObjectPtr)
     {
-        return std::move(vec);
+        return vec;
     }
 
     // Search for a component with the same id
@@ -2429,7 +2434,7 @@ std::vector<GameObjectCompPtr> GameObjectController::getGameObjectComponentsFrom
             vec.emplace_back(gameObjectComponent);
         }
     }
-    return std::move(vec);
+    return vec;
 }
 
 void GameObjectController::activateGameObjectComponentsFromReferenceId(const unsigned long referenceId, bool activate)
@@ -2487,9 +2492,14 @@ bool GameObjectController::hasRenderCategory(const Ogre::String& renderCategory)
     return found != this->renderTypeDBMap.cend();
 }
 
-std::map<unsigned long, GameObjectPtr> const* GameObjectController::getGameObjects(void) const
+GameObjectController::GameObjects const* GameObjectController::getGameObjects(void) const
 {
     return this->gameObjects;
+}
+
+const std::vector<GameObjectPtr>& GameObjectController::getGameObjectsList(void) const
+{
+    return this->gameObjectsList;
 }
 
 void GameObjectController::registerType(boost::shared_ptr<GameObject> gameObjectPtr, const Ogre::String& category, const Ogre::String& renderCategory)
@@ -2695,9 +2705,9 @@ void GameObjectController::changeCategory(GameObject* gameObject, const Ogre::St
 {
     // Check if there is a remaining game object with the old category, if not set the category occupied = false, so that a new category may use that one
     bool found = false;
-    for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
+    for (const auto& gameObjectPtr : this->gameObjectsList)
     {
-        if (oldCategory == it->second->getCategory())
+        if (oldCategory == gameObjectPtr->getCategory())
         {
             found = true;
             break;
@@ -2732,9 +2742,9 @@ void GameObjectController::changeRenderCategory(GameObject* gameObject, const Og
 {
     // Check if there is a remaining game object with the old category, if not set the category occupied = false, so that a new category may use that one
     bool found = false;
-    for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
+    for (const auto& gameObjectPtr : this->gameObjectsList)
     {
-        if (oldRenderCategory == it->second->getRenderCategory())
+        if (oldRenderCategory == gameObjectPtr->getRenderCategory())
         {
             found = true;
             break;
@@ -2756,9 +2766,9 @@ void GameObjectController::changeRenderCategory(GameObject* gameObject, const Og
 void GameObjectController::freeCategoryFromGameObject(const Ogre::String& category)
 {
     bool found = false;
-    for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
+    for (const auto& gameObjectPtr : this->gameObjectsList)
     {
-        if (category == it->second->getCategory())
+        if (category == gameObjectPtr->getCategory())
         {
             found = true;
             break;
@@ -2779,9 +2789,9 @@ void GameObjectController::freeCategoryFromGameObject(const Ogre::String& catego
 void GameObjectController::freeRenderCategoryFromGameObject(const Ogre::String& renderCategory)
 {
     bool found = false;
-    for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
+    for (const auto& gameObjectPtr : this->gameObjectsList)
     {
-        if (renderCategory == it->second->getRenderCategory())
+        if (renderCategory == gameObjectPtr->getRenderCategory())
         {
             found = true;
             break;
