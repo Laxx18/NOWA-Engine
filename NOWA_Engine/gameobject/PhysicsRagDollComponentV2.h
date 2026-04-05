@@ -225,8 +225,8 @@ namespace NOWA
 				BS_BOX, BS_ELLIPSOID, BS_CYLINDER, BS_CAPSULE, BS_CONE, BS_CONVEXHULL, BS_NULLHULL
 			};
 
-			RagBone(const Ogre::String& name, PhysicsRagDollComponentV2* physicsRagDollComponentV2, RagBone* parentRagBone, Ogre::Bone* bone, Ogre::Item* item,
-				const Ogre::Vector3& pose, RagBone::BoneShape shape, Ogre::Vector3& size, Ogre::Real mass, bool partial, const Ogre::Vector3& offset, const Ogre::String& category = Ogre::String());
+			RagBone(const Ogre::String& name, PhysicsRagDollComponentV2* physicsRagDollComponentV2, RagBone* parentRagBone, Ogre::Bone* bone, Ogre::Item* item, const Ogre::Vector3& pose, RagBone::BoneShape shape, Ogre::Vector3& size, Ogre::Real mass,
+                bool partial, const Ogre::Vector3& collisionOffset, const Ogre::Vector3& offset, const Ogre::String& category = Ogre::String());
 
 			~RagBone();
 

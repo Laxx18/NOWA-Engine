@@ -509,6 +509,8 @@ namespace NOWA
 
 		// Set the bounds, to have it in core for public access
 		Core::getSingletonPtr()->setCurrentSceneBounds(this->mostLeftNearPosition, this->mostRightFarPosition);
+
+		NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->buildNavigationMesh();
 	}
 
 	std::vector<unsigned long> DotSceneImportModule::parseGroup(const Ogre::String& fileName, const Ogre::String& resourceGroupName)

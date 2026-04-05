@@ -34,7 +34,6 @@ namespace NOWA
 		// this->ogreNewt->setBroadPhaseAlgorithm(broadPhaseAlgorithm);
 		this->ogreNewt->setDefaultLinearDamping(defaultLinearDamping);
 		this->ogreNewt->setDefaultAngularDamping(defaultAngularDamping);
-		//Ogrenewt mit 2 Thread einstellen: nicht sicher ob OgreNewt diese Funktionalitaet von Newtondynamics unterstuetzt!
 #ifdef _WIN32
 		SYSTEM_INFO sysinfo;
 		GetSystemInfo(&sysinfo);

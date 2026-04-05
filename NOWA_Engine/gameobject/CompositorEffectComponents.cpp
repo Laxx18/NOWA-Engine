@@ -55,16 +55,22 @@ namespace NOWA
 
 	void CompositorEffectBaseComponent::onRemoveComponent(void)
 	{
+        GameObjectComponent::onRemoveComponent();
+
 		AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &CompositorEffectBaseComponent::handleWorkspaceComponentDeleted), EventDataDeleteWorkspaceComponent::getStaticEventType());
 	}
 
 	bool CompositorEffectBaseComponent::connect(void)
 	{
+        GameObjectComponent::connect();
+
 		return true;
 	}
 
 	bool CompositorEffectBaseComponent::disconnect(void)
 	{
+        GameObjectComponent::disconnect();
+
 		return true;
 	}
 

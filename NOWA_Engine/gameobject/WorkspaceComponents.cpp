@@ -851,6 +851,26 @@ namespace NOWA
                 {
                     this->compositorManager->removeNodeDefinition(this->renderingNodeName);
                 }
+
+                // When SSAO is active it contains scene passes that hold a shadow node reference.
+                // If this node definition outlives the SceneManager, CompositorManager2::~CompositorManager2()
+                // calls destroyAllNodes() on the surviving shadow node whose camera scene node
+                // is already deleted -> crash at getParentSceneNode() returning 0xFFFFFFFF.
+                if (true == this->compositorManager->hasNodeDefinition(this->finalRenderingNodeName))
+                {
+                    this->compositorManager->removeNodeDefinition(this->finalRenderingNodeName);
+                }
+
+                // Destroy it here so the TextureGpuManager does not hold a dangling reference.
+                if (true == this->useSSAO->getBool())
+                {
+                    Ogre::TextureGpu* noiseTexture = textureManager->findTextureNoThrow("noiseTexture");
+                    if (nullptr != noiseTexture)
+                    {
+                        textureManager->destroyTexture(noiseTexture);
+                    }
+                }
+
                 this->workspace = nullptr;
                 this->externalChannels.clear();
 

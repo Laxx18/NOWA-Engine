@@ -474,8 +474,8 @@ namespace NOWA
 		// Only recreate if flag is set (scene modified), because its an heavy process
 		if (true == this->mustRegenerate)
 		{
-			ENQUEUE_RENDER_COMMAND("OgreRecastModule::buildNavigationMesh",
-			{
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+            {
 				if (nullptr == this->detourTileCache)
 				{
 					this->detourTileCache = new OgreDetourTileCache(this->ogreRecast);
@@ -557,7 +557,14 @@ namespace NOWA
 				}
 
 				this->mustRegenerate = false;
-			});
+
+				// NavMeshComponents queue EventDataGeometryModified from the render thread during scene load.
+                // Those events are still sitting in the queue even though we just finished the initial build.
+                // Flush them now so they do not trigger a redundant (and expensive) rebuild when the
+                // simulation starts and EventManager::update() processes them.
+                AppStateManager::getSingletonPtr()->getEventManager()->abortEvent(NOWA::EventDataGeometryModified::getStaticEventType(), true /* allOfType */);
+			};
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "OgreRecastModule::buildNavigationMesh");
 		}
 	}
 

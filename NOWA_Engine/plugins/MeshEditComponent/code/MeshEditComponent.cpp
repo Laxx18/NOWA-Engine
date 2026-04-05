@@ -346,6 +346,8 @@ namespace NOWA
 
     bool MeshEditComponent::connect(void)
     {
+        GameObjectComponent::connect();
+
         this->isSimulating = true;
         this->removeInputListener();
 
@@ -362,6 +364,8 @@ namespace NOWA
 
     bool MeshEditComponent::disconnect(void)
     {
+        GameObjectComponent::disconnect();
+
         this->isSimulating = false;
         this->updateModificationState();
 

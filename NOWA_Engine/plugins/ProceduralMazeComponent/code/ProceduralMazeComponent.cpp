@@ -543,6 +543,9 @@ namespace NOWA
             this->calculateSolutionPath();
             this->createMazeMesh();
 
+            boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGeometryModified);
+
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralMazeComponent] Generated maze " + Ogre::StringConverter::toString(this->numColumns->getInt()) + "x" +
                                                                                    Ogre::StringConverter::toString(this->numRows->getInt()) + " with seed " + Ogre::StringConverter::toString(this->seed->getUInt()));
         };
@@ -1269,11 +1272,7 @@ namespace NOWA
             this->physicsArtifactComponent->reCreateCollision();
         }
 
-        boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
-        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGeometryModified);
-
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[ProceduralMazeComponent] Generated maze " + Ogre::StringConverter::toString(this->numColumns->getInt()) + "x" + Ogre::StringConverter::toString(this->numRows->getInt()) +
-                                                                              " with seed " + Ogre::StringConverter::toString(this->seed->getUInt()) + (needsTangents ? " (with tangents)" : " (no tangents)"));
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[ProceduralMazeComponent] Generated maze " + Ogre::StringConverter::toString(this->numColumns->getInt()) + "x" + Ogre::StringConverter::toString(this->numRows->getInt()) +                                                                 " with seed " + Ogre::StringConverter::toString(this->seed->getUInt()) + (needsTangents ? " (with tangents)" : " (no tangents)"));
     }
 
     void ProceduralMazeComponent::destroyMazeMesh(void)

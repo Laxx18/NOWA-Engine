@@ -206,11 +206,11 @@ void ProjectManager::createNewProject(const NOWA::ProjectParameter& projectParam
 	{
 		this->destroyScene();
 		this->additionalMeshResources.clear();
-
-		// Create the physics and set data internally in internalApplySettings
-		this->ogreNewt = NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->createPhysics(NOWA::AppStateManager::getSingletonPtr()->getCurrentAppStateName() + "_world");
-		this->ogreNewt->cleanUp();
 	});
+
+	// Create the physics and set data internally in internalApplySettings
+    this->ogreNewt = NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->createPhysics(NOWA::AppStateManager::getSingletonPtr()->getCurrentAppStateName() + "_world");
+    this->ogreNewt->cleanUp();
 
 	this->internalApplySettings();
 	this->projectParameter = projectParameter;

@@ -6,7 +6,7 @@
 			"scissor_test" : false,
 			"depth_check" : true,
 			"depth_write" : true,
-			"depth_function" : "always",
+			"depth_function" : "less_equal",
 			"depth_bias_constant" : 0,
 			"depth_bias_slope_scale" : 0,
 			"cull_mode" : "clockwise",

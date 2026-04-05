@@ -125,14 +125,14 @@ namespace NOWA
 
 	bool SSAOComponent::connect(void)
 	{
-		GameObjectComponent::connect();
+        CompositorEffectBaseComponent::connect();
 
 		return true;
 	}
 
 	bool SSAOComponent::disconnect(void)
 	{
-		GameObjectComponent::disconnect();
+        CompositorEffectBaseComponent::disconnect();
 
 		Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
 		NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
@@ -142,7 +142,7 @@ namespace NOWA
 
 	void SSAOComponent::onRemoveComponent(void)
 	{
-		GameObjectComponent::onRemoveComponent();
+        CompositorEffectBaseComponent::onRemoveComponent();
 
 		Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
 		NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);

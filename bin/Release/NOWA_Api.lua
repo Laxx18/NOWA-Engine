@@ -1732,6 +1732,62 @@ return {
 				args = "()",
 				returns = "(number)",
 				valuetype = "number"
+			},
+			setOverlayAnimation1 =
+			{
+				type = "method",
+				description = "Starts an overlay animation on top of the current one using per-bone weights. Useful for upper-body actions (attacks, reloads) while legs keep playing locomotion. Non-looping overlays auto-clear when they finish.",
+				args = "(AnimID animationId, number blendInTime)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setOverlayAnimation2 =
+			{
+				type = "method",
+				description = "Starts an overlay animation by name on top of the current one using per-bone weights. Useful for upper-body actions (attacks, reloads) while legs keep playing locomotion. Non-looping overlays auto-clear when they finish.",
+				args = "(string animationName, number blendInTime)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			clearOverlayAnimation =
+			{
+				type = "method",
+				description = "Fades out and removes the current overlay animation over the given blend-out time in seconds. Required for looping overlays. Non-looping overlays clear themselves automatically.",
+				args = "(number blendOutTime)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			isOverlayAnimationActive =
+			{
+				type = "function",
+				description = "Returns true if an overlay animation is currently active (blending in, playing, or blending out).",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			setAnimationSpeed =
+			{
+				type = "method",
+				description = "Sets the playback speed multiplier for the current source and target animations. 1.0 = normal speed, 2.0 = double speed, 0.5 = half speed. The base frame rate per animation is preserved internally so calling this multiple times is safe. When using this, pass raw dt to addTime() instead of scaling it manually.",
+				args = "(number speed)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getAnimationSpeed =
+			{
+				type = "function",
+				description = "Gets the currently active playback speed multiplier. Default is 1.0.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			driveBlendSpace =
+			{
+				type = "method",
+				description = "Drives a 1D blend space every frame. Finds the two clips whose parameter values bracket the given parameter and blends between them using a smoothstep curve. Replaces manual idle/walk/run branching logic with a single call. The source pointer is kept on the dominant clip so getLength() and getTimePosition() remain valid. Call addTime(dt) as normal after this.",
+				args = "(number parameter, BlendSpaceEntryList entries)",
+				returns = "(nil)",
+				valuetype = "nil"
 			}
 		}
 	},
@@ -3202,6 +3258,38 @@ return {
 				args = "(Vector3 color)",
 				returns = "(nil)",
 				valuetype = "nil"
+			}
+		}
+	},
+	BlendSpaceEntryList =
+	{
+		type = "class",
+		description = "A sorted list of animation/parameter pairs used to drive a 1D blend space. Build it once in connect() and reuse it every frame in execute().",
+		childs = 
+		{
+			add =
+			{
+				type = "method",
+				description = "Adds an entry to the blend space. Entries must be added in ascending parameter order. animationId is the animation clip, parameter is the value at which this clip is fully active (e.g. 0.0 for idle, 3.0 for walk, 8.0 for run).",
+				args = "(AnimID animationId, number parameter)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			clear =
+			{
+				type = "method",
+				description = "Removes all entries from the list.",
+				args = "()",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			size =
+			{
+				type = "function",
+				description = "Returns the number of entries currently in the list.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
 			}
 		}
 	},
@@ -9789,6 +9877,54 @@ return {
 				returns = "(PccPerPixelGridPlacementComponent)",
 				valuetype = "PccPerPixelGridPlacementComponent"
 			},
+			getPhysicsActiveSpiderComponent =
+			{
+				type = "function",
+				description = "Gets the component.",
+				args = "()",
+				returns = "(PhysicsActiveSpiderComponent)",
+				valuetype = "PhysicsActiveSpiderComponent"
+			},
+			getPhysicsActiveSpiderComponentFromIndex =
+			{
+				type = "function",
+				description = "Gets by index.",
+				args = "(number occurrenceIndex)",
+				returns = "(PhysicsActiveSpiderComponent)",
+				valuetype = "PhysicsActiveSpiderComponent"
+			},
+			getPhysicsActiveSpiderComponentFromName =
+			{
+				type = "function",
+				description = "Gets by name.",
+				args = "(string name)",
+				returns = "(PhysicsActiveSpiderComponent)",
+				valuetype = "PhysicsActiveSpiderComponent"
+			},
+			getPhysicsActiveVehicleComponentV2 =
+			{
+				type = "function",
+				description = "Gets the component.",
+				args = "()",
+				returns = "(PhysicsActiveVehicleComponentV2)",
+				valuetype = "PhysicsActiveVehicleComponentV2"
+			},
+			getPhysicsActiveVehicleComponentV2FromIndex =
+			{
+				type = "function",
+				description = "Gets the component by occurrence index.",
+				args = "(number occurrenceIndex)",
+				returns = "(PhysicsActiveVehicleComponentV2)",
+				valuetype = "PhysicsActiveVehicleComponentV2"
+			},
+			getPhysicsActiveVehicleComponentV2FromName =
+			{
+				type = "function",
+				description = "Gets the component from name.",
+				args = "(string name)",
+				returns = "(PhysicsActiveVehicleComponentV2)",
+				valuetype = "PhysicsActiveVehicleComponentV2"
+			},
 			getPhysicsRagDollComponentV22 =
 			{
 				type = "function",
@@ -11724,6 +11860,22 @@ return {
 				args = "(PccPerPixelGridPlacementComponent other)",
 				returns = "(PccPerPixelGridPlacementComponent)",
 				valuetype = "PccPerPixelGridPlacementComponent"
+			},
+			castPhysicsActiveSpiderComponent =
+			{
+				type = "function",
+				description = "Casts type for Lua auto completion.",
+				args = "(PhysicsActiveSpiderComponent other)",
+				returns = "(PhysicsActiveSpiderComponent)",
+				valuetype = "PhysicsActiveSpiderComponent"
+			},
+			castPhysicsActiveVehicleComponentV2 =
+			{
+				type = "function",
+				description = "Casts an incoming type from function for lua auto completion.",
+				args = "(PhysicsActiveVehicleComponentV2 other)",
+				returns = "(PhysicsActiveVehicleComponentV2)",
+				valuetype = "PhysicsActiveVehicleComponentV2"
 			},
 			castPhysicsRagDollComponentV2 =
 			{
@@ -23945,6 +24097,119 @@ return {
 			}
 		}
 	},
+	PhysicsActiveSpiderComponent =
+	{
+		type = "class",
+		description = "Procedural IK spider. One physics torso; 12 leg segment nodes created/owned by the component. Set ThighMeshName/CalfMeshName/HeelMeshName and 4 hip/foot rest positions.",
+		inherits = "PhysicsActiveComponent",
+		childs = 
+		{
+			setCanMove =
+			{
+				type = "method",
+				description = "Enable/disable locomotion.",
+				args = "(boolean canMove)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			isOnGround =
+			{
+				type = "function",
+				description = "True if at least one active torso contact.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			setWalkCycleDuration =
+			{
+				type = "method",
+				description = "Full gait cycle duration (default 2.0 s).",
+				args = "(number seconds)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getWalkCycleDuration =
+			{
+				type = "function",
+				description = "Gets gait cycle duration.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setStepHeight =
+			{
+				type = "method",
+				description = "Foot arc height during swing (default 0.2 m).",
+				args = "(number m)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getStepHeight =
+			{
+				type = "function",
+				description = "Gets step height.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setThighMeshName =
+			{
+				type = "method",
+				description = "Upper-leg mesh (shared by all 4 legs).",
+				args = "(string name)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setCalfMeshName =
+			{
+				type = "method",
+				description = "Lower-leg mesh.",
+				args = "(string name)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setHeelMeshName =
+			{
+				type = "method",
+				description = "Foot/ankle mesh.",
+				args = "(string name)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setLegHipPos =
+			{
+				type = "method",
+				description = "Hip socket position for leg i (0..3) in torso-local space.",
+				args = "(number i, Vector3 pos)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getLegHipPos =
+			{
+				type = "function",
+				description = "Gets hip socket position for leg i.",
+				args = "(number i)",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			setLegFootRestPos =
+			{
+				type = "method",
+				description = "Neutral foot position for leg i (torso-local, Y < 0).",
+				args = "(number i, Vector3 p)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getLegFootRestPos =
+			{
+				type = "function",
+				description = "Gets neutral foot position for leg i.",
+				args = "(number i)",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			}
+		}
+	},
 	PhysicsActiveVehicleComponent =
 	{
 		type = "class",
@@ -23999,6 +24264,111 @@ return {
 				returns = "(nil)",
 				valuetype = "nil"
 			},
+	},
+	PhysicsActiveVehicleComponentV2 =
+	{
+		type = "class",
+		description = "Impulse-based vehicle. No joints or raycast required.",
+		inherits = "PhysicsActiveComponent",
+		childs = 
+		{
+			getVehicleForce =
+			{
+				type = "function",
+				description = "Gets current vehicle longitudinal force.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			isAirborne =
+			{
+				type = "function",
+				description = "Gets whether the vehicle is airborne.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			setCanDrive =
+			{
+				type = "method",
+				description = "Enables or disables vehicle control without removing the body.",
+				args = "(boolean canDrive)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setTireDirectionSwap =
+			{
+				type = "method",
+				description = "Flips the spin direction of all tires. Enable if tires roll backward when driving forward.",
+				args = "(boolean swap)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getTireDirectionSwap =
+			{
+				type = "function",
+				description = "Gets whether tire spin direction is swapped.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			setSteeringStrength =
+			{
+				type = "method",
+				description = "Scales the yaw-rate target (default 1.0). Increase (2–4) for sharper turns, decrease for less responsive steering.",
+				args = "(number strength)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getSteeringStrength =
+			{
+				type = "function",
+				description = "Gets the current steering strength multiplier.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setTireSpinAxis =
+			{
+				type = "method",
+				description = "Sets the chassis-space spin axis: 'X', 'Y' or 'Z'. Start with X; switch to Z if tires flip like a coin.",
+				args = "(string axis)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getTireSpinAxis =
+			{
+				type = "function",
+				description = "Gets the current tire spin axis ('X', 'Y' or 'Z').",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			applyWheelie =
+			{
+				type = "method",
+				description = "Applies a wheelie stunt by lifting the front.",
+				args = "(number strength)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			applyDrift =
+			{
+				type = "method",
+				description = "Applies a drift stunt at the given strength and steering strength.",
+				args = "(boolean left, number strength, number steeringStrength)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			applyPitch =
+			{
+				type = "method",
+				description = "Applies pitch angular impulse. Units: torque-like, e.g. 1500..6000.",
+				args = "(number strength, number dt)",
+				returns = "(nil)",
+				valuetype = "nil"
+			}
+		}
 	},
 	PhysicsArtifactComponent =
 	{
@@ -28548,6 +28918,50 @@ return {
 		type = "class",
 		description = "Modifies a sphere on a procedural mesh."
 	},
+	SpiderMovementManipulation =
+	{
+		type = "class",
+		description = "SpiderMovementManipulation class",
+		childs = 
+		{
+			SpiderMovementManipulation =
+			{
+				type = "value"
+			},
+			setStride =
+			{
+				type = "method",
+				description = "Forward stride (0=stand, ~0.3=walk, ~0.5=run).",
+				args = "(number stride)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setOmega =
+			{
+				type = "method",
+				description = "Yaw rate rad/s (+-0.25..0.4).",
+				args = "(number omega)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setBodySwayX =
+			{
+				type = "method",
+				description = "Lateral lean (cosmetic).",
+				args = "(number sway)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setBodySwayZ =
+			{
+				type = "method",
+				description = "Forward lean (cosmetic).",
+				args = "(number sway)",
+				returns = "(nil)",
+				valuetype = "nil"
+			}
+		}
+	},
 	SplitScreenComponent =
 	{
 		type = "class",
@@ -30797,6 +31211,82 @@ return {
 			{
 				type = "function",
 				description = "Gets brake force.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			}
+		}
+	},
+	VehicleDrivingManipulationV2 =
+	{
+		type = "class",
+		description = "VehicleDrivingManipulationV2 class",
+		childs = 
+		{
+			VehicleDrivingManipulationV2 =
+			{
+				type = "value"
+			},
+			setSteerAngle =
+			{
+				type = "method",
+				description = "Sets steer angle in degrees (e.g. -45..45).",
+				args = "(number degrees)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getSteerAngle =
+			{
+				type = "function",
+				description = "Gets the current steer angle.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setMotorForce =
+			{
+				type = "method",
+				description = "Sets motor force. Same scale as old vehicle (e.g. 10000*120*dt).",
+				args = "(number force)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getMotorForce =
+			{
+				type = "function",
+				description = "Gets the current motor force.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setHandBrake =
+			{
+				type = "method",
+				description = "Sets hand-brake factor (e.g. 5.5). Enables drifting.",
+				args = "(number factor)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getHandBrake =
+			{
+				type = "function",
+				description = "Gets the current hand-brake factor.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setBrake =
+			{
+				type = "method",
+				description = "Sets brake factor (e.g. 7.5). Damps forward velocity.",
+				args = "(number factor)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getBrake =
+			{
+				type = "function",
+				description = "Gets the current brake factor.",
 				args = "()",
 				returns = "(number)",
 				valuetype = "number"
