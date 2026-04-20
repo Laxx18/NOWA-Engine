@@ -4406,7 +4406,7 @@ namespace NOWA
 
         GameObjectPtr gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(castEventData->getGameObjectId());
 
-        if (nullptr != gameObjectPtr)
+        if (nullptr == gameObjectPtr)
         {
             return;
         }

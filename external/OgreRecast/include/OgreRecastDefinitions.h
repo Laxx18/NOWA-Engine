@@ -50,8 +50,8 @@
 #include "Detour/DetourNavMeshQuery.h"
 
 #define MAX_PATHSLOT      128 // how many paths we can store
-#define MAX_PATHPOLY      256 // max number of polygons in a path
-#define MAX_PATHVERT      512 // most verts in a path 
+#define MAX_PATHPOLY      2048 // max number of polygons in a path
+#define MAX_PATHVERT      4096 // most verts in a path 
 
 // structure for storing output straight line paths
 typedef struct

@@ -659,6 +659,9 @@
     <ClInclude Include="gameobject\MeshEditComponentBase.h">
       <Filter>gameobject</Filter>
     </ClInclude>
+    <ClInclude Include="editor\ScreenRectSelector.h">
+      <Filter>editor</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\NOWA.ico">
@@ -1222,6 +1225,9 @@
     </ClCompile>
     <ClCompile Include="gameobject\PhysicsActiveSpiderComponent.cpp">
       <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="editor\ScreenRectSelector.cpp">
+      <Filter>editor</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

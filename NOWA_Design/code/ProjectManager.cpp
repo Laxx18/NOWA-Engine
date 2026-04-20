@@ -705,7 +705,7 @@ void ProjectManager::saveGroup(const Ogre::String& filePathName)
 		}
 	}
 	boost::shared_ptr<EventDataSceneValid> eventDataSceneValid(new EventDataSceneValid(true));
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataSceneValid);
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataSceneValid);
 }
 
 void ProjectManager::showFileSaveDialog(const Ogre::String& action, const Ogre::String& fileMask, const Ogre::String& specifiedTargetFolder)
@@ -713,7 +713,7 @@ void ProjectManager::showFileSaveDialog(const Ogre::String& action, const Ogre::
 	this->openSaveFileDialog->setFileName("");
 	
 	boost::shared_ptr<EventDataSceneValid> eventDataSceneValid(new EventDataSceneValid(false));
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataSceneValid);
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataSceneValid);
 	
 	Ogre::ResourceGroupManager::LocationList resLocationsList = Ogre::ResourceGroupManager::getSingleton().getResourceLocationList("Projects");
 	Ogre::ResourceGroupManager::LocationList::const_iterator it = resLocationsList.cbegin();
@@ -859,7 +859,7 @@ void ProjectManager::notifyEndDialog(tools::Dialog* sender, bool result)
 				this->editorManager->attachGroupToPlaceNode(gameObjectIds);
 			});
 			boost::shared_ptr<EventDataSceneValid> eventDataSceneValid(new EventDataSceneValid(true));
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataSceneValid);
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataSceneValid);
 		}
 		else if (this->openSaveFileDialog->getMode() == "AddMeshResources")
 		{
@@ -919,7 +919,7 @@ void ProjectManager::notifyEndDialog(tools::Dialog* sender, bool result)
 		if (false == NOWA::Core::getSingletonPtr()->getCurrentScenePath().empty())
 		{
 			boost::shared_ptr<EventDataSceneValid> eventDataSceneValid(new EventDataSceneValid(true));
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataSceneValid);
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataSceneValid);
 		}
 	}
 
@@ -970,7 +970,7 @@ void ProjectManager::notifyMessageBoxEnd(MyGUI::Message* sender, MyGUI::MessageB
 		this->saveProject(this->projectParameter.projectName + "/" + this->projectParameter.sceneName + "/" + this->projectParameter.sceneName + ".scene");
 	}
 	boost::shared_ptr<EventDataSceneValid> eventDataSceneValid(new EventDataSceneValid(true));
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataSceneValid);
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataSceneValid);
 }
 
 Ogre::String ProjectManager::getSceneFileName(void) const

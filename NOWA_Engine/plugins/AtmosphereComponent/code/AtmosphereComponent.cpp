@@ -1082,22 +1082,22 @@ namespace NOWA
 
 		if (this->timeOfDay >= 0.0f && this->timeOfDay < 0.5f)
 		{
-			// Morning: 0.0 to 0.5 → 6:00 to 12:00
+			// Morning: 0.0 to 0.5 -> 6:00 to 12:00
 			value = Interpolator::getInstance()->linearInterpolation(this->timeOfDay, 0.0f, 0.5f, 6.0f, 12.0f);
 		}
 		else if (this->timeOfDay >= 0.5f && this->timeOfDay < 1.0f)
 		{
-			// Afternoon: 0.5 to 1.0 → 12:00 to 18:00 (CHANGED from 21:00!)
+			// Afternoon: 0.5 to 1.0 -> 12:00 to 18:00 (CHANGED from 21:00!)
 			value = Interpolator::getInstance()->linearInterpolation(this->timeOfDay, 0.5f, 1.0f, 12.0f, 18.0f);
 		}
 		else if (this->timeOfDay >= -1.0f && this->timeOfDay < -0.5f)
 		{
-			// Evening: -1.0 to -0.5 → 18:00 to 24:00 (CHANGED from 21:00!)
+			// Evening: -1.0 to -0.5 -> 18:00 to 24:00 (CHANGED from 21:00!)
 			value = Interpolator::getInstance()->linearInterpolation(this->timeOfDay, -1.0f, -0.5f, 18.0f, 24.0f);
 		}
 		else if (this->timeOfDay >= -0.5f && this->timeOfDay < 0.0f)
 		{
-			// Night: -0.5 to 0.0 → 0:00 to 6:00
+			// Night: -0.5 to 0.0 -> 0:00 to 6:00
 			value = Interpolator::getInstance()->linearInterpolation(this->timeOfDay, -0.5f, 0.0f, 0.0f, 6.0f);
 		}
 

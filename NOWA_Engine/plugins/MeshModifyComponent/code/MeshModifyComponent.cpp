@@ -1684,8 +1684,8 @@ namespace NOWA
 
         // Contact normal points FROM wall TOWARD car (outward).
         // To dent the car we must push INWARD = opposite to normal.
-        // invertEffect=false → dent inward (default for crashes)
-        // invertEffect=true  → push outward
+        // invertEffect=false -> dent inward (default for crashes)
+        // invertEffect=true  -> push outward
         Ogre::Vector3 deformDir = invertEffect ? direction : -direction;
         deformDir.normalise();
 

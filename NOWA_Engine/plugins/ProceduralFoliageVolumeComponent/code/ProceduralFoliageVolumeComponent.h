@@ -37,7 +37,7 @@ namespace NOWA
         bool enabled;          // Can disable rule without deleting
 
         // ========== Density & Distribution ==========
-        Ogre::Real density;            // Instances per m² (0.01 - 10.0)
+        Ogre::Real density;            // Instances per m^2 (0.01 - 10.0)
         Ogre::uint32 seed;             // Seed for this rule (reproducible)
         Ogre::Real minDistanceToSame;  // Min spacing between same type (meters)
         Ogre::Real minDistanceToOther; // Min spacing to ANY other vegetation

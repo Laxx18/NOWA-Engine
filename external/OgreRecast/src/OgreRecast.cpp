@@ -615,7 +615,7 @@ bool OgreRecast::NavMeshBuild(InputGeom* input)
 		m_pLog->logMessage("Detour 5000");
 
 		m_navQuery = dtAllocNavMeshQuery();
-		status = m_navQuery->init(m_navMesh, 2048);
+		status = m_navQuery->init(m_navMesh, 65535);
 
 		m_pLog->logMessage("Detour 5500");
 

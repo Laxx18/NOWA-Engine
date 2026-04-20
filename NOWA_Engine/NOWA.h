@@ -359,6 +359,7 @@ namespace NOWA
 #include "editor/EditorManager.h"
 #include "editor/SelectionRectangle.h"
 #include "editor/SelectionManager.h"
+#include "editor/ScreenRectSelector.h"
 
 // Camera
 #include "camera/Camcorder.h"

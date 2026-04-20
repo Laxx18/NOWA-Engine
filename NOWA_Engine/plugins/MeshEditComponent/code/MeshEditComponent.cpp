@@ -28,6 +28,27 @@ GPL v3
 
 #include "editor/EditorManager.h"
 
+namespace
+{
+    std::unordered_set<size_t> expandToCoLocated(const std::unordered_set<size_t>& base, const std::vector<int>& vertexGroup, const std::vector<std::vector<size_t>>& positionGroups)
+    {
+        std::unordered_set<size_t> result = base;
+        for (size_t idx : base)
+        {
+            const int g = vertexGroup[idx];
+            if (g < 0)
+            {
+                continue; // lone vertex — no group
+            }
+            for (size_t member : positionGroups[static_cast<size_t>(g)])
+            {
+                result.insert(member);
+            }
+        }
+        return result;
+    }
+}
+
 namespace NOWA
 {
     using namespace rapidxml;
@@ -43,6 +64,7 @@ namespace NOWA
         editableItem(nullptr),
         dynamicVertexBuffer(nullptr),
         dynamicIndexBuffer(nullptr),
+        meshRebuildCounter(0),
         isIndices32(false),
         vertexCount(0),
         indexCount(0),
@@ -51,110 +73,155 @@ namespace NOWA
         activeTool(ActiveTool::SELECT),
         isGrabbing(false),
         isBrushArmed(false),
+        brushLastHitPos(Ogre::Vector3::ZERO),
         overlayNode(nullptr),
         overlayObject(nullptr),
-        overlayDirty(false),
+        overlayClosureRemoved(false),
         isPressing(false),
         isShiftPressed(false),
         isCtrlPressed(false),
         isEditorMeshModifyMode(false),
         isSelected(false),
         isSimulating(false),
+        isRectSelecting(false),
+        rectDragThreshold(4.0f),
+        rectPressX(0),
+        rectPressY(0),
+
+        // ── Core ─────────────────────────────────────────────────────────────
         activated(new Variant(MeshEditComponent::AttrActivated(), true, this->attributes)),
         editMode(new Variant(MeshEditComponent::AttrEditMode(), std::vector<Ogre::String>{"Object", "Vertex", "Edge", "Face"}, this->attributes)),
         showWireframe(new Variant(MeshEditComponent::AttrShowWireframe(), true, this->attributes)),
         xRayOverlay(new Variant(MeshEditComponent::AttrXRayOverlay(), true, this->attributes)),
         vertexMarkerSize(new Variant(MeshEditComponent::AttrVertexMarkerSize(), 0.04f, this->attributes)),
         outputFileName(new Variant(MeshEditComponent::AttrOutputFileName(), Ogre::String(""), this->attributes)),
+
+        // ── Brush ────────────────────────────────────────────────────────────
         brushName(new Variant(MeshEditComponent::AttrBrushName(), this->attributes)),
         brushSize(new Variant(MeshEditComponent::AttrBrushSize(), 1.0f, this->attributes)),
         brushIntensity(new Variant(MeshEditComponent::AttrBrushIntensity(), 0.1f, this->attributes)),
         brushFalloff(new Variant(MeshEditComponent::AttrBrushFalloff(), 2.0f, this->attributes)),
         brushMode(new Variant(MeshEditComponent::AttrBrushMode(), std::vector<Ogre::String>{"Push", "Pull", "Smooth", "Flatten", "Pinch", "Inflate"}, this->attributes)),
+
+        // ── NEW: Modeling Parameters ─────────────────────────────────────────
+        proportionalRadius(new Variant(MeshEditComponent::AttrProportionalRadius(), 1.0f, this->attributes)),
+        bevelAmount(new Variant(MeshEditComponent::AttrBevelAmount(), 0.05f, this->attributes)),
+        loopCutFraction(new Variant(MeshEditComponent::AttrLoopCutFraction(), 0.5f, this->attributes)),
+
+        // ── Existing Actions ─────────────────────────────────────────────────
         weldButton(new Variant(MeshEditComponent::AttrWeldVertices(), Ogre::String("Weld"), this->attributes)),
         flipNormalsButton(new Variant(MeshEditComponent::AttrFlipNormals(), Ogre::String("Flip Normals"), this->attributes)),
         recalcNormalsButton(new Variant(MeshEditComponent::AttrRecalcNormals(), Ogre::String("Recalculate"), this->attributes)),
         subdivideFacesButton(new Variant(MeshEditComponent::AttrSubdivideFaces(), Ogre::String("Subdivide Selected"), this->attributes)),
         subdivideAllButton(new Variant(MeshEditComponent::AttrSubdivideAll(), Ogre::String("Subdivide All"), this->attributes)),
+
         extrudeAmount(new Variant(MeshEditComponent::AttrExtrudeAmount(), 0.1f, this->attributes)),
         extrudeFacesButton(new Variant(MeshEditComponent::AttrExtrudeFaces(), Ogre::String("Extrude Selected"), this->attributes)),
+
+        // ── NEW: Modeling Actions ────────────────────────────────────────────
+        mergeSelectedButton(new Variant(MeshEditComponent::AttrMergeSelected(), Ogre::String("Merge Selected"), this->attributes)),
+        dissolveButton(new Variant(MeshEditComponent::AttrDissolveSelected(), Ogre::String("Dissolve"), this->attributes)),
+        fillButton(new Variant(MeshEditComponent::AttrFillSelected(), Ogre::String("Fill"), this->attributes)),
+        bevelButton(new Variant(MeshEditComponent::AttrBevel(), Ogre::String("Bevel"), this->attributes)),
+        loopCutButton(new Variant(MeshEditComponent::AttrLoopCut(), Ogre::String("Loop Cut"), this->attributes)),
+
+        // ── Mirror ───────────────────────────────────────────────────────────
         mirrorAxis(new Variant(MeshEditComponent::AttrMirrorAxis(), std::vector<Ogre::String>{"+X", "-X", "+Y", "-Y", "+Z", "-Z"}, this->attributes)),
         mirrorMeshButton(new Variant(MeshEditComponent::AttrMirrorMesh(), Ogre::String("Mirror Mesh"), this->attributes)),
+
+        // ── Apply Scale ──────────────────────────────────────────────────────
         applyScaleButton(new Variant(MeshEditComponent::AttrApplyScale(), Ogre::String("Apply Scale"), this->attributes)),
+
+        // ── Final Actions (moved last) ────────────────────────────────────────
         applyMeshButton(new Variant(MeshEditComponent::AttrApplyMesh(), Ogre::String("Apply Mesh"), this->attributes)),
         cancelEditButton(new Variant(MeshEditComponent::AttrCancelEdit(), Ogre::String("Cancel Edit"), this->attributes))
     {
-
         this->outputFileName->setDescription("Output file name (no extension). Defaults to <original>_edit. Never overwrites the original mesh.");
 
         this->vertexMarkerSize->setConstraints(0.005f, 1.0f);
         this->vertexMarkerSize->addUserData(GameObject::AttrActionNoUndo());
 
-        // ── Weld ─────────────────────────────────────────────────────────────
+        // ── NEW PARAMS ───────────────────────────────────────────────────────
+        this->proportionalRadius->setConstraints(0.001f, 100.0f);
+        this->proportionalRadius->setDescription("Radius for proportional editing. Nearby vertices are affected with smooth falloff.");
+
+        this->bevelAmount->setConstraints(0.0001f, 10.0f);
+        this->bevelAmount->setDescription("Distance used for bevel operations. Controls edge width or corner rounding.");
+
+        this->loopCutFraction->setConstraints(0.01f, 0.99f);
+        this->loopCutFraction->setDescription("Position of loop cut along edges (0.5 = centered).");
+
+        // ── NEW ACTIONS ──────────────────────────────────────────────────────
+
+        this->mergeSelectedButton->addUserData(GameObject::AttrActionExec());
+        this->mergeSelectedButton->addUserData(GameObject::AttrActionExecId(), MeshEditComponent::ActionMergeSelected());
+        this->mergeSelectedButton->setDescription("Merges selected vertices into a single point (center). "
+                                                  "Use to clean up geometry or close small gaps. Keyboard: M.");
+
+        this->dissolveButton->addUserData(GameObject::AttrActionExec());
+        this->dissolveButton->addUserData(GameObject::AttrActionExecId(), MeshEditComponent::ActionDissolveSelected());
+        this->dissolveButton->setDescription("Removes selected vertices/edges while preserving surrounding faces. "
+                                             "Does not create holes. Ideal for simplifying topology. Keyboard: X.");
+
+        this->fillButton->addUserData(GameObject::AttrActionExec());
+        this->fillButton->addUserData(GameObject::AttrActionExecId(), MeshEditComponent::ActionFillSelected());
+        this->fillButton->setDescription("Creates a face from selected vertices or edges. "
+                                         "Use to close holes in the mesh. Keyboard: F.");
+
+        this->bevelButton->addUserData(GameObject::AttrActionExec());
+        this->bevelButton->addUserData(GameObject::AttrActionExecId(), MeshEditComponent::ActionBevel());
+        this->bevelButton->setDescription("Bevels selected edges or vertices using 'Bevel Amount'. "
+                                          "Creates chamfers or rounded edges. Keyboard: B.");
+
+        this->loopCutButton->addUserData(GameObject::AttrActionExec());
+        this->loopCutButton->addUserData(GameObject::AttrActionExecId(), MeshEditComponent::ActionLoopCut());
+        this->loopCutButton->setDescription("Inserts an edge loop across the mesh at 'Loop Cut Fraction'. "
+                                            "Useful for adding detail or controlling deformation. Keyboard: Ctrl+R.");
+
         this->weldButton->addUserData(GameObject::AttrActionExec());
         this->weldButton->addUserData(GameObject::AttrActionExecId(), MeshEditComponent::ActionWeldVertices());
-        this->weldButton->setDescription("Merges vertices that are closer than 0.00001 units. "
-                                         "Fixes z-fighting from flat-shaded (per-face) meshes. Keyboard: none.");
+        this->weldButton->setDescription("Merges vertices that are closer than 0.00001 units. Fixes z-fighting.");
 
-        // ── Normals ───────────────────────────────────────────────────────────
         this->flipNormalsButton->addUserData(GameObject::AttrActionExec());
         this->flipNormalsButton->addUserData(GameObject::AttrActionExecId(), MeshEditComponent::ActionFlipNormals());
-        this->flipNormalsButton->setDescription("Flips all mesh normals and reverses triangle winding. "
-                                                "Use when the mesh appears inverted/inside-out. Keyboard: F.");
+        this->flipNormalsButton->setDescription("Flips all mesh normals and triangle winding. Keyboard: F.");
 
         this->recalcNormalsButton->addUserData(GameObject::AttrActionExec());
         this->recalcNormalsButton->addUserData(GameObject::AttrActionExecId(), MeshEditComponent::ActionRecalcNormals());
-        this->recalcNormalsButton->setDescription("Recomputes smooth, area-weighted normals from the current geometry. "
-                                                  "Use after heavy sculpting or vertex moves. Keyboard: Ctrl+N.");
+        this->recalcNormalsButton->setDescription("Recomputes smooth normals. Keyboard: Ctrl+N.");
 
-        // ── Subdivide ─────────────────────────────────────────────────────────
         this->subdivideFacesButton->addUserData(GameObject::AttrActionExec());
         this->subdivideFacesButton->addUserData(GameObject::AttrActionExecId(), MeshEditComponent::ActionSubdivideFaces());
-        this->subdivideFacesButton->setDescription("Splits each selected face into 4 triangles by adding edge midpoints. "
-                                                   "Select faces first (Face mode). Keyboard: I.");
+        this->subdivideFacesButton->setDescription("Splits selected faces into 4.");
 
         this->subdivideAllButton->addUserData(GameObject::AttrActionExec());
         this->subdivideAllButton->addUserData(GameObject::AttrActionExecId(), MeshEditComponent::ActionSubdivideAll());
-        this->subdivideAllButton->setDescription("Subdivides every face in the mesh uniformly — no selection needed. "
-                                                 "Each call multiplies triangle count by 4. Keyboard: Ctrl+I.");
+        this->subdivideAllButton->setDescription("Subdivides entire mesh.");
 
-        // ── Extrude ───────────────────────────────────────────────────────────
         this->extrudeAmount->setConstraints(0.001f, 100.0f);
-        this->extrudeAmount->addUserData(GameObject::AttrActionNoUndo());
-        this->extrudeAmount->setDescription("Distance to extrude faces along their normal. Used by 'Extrude Selected'. Keyboard: E.");
+        this->extrudeAmount->setDescription("Distance for extrusion.");
 
         this->extrudeFacesButton->addUserData(GameObject::AttrActionExec());
         this->extrudeFacesButton->addUserData(GameObject::AttrActionExecId(), MeshEditComponent::ActionExtrudeFaces());
-        this->extrudeFacesButton->setDescription("Extrudes selected faces outward by 'Extrude Amount'. "
-                                                 "Creates cap faces and side walls. Select faces first. Keyboard: E.");
+        this->extrudeFacesButton->setDescription("Extrudes selected faces.");
 
-        // ── Mirror ────────────────────────────────────────────────────────────
-        this->mirrorAxis->addUserData(GameObject::AttrActionNoUndo());
-        this->mirrorAxis->setDescription("Axis for Mirror Mesh. The sign selects which half is the source: "
-                                         "+X keeps the positive-X half, -X keeps the negative-X half.");
+        this->mirrorAxis->setDescription("Axis for mirroring mesh.");
 
         this->mirrorMeshButton->addUserData(GameObject::AttrActionExec());
         this->mirrorMeshButton->addUserData(GameObject::AttrActionExecId(), MeshEditComponent::ActionMirrorMesh());
-        this->mirrorMeshButton->setDescription("Mirrors the mesh across the chosen Mirror Axis. "
-                                               "Duplicates and reflects geometry, then welds the seam edge. "
-                                               "Ideal for symmetric objects — model one half, mirror the other.");
+        this->mirrorMeshButton->setDescription("Mirrors mesh and welds seam.");
 
-        // ── Apply Scale ───────────────────────────────────────────────────────
         this->applyScaleButton->addUserData(GameObject::AttrActionExec());
         this->applyScaleButton->addUserData(GameObject::AttrActionExecId(), MeshEditComponent::ActionApplyScale());
-        this->applyScaleButton->setDescription("Bakes the scene-node's current world scale into vertex positions, "
-                                               "then resets the node scale to (1, 1, 1). "
-                                               "Run this before export or physics setup when an accidental scale exists.");
+        this->applyScaleButton->setDescription("Applies node scale to vertices.");
 
-        // ── Apply / Cancel ────────────────────────────────────────────────────
         this->applyMeshButton->addUserData(GameObject::AttrActionExec());
         this->applyMeshButton->addUserData(GameObject::AttrActionExecId(), MeshEditComponent::ActionApplyMesh());
-        this->applyMeshButton->setDescription("Exports the edited mesh to <Output File Name>.mesh. "
-                                              "Use this file as a standalone mesh asset after editing.");
+        this->applyMeshButton->setDescription("Exports edited mesh to file.");
 
         this->cancelEditButton->addUserData(GameObject::AttrActionExec());
         this->cancelEditButton->addUserData(GameObject::AttrActionExecId(), MeshEditComponent::ActionCancelEdit());
-        this->cancelEditButton->setDescription("Discards all edits and restores the original mesh.");
+        this->cancelEditButton->setDescription("Discards all edits.");
     }
 
     MeshEditComponent::~MeshEditComponent()
@@ -333,6 +400,10 @@ namespace NOWA
 
         // ── Create overlay ────────────────────────────────────────────────────
         this->createOverlay();
+        // this->createStatusOverlay();
+
+        Ogre::Camera* camera = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
+        this->rectSelector.init(this->gameObjectPtr->getSceneManager(), camera);
 
         // Do NOT add input listener here — updateModificationState() will do it
         // once the editor fires EDITOR_MESH_MODIFY_MODE and selects this object.
@@ -405,6 +476,7 @@ namespace NOWA
 
         this->removeInputListener();
         this->destroyOverlay();
+        // this->destroyStatusOverlay();
 
         // The editable item is now the truth — do NOT restore the original.
         // Only cancelEdit() restores the original mesh.
@@ -427,6 +499,8 @@ namespace NOWA
         // editableItem and editableMesh stay alive — they ARE the GameObject's mesh now.
         this->editableItem = nullptr;
         this->editableMesh.reset(); // releases our shared_ptr; Ogre still owns the mesh
+
+        this->rectSelector.destroy();
     }
 
     bool MeshEditComponent::onCloned(void)
@@ -584,20 +658,37 @@ namespace NOWA
         // Inside the grab-active block in keyPressed:
         if (this->isGrabbing)
         {
-            // Ogre: X=right, Y=up, Z=depth  (Blender: X=right, Z=up, Y=depth)
+            // X stays as X
             if (evt.key == OIS::KC_X)
             {
                 this->grabAxis = (this->grabAxis == GrabAxis::X) ? GrabAxis::FREE : GrabAxis::X;
                 return false;
             }
+
+            // Y key -> Ogre Z (depth) — Blender convention: Y key = depth axis
             if (evt.key == OIS::KC_Y)
+            {
+                this->grabAxis = (this->grabAxis == GrabAxis::Z) ? GrabAxis::FREE : GrabAxis::Z;
+                return false;
+            }
+
+            // Z key -> Ogre Y (up)   — Blender convention: Z key = up axis
+            if (evt.key == OIS::KC_Z)
             {
                 this->grabAxis = (this->grabAxis == GrabAxis::Y) ? GrabAxis::FREE : GrabAxis::Y;
                 return false;
             }
-            if (evt.key == OIS::KC_Z)
+
+            // S key -> toggle scale mode
+            if (evt.key == OIS::KC_S)
             {
-                this->grabAxis = (this->grabAxis == GrabAxis::Z) ? GrabAxis::FREE : GrabAxis::Z;
+                this->isScaling = !this->isScaling;
+                this->grabScaleMouseAccum = 0;
+                if (this->isScaling)
+                {
+                    this->grabAxis = GrabAxis::FREE; // scale is always free-axis
+                }
+                // this->updateStatusOverlay();
                 return false;
             }
         }
@@ -613,6 +704,62 @@ namespace NOWA
             {
                 this->deselectAll();
             }
+            return false;
+        }
+
+        // M : merge selected vertices to their centroid
+        if (evt.key == OIS::KC_M && !this->isGrabbing)
+        {
+            this->mergeSelected();
+            return false;
+        }
+        
+        // D : dissolve selected (vertex or edge mode)
+        if (evt.key == OIS::KC_D && this->isCtrlPressed && !this->isGrabbing)
+        {
+            this->dissolveSelected();
+            return false;
+        }
+        
+        // O : toggle proportional editing
+        if (evt.key == OIS::KC_O && !this->isGrabbing)
+        {
+            this->isProportionalEditing = !this->isProportionalEditing;
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, Ogre::String("[MeshEditComponent] Proportional editing: ") + (this->isProportionalEditing ? "ON" : "OFF"));
+            // this->updateStatusOverlay();
+            return false;
+        }
+
+        // Ctrl+B : bevel selected edges
+        if (evt.key == OIS::KC_B && this->isCtrlPressed && !this->isGrabbing)
+        {
+            this->bevel(this->bevelAmount->getReal());
+            return false;
+        }
+
+        // Ctrl+R : loop cut (uses first selected edge as guide)
+        if (evt.key == OIS::KC_R && this->isCtrlPressed && !this->isGrabbing)
+        {
+            this->loopCut(this->loopCutFraction->getReal());
+            return false;
+        }
+        
+        // Alt+F : fill border loop with a face
+        if (evt.key == OIS::KC_F && this->isCtrlPressed && !this->isGrabbing) // reuse Ctrl+F (Alt not easy in OIS)
+        {
+            this->fillSelected();
+            return false;
+        }
+
+        // L : select linked (flood fill from element under cursor)
+        if (evt.key == OIS::KC_L && !this->isGrabbing)
+        {
+            // We need current mouse position — OIS doesn't give it here,
+            // so we read it from the InputDeviceCore mouse state.
+            const OIS::MouseState& ms = NOWA::InputDeviceCore::getSingletonPtr()->getMouse()->getMouseState();
+            Ogre::Real sx = 0, sy = 0;
+            MathHelper::getInstance()->mouseToViewPort(ms.X.abs, ms.Y.abs, sx, sy, Core::getSingletonPtr()->getOgreRenderWindow());
+            this->selectLinked(sx, sy, this->isShiftPressed);
             return false;
         }
 
@@ -662,6 +809,7 @@ namespace NOWA
             return true;
         }
 
+        // ── Grab: RMB cancels, LMB confirms ──────────────────────────────────────
         if (id == OIS::MB_Right && this->isGrabbing)
         {
             this->cancelGrab();
@@ -677,35 +825,42 @@ namespace NOWA
             return true;
         }
 
-        this->isPressing = true;
         const bool add = this->isShiftPressed;
         const bool rem = this->isCtrlPressed;
 
         Ogre::Real sx = 0, sy = 0;
         MathHelper::getInstance()->mouseToViewPort(evt.state.X.abs, evt.state.Y.abs, sx, sy, Core::getSingletonPtr()->getOgreRenderWindow());
 
+        // Record press position — used in mouseMoved to detect drag threshold
+        this->rectPressX = evt.state.X.abs;
+        this->rectPressY = evt.state.Y.abs;
+
         const EditMode mode = this->getEditMode();
 
+        // ── VERTEX ────────────────────────────────────────────────────────────────
         if (mode == EditMode::VERTEX)
         {
-            // Brush mode armed (B was held) — paint on click
+            // Brush path
             if (this->isBrushArmed)
             {
                 Ogre::Vector3 hp, hn;
                 size_t ht;
                 if (this->raycastMesh(sx, sy, hp, hn, ht))
                 {
-                    this->applyBrush(hp, rem); // Ctrl inverts brush
+                    this->isPressing = true;
+                    this->brushLastHitPos = hp;
+                    this->brushStrokePreEditData = this->getMeshData();
+                    this->applyBrush(hp, rem);
                 }
                 return false;
             }
 
-            size_t idx;
-            if (this->pickVertex(sx, sy, idx))
+            size_t vIdx;
+            if (this->pickVertex(sx, sy, vIdx))
             {
-                const Ogre::Vector3& pickedPos = this->vertices[idx];
-                constexpr float kEps2 = 1e-8f; // 0.01mm squared
-
+                // Direct vertex click — no rect drag
+                const Ogre::Vector3& pickedPos = this->vertices[vIdx];
+                constexpr float kEps2 = 1e-8f;
                 if (rem)
                 {
                     for (size_t i = 0; i < this->vertexCount; ++i)
@@ -715,7 +870,6 @@ namespace NOWA
                             this->selectedVertices.erase(i);
                         }
                     }
-                    this->scheduleOverlayUpdate();
                 }
                 else
                 {
@@ -730,11 +884,17 @@ namespace NOWA
                             this->selectedVertices.insert(i);
                         }
                     }
-                    this->scheduleOverlayUpdate();
                 }
+                this->scheduleOverlayUpdate();
+                this->isPressing = true;
             }
-            // No fallback to brush on missed click — just a miss
+            else
+            {
+                // Nothing under cursor → prepare rect select (actual start on move)
+                this->isPressing = true;
+            }
         }
+        // ── EDGE ──────────────────────────────────────────────────────────────────
         else if (mode == EditMode::EDGE)
         {
             EdgeKey e(0, 0);
@@ -750,7 +910,9 @@ namespace NOWA
                     this->selectEdge(e.a, e.b, add);
                 }
             }
+            this->isPressing = true;
         }
+        // ── FACE ──────────────────────────────────────────────────────────────────
         else if (mode == EditMode::FACE)
         {
             size_t fi;
@@ -766,7 +928,9 @@ namespace NOWA
                     this->selectFace(fi, add);
                 }
             }
+            this->isPressing = true;
         }
+
         return false;
     }
 
@@ -785,24 +949,52 @@ namespace NOWA
             return true;
         }
 
+        Ogre::Real sx = 0, sy = 0;
+        MathHelper::getInstance()->mouseToViewPort(evt.state.X.abs, evt.state.Y.abs, sx, sy, Core::getSingletonPtr()->getOgreRenderWindow());
+
+        // ── Grab drag ─────────────────────────────────────────────────────────────
         if (this->isGrabbing)
         {
             this->applyGrabMouseDelta(evt.state.X.rel, evt.state.Y.rel);
             return false;
         }
 
-        // Brush stroke: only when explicitly armed (B held) + LMB dragging in vertex mode
+        // ── Brush stroke ──────────────────────────────────────────────────────────
         if (this->isBrushArmed && this->isPressing && this->getEditMode() == EditMode::VERTEX)
         {
-            Ogre::Real sx = 0, sy = 0;
-            MathHelper::getInstance()->mouseToViewPort(evt.state.X.abs, evt.state.Y.abs, sx, sy, Core::getSingletonPtr()->getOgreRenderWindow());
             Ogre::Vector3 hp, hn;
             size_t ht;
             if (this->raycastMesh(sx, sy, hp, hn, ht))
             {
-                this->applyBrush(hp, this->isCtrlPressed);
+                const Ogre::Real minDist = this->brushSize->getReal() * 0.1f;
+                if (hp.distance(this->brushLastHitPos) >= minDist)
+                {
+                    this->brushLastHitPos = hp;
+                    this->applyBrush(hp, this->isCtrlPressed);
+                }
             }
             return false;
+        }
+
+        // ── Rectangle select ──────────────────────────────────────────────────────
+        if (this->isPressing && !this->isBrushArmed)
+        {
+            const float dxPx = std::abs(evt.state.X.abs - this->rectPressX);
+            const float dyPx = std::abs(evt.state.Y.abs - this->rectPressY);
+
+            if (!this->rectSelector.isDragging() && (dxPx > this->rectDragThreshold || dyPx > this->rectDragThreshold))
+            {
+                // Cross the threshold — start rect drag from where LMB was pressed
+                float sx0 = 0, sy0 = 0;
+                MathHelper::getInstance()->mouseToViewPort(static_cast<int>(this->rectPressX), static_cast<int>(this->rectPressY), sx0, sy0, Core::getSingletonPtr()->getOgreRenderWindow());
+                this->rectSelector.beginDrag(sx0, sy0);
+            }
+
+            if (this->rectSelector.isDragging())
+            {
+                this->rectSelector.updateDrag(sx, sy);
+                return false;
+            }
         }
 
         return true;
@@ -810,11 +1002,216 @@ namespace NOWA
 
     bool MeshEditComponent::mouseReleased(const OIS::MouseEvent&, OIS::MouseButtonID id)
     {
+        struct VertexRectAdapter : public NOWA::IScreenRectSelectable
+        {
+            MeshEditComponent& comp;
+            bool add, remove;
+            VertexRectAdapter(MeshEditComponent& c, bool a, bool r) : comp(c), add(a), remove(r)
+            {
+            }
+
+            size_t getElementCount() const override
+            {
+                return comp.vertexCount;
+            }
+
+            bool projectElement(size_t idx, float& nx, float& ny) const override
+            {
+                return comp.projectVertexToScreen(idx, nx, ny);
+            }
+
+            void applyRectSelection(const std::vector<size_t>& ids, bool a, bool r) override
+            {
+                // ids may contain duplicates via co-location — dedup via set
+                if (!a && !r)
+                {
+                    comp.selectedVertices.clear();
+                }
+                for (size_t i : ids)
+                {
+                    if (r)
+                    {
+                        comp.selectedVertices.erase(i);
+                    }
+                    else
+                    {
+                        comp.selectedVertices.insert(i);
+                    }
+                }
+                comp.scheduleOverlayUpdate();
+            }
+        };
+
+        // ── Edge adapter ──────────────────────────────────────────────────────────────
+        struct EdgeRectAdapter : public NOWA::IScreenRectSelectable
+        {
+            MeshEditComponent& comp;
+            std::vector<MeshEditComponent::EdgeKey> edgeList; // deduplicated edge list
+
+            EdgeRectAdapter(MeshEditComponent& c) : comp(c)
+            {
+                std::set<std::pair<size_t, size_t>> seen;
+                for (size_t i = 0; i < c.indexCount; i += 3)
+                {
+                    for (int e = 0; e < 3; ++e)
+                    {
+                        size_t a = c.indices[i + e], b = c.indices[i + (e + 1) % 3];
+                        if (seen.insert({std::min(a, b), std::max(a, b)}).second)
+                        {
+                            edgeList.push_back(MeshEditComponent::EdgeKey(a, b));
+                        }
+                    }
+                }
+            }
+
+            size_t getElementCount() const override
+            {
+                return edgeList.size();
+            }
+
+            bool projectElement(size_t idx, float& nx, float& ny) const override
+            {
+                // Project edge midpoint — simple and practical
+                float ax, ay, bx, by;
+                bool okA = comp.projectVertexToScreen(edgeList[idx].a, ax, ay);
+                bool okB = comp.projectVertexToScreen(edgeList[idx].b, bx, by);
+                if (!okA && !okB)
+                {
+                    return false;
+                }
+                if (!okA)
+                {
+                    nx = bx;
+                    ny = by;
+                    return true;
+                }
+                if (!okB)
+                {
+                    nx = ax;
+                    ny = ay;
+                    return true;
+                }
+                nx = (ax + bx) * 0.5f;
+                ny = (ay + by) * 0.5f;
+                return true;
+            }
+
+            void applyRectSelection(const std::vector<size_t>& ids, bool add, bool remove) override
+            {
+                if (!add && !remove)
+                {
+                    comp.selectedEdges.clear();
+                }
+                for (size_t i : ids)
+                {
+                    if (remove)
+                    {
+                        comp.selectedEdges.erase(edgeList[i]);
+                    }
+                    else
+                    {
+                        comp.selectedEdges.insert(edgeList[i]);
+                    }
+                }
+                comp.scheduleOverlayUpdate();
+            }
+        };
+
+        // ── Face adapter ──────────────────────────────────────────────────────────────
+        struct FaceRectAdapter : public NOWA::IScreenRectSelectable
+        {
+            MeshEditComponent& comp;
+            FaceRectAdapter(MeshEditComponent& c) : comp(c)
+            {
+            }
+
+            size_t getElementCount() const override
+            {
+                return comp.indexCount / 3;
+            }
+
+            bool projectElement(size_t idx, float& nx, float& ny) const override
+            {
+                // Project face centroid
+                size_t i0 = comp.indices[idx * 3], i1 = comp.indices[idx * 3 + 1], i2 = comp.indices[idx * 3 + 2];
+                float ax, ay, bx, by, cx, cy;
+                bool okA = comp.projectVertexToScreen(i0, ax, ay);
+                bool okB = comp.projectVertexToScreen(i1, bx, by);
+                bool okC = comp.projectVertexToScreen(i2, cx, cy);
+                int cnt = (int)okA + (int)okB + (int)okC;
+                if (cnt == 0)
+                {
+                    return false;
+                }
+                nx = ((okA ? ax : 0.f) + (okB ? bx : 0.f) + (okC ? cx : 0.f)) / cnt;
+                ny = ((okA ? ay : 0.f) + (okB ? by : 0.f) + (okC ? cy : 0.f)) / cnt;
+                return true;
+            }
+
+            void applyRectSelection(const std::vector<size_t>& ids, bool add, bool remove) override
+            {
+                if (!add && !remove)
+                {
+                    comp.selectedFaces.clear();
+                }
+                for (size_t i : ids)
+                {
+                    if (remove)
+                    {
+                        comp.selectedFaces.erase(i);
+                    }
+                    else
+                    {
+                        comp.selectedFaces.insert(i);
+                    }
+                }
+                comp.scheduleOverlayUpdate();
+            }
+        };
+
         if (id == OIS::MB_Left)
         {
+            // ── Finish brush stroke ──────────────────────────────────────────────
+            if (this->isPressing && this->isBrushArmed && !this->brushStrokePreEditData.empty())
+            {
+                this->fireUndoEvent(this->brushStrokePreEditData);
+                this->brushStrokePreEditData.clear();
+            }
+
+            // ── Finish rectangle select ──────────────────────────────────────────
+            if (this->rectSelector.isDragging())
+            {
+                const bool add = this->isShiftPressed;
+                const bool rem = this->isCtrlPressed;
+
+                switch (this->getEditMode())
+                {
+                case EditMode::VERTEX:
+                {
+                    VertexRectAdapter adapter(*this, add, rem);
+                    this->rectSelector.endDrag(adapter, add, rem);
+                    break;
+                }
+                case EditMode::EDGE:
+                {
+                    EdgeRectAdapter adapter(*this);
+                    this->rectSelector.endDrag(adapter, add, rem);
+                    break;
+                }
+                case EditMode::FACE:
+                {
+                    FaceRectAdapter adapter(*this);
+                    this->rectSelector.endDrag(adapter, add, rem);
+                    break;
+                }
+                default:
+                    this->rectSelector.cancelDrag();
+                    break;
+                }
+            }
+
             this->isPressing = false;
         }
-
         return true;
     }
 
@@ -829,193 +1226,16 @@ namespace NOWA
             return;
         }
 
-        const Ogre::String closureId = this->gameObjectPtr->getName() + "_MeshEditOverlay_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
-
-        auto closure = [this](Ogre::Real)
+        // One-time: remove any tracked closure that may have been registered by
+        // a previous version of this code.  GraphicsModule silently ignores unknown ids.
+        if (!this->overlayClosureRemoved)
         {
-            if (!this->overlayDirty.exchange(false) || !this->overlayObject)
-            {
-                return;
-            }
-
-            const EditMode mode = this->getEditMode();
-            this->overlayObject->clear();
-            if (mode == EditMode::OBJECT)
-            {
-                return;
-            }
-
-            // ── Camera for depth-offset ─────────────────────────────────────────
-            Ogre::Camera* cam = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
-            const float pushDist = 0.004f; // world-space nudge toward camera
-
-            // Nudges a world-space point slightly toward the camera so overlay
-            // lines never z-fight with the mesh surface.
-            auto push = [&](const Ogre::Vector3& wp) -> Ogre::Vector3
-            {
-                if (!cam)
-                {
-                    return wp;
-                }
-                return wp + (cam->getDerivedPosition() - wp).normalisedCopy() * pushDist;
-            };
-
-            const bool doWire = (this->showWireframe->getBool() || mode == EditMode::EDGE);
-
-            // ── Wireframe ──────────────────────────────────────────────────────
-            if (doWire)
-            {
-                this->overlayObject->begin("WhiteNoLightingBackground", Ogre::OT_LINE_LIST);
-                const Ogre::ColourValue cWire(0.35f, 0.35f, 0.35f, 1.0f);
-                const Ogre::ColourValue cSel(1.0f, 0.75f, 0.0f, 1.0f);
-                std::set<std::pair<size_t, size_t>> drawn;
-                uint32_t idx = 0;
-                for (size_t i = 0; i < this->indexCount; i += 3)
-                {
-                    for (int e = 0; e < 3; ++e)
-                    {
-                        size_t a = this->indices[i + e];
-                        size_t b = this->indices[i + (e + 1) % 3];
-                        if (!drawn.insert({std::min(a, b), std::max(a, b)}).second)
-                        {
-                            continue;
-                        }
-                        bool sel = (mode == EditMode::EDGE) && this->selectedEdges.count(EdgeKey(a, b));
-                        const Ogre::ColourValue& c = sel ? cSel : cWire;
-                        this->overlayObject->position(push(this->localToWorld(this->vertices[a])));
-                        this->overlayObject->colour(c);
-                        this->overlayObject->index(idx++);
-                        this->overlayObject->position(push(this->localToWorld(this->vertices[b])));
-                        this->overlayObject->colour(c);
-                        this->overlayObject->index(idx++);
-                    }
-                }
-                this->overlayObject->end();
-            }
-
-            // ── Vertex crosses ─────────────────────────────────────────────────
-            if (mode == EditMode::VERTEX)
-            {
-                this->overlayObject->begin("WhiteNoLightingBackground", Ogre::OT_LINE_LIST);
-                const float s = this->vertexMarkerSize->getReal();
-                const Ogre::ColourValue cV(1.0f, 1.0f, 1.0f, 1.0f);
-                const Ogre::ColourValue cVS(1.0f, 0.75f, 0.0f, 1.0f);
-                uint32_t idx = 0;
-                for (size_t i = 0; i < this->vertexCount; ++i)
-                {
-                    bool sel = this->selectedVertices.count(i) > 0;
-                    if (!sel)
-                    {
-                        // If this vertex has a duplicate that IS selected, show as selected too
-                        const Ogre::Vector3& myPos = this->vertices[i];
-                        constexpr float kEps2 = 1e-8f;
-                        for (size_t si : this->selectedVertices)
-                        {
-                            if (this->vertices[si].squaredDistance(myPos) <= kEps2)
-                            {
-                                sel = true;
-                                break;
-                            }
-                        }
-                    }
-                    const Ogre::ColourValue& c = sel ? cVS : cV;
-                    // Crosses are offset from the mesh surface, so push each arm tip individually
-                    Ogre::Vector3 wp = this->localToWorld(this->vertices[i]);
-                    Ogre::Vector3 wp_pushed = push(wp); // centre already pushed
-
-                    this->overlayObject->position(push(wp + Ogre::Vector3(-s, 0, 0)));
-                    this->overlayObject->colour(c);
-                    this->overlayObject->index(idx++);
-                    this->overlayObject->position(push(wp + Ogre::Vector3(s, 0, 0)));
-                    this->overlayObject->colour(c);
-                    this->overlayObject->index(idx++);
-
-                    this->overlayObject->position(push(wp + Ogre::Vector3(0, -s, 0)));
-                    this->overlayObject->colour(c);
-                    this->overlayObject->index(idx++);
-                    this->overlayObject->position(push(wp + Ogre::Vector3(0, s, 0)));
-                    this->overlayObject->colour(c);
-                    this->overlayObject->index(idx++);
-
-                    this->overlayObject->position(push(wp + Ogre::Vector3(0, 0, -s)));
-                    this->overlayObject->colour(c);
-                    this->overlayObject->index(idx++);
-                    this->overlayObject->position(push(wp + Ogre::Vector3(0, 0, s)));
-                    this->overlayObject->colour(c);
-                    this->overlayObject->index(idx++);
-                }
-                this->overlayObject->end();
-            }
-
-            // ── Face centre squares ────────────────────────────────────────────
-            if (mode == EditMode::FACE)
-            {
-                this->overlayObject->begin("WhiteNoLightingBackground", Ogre::OT_LINE_LIST);
-                const float s = this->vertexMarkerSize->getReal() * 1.5f;
-                const Ogre::ColourValue cF(0.5f, 0.5f, 1.0f, 1.0f);
-                const Ogre::ColourValue cFS(1.0f, 0.5f, 0.0f, 1.0f);
-
-                const Ogre::Matrix4 worldMat = this->gameObjectPtr->getSceneNode()->_getFullTransform();
-                Ogre::Matrix3 worldRot3;
-                worldMat.extract3x3Matrix(worldRot3);
-
-                uint32_t idx = 0;
-                for (size_t t = 0; t < this->indexCount / 3; ++t)
-                {
-                    const Ogre::Vector3& lv0 = this->vertices[this->indices[t * 3]];
-                    const Ogre::Vector3& lv1 = this->vertices[this->indices[t * 3 + 1]];
-                    const Ogre::Vector3& lv2 = this->vertices[this->indices[t * 3 + 2]];
-
-                    Ogre::Vector3 localNorm = (lv1 - lv0).crossProduct(lv2 - lv0).normalisedCopy();
-                    Ogre::Vector3 wNorm = (worldRot3 * localNorm).normalisedCopy();
-
-                    Ogre::Vector3 ref = (std::abs(wNorm.dotProduct(Ogre::Vector3::UNIT_Y)) < 0.99f) ? Ogre::Vector3::UNIT_Y : Ogre::Vector3::UNIT_X;
-                    Ogre::Vector3 wTan = wNorm.crossProduct(ref).normalisedCopy();
-                    Ogre::Vector3 wBit = wNorm.crossProduct(wTan).normalisedCopy();
-
-                    Ogre::Vector3 wCen = this->localToWorld((lv0 + lv1 + lv2) / 3.0f);
-                    bool sel = this->selectedFaces.count(t) > 0;
-                    const Ogre::ColourValue& c = sel ? cFS : cF;
-
-                    // Square corners in the face's tangent plane — push each corner
-                    Ogre::Vector3 c00 = push(wCen + (-wTan - wBit) * s);
-                    Ogre::Vector3 c10 = push(wCen + (wTan - wBit) * s);
-                    Ogre::Vector3 c11 = push(wCen + (wTan + wBit) * s);
-                    Ogre::Vector3 c01 = push(wCen + (-wTan + wBit) * s);
-
-                    this->overlayObject->position(c00);
-                    this->overlayObject->colour(c);
-                    this->overlayObject->index(idx++);
-                    this->overlayObject->position(c10);
-                    this->overlayObject->colour(c);
-                    this->overlayObject->index(idx++);
-
-                    this->overlayObject->position(c10);
-                    this->overlayObject->colour(c);
-                    this->overlayObject->index(idx++);
-                    this->overlayObject->position(c11);
-                    this->overlayObject->colour(c);
-                    this->overlayObject->index(idx++);
-
-                    this->overlayObject->position(c11);
-                    this->overlayObject->colour(c);
-                    this->overlayObject->index(idx++);
-                    this->overlayObject->position(c01);
-                    this->overlayObject->colour(c);
-                    this->overlayObject->index(idx++);
-
-                    this->overlayObject->position(c01);
-                    this->overlayObject->colour(c);
-                    this->overlayObject->index(idx++);
-                    this->overlayObject->position(c00);
-                    this->overlayObject->colour(c);
-                    this->overlayObject->index(idx++);
-                }
-                this->overlayObject->end();
-            }
-        };
-
-        NOWA::GraphicsModule::getInstance()->updateTrackedClosure(closureId, closure, false);
+            const Ogre::String closureId = this->gameObjectPtr->getName() + "_MeshEditOverlay_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
+            NOWA::GraphicsModule::getInstance()->removeTrackedClosure(closureId);
+            this->overlayClosureRemoved = true;
+        }
+        // All overlay rebuilds are issued by scheduleOverlayUpdate().
+        // Nothing else to do here every frame.
     }
 
     // =========================================================================
@@ -1080,6 +1300,32 @@ namespace NOWA
         if (MeshEditComponent::ActionApplyScale() == actionId)
         {
             this->applyScale();
+            return true;
+        }
+
+        if (MeshEditComponent::ActionMergeSelected() == actionId)
+        {
+            this->mergeSelected();
+            return true;
+        }
+        if (MeshEditComponent::ActionDissolveSelected() == actionId)
+        {
+            this->dissolveSelected();
+            return true;
+        }
+        if (MeshEditComponent::ActionFillSelected() == actionId)
+        {
+            this->fillSelected();
+            return true;
+        }
+        if (MeshEditComponent::ActionBevel() == actionId)
+        {
+            this->bevel(this->bevelAmount->getReal());
+            return true;
+        }
+        if (MeshEditComponent::ActionLoopCut() == actionId)
+        {
+            this->loopCut(this->loopCutFraction->getReal());
             return true;
         }
 
@@ -1196,6 +1442,18 @@ namespace NOWA
         else if (AttrMirrorAxis() == attribute->getName())
         {
             this->setMirrorAxis(attribute->getListSelectedValue());
+        }
+        else if (AttrProportionalRadius() == attribute->getName())
+        {
+            this->setProportionalRadius(attribute->getReal());
+        }
+        else if (AttrBevelAmount() == attribute->getName())
+        {
+            this->setBevelAmount(attribute->getReal());
+        }
+        else if (AttrLoopCutFraction() == attribute->getName())
+        {
+            this->setLoopCutFraction(attribute->getReal());
         }
     }
 
@@ -1423,7 +1681,8 @@ namespace NOWA
             return;
         }
 
-        // Remove all faces that touch any deleted vertex
+        std::vector<unsigned char> oldData = this->getMeshData();
+
         std::vector<Ogre::uint32> newIdx;
         for (size_t i = 0; i < this->indexCount; i += 3)
         {
@@ -1436,7 +1695,6 @@ namespace NOWA
             newIdx.push_back(this->indices[i + 2]);
         }
 
-        // Remap
         std::vector<int32_t> remap(this->vertexCount, -1);
         std::vector<Ogre::Vector3> nv, nn;
         std::vector<Ogre::Vector4> nt;
@@ -1466,24 +1724,19 @@ namespace NOWA
         this->vertexCount = this->vertices.size();
         this->indexCount = this->indices.size();
         this->selectedVertices.clear();
-
         this->buildVertexAdjacency();
         this->rebuildDynamicBuffers();
         this->scheduleOverlayUpdate();
+        this->fireUndoEvent(oldData);
     }
 
     void MeshEditComponent::deleteSelectedEdges(void)
     {
-        if (this->selectedFaces.empty())
-        {
-            return;
-        }
-        std::vector<unsigned char> oldData = this->getMeshData();
-
         if (this->selectedEdges.empty())
         {
             return;
         }
+        std::vector<unsigned char> oldData = this->getMeshData();
 
         std::vector<Ogre::uint32> newIdx;
         for (size_t i = 0; i < this->indexCount; i += 3)
@@ -1494,7 +1747,7 @@ namespace NOWA
 
             int selCount = (int)this->selectedEdges.count(e01) + (int)this->selectedEdges.count(e12) + (int)this->selectedEdges.count(e20);
 
-            if (selCount >= 2) // need at least 2 selected edges to remove this face
+            if (selCount >= 2) // need ≥2 selected edges on a face to remove it
             {
                 continue;
             }
@@ -1509,7 +1762,6 @@ namespace NOWA
         this->buildVertexAdjacency();
         this->rebuildDynamicBuffers();
         this->scheduleOverlayUpdate();
-
         this->fireUndoEvent(oldData);
     }
 
@@ -1555,26 +1807,28 @@ namespace NOWA
 
     void MeshEditComponent::moveSelected(const Ogre::Vector3& localDelta)
     {
-        std::unordered_set<size_t> toMove;
+        std::unordered_set<size_t> selectedSet;
         for (size_t i : this->selectedVertices)
         {
-            toMove.insert(i);
+            selectedSet.insert(i);
         }
         for (const EdgeKey& e : this->selectedEdges)
         {
-            toMove.insert(e.a);
-            toMove.insert(e.b);
+            selectedSet.insert(e.a);
+            selectedSet.insert(e.b);
         }
         for (size_t t : this->selectedFaces)
         {
-            toMove.insert(this->indices[t * 3]);
-            toMove.insert(this->indices[t * 3 + 1]);
-            toMove.insert(this->indices[t * 3 + 2]);
+            selectedSet.insert(this->indices[t * 3]);
+            selectedSet.insert(this->indices[t * 3 + 1]);
+            selectedSet.insert(this->indices[t * 3 + 2]);
         }
-        if (toMove.empty())
+        if (selectedSet.empty())
         {
             return;
         }
+
+        const std::unordered_set<size_t> toMove = expandToCoLocated(selectedSet, this->vertexGroup, this->positionGroups);
 
         for (size_t i : toMove)
         {
@@ -1583,12 +1837,7 @@ namespace NOWA
 
         this->recalculateNormals_internal();
         this->recalculateTangents();
-
-        NOWA::GraphicsModule::RenderCommand cmd = [this]()
-        {
-            this->uploadVertexData();
-        };
-        NOWA::GraphicsModule::getInstance()->enqueue(std::move(cmd), "MeshEditComponent::moveSelected");
+        this->uploadVertexData();
         this->scheduleOverlayUpdate();
     }
 
@@ -1727,7 +1976,7 @@ namespace NOWA
         // Determine mirror normal and sign
         // axis string: "+X" / "-X" / "+Y" / "-Y" / "+Z" / "-Z"
         // The sign tells us which half to KEEP as source.
-        // "+X" → keep vertices with local X >= 0 as source, reflect across X=0 plane.
+        // "+X" -> keep vertices with local X >= 0 as source, reflect across X=0 plane.
         int axisIdx = 0; // 0=X, 1=Y, 2=Z
         float keepSign = 1.0f;
         if (axis == "+X")
@@ -1887,6 +2136,8 @@ namespace NOWA
 
     void MeshEditComponent::flipNormals(void)
     {
+        std::vector<unsigned char> oldData = this->getMeshData();
+
         for (auto& n : this->normals)
         {
             n = -n;
@@ -1895,21 +2146,24 @@ namespace NOWA
         {
             std::swap(this->indices[i + 1], this->indices[i + 2]);
         }
-        NOWA::GraphicsModule::RenderCommand cmd = [this]()
-        {
-            this->uploadVertexData();
-        };
-        NOWA::GraphicsModule::getInstance()->enqueue(std::move(cmd), "MeshEditComponent::flipNormals");
+
+        // rebuildDynamicBuffers is enqueueAndWait — safe to read vertices inside
+        this->rebuildDynamicBuffers();
+
+        this->fireUndoEvent(oldData);
     }
 
     void MeshEditComponent::recalculateNormals(void)
     {
+        std::vector<unsigned char> oldData = this->getMeshData();
+
         this->recalculateNormals_internal();
-        NOWA::GraphicsModule::RenderCommand cmd = [this]()
-        {
-            this->uploadVertexData();
-        };
-        NOWA::GraphicsModule::getInstance()->enqueue(std::move(cmd), "MeshEditComponent::recalcNormals");
+
+        // rebuildDynamicBuffers calls recalculateNormals_internal again internally
+        // (no-op double-compute since result is deterministic from geometry).
+        this->rebuildDynamicBuffers();
+
+        this->fireUndoEvent(oldData);
     }
 
     void MeshEditComponent::subdivideSelectedFaces(void)
@@ -1918,6 +2172,8 @@ namespace NOWA
         {
             return;
         }
+
+        std::vector<unsigned char> oldData = this->getMeshData();
 
         std::vector<Ogre::uint32> newIdx;
         std::vector<Ogre::Vector3> nv = this->vertices, nn = this->normals;
@@ -1970,6 +2226,7 @@ namespace NOWA
         this->buildVertexAdjacency();
         this->rebuildDynamicBuffers();
         this->scheduleOverlayUpdate();
+        this->fireUndoEvent(oldData);
     }
 
     void MeshEditComponent::extrudeSelectedFaces(Ogre::Real amount)
@@ -1978,6 +2235,8 @@ namespace NOWA
         {
             return;
         }
+
+        std::vector<unsigned char> oldData = this->getMeshData();
 
         std::vector<Ogre::uint32> newIdx(this->indices.begin(), this->indices.end());
         std::vector<Ogre::Vector3> nv = this->vertices, nn = this->normals;
@@ -2034,6 +2293,7 @@ namespace NOWA
         this->buildVertexAdjacency();
         this->rebuildDynamicBuffers();
         this->scheduleOverlayUpdate();
+        this->fireUndoEvent(oldData);
     }
 
     // =========================================================================
@@ -2667,7 +2927,6 @@ namespace NOWA
 
     bool MeshEditComponent::rebuildDynamicBuffers(void)
     {
-        // ── Recalculate normals/tangents on main thread BEFORE queuing render work ──
         this->recalculateNormals_internal();
         this->recalculateTangents();
 
@@ -2679,16 +2938,18 @@ namespace NOWA
             const bool hasTan = this->vertexFormat.hasTangent;
             const size_t fpv = hasTan ? 12u : 8u;
 
-            // ── Build new single-submesh mesh ────────────────────────────────────
-            Ogre::String tmpName = this->gameObjectPtr->getName() + "_MeshEditTmp_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
+            // Unique name per rebuild — prevents DUPLICATE_ITEM exception
+            Ogre::String tmpName = this->gameObjectPtr->getName() + "_MeshEditTmp_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()) + "_" + Ogre::StringConverter::toString(this->meshRebuildCounter++);
 
             Ogre::MeshPtr newMesh = Ogre::MeshManager::getSingleton().createManual(tmpName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
             newMesh->_setVaoManager(vm);
 
+            // Pack vertex data
             Ogre::Vector3 minBB(std::numeric_limits<float>::max());
             Ogre::Vector3 maxBB(-std::numeric_limits<float>::max());
 
             float* vd = reinterpret_cast<float*>(OGRE_MALLOC_SIMD(this->vertexCount * fpv * sizeof(float), Ogre::MEMCATEGORY_GEOMETRY));
+
             for (size_t i = 0; i < this->vertexCount; ++i)
             {
                 size_t o = i * fpv;
@@ -2720,18 +2981,21 @@ namespace NOWA
             }
             elems.push_back(Ogre::VertexElement2(Ogre::VET_FLOAT2, Ogre::VES_TEXTURE_COORDINATES));
 
+            // BT_DYNAMIC_DEFAULT + keepAsShadow=false -> we own vd, must free it
             Ogre::VertexBufferPacked* newVB = vm->createVertexBuffer(elems, this->vertexCount, Ogre::BT_DYNAMIC_DEFAULT, vd, false);
-            OGRE_FREE_SIMD(vd, Ogre::MEMCATEGORY_GEOMETRY);
+            OGRE_FREE_SIMD(vd, Ogre::MEMCATEGORY_GEOMETRY); // ✓ correct: keepAsShadow was false
 
+            // Build index data
             Ogre::uint32* id = reinterpret_cast<Ogre::uint32*>(OGRE_MALLOC_SIMD(this->indexCount * sizeof(Ogre::uint32), Ogre::MEMCATEGORY_GEOMETRY));
             for (size_t i = 0; i < this->indexCount; ++i)
             {
                 id[i] = this->indices[i];
             }
 
-            // ── Use 32-bit indices — avoids any truncation for meshes with >65535 verts ──
+            // BT_DEFAULT + keepAsShadow=true -> Ogre owns id, will free it on buffer destroy.
+            // DO NOT call OGRE_FREE_SIMD(id) here — that was the double-free crash.
             Ogre::IndexBufferPacked* newIB = vm->createIndexBuffer(Ogre::IndexBufferPacked::IT_32BIT, this->indexCount, Ogre::BT_DEFAULT, id, true);
-            OGRE_FREE_SIMD(id, Ogre::MEMCATEGORY_GEOMETRY);
+            // ← OGRE_FREE_SIMD(id, ...) intentionally absent: Ogre owns it (keepAsShadow=true)
 
             Ogre::VertexBufferPackedVec vbv;
             vbv.push_back(newVB);
@@ -2740,7 +3004,7 @@ namespace NOWA
             newSM->mVao[Ogre::VpNormal].push_back(newVao);
             newSM->mVao[Ogre::VpShadow].push_back(newVao);
 
-            if (minBB.x > maxBB.x) // degenerate guard
+            if (minBB.x > maxBB.x)
             {
                 minBB = maxBB = Ogre::Vector3::ZERO;
             }
@@ -2749,11 +3013,10 @@ namespace NOWA
             newMesh->_setBounds(bounds, false);
             newMesh->_setBoundingSphereRadius(bounds.getRadius());
 
-            // ── Create new item and safe-swap ────────────────────────────────────
             Ogre::Item* newItem = this->gameObjectPtr->getSceneManager()->createItem(newMesh, this->gameObjectPtr->isDynamic() ? Ogre::SCENE_DYNAMIC : Ogre::SCENE_STATIC);
             newItem->setName(this->gameObjectPtr->getName() + "_MeshEdit");
 
-            // Carry over datablocks
+            // Carry over datablock
             if (newItem->getNumSubItems() > 0)
             {
                 Ogre::HlmsDatablock* db = nullptr;
@@ -2770,23 +3033,24 @@ namespace NOWA
                 }
             }
 
+            // Atomic item swap
             Ogre::MovableObject* oldMovable = nullptr;
             this->gameObjectPtr->swapMovableObject(newItem, oldMovable);
             if (oldMovable)
             {
                 this->gameObjectPtr->getSceneManager()->destroyItem(static_cast<Ogre::Item*>(oldMovable));
             }
-
+            // oldMovable is now destroyed; its mesh ref is released.
+            // Remove and release our editableMesh — no dangling VAO references remain.
             if (this->editableMesh)
             {
                 Ogre::MeshManager::getSingleton().remove(this->editableMesh);
-                this->editableMesh.reset();
+                this->editableMesh.reset(); // ← safe now: no double-free in IB destroy path
             }
 
             this->editableMesh = newMesh;
             this->editableItem = newItem;
 
-            // Rebuild SubMeshInfo — always 1 submesh after topology change
             this->subMeshInfoList.clear();
             SubMeshInfo si;
             si.vertexOffset = 0;
@@ -2801,11 +3065,9 @@ namespace NOWA
             this->dynamicVertexBuffer = newVB;
             this->dynamicIndexBuffer = newIB;
 
-            // ── Force overlay to redraw IN THE SAME FRAME as the mesh change ────
-            this->overlayDirty.store(true, std::memory_order_release);
-
             success = true;
         };
+
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MeshEditComponent::rebuildDynamicBuffers");
         return success;
     }
@@ -2843,37 +3105,83 @@ namespace NOWA
 
     void MeshEditComponent::uploadVertexData(void)
     {
-        for (SubMeshInfo& sm : this->subMeshInfoList)
+        // Pack on the CALLING thread (must be main thread, i.e. called before enqueue)
+        if (this->subMeshInfoList.empty())
+        {
+            return;
+        }
+
+        // Collect per-submesh upload packets: buffer pointer + packed float data
+        struct Packet
+        {
+            Ogre::VertexBufferPacked* buffer;
+            std::vector<float> data;
+            size_t vertexCount;
+        };
+        std::vector<Packet> packets;
+        packets.reserve(this->subMeshInfoList.size());
+
+        for (const SubMeshInfo& sm : this->subMeshInfoList)
         {
             if (!sm.dynamicVertexBuffer)
             {
                 continue;
             }
-            const size_t fpv = sm.floatsPerVertex, vS = sm.vertexOffset, vC = sm.vertexCount;
-            float* vd = reinterpret_cast<float*>(OGRE_MALLOC_SIMD(vC * fpv * sizeof(float), Ogre::MEMCATEGORY_GEOMETRY));
+
+            const size_t fpv = sm.floatsPerVertex;
+            const size_t vS = sm.vertexOffset;
+            const size_t vC = sm.vertexCount;
+
+            Packet pkt;
+            pkt.buffer = sm.dynamicVertexBuffer;
+            pkt.vertexCount = vC;
+            pkt.data.resize(vC * fpv);
+
+            // All reads of this->vertices happen HERE on the main thread — safe
             for (size_t i = 0; i < vC; ++i)
             {
                 const size_t gi = vS + i;
                 size_t o = i * fpv;
-                vd[o++] = this->vertices[gi].x;
-                vd[o++] = this->vertices[gi].y;
-                vd[o++] = this->vertices[gi].z;
-                vd[o++] = this->normals[gi].x;
-                vd[o++] = this->normals[gi].y;
-                vd[o++] = this->normals[gi].z;
+                pkt.data[o++] = this->vertices[gi].x;
+                pkt.data[o++] = this->vertices[gi].y;
+                pkt.data[o++] = this->vertices[gi].z;
+                pkt.data[o++] = this->normals[gi].x;
+                pkt.data[o++] = this->normals[gi].y;
+                pkt.data[o++] = this->normals[gi].z;
                 if (sm.hasTangent)
                 {
-                    vd[o++] = this->tangents[gi].x;
-                    vd[o++] = this->tangents[gi].y;
-                    vd[o++] = this->tangents[gi].z;
-                    vd[o++] = this->tangents[gi].w;
+                    pkt.data[o++] = this->tangents[gi].x;
+                    pkt.data[o++] = this->tangents[gi].y;
+                    pkt.data[o++] = this->tangents[gi].z;
+                    pkt.data[o++] = this->tangents[gi].w;
                 }
-                vd[o++] = this->uvCoordinates[gi].x;
-                vd[o] = this->uvCoordinates[gi].y;
+                pkt.data[o++] = this->uvCoordinates[gi].x;
+                pkt.data[o] = this->uvCoordinates[gi].y;
             }
-            sm.dynamicVertexBuffer->upload(vd, 0, vC);
-            OGRE_FREE_SIMD(vd, Ogre::MEMCATEGORY_GEOMETRY);
+            packets.push_back(std::move(pkt));
         }
+
+        if (packets.empty())
+        {
+            return;
+        }
+
+        // Upload on render thread — main thread blocked by enqueueAndWait -> safe
+        NOWA::GraphicsModule::RenderCommand cmd = [packets = std::move(packets)]() mutable
+        {
+            for (Packet& pkt : packets)
+            {
+                if (!pkt.buffer)
+                {
+                    continue;
+                }
+                float* vd = reinterpret_cast<float*>(OGRE_MALLOC_SIMD(pkt.data.size() * sizeof(float), Ogre::MEMCATEGORY_GEOMETRY));
+                std::memcpy(vd, pkt.data.data(), pkt.data.size() * sizeof(float));
+                pkt.buffer->upload(vd, 0, pkt.vertexCount);
+                OGRE_FREE_SIMD(vd, Ogre::MEMCATEGORY_GEOMETRY);
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MeshEditComponent::uploadVertexData");
     }
 
     // =========================================================================
@@ -2968,6 +3276,45 @@ namespace NOWA
         {
             this->vertexNeighbors[i].assign(sets[i].begin(), sets[i].end());
         }
+
+        // ── Build co-location groups so sculpting never leaves gaps ──────────────
+        this->buildPositionGroups();
+    }
+
+    void MeshEditComponent::buildPositionGroups(void)
+    {
+        this->positionGroups.clear();
+        this->vertexGroup.assign(this->vertexCount, -1);
+
+        constexpr float kEps2 = 1e-8f; // same epsilon used elsewhere (0.01 mm^2)
+
+        for (size_t i = 0; i < this->vertexCount; ++i)
+        {
+            if (this->vertexGroup[i] >= 0)
+            {
+                continue; // already assigned
+            }
+
+            // Start a new group with vertex i
+            const int g = static_cast<int>(this->positionGroups.size());
+            this->positionGroups.push_back({i});
+            this->vertexGroup[i] = g;
+
+            // Find all later vertices at the same position
+            const Ogre::Vector3& pi = this->vertices[i];
+            for (size_t j = i + 1; j < this->vertexCount; ++j)
+            {
+                if (this->vertexGroup[j] >= 0)
+                {
+                    continue;
+                }
+                if (this->vertices[j].squaredDistance(pi) <= kEps2)
+                {
+                    this->positionGroups[g].push_back(j);
+                    this->vertexGroup[j] = g;
+                }
+            }
+        }
     }
 
     // =========================================================================
@@ -3015,7 +3362,213 @@ namespace NOWA
 
     void MeshEditComponent::scheduleOverlayUpdate(void)
     {
-        this->overlayDirty.store(true);
+        if (!this->overlayObject || !this->gameObjectPtr)
+        {
+            return;
+        }
+
+        const EditMode mode = this->getEditMode();
+
+        // ── Object mode: just clear the ManualObject ─────────────────────────────
+        if (mode == EditMode::OBJECT)
+        {
+            NOWA::GraphicsModule::RenderCommand cmd = [this]()
+            {
+                if (this->overlayObject)
+                {
+                    this->overlayObject->clear();
+                }
+            };
+            NOWA::GraphicsModule::getInstance()->enqueue(std::move(cmd), "MeshEditComponent::overlay_clear");
+            return;
+        }
+
+        // ── Get camera pos on main thread (1-frame stale is fine for 4mm push) ───
+        Ogre::Vector3 camPos = Ogre::Vector3::ZERO;
+        {
+            Ogre::Camera* cam = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
+            if (cam)
+            {
+                camPos = cam->getDerivedPosition();
+            }
+        }
+        const float pushDist = 0.004f;
+
+        auto push = [&](const Ogre::Vector3& wp) -> Ogre::Vector3
+        {
+            const Ogre::Vector3 dir = camPos - wp;
+            const float len = dir.length();
+            if (len < 1e-6f)
+            {
+                return wp;
+            }
+            return wp + dir * (pushDist / len);
+        };
+
+        // ── World transform — safe to read on main thread ─────────────────────────
+        const Ogre::Matrix4 worldMat = this->gameObjectPtr->getSceneNode()->_getFullTransform();
+        auto lw = [&](const Ogre::Vector3& v) -> Ogre::Vector3
+        {
+            return worldMat * v;
+        };
+
+        const float s = this->vertexMarkerSize->getReal();
+        const bool doWire = this->showWireframe->getBool() || (mode == EditMode::EDGE);
+
+        // We pass three separate sections to the render command.
+        // Section 0 — wireframe/edge lines
+        // Section 1 — vertex crosses
+        // Section 2 — face centre squares
+        // Each section is a flat LINE_LIST: pairs of (pos,color) sequential verts.
+
+        std::vector<OverlayVertex> wireVerts;
+        std::vector<OverlayVertex> vertVerts;
+        std::vector<OverlayVertex> faceVerts;
+
+        // ── Section 0: Wireframe / edge lines ─────────────────────────────────────
+        if (doWire)
+        {
+            const Ogre::ColourValue cWire(0.35f, 0.35f, 0.35f, 1.0f);
+            const Ogre::ColourValue cSel(1.0f, 0.75f, 0.0f, 1.0f);
+
+            std::set<std::pair<size_t, size_t>> drawn;
+            for (size_t i = 0; i < this->indexCount; i += 3)
+            {
+                for (int e = 0; e < 3; ++e)
+                {
+                    const size_t a = this->indices[i + e];
+                    const size_t b = this->indices[i + (e + 1) % 3];
+                    if (!drawn.insert({std::min(a, b), std::max(a, b)}).second)
+                    {
+                        continue;
+                    }
+
+                    const bool sel = (mode == EditMode::EDGE) && this->selectedEdges.count(EdgeKey(a, b));
+                    const Ogre::ColourValue& c = sel ? cSel : cWire;
+
+                    wireVerts.push_back({push(lw(this->vertices[a])), c});
+                    wireVerts.push_back({push(lw(this->vertices[b])), c});
+                }
+            }
+        }
+
+        // ── Section 1: Vertex crosses ─────────────────────────────────────────────
+        if (mode == EditMode::VERTEX)
+        {
+            const Ogre::ColourValue cV(1.0f, 1.0f, 1.0f, 1.0f);
+            const Ogre::ColourValue cVS(1.0f, 0.75f, 0.0f, 1.0f);
+            constexpr float kEps2 = 1e-8f;
+
+            for (size_t i = 0; i < this->vertexCount; ++i)
+            {
+                bool sel = (this->selectedVertices.count(i) > 0);
+                if (!sel)
+                {
+                    const Ogre::Vector3& myPos = this->vertices[i];
+                    for (size_t si : this->selectedVertices)
+                    {
+                        if (this->vertices[si].squaredDistance(myPos) <= kEps2)
+                        {
+                            sel = true;
+                            break;
+                        }
+                    }
+                }
+                const Ogre::ColourValue& c = sel ? cVS : cV;
+                const Ogre::Vector3 wp = lw(this->vertices[i]);
+
+                // Six arm endpoints of the cross (+X/-X, +Y/-Y, +Z/-Z)
+                vertVerts.push_back({push(wp + Ogre::Vector3(-s, 0, 0)), c});
+                vertVerts.push_back({push(wp + Ogre::Vector3(s, 0, 0)), c});
+
+                vertVerts.push_back({push(wp + Ogre::Vector3(0, -s, 0)), c});
+                vertVerts.push_back({push(wp + Ogre::Vector3(0, s, 0)), c});
+
+                vertVerts.push_back({push(wp + Ogre::Vector3(0, 0, -s)), c});
+                vertVerts.push_back({push(wp + Ogre::Vector3(0, 0, s)), c});
+            }
+        }
+
+        // ── Section 2: Face centre squares ────────────────────────────────────────
+        if (mode == EditMode::FACE)
+        {
+            const float fs = s * 1.5f;
+            const Ogre::ColourValue cF(0.5f, 0.5f, 1.0f, 1.0f);
+            const Ogre::ColourValue cFS(1.0f, 0.5f, 0.0f, 1.0f);
+
+            Ogre::Matrix3 worldRot3;
+            worldMat.extract3x3Matrix(worldRot3);
+
+            const size_t triCount = this->indexCount / 3;
+            for (size_t t = 0; t < triCount; ++t)
+            {
+                const Ogre::Vector3& lv0 = this->vertices[this->indices[t * 3]];
+                const Ogre::Vector3& lv1 = this->vertices[this->indices[t * 3 + 1]];
+                const Ogre::Vector3& lv2 = this->vertices[this->indices[t * 3 + 2]];
+
+                const Ogre::Vector3 localNorm = (lv1 - lv0).crossProduct(lv2 - lv0).normalisedCopy();
+                const Ogre::Vector3 wNorm = (worldRot3 * localNorm).normalisedCopy();
+
+                const Ogre::Vector3 ref = (std::abs(wNorm.dotProduct(Ogre::Vector3::UNIT_Y)) < 0.99f) ? Ogre::Vector3::UNIT_Y : Ogre::Vector3::UNIT_X;
+                const Ogre::Vector3 wTan = wNorm.crossProduct(ref).normalisedCopy();
+                const Ogre::Vector3 wBit = wNorm.crossProduct(wTan).normalisedCopy();
+
+                const Ogre::Vector3 wCen = lw((lv0 + lv1 + lv2) / 3.0f);
+                const bool sel = (this->selectedFaces.count(t) > 0);
+                const Ogre::ColourValue& c = sel ? cFS : cF;
+
+                const Ogre::Vector3 c00 = push(wCen + (-wTan - wBit) * fs);
+                const Ogre::Vector3 c10 = push(wCen + (wTan - wBit) * fs);
+                const Ogre::Vector3 c11 = push(wCen + (wTan + wBit) * fs);
+                const Ogre::Vector3 c01 = push(wCen + (-wTan + wBit) * fs);
+
+                // Four edges of the square (8 vertices = 4 line segments)
+                faceVerts.push_back({c00, c});
+                faceVerts.push_back({c10, c});
+                faceVerts.push_back({c10, c});
+                faceVerts.push_back({c11, c});
+                faceVerts.push_back({c11, c});
+                faceVerts.push_back({c01, c});
+                faceVerts.push_back({c01, c});
+                faceVerts.push_back({c00, c});
+            }
+        }
+
+        // ── Enqueue render command — captures geometry by MOVE, never reads 'this->vertices' ──
+        NOWA::GraphicsModule::RenderCommand cmd = [this, wireV = std::move(wireVerts), vertV = std::move(vertVerts), faceV = std::move(faceVerts)]()
+        {
+            if (!this->overlayObject)
+            {
+                return;
+            }
+
+            this->overlayObject->clear();
+
+            // Helper: feed a pre-built LINE_LIST section into the ManualObject.
+            // verts must contain an EVEN number of entries (pairs of line endpoints).
+            auto buildSection = [this](const std::vector<OverlayVertex>& verts)
+            {
+                if (verts.empty())
+                {
+                    return;
+                }
+                this->overlayObject->begin("WhiteNoLightingBackground", Ogre::OT_LINE_LIST);
+                uint32_t idx = 0;
+                for (const OverlayVertex& v : verts)
+                {
+                    this->overlayObject->position(v.pos);
+                    this->overlayObject->colour(v.color);
+                    this->overlayObject->index(idx++);
+                }
+                this->overlayObject->end();
+            };
+
+            buildSection(wireV);
+            buildSection(vertV);
+            buildSection(faceV);
+        };
+
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(cmd), "MeshEditComponent::overlayRebuild");
     }
 
     // =========================================================================
@@ -3104,50 +3657,96 @@ namespace NOWA
         {
             return false;
         }
+
+        Ogre::Window* win = Core::getSingletonPtr()->getOgreRenderWindow();
+        const float W = static_cast<float>(win->getWidth());
+        const float H = static_cast<float>(win->getHeight());
+
+        // Mouse in pixel space
+        const float mx = sx * W;
+        const float my = sy * H;
+
         const Ogre::Matrix4 vp = cam->getProjectionMatrix() * cam->getViewMatrix();
         const Ogre::Matrix4 world = this->gameObjectPtr->getSceneNode()->_getFullTransform();
 
-        std::vector<Ogre::Vector2> sp(this->vertexCount);
-        std::vector<bool> valid(this->vertexCount, false);
+        // ── Project all vertices to pixel space ──────────────────────────────────
+        struct ScreenVert
+        {
+            float x, y;
+            bool valid;
+        };
+        std::vector<ScreenVert> sp(this->vertexCount);
+
         for (size_t i = 0; i < this->vertexCount; ++i)
         {
             Ogre::Vector4 cp = vp * (world * Ogre::Vector4(this->vertices[i], 1.0f));
-            if (cp.w <= 0.0f)
+            if (cp.w <= 1e-4f)
             {
+                sp[i] = {0.f, 0.f, false};
                 continue;
             }
-            sp[i] = {((cp.x / cp.w) + 1.0f) * 0.5f, 1.0f - ((cp.y / cp.w) + 1.0f) * 0.5f};
-            valid[i] = true;
+            // NDC -> [0,1] -> pixels
+            const float ndcX = cp.x / cp.w;
+            const float ndcY = cp.y / cp.w;
+            sp[i] = {((ndcX + 1.0f) * 0.5f) * W, (1.0f - (ndcY + 1.0f) * 0.5f) * H, true};
         }
 
-        auto ptSeg = [](float px, float py, float ax, float ay, float bx, float by) -> float
+        // ── Point-to-segment distance in pixel space (aspect-ratio correct) ──────
+        //    If only one endpoint is valid (partially clipped), we treat the valid
+        //    endpoint as a degenerate zero-length segment — i.e. we return the
+        //    distance from the cursor to that single visible point.
+        auto ptSeg = [](float px, float py, float ax, float ay, bool aOk, float bx, float by, bool bOk) -> float
         {
-            float dx = bx - ax, dy = by - ay, len = dx * dx + dy * dy;
-            if (len < 1e-8f)
+            if (!aOk && !bOk)
             {
-                return std::sqrt((px - ax) * (px - ax) + (py - ay) * (py - ay));
+                return std::numeric_limits<float>::max();
             }
-            float t = std::max(0.0f, std::min(1.0f, ((px - ax) * dx + (py - ay) * dy) / len));
-            return std::sqrt((px - ax - t * dx) * (px - ax - t * dx) + (py - ay - t * dy) * (py - ay - t * dy));
+
+            if (!aOk) // only B visible — distance to B
+            {
+                return std::hypot(px - bx, py - by);
+            }
+            if (!bOk) // only A visible — distance to A
+            {
+                return std::hypot(px - ax, py - ay);
+            }
+
+            // Both valid — standard point-to-segment
+            const float dx = bx - ax, dy = by - ay;
+            const float len2 = dx * dx + dy * dy;
+            if (len2 < 1.0f) // edge shorter than 1 px — treat as point
+            {
+                return std::hypot(px - ax, py - ay);
+            }
+            const float t = std::max(0.0f, std::min(1.0f, ((px - ax) * dx + (py - ay) * dy) / len2));
+            return std::hypot(px - ax - t * dx, py - ay - t * dy);
         };
 
-        float best = 0.02f;
+        // ── Picking threshold: 8 pixels (scale-independent, works on any DPI) ────
+        float best = 8.0f;
         size_t ba = SIZE_MAX, bb = SIZE_MAX;
+
         std::set<std::pair<size_t, size_t>> checked;
         for (size_t i = 0; i < this->indexCount; i += 3)
         {
             for (int e = 0; e < 3; ++e)
             {
-                size_t a = this->indices[i + e], b = this->indices[i + (e + 1) % 3];
+                const size_t a = this->indices[i + e];
+                const size_t b = this->indices[i + (e + 1) % 3];
+
+                // Deduplicate: each logical edge tested once
                 if (!checked.insert({std::min(a, b), std::max(a, b)}).second)
                 {
                     continue;
                 }
-                if (!valid[a] || !valid[b])
+
+                // Skip only if BOTH endpoints are behind / clipped
+                if (!sp[a].valid && !sp[b].valid)
                 {
                     continue;
                 }
-                float d = ptSeg(sx, sy, sp[a].x, sp[a].y, sp[b].x, sp[b].y);
+
+                const float d = ptSeg(mx, my, sp[a].x, sp[a].y, sp[a].valid, sp[b].x, sp[b].y, sp[b].valid);
                 if (d < best)
                 {
                     best = d;
@@ -3156,6 +3755,7 @@ namespace NOWA
                 }
             }
         }
+
         if (ba != SIZE_MAX)
         {
             outEdge = EdgeKey(ba, bb);
@@ -3182,28 +3782,65 @@ namespace NOWA
 
     void MeshEditComponent::beginGrab(void)
     {
+        // Full mesh snapshot for undo (taken BEFORE any movement)
+        this->grabPreEditData = this->getMeshData();
         this->grabSavedPositions = this->vertices;
         this->grabAccumDelta = Ogre::Vector3::ZERO;
         this->grabAxis = GrabAxis::FREE;
         this->isGrabbing = true;
+        this->isScaling = false;
+        this->grabScaleMouseAccum = 0;
         this->activeTool = ActiveTool::GRAB;
 
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MeshEditComponent] Grab started. X/Y/Z to constrain axis.");
+        // Pre-compute centroid of the selection for scale pivot
+        this->grabCentroid = Ogre::Vector3::ZERO;
+        std::unordered_set<size_t> sel;
+        for (size_t i : this->selectedVertices)
+        {
+            sel.insert(i);
+        }
+        for (const EdgeKey& e : this->selectedEdges)
+        {
+            sel.insert(e.a);
+            sel.insert(e.b);
+        }
+        for (size_t t : this->selectedFaces)
+        {
+            sel.insert(this->indices[t * 3]);
+            sel.insert(this->indices[t * 3 + 1]);
+            sel.insert(this->indices[t * 3 + 2]);
+        }
+        if (!sel.empty())
+        {
+            for (size_t i : sel)
+            {
+                this->grabCentroid += this->vertices[i];
+            }
+            this->grabCentroid /= static_cast<float>(sel.size());
+        }
+
+        // this->updateStatusOverlay();
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MeshEditComponent] Grab started. G+X/Y/Z=axis, G+S=scale, Enter/LMB=confirm, Esc/RMB=cancel.");
     }
 
     void MeshEditComponent::confirmGrab(void)
     {
         this->isGrabbing = false;
+        this->isScaling = false;
         this->activeTool = ActiveTool::SELECT;
-        this->grabSavedPositions.clear();
+
         this->recalculateNormals_internal();
         this->recalculateTangents();
-        NOWA::GraphicsModule::RenderCommand cmd = [this]()
-        {
-            this->uploadVertexData();
-        };
-        NOWA::GraphicsModule::getInstance()->enqueue(std::move(cmd), "MeshEditComponent::confirmGrab");
-        this->scheduleOverlayUpdate();
+
+        // rebuildDynamicBuffers is enqueueAndWait — reads this->vertices safely
+        // (main thread is blocked while the render command runs).
+        // It also updates the AABB so culling is correct after large deformations.
+        this->rebuildDynamicBuffers();
+
+        this->fireUndoEvent(this->grabPreEditData);
+        this->grabPreEditData.clear();
+        this->grabSavedPositions.clear();
+        // this->updateStatusOverlay();
     }
 
     void MeshEditComponent::cancelGrab(void)
@@ -3212,15 +3849,21 @@ namespace NOWA
         {
             this->vertices = this->grabSavedPositions;
         }
+
         this->grabSavedPositions.clear();
+        this->grabPreEditData.clear();
         this->isGrabbing = false;
+        this->isScaling = false;
         this->activeTool = ActiveTool::SELECT;
-        NOWA::GraphicsModule::RenderCommand cmd = [this]()
-        {
-            this->uploadVertexData();
-        };
-        NOWA::GraphicsModule::getInstance()->enqueue(std::move(cmd), "MeshEditComponent::cancelGrab");
+
+        this->recalculateNormals_internal();
+        this->recalculateTangents();
+
+        // Full rebuild restores the AABB to the original shape as well
+        this->rebuildDynamicBuffers();
+
         this->scheduleOverlayUpdate();
+        // this->updateStatusOverlay();
     }
 
     void MeshEditComponent::applyGrabMouseDelta(int dx, int dy)
@@ -3229,6 +3872,13 @@ namespace NOWA
         {
             return;
         }
+
+        if (this->isScaling)
+        {
+            this->applyGrabScale(dx);
+            return;
+        }
+
         Ogre::Camera* cam = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
         if (!cam)
         {
@@ -3238,20 +3888,13 @@ namespace NOWA
         const float sen = 0.005f;
         Ogre::Vector3 wDelta = cam->getRight() * (dx * sen) + cam->getUp() * (-dy * sen);
 
-        // Axis constraint — project world delta onto the chosen world axis
-        // Ogre coordinate system: X=right  Y=up  Z=toward viewer (right-handed)
-        // KC_X → world X,  KC_Y → world Y (up),  KC_Z → world Z (depth)
         switch (this->grabAxis)
         {
         case GrabAxis::X:
             wDelta = Ogre::Vector3::UNIT_X * wDelta.dotProduct(Ogre::Vector3::UNIT_X);
             break;
         case GrabAxis::Y:
-            // Y = up in Ogre (≡ Blender Z)
-            // Use full mouse movement magnitude projected onto Y
             wDelta = Ogre::Vector3::UNIT_Y * wDelta.dotProduct(Ogre::Vector3::UNIT_Y);
-            // If camera is looking level the Y component of wDelta may be tiny —
-            // remap mouse vertical directly to Y in that case
             if (std::abs(wDelta.y) < 1e-4f)
             {
                 wDelta = Ogre::Vector3::UNIT_Y * (-dy * sen);
@@ -3271,35 +3914,1115 @@ namespace NOWA
 
         this->grabAccumDelta += localDelta;
 
-        std::unordered_set<size_t> toMove;
+        // ── Collect directly-selected vertices ───────────────────────────────────
+        std::unordered_set<size_t> selectedSet;
         for (size_t i : this->selectedVertices)
         {
-            toMove.insert(i);
+            selectedSet.insert(i);
         }
         for (const EdgeKey& e : this->selectedEdges)
         {
-            toMove.insert(e.a);
-            toMove.insert(e.b);
+            selectedSet.insert(e.a);
+            selectedSet.insert(e.b);
         }
         for (size_t t : this->selectedFaces)
         {
-            toMove.insert(this->indices[t * 3]);
-            toMove.insert(this->indices[t * 3 + 1]);
-            toMove.insert(this->indices[t * 3 + 2]);
+            selectedSet.insert(this->indices[t * 3]);
+            selectedSet.insert(this->indices[t * 3 + 1]);
+            selectedSet.insert(this->indices[t * 3 + 2]);
         }
+
+        // ── Expand to co-located group members — prevents grab gaps ──────────────
+        const std::unordered_set<size_t> toMove = expandToCoLocated(selectedSet, this->vertexGroup, this->positionGroups);
 
         for (size_t i : toMove)
         {
             this->vertices[i] = this->grabSavedPositions[i] + this->grabAccumDelta;
         }
 
+        // ── Proportional editing ──────────────────────────────────────────────────
+        if (this->isProportionalEditing)
+        {
+            const float propRadius = this->proportionalRadius->getReal();
+            const float falloffExp = this->brushFalloff->getReal();
+            for (size_t i = 0; i < this->vertexCount; ++i)
+            {
+                if (toMove.count(i))
+                {
+                    continue;
+                }
+                float minDist = std::numeric_limits<float>::max();
+                for (size_t s : toMove)
+                {
+                    float d = this->grabSavedPositions[i].distance(this->grabSavedPositions[s]);
+                    if (d < minDist)
+                    {
+                        minDist = d;
+                    }
+                }
+                if (minDist >= propRadius)
+                {
+                    continue;
+                }
+                const float nd = minDist / propRadius;
+                const float falloff = std::pow(1.0f - nd, falloffExp);
+                this->vertices[i] = this->grabSavedPositions[i] + this->grabAccumDelta * falloff;
+            }
+        }
+
+        this->recalculateNormals_internal();
+        this->recalculateTangents();
+        this->uploadVertexData();
+        this->scheduleOverlayUpdate();
+        // this->updateStatusOverlay();
+    }
+
+    void MeshEditComponent::applyGrabScale(int dx)
+    {
+        const float sen = 0.005f;
+        this->grabScaleMouseAccum += dx;
+        const float scaleFactor = std::max(0.01f, 1.0f + this->grabScaleMouseAccum * sen);
+
+        // Collect + expand selection
+        std::unordered_set<size_t> selectedSet;
+        for (size_t i : this->selectedVertices)
+        {
+            selectedSet.insert(i);
+        }
+        for (const EdgeKey& e : this->selectedEdges)
+        {
+            selectedSet.insert(e.a);
+            selectedSet.insert(e.b);
+        }
+        for (size_t t : this->selectedFaces)
+        {
+            selectedSet.insert(this->indices[t * 3]);
+            selectedSet.insert(this->indices[t * 3 + 1]);
+            selectedSet.insert(this->indices[t * 3 + 2]);
+        }
+
+        const std::unordered_set<size_t> toScale = expandToCoLocated(selectedSet, this->vertexGroup, this->positionGroups);
+
+        for (size_t i : toScale)
+        {
+            this->vertices[i] = this->grabCentroid + (this->grabSavedPositions[i] - this->grabCentroid) * scaleFactor;
+        }
+
+        this->recalculateNormals_internal();
+        this->recalculateTangents();
+        this->uploadVertexData();
+        this->scheduleOverlayUpdate();
+        // this->updateStatusOverlay();
+    }
+
+    void MeshEditComponent::mergeSelected(void)
+    {
+        std::unordered_set<size_t> toMerge;
+        switch (this->getEditMode())
+        {
+        case EditMode::VERTEX:
+            for (size_t i : this->selectedVertices)
+            {
+                toMerge.insert(i);
+            }
+            break;
+        case EditMode::EDGE:
+            for (const EdgeKey& e : this->selectedEdges)
+            {
+                toMerge.insert(e.a);
+                toMerge.insert(e.b);
+            }
+            break;
+        case EditMode::FACE:
+            for (size_t t : this->selectedFaces)
+            {
+                toMerge.insert(this->indices[t * 3]);
+                toMerge.insert(this->indices[t * 3 + 1]);
+                toMerge.insert(this->indices[t * 3 + 2]);
+            }
+            break;
+        default:
+            return;
+        }
+        if (toMerge.size() < 2)
+        {
+            return;
+        }
+
+        std::vector<unsigned char> oldData = this->getMeshData();
+
+        // Compute centroid
+        Ogre::Vector3 centroid = Ogre::Vector3::ZERO;
+        for (size_t i : toMerge)
+        {
+            centroid += this->vertices[i];
+        }
+        centroid /= static_cast<float>(toMerge.size());
+
+        // Move all selected to centroid
+        for (size_t i : toMerge)
+        {
+            this->vertices[i] = centroid;
+        }
+
+        // Weld the coincident vertices
+        this->mergeByDistance_noUndo(1e-5f); // already calls rebuildDynamicBuffers + scheduleOverlayUpdate
+
+        this->fireUndoEvent(oldData);
+    }
+
+    void MeshEditComponent::dissolveSelected(void)
+    {
+        switch (this->getEditMode())
+        {
+        case EditMode::VERTEX:
+            this->dissolveSelectedVertices();
+            break;
+        case EditMode::EDGE:
+            this->dissolveSelectedEdges();
+            break;
+        default:
+            break;
+        }
+    }
+
+    void MeshEditComponent::dissolveSelectedVertices(void)
+    {
+        if (this->selectedVertices.empty())
+        {
+            return;
+        }
+
+        std::vector<unsigned char> oldData = this->getMeshData();
+
+        // Process each selected vertex independently (simple, single-vertex at a time)
+        std::vector<Ogre::uint32> masterIdx(this->indices.begin(), this->indices.end());
+
+        for (size_t sv : this->selectedVertices)
+        {
+            // Find all triangles in masterIdx that contain sv
+            std::vector<size_t> starTris;
+            const size_t iCount = masterIdx.size();
+            for (size_t i = 0; i < iCount; i += 3)
+            {
+                if (masterIdx[i] == sv || masterIdx[i + 1] == sv || masterIdx[i + 2] == sv)
+                {
+                    starTris.push_back(i / 3);
+                }
+            }
+            if (starTris.empty())
+            {
+                continue;
+            }
+
+            // Count edge occurrences within the star
+            std::map<std::pair<size_t, size_t>, int> edgeCnt;
+            for (size_t t : starTris)
+            {
+                size_t a = masterIdx[t * 3], b = masterIdx[t * 3 + 1], c = masterIdx[t * 3 + 2];
+                auto add = [&](size_t x, size_t y)
+                {
+                    edgeCnt[{std::min(x, y), std::max(x, y)}]++;
+                };
+                add(a, b);
+                add(b, c);
+                add(c, a);
+            }
+
+            // Boundary edges: shared by exactly one star triangle AND do NOT contain sv
+            std::vector<std::pair<size_t, size_t>> boundaryEdges;
+            for (auto& [e, cnt] : edgeCnt)
+            {
+                if (cnt == 1 && e.first != sv && e.second != sv)
+                {
+                    boundaryEdges.push_back(e);
+                }
+            }
+            if (boundaryEdges.size() < 2)
+            {
+                continue;
+            }
+
+            // Walk boundary edges into an ordered loop
+            std::map<size_t, std::vector<size_t>> adj;
+            for (auto& [a, b] : boundaryEdges)
+            {
+                adj[a].push_back(b);
+                adj[b].push_back(a);
+            }
+
+            std::vector<size_t> loop;
+            {
+                size_t start = boundaryEdges[0].first;
+                loop.push_back(start);
+                size_t prev = SIZE_MAX, cur = start;
+                for (size_t step = 0; step < boundaryEdges.size(); ++step)
+                {
+                    size_t next = SIZE_MAX;
+                    for (size_t n : adj[cur])
+                    {
+                        if (n != prev)
+                        {
+                            next = n;
+                            break;
+                        }
+                    }
+                    if (next == SIZE_MAX || next == start)
+                    {
+                        break;
+                    }
+                    loop.push_back(next);
+                    prev = cur;
+                    cur = next;
+                }
+            }
+            if (loop.size() < 3)
+            {
+                continue;
+            }
+
+            // Remove star triangles from masterIdx
+            std::set<size_t> toRemove(starTris.begin(), starTris.end());
+            std::vector<Ogre::uint32> newIdx;
+            newIdx.reserve(masterIdx.size());
+            for (size_t i = 0; i < masterIdx.size(); i += 3)
+            {
+                if (!toRemove.count(i / 3))
+                {
+                    newIdx.push_back(masterIdx[i]);
+                    newIdx.push_back(masterIdx[i + 1]);
+                    newIdx.push_back(masterIdx[i + 2]);
+                }
+            }
+
+            // Fan-triangulate boundary loop
+            for (size_t i = 1; i + 1 < loop.size(); ++i)
+            {
+                newIdx.push_back(static_cast<Ogre::uint32>(loop[0]));
+                newIdx.push_back(static_cast<Ogre::uint32>(loop[i]));
+                newIdx.push_back(static_cast<Ogre::uint32>(loop[i + 1]));
+            }
+
+            masterIdx = std::move(newIdx);
+        }
+
+        this->indices = std::move(masterIdx);
+        this->indexCount = this->indices.size();
+        this->selectedVertices.clear();
+        this->buildVertexAdjacency();
+        this->rebuildDynamicBuffers();
+        this->scheduleOverlayUpdate();
+        this->fireUndoEvent(oldData);
+    }
+
+    void MeshEditComponent::dissolveSelectedEdges(void)
+    {
+        if (this->selectedEdges.empty())
+        {
+            return;
+        }
+
+        std::vector<unsigned char> oldData = this->getMeshData();
+
+        std::set<size_t> triToRemove;
+        std::vector<std::array<size_t, 3>> trisToAdd;
+        std::set<size_t> processedTris;
+
+        for (const EdgeKey& ek : this->selectedEdges)
+        {
+            const size_t ea = ek.a, eb = ek.b;
+
+            // Find up to two triangles sharing this edge
+            std::vector<size_t> shared;
+            for (size_t i = 0; i < this->indexCount; i += 3)
+            {
+                bool hasA = (this->indices[i] == ea || this->indices[i + 1] == ea || this->indices[i + 2] == ea);
+                bool hasB = (this->indices[i] == eb || this->indices[i + 1] == eb || this->indices[i + 2] == eb);
+                if (hasA && hasB)
+                {
+                    shared.push_back(i / 3);
+                }
+            }
+            if (shared.size() != 2)
+            {
+                continue; // skip boundary or degenerate edges
+            }
+
+            size_t t1 = shared[0], t2 = shared[1];
+            if (processedTris.count(t1) || processedTris.count(t2))
+            {
+                continue;
+            }
+            processedTris.insert(t1);
+            processedTris.insert(t2);
+
+            auto getOther = [&](size_t t) -> size_t
+            {
+                for (int k = 0; k < 3; ++k)
+                {
+                    size_t v = this->indices[t * 3 + k];
+                    if (v != ea && v != eb)
+                    {
+                        return v;
+                    }
+                }
+                return SIZE_MAX;
+            };
+
+            size_t c1 = getOther(t1);
+            size_t c2 = getOther(t2);
+            if (c1 == SIZE_MAX || c2 == SIZE_MAX)
+            {
+                continue;
+            }
+
+            triToRemove.insert(t1);
+            triToRemove.insert(t2);
+
+            // Quad (ea, c1, eb, c2) with the original edge removed -> two new tris
+            trisToAdd.push_back({ea, c1, c2});
+            trisToAdd.push_back({c1, eb, c2});
+        }
+
+        std::vector<Ogre::uint32> newIdx;
+        newIdx.reserve(this->indexCount);
+        for (size_t i = 0; i < this->indexCount; i += 3)
+        {
+            if (!triToRemove.count(i / 3))
+            {
+                newIdx.push_back(this->indices[i]);
+                newIdx.push_back(this->indices[i + 1]);
+                newIdx.push_back(this->indices[i + 2]);
+            }
+        }
+        for (auto& tri : trisToAdd)
+        {
+            newIdx.push_back(static_cast<Ogre::uint32>(tri[0]));
+            newIdx.push_back(static_cast<Ogre::uint32>(tri[1]));
+            newIdx.push_back(static_cast<Ogre::uint32>(tri[2]));
+        }
+
+        this->indices = std::move(newIdx);
+        this->indexCount = this->indices.size();
+        this->selectedEdges.clear();
+        this->buildVertexAdjacency();
+        this->rebuildDynamicBuffers();
+        this->scheduleOverlayUpdate();
+        this->fireUndoEvent(oldData);
+    }
+
+    bool MeshEditComponent::findBorderLoop(std::vector<size_t>& outLoop)
+    {
+        // Build edge set from selected edges (edge mode) or all open border edges
+        std::set<std::pair<size_t, size_t>> edgeSet;
+
+        if (this->getEditMode() == EditMode::EDGE && !this->selectedEdges.empty())
+        {
+            for (const EdgeKey& e : this->selectedEdges)
+            {
+                edgeSet.insert({std::min(e.a, e.b), std::max(e.a, e.b)});
+            }
+        }
+        else
+        {
+            // Auto-detect open border edges (appear in exactly one triangle)
+            std::map<std::pair<size_t, size_t>, int> edgeCnt;
+            for (size_t i = 0; i < this->indexCount; i += 3)
+            {
+                auto add = [&](size_t a, size_t b)
+                {
+                    edgeCnt[{std::min(a, b), std::max(a, b)}]++;
+                };
+                add(this->indices[i], this->indices[i + 1]);
+                add(this->indices[i + 1], this->indices[i + 2]);
+                add(this->indices[i + 2], this->indices[i]);
+            }
+            for (auto& [e, cnt] : edgeCnt)
+            {
+                if (cnt == 1)
+                {
+                    edgeSet.insert(e);
+                }
+            }
+        }
+        if (edgeSet.empty())
+        {
+            return false;
+        }
+
+        // Build vertex adjacency for the edge set
+        std::map<size_t, std::vector<size_t>> adj;
+        for (auto& [a, b] : edgeSet)
+        {
+            adj[a].push_back(b);
+            adj[b].push_back(a);
+        }
+
+        // Walk a single loop (may not cover all edges if there are multiple loops — takes the first)
+        outLoop.clear();
+        size_t start = edgeSet.begin()->first;
+        outLoop.push_back(start);
+        size_t prev = SIZE_MAX, cur = start;
+        for (size_t step = 0; step < edgeSet.size(); ++step)
+        {
+            size_t next = SIZE_MAX;
+            for (size_t n : adj[cur])
+            {
+                if (n != prev)
+                {
+                    next = n;
+                    break;
+                }
+            }
+            if (next == SIZE_MAX || next == start)
+            {
+                break;
+            }
+            outLoop.push_back(next);
+            prev = cur;
+            cur = next;
+        }
+        return outLoop.size() >= 3;
+    }
+
+    void MeshEditComponent::fillSelected(void)
+    {
+        std::vector<unsigned char> oldData = this->getMeshData();
+
+        std::vector<size_t> loop;
+        if (!this->findBorderLoop(loop) || loop.size() < 3)
+        {
+            return;
+        }
+
+        // Fan triangulate from loop[0]
+        for (size_t i = 1; i + 1 < loop.size(); ++i)
+        {
+            this->indices.push_back(static_cast<Ogre::uint32>(loop[0]));
+            this->indices.push_back(static_cast<Ogre::uint32>(loop[i]));
+            this->indices.push_back(static_cast<Ogre::uint32>(loop[i + 1]));
+        }
+        this->indexCount = this->indices.size();
+
+        this->buildVertexAdjacency();
+        this->rebuildDynamicBuffers();
+        this->scheduleOverlayUpdate();
+        this->fireUndoEvent(oldData);
+    }
+
+    void MeshEditComponent::bevel(Ogre::Real amount)
+    {
+        if (this->selectedEdges.empty())
+        {
+            return;
+        }
+
+        std::vector<unsigned char> oldData = this->getMeshData();
+
+        std::vector<Ogre::Vector3> nv = this->vertices, nn = this->normals;
+        std::vector<Ogre::Vector4> nt = this->tangents;
+        std::vector<Ogre::Vector2> nu = this->uvCoordinates;
+
+        std::set<size_t> triToRemove;
+        std::vector<std::array<size_t, 3>> newTris;
+        std::set<size_t> processedEdgeTris;
+
+        // For each face-edge pair, stores the bevel vertex idx for (orig_vertex, tri_idx)
+        std::map<std::pair<size_t, size_t>, size_t> bevelVertMap;
+
+        auto addBevelVert = [&](size_t origV, size_t triIdx, const Ogre::Vector3& pos) -> size_t
+        {
+            auto key = std::make_pair(origV, triIdx);
+            auto it = bevelVertMap.find(key);
+            if (it != bevelVertMap.end())
+            {
+                return it->second;
+            }
+            size_t idx = nv.size();
+            nv.push_back(pos);
+            nn.push_back(this->normals[origV]);
+            nt.push_back(this->tangents[origV]);
+            nu.push_back(this->uvCoordinates[origV]);
+            bevelVertMap[key] = idx;
+            return idx;
+        };
+
+        for (const EdgeKey& ek : this->selectedEdges)
+        {
+            const size_t ea = ek.a, eb = ek.b;
+
+            // Find the two adjacent triangles
+            struct FaceInfo
+            {
+                size_t triIdx;
+                size_t vc;
+            };
+            std::vector<FaceInfo> adj;
+            for (size_t i = 0; i < this->indexCount; i += 3)
+            {
+                bool hasA = (this->indices[i] == ea || this->indices[i + 1] == ea || this->indices[i + 2] == ea);
+                bool hasB = (this->indices[i] == eb || this->indices[i + 1] == eb || this->indices[i + 2] == eb);
+                if (!hasA || !hasB)
+                {
+                    continue;
+                }
+                size_t vc = SIZE_MAX;
+                for (int k = 0; k < 3; ++k)
+                {
+                    size_t v = this->indices[i + k];
+                    if (v != ea && v != eb)
+                    {
+                        vc = v;
+                        break;
+                    }
+                }
+                if (vc != SIZE_MAX)
+                {
+                    adj.push_back({i / 3, vc});
+                }
+            }
+            if (adj.size() != 2)
+            {
+                continue;
+            }
+
+            // For each adjacent face, create two bevel vertices (one at ea, one at eb)
+            // offset TOWARD the opposite vertex (vc) by amount
+            size_t bvA[2], bvB[2]; // bvA[fi] = bevel vertex at ea for face fi, etc.
+            for (size_t fi = 0; fi < 2; ++fi)
+            {
+                size_t triIdx = adj[fi].triIdx;
+                size_t vc = adj[fi].vc;
+
+                Ogre::Vector3 dirAtoC = (this->vertices[vc] - this->vertices[ea]).normalisedCopy();
+                Ogre::Vector3 dirBtoC = (this->vertices[vc] - this->vertices[eb]).normalisedCopy();
+
+                bvA[fi] = addBevelVert(ea, triIdx, this->vertices[ea] + dirAtoC * amount);
+                bvB[fi] = addBevelVert(eb, triIdx, this->vertices[eb] + dirBtoC * amount);
+
+                triToRemove.insert(triIdx);
+
+                // Replacement triangle for this face (shrunk inward)
+                newTris.push_back({bvA[fi], bvB[fi], vc});
+            }
+
+            // Bevel cap quad (bvA[0], bvB[0], bvB[1], bvA[1]) -> 2 tris
+            newTris.push_back({bvA[0], bvB[0], bvB[1]});
+            newTris.push_back({bvA[0], bvB[1], bvA[1]});
+
+            // Small cap triangles at ea and eb connecting the two bevel vertices to the original
+            newTris.push_back({ea, bvA[0], bvA[1]});
+            newTris.push_back({eb, bvB[1], bvB[0]});
+        }
+
+        // Rebuild index buffer
+        std::vector<Ogre::uint32> newIdx;
+        newIdx.reserve(this->indexCount + newTris.size() * 3);
+        for (size_t i = 0; i < this->indexCount; i += 3)
+        {
+            if (!triToRemove.count(i / 3))
+            {
+                newIdx.push_back(this->indices[i]);
+                newIdx.push_back(this->indices[i + 1]);
+                newIdx.push_back(this->indices[i + 2]);
+            }
+        }
+        for (auto& tri : newTris)
+        {
+            newIdx.push_back(static_cast<Ogre::uint32>(tri[0]));
+            newIdx.push_back(static_cast<Ogre::uint32>(tri[1]));
+            newIdx.push_back(static_cast<Ogre::uint32>(tri[2]));
+        }
+
+        this->vertices = std::move(nv);
+        this->normals = std::move(nn);
+        this->tangents = std::move(nt);
+        this->uvCoordinates = std::move(nu);
+        this->indices = std::move(newIdx);
+        this->vertexCount = this->vertices.size();
+        this->indexCount = this->indices.size();
+        this->selectedEdges.clear();
+        this->buildVertexAdjacency();
+        this->rebuildDynamicBuffers();
+        this->scheduleOverlayUpdate();
+        this->fireUndoEvent(oldData);
+    }
+
+    void MeshEditComponent::loopCut(Ogre::Real fraction)
+    {
+        if (this->selectedEdges.empty())
+        {
+            return;
+        }
+
+        const EdgeKey& guide = *this->selectedEdges.begin();
+        const Ogre::Vector3& va = this->vertices[guide.a];
+        const Ogre::Vector3& vb = this->vertices[guide.b];
+        const Ogre::Vector3 edgeDir = (vb - va).normalisedCopy();
+        const Ogre::Vector3 planePt = va + (vb - va) * fraction;
+
+        std::vector<unsigned char> oldData = this->getMeshData();
+
+        std::vector<Ogre::Vector3> nv = this->vertices, nn = this->normals;
+        std::vector<Ogre::Vector4> nt = this->tangents;
+        std::vector<Ogre::Vector2> nu = this->uvCoordinates;
+
+        // Map canonical edge (min,max) -> new cut vertex index
+        std::map<std::pair<size_t, size_t>, size_t> cutMap;
+
+        auto getCutVertex = [&](size_t a, size_t b) -> size_t
+        {
+            auto key = std::make_pair(std::min(a, b), std::max(a, b));
+            auto it = cutMap.find(key);
+            if (it != cutMap.end())
+            {
+                return it->second;
+            }
+
+            float da = edgeDir.dotProduct(this->vertices[a] - planePt);
+            float db = edgeDir.dotProduct(this->vertices[b] - planePt);
+            if ((da < 0.f) == (db < 0.f))
+            {
+                return SIZE_MAX; // same side — no cut
+            }
+
+            float t = da / (da - db);
+            size_t newI = nv.size();
+            nv.push_back(this->vertices[a] + (this->vertices[b] - this->vertices[a]) * t);
+            nn.push_back(((this->normals[a] * (1.f - t)) + (this->normals[b] * t)).normalisedCopy());
+            nt.push_back(this->tangents[a] * (1.f - t) + this->tangents[b] * t);
+            nu.push_back(this->uvCoordinates[a] * (1.f - t) + this->uvCoordinates[b] * t);
+            cutMap[key] = newI;
+            return newI;
+        };
+
+        std::vector<Ogre::uint32> newIdx;
+        newIdx.reserve(this->indexCount * 2);
+
+        auto push3 = [&](size_t x, size_t y, size_t z)
+        {
+            newIdx.push_back(static_cast<Ogre::uint32>(x));
+            newIdx.push_back(static_cast<Ogre::uint32>(y));
+            newIdx.push_back(static_cast<Ogre::uint32>(z));
+        };
+
+        for (size_t i = 0; i < this->indexCount; i += 3)
+        {
+            const size_t ia = this->indices[i], ib = this->indices[i + 1], ic = this->indices[i + 2];
+
+            const float da = edgeDir.dotProduct(this->vertices[ia] - planePt);
+            const float db = edgeDir.dotProduct(this->vertices[ib] - planePt);
+            const float dc = edgeDir.dotProduct(this->vertices[ic] - planePt);
+
+            const bool ab_cut = ((da < 0.f) != (db < 0.f));
+            const bool bc_cut = ((db < 0.f) != (dc < 0.f));
+            const bool ca_cut = ((dc < 0.f) != (da < 0.f));
+            const int cuts = (int)ab_cut + (int)bc_cut + (int)ca_cut;
+
+            if (cuts == 0)
+            {
+                push3(ia, ib, ic);
+            }
+            else if (cuts == 1)
+            {
+                // One edge cut -> 2 triangles
+                if (ab_cut)
+                {
+                    size_t m = getCutVertex(ia, ib);
+                    if (m == SIZE_MAX)
+                    {
+                        push3(ia, ib, ic);
+                        continue;
+                    }
+                    push3(ia, m, ic);
+                    push3(m, ib, ic);
+                }
+                else if (bc_cut)
+                {
+                    size_t m = getCutVertex(ib, ic);
+                    if (m == SIZE_MAX)
+                    {
+                        push3(ia, ib, ic);
+                        continue;
+                    }
+                    push3(ia, ib, m);
+                    push3(ia, m, ic);
+                }
+                else // ca_cut
+                {
+                    size_t m = getCutVertex(ic, ia);
+                    if (m == SIZE_MAX)
+                    {
+                        push3(ia, ib, ic);
+                        continue;
+                    }
+                    push3(ia, ib, m);
+                    push3(ib, ic, m);
+                }
+            }
+            else if (cuts == 2)
+            {
+                // Two edges cut -> 3 triangles; the isolated vertex is on one side
+                if (ab_cut && bc_cut)
+                {
+                    // ib is isolated
+                    size_t mab = getCutVertex(ia, ib), mbc = getCutVertex(ib, ic);
+                    if (mab == SIZE_MAX || mbc == SIZE_MAX)
+                    {
+                        push3(ia, ib, ic);
+                        continue;
+                    }
+                    push3(mab, ib, mbc);
+                    push3(ia, mab, mbc);
+                    push3(ia, mbc, ic);
+                }
+                else if (bc_cut && ca_cut)
+                {
+                    // ic is isolated
+                    size_t mbc = getCutVertex(ib, ic), mca = getCutVertex(ic, ia);
+                    if (mbc == SIZE_MAX || mca == SIZE_MAX)
+                    {
+                        push3(ia, ib, ic);
+                        continue;
+                    }
+                    push3(mbc, ic, mca);
+                    push3(ia, ib, mbc);
+                    push3(ia, mbc, mca);
+                }
+                else // ab_cut && ca_cut
+                {
+                    // ia is isolated
+                    size_t mab = getCutVertex(ia, ib), mca = getCutVertex(ic, ia);
+                    if (mab == SIZE_MAX || mca == SIZE_MAX)
+                    {
+                        push3(ia, ib, ic);
+                        continue;
+                    }
+                    push3(ia, mab, mca);
+                    push3(mab, ib, ic);
+                    push3(mca, mab, ic);
+                }
+            }
+            else
+            {
+                // All 3 edges cut (degenerate — keep original)
+                push3(ia, ib, ic);
+            }
+        }
+
+        this->vertices = std::move(nv);
+        this->normals = std::move(nn);
+        this->tangents = std::move(nt);
+        this->uvCoordinates = std::move(nu);
+        this->indices = std::move(newIdx);
+        this->vertexCount = this->vertices.size();
+        this->indexCount = this->indices.size();
+        this->selectedEdges.clear();
+        this->buildVertexAdjacency();
+        this->rebuildDynamicBuffers();
+        this->scheduleOverlayUpdate();
+        this->fireUndoEvent(oldData);
+    }
+
+    Ogre::Matrix4 MeshEditComponent::getScreenMatrix() const
+    {
+        Ogre::Camera* cam = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
+        return (cam ? cam->getProjectionMatrix() * cam->getViewMatrix() : Ogre::Matrix4::IDENTITY) * this->gameObjectPtr->getSceneNode()->_getFullTransform();
+    }
+
+    bool MeshEditComponent::projectVertexToScreen(size_t idx, float& nx, float& ny) const
+    {
+        Ogre::Camera* cam = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
+        if (!cam)
+        {
+            return false;
+        }
+
+        const Ogre::Matrix4 vp = cam->getProjectionMatrix() * cam->getViewMatrix();
+        const Ogre::Matrix4 world = this->gameObjectPtr->getSceneNode()->_getFullTransform();
+
+        Ogre::Vector4 cp = vp * (world * Ogre::Vector4(this->vertices[idx], 1.0f));
+        if (cp.w <= 1e-4f)
+        {
+            return false;
+        }
+
+        nx = (cp.x / cp.w + 1.0f) * 0.5f;
+        ny = (1.0f - (cp.y / cp.w + 1.0f) * 0.5f);
+        return true;
+    }
+
+    void MeshEditComponent::selectLinked(Ogre::Real sx, Ogre::Real sy, bool add)
+    {
+        const EditMode mode = this->getEditMode();
+
+        // Collision-free edge encoding: upper 32 bits = min vertex, lower 32 = max vertex
+        // Works for any mesh with < 4 billion vertices
+        auto encodeEdge = [](size_t a, size_t b) -> uint64_t
+        {
+            if (a > b)
+            {
+                std::swap(a, b);
+            }
+            return (static_cast<uint64_t>(a) << 32) | static_cast<uint64_t>(b);
+        };
+
+        if (mode == EditMode::VERTEX)
+        {
+            size_t startIdx;
+            if (!this->pickVertex(sx, sy, startIdx))
+            {
+                return;
+            }
+
+            std::vector<size_t> linked = floodSelect(startIdx,
+                [this](size_t idx) -> std::vector<size_t>
+                {
+                    if (idx < this->vertexNeighbors.size())
+                    {
+                        return this->vertexNeighbors[idx];
+                    }
+                    return {};
+                });
+
+            if (!add)
+            {
+                this->selectedVertices.clear();
+            }
+            for (size_t v : linked)
+            {
+                this->selectedVertices.insert(v);
+            }
+            this->scheduleOverlayUpdate();
+        }
+        else if (mode == EditMode::EDGE)
+        {
+            EdgeKey startEdge(0, 0);
+            if (!this->pickEdge(sx, sy, startEdge))
+            {
+                return;
+            }
+
+            // Build deduplicated edge list
+            std::vector<EdgeKey> allEdges;
+            {
+                std::set<std::pair<size_t, size_t>> seen;
+                for (size_t i = 0; i < this->indexCount; i += 3)
+                {
+                    for (int e = 0; e < 3; ++e)
+                    {
+                        size_t a = this->indices[i + e];
+                        size_t b = this->indices[i + (e + 1) % 3];
+                        if (seen.insert({std::min(a, b), std::max(a, b)}).second)
+                        {
+                            allEdges.push_back(EdgeKey(a, b));
+                        }
+                    }
+                }
+            }
+
+            // vertex → list of edge indices in allEdges
+            std::unordered_map<size_t, std::vector<size_t>> vertToEdges;
+            for (size_t i = 0; i < allEdges.size(); ++i)
+            {
+                vertToEdges[allEdges[i].a].push_back(i);
+                vertToEdges[allEdges[i].b].push_back(i);
+            }
+
+            size_t startI = SIZE_MAX;
+            for (size_t i = 0; i < allEdges.size(); ++i)
+            {
+                if (allEdges[i] == startEdge)
+                {
+                    startI = i;
+                    break;
+                }
+            }
+            if (startI == SIZE_MAX)
+            {
+                return;
+            }
+
+            std::vector<size_t> linked = floodSelect(startI,
+                [&allEdges, &vertToEdges](size_t edgeI) -> std::vector<size_t>
+                {
+                    std::vector<size_t> nb;
+                    size_t va = allEdges[edgeI].a;
+                    size_t vb = allEdges[edgeI].b;
+                    for (size_t v : std::array<size_t, 2>{va, vb}) // ← std::array statt initializer_list
+                    {
+                        auto it = vertToEdges.find(v);
+                        if (it != vertToEdges.end())
+                        {
+                            for (size_t ei : it->second)
+                            {
+                                if (ei != edgeI)
+                                {
+                                    nb.push_back(ei);
+                                }
+                            }
+                        }
+                    }
+                    return nb;
+                });
+
+            if (!add)
+            {
+                this->selectedEdges.clear();
+            }
+            for (size_t ei : linked)
+            {
+                this->selectedEdges.insert(allEdges[ei]);
+            }
+            this->scheduleOverlayUpdate();
+        }
+        else if (mode == EditMode::FACE)
+        {
+            size_t startFace;
+            if (!this->pickFace(sx, sy, startFace))
+            {
+                return;
+            }
+
+            const size_t triCount = this->indexCount / 3;
+
+            // edge key → faces containing that edge
+            std::unordered_map<uint64_t, std::vector<size_t>> edgeToFaces;
+            for (size_t t = 0; t < triCount; ++t)
+            {
+                size_t i0 = this->indices[t * 3];
+                size_t i1 = this->indices[t * 3 + 1];
+                size_t i2 = this->indices[t * 3 + 2];
+                edgeToFaces[encodeEdge(i0, i1)].push_back(t);
+                edgeToFaces[encodeEdge(i1, i2)].push_back(t);
+                edgeToFaces[encodeEdge(i2, i0)].push_back(t);
+            }
+
+            std::vector<size_t> linked = floodSelect(startFace,
+                [this, &edgeToFaces, &encodeEdge](size_t fIdx) -> std::vector<size_t>
+                {
+                    std::vector<size_t> nb;
+                    size_t i0 = this->indices[fIdx * 3];
+                    size_t i1 = this->indices[fIdx * 3 + 1];
+                    size_t i2 = this->indices[fIdx * 3 + 2];
+
+                    // ← std::array statt initializer_list
+                    std::array<uint64_t, 3> keys = {encodeEdge(i0, i1), encodeEdge(i1, i2), encodeEdge(i2, i0)};
+                    for (uint64_t eKey : keys)
+                    {
+                        auto it = edgeToFaces.find(eKey);
+                        if (it != edgeToFaces.end())
+                        {
+                            for (size_t f : it->second)
+                            {
+                                if (f != fIdx)
+                                {
+                                    nb.push_back(f);
+                                }
+                            }
+                        }
+                    }
+                    return nb;
+                });
+
+            if (!add)
+            {
+                this->selectedFaces.clear();
+            }
+            for (size_t f : linked)
+            {
+                this->selectedFaces.insert(f);
+            }
+            this->scheduleOverlayUpdate();
+        }
+    }
+
+#if 0
+    void MeshEditComponent::createStatusOverlay(void)
+    {
         NOWA::GraphicsModule::RenderCommand cmd = [this]()
         {
-            this->uploadVertexData();
+            this->statusWidget = MyGUI::Gui::getInstance().createWidget<MyGUI::TextBox>("TextBox", MyGUI::IntCoord(10, 10, 500, 26), MyGUI::Align::Default, "Overlapped");
+            this->statusWidget->setTextColour(MyGUI::Colour(1.0f, 0.9f, 0.2f, 1.0f));
+            this->statusWidget->setFontHeight(16);
+            this->statusWidget->setVisible(false);
         };
-        NOWA::GraphicsModule::getInstance()->enqueue(std::move(cmd), "MeshEditComponent::grabMove");
-        this->scheduleOverlayUpdate();
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MeshEditComponent::createStatusOverlay");
     }
+
+    void MeshEditComponent::destroyStatusOverlay(void)
+    {
+        NOWA::GraphicsModule::RenderCommand cmd = [this]()
+        {
+            if (this->statusWidget)
+            {
+                MyGUI::Gui::getInstance().destroyWidget(this->statusWidget);
+                this->statusWidget = nullptr;
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MeshEditComponent::destroyStatusOverlay");
+    }
+
+    void MeshEditComponent::updateStatusOverlay(void)
+    {
+        if (!this->statusWidget) return;
+ 
+        Ogre::String text;
+        const bool active = this->isEditorMeshModifyMode && this->isSelected && this->activated->getBool();
+ 
+        if (this->isGrabbing)
+        {
+            text = "[GRAB]";
+            if (this->isScaling)
+            {
+                text += "  |  SCALE  (mouse left/right)";
+            }
+            else
+            {
+                switch (this->grabAxis)
+                {
+                case GrabAxis::X: text += "  |  AXIS: X"; break;
+                case GrabAxis::Y: text += "  |  AXIS: Y (up)"; break;
+                case GrabAxis::Z: text += "  |  AXIS: Z (depth)"; break;
+                default:          text += "  |  FREE"; break;
+                }
+            }
+            text += "  |  delta: " + Ogre::StringConverter::toString(this->grabAccumDelta, 2);
+            if (this->isProportionalEditing) text += "  [O: Proportional]";
+        }
+        else
+        {
+            text = "  Mode: " + this->getEditModeString();
+            if (this->isBrushArmed)         text += "  [B: Brush]";
+            if (this->isProportionalEditing) text += "  [O: Proportional]";
+ 
+            size_t selCount = 0;
+            switch (this->getEditMode())
+            {
+            case EditMode::VERTEX: selCount = this->selectedVertices.size(); break;
+            case EditMode::EDGE:   selCount = this->selectedEdges.size();    break;
+            case EditMode::FACE:   selCount = this->selectedFaces.size();    break;
+            default: break;
+            }
+            if (selCount > 0)
+                text += "  |  Sel: " + Ogre::StringConverter::toString(static_cast<int>(selCount));
+        }
+ 
+        NOWA::GraphicsModule::RenderCommand cmd = [this, text, active]()
+        {
+            if (this->statusWidget)
+            {
+                this->statusWidget->setCaption(text);
+                this->statusWidget->setVisible(active);
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(cmd), "MeshEditComponent::updateStatus");
+    }
+#endif
+
+
+
+
 
     // =========================================================================
     //  Brush
@@ -3311,21 +5034,35 @@ namespace NOWA
         {
             return 0.0f;
         }
-        Ogre::Real nd = dist / radius;
+
+        const Ogre::Real nd = dist / radius;
         Ogre::Real inf = std::pow(1.0f - nd, this->brushFalloff->getReal());
-        if (!this->brushData.empty() && this->brushImageWidth > 0)
+
+        if (!this->brushData.empty() && this->brushImageWidth > 0 && this->brushImageHeight > 0)
         {
-            size_t cx = this->brushImageWidth / 2;
-            size_t sx2 = std::min(static_cast<size_t>(cx + nd * cx), this->brushImageWidth - 1);
-            inf *= this->brushData[cx * this->brushImageWidth + sx2];
+            const size_t centerX = this->brushImageWidth / 2;
+            const size_t centerY = this->brushImageHeight / 2;
+
+            size_t sampleX = static_cast<size_t>(centerX + nd * centerX);
+            size_t sampleY = centerY;
+
+            sampleX = std::min(sampleX, this->brushImageWidth - 1);
+            sampleY = std::min(sampleY, this->brushImageHeight - 1);
+
+            const size_t brushIndex = sampleY * this->brushImageWidth + sampleX;
+            if (brushIndex < this->brushData.size())
+            {
+                inf *= this->brushData[brushIndex];
+            }
         }
         return inf * this->brushIntensity->getReal();
     }
 
     void MeshEditComponent::applyBrush(const Ogre::Vector3& ctr, bool invert)
     {
-        Ogre::Real radius = this->brushSize->getReal();
+        Ogre::Real brushRadius = this->brushSize->getReal();
         BrushMode mode = this->getBrushMode();
+
         if (invert)
         {
             if (mode == BrushMode::PUSH)
@@ -3338,14 +5075,17 @@ namespace NOWA
             }
         }
 
-        Ogre::Vector3 avgP = Ogre::Vector3::ZERO, avgN = Ogre::Vector3::ZERO;
-        std::vector<std::pair<size_t, Ogre::Real>> aff;
+        // ── Pass 1: find directly affected vertices + compute averages ────────────
+        Ogre::Vector3 avgP = Ogre::Vector3::ZERO;
+        Ogre::Vector3 avgN = Ogre::Vector3::ZERO;
+        std::vector<std::pair<size_t, Ogre::Real>> aff; // (index, influence)
+
         for (size_t i = 0; i < this->vertexCount; ++i)
         {
-            Ogre::Real d = this->vertices[i].distance(ctr);
-            if (d < radius)
+            const Ogre::Real d = this->vertices[i].distance(ctr);
+            if (d < brushRadius)
             {
-                Ogre::Real inf = this->calculateBrushInfluence(d, radius);
+                const Ogre::Real inf = this->calculateBrushInfluence(d, brushRadius);
                 aff.push_back({i, inf});
                 avgP += this->vertices[i];
                 avgN += this->normals[i];
@@ -3355,57 +5095,111 @@ namespace NOWA
         {
             return;
         }
+
         avgP /= static_cast<Ogre::Real>(aff.size());
         avgN.normalise();
 
-        for (auto& [idx, inf] : aff)
+        // ── Pass 2: apply displacement ────────────────────────────────────────────
+        // For each directly affected vertex, compute its delta THEN apply the same
+        // delta to every co-located group member — closes all UV/hard-edge gaps.
+        for (const auto& [idx, inf] : aff)
         {
+            Ogre::Vector3 delta = Ogre::Vector3::ZERO;
+
             switch (mode)
             {
             case BrushMode::PUSH:
-                this->vertices[idx] += this->normals[idx] * inf;
+                delta = this->normals[idx] * inf;
                 break;
             case BrushMode::PULL:
-                this->vertices[idx] -= this->normals[idx] * inf;
+                delta = -this->normals[idx] * inf;
                 break;
             case BrushMode::SMOOTH:
                 if (idx < this->vertexNeighbors.size() && !this->vertexNeighbors[idx].empty())
                 {
-                    Ogre::Vector3 avg = Ogre::Vector3::ZERO;
-                    for (size_t nb : this->vertexNeighbors[idx])
+                    Ogre::Vector3 nb = Ogre::Vector3::ZERO;
+                    for (size_t n : this->vertexNeighbors[idx])
                     {
-                        avg += this->vertices[nb];
+                        nb += this->vertices[n];
                     }
-                    avg /= static_cast<Ogre::Real>(this->vertexNeighbors[idx].size());
-                    this->vertices[idx] = this->vertices[idx] * (1.0f - inf) + avg * inf;
+                    nb /= static_cast<Ogre::Real>(this->vertexNeighbors[idx].size());
+                    delta = (nb - this->vertices[idx]) * inf;
                 }
                 break;
             case BrushMode::FLATTEN:
             {
-                Ogre::Real d2p = avgN.dotProduct(this->vertices[idx] - avgP);
-                this->vertices[idx] -= avgN * d2p * inf;
+                const Ogre::Real dp = avgN.dotProduct(this->vertices[idx] - avgP);
+                delta = -avgN * dp * inf;
             }
             break;
             case BrushMode::PINCH:
-            {
-                Ogre::Vector3 tc = (ctr - this->vertices[idx]).normalisedCopy();
-                this->vertices[idx] += tc * inf;
-            }
-            break;
-            case BrushMode::INFLATE:
-                this->vertices[idx] += this->normals[idx] * inf;
+                delta = (ctr - this->vertices[idx]).normalisedCopy() * inf;
                 break;
+            case BrushMode::INFLATE:
+                delta = avgN * inf; // area-averaged normal = balloon
+                break;
+            }
+
+            if (delta.squaredLength() < 1e-14f)
+            {
+                continue;
+            }
+
+            // Apply delta to the canonical vertex and ALL co-located siblings
+            this->vertices[idx] += delta;
+
+            const int g = this->vertexGroup[idx];
+            if (g >= 0)
+            {
+                for (size_t sibling : this->positionGroups[static_cast<size_t>(g)])
+                {
+                    if (sibling != idx)
+                    {
+                        this->vertices[sibling] += delta;
+                    }
+                }
             }
         }
 
         this->recalculateNormals_internal();
         this->recalculateTangents();
-        NOWA::GraphicsModule::RenderCommand cmd = [this]()
-        {
-            this->uploadVertexData();
-        };
-        NOWA::GraphicsModule::getInstance()->enqueue(std::move(cmd), "MeshEditComponent::applyBrush");
+        this->uploadVertexData();
         this->scheduleOverlayUpdate();
+    }
+
+    void MeshEditComponent::setProportionalRadius(Ogre::Real radius)
+    {
+        this->proportionalRadius->setValue(radius);
+    }
+
+    Ogre::Real MeshEditComponent::getProportionalRadius(void) const
+    {
+        return this->proportionalRadius->getReal();
+    }
+
+    bool MeshEditComponent::getIsProportionalEditing(void) const
+    {
+        return this->isProportionalEditing;
+    }
+
+    void MeshEditComponent::setBevelAmount(Ogre::Real amount)
+    {
+        this->bevelAmount->setValue(amount);
+    }
+
+    Ogre::Real MeshEditComponent::getBevelAmount(void) const
+    {
+        return this->bevelAmount->getReal();
+    }
+
+    void MeshEditComponent::setLoopCutFraction(Ogre::Real fraction)
+    {
+        this->loopCutFraction->setValue(Ogre::Math::Clamp(fraction, 0.01f, 0.99f));
+    }
+
+    Ogre::Real MeshEditComponent::getLoopCutFraction(void) const
+    {
+        return this->loopCutFraction->getReal();
     }
 
     // =========================================================================
@@ -3524,29 +5318,43 @@ namespace NOWA
 
     void MeshEditComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& /*gameObjectClass*/, class_<GameObjectController>& /*gameObjectControllerClass*/)
     {
-        luabind::module(lua)[luabind::class_<MeshEditComponent, GameObjectComponent>("MeshEditComponent")
-                .def("setEditMode", &MeshEditComponent::setEditMode)
-                .def("getEditModeString", &MeshEditComponent::getEditModeString)
-                .def("selectAll", &MeshEditComponent::selectAll)
-                .def("deselectAll", &MeshEditComponent::deselectAll)
-                .def("deleteSelected", &MeshEditComponent::deleteSelected)
-                .def("mergeByDistance", &MeshEditComponent::mergeByDistance)
-                .def("flipNormals", &MeshEditComponent::flipNormals)
-                .def("recalculateNormals", &MeshEditComponent::recalculateNormals)
-                .def("subdivideSelectedFaces", &MeshEditComponent::subdivideSelectedFaces)
-                .def("extrudeSelectedFaces", &MeshEditComponent::extrudeSelectedFaces)
-                .def("exportMesh", &MeshEditComponent::exportMesh)
-                .def("applyMesh", &MeshEditComponent::applyMesh)
-                .def("getVertexCount", &MeshEditComponent::getVertexCount)
-                .def("getTriangleCount", &MeshEditComponent::getTriangleCount)
-                .def("setBrushSize", &MeshEditComponent::setBrushSize)
-                .def("getBrushSize", &MeshEditComponent::getBrushSize)
-                .def("setBrushIntensity", &MeshEditComponent::setBrushIntensity)
-                .def("getBrushIntensity", &MeshEditComponent::getBrushIntensity)
-                .def("setBrushMode", &MeshEditComponent::setBrushMode)
-                .def("getBrushModeString", &MeshEditComponent::getBrushModeString)
-                .def("setOutputFileName", &MeshEditComponent::setOutputFileName)
-                .def("getOutputFileName", &MeshEditComponent::getOutputFileName)];
+        luabind::module(lua)
+        [
+            luabind::class_<MeshEditComponent, GameObjectComponent>("MeshEditComponent")
+            .def("setEditMode", &MeshEditComponent::setEditMode)
+            .def("getEditModeString", &MeshEditComponent::getEditModeString)
+            .def("selectAll", &MeshEditComponent::selectAll)
+            .def("deselectAll", &MeshEditComponent::deselectAll)
+            .def("deleteSelected", &MeshEditComponent::deleteSelected)
+            .def("mergeByDistance", &MeshEditComponent::mergeByDistance)
+            .def("flipNormals", &MeshEditComponent::flipNormals)
+            .def("recalculateNormals", &MeshEditComponent::recalculateNormals)
+            .def("subdivideSelectedFaces", &MeshEditComponent::subdivideSelectedFaces)
+            .def("extrudeSelectedFaces", &MeshEditComponent::extrudeSelectedFaces)
+            .def("exportMesh", &MeshEditComponent::exportMesh)
+            .def("applyMesh", &MeshEditComponent::applyMesh)
+            .def("getVertexCount", &MeshEditComponent::getVertexCount)
+            .def("getTriangleCount", &MeshEditComponent::getTriangleCount)
+            .def("setBrushSize", &MeshEditComponent::setBrushSize)
+            .def("getBrushSize", &MeshEditComponent::getBrushSize)
+            .def("setBrushIntensity", &MeshEditComponent::setBrushIntensity)
+            .def("getBrushIntensity", &MeshEditComponent::getBrushIntensity)
+            .def("setBrushMode", &MeshEditComponent::setBrushMode)
+            .def("getBrushModeString", &MeshEditComponent::getBrushModeString)
+            .def("setOutputFileName", &MeshEditComponent::setOutputFileName)
+            .def("getOutputFileName", &MeshEditComponent::getOutputFileName)
+            .def("mergeSelected",        &MeshEditComponent::mergeSelected)
+            .def("dissolveSelected",     &MeshEditComponent::dissolveSelected)
+            .def("fillSelected",         &MeshEditComponent::fillSelected)
+            .def("bevel",                &MeshEditComponent::bevel)
+            .def("loopCut",              &MeshEditComponent::loopCut)
+            .def("setProportionalRadius",&MeshEditComponent::setProportionalRadius)
+            .def("getProportionalRadius",&MeshEditComponent::getProportionalRadius)
+            .def("setBevelAmount",       &MeshEditComponent::setBevelAmount)
+            .def("getBevelAmount",       &MeshEditComponent::getBevelAmount)
+            .def("setLoopCutFraction",   &MeshEditComponent::setLoopCutFraction)
+            .def("getLoopCutFraction",   &MeshEditComponent::getLoopCutFraction)
+        ];
     }
 
 }; // namespace NOWA

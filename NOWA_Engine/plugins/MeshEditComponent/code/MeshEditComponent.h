@@ -10,6 +10,7 @@ GPL v3
 #include "OgrePlugin.h"
 #include "gameobject/MeshEditComponentBase.h"
 #include "main/Events.h"
+#include "editor/ScreenRectSelector.h"
 
 #include <set>
 #include <unordered_map>
@@ -28,11 +29,11 @@ namespace NOWA
      * @brief   Blender-inspired offline mesh editing component for NOWA-Engine.
      *
      *          Workflow:
-     *           1. Add component  → original Ogre::Item is REPLACED by an editable clone
+     *           1. Add component  -> original Ogre::Item is REPLACED by an editable clone
      *              (the original .mesh resource is never touched).
      *           2. Select a mode (Vertex / Edge / Face) and edit interactively.
-     *           3. Press "Apply Mesh" → exports the result to <OutputFileName>.mesh.
-     *           4. Remove component → original mesh item is restored on the GameObject.
+     *           3. Press "Apply Mesh" -> exports the result to <OutputFileName>.mesh.
+     *           4. Remove component -> original mesh item is restored on the GameObject.
      *
      *          Editing is only active when:
      *            - the component is Activated
@@ -238,6 +239,16 @@ namespace NOWA
         Ogre::String getBrushModeString(void) const;
         BrushMode getBrushMode(void) const;
 
+        void setProportionalRadius(Ogre::Real radius);
+        Ogre::Real getProportionalRadius(void) const;
+        bool getIsProportionalEditing(void) const;
+
+        void setBevelAmount(Ogre::Real amount);
+        Ogre::Real getBevelAmount(void) const;
+
+        void setLoopCutFraction(Ogre::Real fraction);
+        Ogre::Real getLoopCutFraction(void) const;
+
         // ── Extrude parameter ─────────────────────────────────────────────────
         void setExtrudeAmount(Ogre::Real amount);
         Ogre::Real getExtrudeAmount(void) const;
@@ -269,23 +280,64 @@ namespace NOWA
         static bool canStaticAddComponent(GameObject* gameObject);
         static Ogre::String getStaticInfoText(void)
         {
-            return "Blender-style offline mesh editor. "
-                   "Requires Mesh Modify Mode and a selected GameObject. "
-                   "Modes: Object / Vertex / Edge / Face. "
-                   "G = Grab (move along camera plane). "
-                   "During Grab: X/Y/Z = lock to world axis (press same axis twice to return to free movement). "
-                   "Enter or LMB = Confirm grab. Esc or RMB = Cancel grab (restores original positions). "
-                   "X = Delete selection. "
-                   "E = Extrude selected faces (Face mode). "
-                   "I = Subdivide selected. Ctrl+I = Subdivide entire mesh. "
-                   "F = Flip normals. Ctrl+N = Recalculate normals. "
-                   "B = Toggle sculpt-brush mode (Vertex mode). "
-                   "Ctrl+A = Toggle Select All / Deselect All. "
-                   "Ctrl+Z = Undo (up to 16 levels, one entry per operation or confirmed grab/brush stroke). "
-                   "Buttons: Weld Vertices, Flip Normals, Recalculate Normals, "
-                   "Subdivide Selected, Extrude Selected (uses Extrude Amount), "
-                   "Subdivide All, Mirror Mesh (uses Mirror Axis), Apply Scale. "
-                   "Press 'Apply Mesh' to save the edited mesh as a new .mesh asset.";
+            return "== Setup ==\n"
+                   "1. Add MeshEditComponent to a mesh GameObject.\n"
+                   "2. Click the GameObject to activate listeners.\n"
+                   "3. Set Edit Mode dropdown to Vertex / Edge / Face.\n"
+                   "\n"
+                   "== Edit Modes ==\n"
+                   "Object : Gizmo-only, overlay hidden.\n"
+                   "Vertex : Select vertices. Grab, Scale, Brush, Rect-select.\n"
+                   "Edge   : Select edges.   Grab, Bevel, Dissolve, Loop Cut.\n"
+                   "Face   : Select faces.   Grab, Extrude, Subdivide, Fill.\n"
+                   "\n"
+                   "== Selection ==\n"
+                   "LMB              - Select element.\n"
+                   "Shift+LMB        - Add to selection.\n"
+                   "Ctrl+LMB         - Remove from selection.\n"
+                   "LMB drag (empty) - Rectangle select.\n"
+                   "Shift+LMB drag   - Add rect to selection.\n"
+                   "Ctrl+LMB drag    - Remove rect from selection.\n"
+                   "L (hover)        - Select linked (flood fill).\n"
+                   "Shift+L          - Add linked to selection.\n"
+                   "Ctrl+A           - Select all / Deselect all.\n"
+                   "\n"
+                   "== Grab (G) ==\n"
+                   "G        - Grab: move freely in camera plane.\n"
+                   "  X/Y/Z  - Lock to world axis (press again: free).\n"
+                   "           Note: Z key = Y axis (up), Y key = Z axis.\n"
+                   "  S      - Scale mode (drag left/right).\n"
+                   "  Enter  - Confirm (pushes undo record).\n"
+                   "  Esc    - Cancel (restores original positions).\n"
+                   "O        - Toggle Proportional Editing.\n"
+                   "\n"
+                   "== Sculpt Brush (Vertex mode) ==\n"
+                   "B            - Toggle brush on/off.\n"
+                   "LMB drag     - Paint stroke (one undo per stroke).\n"
+                   "Ctrl+LMB     - Invert Push/Pull.\n"
+                   "Modes: Push Pull Smooth Flatten Pinch Inflate.\n"
+                   "\n"
+                   "== Keys ==\n"
+                   "X       - Delete selected.\n"
+                   "Ctrl+D  - Dissolve selected.\n"
+                   "M       - Merge to centroid.\n"
+                   "E       - Extrude faces (Face mode).\n"
+                   "I       - Subdivide selected faces.\n"
+                   "Ctrl+I  - Subdivide all.\n"
+                   "F       - Flip normals.\n"
+                   "Ctrl+N  - Recalculate normals.\n"
+                   "Ctrl+B  - Bevel edges.\n"
+                   "Ctrl+R  - Loop cut.\n"
+                   "Ctrl+F  - Fill border loop.\n"
+                   "Ctrl+Z  - Undo (16 levels).\n"
+                   "\n"
+                   "== Buttons ==\n"
+                   "Weld Vertices / Flip Normals / Recalculate\n"
+                   "Subdivide Sel. / Subdivide All\n"
+                   "Extrude Sel. / Mirror Mesh / Apply Scale\n"
+                   "Merge Sel. / Dissolve / Fill / Bevel / Loop Cut\n"
+                   "Apply Mesh - export to .mesh file.\n"
+                   "Cancel Edit - restore original mesh.";
         }
         static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass);
 
@@ -432,6 +484,59 @@ namespace NOWA
         {
             return "MeshEditComponent.ApplyScale";
         }
+        static Ogre::String AttrProportionalRadius()
+        {
+            return "Proportional Radius";
+        }
+        static Ogre::String AttrBevelAmount()
+        {
+            return "Bevel Amount";
+        }
+        static Ogre::String AttrLoopCutFraction()
+        {
+            return "Loop Cut Fraction";
+        }
+        static Ogre::String AttrMergeSelected()
+        {
+            return "Merge Selected";
+        }
+        static Ogre::String AttrDissolveSelected()
+        {
+            return "Dissolve";
+        }
+        static Ogre::String AttrFillSelected()
+        {
+            return "Fill";
+        }
+        static Ogre::String AttrBevel()
+        {
+            return "Bevel";
+        }
+        static Ogre::String AttrLoopCut()
+        {
+            return "Loop Cut";
+        }
+
+        static Ogre::String ActionMergeSelected()
+        {
+            return "MergeSelected";
+        }
+        static Ogre::String ActionDissolveSelected()
+        {
+            return "DissolveSelected";
+        }
+        static Ogre::String ActionFillSelected()
+        {
+            return "FillSelected";
+        }
+        static Ogre::String ActionBevel()
+        {
+            return "Bevel";
+        }
+        static Ogre::String ActionLoopCut()
+        {
+            return "LoopCut";
+        }
 
     protected:
         // OIS::MouseListener
@@ -443,6 +548,12 @@ namespace NOWA
         virtual bool keyReleased(const OIS::KeyEvent& evt) override;
 
     private:
+        struct OverlayVertex
+        {
+            Ogre::Vector3     pos;
+            Ogre::ColourValue color;
+        };
+
         // ── Mesh preparation ──────────────────────────────────────────────────
         bool prepareEditableMesh(void);
         bool extractMeshData(void);
@@ -456,6 +567,18 @@ namespace NOWA
         void recalculateNormals_internal(void);
         void recalculateTangents(void);
         void buildVertexAdjacency(void);
+
+        // =============================================================================
+        //  buildPositionGroups
+        //
+        //  Builds vertexGroup[i] -> group index and positionGroups[g] -> {indices}.
+        //  Must be called whenever vertex positions or topology change, i.e. at the
+        //  end of buildVertexAdjacency().
+        //
+        //  Complexity: O(n^2) — fine for mesh editing meshes (typically < 50k verts).
+        //  For very dense sculpts consider a spatial hash; for now O(n^2) is practical.
+        // =============================================================================
+        void buildPositionGroups(void);
 
         // ── Overlay ───────────────────────────────────────────────────────────
         void createOverlay(void);
@@ -477,6 +600,8 @@ namespace NOWA
         void confirmGrab(void);
         void cancelGrab(void);
         void applyGrabMouseDelta(int dx, int dy);
+        void applyGrabScale(int dx);
+        bool findBorderLoop(std::vector<size_t>& outLoop);
 
         // ── Coordinate helpers ────────────────────────────────────────────────
         Ogre::Vector3 worldToLocal(const Ogre::Vector3& worldPos) const;
@@ -499,6 +624,19 @@ namespace NOWA
         /// mirrorMesh() and the public mergeByDistance() which wraps it.
         void mergeByDistance_noUndo(Ogre::Real threshold);
 
+        void mergeSelected(void);
+        void dissolveSelected(void);
+        void dissolveSelectedVertices(void);
+        void dissolveSelectedEdges(void);
+        void fillSelected(void);
+        void bevel(Ogre::Real amount);
+        void loopCut(Ogre::Real fraction);
+
+        void selectLinked(Ogre::Real sx, Ogre::Real sy, bool add);
+        // helpers used by concrete IScreenRectSelectable adapters:
+        Ogre::Matrix4 getScreenMatrix() const;
+        bool projectVertexToScreen(size_t idx, float& nx, float& ny) const;
+
     private:
         Ogre::String componentName;
 
@@ -518,6 +656,7 @@ namespace NOWA
         std::vector<Ogre::Vector2> uvCoordinates;
         std::vector<Ogre::uint32> indices;
         std::vector<std::vector<size_t>> vertexNeighbors;
+        unsigned int meshRebuildCounter;
 
         VertexElementInfo vertexFormat;
         bool isIndices32;
@@ -542,17 +681,28 @@ namespace NOWA
         GrabAxis grabAxis;
         Ogre::Vector3 grabAccumDelta;
         std::vector<Ogre::Vector3> grabSavedPositions;
+        std::vector<unsigned char> grabPreEditData; ///< full mesh snapshot taken at beginGrab for undo
 
         // Brush
         std::vector<Ogre::Real> brushData;
         size_t brushImageWidth;
         size_t brushImageHeight;
         bool isBrushArmed;
+        bool isScaling;                             ///< true while scale mode active inside grab
+        int grabScaleMouseAccum;                    ///< total mouse-X pixels since scale started
+
+        // Brush stroke undo
+        Ogre::Vector3 brushLastHitPos;                     ///< last hit position for distance throttle
+        std::vector<unsigned char> brushStrokePreEditData; ///< snapshot taken at stroke start
+
+        Ogre::Vector3 grabCentroid;                 ///< selection centroid computed at beginGrab
+
+        // Proportional editing
+        bool isProportionalEditing; ///< O-key toggle
 
         // Overlay (render thread owned, updated via tracked closure)
         Ogre::SceneNode* overlayNode;
         Ogre::ManualObject* overlayObject;
-        std::atomic<bool> overlayDirty;
 
         // Mouse state
         bool isPressing;
@@ -563,6 +713,15 @@ namespace NOWA
         bool isEditorMeshModifyMode; ///< set by handleMeshModifyMode
         bool isSelected;             ///< set by handleGameObjectSelected
         bool isSimulating;           ///< true between connect/disconnect
+        bool overlayClosureRemoved;
+
+        std::vector<int> vertexGroup;
+        std::vector<std::vector<size_t>> positionGroups;
+
+        ScreenRectSelector rectSelector;
+        bool  isRectSelecting;
+        float rectDragThreshold;   // px movement before rect starts (default 4)
+        float rectPressX, rectPressY; // where LMB went down
 
         // Attributes
         Variant* activated;
@@ -586,12 +745,23 @@ namespace NOWA
         Variant* mirrorMeshButton;
         // ── Apply Scale ───────────────────────────────────────────────────────
         Variant* applyScaleButton;
+
+        Variant* proportionalRadius;
+        Variant* bevelAmount;
+        Variant* loopCutFraction;
+        Variant* mergeSelectedButton;
+        Variant* dissolveButton;
+        Variant* fillButton;
+        Variant* bevelButton;
+        Variant* loopCutButton;
+
         // ── Brush ─────────────────────────────────────────────────────────────
         Variant* brushName;
         Variant* brushSize;
         Variant* brushIntensity;
         Variant* brushFalloff;
         Variant* brushMode;
+
         // ── Export / misc ─────────────────────────────────────────────────────
         Variant* applyMeshButton;
         Variant* cancelEditButton;

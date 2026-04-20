@@ -194,6 +194,7 @@
     <ClInclude Include="defines.h" />
     <ClInclude Include="editor\EditorManager.h" />
     <ClInclude Include="editor\Gizmo.h" />
+    <ClInclude Include="editor\ScreenRectSelector.h" />
     <ClInclude Include="editor\SelectionManager.h" />
     <ClInclude Include="editor\SelectionRectangle.h" />
     <ClInclude Include="editor\ViewportGrid.h" />
@@ -412,6 +413,7 @@
     <ClCompile Include="editor\EditorManager.cpp" />
     <ClCompile Include="editor\Gizmo.cpp" />
     <ClCompile Include="editor\Picker.cpp" />
+    <ClCompile Include="editor\ScreenRectSelector.cpp" />
     <ClCompile Include="editor\SelectionManager.cpp" />
     <ClCompile Include="editor\SelectionRectangle.cpp" />
     <ClCompile Include="editor\ViewportGrid.cpp" />
