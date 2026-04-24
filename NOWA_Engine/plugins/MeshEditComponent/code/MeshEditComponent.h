@@ -164,6 +164,7 @@ namespace NOWA
         virtual void update(Ogre::Real dt, bool notSimulating = false) override;
         virtual void actualizeValue(Variant* attribute) override;
         virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
+        void writeMesh();
         virtual bool executeAction(const Ogre::String& actionId, NOWA::Variant* attribute) override;
         virtual void setActivated(bool activated) override;
         virtual bool isActivated(void) const override;
@@ -256,6 +257,22 @@ namespace NOWA
         // ── Mirror axis parameter ─────────────────────────────────────────────
         void setMirrorAxis(const Ogre::String& axis);
         Ogre::String getMirrorAxis(void) const;
+
+        void setOriginAlignment(const Ogre::String& preset);
+        Ogre::String getOriginAlignment(void) const;
+
+        void setFlipDirection(const Ogre::String& axis);
+        Ogre::String getFlipDirection(void) const;
+
+        // Places a new vertex at the given world position and selects it.
+        // Called from mousePressed when addVertexMode is active.
+        void addVertexAtPosition(const Ogre::Vector3& localPos);
+
+        // Creates triangles from exactly 3 or 4 currently selected vertices.
+        // 3 selected → 1 triangle.
+        // 4 selected → 2 triangles (split on the shorter diagonal for best shape).
+        // Returns false if fewer than 3 or more than 4 vertices are selected.
+        bool buildFaceFromSelection(void);
 
         // ── Export / Apply ────────────────────────────────────────────────────
         bool exportMesh(const Ogre::String& fileNameOverride = "");
@@ -537,6 +554,39 @@ namespace NOWA
         {
             return "LoopCut";
         }
+        static Ogre::String AttrAddVertex()
+        {
+            return "Add Vertex Mode";
+        }
+        static Ogre::String ActionBuildFace()
+        {
+            return "BuildFace";
+        }
+        static Ogre::String AttrBuildFace()
+        {
+            return "Build Face";
+        }
+
+        static Ogre::String AttrOriginAlignment()
+        {
+            return "Origin Alignment";
+        }
+        static Ogre::String AttrFlipDirection()
+        {
+            return "Flip Direction";
+        }
+        static Ogre::String ActionApplyOriginAlignment()
+        {
+            return "ApplyOriginAlignment";
+        }
+        static Ogre::String ActionApplyFlipDirection()
+        {
+            return "ApplyFlipDirection";
+        }
+        static Ogre::String AttrShowOrigin()
+        {
+            return "Show Origin";
+        }
 
     protected:
         // OIS::MouseListener
@@ -636,6 +686,14 @@ namespace NOWA
         // helpers used by concrete IScreenRectSelectable adapters:
         Ogre::Matrix4 getScreenMatrix() const;
         bool projectVertexToScreen(size_t idx, float& nx, float& ny) const;
+
+        // Applies the currently selected origin alignment preset to all vertices.
+        // Translates all vertices so the chosen bounding-box point becomes (0,0,0).
+        void applyOriginAlignment(void);
+
+        // Flips (mirrors) all vertices across the chosen axis.
+        // Also mirrors normals and fixes triangle winding to keep faces front-facing.
+        void applyFlipDirection(void);
 
     private:
         Ogre::String componentName;
@@ -761,6 +819,14 @@ namespace NOWA
         Variant* brushIntensity;
         Variant* brushFalloff;
         Variant* brushMode;
+
+        Variant* buildFaceButton; // "Build Face" action button
+
+        Variant* originAlignment;     // ComboBox: 27 presets (Y/X/Z combined)
+        Variant* originAlignButton;   // Button: Apply Origin
+        Variant* flipDirection;       // ComboBox: X / Y / Z
+        Variant* flipDirectionButton; // Button: Apply Flip
+        Variant* showOrigin;
 
         // ── Export / misc ─────────────────────────────────────────────────────
         Variant* applyMeshButton;

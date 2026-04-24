@@ -174,7 +174,7 @@ ResourcesPanelMeshes::ResourcesPanelMeshes()
 	meshesTree(nullptr),
 	imageBox(nullptr)
 {
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &ResourcesPanelMeshes::handleRefreshMeshResources), EventDataRefreshMeshResources::getStaticEventType());
+	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &ResourcesPanelMeshes::handleRefreshMeshResources), NOWA::EventDataRefreshMeshResources::getStaticEventType());
 }
 
 void ResourcesPanelMeshes::setEditorManager(NOWA::EditorManager* editorManager)

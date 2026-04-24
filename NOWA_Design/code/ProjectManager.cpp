@@ -880,7 +880,7 @@ void ProjectManager::notifyEndDialog(tools::Dialog* sender, bool result)
 			this->additionalMeshResources.emplace_back(resourceName);
 
 			// Sent when a name has changed, so that the resources panel can be refreshed with new values
-			boost::shared_ptr<EventDataRefreshMeshResources> eventDataRefreshMeshResources(new EventDataRefreshMeshResources());
+			boost::shared_ptr<NOWA::EventDataRefreshMeshResources> eventDataRefreshMeshResources(new NOWA::EventDataRefreshMeshResources());
 			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshMeshResources);
 		}
 		else if (this->openSaveFileDialog->getMode() == "CopyScene")

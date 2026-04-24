@@ -13,6 +13,8 @@
 #include "OgreAbiUtils.h"
 #include "ParticleSystem/OgreParticleSystemManager2.h"
 #include "Compositor/OgreCompositorManager2.h"
+#include "OgreMesh2Serializer.h"
+#include "OgreDataStream.h"
 
 #include "ocean/OgreHlmsOcean.h"
 #include "ocean/Ocean.h"
@@ -4239,7 +4241,39 @@ namespace NOWA
 			return iss.str();
 		}
 		return "";
-	}
+    }
+
+    Ogre::MeshPtr Core::loadMeshFromAbsolutePath(const Ogre::String& absolutePath, const Ogre::String& meshName, Ogre::VaoManager* vaoManager)
+    {
+        Ogre::ResourcePtr existing = Ogre::MeshManager::getSingletonPtr()->getResourceByName(meshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
+        if (existing)
+        {
+            Ogre::MeshManager::getSingletonPtr()->destroyResourcePool(meshName);
+            Ogre::MeshManager::getSingletonPtr()->remove(existing->getHandle());
+        }
+
+        Ogre::MeshPtr mesh = Ogre::MeshManager::getSingletonPtr()->createManual(meshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
+
+		Ogre::String completePath = absolutePath + "/" + meshName;
+
+        std::ifstream* ifs = OGRE_NEW_T(std::ifstream, Ogre::MEMCATEGORY_GENERAL)(completePath.c_str(), std::ios::binary);
+
+        if (!ifs || !ifs->is_open())
+        {
+            Ogre::MeshManager::getSingletonPtr()->remove(mesh);
+            // OGRE_EXCEPT(Ogre::Exception::ERR_FILE_NOT_FOUND, "Cannot open mesh file: " + absolutePath, "loadMeshFromAbsolutePath");
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[Core] Cannot open mesh file: " + absolutePath);
+            return nullptr;
+        }
+
+        Ogre::DataStreamPtr stream(OGRE_NEW Ogre::FileStreamDataStream(meshName, ifs, true /*freeOnClose*/));
+
+        // 4. Serializer direkt befüttern
+        Ogre::MeshSerializer serializer(vaoManager);
+        serializer.importMesh(stream, mesh.get());
+
+        return mesh;
+    }
 
 	bool Core::isProjectEncoded(void) const
 	{
@@ -4504,7 +4538,7 @@ OGRE_ARCH_TYPE != OGRE_ARCHITECTURE_32
 			if (FALSE == result)
 			{
 				// Could not get exit code.
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[Coure] Could not get exit code from OgreMeshMagick.exe.");
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[Core] Could not get exit code from OgreMeshMagick.exe.");
 
 				return false;
 			}

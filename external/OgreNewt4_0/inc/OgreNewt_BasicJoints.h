@@ -239,7 +239,7 @@ namespace OgreNewt
 				if (m_motor0Enabled)
 				{
 					const ndFloat32 angle0 = GetAngle0();
-					SetOffsetAngle0(angle0 + m_motor0Speed * desc.m_timestep);
+                    SetTargetAngle0(angle0 + m_motor0Speed * desc.m_timestep);
 				}
 
 				// run base implementation

@@ -669,97 +669,124 @@ namespace NOWA
 	}
 
 	void GameObject::actualizeDatablocks(void)
-	{
-		if (GameObject::ITEM == this->type || GameObject::PLANE == this->type)
-		{
-			NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
-			{
-				Ogre::Item* item = this->getMovableObjectUnsafe<Ogre::Item>();
-				if (nullptr != item)
-				{
+    {
+        if (GameObject::ITEM == this->type || GameObject::PLANE == this->type)
+        {
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+            {
+                Ogre::Item* item = this->getMovableObjectUnsafe<Ogre::Item>();
+                if (nullptr != item)
+                {
                     this->meshName->setReadOnly(false);
-					this->meshName->setValue(item->getMesh()->getName());
+                    this->meshName->setValue(item->getMesh()->getName());
                     this->meshName->setReadOnly(true);
 
-					// Later check, if the entity has maybe a different type of data block as PBS, such as Toon, Unlit etc.
-					for (size_t i = 0; i < item->getNumSubItems(); i++)
-					{
-						auto datablock = item->getSubItem(i)->getDatablock();
-						Ogre::String datablockName = "Missing";
-						if (nullptr != datablock)
-						{
-							datablockName = *datablock->getNameStr();
-						}
-						else
-						{
-							item->getSubItem(i)->setDatablock(datablockName);
-						}
-						this->dataBlocks.emplace_back(new Variant(GameObject::AttrDataBlock() + Ogre::StringConverter::toString(i), datablockName, this->attributes));
+                    for (size_t i = 0; i < item->getNumSubItems(); i++)
+                    {
+                        auto datablock = item->getSubItem(i)->getDatablock();
+                        Ogre::String datablockName = "Missing";
+                        if (nullptr != datablock)
+                        {
+                            datablockName = *datablock->getNameStr();
+                        }
+                        else
+                        {
+                            item->getSubItem(i)->setDatablock(datablockName);
+                        }
 
-						const Ogre::String* fileName;
-						const Ogre::String* resourceGroup;
-						datablock->getFilenameAndResourceGroup(&fileName, &resourceGroup);
+                        // If the Variant for this index already exists, only update
+                        // its value. emplace_back on repeated calls corrupts the array
+                        // because the attributes map key collides with the old entry.
+                        if (i < this->dataBlocks.size())
+                        {
+                            if (nullptr != this->dataBlocks[i])
+                            {
+                                this->dataBlocks[i]->setValue(datablockName);
+                            }
+                        }
+                        else
+                        {
+                            this->dataBlocks.emplace_back(new Variant(GameObject::AttrDataBlock() + Ogre::StringConverter::toString(i), datablockName, this->attributes));
+                        }
 
-						if (false == (*fileName).empty())
-						{
-							Ogre::String data = "File: '" + *fileName + "'\n Resource group name: '" + *resourceGroup + "'";
-							this->dataBlocks[i]->setDescription(data);
-						}
-					}
-				}
-				else
-				{
-					this->meshName->setVisible(false);
-				}
-			};
-			NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObject::actualizeDatablocks");
-		}
-		else
-		{
-			NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
-			{
-				Ogre::v1::Entity * entity = this->getMovableObject<Ogre::v1::Entity>();
-				if (nullptr != entity)
-				{
+                        if (nullptr != datablock)
+                        {
+                            const Ogre::String* fileName;
+                            const Ogre::String* resourceGroup;
+                            datablock->getFilenameAndResourceGroup(&fileName, &resourceGroup);
+                            if (!fileName->empty())
+                            {
+                                Ogre::String data = "File: '" + *fileName + "'\n Resource group name: '" + *resourceGroup + "'";
+                                this->dataBlocks[i]->setDescription(data);
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    this->meshName->setVisible(false);
+                }
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObject::actualizeDatablocks");
+        }
+        else
+        {
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+            {
+                Ogre::v1::Entity* entity = this->getMovableObject<Ogre::v1::Entity>();
+                if (nullptr != entity)
+                {
                     this->meshName->setReadOnly(false);
                     this->meshName->setValue(entity->getMesh()->getName());
                     this->meshName->setReadOnly(true);
 
-					// Later check, if the entity has maybe a different type of data block as PBS, such as Toon, Unlit etc.
-					for (size_t i = 0; i < entity->getNumSubEntities(); i++)
-					{
-						auto datablock = entity->getSubEntity(i)->getDatablock();
-						Ogre::String datablockName = "Missing";
-						if (nullptr != datablock)
-						{
-							datablockName = *datablock->getNameStr();
-						}
-						else
-						{
-							entity->getSubEntity(i)->setDatablock(datablockName);
-						}
-						this->dataBlocks.emplace_back(new Variant(GameObject::AttrDataBlock() + Ogre::StringConverter::toString(i), datablockName, this->attributes));
+                    for (size_t i = 0; i < entity->getNumSubEntities(); i++)
+                    {
+                        auto datablock = entity->getSubEntity(i)->getDatablock();
+                        Ogre::String datablockName = "Missing";
+                        if (nullptr != datablock)
+                        {
+                            datablockName = *datablock->getNameStr();
+                        }
+                        else
+                        {
+                            entity->getSubEntity(i)->setDatablock(datablockName);
+                        }
 
-						const Ogre::String* fileName;
-						const Ogre::String* resourceGroup;
-						datablock->getFilenameAndResourceGroup(&fileName, &resourceGroup);
+                        // Same guard as above — update value if Variant already exists
+                        if (i < this->dataBlocks.size())
+                        {
+                            if (nullptr != this->dataBlocks[i])
+                            {
+                                this->dataBlocks[i]->setValue(datablockName);
+                            }
+                        }
+                        else
+                        {
+                            this->dataBlocks.emplace_back(new Variant(GameObject::AttrDataBlock() + Ogre::StringConverter::toString(i), datablockName, this->attributes));
+                        }
 
-						if (false == (*fileName).empty())
-						{
-							Ogre::String data = "File: '" + *fileName + "'\n Resource group name: '" + *resourceGroup + "'";
-							this->dataBlocks[i]->setDescription(data);
-						}
-					}
-				}
-				else
-				{
-					this->meshName->setVisible(false);
-				}
-			};
-			NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObject::actualizeDatablocks");
-		}
-
-		this->meshName->setReadOnly(true);
+                        if (nullptr != datablock)
+                        {
+                            const Ogre::String* fileName;
+                            const Ogre::String* resourceGroup;
+                            datablock->getFilenameAndResourceGroup(&fileName, &resourceGroup);
+                            if (!fileName->empty())
+                            {
+                                Ogre::String data = "File: '" + *fileName + "'\n Resource group name: '" + *resourceGroup + "'";
+                                this->dataBlocks[i]->setDescription(data);
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    this->meshName->setVisible(false);
+                }
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObject::actualizeDatablocks");
+        }
+        this->meshName->setReadOnly(true);
     }
 
     LuaScriptComponent* GameObject::getCachedLuaScriptComponent(void) const

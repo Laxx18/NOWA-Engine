@@ -700,6 +700,8 @@ namespace NOWA
 		 */
 		Ogre::String readContent(const Ogre::String& filePathName, unsigned int startOffset, unsigned int size);
 
+        Ogre::MeshPtr loadMeshFromAbsolutePath(const Ogre::String& absolutePath, const Ogre::String& meshName, Ogre::VaoManager* vaoManager);
+
 		void minimizeMemory(Ogre::SceneManager* sceneManager);
 		
 		/**

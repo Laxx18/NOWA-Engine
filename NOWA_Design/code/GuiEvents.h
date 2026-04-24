@@ -307,49 +307,6 @@ private:
 };
 
 //---------------------------------------------------------------------------------------------------------------------
-// EventDataRefreshMeshResources - Sent when new mesh resources has been loaded
-//---------------------------------------------------------------------------------------------------------------------
-class EventDataRefreshMeshResources : public NOWA::BaseEventData
-{
-public:
-
-	EventDataRefreshMeshResources(void)
-	{
-
-	}
-
-	static NOWA::EventType getStaticEventType(void)
-	{
-		return 0xeeab0008;
-	}
-
-	virtual const NOWA::EventType getEventType(void) const
-	{
-		return 0xeeab0008;
-	}
-
-	virtual void serialize(std::ostrstream& out) const
-	{
-
-	}
-
-	virtual void deserialize(std::istrstream& in)
-	{
-
-	}
-
-	virtual NOWA::EventDataPtr copy() const
-	{
-		return NOWA::EventDataPtr(new EventDataRefreshMeshResources());
-	}
-
-	virtual const char* getName(void) const
-	{
-		return "EventDataRefreshMeshResources";
-	}
-};
-
-//---------------------------------------------------------------------------------------------------------------------
 // EventDataTestSelectedGameObjects - Sent when editor is in test activated game objects mode
 //---------------------------------------------------------------------------------------------------------------------
 class EventDataTestSelectedGameObjects : public NOWA::BaseEventData

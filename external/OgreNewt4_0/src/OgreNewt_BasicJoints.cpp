@@ -1319,9 +1319,8 @@ namespace OgreNewt
         SetLimitState(false);
 
         // initial limits & target angle
-        m_minLimit = minAngle;
-        m_maxLimit = maxAngle;
-        m_targetAngle = m_angle;
+        SetMinAngularLimit(minAngle);
+        SetMaxAngularLimit(maxAngle);
     }
 
     void ndOgreHingeActuator::UpdateParameters()
@@ -1338,17 +1337,17 @@ namespace OgreNewt
 
     ndFloat32 ndOgreHingeActuator::GetTargetAngle() const
     {
-        return m_targetAngle;
+        return GetTargetAngle();
     }
 
     ndFloat32 ndOgreHingeActuator::GetMinAngularLimit() const
     {
-        return m_minLimit;
+        return GetMinAngularLimit();
     }
 
     ndFloat32 ndOgreHingeActuator::GetMaxAngularLimit() const
     {
-        return m_maxLimit;
+        return GetMaxAngularLimit();
     }
 
     ndFloat32 ndOgreHingeActuator::GetAngularRate() const
@@ -1363,12 +1362,12 @@ namespace OgreNewt
 
     void ndOgreHingeActuator::SetMinAngularLimit(ndFloat32 limit)
     {
-        m_minLimit = limit;
+        SetMinAngularLimit(limit);
     }
 
     void ndOgreHingeActuator::SetMaxAngularLimit(ndFloat32 limit)
     {
-        m_maxLimit = limit;
+        SetMaxAngularLimit(limit);
     }
 
     void ndOgreHingeActuator::SetAngularRate(ndFloat32 rate)
@@ -1399,11 +1398,11 @@ namespace OgreNewt
         // Direct ND4 clone of ND3 SetTargetAngle:
         // angle = clamp(angle, m_minAngle, m_maxAngle);
         // if |angle - m_targetAngle| > 1e-3, wake body and update m_targetAngle.
-        angle = ndClamp(angle, m_minLimit, m_maxLimit);
-        if (ndAbs(angle - m_targetAngle) > ndFloat32(1.0e-3f))
+        angle = ndClamp(angle, GetMinAngularLimit(), GetMaxAngularLimit());
+        if (ndAbs(angle - GetTargetAngle()) > ndFloat32(1.0e-3f))
         {
             WakeBodies();
-            m_targetAngle = angle;
+            SetTargetAngle(angle);
         }
     }
 
@@ -1444,8 +1443,8 @@ namespace OgreNewt
         const ndFloat32 timestep = desc.m_timestep;
         const ndFloat32 invTimeStep = desc.m_invTimestep;
 
-        const ndFloat32 angle = m_angle;
-        const ndFloat32 targetAngle = m_targetAngle;
+        const ndFloat32 angle = GetAngle();
+        const ndFloat32 targetAngle = GetTargetAngle();
 
         const ndFloat32 step = m_motorSpeed * timestep;
         ndFloat32 currentSpeed = ndFloat32(0.0f);
@@ -1478,11 +1477,11 @@ namespace OgreNewt
         //    if angle > max -> only positive torque
         //    if angle < min -> only negative torque
         //    else           -> +-m_maxTorque
-        if (angle > m_maxLimit)
+        if (angle > GetMaxAngularLimit())
         {
             SetHighFriction(desc, m_maxTorque);
         }
-        else if (angle < m_minLimit)
+        else if (angle < GetMinAngularLimit())
         {
             SetLowerFriction(desc, -m_maxTorque);
         }
@@ -1586,7 +1585,7 @@ namespace OgreNewt
         // we will handle limits & forces manually (like ND3 custom joint),
         // so disable built-in limit/maxForce state
         SetLimitState(false);
-        SetMaxForceState(false);
+        // SetMaxForceState(false);
 
         // set limits on base joint
         SetLimits(minPosit, maxPosit);
@@ -1711,8 +1710,8 @@ namespace OgreNewt
 
         const ndFloat32 timestep = desc.m_timestep;
         const ndFloat32 invTimeStep = desc.m_invTimestep;
-
-        const ndFloat32 posit = m_posit; // updated by UpdateParameters()
+        
+        const ndFloat32 posit = GetPosit();
         const ndFloat32 targetPosit = m_targetPosit;
 
         ndFloat32 minLimit, maxLimit;
