@@ -148,7 +148,7 @@
 		</Group>
 	</Resource>
 	
-	<Resource type="ResourceImageSet" name="Cliff Mountain4.png">
+	<Resource type="ResourceImageSet" name="Cliff Mountain 4.png">
 		<Group name="States" texture="Cliff Mountain 4.png" size="64 64">
 			<Index name="Normal">
 				<Frame point="0 0"/>
@@ -381,7 +381,7 @@
 	</Resource>
 	
 	<Resource type="ResourceImageSet" name="Terraced Mountain 1.png">
-		<Group name="States" texture="Terraced Mountain 1" size="64 64">
+		<Group name="States" texture="Terraced Mountain 1.png" size="64 64">
 			<Index name="Normal">
 				<Frame point="0 0"/>
 			</Index>
@@ -389,7 +389,7 @@
 	</Resource>
 	
 	<Resource type="ResourceImageSet" name="Terraced Mountain 2.png">
-		<Group name="States" texture="Terraced Mountain 2" size="64 64">
+		<Group name="States" texture="Terraced Mountain 2.png" size="64 64">
 			<Index name="Normal">
 				<Frame point="0 0"/>
 			</Index>
@@ -397,7 +397,7 @@
 	</Resource>
 	
 	<Resource type="ResourceImageSet" name="Terraced Mountain 3.png">
-		<Group name="States" texture="Terraced Mountain 3" size="64 64">
+		<Group name="States" texture="Terraced Mountain 3.png" size="64 64">
 			<Index name="Normal">
 				<Frame point="0 0"/>
 			</Index>
@@ -405,7 +405,7 @@
 	</Resource>
 	
 	<Resource type="ResourceImageSet" name="Terraced Mountain 4.png">
-		<Group name="States" texture="Terraced Mountain 4" size="64 64">
+		<Group name="States" texture="Terraced Mountain 4.png" size="64 64">
 			<Index name="Normal">
 				<Frame point="0 0"/>
 			</Index>
@@ -413,7 +413,7 @@
 	</Resource>
 	
 	<Resource type="ResourceImageSet" name="Terraced Mountain 5.png">
-		<Group name="States" texture="Terraced Mountain 5" size="64 64">
+		<Group name="States" texture="Terraced Mountain 5.png" size="64 64">
 			<Index name="Normal">
 				<Frame point="0 0"/>
 			</Index>
@@ -421,7 +421,7 @@
 	</Resource>
 	
 	<Resource type="ResourceImageSet" name="Terraced Mountain 6.png">
-		<Group name="States" texture="Terraced Mountain 6" size="64 64">
+		<Group name="States" texture="Terraced Mountain 6.png" size="64 64">
 			<Index name="Normal">
 				<Frame point="0 0"/>
 			</Index>
@@ -429,7 +429,7 @@
 	</Resource>
 	
 	<Resource type="ResourceImageSet" name="Terraced Mountain 7.png">
-		<Group name="States" texture="Terraced Mountain 7" size="64 64">
+		<Group name="States" texture="Terraced Mountain 7.png" size="64 64">
 			<Index name="Normal">
 				<Frame point="0 0"/>
 			</Index>

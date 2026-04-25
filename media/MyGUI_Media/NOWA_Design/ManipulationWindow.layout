@@ -27,58 +27,59 @@
 			<Property key="ModeImage" value="true"/>
 			<Property key="StateSelected" value="true"/>
         </Widget>
-	  <Widget type="Button" skin="ButtonImage" position="235 5 29 26" name="placeModeCheck">
+		<Widget type="Button" skin="ButtonImage" position="235 5 29 26" name="meshModifyModeCheck">
+			<Property key="ImageResource" value="MeshModifyImage"/>
+            <Property key="ImageGroup" value="States"/>
+			<Property key="ModeImage" value="true"/>
+        </Widget>
+	  <Widget type="Button" skin="ButtonImage" position="270 5 29 26" name="placeModeCheck">
             <Property key="NeedToolTip" value="true"/>
             <Property key="ImageResource" value="PlaceImage"/>
             <Property key="ImageGroup" value="States"/>
 			<Property key="ModeImage" value="true"/>
         </Widget>
-        <Widget type="Button" skin="ButtonImage" position="270 5 29 26" name="translateModeCheck">
+        <Widget type="Button" skin="ButtonImage" position="305 5 29 26" name="translateModeCheck">
             <Property key="NeedToolTip" value="true"/>
             <Property key="ImageResource" value="TranslateImage"/>
             <Property key="ImageGroup" value="States"/>
 			<Property key="ModeImage" value="true"/>
         </Widget>
-        <Widget type="Button" skin="ButtonImage" position="305 5 29 26" name="scaleModeCheck">
+        <Widget type="Button" skin="ButtonImage" position="340 5 29 26" name="scaleModeCheck">
            <Property key="ImageResource" value="ScaleImage"/>
             <Property key="ImageGroup" value="States"/>
 			<Property key="ModeImage" value="true"/>
         </Widget>
-        <Widget type="Button" skin="ButtonImage" position="340 5 29 26" name="rotate1ModeCheck">
+        <Widget type="Button" skin="ButtonImage" position="375 5 29 26" name="rotate1ModeCheck">
             <Property key="ImageResource" value="Rotate1Image"/>
             <Property key="ImageGroup" value="States"/>
 			<Property key="ModeImage" value="true"/>
         </Widget>
-        <Widget type="Button" skin="ButtonImage" position="375 5 29 26" name="rotate2ModeCheck">
+        <Widget type="Button" skin="ButtonImage" position="410 5 29 26" name="rotate2ModeCheck">
             <Property key="ImageResource" value="Rotate2Image"/>
             <Property key="ImageGroup" value="States"/>
 			<Property key="ModeImage" value="true"/>
         </Widget>
-        <Widget type="Button" skin="ButtonImage" position="410 5 29 26" name="pickModeCheck">
+        <Widget type="Button" skin="ButtonImage" position="445 5 29 26" name="pickModeCheck">
 			<Property key="ImageResource" value="PickImage"/>
             <Property key="ImageGroup" value="States"/>
 			<Property key="ModeImage" value="true"/>
         </Widget>
-		<Widget type="Button" skin="ButtonImage" position="445 5 29 26" name="terrainModifyModeCheck">
+		<Widget type="Button" skin="ButtonImage" position="480 5 29 26" name="terrainModifyModeCheck">
 			<Property key="ImageResource" value="ModifyTerrainImage"/>
             <Property key="ImageGroup" value="States"/>
 			<Property key="ModeImage" value="true"/>
         </Widget>
-		<Widget type="Button" skin="ButtonImage" position="480 5 29 26" name="terrainSmoothModeCheck">
+		<Widget type="Button" skin="ButtonImage" position="515 5 29 26" name="terrainSmoothModeCheck">
 			<Property key="ImageResource" value="SmoothTerrainImage"/>
             <Property key="ImageGroup" value="States"/>
 			<Property key="ModeImage" value="true"/>
         </Widget>
-		<Widget type="Button" skin="ButtonImage" position="515 5 29 26" name="terrainPaintModeCheck">
+		<Widget type="Button" skin="ButtonImage" position="550 5 29 26" name="terrainPaintModeCheck">
 			<Property key="ImageResource" value="PaintTerrainImage"/>
             <Property key="ImageGroup" value="States"/>
 			<Property key="ModeImage" value="true"/>
         </Widget>
-		<Widget type="Button" skin="ButtonImage" position="550 5 29 26" name="meshModifyModeCheck">
-			<Property key="ImageResource" value="MeshModifyImage"/>
-            <Property key="ImageGroup" value="States"/>
-			<Property key="ModeImage" value="true"/>
-        </Widget>
+		
 		<Widget type="Button" skin="ButtonImage" position="620 5 29 26" name="removeButton">
             <Property key="ImageResource" value="RemoveImage"/>
             <Property key="ImageGroup" value="States"/>

@@ -354,9 +354,21 @@ namespace NOWA
 		}
 
 		if (exceptionPtr)
-		{
-			std::rethrow_exception(exceptionPtr);
-		}
+        {
+            try
+            {
+                std::rethrow_exception(exceptionPtr);
+            }
+            catch (const std::exception& e)
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AppStateManager] Error on managing a new state\n" + Ogre::String(e.what()));
+            }
+            catch (...)
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AppStateManager] Error on managing a new state (unknown exception)");
+            }
+            std::rethrow_exception(exceptionPtr);
+        }
 	}
 
 	void AppStateManager::clearLogicQueue(void)

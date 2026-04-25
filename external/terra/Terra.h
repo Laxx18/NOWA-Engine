@@ -269,6 +269,7 @@ namespace Ogre
 
         Ogre::TextureGpu* getHeightMapTex(void) const   { return m_heightMapTex; }
         Ogre::TextureGpu* getNormalMapTex(void) const   { return m_normalMapTex; }
+        Ogre::TextureGpu* getBlendWeightTex(void) const { return m_blendWeightTex; }
         TextureGpu* _getShadowMapTex(void) const;
 
         // These are always in Y-up space
@@ -365,6 +366,7 @@ namespace Ogre
         Ogre::String getHeightMapTextureName(void) const;
 
         Ogre::String getBlendWeightTextureName(void) const;
+
     public:
         Ogre::uint32 mHlmsTerraIndex;
     };

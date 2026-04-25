@@ -120,7 +120,7 @@ void ImageData::setResourceName(const Ogre::String& resourceName)
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ImageData] ERROR: Could not add resource: "
 				+ resourceName + ", because it cannot be found, or the XML container is wrong. Check your resource location name XML");
 		}
-		if (nullptr != this->imageItem)
+        if (nullptr != this->imageItem && true == foundCorrectType)
 		{
 			// this->imageItem->setImageTexture(this->resourceName);
 			this->imageItem->setItemResourcePtr(this->resourceImage);

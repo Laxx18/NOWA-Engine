@@ -489,17 +489,15 @@ namespace NOWA
 		float applyRoadCarving(float baseHeight, const Ogre::Vector2& position, const std::vector<std::vector<RoadPoint>>& roads, Ogre::uint32 width, Ogre::uint32 height);
 
 		// River generation helpers
-		struct DrainageNode
-		{
-			Ogre::Vector2 position;
-			float flow;
-			int downstreamIndex;
-			float elevation;
-		};
+        struct RiverPath
+        {
+            std::vector<Ogre::Vector2> points;
+            std::vector<float> widthsPixels; // grows downstream
+            std::vector<float> depthsNorm;   // normalized [0,1], grows downstream
+        };
 
-		void generateTensorField(std::vector<Ogre::Vector2>& tensorField, Ogre::uint32 width, Ogre::uint32 height);
-		std::vector<ProceduralTerrainCreationComponent::DrainageNode> generateDrainageBasins(const std::vector<float>& heights, Ogre::uint32 width, Ogre::uint32 height);
-		void carveRivers(std::vector<float>& heights, const std::vector<DrainageNode>& nodes, Ogre::uint32 width, Ogre::uint32 height);
+        std::vector<RiverPath> traceRiverPaths(const std::vector<float>& heights, Ogre::uint32 width, Ogre::uint32 height);
+        void carveRiversStamp(std::vector<float>& heights, const std::vector<RiverPath>& rivers, Ogre::uint32 width, Ogre::uint32 height);
 
 		// Canyon generation helpers
 		struct CanyonPath
@@ -596,7 +594,9 @@ namespace NOWA
 
 		// Runtime data (PRESERVED FROM ORIGINAL)
 		bool terrainGenerated;
-		float cachedPixelsPerMeter;
+        float cachedPixelsPerMeter;
+        float cachedHeightRange;
+        float cachedSeaLevelNorm;
 	};
 
 }; // namespace end

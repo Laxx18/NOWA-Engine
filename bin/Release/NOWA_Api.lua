@@ -9725,6 +9725,14 @@ return {
 				returns = "(LookAfterComponent)",
 				valuetype = "LookAfterComponent"
 			},
+			getMeshConstructionComponent =
+			{
+				type = "function",
+				description = "Gets the MeshConstructionComponent.",
+				args = "()",
+				returns = "(MeshConstructionComponent)",
+				valuetype = "MeshConstructionComponent"
+			},
 			getMeshModifyComponent =
 			{
 				type = "function",
@@ -11812,6 +11820,14 @@ return {
 				args = "(LookAfterComponent other)",
 				returns = "(LookAfterComponent)",
 				valuetype = "LookAfterComponent"
+			},
+			castMeshConstructionComponent =
+			{
+				type = "function",
+				description = "Casts for Lua auto-completion.",
+				args = "(MeshConstructionComponent other)",
+				returns = "(MeshConstructionComponent)",
+				valuetype = "MeshConstructionComponent"
 			},
 			castMeshModifyComponent =
 			{
@@ -18883,6 +18899,31 @@ return {
 	{
 		type = "class",
 		description = "Matrix3 class."
+	},
+	MeshConstructionComponent =
+	{
+		type = "class",
+		description = "Warcraft-2-style bottom-to-top mesh construction animation. Simulation-only — editor always shows the full mesh. Optionally shows a progress bar and/or percentage text.",
+		inherits = "GameObjectComponent",
+		childs = 
+		{
+			reactOnConstructionDone =
+			{
+				type = "method",
+				description = "Lua callback fired when construction completes. Signature: function()",
+				args = "(func closureFunction)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getConstructionProgress =
+			{
+				type = "function",
+				description = "Returns current progress [0..1].",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			}
+		}
 	},
 	MeshLinearTransform =
 	{

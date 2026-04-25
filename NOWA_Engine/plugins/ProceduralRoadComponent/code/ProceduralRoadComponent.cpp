@@ -61,6 +61,10 @@ namespace NOWA
         curbHeight(new Variant(ProceduralRoadComponent::AttrCurbHeight(), 0.15f, this->attributes)),
         terrainSampleInterval(new Variant(ProceduralRoadComponent::AttrTerrainSampleInterval(), 2.0f, this->attributes)),
         convertToMesh(new Variant(ProceduralRoadComponent::AttrConvertToMesh(), "Convert to Mesh", this->attributes)),
+        sourceTerraLayer(new Variant(ProceduralRoadComponent::AttrSourceTerraLayer(), static_cast<Ogre::uint32>(2), this->attributes)),
+        traceStepMeters(new Variant(ProceduralRoadComponent::AttrTraceStepMeters(), 3.0f, this->attributes)),
+        traceThreshold(new Variant(ProceduralRoadComponent::AttrTraceThreshold(), static_cast<Ogre::uint32>(64), this->attributes)),
+        generateFromLayer(new Variant(ProceduralRoadComponent::AttrGenerateFromLayer(), "Generate From Layer", this->attributes)),
         buildState(BuildState::IDLE),
         isEditorMeshModifyMode(false),
         isSelected(false),
@@ -99,9 +103,19 @@ namespace NOWA
                                             "- The mesh will benefit from Ogre's graphics caching (no FPS drops)\n\n"
                                             "Use this when you're finished designing the road and want optimal performance.");
         this->convertToMesh->addUserData(GameObject::AttrActionExec());
+        this->convertToMesh->addUserData(GameObject::AttrActionNeedRefresh());
         this->convertToMesh->addUserData(GameObject::AttrActionExecId(), "ProceduralRoadComponent.ConvertToMesh");
 
     
+        this->sourceTerraLayer->setDescription("Terra blend layer to trace as road centerline (0=layer1 .. 3=layer4). "
+                                               "Paint the road path on terrain with the Terra brush first, then click Generate.");
+        this->traceStepMeters->setDescription("Distance in meters between generated road waypoints. "
+                                              "Lower = more precise curves but more segments.");
+        this->traceThreshold->setDescription("Minimum layer value (0-255) for a pixel to count as road. "
+                                             "64 = 25%, 128 = 50%, 200 = 78%.");
+        this->generateFromLayer->addUserData(GameObject::AttrActionExec());
+        this->generateFromLayer->addUserData(GameObject::AttrActionNeedRefresh());
+        this->generateFromLayer->addUserData(GameObject::AttrActionExecId(), "ProceduralRoadComponent.GenerateFromLayer");
     }
 
     ProceduralRoadComponent::~ProceduralRoadComponent()
@@ -234,7 +248,26 @@ namespace NOWA
             this->terrainSampleInterval->setValue(XMLConverter::getAttribReal(propertyElement, "data", 2.0f));
             propertyElement = propertyElement->next_sibling("property");
         }
-
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralRoadComponent::AttrSourceTerraLayer())
+        {
+            this->sourceTerraLayer->setValue(XMLConverter::getAttribUnsignedInt(propertyElement, "data", 2));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralRoadComponent::AttrTraceStepMeters())
+        {
+            this->traceStepMeters->setValue(XMLConverter::getAttribReal(propertyElement, "data", 3.0f));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralRoadComponent::AttrTraceThreshold())
+        {
+            this->traceThreshold->setValue(XMLConverter::getAttribUnsignedInt(propertyElement, "data", 64));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralRoadComponent::AttrGenerateFromLayer())
+        {
+            this->generateFromLayer->setValue(XMLConverter::getAttrib(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
         return true;
     }
 
@@ -261,6 +294,10 @@ namespace NOWA
         clonedCompPtr->setEdgeUVTiling(this->edgeUVTiling->getVector2());
         clonedCompPtr->setCurbHeight(this->curbHeight->getReal());
         clonedCompPtr->setTerrainSampleInterval(this->terrainSampleInterval->getReal());
+        clonedCompPtr->setSourceTerraLayer(this->sourceTerraLayer->getUInt());
+        clonedCompPtr->setTraceStepMeters(this->traceStepMeters->getReal());
+        clonedCompPtr->setTraceThreshold(this->traceThreshold->getUInt());
+        clonedCompPtr->setGenerateFromLayer(this->generateFromLayer->getString());
 
         clonedGameObjectPtr->addComponent(clonedCompPtr);
         clonedCompPtr->setOwner(clonedGameObjectPtr);
@@ -459,6 +496,22 @@ namespace NOWA
         {
             this->setTerrainSampleInterval(attribute->getReal());
         }
+        else if (ProceduralRoadComponent::AttrSourceTerraLayer() == attribute->getName())
+        {
+            this->setSourceTerraLayer(attribute->getUInt());
+        }
+        else if (ProceduralRoadComponent::AttrTraceStepMeters() == attribute->getName())
+        {
+            this->setTraceStepMeters(attribute->getReal());
+        }
+        else if (ProceduralRoadComponent::AttrTraceThreshold() == attribute->getName())
+        {
+            this->setTraceThreshold(attribute->getUInt());
+        }
+        else if (ProceduralRoadComponent::AttrGenerateFromLayer() == attribute->getName())
+        {
+            this->setGenerateFromLayer(attribute->getString());
+        }
     }
 
     void ProceduralRoadComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
@@ -577,6 +630,30 @@ namespace NOWA
         propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
         propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string(ProceduralRoadComponent::AttrTerrainSampleInterval().c_str())));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->terrainSampleInterval->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string(ProceduralRoadComponent::AttrSourceTerraLayer().c_str())));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->sourceTerraLayer->getUInt())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string(ProceduralRoadComponent::AttrTraceStepMeters().c_str())));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->traceStepMeters->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string(ProceduralRoadComponent::AttrTraceThreshold().c_str())));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->traceThreshold->getUInt())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string(ProceduralRoadComponent::AttrGenerateFromLayer().c_str())));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->generateFromLayer->getString())));
         propertiesXML->append_node(propertyXML);
 
         this->saveRoadDataToFile();
@@ -815,6 +892,11 @@ namespace NOWA
         if ("ProceduralRoadComponent.ConvertToMesh" == actionId)
         {
             return this->convertToMeshApply();
+        }
+        if ("ProceduralRoadComponent.GenerateFromLayer" == actionId)
+        {
+            this->generateRoadFromTerraLayer();
+            return true;
         }
         return true;
     }
@@ -2044,6 +2126,520 @@ namespace NOWA
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralRoadComponent] Export failed: " + e.getFullDescription());
             return false;
         }
+    }
+
+    void ProceduralRoadComponent::generateRoadFromTerraLayer(void)
+    {
+        // -----------------------------------------------------------------------
+        // 1. Find Terra
+        // -----------------------------------------------------------------------
+        Ogre::Terra* terra = nullptr;
+        auto terraList = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromComponent(TerraComponent::getStaticClassName());
+        if (terraList.empty())
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralRoadComponent] generateFromLayer: No TerraComponent found!");
+            return;
+        }
+        auto terraCompPtr = NOWA::makeStrongPtr(terraList[0]->getComponent<TerraComponent>());
+        if (!terraCompPtr)
+        {
+            return;
+        }
+        terra = terraCompPtr->getTerra();
+        if (!terra)
+        {
+            return;
+        }
+
+        int layerChannel = static_cast<int>(Ogre::Math::Clamp(this->sourceTerraLayer->getUInt(), 0u, 3u));
+        int threshold = static_cast<int>(this->traceThreshold->getUInt());
+        float stepM = std::max(0.5f, this->traceStepMeters->getReal());
+
+        Ogre::TextureGpu* blendTex = terra->getBlendWeightTex();
+        if (!blendTex)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralRoadComponent] generateFromLayer: No blend weight texture!");
+            return;
+        }
+
+        int bW = static_cast<int>(blendTex->getWidth());
+        int bH = static_cast<int>(blendTex->getHeight());
+        Ogre::Vector2 xzDim = terra->getXZDimensions();
+        Ogre::Vector3 terrainOrigin = terra->getTerrainOrigin();
+        float ppmX = static_cast<float>(bW) / xzDim.x;
+        float ppmZ = static_cast<float>(bH) / xzDim.y;
+        float stepPx = stepM * ((ppmX + ppmZ) * 0.5f);
+
+        // -----------------------------------------------------------------------
+        // 2. Build binary mask
+        // -----------------------------------------------------------------------
+        std::vector<uint8_t> mask(bW * bH, 0);
+        int roadPixelCount = 0;
+
+        for (int pz = 0; pz < bH; ++pz)
+        {
+            for (int px = 0; px < bW; ++px)
+            {
+                float worldX = terrainOrigin.x + (px + 0.5f) / ppmX;
+                float worldZ = terrainOrigin.z + (pz + 0.5f) / ppmZ;
+                std::vector<int> layers = terra->getLayerAt(Ogre::Vector3(worldX, 0.0f, worldZ));
+                if (layers[layerChannel] >= threshold)
+                {
+                    mask[pz * bW + px] = 1;
+                    ++roadPixelCount;
+                }
+            }
+        }
+
+        if (roadPixelCount < 10)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralRoadComponent] generateFromLayer: Too few road pixels (" + Ogre::StringConverter::toString(roadPixelCount) + "). Paint more terrain first.");
+            return;
+        }
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] generateFromLayer: " + Ogre::StringConverter::toString(roadPixelCount) + " road pixels found.");
+
+        // -----------------------------------------------------------------------
+        // 3. Zhang-Suen morphological thinning
+        // -----------------------------------------------------------------------
+        auto neighbors8 = [&](int px, int pz, int d) -> uint8_t
+        {
+            static const int dx[8] = {0, 1, 1, 1, 0, -1, -1, -1};
+            static const int dz[8] = {-1, -1, 0, 1, 1, 1, 0, -1};
+            int nx = px + dx[d];
+            int nz = pz + dz[d];
+            if (nx < 0 || nx >= bW || nz < 0 || nz >= bH)
+            {
+                return 0;
+            }
+            return mask[nz * bW + nx];
+        };
+
+        bool changed = true;
+        while (changed)
+        {
+            changed = false;
+            for (int pass = 0; pass < 2; ++pass)
+            {
+                std::vector<int> toDelete;
+                for (int pz = 1; pz < bH - 1; ++pz)
+                {
+                    for (int px = 1; px < bW - 1; ++px)
+                    {
+                        if (mask[pz * bW + px] == 0)
+                        {
+                            continue;
+                        }
+
+                        uint8_t p[8];
+                        for (int d = 0; d < 8; ++d)
+                        {
+                            p[d] = neighbors8(px, pz, d);
+                        }
+
+                        int A = 0;
+                        for (int d = 0; d < 8; ++d)
+                        {
+                            if (p[d] == 0 && p[(d + 1) % 8] == 1)
+                            {
+                                ++A;
+                            }
+                        }
+
+                        int B = 0;
+                        for (int d = 0; d < 8; ++d)
+                        {
+                            B += p[d];
+                        }
+
+                        if (A != 1 || B < 2 || B > 6)
+                        {
+                            continue;
+                        }
+
+                        if (pass == 0)
+                        {
+                            if (p[0] * p[2] * p[4] != 0)
+                            {
+                                continue;
+                            }
+                            if (p[2] * p[4] * p[6] != 0)
+                            {
+                                continue;
+                            }
+                        }
+                        else
+                        {
+                            if (p[0] * p[2] * p[6] != 0)
+                            {
+                                continue;
+                            }
+                            if (p[0] * p[4] * p[6] != 0)
+                            {
+                                continue;
+                            }
+                        }
+                        toDelete.push_back(pz * bW + px);
+                    }
+                }
+                for (int idx : toDelete)
+                {
+                    mask[idx] = 0;
+                    changed = true;
+                }
+            }
+        }
+
+        // Spur pruning: remove dead-end branch pixels left by thinning
+        {
+            int pruneDepth = std::max(4, std::min(static_cast<int>(stepPx * 1.5f), 25));
+            for (int prunePass = 0; prunePass < pruneDepth; ++prunePass)
+            {
+                std::vector<int> toRemove;
+                for (int pz = 1; pz < bH - 1; ++pz)
+                {
+                    for (int px = 1; px < bW - 1; ++px)
+                    {
+                        if (mask[pz * bW + px] == 0)
+                        {
+                            continue;
+                        }
+                        int nc = 0;
+                        for (int d = 0; d < 8; ++d)
+                        {
+                            nc += neighbors8(px, pz, d);
+                        }
+                        if (nc <= 1)
+                        {
+                            toRemove.push_back(pz * bW + px);
+                        }
+                    }
+                }
+                if (toRemove.empty())
+                {
+                    break;
+                }
+                for (int idx : toRemove)
+                {
+                    mask[idx] = 0;
+                }
+            }
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] generateFromLayer: Spur pruning done.");
+        }
+
+        // -----------------------------------------------------------------------
+        // 4. Collect skeleton pixels and find endpoints
+        // -----------------------------------------------------------------------
+        std::vector<std::pair<int, int>> skeletonPixels;
+        std::vector<std::pair<int, int>> endpoints;
+
+        for (int pz = 1; pz < bH - 1; ++pz)
+        {
+            for (int px = 1; px < bW - 1; ++px)
+            {
+                if (mask[pz * bW + px] == 0)
+                {
+                    continue;
+                }
+                skeletonPixels.push_back({px, pz});
+                int nc = 0;
+                for (int d = 0; d < 8; ++d)
+                {
+                    if (neighbors8(px, pz, d))
+                    {
+                        ++nc;
+                    }
+                }
+                if (nc == 1)
+                {
+                    endpoints.push_back({px, pz});
+                }
+            }
+        }
+
+        if (skeletonPixels.empty())
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralRoadComponent] generateFromLayer: Skeleton empty after thinning!");
+            return;
+        }
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+            "[ProceduralRoadComponent] generateFromLayer: Skeleton " + Ogre::StringConverter::toString(skeletonPixels.size()) + " px, " + Ogre::StringConverter::toString(endpoints.size()) + " endpoints.");
+
+        std::pair<int, int> startPx = endpoints.empty() ? skeletonPixels.front() : endpoints.front();
+
+        // -----------------------------------------------------------------------
+        // 5. Trace skeleton
+        //    FIX 1: Direction-scored neighbor selection via dot product instead of
+        //    exact direction match. Prevents the tracer from taking wrong branches
+        //    at junctions which caused sharp kinks and self-intersecting geometry.
+        //    FIX 2: Jump recovery with forward-cone filter. Only jumps forward
+        //    (dot product > -0.3 with current direction) to prevent 180° reversals.
+        // -----------------------------------------------------------------------
+        static const int dx8[8] = {0, 1, 1, 1, 0, -1, -1, -1};
+        static const int dz8[8] = {-1, -1, 0, 1, 1, 1, 0, -1};
+
+        std::vector<uint8_t> visited(bW * bH, 0);
+        std::vector<std::pair<int, int>> ordered;
+        ordered.reserve(skeletonPixels.size());
+
+        std::pair<int, int> cur = startPx;
+        ordered.push_back(cur);
+        visited[cur.second * bW + cur.first] = 1;
+
+        // Current travel direction (unit vector in pixel space)
+        float dirX = 0.0f, dirZ = 0.0f;
+
+        while (true)
+        {
+            // FIX 1: Score all 8 neighbours by dot product with current direction.
+            // Pick the unvisited skeleton neighbour with the highest score.
+            // This replaces the fragile exact-direction-match which failed at curves.
+            float bestScore = -2.0f;
+            std::pair<int, int> best = {-1, -1};
+
+            for (int d = 0; d < 8; ++d)
+            {
+                int nx = cur.first + dx8[d];
+                int nz = cur.second + dz8[d];
+                if (nx < 0 || nx >= bW || nz < 0 || nz >= bH)
+                {
+                    continue;
+                }
+                if (mask[nz * bW + nx] == 0)
+                {
+                    continue;
+                }
+                if (visited[nz * bW + nx])
+                {
+                    continue;
+                }
+
+                float stepLen = std::sqrt(static_cast<float>(dx8[d] * dx8[d] + dz8[d] * dz8[d]));
+                float ndx = dx8[d] / stepLen;
+                float ndz = dz8[d] / stepLen;
+
+                // Dot product with current direction: prefers continuation,
+                // but accepts any direction if we don't yet have one (dirX==0,dirZ==0)
+                float dot = (dirX == 0.0f && dirZ == 0.0f) ? 1.0f : (dirX * ndx + dirZ * ndz);
+
+                if (dot > bestScore)
+                {
+                    bestScore = dot;
+                    best = {nx, nz};
+                }
+            }
+
+            if (best.first >= 0)
+            {
+                // Update direction as exponential moving average for smooth turning
+                float sdx = static_cast<float>(best.first - cur.first);
+                float sdz = static_cast<float>(best.second - cur.second);
+                float slen = std::sqrt(sdx * sdx + sdz * sdz);
+                if (slen > 0.0f)
+                {
+                    sdx /= slen;
+                    sdz /= slen;
+                    if (dirX == 0.0f && dirZ == 0.0f)
+                    {
+                        dirX = sdx;
+                        dirZ = sdz;
+                    }
+                    else
+                    {
+                        dirX = dirX * 0.7f + sdx * 0.3f;
+                        dirZ = dirZ * 0.7f + sdz * 0.3f;
+                    }
+                    float dlen = std::sqrt(dirX * dirX + dirZ * dirZ);
+                    if (dlen > 0.0f)
+                    {
+                        dirX /= dlen;
+                        dirZ /= dlen;
+                    }
+                }
+
+                visited[best.second * bW + best.first] = 1;
+                ordered.push_back(best);
+                cur = best;
+            }
+            else
+            {
+                // FIX 2: Jump recovery — only accept pixels in the forward half-space.
+                // dot > -0.3 rejects anything more than ~107° from current direction,
+                // preventing the 180° reversals that caused the fold-back artifact.
+                float jumpRadius = stepPx * 4.0f;
+                float bestDist = std::numeric_limits<float>::max();
+                std::pair<int, int> jumpTarget = {-1, -1};
+
+                for (const auto& sp : skeletonPixels)
+                {
+                    if (visited[sp.second * bW + sp.first])
+                    {
+                        continue;
+                    }
+
+                    float ddx = static_cast<float>(sp.first - cur.first);
+                    float ddz = static_cast<float>(sp.second - cur.second);
+                    float dist = std::sqrt(ddx * ddx + ddz * ddz);
+                    if (dist >= jumpRadius || dist >= bestDist)
+                    {
+                        continue;
+                    }
+
+                    // Forward-cone filter: reject backward jumps
+                    if (dirX != 0.0f || dirZ != 0.0f)
+                    {
+                        float jdx = ddx / dist;
+                        float jdz = ddz / dist;
+                        float dot = dirX * jdx + dirZ * jdz;
+                        if (dot < -0.3f)
+                        {
+                            continue; // More than ~107° = reject
+                        }
+                    }
+
+                    bestDist = dist;
+                    jumpTarget = sp;
+                }
+
+                if (jumpTarget.first >= 0)
+                {
+                    visited[jumpTarget.second * bW + jumpTarget.first] = 1;
+                    ordered.push_back(jumpTarget);
+                    cur = jumpTarget;
+                }
+                else
+                {
+                    break;
+                }
+            }
+        }
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] generateFromLayer: Traced " + Ogre::StringConverter::toString(ordered.size()) + " pixels.");
+
+        // -----------------------------------------------------------------------
+        // 6. Downsample to waypoints every stepM meters
+        // -----------------------------------------------------------------------
+        std::vector<std::pair<int, int>> waypoints;
+        waypoints.push_back(ordered.front());
+        float accumDist = 0.0f;
+
+        for (size_t i = 1; i < ordered.size(); ++i)
+        {
+            float ddx = static_cast<float>(ordered[i].first - ordered[i - 1].first);
+            float ddz = static_cast<float>(ordered[i].second - ordered[i - 1].second);
+            accumDist += std::sqrt(ddx * ddx + ddz * ddz);
+            if (accumDist >= stepPx)
+            {
+                waypoints.push_back(ordered[i]);
+                accumDist = 0.0f;
+            }
+        }
+        if (waypoints.back() != ordered.back())
+        {
+            waypoints.push_back(ordered.back());
+        }
+
+        // -----------------------------------------------------------------------
+        // FIX 3: Gaussian smoothing of waypoint pixel positions.
+        // Sharp kinks remaining after tracing cause the road cross-section quads
+        // to rotate faster than the road advances → self-intersecting geometry.
+        // A 5-pass weighted average rounds corners before the mesh is built.
+        // Only XZ positions are smoothed — height is re-sampled from terrain after.
+        // -----------------------------------------------------------------------
+        {
+            int smoothPasses = 5;
+            for (int sp = 0; sp < smoothPasses; ++sp)
+            {
+                std::vector<std::pair<int, int>> smoothed = waypoints;
+                for (size_t i = 1; i + 1 < waypoints.size(); ++i)
+                {
+                    // Weighted average: 50% self, 25% each neighbor
+                    smoothed[i].first = static_cast<int>(waypoints[i - 1].first * 0.25f + waypoints[i].first * 0.50f + waypoints[i + 1].first * 0.25f + 0.5f);
+                    smoothed[i].second = static_cast<int>(waypoints[i - 1].second * 0.25f + waypoints[i].second * 0.50f + waypoints[i + 1].second * 0.25f + 0.5f);
+                }
+                waypoints = smoothed;
+            }
+        }
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] generateFromLayer: " + Ogre::StringConverter::toString(waypoints.size()) + " waypoints at " + Ogre::StringConverter::toString(stepM) + "m.");
+
+        // -----------------------------------------------------------------------
+        // 7. Convert waypoints to world positions + ground heights
+        // -----------------------------------------------------------------------
+        std::vector<RoadControlPoint> controlPoints;
+        controlPoints.reserve(waypoints.size());
+        float totalDist = 0.0f;
+
+        for (size_t i = 0; i < waypoints.size(); ++i)
+        {
+            float worldX = terrainOrigin.x + (waypoints[i].first + 0.5f) / ppmX;
+            float worldZ = terrainOrigin.z + (waypoints[i].second + 0.5f) / ppmZ;
+            Ogre::Vector3 worldPos(worldX, 0.0f, worldZ);
+
+            RoadControlPoint cp;
+            cp.position = worldPos;
+            cp.position.y = 0.0f;
+            cp.groundHeight = this->getGroundHeight(worldPos);
+            cp.smoothedHeight = cp.groundHeight;
+            cp.bankingAngle = 0.0f;
+
+            if (i > 0)
+            {
+                totalDist += controlPoints.back().position.distance(cp.position);
+            }
+            cp.distFromStart = totalDist;
+            controlPoints.push_back(cp);
+        }
+
+        // Filter degenerate near-zero-distance control points
+        float minDistM = std::max(0.3f, stepM * 0.4f);
+        std::vector<RoadControlPoint> filteredCPs;
+        filteredCPs.push_back(controlPoints.front());
+
+        for (size_t i = 1; i < controlPoints.size(); ++i)
+        {
+            if (filteredCPs.back().position.distance(controlPoints[i].position) >= minDistM)
+            {
+                filteredCPs.push_back(controlPoints[i]);
+            }
+        }
+        if (filteredCPs.back().position.distance(controlPoints.back().position) > 0.01f)
+        {
+            filteredCPs.push_back(controlPoints.back());
+        }
+
+        if (filteredCPs.size() < 2)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralRoadComponent] generateFromLayer: Not enough waypoints after filtering!");
+            return;
+        }
+
+        // -----------------------------------------------------------------------
+        // 8. Clear road + build one segment with all control points + rebuild mesh
+        // -----------------------------------------------------------------------
+        this->roadSegments.clear();
+        this->destroyRoadMesh();
+        this->hasRoadOrigin = false;
+        this->hasLoadedRoadEndpoint = false;
+
+        this->roadOrigin = filteredCPs.front().position;
+        this->roadOrigin.y = filteredCPs.front().groundHeight;
+        this->hasRoadOrigin = true;
+
+        RoadSegment seg;
+        seg.isCurved = true;
+        seg.curvature = 0.0f;
+        seg.controlPoints = filteredCPs;
+        this->roadSegments.push_back(seg);
+
+        this->smoothHeightTransitions(this->roadSegments.back().controlPoints);
+
+        this->updateContinuationPoint();
+        this->rebuildMesh();
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+            "[ProceduralRoadComponent] generateFromLayer: Road built, " + Ogre::StringConverter::toString(filteredCPs.size()) + " control points, length=" + Ogre::StringConverter::toString(totalDist) + "m.");
     }
 
     void ProceduralRoadComponent::createRoadMesh(void)
@@ -4679,6 +5275,46 @@ namespace NOWA
     Ogre::Real ProceduralRoadComponent::getTerrainSampleInterval(void) const
     {
         return this->terrainSampleInterval->getReal();
+    }
+
+    void ProceduralRoadComponent::setSourceTerraLayer(Ogre::uint32 layer)
+    {
+        this->sourceTerraLayer->setValue(layer);
+    }
+
+    Ogre::uint32 ProceduralRoadComponent::getSourceTerraLayer(void) const
+    {
+        return this->sourceTerraLayer->getUInt();
+    }
+
+    void ProceduralRoadComponent::setTraceStepMeters(Ogre::Real step)
+    {
+        this->traceStepMeters->setValue(step);
+    }
+
+    Ogre::Real ProceduralRoadComponent::getTraceStepMeters(void) const
+    {
+        return this->traceStepMeters->getReal();
+    }
+
+    void ProceduralRoadComponent::setTraceThreshold(Ogre::uint32 threshold)
+    {
+        this->traceThreshold->setValue(threshold);
+    }
+
+    Ogre::uint32 ProceduralRoadComponent::getTraceThreshold(void) const
+    {
+        return this->traceThreshold->getUInt();
+    }
+
+    void ProceduralRoadComponent::setGenerateFromLayer(const Ogre::String& layer)
+    {
+        this->generateFromLayer->setValue(layer);
+    }
+
+    Ogre::String ProceduralRoadComponent::getGenerateFromLayer(void) const
+    {
+        return this->generateFromLayer->getString();
     }
 
 } // namespace NOWA

@@ -303,6 +303,18 @@ namespace NOWA
         void setTerrainSampleInterval(Ogre::Real interval);
         Ogre::Real getTerrainSampleInterval(void) const;
 
+        void setSourceTerraLayer(Ogre::uint32 layer);
+        Ogre::uint32 getSourceTerraLayer(void) const;
+
+        void setTraceStepMeters(Ogre::Real step);
+        Ogre::Real getTraceStepMeters(void) const;
+
+        void setTraceThreshold(Ogre::uint32 threshold);
+        Ogre::uint32 getTraceThreshold(void) const;
+
+        void setGenerateFromLayer(const Ogre::String& layer);
+        Ogre::String getGenerateFromLayer(void) const;
+
         virtual void setRoadData(const std::vector<unsigned char>& data) override;
 
         virtual std::vector<unsigned char> getRoadData(void) const override;
@@ -388,6 +400,22 @@ namespace NOWA
         static const Ogre::String AttrConvertToMesh(void)
         {
             return "Convert To Mesh";
+        }
+        static const Ogre::String AttrSourceTerraLayer(void)
+        {
+            return "Source Terra Layer";
+        }
+        static const Ogre::String AttrTraceStepMeters(void)
+        {
+            return "Trace Step Meters";
+        }
+        static const Ogre::String AttrTraceThreshold(void)
+        {
+            return "Trace Threshold";
+        }
+        static const Ogre::String AttrGenerateFromLayer(void)
+        {
+            return "Generate From Layer";
         }
     protected:
         // Mouse handling for interactive road building
@@ -495,6 +523,8 @@ namespace NOWA
          * @return True if export succeeded
          */
         bool exportMesh(const Ogre::String& filename);
+
+        void generateRoadFromTerraLayer(void);
     private:
         static const uint32_t ROADDATA_MAGIC = 0x524F4144; // "ROAD" in hex
         static const uint32_t ROADDATA_VERSION = 1;
@@ -523,6 +553,11 @@ namespace NOWA
         Variant* curbHeight;
         Variant* terrainSampleInterval;
         Variant* convertToMesh;
+
+        Variant* sourceTerraLayer;  // which layer to trace (0-3)
+        Variant* traceStepMeters;   // waypoint spacing in meters
+        Variant* traceThreshold;    // layer value threshold (0-255)
+        Variant* generateFromLayer; // button
 
         // Road segments
         std::vector<RoadSegment> roadSegments;

@@ -96,17 +96,11 @@ namespace NOWA
         vertexMarkerSize(new Variant(MeshEditComponent::AttrVertexMarkerSize(), 0.04f, this->attributes)),
         outputFileName(new Variant(MeshEditComponent::AttrOutputFileName(), Ogre::String(""), this->attributes)),
 
-        // ── Brush ────────────────────────────────────────────────────────────
-        brushName(new Variant(MeshEditComponent::AttrBrushName(), this->attributes)),
-        brushSize(new Variant(MeshEditComponent::AttrBrushSize(), 1.0f, this->attributes)),
-        brushIntensity(new Variant(MeshEditComponent::AttrBrushIntensity(), 0.1f, this->attributes)),
-        brushFalloff(new Variant(MeshEditComponent::AttrBrushFalloff(), 2.0f, this->attributes)),
-        brushMode(new Variant(MeshEditComponent::AttrBrushMode(), std::vector<Ogre::String>{"Push", "Pull", "Smooth", "Flatten", "Pinch", "Inflate"}, this->attributes)),
-
         // ── Modeling Parameters ─────────────────────────────────────────
         proportionalRadius(new Variant(MeshEditComponent::AttrProportionalRadius(), 1.0f, this->attributes)),
         bevelAmount(new Variant(MeshEditComponent::AttrBevelAmount(), 0.05f, this->attributes)),
         loopCutFraction(new Variant(MeshEditComponent::AttrLoopCutFraction(), 0.5f, this->attributes)),
+        buildFaceButton(new Variant(MeshEditComponent::AttrBuildFace(), Ogre::String("Build Face"), this->attributes)),
 
         // ── Existing Actions ─────────────────────────────────────────────────
         weldButton(new Variant(MeshEditComponent::AttrWeldVertices(), Ogre::String("Weld"), this->attributes)),
@@ -132,7 +126,13 @@ namespace NOWA
         // ── Apply Scale ──────────────────────────────────────────────────────────
         applyScaleButton(new Variant(MeshEditComponent::AttrApplyScale(), Ogre::String("Apply Scale"), this->attributes)),
 
-        buildFaceButton(new Variant(MeshEditComponent::AttrBuildFace(), Ogre::String("Build Face"), this->attributes)),
+        // ── Brush ────────────────────────────────────────────────────────────
+        brushName(new Variant(MeshEditComponent::AttrBrushName(), this->attributes)),
+        brushSize(new Variant(MeshEditComponent::AttrBrushSize(), 1.0f, this->attributes)),
+        brushIntensity(new Variant(MeshEditComponent::AttrBrushIntensity(), 0.1f, this->attributes)),
+        brushFalloff(new Variant(MeshEditComponent::AttrBrushFalloff(), 2.0f, this->attributes)),
+        brushMode(new Variant(MeshEditComponent::AttrBrushMode(), std::vector<Ogre::String>{"Push", "Pull", "Smooth", "Flatten", "Pinch", "Inflate"}, this->attributes)),
+
         // ── Origin Alignment ─────────────────────────────────────────────────────
         originAlignment(new Variant(MeshEditComponent::AttrOriginAlignment(),
             std::vector<Ogre::String>{"Bottom Left Front", "Bottom Left Center", "Bottom Left Back", "Bottom Center Front", "Bottom Center", "Bottom Center Back", "Bottom Right Front", "Bottom Right Center", "Bottom Right Back", "Center Left Front",
@@ -157,6 +157,12 @@ namespace NOWA
 
         this->proportionalRadius->setConstraints(0.001f, 100.0f);
         this->proportionalRadius->setDescription("Radius for proportional editing. Nearby vertices are affected with smooth falloff.");
+
+        this->buildFaceButton->addUserData(GameObject::AttrActionExec());
+        this->buildFaceButton->addUserData(GameObject::AttrActionExecId(), MeshEditComponent::ActionBuildFace());
+        this->buildFaceButton->addUserData(GameObject::AttrActionNeedRefresh());
+        this->buildFaceButton->setDescription("Creates a triangle (3 vertices selected) or quad (4 vertices -> 2 triangles) "
+                                              "from the current vertex selection. Keyboard: F in Vertex mode.");
 
         this->bevelAmount->setConstraints(0.0001f, 10.0f);
         this->bevelAmount->setDescription("Distance used for bevel operations. Controls edge width or corner rounding.");
@@ -238,12 +244,6 @@ namespace NOWA
         this->applyScaleButton->addUserData(GameObject::AttrActionExecId(), MeshEditComponent::ActionApplyScale());
         this->applyScaleButton->addUserData(GameObject::AttrActionNeedRefresh());
         this->applyScaleButton->setDescription("Applies node scale to vertices.");
-
-        this->buildFaceButton->addUserData(GameObject::AttrActionExec());
-        this->buildFaceButton->addUserData(GameObject::AttrActionExecId(), MeshEditComponent::ActionBuildFace());
-        this->buildFaceButton->addUserData(GameObject::AttrActionNeedRefresh());
-        this->buildFaceButton->setDescription("Creates a triangle (3 vertices selected) or quad (4 vertices -> 2 triangles) "
-                                              "from the current vertex selection. Keyboard: F in Vertex mode.");
 
         this->originAlignment->setDescription("Moves all vertices so the chosen bounding-box point becomes the local origin (0,0,0). "
                                               "Ogre axes: X=right, Y=up, Z=toward viewer. "
@@ -3324,94 +3324,145 @@ namespace NOWA
     }
 
     // =============================================================================
-    //  buildFaceFromSelection  —  REPLACE
-    //  3 vertices   -> 1 triangle
-    //  4 vertices   -> 2 triangles (shorter diagonal split)
-    //  5+ vertices  -> fan triangulation from first vertex
+    //  buildFaceFromSelection
+    //
+    //  Creates NEW vertices for the face (copies of the selected ones) with
+    //  planar-projected UVs and a correct face normal, instead of reusing the
+    //  existing vertex entries which carry UVs from their original faces.
     // =============================================================================
     bool MeshEditComponent::buildFaceFromSelection(void)
     {
         if (this->selectedVertices.size() < 3)
         {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MeshEditComponent] buildFaceFromSelection: need at least 3 vertices, got " + Ogre::StringConverter::toString(static_cast<int>(this->selectedVertices.size())));
             return false;
         }
 
         std::vector<unsigned char> oldData = this->getMeshData();
-
-        // Collect selected indices in a stable order
         std::vector<size_t> sel(this->selectedVertices.begin(), this->selectedVertices.end());
 
-        // Determine winding: face normal should point roughly toward camera
-        Ogre::Vector3 desiredNormal = Ogre::Vector3::UNIT_Y;
+        // ── Outward direction from existing vertex normals ────────────────────────
+        Ogre::Vector3 centroid = Ogre::Vector3::ZERO;
+        for (size_t i : sel)
         {
-            Ogre::Camera* cam = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
-            if (cam)
-            {
-                Ogre::Vector3 localCen = Ogre::Vector3::ZERO;
-                for (size_t i : sel)
-                {
-                    localCen += this->vertices[i];
-                }
-                localCen /= static_cast<float>(sel.size());
+            centroid += this->vertices[i];
+        }
+        centroid /= static_cast<float>(sel.size());
 
-                const Ogre::Matrix4 worldMat = this->gameObjectPtr->getSceneNode()->_getFullTransform();
-                const Ogre::Vector3 wCen = worldMat * localCen;
-
-                Ogre::Matrix3 rot3;
-                worldMat.extract3x3Matrix(rot3);
-                desiredNormal = rot3.Inverse() * (cam->getDerivedPosition() - wCen);
-                desiredNormal.normalise();
-            }
+        Ogre::Vector3 desiredNormal = Ogre::Vector3::ZERO;
+        for (size_t i : sel)
+        {
+            desiredNormal += this->normals[i];
+        }
+        if (desiredNormal.squaredLength() < 1e-10f)
+        {
+            desiredNormal = Ogre::Vector3::UNIT_Z;
+        }
+        else
+        {
+            desiredNormal.normalise();
         }
 
-        // Add one triangle with correct winding toward camera
-        auto addTriangle = [&](size_t a, size_t b, size_t c)
+        // Face normal from vertex loop winding order
+        Ogre::Vector3 faceNormal = Ogre::Vector3::ZERO;
+        for (size_t i = 0; i < sel.size(); ++i)
         {
-            const Ogre::Vector3 e1 = this->vertices[b] - this->vertices[a];
-            const Ogre::Vector3 e2 = this->vertices[c] - this->vertices[a];
-            Ogre::Vector3 n = e1.crossProduct(e2);
-            if (n.squaredLength() < 1e-10f)
+            const Ogre::Vector3& a = this->vertices[sel[i]];
+            const Ogre::Vector3& b = this->vertices[sel[(i + 1) % sel.size()]];
+            faceNormal += (a - centroid).crossProduct(b - centroid);
+        }
+        if (faceNormal.squaredLength() < 1e-10f)
+        {
+            faceNormal = desiredNormal;
+        }
+        else
+        {
+            faceNormal.normalise();
+        }
+
+        const bool flip = (faceNormal.dotProduct(desiredNormal) < 0.0f);
+        if (flip)
+        {
+            faceNormal = -faceNormal;
+        }
+
+        // ── UV projection axes ────────────────────────────────────────────────────
+        const Ogre::Vector3 ref = (std::abs(faceNormal.dotProduct(Ogre::Vector3::UNIT_Y)) < 0.99f) ? Ogre::Vector3::UNIT_Y : Ogre::Vector3::UNIT_X;
+        Ogre::Vector3 uAxis = faceNormal.crossProduct(ref).normalisedCopy();
+        Ogre::Vector3 vAxis = faceNormal.crossProduct(uAxis).normalisedCopy();
+
+        float uMin = std::numeric_limits<float>::max();
+        float uMax = -std::numeric_limits<float>::max();
+        float vMin = std::numeric_limits<float>::max();
+        float vMax = -std::numeric_limits<float>::max();
+        for (size_t i : sel)
+        {
+            float u = uAxis.dotProduct(this->vertices[i]);
+            float v = vAxis.dotProduct(this->vertices[i]);
+            uMin = std::min(uMin, u);
+            uMax = std::max(uMax, u);
+            vMin = std::min(vMin, v);
+            vMax = std::max(vMax, v);
+        }
+        const float uRange = (uMax - uMin) > 1e-6f ? (uMax - uMin) : 1.0f;
+        const float vRange = (vMax - vMin) > 1e-6f ? (vMax - vMin) : 1.0f;
+
+        // ── New vertices with planar UVs ──────────────────────────────────────────
+        const size_t baseIdx = this->vertexCount;
+        for (size_t i : sel)
+        {
+            const float u = (uAxis.dotProduct(this->vertices[i]) - uMin) / uRange;
+            const float v = (vAxis.dotProduct(this->vertices[i]) - vMin) / vRange;
+            this->vertices.push_back(this->vertices[i]);
+            this->normals.push_back(faceNormal);
+            this->tangents.push_back(Ogre::Vector4(uAxis.x, uAxis.y, uAxis.z, 1.0f));
+            this->uvCoordinates.push_back(Ogre::Vector2(u, 1.0f - v));
+        }
+        this->vertexCount = this->vertices.size();
+
+        // ── Triangulate ───────────────────────────────────────────────────────────
+        auto addTri = [&](size_t a, size_t b, size_t c)
+        {
+            if (!flip)
             {
-                return; // degenerate, skip
+                this->indices.push_back(static_cast<Ogre::uint32>(a));
+                this->indices.push_back(static_cast<Ogre::uint32>(b));
+                this->indices.push_back(static_cast<Ogre::uint32>(c));
             }
-            n.normalise();
-            if (n.dotProduct(desiredNormal) < 0.0f)
+            else
             {
-                std::swap(b, c); // flip winding
+                this->indices.push_back(static_cast<Ogre::uint32>(a));
+                this->indices.push_back(static_cast<Ogre::uint32>(c));
+                this->indices.push_back(static_cast<Ogre::uint32>(b));
             }
-            this->indices.push_back(static_cast<Ogre::uint32>(a));
-            this->indices.push_back(static_cast<Ogre::uint32>(b));
-            this->indices.push_back(static_cast<Ogre::uint32>(c));
             this->indexCount += 3;
         };
 
-        if (sel.size() == 3)
+        const size_t n = sel.size();
+        if (n == 3)
         {
-            addTriangle(sel[0], sel[1], sel[2]);
+            addTri(baseIdx, baseIdx + 1, baseIdx + 2);
         }
-        else if (sel.size() == 4)
+        else if (n == 4)
         {
-            // Split on the shorter diagonal for a more regular quad
             const float diagA = this->vertices[sel[0]].distance(this->vertices[sel[2]]);
             const float diagB = this->vertices[sel[1]].distance(this->vertices[sel[3]]);
             if (diagA <= diagB)
             {
-                addTriangle(sel[0], sel[1], sel[2]);
-                addTriangle(sel[0], sel[2], sel[3]);
+                addTri(baseIdx, baseIdx + 1, baseIdx + 2);
+                addTri(baseIdx, baseIdx + 2, baseIdx + 3);
             }
             else
             {
-                addTriangle(sel[0], sel[1], sel[3]);
-                addTriangle(sel[1], sel[2], sel[3]);
+                addTri(baseIdx, baseIdx + 1, baseIdx + 3);
+                addTri(baseIdx + 1, baseIdx + 2, baseIdx + 3);
             }
         }
         else
         {
-            // 5+ vertices: fan triangulation from sel[0]
-            for (size_t i = 1; i + 1 < sel.size(); ++i)
+            // Fan from baseIdx for 5+ vertices
+            for (size_t i = 1; i + 1 < n; ++i)
             {
-                addTriangle(sel[0], sel[i], sel[i + 1]);
+                addTri(baseIdx, baseIdx + i, baseIdx + i + 1);
             }
         }
 
@@ -3420,7 +3471,7 @@ namespace NOWA
         this->scheduleOverlayUpdate();
         this->fireUndoEvent(oldData);
 
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MeshEditComponent] Built face from " + Ogre::StringConverter::toString(static_cast<int>(sel.size())) + " vertices.");
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MeshEditComponent] Built face from " + Ogre::StringConverter::toString(static_cast<int>(n)) + " vertices.");
         return true;
     }
 
@@ -3944,11 +3995,14 @@ namespace NOWA
         std::vector<OverlayVertex> vertVerts;
         std::vector<OverlayVertex> faceVerts;
 
-        // ── Section 0: Wireframe / edge lines ─────────────────────────────────────
+        // ── Section 0: Wireframe / edge lines ─────────────────────────────────
         if (doWire)
         {
             const Ogre::ColourValue cWire(0.35f, 0.35f, 0.35f, 1.0f);
             const Ogre::ColourValue cSel(1.0f, 0.75f, 0.0f, 1.0f);
+
+            Ogre::Matrix3 worldRot3wire;
+            worldMat.extract3x3Matrix(worldRot3wire);
 
             std::set<std::pair<size_t, size_t>> drawn;
             for (size_t i = 0; i < this->indexCount; i += 3)
@@ -3965,18 +4019,26 @@ namespace NOWA
                     const bool sel = (mode == EditMode::EDGE) && this->selectedEdges.count(EdgeKey(a, b));
                     const Ogre::ColourValue& c = sel ? cSel : cWire;
 
-                    wireVerts.push_back({push(lw(this->vertices[a])), c});
-                    wireVerts.push_back({push(lw(this->vertices[b])), c});
+                    // Push each endpoint along its own world-space vertex normal
+                    // so edges are visible on ALL sides, not just camera-facing.
+                    const Ogre::Vector3 wNormA = (worldRot3wire * this->normals[a]).normalisedCopy();
+                    const Ogre::Vector3 wNormB = (worldRot3wire * this->normals[b]).normalisedCopy();
+
+                    wireVerts.push_back({lw(this->vertices[a]) + wNormA * pushDist, c});
+                    wireVerts.push_back({lw(this->vertices[b]) + wNormB * pushDist, c});
                 }
             }
         }
 
-        // ── Section 1: Vertex crosses ─────────────────────────────────────────────
+        // ── Section 1: Vertex crosses ─────────────────────────────────────────
         if (mode == EditMode::VERTEX)
         {
             const Ogre::ColourValue cV(1.0f, 1.0f, 1.0f, 1.0f);
             const Ogre::ColourValue cVS(1.0f, 0.75f, 0.0f, 1.0f);
             constexpr float kEps2 = 1e-8f;
+
+            Ogre::Matrix3 worldRot3vert;
+            worldMat.extract3x3Matrix(worldRot3vert);
 
             for (size_t i = 0; i < this->vertexCount; ++i)
             {
@@ -3996,19 +4058,21 @@ namespace NOWA
                 const Ogre::ColourValue& c = sel ? cVS : cV;
                 const Ogre::Vector3 wp = lw(this->vertices[i]);
 
-                // Six arm endpoints of the cross (+X/-X, +Y/-Y, +Z/-Z)
-                vertVerts.push_back({push(wp + Ogre::Vector3(-s, 0, 0)), c});
-                vertVerts.push_back({push(wp + Ogre::Vector3(s, 0, 0)), c});
+                // Push the cross centre along the vertex world normal so it
+                // sits on the correct surface side from any camera angle.
+                const Ogre::Vector3 wNorm = (worldRot3vert * this->normals[i]).normalisedCopy();
+                const Ogre::Vector3 centre = wp + wNorm * pushDist;
 
-                vertVerts.push_back({push(wp + Ogre::Vector3(0, -s, 0)), c});
-                vertVerts.push_back({push(wp + Ogre::Vector3(0, s, 0)), c});
-
-                vertVerts.push_back({push(wp + Ogre::Vector3(0, 0, -s)), c});
-                vertVerts.push_back({push(wp + Ogre::Vector3(0, 0, s)), c});
+                vertVerts.push_back({centre + Ogre::Vector3(-s, 0, 0), c});
+                vertVerts.push_back({centre + Ogre::Vector3(s, 0, 0), c});
+                vertVerts.push_back({centre + Ogre::Vector3(0, -s, 0), c});
+                vertVerts.push_back({centre + Ogre::Vector3(0, s, 0), c});
+                vertVerts.push_back({centre + Ogre::Vector3(0, 0, -s), c});
+                vertVerts.push_back({centre + Ogre::Vector3(0, 0, s), c});
             }
         }
 
-        // ── Section 2: Face centre squares ────────────────────────────────────────
+        // ── Section 2: Face centre squares ────────────────────────────────────
         if (mode == EditMode::FACE)
         {
             const float fs = s * 1.5f;
@@ -4028,20 +4092,29 @@ namespace NOWA
                 const Ogre::Vector3 localNorm = (lv1 - lv0).crossProduct(lv2 - lv0).normalisedCopy();
                 const Ogre::Vector3 wNorm = (worldRot3 * localNorm).normalisedCopy();
 
+                const Ogre::Vector3 wCen = lw((lv0 + lv1 + lv2) / 3.0f);
+
+                // Push the square along the face's own world normal so it
+                // always sits on the correct surface regardless of camera angle.
+                // Using generic push() (toward camera) places back-facing
+                // squares INSIDE the mesh.
+                auto pushAlongNormal = [&](const Ogre::Vector3& wp) -> Ogre::Vector3
+                {
+                    return wp + wNorm * pushDist;
+                };
+
                 const Ogre::Vector3 ref = (std::abs(wNorm.dotProduct(Ogre::Vector3::UNIT_Y)) < 0.99f) ? Ogre::Vector3::UNIT_Y : Ogre::Vector3::UNIT_X;
                 const Ogre::Vector3 wTan = wNorm.crossProduct(ref).normalisedCopy();
                 const Ogre::Vector3 wBit = wNorm.crossProduct(wTan).normalisedCopy();
 
-                const Ogre::Vector3 wCen = lw((lv0 + lv1 + lv2) / 3.0f);
                 const bool sel = (this->selectedFaces.count(t) > 0);
                 const Ogre::ColourValue& c = sel ? cFS : cF;
 
-                const Ogre::Vector3 c00 = push(wCen + (-wTan - wBit) * fs);
-                const Ogre::Vector3 c10 = push(wCen + (wTan - wBit) * fs);
-                const Ogre::Vector3 c11 = push(wCen + (wTan + wBit) * fs);
-                const Ogre::Vector3 c01 = push(wCen + (-wTan + wBit) * fs);
+                const Ogre::Vector3 c00 = pushAlongNormal(wCen + (-wTan - wBit) * fs);
+                const Ogre::Vector3 c10 = pushAlongNormal(wCen + (wTan - wBit) * fs);
+                const Ogre::Vector3 c11 = pushAlongNormal(wCen + (wTan + wBit) * fs);
+                const Ogre::Vector3 c01 = pushAlongNormal(wCen + (-wTan + wBit) * fs);
 
-                // Four edges of the square (8 vertices = 4 line segments)
                 faceVerts.push_back({c00, c});
                 faceVerts.push_back({c10, c});
                 faceVerts.push_back({c10, c});
@@ -4370,16 +4443,89 @@ namespace NOWA
         return false;
     }
 
+    // =============================================================================
+    //  pickFace
+    //
+    //  Uses screen-space centroid distance (from previous fix) but adds
+    //  back-face culling: only triangles whose world normal points TOWARD
+    //  the camera are candidates.  This prevents faces on adjacent/opposite
+    //  sides of the mesh from stealing the hit.
+    // =============================================================================
     bool MeshEditComponent::pickFace(Ogre::Real sx, Ogre::Real sy, size_t& outFace)
     {
-        Ogre::Vector3 hp, hn;
-        size_t ht;
-        if (this->raycastMesh(sx, sy, hp, hn, ht))
+        Ogre::Camera* cam = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
+        if (!cam)
         {
-            outFace = ht;
-            return true;
+            return false;
         }
-        return false;
+
+        const Ogre::Matrix4 vp = cam->getProjectionMatrix() * cam->getViewMatrix();
+        const Ogre::Matrix4 world = this->gameObjectPtr->getSceneNode()->_getFullTransform();
+        Ogre::Matrix3 worldRot3;
+        world.extract3x3Matrix(worldRot3);
+
+        const Ogre::Vector3 camPos = cam->getDerivedPosition();
+
+        Ogre::Window* win = Core::getSingletonPtr()->getOgreRenderWindow();
+        const float W = static_cast<float>(win->getWidth());
+        const float H = static_cast<float>(win->getHeight());
+
+        const float mx = sx * W;
+        const float my = sy * H;
+
+        const size_t triCount = this->indexCount / 3;
+        float bestDist = 20.0f;
+        bool found = false;
+        outFace = 0;
+
+        for (size_t t = 0; t < triCount; ++t)
+        {
+            const Ogre::Vector3& lv0 = this->vertices[this->indices[t * 3]];
+            const Ogre::Vector3& lv1 = this->vertices[this->indices[t * 3 + 1]];
+            const Ogre::Vector3& lv2 = this->vertices[this->indices[t * 3 + 2]];
+
+            // ── Back-face culling ──────────────────────────────────────────────────
+            // Compute face normal in world space and check it faces the camera.
+            const Ogre::Vector3 localNorm = (lv1 - lv0).crossProduct(lv2 - lv0);
+            if (localNorm.squaredLength() < 1e-10f)
+            {
+                continue; // degenerate triangle
+            }
+
+            const Ogre::Vector3 wNorm = (worldRot3 * localNorm).normalisedCopy();
+            const Ogre::Vector3 localCen = (lv0 + lv1 + lv2) / 3.0f;
+            const Ogre::Vector4 wCen4 = world * Ogre::Vector4(localCen, 1.0f);
+            const Ogre::Vector3 wCen(wCen4.x, wCen4.y, wCen4.z);
+
+            // Face is front-facing if its normal points toward the camera
+            // (angle between normal and cam-to-face vector < 90°)
+            const Ogre::Vector3 camToFace = (wCen - camPos).normalisedCopy();
+            if (wNorm.dotProduct(camToFace) >= 0.0f)
+            {
+                continue; // back-facing: skip
+            }
+
+            // ── Screen-space centroid distance ─────────────────────────────────────
+            const Ogre::Vector4 cp = vp * Ogre::Vector4(wCen, 1.0f);
+            if (cp.w <= 1e-4f)
+            {
+                continue; // behind near plane
+            }
+
+            const float nx = (cp.x / cp.w + 1.0f) * 0.5f;
+            const float ny = (1.0f - (cp.y / cp.w + 1.0f) * 0.5f);
+            const float dx = (nx * W) - mx;
+            const float dy = (ny * H) - my;
+            const float d = std::sqrt(dx * dx + dy * dy);
+
+            if (d < bestDist)
+            {
+                bestDist = d;
+                outFace = t;
+                found = true;
+            }
+        }
+        return found;
     }
 
     // =========================================================================
@@ -4919,10 +5065,11 @@ namespace NOWA
 
     bool MeshEditComponent::findBorderLoop(std::vector<size_t>& outLoop)
     {
-        // Build edge set from selected edges (edge mode) or all open border edges
         std::set<std::pair<size_t, size_t>> edgeSet;
 
-        if (this->getEditMode() == EditMode::EDGE && !this->selectedEdges.empty())
+        // Use explicitly selected edges regardless of current edit mode.
+        // deleteSelectedFaces auto-populates selectedEdges with the rim.
+        if (!this->selectedEdges.empty())
         {
             for (const EdgeKey& e : this->selectedEdges)
             {
@@ -4931,7 +5078,8 @@ namespace NOWA
         }
         else
         {
-            // Auto-detect open border edges (appear in exactly one triangle)
+            // No explicit selection: auto-detect all open border edges
+            // (edges that belong to exactly one triangle)
             std::map<std::pair<size_t, size_t>, int> edgeCnt;
             for (size_t i = 0; i < this->indexCount; i += 3)
             {
@@ -4951,12 +5099,13 @@ namespace NOWA
                 }
             }
         }
+
         if (edgeSet.empty())
         {
             return false;
         }
 
-        // Build vertex adjacency for the edge set
+        // Build vertex adjacency from the edge set
         std::map<size_t, std::vector<size_t>> adj;
         for (auto& [a, b] : edgeSet)
         {
@@ -4964,11 +5113,12 @@ namespace NOWA
             adj[b].push_back(a);
         }
 
-        // Walk a single loop (may not cover all edges if there are multiple loops — takes the first)
+        // Walk a single connected loop starting from the first edge
         outLoop.clear();
         size_t start = edgeSet.begin()->first;
         outLoop.push_back(start);
         size_t prev = SIZE_MAX, cur = start;
+
         for (size_t step = 0; step < edgeSet.size(); ++step)
         {
             size_t next = SIZE_MAX;
@@ -4993,23 +5143,116 @@ namespace NOWA
 
     void MeshEditComponent::fillSelected(void)
     {
-        std::vector<unsigned char> oldData = this->getMeshData();
-
         std::vector<size_t> loop;
         if (!this->findBorderLoop(loop) || loop.size() < 3)
         {
             return;
         }
 
-        // Fan triangulate from loop[0]
+        std::vector<unsigned char> oldData = this->getMeshData();
+
+        // ── Face plane for UV projection ──────────────────────────────────────────
+        Ogre::Vector3 centroid = Ogre::Vector3::ZERO;
+        for (size_t v : loop)
+        {
+            centroid += this->vertices[v];
+        }
+        centroid /= static_cast<float>(loop.size());
+
+        // Outward direction: average of the rim vertices' existing normals.
+        // These normals come from the adjacent surviving faces and already
+        // point in the correct outward direction regardless of camera position.
+        Ogre::Vector3 desiredNormal = Ogre::Vector3::ZERO;
+        for (size_t v : loop)
+        {
+            desiredNormal += this->normals[v];
+        }
+        if (desiredNormal.squaredLength() < 1e-10f)
+        {
+            desiredNormal = Ogre::Vector3::UNIT_Z;
+        }
+        else
+        {
+            desiredNormal.normalise();
+        }
+
+        // Face normal from loop winding order
+        Ogre::Vector3 faceNormal = Ogre::Vector3::ZERO;
+        for (size_t i = 0; i < loop.size(); ++i)
+        {
+            const Ogre::Vector3& a = this->vertices[loop[i]];
+            const Ogre::Vector3& b = this->vertices[loop[(i + 1) % loop.size()]];
+            faceNormal += (a - centroid).crossProduct(b - centroid);
+        }
+        if (faceNormal.squaredLength() < 1e-10f)
+        {
+            faceNormal = desiredNormal;
+        }
+        else
+        {
+            faceNormal.normalise();
+        }
+
+        // Flip winding if faceNormal disagrees with the desired outward direction
+        const bool flip = (faceNormal.dotProduct(desiredNormal) < 0.0f);
+        if (flip)
+        {
+            faceNormal = -faceNormal;
+        }
+
+        // ── UV projection axes ────────────────────────────────────────────────────
+        const Ogre::Vector3 ref = (std::abs(faceNormal.dotProduct(Ogre::Vector3::UNIT_Y)) < 0.99f) ? Ogre::Vector3::UNIT_Y : Ogre::Vector3::UNIT_X;
+        Ogre::Vector3 uAxis = faceNormal.crossProduct(ref).normalisedCopy();
+        Ogre::Vector3 vAxis = faceNormal.crossProduct(uAxis).normalisedCopy();
+
+        float uMin = std::numeric_limits<float>::max();
+        float uMax = -std::numeric_limits<float>::max();
+        float vMin = std::numeric_limits<float>::max();
+        float vMax = -std::numeric_limits<float>::max();
+        for (size_t v : loop)
+        {
+            const float u = uAxis.dotProduct(this->vertices[v]);
+            const float w = vAxis.dotProduct(this->vertices[v]);
+            uMin = std::min(uMin, u);
+            uMax = std::max(uMax, u);
+            vMin = std::min(vMin, w);
+            vMax = std::max(vMax, w);
+        }
+        const float uRange = (uMax - uMin) > 1e-6f ? (uMax - uMin) : 1.0f;
+        const float vRange = (vMax - vMin) > 1e-6f ? (vMax - vMin) : 1.0f;
+
+        // ── New vertices with planar UVs ──────────────────────────────────────────
+        const size_t baseIdx = this->vertexCount;
+        for (size_t v : loop)
+        {
+            const float u = (uAxis.dotProduct(this->vertices[v]) - uMin) / uRange;
+            const float w = (vAxis.dotProduct(this->vertices[v]) - vMin) / vRange;
+            this->vertices.push_back(this->vertices[v]);
+            this->normals.push_back(faceNormal);
+            this->tangents.push_back(Ogre::Vector4(uAxis.x, uAxis.y, uAxis.z, 1.0f));
+            this->uvCoordinates.push_back(Ogre::Vector2(u, 1.0f - w));
+        }
+        this->vertexCount = this->vertices.size();
+
+        // ── Fan triangulate ───────────────────────────────────────────────────────
         for (size_t i = 1; i + 1 < loop.size(); ++i)
         {
-            this->indices.push_back(static_cast<Ogre::uint32>(loop[0]));
-            this->indices.push_back(static_cast<Ogre::uint32>(loop[i]));
-            this->indices.push_back(static_cast<Ogre::uint32>(loop[i + 1]));
+            if (!flip)
+            {
+                this->indices.push_back(static_cast<Ogre::uint32>(baseIdx));
+                this->indices.push_back(static_cast<Ogre::uint32>(baseIdx + i));
+                this->indices.push_back(static_cast<Ogre::uint32>(baseIdx + i + 1));
+            }
+            else
+            {
+                this->indices.push_back(static_cast<Ogre::uint32>(baseIdx));
+                this->indices.push_back(static_cast<Ogre::uint32>(baseIdx + i + 1));
+                this->indices.push_back(static_cast<Ogre::uint32>(baseIdx + i));
+            }
         }
         this->indexCount = this->indices.size();
 
+        this->selectedEdges.clear();
         this->buildVertexAdjacency();
         this->rebuildDynamicBuffers();
         this->scheduleOverlayUpdate();
