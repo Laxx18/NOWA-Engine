@@ -9728,7 +9728,7 @@ return {
 			getMeshConstructionComponent =
 			{
 				type = "function",
-				description = "Gets the MeshConstructionComponent.",
+				description = "Gets the component.",
 				args = "()",
 				returns = "(MeshConstructionComponent)",
 				valuetype = "MeshConstructionComponent"
@@ -18903,14 +18903,14 @@ return {
 	MeshConstructionComponent =
 	{
 		type = "class",
-		description = "Warcraft-2-style bottom-to-top mesh construction animation. Simulation-only — editor always shows the full mesh. Optionally shows a progress bar and/or percentage text.",
+		description = "Warcraft-2-style bottom-to-top mesh construction animation. Simulation-only — editor always shows the full mesh. Optional camera-facing progress bar and percentage text.",
 		inherits = "GameObjectComponent",
 		childs = 
 		{
 			reactOnConstructionDone =
 			{
 				type = "method",
-				description = "Lua callback fired when construction completes. Signature: function()",
+				description = "Lua callback at 100%. Signature: function()",
 				args = "(func closureFunction)",
 				returns = "(nil)",
 				valuetype = "nil"
@@ -18918,10 +18918,18 @@ return {
 			getConstructionProgress =
 			{
 				type = "function",
-				description = "Returns current progress [0..1].",
+				description = "Returns progress [0..1].",
 				args = "()",
 				returns = "(number)",
 				valuetype = "number"
+			},
+			setInvert =
+			{
+				type = "method",
+				description = "If true: mesh deconstructs top-to-bottom (demolition). If false: builds bottom-to-top.",
+				args = "(boolean invert)",
+				returns = "(nil)",
+				valuetype = "nil"
 			}
 		}
 	},

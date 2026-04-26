@@ -2518,6 +2518,96 @@ namespace NOWA
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] generateFromLayer: Traced " + Ogre::StringConverter::toString(ordered.size()) + " pixels.");
 
         // -----------------------------------------------------------------------
+        // 5b. Gap detection: split ordered list at large jumps, keep longest segment.
+        //     Jump recovery can connect two separate painted regions into one list.
+        //     Any consecutive pair of pixels further apart than 2x stepPx is a gap
+        //     from a jump — not a natural skeleton step.
+        // -----------------------------------------------------------------------
+        {
+            float gapThresholdSq = stepPx * 2.0f * stepPx * 2.0f;
+
+            // Find all split points
+            std::vector<size_t> splitIndices;
+            splitIndices.push_back(0);
+
+            for (size_t i = 1; i < ordered.size(); ++i)
+            {
+                float ddx = static_cast<float>(ordered[i].first - ordered[i - 1].first);
+                float ddz = static_cast<float>(ordered[i].second - ordered[i - 1].second);
+                if (ddx * ddx + ddz * ddz > gapThresholdSq)
+                {
+                    splitIndices.push_back(i);
+                }
+            }
+            splitIndices.push_back(ordered.size());
+
+            if (splitIndices.size() > 2)
+            {
+                // Multiple segments found — pick the longest one
+                size_t bestStart = 0;
+                size_t bestLength = 0;
+
+                for (size_t s = 0; s + 1 < splitIndices.size(); ++s)
+                {
+                    size_t segLen = splitIndices[s + 1] - splitIndices[s];
+                    if (segLen > bestLength)
+                    {
+                        bestLength = segLen;
+                        bestStart = splitIndices[s];
+                    }
+                }
+
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+                    "[ProceduralRoadComponent] generateFromLayer: " + Ogre::StringConverter::toString(splitIndices.size() - 1) + " disconnected segments found. Using longest (" + Ogre::StringConverter::toString(bestLength) + " pixels).");
+
+                std::vector<std::pair<int, int>> longestSegment(ordered.begin() + bestStart, ordered.begin() + bestStart + bestLength);
+                ordered = std::move(longestSegment);
+            }
+        }
+
+        // -----------------------------------------------------------------------
+        // 5c. Closed loop detection and tail trimming.
+        // If the end of the traced path is near the start, the road is a closed
+        // circuit. Trim the redundant tail pixels that overlap the start region,
+        // then append the first 3 waypoints at the end so Catmull-Rom has
+        // tangent information to close the join smoothly.
+        // -----------------------------------------------------------------------
+        bool isClosed = false;
+        {
+            // Use 8× stepPx so we catch loops where the forward-cone filter
+            // stopped the tracer 5-8 steps before completing the circuit.
+            float closeThreshSq = stepPx * 8.0f * stepPx * 8.0f;
+            float ddx = static_cast<float>(ordered.back().first - ordered.front().first);
+            float ddz = static_cast<float>(ordered.back().second - ordered.front().second);
+            float distSq = ddx * ddx + ddz * ddz;
+
+            if (distSq < closeThreshSq && ordered.size() > 20)
+            {
+                isClosed = true;
+
+                // Trim tail pixels that drifted back into the start region
+                float trimThreshSq = stepPx * 3.0f * stepPx * 3.0f;
+                while (ordered.size() > 10)
+                {
+                    float ex = static_cast<float>(ordered.back().first - ordered.front().first);
+                    float ez = static_cast<float>(ordered.back().second - ordered.front().second);
+                    if (ex * ex + ez * ez < trimThreshSq)
+                    {
+                        ordered.pop_back();
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] generateFromLayer: Closed loop detected, "
+                                                                                   "trimmed to " +
+                                                                                       Ogre::StringConverter::toString(ordered.size()) + " pixels.");
+            }
+        }
+
+        // -----------------------------------------------------------------------
         // 6. Downsample to waypoints every stepM meters
         // -----------------------------------------------------------------------
         std::vector<std::pair<int, int>> waypoints;
@@ -2541,11 +2631,10 @@ namespace NOWA
         }
 
         // -----------------------------------------------------------------------
-        // FIX 3: Gaussian smoothing of waypoint pixel positions.
-        // Sharp kinks remaining after tracing cause the road cross-section quads
-        // to rotate faster than the road advances → self-intersecting geometry.
-        // A 5-pass weighted average rounds corners before the mesh is built.
-        // Only XZ positions are smoothed — height is re-sampled from terrain after.
+        // FIX 3: Gaussian smoothing BEFORE appending closure waypoints.
+        // Previously the closure waypoints were appended first, then smoothing
+        // modified them (they're middle points, not first/last), causing the
+        // appended start copies to drift — producing a kink at the seam.
         // -----------------------------------------------------------------------
         {
             int smoothPasses = 5;
@@ -2554,12 +2643,22 @@ namespace NOWA
                 std::vector<std::pair<int, int>> smoothed = waypoints;
                 for (size_t i = 1; i + 1 < waypoints.size(); ++i)
                 {
-                    // Weighted average: 50% self, 25% each neighbor
                     smoothed[i].first = static_cast<int>(waypoints[i - 1].first * 0.25f + waypoints[i].first * 0.50f + waypoints[i + 1].first * 0.25f + 0.5f);
                     smoothed[i].second = static_cast<int>(waypoints[i - 1].second * 0.25f + waypoints[i].second * 0.50f + waypoints[i + 1].second * 0.25f + 0.5f);
                 }
                 waypoints = smoothed;
             }
+        }
+
+        // NOW append closure waypoints — after smoothing so they are exact
+        // copies of the already-smoothed start positions, not drifted ones.
+        if (isClosed && waypoints.size() > 4)
+        {
+            waypoints.push_back(waypoints[0]);
+            waypoints.push_back(waypoints[1]);
+            waypoints.push_back(waypoints[2]);
+
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] generateFromLayer: Appended closure waypoints.");
         }
 
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] generateFromLayer: " + Ogre::StringConverter::toString(waypoints.size()) + " waypoints at " + Ogre::StringConverter::toString(stepM) + "m.");
@@ -2615,6 +2714,22 @@ namespace NOWA
             return;
         }
 
+        // For closed loops: append the road start and one step past it, directly
+        // from filteredCPs in world space. This gives Catmull-Rom a proper
+        // non-zero tangent at the seam — the old pixel-roundtrip approach
+        // produced cp0_copy and cp0_snapped at the same position,
+        // making the tangent zero and collapsing the junction geometry.
+        if (isClosed && filteredCPs.size() > 4)
+        {
+            // Append exact road start → closes the loop position
+            filteredCPs.push_back(filteredCPs[0]);
+            // Append one step past start → gives evaluateCatmullRom's P3
+            // a meaningful forward direction at the seam, preventing zero tangent
+            filteredCPs.push_back(filteredCPs[1]);
+
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] generateFromLayer: Closure appended in world space.");
+        }
+
         // -----------------------------------------------------------------------
         // 8. Clear road + build one segment with all control points + rebuild mesh
         // -----------------------------------------------------------------------
@@ -2640,6 +2755,42 @@ namespace NOWA
 
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
             "[ProceduralRoadComponent] generateFromLayer: Road built, " + Ogre::StringConverter::toString(filteredCPs.size()) + " control points, length=" + Ogre::StringConverter::toString(totalDist) + "m.");
+    }
+
+    int ProceduralRoadComponent::findNearestSegment(const Ogre::Vector3& worldPos) const
+    {
+        if (this->roadSegments.empty())
+        {
+            return -1;
+        }
+
+        int bestSeg = -1;
+        float bestDist = std::numeric_limits<float>::max();
+
+        for (size_t si = 0; si < this->roadSegments.size(); ++si)
+        {
+            const auto& seg = this->roadSegments[si];
+            for (size_t pi = 1; pi < seg.controlPoints.size(); ++pi)
+            {
+                Ogre::Vector3 a = seg.controlPoints[pi - 1].position;
+                Ogre::Vector3 b = seg.controlPoints[pi].position;
+                a.y = 0.0f;
+                b.y = 0.0f;
+                Ogre::Vector3 p(worldPos.x, 0.0f, worldPos.z);
+
+                Ogre::Vector3 ab = b - a;
+                float abLen2 = ab.dotProduct(ab);
+                float t = (abLen2 > 1e-6f) ? Ogre::Math::Clamp((p - a).dotProduct(ab) / abLen2, 0.0f, 1.0f) : 0.0f;
+                float dist = (a + ab * t - p).length();
+
+                if (dist < bestDist)
+                {
+                    bestDist = dist;
+                    bestSeg = static_cast<int>(si);
+                }
+            }
+        }
+        return bestSeg;
     }
 
     void ProceduralRoadComponent::createRoadMesh(void)

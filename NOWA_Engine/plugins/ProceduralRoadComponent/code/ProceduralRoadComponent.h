@@ -525,6 +525,8 @@ namespace NOWA
         bool exportMesh(const Ogre::String& filename);
 
         void generateRoadFromTerraLayer(void);
+
+        int findNearestSegment(const Ogre::Vector3& worldPos) const;
     private:
         static const uint32_t ROADDATA_MAGIC = 0x524F4144; // "ROAD" in hex
         static const uint32_t ROADDATA_VERSION = 1;

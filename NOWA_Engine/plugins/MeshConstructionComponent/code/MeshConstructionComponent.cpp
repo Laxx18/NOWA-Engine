@@ -42,18 +42,14 @@ namespace NOWA
         componentName("MeshConstructionComponent"),
         meshMinY(0.0f),
         meshMaxY(1.0f),
-        meshXZRadius(1.0f),
         vertexCount(0),
         indexCount(0),
         constructionItem(nullptr),
         barLineNode(nullptr),
         barObject(nullptr),
         barCouldDraw(false),
-        textNode(nullptr),
+        textLineNode(nullptr),
         percentageText(nullptr),
-        glowLineNode(nullptr),
-        glowObject(nullptr),
-        glowCouldDraw(false),
         elapsed(0.0f),
         constructionProgress(0.0f),
         isConstructionFinished(false),
@@ -61,12 +57,15 @@ namespace NOWA
         activated(new Variant(MeshConstructionComponent::AttrActivated(), true, this->attributes)),
         constructionTime(new Variant(MeshConstructionComponent::AttrConstructionTime(), 5.0f, this->attributes)),
         showProgressBar(new Variant(MeshConstructionComponent::AttrShowProgressBar(), true, this->attributes)),
-        showPercentageText(new Variant(MeshConstructionComponent::AttrShowPercentageText(), true, this->attributes))
+        showPercentageText(new Variant(MeshConstructionComponent::AttrShowPercentageText(), true, this->attributes)),
+        invert(new Variant(MeshConstructionComponent::AttrInvert(), false, this->attributes))
     {
         this->constructionTime->setConstraints(0.1f, 3600.0f);
         this->constructionTime->setDescription("Total time in seconds for the mesh to fully materialise.");
         this->showProgressBar->setDescription("Show a camera-facing progress bar above the object.");
         this->showPercentageText->setDescription("Show a percentage text label above the progress bar.");
+        this->invert->setDescription("If true the mesh deconstructs top-to-bottom (demolition mode) "
+                                     "instead of building bottom-to-top.");
     }
 
     MeshConstructionComponent::~MeshConstructionComponent()
@@ -77,7 +76,7 @@ namespace NOWA
     //  Ogre::Plugin
     // =========================================================================
 
-    void MeshConstructionComponent::install(const Ogre::NameValuePairList* /*options*/)
+    void MeshConstructionComponent::install(const Ogre::NameValuePairList*)
     {
         GameObjectFactory::getInstance()->getComponentFactory()->registerPluginComponentClass<MeshConstructionComponent>(MeshConstructionComponent::getStaticClassId(), MeshConstructionComponent::getStaticClassName());
     }
@@ -116,7 +115,6 @@ namespace NOWA
     {
         return this->isConstructionFinished;
     }
-
     void MeshConstructionComponent::setConstructionTime(Ogre::Real s)
     {
         this->constructionTime->setValue(std::max(0.1f, s));
@@ -141,7 +139,14 @@ namespace NOWA
     {
         return this->showPercentageText->getBool();
     }
-
+    void MeshConstructionComponent::setInvert(bool v)
+    {
+        this->invert->setValue(v);
+    }
+    bool MeshConstructionComponent::getInvert(void) const
+    {
+        return this->invert->getBool();
+    }
     void MeshConstructionComponent::reactOnConstructionDone(luabind::object fn)
     {
         this->closureFunction = fn;
@@ -159,7 +164,6 @@ namespace NOWA
     bool MeshConstructionComponent::init(rapidxml::xml_node<>*& propertyElement)
     {
         GameObjectComponent::init(propertyElement);
-
         if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrActivated())
         {
             this->activated->setValue(XMLConverter::getAttribBool(propertyElement, "data", true));
@@ -180,11 +184,16 @@ namespace NOWA
             this->showPercentageText->setValue(XMLConverter::getAttribBool(propertyElement, "data", true));
             propertyElement = propertyElement->next_sibling("property");
         }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrInvert())
+        {
+            this->invert->setValue(XMLConverter::getAttribBool(propertyElement, "data", false));
+            propertyElement = propertyElement->next_sibling("property");
+        }
         return true;
     }
 
     // =========================================================================
-    //  postInit  — editor-safe, read-only (no resource creation, no swap)
+    //  postInit  — editor-safe, zero resource creation
     // =========================================================================
 
     bool MeshConstructionComponent::postInit(void)
@@ -199,22 +208,56 @@ namespace NOWA
         }
 
         this->originalMeshName = item->getMesh()->getName();
-
-        // Rough bounds from stored AABB (refined from actual vertices in connect()).
-        const Ogre::Aabb& bounds = item->getMesh()->getAabb();
-        this->meshMinY = bounds.getMinimum().y;
-        this->meshMaxY = bounds.getMaximum().y;
+        const Ogre::Aabb& b = item->getMesh()->getAabb();
+        this->meshMinY = b.getMinimum().y;
+        this->meshMaxY = b.getMaximum().y;
         if (this->meshMinY >= this->meshMaxY)
         {
             this->meshMinY = 0.0f;
             this->meshMaxY = 1.0f;
         }
-
         return true;
     }
 
     // =========================================================================
-    //  connect  — simulation starts
+    //  restoreOriginalItemAndCleanup  — always called via enqueueAndWait
+    //  so the caller blocks until the render thread has finished cleaning up.
+    //  Safe to call even if construction was never started.
+    // =========================================================================
+
+    void MeshConstructionComponent::restoreOriginalItemAndCleanup(void)
+    {
+        NOWA::GraphicsModule::RenderCommand cmd = [this]()
+        {
+            this->destroyOverlays();
+
+            if (nullptr != this->constructionItem)
+            {
+                Ogre::Item* restored = nullptr;
+                try
+                {
+                    restored = this->gameObjectPtr->getSceneManager()->createItem(this->originalMeshName, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, this->gameObjectPtr->isDynamic() ? Ogre::SCENE_DYNAMIC : Ogre::SCENE_STATIC);
+                }
+                catch (const Ogre::Exception& e)
+                {
+                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MeshConstructionComponent] Restore failed: " + e.getDescription());
+                }
+
+                Ogre::MovableObject* old = nullptr;
+                this->gameObjectPtr->swapMovableObject(restored, old);
+                if (nullptr != old)
+                {
+                    this->gameObjectPtr->getSceneManager()->destroyItem(static_cast<Ogre::Item*>(old));
+                }
+                this->constructionItem = nullptr;
+                this->destroyConstructionResources();
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MeshConstructionComponent::restoreOriginalItemAndCleanup");
+    }
+
+    // =========================================================================
+    //  connect
     // =========================================================================
 
     bool MeshConstructionComponent::connect(void)
@@ -240,7 +283,6 @@ namespace NOWA
             {
                 this->gameObjectPtr->getSceneManager()->destroyItem(static_cast<Ogre::Item*>(old));
             }
-
             this->createOverlays();
             success = true;
         };
@@ -255,48 +297,30 @@ namespace NOWA
         this->elapsed = 0.0f;
         this->constructionProgress = 0.0f;
         this->isConstructionFinished = false;
-        this->barCouldDraw = false;
-        this->glowCouldDraw = false;
+        // barCouldDraw starts false (set in constructor, reset in destroyOverlays)
+
+        // Inverted mode: seed GPU with all-real indices so the complete mesh
+        // is visible immediately and deconstructs from there.
+        if (true == this->invert->getBool())
+        {
+            this->uploadFinalIndicesBlocking(true);
+        }
 
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MeshConstructionComponent] Started for: " + this->gameObjectPtr->getName());
         return true;
     }
 
     // =========================================================================
-    //  disconnect  — simulation ends, restore original Item
+    //  disconnect  — enqueueAndWait guarantees render cleanup before return
     // =========================================================================
 
     bool MeshConstructionComponent::disconnect(void)
     {
         GameObjectComponent::disconnect();
 
+        // Stop render work FIRST, then block until resources are freed.
         NOWA::GraphicsModule::getInstance()->removeTrackedClosure(this->trackedClosureId());
-
-        ENQUEUE_RENDER_COMMAND("MeshConstructionComponent::disconnect", {
-            this->destroyOverlays();
-
-            if (nullptr != this->constructionItem)
-            {
-                Ogre::Item* restored = nullptr;
-                try
-                {
-                    restored = this->gameObjectPtr->getSceneManager()->createItem(this->originalMeshName, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, this->gameObjectPtr->isDynamic() ? Ogre::SCENE_DYNAMIC : Ogre::SCENE_STATIC);
-                }
-                catch (const Ogre::Exception& e)
-                {
-                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MeshConstructionComponent] Restore failed: " + e.getDescription());
-                }
-
-                Ogre::MovableObject* old = nullptr;
-                this->gameObjectPtr->swapMovableObject(restored, old);
-                if (nullptr != old)
-                {
-                    this->gameObjectPtr->getSceneManager()->destroyItem(static_cast<Ogre::Item*>(old));
-                }
-                this->constructionItem = nullptr;
-                this->destroyConstructionResources();
-            }
-        });
+        this->restoreOriginalItemAndCleanup();
 
         this->vertices.clear();
         this->normals.clear();
@@ -309,45 +333,22 @@ namespace NOWA
         this->elapsed = 0.0f;
         this->constructionProgress = 0.0f;
         this->isConstructionFinished = false;
-        this->barCouldDraw = false;
-        this->glowCouldDraw = false;
 
         return true;
     }
 
     // =========================================================================
-    //  onRemoveComponent
+    //  onRemoveComponent  — must also block until render cleanup is done
     // =========================================================================
 
     void MeshConstructionComponent::onRemoveComponent(void)
     {
         GameObjectComponent::onRemoveComponent();
 
+        // Stop render work, then block until resources are freed.
+        // enqueueAndWait prevents the dangling-this crash.
         NOWA::GraphicsModule::getInstance()->removeTrackedClosure(this->trackedClosureId());
-
-        ENQUEUE_RENDER_COMMAND("MeshConstructionComponent::onRemoveComponent", {
-            this->destroyOverlays();
-            if (nullptr != this->constructionItem)
-            {
-                Ogre::Item* restored = nullptr;
-                try
-                {
-                    restored = this->gameObjectPtr->getSceneManager()->createItem(this->originalMeshName, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, this->gameObjectPtr->isDynamic() ? Ogre::SCENE_DYNAMIC : Ogre::SCENE_STATIC);
-                }
-                catch (...)
-                {
-                }
-
-                Ogre::MovableObject* old = nullptr;
-                this->gameObjectPtr->swapMovableObject(restored, old);
-                if (nullptr != old)
-                {
-                    this->gameObjectPtr->getSceneManager()->destroyItem(static_cast<Ogre::Item*>(old));
-                }
-                this->constructionItem = nullptr;
-                this->destroyConstructionResources();
-            }
-        });
+        this->restoreOriginalItemAndCleanup();
     }
 
     // =========================================================================
@@ -361,6 +362,7 @@ namespace NOWA
         comp->setConstructionTime(this->constructionTime->getReal());
         comp->setShowProgressBar(this->showProgressBar->getBool());
         comp->setShowPercentageText(this->showPercentageText->getBool());
+        comp->setInvert(this->invert->getBool());
         cloned->addComponent(comp);
         comp->setOwner(cloned);
         GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(comp));
@@ -371,44 +373,139 @@ namespace NOWA
     //  setActivated
     // =========================================================================
 
-    void MeshConstructionComponent::setActivated(bool activated)
+    void MeshConstructionComponent::setActivated(bool value)
     {
-        this->activated->setValue(activated);
+        this->activated->setValue(value);
 
-        if (false == activated && this->bConnected)
+        if (false == value && this->bConnected)
         {
             NOWA::GraphicsModule::getInstance()->removeTrackedClosure(this->trackedClosureId());
 
-            ENQUEUE_RENDER_COMMAND("MeshConstructionComponent::setActivated::hide", {
+            NOWA::GraphicsModule::RenderCommand hide = [this]()
+            {
                 if (nullptr != this->barLineNode)
                 {
                     this->barLineNode->setVisible(false);
                 }
-                if (nullptr != this->glowLineNode)
+                if (nullptr != this->textLineNode)
                 {
-                    this->glowLineNode->setVisible(false);
+                    this->textLineNode->setVisible(false);
                 }
-                if (nullptr != this->textNode)
-                {
-                    this->textNode->setVisible(false);
-                }
-            });
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(hide), "MeshConstructionComponent::setActivated::hide");
         }
     }
 
     // =========================================================================
-    //  update  — logic thread
+    //  uploadFinalIndicesBlocking
     //
-    //  1. Advance timer, compute cutoffY (local mesh space).
-    //  2. Build index packets on logic thread (binary search + degenerate triangles).
-    //  3. updateTrackedClosure to upload + redraw all overlays on render thread.
+    //  Synchronous final index upload called at 100% completion before the
+    //  tracked closure is removed, guaranteeing the GPU sees the correct
+    //  terminal state regardless of any closure race.
     //
-    //  Drawing follows ValueBarComponent::drawValueBar() EXACTLY:
-    //    p  = world position of bar/ring center (precomputed with scale)
-    //    o  = Quaternion::IDENTITY  (strip object rotation for camera-facing)
-    //    so = MathHelper::lookAt(objPos - cameraPos)  (camera-facing)
-    //    sp = Vector3::ZERO  (offset already baked into p)
-    //    vertex = p + (o * (so * (sp + localOffset)))
+    //  makeAllVisible == true  → normal mode:   complete mesh, all real indices
+    //  makeAllVisible == false → inverted mode: empty mesh, all degenerate [0]
+    // =========================================================================
+
+    void MeshConstructionComponent::uploadFinalIndicesBlocking(bool makeAllVisible)
+    {
+        if (this->subMeshInfoList.empty())
+        {
+            return;
+        }
+
+        struct FullPacket
+        {
+            Ogre::IndexBufferPacked* buffer;
+            std::vector<Ogre::uint16> data16;
+            std::vector<Ogre::uint32> data32;
+            size_t elementCount;
+            bool is16;
+        };
+
+        std::vector<FullPacket> packets;
+        packets.reserve(this->subMeshInfoList.size());
+
+        for (const SubMeshInfo& sm : this->subMeshInfoList)
+        {
+            if (nullptr == sm.indexBuffer)
+            {
+                continue;
+            }
+
+            const bool use16 = (sm.vertexCount <= 65535u);
+            const size_t iC = sm.indexCount;
+
+            FullPacket pkt;
+            pkt.buffer = sm.indexBuffer;
+            pkt.elementCount = iC;
+            pkt.is16 = use16;
+
+            if (makeAllVisible)
+            {
+                // Real indices — complete mesh visible.
+                if (use16)
+                {
+                    pkt.data16.resize(iC);
+                    for (size_t i = 0; i < iC; ++i)
+                    {
+                        pkt.data16[i] = static_cast<Ogre::uint16>(this->indices[sm.indexOffset + i] - sm.vertexOffset);
+                    }
+                }
+                else
+                {
+                    pkt.data32.resize(iC);
+                    for (size_t i = 0; i < iC; ++i)
+                    {
+                        pkt.data32[i] = static_cast<Ogre::uint32>(this->indices[sm.indexOffset + i] - sm.vertexOffset);
+                    }
+                }
+            }
+            else
+            {
+                // All degenerate — mesh fully invisible (demolition complete).
+                if (use16)
+                {
+                    pkt.data16.assign(iC, 0u);
+                }
+                else
+                {
+                    pkt.data32.assign(iC, 0u);
+                }
+            }
+
+            packets.push_back(std::move(pkt));
+        }
+
+        NOWA::GraphicsModule::RenderCommand cmd = [packets = std::move(packets)]() mutable
+        {
+            for (FullPacket& pkt : packets)
+            {
+                if (nullptr == pkt.buffer)
+                {
+                    continue;
+                }
+                if (pkt.is16)
+                {
+                    Ogre::uint16* buf = reinterpret_cast<Ogre::uint16*>(OGRE_MALLOC_SIMD(pkt.elementCount * sizeof(Ogre::uint16), Ogre::MEMCATEGORY_GEOMETRY));
+                    std::memcpy(buf, pkt.data16.data(), pkt.elementCount * sizeof(Ogre::uint16));
+                    pkt.buffer->upload(buf, 0, pkt.elementCount);
+                    OGRE_FREE_SIMD(buf, Ogre::MEMCATEGORY_GEOMETRY);
+                }
+                else
+                {
+                    Ogre::uint32* buf = reinterpret_cast<Ogre::uint32*>(OGRE_MALLOC_SIMD(pkt.elementCount * sizeof(Ogre::uint32), Ogre::MEMCATEGORY_GEOMETRY));
+                    std::memcpy(buf, pkt.data32.data(), pkt.elementCount * sizeof(Ogre::uint32));
+                    pkt.buffer->upload(buf, 0, pkt.elementCount);
+                    OGRE_FREE_SIMD(buf, Ogre::MEMCATEGORY_GEOMETRY);
+                }
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MeshConstructionComponent::uploadFinalIndicesBlocking");
+    }
+
+    // =========================================================================
+    //  update  —  logic thread
     // =========================================================================
 
     void MeshConstructionComponent::update(Ogre::Real dt, bool notSimulating)
@@ -422,19 +519,32 @@ namespace NOWA
             return;
         }
 
-        // ── 1. Timer ──────────────────────────────────────────────────────────────
+        // ── 1. Advance timer ──────────────────────────────────────────────────────
         this->elapsed += dt;
         this->constructionProgress = Ogre::Math::Clamp(this->elapsed / this->constructionTime->getReal(), 0.0f, 1.0f);
 
-        // cutoffY in LOCAL mesh space.
-        // At progress == 1.0 add epsilon so upper_bound includes the very top triangles.
-        float cutoffY = static_cast<float>(this->meshMinY + this->constructionProgress * (this->meshMaxY - this->meshMinY));
-        if (this->constructionProgress >= 1.0f)
+        // Local-space cutoff Y, used with upper_bound(sortedCentroidY, cutoffY).
+        // Triangles with centroid <= cutoffY are visible.
+        //
+        // Normal  (invert=false): cutoffY rises  meshMinY → meshMaxY  (build up)
+        // Inverted(invert=true ): cutoffY falls  meshMaxY → meshMinY  (tear down)
+        //
+        // Epsilon offsets ensure boundary triangles are included at 0% and 100%.
+        float cutoffY;
+        if (false == this->invert->getBool())
         {
-            cutoffY = this->meshMaxY + 1e-3f;
+            // Build: nothing visible at start, everything at end.
+            cutoffY = (this->constructionProgress >= 1.0f) ? this->meshMaxY + 1.0f : static_cast<float>(this->meshMinY + this->constructionProgress * (this->meshMaxY - this->meshMinY));
+        }
+        else
+        {
+            // Demolish: everything visible at start, nothing at end.
+            cutoffY = (this->constructionProgress <= 0.0f)   ? this->meshMaxY + 1.0f // all visible
+                      : (this->constructionProgress >= 1.0f) ? this->meshMinY - 1.0f // nothing visible
+                                                             : static_cast<float>(this->meshMaxY - this->constructionProgress * (this->meshMaxY - this->meshMinY));
         }
 
-        // ── 2. Build index packets on logic thread ────────────────────────────────
+        // ── 2. Index packets ──────────────────────────────────────────────────────
         struct IndexPacket
         {
             Ogre::IndexBufferPacked* buffer;
@@ -478,7 +588,6 @@ namespace NOWA
                 const size_t origTri = sm.sortedTriIndices[t];
                 const size_t srcBase = sm.indexOffset + origTri * 3;
                 const size_t dstBase = origTri * 3;
-
                 for (int k = 0; k < 3; ++k)
                 {
                     const size_t localIdx = this->indices[srcBase + k] - sm.vertexOffset;
@@ -495,19 +604,24 @@ namespace NOWA
             packets.push_back(std::move(pkt));
         }
 
-        // ── 3. Capture all data the render closure needs ──────────────────────────
+        // ── 3. Capture for render closure ─────────────────────────────────────────
         const Ogre::Real capturedProgress = this->constructionProgress;
-        const float capturedCutoffY = cutoffY; // local mesh space
+        const float capturedCutoffY = cutoffY;
         const bool doBar = this->showProgressBar->getBool();
         const bool doText = this->showPercentageText->getBool();
         const int pct = static_cast<int>(capturedProgress * 100.0f);
         const Ogre::String pctStr = Ogre::StringConverter::toString(pct) + " %";
-        const float capturedMeshMinY = this->meshMinY;
         const float capturedMeshMaxY = this->meshMaxY;
-        const float capturedXZRadius = this->meshXZRadius;
 
         // ── 4. updateTrackedClosure ───────────────────────────────────────────────
-        auto renderClosure = [this, packets = std::move(packets), capturedProgress, capturedCutoffY, doBar, doText, pctStr, capturedMeshMinY, capturedMeshMaxY, capturedXZRadius](Ogre::Real /*renderDt*/) mutable
+        //
+        //  CRITICAL: barCouldDraw is a member variable that
+        //  PERSIST across frames — they are NEVER reset inside the closure.
+        //  Frame 1: getNumSections()==0  → begin() is called → barCouldDraw=true
+        //  Frame 2: getNumSections()>0 AND barCouldDraw==true → beginUpdate(0)
+        //  This exactly mirrors ValueBarComponent::update() / drawValueBar().
+
+        auto renderClosure = [this, packets = std::move(packets), capturedProgress, capturedCutoffY, doBar, doText, pctStr, capturedMeshMaxY](Ogre::Real) mutable
         {
             // ── a) Upload index buffers ────────────────────────────────────────────
             for (IndexPacket& pkt : packets)
@@ -532,10 +646,14 @@ namespace NOWA
                 }
             }
 
-            // ── Grab render-thread-safe transforms ────────────────────────────────
-            // Accessing _getDerivedPosition/Scale/Orientation on the render thread
-            // is correct — that is exactly what ValueBarComponent::drawValueBar does
-            // (it reads getPosition()/getOrientation() inside updateTrackedClosure).
+            // ── Derive camera-facing orientation ──────────────────────────────────
+            //
+            // Follows ValueBarComponent::drawValueBar() convention EXACTLY:
+            //   p  = world position of the bar/text anchor
+            //   o  = Quaternion::IDENTITY  (strip object rotation)
+            //   so = MathHelper::lookAt(objPos - cameraPos)  (camera-facing)
+            //   sp = Vector3::ZERO
+            //   vertex = p + (o * (so * (sp + localOffset)))
 
             Ogre::Camera* cam = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
             if (nullptr == cam)
@@ -543,51 +661,37 @@ namespace NOWA
                 return;
             }
 
-            const Ogre::Vector3 worldPos = this->gameObjectPtr->getSceneNode()->_getDerivedPosition();
+            const Ogre::Vector3 objPos = this->gameObjectPtr->getSceneNode()->_getDerivedPosition();
             const Ogre::Vector3 scale = this->gameObjectPtr->getSceneNode()->_getDerivedScale();
-
-            // Camera-facing quaternion — same technique as ValueBarComponent when
-            // an orientation target (the camera) is given:
-            //   so = MathHelper::lookAt(objectPos - targetPos)
-            //   o  = Quaternion::IDENTITY  (strip object rotation)
-            const Ogre::Vector3 direction = worldPos - cam->getDerivedPosition();
-            const Ogre::Quaternion so = MathHelper::getInstance()->lookAt(direction);
+            const Ogre::Vector3 dir = objPos - cam->getDerivedPosition();
+            const Ogre::Quaternion so = MathHelper::getInstance()->lookAt(dir);
             const Ogre::Quaternion o = Ogre::Quaternion::IDENTITY;
+            const Ogre::Vector3 sp = Ogre::Vector3::ZERO;
 
-            // ── b) Progress bar ───────────────────────────────────────────────────
-            //
-            // Following ValueBarComponent::drawValueBar EXACTLY:
-            //   - lineNode at root (no transform) → world-space vertex positions
-            //   - Material: WhiteNoLightingBackground
-            //   - vertex = p + (o * (so * (sp + localOffset)))
-            //   - sp = ZERO (offset already baked into p)
-            //   - couldDraw guard against empty ManualObject crashes
+            // World-space top of the mesh (scaled).
+            const Ogre::Real meshTopWorld = objPos.y + capturedMeshMaxY * scale.y;
+
+            // ── b) Progress bar (follows ValueBarComponent::drawValueBar) ─────────
 
             if (nullptr != this->barObject && doBar)
             {
-                this->barCouldDraw = false;
+                // Bar anchor: above the mesh in world Y.
+                const Ogre::Real barGap = 0.4f; // world-space gap above mesh top
+                const Ogre::Vector3 p(objPos.x, meshTopWorld + barGap, objPos.z);
 
-                // p = bar centre in world space.
-                // Y = world top of mesh + fixed world-space gap (NOT scaled — we always
-                // want the bar to be readable regardless of object scale).
-                const Ogre::Real barGap = 0.35f;
-                const Ogre::Real barWorldY = worldPos.y + capturedMeshMaxY * scale.y + barGap;
-                const Ogre::Vector3 p(worldPos.x, barWorldY, worldPos.z);
-                const Ogre::Vector3 sp = Ogre::Vector3::ZERO;
-
-                // Bar dimensions in world space (fixed, not scaled).
-                const Ogre::Real w = 0.5f;   // half-width
-                const Ogre::Real h = 0.07f;  // height
-                const Ogre::Real bs = 0.01f; // border
-
-                // Fill width (left-aligned: from -w to -w + fillW).
+                const Ogre::Real w = 0.5f;   // half-width of full bar
+                const Ogre::Real h = 0.07f;  // bar height
+                const Ogre::Real bs = 0.01f; // border thickness
                 const Ogre::Real fillW = (w * 2.0f) * static_cast<Ogre::Real>(capturedProgress);
-                const Ogre::Real fillRight = -w + fillW;
+                const Ogre::Real fillR = -w + fillW; // right edge of fill
 
-                const Ogre::ColourValue outerCol(0.15f, 0.15f, 0.15f, 1.0f);
-                const Ogre::ColourValue fillTopCol(0.15f, 0.9f, 0.15f, 1.0f);
-                const Ogre::ColourValue fillBotCol(0.10f, 0.65f, 0.10f, 1.0f);
+                const Ogre::ColourValue outer(0.15f, 0.15f, 0.15f, 1.0f);
+                const Ogre::ColourValue fTop(0.15f, 0.9f, 0.15f, 1.0f);
+                const Ogre::ColourValue fBot(0.10f, 0.65f, 0.10f, 1.0f);
 
+                // *** THE FIX: couldDraw is NEVER reset inside the closure ***
+                // Frame 1: getNumSections()==0  → begin()
+                // Frame 2+: getNumSections()>0 AND barCouldDraw==true → beginUpdate(0)
                 if (this->barObject->getNumSections() > 0)
                 {
                     if (true == this->barCouldDraw)
@@ -603,214 +707,121 @@ namespace NOWA
 
                 unsigned long idx = 0;
 
-                // Outer background rectangle (two quads front-face)
+                // Outer background — two quads (upper + lower half, same as ValueBarComponent)
                 // Upper face
                 this->barObject->position(p + (o * (so * (sp + Ogre::Vector3(-w - bs, h + bs, 0.0f)))));
-                this->barObject->colour(outerCol);
+                this->barObject->colour(outer);
                 this->barObject->normal(0, 0, 1);
                 this->barObject->textureCoord(0, 0);
                 this->barObject->position(p + (o * (so * (sp + Ogre::Vector3(-w - bs, h + bs, 0.0f)))));
-                this->barObject->colour(outerCol);
+                this->barObject->colour(outer);
                 this->barObject->normal(0, 0, 1);
                 this->barObject->textureCoord(0, 1);
                 this->barObject->position(p + (o * (so * (sp + Ogre::Vector3(w + bs, h + bs, 0.0f)))));
-                this->barObject->colour(outerCol);
+                this->barObject->colour(outer);
                 this->barObject->normal(0, 0, 1);
                 this->barObject->textureCoord(1, 1);
                 this->barObject->position(p + (o * (so * (sp + Ogre::Vector3(w + bs, h + bs, 0.0f)))));
-                this->barObject->colour(outerCol);
+                this->barObject->colour(outer);
                 this->barObject->normal(0, 0, 1);
                 this->barObject->textureCoord(1, 0);
                 this->barObject->quad(idx + 0, idx + 1, idx + 2, idx + 3);
                 idx += 4;
                 // Lower face
                 this->barObject->position(p + (o * (so * (sp + Ogre::Vector3(-w - bs, h + bs, 0.0f)))));
-                this->barObject->colour(outerCol);
+                this->barObject->colour(outer);
                 this->barObject->normal(0, 0, 1);
                 this->barObject->textureCoord(0, 0);
                 this->barObject->position(p + (o * (so * (sp + Ogre::Vector3(-w - bs, -bs, 0.0f)))));
-                this->barObject->colour(outerCol);
+                this->barObject->colour(outer);
                 this->barObject->normal(0, 0, 1);
                 this->barObject->textureCoord(0, 1);
                 this->barObject->position(p + (o * (so * (sp + Ogre::Vector3(w + bs, -bs, 0.0f)))));
-                this->barObject->colour(outerCol);
+                this->barObject->colour(outer);
                 this->barObject->normal(0, 0, 1);
                 this->barObject->textureCoord(1, 1);
                 this->barObject->position(p + (o * (so * (sp + Ogre::Vector3(w + bs, h + bs, 0.0f)))));
-                this->barObject->colour(outerCol);
+                this->barObject->colour(outer);
                 this->barObject->normal(0, 0, 1);
                 this->barObject->textureCoord(1, 0);
                 this->barObject->quad(idx + 0, idx + 1, idx + 2, idx + 3);
                 idx += 4;
 
-                // Fill rectangle (green, width = progress)
+                // Green fill (only when progress > epsilon)
                 if (capturedProgress > 0.001f)
                 {
                     this->barObject->position(p + (o * (so * (sp + Ogre::Vector3(-w, h, 0.0f)))));
-                    this->barObject->colour(fillTopCol);
+                    this->barObject->colour(fTop);
                     this->barObject->normal(0, 0, 1);
                     this->barObject->textureCoord(0, 0);
                     this->barObject->position(p + (o * (so * (sp + Ogre::Vector3(-w, h, 0.0f)))));
-                    this->barObject->colour(fillTopCol);
+                    this->barObject->colour(fTop);
                     this->barObject->normal(0, 0, 1);
                     this->barObject->textureCoord(0, 1);
-                    this->barObject->position(p + (o * (so * (sp + Ogre::Vector3(fillRight, h, 0.0f)))));
-                    this->barObject->colour(fillTopCol);
+                    this->barObject->position(p + (o * (so * (sp + Ogre::Vector3(fillR, h, 0.0f)))));
+                    this->barObject->colour(fTop);
                     this->barObject->normal(0, 0, 1);
                     this->barObject->textureCoord(1, 1);
-                    this->barObject->position(p + (o * (so * (sp + Ogre::Vector3(fillRight, h, 0.0f)))));
-                    this->barObject->colour(fillTopCol);
+                    this->barObject->position(p + (o * (so * (sp + Ogre::Vector3(fillR, h, 0.0f)))));
+                    this->barObject->colour(fTop);
                     this->barObject->normal(0, 0, 1);
                     this->barObject->textureCoord(1, 0);
                     this->barObject->quad(idx + 0, idx + 1, idx + 2, idx + 3);
                     idx += 4;
 
                     this->barObject->position(p + (o * (so * (sp + Ogre::Vector3(-w, h, 0.0f)))));
-                    this->barObject->colour(fillTopCol);
+                    this->barObject->colour(fTop);
                     this->barObject->normal(0, 0, 1);
                     this->barObject->textureCoord(0, 0);
-                    this->barObject->position(p + (o * (so * (sp + Ogre::Vector3(-w, 0.f, 0.0f)))));
-                    this->barObject->colour(fillBotCol);
+                    this->barObject->position(p + (o * (so * (sp + Ogre::Vector3(-w, 0.0f, 0.0f)))));
+                    this->barObject->colour(fBot);
                     this->barObject->normal(0, 0, 1);
                     this->barObject->textureCoord(0, 1);
-                    this->barObject->position(p + (o * (so * (sp + Ogre::Vector3(fillRight, 0.f, 0.0f)))));
-                    this->barObject->colour(fillBotCol);
+                    this->barObject->position(p + (o * (so * (sp + Ogre::Vector3(fillR, 0.0f, 0.0f)))));
+                    this->barObject->colour(fBot);
                     this->barObject->normal(0, 0, 1);
                     this->barObject->textureCoord(1, 1);
-                    this->barObject->position(p + (o * (so * (sp + Ogre::Vector3(fillRight, h, 0.0f)))));
-                    this->barObject->colour(fillTopCol);
+                    this->barObject->position(p + (o * (so * (sp + Ogre::Vector3(fillR, h, 0.0f)))));
+                    this->barObject->colour(fTop);
                     this->barObject->normal(0, 0, 1);
                     this->barObject->textureCoord(1, 0);
                     this->barObject->quad(idx + 0, idx + 1, idx + 2, idx + 3);
                     idx += 4;
                 }
 
+                // Mark successful draw for beginUpdate on the NEXT frame.
                 this->barCouldDraw = true;
 
-                if (true == this->barCouldDraw)
-                {
-                    this->barObject->index(0);
-                    this->barObject->end();
-                }
-                else
-                {
-                    this->barObject->clear();
-                }
+                this->barObject->index(0);
+                this->barObject->end();
 
                 this->barLineNode->setVisible(capturedProgress < 1.0f);
             }
 
             // ── c) Percentage text ────────────────────────────────────────────────
             //
-            // textNode is a child of the game-object's scene node.
-            // addTrackedNode() (called in createOverlays) handles camera-facing.
-            // We just update the caption and position here.
+            // textLineNode is a child of ROOT (same as barLineNode), positioned
+            // in world space via updateNodePosition / updateNodeOrientation,
+            // just like GameObjectTitleComponent does for its textNode.
+            // addTrackedNode() is NOT needed here because we drive the position
+            // manually every frame — same approach as the bar.
 
             if (nullptr != this->percentageText && doText)
             {
                 this->percentageText->setCaption(pctStr);
-                this->percentageText->forceUpdate();
 
-                const Ogre::Real barGap = 0.35f;
-                const Ogre::Real textOffset = 0.15f; // above bar
-                const Ogre::Real textWorldY = worldPos.y + capturedMeshMaxY * scale.y + barGap + textOffset;
+                const Ogre::Real textGap = 0.4f + 0.13f; // bar gap + bar height + small extra
+                const Ogre::Vector3 textPos(objPos.x, meshTopWorld + textGap, objPos.z);
 
-                // Note: use updateNodePosition / updateNodeOrientation through the
-                // GraphicsModule to be safe on the render thread (same as GameObjectTitleComponent).
-                NOWA::GraphicsModule::getInstance()->updateNodeOrientation(this->textNode, so);
-                NOWA::GraphicsModule::getInstance()->updateNodePosition(this->textNode, Ogre::Vector3(worldPos.x, textWorldY, worldPos.z));
+                // Follow GameObjectTitleComponent convention: set orientation first, then position.
+                NOWA::GraphicsModule::getInstance()->updateNodeOrientation(this->textLineNode, so);
+                NOWA::GraphicsModule::getInstance()->updateNodePosition(this->textLineNode, textPos);
 
-                this->textNode->setVisible(capturedProgress < 1.0f);
+                this->textLineNode->setVisible(capturedProgress < 1.0f);
             }
-            else if (nullptr != this->textNode)
+            else if (nullptr != this->textLineNode)
             {
-                this->textNode->setVisible(false);
-            }
-
-            // ── d) Glow ring at construction front ────────────────────────────────
-            //
-            // Flat horizontal annulus in the world XZ plane at world Y = cutoffWorldY.
-            // Radius accounts for game object scale.
-            // Uses same material and couldDraw pattern.
-
-            if (nullptr != this->glowObject && capturedProgress < 1.0f)
-            {
-                this->glowCouldDraw = false;
-
-                // World Y of the construction front.
-                const Ogre::Real cutoffWorldY = worldPos.y + capturedCutoffY * scale.y;
-                const Ogre::Vector3 ringCenter(worldPos.x, cutoffWorldY, worldPos.z);
-
-                // Scale ring radius by the larger of x/z scale factors.
-                const Ogre::Real scaleFactor = std::max(scale.x, scale.z);
-                const Ogre::Real outerR = capturedXZRadius * scaleFactor * 1.15f;
-                const Ogre::Real innerR = capturedXZRadius * scaleFactor * 0.85f;
-                const int segs = 24;
-
-                const Ogre::ColourValue glowOuter(1.0f, 0.55f, 0.0f, 1.0f);
-                const Ogre::ColourValue glowInner(1.0f, 0.95f, 0.2f, 1.0f);
-
-                if (this->glowObject->getNumSections() > 0)
-                {
-                    if (true == this->glowCouldDraw)
-                    {
-                        this->glowObject->beginUpdate(0);
-                    }
-                }
-                else
-                {
-                    this->glowObject->clear();
-                    this->glowObject->begin("WhiteNoLightingBackground", Ogre::OT_TRIANGLE_LIST);
-                }
-
-                unsigned long gIdx = 0;
-                for (int i = 0; i < segs; ++i)
-                {
-                    const float a0 = static_cast<float>(i) / segs * Ogre::Math::TWO_PI;
-                    const float a1 = static_cast<float>(i + 1) / segs * Ogre::Math::TWO_PI;
-
-                    const Ogre::Vector3 o0 = ringCenter + Ogre::Vector3(outerR * Ogre::Math::Cos(a0), 0.0f, outerR * Ogre::Math::Sin(a0));
-                    const Ogre::Vector3 o1 = ringCenter + Ogre::Vector3(outerR * Ogre::Math::Cos(a1), 0.0f, outerR * Ogre::Math::Sin(a1));
-                    const Ogre::Vector3 i0 = ringCenter + Ogre::Vector3(innerR * Ogre::Math::Cos(a0), 0.0f, innerR * Ogre::Math::Sin(a0));
-                    const Ogre::Vector3 i1 = ringCenter + Ogre::Vector3(innerR * Ogre::Math::Cos(a1), 0.0f, innerR * Ogre::Math::Sin(a1));
-
-                    this->glowObject->position(o0);
-                    this->glowObject->colour(glowOuter);
-                    this->glowObject->normal(0, 1, 0);
-                    this->glowObject->textureCoord(0, 0);
-                    this->glowObject->position(o1);
-                    this->glowObject->colour(glowOuter);
-                    this->glowObject->normal(0, 1, 0);
-                    this->glowObject->textureCoord(1, 0);
-                    this->glowObject->position(i1);
-                    this->glowObject->colour(glowInner);
-                    this->glowObject->normal(0, 1, 0);
-                    this->glowObject->textureCoord(1, 1);
-                    this->glowObject->position(i0);
-                    this->glowObject->colour(glowInner);
-                    this->glowObject->normal(0, 1, 0);
-                    this->glowObject->textureCoord(0, 1);
-                    this->glowObject->quad(gIdx + 0, gIdx + 1, gIdx + 2, gIdx + 3);
-                    gIdx += 4;
-                }
-
-                this->glowCouldDraw = true;
-
-                if (true == this->glowCouldDraw)
-                {
-                    this->glowObject->index(0);
-                    this->glowObject->end();
-                }
-                else
-                {
-                    this->glowObject->clear();
-                }
-
-                this->glowLineNode->setVisible(true);
-            }
-            else if (nullptr != this->glowLineNode)
-            {
-                this->glowLineNode->setVisible(false);
+                this->textLineNode->setVisible(false);
             }
         };
 
@@ -820,6 +831,14 @@ namespace NOWA
         if (this->constructionProgress >= 1.0f && false == this->isConstructionFinished)
         {
             this->isConstructionFinished = true;
+
+            // FIX: Upload complete index buffer SYNCHRONOUSLY before removing the
+            // tracked closure.  This guarantees the final frame shows the complete
+            // mesh regardless of whether the closure runs one more time.
+            // Normal: show complete mesh. Inverted: show empty mesh (demolished).
+            this->uploadFinalIndicesBlocking(!this->invert->getBool());
+
+            // Now safe to stop the animation.
             this->setActivated(false);
 
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MeshConstructionComponent] Finished: " + this->gameObjectPtr->getName());
@@ -832,12 +851,12 @@ namespace NOWA
                     {
                         luabind::call_function<void>(this->closureFunction);
                     }
-                    catch (luabind::error& error)
+                    catch (luabind::error& err)
                     {
-                        luabind::object errMsg(luabind::from_stack(error.state(), -1));
+                        luabind::object msg(luabind::from_stack(err.state(), -1));
                         std::stringstream ss;
-                        ss << errMsg;
-                        Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MeshConstructionComponent] Error in reactOnConstructionDone: " + Ogre::String(error.what()) + " details: " + ss.str());
+                        ss << msg;
+                        Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MeshConstructionComponent] reactOnConstructionDone error: " + Ogre::String(err.what()) + " | " + ss.str());
                     }
                 };
                 NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCmd));
@@ -868,12 +887,15 @@ namespace NOWA
         {
             this->setShowPercentageText(attribute->getBool());
         }
+        else if (AttrInvert() == attribute->getName())
+        {
+            this->setInvert(attribute->getBool());
+        }
     }
 
     void MeshConstructionComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
     {
         GameObjectComponent::writeXML(propertiesXML, doc);
-
         auto add = [&](const char* type, const Ogre::String& nm, const Ogre::String& val)
         {
             xml_node<>* n = doc.allocate_node(node_element, "property");
@@ -882,11 +904,11 @@ namespace NOWA
             n->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, val)));
             propertiesXML->append_node(n);
         };
-
         add("12", AttrActivated(), XMLConverter::ConvertString(doc, this->activated->getBool()));
         add("6", AttrConstructionTime(), XMLConverter::ConvertString(doc, this->constructionTime->getReal()));
         add("12", AttrShowProgressBar(), XMLConverter::ConvertString(doc, this->showProgressBar->getBool()));
         add("12", AttrShowPercentageText(), XMLConverter::ConvertString(doc, this->showPercentageText->getBool()));
+        add("12", AttrInvert(), XMLConverter::ConvertString(doc, this->invert->getBool()));
     }
 
     // =========================================================================
@@ -913,7 +935,6 @@ namespace NOWA
         this->subMeshInfoList.clear();
         this->vertexCount = 0;
         this->indexCount = 0;
-        this->meshXZRadius = 0.0f;
 
         // Pass 1: count
         size_t totalV = 0, totalI = 0;
@@ -977,7 +998,6 @@ namespace NOWA
                         hasQTan = true;
                     }
                 }
-
                 size_t stride = 0;
                 for (const Ogre::VertexElement2& e : elems)
                 {
@@ -992,7 +1012,6 @@ namespace NOWA
                     const unsigned char* vptr = raw + vi * stride;
                     size_t bo = 0;
                     const size_t gi = gvOff + vi;
-
                     for (const Ogre::VertexElement2& e : elems)
                     {
                         const unsigned char* ep = vptr + bo;
@@ -1013,7 +1032,7 @@ namespace NOWA
                             else if (e.mType == Ogre::VET_SHORT4_SNORM)
                             {
                                 const short* sh = reinterpret_cast<const short*>(ep);
-                                const float sc = 1.0f / 32767.0f;
+                                const float sc = 1.f / 32767.f;
                                 Ogre::Quaternion q(sh[3] * sc, sh[0] * sc, sh[1] * sc, sh[2] * sc);
                                 q.normalise();
                                 this->normals[gi] = q * Ogre::Vector3::UNIT_Z;
@@ -1047,19 +1066,18 @@ namespace NOWA
                 ticket->unmap();
             }
 
-            // Index buffer
             if (nullptr != vao->getIndexBuffer())
             {
                 Ogre::IndexBufferPacked* ibp = vao->getIndexBuffer();
-                Ogre::AsyncTicketPtr idxT = ibp->readRequest(0, ibp->getNumElements());
-                const void* idxRaw = idxT->map();
+                Ogre::AsyncTicketPtr t = ibp->readRequest(0, ibp->getNumElements());
+                const void* r = t->map();
                 const bool is32 = (ibp->getIndexType() == Ogre::IndexBufferPacked::IT_32BIT);
                 for (size_t ii = 0; ii < smIC; ++ii)
                 {
-                    Ogre::uint32 idx = is32 ? reinterpret_cast<const Ogre::uint32*>(idxRaw)[ii] : static_cast<Ogre::uint32>(reinterpret_cast<const Ogre::uint16*>(idxRaw)[ii]);
+                    Ogre::uint32 idx = is32 ? reinterpret_cast<const Ogre::uint32*>(r)[ii] : static_cast<Ogre::uint32>(reinterpret_cast<const Ogre::uint16*>(r)[ii]);
                     this->indices.push_back(static_cast<Ogre::uint32>(gvOff + idx));
                 }
-                idxT->unmap();
+                t->unmap();
             }
 
             SubMeshInfo si;
@@ -1070,7 +1088,6 @@ namespace NOWA
             si.hasTangent = hasTan || hasQTan;
             si.floatsPerVertex = si.hasTangent ? 12u : 8u;
             this->subMeshInfoList.push_back(si);
-
             gvOff += smVC;
             giOff += smIC;
         }
@@ -1078,9 +1095,7 @@ namespace NOWA
         this->vertexCount = this->vertices.size();
         this->indexCount = this->indices.size();
 
-        // ── Recompute Y bounds + XZ radius from ACTUAL vertex data ────────────────
-        // This is critical — getBounds() in postInit can differ slightly, causing
-        // the top triangles to never become visible at 100%.
+        // Recompute Y bounds from ACTUAL vertices (getBounds() may differ slightly).
         {
             float minY = std::numeric_limits<float>::max();
             float maxY = -std::numeric_limits<float>::max();
@@ -1095,20 +1110,12 @@ namespace NOWA
                     maxY = v.y;
                 }
                 const float r = Ogre::Vector2(v.x, v.z).length();
-                if (r > this->meshXZRadius)
-                {
-                    this->meshXZRadius = r;
-                }
             }
             this->meshMinY = minY;
             this->meshMaxY = maxY;
-            if (this->meshXZRadius < 0.01f)
-            {
-                this->meshXZRadius = 0.5f;
-            }
         }
 
-        // ── Sort triangles by centroid Y per sub-mesh (one-time O(n log n)) ────────
+        // Sort triangles by centroid Y (one-time cost).
         for (SubMeshInfo& si : this->subMeshInfoList)
         {
             const size_t triCount = si.indexCount / 3;
@@ -1123,7 +1130,6 @@ namespace NOWA
                 si.sortedCentroidY[t] = (this->vertices[i0].y + this->vertices[i1].y + this->vertices[i2].y) / 3.0f;
                 si.sortedTriIndices[t] = t;
             }
-
             std::sort(si.sortedTriIndices.begin(), si.sortedTriIndices.end(),
                 [&si](size_t a, size_t b)
                 {
@@ -1138,7 +1144,7 @@ namespace NOWA
             si.sortedCentroidY = std::move(sortedY);
         }
 
-        // ── Build GPU mesh ────────────────────────────────────────────────────────
+        // Build GPU mesh.
         const Ogre::String meshName = this->gameObjectPtr->getName() + "_Construction_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
 
         {
@@ -1162,7 +1168,6 @@ namespace NOWA
             const size_t vS = si.vertexOffset;
             const size_t vC = si.vertexCount;
 
-            // Vertex buffer — original geometry, never modified.
             float* vd = reinterpret_cast<float*>(OGRE_MALLOC_SIMD(vC * fpv * sizeof(float), Ogre::MEMCATEGORY_GEOMETRY));
             for (size_t i = 0; i < vC; ++i)
             {
@@ -1198,7 +1203,6 @@ namespace NOWA
 
             si.vertexBuffer = vm->createVertexBuffer(elems, vC, Ogre::BT_DYNAMIC_DEFAULT, vd, false);
 
-            // Index buffer — starts all-degenerate; update() fills visible tris.
             const size_t iC = si.indexCount;
             const bool use16 = (vC <= 65535u);
             if (use16)
@@ -1217,7 +1221,6 @@ namespace NOWA
             Ogre::VertexBufferPackedVec vbv;
             vbv.push_back(si.vertexBuffer);
             Ogre::VertexArrayObject* vao = vm->createVertexArrayObject(vbv, si.indexBuffer, Ogre::OT_TRIANGLE_LIST);
-
             Ogre::SubMesh* subMesh = this->constructionMesh->createSubMesh();
             subMesh->mVao[Ogre::VpNormal].push_back(vao);
             subMesh->mVao[Ogre::VpShadow].push_back(vao);
@@ -1255,7 +1258,6 @@ namespace NOWA
                 }
             }
         }
-
         return true;
     }
 
@@ -1278,7 +1280,7 @@ namespace NOWA
             sm.vertexBuffer = nullptr;
             sm.indexBuffer = nullptr;
         }
-        this->constructionItem = nullptr; // already swapped out
+        this->constructionItem = nullptr;
         if (false == this->constructionMesh.isNull())
         {
             Ogre::MeshManager::getSingleton().remove(this->constructionMesh);
@@ -1289,12 +1291,12 @@ namespace NOWA
     // =========================================================================
     //  createOverlays  —  render thread
     //
-    //  Progress bar + glow ring: child of root scene node (no transform).
-    //  Vertices are supplied in world space inside the tracked closure.
+    //  ALL nodes (bar, text) are children of the ROOT scene node.
+    //  This means there is NO inherited scale, rotation or position from the
+    //  game object.  All positions are computed in world space inside the
+    //  render closure each frame.
     //
-    //  Percentage text: child of game-object's scene node.
-    //  addTrackedNode() → render thread auto-orients it toward camera.
-    //  (Same as GameObjectTitleComponent::postInit)
+    //  The text node uses addTrackedNode() for automatic camera-facing.
     // =========================================================================
 
     void MeshConstructionComponent::createOverlays(void)
@@ -1303,32 +1305,21 @@ namespace NOWA
         Ogre::SceneNode* root = sm->getRootSceneNode();
         const Ogre::SceneMemoryMgrTypes memType = this->gameObjectPtr->isDynamic() ? Ogre::SCENE_DYNAMIC : Ogre::SCENE_STATIC;
 
+        this->barCouldDraw = false;
+
         // ── Progress bar ──────────────────────────────────────────────────────────
         if (this->showProgressBar->getBool())
         {
             this->barLineNode = root->createChildSceneNode(memType);
-
             this->barObject = sm->createManualObject();
             this->barObject->setName("MeshConstrBar_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()) + "_" + Ogre::StringConverter::toString(this->index));
             this->barObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
             this->barObject->setQueryFlags(0 << 0);
             this->barObject->setCastShadows(false);
             this->barLineNode->attachObject(this->barObject);
-            this->barCouldDraw = false;
         }
 
-        // ── Glow ring ─────────────────────────────────────────────────────────────
-        this->glowLineNode = root->createChildSceneNode(memType);
-        this->glowObject = sm->createManualObject();
-        this->glowObject->setName("MeshConstrGlow_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()) + "_" + Ogre::StringConverter::toString(this->index));
-        this->glowObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
-        this->glowObject->setQueryFlags(0 << 0);
-        this->glowObject->setCastShadows(false);
-        this->glowLineNode->attachObject(this->glowObject);
-        this->glowCouldDraw = false;
-
         // ── Percentage text ───────────────────────────────────────────────────────
-        // Follows GameObjectTitleComponent::postInit exactly.
         if (this->showPercentageText->getBool())
         {
             Ogre::NameValuePairList params;
@@ -1337,22 +1328,21 @@ namespace NOWA
             params["fontName"] = "BlueHighway";
 
             this->percentageText = new MovableText(Ogre::Id::generateNewId<Ogre::MovableObject>(), &sm->_getEntityMemoryManager(Ogre::SCENE_DYNAMIC), sm, &params);
-
             this->percentageText->setCaption("0 %");
-            this->percentageText->setCharacterHeight(0.25f);
+            this->percentageText->setCharacterHeight(0.4f);
             this->percentageText->showOnTop(true);
             this->percentageText->setColor(Ogre::ColourValue(1.0f, 1.0f, 0.2f, 1.0f));
             this->percentageText->setTextAlignment(MovableText::H_CENTER, MovableText::V_CENTER);
             this->percentageText->setQueryFlags(0 << 0);
 
-            // Child of game-object scene node — inherits world position.
-            this->textNode = this->gameObjectPtr->getSceneNode()->createChildSceneNode(memType);
-            this->textNode->attachObject(this->percentageText);
+            // Child of ROOT — no inherited transform. Position driven each frame.
+            this->textLineNode = root->createChildSceneNode(memType);
+            this->textLineNode->attachObject(this->percentageText);
 
-            // Registers node for automatic camera-facing on render thread —
-            // same call as GameObjectTitleComponent::postInit.
-            NOWA::GraphicsModule::getInstance()->addTrackedNode(this->textNode);
-            this->textNode->setVisible(false);
+            // addTrackedNode: render thread will orient this node toward the camera.
+            // Same call as GameObjectTitleComponent::postInit.
+            NOWA::GraphicsModule::getInstance()->addTrackedNode(this->textLineNode);
+            this->textLineNode->setVisible(false);
         }
     }
 
@@ -1376,33 +1366,19 @@ namespace NOWA
             this->barLineNode = nullptr;
         }
 
-        if (nullptr != this->glowObject)
-        {
-            this->glowLineNode->detachAllObjects();
-            sm->destroyManualObject(this->glowObject);
-            this->glowObject = nullptr;
-        }
-        if (nullptr != this->glowLineNode)
-        {
-            this->glowLineNode->getParentSceneNode()->removeAndDestroyChild(this->glowLineNode);
-            this->glowLineNode = nullptr;
-        }
-
         if (nullptr != this->percentageText)
         {
-            NOWA::GraphicsModule::getInstance()->removeTrackedNode(this->textNode);
-            this->textNode->detachAllObjects();
+            NOWA::GraphicsModule::getInstance()->removeTrackedNode(this->textLineNode);
+            this->textLineNode->detachAllObjects();
             delete this->percentageText;
             this->percentageText = nullptr;
         }
-        if (nullptr != this->textNode)
+        if (nullptr != this->textLineNode)
         {
-            this->gameObjectPtr->getSceneNode()->removeAndDestroyChild(this->textNode);
-            this->textNode = nullptr;
+            this->textLineNode->getParentSceneNode()->removeAndDestroyChild(this->textLineNode);
+            this->textLineNode = nullptr;
         }
-
         this->barCouldDraw = false;
-        this->glowCouldDraw = false;
     }
 
     // =========================================================================
@@ -1441,18 +1417,20 @@ namespace NOWA
                 .def("getShowPercentageText", &MeshConstructionComponent::getShowPercentageText)
                 .def("getConstructionProgress", &MeshConstructionComponent::getConstructionProgress)
                 .def("getIsConstructionFinished", &MeshConstructionComponent::getIsConstructionFinished)
+                .def("setInvert", &MeshConstructionComponent::setInvert)
+                .def("getInvert", &MeshConstructionComponent::getInvert)
                 .def("reactOnConstructionDone", &MeshConstructionComponent::reactOnConstructionDone)];
 
         LuaScriptApi::getInstance()->addClassToCollection("MeshConstructionComponent", "class inherits GameObjectComponent", MeshConstructionComponent::getStaticInfoText());
-        LuaScriptApi::getInstance()->addClassToCollection("MeshConstructionComponent", "void reactOnConstructionDone(func closureFunction)", "Lua callback fired when construction completes. Signature: function()");
-        LuaScriptApi::getInstance()->addClassToCollection("MeshConstructionComponent", "float getConstructionProgress()", "Returns current progress [0..1].");
+        LuaScriptApi::getInstance()->addClassToCollection("MeshConstructionComponent", "void reactOnConstructionDone(func closureFunction)", "Lua callback at 100%. Signature: function()");
+        LuaScriptApi::getInstance()->addClassToCollection("MeshConstructionComponent", "float getConstructionProgress()", "Returns progress [0..1].");
+        LuaScriptApi::getInstance()->addClassToCollection("MeshConstructionComponent", "void setInvert(bool invert)", "If true: mesh deconstructs top-to-bottom (demolition). If false: builds bottom-to-top.");
 
         gameObjectClass.def("getMeshConstructionComponent", (MeshConstructionComponent * (*)(GameObject*)) & getMeshConstructionComponent);
         gameObjectClass.def("getMeshConstructionComponentFromName", &getMeshConstructionComponentFromName);
-
         gameObjectControllerClass.def("castMeshConstructionComponent", &GameObjectController::cast<MeshConstructionComponent>);
 
-        LuaScriptApi::getInstance()->addClassToCollection("GameObject", "MeshConstructionComponent getMeshConstructionComponent()", "Gets the MeshConstructionComponent.");
+        LuaScriptApi::getInstance()->addClassToCollection("GameObject", "MeshConstructionComponent getMeshConstructionComponent()", "Gets the component.");
         LuaScriptApi::getInstance()->addClassToCollection("GameObjectController", "MeshConstructionComponent castMeshConstructionComponent(MeshConstructionComponent other)", "Casts for Lua auto-completion.");
     }
 

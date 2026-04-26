@@ -28,23 +28,23 @@ namespace NOWA
      * @class   MeshConstructionComponent
      * @brief   Warcraft-2-style mesh construction animation.
      *
-     * In the editor the original Ogre::Item is never touched.
+     * Editor:  original Ogre::Item untouched.
      *
-     * When simulation starts (connect()) and activated == true:
-     *  - Original Item is swapped for a BT_DYNAMIC_DEFAULT copy.
-     *  - Triangles are sorted by centroid Y at connect() time.
-     *  - Each update() tick the index buffer is rebuilt:
-     *      triangles with centroid <= cutoffY  → real indices (visible)
-     *      triangles with centroid >  cutoffY  → degenerate [0,0,0] (hidden)
-     *    This eliminates the "squish/scale-up" artefact completely.
-     *  - Optionally a camera-facing progress bar and/or percentage text above
-     *    the mesh are shown, following the ValueBarComponent / SpeechBubble
-     *    drawing conventions exactly.
-     *  - A glowing ring marks the construction front at the current cutoffY.
-     *  - On completion: setActivated(false) + Lua closure via
-     *    AppStateManager::enqueue() (logic thread).
+     * Simulation (connect() + activated):
+     *  - Original Item swapped for a BT_DYNAMIC_DEFAULT copy.
+     *  - Triangles sorted by centroid Y at connect() time.
+     *  - Each update() tick the index buffer is rebuilt: triangles with
+     *    centroid <= cutoffY are real indices; those above are degenerate
+     *    [0,0,0]. Vertex buffer is never touched → no squish artefact.
+     *  - Camera-facing progress bar (optional) using exactly the
+     *    ValueBarComponent drawing convention.
+     *  - Camera-facing percentage text (optional) via MovableText +
+     *    addTrackedNode, same as GameObjectTitleComponent.
+     *  - On 100%: final blocking index upload → setActivated(false) →
+     *    Lua closure via AppStateManager::enqueue().
      *
-     * disconnect() restores the original Item.
+     * disconnect() restores the original Item (enqueueAndWait).
+     * Crash-safe: all render-resource cleanup uses enqueueAndWait.
      */
     class EXPORTED MeshConstructionComponent : public GameObjectComponent, public Ogre::Plugin
     {
@@ -98,27 +98,28 @@ namespace NOWA
         {
             return "Warcraft-2-style bottom-to-top mesh construction animation. "
                    "Simulation-only — editor always shows the full mesh. "
-                   "Optionally shows a progress bar and/or percentage text.";
+                   "Optional camera-facing progress bar and percentage text.";
         }
         static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass);
 
     public:
         void setConstructionTime(Ogre::Real seconds);
         Ogre::Real getConstructionTime(void) const;
-
         void setShowProgressBar(bool show);
         bool getShowProgressBar(void) const;
-
         void setShowPercentageText(bool show);
         bool getShowPercentageText(void) const;
-
         Ogre::Real getConstructionProgress(void) const;
         bool getIsConstructionFinished(void) const;
 
         /**
-         * @brief  Lua callback fired when construction reaches 100 %.
-         *         Signature: function()
+         * @brief  If true the mesh deconstructs top-to-bottom instead of
+         *         building bottom-to-top.  Useful for demolition scenarios.
          */
+        void setInvert(bool invert);
+        bool getInvert(void) const;
+
+        /** Lua callback, fired at 100%. Signature: function() */
         void reactOnConstructionDone(luabind::object closureFunction);
 
     public:
@@ -138,40 +139,47 @@ namespace NOWA
         {
             return "Show Percentage Text";
         }
+        static const Ogre::String AttrInvert()
+        {
+            return "Invert";
+        }
 
     private:
         struct SubMeshInfo
         {
             size_t vertexOffset = 0;
             size_t vertexCount = 0;
-            size_t indexOffset = 0; ///< into this->indices[]
+            size_t indexOffset = 0;
             size_t indexCount = 0;
             bool hasTangent = false;
             size_t floatsPerVertex = 8;
-
-            Ogre::VertexBufferPacked* vertexBuffer = nullptr; ///< BT_DYNAMIC_DEFAULT
-            Ogre::IndexBufferPacked* indexBuffer = nullptr;   ///< BT_DYNAMIC_DEFAULT
-
-            // Built once at connect(); binary-searched every update().
-            std::vector<size_t> sortedTriIndices; ///< triangle# in ascending centroid-Y order
-            std::vector<float> sortedCentroidY;   ///< parallel ascending centroid-Y values
+            Ogre::VertexBufferPacked* vertexBuffer = nullptr; // BT_DYNAMIC_DEFAULT
+            Ogre::IndexBufferPacked* indexBuffer = nullptr;   // BT_DYNAMIC_DEFAULT
+            std::vector<size_t> sortedTriIndices;
+            std::vector<float> sortedCentroidY;
         };
 
-        bool extractMeshDataAndCreateBuffers(void); ///< render thread
-        void destroyConstructionResources(void);    ///< render thread
-        void createOverlays(void);                  ///< render thread
-        void destroyOverlays(void);                 ///< render thread
+        // All render-thread helpers:
+        bool extractMeshDataAndCreateBuffers(void);
+        void destroyConstructionResources(void);
+        void createOverlays(void);
+        void destroyOverlays(void);
+
+        // Shared by connect/disconnect/onRemove — always enqueueAndWait.
+        void restoreOriginalItemAndCleanup(void);
+
+        // Uploads the final index state synchronously (true=all visible, false=all degenerate).
+        void uploadFinalIndicesBlocking(bool makeAllVisible);
 
         Ogre::String trackedClosureId(void) const;
 
     private:
         Ogre::String componentName;
-
-        // Read in postInit from getBounds() — refined from actual vertices in connect().
         Ogre::String originalMeshName;
+
+        // Local-space Y extents (refined from actual vertex data in connect()).
         Ogre::Real meshMinY;
         Ogre::Real meshMaxY;
-        Ogre::Real meshXZRadius; ///< max distance of any vertex from the Y-axis
 
         std::vector<Ogre::Vector3> vertices;
         std::vector<Ogre::Vector3> normals;
@@ -185,24 +193,14 @@ namespace NOWA
         Ogre::Item* constructionItem;
         Ogre::MeshPtr constructionMesh;
 
-        // ── Progress bar overlay ──────────────────────────────────────────────
-        // lineNode is a child of root scene node (no transform).
-        // All vertex positions are supplied in world space inside the closure.
-        // Material: WhiteNoLightingBackground (same as ValueBarComponent).
+        // ── Overlays ───────────────────────────────────────────────────────────
+        // All nodes are children of the root scene node (no inherited transform).
         Ogre::SceneNode* barLineNode;
         Ogre::ManualObject* barObject;
-        bool barCouldDraw; ///< guards beginUpdate vs begin
+        bool barCouldDraw; ///< ValueBarComponent couldDraw pattern
 
-        // ── Percentage text ───────────────────────────────────────────────────
-        // textNode is a child of the game-object's scene node.
-        // addTrackedNode() makes the render thread orient it toward the camera.
-        Ogre::SceneNode* textNode;
+        Ogre::SceneNode* textLineNode;
         MovableText* percentageText;
-
-        // ── Glow ring ─────────────────────────────────────────────────────────
-        Ogre::SceneNode* glowLineNode;
-        Ogre::ManualObject* glowObject;
-        bool glowCouldDraw;
 
         // Logic-thread state
         Ogre::Real elapsed;
@@ -215,6 +213,7 @@ namespace NOWA
         Variant* constructionTime;
         Variant* showProgressBar;
         Variant* showPercentageText;
+        Variant* invert;
     };
 
 } // namespace NOWA

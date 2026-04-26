@@ -100,7 +100,6 @@ namespace NOWA
         proportionalRadius(new Variant(MeshEditComponent::AttrProportionalRadius(), 1.0f, this->attributes)),
         bevelAmount(new Variant(MeshEditComponent::AttrBevelAmount(), 0.05f, this->attributes)),
         loopCutFraction(new Variant(MeshEditComponent::AttrLoopCutFraction(), 0.5f, this->attributes)),
-        buildFaceButton(new Variant(MeshEditComponent::AttrBuildFace(), Ogre::String("Build Face"), this->attributes)),
 
         // ── Existing Actions ─────────────────────────────────────────────────
         weldButton(new Variant(MeshEditComponent::AttrWeldVertices(), Ogre::String("Weld"), this->attributes)),
@@ -116,6 +115,7 @@ namespace NOWA
         mergeSelectedButton(new Variant(MeshEditComponent::AttrMergeSelected(), Ogre::String("Merge Selected"), this->attributes)),
         dissolveButton(new Variant(MeshEditComponent::AttrDissolveSelected(), Ogre::String("Dissolve"), this->attributes)),
         fillButton(new Variant(MeshEditComponent::AttrFillSelected(), Ogre::String("Fill"), this->attributes)),
+        buildFaceButton(new Variant(MeshEditComponent::AttrBuildFace(), Ogre::String("Build Face"), this->attributes)),
         bevelButton(new Variant(MeshEditComponent::AttrBevel(), Ogre::String("Bevel"), this->attributes)),
         loopCutButton(new Variant(MeshEditComponent::AttrLoopCut(), Ogre::String("Loop Cut"), this->attributes)),
 
@@ -158,12 +158,6 @@ namespace NOWA
         this->proportionalRadius->setConstraints(0.001f, 100.0f);
         this->proportionalRadius->setDescription("Radius for proportional editing. Nearby vertices are affected with smooth falloff.");
 
-        this->buildFaceButton->addUserData(GameObject::AttrActionExec());
-        this->buildFaceButton->addUserData(GameObject::AttrActionExecId(), MeshEditComponent::ActionBuildFace());
-        this->buildFaceButton->addUserData(GameObject::AttrActionNeedRefresh());
-        this->buildFaceButton->setDescription("Creates a triangle (3 vertices selected) or quad (4 vertices -> 2 triangles) "
-                                              "from the current vertex selection. Keyboard: F in Vertex mode.");
-
         this->bevelAmount->setConstraints(0.0001f, 10.0f);
         this->bevelAmount->setDescription("Distance used for bevel operations. Controls edge width or corner rounding.");
 
@@ -187,6 +181,12 @@ namespace NOWA
         this->fillButton->addUserData(GameObject::AttrActionNeedRefresh());
         this->fillButton->setDescription("Creates a face from selected vertices or edges. "
                                          "Use to close holes in the mesh. Keyboard: F.");
+
+        this->buildFaceButton->addUserData(GameObject::AttrActionExec());
+        this->buildFaceButton->addUserData(GameObject::AttrActionExecId(), MeshEditComponent::ActionBuildFace());
+        this->buildFaceButton->addUserData(GameObject::AttrActionNeedRefresh());
+        this->buildFaceButton->setDescription("Creates a triangle (3 vertices selected) or quad (4 vertices -> 2 triangles) "
+                                              "from the current vertex selection. Keyboard: F in Vertex mode.");
 
         this->bevelButton->addUserData(GameObject::AttrActionExec());
         this->bevelButton->addUserData(GameObject::AttrActionExecId(), MeshEditComponent::ActionBevel());
