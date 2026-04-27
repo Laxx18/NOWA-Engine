@@ -161,6 +161,14 @@ namespace NOWA
 		virtual Ogre::String getParentClassName(void) const override;
 
 		/**
+         * @see GameObjectComponent::isProcedural
+         */
+        virtual bool isProcedural(void) const override
+        {
+            return true;
+        }
+
+		/**
 		 * @see		GameObjectComponent::clone
 		 */
 		virtual GameObjectCompPtr clone(GameObjectPtr clonedGameObjectPtr) override;

@@ -49,6 +49,12 @@ namespace NOWA
             CONFIRMING
         };
 
+        enum class EditMode
+        {
+            OBJECT,
+            SEGMENT
+        };
+
         struct RoadControlPoint
         {
             Ogre::Vector3 position;
@@ -71,6 +77,16 @@ namespace NOWA
             Ogre::Vector3 direction; // Forward direction at this point
             Ogre::Vector3 miterPerp; // Lateral offset direction (unit length)
             Ogre::Real miterScale;   // Width multiplier for constant-width curves
+        };
+
+        struct JunctionPoint
+        {
+            Ogre::Vector3 worldPos;
+            std::vector<size_t> segIndices;
+            std::vector<Ogre::Vector3> armDirs;
+            std::vector<Ogre::Real> armTrimDists;         // per-arm, computed from adjacent angles
+            std::vector<Ogre::Vector3> patchCorners;      // outer corners at totalHalfW
+            std::vector<Ogre::Vector3> patchCornersInner; // inner corners at halfW
         };
 
     public:
@@ -315,6 +331,18 @@ namespace NOWA
         void setGenerateFromLayer(const Ogre::String& layer);
         Ogre::String getGenerateFromLayer(void) const;
 
+        EditMode getEditModeEnum(void) const;
+
+        int findNearestSegmentWithinRadius(const Ogre::Vector3& worldPos, Ogre::Real radius) const;
+
+        void deleteSelectedSegment(void);
+
+        void createSegmentOverlay(void);
+
+        void destroySegmentOverlay(void);
+
+        void scheduleSegmentOverlayUpdate(void);
+
         virtual void setRoadData(const std::vector<unsigned char>& data) override;
 
         virtual std::vector<unsigned char> getRoadData(void) const override;
@@ -397,6 +425,10 @@ namespace NOWA
         {
             return "TerrainSampleInterval";
         }
+        static Ogre::String AttrEditMode()
+        {
+            return "Edit Mode";
+        }
         static const Ogre::String AttrConvertToMesh(void)
         {
             return "Convert To Mesh";
@@ -474,9 +506,13 @@ namespace NOWA
 
         // Style-specific geometry generators
         void generatePavedRoad(const std::vector<RoadControlPoint>& points, const std::vector<PointData>& miterData);
+
         void generateHighwayRoad(const std::vector<RoadControlPoint>& points, const std::vector<PointData>& miterData);
+
         void generateTrailRoad(const std::vector<RoadControlPoint>& points, const std::vector<PointData>& miterData);
+
         void generateDirtRoad(const std::vector<RoadControlPoint>& points, const std::vector<PointData>& miterData);
+
         void generateCobblestoneRoad(const std::vector<RoadControlPoint>& points, const std::vector<PointData>& miterData);
 
         /**
@@ -527,6 +563,10 @@ namespace NOWA
         void generateRoadFromTerraLayer(void);
 
         int findNearestSegment(const Ogre::Vector3& worldPos) const;
+
+        void generateJunctionPatch(const JunctionPoint& jp, const Ogre::Vector3& origin);
+
+        void addJunctionTriangle(const Ogre::Vector3& v0, const Ogre::Vector2& uv0, const Ogre::Vector3& v1, const Ogre::Vector2& uv1, const Ogre::Vector3& v2, const Ogre::Vector2& uv2, bool isCenter);
     private:
         static const uint32_t ROADDATA_MAGIC = 0x524F4144; // "ROAD" in hex
         static const uint32_t ROADDATA_VERSION = 1;
@@ -554,6 +594,7 @@ namespace NOWA
         Variant* edgeUVTiling;
         Variant* curbHeight;
         Variant* terrainSampleInterval;
+        Variant* editMode;
         Variant* convertToMesh;
 
         Variant* sourceTerraLayer;  // which layer to trace (0-3)
@@ -611,6 +652,14 @@ namespace NOWA
         bool hasLoadedRoadEndpoint;
         Ogre::Vector3 loadedRoadEndpoint;    // XZ position
         Ogre::Real loadedRoadEndpointHeight; // World-space height
+
+        // Segment selection state
+        int selectedSegmentIndex; // -1 = nothing selected
+        bool isSegmentDragging;   // true while extending from selected endpoint
+
+        Ogre::SceneNode* segOverlayNode;
+        Ogre::ManualObject* segOverlayObject;
+        bool isExtendingFromSegment;
 
         PhysicsArtifactComponent* physicsArtifactComponent;
     };

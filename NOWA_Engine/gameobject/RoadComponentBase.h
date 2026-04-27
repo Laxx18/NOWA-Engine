@@ -12,6 +12,14 @@ namespace NOWA
 		virtual void setRoadData(const std::vector<unsigned char>& roadData) = 0;
 
 		virtual std::vector<unsigned char> getRoadData(void) const = 0;
+
+		/**
+         * @see GameObjectComponent::isProcedural
+         */
+        virtual bool isProcedural(void) const override
+        {
+            return true;
+        }
 	};
 
 }; //namespace end

@@ -60,12 +60,12 @@ namespace NOWA
         edgeUVTiling(new Variant(ProceduralRoadComponent::AttrEdgeUVTiling(), Ogre::Vector2(1.0f, 1.0f), this->attributes)),
         curbHeight(new Variant(ProceduralRoadComponent::AttrCurbHeight(), 0.15f, this->attributes)),
         terrainSampleInterval(new Variant(ProceduralRoadComponent::AttrTerrainSampleInterval(), 2.0f, this->attributes)),
+        editMode(new Variant(ProceduralRoadComponent::AttrEditMode(), std::vector<Ogre::String>{"Object", "Segment"}, this->attributes)),
         convertToMesh(new Variant(ProceduralRoadComponent::AttrConvertToMesh(), "Convert to Mesh", this->attributes)),
         sourceTerraLayer(new Variant(ProceduralRoadComponent::AttrSourceTerraLayer(), static_cast<Ogre::uint32>(2), this->attributes)),
         traceStepMeters(new Variant(ProceduralRoadComponent::AttrTraceStepMeters(), 3.0f, this->attributes)),
         traceThreshold(new Variant(ProceduralRoadComponent::AttrTraceThreshold(), static_cast<Ogre::uint32>(64), this->attributes)),
         generateFromLayer(new Variant(ProceduralRoadComponent::AttrGenerateFromLayer(), "Generate From Layer", this->attributes)),
-        buildState(BuildState::IDLE),
         isEditorMeshModifyMode(false),
         isSelected(false),
         currentCenterVertexIndex(0),
@@ -81,7 +81,12 @@ namespace NOWA
         originPositionSet(false),
         hasLoadedRoadEndpoint(false),
         loadedRoadEndpointHeight(0.0f),
-        physicsArtifactComponent(nullptr)
+        selectedSegmentIndex(-1),
+        segOverlayNode(nullptr),
+        segOverlayObject(nullptr),
+        buildState(BuildState::IDLE),
+        physicsArtifactComponent(nullptr),
+        isExtendingFromSegment(false)
     {
         this->roadStyle->setDescription("Style of the road to generate");
         this->roadWidth->setDescription("Width of the main road surface (meters)");
@@ -94,6 +99,11 @@ namespace NOWA
         this->curveSubdivisions->setDescription("Number of segments for curved roads (higher = smoother)");
         this->curbHeight->setDescription("Height of the curb edges above the road surface (meters). Set 0 for flat edges.");
         this->terrainSampleInterval->setDescription("Distance between terrain height samples along the road (meters). Lower = better terrain following but more geometry.");
+        
+        this->editMode->setDescription("Object: click-drag to build roads.\n"
+                                       "Segment: LMB to select a segment, X to delete it.");
+        this->editMode->addUserData(GameObject::AttrActionNoUndo());
+
         this->convertToMesh->setDescription("Converts this procedural road to a static mesh file. "
                                             "This is a ONE-WAY operation! After conversion:\n"
                                             "- The road mesh is exported to the Procedural resource folder\n"
@@ -102,6 +112,7 @@ namespace NOWA
                                             "- You can no longer edit the road procedurally\n"
                                             "- The mesh will benefit from Ogre's graphics caching (no FPS drops)\n\n"
                                             "Use this when you're finished designing the road and want optimal performance.");
+
         this->convertToMesh->addUserData(GameObject::AttrActionExec());
         this->convertToMesh->addUserData(GameObject::AttrActionNeedRefresh());
         this->convertToMesh->addUserData(GameObject::AttrActionExecId(), "ProceduralRoadComponent.ConvertToMesh");
@@ -338,11 +349,24 @@ namespace NOWA
             }
         }
 
+        this->createSegmentOverlay();
+
         return true;
     }
 
     bool ProceduralRoadComponent::connect(void)
     {
+        if (this->segOverlayNode)
+        {
+            NOWA::GraphicsModule::RenderCommand cmd = [this]()
+            {
+                if (this->segOverlayNode)
+                {
+                    this->segOverlayNode->setVisible(false);
+                }
+            };
+            NOWA::GraphicsModule::getInstance()->enqueue(std::move(cmd), "ProceduralRoadComponent::connect::hideSegOverlay");
+        }
 
         return true;
     }
@@ -390,6 +414,7 @@ namespace NOWA
 
         this->destroyRoadMesh();
         this->destroyPreviewMesh();
+        this->destroySegmentOverlay();
 
         if (nullptr != this->previewNode)
         {
@@ -511,6 +536,24 @@ namespace NOWA
         else if (ProceduralRoadComponent::AttrGenerateFromLayer() == attribute->getName())
         {
             this->setGenerateFromLayer(attribute->getString());
+        }
+        else if (ProceduralRoadComponent::AttrEditMode() == attribute->getName())
+        {
+            this->editMode->setListSelectedValue(attribute->getListSelectedValue());
+            this->selectedSegmentIndex = -1;
+
+            // Cancel any in-progress drag when entering Segment mode
+            if (this->getEditModeEnum() == EditMode::SEGMENT && this->buildState == BuildState::DRAGGING)
+            {
+                this->cancelRoad();
+            }
+
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] EditMode changed to: " + attribute->getListSelectedValue() + " | segments: " + Ogre::StringConverter::toString(this->roadSegments.size()) +
+                                                                                   " | isEditorMeshModifyMode: " + Ogre::StringConverter::toString(this->isEditorMeshModifyMode) + " | isSelected: " + Ogre::StringConverter::toString(this->isSelected));
+
+            // Go directly to mesh modify mode when switching to Segment edit mode, so the user can immediately select segments
+            boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(NOWA::EditorManager::EDITOR_MESH_MODIFY_MODE));
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataEditorMode);
         }
     }
 
@@ -672,37 +715,85 @@ namespace NOWA
 
     bool ProceduralRoadComponent::mousePressed(const OIS::MouseEvent& evt, OIS::MouseButtonID id)
     {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] mousePressed fired! editMode=" + this->editMode->getListSelectedValue() +
+                                                                               " buildState=" + Ogre::StringConverter::toString(static_cast<int>(this->buildState)) + " activated=" + Ogre::StringConverter::toString(this->activated->getBool()));
+
         if (false == this->activated->getBool())
         {
-            return true; // not handled -> bubble
+            return true;
         }
-
         if (id != OIS::MB_Left)
         {
-            return true; // not handled -> bubble
+            return true;
         }
-
-        // Check if clicking on GUI
         if (MyGUI::InputManager::getInstance().getMouseFocusWidget() != nullptr)
         {
-            return true; // not handled -> bubble
+            return true;
         }
 
         Ogre::Camera* camera = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
         if (nullptr == camera)
         {
-            return true; // not handled -> bubble
+            return true;
         }
 
+        Ogre::Real screenX = 0.0f;
+        Ogre::Real screenY = 0.0f;
+        MathHelper::getInstance()->mouseToViewPort(evt.state.X.abs, evt.state.Y.abs, screenX, screenY, Core::getSingletonPtr()->getOgreRenderWindow());
+
+        // ── SEGMENT MODE: confirm branch extension OR pick segment ────────────
+        if (this->getEditModeEnum() == EditMode::SEGMENT)
+        {
+            // If we are mid-drag extending a branch, this click confirms it
+            if (this->isExtendingFromSegment && this->buildState == BuildState::DRAGGING)
+            {
+                this->confirmRoad();
+                // confirmRoad with isShiftPressed=true will shift-chain and stay DRAGGING.
+                // Let the user keep extending. They press ESC or RMB to stop.
+                return false;
+            }
+
+            // Otherwise: pick a segment
+            Ogre::Vector3 hitPos = Ogre::Vector3::ZERO;
+            bool hit = false;
+
+            // Include road mesh in raycast so clicking directly on road surface works
+            Ogre::MovableObject* hitObj = nullptr;
+            Ogre::Real hitDist = 0.0f;
+            Ogre::Vector3 hitNormal = Ogre::Vector3::ZERO;
+            const OIS::MouseState& ms2 = NOWA::InputDeviceCore::getSingletonPtr()->getMouse()->getMouseState();
+
+            hit = MathHelper::getInstance()->getRaycastFromPoint(ms2.X.abs, ms2.Y.abs, camera, Core::getSingletonPtr()->getOgreRenderWindow(), this->groundQuery, hitPos, (size_t&)hitObj, hitDist, hitNormal,
+                nullptr, // no exclusion — we WANT to hit the road item
+                false);
+
+            if (false == hit)
+            {
+                hit = this->raycastGround(screenX, screenY, hitPos);
+            }
+
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] Segment pick: hit=" + Ogre::StringConverter::toString(hit) + " pos=" + Ogre::StringConverter::toString(hitPos));
+
+            if (hit)
+            {
+                const Ogre::Real radius = this->roadWidth->getReal() + this->edgeWidth->getReal() * 2.0f;
+                this->selectedSegmentIndex = this->findNearestSegmentWithinRadius(hitPos, radius);
+
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+                    "[ProceduralRoadComponent] Segment pick result: idx=" + Ogre::StringConverter::toString(this->selectedSegmentIndex) + " radius=" + Ogre::StringConverter::toString(radius));
+            }
+
+            this->scheduleSegmentOverlayUpdate();
+            return false;
+        }
+
+        // ── OBJECT MODE: road building ────────────────────────────────────────
         Ogre::Vector3 internalHitPoint = Ogre::Vector3::ZERO;
         Ogre::MovableObject* hitMovableObject = nullptr;
         Ogre::Real closestDistance = 0.0f;
         Ogre::Vector3 normal = Ogre::Vector3::ZERO;
-
-        // Build exclusion list - exclude our own road and preview items
         std::vector<Ogre::MovableObject*> excludeMovableObjects;
 
-        // Check if mouse hit already created road -> then skip
         const OIS::MouseState& ms = NOWA::InputDeviceCore::getSingletonPtr()->getMouse()->getMouseState();
         bool hitFound = MathHelper::getInstance()->getRaycastFromPoint(ms.X.abs, ms.Y.abs, camera, Core::getSingletonPtr()->getOgreRenderWindow(), this->groundQuery, internalHitPoint, (size_t&)hitMovableObject, closestDistance, normal,
             &excludeMovableObjects, false);
@@ -711,22 +802,15 @@ namespace NOWA
         {
             if (this->roadItem == hitMovableObject)
             {
-                return true; // not handled -> bubble
+                return true;
             }
             if (this->previewItem == hitMovableObject)
             {
-                return true; // not handled -> bubble
+                return true;
             }
         }
 
-        // Get normalized screen coordinates
-        Ogre::Real screenX = 0.0f;
-        Ogre::Real screenY = 0.0f;
-        MathHelper::getInstance()->mouseToViewPort(evt.state.X.abs, evt.state.Y.abs, screenX, screenY, Core::getSingletonPtr()->getOgreRenderWindow());
-
-        // Raycast to ground
         Ogre::Vector3 hitPosition;
-
         if (this->raycastGround(screenX, screenY, hitPosition))
         {
             if (this->snapToGrid->getBool())
@@ -736,10 +820,8 @@ namespace NOWA
 
             if (this->buildState == BuildState::IDLE)
             {
-                // Check if shift is held and we have an existing road to continue from
-                if (this->isShiftPressed && this->hasLoadedRoadEndpoint && !this->roadSegments.empty())
+                if (this->isShiftPressed && this->hasLoadedRoadEndpoint && false == this->roadSegments.empty())
                 {
-                    // Continue from the last endpoint
                     Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] Continuing from existing endpoint");
 
                     RoadControlPoint startPoint;
@@ -757,49 +839,44 @@ namespace NOWA
 
                     this->buildState = BuildState::DRAGGING;
                     this->lastValidPosition = startPoint.position;
-
-                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] Started continuation from: " + Ogre::StringConverter::toString(this->loadedRoadEndpoint));
                 }
                 else
                 {
-                    // Normal: start new road at mouse position
                     this->startRoadPlacement(hitPosition);
-
-                    // Clear continuation flag when starting fresh
                     this->hasLoadedRoadEndpoint = false;
                 }
             }
             else if (this->buildState == BuildState::DRAGGING)
             {
-                // Confirm current road
                 this->confirmRoad();
             }
 
-            return false; // handled -> do not bubble
+            return false;
         }
 
-        return false; // handled -> do not bubble
+        return false;
     }
 
     bool ProceduralRoadComponent::mouseMoved(const OIS::MouseEvent& evt)
     {
         if (false == this->activated->getBool())
         {
-            return true; // not handled -> bubble
+            return true;
         }
 
-        // Only update preview if we're actively dragging
-        if (this->buildState != BuildState::DRAGGING)
+        // Allow preview dragging both in OBJECT mode and when extending
+        // a branch from a segment (SEGMENT mode + isExtendingFromSegment).
+        const bool wantPreview = (this->buildState == BuildState::DRAGGING) && (this->getEditModeEnum() == EditMode::OBJECT || this->isExtendingFromSegment);
+
+        if (false == wantPreview)
         {
-            return true; // not handled -> bubble
+            return true;
         }
 
-        // Get normalized screen coordinates
         Ogre::Real screenX = 0.0f;
         Ogre::Real screenY = 0.0f;
         MathHelper::getInstance()->mouseToViewPort(evt.state.X.abs, evt.state.Y.abs, screenX, screenY, Core::getSingletonPtr()->getOgreRenderWindow());
 
-        // Raycast to ground
         Ogre::Vector3 hitPosition;
         if (this->raycastGround(screenX, screenY, hitPosition))
         {
@@ -807,11 +884,10 @@ namespace NOWA
             {
                 hitPosition = this->snapToGridFunc(hitPosition);
             }
-
             this->updateRoadPreview(hitPosition);
         }
 
-        return true; // not handled -> bubble
+        return true;
     }
 
     bool ProceduralRoadComponent::mouseReleased(const OIS::MouseEvent& evt, OIS::MouseButtonID id)
@@ -825,9 +901,13 @@ namespace NOWA
         {
             // Cancel current road segment in progress
             this->cancelRoad();
-
-            // Remove listeners - user wants to stop building
-            this->removeInputListener();
+            // Cancel both normal drag and extend-from-segment drag
+            this->isExtendingFromSegment = false;
+            if (this->getEditModeEnum() != EditMode::SEGMENT)
+            {
+                // Remove listeners - user wants to stop building
+                this->removeInputListener();
+            }
 
             return false;
         }
@@ -839,7 +919,7 @@ namespace NOWA
     {
         if (false == this->activated->getBool())
         {
-            return true; // not handled -> bubble
+            return true;
         }
 
         if (evt.key == OIS::KC_LSHIFT || evt.key == OIS::KC_RSHIFT)
@@ -852,7 +932,65 @@ namespace NOWA
             this->isCtrlPressed = true;
             return false;
         }
-        else if (evt.key == OIS::KC_Z && this->isCtrlPressed)
+
+        // ── SEGMENT MODE key handling ─────────────────────────────────────────
+        if (this->getEditModeEnum() == EditMode::SEGMENT)
+        {
+            if (evt.key == OIS::KC_X && this->selectedSegmentIndex >= 0)
+            {
+                this->deleteSelectedSegment();
+                return false;
+            }
+
+            if (evt.key == OIS::KC_E && this->selectedSegmentIndex >= 0)
+            {
+                const RoadSegment& sel = this->roadSegments[this->selectedSegmentIndex];
+                const RoadControlPoint& tail = sel.controlPoints.back();
+
+                RoadControlPoint startPoint;
+                startPoint.position = tail.position;
+                startPoint.position.y = 0.0f;
+                startPoint.groundHeight = tail.smoothedHeight;
+                startPoint.smoothedHeight = tail.smoothedHeight;
+                startPoint.bankingAngle = 0.0f;
+                startPoint.distFromStart = 0.0f;
+
+                this->currentSegment.controlPoints.clear();
+                this->currentSegment.controlPoints.push_back(startPoint);
+                this->currentSegment.isCurved = false;
+                this->currentSegment.curvature = 0.0f;
+
+                this->buildState = BuildState::DRAGGING;
+                this->lastValidPosition = startPoint.position;
+                this->isShiftPressed = true;         // auto-chain on confirm
+                this->isExtendingFromSegment = true; // allow preview in segment mode
+
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+                    "[ProceduralRoadComponent] Branch drag started from segment " + Ogre::StringConverter::toString(this->selectedSegmentIndex) + " endpoint: " + Ogre::StringConverter::toString(tail.position));
+                return false;
+            }
+
+            if (evt.key == OIS::KC_ESCAPE)
+            {
+                if (this->isExtendingFromSegment)
+                {
+                    this->isExtendingFromSegment = false;
+                    this->buildState = BuildState::IDLE;
+                    this->destroyPreviewMesh();
+                }
+                else
+                {
+                    this->selectedSegmentIndex = -1;
+                    this->scheduleSegmentOverlayUpdate();
+                }
+                return false;
+            }
+
+            return true; // all other keys bubble in segment mode
+        }
+
+        // ── OBJECT MODE key handling ──────────────────────────────────────────
+        if (evt.key == OIS::KC_Z && this->isCtrlPressed)
         {
             this->removeLastSegment();
             return false;
@@ -861,10 +999,10 @@ namespace NOWA
         {
             this->cancelRoad();
             this->removeInputListener();
-            return false; // consume -> STOP DesignState ESC
+            return false;
         }
 
-        return true; // not handled -> bubble
+        return true;
     }
 
     bool ProceduralRoadComponent::keyReleased(const OIS::KeyEvent& evt)
@@ -989,7 +1127,6 @@ namespace NOWA
         {
             return;
         }
-
         if (this->currentSegment.controlPoints.size() < 2)
         {
             return;
@@ -1002,35 +1139,64 @@ namespace NOWA
             return;
         }
 
-        // Remember chaining state BEFORE modifying anything
+        // ── Highway branch direction guard ────────────────────────────────────
+        // A Highway branch may only depart to the RIGHT of the parent arm's
+        // travel direction (like a motorway exit in City Skylines).
+        if (this->getRoadStyleEnum() == RoadStyle::HIGHWAY && this->currentSegment.controlPoints.size() == 2)
+        {
+            const Ogre::Real snapRadius = 0.15f;
+            int parentIdx = this->findNearestSegmentWithinRadius(this->currentSegment.controlPoints.front().position, snapRadius);
+
+            if (parentIdx >= 0)
+            {
+                const RoadSegment& parent = this->roadSegments[parentIdx];
+                Ogre::Vector3 parentDir = parent.controlPoints.back().position - parent.controlPoints.front().position;
+                parentDir.y = 0.0f;
+                if (parentDir.squaredLength() > 1e-6f)
+                {
+                    parentDir.normalise();
+                }
+
+                // Right = -cross(UNIT_Y, parentDir) = parentDir rotated -90° in XZ
+                const Ogre::Vector3 parentRight = -(Ogre::Vector3::UNIT_Y.crossProduct(parentDir).normalisedCopy());
+
+                Ogre::Vector3 branchDir = this->currentSegment.controlPoints.back().position - this->currentSegment.controlPoints.front().position;
+                branchDir.y = 0.0f;
+                if (branchDir.squaredLength() > 1e-6f)
+                {
+                    branchDir.normalise();
+                }
+
+                if (branchDir.dotProduct(parentRight) <= 0.0f)
+                {
+                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] Highway branch blocked: must exit to the RIGHT.");
+                    this->cancelRoad();
+                    return;
+                }
+            }
+        }
+
         bool shouldChain = this->isShiftPressed;
 
         boost::shared_ptr<NOWA::EventDataCommandTransactionBegin> eventDataUndoBegin(new NOWA::EventDataCommandTransactionBegin("Add Road Segment"));
         NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataUndoBegin);
 
-        // ---- UNDO: Capture state BEFORE modification ----
         std::vector<unsigned char> oldData = this->getRoadData();
 
-        // Apply height smoothing
         this->smoothHeightTransitions(this->currentSegment.controlPoints);
 
-        // CRITICAL: Store the exact endpoint BEFORE adding to roadSegments
         RoadControlPoint exactEndpoint = this->currentSegment.controlPoints.back();
 
-        // Add segment
         this->roadSegments.push_back(this->currentSegment);
 
-        // Clean up preview
         this->destroyPreviewMesh();
         if (this->previewNode)
         {
             this->previewNode->setPosition(Ogre::Vector3::ZERO);
         }
 
-        // Rebuild mesh (this also updates cached vertex data)
         this->rebuildMesh();
 
-        // ---- UNDO: Capture state AFTER modification, fire event ----
         std::vector<unsigned char> newData = this->getRoadData();
 
         boost::shared_ptr<EventDataRoadModifyEnd> eventDataRoadModifyEnd(new EventDataRoadModifyEnd(oldData, newData, this->gameObjectPtr->getId()));
@@ -1039,17 +1205,14 @@ namespace NOWA
         boost::shared_ptr<NOWA::EventDataCommandTransactionEnd> eventDataUndoEnd(new NOWA::EventDataCommandTransactionEnd());
         NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataUndoEnd);
 
-        // Update continuation point for future use
         this->updateContinuationPoint();
 
-        // Shift-chaining or finish
         if (shouldChain)
         {
-            // Start new segment with EXACT endpoint
             RoadControlPoint startPoint;
-            startPoint.position = exactEndpoint.position;           // Use exact XZ position
-            startPoint.position.y = 0.0f;                           // Keep XZ-only convention
-            startPoint.groundHeight = exactEndpoint.smoothedHeight; // Preserve height
+            startPoint.position = exactEndpoint.position;
+            startPoint.position.y = 0.0f;
+            startPoint.groundHeight = exactEndpoint.smoothedHeight;
             startPoint.smoothedHeight = exactEndpoint.smoothedHeight;
             startPoint.bankingAngle = 0.0f;
             startPoint.distFromStart = 0.0f;
@@ -1068,6 +1231,7 @@ namespace NOWA
         {
             this->buildState = BuildState::IDLE;
             this->currentSegment.controlPoints.clear();
+            this->isExtendingFromSegment = false;
             this->removeInputListener();
         }
 
@@ -1203,16 +1367,201 @@ namespace NOWA
         this->edgeIndices.clear();
         this->currentEdgeVertexIndex = 0;
 
-        if (true == this->roadSegments.empty())
+        if (this->roadSegments.empty())
         {
             return;
         }
 
         Ogre::Vector3 originToUse = this->roadOrigin;
+        const Ogre::Real halfW = this->roadWidth->getReal() * 0.5f;
+        const Ogre::Real totalHalfW = halfW + this->edgeWidth->getReal();
+        const Ogre::Real baseTrimDist = totalHalfW * 1.6f;
 
-        // ---- Step 1: Detect connected chains ----
-        // Segments sharing endpoints (from shift-chaining) form chains.
-        // Within a chain, we collect all unique waypoints.
+        struct QKey
+        {
+            int ix, iz;
+            bool operator<(const QKey& o) const
+            {
+                return ix < o.ix || (ix == o.ix && iz < o.iz);
+            }
+        };
+        auto quantise = [](float v) -> int
+        {
+            return static_cast<int>(std::round(v * 10.0f));
+        };
+
+        // ── Junction detection ─────────────────────────────────────────────────
+        std::map<QKey, std::vector<size_t>> endpointMap;
+        for (size_t si = 0; si < this->roadSegments.size(); ++si)
+        {
+            const RoadSegment& seg = this->roadSegments[si];
+            if (seg.controlPoints.size() < 2)
+            {
+                continue;
+            }
+            for (const RoadControlPoint* cp : {&seg.controlPoints.front(), &seg.controlPoints.back()})
+            {
+                QKey k{quantise(cp->position.x), quantise(cp->position.z)};
+                endpointMap[k].push_back(si);
+            }
+        }
+
+        std::vector<JunctionPoint> junctions;
+        std::set<QKey> seenJunctions;
+
+        for (auto& [key, segs] : endpointMap)
+        {
+            std::set<size_t> distinct(segs.begin(), segs.end());
+            if (distinct.size() < 3)
+            {
+                continue;
+            }
+            if (seenJunctions.count(key))
+            {
+                continue;
+            }
+            seenJunctions.insert(key);
+
+            JunctionPoint jp;
+            bool found = false;
+            for (size_t si2 : distinct)
+            {
+                if (found)
+                {
+                    break;
+                }
+                for (const auto& cp : this->roadSegments[si2].controlPoints)
+                {
+                    if (quantise(cp.position.x) == key.ix && quantise(cp.position.z) == key.iz)
+                    {
+                        jp.worldPos = cp.position;
+                        jp.worldPos.y = cp.smoothedHeight;
+                        found = true;
+                        break;
+                    }
+                }
+            }
+
+            jp.segIndices.assign(distinct.begin(), distinct.end());
+
+            for (size_t si2 : distinct)
+            {
+                const RoadSegment& seg2 = this->roadSegments[si2];
+                bool isStart = (quantise(seg2.controlPoints.front().position.x) == key.ix && quantise(seg2.controlPoints.front().position.z) == key.iz);
+                Ogre::Vector3 other = isStart ? seg2.controlPoints.back().position : seg2.controlPoints.front().position;
+                Ogre::Vector3 dir = other - jp.worldPos;
+                dir.y = 0.0f;
+                if (dir.squaredLength() > 1e-6f)
+                {
+                    dir.normalise();
+                }
+                jp.armDirs.push_back(dir);
+            }
+
+            // ── Per-arm trim distance ──────────────────────────────────────────
+            // For arm i, the safe trim distance is totalHalfW / tan(minGap/2)
+            // where minGap is the smaller of the two adjacent angular gaps.
+            // This ensures arm edge strips don't overlap adjacent arm edge strips.
+            const size_t nArms = jp.armDirs.size();
+            jp.armTrimDists.resize(nArms, baseTrimDist);
+
+            if (nArms >= 2)
+            {
+                // Sort arm directions by angle for gap computation
+                std::vector<std::pair<float, size_t>> angleIdx;
+                angleIdx.reserve(nArms);
+                for (size_t ai = 0; ai < nArms; ++ai)
+                {
+                    float ang = std::atan2(jp.armDirs[ai].z, jp.armDirs[ai].x);
+                    angleIdx.push_back({ang, ai});
+                }
+                std::sort(angleIdx.begin(), angleIdx.end());
+
+                for (size_t k = 0; k < nArms; ++k)
+                {
+                    const size_t ai = angleIdx[k].second;
+                    const size_t kPrev = (k + nArms - 1) % nArms;
+                    const size_t kNext = (k + 1) % nArms;
+
+                    // CCW gap to previous arm
+                    float gapPrev = angleIdx[k].first - angleIdx[kPrev].first;
+                    if (gapPrev <= 0.0f)
+                    {
+                        gapPrev += Ogre::Math::TWO_PI;
+                    }
+
+                    // CCW gap to next arm
+                    float gapNext = angleIdx[kNext].first - angleIdx[k].first;
+                    if (gapNext <= 0.0f)
+                    {
+                        gapNext += Ogre::Math::TWO_PI;
+                    }
+
+                    const float minGap = std::min(gapPrev, gapNext);
+
+                    // Safe distance: where this arm's outer edge clears the adjacent arm's outer edge
+                    float safeDist = totalHalfW / std::max(0.01f, std::tan(minGap * 0.5f));
+                    // Clamp: minimum = baseTrimDist, maximum = 5x width (very acute angles)
+                    safeDist = Ogre::Math::Clamp(safeDist * 1.1f, baseTrimDist, totalHalfW * 6.0f);
+                    jp.armTrimDists[ai] = safeDist;
+                }
+            }
+
+            junctions.push_back(jp);
+
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] Junction at " + Ogre::StringConverter::toString(jp.worldPos) + " has " + Ogre::StringConverter::toString(jp.armDirs.size()) + " arms:");
+            for (size_t ai = 0; ai < jp.armDirs.size(); ++ai)
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+                    "  arm " + Ogre::StringConverter::toString(ai) + " dir=(" + Ogre::StringConverter::toString(jp.armDirs[ai].x) + "," + Ogre::StringConverter::toString(jp.armDirs[ai].z) + ")" +
+                        " angle=" + Ogre::StringConverter::toString(Ogre::Math::RadiansToDegrees(std::atan2(jp.armDirs[ai].z, jp.armDirs[ai].x))) + "°" + " trimDist=" + Ogre::StringConverter::toString(jp.armTrimDists[ai]));
+            }
+        }
+
+        std::map<QKey, size_t> junctionByKey;
+        for (size_t ji = 0; ji < junctions.size(); ++ji)
+        {
+            QKey k{quantise(junctions[ji].worldPos.x), quantise(junctions[ji].worldPos.z)};
+            junctionByKey[k] = ji;
+        }
+
+        // Helper: find arm index in junction matching a given outward direction
+        auto findArmIdx = [&](size_t ji, const Ogre::Vector3& outwardDir) -> int
+        {
+            float bestDot = -2.0f;
+            int bestIdx = 0;
+            for (size_t ai = 0; ai < junctions[ji].armDirs.size(); ++ai)
+            {
+                float dot = outwardDir.dotProduct(junctions[ji].armDirs[ai]);
+                if (dot > bestDot)
+                {
+                    bestDot = dot;
+                    bestIdx = static_cast<int>(ai);
+                }
+            }
+            return bestIdx;
+        };
+
+        // Helper: store patch corners for a junction arm using actual boundary data
+        auto storePatchCorners = [&](size_t ji, const Ogre::Vector3& boundaryPosXZ, const Ogre::Vector3& armDirAtBoundary)
+        {
+            Ogre::Vector3 perp = Ogre::Vector3::UNIT_Y.crossProduct(armDirAtBoundary);
+            if (perp.squaredLength() < 1e-6f)
+            {
+                perp = Ogre::Vector3::UNIT_X;
+            }
+            perp.normalise();
+
+            const Ogre::Real worldY = junctions[ji].worldPos.y;
+
+            junctions[ji].patchCorners.push_back(Ogre::Vector3(boundaryPosXZ.x + perp.x * totalHalfW, worldY, boundaryPosXZ.z + perp.z * totalHalfW));
+            junctions[ji].patchCorners.push_back(Ogre::Vector3(boundaryPosXZ.x + perp.x * -totalHalfW, worldY, boundaryPosXZ.z + perp.z * -totalHalfW));
+
+            junctions[ji].patchCornersInner.push_back(Ogre::Vector3(boundaryPosXZ.x + perp.x * halfW, worldY, boundaryPosXZ.z + perp.z * halfW));
+            junctions[ji].patchCornersInner.push_back(Ogre::Vector3(boundaryPosXZ.x + perp.x * -halfW, worldY, boundaryPosXZ.z + perp.z * -halfW));
+        };
+
+        // ── Chain building — stop at junctions ────────────────────────────────
         std::vector<bool> processed(this->roadSegments.size(), false);
 
         for (size_t i = 0; i < this->roadSegments.size(); ++i)
@@ -1222,18 +1571,21 @@ namespace NOWA
                 continue;
             }
 
-            // Start a new chain from segment i
             std::vector<size_t> chainIndices;
             chainIndices.push_back(i);
             processed[i] = true;
 
-            // Look forward for connected segments
             size_t current = i;
             bool foundNext = true;
             while (foundNext)
             {
                 foundNext = false;
                 const Ogre::Vector3& lastEnd = this->roadSegments[current].controlPoints.back().position;
+                QKey endKey{quantise(lastEnd.x), quantise(lastEnd.z)};
+                if (junctionByKey.count(endKey))
+                {
+                    break;
+                }
 
                 for (size_t j = 0; j < this->roadSegments.size(); ++j)
                 {
@@ -1241,7 +1593,6 @@ namespace NOWA
                     {
                         continue;
                     }
-
                     const Ogre::Vector3& nextStart = this->roadSegments[j].controlPoints.front().position;
                     if (lastEnd.squaredDistance(nextStart) < 0.01f)
                     {
@@ -1254,69 +1605,55 @@ namespace NOWA
                 }
             }
 
-            // ---- Step 2: Collect waypoints from this chain ----
+            // Step 2: Collect waypoints
             std::vector<RoadControlPoint> chainWaypoints;
-
             for (size_t ci = 0; ci < chainIndices.size(); ++ci)
             {
                 const RoadSegment& seg = this->roadSegments[chainIndices[ci]];
-
                 for (size_t pi = 0; pi < seg.controlPoints.size(); ++pi)
                 {
-                    // Skip duplicate shared endpoint between segments
                     if (ci > 0 && pi == 0)
                     {
                         continue;
                     }
-
                     chainWaypoints.push_back(seg.controlPoints[pi]);
                 }
             }
 
-            // ---- Step 3: Build final path ----
+            // Step 3: Build final path
             std::vector<RoadControlPoint> finalPath;
-
             if (chainWaypoints.size() >= 3)
             {
-                // 3+ waypoints: generate smooth Catmull-Rom spline curve
-                int subdivisions = this->curveSubdivisions->getInt();
-
+                const int subdivisions = this->curveSubdivisions->getInt();
                 for (size_t pi = 0; pi < chainWaypoints.size() - 1; ++pi)
                 {
                     for (int j = 0; j < subdivisions; ++j)
                     {
                         Ogre::Real t = static_cast<Ogre::Real>(j) / subdivisions;
                         Ogre::Real globalT = static_cast<Ogre::Real>(pi) + t;
-
                         RoadControlPoint cp;
-
-                        // Interpolate position
                         cp.position = this->evaluateCatmullRom(chainWaypoints, globalT);
                         cp.position.y = 0.0f;
-
-                        // **FIX: Interpolate height from saved waypoints instead of raycasting**
                         cp.groundHeight = this->evaluateCatmullRomHeight(chainWaypoints, globalT);
                         cp.smoothedHeight = cp.groundHeight;
-
+                        cp.bankingAngle = 0.0f;
+                        cp.distFromStart = 0.0f;
                         finalPath.push_back(cp);
                     }
                 }
-
-                // Add final point
                 RoadControlPoint lastCp = chainWaypoints.back();
                 lastCp.position.y = 0.0f;
                 finalPath.push_back(lastCp);
             }
             else
             {
-                // 2 waypoints: interpolate height instead of raycasting
                 finalPath = this->subdivideWithHeightInterpolation(chainWaypoints);
             }
 
-            // ---- Step 4: Height smoothing (world space) ----
+            // Step 4: Height smoothing
             this->smoothHeightTransitions(finalPath);
 
-            // ---- Step 5: Banking for curves ----
+            // Step 5: Banking
             if (this->enableBanking->getBool())
             {
                 for (size_t pi = 0; pi < finalPath.size(); ++pi)
@@ -1332,7 +1669,7 @@ namespace NOWA
                 }
             }
 
-            // ---- Step 6: Accumulated distance for UV mapping ----
+            // Step 6: UV distance
             Ogre::Real accumDist = 0.0f;
             for (size_t pi = 0; pi < finalPath.size(); ++pi)
             {
@@ -1343,8 +1680,155 @@ namespace NOWA
                 finalPath[pi].distFromStart = accumDist;
             }
 
-            // ---- Step 7: Transform to LOCAL space ----
+            // Step 7: Trim front using per-arm trimDist
+            {
+                QKey frontKey{quantise(chainWaypoints.front().position.x), quantise(chainWaypoints.front().position.z)};
+                auto it = junctionByKey.find(frontKey);
+                if (it != junctionByKey.end())
+                {
+                    const size_t ji = it->second;
+
+                    // Outward direction: chain goes FROM junction, so forward = second - first
+                    Ogre::Vector3 outDir = chainWaypoints.back().position - chainWaypoints.front().position;
+                    outDir.y = 0.0f;
+                    if (outDir.squaredLength() > 1e-6f)
+                    {
+                        outDir.normalise();
+                    }
+                    const int ai = findArmIdx(ji, outDir);
+                    const Ogre::Real myTrimDist = junctions[ji].armTrimDists[ai];
+
+                    const Ogre::Vector3 jXZ(junctions[ji].worldPos.x, 0.0f, junctions[ji].worldPos.z);
+
+                    while (finalPath.size() > 2)
+                    {
+                        Ogre::Vector3 p(finalPath.front().position.x, 0.0f, finalPath.front().position.z);
+                        if (p.distance(jXZ) < myTrimDist)
+                        {
+                            finalPath.erase(finalPath.begin());
+                        }
+                        else
+                        {
+                            break;
+                        }
+                    }
+
+                    // Insert exact boundary point
+                    {
+                        const Ogre::Vector3 firstXZ(finalPath.front().position.x, 0.0f, finalPath.front().position.z);
+                        const float d = firstXZ.distance(jXZ);
+                        if (d > myTrimDist * 1.001f)
+                        {
+                            const Ogre::Vector3 toJ = (jXZ - firstXZ).normalisedCopy();
+                            const Ogre::Vector3 bnd = firstXZ + toJ * (d - myTrimDist);
+                            RoadControlPoint bp;
+                            bp.position = bnd;
+                            bp.position.y = 0.0f;
+                            bp.groundHeight = bp.smoothedHeight = finalPath.front().groundHeight;
+                            bp.bankingAngle = finalPath.front().bankingAngle;
+                            bp.distFromStart = 0.0f;
+                            finalPath.insert(finalPath.begin(), bp);
+                        }
+                    }
+
+                    if (finalPath.size() >= 2)
+                    {
+                        Ogre::Vector3 armDir = finalPath[1].position - finalPath[0].position;
+                        armDir.y = 0.0f;
+                        if (armDir.squaredLength() > 1e-6f)
+                        {
+                            armDir.normalise();
+                        }
+                        storePatchCorners(ji, finalPath[0].position, armDir);
+                    }
+                }
+            }
+
+            {
+                QKey backKey{quantise(chainWaypoints.back().position.x), quantise(chainWaypoints.back().position.z)};
+                auto it = junctionByKey.find(backKey);
+                if (it != junctionByKey.end())
+                {
+                    const size_t ji = it->second;
+
+                    // For back trim, chain ARRIVES at junction.
+                    // armDirs points FROM junction toward arm's far end.
+                    // That direction = from junction back toward chain start.
+                    // So outDir = front - back (reversed from chain travel direction).
+                    Ogre::Vector3 outDir = chainWaypoints.front().position - chainWaypoints.back().position;
+                    outDir.y = 0.0f;
+                    if (outDir.squaredLength() > 1e-6f)
+                    {
+                        outDir.normalise();
+                    }
+                    const int ai = findArmIdx(ji, outDir);
+                    const Ogre::Real myTrimDist = junctions[ji].armTrimDists[ai];
+
+                    const Ogre::Vector3 jXZ(junctions[ji].worldPos.x, 0.0f, junctions[ji].worldPos.z);
+
+                    while (finalPath.size() > 2)
+                    {
+                        Ogre::Vector3 p(finalPath.back().position.x, 0.0f, finalPath.back().position.z);
+                        if (p.distance(jXZ) < myTrimDist)
+                        {
+                            finalPath.pop_back();
+                        }
+                        else
+                        {
+                            break;
+                        }
+                    }
+
+                    {
+                        const Ogre::Vector3 backXZ(finalPath.back().position.x, 0.0f, finalPath.back().position.z);
+                        const float d = backXZ.distance(jXZ);
+                        if (d > myTrimDist * 1.001f)
+                        {
+                            const Ogre::Vector3 toJ = (jXZ - backXZ).normalisedCopy();
+                            const Ogre::Vector3 bnd = backXZ + toJ * (d - myTrimDist);
+                            RoadControlPoint bp;
+                            bp.position = bnd;
+                            bp.position.y = 0.0f;
+                            bp.groundHeight = bp.smoothedHeight = finalPath.back().groundHeight;
+                            bp.bankingAngle = finalPath.back().bankingAngle;
+                            bp.distFromStart = finalPath.back().distFromStart + (d - myTrimDist);
+                            finalPath.push_back(bp);
+                        }
+                    }
+
+                    if (finalPath.size() >= 2)
+                    {
+                        const int last = static_cast<int>(finalPath.size()) - 1;
+                        Ogre::Vector3 armDir = finalPath[last].position - finalPath[last - 1].position;
+                        armDir.y = 0.0f;
+                        if (armDir.squaredLength() > 1e-6f)
+                        {
+                            armDir.normalise();
+                        }
+                        storePatchCorners(ji, finalPath[last].position, armDir);
+                    }
+                }
+            }
+
+            // Re-accumulate UV
+            accumDist = 0.0f;
+            for (size_t pi = 0; pi < finalPath.size(); ++pi)
+            {
+                if (pi > 0)
+                {
+                    accumDist += finalPath[pi].position.distance(finalPath[pi - 1].position);
+                }
+                finalPath[pi].distFromStart = accumDist;
+            }
+
+            if (finalPath.size() < 2)
+            {
+                continue;
+            }
+
+            // Step 8: Transform to local space
             std::vector<RoadControlPoint> localPath;
+            localPath.reserve(finalPath.size());
             for (const auto& cp : finalPath)
             {
                 RoadControlPoint lp;
@@ -1357,11 +1841,16 @@ namespace NOWA
                 localPath.push_back(lp);
             }
 
-            // ---- Step 8: Generate road geometry ----
+            // Step 9: Generate road geometry
             this->generateStraightRoad(localPath);
         }
 
-        // Create the actual mesh
+        // Step 10: Junction patches
+        for (const JunctionPoint& jp : junctions)
+        {
+            this->generateJunctionPatch(jp, originToUse);
+        }
+
         if (this->currentCenterVertexIndex > 0 || this->currentEdgeVertexIndex > 0)
         {
             this->createRoadMesh();
@@ -2328,7 +2817,10 @@ namespace NOWA
         }
 
         // -----------------------------------------------------------------------
-        // 4. Collect skeleton pixels and find endpoints
+        // 4. Collect skeleton pixels and find endpoints.
+        //    If there are NO endpoints, the skeleton IS a closed ring
+        //    (Zhang-Suen correctly produced a loop with no loose ends).
+        //    Set isClosed immediately — do NOT wait for step 5c.
         // -----------------------------------------------------------------------
         std::vector<std::pair<int, int>> skeletonPixels;
         std::vector<std::pair<int, int>> endpoints;
@@ -2363,18 +2855,19 @@ namespace NOWA
             return;
         }
 
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
-            "[ProceduralRoadComponent] generateFromLayer: Skeleton " + Ogre::StringConverter::toString(skeletonPixels.size()) + " px, " + Ogre::StringConverter::toString(endpoints.size()) + " endpoints.");
+        // Pure closed ring: no endpoints exist.
+        // isClosed is authoritative from here — step 5c is skipped for rings.
+        bool isClosed = endpoints.empty();
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] generateFromLayer: Skeleton " + Ogre::StringConverter::toString(skeletonPixels.size()) + " px, " +
+                                                                               Ogre::StringConverter::toString(endpoints.size()) + " endpoints. " + (isClosed ? "CLOSED RING detected." : "Open path."));
 
         std::pair<int, int> startPx = endpoints.empty() ? skeletonPixels.front() : endpoints.front();
 
         // -----------------------------------------------------------------------
-        // 5. Trace skeleton
-        //    FIX 1: Direction-scored neighbor selection via dot product instead of
-        //    exact direction match. Prevents the tracer from taking wrong branches
-        //    at junctions which caused sharp kinks and self-intersecting geometry.
-        //    FIX 2: Jump recovery with forward-cone filter. Only jumps forward
-        //    (dot product > -0.3 with current direction) to prevent 180° reversals.
+        // 5. Trace skeleton.
+        //    For closed rings: stop when we return within stepPx of the start.
+        //    For open paths: stop when no unvisited neighbour exists.
         // -----------------------------------------------------------------------
         static const int dx8[8] = {0, 1, 1, 1, 0, -1, -1, -1};
         static const int dz8[8] = {-1, -1, 0, 1, 1, 1, 0, -1};
@@ -2387,14 +2880,28 @@ namespace NOWA
         ordered.push_back(cur);
         visited[cur.second * bW + cur.first] = 1;
 
-        // Current travel direction (unit vector in pixel space)
         float dirX = 0.0f, dirZ = 0.0f;
+        // Must travel at least 75% of the full skeleton before even checking for closure.
+        // Prevents premature stop at turns that are spatially close to the start pixel.
+        const float minTravelBeforeClose = static_cast<float>(skeletonPixels.size()) * 0.75f;
+        const float closeThreshSq = stepPx * stepPx * 9.0f; // within 3px of start
 
         while (true)
         {
-            // FIX 1: Score all 8 neighbours by dot product with current direction.
-            // Pick the unvisited skeleton neighbour with the highest score.
-            // This replaces the fragile exact-direction-match which failed at curves.
+            // For closed rings: stop once we've looped back near the start.
+            // We require a minimum travel distance so we don't stop immediately.
+            if (isClosed && static_cast<float>(ordered.size()) > minTravelBeforeClose)
+            {
+                float travelDx = static_cast<float>(ordered.back().first - ordered.front().first);
+                float travelDz = static_cast<float>(ordered.back().second - ordered.front().second);
+                if (travelDx * travelDx + travelDz * travelDz < closeThreshSq)
+                {
+                    // Ogre::LogManager::getSingletonPtr()->logMessage(...);
+                    break;
+                }
+            }
+
+            // Score all 8 neighbours by dot product with current direction
             float bestScore = -2.0f;
             std::pair<int, int> best = {-1, -1};
 
@@ -2418,9 +2925,6 @@ namespace NOWA
                 float stepLen = std::sqrt(static_cast<float>(dx8[d] * dx8[d] + dz8[d] * dz8[d]));
                 float ndx = dx8[d] / stepLen;
                 float ndz = dz8[d] / stepLen;
-
-                // Dot product with current direction: prefers continuation,
-                // but accepts any direction if we don't yet have one (dirX==0,dirZ==0)
                 float dot = (dirX == 0.0f && dirZ == 0.0f) ? 1.0f : (dirX * ndx + dirZ * ndz);
 
                 if (dot > bestScore)
@@ -2432,7 +2936,6 @@ namespace NOWA
 
             if (best.first >= 0)
             {
-                // Update direction as exponential moving average for smooth turning
                 float sdx = static_cast<float>(best.first - cur.first);
                 float sdz = static_cast<float>(best.second - cur.second);
                 float slen = std::sqrt(sdx * sdx + sdz * sdz);
@@ -2464,54 +2967,11 @@ namespace NOWA
             }
             else
             {
-                // FIX 2: Jump recovery — only accept pixels in the forward half-space.
-                // dot > -0.3 rejects anything more than ~107° from current direction,
-                // preventing the 180° reversals that caused the fold-back artifact.
-                float jumpRadius = stepPx * 4.0f;
-                float bestDist = std::numeric_limits<float>::max();
-                std::pair<int, int> jumpTarget = {-1, -1};
-
-                for (const auto& sp : skeletonPixels)
-                {
-                    if (visited[sp.second * bW + sp.first])
-                    {
-                        continue;
-                    }
-
-                    float ddx = static_cast<float>(sp.first - cur.first);
-                    float ddz = static_cast<float>(sp.second - cur.second);
-                    float dist = std::sqrt(ddx * ddx + ddz * ddz);
-                    if (dist >= jumpRadius || dist >= bestDist)
-                    {
-                        continue;
-                    }
-
-                    // Forward-cone filter: reject backward jumps
-                    if (dirX != 0.0f || dirZ != 0.0f)
-                    {
-                        float jdx = ddx / dist;
-                        float jdz = ddz / dist;
-                        float dot = dirX * jdx + dirZ * jdz;
-                        if (dot < -0.3f)
-                        {
-                            continue; // More than ~107° = reject
-                        }
-                    }
-
-                    bestDist = dist;
-                    jumpTarget = sp;
-                }
-
-                if (jumpTarget.first >= 0)
-                {
-                    visited[jumpTarget.second * bW + jumpTarget.first] = 1;
-                    ordered.push_back(jumpTarget);
-                    cur = jumpTarget;
-                }
-                else
-                {
-                    break;
-                }
+                // No unvisited neighbour.
+                // For open paths: done.
+                // For closed rings: we exhausted the ring without proximity detection
+                // firing — that's fine, the ring is fully traced.
+                break;
             }
         }
 
@@ -2566,48 +3026,6 @@ namespace NOWA
         }
 
         // -----------------------------------------------------------------------
-        // 5c. Closed loop detection and tail trimming.
-        // If the end of the traced path is near the start, the road is a closed
-        // circuit. Trim the redundant tail pixels that overlap the start region,
-        // then append the first 3 waypoints at the end so Catmull-Rom has
-        // tangent information to close the join smoothly.
-        // -----------------------------------------------------------------------
-        bool isClosed = false;
-        {
-            // Use 8× stepPx so we catch loops where the forward-cone filter
-            // stopped the tracer 5-8 steps before completing the circuit.
-            float closeThreshSq = stepPx * 8.0f * stepPx * 8.0f;
-            float ddx = static_cast<float>(ordered.back().first - ordered.front().first);
-            float ddz = static_cast<float>(ordered.back().second - ordered.front().second);
-            float distSq = ddx * ddx + ddz * ddz;
-
-            if (distSq < closeThreshSq && ordered.size() > 20)
-            {
-                isClosed = true;
-
-                // Trim tail pixels that drifted back into the start region
-                float trimThreshSq = stepPx * 3.0f * stepPx * 3.0f;
-                while (ordered.size() > 10)
-                {
-                    float ex = static_cast<float>(ordered.back().first - ordered.front().first);
-                    float ez = static_cast<float>(ordered.back().second - ordered.front().second);
-                    if (ex * ex + ez * ez < trimThreshSq)
-                    {
-                        ordered.pop_back();
-                    }
-                    else
-                    {
-                        break;
-                    }
-                }
-
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] generateFromLayer: Closed loop detected, "
-                                                                                   "trimmed to " +
-                                                                                       Ogre::StringConverter::toString(ordered.size()) + " pixels.");
-            }
-        }
-
-        // -----------------------------------------------------------------------
         // 6. Downsample to waypoints every stepM meters
         // -----------------------------------------------------------------------
         std::vector<std::pair<int, int>> waypoints;
@@ -2648,17 +3066,6 @@ namespace NOWA
                 }
                 waypoints = smoothed;
             }
-        }
-
-        // NOW append closure waypoints — after smoothing so they are exact
-        // copies of the already-smoothed start positions, not drifted ones.
-        if (isClosed && waypoints.size() > 4)
-        {
-            waypoints.push_back(waypoints[0]);
-            waypoints.push_back(waypoints[1]);
-            waypoints.push_back(waypoints[2]);
-
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] generateFromLayer: Appended closure waypoints.");
         }
 
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] generateFromLayer: " + Ogre::StringConverter::toString(waypoints.size()) + " waypoints at " + Ogre::StringConverter::toString(stepM) + "m.");
@@ -2721,12 +3128,9 @@ namespace NOWA
         // making the tangent zero and collapsing the junction geometry.
         if (isClosed && filteredCPs.size() > 4)
         {
-            // Append exact road start → closes the loop position
             filteredCPs.push_back(filteredCPs[0]);
-            // Append one step past start → gives evaluateCatmullRom's P3
-            // a meaningful forward direction at the seam, preventing zero tangent
             filteredCPs.push_back(filteredCPs[1]);
-
+            filteredCPs.push_back(filteredCPs[2]);
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] generateFromLayer: Closure appended in world space.");
         }
 
@@ -2748,7 +3152,21 @@ namespace NOWA
         seg.controlPoints = filteredCPs;
         this->roadSegments.push_back(seg);
 
-        this->smoothHeightTransitions(this->roadSegments.back().controlPoints);
+        const float minAboveTerrain = 0.05f;
+        for (int clampPass = 0; clampPass < 5; ++clampPass)
+        {
+            this->smoothHeightTransitions(this->roadSegments.back().controlPoints);
+
+            for (auto& cp : this->roadSegments.back().controlPoints)
+            {
+                float terrainH = this->getGroundHeight(cp.position);
+                if (cp.groundHeight < terrainH + minAboveTerrain)
+                {
+                    cp.groundHeight = terrainH + minAboveTerrain;
+                    cp.smoothedHeight = terrainH + minAboveTerrain;
+                }
+            }
+        }
 
         this->updateContinuationPoint();
         this->rebuildMesh();
@@ -2791,6 +3209,247 @@ namespace NOWA
             }
         }
         return bestSeg;
+    }
+
+    void ProceduralRoadComponent::generateJunctionPatch(const JunctionPoint& jp, const Ogre::Vector3& origin)
+    {
+        const size_t numArms = jp.patchCorners.size() / 2;
+        if (numArms < 2)
+        {
+            return;
+        }
+        if (jp.patchCornersInner.size() != jp.patchCorners.size())
+        {
+            return;
+        }
+
+        const Ogre::Real halfW = this->roadWidth->getReal() * 0.5f;
+        const Ogre::Real totalHalfW = halfW + this->edgeWidth->getReal();
+        const Ogre::Real curbH = this->curbHeight->getReal();
+        const bool hasCurb = (curbH > 0.001f);
+
+        // Center patch sits 2cm below to avoid z-fighting with arm center surface.
+        // Edge/curb geometry sits at roadY (no offset) to meet arm edge geometry exactly.
+        const Ogre::Real roadY = jp.worldPos.y - origin.y;
+        const Ogre::Real patchY = roadY - 0.02f;
+
+        const Ogre::Vector3 localCentre(jp.worldPos.x - origin.x, 0.0f, jp.worldPos.z - origin.z);
+        const Ogre::Vector3 centre3(localCentre.x, patchY, localCentre.z);
+
+        const Ogre::Vector2 cUV = this->centerUVTiling->getVector2();
+        const Ogre::Vector2 eUV = this->edgeUVTiling->getVector2();
+
+        auto centerUVfn = [&](const Ogre::Vector3& pos) -> Ogre::Vector2
+        {
+            const Ogre::Real uvWidth = this->roadWidth->getReal() * 0.5f;
+            return Ogre::Vector2((pos.z - localCentre.z) / std::max(uvWidth / std::max(cUV.y, 0.001f), 0.001f), (pos.x - localCentre.x) / std::max(uvWidth / std::max(cUV.x, 0.001f), 0.001f));
+        };
+
+        // Two toLocal helpers — one for center patch, one for edge/curb geometry
+        auto toLocalPatch = [&](const Ogre::Vector3& w) -> Ogre::Vector3
+        {
+            return Ogre::Vector3(w.x - origin.x, patchY, w.z - origin.z);
+        };
+        auto toLocalEdge = [&](const Ogre::Vector3& w) -> Ogre::Vector3
+        {
+            return Ogre::Vector3(w.x - origin.x, roadY, w.z - origin.z);
+        };
+
+        // ── Build arm data — edge geometry at roadY, patch geometry at patchY ─
+        struct ArmData
+        {
+            float angle;
+            // Edge vertices at roadY — match arm geometry exactly
+            Ogre::Vector3 outerL, outerR;
+            Ogre::Vector3 innerL, innerR;
+            // Inner corners at patchY — for center patch fan
+            Ogre::Vector3 innerL_patch, innerR_patch;
+        };
+
+        std::vector<ArmData> arms;
+        arms.reserve(numArms);
+
+        for (size_t ai = 0; ai < numArms; ++ai)
+        {
+            ArmData a;
+            a.outerL = toLocalEdge(jp.patchCorners[ai * 2]);
+            a.outerR = toLocalEdge(jp.patchCorners[ai * 2 + 1]);
+            a.innerL = toLocalEdge(jp.patchCornersInner[ai * 2]);
+            a.innerR = toLocalEdge(jp.patchCornersInner[ai * 2 + 1]);
+            a.innerL_patch = toLocalPatch(jp.patchCornersInner[ai * 2]);
+            a.innerR_patch = toLocalPatch(jp.patchCornersInner[ai * 2 + 1]);
+
+            const Ogre::Vector3 mid = (a.innerL + a.innerR) * 0.5f;
+            a.angle = std::atan2(mid.z - localCentre.z, mid.x - localCentre.x);
+            arms.push_back(a);
+        }
+
+        std::sort(arms.begin(), arms.end(),
+            [](const ArmData& a, const ArmData& b)
+            {
+                return a.angle < b.angle;
+            });
+
+        // ── Center patch: fan of inner ring at patchY ─────────────────────────
+        struct InnerCorner
+        {
+            float angle;
+            Ogre::Vector3 pos;
+        };
+        std::vector<InnerCorner> innerRing;
+        innerRing.reserve(numArms * 2);
+
+        for (const ArmData& a : arms)
+        {
+            innerRing.push_back({std::atan2(a.innerL_patch.z - localCentre.z, a.innerL_patch.x - localCentre.x), a.innerL_patch});
+            innerRing.push_back({std::atan2(a.innerR_patch.z - localCentre.z, a.innerR_patch.x - localCentre.x), a.innerR_patch});
+        }
+
+        std::sort(innerRing.begin(), innerRing.end(),
+            [](const InnerCorner& a, const InnerCorner& b)
+            {
+                return a.angle < b.angle;
+            });
+
+        innerRing.erase(std::unique(innerRing.begin(), innerRing.end(),
+                            [](const InnerCorner& a, const InnerCorner& b)
+                            {
+                                return std::abs(a.angle - b.angle) < 0.04f;
+                            }),
+            innerRing.end());
+
+        if (innerRing.size() >= 3)
+        {
+            const Ogre::Vector2 uvCentre = centerUVfn(centre3);
+            for (size_t k = 0; k < innerRing.size(); ++k)
+            {
+                const size_t next = (k + 1) % innerRing.size();
+                const Ogre::Vector3& vA = innerRing[k].pos;
+                const Ogre::Vector3& vB = innerRing[next].pos;
+                this->addJunctionTriangle(vA, centerUVfn(vA), vB, centerUVfn(vB), centre3, centerUVfn(centre3), true);
+            }
+        }
+
+        // ── Edge / curb: between-arm boundary segments ─────────────────────────
+        // Only for small angular gaps (<100°) — large gaps are the straight-through side.
+        const float maxGapAngle = Ogre::Math::PI * 0.555f; // ~100°
+
+        for (size_t k = 0; k < arms.size(); ++k)
+        {
+            const size_t next = (k + 1) % arms.size();
+            const ArmData& aK = arms[k];
+            const ArmData& aJ = arms[next];
+
+            float angR = std::atan2(aK.outerR.z - localCentre.z, aK.outerR.x - localCentre.x);
+            float angL = std::atan2(aJ.outerL.z - localCentre.z, aJ.outerL.x - localCentre.x);
+            float gap = angL - angR;
+            if (gap < 0.0f)
+            {
+                gap += Ogre::Math::TWO_PI;
+            }
+            if (gap >= maxGapAngle)
+            {
+                continue;
+            }
+
+            // Outward normal of this boundary segment
+            const Ogre::Vector3 midInner = (aK.innerR + aJ.innerL) * 0.5f;
+            Ogre::Vector3 outward = midInner - Ogre::Vector3(localCentre.x, roadY, localCentre.z);
+            outward.y = 0.0f;
+            if (outward.squaredLength() > 1e-6f)
+            {
+                outward.normalise();
+            }
+
+            const float segLen = std::max(0.001f, aK.innerR.distance(aJ.innerL));
+            const float ev1 = segLen / std::max(eUV.y, 0.001f);
+
+            if (hasCurb)
+            {
+                // Full paved curb: inner wall + top + outer wall
+                // All vertices at roadY (edge geometry Y) — meets arm curb exactly
+                const Ogre::Vector3 aK_iR_top = aK.innerR + Ogre::Vector3(0, curbH, 0);
+                const Ogre::Vector3 aJ_iL_top = aJ.innerL + Ogre::Vector3(0, curbH, 0);
+                const Ogre::Vector3 aK_oR_top = aK.outerR + Ogre::Vector3(0, curbH, 0);
+                const Ogre::Vector3 aJ_oL_top = aJ.outerL + Ogre::Vector3(0, curbH, 0);
+
+                // Inner wall (road surface → curb top)
+                this->addRoadQuad(aK.innerR, aK_iR_top, aJ_iL_top, aJ.innerL, outward, 0.0f, 1.0f, 0.0f, ev1, false);
+
+                // Curb top surface
+                this->addRoadQuad(aK_iR_top, aK_oR_top, aJ_oL_top, aJ_iL_top, Ogre::Vector3::UNIT_Y, 0.0f, 1.0f, 0.0f, ev1, false);
+
+                // Outer wall (curb top → ground)
+                this->addRoadQuad(aK_oR_top, aK.outerR, aJ.outerL, aJ_oL_top, outward, 0.0f, 1.0f, 0.0f, ev1, false);
+            }
+            else
+            {
+                // Flat edge strip (no curb)
+                this->addRoadQuad(aK.innerR, aK.outerR, aJ.outerL, aJ.innerL, Ogre::Vector3::UNIT_Y, 0.0f, 1.0f, 0.0f, ev1, false);
+            }
+        }
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] Junction patch: " + Ogre::StringConverter::toString(numArms) + " arms");
+    }
+
+    void ProceduralRoadComponent::addJunctionTriangle(const Ogre::Vector3& v0, const Ogre::Vector2& uv0, const Ogre::Vector3& v1, const Ogre::Vector2& uv1, const Ogre::Vector3& v2, const Ogre::Vector2& uv2, bool isCenter)
+    {
+        std::vector<float>& verts = isCenter ? this->centerVertices : this->edgeVertices;
+        std::vector<Ogre::uint32>& inds = isCenter ? this->centerIndices : this->edgeIndices;
+        Ogre::uint32& currentIdx = isCenter ? this->currentCenterVertexIndex : this->currentEdgeVertexIndex;
+
+        // Compute face normal — always UP for flat junction surface
+        Ogre::Vector3 edge1 = v1 - v0;
+        Ogre::Vector3 edge2 = v2 - v0;
+        Ogre::Vector3 triNormal = edge1.crossProduct(edge2);
+
+        if (triNormal.squaredLength() > 0.0001f)
+        {
+            triNormal.normalise();
+            // Ensure normal points upward
+            if (triNormal.y < 0.0f)
+            {
+                triNormal = -triNormal;
+            }
+        }
+        else
+        {
+            triNormal = Ogre::Vector3::UNIT_Y;
+        }
+
+        auto pushVert = [&](const Ogre::Vector3& pos, const Ogre::Vector2& uv)
+        {
+            verts.push_back(pos.x);
+            verts.push_back(pos.y);
+            verts.push_back(pos.z);
+            verts.push_back(triNormal.x);
+            verts.push_back(triNormal.y);
+            verts.push_back(triNormal.z);
+            verts.push_back(uv.x);
+            verts.push_back(uv.y);
+        };
+
+        const Ogre::uint32 base = currentIdx;
+        pushVert(v0, uv0);
+        pushVert(v1, uv1);
+        pushVert(v2, uv2);
+
+        // CCW winding (normal already forced UP above)
+        // Check winding matches normal direction
+        if (triNormal.dotProduct(edge1.crossProduct(edge2).normalisedCopy()) > 0.0f)
+        {
+            inds.push_back(base + 0);
+            inds.push_back(base + 1);
+            inds.push_back(base + 2);
+        }
+        else
+        {
+            inds.push_back(base + 0);
+            inds.push_back(base + 2);
+            inds.push_back(base + 1);
+        }
+
+        currentIdx += 3;
     }
 
     void ProceduralRoadComponent::createRoadMesh(void)
@@ -4277,6 +4936,17 @@ namespace NOWA
             this->isSelected = false;
         }
 
+        if (false == castEventData->getIsPartOfMultiSelection())
+        {
+            const bool segmentMode = (this->getEditModeEnum() == EditMode::SEGMENT);
+            if (true == segmentMode)
+            {
+                // Go directly to mesh modify mode when switching to Segment edit mode, so the user can immediately select segments
+                boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(NOWA::EditorManager::EDITOR_MESH_MODIFY_MODE));
+                NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataEditorMode);
+            }
+        }
+
         this->updateModificationState();
     }
 
@@ -4326,17 +4996,24 @@ namespace NOWA
 
     void ProceduralRoadComponent::updateModificationState(void)
     {
-        bool shouldBeActive = this->activated->getBool() && this->isEditorMeshModifyMode && this->isSelected;
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] updateModificationState: activated=" + Ogre::StringConverter::toString(this->activated->getBool()) +
+                                                                               " meshModifyMode=" + Ogre::StringConverter::toString(this->isEditorMeshModifyMode) + " selected=" + Ogre::StringConverter::toString(this->isSelected) +
+                                                                               " editMode=" + this->editMode->getListSelectedValue());
+
+        const bool shouldBeActive = this->activated->getBool() && this->isEditorMeshModifyMode && this->isSelected;
 
         if (shouldBeActive)
         {
             this->addInputListener();
 
-            // When entering modify mode with an existing road, set up continuation point
-            if (!this->roadSegments.empty())
+            if (false == this->roadSegments.empty())
             {
                 this->updateContinuationPoint();
             }
+
+            // Refresh overlay whenever we become active — covers the case where
+            // the user set Segment mode first, THEN clicked into mesh-modify mode.
+            this->scheduleSegmentOverlayUpdate();
         }
         else
         {
@@ -4346,6 +5023,10 @@ namespace NOWA
             {
                 this->cancelRoad();
             }
+
+            // Clear overlay when losing focus
+            this->selectedSegmentIndex = -1;
+            this->scheduleSegmentOverlayUpdate();
         }
     }
 
@@ -5466,6 +6147,324 @@ namespace NOWA
     Ogre::String ProceduralRoadComponent::getGenerateFromLayer(void) const
     {
         return this->generateFromLayer->getString();
+    }
+
+    ProceduralRoadComponent::EditMode ProceduralRoadComponent::getEditModeEnum(void) const
+    {
+        return (this->editMode->getListSelectedValue() == "Segment") ? EditMode::SEGMENT : EditMode::OBJECT;
+    }
+
+    void ProceduralRoadComponent::deleteSelectedSegment(void)
+    {
+        if (this->selectedSegmentIndex < 0 || this->selectedSegmentIndex >= static_cast<int>(this->roadSegments.size()))
+        {
+            return;
+        }
+
+        std::vector<unsigned char> oldData = this->getRoadData();
+
+        this->roadSegments.erase(this->roadSegments.begin() + this->selectedSegmentIndex);
+        this->selectedSegmentIndex = -1;
+
+        if (this->roadSegments.empty())
+        {
+            this->destroyRoadMesh();
+            this->hasRoadOrigin = false;
+            this->hasLoadedRoadEndpoint = false;
+        }
+        else
+        {
+            this->rebuildMesh();
+            this->updateContinuationPoint();
+        }
+
+        // Overlay must update after the mesh rebuild (selectedSegmentIndex is -1 now)
+        this->scheduleSegmentOverlayUpdate();
+
+        // Wrap in undo transaction — identical pattern to confirmRoad/removeLastSegment
+        std::vector<unsigned char> newData = this->getRoadData();
+
+        boost::shared_ptr<EventDataCommandTransactionBegin> evtBegin(new EventDataCommandTransactionBegin("Delete Road Segment"));
+        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(evtBegin);
+
+        boost::shared_ptr<EventDataRoadModifyEnd> evtMod(new EventDataRoadModifyEnd(oldData, newData, this->gameObjectPtr->getId()));
+        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(evtMod);
+
+        boost::shared_ptr<EventDataCommandTransactionEnd> evtEnd(new EventDataCommandTransactionEnd());
+        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(evtEnd);
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] Deleted segment, remaining: " + Ogre::StringConverter::toString(this->roadSegments.size()));
+    }
+
+    int ProceduralRoadComponent::findNearestSegmentWithinRadius(const Ogre::Vector3& worldPos, Ogre::Real radius) const
+    {
+        if (this->roadSegments.empty())
+        {
+            return -1;
+        }
+
+        int bestSeg = -1;
+        float bestDist = radius; // only accept hits within radius
+
+        for (size_t si = 0; si < this->roadSegments.size(); ++si)
+        {
+            const RoadSegment& seg = this->roadSegments[si];
+            for (size_t pi = 1; pi < seg.controlPoints.size(); ++pi)
+            {
+                Ogre::Vector3 a = seg.controlPoints[pi - 1].position;
+                Ogre::Vector3 b = seg.controlPoints[pi].position;
+                a.y = 0.0f;
+                b.y = 0.0f;
+                Ogre::Vector3 p(worldPos.x, 0.0f, worldPos.z);
+
+                Ogre::Vector3 ab = b - a;
+                float abLen2 = ab.dotProduct(ab);
+                float t = (abLen2 > 1e-6f) ? Ogre::Math::Clamp((p - a).dotProduct(ab) / abLen2, 0.0f, 1.0f) : 0.0f;
+                float dist = (a + ab * t - p).length();
+
+                if (dist < bestDist)
+                {
+                    bestDist = dist;
+                    bestSeg = static_cast<int>(si);
+                }
+            }
+        }
+        return bestSeg;
+    }
+
+    void ProceduralRoadComponent::createSegmentOverlay(void)
+    {
+        NOWA::GraphicsModule::RenderCommand cmd = [this]()
+        {
+            this->segOverlayNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
+
+            this->segOverlayObject = this->gameObjectPtr->getSceneManager()->createManualObject();
+            this->segOverlayObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
+            this->segOverlayObject->setName("RoadSegOverlay_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()));
+            this->segOverlayObject->setQueryFlags(0u);
+            this->segOverlayObject->setCastShadows(false);
+            this->segOverlayNode->attachObject(this->segOverlayObject);
+            this->segOverlayNode->setVisible(false);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "ProceduralRoadComponent::createSegmentOverlay");
+    }
+
+    void ProceduralRoadComponent::destroySegmentOverlay(void)
+    {
+        NOWA::GraphicsModule::RenderCommand cmd = [this]()
+        {
+            if (!this->segOverlayNode)
+            {
+                return;
+            }
+            this->segOverlayNode->detachAllObjects();
+            if (this->segOverlayObject)
+            {
+                this->gameObjectPtr->getSceneManager()->destroyManualObject(this->segOverlayObject);
+                this->segOverlayObject = nullptr;
+            }
+            this->segOverlayNode->getParentSceneNode()->removeAndDestroyChild(this->segOverlayNode);
+            this->segOverlayNode = nullptr;
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "ProceduralRoadComponent::destroySegmentOverlay");
+    }
+
+    void ProceduralRoadComponent::scheduleSegmentOverlayUpdate(void)
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] scheduleSegmentOverlayUpdate: segmentMode=" + Ogre::StringConverter::toString(this->getEditModeEnum() == EditMode::SEGMENT) +
+                                                                               " segments=" + Ogre::StringConverter::toString(this->roadSegments.size()) + " selectedIdx=" + Ogre::StringConverter::toString(this->selectedSegmentIndex) +
+                                                                               " overlayObject=" + Ogre::StringConverter::toString(this->segOverlayObject != nullptr));
+
+        if (nullptr == this->segOverlayObject || nullptr == this->gameObjectPtr)
+        {
+            return;
+        }
+
+        const bool segmentMode = (this->getEditModeEnum() == EditMode::SEGMENT);
+
+        if (false == segmentMode || true == this->roadSegments.empty())
+        {
+            NOWA::GraphicsModule::RenderCommand hideCmd = [this]()
+            {
+                if (this->segOverlayObject)
+                {
+                    this->segOverlayObject->clear();
+                }
+                if (this->segOverlayNode)
+                {
+                    this->segOverlayNode->setVisible(false);
+                }
+            };
+            NOWA::GraphicsModule::getInstance()->enqueue(std::move(hideCmd), "ProceduralRoadComponent::segOverlay_hide");
+            return;
+        }
+
+        // ── Build line geometry entirely on main thread — NO raycasting ────────
+        // Heights come from stored smoothedHeight on control points.
+        // This is exactly the height the road mesh was built at, so the overlay
+        // always sits on the road surface regardless of terrain shape.
+
+        struct LV
+        {
+            Ogre::Vector3 pos;
+            Ogre::ColourValue col;
+        };
+        std::vector<LV> lines;
+        lines.reserve(this->roadSegments.size() * 32);
+
+        const Ogre::Real halfW = this->roadWidth->getReal() * 0.5f + this->edgeWidth->getReal();
+        const Ogre::Real pushY = 0.25f; // above road surface to avoid z-fighting
+        const Ogre::Real crossR = std::max(0.3f, this->roadWidth->getReal() * 0.1f);
+
+        const Ogre::ColourValue cGrey(0.35f, 0.35f, 0.35f, 1.0f);
+        const Ogre::ColourValue cSelected(1.00f, 0.75f, 0.00f, 1.0f);
+        const Ogre::ColourValue cEndpt(1.00f, 0.75f, 0.00f, 1.0f);
+
+        auto addLine = [&](const Ogre::Vector3& a, const Ogre::Vector3& b, const Ogre::ColourValue& c)
+        {
+            lines.push_back({a, c});
+            lines.push_back({b, c});
+        };
+
+        for (int si = 0; si < static_cast<int>(this->roadSegments.size()); ++si)
+        {
+            const RoadSegment& seg = this->roadSegments[si];
+            if (seg.controlPoints.size() < 2)
+            {
+                continue;
+            }
+
+            const RoadControlPoint& cp0 = seg.controlPoints.front();
+            const RoadControlPoint& cp1 = seg.controlPoints.back();
+            const bool selected = (si == this->selectedSegmentIndex);
+            const Ogre::ColourValue& lineCol = selected ? cSelected : cGrey;
+
+            // Subdivide the segment and interpolate smoothedHeight linearly.
+            // No raycasting — we use the heights that were already computed
+            // when the segment was confirmed (smoothedHeight = what the road uses).
+            const Ogre::Vector3 pA(cp0.position.x, 0.0f, cp0.position.z);
+            const Ogre::Vector3 pB(cp1.position.x, 0.0f, cp1.position.z);
+            const float segLen = Ogre::Vector2(pB.x - pA.x, pB.z - pA.z).length();
+            const int N = std::max(4, static_cast<int>(segLen / 2.0f) + 1);
+
+            const float h0 = cp0.smoothedHeight;
+            const float h1 = cp1.smoothedHeight;
+
+            std::vector<Ogre::Vector3> path;
+            path.reserve(N + 1);
+            for (int k = 0; k <= N; ++k)
+            {
+                const float t = static_cast<float>(k) / static_cast<float>(N);
+                path.push_back(Ogre::Vector3(pA.x + (pB.x - pA.x) * t, h0 + (h1 - h0) * t + pushY, pA.z + (pB.z - pA.z) * t));
+            }
+
+            // Centerline
+            for (int k = 0; k < static_cast<int>(path.size()) - 1; ++k)
+            {
+                addLine(path[k], path[k + 1], lineCol);
+            }
+
+            if (selected)
+            {
+                // Left and right edge strips
+                for (int k = 0; k < static_cast<int>(path.size()) - 1; ++k)
+                {
+                    Ogre::Vector3 segDir = path[k + 1] - path[k];
+                    segDir.y = 0.0f;
+                    if (segDir.squaredLength() > 1e-6f)
+                    {
+                        segDir.normalise();
+                    }
+                    else
+                    {
+                        segDir = Ogre::Vector3::UNIT_Z;
+                    }
+                    const Ogre::Vector3 perp = Ogre::Vector3::UNIT_Y.crossProduct(segDir).normalisedCopy();
+
+                    addLine(path[k] + perp * halfW, path[k + 1] + perp * halfW, cSelected);
+                    addLine(path[k] + perp * -halfW, path[k + 1] + perp * -halfW, cSelected);
+                }
+
+                // Near cap
+                {
+                    Ogre::Vector3 segDir = path[1] - path[0];
+                    segDir.y = 0.0f;
+                    if (segDir.squaredLength() > 1e-6f)
+                    {
+                        segDir.normalise();
+                    }
+                    const Ogre::Vector3 perp = Ogre::Vector3::UNIT_Y.crossProduct(segDir).normalisedCopy();
+                    addLine(path[0] + perp * halfW, path[0] + perp * -halfW, cSelected);
+                }
+
+                // Far cap
+                {
+                    const int last = static_cast<int>(path.size()) - 1;
+                    Ogre::Vector3 segDir = path[last] - path[last - 1];
+                    segDir.y = 0.0f;
+                    if (segDir.squaredLength() > 1e-6f)
+                    {
+                        segDir.normalise();
+                    }
+                    const Ogre::Vector3 perp = Ogre::Vector3::UNIT_Y.crossProduct(segDir).normalisedCopy();
+                    addLine(path[last] + perp * halfW, path[last] + perp * -halfW, cSelected);
+                }
+
+                // Endpoint crosses (flat in XZ at interpolated height)
+                for (const Ogre::Vector3& ep : {path.front(), path.back()})
+                {
+                    addLine(ep + Ogre::Vector3(-crossR, 0, 0), ep + Ogre::Vector3(crossR, 0, 0), cEndpt);
+                    addLine(ep + Ogre::Vector3(0, 0, -crossR), ep + Ogre::Vector3(0, 0, crossR), cEndpt);
+                }
+            }
+        }
+
+        // ── Upload on render thread ────────────────────────────────────────────
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+            "[ProceduralRoadComponent] Overlay render cmd: lineCount=" + Ogre::StringConverter::toString(lines.size()) + " overlayObject=" + Ogre::StringConverter::toString(this->segOverlayObject != nullptr));
+
+        NOWA::GraphicsModule::RenderCommand drawCmd = [this, lines = std::move(lines)]()
+        {
+            if (nullptr == this->segOverlayObject)
+            {
+                return;
+            }
+            this->segOverlayObject->clear();
+
+            if (true == lines.empty())
+            {
+                if (this->segOverlayNode)
+                {
+                    this->segOverlayNode->setVisible(false);
+                }
+                return;
+            }
+
+            try
+            {
+                this->segOverlayObject->begin("WhiteNoLightingBackground", Ogre::OT_LINE_LIST);
+                Ogre::uint32 idx = 0;
+                for (const auto& v : lines)
+                {
+                    this->segOverlayObject->position(v.pos);
+                    this->segOverlayObject->colour(v.col);
+                    this->segOverlayObject->index(idx++);
+                }
+                this->segOverlayObject->end();
+
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] Overlay committed, verts=" + Ogre::StringConverter::toString(idx));
+            }
+            catch (Ogre::Exception& e)
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralRoadComponent] Overlay begin() FAILED: " + e.getDescription());
+            }
+
+            if (this->segOverlayNode)
+            {
+                this->segOverlayNode->setVisible(true);
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(drawCmd), "ProceduralRoadComponent::segOverlay_draw");
     }
 
 } // namespace NOWA

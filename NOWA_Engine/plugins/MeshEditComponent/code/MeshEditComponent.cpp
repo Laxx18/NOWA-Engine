@@ -2629,6 +2629,9 @@ namespace NOWA
         if (show)
         {
             this->scheduleOverlayUpdate();
+            // Notify editor mode change so edit mesh does work immediately
+            boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(NOWA::EditorManager::EDITOR_MESH_MODIFY_MODE));
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataEditorMode);
         }
     }
 
@@ -6310,16 +6313,27 @@ namespace NOWA
 
     void MeshEditComponent::handleGameObjectSelected(NOWA::EventDataPtr eventData)
     {
-        auto cast = boost::static_pointer_cast<NOWA::EventDataGameObjectSelected>(eventData);
+        auto castEventData = boost::static_pointer_cast<NOWA::EventDataGameObjectSelected>(eventData);
 
-        if (cast->getGameObjectId() == this->gameObjectPtr->getId())
+        if (castEventData->getGameObjectId() == this->gameObjectPtr->getId())
         {
-            this->isSelected = cast->getIsSelected();
+            this->isSelected = castEventData->getIsSelected();
         }
-        else if (cast->getIsSelected())
+        else if (castEventData->getIsSelected())
         {
             // Another object was selected — deselect ourselves
             this->isSelected = false;
+        }
+
+        if (false == castEventData->getIsPartOfMultiSelection())
+        {
+            const bool editMode = (this->getEditMode() != EditMode::OBJECT);
+            if (true == editMode)
+            {
+                // Go directly to mesh modify mode when switching to Segment edit mode, so the user can immediately select segments
+                boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(NOWA::EditorManager::EDITOR_MESH_MODIFY_MODE));
+                NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataEditorMode);
+            }
         }
 
         this->updateModificationState();

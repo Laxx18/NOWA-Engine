@@ -2587,9 +2587,10 @@ namespace NOWA
 	class EventDataGameObjectSelected : public NOWA::BaseEventData
 	{
 	public:
-		EventDataGameObjectSelected(const unsigned long id, bool selected)
+        EventDataGameObjectSelected(const unsigned long id, bool selected, bool partOfMultiselection)
 			: id(id),
-			selected(selected)
+			selected(selected),
+			partOfMultiselection(partOfMultiselection)
 		{
 
 		}
@@ -2606,17 +2607,17 @@ namespace NOWA
 
 		virtual void serialize(std::ostrstream& out) const
 		{
-			out << Ogre::StringConverter::toString(this->id) << " " << Ogre::StringConverter::toString(this->selected);
+            out << Ogre::StringConverter::toString(this->id) << " " << Ogre::StringConverter::toString(this->selected) << " " << Ogre::StringConverter::toString(this->partOfMultiselection);
 		}
 
 		virtual void deserialize(std::istrstream& in)
 		{
-			in >> Ogre::StringConverter::toString(this->id) >> Ogre::StringConverter::toString(this->selected);
+            in >> Ogre::StringConverter::toString(this->id) >> Ogre::StringConverter::toString(this->selected) >> Ogre::StringConverter::toString(this->partOfMultiselection);
 		}
 
 		virtual NOWA::EventDataPtr copy() const
 		{
-			return NOWA::EventDataPtr(new EventDataHdrActivated(this->id, this->selected));
+            return NOWA::EventDataPtr(new EventDataGameObjectSelected(this->id, this->selected, this->partOfMultiselection));
 		}
 
 		virtual const char* getName(void) const
@@ -2633,9 +2634,15 @@ namespace NOWA
 		{
 			return this->selected;
 		}
+
+		bool getIsPartOfMultiSelection(void) const
+        {
+            return this->partOfMultiselection;
+        }
 	private:
 		unsigned long id;
 		bool selected;
+        bool partOfMultiselection;
 	};
 
 	//---------------------------------------------------------------------------------------------------------------------

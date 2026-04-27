@@ -290,6 +290,14 @@ namespace NOWA
             return "GameObjectComponent";
         }
 
+        /**
+         * @see GameObjectComponent::isProcedural
+         */
+        virtual bool isProcedural(void) const override
+        {
+            return true;
+        }
+
         // -------------------------------------------------------------------------
         // Dungeon operations (public API)
         // -------------------------------------------------------------------------

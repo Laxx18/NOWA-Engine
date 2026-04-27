@@ -222,6 +222,15 @@ namespace NOWA
 		}
 
 		/**
+		 * @brief		Gets whether this component is procedural. Procedural components are saved differently and with mesh placeholder "Procedural.mesh".
+		 * @return		true If the component is procedural, else false
+         */
+		virtual bool isProcedural(void) const
+		{
+			return false;
+        }
+
+		/**
 		 * @brief	Gets the owner game object for this component.
 		 * @return	owner		The owner game object to get
 		 */

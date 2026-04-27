@@ -1306,7 +1306,7 @@ namespace NOWA
                 NOWA::GameObjectCompPtr component = std::get<NOWA::COMPONENT>(components->at(i));
                 if (nullptr != component)
                 {
-                    if (AppStateManager::getSingletonPtr()->getGameObjectController()->isProceduralMeshComponent(component->getClassName()))
+                    if (true == component->isProcedural())
                     {
                         hasProceduralComponent = true;
                         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[DotSceneExport] Detected procedural component: " + component->getClassName());

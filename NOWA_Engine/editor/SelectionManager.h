@@ -153,11 +153,17 @@ namespace NOWA
 		bool canSelectionRedo(void);
 
 	private:
-		void queueSelectionEvent(unsigned long id, bool selected);
+        void queueSelectionEvent(unsigned long id, bool bSelected, bool bPartOfMultiselection);
 
 		void handleDeleteGameObject(EventDataPtr eventData);
 
-		void applySelectInternal(GameObject* gameObject, bool bSelect);
+		/**
+		 * @brief		Selects or unselects the given game object and notifies the selection observer
+		 * @param[in]	gameObject				The game object to select or unselect
+		 * @param[in]	bSelect					Whether to select or unselect the game object
+		 * @param[in]	bPartOfMultiselection	Whether the game object is part of a multiselection (e.g. when selecting with a rectangle), so that the selection observer can react differently, e.g. to set another outline template strategy
+         */
+		void applySelectInternal(GameObject* gameObject, bool bSelect, bool bPartOfMultiselection);
 	private:
 		Ogre::Camera* camera;
 		Ogre::SceneManager* sceneManager;
