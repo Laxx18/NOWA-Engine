@@ -1799,7 +1799,10 @@ namespace NOWA
                     if (finalPath.size() >= 2)
                     {
                         const int last = static_cast<int>(finalPath.size()) - 1;
-                        Ogre::Vector3 armDir = finalPath[last].position - finalPath[last - 1].position;
+                        // Back trim: path arrives AT junction, so finalPath[last]-finalPath[last-1]
+                        // points TOWARD junction. Negate to get direction AWAY from junction,
+                        // consistent with front-trim arms and with armDirs[] in JunctionPoint.
+                        Ogre::Vector3 armDir = finalPath[last - 1].position - finalPath[last].position;
                         armDir.y = 0.0f;
                         if (armDir.squaredLength() > 1e-6f)
                         {
@@ -3228,8 +3231,6 @@ namespace NOWA
         const Ogre::Real curbH = this->curbHeight->getReal();
         const bool hasCurb = (curbH > 0.001f);
 
-        // Center patch sits 2cm below to avoid z-fighting with arm center surface.
-        // Edge/curb geometry sits at roadY (no offset) to meet arm edge geometry exactly.
         const Ogre::Real roadY = jp.worldPos.y - origin.y;
         const Ogre::Real patchY = roadY - 0.02f;
 
@@ -3245,7 +3246,6 @@ namespace NOWA
             return Ogre::Vector2((pos.z - localCentre.z) / std::max(uvWidth / std::max(cUV.y, 0.001f), 0.001f), (pos.x - localCentre.x) / std::max(uvWidth / std::max(cUV.x, 0.001f), 0.001f));
         };
 
-        // Two toLocal helpers — one for center patch, one for edge/curb geometry
         auto toLocalPatch = [&](const Ogre::Vector3& w) -> Ogre::Vector3
         {
             return Ogre::Vector3(w.x - origin.x, patchY, w.z - origin.z);
@@ -3255,14 +3255,11 @@ namespace NOWA
             return Ogre::Vector3(w.x - origin.x, roadY, w.z - origin.z);
         };
 
-        // ── Build arm data — edge geometry at roadY, patch geometry at patchY ─
         struct ArmData
         {
             float angle;
-            // Edge vertices at roadY — match arm geometry exactly
             Ogre::Vector3 outerL, outerR;
             Ogre::Vector3 innerL, innerR;
-            // Inner corners at patchY — for center patch fan
             Ogre::Vector3 innerL_patch, innerR_patch;
         };
 
@@ -3330,9 +3327,8 @@ namespace NOWA
             }
         }
 
-        // ── Edge / curb: between-arm boundary segments ─────────────────────────
-        // Only for small angular gaps (<100°) — large gaps are the straight-through side.
-        const float maxGapAngle = Ogre::Math::PI * 0.555f; // ~100°
+        // ── Edge / curb strips ─────────────────────────────────────────────────
+        const float maxGapAngle = Ogre::Math::PI * 0.778f; // ~140° — only skips the straight-through ~180° gap
 
         for (size_t k = 0; k < arms.size(); ++k)
         {
@@ -3347,18 +3343,25 @@ namespace NOWA
             {
                 gap += Ogre::Math::TWO_PI;
             }
-            if (gap >= maxGapAngle)
-            {
-                continue;
-            }
 
-            // Outward normal of this boundary segment
-            const Ogre::Vector3 midInner = (aK.innerR + aJ.innerL) * 0.5f;
-            Ogre::Vector3 outward = midInner - Ogre::Vector3(localCentre.x, roadY, localCentre.z);
-            outward.y = 0.0f;
-            if (outward.squaredLength() > 1e-6f)
+            const bool isLargeGap = (gap >= maxGapAngle);
+
+            // Outward normal: perpendicular to boundary segment, pointing away from centre.
+            // Use geometric cross product — NOT centre-to-midpoint (unreliable at acute angles).
+            Ogre::Vector3 segDir = aJ.innerL - aK.innerR;
+            segDir.y = 0.0f;
+            if (segDir.squaredLength() > 1e-6f)
             {
-                outward.normalise();
+                segDir.normalise();
+            }
+            // Rotate 90° in XZ to get perpendicular
+            Ogre::Vector3 outward(-segDir.z, 0.0f, segDir.x);
+            // Ensure it points AWAY from junction centre
+            const Ogre::Vector3 midInner = (aK.innerR + aJ.innerL) * 0.5f;
+            const Ogre::Vector3 toMid = midInner - Ogre::Vector3(localCentre.x, roadY, localCentre.z);
+            if (outward.dotProduct(toMid) < 0.0f)
+            {
+                outward = -outward;
             }
 
             const float segLen = std::max(0.001f, aK.innerR.distance(aJ.innerL));
@@ -3366,26 +3369,31 @@ namespace NOWA
 
             if (hasCurb)
             {
-                // Full paved curb: inner wall + top + outer wall
-                // All vertices at roadY (edge geometry Y) — meets arm curb exactly
                 const Ogre::Vector3 aK_iR_top = aK.innerR + Ogre::Vector3(0, curbH, 0);
                 const Ogre::Vector3 aJ_iL_top = aJ.innerL + Ogre::Vector3(0, curbH, 0);
                 const Ogre::Vector3 aK_oR_top = aK.outerR + Ogre::Vector3(0, curbH, 0);
                 const Ogre::Vector3 aJ_oL_top = aJ.outerL + Ogre::Vector3(0, curbH, 0);
 
-                // Inner wall (road surface → curb top)
-                this->addRoadQuad(aK.innerR, aK_iR_top, aJ_iL_top, aJ.innerL, outward, 0.0f, 1.0f, 0.0f, ev1, false);
+                if (!isLargeGap)
+                {
+                    // Inner wall: road surface → curb top
+                    // u spans curbH (physical wall height) — matches generatePavedRoad convention
+                    this->addRoadQuad(aK.innerR, aK_iR_top, aJ_iL_top, aJ.innerL, -outward, 0.0f, curbH, 0.0f, ev1, false);
+                }
 
-                // Curb top surface
+                // Curb top — drawn for both small and large gaps to close seam
                 this->addRoadQuad(aK_iR_top, aK_oR_top, aJ_oL_top, aJ_iL_top, Ogre::Vector3::UNIT_Y, 0.0f, 1.0f, 0.0f, ev1, false);
 
-                // Outer wall (curb top → ground)
-                this->addRoadQuad(aK_oR_top, aK.outerR, aJ.outerL, aJ_oL_top, outward, 0.0f, 1.0f, 0.0f, ev1, false);
+                if (!isLargeGap)
+                {
+                    // Outer wall: curb top → ground
+                    this->addRoadQuad(aK_oR_top, aK.outerR, aJ.outerL, aJ_oL_top, outward, 0.0f, curbH, 0.0f, ev1, false);
+                }
             }
             else
             {
-                // Flat edge strip (no curb)
-                this->addRoadQuad(aK.innerR, aK.outerR, aJ.outerL, aJ.innerL, Ogre::Vector3::UNIT_Y, 0.0f, 1.0f, 0.0f, ev1, false);
+                // Flat edge strip
+                this->addRoadQuad(aK.innerR, aJ.innerL, aJ.outerL, aK.outerR, Ogre::Vector3::UNIT_Y, 0.0f, 1.0f, 0.0f, ev1, false);
             }
         }
 
