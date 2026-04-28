@@ -9,6 +9,7 @@ GPL v3
 #include "editor/EditorManager.h"
 #include "gameobject/GameObjectController.h"
 #include "gameobject/GameObjectFactory.h"
+#include "gameobject/GameObjectTitleComponent.h"
 #include "main/AppStateManager.h"
 #include "main/Core.h"
 #include "main/InputDeviceCore.h"
@@ -61,11 +62,14 @@ namespace NOWA
         curbHeight(new Variant(ProceduralRoadComponent::AttrCurbHeight(), 0.15f, this->attributes)),
         terrainSampleInterval(new Variant(ProceduralRoadComponent::AttrTerrainSampleInterval(), 2.0f, this->attributes)),
         editMode(new Variant(ProceduralRoadComponent::AttrEditMode(), std::vector<Ogre::String>{"Object", "Segment"}, this->attributes)),
-        convertToMesh(new Variant(ProceduralRoadComponent::AttrConvertToMesh(), "Convert to Mesh", this->attributes)),
+        convertToMesh(new Variant(ProceduralRoadComponent::AttrConvertToMesh(), Ogre::String("Convert to Mesh"), this->attributes)),
         sourceTerraLayer(new Variant(ProceduralRoadComponent::AttrSourceTerraLayer(), static_cast<Ogre::uint32>(2), this->attributes)),
         traceStepMeters(new Variant(ProceduralRoadComponent::AttrTraceStepMeters(), 3.0f, this->attributes)),
         traceThreshold(new Variant(ProceduralRoadComponent::AttrTraceThreshold(), static_cast<Ogre::uint32>(64), this->attributes)),
-        generateFromLayer(new Variant(ProceduralRoadComponent::AttrGenerateFromLayer(), "Generate From Layer", this->attributes)),
+        generateFromLayer(new Variant(ProceduralRoadComponent::AttrGenerateFromLayer(), Ogre::String("Generate From Layer"), this->attributes)),
+        generateWaypoints(new Variant(ProceduralRoadComponent::AttrGenerateWaypoints(), Ogre::String("Generate Waypoints"), this->attributes)),
+        generateSplitWaypoints(new Variant(ProceduralRoadComponent::AttrGenerateSplitWaypoints(), Ogre::String("Generate Split Waypoints"), this->attributes)),
+        invertWaypoints(new Variant(ProceduralRoadComponent::AttrInvertWaypoints(), false, this->attributes)),
         isEditorMeshModifyMode(false),
         isSelected(false),
         currentCenterVertexIndex(0),
@@ -86,6 +90,11 @@ namespace NOWA
         segOverlayObject(nullptr),
         buildState(BuildState::IDLE),
         physicsArtifactComponent(nullptr),
+        isSnapToRoad(false),
+        snapToRoadPoint(Ogre::Vector3::ZERO),
+        snapToRoadSegmentIdx(-1),
+        snapToRoadT(0.0f),
+        snapRadius(0.0f),
         isExtendingFromSegment(false)
     {
         this->roadStyle->setDescription("Style of the road to generate");
@@ -127,6 +136,21 @@ namespace NOWA
         this->generateFromLayer->addUserData(GameObject::AttrActionExec());
         this->generateFromLayer->addUserData(GameObject::AttrActionNeedRefresh());
         this->generateFromLayer->addUserData(GameObject::AttrActionExecId(), "ProceduralRoadComponent.GenerateFromLayer");
+
+        this->generateWaypoints->addUserData(GameObject::AttrActionExec());
+        this->generateWaypoints->addUserData(GameObject::AttrActionExecId(), ProceduralRoadComponent::ActionGenerateWaypoints());
+        this->generateFromLayer->addUserData(GameObject::AttrActionNeedRefresh());
+        this->generateWaypoints->addUserData(GameObject::AttrActionNoUndo());
+        this->generateWaypoints->setDescription("Creates one centered waypoint GameObject per road segment.");
+
+        this->generateSplitWaypoints->addUserData(GameObject::AttrActionExec());
+        this->generateSplitWaypoints->addUserData(GameObject::AttrActionExecId(), ProceduralRoadComponent::ActionGenerateSplitWaypoints());
+        this->generateFromLayer->addUserData(GameObject::AttrActionNeedRefresh());
+        this->generateSplitWaypoints->addUserData(GameObject::AttrActionNoUndo());
+        this->generateSplitWaypoints->setDescription("Creates two waypoints per segment (right-hand traffic). "
+                                                     "Forward direction ordered A->B, reverse ordered B->A.");
+
+        this->invertWaypoints->setDescription("If true, the forward and reverse waypoint lanes are swapped.");
     }
 
     ProceduralRoadComponent::~ProceduralRoadComponent()
@@ -351,6 +375,9 @@ namespace NOWA
 
         this->createSegmentOverlay();
 
+        // Adjust snapradius here
+        this->snapRadius = this->roadWidth->getReal() * 0.4f;
+
         return true;
     }
 
@@ -554,6 +581,10 @@ namespace NOWA
             // Go directly to mesh modify mode when switching to Segment edit mode, so the user can immediately select segments
             boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(NOWA::EditorManager::EDITOR_MESH_MODIFY_MODE));
             NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataEditorMode);
+        }
+        else if (ProceduralRoadComponent::AttrInvertWaypoints() == attribute->getName())
+        {
+            this->invertWaypoints->setValue(attribute->getBool());
         }
     }
 
@@ -884,7 +915,15 @@ namespace NOWA
             {
                 hitPosition = this->snapToGridFunc(hitPosition);
             }
-            this->updateRoadPreview(hitPosition);
+
+            // Snap to existing road takes priority over grid
+            const Ogre::Real sr = this->roadWidth->getReal() * 0.4f;
+            this->detectSnapToRoad(hitPosition, sr);
+
+            const Ogre::Vector3 previewPos = this->isSnapToRoad ? this->snapToRoadPoint : hitPosition;
+
+            this->updateRoadPreview(previewPos);
+            this->scheduleSnapIndicatorUpdate();
         }
 
         return true;
@@ -1031,9 +1070,19 @@ namespace NOWA
         {
             return this->convertToMeshApply();
         }
-        if ("ProceduralRoadComponent.GenerateFromLayer" == actionId)
+        else if ("ProceduralRoadComponent.GenerateFromLayer" == actionId)
         {
             this->generateRoadFromTerraLayer();
+            return true;
+        }
+        else if (ProceduralRoadComponent::ActionGenerateWaypoints() == actionId)
+        {
+            this->createWaypointNodes(false);
+            return true;
+        }
+        else if (ProceduralRoadComponent::ActionGenerateSplitWaypoints() == actionId)
+        {
+            this->createWaypointNodes(true);
             return true;
         }
         return true;
@@ -1127,6 +1176,7 @@ namespace NOWA
         {
             return;
         }
+
         if (this->currentSegment.controlPoints.size() < 2)
         {
             return;
@@ -1139,13 +1189,28 @@ namespace NOWA
             return;
         }
 
+        // ── Snap-to-road: just override the endpoint position ─────────────────
+        const bool wasSnapping = (this->isSnapToRoad && this->snapToRoadSegmentIdx >= 0);
+
+        if (wasSnapping)
+        {
+            RoadControlPoint& endCP = this->currentSegment.controlPoints.back();
+            endCP.position = this->snapToRoadPoint;
+            endCP.position.y = 0.0f;
+            endCP.groundHeight = this->snapToRoadPoint.y;
+            endCP.smoothedHeight = this->snapToRoadPoint.y;
+
+            this->isSnapToRoad = false;
+            this->snapToRoadSegmentIdx = -1;
+
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] Road closed at snap point: " + Ogre::StringConverter::toString(this->snapToRoadPoint));
+        }
+
         // ── Highway branch direction guard ────────────────────────────────────
-        // A Highway branch may only depart to the RIGHT of the parent arm's
-        // travel direction (like a motorway exit in City Skylines).
         if (this->getRoadStyleEnum() == RoadStyle::HIGHWAY && this->currentSegment.controlPoints.size() == 2)
         {
-            const Ogre::Real snapRadius = 0.15f;
-            int parentIdx = this->findNearestSegmentWithinRadius(this->currentSegment.controlPoints.front().position, snapRadius);
+            const Ogre::Real snapRadius2 = 0.15f;
+            int parentIdx = this->findNearestSegmentWithinRadius(this->currentSegment.controlPoints.front().position, snapRadius2);
 
             if (parentIdx >= 0)
             {
@@ -1157,7 +1222,6 @@ namespace NOWA
                     parentDir.normalise();
                 }
 
-                // Right = -cross(UNIT_Y, parentDir) = parentDir rotated -90° in XZ
                 const Ogre::Vector3 parentRight = -(Ogre::Vector3::UNIT_Y.crossProduct(parentDir).normalisedCopy());
 
                 Ogre::Vector3 branchDir = this->currentSegment.controlPoints.back().position - this->currentSegment.controlPoints.front().position;
@@ -1176,7 +1240,8 @@ namespace NOWA
             }
         }
 
-        bool shouldChain = this->isShiftPressed;
+        // Closing a loop always terminates — never keep chaining
+        bool shouldChain = this->isShiftPressed && !wasSnapping;
 
         boost::shared_ptr<NOWA::EventDataCommandTransactionBegin> eventDataUndoBegin(new NOWA::EventDataCommandTransactionBegin("Add Road Segment"));
         NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataUndoBegin);
@@ -1456,18 +1521,13 @@ namespace NOWA
                     dir.normalise();
                 }
                 jp.armDirs.push_back(dir);
+                jp.armTrimDists.push_back(baseTrimDist);
             }
 
-            // ── Per-arm trim distance ──────────────────────────────────────────
-            // For arm i, the safe trim distance is totalHalfW / tan(minGap/2)
-            // where minGap is the smaller of the two adjacent angular gaps.
-            // This ensures arm edge strips don't overlap adjacent arm edge strips.
+            // Per-arm trim distance based on adjacent angles
             const size_t nArms = jp.armDirs.size();
-            jp.armTrimDists.resize(nArms, baseTrimDist);
-
             if (nArms >= 2)
             {
-                // Sort arm directions by angle for gap computation
                 std::vector<std::pair<float, size_t>> angleIdx;
                 angleIdx.reserve(nArms);
                 for (size_t ai = 0; ai < nArms; ++ai)
@@ -1483,14 +1543,11 @@ namespace NOWA
                     const size_t kPrev = (k + nArms - 1) % nArms;
                     const size_t kNext = (k + 1) % nArms;
 
-                    // CCW gap to previous arm
                     float gapPrev = angleIdx[k].first - angleIdx[kPrev].first;
                     if (gapPrev <= 0.0f)
                     {
                         gapPrev += Ogre::Math::TWO_PI;
                     }
-
-                    // CCW gap to next arm
                     float gapNext = angleIdx[kNext].first - angleIdx[k].first;
                     if (gapNext <= 0.0f)
                     {
@@ -1498,24 +1555,13 @@ namespace NOWA
                     }
 
                     const float minGap = std::min(gapPrev, gapNext);
-
-                    // Safe distance: where this arm's outer edge clears the adjacent arm's outer edge
                     float safeDist = totalHalfW / std::max(0.01f, std::tan(minGap * 0.5f));
-                    // Clamp: minimum = baseTrimDist, maximum = 5x width (very acute angles)
                     safeDist = Ogre::Math::Clamp(safeDist * 1.1f, baseTrimDist, totalHalfW * 6.0f);
                     jp.armTrimDists[ai] = safeDist;
                 }
             }
 
             junctions.push_back(jp);
-
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] Junction at " + Ogre::StringConverter::toString(jp.worldPos) + " has " + Ogre::StringConverter::toString(jp.armDirs.size()) + " arms:");
-            for (size_t ai = 0; ai < jp.armDirs.size(); ++ai)
-            {
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
-                    "  arm " + Ogre::StringConverter::toString(ai) + " dir=(" + Ogre::StringConverter::toString(jp.armDirs[ai].x) + "," + Ogre::StringConverter::toString(jp.armDirs[ai].z) + ")" +
-                        " angle=" + Ogre::StringConverter::toString(Ogre::Math::RadiansToDegrees(std::atan2(jp.armDirs[ai].z, jp.armDirs[ai].x))) + "°" + " trimDist=" + Ogre::StringConverter::toString(jp.armTrimDists[ai]));
-            }
         }
 
         std::map<QKey, size_t> junctionByKey;
@@ -1525,7 +1571,6 @@ namespace NOWA
             junctionByKey[k] = ji;
         }
 
-        // Helper: find arm index in junction matching a given outward direction
         auto findArmIdx = [&](size_t ji, const Ogre::Vector3& outwardDir) -> int
         {
             float bestDot = -2.0f;
@@ -1542,7 +1587,6 @@ namespace NOWA
             return bestIdx;
         };
 
-        // Helper: store patch corners for a junction arm using actual boundary data
         auto storePatchCorners = [&](size_t ji, const Ogre::Vector3& boundaryPosXZ, const Ogre::Vector3& armDirAtBoundary)
         {
             Ogre::Vector3 perp = Ogre::Vector3::UNIT_Y.crossProduct(armDirAtBoundary);
@@ -1551,17 +1595,15 @@ namespace NOWA
                 perp = Ogre::Vector3::UNIT_X;
             }
             perp.normalise();
-
             const Ogre::Real worldY = junctions[ji].worldPos.y;
 
             junctions[ji].patchCorners.push_back(Ogre::Vector3(boundaryPosXZ.x + perp.x * totalHalfW, worldY, boundaryPosXZ.z + perp.z * totalHalfW));
             junctions[ji].patchCorners.push_back(Ogre::Vector3(boundaryPosXZ.x + perp.x * -totalHalfW, worldY, boundaryPosXZ.z + perp.z * -totalHalfW));
-
             junctions[ji].patchCornersInner.push_back(Ogre::Vector3(boundaryPosXZ.x + perp.x * halfW, worldY, boundaryPosXZ.z + perp.z * halfW));
             junctions[ji].patchCornersInner.push_back(Ogre::Vector3(boundaryPosXZ.x + perp.x * -halfW, worldY, boundaryPosXZ.z + perp.z * -halfW));
         };
 
-        // ── Chain building — stop at junctions ────────────────────────────────
+        // ── Chain building ─────────────────────────────────────────────────────
         std::vector<bool> processed(this->roadSegments.size(), false);
 
         for (size_t i = 0; i < this->roadSegments.size(); ++i)
@@ -1605,7 +1647,7 @@ namespace NOWA
                 }
             }
 
-            // Step 2: Collect waypoints
+            // ── Step 2: Collect waypoints ──────────────────────────────────────
             std::vector<RoadControlPoint> chainWaypoints;
             for (size_t ci = 0; ci < chainIndices.size(); ++ci)
             {
@@ -1620,8 +1662,12 @@ namespace NOWA
                 }
             }
 
-            // Step 3: Build final path
+            // Detect closed loop
+            const bool isClosed = (chainWaypoints.size() >= 3) && (chainWaypoints.front().position.squaredDistance(chainWaypoints.back().position) < 0.01f);
+
+            // ── Step 3: Build final path ───────────────────────────────────────
             std::vector<RoadControlPoint> finalPath;
+
             if (chainWaypoints.size() >= 3)
             {
                 const int subdivisions = this->curveSubdivisions->getInt();
@@ -1650,10 +1696,10 @@ namespace NOWA
                 finalPath = this->subdivideWithHeightInterpolation(chainWaypoints);
             }
 
-            // Step 4: Height smoothing
+            // ── Step 4: Height smoothing ───────────────────────────────────────
             this->smoothHeightTransitions(finalPath);
 
-            // Step 5: Banking
+            // ── Step 5: Banking ────────────────────────────────────────────────
             if (this->enableBanking->getBool())
             {
                 for (size_t pi = 0; pi < finalPath.size(); ++pi)
@@ -1669,7 +1715,7 @@ namespace NOWA
                 }
             }
 
-            // Step 6: UV distance
+            // ── Step 6: UV distance ────────────────────────────────────────────
             Ogre::Real accumDist = 0.0f;
             for (size_t pi = 0; pi < finalPath.size(); ++pi)
             {
@@ -1680,148 +1726,131 @@ namespace NOWA
                 finalPath[pi].distFromStart = accumDist;
             }
 
-            // Step 7: Trim front using per-arm trimDist
+            // ── Step 7: Trim front at junction ────────────────────────────────
+            if (!isClosed)
             {
-                QKey frontKey{quantise(chainWaypoints.front().position.x), quantise(chainWaypoints.front().position.z)};
-                auto it = junctionByKey.find(frontKey);
-                if (it != junctionByKey.end())
                 {
-                    const size_t ji = it->second;
-
-                    // Outward direction: chain goes FROM junction, so forward = second - first
-                    Ogre::Vector3 outDir = chainWaypoints.back().position - chainWaypoints.front().position;
-                    outDir.y = 0.0f;
-                    if (outDir.squaredLength() > 1e-6f)
+                    QKey frontKey{quantise(chainWaypoints.front().position.x), quantise(chainWaypoints.front().position.z)};
+                    auto it = junctionByKey.find(frontKey);
+                    if (it != junctionByKey.end())
                     {
-                        outDir.normalise();
-                    }
-                    const int ai = findArmIdx(ji, outDir);
-                    const Ogre::Real myTrimDist = junctions[ji].armTrimDists[ai];
-
-                    const Ogre::Vector3 jXZ(junctions[ji].worldPos.x, 0.0f, junctions[ji].worldPos.z);
-
-                    while (finalPath.size() > 2)
-                    {
-                        Ogre::Vector3 p(finalPath.front().position.x, 0.0f, finalPath.front().position.z);
-                        if (p.distance(jXZ) < myTrimDist)
+                        const size_t ji = it->second;
+                        Ogre::Vector3 outDir = chainWaypoints.back().position - chainWaypoints.front().position;
+                        outDir.y = 0.0f;
+                        if (outDir.squaredLength() > 1e-6f)
                         {
-                            finalPath.erase(finalPath.begin());
+                            outDir.normalise();
                         }
-                        else
-                        {
-                            break;
-                        }
-                    }
+                        const int ai = findArmIdx(ji, outDir);
+                        const Ogre::Real myTrimDist = junctions[ji].armTrimDists[ai];
+                        const Ogre::Vector3 jXZ(junctions[ji].worldPos.x, 0.0f, junctions[ji].worldPos.z);
 
-                    // Insert exact boundary point
-                    {
-                        const Ogre::Vector3 firstXZ(finalPath.front().position.x, 0.0f, finalPath.front().position.z);
-                        const float d = firstXZ.distance(jXZ);
-                        if (d > myTrimDist * 1.001f)
+                        while (finalPath.size() > 2)
                         {
-                            const Ogre::Vector3 toJ = (jXZ - firstXZ).normalisedCopy();
-                            const Ogre::Vector3 bnd = firstXZ + toJ * (d - myTrimDist);
-                            RoadControlPoint bp;
-                            bp.position = bnd;
-                            bp.position.y = 0.0f;
-                            bp.groundHeight = bp.smoothedHeight = finalPath.front().groundHeight;
-                            bp.bankingAngle = finalPath.front().bankingAngle;
-                            bp.distFromStart = 0.0f;
-                            finalPath.insert(finalPath.begin(), bp);
+                            Ogre::Vector3 p(finalPath.front().position.x, 0.0f, finalPath.front().position.z);
+                            if (p.distance(jXZ) < myTrimDist)
+                            {
+                                finalPath.erase(finalPath.begin());
+                            }
+                            else
+                            {
+                                break;
+                            }
                         }
-                    }
-
-                    if (finalPath.size() >= 2)
-                    {
-                        Ogre::Vector3 armDir = finalPath[1].position - finalPath[0].position;
-                        armDir.y = 0.0f;
-                        if (armDir.squaredLength() > 1e-6f)
+                        if (finalPath.size() >= 2)
                         {
-                            armDir.normalise();
+                            const Ogre::Vector3 firstXZ(finalPath.front().position.x, 0.0f, finalPath.front().position.z);
+                            const float d = firstXZ.distance(jXZ);
+                            if (d > myTrimDist * 1.001f)
+                            {
+                                const Ogre::Vector3 toJ = (jXZ - firstXZ).normalisedCopy();
+                                const Ogre::Vector3 bnd = firstXZ + toJ * (d - myTrimDist);
+                                RoadControlPoint bp;
+                                bp.position = bnd;
+                                bp.position.y = 0.0f;
+                                bp.groundHeight = bp.smoothedHeight = finalPath.front().groundHeight;
+                                bp.bankingAngle = finalPath.front().bankingAngle;
+                                bp.distFromStart = 0.0f;
+                                finalPath.insert(finalPath.begin(), bp);
+                            }
+                            Ogre::Vector3 armDir = finalPath[1].position - finalPath[0].position;
+                            armDir.y = 0.0f;
+                            if (armDir.squaredLength() > 1e-6f)
+                            {
+                                armDir.normalise();
+                            }
+                            storePatchCorners(ji, finalPath[0].position, armDir);
                         }
-                        storePatchCorners(ji, finalPath[0].position, armDir);
                     }
                 }
-            }
 
-            {
-                QKey backKey{quantise(chainWaypoints.back().position.x), quantise(chainWaypoints.back().position.z)};
-                auto it = junctionByKey.find(backKey);
-                if (it != junctionByKey.end())
+                // ── Step 7b: Trim back at junction ────────────────────────────
                 {
-                    const size_t ji = it->second;
-
-                    // For back trim, chain ARRIVES at junction.
-                    // armDirs points FROM junction toward arm's far end.
-                    // That direction = from junction back toward chain start.
-                    // So outDir = front - back (reversed from chain travel direction).
-                    Ogre::Vector3 outDir = chainWaypoints.front().position - chainWaypoints.back().position;
-                    outDir.y = 0.0f;
-                    if (outDir.squaredLength() > 1e-6f)
+                    QKey backKey{quantise(chainWaypoints.back().position.x), quantise(chainWaypoints.back().position.z)};
+                    auto it = junctionByKey.find(backKey);
+                    if (it != junctionByKey.end())
                     {
-                        outDir.normalise();
-                    }
-                    const int ai = findArmIdx(ji, outDir);
-                    const Ogre::Real myTrimDist = junctions[ji].armTrimDists[ai];
-
-                    const Ogre::Vector3 jXZ(junctions[ji].worldPos.x, 0.0f, junctions[ji].worldPos.z);
-
-                    while (finalPath.size() > 2)
-                    {
-                        Ogre::Vector3 p(finalPath.back().position.x, 0.0f, finalPath.back().position.z);
-                        if (p.distance(jXZ) < myTrimDist)
+                        const size_t ji = it->second;
+                        Ogre::Vector3 outDir = chainWaypoints.front().position - chainWaypoints.back().position;
+                        outDir.y = 0.0f;
+                        if (outDir.squaredLength() > 1e-6f)
                         {
-                            finalPath.pop_back();
+                            outDir.normalise();
                         }
-                        else
-                        {
-                            break;
-                        }
-                    }
+                        const int ai = findArmIdx(ji, outDir);
+                        const Ogre::Real myTrimDist = junctions[ji].armTrimDists[ai];
+                        const Ogre::Vector3 jXZ(junctions[ji].worldPos.x, 0.0f, junctions[ji].worldPos.z);
 
-                    {
-                        const Ogre::Vector3 backXZ(finalPath.back().position.x, 0.0f, finalPath.back().position.z);
-                        const float d = backXZ.distance(jXZ);
-                        if (d > myTrimDist * 1.001f)
+                        while (finalPath.size() > 2)
                         {
-                            const Ogre::Vector3 toJ = (jXZ - backXZ).normalisedCopy();
-                            const Ogre::Vector3 bnd = backXZ + toJ * (d - myTrimDist);
-                            RoadControlPoint bp;
-                            bp.position = bnd;
-                            bp.position.y = 0.0f;
-                            bp.groundHeight = bp.smoothedHeight = finalPath.back().groundHeight;
-                            bp.bankingAngle = finalPath.back().bankingAngle;
-                            bp.distFromStart = finalPath.back().distFromStart + (d - myTrimDist);
-                            finalPath.push_back(bp);
+                            Ogre::Vector3 p(finalPath.back().position.x, 0.0f, finalPath.back().position.z);
+                            if (p.distance(jXZ) < myTrimDist)
+                            {
+                                finalPath.pop_back();
+                            }
+                            else
+                            {
+                                break;
+                            }
                         }
-                    }
-
-                    if (finalPath.size() >= 2)
-                    {
-                        const int last = static_cast<int>(finalPath.size()) - 1;
-                        // Back trim: path arrives AT junction, so finalPath[last]-finalPath[last-1]
-                        // points TOWARD junction. Negate to get direction AWAY from junction,
-                        // consistent with front-trim arms and with armDirs[] in JunctionPoint.
-                        Ogre::Vector3 armDir = finalPath[last - 1].position - finalPath[last].position;
-                        armDir.y = 0.0f;
-                        if (armDir.squaredLength() > 1e-6f)
+                        if (finalPath.size() >= 2)
                         {
-                            armDir.normalise();
+                            const Ogre::Vector3 backXZ(finalPath.back().position.x, 0.0f, finalPath.back().position.z);
+                            const float d = backXZ.distance(jXZ);
+                            if (d > myTrimDist * 1.001f)
+                            {
+                                const Ogre::Vector3 toJ = (jXZ - backXZ).normalisedCopy();
+                                const Ogre::Vector3 bnd = backXZ + toJ * (d - myTrimDist);
+                                RoadControlPoint bp;
+                                bp.position = bnd;
+                                bp.position.y = 0.0f;
+                                bp.groundHeight = bp.smoothedHeight = finalPath.back().groundHeight;
+                                bp.bankingAngle = finalPath.back().bankingAngle;
+                                bp.distFromStart = finalPath.back().distFromStart + (d - myTrimDist);
+                                finalPath.push_back(bp);
+                            }
+                            const int last2 = static_cast<int>(finalPath.size()) - 1;
+                            Ogre::Vector3 armDir = finalPath[last2 - 1].position - finalPath[last2].position;
+                            armDir.y = 0.0f;
+                            if (armDir.squaredLength() > 1e-6f)
+                            {
+                                armDir.normalise();
+                            }
+                            storePatchCorners(ji, finalPath[last2].position, armDir);
                         }
-                        storePatchCorners(ji, finalPath[last].position, armDir);
                     }
                 }
-            }
 
-            // Re-accumulate UV
-            accumDist = 0.0f;
-            for (size_t pi = 0; pi < finalPath.size(); ++pi)
-            {
-                if (pi > 0)
+                // Re-accumulate UV after trimming
+                accumDist = 0.0f;
+                for (size_t pi = 0; pi < finalPath.size(); ++pi)
                 {
-                    accumDist += finalPath[pi].position.distance(finalPath[pi - 1].position);
+                    if (pi > 0)
+                    {
+                        accumDist += finalPath[pi].position.distance(finalPath[pi - 1].position);
+                    }
+                    finalPath[pi].distFromStart = accumDist;
                 }
-                finalPath[pi].distFromStart = accumDist;
             }
 
             if (finalPath.size() < 2)
@@ -1829,7 +1858,13 @@ namespace NOWA
                 continue;
             }
 
-            // Step 8: Transform to local space
+            // ── Step 8: Closed loop — remove duplicate endpoint ───────────────
+            if (isClosed && finalPath.size() >= 3)
+            {
+                finalPath.pop_back();
+            }
+
+            // ── Step 9: Transform to local space ──────────────────────────────
             std::vector<RoadControlPoint> localPath;
             localPath.reserve(finalPath.size());
             for (const auto& cp : finalPath)
@@ -1844,11 +1879,11 @@ namespace NOWA
                 localPath.push_back(lp);
             }
 
-            // Step 9: Generate road geometry
-            this->generateStraightRoad(localPath);
+            // ── Step 10: Generate road geometry ───────────────────────────────
+            this->generateStraightRoad(localPath, isClosed);
         }
 
-        // Step 10: Junction patches
+        // ── Junction patches ──────────────────────────────────────────────────
         for (const JunctionPoint& jp : junctions)
         {
             this->generateJunctionPatch(jp, originToUse);
@@ -2046,7 +2081,7 @@ namespace NOWA
     // When curbHeight == 0: just flat edge strips (like original)
     ///////////////////////////////////////////////////////////////////////////
 
-    void ProceduralRoadComponent::generateStraightRoad(const std::vector<RoadControlPoint>& points)
+    void ProceduralRoadComponent::generateStraightRoad(const std::vector<RoadControlPoint>& points, bool isClosed)
     {
         if (points.size() < 2)
         {
@@ -2054,7 +2089,7 @@ namespace NOWA
         }
 
         // Pre-compute shared miter data for all styles
-        std::vector<PointData> miterData = this->computeMiterData(points);
+        std::vector<PointData> miterData = this->computeMiterData(points, isClosed);
 
         RoadStyle style = this->getRoadStyleEnum();
 
@@ -2078,6 +2113,16 @@ namespace NOWA
         default:
             this->generatePavedRoad(points, miterData);
             break;
+        }
+
+        // For closed loops: generate the final closing quad from last point back to first
+        if (isClosed && points.size() >= 3)
+        {
+            const size_t last = points.size() - 1;
+            // Reuse the existing per-style generation for the seam quad
+            // by calling the same quad generation as in the main loop
+            // using miterData[last] and miterData[0]
+            this->generateSeamQuad(points, miterData, last, 0);
         }
     }
 
@@ -2158,6 +2203,91 @@ namespace NOWA
         }
 
         currentIdx += 4;
+    }
+
+    void ProceduralRoadComponent::generateSeamQuad(const std::vector<RoadControlPoint>& points, const std::vector<PointData>& miterData, size_t idxA, size_t idxB)
+    {
+        const RoadControlPoint& p0 = points[idxA];
+        const RoadControlPoint& p1 = points[idxB];
+
+        if (p0.position.distance(p1.position) < 0.001f)
+        {
+            return;
+        }
+
+        const Ogre::Real halfWidth = this->roadWidth->getReal() * 0.5f;
+        const Ogre::Real edgeW = this->edgeWidth->getReal();
+        const Ogre::Real curbH = this->curbHeight->getReal();
+        const Ogre::Real totalHalfWidth = halfWidth + edgeW;
+
+        const Ogre::Vector2 centerUV = this->centerUVTiling->getVector2();
+        const Ogre::Vector2 edgeUV = this->edgeUVTiling->getVector2();
+
+        const Ogre::Vector3 perp0 = miterData[idxA].miterPerp;
+        const Ogre::Real scale0 = miterData[idxA].miterScale;
+        const Ogre::Vector3 perp1 = miterData[idxB].miterPerp;
+        const Ogre::Real scale1 = miterData[idxB].miterScale;
+
+        const Ogre::Vector3 segDir = (p1.position - p0.position).normalisedCopy();
+        const Ogre::Quaternion bankRot0(Ogre::Radian(p0.bankingAngle), segDir);
+        const Ogre::Quaternion bankRot1(Ogre::Radian(p1.bankingAngle), segDir);
+
+        const Ogre::Vector3 base0 = p0.position + Ogre::Vector3(0, p0.smoothedHeight, 0);
+        const Ogre::Vector3 base1 = p1.position + Ogre::Vector3(0, p1.smoothedHeight, 0);
+
+        const Ogre::Vector3 cL0 = base0 + bankRot0 * (perp0 * (-halfWidth * scale0));
+        const Ogre::Vector3 cR0 = base0 + bankRot0 * (perp0 * (halfWidth * scale0));
+        const Ogre::Vector3 cL1 = base1 + bankRot1 * (perp1 * (-halfWidth * scale1));
+        const Ogre::Vector3 cR1 = base1 + bankRot1 * (perp1 * (halfWidth * scale1));
+
+        const Ogre::Real v0 = p0.distFromStart / std::max(centerUV.y, 0.001f);
+        const Ogre::Real v1 = p1.distFromStart / std::max(centerUV.y, 0.001f);
+        const Ogre::Real ev0 = p0.distFromStart / std::max(edgeUV.y, 0.001f);
+        const Ogre::Real ev1 = p1.distFromStart / std::max(edgeUV.y, 0.001f);
+
+        // Center surface
+        this->addRoadQuad(cL0, cR0, cR1, cL1, Ogre::Vector3::UNIT_Y, 0.0f, 1.0f, v0, v1, true);
+
+        const RoadStyle style = this->getRoadStyleEnum();
+
+        if (curbH > 0.001f && (style == RoadStyle::PAVED || style == RoadStyle::COBBLESTONE || style == RoadStyle::HIGHWAY))
+        {
+            const Ogre::Vector3 curbL0_top = cL0 + Ogre::Vector3(0, curbH, 0);
+            const Ogre::Vector3 curbR0_top = cR0 + Ogre::Vector3(0, curbH, 0);
+            const Ogre::Vector3 curbL1_top = cL1 + Ogre::Vector3(0, curbH, 0);
+            const Ogre::Vector3 curbR1_top = cR1 + Ogre::Vector3(0, curbH, 0);
+
+            const Ogre::Vector3 eL0_top = base0 + bankRot0 * (perp0 * (-totalHalfWidth * scale0)) + Ogre::Vector3(0, curbH, 0);
+            const Ogre::Vector3 eR0_top = base0 + bankRot0 * (perp0 * (totalHalfWidth * scale0)) + Ogre::Vector3(0, curbH, 0);
+            const Ogre::Vector3 eL1_top = base1 + bankRot1 * (perp1 * (-totalHalfWidth * scale1)) + Ogre::Vector3(0, curbH, 0);
+            const Ogre::Vector3 eR1_top = base1 + bankRot1 * (perp1 * (totalHalfWidth * scale1)) + Ogre::Vector3(0, curbH, 0);
+
+            const Ogre::Vector3 eL0_bot = base0 + bankRot0 * (perp0 * (-totalHalfWidth * scale0));
+            const Ogre::Vector3 eR0_bot = base0 + bankRot0 * (perp0 * (totalHalfWidth * scale0));
+            const Ogre::Vector3 eL1_bot = base1 + bankRot1 * (perp1 * (-totalHalfWidth * scale1));
+            const Ogre::Vector3 eR1_bot = base1 + bankRot1 * (perp1 * (totalHalfWidth * scale1));
+
+            // Left: inner wall, top, outer wall
+            this->addRoadQuad(cL0, curbL0_top, curbL1_top, cL1, perp0, 0.0f, curbH, ev0, ev1, false);
+            this->addRoadQuad(curbL0_top, eL0_top, eL1_top, curbL1_top, Ogre::Vector3::UNIT_Y, 0.0f, 1.0f, ev0, ev1, false);
+            this->addRoadQuad(eL0_top, eL0_bot, eL1_bot, eL1_top, -perp0, 0.0f, curbH, ev0, ev1, false);
+
+            // Right: inner wall, top, outer wall
+            this->addRoadQuad(curbR0_top, cR0, cR1, curbR1_top, -perp0, 0.0f, curbH, ev0, ev1, false);
+            this->addRoadQuad(eR0_top, curbR0_top, curbR1_top, eR1_top, Ogre::Vector3::UNIT_Y, 0.0f, 1.0f, ev0, ev1, false);
+            this->addRoadQuad(eR0_bot, eR0_top, eR1_top, eR1_bot, perp0, 0.0f, curbH, ev0, ev1, false);
+        }
+        else
+        {
+            // Flat edge strips (trail, dirt, or no curb)
+            const Ogre::Vector3 flatEL0 = base0 + bankRot0 * (perp0 * (-totalHalfWidth * scale0));
+            const Ogre::Vector3 flatEL1 = base1 + bankRot1 * (perp1 * (-totalHalfWidth * scale1));
+            const Ogre::Vector3 flatER0 = base0 + bankRot0 * (perp0 * (totalHalfWidth * scale0));
+            const Ogre::Vector3 flatER1 = base1 + bankRot1 * (perp1 * (totalHalfWidth * scale1));
+
+            this->addRoadQuad(flatEL0, cL0, cL1, flatEL1, Ogre::Vector3::UNIT_Y, 0.0f, 1.0f, ev0, ev1, false);
+            this->addRoadQuad(cR0, flatER0, flatER1, cR1, Ogre::Vector3::UNIT_Y, 0.0f, 1.0f, ev0, ev1, false);
+        }
     }
 
     void ProceduralRoadComponent::generateCurvedRoad(const std::vector<RoadControlPoint>& points, Ogre::Real curvature)
@@ -3376,7 +3506,7 @@ namespace NOWA
 
                 if (!isLargeGap)
                 {
-                    // Inner wall: road surface → curb top
+                    // Inner wall: road surface -> curb top
                     // u spans curbH (physical wall height) — matches generatePavedRoad convention
                     this->addRoadQuad(aK.innerR, aK_iR_top, aJ_iL_top, aJ.innerL, -outward, 0.0f, curbH, 0.0f, ev1, false);
                 }
@@ -3386,7 +3516,7 @@ namespace NOWA
 
                 if (!isLargeGap)
                 {
-                    // Outer wall: curb top → ground
+                    // Outer wall: curb top -> ground
                     this->addRoadQuad(aK_oR_top, aK.outerR, aJ.outerL, aJ_oL_top, outward, 0.0f, curbH, 0.0f, ev1, false);
                 }
             }
@@ -3458,6 +3588,449 @@ namespace NOWA
         }
 
         currentIdx += 3;
+    }
+
+    bool ProceduralRoadComponent::detectSnapToRoad(const Ogre::Vector3& worldPos, Ogre::Real radius)
+    {
+        if (this->roadSegments.empty())
+        {
+            return false;
+        }
+
+        float bestDist = radius;
+        int bestSeg = -1;
+        float bestT = 0.0f;
+        Ogre::Vector3 bestPt;
+
+        for (int si = 0; si < static_cast<int>(this->roadSegments.size()); ++si)
+        {
+            const RoadSegment& seg = this->roadSegments[si];
+            if (seg.controlPoints.size() < 2)
+            {
+                continue;
+            }
+
+            // Check FRONT endpoint only
+            {
+                const Ogre::Vector3 ep(seg.controlPoints.front().position.x, 0.0f, seg.controlPoints.front().position.z);
+                const Ogre::Vector3 p(worldPos.x, 0.0f, worldPos.z);
+                float dist = ep.distance(p);
+                if (dist < bestDist)
+                {
+                    bestDist = dist;
+                    bestSeg = si;
+                    bestT = 0.0f;
+                    bestPt = Ogre::Vector3(seg.controlPoints.front().position.x, seg.controlPoints.front().smoothedHeight, seg.controlPoints.front().position.z);
+                }
+            }
+
+            // Check BACK endpoint only
+            {
+                const Ogre::Vector3 ep(seg.controlPoints.back().position.x, 0.0f, seg.controlPoints.back().position.z);
+                const Ogre::Vector3 p(worldPos.x, 0.0f, worldPos.z);
+                float dist = ep.distance(p);
+                if (dist < bestDist)
+                {
+                    bestDist = dist;
+                    bestSeg = si;
+                    bestT = 1.0f;
+                    bestPt = Ogre::Vector3(seg.controlPoints.back().position.x, seg.controlPoints.back().smoothedHeight, seg.controlPoints.back().position.z);
+                }
+            }
+        }
+
+        this->isSnapToRoad = (bestSeg >= 0);
+        this->snapToRoadSegmentIdx = bestSeg;
+        this->snapToRoadT = bestT;
+        this->snapToRoadPoint = bestPt;
+        return this->isSnapToRoad;
+    }
+
+    void ProceduralRoadComponent::scheduleSnapIndicatorUpdate(void)
+    {
+        if (nullptr == this->segOverlayObject)
+        {
+            return;
+        }
+
+        if (!this->isSnapToRoad)
+        {
+            // Only clear if we're not already drawing segment overlay
+            if (this->getEditModeEnum() != EditMode::SEGMENT)
+            {
+                NOWA::GraphicsModule::RenderCommand cmd = [this]()
+                {
+                    if (this->segOverlayObject)
+                    {
+                        this->segOverlayObject->clear();
+                    }
+                    if (this->segOverlayNode)
+                    {
+                        this->segOverlayNode->setVisible(false);
+                    }
+                };
+                NOWA::GraphicsModule::getInstance()->enqueue(std::move(cmd), "snapIndicator_hide");
+            }
+            return;
+        }
+
+        const Ogre::Vector3 centre = this->snapToRoadPoint;
+        const Ogre::Real r = this->roadWidth->getReal() * 0.6f;
+        const int segs = 16;
+        const Ogre::Real pushY = 0.25f;
+
+        struct LV
+        {
+            Ogre::Vector3 pos;
+            Ogre::ColourValue col;
+        };
+        std::vector<LV> lines;
+        lines.reserve(segs * 2);
+
+        const Ogre::ColourValue snapCol(0.0f, 1.0f, 0.5f, 1.0f); // green
+
+        for (int k = 0; k < segs; ++k)
+        {
+            const float a0 = Ogre::Math::TWO_PI * k / segs;
+            const float a1 = Ogre::Math::TWO_PI * (k + 1) / segs;
+            lines.push_back({Ogre::Vector3(centre.x + r * std::cos(a0), centre.y + pushY, centre.z + r * std::sin(a0)), snapCol});
+            lines.push_back({Ogre::Vector3(centre.x + r * std::cos(a1), centre.y + pushY, centre.z + r * std::sin(a1)), snapCol});
+        }
+
+        NOWA::GraphicsModule::RenderCommand cmd = [this, lines = std::move(lines)]()
+        {
+            if (!this->segOverlayObject)
+            {
+                return;
+            }
+            this->segOverlayObject->clear();
+            try
+            {
+                this->segOverlayObject->begin("WhiteNoLightingBackground", Ogre::OT_LINE_LIST);
+                Ogre::uint32 idx = 0;
+                for (const auto& v : lines)
+                {
+                    this->segOverlayObject->position(v.pos);
+                    this->segOverlayObject->colour(v.col);
+                    this->segOverlayObject->index(idx++);
+                }
+                this->segOverlayObject->end();
+            }
+            catch (Ogre::Exception&)
+            {
+            }
+            if (this->segOverlayNode)
+            {
+                this->segOverlayNode->setVisible(true);
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(cmd), "snapIndicator_draw");
+    }
+
+    void ProceduralRoadComponent::createWaypointNodes(bool splitLanes)
+    {
+        if (this->roadSegments.empty())
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] createWaypointNodes: no segments.");
+            return;
+        }
+
+        const Ogre::Real laneOffset = this->roadWidth->getReal() * 0.25f;
+        const bool invertLanes = this->invertWaypoints->getBool();
+
+        struct WpData
+        {
+            Ogre::Vector3 pos;
+            Ogre::Quaternion orient;
+            Ogre::String label;
+        };
+
+        std::vector<WpData> forwardWps;
+        std::vector<WpData> reverseWps;
+
+        std::vector<bool> processed(this->roadSegments.size(), false);
+
+        for (size_t i = 0; i < this->roadSegments.size(); ++i)
+        {
+            if (processed[i])
+            {
+                continue;
+            }
+
+            std::vector<size_t> chainIndices;
+            chainIndices.push_back(i);
+            processed[i] = true;
+
+            size_t current = i;
+            bool foundNext = true;
+            while (foundNext)
+            {
+                foundNext = false;
+                const Ogre::Vector3& lastEnd = this->roadSegments[current].controlPoints.back().position;
+                for (size_t j = 0; j < this->roadSegments.size(); ++j)
+                {
+                    if (processed[j])
+                    {
+                        continue;
+                    }
+                    const Ogre::Vector3& nextStart = this->roadSegments[j].controlPoints.front().position;
+                    if (lastEnd.squaredDistance(nextStart) < 0.01f)
+                    {
+                        chainIndices.push_back(j);
+                        processed[j] = true;
+                        current = j;
+                        foundNext = true;
+                        break;
+                    }
+                }
+            }
+
+            std::vector<RoadControlPoint> fullChainWaypoints;
+            for (size_t ci = 0; ci < chainIndices.size(); ++ci)
+            {
+                const RoadSegment& s = this->roadSegments[chainIndices[ci]];
+                for (size_t pi = 0; pi < s.controlPoints.size(); ++pi)
+                {
+                    if (ci > 0 && pi == 0)
+                    {
+                        continue;
+                    }
+                    fullChainWaypoints.push_back(s.controlPoints[pi]);
+                }
+            }
+
+            const Ogre::Real tMax = static_cast<Ogre::Real>(fullChainWaypoints.size() - 1);
+            size_t runningTotal = 0;
+
+            for (size_t ci = 0; ci < chainIndices.size(); ++ci)
+            {
+                const RoadSegment& seg = this->roadSegments[chainIndices[ci]];
+                const size_t nCP = seg.controlPoints.size();
+                if (nCP < 2)
+                {
+                    runningTotal += nCP - 1;
+                    continue;
+                }
+
+                const Ogre::Real tStart = static_cast<Ogre::Real>(runningTotal);
+                const Ogre::Real tEnd = static_cast<Ogre::Real>(runningTotal + nCP - 1);
+                const Ogre::Real tMid = Ogre::Math::Clamp((tStart + tEnd) * 0.5f, 0.0f, tMax);
+
+                Ogre::Vector3 midPosXZ = this->evaluateCatmullRom(fullChainWaypoints, tMid);
+                midPosXZ.y = 0.0f;
+                const Ogre::Real midH = this->evaluateCatmullRomHeight(fullChainWaypoints, tMid);
+                const Ogre::Vector3 midPos(midPosXZ.x, midH, midPosXZ.z);
+
+                const Ogre::Real eps = 0.05f;
+                const Ogre::Real tA = Ogre::Math::Clamp(tMid - eps, 0.0f, tMax);
+                const Ogre::Real tB = Ogre::Math::Clamp(tMid + eps, 0.0f, tMax);
+                Ogre::Vector3 posA = this->evaluateCatmullRom(fullChainWaypoints, tA);
+                Ogre::Vector3 posB = this->evaluateCatmullRom(fullChainWaypoints, tB);
+
+                Ogre::Vector3 fwd = posB - posA;
+                fwd.y = 0.0f;
+                if (fwd.squaredLength() < 1e-6f)
+                {
+                    fwd = Ogre::Vector3::UNIT_Z;
+                }
+                fwd.normalise();
+
+                const Ogre::Vector3 right = -(fwd.crossProduct(Ogre::Vector3::UNIT_Y).normalisedCopy());
+
+                const Ogre::Quaternion orient = Ogre::Vector3::NEGATIVE_UNIT_Z.getRotationTo(fwd);
+                const Ogre::Quaternion orientRev = Ogre::Vector3::NEGATIVE_UNIT_Z.getRotationTo(-fwd);
+
+                if (!splitLanes)
+                {
+                    WpData wp;
+                    wp.pos = midPos;
+                    wp.orient = orient;
+                    wp.label = Ogre::StringConverter::toString(forwardWps.size());
+                    forwardWps.push_back(wp);
+                }
+                else
+                {
+                    WpData wpFwd;
+                    wpFwd.pos = midPos + right * laneOffset;
+                    wpFwd.orient = orient;
+                    wpFwd.label = "F" + Ogre::StringConverter::toString(forwardWps.size());
+                    forwardWps.push_back(wpFwd);
+
+                    WpData wpRev;
+                    wpRev.pos = midPos - right * laneOffset;
+                    wpRev.orient = orientRev;
+                    wpRev.label = "R" + Ogre::StringConverter::toString(reverseWps.size());
+                    reverseWps.push_back(wpRev);
+                }
+
+                runningTotal += nCP - 1;
+            }
+        }
+
+        // Reverse lane: driven opposite direction, so reverse order
+        std::reverse(reverseWps.begin(), reverseWps.end());
+        for (size_t k = 0; k < reverseWps.size(); ++k)
+        {
+            reverseWps[k].label = "R" + Ogre::StringConverter::toString(k);
+        }
+
+        // ── Invert: flip travel direction of BOTH lanes ────────────────────────
+        // Forward becomes backward (reversed order + flipped orientation),
+        // Reverse becomes forward. Net effect: car goes other way around track.
+        if (invertLanes)
+        {
+            // Reverse the order of forwardWps and flip their orientations
+            std::reverse(forwardWps.begin(), forwardWps.end());
+            for (auto& wp : forwardWps)
+            {
+                // Flip orientation 180° around Y axis
+                wp.orient = wp.orient * Ogre::Quaternion(Ogre::Degree(180.0f), Ogre::Vector3::UNIT_Y);
+            }
+            for (size_t k = 0; k < forwardWps.size(); ++k)
+            {
+                forwardWps[k].label = "F" + Ogre::StringConverter::toString(k);
+            }
+
+            // Reverse lane: un-reverse it (was reversed for normal direction,
+            // now needs normal order since directions are flipped)
+            std::reverse(reverseWps.begin(), reverseWps.end());
+            for (auto& wp : reverseWps)
+            {
+                wp.orient = wp.orient * Ogre::Quaternion(Ogre::Degree(180.0f), Ogre::Vector3::UNIT_Y);
+            }
+            for (size_t k = 0; k < reverseWps.size(); ++k)
+            {
+                reverseWps[k].label = "R" + Ogre::StringConverter::toString(k);
+            }
+        }
+
+        std::vector<WpData> allWps = forwardWps;
+        const size_t fwdCount = forwardWps.size();
+        for (const auto& wp : reverseWps)
+        {
+            allWps.push_back(wp);
+        }
+
+        const Ogre::String meshName = "Node.mesh";
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] createWaypointNodes: creating " + Ogre::StringConverter::toString(allWps.size()) +
+                                                                               " waypoints (splitLanes=" + Ogre::StringConverter::toString(splitLanes) + ", invert=" + Ogre::StringConverter::toString(invertLanes) + ")");
+
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, allWps, meshName, splitLanes, fwdCount]()
+        {
+            Ogre::SceneManager* sm = this->gameObjectPtr->getSceneManager();
+
+            for (size_t wi = 0; wi < allWps.size(); ++wi)
+            {
+                const auto& wp = allWps[wi];
+
+                Ogre::SceneNode* node = sm->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_STATIC);
+                node->setPosition(wp.pos);
+                node->setOrientation(wp.orient);
+                node->setScale(Ogre::Vector3::UNIT_SCALE);
+
+                Ogre::Item* item = sm->createItem(meshName, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, Ogre::SCENE_STATIC);
+                node->attachObject(item);
+
+                const bool isReverse = splitLanes && (wi >= fwdCount);
+                const size_t laneIdx = isReverse ? (wi - fwdCount) : wi;
+                const Ogre::String lane = isReverse ? "Reverse" : "Forward";
+
+                Ogre::String goName = "Waypoint_" + lane + "_" + Ogre::StringConverter::toString(laneIdx);
+                AppStateManager::getSingletonPtr()->getGameObjectController()->getValidatedGameObjectName(goName);
+
+                item->setName(goName);
+                node->setName(goName);
+
+                GameObjectPtr goPtr = GameObjectFactory::getInstance()->createGameObject(sm, node, item, GameObject::ITEM);
+
+                if (nullptr != goPtr)
+                {
+                    NOWA::GameObjectFactory::getInstance()->createComponent(goPtr, NodeComponent::getStaticClassName());
+                    goPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
+
+                    auto titleCompPtr = NOWA::GameObjectFactory::getInstance()->createComponent(goPtr, GameObjectTitleComponent::getStaticClassName());
+                    if (nullptr != titleCompPtr)
+                    {
+                        auto titleComp = boost::dynamic_pointer_cast<GameObjectTitleComponent>(titleCompPtr);
+                        if (nullptr != titleComp)
+                        {
+                            titleComp->setCaption(wp.label);
+                            titleComp->setCharHeight(0.5f);
+                            titleComp->setOffsetPosition(Ogre::Vector3(0.0f, 0.5f, 0.0f));
+                            titleComp->setAlwaysPresent(true);
+                        }
+                    }
+
+                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] Created waypoint: " + goName + " label=" + wp.label + " at " + Ogre::StringConverter::toString(wp.pos));
+                }
+            }
+        };
+
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ProceduralRoadComponent::createWaypointNodes");
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralRoadComponent] createWaypointNodes: done.");
+    }
+
+    void ProceduralRoadComponent::splitSegmentAtPoint(int segIdx, float t, const Ogre::Vector3& splitWorldPos)
+    {
+        if (segIdx < 0 || segIdx >= static_cast<int>(this->roadSegments.size()))
+        {
+            return;
+        }
+
+        const RoadSegment& original = this->roadSegments[segIdx];
+        if (original.controlPoints.size() < 2)
+        {
+            return;
+        }
+
+        // Interpolate a new control point at the split position
+        // Find which sub-interval t falls in
+        const size_t n = original.controlPoints.size();
+        const float totalSegs = static_cast<float>(n - 1);
+        const float scaledT = t * totalSegs;
+        const size_t segPart = static_cast<size_t>(std::min(static_cast<float>(n - 2), std::floor(scaledT)));
+        const float localT = scaledT - static_cast<float>(segPart);
+
+        const RoadControlPoint& cpA = original.controlPoints[segPart];
+        const RoadControlPoint& cpB = original.controlPoints[segPart + 1];
+
+        RoadControlPoint splitCP;
+        splitCP.position = splitWorldPos;
+        splitCP.position.y = 0.0f;
+        splitCP.groundHeight = cpA.groundHeight + (cpB.groundHeight - cpA.groundHeight) * localT;
+        splitCP.smoothedHeight = cpA.smoothedHeight + (cpB.smoothedHeight - cpA.smoothedHeight) * localT;
+        splitCP.bankingAngle = 0.0f;
+        splitCP.distFromStart = 0.0f;
+
+        // First half: original.controlPoints[0..segPart] + splitCP
+        RoadSegment seg1;
+        seg1.isCurved = original.isCurved;
+        seg1.curvature = original.curvature;
+        for (size_t i = 0; i <= segPart; ++i)
+        {
+            seg1.controlPoints.push_back(original.controlPoints[i]);
+        }
+        seg1.controlPoints.push_back(splitCP);
+
+        // Second half: splitCP + original.controlPoints[segPart+1..end]
+        RoadSegment seg2;
+        seg2.isCurved = original.isCurved;
+        seg2.curvature = original.curvature;
+        seg2.controlPoints.push_back(splitCP);
+        for (size_t i = segPart + 1; i < n; ++i)
+        {
+            seg2.controlPoints.push_back(original.controlPoints[i]);
+        }
+
+        // Replace original with the two halves
+        this->roadSegments.erase(this->roadSegments.begin() + segIdx);
+        this->roadSegments.insert(this->roadSegments.begin() + segIdx, seg2);
+        this->roadSegments.insert(this->roadSegments.begin() + segIdx, seg1);
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+            "[ProceduralRoadComponent] Split segment " + Ogre::StringConverter::toString(segIdx) + " at t=" + Ogre::StringConverter::toString(t) + " pos=" + Ogre::StringConverter::toString(splitWorldPos));
     }
 
     void ProceduralRoadComponent::createRoadMesh(void)
@@ -4704,6 +5277,47 @@ namespace NOWA
         return result;
     }
 
+    void ProceduralRoadComponent::addRoadSegmentLua(const Ogre::Vector3& start, const Ogre::Vector3& end)
+    {
+        RoadSegment seg;
+        seg.isCurved = false;
+        seg.curvature = 0.0f;
+
+        RoadControlPoint cpStart;
+        cpStart.position = start;
+        cpStart.position.y = 0.0f;
+        cpStart.groundHeight = this->adaptToGround->getBool() ? this->getGroundHeight(start) : start.y;
+        cpStart.smoothedHeight = cpStart.groundHeight;
+        cpStart.bankingAngle = 0.0f;
+        cpStart.distFromStart = 0.0f;
+
+        RoadControlPoint cpEnd;
+        cpEnd.position = end;
+        cpEnd.position.y = 0.0f;
+        cpEnd.groundHeight = this->adaptToGround->getBool() ? this->getGroundHeight(end) : end.y;
+        cpEnd.smoothedHeight = cpEnd.groundHeight;
+        cpEnd.bankingAngle = 0.0f;
+        cpEnd.distFromStart = start.distance(end);
+
+        if (false == this->hasRoadOrigin)
+        {
+            this->roadOrigin = start;
+            this->roadOrigin.y = cpStart.groundHeight;
+            this->hasRoadOrigin = true;
+        }
+
+        seg.controlPoints.push_back(cpStart);
+        seg.controlPoints.push_back(cpEnd);
+        this->roadSegments.push_back(seg);
+        this->rebuildMesh();
+        this->updateContinuationPoint();
+    }
+
+    int ProceduralRoadComponent::getSegmentCount(void) const
+    {
+        return static_cast<int>(this->roadSegments.size());
+    }
+
     void ProceduralRoadComponent::setRoadData(const std::vector<unsigned char>& data)
     {
         // Destroy current mesh first
@@ -5091,15 +5705,17 @@ namespace NOWA
     // so that adjacent quads share vertices perfectly on curves.
     ///////////////////////////////////////////////////////////////////////////
 
-    std::vector<ProceduralRoadComponent::PointData> ProceduralRoadComponent::computeMiterData(const std::vector<RoadControlPoint>& points)
+    std::vector<ProceduralRoadComponent::PointData> ProceduralRoadComponent::computeMiterData(const std::vector<RoadControlPoint>& points, bool isClosed)
     {
-        std::vector<PointData> data(points.size());
+        const size_t n = points.size();
+        std::vector<PointData> data(n);
 
-        for (size_t i = 0; i < points.size(); ++i)
+        for (size_t i = 0; i < n; ++i)
         {
             Ogre::Vector3 dirPrev = Ogre::Vector3::ZERO;
             Ogre::Vector3 dirNext = Ogre::Vector3::ZERO;
 
+            // Previous direction
             if (i > 0)
             {
                 dirPrev = points[i].position - points[i - 1].position;
@@ -5113,10 +5729,39 @@ namespace NOWA
                     dirPrev = Ogre::Vector3::ZERO;
                 }
             }
+            else if (isClosed && n >= 3)
+            {
+                // Wrap: use last->first direction
+                dirPrev = points[0].position - points[n - 1].position;
+                dirPrev.y = 0.0f;
+                if (dirPrev.squaredLength() > 0.0001f)
+                {
+                    dirPrev.normalise();
+                }
+                else
+                {
+                    dirPrev = Ogre::Vector3::ZERO;
+                }
+            }
 
-            if (i < points.size() - 1)
+            // Next direction
+            if (i < n - 1)
             {
                 dirNext = points[i + 1].position - points[i].position;
+                dirNext.y = 0.0f;
+                if (dirNext.squaredLength() > 0.0001f)
+                {
+                    dirNext.normalise();
+                }
+                else
+                {
+                    dirNext = Ogre::Vector3::ZERO;
+                }
+            }
+            else if (isClosed && n >= 3)
+            {
+                // Wrap: use last->first direction
+                dirNext = points[0].position - points[n - 1].position;
                 dirNext.y = 0.0f;
                 if (dirNext.squaredLength() > 0.0001f)
                 {
@@ -5159,7 +5804,7 @@ namespace NOWA
             }
             perp.normalise();
 
-            // Miter scale: 1/cos(halfAngle) to maintain constant width
+            // Miter scale: 1/cos(halfAngle)
             Ogre::Vector3 refDir = (dirNext.squaredLength() > 0.0001f) ? dirNext : dirPrev;
             Ogre::Vector3 refPerp = Ogre::Vector3::UNIT_Y.crossProduct(refDir);
             if (refPerp.squaredLength() > 0.0001f)
@@ -6473,6 +7118,106 @@ namespace NOWA
             }
         };
         NOWA::GraphicsModule::getInstance()->enqueue(std::move(drawCmd), "ProceduralRoadComponent::segOverlay_draw");
+    }
+
+    // =========================================================================
+    //  Lua API
+    // =========================================================================
+
+    ProceduralRoadComponent* getProceduralRoadComponent(GameObject* go)
+    {
+        return NOWA::makeStrongPtr(go->getComponent<ProceduralRoadComponent>()).get();
+    }
+
+    ProceduralRoadComponent* getProceduralRoadComponentFromName(GameObject* go, const Ogre::String& name)
+    {
+        return NOWA::makeStrongPtr(go->getComponentFromName<ProceduralRoadComponent>(name)).get();
+    }
+
+    void ProceduralRoadComponent::createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass)
+    {
+        luabind::module(lua)
+        [
+            luabind::class_<ProceduralRoadComponent, GameObjectComponent>("ProceduralRoadComponent")
+
+                // ── Activation ────────────────────────────────────────────────
+                .def("setActivated", &ProceduralRoadComponent::setActivated)
+                .def("isActivated", &ProceduralRoadComponent::isActivated)
+
+                // ── Road dimensions ───────────────────────────────────────────
+                .def("setRoadWidth", &ProceduralRoadComponent::setRoadWidth)
+                .def("getRoadWidth", &ProceduralRoadComponent::getRoadWidth)
+                .def("setEdgeWidth", &ProceduralRoadComponent::setEdgeWidth)
+                .def("getEdgeWidth", &ProceduralRoadComponent::getEdgeWidth)
+                .def("setCurbHeight", &ProceduralRoadComponent::setCurbHeight)
+                .def("getCurbHeight", &ProceduralRoadComponent::getCurbHeight)
+                .def("setHeightOffset", &ProceduralRoadComponent::setHeightOffset)
+                .def("getHeightOffset", &ProceduralRoadComponent::getHeightOffset)
+
+                // ── Road style ────────────────────────────────────────────────
+                .def("setRoadStyle", &ProceduralRoadComponent::setRoadStyle)
+                .def("getRoadStyle", &ProceduralRoadComponent::getRoadStyle)
+
+                // ── Terrain adaptation ────────────────────────────────────────
+                .def("setAdaptToGround", &ProceduralRoadComponent::setAdaptToGround)
+                .def("getAdaptToGround", &ProceduralRoadComponent::getAdaptToGround)
+                .def("setMaxGradient", &ProceduralRoadComponent::setMaxGradient)
+                .def("getMaxGradient", &ProceduralRoadComponent::getMaxGradient)
+                .def("setSmoothingFactor", &ProceduralRoadComponent::setSmoothingFactor)
+                .def("getSmoothingFactor", &ProceduralRoadComponent::getSmoothingFactor)
+                .def("setEnableBanking", &ProceduralRoadComponent::setEnableBanking)
+                .def("getEnableBanking", &ProceduralRoadComponent::getEnableBanking)
+                .def("setBankingAngle", &ProceduralRoadComponent::setBankingAngle)
+                .def("getBankingAngle", &ProceduralRoadComponent::getBankingAngle)
+
+                // ── Grid / snap ───────────────────────────────────────────────
+                .def("setSnapToGrid", &ProceduralRoadComponent::setSnapToGrid)
+                .def("getSnapToGrid", &ProceduralRoadComponent::getSnapToGrid)
+                .def("setGridSize", &ProceduralRoadComponent::setGridSize)
+                .def("getGridSize", &ProceduralRoadComponent::getGridSize)
+
+                // ── Datablocks ────────────────────────────────────────────────
+                .def("setCenterDatablock", &ProceduralRoadComponent::setCenterDatablock)
+                .def("getCenterDatablock", &ProceduralRoadComponent::getCenterDatablock)
+                .def("setEdgeDatablock", &ProceduralRoadComponent::setEdgeDatablock)
+                .def("getEdgeDatablock", &ProceduralRoadComponent::getEdgeDatablock)
+
+                // ── UV tiling ─────────────────────────────────────────────────
+                .def("setCenterUVTiling", &ProceduralRoadComponent::setCenterUVTiling)
+                .def("getCenterUVTiling", &ProceduralRoadComponent::getCenterUVTiling)
+                .def("setEdgeUVTiling", &ProceduralRoadComponent::setEdgeUVTiling)
+                .def("getEdgeUVTiling", &ProceduralRoadComponent::getEdgeUVTiling)
+
+                // ── Curve quality ─────────────────────────────────────────────
+                .def("setCurveSubdivisions", &ProceduralRoadComponent::setCurveSubdivisions)
+                .def("getCurveSubdivisions", &ProceduralRoadComponent::getCurveSubdivisions)
+
+                // ── Segment management ────────────────────────────────────────
+                .def("getSegmentCount", &ProceduralRoadComponent::getSegmentCount)
+                .def("addRoadSegment", &ProceduralRoadComponent::addRoadSegmentLua)
+        ];
+
+        // ── LuaScriptApi documentation ─────────────────────────────────────────
+        LuaScriptApi::getInstance()->addClassToCollection("ProceduralRoadComponent", "class inherits GameObjectComponent", ProceduralRoadComponent::getStaticInfoText());
+        LuaScriptApi::getInstance()->addClassToCollection("ProceduralRoadComponent", "void setActivated(bool activated)", "Activates or deactivates the road component.");
+        LuaScriptApi::getInstance()->addClassToCollection("ProceduralRoadComponent", "void setRoadWidth(float width)", "Sets the road surface width in world units.");
+        LuaScriptApi::getInstance()->addClassToCollection("ProceduralRoadComponent", "void setEdgeWidth(float width)", "Sets the edge/curb width on each side of the road.");
+        LuaScriptApi::getInstance()->addClassToCollection("ProceduralRoadComponent", "void setCurbHeight(float height)", "Sets the height of the raised curb. 0 = flat edge strip.");
+        LuaScriptApi::getInstance()->addClassToCollection("ProceduralRoadComponent", "void setRoadStyle(string style)", "Sets road style. Values: 'Paved', 'Highway', 'Trail', 'Dirt', 'Cobblestone'.");
+        LuaScriptApi::getInstance()->addClassToCollection("ProceduralRoadComponent", "void setAdaptToGround(bool adapt)", "If true, road surface follows terrain height.");
+        LuaScriptApi::getInstance()->addClassToCollection("ProceduralRoadComponent", "void setCenterDatablock(string name)", "Sets the PBS datablock for the road center surface.");
+        LuaScriptApi::getInstance()->addClassToCollection("ProceduralRoadComponent", "void setEdgeDatablock(string name)", "Sets the PBS datablock for the road edge / curb.");
+        LuaScriptApi::getInstance()->addClassToCollection("ProceduralRoadComponent", "int getSegmentCount()", "Returns the number of road segments currently placed.");
+        LuaScriptApi::getInstance()->addClassToCollection("ProceduralRoadComponent", "void addRoadSegment(Vector3 start, Vector3 end)", "Adds a single road segment from start to end world position and rebuilds.");
+
+        // ── Register on GameObject and GameObjectController ────────────────────
+        gameObjectClass.def("getProceduralRoadComponent", (ProceduralRoadComponent * (*)(GameObject*)) & getProceduralRoadComponent);
+        gameObjectClass.def("getProceduralRoadComponentFromName", &getProceduralRoadComponentFromName);
+        gameObjectControllerClass.def("castProceduralRoadComponent", &GameObjectController::cast<ProceduralRoadComponent>);
+
+        LuaScriptApi::getInstance()->addClassToCollection("GameObject", "ProceduralRoadComponent getProceduralRoadComponent()", "Gets the ProceduralRoadComponent from this GameObject.");
+        LuaScriptApi::getInstance()->addClassToCollection("GameObject", "ProceduralRoadComponent getProceduralRoadComponentFromName(string name)", "Gets a named ProceduralRoadComponent from this GameObject.");
+        LuaScriptApi::getInstance()->addClassToCollection("GameObjectController", "ProceduralRoadComponent castProceduralRoadComponent(ProceduralRoadComponent other)", "Casts for Lua auto-completion support.");
     }
 
 } // namespace NOWA

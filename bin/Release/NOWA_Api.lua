@@ -10029,6 +10029,22 @@ return {
 				returns = "(ProceduralMazeComponent)",
 				valuetype = "ProceduralMazeComponent"
 			},
+			getProceduralRoadComponent =
+			{
+				type = "function",
+				description = "Gets the ProceduralRoadComponent from this GameObject.",
+				args = "()",
+				returns = "(ProceduralRoadComponent)",
+				valuetype = "ProceduralRoadComponent"
+			},
+			getProceduralRoadComponentFromName =
+			{
+				type = "function",
+				description = "Gets a named ProceduralRoadComponent from this GameObject.",
+				args = "(string name)",
+				returns = "(ProceduralRoadComponent)",
+				valuetype = "ProceduralRoadComponent"
+			},
 			getProceduralTerrainCreationComponent =
 			{
 				type = "function",
@@ -10044,6 +10060,22 @@ return {
 				args = "(string name)",
 				returns = "(ProceduralTerrainCreationComponent)",
 				valuetype = "ProceduralTerrainCreationComponent"
+			},
+			getProceduralWallComponent =
+			{
+				type = "function",
+				description = "Gets the ProceduralWallComponent from this GameObject.",
+				args = "()",
+				returns = "(ProceduralWallComponent)",
+				valuetype = "ProceduralWallComponent"
+			},
+			getProceduralWallComponentFromName =
+			{
+				type = "function",
+				description = "Gets a named ProceduralWallComponent from this GameObject.",
+				args = "(string name)",
+				returns = "(ProceduralWallComponent)",
+				valuetype = "ProceduralWallComponent"
 			},
 			getPurePursuitComponentFromIndex =
 			{
@@ -11925,6 +11957,14 @@ return {
 				returns = "(ProceduralMazeComponent)",
 				valuetype = "ProceduralMazeComponent"
 			},
+			castProceduralRoadComponent =
+			{
+				type = "function",
+				description = "Casts for Lua auto-completion support.",
+				args = "(ProceduralRoadComponent other)",
+				returns = "(ProceduralRoadComponent)",
+				valuetype = "ProceduralRoadComponent"
+			},
 			castProceduralTerrainCreationComponent =
 			{
 				type = "function",
@@ -11932,6 +11972,14 @@ return {
 				args = "(ProceduralTerrainCreationComponent other)",
 				returns = "(ProceduralTerrainCreationComponent)",
 				valuetype = "ProceduralTerrainCreationComponent"
+			},
+			castProceduralWallComponent =
+			{
+				type = "function",
+				description = "Casts for Lua auto-completion support.",
+				args = "(ProceduralWallComponent other)",
+				returns = "(ProceduralWallComponent)",
+				valuetype = "ProceduralWallComponent"
 			},
 			castPurePursuitComponent =
 			{
@@ -18903,7 +18951,7 @@ return {
 	MeshConstructionComponent =
 	{
 		type = "class",
-		description = "Warcraft-2-style bottom-to-top mesh construction animation. Simulation-only — editor always shows the full mesh. Optional camera-facing progress bar and percentage text.",
+		description = "Mesh construction animation. Simulation-only — editor always shows the full mesh. Optional camera-facing progress bar and percentage text.",
 		inherits = "GameObjectComponent",
 		childs = 
 		{
@@ -26334,6 +26382,95 @@ return {
 		type = "class",
 		description = "Generates a procedural path."
 	},
+	ProceduralRoadComponent =
+	{
+		type = "class",
+		description = "Usage: Creates procedural roads with terrain-following geometry and multiple styles.  ROAD BUILDING (Object Mode): - Left-click on terrain to start a new road segment. - Move the mouse to preview the segment, then left-click again to confirm it. - Hold SHIFT while confirming to automatically chain the next segment from the endpoint. - Hold CTRL to constrain the segment direction to the X or Z axis. - Right-click or press ESC to cancel the current segment. - Press CTRL+Z to undo the last confirmed segment.  SEGMENT MODE: - Set the 'Edit Mode' property to 'Segment' to enter segment editing. - Left-click near any road segment to select it. The selected segment is highlighted in orange. - Press X to delete the selected segment. The remaining road rebuilds automatically. - Press E to extend a new segment from the tail endpoint of the selected segment.   Drag the mouse to preview the extension, then left-click to confirm.   Press ESC to cancel the extension. - Press ESC (without extending) to deselect the current segment. - When building or extending near an existing segment endpoint, a green snap circle   appears. Release at that point to snap exactly to the endpoint, closing the road loop   or connecting to an existing junction.  JUNCTIONS: - When three or more segments share an endpoint, a junction patch is generated   automatically to fill the gap between the road arms. - The junction patch uses the same center datablock as the road surface. - Edge strips and curbs are generated on the open boundary of each junction arm. - For Highway style roads, branches may only depart to the right relative to the   direction of travel, matching real motorway exit conventions.  ROAD STYLES: - Paved: solid road surface with raised curbs and edge strips. - Highway: paved road with a center divider strip. Branches exit to the right only. - Trail: narrow path with flat edge blend, no curbs. - Dirt: unpaved road with soft edge transition. - Cobblestone: paved surface with cobblestone material and curbs.  TERRAIN FOLLOWING: - When 'Adapt To Ground' is enabled, the road samples terrain height along each segment   and applies Gaussian height smoothing to avoid sharp steps. - 'Max Gradient' limits how steeply the road can climb or descend. - 'Smoothing Factor' controls how aggressively height transitions are blended. - 'Enable Banking' tilts the road surface into corners based on curvature. - 'Curve Subdivisions' controls how many interpolated points are used per segment.   Higher values produce smoother curves at the cost of more geometry.  WAYPOINT GENERATION: - 'Generate Waypoints' creates one centered waypoint GameObject per road segment   in chain travel order, suitable for single-lane AI navigation. - 'Generate Split Waypoints' creates two waypoints per segment, one per lane,   using right-hand traffic conventions. Forward waypoints run in travel direction   and reverse waypoints run in the opposite direction. - 'Invert Waypoints' reverses the travel direction of all generated waypoints. - Each waypoint GameObject contains a NodeComponent and a GameObjectTitleComponent   showing its index number above the node.  CONVERT TO MESH: - 'Convert To Mesh' exports the current road geometry as a static .mesh file   and replaces this component with a standard mesh item for optimal performance. - This operation is permanent and cannot be undone procedurally.  LUA API: - getProceduralRoadComponent() on a GameObject returns this component. - addRoadSegment(start, end) adds a segment between two world positions. - getSegmentCount() returns the current number of segments. - setRoadWidth(w), setEdgeWidth(w), setCurbHeight(h) adjust geometry dimensions. - setRoadStyle(s) sets the style string: Paved, Highway, Trail, Dirt, Cobblestone. ",
+		inherits = "GameObjectComponent",
+		childs = 
+		{
+			setActivated =
+			{
+				type = "method",
+				description = "Activates or deactivates the road component.",
+				args = "(boolean activated)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setRoadWidth =
+			{
+				type = "method",
+				description = "Sets the road surface width in world units.",
+				args = "(number width)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setEdgeWidth =
+			{
+				type = "method",
+				description = "Sets the edge/curb width on each side of the road.",
+				args = "(number width)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setCurbHeight =
+			{
+				type = "method",
+				description = "Sets the height of the raised curb. 0 = flat edge strip.",
+				args = "(number height)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setRoadStyle =
+			{
+				type = "method",
+				description = "Sets road style. Values: 'Paved', 'Highway', 'Trail', 'Dirt', 'Cobblestone'.",
+				args = "(string style)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setAdaptToGround =
+			{
+				type = "method",
+				description = "If true, road surface follows terrain height.",
+				args = "(boolean adapt)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setCenterDatablock =
+			{
+				type = "method",
+				description = "Sets the PBS datablock for the road center surface.",
+				args = "(string name)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setEdgeDatablock =
+			{
+				type = "method",
+				description = "Sets the PBS datablock for the road edge / curb.",
+				args = "(string name)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getSegmentCount =
+			{
+				type = "function",
+				description = "Returns the number of road segments currently placed.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			addRoadSegment =
+			{
+				type = "method",
+				description = "Adds a single road segment from start to end world position and rebuilds.",
+				args = "(Vector3 start, Vector3 end)",
+				returns = "(nil)",
+				valuetype = "nil"
+			}
+		}
+	},
 	ProceduralTerrainCreationComponent =
 	{
 		type = "class",
@@ -26796,6 +26933,135 @@ return {
 				args = "()",
 				returns = "(number)",
 				valuetype = "number"
+			}
+		}
+	},
+	ProceduralWallComponent =
+	{
+		type = "class",
+		description = "Usage: Creates procedural walls with terrain-following geometry and multiple styles.  WALL BUILDING (Object Mode): - Left-click on terrain to place the start point of a new wall segment. - Move the mouse to preview the segment direction and length. - Left-click again to confirm the segment and add it to the wall. - Hold SHIFT while confirming to automatically chain the next segment   from the endpoint of the one just placed. - Hold CTRL to constrain the segment to the X or Z axis only. - Right-click or press ESC to cancel the current segment in progress. - Press CTRL+Z to remove the last confirmed segment.  SEGMENT MODE: - Set the 'Edit Mode' property to 'Segment' to enter segment editing. - Left-click near any wall segment to select it.   The selected segment is highlighted in orange with endpoint crosses. - Press X to delete the selected segment.   The remaining wall geometry rebuilds automatically. - Press E to extend a new segment from the tail endpoint of the selected segment.   Drag the mouse to preview the extension, then left-click to confirm.   Press ESC to cancel the extension without placing a segment. - Press ESC (without extending) to deselect the current segment. - When dragging a segment near an existing endpoint, a green snap circle appears.   Clicking at that point snaps the endpoint exactly, closing a loop or   connecting to an existing wall endpoint.  WALL STYLES: - Solid: a continuous flat-faced wall with full height and thickness. - Fence: open post-and-rail fence with configurable post spacing and rails. - Battlement: solid wall topped with alternating merlons and gaps.   Battlement width and height are configurable. - Arch: wall panels with rounded arched openings between pillar posts.  TERRAIN FOLLOWING: - When 'Adapt To Ground' is enabled, the base of each wall segment   is sampled from the terrain height at its start and end endpoints. - The wall top follows this ground slope so the wall always sits flush   on the terrain surface regardless of incline.  PILLARS: - When 'Create Pillars' is enabled, a square pillar is generated   at the start and end of each segment. - Adjacent connected segments share a single pillar at their join point. - Pillar size controls the width and depth of each pillar. - Pillars use a separate datablock from the wall surface, allowing   different materials for wall face and pillar.  CONVERT TO MESH: - 'Convert To Mesh' exports the current wall geometry as a static .mesh file   and replaces this component with a standard mesh item for optimal performance. - This operation is permanent and cannot be undone procedurally.  LUA API: - getProceduralWallComponent() on a GameObject returns this component. - addWallSegment(start, end) adds a segment between two world positions. - removeLastSegment() removes the most recently added segment. - getSegmentCount() returns the current number of wall segments. - setWallHeight(h), setWallThickness(t) adjust geometry dimensions. - setWallStyle(s) sets the style string: Solid, Fence, Battlement, Arch. - setWallDatablock(name), setPillarDatablock(name) assign materials. - setCreatePillars(bool) enables or disables pillar generation. - setAdaptToGround(bool) enables or disables terrain height following. - setFencePostSpacing(f) sets post spacing for Fence style. - setBattlementWidth(f), setBattlementHeight(f) configure Battlement style. - setUVTiling(Vector2) controls texture repeat on wall faces.",
+		inherits = "GameObjectComponent",
+		childs = 
+		{
+			setActivated =
+			{
+				type = "method",
+				description = "Activates or deactivates the wall component.",
+				args = "(boolean activated)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setWallHeight =
+			{
+				type = "method",
+				description = "Sets the wall height in world units.",
+				args = "(number height)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setWallThickness =
+			{
+				type = "method",
+				description = "Sets the wall thickness in world units.",
+				args = "(number thickness)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setWallStyle =
+			{
+				type = "method",
+				description = "Sets wall style. Values: 'Solid', 'Fence', 'Battlement', 'Arch'.",
+				args = "(string style)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setAdaptToGround =
+			{
+				type = "method",
+				description = "If true, wall base follows terrain height at each segment endpoint.",
+				args = "(boolean adapt)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setCreatePillars =
+			{
+				type = "method",
+				description = "If true, corner pillars are generated at segment endpoints.",
+				args = "(boolean create)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setWallDatablock =
+			{
+				type = "method",
+				description = "Sets the PBS datablock name for the wall surface material.",
+				args = "(string name)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setPillarDatablock =
+			{
+				type = "method",
+				description = "Sets the PBS datablock name for pillar material.",
+				args = "(string name)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setUVTiling =
+			{
+				type = "method",
+				description = "Sets UV tiling multiplier. x = horizontal repeat, y = vertical repeat.",
+				args = "(Vector2 tiling)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setFencePostSpacing =
+			{
+				type = "method",
+				description = "Sets spacing between fence posts. Only used in Fence style.",
+				args = "(number spacing)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setBattlementWidth =
+			{
+				type = "method",
+				description = "Sets the width of each battlement notch. Only used in Battlement style.",
+				args = "(number width)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setBattlementHeight =
+			{
+				type = "method",
+				description = "Sets the height of battlements above the wall top. Only used in Battlement style.",
+				args = "(number height)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getSegmentCount =
+			{
+				type = "function",
+				description = "Returns the number of wall segments currently placed.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			addWallSegment =
+			{
+				type = "method",
+				description = "Adds a single wall segment between two world positions and rebuilds the mesh.",
+				args = "(Vector3 start, Vector3 end)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			removeLastSegment =
+			{
+				type = "method",
+				description = "Removes the most recently added wall segment.",
+				args = "()",
+				returns = "(nil)",
+				valuetype = "nil"
 			}
 		}
 	},

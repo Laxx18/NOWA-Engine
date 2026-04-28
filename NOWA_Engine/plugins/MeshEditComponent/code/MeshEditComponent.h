@@ -695,6 +695,11 @@ namespace NOWA
         // Also mirrors normals and fixes triangle winding to keep faces front-facing.
         void applyFlipDirection(void);
 
+        // Returns the submesh index that the majority of the selected vertices
+        // belong to. Used by buildFaceFromSelection / fillSelected so new geometry
+        // inherits the correct datablock.
+        size_t getActiveSubmesh(void) const;
+
     private:
         Ogre::String componentName;
 
@@ -780,6 +785,16 @@ namespace NOWA
         bool  isRectSelecting;
         float rectDragThreshold;   // px movement before rect starts (default 4)
         float rectPressX, rectPressY; // where LMB went down
+
+        // Maps every vertex index to the submesh it belongs to.
+        // Populated by createDynamicBuffers(), updated by buildFaceFromSelection()
+        // and fillSelected() (new vertices inherit the active submesh),
+        // and maintained through every rebuildDynamicBuffers() call.
+        std::vector<size_t> vertexToSubmesh;
+
+        // Datablock name per submesh — populated once in createDynamicBuffers()
+        // and carried forward through all rebuilds.
+        std::vector<Ogre::String> submeshDatablockNames;
 
         // Attributes
         Variant* activated;

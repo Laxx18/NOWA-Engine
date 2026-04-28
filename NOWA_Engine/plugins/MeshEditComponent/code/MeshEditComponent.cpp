@@ -622,6 +622,9 @@ namespace NOWA
         // Tell the editor to enter mesh-modify mode
         boost::shared_ptr<EventDataEditorMode> evt(new EventDataEditorMode(EditorManager::EDITOR_MESH_MODIFY_MODE));
         NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(evt);
+
+        this->isSelected = true;
+        this->addInputListener();
     }
 
     void MeshEditComponent::onRemoveComponent(void)
@@ -1705,10 +1708,6 @@ namespace NOWA
 
     std::vector<unsigned char> MeshEditComponent::getMeshData(void) const
     {
-        // Layout: [vertexCount:uint32][indexCount:uint32]
-        //         [float3 * vertexCount pos][float3 * vertexCount normals]
-        //         [float4 * vertexCount tangents][float2 * vertexCount uvs]
-        //         [uint32 * indexCount indices]
         std::vector<unsigned char> buf;
         auto write = [&](const void* p, size_t n)
         {
@@ -1724,6 +1723,15 @@ namespace NOWA
         write(this->tangents.data(), vc * sizeof(Ogre::Vector4));
         write(this->uvCoordinates.data(), vc * sizeof(Ogre::Vector2));
         write(this->indices.data(), ic * sizeof(Ogre::uint32));
+
+        // Serialize vertexToSubmesh so undo restores correct datablock assignment
+        std::vector<uint32_t> vts(vc);
+        for (uint32_t i = 0; i < vc; ++i)
+        {
+            vts[i] = (i < this->vertexToSubmesh.size()) ? static_cast<uint32_t>(this->vertexToSubmesh[i]) : 0u;
+        }
+        write(vts.data(), vc * sizeof(uint32_t));
+
         return buf;
     }
 
@@ -1733,6 +1741,7 @@ namespace NOWA
         {
             return;
         }
+
         const unsigned char* p = data.data();
         auto read = [&](void* dst, size_t n)
         {
@@ -1755,6 +1764,29 @@ namespace NOWA
         read(this->tangents.data(), vc * sizeof(Ogre::Vector4));
         read(this->uvCoordinates.data(), vc * sizeof(Ogre::Vector2));
         read(this->indices.data(), ic * sizeof(Ogre::uint32));
+
+        // Restore vertexToSubmesh — required for correct datablock after undo
+        const size_t vtsBytes = vc * sizeof(uint32_t);
+        const size_t consumed = 8 + vc * sizeof(Ogre::Vector3) // vertices
+                                + vc * sizeof(Ogre::Vector3)   // normals
+                                + vc * sizeof(Ogre::Vector4)   // tangents
+                                + vc * sizeof(Ogre::Vector2)   // uvs
+                                + ic * sizeof(Ogre::uint32);   // indices
+
+        this->vertexToSubmesh.resize(vc, 0);
+        if (data.size() >= consumed + vtsBytes)
+        {
+            // New format: vertexToSubmesh is present
+            std::vector<uint32_t> vts(vc);
+            read(vts.data(), vtsBytes);
+            for (uint32_t i = 0; i < vc; ++i)
+            {
+                this->vertexToSubmesh[i] = static_cast<size_t>(vts[i]);
+            }
+        }
+        // else: old format without vertexToSubmesh — vertexToSubmesh stays all-zero
+        // (all vertices assigned to submesh 0, acceptable fallback)
+
         this->deselectAll();
         this->buildVertexAdjacency();
         this->rebuildDynamicBuffers();
@@ -2141,17 +2173,13 @@ namespace NOWA
         Ogre::VaoManager* vm = Ogre::Root::getSingletonPtr()->getRenderSystem()->getVaoManager();
         Ogre::Item* srcItem = this->gameObjectPtr->getMovableObject<Ogre::Item>();
 
-        // Use outputFileName as the mesh name so DotScene saves the correct file
-        // reference.  Fall back to the internal name if outputFileName is not set yet.
         Ogre::String meshName = this->outputFileName->getString();
         if (meshName.empty())
         {
             meshName = this->gameObjectPtr->getName() + "_MeshEdit_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
         }
 
-        // Remove any mesh already registered under this name.
-        // On a scene reload the DotSceneImportModule may have loaded the .mesh file
-        // from disk under this exact name.  We replace it with our dynamic version.
+        // Remove any existing mesh under this name
         {
             Ogre::ResourcePtr existing = Ogre::MeshManager::getSingleton().getByName(meshName, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME);
             if (!existing.isNull())
@@ -2166,11 +2194,33 @@ namespace NOWA
         Ogre::Vector3 minBB(std::numeric_limits<float>::max());
         Ogre::Vector3 maxBB(-std::numeric_limits<float>::max());
 
+        // ── Build vertexToSubmesh map ──────────────────────────────────────────────
+        this->vertexToSubmesh.assign(this->vertexCount, 0);
+        this->submeshDatablockNames.clear();
+
         for (size_t smIdx = 0; smIdx < this->subMeshInfoList.size(); ++smIdx)
         {
             SubMeshInfo& si = this->subMeshInfoList[smIdx];
 
-            // Check whether the datablock requires tangents (normal map present)
+            // Record the datablock name for this submesh
+            Ogre::String dbName;
+            if (srcItem && smIdx < srcItem->getNumSubItems())
+            {
+                Ogre::HlmsDatablock* db = srcItem->getSubItem(smIdx)->getDatablock();
+                if (db && db->getNameStr())
+                {
+                    dbName = *db->getNameStr();
+                }
+            }
+            this->submeshDatablockNames.push_back(dbName);
+
+            // Mark every vertex in this submesh's range
+            for (size_t v = si.vertexOffset; v < si.vertexOffset + si.vertexCount; ++v)
+            {
+                this->vertexToSubmesh[v] = smIdx;
+            }
+
+            // ── Build geometry ─────────────────────────────────────────────────────
             bool needsTangent = false;
             if (srcItem && smIdx < srcItem->getNumSubItems())
             {
@@ -2228,19 +2278,16 @@ namespace NOWA
                 maxBB.makeCeil(this->vertices[gi]);
             }
 
-            // BT_DYNAMIC_DEFAULT + keepAsShadow=false: we own vd, VaoManager keeps it
             si.dynamicVertexBuffer = vm->createVertexBuffer(elems, vC, Ogre::BT_DYNAMIC_DEFAULT, vd, false);
 
             const size_t iC = si.indexCount;
             const size_t iS = si.indexOffset;
-
             Ogre::uint16* id = reinterpret_cast<Ogre::uint16*>(OGRE_MALLOC_SIMD(iC * sizeof(Ogre::uint16), Ogre::MEMCATEGORY_GEOMETRY));
             for (size_t i = 0; i < iC; ++i)
             {
                 id[i] = static_cast<Ogre::uint16>(this->indices[iS + i] - vS);
             }
 
-            // BT_DEFAULT + keepAsShadow=true: Ogre owns id, do NOT free here
             si.dynamicIndexBuffer = vm->createIndexBuffer(Ogre::IndexBufferPacked::IT_16BIT, iC, Ogre::BT_DEFAULT, id, true);
 
             Ogre::VertexBufferPackedVec vbv;
@@ -2251,14 +2298,10 @@ namespace NOWA
             subMesh->mVao[Ogre::VpNormal].push_back(vao);
             subMesh->mVao[Ogre::VpShadow].push_back(vao);
 
-            // Store the datablock name so MeshSerializer writes it into the .mesh file
-            if (srcItem && smIdx < srcItem->getNumSubItems())
+            // Store datablock name for export
+            if (!dbName.empty())
             {
-                Ogre::HlmsDatablock* db = srcItem->getSubItem(smIdx)->getDatablock();
-                if (db && db->getNameStr())
-                {
-                    subMesh->mMaterialName = *db->getNameStr();
-                }
+                subMesh->mMaterialName = dbName;
             }
         }
 
@@ -2271,11 +2314,10 @@ namespace NOWA
         this->editableMesh->_setBounds(bounds, false);
         this->editableMesh->_setBoundingSphereRadius(bounds.getRadius());
 
-        // editableItem is null until here — no SubItem access allowed above
         this->editableItem = this->gameObjectPtr->getSceneManager()->createItem(this->editableMesh, this->gameObjectPtr->isDynamic() ? Ogre::SCENE_DYNAMIC : Ogre::SCENE_STATIC);
         this->editableItem->setName(this->gameObjectPtr->getName() + "_MeshEdit");
 
-        // Apply datablocks from source item
+        // Apply datablocks
         for (size_t i = 0; i < this->subMeshInfoList.size(); ++i)
         {
             if (srcItem && i < srcItem->getNumSubItems() && i < this->editableItem->getNumSubItems())
@@ -2288,74 +2330,53 @@ namespace NOWA
             }
         }
 
-        this->gameObjectPtr->actualizeDatablocks();
-
         this->dynamicVertexBuffer = this->subMeshInfoList.empty() ? nullptr : this->subMeshInfoList[0].dynamicVertexBuffer;
         this->dynamicIndexBuffer = this->subMeshInfoList.empty() ? nullptr : this->subMeshInfoList[0].dynamicIndexBuffer;
-
         return true;
     }
 
-    // =============================================================================
     bool MeshEditComponent::rebuildDynamicBuffers(void)
     {
         this->recalculateNormals_internal();
         this->recalculateTangents();
 
+        // Ensure vertexToSubmesh covers all vertices
+        if (this->vertexToSubmesh.size() < this->vertexCount)
+        {
+            const size_t lastSM = this->vertexToSubmesh.empty() ? 0 : this->vertexToSubmesh.back();
+            this->vertexToSubmesh.resize(this->vertexCount, lastSM);
+        }
+
+        const size_t numSubMeshes = this->submeshDatablockNames.empty() ? 1 : this->submeshDatablockNames.size();
+
         bool success = false;
-        NOWA::GraphicsModule::RenderCommand cmd = [this, &success]()
+        NOWA::GraphicsModule::RenderCommand cmd = [this, numSubMeshes, &success]()
         {
             Ogre::VaoManager* vm = Ogre::Root::getSingletonPtr()->getRenderSystem()->getVaoManager();
 
             const bool hasTan = this->vertexFormat.hasTangent;
             const size_t fpv = hasTan ? 12u : 8u;
 
-            // Use outputFileName as the mesh name for the same reason as
-            // createDynamicBuffers — keeps DotScene in sync with the exported file.
-            // A counter makes successive rebuilds within one session unique so
-            // we never hit DUPLICATE_ITEM on the old name before it is removed below.
-            const Ogre::String baseName = this->outputFileName->getString().empty() ? (this->gameObjectPtr->getName() + "_MeshEditTmp_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId())) : this->outputFileName->getString();
-
-            const Ogre::String tmpName = baseName + "_tmp_" + Ogre::StringConverter::toString(this->meshRebuildCounter++);
-
-            // Remove any stale entry under this tmp name (should not exist, but guard)
-            {
-                Ogre::ResourcePtr stale = Ogre::MeshManager::getSingleton().getByName(tmpName, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME);
-                if (!stale.isNull())
-                {
-                    Ogre::MeshManager::getSingleton().remove(stale->getHandle());
-                }
-            }
+            const Ogre::String tmpName = this->gameObjectPtr->getName() + "_MeshEditTmp_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()) + "_" + Ogre::StringConverter::toString(this->meshRebuildCounter++);
 
             Ogre::MeshPtr newMesh = Ogre::MeshManager::getSingleton().createManual(tmpName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
             newMesh->_setVaoManager(vm);
 
-            Ogre::Vector3 minBB(std::numeric_limits<float>::max());
-            Ogre::Vector3 maxBB(-std::numeric_limits<float>::max());
+            Ogre::Vector3 globalMinBB(std::numeric_limits<float>::max());
+            Ogre::Vector3 globalMaxBB(-std::numeric_limits<float>::max());
 
-            float* vd = reinterpret_cast<float*>(OGRE_MALLOC_SIMD(this->vertexCount * fpv * sizeof(float), Ogre::MEMCATEGORY_GEOMETRY));
-            for (size_t i = 0; i < this->vertexCount; ++i)
+            // ── Classify triangles by submesh ──────────────────────────────────────
+            std::vector<std::vector<Ogre::uint32>> smTris(numSubMeshes);
+            for (size_t i = 0; i < this->indexCount; i += 3)
             {
-                size_t o = i * fpv;
-                vd[o++] = this->vertices[i].x;
-                vd[o++] = this->vertices[i].y;
-                vd[o++] = this->vertices[i].z;
-                vd[o++] = this->normals[i].x;
-                vd[o++] = this->normals[i].y;
-                vd[o++] = this->normals[i].z;
-                if (hasTan)
-                {
-                    vd[o++] = this->tangents[i].x;
-                    vd[o++] = this->tangents[i].y;
-                    vd[o++] = this->tangents[i].z;
-                    vd[o++] = this->tangents[i].w;
-                }
-                vd[o++] = this->uvCoordinates[i].x;
-                vd[o] = this->uvCoordinates[i].y;
-                minBB.makeFloor(this->vertices[i]);
-                maxBB.makeCeil(this->vertices[i]);
+                const size_t va = this->indices[i];
+                size_t sm = (va < this->vertexToSubmesh.size()) ? std::min(this->vertexToSubmesh[va], numSubMeshes - 1) : 0;
+                smTris[sm].push_back(this->indices[i]);
+                smTris[sm].push_back(this->indices[i + 1]);
+                smTris[sm].push_back(this->indices[i + 2]);
             }
 
+            // ── Vertex element declaration (shared layout, separate buffers) ────────
             Ogre::VertexElement2Vec elems;
             elems.push_back(Ogre::VertexElement2(Ogre::VET_FLOAT3, Ogre::VES_POSITION));
             elems.push_back(Ogre::VertexElement2(Ogre::VET_FLOAT3, Ogre::VES_NORMAL));
@@ -2365,86 +2386,179 @@ namespace NOWA
             }
             elems.push_back(Ogre::VertexElement2(Ogre::VET_FLOAT2, Ogre::VES_TEXTURE_COORDINATES));
 
-            // BT_DYNAMIC_DEFAULT + keepAsShadow=false: we own vd, free after upload
-            Ogre::VertexBufferPacked* newVB = vm->createVertexBuffer(elems, this->vertexCount, Ogre::BT_DYNAMIC_DEFAULT, vd, false);
-            OGRE_FREE_SIMD(vd, Ogre::MEMCATEGORY_GEOMETRY);
+            // Track first valid VB/IB for the legacy single-entry subMeshInfoList
+            Ogre::VertexBufferPacked* firstVB = nullptr;
+            Ogre::IndexBufferPacked* firstIB = nullptr;
 
-            Ogre::uint32* id = reinterpret_cast<Ogre::uint32*>(OGRE_MALLOC_SIMD(this->indexCount * sizeof(Ogre::uint32), Ogre::MEMCATEGORY_GEOMETRY));
-            for (size_t i = 0; i < this->indexCount; ++i)
+            // ── Create one SubMesh per submesh group ───────────────────────────────
+            for (size_t sm = 0; sm < numSubMeshes; ++sm)
             {
-                id[i] = this->indices[i];
-            }
+                const std::vector<Ogre::uint32>& triIdx = smTris[sm];
 
-            // BT_DEFAULT + keepAsShadow=true: Ogre owns id, do NOT free here
-            Ogre::IndexBufferPacked* newIB = vm->createIndexBuffer(Ogre::IndexBufferPacked::IT_32BIT, this->indexCount, Ogre::BT_DEFAULT, id, true);
+                // Collect the unique global vertex indices used by this submesh
+                // and build a global→local remap.
+                std::unordered_map<size_t, size_t> globalToLocal;
+                std::vector<size_t> localToGlobal;
 
-            Ogre::VertexBufferPackedVec vbv;
-            vbv.push_back(newVB);
-            Ogre::VertexArrayObject* newVao = vm->createVertexArrayObject(vbv, newIB, Ogre::OT_TRIANGLE_LIST);
-
-            Ogre::SubMesh* newSM = newMesh->createSubMesh();
-            newSM->mVao[Ogre::VpNormal].push_back(newVao);
-            newSM->mVao[Ogre::VpShadow].push_back(newVao);
-
-            // Carry material name so future writeMesh() exports it correctly
-            if (this->editableItem && this->editableItem->getNumSubItems() > 0)
-            {
-                Ogre::HlmsDatablock* db = this->editableItem->getSubItem(0)->getDatablock();
-                if (db && db->getNameStr())
+                for (Ogre::uint32 gi : triIdx)
                 {
-                    newSM->mMaterialName = *db->getNameStr();
+                    if (globalToLocal.find(gi) == globalToLocal.end())
+                    {
+                        globalToLocal[gi] = localToGlobal.size();
+                        localToGlobal.push_back(gi);
+                    }
+                }
+
+                const size_t localVC = localToGlobal.size();
+
+                // Empty submesh guard: create a 1-vertex dummy so Ogre doesn't crash
+                if (localVC == 0)
+                {
+                    float* dv = reinterpret_cast<float*>(OGRE_MALLOC_SIMD(fpv * sizeof(float), Ogre::MEMCATEGORY_GEOMETRY));
+                    std::memset(dv, 0, fpv * sizeof(float));
+                    if (hasTan)
+                    {
+                        dv[9] = 1.0f;
+                    } // tangent w=1
+
+                    Ogre::VertexBufferPacked* dummyVB = vm->createVertexBuffer(elems, 1, Ogre::BT_DYNAMIC_DEFAULT, dv, false);
+                    OGRE_FREE_SIMD(dv, Ogre::MEMCATEGORY_GEOMETRY);
+
+                    Ogre::uint32* di = reinterpret_cast<Ogre::uint32*>(OGRE_MALLOC_SIMD(sizeof(Ogre::uint32), Ogre::MEMCATEGORY_GEOMETRY));
+                    di[0] = 0;
+                    Ogre::IndexBufferPacked* dummyIB = vm->createIndexBuffer(Ogre::IndexBufferPacked::IT_32BIT, 1, Ogre::BT_DEFAULT, di, true);
+
+                    Ogre::VertexBufferPackedVec vbv;
+                    vbv.push_back(dummyVB);
+                    Ogre::VertexArrayObject* vao = vm->createVertexArrayObject(vbv, dummyIB, Ogre::OT_TRIANGLE_LIST);
+                    Ogre::SubMesh* subMesh = newMesh->createSubMesh();
+                    subMesh->mVao[Ogre::VpNormal].push_back(vao);
+                    subMesh->mVao[Ogre::VpShadow].push_back(vao);
+                    if (sm < this->submeshDatablockNames.size())
+                    {
+                        subMesh->mMaterialName = this->submeshDatablockNames[sm];
+                    }
+                    if (!firstVB)
+                    {
+                        firstVB = dummyVB;
+                        firstIB = dummyIB;
+                    }
+                    continue;
+                }
+
+                // ── Pack vertex data for this submesh's vertices only ────────────────
+                float* vd = reinterpret_cast<float*>(OGRE_MALLOC_SIMD(localVC * fpv * sizeof(float), Ogre::MEMCATEGORY_GEOMETRY));
+
+                for (size_t li = 0; li < localVC; ++li)
+                {
+                    const size_t gi = localToGlobal[li];
+                    size_t o = li * fpv;
+                    vd[o++] = this->vertices[gi].x;
+                    vd[o++] = this->vertices[gi].y;
+                    vd[o++] = this->vertices[gi].z;
+                    vd[o++] = this->normals[gi].x;
+                    vd[o++] = this->normals[gi].y;
+                    vd[o++] = this->normals[gi].z;
+                    if (hasTan)
+                    {
+                        vd[o++] = this->tangents[gi].x;
+                        vd[o++] = this->tangents[gi].y;
+                        vd[o++] = this->tangents[gi].z;
+                        vd[o++] = this->tangents[gi].w;
+                    }
+                    vd[o++] = this->uvCoordinates[gi].x;
+                    vd[o] = this->uvCoordinates[gi].y;
+                    globalMinBB.makeFloor(this->vertices[gi]);
+                    globalMaxBB.makeCeil(this->vertices[gi]);
+                }
+
+                // BT_DYNAMIC_DEFAULT + keepAsShadow=false: we own vd, free after upload
+                Ogre::VertexBufferPacked* newVB = vm->createVertexBuffer(elems, localVC, Ogre::BT_DYNAMIC_DEFAULT, vd, false);
+                OGRE_FREE_SIMD(vd, Ogre::MEMCATEGORY_GEOMETRY);
+
+                // ── Build locally-remapped index buffer ────────────────────────────
+                const size_t iC = triIdx.size();
+                Ogre::uint32* id = reinterpret_cast<Ogre::uint32*>(OGRE_MALLOC_SIMD(iC * sizeof(Ogre::uint32), Ogre::MEMCATEGORY_GEOMETRY));
+                for (size_t i = 0; i < iC; ++i)
+                {
+                    id[i] = static_cast<Ogre::uint32>(globalToLocal[triIdx[i]]);
+                }
+
+                // BT_DEFAULT + keepAsShadow=true: Ogre owns id
+                Ogre::IndexBufferPacked* newIB = vm->createIndexBuffer(Ogre::IndexBufferPacked::IT_32BIT, iC, Ogre::BT_DEFAULT, id, true);
+
+                Ogre::VertexBufferPackedVec vbv;
+                vbv.push_back(newVB);
+                Ogre::VertexArrayObject* newVao = vm->createVertexArrayObject(vbv, newIB, Ogre::OT_TRIANGLE_LIST);
+
+                Ogre::SubMesh* newSM = newMesh->createSubMesh();
+                newSM->mVao[Ogre::VpNormal].push_back(newVao);
+                newSM->mVao[Ogre::VpShadow].push_back(newVao);
+
+                if (sm < this->submeshDatablockNames.size() && !this->submeshDatablockNames[sm].empty())
+                {
+                    newSM->mMaterialName = this->submeshDatablockNames[sm];
+                }
+
+                if (!firstVB)
+                {
+                    firstVB = newVB;
+                    firstIB = newIB;
                 }
             }
 
-            if (minBB.x > maxBB.x)
+            if (globalMinBB.x > globalMaxBB.x)
             {
-                minBB = maxBB = Ogre::Vector3::ZERO;
+                globalMinBB = globalMaxBB = Ogre::Vector3::ZERO;
             }
             Ogre::Aabb bounds;
-            bounds.setExtents(minBB, maxBB);
+            bounds.setExtents(globalMinBB, globalMaxBB);
             newMesh->_setBounds(bounds, false);
             newMesh->_setBoundingSphereRadius(bounds.getRadius());
 
+            // ── Create new Item and apply datablocks ───────────────────────────────
             Ogre::Item* newItem = this->gameObjectPtr->getSceneManager()->createItem(newMesh, this->gameObjectPtr->isDynamic() ? Ogre::SCENE_DYNAMIC : Ogre::SCENE_STATIC);
             newItem->setName(this->gameObjectPtr->getName() + "_MeshEdit");
 
-            // Carry all datablocks from the current item
-            if (this->editableItem)
+            for (size_t sm = 0; sm < numSubMeshes && sm < newItem->getNumSubItems(); ++sm)
             {
-                const size_t n = std::min(this->editableItem->getNumSubItems(), newItem->getNumSubItems());
-                for (size_t s = 0; s < n; ++s)
+                Ogre::HlmsDatablock* db = nullptr;
+
+                if (sm < this->submeshDatablockNames.size() && !this->submeshDatablockNames[sm].empty())
                 {
-                    Ogre::HlmsDatablock* db = this->editableItem->getSubItem(s)->getDatablock();
-                    if (db)
-                    {
-                        newItem->getSubItem(s)->setDatablock(db);
-                    }
+                    db = Ogre::Root::getSingleton().getHlmsManager()->getDatablockNoDefault(this->submeshDatablockNames[sm]);
+                }
+
+                if (!db && this->editableItem && sm < this->editableItem->getNumSubItems())
+                {
+                    db = this->editableItem->getSubItem(std::min(sm, this->editableItem->getNumSubItems() - 1))->getDatablock();
+                }
+
+                if (db)
+                {
+                    newItem->getSubItem(sm)->setDatablock(db);
                 }
             }
 
-            // Atomically swap old item out
+            // ── Atomic item swap ───────────────────────────────────────────────────
             Ogre::MovableObject* oldMovable = nullptr;
             this->gameObjectPtr->swapMovableObject(newItem, oldMovable);
             if (oldMovable)
             {
                 this->gameObjectPtr->getSceneManager()->destroyItem(static_cast<Ogre::Item*>(oldMovable));
             }
-
-            // Remove and release the old editable mesh
+            // oldMovable destroyed — its mesh refs released.
+            // Now safe to remove the old editable mesh (no dangling VAO refs).
             if (this->editableMesh)
             {
                 Ogre::MeshManager::getSingleton().remove(this->editableMesh);
                 this->editableMesh.reset();
             }
 
-            // Rename the tmp mesh to baseName so DotScene saves the right file reference.
-            // We do this by re-registering: remove tmp, recreate under baseName.
-            // Ogre does not support renaming, so we copy and re-register.
-            // Simpler: just keep tmpName for now — writeMesh() exports with outputFileName
-            // and postInit() will clear it on next load via the remove-before-create guard.
             this->editableMesh = newMesh;
             this->editableItem = newItem;
 
+            // Legacy single-entry SubMeshInfo (uploadVertexData path)
             this->subMeshInfoList.clear();
             SubMeshInfo si;
             si.vertexOffset = 0;
@@ -2453,11 +2567,11 @@ namespace NOWA
             si.indexCount = this->indexCount;
             si.hasTangent = hasTan;
             si.floatsPerVertex = fpv;
-            si.dynamicVertexBuffer = newVB;
-            si.dynamicIndexBuffer = newIB;
+            si.dynamicVertexBuffer = firstVB;
+            si.dynamicIndexBuffer = firstIB;
             this->subMeshInfoList.push_back(si);
-            this->dynamicVertexBuffer = newVB;
-            this->dynamicIndexBuffer = newIB;
+            this->dynamicVertexBuffer = firstVB;
+            this->dynamicIndexBuffer = firstIB;
 
             success = true;
         };
@@ -3324,158 +3438,6 @@ namespace NOWA
         this->fireUndoEvent(oldData);
 
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MeshEditComponent] Added vertex #" + Ogre::StringConverter::toString(newIdx) + " at " + Ogre::StringConverter::toString(localPos));
-    }
-
-    // =============================================================================
-    //  buildFaceFromSelection
-    //
-    //  Creates NEW vertices for the face (copies of the selected ones) with
-    //  planar-projected UVs and a correct face normal, instead of reusing the
-    //  existing vertex entries which carry UVs from their original faces.
-    // =============================================================================
-    bool MeshEditComponent::buildFaceFromSelection(void)
-    {
-        if (this->selectedVertices.size() < 3)
-        {
-            return false;
-        }
-
-        std::vector<unsigned char> oldData = this->getMeshData();
-        std::vector<size_t> sel(this->selectedVertices.begin(), this->selectedVertices.end());
-
-        // ── Outward direction from existing vertex normals ────────────────────────
-        Ogre::Vector3 centroid = Ogre::Vector3::ZERO;
-        for (size_t i : sel)
-        {
-            centroid += this->vertices[i];
-        }
-        centroid /= static_cast<float>(sel.size());
-
-        Ogre::Vector3 desiredNormal = Ogre::Vector3::ZERO;
-        for (size_t i : sel)
-        {
-            desiredNormal += this->normals[i];
-        }
-        if (desiredNormal.squaredLength() < 1e-10f)
-        {
-            desiredNormal = Ogre::Vector3::UNIT_Z;
-        }
-        else
-        {
-            desiredNormal.normalise();
-        }
-
-        // Face normal from vertex loop winding order
-        Ogre::Vector3 faceNormal = Ogre::Vector3::ZERO;
-        for (size_t i = 0; i < sel.size(); ++i)
-        {
-            const Ogre::Vector3& a = this->vertices[sel[i]];
-            const Ogre::Vector3& b = this->vertices[sel[(i + 1) % sel.size()]];
-            faceNormal += (a - centroid).crossProduct(b - centroid);
-        }
-        if (faceNormal.squaredLength() < 1e-10f)
-        {
-            faceNormal = desiredNormal;
-        }
-        else
-        {
-            faceNormal.normalise();
-        }
-
-        const bool flip = (faceNormal.dotProduct(desiredNormal) < 0.0f);
-        if (flip)
-        {
-            faceNormal = -faceNormal;
-        }
-
-        // ── UV projection axes ────────────────────────────────────────────────────
-        const Ogre::Vector3 ref = (std::abs(faceNormal.dotProduct(Ogre::Vector3::UNIT_Y)) < 0.99f) ? Ogre::Vector3::UNIT_Y : Ogre::Vector3::UNIT_X;
-        Ogre::Vector3 uAxis = faceNormal.crossProduct(ref).normalisedCopy();
-        Ogre::Vector3 vAxis = faceNormal.crossProduct(uAxis).normalisedCopy();
-
-        float uMin = std::numeric_limits<float>::max();
-        float uMax = -std::numeric_limits<float>::max();
-        float vMin = std::numeric_limits<float>::max();
-        float vMax = -std::numeric_limits<float>::max();
-        for (size_t i : sel)
-        {
-            float u = uAxis.dotProduct(this->vertices[i]);
-            float v = vAxis.dotProduct(this->vertices[i]);
-            uMin = std::min(uMin, u);
-            uMax = std::max(uMax, u);
-            vMin = std::min(vMin, v);
-            vMax = std::max(vMax, v);
-        }
-        const float uRange = (uMax - uMin) > 1e-6f ? (uMax - uMin) : 1.0f;
-        const float vRange = (vMax - vMin) > 1e-6f ? (vMax - vMin) : 1.0f;
-
-        // ── New vertices with planar UVs ──────────────────────────────────────────
-        const size_t baseIdx = this->vertexCount;
-        for (size_t i : sel)
-        {
-            const float u = (uAxis.dotProduct(this->vertices[i]) - uMin) / uRange;
-            const float v = (vAxis.dotProduct(this->vertices[i]) - vMin) / vRange;
-            this->vertices.push_back(this->vertices[i]);
-            this->normals.push_back(faceNormal);
-            this->tangents.push_back(Ogre::Vector4(uAxis.x, uAxis.y, uAxis.z, 1.0f));
-            this->uvCoordinates.push_back(Ogre::Vector2(u, 1.0f - v));
-        }
-        this->vertexCount = this->vertices.size();
-
-        // ── Triangulate ───────────────────────────────────────────────────────────
-        auto addTri = [&](size_t a, size_t b, size_t c)
-        {
-            if (!flip)
-            {
-                this->indices.push_back(static_cast<Ogre::uint32>(a));
-                this->indices.push_back(static_cast<Ogre::uint32>(b));
-                this->indices.push_back(static_cast<Ogre::uint32>(c));
-            }
-            else
-            {
-                this->indices.push_back(static_cast<Ogre::uint32>(a));
-                this->indices.push_back(static_cast<Ogre::uint32>(c));
-                this->indices.push_back(static_cast<Ogre::uint32>(b));
-            }
-            this->indexCount += 3;
-        };
-
-        const size_t n = sel.size();
-        if (n == 3)
-        {
-            addTri(baseIdx, baseIdx + 1, baseIdx + 2);
-        }
-        else if (n == 4)
-        {
-            const float diagA = this->vertices[sel[0]].distance(this->vertices[sel[2]]);
-            const float diagB = this->vertices[sel[1]].distance(this->vertices[sel[3]]);
-            if (diagA <= diagB)
-            {
-                addTri(baseIdx, baseIdx + 1, baseIdx + 2);
-                addTri(baseIdx, baseIdx + 2, baseIdx + 3);
-            }
-            else
-            {
-                addTri(baseIdx, baseIdx + 1, baseIdx + 3);
-                addTri(baseIdx + 1, baseIdx + 2, baseIdx + 3);
-            }
-        }
-        else
-        {
-            // Fan from baseIdx for 5+ vertices
-            for (size_t i = 1; i + 1 < n; ++i)
-            {
-                addTri(baseIdx, baseIdx + i, baseIdx + i + 1);
-            }
-        }
-
-        this->buildVertexAdjacency();
-        this->rebuildDynamicBuffers();
-        this->scheduleOverlayUpdate();
-        this->fireUndoEvent(oldData);
-
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MeshEditComponent] Built face from " + Ogre::StringConverter::toString(static_cast<int>(n)) + " vertices.");
-        return true;
     }
 
     void MeshEditComponent::setOriginAlignment(const Ogre::String& preset)
@@ -5154,7 +5116,28 @@ namespace NOWA
 
         std::vector<unsigned char> oldData = this->getMeshData();
 
-        // ── Face plane for UV projection ──────────────────────────────────────────
+        size_t activeSM = 0;
+        if (!this->vertexToSubmesh.empty())
+        {
+            std::unordered_map<size_t, size_t> votes;
+            for (size_t v : loop)
+            {
+                if (v < this->vertexToSubmesh.size())
+                {
+                    ++votes[this->vertexToSubmesh[v]];
+                }
+            }
+            size_t bestCnt = 0;
+            for (auto& [sm, cnt] : votes)
+            {
+                if (cnt > bestCnt)
+                {
+                    bestCnt = cnt;
+                    activeSM = sm;
+                }
+            }
+        }
+
         Ogre::Vector3 centroid = Ogre::Vector3::ZERO;
         for (size_t v : loop)
         {
@@ -5162,9 +5145,6 @@ namespace NOWA
         }
         centroid /= static_cast<float>(loop.size());
 
-        // Outward direction: average of the rim vertices' existing normals.
-        // These normals come from the adjacent surviving faces and already
-        // point in the correct outward direction regardless of camera position.
         Ogre::Vector3 desiredNormal = Ogre::Vector3::ZERO;
         for (size_t v : loop)
         {
@@ -5179,7 +5159,6 @@ namespace NOWA
             desiredNormal.normalise();
         }
 
-        // Face normal from loop winding order
         Ogre::Vector3 faceNormal = Ogre::Vector3::ZERO;
         for (size_t i = 0; i < loop.size(); ++i)
         {
@@ -5196,48 +5175,29 @@ namespace NOWA
             faceNormal.normalise();
         }
 
-        // Flip winding if faceNormal disagrees with the desired outward direction
         const bool flip = (faceNormal.dotProduct(desiredNormal) < 0.0f);
         if (flip)
         {
             faceNormal = -faceNormal;
         }
 
-        // ── UV projection axes ────────────────────────────────────────────────────
         const Ogre::Vector3 ref = (std::abs(faceNormal.dotProduct(Ogre::Vector3::UNIT_Y)) < 0.99f) ? Ogre::Vector3::UNIT_Y : Ogre::Vector3::UNIT_X;
-        Ogre::Vector3 uAxis = faceNormal.crossProduct(ref).normalisedCopy();
-        Ogre::Vector3 vAxis = faceNormal.crossProduct(uAxis).normalisedCopy();
+        const Ogre::Vector3 uAxis = faceNormal.crossProduct(ref).normalisedCopy();
+        const Ogre::Vector3 vAxis = faceNormal.crossProduct(uAxis).normalisedCopy();
 
-        float uMin = std::numeric_limits<float>::max();
-        float uMax = -std::numeric_limits<float>::max();
-        float vMin = std::numeric_limits<float>::max();
-        float vMax = -std::numeric_limits<float>::max();
-        for (size_t v : loop)
-        {
-            const float u = uAxis.dotProduct(this->vertices[v]);
-            const float w = vAxis.dotProduct(this->vertices[v]);
-            uMin = std::min(uMin, u);
-            uMax = std::max(uMax, u);
-            vMin = std::min(vMin, w);
-            vMax = std::max(vMax, w);
-        }
-        const float uRange = (uMax - uMin) > 1e-6f ? (uMax - uMin) : 1.0f;
-        const float vRange = (vMax - vMin) > 1e-6f ? (vMax - vMin) : 1.0f;
-
-        // ── New vertices with planar UVs ──────────────────────────────────────────
         const size_t baseIdx = this->vertexCount;
         for (size_t v : loop)
         {
-            const float u = (uAxis.dotProduct(this->vertices[v]) - uMin) / uRange;
-            const float w = (vAxis.dotProduct(this->vertices[v]) - vMin) / vRange;
+            const float u = uAxis.dotProduct(this->vertices[v]);
+            const float w = -vAxis.dotProduct(this->vertices[v]);
             this->vertices.push_back(this->vertices[v]);
             this->normals.push_back(faceNormal);
             this->tangents.push_back(Ogre::Vector4(uAxis.x, uAxis.y, uAxis.z, 1.0f));
-            this->uvCoordinates.push_back(Ogre::Vector2(u, 1.0f - w));
+            this->uvCoordinates.push_back(Ogre::Vector2(u, w));
+            this->vertexToSubmesh.push_back(activeSM);
         }
         this->vertexCount = this->vertices.size();
 
-        // ── Fan triangulate ───────────────────────────────────────────────────────
         for (size_t i = 1; i + 1 < loop.size(); ++i)
         {
             if (!flip)
@@ -5260,6 +5220,131 @@ namespace NOWA
         this->rebuildDynamicBuffers();
         this->scheduleOverlayUpdate();
         this->fireUndoEvent(oldData);
+    }
+
+    bool MeshEditComponent::buildFaceFromSelection(void)
+    {
+        if (this->selectedVertices.size() < 3)
+        {
+            return false;
+        }
+
+        std::vector<unsigned char> oldData = this->getMeshData();
+        std::vector<size_t> sel(this->selectedVertices.begin(), this->selectedVertices.end());
+        const size_t activeSM = this->getActiveSubmesh();
+
+        Ogre::Vector3 centroid = Ogre::Vector3::ZERO;
+        for (size_t i : sel)
+        {
+            centroid += this->vertices[i];
+        }
+        centroid /= static_cast<float>(sel.size());
+
+        Ogre::Vector3 desiredNormal = Ogre::Vector3::ZERO;
+        for (size_t i : sel)
+        {
+            desiredNormal += this->normals[i];
+        }
+        if (desiredNormal.squaredLength() < 1e-10f)
+        {
+            desiredNormal = Ogre::Vector3::UNIT_Z;
+        }
+        else
+        {
+            desiredNormal.normalise();
+        }
+
+        Ogre::Vector3 faceNormal = Ogre::Vector3::ZERO;
+        for (size_t i = 0; i < sel.size(); ++i)
+        {
+            const Ogre::Vector3& a = this->vertices[sel[i]];
+            const Ogre::Vector3& b = this->vertices[sel[(i + 1) % sel.size()]];
+            faceNormal += (a - centroid).crossProduct(b - centroid);
+        }
+        if (faceNormal.squaredLength() < 1e-10f)
+        {
+            faceNormal = desiredNormal;
+        }
+        else
+        {
+            faceNormal.normalise();
+        }
+
+        const bool flip = (faceNormal.dotProduct(desiredNormal) < 0.0f);
+        if (flip)
+        {
+            faceNormal = -faceNormal;
+        }
+
+        const Ogre::Vector3 ref = (std::abs(faceNormal.dotProduct(Ogre::Vector3::UNIT_Y)) < 0.99f) ? Ogre::Vector3::UNIT_Y : Ogre::Vector3::UNIT_X;
+        const Ogre::Vector3 uAxis = faceNormal.crossProduct(ref).normalisedCopy();
+        const Ogre::Vector3 vAxis = faceNormal.crossProduct(uAxis).normalisedCopy();
+
+        const size_t baseIdx = this->vertexCount;
+        for (size_t i : sel)
+        {
+            const float u = uAxis.dotProduct(this->vertices[i]);
+            const float w = -vAxis.dotProduct(this->vertices[i]);
+            this->vertices.push_back(this->vertices[i]);
+            this->normals.push_back(faceNormal);
+            this->tangents.push_back(Ogre::Vector4(uAxis.x, uAxis.y, uAxis.z, 1.0f));
+            this->uvCoordinates.push_back(Ogre::Vector2(u, w));
+            this->vertexToSubmesh.push_back(activeSM);
+        }
+        this->vertexCount = this->vertices.size();
+
+        auto addTri = [&](size_t a, size_t b, size_t c)
+        {
+            if (!flip)
+            {
+                this->indices.push_back(static_cast<Ogre::uint32>(a));
+                this->indices.push_back(static_cast<Ogre::uint32>(b));
+                this->indices.push_back(static_cast<Ogre::uint32>(c));
+            }
+            else
+            {
+                this->indices.push_back(static_cast<Ogre::uint32>(a));
+                this->indices.push_back(static_cast<Ogre::uint32>(c));
+                this->indices.push_back(static_cast<Ogre::uint32>(b));
+            }
+            this->indexCount += 3;
+        };
+
+        const size_t n = sel.size();
+        if (n == 3)
+        {
+            addTri(baseIdx, baseIdx + 1, baseIdx + 2);
+        }
+        else if (n == 4)
+        {
+            const float diagA = this->vertices[sel[0]].distance(this->vertices[sel[2]]);
+            const float diagB = this->vertices[sel[1]].distance(this->vertices[sel[3]]);
+            if (diagA <= diagB)
+            {
+                addTri(baseIdx, baseIdx + 1, baseIdx + 2);
+                addTri(baseIdx, baseIdx + 2, baseIdx + 3);
+            }
+            else
+            {
+                addTri(baseIdx, baseIdx + 1, baseIdx + 3);
+                addTri(baseIdx + 1, baseIdx + 2, baseIdx + 3);
+            }
+        }
+        else
+        {
+            for (size_t i = 1; i + 1 < n; ++i)
+            {
+                addTri(baseIdx, baseIdx + i, baseIdx + i + 1);
+            }
+        }
+
+        this->buildVertexAdjacency();
+        this->rebuildDynamicBuffers();
+        this->scheduleOverlayUpdate();
+        this->fireUndoEvent(oldData);
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MeshEditComponent] Built face from " + Ogre::StringConverter::toString(static_cast<int>(n)) + " vertices.");
+        return true;
     }
 
     void MeshEditComponent::bevel(Ogre::Real amount)
@@ -6222,6 +6307,40 @@ namespace NOWA
         this->fireUndoEvent(oldData);
 
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MeshEditComponent] Flipped across " + axis + " axis.");
+    }
+
+    size_t MeshEditComponent::getActiveSubmesh(void) const
+    {
+        if (this->vertexToSubmesh.empty() || this->selectedVertices.empty())
+        {
+            return 0;
+        }
+
+        // Count votes per submesh
+        std::unordered_map<size_t, size_t> votes;
+        for (size_t vi : this->selectedVertices)
+        {
+            if (vi < this->vertexToSubmesh.size())
+            {
+                ++votes[this->vertexToSubmesh[vi]];
+            }
+        }
+        if (votes.empty())
+        {
+            return 0;
+        }
+
+        size_t best = 0, bestCount = 0;
+        for (auto& [sm, cnt] : votes)
+        {
+            if (cnt > bestCount)
+            {
+                bestCount = cnt;
+                best = sm;
+            }
+        }
+
+        return best;
     }
 
     // =========================================================================

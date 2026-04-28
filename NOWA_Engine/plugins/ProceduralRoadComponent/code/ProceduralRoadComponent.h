@@ -202,8 +202,68 @@ namespace NOWA
 
         static Ogre::String getStaticInfoText(void)
         {
-            return "Usage: Create different types of roads with realistic terrain following.";
+            return "Usage: Creates procedural roads with terrain-following geometry and multiple styles.\n\n"
+                   "ROAD BUILDING (Object Mode):\n"
+                   "- Left-click on terrain to start a new road segment.\n"
+                   "- Move the mouse to preview the segment, then left-click again to confirm it.\n"
+                   "- Hold SHIFT while confirming to automatically chain the next segment from the endpoint.\n"
+                   "- Hold CTRL to constrain the segment direction to the X or Z axis.\n"
+                   "- Right-click or press ESC to cancel the current segment.\n"
+                   "- Press CTRL+Z to undo the last confirmed segment.\n\n"
+                   "SEGMENT MODE:\n"
+                   "- Set the 'Edit Mode' property to 'Segment' to enter segment editing.\n"
+                   "- Left-click near any road segment to select it. The selected segment is highlighted in orange.\n"
+                   "- Press X to delete the selected segment. The remaining road rebuilds automatically.\n"
+                   "- Press E to extend a new segment from the tail endpoint of the selected segment.\n"
+                   "  Drag the mouse to preview the extension, then left-click to confirm.\n"
+                   "  Press ESC to cancel the extension.\n"
+                   "- Press ESC (without extending) to deselect the current segment.\n"
+                   "- When building or extending near an existing segment endpoint, a green snap circle\n"
+                   "  appears. Release at that point to snap exactly to the endpoint, closing the road loop\n"
+                   "  or connecting to an existing junction.\n\n"
+                   "JUNCTIONS:\n"
+                   "- When three or more segments share an endpoint, a junction patch is generated\n"
+                   "  automatically to fill the gap between the road arms.\n"
+                   "- The junction patch uses the same center datablock as the road surface.\n"
+                   "- Edge strips and curbs are generated on the open boundary of each junction arm.\n"
+                   "- For Highway style roads, branches may only depart to the right relative to the\n"
+                   "  direction of travel, matching real motorway exit conventions.\n\n"
+                   "ROAD STYLES:\n"
+                   "- Paved: solid road surface with raised curbs and edge strips.\n"
+                   "- Highway: paved road with a center divider strip. Branches exit to the right only.\n"
+                   "- Trail: narrow path with flat edge blend, no curbs.\n"
+                   "- Dirt: unpaved road with soft edge transition.\n"
+                   "- Cobblestone: paved surface with cobblestone material and curbs.\n\n"
+                   "TERRAIN FOLLOWING:\n"
+                   "- When 'Adapt To Ground' is enabled, the road samples terrain height along each segment\n"
+                   "  and applies Gaussian height smoothing to avoid sharp steps.\n"
+                   "- 'Max Gradient' limits how steeply the road can climb or descend.\n"
+                   "- 'Smoothing Factor' controls how aggressively height transitions are blended.\n"
+                   "- 'Enable Banking' tilts the road surface into corners based on curvature.\n"
+                   "- 'Curve Subdivisions' controls how many interpolated points are used per segment.\n"
+                   "  Higher values produce smoother curves at the cost of more geometry.\n\n"
+                   "WAYPOINT GENERATION:\n"
+                   "- 'Generate Waypoints' creates one centered waypoint GameObject per road segment\n"
+                   "  in chain travel order, suitable for single-lane AI navigation.\n"
+                   "- 'Generate Split Waypoints' creates two waypoints per segment, one per lane,\n"
+                   "  using right-hand traffic conventions. Forward waypoints run in travel direction\n"
+                   "  and reverse waypoints run in the opposite direction.\n"
+                   "- 'Invert Waypoints' reverses the travel direction of all generated waypoints.\n"
+                   "- Each waypoint GameObject contains a NodeComponent and a GameObjectTitleComponent\n"
+                   "  showing its index number above the node.\n\n"
+                   "CONVERT TO MESH:\n"
+                   "- 'Convert To Mesh' exports the current road geometry as a static .mesh file\n"
+                   "  and replaces this component with a standard mesh item for optimal performance.\n"
+                   "- This operation is permanent and cannot be undone procedurally.\n\n"
+                   "LUA API:\n"
+                   "- getProceduralRoadComponent() on a GameObject returns this component.\n"
+                   "- addRoadSegment(start, end) adds a segment between two world positions.\n"
+                   "- getSegmentCount() returns the current number of segments.\n"
+                   "- setRoadWidth(w), setEdgeWidth(w), setCurbHeight(h) adjust geometry dimensions.\n"
+                   "- setRoadStyle(s) sets the style string: Paved, Highway, Trail, Dirt, Cobblestone.\n";
         }
+
+        static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass);
 
         virtual Ogre::String getClassName(void) const override
         {
@@ -347,6 +407,10 @@ namespace NOWA
 
         virtual std::vector<unsigned char> getRoadData(void) const override;
 
+        void addRoadSegmentLua(const Ogre::Vector3& start, const Ogre::Vector3& end);
+
+        int getSegmentCount(void) const;
+
     public:
         // Static attribute names
         static Ogre::String AttrActivated(void)
@@ -449,6 +513,26 @@ namespace NOWA
         {
             return "Generate From Layer";
         }
+        static Ogre::String AttrGenerateWaypoints(void)
+        {
+            return "Generate Waypoints";
+        }
+        static Ogre::String AttrGenerateSplitWaypoints(void)
+        {
+            return "Generate Split Waypoints";
+        }
+        static Ogre::String AttrInvertWaypoints(void)
+        {
+            return "Invert Waypoints";
+        }
+        static Ogre::String ActionGenerateWaypoints(void)
+        {
+            return "GenerateWaypoints";
+        }
+        static Ogre::String ActionGenerateSplitWaypoints(void)
+        {
+            return "GenerateSplitWaypoints";
+        }
     protected:
         // Mouse handling for interactive road building
         virtual bool mousePressed(const OIS::MouseEvent& evt, OIS::MouseButtonID id) override;
@@ -477,7 +561,7 @@ namespace NOWA
         // Geometry generation helpers
         void generateRoadSegment(const RoadSegment& segment);
 
-        void generateStraightRoad(const std::vector<RoadControlPoint>& points);
+        void generateStraightRoad(const std::vector<RoadControlPoint>& points, bool isClosed = false);
 
         void generateCurvedRoad(const std::vector<RoadControlPoint>& points, Ogre::Real curvature);
 
@@ -492,13 +576,15 @@ namespace NOWA
         void addRoadQuad(const Ogre::Vector3& v0, const Ogre::Vector3& v1, const Ogre::Vector3& v2, const Ogre::Vector3& v3, const Ogre::Vector3& normal, Ogre::Real u0, Ogre::Real u1, Ogre::Real v0Val,
                          Ogre::Real v1Val, bool isCenter);
 
+        void generateSeamQuad(const std::vector<RoadControlPoint>& points, const std::vector<PointData>& miterData, size_t idxA, size_t idxB);
+
         // Banking calculation
         Ogre::Real calculateBanking(const Ogre::Vector3& p0, const Ogre::Vector3& p1, const Ogre::Vector3& p2);
 
         Ogre::Vector3 snapToGridFunc(const Ogre::Vector3& position);
         RoadStyle getRoadStyleEnum(void) const;
 
-        std::vector<PointData> computeMiterData(const std::vector<RoadControlPoint>& points);
+        std::vector<PointData> computeMiterData(const std::vector<RoadControlPoint>& points, bool isClosed);
 
         Ogre::Real evaluateCatmullRomHeight(const std::vector<RoadControlPoint>& points, Ogre::Real t);
 
@@ -567,6 +653,14 @@ namespace NOWA
         void generateJunctionPatch(const JunctionPoint& jp, const Ogre::Vector3& origin);
 
         void addJunctionTriangle(const Ogre::Vector3& v0, const Ogre::Vector2& uv0, const Ogre::Vector3& v1, const Ogre::Vector2& uv1, const Ogre::Vector3& v2, const Ogre::Vector2& uv2, bool isCenter);
+
+        bool detectSnapToRoad(const Ogre::Vector3& worldPos, Ogre::Real radius);
+
+        void splitSegmentAtPoint(int segIdx, float t, const Ogre::Vector3& splitWorldPos);
+
+        void scheduleSnapIndicatorUpdate(void);
+
+        void createWaypointNodes(bool splitLanes);
     private:
         static const uint32_t ROADDATA_MAGIC = 0x524F4144; // "ROAD" in hex
         static const uint32_t ROADDATA_VERSION = 1;
@@ -596,11 +690,14 @@ namespace NOWA
         Variant* terrainSampleInterval;
         Variant* editMode;
         Variant* convertToMesh;
+        Variant* generateWaypoints;
+        Variant* generateSplitWaypoints;
 
         Variant* sourceTerraLayer;  // which layer to trace (0-3)
         Variant* traceStepMeters;   // waypoint spacing in meters
         Variant* traceThreshold;    // layer value threshold (0-255)
         Variant* generateFromLayer; // button
+        Variant* invertWaypoints;
 
         // Road segments
         std::vector<RoadSegment> roadSegments;
@@ -660,6 +757,12 @@ namespace NOWA
         Ogre::SceneNode* segOverlayNode;
         Ogre::ManualObject* segOverlayObject;
         bool isExtendingFromSegment;
+
+        bool isSnapToRoad;             // true when cursor is snapping to existing road
+        Ogre::Vector3 snapToRoadPoint; // world-space snap point on road centerline
+        int snapToRoadSegmentIdx;      // which segment we're snapping to
+        float snapToRoadT;             // parametric t [0,1] along that segment
+        Ogre::Real snapRadius;         // = roadWidth * 1.5f, set in postInit
 
         PhysicsArtifactComponent* physicsArtifactComponent;
     };

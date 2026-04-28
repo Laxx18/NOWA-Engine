@@ -45,6 +45,12 @@ namespace NOWA
             CONFIRMING
         };
 
+        enum class EditMode
+        {
+            OBJECT = 0,
+            SEGMENT = 1
+        };
+
         struct WallSegment
         {
             Ogre::Vector3 startPoint;
@@ -168,7 +174,64 @@ namespace NOWA
 
         static Ogre::String getStaticInfoText(void)
         {
-            return "Usage: Create different types of walls.";
+            return "Usage: Creates procedural walls with terrain-following geometry and multiple styles.\n\n"
+                   "WALL BUILDING (Object Mode):\n"
+                   "- Left-click on terrain to place the start point of a new wall segment.\n"
+                   "- Move the mouse to preview the segment direction and length.\n"
+                   "- Left-click again to confirm the segment and add it to the wall.\n"
+                   "- Hold SHIFT while confirming to automatically chain the next segment\n"
+                   "  from the endpoint of the one just placed.\n"
+                   "- Hold CTRL to constrain the segment to the X or Z axis only.\n"
+                   "- Right-click or press ESC to cancel the current segment in progress.\n"
+                   "- Press CTRL+Z to remove the last confirmed segment.\n\n"
+                   "SEGMENT MODE:\n"
+                   "- Set the 'Edit Mode' property to 'Segment' to enter segment editing.\n"
+                   "- Left-click near any wall segment to select it.\n"
+                   "  The selected segment is highlighted in orange with endpoint crosses.\n"
+                   "- Press X to delete the selected segment.\n"
+                   "  The remaining wall geometry rebuilds automatically.\n"
+                   "- Press E to extend a new segment from the tail endpoint of the selected segment.\n"
+                   "  Drag the mouse to preview the extension, then left-click to confirm.\n"
+                   "  Press ESC to cancel the extension without placing a segment.\n"
+                   "- Press ESC (without extending) to deselect the current segment.\n"
+                   "- When dragging a segment near an existing endpoint, a green snap circle appears.\n"
+                   "  Clicking at that point snaps the endpoint exactly, closing a loop or\n"
+                   "  connecting to an existing wall endpoint.\n\n"
+                   "WALL STYLES:\n"
+                   "- Solid: a continuous flat-faced wall with full height and thickness.\n"
+                   "- Fence: open post-and-rail fence with configurable post spacing and rails.\n"
+                   "- Battlement: solid wall topped with alternating merlons and gaps.\n"
+                   "  Battlement width and height are configurable.\n"
+                   "- Arch: wall panels with rounded arched openings between pillar posts.\n\n"
+                   "TERRAIN FOLLOWING:\n"
+                   "- When 'Adapt To Ground' is enabled, the base of each wall segment\n"
+                   "  is sampled from the terrain height at its start and end endpoints.\n"
+                   "- The wall top follows this ground slope so the wall always sits flush\n"
+                   "  on the terrain surface regardless of incline.\n\n"
+                   "PILLARS:\n"
+                   "- When 'Create Pillars' is enabled, a square pillar is generated\n"
+                   "  at the start and end of each segment.\n"
+                   "- Adjacent connected segments share a single pillar at their join point.\n"
+                   "- Pillar size controls the width and depth of each pillar.\n"
+                   "- Pillars use a separate datablock from the wall surface, allowing\n"
+                   "  different materials for wall face and pillar.\n\n"
+                   "CONVERT TO MESH:\n"
+                   "- 'Convert To Mesh' exports the current wall geometry as a static .mesh file\n"
+                   "  and replaces this component with a standard mesh item for optimal performance.\n"
+                   "- This operation is permanent and cannot be undone procedurally.\n\n"
+                   "LUA API:\n"
+                   "- getProceduralWallComponent() on a GameObject returns this component.\n"
+                   "- addWallSegment(start, end) adds a segment between two world positions.\n"
+                   "- removeLastSegment() removes the most recently added segment.\n"
+                   "- getSegmentCount() returns the current number of wall segments.\n"
+                   "- setWallHeight(h), setWallThickness(t) adjust geometry dimensions.\n"
+                   "- setWallStyle(s) sets the style string: Solid, Fence, Battlement, Arch.\n"
+                   "- setWallDatablock(name), setPillarDatablock(name) assign materials.\n"
+                   "- setCreatePillars(bool) enables or disables pillar generation.\n"
+                   "- setAdaptToGround(bool) enables or disables terrain height following.\n"
+                   "- setFencePostSpacing(f) sets post spacing for Fence style.\n"
+                   "- setBattlementWidth(f), setBattlementHeight(f) configure Battlement style.\n"
+                   "- setUVTiling(Vector2) controls texture repeat on wall faces.";
         }
 
         virtual Ogre::String getClassName(void) const override
@@ -185,6 +248,8 @@ namespace NOWA
         {
             return "GameObjectComponent";
         }
+
+        static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass);
 
         // Wall building API
         void startWallPlacement(const Ogre::Vector3& worldPosition);
@@ -261,8 +326,12 @@ namespace NOWA
         Ogre::Vector2 getUVTiling(void) const;
 
         void setFencePostSpacing(Ogre::Real spacing);
+
         void setBattlementWidth(Ogre::Real width);
+
         void setBattlementHeight(Ogre::Real height);
+
+        int getSegmentCountLua(void) const;
 
     public:
         // Static attribute names
@@ -325,6 +394,14 @@ namespace NOWA
         static Ogre::String AttrBattlementHeight(void)
         {
             return "Battlement Height";
+        }
+        static Ogre::String AttrEditMode(void)
+        {
+            return "Edit Mode";
+        }
+        static Ogre::String ActionExtendFromSegment(void)
+        {
+            return "ExtendFromSegment";
         }
         static Ogre::String AttrConvertToMesh(void)
         {
@@ -404,6 +481,22 @@ namespace NOWA
          */
         bool exportMesh(const Ogre::String& filename);
 
+        EditMode getEditModeEnum(void) const;
+
+        int findNearestSegmentWithinRadius(const Ogre::Vector3& worldPos, Ogre::Real radius) const;
+
+        void deleteSelectedSegment(void);
+
+        void createSegmentOverlay(void);
+
+        void destroySegmentOverlay(void);
+
+        void scheduleSegmentOverlayUpdate(void);
+
+        bool detectSnapToWall(const Ogre::Vector3& worldPos, Ogre::Real radius);
+
+        void scheduleSnapIndicatorUpdate(void);
+
     private:
         static const uint32_t WALLDATA_MAGIC = 0x57414C4C; // "WALL" in hex
         static const uint32_t WALLDATA_VERSION = 1;
@@ -426,6 +519,7 @@ namespace NOWA
         Variant* fencePostSpacing;
         Variant* battlementWidth;
         Variant* battlementHeight;
+        Variant* editMode;
         Variant* convertToMesh;
 
         // Wall segments
@@ -477,6 +571,17 @@ namespace NOWA
         bool hasLoadedWallEndpoint;
         Ogre::Vector3 loadedWallEndpoint;    // XZ position
         Ogre::Real loadedWallEndpointHeight; // World-space height
+
+        int selectedSegmentIndex;
+        bool isExtendingFromSegment;
+        bool isSnapToWall;
+        Ogre::Vector3 snapToWallPoint;
+        int snapToWallSegmentIdx;
+        float snapToWallT;
+        Ogre::SceneNode* segOverlayNode;
+        Ogre::ManualObject* segOverlayObject;
+        Ogre::SceneNode* snapOverlayNode;
+        Ogre::ManualObject* snapOverlayObject;
 
         PhysicsArtifactComponent* physicsArtifactComponent;
     };

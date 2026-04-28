@@ -89,14 +89,17 @@ namespace NOWA
         {
             return NOWA::getIdFromName("MeshConstructionComponent");
         }
+
         static Ogre::String getStaticClassName(void)
         {
             return "MeshConstructionComponent";
         }
+
         static bool canStaticAddComponent(GameObject* gameObject);
+
         static Ogre::String getStaticInfoText(void)
         {
-            return "Warcraft-2-style bottom-to-top mesh construction animation. "
+            return "Mesh construction animation. "
                    "Simulation-only — editor always shows the full mesh. "
                    "Optional camera-facing progress bar and percentage text.";
         }

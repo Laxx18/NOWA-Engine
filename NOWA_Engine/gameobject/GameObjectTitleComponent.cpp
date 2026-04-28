@@ -163,7 +163,7 @@ namespace NOWA
 			this->textNode->attachObject(this->movableText);
 			NOWA::GraphicsModule::getInstance()->addTrackedNode(this->textNode);
 
-			Ogre::Vector3 p = this->gameObjectPtr->getPosition();
+			// Ogre::Vector3 p = this->gameObjectPtr->getPosition();
 			Ogre::Quaternion o = this->gameObjectPtr->getOrientation();
 
 			Ogre::Vector3 sp = this->offsetPosition->getVector3();
@@ -173,7 +173,19 @@ namespace NOWA
 
 			// Note: Order is really important! First set orientation, then position, else strange side effects do occur!
 			NOWA::GraphicsModule::getInstance()->updateNodeOrientation(this->movableText->getParentSceneNode(), so);
-			NOWA::GraphicsModule::getInstance()->updateNodePosition(this->movableText->getParentSceneNode(), p + (o * (so * sp)));
+
+
+			/*
+            The bug is in postInit and setOffsetPosition / setOffsetOrientation. The textNode is a child of gameObjectPtr->getSceneNode(),
+            so its position must be set in local space relative to the parent.
+            But the code passes the world position p + (o * so * sp) to updateNodePosition, which sets local position. This means:
+            textNode world pos = parent world pos + local pos
+                   = p + (p + o*so*sp)
+                   = 2p + offset   <- WRONG, doubles with distance from origin
+            */
+			// NOWA::GraphicsModule::getInstance()->updateNodePosition(this->movableText->getParentSceneNode(), p + (o * (so * sp)));
+
+			NOWA::GraphicsModule::getInstance()->updateNodePosition(this->movableText->getParentSceneNode(), o * (so * sp));
 		});
 
 		return true;
@@ -469,22 +481,21 @@ namespace NOWA
 	}
 
 	void GameObjectTitleComponent::setOffsetPosition(const Ogre::Vector3& offsetPosition)
-	{
-		this->offsetPosition->setValue(offsetPosition);
+    {
+        this->offsetPosition->setValue(offsetPosition);
 
-		if (this->movableText)
-		{
-			Ogre::Vector3 p = this->gameObjectPtr->getPosition();
-			Ogre::Quaternion o = this->gameObjectPtr->getOrientation();
+        if (this->movableText)
+        {
+            Ogre::Quaternion o = this->gameObjectPtr->getOrientation();
+            Ogre::Vector3 sp = this->offsetPosition->getVector3();
+            Ogre::Quaternion so = MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3());
 
-			Ogre::Vector3 sp = this->offsetPosition->getVector3();
-			Ogre::Quaternion so = MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3());
-
-			this->movableText->setTextYOffset(-1.0f);
-			NOWA::GraphicsModule::getInstance()->updateNodeOrientation(this->movableText->getParentSceneNode(), so);
-			NOWA::GraphicsModule::getInstance()->updateNodePosition(this->movableText->getParentSceneNode(), p + (o * (so * sp)));
-		}
-	}
+            this->movableText->setTextYOffset(-1.0f);
+            NOWA::GraphicsModule::getInstance()->updateNodeOrientation(this->movableText->getParentSceneNode(), so);
+            // FIX: local offset only, not p + offset
+            NOWA::GraphicsModule::getInstance()->updateNodePosition(this->movableText->getParentSceneNode(), o * (so * sp));
+        }
+    }
 
 	Ogre::Vector3 GameObjectTitleComponent::getOffsetPosition(void) const
 	{
