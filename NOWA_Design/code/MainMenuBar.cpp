@@ -392,6 +392,12 @@ MainMenuBar::MainMenuBar(ProjectManager* projectManager, MyGUI::Widget* _parent)
 		menuItem->hideItemChild();
 		menuItem->setCaptionWithReplacing("#{SceneDescription}");
 		menuItem->eventMouseButtonClick += MyGUI::newDelegate(this, &MainMenuBar::buttonHit);
+
+		menuItem = helpMenuControl->addItem("luaWikiMenuItem", MyGUI::MenuItemType::Normal,
+            Ogre::StringConverter::toString(id++)); // id becomes 55
+        menuItem->hideItemChild();
+        menuItem->setCaption("Lua Wiki"); // or use a locale key
+        menuItem->eventMouseButtonClick += MyGUI::newDelegate(this, &MainMenuBar::buttonHit);
 	}
 	
 	this->updateRecentFilesMenu();
@@ -863,6 +869,11 @@ void MainMenuBar::notifyPopupMenuAccept(MyGUI::MenuControl* sender, MyGUI::MenuI
 			this->showSceneDescriptionWindow();
 			break;
 		}
+        case 55: // Lua Wiki
+        {
+            this->showLuaWikiWindow();
+            break;
+        }
 	}
 }
 
@@ -1769,48 +1780,49 @@ void MainMenuBar::showAboutWindow(void)
 
 void MainMenuBar::showSceneDescriptionWindow(void)
 {
-	ENQUEUE_RENDER_COMMAND("MainMenuBar::showSceneDescriptionWindow",
-	{
-		if (0 == this->sceneDescriptionWindowWidgets.size())
-		{
-			this->sceneDescriptionWindow = MyGUI::Gui::getInstance().createWidget<MyGUI::Window>("WindowC", MyGUI::IntCoord(10, 10, 650, 500), MyGUI::Align::Default, "Popup");
-			MyGUI::IntCoord coord = this->sceneDescriptionWindow->getClientCoord();
+    NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    {
+        if (0 == this->sceneDescriptionWindowWidgets.size())
+        {
+            this->sceneDescriptionWindow = MyGUI::Gui::getInstance().createWidget<MyGUI::Window>("WindowC", MyGUI::IntCoord(10, 10, 650, 500), MyGUI::Align::Default, "Popup");
+            MyGUI::IntCoord coord = this->sceneDescriptionWindow->getClientCoord();
 
-			MyGUI::HyperTextBox* hyperTextBox = this->sceneDescriptionWindow->createWidget<MyGUI::HyperTextBox>("HyperTextBox", MyGUI::IntCoord(0, 0, coord.width, coord.height - 50), MyGUI::Align::Stretch);
-			hyperTextBox->setUrlColour(MyGUI::Colour::White);
+            MyGUI::HyperTextBox* hyperTextBox = this->sceneDescriptionWindow->createWidget<MyGUI::HyperTextBox>("HyperTextBox", MyGUI::IntCoord(0, 0, coord.width, coord.height - 50), MyGUI::Align::Stretch);
+            hyperTextBox->setUrlColour(MyGUI::Colour::White);
 
-			const auto mainGameObjectPtr = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(NOWA::GameObjectController::MAIN_GAMEOBJECT_ID);
-			if (nullptr != mainGameObjectPtr)
-			{
-				// Can only be added once
-				auto descriptionCompPtr = NOWA::makeStrongPtr(mainGameObjectPtr->getComponent<NOWA::DescriptionComponent>());
-				if (nullptr != descriptionCompPtr)
-				{
-					hyperTextBox->setCaption(descriptionCompPtr->getDescription());
-				}
-			}
+            const auto mainGameObjectPtr = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(NOWA::GameObjectController::MAIN_GAMEOBJECT_ID);
+            if (nullptr != mainGameObjectPtr)
+            {
+                // Can only be added once
+                auto descriptionCompPtr = NOWA::makeStrongPtr(mainGameObjectPtr->getComponent<NOWA::DescriptionComponent>());
+                if (nullptr != descriptionCompPtr)
+                {
+                    hyperTextBox->setCaption(descriptionCompPtr->getDescription());
+                }
+            }
 
-			hyperTextBox->eventUrlClick += MyGUI::newDelegate(this, &MainMenuBar::onClickUrl);
+            hyperTextBox->eventUrlClick += MyGUI::newDelegate(this, &MainMenuBar::onClickUrl);
 
-			MyGUI::Button* sceneDescriptionOkButton = this->sceneDescriptionWindow->createWidget<MyGUI::Button>("Button", MyGUI::IntCoord(0, coord.height - 40, 100, 40), MyGUI::Align::Bottom | MyGUI::Align::HCenter, "sceneDescriptionOkButton");
-			sceneDescriptionOkButton->setCaption("Ok");
-			sceneDescriptionOkButton->eventMouseButtonClick += MyGUI::newDelegate(this, &MainMenuBar::buttonHit);
-			// Force update layout
-			this->sceneDescriptionWindow->setSize(this->sceneDescriptionWindow->getSize().width - 1, this->sceneDescriptionWindow->getSize().height - 1);
-			this->sceneDescriptionWindow->setSize(this->sceneDescriptionWindow->getSize().width + 1, this->sceneDescriptionWindow->getSize().height + 1);
+            MyGUI::Button* sceneDescriptionOkButton = this->sceneDescriptionWindow->createWidget<MyGUI::Button>("Button", MyGUI::IntCoord(0, coord.height - 40, 100, 40), MyGUI::Align::Bottom | MyGUI::Align::HCenter, "sceneDescriptionOkButton");
+            sceneDescriptionOkButton->setCaption("Ok");
+            sceneDescriptionOkButton->eventMouseButtonClick += MyGUI::newDelegate(this, &MainMenuBar::buttonHit);
+            // Force update layout
+            this->sceneDescriptionWindow->setSize(this->sceneDescriptionWindow->getSize().width - 1, this->sceneDescriptionWindow->getSize().height - 1);
+            this->sceneDescriptionWindow->setSize(this->sceneDescriptionWindow->getSize().width + 1, this->sceneDescriptionWindow->getSize().height + 1);
 
-			this->sceneDescriptionWindowWidgets.push_back(hyperTextBox);
-			this->sceneDescriptionWindowWidgets.push_back(sceneDescriptionOkButton);
-			this->sceneDescriptionWindowWidgets.push_back(this->sceneDescriptionWindow);
-		}
+            this->sceneDescriptionWindowWidgets.push_back(hyperTextBox);
+            this->sceneDescriptionWindowWidgets.push_back(sceneDescriptionOkButton);
+            this->sceneDescriptionWindowWidgets.push_back(this->sceneDescriptionWindow);
+        }
 
-		MyGUI::FloatPoint windowPosition;
-		windowPosition.left = 0.3f;
-		windowPosition.top = 0.2f;
+        MyGUI::FloatPoint windowPosition;
+        windowPosition.left = 0.3f;
+        windowPosition.top = 0.2f;
 
-		this->sceneDescriptionWindow->setRealPosition(windowPosition);
-		this->sceneDescriptionWindow->setVisible(true);
-	});
+        this->sceneDescriptionWindow->setRealPosition(windowPosition);
+        this->sceneDescriptionWindow->setVisible(true);
+    };
+    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MainMenuBar::showSceneDescriptionWindow");
 }
 
 void MainMenuBar::onClickUrl(MyGUI::HyperTextBox* sender, const std::string& url)
@@ -1911,7 +1923,7 @@ void MainMenuBar::showComponentPlugin(void)
 #else
 	void MainMenuBar::showComponentPlugin(void)
 	{
-		ENQUEUE_RENDER_COMMAND("MainMenuBar::showSceneDescriptionWindow",
+		ENQUEUE_RENDER_COMMAND("MainMenuBar::showComponentPlugin",
 		{
 			if (nullptr == this->cPlusPlusComponentGenerator)
 			{
@@ -1990,4 +2002,9 @@ void MainMenuBar::toggleMyGUIComponents(bool bToggleMyGUIComponents)
 			}
 		}
 	});
+}
+
+void MainMenuBar::showLuaWikiWindow(void)
+{
+    LuaWikiPanel::getInstance()->show();
 }

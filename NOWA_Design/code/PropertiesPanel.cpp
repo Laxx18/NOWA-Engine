@@ -1448,8 +1448,7 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 				this->heightCurrent += heightStep;
 
 				// Create ComboBox for showing filtered results (acts as dropdown)
-				MyGUI::ComboBox* comboBox = mWidgetClient->createWidget<MyGUI::ComboBox>("ComboBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth - 15, height), 
-					MyGUI::Align::HStretch | MyGUI::Align::Top, name + "_combo");
+				MyGUI::ComboBox* comboBox = mWidgetClient->createWidget<MyGUI::ComboBox>(MyGUI::WidgetStyle::Enum::Popup,"ComboBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth - 15, height),  MyGUI::Align::HStretch | MyGUI::Align::Top, "Wallpaper", name + "_combo");
 				comboBox->setTextColour(MyGUIHelper::getInstance()->getTextSelectColour());
 				comboBox->setMouseHitThreshold(6, 6, 3, 3);
 				comboBox->setUserData(MyGUI::Any(attribute));

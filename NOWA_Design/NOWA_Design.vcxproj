@@ -14,6 +14,7 @@
     <ClCompile Include="code\ColourPanelManager.cpp" />
     <ClCompile Include="code\ComponentsPanel.cpp" />
     <ClCompile Include="code\ConfigPanel.cpp" />
+    <ClCompile Include="code\LuaWikiPanel.cpp" />
     <ClCompile Include="code\main.cpp" />
     <ClCompile Include="code\MainApplication.cpp" />
     <ClCompile Include="code\MainMenuBar.cpp" />
@@ -33,6 +34,7 @@
     <ClInclude Include="code\ComponentsPanel.h" />
     <ClInclude Include="code\ConfigPanel.h" />
     <ClInclude Include="code\GuiEvents.h" />
+    <ClInclude Include="code\LuaWikiPanel.h" />
     <ClInclude Include="code\MainApplication.h" />
     <ClInclude Include="code\MainMenuBar.h" />
     <ClInclude Include="code\MyGUIHelper.h" />

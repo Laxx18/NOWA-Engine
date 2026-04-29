@@ -7717,13 +7717,10 @@ namespace NOWA
 			];
 
 		module(lua)
-			[
+		[
 				class_<AiPathFollowComponent, AiComponent>("AiPathFollowComponent")
-				// .def("clone", &AiPathFollowComponent::clone)
 			.def("setWaypointsCount", &AiPathFollowComponent::setWaypointsCount)
 			.def("getWaypointsCount", &AiPathFollowComponent::getWaypointsCount)
-			//.def("setWaypointId", &AiPathFollowComponent::setWaypointId)
-			//.def("getWaypointId", &AiPathFollowComponent::getWaypointId)
 			.def("setWaypointId", &setWaypointId)
 			.def("addWaypointId", &addWaypointId)
 			.def("getWaypointId", &getWaypointId)
@@ -7731,11 +7728,9 @@ namespace NOWA
 			.def("getRepeat", &AiPathFollowComponent::getRepeat)
 			.def("setDirectionChange", &AiPathFollowComponent::setDirectionChange)
 			.def("getDirectionChange", &AiPathFollowComponent::getDirectionChange)
-			// .def("setInvertDirection", &AiPathFollowComponent::setInvertDirection)
-			// .def("getInvertDirection", &AiPathFollowComponent::getInvertDirection)
 			.def("setGoalRadius", &AiPathFollowComponent::setGoalRadius)
 			.def("getGoalRadius", &AiPathFollowComponent::getGoalRadius)
-			];
+		];
 
 		AddClassToCollection("AiPathFollowComponent", "class inherits AiComponent", AiPathFollowComponent::getStaticInfoText());
 		AddClassToCollection("AiPathFollowComponent", "void setWaypointsCount(int count)", "Sets the way points count.");

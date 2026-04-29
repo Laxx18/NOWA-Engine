@@ -7,6 +7,7 @@
 #include "ConfigPanel.h"
 #include "TreeControl/TreeControl.h"
 #include "TreeControl/TreeControlItem.h"
+#include "LuaWikiPanel.h"
 
 #include "utilities/CPlusPlusComponentGenerator.h"
 
@@ -59,6 +60,9 @@ public:
 	void drawCollisionLines(bool bDraw);
 
 	void toggleMyGUIComponents(bool bToggleMyGUIComponents);
+
+	void showLuaWikiWindow(void);
+
 private:
 	void notifyPopupMenuAccept(MyGUI::MenuControl* sender, MyGUI::MenuItem* item);
 

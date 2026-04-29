@@ -1866,73 +1866,76 @@ void ResourcesPanelPlugins::shutdown(void)
 void ResourcesPanelPlugins::clear(void)
 {
 	// Wait will block for ever, have no idea why
-	ENQUEUE_RENDER_COMMAND("ResourcesPanelPlugins::clear",
-	{
+    NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    {
 		this->selectedText.clear();
 		this->listBox->removeAllItems();
-	});
+    };
+    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ResourcesPanelPlugins::clear");
 }
 
 void ResourcesPanelPlugins::populateListBox(void)
 {
 	this->clear();
 
-	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelPlugins::populateListBox",
-	{
-			// Get all available plugin names
-		std::vector<Ogre::String> allPlugins = NOWA::Core::getSingletonPtr()->getAllPluginNames();
-		std::vector<Ogre::String> availablePlugins = NOWA::Core::getSingletonPtr()->getAvailablePluginNames();
+	NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    {
+        // Get all available plugin names
+        std::vector<Ogre::String> allPlugins = NOWA::Core::getSingletonPtr()->getAllPluginNames();
+        std::vector<Ogre::String> availablePlugins = NOWA::Core::getSingletonPtr()->getAvailablePluginNames();
 
-		// Iterate through registered components
-		for (const auto& componentName : allPlugins)
-		{
-			bool isPluginAvailable = std::find(availablePlugins.begin(), availablePlugins.end(), componentName) != availablePlugins.end();
+        // Iterate through registered components
+        for (const auto& componentName : allPlugins)
+        {
+            bool isPluginAvailable = std::find(availablePlugins.begin(), availablePlugins.end(), componentName) != availablePlugins.end();
 
-			// Add item to the list box
-			this->listBox->addItem(componentName);
+            // Add item to the list box
+            this->listBox->addItem(componentName);
 
-			// Get the index of the last added item
-			size_t itemIndex = this->listBox->getItemCount() - 1;
+            // Get the index of the last added item
+            size_t itemIndex = this->listBox->getItemCount() - 1;
 
-			// If the plugin is not available, change the text color to red
-			if (false == isPluginAvailable)
-			{
-				Ogre::String text = this->listBox->getItem(itemIndex) + " - (Not Available)";
-				this->listBox->setItemNameAt(itemIndex, text);
-			}
-		}
-	});
+            // If the plugin is not available, change the text color to red
+            if (false == isPluginAvailable)
+            {
+                Ogre::String text = this->listBox->getItem(itemIndex) + " - (Not Available)";
+                this->listBox->setItemNameAt(itemIndex, text);
+            }
+        }
+    };
+    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ResourcesPanelPlugins::populateListBox");
 }
 
 void ResourcesPanelPlugins::onListBoxItemSelected(MyGUI::ListBox* sender, size_t index)
 {
-	ENQUEUE_RENDER_COMMAND_MULTI("ResourcesPanelPlugins::onListBoxItemSelected", _2(sender, index),
-	{
-		if (index == MyGUI::ITEM_NONE)
-		{
-			this->selectedText.clear();
-			this->infoTextBox->setCaption("");
-			return;
-		}
+    NOWA::GraphicsModule::RenderCommand renderCommand = [this, sender, index]()
+    {
+        if (index == MyGUI::ITEM_NONE)
+        {
+            this->selectedText.clear();
+            this->infoTextBox->setCaption("");
+            return;
+        }
 
-		Ogre::String fullText = this->listBox->getItemNameAt(index);
-		size_t spacePos = fullText.find(" -");
+        Ogre::String fullText = this->listBox->getItemNameAt(index);
+        size_t spacePos = fullText.find(" -");
 
-		// Extract substring up to the first space
-		if (spacePos != Ogre::String::npos)
-		{
-			// Since space found, the component is not available , see: " - (Not Available)");
-			this->selectedText = fullText.substr(0, spacePos);
-			this->buyButton->setEnabled(true);
-		}
-		else
-		{
-			this->selectedText = fullText; // No space found, use full text
-			this->buyButton->setEnabled(false);
-		}
+        // Extract substring up to the first space
+        if (spacePos != Ogre::String::npos)
+        {
+            // Since space found, the component is not available , see: " - (Not Available)");
+            this->selectedText = fullText.substr(0, spacePos);
+            this->buyButton->setEnabled(true);
+        }
+        else
+        {
+            this->selectedText = fullText; // No space found, use full text
+            this->buyButton->setEnabled(false);
+        }
 
-		// Update infoTextBox
-		Ogre::String infoText = NOWA::GameObjectFactory::getInstance()->getComponentFactory()->getComponentInfoText(this->selectedText);
-		this->infoTextBox->setCaption(infoText);
-	});
+        // Update infoTextBox
+        Ogre::String infoText = NOWA::GameObjectFactory::getInstance()->getComponentFactory()->getComponentInfoText(this->selectedText);
+        this->infoTextBox->setCaption(infoText);
+    };
+    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ResourcesPanelPlugins::onListBoxItemSelected");
 }

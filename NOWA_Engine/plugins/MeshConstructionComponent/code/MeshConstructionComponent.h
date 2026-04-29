@@ -89,17 +89,14 @@ namespace NOWA
         {
             return NOWA::getIdFromName("MeshConstructionComponent");
         }
-
         static Ogre::String getStaticClassName(void)
         {
             return "MeshConstructionComponent";
         }
-
         static bool canStaticAddComponent(GameObject* gameObject);
-
         static Ogre::String getStaticInfoText(void)
         {
-            return "Mesh construction animation. "
+            return "Warcraft-2-style bottom-to-top mesh construction animation. "
                    "Simulation-only — editor always shows the full mesh. "
                    "Optional camera-facing progress bar and percentage text.";
         }
@@ -121,6 +118,14 @@ namespace NOWA
          */
         void setInvert(bool invert);
         bool getInvert(void) const;
+
+        /**
+         * @brief  Construction axis. "X" = left→right, "Y" = bottom→top,
+         *         "Z" = front→back. Invert reverses the direction.
+         *         Changing this only takes effect on the next connect().
+         */
+        void setConstructionAxis(const Ogre::String& axis);
+        Ogre::String getConstructionAxis(void) const;
 
         /** Lua callback, fired at 100%. Signature: function() */
         void reactOnConstructionDone(luabind::object closureFunction);
@@ -146,6 +151,10 @@ namespace NOWA
         {
             return "Invert";
         }
+        static const Ogre::String AttrConstructionAxis()
+        {
+            return "Construction Axis";
+        }
 
     private:
         struct SubMeshInfo
@@ -159,7 +168,7 @@ namespace NOWA
             Ogre::VertexBufferPacked* vertexBuffer = nullptr; // BT_DYNAMIC_DEFAULT
             Ogre::IndexBufferPacked* indexBuffer = nullptr;   // BT_DYNAMIC_DEFAULT
             std::vector<size_t> sortedTriIndices;
-            std::vector<float> sortedCentroidY;
+            std::vector<float> sortedCentroid; ///< centroid along the chosen construction axis
         };
 
         // All render-thread helpers:
@@ -174,15 +183,21 @@ namespace NOWA
         // Uploads the final index state synchronously (true=all visible, false=all degenerate).
         void uploadFinalIndicesBlocking(bool makeAllVisible);
 
+        /// Returns the axis component (x/y/z) of a vector based on the current axis variant.
+        float axisComponent(const Ogre::Vector3& v) const;
+
         Ogre::String trackedClosureId(void) const;
 
     private:
         Ogre::String componentName;
         Ogre::String originalMeshName;
 
-        // Local-space Y extents (refined from actual vertex data in connect()).
+        // Local-space Y extents — used for progress bar/text positioning (always Y).
         Ogre::Real meshMinY;
         Ogre::Real meshMaxY;
+        // Local-space extents along the chosen construction axis.
+        Ogre::Real meshAxisMin;
+        Ogre::Real meshAxisMax;
 
         std::vector<Ogre::Vector3> vertices;
         std::vector<Ogre::Vector3> normals;
@@ -217,6 +232,7 @@ namespace NOWA
         Variant* showProgressBar;
         Variant* showPercentageText;
         Variant* invert;
+        Variant* constructionAxis;
     };
 
 } // namespace NOWA

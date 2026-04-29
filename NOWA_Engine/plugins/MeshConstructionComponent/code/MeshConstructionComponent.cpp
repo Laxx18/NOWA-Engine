@@ -42,6 +42,8 @@ namespace NOWA
         componentName("MeshConstructionComponent"),
         meshMinY(0.0f),
         meshMaxY(1.0f),
+        meshAxisMin(0.0f),
+        meshAxisMax(1.0f),
         vertexCount(0),
         indexCount(0),
         constructionItem(nullptr),
@@ -58,7 +60,8 @@ namespace NOWA
         constructionTime(new Variant(MeshConstructionComponent::AttrConstructionTime(), 5.0f, this->attributes)),
         showProgressBar(new Variant(MeshConstructionComponent::AttrShowProgressBar(), true, this->attributes)),
         showPercentageText(new Variant(MeshConstructionComponent::AttrShowPercentageText(), true, this->attributes)),
-        invert(new Variant(MeshConstructionComponent::AttrInvert(), false, this->attributes))
+        invert(new Variant(MeshConstructionComponent::AttrInvert(), false, this->attributes)),
+        constructionAxis(new Variant(MeshConstructionComponent::AttrConstructionAxis(), std::vector<Ogre::String>{"X", "Y", "Z"}, this->attributes))
     {
         this->constructionTime->setConstraints(0.1f, 3600.0f);
         this->constructionTime->setDescription("Total time in seconds for the mesh to fully materialise.");
@@ -66,6 +69,9 @@ namespace NOWA
         this->showPercentageText->setDescription("Show a percentage text label above the progress bar.");
         this->invert->setDescription("If true the mesh deconstructs top-to-bottom (demolition mode) "
                                      "instead of building bottom-to-top.");
+        this->constructionAxis->setListSelectedValue("Y");
+        this->constructionAxis->setDescription("Construction axis. X = left to right, Y = bottom to top, "
+                                               "Z = front to back. Combine with Invert to reverse direction.");
     }
 
     MeshConstructionComponent::~MeshConstructionComponent()
@@ -147,6 +153,14 @@ namespace NOWA
     {
         return this->invert->getBool();
     }
+    void MeshConstructionComponent::setConstructionAxis(const Ogre::String& axis)
+    {
+        this->constructionAxis->setListSelectedValue(axis);
+    }
+    Ogre::String MeshConstructionComponent::getConstructionAxis(void) const
+    {
+        return this->constructionAxis->getListSelectedValue();
+    }
     void MeshConstructionComponent::reactOnConstructionDone(luabind::object fn)
     {
         this->closureFunction = fn;
@@ -189,6 +203,11 @@ namespace NOWA
             this->invert->setValue(XMLConverter::getAttribBool(propertyElement, "data", false));
             propertyElement = propertyElement->next_sibling("property");
         }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrConstructionAxis())
+        {
+            this->constructionAxis->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data", "Y"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
         return true;
     }
 
@@ -216,6 +235,8 @@ namespace NOWA
             this->meshMinY = 0.0f;
             this->meshMaxY = 1.0f;
         }
+        this->meshAxisMin = this->meshMinY;
+        this->meshAxisMax = this->meshMaxY;
         return true;
     }
 
@@ -363,6 +384,7 @@ namespace NOWA
         comp->setShowProgressBar(this->showProgressBar->getBool());
         comp->setShowPercentageText(this->showPercentageText->getBool());
         comp->setInvert(this->invert->getBool());
+        comp->setConstructionAxis(this->constructionAxis->getListSelectedValue());
         cloned->addComponent(comp);
         comp->setOwner(cloned);
         GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(comp));
@@ -394,6 +416,25 @@ namespace NOWA
             };
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(hide), "MeshConstructionComponent::setActivated::hide");
         }
+    }
+
+    // =========================================================================
+    //  axisComponent  —  returns the X, Y or Z component of v based on the
+    //  constructionAxis Variant.  Used for centroid sort and cutoff comparison.
+    // =========================================================================
+
+    float MeshConstructionComponent::axisComponent(const Ogre::Vector3& v) const
+    {
+        const Ogre::String axis = this->constructionAxis->getListSelectedValue();
+        if (axis == "X")
+        {
+            return v.x;
+        }
+        if (axis == "Z")
+        {
+            return v.z;
+        }
+        return v.y; // default "Y"
     }
 
     // =========================================================================
@@ -523,25 +564,23 @@ namespace NOWA
         this->elapsed += dt;
         this->constructionProgress = Ogre::Math::Clamp(this->elapsed / this->constructionTime->getReal(), 0.0f, 1.0f);
 
-        // Local-space cutoff Y, used with upper_bound(sortedCentroidY, cutoffY).
-        // Triangles with centroid <= cutoffY are visible.
+        // Local-space cutoff along the chosen axis, used with upper_bound(sortedCentroid).
+        // Triangles with centroid <= cutoff are visible.
         //
-        // Normal  (invert=false): cutoffY rises  meshMinY → meshMaxY  (build up)
-        // Inverted(invert=true ): cutoffY falls  meshMaxY → meshMinY  (tear down)
+        // Normal  (invert=false): cutoff rises  meshAxisMin → meshAxisMax
+        // Inverted(invert=true ): cutoff falls  meshAxisMax → meshAxisMin
         //
-        // Epsilon offsets ensure boundary triangles are included at 0% and 100%.
-        float cutoffY;
+        // Epsilon offsets ensure boundary triangles are always included.
+        float cutoff;
         if (false == this->invert->getBool())
         {
-            // Build: nothing visible at start, everything at end.
-            cutoffY = (this->constructionProgress >= 1.0f) ? this->meshMaxY + 1.0f : static_cast<float>(this->meshMinY + this->constructionProgress * (this->meshMaxY - this->meshMinY));
+            cutoff = (this->constructionProgress >= 1.0f) ? this->meshAxisMax + 1.0f : static_cast<float>(this->meshAxisMin + this->constructionProgress * (this->meshAxisMax - this->meshAxisMin));
         }
         else
         {
-            // Demolish: everything visible at start, nothing at end.
-            cutoffY = (this->constructionProgress <= 0.0f)   ? this->meshMaxY + 1.0f // all visible
-                      : (this->constructionProgress >= 1.0f) ? this->meshMinY - 1.0f // nothing visible
-                                                             : static_cast<float>(this->meshMaxY - this->constructionProgress * (this->meshMaxY - this->meshMinY));
+            cutoff = (this->constructionProgress <= 0.0f)   ? this->meshAxisMax + 1.0f
+                     : (this->constructionProgress >= 1.0f) ? this->meshAxisMin - 1.0f
+                                                            : static_cast<float>(this->meshAxisMax - this->constructionProgress * (this->meshAxisMax - this->meshAxisMin));
         }
 
         // ── 2. Index packets ──────────────────────────────────────────────────────
@@ -564,8 +603,8 @@ namespace NOWA
                 continue;
             }
 
-            const auto it = std::upper_bound(sm.sortedCentroidY.begin(), sm.sortedCentroidY.end(), cutoffY);
-            const size_t visibleTris = static_cast<size_t>(std::distance(sm.sortedCentroidY.begin(), it));
+            const auto it = std::upper_bound(sm.sortedCentroid.begin(), sm.sortedCentroid.end(), cutoff);
+            const size_t visibleTris = static_cast<size_t>(std::distance(sm.sortedCentroid.begin(), it));
             const size_t triCount = sm.indexCount / 3;
             const bool use16 = (sm.vertexCount <= 65535u);
 
@@ -606,7 +645,7 @@ namespace NOWA
 
         // ── 3. Capture for render closure ─────────────────────────────────────────
         const Ogre::Real capturedProgress = this->constructionProgress;
-        const float capturedCutoffY = cutoffY;
+        const float capturedCutoff = cutoff;
         const bool doBar = this->showProgressBar->getBool();
         const bool doText = this->showPercentageText->getBool();
         const int pct = static_cast<int>(capturedProgress * 100.0f);
@@ -621,7 +660,7 @@ namespace NOWA
         //  Frame 2: getNumSections()>0 AND barCouldDraw==true → beginUpdate(0)
         //  This exactly mirrors ValueBarComponent::update() / drawValueBar().
 
-        auto renderClosure = [this, packets = std::move(packets), capturedProgress, capturedCutoffY, doBar, doText, pctStr, capturedMeshMaxY](Ogre::Real) mutable
+        auto renderClosure = [this, packets = std::move(packets), capturedProgress, capturedCutoff, doBar, doText, pctStr, capturedMeshMaxY](Ogre::Real) mutable
         {
             // ── a) Upload index buffers ────────────────────────────────────────────
             for (IndexPacket& pkt : packets)
@@ -891,6 +930,10 @@ namespace NOWA
         {
             this->setInvert(attribute->getBool());
         }
+        else if (AttrConstructionAxis() == attribute->getName())
+        {
+            this->setConstructionAxis(attribute->getListSelectedValue());
+        }
     }
 
     void MeshConstructionComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
@@ -909,6 +952,7 @@ namespace NOWA
         add("12", AttrShowProgressBar(), XMLConverter::ConvertString(doc, this->showProgressBar->getBool()));
         add("12", AttrShowPercentageText(), XMLConverter::ConvertString(doc, this->showPercentageText->getBool()));
         add("12", AttrInvert(), XMLConverter::ConvertString(doc, this->invert->getBool()));
+        add("9", AttrConstructionAxis(), XMLConverter::ConvertString(doc, this->constructionAxis->getListSelectedValue()));
     }
 
     // =========================================================================
@@ -1095,10 +1139,14 @@ namespace NOWA
         this->vertexCount = this->vertices.size();
         this->indexCount = this->indices.size();
 
-        // Recompute Y bounds from ACTUAL vertices (getBounds() may differ slightly).
+        // Recompute bounds from ACTUAL vertex data (getBounds() can differ slightly).
+        // meshMinY/meshMaxY  — always Y, used to position the progress bar above the object.
+        // meshAxisMin/Max    — along the chosen construction axis, used for the cutoff sweep.
         {
             float minY = std::numeric_limits<float>::max();
             float maxY = -std::numeric_limits<float>::max();
+            float minA = std::numeric_limits<float>::max();
+            float maxA = -std::numeric_limits<float>::max();
             for (const auto& v : this->vertices)
             {
                 if (v.y < minY)
@@ -1109,39 +1157,55 @@ namespace NOWA
                 {
                     maxY = v.y;
                 }
-                const float r = Ogre::Vector2(v.x, v.z).length();
+                const float a = this->axisComponent(v);
+                if (a < minA)
+                {
+                    minA = a;
+                }
+                if (a > maxA)
+                {
+                    maxA = a;
+                }
             }
             this->meshMinY = minY;
             this->meshMaxY = maxY;
+            this->meshAxisMin = minA;
+            this->meshAxisMax = maxA;
+            if (this->meshAxisMin >= this->meshAxisMax)
+            {
+                // Degenerate — fall back to Y bounds.
+                this->meshAxisMin = this->meshMinY;
+                this->meshAxisMax = this->meshMaxY;
+            }
         }
 
-        // Sort triangles by centroid Y (one-time cost).
+        // Sort triangles by centroid along the chosen construction axis (one-time O(n log n)).
         for (SubMeshInfo& si : this->subMeshInfoList)
         {
             const size_t triCount = si.indexCount / 3;
             si.sortedTriIndices.resize(triCount);
-            si.sortedCentroidY.resize(triCount);
+            si.sortedCentroid.resize(triCount);
 
             for (size_t t = 0; t < triCount; ++t)
             {
                 const size_t i0 = this->indices[si.indexOffset + t * 3];
                 const size_t i1 = this->indices[si.indexOffset + t * 3 + 1];
                 const size_t i2 = this->indices[si.indexOffset + t * 3 + 2];
-                si.sortedCentroidY[t] = (this->vertices[i0].y + this->vertices[i1].y + this->vertices[i2].y) / 3.0f;
+                si.sortedCentroid[t] = (this->axisComponent(this->vertices[i0]) + this->axisComponent(this->vertices[i1]) + this->axisComponent(this->vertices[i2])) / 3.0f;
                 si.sortedTriIndices[t] = t;
             }
             std::sort(si.sortedTriIndices.begin(), si.sortedTriIndices.end(),
                 [&si](size_t a, size_t b)
                 {
-                    return si.sortedCentroidY[a] < si.sortedCentroidY[b];
+                    return si.sortedCentroid[a] < si.sortedCentroid[b];
                 });
 
-            std::vector<float> sortedY(triCount);
+            std::vector<float> sortedC(triCount);
             for (size_t i = 0; i < triCount; ++i)
             {
-                sortedY[i] = si.sortedCentroidY[si.sortedTriIndices[i]];
+                sortedC[i] = si.sortedCentroid[si.sortedTriIndices[i]];
             }
-            si.sortedCentroidY = std::move(sortedY);
+            si.sortedCentroid = std::move(sortedC);
         }
 
         // Build GPU mesh.
@@ -1419,12 +1483,15 @@ namespace NOWA
                 .def("getIsConstructionFinished", &MeshConstructionComponent::getIsConstructionFinished)
                 .def("setInvert", &MeshConstructionComponent::setInvert)
                 .def("getInvert", &MeshConstructionComponent::getInvert)
+                .def("setConstructionAxis", &MeshConstructionComponent::setConstructionAxis)
+                .def("getConstructionAxis", &MeshConstructionComponent::getConstructionAxis)
                 .def("reactOnConstructionDone", &MeshConstructionComponent::reactOnConstructionDone)];
 
         LuaScriptApi::getInstance()->addClassToCollection("MeshConstructionComponent", "class inherits GameObjectComponent", MeshConstructionComponent::getStaticInfoText());
         LuaScriptApi::getInstance()->addClassToCollection("MeshConstructionComponent", "void reactOnConstructionDone(func closureFunction)", "Lua callback at 100%. Signature: function()");
         LuaScriptApi::getInstance()->addClassToCollection("MeshConstructionComponent", "float getConstructionProgress()", "Returns progress [0..1].");
         LuaScriptApi::getInstance()->addClassToCollection("MeshConstructionComponent", "void setInvert(bool invert)", "If true: mesh deconstructs top-to-bottom (demolition). If false: builds bottom-to-top.");
+        LuaScriptApi::getInstance()->addClassToCollection("MeshConstructionComponent", "void setConstructionAxis(String axis)", "Axis along which construction sweeps. 'X'=left/right, 'Y'=bottom/top, 'Z'=front/back.");
 
         gameObjectClass.def("getMeshConstructionComponent", (MeshConstructionComponent * (*)(GameObject*)) & getMeshConstructionComponent);
         gameObjectClass.def("getMeshConstructionComponentFromName", &getMeshConstructionComponentFromName);

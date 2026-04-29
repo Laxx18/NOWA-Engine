@@ -48,6 +48,9 @@
     <ClCompile Include="code\OpenSaveFileDialogExtended.cpp">
       <Filter>code</Filter>
     </ClCompile>
+    <ClCompile Include="code\LuaWikiPanel.cpp">
+      <Filter>code</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="code\MainApplication.h">
@@ -93,6 +96,9 @@
       <Filter>code</Filter>
     </ClInclude>
     <ClInclude Include="code\MyGUIHelper.h">
+      <Filter>code</Filter>
+    </ClInclude>
+    <ClInclude Include="code\LuaWikiPanel.h">
       <Filter>code</Filter>
     </ClInclude>
   </ItemGroup>

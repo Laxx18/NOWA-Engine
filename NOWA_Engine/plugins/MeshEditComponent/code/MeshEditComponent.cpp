@@ -622,9 +622,6 @@ namespace NOWA
         // Tell the editor to enter mesh-modify mode
         boost::shared_ptr<EventDataEditorMode> evt(new EventDataEditorMode(EditorManager::EDITOR_MESH_MODIFY_MODE));
         NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(evt);
-
-        this->isSelected = true;
-        this->addInputListener();
     }
 
     void MeshEditComponent::onRemoveComponent(void)

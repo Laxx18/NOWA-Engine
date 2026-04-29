@@ -18951,7 +18951,7 @@ return {
 	MeshConstructionComponent =
 	{
 		type = "class",
-		description = "Mesh construction animation. Simulation-only — editor always shows the full mesh. Optional camera-facing progress bar and percentage text.",
+		description = "Warcraft-2-style bottom-to-top mesh construction animation. Simulation-only — editor always shows the full mesh. Optional camera-facing progress bar and percentage text.",
 		inherits = "GameObjectComponent",
 		childs = 
 		{
@@ -18976,6 +18976,14 @@ return {
 				type = "method",
 				description = "If true: mesh deconstructs top-to-bottom (demolition). If false: builds bottom-to-top.",
 				args = "(boolean invert)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setConstructionAxis =
+			{
+				type = "method",
+				description = "Axis along which construction sweeps. 'X'=left/right, 'Y'=bottom/top, 'Z'=front/back.",
+				args = "(string axis)",
 				returns = "(nil)",
 				valuetype = "nil"
 			}
