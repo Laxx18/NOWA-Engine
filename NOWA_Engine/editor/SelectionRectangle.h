@@ -2,14 +2,15 @@
 #define SELECTIONRECTANGLE_H_
 
 #include "defines.h"
-#include "OgreRectangle2D.h"
 
 namespace NOWA
 {
-	class EXPORTED SelectionRectangle : public /*Ogre::v1::Rectangle2D*/ Ogre::ManualObject
+	class EXPORTED SelectionRectangle : public Ogre::ManualObject
 	{
 	public:
 		SelectionRectangle(const Ogre::String& name, Ogre::SceneManager* sceneManager, Ogre::Camera* camera);
+
+		virtual ~SelectionRectangle();
 
 		void setCorners(Ogre::Real left, Ogre::Real top, Ogre::Real right, Ogre::Real bottom);
 

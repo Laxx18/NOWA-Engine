@@ -353,7 +353,8 @@ namespace NOWA
 			this->parseGlobalScene(crypted);
 		}
 
-		ENQUEUE_RENDER_COMMAND_WAIT("DotSceneImportModule::waitForStreamingCompletion", {
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
             Ogre::TextureGpuManager* textureManager = Ogre::Root::getSingletonPtr()->getRenderSystem()->getTextureGpuManager();
             textureManager->waitForStreamingCompletion();
 
@@ -361,14 +362,15 @@ namespace NOWA
             Ogre::VaoManager* vaoManager = Ogre::Root::getSingletonPtr()->getRenderSystem()->getVaoManager();
             // This ensures mesh buffers are batched and created
 
-			// This game objects must be initialized before all other game objects are initialized, because they may need data from this game objects, like terra needs a camera
+            // This game objects must be initialized before all other game objects are initialized, because they may need data from this game objects, like terra needs a camera
             this->postInitData();
-        });
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DotSceneImportModule::waitForStreamingCompletion");
 
 		float dt = (static_cast<Ogre::Real>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001f) - currentTime;
 		Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[DotSceneImportModule] Parse end scene: " + this->projectParameter.sceneName + " duration: " + Ogre::StringConverter::toString(dt) + " seconds");
 
-		// Ogre::Root::getSingletonPtr()->renderOneFrame();
+		Ogre::Root::getSingletonPtr()->renderOneFrame();
 
 		this->bSceneParsed = false;
 

@@ -108,6 +108,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MeshEditComponent", "MeshEd
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MeshConstructionComponent", "MeshConstructionComponent\MeshConstructionComponent.vcxproj", "{CEA15898-4B26-4029-80E6-19700D7E138A}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GameObjectPlaceComponent", "GameObjectPlaceComponent\GameObjectPlaceComponent.vcxproj", "{253E587C-E36F-4998-B6CC-F306BEFC8CC1}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -318,6 +320,10 @@ Global
 		{CEA15898-4B26-4029-80E6-19700D7E138A}.Debug|x64.Build.0 = Debug|x64
 		{CEA15898-4B26-4029-80E6-19700D7E138A}.Release|x64.ActiveCfg = Release|x64
 		{CEA15898-4B26-4029-80E6-19700D7E138A}.Release|x64.Build.0 = Release|x64
+		{253E587C-E36F-4998-B6CC-F306BEFC8CC1}.Debug|x64.ActiveCfg = Debug|x64
+		{253E587C-E36F-4998-B6CC-F306BEFC8CC1}.Debug|x64.Build.0 = Debug|x64
+		{253E587C-E36F-4998-B6CC-F306BEFC8CC1}.Release|x64.ActiveCfg = Release|x64
+		{253E587C-E36F-4998-B6CC-F306BEFC8CC1}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -2452,7 +2452,8 @@ namespace NOWA
 
     void EditorManager::movePlaceNode(const Ogre::Ray& hitRay)
     {
-        ENQUEUE_RENDER_COMMAND_MULTI("EditorManager::movePlaceNode", _1(hitRay), {
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, hitRay]()
+        {
             Ogre::Vector3 internalHitPoint = Ogre::Vector3::ZERO;
             // this->placeNode->setPosition(Ogre::Vector3::ZERO);
             Ogre::MovableObject* hitMovableObject = nullptr;
@@ -2625,7 +2626,8 @@ namespace NOWA
             {
                 this->applyPlaceMovableTransform();
             }
-        });
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "EditorManager::movePlaceNode");
     }
 
     void EditorManager::rotatePlaceNode(void)
@@ -2651,14 +2653,6 @@ namespace NOWA
 
     void EditorManager::applyPlaceMovableTransform(void)
     {
-        // ENQUEUE_RENDER_COMMAND_WAIT("EditorManager::applyPlaceMovableTransform",
-        //{
-        //	// Set position with center and y = 0 with offset to center when place node is orientated
-        //	this->tempPlaceMovableNode->_setDerivedPosition(this->placeNode->_getDerivedPositionUpdated() + (this->placeNode->getOrientation()
-        //		* MathHelper::getInstance()->getBottomCenterOfMesh(this->tempPlaceMovableNode, this->tempPlaceMovableObject)));
-        //	this->tempPlaceMovableNode->setOrientation(this->placeNode->_getDerivedOrientationUpdated());
-        // });
-
         if (nullptr == this->tempPlaceMovableNode)
         {
             return;

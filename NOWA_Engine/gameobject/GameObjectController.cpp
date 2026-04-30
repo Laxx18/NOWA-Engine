@@ -314,9 +314,17 @@ void SnapshotGameObjectsCommand::resetGameObjects(void)
     std::vector<unsigned long> currentGameObjectsIds;
 
     if (false == this->appStateName.empty())
+    {
         currentGameObjectsIds = AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->getAllGameObjectIds();
+    }
     else
+    {
         currentGameObjectsIds = AppStateManager::getSingletonPtr()->getGameObjectController()->getAllGameObjectIds();
+    }
+
+    // Sort both ranges before set_difference
+    std::sort(currentGameObjectsIds.begin(), currentGameObjectsIds.end());
+    std::sort(this->gameObjectsIdsBeforeSnapShot.begin(), this->gameObjectsIdsBeforeSnapShot.end());
 
     std::vector<unsigned long> differenceList;
     std::set_difference(this->gameObjectsIdsBeforeSnapShot.begin(), this->gameObjectsIdsBeforeSnapShot.end(), currentGameObjectsIds.begin(), currentGameObjectsIds.end(), std::inserter(differenceList, differenceList.begin()));

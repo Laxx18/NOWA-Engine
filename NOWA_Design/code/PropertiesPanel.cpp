@@ -2075,8 +2075,10 @@ void PropertiesPanelDynamic::onKeyButtonPressed(MyGUI::Widget* sender, MyGUI::Ke
 		MyGUI::EditBox* editBox = sender->castType<MyGUI::EditBox>(false);
 		if (nullptr != editBox)
 		{
-			this->notifyEditSelectAccept(editBox);
-			MyGUIHelper::getInstance()->adaptFocus(sender, MyGUI::KeyCode::Return, this->itemsEdit);
+            // Focus reset first — widget is guaranteed alive here
+            MyGUIHelper::getInstance()->adaptFocus(sender, MyGUI::KeyCode::Return, this->itemsEdit);
+            // Value acceptance second — may trigger panel rebuild
+            this->notifyEditSelectAccept(editBox);
 		}
 	}
 	// Adds new line if shift + enter is pressed

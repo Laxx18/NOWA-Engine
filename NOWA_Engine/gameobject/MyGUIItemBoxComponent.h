@@ -368,6 +368,7 @@ namespace NOWA
 		DragDropData* dragDropData;
 		Ogre::String oldResourceLocationName;
 		bool dropFinished;
+        std::map<Ogre::String, unsigned int> resourceNameToIndex;
 	};
 
 	//////////////////////////////////////////////////////////////////////////////////
