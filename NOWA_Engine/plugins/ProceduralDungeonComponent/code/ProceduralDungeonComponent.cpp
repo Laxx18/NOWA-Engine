@@ -954,9 +954,10 @@ namespace NOWA
             return true; // not handled -> bubble
         }
 
-        if (MyGUI::InputManager::getInstance().getMouseFocusWidget())
+        // Check for MyGUI focus FIRST, before handling
+        if (nullptr != NOWA::InputDeviceCore::getSingletonPtr()->isMouseAtMyGUIFocusWidget())
         {
-            return true; // not handled -> bubble
+            return true;
         }
 
         Ogre::Camera* camera = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();

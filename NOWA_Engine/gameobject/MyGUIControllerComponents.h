@@ -77,7 +77,7 @@ namespace NOWA
 		/**
 		 * @see  GameObjectComponent::createStaticApiForLua
 		 */
-		static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObject, luabind::class_<GameObjectController>& gameObjectController) { }
+		static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass) { }
 
 		/**
 		* @see	GameObjectComponent::getStaticInfoText
@@ -195,7 +195,7 @@ namespace NOWA
 		/**
 		 * @see  GameObjectComponent::createStaticApiForLua
 		 */
-		static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObject, luabind::class_<GameObjectController>& gameObjectController) { }
+		static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass) { }
 
 		/**
 		* @see	GameObjectComponent::getStaticInfoText
@@ -301,7 +301,7 @@ namespace NOWA
 		/**
 		 * @see  GameObjectComponent::createStaticApiForLua
 		 */
-		static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObject, luabind::class_<GameObjectController>& gameObjectController) { }
+		static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass) { }
 
 		/**
 		* @see	GameObjectComponent::getStaticInfoText
@@ -415,7 +415,7 @@ namespace NOWA
 		/**
 		 * @see  GameObjectComponent::createStaticApiForLua
 		 */
-		static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObject, luabind::class_<GameObjectController>& gameObjectController) { }
+		static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass) { }
 
 		/**
 		* @see	GameObjectComponent::getStaticInfoText
@@ -530,7 +530,7 @@ namespace NOWA
 		/**
 		 * @see  GameObjectComponent::createStaticApiForLua
 		 */
-		static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObject, luabind::class_<GameObjectController>& gameObjectController) { }
+		static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass) { }
 
 		/**
 		* @see	GameObjectComponent::getStaticInfoText
@@ -635,7 +635,7 @@ namespace NOWA
 		/**
 		 * @see  GameObjectComponent::createStaticApiForLua
 		 */
-		static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObject, luabind::class_<GameObjectController>& gameObjectController) { }
+		static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass) { }
 
 		/**
 		* @see	GameObjectComponent::getStaticInfoText

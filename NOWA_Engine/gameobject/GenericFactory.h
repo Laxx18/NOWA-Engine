@@ -27,9 +27,9 @@ namespace NOWA
 	}
 
 	template <class SubType>
-	void genericCreateApiForLuaFunction(lua_State* lua, luabind::class_<GameObject>& gameObject, luabind::class_<GameObjectController>& gameObjectController)
+	void genericCreateApiForLuaFunction(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass)
 	{ 
-		return SubType::createStaticApiForLua(lua, gameObject, gameObjectController);
+		return SubType::createStaticApiForLua(lua, gameObjectClass, gameObjectControllerClass);
 	}
 
 	template <class BaseClass, class IdType>
@@ -39,7 +39,7 @@ namespace NOWA
 
 		typedef BaseClass* (*ObjectCreationFunction)(void);
 
-		typedef void (*CreateForLuaApiFunction)(lua_State* lua, luabind::class_<GameObject>& gameObject, luabind::class_<GameObjectController>& gameObjectController);
+		typedef void (*CreateForLuaApiFunction)(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass);
 	public:
 
 		struct ComponentProperties
@@ -150,7 +150,7 @@ namespace NOWA
 			return true;
 		}
 
-		void createForLuaApi(IdType id, lua_State* lua, luabind::class_<GameObject>& gameObject, luabind::class_<GameObjectController>& gameObjectController)
+		void createForLuaApi(IdType id, lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass)
 		{
 			if (id == 0)
 			{
@@ -161,7 +161,7 @@ namespace NOWA
 			{
 				CreateForLuaApiFunction pFunc = findIt->second;
 
-				pFunc(lua, gameObject, gameObjectController);
+				pFunc(lua, gameObjectClass, gameObjectControllerClass);
 				return;
 			}
 		}

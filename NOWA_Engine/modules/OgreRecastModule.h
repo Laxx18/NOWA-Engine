@@ -526,6 +526,8 @@ namespace NOWA
 		bool mustRegenerate;
 		bool hasValidNavMesh;
 		bool debugDraw;
+        std::thread navMeshThread;
+        std::atomic<bool> buildInProgress;
 	};
 
 }; //namespace end

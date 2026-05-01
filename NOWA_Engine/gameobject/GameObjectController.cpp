@@ -1,6 +1,7 @@
 #include "NOWAPrecompiled.h"
 #include "GameObjectController.h"
 #include "AiLuaComponent.h"
+#include "AiLuaGoalComponent.h"
 #include "CameraBehaviorComponents.h"
 #include "CameraComponent.h"
 #include "DatablockPbsComponent.h"
@@ -1772,6 +1773,12 @@ void GameObjectController::start(void)
                 {
                     aiLuaCompPtr->connect();
                 }
+
+                boost::shared_ptr<AiLuaGoalComponent> aiLuaGoalCompPtr = NOWA::makeStrongPtr(luaScriptCompPtr->getOwner()->getComponent<AiLuaGoalComponent>());
+                if (nullptr != aiLuaGoalCompPtr)
+                {
+                    aiLuaGoalCompPtr->connect();
+                }
             }
         }
 
@@ -1830,6 +1837,7 @@ void GameObjectController::stop(void)
             // (already zero-cost after the postInit caching is in place)
             LuaScriptComponent* luaScriptRaw = gameObjectPtr->getCachedLuaScriptComponent();
             AiLuaComponent* aiLuaRaw = gameObjectPtr->getCachedAiLuaComponent();
+            AiLuaGoalComponent* aiLuaGoalRaw = gameObjectPtr->getCachedAiLuaGoalComponent();
 
             if (nullptr != luaScriptRaw)
             {
@@ -1838,6 +1846,10 @@ void GameObjectController::stop(void)
             else if (nullptr != aiLuaRaw)
             {
                 aiLuaRaw->disconnect();
+            }
+            else if (nullptr != aiLuaGoalRaw)
+            {
+                aiLuaGoalRaw->disconnect();
             }
 
             if (false == gameObjectPtr->disconnect())

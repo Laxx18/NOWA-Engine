@@ -2528,11 +2528,6 @@ namespace NOWA
 		return makeStrongPtr<MyGUIWindowComponent>(gameObject->getComponent<MyGUIWindowComponent>()).get();
 	}
 
-	MyGUIItemBoxComponent* getMyGUIItemBoxComponent(GameObject* gameObject)
-	{
-		return makeStrongPtr<MyGUIItemBoxComponent>(gameObject->getComponent<MyGUIItemBoxComponent>()).get();
-	}
-
 	MyGUITextComponent* getMyGUITextComponent(GameObject* gameObject)
 	{
 		return makeStrongPtr<MyGUITextComponent>(gameObject->getComponent<MyGUITextComponent>()).get();
@@ -3093,11 +3088,6 @@ namespace NOWA
 		return makeStrongPtr<MyGUIWindowComponent>(gameObject->getComponentFromName<MyGUIWindowComponent>(name)).get();
 	}
 
-	MyGUIItemBoxComponent* getMyGUIItemBoxComponentFromName(GameObject* gameObject, const Ogre::String& name)
-	{
-		return makeStrongPtr<MyGUIItemBoxComponent>(gameObject->getComponentFromName<MyGUIItemBoxComponent>(name)).get();
-	}
-
 	MyGUITextComponent* getMyGUITextComponentFromName(GameObject* gameObject, const Ogre::String& name)
 	{
 		return makeStrongPtr<MyGUITextComponent>(gameObject->getComponentFromName<MyGUITextComponent>(name)).get();
@@ -3267,318 +3257,313 @@ namespace NOWA
 		return Ogre::StringConverter::toString(instance->getReferenceId());
 	}
 
-	// ...
-	// more types to come
-
-	void bindGameObject(lua_State* lua, class_<GameObject>& gameObject)
+	void bindGameObject(lua_State* lua, class_<GameObject>& gameObjectClass)
 	{
-		gameObject.def("getId", &getId);
-		gameObject.def("getName", &GameObject::getName);
-		gameObject.def("getUniqueName", &GameObject::getUniqueName);
-		gameObject.def("getSceneManager", &GameObject::getSceneManager);
-		gameObject.def("getSceneNode", &GameObject::getSceneNode);
+		gameObjectClass.def("getId", &getId);
+		gameObjectClass.def("getName", &GameObject::getName);
+		gameObjectClass.def("getUniqueName", &GameObject::getUniqueName);
+		gameObjectClass.def("getSceneManager", &GameObject::getSceneManager);
+		gameObjectClass.def("getSceneNode", &GameObject::getSceneNode);
 		// Here later multiplicate out all types in anonym function
-		gameObject.def("getEntity", &getEntity);
-		gameObject.def("getCategory", &GameObject::getCategory);
-		gameObject.def("getRenderCategory", &GameObject::getRenderCategory);
-		gameObject.def("getCategoryId", &getCategoryId);
-		gameObject.def("getRenderCategoryId", &getRenderCategoryId);
-		gameObject.def("getTagName", &GameObject::getTagName);
-		gameObject.def("setActivated", &GameObject::setActivated);
-		gameObject.def("changeCategory", (void (GameObject::*)(const Ogre::String&, const Ogre::String&)) & GameObject::changeCategory);
-		gameObject.def("changeCategory2", (void (GameObject::*)(const Ogre::String&)) & GameObject::changeCategory);
+		gameObjectClass.def("getEntity", &getEntity);
+		gameObjectClass.def("getCategory", &GameObject::getCategory);
+		gameObjectClass.def("getRenderCategory", &GameObject::getRenderCategory);
+		gameObjectClass.def("getCategoryId", &getCategoryId);
+		gameObjectClass.def("getRenderCategoryId", &getRenderCategoryId);
+		gameObjectClass.def("getTagName", &GameObject::getTagName);
+		gameObjectClass.def("setActivated", &GameObject::setActivated);
+		gameObjectClass.def("changeCategory", (void (GameObject::*)(const Ogre::String&, const Ogre::String&)) & GameObject::changeCategory);
+		gameObjectClass.def("changeCategory2", (void (GameObject::*)(const Ogre::String&)) & GameObject::changeCategory);
 
-		gameObject.def("changeRenderCategory", (void (GameObject::*)(const Ogre::String&, const Ogre::String&)) & GameObject::changeRenderCategory);
-		gameObject.def("changeRenderCategory2", (void (GameObject::*)(const Ogre::String&)) & GameObject::changeRenderCategory);
+		gameObjectClass.def("changeRenderCategory", (void (GameObject::*)(const Ogre::String&, const Ogre::String&)) & GameObject::changeRenderCategory);
+		gameObjectClass.def("changeRenderCategory2", (void (GameObject::*)(const Ogre::String&)) & GameObject::changeRenderCategory);
 
-		// gameObject.def("GameObjectComponents", &GameObject::getComponents);
-		// gameObject.def("addComponent", &GameObject::addComponent);
-		gameObject.def("setAttributePosition", &GameObject::setAttributePosition);
-		gameObject.def("setAttributeScale", &GameObject::setAttributeScale);
-		gameObject.def("setAttributeOrientation", &GameObject::setAttributeOrientation);
-		gameObject.def("getPosition", &GameObject::getPosition);
-		gameObject.def("getOrientation", &GameObject::getOrientation);
-		gameObject.def("getScale", &GameObject::getScale);
-		// gameObject.def("setControlledByClientID", (void (GameObject::*)(unsigned int)) &GameObject::setControlledByClientID);
-		gameObject.def("getControlledByClientID", &GameObject::getControlledByClientID);
-		gameObject.def("getSize", &GameObject::getSize);
-		gameObject.def("getCenterOffset", &GameObject::getCenterOffset);
-		gameObject.def("getBottomOffset", &GameObject::getBottomOffset);
-		gameObject.def("getMiddle", &GameObject::getMiddle);
-		gameObject.def("setVisible", &GameObject::setVisible);
-		gameObject.def("isVisible", &GameObject::isVisible);
-		gameObject.def("isDynamic", &GameObject::isDynamic);
-		gameObject.def("setUseReflection", &GameObject::setUseReflection);
-		gameObject.def("getUseReflection", &GameObject::getUseReflection);
-		gameObject.def("getDefaultDirection", &GameObject::getDefaultDirection);
-		gameObject.def("setClampY", &GameObject::setClampY);
-		gameObject.def("getClampY", &GameObject::getClampY);
-		gameObject.def("setReferenceId", &GameObject::setReferenceId);
-		gameObject.def("getReferenceId", &getGameObjectReferenceId);
-		gameObject.def("showBoundingBox", &GameObject::showBoundingBox);
-		gameObject.def("showDebugData", &GameObject::showDebugData);
-		gameObject.def("getConnectedGameObject", &getConnectedGameObject);
+		// gameObjectClass.def("GameObjectComponents", &GameObject::getComponents);
+		// gameObjectClass.def("addComponent", &GameObject::addComponent);
+		gameObjectClass.def("setAttributePosition", &GameObject::setAttributePosition);
+		gameObjectClass.def("setAttributeScale", &GameObject::setAttributeScale);
+		gameObjectClass.def("setAttributeOrientation", &GameObject::setAttributeOrientation);
+		gameObjectClass.def("getPosition", &GameObject::getPosition);
+		gameObjectClass.def("getOrientation", &GameObject::getOrientation);
+		gameObjectClass.def("getScale", &GameObject::getScale);
+		// gameObjectClass.def("setControlledByClientID", (void (GameObject::*)(unsigned int)) &GameObject::setControlledByClientID);
+		gameObjectClass.def("getControlledByClientID", &GameObject::getControlledByClientID);
+		gameObjectClass.def("getSize", &GameObject::getSize);
+		gameObjectClass.def("getCenterOffset", &GameObject::getCenterOffset);
+		gameObjectClass.def("getBottomOffset", &GameObject::getBottomOffset);
+		gameObjectClass.def("getMiddle", &GameObject::getMiddle);
+		gameObjectClass.def("setVisible", &GameObject::setVisible);
+		gameObjectClass.def("isVisible", &GameObject::isVisible);
+		gameObjectClass.def("isDynamic", &GameObject::isDynamic);
+		gameObjectClass.def("setUseReflection", &GameObject::setUseReflection);
+		gameObjectClass.def("getUseReflection", &GameObject::getUseReflection);
+		gameObjectClass.def("getDefaultDirection", &GameObject::getDefaultDirection);
+		gameObjectClass.def("setClampY", &GameObject::setClampY);
+		gameObjectClass.def("getClampY", &GameObject::getClampY);
+		gameObjectClass.def("setReferenceId", &GameObject::setReferenceId);
+		gameObjectClass.def("getReferenceId", &getGameObjectReferenceId);
+		gameObjectClass.def("showBoundingBox", &GameObject::showBoundingBox);
+		gameObjectClass.def("showDebugData", &GameObject::showDebugData);
+		gameObjectClass.def("getConnectedGameObject", &getConnectedGameObject);
 
 		// get access to all components and cast them to strong shared ptr internally here
-		gameObject.def("getComponentByIndex", &getGameObjectComponentByIndex);
-		gameObject.def("getIndexFromComponent", &GameObject::getIndexFromComponent);
-		gameObject.def("getOccurrenceIndexFromComponent", &GameObject::getOccurrenceIndexFromComponent);
-		gameObject.def("deleteComponent", (bool (GameObject::*)(const Ogre::String&, unsigned int)) & GameObject::deleteComponent);
-		gameObject.def("deleteComponentByIndex", &GameObject::deleteComponentByIndex);
-		gameObject.def("getAttributesComponent", &getAttributesComponent);
-		gameObject.def("getPhysicsBuoyancyComponent", &getPhysicsBuoyancyComponent);
-		gameObject.def("getPhysicsTriggerComponent", &getPhysicsTriggerComponent);
-		gameObject.def("getDistributedComponent", &getDistributedComponent);
-		gameObject.def("getExitComponent", &getExitComponent);
-		gameObject.def("getGameObjectTitleComponent", &getGameObjectTitleComponent);
-		gameObject.def("getAiMoveComponent", &getAiMoveComponent);
-		gameObject.def("getAiMoveRandomlyComponent", &getAiMoveRandomlyComponent);
-		gameObject.def("getAiPathFollowComponent", &getAiPathFollowComponent);
-		gameObject.def("getAiWanderComponent", &getAiWanderComponent);
-		gameObject.def("getAiFlockingComponent", &getAiFlockingComponent);
-		gameObject.def("getAiRecastPathNavigationComponent", &getAiRecastPathNavigationComponent);
-		gameObject.def("getAiObstacleAvoidanceComponent", &getAiObstacleAvoidanceComponent);
-		gameObject.def("getAiHideComponent", &getAiHideComponent);
-		gameObject.def("getAiMoveComponent2D", &getAiMoveComponent2D);
-		gameObject.def("getAiPathFollowComponent2D", &getAiPathFollowComponent2D);
-		gameObject.def("getAiWanderComponent2D", &getAiWanderComponent2D);
-		gameObject.def("getCameraComponent", &getCameraComponent);
-		gameObject.def("getCompositorEffectBloomComponent", &getCompositorEffectBloomComponent);
-		gameObject.def("getCompositorEffectGlassComponent", &getCompositorEffectGlassComponent);
-		gameObject.def("getCompositorEffectOldTvComponent", &getCompositorEffectOldTvComponent);
-		gameObject.def("getCompositorEffectBlackAndWhiteComponent", &getCompositorEffectBlackAndWhiteComponent);
-		gameObject.def("getCompositorEffectColorComponent", &getCompositorEffectColorComponent);
-		gameObject.def("getCompositorEffectEmbossedComponent", &getCompositorEffectEmbossedComponent);
-		gameObject.def("getCompositorEffectSharpenEdgesComponent", &getCompositorEffectSharpenEdgesComponent);
+		gameObjectClass.def("getComponentByIndex", &getGameObjectComponentByIndex);
+		gameObjectClass.def("getIndexFromComponent", &GameObject::getIndexFromComponent);
+		gameObjectClass.def("getOccurrenceIndexFromComponent", &GameObject::getOccurrenceIndexFromComponent);
+		gameObjectClass.def("deleteComponent", (bool (GameObject::*)(const Ogre::String&, unsigned int)) & GameObject::deleteComponent);
+		gameObjectClass.def("deleteComponentByIndex", &GameObject::deleteComponentByIndex);
+		gameObjectClass.def("getAttributesComponent", &getAttributesComponent);
+		gameObjectClass.def("getPhysicsBuoyancyComponent", &getPhysicsBuoyancyComponent);
+		gameObjectClass.def("getPhysicsTriggerComponent", &getPhysicsTriggerComponent);
+		gameObjectClass.def("getDistributedComponent", &getDistributedComponent);
+		gameObjectClass.def("getExitComponent", &getExitComponent);
+		gameObjectClass.def("getGameObjectTitleComponent", &getGameObjectTitleComponent);
+		gameObjectClass.def("getAiMoveComponent", &getAiMoveComponent);
+		gameObjectClass.def("getAiMoveRandomlyComponent", &getAiMoveRandomlyComponent);
+		gameObjectClass.def("getAiPathFollowComponent", &getAiPathFollowComponent);
+		gameObjectClass.def("getAiWanderComponent", &getAiWanderComponent);
+		gameObjectClass.def("getAiFlockingComponent", &getAiFlockingComponent);
+		gameObjectClass.def("getAiRecastPathNavigationComponent", &getAiRecastPathNavigationComponent);
+		gameObjectClass.def("getAiObstacleAvoidanceComponent", &getAiObstacleAvoidanceComponent);
+		gameObjectClass.def("getAiHideComponent", &getAiHideComponent);
+		gameObjectClass.def("getAiMoveComponent2D", &getAiMoveComponent2D);
+		gameObjectClass.def("getAiPathFollowComponent2D", &getAiPathFollowComponent2D);
+		gameObjectClass.def("getAiWanderComponent2D", &getAiWanderComponent2D);
+		gameObjectClass.def("getCameraComponent", &getCameraComponent);
+		gameObjectClass.def("getCompositorEffectBloomComponent", &getCompositorEffectBloomComponent);
+		gameObjectClass.def("getCompositorEffectGlassComponent", &getCompositorEffectGlassComponent);
+		gameObjectClass.def("getCompositorEffectOldTvComponent", &getCompositorEffectOldTvComponent);
+		gameObjectClass.def("getCompositorEffectBlackAndWhiteComponent", &getCompositorEffectBlackAndWhiteComponent);
+		gameObjectClass.def("getCompositorEffectColorComponent", &getCompositorEffectColorComponent);
+		gameObjectClass.def("getCompositorEffectEmbossedComponent", &getCompositorEffectEmbossedComponent);
+		gameObjectClass.def("getCompositorEffectSharpenEdgesComponent", &getCompositorEffectSharpenEdgesComponent);
 
-		gameObject.def("getDatablockPbsComponent", &getDatablockPbsComponent);
-		gameObject.def("getDatablockUnlitComponent", &getDatablockUnlitComponent);
-		gameObject.def("getDatablockTerraComponent", &getDatablockTerraComponent);
-		gameObject.def("getTerraComponent", &getTerraComponent);
-		gameObject.def("getOceanComponent", &getOceanComponent);
-		gameObject.def("getJointComponent", &getJointComponent);
-		gameObject.def("getJointHingeComponent", &getJointHingeComponent);
-		gameObject.def("getJointTargetTransformComponent", &getJointTargetTransformComponent);
-		gameObject.def("getJointHingeActuatorComponent", &getJointHingeActuatorComponent);
-		gameObject.def("getJointBallAndSocketComponent", &getJointBallAndSocketComponent);
-		gameObject.def("getJointPointToPointComponent", &getJointPointToPointComponent);
-		gameObject.def("getJointPinComponent", &getJointPinComponent);
-		gameObject.def("getJointPlaneComponent", &getJointPlaneComponent);
-		gameObject.def("getJointSpringComponent", &getJointSpringComponent);
-		gameObject.def("getJointAttractorComponent", &getJointAttractorComponent);
-		gameObject.def("getJointCorkScrewComponent", &getJointCorkScrewComponent);
-		gameObject.def("getJointPassiveSliderComponent", &getJointPassiveSliderComponent);
-		gameObject.def("getJointSliderActuatorComponent", &getJointSliderActuatorComponent);
-		gameObject.def("getJointSlidingContactComponent", &getJointSlidingContactComponent);
-		gameObject.def("getJointActiveSliderComponent", &getJointActiveSliderComponent);
-		gameObject.def("getJointMathSliderComponent", &getJointMathSliderComponent);
-		gameObject.def("getJointKinematicComponent", &getJointKinematicComponent);
-		gameObject.def("getJointDryRollingFrictionComponent", &getJointDryRollingFrictionComponent);
-		gameObject.def("getJointPathFollowComponent", &getJointPathFollowComponent);
-		gameObject.def("getJointGearComponent", &getJointGearComponent);
-		gameObject.def("getJointRackAndPinionComponent", &getJointRackAndPinionComponent);
-		gameObject.def("getJointWormGearComponent", &getJointWormGearComponent);
-		gameObject.def("getJointPulleyComponent", &getJointPulleyComponent);
-		gameObject.def("getJointUniversalComponent", &getJointUniversalComponent);
-		gameObject.def("getJointUniversalActuatorComponent", &getJointUniversalActuatorComponent);
-		gameObject.def("getJoint6DofComponent", &getJoint6DofComponent);
-		gameObject.def("getJointMotorComponent", &getJointMotorComponent);
-		gameObject.def("getJoinWheelComponent", &getJointWheelComponent);
+		gameObjectClass.def("getDatablockPbsComponent", &getDatablockPbsComponent);
+		gameObjectClass.def("getDatablockUnlitComponent", &getDatablockUnlitComponent);
+		gameObjectClass.def("getDatablockTerraComponent", &getDatablockTerraComponent);
+		gameObjectClass.def("getTerraComponent", &getTerraComponent);
+		gameObjectClass.def("getOceanComponent", &getOceanComponent);
+		gameObjectClass.def("getJointComponent", &getJointComponent);
+		gameObjectClass.def("getJointHingeComponent", &getJointHingeComponent);
+		gameObjectClass.def("getJointTargetTransformComponent", &getJointTargetTransformComponent);
+		gameObjectClass.def("getJointHingeActuatorComponent", &getJointHingeActuatorComponent);
+		gameObjectClass.def("getJointBallAndSocketComponent", &getJointBallAndSocketComponent);
+		gameObjectClass.def("getJointPointToPointComponent", &getJointPointToPointComponent);
+		gameObjectClass.def("getJointPinComponent", &getJointPinComponent);
+		gameObjectClass.def("getJointPlaneComponent", &getJointPlaneComponent);
+		gameObjectClass.def("getJointSpringComponent", &getJointSpringComponent);
+		gameObjectClass.def("getJointAttractorComponent", &getJointAttractorComponent);
+		gameObjectClass.def("getJointCorkScrewComponent", &getJointCorkScrewComponent);
+		gameObjectClass.def("getJointPassiveSliderComponent", &getJointPassiveSliderComponent);
+		gameObjectClass.def("getJointSliderActuatorComponent", &getJointSliderActuatorComponent);
+		gameObjectClass.def("getJointSlidingContactComponent", &getJointSlidingContactComponent);
+		gameObjectClass.def("getJointActiveSliderComponent", &getJointActiveSliderComponent);
+		gameObjectClass.def("getJointMathSliderComponent", &getJointMathSliderComponent);
+		gameObjectClass.def("getJointKinematicComponent", &getJointKinematicComponent);
+		gameObjectClass.def("getJointDryRollingFrictionComponent", &getJointDryRollingFrictionComponent);
+		gameObjectClass.def("getJointPathFollowComponent", &getJointPathFollowComponent);
+		gameObjectClass.def("getJointGearComponent", &getJointGearComponent);
+		gameObjectClass.def("getJointRackAndPinionComponent", &getJointRackAndPinionComponent);
+		gameObjectClass.def("getJointWormGearComponent", &getJointWormGearComponent);
+		gameObjectClass.def("getJointPulleyComponent", &getJointPulleyComponent);
+		gameObjectClass.def("getJointUniversalComponent", &getJointUniversalComponent);
+		gameObjectClass.def("getJointUniversalActuatorComponent", &getJointUniversalActuatorComponent);
+		gameObjectClass.def("getJoint6DofComponent", &getJoint6DofComponent);
+		gameObjectClass.def("getJointMotorComponent", &getJointMotorComponent);
+		gameObjectClass.def("getJoinWheelComponent", &getJointWheelComponent);
 
-		gameObject.def("getLightDirectionalComponent", &getLightDirectionalComponent);
-		gameObject.def("getLightPointComponent", &getLightPointComponent);
-		gameObject.def("getLightSpotComponent", &getLightSpotComponent);
-		gameObject.def("getLightAreaComponent", &getLightAreaComponent);
-		gameObject.def("getFadeComponent", &getFadeComponent);
+		gameObjectClass.def("getLightDirectionalComponent", &getLightDirectionalComponent);
+		gameObjectClass.def("getLightPointComponent", &getLightPointComponent);
+		gameObjectClass.def("getLightSpotComponent", &getLightSpotComponent);
+		gameObjectClass.def("getLightAreaComponent", &getLightAreaComponent);
+		gameObjectClass.def("getFadeComponent", &getFadeComponent);
 
-		gameObject.def("getNavMeshComponent", &getNavMeshComponent);
+		gameObjectClass.def("getNavMeshComponent", &getNavMeshComponent);
 
-		gameObject.def("getPlayerControllerComponent", &getPlayerControllerComponent);
-		gameObject.def("getPlayerControllerJumpNRunComponent", &getPlayerControllerJumpNRunComponent);
-		gameObject.def("getPlayerControllerJumpNRunLuaComponent", &getPlayerControllerJumpNRunLuaComponent);
+		gameObjectClass.def("getPlayerControllerComponent", &getPlayerControllerComponent);
+		gameObjectClass.def("getPlayerControllerJumpNRunComponent", &getPlayerControllerJumpNRunComponent);
+		gameObjectClass.def("getPlayerControllerJumpNRunLuaComponent", &getPlayerControllerJumpNRunLuaComponent);
 
-		gameObject.def("getPlayerControllerClickToPointComponent", &getPlayerControllerClickToPointComponent);
+		gameObjectClass.def("getPlayerControllerClickToPointComponent", &getPlayerControllerClickToPointComponent);
 
-		gameObject.def("getPhysicsComponent", &getPhysicsComponent);
-		gameObject.def("getPhysicsActiveComponent", &getPhysicsActiveComponent);
-		gameObject.def("getPhysicsActiveCompoundComponent", &getPhysicsActiveCompoundComponent);
-		gameObject.def("getPhysicsActiveDestructibleComponent", &getPhysicsActiveDestructableComponent);
-		gameObject.def("getPhysicsActiveKinematicComponent", &getPhysicsActiveKinematicComponent);
-		gameObject.def("getPhysicsArtifactComponent", &getPhysicsArtifactComponent);
-		gameObject.def("getPhysicsRagDollComponent", &getPhysicsRagDollComponent);
-		gameObject.def("getPhysicsCompoundConnectionComponent", &getPhysicsCompoundConnectionComponent);
-		gameObject.def("getPhysicsMaterialComponent", (PhysicsMaterialComponent * (*)(GameObject*)) & getPhysicsMaterialComponent);
-		gameObject.def("getPhysicsMaterialComponentFromIndex", (PhysicsMaterialComponent * (*)(GameObject*, unsigned int)) & getPhysicsMaterialComponent);
-		gameObject.def("getPhysicsPlayerControllerComponent", &getPhysicsPlayerControllerComponent);
-		gameObject.def("getPhysicsActiveVehicleComponent", &getPhysicsActiveVehicleComponent);
-		gameObject.def("getPlaneComponent", &getPlaneComponent);
-		gameObject.def("getSimpleSoundComponent", (SimpleSoundComponent * (*)(GameObject*)) & getSimpleSoundComponent);
-		gameObject.def("getSimpleSoundComponentFromIndex", (SimpleSoundComponent * (*)(GameObject*, unsigned int)) & getSimpleSoundComponent);
-		gameObject.def("getSoundComponent", (SoundComponent * (*)(GameObject*)) & getSoundComponent);
-		gameObject.def("getSoundComponentFromIndex", (SoundComponent * (*)(GameObject*, unsigned int)) & getSoundComponent);
+		gameObjectClass.def("getPhysicsComponent", &getPhysicsComponent);
+		gameObjectClass.def("getPhysicsActiveComponent", &getPhysicsActiveComponent);
+		gameObjectClass.def("getPhysicsActiveCompoundComponent", &getPhysicsActiveCompoundComponent);
+		gameObjectClass.def("getPhysicsActiveDestructibleComponent", &getPhysicsActiveDestructableComponent);
+		gameObjectClass.def("getPhysicsActiveKinematicComponent", &getPhysicsActiveKinematicComponent);
+		gameObjectClass.def("getPhysicsArtifactComponent", &getPhysicsArtifactComponent);
+		gameObjectClass.def("getPhysicsRagDollComponent", &getPhysicsRagDollComponent);
+		gameObjectClass.def("getPhysicsCompoundConnectionComponent", &getPhysicsCompoundConnectionComponent);
+		gameObjectClass.def("getPhysicsMaterialComponent", (PhysicsMaterialComponent * (*)(GameObject*)) & getPhysicsMaterialComponent);
+		gameObjectClass.def("getPhysicsMaterialComponentFromIndex", (PhysicsMaterialComponent * (*)(GameObject*, unsigned int)) & getPhysicsMaterialComponent);
+		gameObjectClass.def("getPhysicsPlayerControllerComponent", &getPhysicsPlayerControllerComponent);
+		gameObjectClass.def("getPhysicsActiveVehicleComponent", &getPhysicsActiveVehicleComponent);
+		gameObjectClass.def("getPlaneComponent", &getPlaneComponent);
+		gameObjectClass.def("getSimpleSoundComponent", (SimpleSoundComponent * (*)(GameObject*)) & getSimpleSoundComponent);
+		gameObjectClass.def("getSimpleSoundComponentFromIndex", (SimpleSoundComponent * (*)(GameObject*, unsigned int)) & getSimpleSoundComponent);
+		gameObjectClass.def("getSoundComponent", (SoundComponent * (*)(GameObject*)) & getSoundComponent);
+		gameObjectClass.def("getSoundComponentFromIndex", (SoundComponent * (*)(GameObject*, unsigned int)) & getSoundComponent);
 
-		gameObject.def("getSpawnComponent", (SpawnComponent* (*)(GameObject*))& getSpawnComponent);
-		gameObject.def("getSpawnComponent", (SpawnComponent* (*)(GameObject*, unsigned int))& getSpawnComponent);
-		gameObject.def("getAiLuaComponent", &getAiLuaComponent);
-		gameObject.def("getPhysicsExplosionComponent", &getPhysicsExplosionComponent);
-		gameObject.def("getTagPointComponent", (TagPointComponent * (*)(GameObject*)) & getTagPointComponent);
-		gameObject.def("getTagPointComponentFromIndex", (TagPointComponent * (*)(GameObject*, unsigned int)) & getTagPointComponent);
-		gameObject.def("getMoveMathFunctionComponent", &getMoveMathFunctionComponent);
+		gameObjectClass.def("getSpawnComponent", (SpawnComponent* (*)(GameObject*))& getSpawnComponent);
+		gameObjectClass.def("getSpawnComponent", (SpawnComponent* (*)(GameObject*, unsigned int))& getSpawnComponent);
+		gameObjectClass.def("getAiLuaComponent", &getAiLuaComponent);
+		gameObjectClass.def("getPhysicsExplosionComponent", &getPhysicsExplosionComponent);
+		gameObjectClass.def("getTagPointComponent", (TagPointComponent * (*)(GameObject*)) & getTagPointComponent);
+		gameObjectClass.def("getTagPointComponentFromIndex", (TagPointComponent * (*)(GameObject*, unsigned int)) & getTagPointComponent);
+		gameObjectClass.def("getMoveMathFunctionComponent", &getMoveMathFunctionComponent);
 
-		gameObject.def("getTagChildNodeComponent", (TagChildNodeComponent * (*)(GameObject*)) & getTagChildNodeComponent);
-		gameObject.def("getTagChildNodeComponentFromIndex", (TagChildNodeComponent * (*)(GameObject*, unsigned int)) & getTagChildNodeComponent);
-		gameObject.def("getNodeTrackComponent", &getNodeTrackComponent);
-		gameObject.def("getLineComponent", &getLineComponent);
-		gameObject.def("getLinesComponent", &getLinesComponent);
-		gameObject.def("getNodeComponent", &getNodeComponent);
-		gameObject.def("getManualObjectComponent", &getManualObjectComponent);
-		gameObject.def("getRectangleComponent", &getRectangleComponent);
-		gameObject.def("getValueBarComponent", &getValueBarComponent);
-		gameObject.def("getRibbonTrailComponent", &getRibbonTrailComponent);
-		gameObject.def("getMyGUIWindowComponentFromIndex", (MyGUIWindowComponent * (*)(GameObject*, unsigned int)) & getMyGUIWindowComponent);
-		gameObject.def("getMyGUITextComponentFromIndex", (MyGUITextComponent * (*)(GameObject*, unsigned int)) & getMyGUITextComponent);
-		gameObject.def("getMyGUIButtonComponentFromIndex", (MyGUIButtonComponent * (*)(GameObject*, unsigned int)) & getMyGUIButtonComponent);
-		gameObject.def("getMyGUICheckBoxComponentFromIndex", (MyGUICheckBoxComponent * (*)(GameObject*, unsigned int)) & getMyGUICheckBoxComponent);
-		gameObject.def("getMyGUIImageBoxComponentFromIndex", (MyGUIImageBoxComponent * (*)(GameObject*, unsigned int)) & getMyGUIImageBoxComponent);
-		gameObject.def("getMyGUIProgressBarComponentFromIndex", (MyGUIProgressBarComponent * (*)(GameObject*, unsigned int)) & getMyGUIProgressBarComponent);
-		gameObject.def("getMyGUIComboBoxComponentFromIndex", (MyGUIComboBoxComponent * (*)(GameObject*, unsigned int)) & getMyGUIComboBoxComponent);
-		gameObject.def("getMyGUIListBoxComponentFromIndex", (MyGUIListBoxComponent * (*)(GameObject*, unsigned int)) & getMyGUIListBoxComponent);
-		gameObject.def("getMyGUIMessageBoxComponentFromIndex", (MyGUIMessageBoxComponent * (*)(GameObject*, unsigned int)) & getMyGUIMessageBoxComponent);
-		gameObject.def("getMyGUIPositionControllerComponentFromIndex", (MyGUIPositionControllerComponent * (*)(GameObject*, unsigned int)) & getMyGUIPositionControllerComponent);
-		gameObject.def("getMyGUIFadeAlphaControllerComponentFromIndex", (MyGUIFadeAlphaControllerComponent * (*)(GameObject*, unsigned int)) & getMyGUIFadeAlphaControllerComponent);
-		gameObject.def("getMyGUIScrollingMessageControllerComponentFromIndex", (MyGUIScrollingMessageControllerComponent * (*)(GameObject*, unsigned int)) & getMyGUIScrollingMessageControllerComponent);
-		gameObject.def("getMyGUIEdgeHideControllerComponentFromIndex", (MyGUIEdgeHideControllerComponent * (*)(GameObject*, unsigned int)) & getMyGUIEdgeHideControllerComponent);
-		gameObject.def("getMyGUIRepeatClickControllerComponentFromIndex", (MyGUIRepeatClickControllerComponent * (*)(GameObject*, unsigned int)) & getMyGUIRepeatClickControllerComponent);
-		gameObject.def("getMyGUIWindowComponent", (MyGUIWindowComponent * (*)(GameObject*)) & getMyGUIWindowComponent);
-		gameObject.def("getMyGUIItemBoxComponent", &getMyGUIItemBoxComponent);
-		gameObject.def("getMyGUITextComponent", (MyGUITextComponent * (*)(GameObject*)) & getMyGUITextComponent);
-		gameObject.def("getMyGUIButtonComponent", (MyGUIButtonComponent * (*)(GameObject*)) & getMyGUIButtonComponent);
-		gameObject.def("getMyGUICheckBoxComponent", (MyGUICheckBoxComponent * (*)(GameObject*)) & getMyGUICheckBoxComponent);
-		gameObject.def("getMyGUIImageBoxComponent", (MyGUIImageBoxComponent * (*)(GameObject*)) & getMyGUIImageBoxComponent);
-		gameObject.def("getMyGUIProgressBarComponent", (MyGUIProgressBarComponent * (*)(GameObject*)) & getMyGUIProgressBarComponent);
-		gameObject.def("getMyGUIComboBoxComponent", (MyGUIComboBoxComponent * (*)(GameObject*)) & getMyGUIComboBoxComponent);
-		gameObject.def("getMyGUIListBoxComponent", (MyGUIListBoxComponent * (*)(GameObject*)) & getMyGUIListBoxComponent);
-		gameObject.def("getMyGUIMessageBoxComponent", (MyGUIMessageBoxComponent * (*)(GameObject*)) & getMyGUIMessageBoxComponent);
-		gameObject.def("getMyGUIPositionControllerComponent", (MyGUIPositionControllerComponent * (*)(GameObject*)) & getMyGUIPositionControllerComponent);
-		gameObject.def("getMyGUIFadeAlphaControllerComponent", (MyGUIFadeAlphaControllerComponent * (*)(GameObject*)) & getMyGUIFadeAlphaControllerComponent);
-		gameObject.def("getMyGUIScrollingMessageControllerComponent", (MyGUIScrollingMessageControllerComponent * (*)(GameObject*)) & getMyGUIScrollingMessageControllerComponent);
-		gameObject.def("getMyGUIEdgeHideControllerComponent", (MyGUIEdgeHideControllerComponent * (*)(GameObject*)) & getMyGUIEdgeHideControllerComponent);
-		gameObject.def("getMyGUIRepeatClickControllerComponent", (MyGUIRepeatClickControllerComponent * (*)(GameObject*)) & getMyGUIRepeatClickControllerComponent);
-		gameObject.def("getMyGUIMiniMapComponent", (MyGUIMiniMapComponent * (*)(GameObject*)) & getMyGUIMiniMapComponent);
-		gameObject.def("getLuaScriptComponent", &getLuaScriptComponent);
-		gameObject.def("getAttributesComponentFromName", &getAttributesComponentFromName);
-		gameObject.def("getPhysicsBuoyancyComponentFromName", &getPhysicsBuoyancyComponentFromName);
-		gameObject.def("getPhysicsTriggerComponentFromName", &getPhysicsTriggerComponentFromName);
-		gameObject.def("getDistributedComponentFromName", &getDistributedComponentFromName);
-		gameObject.def("getExitComponentFromName", &getExitComponentFromName);
-		gameObject.def("getGameObjectTitleComponentFromName", &getGameObjectTitleComponentFromName);
-		gameObject.def("getAiMoveComponentFromName", &getAiMoveComponentFromName);
-		gameObject.def("getAiMoveRandomlyComponentFromName", &getAiMoveRandomlyComponentFromName);
-		gameObject.def("getAiPathFollowComponentFromName", &getAiPathFollowComponentFromName);
-		gameObject.def("getAiWanderComponentFromName", &getAiWanderComponentFromName);
-		gameObject.def("getAiFlockingComponentFromName", &getAiFlockingComponentFromName);
-		gameObject.def("getAiRecastPathNavigationComponentFromName", &getAiRecastPathNavigationComponentFromName);
-		gameObject.def("getAiObstacleAvoidanceComponentFromName", &getAiObstacleAvoidanceComponentFromName);
-		gameObject.def("getAiHideComponentFromName", &getAiHideComponentFromName);
-		gameObject.def("getAiMoveComponent2DFromName", &getAiMoveComponent2D);
-		gameObject.def("getAiPathFollowComponent2DFromName", &getAiPathFollowComponent2D);
-		gameObject.def("getAiWanderComponent2DFromName", &getAiWanderComponent2D);
-		gameObject.def("getCameraComponentFromName", &getCameraComponentFromName);
-		gameObject.def("getCompositorEffectBloomComponentFromName", &getCompositorEffectBloomComponentFromName);
-		gameObject.def("getCompositorEffectGlassComponentFromName", &getCompositorEffectGlassComponentFromName);
-		gameObject.def("getCompositorEffectOldTvComponentFromName", &getCompositorEffectOldTvComponentFromName);
-		gameObject.def("getCompositorEffectBlackAndWhiteComponentFromName", &getCompositorEffectBlackAndWhiteComponentFromName);
-		gameObject.def("getCompositorEffectColorComponentFromName", &getCompositorEffectColorComponentFromName);
-		gameObject.def("getCompositorEffectEmbossedComponentFromName", &getCompositorEffectEmbossedComponentFromName);
-		gameObject.def("getCompositorEffectSharpenEdgesComponentFromName", &getCompositorEffectSharpenEdgesComponentFromName);
-		gameObject.def("getDatablockPbsComponentFromName", &getDatablockPbsComponentFromName);
-		gameObject.def("getDatablockUnlitComponentFromName", &getDatablockUnlitComponentFromName);
-		gameObject.def("getDatablockTerraComponentFromName", &getDatablockTerraComponentFromName);
-		gameObject.def("getTerraComponentFromName", &getTerraComponentFromName);
-		gameObject.def("getOceanComponentFromName", &getOceanComponentFromName);
-		gameObject.def("getJointComponentFromName", &getJointComponentFromName);
-		gameObject.def("getJointHingeComponentFromName", &getJointHingeComponentFromName);
-		gameObject.def("getJointTargetTransformComponentFromName", &getJointTargetTransformComponentFromName);
-		gameObject.def("getJointHingeActuatorComponentFromName", &getJointHingeActuatorComponentFromName);
-		gameObject.def("getJointBallAndSocketComponentFromName", &getJointBallAndSocketComponentFromName);
-		gameObject.def("getJointPointToPointComponentFromName", &getJointPointToPointComponentFromName);
-		gameObject.def("getJointPinComponentFromName", &getJointPinComponentFromName);
-		gameObject.def("getJointPlaneComponentFromName", &getJointPlaneComponentFromName);
-		gameObject.def("getJointSpringComponentFromName", &getJointSpringComponentFromName);
-		gameObject.def("getJointAttractorComponentFromName", &getJointAttractorComponentFromName);
-		gameObject.def("getJointCorkScrewComponentFromName", &getJointCorkScrewComponentFromName);
-		gameObject.def("getJointPassiveSliderComponentFromName", &getJointPassiveSliderComponentFromName);
-		gameObject.def("getJointSliderActuatorComponentFromName", &getJointSliderActuatorComponentFromName);
-		gameObject.def("getJointSlidingContactComponentFromName", &getJointSlidingContactComponentFromName);
-		gameObject.def("getJointActiveSliderComponentFromName", &getJointActiveSliderComponentFromName);
-		gameObject.def("getJointMathSliderComponentFromName", &getJointMathSliderComponentFromName);
-		gameObject.def("getJointKinematicComponentFromName", &getJointKinematicComponentFromName);
-		gameObject.def("getJointDryRollingFrictionComponentFromName", &getJointDryRollingFrictionComponentFromName);
-		gameObject.def("getJointPathFollowComponentFromName", &getJointPathFollowComponentFromName);
-		gameObject.def("getJointGearComponentFromName", &getJointGearComponentFromName);
-		gameObject.def("getJointRackAndPinionComponentFromName", &getJointRackAndPinionComponentFromName);
-		gameObject.def("getJointWormGearComponentFromName", &getJointWormGearComponentFromName);
-		gameObject.def("getJointPulleyComponentFromName", &getJointPulleyComponentFromName);
-		gameObject.def("getJointUniversalComponentFromName", &getJointUniversalComponentFromName);
-		gameObject.def("getJointUniversalActuatorComponentFromName", &getJointUniversalActuatorComponentFromName);
-		gameObject.def("getJoint6DofComponentFromName", &getJoint6DofComponentFromName);
-		gameObject.def("getJointMotorComponentFromName", &getJointMotorComponentFromName);
-		gameObject.def("getJoinWheelComponentFromName", &getJointWheelComponentFromName);
-		gameObject.def("getLightDirectionalComponentFromName", &getLightDirectionalComponentFromName);
-		gameObject.def("getLightPointComponentFromName", &getLightPointComponentFromName);
-		gameObject.def("getLightSpotComponentFromName", &getLightSpotComponentFromName);
-		gameObject.def("getLightAreaComponentFromName", &getLightAreaComponentFromName);
-		gameObject.def("getFadeComponentFromName", &getFadeComponentFromName);
-		gameObject.def("getNavMeshComponentFromName", &getNavMeshComponentFromName);
-		gameObject.def("getPlayerControllerComponentFromName", &getPlayerControllerComponentFromName);
-		gameObject.def("getPlayerControllerJumpNRunComponentFromName", &getPlayerControllerJumpNRunComponentFromName);
-		gameObject.def("getPlayerControllerJumpNRunLuaComponentFromName", &getPlayerControllerJumpNRunLuaComponentFromName);
-		gameObject.def("getPlayerControllerClickToPointComponentFromName", &getPlayerControllerClickToPointComponentFromName);
-		gameObject.def("getPhysicsComponentFromName", &getPhysicsComponentFromName);
-		gameObject.def("getPhysicsActiveComponentFromName", &getPhysicsActiveComponentFromName);
-		gameObject.def("getPhysicsActiveCompoundComponentFromName", &getPhysicsActiveCompoundComponentFromName);
-		gameObject.def("getPhysicsActiveDestructibleComponentFromName", &getPhysicsActiveDestructableComponentFromName);
-		gameObject.def("getPhysicsActiveKinematicComponentFromName", &getPhysicsActiveKinematicComponentFromName);
-		gameObject.def("getPhysicsArtifactComponentFromName", &getPhysicsArtifactComponentFromName);
-		gameObject.def("getPhysicsRagDollComponentFromName", &getPhysicsRagDollComponentFromName);
-		gameObject.def("getPhysicsCompoundConnectionComponentFromName", &getPhysicsCompoundConnectionComponentFromName);
-		gameObject.def("getPhysicsMaterialComponentFromName", &getPhysicsMaterialComponentFromName);
-		gameObject.def("getPhysicsPlayerControllerComponentFromName", &getPhysicsPlayerControllerComponentFromName);
-		gameObject.def("getPhysicsActiveVehicleComponentFromName", &getPhysicsActiveVehicleComponentFromName);
-		gameObject.def("getPlaneComponentFromName", &getPlaneComponentFromName);
-		gameObject.def("getSimpleSoundComponentFromName", &getSimpleSoundComponentFromName);
-		gameObject.def("getSoundComponentFromName", &getSoundComponentFromName);
-		gameObject.def("getSpawnComponentFromName", &getSpawnComponentFromName);
-		gameObject.def("getAiLuaComponentFromName", &getAiLuaComponentFromName);
-		gameObject.def("getPhysicsExplosionComponentFromName", &getPhysicsExplosionComponentFromName);
-		gameObject.def("getTagPointComponentFromName", &getTagPointComponentFromName);
-		gameObject.def("getMoveMathFunctionComponentFromName", &getMoveMathFunctionComponentFromName);
-		gameObject.def("getTagChildNodeComponentFromName", &getTagChildNodeComponentFromName);
-		gameObject.def("getNodeTrackComponentFromName", &getNodeTrackComponentFromName);
-		gameObject.def("getLineComponentFromName", &getLineComponentFromName);
-		gameObject.def("getLinesComponentFromName", &getLinesComponentFromName);
-		gameObject.def("getNodeComponentFromName", &getNodeComponentFromName);
-		gameObject.def("getManualObjectComponentFromName", &getManualObjectComponentFromName);
-		gameObject.def("getRectangleComponentFromName", &getRectangleComponentFromName);
-		gameObject.def("getValueBarComponentFromName", &getValueBarComponentFromName);
-		gameObject.def("getRibbonTrailComponentFromName", &getRibbonTrailComponentFromName);
-		gameObject.def("getMyGUIWindowComponentFromName", &getMyGUIWindowComponentFromName);
-		gameObject.def("getMyGUIItemBoxComponentFromName", &getMyGUIItemBoxComponentFromName);
-		gameObject.def("getMyGUITextComponentFromName", &getMyGUITextComponentFromName);
-		gameObject.def("getMyGUIButtonComponentFromName", &getMyGUIButtonComponentFromName);
-		gameObject.def("getMyGUICheckBoxComponentFromName", &getMyGUICheckBoxComponentFromName);
-		gameObject.def("getMyGUIImageBoxComponentFromName", &getMyGUIImageBoxComponentFromName);
-		gameObject.def("getMyGUIProgressBarComponentFromName", &getMyGUIProgressBarComponentFromName);
-		gameObject.def("getMyGUIComboBoxComponentFromName", &getMyGUIComboBoxComponentFromName);
-		gameObject.def("getMyGUIListBoxComponentFromName", &getMyGUIListBoxComponentFromName);
-		gameObject.def("getMyGUIMessageBoxComponentFromName", &getMyGUIMessageBoxComponentFromName);
-		gameObject.def("getMyGUIPositionControllerComponentFromName", &getMyGUIPositionControllerComponentFromName);
-		gameObject.def("getMyGUIFadeAlphaControllerComponentFromName", &getMyGUIFadeAlphaControllerComponentFromName);
-		gameObject.def("getMyGUIScrollingMessageControllerComponentFromName", &getMyGUIScrollingMessageControllerComponentFromName);
-		gameObject.def("getMyGUIEdgeHideControllerComponentFromName", &getMyGUIEdgeHideControllerComponentFromName);
-		gameObject.def("getMyGUIRepeatClickControllerComponentFromName", &getMyGUIRepeatClickControllerComponentFromName);
-		gameObject.def("getMyGUIMiniMapComponentFromName", &getMyGUIMiniMapComponentFromName);
-		gameObject.def("getLuaScriptComponentFromName", &getLuaScriptComponentFromName);
+		gameObjectClass.def("getTagChildNodeComponent", (TagChildNodeComponent * (*)(GameObject*)) & getTagChildNodeComponent);
+		gameObjectClass.def("getTagChildNodeComponentFromIndex", (TagChildNodeComponent * (*)(GameObject*, unsigned int)) & getTagChildNodeComponent);
+		gameObjectClass.def("getNodeTrackComponent", &getNodeTrackComponent);
+		gameObjectClass.def("getLineComponent", &getLineComponent);
+		gameObjectClass.def("getLinesComponent", &getLinesComponent);
+		gameObjectClass.def("getNodeComponent", &getNodeComponent);
+		gameObjectClass.def("getManualObjectComponent", &getManualObjectComponent);
+		gameObjectClass.def("getRectangleComponent", &getRectangleComponent);
+		gameObjectClass.def("getValueBarComponent", &getValueBarComponent);
+		gameObjectClass.def("getRibbonTrailComponent", &getRibbonTrailComponent);
+		gameObjectClass.def("getMyGUIWindowComponentFromIndex", (MyGUIWindowComponent * (*)(GameObject*, unsigned int)) & getMyGUIWindowComponent);
+		gameObjectClass.def("getMyGUITextComponentFromIndex", (MyGUITextComponent * (*)(GameObject*, unsigned int)) & getMyGUITextComponent);
+		gameObjectClass.def("getMyGUIButtonComponentFromIndex", (MyGUIButtonComponent * (*)(GameObject*, unsigned int)) & getMyGUIButtonComponent);
+		gameObjectClass.def("getMyGUICheckBoxComponentFromIndex", (MyGUICheckBoxComponent * (*)(GameObject*, unsigned int)) & getMyGUICheckBoxComponent);
+		gameObjectClass.def("getMyGUIImageBoxComponentFromIndex", (MyGUIImageBoxComponent * (*)(GameObject*, unsigned int)) & getMyGUIImageBoxComponent);
+		gameObjectClass.def("getMyGUIProgressBarComponentFromIndex", (MyGUIProgressBarComponent * (*)(GameObject*, unsigned int)) & getMyGUIProgressBarComponent);
+		gameObjectClass.def("getMyGUIComboBoxComponentFromIndex", (MyGUIComboBoxComponent * (*)(GameObject*, unsigned int)) & getMyGUIComboBoxComponent);
+		gameObjectClass.def("getMyGUIListBoxComponentFromIndex", (MyGUIListBoxComponent * (*)(GameObject*, unsigned int)) & getMyGUIListBoxComponent);
+		gameObjectClass.def("getMyGUIMessageBoxComponentFromIndex", (MyGUIMessageBoxComponent * (*)(GameObject*, unsigned int)) & getMyGUIMessageBoxComponent);
+		gameObjectClass.def("getMyGUIPositionControllerComponentFromIndex", (MyGUIPositionControllerComponent * (*)(GameObject*, unsigned int)) & getMyGUIPositionControllerComponent);
+		gameObjectClass.def("getMyGUIFadeAlphaControllerComponentFromIndex", (MyGUIFadeAlphaControllerComponent * (*)(GameObject*, unsigned int)) & getMyGUIFadeAlphaControllerComponent);
+		gameObjectClass.def("getMyGUIScrollingMessageControllerComponentFromIndex", (MyGUIScrollingMessageControllerComponent * (*)(GameObject*, unsigned int)) & getMyGUIScrollingMessageControllerComponent);
+		gameObjectClass.def("getMyGUIEdgeHideControllerComponentFromIndex", (MyGUIEdgeHideControllerComponent * (*)(GameObject*, unsigned int)) & getMyGUIEdgeHideControllerComponent);
+		gameObjectClass.def("getMyGUIRepeatClickControllerComponentFromIndex", (MyGUIRepeatClickControllerComponent * (*)(GameObject*, unsigned int)) & getMyGUIRepeatClickControllerComponent);
+		gameObjectClass.def("getMyGUIWindowComponent", (MyGUIWindowComponent * (*)(GameObject*)) & getMyGUIWindowComponent);
+		gameObjectClass.def("getMyGUITextComponent", (MyGUITextComponent * (*)(GameObject*)) & getMyGUITextComponent);
+		gameObjectClass.def("getMyGUIButtonComponent", (MyGUIButtonComponent * (*)(GameObject*)) & getMyGUIButtonComponent);
+		gameObjectClass.def("getMyGUICheckBoxComponent", (MyGUICheckBoxComponent * (*)(GameObject*)) & getMyGUICheckBoxComponent);
+		gameObjectClass.def("getMyGUIImageBoxComponent", (MyGUIImageBoxComponent * (*)(GameObject*)) & getMyGUIImageBoxComponent);
+		gameObjectClass.def("getMyGUIProgressBarComponent", (MyGUIProgressBarComponent * (*)(GameObject*)) & getMyGUIProgressBarComponent);
+		gameObjectClass.def("getMyGUIComboBoxComponent", (MyGUIComboBoxComponent * (*)(GameObject*)) & getMyGUIComboBoxComponent);
+		gameObjectClass.def("getMyGUIListBoxComponent", (MyGUIListBoxComponent * (*)(GameObject*)) & getMyGUIListBoxComponent);
+		gameObjectClass.def("getMyGUIMessageBoxComponent", (MyGUIMessageBoxComponent * (*)(GameObject*)) & getMyGUIMessageBoxComponent);
+		gameObjectClass.def("getMyGUIPositionControllerComponent", (MyGUIPositionControllerComponent * (*)(GameObject*)) & getMyGUIPositionControllerComponent);
+		gameObjectClass.def("getMyGUIFadeAlphaControllerComponent", (MyGUIFadeAlphaControllerComponent * (*)(GameObject*)) & getMyGUIFadeAlphaControllerComponent);
+		gameObjectClass.def("getMyGUIScrollingMessageControllerComponent", (MyGUIScrollingMessageControllerComponent * (*)(GameObject*)) & getMyGUIScrollingMessageControllerComponent);
+		gameObjectClass.def("getMyGUIEdgeHideControllerComponent", (MyGUIEdgeHideControllerComponent * (*)(GameObject*)) & getMyGUIEdgeHideControllerComponent);
+		gameObjectClass.def("getMyGUIRepeatClickControllerComponent", (MyGUIRepeatClickControllerComponent * (*)(GameObject*)) & getMyGUIRepeatClickControllerComponent);
+		gameObjectClass.def("getMyGUIMiniMapComponent", (MyGUIMiniMapComponent * (*)(GameObject*)) & getMyGUIMiniMapComponent);
+		gameObjectClass.def("getLuaScriptComponent", &getLuaScriptComponent);
+		gameObjectClass.def("getAttributesComponentFromName", &getAttributesComponentFromName);
+		gameObjectClass.def("getPhysicsBuoyancyComponentFromName", &getPhysicsBuoyancyComponentFromName);
+		gameObjectClass.def("getPhysicsTriggerComponentFromName", &getPhysicsTriggerComponentFromName);
+		gameObjectClass.def("getDistributedComponentFromName", &getDistributedComponentFromName);
+		gameObjectClass.def("getExitComponentFromName", &getExitComponentFromName);
+		gameObjectClass.def("getGameObjectTitleComponentFromName", &getGameObjectTitleComponentFromName);
+		gameObjectClass.def("getAiMoveComponentFromName", &getAiMoveComponentFromName);
+		gameObjectClass.def("getAiMoveRandomlyComponentFromName", &getAiMoveRandomlyComponentFromName);
+		gameObjectClass.def("getAiPathFollowComponentFromName", &getAiPathFollowComponentFromName);
+		gameObjectClass.def("getAiWanderComponentFromName", &getAiWanderComponentFromName);
+		gameObjectClass.def("getAiFlockingComponentFromName", &getAiFlockingComponentFromName);
+		gameObjectClass.def("getAiRecastPathNavigationComponentFromName", &getAiRecastPathNavigationComponentFromName);
+		gameObjectClass.def("getAiObstacleAvoidanceComponentFromName", &getAiObstacleAvoidanceComponentFromName);
+		gameObjectClass.def("getAiHideComponentFromName", &getAiHideComponentFromName);
+		gameObjectClass.def("getAiMoveComponent2DFromName", &getAiMoveComponent2D);
+		gameObjectClass.def("getAiPathFollowComponent2DFromName", &getAiPathFollowComponent2D);
+		gameObjectClass.def("getAiWanderComponent2DFromName", &getAiWanderComponent2D);
+		gameObjectClass.def("getCameraComponentFromName", &getCameraComponentFromName);
+		gameObjectClass.def("getCompositorEffectBloomComponentFromName", &getCompositorEffectBloomComponentFromName);
+		gameObjectClass.def("getCompositorEffectGlassComponentFromName", &getCompositorEffectGlassComponentFromName);
+		gameObjectClass.def("getCompositorEffectOldTvComponentFromName", &getCompositorEffectOldTvComponentFromName);
+		gameObjectClass.def("getCompositorEffectBlackAndWhiteComponentFromName", &getCompositorEffectBlackAndWhiteComponentFromName);
+		gameObjectClass.def("getCompositorEffectColorComponentFromName", &getCompositorEffectColorComponentFromName);
+		gameObjectClass.def("getCompositorEffectEmbossedComponentFromName", &getCompositorEffectEmbossedComponentFromName);
+		gameObjectClass.def("getCompositorEffectSharpenEdgesComponentFromName", &getCompositorEffectSharpenEdgesComponentFromName);
+		gameObjectClass.def("getDatablockPbsComponentFromName", &getDatablockPbsComponentFromName);
+		gameObjectClass.def("getDatablockUnlitComponentFromName", &getDatablockUnlitComponentFromName);
+		gameObjectClass.def("getDatablockTerraComponentFromName", &getDatablockTerraComponentFromName);
+		gameObjectClass.def("getTerraComponentFromName", &getTerraComponentFromName);
+		gameObjectClass.def("getOceanComponentFromName", &getOceanComponentFromName);
+		gameObjectClass.def("getJointComponentFromName", &getJointComponentFromName);
+		gameObjectClass.def("getJointHingeComponentFromName", &getJointHingeComponentFromName);
+		gameObjectClass.def("getJointTargetTransformComponentFromName", &getJointTargetTransformComponentFromName);
+		gameObjectClass.def("getJointHingeActuatorComponentFromName", &getJointHingeActuatorComponentFromName);
+		gameObjectClass.def("getJointBallAndSocketComponentFromName", &getJointBallAndSocketComponentFromName);
+		gameObjectClass.def("getJointPointToPointComponentFromName", &getJointPointToPointComponentFromName);
+		gameObjectClass.def("getJointPinComponentFromName", &getJointPinComponentFromName);
+		gameObjectClass.def("getJointPlaneComponentFromName", &getJointPlaneComponentFromName);
+		gameObjectClass.def("getJointSpringComponentFromName", &getJointSpringComponentFromName);
+		gameObjectClass.def("getJointAttractorComponentFromName", &getJointAttractorComponentFromName);
+		gameObjectClass.def("getJointCorkScrewComponentFromName", &getJointCorkScrewComponentFromName);
+		gameObjectClass.def("getJointPassiveSliderComponentFromName", &getJointPassiveSliderComponentFromName);
+		gameObjectClass.def("getJointSliderActuatorComponentFromName", &getJointSliderActuatorComponentFromName);
+		gameObjectClass.def("getJointSlidingContactComponentFromName", &getJointSlidingContactComponentFromName);
+		gameObjectClass.def("getJointActiveSliderComponentFromName", &getJointActiveSliderComponentFromName);
+		gameObjectClass.def("getJointMathSliderComponentFromName", &getJointMathSliderComponentFromName);
+		gameObjectClass.def("getJointKinematicComponentFromName", &getJointKinematicComponentFromName);
+		gameObjectClass.def("getJointDryRollingFrictionComponentFromName", &getJointDryRollingFrictionComponentFromName);
+		gameObjectClass.def("getJointPathFollowComponentFromName", &getJointPathFollowComponentFromName);
+		gameObjectClass.def("getJointGearComponentFromName", &getJointGearComponentFromName);
+		gameObjectClass.def("getJointRackAndPinionComponentFromName", &getJointRackAndPinionComponentFromName);
+		gameObjectClass.def("getJointWormGearComponentFromName", &getJointWormGearComponentFromName);
+		gameObjectClass.def("getJointPulleyComponentFromName", &getJointPulleyComponentFromName);
+		gameObjectClass.def("getJointUniversalComponentFromName", &getJointUniversalComponentFromName);
+		gameObjectClass.def("getJointUniversalActuatorComponentFromName", &getJointUniversalActuatorComponentFromName);
+		gameObjectClass.def("getJoint6DofComponentFromName", &getJoint6DofComponentFromName);
+		gameObjectClass.def("getJointMotorComponentFromName", &getJointMotorComponentFromName);
+		gameObjectClass.def("getJoinWheelComponentFromName", &getJointWheelComponentFromName);
+		gameObjectClass.def("getLightDirectionalComponentFromName", &getLightDirectionalComponentFromName);
+		gameObjectClass.def("getLightPointComponentFromName", &getLightPointComponentFromName);
+		gameObjectClass.def("getLightSpotComponentFromName", &getLightSpotComponentFromName);
+		gameObjectClass.def("getLightAreaComponentFromName", &getLightAreaComponentFromName);
+		gameObjectClass.def("getFadeComponentFromName", &getFadeComponentFromName);
+		gameObjectClass.def("getNavMeshComponentFromName", &getNavMeshComponentFromName);
+		gameObjectClass.def("getPlayerControllerComponentFromName", &getPlayerControllerComponentFromName);
+		gameObjectClass.def("getPlayerControllerJumpNRunComponentFromName", &getPlayerControllerJumpNRunComponentFromName);
+		gameObjectClass.def("getPlayerControllerJumpNRunLuaComponentFromName", &getPlayerControllerJumpNRunLuaComponentFromName);
+		gameObjectClass.def("getPlayerControllerClickToPointComponentFromName", &getPlayerControllerClickToPointComponentFromName);
+		gameObjectClass.def("getPhysicsComponentFromName", &getPhysicsComponentFromName);
+		gameObjectClass.def("getPhysicsActiveComponentFromName", &getPhysicsActiveComponentFromName);
+		gameObjectClass.def("getPhysicsActiveCompoundComponentFromName", &getPhysicsActiveCompoundComponentFromName);
+		gameObjectClass.def("getPhysicsActiveDestructibleComponentFromName", &getPhysicsActiveDestructableComponentFromName);
+		gameObjectClass.def("getPhysicsActiveKinematicComponentFromName", &getPhysicsActiveKinematicComponentFromName);
+		gameObjectClass.def("getPhysicsArtifactComponentFromName", &getPhysicsArtifactComponentFromName);
+		gameObjectClass.def("getPhysicsRagDollComponentFromName", &getPhysicsRagDollComponentFromName);
+		gameObjectClass.def("getPhysicsCompoundConnectionComponentFromName", &getPhysicsCompoundConnectionComponentFromName);
+		gameObjectClass.def("getPhysicsMaterialComponentFromName", &getPhysicsMaterialComponentFromName);
+		gameObjectClass.def("getPhysicsPlayerControllerComponentFromName", &getPhysicsPlayerControllerComponentFromName);
+		gameObjectClass.def("getPhysicsActiveVehicleComponentFromName", &getPhysicsActiveVehicleComponentFromName);
+		gameObjectClass.def("getPlaneComponentFromName", &getPlaneComponentFromName);
+		gameObjectClass.def("getSimpleSoundComponentFromName", &getSimpleSoundComponentFromName);
+		gameObjectClass.def("getSoundComponentFromName", &getSoundComponentFromName);
+		gameObjectClass.def("getSpawnComponentFromName", &getSpawnComponentFromName);
+		gameObjectClass.def("getAiLuaComponentFromName", &getAiLuaComponentFromName);
+		gameObjectClass.def("getPhysicsExplosionComponentFromName", &getPhysicsExplosionComponentFromName);
+		gameObjectClass.def("getTagPointComponentFromName", &getTagPointComponentFromName);
+		gameObjectClass.def("getMoveMathFunctionComponentFromName", &getMoveMathFunctionComponentFromName);
+		gameObjectClass.def("getTagChildNodeComponentFromName", &getTagChildNodeComponentFromName);
+		gameObjectClass.def("getNodeTrackComponentFromName", &getNodeTrackComponentFromName);
+		gameObjectClass.def("getLineComponentFromName", &getLineComponentFromName);
+		gameObjectClass.def("getLinesComponentFromName", &getLinesComponentFromName);
+		gameObjectClass.def("getNodeComponentFromName", &getNodeComponentFromName);
+		gameObjectClass.def("getManualObjectComponentFromName", &getManualObjectComponentFromName);
+		gameObjectClass.def("getRectangleComponentFromName", &getRectangleComponentFromName);
+		gameObjectClass.def("getValueBarComponentFromName", &getValueBarComponentFromName);
+		gameObjectClass.def("getRibbonTrailComponentFromName", &getRibbonTrailComponentFromName);
+		gameObjectClass.def("getMyGUIWindowComponentFromName", &getMyGUIWindowComponentFromName);
+		gameObjectClass.def("getMyGUITextComponentFromName", &getMyGUITextComponentFromName);
+		gameObjectClass.def("getMyGUIButtonComponentFromName", &getMyGUIButtonComponentFromName);
+		gameObjectClass.def("getMyGUICheckBoxComponentFromName", &getMyGUICheckBoxComponentFromName);
+		gameObjectClass.def("getMyGUIImageBoxComponentFromName", &getMyGUIImageBoxComponentFromName);
+		gameObjectClass.def("getMyGUIProgressBarComponentFromName", &getMyGUIProgressBarComponentFromName);
+		gameObjectClass.def("getMyGUIComboBoxComponentFromName", &getMyGUIComboBoxComponentFromName);
+		gameObjectClass.def("getMyGUIListBoxComponentFromName", &getMyGUIListBoxComponentFromName);
+		gameObjectClass.def("getMyGUIMessageBoxComponentFromName", &getMyGUIMessageBoxComponentFromName);
+		gameObjectClass.def("getMyGUIPositionControllerComponentFromName", &getMyGUIPositionControllerComponentFromName);
+		gameObjectClass.def("getMyGUIFadeAlphaControllerComponentFromName", &getMyGUIFadeAlphaControllerComponentFromName);
+		gameObjectClass.def("getMyGUIScrollingMessageControllerComponentFromName", &getMyGUIScrollingMessageControllerComponentFromName);
+		gameObjectClass.def("getMyGUIEdgeHideControllerComponentFromName", &getMyGUIEdgeHideControllerComponentFromName);
+		gameObjectClass.def("getMyGUIRepeatClickControllerComponentFromName", &getMyGUIRepeatClickControllerComponentFromName);
+		gameObjectClass.def("getMyGUIMiniMapComponentFromName", &getMyGUIMiniMapComponentFromName);
+		gameObjectClass.def("getLuaScriptComponentFromName", &getLuaScriptComponentFromName);
 
 		AddClassToCollection("GameObject", "class", "Main NOWA type. A game object is a visual representation in the scene and can be composed of several components.");
 		AddClassToCollection("GameObject", "string getId()", "Gets the id of this game object. Note: Id is the primary key, which uniquely identifies a game object.");
@@ -3726,7 +3711,6 @@ namespace NOWA
 		AddClassToCollection("GameObject", "RibbonTrailComponent getRibbonTrailComponent()", "Gets the ribbon trail component.");
 		AddClassToCollection("GameObject", "MyGUIWindowComponent getMyGUIWindowComponentFromIndex(unsigned int occurrenceIndex)", "Gets the MyGUI window component by the given occurence index, since a game object may have besides other components several MyGUI window components.");
 		AddClassToCollection("GameObject", "MyGUIWindowComponent getMyGUIWindowComponent()", "Gets the MyGUI window component. This can be used if the game object just has one MyGUI window component.");
-		AddClassToCollection("GameObject", "MyGUIItemBoxComponent getMyGUIItemBoxComponent()", "Gets the MyGUI item box component. This can be used for inventory item in conjunction with InventoryItemComponent.");
 		AddClassToCollection("GameObject", "MyGUITextComponent getMyGUITextComponentFromIndex(unsigned int occurrenceIndex)", "Gets the MyGUI text component by the given occurence index, since a game object may have besides other components several MyGUI text components.");
 		AddClassToCollection("GameObject", "MyGUITextComponent getMyGUITextComponent()", "Gets the MyGUI text component. This can be used if the game object just has one MyGUI text component.");
 		AddClassToCollection("GameObject", "MyGUIButtonComponent getMyGUIButtonComponentFromIndex(unsigned int occurrenceIndex)", "Gets the MyGUI button component by the given occurence index, since a game object may have besides other components several MyGUI button components.");
@@ -3849,7 +3833,6 @@ namespace NOWA
 		AddClassToCollection("GameObject", "ValueBarComponent getValueBarComponentFromName(String name)", "Gets the value bar component.");
 		AddClassToCollection("GameObject", "RibbonTrailComponent getRibbonTrailComponentFromName(String name)", "Gets the ribbon trail component.");
 		AddClassToCollection("GameObject", "MyGUIWindowComponent getMyGUIWindowComponentFromName(String name)", "Gets the MyGUI window component.");
-		AddClassToCollection("GameObject", "MyGUIItemBoxComponent getMyGUIItemBoxComponentFromName(String name)", "Gets the MyGUI item box component. This can be used for inventory item in conjunction with InventoryItemComponent.");
 		AddClassToCollection("GameObject", "MyGUITextComponent getMyGUITextComponentFromName(String name)", "Gets the MyGUI text component.");
 		AddClassToCollection("GameObject", "MyGUIButtonComponent getMyGUIButtonComponentFromName(String name)", "Gets the MyGUI button component.");
 		AddClassToCollection("GameObject", "MyGUICheckBoxComponent getMyGUICheckBoxComponentFromName(String name)", "Gets the MyGUI check box component.");
@@ -4005,16 +3988,6 @@ namespace NOWA
 		{
 			obj[i++] = vec[j].get();
 		}
-
-#if 0
-		// lua table starts always with key 1 instead of 0, of order is important, that is shit, hence swap the elements
-		luabind::object temp = obj[0];
-		for (int i = 0; i < vec.size(); ++i)
-		{
-			obj[i] = obj[i + 1];
-		}
-		obj[vec.size() - 1] = temp;
-#endif
 
 		currentErrorGameObject = componentClassName;
 		currentCalledFunction = "getGameObjectsFromComponent";
@@ -4806,185 +4779,184 @@ namespace NOWA
 		instance->activatePlayerController(active, Ogre::StringConverter::parseUnsignedLong(gameObjectId), Ogre::StringConverter::parseUnsignedLong(cameraGameObjectId), onlyOneActive);
 	}
 
-	void bindGameObjectController(lua_State* lua, class_<GameObjectController>& gameObjectController)
+	void bindGameObjectController(lua_State* lua, class_<GameObjectController>& gameObjectControllerClass)
 	{
-		gameObjectController.def("deleteDelayedGameObject", deleteDelayedGameObject);
-		gameObjectController.def("deleteGameObject", deleteGameObject);
-		gameObjectController.def("deleteGameObjectWithUndo", deleteGameObjectWithUndo);
-		gameObjectController.def("undo", &GameObjectController::undo);
-		gameObjectController.def("undoAll", &GameObjectController::undoAll);
-		gameObjectController.def("redo", &GameObjectController::redo);
-		gameObjectController.def("redoAll", &GameObjectController::redoAll);
-		gameObjectController.def("clone", &clone);
-		// gameObjectController.def("cloneGroup", &GameObjectController::cloneGroup);
-		// gameObjectController.def("registerGameObject", &GameObjectController::registerGameObject);
-		// gameObjectController.def("deleteAllGameObjects", &GameObjectController::deleteAllGameObjects);
-		gameObjectController.def("getGameObjects", &getGameObjects);
-		gameObjectController.def("getGameObjectFromId", &getGameObjectFromId);
-		gameObjectController.def("getClonedGameObjectFromPriorId", &getClonedGameObjectFromPriorId);
-		// gameObjectController.def("getGameObjectsFromCategory", &getGameObjectsFromCategory, out_value(boost::arg<1>(), return_stl_iterator)) // nothing does work here :(
-		gameObjectController.def("getGameObjectsFromCategory", &getGameObjectsFromCategory);
-		gameObjectController.def("getGameObjectsFromRenderCategory", &getGameObjectsFromRenderCategory);
-		gameObjectController.def("getGameObjectsControlledByClientId", &getGameObjectsControlledByClientId);
-		gameObjectController.def("getGameObjectsFromTagName", &getGameObjectsFromTagName);
-		// gameObjectController.def("getAllCategoriesSoFar", &getAllCategoriesSoFar) does not work for lua at the moment, because the typeDB container is private and cannot be iterated here
-		gameObjectController.def("getIdsFromCategory", &getIdsFromCategory);
-		gameObjectController.def("getIdsFromRenderCategory", &getIdsFromRenderCategory);
-		gameObjectController.def("getGameObjectFromReferenceId", &getGameObjectFromReferenceId);
-		gameObjectController.def("getGameObjectComponentsFromReferenceId", &getGameObjectComponentsFromReferenceId);
-		gameObjectController.def("activateGameObjectComponentsFromReferenceId", &activateGameObjectComponentsFromReferenceId);
+		gameObjectControllerClass.def("deleteDelayedGameObject", deleteDelayedGameObject);
+		gameObjectControllerClass.def("deleteGameObject", deleteGameObject);
+		gameObjectControllerClass.def("deleteGameObjectWithUndo", deleteGameObjectWithUndo);
+		gameObjectControllerClass.def("undo", &GameObjectController::undo);
+		gameObjectControllerClass.def("undoAll", &GameObjectController::undoAll);
+		gameObjectControllerClass.def("redo", &GameObjectController::redo);
+		gameObjectControllerClass.def("redoAll", &GameObjectController::redoAll);
+		gameObjectControllerClass.def("clone", &clone);
+		// gameObjectControllerClass.def("cloneGroup", &GameObjectController::cloneGroup);
+		// gameObjectControllerClass.def("registerGameObject", &GameObjectController::registerGameObject);
+		// gameObjectControllerClass.def("deleteAllGameObjects", &GameObjectController::deleteAllGameObjects);
+		gameObjectControllerClass.def("getGameObjects", &getGameObjects);
+		gameObjectControllerClass.def("getGameObjectFromId", &getGameObjectFromId);
+		gameObjectControllerClass.def("getClonedGameObjectFromPriorId", &getClonedGameObjectFromPriorId);
+		// gameObjectControllerClass.def("getGameObjectsFromCategory", &getGameObjectsFromCategory, out_value(boost::arg<1>(), return_stl_iterator)) // nothing does work here :(
+		gameObjectControllerClass.def("getGameObjectsFromCategory", &getGameObjectsFromCategory);
+		gameObjectControllerClass.def("getGameObjectsFromRenderCategory", &getGameObjectsFromRenderCategory);
+		gameObjectControllerClass.def("getGameObjectsControlledByClientId", &getGameObjectsControlledByClientId);
+		gameObjectControllerClass.def("getGameObjectsFromTagName", &getGameObjectsFromTagName);
+		// gameObjectControllerClass.def("getAllCategoriesSoFar", &getAllCategoriesSoFar) does not work for lua at the moment, because the typeDB container is private and cannot be iterated here
+		gameObjectControllerClass.def("getIdsFromCategory", &getIdsFromCategory);
+		gameObjectControllerClass.def("getIdsFromRenderCategory", &getIdsFromRenderCategory);
+		gameObjectControllerClass.def("getGameObjectFromReferenceId", &getGameObjectFromReferenceId);
+		gameObjectControllerClass.def("getGameObjectComponentsFromReferenceId", &getGameObjectComponentsFromReferenceId);
+		gameObjectControllerClass.def("activateGameObjectComponentsFromReferenceId", &activateGameObjectComponentsFromReferenceId);
 
-		gameObjectController.def("getOtherIdsFromCategory", &getOtherIdsFromCategory);
-		gameObjectController.def("getOtherIdsFromRenderCategory", &getOtherIdsFromRenderCategory);
-		gameObjectController.def("getGameObjectFromName", &getGameObjectFromName);
-		gameObjectController.def("getGameObjectsFromNamePrefix", &getGameObjectsFromNamePrefix);
-		gameObjectController.def("getGameObjectFromNamePrefix", &getGameObjectFromNamePrefix);
-		gameObjectController.def("getGameObjectsFromComponent", &getGameObjectsFromComponent);
+		gameObjectControllerClass.def("getOtherIdsFromCategory", &getOtherIdsFromCategory);
+		gameObjectControllerClass.def("getOtherIdsFromRenderCategory", &getOtherIdsFromRenderCategory);
+		gameObjectControllerClass.def("getGameObjectFromName", &getGameObjectFromName);
+		gameObjectControllerClass.def("getGameObjectsFromNamePrefix", &getGameObjectsFromNamePrefix);
+		gameObjectControllerClass.def("getGameObjectFromNamePrefix", &getGameObjectFromNamePrefix);
+		gameObjectControllerClass.def("getGameObjectsFromComponent", &getGameObjectsFromComponent);
 		
-		gameObjectController.def("getCategoryId", &getCategoryId2);
-		gameObjectController.def("getRenderCategoryId", &getRenderCategoryId2);
-		//// gameObjectController.def("getAffectedCategories", &getAffectedCategories);
-		// gameObjectController.def("getNextGameObjectId", &GameObjectController::getNextGameObjectId) Does not work, because the internal algorithm is here not usable -> must be somehow re-implemented here
-		// gameObjectController.def("getMaterialID", &GameObjectController::getMaterialID);
-		gameObjectController.def("getMaterialIDFromCategory", &GameObjectController::getMaterialID);
-		gameObjectController.def("activatePlayerController", &activatePlayerController);
-		gameObjectController.def("activatePlayerControllerForCamera", &activatePlayerControllerForCamera);
-		gameObjectController.def("getNextGameObject", (GameObject* (GameObjectController::*)(unsigned int))&GameObjectController::getNextGameObject);
-		gameObjectController.def("getNextGameObject", (GameObject* (GameObjectController::*)(const Ogre::String&))&GameObjectController::getNextGameObject);
+		gameObjectControllerClass.def("getCategoryId", &getCategoryId2);
+		gameObjectControllerClass.def("getRenderCategoryId", &getRenderCategoryId2);
+		//// gameObjectControllerClass.def("getAffectedCategories", &getAffectedCategories);
+		// gameObjectControllerClass.def("getNextGameObjectId", &GameObjectController::getNextGameObjectId) Does not work, because the internal algorithm is here not usable -> must be somehow re-implemented here
+		// gameObjectControllerClass.def("getMaterialID", &GameObjectController::getMaterialID);
+		gameObjectControllerClass.def("getMaterialIDFromCategory", &GameObjectController::getMaterialID);
+		gameObjectControllerClass.def("activatePlayerController", &activatePlayerController);
+		gameObjectControllerClass.def("activatePlayerControllerForCamera", &activatePlayerControllerForCamera);
+		gameObjectControllerClass.def("getNextGameObject", (GameObject* (GameObjectController::*)(unsigned int))&GameObjectController::getNextGameObject);
+		gameObjectControllerClass.def("getNextGameObject", (GameObject* (GameObjectController::*)(const Ogre::String&))&GameObjectController::getNextGameObject);
 
-		// gameObjectController.def("addJointProperties", &GameObjectController::addJointProperties);
-		// gameObjectController.def("processJoints", &GameObjectController::processJoints);
-		// gameObjectController.def("processCompoundCollisions", &GameObjectController::processCompoundCollisions);
-		// gameObjectController.def("processVehicles", &GameObjectController::processVehicles);
-		// gameObjectController.def("processGameObjectsData", &GameObjectController::processGameObjectsData);
-		// gameObjectController.def("cleanUp", &GameObjectController::cleanUp);
+		// gameObjectControllerClass.def("addJointProperties", &GameObjectController::addJointProperties);
+		// gameObjectControllerClass.def("processJoints", &GameObjectController::processJoints);
+		// gameObjectControllerClass.def("processCompoundCollisions", &GameObjectController::processCompoundCollisions);
+		// gameObjectControllerClass.def("processVehicles", &GameObjectController::processVehicles);
+		// gameObjectControllerClass.def("processGameObjectsData", &GameObjectController::processGameObjectsData);
+		// gameObjectControllerClass.def("cleanUp", &GameObjectController::cleanUp);
 
-		// gameObjectController.def("selectGameObject", (GameObject* (GameObjectController::*)(int, int, Ogre::Camera*, Ogre::RaySceneQuery*)) &GameObjectController::selectGameObject);
-		// gameObjectController.def("selectGameObject", (GameObject* (GameObjectController::*)(int, int, Ogre::Camera*, OgreNewt::World*, unsigned int, Ogre::Real, bool)) &GameObjectController::selectGameObject);
-		// gameObjectController.def("getTargetBodyPosition", &GameObjectController::getTargetBodyPosition);
-		// gameObjectController.def("initAreaForActiveObjects", &GameObjectController::initAreaForActiveObjects);
-		// gameObjectController.def("checkAreaForActiveObjects", &GameObjectController::checkAreaForActiveObjects);
-		// gameObjectController.def("registerType", &GameObjectController::registerType);
+		// gameObjectControllerClass.def("selectGameObject", (GameObject* (GameObjectController::*)(int, int, Ogre::Camera*, Ogre::RaySceneQuery*)) &GameObjectController::selectGameObject);
+		// gameObjectControllerClass.def("selectGameObject", (GameObject* (GameObjectController::*)(int, int, Ogre::Camera*, OgreNewt::World*, unsigned int, Ogre::Real, bool)) &GameObjectController::selectGameObject);
+		// gameObjectControllerClass.def("getTargetBodyPosition", &GameObjectController::getTargetBodyPosition);
+		// gameObjectControllerClass.def("initAreaForActiveObjects", &GameObjectController::initAreaForActiveObjects);
+		// gameObjectControllerClass.def("checkAreaForActiveObjects", &GameObjectController::checkAreaForActiveObjects);
+		// gameObjectControllerClass.def("registerType", &GameObjectController::registerType);
 		// For lua api auto complete when use functions, e.g. connect(gameObject), what is gameObject?
-		gameObjectController.def("castGameObject", &GameObjectController::cast<GameObject>);
-		gameObjectController.def("castContact", &GameObjectController::cast<OgreNewt::Contact>);
-		gameObjectController.def("castMouseButtonID", &GameObjectController::cast<OIS::MouseButtonID>);
+		gameObjectControllerClass.def("castGameObject", &GameObjectController::cast<GameObject>);
+		gameObjectControllerClass.def("castContact", &GameObjectController::cast<OgreNewt::Contact>);
+		gameObjectControllerClass.def("castMouseButtonID", &GameObjectController::cast<OIS::MouseButtonID>);
 
-		gameObjectController.def("castGameObjectComponent", &GameObjectController::cast<GameObjectComponent>);
-		gameObjectController.def("castAttributesComponent", &GameObjectController::cast<AttributesComponent>);
-		gameObjectController.def("castPhysicsBuoyancyComponent", &GameObjectController::cast<PhysicsBuoyancyComponent>);
-		gameObjectController.def("castPhysicsTriggerComponent", &GameObjectController::cast<PhysicsTriggerComponent>);
-		gameObjectController.def("castDistributedComponent", &GameObjectController::cast<DistributedComponent>);
-		gameObjectController.def("castExitComponent", &GameObjectController::cast<ExitComponent>);
-		gameObjectController.def("castGameObjectTitleComponent", &GameObjectController::cast<GameObjectTitleComponent>);
-		gameObjectController.def("castAiMoveComponent", &GameObjectController::cast<AiMoveComponent>);
-		gameObjectController.def("castAiMoveRandomlyComponent", &GameObjectController::cast<AiMoveRandomlyComponent>);
-		gameObjectController.def("castAiPathFollowComponent", &GameObjectController::cast<AiPathFollowComponent>);
-		gameObjectController.def("castAiWanderComponent", &GameObjectController::cast<AiWanderComponent>);
-		gameObjectController.def("castAiFlockingComponent", &GameObjectController::cast<AiFlockingComponent>);
-		gameObjectController.def("castAiRecastPathNavigationComponent", &GameObjectController::cast<AiRecastPathNavigationComponent>);
-		gameObjectController.def("castAiObstacleAvoidanceComponent", &GameObjectController::cast<AiObstacleAvoidanceComponent>);
-		gameObjectController.def("castAiHideComponent", &GameObjectController::cast<AiHideComponent>);
-		gameObjectController.def("castAiMoveComponent2D", &GameObjectController::cast<AiMoveComponent2D>);
-		gameObjectController.def("castAiPathFollowComponent2D", &GameObjectController::cast<AiPathFollowComponent2D>);
-		gameObjectController.def("castAiWanderComponent2D", &GameObjectController::cast<AiWanderComponent2D>);
-		gameObjectController.def("castCameraComponent", &GameObjectController::cast<CameraComponent>);
-		gameObjectController.def("castCompositorEffectBloomComponent", &GameObjectController::cast<CompositorEffectBloomComponent>);
-		gameObjectController.def("castCompositorEffectGlassComponent", &GameObjectController::cast<CompositorEffectGlassComponent>);
-		gameObjectController.def("castCompositorEffectOldTvComponent", &GameObjectController::cast<CompositorEffectOldTvComponent>);
-		gameObjectController.def("castCompositorEffectBlackAndWhiteComponent", &GameObjectController::cast<CompositorEffectBlackAndWhiteComponent>);
-		gameObjectController.def("castCompositorEffectColorComponent", &GameObjectController::cast<CompositorEffectColorComponent>);
-		gameObjectController.def("castCompositorEffectEmbossedComponent", &GameObjectController::cast<CompositorEffectEmbossedComponent>);
-		gameObjectController.def("castCompositorEffectSharpenEdgesComponent", &GameObjectController::cast<CompositorEffectSharpenEdgesComponent>);
-		gameObjectController.def("castDatablockPbsComponent", &GameObjectController::cast<DatablockPbsComponent>);
-		gameObjectController.def("castDatablockUnlitComponent", &GameObjectController::cast<DatablockUnlitComponent>);
-		gameObjectController.def("castDatablockTerraComponent", &GameObjectController::cast<DatablockTerraComponent>);
-		gameObjectController.def("castTerraComponent", &GameObjectController::cast<TerraComponent>);
-		gameObjectController.def("castOceanComponent", &GameObjectController::cast<OceanComponent>);
-		gameObjectController.def("castJointComponent", &GameObjectController::cast<JointComponent>);
-		gameObjectController.def("castJointHingeComponent", &GameObjectController::cast<JointHingeComponent>);
-		gameObjectController.def("castJointTargetTransformComponent", &GameObjectController::cast<JointTargetTransformComponent>);
-		gameObjectController.def("castJointHingeActuatorComponent", &GameObjectController::cast<JointHingeActuatorComponent>);
-		gameObjectController.def("castJointBallAndSocketComponent", &GameObjectController::cast<JointBallAndSocketComponent>);
-		gameObjectController.def("castJointPointToPointComponent", &GameObjectController::cast<JointPointToPointComponent>);
-		gameObjectController.def("castJointPinComponent", &GameObjectController::cast<JointPinComponent>);
-		gameObjectController.def("castJointPlaneComponent", &GameObjectController::cast<JointPlaneComponent>);
-		gameObjectController.def("castJointSpringComponent", &GameObjectController::cast<JointSpringComponent>);
-		gameObjectController.def("castJointAttractorComponent", &GameObjectController::cast<JointAttractorComponent>);
-		gameObjectController.def("castJointCorkScrewComponent", &GameObjectController::cast<JointCorkScrewComponent>);
-		gameObjectController.def("castJointPassiveSliderComponent", &GameObjectController::cast<JointPassiveSliderComponent>);
-		gameObjectController.def("castJointSliderActuatorComponent", &GameObjectController::cast<JointSliderActuatorComponent>);
-		gameObjectController.def("castJointSlidingContactComponent", &GameObjectController::cast<JointSlidingContactComponent>);
-		gameObjectController.def("castJointActiveSliderComponent", &GameObjectController::cast<JointActiveSliderComponent>);
-		gameObjectController.def("castJointMathSliderComponent", &GameObjectController::cast<JointMathSliderComponent>);
-		gameObjectController.def("castJointKinematicComponent", &GameObjectController::cast<JointKinematicComponent>);
-		gameObjectController.def("castJointDryRollingFrictionComponent", &GameObjectController::cast<JointDryRollingFrictionComponent>);
-		gameObjectController.def("castJointPathFollowComponent", &GameObjectController::cast<JointPathFollowComponent>);
-		gameObjectController.def("castJointGearComponent", &GameObjectController::cast<JointGearComponent>);
-		gameObjectController.def("castJointRackAndPinionComponent", &GameObjectController::cast<JointRackAndPinionComponent>);
-		gameObjectController.def("castJointWormGearComponent", &GameObjectController::cast<JointWormGearComponent>);
-		gameObjectController.def("castJointPulleyComponent", &GameObjectController::cast<JointPulleyComponent>);
-		gameObjectController.def("castJointUniversalComponent", &GameObjectController::cast<JointUniversalComponent>);
-		gameObjectController.def("castJointUniversalActuatorComponent", &GameObjectController::cast<JointUniversalActuatorComponent>);
-		gameObjectController.def("castJoint6DofComponent", &GameObjectController::cast<Joint6DofComponent>);
-		gameObjectController.def("castJointMotorComponent", &GameObjectController::cast<JointMotorComponent>);
-		gameObjectController.def("castJointWheelComponent", &GameObjectController::cast<JointWheelComponent>);
-		gameObjectController.def("castLightDirectionalComponent", &GameObjectController::cast<LightDirectionalComponent>);
-		gameObjectController.def("castLightPointComponent", &GameObjectController::cast<LightPointComponent>);
-		gameObjectController.def("castLightSpotComponent", &GameObjectController::cast<LightSpotComponent>);
-		gameObjectController.def("castLightAreaComponent", &GameObjectController::cast<LightAreaComponent>);
-		gameObjectController.def("castFadeComponent", &GameObjectController::cast<FadeComponent>);
-		gameObjectController.def("castNavMeshComponent", &GameObjectController::cast<NavMeshComponent>);
-		gameObjectController.def("castPlayerControllerComponent", &GameObjectController::cast<PlayerControllerComponent>);
-		gameObjectController.def("castPlayerControllerJumpNRunComponent", &GameObjectController::cast<PlayerControllerJumpNRunComponent>);
-		gameObjectController.def("castPlayerControllerJumpNRunLuaComponent", &GameObjectController::cast<PlayerControllerJumpNRunLuaComponent>);
-		gameObjectController.def("castPlayerControllerClickToPointComponent", &GameObjectController::cast<PlayerControllerClickToPointComponent>);
-		gameObjectController.def("castPhysicsComponent", &GameObjectController::cast<PhysicsComponent>);
-		gameObjectController.def("castPhysicsActiveComponent", &GameObjectController::cast<PhysicsActiveComponent>);
-		gameObjectController.def("castPhysicsActiveCompoundComponent", &GameObjectController::cast<PhysicsActiveCompoundComponent>);
-		gameObjectController.def("castPhysicsActiveDestructableComponent", &GameObjectController::cast<PhysicsActiveDestructableComponent>);
-		gameObjectController.def("castPhysicsActiveKinematicComponent", &GameObjectController::cast<PhysicsActiveKinematicComponent>);
-		gameObjectController.def("castPhysicsArtifactComponent", &GameObjectController::cast<PhysicsArtifactComponent>);
-		gameObjectController.def("castPhysicsRagDollComponent", &GameObjectController::cast<PhysicsRagDollComponent>);
-		gameObjectController.def("castPhysicsCompoundConnectionComponent", &GameObjectController::cast<PhysicsCompoundConnectionComponent>);
-		gameObjectController.def("castPhysicsMaterialComponent", &GameObjectController::cast<PhysicsMaterialComponent>);
-		gameObjectController.def("castPhysicsPlayerControllerComponent", &GameObjectController::cast<PhysicsPlayerControllerComponent>);
-		gameObjectController.def("castPlayerContact", &GameObjectController::cast<PlayerContact>);
-		gameObjectController.def("castPhysicsActiveVehicleComponent", &GameObjectController::cast<PhysicsActiveVehicleComponent>);
-		gameObjectController.def("castPlaneComponent", &GameObjectController::cast<PlaneComponent>);
-		gameObjectController.def("castSimpleSoundComponent", &GameObjectController::cast<SimpleSoundComponent>);
-		gameObjectController.def("castSoundComponent", &GameObjectController::cast<SoundComponent>);
-		gameObjectController.def("castSpawnComponent", &GameObjectController::cast<SpawnComponent>);
-		gameObjectController.def("castAiLuaComponent", &GameObjectController::cast<AiLuaComponent>);
-		gameObjectController.def("castPhysicsExplosionComponent", &GameObjectController::cast<PhysicsExplosionComponent>);
-		gameObjectController.def("castTagPointComponent", &GameObjectController::cast<TagPointComponent>);
-		gameObjectController.def("castMoveMathFunctionComponent", &GameObjectController::cast<MoveMathFunctionComponent>);
-		gameObjectController.def("castTagChildNodeComponent", &GameObjectController::cast<TagChildNodeComponent>);
-		gameObjectController.def("castNodeTrackComponent", &GameObjectController::cast<NodeTrackComponent>);
-		gameObjectController.def("castLineComponent", &GameObjectController::cast<LineComponent>);
-		gameObjectController.def("castLinesComponent", &GameObjectController::cast<LinesComponent>);
-		gameObjectController.def("castNodeComponent", &GameObjectController::cast<NodeComponent>);
-		gameObjectController.def("castManualObjectComponent", &GameObjectController::cast<ManualObjectComponent>);
-		gameObjectController.def("castRectangleComponent", &GameObjectController::cast<RectangleComponent>);
-		gameObjectController.def("castValueBarComponent", &GameObjectController::cast<ValueBarComponent>);
-		gameObjectController.def("castRibbonTrailComponent", &GameObjectController::cast<RibbonTrailComponent>);
-		gameObjectController.def("castMyGUIWindowComponent", &GameObjectController::cast<MyGUIWindowComponent>);
-		gameObjectController.def("castMyGUITextComponent", &GameObjectController::cast<MyGUITextComponent>);
-		gameObjectController.def("castMyGUIButtonComponent", &GameObjectController::cast<MyGUIButtonComponent>);
-		gameObjectController.def("castMyGUICheckBoxComponent", &GameObjectController::cast<MyGUICheckBoxComponent>);
-		gameObjectController.def("castMyGUIImageBoxComponent", &GameObjectController::cast<MyGUIImageBoxComponent>);
-		gameObjectController.def("castMyGUIProgressBarComponent", &GameObjectController::cast<MyGUIProgressBarComponent>);
-		gameObjectController.def("castMyGUIListBoxComponent", &GameObjectController::cast<MyGUIListBoxComponent>);
-		gameObjectController.def("castMyGUIComboBoxComponent", &GameObjectController::cast<MyGUIComboBoxComponent>);
-		gameObjectController.def("castMyGUIMessageBoxComponent", &GameObjectController::cast<MyGUIMessageBoxComponent>);
-		gameObjectController.def("castMyGUIPositionControllerComponent", &GameObjectController::cast<MyGUIPositionControllerComponent>);
-		gameObjectController.def("castMyGUIFadeAlphaControllerComponent", &GameObjectController::cast<MyGUIFadeAlphaControllerComponent>);
-		gameObjectController.def("castMyGUIScrollingMessageControllerComponent", &GameObjectController::cast<MyGUIScrollingMessageControllerComponent>);
-		gameObjectController.def("castMyGUIEdgeHideControllerComponent", &GameObjectController::cast<MyGUIEdgeHideControllerComponent>);
-		gameObjectController.def("castMyGUIRepeatClickControllerComponent", &GameObjectController::cast<MyGUIRepeatClickControllerComponent>);
-		gameObjectController.def("castMyGUIWindowComponent", &GameObjectController::cast<MyGUIWindowComponent>);
-		gameObjectController.def("castMyGUIItemBoxComponent", &GameObjectController::cast<MyGUIItemBoxComponent>);
-		gameObjectController.def("castMyGUIMiniMapComponent", &GameObjectController::cast<MyGUIMiniMapComponent>);
+		gameObjectControllerClass.def("castGameObjectComponent", &GameObjectController::cast<GameObjectComponent>);
+		gameObjectControllerClass.def("castAttributesComponent", &GameObjectController::cast<AttributesComponent>);
+		gameObjectControllerClass.def("castPhysicsBuoyancyComponent", &GameObjectController::cast<PhysicsBuoyancyComponent>);
+		gameObjectControllerClass.def("castPhysicsTriggerComponent", &GameObjectController::cast<PhysicsTriggerComponent>);
+		gameObjectControllerClass.def("castDistributedComponent", &GameObjectController::cast<DistributedComponent>);
+		gameObjectControllerClass.def("castExitComponent", &GameObjectController::cast<ExitComponent>);
+		gameObjectControllerClass.def("castGameObjectTitleComponent", &GameObjectController::cast<GameObjectTitleComponent>);
+		gameObjectControllerClass.def("castAiMoveComponent", &GameObjectController::cast<AiMoveComponent>);
+		gameObjectControllerClass.def("castAiMoveRandomlyComponent", &GameObjectController::cast<AiMoveRandomlyComponent>);
+		gameObjectControllerClass.def("castAiPathFollowComponent", &GameObjectController::cast<AiPathFollowComponent>);
+		gameObjectControllerClass.def("castAiWanderComponent", &GameObjectController::cast<AiWanderComponent>);
+		gameObjectControllerClass.def("castAiFlockingComponent", &GameObjectController::cast<AiFlockingComponent>);
+		gameObjectControllerClass.def("castAiRecastPathNavigationComponent", &GameObjectController::cast<AiRecastPathNavigationComponent>);
+		gameObjectControllerClass.def("castAiObstacleAvoidanceComponent", &GameObjectController::cast<AiObstacleAvoidanceComponent>);
+		gameObjectControllerClass.def("castAiHideComponent", &GameObjectController::cast<AiHideComponent>);
+		gameObjectControllerClass.def("castAiMoveComponent2D", &GameObjectController::cast<AiMoveComponent2D>);
+		gameObjectControllerClass.def("castAiPathFollowComponent2D", &GameObjectController::cast<AiPathFollowComponent2D>);
+		gameObjectControllerClass.def("castAiWanderComponent2D", &GameObjectController::cast<AiWanderComponent2D>);
+		gameObjectControllerClass.def("castCameraComponent", &GameObjectController::cast<CameraComponent>);
+		gameObjectControllerClass.def("castCompositorEffectBloomComponent", &GameObjectController::cast<CompositorEffectBloomComponent>);
+		gameObjectControllerClass.def("castCompositorEffectGlassComponent", &GameObjectController::cast<CompositorEffectGlassComponent>);
+		gameObjectControllerClass.def("castCompositorEffectOldTvComponent", &GameObjectController::cast<CompositorEffectOldTvComponent>);
+		gameObjectControllerClass.def("castCompositorEffectBlackAndWhiteComponent", &GameObjectController::cast<CompositorEffectBlackAndWhiteComponent>);
+		gameObjectControllerClass.def("castCompositorEffectColorComponent", &GameObjectController::cast<CompositorEffectColorComponent>);
+		gameObjectControllerClass.def("castCompositorEffectEmbossedComponent", &GameObjectController::cast<CompositorEffectEmbossedComponent>);
+		gameObjectControllerClass.def("castCompositorEffectSharpenEdgesComponent", &GameObjectController::cast<CompositorEffectSharpenEdgesComponent>);
+		gameObjectControllerClass.def("castDatablockPbsComponent", &GameObjectController::cast<DatablockPbsComponent>);
+		gameObjectControllerClass.def("castDatablockUnlitComponent", &GameObjectController::cast<DatablockUnlitComponent>);
+		gameObjectControllerClass.def("castDatablockTerraComponent", &GameObjectController::cast<DatablockTerraComponent>);
+		gameObjectControllerClass.def("castTerraComponent", &GameObjectController::cast<TerraComponent>);
+		gameObjectControllerClass.def("castOceanComponent", &GameObjectController::cast<OceanComponent>);
+		gameObjectControllerClass.def("castJointComponent", &GameObjectController::cast<JointComponent>);
+		gameObjectControllerClass.def("castJointHingeComponent", &GameObjectController::cast<JointHingeComponent>);
+		gameObjectControllerClass.def("castJointTargetTransformComponent", &GameObjectController::cast<JointTargetTransformComponent>);
+		gameObjectControllerClass.def("castJointHingeActuatorComponent", &GameObjectController::cast<JointHingeActuatorComponent>);
+		gameObjectControllerClass.def("castJointBallAndSocketComponent", &GameObjectController::cast<JointBallAndSocketComponent>);
+		gameObjectControllerClass.def("castJointPointToPointComponent", &GameObjectController::cast<JointPointToPointComponent>);
+		gameObjectControllerClass.def("castJointPinComponent", &GameObjectController::cast<JointPinComponent>);
+		gameObjectControllerClass.def("castJointPlaneComponent", &GameObjectController::cast<JointPlaneComponent>);
+		gameObjectControllerClass.def("castJointSpringComponent", &GameObjectController::cast<JointSpringComponent>);
+		gameObjectControllerClass.def("castJointAttractorComponent", &GameObjectController::cast<JointAttractorComponent>);
+		gameObjectControllerClass.def("castJointCorkScrewComponent", &GameObjectController::cast<JointCorkScrewComponent>);
+		gameObjectControllerClass.def("castJointPassiveSliderComponent", &GameObjectController::cast<JointPassiveSliderComponent>);
+		gameObjectControllerClass.def("castJointSliderActuatorComponent", &GameObjectController::cast<JointSliderActuatorComponent>);
+		gameObjectControllerClass.def("castJointSlidingContactComponent", &GameObjectController::cast<JointSlidingContactComponent>);
+		gameObjectControllerClass.def("castJointActiveSliderComponent", &GameObjectController::cast<JointActiveSliderComponent>);
+		gameObjectControllerClass.def("castJointMathSliderComponent", &GameObjectController::cast<JointMathSliderComponent>);
+		gameObjectControllerClass.def("castJointKinematicComponent", &GameObjectController::cast<JointKinematicComponent>);
+		gameObjectControllerClass.def("castJointDryRollingFrictionComponent", &GameObjectController::cast<JointDryRollingFrictionComponent>);
+		gameObjectControllerClass.def("castJointPathFollowComponent", &GameObjectController::cast<JointPathFollowComponent>);
+		gameObjectControllerClass.def("castJointGearComponent", &GameObjectController::cast<JointGearComponent>);
+		gameObjectControllerClass.def("castJointRackAndPinionComponent", &GameObjectController::cast<JointRackAndPinionComponent>);
+		gameObjectControllerClass.def("castJointWormGearComponent", &GameObjectController::cast<JointWormGearComponent>);
+		gameObjectControllerClass.def("castJointPulleyComponent", &GameObjectController::cast<JointPulleyComponent>);
+		gameObjectControllerClass.def("castJointUniversalComponent", &GameObjectController::cast<JointUniversalComponent>);
+		gameObjectControllerClass.def("castJointUniversalActuatorComponent", &GameObjectController::cast<JointUniversalActuatorComponent>);
+		gameObjectControllerClass.def("castJoint6DofComponent", &GameObjectController::cast<Joint6DofComponent>);
+		gameObjectControllerClass.def("castJointMotorComponent", &GameObjectController::cast<JointMotorComponent>);
+		gameObjectControllerClass.def("castJointWheelComponent", &GameObjectController::cast<JointWheelComponent>);
+		gameObjectControllerClass.def("castLightDirectionalComponent", &GameObjectController::cast<LightDirectionalComponent>);
+		gameObjectControllerClass.def("castLightPointComponent", &GameObjectController::cast<LightPointComponent>);
+		gameObjectControllerClass.def("castLightSpotComponent", &GameObjectController::cast<LightSpotComponent>);
+		gameObjectControllerClass.def("castLightAreaComponent", &GameObjectController::cast<LightAreaComponent>);
+		gameObjectControllerClass.def("castFadeComponent", &GameObjectController::cast<FadeComponent>);
+		gameObjectControllerClass.def("castNavMeshComponent", &GameObjectController::cast<NavMeshComponent>);
+		gameObjectControllerClass.def("castPlayerControllerComponent", &GameObjectController::cast<PlayerControllerComponent>);
+		gameObjectControllerClass.def("castPlayerControllerJumpNRunComponent", &GameObjectController::cast<PlayerControllerJumpNRunComponent>);
+		gameObjectControllerClass.def("castPlayerControllerJumpNRunLuaComponent", &GameObjectController::cast<PlayerControllerJumpNRunLuaComponent>);
+		gameObjectControllerClass.def("castPlayerControllerClickToPointComponent", &GameObjectController::cast<PlayerControllerClickToPointComponent>);
+		gameObjectControllerClass.def("castPhysicsComponent", &GameObjectController::cast<PhysicsComponent>);
+		gameObjectControllerClass.def("castPhysicsActiveComponent", &GameObjectController::cast<PhysicsActiveComponent>);
+		gameObjectControllerClass.def("castPhysicsActiveCompoundComponent", &GameObjectController::cast<PhysicsActiveCompoundComponent>);
+		gameObjectControllerClass.def("castPhysicsActiveDestructableComponent", &GameObjectController::cast<PhysicsActiveDestructableComponent>);
+		gameObjectControllerClass.def("castPhysicsActiveKinematicComponent", &GameObjectController::cast<PhysicsActiveKinematicComponent>);
+		gameObjectControllerClass.def("castPhysicsArtifactComponent", &GameObjectController::cast<PhysicsArtifactComponent>);
+		gameObjectControllerClass.def("castPhysicsRagDollComponent", &GameObjectController::cast<PhysicsRagDollComponent>);
+		gameObjectControllerClass.def("castPhysicsCompoundConnectionComponent", &GameObjectController::cast<PhysicsCompoundConnectionComponent>);
+		gameObjectControllerClass.def("castPhysicsMaterialComponent", &GameObjectController::cast<PhysicsMaterialComponent>);
+		gameObjectControllerClass.def("castPhysicsPlayerControllerComponent", &GameObjectController::cast<PhysicsPlayerControllerComponent>);
+		gameObjectControllerClass.def("castPlayerContact", &GameObjectController::cast<PlayerContact>);
+		gameObjectControllerClass.def("castPhysicsActiveVehicleComponent", &GameObjectController::cast<PhysicsActiveVehicleComponent>);
+		gameObjectControllerClass.def("castPlaneComponent", &GameObjectController::cast<PlaneComponent>);
+		gameObjectControllerClass.def("castSimpleSoundComponent", &GameObjectController::cast<SimpleSoundComponent>);
+		gameObjectControllerClass.def("castSoundComponent", &GameObjectController::cast<SoundComponent>);
+		gameObjectControllerClass.def("castSpawnComponent", &GameObjectController::cast<SpawnComponent>);
+		gameObjectControllerClass.def("castAiLuaComponent", &GameObjectController::cast<AiLuaComponent>);
+		gameObjectControllerClass.def("castPhysicsExplosionComponent", &GameObjectController::cast<PhysicsExplosionComponent>);
+		gameObjectControllerClass.def("castTagPointComponent", &GameObjectController::cast<TagPointComponent>);
+		gameObjectControllerClass.def("castMoveMathFunctionComponent", &GameObjectController::cast<MoveMathFunctionComponent>);
+		gameObjectControllerClass.def("castTagChildNodeComponent", &GameObjectController::cast<TagChildNodeComponent>);
+		gameObjectControllerClass.def("castNodeTrackComponent", &GameObjectController::cast<NodeTrackComponent>);
+		gameObjectControllerClass.def("castLineComponent", &GameObjectController::cast<LineComponent>);
+		gameObjectControllerClass.def("castLinesComponent", &GameObjectController::cast<LinesComponent>);
+		gameObjectControllerClass.def("castNodeComponent", &GameObjectController::cast<NodeComponent>);
+		gameObjectControllerClass.def("castManualObjectComponent", &GameObjectController::cast<ManualObjectComponent>);
+		gameObjectControllerClass.def("castRectangleComponent", &GameObjectController::cast<RectangleComponent>);
+		gameObjectControllerClass.def("castValueBarComponent", &GameObjectController::cast<ValueBarComponent>);
+		gameObjectControllerClass.def("castRibbonTrailComponent", &GameObjectController::cast<RibbonTrailComponent>);
+		gameObjectControllerClass.def("castMyGUIWindowComponent", &GameObjectController::cast<MyGUIWindowComponent>);
+		gameObjectControllerClass.def("castMyGUITextComponent", &GameObjectController::cast<MyGUITextComponent>);
+		gameObjectControllerClass.def("castMyGUIButtonComponent", &GameObjectController::cast<MyGUIButtonComponent>);
+		gameObjectControllerClass.def("castMyGUICheckBoxComponent", &GameObjectController::cast<MyGUICheckBoxComponent>);
+		gameObjectControllerClass.def("castMyGUIImageBoxComponent", &GameObjectController::cast<MyGUIImageBoxComponent>);
+		gameObjectControllerClass.def("castMyGUIProgressBarComponent", &GameObjectController::cast<MyGUIProgressBarComponent>);
+		gameObjectControllerClass.def("castMyGUIListBoxComponent", &GameObjectController::cast<MyGUIListBoxComponent>);
+		gameObjectControllerClass.def("castMyGUIComboBoxComponent", &GameObjectController::cast<MyGUIComboBoxComponent>);
+		gameObjectControllerClass.def("castMyGUIMessageBoxComponent", &GameObjectController::cast<MyGUIMessageBoxComponent>);
+		gameObjectControllerClass.def("castMyGUIPositionControllerComponent", &GameObjectController::cast<MyGUIPositionControllerComponent>);
+		gameObjectControllerClass.def("castMyGUIFadeAlphaControllerComponent", &GameObjectController::cast<MyGUIFadeAlphaControllerComponent>);
+		gameObjectControllerClass.def("castMyGUIScrollingMessageControllerComponent", &GameObjectController::cast<MyGUIScrollingMessageControllerComponent>);
+		gameObjectControllerClass.def("castMyGUIEdgeHideControllerComponent", &GameObjectController::cast<MyGUIEdgeHideControllerComponent>);
+		gameObjectControllerClass.def("castMyGUIRepeatClickControllerComponent", &GameObjectController::cast<MyGUIRepeatClickControllerComponent>);
+		gameObjectControllerClass.def("castMyGUIWindowComponent", &GameObjectController::cast<MyGUIWindowComponent>);
+		gameObjectControllerClass.def("castMyGUIMiniMapComponent", &GameObjectController::cast<MyGUIMiniMapComponent>);
 
 		AddClassToCollection("GameObjectController", "class", "The game object controller manages all game objects.");
 
@@ -5146,15 +5118,14 @@ namespace NOWA
 		AddClassToCollection("GameObjectController", "MyGUIEdgeHideControllerComponent castMyGUIEdgeHideControllerComponent(MyGUIEdgeHideControllerComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "MyGUIRepeatClickControllerComponent castMyGUIRepeatClickControllerComponent(MyGUIRepeatClickControllerComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "MyGUIWindowComponent castMyGUIWindowComponent(MyGUIWindowComponent other)", "Casts an incoming type from function for lua auto completion.");
-		AddClassToCollection("GameObjectController", "MyGUIItemBoxComponent castMyGUIItemBoxComponent(MyGUIItemBoxComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "MyGUIMiniMapComponent castMyGUIMiniMapComponent(MyGUIMiniMapComponent other)", "Casts an incoming type from function for lua auto completion.");
 
 		/*luabind::module(lua);
 		[
 			luabind::class_<std::vector<GameObject*>>("GameObjectVector");
-			gameObjectController.def(luabind::constructor<>());
-			gameObjectController.def("at", (GameObject*&(std::vector<GameObject*>::*)(size_t))&std::vector<GameObject*>::at);
-			gameObjectController.def("size", &std::vector<GameObject*>::size);
+			gameObjectControllerClass.def(luabind::constructor<>());
+			gameObjectControllerClass.def("at", (GameObject*&(std::vector<GameObject*>::*)(size_t))&std::vector<GameObject*>::at);
+			gameObjectControllerClass.def("size", &std::vector<GameObject*>::size);
 		];*/
 
 		object globalVars = globals(lua);
@@ -11817,11 +11788,6 @@ namespace NOWA
 		return Ogre::StringConverter::toString(instance->getParentId());
 	}
 
-	Ogre::String getSenderInventoryId(DragDropData* instance)
-	{
-		return Ogre::StringConverter::toString(instance->getSenderInventoryId());
-	}
-
 	void setSourceIdMyGUIController(MyGUIControllerComponent* instance, const Ogre::String& id)
 	{
 		instance->setSourceId(Ogre::StringConverter::parseUnsignedLong(id));
@@ -11910,84 +11876,6 @@ namespace NOWA
 		AddClassToCollection("MyGUIWindowComponent", "void setWindowCaption(String caption)", "Sets the title caption for this widget.");
 		AddClassToCollection("MyGUIWindowComponent", "String getWindowCaption()", "Gets the title caption of this widget.");
 		// TODO: Is it required for lua api, that each derived widget must have all properties of the base widget??
-
-		module(lua)
-		[
-			class_<MyGUIItemBoxComponent, MyGUIWindowComponent>("MyGUIItemBoxComponent")
-			// .def("getClassName", &MyGUIItemBoxComponent::getClassName)
-			// .def("getClassId", &MyGUIItemBoxComponent::getClassId)
-			.def("getItemCount", &MyGUIItemBoxComponent::getItemCount)
-			.def("getResourceName", &MyGUIItemBoxComponent::getResourceName)
-			.def("setQuantity2", (void (MyGUIItemBoxComponent::*)(unsigned int, unsigned int)) & MyGUIItemBoxComponent::setQuantity)
-			.def("setQuantity", (void (MyGUIItemBoxComponent::*)(const Ogre::String&, unsigned int)) & MyGUIItemBoxComponent::setQuantity)
-			.def("getQuantity2", (unsigned int (MyGUIItemBoxComponent::*)(unsigned int)) & MyGUIItemBoxComponent::getQuantity)
-			.def("getQuantity", (unsigned int (MyGUIItemBoxComponent::*)(const Ogre::String&)) & MyGUIItemBoxComponent::getQuantity)
-			.def("addQuantity", &MyGUIItemBoxComponent::addQuantity)
-			.def("increaseQuantity", (void (MyGUIItemBoxComponent::*)(const Ogre::String&, unsigned int)) & MyGUIItemBoxComponent::increaseQuantity)
-			.def("decreaseQuantity", (void (MyGUIItemBoxComponent::*)(const Ogre::String&, unsigned int)) & MyGUIItemBoxComponent::decreaseQuantity)
-			.def("removeQuantity", &MyGUIItemBoxComponent::removeQuantity)
-
-			.def("setSellValue2", (void (MyGUIItemBoxComponent::*)(unsigned int, Ogre::Real)) & MyGUIItemBoxComponent::setSellValue)
-			.def("setSellValue", (void (MyGUIItemBoxComponent::*)(const Ogre::String&, Ogre::Real)) & MyGUIItemBoxComponent::setSellValue)
-			.def("getSellValue2", (Ogre::Real (MyGUIItemBoxComponent::*)(unsigned int)) & MyGUIItemBoxComponent::getSellValue)
-			.def("getSellValue", (Ogre::Real (MyGUIItemBoxComponent::*)(const Ogre::String&)) & MyGUIItemBoxComponent::getSellValue)
-
-			.def("setBuyValue2", (void (MyGUIItemBoxComponent::*)(unsigned int, Ogre::Real)) & MyGUIItemBoxComponent::setBuyValue)
-			.def("setBuyValue", (void (MyGUIItemBoxComponent::*)(const Ogre::String&, Ogre::Real)) & MyGUIItemBoxComponent::setBuyValue)
-			.def("getBuyValue2", (Ogre::Real(MyGUIItemBoxComponent::*)(unsigned int)) & MyGUIItemBoxComponent::getBuyValue)
-			.def("getBuyValue", (Ogre::Real(MyGUIItemBoxComponent::*)(const Ogre::String&)) & MyGUIItemBoxComponent::getBuyValue)
-
-			.def("clearItems", &MyGUIItemBoxComponent::clearItems)
-			.def("reactOnDropItemRequest", &MyGUIItemBoxComponent::reactOnDropItemRequest)
-			.def("reactOnDropItemAccepted", &MyGUIItemBoxComponent::reactOnDropItemAccepted)
-			.def("reactOnMouseButtonClick", &MyGUIItemBoxComponent::reactOnMouseButtonClick)
-		];
-
-		AddClassToCollection("MyGUIItemBoxComponent", "class inherits MyGUIWindowComponent", MyGUIItemBoxComponent::getStaticInfoText());
-		AddClassToCollection("MyGUIItemBoxComponent", "int getItemCount()", "Gets the max inventory item count.");
-		AddClassToCollection("MyGUIItemBoxComponent", "String getResourceName(int index)", "Gets resource name for the given index. E.g. if 'energy' resource is placed in inventory at index 1, getResourceName(1) would deliver the energy resource. "
-			"Note: This function can be used in a loop in conjunction with @getItemCount to iterate over all items in inventory and dump all resources.");
-		AddClassToCollection("MyGUIItemBoxComponent", "void setQuantity2(int index, int quantity)", "Sets the quantity of the resource for the given index.");
-		AddClassToCollection("MyGUIItemBoxComponent", "void setQuantity(int index, String resourceName)", "Sets the quantity of the resource.");
-		AddClassToCollection("MyGUIItemBoxComponent", "int getQuantity2(int index)", "Gets the quantity of the resource for the given index.");
-		AddClassToCollection("MyGUIItemBoxComponent", "int getQuantity(String resourceName)", "Gets the quantity of the resource.");
-		AddClassToCollection("MyGUIItemBoxComponent", "void increaseQuantity(String resourceName, int quantity)", "Gets the current quantity and increases by the given quantity value.");
-		AddClassToCollection("MyGUIItemBoxComponent", "void decreaseQuantity(String resourceName, int quantity)", "Gets the current quantity and decreases by the given quantity value.");
-		AddClassToCollection("MyGUIItemBoxComponent", "float getSellValue2(int index)", "Gets the sell value of the resource for the given index.");
-		AddClassToCollection("MyGUIItemBoxComponent", "float getSellValue(String resourceName)", "Gets the sell value of the resource.");
-		AddClassToCollection("MyGUIItemBoxComponent", "float getBuyValue2(int index)", "Gets the buy value of the resource for the given index.");
-		AddClassToCollection("MyGUIItemBoxComponent", "float getBuyValue(String resourceName)", "Gets the buy value of the resource.");
-		AddClassToCollection("MyGUIItemBoxComponent", "void addQuantity(String resourceName, int quantity)", "Adds the quantity of the resource, if does not exist, creates a new slot in inventory.");
-		AddClassToCollection("MyGUIItemBoxComponent", "void removeQuantity(String resourceName, int quantity)", "Removes the quantity from the resource.");
-		AddClassToCollection("MyGUIItemBoxComponent", "void clearItems()", "Cleares the whole inventory.");
-		AddClassToCollection("MyGUIItemBoxComponent", "void reactOnDropItemRequest(func closureFunction, DragDropData dragDropData)",
-			"Sets whether to react if an item is requested to be drag and dropped to another inventory. A return value also can be set to prohibit the operation. E.g. getMyGUIItemBoxComponent():reactOnDropItemRequest(function(dragDropData) ... end");
-		AddClassToCollection("MyGUIItemBoxComponent", "void reactOnDropItemAccepted(func closureFunction, DragDropData dragDropData)",
-							 "Sets whether to react if an item drop has been accepted to another inventory. E.g. getMyGUIItemBoxComponent():reactOnDropItemAccepted(function(dragDropData) ... end");
-		AddClassToCollection("MyGUIItemBoxComponent", "void reactOnMouseButtonClick(func closureFunction, string resourceName, int buttonId)",
-														  "Sets whether to react if a mouse button has been clicked on the inventory. The clicked resource name will be received and the clicked mouse button id.");
-
-		module(lua)
-		[
-			class_<DragDropData>("DragDropData")
-			.def("getResourceName", &DragDropData::getResourceName)
-			.def("getQuantity", &DragDropData::getQuantity)
-			.def("getSellValue", &DragDropData::getSellValue)
-			.def("getBuyValue", &DragDropData::getBuyValue)
-			.def("getSenderReceiverIsSame", &DragDropData::getSenderReceiverIsSame)
-			.def("getSenderInventoryId", &getSenderInventoryId)
-			.def("setCanDrop", &DragDropData::setCanDrop)
-			.def("getCanDrop", &DragDropData::getCanDrop)
-		];
-		AddClassToCollection("DragDropData", "DragDropData", "It can be used when an item is dragged from one inventory to another to get some data and control if it may be dropped.");
-		AddClassToCollection("DragDropData", "String getResourceName()", "Gets the resource name.");
-		AddClassToCollection("DragDropData", "int getQuantity()", "Gets resource quantity.");
-		AddClassToCollection("DragDropData", "float getSellValue()", "Gets the sell value of the resource.");
-		AddClassToCollection("DragDropData", "float getBuyValue()", "Gets the buy value of the resource.");
-		AddClassToCollection("DragDropData", "bool getSenderReceiverIsSame()", "Gets whether the inventory sender and receiver is the same. E.g. moving the item within the same inventory.");
-		AddClassToCollection("DragDropData", "string getSenderInventoryId()", "Gets the sender inventory id.");
-		AddClassToCollection("DragDropData", "void setCanDrop(bool canDrop)", "Sets whether the item can be dropped.");
-		AddClassToCollection("DragDropData", "bool getCanDrop()", "Gets whether the item can be dropped.");
 
 		module(lua)
 		[

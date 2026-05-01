@@ -15,6 +15,7 @@ namespace NOWA
 	class GameObjectComponent;
 	class GameObject;
     class AiLuaComponent;
+    class AiLuaGoalComponent;
 	class LuaScript;
 
 	typedef boost::shared_ptr<GameObject> GameObjectPtr;
@@ -774,6 +775,8 @@ namespace NOWA
         LuaScriptComponent* getCachedLuaScriptComponent(void) const;
 
         AiLuaComponent* getCachedAiLuaComponent(void) const;
+
+		AiLuaGoalComponent* getCachedAiLuaGoalComponent(void) const;
 		
 		/**
 		 * @brief		Gets the component weak pointer from component id.
@@ -1064,6 +1067,7 @@ namespace NOWA
         // Use these instead of getComponent<T>() in any hot path.
         LuaScriptComponent* cachedLuaScriptComponent;
         AiLuaComponent* cachedAiLuaComponent;
+        AiLuaGoalComponent* cachedAiLuaGoalComponent;
 
 		Variant* id;
 		Variant* name;

@@ -8093,14 +8093,6 @@ return {
 				returns = "(MyGUIWindowComponent)",
 				valuetype = "MyGUIWindowComponent"
 			},
-			getMyGUIItemBoxComponent =
-			{
-				type = "function",
-				description = "Gets the MyGUI item box component. This can be used for inventory item in conjunction with InventoryItemComponent.",
-				args = "()",
-				returns = "(MyGUIItemBoxComponent)",
-				valuetype = "MyGUIItemBoxComponent"
-			},
 			getMyGUITextComponentFromIndex =
 			{
 				type = "function",
@@ -9053,14 +9045,6 @@ return {
 				returns = "(MyGUIWindowComponent)",
 				valuetype = "MyGUIWindowComponent"
 			},
-			getMyGUIItemBoxComponentFromName =
-			{
-				type = "function",
-				description = "Gets the MyGUI item box component. This can be used for inventory item in conjunction with InventoryItemComponent.",
-				args = "(string name)",
-				returns = "(MyGUIItemBoxComponent)",
-				valuetype = "MyGUIItemBoxComponent"
-			},
 			getMyGUITextComponentFromName =
 			{
 				type = "function",
@@ -9533,6 +9517,22 @@ return {
 				returns = "(FollowTargetComponent)",
 				valuetype = "FollowTargetComponent"
 			},
+			getGameObjectPlaceComponent =
+			{
+				type = "function",
+				description = "Gets the GameObjectPlaceComponent.",
+				args = "()",
+				returns = "(GameObjectPlaceComponent)",
+				valuetype = "GameObjectPlaceComponent"
+			},
+			getGameObjectPlaceComponentFromName =
+			{
+				type = "function",
+				description = "Gets the GameObjectPlaceComponent by name.",
+				args = "(string name)",
+				returns = "(GameObjectPlaceComponent)",
+				valuetype = "GameObjectPlaceComponent"
+			},
 			getHdrEffectComponent =
 			{
 				type = "function",
@@ -9796,6 +9796,22 @@ return {
 				args = "()",
 				returns = "(MorphAnimationComponent)",
 				valuetype = "MorphAnimationComponent"
+			},
+			getMyGUIItemBoxComponent =
+			{
+				type = "function",
+				description = "Gets the MyGUI item box component. This can be used for inventory item in conjunction with InventoryItemComponent.",
+				args = "()",
+				returns = "(MyGUIItemBoxComponent)",
+				valuetype = "MyGUIItemBoxComponent"
+			},
+			getMyGUIItemBoxComponentFromName =
+			{
+				type = "function",
+				description = "Gets the MyGUIItemBoxComponent by name. This can be used for inventory item in conjunction with InventoryItemComponent.",
+				args = "(string name)",
+				returns = "(MyGUIItemBoxComponent)",
+				valuetype = "MyGUIItemBoxComponent"
 			},
 			getMyGuiSpriteComponentFromIndex =
 			{
@@ -11605,14 +11621,6 @@ return {
 				returns = "(MyGUIRepeatClickControllerComponent)",
 				valuetype = "MyGUIRepeatClickControllerComponent"
 			},
-			castMyGUIItemBoxComponent =
-			{
-				type = "function",
-				description = "Casts an incoming type from function for lua auto completion.",
-				args = "(MyGUIItemBoxComponent other)",
-				returns = "(MyGUIItemBoxComponent)",
-				valuetype = "MyGUIItemBoxComponent"
-			},
 			castMyGUIMiniMapComponent =
 			{
 				type = "function",
@@ -11773,6 +11781,14 @@ return {
 				returns = "(FollowTargetComponent)",
 				valuetype = "FollowTargetComponent"
 			},
+			castGameObjectPlaceComponent =
+			{
+				type = "function",
+				description = "Casts for Lua auto completion.",
+				args = "(GameObjectPlaceComponent other)",
+				returns = "(GameObjectPlaceComponent)",
+				valuetype = "GameObjectPlaceComponent"
+			},
 			castHdrEffectComponent =
 			{
 				type = "function",
@@ -11876,6 +11892,14 @@ return {
 				args = "(MinimapComponent other)",
 				returns = "(MinimapComponent)",
 				valuetype = "MinimapComponent"
+			},
+			castMyGUIItemBoxComponent =
+			{
+				type = "function",
+				description = "Casts for Lua auto completion.",
+				args = "(MyGUIItemBoxComponent other)",
+				returns = "(MyGUIItemBoxComponent)",
+				valuetype = "MyGUIItemBoxComponent"
 			},
 			castMyGuiSpriteComponent =
 			{
@@ -12092,6 +12116,95 @@ return {
 				args = "(WaterFoamEffectComponent other)",
 				returns = "(WaterFoamEffectComponent)",
 				valuetype = "WaterFoamEffectComponent"
+			}
+		}
+	},
+	GameObjectPlaceComponent =
+	{
+		type = "class",
+		description = "Usage: Enables placing/cloning pre-configured shadow game objects during simulation. Pre-create shadow objects in the editor (set visible=false), configure their IDs here, then call activatePlacement(id) from Lua. Left-click places, right-click/ESC cancels.",
+		inherits = "GameObjectComponent",
+		childs = 
+		{
+			setActivated =
+			{
+				type = "method",
+				description = "Activates or deactivates the component.",
+				args = "(boolean activated)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			isActivated =
+			{
+				type = "function",
+				description = "Gets whether the component is activated.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			setPlaceObjectCount =
+			{
+				type = "method",
+				description = "Sets how many shadow game object slots are configured.",
+				args = "(number count)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getPlaceObjectCount =
+			{
+				type = "function",
+				description = "Gets the shadow game object slot count.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setGameObjectId =
+			{
+				type = "method",
+				description = "Sets the shadow game object id for the given slot.",
+				args = "(number index, string id)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getGameObjectId =
+			{
+				type = "function",
+				description = "Gets the shadow game object id for the given slot.",
+				args = "(number index)",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			activatePlacement =
+			{
+				type = "method",
+				description = "Starts placement mode for the given shadow game object id. Call from Lua on inventory drop event.",
+				args = "(string gameObjectId)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			cancelPlacement =
+			{
+				type = "method",
+				description = "Cancels the current placement mode programmatically.",
+				args = "()",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			reactOnGameObjectPlaced =
+			{
+				type = "method",
+				description = "Registers a Lua callback fired after a game object is successfully placed. Receives the new game object id.",
+				args = "(func closureFunction(string newId)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			reactOnPlacementCancelled =
+			{
+				type = "method",
+				description = "Registers a Lua callback fired when placement is cancelled.",
+				args = "(func closureFunction()",
+				returns = "(nil)",
+				valuetype = "nil"
 			}
 		}
 	},
@@ -20947,6 +21060,22 @@ return {
 				type = "method",
 				description = "Sets whether to react if an item is requested to be drag and dropped to another inventory. A return value also can be set to prohibit the operation. E.g. getMyGUIItemBoxComponent():reactOnDropItemRequest(function(dragDropData) ... end",
 				args = "(func closureFunction, DragDropData dragDropData)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			reactOnMouseButtonPressed =
+			{
+				type = "method",
+				description = "Fires when a mouse button is pressed down on an inventory slot. Receives the slot index, resource name and mouse button id. Use for drag initiation or visual feedback. E.g. getMyGUIItemBoxComponent():reactOnMouseButtonPressed(function(slotIndex, resourceName, buttonId) ... end)",
+				args = "(func closureFunction, number slotIndex, string resourceName, number buttonId)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			reactOnMouseButtonReleased =
+			{
+				type = "method",
+				description = "Fires when a mouse button is released on an inventory slot. Receives the slot index, resource name and mouse button id. This is the correct event for triggering item actions (placement, use, etc.) since actions should fire on release, not press. E.g. getMyGUIItemBoxComponent():reactOnMouseButtonReleased(function(slotIndex, resourceName, buttonId) ... end)",
+				args = "(func closureFunction, number slotIndex, string resourceName, number buttonId)",
 				returns = "(nil)",
 				valuetype = "nil"
 			},

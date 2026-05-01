@@ -239,7 +239,7 @@ namespace NOWA
 		/**
 		 * @see  GameObjectComponent::createStaticApiForLua
 		 */
-		static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObject, luabind::class_<GameObjectController>& gameObjectController) { }
+        static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass);
 
 		/**
 		* @see	GameObjectComponent::getStaticInfoText
@@ -325,6 +325,10 @@ namespace NOWA
 
 		void clearItems(void);
 
+		void reactOnMouseButtonPressed(luabind::object closureFunction);
+
+        void reactOnMouseButtonReleased(luabind::object closureFunction);
+
 		void reactOnDropItemRequest(luabind::object closureFunction);
 
 		void reactOnDropItemAccepted(luabind::object closureFunction);
@@ -363,8 +367,12 @@ namespace NOWA
 		std::vector<Variant*> sellValues;
 		std::vector<Variant*> buyValues;
 		Variant* allowDragDrop;
+
+		luabind::object mouseButtonPressedClosureFunction;
+        luabind::object mouseButtonReleasedClosureFunction; 
 		luabind::object closureFunctionRequestDropRequest;
 		luabind::object closureFunctionRequestDropAccepted;
+        int selectedSlotIndex;
 		DragDropData* dragDropData;
 		Ogre::String oldResourceLocationName;
 		bool dropFinished;

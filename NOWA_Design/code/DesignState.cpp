@@ -1042,7 +1042,7 @@ void DesignState::handleMyGUIWidgetSelected(NOWA::EventDataPtr eventData)
 	{
 		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DesignState::handleMyGUIWidgetSelected", _1(castEventData),
 		{
-			MyGUI::Widget * widget = MyGUI::InputManager::getInstance().getMouseFocusWidget();
+            MyGUI::Widget* widget = NOWA::InputDeviceCore::getSingletonPtr()->isMouseAtMyGUIFocusWidget();
 			if (nullptr != widget && false == this->simulating)
 			{
 				// Prevents reseleciton of the same game object
@@ -1873,7 +1873,8 @@ void DesignState::renderUpdate(Ogre::Real dt)
 
 	const OIS::MouseState& ms = NOWA::InputDeviceCore::getSingletonPtr()->getMouse()->getMouseState();
 
-	if (false == this->simulating && nullptr != MyGUI::InputManager::getInstance().getMouseFocusWidget() && false == ms.buttonDown(OIS::MB_Right) && nullptr == NOWA::InputDeviceCore::getSingletonPtr()->getJoystick())
+	if (false == this->simulating && nullptr != NOWA::InputDeviceCore::getSingletonPtr()->isMouseAtMyGUIFocusWidget() && false == ms.buttonDown(OIS::MB_Right) &&
+        nullptr == NOWA::InputDeviceCore::getSingletonPtr()->getJoystick())
 	{
 		return;
 	}
@@ -2216,7 +2217,9 @@ bool DesignState::keyPressed(const OIS::KeyEvent& keyEventRef)
 			}*/
 			case OIS::KC_O:
 			{
-				if (nullptr == MyGUI::InputManager::getInstance().getMouseFocusWidget())
+
+                MyGUI::Widget* widget = NOWA::InputDeviceCore::getSingletonPtr()->isMouseAtMyGUIFocusWidget();
+                if (nullptr == widget)
 				{
 					if (GetAsyncKeyState(VK_LCONTROL) && nullptr != this->projectManager)
 					{
@@ -2277,7 +2280,8 @@ bool DesignState::keyPressed(const OIS::KeyEvent& keyEventRef)
 		}
 	}
 
-	if (false == handled && nullptr == MyGUI::InputManager::getInstance().getMouseFocusWidget() && true == validScene)
+    MyGUI::Widget* widget = NOWA::InputDeviceCore::getSingletonPtr()->isMouseAtMyGUIFocusWidget();
+    if (false == handled && nullptr == widget && true == validScene)
 	{
 		switch (keyEventRef.key)
 		{
@@ -2444,7 +2448,9 @@ bool DesignState::keyPressed(const OIS::KeyEvent& keyEventRef)
 bool DesignState::keyReleased(const OIS::KeyEvent &keyEventRef)
 {
 	// Prevent scene manipulation, when user does something in GUI
-	/*if (nullptr != MyGUI::InputManager::getInstance().getMouseFocusWidget())
+	/*
+    MyGUI::Widget* widget = NOWA::InputDeviceCore::getSingletonPtr()->isMouseAtMyGUIFocusWidget();
+	if (nullptr != widget)
 	{
 		return true;
 	}*/
@@ -2494,7 +2500,7 @@ void DesignState::processUnbufferedMouseInput(Ogre::Real dt)
 bool DesignState::mouseMoved(const OIS::MouseEvent& evt)
 {
 	// Prevent scene manipulation, when user does something in GUI
-	MyGUI::Widget* widget = MyGUI::InputManager::getInstance().getMouseFocusWidget();
+    MyGUI::Widget* widget = NOWA::InputDeviceCore::getSingletonPtr()->isMouseAtMyGUIFocusWidget();
 
 	if (nullptr == widget)
 	{
@@ -2632,7 +2638,7 @@ bool DesignState::mousePressed(const OIS::MouseEvent& evt, OIS::MouseButtonID id
 	{
 		if (nullptr != this->editPopupMenu)
 		{
-			MyGUI::Widget* focusedWidget = MyGUI::InputManager::getInstance().getMouseFocusWidget();
+            MyGUI::Widget* focusedWidget = NOWA::InputDeviceCore::getSingletonPtr()->isMouseAtMyGUIFocusWidget();
 
 			// Check if the focused widget is inside popupMenu
 			bool isInsidePopup = false;
@@ -2655,7 +2661,7 @@ bool DesignState::mousePressed(const OIS::MouseEvent& evt, OIS::MouseButtonID id
 	}
 
 	// Prevent scene manipulation, when user does something in GUI
-	if (nullptr != MyGUI::InputManager::getInstance().getMouseFocusWidget()/* && false == this->simulating*/)
+    if (nullptr != NOWA::InputDeviceCore::getSingletonPtr()->isMouseAtMyGUIFocusWidget() /* && false == this->simulating*/)
 	{
 		if (true == MyGUIHelper::getInstance()->getCanMousePress())
 		{
@@ -2741,7 +2747,7 @@ bool DesignState::mouseReleased(const OIS::MouseEvent &evt, OIS::MouseButtonID i
 	this->selectedMovableObjectInfo.clear();
 
 	// Prevent scene manipulation, when user does something in GUI
-	MyGUI::Widget* widget = MyGUI::InputManager::getInstance().getMouseFocusWidget();
+    MyGUI::Widget* widget = NOWA::InputDeviceCore::getSingletonPtr()->isMouseAtMyGUIFocusWidget();
 	if (nullptr != widget/* && true == this->simulating*/) // causes ugly gui behavior
 	{
 		return true;

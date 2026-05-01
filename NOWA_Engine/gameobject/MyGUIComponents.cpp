@@ -197,15 +197,11 @@ namespace NOWA
 
 		if (nullptr != this->widget)
 		{
-			// TODO: Queue needed?
-			ENQUEUE_RENDER_COMMAND("MyGUIComponent::postInit",
-			{
-				this->widget->eventMouseButtonClick += MyGUI::newDelegate(this, &MyGUIComponent::mouseButtonClick);
-				this->widget->eventMouseButtonPressed += MyGUI::newDelegate(this, &MyGUIComponent::baseMouseButtonPressed);
-				this->widget->eventMouseButtonDoubleClick += MyGUI::newDelegate(this, &MyGUIComponent::baseMouseButtonDoubleClick);
-				this->widget->eventRootMouseChangeFocus += MyGUI::newDelegate(this, &MyGUIComponent::rootMouseChangeFocus);
-				this->widget->eventChangeCoord += MyGUI::newDelegate(this, &MyGUIComponent::changeCoord);
-			});
+			this->widget->eventMouseButtonClick += MyGUI::newDelegate(this, &MyGUIComponent::mouseButtonClick);
+			this->widget->eventMouseButtonPressed += MyGUI::newDelegate(this, &MyGUIComponent::baseMouseButtonPressed);
+			this->widget->eventMouseButtonDoubleClick += MyGUI::newDelegate(this, &MyGUIComponent::baseMouseButtonDoubleClick);
+			this->widget->eventRootMouseChangeFocus += MyGUI::newDelegate(this, &MyGUIComponent::rootMouseChangeFocus);
+			this->widget->eventChangeCoord += MyGUI::newDelegate(this, &MyGUIComponent::changeCoord);
 		}
 
 		this->setActivated(this->activated->getBool());

@@ -1,8 +1,9 @@
 ﻿#include "NOWAPrecompiled.h"
 #include "InputDeviceCore.h"
-#include "MyGUI_InputManager.h"
 #include "console/LuaConsole.h"
 #include "main/Core.h"
+#include "main/AppStateManager.h"
+#include "gameobject/MyGUIItemBoxComponent.h"
 #include "modules/GraphicsModule.h"
 #include "modules/InputDeviceModule.h"
 
@@ -1170,6 +1171,50 @@ std::vector<InputDeviceModule*> InputDeviceCore::getJoystickInputDeviceModules(v
 bool InputDeviceCore::isSelectDown(void) const
 {
     return this->bSelectDown;
+}
+
+MyGUI::Widget* InputDeviceCore::isMouseAtMyGUIFocusWidget(void)
+{
+    MyGUI::Widget* widget = nullptr;
+
+    NOWA::GraphicsModule::RenderCommand renderCommand = [this, &widget]()
+    {
+        const OIS::MouseState& ms = NOWA::InputDeviceCore::getSingletonPtr()->getMouse()->getMouseState();
+        MyGUI::Widget* widgetAtMouse = MyGUI::LayerManager::getInstance().getWidgetFromPoint(ms.X.abs, ms.Y.abs);
+        if (nullptr != widgetAtMouse)
+        {
+            widget = widgetAtMouse;
+            return;
+        }
+
+        // DDContainer-based widgets (ItemBox) can slip past getWidgetFromPoint.
+        // Check bounding boxes of all known ItemBox components explicitly.
+        const auto& gameObjects = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects();
+        for (auto& it = gameObjects->begin(); it != gameObjects->end(); it++)
+        {
+            auto compPtr = NOWA::makeStrongPtr(it->second->getComponent<MyGUIItemBoxComponent>());
+            if (nullptr == compPtr || nullptr == compPtr->getWidget())
+            {
+                continue;
+            }
+
+            MyGUI::Widget* w = compPtr->getWidget();
+            if (!w->getVisible())
+            {
+                continue;
+            }
+
+            const MyGUI::IntRect r = w->getAbsoluteRect();
+            if (ms.X.abs >= r.left && ms.X.abs <= r.right && ms.Y.abs >= r.top && ms.Y.abs <= r.bottom)
+            {
+                widget = w;
+                return;
+            }
+        }
+    };
+    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ItemBox::CellView::CellView");
+
+    return widget;
 }
 
 } // namespace end

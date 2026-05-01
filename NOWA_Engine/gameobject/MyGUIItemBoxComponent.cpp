@@ -490,10 +490,18 @@ namespace NOWA
         : MyGUIWindowComponent(),
         toolTip(nullptr),
         itemBoxWindow(nullptr),
+        selectedSlotIndex(-1),
         dragDropData(new DragDropData),
         dropFinished(false)
     {
-        this->skin = new Variant(MyGUIComponent::AttrSkin(), {"ItemBox"}, this->attributes);
+        // MyGUIWindowComponent already created this->skin.
+        // Replace its values rather than creating a duplicate Variant.
+        this->skin->setValue({"ItemBox"});
+        this->skin->setListSelectedValue("ItemBox");
+        this->skin->setVisible(false); // ItemBox skin is fixed, hide from editor
+
+        this->layer->setListSelectedValue("Overlapped");
+
         this->resourceLocationName = new Variant(MyGUIItemBoxComponent::AttrResourceLocationName(), "InventoryItemsResources.xml", this->attributes);
         this->useToolTip = new Variant(MyGUIItemBoxComponent::AttrUseToolTip(), true, this->attributes);
         this->allowDragDrop = new Variant(MyGUIItemBoxComponent::AttrAllowDragDrop(), true, this->attributes);
@@ -556,6 +564,15 @@ namespace NOWA
         this->customDataString = GameObjectComponent::AttrCustomDataNewCreation();
 
         bool success = MyGUIWindowComponent::init(propertyElement);
+
+        if ("ToolTip" == this->layer->getListSelectedValue())
+        {
+            // For tooltip -> pick is set to false
+            // When pick=false, getLayerItemByPoint returns nullptr for every single pixel of that layer. 
+            // MyGUI's InputManager calls this to decide which widget gets mouse focus. Since it always returns null for the ToolTip layer, 
+            // the ItemBox's mClient and its cell widgets never receive mouse focus, so ItemBox::notifyMouseButtonPressed is never called.
+            this->layer->setListSelectedValue("Overlapped");
+        }
 
         if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "ResourceLocationName")
         {
@@ -730,6 +747,10 @@ namespace NOWA
         this->itemBoxWindow->getItemBox()->eventToolTip = newDelegate(this, &MyGUIItemBoxComponent::notifyToolTip);
 
         this->widget = this->itemBoxWindow->getMainWidget();
+        // Explicitly move to the configured layer so getLayerItemByPoint can find it.
+        // MyGUI detaches from current layer and re-attaches automatically.
+        MyGUI::LayerManager::getInstance().attachToLayerNode(this->layer->getListSelectedValue(), this->widget);
+
         // this->widget->changeWidgetSkin("Window"); // Causes crash
         this->setUseToolTip(this->useToolTip->getBool());
 
@@ -777,6 +798,8 @@ namespace NOWA
 
     void MyGUIItemBoxComponent::mouseButtonClick(MyGUI::Widget* sender)
     {
+        int i = 0;
+        i = 1;
         /*if (true == this->isSimulating)
         {
             MyGUI::Window* window = sender->castType<MyGUI::Window>();
@@ -936,7 +959,11 @@ namespace NOWA
 
     void MyGUIItemBoxComponent::notifyRequestDrop(wraps::BaseLayout* _sender, wraps::DDItemInfo _info, bool& _result)
     {
-        // не на айтем кидаем
+        if (false == this->isSimulating)
+        {
+            return;
+        }
+
         if (_info.receiver_index == MyGUI::ITEM_NONE)
         {
             _result = false;
@@ -1029,6 +1056,11 @@ namespace NOWA
 
     void MyGUIItemBoxComponent::notifyEndDrop(wraps::BaseLayout* _sender, wraps::DDItemInfo _info, bool _result)
     {
+        if (false == this->isSimulating)
+        {
+            return;
+        }
+
         if (_result && false == this->dropFinished && true == this->dragDropData->canDrop)
         {
             ItemData* senderData = *static_cast<ItemBox*>(_info.sender)->getItemDataAt<ItemData*>(_info.sender_index);
@@ -1171,70 +1203,149 @@ namespace NOWA
 
     void MyGUIItemBoxComponent::notifyNotifyItem(wraps::BaseLayout* _sender, const MyGUI::IBNotifyItemData& _info)
     {
-        if (_info.index != MyGUI::ITEM_NONE)
+        // Only react during simulation
+        if (false == this->isSimulating)
         {
-            if (_info.notify == MyGUI::IBNotifyItemData::NotifyItem::MousePressed)
+            return;
+        }
+
+        if (_info.index == MyGUI::ITEM_NONE)
+        {
+            return;
+        }
+
+        if (false == this->enabled->getBool())
+        {
+            return;
+        }
+
+        // REMOVED: getLuaScript() null check — closures work without a LuaScriptComponent
+        /*if (nullptr == this->gameObjectPtr->getLuaScript())
+        {
+            return;
+        }*/
+
+        Ogre::String resourceName;
+        if (_info.index < static_cast<size_t>(this->resourceNames.size()) && nullptr != this->resourceNames[_info.index])
+        {
+            resourceName = this->resourceNames[_info.index]->getString();
+        }
+
+        unsigned int slotIndex = static_cast<unsigned int>(_info.index);
+
+        OIS::MouseButtonID buttonId = OIS::MB_Left;
+        if (_info.id == MyGUI::MouseButton::Right)
+        {
+            buttonId = OIS::MB_Right;
+        }
+        else if (_info.id == MyGUI::MouseButton::Middle)
+        {
+            buttonId = OIS::MB_Middle;
+        }
+        else if (_info.id == MyGUI::MouseButton::Button3)
+        {
+            buttonId = OIS::MB_Button3;
+        }
+        else if (_info.id == MyGUI::MouseButton::Button4)
+        {
+            buttonId = OIS::MB_Button4;
+        }
+        else if (_info.id == MyGUI::MouseButton::Button5)
+        {
+            buttonId = OIS::MB_Button5;
+        }
+        else if (_info.id == MyGUI::MouseButton::Button6)
+        {
+            buttonId = OIS::MB_Button6;
+        }
+        else if (_info.id == MyGUI::MouseButton::Button7)
+        {
+            buttonId = OIS::MB_Button7;
+        }
+
+        if (_info.notify == MyGUI::IBNotifyItemData::NotifyItem::MousePressed)
+        {
+            this->selectedSlotIndex = static_cast<int>(slotIndex);
+
+            // Force repaint of all cells so select/pressed visual state updates
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
             {
-                ItemData* senderData = *static_cast<ItemBox*>(_sender)->getItemDataAt<ItemData*>(_info.index);
-
-                Ogre::String resourceName;
-                if (_info.index < this->resourceNames.size())
+                if (nullptr == this->itemBoxWindow)
                 {
-                    resourceName = this->resourceNames[_info.index]->getString();
+                    return;
                 }
-
-                OIS::MouseButtonID buttonId = OIS::MB_Left;
-                if (_info.id == MyGUI::MouseButton::Right)
+                unsigned int count = static_cast<unsigned int>(this->itemBoxWindow->getItemBox()->getItemBox()->getItemCount());
+                for (unsigned int i = 0; i < count; i++)
                 {
-                    buttonId = OIS::MB_Right;
-                }
-                else if (_info.id == MyGUI::MouseButton::Middle)
-                {
-                    buttonId = OIS::MB_Middle;
-                }
-                else if (_info.id == MyGUI::MouseButton::Button3)
-                {
-                    buttonId = OIS::MB_Button3;
-                }
-                else if (_info.id == MyGUI::MouseButton::Button4)
-                {
-                    buttonId = OIS::MB_Button4;
-                }
-                else if (_info.id == MyGUI::MouseButton::Button5)
-                {
-                    buttonId = OIS::MB_Button5;
-                }
-                else if (_info.id == MyGUI::MouseButton::Button6)
-                {
-                    buttonId = OIS::MB_Button6;
-                }
-                else if (_info.id == MyGUI::MouseButton::Button7)
-                {
-                    buttonId = OIS::MB_Button7;
-                }
-
-                if (nullptr != this->gameObjectPtr->getLuaScript() && true == this->enabled->getBool())
-                {
-                    if (this->mouseButtonClickClosureFunction.is_valid())
+                    ItemData** item = this->itemBoxWindow->getItemBox()->getItemDataAt<ItemData*>(i, false);
+                    if (nullptr != item)
                     {
-                        NOWA::AppStateManager::LogicCommand logicCommand = [this, resourceName, buttonId]()
-                        {
-                            try
-                            {
-                                luabind::call_function<void>(this->mouseButtonClickClosureFunction, resourceName, buttonId);
-                            }
-                            catch (luabind::error& error)
-                            {
-                                luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-                                std::stringstream msg;
-                                msg << errorMsg;
-
-                                Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUIItemBoxComponent] Caught error in 'reactOnMouseButtonClick' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
-                            }
-                        };
-                        NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+                        this->itemBoxWindow->getItemBox()->setItemData(i, *item);
                     }
                 }
+                this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x - 0.001f, this->size->getVector2().y - 0.001f);
+                this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x + 0.001f, this->size->getVector2().y + 0.001f);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIItemBoxComponent::notifyNotifyItem repaint");
+
+            // Fire legacy reactOnMouseButtonClick (left-click only, matches old Lua API)
+            if (buttonId == OIS::MB_Left && this->mouseButtonClickClosureFunction.is_valid())
+            {
+                NOWA::AppStateManager::LogicCommand cmd = [this, resourceName, buttonId]()
+                {
+                    try
+                    {
+                        luabind::call_function<void>(this->mouseButtonClickClosureFunction, resourceName, buttonId);
+                    }
+                    catch (luabind::error& error)
+                    {
+                        luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                        std::stringstream msg;
+                        msg << errorMsg;
+                        Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUIItemBoxComponent] reactOnMouseButtonClick error: " + Ogre::String(error.what()) + " " + msg.str());
+                    }
+                };
+                NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(cmd));
+            }
+
+            if (this->mouseButtonPressedClosureFunction.is_valid())
+            {
+                NOWA::AppStateManager::LogicCommand cmd = [this, slotIndex, resourceName, buttonId]()
+                {
+                    try
+                    {
+                        luabind::call_function<void>(this->mouseButtonPressedClosureFunction, slotIndex, resourceName, buttonId);
+                    }
+                    catch (luabind::error& error)
+                    {
+                        luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                        std::stringstream msg;
+                        msg << errorMsg;
+                        Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUIItemBoxComponent] reactOnMouseButtonPressed error: " + Ogre::String(error.what()) + " " + msg.str());
+                    }
+                };
+                NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(cmd));
+            }
+        }
+        else if (_info.notify == MyGUI::IBNotifyItemData::NotifyItem::MouseReleased)
+        {
+            if (this->mouseButtonReleasedClosureFunction.is_valid())
+            {
+                NOWA::AppStateManager::LogicCommand cmd = [this, slotIndex, resourceName, buttonId]()
+                {
+                    try
+                    {
+                        luabind::call_function<void>(this->mouseButtonReleasedClosureFunction, slotIndex, resourceName, buttonId);
+                    }
+                    catch (luabind::error& error)
+                    {
+                        luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                        std::stringstream msg;
+                        msg << errorMsg;
+                        Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUIItemBoxComponent] reactOnMouseButtonReleased error: " + Ogre::String(error.what()) + " " + msg.str());
+                    }
+                };
+                NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(cmd));
             }
         }
     }
@@ -1315,6 +1426,10 @@ namespace NOWA
     {
         if (true == this->useToolTip->getBool())
         {
+            if (nullptr == _data)
+            {
+                return;
+            }
             // In notifyToolTip, copy the data before capturing
             ItemData dataCopy = *_data; // copy by value, assuming ItemData is copyable
 
@@ -1521,14 +1636,17 @@ namespace NOWA
         {
             NOWA::GraphicsModule::RenderCommand renderCommand = [this, resourceName, index]()
             {
-                ItemData** item = this->itemBoxWindow->getItemBox()->getItemDataAt<ItemData*>(index, true);
-                if (nullptr != item)
+                if (this->itemBoxWindow->getItemBox()->getItemBox()->getItemCount() > 0)
                 {
-                    (*item)->setResourceName(resourceName);
-                }
+                    ItemData** item = this->itemBoxWindow->getItemBox()->getItemDataAt<ItemData*>(index, true);
+                    if (nullptr != item)
+                    {
+                        (*item)->setResourceName(resourceName);
+                    }
 
-                this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x - 0.001f, this->size->getVector2().y - 0.001f);
-                this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x + 0.001f, this->size->getVector2().y + 0.001f);
+                    this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x - 0.001f, this->size->getVector2().y - 0.001f);
+                    this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x + 0.001f, this->size->getVector2().y + 0.001f);
+                }
             };
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIItemBoxComponent::setResourceName repaint");
         }
@@ -1943,6 +2061,16 @@ namespace NOWA
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIItemBoxComponent::clearItems");
     }
 
+    void MyGUIItemBoxComponent::reactOnMouseButtonPressed(luabind::object closureFunction)
+    {
+        this->mouseButtonPressedClosureFunction = closureFunction;
+    }
+
+    void MyGUIItemBoxComponent::reactOnMouseButtonReleased(luabind::object closureFunction)
+    {
+        this->mouseButtonReleasedClosureFunction = closureFunction;
+    }
+
     void MyGUIItemBoxComponent::reactOnDropItemRequest(luabind::object closureFunction)
     {
         this->closureFunctionRequestDropRequest = closureFunction;
@@ -1951,6 +2079,122 @@ namespace NOWA
     void MyGUIItemBoxComponent::reactOnDropItemAccepted(luabind::object closureFunction)
     {
         this->closureFunctionRequestDropAccepted = closureFunction;
+    }
+
+    MyGUIItemBoxComponent* getMyGUIItemBoxComponentComponent(GameObject* gameObject)
+    {
+        return makeStrongPtr<MyGUIItemBoxComponent>(gameObject->getComponent<MyGUIItemBoxComponent>()).get();
+    }
+
+    MyGUIItemBoxComponent* getMyGUIItemBoxComponentComponentFromName(GameObject* gameObject, const Ogre::String& name)
+    {
+        return makeStrongPtr<MyGUIItemBoxComponent>(gameObject->getComponentFromName<MyGUIItemBoxComponent>(name)).get();
+    }
+
+    Ogre::String getSenderInventoryId(DragDropData* instance)
+    {
+        return Ogre::StringConverter::toString(instance->getSenderInventoryId());
+    }
+
+    void MyGUIItemBoxComponent::createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass)
+    {
+        module(lua)
+        [
+            class_<MyGUIItemBoxComponent, MyGUIWindowComponent>("MyGUIItemBoxComponent")
+            .def("getItemCount", &MyGUIItemBoxComponent::getItemCount)
+            .def("getResourceName", &MyGUIItemBoxComponent::getResourceName)
+            .def("setQuantity2", (void (MyGUIItemBoxComponent::*)(unsigned int, unsigned int))&MyGUIItemBoxComponent::setQuantity)
+            .def("setQuantity", (void (MyGUIItemBoxComponent::*)(const Ogre::String&, unsigned int))&MyGUIItemBoxComponent::setQuantity)
+            .def("getQuantity2", (unsigned int (MyGUIItemBoxComponent::*)(unsigned int))&MyGUIItemBoxComponent::getQuantity)
+            .def("getQuantity", (unsigned int (MyGUIItemBoxComponent::*)(const Ogre::String&))&MyGUIItemBoxComponent::getQuantity)
+            .def("addQuantity", &MyGUIItemBoxComponent::addQuantity)
+            .def("increaseQuantity", (void (MyGUIItemBoxComponent::*)(const Ogre::String&, unsigned int))&MyGUIItemBoxComponent::increaseQuantity)
+            .def("decreaseQuantity", (void (MyGUIItemBoxComponent::*)(const Ogre::String&, unsigned int))&MyGUIItemBoxComponent::decreaseQuantity)
+            .def("removeQuantity", &MyGUIItemBoxComponent::removeQuantity)
+
+            .def("setSellValue2", (void (MyGUIItemBoxComponent::*)(unsigned int, Ogre::Real))&MyGUIItemBoxComponent::setSellValue)
+            .def("setSellValue", (void (MyGUIItemBoxComponent::*)(const Ogre::String&, Ogre::Real))&MyGUIItemBoxComponent::setSellValue)
+            .def("getSellValue2", (Ogre::Real (MyGUIItemBoxComponent::*)(unsigned int))&MyGUIItemBoxComponent::getSellValue)
+            .def("getSellValue", (Ogre::Real (MyGUIItemBoxComponent::*)(const Ogre::String&))&MyGUIItemBoxComponent::getSellValue)
+
+            .def("setBuyValue2", (void (MyGUIItemBoxComponent::*)(unsigned int, Ogre::Real))&MyGUIItemBoxComponent::setBuyValue)
+            .def("setBuyValue", (void (MyGUIItemBoxComponent::*)(const Ogre::String&, Ogre::Real))&MyGUIItemBoxComponent::setBuyValue)
+            .def("getBuyValue2", (Ogre::Real (MyGUIItemBoxComponent::*)(unsigned int))&MyGUIItemBoxComponent::getBuyValue)
+            .def("getBuyValue", (Ogre::Real (MyGUIItemBoxComponent::*)(const Ogre::String&))&MyGUIItemBoxComponent::getBuyValue)
+
+            .def("clearItems", &MyGUIItemBoxComponent::clearItems)
+            .def("reactOnMouseButtonPressed", &MyGUIItemBoxComponent::reactOnMouseButtonPressed)
+            .def("reactOnMouseButtonReleased", &MyGUIItemBoxComponent::reactOnMouseButtonReleased)
+            .def("reactOnDropItemRequest", &MyGUIItemBoxComponent::reactOnDropItemRequest)
+            .def("reactOnDropItemAccepted", &MyGUIItemBoxComponent::reactOnDropItemAccepted)
+            .def("reactOnMouseButtonClick", &MyGUIItemBoxComponent::reactOnMouseButtonClick)
+        ];
+
+        LuaScriptApi::getInstance()->addClassToCollection("MyGUIItemBoxComponent", "class inherits MyGUIWindowComponent", MyGUIItemBoxComponent::getStaticInfoText());
+        LuaScriptApi::getInstance()->addClassToCollection("MyGUIItemBoxComponent", "int getItemCount()", "Gets the max inventory item count.");
+        LuaScriptApi::getInstance()->addClassToCollection("MyGUIItemBoxComponent", "String getResourceName(int index)",
+            "Gets resource name for the given index. E.g. if 'energy' resource is placed in inventory at index 1, getResourceName(1) would deliver the energy resource. "
+            "Note: This function can be used in a loop in conjunction with @getItemCount to iterate over all items in inventory and dump all resources.");
+        LuaScriptApi::getInstance()->addClassToCollection("MyGUIItemBoxComponent", "void setQuantity2(int index, int quantity)", "Sets the quantity of the resource for the given index.");
+        LuaScriptApi::getInstance()->addClassToCollection("MyGUIItemBoxComponent", "void setQuantity(int index, String resourceName)", "Sets the quantity of the resource.");
+        LuaScriptApi::getInstance()->addClassToCollection("MyGUIItemBoxComponent", "int getQuantity2(int index)", "Gets the quantity of the resource for the given index.");
+        LuaScriptApi::getInstance()->addClassToCollection("MyGUIItemBoxComponent", "int getQuantity(String resourceName)", "Gets the quantity of the resource.");
+        LuaScriptApi::getInstance()->addClassToCollection("MyGUIItemBoxComponent", "void increaseQuantity(String resourceName, int quantity)", "Gets the current quantity and increases by the given quantity value.");
+        LuaScriptApi::getInstance()->addClassToCollection("MyGUIItemBoxComponent", "void decreaseQuantity(String resourceName, int quantity)", "Gets the current quantity and decreases by the given quantity value.");
+        LuaScriptApi::getInstance()->addClassToCollection("MyGUIItemBoxComponent", "float getSellValue2(int index)", "Gets the sell value of the resource for the given index.");
+        LuaScriptApi::getInstance()->addClassToCollection("MyGUIItemBoxComponent", "float getSellValue(String resourceName)", "Gets the sell value of the resource.");
+        LuaScriptApi::getInstance()->addClassToCollection("MyGUIItemBoxComponent", "float getBuyValue2(int index)", "Gets the buy value of the resource for the given index.");
+        LuaScriptApi::getInstance()->addClassToCollection("MyGUIItemBoxComponent", "float getBuyValue(String resourceName)", "Gets the buy value of the resource.");
+        LuaScriptApi::getInstance()->addClassToCollection("MyGUIItemBoxComponent", "void addQuantity(String resourceName, int quantity)", "Adds the quantity of the resource, if does not exist, creates a new slot in inventory.");
+        LuaScriptApi::getInstance()->addClassToCollection("MyGUIItemBoxComponent", "void removeQuantity(String resourceName, int quantity)", "Removes the quantity from the resource.");
+        LuaScriptApi::getInstance()->addClassToCollection("MyGUIItemBoxComponent", "void clearItems()", "Cleares the whole inventory.");
+        LuaScriptApi::getInstance()->addClassToCollection("MyGUIItemBoxComponent", "void reactOnDropItemRequest(func closureFunction, DragDropData dragDropData)",
+            "Sets whether to react if an item is requested to be drag and dropped to another inventory. A return value also can be set to prohibit the operation. E.g. getMyGUIItemBoxComponent():reactOnDropItemRequest(function(dragDropData) ... end");
+        LuaScriptApi::getInstance()->addClassToCollection("MyGUIItemBoxComponent", "void reactOnMouseButtonPressed(func closureFunction, int slotIndex, string resourceName, int buttonId)",
+            "Fires when a mouse button is pressed down on an inventory slot. "
+            "Receives the slot index, resource name and mouse button id. "
+            "Use for drag initiation or visual feedback. "
+            "E.g. getMyGUIItemBoxComponent():reactOnMouseButtonPressed(function(slotIndex, resourceName, buttonId) ... end)");
+        LuaScriptApi::getInstance()->addClassToCollection("MyGUIItemBoxComponent", "void reactOnMouseButtonReleased(func closureFunction, int slotIndex, string resourceName, int buttonId)",
+            "Fires when a mouse button is released on an inventory slot. "
+            "Receives the slot index, resource name and mouse button id. "
+            "This is the correct event for triggering item actions (placement, use, etc.) "
+            "since actions should fire on release, not press. "
+            "E.g. getMyGUIItemBoxComponent():reactOnMouseButtonReleased(function(slotIndex, resourceName, buttonId) ... end)");
+        LuaScriptApi::getInstance()->addClassToCollection("MyGUIItemBoxComponent", "void reactOnDropItemAccepted(func closureFunction, DragDropData dragDropData)",
+            "Sets whether to react if an item drop has been accepted to another inventory. E.g. getMyGUIItemBoxComponent():reactOnDropItemAccepted(function(dragDropData) ... end");
+        LuaScriptApi::getInstance()->addClassToCollection("MyGUIItemBoxComponent", "void reactOnMouseButtonClick(func closureFunction, string resourceName, int buttonId)",
+            "Sets whether to react if a mouse button has been clicked on the inventory. The clicked resource name will be received and the clicked mouse button id.");
+
+        module(lua)[class_<DragDropData>("DragDropData")
+                .def("getResourceName", &DragDropData::getResourceName)
+                .def("getQuantity", &DragDropData::getQuantity)
+                .def("getSellValue", &DragDropData::getSellValue)
+                .def("getBuyValue", &DragDropData::getBuyValue)
+                .def("getSenderReceiverIsSame", &DragDropData::getSenderReceiverIsSame)
+                .def("getSenderInventoryId", &getSenderInventoryId)
+                .def("setCanDrop", &DragDropData::setCanDrop)
+                .def("getCanDrop", &DragDropData::getCanDrop)];
+
+        LuaScriptApi::getInstance()->addClassToCollection("DragDropData", "DragDropData", "It can be used when an item is dragged from one inventory to another to get some data and control if it may be dropped.");
+        LuaScriptApi::getInstance()->addClassToCollection("DragDropData", "String getResourceName()", "Gets the resource name.");
+        LuaScriptApi::getInstance()->addClassToCollection("DragDropData", "int getQuantity()", "Gets resource quantity.");
+        LuaScriptApi::getInstance()->addClassToCollection("DragDropData", "float getSellValue()", "Gets the sell value of the resource.");
+        LuaScriptApi::getInstance()->addClassToCollection("DragDropData", "float getBuyValue()", "Gets the buy value of the resource.");
+        LuaScriptApi::getInstance()->addClassToCollection("DragDropData", "bool getSenderReceiverIsSame()", "Gets whether the inventory sender and receiver is the same. E.g. moving the item within the same inventory.");
+        LuaScriptApi::getInstance()->addClassToCollection("DragDropData", "string getSenderInventoryId()", "Gets the sender inventory id.");
+        LuaScriptApi::getInstance()->addClassToCollection("DragDropData", "void setCanDrop(bool canDrop)", "Sets whether the item can be dropped.");
+        LuaScriptApi::getInstance()->addClassToCollection("DragDropData", "bool getCanDrop()", "Gets whether the item can be dropped.");
+
+        gameObjectClass.def("getMyGUIItemBoxComponent", &getMyGUIItemBoxComponentComponent);
+        gameObjectClass.def("getMyGUIItemBoxComponentFromName", &getMyGUIItemBoxComponentComponentFromName);
+
+        LuaScriptApi::getInstance()->addClassToCollection("GameObject", "MyGUIItemBoxComponent getMyGUIItemBoxComponent()", "Gets the MyGUI item box component. This can be used for inventory item in conjunction with InventoryItemComponent.");
+        LuaScriptApi::getInstance()->addClassToCollection("GameObject", "MyGUIItemBoxComponent getMyGUIItemBoxComponentFromName(string name)",
+            "Gets the MyGUIItemBoxComponent by name. This can be used for inventory item in conjunction with InventoryItemComponent.");
+
+        gameObjectControllerClass.def("castMyGUIItemBoxComponent", &GameObjectController::cast<MyGUIItemBoxComponent>);
+        LuaScriptApi::getInstance()->addClassToCollection("GameObjectController", "MyGUIItemBoxComponent castMyGUIItemBoxComponent(MyGUIItemBoxComponent other)", "Casts for Lua auto completion.");
     }
 
     //////////////////////////////////////////////////////////////////////////////////

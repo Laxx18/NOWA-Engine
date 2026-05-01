@@ -2101,9 +2101,9 @@ namespace NOWA
         }
 
         // Check if clicking on GUI
-        if (MyGUI::InputManager::getInstance().getMouseFocusWidget() != nullptr)
+        if (nullptr != NOWA::InputDeviceCore::getSingletonPtr()->isMouseAtMyGUIFocusWidget())
         {
-            return true; // not handled -> bubble
+            return true;
         }
 
         if (nullptr == this->editableItem)

@@ -8,6 +8,7 @@
 #include "gameobject/GameObjectFactory.h"
 #include "gameobject/PlayerControllerComponents.h"
 #include "gameobject/InputDeviceComponent.h"
+#include "gameobject/MyGUIItemBoxComponent.h"
 
 #include "OgreAbiUtils.h"
 
@@ -406,58 +407,63 @@ namespace NOWA
 	{
 		if (true == this->bConnected)
 		{
-			if (nullptr == MyGUI::InputManager::getInstance().getMouseFocusWidget())
-			{
-				this->selectionManager->handleMousePress(evt, id);
-			}
+            // Check for MyGUI focus FIRST, before handling selection
+            if (nullptr != NOWA::InputDeviceCore::getSingletonPtr()->isMouseAtMyGUIFocusWidget())
+            {
+                // MyGUI is handling this click — do not process as world selection
+                return true;
+            }
+
+		    this->selectionManager->handleMousePress(evt, id);
 		}
 		return true;
 	}
 
 	bool SelectGameObjectsComponent::mouseReleased(const OIS::MouseEvent& evt, OIS::MouseButtonID id)
-	{
-		if (true == this->bConnected)
-		{
-			this->selectionManager->handleMouseRelease(evt, id);
-
-			if (nullptr != MyGUI::InputManager::getInstance().getMouseFocusWidget())
+    {
+        if (true == this->bConnected)
+        {
+            // Check for MyGUI focus FIRST, before handling selection
+            if (nullptr != NOWA::InputDeviceCore::getSingletonPtr()->isMouseAtMyGUIFocusWidget())
 			{
+				// MyGUI is handling this click — do not process as world selection
 				return true;
-			}
+            }
 
-			const auto& selectedGameObjects = this->selectionManager->getSelectedGameObjects();
+            this->selectionManager->handleMouseRelease(evt, id);
 
-			if (this->closureFunction.is_valid())
-			{
-				std::vector<GameObject*> selectedGameObjectList(selectedGameObjects.size());
-				size_t i = 0;
-				for (auto& selectedGameObject : selectedGameObjects)
-				{
-					selectedGameObjectList[i] = selectedGameObject.second.gameObject;
-					i++;
-				}
+            const auto& selectedGameObjects = this->selectionManager->getSelectedGameObjects();
 
-				NOWA::AppStateManager::LogicCommand logicCommand = [this, selectedGameObjectList]()
-					{
-						try
-						{
-							luabind::call_function<void>(this->closureFunction, selectedGameObjectList);
-						}
-						catch (luabind::error& error)
-						{
-							luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-							std::stringstream msg;
-							msg << errorMsg;
+            if (this->closureFunction.is_valid())
+            {
+                // Create a luabind table instead of std::vector
+                luabind::object selectedGameObjectTable = luabind::newtable(LuaScriptApi::getInstance()->getLua());
+                size_t i = 0;
+                for (auto& selectedGameObject : selectedGameObjects)
+                {
+                    selectedGameObjectTable[i++] = selectedGameObject.second.gameObject;
+                }
 
-							Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[SelectGameObjectsComponent] Caught error in 'reactOnGameObjectsSelected' Error: " + Ogre::String(error.what())
-								+ " details: " + msg.str());
-						}
-					};
-				NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-			}
-		}
-		return true;
-	}
+                NOWA::AppStateManager::LogicCommand logicCommand = [this, selectedGameObjectTable]()
+                {
+                    try
+                    {
+                        luabind::call_function<void>(this->closureFunction, selectedGameObjectTable);
+                    }
+                    catch (luabind::error& error)
+                    {
+                        luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                        std::stringstream msg;
+                        msg << errorMsg;
+
+                        Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[SelectGameObjectsComponent] Caught error in 'reactOnGameObjectsSelected' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
+                    }
+                };
+                NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+            }
+        }
+        return true;
+    }
 
 	bool SelectGameObjectsComponent::axisMoved(const OIS::JoyStickEvent& evt, int axis)
 	{

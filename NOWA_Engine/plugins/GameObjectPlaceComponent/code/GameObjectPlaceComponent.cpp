@@ -113,7 +113,7 @@ namespace NOWA
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObjectPlaceComponent] Init component for game object: " + this->gameObjectPtr->getName());
 
         // Create a ray scene query for mouse-to-world hit testing
-        this->raySceneQuery = this->gameObjectPtr->getSceneManager()->createRayQuery(Ogre::Ray());
+        this->raySceneQuery = this->gameObjectPtr->getSceneManager()->createRayQuery(Ogre::Ray(), NOWA::GameObjectController::ALL_CATEGORIES_ID);
         this->raySceneQuery->setSortByDistance(true);
 
         return true;
@@ -459,8 +459,8 @@ namespace NOWA
             return true;
         }
 
-        // Skip if mouse is over a MyGUI widget
-        if (nullptr != MyGUI::InputManager::getInstance().getMouseFocusWidget())
+        // Check for MyGUI focus FIRST, before handling
+        if (nullptr != NOWA::InputDeviceCore::getSingletonPtr()->isMouseAtMyGUIFocusWidget())
         {
             return true;
         }
@@ -500,8 +500,8 @@ namespace NOWA
             return true;
         }
 
-        // Skip if mouse is over a MyGUI widget
-        if (nullptr != MyGUI::InputManager::getInstance().getMouseFocusWidget())
+        // Check for MyGUI focus FIRST, before handling
+        if (nullptr != NOWA::InputDeviceCore::getSingletonPtr()->isMouseAtMyGUIFocusWidget())
         {
             return true;
         }

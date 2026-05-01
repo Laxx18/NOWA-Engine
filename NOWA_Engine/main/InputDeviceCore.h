@@ -11,6 +11,8 @@
 
 #include <OgreWindow.h>
 
+#include "MyGUI_InputManager.h"
+
 namespace NOWA
 {
 	struct JoyStickConfig
@@ -91,6 +93,8 @@ namespace NOWA
 		std::vector<InputDeviceModule*> getJoystickInputDeviceModules(void) const;
 
 		bool isSelectDown(void) const;
+
+		MyGUI::Widget* isMouseAtMyGUIFocusWidget(void);
 	private:
 		InputDeviceCore();
 

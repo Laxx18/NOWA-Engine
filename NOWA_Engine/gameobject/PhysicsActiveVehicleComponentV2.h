@@ -115,7 +115,7 @@ namespace NOWA
             return "PhysicsActiveVehicleComponentV2";
         }
 
-        static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObject, luabind::class_<GameObjectController>& gameObjectController);
+        static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass);
 
         static Ogre::String getStaticInfoText(void)
         {

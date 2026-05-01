@@ -601,14 +601,21 @@ namespace NOWA
         return makeStrongPtr<AiLuaGoalComponent>(gameObject->getComponentFromName<AiLuaGoalComponent>(name)).get();
     }
 
-    void AiLuaGoalComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObject, class_<GameObjectController>& gameObjectController)
+    void AiLuaGoalComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
     {
-        module(lua)[class_<NOWA::KI::GoalResult>("GoalResult")
-                .enum_("LuaGoalState")[value("ACTIVE", NOWA::KI::GoalResult::LuaGoalState::ACTIVE), value("INACTIVE", NOWA::KI::GoalResult::LuaGoalState::INACTIVE), value("COMPLETED", NOWA::KI::GoalResult::LuaGoalState::COMPLETED),
-                    value("FAILED", NOWA::KI::GoalResult::LuaGoalState::FAILED)]
-                .def(luabind::constructor<>()) // Default constructor
-                .def("setStatus", &NOWA::KI::GoalResult::setStatus)
-                .def("getStatus", &NOWA::KI::GoalResult::getStatus)];
+        module(lua)
+        [
+            class_<NOWA::KI::GoalResult>("GoalResult")
+            .enum_("LuaGoalState")
+            [
+                value("ACTIVE", NOWA::KI::GoalResult::LuaGoalState::ACTIVE), 
+                value("INACTIVE", NOWA::KI::GoalResult::LuaGoalState::INACTIVE), 
+                value("COMPLETED", NOWA::KI::GoalResult::LuaGoalState::COMPLETED),
+                value("FAILED", NOWA::KI::GoalResult::LuaGoalState::FAILED)
+            ]
+            .def(luabind::constructor<>()) // Default constructor
+            .def("setStatus", &NOWA::KI::GoalResult::setStatus)
+            .def("getStatus", &NOWA::KI::GoalResult::getStatus)];
 
         LuaScriptApi::getInstance()->addClassToCollection("GoalResult", "class", "Class representing the result of a goals execution.");
         LuaScriptApi::getInstance()->addClassToCollection("GoalResult", "GoalResult()", "Default constructor for GoalResult.");
@@ -620,14 +627,17 @@ namespace NOWA
         LuaScriptApi::getInstance()->addClassToCollection("GoalResult", "LuaGoalState COMPLETED", "The goal has been successfully completed.");
         LuaScriptApi::getInstance()->addClassToCollection("GoalResult", "LuaGoalState FAILED", "The goal has failed to complete.");
 
-        module(lua)[class_<NOWA::KI::LuaGoal<GameObject>>("LuaGoal")
-                .def(luabind::constructor<GameObject*, luabind::object>()) // Exposes constructor
-                .def("isComplete", &NOWA::KI::LuaGoal<GameObject>::isComplete)
-                .def("isActive", &NOWA::KI::LuaGoal<GameObject>::isActive)
-                .def("isInactive", &NOWA::KI::LuaGoal<GameObject>::isInactive)
-                .def("hasFailed", &NOWA::KI::LuaGoal<GameObject>::hasFailed)
-                // .def("getType", &NOWA::KI::LuaGoal<GameObject>::getType)
-                .def("activate", &NOWA::KI::LuaGoal<GameObject>::activate)];
+        module(lua)
+        [
+            class_<NOWA::KI::LuaGoal<GameObject>>("LuaGoal")
+            .def(luabind::constructor<GameObject*, luabind::object>()) // Exposes constructor
+            .def("isComplete", &NOWA::KI::LuaGoal<GameObject>::isComplete)
+            .def("isActive", &NOWA::KI::LuaGoal<GameObject>::isActive)
+            .def("isInactive", &NOWA::KI::LuaGoal<GameObject>::isInactive)
+            .def("hasFailed", &NOWA::KI::LuaGoal<GameObject>::hasFailed)
+            // .def("getType", &NOWA::KI::LuaGoal<GameObject>::getType)
+            .def("activate", &NOWA::KI::LuaGoal<GameObject>::activate)
+        ];
 
         LuaScriptApi::getInstance()->addClassToCollection("LuaGoal", "class LuaGoal", "A leaf atomic goal, which cannot have children anymore.");
         LuaScriptApi::getInstance()->addClassToCollection("LuaGoal", "bool isComplete()", "Gets whether this goal is completed.");
@@ -635,17 +645,20 @@ namespace NOWA
         LuaScriptApi::getInstance()->addClassToCollection("LuaGoal", "bool isInactive()", "Gets whether this goal is inactive.");
         LuaScriptApi::getInstance()->addClassToCollection("LuaGoal", "bool hasFailed()", "Gets whether this goal has failed.");
 
-        module(lua)[class_<NOWA::KI::LuaGoalComposite<GameObject>, NOWA::KI::LuaGoal<GameObject>>("LuaGoalComposite")
-                .def(luabind::constructor<GameObject*, luabind::object>()) // Exposes constructor
-                .def("isComplete", &NOWA::KI::LuaGoalComposite<GameObject>::isComplete)
-                .def("isActive", &NOWA::KI::LuaGoalComposite<GameObject>::isActive)
-                .def("isInactive", &NOWA::KI::LuaGoalComposite<GameObject>::isInactive)
-                .def("hasFailed", &NOWA::KI::LuaGoalComposite<GameObject>::hasFailed)
-                // .def("getType", &NOWA::KI::LuaGoalComposite<GameObject>::getType)
-                .def("addSubGoal", &NOWA::KI::LuaGoalComposite<GameObject>::addSubGoal<GameObject>)
-                .def("removeAllSubGoals", &NOWA::KI::LuaGoalComposite<GameObject>::removeAllSubGoals<GameObject>)
-                .def("activate", &NOWA::KI::LuaGoalComposite<GameObject>::activate)
-                .def("process", &NOWA::KI::LuaGoalComposite<GameObject>::process)];
+        module(lua)
+        [
+            class_<NOWA::KI::LuaGoalComposite<GameObject>, NOWA::KI::LuaGoal<GameObject>>("LuaGoalComposite")
+            .def(luabind::constructor<GameObject*, luabind::object>()) // Exposes constructor
+            .def("isComplete", &NOWA::KI::LuaGoalComposite<GameObject>::isComplete)
+            .def("isActive", &NOWA::KI::LuaGoalComposite<GameObject>::isActive)
+            .def("isInactive", &NOWA::KI::LuaGoalComposite<GameObject>::isInactive)
+            .def("hasFailed", &NOWA::KI::LuaGoalComposite<GameObject>::hasFailed)
+            // .def("getType", &NOWA::KI::LuaGoalComposite<GameObject>::getType)
+            .def("addSubGoal", &NOWA::KI::LuaGoalComposite<GameObject>::addSubGoal<GameObject>)
+            .def("removeAllSubGoals", &NOWA::KI::LuaGoalComposite<GameObject>::removeAllSubGoals<GameObject>)
+            .def("activate", &NOWA::KI::LuaGoalComposite<GameObject>::activate)
+            .def("process", &NOWA::KI::LuaGoalComposite<GameObject>::process)
+       ];
 
         LuaScriptApi::getInstance()->addClassToCollection("LuaGoalComposite", "class inherits LuaGoal", "Composite goal class used for managing hierarchical goal structures.");
         LuaScriptApi::getInstance()->addClassToCollection("LuaGoalComposite", "bool isComplete()", "Gets whether this goal is completed.");
@@ -660,31 +673,34 @@ namespace NOWA
         LuaScriptApi::getInstance()->addClassToCollection("LuaGoalComposite", "GoalResult process(Ogre::Real dt)",
             "Processes the composite goal and its sub-goals, calling their 'process' functions in Lua. Returns the result of the goal's processing.");
 
-        module(lua)[class_<AiLuaGoalComponent, GameObjectComponent>("AiLuaGoalComponent")
-                .def("setActivated", &AiLuaGoalComponent::setActivated)
-                .def("isActivated", &AiLuaGoalComponent::isActivated)
-                .def("setRotationSpeed", &AiLuaGoalComponent::setRotationSpeed)
-                .def("getRotationSpeed", &AiLuaGoalComponent::getRotationSpeed)
-                .def("setFlyMode", &AiLuaGoalComponent::setFlyMode)
-                .def("getIsInFlyMode", &AiLuaGoalComponent::getIsInFlyMode)
-                .def("setRootGoalName", &AiLuaGoalComponent::setRootGoalName)
-                .def("getRootGoalName", &AiLuaGoalComponent::getRootGoalName)
-                // No: Is done via AiLuaGoalComponent, because of some sanity checks??
-                // .def("getStateMachine", &AiLuaGoalComponent::getStateMachine)
-                .def("getMovingBehavior", &AiLuaGoalComponent::getMovingBehavior)
-                .def("setRootGoal", &AiLuaGoalComponent::setRootGoal)
-                .def("addSubGoal", &AiLuaGoalComponent::addSubGoal)
-                // .def("getGoalMachine", &AiLuaGoalComponent::getGoalMachine)
+        module(lua)
+        [
+            class_<AiLuaGoalComponent, GameObjectComponent>("AiLuaGoalComponent")
+            .def("setActivated", &AiLuaGoalComponent::setActivated)
+            .def("isActivated", &AiLuaGoalComponent::isActivated)
+            .def("setRotationSpeed", &AiLuaGoalComponent::setRotationSpeed)
+            .def("getRotationSpeed", &AiLuaGoalComponent::getRotationSpeed)
+            .def("setFlyMode", &AiLuaGoalComponent::setFlyMode)
+            .def("getIsInFlyMode", &AiLuaGoalComponent::getIsInFlyMode)
+            .def("setRootGoalName", &AiLuaGoalComponent::setRootGoalName)
+            .def("getRootGoalName", &AiLuaGoalComponent::getRootGoalName)
+            // No: Is done via AiLuaGoalComponent, because of some sanity checks??
+            // .def("getStateMachine", &AiLuaGoalComponent::getStateMachine)
+            .def("getMovingBehavior", &AiLuaGoalComponent::getMovingBehavior)
+            .def("setRootGoal", &AiLuaGoalComponent::setRootGoal)
+            .def("addSubGoal", &AiLuaGoalComponent::addSubGoal)
+            // .def("getGoalMachine", &AiLuaGoalComponent::getGoalMachine)
 
-                // .def("setGlobalState", &AiLuaGoalComponent::setGlobalState)
-                // .def("exitGlobalState", &AiLuaGoalComponent::exitGlobalState)
-                // .def("getCurrentState", &AiLuaGoalComponent::getCurrentState)
-                // .def("getPreviousState", &AiLuaGoalComponent::getPreviousState)
-                // .def("getGlobalState", &AiLuaGoalComponent::getGlobalState)
-                // .def("changeState", &AiLuaGoalComponent::changeState)
-                // .def("revertToPreviousState", &AiLuaGoalComponent::revertToPreviousState)
-                .def("reactOnPathGoalReached", &AiLuaGoalComponent::reactOnPathGoalReached)
-                .def("reactOnAgentStuck", &AiLuaGoalComponent::reactOnAgentStuck)];
+            // .def("setGlobalState", &AiLuaGoalComponent::setGlobalState)
+            // .def("exitGlobalState", &AiLuaGoalComponent::exitGlobalState)
+            // .def("getCurrentState", &AiLuaGoalComponent::getCurrentState)
+            // .def("getPreviousState", &AiLuaGoalComponent::getPreviousState)
+            // .def("getGlobalState", &AiLuaGoalComponent::getGlobalState)
+            // .def("changeState", &AiLuaGoalComponent::changeState)
+            // .def("revertToPreviousState", &AiLuaGoalComponent::revertToPreviousState)
+            .def("reactOnPathGoalReached", &AiLuaGoalComponent::reactOnPathGoalReached)
+            .def("reactOnAgentStuck", &AiLuaGoalComponent::reactOnAgentStuck)
+        ];
 
         LuaScriptApi::getInstance()->addClassToCollection("AiLuaGoalComponent", "class inherits GameObjectComponent", AiLuaGoalComponent::getStaticInfoText());
         LuaScriptApi::getInstance()->addClassToCollection("AiLuaGoalComponent", "void setActivated(bool activated)", "Activates the components behaviour, so that the lua script will be executed.");
@@ -713,15 +729,15 @@ namespace NOWA
             "Sets whether to react the agent reached the goal.");
         LuaScriptApi::getInstance()->addClassToCollection("AiLuaGoalComponent", "void reactOnAgentStuck(func closure, GameObject targetGameObject, string functionName, GameObject gameObject)", "Sets whether to react the agent got stuck.");
 
-        gameObject.def("getAiLuaGoalComponent", (AiLuaGoalComponent * (*)(GameObject*)) & getAiLuaGoalComponent);
-        gameObject.def("getAiLuaGoalComponentFromName", &getAiLuaGoalComponentFromName);
+        gameObjectClass.def("getAiLuaGoalComponent", (AiLuaGoalComponent * (*)(GameObject*)) & getAiLuaGoalComponent);
+        gameObjectClass.def("getAiLuaGoalComponentFromName", &getAiLuaGoalComponentFromName);
         LuaScriptApi::getInstance()->addClassToCollection("GameObject", "AiLuaGoalComponent getAiLuaGoalComponent()", "Gets the ai lua goal component. This can be used if the game object just has one ai lua goal component.");
         LuaScriptApi::getInstance()->addClassToCollection("GameObject", "AiLuaGoalComponent getAiLuaGoalComponentFromName(String name)", "Gets the ai lua goal component.");
 
-        gameObjectController.def("castAiLuaGoalComponentComponent", &GameObjectController::cast<AiLuaGoalComponent>);
+        gameObjectControllerClass.def("castAiLuaGoalComponentComponent", &GameObjectController::cast<AiLuaGoalComponent>);
         LuaScriptApi::getInstance()->addClassToCollection("GameObjectController", "AiLuaGoalComponent castAiLuaGoalComponent(AiLuaGoalComponent other)", "Casts an incoming type from function for lua auto completion.");
 
-        gameObjectController.def("castGoalResult", &GameObjectController::cast<GoalResult>);
+        gameObjectControllerClass.def("castGoalResult", &GameObjectController::cast<GoalResult>);
         LuaScriptApi::getInstance()->addClassToCollection("GameObjectController", "GoalResult castGoalResult(GoalResult other)", "Casts an incoming type from function for lua auto completion.");
     }
 

@@ -332,7 +332,7 @@ namespace NOWA
 		 * @param[in|out]	gameObjectController	The existing game object controller lua registration, in order to register correct cast (castMyComponent), so that intellisense in zero brane studio will work correctly
 		 */
 		
-		static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObject, luabind::class_<GameObjectController>& gameObjectController) { }
+		static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass) { }
 
 		/**
 		 * @brief		Gets whether this component can be added to the game object.

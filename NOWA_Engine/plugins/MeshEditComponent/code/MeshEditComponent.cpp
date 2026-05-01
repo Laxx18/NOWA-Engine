@@ -703,7 +703,8 @@ namespace NOWA
         {
             return true;
         }
-        if (MyGUI::InputManager::getInstance().getMouseFocusWidget() != nullptr)
+        // Check for MyGUI focus FIRST, before handling
+        if (nullptr != NOWA::InputDeviceCore::getSingletonPtr()->isMouseAtMyGUIFocusWidget())
         {
             return true;
         }
@@ -946,7 +947,8 @@ namespace NOWA
         {
             return true;
         }
-        if (MyGUI::InputManager::getInstance().getMouseFocusWidget() != nullptr)
+        // Check for MyGUI focus FIRST, before handling
+        if (nullptr != NOWA::InputDeviceCore::getSingletonPtr()->isMouseAtMyGUIFocusWidget())
         {
             return true;
         }
@@ -1085,7 +1087,8 @@ namespace NOWA
         {
             return true;
         }
-        if (MyGUI::InputManager::getInstance().getMouseFocusWidget() != nullptr)
+        // Check for MyGUI focus FIRST, before handling
+        if (nullptr != NOWA::InputDeviceCore::getSingletonPtr()->isMouseAtMyGUIFocusWidget())
         {
             return true;
         }

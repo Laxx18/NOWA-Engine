@@ -14187,7 +14187,7 @@ namespace NOWA
 		return makeStrongPtr<JointFlexyPipeHandleComponent>(gameObject->getComponentFromName<JointFlexyPipeHandleComponent>(name)).get();
 	}
 
-	void JointFlexyPipeHandleComponent::createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObject, luabind::class_<GameObjectController>& gameObjectController)
+	void JointFlexyPipeHandleComponent::createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass)
 	{
 		module(lua)
 		[
@@ -14204,13 +14204,13 @@ namespace NOWA
 		LuaScriptApi::getInstance()->addClassToCollection("JointFlexyPipeHandleComponent", "void setVelocity(Vector3 velocity, float dt)", "Controls the motion of this joint by the given velocity vector and time step.");
 		LuaScriptApi::getInstance()->addClassToCollection("JointFlexyPipeHandleComponent", "void setOmega(Vector3 omega, float dt)", "Controls the rotation of this joint by the given velocity vector and time step.");
 
-		gameObject.def("getJointFlexyPipeHandleComponent", (JointFlexyPipeHandleComponent* (*)(GameObject*)) &getJointFlexyPipeHandleComponent);
-		gameObject.def("getJointFlexyPipeHandleComponentFromName", &getJointFlexyPipeHandleComponentFromName);
+		gameObjectClass.def("getJointFlexyPipeHandleComponent", (JointFlexyPipeHandleComponent* (*)(GameObject*)) &getJointFlexyPipeHandleComponent);
+		gameObjectClass.def("getJointFlexyPipeHandleComponentFromName", &getJointFlexyPipeHandleComponentFromName);
 
 		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "JointFlexyPipeHandleComponent getJointFlexyPipeHandleComponent()", "Gets the joint flexy pipe handle component. This can be used if the game object just has one joint flexy pipe handle component.");
 		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "JointFlexyPipeHandleComponent getJointFlexyPipeHandleComponentFromName(String name)", "Gets the joint flexy pipe handle component.");
 
-		gameObjectController.def("castJointFlexyPipeHandleComponent", &GameObjectController::cast<JointFlexyPipeHandleComponent>);
+		gameObjectControllerClass.def("castJointFlexyPipeHandleComponent", &GameObjectController::cast<JointFlexyPipeHandleComponent>);
 		LuaScriptApi::getInstance()->addClassToCollection("GameObjectController", "JointFlexyPipeHandleComponent castJointFlexyPipeHandleComponent(JointFlexyPipeHandleComponent other)", "Casts an incoming type from function for lua auto completion.");
 	}
 

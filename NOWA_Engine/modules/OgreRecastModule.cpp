@@ -15,7 +15,8 @@ namespace NOWA
 		detourCrowd(nullptr),
 		mustRegenerate(true),
 		hasValidNavMesh(false),
-		debugDraw(false)
+		debugDraw(false),
+        buildInProgress(false)
 	{
 		
 	}
@@ -71,6 +72,8 @@ namespace NOWA
 		// Copy dynamicObstacles locally and clear original container early
 		auto obstaclesCopy = this->dynamicObstacles;
 		this->dynamicObstacles.clear();
+
+		this->buildInProgress = false;
 
 		for (auto& it : obstaclesCopy)
 		{
@@ -464,6 +467,7 @@ namespace NOWA
 		return inputGeom;
 	}
 
+#if 1
 	void OgreRecastModule::buildNavigationMesh(void)
 	{
 		if (true == this->staticObstacles.empty() && true == this->dynamicObstacles.empty() && true == this->terraInputGeomCells.empty())
@@ -567,6 +571,165 @@ namespace NOWA
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "OgreRecastModule::buildNavigationMesh");
 		}
 	}
+#else
+    void OgreRecastModule::buildNavigationMesh(void)
+    {
+        if (this->staticObstacles.empty() && this->dynamicObstacles.empty() && this->terraInputGeomCells.empty())
+        {
+            return;
+        }
+
+        if (false == this->mustRegenerate)
+        {
+            return;
+        }
+
+        // Prevent a second build from starting while one is already running.
+        // exchange() returns the OLD value; if it was already true, bail out.
+        if (true == this->buildInProgress.exchange(true))
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[OgreRecastModule] buildNavigationMesh skipped: build already in progress.");
+            return;
+        }
+
+        // Clean up any previous (finished) thread before spawning a new one.
+        if (this->navMeshThread.joinable())
+        {
+            this->navMeshThread.join();
+        }
+
+        this->navMeshThread = std::thread([this]()
+            {
+                // -----------------------------------------------------------------------
+                // PHASE 1 — render thread (fast): initialise and collect Ogre object ptrs
+                // -----------------------------------------------------------------------
+                std::vector<Ogre::v1::Entity*> entities;
+                std::vector<Ogre::Item*> items;
+                std::vector<InputGeom::TerraData> terraDataList;
+                bool hasTerra = false;
+
+                NOWA::GraphicsModule::RenderCommand setupCmd = [&]()
+                {
+                    if (nullptr == this->detourTileCache)
+                    {
+                        this->detourTileCache = new OgreDetourTileCache(this->ogreRecast);
+                    }
+
+                    for (size_t i = 0; i < this->staticObstacles.size(); i++)
+                    {
+                        auto& go = AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->getGameObjectFromId(this->staticObstacles[i]);
+                        if (nullptr == go)
+                        {
+                            continue;
+                        }
+
+                        Ogre::v1::Entity* entity = go->getMovableObject<Ogre::v1::Entity>();
+                        if (nullptr != entity)
+                        {
+                            entities.emplace_back(entity);
+                        }
+                        else
+                        {
+                            Ogre::Item* item = go->getMovableObject<Ogre::Item>();
+                            if (nullptr != item)
+                            {
+                                items.push_back(item);
+                            }
+                        }
+                    }
+
+                    if (false == this->terraInputGeomCells.empty())
+                    {
+                        hasTerra = true;
+                        for (auto it = this->terraInputGeomCells.begin(); it != this->terraInputGeomCells.end(); ++it)
+                        {
+                            auto& go = AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->getGameObjectFromId(it->first);
+                            if (nullptr == go)
+                            {
+                                continue;
+                            }
+
+                            auto navMeshTerraCompPtr = NOWA::makeStrongPtr(go->getComponent<NavMeshTerraComponent>());
+                            if (nullptr == navMeshTerraCompPtr)
+                            {
+                                continue;
+                            }
+
+                            Ogre::Terra* terra = go->getMovableObject<Ogre::Terra>();
+                            if (nullptr == terra)
+                            {
+                                continue;
+                            }
+
+                            InputGeom::TerraData terraData;
+                            terraData.terra = terra;
+                            terraData.terraLayerList = navMeshTerraCompPtr->getTerraLayerList();
+                            terraDataList.push_back(terraData);
+                        }
+                    }
+                };
+
+                // Blocks this background thread until the render thread has collected
+                // everything — but the render thread is only busy for milliseconds here.
+                NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(setupCmd), "OgreRecastModule::buildNavigationMesh::setup");
+
+                // -----------------------------------------------------------------------
+                // PHASE 2 — background thread (heavy): Recast/Detour build
+                // TileCacheBuild only reads CPU-side vertex buffers; safe off render thread
+                // as long as static obstacle meshes are not modified concurrently.
+                // -----------------------------------------------------------------------
+                bool success = false;
+                if (false == hasTerra)
+                {
+                    success = this->detourTileCache->TileCacheBuild(entities, items);
+                }
+                else
+                {
+                    success = this->detourTileCache->TileCacheBuild(terraDataList, entities, items);
+                }
+
+                // -----------------------------------------------------------------------
+                // PHASE 3 — render thread (fast): apply results, recreate debug drawer
+                // -----------------------------------------------------------------------
+                NOWA::GraphicsModule::RenderCommand finishCmd = [this, success]()
+                {
+                    this->hasValidNavMesh = success;
+
+                    // createInputGeom uses Ogre draw calls — must be on render thread
+                    this->createInputGeom();
+
+                    if (false == this->hasValidNavMesh)
+                    {
+                        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[OgreRecastModule] Error: could not generate useable navmesh from mesh.");
+                    }
+
+                    boost::shared_ptr<EventDataFeedback> evt(new EventDataFeedback(this->hasValidNavMesh, "#{NavigationMeshCreationFail}"));
+                    NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->queueEvent(evt);
+
+                    this->ogreRecast->recreateDrawer();
+
+                    auto crowdObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromComponent(CrowdComponent::getStaticClassName());
+                    if (crowdObjects.size() > 0)
+                    {
+                        this->detourCrowd->setMaxAgents(crowdObjects.size());
+                    }
+
+                    this->mustRegenerate = false;
+
+                    AppStateManager::getSingletonPtr()->getEventManager()->abortEvent(NOWA::EventDataGeometryModified::getStaticEventType(), true);
+                };
+
+                NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(finishCmd), "OgreRecastModule::buildNavigationMesh::finish");
+
+                this->buildInProgress.store(false);
+            }); // thread spawned — render thread is now FREE again immediately
+
+        // Detach so the thread cleans itself up. mBuildInProgress guards re-entry.
+        // NOTE: your destructor must guard against destroying OgreRecastModule while
+        //       a build is still running (see destructor note below).
+        this->navMeshThread.detach();
+    }
+#endif
 
 	void OgreRecastModule::debugDrawNavMesh(bool draw)
 	{

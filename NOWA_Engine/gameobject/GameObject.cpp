@@ -7,6 +7,7 @@
 #include "LuaScriptComponent.h"
 #include "MyGUIItemBoxComponent.h"
 #include "AiLuaComponent.h"
+#include "AiLuaGoalComponent.h"
 #include "BackgroundScrollComponent.h"
 #include "CameraComponent.h"
 #include "modules/WorkspaceModule.h"
@@ -56,7 +57,8 @@ namespace NOWA
 		bConnectPriority(false),
 		timeSinceLastUpdate(2.0f),
         cachedLuaScriptComponent(nullptr),
-        cachedAiLuaComponent(nullptr)
+        cachedAiLuaComponent(nullptr),
+        cachedAiLuaGoalComponent(nullptr)
 	{
 		this->name = new Variant(GameObject::AttrName(), "Default", this->attributes);
 		if (0 == id)
@@ -799,6 +801,11 @@ namespace NOWA
         return this->cachedAiLuaComponent;
     }
 
+    AiLuaGoalComponent* GameObject::getCachedAiLuaGoalComponent(void) const
+    {
+        return this->cachedAiLuaGoalComponent;
+    }
+
 	const char* GameObject::typeToString(GameObject::eType t)
 	{
 		switch (t)
@@ -852,7 +859,8 @@ namespace NOWA
 		// Cache frequently-looked-up component raw pointers once, after all components are alive.
         // getComponent<T>() scans + locks; these avoid that cost on every hot-path call.
         this->cachedLuaScriptComponent = NOWA::makeStrongPtr(this->getComponent<LuaScriptComponent>()).get();
-        this->cachedAiLuaComponent = NOWA::makeStrongPtr(this->getComponent<AiLuaComponent>()).get(); 
+        this->cachedAiLuaComponent = NOWA::makeStrongPtr(this->getComponent<AiLuaComponent>()).get();
+        this->cachedAiLuaGoalComponent = NOWA::makeStrongPtr(this->getComponent<AiLuaGoalComponent>()).get();
 
 		return true;
 	}
@@ -921,6 +929,7 @@ namespace NOWA
     {
         LuaScriptComponent* luaScriptRaw = this->cachedLuaScriptComponent;
         AiLuaComponent* aiLuaRaw = this->cachedAiLuaComponent;
+        AiLuaGoalComponent* aiLuaGoalRaw = this->cachedAiLuaGoalComponent;
 
         if (true == this->bConnectPriority)
         {
@@ -939,6 +948,10 @@ namespace NOWA
                 {
                     gameObjectCompPtr->bConnectedSuccess = gameObjectCompPtr->connect();
                 }
+                else if (gameObjectCompPtr.get() != aiLuaGoalRaw)
+                {
+                    gameObjectCompPtr->bConnectedSuccess = gameObjectCompPtr->connect();
+                }
             }
         }
         else
@@ -949,7 +962,7 @@ namespace NOWA
 
                 // BEFORE: two dynamic_pointer_casts per element
                 // AFTER: two raw pointer comparisons
-                if (gameObjectCompPtr.get() != luaScriptRaw && gameObjectCompPtr.get() != aiLuaRaw)
+                if (gameObjectCompPtr.get() != luaScriptRaw && gameObjectCompPtr.get() != aiLuaRaw && gameObjectCompPtr.get() != aiLuaGoalRaw)
                 {
                     if (true == gameObjectCompPtr->getConnectPriority())
                     {
@@ -967,6 +980,7 @@ namespace NOWA
         // These are set once in postInit() and cleared in destroy().
         LuaScriptComponent* luaScriptRaw = this->cachedLuaScriptComponent;
         AiLuaComponent* aiLuaRaw = this->cachedAiLuaComponent;
+        AiLuaGoalComponent* aiLuaGoalRaw = this->cachedAiLuaGoalComponent;
 
         // Problem: When lua script is connected first and initialisations done inside,
         // e.g. ragdoll etc. no ragdoll is yet available, so only compile here.
@@ -996,7 +1010,7 @@ namespace NOWA
                 // those are handled separately in GameObjectController @managedLuaScripts.
                 // Raw pointer comparison replaces the old shared_ptr != shared_ptr comparison,
                 // which internally did two atomic loads. This is a plain pointer compare.
-                if (gameObjectCompPtr.get() != luaScriptRaw && gameObjectCompPtr.get() != aiLuaRaw)
+                if (gameObjectCompPtr.get() != luaScriptRaw && gameObjectCompPtr.get() != aiLuaRaw && gameObjectCompPtr.get() != aiLuaGoalRaw)
                 {
                     gameObjectCompPtr->bConnectedSuccess = gameObjectCompPtr->connect();
                 }
@@ -1035,6 +1049,7 @@ namespace NOWA
         // Clear caches before components are torn down
         this->cachedLuaScriptComponent = nullptr;
         this->cachedAiLuaComponent = nullptr;
+        this->cachedAiLuaGoalComponent = nullptr;
 
 		for (auto& it = this->gameObjectComponents.cbegin(); it != this->gameObjectComponents.cend(); ++it)
 		{
@@ -1976,6 +1991,7 @@ namespace NOWA
 		// Refresh cached pointers after any component removal
         this->cachedLuaScriptComponent = NOWA::makeStrongPtr(this->getComponent<LuaScriptComponent>()).get();
         this->cachedAiLuaComponent = NOWA::makeStrongPtr(this->getComponent<AiLuaComponent>()).get();
+		this->cachedAiLuaGoalComponent = NOWA::makeStrongPtr(this->getComponent<AiLuaGoalComponent>()).get();
 
 		return found;
 	}
