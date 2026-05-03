@@ -180,6 +180,18 @@ namespace NOWA
 		unsigned int getBuyValue(void) const;
 
 		/**
+		 * @brief		Sets the id of the GameObject associated with this inventory item (e.g. a building template). This id is also configurable in NOWA-Design and is forwarded to reactOnMouseButtonClick on the MyGUIItemBoxComponent so the template can be resolved without hardcoded names: 'local go = AppStateManager:getGameObjectController():getGameObjectFromId(inventoryItem:getGameObjectId())'
+		 * @param[in]	gameObjectId	The game object id to set. Use '0' for none.
+         */
+		void InventoryItemComponent::setGameObjectId(unsigned long gameObjectId);
+
+		/**
+         * @brief		Gets the id of the associated GameObject. Returns '0' if none has been set.
+		 * @return		The game object id.
+		*/
+        unsigned long InventoryItemComponent::getGameObjectId(void) const;
+
+		/**
 		 * @brief		Adds the resource and given quantity to inventory (which is the MyGUIItemBoxComponent)
 		 * @param[in]	gameObjectId	The game object id, that possesses the inventory
 		 * @param[in]	componentName	The optional component name if e.g. the game object possesses more than one inventory. If left empty, the first inventory will be used.
@@ -202,11 +214,13 @@ namespace NOWA
 		static const Ogre::String AttrResourceName(void) { return "Resource Name"; }
 		static const Ogre::String AttrSellValue(void) { return "Sell Value"; }
 		static const Ogre::String AttrBuyValue(void) { return "Buy Value"; }
+        static const Ogre::String AttrGameObjectId(void) { return "GameObject Id"; }
 	private:
 		Ogre::String name;
 		Variant* resourceName;
 		Variant* sellValue;
 		Variant* buyValue;
+        Variant* gameObjectId;
 		bool alreadyAdded;
 		bool alreadyRemoved;
 	};

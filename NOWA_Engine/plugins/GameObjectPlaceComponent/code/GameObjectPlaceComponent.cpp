@@ -7,6 +7,7 @@ GPL v3
 #include "GameObjectPlaceComponent.h"
 #include "OgreAbiUtils.h"
 #include "gameobject/GameObjectFactory.h"
+#include "gameobject/PhysicsComponent.h"
 #include "main/AppStateManager.h"
 #include "main/InputDeviceCore.h"
 #include "modules/LuaScriptApi.h"
@@ -22,14 +23,21 @@ namespace NOWA
         GameObjectComponent(),
         name("GameObjectPlaceComponent"),
         activated(new Variant(GameObjectPlaceComponent::AttrActivated(), true, this->attributes)),
+        categories(new Variant(GameObjectPlaceComponent::AttrCategories(), Ogre::String("All"), this->attributes)),
+        showPreview(new Variant(GameObjectPlaceComponent::AttrShowPreview(), true, this->attributes)),
         placeObjectCount(new Variant(GameObjectPlaceComponent::AttrPlaceObjectCount(), 0, this->attributes)),
         activeGameObjectId(0),
         isPlacing(false),
         currentHitPoint(Ogre::Vector3::ZERO),
-        raySceneQuery(nullptr)
+        raySceneQuery(nullptr),
+        categoryId(0),
+        shadowPhysicsComponent(nullptr),
+        oldWasDynamic(false)
     {
-        // Changing count refreshes the properties panel so new ID fields appear/disappear
         this->placeObjectCount->addUserData(GameObject::AttrActionNeedRefresh());
+        this->categories->setDescription("Categories to place objects on. Use 'All' for everything, "
+                                         "or combine with '+' to include and '-' to exclude. E.g. 'All-Building-Agent' places "
+                                         "on everything except Building and Agent categories.");
     }
 
     GameObjectPlaceComponent::~GameObjectPlaceComponent()
@@ -72,6 +80,16 @@ namespace NOWA
             this->activated->setValue(XMLConverter::getAttribBool(propertyElement, "data", true));
             propertyElement = propertyElement->next_sibling("property");
         }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Categories")
+        {
+            this->categories->setValue(XMLConverter::getAttrib(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "ShowPreview")
+        {
+            this->showPreview->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
         if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "PlaceObjectCount")
         {
             this->placeObjectCount->setValue(XMLConverter::getAttribUnsignedInt(propertyElement, "data"));
@@ -112,7 +130,6 @@ namespace NOWA
     {
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObjectPlaceComponent] Init component for game object: " + this->gameObjectPtr->getName());
 
-        // Create a ray scene query for mouse-to-world hit testing
         this->raySceneQuery = this->gameObjectPtr->getSceneManager()->createRayQuery(Ogre::Ray(), NOWA::GameObjectController::ALL_CATEGORIES_ID);
         this->raySceneQuery->setSortByDistance(true);
 
@@ -123,8 +140,9 @@ namespace NOWA
     {
         GameObjectComponent::connect();
 
-        // Delay listener registration by one frame to avoid iterator invalidation
-        // during the connect phase when other listeners may still be iterating
+        // Apply categories to the ray query now that all game objects are registered
+        this->setCategories(this->categories->getString());
+
         NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.25f));
         auto ptrFunction = [this]()
         {
@@ -142,11 +160,14 @@ namespace NOWA
     {
         GameObjectComponent::disconnect();
 
-        // If we were placing when simulation stopped, clean up
         if (this->isPlacing)
         {
             this->endPlacement(true);
         }
+
+        // endPlacement already clears shadowPhysicsComponent,
+        // but guard here in case isPlacing was false
+        this->shadowPhysicsComponent = nullptr;
 
         InputDeviceCore::getSingletonPtr()->removeKeyListener(GameObjectPlaceComponent::getStaticClassName());
         InputDeviceCore::getSingletonPtr()->removeMouseListener(GameObjectPlaceComponent::getStaticClassName());
@@ -168,6 +189,8 @@ namespace NOWA
             this->endPlacement(true);
         }
 
+        this->shadowPhysicsComponent = nullptr;
+
         InputDeviceCore::getSingletonPtr()->removeKeyListener(GameObjectPlaceComponent::getStaticClassName());
         InputDeviceCore::getSingletonPtr()->removeMouseListener(GameObjectPlaceComponent::getStaticClassName());
 
@@ -180,7 +203,22 @@ namespace NOWA
 
     void GameObjectPlaceComponent::onOtherComponentRemoved(unsigned int index)
     {
+        // If the physics component of the currently active shadow object was removed,
+        // clear our cached pointer so mouseMoved falls back to node-based movement
+        if (nullptr != this->shadowPhysicsComponent)
+        {
+            auto shadowGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->activeGameObjectId);
+            if (nullptr != shadowGameObjectPtr)
+            {
+                auto currentPhysics = NOWA::makeStrongPtr(shadowGameObjectPtr->getComponent<PhysicsComponent>()).get();
+                if (nullptr == currentPhysics)
+                {
+                    this->shadowPhysicsComponent = nullptr;
+                }
+            }
+        }
     }
+
     void GameObjectPlaceComponent::onOtherComponentAdded(unsigned int index)
     {
     }
@@ -207,6 +245,14 @@ namespace NOWA
         else if (AttrPlaceObjectCount() == attribute->getName())
         {
             this->setPlaceObjectCount(attribute->getUInt());
+        }
+        else if (AttrCategories() == attribute->getName())
+        {
+            this->setCategories(attribute->getString());
+        }
+        else if (AttrShowPreview() == attribute->getName())
+        {
+            this->setShowPreview(attribute->getBool());
         }
         else
         {
@@ -236,6 +282,18 @@ namespace NOWA
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->placeObjectCount->getUInt())));
         propertiesXML->append_node(propertyXML);
 
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Categories"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->categories->getString())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "ShowPreview"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->showPreview->getBool())));
+        propertiesXML->append_node(propertyXML);
+
         for (size_t i = 0; i < this->placeObjectCount->getUInt(); i++)
         {
             propertyXML = doc.allocate_node(node_element, "property");
@@ -263,6 +321,176 @@ namespace NOWA
     bool GameObjectPlaceComponent::isActivated(void) const
     {
         return this->activated->getBool();
+    }
+
+    void GameObjectPlaceComponent::setCategories(const Ogre::String& categories)
+    {
+        this->categories->setValue(categories);
+        this->categoryId = AppStateManager::getSingletonPtr()->getGameObjectController()->generateCategoryId(categories);
+
+        if (nullptr != this->raySceneQuery)
+        {
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+            {
+                this->raySceneQuery->setQueryMask(this->categoryId);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObjectPlaceComponent::setCategories");
+        }
+    }
+
+    Ogre::String GameObjectPlaceComponent::getCategories(void) const
+    {
+        return this->categories->getString();
+    }
+
+    void GameObjectPlaceComponent::setShowPreview(bool showPreview)
+    {
+        this->showPreview->setValue(showPreview);
+    }
+
+    bool GameObjectPlaceComponent::getShowPreview(void) const
+    {
+        return this->showPreview->getBool();
+    }
+
+    //void GameObjectPlaceComponent::applyPreviewTransparency(GameObjectPtr shadowGameObjectPtr)
+    //{
+    //    if (false == this->showPreview->getBool())
+    //    {
+    //        return;
+    //    }
+
+    //    Ogre::Item* item = shadowGameObjectPtr->getMovableObjectUnsafe<Ogre::Item>();
+    //    if (nullptr == item)
+    //    {
+    //        return;
+    //    }
+
+    //    this->originalTransparencies.clear();
+    //    this->originalTransparencyModes.clear();
+
+    //    NOWA::GraphicsModule::RenderCommand renderCommand = [this, item]()
+    //    {
+    //        for (size_t i = 0; i < item->getNumSubItems(); i++)
+    //        {
+    //            auto datablock = dynamic_cast<Ogre::HlmsPbsDatablock*>(item->getSubItem(i)->getDatablock());
+    //            if (nullptr != datablock)
+    //            {
+    //                // Store originals for restoration on placement
+    //                this->originalTransparencies.push_back(datablock->getTransparency());
+    //                this->originalTransparencyModes.push_back(datablock->getTransparencyMode());
+
+    //                // Apply semi-transparent preview — Fade mode preserves lighting better
+    //                datablock->setTransparency(0.5f, Ogre::HlmsPbsDatablock::Fade, true);
+    //            }
+    //        }
+    //    };
+    //    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObjectPlaceComponent::applyPreviewTransparency");
+    //}
+
+    //void GameObjectPlaceComponent::resetPreviewTransparency(GameObjectPtr shadowGameObjectPtr)
+    //{
+    //    if (false == this->showPreview->getBool())
+    //    {
+    //        return;
+    //    }
+
+    //    Ogre::Item* item = shadowGameObjectPtr->getMovableObjectUnsafe<Ogre::Item>();
+    //    if (nullptr == item)
+    //    {
+    //        return;
+    //    }
+
+    //    if (this->originalTransparencies.empty())
+    //    {
+    //        return;
+    //    }
+
+    //    NOWA::GraphicsModule::RenderCommand renderCommand = [this, item]()
+    //    {
+    //        for (size_t i = 0; i < item->getNumSubItems() && i < this->originalTransparencies.size(); i++)
+    //        {
+    //            auto datablock = dynamic_cast<Ogre::HlmsPbsDatablock*>(item->getSubItem(i)->getDatablock());
+    //            if (nullptr != datablock)
+    //            {
+    //                datablock->setTransparency(this->originalTransparencies[i], this->originalTransparencyModes[i], true);
+    //            }
+    //        }
+    //        this->originalTransparencies.clear();
+    //        this->originalTransparencyModes.clear();
+    //    };
+    //    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObjectPlaceComponent::resetPreviewTransparency");
+    //}
+
+    void GameObjectPlaceComponent::applyPreviewTransparency(GameObjectPtr shadowGameObjectPtr)
+    {
+        if (false == this->showPreview->getBool())
+        {
+            return;
+        }
+
+        // getMovableObjectUnsafe<> exists on GameObjectComponent, NOT on GameObject.
+        // Use dynamic_cast on getMovableObject() instead.
+        Ogre::Item* item = dynamic_cast<Ogre::Item*>(shadowGameObjectPtr->getMovableObject());
+        if (nullptr == item)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObjectPlaceComponent] applyPreviewTransparency: shadow object has no Item, skipping preview.");
+            return;
+        }
+
+        // Must move to render queue 10 BEFORE applying transparency —
+        // without this, Ogre PBS renders the object as opaque regardless of the datablock setting.
+        // shadowGameObjectPtr->setRenderQueueIndex(10);
+
+        NOWA::GraphicsModule::RenderCommand renderCommand = [item]()
+        {
+            for (size_t i = 0; i < item->getNumSubItems(); i++)
+            {
+                auto datablock = dynamic_cast<Ogre::HlmsPbsDatablock*>(item->getSubItem(i)->getDatablock());
+                if (nullptr != datablock)
+                {
+                    // Transparent mode: multiplies final colour by transparency value.
+                    // 0.5f = 50% opaque. useAlphaFromTextures=false so we don't depend on
+                    // the texture having an alpha channel.
+                    datablock->setTransparency(0.5f, Ogre::HlmsPbsDatablock::Transparent, false);
+                }
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObjectPlaceComponent::applyPreviewTransparency");
+    }
+
+    void GameObjectPlaceComponent::resetPreviewTransparency(GameObjectPtr shadowGameObjectPtr)
+    {
+        if (false == this->showPreview->getBool())
+        {
+            return;
+        }
+
+        Ogre::Item* item = dynamic_cast<Ogre::Item*>(shadowGameObjectPtr->getMovableObject());
+        if (nullptr == item)
+        {
+            return;
+        }
+
+        // Restore datablock to fully opaque BEFORE the clone is created.
+        // enqueueAndWait guarantees the render thread completes this BEFORE
+        // the logic thread proceeds to clone(). Shadow objects are always
+        // designed as opaque so we always restore to None + 1.0f.
+        NOWA::GraphicsModule::RenderCommand renderCommand = [item]()
+        {
+            for (size_t i = 0; i < item->getNumSubItems(); i++)
+            {
+                auto datablock = dynamic_cast<Ogre::HlmsPbsDatablock*>(item->getSubItem(i)->getDatablock());
+                if (nullptr != datablock)
+                {
+                    datablock->setTransparency(1.0f, Ogre::HlmsPbsDatablock::None, false);
+                }
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObjectPlaceComponent::resetPreviewTransparency");
+
+        // Restore render queue AFTER datablock is fully reset — logic thread safe.
+        // shadowGameObjectPtr->setRenderQueueIndex(1);
     }
 
     void GameObjectPlaceComponent::setPlaceObjectCount(unsigned int count)
@@ -316,7 +544,6 @@ namespace NOWA
             return;
         }
 
-        // Cancel any existing placement first
         if (this->isPlacing)
         {
             this->endPlacement(true);
@@ -329,7 +556,6 @@ namespace NOWA
             return;
         }
 
-        // Verify the id is in our configured list
         bool found = false;
         for (size_t i = 0; i < this->gameObjectIds.size(); i++)
         {
@@ -341,7 +567,7 @@ namespace NOWA
         }
         if (false == found)
         {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectPlaceComponent] activatePlacement: id " + gameObjectId + " is not in the configured GameObjectId list. Add it in the editor.");
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectPlaceComponent] activatePlacement: id " + gameObjectId + " is not in the configured GameObjectId list.");
             return;
         }
 
@@ -352,13 +578,21 @@ namespace NOWA
             return;
         }
 
+        this->oldWasDynamic = shadowGameObjectPtr->isDynamic();
+        shadowGameObjectPtr->setDynamic(true);
+
         this->activeGameObjectId = id;
         this->isPlacing = true;
 
-        // Make shadow visible so it acts as the placement preview
-        shadowGameObjectPtr->setVisible(true);
+        // Resolve physics component for this shadow object — must be done here
+        // because different slots may have different shadow objects with/without physics
+        this->resolveShadowPhysicsComponent();
 
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObjectPlaceComponent] Placement started for game object: " + shadowGameObjectPtr->getName());
+        shadowGameObjectPtr->setVisible(true);
+        this->applyPreviewTransparency(shadowGameObjectPtr);
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, 
+            "[GameObjectPlaceComponent] Placement started for game object: " + shadowGameObjectPtr->getName() + (nullptr != this->shadowPhysicsComponent ? " (physics-driven)" : " (node-driven)"));
     }
 
     void GameObjectPlaceComponent::cancelPlacement(void)
@@ -376,16 +610,18 @@ namespace NOWA
             return;
         }
 
-        // Hide the shadow object again
         auto shadowGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->activeGameObjectId);
         if (nullptr != shadowGameObjectPtr)
         {
+            this->resetPreviewTransparency(shadowGameObjectPtr);
             shadowGameObjectPtr->setVisible(false);
+            shadowGameObjectPtr->setDynamic(this->oldWasDynamic);
         }
 
         this->isPlacing = false;
         this->activeGameObjectId = 0;
         this->currentHitPoint = Ogre::Vector3::ZERO;
+        this->shadowPhysicsComponent = nullptr; // <- clear on every end
 
         if (cancelled && this->cancelledClosureFunction.is_valid())
         {
@@ -427,6 +663,8 @@ namespace NOWA
         Ogre::Ray mouseRay;
         ENQUEUE_GET_CAMERA_TO_VIEWPORT_RAY(camera, x, y, mouseRay);
 
+        this->raySceneQuery->setRay(mouseRay);
+
         Ogre::Vector3 hitPoint = Ogre::Vector3::ZERO;
         Ogre::MovableObject* hitObject = nullptr;
         Ogre::Real closestDistance = 0.0f;
@@ -448,51 +686,29 @@ namespace NOWA
         return hitPoint;
     }
 
+    void GameObjectPlaceComponent::resolveShadowPhysicsComponent(void)
+    {
+        this->shadowPhysicsComponent = nullptr;
+
+        if (0 == this->activeGameObjectId)
+        {
+            return;
+        }
+
+        auto shadowGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->activeGameObjectId);
+        if (nullptr == shadowGameObjectPtr)
+        {
+            return;
+        }
+
+        // makeStrongPtr returns a shared_ptr; .get() gives raw pointer.
+        // Lifetime is safe: the shadow object exists for the full placement session.
+        this->shadowPhysicsComponent = NOWA::makeStrongPtr(shadowGameObjectPtr->getComponent<PhysicsComponent>()).get();
+    }
+
     // -----------------------------------------------------------------------
     // Mouse / Key handlers
     // -----------------------------------------------------------------------
-
-    bool GameObjectPlaceComponent::mouseMoved(const OIS::MouseEvent& evt)
-    {
-        if (false == this->bConnected || false == this->isPlacing || false == this->activated->getBool())
-        {
-            return true;
-        }
-
-        // Check for MyGUI focus FIRST, before handling
-        if (nullptr != NOWA::InputDeviceCore::getSingletonPtr()->isMouseAtMyGUIFocusWidget())
-        {
-            return true;
-        }
-
-        Ogre::Vector3 hitPoint = this->getMouseWorldPosition(evt);
-        if (hitPoint == Ogre::Vector3::ZERO)
-        {
-            return true;
-        }
-
-        this->currentHitPoint = hitPoint;
-
-        // Move the shadow game object to the hit point so it acts as a live preview
-        auto shadowGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->activeGameObjectId);
-        if (nullptr != shadowGameObjectPtr)
-        {
-            // Bottom-center the mesh on the hit point using the same helper EditorManager uses
-            Ogre::SceneNode* node = shadowGameObjectPtr->getSceneNode();
-            if (nullptr != node)
-            {
-                Ogre::Vector3 offset = Ogre::Vector3::ZERO;
-                if (nullptr != shadowGameObjectPtr->getMovableObject())
-                {
-                    offset = MathHelper::getInstance()->getBottomCenterOfMesh(node, shadowGameObjectPtr->getMovableObject());
-                }
-                NOWA::GraphicsModule::getInstance()->updateNodeTransform(node, hitPoint + offset, node->getOrientation());
-            }
-        }
-
-        return true;
-    }
-
     bool GameObjectPlaceComponent::mousePressed(const OIS::MouseEvent& evt, OIS::MouseButtonID id)
     {
         if (false == this->bConnected || false == this->isPlacing || false == this->activated->getBool())
@@ -501,7 +717,7 @@ namespace NOWA
         }
 
         // Check for MyGUI focus FIRST, before handling
-        if (nullptr != NOWA::InputDeviceCore::getSingletonPtr()->isMouseAtMyGUIFocusWidget())
+        if (nullptr != NOWA::GraphicsModule::getInstance()->getMyGUIFocusWidget())
         {
             return true;
         }
@@ -567,6 +783,64 @@ namespace NOWA
         return true;
     }
 
+    bool GameObjectPlaceComponent::mouseMoved(const OIS::MouseEvent& evt)
+    {
+        if (false == this->bConnected || false == this->isPlacing || false == this->activated->getBool())
+        {
+            return true;
+        }
+
+        if (nullptr != NOWA::GraphicsModule::getInstance()->getMyGUIFocusWidget())
+        {
+            return true;
+        }
+
+        Ogre::Vector3 hitPoint = this->getMouseWorldPosition(evt);
+        if (hitPoint == Ogre::Vector3::ZERO)
+        {
+            return true;
+        }
+
+        this->currentHitPoint = hitPoint;
+
+        auto shadowGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->activeGameObjectId);
+        if (nullptr == shadowGameObjectPtr)
+        {
+            return true;
+        }
+
+        // Ensure shadow is visible while moving
+        shadowGameObjectPtr->setVisible(true);
+
+        Ogre::SceneNode* node = shadowGameObjectPtr->getSceneNode();
+        if (nullptr == node)
+        {
+            return true;
+        }
+
+        Ogre::Vector3 offset = Ogre::Vector3::ZERO;
+        if (nullptr != shadowGameObjectPtr->getMovableObject())
+        {
+            offset = MathHelper::getInstance()->getBottomCenterOfMesh(node, shadowGameObjectPtr->getMovableObject());
+        }
+
+        Ogre::Vector3 targetPosition = hitPoint + offset;
+
+        if (nullptr != this->shadowPhysicsComponent)
+        {
+            // Physics-driven: let the physics component move the body and node together.
+            // setPosition is safe to call from the logic thread for kinematic bodies.
+            this->shadowPhysicsComponent->setPosition(targetPosition);
+        }
+        else
+        {
+            // No physics: move the scene node directly via the render thread
+            NOWA::GraphicsModule::getInstance()->updateNodeTransform(node, targetPosition, node->getOrientation());
+        }
+
+        return true;
+    }
+
     bool GameObjectPlaceComponent::mouseReleased(const OIS::MouseEvent& evt, OIS::MouseButtonID id)
     {
         return true;
@@ -623,6 +897,10 @@ namespace NOWA
             class_<GameObjectPlaceComponent, GameObjectComponent>("GameObjectPlaceComponent")
             .def("setActivated", &GameObjectPlaceComponent::setActivated)
             .def("isActivated", &GameObjectPlaceComponent::isActivated)
+            .def("setCategories", &GameObjectPlaceComponent::setCategories)
+            .def("getCategories", &GameObjectPlaceComponent::getCategories)
+            .def("setShowPreview", &GameObjectPlaceComponent::setShowPreview)
+            .def("getShowPreview", &GameObjectPlaceComponent::getShowPreview)
             .def("setPlaceObjectCount", &GameObjectPlaceComponent::setPlaceObjectCount)
             .def("getPlaceObjectCount", &GameObjectPlaceComponent::getPlaceObjectCount)
             .def("setGameObjectId", &GameObjectPlaceComponent::setGameObjectId)
@@ -636,6 +914,13 @@ namespace NOWA
         LuaScriptApi::getInstance()->addClassToCollection("GameObjectPlaceComponent", "class inherits GameObjectComponent", getStaticInfoText());
         LuaScriptApi::getInstance()->addClassToCollection("GameObjectPlaceComponent", "void setActivated(bool activated)", "Activates or deactivates the component.");
         LuaScriptApi::getInstance()->addClassToCollection("GameObjectPlaceComponent", "bool isActivated()", "Gets whether the component is activated.");
+        LuaScriptApi::getInstance()->addClassToCollection("GameObjectPlaceComponent", "void setCategories(string categories)",
+            "Sets the surface categories the object can be placed on. Use 'All' for everything, "
+            "combine with '+' to include and '-' to exclude. E.g. 'All-Building-Agent' allows placement "
+            "on all surfaces except those in the Building and Agent categories.");
+        LuaScriptApi::getInstance()->addClassToCollection("GameObjectPlaceComponent", "string getCategories()", "Gets the current placement surface categories filter.");
+        LuaScriptApi::getInstance()->addClassToCollection("GameObjectPlaceComponent", "void setShowPreview(bool showPreview)", "Sets whether the shadow object is shown semi-transparent at the mouse cursor during placement.");
+        LuaScriptApi::getInstance()->addClassToCollection("GameObjectPlaceComponent", "bool getShowPreview()", "Gets whether the placement preview transparency is enabled.");
         LuaScriptApi::getInstance()->addClassToCollection("GameObjectPlaceComponent", "void setPlaceObjectCount(int count)", "Sets how many shadow game object slots are configured.");
         LuaScriptApi::getInstance()->addClassToCollection("GameObjectPlaceComponent", "int getPlaceObjectCount()", "Gets the shadow game object slot count.");
         LuaScriptApi::getInstance()->addClassToCollection("GameObjectPlaceComponent", "void setGameObjectId(int index, string id)", "Sets the shadow game object id for the given slot.");

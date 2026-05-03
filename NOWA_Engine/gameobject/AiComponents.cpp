@@ -2121,10 +2121,19 @@ namespace NOWA
 	void AiRecastPathNavigationComponent::setTargetId(unsigned long targetId)
 	{
 		this->targetId->setValue(targetId);
-		if (nullptr != this->movingBehaviorPtr)
-		{
-			this->movingBehaviorPtr->setTargetAgentId(targetId);
-		}
+
+		GameObjectPtr targetGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->targetId->getULong());
+        if (nullptr != targetGameObjectPtr)
+        {
+            if (nullptr != this->movingBehaviorPtr)
+			{
+				this->movingBehaviorPtr->setTargetAgentId(targetId);
+			}
+
+            this->targetGameObject = targetGameObjectPtr.get();
+            //this->movingBehaviorPtr->getPath()->setWayPoint(this->targetGameObject->getPosition());
+            //this->movingBehaviorPtr->findPath();
+        }
 	}
 
 	unsigned long AiRecastPathNavigationComponent::getTargetId(void) const

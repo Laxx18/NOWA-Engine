@@ -75,8 +75,8 @@ namespace NOWA
             return;
         }
 
-        MyGUI::Widget* widget = NOWA::InputDeviceCore::getSingletonPtr()->isMouseAtMyGUIFocusWidget();
-        if (nullptr != widget)
+        MyGUI::Widget* focusWidget = NOWA::GraphicsModule::getInstance()->getMyGUIFocusWidget();
+        if (nullptr != focusWidget)
         {
             return;
         }

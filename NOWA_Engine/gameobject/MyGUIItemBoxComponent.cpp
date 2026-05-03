@@ -486,13 +486,7 @@ namespace NOWA
     using namespace rapidxml;
     using namespace luabind;
 
-    MyGUIItemBoxComponent::MyGUIItemBoxComponent()
-        : MyGUIWindowComponent(),
-        toolTip(nullptr),
-        itemBoxWindow(nullptr),
-        selectedSlotIndex(-1),
-        dragDropData(new DragDropData),
-        dropFinished(false)
+    MyGUIItemBoxComponent::MyGUIItemBoxComponent() : MyGUIWindowComponent(), toolTip(nullptr), itemBoxWindow(nullptr), selectedSlotIndex(-1), dragDropData(new DragDropData), dropFinished(false)
     {
         // MyGUIWindowComponent already created this->skin.
         // Replace its values rather than creating a duplicate Variant.
@@ -511,6 +505,7 @@ namespace NOWA
         this->quantities.resize(this->itemCount->getUInt());
         this->sellValues.resize(this->itemCount->getUInt());
         this->buyValues.resize(this->itemCount->getUInt());
+        this->gameObjectIds.resize(this->itemCount->getUInt());
         // Automatically also triggers needRefresh!
         this->resourceLocationName->addUserData(GameObject::AttrActionFileOpenDialog(), "Essential");
         // Since when node item count is changed, the whole properties must be refreshed, so that new field may come for item tracks
@@ -568,8 +563,8 @@ namespace NOWA
         if ("ToolTip" == this->layer->getListSelectedValue())
         {
             // For tooltip -> pick is set to false
-            // When pick=false, getLayerItemByPoint returns nullptr for every single pixel of that layer. 
-            // MyGUI's InputManager calls this to decide which widget gets mouse focus. Since it always returns null for the ToolTip layer, 
+            // When pick=false, getLayerItemByPoint returns nullptr for every single pixel of that layer.
+            // MyGUI's InputManager calls this to decide which widget gets mouse focus. Since it always returns null for the ToolTip layer,
             // the ItemBox's mClient and its cell widgets never receive mouse focus, so ItemBox::notifyMouseButtonPressed is never called.
             this->layer->setListSelectedValue("Overlapped");
         }
@@ -604,6 +599,7 @@ namespace NOWA
             this->quantities.resize(this->itemCount->getUInt());
             this->sellValues.resize(this->itemCount->getUInt());
             this->buyValues.resize(this->itemCount->getUInt());
+            this->gameObjectIds.resize(this->itemCount->getUInt());
         }
 
         for (size_t i = 0; i < this->itemCount->getUInt(); i++)
@@ -667,13 +663,32 @@ namespace NOWA
                     this->buyValues[i]->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
                 }
                 propertyElement = propertyElement->next_sibling("property");
-                this->buyValues[i]->addUserData(GameObject::AttrActionSeparator());
             }
             // Backward compatibility. No buy values loaded, create new ones
             if (nullptr == this->buyValues[i])
             {
                 this->buyValues[i] = new Variant(MyGUIItemBoxComponent::AttrBuyValue() + Ogre::StringConverter::toString(i), XMLConverter::getAttribReal(propertyElement, "data"), this->attributes);
             }
+
+            // Optional per-slot associated GameObject id (0 = none)
+            if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "GameObjectId" + Ogre::StringConverter::toString(i))
+            {
+                if (nullptr == this->gameObjectIds[i])
+                {
+                    this->gameObjectIds[i] = new Variant(MyGUIItemBoxComponent::AttrGameObjectId() + Ogre::StringConverter::toString(i), XMLConverter::getAttribUnsignedLong(propertyElement, "data"), this->attributes);
+                }
+                else
+                {
+                    this->gameObjectIds[i]->setValue(XMLConverter::getAttribUnsignedLong(propertyElement, "data"));
+                }
+                propertyElement = propertyElement->next_sibling("property");
+            }
+            else
+            {
+                this->gameObjectIds[i] = new Variant(MyGUIItemBoxComponent::AttrGameObjectId() + Ogre::StringConverter::toString(i), static_cast<unsigned long>(0), this->attributes);
+            }
+            this->gameObjectIds[i]->setDescription("Optional: id of the GameObject associated with this slot (e.g. a building template). Passed to reactOnMouseButtonClick. 0 = none.");
+            this->gameObjectIds[i]->addUserData(GameObject::AttrActionSeparator());
         }
 
         return success;
@@ -708,6 +723,7 @@ namespace NOWA
             clonedCompPtr->setQuantity(i, this->quantities[i]->getUInt());
             clonedCompPtr->setSellValue(i, this->sellValues[i]->getReal());
             clonedCompPtr->setBuyValue(i, this->buyValues[i]->getReal());
+            clonedCompPtr->setGameObjectId(i, this->gameObjectIds[i]->getULong());
         }
 
         GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
@@ -759,6 +775,7 @@ namespace NOWA
         this->quantities.resize(this->itemCount->getUInt());
         this->sellValues.resize(this->itemCount->getUInt());
         this->buyValues.resize(this->itemCount->getUInt());
+        this->gameObjectIds.resize(this->itemCount->getUInt());
 
         for (unsigned int i = 0; i < this->itemCount->getUInt(); i++)
         {
@@ -775,7 +792,7 @@ namespace NOWA
                     else
                     {
                         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MyGUIItemBoxComponent] INFO: Item slot " + Ogre::StringConverter::toString(i) + " has resource '" + this->resourceNames[i]->getString() +
-                                                                                               "' but quantity is 0. Resource will be set but item will appear empty until quantity > 0.");
+                                                                                                "' but quantity is 0. Resource will be set but item will appear empty until quantity > 0.");
                     }
                 }
             }
@@ -790,6 +807,10 @@ namespace NOWA
             if (nullptr != this->buyValues[i])
             {
                 this->setBuyValue(i, this->buyValues[i]->getReal());
+            }
+            if (nullptr != this->gameObjectIds[i])
+            {
+                this->setGameObjectId(i, this->gameObjectIds[i]->getULong());
             }
         }
 
@@ -870,6 +891,10 @@ namespace NOWA
                 {
                     this->setBuyValue(i, attribute->getReal());
                 }
+                else if (MyGUIItemBoxComponent::AttrGameObjectId() + Ogre::StringConverter::toString(i) == attribute->getName())
+                {
+                    this->setGameObjectId(i, attribute->getULong());
+                }
             }
         }
     }
@@ -933,6 +958,12 @@ namespace NOWA
             propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
             propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "BuyValue" + Ogre::StringConverter::toString(i))));
             propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->buyValues[i]->getReal())));
+            propertiesXML->append_node(propertyXML);
+
+            propertyXML = doc.allocate_node(node_element, "property");
+            propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
+            propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "GameObjectId" + Ogre::StringConverter::toString(i))));
+            propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->gameObjectIds[i]->getULong())));
             propertiesXML->append_node(propertyXML);
         }
     }
@@ -1291,11 +1322,22 @@ namespace NOWA
             // Fire legacy reactOnMouseButtonClick (left-click only, matches old Lua API)
             if (buttonId == OIS::MB_Left && this->mouseButtonClickClosureFunction.is_valid())
             {
-                NOWA::AppStateManager::LogicCommand cmd = [this, resourceName, buttonId]()
+                // Resolve the optional per-slot associated GameObject id
+                Ogre::String slotGameObjectId = "0";
+                if (_info.index < this->gameObjectIds.size() && nullptr != this->gameObjectIds[_info.index])
+                {
+                    const Ogre::String& id = this->gameObjectIds[_info.index]->getString();
+                    if (!id.empty())
+                    {
+                        slotGameObjectId = id;
+                    }
+                }
+
+                NOWA::AppStateManager::LogicCommand cmd = [this, resourceName, slotGameObjectId, buttonId]()
                 {
                     try
                     {
-                        luabind::call_function<void>(this->mouseButtonClickClosureFunction, resourceName, buttonId);
+                        luabind::call_function<void>(this->mouseButtonClickClosureFunction, resourceName, slotGameObjectId, buttonId);
                     }
                     catch (luabind::error& error)
                     {
@@ -1540,6 +1582,7 @@ namespace NOWA
             this->quantities.resize(itemCount);
             this->sellValues.resize(itemCount);
             this->buyValues.resize(itemCount);
+            this->gameObjectIds.resize(itemCount);
 
             for (size_t i = oldSize; i < this->resourceNames.size(); i++)
             {
@@ -1547,7 +1590,9 @@ namespace NOWA
                 this->quantities[i] = new Variant(MyGUIItemBoxComponent::AttrQuantity() + Ogre::StringConverter::toString(i), 0, this->attributes);
                 this->sellValues[i] = new Variant(MyGUIItemBoxComponent::AttrSellValue() + Ogre::StringConverter::toString(i), 0.0f, this->attributes);
                 this->buyValues[i] = new Variant(MyGUIItemBoxComponent::AttrBuyValue() + Ogre::StringConverter::toString(i), 0.0f, this->attributes);
-                this->buyValues[i]->addUserData(GameObject::AttrActionSeparator());
+                this->gameObjectIds[i] = new Variant(MyGUIItemBoxComponent::AttrGameObjectId() + Ogre::StringConverter::toString(i), static_cast<unsigned long>(0), this->attributes);
+                this->gameObjectIds[i]->setDescription("Optional: id of the GameObject associated with this slot (e.g. a building template). Passed to reactOnMouseButtonClick. 0 = none.");
+                this->gameObjectIds[i]->addUserData(GameObject::AttrActionSeparator());
 
                 if (nullptr != this->itemBoxWindow)
                 {
@@ -1578,6 +1623,7 @@ namespace NOWA
             this->eraseVariants(this->quantities, itemCount);
             this->eraseVariants(this->sellValues, itemCount);
             this->eraseVariants(this->buyValues, itemCount);
+            this->eraseVariants(this->gameObjectIds, itemCount);
 
             if (nullptr != this->itemBoxWindow)
             {
@@ -2014,6 +2060,27 @@ namespace NOWA
         return 0.0f;
     }
 
+    void MyGUIItemBoxComponent::setGameObjectId(unsigned int index, unsigned long gameObjectId)
+    {
+        if (index >= this->gameObjectIds.size())
+        {
+            return;
+        }
+        if (nullptr != this->gameObjectIds[index])
+        {
+            this->gameObjectIds[index]->setValue(gameObjectId);
+        }
+    }
+
+    unsigned long MyGUIItemBoxComponent::getGameObjectId(unsigned int index)
+    {
+        if (index >= this->gameObjectIds.size() || nullptr == this->gameObjectIds[index])
+        {
+            return 0;
+        }
+        return this->gameObjectIds[index]->getULong();
+    }
+
     void MyGUIItemBoxComponent::setAllowDragDrop(bool allowDragDrop)
     {
         this->allowDragDrop->setValue(allowDragDrop);
@@ -2128,6 +2195,8 @@ namespace NOWA
             .def("reactOnDropItemRequest", &MyGUIItemBoxComponent::reactOnDropItemRequest)
             .def("reactOnDropItemAccepted", &MyGUIItemBoxComponent::reactOnDropItemAccepted)
             .def("reactOnMouseButtonClick", &MyGUIItemBoxComponent::reactOnMouseButtonClick)
+            .def("setGameObjectId", &MyGUIItemBoxComponent::setGameObjectId)
+            .def("getGameObjectId", &MyGUIItemBoxComponent::getGameObjectId)
         ];
 
         LuaScriptApi::getInstance()->addClassToCollection("MyGUIItemBoxComponent", "class inherits MyGUIWindowComponent", MyGUIItemBoxComponent::getStaticInfoText());
@@ -2163,18 +2232,31 @@ namespace NOWA
             "E.g. getMyGUIItemBoxComponent():reactOnMouseButtonReleased(function(slotIndex, resourceName, buttonId) ... end)");
         LuaScriptApi::getInstance()->addClassToCollection("MyGUIItemBoxComponent", "void reactOnDropItemAccepted(func closureFunction, DragDropData dragDropData)",
             "Sets whether to react if an item drop has been accepted to another inventory. E.g. getMyGUIItemBoxComponent():reactOnDropItemAccepted(function(dragDropData) ... end");
-        LuaScriptApi::getInstance()->addClassToCollection("MyGUIItemBoxComponent", "void reactOnMouseButtonClick(func closureFunction, string resourceName, int buttonId)",
-            "Sets whether to react if a mouse button has been clicked on the inventory. The clicked resource name will be received and the clicked mouse button id.");
+        LuaScriptApi::getInstance()->addClassToCollection("MyGUIItemBoxComponent", "void reactOnMouseButtonClick(func closureFunction, string resourceName, string gameObjectId, int buttonId)",
+            "Sets whether to react if a mouse button has been clicked on the inventory. "
+            "The clicked resource name, the associated GameObject id (as string, '0' if none was set in NOWA-Design), and the mouse button id are received. "
+            "The gameObjectId can be used to directly resolve the template GameObject for the clicked slot without any name lookup. "
+            "E.g. getMyGUIItemBoxComponent():reactOnMouseButtonClick(function(resourceName, gameObjectId, buttonId) "
+            "  local templateGO = AppStateManager:getGameObjectController():getGameObjectFromId(gameObjectId) "
+            "  -- templateGO is nil when gameObjectId is '0' "
+            "end)");
+        LuaScriptApi::getInstance()->addClassToCollection("MyGUIItemBoxComponent", "void setGameObjectId(int index, String gameObjectId)",
+            "Sets the associated GameObject id for the given slot index. Use '0' for none. "
+            "This value is also configurable per-slot in NOWA-Design and is passed automatically to reactOnMouseButtonClick.");
+        LuaScriptApi::getInstance()->addClassToCollection("MyGUIItemBoxComponent", "String getGameObjectId(int index)", "Gets the associated GameObject id for the given slot index. Returns '0' if none is set.");
 
-        module(lua)[class_<DragDropData>("DragDropData")
-                .def("getResourceName", &DragDropData::getResourceName)
-                .def("getQuantity", &DragDropData::getQuantity)
-                .def("getSellValue", &DragDropData::getSellValue)
-                .def("getBuyValue", &DragDropData::getBuyValue)
-                .def("getSenderReceiverIsSame", &DragDropData::getSenderReceiverIsSame)
-                .def("getSenderInventoryId", &getSenderInventoryId)
-                .def("setCanDrop", &DragDropData::setCanDrop)
-                .def("getCanDrop", &DragDropData::getCanDrop)];
+        module(lua)
+        [
+            class_<DragDropData>("DragDropData")
+            .def("getResourceName", &DragDropData::getResourceName)
+            .def("getQuantity", &DragDropData::getQuantity)
+            .def("getSellValue", &DragDropData::getSellValue)
+            .def("getBuyValue", &DragDropData::getBuyValue)
+            .def("getSenderReceiverIsSame", &DragDropData::getSenderReceiverIsSame)
+            .def("getSenderInventoryId", &getSenderInventoryId)
+            .def("setCanDrop", &DragDropData::setCanDrop)
+            .def("getCanDrop", &DragDropData::getCanDrop)
+        ];
 
         LuaScriptApi::getInstance()->addClassToCollection("DragDropData", "DragDropData", "It can be used when an item is dragged from one inventory to another to get some data and control if it may be dropped.");
         LuaScriptApi::getInstance()->addClassToCollection("DragDropData", "String getResourceName()", "Gets the resource name.");

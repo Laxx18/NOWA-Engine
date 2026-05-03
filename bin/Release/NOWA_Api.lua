@@ -12142,6 +12142,38 @@ return {
 				returns = "(boolean)",
 				valuetype = "boolean"
 			},
+			setCategories =
+			{
+				type = "method",
+				description = "Sets the surface categories the object can be placed on. Use 'All' for everything, combine with '+' to include and '-' to exclude. E.g. 'All-Building-Agent' allows placement on all surfaces except those in the Building and Agent categories.",
+				args = "(string categories)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getCategories =
+			{
+				type = "function",
+				description = "Gets the current placement surface categories filter.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			setShowPreview =
+			{
+				type = "method",
+				description = "Sets whether the shadow object is shown semi-transparent at the mouse cursor during placement.",
+				args = "(boolean showPreview)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getShowPreview =
+			{
+				type = "function",
+				description = "Gets whether the placement preview transparency is enabled.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
 			setPlaceObjectCount =
 			{
 				type = "method",
@@ -13782,13 +13814,21 @@ return {
 				returns = "(nil)",
 				valuetype = "nil"
 			},
-			getDimensions =
+			setGameObjectId =
+			{
+				type = "method",
+				description = "Sets the id of the GameObject associated with this inventory item (e.g. a building template). Use '0' for none. This id is also configurable in NOWA-Design and is forwarded to reactOnMouseButtonClick on the MyGUIItemBoxComponent so the template can be resolved without hardcoded names: 'local go = AppStateManager:getGameObjectController():getGameObjectFromId(inventoryItem:getGameObjectId())'",
+				args = "(string gameObjectId)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getGameObjectId =
 			{
 				type = "function",
-				description = "Gets the color (r, g, b) of the billboard.",
+				description = "Gets the id of the associated GameObject. Returns '0' if none has been set.",
 				args = "()",
-				returns = "(Vecto2)",
-				valuetype = "Vecto2"
+				returns = "(string)",
+				valuetype = "string"
 			}
 		}
 	},
@@ -21090,10 +21130,26 @@ return {
 			reactOnMouseButtonClick =
 			{
 				type = "method",
-				description = "Sets whether to react if a mouse button has been clicked on the inventory. The clicked resource name will be received and the clicked mouse button id.",
-				args = "(func closureFunction, string resourceName, number buttonId)",
+				description = "Sets whether to react if a mouse button has been clicked on the inventory. The clicked resource name, the associated GameObject id (as string, '0' if none was set in NOWA-Design), and the mouse button id are received. The gameObjectId can be used to directly resolve the template GameObject for the clicked slot without any name lookup. E.g. getMyGUIItemBoxComponent():reactOnMouseButtonClick(function(resourceName, gameObjectId, buttonId)   local templateGO = AppStateManager:getGameObjectController():getGameObjectFromId(gameObjectId)   -- templateGO is nil when gameObjectId is '0' end)",
+				args = "(func closureFunction, string resourceName, string gameObjectId, number buttonId)",
 				returns = "(nil)",
 				valuetype = "nil"
+			},
+			setGameObjectId =
+			{
+				type = "method",
+				description = "Sets the associated GameObject id for the given slot index. Use '0' for none. This value is also configurable per-slot in NOWA-Design and is passed automatically to reactOnMouseButtonClick.",
+				args = "(number index, string gameObjectId)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getGameObjectId =
+			{
+				type = "function",
+				description = "Gets the associated GameObject id for the given slot index. Returns '0' if none is set.",
+				args = "(number index)",
+				returns = "(string)",
+				valuetype = "string"
 			}
 		}
 	},

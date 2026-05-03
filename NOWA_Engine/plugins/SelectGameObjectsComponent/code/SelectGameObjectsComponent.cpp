@@ -408,7 +408,7 @@ namespace NOWA
 		if (true == this->bConnected)
 		{
             // Check for MyGUI focus FIRST, before handling selection
-            if (nullptr != NOWA::InputDeviceCore::getSingletonPtr()->isMouseAtMyGUIFocusWidget())
+            if (nullptr != NOWA::GraphicsModule::getInstance()->getMyGUIFocusWidget())
             {
                 // MyGUI is handling this click — do not process as world selection
                 return true;
@@ -424,7 +424,7 @@ namespace NOWA
         if (true == this->bConnected)
         {
             // Check for MyGUI focus FIRST, before handling selection
-            if (nullptr != NOWA::InputDeviceCore::getSingletonPtr()->isMouseAtMyGUIFocusWidget())
+            if (nullptr != NOWA::GraphicsModule::getInstance()->getMyGUIFocusWidget())
 			{
 				// MyGUI is handling this click — do not process as world selection
 				return true;

@@ -12,6 +12,8 @@ GPL v3
 
 namespace NOWA
 {
+    class PhysicsComponent;
+
     /**
      * @brief   Enables placing/cloning pre-configured shadow game objects in the world during simulation.
      *          Configure shadow game object IDs in the editor. Call activatePlacement(id) from Lua
@@ -77,6 +79,14 @@ namespace NOWA
         virtual void setActivated(bool activated) override;
 
         virtual bool isActivated(void) const override;
+
+        void setCategories(const Ogre::String& categories);
+
+        Ogre::String getCategories(void) const;
+
+        void setShowPreview(bool showPreview);
+
+        bool getShowPreview(void) const;
 
         /**
          * @brief Sets the number of shadow game object slots.
@@ -145,6 +155,14 @@ namespace NOWA
         {
             return "Activated";
         }
+        static const Ogre::String AttrCategories(void)
+        {
+            return "Categories";
+        }
+        static const Ogre::String AttrShowPreview(void)
+        {
+            return "Show Preview";
+        }
         static const Ogre::String AttrPlaceObjectCount(void)
         {
             return "Place Object Count";
@@ -177,10 +195,18 @@ namespace NOWA
          */
         Ogre::Vector3 getMouseWorldPosition(const OIS::MouseEvent& evt);
 
+        void resolveShadowPhysicsComponent(void);
+
+        void applyPreviewTransparency(GameObjectPtr shadowGameObjectPtr);
+
+        void resetPreviewTransparency(GameObjectPtr shadowGameObjectPtr);
+
     private:
         Ogre::String name;
 
         Variant* activated;
+        Variant* categories;
+        Variant* showPreview;
         Variant* placeObjectCount;
         std::vector<Variant*> gameObjectIds;
 
@@ -192,6 +218,11 @@ namespace NOWA
 
         luabind::object placedClosureFunction;
         luabind::object cancelledClosureFunction;
+
+        unsigned int categoryId;
+        
+        PhysicsComponent* shadowPhysicsComponent;
+        bool oldWasDynamic;
     };
 
 } // namespace end

@@ -115,7 +115,7 @@ namespace NOWA
 		position(new Variant(MyGUIComponent::AttrPosition(), Ogre::Vector2(0.5f, 0.5f), this->attributes)),
 		size(new Variant(MyGUIComponent::AttrSize(), Ogre::Vector2(0.2f, 0.1f), this->attributes)),
 		align(new Variant(MyGUIComponent::AttrAlign(), { "HCenter", "Center", "Left", "Right", "HStretch", "Top", "Bottom", "VStretch", "Stretch", "Default" }, this->attributes)),
-		layer(new Variant(MyGUIComponent::AttrLayer(), { "Wallpaper", "ToolTip", "Info", "FadeMiddle", "Popup", "Main", "Modal", "Middle", "Overlapped", "Back", "DragAndDrop", "FadeBusy", "Pointer", "Fade", "Statistic" }, this->attributes)),
+		layer(new Variant(MyGUIComponent::AttrLayer(), { "Wallpaper", "Info", "FadeMiddle", "Popup", "Main", "Modal", "Middle", "Overlapped", "Back", "DragAndDrop", "FadeBusy", "Pointer", "Fade", "Statistic" }, this->attributes)),
 		color(new Variant(MyGUIComponent::AttrColor(), Ogre::Vector4(0.5f, 0.5f, 0.5, 1.0f), this->attributes)),
 		enabled(new Variant(MyGUIComponent::AttrEnabled(), true, this->attributes)),
 		id(new Variant(MyGUIComponent::AttrId(), makeUniqueID(), this->attributes, true)),
@@ -125,6 +125,8 @@ namespace NOWA
 		this->layer->setListSelectedValue("Back");
 		this->color->addUserData(GameObject::AttrActionColorDialog());
 		this->skin = nullptr; // Is created in each derived MyGUI Component
+
+		// Note:  "ToolTip" removed, because else hittests for mygui layer stuff to detect e.g. if mouse is over a widget will not be detected and also for any Widget kind component, no events would work.
 	}
 
 	MyGUIComponent::~MyGUIComponent()

@@ -1104,6 +1104,9 @@ namespace NOWA
 		this->dimensions->setValue(dimensions);
 		this->destroyTerra();
 		this->createTerra();
+
+		boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
+        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGeometryModified);
 	}
 		
 	Ogre::Vector3 TerraComponent::getDimensions(void) const

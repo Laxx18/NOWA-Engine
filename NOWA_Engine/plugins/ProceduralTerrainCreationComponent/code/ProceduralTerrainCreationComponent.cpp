@@ -164,8 +164,8 @@ namespace NOWA
         // Roads (NOW IN REAL METERS!)
         Enable Roads: true
         Road Count: 2-3
-        Road Width: 4-6 meters    ← REALISTIC car road width!
-        Road Depth: 1-2 meters    ← Slight depression
+        Road Width: 4-6 meters    <- REALISTIC car road width!
+        Road Depth: 1-2 meters    <- Slight depression
         Road Smoothness: 2.0
         Road Curviness: 0.4
         Roads Closed: false       (set true for race track)

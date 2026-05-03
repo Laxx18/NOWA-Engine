@@ -319,6 +319,10 @@ namespace NOWA
 
 		Ogre::Real getBuyValue(const Ogre::String& resourceName);
 
+        void setGameObjectId(unsigned int index, unsigned long gameObjectId);
+       
+        unsigned long getGameObjectId(unsigned int index);
+        
 		void setAllowDragDrop(bool allowDragDrop);
 
 		bool getAllowDragDrop(void) const;
@@ -340,6 +344,7 @@ namespace NOWA
 		static const Ogre::String AttrQuantity(void) { return "Quantity "; }
 		static const Ogre::String AttrSellValue(void) { return "Sell Value "; }
 		static const Ogre::String AttrBuyValue(void) { return "Buy Value "; }
+        static const Ogre::String AttrGameObjectId(void) { return "GameObject Id "; }
 		static const Ogre::String AttrAllowDragDrop(void) { return "Allow Drag & Drop"; }
 	protected:
 		virtual void mouseButtonClick(MyGUI::Widget* sender) override;
@@ -366,6 +371,8 @@ namespace NOWA
 		std::vector<Variant*> quantities;
 		std::vector<Variant*> sellValues;
 		std::vector<Variant*> buyValues;
+        std::vector<Variant*> gameObjectIds;
+		
 		Variant* allowDragDrop;
 
 		luabind::object mouseButtonPressedClosureFunction;

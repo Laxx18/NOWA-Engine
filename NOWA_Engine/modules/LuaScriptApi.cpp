@@ -7623,6 +7623,11 @@ namespace NOWA
 		return instance->setAgentId(Ogre::StringConverter::parseUnsignedLong(agentId));
 	}
 
+	void setTargetIdAiRecastPathNavigation(AiRecastPathNavigationComponent* instance, const Ogre::String& targetId)
+    {
+        instance->setTargetId(Ogre::StringConverter::parseUnsignedLong(targetId));
+    }
+
 	void bindAiComponents(lua_State* lua)
 	{
 		module(lua)
@@ -7779,9 +7784,9 @@ namespace NOWA
 		AddClassToCollection("AiFlockingComponent", "String getTargetId()", "Gets the target id, that is used for flee or seek behavior.");
 
 		module(lua)
-			[
-				class_<AiRecastPathNavigationComponent, AiComponent>("AiRecastPathNavigationComponent")
-				// .def("clone", &AiRecastPathNavigationComponent::clone)
+		[
+			class_<AiRecastPathNavigationComponent, AiComponent>("AiRecastPathNavigationComponent")
+			// .def("clone", &AiRecastPathNavigationComponent::clone)
 			.def("showDebugData", &AiRecastPathNavigationComponent::showDebugData)
 			.def("setRepeat", &AiRecastPathNavigationComponent::setRepeat)
 			.def("getRepeat", &AiRecastPathNavigationComponent::getRepeat)
@@ -7797,7 +7802,8 @@ namespace NOWA
 			.def("getPathSlot", &AiRecastPathNavigationComponent::getPathSlot)
 			.def("setPathTargetSlot", &AiRecastPathNavigationComponent::setPathTargetSlot)
 			.def("getPathTargetSlot", &AiRecastPathNavigationComponent::getPathTargetSlot)
-			];
+            .def("setTargetId", &setTargetIdAiRecastPathNavigation)
+		];
 
 		AddClassToCollection("AiRecastPathNavigationComponent", "class inherits AiComponent", AiRecastPathNavigationComponent::getStaticInfoText());
 		AddClassToCollection("AiRecastPathNavigationComponent", "void showDebugData(bool show)", "Shows the valid navigation area and the shortest path line from origin to goal.");

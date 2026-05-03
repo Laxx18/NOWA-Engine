@@ -159,8 +159,11 @@ namespace NOWA
 					this->crowdComponent->setGoalRadius(this->goalRadius);
 				}
 
-				// Store the current position of the target for path actualization check
-				this->oldTargetPosition = targetAgent->getPosition();
+				if (nullptr != targetAgent)
+                {
+                    // Store the current position of the target for path actualization check
+                    this->oldTargetPosition = targetAgent->getPosition();
+                }
 			}
 		}
 

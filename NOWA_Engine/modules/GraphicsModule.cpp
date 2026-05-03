@@ -52,6 +52,17 @@ namespace NOWA
         
     }
 
+    MyGUI::Widget* GraphicsModule::getMyGUIFocusWidget(void)
+    {
+        // If called from the render thread, query directly — no stale cached value
+        if (true == this->isRenderThread())
+        {
+            return MyGUI::InputManager::getInstancePtr()->getMouseFocusWidget();
+        }
+        // Logic thread reads the value cached last render frame
+        return this->myGUIFocusWidget.load(std::memory_order_relaxed);
+    }
+
     GraphicsModule* GraphicsModule::getInstance()
     {
         static GraphicsModule instance;
@@ -1733,6 +1744,9 @@ namespace NOWA
 
     void GraphicsModule::updateAndExecuteClosures(void)
     {
+        // Cache mouse focus state once per render frame — any thread can read it
+        this->myGUIFocusWidget.store(MyGUI::InputManager::getInstancePtr()->getMouseFocusWidget(), std::memory_order_relaxed);
+
         // First process all queued commands
         this->processClosureCommands();
 
@@ -1784,8 +1798,15 @@ namespace NOWA
 
     void GraphicsModule::addPersistentClosure(const Ogre::String& uniqueName, std::function<void(Ogre::Real)> closureFunc)
     {
-        // Add or update persistent closure
-        this->persistentClosures[uniqueName] = PersistentClosure(uniqueName, std::move(closureFunc));
+        // Only insert if not already present — idempotent.
+        // Subsequent calls from the same caller every frame become no-ops here.
+        auto it = this->persistentClosures.find(uniqueName);
+        if (it == this->persistentClosures.end())
+        {
+            this->persistentClosures.emplace(uniqueName, PersistentClosure(uniqueName, std::move(closureFunc)));
+        }
+        // If already present: do nothing. The closure is already running
+        // every frame via executeActiveClosures — no re-registration needed.
     }
 
     void GraphicsModule::updatePersistentClosure(const Ogre::String& uniqueName, std::function<void(Ogre::Real)> closureFunc)

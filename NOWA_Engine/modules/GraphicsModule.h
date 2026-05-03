@@ -13,6 +13,8 @@
 #include <array>
 #include <thread>
 
+#include "MyGUI_InputManager.h"
+
 #include "utilities/MathHelper.h"
 #include "utilities/concurrentqueue.h"
 
@@ -564,6 +566,12 @@ namespace NOWA
 
         // Combined method called from render thread
         void updateAndExecuteClosures();
+
+        /*
+         * @brief Gets the MyGUI widget currently under mouse focus, if any. This is used by input handling code to determine whether to block input for gameplay when the mouse is interacting with the UI.
+         * @return Pointer to the MyGUI widget currently under mouse focus, or nullptr if no widget is focused.
+        */
+        MyGUI::Widget* getMyGUIFocusWidget(void);
 	public:
         static constexpr size_t NUM_DESTROY_SLOTS = 4;
 
@@ -669,6 +677,8 @@ namespace NOWA
         // Storage for persistent closures (only accessed by render thread)
         std::unordered_map<Ogre::String, PersistentClosure> persistentClosures;
 
+        std::atomic<MyGUI::Widget*> myGUIFocusWidget { nullptr };
+
         // Producer token for better performance (used by logic thread)
         moodycamel::ProducerToken producerToken;
 
@@ -676,7 +686,7 @@ namespace NOWA
         moodycamel::ConsumerToken consumerToken;
 
         // Atomic flag to ensure proper initialization
-        std::atomic<bool> queueInitialized{ false };
+        std::atomic<bool> queueInitialized { false };
 
         std::atomic<size_t> currentTransformNodeIdx;
         std::atomic<size_t> currentTransformCameraIdx;

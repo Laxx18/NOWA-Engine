@@ -2101,7 +2101,7 @@ namespace NOWA
         }
 
         // Check if clicking on GUI
-        if (nullptr != NOWA::InputDeviceCore::getSingletonPtr()->isMouseAtMyGUIFocusWidget())
+        if (nullptr != NOWA::GraphicsModule::getInstance()->getMyGUIFocusWidget())
         {
             return true;
         }
