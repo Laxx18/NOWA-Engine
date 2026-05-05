@@ -327,7 +327,7 @@ namespace NOWA
         this->hlmsManager = Core::getSingletonPtr()->getOgreRoot()->getHlmsManager();
         this->compositorManager = WorkspaceModule::getInstance()->getCompositorManager();
 
-        auto& cameraCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<CameraComponent>());
+        auto cameraCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<CameraComponent>());
         if (nullptr != cameraCompPtr)
         {
             this->cameraComponent = cameraCompPtr.get();
@@ -483,9 +483,9 @@ namespace NOWA
                 // Store, which game object has used reflections
 
                 unsigned int i = 0;
-                for (auto& it = gameObjects->begin(); it != gameObjects->end(); ++it)
+                for (auto it = gameObjects->begin(); it != gameObjects->end(); ++it)
                 {
-                    auto& gameObjectPtr = it->second;
+                    auto gameObjectPtr = it->second;
                     if (nullptr != gameObjectPtr)
                     {
                         reflections[i++] = gameObjectPtr->getUseReflection();
@@ -533,9 +533,9 @@ namespace NOWA
             }
             /*else
             {
-                for (auto& it = gameObjects->begin(); it != gameObjects->end(); ++it)
+                for (auto it = gameObjects->begin(); it != gameObjects->end(); ++it)
                 {
-                    auto& gameObjectPtr = it->second;
+                    auto gameObjectPtr = it->second;
                     if (nullptr != gameObjectPtr)
                     {
                         gameObjectPtr->getAttribute(GameObject::AttrUseReflection())->setVisible(false);
@@ -583,7 +583,7 @@ namespace NOWA
                 GameObjectPtr reflectionCameraGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->reflectionCameraGameObjectId->getULong());
                 if (nullptr != reflectionCameraGameObjectPtr)
                 {
-                    auto& reflectionCameraCompPtr = NOWA::makeStrongPtr(reflectionCameraGameObjectPtr->getComponent<ReflectionCameraComponent>());
+                    auto reflectionCameraCompPtr = NOWA::makeStrongPtr(reflectionCameraGameObjectPtr->getComponent<ReflectionCameraComponent>());
                     if (nullptr != reflectionCameraCompPtr)
                     {
                         // Set this component as back reference, because when reflection camera is deleted, reflection must be disabled immediately, else a render crash occurs
@@ -725,9 +725,9 @@ namespace NOWA
             {
                 // Restore the reflections
                 unsigned int j = 0;
-                for (auto& it = gameObjects->begin(); it != gameObjects->end(); ++it)
+                for (auto it = gameObjects->begin(); it != gameObjects->end(); ++it)
                 {
-                    auto& gameObjectPtr = it->second;
+                    auto gameObjectPtr = it->second;
                     if (nullptr != gameObjectPtr)
                     {
                         // Refresh reflections
@@ -941,10 +941,10 @@ namespace NOWA
 
     void WorkspaceBaseComponent::onOtherComponentRemoved(unsigned int index)
     {
-        auto& gameObjectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentByIndex(index));
+        auto gameObjectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentByIndex(index));
         if (nullptr != gameObjectCompPtr)
         {
-            auto& cameraCompPtr = boost::dynamic_pointer_cast<CameraComponent>(gameObjectCompPtr);
+            auto cameraCompPtr = boost::dynamic_pointer_cast<CameraComponent>(gameObjectCompPtr);
             if (nullptr != cameraCompPtr)
             {
                 // Camera has been removed, delete also this component
@@ -963,7 +963,7 @@ namespace NOWA
         GameObjectPtr reflectionCameraGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->reflectionCameraGameObjectId->getULong());
         if (nullptr != reflectionCameraGameObjectPtr)
         {
-            auto& reflectionCameraCompPtr = NOWA::makeStrongPtr(reflectionCameraGameObjectPtr->getComponent<ReflectionCameraComponent>());
+            auto reflectionCameraCompPtr = NOWA::makeStrongPtr(reflectionCameraGameObjectPtr->getComponent<ReflectionCameraComponent>());
             if (nullptr != reflectionCameraCompPtr)
             {
                 reflectionCameraCompPtr->workspaceBaseComponent = nullptr;
@@ -1999,7 +1999,7 @@ namespace NOWA
         Ogre::CompositorPassClearDef* clearDef;
 
         bool foundPass = false;
-        for (auto& it = nodeDefinitions.cbegin(); it != nodeDefinitions.cend(); ++it)
+        for (auto it = nodeDefinitions.cbegin(); it != nodeDefinitions.cend(); ++it)
         {
             nodeDef = it->second;
             if (nodeDef)
@@ -2410,9 +2410,9 @@ namespace NOWA
         Ogre::TextureGpuManager* hlmsTextureManager = Ogre::Root::getSingletonPtr()->getRenderSystem()->getTextureGpuManager();
 
         auto gameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects();
-        for (auto& it = gameObjects->begin(); it != gameObjects->end(); ++it)
+        for (auto it = gameObjects->begin(); it != gameObjects->end(); ++it)
         {
-            auto& gameObjectPtr = it->second;
+            auto gameObjectPtr = it->second;
             if (nullptr != gameObjectPtr)
             {
                 if (true == gameObjectPtr->getUseReflection())
@@ -2533,7 +2533,7 @@ namespace NOWA
                         /*GameObjectPtr reflectionCameraGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->reflectionCameraGameObjectId->getULong());
                         if (nullptr != reflectionCameraGameObjectPtr)
                         {
-                            auto& reflectionCameraCompPtr = NOWA::makeStrongPtr(reflectionCameraGameObjectPtr->getComponent<ReflectionCameraComponent>());
+                            auto reflectionCameraCompPtr = NOWA::makeStrongPtr(reflectionCameraGameObjectPtr->getComponent<ReflectionCameraComponent>());
 
                             /*if (nullptr != reflectionCameraCompPtr)
                             {
@@ -2673,7 +2673,7 @@ namespace NOWA
                 }
 
                 // TODO: Test this!
-                /*auto& lightDirectionalCompPtr = NOWA::makeStrongPtr(lightGameObjectPtr->getComponent<LightDirectionalComponent>());
+                /*auto lightDirectionalCompPtr = NOWA::makeStrongPtr(lightGameObjectPtr->getComponent<LightDirectionalComponent>());
                 if (nullptr != lightDirectionalCompPtr)
                 {
                     lightDirectionalCompPtr->setPowerScale(3.14159f);
@@ -3278,9 +3278,9 @@ namespace NOWA
 
         auto gameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects();
 
-        for (auto& it = gameObjects->begin(); it != gameObjects->end(); ++it)
+        for (auto it = gameObjects->begin(); it != gameObjects->end(); ++it)
         {
-            auto& gameObjectPtr = it->second;
+            auto gameObjectPtr = it->second;
             if (nullptr != gameObjectPtr)
             {
 
@@ -3916,7 +3916,7 @@ namespace NOWA
         Ogre::StringVectorPtr skyNames = Ogre::ResourceGroupManager::getSingleton().findResourceNames("Skies", "*.dds");
         std::vector<Ogre::String> compatibleSkyNames(skyNames.getPointer()->size() + 1);
         unsigned int i = 0;
-        for (auto& it = skyNames.getPointer()->cbegin(); it != skyNames.getPointer()->cend(); it++)
+        for (auto it = skyNames.getPointer()->cbegin(); it != skyNames.getPointer()->cend(); it++)
         {
             compatibleSkyNames[i++] = *it;
         }

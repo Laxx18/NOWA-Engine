@@ -102,7 +102,7 @@ namespace NOWA
 		auto mainCameraGameObject = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(GameObjectController::MAIN_CAMERA_ID);
 		if (nullptr != mainCameraGameObject)
 		{
-			auto& workspaceBaseCompPtr = NOWA::makeStrongPtr(mainCameraGameObject->getComponent<WorkspaceBaseComponent>());
+			auto workspaceBaseCompPtr = NOWA::makeStrongPtr(mainCameraGameObject->getComponent<WorkspaceBaseComponent>());
 			if (nullptr != workspaceBaseCompPtr)
 			{
 				this->workspaceBaseComponent = workspaceBaseCompPtr.get();

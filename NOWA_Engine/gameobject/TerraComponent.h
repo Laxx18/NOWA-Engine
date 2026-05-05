@@ -190,9 +190,9 @@ namespace NOWA
 
 		std::tuple<bool, Ogre::Vector3, Ogre::Vector3, Ogre::Real> checkRayIntersect(const Ogre::Ray& ray);
 
-		void TerraComponent::beginCommandTransaction(const Ogre::String& label);
+		void beginCommandTransaction(const Ogre::String& label);
 
-		void TerraComponent::endCommandTransaction(void);
+		void endCommandTransaction(void);
 	public:
 		static const Ogre::String AttrCenter(void) { return "Center"; }
 		static const Ogre::String AttrPixelSize(void) { return "Pixel Size"; }

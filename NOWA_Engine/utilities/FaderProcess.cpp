@@ -243,7 +243,7 @@ namespace NOWA
 	//	// Destroy datablock only if no linked renderables remain
 	//	if (datablockCopy)
 	//	{
-	//		const auto& linkedRenderables = datablockCopy->getLinkedRenderables();
+	//		const auto linkedRenderables = datablockCopy->getLinkedRenderables();
 	//		if (linkedRenderables.empty())
 	//		{
 	//			datablockCopy->getCreator()->destroyDatablock(datablockCopy->getName());

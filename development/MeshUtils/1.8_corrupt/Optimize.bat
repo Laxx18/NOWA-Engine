@@ -1,1 +1,0 @@
-for %%f in (*.mesh) do .\MeshMagick.exe optimise %%f 

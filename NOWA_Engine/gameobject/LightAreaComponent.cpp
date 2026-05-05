@@ -49,13 +49,13 @@ namespace NOWA
 		//}
 		//-> here directly with ogre see dotsceneimportmoduleauto& resourceGroupNames = Core::getSingletonPtr()->getResourcesGroupNames();
 
-		//for (auto& resourceGroupName : resourceGroupNames)
+		//for (const auto& resourceGroupName : resourceGroupNames)
 		//{
 		//	if ("Skies" == resourceGroupName)
 		//		continue;
 		//	// Ogre::StringVector extensions = Ogre::Codec::getExtensions();
 		//	// for (Ogre::StringVector::iterator itExt = extensions.begin(); itExt != extensions.end(); ++itExt)
-		//	for (auto& filter : filters)
+		//	for (const auto& filter : filters)
 		//	{
 		//		Ogre::StringVectorPtr names = Ogre::ResourceGroupManager::getSingletonPtr()->findResourceNames(resourceGroupName, "*." + filter/**itExt*/);
 		//		for (Ogre::StringVector::iterator itName = names->begin(); itName != names->end(); ++itName)
@@ -102,7 +102,7 @@ namespace NOWA
 				if (nullptr != this->datablock)
 				{
 
-					auto& linkedRenderabled = this->datablock->getLinkedRenderables();
+					auto linkedRenderabled = this->datablock->getLinkedRenderables();
 
 					// Only destroy if the datablock is not used else where
 					if (true == linkedRenderabled.empty())

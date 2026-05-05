@@ -107,6 +107,9 @@ namespace OgreAL{
 	typedef std::vector<char> Buffer;
 	typedef std::queue<SourceRef> SourcePool;
 
+	// Shadowing to const due to C++20x
+#define ALString const ALchar*
+
 	/// Struct used with STL containers
 	struct DeleteObject
 	{

@@ -154,7 +154,7 @@ namespace NOWA
         if (false == clonedCompPtr->prepareEditableMesh())
         {
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MeshModifyComponent] Failed to prepare editable mesh for: " + this->gameObjectPtr->getName());
-            return false;
+            return nullptr;
         }
 
         GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));

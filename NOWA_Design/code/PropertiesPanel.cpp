@@ -266,13 +266,13 @@ void PropertiesPanel::showProperties(unsigned int componentIndex)
         this->clearProperties();
         // Show all properties for selected game objects
         unsigned int i = 0;
-        auto& selectedGameObjects = this->editorManager->getSelectionManager()->getSelectedGameObjects();
+        auto selectedGameObjects = this->editorManager->getSelectionManager()->getSelectedGameObjects();
         unsigned int count = static_cast<unsigned int>(selectedGameObjects.size());
         std::vector<NOWA::GameObject*> gameObjects;
         if (count > 0)
         {
             gameObjects.resize(count);
-            for (auto& it = selectedGameObjects.cbegin(); it != selectedGameObjects.cend(); ++it)
+            for (auto it = selectedGameObjects.cbegin(); it != selectedGameObjects.cend(); ++it)
             {
                 gameObjects[i] = it->second.gameObject;
                 i++;
@@ -308,11 +308,11 @@ void PropertiesPanel::showProperties(std::vector<NOWA::GameObject*> gameObjects,
 
 	// Add game object
 	{
-		auto& attributes = gameObjects[0]->getAttributes();
+		auto attributes = gameObjects[0]->getAttributes();
 		// Just one object, simple case, add all attributes
 		if (1 == gameObjects.size())
 		{
-			for (auto& it = attributes.begin(); it != attributes.end(); ++it)
+			for (auto it = attributes.begin(); it != attributes.end(); ++it)
 			{
 				gameObjectPropertiesPanel->addProperty(it->first, it->second, true);
 			}
@@ -327,10 +327,10 @@ void PropertiesPanel::showProperties(std::vector<NOWA::GameObject*> gameObjects,
 				NOWA::GameObject* thisGameObject = gameObjects[i];
 				NOWA::GameObject* nextGameObject = gameObjects[i + 1];
 
-				auto& thisAttributes = thisGameObject->getAttributes();
-				auto& nextAttributes = nextGameObject->getAttributes();
+				auto thisAttributes = thisGameObject->getAttributes();
+				auto nextAttributes = nextGameObject->getAttributes();
 
-				for (auto& it = thisAttributes.cbegin(); it != thisAttributes.cend(); ++it)
+				for (auto it = thisAttributes.cbegin(); it != thisAttributes.cend(); ++it)
 				{
 					NOWA::Variant* thisAttribute = it->second;
 					NOWA::Variant* otherAttribute = nextGameObject->getAttribute(thisAttribute->getName());
@@ -343,9 +343,9 @@ void PropertiesPanel::showProperties(std::vector<NOWA::GameObject*> gameObjects,
 				}
 			}
 
-			for (auto& it = attributes.begin(); it != attributes.end(); ++it)
+			for (auto it = attributes.begin(); it != attributes.end(); ++it)
 			{
-				const auto& found = sameValues.find(it->first);
+				const auto found = sameValues.find(it->first);
 				if (found != sameValues.cend())
 				{
 					// last param is whether the property has the same value for all selected game objects
@@ -409,7 +409,7 @@ void PropertiesPanel::showProperties(std::vector<NOWA::GameObject*> gameObjects,
 				auto nextAttributes = std::get<NOWA::COMPONENT>(nextGameObject->getComponents()->at(j))->getAttributes();
 
 				unsigned int k = 0;
-				for (auto& it = thisAttributes.cbegin(); it != thisAttributes.cend(); ++it)
+				for (auto it = thisAttributes.cbegin(); it != thisAttributes.cend(); ++it)
 				{
 					NOWA::Variant* thisAttribute = it->second;
 					NOWA::Variant* otherAttribute = nextAttributes[k++].second;
@@ -472,10 +472,10 @@ void PropertiesPanel::showProperties(std::vector<NOWA::GameObject*> gameObjects,
 			}
 
 			// Add the properties
-			auto& attributes = thisComponent->getAttributes();
-			for (auto& it = attributes.begin(); it != attributes.end(); ++it)
+			auto attributes = thisComponent->getAttributes();
+			for (auto it = attributes.begin(); it != attributes.end(); ++it)
 			{
-				const auto& found = sameValues.find(it->first);
+				const auto found = sameValues.find(it->first);
 				// Nothing to validate, just one game object, so add default way
 				if (0 == sameValues.size())
 				{
@@ -745,7 +745,7 @@ void PropertiesPanelInfo::listData(NOWA::GameObject* gameObject)
 
             int j = 0;
 
-            auto& simpleSoundComponent = NOWA::makeStrongPtr(gameObject->getComponent<NOWA::SimpleSoundComponent>(j));
+            auto simpleSoundComponent = NOWA::makeStrongPtr(gameObject->getComponent<NOWA::SimpleSoundComponent>(j));
             while (simpleSoundComponent != nullptr && simpleSoundComponent->getSound() != nullptr)
             {
                 MyGUI::TextBox* keyTextBox = mWidgetClient->createWidget<MyGUI::TextBox>("TextBox", MyGUI::IntCoord(keyLeft, heightCurrent, keyWidth, height), MyGUI::Align::Left | MyGUI::Align::Top);
@@ -1448,7 +1448,7 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 				this->heightCurrent += heightStep;
 
 				// Create ComboBox for showing filtered results (acts as dropdown)
-				MyGUI::ComboBox* comboBox = mWidgetClient->createWidget<MyGUI::ComboBox>(MyGUI::WidgetStyle::Enum::Popup,"ComboBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth - 15, height),  MyGUI::Align::HStretch | MyGUI::Align::Top, "Wallpaper", name + "_combo");
+                MyGUI::ComboBox* comboBox = mWidgetClient->createWidget<MyGUI::ComboBox>("ComboBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth - 15, height), MyGUI::Align::HStretch | MyGUI::Align::Top, name + "_combo");        
 				comboBox->setTextColour(MyGUIHelper::getInstance()->getTextSelectColour());
 				comboBox->setMouseHitThreshold(6, 6, 3, 3);
 				comboBox->setUserData(MyGUI::Any(attribute));
@@ -1500,7 +1500,7 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 					std::vector<Ogre::String> allCategories = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getAllCategoriesSoFar();
 					if (allCategories.size() > 0)
 					{
-						for (auto& category : allCategories)
+						for (const auto& category : allCategories)
 						{
 							comboBox->addItem(category);
 						}
@@ -1543,7 +1543,7 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 					std::vector<Ogre::String> allRenderCategories = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getAllRenderCategoriesSoFar();
 					if (allRenderCategories.size() > 0)
 					{
-						for (auto& renderCategory : allRenderCategories)
+						for (const auto& renderCategory : allRenderCategories)
 						{
 							comboBox->addItem(renderCategory);
 						}
@@ -2306,7 +2306,7 @@ void PropertiesPanelDynamic::filterAutoCompleteCombo(MyGUI::EditBox* searchEdit,
 			this->autoCompleteSearch.addSearchText(item);
 		}
 
-		auto& matchedResults = this->autoCompleteSearch.findMatchedItemWithInText(filter);
+		auto matchedResults = this->autoCompleteSearch.findMatchedItemWithInText(filter);
 
 		for (size_t i = 0; i < matchedResults.getResults().size(); i++)
 		{
@@ -2789,7 +2789,7 @@ void PropertiesPanelGameObject::notifyEditSelectAccept(MyGUI::EditBox* sender)
 	{
 		if (1 == this->gameObjects.size())
 		{
-			auto& physicsComponent = NOWA::makeStrongPtr(this->gameObject->getComponent<NOWA::PhysicsComponent>());
+			auto physicsComponent = NOWA::makeStrongPtr(this->gameObject->getComponent<NOWA::PhysicsComponent>());
 			if (nullptr != physicsComponent)
 			{
 				physicsComponent->setPosition((*attribute)->getVector3());
@@ -2804,7 +2804,7 @@ void PropertiesPanelGameObject::notifyEditSelectAccept(MyGUI::EditBox* sender)
 			// If several game objects are selected add the value the user entered relative to the current values
 			for (size_t i = 0; i < this->gameObjects.size(); i++)
 			{
-				auto& physicsComponent = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::PhysicsComponent>());
+				auto physicsComponent = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::PhysicsComponent>());
 				if (nullptr != physicsComponent)
 				{
 					physicsComponent->translate((*attribute)->getVector3());
@@ -2820,7 +2820,7 @@ void PropertiesPanelGameObject::notifyEditSelectAccept(MyGUI::EditBox* sender)
 	{
 		if (1 == this->gameObjects.size())
 		{
-			auto& physicsComponent = NOWA::makeStrongPtr(gameObject->getComponent<NOWA::PhysicsComponent>());
+			auto physicsComponent = NOWA::makeStrongPtr(gameObject->getComponent<NOWA::PhysicsComponent>());
 			if (nullptr != physicsComponent)
 			{
 				physicsComponent->setScale((*attribute)->getVector3());
@@ -2834,7 +2834,7 @@ void PropertiesPanelGameObject::notifyEditSelectAccept(MyGUI::EditBox* sender)
 		{
 			for (size_t i = 0; i < this->gameObjects.size(); i++)
 			{
-				auto& physicsComponent = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::PhysicsComponent>());
+				auto physicsComponent = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::PhysicsComponent>());
 				if (nullptr != physicsComponent)
 				{
 					physicsComponent->setScale((*attribute)->getVector3());
@@ -2850,7 +2850,7 @@ void PropertiesPanelGameObject::notifyEditSelectAccept(MyGUI::EditBox* sender)
 	{
 		if (1 == this->gameObjects.size())
 		{
-			auto& physicsComponent = NOWA::makeStrongPtr(gameObject->getComponent<NOWA::PhysicsComponent>());
+			auto physicsComponent = NOWA::makeStrongPtr(gameObject->getComponent<NOWA::PhysicsComponent>());
 			if (nullptr != physicsComponent)
 			{
 				// Transform to form degreeX, degreeY, degreeZ
@@ -2866,7 +2866,7 @@ void PropertiesPanelGameObject::notifyEditSelectAccept(MyGUI::EditBox* sender)
 			// If several game objects are selected add the value the user entered relative to the current values
 			for (size_t i = 0; i < this->gameObjects.size(); i++)
 			{
-				auto& physicsComponent = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::PhysicsComponent>());
+				auto physicsComponent = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::PhysicsComponent>());
 				if (nullptr != physicsComponent)
 				{
 					physicsComponent->setOrientation(NOWA::MathHelper::getInstance()->degreesToQuat((*attribute)->getVector3()));
@@ -2890,7 +2890,7 @@ void PropertiesPanelGameObject::notifyEditSelectAccept(MyGUI::EditBox* sender)
 				auto currentAttribute = this->gameObjects[i]->getAttribute((*attribute)->getName());
 				// Store the old category, that was selected, so that when changing internally the category, the old one can be removed, if no game object does use the category
 				currentAttribute->setListSelectedOldValue(currentAttribute->getListSelectedValue());
-				auto& list = currentAttribute->getList();
+				auto list = currentAttribute->getList();
 				list.emplace_back(sender->getOnlyText());
 				currentAttribute->setValue(list);
 				currentAttribute->setListSelectedValue(sender->getOnlyText());
@@ -2923,7 +2923,7 @@ void PropertiesPanelGameObject::notifyEditSelectAccept(MyGUI::EditBox* sender)
 				auto currentAttribute = this->gameObjects[i]->getAttribute((*attribute)->getName());
 				// Store the old render category, that was selected, so that when changing internally the render category, the old one can be removed, if no game object does use the category
 				currentAttribute->setListSelectedOldValue(currentAttribute->getListSelectedValue());
-				auto& list = currentAttribute->getList();
+				auto list = currentAttribute->getList();
 				list.emplace_back(sender->getOnlyText());
 				currentAttribute->setValue(list);
 				currentAttribute->setListSelectedValue(sender->getOnlyText());

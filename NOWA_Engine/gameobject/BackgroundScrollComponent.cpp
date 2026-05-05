@@ -107,7 +107,7 @@ namespace NOWA
 	{
 		if (nullptr == this->workspaceBackgroundComponent)
 		{
-			auto& workspaceBackgroundCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<WorkspaceBackgroundComponent>());
+			auto workspaceBackgroundCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<WorkspaceBackgroundComponent>());
 			if (nullptr != workspaceBackgroundCompPtr)
 			{
 				this->workspaceBackgroundComponent = workspaceBackgroundCompPtr.get();
@@ -142,10 +142,10 @@ namespace NOWA
 
 	void BackgroundScrollComponent::onOtherComponentRemoved(unsigned int index)
 	{
-		auto& gameObjectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentByIndex(index));
+		auto gameObjectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentByIndex(index));
 		if (nullptr != gameObjectCompPtr)
 		{
-			auto& workspaceBackgroundCompPtr = boost::dynamic_pointer_cast<WorkspaceBackgroundComponent>(gameObjectCompPtr);
+			auto workspaceBackgroundCompPtr = boost::dynamic_pointer_cast<WorkspaceBackgroundComponent>(gameObjectCompPtr);
 			if (nullptr != workspaceBackgroundCompPtr)
 			{
 				// Remove this component if prior workspace background component has been removed, because this component does not make any sense without workspace background component

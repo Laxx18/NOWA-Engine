@@ -8,7 +8,7 @@
 class MyGUIHelper
 {
 public:
-	static MyGUIHelper* MyGUIHelper::getInstance()
+	static MyGUIHelper* getInstance()
 	{
 		static MyGUIHelper instance;
 
@@ -246,7 +246,7 @@ public:
 	{
 		if (id != 0)
 		{
-			auto& foundIt = this->scrollPositions.find(id);
+			auto foundIt = this->scrollPositions.find(id);
 			if (foundIt == this->scrollPositions.cend())
 			{
 				this->scrollPositions.emplace(id, scrollPosition);
@@ -260,7 +260,7 @@ public:
 
 	int getScrollPosition(unsigned long id) const
 	{
-		auto& foundIt = this->scrollPositions.find(id);
+		auto foundIt = this->scrollPositions.find(id);
 		if (foundIt != this->scrollPositions.cend())
 		{
 			return foundIt->second;

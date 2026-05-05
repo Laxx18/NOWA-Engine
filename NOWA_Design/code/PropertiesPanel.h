@@ -307,7 +307,7 @@ public:
 	virtual void notifySliderMouseRelease(MyGUI::Widget* sender, int x, int y, MyGUI::MouseButton button) override;
 	virtual void notifySetItemBoxData(MyGUI::ItemBox* sender, const Ogre::String& resourceName) override;
 
-	virtual void PropertiesPanelComponent::notifyExecAction(NOWA::Variant* attribute, const Ogre::String& execId) override;
+	virtual void notifyExecAction(NOWA::Variant* attribute, const Ogre::String& execId) override;
 protected:
 	void setNewAttributeValue(MyGUI::EditBox* sender, NOWA::Variant* attribute);
 

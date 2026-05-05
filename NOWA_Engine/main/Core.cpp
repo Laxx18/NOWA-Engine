@@ -41,6 +41,8 @@
 #include <Shlwapi.h>
 #pragma comment(lib, "shlwapi.lib")
 
+#include <signal.h>
+
 #include <boost/archive/iterators/binary_from_base64.hpp>
 #include <boost/archive/iterators/base64_from_binary.hpp>
 #include <boost/archive/iterators/transform_width.hpp>
@@ -59,6 +61,9 @@
 #include <shellapi.h>
 #include <tchar.h>
 #include <psapi.h>
+
+#include <DbgHelp.h>
+#pragma comment(lib, "dbghelp.lib")
 
 #pragma comment(lib, "shell32")
 #else
@@ -622,7 +627,7 @@ namespace NOWA
 		}
 
 		// Enable sRGB Gamma Conversion mode by default for all renderers, but still allow to override it via config dialog
-        for (auto& it = this->root->getAvailableRenderers().begin(); it != this->root->getAvailableRenderers().end(); ++it)
+        for (auto it = this->root->getAvailableRenderers().begin(); it != this->root->getAvailableRenderers().end(); ++it)
         {
             Ogre::RenderSystem* rs = *it;
             rs->setConfigOption("sRGB Gamma Conversion", "Yes");
@@ -748,7 +753,7 @@ namespace NOWA
 			enableDoubleClick*/
 
 		// Add also custom params
-		for (auto& customParam : coreConfiguration.customParams)
+		for (const auto& customParam : coreConfiguration.customParams)
 		{
 			params.insert(std::make_pair(customParam.first, customParam.second));
 		}
@@ -1387,7 +1392,7 @@ namespace NOWA
 		Ogre::String debugSuffix = isDebug ? "_d" : "";
 
 		// Scan the appropriate folder for DLL files
-		for (const auto& entry : std::filesystem::directory_iterator(scanFolder.c_str()))
+        for (const auto& entry : std::filesystem::directory_iterator(scanFolder.c_str()))
 		{
 			if (entry.path().extension() == ".dll")
 			{
@@ -1423,13 +1428,13 @@ namespace NOWA
 		inputFile.close();
 
 		// Add missing DLLs from the plugins folder
-		for (const auto& dll : availableDlls)
+        for (const auto& dll : availableDlls)
 		{
 			Ogre::String pluginName = dll.substr(0, dll.size() - 4); // Remove the ".dll" extension
 			Ogre::String pluginEntry = "Plugin=plugins/" + pluginName;
 
 			bool found = false;
-			for (const auto& l : lines)
+            for (const auto& l : lines)
 			{
 				if (l.rfind(pluginEntry, 0) == 0) // Check if the plugin is already in the config
 				{
@@ -1630,7 +1635,7 @@ namespace NOWA
 			Ogre::Archive* archiveOcean = archiveManager.load(dataFolder + mainFolderPath, "FileSystem", true);
 
 			Ogre::ArchiveVec libraries;
-			for (const auto& path : libraryFolders)
+            for (const auto& path : libraryFolders)
 			{
 				libraries.push_back(archiveManager.load(dataFolder + path, "FileSystem", true));
 			}
@@ -1730,7 +1735,7 @@ namespace NOWA
 		Ogre::HlmsPbs::getDefaultPaths(mainFolderPath, libraryFoldersPaths);
 
 		Ogre::ArchiveVec library;
-		for (const auto& path : libraryFoldersPaths)
+        for (const auto& path : libraryFoldersPaths)
 		{
 			library.push_back(archiveManager.load(dataFolder + path, "FileSystem", true));
 		}
@@ -1941,8 +1946,8 @@ namespace NOWA
 
 	void Core::setWindowPosition(int x, int y)
 	{
-		boost::shared_ptr<EventDataWindowChanged> eventDataWindowChanged(new EventDataWindowChanged());
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataWindowChanged);
+		/*boost::shared_ptr<EventDataWindowChanged> eventDataWindowChanged(new EventDataWindowChanged());
+        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataWindowChanged);*/
 
 		RECT desktop;
 		// Get a handle to the desktop window
@@ -1973,11 +1978,11 @@ namespace NOWA
 	void Core::moveWindowToTaskbar(void)
 	{
 		// Check if AppStateManager is valid before accessing during potential shutdown
-		if (nullptr != AppStateManager::getSingletonPtr() && AppStateManager::getSingletonPtr()->getAppStatesCount() > 0)
+		/*if (nullptr != AppStateManager::getSingletonPtr() && AppStateManager::getSingletonPtr()->getAppStatesCount() > 0)
 		{
 			boost::shared_ptr<EventDataWindowChanged> eventDataWindowChanged(new EventDataWindowChanged());
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataWindowChanged);
-		}
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataWindowChanged);
+		}*/
 
 		HWND handle;
 		NOWA::Core::getSingletonPtr()->getOgreRenderWindow()->getCustomAttribute("WINDOW", &handle);
@@ -2000,11 +2005,11 @@ namespace NOWA
 	void Core::moveWindowToFront(void)
 	{
 		// Check if AppStateManager is valid before accessing during potential shutdown
-		if (nullptr != AppStateManager::getSingletonPtr() && AppStateManager::getSingletonPtr()->getAppStatesCount() > 0)
+		/*if (nullptr != AppStateManager::getSingletonPtr() && AppStateManager::getSingletonPtr()->getAppStatesCount() > 0)
 		{
 			boost::shared_ptr<EventDataWindowChanged> eventDataWindowChanged(new EventDataWindowChanged());
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataWindowChanged);
-		}
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataWindowChanged);
+		}*/
 
 		HWND handle;
 		NOWA::Core::getSingletonPtr()->getOgreRenderWindow()->getCustomAttribute("WINDOW", &handle);
@@ -2021,11 +2026,11 @@ namespace NOWA
 		if (renderWindow == this->renderWindow)
 		{
 			// Check if AppStateManager is valid before accessing during potential shutdown
-			if (nullptr != AppStateManager::getSingletonPtr() && AppStateManager::getSingletonPtr()->getAppStatesCount() > 0)
+			/*if (nullptr != AppStateManager::getSingletonPtr() && AppStateManager::getSingletonPtr()->getAppStatesCount() > 0)
 			{
 				boost::shared_ptr<EventDataWindowChanged> eventDataWindowChanged(new EventDataWindowChanged());
-				AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataWindowChanged);
-			}
+                AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataWindowChanged);
+			}*/
 
 			unsigned int width, height;
 			int left, top;
@@ -2051,11 +2056,11 @@ namespace NOWA
 			this->renderWindow->windowMovedOrResized();
 
 			// Check if AppStateManager is valid before accessing during potential shutdown
-			if (nullptr != AppStateManager::getSingletonPtr() && AppStateManager::getSingletonPtr()->getAppStatesCount() > 0)
+			/*if (nullptr != AppStateManager::getSingletonPtr() && AppStateManager::getSingletonPtr()->getAppStatesCount() > 0)
 			{
 				boost::shared_ptr<EventDataWindowChanged> eventDataWindowChanged(new EventDataWindowChanged());
-				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataWindowChanged);
-			}
+                NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataWindowChanged);
+			}*/
 
 			Win32_ResetCursorToArrow();
 			Win32_SetCursorVisible(false);
@@ -2069,11 +2074,11 @@ namespace NOWA
 		if (renderWindow == this->renderWindow)
 		{
 			// Check if AppStateManager is valid before accessing during potential shutdown
-			if (nullptr != AppStateManager::getSingletonPtr() && AppStateManager::getSingletonPtr()->getAppStatesCount() > 0)
+			/*if (nullptr != AppStateManager::getSingletonPtr() && AppStateManager::getSingletonPtr()->getAppStatesCount() > 0)
 			{
 				boost::shared_ptr<EventDataWindowChanged> eventDataWindowChanged(new EventDataWindowChanged());
-				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataWindowChanged);
-			}
+                NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataWindowChanged);
+			}*/
 		}
 		// this->root->getRenderSystem()->validateDevice(true);
 		return false;
@@ -2138,13 +2143,11 @@ namespace NOWA
 		}
 
 		// Your existing event
-		if (AppStateManager::getSingletonPtr() &&
-			AppStateManager::getSingletonPtr()->getAppStatesCount() > 0 &&
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager())
+		/*if (AppStateManager::getSingletonPtr() && AppStateManager::getSingletonPtr()->getAppStatesCount() > 0 && NOWA::AppStateManager::getSingletonPtr()->getEventManager())
 		{
 			boost::shared_ptr<EventDataWindowChanged> eventDataWindowChanged(new EventDataWindowChanged());
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataWindowChanged);
-		}
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataWindowChanged);
+		}*/
 	}
 
 
@@ -3191,7 +3194,7 @@ namespace NOWA
 		projectName = projectFilePathName.substr(lastSlash + 1);
 
 		// Get the base project path
-		auto& fileNames = Core::getSingletonPtr()->getSectionPath("Project");
+		auto fileNames = Core::getSingletonPtr()->getSectionPath("Project");
 
 		if (true == fileNames.empty())
 		{
@@ -3363,7 +3366,7 @@ namespace NOWA
 	void Core::encodeAllFiles(void)
 	{
 		std::vector<Ogre::String> fileNames = this->getFilePathNamesInProject(this->projectName, "*.*");
-		for (auto filePathName : fileNames)
+        for (auto& filePathName : fileNames)
 		{
 			std::fstream inFile(filePathName);
 			Ogre::String luaInFileContent;
@@ -3407,7 +3410,7 @@ namespace NOWA
 		std::vector<Ogre::String> fileNames = this->getFilePathNamesInProject(this->projectName, "*.*");
 
 		// Check on one scene file, if after decoding a xml tag can be found (with correct key decoded)
-		for (auto filePathName : fileNames)
+        for (auto& filePathName : fileNames)
 		{
 			// If its a scene and the decoded content has no xml tag, then a wrong key must have been used
 			size_t foundScene = filePathName.find(".scene");
@@ -3450,7 +3453,7 @@ namespace NOWA
 			}
 		}
 
-		for (auto filePathName : fileNames)
+		for (auto& filePathName : fileNames)
 		{
 			std::fstream inFile(filePathName);
 			Ogre::String inFileContent;
@@ -3999,7 +4002,122 @@ namespace NOWA
 		
 	}*/
 	
-	void Core::update(Ogre::Real dt)
+	LONG WINAPI Core::vectoredExceptionHandler(EXCEPTION_POINTERS* exceptionInfo)
+    {
+        DWORD code = exceptionInfo->ExceptionRecord->ExceptionCode;
+        // Normal C++ exception — let standard catch handlers deal with it
+        if (code == 0xe06d7363)
+        {
+            return EXCEPTION_CONTINUE_SEARCH;
+        }
+
+        const int max_frames = 128;
+        void* stack[max_frames];
+        HANDLE process = GetCurrentProcess();
+        SymInitialize(process, NULL, TRUE);
+        USHORT frames = CaptureStackBackTrace(0, max_frames, stack, NULL);
+        SYMBOL_INFO* symbol = (SYMBOL_INFO*)calloc(sizeof(SYMBOL_INFO) + 256 * sizeof(char), 1);
+        symbol->MaxNameLen = 255;
+        symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
+        IMAGEHLP_LINE64 line;
+        line.SizeOfStruct = sizeof(IMAGEHLP_LINE64);
+        DWORD displacement;
+
+        std::ostringstream oss;
+        oss << "Exception code: 0x" << std::hex << code << "\nStacktrace:\n";
+        for (USHORT i = 0; i < frames; ++i)
+        {
+            DWORD64 addr = (DWORD64)(stack[i]);
+            if (SymFromAddr(process, addr, 0, symbol))
+            {
+                oss << symbol->Name;
+            }
+            else
+            {
+                oss << "[unknown]";
+            }
+
+            if (SymGetLineFromAddr64(process, addr, &displacement, &line))
+            {
+                oss << " - " << line.FileName << ":" << line.LineNumber << "\n";
+            }
+            else
+            {
+                oss << " - 0x" << std::hex << addr << "\n";
+            }
+        }
+        free(symbol);
+        SymCleanup(process);
+
+        std::ofstream crashLog("crash.log", std::ios::app);
+        crashLog << oss.str() << "\n";
+        crashLog.close();
+
+        Ogre::LogManager* logMgr = Ogre::LogManager::getSingletonPtr();
+        if (nullptr != logMgr)
+        {
+            logMgr->logMessage(oss.str(), Ogre::LML_CRITICAL);
+        }
+
+        MessageBoxA(0, oss.str().c_str(), "Real Crash!", MB_OK | MB_ICONERROR | MB_TASKMODAL);
+        return EXCEPTION_CONTINUE_SEARCH;
+    }
+
+    void Core::printStackTrace(const Ogre::String& errorMessage, const Ogre::String& title)
+    {
+        const int max_frames = 128;
+        void* stack[max_frames];
+        HANDLE process = GetCurrentProcess();
+        SymInitialize(process, NULL, TRUE);
+        USHORT frames = CaptureStackBackTrace(0, max_frames, stack, NULL);
+        SYMBOL_INFO* symbol = (SYMBOL_INFO*)calloc(sizeof(SYMBOL_INFO) + 256 * sizeof(char), 1);
+        symbol->MaxNameLen = 255;
+        symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
+        IMAGEHLP_LINE64 line;
+        line.SizeOfStruct = sizeof(IMAGEHLP_LINE64);
+        DWORD displacement;
+
+        std::ostringstream oss;
+        oss << "Error: " << errorMessage << "\nStacktrace:\n";
+        for (USHORT i = 0; i < frames; ++i)
+        {
+            DWORD64 addr = (DWORD64)(stack[i]);
+            if (SymFromAddr(process, addr, 0, symbol))
+            {
+                oss << symbol->Name;
+            }
+            else
+            {
+                oss << "[unknown symbol]";
+            }
+
+            if (SymGetLineFromAddr64(process, addr, &displacement, &line))
+            {
+                oss << " - 0x" << std::hex << addr << " in " << line.FileName << ":" << std::dec << line.LineNumber << "\n";
+            }
+            else
+            {
+                oss << " - 0x" << std::hex << addr << " (no line info)\n";
+            }
+        }
+        free(symbol);
+        SymCleanup(process);
+
+        MessageBoxA(0, oss.str().c_str(), title.c_str(), MB_OK | MB_ICONERROR | MB_TASKMODAL);
+    }
+
+    void Core::installCrashHandlers(void)
+    {
+        AddVectoredExceptionHandler(1, Core::vectoredExceptionHandler);
+        signal(SIGABRT,
+            [](int)
+            {
+                RaiseException(0xDEAD, 0, 0, nullptr);
+            });
+        _set_abort_behavior(0, _WRITE_ABORT_MSG);
+    }
+
+    void Core::update(Ogre::Real dt)
 	{
 		// ATTENTION: Not necessary?
 		// MyGUI::Gui::getInstancePtr()->_injectFrameEntered(dt);
@@ -4065,30 +4183,34 @@ namespace NOWA
 	}
 
 	std::set<Ogre::String> Core::getAllAvailableTextureNames(std::vector<Ogre::String>& filters)
-	{
-		if (true == filters.empty())
-			filters = { "png", "jpg", "bmp", "tga", "gif", "tif", "dds" };
+    {
+        if (true == filters.empty())
+        {
+            filters = {"png", "jpg", "bmp", "tga", "gif", "tif", "dds"};
+        }
 
-		std::set<Ogre::String> textureNames;
+        std::set<Ogre::String> textureNames;
 
-		for (auto& resourceGroupName : this->resourceGroupNames)
-		{
-			if ("Skies" == resourceGroupName)
-				continue;
-			// Ogre::StringVector extensions = Ogre::Codec::getExtensions();
-			// for (Ogre::StringVector::iterator itExt = extensions.begin(); itExt != extensions.end(); ++itExt)
-			for (auto& filter : filters)
-			{
-				Ogre::StringVectorPtr names = Ogre::ResourceGroupManager::getSingletonPtr()->findResourceNames(resourceGroupName, "*." + filter/**itExt*/);
-				for (Ogre::StringVector::iterator itName = names->begin(); itName != names->end(); ++itName)
-				{
-					textureNames.emplace(*itName);
-				}
-			}
-		}
+        for (auto& resourceGroupName : this->resourceGroupNames)
+        {
+            if ("Skies" == resourceGroupName)
+            {
+                continue;
+            }
+            // Ogre::StringVector extensions = Ogre::Codec::getExtensions();
+            // for (Ogre::StringVector::iterator itExt = extensions.begin(); itExt != extensions.end(); ++itExt)
+            for (const auto& filter : filters)
+            {
+                Ogre::StringVectorPtr names = Ogre::ResourceGroupManager::getSingletonPtr()->findResourceNames(resourceGroupName, "*." + filter /**itExt*/);
+                for (Ogre::StringVector::iterator itName = names->begin(); itName != names->end(); ++itName)
+                {
+                    textureNames.emplace(*itName);
+                }
+            }
+        }
 
-		return textureNames;
-	}
+        return textureNames;
+    }
 
 	std::pair<bool, Ogre::String> Core::getMeshVersion(const Ogre::String& meshName)
 	{

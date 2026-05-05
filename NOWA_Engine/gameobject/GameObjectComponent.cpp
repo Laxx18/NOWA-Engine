@@ -63,7 +63,7 @@ namespace NOWA
 	GameObjectComponent::~GameObjectComponent()
 	{
 		// Delete all attributes
-		auto& it = this->attributes.begin();
+		auto it = this->attributes.begin();
 
 		while (it != this->attributes.end())
 		{
@@ -107,7 +107,7 @@ namespace NOWA
 		return true;
 	}
 
-	void GameObjectComponent::cloneBase(GameObjectCompPtr& otherGameObjectCompPtr)
+	void GameObjectComponent::cloneBase(const GameObjectCompPtr& otherGameObjectCompPtr)
 	{
 		otherGameObjectCompPtr->setReferenceId(this->referenceId->getULong());
 		otherGameObjectCompPtr->setName(this->name->getString());
@@ -379,7 +379,7 @@ namespace NOWA
 
 	void GameObjectComponent::getValidatedComponentName(Ogre::String& componentName)
 	{
-		auto& gameObjectComponentPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentFromName<GameObjectComponent>(componentName));
+		auto gameObjectComponentPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentFromName<GameObjectComponent>(componentName));
 		if (nullptr == gameObjectComponentPtr)
 			return;
 		else if (gameObjectComponentPtr.get() == this)

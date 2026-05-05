@@ -9,6 +9,7 @@
 #include "JointComponents.h"
 #include "LuaScriptComponent.h"
 #include "PhysicsActiveComponent.h"
+#include "NavMeshComponent.h"
 #include "PhysicsActiveCompoundComponent.h"
 #include "PhysicsActiveDestructableComponent.h"
 #include "PhysicsArtifactComponent.h"
@@ -155,7 +156,7 @@ void DeleteGameObjectsUndoCommand::deleteGameObjects(void)
         {
             GameObjectComponents* gameobjectComponents = gameObjectPtr->getComponents();
             // Give change to react if a game object and its components have been manually deleted in a editor
-            for (auto& it = gameobjectComponents->cbegin(); it != gameobjectComponents->cend(); ++it)
+            for (auto it = gameobjectComponents->cbegin(); it != gameobjectComponents->cend(); ++it)
             {
                 GameObjectCompPtr gameObjectComponent = std::get<COMPONENT>(*it);
 
@@ -311,9 +312,7 @@ void SnapshotGameObjectsCommand::resetGameObjects(void)
     rapidxml::xml_document<> XMLDoc;
     rapidxml::xml_node<>* xmlNodes;
 
-    // Determine if there are game object which do not exist anymore. These ones must be loaded completely
     std::vector<unsigned long> currentGameObjectsIds;
-
     if (false == this->appStateName.empty())
     {
         currentGameObjectsIds = AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->getAllGameObjectIds();
@@ -323,13 +322,38 @@ void SnapshotGameObjectsCommand::resetGameObjects(void)
         currentGameObjectsIds = AppStateManager::getSingletonPtr()->getGameObjectController()->getAllGameObjectIds();
     }
 
-    // Sort both ranges before set_difference
     std::sort(currentGameObjectsIds.begin(), currentGameObjectsIds.end());
     std::sort(this->gameObjectsIdsBeforeSnapShot.begin(), this->gameObjectsIdsBeforeSnapShot.end());
 
+    // Objects in snapshot but not current -> were deleted during simulation -> recreate
     std::vector<unsigned long> differenceList;
     std::set_difference(this->gameObjectsIdsBeforeSnapShot.begin(), this->gameObjectsIdsBeforeSnapShot.end(), currentGameObjectsIds.begin(), currentGameObjectsIds.end(), std::inserter(differenceList, differenceList.begin()));
 
+    // Objects in current but not in snapshot -> were CREATED during simulation -> delete
+    // This is the fix: placed buildings, spawned units, any runtime-cloned object.
+    // undoAll() from Lua does NOT affect this — these objects were never in the undo
+    // stack to begin with because they were created after the snapshot was taken.
+    std::vector<unsigned long> excessList;
+    std::set_difference(currentGameObjectsIds.begin(), currentGameObjectsIds.end(), this->gameObjectsIdsBeforeSnapShot.begin(), this->gameObjectsIdsBeforeSnapShot.end(), std::inserter(excessList, excessList.begin()));
+
+    // Delete excess objects immediately before restoring snapshot.
+    // Must happen on logic thread — deleteGameObjectImmediately touches game object map.
+    // No undo needed: snapshot restore is the undo.
+    for (auto& id : excessList)
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[SnapshotGameObjectsCommand] resetGameObjects: deleting runtime-created game object id: " + Ogre::StringConverter::toString(id));
+
+        if (false == this->appStateName.empty())
+        {
+            AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->deleteGameObjectImmediately(id);
+        }
+        else
+        {
+            AppStateManager::getSingletonPtr()->getGameObjectController()->deleteGameObjectImmediately(id);
+        }
+    }
+
+    // Parse the snapshot stream
     std::vector<char> sceneCopy(this->gameObjectsToAddStream.begin(), this->gameObjectsToAddStream.end());
     sceneCopy.emplace_back('\0');
     try
@@ -338,12 +362,14 @@ void SnapshotGameObjectsCommand::resetGameObjects(void)
     }
     catch (rapidxml::parse_error& error)
     {
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[EditorManager] Could not parse node: " + Ogre::String(error.what()) + " at: " + Ogre::String(error.where<char>()));
-        throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[EditorManager] Could not parse node: " + Ogre::String(error.what()) + " at: " + Ogre::String(error.where<char>()) + "\n", "NOWA");
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[SnapshotGameObjectsCommand] Could not parse snapshot: " + Ogre::String(error.what()) + " at: " + Ogre::String(error.where<char>()));
+        throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[SnapshotGameObjectsCommand] Could not parse snapshot: " + Ogre::String(error.what()) + " at: " + Ogre::String(error.where<char>()) + "\n", "NOWA");
     }
 
     xmlNodes = XMLDoc.first_node("nodes");
 
+    // Recreate objects that were deleted during simulation (differenceList)
+    // and restore transforms of surviving objects via justSetValues = true
     this->dotSceneImportModule->setMissingGameObjectIds(differenceList);
     NOWA::AppStateManager::LogicCommand logicCommand = [this, xmlNodes, &differenceList]()
     {
@@ -595,7 +621,7 @@ GameObjectPtr GameObjectController::internalClone(GameObjectPtr originalGameObje
             // also clone each sub material, so that each cloned entity has its own material which can be manipulated, whithout affecting the other entities
             for (unsigned int i = 0; i < static_cast<Ogre::v1::Entity*>(originalMovableObject)->getNumSubEntities(); i++)
             {
-                const auto& datablock = static_cast<Ogre::v1::Entity*>(originalMovableObject)->getSubEntity(i)->getDatablock();
+                const auto datablock = static_cast<Ogre::v1::Entity*>(originalMovableObject)->getSubEntity(i)->getDatablock();
                 const Ogre::String* datablockName = datablock->getNameStr();
                 static_cast<Ogre::v1::Entity*>(clonedMovableObject)->getSubEntity(i)->setDatablock(datablock);
             }
@@ -605,7 +631,7 @@ GameObjectPtr GameObjectController::internalClone(GameObjectPtr originalGameObje
             // also clone each sub material, so that each cloned entity has its own material which can be manipulated, whithout affecting the other entities
             for (unsigned int i = 0; i < static_cast<Ogre::Item*>(originalMovableObject)->getNumSubItems(); i++)
             {
-                const auto& datablock = static_cast<Ogre::Item*>(originalMovableObject)->getSubItem(i)->getDatablock();
+                const auto datablock = static_cast<Ogre::Item*>(originalMovableObject)->getSubItem(i)->getDatablock();
                 const Ogre::String* datablockName = datablock->getNameStr();
                 static_cast<Ogre::Item*>(clonedMovableObject)->getSubItem(i)->setDatablock(datablock);
             }
@@ -646,7 +672,7 @@ GameObjectPtr GameObjectController::internalClone(GameObjectPtr originalGameObje
 
     for (size_t i = 0; i < originalGameObjectPtr->dataBlocks.size(); i++)
     {
-        const auto& datablock = originalGameObjectPtr->dataBlocks[i];
+        const auto datablock = originalGameObjectPtr->dataBlocks[i];
         Ogre::String datablockName = datablock->getString();
         // clonedGameObjectPtr->setDatablock(originalGameObjectPtr->dataBlocks[i]);
         clonedGameObjectPtr->actualizeDatablockName(originalGameObjectPtr->dataBlocks[i]->getString(), i);
@@ -707,7 +733,7 @@ GameObjectPtr GameObjectController::internalClone(GameObjectPtr originalGameObje
     // for (auto GameObjectComponentPt)
     GameObjectComponents* gameobjectComponents = originalGameObjectPtr->getComponents();
 
-    for (auto& it = gameobjectComponents->cbegin(); it != gameobjectComponents->cend(); ++it)
+    for (auto it = gameobjectComponents->cbegin(); it != gameobjectComponents->cend(); ++it)
     {
         const auto compPtr = std::get<COMPONENT>(*it);
         if (nullptr != compPtr)
@@ -734,7 +760,7 @@ GameObjectPtr GameObjectController::internalClone(GameObjectPtr originalGameObje
     Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObjectController]: Returning cloned game object: " + clonedGameObjectPtr->getSceneNode()->getName());
     Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObjectController]: with components:");
 
-    for (auto& it = clonedGameObjectPtr->getComponents()->cbegin(); it != clonedGameObjectPtr->getComponents()->cend(); ++it)
+    for (auto it = clonedGameObjectPtr->getComponents()->cbegin(); it != clonedGameObjectPtr->getComponents()->cend(); ++it)
     {
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObjectController]: Name: " + std::get<COMPONENT>(*it)->getClassName());
 
@@ -743,7 +769,7 @@ GameObjectPtr GameObjectController::internalClone(GameObjectPtr originalGameObje
             const auto compPtr = std::get<COMPONENT>(*it);
             if (nullptr != compPtr)
             {
-                if (compPtr->getClassName() == LuaScriptComponent::getStaticClassName())
+                if (compPtr->getClassName() == LuaScriptComponent::getStaticClassName() || compPtr->getClassName() == NavMeshComponent::getStaticClassName())
                 {
                     compPtr->connect();
                 }
@@ -769,12 +795,12 @@ void GameObjectController::update(Ogre::Real dt, bool notSimulating)
     if (false == notSimulating)
     {
         // Update moving behaviors
-        for (auto& it = this->movingBehaviors.cbegin(); it != this->movingBehaviors.cend(); ++it)
+        for (auto it = this->movingBehaviors.cbegin(); it != this->movingBehaviors.cend(); ++it)
         {
             it->second->update(dt);
         }
         // Update moving behaviors 2D
-        /*for (auto& it = this->movingBehaviors2D.cbegin(); it != this->movingBehaviors2D.cend(); ++it)
+        /*for (auto it = this->movingBehaviors2D.cbegin(); it != this->movingBehaviors2D.cend(); ++it)
         {
             it->second->update(dt);
         }*/
@@ -785,7 +811,7 @@ void GameObjectController::update(Ogre::Real dt, bool notSimulating)
     // therefore it must not be deleted immediately but after the update process is done (post mortem)
     if (false == this->delayedDeleterList.empty())
     {
-        for (auto& it = this->delayedDeleterList.cbegin(); it != this->delayedDeleterList.cend();)
+        for (auto it = this->delayedDeleterList.cbegin(); it != this->delayedDeleterList.cend();)
         {
             GameObjectPtr gameObjectPtr = this->getGameObjectFromId(*it);
 
@@ -807,7 +833,7 @@ void GameObjectController::update(Ogre::Real dt, bool notSimulating)
 GameObjectPtr GameObjectController::getGameObjectFromId(const unsigned long id) const
 {
     // find the GameObject
-    GameObjects::const_iterator& it = this->gameObjects->find(id);
+    GameObjects::const_iterator it = this->gameObjects->find(id);
     // if the object cannot be found beyond the active object, search for it in the passive objects
     if (it != this->gameObjects->end())
     {
@@ -832,7 +858,7 @@ std::vector<unsigned long> GameObjectController::getAllGameObjectIds(void)
 GameObjectPtr GameObjectController::getClonedGameObjectFromPriorId(const unsigned long priorId) const
 {
     // Search by prior id, maybe this game object was another one in a previous life before he has been cloned so get it!
-    for (auto& it2 = this->gameObjects->cbegin(); it2 != this->gameObjects->cend(); ++it2)
+    for (auto it2 = this->gameObjects->cbegin(); it2 != this->gameObjects->cend(); ++it2)
     {
         // Note: This function may take longer to find the object, but it is rarely called, since in most cases the GO will be found, only when cloned, this will be necessary
         if (it2->second->priorId == priorId)
@@ -877,7 +903,7 @@ const OgreNewt::MaterialID* GameObjectController::getMaterialID(GameObject* game
     // if its the default category get the world default category, which can be used for everything
     if ("Default" == gameObject->getCategory())
     {
-        std::map<Ogre::String, OgreNewt::MaterialID*>::const_iterator& it = this->materialIDMap.find(category);
+        std::map<Ogre::String, OgreNewt::MaterialID*>::const_iterator it = this->materialIDMap.find(category);
         if (it == this->materialIDMap.end())
         {
             pMaterialID = const_cast<OgreNewt::MaterialID*>(ogreNewt->getDefaultMaterialID());
@@ -890,7 +916,7 @@ const OgreNewt::MaterialID* GameObjectController::getMaterialID(GameObject* game
         return pMaterialID;
     }
 
-    std::map<Ogre::String, OgreNewt::MaterialID*>::const_iterator& it = this->materialIDMap.find(category);
+    std::map<Ogre::String, OgreNewt::MaterialID*>::const_iterator it = this->materialIDMap.find(category);
    
     // if the type is not in the map, then its a new type, add a new material ID for collision
     if (it == this->materialIDMap.end())
@@ -915,7 +941,7 @@ const OgreNewt::MaterialID* GameObjectController::getMaterialIDFromCategory(cons
             return ogreNewt->getDefaultMaterialID();
         }*/
     OgreNewt::MaterialID* pMaterialID = nullptr;
-    std::map<Ogre::String, OgreNewt::MaterialID*>::const_iterator& it = this->materialIDMap.find(category);
+    std::map<Ogre::String, OgreNewt::MaterialID*>::const_iterator it = this->materialIDMap.find(category);
     // if there is the corresponding category, deliver it, else deliver nullptr
     if (it != this->materialIDMap.end())
     {
@@ -930,14 +956,14 @@ const OgreNewt::MaterialID* GameObjectController::getMaterialIDFromCategory(cons
     return pMaterialID;
 }
 
-void GameObjectController::destroyContent(std::vector<Ogre::String>& excludeGameObjectNames)
+void GameObjectController::destroyContent(const std::vector<Ogre::String>& excludeGameObjectNames)
 {
     if (false == this->alreadyDestroyed)
     {
         AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &GameObjectController::deleteJointDelegate), EventDataDeleteJoint::getStaticEventType());
 
         this->bIsDestroying = true;
-        auto& it = this->materialIDMap.begin();
+        auto it = this->materialIDMap.begin();
         while (it != this->materialIDMap.end())
         {
             delete it->second;
@@ -964,7 +990,7 @@ void GameObjectController::destroyContent(std::vector<Ogre::String>& excludeGame
                 if (gameObjectPtr->getName() == *it2)
                 {
                     canDestroy = false;
-                    it2 = excludeGameObjectNames.erase(it2);
+                    it2 = const_cast<std::vector<Ogre::String>&>(excludeGameObjectNames).erase(it2);
                     break;
                 }
                 else
@@ -1133,7 +1159,7 @@ void GameObjectController::deleteGameObjectImmediately(GameObjectPtr gameObjectP
 
 void GameObjectController::deleteGameObjectImmediately(unsigned long id)
 {
-    GameObjects::const_iterator& it = this->gameObjects->find(id);
+    GameObjects::const_iterator it = this->gameObjects->find(id);
     if (it != this->gameObjects->end())
     {
         this->deleteGameObjectImmediately(it->second);
@@ -1220,7 +1246,7 @@ void GameObjectController::addJointComponent(boost::weak_ptr<JointComponent> joi
         {
             return;
         }
-        auto& existingJointCompPtr = this->jointComponentMap.find(jointCompPtr->getId());
+        auto existingJointCompPtr = this->jointComponentMap.find(jointCompPtr->getId());
         if (existingJointCompPtr == this->jointComponentMap.cend())
         {
             this->jointComponentMap.insert(std::make_pair(jointCompPtr->getId(), jointCompPtr));
@@ -1234,7 +1260,7 @@ void GameObjectController::removeJointComponent(const unsigned long id)
     {
         return;
     }
-    auto& it = this->jointComponentMap.find(id);
+    auto it = this->jointComponentMap.find(id);
     if (it != this->jointComponentMap.end())
     {
         this->jointComponentMap.erase(it);
@@ -1250,10 +1276,10 @@ void GameObjectController::internalRemoveJointComponentBreakJointChain(const uns
 
     visitedJoints.insert(jointId); // Mark this joint as visited
 
-    auto& it = this->jointComponentMap.find(jointId);
+    auto it = this->jointComponentMap.find(jointId);
     if (it != this->jointComponentMap.end())
     {
-        auto& predecessorJointCompPtr = NOWA::makeStrongPtr(this->getJointComponent(it->second->getPredecessorId()));
+        auto predecessorJointCompPtr = NOWA::makeStrongPtr(this->getJointComponent(it->second->getPredecessorId()));
         if (nullptr != predecessorJointCompPtr)
         {
             predecessorJointCompPtr->releaseJoint();
@@ -1263,11 +1289,11 @@ void GameObjectController::internalRemoveJointComponentBreakJointChain(const uns
         else
         {
             // Search for the joint component that points to the removed one
-            for (auto& it2 = this->jointComponentMap.cbegin(); it2 != this->jointComponentMap.cend(); ++it2)
+            for (auto it2 = this->jointComponentMap.cbegin(); it2 != this->jointComponentMap.cend(); ++it2)
             {
                 if (it->second->getPredecessorId() == jointId)
                 {
-                    auto& predecessorJointCompPtr = NOWA::makeStrongPtr(this->getJointComponent(it->second->getPredecessorId()));
+                    auto predecessorJointCompPtr = NOWA::makeStrongPtr(this->getJointComponent(it->second->getPredecessorId()));
                     predecessorJointCompPtr->releaseJoint();
                     this->internalRemoveJointComponentBreakJointChain(predecessorJointCompPtr->getPredecessorId(), visitedJoints);
                     this->internalRemoveJointComponentBreakJointChain(predecessorJointCompPtr->getTargetId(), visitedJoints);
@@ -1287,7 +1313,7 @@ void GameObjectController::deleteJointDelegate(EventDataPtr eventData)
 {
     boost::shared_ptr<EventDataDeleteJoint> castEventData = boost::static_pointer_cast<NOWA::EventDataDeleteJoint>(eventData);
 
-    auto& jointCompPtr = NOWA::makeStrongPtr(this->getJointComponent(castEventData->getJointId()));
+    auto jointCompPtr = NOWA::makeStrongPtr(this->getJointComponent(castEventData->getJointId()));
     if (nullptr != jointCompPtr)
     {
         jointCompPtr->releaseJoint();
@@ -1304,14 +1330,14 @@ boost::weak_ptr<JointComponent> GameObjectController::getJointComponent(const un
         return boost::weak_ptr<JointComponent>();
     }
     // First try: search by id
-    auto& it = this->jointComponentMap.find(id);
+    auto it = this->jointComponentMap.find(id);
     if (it != this->jointComponentMap.end())
     {
         // assert(id != it->second->getId() && "Id and predecessorJointCompPtr are the same!");
         return it->second;
     }
     // Nothing found, next try: search by prior id, maybe this joint was another one in a previous life before he has been cloned so get him!
-    for (auto& it = this->jointComponentMap.cbegin(); it != this->jointComponentMap.cend(); ++it)
+    for (auto it = this->jointComponentMap.cbegin(); it != this->jointComponentMap.cend(); ++it)
     {
         if (it->second->getPriorId() == id)
         {
@@ -1336,7 +1362,7 @@ void GameObjectController::addPlayerController(boost::weak_ptr<PlayerControllerC
         {
             return;
         }
-        auto& existingPlayerControllerCompPtr = this->playerControllerComponentMap.find(playerControllerCompPtr->getOwner()->getId());
+        auto existingPlayerControllerCompPtr = this->playerControllerComponentMap.find(playerControllerCompPtr->getOwner()->getId());
         if (existingPlayerControllerCompPtr == this->playerControllerComponentMap.cend())
         {
             this->playerControllerComponentMap.insert(std::make_pair(playerControllerCompPtr->getOwner()->getId(), playerControllerCompPtr));
@@ -1350,7 +1376,7 @@ void GameObjectController::removePlayerController(const unsigned long id)
     {
         return;
     }
-    auto& it = this->playerControllerComponentMap.find(id);
+    auto it = this->playerControllerComponentMap.find(id);
     if (it != this->playerControllerComponentMap.end())
     {
         it->second->setActivated(false);
@@ -1362,7 +1388,7 @@ void GameObjectController::activatePlayerController(bool active, const unsigned 
 {
     if (true == onlyOneActive)
     {
-        for (auto& it = this->playerControllerComponentMap.begin(); it != this->playerControllerComponentMap.end(); it++)
+        for (auto it = this->playerControllerComponentMap.begin(); it != this->playerControllerComponentMap.end(); it++)
         {
             it->second->getOwner()->selected = false;
             // Do not deactivate if once active, else its no more possible to select one player which shall advance to its goal and select another one to advance to a different goal and animate each
@@ -1370,7 +1396,7 @@ void GameObjectController::activatePlayerController(bool active, const unsigned 
             // Just deactivate all other camera behaviors for the same camera game object id (splitscreen), or if no cameraGameObjectId set
             if (nullptr != it->second->getCameraBehaviorComponent() && 0 == cameraGameObjectId)
             {
-                const auto& inputDeviceCompPtr = NOWA::makeStrongPtr(it->second->getOwner()->getComponent<InputDeviceComponent>());
+                const auto inputDeviceCompPtr = NOWA::makeStrongPtr(it->second->getOwner()->getComponent<InputDeviceComponent>());
                 if (nullptr != inputDeviceCompPtr)
                 {
                     InputDeviceComponent* inputDeviceComponent = inputDeviceCompPtr.get();
@@ -1380,10 +1406,10 @@ void GameObjectController::activatePlayerController(bool active, const unsigned 
             }
         }
     }
-    auto& existingPlayerControllerIt = this->playerControllerComponentMap.find(gameObjectId);
+    auto existingPlayerControllerIt = this->playerControllerComponentMap.find(gameObjectId);
     if (existingPlayerControllerIt != this->playerControllerComponentMap.cend())
     {
-        const auto& inputDeviceCompPtr = NOWA::makeStrongPtr(existingPlayerControllerIt->second->getOwner()->getComponent<InputDeviceComponent>());
+        const auto inputDeviceCompPtr = NOWA::makeStrongPtr(existingPlayerControllerIt->second->getOwner()->getComponent<InputDeviceComponent>());
         if (nullptr != inputDeviceCompPtr)
         {
             InputDeviceComponent* inputDeviceComponent = inputDeviceCompPtr.get();
@@ -1412,7 +1438,7 @@ void GameObjectController::activatePlayerController(bool active, const unsigned 
 
 void GameObjectController::deactivateAllPlayerController(void)
 {
-    for (auto& it = this->playerControllerComponentMap.begin(); it != this->playerControllerComponentMap.end(); it++)
+    for (auto it = this->playerControllerComponentMap.begin(); it != this->playerControllerComponentMap.end(); it++)
     {
         it->second->setActivated(false);
         if (nullptr != it->second->getCameraBehaviorComponent())
@@ -1431,7 +1457,7 @@ void GameObjectController::addPhysicsCompoundConnectionComponent(boost::weak_ptr
         {
             return;
         }
-        auto& existingPhysicsCompoundConnectionCompPtr = this->physicsCompoundConnectionComponentMap.find(physicsCompoundConnectionCompPtr->getId());
+        auto existingPhysicsCompoundConnectionCompPtr = this->physicsCompoundConnectionComponentMap.find(physicsCompoundConnectionCompPtr->getId());
         if (existingPhysicsCompoundConnectionCompPtr == this->physicsCompoundConnectionComponentMap.cend())
         {
             this->physicsCompoundConnectionComponentMap.insert(std::make_pair(physicsCompoundConnectionCompPtr->getId(), physicsCompoundConnectionCompPtr));
@@ -1445,7 +1471,7 @@ void GameObjectController::removePhysicsCompoundConnectionComponent(const unsign
     {
         return;
     }
-    auto& it = this->physicsCompoundConnectionComponentMap.find(id);
+    auto it = this->physicsCompoundConnectionComponentMap.find(id);
     if (it != this->physicsCompoundConnectionComponentMap.end())
     {
         this->physicsCompoundConnectionComponentMap.erase(it);
@@ -1459,14 +1485,14 @@ boost::weak_ptr<PhysicsCompoundConnectionComponent> GameObjectController::getPhy
         return boost::weak_ptr<PhysicsCompoundConnectionComponent>();
     }
     // First try: search by id
-    auto& it = this->physicsCompoundConnectionComponentMap.find(rootId);
+    auto it = this->physicsCompoundConnectionComponentMap.find(rootId);
     // Check also if its the root (predecessor id = 0)
     if (it != this->physicsCompoundConnectionComponentMap.end() && it->second->getRootId() == 0)
     {
         return it->second;
     }
     // Nothing found, next try: search by prior id, maybe this compound connection was another one in a previous life before he has been cloned so get him!
-    for (auto& it = this->physicsCompoundConnectionComponentMap.cbegin(); it != this->physicsCompoundConnectionComponentMap.cend(); ++it)
+    for (auto it = this->physicsCompoundConnectionComponentMap.cbegin(); it != this->physicsCompoundConnectionComponentMap.cend(); ++it)
     {
         // Check also if its the root (predecessor id = 0)
         if (it->second->getPriorId() == rootId && it->second->getRootId() == 0)
@@ -1492,7 +1518,7 @@ public:
 
 boost::shared_ptr<KI::MovingBehavior> GameObjectController::addMovingBehavior(const unsigned long gameObjectId)
 {
-    auto& it = this->movingBehaviors.find(gameObjectId);
+    auto it = this->movingBehaviors.find(gameObjectId);
     if (it == this->movingBehaviors.end())
     {
         // boost::shared_ptr<KI::MovingBehavior> movingBehaviorPtr(new KI::MovingBehavior(gameObjectId), MovingBehaviorDeleter());
@@ -1508,7 +1534,7 @@ boost::shared_ptr<KI::MovingBehavior> GameObjectController::addMovingBehavior(co
 
 void GameObjectController::removeMovingBehavior(const unsigned long gameObjectId)
 {
-    auto& it = this->movingBehaviors.find(gameObjectId);
+    auto it = this->movingBehaviors.find(gameObjectId);
     if (it != this->movingBehaviors.end())
     {
         it->second->setAgentId(0);
@@ -1520,7 +1546,7 @@ void GameObjectController::removeMovingBehavior(const unsigned long gameObjectId
 
 boost::shared_ptr<KI::MovingBehavior> GameObjectController::getMovingBehavior(const unsigned long gameObjectId)
 {
-    auto& it = this->movingBehaviors.find(gameObjectId);
+    auto it = this->movingBehaviors.find(gameObjectId);
     if (it != this->movingBehaviors.end())
     {
         return it->second;
@@ -1530,7 +1556,7 @@ boost::shared_ptr<KI::MovingBehavior> GameObjectController::getMovingBehavior(co
 
 void GameObjectController::connectJoints(void)
 {
-    for (auto& currentJointComponent : this->jointComponentMap)
+    for (const auto& currentJointComponent : this->jointComponentMap)
     {
         if (0 == currentJointComponent.second->getPredecessorId())
         {
@@ -1544,7 +1570,7 @@ void GameObjectController::connectJoints(void)
         else
         {
             // Find the predecessor joint component of the current joint component
-            auto& predecessorJointCompPtr = NOWA::makeStrongPtr(this->getJointComponent(currentJointComponent.second->getPredecessorId()));
+            auto predecessorJointCompPtr = NOWA::makeStrongPtr(this->getJointComponent(currentJointComponent.second->getPredecessorId()));
             if (nullptr == predecessorJointCompPtr)
             {
                 Ogre::String jointName = currentJointComponent.second->getName();
@@ -1579,7 +1605,7 @@ void GameObjectController::connectJoints(void)
             }
 
             // Find the target joint handler of the current joint handler
-            auto& targetJointCompPtr = NOWA::makeStrongPtr(this->getJointComponent(currentJointComponent.second->getTargetId()));
+            auto targetJointCompPtr = NOWA::makeStrongPtr(this->getJointComponent(currentJointComponent.second->getTargetId()));
             if (nullptr == targetJointCompPtr)
             {
                 Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL,
@@ -1615,7 +1641,7 @@ void GameObjectController::connectCompoundCollisions(void)
 {
     std::vector<PhysicsCompoundConnectionCompPtr> physicsCompoundConnectionRootComponentList;
 
-    for (auto& currentPhysicsCompoundConnectionComponent : this->physicsCompoundConnectionComponentMap)
+    for (const auto& currentPhysicsCompoundConnectionComponent : this->physicsCompoundConnectionComponentMap)
     {
         if (0 == currentPhysicsCompoundConnectionComponent.second->getRootId())
         {
@@ -1625,7 +1651,7 @@ void GameObjectController::connectCompoundCollisions(void)
         else
         {
             // Find the root compound connection of the current compound connection
-            auto& rootPhysicsCompoundConnectionCompPtr = NOWA::makeStrongPtr(this->getPhysicsRootCompoundConnectionComponent(currentPhysicsCompoundConnectionComponent.second->getRootId()));
+            auto rootPhysicsCompoundConnectionCompPtr = NOWA::makeStrongPtr(this->getPhysicsRootCompoundConnectionComponent(currentPhysicsCompoundConnectionComponent.second->getRootId()));
             if (nullptr == rootPhysicsCompoundConnectionCompPtr)
             {
                 Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[GameObjectController] Could not create compound collision because there is no such root game object id: " +
@@ -1634,7 +1660,7 @@ void GameObjectController::connectCompoundCollisions(void)
             else
             {
                 // When found physics active component of compound connection add it to the list of the roots
-                auto& physicsActiveCompPtr = NOWA::makeStrongPtr(currentPhysicsCompoundConnectionComponent.second->getOwner()->getComponent<PhysicsActiveComponent>());
+                auto physicsActiveCompPtr = NOWA::makeStrongPtr(currentPhysicsCompoundConnectionComponent.second->getOwner()->getComponent<PhysicsActiveComponent>());
                 if (nullptr != physicsActiveCompPtr)
                 {
                     rootPhysicsCompoundConnectionCompPtr->addPhysicsActiveComponent(physicsActiveCompPtr.get());
@@ -1650,7 +1676,7 @@ void GameObjectController::connectCompoundCollisions(void)
 
     for (size_t i = 0; i < physicsCompoundConnectionRootComponentList.size(); i++)
     {
-        auto& currentPhysicsCompoundConnectionComponent = physicsCompoundConnectionRootComponentList[i];
+        auto currentPhysicsCompoundConnectionComponent = physicsCompoundConnectionRootComponentList[i];
         // If the current compound component has no predecessor it is the root, so create the compound collision, for all connectec compounds in the
         // PhysicsCompoundConnectionComponent list
         bool success = currentPhysicsCompoundConnectionComponent->createCompoundCollision();
@@ -1662,7 +1688,7 @@ void GameObjectController::connectCompoundCollisions(void)
 
     // this->tempCompoundObjectMap.clear();
     //
-    // for (auto& it = this->compoundCollisionMap.cbegin(); it != this->compoundCollisionMap.cend(); ++it)
+    // for (auto it = this->compoundCollisionMap.cbegin(); it != this->compoundCollisionMap.cend(); ++it)
     //{
     //	std::vector<PhysicsActiveComponent*> compoundCollisionPropertiesList = it->second;
     //	PhysicsActiveComponent* rootPhysicsComponent = it->first.second;
@@ -1674,7 +1700,7 @@ void GameObjectController::connectCompoundCollisions(void)
 
 void GameObjectController::disconnectCompoundCollisions(void)
 {
-    /*for (auto& it = this->compoundCollisionMap.cbegin(); it != this->compoundCollisionMap.cend(); ++it)
+    /*for (auto it = this->compoundCollisionMap.cbegin(); it != this->compoundCollisionMap.cend(); ++it)
     {
         std::vector<PhysicsActiveComponent*> compoundCollisionPropertiesList = it->second;
         PhysicsActiveComponent* rootPhysicsComponent = it->first.second;
@@ -1688,7 +1714,7 @@ void GameObjectController::connectVehicles(void)
 {
     // this->tempVehicleObjectMap.clear();
 
-    // for (auto& it = this->vehicleCollisionMap.cbegin(); it != this->vehicleCollisionMap.cend(); ++it)
+    // for (auto it = this->vehicleCollisionMap.cbegin(); it != this->vehicleCollisionMap.cend(); ++it)
     //{
     //	std::vector<PhysicsActiveComponent*> vehiclePropertiesList = it->second;
     //	PhysicsActiveComponent* rootPhysicsComponent = it->first.second;
@@ -1701,7 +1727,7 @@ void GameObjectController::connectVehicles(void)
 
 void GameObjectController::disconnectVehicles(void)
 {
-    // for (auto& it = this->vehicleCollisionMap.cbegin(); it != this->vehicleCollisionMap.cend(); ++it)
+    // for (auto it = this->vehicleCollisionMap.cbegin(); it != this->vehicleCollisionMap.cend(); ++it)
     //{
     //	std::vector<PhysicsActiveComponent*> vehiclePropertiesList = it->second;
     //	PhysicsActiveComponent* rootPhysicsComponent = it->first.second;
@@ -1713,15 +1739,23 @@ void GameObjectController::disconnectVehicles(void)
 
 void GameObjectController::start(void)
 {
+    AppStateManager::getSingletonPtr()->getParticleFxModule(this->appStateName)->setSimulating(true);
+
+    if (true == AppStateManager::getSingletonPtr()->getOgreRecastModule(this->appStateName)->hasNavigationMeshElements())
+    {
+        // Try loading from disk — agents navigate from frame 1.
+        // If no .nav file exists yet, hasValidNavMesh stays false and agents
+        // wait until the background build triggered from postInitData finishes.
+        if (false == AppStateManager::getSingletonPtr()->getOgreRecastModule(this->appStateName)->getHasValidNavMesh())
+        {
+            AppStateManager::getSingletonPtr()->getOgreRecastModule(this->appStateName)->loadNavigationMesh();
+        }
+    }
+
     NOWA::AppStateManager::LogicCommand logicCommand = [this]()
     {
         // Clears lua errors etc.
         LuaScriptApi::getInstance()->clear();
-
-        if (true == AppStateManager::getSingletonPtr()->getOgreRecastModule()->hasNavigationMeshElements())
-        {
-            AppStateManager::getSingletonPtr()->getOgreRecastModule(this->appStateName)->buildNavigationMesh();
-        }
 
         this->isSimulating = true;
         AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->start();
@@ -1808,6 +1842,7 @@ void GameObjectController::start(void)
 
 void GameObjectController::stop(void)
 {
+    AppStateManager::getSingletonPtr()->getParticleFxModule(this->appStateName)->setSimulating(false);
     NOWA::GraphicsModule::getInstance()->clearAllClosures();
     NOWA::AppStateManager::getSingletonPtr()->clearLogicQueue();
 
@@ -1829,9 +1864,9 @@ void GameObjectController::stop(void)
 
         this->isSimulating = false;
 
-        for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
+        for (auto it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
         {
-            const auto& gameObjectPtr = it->second;
+            const auto gameObjectPtr = it->second;
 
             // AFTER: use gameObjectsList (from point #1) + cached pointers
             // (already zero-cost after the postInit caching is in place)
@@ -1861,7 +1896,7 @@ void GameObjectController::stop(void)
             // Main camera check — only fires for one specific GO, keep as-is
             if (gameObjectPtr->getId() == MAIN_CAMERA_ID)
             {
-                auto& cameraCompPtr = makeStrongPtr(gameObjectPtr->getComponent<CameraComponent>());
+                auto cameraCompPtr = makeStrongPtr(gameObjectPtr->getComponent<CameraComponent>());
                 if (nullptr != cameraCompPtr && false == cameraCompPtr->isActivated())
                 {
                     cameraCompPtr->setActivated(true);
@@ -1900,11 +1935,6 @@ void GameObjectController::resume(void)
 
 void GameObjectController::connectClonedGameObjects(const std::vector<unsigned long> gameObjectIds)
 {
-    if (true == AppStateManager::getSingletonPtr()->getOgreRecastModule()->hasNavigationMeshElements())
-    {
-        AppStateManager::getSingletonPtr()->getOgreRecastModule()->buildNavigationMesh();
-    }
-
     // If all game objects had been loaded finally initialize all components of all objects
     // This is done here, because at this time, all game objects are loaded and in the final init, its possible for a component to get data from other game objects or components
     for (size_t i = 0; i < gameObjectIds.size(); i++)
@@ -2275,7 +2305,7 @@ std::pair<std::vector<GameObjectPtr>, std::vector<GameObjectPtr>> GameObjectCont
 
 GameObject* GameObjectController::getNextGameObject(unsigned int categoryIds)
 {
-    const auto& gameObjects = this->getGameObjectsFromCategoryId(categoryIds);
+    const auto gameObjects = this->getGameObjectsFromCategoryId(categoryIds);
 
     if (true == gameObjects.empty())
     {
@@ -2385,11 +2415,11 @@ std::vector<GameObjectPtr> GameObjectController::getOverlappingGameObjects() con
     std::vector<GameObjectPtr> vec;
     for (const auto& gameObjectPtr : this->gameObjectsList)
     {
-        const auto& firstGameObjectPtr = gameObjectPtr;
+        const auto firstGameObjectPtr = gameObjectPtr;
 
-        for (const auto& gameObjectPtr2 : this->gameObjectsList)
+        for (const auto gameObjectPtr2 : this->gameObjectsList)
         {
-            const auto& secondGameObjectPtr = gameObjectPtr2;
+            const auto secondGameObjectPtr = gameObjectPtr2;
             if (firstGameObjectPtr != secondGameObjectPtr)
             {
                 Ogre::Vector4 firstOrientation(firstGameObjectPtr->getOrientation().x, firstGameObjectPtr->getOrientation().y, firstGameObjectPtr->getOrientation().z, firstGameObjectPtr->getOrientation().w);
@@ -2397,8 +2427,8 @@ std::vector<GameObjectPtr> GameObjectController::getOverlappingGameObjects() con
 
                 if (MathHelper::getInstance()->vector3Equals(firstGameObjectPtr->getPosition(), secondGameObjectPtr->getPosition(), 0.01f) && MathHelper::getInstance()->vector4Equals(firstOrientation, secondOrientation, 0.1f))
                 {
-                    const auto& firstEntity = firstGameObjectPtr->getMovableObject<Ogre::v1::Entity>();
-                    const auto& secondEntity = secondGameObjectPtr->getMovableObject<Ogre::v1::Entity>();
+                    const auto firstEntity = firstGameObjectPtr->getMovableObject<Ogre::v1::Entity>();
+                    const auto secondEntity = secondGameObjectPtr->getMovableObject<Ogre::v1::Entity>();
 
                     if (nullptr != firstEntity && nullptr != secondEntity)
                     {
@@ -2409,8 +2439,8 @@ std::vector<GameObjectPtr> GameObjectController::getOverlappingGameObjects() con
                     }
                     else
                     {
-                        const auto& firstItem = firstGameObjectPtr->getMovableObject<Ogre::Item>();
-                        const auto& secondItem = secondGameObjectPtr->getMovableObject<Ogre::Item>();
+                        const auto firstItem = firstGameObjectPtr->getMovableObject<Ogre::Item>();
+                        const auto secondItem = secondGameObjectPtr->getMovableObject<Ogre::Item>();
 
                         if (nullptr != firstItem && nullptr != secondItem)
                         {
@@ -2436,7 +2466,7 @@ std::vector<GameObjectCompPtr> GameObjectController::getGameObjectComponentsFrom
 {
     std::vector<GameObjectCompPtr> vec;
 
-    auto& gameObjectPtr = this->getGameObjectFromId(referenceId);
+    auto gameObjectPtr = this->getGameObjectFromId(referenceId);
     if (nullptr == gameObjectPtr)
     {
         return vec;
@@ -2445,7 +2475,7 @@ std::vector<GameObjectCompPtr> GameObjectController::getGameObjectComponentsFrom
     // Search for a component with the same id
     GameObjectComponents* gameobjectComponents = gameObjectPtr->getComponents();
 
-    for (auto& it = gameobjectComponents->cbegin(); it != gameobjectComponents->cend(); ++it)
+    for (auto it = gameobjectComponents->cbegin(); it != gameobjectComponents->cend(); ++it)
     {
         GameObjectCompPtr gameObjectComponent = std::get<COMPONENT>(*it);
 
@@ -2459,7 +2489,7 @@ std::vector<GameObjectCompPtr> GameObjectController::getGameObjectComponentsFrom
 
 void GameObjectController::activateGameObjectComponentsFromReferenceId(const unsigned long referenceId, bool activate)
 {
-    auto& gameObjectPtr = this->getGameObjectFromId(referenceId);
+    auto gameObjectPtr = this->getGameObjectFromId(referenceId);
     if (nullptr == gameObjectPtr)
     {
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
@@ -2470,7 +2500,7 @@ void GameObjectController::activateGameObjectComponentsFromReferenceId(const uns
     // Search for a components with the same reference id's
     GameObjectComponents* gameobjectComponents = gameObjectPtr->getComponents();
 
-    for (auto& it = gameobjectComponents->cbegin(); it != gameobjectComponents->cend(); ++it)
+    for (auto it = gameobjectComponents->cbegin(); it != gameobjectComponents->cend(); ++it)
     {
         GameObjectCompPtr gameObjectComponent = std::get<COMPONENT>(*it);
 
@@ -2483,7 +2513,7 @@ void GameObjectController::activateGameObjectComponentsFromReferenceId(const uns
 std::vector<Ogre::String> GameObjectController::getAllCategoriesSoFar(void) const
 {
     std::vector<Ogre::String> vec;
-    for (auto& it = this->typeDBMap.cbegin(); it != this->typeDBMap.cend(); ++it)
+    for (auto it = this->typeDBMap.cbegin(); it != this->typeDBMap.cend(); ++it)
     {
         vec.emplace_back(it->first);
     }
@@ -2493,7 +2523,7 @@ std::vector<Ogre::String> GameObjectController::getAllCategoriesSoFar(void) cons
 std::vector<Ogre::String> GameObjectController::getAllRenderCategoriesSoFar(void) const
 {
     std::vector<Ogre::String> vec;
-    for (auto& it = this->renderTypeDBMap.cbegin(); it != this->renderTypeDBMap.cend(); ++it)
+    for (auto it = this->renderTypeDBMap.cbegin(); it != this->renderTypeDBMap.cend(); ++it)
     {
         vec.emplace_back(it->first);
     }
@@ -2502,13 +2532,13 @@ std::vector<Ogre::String> GameObjectController::getAllRenderCategoriesSoFar(void
 
 bool GameObjectController::hasCategory(const Ogre::String& category) const
 {
-    auto& found = this->typeDBMap.find(category);
+    auto found = this->typeDBMap.find(category);
     return found != this->typeDBMap.cend();
 }
 
 bool GameObjectController::hasRenderCategory(const Ogre::String& renderCategory) const
 {
-    auto& found = this->renderTypeDBMap.find(renderCategory);
+    auto found = this->renderTypeDBMap.find(renderCategory);
     return found != this->renderTypeDBMap.cend();
 }
 
@@ -2536,13 +2566,13 @@ void GameObjectController::registerType(GameObject* gameObject, const Ogre::Stri
     {
         // http://www.ogre3d.org/tikiwiki/tiki-index.php?page=Intermediate+Tutorial+3
         // only 31 distinct types are possible!
-        auto& it = this->typeDBMap.find(category);
+        auto it = this->typeDBMap.find(category);
         // if the type is not in the map, then its a new type, so increment the physics type id
         if (it == this->typeDBMap.end())
         {
             bool foundFreeId = false;
             // First check if there is an old remaining category id, that is not occupied
-            for (auto& it = this->typeDBMap.begin(); it != this->typeDBMap.end(); ++it)
+            for (auto it = this->typeDBMap.begin(); it != this->typeDBMap.end(); ++it)
             {
                 if (false == it->second.second)
                 {
@@ -2586,13 +2616,13 @@ void GameObjectController::registerType(GameObject* gameObject, const Ogre::Stri
     if (false == renderCategory.empty())
     {
         // only 31 distinct types are possible!
-        auto& renderIt = this->renderTypeDBMap.find(renderCategory);
+        auto renderIt = this->renderTypeDBMap.find(renderCategory);
         // if the type is not in the map, then its a new type, so increment the physics type id
         if (renderIt == this->renderTypeDBMap.end())
         {
             bool foundFreeId = false;
             // First check if there is an old remaining render category id, that is not occupied
-            for (auto& renderIt = this->renderTypeDBMap.begin(); renderIt != this->renderTypeDBMap.end(); ++renderIt)
+            for (auto renderIt = this->renderTypeDBMap.begin(); renderIt != this->renderTypeDBMap.end(); ++renderIt)
             {
                 if (false == renderIt->second.second)
                 {
@@ -2640,13 +2670,13 @@ unsigned int GameObjectController::registerCategory(const Ogre::String& category
 
     // http://www.ogre3d.org/tikiwiki/tiki-index.php?page=Intermediate+Tutorial+3
     // only 31 distinct types are possible!
-    auto& foundIt = this->typeDBMap.find(category);
+    auto foundIt = this->typeDBMap.find(category);
     // if the type is not in the map, then its a new type, so increment the physics type id
     if (foundIt == this->typeDBMap.end())
     {
         bool foundFreeId = false;
         // First check if there is an old remaining category id, that is not occupied
-        for (auto& it = this->typeDBMap.begin(); it != this->typeDBMap.end(); ++it)
+        for (auto it = this->typeDBMap.begin(); it != this->typeDBMap.end(); ++it)
         {
             // Not occupied
             if (false == it->second.second)
@@ -2683,13 +2713,13 @@ unsigned int GameObjectController::registerRenderCategory(const Ogre::String& re
     unsigned int renderCategoryId = 1;
     // http://www.ogre3d.org/tikiwiki/tiki-index.php?page=Intermediate+Tutorial+3
     // only 31 distinct types are possible!
-    auto& foundIt = this->renderTypeDBMap.find(renderCategory);
+    auto foundIt = this->renderTypeDBMap.find(renderCategory);
 
     if (foundIt == this->renderTypeDBMap.end())
     {
         bool foundFreeId = false;
         // First check if there is an old remaining render category id, that is not occupied
-        for (auto& it = this->renderTypeDBMap.begin(); it != this->renderTypeDBMap.end(); ++it)
+        for (auto it = this->renderTypeDBMap.begin(); it != this->renderTypeDBMap.end(); ++it)
         {
             // Not occupied
             if (false == it->second.second)
@@ -2736,7 +2766,7 @@ void GameObjectController::changeCategory(GameObject* gameObject, const Ogre::St
 
     if (false == found)
     {
-        auto& it = this->typeDBMap.find(oldCategory);
+        auto it = this->typeDBMap.find(oldCategory);
         if (it != this->typeDBMap.end())
         {
             // set occupied = false
@@ -2746,7 +2776,7 @@ void GameObjectController::changeCategory(GameObject* gameObject, const Ogre::St
     this->registerType(gameObject, newCategory, "");
 
     // Since a category may change at any time, adjust the material group id
-    auto& physicsCompPtr = NOWA::makeStrongPtr(gameObject->getComponent<PhysicsComponent>());
+    auto physicsCompPtr = NOWA::makeStrongPtr(gameObject->getComponent<PhysicsComponent>());
     if (nullptr != physicsCompPtr)
     {
         if (nullptr != physicsCompPtr->getBody())
@@ -2773,7 +2803,7 @@ void GameObjectController::changeRenderCategory(GameObject* gameObject, const Og
 
     if (false == found)
     {
-        auto& it = this->renderTypeDBMap.find(oldRenderCategory);
+        auto it = this->renderTypeDBMap.find(oldRenderCategory);
         if (it != this->renderTypeDBMap.end())
         {
             // set occupied = false
@@ -2797,7 +2827,7 @@ void GameObjectController::freeCategoryFromGameObject(const Ogre::String& catego
 
     if (false == found)
     {
-        auto& it = this->typeDBMap.find(category);
+        auto it = this->typeDBMap.find(category);
         if (it != this->typeDBMap.end())
         {
             // set occupied = false
@@ -2820,7 +2850,7 @@ void GameObjectController::freeRenderCategoryFromGameObject(const Ogre::String& 
 
     if (false == found)
     {
-        auto& it = this->renderTypeDBMap.find(renderCategory);
+        auto it = this->renderTypeDBMap.find(renderCategory);
         if (it != this->renderTypeDBMap.end())
         {
             // set occupied = false
@@ -2831,7 +2861,7 @@ void GameObjectController::freeRenderCategoryFromGameObject(const Ogre::String& 
 
 unsigned int GameObjectController::getCategoryId(const Ogre::String& category)
 {
-    auto& it = this->typeDBMap.find(category);
+    auto it = this->typeDBMap.find(category);
     if (it != this->typeDBMap.end())
     {
         return it->second.first;
@@ -2841,7 +2871,7 @@ unsigned int GameObjectController::getCategoryId(const Ogre::String& category)
 
 unsigned int GameObjectController::getRenderCategoryId(const Ogre::String& renderCategory)
 {
-    auto& it = this->renderTypeDBMap.find(renderCategory);
+    auto it = this->renderTypeDBMap.find(renderCategory);
     if (it != this->renderTypeDBMap.end())
     {
         return it->second.first;
@@ -3072,7 +3102,7 @@ std::vector<Ogre::String> GameObjectController::getAffectedCategories(const Ogre
 
     if (categoryNames == "All")
     {
-        for (auto& it = this->typeDBMap.cbegin(); it != this->typeDBMap.cend(); ++it)
+        for (auto it = this->typeDBMap.cbegin(); it != this->typeDBMap.cend(); ++it)
         {
             vec.emplace_back(it->first);
         }
@@ -3136,7 +3166,7 @@ std::vector<Ogre::String> GameObjectController::getAffectedCategories(const Ogre
             // Ogre::StringUtil::toLowerCase(categoryName);
             if (categoryName == "All")
             {
-                for (auto& it = this->typeDBMap.cbegin(); it != this->typeDBMap.cend(); ++it)
+                for (auto it = this->typeDBMap.cbegin(); it != this->typeDBMap.cend(); ++it)
                 {
                     vec.emplace_back(it->first);
                 }
@@ -3177,7 +3207,7 @@ std::vector<Ogre::String> GameObjectController::getAffectedRenderCategories(cons
 
     if (renderCategoryNames == "All")
     {
-        for (auto& it = this->renderTypeDBMap.cbegin(); it != this->renderTypeDBMap.cend(); ++it)
+        for (auto it = this->renderTypeDBMap.cbegin(); it != this->renderTypeDBMap.cend(); ++it)
         {
             vec.emplace_back(it->first);
         }
@@ -3240,7 +3270,7 @@ std::vector<Ogre::String> GameObjectController::getAffectedRenderCategories(cons
 
             if (categoryName == "All")
             {
-                for (auto& it = this->renderTypeDBMap.cbegin(); it != this->renderTypeDBMap.cend(); ++it)
+                for (auto it = this->renderTypeDBMap.cbegin(); it != this->renderTypeDBMap.cend(); ++it)
                 {
                     vec.emplace_back(it->first);
                 }
@@ -3277,7 +3307,7 @@ std::vector<Ogre::String> GameObjectController::getAffectedRenderCategories(cons
 
 void GameObjectController::getValidatedGameObjectName(Ogre::String& gameObjectName, unsigned long excludeId)
 {
-    auto& gameObjectPtr = this->getGameObjectFromName(gameObjectName);
+    auto gameObjectPtr = this->getGameObjectFromName(gameObjectName);
     if (nullptr == gameObjectPtr)
     {
         return;
@@ -3399,7 +3429,7 @@ void GameObjectController::addLuaScript(LuaScriptCompPtr luaScript)
 
     // Sort by orderIndex, placing orderIndex == -1 at the end
     std::sort(this->managedLuaScripts.begin(), this->managedLuaScripts.end(),
-              [](const auto& a, const auto& b)
+              [](const auto a, const auto b)
               {
                   if (a.first == -1)
                       return false; // Keep -1 order scripts at the end
@@ -3411,7 +3441,7 @@ void GameObjectController::addLuaScript(LuaScriptCompPtr luaScript)
     // Reassign sequential order indices, while keeping -1 at the end
     for (size_t i = 0; i < this->managedLuaScripts.size(); ++i)
     {
-        auto& scriptPair = this->managedLuaScripts[i];
+        auto scriptPair = this->managedLuaScripts[i];
         scriptPair.first = static_cast<int>(i + 1); // Reassign order index
 
         auto luaScriptCompPtr = NOWA::makeStrongPtr(scriptPair.second);
@@ -3691,7 +3721,7 @@ void GameObjectController::tryDestroyDatablockIfUnused(const Ogre::String& datab
             break;
         }
 
-        const auto& linkedRenderables = datablock->getLinkedRenderables();
+        const auto linkedRenderables = datablock->getLinkedRenderables();
         if (true == linkedRenderables.empty())
         {
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObject] Destroying unused runtime clone datablock: " + datablockName);
@@ -3708,7 +3738,7 @@ void GameObjectController::updateLuaScriptExecutionOrder(void)
 {
     // Sort by order index
     std::sort(this->managedLuaScripts.begin(), this->managedLuaScripts.end(),
-              [](const auto& a, const auto& b)
+              [](const auto a, const auto b)
               {
                   return a.first < b.first;
               });
@@ -3878,7 +3908,7 @@ void GameObjectController::detachAndDestroyTriggerObserver(ITriggerSphereQueryOb
 
 void GameObjectController::detachAndDestroyAllTriggerObserver(void)
 {
-    for (auto& it = this->triggerSphereQueryObservers.cbegin(); it != this->triggerSphereQueryObservers.cend();)
+    for (auto it = this->triggerSphereQueryObservers.cbegin(); it != this->triggerSphereQueryObservers.cend();)
     {
         ITriggerSphereQueryObserver* observer = *it;
         it = this->triggerSphereQueryObservers.erase(it);
@@ -3909,11 +3939,11 @@ void GameObjectController::checkAreaForActiveObjects(const Ogre::Vector3& positi
             this->sphereSceneQuery->setQueryMask(categoryIds);
         }
 
-        // TODO: Is this correct here?
-        ENQUEUE_RENDER_COMMAND_MULTI("GameObjectController::checkAreaForActiveObjects", _2(position, distance), {
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, position, distance]()
+        {
             // check objects in range
             Ogre::SceneQueryResultMovableList& result = this->sphereSceneQuery->execute().movables;
-            for (auto& it = result.cbegin(); it != result.cend(); ++it)
+            for (auto it = result.cbegin(); it != result.cend(); ++it)
             {
                 Ogre::MovableObject* movableObject = *it;
 
@@ -3925,11 +3955,11 @@ void GameObjectController::checkAreaForActiveObjects(const Ogre::Vector3& positi
                     if (gameObject)
                     {
                         // when this is active, the onEnter callback will only be called once for the object!
-                        auto& it = this->triggeredGameObjects.find(gameObject->getId());
+                        auto it = this->triggeredGameObjects.find(gameObject->getId());
                         if (it == this->triggeredGameObjects.end())
                         {
                             // here also set the script to be called, so that in ActiveObjectsResultCallback can be run in script and call spawn callback for another script?
-                            for (auto& subIt = this->triggerSphereQueryObservers.cbegin(); subIt != this->triggerSphereQueryObservers.cend(); ++subIt)
+                            for (auto subIt = this->triggerSphereQueryObservers.cbegin(); subIt != this->triggerSphereQueryObservers.cend(); ++subIt)
                             {
                                 // notify the observer
                                 (*subIt)->onEnter(gameObject);
@@ -3942,15 +3972,15 @@ void GameObjectController::checkAreaForActiveObjects(const Ogre::Vector3& positi
             }
 
             // go through the map with the triggered game objects that are in range
-            for (auto& it = this->triggeredGameObjects.cbegin(); it != this->triggeredGameObjects.cend(); ++it)
+            for (auto it = this->triggeredGameObjects.cbegin(); it != this->triggeredGameObjects.cend(); ++it)
             {
                 GameObject* gameObject = it->second;
-                Ogre::Vector3& direction = position - gameObject->getPosition();
+                Ogre::Vector3 direction = position - gameObject->getPosition();
                 // if a game objects comes out of the range, remove it and notify the observer
                 Ogre::Real distanceToGameObject = direction.squaredLength();
                 if (distanceToGameObject > distance * distance)
                 {
-                    for (auto& subIt = this->triggerSphereQueryObservers.cbegin(); subIt != this->triggerSphereQueryObservers.cend(); ++subIt)
+                    for (auto subIt = this->triggerSphereQueryObservers.cbegin(); subIt != this->triggerSphereQueryObservers.cend(); ++subIt)
                     {
                         (*subIt)->onLeave(gameObject);
                     }
@@ -3958,7 +3988,8 @@ void GameObjectController::checkAreaForActiveObjects(const Ogre::Vector3& positi
                     break;
                 }
             }
-        });
+        };
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "GameObjectController::checkAreaForActiveObjects");
     }
 }
 

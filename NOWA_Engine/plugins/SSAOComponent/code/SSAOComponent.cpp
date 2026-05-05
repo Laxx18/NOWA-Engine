@@ -110,7 +110,7 @@ namespace NOWA
 
         this->initializeSSAOShaders();
 
-        auto& workspaceBaseCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<WorkspaceBaseComponent>());
+        auto workspaceBaseCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<WorkspaceBaseComponent>());
         if (nullptr != workspaceBaseCompPtr)
         {
             this->workspaceBaseComponent = workspaceBaseCompPtr.get();

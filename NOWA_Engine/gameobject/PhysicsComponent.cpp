@@ -60,10 +60,7 @@ namespace NOWA
     {
         // delete the body
         this->destroyBody();
-        /*this->taggedList->clear();
-        delete this->taggedList;
-        this->taggedList = static_cast<std::list<GameObjectPtr>*>(0);*/
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PhysicsComponent] Destructor physics component for game object: " + this->gameObjectPtr->getName());
+        // Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PhysicsComponent] Destructor physics component for game object: " + this->gameObjectPtr->getName());
     }
 
     bool PhysicsComponent::connect(void)
@@ -1228,46 +1225,53 @@ namespace NOWA
 
     void PhysicsComponent::destroyBody(void)
     {
-        if (nullptr != this->physicsBody)
+        // Re-entry guard — prevents infinite recursion when getComponentWithOccurrence
+        // releases a shared_ptr whose destructor calls destroyBody() again
+        if (nullptr == this->physicsBody)
         {
-            Ogre::Node* node = this->gameObjectPtr ? this->gameObjectPtr->getSceneNode() : nullptr;
+            return;
+        }
 
-            boost::shared_ptr<EventDataDeleteBody> deleteBodyEvent(boost::make_shared<EventDataDeleteBody>(this->physicsBody));
-            AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(deleteBodyEvent);
+        boost::shared_ptr<EventDataDeleteBody> deleteBodyEvent(boost::make_shared<EventDataDeleteBody>(this->physicsBody));
+        AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(deleteBodyEvent);
 
-            // Dangerous: If there is a joint and the body is destroyed, all constraints are destroyed by newton automatically!
-            // And joint pointer will become invalid! Hence release the joints
-            unsigned int i = 0;
-            boost::shared_ptr<JointComponent> jointCompPtr = nullptr;
-            do
+        Ogre::Node* node = this->gameObjectPtr ? this->gameObjectPtr->getSceneNode() : nullptr;
+
+        // CRITICAL: nil out physicsBody FIRST before any component iteration
+        // This is the re-entry guard — if we get called again, we exit immediately above
+        OgreNewt::Body* bodyToDestroy = this->physicsBody;
+        this->physicsBody = nullptr;
+
+        // Now safely iterate joints — even if a shared_ptr destructor triggers
+        // ~PhysicsComponent again, physicsBody is already nullptr so we return early
+        unsigned int i = 0;
+        boost::shared_ptr<JointComponent> jointCompPtr = nullptr;
+        do
+        {
+            jointCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentWithOccurrence<JointComponent>(i));
+            if (nullptr != jointCompPtr)
             {
-                jointCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentWithOccurrence<JointComponent>(i));
-                if (nullptr != jointCompPtr)
-                {
-                    jointCompPtr->releaseJoint();
-                    i++;
-                }
-            } while (nullptr != jointCompPtr);
-
-            this->physicsBody->setRenderUpdateCallback(nullptr);
-            this->physicsBody->removeForceAndTorqueCallback();
-            this->physicsBody->removeNodeUpdateNotify();
-            this->physicsBody->detachNode();
-            this->physicsBody->removeDestructorCallback();
-
-            delete this->physicsBody;
-            this->physicsBody = nullptr;
-
-            // Really important! Remove the tracked node, else there is a transform mess next time!
-            if (nullptr != node)
-            {
-                GraphicsModule::getInstance()->removeTrackedNode(node);
+                jointCompPtr->releaseJoint();
+                i++;
             }
+        } while (nullptr != jointCompPtr);
+
+        bodyToDestroy->setRenderUpdateCallback(nullptr);
+        bodyToDestroy->removeForceAndTorqueCallback();
+        bodyToDestroy->removeNodeUpdateNotify();
+        bodyToDestroy->detachNode();
+        bodyToDestroy->removeDestructorCallback();
+        delete bodyToDestroy;
+
+        if (nullptr != node)
+        {
+            GraphicsModule::getInstance()->removeTrackedNode(node);
         }
     }
 
     void PhysicsComponent::update(Ogre::Real dt, bool notSimulating)
     {
+        GameObjectComponent::update(dt);
     }
 
     void PhysicsComponent::actualizeValue(Variant* attribute)

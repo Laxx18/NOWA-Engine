@@ -309,7 +309,7 @@ namespace NOWA
 			if (true == active)
 			{
 				auto gameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects();
-				for (auto& it = gameObjects->begin(); it != gameObjects->end(); ++it)
+				for (auto it = gameObjects->begin(); it != gameObjects->end(); ++it)
 				{
 					GameObject* gameObject = it->second.get();
 					if (id != gameObject->getId())
@@ -553,7 +553,7 @@ namespace NOWA
 			GameObjectPtr cameraGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->cameraId->getULong());
 			if (nullptr != cameraGameObjectPtr)
 			{
-				auto& cameraCompPtr = NOWA::makeStrongPtr(cameraGameObjectPtr->getComponent<CameraComponent>());
+				auto cameraCompPtr = NOWA::makeStrongPtr(cameraGameObjectPtr->getComponent<CameraComponent>());
 				if (nullptr != cameraCompPtr)
 				{
 					this->usedCamera = cameraCompPtr->getCamera();

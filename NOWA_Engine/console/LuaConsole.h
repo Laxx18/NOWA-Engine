@@ -30,7 +30,7 @@ namespace NOWA
 
 		void clearHistory(void);
 
-		void LuaConsole::clearConsole(void);
+		void clearConsole(void);
 	public:
 		static LuaConsole& getSingleton(void);
 

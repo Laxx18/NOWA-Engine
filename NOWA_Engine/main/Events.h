@@ -42,21 +42,10 @@ namespace NOWA
 			return 0xe86c7c31;
 		}
 
-		virtual void deserialize(std::istrstream& in)
-		{
-			in >> Ogre::StringConverter::toString(this->id);
-		}
-
 		virtual EventDataPtr copy(void) const
 		{
 			return EventDataPtr(new EventDataNewGameObject(this->id));
 		}
-
-		virtual void serialize(std::ostrstream& out) const
-		{
-			out << Ogre::StringConverter::toString(this->id) << " ";
-		}
-
 
 		virtual const char* getName(void) const
 		{
@@ -99,21 +88,6 @@ namespace NOWA
 		virtual const EventType getEventType(void) const
 		{
 			return 0xeeaa0a40;
-		}
-
-		virtual void serialize(std::ostrstream& out) const
-		{
-			out << this->id << " ";
-			out << this->position.x << " " << this->position.y << " " << this->position.z << " ";
-			out << this->orientation.w << " " << this->orientation.x << " " << this->orientation.y << " " << this->orientation.z << " ";
-		}
-
-		virtual void deserialize(std::istrstream& in)
-		{
-			// not sure if this works
-			in >> this->id;
-			in >> this->position.x >> this->position.y >> this->position.z;
-			in >> this->orientation.w >> this->orientation.x >> this->orientation.y >> this->orientation.z;
 		}
 
 		virtual EventDataPtr copy() const
@@ -176,19 +150,6 @@ namespace NOWA
 			return 0xeeaa0a41;
 		}
 
-		virtual void serialize(std::ostrstream& out) const
-		{
-			out << this->gameObjectName << " ";
-			out << this->controlledByClientID << " ";
-		}
-
-		virtual void deserialize(std::istrstream& in)
-		{
-			// not sure if this works
-			in >> this->gameObjectName;
-			in >> this->controlledByClientID;
-		}
-
 		virtual EventDataPtr copy() const
 		{
 			return EventDataPtr(new EventDataParseGameObject(this->gameObjectName, this->controlledByClientID));
@@ -241,21 +202,10 @@ namespace NOWA
 			return 0xe86c7c44;
 		}
 
-		virtual void deserialize(std::istrstream& in)
-		{
-			in >> Ogre::StringConverter::toString(this->id);
-		}
-
 		virtual EventDataPtr copy(void) const
 		{
 			return EventDataPtr(new EventDataDeleteGameObject(this->id));
 		}
-
-		virtual void serialize(std::ostrstream& out) const
-		{
-			out << Ogre::StringConverter::toString(this->id) << " ";
-		}
-
 
 		virtual const char* getName(void) const
 		{
@@ -296,19 +246,9 @@ namespace NOWA
 			return 0xe86c7c45;
 		}
 
-		virtual void deserialize(std::istrstream& in)
-		{
-			in >> this->componentName;
-		}
-
 		virtual EventDataPtr copy(void) const
 		{
 			return EventDataPtr(new EventDataNewComponent(this->componentName));
-		}
-
-		virtual void serialize(std::ostrstream& out) const
-		{
-			out << this->componentName << " ";
 		}
 
 		virtual const char* getName(void) const
@@ -352,23 +292,9 @@ namespace NOWA
 			return 0xe867cc45;
 		}
 
-		virtual void deserialize(std::istrstream& in)
-		{
-			in >> this->gameObjectId;
-			in >> this->componentName;
-			in >> this->componentIndex;
-		}
-
 		virtual EventDataPtr copy(void) const
 		{
 			return EventDataPtr(new EventDataDeleteComponent(this->gameObjectId, this->componentName, this->componentIndex));
-		}
-
-		virtual void serialize(std::ostrstream& out) const
-		{
-			out << this->gameObjectId << " ";
-			out << this->componentName << " ";
-			out << this->componentIndex << " ";
 		}
 
 		virtual const char* getName(void) const
@@ -422,17 +348,6 @@ namespace NOWA
 			return 0xe86c7c46;
 		}
 
-		virtual void serialize(std::ostrstream& out) const
-		{
-			// out << this->id << " ";
-		} 
-
-		virtual void deserialize(std::istrstream& in)
-		{
-			// not sure if this works
-			// in >> this->id;
-		}
-
 		virtual EventDataPtr copy(void) const
 		{
 			return EventDataPtr(new EventDataSpringRelease(this->id));
@@ -471,17 +386,6 @@ namespace NOWA
 		virtual const EventType getEventType(void) const
 		{
 			return 0xe86c7c47;
-		}
-
-		virtual void serialize(std::ostrstream& out) const
-		{
-			out << this->manipulationMode << " ";
-		}
-
-		virtual void deserialize(std::istrstream& in)
-		{
-			// not sure if this works
-			in >> this->manipulationMode;
 		}
 
 		virtual EventDataPtr copy(void) const
@@ -524,16 +428,6 @@ namespace NOWA
 			return 0xe86c7c48;
 		}
 
-		virtual void serialize(std::ostrstream& out) const
-		{
-
-		}
-
-		virtual void deserialize(std::istrstream& in)
-		{
-
-		}
-
 		virtual NOWA::EventDataPtr copy() const
 		{
 			return NOWA::EventDataPtr(new EventDataGenerateCategories());
@@ -568,20 +462,6 @@ namespace NOWA
 		virtual const NOWA::EventType getEventType(void) const
 		{
 			return 0xe86c7c49;
-		}
-
-		virtual void serialize(std::ostrstream& out) const
-		{
-			out << this->cameraGameObjectId << " ";
-			out << this->cameraComponentIndex << " ";
-			out << this->active << " ";
-		}
-
-		virtual void deserialize(std::istrstream& in)
-		{
-			in >> this->cameraGameObjectId;
-			in >> this->cameraComponentIndex;
-			in >> this->active;
 		}
 
 		virtual NOWA::EventDataPtr copy() const
@@ -627,16 +507,6 @@ namespace NOWA
 		virtual const NOWA::EventType getEventType(void) const
 		{
 			return 0xe86c7d49;
-		}
-
-		virtual void serialize(std::ostrstream& out) const
-		{
-			out << this->active << " ";
-		}
-
-		virtual void deserialize(std::istrstream& in)
-		{
-			in >> this->active;
 		}
 
 		virtual NOWA::EventDataPtr copy() const
@@ -687,16 +557,6 @@ namespace NOWA
 			return 0xe86c7e49;
 		}
 
-		virtual void serialize(std::ostrstream& out) const
-		{
-		
-		}
-
-		virtual void deserialize(std::istrstream& in)
-		{
-	
-		}
-
 		virtual NOWA::EventDataPtr copy() const
 		{
 			return NOWA::EventDataPtr(new EventDataRemoveCameraBehavior(this->camera));
@@ -736,16 +596,6 @@ namespace NOWA
 			return 0xe86c7c50;
 		}
 
-		virtual void serialize(std::ostrstream& out) const
-		{
-		
-		}
-
-		virtual void deserialize(std::istrstream& in)
-		{
-			
-		}
-
 		virtual NOWA::EventDataPtr copy() const
 		{
 			return NOWA::EventDataPtr(new EventDataSceneModified());
@@ -776,16 +626,6 @@ namespace NOWA
 		virtual const NOWA::EventType getEventType(void) const
 		{
 			return 0xe96c7c50;
-		}
-
-		virtual void serialize(std::ostrstream& out) const
-		{
-
-		}
-
-		virtual void deserialize(std::istrstream& in)
-		{
-
 		}
 
 		virtual NOWA::EventDataPtr copy() const
@@ -820,18 +660,6 @@ namespace NOWA
 		virtual const NOWA::EventType getEventType(void) const
 		{
 			return 0xe86c7c51;
-		}
-
-		virtual void serialize(std::ostrstream& out) const
-		{
-			out << this->positive;
-			out << this->feedbackMessage;
-		}
-
-		virtual void deserialize(std::istrstream& in)
-		{
-			in >> this->positive;
-			in >> this->feedbackMessage;
 		}
 
 		virtual NOWA::EventDataPtr copy() const
@@ -880,16 +708,6 @@ namespace NOWA
 			return 0xe86c7d51;
 		}
 
-		virtual void serialize(std::ostrstream& out) const
-		{
-			out << this->feedbackMessage;
-		}
-
-		virtual void deserialize(std::istrstream& in)
-		{
-			in >> this->feedbackMessage;
-		}
-
 		virtual NOWA::EventDataPtr copy() const
 		{
 			return NOWA::EventDataPtr(new EventDataStopSimulation(this->feedbackMessage));
@@ -928,16 +746,6 @@ namespace NOWA
 		virtual const NOWA::EventType getEventType(void) const
 		{
 			return 0xe86c7c52;
-		}
-
-		virtual void serialize(std::ostrstream& out) const
-		{
-			out << this->active << " ";
-		}
-
-		virtual void deserialize(std::istrstream& in)
-		{
-			in >> this->active;
 		}
 
 		virtual NOWA::EventDataPtr copy() const
@@ -980,16 +788,6 @@ namespace NOWA
 		virtual const NOWA::EventType getEventType(void) const
 		{
 			return 0xe86c7c53;
-		}
-
-		virtual void serialize(std::ostrstream& out) const
-		{
-			
-		}
-
-		virtual void deserialize(std::istrstream& in)
-		{
-			
 		}
 
 		virtual NOWA::EventDataPtr copy() const
@@ -1043,16 +841,6 @@ namespace NOWA
 			return 0xe86c7a53;
 		}
 
-		virtual void serialize(std::ostrstream& out) const
-		{
-
-		}
-
-		virtual void deserialize(std::istrstream& in)
-		{
-
-		}
-
 		virtual NOWA::EventDataPtr copy() const
 		{
 			return NOWA::EventDataPtr(new EventDataSceneParsed());
@@ -1085,16 +873,6 @@ namespace NOWA
 		virtual const NOWA::EventType getEventType(void) const
 		{
 			return 0xe86c7c54;
-		}
-
-		virtual void serialize(std::ostrstream& out) const
-		{
-			
-		}
-
-		virtual void deserialize(std::istrstream& in)
-		{
-			
 		}
 
 		virtual NOWA::EventDataPtr copy() const
@@ -1144,19 +922,9 @@ namespace NOWA
 			return 0xe86c7c55;
 		}
 
-		virtual void deserialize(std::istrstream& in)
-		{
-			
-		}
-
 		virtual EventDataPtr copy(void) const
 		{
 			return EventDataPtr(new EventDataBoundsUpdated(this->mostLeftNearPosition, this->mostRightFarPosition));
-		}
-
-		virtual void serialize(std::ostrstream& out) const
-		{
-			
 		}
 
 		virtual const char* getName(void) const
@@ -1200,19 +968,9 @@ namespace NOWA
 			return 0xe867cc46;
 		}
 
-		virtual void deserialize(std::istrstream& in)
-		{
-			in >> this->gameObjectId;
-		}
-
 		virtual EventDataPtr copy(void) const
 		{
 			return EventDataPtr(new EventDataDeleteWorkspaceComponent(this->gameObjectId));
-		}
-
-		virtual void serialize(std::ostrstream& out) const
-		{
-			out << this->gameObjectId << " ";
 		}
 
 		virtual const char* getName(void) const
@@ -1257,21 +1015,9 @@ namespace NOWA
 			return 0xe867cc47;
 		}
 
-		virtual void deserialize(std::istrstream& in)
-		{
-			in >> this->gameObjectId;
-			in >> this->isInRagDollingState;
-		}
-
 		virtual EventDataPtr copy(void) const
 		{
 			return EventDataPtr(new EventDataGameObjectIsInRagDollingState(this->gameObjectId, this->isInRagDollingState));
-		}
-
-		virtual void serialize(std::ostrstream& out) const
-		{
-			out << this->gameObjectId << " ";
-			out << this->isInRagDollingState << " ";
 		}
 
 		virtual const char* getName(void) const
@@ -1322,20 +1068,9 @@ namespace NOWA
 			return 0xe867cc48;
 		}
 
-		virtual void deserialize(std::istrstream& in)
-		{
-			in >> this->gameObjectId;
-		}
-
 		virtual EventDataPtr copy(void) const
 		{
 			return EventDataPtr(new EventDataAnimationChanged(this->gameObjectId, this->newAnimationId));
-		}
-
-		virtual void serialize(std::ostrstream& out) const
-		{
-			out << this->gameObjectId << " ";
-			out << this->newAnimationId << " ";
 		}
 
 		virtual const char* getName(void) const
@@ -1378,19 +1113,9 @@ namespace NOWA
 			return 0xe867cc49;
 		}
 
-		virtual void deserialize(std::istrstream& in)
-		{
-			
-		}
-
 		virtual EventDataPtr copy(void) const
 		{
 			return EventDataPtr(new EventDataWindowChanged());
-		}
-
-		virtual void serialize(std::ostrstream& out) const
-		{
-		
 		}
 
 		virtual const char* getName(void) const
@@ -1426,19 +1151,9 @@ namespace NOWA
 			return 0xe867cc50;
 		}
 
-		virtual void deserialize(std::istrstream& in)
-		{
-			in >> this->encoded;
-		}
-
 		virtual EventDataPtr copy(void) const
 		{
 			return EventDataPtr(new EventDataProjectEncoded(this->encoded));
-		}
-
-		virtual void serialize(std::ostrstream& out) const
-		{
-			out << this->encoded << " ";
 		}
 
 		virtual const char* getName(void) const
@@ -1484,25 +1199,9 @@ namespace NOWA
 			return 0xe867cc51;
 		}
 
-		virtual void deserialize(std::istrstream& in)
-		{
-			in >> this->scriptName;
-			in >> this->scriptFilePathName;
-			in >> this->line;
-			in >> this->errorMessage;
-		}
-
 		virtual EventDataPtr copy(void) const
 		{
 			return EventDataPtr(new EventDataPrintLuaError(this->scriptName, this->scriptFilePathName, this->line, this->errorMessage));
-		}
-
-		virtual void serialize(std::ostrstream& out) const
-		{
-			out << this->scriptName << " ";
-			out << this->scriptFilePathName << " ";
-			out << this->line << " ";
-			out << this->errorMessage << " ";
 		}
 
 		virtual const char* getName(void) const
@@ -1559,16 +1258,6 @@ namespace NOWA
 			return 0xe867cd52;
 		}
 
-		virtual void serialize(std::ostrstream& out) const
-		{
-
-		}
-
-		virtual void deserialize(std::istrstream& in)
-		{
-
-		}
-
 		virtual NOWA::EventDataPtr copy() const
 		{
 			return NOWA::EventDataPtr(new EventDataTranslateFinished(this->gameObjectId, this->newPosition));
@@ -1614,16 +1303,6 @@ namespace NOWA
 		virtual const NOWA::EventType getEventType(void) const
 		{
 			return 0xe867cd53;
-		}
-
-		virtual void serialize(std::ostrstream& out) const
-		{
-
-		}
-
-		virtual void deserialize(std::istrstream& in)
-		{
-
 		}
 
 		virtual NOWA::EventDataPtr copy() const
@@ -1673,16 +1352,6 @@ namespace NOWA
 			return 0xe867cd54;
 		}
 
-		virtual void serialize(std::ostrstream& out) const
-		{
-
-		}
-
-		virtual void deserialize(std::istrstream& in)
-		{
-
-		}
-
 		virtual NOWA::EventDataPtr copy() const
 		{
 			return NOWA::EventDataPtr(new EventDataDefaultDirectionChanged(this->gameObjectId, this->defaultDirection));
@@ -1729,16 +1398,6 @@ namespace NOWA
 			return 0xeeab0002;
 		}
 
-		virtual void serialize(std::ostrstream& out) const
-		{
-
-		}
-
-		virtual void deserialize(std::istrstream& in)
-		{
-
-		}
-
 		virtual NOWA::EventDataPtr copy() const
 		{
 			return NOWA::EventDataPtr(new EventDataRefreshGui());
@@ -1777,21 +1436,10 @@ namespace NOWA
 			return 0xe86c7d46;
 		}
 
-		virtual void deserialize(std::istrstream& in)
-		{
-			in >> Ogre::StringConverter::toString(this->jointId) >> Ogre::String(" ");
-		}
-
 		virtual EventDataPtr copy(void) const
 		{
 			return EventDataPtr(new EventDataDeleteJoint(this->jointId));
 		}
-
-		virtual void serialize(std::ostrstream& out) const
-		{
-			out << Ogre::StringConverter::toString(this->jointId) << " ";
-		}
-
 
 		virtual const char* getName(void) const
 		{
@@ -1834,21 +1482,10 @@ namespace NOWA
 			return 0xe86c7d47;
 		}
 
-		virtual void deserialize(std::istrstream& in)
-		{
-		
-		}
-
 		virtual EventDataPtr copy(void) const
 		{
 			return EventDataPtr(new EventDataDeleteBody(this->body));
 		}
-
-		virtual void serialize(std::ostrstream& out) const
-		{
-			
-		}
-
 
 		virtual const char* getName(void) const
 		{
@@ -1891,21 +1528,10 @@ namespace NOWA
 			return 0xe86c7d48;
 		}
 
-		virtual void deserialize(std::istrstream& in)
-		{
-			in >> Ogre::StringConverter::toString(this->id);
-		}
-
 		virtual EventDataPtr copy(void) const
 		{
 			return EventDataPtr(new EventDataLuaScriptConnected(this->id));
 		}
-
-		virtual void serialize(std::ostrstream& out) const
-		{
-			out << Ogre::StringConverter::toString(this->id) << " ";
-		}
-
 
 		virtual const char* getName(void) const
 		{
@@ -1948,19 +1574,9 @@ namespace NOWA
 			return 0xe80c7d48;
 		}
 
-		virtual void deserialize(std::istrstream& in)
-		{
-			
-		}
-
 		virtual EventDataPtr copy(void) const
 		{
 			return EventDataPtr(new EventDataLuaScriptModfied(this->id, this->luaScriptName));
-		}
-
-		virtual void serialize(std::ostrstream& out) const
-		{
-			
 		}
 
 		virtual const char* getName(void) const
@@ -2009,21 +1625,10 @@ namespace NOWA
 			return 0xe86c7d49;
 		}
 
-		virtual void deserialize(std::istrstream& in)
-		{
-			in >> Ogre::StringConverter::toString(this->isActive);
-		}
-
 		virtual EventDataPtr copy(void) const
 		{
 			return EventDataPtr(new EventDataCountdownActive(this->isActive));
 		}
-
-		virtual void serialize(std::ostrstream& out) const
-		{
-			out << Ogre::StringConverter::toString(this->isActive) << " ";
-		}
-
 
 		virtual const char* getName(void) const
 		{
@@ -2068,21 +1673,10 @@ namespace NOWA
 			return 0xe8329A01;
 		}
 
-		virtual void deserialize(std::istrstream& in)
-		{
-			
-		}
-
 		virtual EventDataPtr copy(void) const
 		{
 			return EventDataPtr(new EventDataGeometryChanged(this->id, this->heightMapChanged, this->blendMapChanged));
 		}
-
-		virtual void serialize(std::ostrstream& out) const
-		{
-			
-		}
-
 
 		virtual const char* getName(void) const
 		{
@@ -2137,21 +1731,10 @@ namespace NOWA
 			return 0xe8329A02;
 		}
 
-		virtual void deserialize(std::istrstream& in)
-		{
-
-		}
-
 		virtual EventDataPtr copy(void) const
 		{
 			return EventDataPtr(new EventDataTerraModifyEnd(this->oldHeightData, this->newHeightData, this->terraCompId));
 		}
-
-		virtual void serialize(std::ostrstream& out) const
-		{
-
-		}
-
 
 		virtual const char* getName(void) const
 		{
@@ -2206,21 +1789,10 @@ namespace NOWA
 			return 0xe8329A03;
 		}
 
-		virtual void deserialize(std::istrstream& in)
-		{
-
-		}
-
 		virtual EventDataPtr copy(void) const
 		{
 			return EventDataPtr(new EventDataTerraPaintEnd(this->oldDetailBlendData, this->newDetailBlendData, this->terraCompId));
 		}
-
-		virtual void serialize(std::ostrstream& out) const
-		{
-
-		}
-
 
 		virtual const char* getName(void) const
 		{
@@ -2276,21 +1848,10 @@ namespace NOWA
 			return 0xe8329A05;
 		}
 
-		virtual void deserialize(std::istrstream& in)
-		{
-			in >> Ogre::StringConverter::toString(this->gameObjectId) >> Ogre::StringConverter::toString(this->gameObjectComponentIndex);
-		}
-
 		virtual EventDataPtr copy(void) const
 		{
 			return EventDataPtr(new EventDataMyGUIWidgetSelected(this->gameObjectId, this->gameObjectComponentIndex));
 		}
-
-		virtual void serialize(std::ostrstream& out) const
-		{
-			out << Ogre::StringConverter::toString(this->gameObjectId) << " " << Ogre::StringConverter::toString(this->gameObjectComponentIndex);
-		}
-
 
 		virtual const char* getName(void) const
 		{
@@ -2332,20 +1893,10 @@ namespace NOWA
 			return 0xe8329A06;
 		}
 
-		virtual void deserialize(std::istrstream& in)
-		{
-
-		}
-
 		virtual EventDataPtr copy(void) const
 		{
 			return EventDataPtr(new EventDataResourceCreated());
 		}
-
-		virtual void serialize(std::ostrstream& out) const
-		{
-		}
-
 
 		virtual const char* getName(void) const
 		{
@@ -2374,16 +1925,6 @@ namespace NOWA
 		virtual const NOWA::EventType getEventType(void) const
 		{
 			return 0xe8329A07;
-		}
-
-		virtual void serialize(std::ostrstream& out) const
-		{
-			out << Ogre::StringConverter::toString(this->id) << " " << Ogre::StringConverter::toString(this->isGlobal);
-		}
-
-		virtual void deserialize(std::istrstream& in)
-		{
-			in >> Ogre::StringConverter::toString(this->id) >> Ogre::StringConverter::toString(this->isGlobal);
 		}
 
 		virtual NOWA::EventDataPtr copy() const
@@ -2432,16 +1973,6 @@ namespace NOWA
 			return 0xe8329A08;
 		}
 
-		virtual void serialize(std::ostrstream& out) const
-		{
-			out << Ogre::StringConverter::toString(this->id);
-		}
-
-		virtual void deserialize(std::istrstream& in)
-		{
-			in >> Ogre::StringConverter::toString(this->id);
-		}
-
 		virtual NOWA::EventDataPtr copy() const
 		{
 			return NOWA::EventDataPtr(new EventDataGroupLoaded(this->id));
@@ -2482,16 +2013,6 @@ namespace NOWA
 		virtual const NOWA::EventType getEventType(void) const
 		{
 			return 0xe8329A09;
-		}
-
-		virtual void serialize(std::ostrstream& out) const
-		{
-
-		}
-
-		virtual void deserialize(std::istrstream& in)
-		{
-
 		}
 
 		virtual NOWA::EventDataPtr copy() const
@@ -2547,16 +2068,6 @@ namespace NOWA
 			return 0xe8329A10;
 		}
 
-		virtual void serialize(std::ostrstream& out) const
-		{
-			out << Ogre::StringConverter::toString(this->id) << " " << Ogre::StringConverter::toString(this->activated);
-		}
-
-		virtual void deserialize(std::istrstream& in)
-		{
-			in >> Ogre::StringConverter::toString(this->id) >> Ogre::StringConverter::toString(this->activated);
-		}
-
 		virtual NOWA::EventDataPtr copy() const
 		{
 			return NOWA::EventDataPtr(new EventDataHdrActivated(this->id, this->activated));
@@ -2603,16 +2114,6 @@ namespace NOWA
 		virtual const NOWA::EventType getEventType(void) const
 		{
 			return 0xe8329A11;
-		}
-
-		virtual void serialize(std::ostrstream& out) const
-		{
-            out << Ogre::StringConverter::toString(this->id) << " " << Ogre::StringConverter::toString(this->selected) << " " << Ogre::StringConverter::toString(this->partOfMultiselection);
-		}
-
-		virtual void deserialize(std::istrstream& in)
-		{
-            in >> Ogre::StringConverter::toString(this->id) >> Ogre::StringConverter::toString(this->selected) >> Ogre::StringConverter::toString(this->partOfMultiselection);
 		}
 
 		virtual NOWA::EventDataPtr copy() const
@@ -2673,19 +2174,9 @@ namespace NOWA
 			return 0xe8329A12;
 		}
 
-		virtual void deserialize(std::istrstream& in)
-		{
-
-		}
-
 		virtual EventDataPtr copy(void) const
 		{
 			return EventDataPtr(new EventDataRoadModifyEnd(this->oldRoadData, this->newRoadData, this->gameObjectId));
-		}
-
-		virtual void serialize(std::ostrstream& out) const
-		{
-
 		}
 
 		virtual const char* getName(void) const
@@ -2741,19 +2232,9 @@ namespace NOWA
 			return 0xe8329A13;
 		}
 
-		virtual void deserialize(std::istrstream& in)
-		{
-
-		}
-
 		virtual EventDataPtr copy(void) const
 		{
 			return EventDataPtr(new EventDataWallModifyEnd(this->oldWallData, this->newWallData, this->gameObjectId));
-		}
-
-		virtual void serialize(std::ostrstream& out) const
-		{
-
 		}
 
 		virtual const char* getName(void) const
@@ -2875,20 +2356,17 @@ namespace NOWA
         {
             return 0x4D455348;
         }
+
         virtual const EventType getEventType() const override
         {
             return 0x4D455348;
         }
+
         virtual EventDataPtr copy() const override
         {
             return EventDataPtr(new EventDataMeshEditModifyEnd(oldData, newData, gameObjectId));
         }
-        virtual void deserialize(std::istrstream&) override
-        {
-        }
-        virtual void serialize(std::ostrstream&) const override
-        {
-        }
+
         virtual const char* getName() const override
         {
             return "EventDataMeshEditModifyEnd";
@@ -2898,10 +2376,12 @@ namespace NOWA
         {
             return oldData;
         }
+
         const std::vector<unsigned char>& getNewData() const
         {
             return newData;
         }
+
         unsigned long getGameObjectId() const
         {
             return gameObjectId;
@@ -2933,14 +2413,6 @@ namespace NOWA
             return 0xeeab0008;
         }
 
-        virtual void serialize(std::ostrstream& out) const
-        {
-        }
-
-        virtual void deserialize(std::istrstream& in)
-        {
-        }
-
         virtual NOWA::EventDataPtr copy() const
         {
             return NOWA::EventDataPtr(new EventDataRefreshMeshResources());
@@ -2950,6 +2422,42 @@ namespace NOWA
         {
             return "EventDataRefreshMeshResources";
         }
+    };
+
+	class EventDataNavMeshBusy : public NOWA::BaseEventData
+    {
+    public:
+        explicit EventDataNavMeshBusy(bool busy) : busy(busy)
+        {
+        }
+
+        static NOWA::EventType getStaticEventType(void)
+        {
+            return 0xc3d4e5f6;
+        }
+
+        virtual const NOWA::EventType getEventType(void) const override
+        {
+            return 0xc3d4e5f6;
+        }
+
+        virtual NOWA::EventDataPtr copy() const override
+        {
+            return NOWA::EventDataPtr(new EventDataNavMeshBusy(this->busy));
+        }
+
+        virtual const char* getName(void) const override
+        {
+            return "EventDataNavMeshBusy";
+        }
+
+        bool getIsBusy(void) const
+        {
+            return this->busy;
+        }
+
+    private:
+        bool busy;
     };
 
 }; // namespace end

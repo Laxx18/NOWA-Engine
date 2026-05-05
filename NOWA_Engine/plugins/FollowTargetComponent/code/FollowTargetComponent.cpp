@@ -260,17 +260,17 @@ namespace NOWA
 	{
 		// TODO: What if the target game object is destroyed?
 
-		auto& gameObjectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentByIndex(index));
+		auto gameObjectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentByIndex(index));
 		if (nullptr != gameObjectCompPtr)
 		{
-			auto& physicsActiveKinematicCompPtr = boost::dynamic_pointer_cast<PhysicsActiveKinematicComponent>(gameObjectCompPtr);
+			auto physicsActiveKinematicCompPtr = boost::dynamic_pointer_cast<PhysicsActiveKinematicComponent>(gameObjectCompPtr);
 			if (nullptr != physicsActiveKinematicCompPtr)
 			{
 				this->physicsActiveKinematicComponent = nullptr;
 			}
 			else
 			{
-				auto& physicsActiveCompPtr = boost::dynamic_pointer_cast<PhysicsActiveComponent>(gameObjectCompPtr);
+				auto physicsActiveCompPtr = boost::dynamic_pointer_cast<PhysicsActiveComponent>(gameObjectCompPtr);
 				if (nullptr != physicsActiveCompPtr)
 				{
 					this->physicsActiveComponent = nullptr;

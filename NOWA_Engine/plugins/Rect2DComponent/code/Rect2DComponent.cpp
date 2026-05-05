@@ -111,7 +111,7 @@ namespace NOWA
 				this->rectangle2D->setStatic(!this->gameObjectPtr->isDynamic());
 
 				bool datablockFound = false;
-				auto& datablockUnlitComponent = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<DatablockUnlitComponent>());
+				auto datablockUnlitComponent = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<DatablockUnlitComponent>());
 				if (nullptr != datablockUnlitComponent)
 				{
 					Ogre::HlmsUnlitDatablock* datablock = dynamic_cast<Ogre::HlmsUnlitDatablock*>(datablockUnlitComponent->getDataBlock());
@@ -125,7 +125,7 @@ namespace NOWA
 				else
 				{
 					// Pbs not visible, not working???
-					auto& datablockPbsComponent = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<DatablockPbsComponent>());
+					auto datablockPbsComponent = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<DatablockPbsComponent>());
 					if (nullptr != datablockPbsComponent)
 					{
 						Ogre::HlmsPbsDatablock* datablock = dynamic_cast<Ogre::HlmsPbsDatablock*>(datablockPbsComponent->getDataBlock());
@@ -335,7 +335,7 @@ namespace NOWA
 
 	bool Rect2DComponent::canStaticAddComponent(GameObject* gameObject)
 	{
-		auto& datablockUnlitComponent = NOWA::makeStrongPtr(gameObject->getComponent<DatablockUnlitComponent>());
+		auto datablockUnlitComponent = NOWA::makeStrongPtr(gameObject->getComponent<DatablockUnlitComponent>());
 		if (nullptr != datablockUnlitComponent)
 		{
 			Ogre::HlmsUnlitDatablock* datablock = dynamic_cast<Ogre::HlmsUnlitDatablock*>(datablockUnlitComponent->getDataBlock());

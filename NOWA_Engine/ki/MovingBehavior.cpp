@@ -1348,7 +1348,7 @@ namespace NOWA
 		//	Ogre::Vector3 localPosOfClosestObstacle;
 
 		//	// Iterate through all game objects checking for range
-		//	for (auto& it = this->obstacles.cbegin(); it != this->obstacles.cend(); ++it)
+		//	for (auto it = this->obstacles.cbegin(); it != this->obstacles.cend(); ++it)
 		//	{
 		//		GameObject* obstacle = (*it).get();
 
@@ -1520,7 +1520,7 @@ namespace NOWA
 			Ogre::Vector3 separationForce = Ogre::Vector3::ZERO;
 			unsigned int neighborCount = 0;
 
-			for (auto& it = this->flockingAgents.cbegin(); it != this->flockingAgents.cend(); ++it)
+			for (auto it = this->flockingAgents.cbegin(); it != this->flockingAgents.cend(); ++it)
 			{
 				if (agent == this->agent)
 				{
@@ -1655,7 +1655,7 @@ namespace NOWA
 			const Ogre::Real separationStrength = 2.5f;
 			const Ogre::Real maxSeparationForce = 3.0f;
 
-			for (auto& it = this->flockingAgents.cbegin(); it != this->flockingAgents.cend(); ++it)
+			for (auto it = this->flockingAgents.cbegin(); it != this->flockingAgents.cend(); ++it)
 			{
 				if (*it == this->agent) continue; // Skip the current agent
 
@@ -3220,7 +3220,7 @@ namespace NOWA
 		//void MovingBehavior::tagNeighbors(Ogre::Real radius)
 		//{
 		//	// Iterate through all game objects checking for range
-		//	for (auto& it = this->obstacles.cbegin(); it != this->obstacles.cend(); ++it)
+		//	for (auto it = this->obstacles.cbegin(); it != this->obstacles.cend(); ++it)
 		//	{
 		//		GameObjectPtr gameObjectPtr = *it;
 		//		// First clear any current tag

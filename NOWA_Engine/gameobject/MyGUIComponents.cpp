@@ -643,10 +643,10 @@ namespace NOWA
 				// Refresh positions and sizes
 				for (unsigned int i = 0; i < this->gameObjectPtr->getComponents()->size(); i++)
 				{
-					auto& gameObjectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentByIndex(i));
+					auto gameObjectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentByIndex(i));
 					if (nullptr != gameObjectCompPtr)
 					{
-						auto& myGuiCompPtr = boost::dynamic_pointer_cast<MyGUIComponent>(gameObjectCompPtr);
+						auto myGuiCompPtr = boost::dynamic_pointer_cast<MyGUIComponent>(gameObjectCompPtr);
 						if (nullptr != myGuiCompPtr && true == myGuiCompPtr->hasParent && myGuiCompPtr->getId() != this->id->getULong())
 						{
 							if (nullptr != this->widget && nullptr != myGuiCompPtr->getWidget())
@@ -855,10 +855,10 @@ namespace NOWA
 			// If there are widgets which do have this component as parent, remove them from parent
 			/*for (unsigned int i = 0; i < this->gameObjectPtr->getComponents()->size(); i++)
 			{
-				auto& gameObjectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentByIndex(i));
+				auto gameObjectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentByIndex(i));
 				if (nullptr != gameObjectCompPtr)
 				{
-					auto& myGuiCompPtr = boost::dynamic_pointer_cast<MyGUIComponent>(gameObjectCompPtr);
+					auto myGuiCompPtr = boost::dynamic_pointer_cast<MyGUIComponent>(gameObjectCompPtr);
 					if (nullptr != myGuiCompPtr && this != gameObjectCompPtr.get() && this->parentId->getULong() == myGuiCompPtr->getId())
 					{
 						myGuiCompPtr->getWidget()->detachFromWidget();
@@ -931,10 +931,10 @@ namespace NOWA
 				{
 					for (unsigned int i = 0; i < this->gameObjectPtr->getComponents()->size(); i++)
 					{
-						auto& gameObjectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentByIndex(i));
+						auto gameObjectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentByIndex(i));
 						if (nullptr != gameObjectCompPtr)
 						{
-							auto& myGuiCompPtr = boost::dynamic_pointer_cast<MyGUIComponent>(gameObjectCompPtr);
+							auto myGuiCompPtr = boost::dynamic_pointer_cast<MyGUIComponent>(gameObjectCompPtr);
 							if (nullptr != myGuiCompPtr && myGuiCompPtr->getId() != this->id->getULong() && this->parentId->getULong() == myGuiCompPtr->getId())
 							{
 								if (nullptr != this->widget && nullptr != myGuiCompPtr->getWidget())
@@ -5091,7 +5091,7 @@ namespace NOWA
 		GameObjectPtr cameraGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->cameraId->getULong());
 		if (nullptr != cameraGameObjectPtr)
 		{
-			auto& cameraCompPtr = NOWA::makeStrongPtr(cameraGameObjectPtr->getComponent<CameraComponent>());
+			auto cameraCompPtr = NOWA::makeStrongPtr(cameraGameObjectPtr->getComponent<CameraComponent>());
 			if (nullptr != cameraCompPtr)
 			{
 				this->camera = cameraCompPtr->getCamera();
@@ -5100,10 +5100,10 @@ namespace NOWA
 
 		for (unsigned int i = 0; i < this->gameObjectPtr->getComponents()->size(); i++)
 		{
-			auto& gameObjectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentByIndex(i));
+			auto gameObjectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentByIndex(i));
 			if (nullptr != gameObjectCompPtr)
 			{
-				auto& myGuiCompPtr = boost::dynamic_pointer_cast<MyGUIComponent>(gameObjectCompPtr);
+				auto myGuiCompPtr = boost::dynamic_pointer_cast<MyGUIComponent>(gameObjectCompPtr);
 				if (nullptr != myGuiCompPtr && myGuiCompPtr->getId() == this->widgetId->getULong())
 				{
 					this->widget = myGuiCompPtr->getWidget();
@@ -5159,10 +5159,10 @@ namespace NOWA
 
 		for (unsigned int i = 0; i < this->gameObjectPtr->getComponents()->size(); i++)
 		{
-			auto& gameObjectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentByIndex(i));
+			auto gameObjectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentByIndex(i));
 			if (nullptr != gameObjectCompPtr)
 			{
-				auto& myGuiCompPtr = boost::dynamic_pointer_cast<MyGUIComponent>(gameObjectCompPtr);
+				auto myGuiCompPtr = boost::dynamic_pointer_cast<MyGUIComponent>(gameObjectCompPtr);
 				if (nullptr != myGuiCompPtr && (myGuiCompPtr->getId() == this->widgetId->getULong() || myGuiCompPtr->getPriorId() == this->widgetId->getULong()))
 				{
 					// blur the trace --> No do not blur the trace, else other game objects with joints, that are referring to this id, would not able to set this joint as predecessor!

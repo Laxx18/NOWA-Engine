@@ -60,7 +60,7 @@ namespace
 		// Check if datablock already exists
 		Ogre::HlmsDatablock* existingDatablock = hlmsUnlit->getDatablock(datablockName);
 
-		if (false == existingDatablock)
+		if (nullptr == existingDatablock)
 		{
 			Ogre::HlmsUnlitDatablock* datablock = static_cast<Ogre::HlmsUnlitDatablock*>(
 				hlmsUnlit->createDatablock(datablockName, datablockName, Ogre::HlmsMacroblock(macroblock), Ogre::HlmsBlendblock(blendblock), Ogre::HlmsParamVec()));
@@ -760,6 +760,7 @@ int OgreRecast::getTarget(int pathSlot)
 
 void OgreRecast::drawNavMesh(bool draw)
 {
+	m_debugDrawer->resetForNewFrame();
 	m_debugDrawer->draw(draw);
 	if (m_pmesh)
 	{
@@ -801,25 +802,19 @@ void OgreRecast::CreateRecastPolyMesh(const Ogre::String name, const unsigned sh
 {
 	if (false == draw)
 	{
-		if (nullptr != m_pRecastMOWalk)
+		auto safeDestroy = [&](Ogre::ManualObject*& mo)
 		{
-			m_pRecastMOWalk->clear();
-			m_pRecastMONeighbour->clear();
-			m_pRecastMOBoundary->clear();
-
-			m_pRecastSN->detachObject(m_pRecastMOWalk);
-			m_pRecastSN->detachObject(m_pRecastMONeighbour);
-			m_pRecastSN->detachObject(m_pRecastMOBoundary);
-
-			m_pSceneMgr->destroyManualObject(m_pRecastMOWalk);
-			m_pSceneMgr->destroyManualObject(m_pRecastMONeighbour);
-			m_pSceneMgr->destroyManualObject(m_pRecastMOBoundary);
-
-			m_pRecastMOWalk = nullptr;
-			m_pRecastMONeighbour = nullptr;
-			m_pRecastMOBoundary = nullptr;
-		}
-
+			if (nullptr != mo)
+			{
+				mo->clear();
+				m_pRecastSN->detachObject(mo);
+				m_pSceneMgr->destroyManualObject(mo);
+				mo = nullptr;
+			}
+		};
+		safeDestroy(m_pRecastMOWalk);
+		safeDestroy(m_pRecastMONeighbour);
+		safeDestroy(m_pRecastMOBoundary);
 		return;
 	}
 	
@@ -925,8 +920,6 @@ void OgreRecast::CreateRecastPolyMesh(const Ogre::String name, const unsigned sh
 					m_pRecastMONeighbour->colour(m_navmeshNeighbourEdgeCol);
 					m_pRecastMONeighbour->index(nIndex++);
 				}
-				
-				nIndex += 2;
 			}
 		}
 
@@ -966,8 +959,6 @@ void OgreRecast::CreateRecastPolyMesh(const Ogre::String name, const unsigned sh
 					m_pRecastMOBoundary->colour(m_navmeshOuterEdgeCol);
 					m_pRecastMOBoundary->index(nIndex++);
 				}
-				
-				nIndex += 2;
 			}
 		}
 
@@ -1084,7 +1075,7 @@ void OgreRecast::update()
 
 		// Batch all lines together in one single manualObject (since we cannot use staticGeometry for lines)
 
-		auto& itor = m_pSceneMgr->getMovableObjectIterator("ManualObject");
+		auto itor = m_pSceneMgr->getMovableObjectIterator("ManualObject");
 		while (itor.hasMoreElements())
 		{
 			// is that correct??
@@ -1403,7 +1394,7 @@ void OgreRecast::removeDrawnNavmesh(unsigned int tileRef)
 	Ogre::String entName = "";
 
 	Ogre::MovableObject* object = nullptr;
-	auto& itor = m_pRecastSN->getAttachedObjectIterator();
+	auto itor = m_pRecastSN->getAttachedObjectIterator();
 	while (itor.hasMoreElements())
 	{
 		object = itor.peekNext();

@@ -143,7 +143,7 @@ namespace NOWA
 		 * @param[in]	places			The the places behind the dot for precision
 		 * @return		roundedVector	The rounded vector
 		 */
-		Ogre::Vector2 round(Ogre::Vector2 vec, unsigned int places);
+        Ogre::Vector2 round(const Ogre::Vector2& vec, unsigned int places);
 
 		/**
 		 * @brief		Rounds a vector according to the number of places.
@@ -151,7 +151,7 @@ namespace NOWA
 		 * @param[in]	places			The the places behind the dot for precision
 		 * @return		roundedVector	The rounded vector
 		 */
-		Ogre::Vector3 round(Ogre::Vector3 vec, unsigned int places);
+        Ogre::Vector3 round(const Ogre::Vector3& vec, unsigned int places);
 
 		/**
 		 * @brief		Rounds a vector according to the number of places.
@@ -159,7 +159,7 @@ namespace NOWA
 		 * @param[in]	places			The the places behind the dot for precision
 		 * @return		roundedVector	The rounded vector
 		 */
-		Ogre::Vector4 MathHelper::round(Ogre::Vector4 vec, unsigned int places);
+		Ogre::Vector4 round(const Ogre::Vector4& vec, unsigned int places);
 
 		/**
 		* @brief		Gets the difference pitch of two quaternions
@@ -167,7 +167,7 @@ namespace NOWA
 		* @param[in]	src				The source quaternion
 		* @return		pitchQuaternion	The quaternion that holds the pitch difference
 		*/
-		Ogre::Quaternion diffPitch(Ogre::Quaternion dest, Ogre::Quaternion src);
+        Ogre::Quaternion diffPitch(const Ogre::Quaternion& dest, const Ogre::Quaternion& src);
 
 		/**
 		* @brief		Gets the difference yaw of two quaternions
@@ -175,7 +175,7 @@ namespace NOWA
 		* @param[in]	src				The source quaternion
 		* @return		yawQuaternion	The quaternion that holds the yaw difference
 		*/
-		Ogre::Quaternion diffYaw(Ogre::Quaternion dest, Ogre::Quaternion src);
+        Ogre::Quaternion diffYaw(const Ogre::Quaternion& dest, const Ogre::Quaternion& src);
 
 		/**
 		* @brief		Gets the difference roll of two quaternions
@@ -183,7 +183,7 @@ namespace NOWA
 		* @param[in]	src				The source quaternion
 		* @return		rollQuaternion	The quaternion that holds the roll difference
 		*/
-		Ogre::Quaternion diffRoll(Ogre::Quaternion dest, Ogre::Quaternion src);
+        Ogre::Quaternion diffRoll(const Ogre::Quaternion& dest, const Ogre::Quaternion& src);
 
 		/**
 		* @brief		Gets the difference of two quaternions
@@ -192,7 +192,7 @@ namespace NOWA
 		* @param[in]	mode			The mode, 1: pitch quaternion, 2: yaw quaternion, 3: roll quaternion will be calculated
 		* @return		rollQuaternion	The quaternion that holds the roll difference
 		*/
-		Ogre::Quaternion diffDegree(Ogre::Quaternion dest, Ogre::Quaternion src, int mode);
+		Ogre::Quaternion diffDegree(const Ogre::Quaternion& dest, const Ogre::Quaternion& src, int mode);
 
 		/**
 		* @brief		Extracts the yaw (heading), pitch and roll out of the quaternion.
@@ -553,6 +553,14 @@ namespace NOWA
 		 * @return		bottomCenter	The bottom center point to get
 		 */
 		Ogre::Vector3 getBottomCenterOfMesh(Ogre::SceneNode* sceneNode, Ogre::MovableObject* movableObject) const;
+
+		/**
+		 * @brief		Gets the placement y offset for the given movable object mesh, so that the object can be placed on the ground with its bottom center point.
+		 * @param[in]	sceneNode	The scene node (for taking scale into account)
+		 * @param[in]	movableObject	The movable object to get the bounding box for calcuation
+		 * @return		yOffset		The y offset to place the object on the ground with its bottom center point
+         */
+		Ogre::Vector3 getPlacementYOffset(Ogre::SceneNode* sceneNode, Ogre::MovableObject* movableObject) const;
 
 		/**
 		* @brief			Gets geometry information about a given mesh from entity

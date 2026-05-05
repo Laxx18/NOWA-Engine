@@ -201,7 +201,7 @@ namespace NOWA
 			item->setName(this->gameObjectPtr->getName() + "mesh");
 
 			// When plane is re-created actualize the data block component so that the plane gets the data block
-			auto& datablockPbsComponent = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<DatablockPbsComponent>());
+			auto datablockPbsComponent = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<DatablockPbsComponent>());
 			if (nullptr != datablockPbsComponent)
 			{
 				Ogre::HlmsPbsDatablock* datablock = datablockPbsComponent->getDataBlock();
@@ -280,7 +280,7 @@ namespace NOWA
 		});
 
 		// Check if a physics artifact component does exist for this game object and recreate the collision shape when the plane has changed
-		auto& physicsArtifactComponent = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsArtifactComponent>());
+		auto physicsArtifactComponent = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsArtifactComponent>());
 		if (nullptr != physicsArtifactComponent)
 		{
 // Attention: what is with joints in post init, is it required to recreate also the joints, if the collision does change for the physics body??????????

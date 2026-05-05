@@ -445,7 +445,7 @@ namespace NOWA
 		Ogre::String errorString;
 
 		// Flooding prevention
-		auto& found = errorMessages.find(functionName);
+		auto found = errorMessages.find(functionName);
 		if (found == errorMessages.cend())
 		{
 			errorMessages.emplace(functionName);

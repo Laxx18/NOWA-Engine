@@ -4,13 +4,22 @@
 OgreRecastDebugDraw::OgreRecastDebugDraw(Ogre::SceneManager* scnMgr)
 	: m_pScnMgr(scnMgr),
 	m_pNode(nullptr),
-	m_pManualObject(nullptr)
+	m_pManualObject(nullptr),
+	m_sectionCount(0)
 {
 	
 }
 
 void OgreRecastDebugDraw::draw(bool enable)
 {
+	if (false == enable)
+	{
+		if (nullptr != m_pNode)
+			m_pNode->setVisible(false);
+
+		return;
+	}
+
 	if (nullptr == m_pNode)
 	{
 		m_pNode = m_pScnMgr->getRootSceneNode()->createChildSceneNode();
@@ -18,11 +27,13 @@ void OgreRecastDebugDraw::draw(bool enable)
 		m_pManualObject->setRenderQueueGroup(10);
 		m_pNode->attachObject(m_pManualObject);
 	}
-	m_pNode->setVisible(enable);
+	m_pNode->setVisible(true);
 }
 
 void OgreRecastDebugDraw::mustRecreate(void)
 {
+	m_sectionCount = 0;
+
 	if (nullptr != m_pNode)
 	{
 		m_pNode->detachObject(m_pManualObject);
@@ -31,6 +42,11 @@ void OgreRecastDebugDraw::mustRecreate(void)
 		m_pScnMgr->getRootSceneNode()->removeAndDestroyChild(m_pNode);
 		m_pNode = nullptr;
 	}
+}
+
+void OgreRecastDebugDraw::resetForNewFrame(void)
+{
+	m_sectionCount = 0;
 }
 
 void OgreRecastDebugDraw::depthMask(bool state)
@@ -44,9 +60,13 @@ void OgreRecastDebugDraw::texture(bool state)
 void OgreRecastDebugDraw::begin(duDebugDrawPrimitives prim, float size)
 {
 	m_crtShape = prim;
-
 	m_lstCrtVertex.clear();
+
+	// First begin() of a new draw sequence — clear all old sections
+	if (0 == m_sectionCount && nullptr != m_pManualObject)
+		m_pManualObject->clear();
 }
+
 
 void OgreRecastDebugDraw::vertex(const float * pos, unsigned int color)
 {
@@ -167,9 +187,11 @@ void OgreRecastDebugDraw::end()
 		break;
 	}
 
-	if (!bSuccessSet)
+	if (false == bSuccessSet)
 	{
-		assert(!"Wrong debug shape");
+		return;
 	}
+
 	m_pManualObject->end();
+	++m_sectionCount;
 }

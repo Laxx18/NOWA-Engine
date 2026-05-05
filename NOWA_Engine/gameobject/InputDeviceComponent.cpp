@@ -226,10 +226,10 @@ namespace NOWA
 		this->isExclusive->setValue(isExclusive);
 
 		// All other components must have the same flag set
-		const auto& gameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromComponent(InputDeviceComponent::getStaticClassName());
-		for (const auto& gameObjectPtr : gameObjects)
+		const auto gameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromComponent(InputDeviceComponent::getStaticClassName());
+        for (const auto& gameObjectPtr : gameObjects)
 		{
-			const auto& otherInputDeviceComponent = NOWA::makeStrongPtr(gameObjectPtr->getComponent<InputDeviceComponent>());
+			const auto otherInputDeviceComponent = NOWA::makeStrongPtr(gameObjectPtr->getComponent<InputDeviceComponent>());
 			if (gameObjectPtr->getId() != this->gameObjectPtr->getId())
 			{
 				Ogre::String name = gameObjectPtr->getName();
@@ -280,14 +280,14 @@ namespace NOWA
 	std::vector<Ogre::String> InputDeviceComponent::getActualizedDeviceList(void)
 	{
 		std::vector<Ogre::String> availableDeviceNames;
-		for (const auto& joystickInputDeviceModule : InputDeviceCore::getSingletonPtr()->getJoystickInputDeviceModules())
+        for (const auto& joystickInputDeviceModule : InputDeviceCore::getSingletonPtr()->getJoystickInputDeviceModules())
 		{
 			if (0 == joystickInputDeviceModule->getOccupiedId())
 			{
 				availableDeviceNames.push_back(joystickInputDeviceModule->getDeviceName());
 			}
 		}
-		for (const auto& keyboardInputDeviceModule : InputDeviceCore::getSingletonPtr()->getKeyboardInputDeviceModules())
+        for (const auto& keyboardInputDeviceModule : InputDeviceCore::getSingletonPtr()->getKeyboardInputDeviceModules())
 		{
 			if (0 == keyboardInputDeviceModule->getOccupiedId() || keyboardInputDeviceModule->getOccupiedId() == this->gameObjectPtr->getId())
 			{
@@ -383,10 +383,10 @@ namespace NOWA
 	{
 		luabind::object obj = luabind::newtable(NOWA::LuaScriptApi::getInstance()->getLua());
 
-		const auto& deviceNames = this->getActualizedDeviceList();
+		const auto deviceNames = this->getActualizedDeviceList();
 
 		unsigned int i = 0;
-		for (auto& it = deviceNames.cbegin(); it != deviceNames.cend(); ++it)
+		for (auto it = deviceNames.cbegin(); it != deviceNames.cend(); ++it)
 		{
 			obj[i++] = *it;
 		}

@@ -1,16 +1,185 @@
-13:27:01: OGRE EXCEPTION(7:InternalErrorException): Cannot find serializer implementation for mesh version [MeshSerializer_v2.1 R2] in MeshSerializer::importMesh at E:\Ogre2.2SDK\OgreMain\src\OgreMeshSerializer.cpp (line 186)
-13:27:01: MeshSerializer writing mesh data to stream ...
-13:27:01: File header written.
-13:27:01: Writing mesh data...
-13:27:01: Writing submesh...
-13:27:01: Submesh exported.
-13:27:01: Exporting LOD level thresholds....
-13:27:01: LOD level thresholds exported.
-13:27:01: Exporting bounds information....
-13:27:01: Bounds information exported.
-13:27:01: Exporting submesh name table...
-13:27:01: Submesh name table exported.
-13:27:01: Exporting hash for caches...
-13:27:01: Exporting hash for caches exported.
-13:27:01: Mesh data exported.
-13:27:01: MeshSerializer export successful.
+21:50:54: Exporting bones..
+21:50:54: Bones exported.
+21:50:54: Exporting animations, count=91
+21:50:54: Exporting animation: T-pose
+21:50:54: Animation exported.
+21:50:54: Exporting animation: attack-01
+21:50:54: Animation exported.
+21:50:54: Exporting animation: attack-02
+21:50:54: Animation exported.
+21:50:54: Exporting animation: attack-03
+21:50:54: Animation exported.
+21:50:54: Exporting animation: attack-04
+21:50:54: Animation exported.
+21:50:54: Exporting animation: attack-05
+21:50:54: Animation exported.
+21:50:54: Exporting animation: attack-06
+21:50:54: Animation exported.
+21:50:54: Exporting animation: attack-07
+21:50:54: Animation exported.
+21:50:54: Exporting animation: attack-08
+21:50:54: Animation exported.
+21:50:54: Exporting animation: bow_shoot
+21:50:54: Animation exported.
+21:50:54: Exporting animation: braking
+21:50:54: Animation exported.
+21:50:54: Exporting animation: carry_sack
+21:50:54: Animation exported.
+21:50:54: Exporting animation: carry_wood
+21:50:54: Animation exported.
+21:50:54: Exporting animation: cast-01
+21:50:54: Animation exported.
+21:50:54: Exporting animation: cast-02
+21:50:54: Animation exported.
+21:50:54: Exporting animation: cast-03
+21:50:54: Animation exported.
+21:50:54: Exporting animation: choping
+21:50:54: Animation exported.
+21:50:54: Exporting animation: cooking
+21:50:54: Animation exported.
+21:50:54: Exporting animation: crying
+21:50:54: Animation exported.
+21:50:54: Exporting animation: death-01
+21:50:54: Animation exported.
+21:50:54: Exporting animation: death-02
+21:50:54: Animation exported.
+21:50:54: Exporting animation: death-03
+21:50:54: Animation exported.
+21:50:54: Exporting animation: death-04
+21:50:54: Animation exported.
+21:50:54: Exporting animation: digging
+21:50:54: Animation exported.
+21:50:54: Exporting animation: dodge-left
+21:50:54: Animation exported.
+21:50:54: Exporting animation: dodge-right
+21:50:54: Animation exported.
+21:50:54: Exporting animation: dragging
+21:50:54: Animation exported.
+21:50:54: Exporting animation: drinking
+21:50:54: Animation exported.
+21:50:54: Exporting animation: drop-obj
+21:50:54: Animation exported.
+21:50:54: Exporting animation: eating
+21:50:54: Animation exported.
+21:50:54: Exporting animation: fixing
+21:50:54: Animation exported.
+21:50:54: Exporting animation: frying
+21:50:54: Animation exported.
+21:50:54: Exporting animation: get-up
+21:50:54: Animation exported.
+21:50:54: Exporting animation: hit-01
+21:50:54: Animation exported.
+21:50:54: Exporting animation: hit-02
+21:50:54: Animation exported.
+21:50:54: Exporting animation: hit-03
+21:50:54: Animation exported.
+21:50:54: Exporting animation: hit-fall
+21:50:54: Animation exported.
+21:50:54: Exporting animation: idle-01
+21:50:54: Animation exported.
+21:50:54: Exporting animation: idle-02
+21:50:54: Animation exported.
+21:50:54: Exporting animation: idle-03
+21:50:54: Animation exported.
+21:50:54: Exporting animation: idle-05
+21:50:54: Animation exported.
+21:50:54: Exporting animation: idle-06
+21:50:54: Animation exported.
+21:50:54: Exporting animation: joke
+21:50:54: Animation exported.
+21:50:54: Exporting animation: joy-01
+21:50:54: Animation exported.
+21:50:54: Exporting animation: joy-02
+21:50:54: Animation exported.
+21:50:54: Exporting animation: joy-03
+21:50:54: Animation exported.
+21:50:54: Exporting animation: jump-01
+21:50:54: Animation exported.
+21:50:54: Exporting animation: jump-0p
+21:50:54: Animation exported.
+21:50:54: Exporting animation: jump-pose
+21:50:54: Animation exported.
+21:50:54: Exporting animation: knock_ground
+21:50:54: Animation exported.
+21:50:54: Exporting animation: knock_shield
+21:50:54: Animation exported.
+21:50:54: Exporting animation: mining
+21:50:54: Animation exported.
+21:50:54: Exporting animation: mowing
+21:50:54: Animation exported.
+21:50:54: Exporting animation: no
+21:50:54: Animation exported.
+21:50:54: Exporting animation: pick-obj
+21:50:54: Animation exported.
+21:50:54: Exporting animation: roll-backward
+21:50:54: Animation exported.
+21:50:54: Exporting animation: roll-forward
+21:50:54: Animation exported.
+21:50:54: Exporting animation: roll-left
+21:50:54: Animation exported.
+21:50:54: Exporting animation: roll-right
+21:50:54: Animation exported.
+21:50:54: Exporting animation: rollout
+21:50:54: Animation exported.
+21:50:54: Exporting animation: run-01
+21:50:54: Animation exported.
+21:50:54: Exporting animation: run-02
+21:50:54: Animation exported.
+21:50:54: Exporting animation: run-03
+21:50:54: Animation exported.
+21:50:54: Exporting animation: run-left-45
+21:50:54: Animation exported.
+21:50:54: Exporting animation: run-left-90
+21:50:54: Animation exported.
+21:50:54: Exporting animation: run-right-45
+21:50:54: Animation exported.
+21:50:54: Exporting animation: run-right-90
+21:50:54: Animation exported.
+21:50:54: Exporting animation: sitting
+21:50:54: Animation exported.
+21:50:54: Exporting animation: sleep
+21:50:54: Animation exported.
+21:50:54: Exporting animation: sowing
+21:50:54: Animation exported.
+21:50:54: Exporting animation: spell-01
+21:50:54: Animation exported.
+21:50:54: Exporting animation: spell-02
+21:50:54: Animation exported.
+21:50:54: Exporting animation: spell-03
+21:50:54: Animation exported.
+21:50:54: Exporting animation: talk-01
+21:50:54: Animation exported.
+21:50:54: Exporting animation: talk-02
+21:50:54: Animation exported.
+21:50:54: Exporting animation: throw
+21:50:54: Animation exported.
+21:50:54: Exporting animation: throw-obj
+21:50:54: Animation exported.
+21:50:54: Exporting animation: throw_bomb
+21:50:54: Animation exported.
+21:50:54: Exporting animation: walk-01
+21:50:54: Animation exported.
+21:50:54: Exporting animation: walk-02
+21:50:54: Animation exported.
+21:50:54: Exporting animation: walk-03
+21:50:54: Animation exported.
+21:50:54: Exporting animation: walk-back
+21:50:54: Animation exported.
+21:50:54: Exporting animation: walk-left-45
+21:50:54: Animation exported.
+21:50:54: Exporting animation: walk-left-90
+21:50:54: Animation exported.
+21:50:54: Exporting animation: walk-right-45
+21:50:54: Animation exported.
+21:50:54: Exporting animation: walk-right-90
+21:50:54: Animation exported.
+21:50:54: Exporting animation: warcry-01
+21:50:54: Animation exported.
+21:50:54: Exporting animation: warcry-02
+21:50:54: Animation exported.
+21:50:54: Exporting animation: woodcut_above
+21:50:54: Animation exported.
+21:50:54: Exporting animation: woodcut_side
+21:50:54: Animation exported.
+21:50:54: Exporting animation: yes
+21:50:54: Animation exported.

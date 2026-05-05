@@ -70,7 +70,7 @@ namespace NOWA
 		this->firstTimeMoveValueSet = true;
 	}
 
-	void FollowCamera2D::setBounds(Ogre::Vector3& minimumBounds, Ogre::Vector3& maximumBounds)
+	void FollowCamera2D::setBounds(const Ogre::Vector3& minimumBounds, const Ogre::Vector3& maximumBounds)
 	{
 		this->minimumBounds = minimumBounds/* + this->borderOffset*/;
 		this->maximumBounds = maximumBounds/* - this->borderOffset*/;

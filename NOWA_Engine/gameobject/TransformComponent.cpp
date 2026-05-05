@@ -241,7 +241,7 @@ namespace NOWA
 		this->scaleRound = 0;
 		this->scaleOppositeDir = 1.0f;
 		
-		auto& physicsCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsComponent>());
+		auto physicsCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsComponent>());
 		if (nullptr != physicsCompPtr)
 		 	this->physicsComponent = physicsCompPtr.get();
 		

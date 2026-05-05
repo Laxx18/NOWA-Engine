@@ -91,7 +91,7 @@ namespace NOWA
 
 		if (this->sourceGameObjectId != 0)
 		{
-			auto& sourceGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->sourceGameObjectId->getULong());
+			auto sourceGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->sourceGameObjectId->getULong());
 			
 			if (nullptr != sourceGameObjectPtr)
 			{
@@ -127,7 +127,7 @@ namespace NOWA
 	{
 		// Nothing to clone?
 		/*// Search for the prior id of the cloned game object and set the new id and set the new id, if not found set better 0, else the game objects may be corrupt!
-		auto& sourceGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getClonedGameObjectFromPriorId(this->sourceGameObjectId->getULong());
+		auto sourceGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getClonedGameObjectFromPriorId(this->sourceGameObjectId->getULong());
 		if (nullptr != gameObjectPtr)
 		{
 			this->sourceGameObject = sourceGameObjectPtr.get();

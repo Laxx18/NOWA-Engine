@@ -809,7 +809,7 @@ namespace NOWA
 
 	//	// https://sourceforge.net/p/luabind/mailman/message/6187131/
 	//	// Checks if the correct buttons are pressed, order is not relevant
-	//	const auto& pressedButtons = NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getPressedButtons();
+	//	const auto pressedButtons = NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getPressedButtons();
 	//	for (size_t i = 0; i < pressedButtons.size(); i++)
 	//	{
 	//		for (luabind::iterator it(buttons), end; it != end; ++it)
@@ -838,7 +838,7 @@ namespace NOWA
 
 	//	// https://sourceforge.net/p/luabind/mailman/message/6187131/
 	//	// Checks if the correct buttons are pressed, order is not relevant
-	//	const auto& pressedButtons = NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getPressedButtons();
+	//	const auto pressedButtons = NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getPressedButtons();
 	//	for (size_t i = 0; i < pressedButtons.size(); i++)
 	//	{
 	//		for (luabind::iterator it(buttons), end; it != end; ++it)
@@ -868,7 +868,7 @@ namespace NOWA
 
 		// https://sourceforge.net/p/luabind/mailman/message/6187131/
 		// Checks if the correct buttons are pressed, order is not relevant
-		const auto& pressedButtons = NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getPressedButtons();
+		const auto pressedButtons = NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getPressedButtons();
 		for (size_t i = 0; i < pressedButtons.size(); i++)
 		{
 			if (pressedButtons[i] == button)
@@ -888,7 +888,7 @@ namespace NOWA
 
 		// https://sourceforge.net/p/luabind/mailman/message/6187131/
 		// Checks if the correct buttons are pressed, order is not relevant
-		const auto& pressedButtons = NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getPressedButtons();
+		const auto pressedButtons = NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getPressedButtons();
 		for (size_t i = 0; i < pressedButtons.size(); i++)
 		{
 			if (pressedButtons[i] == button1 || pressedButtons[i] == button2)
@@ -904,10 +904,10 @@ namespace NOWA
 	{
 		luabind::object obj = luabind::newtable(LuaScriptApi::getInstance()->getLua());
 
-		const auto& pressedButtons = instance->getPressedButtons();
+		const auto pressedButtons = instance->getPressedButtons();
 
 		unsigned int i = 0;
-		for (auto& it = pressedButtons.cbegin(); it != pressedButtons.cend(); ++it)
+		for (auto it = pressedButtons.cbegin(); it != pressedButtons.cend(); ++it)
 		{
 			obj[i++] = *it;
 		}
@@ -924,7 +924,7 @@ namespace NOWA
 		// https://sourceforge.net/p/luabind/mailman/message/6187131/
 		// Checks if the correct buttons are pressed, order is not relevant
 		// TODO: (1) is wrong
-		const auto& pressedButtons = InputDeviceCore::getSingletonPtr()->getJoystickInputDeviceModule(1)->getPressedButtons();
+		const auto pressedButtons = InputDeviceCore::getSingletonPtr()->getJoystickInputDeviceModule(1)->getPressedButtons();
 		for (size_t i = 0; i < pressedButtons.size(); i++)
 		{
 			if (pressedButtons[i] == button)
@@ -945,7 +945,7 @@ namespace NOWA
 		// https://sourceforge.net/p/luabind/mailman/message/6187131/
 		// Checks if the correct buttons are pressed, order is not relevant
 		// TODO: (1) is wrong
-		const auto& pressedButtons = InputDeviceCore::getSingletonPtr()->getJoystickInputDeviceModule(1)->getPressedButtons();
+		const auto pressedButtons = InputDeviceCore::getSingletonPtr()->getJoystickInputDeviceModule(1)->getPressedButtons();
 		for (size_t i = 0; i < pressedButtons.size(); i++)
 		{
 			if (pressedButtons[i] == button1 || pressedButtons[i] == button2)
@@ -3203,6 +3203,11 @@ namespace NOWA
 		return gameObject->getMovableObject<Ogre::v1::Entity>();
 	}
 
+	Ogre::Item* getItem(GameObject* gameObject)
+    {
+        return gameObject->getMovableObject<Ogre::Item>();
+    }
+
 	int getRandomNumberInt(MathHelper* instance, int min, int max)
 	{
 		return instance->getRandomNumber<int>(min, max);
@@ -3266,6 +3271,7 @@ namespace NOWA
 		gameObjectClass.def("getSceneNode", &GameObject::getSceneNode);
 		// Here later multiplicate out all types in anonym function
 		gameObjectClass.def("getEntity", &getEntity);
+        gameObjectClass.def("getItem", &getItem);
 		gameObjectClass.def("getCategory", &GameObject::getCategory);
 		gameObjectClass.def("getRenderCategory", &GameObject::getRenderCategory);
 		gameObjectClass.def("getCategoryId", &getCategoryId);
@@ -3572,6 +3578,7 @@ namespace NOWA
 		AddClassToCollection("GameObject", "SceneManager getSceneManager()", "Gets the scene manager of this game object.");
 		AddClassToCollection("GameObject", "SceneNode getSceneNode()", "Gets the scene node of this game object.");
 		AddClassToCollection("GameObject", "Entity getEntity()", "Gets the entity of this game object.");
+        AddClassToCollection("GameObject", "Entity getItem()", "Gets the item of this game object.");
 		AddClassToCollection("GameObject", "Vector3 getDefaultDirection()", "Gets the direction the game object's entity is modelled.");
 		AddClassToCollection("GameObject", "string getCategory()", "Gets the category to which this game object does belong. Note: This is useful when doing ray-casts on graphics base or physics base or creating physics materials between categories.");
 		AddClassToCollection("GameObject", "string getTagName()", "Gets the tag name of game object. Note: Tags are like sub-categories. E.g. several game objects may belong to the category 'Enemy', but one group may have a tag name 'Stone', the other 'Ship1', 'Ship2' etc. "
@@ -3856,7 +3863,7 @@ namespace NOWA
 	// When using smart pointers, at the end of the script the game object must be set to nil!
 	GameObject* getGameObjectFromId(GameObjectController* instance, const Ogre::String& id)
 	{
-		auto& gameObject = instance->getGameObjectFromId(Ogre::StringConverter::parseUnsignedLong(id));
+		auto gameObject = instance->getGameObjectFromId(Ogre::StringConverter::parseUnsignedLong(id));
 		if (nullptr != gameObject)
 		{
 			return gameObject.get();
@@ -3871,7 +3878,7 @@ namespace NOWA
 	GameObject* clone(GameObjectController* instance, const Ogre::String& originalGameObjectId, Ogre::SceneNode* parentNode, const Ogre::String& targetId, const Ogre::Vector3& targetPosition,
 		const Ogre::Quaternion& targetOrientation, const Ogre::Vector3& targetScale)
 	{
-		auto& clonedGameObjectPtr = instance->clone(Ogre::StringConverter::parseUnsignedLong(originalGameObjectId), parentNode, Ogre::StringConverter::parseUnsignedLong(targetId), targetPosition, targetOrientation, targetScale);
+		auto clonedGameObjectPtr = instance->clone(Ogre::StringConverter::parseUnsignedLong(originalGameObjectId), parentNode, Ogre::StringConverter::parseUnsignedLong(targetId), targetPosition, targetOrientation, targetScale);
 		if (nullptr != clonedGameObjectPtr)
 		{
 			// Connect the object
@@ -3887,7 +3894,7 @@ namespace NOWA
 
 	GameObject* getClonedGameObjectFromPriorId(GameObjectController* instance, const Ogre::String& priorId)
 	{
-		auto& gameObject = instance->getClonedGameObjectFromPriorId(Ogre::StringConverter::parseUnsignedLong(priorId));
+		auto gameObject = instance->getClonedGameObjectFromPriorId(Ogre::StringConverter::parseUnsignedLong(priorId));
 		if (nullptr != gameObject)
 			return gameObject.get();
 
@@ -3899,7 +3906,7 @@ namespace NOWA
 
 	GameObject* getGameObjectFromName(GameObjectController* instance, const Ogre::String& name)
 	{
-		auto& gameObject = instance->getGameObjectFromName(name);
+		auto gameObject = instance->getGameObjectFromName(name);
 		if (nullptr != gameObject)
 			return gameObject.get();
 
@@ -3911,7 +3918,7 @@ namespace NOWA
 
 	GameObject* getGameObjectFromNamePrefix(GameObjectController* instance, const Ogre::String& pattern)
 	{
-		auto& gameObject = instance->getGameObjectFromNamePrefix(pattern);
+		auto gameObject = instance->getGameObjectFromNamePrefix(pattern);
 		if (nullptr != gameObject)
 			return gameObject.get();
 
@@ -3931,7 +3938,7 @@ namespace NOWA
 		luabind::object obj = luabind::newtable(LuaScriptApi::getInstance()->getLua());
 
 		unsigned int i = 0;
-		for (auto& it = instance->getGameObjects()->cbegin(); it != instance->getGameObjects()->cend(); ++it)
+		for (auto it = instance->getGameObjects()->cbegin(); it != instance->getGameObjects()->cend(); ++it)
 		{
 			if (it->second->getCategory() == category)
 			{
@@ -3951,7 +3958,7 @@ namespace NOWA
 		luabind::object obj = luabind::newtable(LuaScriptApi::getInstance()->getLua());
 
 		unsigned int i = 0;
-		for (auto& it = instance->getGameObjects()->cbegin(); it != instance->getGameObjects()->cend(); ++it)
+		for (auto it = instance->getGameObjects()->cbegin(); it != instance->getGameObjects()->cend(); ++it)
 		{
 			if (it->second->getRenderCategory() == renderCategory)
 			{
@@ -3971,7 +3978,7 @@ namespace NOWA
 		luabind::object obj = luabind::newtable(LuaScriptApi::getInstance()->getLua());
 
 		std::vector<GameObjectPtr> vec;
-		for (auto& it = instance->getGameObjects()->cbegin(); it != instance->getGameObjects()->cend(); ++it)
+		for (auto it = instance->getGameObjects()->cbegin(); it != instance->getGameObjects()->cend(); ++it)
 		{
 			auto gameObjectPtr = NOWA::makeStrongPtr(it->second->getComponentFromName<GameObjectComponent>(componentClassName, true));
 			if (nullptr != gameObjectPtr)
@@ -4081,7 +4088,7 @@ namespace NOWA
 		luabind::object obj = luabind::newtable(LuaScriptApi::getInstance()->getLua());
 
 		unsigned int i = 0;
-		for (auto& it = instance->getGameObjects()->cbegin(); it != instance->getGameObjects()->cend(); ++it)
+		for (auto it = instance->getGameObjects()->cbegin(); it != instance->getGameObjects()->cend(); ++it)
 		{
 			if (Ogre::StringUtil::match(it->second->getSceneNode()->getName(), pattern, false))
 			{
@@ -4098,7 +4105,7 @@ namespace NOWA
 		luabind::object obj = luabind::newtable(LuaScriptApi::getInstance()->getLua());
 
 		unsigned int i = 0;
-		for (auto& it = instance->getGameObjects()->cbegin(); it != instance->getGameObjects()->cend(); ++it)
+		for (auto it = instance->getGameObjects()->cbegin(); it != instance->getGameObjects()->cend(); ++it)
 		{
 			obj[i++] = it->second.get();
 		}
@@ -4112,7 +4119,7 @@ namespace NOWA
 		luabind::object obj = luabind::newtable(LuaScriptApi::getInstance()->getLua());
 
 		unsigned int i = 0;
-		for (auto& it = instance->getGameObjects()->cbegin(); it != instance->getGameObjects()->cend(); ++it)
+		for (auto it = instance->getGameObjects()->cbegin(); it != instance->getGameObjects()->cend(); ++it)
 		{
 			if (it->second->getCategory() == category)
 			{
@@ -4129,7 +4136,7 @@ namespace NOWA
 		luabind::object obj = luabind::newtable(LuaScriptApi::getInstance()->getLua());
 
 		unsigned int i = 0;
-		for (auto& it = instance->getGameObjects()->cbegin(); it != instance->getGameObjects()->cend(); ++it)
+		for (auto it = instance->getGameObjects()->cbegin(); it != instance->getGameObjects()->cend(); ++it)
 		{
 			if (it->second->getRenderCategory() == renderCategory)
 			{
@@ -4146,7 +4153,7 @@ namespace NOWA
 		luabind::object obj = luabind::newtable(LuaScriptApi::getInstance()->getLua());
 
 		unsigned int i = 0;
-		for (auto& it = instance->getGameObjects()->cbegin(); it != instance->getGameObjects()->cend(); ++it)
+		for (auto it = instance->getGameObjects()->cbegin(); it != instance->getGameObjects()->cend(); ++it)
 		{
 			if (it->second->getCategory() == category && it->second.get() != excludedGameObject)
 			{
@@ -4163,7 +4170,7 @@ namespace NOWA
 		luabind::object obj = luabind::newtable(LuaScriptApi::getInstance()->getLua());
 
 		unsigned int i = 0;
-		for (auto& it = instance->getGameObjects()->cbegin(); it != instance->getGameObjects()->cend(); ++it)
+		for (auto it = instance->getGameObjects()->cbegin(); it != instance->getGameObjects()->cend(); ++it)
 		{
 			if (it->second->getRenderCategory() == renderCategory && it->second.get() != excludedGameObject)
 			{
@@ -4186,7 +4193,7 @@ namespace NOWA
 		}
 
 		unsigned int i = 0;
-		for (auto& it = instance->getGameObjects()->cbegin(); it != instance->getGameObjects()->cend(); ++it)
+		for (auto it = instance->getGameObjects()->cbegin(); it != instance->getGameObjects()->cend(); ++it)
 		{
 			if (it->second->getControlledByClientID() == clientID)
 			{
@@ -4209,7 +4216,7 @@ namespace NOWA
 		}
 
 		unsigned int i = 0;
-		for (auto& it = instance->getGameObjects()->cbegin(); it != instance->getGameObjects()->cend(); ++it)
+		for (auto it = instance->getGameObjects()->cbegin(); it != instance->getGameObjects()->cend(); ++it)
 		{
 			if (it->second->getTagName() == tagName)
 			{
@@ -4222,7 +4229,7 @@ namespace NOWA
 
 	GameObject* getGameObjectFromReferenceId(GameObjectController* instance, const Ogre::String& referenceId)
 	{
-		auto& gameObject = instance->getGameObjectFromId(Ogre::StringConverter::parseUnsignedLong(referenceId));
+		auto gameObject = instance->getGameObjectFromId(Ogre::StringConverter::parseUnsignedLong(referenceId));
 		if (nullptr != gameObject)
 		{
 			return gameObject.get();
@@ -4244,7 +4251,7 @@ namespace NOWA
 		std::vector<GameObjectCompPtr> vec;
 
 		unsigned long lReferenceId = Ogre::StringConverter::parseUnsignedLong(referenceId);
-		auto& gameObjectPtr = instance->getGameObjectFromId(lReferenceId);
+		auto gameObjectPtr = instance->getGameObjectFromId(lReferenceId);
 		if (nullptr == gameObjectPtr)
 		{
 			currentErrorGameObject = referenceId;
@@ -4254,7 +4261,7 @@ namespace NOWA
 		}
 
 		// Search for a component with the same id
-		for (auto& it = instance->getGameObjects()->cbegin(); it != instance->getGameObjects()->cend(); ++it)
+		for (auto it = instance->getGameObjects()->cbegin(); it != instance->getGameObjects()->cend(); ++it)
 		{
 			if (it->second->getReferenceId() == lReferenceId)
 			{
@@ -5885,10 +5892,10 @@ namespace NOWA
 	{
 		luabind::object obj = luabind::newtable(LuaScriptApi::getInstance()->getLua());
 
-		const auto& attributes = instance->getAttributes();
+		const auto attributes = instance->getAttributes();
 
 		// unsigned int i = 0;
-		for (auto& it = attributes.cbegin(); it != attributes.cend(); ++it)
+		for (auto it = attributes.cbegin(); it != attributes.cend(); ++it)
 		{
 			obj[it->first] = it->second;
 		}
@@ -7543,7 +7550,7 @@ namespace NOWA
 
 	JointComponent* getPredecessorJointComponent(JointComponent* instance)
 	{
-		auto& jointCompPtr = NOWA::makeStrongPtr(AppStateManager::getSingletonPtr()->getGameObjectController()->getJointComponent(instance->getPredecessorId()));
+		auto jointCompPtr = NOWA::makeStrongPtr(AppStateManager::getSingletonPtr()->getGameObjectController()->getJointComponent(instance->getPredecessorId()));
 		if (nullptr != jointCompPtr)
 		{
 			return jointCompPtr.get();
@@ -7559,7 +7566,7 @@ namespace NOWA
 
 	JointComponent* getTargetJointComponent(JointComponent* instance)
 	{
-		auto& jointCompPtr = NOWA::makeStrongPtr(AppStateManager::getSingletonPtr()->getGameObjectController()->getJointComponent(instance->getTargetId()));
+		auto jointCompPtr = NOWA::makeStrongPtr(AppStateManager::getSingletonPtr()->getGameObjectController()->getJointComponent(instance->getTargetId()));
 		if (nullptr != jointCompPtr)
 		{
 			return jointCompPtr.get();
@@ -11393,7 +11400,7 @@ namespace NOWA
 
 	Ogre::Vector3 getCurrentWayPoint(KI::Path* instance)
 	{
-		auto& result = instance->getCurrentWaypoint();
+		auto result = instance->getCurrentWaypoint();
 		if (result.first)
 		{
 			return result.second;
@@ -12845,11 +12852,11 @@ namespace NOWA
 			.def("lowPassFilter", (Ogre::Real(MathHelper::*)(Ogre::Real, Ogre::Real, Ogre::Real)) &MathHelper::lowPassFilter)
 			.def("lowPassFilter", (Ogre::Vector3(MathHelper::*)(const Ogre::Vector3& , const Ogre::Vector3& , Ogre::Real)) &MathHelper::lowPassFilter)
 			.def("clamp", &MathHelper::clamp)
-			.def("round", (Ogre::Real(MathHelper::*)(Ogre::Real, unsigned int)) & MathHelper::round)
-			.def("round", (Ogre::Real(MathHelper::*)(Ogre::Real)) & MathHelper::round)
-			.def("round", (Ogre::Vector2(MathHelper::*)(Ogre::Vector2, unsigned int)) & MathHelper::round)
-			.def("round", (Ogre::Vector3(MathHelper::*)(Ogre::Vector3, unsigned int)) & MathHelper::round)
-			.def("round", (Ogre::Vector4(MathHelper::*)(Ogre::Vector4, unsigned int)) & MathHelper::round)
+			.def("round", (Ogre::Real(MathHelper::*)(Ogre::Real, unsigned int)) &MathHelper::round)
+			.def("round", (Ogre::Real(MathHelper::*)(Ogre::Real)) &MathHelper::round)
+			.def("round", (Ogre::Vector2(MathHelper::*)(const Ogre::Vector2&, unsigned int)) &MathHelper::round)
+            .def("round", (Ogre::Vector3 (MathHelper::*)(const Ogre::Vector3&, unsigned int)) &MathHelper::round)
+            .def("round", (Ogre::Vector4 (MathHelper::*)(const Ogre::Vector4&, unsigned int)) &MathHelper::round)
 			.def("diffPitch", &MathHelper::diffPitch)
 			.def("diffYaw", &MathHelper::diffYaw)
 			.def("diffRoll", &MathHelper::diffRoll)
@@ -12991,10 +12998,10 @@ namespace NOWA
 	{
 		luabind::object obj = luabind::newtable(LuaScriptApi::getInstance()->getLua());
 
-		const auto& snapshotsInProject = instance->getSceneSnapshotsInProject(projectName);
+		const auto snapshotsInProject = instance->getSceneSnapshotsInProject(projectName);
 
 		unsigned int i = 0;
-		for (auto& it = snapshotsInProject.cbegin(); it != snapshotsInProject.cend(); ++it)
+		for (auto it = snapshotsInProject.cbegin(); it != snapshotsInProject.cend(); ++it)
 		{
 			obj[i++] = *it;
 		}
@@ -13006,10 +13013,10 @@ namespace NOWA
 	{
 		luabind::object obj = luabind::newtable(LuaScriptApi::getInstance()->getLua());
 
-		const auto& snapshotsInProject = instance->getSaveNamesInProject(projectName);
+		const auto snapshotsInProject = instance->getSaveNamesInProject(projectName);
 
 		unsigned int i = 0;
-		for (auto& it = snapshotsInProject.cbegin(); it != snapshotsInProject.cend(); ++it)
+		for (auto it = snapshotsInProject.cbegin(); it != snapshotsInProject.cend(); ++it)
 		{
 			obj[i++] = *it;
 		}
@@ -13250,7 +13257,7 @@ namespace NOWA
 			if (d.currentline > -1)
 			{
 				// Flooding prevention
-				auto& found = errorMessages.find(d.currentline);
+				auto found = errorMessages.find(d.currentline);
 				if (found == errorMessages.cend())
 				{
 					errorMessages.emplace(d.currentline);
@@ -13418,7 +13425,7 @@ namespace NOWA
 				bindLuaScriptEventManager(this->lua);
 
 				// Add dynamic component lua api registrations (if existing)
-				for (auto componentInfo : GameObjectFactory::getInstance()->getComponentFactory()->getRegisteredComponentNames())
+				for (const auto& componentInfo : GameObjectFactory::getInstance()->getComponentFactory()->getRegisteredComponentNames())
 				{
 					if (CameraBehaviorComponent::getStaticClassName() != componentInfo.first)
 					{
@@ -13639,7 +13646,7 @@ namespace NOWA
 		msg << errorMsg;
 
 		// Flooding prevention
-		auto& found = errorMessages2.find(function);
+		auto found = errorMessages2.find(function);
 		if (found == errorMessages2.cend())
 		{
 			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScriptApi] Caught error in '" + function + "' Error: " + Ogre::String(error.what())
@@ -13688,7 +13695,7 @@ namespace NOWA
 			currentPath.append(";");
 			currentPath.append(luaFilePath + "/?.lua");
 
-			const auto& sceneFilePathNames = Core::getSingletonPtr()->getSceneFoldersInProject(luaFilePath);
+			const auto sceneFilePathNames = Core::getSingletonPtr()->getSceneFoldersInProject(luaFilePath);
 			for (size_t i = 0; i < sceneFilePathNames.size(); i++)
 			{
 				currentPath.append(";");
@@ -13730,7 +13737,7 @@ namespace NOWA
 
 	void LuaScriptApi::addClassToCollection(const Ogre::String& className, const Ogre::String& function, const Ogre::String& description)
 	{
-		auto& it = classCollection.find(className);
+		auto it = classCollection.find(className);
 		if (it == classCollection.cend())
 		{
 			std::vector<std::pair<Ogre::String, Ogre::String>> details;
@@ -13758,7 +13765,7 @@ namespace NOWA
 
 	void LuaScriptApi::addFunctionToCollection(const Ogre::String& function, const Ogre::String& description)
 	{
-		auto& it = classCollection.find("Z-Global");
+		auto it = classCollection.find("Z-Global");
 		if (it == classCollection.cend())
 		{
 			std::vector<std::pair<Ogre::String, Ogre::String>> details;

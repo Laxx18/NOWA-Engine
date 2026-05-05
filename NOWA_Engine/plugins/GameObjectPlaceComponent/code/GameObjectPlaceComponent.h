@@ -88,6 +88,10 @@ namespace NOWA
 
         bool getShowPreview(void) const;
 
+        void setRotateEnabled(bool rotateEnabled);
+
+        bool getRotateEnabled(void) const;
+
         /**
          * @brief Sets the number of shadow game object slots.
          */
@@ -163,6 +167,10 @@ namespace NOWA
         {
             return "Show Preview";
         }
+        static Ogre::String AttrRotateEnabled()
+        {
+            return "RotateEnabled";
+        }
         static const Ogre::String AttrPlaceObjectCount(void)
         {
             return "Place Object Count";
@@ -207,6 +215,7 @@ namespace NOWA
         Variant* activated;
         Variant* categories;
         Variant* showPreview;
+        Variant* rotateEnabled;
         Variant* placeObjectCount;
         std::vector<Variant*> gameObjectIds;
 
@@ -223,6 +232,10 @@ namespace NOWA
         
         PhysicsComponent* shadowPhysicsComponent;
         bool oldWasDynamic;
+
+        Ogre::Real currentRotationDegrees; // accumulated Y rotation via mousewheel
+        // Per-subitem cloned datablocks for transparency — key = subitem index
+        std::vector<std::pair<Ogre::HlmsDatablock*, unsigned int>> clonedDatablocks;
     };
 
 } // namespace end

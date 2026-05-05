@@ -161,52 +161,55 @@ namespace NOWA
 		return roundedNumber;
 	}
 
-	Ogre::Vector2 MathHelper::round(Ogre::Vector2 vec, unsigned int places)
+	Ogre::Vector2 MathHelper::round(const Ogre::Vector2& vec, unsigned int places)
 	{
-		vec.x = round(vec.x, places);
-		vec.y = round(vec.y, places);
-		return vec;
+		Ogre::Vector2 result = vec;
+		result.x = round(result.x, places);
+		result.y = round(result.y, places);
+		return result;
 	}
 
-	Ogre::Vector3 MathHelper::round(Ogre::Vector3 vec, unsigned int places)
+	Ogre::Vector3 MathHelper::round(const Ogre::Vector3& vec, unsigned int places)
 	{
-		vec.x = round(vec.x, places);
-		vec.y = round(vec.y, places);
-		vec.z = round(vec.z, places);
-		return vec;
+		Ogre::Vector3 result = vec;
+		result.x = round(result.x, places);
+		result.y = round(result.y, places);
+		result.z = round(result.z, places);
+		return result;
 	}
 
-	Ogre::Vector4 MathHelper::round(Ogre::Vector4 vec, unsigned int places)
+	Ogre::Vector4 MathHelper::round(const Ogre::Vector4& vec, unsigned int places)
 	{
-		vec.x = round(vec.x, places);
-		vec.y = round(vec.y, places);
-		vec.z = round(vec.z, places);
-		vec.w = round(vec.w, places);
-		return vec;
+		Ogre::Vector4 result = vec;
+		result.x = round(result.x, places);
+		result.y = round(result.y, places);
+		result.z = round(result.z, places);
+		result.w = round(result.w, places);
+		return result;
 	}
 
-	Ogre::Quaternion MathHelper::diffPitch(Ogre::Quaternion dest, Ogre::Quaternion src)
+	Ogre::Quaternion MathHelper::diffPitch(const Ogre::Quaternion& dest, const Ogre::Quaternion& src)
 	{
 		Ogre::Quaternion quat = Ogre::Quaternion::ZERO;
 		quat.FromAngleAxis(dest.getPitch() - src.getPitch(), Ogre::Vector3::UNIT_X);
 		return quat;
 	}
 
-	Ogre::Quaternion MathHelper::diffYaw(Ogre::Quaternion dest, Ogre::Quaternion src)
+	Ogre::Quaternion MathHelper::diffYaw(const Ogre::Quaternion& dest, const Ogre::Quaternion& src)
 	{
 		Ogre::Quaternion quat = Ogre::Quaternion::ZERO;
 		quat.FromAngleAxis(dest.getYaw() - src.getYaw(), Ogre::Vector3::UNIT_Y);
 		return quat;
 	}
 
-	Ogre::Quaternion MathHelper::diffRoll(Ogre::Quaternion dest, Ogre::Quaternion src)
+	Ogre::Quaternion MathHelper::diffRoll(const Ogre::Quaternion& dest, const Ogre::Quaternion& src)
 	{
 		Ogre::Quaternion quat = Ogre::Quaternion::ZERO;
 		quat.FromAngleAxis(dest.getRoll() - src.getRoll(), Ogre::Vector3::UNIT_Z);
 		return quat;
 	}
 
-	Ogre::Quaternion MathHelper::diffDegree(Ogre::Quaternion dest, Ogre::Quaternion src, int mode)
+	Ogre::Quaternion MathHelper::diffDegree(const Ogre::Quaternion& dest, const Ogre::Quaternion& src, int mode)
 	{
 		Ogre::Quaternion quat = Ogre::Quaternion::ZERO;
 		if (mode == 1)
@@ -830,7 +833,15 @@ namespace NOWA
 		Ogre::Real lowestObjectY = minimumScaled.y;
 		centerOffset.y = 0.0f - lowestObjectY;
 		return centerOffset;
-	}
+    }
+
+    Ogre::Vector3 MathHelper::getPlacementYOffset(Ogre::SceneNode* sceneNode, Ogre::MovableObject* movableObject) const
+    {
+        Ogre::Aabb boundingBox = movableObject->getLocalAabb();
+        Ogre::Vector3 minimumScaled = boundingBox.getMinimum() * sceneNode->getScale();
+
+        return Ogre::Vector3(0.0f, -minimumScaled.y, 0.0f);
+    }
 
 	void MathHelper::getMeshInformationWithSkeleton(Ogre::v1::Entity* entity, size_t& vertexCount, Ogre::Vector3*& vertices, size_t& indexCount, unsigned long*& indices,
 		const Ogre::Vector3& position, const Ogre::Quaternion& orient, const Ogre::Vector3& scale)

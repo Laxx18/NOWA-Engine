@@ -69,7 +69,7 @@ void KinematicBody::integrateVelocity(Ogre::Real dt)
 
                 if (other)
                 {
-                    auto& notifyPtr = other->GetNotifyCallback();
+                    auto notifyPtr = other->GetNotifyCallback();
                     if (!notifyPtr)
                     {
                         continue;

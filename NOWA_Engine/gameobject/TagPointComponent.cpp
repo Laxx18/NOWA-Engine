@@ -38,7 +38,7 @@ namespace NOWA
                 auto sourcePhysicsActiveKinematicComponent = dynamic_cast<PhysicsActiveKinematicComponent*>(sourcePhysicsActiveComponent);
                 if (nullptr == sourcePhysicsActiveKinematicComponent)
                 {
-                    auto& existingJointKinematicCompPtr = NOWA::makeStrongPtr(this->sourcePhysicsActiveComponent->getOwner()->getComponent<JointKinematicComponent>());
+                    auto existingJointKinematicCompPtr = NOWA::makeStrongPtr(this->sourcePhysicsActiveComponent->getOwner()->getComponent<JointKinematicComponent>());
                     if (nullptr == existingJointKinematicCompPtr)
                     {
                         boost::shared_ptr<JointKinematicComponent> jointKinematicCompPtr(boost::make_shared<JointKinematicComponent>());
@@ -53,7 +53,7 @@ namespace NOWA
                     else
                     {
                         this->jointKinematicComponent = existingJointKinematicCompPtr.get();
-                        auto& jointCompPtr = NOWA::makeStrongPtr(this->gameObject->getComponent<JointComponent>());
+                        auto jointCompPtr = NOWA::makeStrongPtr(this->gameObject->getComponent<JointComponent>());
                         if (nullptr != jointCompPtr)
                         {
                             this->jointKinematicComponent->connectPredecessorId(jointCompPtr->getId());
@@ -375,7 +375,7 @@ namespace NOWA
 
                 sourceGameObjectPtr->setConnectedGameObject(this->gameObjectPtr);
 
-                auto& physicsActiveCompPtr = NOWA::makeStrongPtr(sourceGameObjectPtr->getComponent<PhysicsActiveComponent>());
+                auto physicsActiveCompPtr = NOWA::makeStrongPtr(sourceGameObjectPtr->getComponent<PhysicsActiveComponent>());
                 if (nullptr != physicsActiveCompPtr)
                 {
                     this->sourcePhysicsActiveComponent = physicsActiveCompPtr.get();
@@ -387,7 +387,7 @@ namespace NOWA
 
                 std::vector<Ogre::MovableObject*> movableObjects;
                 Ogre::SceneNode* sourceSceneNode = sourceGameObjectPtr->getSceneNode();
-                auto& it = sourceSceneNode->getAttachedObjectIterator();
+                auto it = sourceSceneNode->getAttachedObjectIterator();
 
                 while (it.hasMoreElements())
                 {
@@ -428,7 +428,7 @@ namespace NOWA
 
                 sourceGameObjectPtr->setConnectedGameObject(this->gameObjectPtr);
 
-                auto& physicsActiveCompPtr = NOWA::makeStrongPtr(sourceGameObjectPtr->getComponent<PhysicsActiveComponent>());
+                auto physicsActiveCompPtr = NOWA::makeStrongPtr(sourceGameObjectPtr->getComponent<PhysicsActiveComponent>());
                 if (nullptr != physicsActiveCompPtr)
                 {
                     this->sourcePhysicsActiveComponent = physicsActiveCompPtr.get();
@@ -462,7 +462,7 @@ namespace NOWA
 
                     std::vector<Ogre::MovableObject*> movableObjects;
                     Ogre::SceneNode* sourceSceneNode = sourceGameObjectPtr->getSceneNode();
-                    auto& it = sourceSceneNode->getAttachedObjectIterator();
+                    auto it = sourceSceneNode->getAttachedObjectIterator();
 
                     while (it.hasMoreElements())
                     {
@@ -484,7 +484,7 @@ namespace NOWA
                         auto sourcePhysicsActiveKinematicComponent = dynamic_cast<PhysicsActiveKinematicComponent*>(this->sourcePhysicsActiveComponent);
                         if (nullptr == sourcePhysicsActiveKinematicComponent)
                         {
-                            auto& existingJointKinematicCompPtr = NOWA::makeStrongPtr(this->sourcePhysicsActiveComponent->getOwner()->getComponent<JointKinematicComponent>());
+                            auto existingJointKinematicCompPtr = NOWA::makeStrongPtr(this->sourcePhysicsActiveComponent->getOwner()->getComponent<JointKinematicComponent>());
                             if (nullptr == existingJointKinematicCompPtr)
                             {
                                 boost::shared_ptr<JointKinematicComponent> jointKinematicCompPtr(boost::make_shared<JointKinematicComponent>());
@@ -497,7 +497,7 @@ namespace NOWA
                             }
                             else
                             {
-                                auto& jointCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<JointComponent>());
+                                auto jointCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<JointComponent>());
                                 if (nullptr != jointCompPtr)
                                 {
                                     existingJointKinematicCompPtr->connectPredecessorId(jointCompPtr->getId());
@@ -547,7 +547,7 @@ namespace NOWA
         {
             // Non-kinematic body: the JointKinematicComponent was created in
             // connectV2Item and drives the body via a target position/rotation.
-            auto& jointKinematicCompPtr = NOWA::makeStrongPtr(this->sourcePhysicsActiveComponent->getOwner()->getComponent<JointKinematicComponent>());
+            auto jointKinematicCompPtr = NOWA::makeStrongPtr(this->sourcePhysicsActiveComponent->getOwner()->getComponent<JointKinematicComponent>());
             if (nullptr != jointKinematicCompPtr)
             {
                 jointKinematicCompPtr->setTargetPositionRotation(this->tagPointV2->_getDerivedPositionUpdated(), this->tagPointV2->_getDerivedOrientationUpdated());
@@ -569,11 +569,11 @@ namespace NOWA
 
     void TagPointComponent::onOtherComponentRemoved(unsigned int index)
     {
-        auto& gameObjectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentByIndex(index));
+        auto gameObjectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentByIndex(index));
         if (nullptr != gameObjectCompPtr)
         {
-            auto& physicsRagdollCompPtr = boost::dynamic_pointer_cast<PhysicsRagDollComponent>(gameObjectCompPtr);
-            auto& animationCompPtr = boost::dynamic_pointer_cast<AnimationComponent>(gameObjectCompPtr);
+            auto physicsRagdollCompPtr = boost::dynamic_pointer_cast<PhysicsRagDollComponent>(gameObjectCompPtr);
+            auto animationCompPtr = boost::dynamic_pointer_cast<AnimationComponent>(gameObjectCompPtr);
             if (nullptr != physicsRagdollCompPtr || nullptr != animationCompPtr)
             {
                 this->resetTagPoint();
@@ -987,7 +987,7 @@ namespace NOWA
                 if (nullptr != this->tagPointNode)
                 {
                     std::vector<Ogre::MovableObject*> movableObjects;
-                    auto& it = this->tagPointNode->getAttachedObjectIterator();
+                    auto it = this->tagPointNode->getAttachedObjectIterator();
                     while (it.hasMoreElements())
                     {
                         Ogre::MovableObject* movableObject = it.getNext();
@@ -1033,7 +1033,7 @@ namespace NOWA
                 if (nullptr != this->tagPointV2)
                 {
                     std::vector<Ogre::MovableObject*> movableObjects;
-                    auto& it = this->tagPointV2->getAttachedObjectIterator();
+                    auto it = this->tagPointV2->getAttachedObjectIterator();
                     while (it.hasMoreElements())
                     {
                         movableObjects.emplace_back(it.getNext());

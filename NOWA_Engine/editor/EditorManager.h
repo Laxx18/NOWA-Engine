@@ -130,7 +130,7 @@ namespace NOWA
 		* @param[in]	materialName			The material name to use for the rectangle selection. Default is "Select" which comes from the NOWA folder.
 		* @Note			When the gizmo manager is used, 4 categories (GizmoX, GizmoY, GizmoZ, GizmoSphere), will be occupied in the GameObjectController. So overall, there are 4 categories less available.
 		*/
-		void init(Ogre::SceneManager* sceneManager, Ogre::Camera* camera, Ogre::String& categories, OIS::MouseButtonID mouseButtonId,
+		void init(Ogre::SceneManager* sceneManager, Ogre::Camera* camera, const Ogre::String& categories, OIS::MouseButtonID mouseButtonId,
 			SelectionManager::ISelectionObserver* selectionObserver, Ogre::Real thickness = 0.6f,
 			const Ogre::String& materialNameX = "BaseRedLine", const Ogre::String& materialNameY = "BaseGreenLine", const Ogre::String& materialNameZ = "BaseBlueLine",
 			const Ogre::String& materialNameHighlight = "BaseYellowLine", const Ogre::String& materialNameSelection = "Select");

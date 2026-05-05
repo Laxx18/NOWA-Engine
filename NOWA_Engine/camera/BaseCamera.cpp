@@ -207,6 +207,7 @@ namespace NOWA
         if (moveValue.squaredLength() < eps2)
         {
             moveValue = Ogre::Vector3::ZERO;
+            this->lastMoveValue = Ogre::Vector3::ZERO;
         }
 
         // Always update lastMoveValue so the filter can ramp smoothly
@@ -215,8 +216,8 @@ namespace NOWA
         // Apply movement whenever we actually have something to apply
         if (moveValue != Ogre::Vector3::ZERO)
         {
-            Ogre::Vector3 worldMove = this->camera->getOrientation() * moveValue;
-            Ogre::Vector3 newPosition = this->camera->getPosition() + worldMove;
+            Ogre::Vector3 worldMove = this->getOrientation() * moveValue;
+            Ogre::Vector3 newPosition = this->getPosition() + worldMove;
 
             NOWA::GraphicsModule::getInstance()->updateCameraPosition(this->camera, newPosition);
         }
@@ -284,7 +285,6 @@ namespace NOWA
 
         // Adjust low-pass filter interpolation based on frame time - exact same approach as moveCamera
         Ogre::Real dynamicSmoothValue = this->smoothValue * 0.01f;
-        ;
 
         // Ogre::Real dynamicSmoothValue = 0.001f;
 
@@ -301,11 +301,12 @@ namespace NOWA
 
         if (rotationValue.length() > 0.0001f)
         {
+            this->lastValue = Ogre::Vector2::ZERO;
             // Create a local coordinate system based on gravity
             Ogre::Vector3 upVector = -this->gravityDirection;
 
             // Get current orientation - we need the camera orientation here
-            Ogre::Quaternion currentOrientation = this->camera->getOrientation();
+            Ogre::Quaternion currentOrientation = this->getOrientation();
 
             // Create rotation quaternions for yaw and pitch
             // Create rotation quaternions for yaw and pitch

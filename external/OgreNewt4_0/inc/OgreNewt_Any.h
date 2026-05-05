@@ -195,7 +195,7 @@ namespace OgreNewt
         {
             if (!mContent)
             {
-                OGRE_EXCEPT(Exception::ERR_INVALIDPARAMS,
+                 Ogre::ExceptionFactory::throwException(Ogre::Exception::ERR_INVALIDPARAMS,
                     "Bad cast from uninitialised Any",
                     "Any::operator()");
             }
@@ -219,7 +219,7 @@ namespace OgreNewt
         {
             if (!mContent)
             {
-                OGRE_EXCEPT(Exception::ERR_INVALIDPARAMS,
+                Ogre::ExceptionFactory::throwException(Ogre::Exception::ERR_INVALIDPARAMS,
                     "Bad cast from uninitialised Any",
                     "Any::operator()");
             }

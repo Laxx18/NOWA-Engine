@@ -4613,7 +4613,7 @@ namespace NOWA
         // Append edge data with offset indices
         size_t vertexOffset = this->currentCenterVertexIndex;
         combinedVertices.insert(combinedVertices.end(), this->edgeVertices.begin(), this->edgeVertices.end());
-        for (auto idx : this->edgeIndices)
+        for (const auto& idx : this->edgeIndices)
         {
             combinedIndices.push_back(idx + vertexOffset);
         }

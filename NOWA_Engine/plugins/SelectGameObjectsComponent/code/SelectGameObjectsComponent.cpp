@@ -50,7 +50,7 @@ namespace NOWA
 
 			if (true == activatePlayerController)
 			{
-				const auto& inputDeviceCompPtr = NOWA::makeStrongPtr(gameObject->getComponent<InputDeviceComponent>());
+				const auto inputDeviceCompPtr = NOWA::makeStrongPtr(gameObject->getComponent<InputDeviceComponent>());
 
 				if (nullptr != inputDeviceCompPtr)
 				{
@@ -58,7 +58,7 @@ namespace NOWA
 					inputDeviceComponent->setActivated(selected);
 				}
 
-				const auto& playerControllerCompPtr = NOWA::makeStrongPtr(gameObject->getComponent<PlayerControllerComponent>());
+				const auto playerControllerCompPtr = NOWA::makeStrongPtr(gameObject->getComponent<PlayerControllerComponent>());
 
 				if (nullptr != playerControllerCompPtr)
 				{
@@ -339,7 +339,7 @@ namespace NOWA
 		this->categories->setValue(categories);
 		if (nullptr != this->selectionManager)
 		{
-			this->selectionManager->filterCategories(this->categories->getString());
+			this->selectionManager-> filterCategories(this->categories->getString());
 		}
 	}
 
@@ -352,7 +352,7 @@ namespace NOWA
 	{
 		this->useMultiSelection->setValue(useMultiSelection);
 
-		const auto& selectionObserver = this->selectionManager->getSelectionObserver();
+		const auto selectionObserver = this->selectionManager->getSelectionObserver();
 		if (nullptr != selectionObserver)
 		{
 			static_cast<SelectionObserver*>(selectionObserver)->setUseMultiSelection(useMultiSelection);
@@ -432,14 +432,14 @@ namespace NOWA
 
             this->selectionManager->handleMouseRelease(evt, id);
 
-            const auto& selectedGameObjects = this->selectionManager->getSelectedGameObjects();
+            const auto selectedGameObjects = this->selectionManager->getSelectedGameObjects();
 
             if (this->closureFunction.is_valid())
             {
                 // Create a luabind table instead of std::vector
                 luabind::object selectedGameObjectTable = luabind::newtable(LuaScriptApi::getInstance()->getLua());
                 size_t i = 0;
-                for (auto& selectedGameObject : selectedGameObjects)
+                for (const auto& selectedGameObject : selectedGameObjects)
                 {
                     selectedGameObjectTable[i++] = selectedGameObject.second.gameObject;
                 }
@@ -514,7 +514,7 @@ namespace NOWA
 	{
 		this->activatePlayerController->setValue(activatePlayerController);
 
-		const auto& selectionObserver = this->selectionManager->getSelectionObserver();
+		const auto selectionObserver = this->selectionManager->getSelectionObserver();
 		if (nullptr != selectionObserver)
 		{
 			static_cast<SelectionObserver*>(selectionObserver)->setActivatePlayerController(activatePlayerController);

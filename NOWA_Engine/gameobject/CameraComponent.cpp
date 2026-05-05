@@ -80,7 +80,7 @@ namespace NOWA
 		if (true == active)
 		{
 			auto gameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects();
-			for (auto& it = gameObjects->begin(); it != gameObjects->end(); ++it)
+			for (auto it = gameObjects->begin(); it != gameObjects->end(); ++it)
 			{
 				GameObject* gameObject = it->second.get();
 				if (id != gameObject->getId())
@@ -105,7 +105,7 @@ namespace NOWA
 		{
 			auto gameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects();
 			// if the removed camera component had an active camera a successeres must be determined
-			for (auto& it = gameObjects->begin(); it != gameObjects->end(); ++it)
+			for (auto it = gameObjects->begin(); it != gameObjects->end(); ++it)
 			{
 				GameObject* gameObject = it->second.get();
 
@@ -615,7 +615,7 @@ namespace NOWA
 				// this->setCameraPosition(this->camera->getParentSceneNode()->convertWorldToLocalPositionUpdated(desiredWorldPosition));
 				// this->setCameraOrientation(this->camera->getParentSceneNode()->convertWorldToLocalOrientationUpdated(desiredWorldOrientation));
 
-				auto& workspaceBaseCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<WorkspaceBaseComponent>());
+				auto workspaceBaseCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<WorkspaceBaseComponent>());
 				if (nullptr != workspaceBaseCompPtr)
 				{
 					// if ("MainCamera" == this->camera->getName())
@@ -652,7 +652,7 @@ namespace NOWA
 			bool stillActiveOne = false;
 			auto gameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects();
 
-			for (auto& it = gameObjects->begin(); it != gameObjects->end(); ++it)
+			for (auto it = gameObjects->begin(); it != gameObjects->end(); ++it)
 			{
 				GameObject* gameObject = it->second.get();
 
@@ -715,7 +715,7 @@ namespace NOWA
 				{
 					// if (true == WorkspaceModule::getInstance()->hasMoreThanOneWorkspace())
 					{
-						auto& workspaceBaseCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<WorkspaceBaseComponent>());
+						auto workspaceBaseCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<WorkspaceBaseComponent>());
 						if (nullptr != workspaceBaseCompPtr)
 						{
 							// Create and switch workspace

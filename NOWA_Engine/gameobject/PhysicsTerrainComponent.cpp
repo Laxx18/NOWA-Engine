@@ -66,7 +66,7 @@ namespace NOWA
 		
 		Ogre::Terra* terra = nullptr;
 
-		auto& terraCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<TerraComponent>());
+		auto terraCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<TerraComponent>());
 		if (nullptr != terraCompPtr)
 		{
 			terra = terraCompPtr->getTerra();

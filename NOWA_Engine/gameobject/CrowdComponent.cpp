@@ -142,10 +142,10 @@ namespace NOWA
 	
 	void CrowdComponent::onOtherComponentRemoved(unsigned int index)
 	{
-		auto& gameObjectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentByIndex(index));
+		auto gameObjectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentByIndex(index));
 		if (nullptr != gameObjectCompPtr)
 		{
-			auto& physicsActiveCompPtr = boost::dynamic_pointer_cast<PhysicsActiveComponent>(gameObjectCompPtr);
+			auto physicsActiveCompPtr = boost::dynamic_pointer_cast<PhysicsActiveComponent>(gameObjectCompPtr);
 			if (nullptr != physicsActiveCompPtr)
 			{
 				this->physicsActiveComponent = nullptr;

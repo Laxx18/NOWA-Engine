@@ -389,8 +389,8 @@ namespace NOWA
 			Ogre::CompositorManager2::CompositorNodeDefMap nodeDefs = WorkspaceModule::getInstance()->getCompositorManager()->getNodeDefinitions();
 
 			// Iterate through Compositor Managers resources
-			auto& it = nodeDefs.begin();
-			auto& end = nodeDefs.end();
+			auto it = nodeDefs.begin();
+			auto end = nodeDefs.end();
 
 			// Goes through all passes for the given workspace and set the corresponding render category. All game objects which do not match that category, will not be rendered for this camera
 			// Note: MyGui is added to the final split combined workspace, so it does not make sense to exclude mygui objects from rendering

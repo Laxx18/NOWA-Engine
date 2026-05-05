@@ -193,10 +193,10 @@ namespace NOWA
 
     void AiLuaGoalComponent::onOtherComponentRemoved(unsigned int index)
     {
-        auto& gameObjectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentByIndex(index));
+        auto gameObjectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentByIndex(index));
         if (nullptr != gameObjectCompPtr)
         {
-            auto& physicsCompPtr = boost::dynamic_pointer_cast<PhysicsComponent>(gameObjectCompPtr);
+            auto physicsCompPtr = boost::dynamic_pointer_cast<PhysicsComponent>(gameObjectCompPtr);
             if (nullptr != physicsCompPtr)
             {
                 if (nullptr != this->movingBehaviorPtr)
@@ -214,10 +214,10 @@ namespace NOWA
             return;
         }
 
-        auto& gameObjectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentByIndex(index));
+        auto gameObjectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentByIndex(index));
         if (nullptr != gameObjectCompPtr)
         {
-            auto& physicsActiveCompPtr = boost::dynamic_pointer_cast<PhysicsActiveComponent>(gameObjectCompPtr);
+            auto physicsActiveCompPtr = boost::dynamic_pointer_cast<PhysicsActiveComponent>(gameObjectCompPtr);
             if (nullptr != physicsActiveCompPtr)
             {
                 if (nullptr != this->movingBehaviorPtr)

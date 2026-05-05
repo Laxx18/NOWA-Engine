@@ -24,7 +24,7 @@ namespace
                 return nullptr;
             }
 
-            auto& notifyPtr = nbody->GetNotifyCallback();
+            auto notifyPtr = nbody->GetNotifyCallback();
             if (!notifyPtr)
             {
                 return nullptr;
@@ -278,7 +278,7 @@ OgreNewt::Body* Joint::getBody0() const
 
     if (auto* body = m_jointPtr->GetBody0())
     {
-        auto& notifyPtr = body->GetNotifyCallback();
+        auto notifyPtr = body->GetNotifyCallback();
         if (notifyPtr)
         {
             if (auto* bodyNotify = dynamic_cast<OgreNewt::BodyNotify*>(*notifyPtr))
@@ -300,7 +300,7 @@ OgreNewt::Body* Joint::getBody1() const
 
     if (auto* body = m_jointPtr->GetBody1())
     {
-        auto& notifyPtr = body->GetNotifyCallback();
+        auto notifyPtr = body->GetNotifyCallback();
         if (notifyPtr)
         {
             if (auto* bodyNotify = dynamic_cast<OgreNewt::BodyNotify*>(*notifyPtr))

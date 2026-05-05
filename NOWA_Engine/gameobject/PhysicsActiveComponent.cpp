@@ -321,7 +321,7 @@ namespace NOWA
         this->gameObjectPtr->setDynamic(true);
         this->gameObjectPtr->getAttribute(GameObject::AttrDynamic())->setVisible(false);
 
-        auto& physicsCompoundConnectionCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsCompoundConnectionComponent>());
+        auto physicsCompoundConnectionCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsCompoundConnectionComponent>());
         if (nullptr == physicsCompoundConnectionCompPtr)
         {
             if (false == this->createDynamicBody())
@@ -1849,7 +1849,7 @@ namespace NOWA
         {
             // Get a key from id and user index to match a line when drawing is enabled
             Ogre::String key = std::to_string(this->gameObjectPtr->getId()) + std::to_string(index) + "getContactBelow";
-            auto& it = this->drawLineMap.find(key);
+            auto it = this->drawLineMap.find(key);
             if (it == this->drawLineMap.cend())
             {
                 ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsActiveComponent::getContactBelow", _3(key, charPoint, rayEndPoint), {
@@ -1994,7 +1994,7 @@ namespace NOWA
         {
             // Get a key from id and user index to match a line, when line drawing is set to on
             Ogre::String key = std::to_string(this->gameObjectPtr->getId()) + std::to_string(index) + "getContactAhead";
-            auto& it = this->drawLineMap.find(key);
+            auto it = this->drawLineMap.find(key);
             if (it == this->drawLineMap.cend())
             {
                 ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsActiveComponent::getContactAhead", _3(key, charPoint, rayEndPoint), {
@@ -2130,7 +2130,7 @@ namespace NOWA
             Ogre::Vector3 toPosition = rayEndPoint;
 
             Ogre::String key = std::to_string(this->gameObjectPtr->getId()) + std::to_string(index) + "getContactAbove";
-            auto& it = this->drawLineMap.find(key);
+            auto it = this->drawLineMap.find(key);
             if (it == this->drawLineMap.cend())
             {
                 ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsActiveComponent::getContactAbove", _3(key, fromPosition, toPosition), {
@@ -2269,7 +2269,7 @@ namespace NOWA
         {
             // Get a key from id and user index to match a line, when line drawing is set to on
             Ogre::String key = std::to_string(this->gameObjectPtr->getId()) + std::to_string(index) + "getContactToDirection";
-            auto& it = this->drawLineMap.find(key);
+            auto it = this->drawLineMap.find(key);
             if (it == this->drawLineMap.cend())
             {
                 ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsActiveComponent::getContactToDirection", _3(key, fromPosition, toPosition), {
@@ -2419,7 +2419,7 @@ namespace NOWA
         {
             // Get a key from id and user index to match a line, when line drawing is set to on
             Ogre::String key = std::to_string(this->gameObjectPtr->getId()) + std::to_string(index) + "getContact";
-            auto& it = this->drawLineMap.find(key);
+            auto it = this->drawLineMap.find(key);
             if (it == this->drawLineMap.cend())
             {
                 ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsActiveComponent::getContact", _1(key), {
@@ -2778,7 +2778,7 @@ namespace NOWA
 
     void PhysicsActiveComponent::destroyLineMap(void)
     {
-        for (auto& it = this->drawLineMap.cbegin(); it != this->drawLineMap.cend(); ++it)
+        for (auto it = this->drawLineMap.cbegin(); it != this->drawLineMap.cend(); ++it)
         {
             Ogre::SceneNode* debugLineNode = it->second.first;
 
@@ -2852,7 +2852,7 @@ namespace NOWA
             // Only do calculation for the nearest planet
             if (nullptr != nearestGravitySourceObject)
             {
-                auto& gravitySourcePhysicsComponentPtr = NOWA::makeStrongPtr(nearestGravitySourceObject->getComponent<PhysicsComponent>());
+                auto gravitySourcePhysicsComponentPtr = NOWA::makeStrongPtr(nearestGravitySourceObject->getComponent<PhysicsComponent>());
                 if (nullptr != gravitySourcePhysicsComponentPtr)
                 {
                     Ogre::Vector3 directionToPlanet = this->getPosition() - gravitySourcePhysicsComponentPtr->getPosition();
@@ -2978,13 +2978,13 @@ namespace NOWA
         {
             std::shared_lock<std::shared_mutex> lk(forceObserversMutex);
             local.reserve(forceObservers.size());
-            for (auto& kv : forceObservers)
+            for (const auto& kv : forceObservers)
             {
                 local.push_back(kv.second);
             }
         }
 
-        for (auto& obs : local)
+        for (const auto& obs : local)
         {
             obs->onForceAdd(body, timeStep, threadIndex);
         }
@@ -2996,7 +2996,7 @@ namespace NOWA
         // http://natureofcode.com/book/chapter-4-particle-systems/
 
         // A repeller may be attracted by several attractors with different magnetic strengths etc.
-        for (auto& it = this->physicsAttractors.cbegin(); it != this->physicsAttractors.cend(); ++it)
+        for (auto it = this->physicsAttractors.cbegin(); it != this->physicsAttractors.cend(); ++it)
         {
             boost::shared_ptr<JointAttractorComponent> jointAttractorCompPtr = boost::dynamic_pointer_cast<JointAttractorComponent>(NOWA::makeStrongPtr(AppStateManager::getSingletonPtr()->getGameObjectController()->getJointComponent(*it)));
 
@@ -3033,12 +3033,12 @@ namespace NOWA
 
         /////////////////////Spring Joint behaviour/////////////////////////////////////
 
-        for (auto& it = this->springs.cbegin(); it != this->springs.cend(); ++it)
+        for (auto it = this->springs.cbegin(); it != this->springs.cend(); ++it)
         {
             boost::shared_ptr<JointSpringComponent> jointSpringCompPtr = boost::dynamic_pointer_cast<JointSpringComponent>(NOWA::makeStrongPtr(AppStateManager::getSingletonPtr()->getGameObjectController()->getJointComponent(*it)));
 
             // Get the global position our cursor is at
-            auto& predecessorJointSpringCompPtr = NOWA::makeStrongPtr(AppStateManager::getSingletonPtr()->getGameObjectController()->getJointComponent(jointSpringCompPtr->getPredecessorId()));
+            auto predecessorJointSpringCompPtr = NOWA::makeStrongPtr(AppStateManager::getSingletonPtr()->getGameObjectController()->getJointComponent(jointSpringCompPtr->getPredecessorId()));
             if (nullptr != predecessorJointSpringCompPtr)
             {
                 Ogre::Vector3 anchorPosition = predecessorJointSpringCompPtr->getBody()->getPosition() + jointSpringCompPtr->getAnchorOffsetPosition();

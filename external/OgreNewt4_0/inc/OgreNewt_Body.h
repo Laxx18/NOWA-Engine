@@ -32,7 +32,7 @@ namespace OgreNewt
 		typedef OgreNewt::function<void(OgreNewt::Body*, ndFloat32 timeStep, int threadIndex)> ForceCallback;
 		typedef OgreNewt::function<void(OgreNewt::Body*)> NodeUpdateNotifyCallback;
 		typedef OgreNewt::function<void(OgreNewt::Body*, OgreNewt::Contact*)> ContactCallback;
-		typedef OgreNewt::function<void(Ogre::SceneNode*, const Ogre::Vector3&, const Ogre::Quaternion&, bool updateRot, bool updateStatic)> RenderUpdateCallback;
+        typedef OgreNewt::function<void(Ogre::SceneNode*, const Ogre::Vector3&, const Ogre::Quaternion&, bool updateRot, bool updateStatic, bool teleport)> RenderUpdateCallback;
 
 		friend class Vehicle;
 		friend class World;
@@ -178,7 +178,7 @@ namespace OgreNewt
 
 		void showDebugCollision(bool isStatic, bool show, const Ogre::ColourValue& color = Ogre::ColourValue::Green);
 
-		void updateNode(Ogre::Real interpolatParam);
+		void updateNode(Ogre::Real interpolatParam, bool isTeleport);
 
 		Ogre::SceneMemoryMgrTypes getSceneMemoryType(void) const;
 

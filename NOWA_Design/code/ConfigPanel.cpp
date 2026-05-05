@@ -241,7 +241,7 @@ void ConfigPanel::callForSettings(bool forSettings)
 void ConfigPanel::applySettings(void)
 {
 	// Get the project parameter from project manager when a project has been loaded
-	NOWA::ProjectParameter& projectParameter = this->projectManager->getProjectParameter();
+	const NOWA::ProjectParameter& projectParameter = this->projectManager->getProjectParameter();
 
 	this->configPanelProject->setParameter(projectParameter.projectName, projectParameter.sceneName, projectParameter.createProject, projectParameter.openProject, 
 		projectParameter.createSceneInOwnState, NOWA::Core::getSingletonPtr()->getCryptKey(), projectParameter.ignoreGlobalScene, projectParameter.useV2Item);
@@ -393,7 +393,7 @@ void ConfigPanelProject::resetSettings(void)
 	});
 
 	auto filePathNames = NOWA::Core::getSingletonPtr()->getFilePathNames("Projects", "", "/*");
-	for (auto filePathName : filePathNames)
+	for (auto& filePathName : filePathNames)
 	{
 		size_t found = filePathName.find_last_of("/\\");
 		if (Ogre::String::npos == found)
@@ -507,7 +507,7 @@ void ConfigPanelProject::onEditTextChanged(MyGUI::Widget* sender)
 	{
 		if (this->projectNameEdit == sender)
 		{
-			auto& matchedNames = this->projectAutoCompleteSearch.findMatchedItemWithInText(this->projectNameEdit->getOnlyText());
+			auto matchedNames = this->projectAutoCompleteSearch.findMatchedItemWithInText(this->projectNameEdit->getOnlyText());
 			this->projectNameEdit->removeAllItems();
 			if (false == matchedNames.getResults().empty())
 			{
@@ -548,7 +548,7 @@ void ConfigPanelProject::fillScenesSearchList(void)
 {
 	// Threadsafety outside
 	auto filePathNames = NOWA::Core::getSingletonPtr()->getFilePathNames("Projects", this->projectNameEdit->getOnlyText(), "*.scene");
-	for (auto& filePathName : filePathNames)
+	for (const auto& filePathName : filePathNames)
 	{
 		Ogre::String fileName = NOWA::Core::getSingletonPtr()->getFileNameFromPath(filePathName);
 		fileName = fileName.substr(0, fileName.find(".scene"));

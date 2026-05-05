@@ -24,7 +24,7 @@ namespace
 		return str;
 	}
 
-	Ogre::String mid(Ogre::String& str, unsigned short pos1, unsigned short pos2)
+	Ogre::String mid(const Ogre::String& str, unsigned short pos1, unsigned short pos2)
 	{
 		unsigned short i;
 		Ogre::String temp;

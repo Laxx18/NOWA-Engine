@@ -100,24 +100,28 @@ namespace NOWA
 	}
 	
 	void AnimationBlenderV2::internalInit(const Ogre::String& animationName, bool loop)
-	{
-		if (false == this->canAnimate)
-			return;
+    {
+        if (false == this->canAnimate)
+        {
+            return;
+        }
 
-		if (nullptr == this->skeleton)
-		{
-			// No animations avaiable, skip
-			this->canAnimate = false;
-			return;
-		}
-		for (auto& anim : this->skeleton->getAnimationsNonConst())
-		{
-			anim.setEnabled(false);
-			anim.mWeight = 0.0f;
-			anim.setTime(0.0f);
-		}
-		
-		// set current animation
+        if (nullptr == this->skeleton)
+        {
+            // No animations available — permanently disable to avoid null-pointer spam.
+            this->canAnimate = false;
+            return;
+        }
+
+        // Disable every animation on the skeleton before activating the new one,
+        // so no previously running animation bleeds into the new source.
+        for (auto& anim : this->skeleton->getAnimationsNonConst())
+        {
+            anim.setEnabled(false);
+            anim.mWeight = 0.0f;
+            anim.setTime(0.0f);
+        }
+
         if (true == this->skeleton->hasAnimation(animationName))
         {
             this->source = this->skeleton->getAnimation(animationName);
@@ -129,14 +133,18 @@ namespace NOWA
             this->complete = false;
             this->loop = loop;
 
-            // Apply current speed to the freshly assigned source
+            // Propagate the loop flag to Ogre immediately so that the very first
+            // addTime() call wraps (or stops) correctly without waiting one extra tick.
+            this->source->setLoop(loop);
+
+            // Apply the current playback speed to the freshly assigned source.
             auto it = this->baseFrameRates.find(animationName);
             if (it != this->baseFrameRates.end())
             {
                 this->source->mFrameRate = it->second * this->currentSpeed;
             }
         }
-	}
+    }
 	
 	void AnimationBlenderV2::blend(AnimID animationId, BlendingTransition transition, Ogre::Real duration, bool loop)
 	{
@@ -455,61 +463,109 @@ namespace NOWA
         NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "AnimationBlenderV2::internalBlend");
 	}
 
-	void AnimationBlenderV2::addTime(Ogre::Real time)
-	{
-		// Note: If entity is in ragdolling state, animation would explode the ragdoll and since its no possible to avoid, that a developer calls
-		// e.g. in a lua script some animation functions, it must be avoided internally
-		if (false == this->canAnimate)
-		{
-			return;
-		}
+	//   1. source->setLoop() is now called BEFORE source->addTime() so Ogre's
+    //      internal wrap is applied on the same frame the end is reached.
+    //   2. Looping and non-looping paths are fully separated:
+    //        - loop = true  → complete stays false, notifyObservers() never fires.
+    //        - loop = false → old threshold logic kept, notifyObservers() fires once.
+    //   3. The completionThreshold constant is named so it is easy to adjust.
+    // -----------------------------------------------------------------------------
+    void AnimationBlenderV2::addTime(Ogre::Real time)
+    {
+        // If the entity is in ragdolling state, skip animation updates entirely —
+        // driving animations during ragdoll would corrupt the physics simulation.
+        if (false == this->canAnimate)
+        {
+            return;
+        }
 
-		if (this->source != nullptr)
-		{
-			auto closureFunction = [this, time](Ogre::Real renderDt)
-			{
-				bool weightChange = false;
-				if (this->timeleft > 0.0f)
-				{
-					this->timeleft -= time;
-					if (this->timeleft <= 0.0f)
-					{
-						// finish blending
-                        this->source->setEnabled(false);
-                        this->source->mWeight = 0.0f;
-                        this->source = this->target;
-                        this->source->setEnabled(true);
-                        this->source->mWeight = 1.0f;
-                        this->target = nullptr;
+        if (nullptr == this->source)
+        {
+            return;
+        }
 
-						// In addTime, when timeleft crosses zero:
-                        if (this->transition == BlendingTransition::BlendThenAnimate)
-                        {
-                            // Blend phase complete, animation is now live from frame 0
-                            // Notify separately if needed — e.g. a separate onAnimationStarted observer
-                            // For now, just ensure target starts cleanly
-                            this->source->setFrame(0.0f); // after source = target assignment
-                        }
-					}
-					else
-					{
-						// still blending, advance weights
-                        Ogre::Real t = 1.0f - (this->timeleft / this->duration); // 0->1 as blend progresses
-                        Ogre::Real smooth = t * t * (3.0f - 2.0f * t);           // smoothstep formula
-                        this->source->mWeight = 1.0f - smooth;
-                        this->target->mWeight = smooth;
-						weightChange = true;
-                        if (this->transition == AnimationBlenderV2::BlendWhileAnimating || this->transition == AnimationBlenderV2::BlendThenAnimate)
-                        {
-                            this->target->addTime(time);
-                        }
-					}
-				}
+        auto closureFunction = [this, time](Ogre::Real renderDt)
+        {
+            bool weightChange = false;
 
-				// Must be minus fraction, else it will never complete, OgreAnimationState bug? hasEnded only works for not looping and not accurate too
-				if (this->source->getCurrentTime() >= this->source->getDuration() - 0.05f)
-				{
-					this->complete = true;
+            // ---- Cross-fade / blend phase ----------------------------------------
+            if (this->timeleft > 0.0f)
+            {
+                this->timeleft -= time;
+
+                if (this->timeleft <= 0.0f)
+                {
+                    // Blend finished: promote target to source.
+                    this->source->setEnabled(false);
+                    this->source->mWeight = 0.0f;
+                    this->source = this->target;
+                    this->source->setEnabled(true);
+                    this->source->mWeight = 1.0f;
+                    this->target = nullptr;
+
+                    // For BlendThenAnimate the animation starts playing from frame 0
+                    // once the blend phase is complete.
+                    if (this->transition == BlendingTransition::BlendThenAnimate)
+                    {
+                        this->source->setFrame(0.0f);
+                    }
+                }
+                else
+                {
+                    // Still in blend phase — update weights with a smoothstep curve
+                    // so the transition eases in and out instead of feeling linear.
+                    Ogre::Real t = 1.0f - (this->timeleft / this->duration);
+                    Ogre::Real smooth = t * t * (3.0f - 2.0f * t);
+                    this->source->mWeight = 1.0f - smooth;
+                    this->target->mWeight = smooth;
+                    weightChange = true;
+
+                    if (this->transition == AnimationBlenderV2::BlendWhileAnimating || this->transition == AnimationBlenderV2::BlendThenAnimate)
+                    {
+                        this->target->addTime(time);
+                    }
+                }
+            }
+
+            // ---- FIX: set loop flag BEFORE addTime --------------------------------
+            // Ogre reads mLoop inside addTime to decide whether to wrap the time or
+            // clamp it.  Setting it after addTime meant the wrap decision on the very
+            // last frame was made with the stale flag from the previous animation.
+            this->source->setLoop(this->loop);
+
+            // ---- Completion / loop handling ---------------------------------------
+
+            if (this->loop)
+            {
+                // FIX: looping animations must NEVER set complete = true and must
+                // NEVER call notifyObservers().  Ogre wraps time internally via
+                // addTime() as long as setLoop(true) has been called (see above).
+                // The old code fired notifyObservers() on every single loop cycle,
+                // causing spurious animation-finished callbacks and visually the
+                // complete flag toggling true/false each cycle made the weight
+                // management inconsistent.
+                this->complete = false;
+
+                if (false == weightChange)
+                {
+                    this->source->mWeight = 1.0f;
+                }
+            }
+            else
+            {
+                // Non-looping path: use a small threshold instead of comparing
+                // against the exact duration value because floating-point accumulation
+                // can overshoot getDuration() by tiny amounts, and Ogre's hasEnded()
+                // is documented as unreliable for non-looping skeleton animations.
+                const Ogre::Real completionThreshold = 0.05f;
+
+                if (this->source->getCurrentTime() >= this->source->getDuration() - completionThreshold)
+                {
+                    this->complete = true;
+
+                    // blendAndContinue support: if a previous source was saved before
+                    // the one-shot animation started, restore it now that the one-shot
+                    // has finished playing.
                     if (nullptr != this->previousSource)
                     {
                         this->source->setEnabled(false);
@@ -529,30 +585,30 @@ namespace NOWA
                         this->source->setTime(0.0f);
                         this->source->setLoop(this->loop);
 
-                        // Reapply current speed — previousSource may not have been touched since last speed change
+                        // Re-apply the playback speed — the previous source may not
+                        // have been touched since the last setAnimationSpeed() call.
                         auto it = this->baseFrameRates.find(this->source->getName().getFriendlyText());
                         if (it != this->baseFrameRates.end())
                         {
                             this->source->mFrameRate = it->second * this->currentSpeed;
                         }
 
-						// ---- Overlay animation driving ----
+                        // ---- Overlay animation driving ---------------------------
                         if (nullptr != this->overlaySource)
                         {
                             if (false == this->overlayBlendingOut)
                             {
-                                // Blend-in phase: weight 0 -> 1
+                                // Blend-in phase: ramp weight from 0 to 1.
                                 if (this->overlayTimeleft > 0.0f)
                                 {
                                     this->overlayTimeleft -= time;
                                     this->overlaySource->mWeight = (this->overlayTimeleft <= 0.0f) ? 1.0f : 1.0f - (this->overlayTimeleft / this->overlayDuration);
                                 }
 
-                                // Advance the overlay animation
                                 this->overlaySource->addTime(time);
 
-                                // Non-looping overlay finished on its own — auto-clear
-                                if (false == this->overlaySource->mLoop && this->overlaySource->getCurrentTime() >= this->overlaySource->getDuration() - 0.05f)
+                                // Non-looping overlay finished on its own — auto-remove.
+                                if (false == this->overlaySource->mLoop && this->overlaySource->getCurrentTime() >= this->overlaySource->getDuration() - completionThreshold)
                                 {
                                     this->overlaySource->setOverrideBoneWeightsOnAllAnimations(1.0f, true);
                                     this->overlaySource->setEnabled(false);
@@ -562,14 +618,14 @@ namespace NOWA
                             }
                             else
                             {
-                                // Blend-out phase: weight 1 -> 0
+                                // Blend-out phase: ramp weight from 1 to 0.
                                 if (this->overlayTimeleft > 0.0f)
                                 {
                                     this->overlayTimeleft -= time;
 
                                     if (this->overlayTimeleft <= 0.0f)
                                     {
-                                        // Fully blended out — shut down
+                                        // Fully blended out — shut down overlay.
                                         this->overlaySource->setEnabled(false);
                                         this->overlaySource->mWeight = 0.0f;
                                         this->overlaySource = nullptr;
@@ -584,42 +640,43 @@ namespace NOWA
                         }
                     }
 
-					// Notifies all observers that the animation has finished
-					this->notifyObservers();
-				}
-				else
-				{
-					this->complete = false;
-					if (false == weightChange)
-					{
-						this->source->mWeight = 1.0f;
-						/*if (nullptr != this->target)
-						{
-							this->target->setWeight(1.0f);
-						}*/
-					}
-				}
-				this->source->addTime(time);
+                    // Notify all registered observers that the non-looping animation
+                    // has ended.  Only fired once per completion, not every frame.
+                    this->notifyObservers();
+                }
+                else
+                {
+                    this->complete = false;
+                    if (false == weightChange)
+                    {
+                        this->source->mWeight = 1.0f;
+                    }
+                }
+            }
 
-				if (true == this->debugLog)
-				{
-					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "Source Animation: " + this->source->getName().getFriendlyText()
-						+ " timePosition: " + Ogre::StringConverter::toString(this->source->getCurrentTime())
-						+ " length: " + Ogre::StringConverter::toString(this->source->getDuration())
-						+ " complete: " + Ogre::StringConverter::toString(this->complete) + " weight: " + Ogre::StringConverter::toString(this->source->mWeight));
-					if (target != nullptr)
-					{
-						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "Target Animation: " + this->target->getName().getFriendlyText()
-							+ " timePosition: " + Ogre::StringConverter::toString(this->target->getCurrentTime())
-							+ " length: " + Ogre::StringConverter::toString(this->target->getDuration()) + " weight: " + Ogre::StringConverter::toString(this->target->mWeight));
-					}
-				}
-				this->source->setLoop(this->loop);
-			};
-			Ogre::String id = "AnimationBlenderV2::addTime" + Ogre::StringConverter::toString(this->uniqueId);
-			NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction);
-		}
-	}
+            // ---- Advance source animation time ------------------------------------
+            // addTime() wraps automatically for looping animations because setLoop()
+            // was already called above before this point.
+            this->source->addTime(time);
+
+            // ---- Debug logging ----------------------------------------------------
+            if (true == this->debugLog)
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "Source Animation: " + this->source->getName().getFriendlyText() + " timePosition: " + Ogre::StringConverter::toString(this->source->getCurrentTime()) +
+                                                                                        " length: " + Ogre::StringConverter::toString(this->source->getDuration()) + " complete: " + Ogre::StringConverter::toString(this->complete) +
+                                                                                        " weight: " + Ogre::StringConverter::toString(this->source->mWeight));
+
+                if (nullptr != this->target)
+                {
+                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "Target Animation: " + this->target->getName().getFriendlyText() + " timePosition: " + Ogre::StringConverter::toString(this->target->getCurrentTime()) +
+                                                                                            " length: " + Ogre::StringConverter::toString(this->target->getDuration()) + " weight: " + Ogre::StringConverter::toString(this->target->mWeight));
+                }
+            }
+        };
+
+        Ogre::String id = "AnimationBlenderV2::addTime" + Ogre::StringConverter::toString(this->uniqueId);
+        NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction);
+    }
 
 	void AnimationBlenderV2::blendAndContinue(AnimID animationId, Ogre::Real duration)
 	{
@@ -832,7 +889,7 @@ namespace NOWA
 
     void AnimationBlenderV2::driveBlendSpace(Ogre::Real parameter, const IAnimationBlender::BlendSpaceEntryList& entryList)
     {
-        const auto& entries = entryList.getEntries();
+        const auto entries = entryList.getEntries();
         if (entries.size() < 2 || false == this->canAnimate)
         {
             return;
@@ -926,7 +983,7 @@ namespace NOWA
 
 	AnimationBlenderV2::AnimID AnimationBlenderV2::getAnimationIdFromString(const Ogre::String& animationName)
 	{
-		for (auto& it = this->mappedAnimations.cbegin(); it != this->mappedAnimations.cend(); ++it)
+		for (auto it = this->mappedAnimations.cbegin(); it != this->mappedAnimations.cend(); ++it)
 		{
 			if (it->second == animationName)
 			{
@@ -1079,7 +1136,7 @@ namespace NOWA
 					Ogre::SkeletonInstance* skeleton = item->getSkeletonInstance();
 					if (nullptr != skeleton)
 					{
-						for (const auto& anim : skeleton->getAnimations())
+                        for (const auto& anim : skeleton->getAnimations())
 						{
 							Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AnimationComponent] Animation name: " + anim.getName().getFriendlyText()
 																			+ " length: " + Ogre::StringConverter::toString(anim.getDuration()) + " seconds");
@@ -1253,7 +1310,7 @@ namespace NOWA
 
 	void AnimationBlenderV2::processDeferredCallbacks(void)
 	{
-		for (auto& callback : this->deferredCallbacks)
+        for (auto& callback : this->deferredCallbacks)
 		{
 			callback();  // Execute each callback
 		}

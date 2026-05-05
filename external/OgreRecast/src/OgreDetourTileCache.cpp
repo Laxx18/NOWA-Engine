@@ -834,6 +834,24 @@ void OgreDetourTileCache::drawNavMesh(bool draw)
     }
 }
 
+void OgreDetourTileCache::setInputGeom(InputGeom* geom)
+{
+    // Always replace — even if m_geom is already set (stale empty placeholder)
+    if (nullptr != m_geom)
+    {
+        delete m_geom;
+        m_geom = nullptr;
+    }
+
+    m_geom = geom;
+
+    // m_tmproc is shared with the already-initialised tile cache.
+    // Updating its internal m_geom here means rasterizeTileLayers() sees
+    // real geometry when rebuilding tiles after addConvexShapeObstacle().
+    if (nullptr != m_tmproc && nullptr != m_geom)
+        m_tmproc->init(m_geom);
+}
+
 void OgreDetourTileCache::drawDetail(const int tx, const int ty, bool draw)
 {
     dtCompressedTileRef tiles[MAX_LAYERS];
@@ -918,7 +936,7 @@ void OgreDetourTileCache::drawDetail(const int tx, const int ty, bool draw)
 		// 	return;
 
 // Attention: Is that correct with "ManualObject"??
-		auto& itor = m_recast->m_pSceneMgr->getMovableObjectIterator("ManualObject");
+		auto itor = m_recast->m_pSceneMgr->getMovableObjectIterator("ManualObject");
 		while (itor.hasMoreElements())
 		{
 			Ogre::MovableObject* object = itor.peekNext();
@@ -1421,6 +1439,8 @@ bool OgreDetourTileCache::loadAll(Ogre::String filename)
            return false;
        }
 
+       m_ctx = m_recast->m_ctx;
+
        memcpy(&m_cfg, &header.recastConfig, sizeof(rcConfig));
 
        // Read tiles.
@@ -1523,4 +1543,16 @@ bool OgreDetourTileCache::loadAll(Ogre::String filename)
        Ogre::LogManager::getSingletonPtr()->logMessage("Tilecache Mem Usage = " +Ogre::StringConverter::toString(m_cacheCompressedSize/1024.0f) +" kB");
 
        return true;
+}
+
+void OgreDetourTileCache::createEmptyInputGeom(void)
+{
+    if (nullptr == m_geom)
+    {
+        m_geom = new InputGeom();
+        // Must init m_tmproc so MeshProcess has a valid geom pointer.
+        // Without this, rasterizeTileLayers crashes even though m_geom is set.
+        if (nullptr != m_tmproc)
+            m_tmproc->init(m_geom);
+    }
 }

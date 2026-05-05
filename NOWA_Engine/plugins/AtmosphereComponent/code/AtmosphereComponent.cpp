@@ -789,7 +789,7 @@ namespace NOWA
 			return false;
 		}
 
-		auto& lightDirectionalCompPtr = NOWA::makeStrongPtr(lightGameObjectPtr->getComponent<LightDirectionalComponent>());
+		auto lightDirectionalCompPtr = NOWA::makeStrongPtr(lightGameObjectPtr->getComponent<LightDirectionalComponent>());
 		if (nullptr != lightDirectionalCompPtr)
 		{
 			this->lightDirectionalComponent = lightDirectionalCompPtr.get();

@@ -304,7 +304,7 @@ namespace NOWA
 		try
 		{
 			// Iterate through the directory
-			for (const auto& entry : fs::directory_iterator(directoryPath))
+            for (const auto& entry : fs::directory_iterator(directoryPath))
 			{
 				if (entry.is_regular_file() && entry.path().extension() == ".xml")
 				{
@@ -333,7 +333,7 @@ namespace NOWA
 	{
 		if (true == path.empty() && false == resourceGroupName.empty())
 		{
-			auto& locationList = Ogre::ResourceGroupManager::getSingletonPtr()->getResourceLocationList(resourceGroupName);
+			auto locationList = Ogre::ResourceGroupManager::getSingletonPtr()->getResourceLocationList(resourceGroupName);
 			for (auto it = locationList.cbegin(); it != locationList.cend(); ++it)
 			{
 				Ogre::String filePathName = (*it)->archive->getName() + "//" + name;
@@ -357,7 +357,7 @@ namespace NOWA
 
 	void DeployResourceModule::removeResource(const Ogre::String& name)
 	{
-		const auto& it = this->taggedResourceMap.find(name);
+		const auto it = this->taggedResourceMap.find(name);
 		if (this->taggedResourceMap.cend() != it)
 		{
 			this->taggedResourceMap.erase(it);
@@ -392,7 +392,7 @@ namespace NOWA
 
 	Ogre::String DeployResourceModule::getResourceGroupName(const Ogre::String& name) const
 	{
-		const auto& it = this->taggedResourceMap.find(name);
+		const auto it = this->taggedResourceMap.find(name);
 		if (this->taggedResourceMap.cend() != it)
 		{
 			return it->second.first;
@@ -402,7 +402,7 @@ namespace NOWA
 
 	Ogre::String DeployResourceModule::getResourcePath(const Ogre::String& name) const
 	{
-		const auto& it = this->taggedResourceMap.find(name);
+		const auto it = this->taggedResourceMap.find(name);
 		if (this->taggedResourceMap.cend() != it)
 		{
 			return it->second.second;
@@ -614,7 +614,7 @@ namespace NOWA
 		auto gameObjects = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects();
 
 		// Go through all game objects to get, which are really used in scene, because only these ones should be written
-		for (auto& it = gameObjects->cbegin(); it != gameObjects->cend(); ++it)
+		for (auto it = gameObjects->cbegin(); it != gameObjects->cend(); ++it)
 		{
 			Ogre::v1::Entity* entity = it->second->getMovableObject<Ogre::v1::Entity>();
 			if (nullptr != entity)
@@ -1106,7 +1106,7 @@ namespace NOWA
 
 		auto gameObjects = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects();
 
-		for (auto& it = gameObjects->cbegin(); it != gameObjects->cend(); ++it)
+		for (auto it = gameObjects->cbegin(); it != gameObjects->cend(); ++it)
 		{
 			Ogre::set<Ogre::String>::type tempTextures;
 			Ogre::v1::Entity* entity = it->second->getMovableObject<Ogre::v1::Entity>();
@@ -1154,7 +1154,7 @@ namespace NOWA
 		std::ofstream ofs(sceneFolderPathName + "/cachedTextures.cache");
 		ofs << "{\n";
 		bool first = true;
-		for (const auto& texture : savedTextures)
+        for (const auto& texture : savedTextures)
 		{
 			if (!first) ofs << ",\n";
 			first = false;
@@ -1866,7 +1866,7 @@ namespace NOWA
 	{
 		std::list<Ogre::String> sceneBackupList;
 		auto filePathNames = NOWA::Core::getSingletonPtr()->getFilePathNames("", "../../media/Projects/backup/" + projectName, "*.*");
-		for (auto filePathName : filePathNames)
+        for (const auto& filePathName : filePathNames)
 		{
 			sceneBackupList.push_back(filePathName);
 		}

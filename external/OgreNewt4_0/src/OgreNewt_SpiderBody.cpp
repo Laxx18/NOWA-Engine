@@ -369,7 +369,7 @@ SpiderBody::~SpiderBody()
     // Sever notify back-pointer before anything else
     if (m_artModel && m_artModel->torsoNd)
     {
-        auto& np = m_artModel->torsoNd->GetNotifyCallback();
+        auto np = m_artModel->torsoNd->GetNotifyCallback();
         if (np)
         {
             if (auto* bn = dynamic_cast<BodyNotify*>(*np))

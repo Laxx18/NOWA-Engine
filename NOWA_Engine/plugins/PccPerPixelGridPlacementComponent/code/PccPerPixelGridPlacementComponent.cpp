@@ -156,7 +156,7 @@ namespace NOWA
 		}
 
 		// Get required components
-		auto& cameraCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<CameraComponent>());
+		auto cameraCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<CameraComponent>());
 		if (nullptr == cameraCompPtr)
 		{
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PccPerPixelGridPlacementComponent] Error: CameraComponent is required but not found on game object: " + this->gameObjectPtr->getName());
@@ -164,7 +164,7 @@ namespace NOWA
 		}
 		this->cameraComponent = cameraCompPtr.get();
 
-		auto& workspaceBaseCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<WorkspaceBaseComponent>());
+		auto workspaceBaseCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<WorkspaceBaseComponent>());
 		if (nullptr == workspaceBaseCompPtr)
 		{
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PccPerPixelGridPlacementComponent] Error: WorkspaceBaseComponent is required but not found on game object: " + this->gameObjectPtr->getName());
@@ -173,7 +173,7 @@ namespace NOWA
 		this->workspaceBaseComponent = workspaceBaseCompPtr.get();
 
 		// Check for conflicting ReflectionCameraComponent
-		auto& reflectionCameraCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<ReflectionCameraComponent>());
+		auto reflectionCameraCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<ReflectionCameraComponent>());
 		if (nullptr != reflectionCameraCompPtr)
 		{
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PccPerPixelGridPlacementComponent] Error: Cannot use PccPerPixelGridPlacementComponent with ReflectionCameraComponent. "
@@ -626,7 +626,7 @@ namespace NOWA
 			int objectsInRegion = 0;
 			Ogre::Aabb pccRegion(this->regionCenter->getVector3(), this->regionHalfSize->getVector3());
 
-			for (auto& it = gameObjects->begin(); it != gameObjects->end(); ++it)
+			for (auto it = gameObjects->begin(); it != gameObjects->end(); ++it)
 			{
 				auto& gameObjectPtr = it->second;
 				if (nullptr != gameObjectPtr)

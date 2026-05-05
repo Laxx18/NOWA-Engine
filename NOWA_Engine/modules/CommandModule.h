@@ -62,7 +62,7 @@ namespace NOWA
 
 		virtual void redo(void) override
 		{
-			for (auto& cmd : this->commands)
+			for (const auto& cmd : this->commands)
 			{
 				cmd->redo();
 			}
@@ -222,13 +222,13 @@ namespace NOWA
 #endif
 		}
 
-		void CommandModule::debugPrintUndoTree(void) const
+		void debugPrintUndoTree(void) const
 		{
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "===== UNDO STACK DEBUG START =====");
 
 			int index = 0;
 
-			for (auto& cmd : this->undoStack)
+			for (const auto& cmd : this->undoStack)
 			{
 				printCommandRecursive(cmd, 0, index++);
 			}
@@ -236,7 +236,7 @@ namespace NOWA
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "===== UNDO STACK DEBUG END =====");
 		}
 
-		void CommandModule::printCommandRecursive(const std::shared_ptr<ICommand>& cmd, int depth, int index) const
+		void printCommandRecursive(const std::shared_ptr<ICommand>& cmd, int depth, int index) const
 		{
 			std::string indent(depth * 4, ' ');
 
@@ -245,10 +245,10 @@ namespace NOWA
 			auto composite = std::dynamic_pointer_cast<CompositeCommand>(cmd);
 			if (composite)
 			{
-				const auto& children = composite->getCommands();
+				const auto children = composite->getCommands();
 				int childIndex = 0;
 
-				for (auto& child : children)
+				for (const auto& child : children)
 				{
 					printCommandRecursive(child, depth + 1, childIndex++);
 				}

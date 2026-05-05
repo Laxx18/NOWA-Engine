@@ -410,7 +410,7 @@ namespace NOWA
 
         if (this->rdState == PhysicsRagDollComponent::RAGDOLLING || this->rdState == PhysicsRagDollComponent::PARTIAL_RAGDOLLING)
         {
-            for (auto& it = this->ragDataList.begin(); it != this->ragDataList.end(); ++it)
+            for (auto it = this->ragDataList.begin(); it != this->ragDataList.end(); ++it)
             {
                 if (true == activated)
                 {
@@ -448,7 +448,7 @@ namespace NOWA
 
             if (this->rdState == PhysicsRagDollComponent::RAGDOLLING || this->rdState == PhysicsRagDollComponent::PARTIAL_RAGDOLLING)
             {
-                for (auto& it = this->ragDataList.begin(); it != this->ragDataList.end(); ++it)
+                for (auto it = this->ragDataList.begin(); it != this->ragDataList.end(); ++it)
                 {
                     (*it).ragBone->update(dt, notSimulating);
                 }
@@ -519,7 +519,7 @@ namespace NOWA
         {
             NOWA::GraphicsModule::RenderCommand renderCommand = [this, activate]()
             {
-                for (auto& it = this->ragDataList.begin(); it != this->ragDataList.end(); ++it)
+                for (auto it = this->ragDataList.begin(); it != this->ragDataList.end(); ++it)
                 {
                     if (true == activate)
                     {
@@ -707,7 +707,7 @@ namespace NOWA
         {
             /*if (this->rdState == PhysicsRagDollComponent::RAGDOLLING)
             {
-                for (auto& it = this->ragDataList.begin(); it != this->ragDataList.end(); ++it)
+                for (auto it = this->ragDataList.begin(); it != this->ragDataList.end(); ++it)
                 {
                     OgreNewt::Body* body = (*it).ragBone->getBody();
                     body->setVelocity(velocity);
@@ -715,7 +715,7 @@ namespace NOWA
             }
             else if (this->rdState == PhysicsRagDollComponent::PARTIAL_RAGDOLLING)
             {
-                for (auto& it = this->ragDataList.begin() + 1; it != this->ragDataList.end(); ++it)
+                for (auto it = this->ragDataList.begin() + 1; it != this->ragDataList.end(); ++it)
                 {
                     OgreNewt::Body* body = (*it).ragBone->getBody();
                     body->setVelocity(velocity);
@@ -833,7 +833,7 @@ namespace NOWA
                 {
                     offset = 1;
                 }
-                for (auto& it = this->ragDataList.cbegin() + offset; it != this->ragDataList.cend(); ++it)
+                for (auto it = this->ragDataList.cbegin() + offset; it != this->ragDataList.cend(); ++it)
                 {
                     it->ragBone->setOrientation(orientation);
                 }*/
@@ -900,7 +900,7 @@ namespace NOWA
                 offset = 1;
             }
 
-            for (auto& it = this->ragDataList.cbegin() + offset; it != this->ragDataList.cend(); ++it)
+            for (auto it = this->ragDataList.cbegin() + offset; it != this->ragDataList.cend(); ++it)
             {
                 it->ragBone->setInitialState();
             }
@@ -919,7 +919,7 @@ namespace NOWA
             offset = 1;
         }
 
-        for (auto& it = this->ragDataList.cbegin() + offset; it != this->ragDataList.cend(); ++it)
+        for (auto it = this->ragDataList.cbegin() + offset; it != this->ragDataList.cend(); ++it)
         {
             it->ragBone->getOgreBone()->setManuallyControlled(!animationEnabled);
             it->ragBone->applyPose(Ogre::Vector3::ZERO);
@@ -1530,7 +1530,7 @@ namespace NOWA
             offset = 1;
         }
 
-        for (auto& it = this->ragDataList.cbegin() + offset; it != this->ragDataList.cend(); ++it)
+        for (auto it = this->ragDataList.cbegin() + offset; it != this->ragDataList.cend(); ++it)
         {
             Ogre::Vector3 pos;
             Ogre::Quaternion orient;
@@ -1624,7 +1624,7 @@ namespace NOWA
         {
             return nullptr;
         }
-        for (auto& it = this->ragDataList.cbegin(); it != this->ragDataList.cend(); ++it)
+        for (auto it = this->ragDataList.cbegin(); it != this->ragDataList.cend(); ++it)
         {
             if (name == it->ragBoneName)
             {
@@ -1650,7 +1650,7 @@ namespace NOWA
 
         for (; i < this->ragDataList.size(); i++)
         {
-            auto& ragBone = this->ragDataList[i].ragBone;
+            auto ragBone = this->ragDataList[i].ragBone;
             if (nullptr == ragBone || nullptr == ragBone->getBody() || nullptr == ragBone->getOgreBone())
             {
                 continue;
@@ -1707,7 +1707,7 @@ namespace NOWA
         // Each bone must call _update() so its children see the updated derived transform.
         for (; i < this->ragDataList.size(); i++)
         {
-            auto& ragBone = this->ragDataList[i].ragBone;
+            auto ragBone = this->ragDataList[i].ragBone;
             if (nullptr == ragBone || nullptr == ragBone->getBody() || nullptr == ragBone->getOgreBone())
             {
                 continue;
@@ -1766,7 +1766,7 @@ namespace NOWA
         }
 
         // Bone corrections remain the same
-        for (auto& boneCorrectionData : this->boneCorrectionMap)
+        for (auto boneCorrectionData : this->boneCorrectionMap)
         {
             boneCorrectionData.first->setPosition(boneCorrectionData.second.first->_getDerivedPosition() + boneCorrectionData.second.second);
             boneCorrectionData.first->setOrientation(boneCorrectionData.second.first->_getDerivedOrientation());
@@ -2299,7 +2299,7 @@ namespace NOWA
             // Only do calculation for the nearest planet
             if (nullptr != nearestGravitySourceObject)
             {
-                auto& gravitySourcePhysicsComponentPtr = NOWA::makeStrongPtr(nearestGravitySourceObject->getComponent<PhysicsComponent>());
+                auto gravitySourcePhysicsComponentPtr = NOWA::makeStrongPtr(nearestGravitySourceObject->getComponent<PhysicsComponent>());
                 if (nullptr != gravitySourcePhysicsComponentPtr)
                 {
                     Ogre::Vector3 directionToPlanet = this->getPosition() - gravitySourcePhysicsComponentPtr->getPosition();

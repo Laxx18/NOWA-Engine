@@ -198,10 +198,10 @@ namespace NOWA
 
 	void AiComponent::onOtherComponentRemoved(unsigned int index)
 	{
-		auto& gameObjectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentByIndex(index));
+		auto gameObjectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentByIndex(index));
 		if (nullptr != gameObjectCompPtr)
 		{
-			auto& physicsCompPtr = boost::dynamic_pointer_cast<PhysicsComponent>(gameObjectCompPtr);
+			auto physicsCompPtr = boost::dynamic_pointer_cast<PhysicsComponent>(gameObjectCompPtr);
 			if (nullptr != physicsCompPtr)
 			{
 				if (nullptr != this->movingBehaviorPtr)
@@ -1901,7 +1901,7 @@ namespace NOWA
 
 		if (this->movingBehaviorPtr != nullptr && nullptr != this->movingBehaviorPtr->getPath())
 		{
-			auto& physicsActiveCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsActiveComponent>());
+			auto physicsActiveCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsActiveComponent>());
 			if (nullptr == physicsActiveCompPtr)
 			{
 				this->movingBehaviorPtr->reset();

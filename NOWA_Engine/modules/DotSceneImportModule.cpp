@@ -420,7 +420,7 @@ namespace NOWA
 
 	void DotSceneImportModule::postInitData()
 	{
-		auto& mainCameraGameObject = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(NOWA::GameObjectController::MAIN_CAMERA_ID);
+		auto mainCameraGameObject = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(NOWA::GameObjectController::MAIN_CAMERA_ID);
 		if (nullptr == mainCameraGameObject && false == this->bNewScene)
 		{
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Error: Can not load scene, because the MainCamera could not be created! See log for further information.");
@@ -435,7 +435,7 @@ namespace NOWA
 			}
 		}
 
-		auto& mainLightGameObject = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(NOWA::GameObjectController::MAIN_LIGHT_ID);
+		auto mainLightGameObject = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(NOWA::GameObjectController::MAIN_LIGHT_ID);
 		if (nullptr == mainLightGameObject && false == this->bNewScene)
 		{
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Error: Can not load scene, because the MainLight could not be created! See log for further information.");
@@ -450,7 +450,7 @@ namespace NOWA
 			}
 		}
 
-		auto& mainGameObject = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(NOWA::GameObjectController::MAIN_GAMEOBJECT_ID);
+		auto mainGameObject = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(NOWA::GameObjectController::MAIN_GAMEOBJECT_ID);
 		if (nullptr == mainGameObject && false == this->bNewScene)
 		{
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Error: Can not load scene, because the MainGameObject could not be created. Maybe this is an old scene, which does not have a MainGameObject! See log for further information.");
@@ -464,10 +464,10 @@ namespace NOWA
 		std::vector<GameObject*> clampGameObjects;
 
 		// Now that all gameobject's have been fully created, run the post init phase (now all other components are also available for each game object)
-		for (auto& it = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects()->cbegin();
+		for (auto it = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects()->cbegin();
 				it != AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects()->cend(); ++it)
 		{
-			const auto& gameObjectPtr = it->second;
+			const auto gameObjectPtr = it->second;
 			if (gameObjectPtr->getId() != NOWA::GameObjectController::MAIN_CAMERA_ID
 				&& gameObjectPtr->getId() != NOWA::GameObjectController::MAIN_LIGHT_ID
 				&& gameObjectPtr->getId() != NOWA::GameObjectController::MAIN_GAMEOBJECT_ID)
@@ -512,7 +512,11 @@ namespace NOWA
 		// Set the bounds, to have it in core for public access
 		Core::getSingletonPtr()->setCurrentSceneBounds(this->mostLeftNearPosition, this->mostRightFarPosition);
 
-		NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->buildNavigationMesh();
+		if (false == NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->loadNavigationMesh())
+        {
+            // No .nav file yet — build from scratch and auto-save
+            NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->buildNavigationMesh();
+        }
 	}
 
 	std::vector<unsigned long> DotSceneImportModule::parseGroup(const Ogre::String& fileName, const Ogre::String& resourceGroupName)
@@ -556,13 +560,13 @@ namespace NOWA
 		// Now that all gameobject's have been fully created, run the post init phase (now all other components are also available for each game object)
 		for (size_t i = 0; i < this->parsedGameObjectIds.size(); i++)
 		{
-			const auto& gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->parsedGameObjectIds[i]);
+			const auto gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->parsedGameObjectIds[i]);
 			if (nullptr != gameObjectPtr)
 			{
 				// Deactivated, because its copied on another place^^
 #if 0
 				GameObjectComponents* components = gameObjectPtr->getComponents();
-				for (auto& it = components->begin(); it != components->end(); ++it)
+				for (auto it = components->begin(); it != components->end(); ++it)
 				{
 					auto luaScriptCompPtr = boost::dynamic_pointer_cast<LuaScriptComponent>(std::get<COMPONENT>(*it));
 					if (nullptr != luaScriptCompPtr)
@@ -576,7 +580,7 @@ namespace NOWA
 #endif
 				// Tells lua script component, that its being cloned (prevents multiple script creations)
 				GameObjectComponents* components = gameObjectPtr->getComponents();
-				for (auto& it = components->begin(); it != components->end(); ++it)
+				for (auto it = components->begin(); it != components->end(); ++it)
 				{
 					auto luaScriptCompPtr = boost::dynamic_pointer_cast<LuaScriptComponent>(std::get<COMPONENT>(*it));
 					if (nullptr != luaScriptCompPtr)
@@ -634,7 +638,7 @@ namespace NOWA
 			}
 		}
 
-		auto& gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromName(name);
+		auto gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromName(name);
 		if (nullptr != gameObjectPtr)
 		{
 			if (!gameObjectPtr->postInit())
@@ -713,7 +717,7 @@ namespace NOWA
 		// Now that all gameobject's have been fully created, run the post init phase (now all other components are also available for each game object)
 		for (size_t i = 0; i < this->parsedGameObjectIds.size(); i++)
 		{
-			const auto& gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->parsedGameObjectIds[i]);
+			const auto gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->parsedGameObjectIds[i]);
 			if (nullptr != gameObjectPtr)
 			{
 				if (!gameObjectPtr->postInit())
@@ -989,17 +993,17 @@ namespace NOWA
 			Ogre::String usedPath = pElement->first_attribute("path")->value();
 
 			// Get all currently defined resource group names
-			auto& resourceLocations = Ogre::ResourceGroupManager::getSingleton().getResourceGroups();
+			auto resourceLocations = Ogre::ResourceGroupManager::getSingleton().getResourceGroups();
 			bool foundResourceGroupName = false;
 			bool foundResourceGroupPath = false;
-			for (auto& resourceGroupName : resourceLocations)
+			for (const auto& resourceGroupName : resourceLocations)
 			{
 				if (usedName == resourceGroupName)
 				{
 					foundResourceGroupName = true;
 					// here no break, because a resource group may match, but it may have several locations and it could be that a location is missing
 				}
-				for (auto& path : Ogre::ResourceGroupManager::getSingleton().getResourceLocationList(resourceGroupName))
+				for (const auto& path : Ogre::ResourceGroupManager::getSingleton().getResourceLocationList(resourceGroupName))
 				{
 					if (usedPath == path->archive->getName())
 					{
@@ -1398,7 +1402,7 @@ namespace NOWA
 			if (true == this->bIsSnapshot)
 			{
 				// Damn it, scene node names are not unique!
-				const auto& nodesList = this->sceneManager->findSceneNodes(name);
+				const auto nodesList = this->sceneManager->findSceneNodes(name);
 				if (false == nodesList.empty())
 				{
 					if (1 == nodesList.size())
@@ -1698,7 +1702,8 @@ namespace NOWA
                             }
                         }
                     }
-                    DeployResourceModule::getInstance()->tagResource(tempMeshFile, v2Mesh->getGroup());
+					Ogre::String path;
+                    DeployResourceModule::getInstance()->tagResource(tempMeshFile, v2Mesh->getGroup(), path);
 
                     // Always create scene dynamic and later in game object change the type, to what has been configured
                     item = this->sceneManager->createItem(v2Mesh, Ogre::SCENE_STATIC);
@@ -1886,7 +1891,8 @@ namespace NOWA
                         return;
                     }
 
-                    DeployResourceModule::getInstance()->tagResource(tempMeshFile, v2Mesh->getGroup());
+					Ogre::String path;
+                    DeployResourceModule::getInstance()->tagResource(tempMeshFile, v2Mesh->getGroup(), path);
 
                     // Create Item
                     item = this->sceneManager->createItem(v2Mesh, Ogre::SCENE_STATIC);
@@ -2065,8 +2071,8 @@ namespace NOWA
         // Only load mesh if it's NOT procedural
         if (false == isProceduralMesh)
         {
-            GraphicsModule::RenderCommand renderCommand =
-                [this, &entity, &item, justSetValues, xmlNode, &parent, missingGameObjectId, &v1Mesh, meshFile, &tempMeshFile, &v2Mesh, name, &type, castShadows, visible]()
+            GraphicsModule::RenderCommand renderCommand = 
+				[this, &entity, &item, justSetValues, xmlNode, &parent, missingGameObjectId, &v1Mesh, meshFile, &tempMeshFile, &v2Mesh, name, &type, castShadows, visible]()
             {
                 // Maybe create, if its an already missing game object id
                 if (false == justSetValues || missingGameObjectId != 0)
@@ -2076,7 +2082,8 @@ namespace NOWA
                         v1Mesh = Ogre::v1::MeshManager::getSingletonPtr()->load(tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, Ogre::v1::HardwareBuffer::HBU_STATIC_WRITE_ONLY,
                                                                                 Ogre::v1::HardwareBuffer::HBU_STATIC_WRITE_ONLY, true, true);
 
-                        DeployResourceModule::getInstance()->tagResource(tempMeshFile, v1Mesh->getGroup());
+						Ogre::String path;
+                        DeployResourceModule::getInstance()->tagResource(tempMeshFile, v1Mesh->getGroup(), path);
                     }
                     catch (Ogre::Exception& e)
                     {
@@ -2146,7 +2153,8 @@ namespace NOWA
                         type = GameObject::ITEM;
                         if (nullptr != v2Mesh)
                         {
-                            DeployResourceModule::getInstance()->tagResource(tempMeshFile, v2Mesh->getGroup());
+                            Ogre::String path;
+                            DeployResourceModule::getInstance()->tagResource(tempMeshFile, v2Mesh->getGroup(), path);
                         }
                     }
                 }
@@ -2515,7 +2523,8 @@ namespace NOWA
 				planeMeshV1 = Ogre::v1::MeshManager::getSingletonPtr()->createPlane(name + "mesh", "General", plane, width, height, xSegments, ySegments, hasNormals,
 					numTexCoordSets, uTile, vTile, up, Ogre::v1::HardwareBuffer::HBU_STATIC, Ogre::v1::HardwareBuffer::HBU_STATIC);
 
-				DeployResourceModule::getInstance()->tagResource(name + "mesh", planeMeshV1->getGroup());
+				Ogre::String path;
+				DeployResourceModule::getInstance()->tagResource(name + "mesh", planeMeshV1->getGroup(), path);
 
 				Ogre::MeshPtr v2Mesh = Ogre::MeshManager::getSingletonPtr()->createByImportingV1(name, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, planeMeshV1.get(), true, true, true);
 				planeMeshV1->unload();

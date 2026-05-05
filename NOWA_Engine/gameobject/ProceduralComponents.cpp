@@ -1805,19 +1805,19 @@ namespace NOWA
 			Ogre::v1::MeshManager::getSingletonPtr()->remove(this->meshPtr->getHandle());
 		}
 
-		auto& targetGameObjectPtr1 = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->targetId1->getULong());
+		auto targetGameObjectPtr1 = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->targetId1->getULong());
 		if (nullptr == targetGameObjectPtr1)
 			return false;
 
-		auto& targetProceduralCompPtr1 = NOWA::makeStrongPtr(targetGameObjectPtr1->getComponent<ProceduralComponent>());
+		auto targetProceduralCompPtr1 = NOWA::makeStrongPtr(targetGameObjectPtr1->getComponent<ProceduralComponent>());
 		if (nullptr == targetProceduralCompPtr1)
 			return false;
 		
-		auto& targetGameObjectPtr2 = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->targetId2->getULong());
+		auto targetGameObjectPtr2 = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->targetId2->getULong());
 		if (nullptr == targetGameObjectPtr2)
 			return false;
 
-		auto& targetProceduralCompPtr2 = NOWA::makeStrongPtr(targetGameObjectPtr2->getComponent<ProceduralComponent>());
+		auto targetProceduralCompPtr2 = NOWA::makeStrongPtr(targetGameObjectPtr2->getComponent<ProceduralComponent>());
 		if (nullptr == targetProceduralCompPtr2)
 			return false;
 

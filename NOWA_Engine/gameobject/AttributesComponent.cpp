@@ -282,7 +282,7 @@ namespace NOWA
 			propertiesXML->append_node(propertyXML);
 		}
 
-		/*for (auto& it = attributes.cbegin(); it != attributes.cend(); ++it)
+		/*for (auto it = attributes.cbegin(); it != attributes.cend(); ++it)
 		{
 			propertyXML = doc.allocate_node(node_element, "property");
 
@@ -658,7 +658,7 @@ namespace NOWA
 			return;
 		}
 // TODO: Implement
-		//const auto& it = this->userAttributes.find(oldName);
+		//const auto it = this->userAttributes.find(oldName);
 		//if (it != this->userAttributes.end())
 		//{
 		//	// here with swap like in goc
@@ -684,7 +684,7 @@ namespace NOWA
 				}
 			}
 		*/
-		/*const auto& it = this->userAttributes.find(attributeName);
+		/*const auto it = this->userAttributes.find(attributeName);
 		if (it != this->userAttributes.end())
 		{
 			it->second->setType(attributeType);

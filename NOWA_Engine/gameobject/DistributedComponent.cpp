@@ -449,7 +449,7 @@ namespace NOWA
 		// also send the size to determine whether to add the attribute or delete
 		constructionBitstream->Write(this->attributes.size());
 		// serialize attributes
-		for (auto& it = this->attributes.cbegin(); it != this->attributes.cend(); ++it)
+		for (auto it = this->attributes.cbegin(); it != this->attributes.cend(); ++it)
 		{
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[DistributedComponent] Serialize construction attribute: " + it->first + " with value: "
 				+ it->second.attributeValue + " for client id: " + Ogre::StringConverter::toString(this->clientID));
@@ -588,7 +588,7 @@ namespace NOWA
 			mode = 0;
 		}
 
-		for (auto& it = this->attributes.cbegin(); it != this->attributes.cend(); ++it)
+		for (auto it = this->attributes.cbegin(); it != this->attributes.cend(); ++it)
 		{
 			Ogre::String attributeName;
 			Ogre::String attributeValue;
@@ -831,7 +831,7 @@ namespace NOWA
 						this->sphereSceneQuery->setSphere(updateSphere);
 
 						Ogre::SceneQueryResultMovableList& result = this->sphereSceneQuery->execute().movables;
-						for (auto& it = result.cbegin(); it != result.cend(); ++it)
+						for (auto it = result.cbegin(); it != result.cend(); ++it)
 						{
 							Ogre::MovableObject* movableObject = *it;
 
@@ -938,7 +938,7 @@ namespace NOWA
 						DistributedCompPtr interestedDistributedComponent = nullptr;
 
 						Ogre::String message = this->gameObjectPtr->getName() + ": found gameobjects: " + Ogre::StringConverter::toString(result.size()) + ": ";
-						for (auto& it = result.cbegin(); it != result.cend(); ++it)
+						for (auto it = result.cbegin(); it != result.cend(); ++it)
 						{
 							Ogre::MovableObject* movableObject = *it;
 
@@ -1545,7 +1545,7 @@ namespace NOWA
 
 	void DistributedComponent::setAttributes(std::map<Ogre::String, DistributedComponent::AttributeData> attributes)
 	{
-		for (auto& it = attributes.cbegin(); it != attributes.cend(); ++it)
+		for (auto it = attributes.cbegin(); it != attributes.cend(); ++it)
 		{
 			this->attributes.insert(std::make_pair(it->first, it->second));
 		}

@@ -126,7 +126,7 @@ namespace NOWA
 	{
 		GameObjectComponent::connect();
 
-		auto& lightSpotCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<LightSpotComponent>());
+		auto lightSpotCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<LightSpotComponent>());
 
 		if (nullptr != lightSpotCompPtr)
 		{

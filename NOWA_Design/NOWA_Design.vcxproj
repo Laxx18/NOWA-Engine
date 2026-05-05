@@ -118,7 +118,7 @@
       <DisableSpecificWarnings>4786;4503;4251;4275;4290;4661;4996;4127;4100;26429;26400;26495;26440;26447</DisableSpecificWarnings>
       <AdditionalOptions>/Zm1000 /bigobj %(AdditionalOptions)</AdditionalOptions>
       <UndefinePreprocessorDefinitions>OGRE_DEBUG_MODE</UndefinePreprocessorDefinitions>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -160,7 +160,7 @@
       <CompileAs>CompileAsCpp</CompileAs>
       <DisableSpecificWarnings>4786;4503;4251;4275;4290;4661;4996;4127;4100;26429;26400;26495;26440;26447</DisableSpecificWarnings>
       <AdditionalOptions>/Zm1000 %(AdditionalOptions)</AdditionalOptions>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>

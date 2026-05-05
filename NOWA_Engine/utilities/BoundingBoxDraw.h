@@ -51,7 +51,7 @@ namespace NOWA
 		template<typename T>
 		void remove(std::vector<T>* vector, int listNum)
 		{
-			std::vector<T>::iterator del = vector->begin();
+            auto del = vector->begin();
 			del += listNum;
 			vector->erase(del);
 		}

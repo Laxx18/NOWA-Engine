@@ -81,7 +81,7 @@ namespace NOWA
 		Ogre::Hlms* hlms = Ogre::Root::getSingletonPtr()->getHlmsManager()->getHlms(Ogre::HLMS_UNLIT);
 		if (nullptr != hlms)
 		{
-			for (auto& it = hlms->getDatablockMap().cbegin(); it != hlms->getDatablockMap().cend(); ++it)
+			for (auto it = hlms->getDatablockMap().cbegin(); it != hlms->getDatablockMap().cend(); ++it)
 			{
 				datablockNames.emplace_back(it->second.name);
 			}
@@ -745,7 +745,7 @@ namespace NOWA
 	void RibbonTrailComponent::setFaceCameraId(unsigned long faceCameraId)
 	{
 		this->faceCameraId->setValue(faceCameraId);
-		auto& cameraGameObject = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(faceCameraId);
+		auto cameraGameObject = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(faceCameraId);
 		if (nullptr != cameraGameObject)
 		{
 			auto cameraCompPtr = NOWA::makeStrongPtr(cameraGameObject->getComponent<CameraComponent>());

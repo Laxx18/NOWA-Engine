@@ -29,7 +29,7 @@ namespace NOWA
             // Store the new selection
             this->newSelectedGameObjectIds.resize(this->selectionManager->getSelectedGameObjects().size());
             unsigned int i = 0;
-            for (auto& it = this->selectionManager->getSelectedGameObjects().cbegin(); it != this->selectionManager->getSelectedGameObjects().cend(); ++it)
+            for (auto it = this->selectionManager->getSelectedGameObjects().cbegin(); it != this->selectionManager->getSelectedGameObjects().cend(); ++it)
             {
                 this->newSelectedGameObjectIds[i++] = it->second.gameObject->getId();
             }
@@ -357,7 +357,7 @@ namespace NOWA
             //// If no shift has been hold, un select all objects
             // if (false == this->shiftDown)
             //{
-            //	for (auto& entry : this->selectedGameObjects)
+            //	for (const auto& entry : this->selectedGameObjects)
             //	{
             //		this->selectionObserver->onHandleSelection(entry.second, false);
             //
@@ -379,7 +379,7 @@ namespace NOWA
         }
     }
 
-    unsigned int SelectionManager::filterCategories(Ogre::String& categories)
+    unsigned int SelectionManager::filterCategories(const Ogre::String& categories)
     {
         this->categories = categories;
         this->categoryId = AppStateManager::getSingletonPtr()->getGameObjectController()->generateCategoryId(categories);
@@ -643,7 +643,7 @@ namespace NOWA
 
     void SelectionManager::select(const unsigned long id, bool bSelect)
     {
-        auto& gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(id);
+        auto gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(id);
         if (nullptr != gameObjectPtr)
         {
             this->applySelectInternal(gameObjectPtr.get(), bSelect, false);
@@ -655,7 +655,7 @@ namespace NOWA
         // Work with ids instead of pointers for undo/redo, because pointer may become invalid when deleted via undo/redo
         std::vector<unsigned long> gameObjectIds(this->selectedGameObjects.size());
         unsigned int i = 0;
-        for (auto& it = this->selectedGameObjects.cbegin(); it != this->selectedGameObjects.cend(); ++it)
+        for (auto it = this->selectedGameObjects.cbegin(); it != this->selectedGameObjects.cend(); ++it)
         {
             gameObjectIds[i++] = it->second.gameObject->getId();
         }

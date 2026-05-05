@@ -74,10 +74,10 @@ namespace NOWA
 
 		for (unsigned int i = 0; i < this->gameObjectPtr->getComponents()->size(); i++)
 		{
-			auto& gameObjectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentByIndex(i));
+			auto gameObjectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentByIndex(i));
 			if (nullptr != gameObjectCompPtr)
 			{
-				auto& myGuiCompPtr = boost::dynamic_pointer_cast<MyGUIComponent>(gameObjectCompPtr);
+				auto myGuiCompPtr = boost::dynamic_pointer_cast<MyGUIComponent>(gameObjectCompPtr);
 				if (nullptr != myGuiCompPtr && myGuiCompPtr->getId() == this->sourceId->getULong())
 				{
 					if (nullptr != myGuiCompPtr->getWidget())
@@ -122,10 +122,10 @@ namespace NOWA
 	{
 		GameObjectComponent::onOtherComponentRemoved(index);
 		
-		auto& gameObjectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentByIndex(index));
+		auto gameObjectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentByIndex(index));
 		if (nullptr != gameObjectCompPtr)
 		{
-			auto& myGuiCompPtr = boost::dynamic_pointer_cast<MyGUIComponent>(gameObjectCompPtr);
+			auto myGuiCompPtr = boost::dynamic_pointer_cast<MyGUIComponent>(gameObjectCompPtr);
 			if (nullptr != myGuiCompPtr)
 			{
 				if (this->sourceWidget == myGuiCompPtr->getWidget())
@@ -906,10 +906,10 @@ namespace NOWA
 	{
 		MyGUIControllerComponent::onOtherComponentRemoved(index);
 		
-		auto& gameObjectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentByIndex(index));
+		auto gameObjectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentByIndex(index));
 		if (nullptr != gameObjectCompPtr)
 		{
-			auto& myGuiCompPtr = boost::dynamic_pointer_cast<MyGUIComponent>(gameObjectCompPtr);
+			auto myGuiCompPtr = boost::dynamic_pointer_cast<MyGUIComponent>(gameObjectCompPtr);
 			if (nullptr != myGuiCompPtr)
 			{
 				if (this->sourceWidget == myGuiCompPtr->getWidget())

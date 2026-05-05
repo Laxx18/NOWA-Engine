@@ -221,7 +221,7 @@
       <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <DisableSpecificWarnings>4786;4503;4251;4275;4290;4661;4996;4127;4100;26429;26400;26495;26440;26447</DisableSpecificWarnings>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <ShowIncludes>false</ShowIncludes>
     </ClCompile>
     <ResourceCompile>
@@ -370,7 +370,7 @@
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <DisableSpecificWarnings>4786;4503;4251;4275;4290;4661;4996;4127;4100;26429;26400;26495;26440;26447</DisableSpecificWarnings>
       <ShowIncludes>false</ShowIncludes>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>WIN32;_WINDOWS;NDEBUG;CMAKE_INTDIR="Release";_OGRENEWT_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>

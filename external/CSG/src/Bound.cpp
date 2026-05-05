@@ -46,7 +46,7 @@ Bound::~Bound()
 
 // What about (for fun) intersecting 2 bounds??
 
-bool Bound::overlap(Bound & bound)
+bool Bound::overlap(const Bound & bound)
 {
 	if((xMin>bound.xMax+TOL)||(xMax<bound.xMin-TOL)||(yMin>bound.yMax+TOL)||(yMax<bound.yMin-TOL)||(zMin>bound.zMax+TOL)||(zMax<bound.zMin-TOL))
 	{

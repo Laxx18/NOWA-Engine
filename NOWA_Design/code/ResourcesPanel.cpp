@@ -406,7 +406,7 @@ void ResourcesPanelMeshes::loadMeshes(const Ogre::String& filter)
 	if (false == filter.empty())
 	{
 		// Get the matched results and add to tree
-		auto& matchedResources = this->autoCompleteSearch.findMatchedItemWithInText(filter);
+		auto matchedResources = this->autoCompleteSearch.findMatchedItemWithInText(filter);
 
 		for (size_t i = 0; i < matchedResources.getResults().size(); i++)
 		{
@@ -696,7 +696,7 @@ void ResourcesPanelGameObjects::refresh(const Ogre::String& filter)
 	root->removeAll();
 
 	/* auto gameObjects = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects();
-	for (auto& it = gameObjects->cbegin(); it != gameObjects->cend(); ++it)
+	for (auto it = gameObjects->cbegin(); it != gameObjects->cend(); ++it)
 	{
 		NOWA::GameObjectPtr gameObjectPtr = it->second;
 		
@@ -789,7 +789,7 @@ void ResourcesPanelGameObjects::refresh(const Ogre::String& filter)
 	{
 		MyGUI::TreeControl::Node* child = nullptr;
 		// Get the matched results and add to tree
-		auto& matchedResources = this->autoCompleteSearch.findMatchedItemWithInText(filter);
+		auto matchedResources = this->autoCompleteSearch.findMatchedItemWithInText(filter);
 
 		std::set<Ogre::String> tempGameObjectSet;
 
@@ -862,7 +862,7 @@ void ResourcesPanelGameObjects::notifyTreeNodeSelected(MyGUI::TreeControl* treeC
 	{
 		std::vector<unsigned long> gameObjectIds;
 		// Do not delete directly via selection manager, because when internally deleted, an event is sent out to selection manager to remove from map
-		for (auto& it = this->editorManager->getSelectionManager()->getSelectedGameObjects().begin(); it != this->editorManager->getSelectionManager()->getSelectedGameObjects().end(); ++it)
+		for (auto it = this->editorManager->getSelectionManager()->getSelectedGameObjects().begin(); it != this->editorManager->getSelectionManager()->getSelectedGameObjects().end(); ++it)
 		{
 			// SunLight must not be deleted by the user!
 			if (it->second.gameObject->getId() != NOWA::GameObjectController::MAIN_LIGHT_ID)
@@ -902,7 +902,7 @@ void ResourcesPanelGameObjects::notifyTreeNodeSelected(MyGUI::TreeControl* treeC
 	}
 
 	// Select game object
-	auto& gameObjectPtr = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromName(node->getText());
+	auto gameObjectPtr = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromName(node->getText());
 	if (nullptr != gameObjectPtr)
 	{
 		this->editorManager->getSelectionManager()->snapshotGameObjectSelection();
@@ -941,7 +941,7 @@ void ResourcesPanelGameObjects::keyButtonPressed(MyGUI::Widget* sender, MyGUI::K
 	{
 		std::vector<unsigned long> gameObjectIds;
 		// Do not delete directly via selection manager, because when internally deleted, an event is sent out to selection manager to remove from map
-		for (auto& it = this->editorManager->getSelectionManager()->getSelectedGameObjects().begin(); it != this->editorManager->getSelectionManager()->getSelectedGameObjects().end(); ++it)
+		for (auto it = this->editorManager->getSelectionManager()->getSelectedGameObjects().begin(); it != this->editorManager->getSelectionManager()->getSelectedGameObjects().end(); ++it)
 		{
 			// SunLight must not be deleted by the user!
 			if (it->second.gameObject->getId() != NOWA::GameObjectController::MAIN_LIGHT_ID && it->second.gameObject->getId() != NOWA::GameObjectController::MAIN_CAMERA_ID 
@@ -992,7 +992,7 @@ void ResourcesPanelGameObjects::selectAllNodes(MyGUI::TreeControl* treeControl)
 	ENQUEUE_RENDER_COMMAND_MULTI("ResourcesPanelGameObjects::selectAllNodes", _1(treeControl),
 	{
 		auto rootNodes = treeControl->getRoot();
-		for (const auto node : rootNodes->getChildren())
+		for (const auto& node : rootNodes->getChildren())
 		{
 			this->notifyTreeNodeSelected(treeControl, node);
 			// Optionally, traverse child nodes if necessary
@@ -1004,7 +1004,7 @@ void ResourcesPanelGameObjects::selectAllNodes(MyGUI::TreeControl* treeControl)
 				nodeStack.pop();
 				this->notifyTreeNodeSelected(treeControl, currentNode);
 				auto childNodes = currentNode->getChildren();
-				for (auto childNode : childNodes)
+				for (const auto& childNode : childNodes)
 				{
 					nodeStack.push(childNode);
 				}
@@ -1097,13 +1097,13 @@ void ResourcesPanelDataBlocks::loadDataBlocks(const Ogre::String& filter)
 
 	Ogre::Hlms* hlms = nullptr;
 	// List for all hlms typs all data blocks
-	for (auto searchHlmsIt = searchHlms.begin(); searchHlmsIt != searchHlms.end(); ++searchHlmsIt)
+	for (auto& searchHlmsIt : searchHlms)
 	{
-		hlms = NOWA::Core::getSingletonPtr()->getOgreRoot()->getHlmsManager()->getHlms(*searchHlmsIt);
+		hlms = NOWA::Core::getSingletonPtr()->getOgreRoot()->getHlmsManager()->getHlms(searchHlmsIt);
 		if (nullptr != hlms)
 		{
 			MyGUI::TreeControl::Node* typeNode = new MyGUI::TreeControl::Node(hlms->getTypeNameStr(), "Data");
-			for (auto& it = hlms->getDatablockMap().cbegin(); it != hlms->getDatablockMap().cend(); ++it)
+			for (auto it = hlms->getDatablockMap().cbegin(); it != hlms->getDatablockMap().cend(); ++it)
 			{
 				if (true == filter.empty())
 				{
@@ -1127,7 +1127,7 @@ void ResourcesPanelDataBlocks::loadDataBlocks(const Ogre::String& filter)
 	{
 		MyGUI::TreeControl::Node* child = nullptr;
 		// Get the matched results and add to tree
-		auto& matchedResources = this->autoCompleteSearch.findMatchedItemWithInText(filter);
+		auto matchedResources = this->autoCompleteSearch.findMatchedItemWithInText(filter);
 
 		for (size_t i = 0; i < matchedResources.getResults().size(); i++)
 		{
@@ -1291,7 +1291,7 @@ void ResourcesPanelTextures::loadTextures(const Ogre::String& filter)
 	std::vector<Ogre::String> filters({ "png", "jpg", "bmp", "tga", "gif", "tif" });
 	std::set<Ogre::String> textureNames = NOWA::Core::getSingletonPtr()->getAllAvailableTextureNames(filters);
 
-	for (auto& textureName : textureNames)
+	for (const auto& textureName : textureNames)
 	{
 		if (true == filter.empty())
 		{
@@ -1310,7 +1310,7 @@ void ResourcesPanelTextures::loadTextures(const Ogre::String& filter)
 	{
 		MyGUI::TreeControl::Node* child = nullptr;
 		// Get the matched results and add to tree
-		auto& matchedResources = this->autoCompleteSearch.findMatchedItemWithInText(filter);
+		auto matchedResources = this->autoCompleteSearch.findMatchedItemWithInText(filter);
 
 		for (size_t i = 0; i < matchedResources.getResults().size(); i++)
 		{
@@ -1552,7 +1552,7 @@ void ResourcesPanelProject::handleSingleClick(MyGUI::TreeControl::Node* node)
 
 		for (size_t i = 0; i < gameObjects.size(); i++)
 		{
-			const auto& gameObjectPtr = gameObjects[i];
+			const auto gameObjectPtr = gameObjects[i];
 			auto luaCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NOWA::LuaScriptComponent>());
 			if (nullptr != luaCompPtr)
 			{
@@ -1587,7 +1587,7 @@ void ResourcesPanelProject::handleDoubleClick(MyGUI::TreeControl::Node* node)
 
 		for (size_t i = 0; i < gameObjects.size(); i++)
 		{
-			const auto& gameObjectPtr = gameObjects[i];
+			const auto gameObjectPtr = gameObjects[i];
 			auto luaCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NOWA::LuaScriptComponent>());
 			if (nullptr != luaCompPtr)
 			{
@@ -1642,7 +1642,7 @@ void ResourcesPanelProject::sortTreeNodesByName(MyGUI::TreeControl::Node* parent
 		return a->getText() < b->getText();
 	});
 
-	for (auto node : nodes)
+	for (const auto& node : nodes)
 	{
 		this->sortTreeNodesByName(node);
 	}

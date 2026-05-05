@@ -27,7 +27,7 @@ public:
 	Bound(VectorSet * vertices);
 	virtual ~Bound();
 	
-	bool overlap(Bound & bound);
+	bool overlap(const Bound & bound);
 
 	static double TOL;
 

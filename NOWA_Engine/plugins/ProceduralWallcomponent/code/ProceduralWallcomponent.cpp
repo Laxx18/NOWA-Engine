@@ -2558,7 +2558,7 @@ namespace NOWA
         // Append pillar data with offset indices
         size_t vertexOffset = this->currentVertexIndex;
         combinedVertices.insert(combinedVertices.end(), this->pillarVertices.begin(), this->pillarVertices.end());
-        for (auto idx : this->pillarIndices)
+        for (const auto& idx : this->pillarIndices)
         {
             combinedIndices.push_back(idx + vertexOffset);
         }

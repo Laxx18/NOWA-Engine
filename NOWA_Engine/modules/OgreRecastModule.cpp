@@ -1,14 +1,17 @@
-#include "NOWAPrecompiled.h"
+﻿#include "NOWAPrecompiled.h"
 #include "OgreRecastModule.h"
 #include "gameobject/GameObject.h"
 #include "gameobject/NavMeshComponent.h"
 #include "gameobject/NavMeshTerraComponent.h"
 #include "gameobject/CrowdComponent.h"
 #include "main/AppStateManager.h"
+#include "main/Core.h"
+
+#include <filesystem>
 
 namespace NOWA
 {
-	OgreRecastModule::OgreRecastModule(const Ogre::String& appStateName)
+    OgreRecastModule::OgreRecastModule(const Ogre::String& appStateName)
 		: appStateName(appStateName),
 		ogreRecast(nullptr),
 		detourTileCache(nullptr),
@@ -22,35 +25,32 @@ namespace NOWA
 	}
 
 	OgreRecast* OgreRecastModule::createOgreRecast(Ogre::SceneManager* sceneManager, OgreRecastConfigParams params, const Ogre::Vector3& pointExtends)
-	{
-		if (nullptr == this->ogreRecast)
-		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("OgreRecastModule::createOgreRecast", _3(sceneManager, params, pointExtends),
-			{
-				// this->destroyContent();
-				// params.setKeepInterResults(false);
-				this->ogreRecast = new OgreRecast(sceneManager, params);
-				this->ogreRecast->setPointExtents(pointExtends);
+    {
+        if (nullptr == this->ogreRecast)
+        {
+            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("OgreRecastModule::createOgreRecast", _3(sceneManager, params, pointExtends), {
+                this->ogreRecast = new OgreRecast(sceneManager, params);
+                this->ogreRecast->setPointExtents(pointExtends);
+                if (nullptr == this->detourTileCache)
+                {
+                    this->detourTileCache = new OgreDetourTileCache(this->ogreRecast);
+                    this->detourCrowd = new OgreDetourCrowd(this->ogreRecast);
+                }
+            });
 
-				if (nullptr == this->detourTileCache)
-				{
-					this->detourTileCache = new OgreDetourTileCache(this->ogreRecast);
-					this->detourCrowd = new OgreDetourCrowd(this->ogreRecast);
-				}
-			});
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[OgreRecastModule] Recast created");
 
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[OgreRecastModule] Recast created");
-
-			AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->addListener(fastdelegate::MakeDelegate(this, &OgreRecastModule::handleGeometryModified), EventDataGeometryModified::getStaticEventType());
-
-		}
-		else
-		{
-			this->ogreRecast->configure(params);
-			this->ogreRecast->setPointExtents(pointExtends);
-		}
-		return this->ogreRecast;
-	}
+            // Listen on the app-state manager (NavMeshComponent::connect fires here
+            // when simulation starts — connect() is called from app-state context).
+            AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->addListener(fastdelegate::MakeDelegate(this, &OgreRecastModule::handleGeometryModified), EventDataGeometryModified::getStaticEventType());
+        }
+        else
+        {
+            this->ogreRecast->configure(params);
+            this->ogreRecast->setPointExtents(pointExtends);
+        }
+        return this->ogreRecast;
+    }
 
 	OgreRecastModule::~OgreRecastModule()
 	{
@@ -59,13 +59,30 @@ namespace NOWA
 	}
 
 	void OgreRecastModule::handleGeometryModified(NOWA::EventDataPtr eventData)
-	{
-		this->mustRegenerate = true;
-	}
+    {
+        this->mustRegenerate = true;
+    }
+
+    bool OgreRecastModule::isBuildInProgress(void) const
+    {
+        return this->buildInProgress.load();
+    }
+
+    bool OgreRecastModule::getHasValidNavMesh(void) const
+    {
+        return this->hasValidNavMesh;
+    }
 
 	void OgreRecastModule::destroyContent(void)
 	{
-		// Disable debug drawing � enqueue if it affects Ogre scene
+        // Must wait for any running navmesh build before freeing its resources.
+        // Without this join, the background thread would access freed memory (UAF).
+        if (this->navMeshThread.joinable())
+        {
+            this->navMeshThread.join();
+        }
+
+		// Disable debug drawing — enqueue if it affects Ogre scene
 		this->debugDrawNavMesh(false);
 
 		// Remove and delete dynamic obstacles
@@ -75,7 +92,7 @@ namespace NOWA
 
 		this->buildInProgress = false;
 
-		for (auto& it : obstaclesCopy)
+		for (const auto& it : obstaclesCopy)
 		{
 			InputGeom* inputGeom = it.second.first;
 			ConvexVolume* convexVolume = it.second.second;
@@ -97,7 +114,7 @@ namespace NOWA
 		}
 
 		// Delete terraInputGeomCells data immediately (pure data)
-		for (auto& it2 : this->terraInputGeomCells)
+		for (const auto& it2 : this->terraInputGeomCells)
 		{
 			InputGeom* inputGeom = it2.second;
 			delete inputGeom;
@@ -150,428 +167,640 @@ namespace NOWA
 		return this->staticObstacles.size() > 0 || this->dynamicObstacles.size() > 0 || this->terraInputGeomCells.size() > 0;
 	}
 
-	void OgreRecastModule::addStaticObstacle(unsigned long id)
-	{
-		this->removeDynamicObstacle(id, false);
-		
-		bool alreadyExisting = false;
-		for (auto it = this->staticObstacles.begin(); it != this->staticObstacles.end(); ++it)
-		{
-			if (id == *it)
-			{
-				alreadyExisting = true;
-				break;
-			}
-		}
-		if (false == alreadyExisting)
-		{
-			this->staticObstacles.push_back(id);
-		}
-	}
+	// ─────────────────────────────────────────────────────────────────────────────
+    // addStaticObstacle
+    //
+    // Registers a game object as a static obstacle (baked into navmesh geometry).
+    // Static obstacles are stored in a simple list used by buildNavigationMesh().
+    // They are never added directly to the tile cache — they require a full rebuild.
+    //
+    // Note: any previous dynamic obstacle entry for the same id is removed first,
+    // because an object cannot be both static and dynamic at the same time.
+    // ─────────────────────────────────────────────────────────────────────────────
+    void OgreRecastModule::addStaticObstacle(unsigned long id)
+    {
+        // Remove from dynamic map first — object cannot be in both lists
+        this->removeDynamicObstacle(id, false);
 
-	void OgreRecastModule::removeStaticObstacle(unsigned long id)
-	{
-		for (auto it = this->staticObstacles.begin(); it != this->staticObstacles.end(); ++it)
-		{
-			if (id == *it)
-			{
-				this->staticObstacles.erase(it);
-				break;
-			}
-		}
-	}
-
-	void OgreRecastModule::addDynamicObstacle(unsigned long id, bool walkable, InputGeom* externalInputGeom, ConvexVolume* externalConvexVolume)
-	{
-		if (nullptr == this->detourTileCache)
-		{
-			return;
-		}
-
-		InputGeom* inputGeom = nullptr;
-		ConvexVolume* convexVolume = nullptr;
-
-		this->removeStaticObstacle(id);
-
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("OgreRecastModule::addDynamicObstacle", _6(id, walkable, externalInputGeom, externalConvexVolume, &inputGeom, &convexVolume),
-		{
-			auto & it = this->dynamicObstacles.find(id);
-			if (it == this->dynamicObstacles.end())
-			{
-				auto& gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->getGameObjectFromId(id);
-				if (nullptr != gameObjectPtr)
-				{
-					Ogre::v1::Entity* entity = gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
-					if (nullptr != entity)
-					{
-						// Only create if there is an input geom for the detour tile cache existing, if not just add nullptr, nullptr as place holders, and when nav mesh is created
-						// detour tile cache input geom does exist, so add them later
-						if (nullptr != this->detourTileCache->getInputGeom())
-						{
-							// Only create new one, if there is no external existing one
-							if (nullptr == externalInputGeom)
-							{
-								inputGeom = new InputGeom(entity);
-							}
-							else
-							{
-								inputGeom = externalInputGeom;
-							}
-						}
-					}
-					else
-					{
-						Ogre::Item* item = gameObjectPtr->getMovableObject<Ogre::Item>();
-						if (nullptr != item)
-						{
-							// Only create if there is an input geom for the detour tile cache existing, if not just add nullptr, nullptr as place holders, and when nav mesh is created
-							// detour tile cache input geom does exist, so add them later
-							if (nullptr != this->detourTileCache->getInputGeom())
-							{
-								// Only create new one, if there is no external existing one
-								if (nullptr == externalInputGeom)
-								{
-									inputGeom = new InputGeom(item);
-								}
-								else
-								{
-									inputGeom = externalInputGeom;
-								}
-							}
-						}
-					}
-
-					if (nullptr != inputGeom)
-					{
-						if (nullptr == externalConvexVolume)
-						{
-							convexVolume = inputGeom->getConvexHull(this->ogreRecast->getAgentRadius());
-						}
-						else
-						{
-							convexVolume = externalConvexVolume;
-						}
-
-						if (false == walkable)
-						{
-							convexVolume->area = RC_NULL_AREA;   // Set area described by convex polygon to "unwalkable"
-						}
-						else
-						{
-							convexVolume->area = RC_WALKABLE_AREA;
-						}
-						// convexVolume->hmin = convexVolume->hmin - 0.1f;    // Extend a bit downwards so it hits the ground (navmesh) for certain. (Maybe this is not necessary)
-						this->detourTileCache->addConvexShapeObstacle(convexVolume);
-						// this->detourTileCache->addTempObstacle(gameObjectPtr->getPosition());
-					}
-
-					// ConvexVolume* convexVolume = new ConvexVolume(InputGeom::getWorldSpaceBoundingBox(entity), this->ogreRecast->getAgentRadius());
-					// Add in any case dynamic obstacle as placeholder
-					this->dynamicObstacles.emplace(id, std::make_pair(inputGeom, convexVolume));
-				}
-			}
-			else
-			{
-				if (false == walkable)
-				{
-					it->second.second->area = RC_NULL_AREA;   // Set area described by convex polygon to "unwalkable"
-				}
-				else
-				{
-					it->second.second->area = RC_WALKABLE_AREA;
-				}
-			}
-		});
-	}
-
-	void OgreRecastModule::createInputGeom(void)
-	{
-		InputGeom* inputGeom = nullptr;
-
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("OgreRecastModule::createInputGeom", _1(&inputGeom),
-		{
-			for (auto it = this->dynamicObstacles.begin(); it != this->dynamicObstacles.end(); ++it)
-			{
-				if (nullptr == it->second.first)
-				{
-					// Only create new one, if there is no external existing one
-					auto& gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->getGameObjectFromId(it->first);
-					if (nullptr != gameObjectPtr)
-					{
-						Ogre::v1::Entity* entity = gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
-						if (nullptr != entity)
-						{
-							inputGeom = new InputGeom(entity);
-						}
-						else
-						{
-							Ogre::Item* item = gameObjectPtr->getMovableObject<Ogre::Item>();
-							if (nullptr != item)
-							{
-								inputGeom = new InputGeom(item);
-							}
-						}
-
-						if (nullptr == inputGeom)
-						{
-							continue;
-						}
-
-						it->second.first = inputGeom;
-						ConvexVolume* convexVolume = inputGeom->getConvexHull(this->ogreRecast->getAgentRadius());
-						it->second.second = convexVolume;
-
-						convexVolume->area = RC_NULL_AREA;
-
-						auto& navMeshCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NavMeshComponent>());
-						if (nullptr != navMeshCompPtr)
-						{
-							if (true == navMeshCompPtr->getWalkable())
-							{
-								convexVolume->area = RC_WALKABLE_AREA;   // Set area described by convex polygon to "unwalkable"
-							}
-						}
-						convexVolume->hmin = convexVolume->hmin - 0.1f;    // Extend a bit downwards so it hits the ground (navmesh) for certain. (Maybe this is not necessary)
-						this->detourTileCache->addConvexShapeObstacle(convexVolume);
-						// this->detourTileCache->addTempObstacle(gameObjectPtr->getPosition());
-					}
-				}
-			}
-		});
-	}
-
-	std::pair<InputGeom*, ConvexVolume*> OgreRecastModule::removeDynamicObstacle(unsigned long id, bool destroy)
-	{
-		ConvexVolume* convexVolume = nullptr;
-		InputGeom* inputGeom = nullptr;
-		
-		if (nullptr == this->detourTileCache)
-		{
-			return std::make_pair(inputGeom, convexVolume);
-		}
-
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("OgreRecastModule::removeDynamicObstacle", _4(id, destroy, &inputGeom, &convexVolume),
-		{
-			auto & it = this->dynamicObstacles.find(id);
-			if (it != this->dynamicObstacles.end())
-			{
-				auto& gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->getGameObjectFromId(id);
-				//#if _DEBUG
-				//			Ogre::String debugText = "Gameobject with id : " + Ogre::StringConverter::toString(id) + " does no more exist!";
-				//			assert((nullptr != gameObjectPtr) && debugText.c_str());
-				//#endif
-				if (nullptr != gameObjectPtr)
-				{
-					Ogre::v1::Entity* entity = gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
-					if (nullptr != entity)
-					{
-						convexVolume = it->second.second;
-						inputGeom = it->second.first;
-						this->detourTileCache->removeConvexShapeObstacle(convexVolume);
-
-						this->dynamicObstacles.erase(id);
-
-						if (true == destroy)
-						{
-							delete inputGeom;
-							inputGeom = nullptr;
-
-							delete convexVolume;
-							convexVolume = nullptr;
-						}
-					}
-				}
-			}
-		});
-		return std::make_pair(inputGeom, convexVolume);
-	}
-
-	void OgreRecastModule::activateDynamicObstacle(unsigned long id, bool activate)
-	{
-		if (nullptr == this->detourTileCache || nullptr == this->detourTileCache->getInputGeom())
-		{
-			return;
-		}
-
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("OgreRecastModule::activateDynamicObstacle", _2(id, activate),
-		{
-			auto & it = this->dynamicObstacles.find(id);
-			if (it != this->dynamicObstacles.end())
-			{
-				ConvexVolume* convexVolume = it->second.second;
-				if (false == activate)
-				{
-					this->detourTileCache->removeConvexShapeObstacle(convexVolume);
-				}
-				else
-				{
-					int obstacleId = this->detourTileCache->getConvexShapeObstacleId(convexVolume);
-					if (-1 == obstacleId)
-					{
-						this->detourTileCache->addConvexShapeObstacle(convexVolume);
-					}
-				}
-			}
-		});
-	}
-
-	void OgreRecastModule::addTerra(unsigned long id)
-	{
-		auto& it = this->terraInputGeomCells.find(id);
-		if (it == this->terraInputGeomCells.end())
-		{
-			auto& gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->getGameObjectFromId(id);
-			if (nullptr != gameObjectPtr)
-			{
-				Ogre::Terra* terra = gameObjectPtr->getMovableObject<Ogre::Terra>();
-				if (nullptr != terra)
-				{
-					this->terraInputGeomCells.emplace(id, nullptr);
-					boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
-					NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGeometryModified);
-				}
-			}
-		}
-	}
-
-	InputGeom* OgreRecastModule::removeTerra(unsigned long id, bool destroy)
-	{
-		InputGeom* inputGeom = nullptr;
-
-		auto& it = this->terraInputGeomCells.find(id);
-		if (it != this->terraInputGeomCells.end())
-		{
-			auto& gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->getGameObjectFromId(id);
-//#if _DEBUG
-//			Ogre::String debugText = "Gameobject with id : " + Ogre::StringConverter::toString(id) + " does no more exist!";
-//			assert((nullptr != gameObjectPtr) && debugText.c_str());
-//#endif
-			if (nullptr != gameObjectPtr)
-			{
-				Ogre::Terra* terra = gameObjectPtr->getMovableObject<Ogre::Terra>();
-				if (nullptr != terra)
-				{
-					inputGeom = it->second;
-					this->terraInputGeomCells.erase(id);
-					boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
-					NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGeometryModified);
-
-					if (true == destroy)
-					{
-						delete inputGeom;
-						inputGeom = nullptr;
-					}
-				}
-			}
-		}
-		return inputGeom;
-	}
-
-#if 1
-	void OgreRecastModule::buildNavigationMesh(void)
-	{
-		if (true == this->staticObstacles.empty() && true == this->dynamicObstacles.empty() && true == this->terraInputGeomCells.empty())
-		{
-			return;
-		}
-
-		// Only recreate if flag is set (scene modified), because its an heavy process
-		if (true == this->mustRegenerate)
-		{
-            NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        bool alreadyExisting = false;
+        for (auto it = this->staticObstacles.begin(); it != this->staticObstacles.end(); ++it)
+        {
+            if (id == *it)
             {
-				if (nullptr == this->detourTileCache)
-				{
-					this->detourTileCache = new OgreDetourTileCache(this->ogreRecast);
-				}
+                alreadyExisting = true;
+                break;
+            }
+        }
 
-				std::vector<Ogre::v1::Entity*> entities;
-				std::vector<Ogre::Item*> items;
+        if (false == alreadyExisting)
+        {
+            this->staticObstacles.push_back(id);
+        }
+    }
 
-				for (size_t i = 0; i < this->staticObstacles.size(); i++)
-				{
-					auto& gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->getGameObjectFromId(this->staticObstacles[i]);
-					if (nullptr != gameObjectPtr)
-					{
-						Ogre::v1::Entity* entity = gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
-						if (nullptr != entity)
-						{
-							entities.emplace_back(entity);
-						}
-						else
-						{
-							Ogre::Item* item = gameObjectPtr->getMovableObject<Ogre::Item>();
-							if (nullptr != item)
-							{
-								items.push_back(item);
-							}
-						}
-					}
-				}
+    // ─────────────────────────────────────────────────────────────────────────────
+    // removeStaticObstacle
+    //
+    // Unregisters a game object from the static obstacle list.
+    // Does NOT trigger a navmesh rebuild — caller is responsible for that
+    // if the navmesh needs to be updated after removal.
+    // ─────────────────────────────────────────────────────────────────────────────
+    void OgreRecastModule::removeStaticObstacle(unsigned long id)
+    {
+        for (auto it = this->staticObstacles.begin(); it != this->staticObstacles.end(); ++it)
+        {
+            if (id == *it)
+            {
+                this->staticObstacles.erase(it);
+                break;
+            }
+        }
+    }
 
-				if (true == this->terraInputGeomCells.empty())
-				{
-					this->hasValidNavMesh = this->detourTileCache->TileCacheBuild(entities, items);
-					// this->hasValidNavMesh = this->ogreRecast->NavMeshBuild(entities);
-				}
-				else
-				{
-					std::vector<InputGeom::TerraData> terraDataList;
-					for (auto it = this->terraInputGeomCells.begin(); it != this->terraInputGeomCells.end(); ++it)
-					{
-						auto& gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->getGameObjectFromId(it->first);
-						if (nullptr != gameObjectPtr)
-						{
-							auto& navMeshTerraCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NavMeshTerraComponent>());
-							if (nullptr != navMeshTerraCompPtr)
-							{
-								Ogre::Terra* terra = gameObjectPtr->getMovableObject<Ogre::Terra>();
-								if (nullptr != terra)
-								{
-									InputGeom::TerraData terraData;
-									terraData.terra = terra;
-									terraData.terraLayerList = navMeshTerraCompPtr->getTerraLayerList();
-									terraDataList.push_back(terraData);
-								}
-							}
-						}
-					}
+    // ─────────────────────────────────────────────────────────────────────────────
+    // addDynamicObstacle
+    //
+    // Registers a game object as a dynamic convex shape obstacle in the tile cache.
+    // Dynamic obstacles update the navmesh in milliseconds without a full rebuild.
+    //
+    // Three cases are handled:
+    //
+    // Case A — Not yet registered, InputGeom exists (tile cache built or loaded):
+    //   Create InputGeom from the mesh, compute convex hull, add to tile cache.
+    //
+    // Case B — Not yet registered, InputGeom does NOT exist yet:
+    //   Store {nullptr, nullptr} as a placeholder. createInputGeom() will fill
+    //   these placeholders after the first successful build or load.
+    //
+    // Case C — Already registered with valid geometry (update walkable flag only):
+    //   Just update the area flag on the existing convex volume.
+    //
+    // Case D — Already registered as {nullptr, nullptr} placeholder
+    //   (tile cache was built/loaded AFTER the object was registered):
+    //   Treat as Case A — create real geometry now and add to tile cache.
+    //
+    // externalInputGeom / externalConvexVolume:
+    //   Optional pre-built geometry (used by NavMeshComponent::update for rotation/
+    //   position changes). If provided, ownership is taken — do not delete externally.
+    // ─────────────────────────────────────────────────────────────────────────────
+    void OgreRecastModule::addDynamicObstacle(unsigned long id, bool walkable, InputGeom* externalInputGeom, ConvexVolume* externalConvexVolume)
+    {
+        if (nullptr == this->detourTileCache)
+        {
+            return;
+        }
 
-					this->hasValidNavMesh = this->detourTileCache->TileCacheBuild(terraDataList, entities, items);
-				}
+        // Remove from static list — object cannot be in both
+        this->removeStaticObstacle(id);
 
-				// Create input geom after TileCacheBuild is finished
-				this->createInputGeom();
+        InputGeom* inputGeom = nullptr;
+        ConvexVolume* convexVolume = nullptr;
 
-				if (false == this->hasValidNavMesh)
-				{
-					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[OgreRecastModule] Error: could not generate useable navmesh from mesh.");
-					// throw Ogre::Exception(Ogre::Exception::ERR_INTERNAL_ERROR, "[OgreRecastModule] could not generate useable navmesh from mesh", "NOWA");
-				}
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, id, walkable, externalInputGeom, externalConvexVolume, &inputGeom, &convexVolume]()
+        {
+            auto it = this->dynamicObstacles.find(id);
 
-				// Sent event with feedback
-				boost::shared_ptr<EventDataFeedback> eventDataNavigationMeshFeedback(new EventDataFeedback(this->hasValidNavMesh, "#{NavigationMeshCreationFail}"));
-				NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->queueEvent(eventDataNavigationMeshFeedback);
-				this->ogreRecast->recreateDrawer();
+            const bool isPlaceholder = (it != this->dynamicObstacles.end()) && (nullptr == it->second.first) && (nullptr == it->second.second);
+            if (isPlaceholder)
+            {
+                this->dynamicObstacles.erase(it);
+                it = this->dynamicObstacles.end();
+            }
 
-				auto gameObjectsWithCrowdComponent = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromComponent(CrowdComponent::getStaticClassName());
-				if (gameObjectsWithCrowdComponent.size() > 0)
-				{
-					this->detourCrowd->setMaxAgents(gameObjectsWithCrowdComponent.size());
-				}
+            if (it == this->dynamicObstacles.end())
+            {
+                auto gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->getGameObjectFromId(id);
 
-				this->mustRegenerate = false;
+                if (nullptr == gameObjectPtr)
+                {
+                    return;
+                }
 
-				// NavMeshComponents queue EventDataGeometryModified from the render thread during scene load.
-                // Those events are still sitting in the queue even though we just finished the initial build.
-                // Flush them now so they do not trigger a redundant (and expensive) rebuild when the
-                // simulation starts and EventManager::update() processes them.
-                AppStateManager::getSingletonPtr()->getEventManager()->abortEvent(NOWA::EventDataGeometryModified::getStaticEventType(), true /* allOfType */);
-			};
-            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "OgreRecastModule::buildNavigationMesh");
-		}
-	}
-#else
+                // Use hasValidNavMesh — not getInputGeom().
+                // After loadAll(), getInputGeom() is always null even though the tile cache
+                // is fully valid and ready to accept convex shape obstacles.
+                const bool tileInputGeomReady = this->hasValidNavMesh;
+
+                if (tileInputGeomReady)
+                {
+                    if (nullptr != externalInputGeom)
+                    {
+                        inputGeom = externalInputGeom;
+                    }
+                    else
+                    {
+                        Ogre::v1::Entity* entity = gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
+                        if (nullptr != entity)
+                        {
+                            inputGeom = new InputGeom(entity);
+                        }
+                        else
+                        {
+                            Ogre::Item* item = gameObjectPtr->getMovableObject<Ogre::Item>();
+                            if (nullptr != item)
+                            {
+                                inputGeom = new InputGeom(item);
+                            }
+                        }
+                    }
+
+                    if (nullptr != inputGeom)
+                    {
+                        convexVolume = (nullptr != externalConvexVolume) ? externalConvexVolume : inputGeom->getConvexHull(this->ogreRecast->getAgentRadius());
+
+                        convexVolume->area = walkable ? RC_WALKABLE_AREA : RC_NULL_AREA;
+                        this->detourTileCache->addConvexShapeObstacle(convexVolume);
+                    }
+                }
+
+                this->dynamicObstacles.emplace(id, std::make_pair(inputGeom, convexVolume));
+            }
+            else
+            {
+                if (nullptr != it->second.second)
+                {
+                    it->second.second->area = walkable ? RC_WALKABLE_AREA : RC_NULL_AREA;
+                }
+                else
+                {
+                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[OgreRecastModule] addDynamicObstacle: null convexVolume for id " + Ogre::StringConverter::toString(id));
+                }
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "OgreRecastModule::addDynamicObstacle");
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // removeDynamicObstacle
+    //
+    // Unregisters a game object from the dynamic obstacle map and removes its
+    // convex shape from the tile cache.
+    //
+    // destroy = true:  InputGeom and ConvexVolume are deleted (normal removal).
+    // destroy = false: Caller takes ownership of the returned pair for reuse
+    //                  (used by NavMeshComponent::update for position/rotation changes).
+    //
+    // Handles all movable types (Entity, Item) and placeholder {nullptr, nullptr}
+    // entries gracefully — safe to call even if the object was never fully initialised.
+    // ─────────────────────────────────────────────────────────────────────────────
+    std::pair<InputGeom*, ConvexVolume*> OgreRecastModule::removeDynamicObstacle(unsigned long id, bool destroy)
+    {
+        InputGeom* inputGeom = nullptr;
+        ConvexVolume* convexVolume = nullptr;
+
+        if (nullptr == this->detourTileCache)
+        {
+            return std::make_pair(inputGeom, convexVolume);
+        }
+
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, id, destroy, &inputGeom, &convexVolume]()
+        {
+            auto it = this->dynamicObstacles.find(id);
+            if (it == this->dynamicObstacles.end())
+            {
+                return; // Not registered — nothing to do
+            }
+
+            inputGeom = it->second.first;
+            convexVolume = it->second.second;
+
+            // Remove convex hull from tile cache only if it was actually registered.
+            // Placeholder entries {nullptr, nullptr} were never added to the tile cache
+            // so calling removeConvexShapeObstacle on null would crash.
+            if (nullptr != convexVolume)
+            {
+                this->detourTileCache->removeConvexShapeObstacle(convexVolume);
+            }
+
+            // Erase from map regardless of geometry state
+            this->dynamicObstacles.erase(it);
+
+            if (true == destroy)
+            {
+                delete inputGeom;
+                inputGeom = nullptr;
+
+                delete convexVolume;
+                convexVolume = nullptr;
+            }
+            // If destroy = false, caller receives ownership via the returned pair
+        };
+
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "OgreRecastModule::removeDynamicObstacle");
+
+        return std::make_pair(inputGeom, convexVolume);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // activateDynamicObstacle
+    //
+    // Enables or disables an existing dynamic obstacle without removing it from
+    // the map. Used by NavMeshComponent when the activated flag is toggled at runtime.
+    //
+    // activate = false: removes the convex hull from the tile cache (agents can walk
+    //                   through the area) but keeps the entry in dynamicObstacles.
+    // activate = true:  re-adds the convex hull to the tile cache if it was removed.
+    //
+    // Skips placeholder entries {nullptr, nullptr} silently — they have no geometry
+    // to activate/deactivate and will be filled by createInputGeom() later.
+    //
+    // Note: does NOT check detourTileCache->getInputGeom() — that pointer is null
+    // after loadAll() (no InputGeom is created during load, only tile data is restored).
+    // The tile cache itself is valid after loadAll() so the obstacle add/remove works.
+    // ─────────────────────────────────────────────────────────────────────────────
+    void OgreRecastModule::activateDynamicObstacle(unsigned long id, bool activate)
+    {
+        // Change this:
+        if (nullptr == this->detourTileCache)
+        {
+
+            // To this — getInputGeom() is null after loadAll() but tile cache is still valid:
+            if (nullptr == this->detourTileCache || false == this->hasValidNavMesh)
+            {
+                return;
+            }
+        }
+
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, id, activate]()
+        {
+            auto it = this->dynamicObstacles.find(id);
+            if (it == this->dynamicObstacles.end())
+            {
+                return;
+            }
+
+            ConvexVolume* convexVolume = it->second.second;
+
+            // Skip placeholders — no geometry exists yet, nothing to activate
+            if (nullptr == convexVolume)
+            {
+                return;
+            }
+
+            if (false == activate)
+            {
+                // Remove from tile cache — tiles are rebuilt, area becomes walkable
+                this->detourTileCache->removeConvexShapeObstacle(convexVolume);
+            }
+            else
+            {
+                // Only re-add if not already present in the tile cache
+                int obstacleId = this->detourTileCache->getConvexShapeObstacleId(convexVolume);
+                if (-1 == obstacleId)
+                {
+                    this->detourTileCache->addConvexShapeObstacle(convexVolume);
+                }
+            }
+        };
+
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "OgreRecastModule::activateDynamicObstacle");
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // addTerra
+    //
+    // Registers a Terra heightmap game object as a navmesh terrain source.
+    // Terra objects are stored in terraInputGeomCells with a null InputGeom pointer
+    // (placeholder) until buildNavigationMesh() runs and builds the full geometry.
+    //
+    // Fires EventDataGeometryModified so the navmesh is marked dirty and will be
+    // rebuilt the next time debugDrawNavMesh(true) is called.
+    // ─────────────────────────────────────────────────────────────────────────────
+    void OgreRecastModule::addTerra(unsigned long id)
+    {
+        auto it = this->terraInputGeomCells.find(id);
+        if (it != this->terraInputGeomCells.end())
+        {
+            return; // Already registered
+        }
+
+        auto gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->getGameObjectFromId(id);
+        if (nullptr == gameObjectPtr)
+        {
+            return;
+        }
+
+        Ogre::Terra* terra = gameObjectPtr->getMovableObject<Ogre::Terra>();
+        if (nullptr == terra)
+        {
+            return;
+        }
+
+        // Store as placeholder — InputGeom is built during the next full rebuild
+        this->terraInputGeomCells.emplace(id, nullptr);
+
+        boost::shared_ptr<NOWA::EventDataGeometryModified> evt(new NOWA::EventDataGeometryModified());
+        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(evt);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // removeTerra
+    //
+    // Unregisters a Terra heightmap object from the terrain source map.
+    //
+    // destroy = true:  the cached InputGeom is deleted (normal removal on disconnect).
+    // destroy = false: caller receives the InputGeom pointer for inspection/reuse.
+    //
+    // Fires EventDataGeometryModified so the navmesh is marked dirty — a rebuild
+    // is needed to remove the terrain geometry from the baked navmesh.
+    // ─────────────────────────────────────────────────────────────────────────────
+    InputGeom* OgreRecastModule::removeTerra(unsigned long id, bool destroy)
+    {
+        InputGeom* inputGeom = nullptr;
+
+        auto it = this->terraInputGeomCells.find(id);
+        if (it == this->terraInputGeomCells.end())
+        {
+            return nullptr; // Not registered
+        }
+
+        auto gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->getGameObjectFromId(id);
+        if (nullptr == gameObjectPtr)
+        {
+            return nullptr;
+        }
+
+        Ogre::Terra* terra = gameObjectPtr->getMovableObject<Ogre::Terra>();
+        if (nullptr == terra)
+        {
+            return nullptr;
+        }
+
+        inputGeom = it->second;
+        this->terraInputGeomCells.erase(it);
+
+        boost::shared_ptr<NOWA::EventDataGeometryModified> evt(new NOWA::EventDataGeometryModified());
+        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(evt);
+
+        if (true == destroy)
+        {
+            delete inputGeom;
+            inputGeom = nullptr;
+        }
+
+        return inputGeom;
+    }
+
+    void OgreRecastModule::createInputGeom(void)
+    {
+        InputGeom* inputGeom = nullptr;
+
+        ENQUEUE_RENDER_COMMAND_MULTI_WAIT("OgreRecastModule::createInputGeom", _1(&inputGeom), {
+            for (auto it = this->dynamicObstacles.begin(); it != this->dynamicObstacles.end(); ++it)
+            {
+                if (nullptr == it->second.first)
+                {
+                    // Only create new one, if there is no external existing one
+                    auto gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->getGameObjectFromId(it->first);
+                    if (nullptr != gameObjectPtr)
+                    {
+                        Ogre::v1::Entity* entity = gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
+                        if (nullptr != entity)
+                        {
+                            inputGeom = new InputGeom(entity);
+                        }
+                        else
+                        {
+                            Ogre::Item* item = gameObjectPtr->getMovableObject<Ogre::Item>();
+                            if (nullptr != item)
+                            {
+                                inputGeom = new InputGeom(item);
+                            }
+                        }
+
+                        if (nullptr == inputGeom)
+                        {
+                            continue;
+                        }
+
+                        it->second.first = inputGeom;
+                        ConvexVolume* convexVolume = inputGeom->getConvexHull(this->ogreRecast->getAgentRadius());
+                        it->second.second = convexVolume;
+
+                        convexVolume->area = RC_NULL_AREA;
+
+                        auto navMeshCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NavMeshComponent>());
+                        if (nullptr != navMeshCompPtr)
+                        {
+                            if (true == navMeshCompPtr->getWalkable())
+                            {
+                                convexVolume->area = RC_WALKABLE_AREA; // Set area described by convex polygon to "unwalkable"
+                            }
+                        }
+                        convexVolume->hmin = convexVolume->hmin - 0.1f; // Extend a bit downwards so it hits the ground (navmesh) for certain. (Maybe this is not necessary)
+                        this->detourTileCache->addConvexShapeObstacle(convexVolume);
+                        // this->detourTileCache->addTempObstacle(gameObjectPtr->getPosition());
+                    }
+                }
+            }
+        });
+    }
+
+    Ogre::String OgreRecastModule::getNavMeshFilePath(void) const
+    {
+        return Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName() + "/" + Core::getSingletonPtr()->getSceneName() + ".nav";
+    }
+
+    Ogre::String OgreRecastModule::getNavGeomFilePath(void) const
+    {
+        return Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName() + "/" + Core::getSingletonPtr()->getSceneName() + ".navgeom";
+    }
+
+    bool OgreRecastModule::saveNavigationMesh(const InputGeom::NavMeshGeomSnapshot& snapshot)
+    {
+        if (nullptr == this->detourTileCache)
+        {
+            return false;
+        }
+
+        // ── 1. Save tile cache binary (.nav) ─────────────────────────────────────
+        {
+            Ogre::String filePath = this->getNavMeshFilePath();
+            if (false == this->detourTileCache->saveAll(filePath))
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[OgreRecastModule] saveNavigationMesh: failed to save .nav: " + filePath);
+                return false;
+            }
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[OgreRecastModule] Tile cache saved to: " + filePath);
+        }
+
+        // ── 2. Save mesh geometry (.navgeom) ──────────────────────────────────────
+        // Needed so buildTile() has real vertices when obstacles rebuild tiles at runtime.
+        // Without this: addConvexShapeObstacle -> rasterizeTileLayers -> isEmpty() = true
+        //               -> "ERROR: buildTile: Input mesh is not specified."
+        {
+            Ogre::String filePath = this->getNavGeomFilePath();
+            FILE* fp = fopen(filePath.c_str(), "wb");
+            if (nullptr == fp)
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[OgreRecastModule] saveNavigationMesh: failed to open .navgeom: " + filePath);
+                return false;
+            }
+
+            const unsigned int magic = 0x4E474D00; // "NGM\0"
+            const unsigned int version = 1;
+            fwrite(&magic, sizeof(unsigned int), 1, fp);
+            fwrite(&version, sizeof(unsigned int), 1, fp);
+
+            int entryCount = static_cast<int>(snapshot.meshEntries.size());
+            fwrite(&entryCount, sizeof(int), 1, fp);
+
+            for (const auto& entry : snapshot.meshEntries)
+            {
+                int vertCount = static_cast<int>(entry.verts.size());
+                int idxCount = static_cast<int>(entry.indices.size());
+                fwrite(&vertCount, sizeof(int), 1, fp);
+                fwrite(&idxCount, sizeof(int), 1, fp);
+                if (vertCount > 0)
+                {
+                    fwrite(entry.verts.data(), sizeof(float), vertCount, fp);
+                }
+                if (idxCount > 0)
+                {
+                    fwrite(entry.indices.data(), sizeof(int), idxCount, fp);
+                }
+            }
+
+            fwrite(snapshot.bmin, sizeof(float), 3, fp);
+            fwrite(snapshot.bmax, sizeof(float), 3, fp);
+
+            fclose(fp);
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[OgreRecastModule] Mesh geometry saved to: " + filePath);
+        }
+
+        return true;
+    }
+
+    bool OgreRecastModule::loadNavigationMesh(void)
+    {
+        Ogre::String navFilePath = this->getNavMeshFilePath();
+        Ogre::String geomFilePath = this->getNavGeomFilePath();
+
+        // ── 1. Check .nav file exists ─────────────────────────────────────────────
+        if (false == std::filesystem::exists(navFilePath))
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[OgreRecastModule] No .nav file found at: " + navFilePath + " — will build from scratch.");
+            return false;
+        }
+
+        // ── 2. Always recreate detourTileCache before loadAll ─────────────────────
+        // loadAll() calls dtAllocTileCache() and dtAllocNavMesh() internally.
+        // Calling it on an existing object corrupts internal pointers.
+        if (nullptr != this->detourTileCache)
+        {
+            delete this->detourTileCache;
+            this->detourTileCache = nullptr;
+        }
+        this->detourTileCache = new OgreDetourTileCache(this->ogreRecast);
+
+        // ── 3. Load tile cache (.nav) ─────────────────────────────────────────────
+        if (false == this->detourTileCache->loadAll(navFilePath))
+        {
+            delete this->detourTileCache;
+            this->detourTileCache = nullptr;
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[OgreRecastModule] Failed to load .nav: " + navFilePath + " — will build from scratch.");
+            return false;
+        }
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[OgreRecastModule] Tile cache loaded from: " + navFilePath);
+
+        // ── 4. Load mesh geometry (.navgeom) and create real InputGeom ────────────
+        // After loadAll(), m_geom is null. addConvexShapeObstacle calls
+        // buildTile() -> rasterizeTileLayers() which needs real mesh vertices.
+        // We load the saved snapshot and build InputGeom with chunky tri mesh.
+        if (true == std::filesystem::exists(geomFilePath))
+        {
+            FILE* fp = fopen(geomFilePath.c_str(), "rb");
+            if (nullptr != fp)
+            {
+                unsigned int magic = 0, version = 0;
+                fread(&magic, sizeof(unsigned int), 1, fp);
+                fread(&version, sizeof(unsigned int), 1, fp);
+
+                if (magic == 0x4E474D00 && version == 1)
+                {
+                    InputGeom::NavMeshGeomSnapshot snapshot;
+
+                    int entryCount = 0;
+                    fread(&entryCount, sizeof(int), 1, fp);
+                    snapshot.meshEntries.resize(entryCount);
+
+                    for (auto& entry : snapshot.meshEntries)
+                    {
+                        int vertCount = 0, idxCount = 0;
+                        fread(&vertCount, sizeof(int), 1, fp);
+                        fread(&idxCount, sizeof(int), 1, fp);
+                        entry.verts.resize(vertCount);
+                        entry.indices.resize(idxCount);
+                        if (vertCount > 0)
+                        {
+                            fread(entry.verts.data(), sizeof(float), vertCount, fp);
+                        }
+                        if (idxCount > 0)
+                        {
+                            fread(entry.indices.data(), sizeof(int), idxCount, fp);
+                        }
+                    }
+
+                    fread(snapshot.bmin, sizeof(float), 3, fp);
+                    fread(snapshot.bmax, sizeof(float), 3, fp);
+                    fclose(fp);
+
+                    // Build real InputGeom with chunky tri mesh from snapshot.
+                    // This is what rasterizeTileLayers needs for tile rebuilds.
+                    InputGeom* geom = new InputGeom(snapshot);
+                    this->detourTileCache->setInputGeom(geom);
+
+                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[OgreRecastModule] Mesh geometry loaded from: " + geomFilePath);
+                }
+                else
+                {
+                    fclose(fp);
+                    // Invalid file — fall back to empty geom so addConvexVolume
+                    // doesn't crash, but tile rebuilds will silently produce no tiles.
+                    // User must delete both files and rebuild navmesh.
+                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[OgreRecastModule] Invalid .navgeom file — dynamic obstacles "
+                                                                                        "cannot rebuild tiles. Delete .nav and .navgeom and rebuild.");
+                    this->detourTileCache->setInputGeom(new InputGeom());
+                }
+            }
+            else
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[OgreRecastModule] Cannot open .navgeom — dynamic obstacles "
+                                                                                    "cannot rebuild tiles.");
+                this->detourTileCache->setInputGeom(new InputGeom());
+            }
+        }
+        else
+        {
+            // .navgeom missing — old .nav file without matching geometry.
+            // Empty geom prevents crash but tile rebuilds will silently fail.
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[OgreRecastModule] No .navgeom found — dynamic obstacles will not "
+                                                                              "affect navmesh tiles. Rebuild navmesh to generate both files.");
+            this->detourTileCache->setInputGeom(new InputGeom());
+        }
+
+        // ── 5. Mark valid and fill dynamic obstacle placeholders ──────────────────
+        this->hasValidNavMesh = true;
+        this->mustRegenerate = false;
+
+        // createInputGeom fills any {nullptr,nullptr} placeholder entries in
+        // dynamicObstacles that were registered before this load completed.
+        this->createInputGeom();
+
+        auto crowdGOs = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromComponent(CrowdComponent::getStaticClassName());
+        if (false == crowdGOs.empty())
+        {
+            this->detourCrowd->setMaxAgents(crowdGOs.size());
+        }
+
+        return true;
+    }
+
+    void OgreRecastModule::setMustRegenerate(bool mustRegenerate)
+    {
+        this->mustRegenerate = mustRegenerate;
+    }
+
     void OgreRecastModule::buildNavigationMesh(void)
     {
         if (this->staticObstacles.empty() && this->dynamicObstacles.empty() && this->terraInputGeomCells.empty())
@@ -584,15 +813,18 @@ namespace NOWA
             return;
         }
 
-        // Prevent a second build from starting while one is already running.
-        // exchange() returns the OLD value; if it was already true, bail out.
+        // Guard re-entry — exchange() returns the OLD value
         if (true == this->buildInProgress.exchange(true))
         {
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[OgreRecastModule] buildNavigationMesh skipped: build already in progress.");
             return;
         }
 
-        // Clean up any previous (finished) thread before spawning a new one.
+        // Notify UI: busy
+        boost::shared_ptr<EventDataNavMeshBusy> busyEvt(new EventDataNavMeshBusy(true));
+        AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->queueEvent(busyEvt);
+
+        // Clean up any previous (finished) thread
         if (this->navMeshThread.joinable())
         {
             this->navMeshThread.join();
@@ -601,11 +833,13 @@ namespace NOWA
         this->navMeshThread = std::thread([this]()
             {
                 // -----------------------------------------------------------------------
-                // PHASE 1 � render thread (fast): initialise and collect Ogre object ptrs
+                // PHASE 1 — render thread (~50ms):
+                //   • Initialise detourTileCache if needed
+                //   • Collect entity/item pointers, call getMeshInformation (reads CPU
+                //     vertex buffers), apply world transforms -> NavMeshGeomSnapshot
+                //   • The render thread is only blocked for this fast snapshot step.
                 // -----------------------------------------------------------------------
-                std::vector<Ogre::v1::Entity*> entities;
-                std::vector<Ogre::Item*> items;
-                std::vector<InputGeom::TerraData> terraDataList;
+                InputGeom::NavMeshGeomSnapshot snapshot;
                 bool hasTerra = false;
 
                 NOWA::GraphicsModule::RenderCommand setupCmd = [&]()
@@ -615,22 +849,25 @@ namespace NOWA
                         this->detourTileCache = new OgreDetourTileCache(this->ogreRecast);
                     }
 
+                    std::vector<Ogre::v1::Entity*> entities;
+                    std::vector<Ogre::Item*> items;
+
                     for (size_t i = 0; i < this->staticObstacles.size(); i++)
                     {
-                        auto& go = AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->getGameObjectFromId(this->staticObstacles[i]);
+                        auto go = AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->getGameObjectFromId(this->staticObstacles[i]);
                         if (nullptr == go)
                         {
                             continue;
                         }
 
-                        Ogre::v1::Entity* entity = go->getMovableObject<Ogre::v1::Entity>();
-                        if (nullptr != entity)
+                        auto* ent = go->getMovableObject<Ogre::v1::Entity>();
+                        if (nullptr != ent)
                         {
-                            entities.emplace_back(entity);
+                            entities.emplace_back(ent);
                         }
                         else
                         {
-                            Ogre::Item* item = go->getMovableObject<Ogre::Item>();
+                            auto* item = go->getMovableObject<Ogre::Item>();
                             if (nullptr != item)
                             {
                                 items.push_back(item);
@@ -638,156 +875,254 @@ namespace NOWA
                         }
                     }
 
+                    Ogre::SceneNode* rootNode = AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->getGameObjectFromId(this->staticObstacles.empty() ? 0 : this->staticObstacles[0])
+                                                    ? // fallback: grab from first valid entity/item
+                                                    (!entities.empty() ? entities[0]->getParentSceneNode()->getCreator()->getRootSceneNode()
+                                                                       : (!items.empty() ? items[0]->getParentSceneNode()->getCreator()->getRootSceneNode() : this->ogreRecast->m_pSceneMgr->getRootSceneNode()))
+                                                    : this->ogreRecast->m_pSceneMgr->getRootSceneNode();
+
+                    // Build snapshot — reads CPU vertex buffers + world transforms.
+                    // Returns plain float/int arrays: zero Ogre access after this point.
+                    snapshot = InputGeom::buildSnapshot(entities, items, rootNode);
+
                     if (false == this->terraInputGeomCells.empty())
                     {
                         hasTerra = true;
                         for (auto it = this->terraInputGeomCells.begin(); it != this->terraInputGeomCells.end(); ++it)
                         {
-                            auto& go = AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->getGameObjectFromId(it->first);
+                            auto go = AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->getGameObjectFromId(it->first);
                             if (nullptr == go)
                             {
                                 continue;
                             }
-
-                            auto navMeshTerraCompPtr = NOWA::makeStrongPtr(go->getComponent<NavMeshTerraComponent>());
-                            if (nullptr == navMeshTerraCompPtr)
+                            auto comp = NOWA::makeStrongPtr(go->getComponent<NavMeshTerraComponent>());
+                            if (nullptr == comp)
                             {
                                 continue;
                             }
-
                             Ogre::Terra* terra = go->getMovableObject<Ogre::Terra>();
                             if (nullptr == terra)
                             {
                                 continue;
                             }
 
-                            InputGeom::TerraData terraData;
-                            terraData.terra = terra;
-                            terraData.terraLayerList = navMeshTerraCompPtr->getTerraLayerList();
-                            terraDataList.push_back(terraData);
+                            InputGeom::TerraData td;
+                            td.terra = terra;
+                            td.terraLayerList = comp->getTerraLayerList();
+                            snapshot.terraDataList.push_back(td);
                         }
                     }
                 };
 
-                // Blocks this background thread until the render thread has collected
-                // everything � but the render thread is only busy for milliseconds here.
-                NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(setupCmd), "OgreRecastModule::buildNavigationMesh::setup");
+                // Render thread is busy only for this call (~50ms), then completely free.
+                NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(setupCmd), "OgreRecastModule::buildNavigationMesh::snapshot");
 
                 // -----------------------------------------------------------------------
-                // PHASE 2 � background thread (heavy): Recast/Detour build
-                // TileCacheBuild only reads CPU-side vertex buffers; safe off render thread
-                // as long as static obstacle meshes are not modified concurrently.
+                // PHASE 2 — background thread (heavy, ~9s):
+                //   • InputGeom is built from plain float/int arrays — zero Ogre calls.
+                //   • buildChunkyTriMesh() runs here.
+                //   • TileCacheBuild(InputGeom*) runs here.
+                //   • The render thread is 100% free during this entire phase.
                 // -----------------------------------------------------------------------
                 bool success = false;
+
                 if (false == hasTerra)
                 {
-                    success = this->detourTileCache->TileCacheBuild(entities, items);
+                    // Pure-snapshot path: all heavy work on background thread
+                    InputGeom* inputGeom = new InputGeom(snapshot);
+                    success = this->detourTileCache->TileCacheBuild(inputGeom);
+                    // TileCacheBuild takes ownership and deletes inputGeom
                 }
                 else
                 {
-                    success = this->detourTileCache->TileCacheBuild(terraDataList, entities, items);
+                    // Terra path: existing constructor reads CPU heightmap — still safe
+                    // off render thread as long as terrain isn't edited concurrently.
+                    std::vector<Ogre::v1::Entity*> noEntities;
+                    std::vector<Ogre::Item*> noItems;
+                    success = this->detourTileCache->TileCacheBuild(snapshot.terraDataList, noEntities, noItems);
+                    // Note: if you also have entities+items alongside terra, reconstruct
+                    // them from snapshot.meshEntries here, or extend TileCacheBuild to
+                    // accept a mixed snapshot — see section 5 below.
                 }
 
                 // -----------------------------------------------------------------------
-                // PHASE 3 � render thread (fast): apply results, recreate debug drawer
+                // PHASE 3 — render thread (~50ms): commit results, fire events
                 // -----------------------------------------------------------------------
-                NOWA::GraphicsModule::RenderCommand finishCmd = [this, success]()
+                NOWA::GraphicsModule::RenderCommand finishCmd = [this, success, snapshot]()
                 {
                     this->hasValidNavMesh = success;
 
-                    // createInputGeom uses Ogre draw calls � must be on render thread
+                    if (true == success)
+                    {
+                        // Saves both .nav (tile cache) and .navgeom (mesh geometry for tile rebuilds)
+                        if (false == this->saveNavigationMesh(snapshot))
+                        {
+                            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[OgreRecastModule] Navmesh built but files could not be saved.");
+                        }
+                    }
+
                     this->createInputGeom();
 
                     if (false == this->hasValidNavMesh)
                     {
-                        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[OgreRecastModule] Error: could not generate useable navmesh from mesh.");
+                        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[OgreRecastModule] Error: could not generate useable navmesh.");
+                    }
+
+                    // recreateDrawer destroys the old ManualObject geometry first,
+                    // then drawNavMesh rebuilds it fresh — order matters to prevent accumulation.
+                    this->ogreRecast->recreateDrawer();
+
+                    // Only draw if the flag is still true — user may have toggled it off
+                    // while the background build was running.
+                    if (true == this->debugDraw && nullptr != this->detourTileCache)
+                    {
+                        this->ogreRecast->recreateDrawer(); // clear old geometry first
+                        this->detourTileCache->drawNavMesh(true);
                     }
 
                     boost::shared_ptr<EventDataFeedback> evt(new EventDataFeedback(this->hasValidNavMesh, "#{NavigationMeshCreationFail}"));
-                    NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->queueEvent(evt);
+                    AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->queueEvent(evt);
 
-                    this->ogreRecast->recreateDrawer();
-
-                    auto crowdObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromComponent(CrowdComponent::getStaticClassName());
-                    if (crowdObjects.size() > 0)
+                    auto crowdGOs = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromComponent(CrowdComponent::getStaticClassName());
+                    if (!crowdGOs.empty())
                     {
-                        this->detourCrowd->setMaxAgents(crowdObjects.size());
+                        this->detourCrowd->setMaxAgents(crowdGOs.size());
                     }
 
                     this->mustRegenerate = false;
-
                     AppStateManager::getSingletonPtr()->getEventManager()->abortEvent(NOWA::EventDataGeometryModified::getStaticEventType(), true);
+
+                    boost::shared_ptr<EventDataNavMeshBusy> doneEvt(new EventDataNavMeshBusy(false));
+                    AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->queueEvent(doneEvt);
                 };
 
                 NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(finishCmd), "OgreRecastModule::buildNavigationMesh::finish");
 
                 this->buildInProgress.store(false);
-            }); // thread spawned � render thread is now FREE again immediately
-
-        // Detach so the thread cleans itself up. mBuildInProgress guards re-entry.
-        // NOTE: your destructor must guard against destroying OgreRecastModule while
-        //       a build is still running (see destructor note below).
-        this->navMeshThread.detach();
+                // Do NOT detach - see destroyContent() below
+            });
+        // navMeshThread is kept joinable; destructor will join it.
     }
-#endif
 
 	void OgreRecastModule::debugDrawNavMesh(bool draw)
-	{
-		this->debugDraw = draw;
+    {
+        this->debugDraw = draw;
 
-		if (true == draw)
-		{
-			this->buildNavigationMesh();
-		}
+        if (true == this->buildInProgress.load())
+        {
+            return;
+        }
 
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("OgreRecastModule::debugDrawNavMesh", _1(draw),
-		{
-			if (true == this->hasValidNavMesh)
-			{
-				// this->ogreRecast->drawNavMesh(draw);
-				this->detourTileCache->drawNavMesh(draw);
-			}
-		});
-	}
+        if (true == draw)
+        {
+            // Already valid in memory — just draw, nothing else needed
+            if (true == this->hasValidNavMesh)
+            {
+                NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+                {
+                    if (nullptr != this->detourTileCache)
+                    {
+                        this->ogreRecast->recreateDrawer();
+                        this->detourTileCache->drawNavMesh(true);
+                    }
+                };
+                NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "OgreRecastModule::debugDrawNavMesh::draw");
+                return;
+            }
+
+            // Not in memory — try loading from disk first regardless of mustRegenerate.
+            // Only rebuild if: file doesn't exist OR geometry actually changed (mustRegenerate
+            // AND file is outdated — but we cannot know that, so trust the file if it exists).
+            bool loaded = false;
+            NOWA::GraphicsModule::RenderCommand loadCmd = [this, &loaded]()
+            {
+                loaded = this->loadNavigationMesh();
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(loadCmd), "OgreRecastModule::debugDrawNavMesh::load");
+
+            if (true == loaded)
+            {
+                // Loaded from disk — draw immediately, no rebuild needed
+                NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+                {
+                    if (nullptr != this->detourTileCache)
+                    {
+                        this->ogreRecast->recreateDrawer();
+                        this->detourTileCache->drawNavMesh(true);
+                    }
+                };
+                NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "OgreRecastModule::debugDrawNavMesh::draw");
+                return;
+            }
+
+            // No file on disk — must build from scratch.
+            // Phase 3 finishCmd will draw when done (reads this->debugDraw).
+            this->buildNavigationMesh();
+        }
+        else
+        {
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+            {
+                if (nullptr != this->detourTileCache)
+                {
+                    this->detourTileCache->drawNavMesh(false);
+                }
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "OgreRecastModule::debugDrawNavMesh::hide");
+        }
+    }
 
 	void OgreRecastModule::update(Ogre::Real dt)
-	{
-		if (nullptr != this->detourTileCache)
-		{
-			this->detourTileCache->handleUpdate(dt);
-		}
-	}
+    {
+        // Bug fix 3: handleUpdate ticks the tile cache obstacle system (processes
+        // deferred add/remove of convex obstacles, rebuilds affected tiles).
+        // If a full rebuild is running on the background thread, the tile cache
+        // pointer and its internal state are being rewritten — calling handleUpdate
+        // concurrently is a data race and will corrupt or crash the rebuild.
+        if (true == this->buildInProgress.load())
+        {
+            return;
+        }
+
+        if (nullptr != this->detourTileCache)
+        {
+            this->detourTileCache->handleUpdate(dt);
+        }
+    }
 
 	bool OgreRecastModule::findPath(const Ogre::Vector3& startPosition, const Ogre::Vector3& endPosition, int pathSlot, int targetSlot, bool drawPath)
-	{
-		if (!this->hasValidNavMesh)
-			return false;
+    {
+        // Bug fix 1: Guard both conditions — no valid mesh at all, OR a rebuild
+        // is currently running. The old code only checked hasValidNavMesh, which
+        // is true from the PREVIOUS build while a new one rewrites internal Detour
+        // structures concurrently — a guaranteed crash / corrupt path result.
+        if (false == this->hasValidNavMesh || true == this->buildInProgress.load())
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[OgreRecastModule] findPath skipped: nav mesh not ready or build in progress.");
+            return false;
+        }
 
-		// Capture necessary objects
-		auto ogreRecastPtr = this->ogreRecast;
+        auto ogreRecastPtr = this->ogreRecast;
 
-		// Call FindPath on the render thread and get result safely
-		int ret = NOWA::GraphicsModule::getInstance()->enqueueAndWaitWithResult<int>([=]() -> int
-		{
-			return ogreRecastPtr->FindPath(startPosition, endPosition, pathSlot, targetSlot);
-		}, "OgreRecastModule::findPath");
+        int ret = NOWA::GraphicsModule::getInstance()->enqueueAndWaitWithResult<int>([=]() -> int
+        {
+            return ogreRecastPtr->FindPath(startPosition, endPosition, pathSlot, targetSlot);
+        }, "OgreRecastModule::findPath");
 
-		// If success, optionally draw the path
-		if (ret >= 0)
-		{
-			ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("OgreRecastModule::drawPathLine", _3(ogreRecastPtr, pathSlot, drawPath),
+        if (ret >= 0)
+        {
+            ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("OgreRecastModule::drawPathLine", _3(ogreRecastPtr, pathSlot, drawPath),
 				{
 					ogreRecastPtr->CreateRecastPathLine(pathSlot, drawPath);
 				});
-			return true;
-		}
-		else
-		{
-			// Still safe to use ogreRecast here on the logic thread
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[OgreRecastModule] Warning: could not find a (full) path (" + this->ogreRecast->getPathFindErrorMsg(ret) + "). It is possible there is a partial path.");
-			return false;
-		}
-	}
+            return true;
+        }
+        else
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[OgreRecastModule] Warning: could not find a (full) path (" + this->ogreRecast->getPathFindErrorMsg(ret) + "). It is possible there is a partial path.");
+            return false;
+        }
+    }
 
 
 	void OgreRecastModule::removeDrawnPath(void)

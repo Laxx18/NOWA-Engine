@@ -101,7 +101,7 @@ void ComponentsPanel::showComponents(int index)
 		if (count > 0)
 		{
 			gameObjects.resize(count);
-			for (auto& it = selectedGameObjects.cbegin(); it != selectedGameObjects.cend(); ++it)
+			for (auto it = selectedGameObjects.cbegin(); it != selectedGameObjects.cend(); ++it)
 			{
 				gameObjects[i] = it->second.gameObject;
 				i++;
@@ -289,13 +289,13 @@ void ComponentsPanelDynamic::showComponents(const Ogre::String& searchText)
 		this->clear();
 
 		// Add all registered comopnents to the search
-		for (auto componentInfo : NOWA::GameObjectFactory::getInstance()->getComponentFactory()->getRegisteredComponentNames())
+		for (const auto& componentInfo : NOWA::GameObjectFactory::getInstance()->getComponentFactory()->getRegisteredComponentNames())
 		{
 			this->autoCompleteSearch.addSearchText(componentInfo.first);
 		}
 
 		// Get the matched results
-		auto& matchedComponents = this->autoCompleteSearch.findMatchedItemWithInText(searchText);
+		auto matchedComponents = this->autoCompleteSearch.findMatchedItemWithInText(searchText);
 
 		for (size_t i = 0; i < matchedComponents.getResults().size(); i++)
 		{
@@ -419,17 +419,17 @@ void ComponentsPanelDynamic::showComponents(const Ogre::String& searchText)
 				}
 				else if (NOWA::PhysicsTerrainComponent::getStaticClassName() == componentName) // Attention here componentName, because tempComponentName delivers parent PhysicsComponent, instead of sub type
 				{
-					auto& terraCompPtr = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::TerraComponent>());
+					auto terraCompPtr = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::TerraComponent>());
 					if (nullptr != terraCompPtr)
 					{
-						auto& physicsTerrainCompPtr = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::PhysicsTerrainComponent>());
+						auto physicsTerrainCompPtr = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::PhysicsTerrainComponent>());
 						if (nullptr == physicsTerrainCompPtr)
 							validToEnable = true;
 					}
 				}
 				else if (NOWA::PhysicsArtifactComponent::getStaticClassName() == componentName)
 				{
-					auto& aiLuaCompPtr = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::AiLuaComponent>());
+					auto aiLuaCompPtr = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::AiLuaComponent>());
 					if (nullptr != aiLuaCompPtr)
 					{
 						validToEnable = false;
@@ -438,7 +438,7 @@ void ComponentsPanelDynamic::showComponents(const Ogre::String& searchText)
 				// Kinematic may not have any joint besides kinematic controller
 				else if (NOWA::PhysicsActiveKinematicComponent::getStaticClassName() == componentName)
 				{
-					auto& jointCompPtr = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::JointComponent>());
+					auto jointCompPtr = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::JointComponent>());
 					if (nullptr != jointCompPtr && nullptr == boost::dynamic_pointer_cast<NOWA::JointKinematicComponent>(jointCompPtr))
 					{
 						validToEnable = false;
@@ -508,7 +508,7 @@ void ComponentsPanelDynamic::showComponents(const Ogre::String& searchText)
 				}
 				else if (/*NOWA::DatablockTerraComponent::getStaticClassName() == tempComponentName || */NOWA::PhysicsTerrainComponent::getStaticClassName() == componentName)
 				{
-					auto& terraCompPtr = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::TerraComponent>(tempComponentName));
+					auto terraCompPtr = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::TerraComponent>(tempComponentName));
 					if (nullptr != terraCompPtr)
 						validToEnable = true;
 				}

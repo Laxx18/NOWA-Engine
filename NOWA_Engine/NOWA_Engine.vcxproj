@@ -69,7 +69,7 @@
       <ShowIncludes>false</ShowIncludes>
       <UseFullPaths>false</UseFullPaths>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/bigobj /permissive %(AdditionalOptions)</AdditionalOptions>
       <EnableParallelCodeGeneration>
       </EnableParallelCodeGeneration>
       <FunctionLevelLinking>
@@ -82,7 +82,7 @@
       <CompileAs>CompileAsCpp</CompileAs>
       <UndefinePreprocessorDefinitions>
       </UndefinePreprocessorDefinitions>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -143,7 +143,8 @@
       <CompileAs>CompileAsCpp</CompileAs>
       <DebugInformationFormat>
       </DebugInformationFormat>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalOptions>/bigobj /permissive %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -359,6 +360,7 @@
     <ClInclude Include="utilities\AutoCompleteSearch.h" />
     <ClInclude Include="utilities\BoundingBoxDraw.h" />
     <ClInclude Include="utilities\C2DMatrix.h" />
+    <ClInclude Include="utilities\ConcurrentQueue.h" />
     <ClInclude Include="utilities\CPlusPlusComponentGenerator.h" />
     <ClInclude Include="utilities\DrawRenderer.hpp" />
     <ClInclude Include="utilities\DynamicLines.hpp" />
@@ -366,7 +368,6 @@
     <ClInclude Include="utilities\FaderProcess.h" />
     <ClInclude Include="utilities\GeometryDrawer.hpp" />
     <ClInclude Include="utilities\DrawDynamicLines.hpp" />
-    <ClInclude Include="utilities\ConcurrentQueue.h" />
     <ClInclude Include="utilities\FastDelegate.h" />
     <ClInclude Include="utilities\FastDelegateBind.h" />
     <ClInclude Include="utilities\IAnimationBlender.h" />

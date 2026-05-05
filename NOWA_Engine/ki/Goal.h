@@ -72,7 +72,7 @@ namespace NOWA
 				try
 				{
 					// Call the entry method of the new state
-					auto& goal = this->thisLuaGoal["activate"];
+					auto goal = this->thisLuaGoal["activate"];
 					if (goal)
 					{
 						goal(this->owner, this->goalResult.get());
@@ -99,7 +99,7 @@ namespace NOWA
 				try
 				{
 					// Call the entry method of the new state
-					auto& goal = this->thisLuaGoal["process"];
+					auto goal = this->thisLuaGoal["process"];
 					if (goal)
 					{
 						goal(this->owner, dt, this->goalResult.get());
@@ -126,7 +126,7 @@ namespace NOWA
 				try
 				{
 					// Call the entry method of the new state
-					auto& goal = this->thisLuaGoal["terminate"];
+					auto goal = this->thisLuaGoal["terminate"];
 					if (goal)
 					{
 						goal(this->owner, this->goalResult.get());

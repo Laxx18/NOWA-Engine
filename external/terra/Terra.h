@@ -285,7 +285,7 @@ namespace Ogre
         // Always in Y-up space
         Vector2 getTerrainXZCenter(void) const;
         // TODO: Is this correct??
-		std::vector<TerrainCell>& Terra::getTerrainCells(void) { return m_terrainCells[0]; }
+		std::vector<TerrainCell>& getTerrainCells(void) { return m_terrainCells[0]; }
 
         /**
          Set the height of the terrain to be a single value.

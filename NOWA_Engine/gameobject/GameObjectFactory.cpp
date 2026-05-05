@@ -613,7 +613,7 @@ namespace NOWA
 
 			if (nullptr == existingGameObjectPtr)
 			{
-				const auto& existingGameObjectNamePtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromName(sceneNode->getName());
+				const auto existingGameObjectNamePtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromName(sceneNode->getName());
 
 				// If naming collision: Somehow a local scene has the game object and the global one, kill the first one and register the second one.
 				if (nullptr != existingGameObjectNamePtr)
@@ -761,7 +761,7 @@ namespace NOWA
 		}
 		else
 		{
-			const auto& existingGameObjectNamePtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromName(sceneNode->getName());
+			const auto existingGameObjectNamePtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromName(sceneNode->getName());
 
 			// If naming collision: Somehow a local scene has the game object and the global one, kill the first one and register the second one.
 			if (nullptr != existingGameObjectNamePtr)

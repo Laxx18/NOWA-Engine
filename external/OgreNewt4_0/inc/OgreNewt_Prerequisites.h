@@ -111,7 +111,7 @@ namespace OgreNewt
 
         template<class c> void setDestructorCallback(OgreNewt::function<void(c*, DerivedClass*)> callback, c* instancedClassPointer)
         {
-            setDestructorCallback(OgreNewt::bind(callback, instancedClassPointer, _1));
+            setDestructorCallback(OgreNewt::bind(callback, instancedClassPointer, std::placeholders::_1));
         }
     private:
         DestructorCallbackFunction m_callback;

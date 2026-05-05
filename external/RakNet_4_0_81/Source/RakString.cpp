@@ -450,7 +450,7 @@ void RakString::SetChar( unsigned index, RakNet::RakString s )
 }
 
 #ifdef _WIN32
-WCHAR * RakString::ToWideChar(void)
+const WCHAR * RakString::ToWideChar(void)
 {
 	//
 	// Special case of NULL or empty input string

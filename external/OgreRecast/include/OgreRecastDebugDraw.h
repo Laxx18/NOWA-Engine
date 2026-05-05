@@ -18,12 +18,15 @@ private:
 	duDebugDrawPrimitives m_crtShape;
 
 	std::vector<oduVertex> m_lstCrtVertex;
+	int m_sectionCount;
 public:
 	OgreRecastDebugDraw(Ogre::SceneManager* scnMgr);
 
 	void draw(bool enable);
 
 	void mustRecreate(void);
+
+	void resetForNewFrame(void);
 
 	virtual void depthMask(bool state);
 	virtual void texture(bool state);

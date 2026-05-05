@@ -374,7 +374,7 @@ void World::interalPostUpdate(Ogre::Real interp)
             continue;
         }
 
-        auto& notifyPtr = ndBody->GetNotifyCallback();
+        auto notifyPtr = ndBody->GetNotifyCallback();
         if (!notifyPtr)
         {
             continue;
@@ -393,7 +393,7 @@ void World::interalPostUpdate(Ogre::Real interp)
         }
 
         // One pass: update transform AND dispatch contacts
-        ogreBody->updateNode(interp);
+        ogreBody->updateNode(interp, false);
         ogreBody->dispatchContacts();
     }
 }
@@ -404,7 +404,7 @@ void World::recoverInternal()
 
     for (auto node = GetBodyList().GetFirst(); node; node = node->GetNext())
     {
-        auto& bodySp = node->GetInfo();
+        auto bodySp = node->GetInfo();
         ndBodyKinematic* const b = bodySp->GetAsBodyKinematic();
 
         if (!b || b == GetSentinelBody())
@@ -506,10 +506,10 @@ void World::applySelfCollisionGroup(ndBodyKinematic* start, unsigned int group)
     std::unordered_map<ndBodyKinematic*, std::vector<ndBodyKinematic*>> adj;
     adj.reserve(128);
 
-    const auto& joints = GetJointList();
+    const auto joints = GetJointList();
     for (auto node = joints.GetFirst(); node; node = node->GetNext())
     {
-        auto& jSp = node->GetInfo();
+        auto jSp = node->GetInfo();
         ndJointBilateralConstraint* j = jSp.operator->();
         if (!j)
         {

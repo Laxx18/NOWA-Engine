@@ -142,7 +142,7 @@ namespace NOWA
 	void CameraManager::setActiveCameraBehavior(Ogre::Camera* camera, const Ogre::String& cameraBehaviorType)
 	{
 		Ogre::String cameraName = camera->getName();
-		auto& cameraData = this->cameraDataMap[camera];
+        auto& cameraData = this->cameraDataMap[camera];
 
 		// Clear data for the old behavior
 		for (auto it = cameraData.behaviorData.begin(); it != cameraData.behaviorData.end(); ++it)
@@ -171,12 +171,19 @@ namespace NOWA
 		}
 
 		// If the new behavior was not found in the list, log an error
-		if (cameraData.behaviorData.begin()->cameraBehavior->getBehaviorType() != cameraBehaviorType)
-		{
-			cameraData.behaviorData.begin()->cameraBehaviorKey = cameraBehaviorType;
-			cameraData.behaviorData.begin()->cameraBehavior->onSetData();
-			cameraData.isActive = true;
-		}
+        if (cameraData.behaviorData.empty())
+        {
+            Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[CameraManager] setActiveCameraBehavior: no behaviors registered for camera: " + cameraName);
+            return;
+        }
+
+		// If the new behavior was not found in the list, log an error
+        if (cameraData.behaviorData.front().cameraBehavior->getBehaviorType() != cameraBehaviorType)
+        {
+            cameraData.behaviorData.front().cameraBehaviorKey = cameraBehaviorType;
+            cameraData.behaviorData.front().cameraBehavior->onSetData();
+            cameraData.isActive = true;
+        }
 	}
 
 	BaseCamera* CameraManager::getActiveCameraBehavior(Ogre::Camera* camera) const
@@ -320,7 +327,7 @@ namespace NOWA
 		}
 
 		// Set the camera behavior to the first item in the list and initialize it
-		auto& firstBehavior = cameraData.behaviorData.front();
+		auto firstBehavior = cameraData.behaviorData.front();
 		cameraData.behaviorData.begin()->cameraBehaviorKey = firstBehavior.cameraBehaviorKey;
 		cameraData.behaviorData.begin()->cameraBehavior = firstBehavior.cameraBehavior;
 		firstBehavior.cameraBehavior->postInitialize(camera);
@@ -441,7 +448,7 @@ namespace NOWA
 			// Ensure the first behavior is set and initialized
 			if (!cameraData.behaviorData.empty())
 			{
-				auto& firstBehavior = cameraData.behaviorData.front();
+				auto firstBehavior = cameraData.behaviorData.front();
 				cameraData.behaviorData.begin()->cameraBehaviorKey = firstBehavior.cameraBehaviorKey;
 				cameraData.behaviorData.begin()->cameraBehavior = firstBehavior.cameraBehavior;
 				firstBehavior.cameraBehavior->postInitialize(camera);
@@ -453,7 +460,7 @@ namespace NOWA
 	Ogre::Camera* CameraManager::getActiveCamera(void) const
 	{
 		// Iterates through all cameras in the cameraDataMap
-		for (const auto& entry : this->cameraDataMap)
+		for (const auto entry : this->cameraDataMap)
 		{
 			// Check if the camera is active
 			if (true == entry.second.isActive && false == entry.second.forSplitScreen)

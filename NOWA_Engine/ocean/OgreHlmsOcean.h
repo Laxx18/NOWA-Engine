@@ -259,9 +259,9 @@ namespace Ogre
          * @param probe Pointer to the cubemap texture used as the global environment probe,
          *              or nullptr to disable global ocean reflections.
          */
-        void HlmsOcean::setDatablockEnvReflection( HlmsOceanDatablock* datablock, Ogre::TextureGpu* reflectionTexture );
+        void setDatablockEnvReflection( HlmsOceanDatablock* datablock, Ogre::TextureGpu* reflectionTexture );
 
-        void HlmsOcean::setDatablockEnvReflection( HlmsOceanDatablock* datablock, const Ogre::String& textureName );
+        void setDatablockEnvReflection( HlmsOceanDatablock* datablock, const Ogre::String& textureName );
 
 
 	    /// Overrides the resource name of the 3D texture used by the ocean shader.

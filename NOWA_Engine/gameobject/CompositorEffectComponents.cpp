@@ -181,7 +181,7 @@ namespace NOWA
 			return;
 		}
 
-		auto& cameraCompPtr = NOWA::makeStrongPtr(workspaceGameObjectPtr->getComponent<CameraComponent>());
+		auto cameraCompPtr = NOWA::makeStrongPtr(workspaceGameObjectPtr->getComponent<CameraComponent>());
 		if (nullptr != cameraCompPtr)
 		{
 			// If camera is not activated, this compositor effect should not be played
@@ -196,7 +196,7 @@ namespace NOWA
 			return;
 		}
 
-		auto& workspaceBaseCompPtr = NOWA::makeStrongPtr(workspaceGameObjectPtr->getComponent<WorkspaceBaseComponent>());
+		auto workspaceBaseCompPtr = NOWA::makeStrongPtr(workspaceGameObjectPtr->getComponent<WorkspaceBaseComponent>());
 		if (nullptr != workspaceBaseCompPtr)
 		{
 			this->workspaceBaseComponent = workspaceBaseCompPtr.get();

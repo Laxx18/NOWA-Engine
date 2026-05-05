@@ -22,8 +22,6 @@ namespace
 		}
 		return values;
 	}
-
-	std::mutex mutex;
 }
 
 namespace NOWA
@@ -41,12 +39,13 @@ namespace NOWA
 	}
 
 	NavMeshTerraComponent::~NavMeshTerraComponent()
-	{
-		AppStateManager::getSingletonPtr()->getOgreRecastModule()->removeTerra(this->gameObjectPtr->getId());
+    {
+        // Pass destroy=false: let OgreRecastModule handle cleanup in its own
+        // destroyContent(). Queueing geometry events during destruction is unsafe.
+        AppStateManager::getSingletonPtr()->getOgreRecastModule()->removeTerra(this->gameObjectPtr->getId(), false);
 
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[NavMeshTerraComponent] Destructor navigation mesh terra component for game object: "
-			+ this->gameObjectPtr->getName());
-	}
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[NavMeshTerraComponent] Destructor navigation mesh terra component for game object: " + this->gameObjectPtr->getName());
+    }
 
 	bool NavMeshTerraComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
@@ -72,28 +71,26 @@ namespace NOWA
 	}
 
 	bool NavMeshTerraComponent::postInit(void)
-	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[NavMeshTerraComponent] Init navigation mesh terra component for game object: "
-			+ this->gameObjectPtr->getName());
-		
-		this->setActivated(this->activated->getBool());
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[NavMeshTerraComponent] Init navigation mesh terra component for game object: " + this->gameObjectPtr->getName());
 
-		return true;
-	}
+        // Register terra first, then signal geometry changed.
+        this->setActivated(this->activated->getBool());
+
+        return true;
+    }
 
 	void NavMeshTerraComponent::onRemoveComponent(void)
 	{
 		GameObjectComponent::onRemoveComponent();
-
-		boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGeometryModified);
 	}
 
 	bool NavMeshTerraComponent::connect(void)
-	{
-		this->setActivated(this->activated->getBool());
-		return true;
-	}
+    {
+        this->setActivated(this->activated->getBool());
+
+        return true;
+    }
 
 	bool NavMeshTerraComponent::disconnect(void)
 	{
@@ -175,17 +172,18 @@ namespace NOWA
 
 	void NavMeshTerraComponent::checkAndSetTerraLayers(const Ogre::String& terraLayers)
 	{
-		this->terraLayerList.clear();
-		auto strLayers = split(terraLayers);
-		if (true == strLayers.empty())
-		{
-			this->terraLayerList = { 255, 255, 255, 255 };
-		}
-		for (size_t i = 0; i < strLayers.size(); i++)
-		{
-			int value = Ogre::StringConverter::parseInt(strLayers[i]);
-			this->terraLayerList.emplace_back(value > 255 ? 255 : value);
-		}
+        this->terraLayerList.clear();
+        auto strLayers = split(terraLayers);
+        if (strLayers.size() != 4)
+        {
+            this->terraLayerList = {255, 255, 255, 255};
+            return;
+        }
+        for (size_t i = 0; i < strLayers.size(); i++)
+        {
+            int value = Ogre::StringConverter::parseInt(strLayers[i]);
+            this->terraLayerList.emplace_back(value > 255 ? 255 : value);
+        }
 	}
 
 	void NavMeshTerraComponent::setTerraLayers(const Ogre::String& terraLayers)

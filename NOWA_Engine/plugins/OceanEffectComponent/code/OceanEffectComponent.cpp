@@ -230,7 +230,7 @@ namespace NOWA
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[OceanEffectComponent] Init ocean effect component for game object: " + this->gameObjectPtr->getName());
 
-		auto& oceanCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<OceanComponent>());
+		auto oceanCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<OceanComponent>());
 		if (nullptr != oceanCompPtr)
 		{
 			this->oceanComponent = oceanCompPtr.get();
@@ -253,7 +253,7 @@ namespace NOWA
 	{
 		GameObjectComponent::connect();
 
-		auto& oceanCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<OceanComponent>());
+	    auto oceanCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<OceanComponent>());
 		if (nullptr != oceanCompPtr)
 		{
 			this->oceanComponent = oceanCompPtr.get();
@@ -282,10 +282,10 @@ namespace NOWA
 
 	void OceanEffectComponent::onOtherComponentRemoved(unsigned int index)
 	{
-		auto& gameObjectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentByIndex(index));
+        auto gameObjectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentByIndex(index));
 		if (nullptr != gameObjectCompPtr)
 		{
-			auto& oceanCompPtr = boost::dynamic_pointer_cast<OceanComponent>(gameObjectCompPtr);
+            auto oceanCompPtr = boost::dynamic_pointer_cast<OceanComponent>(gameObjectCompPtr);
 			if (nullptr != oceanCompPtr)
 			{
 				this->oceanComponent = nullptr;

@@ -517,7 +517,7 @@ namespace NOWA
 		// Two data block components with the same entity index can not exist
 		for (unsigned int i = 0; i < static_cast<unsigned int>(this->gameObjectPtr->getComponents()->size()); i++)
 		{
-			auto& priorUnlitComponent = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<DatablockUnlitComponent>(DatablockUnlitComponent::getStaticClassName(), i));
+			auto priorUnlitComponent = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<DatablockUnlitComponent>(DatablockUnlitComponent::getStaticClassName(), i));
 			if (nullptr != priorUnlitComponent && priorUnlitComponent.get() != this)
 			{
 				if (this->subItemIndex->getUInt() == priorUnlitComponent->getSubItemIndex())
@@ -613,7 +613,7 @@ namespace NOWA
 		// Two data block components with the same item index can not exist
 		for (unsigned int i = 0; i < static_cast<unsigned int>(this->gameObjectPtr->getComponents()->size()); i++)
 		{
-			auto& priorUnlitComponent = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<DatablockUnlitComponent>(DatablockUnlitComponent::getStaticClassName(), i));
+			auto priorUnlitComponent = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<DatablockUnlitComponent>(DatablockUnlitComponent::getStaticClassName(), i));
 			if (nullptr != priorUnlitComponent && priorUnlitComponent.get() != this)
 			{
 				if (this->subItemIndex->getUInt() == priorUnlitComponent->getSubItemIndex())
@@ -915,7 +915,7 @@ namespace NOWA
 				// Two data block components with the same entity index can not exist
 				for (size_t i = 0; i < this->gameObjectPtr->getComponents()->size(); i++)
 				{
-					auto& priorUnlitComponent = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<DatablockUnlitComponent>(DatablockUnlitComponent::getStaticClassName(), static_cast<unsigned int>(i)));
+					auto priorUnlitComponent = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<DatablockUnlitComponent>(DatablockUnlitComponent::getStaticClassName(), static_cast<unsigned int>(i)));
 					if (nullptr != priorUnlitComponent && priorUnlitComponent.get() != this)
 					{
 						if (subItemIndex == priorUnlitComponent->getSubItemIndex())

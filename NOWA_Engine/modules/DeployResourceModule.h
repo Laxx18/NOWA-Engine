@@ -9,7 +9,7 @@ namespace NOWA
 	class EXPORTED DeployResourceModule
 	{
 	public:
-		void tagResource(const Ogre::String& name, const Ogre::String& resourceGroupName, Ogre::String& path = Ogre::String());
+		void tagResource(const Ogre::String& name, const Ogre::String& resourceGroupName, Ogre::String& path);
 
 		void removeResource(const Ogre::String& name);
 

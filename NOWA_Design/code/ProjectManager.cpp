@@ -247,7 +247,7 @@ void ProjectManager::createNewProject(const NOWA::ProjectParameter& projectParam
 	}
 
 	// Check after (maybe loading a valid global.scene, which mandatory game objects already exists
-	const auto& mainCameraGameObjectPtr = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromName("MainCamera");
+	const auto mainCameraGameObjectPtr = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromName("MainCamera");
 	if (nullptr == mainCameraGameObjectPtr)
 	{
 		Ogre::Camera* camera = this->createMainCamera();
@@ -567,7 +567,7 @@ void ProjectManager::internalApplySettings(void)
 
 			NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->createOgreRecast(this->sceneManager, params, projectParameter.pointExtends);
 
-			const auto& navMeshTerraComponents = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectComponents<NOWA::NavMeshTerraComponent>();
+			const auto navMeshTerraComponents = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectComponents<NOWA::NavMeshTerraComponent>();
 
 			// Nav mesh terra components, must be re-applied in order to re-create nav mesh
 			for (size_t i = 0; i < navMeshTerraComponents.size(); i++)
@@ -575,7 +575,7 @@ void ProjectManager::internalApplySettings(void)
 				navMeshTerraComponents[i]->postInit();
 			}
 
-			const auto& navMeshComponents = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectComponents<NOWA::NavMeshComponent>();
+			const auto navMeshComponents = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectComponents<NOWA::NavMeshComponent>();
 
 			// Nav mesh components, must be re-applied in order to re-create nav mesh
 			for (size_t i = 0; i < navMeshComponents.size(); i++)
@@ -583,7 +583,8 @@ void ProjectManager::internalApplySettings(void)
 				navMeshComponents[i]->postInit();
 			}
 
-			NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->buildNavigationMesh();
+			NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->setMustRegenerate(true);
+            NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->buildNavigationMesh();
 		}
 		else
 		{
@@ -594,7 +595,7 @@ void ProjectManager::internalApplySettings(void)
 		NOWA::WorkspaceModule::getInstance()->setShadowQuality(static_cast<Ogre::HlmsPbs::ShadowFilter>(this->projectParameter.shadowQualityIndex), true);
 		NOWA::WorkspaceModule::getInstance()->setAmbientLightMode(static_cast<Ogre::HlmsPbs::AmbientLightMode>(this->projectParameter.ambientLightModeIndex));
 
-		const auto& oceanComponents = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectComponents<NOWA::OceanComponent>();
+		const auto oceanComponents = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectComponents<NOWA::OceanComponent>();
 
 		// Ocean must set new values for ambient, shadows
 		for (size_t i = 0; i < oceanComponents.size(); i++)
@@ -626,7 +627,7 @@ void ProjectManager::destroyScene(void)
 	// If there is already a camera component with this camera, let it be destroyed by the camera component when NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->destroyContent(); is called
 	bool foundCorrectCameraComponent = false;
 	auto gameObjects = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects();
-	for (auto& it = gameObjects->begin(); it != gameObjects->end(); ++it)
+	for (auto it = gameObjects->begin(); it != gameObjects->end(); ++it)
 	{
 		NOWA::GameObject* gameObject = it->second.get();
 		auto cameraComponent = NOWA::makeStrongPtr(gameObject->getComponent<NOWA::CameraComponent>());
@@ -692,12 +693,12 @@ void ProjectManager::saveGroup(const Ogre::String& filePathName)
 {
 	if (nullptr != this->dotSceneExportModule)
 	{
-		auto& selectedGameObjects = this->editorManager->getSelectionManager()->getSelectedGameObjects();
+		auto selectedGameObjects = this->editorManager->getSelectionManager()->getSelectedGameObjects();
 		if (selectedGameObjects.size() > 0)
 		{
 			std::vector<unsigned long> gameObjectIds(selectedGameObjects.size());
 			unsigned int i = 0;
-			for (auto& it = selectedGameObjects.cbegin(); it != selectedGameObjects.cend(); ++it)
+			for (auto it = selectedGameObjects.cbegin(); it != selectedGameObjects.cend(); ++it)
 			{
 				gameObjectIds[i++] = it->second.gameObject->getId();
 			}

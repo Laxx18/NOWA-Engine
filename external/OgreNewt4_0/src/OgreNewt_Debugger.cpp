@@ -108,7 +108,7 @@ namespace OgreNewt
             // Check if datablock exists before attempting destruction
             if (nullptr != datablock)
             {
-                auto& linkedRenderables = datablock->getLinkedRenderables();
+                auto linkedRenderables = datablock->getLinkedRenderables();
 
                 // Only destroy if the datablock is not used else where
                 if (true == linkedRenderables.empty())
@@ -135,18 +135,30 @@ namespace OgreNewt
 
     void Debugger::clearBodyDebugDataCache()
     {
-        if (m_cachemap.size() == 0)
+        if (m_cachemap.empty())
         {
             return;
         }
 
-        for (BodyDebugDataMap::iterator it = m_cachemap.begin(); it != m_cachemap.end(); it++)
+        for (auto& it : m_cachemap)
         {
-            Ogre::ManualObject* mo = it->second.m_lines;
-            if (mo)
+            if (nullptr != it.second.m_lines)
             {
-                m_sceneManager->destroyManualObject(mo);
-                mo = nullptr;
+                if (nullptr != it.second.m_node)
+                {
+                    it.second.m_node->detachObject(it.second.m_lines);
+                }
+                m_sceneManager->destroyManualObject(it.second.m_lines);
+                it.second.m_lines = nullptr;
+            }
+            if (nullptr != it.second.m_node)
+            {
+                it.second.m_node->detachAllObjects();
+                if (nullptr != it.second.m_node->getParentSceneNode())
+                {
+                    it.second.m_node->getParentSceneNode()->removeAndDestroyChild(it.second.m_node);
+                }
+                it.second.m_node = nullptr;
             }
         }
         m_cachemap.clear();
@@ -208,18 +220,32 @@ namespace OgreNewt
 
         // keep your existing cleanup logic unchanged...
         BodyDebugDataMap newbodymap;
-        for (BodyDebugDataMap::iterator it = m_cachemap.begin(); it != m_cachemap.end(); it++)
+        for (auto& it : m_cachemap)
         {
-            if (it->second.m_updated)
+            if (it.second.m_updated)
             {
-                newbodymap.insert(*it);
+                newbodymap.insert(it);
             }
             else
             {
-                Ogre::ManualObject* mo = it->second.m_lines;
-                if (mo)
+                // Detach before destroy, then clean up node
+                if (nullptr != it.second.m_lines)
                 {
-                    m_sceneManager->destroyManualObject(mo);
+                    if (nullptr != it.second.m_node)
+                    {
+                        it.second.m_node->detachObject(it.second.m_lines);
+                    }
+                    m_sceneManager->destroyManualObject(it.second.m_lines);
+                    it.second.m_lines = nullptr;
+                }
+                if (nullptr != it.second.m_node)
+                {
+                    it.second.m_node->detachAllObjects();
+                    if (nullptr != it.second.m_node->getParentSceneNode())
+                    {
+                        it.second.m_node->getParentSceneNode()->removeAndDestroyChild(it.second.m_node);
+                    }
+                    it.second.m_node = nullptr;
                 }
             }
         }
@@ -268,7 +294,7 @@ namespace OgreNewt
 
         Debugger::unlitDatablockNames.emplace_back(datablockName);
 
-        if (false == existingDatablock)
+        if (nullptr == existingDatablock)
         {
             Ogre::HlmsUnlitDatablock* datablock = static_cast<Ogre::HlmsUnlitDatablock*>(hlmsUnlit->createDatablock(datablockName, datablockName, Ogre::HlmsMacroblock(macroblock), Ogre::HlmsBlendblock(blendblock), Ogre::HlmsParamVec()));
 
@@ -294,21 +320,16 @@ namespace OgreNewt
             return;
         }
 
-        // Clear existing object content
         object->clear();
-
         const Ogre::String datablockName = "DebugObjectUnlitDatablock__" + Ogre::StringConverter::toString(index);
         Debugger::createUnlitDatablock(datablockName, colour);
         object->begin(datablockName, Ogre::OperationType::OT_LINE_LIST);
 
-        Ogre::Vector3 scale = body->getOgreNode()->_getDerivedScaleUpdated();
-        CollisionDebugNotify collisionDebugNotify(object, scale);
-
-        ndBodyKinematic* nativeBody = body->getNewtonBody(); // or however you store it
+        // No scale — debug node already has setScale(localScale) applied
+        CollisionDebugNotify collisionDebugNotify(object);
+        ndBodyKinematic* nativeBody = body->getNewtonBody();
         ndShapeInstance& shapeInstance = nativeBody->GetCollisionShape();
-
-        ndMatrix matrix = ndGetIdentityMatrix();
-        shapeInstance.DebugShape(matrix, collisionDebugNotify);
+        shapeInstance.DebugShape(ndGetIdentityMatrix(), collisionDebugNotify);
 
         object->end();
     }
@@ -363,7 +384,11 @@ namespace OgreNewt
             data->m_node->setOrientation(ori);
             data->m_node->setScale(scale);
             data->m_updated = 1;
-            m_debugnode->addChild(data->m_node);
+            // Only add if not already a child of m_debugnode
+            if (nullptr == data->m_node->getParentSceneNode())
+            {
+                m_debugnode->addChild(data->m_node);
+            }
         }
         else
         {
@@ -436,8 +461,7 @@ namespace OgreNewt
 
         body->getVisualPositionOrientation(pos, ori);
 
-        Ogre::Vector3 scale = body->getOgreNode()->_getDerivedScaleUpdated();
-        CollisionDebugNotify collisionDebugNotify(line, scale);
+        CollisionDebugNotify collisionDebugNotify(line);
 
         ndMatrix matrix;
         OgreNewt::Converters::QuatPosToMatrix(ori, pos, matrix);
@@ -479,8 +503,7 @@ namespace OgreNewt
 
         body->getVisualPositionOrientation(pos, ori);
 
-        Ogre::Vector3 scale = body->getOgreNode()->_getDerivedScaleUpdated();
-        CollisionDebugNotify collisionDebugNotify(line, scale);
+        CollisionDebugNotify collisionDebugNotify(line);
 
         ndMatrix matrix;
         OgreNewt::Converters::QuatPosToMatrix(ori, pos, matrix);
@@ -595,7 +618,7 @@ namespace OgreNewt
 
         // bodies
         ndMatrix matrix;
-        CollisionDebugNotify collisionDebugNotify(line, Ogre::Vector3::UNIT_SCALE);
+        CollisionDebugNotify collisionDebugNotify(line);
 
         OgreNewt::Converters::QuatPosToMatrix(colori, startpt, matrix);
         // Newton 4.0 shapes need to be wrapped in ndShapeInstance for debug rendering

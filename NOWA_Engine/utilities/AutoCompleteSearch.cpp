@@ -78,7 +78,7 @@ namespace NOWA
 		// Text empty, get the whole list
 		if (true == searchText.empty()/* || searchText.size() < 3*/)
 		{
-			for (auto& currentText : this->searchList)
+            for (const auto& currentText : this->searchList)
 			{
 				MatchedItem item;
 				item.matchedItemText = currentText.first;
@@ -93,7 +93,7 @@ namespace NOWA
 		Ogre::StringUtil::toUpperCase(tempSearchText);
 
 		// Worst case of the whole algorithm O(GetCount() * len(currentStringInListHigh)) = O(n*n)
-		for (auto currentText : this->searchList)
+		for (const auto& currentText : this->searchList)
 		{
 			Ogre::String tempCurrentText = currentText.first;
 			Ogre::StringUtil::toUpperCase(tempCurrentText);

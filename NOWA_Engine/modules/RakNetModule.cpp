@@ -341,7 +341,7 @@ namespace NOWA
 		{
 			// determine the next free player id
 			this->nextFreePlayerID = 1;
-			for (auto& it = this->clients.cbegin(); it != clients.cend(); ++it)
+			for (auto it = this->clients.cbegin(); it != clients.cend(); ++it)
 			{
 				int occupiedID = it->first;
 				if (this->nextFreePlayerID == occupiedID)
@@ -472,7 +472,7 @@ namespace NOWA
 		RakNet::BitStream bitstream2;
 
 		// send to the remaining clients, that one client is no langer available, so that they can remove the client from the list
-		for (auto& it = this->clients.cbegin(); it != this->clients.cend(); ++it)
+		for (auto it = this->clients.cbegin(); it != this->clients.cend(); ++it)
 		{
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[RakNetModule:Server] send exit for remote client Id: "
 				+ Ogre::StringConverter::toString(clientID));
@@ -744,7 +744,7 @@ namespace NOWA
 	int RakNetModule::getClientIDForSystemAddress(const RakNet::SystemAddress& systemAddress)
 	{
 		int clientID = -1;
-		for (auto& it = this->clients.cbegin(); it != this->clients.cend(); ++it)
+		for (auto it = this->clients.cbegin(); it != this->clients.cend(); ++it)
 		{
 			if (systemAddress == it->second)
 			{

@@ -26,29 +26,24 @@ namespace NOWA
 		class EXPORTED NavNode : public Node
 		{
 		public:
-			NavNode()
-			:
-			extraInfo(ExtraInfo)
-			{
+            NavNode()
+				: extraInfo()
+            {
+            }
 
-			}
+            NavNode(int index, Ogre::Vector3 position)
+				: Node(index),
+				position(position),
+				extraInfo()
+            {
+            }
 
-			NavNode(int index, Ogre::Vector3 position)
-			:
-			Node	(index),
-			position(position),
-			extraInfo(ExtraInfo)
-			{
-
-			}
-
-			NavNode(std::ifstream& stream)
-			:
-			extraInfo(ExtraInfo)
-			{
-				char buffer[50]; // are 50 bytes enough?
-				stream >> buffer >> this->index >> this->position.x >> buffer >> this->position.y >> buffer >> this->position.z;
-			}
+            NavNode(std::ifstream& stream)
+				: extraInfo()
+            {
+                char buffer[50];
+                stream >> buffer >> this->index >> this->position.x >> buffer >> this->position.y >> buffer >> this->position.z;
+            }
 
 			virtual ~NavNode()
 			{

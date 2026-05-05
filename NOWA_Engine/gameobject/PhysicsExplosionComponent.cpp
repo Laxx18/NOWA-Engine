@@ -217,7 +217,7 @@ namespace NOWA
 
 					// check objects in range
 					Ogre::SceneQueryResultMovableList& result = this->sphereSceneQuery->execute().movables;
-					for (auto& it = result.cbegin(); it != result.cend(); ++it)
+					for (auto it = result.cbegin(); it != result.cend(); ++it)
 					{
 						Ogre::MovableObject* movableObject = *it;
 
@@ -255,7 +255,7 @@ namespace NOWA
 									+ Ogre::StringConverter::toString(detonationStrength) + " direction: " + Ogre::StringConverter::toString(direction)
 									+ " directionJump: " + Ogre::StringConverter::toString(direction * -1.0f * static_cast<Ogre::Real>(detonationStrength)));*/
 									// here because of parent id introduction, its possible to get the base component and set data, instead of setting for all available derived components from PhysicsComponent
-								auto& physicsCompPtr = makeStrongPtr(affectedGameObject->getComponent<PhysicsComponent>());
+								auto physicsCompPtr = makeStrongPtr(affectedGameObject->getComponent<PhysicsComponent>());
 								if (physicsCompPtr)
 								{
 									// Blast the affected game object away, but by a delay, depending on the distance to the bomb

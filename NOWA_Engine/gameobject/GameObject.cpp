@@ -212,7 +212,7 @@ namespace NOWA
 		this->luaScript = nullptr;
 
 		// Delete all attributes
-		auto& it = this->attributes.begin();
+		auto it = this->attributes.begin();
 
 		while (it != this->attributes.end())
 		{
@@ -1051,7 +1051,7 @@ namespace NOWA
         this->cachedAiLuaComponent = nullptr;
         this->cachedAiLuaGoalComponent = nullptr;
 
-		for (auto& it = this->gameObjectComponents.cbegin(); it != this->gameObjectComponents.cend(); ++it)
+		for (auto it = this->gameObjectComponents.cbegin(); it != this->gameObjectComponents.cend(); ++it)
 		{
 			std::get<COMPONENT>(*it)->bTaggedForRemovement = true;
 			std::get<COMPONENT>(*it)->onRemoveComponent();
@@ -1077,7 +1077,7 @@ namespace NOWA
 
 	void GameObject::update(Ogre::Real dt, bool notSimulating)
 	{
-		for (auto& it = this->gameObjectComponents.cbegin(); it != this->gameObjectComponents.cend(); ++it)
+		for (auto it = this->gameObjectComponents.cbegin(); it != this->gameObjectComponents.cend(); ++it)
 		{
 			if (true == std::get<COMPONENT>(*it)->bConnectedSuccess)
 			{
@@ -1087,7 +1087,7 @@ namespace NOWA
 
 		if (false == this->delayedAddCommponentList.empty())
 		{
-			for (auto& it = this->delayedAddCommponentList.cbegin(); it != this->delayedAddCommponentList.cend();)
+			for (auto it = this->delayedAddCommponentList.cbegin(); it != this->delayedAddCommponentList.cend();)
 			{
 				GameObjectCompPtr gameObjectCompPtr = (*it).first;
 				bool bConnect = (*it).second;
@@ -1676,7 +1676,7 @@ namespace NOWA
 
 		unsigned int i = 0;
 		// If there is already such component increment the occurrence index
-		for (auto& it = this->gameObjectComponents.begin(); it != this->gameObjectComponents.end(); ++it)
+		for (auto it = this->gameObjectComponents.begin(); it != this->gameObjectComponents.end(); ++it)
 		{
 			if (std::get<COMPONENT>(*it) != gameObjectCompPtr)
 			{
@@ -1718,7 +1718,7 @@ namespace NOWA
 
 		unsigned int i = 0;
 		// If there is already such component increment the occurrence
-		for (auto& it = this->gameObjectComponents.begin(); it != this->gameObjectComponents.end(); ++it)
+		for (auto it = this->gameObjectComponents.begin(); it != this->gameObjectComponents.end(); ++it)
 		{
 			// Check for class name and parent class name for occurrence, e.g. JointPassiveSliderComponent -> JointComponent, JointKinematicComponent -> JointComponent
 			if (std::get<COMPONENT>(*it)->getClassName() == std::get<COMPONENT>(currentComponentData)->getClassName() 
@@ -1759,7 +1759,7 @@ namespace NOWA
 		
 		unsigned int i = 0;
 		// If there is already such component increment the occurrence
-		for (auto& it = this->gameObjectComponents.begin(); it != this->gameObjectComponents.end(); ++it)
+		for (auto it = this->gameObjectComponents.begin(); it != this->gameObjectComponents.end(); ++it)
 		{
 			// Check for class name and parent class name for occurrence, e.g. JointPassiveSliderComponent -> JointComponent, JointKinematicComponent -> JointComponent
 			if (std::get<COMPONENT>(*it)->getClassName() == std::get<COMPONENT>(currentComponentData)->getClassName() /*||
@@ -1896,7 +1896,7 @@ namespace NOWA
 			return false;
 		}
 
-		auto& component = NOWA::makeStrongPtr(this->getComponentByIndex(index));
+		auto component = NOWA::makeStrongPtr(this->getComponentByIndex(index));
 		if (nullptr != component)
 		{
 			// If a lua script component has been removed, reset the lua script pointer
@@ -1907,7 +1907,7 @@ namespace NOWA
 			}
 			
 			size_t originSize = this->gameObjectComponents.size();
-			for (auto& it = this->gameObjectComponents.begin(); it != this->gameObjectComponents.end(); ++it)
+			for (auto it = this->gameObjectComponents.begin(); it != this->gameObjectComponents.end(); ++it)
 			{
 				// Call for all other components the event
 				// if (std::get<COMPONENT>(*it)->getClassName() != component->getClassName() || std::get<COMPONENT>(*it)->occurrenceIndex != component->occurrenceIndex)
@@ -2224,7 +2224,7 @@ namespace NOWA
 			isMovableVisible = this->movableObject->getVisible();
 		}
 
-		const auto& cameraCompPtr = NOWA::makeStrongPtr(this->getComponent<CameraComponent>());
+		const auto cameraCompPtr = NOWA::makeStrongPtr(this->getComponent<CameraComponent>());
 		if (nullptr != cameraCompPtr)
 		{
 			if (this->visible->getBool() != visible)
@@ -2632,7 +2632,8 @@ namespace NOWA
 		v1Mesh->unload();
 		Ogre::v1::MeshManager::getSingletonPtr()->remove(v1Mesh);
 
-		DeployResourceModule::getInstance()->tagResource(tempMeshFile, v2Mesh->getGroup());
+		Ogre::String path;
+		DeployResourceModule::getInstance()->tagResource(tempMeshFile, v2Mesh->getGroup(), path);
 
 		saveV2MeshToFile(tempMeshFile, v2Mesh.get());
 	}
@@ -2689,9 +2690,9 @@ namespace NOWA
 	void GameObject::saveV1MeshToFile(const Ogre::String& meshName, Ogre::v1::Mesh* mesh)
 	{
 		Ogre::String filePathName;
-		auto& locationList = Ogre::ResourceGroupManager::getSingletonPtr()->getResourceLocationList(mesh->getGroup());
+		auto locationList = Ogre::ResourceGroupManager::getSingletonPtr()->getResourceLocationList(mesh->getGroup());
 
-		for (auto& loc : locationList)
+		for (const auto& loc : locationList)
 		{
 			Ogre::String path = loc->archive->getName() + "//" + meshName;
 			if (std::ifstream(path.c_str()).good())
@@ -2720,9 +2721,9 @@ namespace NOWA
 	void GameObject::saveV2MeshToFile(const Ogre::String& meshName, Ogre::Mesh* mesh)
 	{
 		Ogre::String filePathName;
-		auto& locationList = Ogre::ResourceGroupManager::getSingletonPtr()->getResourceLocationList(mesh->getGroup());
+		auto locationList = Ogre::ResourceGroupManager::getSingletonPtr()->getResourceLocationList(mesh->getGroup());
 
-		for (auto& loc : locationList)
+		for (const auto& loc : locationList)
 		{
 			Ogre::String path = loc->archive->getName() + "//" + meshName;
 			if (std::ifstream(path.c_str()).good())

@@ -126,7 +126,7 @@ namespace OgreNewt
 		Ogre::Vector3 getForce() const;
 
 		//! get position and normal of the collision
-		void getPositionAndNormal(Ogre::Vector3& pos, Ogre::Vector3& norm, OgreNewt::Body* body) const;
+		void getPositionAndNormal(Ogre::Vector3& pos, Ogre::Vector3& norm) const;
 
 		//! get tangent speed of the collision
 		Ogre::Real getTangentSpeed(int index) const;

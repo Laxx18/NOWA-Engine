@@ -114,7 +114,7 @@ namespace NOWA
 		 * @note		This function should be called when a new scene is created. E.g. entering a new AppState, call it in the @AppState::exit() function. Because all game objects are used for one scene manager.
 		 *              Do not call this function in an update method, else hell is raised.
 		 */
-		void destroyContent(std::vector<Ogre::String>& excludeGameObjectNames = std::vector<Ogre::String>());
+		void destroyContent(const std::vector<Ogre::String>& excludeGameObjectNames = std::vector<Ogre::String>());
 
 		/**
 		 * @brief		Updates all game objects and its components
@@ -452,7 +452,7 @@ namespace NOWA
 		std::vector<boost::shared_ptr<ComponentType>> getGameObjectComponents(void)
 		{
 			std::vector<boost::shared_ptr<ComponentType>> vec;
-			for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
+			for (auto it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
 			{
 				GameObjectComponents* gameobjectComponents = it->second->getComponents();
 				for (size_t i = 0; i < gameobjectComponents->size(); i++)

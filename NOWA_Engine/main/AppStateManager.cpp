@@ -131,7 +131,7 @@ namespace NOWA
 	AppStateManager::~AppStateManager()
 	{
 		// Delete all global attributes
-		auto& it = this->globalAttributesMap.begin();
+		auto it = this->globalAttributesMap.begin();
 
 		while (it != this->globalAttributesMap.end())
 		{
@@ -239,7 +239,7 @@ namespace NOWA
 
 	AppState* AppStateManager::findByName(const Ogre::String& stateName)
 	{
-		for (auto& it = this->states.cbegin(); it != this->states.cend(); ++it)
+		for (auto it = this->states.cbegin(); it != this->states.cend(); ++it)
 		{
 			if (it->name == stateName)
 			{
@@ -257,7 +257,7 @@ namespace NOWA
 	AppState* AppStateManager::getNextState(AppState* currentAppState)
 	{
 		AppState* nextState = nullptr;
-		for (auto& it = this->states.begin(); it != this->states.end(); ++it)
+		for (auto it = this->states.begin(); it != this->states.end(); ++it)
 		{
 			if (it->state == currentAppState)
 			{
@@ -1180,7 +1180,7 @@ namespace NOWA
 	Variant* AppStateManager::getGlobalValue(const Ogre::String& attributeName)
 	{
 		Variant* globalAttribute = nullptr;
-		auto& it = this->globalAttributesMap.find(attributeName);
+		auto it = this->globalAttributesMap.find(attributeName);
 		if (it != this->globalAttributesMap.cend())
 		{
 			globalAttribute = it->second;
@@ -1191,7 +1191,7 @@ namespace NOWA
 	Variant* AppStateManager::setGlobalBoolValue(const Ogre::String& attributeName, bool value)
 	{
 		Variant* globalAttribute = nullptr;
-		auto& it = this->globalAttributesMap.find(attributeName);
+		auto it = this->globalAttributesMap.find(attributeName);
 		if (it != this->globalAttributesMap.cend())
 		{
 			globalAttribute = it->second;
@@ -1209,7 +1209,7 @@ namespace NOWA
 	Variant* AppStateManager::setGlobalIntValue(const Ogre::String& attributeName, int value)
 	{
 		Variant* globalAttribute = nullptr;
-		auto& it = this->globalAttributesMap.find(attributeName);
+		auto it = this->globalAttributesMap.find(attributeName);
 		if (it != this->globalAttributesMap.cend())
 		{
 			globalAttribute = it->second;
@@ -1227,7 +1227,7 @@ namespace NOWA
 	Variant* AppStateManager::setGlobalUIntValue(const Ogre::String& attributeName, unsigned int value)
 	{
 		Variant* globalAttribute = nullptr;
-		auto& it = this->globalAttributesMap.find(attributeName);
+		auto it = this->globalAttributesMap.find(attributeName);
 		if (it != this->globalAttributesMap.cend())
 		{
 			globalAttribute = it->second;
@@ -1245,7 +1245,7 @@ namespace NOWA
 	Variant* AppStateManager::setGlobalULongValue(const Ogre::String& attributeName, unsigned long value)
 	{
 		Variant* globalAttribute = nullptr;
-		auto& it = this->globalAttributesMap.find(attributeName);
+		auto it = this->globalAttributesMap.find(attributeName);
 		if (it != this->globalAttributesMap.cend())
 		{
 			globalAttribute = it->second;
@@ -1263,7 +1263,7 @@ namespace NOWA
 	Variant* AppStateManager::setGlobalRealValue(const Ogre::String& attributeName, Ogre::Real value)
 	{
 		Variant* globalAttribute = nullptr;
-		auto& it = this->globalAttributesMap.find(attributeName);
+		auto it = this->globalAttributesMap.find(attributeName);
 		if (it != this->globalAttributesMap.cend())
 		{
 			globalAttribute = it->second;
@@ -1281,7 +1281,7 @@ namespace NOWA
 	Variant* AppStateManager::setGlobalStringValue(const Ogre::String& attributeName, Ogre::String value)
 	{
 		Variant* globalAttribute = nullptr;
-		auto& it = this->globalAttributesMap.find(attributeName);
+		auto it = this->globalAttributesMap.find(attributeName);
 		if (it != this->globalAttributesMap.cend())
 		{
 			globalAttribute = it->second;
@@ -1299,7 +1299,7 @@ namespace NOWA
 	Variant* AppStateManager::setGlobalVector2Value(const Ogre::String& attributeName, Ogre::Vector2 value)
 	{
 		Variant* globalAttribute = nullptr;
-		auto& it = this->globalAttributesMap.find(attributeName);
+		auto it = this->globalAttributesMap.find(attributeName);
 		if (it != this->globalAttributesMap.cend())
 		{
 			globalAttribute = it->second;
@@ -1317,7 +1317,7 @@ namespace NOWA
 	Variant* AppStateManager::setGlobalVector3Value(const Ogre::String& attributeName, Ogre::Vector3 value)
 	{
 		Variant* globalAttribute = nullptr;
-		auto& it = this->globalAttributesMap.find(attributeName);
+		auto it = this->globalAttributesMap.find(attributeName);
 		if (it != this->globalAttributesMap.cend())
 		{
 			globalAttribute = it->second;
@@ -1335,7 +1335,7 @@ namespace NOWA
 	Variant* AppStateManager::setGlobalVector4Value(const Ogre::String& attributeName, Ogre::Vector4 value)
 	{
 		Variant* globalAttribute = nullptr;
-		auto& it = this->globalAttributesMap.find(attributeName);
+		auto it = this->globalAttributesMap.find(attributeName);
 		if (it != this->globalAttributesMap.cend())
 		{
 			globalAttribute = it->second;
@@ -1375,7 +1375,7 @@ namespace NOWA
 			std::istringstream(gameObjectId) >> id;
 
 			// Get the game object controller for this app state name
-			auto& gameObjectPtr = this->getGameObjectController(this->activeStateStack.back()->getName())->getGameObjectFromId(id);
+			auto gameObjectPtr = this->getGameObjectController(this->activeStateStack.back()->getName())->getGameObjectFromId(id);
 			if (nullptr != gameObjectPtr)
 			{
 				boost::shared_ptr<AttributesComponent> attributesCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<AttributesComponent>());
@@ -1402,7 +1402,7 @@ namespace NOWA
 				continue;
 
 			Variant* globalAttribute = nullptr;
-			auto& it = this->globalAttributesMap.find(data[0]);
+			auto it = this->globalAttributesMap.find(data[0]);
 			if (it != this->globalAttributesMap.cend())
 			{
 				globalAttribute = it->second;
@@ -1487,9 +1487,9 @@ namespace NOWA
 
 			std::ostringstream oStream;
 
-			for (auto& it = gameObjects->cbegin(); it != gameObjects->cend(); ++it)
+			for (auto it = gameObjects->cbegin(); it != gameObjects->cend(); ++it)
 			{
-				const auto& gameObjectPtr = it->second;
+				const auto gameObjectPtr = it->second;
 
 				// https://thinkcpp.wordpress.com/2012/04/16/file-to-map-inputoutput/
 
@@ -1504,7 +1504,7 @@ namespace NOWA
 
 			// Store global defined attributes
 			oStream << "[GlobalAttributes]" << "\n";
-			for (auto& it = this->globalAttributesMap.cbegin(); it != this->globalAttributesMap.cend(); ++it)
+			for (auto it = this->globalAttributesMap.cbegin(); it != this->globalAttributesMap.cend(); ++it)
 			{
 				Variant* globalAttribute = it->second;
 				int type = globalAttribute->getType();

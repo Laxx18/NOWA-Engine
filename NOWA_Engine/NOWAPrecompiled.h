@@ -66,3 +66,4 @@ extern "C"
 }
 
 #include <luabind/luabind.hpp>
+#include <source_location>

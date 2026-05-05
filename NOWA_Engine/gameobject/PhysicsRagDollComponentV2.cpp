@@ -434,7 +434,7 @@ namespace NOWA
 
         if (this->rdState == PhysicsRagDollComponentV2::RAGDOLLING || this->rdState == PhysicsRagDollComponentV2::PARTIAL_RAGDOLLING)
         {
-            for (auto& it = this->ragDataList.begin(); it != this->ragDataList.end(); ++it)
+            for (auto it = this->ragDataList.begin(); it != this->ragDataList.end(); ++it)
             {
                 if (true == activated)
                 {
@@ -506,7 +506,7 @@ namespace NOWA
 
             if (this->rdState == PhysicsRagDollComponentV2::RAGDOLLING || this->rdState == PhysicsRagDollComponentV2::PARTIAL_RAGDOLLING)
             {
-                for (auto& it = this->ragDataList.begin(); it != this->ragDataList.end(); ++it)
+                for (auto it = this->ragDataList.begin(); it != this->ragDataList.end(); ++it)
                 {
                     (*it).ragBone->update(dt, notSimulating);
                 }
@@ -578,7 +578,7 @@ namespace NOWA
         {
             NOWA::GraphicsModule::RenderCommand renderCommand = [this, activate]()
             {
-                for (auto& it = this->ragDataList.begin(); it != this->ragDataList.end(); ++it)
+                for (auto it = this->ragDataList.begin(); it != this->ragDataList.end(); ++it)
                 {
                     if (true == activate)
                     {
@@ -936,7 +936,7 @@ namespace NOWA
                 offset = 1;
             }
 
-            for (auto& it = this->ragDataList.cbegin() + offset; it != this->ragDataList.cend(); ++it)
+            for (auto it = this->ragDataList.cbegin() + offset; it != this->ragDataList.cend(); ++it)
             {
                 it->ragBone->setInitialState();
             }
@@ -958,7 +958,7 @@ namespace NOWA
             offset = 1;
         }
 
-        for (auto& it = this->ragDataList.cbegin() + offset; it != this->ragDataList.cend(); ++it)
+        for (auto it = this->ragDataList.cbegin() + offset; it != this->ragDataList.cend(); ++it)
         {
             // V2: use setManualBone instead of setManuallyControlled
             if (nullptr != this->skeletonInstance)
@@ -1601,7 +1601,7 @@ namespace NOWA
             offset = 1;
         }
 
-        for (auto& it = this->ragDataList.cbegin() + offset; it != this->ragDataList.cend(); ++it)
+        for (auto it = this->ragDataList.cbegin() + offset; it != this->ragDataList.cend(); ++it)
         {
             Ogre::Vector3 pos;
             Ogre::Quaternion orient;
@@ -1705,7 +1705,7 @@ namespace NOWA
         {
             return nullptr;
         }
-        for (auto& it = this->ragDataList.cbegin(); it != this->ragDataList.cend(); ++it)
+        for (auto it = this->ragDataList.cbegin(); it != this->ragDataList.cend(); ++it)
         {
             if (name == it->ragBoneName)
             {
@@ -1735,7 +1735,7 @@ namespace NOWA
 
         for (; i < this->ragDataList.size(); i++)
         {
-            auto& ragBone = this->ragDataList[i].ragBone;
+            auto ragBone = this->ragDataList[i].ragBone;
             if (nullptr == ragBone || nullptr == ragBone->getBody() || nullptr == ragBone->getBone())
             {
                 continue;
@@ -1810,7 +1810,7 @@ namespace NOWA
 
         for (; i < this->ragDataList.size(); i++)
         {
-            auto& ragBone = this->ragDataList[i].ragBone;
+            auto ragBone = this->ragDataList[i].ragBone;
             if (nullptr == ragBone || nullptr == ragBone->getBody() || nullptr == ragBone->getBone())
             {
                 continue;
@@ -1896,7 +1896,7 @@ namespace NOWA
 
         for (; i < this->ragDataList.size(); i++)
         {
-            auto& ragBone = this->ragDataList[i].ragBone;
+            auto ragBone = this->ragDataList[i].ragBone;
             if (nullptr == ragBone || nullptr == ragBone->getBody() || nullptr == ragBone->getBone())
             {
                 continue;
@@ -1954,7 +1954,7 @@ namespace NOWA
         }
 
         // Apply bone corrections
-        for (auto& boneCorrectionData : this->boneCorrectionMap)
+        for (const auto& boneCorrectionData : this->boneCorrectionMap)
         {
             Ogre::Vector3 targetPos;
             Ogre::Quaternion targetOrient;
@@ -2716,7 +2716,7 @@ namespace NOWA
 
             if (nullptr != nearestGravitySourceObject)
             {
-                auto& gravitySourcePhysicsComponentPtr = NOWA::makeStrongPtr(nearestGravitySourceObject->getComponent<PhysicsComponent>());
+                auto gravitySourcePhysicsComponentPtr = NOWA::makeStrongPtr(nearestGravitySourceObject->getComponent<PhysicsComponent>());
                 if (nullptr != gravitySourcePhysicsComponentPtr)
                 {
                     Ogre::Vector3 directionToPlanet = this->getPosition() - gravitySourcePhysicsComponentPtr->getPosition();

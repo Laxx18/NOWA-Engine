@@ -93,7 +93,7 @@ namespace NOWA
 		std::vector<Ogre::String> compatibleNames(names.getPointer()->size() + 1);
 		unsigned int i = 0;
 		compatibleNames[i++] = "";
-		for (auto& it = names.getPointer()->cbegin(); it != names.getPointer()->cend(); it++)
+		for (auto it = names.getPointer()->cbegin(); it != names.getPointer()->cend(); it++)
 		{
 			compatibleNames[i++] = *it;
 		}

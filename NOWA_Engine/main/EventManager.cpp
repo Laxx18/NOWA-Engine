@@ -106,16 +106,31 @@ namespace NOWA
         return success;
     }
 
-    bool EventManager::triggerEvent(const EventDataPtr& event, Ogre::Real delaySec)
+    bool EventManager::triggerEvent(const EventDataPtr& event, Ogre::Real delaySec, std::source_location location)
     {
         // CRITICAL: triggerEvent must only be called from the main/logic thread
         // because listeners execute on the calling thread
         assert(AppStateManager::getSingletonPtr()->isLogicThread() && "triggerEvent() must be called from the main/logic thread! Use queueEvent() from other threads.");
         
 
-        if (!event)
+        if (nullptr == event)
         {
             return false;
+        }
+
+        // Attach call-site info to the event itself so you can inspect it in the debugger
+        // or log it from any listener without changing any other code.
+        auto* base = dynamic_cast<BaseEventData*>(event.get());
+        if (nullptr != base)
+        {
+            try
+            {
+                base->senderInfo = "[triggerEvent]: " + std::string(location.file_name()) + ":" + std::to_string((int)location.line()) + " [" + location.function_name() + "]";
+            }
+            catch (...)
+            {
+                // During shutdown Ogre may already be destroyed — ignore
+            }
         }
 
         bool processed = false;
@@ -166,13 +181,27 @@ namespace NOWA
         return processed;
     }
 
-    bool EventManager::queueEvent(const EventDataPtr& event)
+    bool EventManager::queueEvent(const EventDataPtr& event, std::source_location location)
     {
         // Make sure the event is valid
         if (nullptr == event)
         {
-            // ERROR("Invalid event in queueEvent()");
             return false;
+        }
+
+        // Attach call-site info to the event itself so you can inspect it in the debugger
+        // or log it from any listener without changing any other code.
+        auto* base = dynamic_cast<BaseEventData*>(event.get());
+        if (nullptr != base)
+        {
+            try
+            {
+                base->senderInfo = "[queueEvent]: " + std::string(location.file_name()) + ":" + std::to_string((int)location.line()) + " [" + location.function_name() + "]";
+            }
+            catch (...)
+            {
+                // During shutdown Ogre may already be destroyed — ignore
+            }
         }
 
         // Thread-safe enqueue - can be called from any thread (render or main)
@@ -181,7 +210,7 @@ namespace NOWA
         return true;
     }
 
-    bool EventManager::abortEvent(const EventType& inType, bool allOfType)
+    bool EventManager::abortEvent(const EventType& inType, bool allOfType, std::source_location location)
     {
         // Note: With lock-free queue, we must dequeue all events, filter, and re-enqueue
         // This is less efficient than the original double-buffer approach, but maintains API compatibility
@@ -216,6 +245,21 @@ namespace NOWA
             while (this->eventQueue.try_dequeue(event))
             {
                 tempEvents.push_back(event);
+
+                // Attach call-site info to the event itself so you can inspect it in the debugger
+                // or log it from any listener without changing any other code.
+                auto* base = dynamic_cast<BaseEventData*>(event.get());
+                if (nullptr != base)
+                {
+                    try
+                    {
+                        base->senderInfo = "[abortEvent]: " + std::string(location.file_name()) + ":" + std::to_string((int)location.line()) + " [" + location.function_name() + "]";
+                    }
+                    catch (...)
+                    {
+                        // During shutdown Ogre may already be destroyed — ignore
+                    }
+                }
             }
         }
 

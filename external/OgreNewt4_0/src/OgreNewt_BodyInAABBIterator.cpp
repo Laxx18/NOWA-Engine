@@ -26,7 +26,7 @@ namespace OgreNewt
                 continue;
             }
 
-            auto& notifyPtr = const_cast<ndBody*>(nbody)->GetNotifyCallback();
+            auto notifyPtr = const_cast<ndBody*>(nbody)->GetNotifyCallback();
             if (!notifyPtr)
             {
                 continue;

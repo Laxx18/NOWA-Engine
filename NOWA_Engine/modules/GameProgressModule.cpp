@@ -391,7 +391,7 @@ namespace NOWA
 			reachableSceneProjectName = Core::getSingletonPtr()->getProjectName() + "/" + reachableSceneName + "/" + reachableSceneName + ".scene";
 		}
 
-		auto& it = this->sceneMap.find(currentSceneName);
+		auto it = this->sceneMap.find(currentSceneName);
 		if (this->sceneMap.end() == it)
 		{
 			GameProgressModule::SceneData sceneData(currentSceneName, targetLocationName, exitDirection, startPosition, xyAxis);
@@ -426,7 +426,7 @@ namespace NOWA
 		if (!reachableSceneName.empty() && this->sceneMap.end() != it)
 		{
 			// check if the reachable app state name already exist, if yes, it is the predecessor!
-			const auto& it2 = this->sceneMap.find(reachableSceneProjectName);
+			const auto it2 = this->sceneMap.find(reachableSceneProjectName);
 			if (this->sceneMap.end() != it2)
 			{
 				// the currents app state predecessor is the reachable one
@@ -439,7 +439,7 @@ namespace NOWA
 
 	std::vector<Ogre::String>* GameProgressModule::getReachableScenes(const Ogre::String& currentSceneName)
 	{
-		const auto& it = this->sceneMap.find(currentSceneName);
+		const auto it = this->sceneMap.find(currentSceneName);
 		if (this->sceneMap.end() != it)
 		{
 			return &it->second.getReachableScenes();
@@ -449,7 +449,7 @@ namespace NOWA
 
 	GameProgressModule::SceneData* GameProgressModule::getPredecessorSceneData(const Ogre::String& currentSceneName)
 	{
-		const auto& it = this->sceneMap.find(currentSceneName);
+		const auto it = this->sceneMap.find(currentSceneName);
 		if (this->sceneMap.end() != it)
 		{
 			return it->second.getPredecessorSceneData();
@@ -459,7 +459,7 @@ namespace NOWA
 
 	GameProgressModule::SceneData* GameProgressModule::getSceneData(const Ogre::String& currentSceneName)
 	{
-		const auto& it = this->sceneMap.find(currentSceneName);
+		const auto it = this->sceneMap.find(currentSceneName);
 		if (this->sceneMap.end() != it)
 		{
 			return &(it->second);
@@ -480,10 +480,10 @@ namespace NOWA
 		// if this is not the first loaded app state, calculate the player position, where to start in the app state
 		if (0 < this->sceneMap.size())
 		{
-			const auto& predessorSceneData = this->getPredecessorSceneData(Core::getSingletonPtr()->getProjectName() + "/" + currentSceneName + "/" + currentSceneName + ".scene");
+			const auto predessorSceneData = this->getPredecessorSceneData(Core::getSingletonPtr()->getProjectName() + "/" + currentSceneName + "/" + currentSceneName + ".scene");
 			if (nullptr != predessorSceneData)
 			{
-				const auto& targetLocation = AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->getGameObjectFromName(predessorSceneData->getTargetLocationName()).get();
+				const auto targetLocation = AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->getGameObjectFromName(predessorSceneData->getTargetLocationName()).get();
 				if (nullptr != targetLocation)
 				{
 				/*	Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameProgressModule] Cannot determine start position, because there is no such location name: '"
@@ -520,7 +520,7 @@ namespace NOWA
 						throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[GameProgressModule] Error: Cannot determine start position, because no player had been announced to GameProgressModule!\n", "NOWA");
 					}
 
-					auto& physicsCompPtr = NOWA::makeStrongPtr(this->player->getComponent<NOWA::PhysicsComponent>());
+					auto physicsCompPtr = NOWA::makeStrongPtr(this->player->getComponent<NOWA::PhysicsComponent>());
 					if (nullptr == physicsCompPtr)
 					{
 						Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[GameProgressModule] Error: Cannot determine start position because the player has no physics component!");
@@ -699,7 +699,7 @@ namespace NOWA
 				foundIdPos += strGameObjectId.size() + 2;
 				
 				// Get the game object controller for this app state name
-				auto& gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->getGameObjectFromId(gameObjectId);
+				auto gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->getGameObjectFromId(gameObjectId);
 				if (nullptr != gameObjectPtr)
 				{
 					// Save attributes for the given game object id
@@ -750,7 +750,7 @@ namespace NOWA
 			if (false == foundSpecific)
 			{
 				// Get the game object controller for this app state name
-				auto& gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->getGameObjectFromId(gameObjectId);
+				auto gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->getGameObjectFromId(gameObjectId);
 				if (nullptr != gameObjectPtr)
 				{
 					// https://thinkcpp.wordpress.com/2012/04/16/file-to-map-inputoutput/
@@ -801,7 +801,7 @@ namespace NOWA
 				foundIdPos += strGameObjectId.size() + 2;
 
 				// Get the game object controller for this app state name
-				auto& gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->getGameObjectFromId(gameObjectId);
+				auto gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->getGameObjectFromId(gameObjectId);
 				if (nullptr != gameObjectPtr)
 				{
 					boost::shared_ptr<AttributesComponent> attributesCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<AttributesComponent>());
@@ -862,7 +862,7 @@ namespace NOWA
 			if (false == foundSpecific)
 			{
 				// Get the game object controller for this app state name
-				auto& gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->getGameObjectFromId(gameObjectId);
+				auto gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->getGameObjectFromId(gameObjectId);
 				if (nullptr != gameObjectPtr)
 				{
 					// https://thinkcpp.wordpress.com/2012/04/16/file-to-map-inputoutput/
@@ -971,7 +971,7 @@ namespace NOWA
 			if (id == gameObjectId)
 			{
 				// Get the game object controller for this app state name
-				auto& gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->getGameObjectFromId(id);
+				auto gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->getGameObjectFromId(id);
 				if (nullptr != gameObjectPtr)
 				{
 					boost::shared_ptr<AttributesComponent> attributesCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<AttributesComponent>());
@@ -1013,7 +1013,7 @@ namespace NOWA
 			if (id == gameObjectId)
 			{
 				// Get the game object controller for this app state name
-				auto& gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->getGameObjectFromId(id);
+				auto gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->getGameObjectFromId(id);
 				if (nullptr != gameObjectPtr)
 				{
 					boost::shared_ptr<AttributesComponent> attributesCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<AttributesComponent>());

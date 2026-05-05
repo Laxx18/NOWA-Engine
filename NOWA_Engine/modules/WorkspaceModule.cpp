@@ -45,7 +45,7 @@ namespace NOWA
 
 	void WorkspaceModule::destroyContent(void)
 	{
-		for (auto& it : this->workspaceMap)
+		for (const auto& it : this->workspaceMap)
 		{
 			if (it.second.isDummy)
 			{
@@ -496,7 +496,7 @@ namespace NOWA
 			else
 			{
 				// Remove an existing current workspace before another one is added, because only one workspace can be running actively!
-				for (auto& it = this->workspaceMap.cbegin(); it != this->workspaceMap.cend(); ++it)
+				for (auto it = this->workspaceMap.cbegin(); it != this->workspaceMap.cend(); ++it)
 				{
 					if (false == it->second.isDummy)
 					{
@@ -564,7 +564,7 @@ namespace NOWA
 		else
 		{
 			// Remove an existing current workspace before another one is added, because only one workspace can be running actively!
-			for (auto& it = this->workspaceMap.cbegin(); it != this->workspaceMap.cend(); ++it)
+			for (auto it = this->workspaceMap.cbegin(); it != this->workspaceMap.cend(); ++it)
 			{
 				if (false == it->second.isDummy)
 				{
@@ -722,12 +722,12 @@ namespace NOWA
 	{
 		auto gameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromComponent(CameraComponent::getStaticClassName());
 
-		for (auto& it = this->workspaceMap.cbegin(); it != this->workspaceMap.cend(); ++it)
+		for (auto it = this->workspaceMap.cbegin(); it != this->workspaceMap.cend(); ++it)
 		{
 			// Main camera should be the first one
 			for (size_t i = 0; i < gameObjects.size(); i++)
 			{
-				const auto& gameObjectPtr = gameObjects[i];
+				const auto gameObjectPtr = gameObjects[i];
 				auto cameraCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<CameraComponent>());
 				if (nullptr != cameraCompPtr)
 				{
@@ -816,7 +816,7 @@ namespace NOWA
 
 		for (size_t i = 0; i < gameObjects.size(); i++)
 		{
-			const auto& gameObjectPtr = gameObjects[i];
+			const auto gameObjectPtr = gameObjects[i];
 			auto cameraCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<CameraComponent>());
 			if (nullptr != cameraCompPtr)
 			{
@@ -840,7 +840,7 @@ namespace NOWA
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[WorkspaceModule] Creating dummy workspace");
 
-		for (auto& it = this->workspaceMap.begin(); it != this->workspaceMap.end(); ++it)
+		for (auto it = this->workspaceMap.begin(); it != this->workspaceMap.end(); ++it)
 		{
 			if (false == it->second.isDummy)
 			{

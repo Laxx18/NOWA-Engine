@@ -513,7 +513,7 @@ public:
 
     bool loadAll(Ogre::String filename);
 
-
+    void createEmptyInputGeom(void);
 
     /**
       * Update (tick) the tilecache.
@@ -656,6 +656,9 @@ public:
 		return m_geom;
 	}
 
+    // Sets InputGeom after loadAll() so dynamic obstacles can rebuild tiles.
+    // Unlike configure(), does NOT overwrite tile cache params or bounding boxes.
+    void setInputGeom(InputGeom* geom);
 
     /**
       * Ogre Recast component that holds the recast config and where the navmesh will be built.

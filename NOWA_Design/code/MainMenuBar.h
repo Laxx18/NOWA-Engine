@@ -85,6 +85,7 @@ private:
 	void handleProjectEncoded(NOWA::EventDataPtr eventData);
 	void handleLuaError(NOWA::EventDataPtr eventData);
 	void handleSceneInvalid(NOWA::EventDataPtr eventData);
+    void handleNavMeshBusy(NOWA::EventDataPtr eventData);
 	void notifyInsideKeyButtonPressed(MyGUI::Widget* sender, MyGUI::KeyCode key, MyGUI::Char ch, const std::string& selectedText);
 	void onClickUrl(MyGUI::HyperTextBox* sender, const std::string& url);
 

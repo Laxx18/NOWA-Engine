@@ -189,7 +189,7 @@ namespace NOWA
 
 		int onAABBOverlap(OgreNewt::Body* body0, OgreNewt::Body* body1, int threadIndex);
 
-		void contactsProcess(OgreNewt::ContactJoint& contactJoint, Ogre::Real timeStep, int threadIndex);
+		void contactsProcess(const OgreNewt::ContactJoint& contactJoint, Ogre::Real timeStep, int threadIndex);
 
 		void setContactSpeed(Ogre::Real contactSpeed);
 
@@ -213,7 +213,7 @@ namespace NOWA
 
 		int onAABBOverlap(OgreNewt::Body* body0, OgreNewt::Body* body1, int threadIndex) override;
 
-		void contactsProcess(OgreNewt::ContactJoint& contactJoint, Ogre::Real timeStep, int threadIndex) override;
+		void contactsProcess(const OgreNewt::ContactJoint& contactJoint, Ogre::Real timeStep, int threadIndex) override;
 	private:
 		int firstObjectId;
 		Ogre::Real lastNormalSpeed;

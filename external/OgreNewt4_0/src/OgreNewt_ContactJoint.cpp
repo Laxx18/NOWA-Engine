@@ -188,7 +188,7 @@ namespace OgreNewt
         return static_cast<Ogre::Real>(speed);
     }
 
-    void Contact::getPositionAndNormal(Ogre::Vector3& pos, Ogre::Vector3& norm, OgreNewt::Body* body) const
+    void Contact::getPositionAndNormal(Ogre::Vector3& pos, Ogre::Vector3& norm) const
     {
         if (!m_contactNode)
         {
@@ -577,7 +577,7 @@ namespace OgreNewt
         Ogre::Vector3 position = Ogre::Vector3::ZERO;
         Ogre::Vector3 normal = Ogre::Vector3::ZERO;
 
-        this->getPositionAndNormal(position, normal, this->getBody0());
+        this->getPositionAndNormal(position, normal);
 
         Ogre::Vector3 direction1 = Ogre::Vector3::ZERO;
         Ogre::Vector3 direction2 = Ogre::Vector3::ZERO;
@@ -609,7 +609,7 @@ namespace OgreNewt
             return snap;
         }
 
-        getPositionAndNormal(snap.position, snap.normal, getBody0());
+        getPositionAndNormal(snap.position, snap.normal);
         getContactTangentDirections(getBody0(), snap.tangentDir0, snap.tangentDir1);
         snap.normalSpeed = getNormalSpeed();
         snap.normalImpact = getContactMaxNormalImpact();

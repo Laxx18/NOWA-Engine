@@ -787,12 +787,12 @@ namespace NOWA
 			++this->currentVariableIndex; // Increment index for next variable
 
 			{
-				const auto& position = this->generateButton->getPosition();
+				const auto position = this->generateButton->getPosition();
 				this->generateButton->setPosition(position.left, position.top + 40);
 			}
 
 			{
-				const auto& position = this->okButton->getPosition();
+				const auto position = this->okButton->getPosition();
 				this->okButton->setPosition(position.left, position.top + 40);
 			}
 

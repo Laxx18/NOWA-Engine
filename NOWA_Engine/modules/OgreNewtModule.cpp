@@ -258,46 +258,48 @@ namespace NOWA
 	}
 
 	void OgreNewtModule::registerRenderCallbackForBody(OgreNewt::Body* body)
-	{
-		if (nullptr == body)
-		{
-			return;
-		}
+    {
+        if (nullptr == body)
+        {
+            return;
+        }
 
-		body->setRenderUpdateCallback([](Ogre::SceneNode* node, const Ogre::Vector3& pos, const Ogre::Quaternion& rot, bool updateRot, bool updateStatic)
-		{
-			if (nullptr == node)
-			{
-				return;
-			}
+        body->setRenderUpdateCallback(
+            [](Ogre::SceneNode* node, const Ogre::Vector3& pos, const Ogre::Quaternion& rot, bool updateRot, bool updateStatic, bool isTeleport)
+            {
+                if (nullptr == node)
+                {
+                    return;
+                }
 
-			Ogre::Node* parent = node->getParent();
+                Ogre::Node* parent = node->getParent();
+                if (nullptr == parent)
+                {
+                    return;
+                }
 
-			if (nullptr == parent)
-			{
-				return;
-			}
+                // fireAndForget = true for teleports (setPositionOrientation, undo, mouse snap).
+                // This writes ALL transform buffers to the same value, suppressing interpolation.
+                // fireAndForget = false for normal physics steps — interpolation runs correctly.
+                const bool fireAndForget = isTeleport;
 
-			// Non-static node path (mirror Body::updateNode())
-			if (!node->isStatic())
-			{
-				const Ogre::Vector3 localPos = (parent->_getDerivedOrientation().Inverse() * (pos - parent->_getDerivedPosition())) / parent->_getDerivedScale();
-				NOWA::GraphicsModule::getInstance()->updateNodePosition(node, localPos);
-
-				if (updateRot)
-				{
-					const Ogre::Quaternion localRot = parent->_getDerivedOrientation().Inverse() * rot;
-					NOWA::GraphicsModule::getInstance()->updateNodeOrientation(node, localRot);
-				}
-			}
-			// Static node path (mirror Body::updateNode())
-			else if (updateStatic)
-			{
-				const Ogre::Vector3 localPos = (parent->_getDerivedOrientationUpdated().Inverse() * (pos - parent->_getDerivedPositionUpdated())) / parent->_getDerivedScaleUpdated();
-				const Ogre::Quaternion localRot = parent->_getDerivedOrientationUpdated().Inverse() * rot;
-				NOWA::GraphicsModule::getInstance()->updateNodePosition(node, localPos);
-				NOWA::GraphicsModule::getInstance()->updateNodeOrientation(node, localRot);
-			}
-		});
-	}
+                if (!node->isStatic())
+                {
+                    const Ogre::Vector3 localPos = (parent->_getDerivedOrientation().Inverse() * (pos - parent->_getDerivedPosition())) / parent->_getDerivedScale();
+                    NOWA::GraphicsModule::getInstance()->updateNodePosition(node, localPos, false, fireAndForget);
+                    if (updateRot)
+                    {
+                        const Ogre::Quaternion localRot = parent->_getDerivedOrientation().Inverse() * rot;
+                        NOWA::GraphicsModule::getInstance()->updateNodeOrientation(node, localRot, false, fireAndForget);
+                    }
+                }
+                else if (updateStatic)
+                {
+                    const Ogre::Vector3 localPos = (parent->_getDerivedOrientationUpdated().Inverse() * (pos - parent->_getDerivedPositionUpdated())) / parent->_getDerivedScaleUpdated();
+                    const Ogre::Quaternion localRot = parent->_getDerivedOrientationUpdated().Inverse() * rot;
+                    NOWA::GraphicsModule::getInstance()->updateNodePosition(node, localPos, false, fireAndForget);
+                    NOWA::GraphicsModule::getInstance()->updateNodeOrientation(node, localRot, false, fireAndForget);
+                }
+            });
+    }
 } // namespace end

@@ -575,7 +575,7 @@ namespace NOWA
             }
         }
 
-        // ── Normal path (logic thread → render thread) ────────────────────────
+        // ── Normal path (logic thread -> render thread) ────────────────────────
         this->incrementWaitDepth();
 
         try
@@ -1877,14 +1877,14 @@ namespace NOWA
 
             for (size_t i = 0; i < this->trackedNodes.size(); ++i)
             {
-                const auto& nodeTransform = this->trackedNodes[i];
+                const auto nodeTransform = this->trackedNodes[i];
                 logManager.logMessage(Ogre::LML_CRITICAL, "Node " + std::to_string(i) + " (" + Ogre::StringConverter::toString(nodeTransform.node) + "):", false);
                 logManager.logMessage(Ogre::LML_CRITICAL, "  Active: " + std::string(nodeTransform.active ? "yes" : "no"), false);
                 logManager.logMessage(Ogre::LML_CRITICAL, "  New: " + std::string(nodeTransform.isNew ? "yes" : "no"), false);
 
                 for (size_t j = 0; j < NUM_TRANSFORM_BUFFERS; ++j)
                 {
-                    const auto& transform = nodeTransform.transforms[j];
+                    const auto transform = nodeTransform.transforms[j];
                     logManager.logMessage(Ogre::LML_CRITICAL, "  Buffer " + std::to_string(j) + ":", false);
                     logManager.logMessage(Ogre::LML_CRITICAL, "    Position: " + Ogre::StringConverter::toString(transform.position), false);
                     logManager.logMessage(Ogre::LML_CRITICAL, "    Orientation: " + Ogre::StringConverter::toString(transform.orientation), false);
@@ -2126,7 +2126,7 @@ namespace NOWA
         size_t prevIdx = this->getPreviousTransformNodeIdx();
 
         // Update all active nodes
-        for (auto& nodeTransform : this->trackedNodes)
+        for (const auto& nodeTransform : this->trackedNodes)
         {
             if (true == nodeTransform.active)
             {
@@ -2166,7 +2166,7 @@ namespace NOWA
         size_t prevCameraIdx = this->getPreviousTransformCameraIdx();
 
         // Update all active cameras
-        for (auto& cameraTransform : this->trackedCameras)
+        for (const auto& cameraTransform : this->trackedCameras)
         {
             if (true == cameraTransform.active)
             {
@@ -2192,7 +2192,7 @@ namespace NOWA
         size_t prevOldBoneIdx = this->getPreviousTransformOldBoneIdx();
 
         // Update all active oldBones
-        for (auto& oldBoneTransform : this->trackedOldBones)
+        for (const auto& oldBoneTransform : this->trackedOldBones)
         {
             if (true == oldBoneTransform.active)
             {
@@ -2216,7 +2216,7 @@ namespace NOWA
 
         size_t prevBoneIdx = this->getPreviousTransformBoneIdx();
 
-        for (auto& boneTransform : this->trackedBones)
+        for (const auto& boneTransform : this->trackedBones)
         {
             if (true == boneTransform.active)
             {
@@ -2233,7 +2233,7 @@ namespace NOWA
 
         size_t prevPassIdx = this->getPreviousTransformPassIdx();
 
-        for (auto& passTransform : this->trackedPasses)
+        for (const auto& passTransform : this->trackedPasses)
         {
             if (passTransform.active)
             {
@@ -2264,7 +2264,7 @@ namespace NOWA
         // Get the previous buffer index
         size_t prevTrackedDatablockIdx = this->getPreviousTrackedDatablockIdx();
 
-        for (auto& trackedDatablock : this->trackedDatablocks)
+        for (const auto& trackedDatablock : this->trackedDatablocks)
         {
             if (false == trackedDatablock.active)
             {

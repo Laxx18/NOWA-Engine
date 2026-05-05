@@ -163,10 +163,10 @@ namespace NOWA
 
 	void PlayerControllerComponent::onOtherComponentRemoved(unsigned int index)
 	{
-		auto& gameObjectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentByIndex(index));
+		auto gameObjectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentByIndex(index));
 		if (nullptr != gameObjectCompPtr)
 		{
-			auto& inputDeviceCompPtr = boost::dynamic_pointer_cast<InputDeviceComponent>(gameObjectCompPtr);
+			auto inputDeviceCompPtr = boost::dynamic_pointer_cast<InputDeviceComponent>(gameObjectCompPtr);
 			if (nullptr != inputDeviceCompPtr)
 			{
 				this->inputDeviceComponent = nullptr;
@@ -598,13 +598,13 @@ namespace NOWA
 		AppStateManager::getSingletonPtr()->getGameObjectController()->addPlayerController(boost::dynamic_pointer_cast<PlayerControllerComponent>(shared_from_this()));
 
 		// Must be done here, because in post init, it may be, that a component does not yet exist, if its added after this component!
-		auto& physicsPlayerControllerCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsPlayerControllerComponent>());
+		auto physicsPlayerControllerCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsPlayerControllerComponent>());
 		if (nullptr == physicsPlayerControllerCompPtr)
 		{
-			auto& physicsActiveCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsActiveComponent>());
+			auto physicsActiveCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsActiveComponent>());
 			if (nullptr == physicsActiveCompPtr)
 			{
-				auto& physicsActiveKinematicCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsActiveKinematicComponent>());
+				auto physicsActiveKinematicCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsActiveKinematicComponent>());
 				if (nullptr == physicsActiveKinematicCompPtr)
 				{
 					return;
@@ -625,7 +625,7 @@ namespace NOWA
 		}
 
 		// Get optional camera behavior component, for activation in game object controller
-		auto& cameraBehaviorCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<CameraBehaviorComponent>());
+		auto cameraBehaviorCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<CameraBehaviorComponent>());
 		if (nullptr != cameraBehaviorCompPtr)
 		{
 			this->cameraBehaviorComponent = cameraBehaviorCompPtr.get();

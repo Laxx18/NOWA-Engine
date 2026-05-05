@@ -121,7 +121,7 @@ namespace NOWA
 	bool PhysicsCompoundConnectionComponent::canStaticAddComponent(GameObject* gameObject)
 	{
 		// Check if there is a physics active component and no ai lua component (because it already has a moving behavior)
-		auto& physicsCompPtr = NOWA::makeStrongPtr(gameObject->getComponent<PhysicsActiveComponent>());
+		auto physicsCompPtr = NOWA::makeStrongPtr(gameObject->getComponent<PhysicsActiveComponent>());
 		if (nullptr != physicsCompPtr)
 		{
 			return true;
@@ -206,7 +206,7 @@ namespace NOWA
 		{
 			for (size_t i = 0; i < this->physicsActiveComponentList.size(); i++)
 			{
-				auto& physicsActiveCompPtr = this->physicsActiveComponentList[i];
+				auto physicsActiveCompPtr = this->physicsActiveComponentList[i];
 				if (nullptr != physicsActiveCompPtr)
 				{
 					physicsActiveCompPtr->destroyCollision();
@@ -214,7 +214,7 @@ namespace NOWA
 			}
 
 			// First destroy all collisions for this root and all other connected compounds in the list
-			auto& physicsActiveRootCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsActiveComponent>());
+			auto physicsActiveRootCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsActiveComponent>());
 			if (nullptr != physicsActiveRootCompPtr)
 			{
 				physicsActiveRootCompPtr->destroyCollision();
@@ -230,7 +230,7 @@ namespace NOWA
 	
 	void PhysicsCompoundConnectionComponent::destroyCompoundCollision(void)
 	{
-		auto& physicsActiveRootCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsActiveComponent>());
+		auto physicsActiveRootCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsActiveComponent>());
 		if (nullptr != physicsActiveRootCompPtr)
 		{
 			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsCompoundConnectionComponent::destroyCompoundCollision", _1(physicsActiveRootCompPtr),

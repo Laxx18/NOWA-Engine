@@ -198,7 +198,7 @@ namespace OgreAL {
 
 		// mSoundMap[name] = newSound;
 
-		const auto& it = mSoundContainer.find(sceneMgr);
+		const auto it = mSoundContainer.find(sceneMgr);
 		if (it != mSoundContainer.cend())
 		{
 			it->second.insert(std::make_pair(name, newSound));
@@ -220,7 +220,7 @@ namespace OgreAL {
 					"SceneManager::getMovableObject");
 		}
 
-		auto& subIt = soundItr->second.find(name);
+		auto subIt = soundItr->second.find(name);
 		if(subIt == soundItr->second.cend())
 		{
 			throw Ogre::Exception(Ogre::Exception::ERR_ITEM_NOT_FOUND, 
@@ -239,7 +239,7 @@ namespace OgreAL {
 		SoundContainer::const_iterator soundItr = mSoundContainer.find(sceneMgr);
 		if(soundItr != mSoundContainer.cend())
 		{
-			auto& subIt = soundItr->second.find(name);
+			auto subIt = soundItr->second.find(name);
 			if(subIt != soundItr->second.cend())
 			{
 				return true;
@@ -265,10 +265,10 @@ namespace OgreAL {
 		// Lock Mutex
 		OGREAL_LOCK_AUTO_MUTEX
 
-		const auto& soundItr = mSoundContainer.find(sceneMgr);
+		const auto soundItr = mSoundContainer.find(sceneMgr);
 		if(soundItr != mSoundContainer.cend())
 		{
-			const auto& subIt = soundItr->second.find(name);
+			const auto subIt = soundItr->second.find(name);
 			if(subIt != soundItr->second.end())
 			{		
 				mSoundsToDestroy.push_back(subIt->second);
@@ -283,7 +283,7 @@ namespace OgreAL {
 		// Lock Mutex
 		OGREAL_LOCK_AUTO_MUTEX
 
-		const auto& soundItr = mSoundContainer.find(sceneMgr);
+		const auto soundItr = mSoundContainer.find(sceneMgr);
 		if(soundItr != mSoundContainer.cend())
 		{
 			// Delete all Sound pointers in the SoundMap.
@@ -317,7 +317,7 @@ namespace OgreAL {
 		if(soundItr != mSoundContainer.cend())
 		{
 			const std::map<Ogre::String, Sound*>& soundMap = soundItr->second;
-			for(auto& subIt = soundMap.cbegin(); subIt != soundMap.cend(); ++subIt)
+			for(auto subIt = soundMap.cbegin(); subIt != soundMap.cend(); ++subIt)
 			{
 				if(subIt->second->isPlaying())
 				{
@@ -520,7 +520,7 @@ namespace OgreAL {
 		{
 			const std::map<Ogre::String, Sound*>& soundMap = soundItr->second;
 			// Go over all sounds.
-			for (auto& subIt = soundMap.cbegin(); subIt != soundMap.cend(); ++subIt)
+			for (auto subIt = soundMap.cbegin(); subIt != soundMap.cend(); ++subIt)
 			{
 				// Perform a cull cycle on the sound, redoing all culls based on the 
 				// newly set cull distance.
@@ -909,7 +909,7 @@ namespace OgreAL {
 		Ogre::LogManager::getSingleton().logMessage("-----------------");
 		while(itr.hasMoreElements())
 		{
-			Ogre::LogManager::getSingleton().logMessage(" * " + std::string(static_cast<char*>
+			Ogre::LogManager::getSingleton().logMessage(" * " + std::string(const_cast<char*>
 				(itr.peekNextValue()->formatName)) + ", " + itr.peekNextValue()->formatDescription);
 			itr.getNext();
 		}
@@ -964,7 +964,7 @@ namespace OgreAL {
 		{
 			const std::map<Ogre::String, Sound*>& soundMap = it->second;
 			// Go over all sounds.
-			for (auto& subIt = soundMap.cbegin(); subIt != soundMap.cend(); ++subIt)
+			for (auto subIt = soundMap.cbegin(); subIt != soundMap.cend(); ++subIt)
 			{
 				// Update the Sound and Listeners if necessary	
 
@@ -989,7 +989,7 @@ namespace OgreAL {
 		{
 			const std::map<Ogre::String, Sound*>& soundMap = it->second;
 			// Go over all sounds.
-			for (auto& subIt = soundMap.cbegin(); subIt != soundMap.cend(); ++subIt)
+			for (auto subIt = soundMap.cbegin(); subIt != soundMap.cend(); ++subIt)
 			{
 				subIt->second->setStateCached(true);
 			}
@@ -1002,7 +1002,7 @@ namespace OgreAL {
 		{
 			const std::map<Ogre::String, Sound*>& soundMap = it->second;
 			// Go over all sounds.
-			for (auto& subIt = soundMap.cbegin(); subIt != soundMap.cend(); ++subIt)
+			for (auto subIt = soundMap.cbegin(); subIt != soundMap.cend(); ++subIt)
 			{
 				 subIt->second->setStateCached(false);
 			}

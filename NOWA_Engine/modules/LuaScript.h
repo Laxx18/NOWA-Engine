@@ -74,7 +74,7 @@ namespace NOWA
 				try
 				{
 					// Call the entry method of the new state
-					auto& state = this->compiledScript[functionName];
+					auto state = this->compiledScript[functionName];
 					if (state)
 						state();
 				}
@@ -103,7 +103,7 @@ namespace NOWA
 				try
 				{
 					// Call the entry method of the new state
-					auto& function = this->compiledScript[functionName];
+					auto function = this->compiledScript[functionName];
 					if (function)
 						function(param1);
 				}
@@ -132,7 +132,7 @@ namespace NOWA
 				try
 				{
 					// Call the entry method of the new state
-					auto& function = this->compiledScript[functionName];
+					auto function = this->compiledScript[functionName];
 					if (function)
 						function(param1, param2);
 				}
@@ -161,7 +161,7 @@ namespace NOWA
 				try
 				{
 					// Call the entry method of the new state
-					auto& function = this->compiledScript[functionName];
+					auto function = this->compiledScript[functionName];
 					if (function)
 						function(param1, param2, param3);
 				}
@@ -191,7 +191,7 @@ namespace NOWA
 				try
 				{
 					// Call the entry method of the new state
-					auto& function = this->compiledScript[functionName];
+					auto function = this->compiledScript[functionName];
 					if (function)
 						function(param1, param2, param3, param4);
 				}
@@ -220,7 +220,7 @@ namespace NOWA
 				try
 				{
 					// Call the entry method of the new state
-					auto& function = this->compiledScript[functionName];
+					auto function = this->compiledScript[functionName];
 					if (function)
 						function(param1, param2, param3, param4, param5);
 				}
@@ -249,7 +249,7 @@ namespace NOWA
 				try
 				{
 					// Call the entry method of the new state
-					auto& function = this->compiledScript[functionName];
+					auto function = this->compiledScript[functionName];
 					if (function)
 						function(param1, param2, param3, param4, param5, param6);
 				}

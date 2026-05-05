@@ -782,7 +782,7 @@ void DesignState::generateCategories(void)
 {
 	this->categoriesComboBox->deleteAllItems();
 	std::vector<Ogre::String> allCategories = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getAllCategoriesSoFar();
-	for (auto& category : allCategories)
+	for (const auto& category : allCategories)
 	{
 		this->categoriesComboBox->addItem(category);
 	}
@@ -846,71 +846,72 @@ void DesignState::handleProjectManipulation(NOWA::EventDataPtr eventData)
 		this->ogreNewt = NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->getOgreNewt();
 		this->validScene = true;
 
-		ENQUEUE_RENDER_COMMAND_WAIT("DesignState::handleProjectManipulation",
-		{
-			this->mainMenuBar->enableMenuEntries(this->validScene);
-			this->mainMenuBar->drawNavigationMap(false);
-			NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->enableOgreNewtCollisionLines(this->sceneManager, false);
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            this->mainMenuBar->enableMenuEntries(this->validScene);
+            this->mainMenuBar->drawNavigationMap(false);
+            NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->enableOgreNewtCollisionLines(this->sceneManager, false);
 
-			if (nullptr != this->editorManager)
-			{
-				delete this->editorManager;
-			}
+            if (nullptr != this->editorManager)
+            {
+                delete this->editorManager;
+            }
 
-			// Editor manager init
-			this->editorManager = new NOWA::EditorManager();
-			this->editorManager->init(this->sceneManager, this->camera, Ogre::String("All"), OIS::MB_Left, new SelectionObserver(this->editorManager));
-			this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_SELECT_MODE);
-			// Do not push commands for picker mode, since a simulation is active
-			this->editorManager->setUseUndoRedoForPicker(false);
-			this->generateCategories();
+            // Editor manager init
+            this->editorManager = new NOWA::EditorManager();
+            this->editorManager->init(this->sceneManager, this->camera, Ogre::String("All"), OIS::MB_Left, new SelectionObserver(this->editorManager));
+            this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_SELECT_MODE);
+            // Do not push commands for picker mode, since a simulation is active
+            this->editorManager->setUseUndoRedoForPicker(false);
+            this->generateCategories();
 
-			this->projectManager->setEditorManager(this->editorManager);
-			// When a new scene has been loaded e.g. via GameProgressModule, the project manager must get the new ogre newt and must not work with the old one!
-			this->projectManager->setOgreNewt(this->ogreNewt);
+            this->projectManager->setEditorManager(this->editorManager);
+            // When a new scene has been loaded e.g. via GameProgressModule, the project manager must get the new ogre newt and must not work with the old one!
+            this->projectManager->setOgreNewt(this->ogreNewt);
 
-			// Creates the properties panel
-			{
-				if (nullptr == this->propertiesPanel)
-				{
-					this->propertiesPanel = new PropertiesPanel(MyGUI::FloatCoord(0.78f, 0.0f, 0.23f, 0.93f));
-				}
-				this->propertiesPanel->clearProperties();
-				// Actualize the editor manager pointer, because e.g. when a new scene is created, the editor manager will be destroyed first, so the pointer is no more valid
-				this->propertiesPanel->setEditorManager(this->editorManager);
-			}
+            // Creates the properties panel
+            {
+                if (nullptr == this->propertiesPanel)
+                {
+                    this->propertiesPanel = new PropertiesPanel(MyGUI::FloatCoord(0.78f, 0.0f, 0.23f, 0.93f));
+                }
+                this->propertiesPanel->clearProperties();
+                // Actualize the editor manager pointer, because e.g. when a new scene is created, the editor manager will be destroyed first, so the pointer is no more valid
+                this->propertiesPanel->setEditorManager(this->editorManager);
+            }
 
-			// Creates the resources panel
-			{
-				if (nullptr == this->resourcesPanel)
-				{
-					this->resourcesPanel = new ResourcesPanel(MyGUI::FloatCoord(0.0f, 0.03f, 0.18f, 0.90f));
-				}
-				this->resourcesPanel->clear();
-				// Actualize the editor manager pointer, because e.g. when a new scene is created, the editor manager will be destroyed first, so the pointer is no more valid
-				this->resourcesPanel->setEditorManager(this->editorManager);
-				this->resourcesPanel->setProjectManager(this->projectManager);
-			}
+            // Creates the resources panel
+            {
+                if (nullptr == this->resourcesPanel)
+                {
+                    this->resourcesPanel = new ResourcesPanel(MyGUI::FloatCoord(0.0f, 0.03f, 0.18f, 0.90f));
+                }
+                this->resourcesPanel->clear();
+                // Actualize the editor manager pointer, because e.g. when a new scene is created, the editor manager will be destroyed first, so the pointer is no more valid
+                this->resourcesPanel->setEditorManager(this->editorManager);
+                this->resourcesPanel->setProjectManager(this->projectManager);
+            }
 
-			// Creates the components panel
-			{
-				if (nullptr == this->componentsPanel)
-				{
-					this->componentsPanel = new ComponentsPanel(MyGUI::FloatCoord(0.6f, 0.03f, 0.18f, 0.90f));
-				}
-				// Actualize the editor manager pointer, because e.g. when a new scene is created, the editor manager will be destroyed first, so the pointer is no more valid
-				this->componentsPanel->setEditorManager(this->editorManager);
-				this->componentsPanel->setVisible(false);
-			}
+            // Creates the components panel
+            {
+                if (nullptr == this->componentsPanel)
+                {
+                    this->componentsPanel = new ComponentsPanel(MyGUI::FloatCoord(0.6f, 0.03f, 0.18f, 0.90f));
+                }
+                // Actualize the editor manager pointer, because e.g. when a new scene is created, the editor manager will be destroyed first, so the pointer is no more valid
+                this->componentsPanel->setEditorManager(this->editorManager);
+                this->componentsPanel->setVisible(false);
+            }
 
-			this->enableWidgets(true);
-			this->simulationWindow->setVisible(true);
-			this->manipulationWindow->setVisible(true);
-			this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getProjectName() + "/" + NOWA::Core::getSingletonPtr()->getSceneName());
+            this->enableWidgets(true);
+            this->simulationWindow->setVisible(true);
+            this->manipulationWindow->setVisible(true);
+            this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getProjectName() + "/" + NOWA::Core::getSingletonPtr()->getSceneName());
 
-			this->cameraSpeedUpButton->setEnabled(true);
-			this->cameraSpeedDownButton->setEnabled(true);
-		});
+            this->cameraSpeedUpButton->setEnabled(true);
+            this->cameraSpeedDownButton->setEnabled(true);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::handleProjectManipulation");
 
 		this->hasSceneChanges = false;
 
@@ -1046,8 +1047,8 @@ void DesignState::handleMyGUIWidgetSelected(NOWA::EventDataPtr eventData)
 			if (nullptr != widget && false == this->simulating)
 			{
 				// Prevents reseleciton of the same game object
-				const auto& selectedGameObjects = this->editorManager->getSelectionManager()->getSelectedGameObjects();
-				const auto& found = selectedGameObjects.find(castEventData->getGameObjectId());
+				const auto selectedGameObjects = this->editorManager->getSelectionManager()->getSelectedGameObjects();
+				const auto found = selectedGameObjects.find(castEventData->getGameObjectId());
 				// Prevents reseleciton of the same game object
 				// Deactivated, because its not possible to select widgets within widgets, because they belong to the same game object
 				// if (true == selectedGameObjects.empty() || found == selectedGameObjects.cend())
@@ -1754,7 +1755,7 @@ void DesignState::removeGameObjects(void)
 	}
 	std::vector<unsigned long> gameObjectIds;
 	// Do not delete directly via selection manager, because when internally deleted, an event is sent out to selection manager to remove from map
-	for (auto& it = this->editorManager->getSelectionManager()->getSelectedGameObjects().begin(); it != this->editorManager->getSelectionManager()->getSelectedGameObjects().end(); ++it)
+	for (auto it = this->editorManager->getSelectionManager()->getSelectedGameObjects().begin(); it != this->editorManager->getSelectionManager()->getSelectedGameObjects().end(); ++it)
 	{
 		// SunLight must not be deleted by the user!
 		if (it->second.gameObject->getId() != NOWA::GameObjectController::MAIN_LIGHT_ID && it->second.gameObject->getId() != NOWA::GameObjectController::MAIN_CAMERA_ID 
@@ -1786,7 +1787,7 @@ void DesignState::cloneGameObjects(void)
 	std::vector<unsigned long> gameObjectIds(this->editorManager->getSelectionManager()->getSelectedGameObjects().size());
 	size_t i = 0;
 	// Do not delete directly via selection manager, because when internally deleted, an event is sent out to selection manager to remove from map
-	for (auto& it = this->editorManager->getSelectionManager()->getSelectedGameObjects().begin(); it != this->editorManager->getSelectionManager()->getSelectedGameObjects().end(); ++it)
+	for (auto it = this->editorManager->getSelectionManager()->getSelectedGameObjects().begin(); it != this->editorManager->getSelectionManager()->getSelectedGameObjects().end(); ++it)
 	{
 		// Prohibit cloning of mandatory game objects
 		if (it->second.gameObject->getId() != NOWA::GameObjectController::MAIN_GAMEOBJECT_ID 
@@ -1959,20 +1960,20 @@ void DesignState::orbitCamera(Ogre::Real dt)
 
 void DesignState::showDebugCollisionLines(bool show)
 {
-	const auto& gameObjects = this->editorManager->getSelectionManager()->getSelectedGameObjects();
-	for (auto& it = gameObjects.begin(); it != gameObjects.end(); it++)
+	const auto gameObjects = this->editorManager->getSelectionManager()->getSelectedGameObjects();
+	for (auto it = gameObjects.begin(); it != gameObjects.end(); it++)
 	{
-		auto& gameObject = it->second.gameObject;
+		auto gameObject = it->second.gameObject;
 		// Issue here: PhysicsRagDollComponent is derived from PhysicsActiveComponent, and PhysicsActiveComponent is derived from GameObjectComponent, but the link from
 		// PhysicsRagDollComponent to GameObjectComponent is somehow missing ?!?
-		auto& gameObjectComponent = NOWA::makeStrongPtr(gameObject->getComponent<NOWA::GameObjectComponent>());
+		auto gameObjectComponent = NOWA::makeStrongPtr(gameObject->getComponent<NOWA::GameObjectComponent>());
 		if (nullptr != gameObjectComponent)
 		{
 			gameObjectComponent->showDebugData();
 		}
 		else
 		{
-			auto& physicsActiveComponent = NOWA::makeStrongPtr(gameObject->getComponent<NOWA::PhysicsActiveComponent>());
+			auto physicsActiveComponent = NOWA::makeStrongPtr(gameObject->getComponent<NOWA::PhysicsActiveComponent>());
 			if (nullptr != physicsActiveComponent)
 			{
 				physicsActiveComponent->showDebugData();
@@ -2027,7 +2028,7 @@ void DesignState::onMenuItemSelected(MyGUI::MenuCtrl* menu, MyGUI::MenuItem* ite
 			}
 		}
 
-		auto& affectedGameObjects = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromMeshName(meshName);
+		auto affectedGameObjects = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromMeshName(meshName);
 		this->editorManager->getSelectionManager()->clearSelection();
 
 		for (size_t i = 0; i < affectedGameObjects.size(); i++)
@@ -2077,7 +2078,7 @@ void DesignState::onMenuItemSelected(MyGUI::MenuCtrl* menu, MyGUI::MenuItem* ite
 			}
 		}
 
-		auto& affectedGameObjects = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromDatablockName(datablockName);
+		auto affectedGameObjects = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromDatablockName(datablockName);
 		this->editorManager->getSelectionManager()->clearSelection();
 		for (size_t i = 0; i < affectedGameObjects.size(); i++)
 		{
@@ -2291,7 +2292,7 @@ bool DesignState::keyPressed(const OIS::KeyEvent& keyEventRef)
 			{
 				if (GetAsyncKeyState(VK_LCONTROL))
 				{
-					auto& affectedGameObjects = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromCategory(this->activeCategory);
+					auto affectedGameObjects = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromCategory(this->activeCategory);
 					for (size_t i = 0; i < affectedGameObjects.size(); i++)
 					{
 						this->editorManager->getSelectionManager()->select(affectedGameObjects[i]->getId());
@@ -2480,7 +2481,7 @@ bool DesignState::keyReleased(const OIS::KeyEvent &keyEventRef)
 
 void DesignState::processUnbufferedKeyInput(Ogre::Real dt)
 {
-	const auto& keyboard = NOWA::InputDeviceCore::getSingletonPtr()->getKeyboard();
+	const auto keyboard = NOWA::InputDeviceCore::getSingletonPtr()->getKeyboard();
 
 	if (keyboard->isKeyDown(OIS::KC_F4) && keyboard->isKeyDown(OIS::KC_LMENU))
 	{
@@ -2672,8 +2673,8 @@ bool DesignState::mousePressed(const OIS::MouseEvent& evt, OIS::MouseButtonID id
 
 			if (false == this->simulating && OIS::MB_Left == id && true == std::get<0>(gameObjectData))
 			{
-				const auto& selectedGameObjects = this->editorManager->getSelectionManager()->getSelectedGameObjects();
-				const auto& found = selectedGameObjects.find(std::get<1>(gameObjectData));
+				const auto selectedGameObjects = this->editorManager->getSelectionManager()->getSelectedGameObjects();
+				const auto found = selectedGameObjects.find(std::get<1>(gameObjectData));
 				// Prevents reseleciton of the same game object
 				// if (true == selectedGameObjects.empty() || found == selectedGameObjects.cend())
 				{

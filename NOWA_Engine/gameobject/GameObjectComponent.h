@@ -376,7 +376,7 @@ namespace NOWA
 
 		void resetVariants();
 
-		void cloneBase(GameObjectCompPtr& otherGameObjectCompPtr);
+		void cloneBase(const GameObjectCompPtr& otherGameObjectCompPtr);
 
 		template <class T>
 		T* getPriorComponentByType(void) const

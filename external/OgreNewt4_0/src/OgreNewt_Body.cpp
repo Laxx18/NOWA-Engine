@@ -197,7 +197,7 @@ namespace OgreNewt
         }
 
         // Sever Newton -> OgreNewt back-pointer
-        auto& np = (*m_bodyPtr)->GetNotifyCallback();
+        auto np = (*m_bodyPtr)->GetNotifyCallback();
         if (np)
         {
             if (auto* bn = dynamic_cast<BodyNotify*>(*np))
@@ -265,7 +265,7 @@ namespace OgreNewt
 
         me->addForce(gravityForce);
 
-        for (auto& it = me->m_accumulatedGlobalForces.cbegin(); it != me->m_accumulatedGlobalForces.cend(); it++)
+        for (auto it = me->m_accumulatedGlobalForces.cbegin(); it != me->m_accumulatedGlobalForces.cend(); it++)
         {
             me->addGlobalForce(it->first, it->second);
         }
@@ -284,7 +284,7 @@ namespace OgreNewt
         m_updateRotation = updateRotation;
         // Sync snap fields so the first updateNode() call (below) has correct data.
         // Physics hasn't started yet so cur/prev are the spawn position set by the caller.
-        updateNode(1.0f);
+        updateNode(1.0f, true);
 
         m_lastPosit = m_node->getPosition();
         m_lastOrientation = m_node->getOrientation();
@@ -432,7 +432,7 @@ namespace OgreNewt
             OgreNewt::Converters::QuatPosToMatrix(orient, pos, matrix);
             getNewtonBody()->SetMatrix(matrix);
 
-            updateNode(1.0f);
+            updateNode(1.0f, true);
         }
     }
 
@@ -910,7 +910,6 @@ namespace OgreNewt
         Ogre::Vector3 pos, scale;
         Ogre::Quaternion ori;
         getPositionOrientation(pos, ori);
-        scale = m_node->_getDerivedScaleUpdated();
 
         if (m_debugCollisionLines && m_debugCollisionLines->getNumSections() > 0)
         {
@@ -922,7 +921,7 @@ namespace OgreNewt
             // m_debugCollisionLines->begin("BaseWhiteLine", Ogre::OperationType::OT_LINE_LIST);
         }
 
-        CollisionDebugNotify collisionDebugNotify(m_debugCollisionLines, scale);
+        CollisionDebugNotify collisionDebugNotify(m_debugCollisionLines);
 
         // get collision shape
         ndShapeInstance& shapeInstance = nbody->GetCollisionShape();
@@ -952,7 +951,7 @@ namespace OgreNewt
         for (ndBodyList::ndNode* node = bodyList.GetFirst(); node; node = node->GetNext())
         {
             // IMPORTANT: reference, not copy (GetInfo() returns T&)
-            auto& bodySp = node->GetInfo();                          // ndSharedPtr<ndBody>& (most likely)
+            auto bodySp = node->GetInfo();                          // ndSharedPtr<ndBody>& (most likely)
             ndBodyKinematic* const b = bodySp->GetAsBodyKinematic(); // or bodySp->GetAsBody()
 
             if (b == getNewtonBody())
@@ -967,7 +966,7 @@ namespace OgreNewt
             ndBodyList::ndNode* nextNode = currentNode->GetNext();
             if (nextNode)
             {
-                auto& nextSp = nextNode->GetInfo(); // ref, not copy
+                auto nextSp = nextNode->GetInfo(); // ref, not copy
                 ndBodyKinematic* const nextBody = nextSp->GetAsBodyKinematic();
                 if (nextBody)
                 {
@@ -1007,7 +1006,7 @@ namespace OgreNewt
         return m_gravity;
     }
 
-    void Body::updateNode(Ogre::Real interpolatParam)
+    void Body::updateNode(Ogre::Real interpolatParam, bool isTeleport)
     {
         if (!m_node)
         {
@@ -1041,7 +1040,7 @@ namespace OgreNewt
         {
             if (nullptr != m_renderUpdateCallback)
             {
-                m_renderUpdateCallback(m_node, m_nodePosit, m_nodeRotation, m_updateRotation, m_validToUpdateStatic);
+                m_renderUpdateCallback(m_node, m_nodePosit, m_nodeRotation, m_updateRotation, m_validToUpdateStatic, isTeleport);
             }
             else
             {
@@ -1057,7 +1056,7 @@ namespace OgreNewt
         {
             if (nullptr != m_renderUpdateCallback)
             {
-                m_renderUpdateCallback(m_node, m_nodePosit, m_nodeRotation, m_updateRotation, m_validToUpdateStatic);
+                m_renderUpdateCallback(m_node, m_nodePosit, m_nodeRotation, m_updateRotation, m_validToUpdateStatic, isTeleport);
             }
             else
             {

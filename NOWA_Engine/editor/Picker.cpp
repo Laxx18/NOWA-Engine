@@ -147,7 +147,7 @@ namespace NOWA
 
 	void Picker::detachAndDestroyAllPickObserver(void)
 	{
-		for (auto& it = this->pickObservers.cbegin(); it != this->pickObservers.cend();)
+		for (auto it = this->pickObservers.cbegin(); it != this->pickObservers.cend();)
 		{
 			IPickObserver* observer = *it;
 			it = this->pickObservers.erase(it);
@@ -374,7 +374,7 @@ namespace NOWA
 
 					if (nullptr != this->dragComponent)
 					{
-						for (auto& it = this->pickObservers.cbegin(); it != this->pickObservers.cend(); ++it)
+						for (auto it = this->pickObservers.cbegin(); it != this->pickObservers.cend(); ++it)
 						{
 							// notify the observer
 							(*it)->onPick(this->dragComponent->getOwner().get());
@@ -403,7 +403,7 @@ namespace NOWA
 	{
 		if (this->hitBody)
 		{
-			for (auto& it = this->pickObservers.cbegin(); it != this->pickObservers.cend(); ++it)
+			for (auto it = this->pickObservers.cbegin(); it != this->pickObservers.cend(); ++it)
 			{
 				// notify the observer
 				(*it)->onRelease();

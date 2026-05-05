@@ -39,7 +39,7 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PhysicsActiveDestructableComponent] Destructor physics active destructable component for game object: " 
 			+ this->gameObjectPtr->getName());
 
-		for (auto& it = this->parts.cbegin(); it != this->parts.cend(); ++it)
+		for (auto it = this->parts.cbegin(); it != this->parts.cend(); ++it)
 		{
 			delete it->second;
 		}
@@ -193,7 +193,7 @@ namespace NOWA
 	{
 		bool success = PhysicsActiveComponent::disconnect();
 
-		for (auto& i = this->parts.cbegin(); i != this->parts.cend(); i++)
+		for (auto i = this->parts.cbegin(); i != this->parts.cend(); i++)
 		{
 			delete i->second;
 		}
@@ -355,7 +355,7 @@ namespace NOWA
 		Ogre::Real wholeMass = 0.0f;
 		size_t middleId = this->parts.size() / 2;
 		unsigned int i = 0;
-		for (auto& it = this->parts.cbegin(); it != this->parts.cend(); it++)
+		for (auto it = this->parts.cbegin(); it != this->parts.cend(); it++)
 		{
 			// The middle part is the main body
 			if (i == middleId)
@@ -379,7 +379,7 @@ namespace NOWA
 		Ogre::String jointName2 = "DestructableJoint" + Ogre::StringConverter::toString(this->jointCount) + "_" + this->gameObjectPtr->getName();
 		this->jointCount++;
 
-		auto& jointHingeCompPtr1 = boost::make_shared<JointHingeComponent>();
+		auto jointHingeCompPtr1 = boost::make_shared<JointHingeComponent>();
 		jointHingeCompPtr1->setType(JointHingeComponent::getStaticClassName());
 		jointHingeCompPtr1->setBody(part1->getBody());
 		// jointHingeCompPtr1->setLimitsEnabled(true);
@@ -398,7 +398,7 @@ namespace NOWA
 		AppStateManager::getSingletonPtr()->getGameObjectController()->addJointComponent(jointHingeCompPtr1);
 
 		// connect the current joint to the predecessor, (internally gets its body for joint creation)
-		auto& jointHingeCompPtr2 = boost::make_shared<JointHingeComponent>();
+		auto jointHingeCompPtr2 = boost::make_shared<JointHingeComponent>();
 		jointHingeCompPtr2->setType(JointHingeComponent::getStaticClassName());
 		jointHingeCompPtr2->setPredecessorId(jointHingeCompPtr1->getId());
 		jointHingeCompPtr2->connectPredecessorCompPtr(jointHingeCompPtr1);
@@ -660,22 +660,22 @@ namespace NOWA
 		{
 			PhysicsComponent::update(dt, notSimulating);
 
-			for (auto& it = this->parts.begin(); it != this->parts.end(); ++it)
+			for (auto it = this->parts.begin(); it != this->parts.end(); ++it)
 			{
-				for (auto& jointCompPtr : it->second->getJointComponents())
+				for (const auto& jointCompPtr : it->second->getJointComponents())
 				{
 					jointCompPtr->update(dt);
 				}
 			}
 
-			//for (auto& it = this->parts.begin(); it != this->parts.end(); ++it)
+			//for (auto it = this->parts.begin(); it != this->parts.end(); ++it)
 			//{
 			//	/*Ogre::Real breakForceLength = it->second->getBody()->getForce().length();
 			//	Ogre::Real breakTorqueLength = it->second->getBody()->getOmega().length();*/
 
 			//	// PhysicsActiveDestructableComponent::SplitPart* part = OgreNewt::any_cast<PhysicsActiveDestructableComponent::SplitPart*>(body->getUserData());
 			//	// go through all joint handlers for a split part and if the acting force or torgue is stronger as the configured value, 
-			//	for (auto& jointCompPtr : it->second->getJointComponents())
+			//	for (const auto& jointCompPtr : it->second->getJointComponents())
 			//	{
 			//		if (nullptr == jointCompPtr->getJoint())
 			//			continue;
@@ -720,7 +720,7 @@ namespace NOWA
 			//				this->delayedDeleteJointComponentList.emplace(jointCompPtr);
 			//			}
 			//			// Also check all its predecessors and remove the joints if necessary
-			//			auto& predecessorJointComponent = NOWA::makeStrongPtr(AppStateManager::getSingletonPtr()->getGameObjectController()->getJointComponent(jointCompPtr->getPredecessorId()));
+			//			auto predecessorJointComponent = NOWA::makeStrongPtr(AppStateManager::getSingletonPtr()->getGameObjectController()->getJointComponent(jointCompPtr->getPredecessorId()));
 			//			if (predecessorJointComponent && predecessorJointComponent->getJoint())
 			//			{
 			//				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PhysicsActiveDestructableComponent::SplitPart] Predecessor Part: "
@@ -738,7 +738,7 @@ namespace NOWA
 			//}
 
 			//// check if there are any to be deleted joint handlers and release them
-			//for (auto& it = this->delayedDeleteJointComponentList.cbegin(); it != this->delayedDeleteJointComponentList.cend();)
+			//for (auto it = this->delayedDeleteJointComponentList.cbegin(); it != this->delayedDeleteJointComponentList.cend();)
 			//{
 			//	JointCompPtr jointCompPtr = *it;
 
@@ -757,7 +757,7 @@ namespace NOWA
 			// if the mesh is configured as motionless, apply the current position to each part. The object will behave like a normal static physics object
 			if (this->motionless)
 			{
-				for (auto& it = this->parts.cbegin(); it != this->parts.cend(); it++)
+				for (auto it = this->parts.cbegin(); it != this->parts.cend(); it++)
 				{
 					if (it->second->isMotionLess())
 						// if (it->second->getJointHandlerPtr()->getJoint())
@@ -841,7 +841,7 @@ namespace NOWA
 
 	PhysicsActiveDestructableComponent::SplitPart* PhysicsActiveDestructableComponent::getOrCreatePart(const Ogre::String& meshName)
 	{
-		auto& find = this->parts.find(meshName);
+		auto find = this->parts.find(meshName);
 		if (find != this->parts.cend())
 		{
 			return find->second;
@@ -860,7 +860,7 @@ namespace NOWA
 
 	void PhysicsActiveDestructableComponent::setPosition(Ogre::Real x, Ogre::Real y, Ogre::Real z)
 	{
-		for (auto& it = this->parts.cbegin(); it != this->parts.cend(); it++)
+		for (auto it = this->parts.cbegin(); it != this->parts.cend(); it++)
 		{
 			// this->parts[0] wrong because its a map
 			it->second->getBody()->setPositionOrientation(Ogre::Vector3(x, y, z), this->parts[0]->getBody()->getOrientation());
@@ -871,7 +871,7 @@ namespace NOWA
 	void PhysicsActiveDestructableComponent::setPosition(const Ogre::Vector3& position)
 	{
 		this->gameObjectPtr->setAttributePosition(position);
-		for (auto& it = this->parts.cbegin(); it != this->parts.cend(); it++)
+		for (auto it = this->parts.cbegin(); it != this->parts.cend(); it++)
 		{
 			it->second->getBody()->setPositionOrientation(position, this->parts[0]->getBody()->getOrientation());
 		}
@@ -880,7 +880,7 @@ namespace NOWA
 
 	void PhysicsActiveDestructableComponent::translate(const Ogre::Vector3& relativePosition)
 	{
-		for (auto& it = this->parts.cbegin(); it != this->parts.cend(); it++)
+		for (auto it = this->parts.cbegin(); it != this->parts.cend(); it++)
 		{
 			it->second->getBody()->setPositionOrientation(it->second->getBody()->getPosition() + relativePosition, this->parts[0]->getBody()->getOrientation());
 		}
@@ -888,7 +888,7 @@ namespace NOWA
 
 	void PhysicsActiveDestructableComponent::addImpulse(const Ogre::Vector3& deltaVector)
 	{
-		for (auto& it = this->parts.cbegin(); it != this->parts.cend(); it++)
+		for (auto it = this->parts.cbegin(); it != this->parts.cend(); it++)
 		{
 			// Attention: 1.0f / 60.0f
 			it->second->getBody()->addImpulse(deltaVector, it->second->getBody()->getPosition(), 1.0f / 60.0f);
@@ -898,7 +898,7 @@ namespace NOWA
 	void PhysicsActiveDestructableComponent::setOrientation(const Ogre::Quaternion& orientation)
 	{
 		this->gameObjectPtr->setAttributeOrientation(orientation);
-		for (auto& it = this->parts.cbegin(); it != this->parts.cend(); it++)
+		for (auto it = this->parts.cbegin(); it != this->parts.cend(); it++)
 		{
 			it->second->getBody()->setPositionOrientation(it->second->getBody()->getPosition(), orientation);
 		}
@@ -907,7 +907,7 @@ namespace NOWA
 
 	void PhysicsActiveDestructableComponent::setVelocity(const Ogre::Vector3& velocity)
 	{
-		for (auto& it = this->parts.cbegin(); it != this->parts.cend(); it++)
+		for (auto it = this->parts.cbegin(); it != this->parts.cend(); it++)
 		{
 			it->second->getBody()->setVelocity(velocity);
 		}
@@ -931,7 +931,7 @@ namespace NOWA
 	void PhysicsActiveDestructableComponent::setActivated(bool activated)
 	{
 		this->activated->setValue(activated);
-		for (auto& it = this->parts.cbegin(); it != this->parts.cend(); it++)
+		for (auto it = this->parts.cbegin(); it != this->parts.cend(); it++)
 		{
 			if (false == this->activated->getBool())
 			{
@@ -1200,7 +1200,7 @@ namespace NOWA
 			this->sceneManager->destroySceneNode(this->sceneNode);
 		}
 
-		for (auto& it = this->jointComponents.begin(); it != this->jointComponents.end(); ++it)
+		for (auto it = this->jointComponents.begin(); it != this->jointComponents.end(); ++it)
 		{
 			(*it).reset();
 		}
@@ -1296,7 +1296,7 @@ namespace NOWA
 
 		//PhysicsActiveDestructableComponent::SplitPart* part = OgreNewt::any_cast<PhysicsActiveDestructableComponent::SplitPart*>(body->getUserData());
 		//// go through all joint handlers for a split part and if the acting force or torgue is stronger as the configured value, 
-		//for (auto& jointCompPtr : part->getJointComponents())
+		//for (const auto& jointCompPtr : part->getJointComponents())
 		//{
 		//	Ogre::Real breakForceLength = Ogre::Math::Abs(boost::static_pointer_cast<JointHingeComponent>(jointCompPtr)->getActingForce());
 		//	/*Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsActiveDestructableComponent::SplitPart] Acting Force: "
@@ -1311,7 +1311,7 @@ namespace NOWA
 		//		if (false == this->physicsActiveDestructableComponent->firstTimeBroken && true == this->physicsActiveDestructableComponent->motionless->getBool())
 		//		{
 		//			this->physicsActiveDestructableComponent->gameObjectPtr->getSceneNode()->setVisible(false);
-		//			for (auto& it = this->physicsActiveDestructableComponent->parts.cbegin(); it != this->physicsActiveDestructableComponent->parts.cend(); it++)
+		//			for (auto it = this->physicsActiveDestructableComponent->parts.cbegin(); it != this->physicsActiveDestructableComponent->parts.cend(); it++)
 		//			{
 		//				it->second->sceneNode->setVisible(true);
 		//			}
@@ -1338,7 +1338,7 @@ namespace NOWA
 		//			this->physicsActiveDestructableComponent->delayedDeleteJointComponentList.emplace(jointCompPtr);
 		//		}
 		//		// Also check all its predecessors and remove the joints if necessary
-		//		auto& predecessorJointComponent = NOWA::makeStrongPtr(AppStateManager::getSingletonPtr()->getGameObjectController()->getJointComponent(jointCompPtr->getPredecessorId()));
+		//		auto predecessorJointComponent = NOWA::makeStrongPtr(AppStateManager::getSingletonPtr()->getGameObjectController()->getJointComponent(jointCompPtr->getPredecessorId()));
 		//		if (predecessorJointComponent && predecessorJointComponent->getJoint())
 		//		{
 		//			/*Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PhysicsActiveDestructableComponent::SplitPart] Predecessor Part: "

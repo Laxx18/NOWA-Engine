@@ -134,7 +134,7 @@ void normalizeMouseEventCoords(const OIS::MouseEvent& e)
 
     // We want everyone to see client coords in e.state.X.abs / Y.abs,
     // so we overwrite them (OIS is not particularly const-correct anyway).
-    auto& state = const_cast<OIS::MouseState&>(e.state);
+    auto state = const_cast<OIS::MouseState&>(e.state);
     state.X.abs = p.x;
     state.Y.abs = p.y;
 }
@@ -143,7 +143,16 @@ void normalizeMouseEventCoords(const OIS::MouseEvent& e)
 
 namespace NOWA
 {
-InputDeviceCore::InputDeviceCore() : mouse(nullptr), keyboard(nullptr), inputSystem(nullptr), mainInputDeviceModule(nullptr), joystickIndex(0), bSelectDown(false), keyDispatchDepth(0), mouseDispatchDepth(0), joystickDispatchDepth(0)
+InputDeviceCore::InputDeviceCore()
+    : mouse(nullptr),
+    keyboard(nullptr),
+    inputSystem(nullptr),
+    mainInputDeviceModule(nullptr),
+    joystickIndex(0),
+    bSelectDown(false),
+    keyDispatchDepth(0),
+    mouseDispatchDepth(0),
+    joystickDispatchDepth(0)
 {
 }
 
@@ -200,8 +209,8 @@ void InputDeviceCore::destroyContent(void)
 
         if (this->joysticks.size() > 0)
         {
-            auto& itJoystick = this->joysticks.begin();
-            auto& itJoystickEnd = this->joysticks.end();
+            auto itJoystick = this->joysticks.begin();
+            auto itJoystickEnd = this->joysticks.end();
             for (; itJoystick != itJoystickEnd; ++itJoystick)
             {
                 this->inputSystem->destroyInputObject(*itJoystick);
@@ -254,47 +263,32 @@ void InputDeviceCore::initialise(Ogre::Window* renderWindow)
 
         this->inputSystem = OIS::InputManager::createInputSystem(paramList);
 
-        try
+        int numKeyboards = this->inputSystem->getNumberOfDevices(OIS::OISKeyboard);
+        for (int keyboardIndex = 0; keyboardIndex < numKeyboards; keyboardIndex++)
         {
-            int keyboardIndex = 0;
-            while (true)
+            OIS::Keyboard* kb = static_cast<OIS::Keyboard*>(this->inputSystem->createInputObject(OIS::OISKeyboard, true));
+
+            if (keyboardIndex == 0)
             {
-                if (0 == keyboardIndex)
-                {
-                    this->keyboard = static_cast<OIS::Keyboard*>(this->inputSystem->createInputObject(OIS::OISKeyboard, true));
-                    this->mainInputDeviceModule = new InputDeviceModule("MainKeyboard", true, this->keyboard);
-                    this->keyboard->setEventCallback(this);
-
-                    std::string deviceName = keyboard->vendor();
-                    if (deviceName.empty())
-                    {
-                        deviceName = "Keyboard" + std::to_string(keyboardIndex);
-                    }
-                    this->addDevice(deviceName, true, keyboard);
-                }
-                else
-                {
-                    OIS::Keyboard* keyboard = static_cast<OIS::Keyboard*>(this->inputSystem->createInputObject(OIS::OISKeyboard, true));
-                    this->keyboard->setEventCallback(this);
-
-                    // Use the joystick's vendor name as its unique identifier
-                    std::string deviceName = keyboard->vendor();
-                    if (deviceName.empty())
-                    {
-                        deviceName = "Keyboard" + std::to_string(keyboardIndex);
-                    }
-                    else
-                    {
-                        deviceName += "_" + Ogre::StringConverter::toString(keyboardIndex);
-                    }
-                    this->addDevice(deviceName, true, keyboard);
-                }
-                ++keyboardIndex;
+                this->keyboard = kb;
+                this->mainInputDeviceModule = new InputDeviceModule("MainKeyboard", true, this->keyboard);
+                this->keyboard->setEventCallback(this);
             }
-        }
-        catch (...)
-        {
-            // No more keyboards available
+            else
+            {
+                kb->setEventCallback(this);
+            }
+
+            std::string deviceName = kb->vendor();
+            if (deviceName.empty())
+            {
+                deviceName = "Keyboard" + std::to_string(keyboardIndex);
+            }
+            else if (keyboardIndex > 0)
+            {
+                deviceName += "_" + Ogre::StringConverter::toString(keyboardIndex);
+            }
+            this->addDevice(deviceName, true, kb);
         }
 
         if (this->inputSystem->getNumberOfDevices(OIS::OISMouse) > 0)
@@ -311,46 +305,32 @@ void InputDeviceCore::initialise(Ogre::Window* renderWindow)
             this->setWindowExtents(width, height);
         }
 
-        try
+        int numJoysticks = this->inputSystem->getNumberOfDevices(OIS::OISJoyStick);
+        for (int joystickIndex = 0; joystickIndex < numJoysticks; joystickIndex++)
         {
-            int joystickIndex = 0;
-            while (true)
+            OIS::JoyStick* joystick = static_cast<OIS::JoyStick*>(this->inputSystem->createInputObject(OIS::OISJoyStick, true));
+            this->joysticks.push_back(joystick);
+
+            std::string deviceName = joystick->vendor();
+            if (deviceName.empty())
             {
-                OIS::JoyStick* joystick = static_cast<OIS::JoyStick*>(this->inputSystem->createInputObject(OIS::OISJoyStick, true));
-                this->joysticks.push_back(joystick);
-
-                // Use the joystick's vendor name as its unique identifier
-                std::string deviceName = joystick->vendor();
-                if (deviceName.empty())
-                {
-                    deviceName = "Joystick" + std::to_string(joystickIndex);
-                }
-                else
-                {
-                    deviceName += "_" + Ogre::StringConverter::toString(joystickIndex);
-                }
-
-                joystick->setEventCallback(this);
-
-                this->joyStickConfig.max = joystick->MAX_AXIS - 4000;
-                // Attention: static_cast is new, is it correct casted?
-                this->joyStickConfig.deadZone = static_cast<int>(this->joyStickConfig.max * 0.1f);
-
-                this->joyStickConfig.yaw = 0;
-                this->joyStickConfig.pitch = 0;
-
-                this->joyStickConfig.swivel = 0;
-
-                joystick->setVector3Sensitivity(0.001f);
-
-                this->addDevice(deviceName, false, joystick);
-
-                ++joystickIndex;
+                deviceName = "Joystick" + std::to_string(joystickIndex);
             }
-        }
-        catch (...)
-        {
-            // No more joysticks available
+            else
+            {
+                deviceName += "_" + Ogre::StringConverter::toString(joystickIndex);
+            }
+
+            joystick->setEventCallback(this);
+
+            this->joyStickConfig.max = joystick->MAX_AXIS - 4000;
+            this->joyStickConfig.deadZone = static_cast<int>(this->joyStickConfig.max * 0.1f);
+            this->joyStickConfig.yaw = 0;
+            this->joyStickConfig.pitch = 0;
+            this->joyStickConfig.swivel = 0;
+            joystick->setVector3Sensitivity(0.001f);
+
+            this->addDevice(deviceName, false, joystick);
         }
     }
 }
@@ -1090,7 +1070,7 @@ std::vector<OIS::JoyStick*> InputDeviceCore::getJoySticks(void) const
 
 InputDeviceModule* InputDeviceCore::assignDevice(const Ogre::String& deviceName, unsigned long id)
 {
-    for (auto& module : this->keyboardInputDeviceModules)
+    for (const auto& module : this->keyboardInputDeviceModules)
     {
         if ((module->getDeviceName() == deviceName && false == module->isOccupied()) || module->getOccupiedId() == id)
         {
@@ -1098,7 +1078,7 @@ InputDeviceModule* InputDeviceCore::assignDevice(const Ogre::String& deviceName,
             return module;
         }
     }
-    for (auto& module : this->joystickInputDeviceModules)
+    for (const auto& module : this->joystickInputDeviceModules)
     {
         if ((module->getDeviceName() == deviceName && false == module->isOccupied()) || module->getOccupiedId() == id)
         {
@@ -1111,7 +1091,7 @@ InputDeviceModule* InputDeviceCore::assignDevice(const Ogre::String& deviceName,
 
 void InputDeviceCore::releaseDevice(unsigned long id)
 {
-    for (auto& module : this->keyboardInputDeviceModules)
+    for (const auto& module : this->keyboardInputDeviceModules)
     {
         if (module->getOccupiedId() == id && module->isOccupied())
         {
@@ -1119,7 +1099,7 @@ void InputDeviceCore::releaseDevice(unsigned long id)
             break;
         }
     }
-    for (auto& module : this->joystickInputDeviceModules)
+    for (const auto& module : this->joystickInputDeviceModules)
     {
         if (module->getOccupiedId() == id && module->isOccupied())
         {
@@ -1136,7 +1116,7 @@ InputDeviceModule* InputDeviceCore::getMainKeyboardInputDeviceModule(void) const
 
 InputDeviceModule* InputDeviceCore::getKeyboardInputDeviceModule(unsigned long id) const
 {
-    for (auto& module : this->keyboardInputDeviceModules)
+    for (const auto& module : this->keyboardInputDeviceModules)
     {
         if (id == module->getOccupiedId())
         {
@@ -1148,7 +1128,7 @@ InputDeviceModule* InputDeviceCore::getKeyboardInputDeviceModule(unsigned long i
 
 InputDeviceModule* InputDeviceCore::getJoystickInputDeviceModule(unsigned long id) const
 {
-    for (auto& module : this->joystickInputDeviceModules)
+    for (const auto& module : this->joystickInputDeviceModules)
     {
         if (id == module->getOccupiedId())
         {

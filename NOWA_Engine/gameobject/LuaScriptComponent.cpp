@@ -583,11 +583,11 @@ namespace NOWA
 			{
 				// If a common script has been renamed, maybe there are other game objects, which have a lua script component, that points to the same script
 				// Hence adapt also the script name for the other one
-				const auto& gameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects();
-				for (auto& it = gameObjects->begin(); it != gameObjects->end(); it++)
+				const auto gameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects();
+				for (auto it = gameObjects->begin(); it != gameObjects->end(); it++)
 				{
-					auto& gameObject = it->second;
-					auto& luaScriptComponent = NOWA::makeStrongPtr(gameObject->getComponent<LuaScriptComponent>());
+					auto gameObject = it->second;
+					auto luaScriptComponent = NOWA::makeStrongPtr(gameObject->getComponent<LuaScriptComponent>());
 					if (nullptr != luaScriptComponent)
 					{
 						if (luaScriptComponent->getScriptFile() == oldScriptFile)

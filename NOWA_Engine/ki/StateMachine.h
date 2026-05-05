@@ -35,7 +35,7 @@ namespace NOWA
 
 			~StateMachine()
 			{
-				auto& it = this->states.begin();
+				auto it = this->states.begin();
 				while (it != this->states.end())
 				{
 					delete it->second;
@@ -309,7 +309,7 @@ namespace NOWA
 				try
 				{
 					// Call the entry method of the new state
-					auto& state = this->currentState["enter"];
+					auto state = this->currentState["enter"];
 					if (state)
 					{
 						state(this->owner);
@@ -333,7 +333,7 @@ namespace NOWA
 				try
 				{
 					// Call the entry method of the new state
-					auto& state = this->globalState["enter"];
+					auto state = this->globalState["enter"];
 					if (state)
 					{
 						state(this->owner);
@@ -378,7 +378,7 @@ namespace NOWA
 					// Make sure the state is valid before calling its execute 'method'
 					if (this->currentState.is_valid())
 					{
-						auto& state = this->currentState["execute"];
+						auto state = this->currentState["execute"];
 						if (state)
 						{
 							state(this->owner, dt);
@@ -387,7 +387,7 @@ namespace NOWA
 					
 					if (this->globalState.is_valid())
 					{
-						auto& state = this->globalState["execute"];
+						auto state = this->globalState["execute"];
 						if (state)
 						{
 							state(this->owner, dt);
@@ -396,7 +396,7 @@ namespace NOWA
 				}
 				catch (luabind::error& error)
 				{
-					auto& found = errorMessages.find("execute");
+					auto found = errorMessages.find("execute");
 					if (found == errorMessages.cend())
 					{
 						luabind::object errorMsg(luabind::from_stack(error.state(), -1));
@@ -421,7 +421,7 @@ namespace NOWA
 				try
 				{
 					// Call the exit method of the existing state
-					auto& state = this->currentState["exit"];
+					auto state = this->currentState["exit"];
 					if (state)
 					{
 						state(this->owner);
@@ -433,7 +433,7 @@ namespace NOWA
 					if (this->currentState.is_valid())
 					{
 						// Call the entry method of the new state
-						auto& state = this->currentState["enter"];
+						auto state = this->currentState["enter"];
 						if (state)
 						{
 							state(this->owner);
@@ -458,7 +458,7 @@ namespace NOWA
 					if (this->globalState.is_valid())
 					{
 						// Call the exit method of the existing state
-						auto& state = this->globalState["exit"];
+						auto state = this->globalState["exit"];
 						if (state)
 						{
 							state(this->owner);

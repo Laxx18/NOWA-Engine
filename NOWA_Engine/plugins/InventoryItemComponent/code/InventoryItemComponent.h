@@ -183,13 +183,13 @@ namespace NOWA
 		 * @brief		Sets the id of the GameObject associated with this inventory item (e.g. a building template). This id is also configurable in NOWA-Design and is forwarded to reactOnMouseButtonClick on the MyGUIItemBoxComponent so the template can be resolved without hardcoded names: 'local go = AppStateManager:getGameObjectController():getGameObjectFromId(inventoryItem:getGameObjectId())'
 		 * @param[in]	gameObjectId	The game object id to set. Use '0' for none.
          */
-		void InventoryItemComponent::setGameObjectId(unsigned long gameObjectId);
+		void setGameObjectId(unsigned long gameObjectId);
 
 		/**
          * @brief		Gets the id of the associated GameObject. Returns '0' if none has been set.
 		 * @return		The game object id.
 		*/
-        unsigned long InventoryItemComponent::getGameObjectId(void) const;
+        unsigned long getGameObjectId(void) const;
 
 		/**
 		 * @brief		Adds the resource and given quantity to inventory (which is the MyGUIItemBoxComponent)

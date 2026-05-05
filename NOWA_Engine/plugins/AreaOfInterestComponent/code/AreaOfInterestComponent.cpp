@@ -192,7 +192,7 @@ namespace NOWA
 		boost::shared_ptr<EventDataDeleteGameObject> castEventData = boost::static_pointer_cast<NOWA::EventDataDeleteGameObject>(eventData);
 		// if a game object has been deleted elsewhere remove it from the queue, in order not to work with dangling pointers
 		unsigned long id = castEventData->getGameObjectId();
-		for (auto& it = this->triggeredGameObjects.cbegin(); it != this->triggeredGameObjects.cend();)
+		for (auto it = this->triggeredGameObjects.cbegin(); it != this->triggeredGameObjects.cend();)
 		{
 			if (it->second.first->getId() == id)
 			{
@@ -232,7 +232,7 @@ namespace NOWA
 
 			// Check objects in range
 			Ogre::SceneQueryResultMovableList& result = this->sphereSceneQuery->execute().movables;
-			for (auto& it = result.cbegin(); it != result.cend(); ++it)
+			for (auto it = result.cbegin(); it != result.cend(); ++it)
 			{
 				Ogre::MovableObject* movableObject = *it;
 
@@ -255,7 +255,7 @@ namespace NOWA
 						currentObjectsInRange.insert(gameObject->getId());
 					}
 
-					auto& otherIt = this->triggeredGameObjects.find(gameObject->getId());
+					auto otherIt = this->triggeredGameObjects.find(gameObject->getId());
 					if (otherIt == this->triggeredGameObjects.end())
 					{
 						// First time entering
@@ -495,7 +495,7 @@ namespace NOWA
 		if (false == activated)
 		{
 			// If not activated remove all objects
-			for (auto& it = this->triggeredGameObjects.cbegin(); it != this->triggeredGameObjects.cend();)
+			for (auto it = this->triggeredGameObjects.cbegin(); it != this->triggeredGameObjects.cend();)
 			{
 				GameObject* gameObject = it->second.first;
 

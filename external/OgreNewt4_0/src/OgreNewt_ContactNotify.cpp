@@ -42,7 +42,7 @@ namespace OgreNewt
         // map registered via World::registerMaterialPair(). Newton's m_materialGraph is
         // NEVER consulted by any of our overrides, so registering into it is dead code.
         auto key = std::make_pair(std::min(id0, id1), std::max(id0, id1));
-        auto& entry = m_localMaterials[key];
+        auto entry = m_localMaterials[key];
         entry = material;
         return entry;
     }
@@ -137,8 +137,8 @@ namespace OgreNewt
         }
 
         // Resolve via BodyNotify — never touch GetCollisionShape() on unknown bodies.
-        auto& np0 = const_cast<ndBodyKinematic*>(body0)->GetNotifyCallback();
-        auto& np1 = const_cast<ndBodyKinematic*>(body1)->GetNotifyCallback();
+        auto np0 = const_cast<ndBodyKinematic*>(body0)->GetNotifyCallback();
+        auto np1 = const_cast<ndBodyKinematic*>(body1)->GetNotifyCallback();
         if (!np0 || !np1)
         {
             return true;
@@ -228,8 +228,8 @@ namespace OgreNewt
             return false;
         }
 
-        auto& notifyPtr0 = b0->GetNotifyCallback();
-        auto& notifyPtr1 = b1->GetNotifyCallback();
+        auto notifyPtr0 = b0->GetNotifyCallback();
+        auto notifyPtr1 = b1->GetNotifyCallback();
 
         if (!notifyPtr0 || !notifyPtr1)
         {
@@ -287,8 +287,8 @@ namespace OgreNewt
             return true;
         }
 
-        auto& notifyPtr0 = b0->GetNotifyCallback();
-        auto& notifyPtr1 = b1->GetNotifyCallback();
+        auto notifyPtr0 = b0->GetNotifyCallback();
+        auto notifyPtr1 = b1->GetNotifyCallback();
 
         if (!notifyPtr0 || !notifyPtr1)
         {

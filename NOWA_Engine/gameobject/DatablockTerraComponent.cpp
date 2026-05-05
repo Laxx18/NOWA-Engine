@@ -425,35 +425,38 @@ namespace NOWA
 	}
 
 	void DatablockTerraComponent::preReadDatablock(void)
-	{
-		bool success = true;
-		
-		if (nullptr == this->gameObjectPtr)
-			return;
+    {
+        bool success = true;
 
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DatablockTerraComponent::preReadDatablock", _1(&success),
-		{
-			auto & terraCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<TerraComponent>());
-			if (nullptr != terraCompPtr)
-			{
-				if (nullptr != terraCompPtr->getTerra())
-				{
-					success = this->readDatablockTerra(terraCompPtr->getTerra());
-				}
-			}
-			else
-			{
-				success = this->readDefaultDatablockTerra();
-			}
-		});
+        if (nullptr == this->gameObjectPtr)
+        {
+            return;
+        }
 
-		if (false == success)
-		{
-			this->datablock = nullptr;
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DatablockTerraComponent] this->datablock reading failed for game object: " + this->gameObjectPtr->getName());
-			return;
-		}
-	}
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, &success]()
+        {
+            auto terraCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<TerraComponent>());
+            if (nullptr != terraCompPtr)
+            {
+                if (nullptr != terraCompPtr->getTerra())
+                {
+                    success = this->readDatablockTerra(terraCompPtr->getTerra());
+                }
+            }
+            else
+            {
+                success = this->readDefaultDatablockTerra();
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DatablockTerraComponent::preReadDatablock");
+
+        if (false == success)
+        {
+            this->datablock = nullptr;
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DatablockTerraComponent] this->datablock reading failed for game object: " + this->gameObjectPtr->getName());
+            return;
+        }
+    }
 
 	bool DatablockTerraComponent::readDatablockTerra(Ogre::Terra* terra)
 	{

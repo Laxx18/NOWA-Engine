@@ -115,6 +115,32 @@ public:
         std::vector<int> terraLayerList;
     };
 
+    // ── Plain-data snapshot collected on the render thread ──────────────────────
+        // After buildSnapshot() returns, zero Ogre API calls are needed to build the
+        // navmesh. The background thread only ever touches these plain arrays.
+    struct __declspec(dllexport) NavMeshGeomSnapshot
+    {
+        struct __declspec(dllexport) MeshEntry
+        {
+            // Vertices already transformed into referenceNode-local space (same
+            // coordinate space that InputGeom uses internally). Flat x,y,z layout.
+            std::vector<float> verts; // size = nverts * 3
+            std::vector<int> indices; // size = ntris * 3  (raw index list)
+        };
+
+        std::vector<MeshEntry> meshEntries;
+        float bmin[3];
+        float bmax[3];
+        Ogre::SceneNode* referenceNode = nullptr;        // read-only ptr
+        std::vector<TerraData> terraDataList; // CPU heightmap, read-only
+    };
+
+    InputGeom();
+
+    // New constructor — takes a pre-snapshotted geometry. Safe to call on any
+    // thread because it never touches the Ogre scene graph.
+    explicit InputGeom(const NavMeshGeomSnapshot& snapshot);
+
     /**
       * Create recast compatible inputgeom from the specified entities. The entities have to be added to the
       * scene before this call, as we need to calculate the world coordinates of the entity.
@@ -180,6 +206,10 @@ public:
       * Entity needs to be added to the scene before calling this function.
       **/
     static Ogre::AxisAlignedBox getWorldSpaceBoundingBox(Ogre::v1::Entity *ent);
+
+    // Collects vertex/index data + world transforms on the render thread and
+    // packs them into a NavMeshGeomSnapshot. Fast (~50ms even for large scenes).
+    static NavMeshGeomSnapshot buildSnapshot(const std::vector<Ogre::v1::Entity*>& entities, const std::vector<Ogre::Item*>& items, Ogre::SceneNode* referenceNode);
 
     /**
       * Apply the specified rotation to all vertices of this geometry.

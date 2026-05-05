@@ -296,7 +296,7 @@ namespace NOWA
 		* @brief		Gets client start data
 		* @return		clientStartData	The client start data structure
 		*/
-		std::map<unsigned int, RakNet::SystemAddress> RakNetModule::getClients(void) const
+		std::map<unsigned int, RakNet::SystemAddress> getClients(void) const
 		{
 			return this->clients;
 		}

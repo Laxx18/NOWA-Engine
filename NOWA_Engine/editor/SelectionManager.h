@@ -100,7 +100,7 @@ namespace NOWA
 		 * @param[in]	categories	The categories to use
 		 * @return		categoryId	The generated category id
 		 */
-		unsigned int filterCategories(Ogre::String& categories);
+		unsigned int filterCategories(const Ogre::String& categories);
 
 		/**
 		* @brief		Changes the material name for the rectangle

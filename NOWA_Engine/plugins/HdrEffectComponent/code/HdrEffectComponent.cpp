@@ -179,13 +179,13 @@ namespace NOWA
 			return false;
 		}
 
-		auto& lightDirectionalCompPtr = NOWA::makeStrongPtr(lightGameObjectPtr->getComponent<LightDirectionalComponent>());
+		auto lightDirectionalCompPtr = NOWA::makeStrongPtr(lightGameObjectPtr->getComponent<LightDirectionalComponent>());
 		if (nullptr != lightDirectionalCompPtr)
 		{
 			this->lightDirectionalComponent = lightDirectionalCompPtr.get();
 		}
 
-		auto& workspaceBaseCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<WorkspaceBaseComponent>());
+		auto workspaceBaseCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<WorkspaceBaseComponent>());
 		if (nullptr != workspaceBaseCompPtr)
 		{
 			this->workspaceBaseComponent = workspaceBaseCompPtr.get();
@@ -204,7 +204,7 @@ namespace NOWA
 	{
 		GameObjectComponent::connect();
 
-		auto& cameraCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<CameraComponent>());
+		auto cameraCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<CameraComponent>());
 		if (nullptr != cameraCompPtr)
 		{
 			// Note: If its a camera, e.g. MainCamera and hdr effect shall be set, but there is split screen scenario active, the hdr effect may not be set for a camera, which is not involved in split screen scenario
@@ -243,10 +243,10 @@ namespace NOWA
 
 	void HdrEffectComponent::onOtherComponentRemoved(unsigned int index)
 	{
-		auto& gameObjectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentByIndex(index));
+		auto gameObjectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentByIndex(index));
 		if (nullptr != gameObjectCompPtr)
 		{
-			auto& lightDirectionalCompPtr = boost::dynamic_pointer_cast<LightDirectionalComponent>(gameObjectCompPtr);
+			auto lightDirectionalCompPtr = boost::dynamic_pointer_cast<LightDirectionalComponent>(gameObjectCompPtr);
 			if (nullptr != lightDirectionalCompPtr)
 			{
 				this->lightDirectionalComponent = nullptr;

@@ -51,9 +51,9 @@ namespace MyGUI
 		}
 
 		//    memory allocation
-		inline pointer allocate(size_type cnt, typename std::allocator<void>::const_pointer = 0)
+		inline pointer allocate(size_type cnt, const void* = 0)
 		{
-			return reinterpret_cast<pointer>(::operator new (cnt * sizeof (T)));
+			return reinterpret_cast<pointer>(::operator new(cnt * sizeof(T)));
 		}
 		inline void deallocate(pointer p, size_type)
 		{

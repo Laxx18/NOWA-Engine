@@ -14,12 +14,11 @@ namespace OgreNewt
     class CollisionDebugNotify : public ndShapeDebugNotify
     {
     public:
-        CollisionDebugNotify(Ogre::ManualObject* lines, const Ogre::Vector3& scale);
+        CollisionDebugNotify(Ogre::ManualObject* lines);
 
         virtual void DrawPolygon(ndInt32 vertexCount, const ndVector* const faceArray, const ndEdgeType* const edgeType) override;
     protected:
         Ogre::ManualObject* m_lines;
-        Ogre::Vector3 m_scale;
         ndInt32 m_index;
     };
 }

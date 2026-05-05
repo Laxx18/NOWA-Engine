@@ -185,7 +185,7 @@ void OpenSaveFileDialogExtended::notifyEditTextChange(MyGUI::Widget* _sender)
 		}
 
 		// Get the matched results
-		auto& matchedFileNames = this->autoCompleteSearch.findMatchedItemWithInText(searchText);
+		auto matchedFileNames = this->autoCompleteSearch.findMatchedItemWithInText(searchText);
 
 		for (size_t j = 1; j < mListFiles->getItemCount();)
 		{

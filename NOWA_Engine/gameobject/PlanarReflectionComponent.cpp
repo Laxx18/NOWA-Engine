@@ -284,7 +284,7 @@ namespace NOWA
 			this->mirrorPlaneItem->setVisible(this->gameObjectPtr->isVisible());
 
 			// Check if a physics artifact component does exist for this game object and recreate the collision shape when the plane has changed
-			auto& physicsArtifactComponent = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsArtifactComponent>());
+			auto physicsArtifactComponent = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsArtifactComponent>());
 			if (nullptr != physicsArtifactComponent)
 			{
 				// Attention: what is with joints in post init, is it required to recreate also the joints, if the collision does change for the physics body??????????
@@ -313,7 +313,7 @@ namespace NOWA
 
 			this->gameObjectPtr->getSceneNode()->setScale(Ogre::Vector3(this->mirrorSize->getVector2().x, this->mirrorSize->getVector2().y, 1.0f));
 			// If there is a physics component, it needs to be scaled too
-			auto& physicsCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<PhysicsComponent>());
+			auto physicsCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<PhysicsComponent>());
 			if (nullptr != physicsCompPtr)
 				physicsCompPtr->setScale(this->gameObjectPtr->getSceneNode()->getScale());
 
@@ -504,7 +504,7 @@ namespace NOWA
 		{
 			this->gameObjectPtr->getSceneNode()->setScale(Ogre::Vector3(this->mirrorSize->getVector2().x, this->mirrorSize->getVector2().y, 1.0f));
 			// If there is a physics component, it needs to be scaled too
-			auto& physicsCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<PhysicsComponent>());
+			auto physicsCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<PhysicsComponent>());
 			if (nullptr != physicsCompPtr)
 				physicsCompPtr->setScale(this->gameObjectPtr->getSceneNode()->getScale());
 		}

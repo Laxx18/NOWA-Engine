@@ -339,28 +339,32 @@ void OgreALModule::deleteSound(Ogre::SceneManager* sceneManager, OgreAL::Sound*&
 
 		OgreAL::Sound* sound = nullptr;
 
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("OgreALModule::createSound", _6(sceneManager, name, resourceName, loop, stream, &sound),
-		{
-			try
-			{
-				sound = this->soundManager->createSound(sceneManager, name, resourceName, loop, stream);
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this, sceneManager, name, resourceName, loop, stream, &sound]()
+        {
+            try
+            {
+                sound = this->soundManager->createSound(sceneManager, name, resourceName, loop, stream);
 
-				// Set volume
-				sound->setGain(Ogre::Real(this->soundVolume) / 100.0f);
+                // Set volume
+                sound->setGain(Ogre::Real(this->soundVolume) / 100.0f);
 
-				// Tag resource for cleanup
-				DeployResourceModule::getInstance()->tagResource(sound->getFileName(), "Audio");
+				Ogre::String path;
+                // Tag resource for cleanup
+                DeployResourceModule::getInstance()->tagResource(sound->getFileName(), "Audio", path);
 
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[OgreALModule] Sound: " + name + " created.");
-			}
-			catch (const Ogre::Exception& exception)
-			{
-				Ogre::String message = "[OgreALModule] Could not create sound : " + name + " description : " + exception.getDescription();
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, message);
-				boost::shared_ptr<EventDataFeedback> eventDataNavigationMeshFeedback(new EventDataFeedback(false, message));
-				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataNavigationMeshFeedback);
-			}
-		});  // `sound` will be set after the render thread completes
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[OgreALModule] Sound: " + name + " created.");
+            }
+            catch (const Ogre::Exception& exception)
+            {
+                Ogre::String message = "[OgreALModule] Could not create sound : " + name + " description : " + exception.getDescription();
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, message);
+                boost::shared_ptr<EventDataFeedback> eventDataNavigationMeshFeedback(new EventDataFeedback(false, message));
+                NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataNavigationMeshFeedback);
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "OgreALModule::createSound");
+
+		// Sound will be set after the render thread completes
 
 		return sound;  // This will now return after the promise is resolved
 	}

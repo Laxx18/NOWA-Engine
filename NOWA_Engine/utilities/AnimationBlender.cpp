@@ -687,7 +687,7 @@ namespace NOWA
 
 	AnimationBlender::AnimID AnimationBlender::getAnimationIdFromString(const Ogre::String& animationName)
 	{
-		for (auto& it = this->mappedAnimations.cbegin(); it != this->mappedAnimations.cend(); ++it)
+		for (auto it = this->mappedAnimations.cbegin(); it != this->mappedAnimations.cend(); ++it)
 		{
 			if (it->second == animationName)
 			{
@@ -1046,7 +1046,7 @@ namespace NOWA
 
 	void AnimationBlender::processDeferredCallbacks(void)
 	{
-		for (auto& callback : this->deferredCallbacks)
+        for (auto& callback : this->deferredCallbacks)
 		{
 			callback();  // Execute each callback
 		}

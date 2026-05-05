@@ -347,7 +347,7 @@ namespace NOWA
 					}
 
 					GameObjectComponents* components = gameObjectPtr->getComponents();
-					for (auto& it = components->begin(); it != components->end(); ++it)
+					for (auto it = components->begin(); it != components->end(); ++it)
 					{
 						auto luaScriptCompPtr = boost::dynamic_pointer_cast<LuaScriptComponent>(std::get<COMPONENT>(*it));
 						if (nullptr != luaScriptCompPtr)
@@ -879,7 +879,7 @@ namespace NOWA
 	void DotSceneExportModule::exportResourceLocations(rapidxml::xml_node<>* resourcesXML, rapidxml::xml_document<>& doc)
 	{
 #if 0
-		auto& resourceLocations = Ogre::ResourceGroupManager::getSingleton().getResourceGroups();
+		auto resourceLocations = Ogre::ResourceGroupManager::getSingleton().getResourceGroups();
 		for (auto& resourceGroupName : resourceLocations)
 		{
 			// A resource group name can have several pathes
@@ -1458,7 +1458,7 @@ namespace NOWA
 							flatIdsList.push_back(std::make_pair(gameObjectIdAttribute->getULong(), false));
 
 							GameObjectComponents* components = gameObjectPtr->getComponents();
-							for (auto& it = components->begin(); it != components->end(); ++it)
+							for (auto it = components->begin(); it != components->end(); ++it)
 							{
 								std::vector<std::pair<Ogre::String, Variant*>>& attributes = std::get<COMPONENT>(*it)->getAttributes();
 								for (size_t k = 0; k < attributes.size(); k++)
@@ -1574,7 +1574,7 @@ namespace NOWA
 			if (nullptr != gameObjectPtr)
 			{
 				GameObjectComponents* components = gameObjectPtr->getComponents();
-				for (auto& it = components->begin(); it != components->end(); ++it)
+				for (auto it = components->begin(); it != components->end(); ++it)
 				{
 					auto luaScriptCompPtr = boost::dynamic_pointer_cast<LuaScriptComponent>(std::get<COMPONENT>(*it));
 					if (nullptr != luaScriptCompPtr)
@@ -1615,7 +1615,7 @@ namespace NOWA
 							indexCounter++;
 
 							GameObjectComponents* components = gameObjectPtr->getComponents();
-							for (auto& it = components->begin(); it != components->end(); ++it)
+							for (auto it = components->begin(); it != components->end(); ++it)
 							{
 								std::vector<std::pair<Ogre::String, Variant*>>& attributes = std::get<COMPONENT>(*it)->getAttributes();
 								for (size_t k = 0; k < attributes.size(); k++)

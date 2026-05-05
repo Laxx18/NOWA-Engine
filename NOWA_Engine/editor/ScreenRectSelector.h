@@ -46,9 +46,9 @@ namespace NOWA
         virtual bool projectElement(size_t idx, float& outNX, float& outNY) const = 0;
 
         // Called once with all indices whose projection lies inside the rectangle.
-        // add=true   → union with current selection (Shift held)
-        // remove=true→ subtract from current selection (Ctrl held)
-        // both false → replace selection
+        // add=true   -> union with current selection (Shift held)
+        // remove=true-> subtract from current selection (Ctrl held)
+        // both false -> replace selection
         virtual void applyRectSelection(const std::vector<size_t>& indices, bool add, bool remove) = 0;
     };
 
@@ -113,7 +113,7 @@ namespace NOWA
     //  Starting from startIdx, performs a BFS expanding through element adjacency
     //  until all connected elements are reached.  Returns all found indices.
     //
-    //  getNeighbors(idx) → vector of adjacent element indices
+    //  getNeighbors(idx) -> vector of adjacent element indices
     //
     //  Typical use:
     //    VERTEX mode  — getNeighbors returns vertexNeighbors[idx]

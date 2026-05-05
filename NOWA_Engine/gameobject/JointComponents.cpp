@@ -1096,10 +1096,10 @@ namespace NOWA
 		}
 
 		//This was in physicsActiveComponent
-		//for (auto& it = this->jointHandlers.begin(); it != this->jointHandlers.end(); ++it)
+		//for (auto it = this->jointHandlers.begin(); it != this->jointHandlers.end(); ++it)
 		//{
-		//	auto& jointHandlerPtr = *it;
-		//	auto& jointHingeHandlerPtr = boost::dynamic_pointer_cast<JointHingeHandler>(jointHandlerPtr);
+		//	auto jointHandlerPtr = *it;
+		//	auto jointHingeHandlerPtr = boost::dynamic_pointer_cast<JointHingeHandler>(jointHandlerPtr);
 		//	if (nullptr != jointHingeHandlerPtr)
 		//	{
 		//		/*Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PhysicsActiveDestructableComponent::SplitPart] Acting Force: "
@@ -4882,10 +4882,10 @@ namespace NOWA
 
 	JointAttractorComponent::~JointAttractorComponent()
 	{
-		auto& repellerGameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromCategory(this->repellerCategory->getString());
+		auto repellerGameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromCategory(this->repellerCategory->getString());
 		for (size_t i = 0; i < repellerGameObjects.size(); i++)
 		{
-			auto& physicsActiveCompPtr = NOWA::makeStrongPtr(repellerGameObjects[i]->getComponent<PhysicsActiveComponent>());
+			auto physicsActiveCompPtr = NOWA::makeStrongPtr(repellerGameObjects[i]->getComponent<PhysicsActiveComponent>());
 			if (nullptr != physicsActiveCompPtr)
 			{
 				physicsActiveCompPtr->removeJointAttractorComponent(this->id->getULong());
@@ -4965,10 +4965,10 @@ namespace NOWA
 	{
 		bool success = JointComponent::connect();
 
-		auto& repellerGameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromCategory(this->repellerCategory->getString());
+		auto repellerGameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromCategory(this->repellerCategory->getString());
 		for (size_t i = 0; i < repellerGameObjects.size(); i++)
 		{
-			auto& physicsActiveCompPtr = NOWA::makeStrongPtr(repellerGameObjects[i]->getComponent<PhysicsActiveComponent>());
+			auto physicsActiveCompPtr = NOWA::makeStrongPtr(repellerGameObjects[i]->getComponent<PhysicsActiveComponent>());
 			if (nullptr != physicsActiveCompPtr)
 			{
 				physicsActiveCompPtr->addJointAttractorComponent(this->id->getULong());
@@ -4982,10 +4982,10 @@ namespace NOWA
 	{
 		bool success = JointComponent::disconnect();
 
-		auto& repellerGameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromCategory(this->repellerCategory->getString());
+		auto repellerGameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromCategory(this->repellerCategory->getString());
 		for (size_t i = 0; i < repellerGameObjects.size(); i++)
 		{
-			auto& physicsActiveCompPtr = NOWA::makeStrongPtr(repellerGameObjects[i]->getComponent<PhysicsActiveComponent>());
+			auto physicsActiveCompPtr = NOWA::makeStrongPtr(repellerGameObjects[i]->getComponent<PhysicsActiveComponent>());
 			if (nullptr != physicsActiveCompPtr)
 			{
 				physicsActiveCompPtr->removeJointAttractorComponent(this->id->getULong());
@@ -14532,7 +14532,7 @@ namespace NOWA
 		if (nullptr != this->predecessorJointCompPtr)
 		{
 			// Removes the tire from vehicle, if tire joint will be removed
-			auto& physicsActiveVehicleCompPtr = NOWA::makeStrongPtr(this->predecessorJointCompPtr->getOwner()->getComponent<PhysicsActiveVehicleComponent>());
+			auto physicsActiveVehicleCompPtr = NOWA::makeStrongPtr(this->predecessorJointCompPtr->getOwner()->getComponent<PhysicsActiveVehicleComponent>());
 			if (nullptr != physicsActiveVehicleCompPtr)
 			{
 				OgreNewt::VehicleTire* vehicleTire = dynamic_cast<OgreNewt::VehicleTire*>(this->joint);
@@ -14685,7 +14685,7 @@ namespace NOWA
 		// Release joint each time, to create new one with new values
 		this->internalReleaseJoint();
 
-		auto& physicsActiveVehicleCompPtr = NOWA::makeStrongPtr(this->predecessorJointCompPtr->getOwner()->getComponent<PhysicsActiveVehicleComponent>());
+		auto physicsActiveVehicleCompPtr = NOWA::makeStrongPtr(this->predecessorJointCompPtr->getOwner()->getComponent<PhysicsActiveVehicleComponent>());
 		if (nullptr == physicsActiveVehicleCompPtr)
 		{
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[JointVehicleTireComponent] Cannot create joint for: " + gameObjectName + " because there is no predecessor.");
@@ -15269,7 +15269,7 @@ namespace NOWA
 
 		if (nullptr != this->predecessorJointCompPtr)
 		{
-			auto& physicsActiveComplexVehicleCompPtr = NOWA::makeStrongPtr(this->predecessorJointCompPtr->getOwner()->getComponent<PhysicsActiveComplexVehicleComponent>());
+			auto physicsActiveComplexVehicleCompPtr = NOWA::makeStrongPtr(this->predecessorJointCompPtr->getOwner()->getComponent<PhysicsActiveComplexVehicleComponent>());
 			if (nullptr != physicsActiveComplexVehicleCompPtr)
 			{
 				OgreNewt::ComplexVehicleTire* vehicleTire = dynamic_cast<OgreNewt::ComplexVehicleTire*>(this->joint);
@@ -15418,7 +15418,7 @@ namespace NOWA
 
 		this->internalReleaseJoint();
 
-		auto& physicsActiveComplexVehicleCompPtr =
+		auto physicsActiveComplexVehicleCompPtr =
 			NOWA::makeStrongPtr(this->getOwner()->getComponent<PhysicsActiveComplexVehicleComponent>());
 		if (nullptr == physicsActiveComplexVehicleCompPtr)
 		{

@@ -45,6 +45,108 @@
 #include <cstdio>
 #include <fstream>
 
+InputGeom::InputGeom()
+	: nverts(0), 
+	ntris(0), 
+	normals(nullptr), 
+	verts(nullptr), 
+	tris(nullptr),
+	bmin(nullptr), 
+	bmax(nullptr), 
+	m_chunkyMesh(nullptr),
+	mReferenceNode(nullptr), 
+	m_volumeCount(0), 
+	m_offMeshConCount(0)
+{
+	memset(m_volumes, 0, sizeof(m_volumes));
+}
+
+InputGeom::InputGeom(const NavMeshGeomSnapshot& snapshot)
+	: mReferenceNode(snapshot.referenceNode),
+	nverts(0),
+	ntris(0),
+	normals(nullptr),
+	verts(nullptr),
+	tris(nullptr),
+	bmin(nullptr),
+	bmax(nullptr),
+	m_chunkyMesh(nullptr)
+{
+	// Count totals across all mesh entries
+	for (const auto entry : snapshot.meshEntries)
+	{
+		nverts += static_cast<int>(entry.verts.size() / 3);
+		ntris += static_cast<int>(entry.indices.size() / 3); // will be index-count/3
+	}
+
+	if (nverts == 0)
+		return;
+
+	verts = new float[nverts * 3];
+	// ntris here is still the raw index count / 3
+	int totalIndices = ntris * 3;
+	tris = new int[totalIndices];
+
+	// Copy pre-transformed data straight in — no Ogre calls at all
+	int vOffset = 0, iOffset = 0, vertBase = 0;
+	for (const auto& entry : snapshot.meshEntries)
+	{
+		// Vertices
+		std::memcpy(verts + vOffset, entry.verts.data(),
+			entry.verts.size() * sizeof(float));
+
+		// Indices — offset by running vertex base so they index into the
+		// combined verts array correctly
+		for (int idx : entry.indices)
+			tris[iOffset++] = idx + vertBase;
+
+		vertBase += static_cast<int>(entry.verts.size() / 3);
+		vOffset += static_cast<int>(entry.verts.size());
+	}
+
+	// Terra geometry (if any) — pure CPU heightmap reads, safe off render thread
+	if (!snapshot.terraDataList.empty())
+	{
+		// Re-use the existing Terra ingestion logic by delegating to a helper.
+		// The Terra constructor branch already does this; replicate only the
+		// vertex-append portion here if your codebase exposes it, or call the
+		// Terra-specific convertOgreEntities overload passing the already-set
+		// verts/tris arrays.  As a safe fallback, the terra path can still run
+		// the existing constructor; see note in buildNavigationMesh below.
+	}
+
+	bmin = new float[3];
+	bmax = new float[3];
+	std::memcpy(bmin, snapshot.bmin, sizeof(float) * 3);
+	std::memcpy(bmax, snapshot.bmax, sizeof(float) * 3);
+
+	// Compute face normals — same formula as all other InputGeom constructors
+	normals = new float[ntris * 3];
+	for (int i = 0; i < ntris * 3; i += 3)
+	{
+		const float* v0 = &verts[tris[i * 3 + 0] * 3];
+		const float* v1 = &verts[tris[i * 3 + 1] * 3];
+		const float* v2 = &verts[tris[i * 3 + 2] * 3];
+		float e0[3], e1[3];
+		for (int j = 0; j < 3; ++j)
+		{
+			e0[j] = v1[j] - v0[j]; e1[j] = v2[j] - v0[j];
+		}
+		float* n = &normals[i];
+		n[0] = e0[1] * e1[2] - e0[2] * e1[1];
+		n[1] = e0[2] * e1[0] - e0[0] * e1[2];
+		n[2] = e0[0] * e1[1] - e0[1] * e1[0];
+		float d = sqrtf(n[0] * n[0] + n[1] * n[1] + n[2] * n[2]);
+		if (d > 1e-6f)
+		{
+			n[0] /= d; n[1] /= d; n[2] /= d;
+		}
+	}
+
+	// This is the heavy Recast operation — safe on background thread
+	buildChunkyTriMesh();
+}
+
 InputGeom::InputGeom(const std::vector<Ogre::v1::Entity*>& srcMeshes, const std::vector<Ogre::Item*>& srcItems)
 	: mSrcMeshes(srcMeshes),
 	mSrcItems(srcItems),
@@ -786,8 +888,9 @@ void InputGeom::convertOgreEntities(const Ogre::AxisAlignedBox& tileBounds)
 	{
 		transform = mReferenceNode->_getFullTransform().inverse() * (*iter)->getParentSceneNode()->_getFullTransform();
 		aabb = (*iter)->getMesh()->getAabb();
-		aabb.transformAffine(transform);    // Transform to world coordinates
-		if (bb.intersects(tileBounds))
+		aabb.transformAffine(transform);
+		Ogre::AxisAlignedBox aabbV1(aabb.getMinimum(), aabb.getMaximum()); // convert to v1 type
+		if (aabbV1.intersects(tileBounds))   // test THIS item's actual AABB
 			selectedItems.push_back(*iter);
 	}
 	mSrcItems.clear();
@@ -821,8 +924,8 @@ void InputGeom::calculateExtents()
 		Ogre::AxisAlignedBox srcMeshBB = ent->getMesh()->getBounds();
 		Ogre::Matrix4 transform = mReferenceNode->_getFullTransform().inverse() * ent->getParentSceneNode()->_getFullTransform();
 		srcMeshBB.transform(transform);
-		min = srcMeshBB.getMinimum() * ent->getParentSceneNode()->getScale();
-		max = srcMeshBB.getMaximum() * ent->getParentSceneNode()->getScale();
+		min = srcMeshBB.getMinimum() /** ent->getParentSceneNode()->getScale()*/;
+		max = srcMeshBB.getMaximum() /** ent->getParentSceneNode()->getScale()*/;
 
 		// Calculate min and max from all entities
 		for (std::vector<Ogre::v1::Entity*>::iterator iter = mSrcMeshes.begin(); iter != mSrcMeshes.end(); iter++)
@@ -834,7 +937,7 @@ void InputGeom::calculateExtents()
 
 			Ogre::AxisAlignedBox srcMeshBB = ent->getMesh()->getBounds();
 			srcMeshBB.transform(transform);
-			min2 = srcMeshBB.getMinimum() * ent->getParentSceneNode()->getScale();
+			min2 = srcMeshBB.getMinimum() /** ent->getParentSceneNode()->getScale()*/;
 			if (min2.x < min.x)
 				min.x = min2.x;
 			if (min2.y < min.y)
@@ -842,7 +945,7 @@ void InputGeom::calculateExtents()
 			if (min2.z < min.z)
 				min.z = min2.z;
 
-			max2 = srcMeshBB.getMaximum() * ent->getParentSceneNode()->getScale();
+			max2 = srcMeshBB.getMaximum() /** ent->getParentSceneNode()->getScale()*/;
 			if (max2.x > max.x)
 				max.x = max2.x;
 			if (max2.y > max.y)
@@ -861,8 +964,8 @@ void InputGeom::calculateExtents()
 		srcMeshBB.transformAffine(transform);
 		if (mSrcMeshes.empty())
 		{
-			min = srcMeshBB.getMinimum() * item->getParentSceneNode()->getScale();
-			max = srcMeshBB.getMaximum() * item->getParentSceneNode()->getScale();
+			min = srcMeshBB.getMinimum() /** item->getParentSceneNode()->getScale()*/;
+			max = srcMeshBB.getMaximum() /** item->getParentSceneNode()->getScale()*/;
 		}
 
 		// Calculate min and max from all entities
@@ -876,7 +979,7 @@ void InputGeom::calculateExtents()
 			Ogre::Aabb srcMeshBB = item->getMesh()->getAabb();
 			srcMeshBB.transformAffine(transform);
 
-			min2 = srcMeshBB.getMinimum() * item->getParentSceneNode()->getScale();
+			min2 = srcMeshBB.getMinimum() /** item->getParentSceneNode()->getScale()*/;
 			if (min2.x < min.x)
 				min.x = min2.x;
 			if (min2.y < min.y)
@@ -884,7 +987,7 @@ void InputGeom::calculateExtents()
 			if (min2.z < min.z)
 				min.z = min2.z;
 
-			max2 = srcMeshBB.getMaximum() * item->getParentSceneNode()->getScale();
+			max2 = srcMeshBB.getMaximum() /** item->getParentSceneNode()->getScale()*/;
 			if (max2.x > max.x)
 				max.x = max2.x;
 			if (max2.y > max.y)
@@ -1140,9 +1243,23 @@ void InputGeom::getMeshInformation2(const Ogre::MeshPtr mesh, size_t& vertexCoun
 					vertices[i + subMeshOffset] = (orientation * (vec * scale)) + position;
 				}
 			}
+			else if (requests[0].type == Ogre::VET_FLOAT4)
+			{
+				for (size_t i = 0; i < subMeshVerticiesNum; ++i)
+				{
+					const float* pos = reinterpret_cast<const float*>(requests[0].data);
+					Ogre::Vector3 vec(pos[0], pos[1], pos[2]); // w is ignored
+					requests[0].data += requests[0].vertexBuffer->getBytesPerElement();
+					vertices[i + subMeshOffset] = (orientation * (vec * scale)) + position;
+				}
+			}
 			else
 			{
-				throw Ogre::Exception(0, "Vertex Buffer type not recognised", "getMeshInformation");
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+					"[getMeshInformation2] Unrecognised vertex position type: "
+					+ Ogre::StringConverter::toString((int)requests[0].type)
+					+ " for mesh. House will be invisible to Recast.");
+				throw Ogre::Exception(0, "Vertex Buffer type not recognised", "getMeshInformation2");
 			}
 			subMeshOffset += subMeshVerticiesNum;
 			vao->unmapAsyncTickets(requests);
@@ -1933,6 +2050,67 @@ Ogre::AxisAlignedBox InputGeom::getWorldSpaceBoundingBox(Ogre::v1::Entity* ent)
 	return bb;
 }
 
+InputGeom::NavMeshGeomSnapshot InputGeom::buildSnapshot(const std::vector<Ogre::v1::Entity*>& entities, const std::vector<Ogre::Item*>& items, Ogre::SceneNode* referenceNode)
+{
+	NavMeshGeomSnapshot snap;
+	snap.referenceNode = referenceNode;
+	snap.bmin[0] = snap.bmin[1] = snap.bmin[2] = std::numeric_limits<float>::max();
+	snap.bmax[0] = snap.bmax[1] = snap.bmax[2] = -std::numeric_limits<float>::max();
+
+	Ogre::Matrix4 invRef = referenceNode->_getFullTransform().inverse();
+
+	auto processEntry = [&](size_t vertexCount, Ogre::Vector3* rawVerts, size_t indexCount, unsigned long* rawIdx, const Ogre::Matrix4& worldTransform)
+	{
+		NavMeshGeomSnapshot::MeshEntry entry;
+		Ogre::Matrix4 localTransform = invRef * worldTransform;
+
+		entry.verts.reserve(vertexCount * 3);
+		for (size_t v = 0; v < vertexCount; ++v)
+		{
+			Ogre::Vector3 p = localTransform * rawVerts[v];
+			entry.verts.push_back(p.x);
+			entry.verts.push_back(p.y);
+			entry.verts.push_back(p.z);
+			snap.bmin[0] = std::min(snap.bmin[0], p.x);
+			snap.bmin[1] = std::min(snap.bmin[1], p.y);
+			snap.bmin[2] = std::min(snap.bmin[2], p.z);
+			snap.bmax[0] = std::max(snap.bmax[0], p.x);
+			snap.bmax[1] = std::max(snap.bmax[1], p.y);
+			snap.bmax[2] = std::max(snap.bmax[2], p.z);
+		}
+
+		entry.indices.reserve(indexCount);
+		for (size_t i = 0; i < indexCount; ++i)
+			entry.indices.push_back(static_cast<int>(rawIdx[i]));
+
+		delete[] rawVerts;
+		delete[] rawIdx;
+
+		snap.meshEntries.push_back(std::move(entry));
+	};
+
+	for (auto* ent : entities)
+	{
+		size_t vc = 0, ic = 0;
+		Ogre::Vector3* vs = nullptr;
+		unsigned long* is = nullptr;
+		getMeshInformation(ent->getMesh(), vc, vs, ic, is,
+			Ogre::Vector3::ZERO, Ogre::Quaternion::IDENTITY);
+		processEntry(vc, vs, ic, is, ent->getParentSceneNode()->_getFullTransform());
+	}
+
+	for (auto* item : items)
+	{
+		size_t vc = 0, ic = 0;
+		Ogre::Vector3* vs = nullptr;
+		unsigned long* is = nullptr;
+		getMeshInformation2(item->getMesh(), vc, vs, ic, is,
+			Ogre::Vector3::ZERO, Ogre::Quaternion::IDENTITY);
+		processEntry(vc, vs, ic, is, item->getParentSceneNode()->_getFullTransform());
+	}
+
+	return snap;
+}
 
 Ogre::AxisAlignedBox InputGeom::getBoundingBox()
 {

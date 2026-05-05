@@ -166,7 +166,7 @@ namespace NOWA
 
 	void ParticleFxModule::destroyContent(void)
 	{
-		for (auto& it = this->particles.begin(); it != this->particles.end(); ++it)
+		for (auto it = this->particles.begin(); it != this->particles.end(); ++it)
 		{
 			this->destroyEverything(it->second);
 		}
@@ -1013,7 +1013,7 @@ namespace NOWA
 			return;
 		}
 
-		auto& emitters = particleSystemDef->getEmitters();
+		auto emitters = particleSystemDef->getEmitters();
 
 		for (size_t i = 0; i < emitters.size() && i < particleData.originalEmissionRates.size(); ++i)
 		{
@@ -1036,7 +1036,7 @@ namespace NOWA
 			return;
 		}
 
-		auto& emitters = particleSystemDef->getEmitters();
+		auto emitters = particleSystemDef->getEmitters();
 
 		for (size_t i = 0; i < emitters.size() && i < particleData.originalMinVelocities.size(); ++i)
 		{
@@ -1062,7 +1062,7 @@ namespace NOWA
 			return;
 		}
 
-		const auto& emitters = particleSystemDef->getEmitters();
+		const auto emitters = particleSystemDef->getEmitters();
 		particleData.originalEmissionRates.reserve(emitters.size());
 		particleData.originalMinVelocities.reserve(emitters.size());
 		particleData.originalMaxVelocities.reserve(emitters.size());
@@ -1089,7 +1089,7 @@ namespace NOWA
 			return;
 		}
 
-		auto& emitters = particleSystemDef->getEmitters();
+		auto emitters = particleSystemDef->getEmitters();
 
 		for (size_t i = 0; i < emitters.size() && i < particleData.originalEmissionRates.size() && i < particleData.originalMinVelocities.size() && i < particleData.originalMaxVelocities.size(); ++i)
 		{
@@ -1112,8 +1112,8 @@ namespace NOWA
 		Ogre::ParticleSystemManager2* particleManager = this->sceneManager->getParticleSystemManager2();
 		Ogre::ParticleSystemDef* baseDef = particleManager->getParticleSystemDef(particleData.particleTemplateName);
 
-		const auto& baseEmitters = baseDef->getEmitters();
-		auto& cloneEmitters = particleSystemDefInstance->getEmitters();
+		const auto baseEmitters = baseDef->getEmitters();
+		auto cloneEmitters = particleSystemDefInstance->getEmitters();
 
 		for (size_t i = 0; i < cloneEmitters.size() && i < baseEmitters.size(); ++i)
 		{
@@ -1212,7 +1212,7 @@ namespace NOWA
 
 		Ogre::Real maxTtl = 0.0f;
 
-		const auto& emitters = def->getEmitters();
+		const auto emitters = def->getEmitters();
 		for (const Ogre::EmitterDefData* emitters : emitters)
 		{
 			const Ogre::ParticleEmitter* emitter = emitters->asParticleEmitter();

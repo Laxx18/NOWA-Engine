@@ -22,7 +22,7 @@ namespace NOWA
 	void HlmsBaseListenerContainer::propertiesMergedPreGenerationStep(Ogre::Hlms* hlms, const Ogre::HlmsCache& passCache, const Ogre::HlmsPropertyVec& renderableCacheProperties,
 										   const Ogre::PiecesMap renderableCachePieces[Ogre::NumShaderTypes], const Ogre::HlmsPropertyVec& properties, const Ogre::QueuedRenderable& queuedRenderable, size_t tid)
 	{
-		for (auto& it = this->concreteListeners.cbegin(); it != this->concreteListeners.cend(); ++it)
+		for (auto it = this->concreteListeners.cbegin(); it != this->concreteListeners.cend(); ++it)
 		{
 			(*it)->propertiesMergedPreGenerationStep(hlms, passCache, renderableCacheProperties, renderableCachePieces, properties, queuedRenderable, tid);
 		}
@@ -32,7 +32,7 @@ namespace NOWA
 	{
 		Ogre::uint32 size = 0;
 
-		for (auto& it = this->concreteListeners.cbegin(); it != this->concreteListeners.cend(); ++it)
+		for (auto it = this->concreteListeners.cbegin(); it != this->concreteListeners.cend(); ++it)
 		{
 			size += (*it)->getNumExtraPassTextures(properties, casterPass);
 		}
@@ -41,7 +41,7 @@ namespace NOWA
 
 	void HlmsBaseListenerContainer::setupRootLayout(Ogre::RootLayout& rootLayout, const Ogre::HlmsPropertyVec& properties, size_t tid) const
 	{
-		for (auto& it = this->concreteListeners.cbegin(); it != this->concreteListeners.cend(); ++it)
+		for (auto it = this->concreteListeners.cbegin(); it != this->concreteListeners.cend(); ++it)
 		{
 			(*it)->setupRootLayout(rootLayout, properties, tid);
 		}
@@ -50,7 +50,7 @@ namespace NOWA
 	void HlmsBaseListenerContainer::shaderCacheEntryCreated(const Ogre::String& shaderProfile, const Ogre::HlmsCache* hlmsCacheEntry, const Ogre::HlmsCache& passCache, const Ogre::HlmsPropertyVec& properties,
 								 const Ogre::QueuedRenderable& queuedRenderable, size_t tid)
 	{
-		for (auto& it = this->concreteListeners.cbegin(); it != this->concreteListeners.cend(); ++it)
+		for (auto it = this->concreteListeners.cbegin(); it != this->concreteListeners.cend(); ++it)
 		{
 			(*it)->shaderCacheEntryCreated(shaderProfile, hlmsCacheEntry, passCache, properties, queuedRenderable, tid);
 		}
@@ -58,7 +58,7 @@ namespace NOWA
 
 	void HlmsBaseListenerContainer::preparePassHash(const Ogre::CompositorShadowNode* shadowNode, bool casterPass, bool dualParaboloid, Ogre::SceneManager* sceneManager, Ogre::Hlms* hlms)
 	{
-		for (auto& it = this->concreteListeners.cbegin(); it != this->concreteListeners.cend(); ++it)
+		for (auto it = this->concreteListeners.cbegin(); it != this->concreteListeners.cend(); ++it)
 		{
 			(*it)->preparePassHash(shadowNode, casterPass, dualParaboloid, sceneManager, hlms);
 		}
@@ -68,7 +68,7 @@ namespace NOWA
 	{
 		Ogre::uint32 size = 0;
 
-		for (auto& it = this->concreteListeners.cbegin(); it != this->concreteListeners.cend(); ++it)
+		for (auto it = this->concreteListeners.cbegin(); it != this->concreteListeners.cend(); ++it)
 		{
 			size += (*it)->getPassBufferSize(shadowNode, casterPass, dualParaboloid, sceneManager);
 		}
@@ -85,7 +85,7 @@ namespace NOWA
 		// https://forums.ogre3d.org/viewtopic.php?f=25&t=83081&p=550395#p550395
 		// Note: prepareConcretePassBuffer uses passBufferPtr as reference to pointer (in/out), so that the address is always correct, even its dispatched deeper to concrete listeners
 		// to prevent the assert and shader crash: assert( (size_t)(passBufferPtr - startupPtr) * 4u == mapSize );
-		for (auto& it = this->concreteListeners.cbegin(); it != this->concreteListeners.cend(); ++it)
+		for (auto it = this->concreteListeners.cbegin(); it != this->concreteListeners.cend(); ++it)
 		{
 			passBufferPtr = static_cast<HlmsBaseListenerContainer*>((*it))->prepareConcretePassBuffer(shadowNode, casterPass, dualParaboloid, sceneManager, passBufferPtr);
 		}
@@ -95,7 +95,7 @@ namespace NOWA
 
 	void HlmsBaseListenerContainer::hlmsTypeChanged(bool casterPass, Ogre::CommandBuffer* commandBuffer, const Ogre::HlmsDatablock* datablock, size_t texUnit)
 	{
-		for (auto& it = this->concreteListeners.cbegin(); it != this->concreteListeners.cend(); ++it)
+		for (auto it = this->concreteListeners.cbegin(); it != this->concreteListeners.cend(); ++it)
 		{
 			(*it)->hlmsTypeChanged(casterPass, commandBuffer, datablock, texUnit);
 		}
@@ -103,7 +103,7 @@ namespace NOWA
 
 	void HlmsBaseListenerContainer::addConcreteListener(HlmsBaseListenerContainer* listener)
 	{
-		for (auto& it = this->concreteListeners.cbegin(); it != this->concreteListeners.cend(); ++it)
+		for (auto it = this->concreteListeners.cbegin(); it != this->concreteListeners.cend(); ++it)
 		{
 			if ((*it) == listener)
 			{
@@ -115,7 +115,7 @@ namespace NOWA
 
 	void HlmsBaseListenerContainer::removeConcreteListener(HlmsBaseListenerContainer* listener)
 	{
-		for (auto& it = this->concreteListeners.cbegin(); it != this->concreteListeners.cend(); ++it)
+		for (auto it = this->concreteListeners.cbegin(); it != this->concreteListeners.cend(); ++it)
 		{
 			if ((*it) == listener)
 			{

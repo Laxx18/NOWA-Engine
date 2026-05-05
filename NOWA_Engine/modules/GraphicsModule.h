@@ -611,7 +611,7 @@ namespace NOWA
 
         void removePersistentClosure(const Ogre::String& uniqueName);
 
-        void GraphicsModule::flushDeferredDestroyCommands()
+        void flushDeferredDestroyCommands()
         {
             if (true == this->deferredDestroyCommands.empty())
             {
@@ -621,7 +621,7 @@ namespace NOWA
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
                 "[GraphicsModule] Flushing " + Ogre::StringConverter::toString(this->deferredDestroyCommands.size()) + " deferred destroy commands into slot " + Ogre::StringConverter::toString(this->currentDestroySlot));
 
-            for (auto& [cmd, name] : this->deferredDestroyCommands)
+            for (const auto& [cmd, name] : this->deferredDestroyCommands)
             {
                 this->destroySlots[this->currentDestroySlot].emplace_back(std::move(cmd));
                 Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GraphicsModule] Flushed deferred destroy: " + name);

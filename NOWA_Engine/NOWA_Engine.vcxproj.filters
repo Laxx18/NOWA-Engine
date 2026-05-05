@@ -228,9 +228,6 @@
     <ClInclude Include="utilities\C2DMatrix.h">
       <Filter>utilities</Filter>
     </ClInclude>
-    <ClInclude Include="utilities\ConcurrentQueue.h">
-      <Filter>utilities</Filter>
-    </ClInclude>
     <ClInclude Include="utilities\FastDelegate.h">
       <Filter>utilities</Filter>
     </ClInclude>
@@ -661,6 +658,9 @@
     </ClInclude>
     <ClInclude Include="editor\ScreenRectSelector.h">
       <Filter>editor</Filter>
+    </ClInclude>
+    <ClInclude Include="utilities\ConcurrentQueue.h">
+      <Filter>utilities</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

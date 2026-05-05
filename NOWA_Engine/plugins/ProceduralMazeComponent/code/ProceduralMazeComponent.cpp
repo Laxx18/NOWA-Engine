@@ -530,7 +530,7 @@ namespace NOWA
     void ProceduralMazeComponent::regenerateMaze(void)
     {
         // Get PhysicsArtifactComponent if exists
-        const auto& physicsArtifactCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsArtifactComponent>());
+        const auto & physicsArtifactCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsArtifactComponent>());
         if (physicsArtifactCompPtr)
         {
             this->physicsArtifactComponent = physicsArtifactCompPtr.get();

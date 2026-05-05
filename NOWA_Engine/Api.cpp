@@ -198,7 +198,7 @@ public:
 
 	void processUnbufferedKeyInput(Ogre::Real dt)
 	{
-		const auto& keyboard = NOWA::InputDeviceCore::getSingletonPtr()->getKeyboard();
+		const auto keyboard = NOWA::InputDeviceCore::getSingletonPtr()->getKeyboard();
 
 		if (keyboard->isKeyDown(OIS::KC_F4) && keyboard->isKeyDown(OIS::KC_LMENU))
 		{

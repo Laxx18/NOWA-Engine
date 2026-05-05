@@ -244,7 +244,7 @@ namespace NOWA
 		{
 			categoryConnection = '+' + this->category2->getListSelectedValue();
 		}
-		auto& targetCategoryNames = AppStateManager::getSingletonPtr()->getGameObjectController()->getAffectedCategories(categoryConnection);
+		auto targetCategoryNames = AppStateManager::getSingletonPtr()->getGameObjectController()->getAffectedCategories(categoryConnection);
 		for (int j = 0; j < static_cast<int>(targetCategoryNames.size()); j++)
 		{
 			if (true == targetCategoryNames[j].empty())
@@ -705,19 +705,19 @@ namespace NOWA
 		return 0;
 	}
 
-	void ConveyorContactCallback::contactsProcess(OgreNewt::ContactJoint& contactJoint, Ogre::Real timeStep, int threadIndex)
+	void ConveyorContactCallback::contactsProcess(const OgreNewt::ContactJoint& contactJoint, Ogre::Real timeStep, int threadIndex)
 	{
 		if (0.0f == this->speed)
 		{
 			return;
 		}
 
-		OgreNewt::Body* body0 = contactJoint.getBody0();
-		OgreNewt::Body* body1 = contactJoint.getBody1();
+		OgreNewt::ContactJoint& mutableJoint = const_cast<OgreNewt::ContactJoint&>(contactJoint);
+        const OgreNewt::Body* body0 = mutableJoint.getBody0();
+        const OgreNewt::Body* body1 = mutableJoint.getBody1();
 		// First, find which body represents the conveyor belt!
-		OgreNewt::Body* conveyor = nullptr;
-		OgreNewt::Body* object = nullptr;
-
+		const OgreNewt::Body* conveyor = nullptr;
+		const OgreNewt::Body* object = nullptr;
 		if (body0->getType() == this->conveyorCategoryId)
 		{
 			conveyor = body0;
@@ -736,12 +736,12 @@ namespace NOWA
 			if (this->forPlayer)
 			{
 				// for player a different approach since the player is an manually controller object which cannot be move as easy as e.g. an box
-				object->setVelocity(object->getVelocity() + (tempDirection * this->speed));
+				const_cast<OgreNewt::Body*>(object)->setVelocity(object->getVelocity() + (tempDirection * this->speed));
 			}
 			else
 			{
 				// okay, found the belt... let's adjust the collision based on this.
-				for (OgreNewt::Contact contact = contactJoint.getFirstContact(); contact; contact = contact.getNext())
+				for (OgreNewt::Contact contact = const_cast<OgreNewt::ContactJoint&>(contactJoint).getFirstContact(); contact; contact = contact.getNext())
 				{
 					/*
 					int state* - new state. 0 makes the contact frictionless along the index tangent vector.
@@ -752,7 +752,7 @@ namespace NOWA
 					contact.setRotateTangentDirections(tempDirection);
 					Ogre::Vector3 contactPosition;
 					Ogre::Vector3 contactNormal;
-					contact.getPositionAndNormal(contactPosition, contactNormal, object);
+					contact.getPositionAndNormal(contactPosition, contactNormal);
 					// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "pos: " + Ogre::StringConverter::toString(contactPosition) + "norm: " + Ogre::StringConverter::toString(contactNormal));
 					Ogre::Vector3 objectPosition;
 					Ogre::Quaternion objectOrientation;
@@ -873,7 +873,7 @@ namespace NOWA
         return 1;
     }
 
-	void GenericContactCallback::contactsProcess(OgreNewt::ContactJoint& contactJoint, Ogre::Real timeStep, int threadIndex)
+	void GenericContactCallback::contactsProcess(const OgreNewt::ContactJoint& contactJoint, Ogre::Real timeStep, int threadIndex)
     {
         // Note: If several threads are used, a lock is required, else lua will crash when a script is called?
 
@@ -889,7 +889,8 @@ namespace NOWA
         bool hasScratch = false;
         OgreNewt::Contact* contact = nullptr;
 
-        for (contact = &contactJoint.getFirstContact(); false == contact->isEmpty(); contact = &contact->getNext())
+        OgreNewt::Contact firstContact = const_cast<OgreNewt::ContactJoint&>(contactJoint).getFirstContact();
+        for (contact = &firstContact; false == contact->isEmpty(); contact = &contact->getNext())
         {
             if (false == this->contactFunctionName.empty())
             {
@@ -933,11 +934,11 @@ namespace NOWA
             {
                 Ogre::Vector3 point0;
                 Ogre::Vector3 normal0;
-                contact->getPositionAndNormal(point0, normal0, this->body0);
+                contact->getPositionAndNormal(point0, normal0);
 
                 Ogre::Vector3 point1;
                 Ogre::Vector3 normal1;
-                contact->getPositionAndNormal(point1, normal1, this->body1);
+                contact->getPositionAndNormal(point1, normal1);
 
                 const Ogre::Vector3 pointVeloc0(this->body0->getVelocityAtPoint(point0));
                 const Ogre::Vector3 pointVeloc1(this->body1->getVelocityAtPoint(point1));

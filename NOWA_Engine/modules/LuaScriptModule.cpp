@@ -57,7 +57,7 @@ namespace NOWA
 
 	LuaScript* LuaScriptModule::getScript(const Ogre::String& scriptName)
 	{
-		auto& it = this->scripts.find(scriptName);
+		auto it = this->scripts.find(scriptName);
 		if (it == this->scripts.end())
 		{
 			return nullptr;
@@ -67,7 +67,7 @@ namespace NOWA
 
 	LuaScript* LuaScriptModule::createScript(const Ogre::String& name, const Ogre::String& scriptName, bool isGlobal)
 	{
-		auto& it = this->scripts.find(name);
+		auto it = this->scripts.find(name);
 		if (it != this->scripts.end())
 		{
 			// Ogre::LogManager::getSingletonPtr()->logMessage("[LuaScriptApi]: Script: " + name + " does already exist!", Ogre::LML_CRITICAL);
@@ -89,7 +89,7 @@ namespace NOWA
 
 	LuaScript* LuaScriptModule::createScript(const Ogre::String& name, const Ogre::String& scriptName, const Ogre::String& scriptContent, bool isGlobal)
 	{
-		auto& it = this->scripts.find(name);
+		auto it = this->scripts.find(name);
 		if (it != this->scripts.end())
 		{
 			// Ogre::LogManager::getSingletonPtr()->logMessage("[LuaScriptApi]: Script: " + name + " does already exist!", Ogre::LML_CRITICAL);
@@ -112,7 +112,7 @@ namespace NOWA
 
 	void LuaScriptModule::destroyScript(const Ogre::String& name)
 	{
-		auto& it = this->scripts.find(name);
+		auto it = this->scripts.find(name);
 		if (it != this->scripts.end())
 		{
 			LuaScript* luaScript = it->second;
@@ -554,7 +554,7 @@ namespace NOWA
 
 	void LuaScriptModule::destroyContent(void)
 	{
-		auto& it = this->scripts.begin();
+		auto it = this->scripts.begin();
 		while (it != this->scripts.end())
 		{
 			LuaScript* luaScript = it->second;

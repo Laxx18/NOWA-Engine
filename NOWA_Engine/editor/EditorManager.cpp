@@ -92,7 +92,7 @@ namespace NOWA
                     continue;
                 }
 
-                auto& physicsComponent = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NOWA::PhysicsComponent>());
+                auto physicsComponent = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NOWA::PhysicsComponent>());
 
                 if (nullptr != physicsComponent && nullptr != physicsComponent->getBody())
                 {
@@ -104,7 +104,7 @@ namespace NOWA
                     physicsComponent->setOrientation(this->oldGameObjectDataList[i].oldOrientation);
 
                     // Special case: Reset the internal heading of the player controller, else it will be rotated differently each time, the simulation starts
-                    auto& physicsPlayerControllerCompPtr = boost::dynamic_pointer_cast<NOWA::PhysicsPlayerControllerComponent>(physicsComponent);
+                    auto physicsPlayerControllerCompPtr = boost::dynamic_pointer_cast<NOWA::PhysicsPlayerControllerComponent>(physicsComponent);
                     if (nullptr != physicsPlayerControllerCompPtr)
                     {
                         physicsPlayerControllerCompPtr->move(0.0f, 0.0f, this->oldGameObjectDataList[i].oldOrientation.getYaw());
@@ -134,7 +134,7 @@ namespace NOWA
         virtual void redo(void)
         {
             unsigned int i = 0;
-            for (auto& it = this->gameObjectIds.begin(); it != this->gameObjectIds.end(); ++it)
+            for (auto it = this->gameObjectIds.begin(); it != this->gameObjectIds.end(); ++it)
             {
                 GameObjectPtr gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(*it);
                 if (nullptr == gameObjectPtr)
@@ -161,7 +161,7 @@ namespace NOWA
                     continue;
                 }
 
-                auto& physicsComponent = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NOWA::PhysicsComponent>());
+                auto physicsComponent = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NOWA::PhysicsComponent>());
 
                 if (nullptr != physicsComponent && physicsComponent->getBody() != nullptr)
                 {
@@ -170,7 +170,7 @@ namespace NOWA
                     physicsComponent->setOrientation(this->oldGameObjectDataList[i].newOrientation);
 
                     // Special case: Reset the internal heading of the player controller, else it will be rotated differently each time, the simulation starts
-                    auto& physicsPlayerControllerCompPtr = boost::dynamic_pointer_cast<NOWA::PhysicsPlayerControllerComponent>(physicsComponent);
+                    auto physicsPlayerControllerCompPtr = boost::dynamic_pointer_cast<NOWA::PhysicsPlayerControllerComponent>(physicsComponent);
                     if (nullptr != physicsPlayerControllerCompPtr)
                     {
                         physicsPlayerControllerCompPtr->move(0.0f, 0.0f, this->oldGameObjectDataList[i].newOrientation.getYaw());
@@ -241,7 +241,7 @@ namespace NOWA
                 // Special treatment for transform
                 if ("Position" == this->oldGameObjectDataList[i].oldAttribute->getName())
                 {
-                    auto& physicsComponent = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NOWA::PhysicsComponent>());
+                    auto physicsComponent = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NOWA::PhysicsComponent>());
                     if (nullptr != physicsComponent && physicsComponent->getBody() != nullptr)
                     {
                         physicsComponent->setPosition(this->oldGameObjectDataList[i].oldAttribute->getVector3());
@@ -249,7 +249,7 @@ namespace NOWA
                 }
                 else if ("Scale" == this->oldGameObjectDataList[i].oldAttribute->getName())
                 {
-                    auto& physicsComponent = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NOWA::PhysicsComponent>());
+                    auto physicsComponent = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NOWA::PhysicsComponent>());
                     if (nullptr != physicsComponent && physicsComponent->getBody() != nullptr)
                     {
                         physicsComponent->setScale(this->oldGameObjectDataList[i].oldAttribute->getVector3());
@@ -257,7 +257,7 @@ namespace NOWA
                 }
                 else if ("Orientation" == this->oldGameObjectDataList[i].oldAttribute->getName())
                 {
-                    auto& physicsComponent = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NOWA::PhysicsComponent>());
+                    auto physicsComponent = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NOWA::PhysicsComponent>());
                     if (nullptr != physicsComponent && physicsComponent->getBody() != nullptr)
                     {
                         Ogre::Vector3 degreeOrientation = this->oldGameObjectDataList[i].oldAttribute->getVector3();
@@ -266,7 +266,7 @@ namespace NOWA
                 }
                 else if ("Category" == this->oldGameObjectDataList[i].oldAttribute->getName())
                 {
-                    auto& physicsComponent = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NOWA::PhysicsComponent>());
+                    auto physicsComponent = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NOWA::PhysicsComponent>());
                     if (nullptr != physicsComponent && physicsComponent->getBody() != nullptr)
                     {
                         physicsComponent->getBody()->setType(this->oldGameObjectDataList[i].oldAttribute->getUInt());
@@ -293,7 +293,7 @@ namespace NOWA
                 // Special treatment for transform
                 if ("Position" == this->oldGameObjectDataList[i].newAttribute->getName())
                 {
-                    auto& physicsComponent = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NOWA::PhysicsComponent>());
+                    auto physicsComponent = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NOWA::PhysicsComponent>());
                     if (nullptr != physicsComponent && physicsComponent->getBody() != nullptr)
                     {
                         // if its just for one game object, set position absolute, else translate because for several setting new value, translation is done
@@ -309,7 +309,7 @@ namespace NOWA
                 }
                 else if ("Scale" == this->oldGameObjectDataList[i].newAttribute->getName())
                 {
-                    auto& physicsComponent = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NOWA::PhysicsComponent>());
+                    auto physicsComponent = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NOWA::PhysicsComponent>());
                     if (nullptr != physicsComponent && physicsComponent->getBody() != nullptr)
                     {
                         if (1 == count)
@@ -324,7 +324,7 @@ namespace NOWA
                 }
                 else if ("Orientation" == this->oldGameObjectDataList[i].newAttribute->getName())
                 {
-                    auto& physicsComponent = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NOWA::PhysicsComponent>());
+                    auto physicsComponent = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NOWA::PhysicsComponent>());
                     if (nullptr != physicsComponent && physicsComponent->getBody() != nullptr)
                     {
                         Ogre::Vector3 degreeOrientation = this->oldGameObjectDataList[i].newAttribute->getVector3();
@@ -340,7 +340,7 @@ namespace NOWA
                 }
                 else if ("Category" == this->oldGameObjectDataList[i].oldAttribute->getName())
                 {
-                    auto& physicsComponent = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NOWA::PhysicsComponent>());
+                    auto physicsComponent = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NOWA::PhysicsComponent>());
                     if (nullptr != physicsComponent && physicsComponent->getBody() != nullptr)
                     {
                         physicsComponent->getBody()->setType(this->oldGameObjectDataList[i].newAttribute->getUInt());
@@ -394,7 +394,7 @@ namespace NOWA
                     continue;
                 }
 
-                auto& gameObjectCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponentByIndex(this->oldGameObjectDataList[i].componentIndex));
+                auto gameObjectCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponentByIndex(this->oldGameObjectDataList[i].componentIndex));
                 if (nullptr != gameObjectCompPtr)
                 {
                     gameObjectCompPtr->actualizeValue(this->oldGameObjectDataList[i].oldAttribute);
@@ -414,7 +414,7 @@ namespace NOWA
                 {
                     continue;
                 }
-                auto& gameObjectCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponentByIndex(this->oldGameObjectDataList[i].componentIndex));
+                auto gameObjectCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponentByIndex(this->oldGameObjectDataList[i].componentIndex));
                 if (nullptr != gameObjectCompPtr)
                 {
                     gameObjectCompPtr->actualizeValue(this->oldGameObjectDataList[i].newAttribute);
@@ -769,7 +769,7 @@ namespace NOWA
                 if (nullptr != gameObjectPtr)
                 {
                     // No post init etc. necessary, since its done inside createComponent
-                    auto& gameObjectCompPtr = GameObjectFactory::getInstance()->createComponent(gameObjectPtr, this->componentClassName, newComponent);
+                    auto gameObjectCompPtr = GameObjectFactory::getInstance()->createComponent(gameObjectPtr, this->componentClassName, newComponent);
                     if (nullptr != gameObjectCompPtr)
                     {
                         // Save the occurrence index for deletion
@@ -834,7 +834,7 @@ namespace NOWA
                 if (nullptr != gameObjectPtr)
                 {
                     // Write component data
-                    auto& gameObjectCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponentByIndex(this->index));
+                    auto gameObjectCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponentByIndex(this->index));
                     if (nullptr != gameObjectCompPtr)
                     {
                         // Give change to react if a component has been manually deleted in a editor
@@ -1663,7 +1663,7 @@ namespace NOWA
         this->terraComponent = nullptr;
     }
 
-    void EditorManager::init(Ogre::SceneManager* sceneManager, Ogre::Camera* camera, Ogre::String& categories, OIS::MouseButtonID mouseButtonId, SelectionManager::ISelectionObserver* selectionObserver, Ogre::Real thickness,
+    void EditorManager::init(Ogre::SceneManager* sceneManager, Ogre::Camera* camera, const Ogre::String& categories, OIS::MouseButtonID mouseButtonId, SelectionManager::ISelectionObserver* selectionObserver, Ogre::Real thickness,
         const Ogre::String& materialNameX, const Ogre::String& materialNameY, const Ogre::String& materialNameZ, const Ogre::String& materialNameHighlight, const Ogre::String& materialNameSelection)
     {
         this->sceneManager = sceneManager;
@@ -1807,7 +1807,7 @@ namespace NOWA
                 // if (this->getSelectionManager()->getSelectedGameObjects().size() == 1)
                 {
                     // Only pull if its a kind of physics object
-                    // auto& physicsComponent = NOWA::makeStrongPtr(this->getSelectionManager()->getSelectedGameObjects().begin()->second.gameObject->getComponent<NOWA::PhysicsComponent>());
+                    // auto physicsComponent = NOWA::makeStrongPtr(this->getSelectionManager()->getSelectedGameObjects().begin()->second.gameObject->getComponent<NOWA::PhysicsComponent>());
                     // if (nullptr != physicsComponent && physicsComponent->getBody() != nullptr)
                     {
                         this->pickForce = static_cast<int>(this->pickForce);
@@ -2106,7 +2106,7 @@ namespace NOWA
             if (EDITOR_TRANSLATE_MODE == this->manipulationMode)
             {
                 // Sents event that translation for the given selected game objects is finished
-                for (auto& it = this->getSelectionManager()->getSelectedGameObjects().begin(); it != this->getSelectionManager()->getSelectedGameObjects().end(); ++it)
+                for (auto it = this->getSelectionManager()->getSelectedGameObjects().begin(); it != this->getSelectionManager()->getSelectedGameObjects().end(); ++it)
                 {
                     boost::shared_ptr<NOWA::EventDataTranslateFinished> eventDataTranslateFinished(new NOWA::EventDataTranslateFinished(it->second.gameObject->getId(), it->second.gameObject->getPosition()));
                     NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataTranslateFinished);
@@ -2123,7 +2123,7 @@ namespace NOWA
             else if (EDITOR_ROTATE_MODE1 == this->manipulationMode || EDITOR_ROTATE_MODE2 == this->manipulationMode)
             {
                 // Sents event that rotation for the given selected game objects is finished
-                for (auto& it = this->getSelectionManager()->getSelectedGameObjects().begin(); it != this->getSelectionManager()->getSelectedGameObjects().end(); ++it)
+                for (auto it = this->getSelectionManager()->getSelectedGameObjects().begin(); it != this->getSelectionManager()->getSelectedGameObjects().end(); ++it)
                 {
                     boost::shared_ptr<NOWA::EventDataRotateFinished> eventDataRotateFinished(new NOWA::EventDataRotateFinished(it->second.gameObject->getId(), it->second.gameObject->getOrientation()));
                     NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRotateFinished);
@@ -2144,7 +2144,7 @@ namespace NOWA
                 for (size_t i = 0; i < gameObjectIds.size(); i++)
                 {
                     GameObjectPtr gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(gameObjectIds[i]);
-                    const auto& navMeshComponent = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NavMeshComponent>());
+                    const auto navMeshComponent = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NavMeshComponent>());
                     {
                         if (nullptr != navMeshComponent)
                         {
@@ -2640,14 +2640,17 @@ namespace NOWA
         {
             this->rotateFactor -= 10.0f;
         }
+
+        // Normalise
+        this->rotateFactor = std::fmod(this->rotateFactor, 360.0f);
+        if (this->rotateFactor < 0.0f)
+        {
+            this->rotateFactor += 360.0f;
+        }
+
         if (nullptr != this->placeNode && this->rotateFactor != 0.0f)
         {
-            /*ENQUEUE_RENDER_COMMAND("EditorManager::rotatePlaceNode",
-            {
-                this->placeNode->setOrientation(Ogre::Quaternion(Ogre::Degree(this->rotateFactor), Ogre::Vector3::UNIT_Y));
-            });*/
-
-            NOWA::GraphicsModule::getInstance()->updateNodeOrientation(this->placeNode, Ogre::Quaternion(Ogre::Degree(this->rotateFactor), Ogre::Vector3::UNIT_Y), true);
+            NOWA::GraphicsModule::getInstance()->updateNodeOrientation(this->placeNode, Ogre::Quaternion(Ogre::Degree(this->rotateFactor), Ogre::Vector3::UNIT_Y), false, true);
         }
     }
 
@@ -2677,7 +2680,7 @@ namespace NOWA
             // Place node position is global and on the top goes offset position (current object pos relative to center)
             Ogre::Vector3 targetPosition = this->placeNode->_getDerivedPositionUpdated() + (this->placeNode->_getDerivedOrientationUpdated() * std::get<1>(this->groupGameObjectIds[i]));
 
-            auto& physicsComponent = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NOWA::PhysicsComponent>());
+            auto physicsComponent = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NOWA::PhysicsComponent>());
             if (nullptr != physicsComponent && physicsComponent->getBody() != nullptr)
             {
                 physicsComponent->setPosition(targetPosition);
@@ -2783,7 +2786,8 @@ namespace NOWA
             item->setQueryFlags(AppStateManager::getSingletonPtr()->getGameObjectController()->getCategoryId("Default"));
             item->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
 
-            DeployResourceModule::getInstance()->tagResource(name, importedV2Mesh->getGroup());
+            Ogre::String path;
+            DeployResourceModule::getInstance()->tagResource(name, importedV2Mesh->getGroup(), path);
 
             return item;
         };
@@ -2809,7 +2813,8 @@ namespace NOWA
                 this->tempPlaceMovableObject->setQueryFlags(AppStateManager::getSingletonPtr()->getGameObjectController()->getCategoryId("Default"));
                 this->tempPlaceMovableObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
 
-                DeployResourceModule::getInstance()->tagResource(meshName, v2Mesh->getGroup());
+                Ogre::String path;
+                DeployResourceModule::getInstance()->tagResource(meshName, v2Mesh->getGroup(), path);
             }
             else
             {
@@ -2876,7 +2881,8 @@ namespace NOWA
                         this->tempPlaceMovableObject->setQueryFlags(AppStateManager::getSingletonPtr()->getGameObjectController()->getCategoryId("Default"));
                         this->tempPlaceMovableObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V1_MESH);
 
-                        DeployResourceModule::getInstance()->tagResource(meshName, v1Mesh->getGroup());
+                        Ogre::String path;
+                        DeployResourceModule::getInstance()->tagResource(meshName, v1Mesh->getGroup(), path);
                     }
                 }
             }
@@ -3301,13 +3307,13 @@ namespace NOWA
         // Note: rotation is just current for one axis, but in order to rotate and translate objects correctly, rotation all axes are required, so use gizmoRotationDelta
         Ogre::Quaternion gizmoRotationDelta = this->gizmo->getOrientation() * this->oldGizmoOrientation.Inverse();
 
-        auto& selectedGameObjects = this->selectionManager->getSelectedGameObjects();
+        auto selectedGameObjects = this->selectionManager->getSelectedGameObjects();
 
         // Check if rotation is about y, and ray cast objects below to manipulate the height
         if (true == yRotation)
         {
             // Set the new position for either physics component or the game object
-            for (auto& selectedGameObject : selectedGameObjects)
+            for (const auto& selectedGameObject : selectedGameObjects)
             {
                 // Get y-data (stack translate mode?)
                 auto hitData = this->getTranslateYData(selectedGameObject.second.gameObject);
@@ -3316,7 +3322,7 @@ namespace NOWA
                 Ogre::Real height = std::get<1>(hitData);
                 Ogre::Vector3 normal = std::get<2>(hitData);
 
-                auto& physicsComponent = makeStrongPtr(selectedGameObject.second.gameObject->getComponent<PhysicsComponent>());
+                auto physicsComponent = makeStrongPtr(selectedGameObject.second.gameObject->getComponent<PhysicsComponent>());
                 if (nullptr != physicsComponent)
                 {
                     if (EDITOR_ROTATE_MODE1 == this->manipulationMode)
@@ -3391,9 +3397,9 @@ namespace NOWA
         {
             unsigned int i = 0;
             // Set the new position for either physics component or the game object
-            for (auto& selectedGameObject : selectedGameObjects)
+            for (const auto& selectedGameObject : selectedGameObjects)
             {
-                auto& physicsComponent = makeStrongPtr(selectedGameObject.second.gameObject->getComponent<PhysicsComponent>());
+                auto physicsComponent = makeStrongPtr(selectedGameObject.second.gameObject->getComponent<PhysicsComponent>());
                 if (nullptr != physicsComponent && physicsComponent->getBody() != nullptr)
                 {
                     if (EDITOR_ROTATE_MODE1 == this->manipulationMode)
@@ -3542,7 +3548,7 @@ namespace NOWA
             // Special case, the grid has the size of the objects bounding box
             if (1 == this->getSelectionManager()->getSelectedGameObjects().size() && GetAsyncKeyState(VK_LMENU))
             {
-                auto& gameObject = this->getSelectionManager()->getSelectedGameObjects().begin()->second.gameObject;
+                auto gameObject = this->getSelectionManager()->getSelectedGameObjects().begin()->second.gameObject;
 
                 oldGridPos = MathHelper::getInstance()->calculateGridValue(this->gridStep, this->gizmo->getPosition());
 
@@ -3569,11 +3575,11 @@ namespace NOWA
             this->gizmo->translate(offset);
         }
 
-        auto& selectedGameObjects = this->selectionManager->getSelectedGameObjects();
+        auto selectedGameObjects = this->selectionManager->getSelectedGameObjects();
 
         size_t i = 0;
         // Set the new position for either physics component or the game object
-        for (auto& selectedGameObject : selectedGameObjects)
+        for (const auto& selectedGameObject : selectedGameObjects)
         {
             // Get y-data (stack translate mode?)
             auto hitData = this->getTranslateYData(selectedGameObject.second.gameObject);
@@ -3586,7 +3592,7 @@ namespace NOWA
             {
                 offset = Ogre::Vector3(offset.x, 0.0f, offset.z);
             }
-            auto& physicsComponent = makeStrongPtr(selectedGameObject.second.gameObject->getComponent<PhysicsComponent>());
+            auto physicsComponent = makeStrongPtr(selectedGameObject.second.gameObject->getComponent<PhysicsComponent>());
 
             if (nullptr != physicsComponent && physicsComponent->getBody() != nullptr)
             {
@@ -3724,8 +3730,8 @@ namespace NOWA
 
     void EditorManager::scaleObjects(Ogre::Vector3& offset)
     {
-        auto& selectedGameObjects = this->selectionManager->getSelectedGameObjects();
-        for (auto& entry : selectedGameObjects)
+        auto selectedGameObjects = this->selectionManager->getSelectedGameObjects();
+        for (const auto& entry : selectedGameObjects)
         {
             if (this->gridStep > 0.0f)
             {
@@ -3745,7 +3751,7 @@ namespace NOWA
             {
                 // vertices[i + subMeshOffset] = (orientation * (vec * scale)) + pos;
 
-                auto& phyicsComponent = makeStrongPtr(entry.second.gameObject->getComponent<PhysicsComponent>());
+                auto phyicsComponent = makeStrongPtr(entry.second.gameObject->getComponent<PhysicsComponent>());
                 if (nullptr != phyicsComponent)
                 {
                     Ogre::Vector3 currentScale = entry.second.gameObject->getSceneNode()->getScale();
@@ -3850,7 +3856,7 @@ namespace NOWA
         // Calculate the center of all selected objects
         // this algorithmus is based on the arithmetic average
         Ogre::Vector3 cumulated = Ogre::Vector3::ZERO;
-        auto& selectedGameObjects = this->selectionManager->getSelectedGameObjects();
+        auto selectedGameObjects = this->selectionManager->getSelectedGameObjects();
         int count = static_cast<int>(selectedGameObjects.size());
 
         if (0 == count)
@@ -3858,7 +3864,7 @@ namespace NOWA
             return Ogre::Vector3::ZERO;
         }
 
-        for (auto& entry : selectedGameObjects)
+        for (const auto& entry : selectedGameObjects)
         {
             cumulated += entry.second.gameObject->getSceneNode()->getPosition();
         }
@@ -3888,13 +3894,13 @@ namespace NOWA
         this->boundingBoxSize = Ogre::Vector3::ZERO;
         this->selectedObjectsStartOffsets.clear();
 
-        auto& selectedGameObjects = this->selectionManager->getSelectedGameObjects();
+        auto selectedGameObjects = this->selectionManager->getSelectedGameObjects();
 
         // Calculates the global bounding box for grid movement
         Ogre::Vector3 minCorner(std::numeric_limits<Ogre::Real>::max(), std::numeric_limits<Ogre::Real>::max(), std::numeric_limits<Ogre::Real>::max());
         Ogre::Vector3 maxCorner(std::numeric_limits<Ogre::Real>::lowest(), std::numeric_limits<Ogre::Real>::lowest(), std::numeric_limits<Ogre::Real>::lowest());
 
-        for (auto& entry : selectedGameObjects)
+        for (const auto& entry : selectedGameObjects)
         {
 
             Ogre::Matrix4 transformMatrix = entry.second.gameObject->getSceneNode()->_getFullTransform();
@@ -3964,7 +3970,7 @@ namespace NOWA
         else if (EDITOR_TERRAIN_MODIFY_MODE == this->manipulationMode || EDITOR_TERRAIN_SMOOTH_MODE == this->manipulationMode || EDITOR_TERRAIN_PAINT_MODE == this->manipulationMode)
         {
             auto terraGameObjectList = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromType(GameObject::TERRA);
-            for (auto terraGameObjectPtr : terraGameObjectList)
+            for (const auto& terraGameObjectPtr : terraGameObjectList)
             {
                 if (nullptr != terraGameObjectPtr)
                 {
@@ -4120,7 +4126,7 @@ namespace NOWA
         // Work with ids instead of pointers for undo/redo, because pointer may become invalid when deleted via undo/redo
         std::vector<unsigned long> gameObjectIds(this->selectionManager->getSelectedGameObjects().size());
         unsigned int i = 0;
-        for (auto& it = this->selectionManager->getSelectedGameObjects().cbegin(); it != this->selectionManager->getSelectedGameObjects().cend(); ++it)
+        for (auto it = this->selectionManager->getSelectedGameObjects().cbegin(); it != this->selectionManager->getSelectedGameObjects().cend(); ++it)
         {
             gameObjectIds[i++] = it->second.gameObject->getId();
         }
@@ -4132,7 +4138,7 @@ namespace NOWA
         // Work with ids instead of pointers for undo/redo, because pointer may become invalid when deleted via undo/redo
         std::vector<unsigned long> gameObjectIds(AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects()->size());
         unsigned int i = 0;
-        for (auto& it = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects()->cbegin(); it != AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects()->cend(); ++it)
+        for (auto it = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects()->cbegin(); it != AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects()->cend(); ++it)
         {
             gameObjectIds[i++] = it->second->getId();
         }
@@ -4155,7 +4161,7 @@ namespace NOWA
         this->oldGameObjectDataList.clear();
 
         // Store the data from the selected game objects before any manipulation has been made
-        for (auto& it = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects()->cbegin(); it != AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects()->cend(); ++it)
+        for (auto it = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects()->cbegin(); it != AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects()->cend(); ++it)
         {
             GameObjectData gameObjectData;
             gameObjectData.oldPosition = it->second->getPosition();
@@ -4212,7 +4218,7 @@ namespace NOWA
     {
         this->oldGameObjectDataList.clear();
         // Store the data from the selected game objects before any manipulation has been made
-        for (auto& it = this->selectionManager->getSelectedGameObjects().begin(); it != this->selectionManager->getSelectedGameObjects().end(); ++it)
+        for (auto it = this->selectionManager->getSelectedGameObjects().begin(); it != this->selectionManager->getSelectedGameObjects().end(); ++it)
         {
             GameObjectData gameObjectData;
             gameObjectData.oldPosition = it->second.gameObject->getPosition();
@@ -4338,7 +4344,7 @@ namespace NOWA
 
         if (nullptr != gameObjectPtr)
         {
-            auto& terraComponent = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NOWA::TerraComponent>());
+            auto terraComponent = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NOWA::TerraComponent>());
             if (nullptr != terraComponent)
             {
                 this->snapshotTerraHeightMap(castEventData->getOldHeightData(), castEventData->getNewHeightData(), castEventData->getTerraCompId(), true);
@@ -4354,7 +4360,7 @@ namespace NOWA
 
         if (nullptr != gameObjectPtr)
         {
-            auto& terraComponent = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NOWA::TerraComponent>());
+            auto terraComponent = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NOWA::TerraComponent>());
             if (nullptr != terraComponent)
             {
                 this->snapshotTerraBlendMap(castEventData->getOldDetailBlendData(), castEventData->getNewDetailBlendData(), castEventData->getTerraCompId(), true);
@@ -4370,7 +4376,7 @@ namespace NOWA
 
         if (nullptr != gameObjectPtr)
         {
-            auto& roadComponentBase = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NOWA::RoadComponentBase>());
+            auto roadComponentBase = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NOWA::RoadComponentBase>());
             if (nullptr != roadComponentBase)
             {
                 this->snapshotRoadData(castEventData->getOldRoadData(), castEventData->getNewRoadData(), castEventData->getGameObjectId(), false);
@@ -4386,7 +4392,7 @@ namespace NOWA
 
         if (nullptr != gameObjectPtr)
         {
-            auto& wallComponentBase = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NOWA::WallComponentBase>());
+            auto wallComponentBase = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NOWA::WallComponentBase>());
             if (nullptr != wallComponentBase)
             {
                 this->snapshotWallData(castEventData->getOldWallData(), castEventData->getNewWallData(), castEventData->getGameObjectId(), false);
@@ -4538,15 +4544,15 @@ namespace NOWA
 
     void EditorManager::optimizeScene(bool optimize)
     {
-        const auto& gameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects();
+        const auto gameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects();
 
         if (true == optimize)
         {
-            for (auto& it = gameObjects->begin(); it != gameObjects->end(); it++)
+            for (auto it = gameObjects->begin(); it != gameObjects->end(); it++)
             {
-                auto& gameObject = it->second;
+                auto gameObject = it->second;
                 {
-                    auto& component = NOWA::makeStrongPtr(gameObject->getComponent<NOWA::PhysicsArtifactComponent>());
+                    auto component = NOWA::makeStrongPtr(gameObject->getComponent<NOWA::PhysicsArtifactComponent>());
                     if (nullptr != component)
                     {
                         gameObject->setDynamic(false);
@@ -4590,7 +4596,7 @@ namespace NOWA
                     }
                 }
 
-                auto& component = NOWA::makeStrongPtr(gameObject->getComponent<NOWA::PhysicsTerrainComponent>());
+                auto component = NOWA::makeStrongPtr(gameObject->getComponent<NOWA::PhysicsTerrainComponent>());
                 if (nullptr != component)
                 {
                     // Serialize collision hull for terrain
@@ -4601,7 +4607,7 @@ namespace NOWA
                 }
 
                 {
-                    auto& component = NOWA::makeStrongPtr(gameObject->getComponent<NOWA::JointComponent>());
+                    auto component = NOWA::makeStrongPtr(gameObject->getComponent<NOWA::JointComponent>());
                     if (nullptr != component)
                     {
                         if ("JointComponent" == component->getClassName())
@@ -4615,7 +4621,7 @@ namespace NOWA
         }
         else
         {
-            for (auto& it = gameObjects->begin(); it != gameObjects->end(); it++)
+            for (auto it = gameObjects->begin(); it != gameObjects->end(); it++)
             {
                 it->second->setDynamic(true);
             }
@@ -4629,15 +4635,15 @@ namespace NOWA
     {
         if (true == bActivate)
         {
-            auto& selectedGameObjects = this->selectionManager->getSelectedGameObjects();
+            auto selectedGameObjects = this->selectionManager->getSelectedGameObjects();
             if (selectedGameObjects.size() > 0)
             {
-                const auto& allGameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects();
+                const auto allGameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects();
 
-                for (auto& it2 = allGameObjects->cbegin(); it2 != allGameObjects->cend(); ++it2)
+                for (auto it2 = allGameObjects->cbegin(); it2 != allGameObjects->cend(); ++it2)
                 {
                     bool foundSelectedGameObject = false;
-                    for (auto& it = selectedGameObjects.cbegin(); it != selectedGameObjects.cend(); ++it)
+                    for (auto it = selectedGameObjects.cbegin(); it != selectedGameObjects.cend(); ++it)
                     {
                         if (it->second.gameObject->getId() == it2->second->getId())
                         {
@@ -4649,7 +4655,7 @@ namespace NOWA
 
                     if (false == foundSelectedGameObject)
                     {
-                        const auto& gameObjectComponents = it2->second->getComponents();
+                        const auto gameObjectComponents = it2->second->getComponents();
                         std::vector<bool> activatedParts(gameObjectComponents->size());
 
                         for (size_t i = 0; i < gameObjectComponents->size(); i++)
@@ -4672,12 +4678,12 @@ namespace NOWA
         }
         else
         {
-            for (auto& it = this->oldActivatedMap.begin(); it != this->oldActivatedMap.end(); ++it)
+            for (auto it = this->oldActivatedMap.begin(); it != this->oldActivatedMap.end(); ++it)
             {
                 auto gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(it->first);
                 if (nullptr != gameObjectPtr)
                 {
-                    const auto& gameObjectComponents = gameObjectPtr->getComponents();
+                    const auto gameObjectComponents = gameObjectPtr->getComponents();
 
                     for (size_t i = 0; i < gameObjectComponents->size(); i++)
                     {

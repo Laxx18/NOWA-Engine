@@ -163,7 +163,7 @@ namespace NOWA
 
 		// if an object has the compoundname set, then do not create collision for each body but collect it in a list, to get all bodies
 		// that belong to the compound collision
-		/*auto& physicsCompoundConnectionCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsCompoundConnectionComponent>());
+		/*auto physicsCompoundConnectionCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsCompoundConnectionComponent>());
 		if (nullptr == physicsCompoundConnectionCompPtr)
 		{
 			this->setupCompoundBodies();
@@ -210,7 +210,7 @@ namespace NOWA
 			}
 		}
 
-		auto& physicsCompoundConnectionCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsCompoundConnectionComponent>());
+		auto physicsCompoundConnectionCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsCompoundConnectionComponent>());
 		if (nullptr == physicsCompoundConnectionCompPtr)
 		{
 			if (!this->createDynamicBody())
@@ -313,7 +313,7 @@ namespace NOWA
 
 	void PhysicsActiveCompoundComponent::copyCollisionData(std::vector<PhysicsActiveCompoundComponent::CollisionData> collisionDataList)
 	{
-		for (auto& it = collisionDataList.cbegin(); it != collisionDataList.cend(); ++it)
+		for (auto it = collisionDataList.cbegin(); it != collisionDataList.cend(); ++it)
 		{
 			this->collisionDataList.emplace_back(*it);
 		}

@@ -39,8 +39,8 @@ namespace NOWA
          *   build time and memory use.
          *
          *   Rule of thumb: aim for at least 10 voxels across the narrowest corridor.
-         *     corridor = 2m, cellSize = 0.2  →  10 voxels across  ✓
-         *     corridor = 2m, cellSize = 0.5  →   4 voxels across  ⚠ too coarse
+         *     corridor = 2m, cellSize = 0.2  ->  10 voxels across  ✓
+         *     corridor = 2m, cellSize = 0.5  ->   4 voxels across  ⚠ too coarse
          *
          *   Minimum allowed value is approximately 0.05 (floating-point precision limit).
          *   [Limit: > 0] [Units: world units]
@@ -70,9 +70,9 @@ namespace NOWA
          *   Walkable width after erosion:
          *     walkable = corridorWidth - (2 × agentRadius)
          *
-         *     2m corridor, radius 0.3  →  2.0 - 0.6 = 1.4m walkable  ✓
-         *     2m corridor, radius 0.8  →  2.0 - 1.6 = 0.4m walkable  ⚠ very thin
-         *     2m corridor, radius 1.1  →  2.0 - 2.2 = negative       ✗ corridor gone!
+         *     2m corridor, radius 0.3  ->  2.0 - 0.6 = 1.4m walkable  ✓
+         *     2m corridor, radius 0.8  ->  2.0 - 1.6 = 0.4m walkable  ⚠ very thin
+         *     2m corridor, radius 1.1  ->  2.0 - 2.2 = negative       ✗ corridor gone!
          *
          *   Recommended for a 2m corridor: 0.3
          *   [Limit: >= 0] [Units: world units]
@@ -222,8 +222,8 @@ namespace NOWA
          *   Speicherverbrauch.
          *
          *   Faustregel: mindestens 10 Voxel über den schmalsten Korridor.
-         *     Korridor = 2m, cellSize = 0.2  →  10 Voxel Breite  ✓
-         *     Korridor = 2m, cellSize = 0.5  →   4 Voxel Breite  ⚠ zu grob
+         *     Korridor = 2m, cellSize = 0.2  ->  10 Voxel Breite  ✓
+         *     Korridor = 2m, cellSize = 0.5  ->   4 Voxel Breite  ⚠ zu grob
          *
          *   Mindestwert liegt bei ca. 0.05 (Gleitkomma-Präzisionsgrenze).
          *   [Limit: > 0] [Einheit: Welteinheiten]
@@ -255,9 +255,9 @@ namespace NOWA
          *   Begehbare Breite nach Erosion:
          *     begehbar = Korridorbreite - (2 × agentRadius)
          *
-         *     2m Korridor, Radius 0.3  →  2.0 - 0.6 = 1.4m begehbar  ✓
-         *     2m Korridor, Radius 0.8  →  2.0 - 1.6 = 0.4m begehbar  ⚠ sehr schmal
-         *     2m Korridor, Radius 1.1  →  2.0 - 2.2 = negativ        ✗ Korridor weg!
+         *     2m Korridor, Radius 0.3  ->  2.0 - 0.6 = 1.4m begehbar  ✓
+         *     2m Korridor, Radius 0.8  ->  2.0 - 1.6 = 0.4m begehbar  ⚠ sehr schmal
+         *     2m Korridor, Radius 1.1  ->  2.0 - 2.2 = negativ        ✗ Korridor weg!
          *
          *   Empfehlung für 2m Korridor: 0.3
          *   [Limit: >= 0] [Einheit: Welteinheiten]
@@ -505,16 +505,59 @@ namespace NOWA
 		 */
 		OgreRecast* getOgreRecast(void) const;
 
+        /** 
+         * @brief Gets the OgreDetourTileCache pointer. From this pointer the internal DetourTileCache data structure is callable if the developer wants to more customize navigation.
+         * @return OgreDetourTileCache The OgreDetourTileCache pointer to get.
+         */
 		OgreDetourTileCache* getOgreDetourTileCache(void) const;
 
+        /** 
+         * @brief Gets the OgreDetourCrowd pointer. From this pointer the internal DetourCrowd data structure is callable if the developer wants to more customize navigation.
+         * @return OgreDetourCrowd The OgreDetourCrowd pointer to get.
+         */
 		OgreDetourCrowd* getOgreDetourCrowd(void) const;
 
-		void handleGeometryModified(NOWA::EventDataPtr eventData);
+        /*
+        * @brief Checks if the navigation mesh build is in progress.
+        * @return true if the build is in progress, false otherwise.
+        */
+        bool isBuildInProgress(void) const;
+
+        /*
+         * @brief Checks if the navigation mesh is valid and can be used for pathfinding.
+         * @return true if the navigation mesh is valid, false otherwise.
+         */
+        bool getHasValidNavMesh(void) const;
+
+        /*
+         * @brief Loads the navigation mesh from a file.
+         * @return true if the navigation mesh was successfully loaded, false otherwise.
+         */
+        bool loadNavigationMesh(void);
+
+        /**
+         * @brief Handles the event when the geometry of a game object is modified. This can be used to update the navigation mesh if necessary, for example when a dynamic obstacle is moved or changed.
+         * @param[in] eventData The event data containing information about the modified geometry.
+         */
+        void handleGeometryModified(NOWA::EventDataPtr eventData);
+
+        /**
+         * @brief Sets whether the navigation mesh must be regenerated.
+         * @param[in] mustRegenerate true if the navigation mesh must be regenerated, false otherwise.
+         */
+        void setMustRegenerate(bool mustRegenerate);
 	private:
 		OgreRecastModule(const Ogre::String& appStateName);
+
 		~OgreRecastModule();
 
 		void createInputGeom(void);
+
+        Ogre::String getNavMeshFilePath(void) const;
+
+        Ogre::String getNavGeomFilePath(void) const;
+
+        bool saveNavigationMesh(const InputGeom::NavMeshGeomSnapshot& snapshot);
 	private:
 		Ogre::String appStateName;
 		OgreRecast* ogreRecast;

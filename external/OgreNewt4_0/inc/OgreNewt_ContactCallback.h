@@ -54,7 +54,7 @@ namespace OgreNewt
 		user process function.  it is called for each colliding pair of bodies. you can use
 		the ContactJoint to iterate through all contact-points and change the "material" of each contact-point!
 		*/
-		virtual void contactsProcess(OgreNewt::ContactJoint& contactJoint, Ogre::Real timeStep, int threadIndex)
+		virtual void contactsProcess(const OgreNewt::ContactJoint& contactJoint, Ogre::Real timeStep, int threadIndex)
 		{
 		}
 

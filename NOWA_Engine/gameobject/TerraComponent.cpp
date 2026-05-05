@@ -76,7 +76,7 @@ namespace NOWA
 		Ogre::StringVectorPtr brushNames = Ogre::ResourceGroupManager::getSingleton().findResourceNames("Brushes", "*.png");
 		std::vector<Ogre::String> compatibleBrushNames(brushNames.getPointer()->size() + 1);
 		unsigned int i = 0;
-		for (auto& it = brushNames.getPointer()->cbegin(); it != brushNames.getPointer()->cend(); it++)
+		for (auto it = brushNames.getPointer()->cbegin(); it != brushNames.getPointer()->cend(); it++)
 		{
 			compatibleBrushNames[i++] = *it;
 		}
@@ -339,7 +339,7 @@ namespace NOWA
 			if (true == active)
 			{
 				auto gameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects();
-				for (auto& it = gameObjects->begin(); it != gameObjects->end(); ++it)
+				for (auto it = gameObjects->begin(); it != gameObjects->end(); ++it)
 				{
 					GameObject* gameObject = it->second.get();
 					if (id != gameObject->getId())
@@ -373,7 +373,7 @@ namespace NOWA
                     GameObjectPtr cameraGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->cameraId->getULong());
                     if (nullptr != cameraGameObjectPtr)
                     {
-                        auto& cameraCompPtr = NOWA::makeStrongPtr(cameraGameObjectPtr->getComponent<CameraComponent>());
+                        auto cameraCompPtr = NOWA::makeStrongPtr(cameraGameObjectPtr->getComponent<CameraComponent>());
                         if (nullptr != cameraCompPtr)
                         {
                             this->usedCamera = cameraCompPtr->getCamera();
@@ -646,7 +646,7 @@ namespace NOWA
 				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataTerraModifyEnd);
 			}
 
-			auto& component = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsTerrainComponent>());
+			auto component = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsTerrainComponent>());
 			if (nullptr != component)
 			{
 				component->reCreateCollision();
@@ -883,7 +883,7 @@ namespace NOWA
 		// Is not called, because this is no GO!
 		if (GameObject::AttrPosition() == attribute->getName())
 		{
-			auto& component = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsTerrainComponent>());
+			auto component = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsTerrainComponent>());
 			if (nullptr != component)
 			{
 				component->setPosition(attribute->getVector3());
@@ -1129,7 +1129,7 @@ namespace NOWA
 				+ " for game object: " + this->gameObjectPtr->getName());
 		}
 
-		auto& lightDirectionalCompPtr = NOWA::makeStrongPtr(lightGameObjectPtr->getComponent<LightDirectionalComponent>());
+		auto lightDirectionalCompPtr = NOWA::makeStrongPtr(lightGameObjectPtr->getComponent<LightDirectionalComponent>());
 		if (nullptr != lightDirectionalCompPtr)
 		{
 			this->sunLight = lightDirectionalCompPtr->getOgreLight();

@@ -145,7 +145,7 @@ namespace NOWA
 
 		if (nullptr != inputDeviceModule)
 		{
-			for (auto& it = this->keyCodes.cbegin(); it != this->keyCodes.cend(); ++it)
+			for (auto it = this->keyCodes.cbegin(); it != this->keyCodes.cend(); ++it)
 			{
 				InputDeviceModule::JoyStickButton button = static_cast<InputDeviceModule::JoyStickButton>(it->second);
 				if (InputDeviceModule::JoyStickButton::BUTTON_NONE != button)
@@ -366,10 +366,10 @@ namespace NOWA
 		{
 			for (unsigned int i = 0; i < this->gameObjectPtr->getComponents()->size(); i++)
 			{
-				auto& gameObjectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentByIndex(i));
+				auto gameObjectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentByIndex(i));
 				if (nullptr != gameObjectCompPtr)
 				{
-					auto& myGuiCompPtr = boost::dynamic_pointer_cast<MyGUIComponent>(gameObjectCompPtr);
+					auto myGuiCompPtr = boost::dynamic_pointer_cast<MyGUIComponent>(gameObjectCompPtr);
 					if (nullptr != myGuiCompPtr && this->parentId->getULong() == myGuiCompPtr->getId())
 					{
 						if (nullptr != this->widget && nullptr != myGuiCompPtr->getWidget())

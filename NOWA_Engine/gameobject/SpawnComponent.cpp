@@ -214,7 +214,7 @@ namespace NOWA
 		this->initPosition = this->gameObjectPtr->getPosition();
 		this->initOrientation = this->gameObjectPtr->getOrientation();
 
-		auto& tempGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->spawnTargetId->getULong());
+		auto tempGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->spawnTargetId->getULong());
 		if (nullptr == tempGameObjectPtr)
 		{
 			return false;
@@ -248,7 +248,7 @@ namespace NOWA
 			// throw Ogre::Exception(Ogre::Exception::ERR_ITEM_NOT_FOUND, "[SpawnComponent] Spawn target id: " + Ogre::StringConverter::toString(this->spawnTargetId->getULong()) + " is about to be destroyed, which is an illegal case!", "NOWA");
 		}
 
-		for (auto& it = this->lifeTimeQueue.cbegin(); it != this->lifeTimeQueue.cend();)
+		for (auto it = this->lifeTimeQueue.cbegin(); it != this->lifeTimeQueue.cend();)
 		{
 			if (it->second->getId() == id)
 			{
@@ -262,7 +262,7 @@ namespace NOWA
 			}
 		}
 
-		for (auto& it = this->clonedGameObjectsInScene.begin(); it != this->clonedGameObjectsInScene.end();)
+		for (auto it = this->clonedGameObjectsInScene.begin(); it != this->clonedGameObjectsInScene.end();)
 		{
 			if ((*it)->getId() == id)
 			{
@@ -296,7 +296,7 @@ namespace NOWA
 			{
 				if (this->spawnTargetId->getULong() != this->gameObjectPtr->getId())
 				{
-					auto& tempGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->spawnTargetId->getULong());
+					auto tempGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->spawnTargetId->getULong());
 					if (nullptr == tempGameObjectPtr)
 					{
 						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[SpawnComponent] Spawn target id: " + Ogre::StringConverter::toString(this->spawnTargetId->getULong()) + " does not exist!");
@@ -576,7 +576,7 @@ namespace NOWA
 		// Delete the remaining game objects in queue;
 		if (false == this->keepAlive)
 		{
-			for (auto& it = this->lifeTimeQueue.begin(); it != this->lifeTimeQueue.end();)
+			for (auto it = this->lifeTimeQueue.begin(); it != this->lifeTimeQueue.end();)
 			{
 				GameObject* gameObject = (*it).second;
 				it = this->lifeTimeQueue.erase(it);
@@ -584,7 +584,7 @@ namespace NOWA
 				gameObject = nullptr;
 			}
 
-			for (auto& it = this->clonedGameObjectsInScene.begin(); it != this->clonedGameObjectsInScene.end();)
+			for (auto it = this->clonedGameObjectsInScene.begin(); it != this->clonedGameObjectsInScene.end();)
 			{
 				GameObject* gameObject = *it;
 				it = this->clonedGameObjectsInScene.erase(it);

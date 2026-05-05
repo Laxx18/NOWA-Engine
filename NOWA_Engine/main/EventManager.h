@@ -5,6 +5,7 @@
 #include "utilities/FastDelegate.h"
 #include <mutex>
 #include <strstream>
+#include <source_location>
 // #include "../Debugging/MemoryWatcher.h"
 #include "gameobject/GameObjectFactory.h"
 #include "utilities/ConcurrentQueue.h"
@@ -33,7 +34,7 @@ namespace NOWA
 #define CREATE_EVENT(eventType) eventFactory.create(eventType)
 
     //---------------------------------------------------------------------------------------------------------------------
-    // EventData                               - Chapter 11, page 310
+    // EventData
     // Base type for event object hierarchy, may be used itself for simplest event notifications such as those that do
     // not carry additional payload data. If any event needs to propagate with payload data it must be defined separately.
     //---------------------------------------------------------------------------------------------------------------------
@@ -44,24 +45,21 @@ namespace NOWA
         {
         }
         virtual const EventType getEventType(void) const = 0;
-        virtual float getTimeStamp(void) const = 0;
-        virtual void serialize(std::ostrstream& out) const = 0;
-        virtual void deserialize(std::istrstream& in) = 0;
-        virtual EventDataPtr copy(void) const = 0;
-        virtual const char* getName(void) const = 0;
 
-        // GCC_MEMORY_WATCHER_DECLARATION();
+        virtual float getTimeStamp(void) const = 0;
+
+        virtual EventDataPtr copy(void) const = 0;
+
+        virtual const char* getName(void) const = 0;
     };
 
-    //---------------------------------------------------------------------------------------------------------------------
-    // class BaseEventData		- Chapter 11, page 311
-    //---------------------------------------------------------------------------------------------------------------------
     class EXPORTED BaseEventData : public EventData
     {
         const float timeStamp;
 
     public:
-        explicit BaseEventData(const float timeStamp = 0.0f) : timeStamp(timeStamp)
+        explicit BaseEventData(const float timeStamp = 0.0f)
+            : timeStamp(timeStamp)
         {
         }
 
@@ -73,17 +71,12 @@ namespace NOWA
             return this->timeStamp;
         }
 
-        // Serializing for network input / output
-        virtual void serialize(std::ostrstream& out) const
-        {
-        }
-        virtual void deserialize(std::istrstream& in)
-        {
-        }
+    public:
+        Ogre::String senderInfo;
     };
 
     //---------------------------------------------------------------------------------------------------------------------
-    // IEventManager Description                        Chapter 11, page 314
+    // IEventManager Description
     //
     // This is the object which maintains the list of registered events and their listeners.
     //
@@ -139,7 +132,7 @@ namespace NOWA
          * @param[in]	delaySec		The optional delay in seconds
          * @return		success			If the event could be triggered.
          */
-        bool triggerEvent(const EventDataPtr& event, Ogre::Real delaySec = 0.0f);
+        bool triggerEvent(const EventDataPtr& event, Ogre::Real delaySec = 0.0f, std::source_location location = std::source_location::current());
 
         /**
          * @brief		Queues the event for processing on the next update() call.
@@ -147,7 +140,7 @@ namespace NOWA
          * @param[in]	event	The event to queue
          * @return		success			If the event could be queued.
          */
-        bool queueEvent(const EventDataPtr& event);
+        bool queueEvent(const EventDataPtr& event, std::source_location location = std::source_location::current());
 
         /**
          * @brief		Cleares all events out of the queue.
@@ -164,7 +157,7 @@ namespace NOWA
          * @param[in]	allOfType	If allOfType is true, then all events of that type are cleared from the input queue.
          * @return		success		Returns true if the event was found and removed, false otherwise.
          */
-        bool abortEvent(const EventType& type, bool allOfType = false);
+        bool abortEvent(const EventType& type, bool allOfType = false, std::source_location location = std::source_location::current());
 
         /**
          * @brief		Gets whether the event of the given type does exist in the queue.

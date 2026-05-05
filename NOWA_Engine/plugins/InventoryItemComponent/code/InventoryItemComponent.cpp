@@ -242,7 +242,7 @@ namespace NOWA
             return;
         }
 
-        auto& mainGameObject = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(gameObjectId);
+        auto mainGameObject = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(gameObjectId);
         if (nullptr != mainGameObject)
         {
             boost::shared_ptr<MyGUIItemBoxComponent> myGUIItemBoxCompPtr;
@@ -280,7 +280,7 @@ namespace NOWA
             return;
         }
 
-        auto& mainGameObject = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(gameObjectId);
+        auto mainGameObject = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(gameObjectId);
         if (nullptr != mainGameObject)
         {
             boost::shared_ptr<MyGUIItemBoxComponent> myGUIItemBoxCompPtr;

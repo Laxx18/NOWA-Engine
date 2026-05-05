@@ -761,7 +761,7 @@ namespace NOWA
 		std::vector<Ogre::String> compatibleSkyNames(skyNames.getPointer()->size() + 1);
 		unsigned int i = 1;
 		compatibleSkyNames[0] = "";
-		for (auto& it = skyNames.getPointer()->cbegin(); it != skyNames.getPointer()->cend(); it++)
+		for (auto it = skyNames.getPointer()->cbegin(); it != skyNames.getPointer()->cend(); it++)
 		{
 			compatibleSkyNames[i++] = *it;
 		}
@@ -818,7 +818,7 @@ namespace NOWA
 		// Two data block components with the same entity index can not exist
 		for (unsigned int i = 0; i < static_cast<unsigned int>(this->gameObjectPtr->getComponents()->size()); i++)
 		{
-			auto& priorPbsComponent = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<DatablockPbsComponent>(DatablockPbsComponent::getStaticClassName(), i));
+			auto priorPbsComponent = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<DatablockPbsComponent>(DatablockPbsComponent::getStaticClassName(), i));
 			if (nullptr != priorPbsComponent && priorPbsComponent.get() != this)
 			{
 				if (this->subItemIndex->getUInt() == priorPbsComponent->getSubItemIndex())
@@ -922,7 +922,7 @@ namespace NOWA
 		// Two data block components with the same entity index can not exist
 		for (unsigned int i = 0; i < static_cast<unsigned int>(this->gameObjectPtr->getComponents()->size()); i++)
 		{
-			auto& priorPbsComponent = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<DatablockPbsComponent>(DatablockPbsComponent::getStaticClassName(), i));
+			auto priorPbsComponent = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<DatablockPbsComponent>(DatablockPbsComponent::getStaticClassName(), i));
 			if (nullptr != priorPbsComponent && priorPbsComponent.get() != this)
 			{
 				if (this->subItemIndex->getUInt() == priorPbsComponent->getSubItemIndex())
@@ -1832,7 +1832,7 @@ namespace NOWA
 				// Two data block components with the same entity index can not exist
 				for (unsigned int i = 0; i < static_cast<unsigned int>(this->gameObjectPtr->getComponents()->size()); i++)
 				{
-					auto& priorPbsComponent = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<DatablockPbsComponent>(DatablockPbsComponent::getStaticClassName(), i));
+					auto priorPbsComponent = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<DatablockPbsComponent>(DatablockPbsComponent::getStaticClassName(), i));
 					if (nullptr != priorPbsComponent && priorPbsComponent.get() != this)
 					{
 						if (subItemIndex == priorPbsComponent->getSubItemIndex())

@@ -416,6 +416,7 @@ MainMenuBar::MainMenuBar(ProjectManager* projectManager, MyGUI::Widget* _parent)
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &MainMenuBar::handleProjectEncoded), NOWA::EventDataProjectEncoded::getStaticEventType());
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &MainMenuBar::handleLuaError), NOWA::EventDataPrintLuaError::getStaticEventType());
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &MainMenuBar::handleSceneInvalid), EventDataSceneInvalid::getStaticEventType());
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &MainMenuBar::handleNavMeshBusy), NOWA::EventDataNavMeshBusy::getStaticEventType());
 }
 
 MainMenuBar::~MainMenuBar()
@@ -426,6 +427,7 @@ MainMenuBar::~MainMenuBar()
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &MainMenuBar::handleProjectEncoded), NOWA::EventDataProjectEncoded::getStaticEventType());
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &MainMenuBar::handleLuaError), NOWA::EventDataPrintLuaError::getStaticEventType());
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &MainMenuBar::handleSceneInvalid), EventDataSceneInvalid::getStaticEventType());
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &MainMenuBar::handleNavMeshBusy), NOWA::EventDataNavMeshBusy::getStaticEventType());
 
 	MyGUI::LayoutManager::getInstancePtr()->unloadLayout(this->analysisWidgets);
 	MyGUI::LayoutManager::getInstancePtr()->unloadLayout(this->deployWidgets);
@@ -840,10 +842,10 @@ void MainMenuBar::notifyPopupMenuAccept(MyGUI::MenuControl* sender, MyGUI::MenuI
 		}
 		case 51: // Control selected player
 		{
-			for (auto& it = this->projectManager->getEditorManager()->getSelectionManager()->getSelectedGameObjects().begin(); it != this->projectManager->getEditorManager()->getSelectionManager()->getSelectedGameObjects().end(); ++it)
+			for (auto it = this->projectManager->getEditorManager()->getSelectionManager()->getSelectedGameObjects().begin(); it != this->projectManager->getEditorManager()->getSelectionManager()->getSelectedGameObjects().end(); ++it)
 			{
 				// Start player controller;
-				auto& PlayerControllerComponent = NOWA::makeStrongPtr(it->second.gameObject->getComponent<NOWA::PlayerControllerComponent>());
+				auto PlayerControllerComponent = NOWA::makeStrongPtr(it->second.gameObject->getComponent<NOWA::PlayerControllerComponent>());
 				if (nullptr != PlayerControllerComponent)
 				{
 					NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->activatePlayerController(true, it->second.gameObject->getId(), true);
@@ -954,7 +956,7 @@ void MainMenuBar::buttonHit(MyGUI::Widget* sender)
 		else if ("deployOkButton" == sender->getName())
 		{
 			Ogre::String projectFilePathName = NOWA::Core::getSingletonPtr()->getCurrentProjectPath();
-			const auto& sceneNames = NOWA::Core::getSingletonPtr()->getSceneFileNamesInProject(projectFilePathName);
+			const auto sceneNames = NOWA::Core::getSingletonPtr()->getSceneFileNamesInProject(projectFilePathName);
 			if (sceneNames.empty())
 			{
 				return;
@@ -1069,20 +1071,21 @@ void MainMenuBar::handleProjectManipulation(NOWA::EventDataPtr eventData)
 	{
 		this->updateRecentFilesMenu();
 
-		ENQUEUE_RENDER_COMMAND("MainMenuBar::handleProjectManipulation",
-		{
-			this->bTestSelectedGameObjects = false;
-			this->simulationMenuItem->getItemChild()->getItemAt(1)->setStateCheck(this->bTestSelectedGameObjects);
-			this->projectManager->getEditorManager()->activateTestSelectedGameObjects(this->bTestSelectedGameObjects);
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this, castEventData]()
+        {
+            this->bTestSelectedGameObjects = false;
+            this->simulationMenuItem->getItemChild()->getItemAt(1)->setStateCheck(this->bTestSelectedGameObjects);
+            this->projectManager->getEditorManager()->activateTestSelectedGameObjects(this->bTestSelectedGameObjects);
 
-			this->bDrawCollisionLines = false;
-			this->utilitiesMenuItem->getItemChild()->getItemAt(6)->setStateCheck(this->bDrawCollisionLines);
-			NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->debugDrawNavMesh(this->bDrawCollisionLines);
+            this->bDrawCollisionLines = false;
+            this->utilitiesMenuItem->getItemChild()->getItemAt(6)->setStateCheck(this->bDrawCollisionLines);
+            NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->debugDrawNavMesh(this->bDrawCollisionLines);
 
-			this->bDrawNavigationMesh = false;
-			this->utilitiesMenuItem->getItemChild()->getItemAt(7)->setStateCheck(this->bDrawNavigationMesh);
-			NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->showOgreNewtCollisionLines(this->bDrawNavigationMesh);
-		});
+            this->bDrawNavigationMesh = false;
+            this->utilitiesMenuItem->getItemChild()->getItemAt(7)->setStateCheck(this->bDrawNavigationMesh);
+            NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->showOgreNewtCollisionLines(this->bDrawNavigationMesh);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MainMenuBar::handleProjectManipulation");
 	}
 }
 
@@ -1096,11 +1099,12 @@ void MainMenuBar::handleProjectEncoded(NOWA::EventDataPtr eventData)
 {
 	boost::shared_ptr<NOWA::EventDataProjectEncoded> castEventData = boost::static_pointer_cast<NOWA::EventDataProjectEncoded>(eventData);
 
-	ENQUEUE_RENDER_COMMAND_MULTI("MainMenuBar::handleProjectEncoded", _1(castEventData),
-	{
-		this->fileMenuItem->getItemChild()->getItemAt(SAVE)->setEnabled(!castEventData->getIsEncoded());
-		this->fileMenuItem->getItemChild()->getItemAt(SAVE_AS)->setEnabled(!castEventData->getIsEncoded());
-	});
+	NOWA::GraphicsModule::RenderCommand renderCommand = [this, castEventData]()
+    {
+        this->fileMenuItem->getItemChild()->getItemAt(SAVE)->setEnabled(!castEventData->getIsEncoded());
+        this->fileMenuItem->getItemChild()->getItemAt(SAVE_AS)->setEnabled(!castEventData->getIsEncoded());
+    };
+    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MainMenuBar::handleProjectEncoded");
 }
 
 void MainMenuBar::handleLuaError(NOWA::EventDataPtr eventData)
@@ -1142,6 +1146,29 @@ void MainMenuBar::handleSceneInvalid(NOWA::EventDataPtr eventData)
 	}
 }
 
+void MainMenuBar::handleNavMeshBusy(NOWA::EventDataPtr eventData)
+{
+    auto castEvent = boost::static_pointer_cast<NOWA::EventDataNavMeshBusy>(eventData);
+    bool busy = castEvent->getIsBusy();
+
+	NOWA::GraphicsModule::RenderCommand renderCommand = [this, busy]()
+    {
+        MyGUI::MenuItem* item = this->utilitiesMenuItem->getItemChild()->getItemAt(6);
+        if (busy)
+        {
+            item->setCaption("Generating NavMesh...");
+            item->setEnabled(false);
+        }
+        else
+        {
+            item->setCaptionWithReplacing("#{DrawNavigationMesh}");
+            item->setEnabled(true);
+            item->setStateCheck(this->bDrawNavigationMesh);
+        }
+    };
+    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MainMenuBar::handleNavMeshBusy");
+}
+
 void MainMenuBar::showAnalysisWindow(void)
 {
 	ENQUEUE_RENDER_COMMAND("MainMenuBar::showAnalysisWindow",
@@ -1164,7 +1191,7 @@ void MainMenuBar::showAnalysisWindow(void)
 			+ Ogre::StringConverter::toString(NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects()->size()));
 
 
-		const auto& overlappingGameObjects = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getOverlappingGameObjects();
+		const auto overlappingGameObjects = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getOverlappingGameObjects();
 		MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("overlappingGameObjectsCountLabel")->setCaptionWithReplacing("#{OverlappingGameObjectsCount}: "
 																												   + Ogre::StringConverter::toString(overlappingGameObjects.size()));
 
@@ -1179,8 +1206,8 @@ void MainMenuBar::showAnalysisWindow(void)
 		unsigned int dynamicGameObjectsCount = 0;
 		unsigned int lightsCount = 0;
 
-		const auto& gameObjects = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects();
-		for (auto& it = gameObjects->begin(); it != gameObjects->end(); it++)
+		const auto gameObjects = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects();
+		for (auto it = gameObjects->begin(); it != gameObjects->end(); it++)
 		{
 			componentsCount += it->second->getComponents()->size();
 			if (true == it->second->isDynamic())
@@ -1404,7 +1431,7 @@ void MainMenuBar::refreshLuaApi(const Ogre::String& filter)
 	{
 		MyGUI::TreeControl::Node* child = nullptr;
 		// Get the matched results and add to tree
-		auto& matchedResources = this->luaApiAutoCompleteSearch.findMatchedItemWithInText(filter);
+		auto matchedResources = this->luaApiAutoCompleteSearch.findMatchedItemWithInText(filter);
 
 		for (size_t i = 0; i < matchedResources.getResults().size(); i++)
 		{
@@ -1509,7 +1536,7 @@ void MainMenuBar::refreshMeshes(const Ogre::String& filter)
 		++groupIt;
 	}
 
-	auto& matchedResources = this->luaApiAutoCompleteSearch.findMatchedItemWithInText(filter);
+	auto matchedResources = this->luaApiAutoCompleteSearch.findMatchedItemWithInText(filter);
 
 	for (size_t i = 0; i < matchedResources.getResults().size(); i++)
 	{
@@ -1955,11 +1982,18 @@ void MainMenuBar::activateTestSelectedGameObjects(bool bActivated)
 
 void MainMenuBar::drawNavigationMap(bool bDraw)
 {
-	ENQUEUE_RENDER_COMMAND_MULTI("MainMenuBar::drawNavigationMap", _1(bDraw),
-	{
-		this->utilitiesMenuItem->getItemChild()->getItemAt(6)->setStateCheck(bDraw);
-		NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->debugDrawNavMesh(bDraw);
-	});
+    NOWA::GraphicsModule::RenderCommand renderCommand = [this, bDraw]()
+    {
+        // Do not allow toggling while a build is in progress
+        if (NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->isBuildInProgress())
+        {
+            return;
+        }
+
+        this->utilitiesMenuItem->getItemChild()->getItemAt(6)->setStateCheck(bDraw);
+        NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->debugDrawNavMesh(bDraw);
+    };
+    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MainMenuBar::drawNavigationMap");
 }
 
 void MainMenuBar::drawCollisionLines(bool bDraw)

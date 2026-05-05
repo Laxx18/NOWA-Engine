@@ -2001,7 +2001,7 @@ void LuaWikiPanel::buildEntries(void)
         c += wBr();
 
         c += wSub("How the C++ drives goals (important to understand)");
-        c += wC("-- 1. Simulation starts → AiLuaGoalComponent finds the Lua table");
+        c += wC("-- 1. Simulation starts -> AiLuaGoalComponent finds the Lua table");
         c += wC("--    whose name matches 'RootGoalName' in NOWA-Design.");
         c += wC("-- 2. C++ creates a LuaGoalComposite wrapping it and calls activate().");
         c += wC("-- 3. Every frame: C++ calls process(dt) on the composite,");
@@ -2009,7 +2009,7 @@ void LuaWikiPanel::buildEntries(void)
         c += wC("-- 4. When a sub-goal sets COMPLETED it is terminated and removed.");
         c += wC("--    The next sub-goal becomes the new front.");
         c += wC("-- 5. When all sub-goals are done the root returns COMPLETED,");
-        c += wC("--    reactivateIfFailed() resets it → activate() fires again.");
+        c += wC("--    reactivateIfFailed() resets it -> activate() fires again.");
         c += wBr();
 
         c += wSub("Callback signatures (exact – must not differ)");
@@ -2019,7 +2019,7 @@ void LuaWikiPanel::buildEntries(void)
         c += wBr();
 
         c += wSub("Townhall scenario – Player (4 sequential goals)");
-        c += wP("Player picks a build spot → walks there → builds Townhall → spawns Worker.");
+        c += wP("Player picks a build spot -> walks there -> builds Townhall -> spawns Worker.");
         c += wBr();
         c += wC("-- In connect(): only setup, no goal calls");
         c += wC("aiGoalComp = gameObject:getAiLuaGoalComponent()");
@@ -2116,7 +2116,7 @@ void LuaWikiPanel::buildEntries(void)
         c += wC("end");
         c += wBr();
 
-        c += wSub("Worker cycling scenario (wander → rest → repeat)");
+        c += wSub("Worker cycling scenario (wander -> rest -> repeat)");
         c += wC("WorkerRootGoal = {}");
         c += wC("WorkerRootGoal[\"activate\"] = function(gameObject, goalResult)");
         c += wC("    goalResult = AppStateManager:getGameObjectController()");
@@ -2177,8 +2177,8 @@ void LuaWikiPanel::buildEntries(void)
         c += wBr();
 
         c += wSub("Path behaviour flags");
-        c += wC("pathFollow:setRepeat(true)           -- loop: 0→1→2→3→0→...");
-        c += wC("pathFollow:setDirectionChange(true)  -- bounce: 0→1→2→3→2→1→0→...");
+        c += wC("pathFollow:setRepeat(true)           -- loop: 0->1->2->3->0->...");
+        c += wC("pathFollow:setDirectionChange(true)  -- bounce: 0->1->2->3->2->1->0->...");
         c += wC("pathFollow:setGoalRadius(1.0)        -- arrival tolerance in units");
         c += wBr();
 

@@ -279,7 +279,7 @@ namespace NOWA
 			this->initialPosition = position;
 
 			LuaScript* luaScript = nullptr;
-			auto& luaScriptCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<LuaScriptComponent>());
+			auto luaScriptCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<LuaScriptComponent>());
 			if (nullptr != luaScriptCompPtr)
 			{
 				luaScript = luaScriptCompPtr->getLuaScript();

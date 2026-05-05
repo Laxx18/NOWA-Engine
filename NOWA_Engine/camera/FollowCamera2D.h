@@ -46,7 +46,7 @@ namespace NOWA
 		*/
 		void setBorderOffset(const Ogre::Vector3& borderOffset);
 
-		void setBounds(Ogre::Vector3& minimumBounds, Ogre::Vector3& maximumBounds);
+		void setBounds(const Ogre::Vector3& minimumBounds, const Ogre::Vector3& maximumBounds);
 
 		void alwaysShowGameObject(bool show, const Ogre::String& category, Ogre::SceneManager* sceneManager);
 
