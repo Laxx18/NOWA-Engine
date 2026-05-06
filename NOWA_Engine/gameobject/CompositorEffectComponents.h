@@ -1095,6 +1095,192 @@ namespace NOWA
 		Ogre::Pass* pass;
 	};
 
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    /**
+        * @brief   Two-pass cartoon / cel-shading post-process compositor effect component.
+        *
+        * Pass 1 (Postprocess/CartoonEdge):
+        *   Sobel edge detection on the scene colour buffer → grayscale edge mask.
+        *
+        * Pass 2 (Postprocess/CartoonColor):
+        *   Colour quantisation into discrete cel bands, saturation boost, and
+        *   edge darkening using the mask from pass 1.
+        *
+        * Requirements: A camera component must exist.
+        */
+    class EXPORTED CompositorEffectCartoonComponent : public CompositorEffectBaseComponent
+    {
+    public:
+        typedef boost::shared_ptr<NOWA::CompositorEffectCartoonComponent> CompositorEffectCartoonCompPtr;
+
+    public:
+        CompositorEffectCartoonComponent();
+
+        virtual ~CompositorEffectCartoonComponent();
+
+        /**
+            * @see     GameObjectComponent::init
+            */
+        virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
+
+        /**
+            * @see     GameObjectComponent::postInit
+            */
+        virtual bool postInit(void) override;
+
+        /**
+            * @see     GameObjectComponent::getClassName
+            */
+        virtual Ogre::String getClassName(void) const override;
+
+        /**
+            * @see     GameObjectComponent::getParentClassName
+            */
+        virtual Ogre::String getParentClassName(void) const override;
+
+        /**
+            * @see     GameObjectComponent::clone
+            */
+        virtual GameObjectCompPtr clone(GameObjectPtr clonedGameObjectPtr) override;
+
+        static unsigned int getStaticClassId(void)
+        {
+            return NOWA::getIdFromName("CompositorEffectCartoonComponent");
+        }
+
+        static Ogre::String getStaticClassName(void)
+        {
+            return "CompositorEffectCartoonComponent";
+        }
+
+        /**
+            * @see  GameObjectComponent::createStaticApiForLua
+            */
+        static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass)
+        {
+            luabind::module(lua)[luabind::class_<CompositorEffectCartoonComponent, GameObjectComponent>("CompositorEffectCartoonComponent")
+                    .def("setEdgeThreshold", &CompositorEffectCartoonComponent::setEdgeThreshold)
+                    .def("getEdgeThreshold", &CompositorEffectCartoonComponent::getEdgeThreshold)
+                    .def("setEdgeStrength", &CompositorEffectCartoonComponent::setEdgeStrength)
+                    .def("getEdgeStrength", &CompositorEffectCartoonComponent::getEdgeStrength)
+                    .def("setNumBands", &CompositorEffectCartoonComponent::setNumBands)
+                    .def("getNumBands", &CompositorEffectCartoonComponent::getNumBands)
+                    .def("setSaturation", &CompositorEffectCartoonComponent::setSaturation)
+                    .def("getSaturation", &CompositorEffectCartoonComponent::getSaturation)
+                    .def("setEdgeDarkness", &CompositorEffectCartoonComponent::setEdgeDarkness)
+                    .def("getEdgeDarkness", &CompositorEffectCartoonComponent::getEdgeDarkness)];
+        }
+
+        /**
+            * @see     GameObjectComponent::actualizeValue
+            */
+        virtual void actualizeValue(Variant* attribute) override;
+
+        /**
+            * @see     GameObjectComponent::writeXML
+            */
+        virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
+
+        /**
+            * @see     GameObjectComponent::getStaticInfoText
+            */
+        static Ogre::String getStaticInfoText(void)
+        {
+            return "Requirements: A camera component must exist. "
+                    "Two-pass cartoon effect: Sobel edge detection + cel-shade colour quantisation.";
+        }
+
+        // -----------------------------------------------------------------------
+        // CartoonEdge pass parameters
+        // -----------------------------------------------------------------------
+
+        /**
+            * @brief   Minimum Sobel gradient magnitude to register as an edge.
+            *          Lower values detect more (thinner/fainter) edges. Range: [0..1], default 0.1.
+            */
+        void setEdgeThreshold(Ogre::Real edgeThreshold);
+
+        Ogre::Real getEdgeThreshold(void) const;
+
+        /**
+            * @brief   Intensity multiplier applied to detected edges before writing the mask.
+            *          Values > 1 make edges more prominent. Default 1.0.
+            */
+        void setEdgeStrength(Ogre::Real edgeStrength);
+
+        Ogre::Real getEdgeStrength(void) const;
+
+        // -----------------------------------------------------------------------
+        // CartoonColor pass parameters
+        // -----------------------------------------------------------------------
+
+        /**
+            * @brief   Number of discrete colour levels per channel (cel bands).
+            *          Fewer bands = harder, more stylised look. Default 4.0.
+            */
+        void setNumBands(Ogre::Real numBands);
+
+        Ogre::Real getNumBands(void) const;
+
+        /**
+            * @brief   Colour saturation multiplier. Values > 1 produce more vivid cartoon colours.
+            *          Default 1.4.
+            */
+        void setSaturation(Ogre::Real saturation);
+
+        Ogre::Real getSaturation(void) const;
+
+        /**
+            * @brief   Brightness of outline pixels. 0 = pure black outlines, 1 = no darkening.
+            *          Default 0.0.
+            */
+        void setEdgeDarkness(Ogre::Real edgeDarkness);
+
+        Ogre::Real getEdgeDarkness(void) const;
+
+    public:
+        // Attribute name constants
+        static const Ogre::String AttrEdgeThreshold(void)
+        {
+            return "Edge Threshold";
+        }
+        static const Ogre::String AttrEdgeStrength(void)
+        {
+            return "Edge Strength";
+        }
+        static const Ogre::String AttrNumBands(void)
+        {
+            return "Num Bands";
+        }
+        static const Ogre::String AttrSaturation(void)
+        {
+            return "Saturation";
+        }
+        static const Ogre::String AttrEdgeDarkness(void)
+        {
+            return "Edge Darkness";
+        }
+
+    private:
+        // Pass 1: Postprocess/CartoonEdge
+        Ogre::MaterialPtr edgeMaterial;
+        Ogre::Pass* edgePass;
+
+        // Pass 2: Postprocess/CartoonColor
+        Ogre::MaterialPtr colorMaterial;
+        Ogre::Pass* colorPass;
+
+        // Variants (editor / serialisation)
+        Variant* edgeThreshold;
+        Variant* edgeStrength;
+        Variant* numBands;
+        Variant* saturation;
+        Variant* edgeDarkness;
+    };
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 }; //namespace end
 
 #endif

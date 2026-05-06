@@ -1819,4 +1819,283 @@ namespace NOWA
 		return "CompositorEffectBaseComponent";
 	}
 
+	///////////////////////////////////////////////////////////////////////////////////////////////
+
+	CompositorEffectCartoonComponent::CompositorEffectCartoonComponent() :
+        CompositorEffectBaseComponent(),
+        edgePass(nullptr),
+        colorPass(nullptr),
+        edgeThreshold(new Variant(CompositorEffectCartoonComponent::AttrEdgeThreshold(), 0.35f, this->attributes)), 
+        edgeStrength(new Variant(CompositorEffectCartoonComponent::AttrEdgeStrength(), 0.8f, this->attributes)),  
+        numBands(new Variant(CompositorEffectCartoonComponent::AttrNumBands(), 6.0f, this->attributes)),  
+        saturation(new Variant(CompositorEffectCartoonComponent::AttrSaturation(), 1.2f, this->attributes)),
+        edgeDarkness(new Variant(CompositorEffectCartoonComponent::AttrEdgeDarkness(), 0.2f, this->attributes))
+    {
+        this->effectName = "Cartoon";
+
+        // Describe reasonable value ranges for the editor
+        this->edgeThreshold->setConstraints(0.0f, 1.0f);
+        this->edgeStrength->setConstraints(0.0f, 5.0f);
+        this->numBands->setConstraints(2.0f, 16.0f);
+        this->saturation->setConstraints(0.0f, 3.0f);
+        this->edgeDarkness->setConstraints(0.0f, 1.0f);
+    }
+
+    CompositorEffectCartoonComponent::~CompositorEffectCartoonComponent()
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[CompositorEffectCartoonComponent] Destructor compositor effect cartoon component for game object: " + this->gameObjectPtr->getName());
+
+        this->edgePass = nullptr;
+        this->colorPass = nullptr;
+    }
+
+    bool CompositorEffectCartoonComponent::init(rapidxml::xml_node<>*& propertyElement)
+    {
+        bool success = CompositorEffectBaseComponent::init(propertyElement);
+
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrEdgeThreshold())
+        {
+            this->setEdgeThreshold(XMLConverter::getAttribReal(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrEdgeStrength())
+        {
+            this->setEdgeStrength(XMLConverter::getAttribReal(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrNumBands())
+        {
+            this->setNumBands(XMLConverter::getAttribReal(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrSaturation())
+        {
+            this->setSaturation(XMLConverter::getAttribReal(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrEdgeDarkness())
+        {
+            this->setEdgeDarkness(XMLConverter::getAttribReal(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+
+        return success;
+    }
+
+    GameObjectCompPtr CompositorEffectCartoonComponent::clone(GameObjectPtr clonedGameObjectPtr)
+    {
+        CompositorEffectCartoonCompPtr clonedCompPtr(boost::make_shared<CompositorEffectCartoonComponent>());
+
+        clonedCompPtr->setActivated(this->activated->getBool());
+        clonedCompPtr->setEdgeThreshold(this->edgeThreshold->getReal());
+        clonedCompPtr->setEdgeStrength(this->edgeStrength->getReal());
+        clonedCompPtr->setNumBands(this->numBands->getReal());
+        clonedCompPtr->setSaturation(this->saturation->getReal());
+        clonedCompPtr->setEdgeDarkness(this->edgeDarkness->getReal());
+
+        clonedGameObjectPtr->addComponent(clonedCompPtr);
+        clonedCompPtr->setOwner(clonedGameObjectPtr);
+
+        GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
+
+        return clonedCompPtr;
+    }
+
+    bool CompositorEffectCartoonComponent::postInit(void)
+    {
+        bool success = CompositorEffectBaseComponent::postInit();
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[CompositorEffectCartoonComponent] Init compositor effect cartoon component for game object: " + this->gameObjectPtr->getName());
+
+        // --- Pass 1: CartoonEdge ---
+        const Ogre::String edgeMaterialName = "Postprocess/CartoonEdge";
+        this->edgeMaterial = Ogre::MaterialManager::getSingletonPtr()->getByName(edgeMaterialName);
+
+        if (true == this->edgeMaterial.isNull())
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[CompositorEffectCartoonComponent] Could not set: " + this->effectName + " because the material: '" + edgeMaterialName + "' does not exist!");
+            return false;
+        }
+
+        this->edgePass = this->edgeMaterial->getTechnique(0)->getPass(0);
+
+        // --- Pass 2: CartoonColor ---
+        const Ogre::String colorMaterialName = "Postprocess/CartoonColor";
+        this->colorMaterial = Ogre::MaterialManager::getSingletonPtr()->getByName(colorMaterialName);
+
+        if (true == this->colorMaterial.isNull())
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[CompositorEffectCartoonComponent] Could not set: " + this->effectName + " because the material: '" + colorMaterialName + "' does not exist!");
+            return false;
+        }
+
+        this->colorPass = this->colorMaterial->getTechnique(0)->getPass(0);
+
+        // Push all loaded values to the GPU so the compositor starts with the
+        // correct state even before the user changes anything.
+        this->setEdgeThreshold(this->edgeThreshold->getReal());
+        this->setEdgeStrength(this->edgeStrength->getReal());
+        this->setNumBands(this->numBands->getReal());
+        this->setSaturation(this->saturation->getReal());
+        this->setEdgeDarkness(this->edgeDarkness->getReal());
+
+        return success;
+    }
+
+    void CompositorEffectCartoonComponent::actualizeValue(Variant* attribute)
+    {
+        CompositorEffectBaseComponent::actualizeValue(attribute);
+
+        if (CompositorEffectCartoonComponent::AttrEdgeThreshold() == attribute->getName())
+        {
+            this->setEdgeThreshold(attribute->getReal());
+        }
+        else if (CompositorEffectCartoonComponent::AttrEdgeStrength() == attribute->getName())
+        {
+            this->setEdgeStrength(attribute->getReal());
+        }
+        else if (CompositorEffectCartoonComponent::AttrNumBands() == attribute->getName())
+        {
+            this->setNumBands(attribute->getReal());
+        }
+        else if (CompositorEffectCartoonComponent::AttrSaturation() == attribute->getName())
+        {
+            this->setSaturation(attribute->getReal());
+        }
+        else if (CompositorEffectCartoonComponent::AttrEdgeDarkness() == attribute->getName())
+        {
+            this->setEdgeDarkness(attribute->getReal());
+        }
+    }
+
+    void CompositorEffectCartoonComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
+    {
+        // Type codes: 2=int, 6=real, 7=string, 8=vector2, 9=vector3,
+        //             10=vector4/quaternion, 12=bool
+        CompositorEffectBaseComponent::writeXML(propertiesXML, doc);
+
+        xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Edge Threshold"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->edgeThreshold->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Edge Strength"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->edgeStrength->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Num Bands"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->numBands->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Saturation"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->saturation->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Edge Darkness"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->edgeDarkness->getReal())));
+        propertiesXML->append_node(propertyXML);
+    }
+
+    Ogre::String CompositorEffectCartoonComponent::getClassName(void) const
+    {
+        return "CompositorEffectCartoonComponent";
+    }
+
+    Ogre::String CompositorEffectCartoonComponent::getParentClassName(void) const
+    {
+        return "CompositorEffectBaseComponent";
+    }
+
+    // -----------------------------------------------------------------------
+    // Setters / getters — CartoonEdge pass
+    // -----------------------------------------------------------------------
+
+    void CompositorEffectCartoonComponent::setEdgeThreshold(Ogre::Real edgeThreshold)
+    {
+        this->edgeThreshold->setValue(edgeThreshold);
+
+        if (nullptr != this->edgePass)
+        {
+            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectCartoonComponent::setEdgeThreshold", _1(edgeThreshold), { this->edgePass->getFragmentProgramParameters()->setNamedConstant("edgeThreshold", edgeThreshold); });
+        }
+    }
+
+    Ogre::Real CompositorEffectCartoonComponent::getEdgeThreshold(void) const
+    {
+        return this->edgeThreshold->getReal();
+    }
+
+    void CompositorEffectCartoonComponent::setEdgeStrength(Ogre::Real edgeStrength)
+    {
+        this->edgeStrength->setValue(edgeStrength);
+
+        if (nullptr != this->edgePass)
+        {
+            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectCartoonComponent::setEdgeStrength", _1(edgeStrength), { this->edgePass->getFragmentProgramParameters()->setNamedConstant("edgeStrength", edgeStrength); });
+        }
+    }
+
+    Ogre::Real CompositorEffectCartoonComponent::getEdgeStrength(void) const
+    {
+        return this->edgeStrength->getReal();
+    }
+
+    // -----------------------------------------------------------------------
+    // Setters / getters — CartoonColor pass
+    // -----------------------------------------------------------------------
+
+    void CompositorEffectCartoonComponent::setNumBands(Ogre::Real numBands)
+    {
+        this->numBands->setValue(numBands);
+
+        if (nullptr != this->colorPass)
+        {
+            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectCartoonComponent::setNumBands", _1(numBands), { this->colorPass->getFragmentProgramParameters()->setNamedConstant("numBands", numBands); });
+        }
+    }
+
+    Ogre::Real CompositorEffectCartoonComponent::getNumBands(void) const
+    {
+        return this->numBands->getReal();
+    }
+
+    void CompositorEffectCartoonComponent::setSaturation(Ogre::Real saturation)
+    {
+        this->saturation->setValue(saturation);
+
+        if (nullptr != this->colorPass)
+        {
+            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectCartoonComponent::setSaturation", _1(saturation), { this->colorPass->getFragmentProgramParameters()->setNamedConstant("saturation", saturation); });
+        }
+    }
+
+    Ogre::Real CompositorEffectCartoonComponent::getSaturation(void) const
+    {
+        return this->saturation->getReal();
+    }
+
+    void CompositorEffectCartoonComponent::setEdgeDarkness(Ogre::Real edgeDarkness)
+    {
+        this->edgeDarkness->setValue(edgeDarkness);
+
+        if (nullptr != this->colorPass)
+        {
+            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectCartoonComponent::setEdgeDarkness", _1(edgeDarkness), { this->colorPass->getFragmentProgramParameters()->setNamedConstant("edgeDarkness", edgeDarkness); });
+        }
+    }
+
+    Ogre::Real CompositorEffectCartoonComponent::getEdgeDarkness(void) const
+    {
+        return this->edgeDarkness->getReal();
+    }
+
 }; // namespace end

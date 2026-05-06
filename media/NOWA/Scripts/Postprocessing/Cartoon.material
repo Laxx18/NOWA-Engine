@@ -1,0 +1,174 @@
+//---------------------------------------------------
+// Cartoon / Cel-Shading post-process effect
+//
+// Two-pass pipeline:
+//   1. Postprocess/CartoonEdge  — Sobel edge detection → grayscale edge mask
+//   2. Postprocess/CartoonColor — cel-shade quantisation + edge darkening
+//
+// Tunable parameters (CartoonEdge):
+//   edgeThreshold  float  0.1   — minimum gradient to be treated as an edge
+//   edgeStrength   float  1.0   — intensity multiplier for detected edges
+//
+// Tunable parameters (CartoonColor):
+//   numBands       float  4.0   — number of discrete colour levels per channel
+//   saturation     float  1.4   — saturation boost (>1 = more vivid cartoon colours)
+//   edgeDarkness   float  0.0   — brightness of edge pixels (0=black, 1=invisible)
+//---------------------------------------------------
+
+//------------------------
+// OpenGL GLSL Definitions
+//------------------------
+fragment_program CartoonEdge_ps_GLSL glsl
+{
+    source CartoonEdge_ps.glsl
+}
+fragment_program CartoonColor_ps_GLSL glsl
+{
+    source CartoonColor_ps.glsl
+    default_params
+    {
+        param_named RT      int 0
+        param_named EdgeTex int 1
+    }
+}
+
+//------------------------
+// Vulkan GLSL Definitions
+//------------------------
+fragment_program CartoonEdge_ps_VK glslvk
+{
+    source CartoonEdge_ps.glsl
+}
+fragment_program CartoonColor_ps_VK glslvk
+{
+    source CartoonColor_ps.glsl
+}
+
+//------------------------
+// DirectX 11 HLSL Definitions
+//------------------------
+fragment_program CartoonEdge_ps_HLSL hlsl
+{
+    source CartoonEdge_ps.hlsl
+    target ps_5_0 ps_4_0 ps_4_0_level_9_1 ps_4_0_level_9_3
+    entry_point main
+}
+fragment_program CartoonColor_ps_HLSL hlsl
+{
+    source CartoonColor_ps.hlsl
+    target ps_5_0 ps_4_0 ps_4_0_level_9_1 ps_4_0_level_9_3
+    entry_point main
+}
+
+//------------------------
+// Metal Definitions
+//------------------------
+fragment_program CartoonEdge_ps_Metal metal
+{
+    source CartoonEdge_ps.metal
+    shader_reflection_pair_hint Ogre/Compositor/Quad_vs
+}
+fragment_program CartoonColor_ps_Metal metal
+{
+    source CartoonColor_ps.metal
+    shader_reflection_pair_hint Ogre/Compositor/Quad_vs
+}
+
+//------------------------
+// Unified Definitions
+//------------------------
+fragment_program CartoonEdge_ps unified
+{
+    delegate CartoonEdge_ps_HLSL
+    delegate CartoonEdge_ps_GLSL
+    delegate CartoonEdge_ps_VK
+    delegate CartoonEdge_ps_Metal
+}
+fragment_program CartoonColor_ps unified
+{
+    delegate CartoonColor_ps_HLSL
+    delegate CartoonColor_ps_GLSL
+    delegate CartoonColor_ps_VK
+    delegate CartoonColor_ps_Metal
+}
+
+//------------------------
+// Pass 1 — Sobel edge detection
+//   Input 0: rt_input (scene colour)
+//   Output:  edge mask in rt0
+//------------------------
+material Postprocess/CartoonEdge
+{
+    technique
+    {
+        pass
+        {
+            depth_check off
+            depth_write off
+
+            cull_hardware none
+
+            vertex_program_ref Ogre/Compositor/Quad_vs
+            {
+            }
+
+            fragment_program_ref CartoonEdge_ps
+            {
+                // (1/w, 1/h, w, h) supplied automatically by Ogre
+                param_named_auto texelSize    inverse_texture_size 0
+				param_named      edgeThreshold float 0.35
+				param_named      edgeStrength  float 0.8
+            }
+
+            texture_unit
+            {
+                tex_address_mode clamp
+                filtering bilinear
+            }
+        }
+    }
+}
+
+//------------------------
+// Pass 2 — Cel-shade + edge composite
+//   Input 0: rt_input  (original scene colour)
+//   Input 1: rt0       (edge mask from pass 1)
+//   Output:  rt_output (final cartoon image)
+//------------------------
+material Postprocess/CartoonColor
+{
+    technique
+    {
+        pass
+        {
+            depth_check off
+            depth_write off
+
+            cull_hardware none
+
+            vertex_program_ref Ogre/Compositor/Quad_vs
+            {
+            }
+
+            fragment_program_ref CartoonColor_ps
+            {
+                param_named numBands     float 6.0
+				param_named saturation   float 1.2
+				param_named edgeDarkness float 0.2
+            }
+
+            // texture unit 0 — original scene
+            texture_unit
+            {
+                tex_address_mode clamp
+                filtering none
+            }
+            // texture unit 1 — edge mask
+            texture_unit
+            {
+                tex_address_mode clamp
+                filtering none
+            }
+        }
+    }
+}
