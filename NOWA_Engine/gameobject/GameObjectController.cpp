@@ -1626,17 +1626,6 @@ void GameObjectController::connectJoints(void)
     }
 }
 
-// void GameObjectController::disconnectJoints(void)
-//{
-//	for (auto& currentJointComponent : this->jointComponentMap)
-//	{
-//		currentJointComponent.second->releaseConnectionToOtherJoints();
-//		currentJointComponent.second->releaseJoint();
-//		// Important: Do not set the predecessor id to null, because its an attribute, maybe also used in an editor and hence the predecessor will never be found!
-//	}
-//	this->jointComponentMap.clear();
-// }
-
 void GameObjectController::connectCompoundCollisions(void)
 {
     std::vector<PhysicsCompoundConnectionCompPtr> physicsCompoundConnectionRootComponentList;
@@ -1698,49 +1687,8 @@ void GameObjectController::connectCompoundCollisions(void)
     // this->compoundCollisionMap.clear();
 }
 
-void GameObjectController::disconnectCompoundCollisions(void)
-{
-    /*for (auto it = this->compoundCollisionMap.cbegin(); it != this->compoundCollisionMap.cend(); ++it)
-    {
-        std::vector<PhysicsActiveComponent*> compoundCollisionPropertiesList = it->second;
-        PhysicsActiveComponent* rootPhysicsComponent = it->first.second;
-        rootPhysicsComponent->destroyCompoundBody(compoundCollisionPropertiesList);
-    }
-    this->tempCompoundObjectMap.clear();
-    this->compoundCollisionMap.clear();*/
-}
-
-void GameObjectController::connectVehicles(void)
-{
-    // this->tempVehicleObjectMap.clear();
-
-    // for (auto it = this->vehicleCollisionMap.cbegin(); it != this->vehicleCollisionMap.cend(); ++it)
-    //{
-    //	std::vector<PhysicsActiveComponent*> vehiclePropertiesList = it->second;
-    //	PhysicsActiveComponent* rootPhysicsComponent = it->first.second;
-    //	// here return Vehicle
-    //	rootPhysicsComponent->createVehicle(vehiclePropertiesList);
-    // }
-    //// after creation clear the map!
-    // this->vehicleCollisionMap.clear();
-}
-
-void GameObjectController::disconnectVehicles(void)
-{
-    // for (auto it = this->vehicleCollisionMap.cbegin(); it != this->vehicleCollisionMap.cend(); ++it)
-    //{
-    //	std::vector<PhysicsActiveComponent*> vehiclePropertiesList = it->second;
-    //	PhysicsActiveComponent* rootPhysicsComponent = it->first.second;
-    //	// here return Vehicle
-    //	rootPhysicsComponent->destroyVehicle(vehiclePropertiesList);
-    // }
-    // this->vehicleCollisionMap.clear();
-}
-
 void GameObjectController::start(void)
 {
-    AppStateManager::getSingletonPtr()->getParticleFxModule(this->appStateName)->setSimulating(true);
-
     if (true == AppStateManager::getSingletonPtr()->getOgreRecastModule(this->appStateName)->hasNavigationMeshElements())
     {
         // Try loading from disk — agents navigate from frame 1.
@@ -1822,9 +1770,6 @@ void GameObjectController::start(void)
         // Connect physics joints
         this->connectJoints();
 
-        // Connect vehicles
-        this->connectVehicles();
-
         if (nullptr != mainGameObjectPtr)
         {
             mainGameObjectPtr->connect();
@@ -1842,7 +1787,6 @@ void GameObjectController::start(void)
 
 void GameObjectController::stop(void)
 {
-    AppStateManager::getSingletonPtr()->getParticleFxModule(this->appStateName)->setSimulating(false);
     NOWA::GraphicsModule::getInstance()->clearAllClosures();
     NOWA::AppStateManager::getSingletonPtr()->clearLogicQueue();
 
@@ -1906,12 +1850,8 @@ void GameObjectController::stop(void)
 
         LuaScriptApi::getInstance()->stopInitScript("init.lua");
 
-        this->disconnectCompoundCollisions();
-        // this->disconnectJoints();
         this->jointComponentMap.clear();
-        this->physicsCompoundConnectionComponentMap.clear();
-        this->disconnectVehicles();
-        // done->set_value();
+        this->physicsCompoundConnectionComponentMap.clear();;
     };
 
     NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
@@ -1959,9 +1899,6 @@ void GameObjectController::connectClonedGameObjects(const std::vector<unsigned l
 
     // Connect physics joints
     this->connectJoints();
-
-    // Connect vehicles
-    this->connectVehicles();
 }
 
 std::vector<unsigned long> GameObjectController::getIdsFromCategory(const Ogre::String& category) const

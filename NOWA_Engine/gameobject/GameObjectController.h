@@ -807,31 +807,11 @@ namespace NOWA
 		 */
 		void connectJoints(void);
 
-		// void disconnectJoints(void);
-
 		/**
 		 * @brief		Connects data between all physics active compound components.
 		 * @Note		This is called inside @GameObjectController::connectGameObjects().
 		 */
 		void connectCompoundCollisions(void);
-
-		/**
-		 * @brief		Disconnects data between all physics active compound components.
-		 * @Note		This is called inside @GameObjectController::disconnectGameObjects().
-		 */
-		void disconnectCompoundCollisions(void);
-
-		/**
-		 * @brief		Connects data between all physics active components forming a vehicle behavior.
-		 * @Note		This is called inside @GameObjectController::connectGameObjects().
-		 */
-		void connectVehicles(void);
-
-		/**
-		 * @brief		Disconnects data between all physics active components.
-		 * @Note		This is called inside @GameObjectController::disconnectGameObjects().
-		 */
-		void disconnectVehicles(void);
 
 		/**
 		 * @brief		Gets the game object by the given mouse coordinates and the scene query.

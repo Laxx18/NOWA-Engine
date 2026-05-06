@@ -24,7 +24,7 @@ namespace NOWA
 		: appStateName(appStateName),
 		sceneManager(nullptr)
 	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[ParticleFxModule] Module created");
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ParticleFxModule] Module created");
 	}
 
 	ParticleFxModule::~ParticleFxModule()
@@ -279,9 +279,12 @@ namespace NOWA
 
 	void ParticleFxModule::playParticleSystem(const Ogre::String& name)
 	{
-		auto it = this->particles.find(name);
-		if (it != this->particles.end())
-		{
+        auto it = this->particles.find(name);
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ParticleFxModule] playParticleSystem: name='" + name + "' found=" + (it != this->particles.end() ? "YES" : "NO"));
+        if (it != this->particles.end())
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+                "[ParticleFxModule] playParticleSystem: particleSystem=" + Ogre::String(it->second.particleSystem ? "VALID" : "NULL") + " clonedDefName='" + it->second.clonedDefName + "'" + " templateName='" + it->second.particleTemplateName + "'");
 			// Reset the time
 			it->second.particlePlayTime = it->second.particleInitialPlayTime;
 			it->second.activated = true;
@@ -617,7 +620,11 @@ namespace NOWA
 
 		GraphicsModule::RenderCommand renderCommand = [this, &particleData, templateName, cloneName]()
 		{
-			Ogre::ParticleSystemManager2* particleManager = this->sceneManager->getParticleSystemManager2();
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ParticleFxModule] createParticleEffect START: template='" + templateName + "' clone='" + cloneName + "'");
+
+            Ogre::ParticleSystemManager2* particleManager = this->sceneManager->getParticleSystemManager2();
+            bool hasClone = particleManager && particleManager->hasParticleSystemDef(cloneName, false);
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ParticleFxModule] hasCloneDef='" + Ogre::StringConverter::toString(hasClone) + "'");
 
 			Ogre::ParticleSystemDef* particleSystemDefInstance = nullptr;
 
@@ -686,7 +693,7 @@ namespace NOWA
 			if (particleData.particleSystem)
 			{
 				// Log the actual render queue group ParticleSystem2 uses
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
 					"[ParticleFxModule] ParticleSystem2 '" + particleData.particleSystem->getName() +
 					"' render queue group: " +
 					Ogre::StringConverter::toString(particleData.particleSystem->getRenderQueueGroup()));
@@ -695,10 +702,12 @@ namespace NOWA
 				const Ogre::ParticleSystemDef* def = particleData.particleSystem->getParticleSystemDef();
 				if (def)
 				{
-					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
+					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
 						"[ParticleFxModule] Material: " + def->getMaterialName());
 				}
 			}
+
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ParticleFxModule] createParticleEffect END: particleSystem=" + Ogre::String(particleData.particleSystem ? "VALID" : "NULL"));
 		};
 		NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ParticleFxModule::createParticleEffect");
 
@@ -775,7 +784,7 @@ namespace NOWA
 						clone->_destroyAllParticleSystems();
 
 						// Now destroy the def itself
-						particleManager->destroyAllParticleSystems();
+						// particleManager->destroyAllParticleSystems();
 					}
 				}
 				catch (const Ogre::Exception& e)
@@ -1497,7 +1506,7 @@ namespace NOWA
 				}
 			}
 
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[ParticleFxModule] Cached annotations for " +
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ParticleFxModule] Cached annotations for " +
 				Ogre::StringConverter::toString(this->materialBlendingModeCache.size()) + " materials (" +
 				Ogre::StringConverter::toString(this->materialBlendingModeCache.size()) + " with texture atlas)");
 		}
@@ -1746,7 +1755,7 @@ namespace NOWA
 	{
 		this->materialBlendingModeCache.clear();
 
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[ParticleFxModule] Blending mode cache cleared");
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ParticleFxModule] Blending mode cache cleared");
 	}
 
 	void ParticleFxModule::clearBlendingModeCacheForMaterial(const Ogre::String& materialName)

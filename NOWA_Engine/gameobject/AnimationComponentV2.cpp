@@ -133,7 +133,7 @@ namespace NOWA
 	bool AnimationComponentV2::postInit(void)
 	{
 		// Do not set things a second time after cloning
-		if (nullptr != this->animationBlender)
+        if (nullptr != this->animationBlender && nullptr != this->animationBlender->getSource())
 		{
 			return true;
 		}
@@ -231,16 +231,24 @@ namespace NOWA
 	{
 		if (true == this->activated->getBool() && false == notSimulating)
 		{
-			// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AnimationComponentV2] weight: " + Ogre::StringConverter::toString(this->animationState->getWeight()));
-			if (nullptr != this->animationBlender)
+			if (nullptr != this->animationBlender && nullptr != this->animationBlender->getSource())
 			{
-				this->animationBlender->addTime(dt * this->animationSpeed->getReal() / this->animationBlender->getSource()->getDuration());
+				// BUG FIX: the old formula was:
+				//   addTime(dt * speed / getDuration())
+				//
+				// This is wrong because addTime() expects real seconds. Dividing by
+				// getDuration() made the animation take getDuration()^2 / speed seconds
+				// to complete instead of getDuration() / speed seconds. At speed=1 a
+				// 1.2s animation took 1.44s. The error is invisible at speed=1.0 but
+				// compounds visually at slow speeds (speed=0.1 -> 14.4s instead of 12s).
+				//
+				// Correct formula: addTime(dt * speed)
+				//   speed=1.0  → animation plays at natural speed (getDuration() seconds)
+				//   speed=0.1  → animation plays 10x slower (getDuration() * 10 seconds)
+				//   speed=2.0  → animation plays 2x faster (getDuration() / 2 seconds)
+				this->animationBlender->addTime(dt * this->animationSpeed->getReal());
 			}
 		}
-		/*else if (true == notSimulating && nullptr != this->animationBlender)
-		{
-			this->resetAnimation();
-		}*/
 	}
 
 	void AnimationComponentV2::resetAnimation(void)

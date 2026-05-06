@@ -239,7 +239,10 @@ namespace NOWA
 
 	bool ParticleFxComponent::connect(void)
 	{
-		GameObjectComponent::connect();
+        GameObjectComponent::connect();
+        this->oldActivated = this->activated->getBool();
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+            "[ParticleFxComponent] connect: uniqueName='" + this->uniqueParticleName + "' templateName='" + this->particleTemplateName->getListSelectedValue() + "' activated=" + Ogre::StringConverter::toString(this->activated->getBool()));
 
 		this->oldActivated = this->activated->getBool();
 
@@ -262,7 +265,8 @@ namespace NOWA
 
 	bool ParticleFxComponent::disconnect(void)
 	{
-		GameObjectComponent::disconnect();
+        GameObjectComponent::disconnect();
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ParticleFxComponent] disconnect: uniqueName='" + this->uniqueParticleName + "'");
 
 		// Remove the particle from the module
 		if (false == this->uniqueParticleName.empty() && nullptr != this->particleFxModule)

@@ -101,7 +101,7 @@ namespace NOWA
 				return;
 			}
 
-			this->redoStack = CommandStack();
+			this->redoStack.clear();
 			this->undoStack.push_front(command);
 
 			if (this->undoStack.size() > this->limitCount)
