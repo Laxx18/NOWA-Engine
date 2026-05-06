@@ -344,31 +344,16 @@ void ComponentsPanelDynamic::showComponents(const Ogre::String& searchText)
 				}
 				else if (NOWA::TagPointComponent::getStaticClassName() == tempComponentName)
 				{
-					Ogre::v1::Entity* entity = this->gameObjects[i]->getMovableObject<Ogre::v1::Entity>();
-					if (nullptr != entity)
+					Ogre::Item* item = this->gameObjects[i]->getMovableObject<Ogre::Item>();
+					if (nullptr != item)
 					{
 						// Only show TagPointComponent if there is a skeleton and bones
-						Ogre::v1::Skeleton* skeleton = entity->getSkeleton();
-						if (nullptr != skeleton)
+						Ogre::SkeletonInstance* skeletonInstance = item->getSkeletonInstance();
+						if (nullptr != skeletonInstance)
 						{
-							unsigned short numBones = skeleton->getNumBones();
+							unsigned short numBones = skeletonInstance->getNumBones();
 							if (numBones > 0)
 								validToEnable = true;
-						}
-					}
-					else
-					{
-						Ogre::Item* item = this->gameObjects[i]->getMovableObject<Ogre::Item>();
-						if (nullptr != item)
-						{
-							// Only show TagPointComponent if there is a skeleton and bones
-							Ogre::SkeletonInstance* skeletonInstance = item->getSkeletonInstance();
-							if (nullptr != skeletonInstance)
-							{
-								unsigned short numBones = skeletonInstance->getNumBones();
-								if (numBones > 0)
-									validToEnable = true;
-							}
 						}
 					}
 				}
@@ -450,12 +435,12 @@ void ComponentsPanelDynamic::showComponents(const Ogre::String& searchText)
 					NOWA::PhysicsCompPtr physicsCompPtr = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::PhysicsComponent>());
 					// NOWA::AnimationCompPtr animationCompPtr = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::AnimationComponent>());
 
-					Ogre::v1::Entity* entity = this->gameObjects[i]->getMovableObject<Ogre::v1::Entity>();
-					if (nullptr != entity)
+					Ogre::Item* item = this->gameObjects[i]->getMovableObject<Ogre::Item>();
+                    if (nullptr != item)
 					{
-						Ogre::v1::OldSkeletonInstance* skeleton = entity->getSkeleton();
+                        Ogre::SkeletonInstance* skeleton = item->getSkeletonInstance();
 
-						if (nullptr != physicsCompPtr && nullptr != entity && nullptr != skeleton)
+						if (nullptr != physicsCompPtr && nullptr != item && nullptr != skeleton)
 							validToEnable = true;
 					}
 				}

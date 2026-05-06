@@ -803,7 +803,8 @@ protected:
       **/
     Ogre::ManualObject* mDebugRebuiltBB;
 
-
+    std::unordered_map<ConvexVolume*, dtObstacleRef> mBoxObstacleRefs;
+    bool mloadedFromDisk;
 
     static const int TILECACHESET_MAGIC = 'T'<<24 | 'S'<<16 | 'E'<<8 | 'T'; //'TSET';
     static const int TILECACHESET_VERSION = 2;

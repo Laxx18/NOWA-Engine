@@ -167,8 +167,6 @@ namespace NOWA
 	private:
 		void preReadDatablock(void);
 
-		bool readDatablockEntity(Ogre::v1::Entity* entity);
-
 		bool readDatablockItem(Ogre::Item* item);
 
 		void postReadDatablock(void);

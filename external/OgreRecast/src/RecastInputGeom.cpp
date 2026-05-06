@@ -59,18 +59,16 @@ InputGeom::InputGeom()
 	m_offMeshConCount(0)
 {
 	memset(m_volumes, 0, sizeof(m_volumes));
+	memset(m_offMeshConVerts, 0, sizeof(m_offMeshConVerts));
+	memset(m_offMeshConRads, 0, sizeof(m_offMeshConRads));
+	memset(m_offMeshConDirs, 0, sizeof(m_offMeshConDirs));
+	memset(m_offMeshConAreas, 0, sizeof(m_offMeshConAreas));
+	memset(m_offMeshConFlags, 0, sizeof(m_offMeshConFlags));
+	memset(m_offMeshConId, 0, sizeof(m_offMeshConId));
 }
 
 InputGeom::InputGeom(const NavMeshGeomSnapshot& snapshot)
-	: mReferenceNode(snapshot.referenceNode),
-	nverts(0),
-	ntris(0),
-	normals(nullptr),
-	verts(nullptr),
-	tris(nullptr),
-	bmin(nullptr),
-	bmax(nullptr),
-	m_chunkyMesh(nullptr)
+	: InputGeom()
 {
 	// Count totals across all mesh entries
 	for (const auto entry : snapshot.meshEntries)

@@ -806,12 +806,6 @@ namespace NOWA
 
 		inline Ogre::Vector3 pointToWorldSpace(const Ogre::Vector3& point, const Ogre::Vector3& heading, const Ogre::Vector3& side, const Ogre::Vector3& position);
 
-		bool hasNoTangentsAndCanGenerate(Ogre::v1::VertexDeclaration* vertexDecl);
-
-		void ensureHasTangents(Ogre::v1::MeshPtr mesh);
-
-		void substractOutTangentsForShader(Ogre::v1::Entity* entity);
-
 		template <typename T>
 		void localToGlobal(T* node, const Ogre::Quaternion& localOrient, const Ogre::Vector3& localPos, Ogre::Quaternion& globalOrient, Ogre::Vector3& globalPos)
 		{

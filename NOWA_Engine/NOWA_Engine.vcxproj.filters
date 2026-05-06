@@ -51,9 +51,6 @@
     <ClInclude Include="gameobject\AiLuaComponent.h">
       <Filter>gameobject</Filter>
     </ClInclude>
-    <ClInclude Include="gameobject\AnimationComponent.h">
-      <Filter>gameobject</Filter>
-    </ClInclude>
     <ClInclude Include="gameobject\AttributesComponent.h">
       <Filter>gameobject</Filter>
     </ClInclude>
@@ -100,9 +97,6 @@
       <Filter>gameobject</Filter>
     </ClInclude>
     <ClInclude Include="gameobject\PhysicsExplosionComponent.h">
-      <Filter>gameobject</Filter>
-    </ClInclude>
-    <ClInclude Include="gameobject\PhysicsRagDollComponent.h">
       <Filter>gameobject</Filter>
     </ClInclude>
     <ClInclude Include="gameobject\PhysicsTerrainComponent.h">
@@ -218,9 +212,6 @@
     </ClInclude>
     <ClInclude Include="network\Server.h">
       <Filter>network</Filter>
-    </ClInclude>
-    <ClInclude Include="utilities\AnimationBlender.h">
-      <Filter>utilities</Filter>
     </ClInclude>
     <ClInclude Include="utilities\AnimationSerializer.h">
       <Filter>utilities</Filter>
@@ -707,9 +698,6 @@
     <ClCompile Include="gameobject\AiLuaComponent.cpp">
       <Filter>gameobject</Filter>
     </ClCompile>
-    <ClCompile Include="gameobject\AnimationComponent.cpp">
-      <Filter>gameobject</Filter>
-    </ClCompile>
     <ClCompile Include="gameobject\AttributesComponent.cpp">
       <Filter>gameobject</Filter>
     </ClCompile>
@@ -747,9 +735,6 @@
       <Filter>gameobject</Filter>
     </ClCompile>
     <ClCompile Include="gameobject\PhysicsExplosionComponent.cpp">
-      <Filter>gameobject</Filter>
-    </ClCompile>
-    <ClCompile Include="gameobject\PhysicsRagDollComponent.cpp">
       <Filter>gameobject</Filter>
     </ClCompile>
     <ClCompile Include="gameobject\PhysicsTerrainComponent.cpp">
@@ -868,9 +853,6 @@
     </ClCompile>
     <ClCompile Include="network\Server.cpp">
       <Filter>network</Filter>
-    </ClCompile>
-    <ClCompile Include="utilities\AnimationBlender.cpp">
-      <Filter>utilities</Filter>
     </ClCompile>
     <ClCompile Include="utilities\AnimationSerializer.cpp">
       <Filter>utilities</Filter>

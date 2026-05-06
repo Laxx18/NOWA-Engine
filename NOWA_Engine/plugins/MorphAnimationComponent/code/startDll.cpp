@@ -1,6 +1,9 @@
 #include "NOWAPrecompiled.h"
 #include "MorphAnimationComponent.h"
 
+// TODO: Port for item
+
+#if 0
 // Plugin Code
 NOWA::MorphAnimationComponent* pMorphAnimationComponent;
 
@@ -16,3 +19,5 @@ extern "C" EXPORTED void dllStopPlugin()
 	delete pMorphAnimationComponent;
 	pMorphAnimationComponent = static_cast<NOWA::MorphAnimationComponent*>(0);
 }
+
+#endif

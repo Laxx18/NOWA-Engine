@@ -121,30 +121,17 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PhysicsActiveDestructableComponent] Init physics active destructable component for game object: " 
 			+ this->gameObjectPtr->getName());
 
-		Ogre::v1::Entity* entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
-		Ogre::Item* item = nullptr;
-		if (nullptr == entity)
+		Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
+        if (nullptr == item)
 		{
-			item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
-			if (nullptr == entity)
-			{
-				return false;
-			}
+			return false;
 		}
 
 		// Physics active component must be dynamic, else a mess occurs
 		this->gameObjectPtr->setDynamic(true);
 		this->gameObjectPtr->getAttribute(GameObject::AttrDynamic())->setVisible(false);
 
-		Ogre::String meshName = "";
-		if (nullptr != entity)
-		{
-			meshName = entity->getMesh()->getName();
-		}
-		else
-		{
-			meshName = item->getMesh()->getName();
-		}
+		Ogre::String meshName = item->getMesh()->getName();
 
 		size_t pos = meshName.rfind(".");
 		if (Ogre::String::npos != pos)
@@ -163,16 +150,11 @@ namespace NOWA
 		this->initialScale = this->gameObjectPtr->getSceneNode()->getScale();
 		this->initialOrientation = this->gameObjectPtr->getSceneNode()->getOrientation();
 
-		Ogre::v1::Entity* entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
-		Ogre::Item* item = nullptr;
-		if (nullptr == entity)
+        Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
+		if (nullptr == item)
 		{
-			item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
-			if (nullptr == entity)
-			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsActiveDestructableComponent] Error cannot create static body, because the game object has no entity with mesh for game object: " + this->gameObjectPtr->getName());
-				return false;
-			}
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsActiveDestructableComponent] Error cannot create static body, because the game object has no entity with mesh for game object: " + this->gameObjectPtr->getName());
+			return false;
 		}
 		
 		// first hide the origin entity and its holding mesh, because it was just a placeholder for the breakable meshes
@@ -453,15 +435,10 @@ namespace NOWA
 
 	Ogre::DataStreamPtr PhysicsActiveDestructableComponent::execSplitMesh(void)
 	{
-		Ogre::v1::Entity* entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
-		Ogre::Item* item = nullptr;
-		if (nullptr == entity)
+        Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
+		if (nullptr == item)
 		{
-			item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
-			if (nullptr == item)
-			{
-				return Ogre::DataStreamPtr();
-			}
+			return Ogre::DataStreamPtr();
 		}
 
 		// Only split if there is yet no file
@@ -512,25 +489,12 @@ namespace NOWA
 			Ogre::String datablockName;
 			Ogre::FileInfoListPtr fileInfoList;
 				
-			if (nullptr != entity)
+			datablockName = *item->getSubItem(0)->getDatablock()->getNameStr();
+			Ogre::String meshResourceFolderName = Ogre::ResourceGroupManager::getSingleton().findGroupContainingResource(item->getMesh()->getName());
+			fileInfoList = Ogre::FileInfoListPtr(Ogre::ResourceGroupManager::getSingletonPtr()->findResourceFileInfo(meshResourceFolderName, item->getMesh()->getName()));
+			if (fileInfoList->empty())
 			{
-				datablockName = *entity->getSubEntity(0)->getDatablock()->getNameStr();
-				Ogre::String meshResourceFolderName = Ogre::ResourceGroupManager::getSingleton().findGroupContainingResource(entity->getMesh()->getName());
-				fileInfoList = Ogre::FileInfoListPtr(Ogre::ResourceGroupManager::getSingletonPtr()->findResourceFileInfo(meshResourceFolderName, entity->getMesh()->getName()));
-				if (fileInfoList->empty())
-				{
-					return Ogre::DataStreamPtr();
-				}
-			}
-			else
-			{
-				datablockName = *item->getSubItem(0)->getDatablock()->getNameStr();
-				Ogre::String meshResourceFolderName = Ogre::ResourceGroupManager::getSingleton().findGroupContainingResource(item->getMesh()->getName());
-				fileInfoList = Ogre::FileInfoListPtr(Ogre::ResourceGroupManager::getSingletonPtr()->findResourceFileInfo(meshResourceFolderName, item->getMesh()->getName()));
-				if (fileInfoList->empty())
-				{
-					return Ogre::DataStreamPtr();
-				}
+				return Ogre::DataStreamPtr();
 			}
 
 			if (fileInfoList.isNull())
@@ -543,16 +507,7 @@ namespace NOWA
 			sourceFolder = rootFolder + "/" + sourceFolder.substr(6, sourceFolder.length());
 
 			// "D:\Ogre\GameEngineDevelopment\media\models\Objects\Case1.mesh"
-			Ogre::String sourceFile;
-			if (nullptr != entity)
-			{
-				sourceFile = sourceFolder + "/" + entity->getMesh()->getName();
-			}
-			else
-			{
-				sourceFile = sourceFolder + "/" + item->getMesh()->getName();
-			}
-				
+			Ogre::String sourceFile = sourceFolder + "/" + item->getMesh()->getName();
 			sourceFile = Core::getSingletonPtr()->replaceSlashes(sourceFile, false);
 
 			// "D:\Ogre\GameEngineDevelopment\media\models\Destructable\"
@@ -951,7 +906,6 @@ namespace NOWA
 		const Ogre::String& meshName, Ogre::SceneManager* sceneManager)
 		: physicsActiveDestructableComponent(physicsActiveDestructableComponent),
 		sceneManager(physicsActiveDestructableComponent->getOwner()->getSceneManager()),
-		entity(nullptr),
 		item(nullptr),
 		sceneNode(nullptr),
 		splitPartBody(nullptr),
@@ -965,12 +919,7 @@ namespace NOWA
 		this->sceneNode->setName("DestructableNode"
 			+ Ogre::StringConverter::toString(this->physicsActiveDestructableComponent->parts.size()) + "_" + this->physicsActiveDestructableComponent->getOwner()->getUniqueName());
 
-		if (GameObject::ENTITY == this->physicsActiveDestructableComponent->getOwner()->getType())
-		{
-			this->entity = sceneManager->createEntity(meshName);
-			this->sceneNode->attachObject(this->entity);
-		}
-		else if (GameObject::ITEM == this->physicsActiveDestructableComponent->getOwner()->getType())
+		if (GameObject::ITEM == this->physicsActiveDestructableComponent->getOwner()->getType())
 		{
 			this->item = sceneManager->createItem(meshName);
 			this->sceneNode->attachObject(this->item);
@@ -997,12 +946,7 @@ namespace NOWA
 
 		Ogre::Vector3 boundingBoxHalfSize = Ogre::Vector3::ZERO;
 		Ogre::Vector3 scale = originScale * shapeSizeFactor;
-		if (GameObject::ENTITY == this->physicsActiveDestructableComponent->getOwner()->getType())
-		{
-			this->partPosition = (entity->getMesh()->getBounds().getCenter()) * originScale;
-			boundingBoxHalfSize = entity->getMesh()->getBounds().getHalfSize() * scale;
-		}
-		else if (GameObject::ITEM == this->physicsActiveDestructableComponent->getOwner()->getType())
+		if (GameObject::ITEM == this->physicsActiveDestructableComponent->getOwner()->getType())
 		{
 			this->partPosition = (item->getMesh()->getAabb().mCenter) * originScale;
 			boundingBoxHalfSize = item->getMesh()->getAabb().mHalfSize * scale;
@@ -1025,12 +969,7 @@ namespace NOWA
 			// when scene node is scaled to 0.5, 0.5, 0.5 the collision scale will be 0.25, 0.25, 0.25
 			// This works because the collision is made of peaces and each peace has an offset position, so scaling will also more offsetting the position in all directions
 			OgreNewt::CollisionPrimitives::ConvexHull* col = nullptr;
-			if (GameObject::ENTITY == this->physicsActiveDestructableComponent->getOwner()->getType())
-			{
-				col = new OgreNewt::CollisionPrimitives::ConvexHull(
-				this->physicsActiveDestructableComponent->getOgreNewt(), entity, 0, Ogre::Quaternion::IDENTITY, Ogre::Vector3::ZERO, 0.001f, scale * scale);
-			}
-			else if (GameObject::ITEM == this->physicsActiveDestructableComponent->getOwner()->getType())
+			if (GameObject::ITEM == this->physicsActiveDestructableComponent->getOwner()->getType())
 			{
 				col = new OgreNewt::CollisionPrimitives::ConvexHull(
 					this->physicsActiveDestructableComponent->getOgreNewt(), item, 0, Ogre::Quaternion::IDENTITY, Ogre::Vector3::ZERO, 0.001f, scale * scale);
@@ -1056,18 +995,11 @@ namespace NOWA
 
 		// calculate mass for each part
 // Attention: Is this correct?
-		Ogre::v1::Entity* ownerEntity = nullptr;
 		Ogre::Item* ownerItem = nullptr;
 		Ogre::Vector3 splitPartBoundingBoxSize = Ogre::Vector3::ZERO;
 		Ogre::Vector3 originalBoundingBoxSize = Ogre::Vector3::ZERO;
 
-		if (GameObject::ENTITY == this->physicsActiveDestructableComponent->getOwner()->getType())
-		{
-			ownerEntity = this->physicsActiveDestructableComponent->getOwner()->getMovableObjectUnsafe<Ogre::v1::Entity>();
-			splitPartBoundingBoxSize = ownerEntity->getMesh()->getBounds().getSize() * scale;
-			originalBoundingBoxSize = entity->getMesh()->getBounds().getSize() * scale;
-		}
-		else if (GameObject::ITEM == this->physicsActiveDestructableComponent->getOwner()->getType())
+		if (GameObject::ITEM == this->physicsActiveDestructableComponent->getOwner()->getType())
 		{
 			ownerItem = this->physicsActiveDestructableComponent->getOwner()->getMovableObjectUnsafe<Ogre::Item>();
 			splitPartBoundingBoxSize = ownerItem->getMesh()->getAabb().getSize() * scale;
@@ -1158,19 +1090,7 @@ namespace NOWA
 
 	PhysicsActiveDestructableComponent::SplitPart::~SplitPart()
 	{
-		if (nullptr != this->entity)
-		{
-// Attention: is this correct?
-			if (this->sceneManager->hasMovableObject(this->entity))
-			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PhysicsActiveDestructableComponent::SplitPart] Destroying entity: "
-					+ this->entity->getName());
-
-				this->sceneManager->destroyEntity(this->entity);
-				this->entity = nullptr;
-			}
-		}
-		else if (nullptr != this->item)
+		if (nullptr != this->item)
 		{
 			// Attention: is this correct?
 			if (this->sceneManager->hasMovableObject(this->item))

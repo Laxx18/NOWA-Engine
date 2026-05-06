@@ -872,7 +872,7 @@ namespace NOWA
 	{
 		this->functionParser.resize(5 * this->functionCount->getUInt());
 
-		if (index > this->xFunctions.size())
+		if (index >= this->xFunctions.size())
 			index = static_cast<unsigned int>(this->xFunctions.size()) - 1;
 
 		this->xFunctions[index]->setValue(xFunction);
@@ -888,7 +888,7 @@ namespace NOWA
 	{
 		this->functionParser.resize(5 * this->functionCount->getUInt());
 
-		if (index > this->yFunctions.size())
+		if (index >= this->yFunctions.size())
 			index = static_cast<unsigned int>(this->yFunctions.size()) - 1;
 
 		this->yFunctions[index]->setValue(yFunction);
@@ -905,7 +905,7 @@ namespace NOWA
 	{
 		this->functionParser.resize(5 * this->functionCount->getUInt());
 
-		if (index > this->zFunctions.size())
+		if (index >= this->zFunctions.size())
 			index = static_cast<unsigned int>(this->zFunctions.size()) - 1;
 
 		this->zFunctions[index]->setValue(zFunction);
@@ -920,21 +920,21 @@ namespace NOWA
 
 	Ogre::String MoveMathFunctionComponent::getXFunction(unsigned int index) const
 	{
-		if (index > this->xFunctions.size())
+		if (index >= this->xFunctions.size())
 			return "";
 		return this->xFunctions[index]->getString();
 	}
 
 	Ogre::String MoveMathFunctionComponent::getYFunction(unsigned int index) const
 	{
-		if (index > this->yFunctions.size())
+		if (index >= this->yFunctions.size())
 			return "";
 		return this->yFunctions[index]->getString();
 	}
 
 	Ogre::String MoveMathFunctionComponent::getZFunction(unsigned int index) const
 	{
-		if (index > this->zFunctions.size())
+		if (index >= this->zFunctions.size())
 			return "";
 		return this->zFunctions[index]->getString();
 	}
@@ -943,14 +943,14 @@ namespace NOWA
 	{
 		this->functionParser.resize(5 * this->functionCount->getUInt());
 
-		if (index > this->minLengths.size())
+		if (index >= this->minLengths.size())
 			index = static_cast<unsigned int>(this->minLengths.size()) - 1;
 		this->minLengths[index]->setValue(minLength);
 	}
 	
 	Ogre::String MoveMathFunctionComponent::getMinLength(unsigned int index) const
 	{
-		if (index > this->minLengths.size())
+		if (index >= this->minLengths.size())
 			return "";
 		return this->minLengths[index]->getString();
 	}
@@ -959,42 +959,42 @@ namespace NOWA
 	{
 		this->functionParser.resize(5 * this->functionCount->getUInt());
 
-		if (index > this->maxLengths.size())
+		if (index >= this->maxLengths.size())
 			index = static_cast<unsigned int>(this->maxLengths.size()) - 1;
 		this->maxLengths[index]->setValue(maxLength);
 	}
 
 	Ogre::String MoveMathFunctionComponent::getMaxLength(unsigned int index) const
 	{
-		if (index > this->maxLengths.size())
+		if (index >= this->maxLengths.size())
 			return "";
 		return this->maxLengths[index]->getString();
 	}
 	
 	void MoveMathFunctionComponent::setSpeed(unsigned int index, Ogre::Real speed)
 	{
-		if (index > this->speeds.size())
+		if (index >= this->speeds.size())
 			index = static_cast<unsigned int>(this->speeds.size()) - 1;
 		this->speeds[index]->setValue(speed);
 	}
 	
 	Ogre::Real MoveMathFunctionComponent::getSpeed(unsigned int index) const
 	{
-		if (index > this->speeds.size())
+		if (index >= this->speeds.size())
 			return 0;
 		return this->speeds[index]->getReal();
 	}
 
 	void MoveMathFunctionComponent::setRotationAxis(unsigned int index, const Ogre::Vector3 pivotAxis)
 	{
-		if (index > this->rotationAxes.size())
+		if (index >= this->rotationAxes.size())
 			index = static_cast<unsigned int>(this->rotationAxes.size()) - 1;
 		this->rotationAxes[index]->setValue(pivotAxis);
 	}
 
 	Ogre::Vector3 MoveMathFunctionComponent::getRotationAxis(unsigned int index) const
 	{
-		if (index > this->rotationAxes.size())
+		if (index >= this->rotationAxes.size())
 			return Ogre::Vector3::ZERO;
 		return this->rotationAxes[index]->getVector3();
 	}

@@ -643,7 +643,7 @@ namespace NOWA
 
 	Ogre::String RandomImageShuffler::getImageName(unsigned int index)
 	{
-		if (index > this->images.size())
+		if (index >= this->images.size())
 			return "";
 		return this->images[index]->getString();
 	}

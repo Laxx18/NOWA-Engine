@@ -372,7 +372,7 @@ namespace NOWA
 
 	void LinesComponent::setColor(unsigned int index, const Ogre::Vector3& color)
 	{
-		if (index > this->colors.size())
+		if (index >= this->colors.size())
 			index = static_cast<unsigned int>(this->colors.size()) - 1;
 
 		this->colors[index]->setValue(color);
@@ -380,14 +380,14 @@ namespace NOWA
 
 	Ogre::Vector3 LinesComponent::getColor(unsigned int index) const
 	{
-		if (index > this->colors.size())
+		if (index >= this->colors.size())
 			return Ogre::Vector3::ZERO;
 		return this->colors[index]->getVector3();
 	}
 
 	void LinesComponent::setStartPosition(unsigned int index, const Ogre::Vector3& startPosition)
 	{
-		if (index > this->startPositions.size())
+		if (index >= this->startPositions.size())
 			index = static_cast<unsigned int>(this->startPositions.size()) - 1;
 
 		this->startPositions[index]->setValue(startPosition);
@@ -395,14 +395,14 @@ namespace NOWA
 
 	Ogre::Vector3 LinesComponent::getStartPosition(unsigned int index) const
 	{
-		if (index > this->startPositions.size())
+		if (index >= this->startPositions.size())
 			return Ogre::Vector3::ZERO;
 		return this->startPositions[index]->getVector3();
 	}
 
 	void LinesComponent::setEndPosition(unsigned int index, const Ogre::Vector3& endPosition)
 	{
-		if (index > this->endPositions.size())
+		if (index >= this->endPositions.size())
 			index = static_cast<unsigned int>(this->endPositions.size()) - 1;
 
 		this->endPositions[index]->setValue(endPosition);
@@ -410,7 +410,7 @@ namespace NOWA
 
 	Ogre::Vector3 LinesComponent::getEndPosition(unsigned int index) const
 	{
-		if (index > this->endPositions.size())
+		if (index >= this->endPositions.size())
 			return Ogre::Vector3::ZERO;
 		return this->endPositions[index]->getVector3();
 	}

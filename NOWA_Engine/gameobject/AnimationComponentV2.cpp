@@ -476,9 +476,9 @@ namespace NOWA
 	{
 		if (nullptr != this->skeleton)
 		{
-			if (true == skeleton->hasBone(boneName))
+            if (true == this->skeleton->hasBone(boneName))
 			{
-				return skeleton->getBone(boneName);
+                return this->skeleton->getBone(boneName);
 			}
 		}
 		return nullptr;

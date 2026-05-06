@@ -506,21 +506,10 @@ namespace NOWA
                 }
 
                 // visibility check
-                if (type == "Entity")
+                Ogre::Item* it = static_cast<Ogre::Item*>(movable);
+                if (!it->getVisible())
                 {
-                    Ogre::v1::Entity* e = static_cast<Ogre::v1::Entity*>(movable);
-                    if (!e->getVisible())
-                    {
-                        continue;
-                    }
-                }
-                else
-                {
-                    Ogre::Item* it = static_cast<Ogre::Item*>(movable);
-                    if (!it->getVisible())
-                    {
-                        continue;
-                    }
+                    continue;
                 }
 
                 size_t vertexCount = 0;
@@ -528,18 +517,9 @@ namespace NOWA
                 Ogre::Vector3* vertices = nullptr;
                 unsigned long* indices = nullptr;
 
-                if (type == "Entity")
-                {
-                    Ogre::v1::Entity* entity = static_cast<Ogre::v1::Entity*>(movable);
-                    MathHelper::getInstance()->getMeshInformation(entity->getMesh(), vertexCount, vertices, indexCount, indices, entity->getParentNode()->_getDerivedPosition(), entity->getParentNode()->_getDerivedOrientation(),
-                        entity->getParentNode()->getScale());
-                }
-                else
-                {
-                    Ogre::Item* item = static_cast<Ogre::Item*>(movable);
-                    MathHelper::getInstance()->getMeshInformation2(item->getMesh(), vertexCount, vertices, indexCount, indices, item->getParentNode()->_getDerivedPosition(), item->getParentNode()->_getDerivedOrientation(),
-                        item->getParentNode()->getScale());
-                }
+                Ogre::Item* item = static_cast<Ogre::Item*>(movable);
+                MathHelper::getInstance()->getMeshInformation2(item->getMesh(), vertexCount, vertices, indexCount, indices, item->getParentNode()->_getDerivedPosition(), item->getParentNode()->_getDerivedOrientation(),
+                    item->getParentNode()->getScale());
 
                 bool hitfound = false;
 

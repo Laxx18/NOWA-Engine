@@ -132,7 +132,6 @@ namespace NOWA
 			void splitPartMoveCallback(OgreNewt::Body* body, Ogre::Real timeStep, int threadIndex);
 		private:
 			Ogre::SceneManager* sceneManager;
-			Ogre::v1::Entity* entity;
 			Ogre::Item* item;
 			Ogre::SceneNode* sceneNode;
 			OgreNewt::Body* splitPartBody;

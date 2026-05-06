@@ -9,22 +9,35 @@ namespace NOWA
 	using namespace rapidxml;
 	using namespace luabind;
 
-	NavMeshComponent::NavMeshComponent()
-		: GameObjectComponent(),
-		transformUpdateTimer(0.0f),
-		oldPosition(Ogre::Vector3::ZERO),
-		oldOrientation(Ogre::Quaternion::IDENTITY),
-		type(0),
-		activated(new Variant(NavMeshComponent::AttrActivated(), true, this->attributes))
-	{
-		std::vector<Ogre::String> navigationTypes(2);
-		navigationTypes[0] = "Static Obstacle";
-		navigationTypes[1] = "Dynamic Obstacle";
-		this->navigationType = new Variant(NavMeshComponent::AttrNavigationType(), navigationTypes, this->attributes);
-		this->navigationType->addUserData(GameObject::AttrActionNeedRefresh());
-		this->walkable = new Variant(NavMeshComponent::AttrWalkable(), false, this->attributes);
-		this->walkable->setVisible(false);
-	}
+	NavMeshComponent::NavMeshComponent() :
+        GameObjectComponent(),
+        transformUpdateTimer(0.0f),
+        oldPosition(Ogre::Vector3::ZERO),
+        oldOrientation(Ogre::Quaternion::IDENTITY),
+        type(0),
+        activated(new Variant(NavMeshComponent::AttrActivated(), true, this->attributes))
+    {
+        std::vector<Ogre::String> navigationTypes(2);
+        navigationTypes[0] = "Static Obstacle";
+        navigationTypes[1] = "Dynamic Obstacle";
+        this->navigationType = new Variant(NavMeshComponent::AttrNavigationType(), navigationTypes, this->attributes);
+        this->navigationType->addUserData(GameObject::AttrActionNeedRefresh());
+
+        this->walkable = new Variant(NavMeshComponent::AttrWalkable(), false, this->attributes);
+        this->walkable->setVisible(false);
+
+        // Set descriptions visible in the properties panel
+        this->navigationType->setDescription("Static Obstacle: baked into navmesh geometry at build time, requires full rebuild."
+                                             "Dynamic Obstacle: convex hull overlay on tile cache, added/removed in milliseconds."
+                                             "WARNING: The obstacle shape is a CONVEX HULL of the mesh footprint. The entire"
+                                             "enclosed area (including interior) becomes non-walkable. For walkable interiors"
+                                             "(e.g. motorhome cabin) a separate interior navmesh with off-mesh connections"
+                                             "is required — this is not currently supported by NavMeshComponent alone.");
+
+        this->walkable->setDescription("Only applies to Dynamic Obstacle type."
+                                       "false (default): RC_NULL_AREA — agents treat this area as impassable (buildings, walls)."
+                                       "true: RC_WALKABLE_AREA — agents can walk through (bridges, ramps, platforms).");
+    }
 
 	NavMeshComponent::~NavMeshComponent()
 	{

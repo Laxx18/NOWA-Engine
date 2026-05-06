@@ -224,20 +224,10 @@ namespace NOWA
 
 				// this->light->setAffectParentNode(true);
 
-				Ogre::v1::Entity* entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
-				if (nullptr != entity)
+				Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
+				if (item != nullptr)
 				{
-					entity->setCastShadows(false);
-					// Borrow the entity from the game object
-					this->dummyItem = this->gameObjectPtr->getMovableObject<Ogre::Item>();
-				}
-				else
-				{
-					Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
-					if (item != nullptr)
-					{
-						item->setCastShadows(false);
-					}
+					item->setCastShadows(false);
 				}
 			});
 		}

@@ -3,7 +3,7 @@
 #include "JointComponents.h"
 #include "TagPointComponent.h"
 #include "main/AppStateManager.h"
-#include "utilities/AnimationBlender.h"
+#include "utilities/AnimationBlenderV2.h"
 #include "utilities/MathHelper.h"
 #include "utilities/XMLConverter.h"
 
@@ -415,7 +415,7 @@ namespace NOWA
 
         if (this->gameObjectPtr->getId() == id)
         {
-            if (this->rdState == PhysicsRagDollComponentV2::PARTIAL_RAGDOLLING && AnimationBlender::ANIM_JUMP_START == castEventData->getAnimationId() && this->oldAnimationId != castEventData->getAnimationId())
+            if (this->rdState == PhysicsRagDollComponentV2::PARTIAL_RAGDOLLING && AnimationBlenderV2::ANIM_JUMP_START == castEventData->getAnimationId() && this->oldAnimationId != castEventData->getAnimationId())
             {
                 // Could trigger state changes on specific animations
             }

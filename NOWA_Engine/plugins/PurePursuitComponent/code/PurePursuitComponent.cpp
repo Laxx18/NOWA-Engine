@@ -858,7 +858,7 @@ namespace NOWA
 
 	void PurePursuitComponent::prependWaypointStrId(int index, const Ogre::String& id)
 	{
-		if (index > this->waypoints.size())
+		if (index >= this->waypoints.size())
 			return;
 
 		this->waypointsCount->setValue(static_cast<unsigned int>(this->waypoints.size() + 1));
@@ -869,7 +869,7 @@ namespace NOWA
 
 	unsigned long PurePursuitComponent::getWaypointId(unsigned int index)
 	{
-		if (index > this->waypoints.size())
+		if (index >= this->waypoints.size())
 			return 0;
 		return this->waypoints[index]->getULong();
 	}
@@ -1117,25 +1117,13 @@ namespace NOWA
 
 		for (const auto& obstacle : obstacles)
 		{
-			Ogre::v1::Entity* entity = obstacle->getMovableObject<Ogre::v1::Entity>();
-			if (nullptr != entity)
+			Ogre::Item* item = obstacle->getMovableObject<Ogre::Item>();
+			if (nullptr != item)
 			{
-				const auto& boundingBox = entity->getLocalAabb();
+				const auto& boundingBox = item->getLocalAabb();
 				if (boundingBox.contains(detectionPoint))
 				{
 					return true;
-				}
-			}
-			else
-			{
-				Ogre::Item* item = obstacle->getMovableObject<Ogre::Item>();
-				if (nullptr != item)
-				{
-					const auto& boundingBox = item->getLocalAabb();
-					if (boundingBox.contains(detectionPoint))
-					{
-						return true;
-					}
 				}
 			}
 		}
@@ -1335,11 +1323,11 @@ namespace NOWA
 					Ogre::Vector3 pos = nodeCompPtr->getOwner()->getPosition();
 					if (true == MathHelper::getInstance()->vector3Equals(this->currentWaypoint.second, pos))
 					{
-						nodeCompPtr->getOwner()->getMovableObjectUnsafe<Ogre::v1::Entity>()->setDatablock("datablockName");
+						nodeCompPtr->getOwner()->getMovableObjectUnsafe<Ogre::Item>()->setDatablock("datablockName");
 					}
 					else
 					{
-						nodeCompPtr->getOwner()->getMovableObjectUnsafe<Ogre::v1::Entity>()->setDatablock(this->oldDatablockName);
+                        nodeCompPtr->getOwner()->getMovableObjectUnsafe<Ogre::Item>()->setDatablock(this->oldDatablockName);
 					}
 				}
 			}

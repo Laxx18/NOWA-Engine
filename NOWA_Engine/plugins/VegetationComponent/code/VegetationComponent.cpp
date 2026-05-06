@@ -941,7 +941,6 @@ namespace NOWA
             // =================================================================
             for (const auto& instance : batch.instances)
             {
-                // Create V2 Item (not Entity!)
                 Ogre::Item* item = sceneManager->createItem(meshPtr, Ogre::SCENE_STATIC);
 
                 if (!item)

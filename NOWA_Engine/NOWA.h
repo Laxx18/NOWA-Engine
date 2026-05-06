@@ -85,7 +85,6 @@ extern "C"
 #include "gameobject/AttributesComponent.h"
 #include "gameobject/NavMeshComponent.h"
 #include "gameobject/NavMeshTerraComponent.h"
-#include "gameobject/PhysicsRagDollComponent.h"
 #include "gameobject/PhysicsRagDollComponentV2.h"
 #include "gameobject/PhysicsRagDollComponentV3.h"
 #include "gameobject/DistributedComponent.h"
@@ -95,7 +94,6 @@ extern "C"
 #include "gameobject/GameObjectTitleComponent.h"
 #include "gameobject/SpawnComponent.h"
 #include "gameobject/ExitComponent.h"
-#include "gameobject/AnimationComponent.h"
 #include "gameobject/AnimationComponentV2.h"
 #include "gameobject/PhysicsActiveCompoundComponent.h"
 #include "gameobject/PhysicsActiveDestructAbleComponent.h"
@@ -165,7 +163,6 @@ namespace NOWA
 	typedef boost::shared_ptr<PhysicsTerrainComponent> PhysicsTerrainCompPtr;
 	typedef boost::shared_ptr<PhysicsBuoyancyComponent> PhysicsBuoyancyCompPtr;
 	typedef boost::shared_ptr<AttributesComponent> AttributesCompPtr;
-	typedef boost::shared_ptr<PhysicsRagDollComponent> PhysicsRagDollCompPtr;
     typedef boost::shared_ptr<PhysicsRagDollComponentV2> PhysicsRagDollV2CompPtr;
     typedef boost::shared_ptr<PhysicsRagDollComponentV3> PhysicsRagDollV3CompPtr;
 	typedef boost::shared_ptr<DistributedComponent> DistributedCompPtr;
@@ -177,7 +174,6 @@ namespace NOWA
 	typedef boost::shared_ptr<SimpleSoundComponent> SimpleSoundCompPtr;
 	typedef boost::shared_ptr<SpawnComponent> SpawnCompPtr;
 	typedef boost::shared_ptr<ExitComponent> ExitCompPtr;
-	typedef boost::shared_ptr<AnimationComponent> AnimationCompPtr;
 	typedef boost::shared_ptr<PhysicsActiveCompoundComponent> PhysicsActiveCompoundCompPtr;
 	typedef boost::shared_ptr<PhysicsPlayerControllerComponent> PhysicsPlayerControllerCompPtr;
 	typedef boost::shared_ptr<PhysicsActiveDestructableComponent> PhysicsActiveDestructableCompPtr;
@@ -384,7 +380,6 @@ namespace NOWA
 #include "utilities/Outline.h"
 #include "utilities/MeshScissor.h"
 #include "utilities/AnimationSerializer.h"
-#include "utilities/AnimationBlender.h"
 #include "utilities/AnimationBlenderV2.h"
 // #include "utilities/DynamicLines.h"
 #include "utilities/BoundingBoxDraw.h"

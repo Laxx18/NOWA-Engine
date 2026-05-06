@@ -3,7 +3,6 @@
 #include "gameobject/PhysicsActiveComponent.h"
 #include "gameobject/PhysicsPlayerControllerComponent.h"
 #include "gameobject/PhysicsActiveKinematicComponent.h"
-#include "gameobject/AnimationComponent.h"
 #include "gameobject/AnimationComponentV2.h"
 #include "gameobject/PlayerControllerComponents.h"
 #include "gameobject/JointComponents.h"
@@ -571,10 +570,6 @@ namespace NOWA
 
 			for (size_t i = 0; i < path.size(); i++)
 			{
-				/*Ogre::SceneNode* node = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
-				Ogre::v1::Entity* entity = this->gameObjectPtr->getSceneManager()->createEntity("Node.mesh");
-				node->attachObject(entity);*/
-
 				Ogre::Vector3 waypoint = path[i];
 				this->pPath->addWayPoint(Ogre::Vector3(path[i]));
 			}
@@ -2736,43 +2731,19 @@ namespace NOWA
 			{
 				bool hasAnimation = false;
 				IAnimationBlender* animationBlender;
-				auto animationCompPtr = NOWA::makeStrongPtr(this->agent->getOwner()->getComponent<AnimationComponent>());
-				if (nullptr == animationCompPtr)
+				auto animationCompPtrV2 = NOWA::makeStrongPtr(this->agent->getOwner()->getComponent<AnimationComponentV2>());
+				if (nullptr != animationCompPtrV2)
 				{
-					auto playerControllerCompPtr = NOWA::makeStrongPtr(this->agent->getOwner()->getComponent<PlayerControllerComponent>());
-					if (nullptr != playerControllerCompPtr)
-					{
-						animationBlender = playerControllerCompPtr->getAnimationBlender();
-						this->autoAnimation = autoAnimation;
-						this->animationBlender = animationBlender;
-						this->oldAnimationSpeed = playerControllerCompPtr->getAnimationSpeed();
-						hasAnimation = true;
-					}
-					else
-					{
-						auto animationCompPtrV2 = NOWA::makeStrongPtr(this->agent->getOwner()->getComponent<AnimationComponentV2>());
-						if (nullptr != animationCompPtrV2)
-						{
-							animationBlender = animationCompPtrV2->getAnimationBlender();
-							this->autoAnimation = autoAnimation;
-							this->animationBlender = animationBlender;
-							this->oldAnimationSpeed = animationCompPtrV2->getSpeed();
-							hasAnimation = true;
-						}
-					}
-				}
-				else
-				{
-					animationBlender = animationCompPtr->getAnimationBlender();
+					animationBlender = animationCompPtrV2->getAnimationBlender();
 					this->autoAnimation = autoAnimation;
 					this->animationBlender = animationBlender;
-					this->oldAnimationSpeed = animationCompPtr->getSpeed();
+					this->oldAnimationSpeed = animationCompPtrV2->getSpeed();
 					hasAnimation = true;
 				}
 
 				if (false == hasAnimation)
 				{
-					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MovingBehavior] Warning: Cannot use auto animation, because the agent has no component which includes animation (AnimationComponent, PlayerControllerComponent) for game object: " 
+					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MovingBehavior] Warning: Cannot use auto animation, because the agent has no component which includes animation (AnimationComponentV2, PlayerControllerComponent) for game object: " 
 						+ this->agent->getOwner()->getName());
 				}
 			}

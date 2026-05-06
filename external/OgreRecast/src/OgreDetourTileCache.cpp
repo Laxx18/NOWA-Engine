@@ -72,11 +72,16 @@ OgreDetourTileCache::OgreDetourTileCache(OgreRecast *recast, int tileSize)
       m_th(0),
       m_tw(0),
       mChangedConvexVolumesCount(0),
-      mDebugRebuiltBB(0)
+      mDebugRebuiltBB(0),
+      mloadedFromDisk(false)
 {
     m_talloc = new LinearAllocator(32000);
     m_tcomp = new FastLZCompressor;
     m_tmproc = new MeshProcess;
+
+    m_geom = new InputGeom();
+    if (nullptr != m_tmproc)
+        m_tmproc->init(m_geom);
 
     // Sanity check on tilesize
     if(m_tileSize < 16 || m_tileSize > 128)
@@ -250,6 +255,7 @@ bool OgreDetourTileCache::TileCacheBuild(const std::vector<InputGeom::TerraData>
 
 bool OgreDetourTileCache::TileCacheBuild(InputGeom *inputGeom)
 {
+    mloadedFromDisk = false;
     // Init configuration for specified geometry
     configure(inputGeom);
 
@@ -581,13 +587,9 @@ int OgreDetourTileCache::rasterizeTileLayers(InputGeom* geom, const int tx, cons
     return n;
 }
 
-
-
-void OgreDetourTileCache::handleUpdate(const float dt)
+void OgreDetourTileCache::handleUpdate(float dt)
 {
-    if (!m_recast->m_navMesh)
-        return;
-    if (!m_tileCache)
+    if (!m_tileCache || !m_recast->m_navMesh)
         return;
 
 // TODO deferred rebuilding of tiles when adding or removing convex shape obstacles
@@ -600,9 +602,11 @@ void OgreDetourTileCache::handleUpdate(const float dt)
     }
 */
 
+    // Processes deferred temp obstacles (addBoxObstacle/removeObstacle calls).
+    // Each frame this rebuilds dirty tile layers with new obstacle data —
+    // no original geometry needed, works entirely on compressed tile data.
     m_tileCache->update(dt, m_recast->m_navMesh);
 }
-
 
 void OgreDetourTileCache::getTileAtPos(const float* pos, int& tx, int& ty)
 {
@@ -977,44 +981,53 @@ void OgreDetourTileCache::drawPolyMesh(const Ogre::String tileName, const struct
 
 
 // TODO I need to redraw the changed tiles!!
-int OgreDetourTileCache::addConvexShapeObstacle(ConvexVolume *obstacle)
+int OgreDetourTileCache::addConvexShapeObstacle(ConvexVolume* obstacle)
 {
-    // Add convex shape to input geometry
+    // Always store in m_geom for tracking (index-based lookup, ray hit tests).
     int result = m_geom->addConvexVolume(obstacle);
     if (result == -1)
-        return result;
-
-// TODO use these vars for deferring addConvexShape actions
-//    mChangedConvexVolumes[mChangedConvexVolumesCount] = obstacle;
-//    mChangedConvexVolumesCount++;
-
-    // Determine which navmesh tiles have to be updated
-         // Borrowed from detourTileCache::update()
-            // Find touched tiles using obstacle bounds.
-    int ntouched = 0;
-    dtCompressedTileRef touched[DT_MAX_TOUCHED_TILES];
-    m_tileCache->queryTiles(obstacle->bmin, obstacle->bmax, touched, &ntouched, DT_MAX_TOUCHED_TILES);
-
-    // Rebuild affected tiles
-// TODO maybe defer this and timeslice it, like happend in dtTileCache with tempObstacle updates
-    for (int i = 0; i < ntouched; ++i)
     {
-// TODO when you do deffered commands, make sure you issue a rebuild for a tile only once per update, so remove doubles from the request queue (this is what contains() is for in dtTileCache)
-        // Retrieve coordinates of tile that has to be rebuilt
-        const dtCompressedTile* tile = m_tileCache->getTileByRef(touched[i]);
-
-        // If it is null, tile is already rebuilt (and has a new ref ID)
-        if(tile) {
-            int tx = tile->header->tx;
-            int ty = tile->header->ty;
-            tile = NULL;
-
-// TODO we actually want a buildTile method with a tileRef as input param. As this method does a bounding box intersection with tiles again, which might result in multiple tiles being rebuilt (which will lead to nothing because only one tile is removed..), and we determined which tiles to bebuild already, anyway (using queryTiles)
-            buildTile(tx, ty, m_geom);  // Might rebuild multiple tiles
-        }
-
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+            "[OgreDetourTileCache] addConvexShapeObstacle: MAX_VOLUMES reached.");
+        return -1;
     }
 
+    if (mloadedFromDisk)
+    {
+        // Navmesh was loaded from disk — original rasterization geometry is not
+        // available so buildTile() cannot re-rasterize (returns 0 tiles).
+        // Use dtTileCache's native temp obstacle API instead: it modifies the
+        // existing compressed tile layer data without needing geometry.
+        // The obstacle is processed asynchronously by handleUpdate() each frame.
+        dtObstacleRef ref = 0;
+        dtStatus status = m_tileCache->addBoxObstacle(obstacle->bmin, obstacle->bmax, &ref);
+        if (dtStatusFailed(status))
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[OgreDetourTileCache] addConvexShapeObstacle: addBoxObstacle failed (status=" + Ogre::StringConverter::toString(status) + ").");
+            return -1;
+        }
+        mBoxObstacleRefs[obstacle] = ref;
+        return result;
+    }
+
+    // Navmesh was built from geometry this session — rebuild affected tiles
+    // from scratch so the convex poly area is baked into the tile layers.
+    int ntouched = 0;
+    dtCompressedTileRef touched[DT_MAX_TOUCHED_TILES];
+    m_tileCache->queryTiles(obstacle->bmin, obstacle->bmax,
+        touched, &ntouched, DT_MAX_TOUCHED_TILES);
+
+    for (int i = 0; i < ntouched; ++i)
+    {
+        const dtCompressedTile* tile = m_tileCache->getTileByRef(touched[i]);
+        if (tile)
+        {
+            int tx = tile->header->tx;
+            int ty = tile->header->ty;
+            tile = nullptr;
+            buildTile(tx, ty, m_geom);
+        }
+    }
 
     return result;
 }
@@ -1229,43 +1242,69 @@ int OgreDetourTileCache::getConvexShapeObstacleId(ConvexVolume *convexHull)
 
 bool OgreDetourTileCache::removeConvexShapeObstacle(ConvexVolume* convexHull)
 {
+    // Check if this was added via the temp obstacle path (loaded-from-disk).
+    auto boxIt = mBoxObstacleRefs.find(convexHull);
+    if (boxIt != mBoxObstacleRefs.end())
+    {
+        // Remove from dtTileCache temp obstacle list.
+        // Tile rebuild is deferred to next handleUpdate() call.
+        dtStatus status = m_tileCache->removeObstacle(boxIt->second);
+        mBoxObstacleRefs.erase(boxIt);
+
+        // Also remove from m_geom tracking so index/ray tests stay consistent.
+        int id = m_geom->getConvexVolumeId(convexHull);
+        if (id != -1)
+        {
+            ConvexVolume* removed = nullptr;
+            m_geom->deleteConvexVolume(id, &removed);
+        }
+
+        if (dtStatusFailed(status))
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[OgreDetourTileCache] removeConvexShapeObstacle: removeObstacle failed.");
+            return false;
+        }
+        return true;
+    }
+
+    // Standard path: obstacle was added via buildTile (built-from-geometry).
     int id = getConvexShapeObstacleId(convexHull);
     return removeConvexShapeObstacleById(id);
 }
 
-bool OgreDetourTileCache::removeConvexShapeObstacleById(int obstacleIndex, ConvexVolume** removedVolume)
+bool OgreDetourTileCache::removeConvexShapeObstacleById(int obstacleIndex,
+    ConvexVolume** removedVolume)
 {
-    ConvexVolume* obstacle;
-    if(! m_geom->deleteConvexVolume(obstacleIndex, &obstacle))
+    ConvexVolume* obstacle = nullptr;
+    if (!m_geom->deleteConvexVolume(obstacleIndex, &obstacle))
         return false;
 
-    if(removedVolume != NULL)
+    if (removedVolume != nullptr)
         *removedVolume = obstacle;
 
-// TODO use these vars for deferring addConvexShape actions
-    //mChangedConvexVolumes[mChangedConvexVolumesCount] = obstacle;
-    //mChangedConvexVolumesCount++;
+    // If this was a box obstacle (loaded-from-disk path), remove via temp API.
+    auto boxIt = mBoxObstacleRefs.find(obstacle);
+    if (boxIt != mBoxObstacleRefs.end())
+    {
+        m_tileCache->removeObstacle(boxIt->second);
+        mBoxObstacleRefs.erase(boxIt);
+        return true;
+    }
 
-//TODO For removing a convex volume again, store a reference to the impacted tiles in the convex volume so they can be found quickly
+    // Standard path: rebuild affected tiles without this convex area.
     int ntouched = 0;
     dtCompressedTileRef touched[DT_MAX_TOUCHED_TILES];
-    m_tileCache->queryTiles(obstacle->bmin, obstacle->bmax, touched, &ntouched, DT_MAX_TOUCHED_TILES);
+    m_tileCache->queryTiles(obstacle->bmin, obstacle->bmax,
+        touched, &ntouched, DT_MAX_TOUCHED_TILES);
 
-    // Rebuild affected tiles
-// TODO maybe defer this and timeslice it, like happens in dtTileCache with tempObstacle updates
     for (int i = 0; i < ntouched; ++i)
     {
-// TODO when you do deffered commands, make sure you issue a rebuild for a tile only once per update, so remove doubles from the request queue (this is what contains() is for in dtTileCache)
-        // Retrieve coordinates of tile that has to be rebuilt
         const dtCompressedTile* tile = m_tileCache->getTileByRef(touched[i]);
-
-        // If it is null, tile is already rebuilt (and has a new ref ID)
-        if(tile) {
+        if (tile)
+        {
             int tx = tile->header->tx;
             int ty = tile->header->ty;
-            tile = NULL;
-
-            // Issue full rebuild from inputGeom, with the specified convex shape removed, for this tile
+            tile = nullptr;
             buildTile(tx, ty, m_geom);
         }
     }
@@ -1514,9 +1553,6 @@ bool OgreDetourTileCache::loadAll(Ogre::String filename)
        // End config ////
 
 
-
-
-
        // Build initial meshes
        // Builds detour compatible navmesh from all tiles.
        // A tile will have to be rebuilt if something changes, eg. a temporary obstacle is placed on it.
@@ -1541,6 +1577,10 @@ bool OgreDetourTileCache::loadAll(Ogre::String filename)
 
        Ogre::LogManager::getSingletonPtr()->logMessage("Navmesh Mem Usage = "+ Ogre::StringConverter::toString(navmeshMemUsage/1024.0f) +" kB");
        Ogre::LogManager::getSingletonPtr()->logMessage("Tilecache Mem Usage = " +Ogre::StringConverter::toString(m_cacheCompressedSize/1024.0f) +" kB");
+
+       // Runtime obstacles must use dtTileCache temp obstacle API because original
+       // rasterization geometry is unavailable — buildTile() would return 0 tiles.
+       mloadedFromDisk = true;
 
        return true;
 }

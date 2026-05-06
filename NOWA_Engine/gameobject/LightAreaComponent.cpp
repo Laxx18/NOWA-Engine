@@ -78,12 +78,12 @@ namespace NOWA
 			ENQUEUE_RENDER_COMMAND_WAIT("LightAreaComponent::~LightAreaComponent",
 			{
 				// First remove data block from entity, after that it can be destroyed
-				Ogre::v1::Entity * entity = this->gameObjectPtr->getMovableObject <Ogre::v1::Entity>();
-				if (nullptr != entity)
+				Ogre::Item* item = this->gameObjectPtr->getMovableObject <Ogre::Item>();
+                if (nullptr != item)
 				{
-					for (size_t i = 0; i < entity->getNumSubEntities(); i++)
+                    for (size_t i = 0; i < item->getNumSubItems(); i++)
 					{
-						entity->getSubEntity(i)->_setNullDatablock();
+                        item->getSubItem(i)->_setNullDatablock();
 					}
 				}
 				// Attention:
@@ -101,7 +101,6 @@ namespace NOWA
 
 				if (nullptr != this->datablock)
 				{
-
 					auto linkedRenderabled = this->datablock->getLinkedRenderables();
 
 					// Only destroy if the datablock is not used else where
@@ -743,74 +742,82 @@ namespace NOWA
 		this->textureName->setValue(textureName);
 		if (nullptr != this->light)
 		{
-			// TODO: Wait?
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("LightAreaComponent::setTextureName", _1(textureName),
-				{
-				if (true == textureName.empty())
-				{
-					if (nullptr != this->light)
-					{
-						// When the array index is 0xFFFF, the light will not use a texture.
-						this->light->mTextureLightMaskIdx = std::numeric_limits<Ogre::uint16>::max();
-						if (nullptr != this->datablock)
-						{
-							this->datablock->setTexture(0, nullptr);
-							this->light->setTexture(nullptr);
-						}
-					}
-				}
-				else
-				{
-					Ogre::Hlms* hlmsPbs = Ogre::Root::getSingletonPtr()->getHlmsManager()->getHlms(Ogre::HLMS_PBS);
-					assert(dynamic_cast<Ogre::HlmsPbs*>(hlmsPbs));
-					Ogre::HlmsPbs* pbs = static_cast<Ogre::HlmsPbs*>(hlmsPbs);
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, textureName]()
+            {
+                if (true == textureName.empty())
+                {
+                    if (nullptr != this->light)
+                    {
+                        // When the array index is 0xFFFF, the light will not use a texture.
+                        this->light->mTextureLightMaskIdx = std::numeric_limits<Ogre::uint16>::max();
+                        if (nullptr != this->datablock)
+                        {
+                            this->datablock->setTexture(0, nullptr);
+                            this->light->setTexture(nullptr);
+                        }
+                    }
+                }
+                else
+                {
+                    Ogre::Hlms* hlmsPbs = Ogre::Root::getSingletonPtr()->getHlmsManager()->getHlms(Ogre::HLMS_PBS);
+                    assert(dynamic_cast<Ogre::HlmsPbs*>(hlmsPbs));
+                    Ogre::HlmsPbs* pbs = static_cast<Ogre::HlmsPbs*>(hlmsPbs);
 
-					//Set the array index of the light mask in mAreaMaskTex
-					this->light->mTextureLightMaskIdx = 1u;
+                    // Set the array index of the light mask in mAreaMaskTex
+                    this->light->mTextureLightMaskIdx = 1u;
 
-					Ogre::TextureGpuManager* textureManager = Ogre::Root::getSingletonPtr()->getRenderSystem()->getTextureGpuManager();
-					Ogre::TextureGpu* areaTexture = textureManager->findTextureNoThrow(this->textureName->getString());
-					if (nullptr != areaTexture)
-						textureManager->destroyTexture(areaTexture);
+                    Ogre::TextureGpuManager* textureManager = Ogre::Root::getSingletonPtr()->getRenderSystem()->getTextureGpuManager();
+                    Ogre::TextureGpu* areaTexture = textureManager->findTextureNoThrow(this->textureName->getString());
+                    if (nullptr != areaTexture)
+                    {
+                        textureManager->destroyTexture(areaTexture);
+                    }
 
-					//We know beforehand that floor_bump.PNG & co are 512x512. This is important!!!
-					//(because it must match the resolution of the texture created via reservePoolId)
-					/*const char *textureNames[4] = { "floor_bump.PNG", "grassWalpha.tga",
-													"MtlPlat2.jpg", "Panels_Normal_Obj.png" };*/
-													// Attention: How does it work with the pools (c_areaLightsPoolId) ??
-					areaTexture = textureManager->createOrRetrieveTexture(this->textureName->getString(), this->textureName->getString(),
-						Ogre::GpuPageOutStrategy::Discard, Ogre::CommonTextureTypes::Diffuse, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, this->light->mTextureLightMaskIdx);
+                    // We know beforehand that floor_bump.PNG & co are 512x512. This is important!!!
+                    //(because it must match the resolution of the texture created via reservePoolId)
+                    /*const char *textureNames[4] = { "floor_bump.PNG", "grassWalpha.tga",
+                                                    "MtlPlat2.jpg", "Panels_Normal_Obj.png" };*/
+                    // Attention: How does it work with the pools (c_areaLightsPoolId) ??
+                    areaTexture = textureManager->createOrRetrieveTexture(this->textureName->getString(), this->textureName->getString(), Ogre::GpuPageOutStrategy::Discard, Ogre::CommonTextureTypes::Diffuse,
+                        Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, this->light->mTextureLightMaskIdx);
 
-					//Set the array index of the light mask in mAreaMaskTex
-					this->light->mTextureLightMaskIdx = 1u;
+                    // Set the array index of the light mask in mAreaMaskTex
+                    this->light->mTextureLightMaskIdx = 1u;
 
-					if (nullptr == areaTexture)
-					{
-						return;
-					}
+                    if (nullptr == areaTexture)
+                    {
+                        return;
+                    }
 
-					// areaTexture->scheduleTransitionTo(Ogre::GpuResidency::Resident);
-					// areaTexture->waitForData();
-					textureManager->waitForStreamingCompletion();
+                    // areaTexture->scheduleTransitionTo(Ogre::GpuResidency::Resident);
+                    // areaTexture->waitForData();
+                    textureManager->waitForStreamingCompletion();
 
-					this->light->setTexture(areaTexture);
-					// Attention: How to control this?
-					pbs->setAreaLightMasks(areaTexture);
-					pbs->setAreaLightForwardSettings(2u, 2u);
+                    this->light->setTexture(areaTexture);
+                    // Attention: How to control this?
+                    pbs->setAreaLightMasks(areaTexture);
+                    pbs->setAreaLightForwardSettings(2u, 2u);
 
-					if (nullptr != areaTexture)
-					{
-						if (nullptr != this->datablock)
-							this->datablock->setTexture(Ogre::PbsTextureTypes::PBSM_DIFFUSE, areaTexture);
-						// Attention: is this necessary?
-						if (nullptr != this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>())
-							this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>()->setDatablock(this->datablock);
+                    if (nullptr != areaTexture)
+                    {
+                        if (nullptr != this->datablock)
+                        {
+                            this->datablock->setTexture(Ogre::PbsTextureTypes::PBSM_DIFFUSE, areaTexture);
+                        }
+                        // Attention: is this necessary?
+                        if (nullptr != this->gameObjectPtr->getMovableObject<Ogre::Item>())
+                        {
+                            this->gameObjectPtr->getMovableObject<Ogre::Item>()->setDatablock(this->datablock);
 
-						if (nullptr != this->light)
-							this->light->setTexture(areaTexture);
-					}
-				}
-			});
+                            if (nullptr != this->light)
+                            {
+                                this->light->setTexture(areaTexture);
+                            }
+                        }
+                    }
+                }
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "LightAreaComponent::setTextureName");
 		}
 	}
 

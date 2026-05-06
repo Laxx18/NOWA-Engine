@@ -489,31 +489,15 @@ namespace NOWA
                 {
                     meshName = this->meshData[0];
 
-                    if (GameObject::ENTITY == this->type)
+                    Ogre::Item* newItem = this->sceneManager->createItem(meshName, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, Ogre::SCENE_STATIC);
+                    this->objectNode->attachObject(newItem);
+
+                    newMovableObject = newItem;
+
+                    // Copy the datablocks from place entity to new one
+                    for (size_t i = 1; i < this->meshData.size(); i++)
                     {
-                        Ogre::v1::Entity* newEntity = this->sceneManager->createEntity(meshName, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, Ogre::SCENE_STATIC);
-                        this->objectNode->attachObject(newEntity);
-
-                        newMovableObject = newEntity;
-
-                        // Copy the datablocks from place entity to new one
-                        for (size_t i = 1; i < this->meshData.size(); i++)
-                        {
-                            newEntity->getSubEntity(i - 1)->setDatablock(this->meshData[i]);
-                        }
-                    }
-                    else
-                    {
-                        Ogre::Item* newItem = this->sceneManager->createItem(meshName, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, Ogre::SCENE_STATIC);
-                        this->objectNode->attachObject(newItem);
-
-                        newMovableObject = newItem;
-
-                        // Copy the datablocks from place entity to new one
-                        for (size_t i = 1; i < this->meshData.size(); i++)
-                        {
-                            newItem->getSubItem(i - 1)->setDatablock(this->meshData[i]);
-                        }
+                        newItem->getSubItem(i - 1)->setDatablock(this->meshData[i]);
                     }
 
                     // Get name without .mesh
@@ -1857,28 +1841,15 @@ namespace NOWA
             {
                 // 1. is the mesh name and the rest are the data block names
                 std::vector<Ogre::String> meshData;
-
-                Ogre::v1::Entity* tempEntity = dynamic_cast<Ogre::v1::Entity*>(this->tempPlaceMovableObject);
-                if (nullptr != tempEntity)
+                
+                Ogre::Item* tempItem = dynamic_cast<Ogre::Item*>(this->tempPlaceMovableObject);
+                if (nullptr != tempItem)
                 {
-                    meshData.resize(1 + tempEntity->getNumSubEntities());
-                    meshData[0] = tempEntity->getMesh()->getName();
-                    for (size_t i = 0; i < tempEntity->getNumSubEntities(); i++)
+                    meshData.resize(1 + tempItem->getNumSubItems());
+                    meshData[0] = tempItem->getMesh()->getName();
+                    for (size_t i = 0; i < tempItem->getNumSubItems(); i++)
                     {
-                        meshData[i + 1] = *tempEntity->getSubEntity(i)->getDatablock()->getNameStr();
-                    }
-                }
-                else
-                {
-                    Ogre::Item* tempItem = dynamic_cast<Ogre::Item*>(this->tempPlaceMovableObject);
-                    if (nullptr != tempItem)
-                    {
-                        meshData.resize(1 + tempItem->getNumSubItems());
-                        meshData[0] = tempItem->getMesh()->getName();
-                        for (size_t i = 0; i < tempItem->getNumSubItems(); i++)
-                        {
-                            meshData[i + 1] = *tempItem->getSubItem(i)->getDatablock()->getNameStr();
-                        }
+                        meshData[i + 1] = *tempItem->getSubItem(i)->getDatablock()->getNameStr();
                     }
                 }
 
@@ -2892,61 +2863,35 @@ namespace NOWA
             }
         }
 
-        // ----- Your original datablock tweaks stay the same -----
-
-        Ogre::v1::Entity* tempEntity = dynamic_cast<Ogre::v1::Entity*>(this->tempPlaceMovableObject);
-        if (nullptr != tempEntity)
+        Ogre::Item* tempItem = dynamic_cast<Ogre::Item*>(this->tempPlaceMovableObject);
+        if (nullptr != tempItem)
         {
-            if ("Plane" == meshName)
+            if (GameObject::PLANE == type)
             {
-                tempEntity->setDatablock("GroundDirtPlane");
+                tempItem->setDatablock("GroundDirtPlane");
             }
 
-            for (size_t i = 0; i < tempEntity->getNumSubEntities(); i++)
+            // Change the addressing mode of the roughness map to wrap via code.
+            Ogre::HlmsPbsDatablock* datablock = static_cast<Ogre::HlmsPbsDatablock*>(tempItem->getSubItem(0)->getDatablock());
+            auto sampleBlock = datablock->getSamplerblock(Ogre::PBSM_ROUGHNESS);
+            if (nullptr != sampleBlock)
             {
-                auto sourceDataBlock = dynamic_cast<Ogre::HlmsPbsDatablock*>(tempEntity->getSubEntity(i)->getDatablock());
+                Ogre::HlmsSamplerblock samplerblockCopy(*sampleBlock);
+                samplerblockCopy.mU = Ogre::TAM_WRAP;
+                samplerblockCopy.mV = Ogre::TAM_WRAP;
+                samplerblockCopy.mW = Ogre::TAM_WRAP;
+                datablock->setSamplerblock(Ogre::PBSM_ROUGHNESS, samplerblockCopy);
+            }
+
+            for (size_t i = 0; i < tempItem->getNumSubItems(); i++)
+            {
+                auto sourceDataBlock = dynamic_cast<Ogre::HlmsPbsDatablock*>(tempItem->getSubItem(i)->getDatablock());
                 if (nullptr != sourceDataBlock)
                 {
-                    // Deactivate fresnel by default, because it looks ugly
                     if (sourceDataBlock->getWorkflow() != Ogre::HlmsPbsDatablock::SpecularAsFresnelWorkflow && sourceDataBlock->getWorkflow() != Ogre::HlmsPbsDatablock::MetallicWorkflow)
                     {
                         sourceDataBlock->setFresnel(Ogre::Vector3(0.01f, 0.01f, 0.01f), false);
-                    }
-                }
-            }
-        }
-        else
-        {
-            Ogre::Item* tempItem = dynamic_cast<Ogre::Item*>(this->tempPlaceMovableObject);
-            if (nullptr != tempItem)
-            {
-                if (GameObject::PLANE == type)
-                {
-                    tempItem->setDatablock("GroundDirtPlane");
-                }
-
-                // Change the addressing mode of the roughness map to wrap via code.
-                Ogre::HlmsPbsDatablock* datablock = static_cast<Ogre::HlmsPbsDatablock*>(tempItem->getSubItem(0)->getDatablock());
-                auto sampleBlock = datablock->getSamplerblock(Ogre::PBSM_ROUGHNESS);
-                if (nullptr != sampleBlock)
-                {
-                    Ogre::HlmsSamplerblock samplerblockCopy(*sampleBlock);
-                    samplerblockCopy.mU = Ogre::TAM_WRAP;
-                    samplerblockCopy.mV = Ogre::TAM_WRAP;
-                    samplerblockCopy.mW = Ogre::TAM_WRAP;
-                    datablock->setSamplerblock(Ogre::PBSM_ROUGHNESS, samplerblockCopy);
-                }
-
-                for (size_t i = 0; i < tempItem->getNumSubItems(); i++)
-                {
-                    auto sourceDataBlock = dynamic_cast<Ogre::HlmsPbsDatablock*>(tempItem->getSubItem(i)->getDatablock());
-                    if (nullptr != sourceDataBlock)
-                    {
-                        if (sourceDataBlock->getWorkflow() != Ogre::HlmsPbsDatablock::SpecularAsFresnelWorkflow && sourceDataBlock->getWorkflow() != Ogre::HlmsPbsDatablock::MetallicWorkflow)
-                        {
-                            sourceDataBlock->setFresnel(Ogre::Vector3(0.01f, 0.01f, 0.01f), false);
-                            tempItem->getSubItem(i)->setDatablock(tempItem->getSubItem(i)->getDatablock());
-                        }
+                        tempItem->getSubItem(i)->setDatablock(tempItem->getSubItem(i)->getDatablock());
                     }
                 }
             }
@@ -4558,18 +4503,11 @@ namespace NOWA
                         gameObject->setDynamic(false);
 
                         Ogre::String meshName;
-                        Ogre::v1::Entity* entity = gameObject->getMovableObject<Ogre::v1::Entity>();
-                        if (nullptr != entity)
+                        
+                        Ogre::Item* item = gameObject->getMovableObject<Ogre::Item>();
+                        if (nullptr != item)
                         {
-                            meshName = entity->getMesh()->getName();
-                        }
-                        else
-                        {
-                            Ogre::Item* item = gameObject->getMovableObject<Ogre::Item>();
-                            if (nullptr != item)
-                            {
-                                meshName = item->getMesh()->getName();
-                            }
+                            meshName = item->getMesh()->getName();
                         }
                         Ogre::FileInfoListPtr fileInfoList = nullptr;
                         try

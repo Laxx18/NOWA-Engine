@@ -14,7 +14,6 @@
 #include "PhysicsActiveDestructableComponent.h"
 #include "PhysicsArtifactComponent.h"
 #include "PhysicsCompoundConnectionComponent.h"
-#include "PhysicsRagDollComponent.h"
 #include "PhysicsTerrainComponent.h"
 #include "PlayerControllerComponents.h"
 #include "main/AppStateManager.h"
@@ -604,11 +603,7 @@ GameObjectPtr GameObjectController::internalClone(GameObjectPtr originalGameObje
 
     // Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObjectController]: Cloning game object name " + validatedName + " from the original name : " + originalGameObjectPtr->getName());
 
-    if (GameObject::ENTITY == originalGameObjectPtr->getType() || GameObject::SCENE_NODE == originalGameObjectPtr->getType())
-    {
-        clonedMovableObject = sceneManager->createEntity(static_cast<Ogre::v1::Entity*>(originalMovableObject)->getMesh(), originalSceneNode->isStatic() ? Ogre::SCENE_STATIC : Ogre::SCENE_DYNAMIC);
-    }
-    else if (GameObject::ITEM == originalGameObjectPtr->getType())
+    if (GameObject::ITEM == originalGameObjectPtr->getType())
     {
         clonedMovableObject = sceneManager->createItem(static_cast<Ogre::Item*>(originalMovableObject)->getMesh(), originalSceneNode->isStatic() ? Ogre::SCENE_STATIC : Ogre::SCENE_DYNAMIC);
     }
@@ -616,17 +611,7 @@ GameObjectPtr GameObjectController::internalClone(GameObjectPtr originalGameObje
     clonedSceneNode->attachObject(clonedMovableObject);
     if (nullptr != clonedMovableObject)
     {
-        if (GameObject::ENTITY == originalGameObjectPtr->getType())
-        {
-            // also clone each sub material, so that each cloned entity has its own material which can be manipulated, whithout affecting the other entities
-            for (unsigned int i = 0; i < static_cast<Ogre::v1::Entity*>(originalMovableObject)->getNumSubEntities(); i++)
-            {
-                const auto datablock = static_cast<Ogre::v1::Entity*>(originalMovableObject)->getSubEntity(i)->getDatablock();
-                const Ogre::String* datablockName = datablock->getNameStr();
-                static_cast<Ogre::v1::Entity*>(clonedMovableObject)->getSubEntity(i)->setDatablock(datablock);
-            }
-        }
-        else if (GameObject::ITEM == originalGameObjectPtr->getType())
+        if (GameObject::ITEM == originalGameObjectPtr->getType())
         {
             // also clone each sub material, so that each cloned entity has its own material which can be manipulated, whithout affecting the other entities
             for (unsigned int i = 0; i < static_cast<Ogre::Item*>(originalMovableObject)->getNumSubItems(); i++)
@@ -2049,17 +2034,6 @@ std::vector<GameObjectPtr> GameObjectController::getGameObjectsFromMeshName(cons
                 vec.emplace_back(gameObjectPtr);
             }
         }
-        else
-        {
-            Ogre::v1::Entity* entity = gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
-            if (nullptr != entity)
-            {
-                if (entity->getMesh()->getName() == meshName)
-                {
-                    vec.emplace_back(gameObjectPtr);
-                }
-            }
-        }
     }
 
     // Sort them
@@ -2089,28 +2063,6 @@ std::vector<GameObjectPtr> GameObjectController::getGameObjectsFromDatablockName
                 {
                     vec.emplace_back(gameObjectPtr);
                     break;
-                }
-            }
-        }
-        else
-        {
-            Ogre::v1::Entity* entity = gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
-            if (nullptr != entity)
-            {
-                if (nullptr != entity->getSubEntity(0))
-                {
-                    auto datablock = entity->getSubEntity(0)->getDatablock();
-                    Ogre::String tempDatablockName;
-                    if (nullptr != datablock)
-                    {
-                        tempDatablockName = *datablock->getNameStr();
-                    }
-
-                    if (tempDatablockName == datablockName)
-                    {
-                        vec.emplace_back(gameObjectPtr);
-                        break;
-                    }
                 }
             }
         }
@@ -2324,23 +2276,12 @@ std::vector<GameObjectPtr> GameObjectController::getGameObjectsFromMeshName(cons
 
     for (const auto& gameObjectPtr : this->gameObjectsList)
     {
-        Ogre::v1::Entity* entity = gameObjectPtr->getMovableObjectUnsafe<Ogre::v1::Entity>();
-        if (nullptr != entity)
+        Ogre::Item* item = gameObjectPtr->getMovableObjectUnsafe<Ogre::Item>();
+        if (nullptr != item)
         {
-            if (entity->getMesh()->getName() == meshName)
+            if (item->getMesh()->getName() == meshName)
             {
                 vec.emplace_back(gameObjectPtr);
-            }
-        }
-        else
-        {
-            Ogre::Item* item = gameObjectPtr->getMovableObjectUnsafe<Ogre::Item>();
-            if (nullptr != item)
-            {
-                if (item->getMesh()->getName() == meshName)
-                {
-                    vec.emplace_back(gameObjectPtr);
-                }
             }
         }
     }
@@ -2364,27 +2305,14 @@ std::vector<GameObjectPtr> GameObjectController::getOverlappingGameObjects() con
 
                 if (MathHelper::getInstance()->vector3Equals(firstGameObjectPtr->getPosition(), secondGameObjectPtr->getPosition(), 0.01f) && MathHelper::getInstance()->vector4Equals(firstOrientation, secondOrientation, 0.1f))
                 {
-                    const auto firstEntity = firstGameObjectPtr->getMovableObject<Ogre::v1::Entity>();
-                    const auto secondEntity = secondGameObjectPtr->getMovableObject<Ogre::v1::Entity>();
+                    const auto firstItem = firstGameObjectPtr->getMovableObject<Ogre::Item>();
+                    const auto secondItem = secondGameObjectPtr->getMovableObject<Ogre::Item>();
 
-                    if (nullptr != firstEntity && nullptr != secondEntity)
+                    if (nullptr != firstItem && nullptr != secondItem)
                     {
-                        if (firstEntity->getMesh()->getName() == secondEntity->getMesh()->getName())
+                        if (firstItem->getMesh()->getName() == secondItem->getMesh()->getName())
                         {
                             vec.emplace_back(secondGameObjectPtr);
-                        }
-                    }
-                    else
-                    {
-                        const auto firstItem = firstGameObjectPtr->getMovableObject<Ogre::Item>();
-                        const auto secondItem = secondGameObjectPtr->getMovableObject<Ogre::Item>();
-
-                        if (nullptr != firstItem && nullptr != secondItem)
-                        {
-                            if (firstItem->getMesh()->getName() == secondItem->getMesh()->getName())
-                            {
-                                vec.emplace_back(secondGameObjectPtr);
-                            }
                         }
                     }
                 }
@@ -3279,7 +3207,8 @@ void GameObjectController::getValidatedGameObjectName(Ogre::String& gameObjectNa
 
 void GameObjectController::createAllGameObjectsForShaderCacheGeneration(Ogre::SceneManager* sceneManager)
 {
-    ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObjectController::createAllGameObjectsForShaderCacheGeneration", _1(sceneManager), {
+    NOWA::GraphicsModule::RenderCommand renderCommand = [this, sceneManager]()
+    {
         // Get all meshes from all available resource groups
         Ogre::StringVector groups = Ogre::ResourceGroupManager::getSingletonPtr()->getResourceGroups();
         std::vector<Ogre::String>::iterator groupIt = groups.begin();
@@ -3299,19 +3228,18 @@ void GameObjectController::createAllGameObjectsForShaderCacheGeneration(Ogre::Sc
                 while (meshIt != dirs->end())
                 {
                     Ogre::SceneNode* node = sceneManager->getRootSceneNode()->createChildSceneNode();
-                    Ogre::v1::Entity* entity = sceneManager->createEntity(*meshIt);
-                    MathHelper::getInstance()->substractOutTangentsForShader(entity);
+                    Ogre::Item* item = sceneManager->createItem(*meshIt);
 
-                    node->attachObject(entity);
+                    node->attachObject(item);
 
                     /*if (x % 100 == 0)
                     {
                         z++;
                     }*/
 
-                    node->setPosition(Ogre::Vector3(static_cast<Ogre::Real>(x) * entity->getWorldRadius() * 2.0f, 0.0f, 0.0f /*static_cast<Ogre::Real>(z) * entity->getWorldRadius() * 2.0f*/));
+                    node->setPosition(Ogre::Vector3(static_cast<Ogre::Real>(x) * item->getWorldRadius() * 2.0f, 0.0f, 0.0f /*static_cast<Ogre::Real>(z) * item->getWorldRadius() * 2.0f*/));
 
-                    Ogre::String meshName = entity->getMesh()->getName();
+                    Ogre::String meshName = item->getMesh()->getName();
 
                     // Get name without .mesh
                     size_t found = meshName.find(".");
@@ -3324,9 +3252,9 @@ void GameObjectController::createAllGameObjectsForShaderCacheGeneration(Ogre::Sc
                     Ogre::String gameObjectName = meshName + "_0";
                     this->getValidatedGameObjectName(gameObjectName);
 
-                    entity->setName(gameObjectName);
+                    item->setName(gameObjectName);
                     node->setName(gameObjectName);
-                    GameObjectPtr newGameObjectPtr = GameObjectFactory::getInstance()->createGameObject(sceneManager, node, entity, GameObject::ENTITY);
+                    GameObjectPtr newGameObjectPtr = GameObjectFactory::getInstance()->createGameObject(sceneManager, node, item, GameObject::ITEM);
                     if (nullptr == newGameObjectPtr)
                     {
                         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectController]: Could not create game object for mesh name: '" + meshName + "'");
@@ -3338,7 +3266,8 @@ void GameObjectController::createAllGameObjectsForShaderCacheGeneration(Ogre::Sc
             }
             ++groupIt;
         }
-    });
+    };
+    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObjectController::createAllGameObjectsForShaderCacheGeneration");
 }
 
 bool GameObjectController::getIsDestroying(void) const
@@ -3543,21 +3472,6 @@ void GameObjectController::collectDatablockNamesFromMovable(Ogre::MovableObject*
         for (size_t i = 0u; i < num; ++i)
         {
             Ogre::HlmsDatablock* db = item->getSubItem(i)->getDatablock();
-            if (db && db->getNameStr() && !db->getNameStr()->empty())
-            {
-                outNames.insert(*db->getNameStr());
-            }
-        }
-        return;
-    }
-
-    // v1 Entity
-    if (Ogre::v1::Entity* entity = dynamic_cast<Ogre::v1::Entity*>(movableObject))
-    {
-        const size_t num = entity->getNumSubEntities();
-        for (size_t i = 0u; i < num; ++i)
-        {
-            Ogre::HlmsDatablock* db = entity->getSubEntity(i)->getDatablock();
             if (db && db->getNameStr() && !db->getNameStr()->empty())
             {
                 outNames.insert(*db->getNameStr());

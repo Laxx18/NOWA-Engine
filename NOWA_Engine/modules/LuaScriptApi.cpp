@@ -1584,37 +1584,6 @@ namespace NOWA
 		AddClassToCollection("MovableObject", "bool getVisible()", "Gets whether this movable object is visible.");
 	}
 
-	//bind Ogre::v1::Entity
-	//NOTE: not all functions are binded
-	void bindEntity(lua_State* lua)
-	{
-		module(lua)
-			[
-				class_<v1::Entity, MovableObject>("Entity")
-				.def("setVisible", &v1::Entity::setVisible)
-			.def("getVisible", &v1::Entity::getVisible)
-			.def("getCastShadows", &v1::Entity::getCastShadows)
-			// .def("setMaterialName", &v1::Entity::setMaterialName)		//HACK : LuaBind may not support the optional arg here
-			.def("getName", &v1::Entity::getName)
-			];
-		AddClassToCollection("Entity", "class", "Base class for an Ogre mesh object.");
-		AddClassToCollection("Entity", "void setVisible(bool visible)", "Sets the entity visible (rendered) or not.");
-		AddClassToCollection("Entity", "bool getVisible()", "Gets whether the entity is visible or not.");
-		AddClassToCollection("Entity", "bool getCastShadows()", "Gets whether shadows are casted or not.");
-		AddClassToCollection("Entity", "string getName()", "Gets the name of the entity.");
-
-		// has protected constructor and destructor so its not possible to create that here
-		//module(lua)
-		//[
-		//	class_<SubEntity>("SubEntity")
-		//	.def("getMaterialName", &SubEntity::getMaterialName)
-		//	.def("setMaterialName", (void (SubEntity::*)(const Ogre::String&, const Ogre::String&)) &SubEntity::setMaterialName)
-		//	.def("getParent", &SubEntity::getParent)
-		//	// .def("getSubMesh", &SubEntity::getSubMesh)
-		//	.def("getCastsShadows", &SubEntity::getCastsShadows)
-		//];
-	}
-
 	// Fake member function for simplifing binding, as the real functions 
 	// have optional aguments, which I don't want to use in the Lua script.
 	// However luabind does not support optional arguments.
@@ -1724,13 +1693,6 @@ namespace NOWA
 		AddClassToCollection("TS_WORLD", "singleton", "World transform space.");
 	}
 
-	//dummy function to wrap up Ogre::SceneManager::createEntity
-	//think of obj as self
-	Ogre::v1::Entity* createEntity(Ogre::SceneManager* sceneManager, const Ogre::String& entityName, const Ogre::String& meshName)
-	{
-		return sceneManager->createEntity(entityName, meshName);
-	}
-
 	void setOldNodeDirection(Ogre::v1::OldNode* instance, const Ogre::Vector3& direction, const Vector3& localDirectionVector)
 	{
 		// The direction we want the local direction point to
@@ -1781,7 +1743,6 @@ namespace NOWA
 				// .def("getRootSceneNode", &SceneManager::getRootSceneNode)
 				// .def("createCamera", &SceneManager::createCamera)
 				// .def("getCamera", &SceneManager::getCamera)
-				// .def("createEntity", &createEntity)
 				// .def("getEntity", &SceneManager::getEntity)
 			];
 
@@ -2021,11 +1982,6 @@ namespace NOWA
 	PhysicsArtifactComponent* getPhysicsArtifactComponent(GameObject* gameObject)
 	{
 		return makeStrongPtr<PhysicsArtifactComponent>(gameObject->getComponent<PhysicsArtifactComponent>()).get();
-	}
-
-	PhysicsRagDollComponent* getPhysicsRagDollComponent(GameObject* gameObject)
-	{
-		return makeStrongPtr<PhysicsRagDollComponent>(gameObject->getComponent<PhysicsRagDollComponent>()).get();
 	}
 
 	PhysicsCompoundConnectionComponent* getPhysicsCompoundConnectionComponent(GameObject* gameObject)
@@ -2688,11 +2644,6 @@ namespace NOWA
 		return makeStrongPtr<PhysicsArtifactComponent>(gameObject->getComponentFromName<PhysicsArtifactComponent>(name)).get();
 	}
 
-	PhysicsRagDollComponent* getPhysicsRagDollComponentFromName(GameObject* gameObject, const Ogre::String& name)
-	{
-		return makeStrongPtr<PhysicsRagDollComponent>(gameObject->getComponentFromName<PhysicsRagDollComponent>(name)).get();
-	}
-
 	PhysicsCompoundConnectionComponent* getPhysicsCompoundConnectionComponentFromName(GameObject* gameObject, const Ogre::String& name)
 	{
 		return makeStrongPtr<PhysicsCompoundConnectionComponent>(gameObject->getComponentFromName<PhysicsCompoundConnectionComponent>(name)).get();
@@ -3163,46 +3114,6 @@ namespace NOWA
 		return makeStrongPtr<LuaScriptComponent>(gameObject->getComponentFromName<LuaScriptComponent>(name)).get();
 	}
 
-	JointComponent* getRagJointComponent(PhysicsRagDollComponent::RagBone* ragBone)
-	{
-		return ragBone->getJointComponent().get();
-	}
-
-	JointHingeComponent* getRagJointHingeComponent(PhysicsRagDollComponent::RagBone* ragBone)
-	{
-		return boost::dynamic_pointer_cast<JointHingeComponent>(ragBone->getJointComponent()).get();
-	}
-	
-	JointUniversalComponent* getRagJointUniversalComponent(PhysicsRagDollComponent::RagBone* ragBone)
-	{
-		return boost::dynamic_pointer_cast<JointUniversalComponent>(ragBone->getJointComponent()).get();
-	}
-
-	JointBallAndSocketComponent* getRagJointBallAndSocketComponent(PhysicsRagDollComponent::RagBone* ragBone)
-	{
-		return boost::dynamic_pointer_cast<JointBallAndSocketComponent>(ragBone->getJointComponent()).get();
-	}
-
-	JointHingeActuatorComponent* getRagJointHingeActuatorComponent(PhysicsRagDollComponent::RagBone* ragBone)
-	{
-		return boost::dynamic_pointer_cast<JointHingeActuatorComponent>(ragBone->getJointComponent()).get();
-	}
-
-	JointUniversalActuatorComponent* getRagJointUniversalActuatorComponent(PhysicsRagDollComponent::RagBone* ragBone)
-	{
-		return boost::dynamic_pointer_cast<JointUniversalActuatorComponent>(ragBone->getJointComponent()).get();
-	}
-
-	JointKinematicComponent* getRagJointKinematicComponent(PhysicsRagDollComponent::RagBone* ragBone)
-	{
-		return boost::dynamic_pointer_cast<JointKinematicComponent>(ragBone->getSecondJointComponent()).get();
-	}
-
-	Ogre::v1::Entity* getEntity(GameObject* gameObject)
-	{
-		return gameObject->getMovableObject<Ogre::v1::Entity>();
-	}
-
 	Ogre::Item* getItem(GameObject* gameObject)
     {
         return gameObject->getMovableObject<Ogre::Item>();
@@ -3270,7 +3181,6 @@ namespace NOWA
 		gameObjectClass.def("getSceneManager", &GameObject::getSceneManager);
 		gameObjectClass.def("getSceneNode", &GameObject::getSceneNode);
 		// Here later multiplicate out all types in anonym function
-		gameObjectClass.def("getEntity", &getEntity);
         gameObjectClass.def("getItem", &getItem);
 		gameObjectClass.def("getCategory", &GameObject::getCategory);
 		gameObjectClass.def("getRenderCategory", &GameObject::getRenderCategory);
@@ -3398,7 +3308,6 @@ namespace NOWA
 		gameObjectClass.def("getPhysicsActiveDestructibleComponent", &getPhysicsActiveDestructableComponent);
 		gameObjectClass.def("getPhysicsActiveKinematicComponent", &getPhysicsActiveKinematicComponent);
 		gameObjectClass.def("getPhysicsArtifactComponent", &getPhysicsArtifactComponent);
-		gameObjectClass.def("getPhysicsRagDollComponent", &getPhysicsRagDollComponent);
 		gameObjectClass.def("getPhysicsCompoundConnectionComponent", &getPhysicsCompoundConnectionComponent);
 		gameObjectClass.def("getPhysicsMaterialComponent", (PhysicsMaterialComponent * (*)(GameObject*)) & getPhysicsMaterialComponent);
 		gameObjectClass.def("getPhysicsMaterialComponentFromIndex", (PhysicsMaterialComponent * (*)(GameObject*, unsigned int)) & getPhysicsMaterialComponent);
@@ -3532,7 +3441,6 @@ namespace NOWA
 		gameObjectClass.def("getPhysicsActiveDestructibleComponentFromName", &getPhysicsActiveDestructableComponentFromName);
 		gameObjectClass.def("getPhysicsActiveKinematicComponentFromName", &getPhysicsActiveKinematicComponentFromName);
 		gameObjectClass.def("getPhysicsArtifactComponentFromName", &getPhysicsArtifactComponentFromName);
-		gameObjectClass.def("getPhysicsRagDollComponentFromName", &getPhysicsRagDollComponentFromName);
 		gameObjectClass.def("getPhysicsCompoundConnectionComponentFromName", &getPhysicsCompoundConnectionComponentFromName);
 		gameObjectClass.def("getPhysicsMaterialComponentFromName", &getPhysicsMaterialComponentFromName);
 		gameObjectClass.def("getPhysicsPlayerControllerComponentFromName", &getPhysicsPlayerControllerComponentFromName);
@@ -3689,7 +3597,6 @@ namespace NOWA
 		AddClassToCollection("GameObject", "PhysicsActiveCompoundComponent getPhysicsActiveCompoundComponent()", "Gets the physics active compound component.");
 		AddClassToCollection("GameObject", "PhysicsActiveDestructibleComponent getPhysicsActiveDestructibleComponent()", "Gets the physics active destructable component.");
 		AddClassToCollection("GameObject", "PhysicsArtifactComponent getPhysicsArtifactComponent()", "Gets the physics artifact component.");
-		AddClassToCollection("GameObject", "PhysicsRagDollComponent getPhysicsRagDollComponent()", "Gets the physics ragdoll component.");
 		AddClassToCollection("GameObject", "PhysicsCompoundConnectionComponent getPhysicsCompoundConnectionComponent()", "Gets the physics compound connection component.");
 		AddClassToCollection("GameObject", "PhysicsMaterialComponent getPhysicsMaterialComponentFromIndex(unsigned int occurrenceIndex)", "Gets the physics material component by the given occurence index, since a game object may have besides other components several physics material components.");
 		AddClassToCollection("GameObject", "PhysicsMaterialComponent getPhysicsMaterialComponent()", "Gets the physics material component. This can be used if the game object just has one physics material component.");
@@ -3817,7 +3724,6 @@ namespace NOWA
 		AddClassToCollection("GameObject", "PhysicsActiveCompoundComponent getPhysicsActiveCompoundComponentFromName(String name)", "Gets the physics active compound component.");
 		AddClassToCollection("GameObject", "PhysicsActiveDestructibleComponent getPhysicsActiveDestructibleComponentFromName(String name)", "Gets the physics active destructable component.");
 		AddClassToCollection("GameObject", "PhysicsArtifactComponent getPhysicsArtifactComponentFromName(String name)", "Gets the physics artifact component.");
-		AddClassToCollection("GameObject", "PhysicsRagDollComponent getPhysicsRagDollComponentFromName(String name)", "Gets the physics ragdoll component.");
 		AddClassToCollection("GameObject", "PhysicsCompoundConnectionComponent getPhysicsCompoundConnectionComponentFromName(String name)", "Gets the physics compound connection component.");
 		AddClassToCollection("GameObject", "PhysicsMaterialComponent getPhysicsMaterialComponentFromName(String name)", "Gets the physics material component.");
 		AddClassToCollection("GameObject", "PhysicsPlayerControllerComponent getPhysicsPlayerControllerComponentFromName(String name)", "Gets the physics player controller component.");
@@ -4925,7 +4831,6 @@ namespace NOWA
 		gameObjectControllerClass.def("castPhysicsActiveDestructableComponent", &GameObjectController::cast<PhysicsActiveDestructableComponent>);
 		gameObjectControllerClass.def("castPhysicsActiveKinematicComponent", &GameObjectController::cast<PhysicsActiveKinematicComponent>);
 		gameObjectControllerClass.def("castPhysicsArtifactComponent", &GameObjectController::cast<PhysicsArtifactComponent>);
-		gameObjectControllerClass.def("castPhysicsRagDollComponent", &GameObjectController::cast<PhysicsRagDollComponent>);
 		gameObjectControllerClass.def("castPhysicsCompoundConnectionComponent", &GameObjectController::cast<PhysicsCompoundConnectionComponent>);
 		gameObjectControllerClass.def("castPhysicsMaterialComponent", &GameObjectController::cast<PhysicsMaterialComponent>);
 		gameObjectControllerClass.def("castPhysicsPlayerControllerComponent", &GameObjectController::cast<PhysicsPlayerControllerComponent>);
@@ -5086,8 +4991,7 @@ namespace NOWA
 		AddClassToCollection("GameObjectController", "PhysicsActiveCompoundComponent castPhysicsActiveCompoundComponent(PhysicsActiveCompoundComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "PhysicsActiveDestructableComponent castPhysicsActiveDestructableComponent(PhysicsActiveDestructableComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "PhysicsActiveKinematicComponent castPhysicsActiveKinematicComponent(PhysicsActiveKinematicComponent other)", "Casts an incoming type from function for lua auto completion.");
-		AddClassToCollection("GameObjectController", "PhysicsArtifactComponent castPhysicsArtifactComponent(PhysicsArtifactComponent other)", "Casts an incoming type from function for lua auto completion.");
-		AddClassToCollection("GameObjectController", "PhysicsRagDollComponent castPhysicsRagDollComponent(PhysicsRagDollComponent other)", "Casts an incoming type from function for lua auto completion.");
+		AddClassToCollection("GameObjectController", "PhysicsArtifactComponent castPhysicsArtifactComponent(PhysicsArtifactComponent other)", "Casts an incoming type from function for lua auto completion.");;
 		AddClassToCollection("GameObjectController", "PhysicsCompoundConnectionComponent castPhysicsCompoundConnectionComponent(PhysicsCompoundConnectionComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "PhysicsMaterialComponent castPhysicsMaterialComponent(PhysicsMaterialComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "PhysicsPlayerControllerComponent castPhysicsPlayerControllerComponent(PhysicsPlayerControllerComponent other)", "Casts an incoming type from function for lua auto completion.");
@@ -5222,7 +5126,7 @@ namespace NOWA
 		];
 	}
 
-	luabind::object getAllAvailableAnimationNames(AnimationBlender* instance, bool skipLogging)
+	luabind::object getAllAvailableAnimationNames(AnimationBlenderV2* instance, bool skipLogging)
 	{
 		luabind::object obj = luabind::newtable(LuaScriptApi::getInstance()->getLua());
 
@@ -5239,15 +5143,15 @@ namespace NOWA
 	{
 		module(lua)
 		[
-			class_<Ogre::v1::AnimationState>("AnimationState")
-			.def("getTimePosition", &Ogre::v1::AnimationState::getTimePosition)
-			.def("getLength", &Ogre::v1::AnimationState::getLength)
-			.def("setTimePosition", &Ogre::v1::AnimationState::setTimePosition)
+			class_<Ogre::SkeletonAnimation>("SkeletonAnimation")
+            .def("getCurrentTime", &Ogre::SkeletonAnimation::getCurrentTime)
+            .def("getDuration", &Ogre::SkeletonAnimation::getDuration)
+            .def("setTime", &Ogre::SkeletonAnimation::setTime)
 		];
-		AddClassToCollection("AnimationState", "class", "The v1 animation state.");
-		AddClassToCollection("AnimationState", "float getTimePosition()", "Gets the current time position of this animation state.");
-		AddClassToCollection("AnimationState", "float getLength()", "Gets the animation length.");
-		AddClassToCollection("AnimationState", "void setTimePosition(float timePosition)", "Sets the time position of this animation state.");
+		AddClassToCollection("SkeletonAnimation", "class", "The animation state.");
+		AddClassToCollection("SkeletonAnimation", "float getCurrentTime()", "Gets the current time position of this animation state.");
+		AddClassToCollection("SkeletonAnimation", "float getDuration()", "Gets the animation length.");
+		AddClassToCollection("SkeletonAnimation", "void setTime(float timePosition)", "Sets the time position of this animation state.");
 
 		module(lua)
 		[
@@ -5398,18 +5302,12 @@ namespace NOWA
 
 		module(lua)
 		[
-			class_<AnimationBlender, IAnimationBlender>("AnimationBlender")
-			.def("getSource", &AnimationBlender::getSource)
-			.def("getTarget", &AnimationBlender::getTarget)
-			.def("getBone", &AnimationBlender::getBone)
-			.def("setBoneWeight", &AnimationBlender::setBoneWeight)
-			.def("getLocalToWorldPosition", &AnimationBlender::getLocalToWorldPosition)
-			.def("getLocalToWorldOrientation", &AnimationBlender::getLocalToWorldOrientation)
-		];
-
-		module(lua)
-		[
-			class_<AnimationBlenderV2, IAnimationBlender>("AnimationBlenderV2")
+			class_<AnimationBlenderV2, IAnimationBlender>("AnimationBlender")
+			.def("getSource", &AnimationBlenderV2::getSource)
+            .def("getTarget", &AnimationBlenderV2::getTarget)
+            .def("getBone", &AnimationBlenderV2::getBone)
+            .def("getLocalToWorldPosition", &AnimationBlenderV2::getLocalToWorldPosition)
+            .def("getLocalToWorldOrientation", &AnimationBlenderV2::getLocalToWorldOrientation)
 		];
 
 		AddClassToCollection("AnimationBlender", "class", "This class can be used for more complex animations and transitions between them.");
@@ -11040,7 +10938,7 @@ namespace NOWA
 		AddClassToCollection("PlaneComponent", "float getUTile()", "Gets number of v-tiles of the plane.");
 	}
 
-	luabind::object getRagDataList(PhysicsRagDollComponent* instance)
+	/*luabind::object getRagDataList(PhysicsRagDollComponentV2* instance)
 	{
 		luabind::object obj = luabind::newtable(LuaScriptApi::getInstance()->getLua());
 
@@ -11052,122 +10950,10 @@ namespace NOWA
 		return obj;
 	}
 
-	Ogre::String getJointId(PhysicsRagDollComponent::RagBone* instance)
+	Ogre::String getJointId(PhysicsRagDollComponentV2::RagBone* instance)
 	{
 		return Ogre::StringConverter::toString(instance->getJointId());
-	}
-
-	void bindPhysicsRagDollComponent(lua_State* lua)
-	{
-		module(lua)
-		[
-			class_<PhysicsRagDollComponent, PhysicsActiveComponent>("PhysicsRagDollComponent")
-			// .def("getClassName", &PhysicsRagDollComponent::getClassName)
-			// .def("clone", &PhysicsRagDollComponent::clone)
-			// .def("getClassId", &PhysicsRagDollComponent::getClassId)
-			.def("inheritVelOmega", &PhysicsRagDollComponent::inheritVelOmega)
-			.def("setActivated", &PhysicsRagDollComponent::setActivated)
-			.def("setState", &PhysicsRagDollComponent::setState)
-			// .def("isActive", &PhysicsRagDollComponent::isActivated)
-			.def("setVelocity", &PhysicsRagDollComponent::setVelocity)
-			.def("getVelocity", &PhysicsRagDollComponent::getVelocity)
-			.def("getPosition", &PhysicsRagDollComponent::getPosition)
-			.def("setOrientation", &PhysicsRagDollComponent::setOrientation)
-			.def("getOrientation", &PhysicsRagDollComponent::getOrientation)
-			.def("setInitialState", &PhysicsRagDollComponent::setInitialState)
-			.def("setAnimationEnabled", &PhysicsRagDollComponent::setAnimationEnabled)
-			.def("isAnimationEnabled", &PhysicsRagDollComponent::isAnimationEnabled)
-			// .def("applyModelStateToRagdoll", &PhysicsRagDollComponent::applyModelStateToRagdoll)
-			// .def("applyRagdollStateToModel", &PhysicsRagDollComponent::applyRagdollStateToModel)
-			// .def("startRagdolling", &PhysicsRagDollComponent::startRagdolling)
-			.def("setBoneConfigFile", &PhysicsRagDollComponent::setBoneConfigFile)
-			.def("getBoneConfigFile", &PhysicsRagDollComponent::getBoneConfigFile)
-			.def("getRagDataList", &getRagDataList)
-			.def("getRagBone", &PhysicsRagDollComponent::getRagBone)
-			.def("setBoneRotation", &PhysicsRagDollComponent::setBoneRotation)
-			.scope
-			[
-				class_<PhysicsRagDollComponent::RagBone>("RagBone")
-				.def("getName", &PhysicsRagDollComponent::RagBone::getName)
-				.def("getPosition", &PhysicsRagDollComponent::RagBone::getPosition)
-				.def("setOrientation", &PhysicsRagDollComponent::RagBone::setOrientation)
-				.def("getOrientation", &PhysicsRagDollComponent::RagBone::getOrientation)
-				// .def("rotate", &PhysicsRagDollComponent::RagBone::rotate)
-				.def("setInitialState", &PhysicsRagDollComponent::RagBone::setInitialState)
-				// .def("getBody", &PhysicsRagDollComponent::RagBone::getBody)
-				.def("getOgreBone", &PhysicsRagDollComponent::RagBone::getOgreBone)
-				.def("getParentRagBone", &PhysicsRagDollComponent::RagBone::getParentRagBone)
-				.def("getInitialBonePosition", &PhysicsRagDollComponent::RagBone::getInitialBonePosition)
-				.def("getInitialBoneOrientation", &PhysicsRagDollComponent::RagBone::getInitialBoneOrientation)
-				// .def("getInitialBodyPosition", &PhysicsRagDollComponent::RagBone::getInitialBodyPosition)
-				// .def("getInitialBodyOrientation", &PhysicsRagDollComponent::RagBone::getInitialBodyOrientation)
-				// .def("getPositionCorrection", &PhysicsRagDollComponent::RagBone::getPositionCorrection)
-				// .def("getOrientationCorrection", &PhysicsRagDollComponent::RagBone::getOrientationCorrection)
-				// .def("setInitialPose", &PhysicsRagDollComponent::RagBone::setInitialPose)
-				.def("getPhysicsRagDollComponent", &PhysicsRagDollComponent::RagBone::getPhysicsRagDollComponent)
-				.def("getRagPose", &PhysicsRagDollComponent::RagBone::getRagPose)
-				.def("applyPose", &PhysicsRagDollComponent::RagBone::applyPose)
-				// .def("getSceneNode", &PhysicsRagDollComponent::RagBone::getSceneNode)
-				.def("getJointComponent", &getRagJointComponent)
-				.def("getJointHingeComponent", &getRagJointHingeComponent)
-				.def("getJointUniversalComponent", &getRagJointUniversalComponent)
-				.def("getJointBallAndSocketComponent", &getRagJointBallAndSocketComponent)
-				.def("getJointHingeActuatorComponent", &getRagJointHingeActuatorComponent)
-				.def("getJointUniversalActuatorComponent", &getRagJointUniversalActuatorComponent)
-				.def("getJointKinematicComponent", &getRagJointKinematicComponent)
-				.def("applyRequiredForceForVelocity", &PhysicsRagDollComponent::RagBone::applyRequiredForceForVelocity)
-				.def("applyOmegaForce", &PhysicsRagDollComponent::RagBone::applyOmegaForce)
-				.def("applyOmegaForceRotateTo", &PhysicsRagDollComponent::RagBone::applyOmegaForceRotateTo)
-				.def("getSize", &PhysicsRagDollComponent::RagBone::getBodySize)
-				.def("getJointId", &getJointId)
-				.def("getBody", &PhysicsRagDollComponent::RagBone::getBody)
-			]
-		];
-		AddClassToCollection("PhysicsRagDollComponent", "class inherits PhysicsActiveComponent", PhysicsRagDollComponent::getStaticInfoText());
-		AddClassToCollection("PhysicsRagDollComponent", "void setVelocity(Vector3 velocity)", "Sets the global linear velocity on the physics body. Note: This should only be used for initzialisation. Use @applyRequiredForceForVelocity in simualtion instead. Or it may be called if its a physics active kinematic body.");
-		AddClassToCollection("PhysicsRagDollComponent", "Vector3 getVelocity()", "Gets currently acting velocity on the body.");
-		AddClassToCollection("PhysicsRagDollComponent", "Vector3 getPosition()", "Gets the position of the physics component.");
-		AddClassToCollection("PhysicsRagDollComponent", "void setOrientation(Quaternion orientation)", "Sets the orientation of the physics component. Attention: Never ever use this function in an update function for physics, as it will mess up parts of physics like ragdolls etc. Only use it for initialization!");
-		AddClassToCollection("PhysicsRagDollComponent", "Quaternion getOrientation()", "Gets the orientation of the physics component.");
-		AddClassToCollection("PhysicsRagDollComponent", "void setInitialState()", "If in ragdoll state, resets all bones ot its initial position and orientation.");
-		AddClassToCollection("PhysicsRagDollComponent", "void setAnimationEnabled(bool enabled)", "Enables animation for the ragdoll. That is, the bones are no more controlled manually, but transform comes from animation state.");
-		AddClassToCollection("PhysicsRagDollComponent", "bool isAnimationEnabled()", "Gets whether the ragdoll is being animated.");
-		AddClassToCollection("PhysicsRagDollComponent", "void setBoneConfigFile(String boneConfigFile)", "Sets the bone configuration file. Which describes in XML, how the ragdoll is configure. The file must be placed in the same folder as the mesh and skeleton file. Note: The file can be exchanged at runtime, if a different ragdoll configuration is desire.");
-		AddClassToCollection("PhysicsRagDollComponent", "String getBoneConfigFile()", "Gets the currently applied bone config file.");
-		AddClassToCollection("PhysicsRagDollComponent", "Table[RagBone] getRagDataList()", "Gets List of all configured rag bones.");
-		AddClassToCollection("PhysicsRagDollComponent", "RagBone getRagBone(String ragboneName)", "Gets RagBone from the given name or nil, if it does not exist.");
-		AddClassToCollection("PhysicsRagDollComponent", "void setBoneRotation(String ragboneName, Vector3 axis, float degree)", "Rotates the given RagBone around the given axis by degree amount.");
-
-		AddClassToCollection("RagBone", "class", "The inner class RagBone represents one physically controlled rag bone.");
-		AddClassToCollection("RagBone", "String getName()", "Gets name of this bone, that has been specified in the bone config file.");
-		AddClassToCollection("RagBone", "Vector3 getPosition()", "Gets the position of this rag bone in global space.");
-		AddClassToCollection("RagBone", "void setOrientation(Quaternion orientation)", "Sets the orientation of this rag bone in global space. Attention: Never ever use this function in an update function for physics, as it will mess up parts of physics like ragdolls etc. Only use it for initialization!");
-		AddClassToCollection("RagBone", "Quaternion getOrientation()", "Gets the orientation of this rag bone in global space.");
-		AddClassToCollection("RagBone", "void setInitialState()", "If in ragdoll state, resets this rag bone ot its initial position and orientation.");
-		AddClassToCollection("RagBone", "OldBone getOgreBone()", "Gets the Ogre v1 old bone.");
-		AddClassToCollection("RagBone", "RagBone getParentRagBone()", "Gets the parent rag bone or nil, if its the root.");
-		AddClassToCollection("RagBone", "Vector3 getInitialBonePosition()", "Gets the initial position of this rag bone in global space.");
-		AddClassToCollection("RagBone", "Quaternion getInitialBoneOrientation()", "Gets the initial orientation of this rag bone in global space.");
-		AddClassToCollection("RagBone", "PhysicsRagDollComponent getPhysicsRagDollComponent()", "Gets PhysicsRagDollComponent outer class object from this rag bone.");
-		AddClassToCollection("RagBone", "Vector3 getPose()", "Gets the pose of this rag bone. Note: This is a vector if not ZERO, that is used to constraint a specific axis, so that the rag bone can not be moved along that axis.");
-		AddClassToCollection("RagBone", "void applyPose(Vector3 pose)", "Applies a the pose to this rag bone. Note: This is a vector if not ZERO, that is used to constraint a specific axis, so that the rag bone can not be moved along that axis.");
-		// AddClassToCollection("RagBone", "SceneNode getSceneNode()", "Gets the Ogre scene node of this rag bone for further manipulations, like attaching another object to it.");
-		AddClassToCollection("RagBone", "JointComponent getJointComponent()", "Gets the base joint component that connects this rag bone with another one for rag doll constraints or nil, if it does not exist.");
-		AddClassToCollection("RagBone", "JointHingeComponent getJointHingeComponent()", "Gets the joint hinge component that connects this rag bone with another one for rag doll constraints or nil, if it does not exist.");
-		AddClassToCollection("RagBone", "JointComponent getJointUniversalComponent()", "Gets the joint universal (double hinge) component that connects this rag bone with another one for rag doll constraints or nil, if it does not exist.");
-		AddClassToCollection("RagBone", "JointComponent getJointBallAndSocketComponent()", "Gets the joint ball and socket component that connects this rag bone with another one for rag doll constraints or nil, if it does not exist.");
-		AddClassToCollection("RagBone", "JointComponent getJointHingeActuatorComponent()", "Gets the joint hinge actuator component that connects this rag bone with another one for rag doll constraints or nil, if it does not exist.");
-		AddClassToCollection("RagBone", "JointComponent getJointUniversalActuatorComponent()", "Gets the joint universal actuator (double hinge actuator) component that connects this rag bone with another one for rag doll constraints or nil, if it does not exist.");
-		AddClassToCollection("RagBone", "void applyRequiredForceForVelocity(Vector3 velocity)", "Applies internally as many force, to satisfy the given velocity and move the bone by that force.");
-		AddClassToCollection("RagBone", "void applyOmegaForce(Vector3 omega)", "Applies omega force in order to rotate the rag bone.");
-		AddClassToCollection("RagBone", "void applyOmegaForceRotateTo(Quaternion resultOrientation, Vector3 axes, Ogre::Real strength)", "Applies omega force in order to rotate the game object to the given orientation. "
-							 "The axes at which the rotation should occur (Vector3::UNIT_Y for y, Vector3::UNIT_SCALE for all axes, or just Vector3(1, 1, 0) for x,y axis etc.). "
-							 "The strength at which the rotation should occur. "
-							 "Note: This should be used during simulation instead of @setOmegaVelocity.");
-		AddClassToCollection("RagBone", "Vector3 getSize()", "Gets the size of the bone.");
-		AddClassToCollection("RagBone", "string getJointId()", "Gets the joint id of the given rag bone for direct attachment.");
-		AddClassToCollection("RagBone", "Body getBody()", "Gets the OgreNewt physics body for direct attachment.");
-	}
+	}*/
 
 	/*void bindPhysicsMathSliderComponent(lua_State* lua)
 	{
@@ -13346,7 +13132,6 @@ namespace NOWA
 				bindInput(this->lua);
 				bindMyGUI(this->lua);
 				bindMovableObject(this->lua);
-				bindEntity(this->lua);
 				bindSceneNode(this->lua);
 				bindCamera(this->lua);
 				bindSceneManager(this->lua);
@@ -13391,7 +13176,6 @@ namespace NOWA
 				bindPhysicsPlayerControllerComponent(this->lua);
 				bindPhysicsVehicleComponent(this->lua);
 				bindPhysicsMaterialComponent(this->lua);
-				bindPhysicsRagDollComponent(this->lua);
 				bindPlaneComponent(this->lua);
 				// bindPhysicsMathSliderComponent(this->lua);
 				bindPhysicsTerrainComponent(this->lua);

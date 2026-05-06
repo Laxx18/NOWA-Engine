@@ -1097,7 +1097,9 @@ namespace NOWA
 		if (nullptr == meshPtr)
 			return true;
 
-		NOWA::MathHelper::getInstance()->ensureHasTangents(meshPtr);
+
+// TODO: Refactor for Ogre::Item!!
+		// NOWA::MathHelper::getInstance()->ensureHasTangents(meshPtr);
 
 		bool castShadows = true;
 		bool visible = true;
@@ -1861,7 +1863,7 @@ namespace NOWA
 		if (nullptr == meshPtr)
 			return true;
 
-		NOWA::MathHelper::getInstance()->ensureHasTangents(meshPtr);
+		// NOWA::MathHelper::getInstance()->ensureHasTangents(meshPtr);
 
 		bool castShadows = true;
 		bool visible = true;

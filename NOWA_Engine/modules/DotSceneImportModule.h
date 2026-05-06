@@ -192,7 +192,6 @@ namespace NOWA
 		void processOgreRecast(rapidxml::xml_node<>* xmlNode);
 
 		void findGameObjectId(rapidxml::xml_node<>*& propertyElement, unsigned long& missingGameObjectId);
-		void processEntity(rapidxml::xml_node<>* xmlNode, Ogre::SceneNode* parent, bool justSetValues = false);
 		void processItem(rapidxml::xml_node<>* xmlNode, Ogre::SceneNode* parent, bool justSetValues = false);
 		void processTerra(rapidxml::xml_node<>* xmlNode, Ogre::SceneNode* parent, bool justSetValues = false);
 		void processOcean(rapidxml::xml_node<>* xmlNode, Ogre::SceneNode* parent, bool justSetValues = false);

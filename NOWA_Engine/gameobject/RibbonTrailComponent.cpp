@@ -659,7 +659,7 @@ namespace NOWA
 
 	Ogre::Vector3 RibbonTrailComponent::getColorChange(unsigned int chainIndex) const
 	{
-		if (index > this->colorChanges.size())
+		if (index >= this->colorChanges.size())
 		{
 			return Ogre::Vector3::ZERO;
 		}
@@ -684,7 +684,7 @@ namespace NOWA
 
 	Ogre::Real RibbonTrailComponent::getWidthChange(unsigned int chainIndex) const
 	{
-		if (index > this->widthChanges.size())
+		if (index >= this->widthChanges.size())
 		{
 			return 0.0f;
 		}
@@ -709,7 +709,7 @@ namespace NOWA
 
 	Ogre::Vector3 RibbonTrailComponent::getInitialColor(unsigned int chainIndex) const
 	{
-		if (index > this->initialColors.size())
+		if (index >= this->initialColors.size())
 		{
 			return Ogre::Vector3::ZERO;
 		}
@@ -735,7 +735,7 @@ namespace NOWA
 
 	Ogre::Real RibbonTrailComponent::getInitialWidth(unsigned int chainIndex) const
 	{
-		if (index > this->initialWidths.size())
+		if (index >= this->initialWidths.size())
 		{
 			return 0.0f;
 		}

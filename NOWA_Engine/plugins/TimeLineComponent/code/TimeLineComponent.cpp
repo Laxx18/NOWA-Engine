@@ -529,21 +529,21 @@ namespace NOWA
 
 	void TimeLineComponent::setGameObjectId(unsigned int index, unsigned long id)
 	{
-		if (index > this->gameObjectIds.size())
+		if (index >= this->gameObjectIds.size())
 			index = static_cast<unsigned int>(this->gameObjectIds.size()) - 1;
 		this->gameObjectIds[index]->setValue(id);
 	}
 
 	unsigned long TimeLineComponent::getGameObjectId(unsigned int index)
 	{
-		if (index > this->gameObjectIds.size())
+		if (index >= this->gameObjectIds.size())
 			return 0;
 		return this->gameObjectIds[index]->getULong();
 	}
 
 	void TimeLineComponent::setStartTime(unsigned int index, Ogre::Real timePosition)
 	{
-		if (index > this->startTimes.size())
+		if (index >= this->startTimes.size())
 			index = static_cast<unsigned int>(this->startTimes.size()) - 1;
 
 
@@ -566,14 +566,14 @@ namespace NOWA
 
 	Ogre::Real TimeLineComponent::getStartTime(unsigned int index)
 	{
-		if (index > this->startTimes.size())
+		if (index >= this->startTimes.size())
 			return 0;
 		return this->startTimes[index]->getReal();
 	}
 
 	void TimeLineComponent::setDurationSec(unsigned int index, Ogre::Real duration)
 	{
-		if (index > this->durations.size())
+		if (index >= this->durations.size())
 			index = static_cast<unsigned int>(this->durations.size()) - 1;
 
 		if (duration < 0.0f)
@@ -595,14 +595,14 @@ namespace NOWA
 
 	Ogre::Real TimeLineComponent::getDurationSec(unsigned int index)
 	{
-		if (index > this->durations.size())
+		if (index >= this->durations.size())
 			return 0;
 		return this->durations[index]->getReal();
 	}
 
 	void TimeLineComponent::setRepeatCount(unsigned int index, unsigned int repeatCount)
 	{
-		if (index > this->repeatCounts.size())
+		if (index >= this->repeatCounts.size())
 			index = static_cast<unsigned int>(this->repeatCounts.size()) - 1;
 
 		// Allow max 2 times a second
@@ -614,14 +614,14 @@ namespace NOWA
 
 	unsigned int TimeLineComponent::getRepeatCount(unsigned int index)
 	{
-		if (index > this->repeatCounts.size())
+		if (index >= this->repeatCounts.size())
 			return 0;
 		return this->repeatCounts[index]->getUInt();
 	}
 
 	void TimeLineComponent::setTimePointStartEventName(unsigned int index, const Ogre::String& timePointStartEventName)
 	{
-		if (index > this->timePointStartEventNames.size())
+		if (index >= this->timePointStartEventNames.size())
 			index = static_cast<unsigned int>(this->timePointStartEventNames.size()) - 1;
 		this->timePointStartEventNames[index]->setValue(timePointStartEventName);
 		this->timePointStartEventNames[index]->addUserData(GameObject::AttrActionGenerateLuaFunction(), timePointStartEventName + "(timePointSec)");
@@ -629,14 +629,14 @@ namespace NOWA
 
 	Ogre::String TimeLineComponent::getTimePointStartEventName(unsigned int index)
 	{
-		if (index > this->timePointStartEventNames.size())
+		if (index >= this->timePointStartEventNames.size())
 			return "";
 		return this->timePointStartEventNames[index]->getString();
 	}
 
 	void TimeLineComponent::setTimePointEndEventName(unsigned int index, const Ogre::String& timePointEndEventName)
 	{
-		if (index > this->timePointEndEventNames.size())
+		if (index >= this->timePointEndEventNames.size())
 			index = static_cast<unsigned int>(this->timePointEndEventNames.size()) - 1;
 		this->timePointEndEventNames[index]->setValue(timePointEndEventName);
 		this->timePointEndEventNames[index]->addUserData(GameObject::AttrActionGenerateLuaFunction(), timePointEndEventName + "(timePointSec)");
@@ -644,7 +644,7 @@ namespace NOWA
 
 	Ogre::String TimeLineComponent::getTimePointEndEventName(unsigned int index)
 	{
-		if (index > this->timePointEndEventNames.size())
+		if (index >= this->timePointEndEventNames.size())
 			return "";
 		return this->timePointEndEventNames[index]->getString();
 	}

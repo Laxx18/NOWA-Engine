@@ -1764,7 +1764,7 @@ namespace NOWA
 
     unsigned int MyGUIItemBoxComponent::getQuantity(unsigned int index)
     {
-        if (index > this->quantities.size())
+        if (index >= this->quantities.size())
         {
             return 0;
         }
@@ -1978,7 +1978,7 @@ namespace NOWA
 
     Ogre::Real MyGUIItemBoxComponent::getSellValue(unsigned int index)
     {
-        if (index > this->sellValues.size())
+        if (index >= this->sellValues.size())
         {
             return 0.0f;
         }
@@ -2043,7 +2043,7 @@ namespace NOWA
 
     Ogre::Real MyGUIItemBoxComponent::getBuyValue(unsigned int index)
     {
-        if (index > this->buyValues.size())
+        if (index >= this->buyValues.size())
         {
             return 0.0f;
         }

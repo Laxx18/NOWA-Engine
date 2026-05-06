@@ -166,7 +166,7 @@ namespace OgreNewt
 		{
 		public:
 			ConcaveHull(const World* world);
-			ConcaveHull(const World* world, Ogre::v1::Entity* ent, unsigned int id, Ogre::Real tolerance = 0.001f,
+			ConcaveHull(const World* world, Ogre::Item* ent, unsigned int id, Ogre::Real tolerance = 0.001f,
 				const Ogre::Vector3& scale = Ogre::Vector3::UNIT_SCALE);
 			ConcaveHull(const World* world, const Ogre::Vector3* verts, int vertcount, unsigned int id, Ogre::Real tolerance = 0.001f);
 			~ConcaveHull() {}

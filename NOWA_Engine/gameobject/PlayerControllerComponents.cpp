@@ -2,7 +2,7 @@
 #include "PlayerControllerComponents.h"
 #include "GameObjectController.h"
 #include "PhysicsActiveComponent.h"
-#include "PhysicsRagDollComponent.h"
+#include "PhysicsRagDollComponentV2.h"
 #include "PhysicsPlayerControllerComponent.h"
 #include "PhysicsActiveKinematicComponent.h"
 #include "NodeComponent.h"
@@ -26,7 +26,6 @@
 #include "modules/LuaScriptApi.h"
 #include "AiComponents.h"
 
-#include "utilities/AnimationBlender.h"
 #include "utilities/AnimationBlenderV2.h"
 
 #include "Animation/OgreSkeletonInstance.h"
@@ -37,7 +36,7 @@ namespace NOWA
 	using namespace luabind;
 
 	PlayerControllerComponent::AnimationBlenderObserver::AnimationBlenderObserver(luabind::object closureFunction, bool oneTime)
-		: IAnimationBlender::IAnimationBlenderObserver(),
+		: AnimationBlenderV2::IAnimationBlenderObserver(),
 		closureFunction(closureFunction),
 		oneTime(oneTime)
 	{
@@ -219,22 +218,14 @@ namespace NOWA
 
 	bool PlayerControllerComponent::postInit(void)
 	{
-		Ogre::v1::Entity* entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
-		if (nullptr != entity)
+		Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
+		if (nullptr != item)
 		{
-			this->animationBlender = new NOWA::AnimationBlender(entity);
+			this->animationBlender = new NOWA::AnimationBlenderV2(item);
 		}
 		else
 		{
-			Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
-			if (nullptr != item)
-			{
-				this->animationBlender = new NOWA::AnimationBlenderV2(item);
-			}
-			else
-			{
-				return false;
-			}
+			return false;
 		}
 
 		// Component must be dynamic, because it will be moved
@@ -722,9 +713,9 @@ namespace NOWA
 		return this->physicsActiveComponent;
 	}
 
-	PhysicsRagDollComponent* PlayerControllerComponent::getPhysicsRagDollComponent(void) const
+	PhysicsRagDollComponentV2* PlayerControllerComponent::getPhysicsRagDollComponent(void) const
 	{
-		return dynamic_cast<PhysicsRagDollComponent*>(this->physicsActiveComponent);
+		return dynamic_cast<PhysicsRagDollComponentV2*>(this->physicsActiveComponent);
 	}
 
 	void PlayerControllerComponent::lockMovement(const Ogre::String& ownerName, bool lock)
@@ -845,7 +836,7 @@ namespace NOWA
 
 	void PlayerControllerComponent::setAnimationName(const Ogre::String& name, unsigned int index)
 	{
-		if (index > this->animations.size())
+		if (index >= this->animations.size())
 		{
 			return;
 		}
@@ -854,7 +845,7 @@ namespace NOWA
 
 	Ogre::String PlayerControllerComponent::getAnimationName(unsigned int index)
 	{
-		if (index > this->animations.size())
+		if (index >= this->animations.size())
 		{
 			return "";
 		}
@@ -1107,29 +1098,26 @@ namespace NOWA
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PlayerControllerJumpNRunComponent] Init player controller 3D component for game object: " + this->gameObjectPtr->getName());
 
-		Ogre::v1::Entity* entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
-		if (nullptr != entity)
+		Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
+		if (nullptr != item)
 		{
 			std::vector<Ogre::String> animationNames;
 			// Add also none, so that when choosen, no animation will be done, because it does not exist
 			animationNames.emplace_back("None");
 
-			Ogre::v1::AnimationStateSet* set = entity->getAllAnimationStates();
-			if (nullptr != set)
-			{
-				Ogre::v1::AnimationStateIterator it = set->getAnimationStateIterator();
-				// list all animations
-				while (it.hasMoreElements())
-				{
-					Ogre::v1::AnimationState* anim = it.getNext();
-					animationNames.emplace_back(anim->getAnimationName());
-				}
-				// Add all available animation names to list
-				for (unsigned short i = 0; i < this->animationsCount; i++)
-				{
-					this->animations[i]->setValue(animationNames);
-				}
-			}
+			Ogre::SkeletonInstance* skeleton = item->getSkeletonInstance();
+            if (nullptr != skeleton)
+            {
+                for (auto& anim : skeleton->getAnimationsNonConst())
+                {
+                    animationNames.emplace_back(anim.getName().getFriendlyText());
+                }
+                // Add all available animation names to list
+                for (unsigned short i = 0; i < this->animationsCount; i++)
+                {
+                    this->animations[i]->setValue(animationNames);
+                }
+            }
 		}
 
 		this->stateMachine = new NOWA::KI::StateMachine<GameObject>(this->gameObjectPtr.get());
@@ -1159,7 +1147,7 @@ namespace NOWA
 		if (nullptr != this->animationBlender)
 		{
 			// this->animationBlender->clearAnimations();
-			this->animationBlender->init(NOWA::AnimationBlender::ANIM_IDLE_1);
+			this->animationBlender->init(NOWA::AnimationBlenderV2::ANIM_IDLE_1);
 			// Reset animation to T-Pose
 			this->animationBlender->setSourceEnabled(false);
 		}
@@ -1385,22 +1373,22 @@ namespace NOWA
 
 		if (true == activated)
 		{
-			this->animationBlender->registerAnimation(NOWA::AnimationBlender::ANIM_IDLE_1, this->animations[0]->getListSelectedValue());
-			this->animationBlender->registerAnimation(NOWA::AnimationBlender::ANIM_IDLE_2, this->animations[1]->getListSelectedValue());
-			this->animationBlender->registerAnimation(NOWA::AnimationBlender::ANIM_IDLE_3, this->animations[2]->getListSelectedValue());
-			this->animationBlender->registerAnimation(NOWA::AnimationBlender::ANIM_WALK_NORTH, this->animations[3]->getListSelectedValue());
-			this->animationBlender->registerAnimation(NOWA::AnimationBlender::ANIM_WALK_SOUTH, this->animations[4]->getListSelectedValue());
-			this->animationBlender->registerAnimation(NOWA::AnimationBlender::ANIM_WALK_WEST, this->animations[5]->getListSelectedValue());
-			this->animationBlender->registerAnimation(NOWA::AnimationBlender::ANIM_WALK_EAST, this->animations[6]->getListSelectedValue());
-			this->animationBlender->registerAnimation(NOWA::AnimationBlender::ANIM_JUMP_START, this->animations[7]->getListSelectedValue());
-			this->animationBlender->registerAnimation(NOWA::AnimationBlender::ANIM_JUMP_WALK, this->animations[8]->getListSelectedValue());
-			this->animationBlender->registerAnimation(NOWA::AnimationBlender::ANIM_HIGH_JUMP_END, this->animations[9]->getListSelectedValue());
-			this->animationBlender->registerAnimation(NOWA::AnimationBlender::ANIM_JUMP_END, this->animations[10]->getListSelectedValue());
-			this->animationBlender->registerAnimation(NOWA::AnimationBlender::ANIM_RUN, this->animations[11]->getListSelectedValue());
-			this->animationBlender->registerAnimation(NOWA::AnimationBlender::ANIM_SNEAK, this->animations[12]->getListSelectedValue());
-			this->animationBlender->registerAnimation(NOWA::AnimationBlender::ANIM_DUCK, this->animations[13]->getListSelectedValue());
+			this->animationBlender->registerAnimation(NOWA::AnimationBlenderV2::ANIM_IDLE_1, this->animations[0]->getListSelectedValue());
+            this->animationBlender->registerAnimation(NOWA::AnimationBlenderV2::ANIM_IDLE_2, this->animations[1]->getListSelectedValue());
+            this->animationBlender->registerAnimation(NOWA::AnimationBlenderV2::ANIM_IDLE_3, this->animations[2]->getListSelectedValue());
+            this->animationBlender->registerAnimation(NOWA::AnimationBlenderV2::ANIM_WALK_NORTH, this->animations[3]->getListSelectedValue());
+            this->animationBlender->registerAnimation(NOWA::AnimationBlenderV2::ANIM_WALK_SOUTH, this->animations[4]->getListSelectedValue());
+            this->animationBlender->registerAnimation(NOWA::AnimationBlenderV2::ANIM_WALK_WEST, this->animations[5]->getListSelectedValue());
+            this->animationBlender->registerAnimation(NOWA::AnimationBlenderV2::ANIM_WALK_EAST, this->animations[6]->getListSelectedValue());
+            this->animationBlender->registerAnimation(NOWA::AnimationBlenderV2::ANIM_JUMP_START, this->animations[7]->getListSelectedValue());
+            this->animationBlender->registerAnimation(NOWA::AnimationBlenderV2::ANIM_JUMP_WALK, this->animations[8]->getListSelectedValue());
+            this->animationBlender->registerAnimation(NOWA::AnimationBlenderV2::ANIM_HIGH_JUMP_END, this->animations[9]->getListSelectedValue());
+            this->animationBlender->registerAnimation(NOWA::AnimationBlenderV2::ANIM_JUMP_END, this->animations[10]->getListSelectedValue());
+            this->animationBlender->registerAnimation(NOWA::AnimationBlenderV2::ANIM_RUN, this->animations[11]->getListSelectedValue());
+            this->animationBlender->registerAnimation(NOWA::AnimationBlenderV2::ANIM_SNEAK, this->animations[12]->getListSelectedValue());
+            this->animationBlender->registerAnimation(NOWA::AnimationBlenderV2::ANIM_DUCK, this->animations[13]->getListSelectedValue());
 
-			this->animationBlender->init(NOWA::AnimationBlender::ANIM_IDLE_1);
+			this->animationBlender->init(NOWA::AnimationBlenderV2::ANIM_IDLE_1);
 
 			this->stateMachine->setCurrentState(WalkingStateJumpNRun::getName());
 		}
@@ -1767,34 +1755,17 @@ namespace NOWA
 
 		this->categoriesId = AppStateManager::getSingletonPtr()->getGameObjectController()->generateCategoryId(this->categories->getString());
 
-		Ogre::v1::Entity* entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
-		if (nullptr != entity)
+		Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
+		if (nullptr != item)
 		{
 			std::vector<Ogre::String> animationNames = this->animationBlender->getAllAvailableAnimationNames();
 			// Add also none, so that when choosen, no animation will be done, because it does not exist
 			animationNames.insert(animationNames.cbegin(), "None");
-			
+
 			// Add all available animation names to list
 			for (unsigned short i = 0; i < this->animationsCount; i++)
 			{
 				this->animations[i]->setValue(animationNames);
-			}
-			
-		}
-		else
-		{
-			Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
-			if (nullptr != item)
-			{
-				std::vector<Ogre::String> animationNames = this->animationBlender->getAllAvailableAnimationNames();
-				// Add also none, so that when choosen, no animation will be done, because it does not exist
-				animationNames.insert(animationNames.cbegin(), "None");
-
-				// Add all available animation names to list
-				for (unsigned short i = 0; i < this->animationsCount; i++)
-				{
-					this->animations[i]->setValue(animationNames);
-				}
 			}
 		}
 
@@ -1826,13 +1797,13 @@ namespace NOWA
 
 		if (nullptr != this->animationBlender)
 		{
-			this->animationBlender->registerAnimation(NOWA::AnimationBlender::ANIM_IDLE_1, this->animations[0]->getListSelectedValue());
-			this->animationBlender->registerAnimation(NOWA::AnimationBlender::ANIM_IDLE_2, this->animations[1]->getListSelectedValue());
-			this->animationBlender->registerAnimation(NOWA::AnimationBlender::ANIM_IDLE_3, this->animations[2]->getListSelectedValue());
-			this->animationBlender->registerAnimation(NOWA::AnimationBlender::ANIM_WALK_NORTH, this->animations[3]->getListSelectedValue());
-			this->animationBlender->registerAnimation(NOWA::AnimationBlender::ANIM_RUN, this->animations[4]->getListSelectedValue());
+			this->animationBlender->registerAnimation(NOWA::AnimationBlenderV2::ANIM_IDLE_1, this->animations[0]->getListSelectedValue());
+			this->animationBlender->registerAnimation(NOWA::AnimationBlenderV2::ANIM_IDLE_2, this->animations[1]->getListSelectedValue());
+			this->animationBlender->registerAnimation(NOWA::AnimationBlenderV2::ANIM_IDLE_3, this->animations[2]->getListSelectedValue());
+			this->animationBlender->registerAnimation(NOWA::AnimationBlenderV2::ANIM_WALK_NORTH, this->animations[3]->getListSelectedValue());
+			this->animationBlender->registerAnimation(NOWA::AnimationBlenderV2::ANIM_RUN, this->animations[4]->getListSelectedValue());
 
-			this->animationBlender->init(NOWA::AnimationBlender::ANIM_IDLE_1);
+			this->animationBlender->init(NOWA::AnimationBlenderV2::ANIM_IDLE_1);
 		}
 
 		if (nullptr != this->movingBehaviorPtr)
@@ -2165,7 +2136,7 @@ namespace NOWA
 		this->jumpSound = OgreALModule::getInstance()->createSound(this->playerController->getOwner()->getSceneManager(), "PlayerJump1", "Jump1.wav");
 		this->jumpSound->setGain(0.5f);
 
-		this->playerController->getAnimationBlender()->blend(NOWA::AnimationBlender::ANIM_IDLE_1, NOWA::AnimationBlender::BlendThenAnimate, 0.2f, true);
+		this->playerController->getAnimationBlender()->blend(NOWA::AnimationBlenderV2::ANIM_IDLE_1, NOWA::AnimationBlenderV2::BlendThenAnimate, 0.2f, true);
 		this->boringTimer = 0.0f;
 		this->noMoveTimer = 0.0f;
 		// acquire the jump force from attributes
@@ -2262,9 +2233,9 @@ namespace NOWA
 		{
 			this->walkCount = 0.0f;
 			this->keyDirection = Ogre::Vector3::ZERO;
-			if (!this->playerController->getAnimationBlender()->isAnimationActive(AnimationBlender::ANIM_IDLE_1) /*&& this->playerController->getAnimationBlender()->isComplete()*/ && false == this->inAir)
+			if (!this->playerController->getAnimationBlender()->isAnimationActive(NOWA::AnimationBlenderV2::ANIM_IDLE_1) /*&& this->playerController->getAnimationBlender()->isComplete()*/ && false == this->inAir)
 			{
-				this->playerController->getAnimationBlender()->blend(AnimationBlender::ANIM_IDLE_1, AnimationBlender::BlendWhileAnimating, 0.2f, true);
+				this->playerController->getAnimationBlender()->blend(NOWA::AnimationBlenderV2::ANIM_IDLE_1, NOWA::AnimationBlenderV2::BlendWhileAnimating, 0.2f, true);
 			}
 
 			tempAnimationSpeed = this->playerController->getAnimationSpeed() * 0.5f;
@@ -2289,23 +2260,23 @@ namespace NOWA
 			{
 				this->boringTimer = 0.0f;
 				int id = MathHelper::getInstance()->getRandomNumber<int>(0, 3);
-				AnimationBlender::AnimID animID;
+				NOWA::AnimationBlenderV2::AnimID animID;
 				if (0 == id)
 				{
-					animID = AnimationBlender::ANIM_IDLE_1;
+					animID = NOWA::AnimationBlenderV2::ANIM_IDLE_1;
 				}
 				else if (1 == id)
 				{
-					animID = AnimationBlender::ANIM_IDLE_2;
+					animID = NOWA::AnimationBlenderV2::ANIM_IDLE_2;
 				}
 				else
 				{
-					animID = AnimationBlender::ANIM_IDLE_3;
+					animID = NOWA::AnimationBlenderV2::ANIM_IDLE_3;
 				}
 				if (this->playerController->getAnimationBlender()->hasAnimation(animID) && this->playerController->getAnimationBlender()->isComplete())
 				{
 					tempAnimationSpeed = this->playerController->getAnimationSpeed();
-					this->playerController->getAnimationBlender()->blend(animID, AnimationBlender::BlendWhileAnimating, 0.2f, true);
+					this->playerController->getAnimationBlender()->blend(animID, NOWA::AnimationBlenderV2::BlendWhileAnimating, 0.2f, true);
 				}
 			}
 
@@ -2340,7 +2311,7 @@ namespace NOWA
 			// walk if left or right is being pressed
 			this->boringTimer = 0.0f;
 
-			AnimationBlender::AnimID animId = AnimationBlender::AnimID::ANIM_NONE;
+			NOWA::AnimationBlenderV2::AnimID animId = NOWA::AnimationBlenderV2::AnimID::ANIM_NONE;
 
 			// 3D movement
 			if (false == this->playerController->getIsFor2D())
@@ -2349,7 +2320,7 @@ namespace NOWA
 				if (inputDeviceModule->isActionDown(NOWA_A_UP))
 				{
 					tempSpeed = this->playerController->getPhysicsComponent()->getSpeed() * this->playerController->getMoveWeight();
-					animId = AnimationBlender::ANIM_WALK_NORTH;
+					animId = NOWA::AnimationBlenderV2::ANIM_WALK_NORTH;
 					this->direction = Direction::UP;
 
 					// Move along the forward direction (tangent to planet surface)
@@ -2360,7 +2331,7 @@ namespace NOWA
 					tempAnimationSpeed = this->playerController->getAnimationSpeed() * 0.75f;
 					this->playerController->setMoveWeight(1.0f);
 					tempSpeed = -this->playerController->getPhysicsComponent()->getSpeed() * 0.5f * this->playerController->getMoveWeight();
-					animId = AnimationBlender::ANIM_WALK_SOUTH;
+					animId = NOWA::AnimationBlenderV2::ANIM_WALK_SOUTH;
 					this->direction = Direction::DOWN;
 
 					// Move along the forward direction (but backward since tempSpeed is negative)
@@ -2370,7 +2341,7 @@ namespace NOWA
 				// Rotation handling using angular forces around the up vector
 				if (inputDeviceModule->isActionDown(NOWA_A_LEFT))
 				{
-					animId = AnimationBlender::ANIM_WALK_WEST;
+					animId = NOWA::AnimationBlenderV2::ANIM_WALK_WEST;
 					this->direction = Direction::LEFT;
 
 					// Apply rotation force around the up vector (which is perpendicular to planet surface)
@@ -2380,7 +2351,7 @@ namespace NOWA
 				}
 				else if (inputDeviceModule->isActionDown(NOWA_A_RIGHT))
 				{
-					animId = AnimationBlender::ANIM_WALK_EAST;
+					animId = NOWA::AnimationBlenderV2::ANIM_WALK_EAST;
 					this->direction = Direction::RIGHT;
 
 					// Apply negative rotation force around the up vector
@@ -2405,14 +2376,14 @@ namespace NOWA
 					// Walked long enough without pause -> run
 					if (this->walkCount >= this->playerController->getRunAfterWalkTime())
 					{
-						animId = AnimationBlender::ANIM_RUN;
+						animId = NOWA::AnimationBlenderV2::ANIM_RUN;
 						tempSpeed = this->playerController->getPhysicsComponent()->getMaxSpeed() * this->playerController->getMoveWeight();
 						tempAnimationSpeed *= 0.5f;
 					}
 					else
 					{
 						tempSpeed = this->playerController->getPhysicsComponent()->getSpeed() * this->playerController->getMoveWeight();
-						animId = AnimationBlender::ANIM_WALK_NORTH;
+						animId = NOWA::AnimationBlenderV2::ANIM_WALK_NORTH;
 					}
 					this->direction = Direction::LEFT;
 					this->keyDirection = Ogre::Vector3(-1.0f, 0.0f, 0.0f);
@@ -2424,14 +2395,14 @@ namespace NOWA
 					// Walked long enough without pause -> run
 					if (this->walkCount >= this->playerController->getRunAfterWalkTime())
 					{
-						animId = AnimationBlender::ANIM_RUN;
+						animId = NOWA::AnimationBlenderV2::ANIM_RUN;
 						tempSpeed = this->playerController->getPhysicsComponent()->getMaxSpeed() * this->playerController->getMoveWeight();
 						tempAnimationSpeed *= 0.5f;
 					}
 					else
 					{
 						tempSpeed = this->playerController->getPhysicsComponent()->getSpeed() * this->playerController->getMoveWeight();
-						animId = AnimationBlender::ANIM_WALK_NORTH;
+						animId = NOWA::AnimationBlenderV2::ANIM_WALK_NORTH;
 					}
 					this->direction = Direction::RIGHT;
 					this->keyDirection = Ogre::Vector3(1.0f, 0.0f, 0.0f);
@@ -2497,14 +2468,14 @@ namespace NOWA
 					this->direction = Direction::UP;
 					tempSpeed = this->playerController->getPhysicsComponent()->getMaxSpeed() * this->playerController->getMoveWeight();
 					tempAnimationSpeed *= 0.8f;
-					animId = AnimationBlender::ANIM_RUN;
+					animId = NOWA::AnimationBlenderV2::ANIM_RUN;
 				}
 				else if (inputDeviceModule->isActionDown(NOWA_A_SNEAK) && inputDeviceModule->isActionDown(NOWA_A_UP))
 				{
 					this->direction = Direction::UP;
 					tempSpeed = this->playerController->getPhysicsComponent()->getMinSpeed() * this->playerController->getMoveWeight();
 					tempAnimationSpeed *= 0.5f;
-					animId = AnimationBlender::ANIM_SNEAK;
+					animId = NOWA::AnimationBlenderV2::ANIM_SNEAK;
 				}
 			}
 
@@ -2512,15 +2483,15 @@ namespace NOWA
 			// + " ");
 
 			if (false == this->playerController->getAnimationBlender()->isAnimationActive(animId)
-				&& (this->playerController->getAnimationBlender()->isComplete() || this->playerController->getAnimationBlender()->isAnimationActive(AnimationBlender::ANIM_IDLE_1)
-					|| this->playerController->getAnimationBlender()->isAnimationActive(AnimationBlender::ANIM_IDLE_2)
-					|| this->playerController->getAnimationBlender()->isAnimationActive(AnimationBlender::ANIM_IDLE_3))
+				&& (this->playerController->getAnimationBlender()->isComplete() || this->playerController->getAnimationBlender()->isAnimationActive(NOWA::AnimationBlenderV2::ANIM_IDLE_1)
+					|| this->playerController->getAnimationBlender()->isAnimationActive(NOWA::AnimationBlenderV2::ANIM_IDLE_2)
+					|| this->playerController->getAnimationBlender()->isAnimationActive(NOWA::AnimationBlenderV2::ANIM_IDLE_3))
 					/*&& false == this->playerController->getPhysicsComponent()->getHasBuoyancy()*/
 				&& false == this->inAir && !this->jumpKeyPressed && !this->isJumping)
 			{
 				tempAnimationSpeed = this->playerController->getAnimationSpeed();
 				// 0.02f: Immediately blend to walk
-				this->playerController->getAnimationBlender()->blend(animId, NOWA::AnimationBlender::BlendWhileAnimating, 0.2f, true);
+				this->playerController->getAnimationBlender()->blend(animId, NOWA::AnimationBlenderV2::BlendWhileAnimating, 0.2f, true);
 			}
 		}
 // Attention: Does not work at the moment, some condition is wrong
@@ -2528,10 +2499,10 @@ namespace NOWA
 		{
 			this->boringTimer = 0;
 		
-			if (false == this->playerController->getAnimationBlender()->isAnimationActive(AnimationBlender::ANIM_DUCK) && false == this->duckedOnce)
+			if (false == this->playerController->getAnimationBlender()->isAnimationActive(NOWA::AnimationBlenderV2::ANIM_DUCK) && false == this->duckedOnce)
 			{
 				this->duckedOnce = true;
-				this->playerController->getAnimationBlender()->blend(AnimationBlender::ANIM_DUCK, AnimationBlender::BlendWhileAnimating, 0.1f, false);
+				this->playerController->getAnimationBlender()->blend(NOWA::AnimationBlenderV2::ANIM_DUCK, NOWA::AnimationBlenderV2::BlendWhileAnimating, 0.1f, false);
 				// this->playerController->getPhysicsComponent()->getBody()->scaleCollision(Ogre::Vector3(1.0f, 0.5f, 1.0f));
 			}
 			if (this->playerController->getAnimationBlender()->getTimePosition() >= this->playerController->getAnimationBlender()->getLength() - 0.3f)
@@ -2569,12 +2540,12 @@ namespace NOWA
 			// Jump at place, back or sidewards
 #if 0
 			if ((Direction::NONE == this->direction || Direction::DOWN == this->direction || Direction::LEFT == this->direction || Direction::RIGHT == this->direction)
-				/*&& false == this->playerController->getAnimationBlender()->isAnimationActive(AnimationBlender::ANIM_JUMP_START)*/
+				/*&& false == this->playerController->getAnimationBlender()->isAnimationActive(NOWA::AnimationBlenderV2::ANIM_JUMP_START)*/
 				/*&& this->playerController->getAnimationBlender()->isComplete()*/ /*&& this->playerController->getPhysicsComponent()->getVelocity().squaredLength() <= 2.0f*/)
 #endif
 			{
 				// tempAnimationSpeed = this->playerController->getAnimationSpeed() * 0.5f;
-				this->playerController->getAnimationBlender()->blend(AnimationBlender::ANIM_JUMP_START, AnimationBlender::BlendWhileAnimating, 0.5f, false);
+				this->playerController->getAnimationBlender()->blend(NOWA::AnimationBlenderV2::ANIM_JUMP_START, NOWA::AnimationBlenderV2::BlendWhileAnimating, 0.5f, false);
 		
 				if (this->playerController->getAnimationBlender()->getTimePosition() >= this->playerController->getAnimationBlender()->getLength() - 0.3f)
 				{
@@ -2587,11 +2558,11 @@ namespace NOWA
 			//{
 			//	// start jumping animation directly and not waiting until complete
 			//	// if the player is running and jumping, choose the jump walk animation if it does exist
-			//	if (this->playerController->getAnimationBlender()->hasAnimation(AnimationBlender::ANIM_JUMP_WALK)
-			//		&& false == this->playerController->getAnimationBlender()->isAnimationActive(AnimationBlender::ANIM_JUMP_WALK))
+			//	if (this->playerController->getAnimationBlender()->hasAnimation(NOWA::AnimationBlenderV2::ANIM_JUMP_WALK)
+			//		&& false == this->playerController->getAnimationBlender()->isAnimationActive(NOWA::AnimationBlenderV2::ANIM_JUMP_WALK))
 			//	{
 			//		// tempAnimationSpeed = this->playerController->getAnimationSpeed() * 0.75f;
-			//		this->playerController->getAnimationBlender()->blend(AnimationBlender::ANIM_JUMP_WALK, AnimationBlender::BlendWhileAnimating, 0.5f, false);
+			//		this->playerController->getAnimationBlender()->blend(NOWA::AnimationBlenderV2::ANIM_JUMP_WALK, NOWA::AnimationBlenderV2::BlendWhileAnimating, 0.5f, false);
 			//		this->jumpSound->play();
 			//	}
 			//}
@@ -2604,9 +2575,9 @@ namespace NOWA
 		{
 			this->jumpCount = 0;
 			//if (widget) widget->setCaption("Falling");
-			if (false == this->playerController->getAnimationBlender()->isAnimationActive(AnimationBlender::ANIM_JUMP_START))
+			if (false == this->playerController->getAnimationBlender()->isAnimationActive(NOWA::AnimationBlenderV2::ANIM_JUMP_START))
 			{
-				this->playerController->getAnimationBlender()->blend(AnimationBlender::ANIM_JUMP_START, AnimationBlender::BlendWhileAnimating, 0.5f, false);
+				this->playerController->getAnimationBlender()->blend(NOWA::AnimationBlenderV2::ANIM_JUMP_START, NOWA::AnimationBlenderV2::BlendWhileAnimating, 0.5f, false);
 			}
 			else if (this->playerController->getAnimationBlender()->getTimePosition() >= this->playerController->getAnimationBlender()->getLength() - 0.3f)
 			{
@@ -2635,11 +2606,11 @@ namespace NOWA
 			this->boringTimer = 0;
 			this->acceleration = 0.0f;
 			tempAnimationSpeed = this->playerController->getAnimationSpeed() * 3.0f;
-			if (!this->playerController->getAnimationBlender()->isAnimationActive(AnimationBlender::ANIM_HIGH_JUMP_END)
+			if (!this->playerController->getAnimationBlender()->isAnimationActive(NOWA::AnimationBlenderV2::ANIM_HIGH_JUMP_END)
 				/*&& this->playerController->getAnimationBlender()->isComplete()*/)
 			{
 				// this->noMoveTimer = 1.0f;
-				this->playerController->getAnimationBlender()->blend(AnimationBlender::ANIM_HIGH_JUMP_END, AnimationBlender::BlendWhileAnimating, 0.5f, false);
+				this->playerController->getAnimationBlender()->blend(NOWA::AnimationBlenderV2::ANIM_HIGH_JUMP_END, NOWA::AnimationBlenderV2::BlendWhileAnimating, 0.5f, false);
 
 				///////////////if (widget) widget->setCaption("Land");
 				this->playerController->getPhysicsComponent()->setVelocity(this->playerController->getPhysicsComponent()->getVelocity() * Ogre::Vector3(0.0f, 1.0f, 0.0f));
@@ -2652,9 +2623,9 @@ namespace NOWA
 
 		if (false == this->inAir && this->playerController->getPhysicsComponent()->getVelocity().y < -1.0f && false == this->groundedOnce)
 		{
-			if (!this->playerController->getAnimationBlender()->isAnimationActive(AnimationBlender::ANIM_JUMP_END))
+			if (!this->playerController->getAnimationBlender()->isAnimationActive(NOWA::AnimationBlenderV2::ANIM_JUMP_END))
 			{
-				this->playerController->getAnimationBlender()->blend(AnimationBlender::ANIM_JUMP_END, AnimationBlender::BlendWhileAnimating, 0.5f, false);
+				this->playerController->getAnimationBlender()->blend(NOWA::AnimationBlenderV2::ANIM_JUMP_END, NOWA::AnimationBlenderV2::BlendWhileAnimating, 0.5f, false);
 			}
 			this->boringTimer = 0;
 			// Play only once!
@@ -2906,8 +2877,8 @@ namespace NOWA
 	void PathFollowState3D::enter(GameObject* player)
 	{
 		this->playerController = NOWA::makeStrongPtr(player->getComponent<PlayerControllerClickToPointComponent>()).get();
-		// this->playerController->getAnimationBlender()->init(NOWA::AnimationBlender::ANIM_IDLE_1);
-		this->playerController->getAnimationBlender()->blend(NOWA::AnimationBlender::ANIM_IDLE_1, NOWA::AnimationBlender::BlendWhileAnimating, 0.5f, true);
+		// this->playerController->getAnimationBlender()->init(NOWA::AnimationBlenderV2::ANIM_IDLE_1);
+		this->playerController->getAnimationBlender()->blend(NOWA::AnimationBlenderV2::ANIM_IDLE_1, NOWA::AnimationBlenderV2::BlendWhileAnimating, 0.5f, true);
 		this->boringTimer = 6.0f;
 		
 		this->movingBehavior = this->playerController->getMovingBehavior();
@@ -3113,12 +3084,12 @@ namespace NOWA
 							this->playerController->setJumpWeight(1.0f);
 
 							if ((false == this->playerController->getAnimationBlender()->isComplete() && this->movingBehavior->getPath()->getRemainingWaypoints() > 0)
-								&& false == this->playerController->getAnimationBlender()->isAnimationActive(AnimationBlender::ANIM_WALK_NORTH))
+								&& false == this->playerController->getAnimationBlender()->isAnimationActive(NOWA::AnimationBlenderV2::ANIM_WALK_NORTH))
 							{
 								tempAnimationSpeed = this->playerController->getAnimationSpeed();
 								// 0.02f: Immediately blend to walk
-								// this->playerController->getAnimationBlender()->blend(AnimationBlender::ANIM_WALK_NORTH, NOWA::AnimationBlender::BlendSwitch, 0.2f, true);
-								this->playerController->getAnimationBlender()->blend(AnimationBlender::ANIM_WALK_NORTH, NOWA::AnimationBlender::BlendWhileAnimating, 0.2f, true);
+								// this->playerController->getAnimationBlender()->blend(NOWA::AnimationBlenderV2::ANIM_WALK_NORTH, NOWA::AnimationBlenderV2::BlendSwitch, 0.2f, true);
+								this->playerController->getAnimationBlender()->blend(NOWA::AnimationBlenderV2::ANIM_WALK_NORTH, NOWA::AnimationBlenderV2::BlendWhileAnimating, 0.2f, true);
 							}
 						}
 					}
@@ -3153,24 +3124,24 @@ namespace NOWA
 			if (this->boringTimer >= 5.0f)
 			{
 				int id = MathHelper::getInstance()->getRandomNumber<int>(0, 3);
-				AnimationBlender::AnimID animID;
+				NOWA::AnimationBlenderV2::AnimID animID;
 				if (0 == id)
 				{
-					animID = AnimationBlender::ANIM_IDLE_1;
+					animID = NOWA::AnimationBlenderV2::ANIM_IDLE_1;
 				}
 				else if (1 == id)
 				{
-					animID = AnimationBlender::ANIM_IDLE_2;
+					animID = NOWA::AnimationBlenderV2::ANIM_IDLE_2;
 				}
 				else
 				{
-					animID = AnimationBlender::ANIM_IDLE_3;
+					animID = NOWA::AnimationBlenderV2::ANIM_IDLE_3;
 				}
 				if (this->playerController->getAnimationBlender()->hasAnimation(animID))
 				{
 					if (false == this->playerController->getAnimationBlender()->isAnimationActive(animID) || this->playerController->getAnimationBlender()->isComplete())
 					{
-						this->playerController->getAnimationBlender()->blend(animID, AnimationBlender::BlendWhileAnimating, 0.5f, true);
+						this->playerController->getAnimationBlender()->blend(animID, NOWA::AnimationBlenderV2::BlendWhileAnimating, 0.5f, true);
 						this->boringTimer = 0.0f;
 					}
 				}
@@ -3190,8 +3161,8 @@ namespace NOWA
 
 	void PathFollowState3D::exit(GameObject* player)
 	{
-		this->playerController->getAnimationBlender()->init(NOWA::AnimationBlender::ANIM_IDLE_1);
-		this->playerController->getAnimationBlender()->blend(NOWA::AnimationBlender::ANIM_IDLE_1, NOWA::AnimationBlender::BlendWhileAnimating, 0.5f, true);
+		this->playerController->getAnimationBlender()->init(NOWA::AnimationBlenderV2::ANIM_IDLE_1);
+		this->playerController->getAnimationBlender()->blend(NOWA::AnimationBlenderV2::ANIM_IDLE_1, NOWA::AnimationBlenderV2::BlendWhileAnimating, 0.5f, true);
 		this->boringTimer = 6.0f;
 		this->movingBehavior->removeBehavior(NOWA::KI::MovingBehavior::FOLLOW_PATH);
 	}

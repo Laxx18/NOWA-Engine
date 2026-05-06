@@ -9829,7 +9829,7 @@ namespace NOWA
 
 	void JointPathFollowComponent::setWaypointId(unsigned long id, unsigned int index)
 	{
-		if (index > this->waypoints.size())
+		if (index >= this->waypoints.size())
 			return;
 		this->waypoints[index]->setValue(id);
 		this->createJoint();
@@ -9837,7 +9837,7 @@ namespace NOWA
 
 	unsigned long JointPathFollowComponent::getWaypointId(unsigned int index)
 	{
-		if (index > this->waypoints.size())
+		if (index >= this->waypoints.size())
 			return 0;
 		return this->waypoints[index]->getULong();
 	}

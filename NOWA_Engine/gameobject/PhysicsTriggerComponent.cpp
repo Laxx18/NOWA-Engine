@@ -396,18 +396,10 @@ namespace NOWA
 		OgreNewt::CollisionPtr collisionPtr;
 		if (this->collisionType->getListSelectedValue() == "Tree")
 		{
-			Ogre::v1::Entity* entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
-			if (nullptr != entity)
+			Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
+			if (nullptr != item)
 			{
-				collisionPtr = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::TreeCollision(this->ogreNewt, entity, true, this->gameObjectPtr->getCategoryId()));
-			}
-			else
-			{
-				Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
-				if (nullptr != item)
-				{
-					collisionPtr = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::TreeCollision(this->ogreNewt, item, true, this->gameObjectPtr->getCategoryId()));
-				}
+				collisionPtr = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::TreeCollision(this->ogreNewt, item, true, this->gameObjectPtr->getCategoryId()));
 			}
 		}
 		else

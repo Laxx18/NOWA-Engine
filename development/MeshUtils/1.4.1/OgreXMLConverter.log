@@ -1,291 +1,291 @@
-21:50:37: Creating resource group General
-21:50:37: Creating resource group Internal
-21:50:37: Creating resource group Autodetect
-21:50:37: Registering ResourceManager for type Mesh
-21:50:37: Registering ResourceManager for type Material
-21:50:37: Registering ResourceManager for type Skeleton
-21:50:38: XMLSkeletonSerializer: reading XML data from Mage1.skeleton.xml...
-21:50:39: XMLSkeletonSerializer: Reading Bones name...
-21:50:39: XMLSkeletonSerializer: Reading Hierarchy data...
-21:50:39: XMLSkeletonSerializer: Reading Bones data...
-21:50:39: XMLSkeletonSerializer: Reading Animations data...
-21:50:39: Animation: nom: T-pose et longueur: 0.3
-21:50:39: Animation: nom: attack-01 et longueur: 0.5
-21:50:39: Animation: nom: attack-02 et longueur: 0.666667
-21:50:39: Animation: nom: attack-03 et longueur: 0.666667
-21:50:39: Animation: nom: attack-04 et longueur: 0.666667
-21:50:39: Animation: nom: attack-05 et longueur: 0.666667
-21:50:39: Animation: nom: attack-06 et longueur: 0.833333
-21:50:39: Animation: nom: attack-07 et longueur: 0.666667
-21:50:39: Animation: nom: attack-08 et longueur: 0.833333
-21:50:39: Animation: nom: bow_shoot et longueur: 1
-21:50:39: Animation: nom: braking et longueur: 0.833333
-21:50:39: Animation: nom: carry_sack et longueur: 1
-21:50:39: Animation: nom: carry_wood et longueur: 1
-21:50:39: Animation: nom: cast-01 et longueur: 1.66667
-21:50:39: Animation: nom: cast-02 et longueur: 1.33333
-21:50:39: Animation: nom: cast-03 et longueur: 1
-21:50:39: Animation: nom: choping et longueur: 1
-21:50:39: Animation: nom: cooking et longueur: 3.5
-21:50:39: Animation: nom: crying et longueur: 2
-21:50:39: Animation: nom: death-01 et longueur: 1.66667
-21:50:39: Animation: nom: death-02 et longueur: 1.33333
-21:50:39: Animation: nom: death-03 et longueur: 1.16667
-21:50:39: Animation: nom: death-04 et longueur: 1.83333
-21:50:39: Animation: nom: digging et longueur: 1.33333
-21:50:39: Animation: nom: dodge-left et longueur: 0.666667
-21:50:39: Animation: nom: dodge-right et longueur: 0.666667
-21:50:39: Animation: nom: dragging et longueur: 1
-21:50:39: Animation: nom: drinking et longueur: 1.33333
-21:50:39: Animation: nom: drop-obj et longueur: 0.666667
-21:50:39: Animation: nom: eating et longueur: 1.66667
-21:50:39: Animation: nom: fixing et longueur: 1.83333
-21:50:39: Animation: nom: frying et longueur: 3.5
-21:50:39: Animation: nom: get-up et longueur: 1
-21:50:39: Animation: nom: hit-01 et longueur: 0.333333
-21:50:39: Animation: nom: hit-02 et longueur: 0.5
-21:50:39: Animation: nom: hit-03 et longueur: 0.5
-21:50:39: Animation: nom: hit-fall et longueur: 0.666667
-21:50:39: Animation: nom: idle-01 et longueur: 3.33333
-21:50:39: Animation: nom: idle-02 et longueur: 6.66667
-21:50:39: Animation: nom: idle-03 et longueur: 3.33333
-21:50:39: Animation: nom: idle-05 et longueur: 5.33333
-21:50:39: Animation: nom: idle-06 et longueur: 6.66667
-21:50:39: Animation: nom: joke et longueur: 2
-21:50:39: Animation: nom: joy-01 et longueur: 1
-21:50:39: Animation: nom: joy-02 et longueur: 1
-21:50:39: Animation: nom: joy-03 et longueur: 1
-21:50:39: Animation: nom: jump-01 et longueur: 0.666667
-21:50:39: Animation: nom: jump-0p et longueur: 0.666667
-21:50:39: Animation: nom: jump-pose et longueur: 0.1
-21:50:39: Animation: nom: knock_ground et longueur: 1
-21:50:39: Animation: nom: knock_shield et longueur: 1
-21:50:39: Animation: nom: mining et longueur: 1.33333
-21:50:39: Animation: nom: mowing et longueur: 1
-21:50:39: Animation: nom: no et longueur: 1
-21:50:39: Animation: nom: pick-obj et longueur: 0.666667
-21:50:39: Animation: nom: roll-backward et longueur: 0.666667
-21:50:39: Animation: nom: roll-forward et longueur: 0.666667
-21:50:40: Animation: nom: roll-left et longueur: 0.666667
-21:50:40: Animation: nom: roll-right et longueur: 0.833333
-21:50:40: Animation: nom: rollout et longueur: 2.66667
-21:50:40: Animation: nom: run-01 et longueur: 0.666667
-21:50:40: Animation: nom: run-02 et longueur: 0.666667
-21:50:40: Animation: nom: run-03 et longueur: 0.666667
-21:50:40: Animation: nom: run-left-45 et longueur: 0.666667
-21:50:40: Animation: nom: run-left-90 et longueur: 0.666667
-21:50:40: Animation: nom: run-right-45 et longueur: 0.666667
-21:50:40: Animation: nom: run-right-90 et longueur: 0.666667
-21:50:40: Animation: nom: sitting et longueur: 3.33333
-21:50:40: Animation: nom: sleep et longueur: 3.33333
-21:50:40: Animation: nom: sowing et longueur: 1.5
-21:50:40: Animation: nom: spell-01 et longueur: 1.33333
-21:50:40: Animation: nom: spell-02 et longueur: 1.33333
-21:50:40: Animation: nom: spell-03 et longueur: 1.33333
-21:50:40: Animation: nom: talk-01 et longueur: 3.33333
-21:50:40: Animation: nom: talk-02 et longueur: 3.33333
-21:50:40: Animation: nom: throw et longueur: 1
-21:50:40: Animation: nom: throw-obj et longueur: 0.666667
-21:50:40: Animation: nom: throw_bomb et longueur: 1
-21:50:40: Animation: nom: walk-01 et longueur: 1
-21:50:40: Animation: nom: walk-02 et longueur: 1
-21:50:40: Animation: nom: walk-03 et longueur: 1
-21:50:40: Animation: nom: walk-back et longueur: 1
-21:50:40: Animation: nom: walk-left-45 et longueur: 1
-21:50:40: Animation: nom: walk-left-90 et longueur: 1
-21:50:40: Animation: nom: walk-right-45 et longueur: 1
-21:50:40: Animation: nom: walk-right-90 et longueur: 1
-21:50:40: Animation: nom: warcry-01 et longueur: 1
-21:50:40: Animation: nom: warcry-02 et longueur: 1
-21:50:40: Animation: nom: woodcut_above et longueur: 0.833333
-21:50:40: Animation: nom: woodcut_side et longueur: 0.833333
-21:50:40: Animation: nom: yes et longueur: 1
-21:50:40: XMLSkeletonSerializer: Finished. Running SkeletonSerializer...
-21:50:40: Exporting bones..
-21:50:40: Bones exported.
-21:50:40: Exporting animations, count=91
-21:50:40: Exporting animation: T-pose
-21:50:40: Animation exported.
-21:50:40: Exporting animation: attack-01
-21:50:40: Animation exported.
-21:50:40: Exporting animation: attack-02
-21:50:40: Animation exported.
-21:50:40: Exporting animation: attack-03
-21:50:40: Animation exported.
-21:50:40: Exporting animation: attack-04
-21:50:40: Animation exported.
-21:50:40: Exporting animation: attack-05
-21:50:40: Animation exported.
-21:50:40: Exporting animation: attack-06
-21:50:40: Animation exported.
-21:50:40: Exporting animation: attack-07
-21:50:40: Animation exported.
-21:50:40: Exporting animation: attack-08
-21:50:40: Animation exported.
-21:50:40: Exporting animation: bow_shoot
-21:50:40: Animation exported.
-21:50:40: Exporting animation: braking
-21:50:40: Animation exported.
-21:50:40: Exporting animation: carry_sack
-21:50:40: Animation exported.
-21:50:40: Exporting animation: carry_wood
-21:50:40: Animation exported.
-21:50:40: Exporting animation: cast-01
-21:50:40: Animation exported.
-21:50:40: Exporting animation: cast-02
-21:50:40: Animation exported.
-21:50:40: Exporting animation: cast-03
-21:50:40: Animation exported.
-21:50:40: Exporting animation: choping
-21:50:40: Animation exported.
-21:50:40: Exporting animation: cooking
-21:50:40: Animation exported.
-21:50:40: Exporting animation: crying
-21:50:40: Animation exported.
-21:50:40: Exporting animation: death-01
-21:50:40: Animation exported.
-21:50:40: Exporting animation: death-02
-21:50:40: Animation exported.
-21:50:40: Exporting animation: death-03
-21:50:40: Animation exported.
-21:50:40: Exporting animation: death-04
-21:50:40: Animation exported.
-21:50:40: Exporting animation: digging
-21:50:40: Animation exported.
-21:50:40: Exporting animation: dodge-left
-21:50:40: Animation exported.
-21:50:40: Exporting animation: dodge-right
-21:50:40: Animation exported.
-21:50:40: Exporting animation: dragging
-21:50:40: Animation exported.
-21:50:40: Exporting animation: drinking
-21:50:40: Animation exported.
-21:50:40: Exporting animation: drop-obj
-21:50:40: Animation exported.
-21:50:40: Exporting animation: eating
-21:50:40: Animation exported.
-21:50:40: Exporting animation: fixing
-21:50:40: Animation exported.
-21:50:40: Exporting animation: frying
-21:50:40: Animation exported.
-21:50:40: Exporting animation: get-up
-21:50:40: Animation exported.
-21:50:40: Exporting animation: hit-01
-21:50:40: Animation exported.
-21:50:40: Exporting animation: hit-02
-21:50:40: Animation exported.
-21:50:40: Exporting animation: hit-03
-21:50:40: Animation exported.
-21:50:40: Exporting animation: hit-fall
-21:50:40: Animation exported.
-21:50:40: Exporting animation: idle-01
-21:50:40: Animation exported.
-21:50:40: Exporting animation: idle-02
-21:50:40: Animation exported.
-21:50:40: Exporting animation: idle-03
-21:50:40: Animation exported.
-21:50:40: Exporting animation: idle-05
-21:50:40: Animation exported.
-21:50:40: Exporting animation: idle-06
-21:50:40: Animation exported.
-21:50:40: Exporting animation: joke
-21:50:40: Animation exported.
-21:50:40: Exporting animation: joy-01
-21:50:40: Animation exported.
-21:50:40: Exporting animation: joy-02
-21:50:40: Animation exported.
-21:50:40: Exporting animation: joy-03
-21:50:40: Animation exported.
-21:50:40: Exporting animation: jump-01
-21:50:40: Animation exported.
-21:50:40: Exporting animation: jump-0p
-21:50:40: Animation exported.
-21:50:40: Exporting animation: jump-pose
-21:50:40: Animation exported.
-21:50:40: Exporting animation: knock_ground
-21:50:40: Animation exported.
-21:50:40: Exporting animation: knock_shield
-21:50:40: Animation exported.
-21:50:40: Exporting animation: mining
-21:50:40: Animation exported.
-21:50:40: Exporting animation: mowing
-21:50:40: Animation exported.
-21:50:40: Exporting animation: no
-21:50:40: Animation exported.
-21:50:40: Exporting animation: pick-obj
-21:50:40: Animation exported.
-21:50:40: Exporting animation: roll-backward
-21:50:40: Animation exported.
-21:50:40: Exporting animation: roll-forward
-21:50:40: Animation exported.
-21:50:40: Exporting animation: roll-left
-21:50:40: Animation exported.
-21:50:40: Exporting animation: roll-right
-21:50:40: Animation exported.
-21:50:40: Exporting animation: rollout
-21:50:40: Animation exported.
-21:50:40: Exporting animation: run-01
-21:50:40: Animation exported.
-21:50:40: Exporting animation: run-02
-21:50:40: Animation exported.
-21:50:40: Exporting animation: run-03
-21:50:40: Animation exported.
-21:50:40: Exporting animation: run-left-45
-21:50:40: Animation exported.
-21:50:40: Exporting animation: run-left-90
-21:50:40: Animation exported.
-21:50:40: Exporting animation: run-right-45
-21:50:40: Animation exported.
-21:50:40: Exporting animation: run-right-90
-21:50:40: Animation exported.
-21:50:40: Exporting animation: sitting
-21:50:40: Animation exported.
-21:50:40: Exporting animation: sleep
-21:50:40: Animation exported.
-21:50:40: Exporting animation: sowing
-21:50:40: Animation exported.
-21:50:40: Exporting animation: spell-01
-21:50:40: Animation exported.
-21:50:40: Exporting animation: spell-02
-21:50:40: Animation exported.
-21:50:40: Exporting animation: spell-03
-21:50:40: Animation exported.
-21:50:40: Exporting animation: talk-01
-21:50:40: Animation exported.
-21:50:40: Exporting animation: talk-02
-21:50:40: Animation exported.
-21:50:40: Exporting animation: throw
-21:50:40: Animation exported.
-21:50:40: Exporting animation: throw-obj
-21:50:40: Animation exported.
-21:50:40: Exporting animation: throw_bomb
-21:50:40: Animation exported.
-21:50:40: Exporting animation: walk-01
-21:50:40: Animation exported.
-21:50:40: Exporting animation: walk-02
-21:50:40: Animation exported.
-21:50:40: Exporting animation: walk-03
-21:50:40: Animation exported.
-21:50:40: Exporting animation: walk-back
-21:50:40: Animation exported.
-21:50:40: Exporting animation: walk-left-45
-21:50:40: Animation exported.
-21:50:40: Exporting animation: walk-left-90
-21:50:40: Animation exported.
-21:50:40: Exporting animation: walk-right-45
-21:50:40: Animation exported.
-21:50:40: Exporting animation: walk-right-90
-21:50:40: Animation exported.
-21:50:40: Exporting animation: warcry-01
-21:50:40: Animation exported.
-21:50:40: Exporting animation: warcry-02
-21:50:40: Animation exported.
-21:50:40: Exporting animation: woodcut_above
-21:50:40: Animation exported.
-21:50:40: Exporting animation: woodcut_side
-21:50:40: Animation exported.
-21:50:40: Exporting animation: yes
-21:50:40: Animation exported.
-21:50:40: Unregistering ResourceManager for type Skeleton
-21:50:40: Unregistering ResourceManager for type Material
-21:50:40: Unregistering ResourceManager for type Mesh
+17:24:50: Creating resource group General
+17:24:50: Creating resource group Internal
+17:24:50: Creating resource group Autodetect
+17:24:50: Registering ResourceManager for type Mesh
+17:24:50: Registering ResourceManager for type Material
+17:24:50: Registering ResourceManager for type Skeleton
+17:24:51: XMLSkeletonSerializer: reading XML data from Mage1.skeleton.xml...
+17:24:52: XMLSkeletonSerializer: Reading Bones name...
+17:24:52: XMLSkeletonSerializer: Reading Hierarchy data...
+17:24:52: XMLSkeletonSerializer: Reading Bones data...
+17:24:52: XMLSkeletonSerializer: Reading Animations data...
+17:24:52: Animation: nom: T-pose et longueur: 0.3
+17:24:52: Animation: nom: attack-01 et longueur: 0.5
+17:24:52: Animation: nom: attack-02 et longueur: 0.666667
+17:24:52: Animation: nom: attack-03 et longueur: 0.666667
+17:24:52: Animation: nom: attack-04 et longueur: 0.666667
+17:24:52: Animation: nom: attack-05 et longueur: 0.666667
+17:24:52: Animation: nom: attack-06 et longueur: 0.833333
+17:24:52: Animation: nom: attack-07 et longueur: 0.666667
+17:24:52: Animation: nom: attack-08 et longueur: 0.833333
+17:24:52: Animation: nom: bow_shoot et longueur: 1
+17:24:52: Animation: nom: braking et longueur: 0.833333
+17:24:52: Animation: nom: carry_sack et longueur: 1
+17:24:52: Animation: nom: carry_wood et longueur: 1
+17:24:52: Animation: nom: cast-01 et longueur: 1.66667
+17:24:52: Animation: nom: cast-02 et longueur: 1.33333
+17:24:52: Animation: nom: cast-03 et longueur: 1
+17:24:52: Animation: nom: choping et longueur: 1
+17:24:52: Animation: nom: cooking et longueur: 3.5
+17:24:52: Animation: nom: crying et longueur: 2
+17:24:52: Animation: nom: death-01 et longueur: 1.66667
+17:24:52: Animation: nom: death-02 et longueur: 1.33333
+17:24:52: Animation: nom: death-03 et longueur: 1.16667
+17:24:52: Animation: nom: death-04 et longueur: 1.83333
+17:24:52: Animation: nom: digging et longueur: 1.33333
+17:24:52: Animation: nom: dodge-left et longueur: 0.666667
+17:24:52: Animation: nom: dodge-right et longueur: 0.666667
+17:24:52: Animation: nom: dragging et longueur: 1
+17:24:52: Animation: nom: drinking et longueur: 1.33333
+17:24:52: Animation: nom: drop-obj et longueur: 0.666667
+17:24:52: Animation: nom: eating et longueur: 1.66667
+17:24:52: Animation: nom: fixing et longueur: 1.83333
+17:24:52: Animation: nom: frying et longueur: 3.5
+17:24:52: Animation: nom: get-up et longueur: 1
+17:24:52: Animation: nom: hit-01 et longueur: 0.333333
+17:24:52: Animation: nom: hit-02 et longueur: 0.5
+17:24:52: Animation: nom: hit-03 et longueur: 0.5
+17:24:52: Animation: nom: hit-fall et longueur: 0.666667
+17:24:52: Animation: nom: idle-01 et longueur: 3.33333
+17:24:52: Animation: nom: idle-02 et longueur: 6.66667
+17:24:52: Animation: nom: idle-03 et longueur: 3.33333
+17:24:52: Animation: nom: idle-05 et longueur: 5.33333
+17:24:52: Animation: nom: idle-06 et longueur: 6.66667
+17:24:53: Animation: nom: joke et longueur: 2
+17:24:53: Animation: nom: joy-01 et longueur: 1
+17:24:53: Animation: nom: joy-02 et longueur: 1
+17:24:53: Animation: nom: joy-03 et longueur: 1
+17:24:53: Animation: nom: jump-01 et longueur: 0.666667
+17:24:53: Animation: nom: jump-0p et longueur: 0.666667
+17:24:53: Animation: nom: jump-pose et longueur: 0.1
+17:24:53: Animation: nom: knock_ground et longueur: 1
+17:24:53: Animation: nom: knock_shield et longueur: 1
+17:24:53: Animation: nom: mining et longueur: 1.33333
+17:24:53: Animation: nom: mowing et longueur: 1
+17:24:53: Animation: nom: no et longueur: 1
+17:24:53: Animation: nom: pick-obj et longueur: 0.666667
+17:24:53: Animation: nom: roll-backward et longueur: 0.666667
+17:24:53: Animation: nom: roll-forward et longueur: 0.666667
+17:24:53: Animation: nom: roll-left et longueur: 0.666667
+17:24:53: Animation: nom: roll-right et longueur: 0.833333
+17:24:53: Animation: nom: rollout et longueur: 2.66667
+17:24:53: Animation: nom: run-01 et longueur: 0.666667
+17:24:53: Animation: nom: run-02 et longueur: 0.666667
+17:24:53: Animation: nom: run-03 et longueur: 0.666667
+17:24:53: Animation: nom: run-left-45 et longueur: 0.666667
+17:24:53: Animation: nom: run-left-90 et longueur: 0.666667
+17:24:53: Animation: nom: run-right-45 et longueur: 0.666667
+17:24:53: Animation: nom: run-right-90 et longueur: 0.666667
+17:24:53: Animation: nom: sitting et longueur: 3.33333
+17:24:53: Animation: nom: sleep et longueur: 3.33333
+17:24:53: Animation: nom: sowing et longueur: 1.5
+17:24:53: Animation: nom: spell-01 et longueur: 1.33333
+17:24:53: Animation: nom: spell-02 et longueur: 1.33333
+17:24:53: Animation: nom: spell-03 et longueur: 1.33333
+17:24:53: Animation: nom: talk-01 et longueur: 3.33333
+17:24:53: Animation: nom: talk-02 et longueur: 3.33333
+17:24:53: Animation: nom: throw et longueur: 1
+17:24:53: Animation: nom: throw-obj et longueur: 0.666667
+17:24:53: Animation: nom: throw_bomb et longueur: 1
+17:24:53: Animation: nom: walk-01 et longueur: 1
+17:24:53: Animation: nom: walk-02 et longueur: 1
+17:24:53: Animation: nom: walk-03 et longueur: 1
+17:24:53: Animation: nom: walk-back et longueur: 1
+17:24:53: Animation: nom: walk-left-45 et longueur: 1
+17:24:53: Animation: nom: walk-left-90 et longueur: 1
+17:24:53: Animation: nom: walk-right-45 et longueur: 1
+17:24:53: Animation: nom: walk-right-90 et longueur: 1
+17:24:53: Animation: nom: warcry-01 et longueur: 1
+17:24:53: Animation: nom: warcry-02 et longueur: 1
+17:24:53: Animation: nom: woodcut_above et longueur: 0.833333
+17:24:53: Animation: nom: woodcut_side et longueur: 0.833333
+17:24:53: Animation: nom: yes et longueur: 1
+17:24:53: XMLSkeletonSerializer: Finished. Running SkeletonSerializer...
+17:24:53: Exporting bones..
+17:24:53: Bones exported.
+17:24:53: Exporting animations, count=91
+17:24:53: Exporting animation: T-pose
+17:24:53: Animation exported.
+17:24:53: Exporting animation: attack-01
+17:24:53: Animation exported.
+17:24:53: Exporting animation: attack-02
+17:24:53: Animation exported.
+17:24:53: Exporting animation: attack-03
+17:24:53: Animation exported.
+17:24:53: Exporting animation: attack-04
+17:24:53: Animation exported.
+17:24:53: Exporting animation: attack-05
+17:24:53: Animation exported.
+17:24:53: Exporting animation: attack-06
+17:24:53: Animation exported.
+17:24:53: Exporting animation: attack-07
+17:24:53: Animation exported.
+17:24:53: Exporting animation: attack-08
+17:24:53: Animation exported.
+17:24:53: Exporting animation: bow_shoot
+17:24:53: Animation exported.
+17:24:53: Exporting animation: braking
+17:24:53: Animation exported.
+17:24:53: Exporting animation: carry_sack
+17:24:53: Animation exported.
+17:24:53: Exporting animation: carry_wood
+17:24:53: Animation exported.
+17:24:53: Exporting animation: cast-01
+17:24:53: Animation exported.
+17:24:53: Exporting animation: cast-02
+17:24:53: Animation exported.
+17:24:53: Exporting animation: cast-03
+17:24:53: Animation exported.
+17:24:53: Exporting animation: choping
+17:24:53: Animation exported.
+17:24:53: Exporting animation: cooking
+17:24:53: Animation exported.
+17:24:53: Exporting animation: crying
+17:24:53: Animation exported.
+17:24:53: Exporting animation: death-01
+17:24:53: Animation exported.
+17:24:53: Exporting animation: death-02
+17:24:53: Animation exported.
+17:24:53: Exporting animation: death-03
+17:24:53: Animation exported.
+17:24:53: Exporting animation: death-04
+17:24:53: Animation exported.
+17:24:53: Exporting animation: digging
+17:24:53: Animation exported.
+17:24:53: Exporting animation: dodge-left
+17:24:53: Animation exported.
+17:24:53: Exporting animation: dodge-right
+17:24:53: Animation exported.
+17:24:53: Exporting animation: dragging
+17:24:53: Animation exported.
+17:24:53: Exporting animation: drinking
+17:24:53: Animation exported.
+17:24:53: Exporting animation: drop-obj
+17:24:53: Animation exported.
+17:24:53: Exporting animation: eating
+17:24:53: Animation exported.
+17:24:53: Exporting animation: fixing
+17:24:53: Animation exported.
+17:24:53: Exporting animation: frying
+17:24:53: Animation exported.
+17:24:53: Exporting animation: get-up
+17:24:53: Animation exported.
+17:24:53: Exporting animation: hit-01
+17:24:53: Animation exported.
+17:24:53: Exporting animation: hit-02
+17:24:53: Animation exported.
+17:24:53: Exporting animation: hit-03
+17:24:53: Animation exported.
+17:24:53: Exporting animation: hit-fall
+17:24:53: Animation exported.
+17:24:53: Exporting animation: idle-01
+17:24:53: Animation exported.
+17:24:53: Exporting animation: idle-02
+17:24:53: Animation exported.
+17:24:53: Exporting animation: idle-03
+17:24:53: Animation exported.
+17:24:53: Exporting animation: idle-05
+17:24:53: Animation exported.
+17:24:53: Exporting animation: idle-06
+17:24:53: Animation exported.
+17:24:53: Exporting animation: joke
+17:24:53: Animation exported.
+17:24:53: Exporting animation: joy-01
+17:24:53: Animation exported.
+17:24:53: Exporting animation: joy-02
+17:24:53: Animation exported.
+17:24:53: Exporting animation: joy-03
+17:24:53: Animation exported.
+17:24:53: Exporting animation: jump-01
+17:24:53: Animation exported.
+17:24:53: Exporting animation: jump-0p
+17:24:53: Animation exported.
+17:24:53: Exporting animation: jump-pose
+17:24:53: Animation exported.
+17:24:53: Exporting animation: knock_ground
+17:24:53: Animation exported.
+17:24:53: Exporting animation: knock_shield
+17:24:53: Animation exported.
+17:24:53: Exporting animation: mining
+17:24:53: Animation exported.
+17:24:53: Exporting animation: mowing
+17:24:53: Animation exported.
+17:24:53: Exporting animation: no
+17:24:53: Animation exported.
+17:24:53: Exporting animation: pick-obj
+17:24:53: Animation exported.
+17:24:53: Exporting animation: roll-backward
+17:24:53: Animation exported.
+17:24:53: Exporting animation: roll-forward
+17:24:53: Animation exported.
+17:24:53: Exporting animation: roll-left
+17:24:53: Animation exported.
+17:24:53: Exporting animation: roll-right
+17:24:53: Animation exported.
+17:24:53: Exporting animation: rollout
+17:24:53: Animation exported.
+17:24:53: Exporting animation: run-01
+17:24:53: Animation exported.
+17:24:53: Exporting animation: run-02
+17:24:53: Animation exported.
+17:24:53: Exporting animation: run-03
+17:24:53: Animation exported.
+17:24:53: Exporting animation: run-left-45
+17:24:53: Animation exported.
+17:24:53: Exporting animation: run-left-90
+17:24:53: Animation exported.
+17:24:53: Exporting animation: run-right-45
+17:24:53: Animation exported.
+17:24:53: Exporting animation: run-right-90
+17:24:53: Animation exported.
+17:24:53: Exporting animation: sitting
+17:24:53: Animation exported.
+17:24:53: Exporting animation: sleep
+17:24:53: Animation exported.
+17:24:53: Exporting animation: sowing
+17:24:53: Animation exported.
+17:24:53: Exporting animation: spell-01
+17:24:53: Animation exported.
+17:24:53: Exporting animation: spell-02
+17:24:53: Animation exported.
+17:24:53: Exporting animation: spell-03
+17:24:53: Animation exported.
+17:24:53: Exporting animation: talk-01
+17:24:53: Animation exported.
+17:24:53: Exporting animation: talk-02
+17:24:53: Animation exported.
+17:24:53: Exporting animation: throw
+17:24:53: Animation exported.
+17:24:53: Exporting animation: throw-obj
+17:24:53: Animation exported.
+17:24:53: Exporting animation: throw_bomb
+17:24:53: Animation exported.
+17:24:53: Exporting animation: walk-01
+17:24:53: Animation exported.
+17:24:53: Exporting animation: walk-02
+17:24:53: Animation exported.
+17:24:53: Exporting animation: walk-03
+17:24:53: Animation exported.
+17:24:53: Exporting animation: walk-back
+17:24:53: Animation exported.
+17:24:53: Exporting animation: walk-left-45
+17:24:53: Animation exported.
+17:24:53: Exporting animation: walk-left-90
+17:24:53: Animation exported.
+17:24:53: Exporting animation: walk-right-45
+17:24:53: Animation exported.
+17:24:53: Exporting animation: walk-right-90
+17:24:53: Animation exported.
+17:24:53: Exporting animation: warcry-01
+17:24:53: Animation exported.
+17:24:53: Exporting animation: warcry-02
+17:24:53: Animation exported.
+17:24:53: Exporting animation: woodcut_above
+17:24:53: Animation exported.
+17:24:53: Exporting animation: woodcut_side
+17:24:53: Animation exported.
+17:24:53: Exporting animation: yes
+17:24:53: Animation exported.
+17:24:53: Unregistering ResourceManager for type Skeleton
+17:24:53: Unregistering ResourceManager for type Material
+17:24:53: Unregistering ResourceManager for type Mesh

@@ -1,10 +1,10 @@
 #include "NOWAPrecompiled.h"
 #include "TagPointComponent.h"
-#include "AnimationComponent.h"
+#include "AnimationComponentV2.h"
 #include "JointComponents.h"
 #include "PhysicsActiveComponent.h"
 #include "PhysicsActiveKinematicComponent.h"
-#include "PhysicsRagDollComponent.h"
+#include "PhysicsRagDollComponentV2.h"
 #include "main/AppStateManager.h"
 #include "utilities/MathHelper.h"
 #include "utilities/XMLConverter.h"
@@ -113,7 +113,6 @@ namespace NOWA
 
     TagPointComponent::TagPointComponent() :
         GameObjectComponent(),
-        tagPoint(nullptr),
         tagPointNode(nullptr),
         sourcePhysicsActiveComponent(nullptr),
         alreadyConnected(false),
@@ -138,7 +137,6 @@ namespace NOWA
     {
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[TagPointComponent] Destructor tag point component for game object: " + this->gameObjectPtr->getName());
 
-        this->tagPoint = nullptr;
         this->tagPointV2 = nullptr;
         this->attachedBone = nullptr;
         this->skeletonInstance = nullptr;
@@ -201,84 +199,13 @@ namespace NOWA
         this->gameObjectPtr->setDynamic(true);
         this->gameObjectPtr->getAttribute(GameObject::AttrDynamic())->setVisible(false);
 
-        // Try v1::Entity first
-        Ogre::v1::Entity* entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
-        if (nullptr != entity)
+        Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
+        if (nullptr != item)
         {
-            this->initializeV1Entity(entity);
-        }
-        else
-        {
-            // Try v2::Item
-            Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
-            if (nullptr != item)
-            {
-                this->initializeV2Item(item);
-            }
+            this->initializeV2Item(item);
         }
 
         return true;
-    }
-
-    void TagPointComponent::initializeV1Entity(Ogre::v1::Entity* entity)
-    {
-        Ogre::v1::Skeleton* skeleton = entity->getSkeleton();
-        if (nullptr != skeleton)
-        {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[TagPointComponent] List all bones (v1) for mesh '" + entity->getMesh()->getName() + "':");
-
-            std::vector<Ogre::String> tagPointNames;
-            unsigned short numBones = entity->getSkeleton()->getNumBones();
-
-            for (unsigned short iBone = 0; iBone < numBones; iBone++)
-            {
-                Ogre::v1::OldBone* bone = entity->getSkeleton()->getBone(iBone);
-                if (nullptr == bone)
-                {
-                    continue;
-                }
-
-                unsigned short numChildren = bone->numChildren();
-                if (numChildren == 0)
-                {
-                    bool unique = true;
-                    for (size_t i = 0; i < tagPointNames.size(); i++)
-                    {
-                        if (tagPointNames[i] == bone->getName())
-                        {
-                            unique = false;
-                            break;
-                        }
-                    }
-                    if (true == unique)
-                    {
-                        tagPointNames.emplace_back(bone->getName());
-                        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[TagPointComponent] Bone name: " + bone->getName());
-                    }
-                }
-                else
-                {
-                    bool unique = true;
-                    for (size_t i = 0; i < tagPointNames.size(); i++)
-                    {
-                        if (tagPointNames[i] == bone->getName())
-                        {
-                            unique = false;
-                            break;
-                        }
-                    }
-                    if (true == unique)
-                    {
-                        tagPointNames.emplace_back(bone->getName());
-                        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[TagPointComponent] Bone name: " + bone->getName());
-                    }
-                }
-            }
-
-            this->tagPoints->setValue(tagPointNames);
-        }
-
-        this->setTagPointName(this->tagPoints->getListSelectedValue());
     }
 
     void TagPointComponent::initializeV2Item(Ogre::Item* item)
@@ -342,77 +269,14 @@ namespace NOWA
     {
         if (false == alreadyConnected)
         {
-            // Try v1::Entity first
-            Ogre::v1::Entity* entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
-            if (nullptr != entity)
+            Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
+            if (nullptr != item)
             {
-                this->connectV1Entity(entity);
+                this->connectV2Item(item);
             }
-            else
-            {
-                // Try v2::Item
-                Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
-                if (nullptr != item)
-                {
-                    this->connectV2Item(item);
-                }
-            }
+ 
         }
         return true;
-    }
-
-    void TagPointComponent::connectV1Entity(Ogre::v1::Entity* entity)
-    {
-        ENQUEUE_RENDER_COMMAND_MULTI("TagPointComponent::connectV1Entity", _1(entity), {
-            Ogre::v1::OldSkeletonInstance* oldSkeletonInstance = entity->getSkeleton();
-            if (nullptr != oldSkeletonInstance)
-            {
-                GameObjectPtr sourceGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->sourceId->getULong());
-                if (nullptr == sourceGameObjectPtr)
-                {
-                    return;
-                }
-
-                sourceGameObjectPtr->setConnectedGameObject(this->gameObjectPtr);
-
-                auto physicsActiveCompPtr = NOWA::makeStrongPtr(sourceGameObjectPtr->getComponent<PhysicsActiveComponent>());
-                if (nullptr != physicsActiveCompPtr)
-                {
-                    this->sourcePhysicsActiveComponent = physicsActiveCompPtr.get();
-                }
-
-                this->tagPointNode = this->gameObjectPtr->getSceneNode()->createChildSceneNode(Ogre::SCENE_DYNAMIC);
-                this->tagPointNode->setScale(this->gameObjectPtr->getSceneNode()->getScale());
-                this->tagPointNode->setPosition(this->tagPointNode->getPosition() * this->tagPointNode->getScale());
-
-                std::vector<Ogre::MovableObject*> movableObjects;
-                Ogre::SceneNode* sourceSceneNode = sourceGameObjectPtr->getSceneNode();
-                auto it = sourceSceneNode->getAttachedObjectIterator();
-
-                while (it.hasMoreElements())
-                {
-                    Ogre::MovableObject* movableObject = it.getNext();
-                    movableObjects.emplace_back(movableObject);
-                }
-
-                for (size_t i = 0; i < movableObjects.size(); i++)
-                {
-                    movableObjects[i]->detachFromParent();
-                    this->tagPointNode->attachObject(movableObjects[i]);
-                }
-
-                if (nullptr == this->tagPoint)
-                {
-                    this->tagPoint = oldSkeletonInstance->createTagPointOnBone(oldSkeletonInstance->getBone(this->tagPoints->getListSelectedValue()));
-                    this->tagPoint->setScale(this->gameObjectPtr->getSceneNode()->getScale());
-                }
-
-                this->tagPoint->setListener(new TagPointListener(this->tagPointNode, this->offsetPosition->getVector3(), MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3()), this->sourcePhysicsActiveComponent,
-                    this->gameObjectPtr.get()));
-
-                this->alreadyConnected = true;
-            }
-        });
     }
 
     void TagPointComponent::connectV2Item(Ogre::Item* item)
@@ -572,8 +436,8 @@ namespace NOWA
         auto gameObjectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentByIndex(index));
         if (nullptr != gameObjectCompPtr)
         {
-            auto physicsRagdollCompPtr = boost::dynamic_pointer_cast<PhysicsRagDollComponent>(gameObjectCompPtr);
-            auto animationCompPtr = boost::dynamic_pointer_cast<AnimationComponent>(gameObjectCompPtr);
+            auto physicsRagdollCompPtr = boost::dynamic_pointer_cast<PhysicsRagDollComponentV2>(gameObjectCompPtr);
+            auto animationCompPtr = boost::dynamic_pointer_cast<AnimationComponentV2>(gameObjectCompPtr);
             if (nullptr != physicsRagdollCompPtr || nullptr != animationCompPtr)
             {
                 this->resetTagPoint();
@@ -605,30 +469,7 @@ namespace NOWA
                 Ogre::Quaternion worldOrientation;
 
                 // Try v1 approach first
-                if (nullptr != this->tagPoint)
-                {
-                    worldPosition = this->tagPoint->getParent()->_getDerivedPosition();
-                    worldOrientation = this->tagPoint->getParent()->_getDerivedOrientation();
-
-                    Ogre::Node* parentNode = this->gameObjectPtr->getMovableObject()->getParentNode();
-                    Ogre::SceneNode* sceneNode = this->gameObjectPtr->getMovableObject()->getParentSceneNode();
-                    while (parentNode != nullptr)
-                    {
-                        if (parentNode != sceneNode)
-                        {
-                            worldPosition = ((Ogre::v1::TagPoint*)parentNode)->_getFullLocalTransform() * worldPosition;
-                            parentNode = ((Ogre::v1::TagPoint*)parentNode)->getParentEntity()->getParentNode();
-                            worldOrientation = ((Ogre::v1::TagPoint*)parentNode)->_getDerivedOrientation() * worldOrientation;
-                        }
-                        else
-                        {
-                            worldPosition = parentNode->_getFullTransform() * worldPosition;
-                            worldOrientation = parentNode->_getDerivedOrientation() * worldOrientation;
-                            break;
-                        }
-                    }
-                }
-                else if (nullptr != this->tagPointV2)
+                if (nullptr != this->tagPointV2)
                 {
                     // V2 approach - just use the tagpoint node's derived transform
                     worldPosition = this->tagPointV2->_getDerivedPosition();
@@ -728,20 +569,10 @@ namespace NOWA
             return;
         }
 
-        // Try v1::Entity first
-        Ogre::v1::Entity* entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
-        if (nullptr != entity)
+        Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
+        if (nullptr != item)
         {
-            this->setTagPointNameV1(entity, tagPointName);
-        }
-        else
-        {
-            // Try v2::Item
-            Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
-            if (nullptr != item)
-            {
-                this->setTagPointNameV2(item, tagPointName);
-            }
+            this->setTagPointNameV2(item, tagPointName);
         }
 
         if (true == this->bShowDebugData)
@@ -749,24 +580,6 @@ namespace NOWA
             this->destroyDebugData();
             this->generateDebugData();
         }
-    }
-
-    void TagPointComponent::setTagPointNameV1(Ogre::v1::Entity* entity, const Ogre::String& tagPointName)
-    {
-        ENQUEUE_RENDER_COMMAND_MULTI("TagPointComponent::setTagPointNameV1", _2(entity, tagPointName), {
-            Ogre::v1::OldSkeletonInstance* oldSkeletonInstance = entity->getSkeleton();
-            if (nullptr != oldSkeletonInstance)
-            {
-                if (nullptr != this->tagPoint)
-                {
-                    oldSkeletonInstance->freeTagPoint(this->tagPoint);
-                    this->tagPoint = nullptr;
-                }
-
-                this->tagPoint = oldSkeletonInstance->createTagPointOnBone(oldSkeletonInstance->getBone(tagPointName));
-                this->tagPoint->setScale(this->gameObjectPtr->getSceneNode()->getScale());
-            }
-        });
     }
 
     void TagPointComponent::setTagPointNameV2(Ogre::Item* item, const Ogre::String& tagPointName)
@@ -839,9 +652,9 @@ namespace NOWA
         return this->offsetOrientation->getVector3();
     }
 
-    Ogre::v1::TagPoint* TagPointComponent::getTagPoint(void) const
+    Ogre::TagPoint* TagPointComponent::getTagPoint(void) const
     {
-        return this->tagPoint;
+        return this->tagPointV2;
     }
 
     Ogre::SceneNode* TagPointComponent::getTagPointNode(void) const
@@ -852,7 +665,7 @@ namespace NOWA
     void TagPointComponent::generateDebugData(void)
     {
         // Generate debug visualization for both v1 and v2 paths
-        bool canGenerateDebug = (nullptr != this->tagPoint) || (nullptr != this->tagPointV2);
+        bool canGenerateDebug = nullptr != this->tagPointV2;
 
         if (nullptr == this->debugGeometryArrowNode && canGenerateDebug)
         {
@@ -865,32 +678,7 @@ namespace NOWA
                 Ogre::Vector3 worldPosition;
                 Ogre::Quaternion worldOrientation;
 
-                // Get position based on v1 or v2
-                if (nullptr != this->tagPoint)
-                {
-                    // V1 path
-                    worldPosition = this->tagPoint->getParent()->_getDerivedPosition();
-                    worldOrientation = this->tagPoint->getParent()->_getDerivedOrientation();
-
-                    Ogre::Node* parentNode = this->gameObjectPtr->getMovableObject()->getParentNode();
-                    Ogre::SceneNode* sceneNode = this->gameObjectPtr->getMovableObject()->getParentSceneNode();
-                    while (parentNode != nullptr)
-                    {
-                        if (parentNode != sceneNode)
-                        {
-                            worldPosition = ((Ogre::v1::TagPoint*)parentNode)->_getFullLocalTransform() * worldPosition;
-                            parentNode = ((Ogre::v1::TagPoint*)parentNode)->getParentEntity()->getParentNode();
-                            worldOrientation = ((Ogre::v1::TagPoint*)parentNode)->_getDerivedOrientation() * worldOrientation;
-                        }
-                        else
-                        {
-                            worldPosition = parentNode->_getFullTransform() * worldPosition;
-                            worldOrientation = parentNode->_getDerivedOrientation() * worldOrientation;
-                            break;
-                        }
-                    }
-                }
-                else if (nullptr != this->tagPointV2)
+                if (nullptr != this->tagPointV2)
                 {
                     // V2 path
                     // transform is updated automatically by Ogre each frame.
@@ -945,73 +733,11 @@ namespace NOWA
 
     void TagPointComponent::resetTagPoint(void)
     {
-        // Try v1 first
-        Ogre::v1::Entity* entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
-        if (nullptr != entity && nullptr != this->tagPoint)
+        Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
+        if (nullptr != item && nullptr != this->tagPointV2)
         {
-            this->resetTagPointV1(entity);
+            this->resetTagPointV2(item);
         }
-        else
-        {
-            // Try v2
-            Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
-            if (nullptr != item && nullptr != this->tagPointV2)
-            {
-                this->resetTagPointV2(item);
-            }
-        }
-    }
-
-    void TagPointComponent::resetTagPointV1(Ogre::v1::Entity* entity)
-    {
-        NOWA::GraphicsModule::RenderCommand renderCommand = [this, entity]()
-        {
-            Ogre::v1::OldSkeletonInstance* oldSkeletonInstance = entity->getSkeleton();
-            if (nullptr != oldSkeletonInstance)
-            {
-                if (nullptr != this->tagPoint)
-                {
-                    oldSkeletonInstance->freeTagPoint(this->tagPoint);
-                    Ogre::v1::OldNode::Listener* nodeListener = this->tagPoint->getListener();
-                    this->tagPoint->setListener(nullptr);
-                    delete nodeListener;
-                    this->tagPoint = nullptr;
-                }
-            }
-
-            GameObjectPtr sourceGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->sourceId->getULong());
-            if (nullptr != sourceGameObjectPtr)
-            {
-                sourceGameObjectPtr->setConnectedGameObject(boost::weak_ptr<GameObject>());
-
-                if (nullptr != this->tagPointNode)
-                {
-                    std::vector<Ogre::MovableObject*> movableObjects;
-                    auto it = this->tagPointNode->getAttachedObjectIterator();
-                    while (it.hasMoreElements())
-                    {
-                        Ogre::MovableObject* movableObject = it.getNext();
-                        movableObjects.emplace_back(movableObject);
-                    }
-                    for (size_t i = 0; i < movableObjects.size(); i++)
-                    {
-                        movableObjects[i]->detachFromParent();
-                        sourceGameObjectPtr->getSceneNode()->attachObject(movableObjects[i]);
-                    }
-                }
-            }
-
-            if (nullptr != this->tagPointNode)
-            {
-                GraphicsModule::getInstance()->removeTrackedNode(this->tagPointNode);
-                this->tagPointNode->removeAndDestroyAllChildren();
-                this->gameObjectPtr->getSceneManager()->destroySceneNode(this->tagPointNode);
-                this->tagPointNode = nullptr;
-            }
-
-            this->alreadyConnected = false;
-        };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "TagPointComponent::resetTagPoint");
     }
 
     void TagPointComponent::resetTagPointV2(Ogre::Item* item)

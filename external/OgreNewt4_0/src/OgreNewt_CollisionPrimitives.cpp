@@ -577,7 +577,7 @@ namespace OgreNewt
         {
         }
 
-        ConcaveHull::ConcaveHull(const World* world, Ogre::v1::Entity* obj, unsigned int id, Ogre::Real tolerance, const Ogre::Vector3& scale) : ConvexCollision(world)
+        ConcaveHull::ConcaveHull(const World* world, Ogre::Item* obj, unsigned int id, Ogre::Real tolerance, const Ogre::Vector3& scale) : ConvexCollision(world)
         {
             // Note: Newton 4.0 handles concave hulls differently
             // This may need to use ndShapeCompound with multiple convex pieces

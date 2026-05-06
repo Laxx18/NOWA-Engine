@@ -416,21 +416,21 @@ namespace NOWA
 
 	void NodeTrackComponent::setNodeTrackId(unsigned int index, unsigned long id)
 	{
-		if (index > this->nodeTrackIds.size())
+		if (index >= this->nodeTrackIds.size())
 			index = static_cast<unsigned int>(this->nodeTrackIds.size()) - 1;
 		this->nodeTrackIds[index]->setValue(id);
 	}
 
 	unsigned long NodeTrackComponent::getNodeTrackId(unsigned int index)
 	{
-		if (index > this->nodeTrackIds.size())
+		if (index >= this->nodeTrackIds.size())
 			return 0;
 		return this->nodeTrackIds[index]->getULong();
 	}
 
 	void NodeTrackComponent::setTimePosition(unsigned int index, Ogre::Real timePosition)
 	{
-		if (index > this->timePositions.size())
+		if (index >= this->timePositions.size())
 			index = static_cast<unsigned int>(this->timePositions.size()) - 1;
 
 		Ogre::Real oldTimePosition = 0.0f;
@@ -449,7 +449,7 @@ namespace NOWA
 
 	Ogre::Real NodeTrackComponent::getTimePosition(unsigned int index)
 	{
-		if (index > this->timePositions.size())
+		if (index >= this->timePositions.size())
 			return 0;
 		return this->timePositions[index]->getReal();
 	}

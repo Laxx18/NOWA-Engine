@@ -10,7 +10,6 @@
 #include "PhysicsArtifactComponent.h"
 #include "PhysicsActiveComponent.h"
 #include "PhysicsCompoundConnectionComponent.h"
-#include "PhysicsRagDollComponent.h"
 #include "PhysicsRagDollComponentV2.h"
 #include "PhysicsRagDollComponentV3.h"
 #include "AttributesComponent.h"
@@ -24,7 +23,6 @@
 #include "GameObjectTitleComponent.h"
 #include "SpawnComponent.h"
 #include "ExitComponent.h"
-#include "AnimationComponent.h"
 #include "AnimationComponentV2.h"
 #include "PhysicsActiveCompoundComponent.h"
 #include "PhysicsActiveDestructableComponent.h"
@@ -106,7 +104,6 @@ namespace NOWA
 		this->componentFactory.registerClass<GameObjectTitleComponent>(GameObjectTitleComponent::getStaticClassId(), GameObjectTitleComponent::getStaticClassName());
 		this->componentFactory.registerClass<SpawnComponent>(SpawnComponent::getStaticClassId(), SpawnComponent::getStaticClassName());
 		this->componentFactory.registerClass<ExitComponent>(ExitComponent::getStaticClassId(), ExitComponent::getStaticClassName());
-		this->componentFactory.registerClass<AnimationComponent>(AnimationComponent::getStaticClassId(), AnimationComponent::getStaticClassName());
 		this->componentFactory.registerClass<AnimationComponentV2>(AnimationComponentV2::getStaticClassId(), AnimationComponentV2::getStaticClassName());
 		this->componentFactory.registerClass<PlaneComponent>(PlaneComponent::getStaticClassId(), PlaneComponent::getStaticClassName());
 		this->componentFactory.registerClass<AiLuaComponent>(AiLuaComponent::getStaticClassId(), AiLuaComponent::getStaticClassName());
@@ -174,7 +171,6 @@ namespace NOWA
 		this->componentFactory.registerClass<PhysicsArtifactComponent>(PhysicsArtifactComponent::getStaticClassId(), PhysicsArtifactComponent::getStaticClassName());
 		this->componentFactory.registerClass<PhysicsTerrainComponent>(PhysicsTerrainComponent::getStaticClassId(), PhysicsTerrainComponent::getStaticClassName());
 		this->componentFactory.registerClass<PhysicsActiveComponent>(PhysicsActiveComponent::getStaticClassId(), PhysicsActiveComponent::getStaticClassName());
-		this->componentFactory.registerClass<PhysicsRagDollComponent>(PhysicsRagDollComponent::getStaticClassId(), PhysicsRagDollComponent::getStaticClassName());
         this->componentFactory.registerClass<PhysicsRagDollComponentV2>(PhysicsRagDollComponentV2::getStaticClassId(), PhysicsRagDollComponentV2::getStaticClassName());
         this->componentFactory.registerClass<PhysicsRagDollComponentV3>(PhysicsRagDollComponentV3::getStaticClassId(), PhysicsRagDollComponentV3::getStaticClassName());
 		this->componentFactory.registerClass<PhysicsActiveCompoundComponent>(PhysicsActiveCompoundComponent::getStaticClassId(), PhysicsActiveCompoundComponent::getStaticClassName());

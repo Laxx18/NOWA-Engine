@@ -43,7 +43,6 @@ namespace NOWA
 		enum eType
 		{
 			NONE = 0,
-			ENTITY = 1,
 			ITEM,
 			SCENE_NODE, // E.g. for waypoints
 			PLANE,
@@ -79,13 +78,13 @@ namespace NOWA
 		friend class CameraComponent;
 	public:
 		GameObject(Ogre::SceneManager* sceneManager, Ogre::SceneNode* sceneNode, Ogre::MovableObject* movableObject, const Ogre::String& category = "Default", const Ogre::String& renderCategory = "Default",
-			bool dynamic = true, eType type = eType::ENTITY, unsigned long id = 0);
+			bool dynamic = true, eType type = eType::ITEM, unsigned long id = 0);
 
 		~GameObject();
 
 		/**
 		 * @brief		Initializes the game object and its components by parsing the property element from XML
-		 * @param[in]	newMovableObject	Optional new movable object that has been created by a component to set and overwrite this entity
+		 * @param[in]	newMovableObject	Optional new movable object that has been created by a component to set and overwrite this item
 		 * @return		success		true, if the game object could be initialised, else false
 		 */
 		bool init(Ogre::MovableObject* newMovableObject = nullptr);
@@ -1038,7 +1037,6 @@ namespace NOWA
 		void resetChanges();
 		void actualizeComponentsIndices(void);
 		void applyLodDistanceToItem(Ogre::Item* item, Ogre::Real lodDistance);
-		void applyLodDistanceToEntity(Ogre::v1::Entity* entity, Ogre::Real lodDistance);
 		bool generateLodForMesh(const Ogre::String& meshName, Ogre::v1::MeshPtr v1Mesh, Ogre::Real lodDistance);
 		void saveV1MeshToFile(const Ogre::String& meshName, Ogre::v1::Mesh* mesh);
 		void saveV2MeshToFile(const Ogre::String& meshName, Ogre::Mesh* mesh);

@@ -2417,12 +2417,13 @@ namespace NOWA
             {
                 if (true == gameObjectPtr->getUseReflection())
                 {
-                    Ogre::v1::Entity* entity = gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
-                    if (nullptr != entity)
+
+                    Ogre::Item* item = gameObjectPtr->getMovableObject<Ogre::Item>();
+                    if (nullptr != item)
                     {
-                        for (size_t i = 0; i < entity->getNumSubEntities(); i++)
+                        for (size_t i = 0; i < item->getNumSubItems(); i++)
                         {
-                            Ogre::HlmsPbsDatablock* pbsDatablock = dynamic_cast<Ogre::HlmsPbsDatablock*>(entity->getSubEntity(i)->getDatablock());
+                            Ogre::HlmsPbsDatablock* pbsDatablock = dynamic_cast<Ogre::HlmsPbsDatablock*>(item->getSubItem(i)->getDatablock());
                             if (nullptr != pbsDatablock)
                             {
                                 // DynamicCubemap
@@ -2431,33 +2432,6 @@ namespace NOWA
                                 {
                                     pbsDatablock->setTexture(static_cast<Ogre::uint8>(Ogre::PBSM_REFLECTION), nullptr);
                                     this->setDataBlockPbsReflectionTextureName(gameObjectPtr.get(), "");
-
-                                    /*Ogre::TextureGpu* reflectionTexture = pbsDatablock->getTexture(static_cast<Ogre::uint8>(Ogre::PBSM_REFLECTION));
-                                    if (nullptr != reflectionTexture)
-                                    {
-                                        hlmsTextureManager->destroyTexture(reflectionTexture);
-                                    }*/
-                                }
-                            }
-                        }
-                    }
-                    else
-                    {
-                        Ogre::Item* item = gameObjectPtr->getMovableObject<Ogre::Item>();
-                        if (nullptr != item)
-                        {
-                            for (size_t i = 0; i < item->getNumSubItems(); i++)
-                            {
-                                Ogre::HlmsPbsDatablock* pbsDatablock = dynamic_cast<Ogre::HlmsPbsDatablock*>(item->getSubItem(i)->getDatablock());
-                                if (nullptr != pbsDatablock)
-                                {
-                                    // DynamicCubemap
-                                    auto reflectionTexture = pbsDatablock->getTexture(Ogre::PbsTextureTypes::PBSM_REFLECTION);
-                                    if (nullptr != reflectionTexture)
-                                    {
-                                        pbsDatablock->setTexture(static_cast<Ogre::uint8>(Ogre::PBSM_REFLECTION), nullptr);
-                                        this->setDataBlockPbsReflectionTextureName(gameObjectPtr.get(), "");
-                                    }
                                 }
                             }
                         }

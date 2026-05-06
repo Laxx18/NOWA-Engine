@@ -3,7 +3,6 @@
 #include "gameobject/PhysicsActiveComponent.h"
 #include "gameobject/PhysicsPlayerControllerComponent.h"
 #include "gameobject/PhysicsActiveKinematicComponent.h"
-#include "gameobject/AnimationComponent.h"
 #include "gameobject/AnimationComponentV2.h"
 #include "gameobject/PlayerControllerComponents.h"
 #include "gameobject/JointComponents.h"

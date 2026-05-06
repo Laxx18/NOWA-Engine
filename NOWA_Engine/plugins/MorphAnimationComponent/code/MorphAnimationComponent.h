@@ -6,24 +6,15 @@
 #include "OgrePlugin.h"
 #include "fparser.hh"
 
-namespace Ogre
-{
-	namespace v1
-	{
-		class Entity;
-		class Mesh;
-		class SubEntity;
-		class Skeleton;
-		class Pose;
-		class VertexPoseKeyFrame;
-	}
-}
+// TODO: Port for Item
+
+#if 0
 
 namespace NOWA
 {
 	/**
 	  * @brief		Morph animation component for controlling pose/blend shape animations via mathematical functions.
-	  *				Works with Ogre::v1::Entity and supports creating, querying, and animating poses.
+	  *				Works with Item and supports creating, querying, and animating poses.
 	  *				Can optionally be associated with a specific bone.
 	  */
 	class EXPORTED MorphAnimationComponent : public GameObjectComponent, public Ogre::Plugin
@@ -448,5 +439,7 @@ namespace NOWA
 	};
 
 }; // namespace end
+
+#endif
 
 #endif

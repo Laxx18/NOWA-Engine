@@ -464,7 +464,7 @@ namespace NOWA
 
 	void RectangleComponent::setColor1(unsigned int index, const Ogre::Vector3& color)
 	{
-		if (index > this->colors1.size())
+		if (index >= this->colors1.size())
 		{
 			index = static_cast<unsigned int>(this->colors1.size()) - 1;
 		}
@@ -474,7 +474,7 @@ namespace NOWA
 
 	Ogre::Vector3 RectangleComponent::getColor1(unsigned int index) const
 	{
-		if (index > this->colors1.size())
+		if (index >= this->colors1.size())
 		{
 			return Ogre::Vector3::ZERO;
 		}
@@ -483,7 +483,7 @@ namespace NOWA
 
 	void RectangleComponent::setColor2(unsigned int index, const Ogre::Vector3& color)
 	{
-		if (index > this->colors2.size())
+		if (index >= this->colors2.size())
 		{
 			index = static_cast<unsigned int>(this->colors2.size()) - 1;
 		}
@@ -493,7 +493,7 @@ namespace NOWA
 
 	Ogre::Vector3 RectangleComponent::getColor2(unsigned int index) const
 	{
-		if (index > this->colors2.size())
+		if (index >= this->colors2.size())
 		{
 			return Ogre::Vector3::ZERO;
 		}
@@ -502,7 +502,7 @@ namespace NOWA
 
 	void RectangleComponent::setStartPosition(unsigned int index, const Ogre::Vector3& startPosition)
 	{
-		if (index > this->startPositions.size())
+		if (index >= this->startPositions.size())
 		{
 			index = static_cast<unsigned int>(this->startPositions.size()) - 1;
 		}
@@ -511,7 +511,7 @@ namespace NOWA
 
 	Ogre::Vector3 RectangleComponent::getStartPosition(unsigned int index) const
 	{
-		if (index > this->startPositions.size())
+		if (index >= this->startPositions.size())
 		{
 			return Ogre::Vector3::ZERO;
 		}
@@ -520,7 +520,7 @@ namespace NOWA
 
 	void RectangleComponent::setStartOrientation(unsigned int index, const Ogre::Vector3& startOrientation)
 	{
-		if (index > this->startOrientations.size())
+		if (index >= this->startOrientations.size())
 		{
 			index = static_cast<unsigned int>(this->startOrientations.size()) - 1;
 		}
@@ -529,7 +529,7 @@ namespace NOWA
 
 	Ogre::Vector3 RectangleComponent::getStartOrientation(unsigned int index) const
 	{
-		if (index > this->startOrientations.size())
+		if (index >= this->startOrientations.size())
 		{
 			return Ogre::Vector3::ZERO;
 		}
@@ -538,7 +538,7 @@ namespace NOWA
 
 	void RectangleComponent::setWidth(unsigned int index, Ogre::Real width)
 	{
-		if (index > this->widths.size())
+		if (index >= this->widths.size())
 		{
 			index = static_cast<unsigned int>(this->widths.size()) - 1;
 		}
@@ -553,7 +553,7 @@ namespace NOWA
 
 	Ogre::Real RectangleComponent::getWidth(unsigned int index) const
 	{
-		if (index > this->widths.size())
+		if (index >= this->widths.size())
 		{
 			return 0.0f;
 		}
@@ -562,7 +562,7 @@ namespace NOWA
 
 	void RectangleComponent::setHeight(unsigned int index, Ogre::Real height)
 	{
-		if (index > this->heights.size())
+		if (index >= this->heights.size())
 		{
 			index = static_cast<unsigned int>(this->heights.size()) - 1;
 		}
@@ -578,7 +578,7 @@ namespace NOWA
 
 	Ogre::Real RectangleComponent::getHeight(unsigned int index) const
 	{
-		if (index > this->heights.size())
+		if (index >= this->heights.size())
 		{
 			return 0.0f;
 		}

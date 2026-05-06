@@ -82,8 +82,6 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "InstantRadiosityComponent",
 		{8C12F513-DA02-465D-A01F-20B0127D8AED} = {8C12F513-DA02-465D-A01F-20B0127D8AED}
 	EndProjectSection
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MorphAnimationComponent", "MorphAnimationComponent\MorphAnimationComponent.vcxproj", "{036FBB89-6757-4420-8C8B-962FE3B46FF0}"
-EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LightAreaOfInterestComponent", "LightAreaOfInterestComponent\LightAreaOfInterestComponent.vcxproj", "{8C12F513-DA02-465D-A01F-20B0127D8AED}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "WaterFoamEffectComponent", "WaterFoamEffectComponent\WaterFoamEffectComponent.vcxproj", "{FF3F7998-C6E2-4600-AA45-DA2A52E30DA4}"
@@ -268,10 +266,6 @@ Global
 		{304D9685-917B-421F-B832-877C0D74550D}.Debug|x64.Build.0 = Debug|x64
 		{304D9685-917B-421F-B832-877C0D74550D}.Release|x64.ActiveCfg = Release|x64
 		{304D9685-917B-421F-B832-877C0D74550D}.Release|x64.Build.0 = Release|x64
-		{036FBB89-6757-4420-8C8B-962FE3B46FF0}.Debug|x64.ActiveCfg = Debug|x64
-		{036FBB89-6757-4420-8C8B-962FE3B46FF0}.Debug|x64.Build.0 = Debug|x64
-		{036FBB89-6757-4420-8C8B-962FE3B46FF0}.Release|x64.ActiveCfg = Release|x64
-		{036FBB89-6757-4420-8C8B-962FE3B46FF0}.Release|x64.Build.0 = Release|x64
 		{8C12F513-DA02-465D-A01F-20B0127D8AED}.Debug|x64.ActiveCfg = Debug|x64
 		{8C12F513-DA02-465D-A01F-20B0127D8AED}.Debug|x64.Build.0 = Debug|x64
 		{8C12F513-DA02-465D-A01F-20B0127D8AED}.Release|x64.ActiveCfg = Release|x64

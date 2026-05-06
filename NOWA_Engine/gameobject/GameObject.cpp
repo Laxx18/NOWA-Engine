@@ -191,7 +191,7 @@ namespace NOWA
 							"Especially when the game object is a global one and will be loaded for different scenes, that start at a different height."
 							"If there is no game object below, the next game object above is searched.If this also does not exist, the current y coordinate is just used.");
 		this->renderQueueIndex->setDescription("Sets the render queue group index, which controls the rendering order of the game object. Possible values are from 0 to 255. Constraints: "
-			"RenderQueue ID range [0; 100) & [200; 225) default to FAST (i.e. for v2 objects, like Items); RenderQueue ID range[100; 200)& [225; 256) default to V1_FAST(i.e. for v1 objects, like v1::Entity)");
+			"RenderQueue ID range [0; 100) & [200; 225) default to FAST (i.e. for v2 objects, like Items); RenderQueue ID range[100; 200)& [225; 256) default to V1_FAST(i.e. for v1 objects, like Overlays)");
 		this->renderDistance->setDescription("Sets the render distance in meters til which the game object will be rendered. Default value is 1000.");
 		this->shadowRenderingDistance->setDescription("Sets the shadow rendering distance in meters til which the game object's shadow will be rendered. Default set to 300 meters, which means the game object's shadow will be rendered up to 300 meters.");
 		this->lodDistance->setDescription("Sets the lod distance in meters til which the game object vertex count will be reduced. Default set to 0, which means that for this game object no lod levels will be generated and the mesh never reduced. "
@@ -364,25 +364,6 @@ namespace NOWA
 					}
 
 				}
-				else
-				{
-					Ogre::v1::Entity* entity = this->getMovableObject<Ogre::v1::Entity>();
-					if (nullptr != entity)
-					{
-						for (size_t i = 0; i < entity->getNumSubEntities(); i++)
-						{
-							auto sourceDataBlock = dynamic_cast<Ogre::HlmsPbsDatablock*>(entity->getSubEntity(i)->getDatablock());
-							if (nullptr != sourceDataBlock)
-							{
-								// Deactivate fresnel by default, because it looks ugly
-								if (sourceDataBlock->getWorkflow() != Ogre::HlmsPbsDatablock::SpecularAsFresnelWorkflow && sourceDataBlock->getWorkflow() != Ogre::HlmsPbsDatablock::MetallicWorkflow)
-								{
-									sourceDataBlock->setFresnel(Ogre::Vector3(0.01f, 0.01f, 0.01f), false);
-								}
-							}
-						}
-					}
-				}
 
 				this->setRenderQueueIndex(this->movableObject->getRenderQueueGroup());
 				// Note: Ogre runs in kilometers where as NOWA in meters as newton does
@@ -434,13 +415,6 @@ namespace NOWA
             if (dynamic_cast<Ogre::Item*>(this->movableObject))
             {
                 this->type = GameObject::ITEM;
-                this->typeName->setReadOnly(false);
-                this->typeName->setValue(Ogre::String(GameObject::typeToString(this->type)));
-                this->typeName->setReadOnly(true);
-            }
-            else if (dynamic_cast<Ogre::v1::Entity*>(this->movableObject))
-            {
-                this->type = GameObject::ENTITY;
                 this->typeName->setReadOnly(false);
                 this->typeName->setValue(Ogre::String(GameObject::typeToString(this->type)));
                 this->typeName->setReadOnly(true);
@@ -731,63 +705,7 @@ namespace NOWA
             };
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObject::actualizeDatablocks");
         }
-        else
-        {
-            NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
-            {
-                Ogre::v1::Entity* entity = this->getMovableObject<Ogre::v1::Entity>();
-                if (nullptr != entity)
-                {
-                    this->meshName->setReadOnly(false);
-                    this->meshName->setValue(entity->getMesh()->getName());
-                    this->meshName->setReadOnly(true);
-
-                    for (size_t i = 0; i < entity->getNumSubEntities(); i++)
-                    {
-                        auto datablock = entity->getSubEntity(i)->getDatablock();
-                        Ogre::String datablockName = "Missing";
-                        if (nullptr != datablock)
-                        {
-                            datablockName = *datablock->getNameStr();
-                        }
-                        else
-                        {
-                            entity->getSubEntity(i)->setDatablock(datablockName);
-                        }
-
-                        // Same guard as above — update value if Variant already exists
-                        if (i < this->dataBlocks.size())
-                        {
-                            if (nullptr != this->dataBlocks[i])
-                            {
-                                this->dataBlocks[i]->setValue(datablockName);
-                            }
-                        }
-                        else
-                        {
-                            this->dataBlocks.emplace_back(new Variant(GameObject::AttrDataBlock() + Ogre::StringConverter::toString(i), datablockName, this->attributes));
-                        }
-
-                        if (nullptr != datablock)
-                        {
-                            const Ogre::String* fileName;
-                            const Ogre::String* resourceGroup;
-                            datablock->getFilenameAndResourceGroup(&fileName, &resourceGroup);
-                            if (!fileName->empty())
-                            {
-                                Ogre::String data = "File: '" + *fileName + "'\n Resource group name: '" + *resourceGroup + "'";
-                                this->dataBlocks[i]->setDescription(data);
-                            }
-                        }
-                    }
-                }
-                else
-                {
-                    this->meshName->setVisible(false);
-                }
-            };
-            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObject::actualizeDatablocks");
-        }
+        
         this->meshName->setReadOnly(true);
     }
 
@@ -811,7 +729,6 @@ namespace NOWA
 		switch (t)
 		{
 		case NONE:               return "NONE";
-		case ENTITY:             return "ENTITY";
 		case ITEM:               return "ITEM";
 		case SCENE_NODE:         return "SCENE_NODE";
 		case PLANE:              return "PLANE";
@@ -1316,54 +1233,6 @@ namespace NOWA
 			};
 
 			NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObject::setDatablock item");
-		}
-		else
-		{
-			GraphicsModule::RenderCommand renderCommand = [this, attribute]()
-			{
-				Ogre::v1::Entity* entity = this->getMovableObject<Ogre::v1::Entity>();
-				if (nullptr != entity)
-				{
-					for (size_t i = 0; i < this->dataBlocks.size(); i++)
-					{
-						if (GameObject::AttrDataBlock() + Ogre::StringConverter::toString(i) == attribute->getName())
-						{
-							Ogre::Hlms* hlms = nullptr;
-							// Go through all types of registered hlms and check if the data block exists and set the data block
-							for (auto searchHlmsIt = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->searchHlms.begin(); 
-								searchHlmsIt != NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->searchHlms.end(); ++searchHlmsIt)
-							{
-								hlms = Ogre::Root::getSingletonPtr()->getHlmsManager()->getHlms(*searchHlmsIt);
-								if (nullptr != hlms)
-								{
-									if (nullptr != hlms->getDatablock(attribute->getString()))
-									{
-										entity->getSubEntity(i)->setDatablock(attribute->getString());
-										auto sourceDataBlock = dynamic_cast<Ogre::HlmsPbsDatablock*>(entity->getSubEntity(i)->getDatablock());
-										if (nullptr != sourceDataBlock)
-										{
-											// Deactivate fresnel by default, because it looks ugly
-											if (sourceDataBlock->getWorkflow() != Ogre::HlmsPbsDatablock::SpecularAsFresnelWorkflow && sourceDataBlock->getWorkflow() != Ogre::HlmsPbsDatablock::MetallicWorkflow)
-											{
-												sourceDataBlock->setFresnel(Ogre::Vector3(0.01f, 0.01f, 0.01f), false);
-											}
-										}
-										this->dataBlocks[i]->setValue(attribute->getString());
-										break;
-									}
-									else
-									{
-										Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObject] Could not set data block name: '" + attribute->getString() + "', because it does not exist");
-										attribute->setValue(*entity->getSubEntity(i)->getDatablock()->getNameStr());
-									}
-								}
-							}
-						}
-					}
-				}
-			};
-
-			NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObject::setDatablock entity");
 		}
 	}
 
@@ -2163,10 +2032,6 @@ namespace NOWA
 		{
 			bottomCenterOfMesh = MathHelper::getInstance()->getBottomCenterOfMesh(this->sceneNode, this->getMovableObjectUnsafe<Ogre::Item>());
 		}
-		else
-		{
-			bottomCenterOfMesh = MathHelper::getInstance()->getBottomCenterOfMesh(this->sceneNode, this->getMovableObjectUnsafe<Ogre::v1::Entity>());
-		}
 
 		return bottomCenterOfMesh;
 	}
@@ -2178,10 +2043,6 @@ namespace NOWA
 		if (GameObject::ITEM == this->type)
 		{
 			centerBottom = MathHelper::getInstance()->getBottomCenterOfMesh(this->sceneNode, this->getMovableObjectUnsafe<Ogre::Item>());
-		}
-		else
-		{
-			centerBottom = MathHelper::getInstance()->getBottomCenterOfMesh(this->sceneNode, this->getMovableObjectUnsafe<Ogre::v1::Entity>());
 		}
 
 		return centerBottom + this->size->getVector3() * 0.5f /** Ogre::Vector3(1.0f, 0.0f, 1.0f)*/;
@@ -2303,49 +2164,6 @@ namespace NOWA
 									{
 										pbsDatablock->setWorkflow(Ogre::HlmsPbsDatablock::SpecularAsFresnelWorkflow);
 										pbsDatablock->setFresnel(Ogre::Vector3(1.0f, 1.0f, 1.0f), true);
-									}
-								}
-							}
-							else
-							{
-								auto reflectionTexture = pbsDatablock->getTexture(Ogre::PbsTextureTypes::PBSM_REFLECTION);
-								if (nullptr != reflectionTexture)
-								{
-									pbsDatablock->setTexture(Ogre::PBSM_REFLECTION, static_cast<Ogre::TextureGpu*>(nullptr));
-									this->setDataBlockPbsReflectionTextureName("");
-								}
-							}
-						}
-					}
-				}
-			});
-		}
-		else if (GameObject::ENTITY == this->type)
-		{
-			// Similar pattern for entities
-			ENQUEUE_RENDER_COMMAND_WAIT("GameObject::setUseReflection2",
-			{
-				Ogre::v1::Entity * entity = this->getMovableObject<Ogre::v1::Entity>();
-				if (nullptr != entity)
-				{
-					for (size_t i = 0; i < entity->getNumSubEntities(); i++)
-					{
-						Ogre::HlmsPbsDatablock* pbsDatablock = dynamic_cast<Ogre::HlmsPbsDatablock*>(entity->getSubEntity(i)->getDatablock());
-						if (nullptr != pbsDatablock)
-						{
-							if (true == this->useReflection->getBool())
-							{
-								WorkspaceBaseComponent* workspaceBaseComponent = WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent();
-								if (nullptr != workspaceBaseComponent)
-								{
-									Ogre::TextureGpu* cubemapTex = workspaceBaseComponent->getDynamicCubemapTexture();
-									if (nullptr != cubemapTex)
-									{
-										pbsDatablock->setTexture(Ogre::PBSM_REFLECTION, cubemapTex);
-										pbsDatablock->setWorkflow(Ogre::HlmsPbsDatablock::SpecularAsFresnelWorkflow);
-										pbsDatablock->setFresnel(Ogre::Vector3(1.0f, 1.0f, 1.0f), true);
-										pbsDatablock->setRoughness(0.001f);
-										this->setDataBlockPbsReflectionTextureName("cubemap");
 									}
 								}
 							}
@@ -2496,24 +2314,6 @@ namespace NOWA
 				renderQueueIndex = NOWA::RENDER_QUEUE_V2_MESH;
 			}
 		}
-		else
-		{
-			Ogre::v1::Entity* entity = this->getMovableObject<Ogre::v1::Entity>();
-			if (nullptr != entity)
-			{
-				// Entities should be in V1 ranges: [100-199] or [225-255]
-				if (renderQueueIndex < 100)
-				{
-					// User tried to put V1 entity in V2 range, clamp to start of V1 opaque
-					renderQueueIndex = NOWA::RENDER_QUEUE_V1_MESH;
-				}
-				else if (renderQueueIndex >= 200 && renderQueueIndex < 225)
-				{
-					// User tried to put V1 entity in V2 transparent range, clamp to start of V1 transparent
-					renderQueueIndex = 225;
-				}
-			}
-		}
 
 		this->renderQueueIndex->setValue(renderQueueIndex);
 		if (nullptr != this->movableObject)
@@ -2596,13 +2396,6 @@ namespace NOWA
 				this->applyLodDistanceToItem(item, lodDistance);
 			});
 		}
-		else if (Ogre::v1::Entity* entity = this->getMovableObject<Ogre::v1::Entity>())
-		{
-			ENQUEUE_RENDER_COMMAND_MULTI("GameObject::setLodDistance2", _2(entity, lodDistance),
-			{
-				this->applyLodDistanceToEntity(entity, lodDistance);
-			});
-		}
 	}
 
 	void GameObject::applyLodDistanceToItem(Ogre::Item* item, Ogre::Real lodDistance)
@@ -2636,24 +2429,6 @@ namespace NOWA
 		DeployResourceModule::getInstance()->tagResource(tempMeshFile, v2Mesh->getGroup(), path);
 
 		saveV2MeshToFile(tempMeshFile, v2Mesh.get());
-	}
-
-	void GameObject::applyLodDistanceToEntity(Ogre::v1::Entity* entity, Ogre::Real lodDistance)
-	{
-		Ogre::String tempMeshFile = entity->getMesh()->getName();
-		Ogre::v1::MeshPtr v1Mesh = Ogre::v1::MeshManager::getSingletonPtr()->getByName(tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME);
-
-		if (!v1Mesh)
-		{
-			v1Mesh = Ogre::v1::MeshManager::getSingletonPtr()->load(
-				tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME,
-				Ogre::v1::HardwareBuffer::HBU_STATIC_WRITE_ONLY, Ogre::v1::HardwareBuffer::HBU_STATIC_WRITE_ONLY, true, true);
-		}
-
-		if (!generateLodForMesh(tempMeshFile, v1Mesh, lodDistance))
-			return;
-
-		saveV1MeshToFile(tempMeshFile, v1Mesh.get());
 	}
 
 	bool GameObject::generateLodForMesh(const Ogre::String& meshName, Ogre::v1::MeshPtr v1Mesh, Ogre::Real lodDistance)

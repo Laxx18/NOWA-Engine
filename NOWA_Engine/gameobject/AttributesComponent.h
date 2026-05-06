@@ -80,7 +80,7 @@ namespace NOWA
 		template <typename T>
 		void setAttributeValue(T attributeValue, unsigned int index)
 		{
-			if (index > this->attributeValues.size())
+			if (index >= this->attributeValues.size())
 				return;
 			this->attributeValues[index]->setValue(attributeValue);
 		}

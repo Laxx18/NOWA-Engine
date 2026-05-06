@@ -1090,7 +1090,7 @@ namespace NOWA
 
 	unsigned long AiPathFollowComponent::getWaypointId(unsigned int index)
 	{
-		if (index > this->waypoints.size())
+		if (index >= this->waypoints.size())
 			return 0;
 		return this->waypoints[index]->getULong();
 	}
@@ -3001,7 +3001,7 @@ namespace NOWA
 
 	void AiPathFollowComponent2D::setWaypointId(unsigned int index, unsigned long id)
 	{
-		if (index > this->waypoints.size())
+		if (index >= this->waypoints.size())
 			return;
 		this->waypoints[index]->setValue(id);
 	}
@@ -3016,7 +3016,7 @@ namespace NOWA
 
 	unsigned long AiPathFollowComponent2D::getWaypointId(unsigned int index)
 	{
-		if (index > this->waypoints.size())
+		if (index >= this->waypoints.size())
 			return 0;
 		return this->waypoints[index]->getULong();
 	}

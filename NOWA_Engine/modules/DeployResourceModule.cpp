@@ -614,152 +614,79 @@ namespace NOWA
 		auto gameObjects = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects();
 
 		// Go through all game objects to get, which are really used in scene, because only these ones should be written
-		for (auto it = gameObjects->cbegin(); it != gameObjects->cend(); ++it)
-		{
-			Ogre::v1::Entity* entity = it->second->getMovableObject<Ogre::v1::Entity>();
-			if (nullptr != entity)
-			{
-				for (size_t i = 0; i < entity->getNumSubEntities(); i++)
-				{
-					auto dataBlock = entity->getSubEntity(i)->getDatablock();
-					if (nullptr != dataBlock)
-					{
-						Ogre::String resourcePath = NOWA::DeployResourceModule::getInstance()->getResourcePath(entity->getMesh()->getName());
-						if (false == resourcePath.empty())
-						{
-							Ogre::set<Ogre::String>::type savedTextures;
-							// Save all textures, that are used (textures are copied to the given folder)
-							dataBlock->saveTextures(directory, savedTextures, false, true, nullptr);
+        for (auto it = gameObjects->cbegin(); it != gameObjects->cend(); ++it)
+        {
+            Ogre::Item* item = it->second->getMovableObject<Ogre::Item>();
+            if (nullptr != item)
+            {
+                for (size_t i = 0; i < item->getNumSubItems(); i++)
+                {
+                    auto dataBlock = item->getSubItem(i)->getDatablock();
+                    if (nullptr != dataBlock)
+                    {
+                        Ogre::String resourcePath = NOWA::DeployResourceModule::getInstance()->getResourcePath(item->getMesh()->getName());
+                        if (false == resourcePath.empty())
+                        {
+                            Ogre::set<Ogre::String>::type savedTextures;
+                            // Save all textures, that are used (textures are copied to the given folder)
+                            dataBlock->saveTextures(directory, savedTextures, false, true, nullptr);
 
-							// Copy all mesh and skeleton files to the given folder
-							Ogre::String destination = directory + "/" + entity->getMesh()->getName();
-							CopyFile(resourcePath.data(), destination.data(), TRUE);
+                            // Copy all mesh and skeleton files to the given folder
+                            Ogre::String destination = directory + "\\" + item->getMesh()->getName();
+                            CopyFile(resourcePath.data(), destination.data(), TRUE);
 
-							if (true == entity->getMesh()->hasSkeleton())
-							{
-								Ogre::String destinationSkeletonFilePathName = directory + "/" + entity->getMesh()->getSkeletonName();
+                            if (true == item->getMesh()->hasSkeleton())
+                            {
+                                Ogre::String destinationSkeletonFilePathName = directory + "/" + item->getMesh()->getSkeletonName();
 
-								Ogre::String ragName;
-								size_t upToSkeleton = entity->getMesh()->getSkeletonName().find(".skeleton");
+                                Ogre::String ragName;
+                                size_t upToSkeleton = item->getMesh()->getSkeletonName().find(".skeleton");
 
-								if (upToSkeleton != Ogre::String::npos)
-								{
-									ragName = entity->getMesh()->getSkeletonName().substr(0, upToSkeleton);
-								}
+                                if (upToSkeleton != Ogre::String::npos)
+                                {
+                                    ragName = item->getMesh()->getSkeletonName().substr(0, upToSkeleton);
+                                }
 
-								Ogre::String destinationRagFilePathName = directory + "/" + ragName + ".rag";
-								Ogre::String sourceSkeletonPath;
-								Ogre::String sourceRagPath;
+                                Ogre::String destinationRagFilePathName = directory + "/" + ragName + ".rag";
+                                Ogre::String sourceSkeletonPath;
+                                Ogre::String sourceRagPath;
 
-								size_t lastSlash = resourcePath.find_last_of("/\\");
+                                size_t lastSlash = resourcePath.find_last_of("/\\");
 
-								if (lastSlash != Ogre::String::npos)
-								{
-									sourceSkeletonPath = resourcePath.substr(0, lastSlash) + "/" + entity->getMesh()->getSkeletonName();
-									sourceRagPath = sourceSkeletonPath + "/" + ragName + ".rag";
-									if (false == sourceSkeletonPath.empty())
-									{
-										CopyFile(sourceSkeletonPath.data(), destinationSkeletonFilePathName.data(), TRUE);
-										CopyFile(sourceRagPath.data(), destinationRagFilePathName.data(), TRUE);
-									}
-								}
-							}
-						}
+                                if (lastSlash != Ogre::String::npos)
+                                {
+                                    sourceSkeletonPath = resourcePath.substr(0, lastSlash) + "/" + item->getMesh()->getSkeletonName();
+                                    sourceRagPath = sourceSkeletonPath + "/" + ragName + ".rag";
+                                    if (false == sourceSkeletonPath.empty())
+                                    {
+                                        CopyFile(sourceSkeletonPath.data(), destinationSkeletonFilePathName.data(), TRUE);
+                                        CopyFile(sourceRagPath.data(), destinationRagFilePathName.data(), TRUE);
+                                    }
+                                }
+                            }
+                        }
 
-						// 2. Mark all data blocks, that are really used in the scene (created game objects)
-						const Ogre::String* dataBlockName = dataBlock->getNameStr();
-						auto it = existingDataBlocks.find(*dataBlockName);
-						if (it == existingDataBlocks.cend())
-						{
-							if (nullptr != dataBlockName)
-							{
-								// Mark only the first occurence
-								size_t foundDataBlock = content.find(*dataBlockName);
-								if (Ogre::String::npos != foundDataBlock)
-								{
-									Ogre::String marker = "-->";
-									content.insert(foundDataBlock, marker);
-									existingDataBlocks.emplace(*dataBlockName);
-								}
-							}
-						}
-					}
-				}
-			}
-			else
-			{
-				Ogre::Item* item = it->second->getMovableObject<Ogre::Item>();
-				if (nullptr != item)
-				{
-					for (size_t i = 0; i < item->getNumSubItems(); i++)
-					{
-						auto dataBlock = item->getSubItem(i)->getDatablock();
-						if (nullptr != dataBlock)
-						{
-							Ogre::String resourcePath = NOWA::DeployResourceModule::getInstance()->getResourcePath(item->getMesh()->getName());
-							if (false == resourcePath.empty())
-							{
-								Ogre::set<Ogre::String>::type savedTextures;
-								// Save all textures, that are used (textures are copied to the given folder)
-								dataBlock->saveTextures(directory, savedTextures, false, true, nullptr);
-
-								// Copy all mesh and skeleton files to the given folder
-								Ogre::String destination = directory + "\\" + item->getMesh()->getName();
-								CopyFile(resourcePath.data(), destination.data(), TRUE);
-
-								if (true == item->getMesh()->hasSkeleton())
-								{
-									Ogre::String destinationSkeletonFilePathName = directory + "/" + item->getMesh()->getSkeletonName();
-
-									Ogre::String ragName;
-									size_t upToSkeleton = item->getMesh()->getSkeletonName().find(".skeleton");
-
-									if (upToSkeleton != Ogre::String::npos)
-									{
-										ragName = item->getMesh()->getSkeletonName().substr(0, upToSkeleton);
-									}
-
-									Ogre::String destinationRagFilePathName = directory + "/" + ragName + ".rag";
-									Ogre::String sourceSkeletonPath;
-									Ogre::String sourceRagPath;
-
-									size_t lastSlash = resourcePath.find_last_of("/\\");
-
-									if (lastSlash != Ogre::String::npos)
-									{
-										sourceSkeletonPath = resourcePath.substr(0, lastSlash) + "/" + item->getMesh()->getSkeletonName();
-										sourceRagPath = sourceSkeletonPath + "/" + ragName + ".rag";
-										if (false == sourceSkeletonPath.empty())
-										{
-											CopyFile(sourceSkeletonPath.data(), destinationSkeletonFilePathName.data(), TRUE);
-											CopyFile(sourceRagPath.data(), destinationRagFilePathName.data(), TRUE);
-										}
-									}
-								}
-							}
-
-							// 2. Mark all data blocks, that are really used in the scene (created game objects)
-							const Ogre::String* dataBlockName = dataBlock->getNameStr();
-							auto it = existingDataBlocks.find(*dataBlockName);
-							if (it == existingDataBlocks.cend())
-							{
-								if (nullptr != dataBlockName)
-								{
-									// Mark only the first occurence
-									size_t foundDataBlock = content.find(*dataBlockName);
-									if (Ogre::String::npos != foundDataBlock)
-									{
-										Ogre::String marker = "-->";
-										content.insert(foundDataBlock, marker);
-										existingDataBlocks.emplace(*dataBlockName);
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-		}
+                        // 2. Mark all data blocks, that are really used in the scene (created game objects)
+                        const Ogre::String* dataBlockName = dataBlock->getNameStr();
+                        auto it = existingDataBlocks.find(*dataBlockName);
+                        if (it == existingDataBlocks.cend())
+                        {
+                            if (nullptr != dataBlockName)
+                            {
+                                // Mark only the first occurence
+                                size_t foundDataBlock = content.find(*dataBlockName);
+                                if (Ogre::String::npos != foundDataBlock)
+                                {
+                                    Ogre::String marker = "-->";
+                                    content.insert(foundDataBlock, marker);
+                                    existingDataBlocks.emplace(*dataBlockName);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
 		// Go through all data block, remove the marker and the datablocks without a marker will be removed
 		bool firstDataBlock = false;
@@ -1100,53 +1027,34 @@ namespace NOWA
 	{
 		// Note: Will not be used, because it will not work this way: If there would be a cache for for a project, the project must be loaded in any case, so 
 		// Then the textures would be preLoaded. But I need it during starting the Engine! But at this time the user has not yet determined which scene to load.
-		// So the only possible scenario is using deploy function, in which all resources are copied to a folder for a game. If the game is started this folder is used to preLoad the textures at game start not at scene load stage!
-		std::ifstream ifs(sceneFolderPathName + "/cachedTextures.cache");
-		Ogre::set<Ogre::String>::type savedTextures;
+        // So the only possible scenario is using deploy function, in which all resources are copied to a folder for a game. If the game is started this folder is used to preLoad the textures at game start not at scene load stage!
+        std::ifstream ifs(sceneFolderPathName + "/cachedTextures.cache");
+        Ogre::set<Ogre::String>::type savedTextures;
 
-		auto gameObjects = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects();
+        auto gameObjects = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects();
 
-		for (auto it = gameObjects->cbegin(); it != gameObjects->cend(); ++it)
-		{
-			Ogre::set<Ogre::String>::type tempTextures;
-			Ogre::v1::Entity* entity = it->second->getMovableObject<Ogre::v1::Entity>();
-			if (nullptr != entity)
-			{
-				for (size_t i = 0; i < entity->getNumSubEntities(); i++)
-				{
-					auto dataBlock = entity->getSubEntity(i)->getDatablock();
-					if (nullptr != dataBlock)
-					{
-						Ogre::String resourcePath = NOWA::DeployResourceModule::getInstance()->getResourcePath(entity->getMesh()->getName());
-						if (!resourcePath.empty())
-						{
-							dataBlock->saveTextures(sceneFolderPathName, tempTextures, false, true, nullptr);
-							savedTextures.insert(tempTextures.begin(), tempTextures.end());
-						}
-					}
-				}
-			}
-			else
-			{
-				Ogre::Item* item = it->second->getMovableObject<Ogre::Item>();
-				if (nullptr != item)
-				{
-					for (size_t i = 0; i < item->getNumSubItems(); i++)
-					{
-						auto dataBlock = item->getSubItem(i)->getDatablock();
-						if (nullptr != dataBlock)
-						{
-							Ogre::String resourcePath = NOWA::DeployResourceModule::getInstance()->getResourcePath(item->getMesh()->getName());
-							if (!resourcePath.empty())
-							{
-								dataBlock->saveTextures(sceneFolderPathName, tempTextures, false, true, nullptr);
-								savedTextures.insert(tempTextures.begin(), tempTextures.end());
-							}
-						}
-					}
-				}
-			}
-		}
+        for (auto it = gameObjects->cbegin(); it != gameObjects->cend(); ++it)
+        {
+            Ogre::set<Ogre::String>::type tempTextures;
+
+            Ogre::Item* item = it->second->getMovableObject<Ogre::Item>();
+            if (nullptr != item)
+            {
+                for (size_t i = 0; i < item->getNumSubItems(); i++)
+                {
+                    auto dataBlock = item->getSubItem(i)->getDatablock();
+                    if (nullptr != dataBlock)
+                    {
+                        Ogre::String resourcePath = NOWA::DeployResourceModule::getInstance()->getResourcePath(item->getMesh()->getName());
+                        if (!resourcePath.empty())
+                        {
+                            dataBlock->saveTextures(sceneFolderPathName, tempTextures, false, true, nullptr);
+                            savedTextures.insert(tempTextures.begin(), tempTextures.end());
+                        }
+                    }
+                }
+            }
+        }
 
 		ifs.close();
 

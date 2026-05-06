@@ -742,7 +742,6 @@ namespace NOWA
 		static const Ogre::String AttrCutOff(void) { return "Cut Off"; }
 	private:
 		bool preReadDatablock(void);
-		bool readDatablockEntity(Ogre::v1::Entity* entity);
 		bool readDatablockItem(Ogre::Item* item);
 		void postReadDatablock(void);
 		Ogre::String getPbsTextureName(Ogre::HlmsPbsDatablock* datablock, Ogre::PbsTextureTypes type);

@@ -559,7 +559,7 @@ namespace NOWA
 
 	void MyGUIMiniMapComponent::setSceneVisited(unsigned int index, bool visited)
 	{
-		if (index > this->visitedList.size())
+		if (index >= this->visitedList.size())
 		{
 			index = static_cast<unsigned int>(this->visitedList.size()) - 1;
 		}
@@ -568,7 +568,7 @@ namespace NOWA
 
 	bool MyGUIMiniMapComponent::getIsSceneVisited(unsigned int index)
 	{
-		if (index > this->visitedList.size())
+		if (index >= this->visitedList.size())
 		{
 			return false;
 		}
@@ -1050,7 +1050,7 @@ namespace NOWA
 
 	void MyGUIMiniMapComponent::setSkinName(unsigned int index, const Ogre::String& skinName)
 	{
-		if (index > this->skinNames.size())
+		if (index >= this->skinNames.size())
 		{
 			index = static_cast<unsigned int>(this->skinNames.size()) - 1;
 		}
@@ -1064,7 +1064,7 @@ namespace NOWA
 
 	Ogre::String MyGUIMiniMapComponent::getSkinName(unsigned int index) const
 	{
-		if (index > this->skinNames.size())
+		if (index >= this->skinNames.size())
 		{
 			return "";
 		}
@@ -1083,7 +1083,7 @@ namespace NOWA
 
 	void MyGUIMiniMapComponent::setMiniMapTileColor(unsigned int index, const Ogre::Vector3& color)
 	{
-		if (index > this->miniMapTilesColors.size())
+		if (index >= this->miniMapTilesColors.size())
 		{
 			index = static_cast<unsigned int>(this->miniMapTilesColors.size()) - 1;
 		}
@@ -1097,7 +1097,7 @@ namespace NOWA
 
 	Ogre::Vector3 MyGUIMiniMapComponent::getMiniMapTileColor(unsigned int index)
 	{
-		if (index > this->miniMapTilesColors.size())
+		if (index >= this->miniMapTilesColors.size())
 		{
 			return Ogre::Vector3::ZERO;
 		}
@@ -1106,7 +1106,7 @@ namespace NOWA
 
 	void MyGUIMiniMapComponent::setToolTipDescription(unsigned int index, const Ogre::String& description)
 	{
-		if (index > this->toolTipDescriptions.size())
+		if (index >= this->toolTipDescriptions.size())
 		{
 			index = static_cast<unsigned int>(this->toolTipDescriptions.size()) - 1;
 		}
@@ -1120,7 +1120,7 @@ namespace NOWA
 
 	Ogre::String MyGUIMiniMapComponent::getToolTipDescription(unsigned int index)
 	{
-		if (index > this->toolTipDescriptions.size())
+		if (index >= this->toolTipDescriptions.size())
 		{
 			return "";
 		}
@@ -1129,7 +1129,7 @@ namespace NOWA
 
 	void MyGUIMiniMapComponent::setMiniMapTileVisible(unsigned int index, bool miniMapTileVisible)
 	{
-		if (index > this->windowMapTiles.size())
+		if (index >= this->windowMapTiles.size())
 		{
 			index = static_cast<unsigned int>(this->windowMapTiles.size()) - 1;
 		}
@@ -1145,7 +1145,7 @@ namespace NOWA
 
 	bool MyGUIMiniMapComponent::isMiniMapTileVisible(unsigned int index) const
 	{
-		if (index > this->windowMapTiles.size())
+		if (index >= this->windowMapTiles.size())
 		{
 			return false;
 		}
@@ -1203,7 +1203,7 @@ namespace NOWA
 
 	void MyGUIMiniMapComponent::setTrackableId(unsigned int index, const Ogre::String& id)
 	{
-		if (index > this->trackableIds.size())
+		if (index >= this->trackableIds.size())
 		{
 			index = static_cast<unsigned int>(this->trackableIds.size()) - 1;
 		}
@@ -1218,7 +1218,7 @@ namespace NOWA
 
 	Ogre::String MyGUIMiniMapComponent::getTrackableId(unsigned int index)
 	{
-		if (index > this->trackableIds.size())
+		if (index >= this->trackableIds.size())
 		{
 			return "";
 		}
@@ -1227,7 +1227,7 @@ namespace NOWA
 
 	void MyGUIMiniMapComponent::setTrackableImage(unsigned int index, const Ogre::String& imageName)
 	{
-		if (index > this->trackableImages.size())
+		if (index >= this->trackableImages.size())
 		{
 			index = static_cast<unsigned int>(this->trackableImages.size()) - 1;
 		}
@@ -1249,7 +1249,7 @@ namespace NOWA
 
 	Ogre::String MyGUIMiniMapComponent::getTrackableImage(unsigned int index)
 	{
-		if (index > this->trackableImages.size())
+		if (index >= this->trackableImages.size())
 		{
 			return "";
 		}
@@ -1258,7 +1258,7 @@ namespace NOWA
 
 	void MyGUIMiniMapComponent::setTrackableImageTileSize(unsigned int index, const Ogre::Vector2& imageTileSize)
 	{
-		if (index > this->trackableImageTileSizes.size())
+		if (index >= this->trackableImageTileSizes.size())
 		{
 			index = static_cast<unsigned int>(this->trackableImageTileSizes.size()) - 1;
 		}
@@ -1292,7 +1292,7 @@ namespace NOWA
 
 	Ogre::Vector2 MyGUIMiniMapComponent::getTrackableImageTileSize(unsigned int index)
 	{
-		if (index > this->trackableImageTileSizes.size())
+		if (index >= this->trackableImageTileSizes.size())
 		{
 			return Ogre::Vector2::ZERO;
 		}

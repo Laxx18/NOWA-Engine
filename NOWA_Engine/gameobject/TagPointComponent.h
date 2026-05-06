@@ -14,7 +14,7 @@ namespace NOWA
      * @brief 	This component can be used to attach another source game object to the local tag point (bone).
      *			Info: Several tag point components can be added to one game object.
      *			Example: A weapon (source game object) could be attached to the right hand of the player.
-     *			Requirements: The entity of this game object must have a skeleton with bones.
+     *			Requirements: The item of this game object must have a skeleton with bones.
      */
     class EXPORTED TagPointComponent : public GameObjectComponent
     {
@@ -124,7 +124,7 @@ namespace NOWA
             return "This component can be used to attach another source game object to the local tag point (bone). "
                    "Info: Several tag point components can be added to one game object. "
                    "Example : A weapon(source game object) could be attached to the right hand of the player. "
-                   "Requirements : Tags a game object to a bone.Requirements: Entity must have animations.";
+                   "Requirements : Tags a game object to a bone.Requirements: Item must have animations.";
         }
 
         /**
@@ -179,7 +179,7 @@ namespace NOWA
          * @brief Gets the tag point Ogre pointer to work directly with the tag point
          * @return tagPoint The tag point pointer to get
          */
-        Ogre::v1::TagPoint* getTagPoint(void) const;
+        Ogre::TagPoint* getTagPoint(void) const;
 
         /**
          * @brief Gets the tag point Ogre scene node that is used for this tag point
@@ -210,13 +210,6 @@ namespace NOWA
         void destroyDebugData(void);
         void resetTagPoint(void);
 
-        // V1 Entity support
-        void initializeV1Entity(Ogre::v1::Entity* entity);
-        void connectV1Entity(Ogre::v1::Entity* entity);
-        void setTagPointNameV1(Ogre::v1::Entity* entity, const Ogre::String& tagPointName);
-        void resetTagPointV1(Ogre::v1::Entity* entity);
-
-        // V2 Item support
         void initializeV2Item(Ogre::Item* item);
         void connectV2Item(Ogre::Item* item);
         void setTagPointNameV2(Ogre::Item* item, const Ogre::String& tagPointName);
@@ -225,9 +218,6 @@ namespace NOWA
         void updateV2PhysicsFromTagPoint(void);
 
     private:
-        // V1 members
-        Ogre::v1::TagPoint* tagPoint;
-
         // Common members
         Ogre::SceneNode* tagPointNode;
         PhysicsActiveComponent* sourcePhysicsActiveComponent;

@@ -224,16 +224,6 @@ namespace NOWA
 					this->gameObjectPtr->setRenderQueueIndex(16);
 				}
 			}
-			else
-			{
-				Ogre::v1::Entity* entity = this->gameObjectPtr->getMovableObjectUnsafe<Ogre::v1::Entity>();
-				if (nullptr != entity)
-				{
-					entity->setDatablock(this->distortionDatablock);
-					// Set item to be rendered in distortion queue pass (ID 16)
-					this->gameObjectPtr->setRenderQueueIndex(16);
-				}
-			}
 
 			// Receive distortion material and set strenght uniform
 			Ogre::MaterialPtr materialDistortion = std::static_pointer_cast<Ogre::Material>(Ogre::MaterialManager::getSingleton().load("Distortion/Quad", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME));
@@ -256,23 +246,11 @@ namespace NOWA
 
 			this->distortionPass = nullptr;
 
-			Ogre::v1::Entity* entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
-			if (nullptr != entity)
+			Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
+			if (false == this->oldDatablockName.empty())
 			{
-				if (false != this->oldDatablockName.empty())
-				{
-					// Set back the default datablock
-					entity->setDatablock(this->oldDatablockName);
-				}
-			}
-			else
-			{
-				Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
-				if (false == this->oldDatablockName.empty())
-				{
-					// Set back the default datablock
-					item->setDatablock(this->oldDatablockName);
-				}
+				// Set back the default datablock
+				item->setDatablock(this->oldDatablockName);
 			}
 
 			if (nullptr != this->distortionDatablock)

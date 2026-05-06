@@ -1029,7 +1029,7 @@ namespace NOWA
 	
 	void MyGUIScrollingMessageControllerComponent::setMessage(unsigned int index, const Ogre::String& message)
 	{
-		if (index > this->messages.size())
+		if (index >= this->messages.size())
 		{
 			index = static_cast<unsigned int>(this->messages.size()) - 1;
 		}
@@ -1038,7 +1038,7 @@ namespace NOWA
 	
 	Ogre::String MyGUIScrollingMessageControllerComponent::getMessage(unsigned int index) const
 	{
-		if (index > this->messages.size())
+		if (index >= this->messages.size())
 		{
 			return "";
 		}

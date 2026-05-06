@@ -86,7 +86,6 @@ namespace NOWA
 
 		if (this->alreadyCloned)
 		{
-			Ogre::v1::Entity* entityCopy = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
 			Ogre::Item* itemCopy = this->gameObjectPtr->getMovableObject<Ogre::Item>();
 
 			Ogre::HlmsDatablock* datablockCopy = this->datablock;
@@ -96,16 +95,9 @@ namespace NOWA
 			this->datablock = nullptr;
 			this->originalDatablock = nullptr;
 
-			NOWA::GraphicsModule::RenderCommand renderCommand = [entityCopy, itemCopy, datablockCopy, originalDatablockCopy, oldSubIndexCopy]()
+			NOWA::GraphicsModule::RenderCommand renderCommand = [itemCopy, datablockCopy, originalDatablockCopy, oldSubIndexCopy]()
 			{
-				if (entityCopy && originalDatablockCopy)
-				{
-					if (oldSubIndexCopy < entityCopy->getNumSubEntities())
-					{
-						entityCopy->getSubEntity(oldSubIndexCopy)->setDatablock(originalDatablockCopy);
-					}
-				}
-				else if (itemCopy && originalDatablockCopy)
+				if (itemCopy && originalDatablockCopy)
 				{
 					if (oldSubIndexCopy < itemCopy->getNumSubItems())
 					{
@@ -488,19 +480,11 @@ namespace NOWA
 
 		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DatablockUnlitComponent::preReadDatablock", _1(&success),
 		{
-			Ogre::v1::Entity* entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
-			if (nullptr != entity)
+			Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
+			if (nullptr != item)
 			{
-				success = this->readDatablockEntity(entity);
-			}
-			else
-			{
-				Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
-				if (nullptr != item)
-				{
-					success = this->readDatablockItem(item);
+				success = this->readDatablockItem(item);
 
-				}
 			}
 		});
 
@@ -510,102 +494,6 @@ namespace NOWA
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DatablockUnlitComponent] Unlit datablock reading failed for game object: " + this->gameObjectPtr->getName());
 			return;
 		}
-	}
-
-	bool DatablockUnlitComponent::readDatablockEntity(Ogre::v1::Entity* entity)
-	{
-		// Two data block components with the same entity index can not exist
-		for (unsigned int i = 0; i < static_cast<unsigned int>(this->gameObjectPtr->getComponents()->size()); i++)
-		{
-			auto priorUnlitComponent = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<DatablockUnlitComponent>(DatablockUnlitComponent::getStaticClassName(), i));
-			if (nullptr != priorUnlitComponent && priorUnlitComponent.get() != this)
-			{
-				if (this->subItemIndex->getUInt() == priorUnlitComponent->getSubItemIndex())
-				{
-					this->subItemIndex->setValue(priorUnlitComponent->getSubItemIndex() + 1);
-				}
-			}
-		}
-
-		if (this->subItemIndex->getUInt() >= entity->getNumSubEntities())
-		{
-			this->datablock = nullptr;
-			Ogre::String message = "[DatablockUnlitComponent] Datablock reading failed, because there is no such sub entity index: "
-				+ Ogre::StringConverter::toString(this->subItemIndex->getUInt()) + " for game object: "
-				+ this->gameObjectPtr->getName();
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, message);
-
-			boost::shared_ptr<EventDataFeedback> eventDataFeedback(new EventDataFeedback(false, message));
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataFeedback);
-			return false;
-		}
-
-		// If a prior component set this custom data string, with this content, do not clone the datablock (see. PlaneComponent)
-		if ("doNotCloneDatablock" == this->gameObjectPtr->getCustomDataString())
-		{
-			this->alreadyCloned = true;
-			this->gameObjectPtr->setCustomDataString("");
-		}
-
-		// Get the cloned data block, so that it can be manipulated individually
-		this->originalDatablock = dynamic_cast<Ogre::HlmsUnlitDatablock*>(entity->getSubEntity(this->subItemIndex->getUInt())->getDatablock());
-		// Datablock could not be received, pbs entity got unlit data block component?
-		if (nullptr == this->originalDatablock)
-		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DatablockUnlitComponent] Warning: Could not use datablock unlit component, because this game object has a pbs data block for game object: "
-															+ this->gameObjectPtr->getName());
-			return false;
-		}
-
-		// Store also the original name
-		Ogre::String originalDataBlockName = *this->originalDatablock->getNameStr();
-
-		if ("Missing" == originalDataBlockName)
-			return false;
-
-		// If its already a cloned data block (with __ + id extension), this one will be then adapted by properties from this component
-		size_t found = originalDataBlockName.find("__");
-		if (found != Ogre::String::npos)
-		{
-			originalDataBlockName = originalDataBlockName.substr(0, found);
-		}
-
-		if (false == this->alreadyCloned && false == this->isCloned && nullptr != this->originalDatablock)
-		{
-			Ogre::HlmsDatablock* clonedDatablock = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->cloneDatablockUnique(
-					this->originalDatablock, originalDataBlockName, static_cast<unsigned long>(this->gameObjectPtr->getId()), this->oldSubIndex);
-
-			this->datablock = dynamic_cast<Ogre::HlmsUnlitDatablock*>(clonedDatablock);
-
-			Ogre::String clonedDataBlockName = *this->datablock->getNameStr();
-
-			this->alreadyCloned = true;
-		}
-		else
-		{
-			this->datablock = dynamic_cast<Ogre::HlmsUnlitDatablock*>(entity->getSubEntity(this->subItemIndex->getUInt())->getDatablock());
-		}
-
-		if (nullptr == this->datablock)
-		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DatablockUnlitComponent] Unlit datablock reading failed, because there is no unlit data block for game object: "
-				+ this->gameObjectPtr->getName());
-			return false;
-		}
-
-		entity->getSubEntity(this->subItemIndex->getUInt())->setDatablock(this->datablock);
-		this->oldSubIndex = this->subItemIndex->getUInt();
-
-		const Ogre::String* finalDatablockName = this->datablock->getNameStr();
-
-		if (nullptr != finalDatablockName)
-		{
-			this->gameObjectPtr->actualizeDatablockName(*finalDatablockName, this->subItemIndex->getUInt());
-		}
-
-		this->postReadDatablock();
-
-		return true;
 	}
 
 	bool DatablockUnlitComponent::readDatablockItem(Ogre::Item* item)
@@ -910,51 +798,52 @@ namespace NOWA
 
 		if (nullptr != this->gameObjectPtr)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DatablockUnlitComponent::setSubItemIndex", _1(&subItemIndex),
-			{
-				// Two data block components with the same entity index can not exist
-				for (size_t i = 0; i < this->gameObjectPtr->getComponents()->size(); i++)
-				{
-					auto priorUnlitComponent = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<DatablockUnlitComponent>(DatablockUnlitComponent::getStaticClassName(), static_cast<unsigned int>(i)));
-					if (nullptr != priorUnlitComponent && priorUnlitComponent.get() != this)
-					{
-						if (subItemIndex == priorUnlitComponent->getSubItemIndex())
-						{
-							subItemIndex = priorUnlitComponent->getSubItemIndex() + 1;
-						}
-					}
-				}
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, &subItemIndex]()
+            {
+                // Two data block components with the same entity index can not exist
+                for (size_t i = 0; i < this->gameObjectPtr->getComponents()->size(); i++)
+                {
+                    auto priorUnlitComponent = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<DatablockUnlitComponent>(DatablockUnlitComponent::getStaticClassName(), static_cast<unsigned int>(i)));
+                    if (nullptr != priorUnlitComponent && priorUnlitComponent.get() != this)
+                    {
+                        if (subItemIndex == priorUnlitComponent->getSubItemIndex())
+                        {
+                            subItemIndex = priorUnlitComponent->getSubItemIndex() + 1;
+                        }
+                    }
+                }
 
-				Ogre::v1::Entity* entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
-				if (nullptr != entity)
-				{
-					if (subItemIndex >= entity->getNumSubEntities())
-					{
-						subItemIndex = static_cast<unsigned int>(entity->getNumSubEntities()) - 1;
-					}
-				}
+                Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
+                if (nullptr != item)
+                {
+                    if (subItemIndex >= item->getNumSubItems())
+                    {
+                        subItemIndex = static_cast<unsigned int>(item->getNumSubItems()) - 1;
+                    }
+                }
 
-				if (this->oldSubIndex != subItemIndex)
-				{
-					// Read everything from the beginning, if a new sub index has been set
-					this->newlyCreated = true;
+                if (this->oldSubIndex != subItemIndex)
+                {
+                    // Read everything from the beginning, if a new sub index has been set
+                    this->newlyCreated = true;
 
-					// Old data block must be destroyed
-					if (true == this->alreadyCloned)
-					{
-						// Set back the default datablock
-						entity->getSubEntity(this->oldSubIndex)->setDatablock(this->originalDatablock);
-						if (nullptr != this->datablock)
-						{
-							Ogre::Hlms* hlmsUnlit = Ogre::Root::getSingletonPtr()->getHlmsManager()->getHlms(Ogre::HLMS_UNLIT);
-							hlmsUnlit->destroyDatablock(this->datablock->getName());
-							this->datablock = nullptr;
-						}
-					}
+                    // Old data block must be destroyed
+                    if (true == this->alreadyCloned)
+                    {
+                        // Set back the default datablock
+                        item->getSubItem(this->oldSubIndex)->setDatablock(this->originalDatablock);
+                        if (nullptr != this->datablock)
+                        {
+                            Ogre::Hlms* hlmsUnlit = Ogre::Root::getSingletonPtr()->getHlmsManager()->getHlms(Ogre::HLMS_UNLIT);
+                            hlmsUnlit->destroyDatablock(this->datablock->getName());
+                            this->datablock = nullptr;
+                        }
+                    }
 
-					this->alreadyCloned = false;
-				}
-			});
+                    this->alreadyCloned = false;
+                }
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DatablockUnlitComponent::setSubItemIndex");
 
 			this->preReadDatablock();
 
@@ -1058,7 +947,7 @@ namespace NOWA
 
 	void DatablockUnlitComponent::setDetailTextureName(unsigned int index, const Ogre::String& detailTextureName)
 	{
-		if (index > this->detailTextureNames.size())
+		if (index >= this->detailTextureNames.size())
 			index = static_cast<unsigned int>(this->detailTextureNames.size()) - 1;
 		this->detailTextureNames[index]->setValue(detailTextureName);
 
@@ -1068,14 +957,14 @@ namespace NOWA
 	
 	const Ogre::String DatablockUnlitComponent::getDetailTextureName(unsigned int index) const
 	{
-		if (index > this->detailTextureNames.size())
+		if (index >= this->detailTextureNames.size())
 			return "";
 		return this->detailTextureNames[index]->getString();
 	}
 	
 	void DatablockUnlitComponent::setBlendMode(unsigned int index, const Ogre::String& blendMode)
 	{
-		if (index > this->blendModes.size())
+		if (index >= this->blendModes.size())
 			index = static_cast<unsigned int>(this->blendModes.size()) - 1;
 		this->blendModes[index]->setListSelectedValue(blendMode);
 
@@ -1097,14 +986,14 @@ namespace NOWA
 	
     Ogre::String DatablockUnlitComponent::getBlendMode(unsigned int index) const
 	{
-		if (index > this->blendModes.size())
+		if (index >= this->blendModes.size())
 			return "";
 		return this->blendModes[index]->getListSelectedValue();
 	}
 	
 	void DatablockUnlitComponent::setTextureSwizzle(unsigned int index, const Ogre::Vector4& textureSwizzle)
 	{
-		if (index > this->textureSwizzles.size())
+		if (index >= this->textureSwizzles.size())
 			index = static_cast<unsigned int>(this->textureSwizzles.size()) - 1;
 		this->textureSwizzles[index]->setValue(textureSwizzle);
 		
@@ -1119,14 +1008,14 @@ namespace NOWA
 
 	Ogre::Vector4 DatablockUnlitComponent::getTextureSwizzle(unsigned int index) const
 	{
-		if (index > this->textureSwizzles.size())
+		if (index >= this->textureSwizzles.size())
 			return Ogre::Vector4::ZERO;
 		return this->textureSwizzles[index]->getVector4();
 	}
 	
 	void DatablockUnlitComponent::setUseAnimation(unsigned int index, bool useAnimation)
 	{
-		if (index > this->useAnimations.size())
+		if (index >= this->useAnimations.size())
 			index = static_cast<unsigned int>(this->useAnimations.size()) - 1;
 		this->useAnimations[index]->setValue(useAnimation);
 
@@ -1144,14 +1033,14 @@ namespace NOWA
 
 	bool DatablockUnlitComponent::getUseAnimation(unsigned int index) const
 	{
-		if (index > this->useAnimations.size())
+		if (index >= this->useAnimations.size())
 			return false;
 		return this->useAnimations[index]->getBool();
 	}
 
 	void DatablockUnlitComponent::setAnimationTranslation(unsigned int index, const Ogre::Vector3& animationTranslation)
 	{
-		if (index > this->animationTranslations.size())
+		if (index >= this->animationTranslations.size())
 			index = static_cast<unsigned int>(this->animationTranslations.size()) - 1;
 		this->animationTranslations[index]->setValue(animationTranslation);
 
@@ -1179,14 +1068,14 @@ namespace NOWA
 
 	Ogre::Vector3 DatablockUnlitComponent::getAnimationTranslation(unsigned int index) const
 	{
-		if (index > this->animationTranslations.size())
+		if (index >= this->animationTranslations.size())
 			return Ogre::Vector3::ZERO;
 		return this->animationTranslations[index]->getVector3();
 	}
 
 	void DatablockUnlitComponent::setAnimationScale(unsigned int index, const Ogre::Vector3& animationScale)
 	{
-		if (index > this->animationScales.size())
+		if (index >= this->animationScales.size())
 			index = static_cast<unsigned int>(this->animationScales.size()) - 1;
 		this->animationScales[index]->setValue(animationScale);
 
@@ -1214,14 +1103,14 @@ namespace NOWA
 
 	Ogre::Vector3 DatablockUnlitComponent::getAnimationScale(unsigned int index) const
 	{
-		if (index > this->animationScales.size())
+		if (index >= this->animationScales.size())
 			return Ogre::Vector3::ZERO;
 		return this->animationScales[index]->getVector3();
 	}
 	
 	void DatablockUnlitComponent::setAnimationRotation(unsigned int index, const Ogre::Vector3& animationRotation)
 	{
-		if (index > this->animationRotations.size())
+		if (index >= this->animationRotations.size())
 			index = static_cast<unsigned int>(this->animationRotations.size()) - 1;
 		this->animationRotations[index]->setValue(animationRotation);
 
@@ -1257,7 +1146,7 @@ namespace NOWA
 
 	Ogre::Vector3 DatablockUnlitComponent::getAnimationRotation(unsigned int index) const
 	{
-		if (index > this->animationRotations.size())
+		if (index >= this->animationRotations.size())
 			return Ogre::Vector3::ZERO;
 		return this->animationRotations[index]->getVector3();
 	}

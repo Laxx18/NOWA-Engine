@@ -53,7 +53,7 @@ namespace NOWA
 		RENDER_QUEUE_LEGACY = 156,
         RENDER_QUEUE_V2_TRANSPARENT = 205, // Transparent V2 (200-224 range)
 		RENDER_QUEUE_V2_OBJECTS_ALWAYS_IN_FOREGROUND = 220, // E.g. Ogre::ManualObject, Item
-		RENDER_QUEUE_V1_OBJECTS_ALWAYS_IN_FOREGROUND = 230, // E.g. Ogre::v1::Entity, Ogre::v1::ManualObject, Ogre::v1::Overlay
+		RENDER_QUEUE_V1_OBJECTS_ALWAYS_IN_FOREGROUND = 230, // E.g. Ogre::v1::ManualObject, Ogre::v1::Overlay
 		RENDER_QUEUE_GIZMO = 252,
 		RENDER_QUEUE_MAX = 254 // E.g. Ogre::v1::Overlay
 	};

@@ -202,7 +202,6 @@
     <ClInclude Include="gameobject\AiComponents.h" />
     <ClInclude Include="gameobject\AiLuaComponent.h" />
     <ClInclude Include="gameobject\AiLuaGoalComponent.h" />
-    <ClInclude Include="gameobject\AnimationComponent.h" />
     <ClInclude Include="gameobject\AnimationComponentV2.h" />
     <ClInclude Include="gameobject\BackgroundScrollComponent.h" />
     <ClInclude Include="gameobject\CameraBehaviorComponents.h" />
@@ -265,7 +264,6 @@
     <ClInclude Include="gameobject\PhysicsExplosionComponent.h" />
     <ClInclude Include="gameobject\PhysicsMaterialComponent.h" />
     <ClInclude Include="gameobject\PhysicsPlayerControllerComponent.h" />
-    <ClInclude Include="gameobject\PhysicsRagDollComponent.h" />
     <ClInclude Include="gameobject\PhysicsTerrainComponent.h" />
     <ClInclude Include="gameobject\PhysicsTriggerComponent.h" />
     <ClInclude Include="gameobject\PlanarReflectionComponent.h" />
@@ -353,7 +351,6 @@
     <ClInclude Include="shader\HlmsBaseListenerContainer.h" />
     <ClInclude Include="shader\HlmsFog.h" />
     <ClInclude Include="shader\HlmsWind.h" />
-    <ClInclude Include="utilities\AnimationBlender.h" />
     <ClInclude Include="utilities\AnimationBlenderV2.h" />
     <ClInclude Include="utilities\AnimationSerializer.h" />
     <ClInclude Include="camera\BasePhysicsCamera.h" />
@@ -421,7 +418,6 @@
     <ClCompile Include="gameobject\AiComponents.cpp" />
     <ClCompile Include="gameobject\AiLuaComponent.cpp" />
     <ClCompile Include="gameobject\AiLuaGoalComponent.cpp" />
-    <ClCompile Include="gameobject\AnimationComponent.cpp" />
     <ClCompile Include="gameobject\AnimationComponentV2.cpp" />
     <ClCompile Include="gameobject\AttributesComponent.cpp" />
     <ClCompile Include="gameobject\BackgroundScrollComponent.cpp" />
@@ -482,7 +478,6 @@
     <ClCompile Include="gameobject\PhysicsExplosionComponent.cpp" />
     <ClCompile Include="gameobject\PhysicsMaterialComponent.cpp" />
     <ClCompile Include="gameobject\PhysicsPlayerControllerComponent.cpp" />
-    <ClCompile Include="gameobject\PhysicsRagDollComponent.cpp" />
     <ClCompile Include="gameobject\PhysicsTerrainComponent.cpp" />
     <ClCompile Include="gameobject\PhysicsTriggerComponent.cpp" />
     <ClCompile Include="gameobject\PlanarReflectionComponent.cpp" />
@@ -569,7 +564,6 @@
     <ClCompile Include="shader\HlmsBaseListenerContainer.cpp" />
     <ClCompile Include="shader\HlmsFog.cpp" />
     <ClCompile Include="shader\HlmsWind.cpp" />
-    <ClCompile Include="utilities\AnimationBlender.cpp" />
     <ClCompile Include="utilities\AnimationBlenderV2.cpp" />
     <ClCompile Include="utilities\AnimationSerializer.cpp" />
     <ClCompile Include="utilities\AutoCompleteSearch.cpp" />

@@ -8,6 +8,7 @@
 
 #include "utilities/Interpolator.h"
 
+#include <Animation/OgreSkeletonDef.h>
 #include <regex>
 
 namespace
@@ -606,13 +607,13 @@ void PropertiesPanelInfo::listData(NOWA::GameObject* gameObject)
             this->heightCurrent += informationHeight + 2;
         }
 
-        Ogre::v1::Entity* entity = gameObject->getMovableObject<Ogre::v1::Entity>();
-        if (nullptr != entity)
+        Ogre::Item* item = gameObject->getMovableObject<Ogre::Item>();
+        if (nullptr != item)
         {
             ///////////////////////////////List all animations///////////////////////////////////////////////////////
             std::vector<Ogre::String> animationNames;
-            Ogre::v1::AnimationStateSet* set = entity->getAllAnimationStates();
-            if (nullptr != set)
+            Ogre::SkeletonInstance* skeleton = item->getSkeletonInstance();
+            if (nullptr != skeleton)
             {
                 MyGUI::TextBox* keyTextBox = mWidgetClient->createWidget<MyGUI::TextBox>("TextBox", MyGUI::IntCoord(keyLeft, heightCurrent, keyWidth, height), MyGUI::Align::Left | MyGUI::Align::Top);
                 keyTextBox->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
@@ -624,12 +625,9 @@ void PropertiesPanelInfo::listData(NOWA::GameObject* gameObject)
                 this->heightCurrent += heightStep;
 
                 unsigned int i = 0;
-                Ogre::v1::AnimationStateIterator it = set->getAnimationStateIterator();
                 // list all animations
-                while (it.hasMoreElements())
+                for (auto& anim : skeleton->getAnimationsNonConst())
                 {
-                    Ogre::v1::AnimationState* anim = it.getNext();
-
                     // Set the key of the property
                     MyGUI::TextBox* keyTextBox = mWidgetClient->createWidget<MyGUI::TextBox>("TextBox", MyGUI::IntCoord(keyLeft, heightCurrent, keyWidth, height), MyGUI::Align::Left | MyGUI::Align::Top);
                     keyTextBox->setTextAlign(MyGUI::Align::Left | MyGUI::Align::VCenter);
@@ -640,7 +638,7 @@ void PropertiesPanelInfo::listData(NOWA::GameObject* gameObject)
                     MyGUI::EditBox* edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top);
                     edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
                     edit->setMouseHitThreshold(6, 6, 3, 3);
-                    edit->setOnlyText(anim->getAnimationName());
+                    edit->setOnlyText(anim.getName().getFriendlyText());
                     edit->setEditReadOnly(true);
 
                     this->itemsEdit.push_back(edit);
@@ -652,26 +650,23 @@ void PropertiesPanelInfo::listData(NOWA::GameObject* gameObject)
                 MyGUI::Widget* separator = mWidgetClient->createWidget<MyGUI::Widget>("Separator3", MyGUI::IntCoord(keyLeft, this->heightCurrent, static_cast<int>(mWidgetClient->getWidth()), height), MyGUI::Align::HStretch | MyGUI::Align::Top);
                 this->itemsText.push_back(separator);
                 this->heightCurrent += heightStep / 2;
-            }
 
-            ///////////////////////////////List all bones///////////////////////////////////////////////////////
-            Ogre::v1::Skeleton* skeleton = entity->getSkeleton();
-            if (nullptr != skeleton)
-            {
+                ///////////////////////////////List all bones///////////////////////////////////////////////////////
+
                 std::vector<Ogre::String> boneNames;
 
-                MyGUI::TextBox* keyTextBox = mWidgetClient->createWidget<MyGUI::TextBox>("TextBox", MyGUI::IntCoord(keyLeft, heightCurrent, 100, height), MyGUI::Align::Left | MyGUI::Align::Top);
+                keyTextBox = mWidgetClient->createWidget<MyGUI::TextBox>("TextBox", MyGUI::IntCoord(keyLeft, heightCurrent, 100, height), MyGUI::Align::Left | MyGUI::Align::Top);
                 keyTextBox->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
                 keyTextBox->setTextAlign(MyGUI::Align::Left | MyGUI::Align::VCenter);
-                keyTextBox->setCaption("Bones of Skeleton: " + skeleton->getName());
+                keyTextBox->setCaption("Bones of Skeleton: " + skeleton->getDefinition()->getNameStr());
 
                 this->itemsText.push_back(keyTextBox);
                 this->heightCurrent += heightStep;
 
-                unsigned short numBones = entity->getSkeleton()->getNumBones();
+                unsigned short numBones = skeleton->getNumBones();
                 for (unsigned short iBone = 0; iBone < numBones; iBone++)
                 {
-                    Ogre::v1::OldBone* bone = entity->getSkeleton()->getBone(iBone);
+                    Ogre::Bone* bone = skeleton->getBone(iBone);
                     if (nullptr == bone)
                     {
                         continue;
@@ -680,7 +675,7 @@ void PropertiesPanelInfo::listData(NOWA::GameObject* gameObject)
                     // Absolutely HAVE to create bone representations first. Otherwise we would get the wrong child count
                     // because an attached object counts as a child
                     // Would be nice to have a function that only gets the children that are bones...
-                    unsigned short numChildren = bone->numChildren();
+                    unsigned short numChildren = bone->getNumChildren();
                     if (numChildren == 0)
                     {
                         bool unique = true;
@@ -738,110 +733,110 @@ void PropertiesPanelInfo::listData(NOWA::GameObject* gameObject)
                     this->heightCurrent += heightStep;
                 }
 
-                MyGUI::Widget* separator = mWidgetClient->createWidget<MyGUI::Widget>("Separator3", MyGUI::IntCoord(keyLeft, this->heightCurrent, static_cast<int>(mWidgetClient->getWidth()), height), MyGUI::Align::HStretch | MyGUI::Align::Top);
+                separator = mWidgetClient->createWidget<MyGUI::Widget>("Separator3", MyGUI::IntCoord(keyLeft, this->heightCurrent, static_cast<int>(mWidgetClient->getWidth()), height), MyGUI::Align::HStretch | MyGUI::Align::Top);
                 this->itemsText.push_back(separator);
                 this->heightCurrent += heightStep / 2;
-            }
 
-            int j = 0;
+                int j = 0;
 
-            auto simpleSoundComponent = NOWA::makeStrongPtr(gameObject->getComponent<NOWA::SimpleSoundComponent>(j));
-            while (simpleSoundComponent != nullptr && simpleSoundComponent->getSound() != nullptr)
-            {
-                MyGUI::TextBox* keyTextBox = mWidgetClient->createWidget<MyGUI::TextBox>("TextBox", MyGUI::IntCoord(keyLeft, heightCurrent, keyWidth, height), MyGUI::Align::Left | MyGUI::Align::Top);
-                keyTextBox->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-                keyTextBox->setTextAlign(MyGUI::Align::Left | MyGUI::Align::VCenter);
-                keyTextBox->setCaption("SoundName: ");
-                this->itemsText.push_back(keyTextBox);
+                auto simpleSoundComponent = NOWA::makeStrongPtr(gameObject->getComponent<NOWA::SimpleSoundComponent>(j));
+                while (simpleSoundComponent != nullptr && simpleSoundComponent->getSound() != nullptr)
+                {
+                    MyGUI::TextBox* keyTextBox = mWidgetClient->createWidget<MyGUI::TextBox>("TextBox", MyGUI::IntCoord(keyLeft, heightCurrent, keyWidth, height), MyGUI::Align::Left | MyGUI::Align::Top);
+                    keyTextBox->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+                    keyTextBox->setTextAlign(MyGUI::Align::Left | MyGUI::Align::VCenter);
+                    keyTextBox->setCaption("SoundName: ");
+                    this->itemsText.push_back(keyTextBox);
 
-                MyGUI::EditBox* edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top);
-                edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-                edit->setOnlyText(simpleSoundComponent->getSoundName());
-                edit->setEditReadOnly(true);
-                this->itemsEdit.push_back(edit);
-                this->heightCurrent += heightStep;
+                    MyGUI::EditBox* edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top);
+                    edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+                    edit->setOnlyText(simpleSoundComponent->getSoundName());
+                    edit->setEditReadOnly(true);
+                    this->itemsEdit.push_back(edit);
+                    this->heightCurrent += heightStep;
 
-                ///////////////////////////////////////////////////
+                    ///////////////////////////////////////////////////
 
-                keyTextBox = mWidgetClient->createWidget<MyGUI::TextBox>("TextBox", MyGUI::IntCoord(keyLeft, heightCurrent, keyWidth, height), MyGUI::Align::Left | MyGUI::Align::Top);
-                keyTextBox->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-                keyTextBox->setTextAlign(MyGUI::Align::Left | MyGUI::Align::VCenter);
-                keyTextBox->setCaption("Length: ");
-                this->itemsText.push_back(keyTextBox);
+                    keyTextBox = mWidgetClient->createWidget<MyGUI::TextBox>("TextBox", MyGUI::IntCoord(keyLeft, heightCurrent, keyWidth, height), MyGUI::Align::Left | MyGUI::Align::Top);
+                    keyTextBox->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+                    keyTextBox->setTextAlign(MyGUI::Align::Left | MyGUI::Align::VCenter);
+                    keyTextBox->setCaption("Length: ");
+                    this->itemsText.push_back(keyTextBox);
 
-                edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top);
-                edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-                edit->setOnlyText(Ogre::StringConverter::toString(simpleSoundComponent->getSound()->getLength()) + " Seconds");
-                edit->setEditReadOnly(true);
-                this->itemsEdit.push_back(edit);
-                this->heightCurrent += heightStep;
+                    edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top);
+                    edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+                    edit->setOnlyText(Ogre::StringConverter::toString(simpleSoundComponent->getSound()->getLength()) + " Seconds");
+                    edit->setEditReadOnly(true);
+                    this->itemsEdit.push_back(edit);
+                    this->heightCurrent += heightStep;
 
-                ///////////////////////////////////////////////////
+                    ///////////////////////////////////////////////////
 
-                keyTextBox = mWidgetClient->createWidget<MyGUI::TextBox>("TextBox", MyGUI::IntCoord(keyLeft, heightCurrent, keyWidth, height), MyGUI::Align::Left | MyGUI::Align::Top);
-                keyTextBox->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-                keyTextBox->setTextAlign(MyGUI::Align::Left | MyGUI::Align::VCenter);
-                keyTextBox->setCaption("Frequency: ");
-                this->itemsText.push_back(keyTextBox);
+                    keyTextBox = mWidgetClient->createWidget<MyGUI::TextBox>("TextBox", MyGUI::IntCoord(keyLeft, heightCurrent, keyWidth, height), MyGUI::Align::Left | MyGUI::Align::Top);
+                    keyTextBox->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+                    keyTextBox->setTextAlign(MyGUI::Align::Left | MyGUI::Align::VCenter);
+                    keyTextBox->setCaption("Frequency: ");
+                    this->itemsText.push_back(keyTextBox);
 
-                edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top);
-                edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-                edit->setOnlyText(Ogre::StringConverter::toString(simpleSoundComponent->getSound()->getFrequency()));
-                edit->setEditReadOnly(true);
-                this->itemsEdit.push_back(edit);
-                this->heightCurrent += heightStep;
+                    edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top);
+                    edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+                    edit->setOnlyText(Ogre::StringConverter::toString(simpleSoundComponent->getSound()->getFrequency()));
+                    edit->setEditReadOnly(true);
+                    this->itemsEdit.push_back(edit);
+                    this->heightCurrent += heightStep;
 
-                ///////////////////////////////////////////////////
+                    ///////////////////////////////////////////////////
 
-                keyTextBox = mWidgetClient->createWidget<MyGUI::TextBox>("TextBox", MyGUI::IntCoord(keyLeft, heightCurrent, keyWidth, height), MyGUI::Align::Left | MyGUI::Align::Top);
-                keyTextBox->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-                keyTextBox->setTextAlign(MyGUI::Align::Left | MyGUI::Align::VCenter);
-                keyTextBox->setCaption("Channels: ");
-                this->itemsText.push_back(keyTextBox);
+                    keyTextBox = mWidgetClient->createWidget<MyGUI::TextBox>("TextBox", MyGUI::IntCoord(keyLeft, heightCurrent, keyWidth, height), MyGUI::Align::Left | MyGUI::Align::Top);
+                    keyTextBox->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+                    keyTextBox->setTextAlign(MyGUI::Align::Left | MyGUI::Align::VCenter);
+                    keyTextBox->setCaption("Channels: ");
+                    this->itemsText.push_back(keyTextBox);
 
-                edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top);
-                edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-                edit->setOnlyText(Ogre::StringConverter::toString(simpleSoundComponent->getSound()->getChannelCount()));
-                edit->setEditReadOnly(true);
-                this->itemsEdit.push_back(edit);
-                this->heightCurrent += heightStep;
+                    edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top);
+                    edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+                    edit->setOnlyText(Ogre::StringConverter::toString(simpleSoundComponent->getSound()->getChannelCount()));
+                    edit->setEditReadOnly(true);
+                    this->itemsEdit.push_back(edit);
+                    this->heightCurrent += heightStep;
 
-                ///////////////////////////////////////////////////
+                    ///////////////////////////////////////////////////
 
-                keyTextBox = mWidgetClient->createWidget<MyGUI::TextBox>("TextBox", MyGUI::IntCoord(keyLeft, heightCurrent, keyWidth, height), MyGUI::Align::Left | MyGUI::Align::Top);
-                keyTextBox->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-                keyTextBox->setTextAlign(MyGUI::Align::Left | MyGUI::Align::VCenter);
-                keyTextBox->setCaption("Bits per sample: ");
-                this->itemsText.push_back(keyTextBox);
+                    keyTextBox = mWidgetClient->createWidget<MyGUI::TextBox>("TextBox", MyGUI::IntCoord(keyLeft, heightCurrent, keyWidth, height), MyGUI::Align::Left | MyGUI::Align::Top);
+                    keyTextBox->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+                    keyTextBox->setTextAlign(MyGUI::Align::Left | MyGUI::Align::VCenter);
+                    keyTextBox->setCaption("Bits per sample: ");
+                    this->itemsText.push_back(keyTextBox);
 
-                edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top);
-                edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-                edit->setOnlyText(Ogre::StringConverter::toString(simpleSoundComponent->getSound()->getBitsPerSample()));
-                edit->setEditReadOnly(true);
-                this->itemsEdit.push_back(edit);
-                this->heightCurrent += heightStep;
+                    edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top);
+                    edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+                    edit->setOnlyText(Ogre::StringConverter::toString(simpleSoundComponent->getSound()->getBitsPerSample()));
+                    edit->setEditReadOnly(true);
+                    this->itemsEdit.push_back(edit);
+                    this->heightCurrent += heightStep;
 
-                ///////////////////////////////////////////////////
+                    ///////////////////////////////////////////////////
 
-                keyTextBox = mWidgetClient->createWidget<MyGUI::TextBox>("TextBox", MyGUI::IntCoord(keyLeft, heightCurrent, keyWidth, height), MyGUI::Align::Left | MyGUI::Align::Top);
-                keyTextBox->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-                keyTextBox->setTextAlign(MyGUI::Align::Left | MyGUI::Align::VCenter);
-                keyTextBox->setCaption("Data size: ");
-                this->itemsText.push_back(keyTextBox);
+                    keyTextBox = mWidgetClient->createWidget<MyGUI::TextBox>("TextBox", MyGUI::IntCoord(keyLeft, heightCurrent, keyWidth, height), MyGUI::Align::Left | MyGUI::Align::Top);
+                    keyTextBox->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+                    keyTextBox->setTextAlign(MyGUI::Align::Left | MyGUI::Align::VCenter);
+                    keyTextBox->setCaption("Data size: ");
+                    this->itemsText.push_back(keyTextBox);
 
-                edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top);
-                edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-                edit->setOnlyText(Ogre::StringConverter::toString(simpleSoundComponent->getSound()->getDataSize()));
-                edit->setEditReadOnly(true);
-                this->itemsEdit.push_back(edit);
-                this->heightCurrent += heightStep;
+                    edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top);
+                    edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+                    edit->setOnlyText(Ogre::StringConverter::toString(simpleSoundComponent->getSound()->getDataSize()));
+                    edit->setEditReadOnly(true);
+                    this->itemsEdit.push_back(edit);
+                    this->heightCurrent += heightStep;
 
-                j++;
-                simpleSoundComponent = NOWA::makeStrongPtr(gameObject->getComponent<NOWA::SimpleSoundComponent>(j));
+                    j++;
+                    simpleSoundComponent = NOWA::makeStrongPtr(gameObject->getComponent<NOWA::SimpleSoundComponent>(j));
 
-                MyGUI::Widget* separator = mWidgetClient->createWidget<MyGUI::Widget>("Separator3", MyGUI::IntCoord(keyLeft, this->heightCurrent, static_cast<int>(mWidgetClient->getWidth()), height), MyGUI::Align::HStretch | MyGUI::Align::Top);
-                this->itemsText.push_back(separator);
-                this->heightCurrent += heightStep / 2;
+                    MyGUI::Widget* separator = mWidgetClient->createWidget<MyGUI::Widget>("Separator3", MyGUI::IntCoord(keyLeft, this->heightCurrent, static_cast<int>(mWidgetClient->getWidth()), height), MyGUI::Align::HStretch | MyGUI::Align::Top);
+                    this->itemsText.push_back(separator);
+                    this->heightCurrent += heightStep / 2;
+                }
             }
         }
 

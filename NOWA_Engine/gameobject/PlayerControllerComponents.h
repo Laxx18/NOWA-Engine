@@ -12,7 +12,7 @@
 namespace NOWA
 {
 	class PhysicsActiveComponent;
-	class PhysicsRagDollComponent;
+	class PhysicsRagDollComponentV2;
 	class CameraBehaviorComponent;
 	class InputDeviceComponent;
 	class OgreRecastModule;
@@ -145,7 +145,7 @@ namespace NOWA
 
 		PhysicsActiveComponent* getPhysicsComponent(void) const;
 
-		PhysicsRagDollComponent* getPhysicsRagDollComponent(void) const;
+		PhysicsRagDollComponentV2* getPhysicsRagDollComponent(void) const;
 
 		void setRotationSpeed(Ogre::Real rotationSpeed);
 

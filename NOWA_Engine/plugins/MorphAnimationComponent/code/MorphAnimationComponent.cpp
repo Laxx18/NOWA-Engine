@@ -1,5 +1,8 @@
 #include "NOWAPrecompiled.h"
 #include "MorphAnimationComponent.h"
+
+// TODO: Port for item
+#if 0
 #include "utilities/XMLConverter.h"
 #include "modules/LuaScriptApi.h"
 #include "main/EventManager.h"
@@ -1129,3 +1132,5 @@ namespace NOWA
 	}
 
 }; // namespace end
+
+#endif

@@ -422,7 +422,7 @@ namespace NOWA
 
 	Variant* AttributesComponent::getAttributeValueByIndex(unsigned int index) const
 	{
-		if (index > this->attributeNames.size())
+		if (index >= this->attributeNames.size())
 			return nullptr;
 
 		return this->attributeValues[index];
@@ -442,7 +442,7 @@ namespace NOWA
 
 	void AttributesComponent::setAttributeName(const Ogre::String& attributeName, unsigned int index)
 	{
-		if (index > this->attributeNames.size())
+		if (index >= this->attributeNames.size())
 			return;
 		this->attributeNames[index]->setValue(attributeName);
 		// Make a link from value to name for better identification
@@ -451,28 +451,28 @@ namespace NOWA
 
 	Ogre::String AttributesComponent::getAttributeName(unsigned int index)
 	{
-		if (index > this->attributeNames.size())
+		if (index >= this->attributeNames.size())
 			return "";
 		return this->attributeNames[index]->getString();
 	}
 	
 	void AttributesComponent::setAttributeType(const Ogre::String& attributeType, unsigned int index)
 	{
-		if (index > this->attributeTypes.size())
+		if (index >= this->attributeTypes.size())
 			return;
 		this->attributeTypes[index]->setListSelectedValue(attributeType);
 	}
 
 	Ogre::String AttributesComponent::getAttributeType(unsigned int index)
 	{
-		if (index > this->attributeTypes.size())
+		if (index >= this->attributeTypes.size())
 			return "";
 		return this->attributeTypes[index]->getListSelectedValue();
 	}
 
 	bool AttributesComponent::getAttributeValueBool(unsigned int index)
 	{
-		if (index > this->attributeValues.size())
+		if (index >= this->attributeValues.size())
 			return false;
 		return this->attributeValues[index]->getBool();
 	}
@@ -486,49 +486,49 @@ namespace NOWA
 
 	unsigned int AttributesComponent::getAttributeValueUInt(unsigned int index)
 	{
-		if (index > this->attributeValues.size())
+		if (index >= this->attributeValues.size())
 			return 0;
 		return this->attributeValues[index]->getUInt();
 	}
 
 	unsigned long AttributesComponent::getAttributeValueULong(unsigned int index)
 	{
-		if (index > this->attributeValues.size())
+		if (index >= this->attributeValues.size())
 			return 0;
 		return this->attributeValues[index]->getULong();
 	}
 
 	Ogre::String AttributesComponent::getAttributeValueString(unsigned int index)
 	{
-		if (index > this->attributeValues.size())
+		if (index >= this->attributeValues.size())
 			return "";
 		return this->attributeValues[index]->getString();
 	}
 
 	Ogre::Real AttributesComponent::getAttributeValueReal(unsigned int index)
 	{
-		if (index > this->attributeValues.size())
+		if (index >= this->attributeValues.size())
 			return 0.0f;
 		return this->attributeValues[index]->getReal();
 	}
 
 	Ogre::Vector2 AttributesComponent::getAttributeValueVector2(unsigned int index)
 	{
-		if (index > this->attributeValues.size())
+		if (index >= this->attributeValues.size())
 			return Ogre::Vector2::ZERO;
 		return this->attributeValues[index]->getVector2();
 	}
 
 	Ogre::Vector3 AttributesComponent::getAttributeValueVector3(unsigned int index)
 	{
-		if (index > this->attributeValues.size())
+		if (index >= this->attributeValues.size())
 			return Ogre::Vector3::ZERO;
 		return this->attributeValues[index]->getVector3();
 	}
 
 	Ogre::Vector4 AttributesComponent::getAttributeValueVector4(unsigned int index)
 	{
-		if (index > this->attributeValues.size())
+		if (index >= this->attributeValues.size())
 			return Ogre::Vector4::ZERO;
 		return this->attributeValues[index]->getVector4();
 	}
@@ -1077,7 +1077,7 @@ namespace NOWA
 			if (true == this->attributeNames.empty())
 				return false;
 			
-			if (index > this->attributeNames.size())
+			if (index >= this->attributeNames.size())
 				return success;
 			
 			// Check if its the correkt name and set its value

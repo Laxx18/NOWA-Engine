@@ -423,7 +423,7 @@ namespace NOWA
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[LineMeshScaleComponent] Init mesh scale component for game object: " + this->gameObjectPtr->getName());
 
-		if (nullptr ==  this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>())
+		if (nullptr ==  this->gameObjectPtr->getMovableObject<Ogre::Item>())
 		{
 			return false;
 		}

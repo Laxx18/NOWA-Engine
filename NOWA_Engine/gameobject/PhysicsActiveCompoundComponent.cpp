@@ -172,11 +172,7 @@ namespace NOWA
 		if (false == this->meshCompoundConfigFile->getString().empty())
 		{
 			Ogre::String meshName;
-			if (GameObject::ENTITY == this->gameObjectPtr->getType())
-			{
-				meshName = this->gameObjectPtr->getMovableObjectUnsafe<Ogre::v1::Entity>()->getMesh()->getName();
-			}
-			else if (GameObject::ITEM == this->gameObjectPtr->getType())
+			if (GameObject::ITEM == this->gameObjectPtr->getType())
 			{
 				meshName = this->gameObjectPtr->getMovableObjectUnsafe<Ogre::Item>()->getMesh()->getName();
 			}
@@ -372,37 +368,26 @@ namespace NOWA
 				Ogre::String sceneNodeName = "CompoundNode" + Ogre::StringConverter::toString(partsCount++) + "_" + this->gameObjectPtr->getName();
 				Ogre::String meshName = (childElement->first_attribute("name") ? childElement->first_attribute("name")->value() : "");
 
-				Ogre::v1::Entity* entity = nullptr;
 				Ogre::Item* item = nullptr;
 
-				ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsActiveCompoundComponent::createDynamicBody", _4(sceneNodeName, meshName, &entity, &item), {
+				NOWA::GraphicsModule::RenderCommand renderCommand = [this, sceneNodeName, meshName, &item]()
+                {
+                    Ogre::SceneNode* sceneNode = this->gameObjectPtr->getSceneNode()->createChildSceneNode();
+                    sceneNode->setName(sceneNodeName);
 
-					Ogre::SceneNode* sceneNode = this->gameObjectPtr->getSceneNode()->createChildSceneNode();
-					sceneNode->setName(sceneNodeName);
-
-					if (GameObject::ENTITY == this->gameObjectPtr->getType())
-					{
-						entity = this->gameObjectPtr->getSceneManager()->createEntity(meshName);
-						sceneNode->attachObject(entity);
-					}
-					else if (GameObject::ITEM == this->gameObjectPtr->getType())
-					{
-						item = this->gameObjectPtr->getSceneManager()->createItem(meshName);
-						sceneNode->attachObject(item);
-					}
-					sceneNode->setScale(this->initialScale);
-
-				});
+                    if (GameObject::ITEM == this->gameObjectPtr->getType())
+                    {
+                        item = this->gameObjectPtr->getSceneManager()->createItem(meshName);
+                        sceneNode->attachObject(item);
+                    }
+                    sceneNode->setScale(this->initialScale);
+                };
+                NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PhysicsActiveCompoundComponent::createDynamicBody");
 				
 				// scaling also does reposition the collision parts! how nice! Use the created entity part for the convex hull!
 				OgreNewt::CollisionPrimitives::ConvexHull* col = nullptr;
 
-				if (GameObject::ENTITY == this->gameObjectPtr->getType())
-				{
-					col = new OgreNewt::CollisionPrimitives::ConvexHull(
-						this->ogreNewt, entity, this->gameObjectPtr->getCategoryId(), Ogre::Quaternion::IDENTITY, Ogre::Vector3::ZERO, 0.001f, this->initialScale);
-				}
-				else if (GameObject::ITEM == this->gameObjectPtr->getType())
+				if (GameObject::ITEM == this->gameObjectPtr->getType())
 				{
 					col = new OgreNewt::CollisionPrimitives::ConvexHull(
 						this->ogreNewt, item, this->gameObjectPtr->getCategoryId(), Ogre::Quaternion::IDENTITY, Ogre::Vector3::ZERO, 0.001f, this->initialScale);

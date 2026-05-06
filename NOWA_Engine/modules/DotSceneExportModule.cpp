@@ -362,19 +362,13 @@ namespace NOWA
 						if (nullptr != physicsArtifactCompPtr)
 						{
 							Ogre::String meshName;
-							Ogre::v1::Entity* entity = gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
-							if (nullptr != entity)
+							
+							Ogre::Item* item = gameObjectPtr->getMovableObject<Ogre::Item>();
+							if (nullptr != item)
 							{
-								meshName = entity->getMesh()->getName();
+								meshName = item->getMesh()->getName();
 							}
-							else
-							{
-								Ogre::Item* item = gameObjectPtr->getMovableObject<Ogre::Item>();
-								if (nullptr != item)
-								{
-									meshName = item->getMesh()->getName();
-								}
-							}
+
 							// Note: Ply files are outside the scene folders in the parent project folder
 							Ogre::String sourceFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + meshName + ".ply";
 							Ogre::String targetFilePathName = tempFilePath + "/" + meshName + ".ply";
@@ -1175,12 +1169,6 @@ namespace NOWA
 			if (nullptr != gameObject)
 			{
 				bool foundType = false;
-				Ogre::v1::Entity* entity = gameObject->getMovableObject<Ogre::v1::Entity>();
-				if (nullptr != entity)
-				{
-					foundType = true;
-					this->exportEntity(gameObject, entity, nodeXML, doc);
-				}
 				Ogre::Item* item = gameObject->getMovableObject<Ogre::Item>();
 				if (nullptr != item)
 				{
@@ -1235,55 +1223,6 @@ namespace NOWA
 		{
 			//go through all objects recursive that are attached to the scenenodes
 			this->exportNode(nodeIt.getNext(), nodesXML, doc, exportGlobalGameObject, recursive);
-		}
-	}
-
-	void DotSceneExportModule::exportEntity(GameObject* gameObject, Ogre::v1::Entity* entity, rapidxml::xml_node<>* nodeXML, rapidxml::xml_document<>& doc)
-	{
-		// Entity
-		{
-			xml_node<>* entityXML = doc.allocate_node(node_element, "entity");
-			entityXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, entity->getName())));
-
-			// No 'missing.mesh' should be stored, hence check if a mesh could not be loaded and get its original name
-			Ogre::String meshFile;
-			if (false == gameObject->getOriginalMeshNameOnLoadFailure().empty())
-				meshFile = gameObject->getOriginalMeshNameOnLoadFailure();
-			else
-				meshFile = entity->getMesh()->getName();
-
-			// Only calculate bounds for usable world entities
-			if ("LightDirectional.mesh" != meshFile && "LightPoint.mesh" != meshFile && "LightSpot.mesh" != meshFile && "Camera.mesh" != meshFile)
-				this->calculateBounds(entity->getWorldAabbUpdated());
-
-			entityXML->append_attribute(doc.allocate_attribute("meshFile", XMLConverter::ConvertString(doc, meshFile)));
-			entityXML->append_attribute(doc.allocate_attribute("castShadows", XMLConverter::ConvertString(doc, entity->getCastShadows())));
-			entityXML->append_attribute(doc.allocate_attribute("visible", XMLConverter::ConvertString(doc, entity->getVisible())));
-
-			nodeXML->append_node(entityXML);
-
-			// SubEntity
-			{
-				for (unsigned int i = 0; i < gameObject->getDatablockNames().size(); i++)
-				{
-					if (i >= entity->getNumSubEntities())
-						break;
-
-					Ogre::v1::SubEntity* subEntity = entity->getSubEntity(i);
-					xml_node<>* subEntityXML = doc.allocate_node(node_element, "subentity");
-					subEntityXML->append_attribute(doc.allocate_attribute("index", XMLConverter::ConvertString(doc, i)));
-					// Write the original datablock names from game object, not the currently applied one, because it has "__id.." at the end
-					subEntityXML->append_attribute(doc.allocate_attribute("datablockName", XMLConverter::ConvertString(doc, gameObject->getDatablockNames()[i])));
-					entityXML->append_node(subEntityXML);
-				}
-			}
-
-			// UserData
-			{
-				xml_node<>* userDataXML = doc.allocate_node(node_element, "userData");
-				gameObject->writeXML(userDataXML, doc);
-				entityXML->append_node(userDataXML);
-			}
 		}
 	}
 

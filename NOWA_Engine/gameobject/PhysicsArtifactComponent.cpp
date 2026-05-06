@@ -211,14 +211,14 @@ namespace NOWA
 
 		if (false == this->serialize->getBool())
 		{
-			Ogre::v1::Entity* entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
-			if (nullptr != entity)
+			Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
+			if (nullptr != item)
 			{
-				meshName = entity->getMesh()->getName();
+				meshName = item->getMesh()->getName();
 				if (Ogre::StringUtil::match(meshName, "Plane*", true))
 				{
 					// if the mesh name is a plane, the tree collision does not work, so use box
-					Ogre::Vector3 size = entity->getMesh()->getBounds().getSize() * this->initialScale;
+					Ogre::Vector3 size = item->getMesh()->getAabb().getSize() * this->initialScale;
 					size.y = 0.001f;
 					staticCollision = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::Box(this->ogreNewt, size, this->gameObjectPtr->getCategoryId(), Ogre::Quaternion::IDENTITY, Ogre::Vector3::ZERO));
 					// Causes crash, when deleted all bodies!, something is wrong with that!
@@ -226,35 +226,13 @@ namespace NOWA
 				}
 				else
 				{
-					staticCollision = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::TreeCollision(this->ogreNewt, entity, true, this->gameObjectPtr->getCategoryId()));
+					staticCollision = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::TreeCollision(this->ogreNewt, item, true, this->gameObjectPtr->getCategoryId()));
 					// this->ogreNewt->AddSceneCollision(staticCollision, 0);
 				}
 			}
 			else
 			{
-				Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
-				if (nullptr != item)
-				{
-					meshName = item->getMesh()->getName();
-					if (Ogre::StringUtil::match(meshName, "Plane*", true))
-					{
-						// if the mesh name is a plane, the tree collision does not work, so use box
-						Ogre::Vector3 size = item->getMesh()->getAabb().getSize() * this->initialScale;
-						size.y = 0.001f;
-						staticCollision = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::Box(this->ogreNewt, size, this->gameObjectPtr->getCategoryId(), Ogre::Quaternion::IDENTITY, Ogre::Vector3::ZERO));
-						// Causes crash, when deleted all bodies!, something is wrong with that!
-						// this->ogreNewt->AddSceneCollision(staticCollision, 0);
-					}
-					else
-					{
-						staticCollision = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::TreeCollision(this->ogreNewt, item, true, this->gameObjectPtr->getCategoryId()));
-						// this->ogreNewt->AddSceneCollision(staticCollision, 0);
-					}
-				}
-				else
-				{
-					// Foliage type?
-				}
+				// Foliage type?
 			}
 		}
 		else
@@ -431,49 +409,28 @@ namespace NOWA
 		OgreNewt::CollisionPtr staticCollision;
 		if (false == this->serialize->getBool())
 		{
-			Ogre::v1::Entity* entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
-			if (nullptr != entity)
+			Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
+			if (nullptr != item)
 			{
-				meshName = entity->getMesh()->getName();
+				meshName = item->getMesh()->getName();
 				if (Ogre::StringUtil::match(meshName, "Plane*", true))
 				{
 					// if the mesh name is a plane, the tree collision does not work, so use box
 					// Attention: Is this correct?
-					Ogre::Vector3 size = entity->getMesh()->getBounds().getSize() * this->initialScale;
+					Ogre::Vector3 size = item->getMesh()->getAabb().getSize() * this->initialScale;
 					size.y = 0.001f;
 					staticCollision = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::Box(this->ogreNewt, size, this->gameObjectPtr->getCategoryId(),
 						Ogre::Quaternion::IDENTITY, Ogre::Vector3::ZERO));
 				}
 				else
 				{
-					staticCollision = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::TreeCollision(this->ogreNewt, entity, true, this->gameObjectPtr->getCategoryId()));
+					staticCollision = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::TreeCollision(this->ogreNewt, item, true, this->gameObjectPtr->getCategoryId()));
 				}
 			}
 			else
 			{
-				Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
-				if (nullptr != item)
-				{
-					meshName = item->getMesh()->getName();
-					if (Ogre::StringUtil::match(meshName, "Plane*", true))
-					{
-						// if the mesh name is a plane, the tree collision does not work, so use box
-						// Attention: Is this correct?
-						Ogre::Vector3 size = item->getMesh()->getAabb().getSize() * this->initialScale;
-						size.y = 0.001f;
-						staticCollision = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::Box(this->ogreNewt, size, this->gameObjectPtr->getCategoryId(),
-							Ogre::Quaternion::IDENTITY, Ogre::Vector3::ZERO));
-					}
-					else
-					{
-						staticCollision = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::TreeCollision(this->ogreNewt, item, true, this->gameObjectPtr->getCategoryId()));
-					}
-				}
-				else
-				{
-					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsArtifactComponent] Error cannot create static body, because the game object has no entity/item with mesh for game object: " + this->gameObjectPtr->getName());
-					throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[PhysicsArtifactComponent] Error cannot create static body, because the game object has no entity/item with mesh for game object: " + this->gameObjectPtr->getName() + ".\n", "NOWA");
-				}
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsArtifactComponent] Error cannot create static body, because the game object has no entity/item with mesh for game object: " + this->gameObjectPtr->getName());
+				throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[PhysicsArtifactComponent] Error cannot create static body, because the game object has no entity/item with mesh for game object: " + this->gameObjectPtr->getName() + ".\n", "NOWA");
 			}
 		}
 		else
@@ -516,16 +473,7 @@ namespace NOWA
 		}
 		else
 		{
-			Ogre::String meshName;
-			if (GameObject::ENTITY == this->gameObjectPtr->getType())
-			{
-				meshName = this->gameObjectPtr->getMovableObjectUnsafe<Ogre::v1::Entity>()->getMesh()->getName();
-			}
-			else
-			{
-				meshName = this->gameObjectPtr->getMovableObjectUnsafe<Ogre::Item>()->getMesh()->getName();
-			}
-
+			Ogre::String meshName = this->gameObjectPtr->getMovableObjectUnsafe<Ogre::Item>()->getMesh()->getName();
 			Ogre::String sourceCollisionFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + meshName + ".ply";
 			try
 			{

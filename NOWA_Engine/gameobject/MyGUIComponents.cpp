@@ -3783,7 +3783,7 @@ namespace NOWA
 	
 	Ogre::String MyGUIListBoxComponent::getItemText(unsigned int index) const
 	{
-		if (index > this->items.size())
+		if (index >= this->items.size())
 			return "";
 		return this->items[index]->getString();
 	}
@@ -3814,7 +3814,7 @@ namespace NOWA
 
 	void MyGUIListBoxComponent::insertItem(int index, const Ogre::String& itemText)
 	{
-		if (index > this->items.size())
+		if (index >= this->items.size())
 			index = static_cast<unsigned int>(this->items.size()) - 1;
 
 		this->itemCount->setValue(this->itemCount->getUInt() + 1);
@@ -4506,7 +4506,7 @@ namespace NOWA
 	
 	Ogre::String MyGUIComboBoxComponent::getItemText(unsigned int index) const
 	{
-		if (index > this->items.size())
+		if (index >= this->items.size())
 			return "";
 		return this->items[index]->getString();
 	}
@@ -4531,7 +4531,7 @@ namespace NOWA
 
 	void MyGUIComboBoxComponent::insertItem(int index, const Ogre::String& itemText)
 	{
-		if (index > this->items.size())
+		if (index >= this->items.size())
 			index = static_cast<unsigned int>(this->items.size()) - 1;
 
 		this->itemCount->setValue(this->itemCount->getUInt() + 1);
@@ -4928,14 +4928,14 @@ namespace NOWA
 	
 	void MyGUIMessageBoxComponent::setStyle(unsigned int index, const Ogre::String& style)
 	{
-		if (index > this->styles.size())
+		if (index >= this->styles.size())
 			index = static_cast<unsigned int>(this->styles.size()) - 1;
 		this->styles[index]->setListSelectedValue(style);
 	}
 	
 	Ogre::String MyGUIMessageBoxComponent::getStyle(unsigned int index) const
 	{
-		if (index > this->styles.size())
+		if (index >= this->styles.size())
 			return "";
 		return this->styles[index]->getListSelectedValue();
 	}

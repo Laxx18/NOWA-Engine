@@ -1470,7 +1470,7 @@ namespace NOWA
 
 	void AtmosphereComponent::setTime(unsigned int index, const Ogre::String& time)
 	{
-		if (index > this->times.size())
+		if (index >= this->times.size())
 		{
 			index = static_cast<unsigned int>(this->times.size()) - 1;
 		}
@@ -1499,7 +1499,7 @@ namespace NOWA
 
 	void AtmosphereComponent::setDensityCoefficient(unsigned int index, Ogre::Real densityCoefficient)
 	{
-		if (index > this->densityCoefficients.size())
+		if (index >= this->densityCoefficients.size())
 			index = static_cast<unsigned int>(this->densityCoefficients.size()) - 1;
 
 		if (densityCoefficient < 0.0f)
@@ -1528,7 +1528,7 @@ namespace NOWA
 
 	void AtmosphereComponent::setDensityDiffusion(unsigned int index, Ogre::Real densityDiffusion)
 	{
-		if (index > this->densityDiffusions.size())
+		if (index >= this->densityDiffusions.size())
 			index = static_cast<unsigned int>(this->densityDiffusions.size()) - 1;
 
 		if (densityDiffusion < 0.0f)
@@ -1557,7 +1557,7 @@ namespace NOWA
 
 	void AtmosphereComponent::setHorizonLimit(unsigned int index, Ogre::Real horizonLimit)
 	{
-		if (index > this->horizonLimits.size())
+		if (index >= this->horizonLimits.size())
 		{
 			index = static_cast<unsigned int>(this->horizonLimits.size()) - 1;
 		}
@@ -1586,7 +1586,7 @@ namespace NOWA
 
 	void AtmosphereComponent::setSunPower(unsigned int index, Ogre::Real sunPower)
 	{
-		if (index > this->sunPowers.size())
+		if (index >= this->sunPowers.size())
 		{
 			index = static_cast<unsigned int>(this->sunPowers.size()) - 1;
 		}
@@ -1616,7 +1616,7 @@ namespace NOWA
 
 	void AtmosphereComponent::setSkyPower(unsigned int index, Ogre::Real skyPower)
 	{
-		if (index > this->skyPowers.size())
+		if (index >= this->skyPowers.size())
 		{
 			index = static_cast<unsigned int>(this->skyPowers.size()) - 1;
 		}
@@ -1648,7 +1648,7 @@ namespace NOWA
 
 	void AtmosphereComponent::setSkyColor(unsigned int index, const Ogre::Vector3& skyColor)
 	{
-		if (index > this->skyColors.size())
+		if (index >= this->skyColors.size())
 		{
 			index = static_cast<unsigned int>(this->skyColors.size()) - 1;
 		}
@@ -1704,7 +1704,7 @@ namespace NOWA
 
 	void AtmosphereComponent::setFogDensity(unsigned int index, Ogre::Real fogDensity)
 	{
-		if (index > this->fogDensities.size())
+		if (index >= this->fogDensities.size())
 		{
 			index = static_cast<unsigned int>(this->fogDensities.size()) - 1;
 		}
@@ -1738,7 +1738,7 @@ namespace NOWA
 
 	void AtmosphereComponent::setFogBreakMinBrightness(unsigned int index, Ogre::Real fogBreakMinBrightness)
 	{
-		if (index > this->fogBreakMinBrightnesses.size())
+		if (index >= this->fogBreakMinBrightnesses.size())
 		{
 			index = static_cast<unsigned int>(this->fogBreakMinBrightnesses.size()) - 1;
 		}
@@ -1767,7 +1767,7 @@ namespace NOWA
 
 	void AtmosphereComponent::setFogBreakFalloff(unsigned int index, Ogre::Real fogBreakFalloff)
 	{
-		if (index > this->fogBreakFalloffs.size())
+		if (index >= this->fogBreakFalloffs.size())
 		{
 			index = static_cast<unsigned int>(this->fogBreakFalloffs.size()) - 1;
 		}
@@ -1797,7 +1797,7 @@ namespace NOWA
 
 	void AtmosphereComponent::setLinkedLightPower(unsigned int index, Ogre::Real linkedLightPower)
 	{
-		if (index > this->linkedLightPowers.size())
+		if (index >= this->linkedLightPowers.size())
 		{
 			index = static_cast<unsigned int>(this->linkedLightPowers.size()) - 1;
 		}
@@ -1828,7 +1828,7 @@ namespace NOWA
 
 	void AtmosphereComponent::setLinkedAmbientUpperPower(unsigned int index, Ogre::Real linkedAmbientUpperPower)
 	{
-		if (index > this->linkedSceneAmbientUpperPowers.size())
+		if (index >= this->linkedSceneAmbientUpperPowers.size())
 		{
 			index = static_cast<unsigned int>(this->linkedSceneAmbientUpperPowers.size()) - 1;
 		}
@@ -1857,7 +1857,7 @@ namespace NOWA
 
 	void AtmosphereComponent::setLinkedAmbientLowerPower(unsigned int index, Ogre::Real linkedAmbientLowerPower)
 	{
-		if (index > this->linkedSceneAmbientLowerPowers.size())
+		if (index >= this->linkedSceneAmbientLowerPowers.size())
 		{
 			index = static_cast<unsigned int>(this->linkedSceneAmbientLowerPowers.size()) - 1;
 		}
@@ -1886,7 +1886,7 @@ namespace NOWA
 
 	void AtmosphereComponent::setEnvmapScale(unsigned int index, Ogre::Real envmapScale)
 	{
-		if (index > this->envmapScales.size())
+		if (index >= this->envmapScales.size())
 		{
 			index = static_cast<unsigned int>(this->envmapScales.size()) - 1;
 		}

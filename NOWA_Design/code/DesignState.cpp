@@ -2018,14 +2018,6 @@ void DesignState::onMenuItemSelected(MyGUI::MenuCtrl* menu, MyGUI::MenuItem* ite
 			{
 				meshName = item->getMesh()->getName();
 			}
-			else
-			{
-				Ogre::v1::Entity* entity = this->editorManager->getSelectionManager()->getSelectedGameObjects().cbegin()->second.gameObject->getMovableObject<Ogre::v1::Entity>();
-				if (nullptr != entity)
-				{
-					meshName = entity->getMesh()->getName();
-				}
-			}
 		}
 
 		auto affectedGameObjects = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromMeshName(meshName);
@@ -2055,25 +2047,6 @@ void DesignState::onMenuItemSelected(MyGUI::MenuCtrl* menu, MyGUI::MenuItem* ite
 					}
 					datablockName = tempDatablockName;
 					break;
-				}
-			}
-			else
-			{
-				Ogre::v1::Entity* entity = this->editorManager->getSelectionManager()->getSelectedGameObjects().cbegin()->second.gameObject->getMovableObject<Ogre::v1::Entity>();
-				if (nullptr != entity)
-				{
-					// Later check, if the entity has maybe a different type of data block as PBS, such as Toon, Unlit etc.
-					for (size_t i = 0; i < entity->getNumSubEntities(); i++)
-					{
-						auto datablock = entity->getSubEntity(i)->getDatablock();
-						Ogre::String tempDatablockName;
-						if (nullptr != datablock)
-						{
-							tempDatablockName = *datablock->getNameStr();
-						}
-						datablockName = tempDatablockName;
-						break;
-					}
 				}
 			}
 		}
