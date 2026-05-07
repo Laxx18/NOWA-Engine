@@ -252,27 +252,35 @@ namespace NOWA
 	}
 
 	void AnimationComponentV2::resetAnimation(void)
-	{
-		if (nullptr != this->animationBlender)
-		{
-            NOWA::GraphicsModule::RenderCommand command = [this]()
+    {
+        if (nullptr == this->animationBlender)
+        {
+            return;
+        }
+
+        NOWA::GraphicsModule::RenderCommand command = [this]()
+        {
+            // Disable and zero all live animation pointers
+            if (nullptr != this->animationBlender->getSource())
             {
-                if (nullptr != this->animationBlender->getSource())
-                {
-                    this->animationBlender->getSource()->setEnabled(false);
-                    this->animationBlender->getSource()->mWeight = 0.0f;
-                    this->animationBlender->getSource()->setTime(0.0f);
-                }
-                if (nullptr != this->animationBlender->getTarget())
-                {
-                    this->animationBlender->getTarget()->setEnabled(false);
-                    this->animationBlender->getTarget()->mWeight = 0.0f;
-                    this->animationBlender->getTarget()->setTime(0.0f);
-                }
-            };
-            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(command), "AnimationComponentV2::resetAnimation");
-		}
-	}
+                this->animationBlender->getSource()->setEnabled(false);
+                this->animationBlender->getSource()->mWeight = 0.0f;
+                this->animationBlender->getSource()->setTime(0.0f);
+            }
+            if (nullptr != this->animationBlender->getTarget())
+            {
+                this->animationBlender->getTarget()->setEnabled(false);
+                this->animationBlender->getTarget()->mWeight = 0.0f;
+                this->animationBlender->getTarget()->setTime(0.0f);
+            }
+
+            // *** CRITICAL: reset blender internal state ***
+            // Without this, the persistent addTime closure continues running
+            // with timeleft > 0 after disconnect, re-enabling animations on its own.
+            this->animationBlender->resetBlendState();
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(command), "AnimationComponentV2::resetAnimation");
+    }
 
 	void AnimationComponentV2::actualizeValue(Variant* attribute)
 	{

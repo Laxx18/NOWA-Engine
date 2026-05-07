@@ -1244,7 +1244,7 @@ namespace NOWA
                 return;
             }
 
-            Ogre::CompositorWorkspaceDef* workspaceDef = this->workspace->getCompositorManager()->getWorkspaceDefinition(this->workspaceName);
+            Ogre::CompositorWorkspaceDef* workspaceDef = this->compositorManager->getWorkspaceDefinition(this->workspaceName);
 
             workspaceDef->clearAllInterNodeConnections();
 
@@ -1319,6 +1319,16 @@ namespace NOWA
                         lastInNode = (*it2)->getName();
                         workspaceDef->connect(outNodeName, 0, lastInNode, 0);
                         workspaceDef->connect(outNodeName, 1, lastInNode, 1);
+
+                        // Important for generic depth texture usage!
+                        // For depth based compositor effects connect depth texture to channel
+                        {
+                            const Ogre::CompositorNodeDef* inNodeDef = this->compositorManager->getNodeDefinition(lastInNode);
+                            if (inNodeDef->getNumInputChannels() >= 3)
+                            {
+                                workspaceDef->connect(this->renderingNodeName, channelDepthTexture, lastInNode, 2);
+                            }
+                        }
                     }
 
                     it = it2 - 1;
@@ -2396,6 +2406,38 @@ namespace NOWA
                 volLightDef->setNumOutputChannels(2);
                 volLightDef->mapOutputChannel(0, "rt_output");
                 volLightDef->mapOutputChannel(1, "rt_input");
+            }
+
+            if (!this->compositorManager->hasNodeDefinition("Fog"))
+            {
+                Ogre::CompositorNodeDef* fogDef = compositorManager->addNodeDefinition("Fog");
+
+                // Input channels — standard in 0/1 + depth on in 2
+                fogDef->addTextureSourceName("rt_input", 0, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
+                fogDef->addTextureSourceName("rt_output", 1, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
+                fogDef->addTextureSourceName("depthTexture", 2, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
+
+                fogDef->mCustomIdentifier = "Ogre/Postprocess";
+
+                // Single target pass — no intermediate RTs needed
+                fogDef->setNumTargetPass(1);
+
+                {
+                    Ogre::CompositorTargetDef* targetDef = fogDef->addTargetPass("rt_output");
+
+                    auto* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
+
+                    passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
+                    passQuad->mMaterialName = "Postprocess/Fog";
+                    passQuad->addQuadTextureSource(0, "rt_input");     // scene colour -> t0
+                    passQuad->addQuadTextureSource(1, "depthTexture"); // depth        -> t1
+                    passQuad->mProfilingId = "NOWA_Post_Effect_Fog_Pass_Quad";
+                }
+
+                // Output channels — standard ping-pong contract
+                fogDef->setNumOutputChannels(2);
+                fogDef->mapOutputChannel(0, "rt_output");
+                fogDef->mapOutputChannel(1, "rt_input");
             }
         };
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(command), "WorkspaceBaseComponent::createCompositorEffectsFromCode");

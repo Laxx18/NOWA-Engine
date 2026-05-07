@@ -250,11 +250,11 @@ namespace NOWA
             staticCollision = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::Null(this->ogreNewt));
 		}
 
-		this->physicsBody = new OgreNewt::Body(this->ogreNewt, this->gameObjectPtr->getSceneManager(), staticCollision);
+		// Non movable bodies are kinematic!
+		this->physicsBody = new OgreNewt::Body(this->ogreNewt, this->gameObjectPtr->getSceneManager(), staticCollision, true);
 		NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->registerRenderCallbackForBody(this->physicsBody);
 
-		// Set mass to 0 = infinity = static
-		this->physicsBody->setMassMatrix(0.0f, Ogre::Vector3::ZERO);
+		// Its prohibited to set mass for non movable bodies!
 
 		this->physicsBody->setUserData(OgreNewt::Any(dynamic_cast<PhysicsComponent*>(this)));
 
@@ -327,11 +327,9 @@ namespace NOWA
         }
 
         // Create body
-        this->physicsBody = new OgreNewt::Body(this->ogreNewt, this->gameObjectPtr->getSceneManager(), compoundCollision);
+        this->physicsBody = new OgreNewt::Body(this->ogreNewt, this->gameObjectPtr->getSceneManager(), compoundCollision, true);
         NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->registerRenderCallbackForBody(this->physicsBody);
 
-        // Set mass to 0 = static
-        this->physicsBody->setMassMatrix(0.0f, Ogre::Vector3::ZERO);
         this->physicsBody->setUserData(OgreNewt::Any(dynamic_cast<PhysicsComponent*>(this)));
         this->physicsBody->attachNode(this->gameObjectPtr->getSceneNode());
 
@@ -387,7 +385,6 @@ namespace NOWA
             if (compoundCollision)
             {
                 this->physicsBody->setCollision(compoundCollision);
-                this->physicsBody->setMassMatrix(0.0f, Ogre::Vector3::ZERO);
             }
 
 			// Re-apply material group ID — reCreateCollision creates a fresh body
@@ -455,8 +452,6 @@ namespace NOWA
 
 		// Set the new collision hull
 		this->physicsBody->setCollision(staticCollision);
-
-		this->physicsBody->setMassMatrix(0.0f, Ogre::Vector3::ZERO);
 
 		// Re-apply material group ID — reCreateCollision creates a fresh body
         // which resets m_shapeMaterial.m_userId to 0

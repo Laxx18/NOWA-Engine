@@ -6,6 +6,7 @@
 #include "WorkspaceComponents.h"
 #include "main/Events.h"
 #include "main/AppStateManager.h"
+#include "modules/LuaScriptApi.h"
 
 namespace NOWA
 {
@@ -1486,346 +1487,6 @@ namespace NOWA
 
 	///////////////////////////////////////////////////////////////////////////////////////////////
 
-	CompositorEffectDepthOfFieldComponent::CompositorEffectDepthOfFieldComponent()
-		: CompositorEffectBaseComponent(),
-		pass(nullptr)
-	{
-		this->effectName = "Dof";
-	}
-
-	CompositorEffectDepthOfFieldComponent::~CompositorEffectDepthOfFieldComponent()
-	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[CompositorEffectDepthOfFieldComponent] Destructor compositor effect depth of field component for game object: " + this->gameObjectPtr->getName());
-		this->pass = nullptr;
-	}
-
-	bool CompositorEffectDepthOfFieldComponent::init(rapidxml::xml_node<>*& propertyElement)
-	{
-		bool success = CompositorEffectBaseComponent::init(propertyElement);
-
-		return true;
-	}
-
-	GameObjectCompPtr CompositorEffectDepthOfFieldComponent::clone(GameObjectPtr clonedGameObjectPtr)
-	{
-		CompositorEffectDepthOfFieldCompPtr clonedCompPtr(boost::make_shared<CompositorEffectDepthOfFieldComponent>());
-
-
-		clonedCompPtr->setActivated(this->activated->getBool());
-
-		clonedGameObjectPtr->addComponent(clonedCompPtr);
-		clonedCompPtr->setOwner(clonedGameObjectPtr);
-
-		GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
-		return clonedCompPtr;
-	}
-
-	bool CompositorEffectDepthOfFieldComponent::postInit(void)
-	{
-		bool success = CompositorEffectBaseComponent::postInit();
-
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[CompositorEffectSharpenEdgesComponent] Init compositor effect depth of field component for game object: " + this->gameObjectPtr->getName());
-
-		Ogre::String materialName0 = "Postprocess/SharpenEdges";
-
-		this->material = Ogre::MaterialManager::getSingletonPtr()->getByName(materialName0);
-		if (true == this->material.isNull())
-		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[CompositorEffectDepthOfFieldComponent] Could not set: " + this->effectName
-															+ " because the material: '" + materialName0 + "' does not exist!");
-			return false;
-		}
-
-		Ogre::Material* material0 = this->material.getPointer();
-		this->pass = material0->getTechnique(0)->getPass(0);
-
-		return success;
-	}
-
-	void CompositorEffectDepthOfFieldComponent::actualizeValue(Variant* attribute)
-	{
-		CompositorEffectBaseComponent::actualizeValue(attribute);
-	}
-
-	void CompositorEffectDepthOfFieldComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
-	{
-		// 2 = int
-		// 6 = real
-		// 7 = string
-		// 8 = vector2
-		// 9 = vector3
-		// 10 = vector4 -> also quaternion
-		// 12 = bool
-		CompositorEffectBaseComponent::writeXML(propertiesXML, doc);
-	}
-
-	Ogre::String CompositorEffectDepthOfFieldComponent::getClassName(void) const
-	{
-		return "CompositorEffectDepthOfFieldComponent";
-	}
-
-	Ogre::String CompositorEffectDepthOfFieldComponent::getParentClassName(void) const
-	{
-		return "CompositorEffectBaseComponent";
-	}
-
-	///////////////////////////////////////////////////////////////////////////////////////////////
-
-	CompositorEffectHeightFogComponent::CompositorEffectHeightFogComponent()
-		: CompositorEffectBaseComponent(),
-		pass(nullptr)
-	{
-		this->effectName = "HeightFog";
-	}
-
-	CompositorEffectHeightFogComponent::~CompositorEffectHeightFogComponent()
-	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[CompositorEffectHeightFogComponent] Destructor compositor effect height fog component for game object: " + this->gameObjectPtr->getName());
-		this->pass = nullptr;
-	}
-
-	bool CompositorEffectHeightFogComponent::init(rapidxml::xml_node<>*& propertyElement)
-	{
-		bool success = CompositorEffectBaseComponent::init(propertyElement);
-
-		return true;
-	}
-
-	GameObjectCompPtr CompositorEffectHeightFogComponent::clone(GameObjectPtr clonedGameObjectPtr)
-	{
-		CompositorEffectHeightFogCompPtr clonedCompPtr(boost::make_shared<CompositorEffectHeightFogComponent>());
-
-
-		clonedCompPtr->setActivated(this->activated->getBool());
-
-		clonedGameObjectPtr->addComponent(clonedCompPtr);
-		clonedCompPtr->setOwner(clonedGameObjectPtr);
-
-		GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
-		return clonedCompPtr;
-	}
-
-	bool CompositorEffectHeightFogComponent::postInit(void)
-	{
-		bool success = CompositorEffectBaseComponent::postInit();
-
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[CompositorEffectHeightFogComponent] Init compositor effect height fog component for game object: " + this->gameObjectPtr->getName());
-
-		Ogre::String materialName0 = "Postprocess/HeightFog";
-
-		this->material = Ogre::MaterialManager::getSingletonPtr()->getByName(materialName0);
-		if (true == this->material.isNull())
-		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[CompositorEffectHeightFogComponent] Could not set: " + this->effectName
-															+ " because the material: '" + materialName0 + "' does not exist!");
-			return false;
-		}
-
-		Ogre::Material* material0 = this->material.getPointer();
-		this->pass = material0->getTechnique(0)->getPass(0);
-
-		return success;
-	}
-
-	void CompositorEffectHeightFogComponent::actualizeValue(Variant* attribute)
-	{
-		CompositorEffectBaseComponent::actualizeValue(attribute);
-	}
-
-	void CompositorEffectHeightFogComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
-	{
-		// 2 = int
-		// 6 = real
-		// 7 = string
-		// 8 = vector2
-		// 9 = vector3
-		// 10 = vector4 -> also quaternion
-		// 12 = bool
-		CompositorEffectBaseComponent::writeXML(propertiesXML, doc);
-	}
-
-	Ogre::String CompositorEffectHeightFogComponent::getClassName(void) const
-	{
-		return "CompositorEffectHeightFogComponent";
-	}
-
-	Ogre::String CompositorEffectHeightFogComponent::getParentClassName(void) const
-	{
-		return "CompositorEffectBaseComponent";
-	}
-
-	///////////////////////////////////////////////////////////////////////////////////////////////
-
-	CompositorEffectFogComponent::CompositorEffectFogComponent()
-		: CompositorEffectBaseComponent(),
-		pass(nullptr)
-	{
-		this->effectName = "Fog";
-	}
-
-	CompositorEffectFogComponent::~CompositorEffectFogComponent()
-	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[CompositorEffectFogComponent] Destructor compositor effect fog component for game object: " + this->gameObjectPtr->getName());
-		this->pass = nullptr;
-	}
-
-	bool CompositorEffectFogComponent::init(rapidxml::xml_node<>*& propertyElement)
-	{
-		bool success = CompositorEffectBaseComponent::init(propertyElement);
-
-		return true;
-	}
-
-	GameObjectCompPtr CompositorEffectFogComponent::clone(GameObjectPtr clonedGameObjectPtr)
-	{
-		CompositorEffectFogCompPtr clonedCompPtr(boost::make_shared<CompositorEffectFogComponent>());
-
-
-		clonedCompPtr->setActivated(this->activated->getBool());
-
-		clonedGameObjectPtr->addComponent(clonedCompPtr);
-		clonedCompPtr->setOwner(clonedGameObjectPtr);
-
-		GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
-		return clonedCompPtr;
-	}
-
-	bool CompositorEffectFogComponent::postInit(void)
-	{
-		bool success = CompositorEffectBaseComponent::postInit();
-
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[CompositorEffectFogComponent] Init compositor effect fog component for game object: " + this->gameObjectPtr->getName());
-
-		Ogre::String materialName0 = "Postprocess/Fog";
-
-		this->material = Ogre::MaterialManager::getSingletonPtr()->getByName(materialName0);
-		if (true == this->material.isNull())
-		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[CompositorEffectFogComponent] Could not set: " + this->effectName
-															+ " because the material: '" + materialName0 + "' does not exist!");
-			return false;
-		}
-
-		Ogre::Material* material0 = this->material.getPointer();
-		this->pass = material0->getTechnique(0)->getPass(0);
-
-		return success;
-	}
-
-	void CompositorEffectFogComponent::actualizeValue(Variant* attribute)
-	{
-		CompositorEffectBaseComponent::actualizeValue(attribute);
-	}
-
-	void CompositorEffectFogComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
-	{
-		// 2 = int
-		// 6 = real
-		// 7 = string
-		// 8 = vector2
-		// 9 = vector3
-		// 10 = vector4 -> also quaternion
-		// 12 = bool
-		CompositorEffectBaseComponent::writeXML(propertiesXML, doc);
-	}
-
-	Ogre::String CompositorEffectFogComponent::getClassName(void) const
-	{
-		return "CompositorEffectFogComponent";
-	}
-
-	Ogre::String CompositorEffectFogComponent::getParentClassName(void) const
-	{
-		return "CompositorEffectBaseComponent";
-	}
-
-	///////////////////////////////////////////////////////////////////////////////////////////////
-
-	CompositorEffectLightShaftsComponent::CompositorEffectLightShaftsComponent()
-		: CompositorEffectBaseComponent(),
-		pass(nullptr)
-	{
-		this->effectName = "LightShafts";
-	}
-
-	CompositorEffectLightShaftsComponent::~CompositorEffectLightShaftsComponent()
-	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[CompositorEffectLightShaftsComponent] Destructor compositor effect light shafts component for game object: " + this->gameObjectPtr->getName());
-		this->pass = nullptr;
-	}
-
-	bool CompositorEffectLightShaftsComponent::init(rapidxml::xml_node<>*& propertyElement)
-	{
-		bool success = CompositorEffectBaseComponent::init(propertyElement);
-
-		return true;
-	}
-
-	GameObjectCompPtr CompositorEffectLightShaftsComponent::clone(GameObjectPtr clonedGameObjectPtr)
-	{
-		CompositorEffectLightShaftsCompPtr clonedCompPtr(boost::make_shared<CompositorEffectLightShaftsComponent>());
-
-
-		clonedCompPtr->setActivated(this->activated->getBool());
-
-		clonedGameObjectPtr->addComponent(clonedCompPtr);
-		clonedCompPtr->setOwner(clonedGameObjectPtr);
-
-		GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
-		return clonedCompPtr;
-	}
-
-	bool CompositorEffectLightShaftsComponent::postInit(void)
-	{
-		bool success = CompositorEffectBaseComponent::postInit();
-
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[CompositorEffectFogComponent] Init compositor effect light shafts component for game object: " + this->gameObjectPtr->getName());
-
-		Ogre::String materialName0 = "Postprocess/LightShafts";
-
-		this->material = Ogre::MaterialManager::getSingletonPtr()->getByName(materialName0);
-		if (true == this->material.isNull())
-		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[CompositorEffectLightShaftsComponent] Could not set: " + this->effectName
-															+ " because the material: '" + materialName0 + "' does not exist!");
-			return false;
-		}
-
-		Ogre::Material* material0 = this->material.getPointer();
-		this->pass = material0->getTechnique(0)->getPass(0);
-
-		return success;
-	}
-
-	void CompositorEffectLightShaftsComponent::actualizeValue(Variant* attribute)
-	{
-		CompositorEffectBaseComponent::actualizeValue(attribute);
-	}
-
-	void CompositorEffectLightShaftsComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
-	{
-		// 2 = int
-		// 6 = real
-		// 7 = string
-		// 8 = vector2
-		// 9 = vector3
-		// 10 = vector4 -> also quaternion
-		// 12 = bool
-		CompositorEffectBaseComponent::writeXML(propertiesXML, doc);
-	}
-
-	Ogre::String CompositorEffectLightShaftsComponent::getClassName(void) const
-	{
-		return "CompositorEffectLightShaftsComponent";
-	}
-
-	Ogre::String CompositorEffectLightShaftsComponent::getParentClassName(void) const
-	{
-		return "CompositorEffectBaseComponent";
-	}
-
-	///////////////////////////////////////////////////////////////////////////////////////////////
-
 	CompositorEffectCartoonComponent::CompositorEffectCartoonComponent()
 		: CompositorEffectBaseComponent(),
         edgePass(nullptr),
@@ -1839,11 +1500,11 @@ namespace NOWA
         this->effectName = "Cartoon";
 
         // Describe reasonable value ranges for the editor
-        this->edgeThreshold->setConstraints(0.0f, 1.0f);
-        this->edgeStrength->setConstraints(0.0f, 5.0f);
-        this->numBands->setConstraints(2.0f, 16.0f);
-        this->saturation->setConstraints(0.0f, 3.0f);
-        this->edgeDarkness->setConstraints(0.0f, 1.0f);
+        this->edgeThreshold->setDescription("Controls the edge detection sensitivity. Lower values detect more edges.");
+        this->edgeStrength->setDescription("Controls the intensity and visibility of the cartoon outlines.");
+        this->numBands->setDescription("Controls the number of color shading bands used for the cartoon effect.");
+        this->saturation->setDescription("Controls the color saturation of the final cartoon image.");
+        this->edgeDarkness->setDescription("Controls how dark the detected outline edges appear.");
     }
 
     CompositorEffectCartoonComponent::~CompositorEffectCartoonComponent()
@@ -2129,6 +1790,13 @@ namespace NOWA
         this->decay->setConstraints(0.90f, 1.0f);
         this->density->setConstraints(0.1f, 1.0f);
         this->exposure->setConstraints(0.01f, 2.0f);
+
+		this->godRayStrength->setDescription("Controls the overall intensity of the volumetric light and god ray effect.");
+        this->sunThreshold->setDescription("Defines the brightness threshold required for light scattering contribution.");
+        this->sunRadius->setDescription("Controls the apparent size of the light source used for the god ray effect.");
+        this->decay->setDescription("Controls how quickly volumetric light fades over distance.");
+        this->density->setDescription("Controls the sampling density of the volumetric light scattering effect.");
+        this->exposure->setDescription("Controls the exposure multiplier applied to the volumetric lighting.");
     }
 
     CompositorEffectVolumetricLightComponent::~CompositorEffectVolumetricLightComponent()
@@ -2209,6 +1877,20 @@ namespace NOWA
         GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
 
         return clonedCompPtr;
+    }
+
+    bool CompositorEffectVolumetricLightComponent::connect(void)
+    {
+        CompositorEffectBaseComponent::connect();
+
+        return true;
+    }
+
+    bool CompositorEffectVolumetricLightComponent::disconnect(void)
+    {
+        CompositorEffectBaseComponent::disconnect();
+
+        return true;
     }
 
     bool CompositorEffectVolumetricLightComponent::postInit(void)
@@ -2369,6 +2051,11 @@ namespace NOWA
 
     void CompositorEffectVolumetricLightComponent::update(Ogre::Real dt, bool notSimulating)
     {
+        if (true == notSimulating)
+        {
+            return;
+        }
+
         if (nullptr == this->sunLight)
         {
             return;
@@ -2610,10 +2297,18 @@ namespace NOWA
         return this->tint->getVector3();
     }
 
-	void CompositorEffectVolumetricLightComponent::createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass)
+	CompositorEffectVolumetricLightComponent* getCompositorEffectVolumetricLightComponent(GameObject* gameObject)
     {
-#if 0
-		// TODO: Necessary? If yes documenation is missing.
+        return makeStrongPtr<CompositorEffectVolumetricLightComponent>(gameObject->getComponent<CompositorEffectVolumetricLightComponent>()).get();
+    }
+
+    CompositorEffectVolumetricLightComponent* getCompositorEffectVolumetricLightComponentFromName(GameObject* gameObject, const Ogre::String& name)
+    {
+        return makeStrongPtr<CompositorEffectVolumetricLightComponent>(gameObject->getComponentFromName<CompositorEffectVolumetricLightComponent>(name)).get();
+    }
+
+    void CompositorEffectVolumetricLightComponent::createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass)
+    {
         luabind::module(lua)
 		[
 			luabind::class_<CompositorEffectVolumetricLightComponent, GameObjectComponent>("CompositorEffectVolumetricLightComponent")
@@ -2634,7 +2329,499 @@ namespace NOWA
             .def("setTint", &CompositorEffectVolumetricLightComponent::setTint)
             .def("getTint", &CompositorEffectVolumetricLightComponent::getTint)
 		];
-#endif
+
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectVolumetricLightComponent", "class inherits GameObjectComponent", getStaticInfoText());
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectVolumetricLightComponent", "void setLightId(string lightId)", "Sets the light game object id used as the volumetric light source.");
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectVolumetricLightComponent", "string getLightId()", "Gets the current volumetric light source game object id.");
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectVolumetricLightComponent", "void setGodRayStrength(float strength)", "Sets the overall intensity of the god ray effect.");
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectVolumetricLightComponent", "float getGodRayStrength()", "Gets the overall god ray intensity.");
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectVolumetricLightComponent", "void setSunThreshold(float threshold)", "Sets the brightness threshold for light scattering contribution.");
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectVolumetricLightComponent", "float getSunThreshold()", "Gets the sun brightness threshold.");
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectVolumetricLightComponent", "void setSunRadius(float radius)", "Sets the apparent screen space radius of the light source.");
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectVolumetricLightComponent", "float getSunRadius()", "Gets the apparent light source radius.");
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectVolumetricLightComponent", "void setDecay(float decay)", "Sets how quickly light scattering fades over distance.");
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectVolumetricLightComponent", "float getDecay()", "Gets the light scattering decay factor.");
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectVolumetricLightComponent", "void setDensity(float density)", "Sets the sample density used for volumetric light scattering.");
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectVolumetricLightComponent", "float getDensity()", "Gets the volumetric light sample density.");
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectVolumetricLightComponent", "void setExposure(float exposure)", "Sets the exposure multiplier of the volumetric light effect.");
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectVolumetricLightComponent", "float getExposure()", "Gets the volumetric light exposure multiplier.");
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectVolumetricLightComponent", "void setTint(Vector3 tint)", "Sets the RGB tint color of the volumetric light effect.");
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectVolumetricLightComponent", "Vector3 getTint()", "Gets the RGB tint color.");
+
+        gameObjectClass.def("getCompositorEffectVolumetricLightComponent", &getCompositorEffectVolumetricLightComponent);
+        gameObjectClass.def("getCompositorEffectVolumetricLightComponentFromName", &getCompositorEffectVolumetricLightComponentFromName);
+
+        LuaScriptApi::getInstance()->addClassToCollection("GameObject", "CompositorEffectVolumetricLightComponent getCompositorEffectVolumetricLightComponent()", "Gets the CompositorEffectVolumetricLightComponent.");
+        LuaScriptApi::getInstance()->addClassToCollection("GameObject", "CompositorEffectVolumetricLightComponent getCompositorEffectVolumetricLightComponentFromName(string name)", "Gets the CompositorEffectVolumetricLightComponent by name.");
+
+        gameObjectControllerClass.def("castCompositorEffectVolumetricLightComponent", &GameObjectController::cast<CompositorEffectVolumetricLightComponent>);
+
+        LuaScriptApi::getInstance()->addClassToCollection("GameObjectController", "CompositorEffectVolumetricLightComponent castCompositorEffectVolumetricLightComponent(CompositorEffectVolumetricLightComponent other)",
+            "Casts for Lua auto completion.");
+    }
+
+	///////////////////////////////////////////////////////////////////////////////////////////////
+
+	CompositorEffectFogComponent::CompositorEffectFogComponent() :
+        CompositorEffectBaseComponent(),
+        fogPass(nullptr),
+        depthFogDensity(new Variant(CompositorEffectFogComponent::AttrDepthFogDensity(), 0.008f, this->attributes)),
+        depthFogStart(new Variant(CompositorEffectFogComponent::AttrDepthFogStart(), 20.0f, this->attributes)),
+        heightFogDensity(new Variant(CompositorEffectFogComponent::AttrHeightFogDensity(), 0.06f, this->attributes)),
+        heightFogStart(new Variant(CompositorEffectFogComponent::AttrHeightFogStart(), 0.0f, this->attributes)),
+        heightFogEnd(new Variant(CompositorEffectFogComponent::AttrHeightFogEnd(), 40.0f, this->attributes)),
+        fogColor(new Variant(CompositorEffectFogComponent::AttrFogColor(), Ogre::Vector3(0.7f, 0.75f, 0.8f), this->attributes)),
+        fogSkyBlend(new Variant(CompositorEffectFogComponent::AttrFogSkyBlend(), 0.3f, this->attributes))
+    {
+        this->effectName = "Fog";
+
+        this->depthFogDensity->setConstraints(0.0f, 0.5f);
+        this->depthFogStart->setConstraints(0.0f, 5000.0f);
+        this->heightFogDensity->setConstraints(0.0f, 1.0f);
+        this->heightFogStart->setConstraints(-1000.0f, 1000.0f);
+        this->heightFogEnd->setConstraints(-1000.0f, 1000.0f);
+        this->fogSkyBlend->setConstraints(0.0f, 1.0f);
+
+		this->depthFogDensity->setDescription("Controls the intensity of distance based fog. Higher values create thicker atmospheric haze.");
+        this->depthFogStart->setDescription("Defines the camera distance where depth fog begins to appear.");
+        this->heightFogDensity->setDescription("Controls the intensity of height based fog. Higher values create denser ground or valley fog.");
+
+        this->heightFogStart->setDescription("Defines the world space height where height fog starts.");
+        this->heightFogEnd->setDescription("Defines the world space height where height fog fully fades out.");
+        this->fogSkyBlend->setDescription("Controls how much the fog color blends with the sky color. 0 uses only the fog color, 1 fully blends with the sky.");
+    }
+
+    CompositorEffectFogComponent::~CompositorEffectFogComponent()
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[CompositorEffectFogComponent] Destructor for game object: " + this->gameObjectPtr->getName());
+
+        this->fogPass = nullptr;
+    }
+
+    bool CompositorEffectFogComponent::init(rapidxml::xml_node<>*& propertyElement)
+    {
+        bool success = CompositorEffectBaseComponent::init(propertyElement);
+
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrDepthFogDensity())
+        {
+            this->setDepthFogDensity(XMLConverter::getAttribReal(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrDepthFogStart())
+        {
+            this->setDepthFogStart(XMLConverter::getAttribReal(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrHeightFogDensity())
+        {
+            this->setHeightFogDensity(XMLConverter::getAttribReal(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrHeightFogStart())
+        {
+            this->setHeightFogStart(XMLConverter::getAttribReal(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrHeightFogEnd())
+        {
+            this->setHeightFogEnd(XMLConverter::getAttribReal(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrFogColor())
+        {
+            this->setFogColor(XMLConverter::getAttribVector3(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrFogSkyBlend())
+        {
+            this->setFogSkyBlend(XMLConverter::getAttribReal(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+
+        return success;
+    }
+
+    GameObjectCompPtr CompositorEffectFogComponent::clone(GameObjectPtr clonedGameObjectPtr)
+    {
+        CompositorEffectFogCompPtr clonedCompPtr(boost::make_shared<CompositorEffectFogComponent>());
+
+        clonedCompPtr->setActivated(this->activated->getBool());
+        clonedCompPtr->setDepthFogDensity(this->depthFogDensity->getReal());
+        clonedCompPtr->setDepthFogStart(this->depthFogStart->getReal());
+        clonedCompPtr->setHeightFogDensity(this->heightFogDensity->getReal());
+        clonedCompPtr->setHeightFogStart(this->heightFogStart->getReal());
+        clonedCompPtr->setHeightFogEnd(this->heightFogEnd->getReal());
+        clonedCompPtr->setFogColor(this->fogColor->getVector3());
+        clonedCompPtr->setFogSkyBlend(this->fogSkyBlend->getReal());
+
+        clonedGameObjectPtr->addComponent(clonedCompPtr);
+        clonedCompPtr->setOwner(clonedGameObjectPtr);
+
+        GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
+
+        return clonedCompPtr;
+    }
+
+    bool CompositorEffectFogComponent::postInit(void)
+    {
+        bool success = CompositorEffectBaseComponent::postInit();
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[CompositorEffectFogComponent] Init for game object: " + this->gameObjectPtr->getName());
+
+        const Ogre::String materialName = "Postprocess/Fog";
+        this->fogMaterial = Ogre::MaterialManager::getSingletonPtr()->getByName(materialName);
+
+        if (this->fogMaterial.isNull())
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[CompositorEffectFogComponent] Material not found: '" + materialName + "'");
+            return false;
+        }
+
+        return success;
+    }
+
+    void CompositorEffectFogComponent::onRemoveComponent(void)
+    {
+        CompositorEffectBaseComponent::onRemoveComponent();
+
+        Ogre::String closureId = this->gameObjectPtr->getName() + this->getClassName() + "::update";
+        NOWA::GraphicsModule::getInstance()->removeTrackedClosure(closureId);
+    }
+
+    bool CompositorEffectFogComponent::connect(void)
+    {
+        CompositorEffectBaseComponent::connect();
+
+		this->fogPass = this->fogMaterial->getTechnique(0)->getPass(0);
+
+        // Push static camera params immediately — projectionParams and
+        // farClipDistance don't change per frame (unless camera changes).
+        // invViewProjMatrix is pushed per-frame in update().
+        if (nullptr != this->workspaceBaseComponent)
+        {
+            if (nullptr == this->camera)
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[CompositorEffectFogComponent] Could not find camera, hence effect cannot be enabled for game object: " + this->gameObjectPtr->getName());
+                return true;
+            }
+
+            Ogre::Vector2 projAB = this->camera->getProjectionParamsAB();
+            projAB.y /= this->camera->getFarClipDistance();
+
+            Ogre::Pass* pass = this->fogPass;
+            Ogre::Camera* camera = this->camera;
+            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectFogComponent::postInit_projParams", _3(projAB, pass, camera), {
+                auto* params = pass->getFragmentProgramParameters().get();
+                params->setNamedConstant("projectionParams", projAB);
+                params->setNamedConstant("farClipDistance", camera->getFarClipDistance());
+            });
+        }
+
+        // Push all tunable values
+        this->setDepthFogDensity(this->depthFogDensity->getReal());
+        this->setDepthFogStart(this->depthFogStart->getReal());
+        this->setHeightFogDensity(this->heightFogDensity->getReal());
+        this->setHeightFogStart(this->heightFogStart->getReal());
+        this->setHeightFogEnd(this->heightFogEnd->getReal());
+        this->setFogColor(this->fogColor->getVector3());
+        this->setFogSkyBlend(this->fogSkyBlend->getReal());
+
+        return true;
+    }
+
+	
+    bool CompositorEffectFogComponent::disconnect(void)
+    {
+        CompositorEffectBaseComponent::disconnect();
+        return true;
+    }
+
+    void CompositorEffectFogComponent::actualizeValue(Variant* attribute)
+    {
+        CompositorEffectBaseComponent::actualizeValue(attribute);
+
+        const Ogre::String& name = attribute->getName();
+
+        if (name == AttrDepthFogDensity())
+        {
+            this->setDepthFogDensity(attribute->getReal());
+        }
+        else if (name == AttrDepthFogStart())
+        {
+            this->setDepthFogStart(attribute->getReal());
+        }
+        else if (name == AttrHeightFogDensity())
+        {
+            this->setHeightFogDensity(attribute->getReal());
+        }
+        else if (name == AttrHeightFogStart())
+        {
+            this->setHeightFogStart(attribute->getReal());
+        }
+        else if (name == AttrHeightFogEnd())
+        {
+            this->setHeightFogEnd(attribute->getReal());
+        }
+        else if (name == AttrFogColor())
+        {
+            this->setFogColor(attribute->getVector3());
+        }
+        else if (name == AttrFogSkyBlend())
+        {
+            this->setFogSkyBlend(attribute->getReal());
+        }
+    }
+
+    void CompositorEffectFogComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
+    {
+        CompositorEffectBaseComponent::writeXML(propertiesXML, doc);
+
+        auto writeReal = [&](const char* name, Ogre::Real value)
+        {
+            xml_node<>* p = doc.allocate_node(node_element, "property");
+            p->append_attribute(doc.allocate_attribute("type", "6"));
+            p->append_attribute(doc.allocate_attribute("name", name));
+            p->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, value)));
+            propertiesXML->append_node(p);
+        };
+
+        auto writeVec3 = [&](const char* name, const Ogre::Vector3& value)
+        {
+            xml_node<>* p = doc.allocate_node(node_element, "property");
+            p->append_attribute(doc.allocate_attribute("type", "9"));
+            p->append_attribute(doc.allocate_attribute("name", name));
+            p->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, value)));
+            propertiesXML->append_node(p);
+        };
+
+        writeReal("Depth Fog Density", this->depthFogDensity->getReal());
+        writeReal("Depth Fog Start", this->depthFogStart->getReal());
+        writeReal("Height Fog Density", this->heightFogDensity->getReal());
+        writeReal("Height Fog Start", this->heightFogStart->getReal());
+        writeReal("Height Fog End", this->heightFogEnd->getReal());
+        writeVec3("Fog Color", this->fogColor->getVector3());
+        writeReal("Fog Sky Blend", this->fogSkyBlend->getReal());
+    }
+
+    Ogre::String CompositorEffectFogComponent::getClassName(void) const
+    {
+        return "CompositorEffectFogComponent";
+    }
+
+    Ogre::String CompositorEffectFogComponent::getParentClassName(void) const
+    {
+        return "CompositorEffectBaseComponent";
+    }
+
+    // -----------------------------------------------------------------------
+    // Per-frame update — push invViewProjMatrix to shader
+    // -----------------------------------------------------------------------
+
+    void CompositorEffectFogComponent::update(Ogre::Real dt, bool notSimulating)
+    {
+		if (true == notSimulating)
+		{
+            return;
+		}
+
+        if (nullptr == this->fogPass)
+        {
+            return;
+        }
+        if (nullptr == this->workspaceBaseComponent)
+        {
+            return;
+        }
+        if (nullptr == this->camera)
+        {
+            return;
+        }
+
+        Ogre::Pass* pass = this->fogPass;
+        Ogre::Camera* camera = this->camera;
+
+        auto closureFunction = [pass, camera](Ogre::Real /*renderDt*/)
+        {
+            // Inverse view-projection: world pos = invVP * ndcPos
+            Ogre::Matrix4 invViewProj = (camera->getProjectionMatrixWithRSDepth() * camera->getViewMatrix()).inverse();
+
+            pass->getFragmentProgramParameters()->setNamedConstant("invViewProjMatrix", invViewProj);
+        };
+
+        Ogre::String closureId = this->gameObjectPtr->getName() + this->getClassName() + "::update";
+        NOWA::GraphicsModule::getInstance()->updateTrackedClosure(closureId, closureFunction, false);
+    }
+
+    // -----------------------------------------------------------------------
+    // Setters / getters
+    // -----------------------------------------------------------------------
+
+    void CompositorEffectFogComponent::setDepthFogDensity(Ogre::Real density)
+    {
+        this->depthFogDensity->setValue(density);
+        if (nullptr != this->fogPass)
+        {
+            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectFogComponent::setDepthFogDensity", _1(density), { this->fogPass->getFragmentProgramParameters()->setNamedConstant("depthFogDensity", density); });
+        }
+    }
+
+    Ogre::Real CompositorEffectFogComponent::getDepthFogDensity(void) const
+    {
+        return this->depthFogDensity->getReal();
+    }
+
+    void CompositorEffectFogComponent::setDepthFogStart(Ogre::Real start)
+    {
+        this->depthFogStart->setValue(start);
+        if (nullptr != this->fogPass)
+        {
+            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectFogComponent::setDepthFogStart", _1(start), { this->fogPass->getFragmentProgramParameters()->setNamedConstant("depthFogStart", start); });
+        }
+    }
+
+    Ogre::Real CompositorEffectFogComponent::getDepthFogStart(void) const
+    {
+        return this->depthFogStart->getReal();
+    }
+
+    void CompositorEffectFogComponent::setHeightFogDensity(Ogre::Real density)
+    {
+        this->heightFogDensity->setValue(density);
+        if (nullptr != this->fogPass)
+        {
+            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectFogComponent::setHeightFogDensity", _1(density), { this->fogPass->getFragmentProgramParameters()->setNamedConstant("heightFogDensity", density); });
+        }
+    }
+
+    Ogre::Real CompositorEffectFogComponent::getHeightFogDensity(void) const
+    {
+        return this->heightFogDensity->getReal();
+    }
+
+    void CompositorEffectFogComponent::setHeightFogStart(Ogre::Real worldY)
+    {
+        this->heightFogStart->setValue(worldY);
+        if (nullptr != this->fogPass)
+        {
+            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectFogComponent::setHeightFogStart", _1(worldY), { this->fogPass->getFragmentProgramParameters()->setNamedConstant("heightFogStart", worldY); });
+        }
+    }
+
+    Ogre::Real CompositorEffectFogComponent::getHeightFogStart(void) const
+    {
+        return this->heightFogStart->getReal();
+    }
+
+    void CompositorEffectFogComponent::setHeightFogEnd(Ogre::Real worldY)
+    {
+        this->heightFogEnd->setValue(worldY);
+        if (nullptr != this->fogPass)
+        {
+            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectFogComponent::setHeightFogEnd", _1(worldY), { this->fogPass->getFragmentProgramParameters()->setNamedConstant("heightFogEnd", worldY); });
+        }
+    }
+
+    Ogre::Real CompositorEffectFogComponent::getHeightFogEnd(void) const
+    {
+        return this->heightFogEnd->getReal();
+    }
+
+    void CompositorEffectFogComponent::setFogColor(const Ogre::Vector3& color)
+    {
+        this->fogColor->setValue(color);
+        if (nullptr != this->fogPass)
+        {
+            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectFogComponent::setFogColor", _1(color), { this->fogPass->getFragmentProgramParameters()->setNamedConstant("fogColor", color); });
+        }
+    }
+
+    Ogre::Vector3 CompositorEffectFogComponent::getFogColor(void) const
+    {
+        return this->fogColor->getVector3();
+    }
+
+    void CompositorEffectFogComponent::setFogSkyBlend(Ogre::Real blend)
+    {
+        this->fogSkyBlend->setValue(blend);
+        if (nullptr != this->fogPass)
+        {
+            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectFogComponent::setFogSkyBlend", _1(blend), { this->fogPass->getFragmentProgramParameters()->setNamedConstant("fogSkyBlend", blend); });
+        }
+    }
+
+    Ogre::Real CompositorEffectFogComponent::getFogSkyBlend(void) const
+    {
+        return this->fogSkyBlend->getReal();
+    }
+
+	CompositorEffectFogComponent* getCompositorEffectFogComponent(GameObject* gameObject)
+    {
+        return makeStrongPtr<CompositorEffectFogComponent>(gameObject->getComponent<CompositorEffectFogComponent>()).get();
+    }
+
+    CompositorEffectFogComponent* getCompositorEffectFogComponentFromName(GameObject* gameObject, const Ogre::String& name)
+    {
+        return makeStrongPtr<CompositorEffectFogComponent>(gameObject->getComponentFromName<CompositorEffectFogComponent>(name)).get();
+    }
+
+    void CompositorEffectFogComponent::createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass)
+    {
+        luabind::module(lua)
+		[
+			luabind::class_<CompositorEffectFogComponent, GameObjectComponent>("CompositorEffectFogComponent")
+            // Depth fog
+            .def("setDepthFogDensity", &CompositorEffectFogComponent::setDepthFogDensity)
+            .def("getDepthFogDensity", &CompositorEffectFogComponent::getDepthFogDensity)
+            .def("setDepthFogStart", &CompositorEffectFogComponent::setDepthFogStart)
+            .def("getDepthFogStart", &CompositorEffectFogComponent::getDepthFogStart)
+            // Height fog
+            .def("setHeightFogDensity", &CompositorEffectFogComponent::setHeightFogDensity)
+            .def("getHeightFogDensity", &CompositorEffectFogComponent::getHeightFogDensity)
+            .def("setHeightFogStart", &CompositorEffectFogComponent::setHeightFogStart)
+            .def("getHeightFogStart", &CompositorEffectFogComponent::getHeightFogStart)
+            .def("setHeightFogEnd", &CompositorEffectFogComponent::setHeightFogEnd)
+            .def("getHeightFogEnd", &CompositorEffectFogComponent::getHeightFogEnd)
+            // Shared
+            .def("setFogColor", &CompositorEffectFogComponent::setFogColor)
+            .def("getFogColor", &CompositorEffectFogComponent::getFogColor)
+            .def("setFogSkyBlend", &CompositorEffectFogComponent::setFogSkyBlend)
+            .def("getFogSkyBlend", &CompositorEffectFogComponent::getFogSkyBlend)
+		];
+
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectFogComponent", "class inherits GameObjectComponent", getStaticInfoText());
+
+        // Depth fog
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectFogComponent", "void setDepthFogDensity(float density)", "Sets the density/intensity of the distance based fog effect.");
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectFogComponent", "float getDepthFogDensity()", "Gets the current distance fog density.");
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectFogComponent", "void setDepthFogStart(float start)", "Sets the world distance at which depth fog begins.");
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectFogComponent", "float getDepthFogStart()", "Gets the depth fog start distance.");
+
+        // Height fog
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectFogComponent", "void setHeightFogDensity(float density)", "Sets the density/intensity of the height based fog effect.");
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectFogComponent", "float getHeightFogDensity()", "Gets the current height fog density.");
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectFogComponent", "void setHeightFogStart(float startHeight)", "Sets the world height where height fog begins.");
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectFogComponent", "float getHeightFogStart()", "Gets the height fog start height.");
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectFogComponent", "void setHeightFogEnd(float endHeight)", "Sets the world height where height fog fully fades out.");
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectFogComponent", "float getHeightFogEnd()", "Gets the height fog end height.");
+
+        // Shared fog settings
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectFogComponent", "void setFogColor(Vector3 color)", "Sets the fog RGB color.");
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectFogComponent", "Vector3 getFogColor()", "Gets the current fog RGB color.");
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectFogComponent", "void setFogSkyBlend(float blend)",
+            "Sets how much the fog blends with the sky color. "
+            "0 = only fog color, 1 = fully blended with sky.");
+
+        LuaScriptApi::getInstance()->addClassToCollection("CompositorEffectFogComponent", "float getFogSkyBlend()", "Gets the sky blend factor.");
+
+        // GameObject bindings
+        gameObjectClass.def("getCompositorEffectFogComponent", &getCompositorEffectFogComponent);
+        gameObjectClass.def("getCompositorEffectFogComponentFromName", &getCompositorEffectFogComponentFromName);
+        LuaScriptApi::getInstance()->addClassToCollection("GameObject", "CompositorEffectFogComponent getCompositorEffectFogComponent()", "Gets the CompositorEffectFogComponent.");
+        LuaScriptApi::getInstance()->addClassToCollection("GameObject", "CompositorEffectFogComponent getCompositorEffectFogComponentFromName(string name)", "Gets the CompositorEffectFogComponent by name.");
+
+        // Cast helper
+        gameObjectControllerClass.def("castCompositorEffectFogComponent", &GameObjectController::cast<CompositorEffectFogComponent>);
+        LuaScriptApi::getInstance()->addClassToCollection("GameObjectController", "CompositorEffectFogComponent castCompositorEffectFogComponent(CompositorEffectFogComponent other)", "Casts for Lua auto completion.");
     }
 
 	///////////////////////////////////////////////////////////////////////////////////////////////

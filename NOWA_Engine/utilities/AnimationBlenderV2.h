@@ -127,6 +127,8 @@ namespace NOWA
 
 		virtual void deleteAllObservers(void) override;
 
+		virtual void resetBlendState(void) override;
+
 		Ogre::SkeletonAnimation* getAnimationState(AnimID animationId);
 
 		Ogre::SkeletonAnimation* getAnimationState(const Ogre::String& animationName);

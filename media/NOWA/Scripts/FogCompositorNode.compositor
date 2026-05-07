@@ -1,0 +1,27 @@
+// Depth Fog + Height Fog post-process effect
+//
+// Declares "in 2 depthTexture" — the Option B infrastructure in
+// reconnectAllNodes() will automatically wire the depth channel here.
+// No manual workspace wiring required.
+compositor_node Fog
+{
+    in 0 rt_input
+    in 1 rt_output
+    in 2 depthTexture    // auto-wired by reconnectAllNodes Option B
+
+    custom_id Ogre/Postprocess
+
+    target rt_output
+    {
+        pass render_quad
+        {
+            load { all dont_care }
+            material Postprocess/Fog
+            input 0 rt_input      // scene colour  → texture unit 0
+            input 1 depthTexture  // depth buffer  → texture unit 1
+        }
+    }
+
+    out 0 rt_output
+    out 1 rt_input
+}

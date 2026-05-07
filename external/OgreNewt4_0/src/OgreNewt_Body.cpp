@@ -18,14 +18,14 @@ namespace OgreNewt
     // ─────────────────────────────────────────────────────────────────────────────
     // Constructor 1 — creates its own ndBodyDynamic (the normal path)
     // ─────────────────────────────────────────────────────────────────────────────
-    Body::Body(World* world, Ogre::SceneManager* sceneManager, const OgreNewt::CollisionPtr& collisionPtr, Ogre::SceneMemoryMgrTypes memoryType, NotifyKind notifyKind) :
+    Body::Body(World* world, Ogre::SceneManager* sceneManager, const OgreNewt::CollisionPtr& collisionPtr, bool isKinematic, Ogre::SceneMemoryMgrTypes memoryType, NotifyKind notifyKind) :
         m_world(world),
         m_sceneManager(sceneManager),
         m_sceneMemoryType(memoryType),
         m_categoryType(0),
         m_node(nullptr),
         m_matid(nullptr),
-        m_bodyPtr(new ndBodyDynamic()),
+        m_bodyPtr(isKinematic ? ndSharedPtr<ndBody>(new ndBodyKinematic()) : ndSharedPtr<ndBody>(new ndBodyDynamic())),
         m_nodePosit(Ogre::Vector3::ZERO),
         m_curPosit(Ogre::Vector3::ZERO),
         m_prevPosit(Ogre::Vector3::ZERO),

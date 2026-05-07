@@ -219,6 +219,11 @@ namespace NOWA
          */
         virtual bool isOverlayAnimationActive(void) const = 0;
 
+		/**
+         * @brief  Resets the blend state.
+         */
+		virtual void resetBlendState(void) = 0;
+
 		struct BlendSpaceEntry
         {
             AnimID animationId;

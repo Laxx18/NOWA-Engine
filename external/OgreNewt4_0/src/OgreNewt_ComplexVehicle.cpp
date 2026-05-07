@@ -163,7 +163,7 @@ namespace OgreNewt
     // -------------------------------------------------------------------------
     ComplexVehicle::ComplexVehicle(World* world, Ogre::SceneManager* sceneManager, const Ogre::Vector3& defaultDirection, const OgreNewt::CollisionPtr& col, Ogre::Real vhmass, const Ogre::Vector3& collisionPosition, const Ogre::Vector3& massOrigin,
         ComplexVehicleCallback* vehicleCallback) :
-        OgreNewt::Body(world, sceneManager, col, Ogre::SceneMemoryMgrTypes::SCENE_DYNAMIC, Body::NotifyKind::ComplexVehicle),
+        OgreNewt::Body(world, sceneManager, col, false, Ogre::SceneMemoryMgrTypes::SCENE_DYNAMIC, Body::NotifyKind::ComplexVehicle),
         m_driveLayout(cdlRearWheelDrive),
         m_world(world),
         m_vehicleCallback(vehicleCallback),

@@ -867,242 +867,11 @@ namespace NOWA
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	class EXPORTED CompositorEffectHeightFogComponent : public CompositorEffectBaseComponent
-	{
-	public:
-		typedef boost::shared_ptr<NOWA::CompositorEffectHeightFogComponent> CompositorEffectHeightFogCompPtr;
-	public:
-
-		CompositorEffectHeightFogComponent();
-
-		virtual ~CompositorEffectHeightFogComponent();
-
-		/**
-		 * @see		GameObjectComponent::init
-		 */
-		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
-
-		/**
-		 * @see		GameObjectComponent::postInit
-		 */
-		virtual bool postInit(void) override;
-
-		/**
-		 * @see		GameObjectComponent::getClassName
-		 */
-		virtual Ogre::String getClassName(void) const override;
-
-		/**
-		 * @see		GameObjectComponent::getParentClassName
-		 */
-		virtual Ogre::String getParentClassName(void) const override;
-
-		/**
-		 * @see		GameObjectComponent::clone
-		 */
-		virtual GameObjectCompPtr clone(GameObjectPtr clonedGameObjectPtr) override;
-
-		static unsigned int getStaticClassId(void)
-		{
-			return NOWA::getIdFromName("CompositorEffectHeightFogComponent");
-		}
-
-		static Ogre::String getStaticClassName(void)
-		{
-			return "CompositorEffectHeightFogComponent";
-		}
-
-		/**
-		 * @see  GameObjectComponent::createStaticApiForLua
-		 */
-		static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass) {}
-
-		/**
-		 * @see		GameObjectComponent::actualizeValue
-		 */
-		virtual void actualizeValue(Variant* attribute) override;
-
-		/**
-		 * @see		GameObjectComponent::writeXML
-		 */
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
-
-		/**
-		 * @see	GameObjectComponent::getStaticInfoText
-		 */
-		static Ogre::String getStaticInfoText(void)
-		{
-			return "Requirements: A camera component must exist.";
-		}
-
-	public:
-		static const Ogre::String AttrWeight(void) { return "Weight"; }
-	private:
-		Ogre::MaterialPtr material;
-		Ogre::Pass* pass;
-	};
-
-	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-	class EXPORTED CompositorEffectFogComponent : public CompositorEffectBaseComponent
-	{
-	public:
-		typedef boost::shared_ptr<NOWA::CompositorEffectFogComponent> CompositorEffectFogCompPtr;
-	public:
-
-		CompositorEffectFogComponent();
-
-		virtual ~CompositorEffectFogComponent();
-
-		/**
-		 * @see		GameObjectComponent::init
-		 */
-		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
-
-		/**
-		 * @see		GameObjectComponent::postInit
-		 */
-		virtual bool postInit(void) override;
-
-		/**
-		 * @see		GameObjectComponent::getClassName
-		 */
-		virtual Ogre::String getClassName(void) const override;
-
-		/**
-		 * @see		GameObjectComponent::getParentClassName
-		 */
-		virtual Ogre::String getParentClassName(void) const override;
-
-		/**
-		 * @see		GameObjectComponent::clone
-		 */
-		virtual GameObjectCompPtr clone(GameObjectPtr clonedGameObjectPtr) override;
-
-		static unsigned int getStaticClassId(void)
-		{
-			return NOWA::getIdFromName("CompositorEffectFogComponent");
-		}
-
-		static Ogre::String getStaticClassName(void)
-		{
-			return "CompositorEffectFogComponent";
-		}
-
-		/**
-		 * @see  GameObjectComponent::createStaticApiForLua
-		 */
-		static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass) {}
-
-		/**
-		 * @see		GameObjectComponent::actualizeValue
-		 */
-		virtual void actualizeValue(Variant* attribute) override;
-
-		/**
-		 * @see		GameObjectComponent::writeXML
-		 */
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
-
-		/**
-		 * @see	GameObjectComponent::getStaticInfoText
-		 */
-		static Ogre::String getStaticInfoText(void)
-		{
-			return "Requirements: A camera component must exist.";
-		}
-
-	public:
-		static const Ogre::String AttrWeight(void) { return "Weight"; }
-	private:
-		Ogre::MaterialPtr material;
-		Ogre::Pass* pass;
-	};
-
-	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	
-	class EXPORTED CompositorEffectLightShaftsComponent : public CompositorEffectBaseComponent
-	{
-	public:
-		typedef boost::shared_ptr<NOWA::CompositorEffectLightShaftsComponent> CompositorEffectLightShaftsCompPtr;
-	public:
-
-		CompositorEffectLightShaftsComponent();
-
-		virtual ~CompositorEffectLightShaftsComponent();
-
-		/**
-		 * @see		GameObjectComponent::init
-		 */
-		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
-
-		/**
-		 * @see		GameObjectComponent::postInit
-		 */
-		virtual bool postInit(void) override;
-
-		/**
-		 * @see		GameObjectComponent::getClassName
-		 */
-		virtual Ogre::String getClassName(void) const override;
-
-		/**
-		 * @see		GameObjectComponent::getParentClassName
-		 */
-		virtual Ogre::String getParentClassName(void) const override;
-
-		/**
-		 * @see		GameObjectComponent::clone
-		 */
-		virtual GameObjectCompPtr clone(GameObjectPtr clonedGameObjectPtr) override;
-
-		static unsigned int getStaticClassId(void)
-		{
-			return NOWA::getIdFromName("CompositorEffectLightShaftsComponent");
-		}
-
-		static Ogre::String getStaticClassName(void)
-		{
-			return "CompositorEffectLightShaftsComponent";
-		}
-
-		/**
-		 * @see  GameObjectComponent::createStaticApiForLua
-		 */
-		static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass) {}
-
-		/**
-		 * @see		GameObjectComponent::actualizeValue
-		 */
-		virtual void actualizeValue(Variant* attribute) override;
-
-		/**
-		 * @see		GameObjectComponent::writeXML
-		 */
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
-
-		/**
-		 * @see	GameObjectComponent::getStaticInfoText
-		 */
-		static Ogre::String getStaticInfoText(void)
-		{
-			return "Requirements: A camera component must exist.";
-		}
-
-	public:
-		static const Ogre::String AttrWeight(void) { return "Weight"; }
-	private:
-		Ogre::MaterialPtr material;
-		Ogre::Pass* pass;
-	};
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
     /**
         * @brief   Two-pass cartoon / cel-shading post-process compositor effect component.
         *
         * Pass 1 (Postprocess/CartoonEdge):
-        *   Sobel edge detection on the scene colour buffer → grayscale edge mask.
+        *   Sobel edge detection on the scene colour buffer -> grayscale edge mask.
         *
         * Pass 2 (Postprocess/CartoonColor):
         *   Colour quantisation into discrete cel bands, saturation boost, and
@@ -1317,6 +1086,16 @@ namespace NOWA
         virtual Ogre::String getParentClassName(void) const override;
         virtual GameObjectCompPtr clone(GameObjectPtr clonedGameObjectPtr) override;
 
+		/**
+         * @see		GameObjectComponent::connect
+         */
+        virtual bool connect(void) override;
+
+        /**
+         * @see		GameObjectComponent::disconnect
+         */
+        virtual bool disconnect(void) override;
+
         static unsigned int getStaticClassId(void)
         {
             return NOWA::getIdFromName("CompositorEffectVolumetricLightComponent");
@@ -1341,8 +1120,7 @@ namespace NOWA
         static Ogre::String getStaticInfoText(void)
         {
             return "Requirements: A camera component and a LightDirectionalComponent must exist. "
-                   "Screen-space god rays using the Crytek/Kawase three-pass technique. "
-                   "No depth texture required.";
+                   "Screen-space god rays using the Crytek/Kawase three-pass technique. ";
         }
 
 		static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass);
@@ -1467,6 +1245,187 @@ namespace NOWA
         Variant* density;
         Variant* exposure;
         Variant* tint;
+    };
+
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	/**
+     * @brief   Depth Fog + Height Fog post-process compositor effect.
+     *
+     * Uses the depth buffer (automatically wired
+     * infrastructure in reconnectAllNodes) to compute per-pixel fog based on:
+     *
+     *   Depth fog   — exponential fog that increases with camera distance.
+     *                 Good for atmospheric haze, distant mountain fade.
+     *
+     *   Height fog  — exponential fog based on world-space Y position.
+     *                 Good for low-lying ground mist, valley fog.
+     *
+     * Both layers are independent and can be combined freely.
+     * Setting either density to 0.0 disables that layer entirely.
+     *
+     * Per-frame work (camera matrix projection, invViewProj) is pushed to
+     * the GPU via updateTrackedClosure — no game-thread stalls.
+     *
+     * Requirements: A camera component must exist.
+     *               The workspace must have depthTexture as an output channel
+     *               (true for all workspace components: Pbs, Sky, Background).
+     */
+    class EXPORTED CompositorEffectFogComponent : public CompositorEffectBaseComponent
+    {
+    public:
+        typedef boost::shared_ptr<NOWA::CompositorEffectFogComponent> CompositorEffectFogCompPtr;
+
+    public:
+        CompositorEffectFogComponent();
+        virtual ~CompositorEffectFogComponent();
+
+        virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
+        virtual bool postInit(void) override;
+        virtual void onRemoveComponent(void) override;
+
+		/**
+         * @see		GameObjectComponent::connect
+         */
+        virtual bool connect(void) override;
+
+        /**
+         * @see		GameObjectComponent::disconnect
+         */
+        virtual bool disconnect(void) override;
+
+        virtual Ogre::String getClassName(void) const override;
+        virtual Ogre::String getParentClassName(void) const override;
+        virtual GameObjectCompPtr clone(GameObjectPtr clonedGameObjectPtr) override;
+
+        static unsigned int getStaticClassId(void)
+        {
+            return NOWA::getIdFromName("CompositorEffectFogComponent");
+        }
+
+        static Ogre::String getStaticClassName(void)
+        {
+            return "CompositorEffectFogComponent";
+        }
+
+        static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass);
+
+        virtual void actualizeValue(Variant* attribute) override;
+        virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
+
+        /**
+         * @brief   Per-frame update: pushes the camera's current inverse
+         *          view-projection matrix and projection params to the shader.
+         *          Runs every frame so height fog tracks camera movement.
+         */
+        virtual void update(Ogre::Real dt, bool notSimulating) override;
+
+        static Ogre::String getStaticInfoText(void)
+        {
+            return "Requirements: A camera component must exist.\n"
+                   "The workspace must provide a depthTexture output channel.\n"
+                   "Uses the scene depth buffer to compute per pixel fog.\n"
+                   "\n"
+                   "Supports two independent fog layers:\n"
+                   "\n"
+                   "Depth fog:\n"
+                   "Exponential fog based on camera distance.\n"
+                   "Useful for atmospheric haze and distant object fading.\n"
+                   "\n"
+                   "Height fog:\n"
+                   "Exponential fog based on world space height.\n"
+                   "Useful for ground mist, valleys and low lying fog.\n"
+                   "\n"
+                   "Both fog layers can be combined freely.\n"
+                   "Setting a fog density to 0 disables that layer.\n"
+                   "\n"
+                   "Camera matrices and projection data are updated per frame\n"
+                   "through the tracked closure system without game thread stalls.";
+        }
+
+        // -----------------------------------------------------------------------
+        // Depth fog
+        // -----------------------------------------------------------------------
+        /** Exponential fog density for depth fog. 0 = disabled. Default 0.008. */
+        void setDepthFogDensity(Ogre::Real density);
+        Ogre::Real getDepthFogDensity(void) const;
+
+        /** Linear depth (world units) where depth fog starts. Default 20.0. */
+        void setDepthFogStart(Ogre::Real start);
+        Ogre::Real getDepthFogStart(void) const;
+
+        // -----------------------------------------------------------------------
+        // Height fog
+        // -----------------------------------------------------------------------
+        /** Exponential fog density for height fog. 0 = disabled. Default 0.06. */
+        void setHeightFogDensity(Ogre::Real density);
+        Ogre::Real getHeightFogDensity(void) const;
+
+        /** World-space Y below which height fog is at maximum. Default 0.0. */
+        void setHeightFogStart(Ogre::Real worldY);
+        Ogre::Real getHeightFogStart(void) const;
+
+        /** World-space Y above which height fog is zero. Default 40.0. */
+        void setHeightFogEnd(Ogre::Real worldY);
+        Ogre::Real getHeightFogEnd(void) const;
+
+        // -----------------------------------------------------------------------
+        // Shared
+        // -----------------------------------------------------------------------
+        /** RGB colour of the fog. Default: cool grey-blue (0.7, 0.75, 0.8). */
+        void setFogColor(const Ogre::Vector3& color);
+        Ogre::Vector3 getFogColor(void) const;
+
+        /**
+         * @brief   Controls how much the fog suppresses the skybox.
+         *          0 = sky pixels get full fog suppression (sharp horizon),
+         *          1 = sky pixels receive the same fog as everything else (bleed).
+         *          Default 0.3.
+         */
+        void setFogSkyBlend(Ogre::Real blend);
+        Ogre::Real getFogSkyBlend(void) const;
+
+    public:
+        static const Ogre::String AttrDepthFogDensity(void)
+        {
+            return "Depth Fog Density";
+        }
+        static const Ogre::String AttrDepthFogStart(void)
+        {
+            return "Depth Fog Start";
+        }
+        static const Ogre::String AttrHeightFogDensity(void)
+        {
+            return "Height Fog Density";
+        }
+        static const Ogre::String AttrHeightFogStart(void)
+        {
+            return "Height Fog Start";
+        }
+        static const Ogre::String AttrHeightFogEnd(void)
+        {
+            return "Height Fog End";
+        }
+        static const Ogre::String AttrFogColor(void)
+        {
+            return "Fog Color";
+        }
+        static const Ogre::String AttrFogSkyBlend(void)
+        {
+            return "Fog Sky Blend";
+        }
+
+    private:
+        Ogre::MaterialPtr fogMaterial;
+        Ogre::Pass* fogPass;
+
+        Variant* depthFogDensity;
+        Variant* depthFogStart;
+        Variant* heightFogDensity;
+        Variant* heightFogStart;
+        Variant* heightFogEnd;
+        Variant* fogColor;
+        Variant* fogSkyBlend;
     };
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

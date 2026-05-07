@@ -44,11 +44,11 @@ namespace NOWA
         AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &AnimationBlenderV2::gameObjectIsInRagDollStateDelegate), EventDataGameObjectIsInRagDollingState::getStaticEventType());
     }
 
-    AnimationBlenderV2::~AnimationBlenderV2()
+   AnimationBlenderV2::~AnimationBlenderV2()
     {
-        // Remove the per-frame addTime closure BEFORE the object is freed.
-        // Without this, the closure keeps running on the render thread every frame
-        // with a dangling this pointer, causing UB and skeleton corruption.
+        // Remove the per-frame addTime closure BEFORE this object is freed.
+        // The closure captures `this` — if it keeps running after destruction,
+        // it reads freed memory and can corrupt Ogre's skeleton state.
         Ogre::String id = "AnimationBlenderV2::addTime" + Ogre::StringConverter::toString(this->uniqueId);
         NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
 
@@ -502,7 +502,20 @@ namespace NOWA
         {
             auto closureFunction = [this, time](Ogre::Real renderDt)
             {
+                // Guard: if source was disabled by resetAnimation (disconnect),
+                // and timeleft somehow got reset but source is still non-null,
+                // skip execution to avoid re-enabling a dead animation.
+                if (nullptr == this->source || false == this->source->mEnabled)
+                {
+                    // Only skip if there's no active blend in progress either
+                    if (this->timeleft <= 0.0f)
+                    {
+                        return;
+                    }
+                }
+
                 bool weightChange = false;
+
                 if (this->timeleft > 0.0f)
                 {
                     this->timeleft -= time;
@@ -1465,6 +1478,19 @@ namespace NOWA
             delete observer;
         }
         this->animationBlenderObservers.clear();
+    }
+
+    void AnimationBlenderV2::resetBlendState(void)
+    {
+        // Called on the render thread from resetAnimation().
+        // Nulls out all blend-in-progress state so the persistent addTime closure
+        // cannot fire a stale timeleft completion and re-enable dead animations.
+        this->timeleft = 0.0f;
+        this->target = nullptr;
+        this->previousSource = nullptr;
+        this->complete = false;
+        // source is left pointing to the last animation (disabled) so internalBlend
+        // can check source != null on next connect without hitting the early-return.
     }
 
     Ogre::Vector3 AnimationBlenderV2::getLocalToWorldPosition(Ogre::Bone* bone)

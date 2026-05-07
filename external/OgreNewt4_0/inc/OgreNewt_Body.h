@@ -39,7 +39,7 @@ namespace OgreNewt
         friend class BodyNotify;
 	public:
 
-		Body(World* world, Ogre::SceneManager* sceneManager, const OgreNewt::CollisionPtr& col, Ogre::SceneMemoryMgrTypes memoryType = Ogre::SceneMemoryMgrTypes::SCENE_DYNAMIC, NotifyKind notifyKind = NotifyKind::Default);
+		Body(World* world, Ogre::SceneManager* sceneManager, const OgreNewt::CollisionPtr& col, bool isKinematic = false, Ogre::SceneMemoryMgrTypes memoryType = Ogre::SceneMemoryMgrTypes::SCENE_DYNAMIC, NotifyKind notifyKind = NotifyKind::Default);
         Body(World* world, Ogre::SceneManager* sceneManager, ndSharedPtr<ndBody> bodyPtr, Ogre::SceneMemoryMgrTypes memoryType = Ogre::SceneMemoryMgrTypes::SCENE_DYNAMIC, NotifyKind notifyKind = NotifyKind::Default);
 		Body(World* world, Ogre::SceneManager* sceneManager, Ogre::SceneMemoryMgrTypes memoryType = Ogre::SceneMemoryMgrTypes::SCENE_DYNAMIC);
 

@@ -1,0 +1,95 @@
+//---------------------------------------------------
+// Depth Fog + Height Fog post-process effect
+//
+// Single pass. Takes:
+//   texture unit 0 — scene colour (rt_input)
+//   texture unit 1 — depth buffer (depthTexture, auto-wired via Option B)
+//
+// All per-frame params (invViewProjMatrix, projectionParams) are pushed
+// from CompositorEffectFogComponent::update() via updateTrackedClosure.
+//---------------------------------------------------
+
+fragment_program Fog_ps_GLSL glsl
+{
+    source Fog_ps.glsl
+    default_params
+    {
+        param_named RT       int 0
+        param_named DepthTex int 1
+    }
+}
+fragment_program Fog_ps_VK glslvk
+{
+    source Fog_ps.glsl
+    default_params
+    {
+        param_named RT       int 0
+        param_named DepthTex int 1
+    }
+}
+fragment_program Fog_ps_HLSL hlsl
+{
+    source Fog_ps.hlsl
+    target ps_5_0 ps_4_0 ps_4_0_level_9_1 ps_4_0_level_9_3
+    entry_point main
+}
+fragment_program Fog_ps_Metal metal
+{
+    source Fog_ps.metal
+    shader_reflection_pair_hint Ogre/Compositor/Quad_vs
+}
+fragment_program Fog_ps unified
+{
+    delegate Fog_ps_HLSL
+    delegate Fog_ps_GLSL
+    delegate Fog_ps_VK
+    delegate Fog_ps_Metal
+}
+
+material Postprocess/Fog
+{
+    technique
+    {
+        pass
+        {
+            depth_check off
+            depth_write off
+            cull_hardware none
+
+            vertex_program_ref Ogre/Compositor/Quad_vs {}
+
+            fragment_program_ref Fog_ps
+            {
+                // These are set from C++ in postInit / update — defaults shown for reference only
+                param_named projectionParams   float2 0.0 0.0
+                param_named farClipDistance    float  1000.0
+
+                // Depth fog — set density 0 to disable
+                param_named depthFogDensity    float  0.008
+                param_named depthFogStart      float  20.0
+
+                // Height fog — set density 0 to disable
+                param_named heightFogDensity   float  0.06
+                param_named heightFogStart     float  0.0
+                param_named heightFogEnd       float  40.0
+
+                // Shared
+                param_named fogColor           float3  0.7 0.75 0.8
+                param_named fogSkyBlend        float   0.3
+            }
+
+            // scene colour
+            texture_unit
+            {
+                tex_address_mode clamp
+                filtering bilinear
+            }
+            // depth buffer
+            texture_unit
+            {
+                tex_address_mode clamp
+                filtering point
+            }
+        }
+    }
+}

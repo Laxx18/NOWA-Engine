@@ -848,7 +848,7 @@ Ogre::Real RayCastTire::calcArcadeGripMul(Ogre::Real speed, Ogre::Real speedRef,
 // -----------------------------------------------------------------------------
 Vehicle::Vehicle(OgreNewt::World* world, Ogre::SceneManager* sceneManager, const Ogre::Vector3& defaultDirection, const OgreNewt::CollisionPtr& col, Ogre::Real vhmass, const Ogre::Vector3& collisionPosition, const Ogre::Vector3& massOrigin,
     const Ogre::Vector3& gravity, VehicleCallback* vehicleCallback) :
-    OgreNewt::Body(world, sceneManager, col, Ogre::SceneMemoryMgrTypes::SCENE_DYNAMIC, Body::NotifyKind::Vehicle),
+    OgreNewt::Body(world, sceneManager, col, false, Ogre::SceneMemoryMgrTypes::SCENE_DYNAMIC, Body::NotifyKind::Vehicle),
     m_tireCount(0),
     m_tires(),
     m_defaultDirection(ndVector(defaultDirection.x, defaultDirection.y, defaultDirection.z, 0.0f)),
