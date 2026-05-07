@@ -1,0 +1,212 @@
+//---------------------------------------------------
+// Volumetric Light / God Ray post-process effect
+//
+// Three-pass Crytek / Kawase screen-space god-ray pipeline:
+//
+//   Pass 1  Postprocess/VolumetricLightSunMask
+//           Isolates bright pixels near the sun → ½-res rt0
+//
+//   Pass 2  Postprocess/VolumetricLightRadialBlur
+//           Walks each pixel toward the sun, accumulating with decay → ½-res rt1
+//
+//   Pass 3  Postprocess/VolumetricLightBlend
+//           Additively composites god rays + tint onto the original scene
+//
+// sunScreenPos is written per-frame from C++ by projecting the
+// directional light's derived direction through the camera VP matrix.
+// All other parameters are tunable through CompositorEffectVolumetricLightComponent.
+//---------------------------------------------------
+
+// ============================================================
+// Fragment program declarations
+// ============================================================
+
+// Pass 1 — Sun Mask
+fragment_program VolumetricLightSunMask_ps_GLSL glsl
+{
+    source VolumetricLight_SunMask_ps.glsl
+}
+fragment_program VolumetricLightSunMask_ps_VK glslvk
+{
+    source VolumetricLight_SunMask_ps.glsl
+}
+fragment_program VolumetricLightSunMask_ps_HLSL hlsl
+{
+    source VolumetricLight_SunMask_ps.hlsl
+    target ps_5_0 ps_4_0 ps_4_0_level_9_1 ps_4_0_level_9_3
+    entry_point main
+}
+fragment_program VolumetricLightSunMask_ps_Metal metal
+{
+    source VolumetricLight_SunMask_ps.metal
+    shader_reflection_pair_hint Ogre/Compositor/Quad_vs
+}
+fragment_program VolumetricLightSunMask_ps unified
+{
+    delegate VolumetricLightSunMask_ps_HLSL
+    delegate VolumetricLightSunMask_ps_GLSL
+    delegate VolumetricLightSunMask_ps_VK
+    delegate VolumetricLightSunMask_ps_Metal
+}
+
+// Pass 2 — Radial Blur
+fragment_program VolumetricLightRadialBlur_ps_GLSL glsl
+{
+    source VolumetricLight_RadialBlur_ps.glsl
+}
+fragment_program VolumetricLightRadialBlur_ps_VK glslvk
+{
+    source VolumetricLight_RadialBlur_ps.glsl
+}
+fragment_program VolumetricLightRadialBlur_ps_HLSL hlsl
+{
+    source VolumetricLight_RadialBlur_ps.hlsl
+    target ps_5_0 ps_4_0 ps_4_0_level_9_1 ps_4_0_level_9_3
+    entry_point main
+}
+fragment_program VolumetricLightRadialBlur_ps_Metal metal
+{
+    source VolumetricLight_RadialBlur_ps.metal
+    shader_reflection_pair_hint Ogre/Compositor/Quad_vs
+}
+fragment_program VolumetricLightRadialBlur_ps unified
+{
+    delegate VolumetricLightRadialBlur_ps_HLSL
+    delegate VolumetricLightRadialBlur_ps_GLSL
+    delegate VolumetricLightRadialBlur_ps_VK
+    delegate VolumetricLightRadialBlur_ps_Metal
+}
+
+// Pass 3 — Blend
+fragment_program VolumetricLightBlend_ps_GLSL glsl
+{
+    source VolumetricLight_Blend_ps.glsl
+    default_params
+    {
+        param_named RT      int 0
+        param_named GodRays int 1
+    }
+}
+fragment_program VolumetricLightBlend_ps_VK glslvk
+{
+    source VolumetricLight_Blend_ps.glsl
+}
+fragment_program VolumetricLightBlend_ps_HLSL hlsl
+{
+    source VolumetricLight_Blend_ps.hlsl
+    target ps_5_0 ps_4_0 ps_4_0_level_9_1 ps_4_0_level_9_3
+    entry_point main
+}
+fragment_program VolumetricLightBlend_ps_Metal metal
+{
+    source VolumetricLight_Blend_ps.metal
+    shader_reflection_pair_hint Ogre/Compositor/Quad_vs
+}
+fragment_program VolumetricLightBlend_ps unified
+{
+    delegate VolumetricLightBlend_ps_HLSL
+    delegate VolumetricLightBlend_ps_GLSL
+    delegate VolumetricLightBlend_ps_VK
+    delegate VolumetricLightBlend_ps_Metal
+}
+
+// ============================================================
+// Material definitions
+// ============================================================
+
+// Pass 1 — Sun Mask (½-res bright-pass near sun position)
+material Postprocess/VolumetricLightSunMask
+{
+    technique
+    {
+        pass
+        {
+            depth_check off
+            depth_write off
+            cull_hardware none
+
+            vertex_program_ref Ogre/Compositor/Quad_vs {}
+
+            fragment_program_ref VolumetricLightSunMask_ps
+            {
+                // sunScreenPos is written every frame from C++
+                param_named sunScreenPos  float2 0.5 0.1
+                param_named sunThreshold  float  0.8
+                param_named sunRadius     float  0.4
+            }
+
+            texture_unit
+            {
+                tex_address_mode clamp
+                filtering bilinear
+            }
+        }
+    }
+}
+
+// Pass 2 — Radial blur toward sun
+material Postprocess/VolumetricLightRadialBlur
+{
+    technique
+    {
+        pass
+        {
+            depth_check off
+            depth_write off
+            cull_hardware none
+
+            vertex_program_ref Ogre/Compositor/Quad_vs {}
+
+            fragment_program_ref VolumetricLightRadialBlur_ps
+            {
+                // sunScreenPos is written every frame from C++
+                param_named sunScreenPos float2 0.5 0.1
+                param_named decay        float  0.97
+                param_named density      float  0.8
+                param_named weight       float  0.04
+                param_named exposure     float  0.25
+            }
+
+            texture_unit
+            {
+                tex_address_mode clamp
+                filtering bilinear
+            }
+        }
+    }
+}
+
+// Pass 3 — Additive blend onto scene
+material Postprocess/VolumetricLightBlend
+{
+    technique
+    {
+        pass
+        {
+            depth_check off
+            depth_write off
+            cull_hardware none
+
+            vertex_program_ref Ogre/Compositor/Quad_vs {}
+
+            fragment_program_ref VolumetricLightBlend_ps
+            {
+                param_named godRayStrength float  1.0
+                param_named tint          float3  1.0 0.9 0.7
+            }
+
+            // texture unit 0 — original scene colour
+            texture_unit
+            {
+                tex_address_mode clamp
+                filtering none
+            }
+            // texture unit 1 — radial blur output (god rays)
+            texture_unit
+            {
+                tex_address_mode clamp
+                filtering bilinear
+            }
+        }
+    }
+}

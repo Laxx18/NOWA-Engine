@@ -2092,7 +2092,8 @@ namespace NOWA
 
     void WorkspaceBaseComponent::createCompositorEffectsFromCode(void)
     {
-        ENQUEUE_RENDER_COMMAND_WAIT("WorkspaceBaseComponent::createCompositorEffectsFromCode", {
+        NOWA::GraphicsModule::RenderCommand command = [this]()
+        {
             Ogre::Root* root = Core::getSingletonPtr()->getOgreRoot();
 
             // Bloom compositor is loaded from script but here is the hard coded equivalent
@@ -2317,7 +2318,87 @@ namespace NOWA
                 motionBlurDef->mapOutputChannel(0, "rt_output");
                 motionBlurDef->mapOutputChannel(1, "rt_input");
             }
-        });
+
+            if (!compositorManager->hasNodeDefinition("Volumetric Light"))
+            {
+                Ogre::CompositorNodeDef* volLightDef = compositorManager->addNodeDefinition("Volumetric Light");
+
+                // Input channels — identical contract to Bloom / Cartoon
+                volLightDef->addTextureSourceName("rt_input", 0, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
+                volLightDef->addTextureSourceName("rt_output", 1, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
+
+                volLightDef->mCustomIdentifier = "Ogre/Postprocess";
+
+                // Two ½-resolution intermediate RTs
+                volLightDef->setNumLocalTextureDefinitions(2);
+                {
+                    // rt0 — sun mask output
+                    Ogre::TextureDefinitionBase::TextureDefinition* texDef = volLightDef->addTextureDefinition("rt0");
+                    texDef->widthFactor = 0.5f;
+                    texDef->heightFactor = 0.5f;
+                    texDef->format = Ogre::PFG_RGBA8_UNORM_SRGB;
+
+                    Ogre::RenderTargetViewDef* rtv = volLightDef->addRenderTextureView("rt0");
+                    Ogre::RenderTargetViewEntry attachment;
+                    attachment.textureName = "rt0";
+                    rtv->colourAttachments.push_back(attachment);
+                    rtv->depthBufferId = Ogre::DepthBuffer::POOL_NO_DEPTH;
+
+                    // rt1 — radial blur output
+                    texDef = volLightDef->addTextureDefinition("rt1");
+                    texDef->widthFactor = 0.5f;
+                    texDef->heightFactor = 0.5f;
+                    texDef->format = Ogre::PFG_RGBA8_UNORM_SRGB;
+
+                    rtv = volLightDef->addRenderTextureView("rt1");
+                    attachment.textureName = "rt1";
+                    rtv->colourAttachments.push_back(attachment);
+                    rtv->depthBufferId = Ogre::DepthBuffer::POOL_NO_DEPTH;
+                }
+
+                volLightDef->setNumTargetPass(3);
+
+                // --- Pass 1: Sun Mask ---
+                {
+                    Ogre::CompositorTargetDef* targetDef = volLightDef->addTargetPass("rt0");
+                    auto* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
+
+                    passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
+                    passQuad->mMaterialName = "Postprocess/VolumetricLightSunMask";
+                    passQuad->addQuadTextureSource(0, "rt_input");
+                    passQuad->mProfilingId = "NOWA_Post_Effect_VolumetricLight_SunMask_Pass_Quad";
+                }
+
+                // --- Pass 2: Radial Blur ---
+                {
+                    Ogre::CompositorTargetDef* targetDef = volLightDef->addTargetPass("rt1");
+                    auto* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
+
+                    passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
+                    passQuad->mMaterialName = "Postprocess/VolumetricLightRadialBlur";
+                    passQuad->addQuadTextureSource(0, "rt0");
+                    passQuad->mProfilingId = "NOWA_Post_Effect_VolumetricLight_RadialBlur_Pass_Quad";
+                }
+
+                // --- Pass 3: Blend ---
+                {
+                    Ogre::CompositorTargetDef* targetDef = volLightDef->addTargetPass("rt_output");
+                    auto* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
+
+                    passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
+                    passQuad->mMaterialName = "Postprocess/VolumetricLightBlend";
+                    passQuad->addQuadTextureSource(0, "rt_input"); // original scene
+                    passQuad->addQuadTextureSource(1, "rt1");      // god-ray contribution
+                    passQuad->mProfilingId = "NOWA_Post_Effect_VolumetricLight_Blend_Pass_Quad";
+                }
+
+                // Output channels
+                volLightDef->setNumOutputChannels(2);
+                volLightDef->mapOutputChannel(0, "rt_output");
+                volLightDef->mapOutputChannel(1, "rt_input");
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(command), "WorkspaceBaseComponent::createCompositorEffectsFromCode");
     }
 
     void WorkspaceBaseComponent::initializeSmaa(PresetQuality quality, EdgeDetectionMode edgeDetectionMode)

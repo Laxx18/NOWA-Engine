@@ -149,47 +149,47 @@ namespace NOWA
 	}
 
 	void AnimationComponentV2::createAnimationBlender(void)
-	{
-		Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
-		if (nullptr != item)
-		{
-			std::vector<Ogre::String> animationNames;
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AnimationBlenderV2] List all animations for mesh '" + item->getMesh()->getName() + "':");
+    {
+        Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
+        if (nullptr == item)
+        {
+            return;
+        }
 
-			this->skeleton = item->getSkeletonInstance();
-			if (nullptr == this->skeleton)
-			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[Animation Blender V2] Cannot initialize animation blender, because the skeleton resource for item: "
-																+ item->getName() + " is missing!");
-				return;
-			}
-			else
-			{
-				for (auto& anim : this->skeleton->getAnimationsNonConst())
-				{
-					anim.setEnabled(false);
-					anim.mWeight = 0.0f;
-					anim.setTime(0.0f);
-					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AnimationComponentV2] Animation name: " + anim.getName().getFriendlyText()
-																	+ " length: " + Ogre::StringConverter::toString(anim.getDuration()) + " seconds");
-					animationNames.emplace_back(anim.getName().getFriendlyText());
-				}
+        // Phase 1 (main thread): read-only — collect animation names for the UI variant.
+        // Reading the names vector is safe since the SkeletonDef is immutable after load.
+        this->skeleton = item->getSkeletonInstance();
+        if (nullptr == this->skeleton)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "...");
+            return;
+        }
 
-				// Add all available animation names to list
-				this->animationName->setValue(animationNames);
+        std::vector<Ogre::String> animationNames;
+        for (const auto& anim : this->skeleton->getAnimations())
+        {
+            animationNames.emplace_back(anim.getName().getFriendlyText());
+        }
+        this->animationName->setValue(animationNames);
 
-				this->animationBlender = new AnimationBlenderV2(item);
-				this->animationBlender->init(this->animationName->getListSelectedValue(), this->animationRepeat->getBool());
-			}
-		}
-	}
+        // Phase 2 (render thread): everything that touches mEnabled / mWeight / mCurrentFrame.
+        Ogre::String selectedAnim = this->animationName->getListSelectedValue();
+        bool repeat = this->animationRepeat->getBool();
+
+        NOWA::GraphicsModule::RenderCommand cmd = [this, item, selectedAnim, repeat]()
+        {
+            this->animationBlender = new AnimationBlenderV2(item);
+            this->animationBlender->init(selectedAnim, repeat);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "AnimationComponentV2::createAnimationBlender");
+    }
 
 	bool AnimationComponentV2::connect(void)
 	{
 		GameObjectComponent::connect();
 		if (true == this->activated->getBool())
 		{
-			this->activateAnimation();
+            this->activateAnimation();
 		}
 		return true;
 	}
@@ -243,9 +243,9 @@ namespace NOWA
 				// compounds visually at slow speeds (speed=0.1 -> 14.4s instead of 12s).
 				//
 				// Correct formula: addTime(dt * speed)
-				//   speed=1.0  → animation plays at natural speed (getDuration() seconds)
-				//   speed=0.1  → animation plays 10x slower (getDuration() * 10 seconds)
-				//   speed=2.0  → animation plays 2x faster (getDuration() / 2 seconds)
+				//   speed=1.0  -> animation plays at natural speed (getDuration() seconds)
+				//   speed=0.1  -> animation plays 10x slower (getDuration() * 10 seconds)
+				//   speed=2.0  -> animation plays 2x faster (getDuration() / 2 seconds)
 				this->animationBlender->addTime(dt * this->animationSpeed->getReal());
 			}
 		}
@@ -255,21 +255,22 @@ namespace NOWA
 	{
 		if (nullptr != this->animationBlender)
 		{
-			ENQUEUE_RENDER_COMMAND("AnimationComponentV2::resetAnimation",
-			{
-				if (nullptr != this->animationBlender->getSource())
-				{
-					this->animationBlender->getSource()->setEnabled(false);
-					this->animationBlender->getSource()->mWeight = 0.0f;
-					this->animationBlender->getSource()->setTime(0.0f);
-				}
-				if (nullptr != this->animationBlender->getTarget())
-				{
-					this->animationBlender->getTarget()->setEnabled(false);
-					this->animationBlender->getTarget()->mWeight = 0.0f;
-					this->animationBlender->getTarget()->setTime(0.0f);
-				}
-			});
+            NOWA::GraphicsModule::RenderCommand command = [this]()
+            {
+                if (nullptr != this->animationBlender->getSource())
+                {
+                    this->animationBlender->getSource()->setEnabled(false);
+                    this->animationBlender->getSource()->mWeight = 0.0f;
+                    this->animationBlender->getSource()->setTime(0.0f);
+                }
+                if (nullptr != this->animationBlender->getTarget())
+                {
+                    this->animationBlender->getTarget()->setEnabled(false);
+                    this->animationBlender->getTarget()->mWeight = 0.0f;
+                    this->animationBlender->getTarget()->setTime(0.0f);
+                }
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(command), "AnimationComponentV2::resetAnimation");
 		}
 	}
 
@@ -352,42 +353,44 @@ namespace NOWA
 
 		if (false == this->animationName->getListSelectedValue().empty())
 		{
-
-			if (nullptr != this->skeleton)
-			{
-				Ogre::SkeletonAnimation* animationState = this->skeleton->getAnimation(this->animationName->getListSelectedValue());
-				if (nullptr != animationState)
-				{
-					// this->resetAnimation();
-					// this->animationState->setEnabled(true);
-					// this->animationState->setWeight(5.0f);
-					// this->animationState->setTimePosition(0.0f);
-					// this->animationBlender->init(this->animationName->getListSelectedValue(), this->animationRepeat->getBool());
-					this->animationBlender->blend(this->animationName->getListSelectedValue(), NOWA::AnimationBlenderV2::BlendThenAnimate, 0.2f, this->animationRepeat->getBool());
-				}
-				else
-				{
-					Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
-					if (nullptr != item)
-					{
-						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AnimationComponentV2] Error: The item: " + item->getName()
-																		+ " has no animation: " + this->animationName->getListSelectedValue());
-						for (auto& anim : this->skeleton->getAnimationsNonConst())
-						{
-							anim.setEnabled(false);
-							anim.mWeight = 0.0f;
-							anim.setTime(0.0f);
-							Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AnimationComponentV2] Available Animations: ");
-							Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AnimationComponentV2] Animation name: " + anim.getName().getFriendlyText()
-																			+ " length: " + Ogre::StringConverter::toString(anim.getDuration()) + " seconds");
-						}
-					}
-					else
-					{
-						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AnimationComponentV2] Error: The game object does not possess an item for animations.");
-					}
-				}
-			}
+            NOWA::GraphicsModule::RenderCommand loadCmd = [this]()
+            {
+                if (nullptr != this->skeleton)
+                {
+                    Ogre::SkeletonAnimation* animationState = this->skeleton->getAnimation(this->animationName->getListSelectedValue());
+                    if (nullptr != animationState)
+                    {
+                        // this->resetAnimation();
+                        // this->animationState->setEnabled(true);
+                        // this->animationState->setWeight(5.0f);
+                        // this->animationState->setTimePosition(0.0f);
+                        // this->animationBlender->init(this->animationName->getListSelectedValue(), this->animationRepeat->getBool());
+                        this->animationBlender->blend(this->animationName->getListSelectedValue(), NOWA::AnimationBlenderV2::BlendThenAnimate, 0.2f, this->animationRepeat->getBool());
+                    }
+                    else
+                    {
+                        Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
+                        if (nullptr != item)
+                        {
+                            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AnimationComponentV2] Error: The item: " + item->getName() + " has no animation: " + this->animationName->getListSelectedValue());
+                            for (auto& anim : this->skeleton->getAnimationsNonConst())
+                            {
+                                anim.setEnabled(false);
+                                anim.mWeight = 0.0f;
+                                anim.setTime(0.0f);
+                                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AnimationComponentV2] Available Animations: ");
+                                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                                    "[AnimationComponentV2] Animation name: " + anim.getName().getFriendlyText() + " length: " + Ogre::StringConverter::toString(anim.getDuration()) + " seconds");
+                            }
+                        }
+                        else
+                        {
+                            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AnimationComponentV2] Error: The game object does not possess an item for animations.");
+                        }
+                    }
+                }
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(loadCmd), "AnimationComponentV2::connect");
 		}
 		else
 		{
@@ -495,12 +498,20 @@ namespace NOWA
 	}
 
 	void AnimationComponentV2::setTimePosition(Ogre::Real timePosition)
-	{
-		if (nullptr != this->animationBlender)
-		{
-			this->animationBlender->getSource()->setTime(timePosition);
-		}
-	}
+    {
+        if (nullptr == this->animationBlender)
+        {
+            return;
+        }
+        NOWA::GraphicsModule::RenderCommand cmd = [this, timePosition]()
+        {
+            if (nullptr != this->animationBlender && nullptr != this->animationBlender->getSource())
+            {
+                this->animationBlender->getSource()->setTime(timePosition);
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "AnimationComponentV2::setTimePosition");
+    }
 
 	Ogre::Real AnimationComponentV2::getTimePosition(void) const
 	{

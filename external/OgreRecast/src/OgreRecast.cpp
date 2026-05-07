@@ -771,11 +771,6 @@ void OgreRecast::drawNavMesh(bool draw)
 	}
 }
 
-void OgreRecast::recreateDrawer(void)
-{
-	m_debugDrawer->mustRecreate();
-}
-
 void OgreRecast::drawPolyMesh(const rcPolyMesh &mesh, bool draw, bool colorRegions)
 {
 	const int nvp = mesh.nvp;
@@ -1445,4 +1440,32 @@ OgreRecastNavmeshPruner* OgreRecast::getNavmeshPruner()
 
 // Return navmesh pruner for this recast mesh
 	return mNavmeshPruner;
+}
+
+void OgreRecast::removeAllDrawnNavmesh()
+{
+	// Collect all RecastMO* objects to avoid iterator invalidation
+	std::vector<Ogre::MovableObject*> toRemove;
+	auto itor = m_pRecastSN->getAttachedObjectIterator();
+	while (itor.hasMoreElements())
+	{
+		Ogre::MovableObject* obj = itor.peekNext();
+		const Ogre::String& n = obj->getName();
+		if (Ogre::StringUtil::startsWith(n, "RecastMOWalk_") || Ogre::StringUtil::startsWith(n, "RecastMONeighbour_") || Ogre::StringUtil::startsWith(n, "RecastMOBoundary_"))
+		{
+			toRemove.push_back(obj);
+		}
+		itor.moveNext();
+	}
+	for (Ogre::MovableObject* obj : toRemove)
+	{
+		obj->detachFromParent();
+		m_pSceneMgr->destroyManualObject(static_cast<Ogre::ManualObject*>(obj));
+	}
+}
+
+void OgreRecast::recreateDrawer()
+{
+	removeAllDrawnNavmesh();
+	m_debugDrawer->mustRecreate();
 }

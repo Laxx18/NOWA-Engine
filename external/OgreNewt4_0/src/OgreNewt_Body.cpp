@@ -74,7 +74,7 @@ namespace OgreNewt
             getNewtonBody()->SetCollisionShape(ndShapeInstance(collisionPtr->getNewtonCollision()));
         }
 
-        m_world->enqueuePhysicsAndWait(
+        m_world->enqueuePhysics(
             [this](World& w)
             {
                 getNewtonBody()->SetNotifyCallback(m_bodyNotifyPtr); // pass SharedPtr directly
@@ -662,7 +662,7 @@ namespace OgreNewt
             }
         }
 
-        m_world->enqueuePhysicsAndWait(
+        m_world->enqueuePhysics(
             [this, id](World& w)
             {
                 ndShapeInstance& shape = getNewtonBody()->GetCollisionShape();

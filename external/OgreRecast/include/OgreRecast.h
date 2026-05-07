@@ -820,6 +820,8 @@ public:
 
    OgreRecastNavmeshPruner* getNavmeshPruner(void);
 
+   void removeAllDrawnNavmesh(void);
+
    // helper debug drawing stuff
    Ogre::ManualObject* m_pRecastMOWalk ;
    Ogre::ManualObject* m_pRecastMONeighbour ;

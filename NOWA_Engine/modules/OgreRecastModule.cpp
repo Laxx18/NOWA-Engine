@@ -988,7 +988,9 @@ namespace NOWA
 
             if (true == loaded)
             {
-                // Loaded from disk — draw immediately, no rebuild needed
+                // Process first the obstacles (Box-Obstacles via mloadedFromDisk)
+                this->detourTileCache->handleUpdate(0.016f);
+
                 NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
                 {
                     if (nullptr != this->detourTileCache)

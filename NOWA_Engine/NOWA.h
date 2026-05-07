@@ -261,7 +261,9 @@ namespace NOWA
 	typedef boost::shared_ptr<CompositorEffectColorComponent> CompositorEffectColorCompPtr;
 	typedef boost::shared_ptr<CompositorEffectEmbossedComponent> CompositorEffectEmbossedCompPtr;
 	typedef boost::shared_ptr<CompositorEffectSharpenEdgesComponent> CompositorEffectSharpenEdgesCompPtr;
-
+    typedef boost::shared_ptr<CompositorEffectCartoonComponent> CompositorEffectCartoonCompPtr;
+    typedef boost::shared_ptr<CompositorEffectVolumetricLightComponent> CompositorEffectVolumetricLightCompPtr;
+	
 	typedef boost::shared_ptr<DatablockPbsComponent> DatablockPbsCompPtr;
 	typedef boost::shared_ptr<DatablockUnlitComponent> DatablockUnlitCompPtr;
 	typedef boost::shared_ptr<DatablockTerraComponent> DatablockTerraCompPtr;

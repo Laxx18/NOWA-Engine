@@ -482,6 +482,8 @@ namespace NOWA
 		 */
 		Ogre::Real getEnvmapScale(unsigned int index);
 
+		Ogre::AtmosphereNpr* getAtmosphereNpr(void) const;
+
 	public:
 		/** 
 		 * @brief Sets the time of day.

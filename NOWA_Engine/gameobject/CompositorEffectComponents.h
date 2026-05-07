@@ -150,6 +150,7 @@ namespace NOWA
 		Variant* workspaceGameObjectId;
 		Ogre::String effectName;
 		WorkspaceBaseComponent* workspaceBaseComponent;
+        Ogre::Camera* camera;
 	};
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1280,6 +1281,195 @@ namespace NOWA
     };
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	/**
+     * @brief   Screen-space volumetric light / god-ray post-process compositor effect.
+     *
+     * Uses the classic Crytek / Kawase three-pass pipeline:
+     *
+     *   Pass 1  Sun Mask  — extracts bright pixels near the sun's screen position.
+     *   Pass 2  Radial Blur — walks each pixel toward the sun accumulating with decay.
+     *   Pass 3  Blend     — additively composites the rays onto the scene with a tint.
+     *
+     * The sun's screen-space position is derived each frame by projecting the
+     * linked directional light's derived world direction through the camera's
+     * view-projection matrix.  No depth texture is required — zero workspace
+     * wiring changes are needed beyond the existing Ogre/Postprocess mechanism.
+     *
+     * Requirements: A camera component and at least one LightDirectionalComponent
+     *               must exist in the scene.  If no light ID is set the component
+     *               falls back to GameObjectController::MAIN_LIGHT_ID.
+     */
+    class EXPORTED CompositorEffectVolumetricLightComponent : public CompositorEffectBaseComponent
+    {
+    public:
+        typedef boost::shared_ptr<NOWA::CompositorEffectVolumetricLightComponent> CompositorEffectVolumetricLightCompPtr;
+
+    public:
+        CompositorEffectVolumetricLightComponent();
+        virtual ~CompositorEffectVolumetricLightComponent();
+
+        virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
+        virtual bool postInit(void) override;
+        virtual void onRemoveComponent(void) override;
+
+        virtual Ogre::String getClassName(void) const override;
+        virtual Ogre::String getParentClassName(void) const override;
+        virtual GameObjectCompPtr clone(GameObjectPtr clonedGameObjectPtr) override;
+
+        static unsigned int getStaticClassId(void)
+        {
+            return NOWA::getIdFromName("CompositorEffectVolumetricLightComponent");
+        }
+
+        static Ogre::String getStaticClassName(void)
+        {
+            return "CompositorEffectVolumetricLightComponent";
+        }
+
+        virtual void actualizeValue(Variant* attribute) override;
+        virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
+
+        /**
+         * @brief   Per-frame update: projects the sun direction to screen space and
+         *          pushes it to both the sun-mask and radial-blur shader passes.
+         *          This runs every frame regardless of the notSimulating flag so that
+         *          god rays follow the sun even in the editor.
+         */
+        virtual void update(Ogre::Real dt, bool notSimulating) override;
+
+        static Ogre::String getStaticInfoText(void)
+        {
+            return "Requirements: A camera component and a LightDirectionalComponent must exist. "
+                   "Screen-space god rays using the Crytek/Kawase three-pass technique. "
+                   "No depth texture required.";
+        }
+
+		static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass);
+
+        // -----------------------------------------------------------------------
+        // Light source
+        // -----------------------------------------------------------------------
+        /**
+         * @brief   Sets the game object ID of the directional light that acts as the sun.
+         *          Pass 0 to fall back to GameObjectController::MAIN_LIGHT_ID.
+         */
+        void setLightId(unsigned long lightId);
+        unsigned long getLightId(void) const;
+
+        // -----------------------------------------------------------------------
+        // Sun Mask pass parameters
+        // -----------------------------------------------------------------------
+        /** Luminance threshold: only pixels above this value are treated as sun. [0..1] default 0.8 */
+        void setSunThreshold(Ogre::Real sunThreshold);
+        Ogre::Real getSunThreshold(void) const;
+
+        /** Screen-space radius around the sun position within which the mask is active. [0.1..1.5] default 0.4 */
+        void setSunRadius(Ogre::Real sunRadius);
+        Ogre::Real getSunRadius(void) const;
+
+        // -----------------------------------------------------------------------
+        // Radial Blur pass parameters
+        // -----------------------------------------------------------------------
+        /** Per-step luminance decay along the ray. [0.9..1.0] default 0.97 */
+        void setDecay(Ogre::Real decay);
+        Ogre::Real getDecay(void) const;
+
+        /** Fraction of the pixel→sun path sampled. [0.1..1.0] default 0.8 */
+        void setDensity(Ogre::Real density);
+        Ogre::Real getDensity(void) const;
+
+        /** Final exposure multiplier on the accumulated ray colour. [0.01..2.0] default 0.25 */
+        void setExposure(Ogre::Real exposure);
+        Ogre::Real getExposure(void) const;
+
+        // -----------------------------------------------------------------------
+        // Blend pass parameters
+        // -----------------------------------------------------------------------
+        /** Final strength of the additive blend onto the scene. [0..3] default 1.0 */
+        void setGodRayStrength(Ogre::Real godRayStrength);
+        Ogre::Real getGodRayStrength(void) const;
+
+        /** RGB colour tint of the light shafts. Default: warm sunlight (1, 0.9, 0.7) */
+        void setTint(const Ogre::Vector3& tint);
+        Ogre::Vector3 getTint(void) const;
+
+    public:
+        static const Ogre::String AttrLightId(void)
+        {
+            return "Light Id";
+        }
+        static const Ogre::String AttrGodRayStrength(void)
+        {
+            return "God Ray Strength";
+        }
+        static const Ogre::String AttrSunThreshold(void)
+        {
+            return "Sun Threshold";
+        }
+        static const Ogre::String AttrSunRadius(void)
+        {
+            return "Sun Radius";
+        }
+        static const Ogre::String AttrDecay(void)
+        {
+            return "Decay";
+        }
+        static const Ogre::String AttrDensity(void)
+        {
+            return "Density";
+        }
+        static const Ogre::String AttrExposure(void)
+        {
+            return "Exposure";
+        }
+        static const Ogre::String AttrTint(void)
+        {
+            return "Tint";
+        }
+
+    private:
+        // -----------------------------------------------------------------------
+        // Internal helpers
+        // -----------------------------------------------------------------------
+        /**
+         * @brief   Resolves the Ogre::Light* from the stored lightId Variant.
+         *          Falls back to MAIN_LIGHT_ID when lightId == 0.
+         *          Called from postInit and setLightId.
+         */
+        void resolveLight(void);
+
+        // -----------------------------------------------------------------------
+        // GPU pass pointers  (three materials, three passes)
+        // -----------------------------------------------------------------------
+        Ogre::MaterialPtr sunMaskMaterial;
+        Ogre::Pass* sunMaskPass; ///< Postprocess/VolumetricLightSunMask
+
+        Ogre::MaterialPtr radialBlurMaterial;
+        Ogre::Pass* radialBlurPass; ///< Postprocess/VolumetricLightRadialBlur
+
+        Ogre::MaterialPtr blendMaterial;
+        Ogre::Pass* blendPass; ///< Postprocess/VolumetricLightBlend
+
+        // -----------------------------------------------------------------------
+        // Light reference
+        // -----------------------------------------------------------------------
+        Ogre::Light* sunLight; ///< Resolved directional light — not owned by this component
+
+        // -----------------------------------------------------------------------
+        // Variants
+        // -----------------------------------------------------------------------
+        Variant* lightId;
+        Variant* godRayStrength;
+        Variant* sunThreshold;
+        Variant* sunRadius;
+        Variant* decay;
+        Variant* density;
+        Variant* exposure;
+        Variant* tint;
+    };
+
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 }; //namespace end
 

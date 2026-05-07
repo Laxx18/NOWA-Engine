@@ -1,0 +1,56 @@
+// Volumetric Light / God Ray effect — Crytek / Kawase screen-space technique
+//
+// Three passes, identical channel contract to Bloom (in 0 = rt_input, in 1 = rt_output).
+// No depth texture required. Zero workspace wiring changes needed.
+//
+// rt0 / rt1 at ½ resolution reduce ALU cost for the 32-sample radial blur.
+// sunScreenPos in the first two materials is updated per-frame from C++ by
+// CompositorEffectVolumetricLightComponent::update().
+compositor_node "Volumetric Light"
+{
+    in 0 rt_input
+    in 1 rt_output
+
+    custom_id Ogre/Postprocess
+
+    // ½-res intermediates — fine for a glow/ray pass
+    texture rt0 target_width_scaled 0.5 target_height_scaled 0.5 PFG_RGBA8_UNORM_SRGB depth_pool 0
+    texture rt1 target_width_scaled 0.5 target_height_scaled 0.5 PFG_RGBA8_UNORM_SRGB depth_pool 0
+
+    target rt0
+    {
+        // Pass 1: isolate bright pixels near sun position
+        pass render_quad
+        {
+            load { all dont_care }
+            material Postprocess/VolumetricLightSunMask
+            input 0 rt_input
+        }
+    }
+
+    target rt1
+    {
+        // Pass 2: radial blur from pixel toward sun
+        pass render_quad
+        {
+            load { all dont_care }
+            material Postprocess/VolumetricLightRadialBlur
+            input 0 rt0
+        }
+    }
+
+    target rt_output
+    {
+        // Pass 3: additive blend onto full-res scene
+        pass render_quad
+        {
+            load { all dont_care }
+            material Postprocess/VolumetricLightBlend
+            input 0 rt_input   // original scene
+            input 1 rt1        // god-ray contribution
+        }
+    }
+
+    out 0 rt_output
+    out 1 rt_input
+}

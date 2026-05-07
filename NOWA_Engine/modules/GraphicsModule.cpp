@@ -1,7 +1,7 @@
 ﻿#include "NOWAPrecompiled.h"
 #include "GraphicsModule.h"
-#include "main/Core.h"
 #include "main/AppStateManager.h"
+#include "main/Core.h"
 #include "main/InputDeviceCore.h"
 
 #include "Animation/OgreBone.h"
@@ -17,8 +17,8 @@ namespace NOWA
 {
     using namespace RenderGlobals;
 
-    GraphicsModule::GraphicsModule()
-        : bRunning(false),
+    GraphicsModule::GraphicsModule() :
+        bRunning(false),
         timeoutEnabled(false),
         timeoutDuration(g_defaultTimeout.count()),
         logLevel(Ogre::LML_NORMAL),
@@ -49,7 +49,6 @@ namespace NOWA
 
     GraphicsModule::~GraphicsModule()
     {
-        
     }
 
     MyGUI::Widget* GraphicsModule::getMyGUIFocusWidget(void)
@@ -90,7 +89,7 @@ namespace NOWA
         this->markCurrentThreadAsRenderThread();
 
         this->setTimeoutDuration(std::chrono::milliseconds(10000));
-        
+
         const float fixedDt = 1.0f / float(NOWA::Core::getSingletonPtr()->getOptionDesiredSimulationUpdates());
         this->setFrameTime(fixedDt);
 
@@ -186,9 +185,7 @@ namespace NOWA
         const int remainingCommands = this->queue.size_approx();
         if (remainingCommands > 0)
         {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-                "[RenderCommandQueueModule]: Illegal state, as there are still: " +
-                Ogre::StringConverter::toString(remainingCommands) + " pending commands!");
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[RenderCommandQueueModule]: Illegal state, as there are still: " + Ogre::StringConverter::toString(remainingCommands) + " pending commands!");
             throw;
         }
 
@@ -201,30 +198,32 @@ namespace NOWA
         this->trackedPasses.clear();
         this->trackedDatablocks.clear();
 
-		this->bRunning = false;
-		this->timeoutEnabled = false;
-		this->timeoutDuration = g_defaultTimeout.count();
-		this->logLevel = Ogre::LML_NORMAL;
-		this->currentTransformNodeIdx = 0;
-		this->currentTransformCameraIdx = 0;
+        this->bRunning = false;
+        this->timeoutEnabled = false;
+        this->timeoutDuration = g_defaultTimeout.count();
+        this->logLevel = Ogre::LML_NORMAL;
+        this->currentTransformNodeIdx = 0;
+        this->currentTransformCameraIdx = 0;
         this->currentTransformOldBoneIdx = 0;
         this->currentTransformBoneIdx = 0;
         this->currentTransformPassIdx = 0;
         this->currentTrackedDatablockIdx = 0;
 
-		this->accumTimeSinceLastLogicFrame = 0.0f;
+        this->accumTimeSinceLastLogicFrame = 0.0f;
 
-		this->frameTime = 1.0f / 60.0f;
-		this->debugVisualization = false;
-		this->currentDestroySlot = 0;
-		this->isRunningWaitClosure = false;
+        this->frameTime = 1.0f / 60.0f;
+        this->debugVisualization = false;
+        this->currentDestroySlot = 0;
+        this->isRunningWaitClosure = false;
     }
 
     void GraphicsModule::publishInterpolationAlpha(float alpha)
     {
         // Clamp hard: we never want NaNs or >1 to leak into interpolation
         if (!(alpha == alpha)) // NaN check
+        {
             alpha = 0.0f;
+        }
 
         alpha = std::clamp(alpha, 0.0f, 1.0f);
 
@@ -239,7 +238,7 @@ namespace NOWA
     }
 
     float GraphicsModule::consumeInterpolationAlpha() const
-    { 
+    {
         // Acquire pairs with logic release stores
         return m_interpolationAlpha.load(std::memory_order_acquire);
     }
@@ -293,47 +292,48 @@ namespace NOWA
         if (clearedCommands > 0)
         {
             Ogre::LogManager::getSingleton().logMessage("[GraphicsModule] Cleared " + Ogre::StringConverter::toString(clearedCommands) + " queued closure commands and " + Ogre::StringConverter::toString(persistentClosures.size()) +
-                " persistent closures", Ogre::LML_NORMAL);
+                                                            " persistent closures",
+                Ogre::LML_NORMAL);
         }
     }
 
     void GraphicsModule::clearSceneResources(void)
     {
-      this->trackedCameras.clear();
-      this->cameraToIndexMap.clear();
+        this->trackedCameras.clear();
+        this->cameraToIndexMap.clear();
 
-      this->trackedNodes.clear();
-      this->nodeToIndexMap.clear();
+        this->trackedNodes.clear();
+        this->nodeToIndexMap.clear();
 
-      this->oldBoneToIndexMap.clear();
-      this->trackedOldBones.clear();
-      this->boneToIndexMap.clear();
-      this->trackedBones.clear();
+        this->oldBoneToIndexMap.clear();
+        this->trackedOldBones.clear();
+        this->boneToIndexMap.clear();
+        this->trackedBones.clear();
 
-      this->passToIndexMap.clear();
-      this->trackedPasses.clear();
+        this->passToIndexMap.clear();
+        this->trackedPasses.clear();
 
-      this->datablockToIndexMap.clear();
-      this->trackedDatablocks.clear();
+        this->datablockToIndexMap.clear();
+        this->trackedDatablocks.clear();
 
-      this->currentTransformNodeIdx = 0;
-      this->currentTransformCameraIdx = 0;
-      this->currentTransformOldBoneIdx = 0;
-      this->currentTransformBoneIdx = 0;
-      this->currentTransformPassIdx = 0;
-      this->currentTrackedDatablockIdx = 0;
-      this->interpolationWeight = 0.0f;
-      this->accumTimeSinceLastLogicFrame = 0.0f;
+        this->currentTransformNodeIdx = 0;
+        this->currentTransformCameraIdx = 0;
+        this->currentTransformOldBoneIdx = 0;
+        this->currentTransformBoneIdx = 0;
+        this->currentTransformPassIdx = 0;
+        this->currentTrackedDatablockIdx = 0;
+        this->interpolationWeight = 0.0f;
+        this->accumTimeSinceLastLogicFrame = 0.0f;
 
-      // 6. Clear Pending Destruction Commands (destroySlots)
-      // The multi-frame delayed destruction queue must be cleared immediately.
-      for (size_t i = 0; i < GraphicsModule::NUM_DESTROY_SLOTS; ++i)
-      {
-          this->destroySlots[i].clear();
-      }
+        // 6. Clear Pending Destruction Commands (destroySlots)
+        // The multi-frame delayed destruction queue must be cleared immediately.
+        for (size_t i = 0; i < GraphicsModule::NUM_DESTROY_SLOTS; ++i)
+        {
+            this->destroySlots[i].clear();
+        }
 
-      // 7. Reset the internal destroy slot index 
-      this->currentDestroySlot = 0;
+        // 7. Reset the internal destroy slot index
+        this->currentDestroySlot = 0;
     }
 
     void GraphicsModule::doCleanup(void)
@@ -502,11 +502,13 @@ namespace NOWA
         auto future = promise->get_future();
 
         // Create a special sync command that processes everything in the queue
-        this->enqueue([this]()
-        {
-            // This will execute in the render thread and process any commands ahead of it
+        this->enqueue(
+            [this]()
+            {
+                // This will execute in the render thread and process any commands ahead of it
                 this->logCommandEvent("Processing queue from waitForRenderCompletion", Ogre::LML_NORMAL);
-        }, "", promise);
+            },
+            "", promise);
 
         // Wait for the command to complete
         try
@@ -659,11 +661,13 @@ namespace NOWA
         auto syncFuture = syncPromise->get_future();
 
         // Create a special command that just completes the sync
-        enqueue([this]() 
-        {
-            // This will execute after all previous commands
-            this->logCommandEvent("Sync point reached in queue processing", Ogre::LML_NORMAL);
-        }, "", syncPromise);
+        enqueue(
+            [this]()
+            {
+                // This will execute after all previous commands
+                this->logCommandEvent("Sync point reached in queue processing", Ogre::LML_NORMAL);
+            },
+            "", syncPromise);
 
         // Wait without timeout - we need to ensure this completes
         this->logCommandEvent("Waiting for queue sync point", Ogre::LML_NORMAL);
@@ -1531,7 +1535,10 @@ namespace NOWA
 
     void GraphicsModule::removeTrackedPass(Ogre::Pass* pass)
     {
-        if (this->trackedPasses.empty()) return;
+        if (this->trackedPasses.empty())
+        {
+            return;
+        }
 
         auto it = this->passToIndexMap.find(pass);
         if (it != this->passToIndexMap.end())
@@ -1658,11 +1665,14 @@ namespace NOWA
             return;
         }
 
-        // Create removal command
-        ClosureCommand command(uniqueName, nullptr, true, false, true);
-
-        // Use producer token for better performance
-        bool success = this->closureQueue.enqueue(producerToken, std::move(command));
+        // Post a removal command so the render thread removes it at the next
+        // safe point (processClosureCommands), not immediately from main thread.
+        ClosureCommand cmd;
+        cmd.uniqueName = uniqueName;
+        cmd.isRemoval = true;
+        cmd.fireAndForget = false;
+        cmd.isUpdate = false;
+        bool success = this->closureQueue.enqueue(this->producerToken, std::move(cmd));;
 
         if (false == success)
         {
@@ -1899,16 +1909,18 @@ namespace NOWA
     void GraphicsModule::advanceTransformBuffer(void)
     {
         // Runs in Main thread
-      
+
         // Move to the next buffer - this is the key operation that separates logic and render threads
         size_t prevIdx = this->currentTransformNodeIdx;
         this->currentTransformNodeIdx = (this->currentTransformNodeIdx + 1) % NUM_TRANSFORM_BUFFERS;
 
         if (true == this->debugVisualization)
         {
-            this->logCommandEvent("[RenderCommandQueueModule]: Advanced buffer from "
-                + Ogre::StringConverter::toString(prevIdx) + " to " + Ogre::StringConverter::toString(this->currentTransformNodeIdx), Ogre::LML_TRIVIAL);
+            this->logCommandEvent("[RenderCommandQueueModule]: Advanced buffer from " + Ogre::StringConverter::toString(prevIdx) + " to " + Ogre::StringConverter::toString(this->currentTransformNodeIdx), Ogre::LML_TRIVIAL);
         }
+
+        // Deactivates nodes that have not been updated for a while
+        const int maxStableFrames = 4;
 
         // For newly added nodes, we need to copy the current transform to all buffers
         // For existing nodes, we copy the previous buffer to the new current buffer
@@ -1917,6 +1929,12 @@ namespace NOWA
         {
             if (true == nodeTransform.isNew)
             {
+                if (nullptr == nodeTransform.node)
+                {
+                    nodeTransform.stableFrames = maxStableFrames; // will be evicted below
+                    continue;
+                }
+
                 // For new nodes, initialize all buffers with current transform
                 GraphicsModule::TransformData currentTransform;
                 if (true == nodeTransform.useDerived)
@@ -1950,7 +1968,7 @@ namespace NOWA
                 }
                 else
                 {
-                    ++nodeTransform.stableFrames;     // <<< THIS is the increment
+                    ++nodeTransform.stableFrames; // <<< THIS is the increment
                 }
 
                 // For existing active nodes, copy from previous buffer to new current buffer
@@ -1962,9 +1980,6 @@ namespace NOWA
                 nodeTransform.updatedThisFrame = false;
             }
         }
-
-        // Deactivates nodes that have not been updated for a while
-        const int maxStableFrames = 4;
 
         for (int i = static_cast<int>(this->trackedNodes.size()) - 1; i >= 0; --i)
         {
@@ -1978,7 +1993,7 @@ namespace NOWA
         }
 
         // Advance camera transform buffer
-        
+
         // Move to the next buffer - this is the key operation that separates logic and render threads
         size_t prevCameraIdx = this->currentTransformCameraIdx;
         this->currentTransformCameraIdx = (this->currentTransformCameraIdx + 1) % NUM_TRANSFORM_BUFFERS;
@@ -2094,7 +2109,6 @@ namespace NOWA
             }
         }
 
-
         // Advance datablock buffer
 
         size_t prevDatablockIdx = this->currentTrackedDatablockIdx;
@@ -2160,7 +2174,6 @@ namespace NOWA
         }
 
         // Update camera transforms
-
 
         // Get the previous buffer index
         size_t prevCameraIdx = this->getPreviousTransformCameraIdx();
@@ -2300,7 +2313,7 @@ namespace NOWA
 
     Ogre::Real GraphicsModule::getAccumTimeSinceLastLogicFrame(void) const
     {
-        return  this->accumTimeSinceLastLogicFrame;
+        return this->accumTimeSinceLastLogicFrame;
     }
 
     void GraphicsModule::setFrameTime(Ogre::Real frameTime)
@@ -2349,11 +2362,7 @@ namespace NOWA
         if (level == Ogre::LML_CRITICAL)
         {
             std::stringstream ss;
-            ss << "[RenderCommandQueue] "
-                << message
-                << " (Thread: " << (this->isRenderThread() ? "RENDER" : "MAIN")
-                << ", Depth: " << g_renderCommandDepth
-                << ", WaitDepth: " << g_waitDepth << ")";
+            ss << "[RenderCommandQueue] " << message << " (Thread: " << (this->isRenderThread() ? "RENDER" : "MAIN") << ", Depth: " << g_renderCommandDepth << ", WaitDepth: " << g_waitDepth << ")";
 
             Ogre::LogManager::getSingletonPtr()->logMessage(level, ss.str());
         }

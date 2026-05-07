@@ -1916,7 +1916,12 @@ namespace NOWA
 	Ogre::Real AtmosphereComponent::getEnvmapScale(unsigned int index)
 	{
 		return this->envmapScales[index]->getReal();
-	}
+    }
+
+    Ogre::AtmosphereNpr* AtmosphereComponent::getAtmosphereNpr(void) const
+    {
+        return this->atmosphereNpr;
+    }
 
 	void AtmosphereComponent::setSunDir(const Ogre::Radian& sunAltitude, const Ogre::Radian& azimuth)
 	{

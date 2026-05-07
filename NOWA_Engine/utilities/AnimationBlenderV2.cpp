@@ -46,6 +46,12 @@ namespace NOWA
 
     AnimationBlenderV2::~AnimationBlenderV2()
     {
+        // Remove the per-frame addTime closure BEFORE the object is freed.
+        // Without this, the closure keeps running on the render thread every frame
+        // with a dangling this pointer, causing UB and skeleton corruption.
+        Ogre::String id = "AnimationBlenderV2::addTime" + Ogre::StringConverter::toString(this->uniqueId);
+        NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
+
         this->item = nullptr;
         AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &AnimationBlenderV2::gameObjectIsInRagDollStateDelegate), EventDataGameObjectIsInRagDollingState::getStaticEventType());
     }
@@ -480,7 +486,7 @@ namespace NOWA
                 }
             }
         };
-        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "AnimationBlenderV2::internalBlend");
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "AnimationBlenderV2::internalBlend");
     }
 
     void AnimationBlenderV2::addTime(Ogre::Real time)
@@ -684,7 +690,7 @@ namespace NOWA
                 }
             };
             Ogre::String id = "AnimationBlenderV2::addTime" + Ogre::StringConverter::toString(this->uniqueId);
-            NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction);
+            NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
         }
     }
 

@@ -436,16 +436,15 @@ namespace NOWA
 
             if (this->closureFunction.is_valid())
             {
-                // Create a luabind table instead of std::vector
-                luabind::object selectedGameObjectTable = luabind::newtable(LuaScriptApi::getInstance()->getLua());
-                size_t i = 0;
-                for (const auto& selectedGameObject : selectedGameObjects)
+                NOWA::AppStateManager::LogicCommand logicCommand = [this, selectedGameObjects]()
                 {
-                    selectedGameObjectTable[i++] = selectedGameObject.second.gameObject;
-                }
-
-                NOWA::AppStateManager::LogicCommand logicCommand = [this, selectedGameObjectTable]()
-                {
+                    // Create a luabind table instead of std::vector
+                    luabind::object selectedGameObjectTable = luabind::newtable(LuaScriptApi::getInstance()->getLua());
+                    size_t i = 0;
+                    for (const auto& selectedGameObject : selectedGameObjects)
+                    {
+                        selectedGameObjectTable[i++] = selectedGameObject.second.gameObject;
+                    }
                     try
                     {
                         luabind::call_function<void>(this->closureFunction, selectedGameObjectTable);

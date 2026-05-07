@@ -1,0 +1,39 @@
+// Cartoon / Cel-shading effect
+// Pass 1: Sobel edge detection into a full-resolution single-channel helper texture.
+// Pass 2: Colour quantisation (cel bands) + saturation boost + edge darkening.
+compositor_node Cartoon
+{
+    in 0 rt_input
+    in 1 rt_output
+
+    custom_id Ogre/Postprocess
+
+    // Full-resolution single-channel edge mask (R8 saves bandwidth vs RGBA8)
+    texture rt0 target_width target_height PFG_R8_UNORM depth_pool 0
+
+    target rt0
+    {
+        // --- Pass 1: Sobel edge detection ---
+        pass render_quad
+        {
+            load { all dont_care }
+            material Postprocess/CartoonEdge
+            input 0 rt_input
+        }
+    }
+
+    target rt_output
+    {
+        // --- Pass 2: Cel-shade + edge composite ---
+        pass render_quad
+        {
+            load { all dont_care }
+            material Postprocess/CartoonColor
+            input 0 rt_input   // original scene colour
+            input 1 rt0        // edge mask
+        }
+    }
+
+    out 0 rt_output
+    out 1 rt_input
+}

@@ -1,6 +1,7 @@
 #include "NOWAPrecompiled.h"
 #include "CompositorEffectComponents.h"
 #include "CameraComponent.h"
+#include "LightDirectionalComponent.h"
 #include "utilities/XMLConverter.h"
 #include "WorkspaceComponents.h"
 #include "main/Events.h"
@@ -15,6 +16,7 @@ namespace NOWA
 		: GameObjectComponent(),
 		effectName("None"),
 		workspaceBaseComponent(nullptr),
+        camera(nullptr),
 		activated(new Variant(CompositorEffectBaseComponent::AttrActivated(), true, this->attributes)),
 		workspaceGameObjectId(new Variant(CompositorEffectBaseComponent::AttrWorkspaceGameObjectId(), static_cast<unsigned long>(0), this->attributes, true))
 	{
@@ -70,6 +72,8 @@ namespace NOWA
 	bool CompositorEffectBaseComponent::disconnect(void)
 	{
         GameObjectComponent::disconnect();
+
+		this->camera = nullptr;
 
 		return true;
 	}
@@ -189,6 +193,7 @@ namespace NOWA
 			{
 				return;
 			}
+            this->camera = cameraCompPtr->getCamera();
 		}
 		else
 		{
@@ -1821,13 +1826,13 @@ namespace NOWA
 
 	///////////////////////////////////////////////////////////////////////////////////////////////
 
-	CompositorEffectCartoonComponent::CompositorEffectCartoonComponent() :
-        CompositorEffectBaseComponent(),
+	CompositorEffectCartoonComponent::CompositorEffectCartoonComponent()
+		: CompositorEffectBaseComponent(),
         edgePass(nullptr),
         colorPass(nullptr),
-        edgeThreshold(new Variant(CompositorEffectCartoonComponent::AttrEdgeThreshold(), 0.35f, this->attributes)), 
-        edgeStrength(new Variant(CompositorEffectCartoonComponent::AttrEdgeStrength(), 0.8f, this->attributes)),  
-        numBands(new Variant(CompositorEffectCartoonComponent::AttrNumBands(), 6.0f, this->attributes)),  
+        edgeThreshold(new Variant(CompositorEffectCartoonComponent::AttrEdgeThreshold(), 0.8f, this->attributes)), 
+        edgeStrength(new Variant(CompositorEffectCartoonComponent::AttrEdgeStrength(), 2.0f, this->attributes)),  
+        numBands(new Variant(CompositorEffectCartoonComponent::AttrNumBands(), 10.0f, this->attributes)),  
         saturation(new Variant(CompositorEffectCartoonComponent::AttrSaturation(), 1.2f, this->attributes)),
         edgeDarkness(new Variant(CompositorEffectCartoonComponent::AttrEdgeDarkness(), 0.2f, this->attributes))
     {
@@ -2097,5 +2102,541 @@ namespace NOWA
     {
         return this->edgeDarkness->getReal();
     }
+
+	///////////////////////////////////////////////////////////////////////////////////////////////
+
+	CompositorEffectVolumetricLightComponent::CompositorEffectVolumetricLightComponent() :
+        CompositorEffectBaseComponent(),
+        sunMaskPass(nullptr),
+        radialBlurPass(nullptr),
+        blendPass(nullptr),
+        sunLight(nullptr),
+        lightId(new Variant(CompositorEffectVolumetricLightComponent::AttrLightId(), static_cast<unsigned long>(0), this->attributes)),
+        godRayStrength(new Variant(CompositorEffectVolumetricLightComponent::AttrGodRayStrength(), 1.0f, this->attributes)),
+        sunThreshold(new Variant(CompositorEffectVolumetricLightComponent::AttrSunThreshold(), 0.8f, this->attributes)),
+        sunRadius(new Variant(CompositorEffectVolumetricLightComponent::AttrSunRadius(), 0.4f, this->attributes)),
+        decay(new Variant(CompositorEffectVolumetricLightComponent::AttrDecay(), 0.97f, this->attributes)),
+        density(new Variant(CompositorEffectVolumetricLightComponent::AttrDensity(), 0.8f, this->attributes)),
+        exposure(new Variant(CompositorEffectVolumetricLightComponent::AttrExposure(), 0.25f, this->attributes)),
+        tint(new Variant(CompositorEffectVolumetricLightComponent::AttrTint(), Ogre::Vector3(1.0f, 0.9f, 0.7f), this->attributes))
+    {
+        this->effectName = "Volumetric Light";
+
+        // Editor slider ranges
+        this->godRayStrength->setConstraints(0.0f, 3.0f);
+        this->sunThreshold->setConstraints(0.0f, 1.0f);
+        this->sunRadius->setConstraints(0.05f, 1.5f);
+        this->decay->setConstraints(0.90f, 1.0f);
+        this->density->setConstraints(0.1f, 1.0f);
+        this->exposure->setConstraints(0.01f, 2.0f);
+    }
+
+    CompositorEffectVolumetricLightComponent::~CompositorEffectVolumetricLightComponent()
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[CompositorEffectVolumetricLightComponent] Destructor for game object: " + this->gameObjectPtr->getName());
+
+        this->sunMaskPass = nullptr;
+        this->radialBlurPass = nullptr;
+        this->blendPass = nullptr;
+        this->sunLight = nullptr;
+    }
+
+    bool CompositorEffectVolumetricLightComponent::init(rapidxml::xml_node<>*& propertyElement)
+    {
+        bool success = CompositorEffectBaseComponent::init(propertyElement);
+
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrLightId())
+        {
+            this->lightId->setValue(XMLConverter::getAttribUnsignedLong(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrGodRayStrength())
+        {
+            this->setGodRayStrength(XMLConverter::getAttribReal(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrSunThreshold())
+        {
+            this->setSunThreshold(XMLConverter::getAttribReal(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrSunRadius())
+        {
+            this->setSunRadius(XMLConverter::getAttribReal(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrDecay())
+        {
+            this->setDecay(XMLConverter::getAttribReal(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrDensity())
+        {
+            this->setDensity(XMLConverter::getAttribReal(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrExposure())
+        {
+            this->setExposure(XMLConverter::getAttribReal(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrTint())
+        {
+            this->setTint(XMLConverter::getAttribVector3(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+
+        return success;
+    }
+
+    GameObjectCompPtr CompositorEffectVolumetricLightComponent::clone(GameObjectPtr clonedGameObjectPtr)
+    {
+        CompositorEffectVolumetricLightCompPtr clonedCompPtr(boost::make_shared<CompositorEffectVolumetricLightComponent>());
+
+        clonedCompPtr->setActivated(this->activated->getBool());
+        clonedCompPtr->setLightId(this->lightId->getULong());
+        clonedCompPtr->setGodRayStrength(this->godRayStrength->getReal());
+        clonedCompPtr->setSunThreshold(this->sunThreshold->getReal());
+        clonedCompPtr->setSunRadius(this->sunRadius->getReal());
+        clonedCompPtr->setDecay(this->decay->getReal());
+        clonedCompPtr->setDensity(this->density->getReal());
+        clonedCompPtr->setExposure(this->exposure->getReal());
+        clonedCompPtr->setTint(this->tint->getVector3());
+
+        clonedGameObjectPtr->addComponent(clonedCompPtr);
+        clonedCompPtr->setOwner(clonedGameObjectPtr);
+
+        GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
+
+        return clonedCompPtr;
+    }
+
+    bool CompositorEffectVolumetricLightComponent::postInit(void)
+    {
+        bool success = CompositorEffectBaseComponent::postInit();
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[CompositorEffectVolumetricLightComponent] Init for game object: " + this->gameObjectPtr->getName());
+
+        // ----------------------------------------------------------------
+        // Resolve the three materials / passes
+        // ----------------------------------------------------------------
+        auto loadPass = [this](const Ogre::String& matName, Ogre::MaterialPtr& matPtr, Ogre::Pass*& passPtr) -> bool
+        {
+            matPtr = Ogre::MaterialManager::getSingletonPtr()->getByName(matName);
+            if (matPtr.isNull())
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[CompositorEffectVolumetricLightComponent] Material not found: '" + matName + "'");
+                return false;
+            }
+            passPtr = matPtr->getTechnique(0)->getPass(0);
+            return true;
+        };
+
+        if (!loadPass("Postprocess/VolumetricLightSunMask", this->sunMaskMaterial, this->sunMaskPass))
+        {
+            return false;
+        }
+        if (!loadPass("Postprocess/VolumetricLightRadialBlur", this->radialBlurMaterial, this->radialBlurPass))
+        {
+            return false;
+        }
+        if (!loadPass("Postprocess/VolumetricLightBlend", this->blendMaterial, this->blendPass))
+        {
+            return false;
+        }
+
+        // ----------------------------------------------------------------
+        // Resolve directional light
+        // ----------------------------------------------------------------
+        this->resolveLight();
+
+        // ----------------------------------------------------------------
+        // Push initial values to GPU
+        // ----------------------------------------------------------------
+        this->setGodRayStrength(this->godRayStrength->getReal());
+        this->setSunThreshold(this->sunThreshold->getReal());
+        this->setSunRadius(this->sunRadius->getReal());
+        this->setDecay(this->decay->getReal());
+        this->setDensity(this->density->getReal());
+        this->setExposure(this->exposure->getReal());
+        this->setTint(this->tint->getVector3());
+
+        return success;
+    }
+
+    void CompositorEffectVolumetricLightComponent::onRemoveComponent(void)
+    {
+        CompositorEffectBaseComponent::onRemoveComponent();
+
+        // Remove the per-frame render-thread closure so it does not hold a dangling 'this'
+        Ogre::String closureId = this->gameObjectPtr->getName() + this->getClassName() + "::update";
+        NOWA::GraphicsModule::getInstance()->removeTrackedClosure(closureId);
+    }
+
+    void CompositorEffectVolumetricLightComponent::actualizeValue(Variant* attribute)
+    {
+        CompositorEffectBaseComponent::actualizeValue(attribute);
+
+        const Ogre::String& name = attribute->getName();
+
+        if (name == AttrLightId())
+        {
+            this->setLightId(attribute->getULong());
+        }
+        else if (name == AttrGodRayStrength())
+        {
+            this->setGodRayStrength(attribute->getReal());
+        }
+        else if (name == AttrSunThreshold())
+        {
+            this->setSunThreshold(attribute->getReal());
+        }
+        else if (name == AttrSunRadius())
+        {
+            this->setSunRadius(attribute->getReal());
+        }
+        else if (name == AttrDecay())
+        {
+            this->setDecay(attribute->getReal());
+        }
+        else if (name == AttrDensity())
+        {
+            this->setDensity(attribute->getReal());
+        }
+        else if (name == AttrExposure())
+        {
+            this->setExposure(attribute->getReal());
+        }
+        else if (name == AttrTint())
+        {
+            this->setTint(attribute->getVector3());
+        }
+    }
+
+    void CompositorEffectVolumetricLightComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
+    {
+        // Type codes: 2=int, 6=real, 7=string, 8=vector2, 9=vector3, 10=vector4, 12=bool
+        CompositorEffectBaseComponent::writeXML(propertiesXML, doc);
+
+        auto writeReal = [&](const char* name, Ogre::Real value)
+        {
+            xml_node<>* p = doc.allocate_node(node_element, "property");
+            p->append_attribute(doc.allocate_attribute("type", "6"));
+            p->append_attribute(doc.allocate_attribute("name", name));
+            p->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, value)));
+            propertiesXML->append_node(p);
+        };
+
+        // Light ID (unsigned long, type 2)
+        {
+            xml_node<>* p = doc.allocate_node(node_element, "property");
+            p->append_attribute(doc.allocate_attribute("type", "2"));
+            p->append_attribute(doc.allocate_attribute("name", "Light Id"));
+            p->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->lightId->getULong())));
+            propertiesXML->append_node(p);
+        }
+
+        writeReal("God Ray Strength", this->godRayStrength->getReal());
+        writeReal("Sun Threshold", this->sunThreshold->getReal());
+        writeReal("Sun Radius", this->sunRadius->getReal());
+        writeReal("Decay", this->decay->getReal());
+        writeReal("Density", this->density->getReal());
+        writeReal("Exposure", this->exposure->getReal());
+
+        // Tint (vector3, type 9)
+        {
+            xml_node<>* p = doc.allocate_node(node_element, "property");
+            p->append_attribute(doc.allocate_attribute("type", "9"));
+            p->append_attribute(doc.allocate_attribute("name", "Tint"));
+            p->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->tint->getVector3())));
+            propertiesXML->append_node(p);
+        }
+    }
+
+    Ogre::String CompositorEffectVolumetricLightComponent::getClassName(void) const
+    {
+        return "CompositorEffectVolumetricLightComponent";
+    }
+
+    Ogre::String CompositorEffectVolumetricLightComponent::getParentClassName(void) const
+    {
+        return "CompositorEffectBaseComponent";
+    }
+
+    // -----------------------------------------------------------------------
+    // Per-frame update — project sun to screen space
+    // -----------------------------------------------------------------------
+
+    void CompositorEffectVolumetricLightComponent::update(Ogre::Real dt, bool notSimulating)
+    {
+        if (nullptr == this->sunLight)
+        {
+            return;
+        }
+        if (nullptr == this->sunMaskPass)
+        {
+            return;
+        }
+        if (nullptr == this->radialBlurPass)
+        {
+            return;
+        }
+        if (nullptr == this->workspaceBaseComponent)
+        {
+            return;
+        }
+
+		if (nullptr == this->camera)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[CompositorEffectVolumetricLightComponent] Could not find camera, hence effect cannot be enabled for game object: " + this->gameObjectPtr->getName());
+            return;
+        }
+
+        // Capture pointers by value for the render-thread closure
+        Ogre::Pass* maskPass = this->sunMaskPass;
+        Ogre::Pass* blurPass = this->radialBlurPass;
+        Ogre::Light* light = this->sunLight;
+        Ogre::Camera* camera = this->camera;
+        WorkspaceBaseComponent* workspaceBaseComponent = this->workspaceBaseComponent;
+
+        auto closureFunction = [maskPass, blurPass, light, camera, workspaceBaseComponent](Ogre::Real /*renderDt*/)
+        {
+            // The sun direction points FROM the sun TOWARD the scene.
+            // To find the sun's position, we go in the OPPOSITE direction.
+            Ogre::Vector3 sunDir = light->getDerivedDirectionUpdated().normalisedCopy();
+
+            // Place a virtual sun point very far away in the anti-light direction
+            Ogre::Vector3 sunWorldPos = camera->getDerivedPosition() + (-sunDir) * 100000.0f;
+
+            // Build view-projection matrix.
+            // getProjectionMatrixWithRSDepth accounts for D3D/GL depth-range differences.
+            Ogre::Matrix4 viewProj = camera->getProjectionMatrixWithRSDepth() * camera->getViewMatrix();
+
+            Ogre::Vector4 clipPos = viewProj * Ogre::Vector4(sunWorldPos.x, sunWorldPos.y, sunWorldPos.z, 1.0f);
+
+            Ogre::Vector2 sunScreenPos;
+
+            if (clipPos.w > 0.0001f)
+            {
+                // Standard NDC → UV conversion.
+                // Y is flipped: NDC +1 = top of screen = UV 0 in Ogre's convention.
+                sunScreenPos.x = (clipPos.x / clipPos.w) * 0.5f + 0.5f;
+                sunScreenPos.y = 1.0f - ((clipPos.y / clipPos.w) * 0.5f + 0.5f);
+            }
+            else
+            {
+                // Sun is behind the camera — push it to a far edge so rays
+                // still point in roughly the right direction rather than
+                // collapsing to screen centre.
+                Ogre::Vector2 edge(clipPos.x, -clipPos.y);
+                float len = edge.length();
+                if (len > 0.0001f)
+                {
+                    edge /= len;
+                    sunScreenPos = Ogre::Vector2(0.5f + edge.x * 2.0f, 0.5f + edge.y * 2.0f);
+                }
+                else
+                {
+                    // Completely overhead or directly behind — arbitrary fallback
+                    sunScreenPos = Ogre::Vector2(0.5f, 0.5f);
+                }
+            }
+
+            // Push the updated position to both passes that need it
+            maskPass->getFragmentProgramParameters()->setNamedConstant("sunScreenPos", sunScreenPos);
+            blurPass->getFragmentProgramParameters()->setNamedConstant("sunScreenPos", sunScreenPos);
+        };
+
+        Ogre::String closureId = this->gameObjectPtr->getName() + this->getClassName() + "::update";
+        NOWA::GraphicsModule::getInstance()->updateTrackedClosure(closureId, closureFunction, false);
+    }
+
+    // -----------------------------------------------------------------------
+    // Light resolution
+    // -----------------------------------------------------------------------
+
+    void CompositorEffectVolumetricLightComponent::resolveLight(void)
+    {
+        this->sunLight = nullptr;
+
+        unsigned long id = this->lightId->getULong();
+
+        // Fallback to the main scene light when no ID is specified
+        if (id == 0)
+        {
+            id = GameObjectController::MAIN_LIGHT_ID;
+        }
+
+        GameObjectPtr lightGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(id);
+
+        if (nullptr == lightGameObjectPtr)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[CompositorEffectVolumetricLightComponent] Could not find game object "
+                                                                                "for light id: " +
+                                                                                    Ogre::StringConverter::toString(id) + "  game object: " + this->gameObjectPtr->getName());
+            return;
+        }
+
+        auto lightCompPtr = NOWA::makeStrongPtr(lightGameObjectPtr->getComponent<LightDirectionalComponent>());
+
+        if (nullptr != lightCompPtr)
+        {
+            this->sunLight = lightCompPtr->getOgreLight();
+        }
+        else
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                "[CompositorEffectVolumetricLightComponent] Game object with id: " + Ogre::StringConverter::toString(id) + " has no LightDirectionalComponent. Game object: " + this->gameObjectPtr->getName());
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Setters / getters
+    // -----------------------------------------------------------------------
+
+    void CompositorEffectVolumetricLightComponent::setLightId(unsigned long lightId)
+    {
+        this->lightId->setValue(lightId);
+        // Re-resolve light at runtime (e.g. user changes the ID in NOWA-Design)
+        this->resolveLight();
+    }
+
+    unsigned long CompositorEffectVolumetricLightComponent::getLightId(void) const
+    {
+        return this->lightId->getULong();
+    }
+
+    // --- Sun Mask pass ---
+
+    void CompositorEffectVolumetricLightComponent::setSunThreshold(Ogre::Real sunThreshold)
+    {
+        this->sunThreshold->setValue(sunThreshold);
+        if (nullptr != this->sunMaskPass)
+        {
+            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectVolumetricLightComponent::setSunThreshold", _1(sunThreshold), { this->sunMaskPass->getFragmentProgramParameters()->setNamedConstant("sunThreshold", sunThreshold); });
+        }
+    }
+
+    Ogre::Real CompositorEffectVolumetricLightComponent::getSunThreshold(void) const
+    {
+        return this->sunThreshold->getReal();
+    }
+
+    void CompositorEffectVolumetricLightComponent::setSunRadius(Ogre::Real sunRadius)
+    {
+        this->sunRadius->setValue(sunRadius);
+        if (nullptr != this->sunMaskPass)
+        {
+            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectVolumetricLightComponent::setSunRadius", _1(sunRadius), { this->sunMaskPass->getFragmentProgramParameters()->setNamedConstant("sunRadius", sunRadius); });
+        }
+    }
+
+    Ogre::Real CompositorEffectVolumetricLightComponent::getSunRadius(void) const
+    {
+        return this->sunRadius->getReal();
+    }
+
+    // --- Radial Blur pass ---
+
+    void CompositorEffectVolumetricLightComponent::setDecay(Ogre::Real decay)
+    {
+        this->decay->setValue(decay);
+        if (nullptr != this->radialBlurPass)
+        {
+            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectVolumetricLightComponent::setDecay", _1(decay), { this->radialBlurPass->getFragmentProgramParameters()->setNamedConstant("decay", decay); });
+        }
+    }
+
+    Ogre::Real CompositorEffectVolumetricLightComponent::getDecay(void) const
+    {
+        return this->decay->getReal();
+    }
+
+    void CompositorEffectVolumetricLightComponent::setDensity(Ogre::Real density)
+    {
+        this->density->setValue(density);
+        if (nullptr != this->radialBlurPass)
+        {
+            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectVolumetricLightComponent::setDensity", _1(density), { this->radialBlurPass->getFragmentProgramParameters()->setNamedConstant("density", density); });
+        }
+    }
+
+    Ogre::Real CompositorEffectVolumetricLightComponent::getDensity(void) const
+    {
+        return this->density->getReal();
+    }
+
+    void CompositorEffectVolumetricLightComponent::setExposure(Ogre::Real exposure)
+    {
+        this->exposure->setValue(exposure);
+        if (nullptr != this->radialBlurPass)
+        {
+            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectVolumetricLightComponent::setExposure", _1(exposure), { this->radialBlurPass->getFragmentProgramParameters()->setNamedConstant("exposure", exposure); });
+        }
+    }
+
+    Ogre::Real CompositorEffectVolumetricLightComponent::getExposure(void) const
+    {
+        return this->exposure->getReal();
+    }
+
+    // --- Blend pass ---
+
+    void CompositorEffectVolumetricLightComponent::setGodRayStrength(Ogre::Real godRayStrength)
+    {
+        this->godRayStrength->setValue(godRayStrength);
+        if (nullptr != this->blendPass)
+        {
+            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectVolumetricLightComponent::setGodRayStrength", _1(godRayStrength), { this->blendPass->getFragmentProgramParameters()->setNamedConstant("godRayStrength", godRayStrength); });
+        }
+    }
+
+    Ogre::Real CompositorEffectVolumetricLightComponent::getGodRayStrength(void) const
+    {
+        return this->godRayStrength->getReal();
+    }
+
+    void CompositorEffectVolumetricLightComponent::setTint(const Ogre::Vector3& tint)
+    {
+        this->tint->setValue(tint);
+        if (nullptr != this->blendPass)
+        {
+            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectVolumetricLightComponent::setTint", _1(tint), { this->blendPass->getFragmentProgramParameters()->setNamedConstant("tint", tint); });
+        }
+    }
+
+    Ogre::Vector3 CompositorEffectVolumetricLightComponent::getTint(void) const
+    {
+        return this->tint->getVector3();
+    }
+
+	void CompositorEffectVolumetricLightComponent::createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass)
+    {
+#if 0
+		// TODO: Necessary? If yes documenation is missing.
+        luabind::module(lua)
+		[
+			luabind::class_<CompositorEffectVolumetricLightComponent, GameObjectComponent>("CompositorEffectVolumetricLightComponent")
+            .def("setLightId", &CompositorEffectVolumetricLightComponent::setLightId)
+            .def("getLightId", &CompositorEffectVolumetricLightComponent::getLightId)
+            .def("setGodRayStrength", &CompositorEffectVolumetricLightComponent::setGodRayStrength)
+            .def("getGodRayStrength", &CompositorEffectVolumetricLightComponent::getGodRayStrength)
+            .def("setSunThreshold", &CompositorEffectVolumetricLightComponent::setSunThreshold)
+            .def("getSunThreshold", &CompositorEffectVolumetricLightComponent::getSunThreshold)
+            .def("setSunRadius", &CompositorEffectVolumetricLightComponent::setSunRadius)
+            .def("getSunRadius", &CompositorEffectVolumetricLightComponent::getSunRadius)
+            .def("setDecay", &CompositorEffectVolumetricLightComponent::setDecay)
+            .def("getDecay", &CompositorEffectVolumetricLightComponent::getDecay)
+            .def("setDensity", &CompositorEffectVolumetricLightComponent::setDensity)
+            .def("getDensity", &CompositorEffectVolumetricLightComponent::getDensity)
+            .def("setExposure", &CompositorEffectVolumetricLightComponent::setExposure)
+            .def("getExposure", &CompositorEffectVolumetricLightComponent::getExposure)
+            .def("setTint", &CompositorEffectVolumetricLightComponent::setTint)
+            .def("getTint", &CompositorEffectVolumetricLightComponent::getTint)
+		];
+#endif
+    }
+
+	///////////////////////////////////////////////////////////////////////////////////////////////
 
 }; // namespace end

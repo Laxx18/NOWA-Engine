@@ -92,6 +92,10 @@ namespace NOWA
 
         bool getRotateEnabled(void) const;
 
+        void setAlignToTerrain(bool alignToTerrain);
+
+        bool getAlignToTerrain() const;
+
         /**
          * @brief Sets the number of shadow game object slots.
          */
@@ -169,7 +173,11 @@ namespace NOWA
         }
         static Ogre::String AttrRotateEnabled()
         {
-            return "RotateEnabled";
+            return "Rotate Enabled";
+        }
+        static Ogre::String AttrAlignToTerrain()
+        {
+            return "Align To Terrain";
         }
         static const Ogre::String AttrPlaceObjectCount(void)
         {
@@ -177,7 +185,7 @@ namespace NOWA
         }
         static const Ogre::String AttrGameObjectId(void)
         {
-            return "GameObjectId";
+            return "GameObject Id";
         }
 
     protected:
@@ -209,6 +217,15 @@ namespace NOWA
 
         void resetPreviewTransparency(GameObjectPtr shadowGameObjectPtr);
 
+        void parseExcludedCategories(const Ogre::String& categories);
+
+        void applyForbiddenVisual(GameObjectPtr shadowGameObjectPtr);
+
+        void resetForbiddenVisual(GameObjectPtr shadowGameObjectPtr);
+
+        Ogre::Quaternion computeTerrainAlignOrientation(const Ogre::Vector3& hitPoint, const Ogre::Quaternion& baseYRotation);
+
+        bool checkExcludedCategoryOverlap(const Ogre::Vector3& position);
     private:
         Ogre::String name;
 
@@ -216,6 +233,7 @@ namespace NOWA
         Variant* categories;
         Variant* showPreview;
         Variant* rotateEnabled;
+        Variant* alignToTerrain;
         Variant* placeObjectCount;
         std::vector<Variant*> gameObjectIds;
 
@@ -224,11 +242,13 @@ namespace NOWA
         Ogre::Vector3 currentHitPoint;
 
         Ogre::RaySceneQuery* raySceneQuery;
+        Ogre::RaySceneQuery* terrainRayQuery;
+        Ogre::PlaneBoundedVolumeListSceneQuery* volumeQuery;
 
         luabind::object placedClosureFunction;
         luabind::object cancelledClosureFunction;
 
-        unsigned int categoryId;
+       Ogre::uint32 categoryId;
         
         PhysicsComponent* shadowPhysicsComponent;
         bool oldWasDynamic;
@@ -236,6 +256,13 @@ namespace NOWA
         Ogre::Real currentRotationDegrees; // accumulated Y rotation via mousewheel
         // Per-subitem cloned datablocks for transparency — key = subitem index
         std::vector<std::pair<Ogre::HlmsDatablock*, unsigned int>> clonedDatablocks;
+
+        Ogre::uint32 excludedCategoryId;
+        bool isOnForbiddenSurface;
+        bool isForbiddenVisualActive;
+        std::vector<std::pair<Ogre::HlmsDatablock*, unsigned int>> forbiddenClonedDatablocks;
+        Ogre::MovableObject* lastHitObject;
+        Ogre::Quaternion currentPlacementOrientation;
     };
 
 } // namespace end
