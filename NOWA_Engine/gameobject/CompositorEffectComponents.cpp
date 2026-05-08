@@ -3453,7 +3453,6 @@ namespace NOWA
             projAB.y /= this->camera->getFarClipDistance();
             const float farClip = this->camera->getFarClipDistance();
   
-
             Ogre::Pass* coc = this->cocPass;
             ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectDepthOfFieldComponent::postInit_proj", _3(projAB, farClip, coc), {
                 auto* p = coc->getFragmentProgramParameters().get();
@@ -3643,59 +3642,83 @@ namespace NOWA
 
         Ogre::String type = this->dofType->getListSelectedValue();
 
-        auto loadPass = [this](const Ogre::String& mat, Ogre::MaterialPtr& ptr, Ogre::Pass*& pass) -> bool
-        {
-            ptr = Ogre::MaterialManager::getSingletonPtr()->getByName(mat);
-            if (ptr.isNull())
-            {
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[CompositorEffectDepthOfFieldComponent] Material not found: '" + mat + "'");
-                return false;
-            }
-            pass = ptr->getTechnique(0)->getPass(0);
-            return true;
-        };
         if (type == "Depth Of Field Gaussian")
         {
-            if (!loadPass("Postprocess/DOFGaussianCoC", this->cocMaterial, this->cocPass))
+            this->cocMaterial = Ogre::MaterialManager::getSingletonPtr()->getByName("Postprocess/DOFGaussianCoC");
+            if (this->cocMaterial.isNull())
             {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[CompositorEffectDepthOfFieldComponent] Material not found: 'Postprocess/DOFGaussianCoC'");
                 return false;
             }
-            if (!loadPass("Postprocess/DOFGaussianBlurH", this->blurMaterial0, this->blurPass0))
+            this->cocPass = this->cocMaterial->getTechnique(0)->getPass(0);
+
+            this->blurMaterial0 = Ogre::MaterialManager::getSingletonPtr()->getByName("Postprocess/DOFGaussianBlurH");
+            if (this->blurMaterial0.isNull())
             {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[CompositorEffectDepthOfFieldComponent] Material not found: 'Postprocess/DOFGaussianBlurH'");
                 return false;
             }
-            if (!loadPass("Postprocess/DOFGaussianBlurV", this->blurMaterial1, this->blurPass1))
+            this->blurPass0 = this->blurMaterial0->getTechnique(0)->getPass(0);
+
+            this->blurMaterial1 = Ogre::MaterialManager::getSingletonPtr()->getByName("Postprocess/DOFGaussianBlurV");
+            if (this->blurMaterial1.isNull())
             {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[CompositorEffectDepthOfFieldComponent] Material not found: 'Postprocess/DOFGaussianBlurV'");
                 return false;
             }
-            if (!loadPass("Postprocess/DOFGaussianBlend", this->blendMaterial, this->blendPass))
+            this->blurPass1 = this->blurMaterial1->getTechnique(0)->getPass(0);
+
+            this->blendMaterial = Ogre::MaterialManager::getSingletonPtr()->getByName("Postprocess/DOFGaussianBlend");
+            if (this->blendMaterial.isNull())
             {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[CompositorEffectDepthOfFieldComponent] Material not found: 'Postprocess/DOFGaussianBlend'");
                 return false;
             }
-            this->blurPass2 = nullptr; // unused for Gaussian
+            this->blendPass = this->blendMaterial->getTechnique(0)->getPass(0);
+
+            this->blurPass2 = nullptr;
         }
-        else // HexBokeh
+        else
         {
-            if (!loadPass("Postprocess/DOFHexBokehCoC", this->cocMaterial, this->cocPass))
+            this->cocMaterial = Ogre::MaterialManager::getSingletonPtr()->getByName("Postprocess/DOFHexBokehCoC");
+            if (this->cocMaterial.isNull())
             {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[CompositorEffectDepthOfFieldComponent] Material not found: 'Postprocess/DOFHexBokehCoC'");
                 return false;
             }
-            if (!loadPass("Postprocess/DOFHexBokehDir0", this->blurMaterial0, this->blurPass0))
+            this->cocPass = this->cocMaterial->getTechnique(0)->getPass(0);
+
+            this->blurMaterial0 = Ogre::MaterialManager::getSingletonPtr()->getByName("Postprocess/DOFHexBokehDir0");
+            if (this->blurMaterial0.isNull())
             {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[CompositorEffectDepthOfFieldComponent] Material not found: 'Postprocess/DOFHexBokehDir0'");
                 return false;
             }
-            if (!loadPass("Postprocess/DOFHexBokehDir1", this->blurMaterial1, this->blurPass1))
+            this->blurPass0 = this->blurMaterial0->getTechnique(0)->getPass(0);
+
+            this->blurMaterial1 = Ogre::MaterialManager::getSingletonPtr()->getByName("Postprocess/DOFHexBokehDir1");
+            if (this->blurMaterial1.isNull())
             {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[CompositorEffectDepthOfFieldComponent] Material not found: 'Postprocess/DOFHexBokehDir1'");
                 return false;
             }
-            if (!loadPass("Postprocess/DOFHexBokehDir2", this->blurMaterial2, this->blurPass2))
+            this->blurPass1 = this->blurMaterial1->getTechnique(0)->getPass(0);
+
+            this->blurMaterial2 = Ogre::MaterialManager::getSingletonPtr()->getByName("Postprocess/DOFHexBokehDir2");
+            if (this->blurMaterial2.isNull())
             {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[CompositorEffectDepthOfFieldComponent] Material not found: 'Postprocess/DOFHexBokehDir2'");
                 return false;
             }
-            if (!loadPass("Postprocess/DOFHexBokehBlend", this->blendMaterial, this->blendPass))
+            this->blurPass2 = this->blurMaterial2->getTechnique(0)->getPass(0);
+
+            this->blendMaterial = Ogre::MaterialManager::getSingletonPtr()->getByName("Postprocess/DOFHexBokehBlend");
+            if (this->blendMaterial.isNull())
             {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[CompositorEffectDepthOfFieldComponent] Material not found: 'Postprocess/DOFHexBokehBlend'");
                 return false;
             }
+            this->blendPass = this->blendMaterial->getTechnique(0)->getPass(0);
         }
 
         return true;
@@ -3787,7 +3810,7 @@ namespace NOWA
 
         if (nullptr != this->blurPass0)
         {
-            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CompositorEffectDepthOfFieldComponent::setBlurRadius", _1(radius),
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, radius]()
             {
                 if (this->blurPass0)
                 {
@@ -3803,9 +3826,11 @@ namespace NOWA
                 {
                     this->blurPass2->getFragmentProgramParameters()->setNamedConstant("blurRadius", radius);
                 }
-            });
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CompositorEffectDepthOfFieldComponent::setBlurRadius");
         }
     }
+
     Ogre::Real CompositorEffectDepthOfFieldComponent::getBlurRadius(void) const
     {
         return this->blurRadius->getReal();

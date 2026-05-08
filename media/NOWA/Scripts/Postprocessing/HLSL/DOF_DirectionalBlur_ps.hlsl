@@ -29,7 +29,7 @@ float4 main(
 
     int iSamples = (int)numSamples;
 
-    [unroll]
+    [loop]
     for ( int i = -iSamples; i <= iSamples; i++ )
     {
         float2 sampleUV = inPs.uv0 + stepVec * (float)i;

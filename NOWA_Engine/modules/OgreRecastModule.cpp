@@ -1059,10 +1059,11 @@ namespace NOWA
 
         if (ret >= 0)
         {
-            ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("OgreRecastModule::drawPathLine", _3(ogreRecastPtr, pathSlot, drawPath),
-				{
-					ogreRecastPtr->CreateRecastPathLine(pathSlot, drawPath);
-				});
+            NOWA::GraphicsModule::RenderCommand renderCommand = [ogreRecastPtr, pathSlot, drawPath]()
+            {
+                ogreRecastPtr->CreateRecastPathLine(pathSlot, drawPath);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "OgreRecastModule::drawPathLine");
             return true;
         }
         else

@@ -59,7 +59,6 @@ material NOWABackgroundScroll
             
             // Ensure proper alpha handling
             alpha_to_coverage off
-            transparent_sorting on
 
             vertex_program_ref Ogre/Compositor/Quad_vs
             {

@@ -88,7 +88,7 @@ material Postprocess/Fog
             texture_unit
             {
                 tex_address_mode clamp
-                filtering point
+                filtering none
             }
         }
     }
