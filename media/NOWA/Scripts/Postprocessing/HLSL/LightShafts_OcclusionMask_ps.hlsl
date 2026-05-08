@@ -25,7 +25,7 @@ float4 main(
     float3 color    = RT.Sample(       samplerBilinear, inPs.uv0 ).rgb;
 
     // Gate 1: geometry occlusion
-    float isSky    = step( occlusionDepthThreshold, rawDepth );
+    float isSky = step( rawDepth, occlusionDepthThreshold );
 
     // Gate 2: brightness
     float lum      = dot( color, float3( 0.2126, 0.7152, 0.0722 ) );

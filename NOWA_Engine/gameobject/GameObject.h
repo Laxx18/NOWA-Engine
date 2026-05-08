@@ -1111,6 +1111,7 @@ namespace NOWA
 		bool bShowDebugData;
 		LuaScript* luaScript;
 		bool bConnectPriority;
+        bool bConnected;
 
 		std::vector<std::pair<GameObjectCompPtr, bool>> delayedAddCommponentList;
 		Ogre::Real timeSinceLastUpdate;

@@ -50,7 +50,7 @@ void main()
     vec3  color    = texture( vkSampler2D( RT,       samplerBilinear ), inPs.uv0 ).rgb;
 
     // Gate 1: geometry occlusion — any pixel with geometry in front is a hard blocker
-    float isSky = step( occlusionDepthThreshold, rawDepth );
+    float isSky = step( rawDepth, occlusionDepthThreshold );
 
     // Gate 2: brightness — only actually bright sky pixels emit
     float lum        = dot( color, vec3( 0.2126, 0.7152, 0.0722 ) );

@@ -13,10 +13,13 @@ Texture2D<float4> rt_input		: register(t0); //Must not be sRGB
 	Texture2D<float> depthTex	: register(t1);
 #endif
 
+// Global declaration so D3D11 reflection can find it (uniform function params
+// are not reliably exposed by ID3D11ShaderReflection in SM4/SM5).
+uniform float4 viewportSize;
+
 float2 main
 (
-	PS_INPUT inPs,
-	uniform float4 viewportSize
+	PS_INPUT inPs
 ) : SV_Target
 {
 #if !SMAA_EDGE_DETECTION_MODE || SMAA_EDGE_DETECTION_MODE == 2

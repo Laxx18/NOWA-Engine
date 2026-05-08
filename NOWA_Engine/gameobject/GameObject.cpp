@@ -55,6 +55,7 @@ namespace NOWA
 		bShowDebugData(false),
 		luaScript(nullptr),
 		bConnectPriority(false),
+        bConnected(false),
 		timeSinceLastUpdate(2.0f),
         cachedLuaScriptComponent(nullptr),
         cachedAiLuaComponent(nullptr),
@@ -893,6 +894,7 @@ namespace NOWA
 
 	bool GameObject::connect(void)
     {
+        this->bConnected = true;
         // Use cached raw pointers — no component scan, no atomic refcount lock.
         // These are set once in postInit() and cleared in destroy().
         LuaScriptComponent* luaScriptRaw = this->cachedLuaScriptComponent;
@@ -939,6 +941,7 @@ namespace NOWA
 
 	bool GameObject::disconnect(void)
 	{
+        this->bConnected = false;
 		for (const auto& component : this->gameObjectComponents)
 		{
 			if (false == std::get<COMPONENT>(component)->disconnect())
@@ -2126,7 +2129,13 @@ namespace NOWA
 	{
 		for (const auto& component : this->gameObjectComponents)
 		{
-			std::get<COMPONENT>(component)->setActivated(activated);
+			// ATTENTION: if component has been cloned at runtime, it has never been connected so far, so it must be done!
+            if (false == std::get<COMPONENT>(component)->bConnected)
+            {
+                std::get<COMPONENT>(component)->bConnected = true;
+                std::get<COMPONENT>(component)->setActivated(activated);
+                std::get<COMPONENT>(component)->connect();
+            }
 		}
 	}
 

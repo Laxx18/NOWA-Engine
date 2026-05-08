@@ -33,7 +33,7 @@ fragment float4 main_metal(
     float  rawDepth = DepthTex.sample( samplerPoint,    inPs.uv0 ).r;
     float3 color    = RT.sample(       samplerBilinear, inPs.uv0 ).rgb;
 
-    float isSky    = step( params.occlusionDepthThreshold, rawDepth );
+    float isSky    = step( rawDepth, params.occlusionDepthThreshold );
     float lum      = dot( color, float3( 0.2126, 0.7152, 0.0722 ) );
     float isBright = step( params.brightnessThreshold, lum );
 
