@@ -1,0 +1,336 @@
+//---------------------------------------------------
+// Depth of Field — Gaussian  +  Hexagonal Bokeh
+//
+// Both effects share:
+//   DOF_CoC_ps        — depth → Circle of Confusion packed with colour
+//   DOF_Directional_ps — separable directional blur (H, V, and hex angles)
+//   DOF_Blend_ps       — final sharp+blurred composite
+//
+// Hex adds:
+//   DOF_HexCombine_ps  — averages 3-direction blurs into hexagonal kernel
+//---------------------------------------------------
+
+// ============================================================
+// Shared fragment programs — CoC
+// ============================================================
+fragment_program DOF_CoC_ps_GLSL glsl
+{
+    source DOF_CoC_ps.glsl
+    default_params
+    {
+        param_named RT       int 0
+        param_named DepthTex int 1
+    }
+}
+fragment_program DOF_CoC_ps_VK glslvk
+{
+    source DOF_CoC_ps.glsl
+    default_params
+    {
+        param_named RT       int 0
+        param_named DepthTex int 1
+    }
+}
+fragment_program DOF_CoC_ps_HLSL hlsl
+{
+    source DOF_CoC_ps.hlsl
+    target ps_5_0 ps_4_0 ps_4_0_level_9_1 ps_4_0_level_9_3
+    entry_point main
+}
+fragment_program DOF_CoC_ps_Metal metal
+{
+    source DOF_CoC_ps.metal
+    shader_reflection_pair_hint Ogre/Compositor/Quad_vs
+}
+fragment_program DOF_CoC_ps unified
+{
+    delegate DOF_CoC_ps_HLSL
+    delegate DOF_CoC_ps_GLSL
+    delegate DOF_CoC_ps_VK
+    delegate DOF_CoC_ps_Metal
+}
+
+// ============================================================
+// Shared fragment programs — Directional Blur
+// ============================================================
+fragment_program DOF_DirectionalBlur_ps_GLSL glsl
+{
+    source DOF_DirectionalBlur_ps.glsl
+}
+fragment_program DOF_DirectionalBlur_ps_VK glslvk
+{
+    source DOF_DirectionalBlur_ps.glsl
+}
+fragment_program DOF_DirectionalBlur_ps_HLSL hlsl
+{
+    source DOF_DirectionalBlur_ps.hlsl
+    target ps_5_0 ps_4_0 ps_4_0_level_9_1 ps_4_0_level_9_3
+    entry_point main
+}
+fragment_program DOF_DirectionalBlur_ps_Metal metal
+{
+    source DOF_DirectionalBlur_ps.metal
+    shader_reflection_pair_hint Ogre/Compositor/Quad_vs
+}
+fragment_program DOF_DirectionalBlur_ps unified
+{
+    delegate DOF_DirectionalBlur_ps_HLSL
+    delegate DOF_DirectionalBlur_ps_GLSL
+    delegate DOF_DirectionalBlur_ps_VK
+    delegate DOF_DirectionalBlur_ps_Metal
+}
+
+// ============================================================
+// Shared fragment programs — Blend
+// ============================================================
+fragment_program DOF_Blend_ps_GLSL glsl
+{
+    source DOF_Blend_ps.glsl
+    default_params
+    {
+        param_named RT_Input  int 0
+        param_named BlurredRT int 1
+        param_named CoCRT     int 2
+    }
+}
+fragment_program DOF_Blend_ps_VK glslvk
+{
+    source DOF_Blend_ps.glsl
+    default_params
+    {
+        param_named RT_Input  int 0
+        param_named BlurredRT int 1
+        param_named CoCRT     int 2
+    }
+}
+fragment_program DOF_Blend_ps_HLSL hlsl
+{
+    source DOF_Blend_ps.hlsl
+    target ps_5_0 ps_4_0 ps_4_0_level_9_1 ps_4_0_level_9_3
+    entry_point main
+}
+fragment_program DOF_Blend_ps_Metal metal
+{
+    source DOF_Blend_ps.metal
+    shader_reflection_pair_hint Ogre/Compositor/Quad_vs
+}
+fragment_program DOF_Blend_ps unified
+{
+    delegate DOF_Blend_ps_HLSL
+    delegate DOF_Blend_ps_GLSL
+    delegate DOF_Blend_ps_VK
+    delegate DOF_Blend_ps_Metal
+}
+
+// ============================================================
+// Hex-only fragment programs — Combine
+// ============================================================
+fragment_program DOF_HexCombine_ps_GLSL glsl
+{
+    source DOF_Hex_Combine_ps.glsl
+    default_params
+    {
+        param_named RT0 int 0
+        param_named RT1 int 1
+        param_named RT2 int 2
+    }
+}
+fragment_program DOF_HexCombine_ps_VK glslvk
+{
+    source DOF_Hex_Combine_ps.glsl
+    default_params
+    {
+        param_named RT0 int 0
+        param_named RT1 int 1
+        param_named RT2 int 2
+    }
+}
+fragment_program DOF_HexCombine_ps_HLSL hlsl
+{
+    source DOF_Hex_Combine_ps.hlsl
+    target ps_5_0 ps_4_0 ps_4_0_level_9_1 ps_4_0_level_9_3
+    entry_point main
+}
+fragment_program DOF_HexCombine_ps_Metal metal
+{
+    source DOF_Hex_Combine_ps.metal
+    shader_reflection_pair_hint Ogre/Compositor/Quad_vs
+}
+fragment_program DOF_HexCombine_ps unified
+{
+    delegate DOF_HexCombine_ps_HLSL
+    delegate DOF_HexCombine_ps_GLSL
+    delegate DOF_HexCombine_ps_VK
+    delegate DOF_HexCombine_ps_Metal
+}
+
+// ============================================================
+// GAUSSIAN DOF MATERIALS
+// ============================================================
+
+// Pass 1 — CoC
+material Postprocess/DOFGaussianCoC
+{
+    technique { pass {
+        depth_check off  depth_write off  cull_hardware none
+        vertex_program_ref Ogre/Compositor/Quad_vs {}
+        fragment_program_ref DOF_CoC_ps
+        {
+            param_named projectionParams  float2  0.0 0.0
+            param_named farClipDistance   float   1000.0
+            param_named focusDistance     float   20.0
+            param_named nearBlurRange     float   5.0
+            param_named farBlurRange      float   30.0
+        }
+        texture_unit { tex_address_mode clamp  filtering bilinear }  // RT
+        texture_unit { tex_address_mode clamp  filtering point    }  // DepthTex
+    } }
+}
+
+// Pass 2 — Horizontal blur
+material Postprocess/DOFGaussianBlurH
+{
+    technique { pass {
+        depth_check off  depth_write off  cull_hardware none
+        vertex_program_ref Ogre/Compositor/Quad_vs {}
+        fragment_program_ref DOF_DirectionalBlur_ps
+        {
+            param_named blurDir     float2  1.0 0.0
+            param_named blurRadius  float   0.012
+            param_named numSamples  float   8.0
+        }
+        texture_unit { tex_address_mode clamp  filtering bilinear }
+    } }
+}
+
+// Pass 3 — Vertical blur
+material Postprocess/DOFGaussianBlurV
+{
+    technique { pass {
+        depth_check off  depth_write off  cull_hardware none
+        vertex_program_ref Ogre/Compositor/Quad_vs {}
+        fragment_program_ref DOF_DirectionalBlur_ps
+        {
+            param_named blurDir     float2  0.0 1.0
+            param_named blurRadius  float   0.012
+            param_named numSamples  float   8.0
+        }
+        texture_unit { tex_address_mode clamp  filtering bilinear }
+    } }
+}
+
+// Pass 4 — Blend
+material Postprocess/DOFGaussianBlend
+{
+    technique { pass {
+        depth_check off  depth_write off  cull_hardware none
+        vertex_program_ref Ogre/Compositor/Quad_vs {}
+        fragment_program_ref DOF_Blend_ps
+        {
+            param_named blendStrength  float  1.0
+        }
+        texture_unit { tex_address_mode clamp  filtering none    }  // sharp scene
+        texture_unit { tex_address_mode clamp  filtering bilinear }  // blurred
+        texture_unit { tex_address_mode clamp  filtering bilinear }  // CoC
+    } }
+}
+
+// ============================================================
+// HEXAGONAL BOKEH DOF MATERIALS
+// ============================================================
+
+// Pass 1 — CoC (identical parameters, separate material for independence)
+material Postprocess/DOFHexBokehCoC
+{
+    technique { pass {
+        depth_check off  depth_write off  cull_hardware none
+        vertex_program_ref Ogre/Compositor/Quad_vs {}
+        fragment_program_ref DOF_CoC_ps
+        {
+            param_named projectionParams  float2  0.0 0.0
+            param_named farClipDistance   float   1000.0
+            param_named focusDistance     float   20.0
+            param_named nearBlurRange     float   5.0
+            param_named farBlurRange      float   30.0
+        }
+        texture_unit { tex_address_mode clamp  filtering bilinear }
+        texture_unit { tex_address_mode clamp  filtering point    }
+    } }
+}
+
+// Pass 2 — Hex direction 0° (vertical: dir=(0,1))
+material Postprocess/DOFHexBokehDir0
+{
+    technique { pass {
+        depth_check off  depth_write off  cull_hardware none
+        vertex_program_ref Ogre/Compositor/Quad_vs {}
+        fragment_program_ref DOF_DirectionalBlur_ps
+        {
+            param_named blurDir     float2   0.0 1.0
+            param_named blurRadius  float    0.014
+            param_named numSamples  float    10.0
+        }
+        texture_unit { tex_address_mode clamp  filtering bilinear }
+    } }
+}
+
+// Pass 3 — Hex direction 60° (dir=(sin60,cos60)=(0.866,0.5))
+material Postprocess/DOFHexBokehDir1
+{
+    technique { pass {
+        depth_check off  depth_write off  cull_hardware none
+        vertex_program_ref Ogre/Compositor/Quad_vs {}
+        fragment_program_ref DOF_DirectionalBlur_ps
+        {
+            param_named blurDir     float2   0.866 0.5
+            param_named blurRadius  float    0.014
+            param_named numSamples  float    10.0
+        }
+        texture_unit { tex_address_mode clamp  filtering bilinear }
+    } }
+}
+
+// Pass 4 — Hex direction −60° (dir=(0.866,−0.5))
+material Postprocess/DOFHexBokehDir2
+{
+    technique { pass {
+        depth_check off  depth_write off  cull_hardware none
+        vertex_program_ref Ogre/Compositor/Quad_vs {}
+        fragment_program_ref DOF_DirectionalBlur_ps
+        {
+            param_named blurDir     float2   0.866 -0.5
+            param_named blurRadius  float    0.014
+            param_named numSamples  float    10.0
+        }
+        texture_unit { tex_address_mode clamp  filtering bilinear }
+    } }
+}
+
+// Pass 5 — Hex combine
+material Postprocess/DOFHexBokehCombine
+{
+    technique { pass {
+        depth_check off  depth_write off  cull_hardware none
+        vertex_program_ref Ogre/Compositor/Quad_vs {}
+        fragment_program_ref DOF_HexCombine_ps {}
+        texture_unit { tex_address_mode clamp  filtering bilinear }  // RT0
+        texture_unit { tex_address_mode clamp  filtering bilinear }  // RT1
+        texture_unit { tex_address_mode clamp  filtering bilinear }  // RT2
+    } }
+}
+
+// Pass 6 — Blend
+material Postprocess/DOFHexBokehBlend
+{
+    technique { pass {
+        depth_check off  depth_write off  cull_hardware none
+        vertex_program_ref Ogre/Compositor/Quad_vs {}
+        fragment_program_ref DOF_Blend_ps
+        {
+            param_named blendStrength  float  1.0
+        }
+        texture_unit { tex_address_mode clamp  filtering none    }
+        texture_unit { tex_address_mode clamp  filtering bilinear }
+        texture_unit { tex_address_mode clamp  filtering bilinear }
+    } }
+}

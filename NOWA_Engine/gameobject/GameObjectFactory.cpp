@@ -140,6 +140,9 @@ namespace NOWA
         this->componentFactory.registerClass<CompositorEffectCartoonComponent>(CompositorEffectCartoonComponent::getStaticClassId(), CompositorEffectCartoonComponent::getStaticClassName());
         this->componentFactory.registerClass<CompositorEffectVolumetricLightComponent>(CompositorEffectVolumetricLightComponent::getStaticClassId(), CompositorEffectVolumetricLightComponent::getStaticClassName());
         this->componentFactory.registerClass<CompositorEffectFogComponent>(CompositorEffectFogComponent::getStaticClassId(), CompositorEffectFogComponent::getStaticClassName());
+        this->componentFactory.registerClass<CompositorEffectLightShaftsComponent>(CompositorEffectLightShaftsComponent::getStaticClassId(), CompositorEffectLightShaftsComponent::getStaticClassName());
+        this->componentFactory.registerClass<CompositorEffectDepthOfFieldComponent>(CompositorEffectDepthOfFieldComponent::getStaticClassId(), CompositorEffectDepthOfFieldComponent::getStaticClassName());
+        this->componentFactory.registerClass<CompositorEffectOutlineComponent>(CompositorEffectOutlineComponent::getStaticClassId(), CompositorEffectOutlineComponent::getStaticClassName());
 
 		this->componentFactory.registerClass<DatablockPbsComponent>(DatablockPbsComponent::getStaticClassId(), DatablockPbsComponent::getStaticClassName());
 		this->componentFactory.registerClass<DatablockUnlitComponent>(DatablockUnlitComponent::getStaticClassId(), DatablockUnlitComponent::getStaticClassName());

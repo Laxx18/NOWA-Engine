@@ -258,25 +258,11 @@ namespace NOWA
             return;
         }
 
+        // Step 2: clear ALL blender state on the render thread synchronously.
+        // enqueueAndWait guarantees this is complete before connect() can run
+        // on the second play-press, so internalBlend always sees timeleft == 0.
         NOWA::GraphicsModule::RenderCommand command = [this]()
         {
-            // Disable and zero all live animation pointers
-            if (nullptr != this->animationBlender->getSource())
-            {
-                this->animationBlender->getSource()->setEnabled(false);
-                this->animationBlender->getSource()->mWeight = 0.0f;
-                this->animationBlender->getSource()->setTime(0.0f);
-            }
-            if (nullptr != this->animationBlender->getTarget())
-            {
-                this->animationBlender->getTarget()->setEnabled(false);
-                this->animationBlender->getTarget()->mWeight = 0.0f;
-                this->animationBlender->getTarget()->setTime(0.0f);
-            }
-
-            // *** CRITICAL: reset blender internal state ***
-            // Without this, the persistent addTime closure continues running
-            // with timeleft > 0 after disconnect, re-enabling animations on its own.
             this->animationBlender->resetBlendState();
         };
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(command), "AnimationComponentV2::resetAnimation");

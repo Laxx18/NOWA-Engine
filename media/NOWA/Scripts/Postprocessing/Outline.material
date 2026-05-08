@@ -1,0 +1,89 @@
+//---------------------------------------------------
+// Outline / Silhouette post-process effect
+//
+// Single pass, depth-based Sobel edge detection.
+// Geometry silhouettes only — texture detail is invisible to the shader.
+//
+// projectionParams is pushed once from C++ postInit and update().
+// texelSize is supplied automatically by Ogre via inverse_texture_size.
+//---------------------------------------------------
+
+fragment_program Outline_ps_GLSL glsl
+{
+    source Outline_ps.glsl
+    default_params
+    {
+        param_named RT       int 0
+        param_named DepthTex int 1
+    }
+}
+fragment_program Outline_ps_VK glslvk
+{
+    source Outline_ps.glsl
+    default_params
+    {
+        param_named RT       int 0
+        param_named DepthTex int 1
+    }
+}
+fragment_program Outline_ps_HLSL hlsl
+{
+    source Outline_ps.hlsl
+    target ps_5_0 ps_4_0 ps_4_0_level_9_1 ps_4_0_level_9_3
+    entry_point main
+}
+fragment_program Outline_ps_Metal metal
+{
+    source Outline_ps.metal
+    shader_reflection_pair_hint Ogre/Compositor/Quad_vs
+}
+fragment_program Outline_ps unified
+{
+    delegate Outline_ps_HLSL
+    delegate Outline_ps_GLSL
+    delegate Outline_ps_VK
+    delegate Outline_ps_Metal
+}
+
+material Postprocess/Outline
+{
+    technique
+    {
+        pass
+        {
+            depth_check off
+            depth_write off
+            cull_hardware none
+
+            vertex_program_ref Ogre/Compositor/Quad_vs {}
+
+            fragment_program_ref Outline_ps
+            {
+                // Pushed from C++ — defaults shown for reference only
+                param_named projectionParams   float2  0.0 0.0
+                param_named farClipDistance    float   1000.0
+
+                // texelSize auto-filled by Ogre from texture unit 1 (DepthTex)
+                param_named_auto texelSize     inverse_texture_size 1
+
+                param_named outlineColor       float3  0.0 0.0 0.0
+                param_named outlineThickness   float   1.0
+                param_named depthThreshold     float   0.001
+                param_named outlineStrength    float   1.0
+            }
+
+            // texture unit 0 — scene colour
+            texture_unit
+            {
+                tex_address_mode clamp
+                filtering bilinear
+            }
+            // texture unit 1 — depth buffer (point-sampled for exact values)
+            texture_unit
+            {
+                tex_address_mode clamp
+                filtering point
+            }
+        }
+    }
+}

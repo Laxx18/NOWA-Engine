@@ -1,0 +1,26 @@
+// Outline / Silhouette post-process effect
+//
+// Single pass — declares "in 2 depthTexture" so Option B in
+// reconnectAllNodes() auto-wires the depth channel.
+compositor_node Outline
+{
+    in 0 rt_input
+    in 1 rt_output
+    in 2 depthTexture
+
+    custom_id Ogre/Postprocess
+
+    target rt_output
+    {
+        pass render_quad
+        {
+            load { all dont_care }
+            material Postprocess/Outline
+            input 0 rt_input      // scene colour → t0
+            input 1 depthTexture  // depth buffer → t1
+        }
+    }
+
+    out 0 rt_output
+    out 1 rt_input
+}

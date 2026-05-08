@@ -6,13 +6,15 @@
 #include "utilities/rapidxml.hpp"
 #include "main/Events.h"
 
+#include "main/EngineResourceListener.h"
+
 namespace NOWA
 {
 	/**
 	* @class DotSceneImportModule
 	* @brief This class is responsible for loading an external virtual environment
 	*/
-	class EXPORTED DotSceneImportModule
+    class EXPORTED DotSceneImportModule : public Ogre::ResourceGroupListener
 	{
 	public:
 		friend class MiniMapModule;
@@ -78,11 +80,10 @@ namespace NOWA
 		* @param[in]	sceneLoaderCallback	The scene loader callback that can be used to react when objects are loaded.
 		* @note								A newly created scene loader callback heap pointer must be passed for the IsceneLoaderCallback. It will be deleted internally,
 		*									if the object is not required anymore.
-		* @param[in]	showProgress		If set to true, the loading progress will be shown, else nothing will be shown which loads the virtual environment faster.
 		* @return		success				True, if scene could be parsed, else false
 		*/
 		bool parseScene(const Ogre::String& projectName, const Ogre::String& sceneName, const Ogre::String& resourceGroupName, Ogre::Light* sunLight = nullptr,
-			IsceneLoaderCallback* sceneLoaderCallback = nullptr, bool showProgress = true);
+			IsceneLoaderCallback* sceneLoaderCallback = nullptr);
 
 		/**
 		* @brief		Parses a scene XML to create the virtual environment for the game engine
@@ -91,10 +92,9 @@ namespace NOWA
 		* @param[in]	savedGameFilePathName	The whole file path name of the saved game location.
 		* @param[in]	resourceGroupName		The group name which leads to the scene name. The group name must be declared in a resource cfg file.
 		* @param[in]	crypted					If a saved game snapshot shall be parsed, the user can say, whether everything is crypted and needs to be decoded.
-		* @param[in]	showProgress			If set to true, the loading progress will be shown, else nothing will be shown which loads the virtual environment faster.
 		* @return		success					True, if scene could be parsed, else false
 		*/
-		bool parseSceneSnapshot(const Ogre::String& projectName, const Ogre::String& sceneName, const Ogre::String& resourceGroupName, const Ogre::String& savedGameFilePathName, bool crypted = false, bool showProgress = false);
+		bool parseSceneSnapshot(const Ogre::String& projectName, const Ogre::String& sceneName, const Ogre::String& resourceGroupName, const Ogre::String& savedGameFilePathName, bool crypted = false);
 
 		std::vector<unsigned long> parseGroup(const Ogre::String& fileName, const Ogre::String& resourceGroupName);
 
@@ -164,6 +164,11 @@ namespace NOWA
 		 * @return		project, sceneName	The project and scene name to get
 		 */
 		std::pair<Ogre::String, Ogre::String> getProjectAndSceneName(const Ogre::String& filePathName, bool decrypt);
+
+		void setShowLoadingDetails(bool show);
+
+        void setShowProgressBar(bool show);
+
 	protected:
 		/**
 		* @brief		Parses a scene XML to create the virtual environment for the game engine
@@ -198,6 +203,22 @@ namespace NOWA
 		void processPlane(rapidxml::xml_node<>* xmlNode, Ogre::SceneNode* parent, bool justSetValues = false);
 
 		Ogre::MeshPtr loadMeshV2Optimized(const Ogre::String& meshName, const Ogre::String& itemName, const Ogre::String& originalMeshFile);
+
+		void createSceneLoadUI(size_t totalObjects);
+        void destroySceneLoadUI();
+        // Called from main thread – enqueues non-blocking render command
+        void notifySceneLoadProgress(const Ogre::String& status);
+        // Called directly from render thread (postInitData)
+        void notifyPostInitPhase(const Ogre::String& phase, size_t current, size_t total);
+
+		virtual void resourceGroupScriptingStarted(const Ogre::String& resourceGroupName, size_t scriptCount) override;
+        virtual void scriptParseStarted(const Ogre::String& scriptName, bool& skipThisScript) override;
+        virtual void scriptParseEnded(const Ogre::String& scriptName, bool skipped) override;
+        virtual void resourceGroupScriptingEnded(const Ogre::String& resourceGroupName) override;
+        virtual void resourceGroupLoadStarted(const Ogre::String& resourceGroupName, size_t resourceCount) override;
+        virtual void resourceLoadStarted(const Ogre::ResourcePtr& resource) override;
+        virtual void resourceLoadEnded() override;
+        virtual void resourceGroupLoadEnded(const Ogre::String& resourceGroupName) override;
 	private:
 		void parseGameObjectDelegate(EventDataPtr eventData);
 	protected:
@@ -215,7 +236,6 @@ namespace NOWA
 		int	pagesCount;
 		bool needCollisionRebuild;
 		Ogre::Light* sunLight;
-		bool showProgress;
 		bool forceCreation;
 		bool bSceneParsed;
 		std::vector<unsigned long> parsedGameObjectIds;
@@ -228,6 +248,12 @@ namespace NOWA
 		std::vector<unsigned long> missingGameObjectIds;
 		bool bIsSnapshot;
 		bool bNewScene;
+
+		bool showLoadingDetails;
+        bool showProgressBar;
+        EngineResourceSceneListener* sceneListener;
+        size_t sceneLoadCurrentObject;
+        size_t sceneLoadTotalObjects;
 	};
 
 }; // namespace end

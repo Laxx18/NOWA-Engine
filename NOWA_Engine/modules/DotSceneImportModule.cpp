@@ -1,569 +1,571 @@
 ﻿#include "NOWAPrecompiled.h"
 #include "DotSceneImportModule.h"
-#include "main/Core.h" // required for the progressbar when loading the scene
-#include "main/AppStateManager.h"
-#include "gameobject/GameObjectController.h"
-#include "utilities/XMLConverter.h"
-#include "utilities/MathHelper.h"
-#include "gameobject/PhysicsComponent.h"
-#include "gameobject/PhysicsActiveComponent.h"
-#include "gameobject/CameraComponent.h"
-#include "gameobject/LightDirectionalComponent.h"
-#include "gameobject/PlanarReflectionComponent.h"
-#include "gameobject/TerraComponent.h"
-#include "gameObject/ExitComponent.h"
-#include "gameObject/LuaScriptComponent.h"
-#include "modules/WorkspaceModule.h"
-#include "OgreMeshManager2.h"
 #include "OgreConfigFile.h"
 #include "OgreLodConfig.h"
 #include "OgreLodStrategyManager.h"
-#include "OgreMeshLodGenerator.h"
 #include "OgreMesh2Serializer.h"
+#include "OgreMeshLodGenerator.h"
+#include "OgreMeshManager2.h"
 #include "OgrePixelCountLodStrategy.h"
+#include "gameObject/ExitComponent.h"
+#include "gameObject/LuaScriptComponent.h"
+#include "gameobject/CameraComponent.h"
+#include "gameobject/GameObjectController.h"
+#include "gameobject/LightDirectionalComponent.h"
+#include "gameobject/PhysicsActiveComponent.h"
+#include "gameobject/PhysicsComponent.h"
+#include "gameobject/PlanarReflectionComponent.h"
+#include "gameobject/TerraComponent.h"
+#include "main/AppStateManager.h"
+#include "main/Core.h"
+#include "modules/WorkspaceModule.h"
+#include "utilities/MathHelper.h"
+#include "utilities/MyGUIUtilities.h"
+#include "utilities/XMLConverter.h"
 
 #include "res/resource.h"
 
+#include "DeployResourceModule.h"
 #include "GameProgressModule.h"
 #include "OgreNewtModule.h"
-#include "DeployResourceModule.h"
 
 #include <filesystem>
 
 namespace NOWA
 {
-	DotSceneImportModule::DotSceneImportModule(Ogre::SceneManager* sceneManager)
-		: sceneManager(sceneManager),
-		ogreNewt(nullptr),
-		mainCamera(nullptr),
-		pagesCount(0),
-		needCollisionRebuild(false),
-		sceneLoaderCallback(nullptr),
-		showProgress(false),
-		forceCreation(false),
-		bSceneParsed(false),
-		bIsSnapshot(false),
-		bNewScene(false),
-		mostLeftNearPosition(Ogre::Vector3(Ogre::Math::POS_INFINITY, Ogre::Math::POS_INFINITY, Ogre::Math::POS_INFINITY)),
-		mostRightFarPosition(Ogre::Vector3(Ogre::Math::NEG_INFINITY, Ogre::Math::NEG_INFINITY, Ogre::Math::NEG_INFINITY)),
-		sunLight(nullptr)
-	{
+    DotSceneImportModule::DotSceneImportModule(Ogre::SceneManager* sceneManager) :
+        sceneManager(sceneManager),
+        ogreNewt(nullptr),
+        mainCamera(nullptr),
+        pagesCount(0),
+        needCollisionRebuild(false),
+        sceneLoaderCallback(nullptr),
+        forceCreation(false),
+        bSceneParsed(false),
+        bIsSnapshot(false),
+        bNewScene(false),
+        mostLeftNearPosition(Ogre::Vector3(Ogre::Math::POS_INFINITY, Ogre::Math::POS_INFINITY, Ogre::Math::POS_INFINITY)),
+        mostRightFarPosition(Ogre::Vector3(Ogre::Math::NEG_INFINITY, Ogre::Math::NEG_INFINITY, Ogre::Math::NEG_INFINITY)),
+        sunLight(nullptr),
+        showLoadingDetails(false),
+        showProgressBar(false),
+        sceneListener(nullptr),
+        sceneLoadCurrentObject(0),
+        sceneLoadTotalObjects(0)
+    {
+    }
 
-	}
+    DotSceneImportModule::DotSceneImportModule(Ogre::SceneManager* sceneManager, Ogre::Camera* mainCamera, OgreNewt::World* ogreNewt) :
+        sceneManager(sceneManager),
+        mainCamera(mainCamera),
+        ogreNewt(ogreNewt),
+        sunLight(nullptr),
+        pagesCount(0),
+        needCollisionRebuild(false),
+        sceneLoaderCallback(nullptr),
+        forceCreation(false),
+        bSceneParsed(false),
+        bIsSnapshot(false),
+        bNewScene(false),
+        mostLeftNearPosition(Ogre::Vector3(Ogre::Math::POS_INFINITY, Ogre::Math::POS_INFINITY, Ogre::Math::POS_INFINITY)),
+        mostRightFarPosition(Ogre::Vector3(Ogre::Math::NEG_INFINITY, Ogre::Math::NEG_INFINITY, Ogre::Math::NEG_INFINITY)),
+        showLoadingDetails(false),
+        showProgressBar(false),
+        sceneListener(nullptr),
+        sceneLoadCurrentObject(0),
+        sceneLoadTotalObjects(0)
+    {
+        // Add delegates to be called when the corresponding event had fired
+        AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &DotSceneImportModule::parseGameObjectDelegate), EventDataParseGameObject::getStaticEventType());
+    }
 
-	DotSceneImportModule::DotSceneImportModule(Ogre::SceneManager* sceneManager, Ogre::Camera* mainCamera, OgreNewt::World* ogreNewt)
-		: sceneManager(sceneManager),
-		mainCamera(mainCamera),
-		ogreNewt(ogreNewt),
-		sunLight(nullptr),
-		pagesCount(0),
-		needCollisionRebuild(false),
-		sceneLoaderCallback(nullptr),
-		showProgress(false),
-		forceCreation(false),
-		bSceneParsed(false),
-		bIsSnapshot(false),
-		bNewScene(false),
-		mostLeftNearPosition(Ogre::Vector3(Ogre::Math::POS_INFINITY, Ogre::Math::POS_INFINITY, Ogre::Math::POS_INFINITY)),
-		mostRightFarPosition(Ogre::Vector3(Ogre::Math::NEG_INFINITY, Ogre::Math::NEG_INFINITY, Ogre::Math::NEG_INFINITY))
-	{
-		// Add delegates to be called when the corresponding event had fired
-		AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &DotSceneImportModule::parseGameObjectDelegate), EventDataParseGameObject::getStaticEventType());
-	}
+    DotSceneImportModule::~DotSceneImportModule()
+    {
+        // Remove delegates
+        AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &DotSceneImportModule::parseGameObjectDelegate), EventDataParseGameObject::getStaticEventType());
+        // Do not destroy here, because scene loader is also used in undo command!!
+        // AppStateManager::getSingletonPtr()->getGameObjectController()->destroyContent();
+    }
 
-	DotSceneImportModule::~DotSceneImportModule()
-	{
-		// Remove delegates
-		AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &DotSceneImportModule::parseGameObjectDelegate), EventDataParseGameObject::getStaticEventType());
-		// Do not destroy here, because scene loader is also used in undo command!!
-		// AppStateManager::getSingletonPtr()->getGameObjectController()->destroyContent();
-	}
+    DotSceneImportModule::DotSceneImportModule(Ogre::SceneManager* sceneManager, const Ogre::String& projectName, const Ogre::String& sceneName, const Ogre::String& resourceGroupName) :
+        sceneManager(sceneManager),
+        mainCamera(nullptr),
+        ogreNewt(nullptr),
+        sunLight(nullptr),
+        pagesCount(0),
+        needCollisionRebuild(false),
+        sceneLoaderCallback(nullptr),
+        forceCreation(false),
+        bSceneParsed(false),
+        bIsSnapshot(false),
+        bNewScene(false),
+        mostLeftNearPosition(Ogre::Vector3(Ogre::Math::POS_INFINITY, Ogre::Math::POS_INFINITY, Ogre::Math::POS_INFINITY)),
+        mostRightFarPosition(Ogre::Vector3(Ogre::Math::NEG_INFINITY, Ogre::Math::NEG_INFINITY, Ogre::Math::NEG_INFINITY)),
+        showLoadingDetails(false),
+        showProgressBar(false),
+        sceneListener(nullptr),
+        sceneLoadCurrentObject(0),
+        sceneLoadTotalObjects(0)
+    {
+        // Remove .scene
+        Ogre::String tempSceneName = sceneName;
+        size_t found = tempSceneName.find(".scene");
+        if (found != std::wstring::npos)
+        {
+            tempSceneName = tempSceneName.substr(0, tempSceneName.size() - 6);
+        }
+        this->projectParameter.projectName = projectName;
+        this->projectParameter.sceneName = tempSceneName;
+        this->resourceGroupName = resourceGroupName;
 
-	DotSceneImportModule::DotSceneImportModule(Ogre::SceneManager* sceneManager, const Ogre::String& projectName, const Ogre::String& sceneName, const Ogre::String& resourceGroupName)
-		: sceneManager(sceneManager),
-		mainCamera(nullptr),
-		ogreNewt(nullptr),
-		sunLight(nullptr),
-		pagesCount(0),
-		needCollisionRebuild(false),
-		sceneLoaderCallback(nullptr),
-		showProgress(false),
-		forceCreation(false),
-		bSceneParsed(false),
-		bIsSnapshot(false),
-		bNewScene(false),
-		mostLeftNearPosition(Ogre::Vector3(Ogre::Math::POS_INFINITY, Ogre::Math::POS_INFINITY, Ogre::Math::POS_INFINITY)),
-		mostRightFarPosition(Ogre::Vector3(Ogre::Math::NEG_INFINITY, Ogre::Math::NEG_INFINITY, Ogre::Math::NEG_INFINITY))
-	{
-		// Remove .scene
-		Ogre::String tempSceneName = sceneName;
-		size_t found = tempSceneName.find(".scene");
-		if (found != std::wstring::npos)
-		{
-			tempSceneName = tempSceneName.substr(0, tempSceneName.size() - 6);
-		}
-		this->projectParameter.projectName = projectName;
-		this->projectParameter.sceneName = tempSceneName;
-		this->resourceGroupName = resourceGroupName;
+        if (true == this->resourceGroupName.empty())
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Error: Can not load scene, because the groupname is empty.");
+            throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[DotSceneImportModule] Can not load scene, because the groupname is empty.\n", "NOWA");
+        }
 
-		if (true == this->resourceGroupName.empty())
-		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Error: Can not load scene, because the groupname is empty.");
-			throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[DotSceneImportModule] Can not load scene, because the groupname is empty.\n", "NOWA");
-		}
+        Ogre::String projectPath = Core::getSingletonPtr()->getSectionPath(this->resourceGroupName)[0];
 
-		Ogre::String projectPath = Core::getSingletonPtr()->getSectionPath(this->resourceGroupName)[0];
+        // Project is always: "Projects/ProjectName/SceneName.scene"
+        // E.g.: "Projects/Plattformer/Level1/Level1.scene", "Projects/Plattformer/Level2/Level2.scene", "Projects/Plattformer/Level3/Level3.scene"
+        this->scenePath = projectPath + "/" + this->projectParameter.projectName + "/" + this->projectParameter.sceneName + "/" + this->projectParameter.sceneName + ".scene";
+    }
 
-		// Project is always: "Projects/ProjectName/SceneName.scene"
-		// E.g.: "Projects/Plattformer/Level1/Level1.scene", "Projects/Plattformer/Level2/Level2.scene", "Projects/Plattformer/Level3/Level3.scene"
-		this->scenePath = projectPath + "/" + this->projectParameter.projectName + "/" + this->projectParameter.sceneName + "/" + this->projectParameter.sceneName + ".scene";
-	}
+    void DotSceneImportModule::parseGameObjectDelegate(EventDataPtr eventData)
+    {
+        boost::shared_ptr<NOWA::EventDataParseGameObject> castEventData = boost::static_pointer_cast<EventDataParseGameObject>(eventData);
 
-	void DotSceneImportModule::parseGameObjectDelegate(EventDataPtr eventData)
-	{
-		boost::shared_ptr<NOWA::EventDataParseGameObject> castEventData = boost::static_pointer_cast<EventDataParseGameObject>(eventData);
+        this->parsedGameObjectIds.clear();
+        Ogre::String gameObjectName = castEventData->getGameObjectName();
+        unsigned int controlledByClientID = castEventData->getControlledByClientID();
 
-		this->parsedGameObjectIds.clear();
-		Ogre::String gameObjectName = castEventData->getGameObjectName();
-		unsigned int controlledByClientID = castEventData->getControlledByClientID();
+        if (!gameObjectName.empty())
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[DotSceneImportModule]: Parse game object from virtual environment for name: " + gameObjectName);
+            this->forceCreation = true;
+            this->parseGameObject(gameObjectName);
+            this->forceCreation = false;
+        }
+        else if (0 != controlledByClientID)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[DotSceneImportModule]: Parse game objects from virtual environment for controlled client id: " + Ogre::StringConverter::toString(controlledByClientID));
+            this->forceCreation = true;
+            this->parseGameObjects(controlledByClientID);
+            this->forceCreation = false;
+        }
+    }
 
-		if (!gameObjectName.empty())
-		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[DotSceneImportModule]: Parse game object from virtual environment for name: " + gameObjectName);
-			this->forceCreation = true;
-			this->parseGameObject(gameObjectName);
-			this->forceCreation = false;
-		}
-		else if (0 != controlledByClientID)
-		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[DotSceneImportModule]: Parse game objects from virtual environment for controlled client id: "
-				+ Ogre::StringConverter::toString(controlledByClientID));
-			this->forceCreation = true;
-			this->parseGameObjects(controlledByClientID);
-			this->forceCreation = false;
-		}
-	}
-	
-	bool DotSceneImportModule::parseGlobalScene(bool crypted)
-	{
-		rapidxml::xml_document<> XMLDoc;
-		rapidxml::xml_node<>* xmlRoot;
-		
-		auto sections = Core::getSingletonPtr()->getSectionPath(this->resourceGroupName);
-		if (true == sections.empty())
-		{
-			return false;
-		}
+    bool DotSceneImportModule::parseGlobalScene(bool crypted)
+    {
+        rapidxml::xml_document<> XMLDoc;
+        rapidxml::xml_node<>* xmlRoot;
 
-		Ogre::String projectPath = sections[0];
+        auto sections = Core::getSingletonPtr()->getSectionPath(this->resourceGroupName);
+        if (true == sections.empty())
+        {
+            return false;
+        }
 
-		this->bSceneParsed = true;
-		
-		// Import global scene, if it does exist
+        Ogre::String projectPath = sections[0];
 
-		Ogre::String globalSceneFilePathName;
-		
-		if (true == this->savedGameFilePathName.empty())
-		{
-			globalSceneFilePathName = projectPath + "/" + this->projectParameter.projectName + "/global.scene";
-		}
-		else
-		{
-			Ogre::String projectFilePathName = Core::getSingletonPtr()->getProjectFilePathNameFromPath(this->savedGameFilePathName);
-			globalSceneFilePathName = projectFilePathName + "/global.scene";
-		}
-		
-		// Project is always: "Projects/ProjectName/global.scene"
-		std::ifstream ifs(globalSceneFilePathName);
-		// If it does not exist, then there are no global objects and it does not matter
-		if (false == ifs.good())
-		{
-			return false;
-		}
-		std::string content((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
+        this->bSceneParsed = true;
 
-		if (GetFileAttributes(globalSceneFilePathName.data()) & FileFlag || crypted)
-		{
-			content = Core::getSingletonPtr()->decode64(content, true);
-		}
-		content += '\0';
+        // Import global scene, if it does exist
 
-		boost::shared_ptr<EventDataProjectEncoded> eventDataProjectEncoded(new EventDataProjectEncoded(Core::getSingletonPtr()->projectEncoded));
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataProjectEncoded);
+        Ogre::String globalSceneFilePathName;
 
-		try
-		{
-			XMLDoc.parse<0>(&content[0]);
-		}
-		catch (rapidxml::parse_error& error)
-		{
-			throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[DotSceneImportModule] Could not parse global scene. Error: " + Ogre::String(error.what())
-				+ " at: " + Ogre::String(error.where<char>()) + "\n", "NOWA");
-		}
+        if (true == this->savedGameFilePathName.empty())
+        {
+            globalSceneFilePathName = projectPath + "/" + this->projectParameter.projectName + "/global.scene";
+        }
+        else
+        {
+            Ogre::String projectFilePathName = Core::getSingletonPtr()->getProjectFilePathNameFromPath(this->savedGameFilePathName);
+            globalSceneFilePathName = projectFilePathName + "/global.scene";
+        }
 
-		xmlRoot = XMLDoc.first_node("scene");
-		if (nullptr == xmlRoot)
-		{
-			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Error: Invalid global.scene File. Missing <scene>");
-			return false;
-		}
-		if (XMLConverter::getAttrib(xmlRoot, "formatVersion", "") == "")
-		{
-			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Error: Invalid global.scene File. Missing <scene>");
-			return false;
-		}
-		
-		// Process the global.scene
-		this->processScene(xmlRoot);
+        // Project is always: "Projects/ProjectName/global.scene"
+        std::ifstream ifs(globalSceneFilePathName);
+        // If it does not exist, then there are no global objects and it does not matter
+        if (false == ifs.good())
+        {
+            return false;
+        }
+        std::string content((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
 
-		this->bSceneParsed = false;
+        if (GetFileAttributes(globalSceneFilePathName.data()) & FileFlag || crypted)
+        {
+            content = Core::getSingletonPtr()->decode64(content, true);
+        }
+        content += '\0';
 
-		return true;
-	}
+        boost::shared_ptr<EventDataProjectEncoded> eventDataProjectEncoded(new EventDataProjectEncoded(Core::getSingletonPtr()->projectEncoded));
+        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataProjectEncoded);
 
-	bool DotSceneImportModule::parseScene(const Ogre::String& projectName, const Ogre::String& sceneName, const Ogre::String& resourceGroupName, Ogre::Light* sunLight,
-		DotSceneImportModule::IsceneLoaderCallback* sceneLoaderCallback, bool showProgress)
-	{
-		// Note: No crypted flag used, because if its a usual scene and shall be crypted, the whole project and all scene files will be crypted from the outside at once and also decoded at once.
-		bool success = true;
+        try
+        {
+            XMLDoc.parse<0>(&content[0]);
+        }
+        catch (rapidxml::parse_error& error)
+        {
+            throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[DotSceneImportModule] Could not parse global scene. Error: " + Ogre::String(error.what()) + " at: " + Ogre::String(error.where<char>()) + "\n", "NOWA");
+        }
 
-		// Remove .scene
-		Ogre::String tempSceneName = sceneName;
-		size_t found = tempSceneName.find(".scene");
-		if (found != std::wstring::npos)
-		{
-			tempSceneName = tempSceneName.substr(0, tempSceneName.size() - 6);
-		}
+        xmlRoot = XMLDoc.first_node("scene");
+        if (nullptr == xmlRoot)
+        {
+            Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Error: Invalid global.scene File. Missing <scene>");
+            return false;
+        }
+        if (XMLConverter::getAttrib(xmlRoot, "formatVersion", "") == "")
+        {
+            Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Error: Invalid global.scene File. Missing <scene>");
+            return false;
+        }
 
-		this->projectParameter.projectName = projectName;
-		this->projectParameter.sceneName = tempSceneName;
-		this->resourceGroupName = resourceGroupName;
-		this->sunLight = sunLight;
-		this->sceneLoaderCallback = sceneLoaderCallback;
-		this->showProgress = showProgress;
-		this->parsedGameObjectIds.clear();
+        // Process the global.scene
+        this->processScene(xmlRoot);
 
-		if (true == this->resourceGroupName.empty())
-		{
-			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Error: Can not load scene, because the groupname is empty.");
-			throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[DotSceneImportModule] Can not load scene, because the groupname is empty.\n", "NOWA");
-		}
-		
-		Ogre::String projectPath = Core::getSingletonPtr()->getSectionPath(this->resourceGroupName)[0];
-		
-		// Project is always: "Projects/ProjectName/SceneName.scene"
-		// E.g.: "Projects/Plattformer/Level1/Level1.scene", "Projects/Plattformer/Level2.scene", "Projects/Plattformer/Level3.scene"
-		this->scenePath = projectPath + "/" + this->projectParameter.projectName + "/" + this->projectParameter.sceneName + "/" + this->projectParameter.sceneName + ".scene";
+        this->bSceneParsed = false;
 
-		if (false == std::filesystem::exists(this->scenePath))
-		{
-			return false;
-		}
+        return true;
+    }
 
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[DotSceneImportModule]: Begin Parsing scene: '" + this->scenePath + "' for resource group : '" + resourceGroupName + "'");
+    bool DotSceneImportModule::parseScene(const Ogre::String& projectName, const Ogre::String& sceneName, const Ogre::String& resourceGroupName, Ogre::Light* sunLight, DotSceneImportModule::IsceneLoaderCallback* sceneLoaderCallback)
+    {
+        // Note: No crypted flag used, because if its a usual scene and shall be crypted, the whole project and all scene files will be crypted from the outside at once and also decoded at once.
+        bool success = true;
 
+        // Remove .scene
+        Ogre::String tempSceneName = sceneName;
+        size_t found = tempSceneName.find(".scene");
+        if (found != std::wstring::npos)
+        {
+            tempSceneName = tempSceneName.substr(0, tempSceneName.size() - 6);
+        }
 
-		return this->internalParseScene(this->scenePath);
-	}
+        this->projectParameter.projectName = projectName;
+        this->projectParameter.sceneName = tempSceneName;
+        this->resourceGroupName = resourceGroupName;
+        this->sunLight = sunLight;
+        this->sceneLoaderCallback = sceneLoaderCallback;
+        this->parsedGameObjectIds.clear();
 
-	bool DotSceneImportModule::internalParseScene(const Ogre::String& filePathName, bool crypted)
-	{
-		// If a saved game shall be parsed, the user can say, whether everything is crypted and needs to be decoded.
-		float currentTime = static_cast<Ogre::Real>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001f;
+        if (true == this->resourceGroupName.empty())
+        {
+            Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Error: Can not load scene, because the groupname is empty.");
+            throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[DotSceneImportModule] Can not load scene, because the groupname is empty.\n", "NOWA");
+        }
 
-		Core::getSingletonPtr()->preLoadSceneTextures(filePathName);
+        Ogre::String projectPath = Core::getSingletonPtr()->getSectionPath(this->resourceGroupName)[0];
+
+        // Project is always: "Projects/ProjectName/SceneName.scene"
+        // E.g.: "Projects/Plattformer/Level1/Level1.scene", "Projects/Plattformer/Level2.scene", "Projects/Plattformer/Level3.scene"
+        this->scenePath = projectPath + "/" + this->projectParameter.projectName + "/" + this->projectParameter.sceneName + "/" + this->projectParameter.sceneName + ".scene";
+
+        if (false == std::filesystem::exists(this->scenePath))
+        {
+            return false;
+        }
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[DotSceneImportModule]: Begin Parsing scene: '" + this->scenePath + "' for resource group: '" + resourceGroupName + "'");
+
+        return this->internalParseScene(this->scenePath);
+    }
+
+    bool DotSceneImportModule::internalParseScene(const Ogre::String& filePathName, bool crypted)
+    {
+        float currentTime = static_cast<Ogre::Real>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001f;
+
+        Core::getSingletonPtr()->preLoadSceneTextures(filePathName);
         Ogre::LogManager::getSingleton().logMessage("[DotSceneImportModule] Texture preload: " + Ogre::StringConverter::toString(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) + "ms");
 
-		Core::getSingletonPtr()->createFolders(this->scenePath);
+        Core::getSingletonPtr()->createFolders(this->scenePath);
+        Core::getSingletonPtr()->setCurrentScenePath(this->scenePath);
+        this->bSceneParsed = true;
 
-		// Announce the current scene path to core. Do not set file path name, as it could be from a saved game, which points to a whole different location, in which there are no lua scripts etc.
-		Core::getSingletonPtr()->setCurrentScenePath(this->scenePath);
+        std::ifstream ifs(filePathName);
+        if (false == ifs.good())
+        {
+            this->bNewScene = true;
+            bool success = this->parseGlobalScene(crypted);
+            if (true == success)
+            {
+                this->postInitData();
+            }
+            this->bNewScene = false;
+            return success;
+        }
 
-		this->bSceneParsed = true;
+        std::string content((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+        DWORD dwFileAttributes = GetFileAttributes(filePathName.data());
+        if (dwFileAttributes & FileFlag || crypted)
+        {
+            content = Core::getSingletonPtr()->decode64(content, true);
+            Core::getSingletonPtr()->projectEncoded = true;
+        }
+        else
+        {
+            Core::getSingletonPtr()->projectEncoded = false;
+        }
+        content += '\0';
 
-		std::ifstream ifs(filePathName);
-		if (false == ifs.good())
-		{
-			this->bNewScene = true;
-			// If scene does not exist yet, maybe there is a global scene. Parse these one.
-			bool success = this->parseGlobalScene(crypted);
-			// If there is no scene, but just an existing global scene, post init must be done, because maybe main camera etc. are just in the global scene!
-			if (true == success)
-			{
-				this->postInitData();
-			}
-			this->bNewScene = false;
-			return success;
-		}
+        boost::shared_ptr<EventDataProjectEncoded> eventDataProjectEncoded(new EventDataProjectEncoded(Core::getSingletonPtr()->projectEncoded));
+        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataProjectEncoded);
 
-		// First process the usual scene with all the other stuff
-		rapidxml::xml_document<> XMLDoc;
-		rapidxml::xml_node<>* xmlRoot;
+        rapidxml::xml_document<> XMLDoc;
+        rapidxml::xml_node<>* xmlRoot = nullptr;
+        try
+        {
+            XMLDoc.parse<0>(&content[0]);
+        }
+        catch (rapidxml::parse_error& error)
+        {
+            throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[DotSceneImportModule] Could not parse scene: " + this->projectParameter.sceneName + " error: " + Ogre::String(error.what()) + " at: " + Ogre::String(error.where<char>()) + "\n",
+                "NOWA");
+        }
 
-		std::string content((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
-		DWORD dwFileAttributes = GetFileAttributes(filePathName.data());
-		if (dwFileAttributes & FileFlag || crypted)
-		{
-			content = Core::getSingletonPtr()->decode64(content, true);
-			Core::getSingletonPtr()->projectEncoded = true;
-		}
-		else
-		{
-			Core::getSingletonPtr()->projectEncoded = false;
-		}
-		content += '\0';
+        xmlRoot = XMLDoc.first_node("scene");
+        if (nullptr == xmlRoot)
+        {
+            Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Error: Invalid .scene File. Missing <scene>");
+            return false;
+        }
+        if (XMLConverter::getAttrib(xmlRoot, "formatVersion", "") == "")
+        {
+            Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Error: Invalid .scene File. Missing formatVersion");
+            return false;
+        }
 
-		boost::shared_ptr<EventDataProjectEncoded> eventDataProjectEncoded(new EventDataProjectEncoded(Core::getSingletonPtr()->projectEncoded));
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataProjectEncoded);
+        // Pre-count nodes so the progress bar has a denominator
+        size_t totalObjects = 0;
+        {
+            rapidxml::xml_node<>* nodesElem = xmlRoot->first_node("nodes");
+            if (nullptr != nodesElem)
+            {
+                for (auto* n = nodesElem->first_node("node"); nullptr != n; n = n->next_sibling("node"))
+                {
+                    ++totalObjects;
+                }
+            }
+        }
+        Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[DotSceneImportModule] Scene node count: " + Ogre::StringConverter::toString(totalObjects));
 
-		try
-		{
-			XMLDoc.parse<0>(&content[0]);
-		}
-		catch (rapidxml::parse_error& error)
-		{
-			throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[DotSceneImportModule] Could not parse scene: " + this->projectParameter.sceneName + " error: " + Ogre::String(error.what())
-								  + " at: " + Ogre::String(error.where<char>()) + "\n", "NOWA");
-		}
-		/*catch (Ogre::FileNotFoundException& exception)
-		{
-			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Could not parse scene: " + sceneName
-				+ " because it does not exist. Error: " + exception.what());
-			return false;
-		}*/
+        // Creates MyGUI widgets on the render thread (enqueueAndWait from main thread — safe during game loop)
+        this->createSceneLoadUI(totalObjects);
 
-		xmlRoot = XMLDoc.first_node("scene");
-		if (nullptr == xmlRoot)
-		{
-			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Error: Invalid global.scene File. Missing <scene>");
-			return false;
-		}
-		if (XMLConverter::getAttrib(xmlRoot, "formatVersion", "") == "")
-		{
-			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Error: Invalid .scene File. Missing <scene>");
-			return false;
-		}
+        // Sequential parse — notifySceneLoadProgress is called per node in processNode
+        this->processScene(xmlRoot);
 
-		// Process the scene
-		this->processScene(xmlRoot);
+        if (false == this->projectParameter.ignoreGlobalScene)
+        {
+            this->parseGlobalScene(crypted);
+        }
 
-		// Second process a possible global.scene with all global game objects, that are used for all scenes in the project
-		if (false == this->projectParameter.ignoreGlobalScene)
-		{
-			this->parseGlobalScene(crypted);
-		}
-
-		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        // postInitData must run on the render thread — notifyPostInitPhase is called directly there
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
         {
             Ogre::TextureGpuManager* textureManager = Ogre::Root::getSingletonPtr()->getRenderSystem()->getTextureGpuManager();
             textureManager->waitForStreamingCompletion();
-
-            // NEW: Force buffer creation for all loaded meshes
-            Ogre::VaoManager* vaoManager = Ogre::Root::getSingletonPtr()->getRenderSystem()->getVaoManager();
-            // This ensures mesh buffers are batched and created
-
-            // This game objects must be initialized before all other game objects are initialized, because they may need data from this game objects, like terra needs a camera
             this->postInitData();
         };
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DotSceneImportModule::waitForStreamingCompletion");
 
-		float dt = (static_cast<Ogre::Real>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001f) - currentTime;
-		Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[DotSceneImportModule] Parse end scene: " + this->projectParameter.sceneName + " duration: " + Ogre::StringConverter::toString(dt) + " seconds");
+        // Destroy progress UI on render thread
+        this->destroySceneLoadUI();
 
-		Ogre::Root::getSingletonPtr()->renderOneFrame();
+        this->bSceneParsed = false;
+        this->savedGameFilePathName.clear();
 
-		this->bSceneParsed = false;
+        boost::shared_ptr<EventDataSceneParsed> eventDataSceneParsed(new EventDataSceneParsed());
+        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataSceneParsed);
 
-		// Clears the saved game file path name again, so that usual loading is done
-		this->savedGameFilePathName.clear();
+        float dt = (static_cast<Ogre::Real>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001f) - currentTime;
+        Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[DotSceneImportModule] Parse end scene: " + this->projectParameter.sceneName + " duration: " + Ogre::StringConverter::toString(dt) + " seconds");
 
-		boost::shared_ptr<EventDataSceneParsed> eventDataSceneParsed(new EventDataSceneParsed());
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataSceneParsed);
+        return true;
+    }
 
-		return true;
-	}
+    bool NOWA::DotSceneImportModule::parseSceneSnapshot(const Ogre::String& projectName, const Ogre::String& sceneName, const Ogre::String& resourceGroupName, const Ogre::String& savedGameFilePathName, bool crypted)
+    {
+        // If a saved game shall be parsed, the user can say, whether everything is crypted and needs to be decoded.
+        bool success = true;
+        this->bIsSnapshot = true;
+        this->bSceneParsed = true;
 
-	bool NOWA::DotSceneImportModule::parseSceneSnapshot(const Ogre::String& projectName, const Ogre::String& sceneName, const Ogre::String& resourceGroupName, const Ogre::String& savedGameFilePathName, bool crypted, bool showProgress)
-	{
-		// If a saved game shall be parsed, the user can say, whether everything is crypted and needs to be decoded.
-		bool success = true;
-		this->bIsSnapshot = true;
-		this->bSceneParsed = true;
-		this->showProgress = showProgress;
+        float currentTime = static_cast<Ogre::Real>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001f;
 
-		float currentTime = static_cast<Ogre::Real>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001f;
+        rapidxml::xml_document<> XMLDoc;
 
-		rapidxml::xml_document<> XMLDoc;
-
-		std::ifstream ifs(savedGameFilePathName);
-		if (false == ifs.good())
-		{
-			success = false;
-			return success;
-		}
-
-		this->projectParameter.projectName = projectName;
-		this->projectParameter.sceneName = sceneName;
-		this->resourceGroupName = resourceGroupName;
-		this->savedGameFilePathName = savedGameFilePathName;
-
-		this->sunLight = sunLight;
-		this->sceneLoaderCallback = sceneLoaderCallback;
-		this->showProgress = showProgress;
-		this->parsedGameObjectIds.clear();
-
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[DotSceneImportModule]: Begin Parsing scene: '"
-														+ this->projectParameter.projectName + "/" + this->projectParameter.sceneName + ".scene' for resource group: '" + resourceGroupName + "'");
-
-		return this->internalParseScene(savedGameFilePathName, crypted);
-	}
-
-	void DotSceneImportModule::postInitData()
-	{
-		auto mainCameraGameObject = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(NOWA::GameObjectController::MAIN_CAMERA_ID);
-		if (nullptr == mainCameraGameObject && false == this->bNewScene)
-		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Error: Can not load scene, because the MainCamera could not be created! See log for further information.");
-			throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[DotSceneImportModule] Error: Can not load scene, because the MainCamera could not be created! See log for further information.\n", "NOWA");
-		}
-		else if (nullptr != mainCameraGameObject)
-		{
-			mainCameraGameObject->postInit();
-			if (nullptr == this->mainCamera && false == this->bNewScene)
-			{
-				this->mainCamera = NOWA::makeStrongPtr(mainCameraGameObject->getComponent<CameraComponent>())->getCamera();
-			}
-		}
-
-		auto mainLightGameObject = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(NOWA::GameObjectController::MAIN_LIGHT_ID);
-		if (nullptr == mainLightGameObject && false == this->bNewScene)
-		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Error: Can not load scene, because the MainLight could not be created! See log for further information.");
-			throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[DotSceneImportModule] Error: Can not load scene, because the MainLight could not be created! See log for further information.\n", "NOWA");
-		}
-		else if (nullptr != mainLightGameObject)
-		{
-			mainLightGameObject->postInit();
-			if (nullptr == this->sunLight)
-			{
-				this->sunLight = NOWA::makeStrongPtr(mainLightGameObject->getComponent<LightDirectionalComponent>())->getOgreLight();
-			}
-		}
-
-		auto mainGameObject = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(NOWA::GameObjectController::MAIN_GAMEOBJECT_ID);
-		if (nullptr == mainGameObject && false == this->bNewScene)
-		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Error: Can not load scene, because the MainGameObject could not be created. Maybe this is an old scene, which does not have a MainGameObject! See log for further information.");
-			throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[DotSceneImportModule] Error: Can not load scene, because the MainGameObject could not be created! See log for further information.\n", "NOWA");
-		}
-		else if (nullptr != mainGameObject)
-		{
-			mainGameObject->postInit();
-		}
-
-		std::vector<GameObject*> clampGameObjects;
-
-		// Now that all gameobject's have been fully created, run the post init phase (now all other components are also available for each game object)
-		for (auto it = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects()->cbegin();
-				it != AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects()->cend(); ++it)
-		{
-			const auto gameObjectPtr = it->second;
-			if (gameObjectPtr->getId() != NOWA::GameObjectController::MAIN_CAMERA_ID
-				&& gameObjectPtr->getId() != NOWA::GameObjectController::MAIN_LIGHT_ID
-				&& gameObjectPtr->getId() != NOWA::GameObjectController::MAIN_GAMEOBJECT_ID)
-			{
-				if (false == gameObjectPtr->postInit())
-				{
-					AppStateManager::getSingletonPtr()->getGameObjectController()->deleteGameObjectImmediately(gameObjectPtr->getId());
-				}
-				else if (true == gameObjectPtr->getClampY())
-				{
-					clampGameObjects.emplace_back(gameObjectPtr.get());
-				}
-			}
-		}
-
-		for (const auto& clampGameObject : clampGameObjects)
-		{
-			if (clampGameObject->getId() != NOWA::GameObjectController::MAIN_CAMERA_ID
-				&& clampGameObject->getId() != NOWA::GameObjectController::MAIN_LIGHT_ID
-				&& clampGameObject->getId() != NOWA::GameObjectController::MAIN_GAMEOBJECT_ID)
-			{
-				// If everything is loaded, perform raycast for y clamping for each game object, which has the corresponding attribute activated
-				clampGameObject->performRaycastForYClamping();
-			}
-		}
-
-		if (AppStateManager::getSingletonPtr()->getOgreRecastModule()->hasNavigationMeshElements() && true == this->projectParameter.hasRecast)
-		{
-			// wrong transform values at this early stage
-		}
-		else
-		{
-			AppStateManager::getSingletonPtr()->getOgreRecastModule()->destroyContent();
-		}
-
-		if (nullptr != this->sceneLoaderCallback)
-		{
-			delete this->sceneLoaderCallback;
-			this->sceneLoaderCallback = nullptr;
-		}
-
-		// Set the bounds, to have it in core for public access
-		Core::getSingletonPtr()->setCurrentSceneBounds(this->mostLeftNearPosition, this->mostRightFarPosition);
-
-		if (false == NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->loadNavigationMesh())
+        std::ifstream ifs(savedGameFilePathName);
+        if (false == ifs.good())
         {
+            success = false;
+            return success;
+        }
+
+        this->projectParameter.projectName = projectName;
+        this->projectParameter.sceneName = sceneName;
+        this->resourceGroupName = resourceGroupName;
+        this->savedGameFilePathName = savedGameFilePathName;
+        this->parsedGameObjectIds.clear();
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+            "[DotSceneImportModule]: Begin Parsing scene: '" + this->projectParameter.projectName + "/" + this->projectParameter.sceneName + ".scene' for resource group: '" + resourceGroupName + "'");
+
+        return this->internalParseScene(savedGameFilePathName, crypted);
+    }
+
+    void DotSceneImportModule::postInitData()
+    {
+        // Count total game objects for postInit progress
+        size_t totalGO = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects()->size();
+        size_t currentGO = 0;
+
+        this->notifyPostInitPhase("MainCamera postInit", ++currentGO, totalGO);
+        auto mainCameraGameObject = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(NOWA::GameObjectController::MAIN_CAMERA_ID);
+        if (nullptr == mainCameraGameObject && false == this->bNewScene)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Error: Can not load scene, because the MainCamera could not be created! See log for further information.");
+            throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[DotSceneImportModule] Error: Can not load scene, because the MainCamera could not be created! See log for further information.\n", "NOWA");
+        }
+        else if (nullptr != mainCameraGameObject)
+        {
+            mainCameraGameObject->postInit();
+            if (nullptr == this->mainCamera && false == this->bNewScene)
+            {
+                this->mainCamera = NOWA::makeStrongPtr(mainCameraGameObject->getComponent<CameraComponent>())->getCamera();
+            }
+        }
+
+        this->notifyPostInitPhase("MainLight postInit", ++currentGO, totalGO);
+        auto mainLightGameObject = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(NOWA::GameObjectController::MAIN_LIGHT_ID);
+        if (nullptr == mainLightGameObject && false == this->bNewScene)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Error: Can not load scene, because the MainLight could not be created! See log for further information.");
+            throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[DotSceneImportModule] Error: Can not load scene, because the MainLight could not be created! See log for further information.\n", "NOWA");
+        }
+        else if (nullptr != mainLightGameObject)
+        {
+            mainLightGameObject->postInit();
+            if (nullptr == this->sunLight)
+            {
+                this->sunLight = NOWA::makeStrongPtr(mainLightGameObject->getComponent<LightDirectionalComponent>())->getOgreLight();
+            }
+        }
+
+        this->notifyPostInitPhase("MainGameObject postInit", ++currentGO, totalGO);
+        auto mainGameObject = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(NOWA::GameObjectController::MAIN_GAMEOBJECT_ID);
+        if (nullptr == mainGameObject && false == this->bNewScene)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                "[DotSceneImportModule] Error: Can not load scene, because the MainGameObject could not be created. Maybe this is an old scene, which does not have a MainGameObject! See log for further information.");
+            throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[DotSceneImportModule] Error: Can not load scene, because the MainGameObject could not be created! See log for further information.\n", "NOWA");
+        }
+        else if (nullptr != mainGameObject)
+        {
+            mainGameObject->postInit();
+        }
+
+        std::vector<GameObject*> clampGameObjects;
+
+        // Now that all gameobject's have been fully created, run the post init phase (now all other components are also available for each game object)
+        for (auto it = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects()->cbegin(); it != AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects()->cend(); ++it)
+        {
+            const auto gameObjectPtr = it->second;
+            if (gameObjectPtr->getId() != NOWA::GameObjectController::MAIN_CAMERA_ID && gameObjectPtr->getId() != NOWA::GameObjectController::MAIN_LIGHT_ID && gameObjectPtr->getId() != NOWA::GameObjectController::MAIN_GAMEOBJECT_ID)
+            {
+                this->notifyPostInitPhase(gameObjectPtr->getName(), ++currentGO, totalGO);
+                if (false == gameObjectPtr->postInit())
+                {
+                    AppStateManager::getSingletonPtr()->getGameObjectController()->deleteGameObjectImmediately(gameObjectPtr->getId());
+                }
+                else if (true == gameObjectPtr->getClampY())
+                {
+                    clampGameObjects.emplace_back(gameObjectPtr.get());
+                }
+            }
+        }
+
+        for (const auto& clampGameObject : clampGameObjects)
+        {
+            if (clampGameObject->getId() != NOWA::GameObjectController::MAIN_CAMERA_ID && clampGameObject->getId() != NOWA::GameObjectController::MAIN_LIGHT_ID && clampGameObject->getId() != NOWA::GameObjectController::MAIN_GAMEOBJECT_ID)
+            {
+                // If everything is loaded, perform raycast for y clamping for each game object, which has the corresponding attribute activated
+                clampGameObject->performRaycastForYClamping();
+            }
+        }
+
+        if (AppStateManager::getSingletonPtr()->getOgreRecastModule()->hasNavigationMeshElements() && true == this->projectParameter.hasRecast)
+        {
+            // wrong transform values at this early stage
+        }
+        else
+        {
+            AppStateManager::getSingletonPtr()->getOgreRecastModule()->destroyContent();
+        }
+
+        if (nullptr != this->sceneLoaderCallback)
+        {
+            delete this->sceneLoaderCallback;
+            this->sceneLoaderCallback = nullptr;
+        }
+
+        // Set the bounds, to have it in core for public access
+        Core::getSingletonPtr()->setCurrentSceneBounds(this->mostLeftNearPosition, this->mostRightFarPosition);
+
+        if (false == NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->loadNavigationMesh())
+        {
+            this->notifyPostInitPhase("NavMesh / RecastModule", totalGO, totalGO);
             // No .nav file yet — build from scratch and auto-save
             NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->buildNavigationMesh();
         }
-	}
+    }
 
-	std::vector<unsigned long> DotSceneImportModule::parseGroup(const Ogre::String& fileName, const Ogre::String& resourceGroupName)
-	{
-		Ogre::String groupFileName = "Groups/" + fileName;
+    std::vector<unsigned long> DotSceneImportModule::parseGroup(const Ogre::String& fileName, const Ogre::String& resourceGroupName)
+    {
+        Ogre::String groupFileName = "Groups/" + fileName;
 
-		this->parsedGameObjectIds.clear();
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[DotSceneImportModule]: Parsing group: " + groupFileName);
+        this->parsedGameObjectIds.clear();
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[DotSceneImportModule]: Parsing group: " + groupFileName);
 
-		rapidxml::xml_document<> XMLDoc;
+        rapidxml::xml_document<> XMLDoc;
 
-		Ogre::DataStreamPtr stream = Ogre::ResourceGroupManager::getSingleton().openResource(groupFileName, resourceGroupName);
-		Ogre::String strScene = stream->getAsString();
-		std::vector<char> sceneCopy(strScene.begin(), strScene.end());
-		sceneCopy.emplace_back('\0');
-		try
-		{
-			XMLDoc.parse<0>(&sceneCopy[0]);
-		}
-		catch (rapidxml::parse_error& error)
-		{
-			throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[DotSceneImportModule] Could not parse group: " + groupFileName + " error: " + Ogre::String(error.what())
-				+ " at: " + Ogre::String(error.where<char>()) + "\n", "NOWA");
-		}
+        Ogre::DataStreamPtr stream = Ogre::ResourceGroupManager::getSingleton().openResource(groupFileName, resourceGroupName);
+        Ogre::String strScene = stream->getAsString();
+        std::vector<char> sceneCopy(strScene.begin(), strScene.end());
+        sceneCopy.emplace_back('\0');
+        try
+        {
+            XMLDoc.parse<0>(&sceneCopy[0]);
+        }
+        catch (rapidxml::parse_error& error)
+        {
+            throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[DotSceneImportModule] Could not parse group: " + groupFileName + " error: " + Ogre::String(error.what()) + " at: " + Ogre::String(error.where<char>()) + "\n", "NOWA");
+        }
 
-		rapidxml::xml_node<> *pElement;
+        rapidxml::xml_node<>* pElement;
 
-		// Process resource locations (?)
-		pElement = XMLDoc.first_node("resourceLocations");
-		if (pElement)
-		{
-			this->processResourceLocations(pElement);
-		}
-		
-		pElement = XMLDoc.first_node("nodes");
-		if (pElement)
-		{
-			this->processNodes(pElement);
-		}
+        // Process resource locations (?)
+        pElement = XMLDoc.first_node("resourceLocations");
+        if (pElement)
+        {
+            this->processResourceLocations(pElement);
+        }
 
-		// Now that all gameobject's have been fully created, run the post init phase (now all other components are also available for each game object)
-		for (size_t i = 0; i < this->parsedGameObjectIds.size(); i++)
-		{
-			const auto gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->parsedGameObjectIds[i]);
-			if (nullptr != gameObjectPtr)
-			{
-				// Deactivated, because its copied on another place^^
+        pElement = XMLDoc.first_node("nodes");
+        if (pElement)
+        {
+            this->processNodes(pElement);
+        }
+
+        // Now that all gameobject's have been fully created, run the post init phase (now all other components are also available for each game object)
+        for (size_t i = 0; i < this->parsedGameObjectIds.size(); i++)
+        {
+            const auto gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->parsedGameObjectIds[i]);
+            if (nullptr != gameObjectPtr)
+            {
+                // Deactivated, because its copied on another place^^
 #if 0
 				GameObjectComponents* components = gameObjectPtr->getComponents();
 				for (auto it = components->begin(); it != components->end(); ++it)
@@ -578,1012 +580,932 @@ namespace NOWA
 					}
 				}
 #endif
-				// Tells lua script component, that its being cloned (prevents multiple script creations)
-				GameObjectComponents* components = gameObjectPtr->getComponents();
-				for (auto it = components->begin(); it != components->end(); ++it)
-				{
-					auto luaScriptCompPtr = boost::dynamic_pointer_cast<LuaScriptComponent>(std::get<COMPONENT>(*it));
-					if (nullptr != luaScriptCompPtr)
-					{
-						luaScriptCompPtr->setComponentCloned(true);
-
-						boost::shared_ptr<EventDataGroupLoaded> eventDataGroupLoaded(new EventDataGroupLoaded(gameObjectPtr->getId()));
-						AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGroupLoaded);
-					}
-				}
-
-				gameObjectPtr->postInit();
-			}
-		}
-
-		// Copy the parsed game object ids and clear for next round
-		std::vector<unsigned long> tempParsedGameObjectIds = this->parsedGameObjectIds;
-		this->parsedGameObjectIds.clear();
-
-		return tempParsedGameObjectIds;
-	}
-
-	bool DotSceneImportModule::parseGameObject(const Ogre::String& name)
-	{
-		// do not show progress in gui because it will crash
-		this->showProgress = false;
-		bool success = false;
-		// get the xml file from the resourcegroup
-		Ogre::DataStreamPtr stream = Ogre::ResourceGroupManager::getSingleton().openResource(this->projectParameter.projectName + "/" + this->projectParameter.sceneName + "/" + this->projectParameter.sceneName + ".scene", this->resourceGroupName);
-
-		char* scene = _strdup(stream->getAsString().c_str());
-
-		rapidxml::xml_document<> XMLDoc;
-		// parse the xml document
-		XMLDoc.parse<0>(scene);
-
-		// go to the node, at which the scene nodes occur
-		rapidxml::xml_node<>* XMLRoot = XMLDoc.first_node("scene");
-		rapidxml::xml_node<>* nodesElement = XMLRoot->first_node("nodes");
-		rapidxml::xml_node<>* nodeElement = nodesElement->first_node("node");
-		// go through all nodes
-		
-		while (nodeElement)
-		{
-			if (nodeElement && name == nodeElement->first_attribute("name")->value())
-			{
-				// loads the game object internally into the game object controller
-				this->processNode(nodeElement);
-				success = true;
-				break;
-			}
-			else
-			{
-				nodeElement = nodeElement->next_sibling("node");
-			}
-		}
-
-		auto gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromName(name);
-		if (nullptr != gameObjectPtr)
-		{
-			if (!gameObjectPtr->postInit())
-			{
-				AppStateManager::getSingletonPtr()->getGameObjectController()->deleteGameObjectImmediately(gameObjectPtr->getId());
-			}
-		}
-
-		free(scene);
-		return success;
-	}
-
-	bool DotSceneImportModule::parseGameObjects(unsigned int controlledByClientID)
-	{
-		// Do not show progress in gui because it will crash
-		this->showProgress = false;
-		bool success = false;
-		this->parsedGameObjectIds.clear();
-		// Get the xml file from the resourcegroup
-		Ogre::DataStreamPtr stream = Ogre::ResourceGroupManager::getSingleton().openResource(this->projectParameter.projectName + "/" + this->projectParameter.sceneName + "/" + this->projectParameter.sceneName + ".scene", this->resourceGroupName);
-
-		char* scene = _strdup(stream->getAsString().c_str());
-
-		rapidxml::xml_document<> XMLDoc;
-		// Parse the xml document
-		XMLDoc.parse<0>(scene);
-
-		// Go to the node, at which the scene nodes occur
-		rapidxml::xml_node<>* XMLRoot = XMLDoc.first_node("scene");
-		rapidxml::xml_node<>* nodesElement = XMLRoot->first_node("nodes");
-		rapidxml::xml_node<>* nodeElement = nodesElement->first_node("node");
-		// Go through all nodes
-
-		while (nodeElement)
-		{
-			// Search for the entity or item
-			rapidxml::xml_node<>* entityElement = nodeElement->first_node("entity");
-			if (nullptr == entityElement)
-			{
-				entityElement = nodeElement->first_node("item");
-			}
-			if (nullptr != entityElement)
-			{
-				rapidxml::xml_node<>* userDataElement = entityElement->first_node("userData");
-				if (userDataElement)
-				{
-					rapidxml::xml_node<>* propertyElement = userDataElement->first_node("property");
-
-					while (propertyElement && propertyElement->first_attribute("name")->value() != Ogre::String("ControlledByClient"))
-					{
-						propertyElement = propertyElement->next_sibling("property");
-					}
-
-					// If there is no ControlledByClient property, then all property elements had been visited and the element is still null,
-					// so go to the next node
-					if (!propertyElement)
-					{
-						nodeElement = nodeElement->next_sibling("node");
-						continue;
-					}
-
-					// Check if this game object matches the controlled client id
-					if (static_cast<unsigned int>(XMLConverter::getAttribReal(propertyElement, "data", 0)) == controlledByClientID)
-					{
-						// Loads the game object internally into the game object controller
-						this->processNode(nodeElement);
-						success = true;
-					}
-				}
-			}
-			// Go to the next node
-			nodeElement = nodeElement->next_sibling("node");
-		}
-		free(scene);
-
-		// Now that all gameobject's have been fully created, run the post init phase (now all other components are also available for each game object)
-		for (size_t i = 0; i < this->parsedGameObjectIds.size(); i++)
-		{
-			const auto gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->parsedGameObjectIds[i]);
-			if (nullptr != gameObjectPtr)
-			{
-				if (!gameObjectPtr->postInit())
-				{
-					AppStateManager::getSingletonPtr()->getGameObjectController()->deleteGameObjectImmediately(gameObjectPtr->getId());
-				}
-			}
-		}
-
-		return success;
-	}
-
-	std::pair<Ogre::Vector3, Ogre::Vector3> DotSceneImportModule::parseBounds(void)
-	{
-		// Do not show progress in gui because it will crash
-		this->showProgress = false;
-		bool success = false;
-		// Get the xml file from the resourcegroup
-		Ogre::DataStreamPtr stream = Ogre::ResourceGroupManager::getSingleton().openResource(this->projectParameter.projectName + "/" + this->projectParameter.sceneName + "/" + this->projectParameter.sceneName + ".scene", this->resourceGroupName);
-
-		char* scene = _strdup(stream->getAsString().c_str());
-
-		rapidxml::xml_document<> XMLDoc;
-		// Parse the xml document
-		XMLDoc.parse<0>(scene);
-
-		// Go to the node, at which the scene nodes occur
-		rapidxml::xml_node<>* XMLRoot = XMLDoc.first_node("scene");
-		rapidxml::xml_node<>* XMLEnvironment = XMLRoot->first_node("environment");
-		rapidxml::xml_node<>* boundsElement = XMLEnvironment->first_node("bounds");
-		
-		if (nullptr != boundsElement)
-		{
-			this->mostLeftNearPosition = XMLConverter::getAttribVector3(boundsElement, "mostLeftNearPosition", Ogre::Vector3(Ogre::Math::POS_INFINITY, Ogre::Math::POS_INFINITY, Ogre::Math::POS_INFINITY));
-			this->mostRightFarPosition = XMLConverter::getAttribVector3(boundsElement, "mostRightFarPosition", Ogre::Vector3(Ogre::Math::NEG_INFINITY, Ogre::Math::NEG_INFINITY, Ogre::Math::NEG_INFINITY));
-		}
-		free(scene);
-		return std::make_pair(this->mostLeftNearPosition, this->mostRightFarPosition);
-	}
-
-	std::vector<std::pair<Ogre::Vector2, Ogre::String>> DotSceneImportModule::parseExitDirectionsNextScenes(void)
-	{
-		std::vector<std::pair<Ogre::Vector2, Ogre::String>> exitDirectionsNextScenes;
-
-		// Do not show progress in gui because it will crash
-		this->showProgress = false;
-		bool success = false;
-		// Get the xml file from the resourcegroup
-		Ogre::DataStreamPtr stream = Ogre::ResourceGroupManager::getSingleton().openResource(this->projectParameter.projectName + "/" + this->projectParameter.sceneName + "/" + this->projectParameter.sceneName + ".scene", this->resourceGroupName);
-
-		char* scene = _strdup(stream->getAsString().c_str());
-
-		rapidxml::xml_document<> XMLDoc;
-		// Parse the xml document
-		XMLDoc.parse<0>(scene);
-
-		// Go to the node, at which the scene nodes occur
-		rapidxml::xml_node<>* XMLRoot = XMLDoc.first_node("scene");
-		rapidxml::xml_node<>* nodesElement = XMLRoot->first_node("nodes");
-		rapidxml::xml_node<>* nodeElement = nodesElement->first_node("node");
-		// Go through all nodes
-
-		while (nodeElement)
-		{
-			// Search for the entity or item
-			rapidxml::xml_node<>* entityElement = nodeElement->first_node("entity");
-			if (nullptr == entityElement)
-			{
-				entityElement = nodeElement->first_node("item");
-			}
-			if (nullptr != entityElement)
-			{
-				rapidxml::xml_node<>* userDataElement = entityElement->first_node("userData");
-				if (userDataElement)
-				{
-					rapidxml::xml_node<>* propertyElement = userDataElement->first_node("property");
-
-					while (propertyElement && propertyElement->first_attribute("data")->value() != ExitComponent::getStaticClassName())
-					{
-						propertyElement = propertyElement->next_sibling("property");
-					}
-
-					if (!propertyElement)
-					{
-						nodeElement = nodeElement->next_sibling("node");
-						continue;
-					}
-
-					std::pair<Ogre::Vector2, Ogre::String> data;
-					bool foundExitDirection = false;
-					bool foundTargetSceneName = false;
-
-					while (nullptr != propertyElement && (false == foundExitDirection || false == foundTargetSceneName))
-					{
-						if (XMLConverter::getAttrib(propertyElement, "name") == "TargetSceneName")
-						{
-							data.second = XMLConverter::getAttrib(propertyElement, "data");
-							foundTargetSceneName = true;
-						}
-						else if (XMLConverter::getAttrib(propertyElement, "name") == "ExitDirection")
-						{
-							data.first = XMLConverter::getAttribVector2(propertyElement, "data");
-							foundExitDirection = true;
-						}
-						propertyElement = propertyElement->next_sibling("property");
-					}
-
-					if (true == foundExitDirection && true == foundTargetSceneName)
-					{
-						exitDirectionsNextScenes.emplace_back(data);
-					}
-				}
-			}
-			// Go to the next node
-			nodeElement = nodeElement->next_sibling("node");
-		}
-		free(scene);
-
-		return exitDirectionsNextScenes;
-	}
-
-	std::pair<bool, Ogre::Vector3> DotSceneImportModule::parseGameObjectPosition(unsigned long id)
-	{
-		Ogre::Vector3 gameObjectPosition = Ogre::Vector3::ZERO;
-
-		// Do not show progress in gui because it will crash
-		this->showProgress = false;
-		bool success = false;
-		// Get the xml file from the resourcegroup
-		Ogre::DataStreamPtr stream = Ogre::ResourceGroupManager::getSingleton().openResource(this->projectParameter.projectName + "/" + this->projectParameter.sceneName + "/" + this->projectParameter.sceneName + ".scene", this->resourceGroupName);
-
-		char* scene = _strdup(stream->getAsString().c_str());
-
-		rapidxml::xml_document<> XMLDoc;
-		// Parse the xml document
-		XMLDoc.parse<0>(scene);
-
-		// Go to the node, at which the scene nodes occur
-		rapidxml::xml_node<>* XMLRoot = XMLDoc.first_node("scene");
-		rapidxml::xml_node<>* nodesElement = XMLRoot->first_node("nodes");
-		rapidxml::xml_node<>* nodeElement = nodesElement->first_node("node");
-
-		// Go through all nodes
-		while (nodeElement && false == success)
-		{
-			// Search for the entity or item
-			rapidxml::xml_node<>* entityElement = nodeElement->first_node("entity");
-			if (nullptr == entityElement)
-			{
-				entityElement = nodeElement->first_node("item");
-			}
-			if (nullptr != entityElement)
-			{
-				rapidxml::xml_node<>* userDataElement = entityElement->first_node("userData");
-				if (userDataElement)
-				{
-					rapidxml::xml_node<>* propertyElement = userDataElement->first_node("property");
-
-					while (propertyElement)
-					{
-						if (propertyElement->first_attribute("name")->value() != "Id")
-						{
-							propertyElement = propertyElement->next_sibling("property");
-						}
-						else
-						{
-							unsigned long tempId = XMLConverter::getAttribUnsignedLong(propertyElement, "data");
-							if (tempId == id)
-							{
-								rapidxml::xml_node<>* positionElement = nodeElement->first_node("position");
-								if (positionElement)
-								{
-									gameObjectPosition = XMLConverter::getAttribVector3(propertyElement, "data");
-									success = true;
-									break;
-								}
-							}
-						}
-					}
-				}
-			}
-			// Go to the next node
-			nodeElement = nodeElement->next_sibling("node");
-		}
-		free(scene);
-
-		return std::make_pair(success, gameObjectPosition);
-	}
-
-	void DotSceneImportModule::processScene(rapidxml::xml_node<>* xmlRoot, bool justSetValues)
-	{
-		bool skip = false;
-		// Process the scene parameters
-		Ogre::String version = XMLConverter::getAttrib(xmlRoot, "formatVersion", "unknown");
-		size_t found = version.find(NOWA_DOT_SCENE_FILEVERSION_STR);
-		if (found == Ogre::String::npos)
-		{
-			Ogre::String message = "This scene has been created with an older version, it may be that some components will not work correctly! Please check the log and especially when using id's of other components!";
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,  message);
-			boost::shared_ptr<EventDataFeedback> eventDataFeedback(new EventDataFeedback(false, message));
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataFeedback);
-		}
-
-		Ogre::String message = "[DotSceneImportModule] Parsing Scene file with version " + version;
-		if (xmlRoot->first_attribute("ID"))
-			message += ", id " + Ogre::String(xmlRoot->first_attribute("ID")->value());
-		if (xmlRoot->first_attribute("sceneManager"))
-			message += ", scene manager " + Ogre::String(xmlRoot->first_attribute("sceneManager")->value());
-		if (xmlRoot->first_attribute("minOgreVersion"))
-			message += ", min. Ogre version " + Ogre::String(xmlRoot->first_attribute("minOgreVersion")->value());
-		if (xmlRoot->first_attribute("author"))
-			message += ", author " + Ogre::String(xmlRoot->first_attribute("author")->value());
-
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, message);
-
-		rapidxml::xml_node<> *pElement;
-
-		// Process resource locations (?)
-
-		pElement = xmlRoot->first_node("resourceLocations");
-		if (pElement)
-		{
-			this->processResourceLocations(pElement);
-		}
-
-		// Process environment (?)
-		pElement = xmlRoot->first_node("environment");
-		if (pElement)
-		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DotSceneImportModule::processEnvironment", _1(&pElement),
-			{
-				this->processEnvironment(pElement);
-			});
-		}
-
-		// Process OgreNewt
-		pElement = xmlRoot->first_node("OgreNewt");
-		if (nullptr != pElement)
-		{
-			this->processOgreNewt(pElement);
-		}
-
-		// Process OgreRecast
-		pElement = xmlRoot->first_node("OgreRecast");
-		if (nullptr != pElement)
-		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DotSceneImportModule::processScene2", _1(&pElement),
-			{
-				this->processOgreRecast(pElement);
-			});
-		}
-
-		// Process nodes (?)
-		pElement = xmlRoot->first_node("nodes");
-		if (nullptr != pElement)
-		{
-			this->processNodes(pElement, nullptr, justSetValues);
-		}
-	}
-
-	void DotSceneImportModule::processResourceLocations(rapidxml::xml_node<>* xmlNode)
-	{
-		rapidxml::xml_node<> *pElement;
-		
-		// resourceGroupName, type, path 
-		std::vector<std::tuple<Ogre::String, Ogre::String, Ogre::String>> missingResourceGroupNamesForScene;
-
-		pElement = xmlNode->first_node("resourceLocation");
-		while (pElement)
-		{
-			Ogre::String usedName = pElement->first_attribute("name")->value();
-			Ogre::String usedType = pElement->first_attribute("type")->value();
-			Ogre::String usedPath = pElement->first_attribute("path")->value();
-
-			// Get all currently defined resource group names
-			auto resourceLocations = Ogre::ResourceGroupManager::getSingleton().getResourceGroups();
-			bool foundResourceGroupName = false;
-			bool foundResourceGroupPath = false;
-			for (const auto& resourceGroupName : resourceLocations)
-			{
-				if (usedName == resourceGroupName)
-				{
-					foundResourceGroupName = true;
-					// here no break, because a resource group may match, but it may have several locations and it could be that a location is missing
-				}
-				for (const auto& path : Ogre::ResourceGroupManager::getSingleton().getResourceLocationList(resourceGroupName))
-				{
-					if (usedPath == path->archive->getName())
-					{
-						foundResourceGroupPath = true;
-						break;
-					}
-				}
-
-				if (true == foundResourceGroupPath)
-					break;
-			}
-
-			// Check if a resource is not defined in the corresponding cfg file and add it to the missing list, to late-initialize the resource, so that the scene can be loaded properly
-			if (false == foundResourceGroupName || false == foundResourceGroupPath)
-			{
-				missingResourceGroupNamesForScene.emplace_back(usedName, usedType, usedPath);
-			}
-
-			pElement = pElement->next_sibling("resourceLocation");
-		}
-
-		for (size_t i = 0; i < missingResourceGroupNamesForScene.size(); i++)
-		{
-			Ogre::ResourceGroupManager::getSingleton().addResourceLocation(std::get<2>(missingResourceGroupNamesForScene[i]), 
-				std::get<1>(missingResourceGroupNamesForScene[i]), std::get<0>(missingResourceGroupNamesForScene[i]));
-
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Warning: The resource group: '" + std::get<0>(missingResourceGroupNamesForScene[i])
-			+ "' or its location: '" + std::get<2>(missingResourceGroupNamesForScene[i]) + "' has not been defined. It will now be initialized during level loading progress. "
-				"This may take some time! Please define the data in the corresponding cfg file, so that all necessary resources are loaded at the starup of the application!");
-			Ogre::ResourceGroupManager::getSingleton().initialiseResourceGroup(std::get<0>(missingResourceGroupNamesForScene[i]), false);
-
-		}
-	}
-
-	void DotSceneImportModule::processEnvironment(rapidxml::xml_node<> *xmlNode)
-	{
-		rapidxml::xml_node<> *pElement;
-		bool skip = false;
-
-		// Process modules (user data of scene manager) (?)
-		pElement = xmlNode->first_node("scenemanager");
-		if (pElement)
-		{
-			Ogre::String name = pElement->first_attribute("name")->value();
-			// Scenemanager has no name anymore
-		}
-		
-		// Colour ambient
-		{
-			pElement = xmlNode->first_node("ambient");
-			if (pElement)
-			{
-				rapidxml::xml_node<>* subElement = pElement->first_node("ambientLightUpperHemisphere");
-				if (subElement)
-				{
-					this->projectParameter.ambientLightUpperHemisphere = XMLConverter::parseColour(subElement);
-					// ambientLightUpperHemisphere *= Ogre::Math::PI;
-				}
-				subElement = pElement->first_node("ambientLightLowerHemisphere");
-				if (subElement)
-				{
-					this->projectParameter.ambientLightLowerHemisphere = XMLConverter::parseColour(subElement);
-					// ambientLightLowerHemisphere *= Ogre::Math::PI;
-				}
-				subElement = pElement->first_node("hemisphereDir");
-				if (subElement)
-				{
-					this->projectParameter.hemisphereDir = XMLConverter::parseVector3(subElement);
-				}
-				subElement = pElement->first_node("envmapScale");
-				if (subElement)
-				{
-					this->projectParameter.envmapScale = XMLConverter::getAttribReal(subElement, "envmapScale", 1.0f);
-				}
-				this->sceneManager->setAmbientLight(this->projectParameter.ambientLightUpperHemisphere, this->projectParameter.ambientLightLowerHemisphere, 
-					this->projectParameter.hemisphereDir, this->projectParameter.envmapScale);
-			}
-		}
-
-		// Shadows
-		{
-			pElement = xmlNode->first_node("shadows");
-			if (pElement)
-			{
-				rapidxml::xml_node<>* subElement = pElement->first_node("shadowFarDistance");
-				if (subElement)
-				{
-					this->projectParameter.shadowFarDistance = XMLConverter::getAttribReal(subElement, "distance", 50.0f);
-				}
-				subElement = pElement->first_node("shadowDirectionalLightExtrusionDistance");
-				if (subElement)
-				{
-					this->projectParameter.shadowDirectionalLightExtrusionDistance = XMLConverter::getAttribReal(subElement, "distance", 50.0f);
-				}
-				subElement = pElement->first_node("shadowDirLightTextureOffset");
-				if (subElement)
-				{
-					this->projectParameter.shadowDirLightTextureOffset = XMLConverter::getAttribReal(subElement, "offset", 0.6f);
-				}
-				subElement = pElement->first_node("shadowColor");
-				if (subElement)
-				{
-					this->projectParameter.shadowColor = XMLConverter::parseColour(subElement);
-				}
-				subElement = pElement->first_node("shadowQuality");
-				if (subElement)
-				{
-					this->projectParameter.shadowQualityIndex = XMLConverter::getAttribUnsignedInt(subElement, "index", 2);
-				}
-				subElement = pElement->first_node("ambientLightMode");
-				if (subElement)
-				{
-					this->projectParameter.ambientLightModeIndex = XMLConverter::getAttribUnsignedInt(subElement, "index", 0);
-				}
-
-				this->sceneManager->setShadowFarDistance(this->projectParameter.shadowFarDistance);
-				this->sceneManager->setShadowDirectionalLightExtrusionDistance(this->projectParameter.shadowDirectionalLightExtrusionDistance);
-				this->sceneManager->setShadowDirLightTextureOffset(this->projectParameter.shadowDirLightTextureOffset);
-				this->sceneManager->setShadowColour(this->projectParameter.shadowColor);
-
-				NOWA::WorkspaceModule::getInstance()->setShadowQuality(static_cast<Ogre::HlmsPbs::ShadowFilter>(this->projectParameter.shadowQualityIndex), false);
-				NOWA::WorkspaceModule::getInstance()->setAmbientLightMode(static_cast<Ogre::HlmsPbs::AmbientLightMode>(this->projectParameter.ambientLightModeIndex));
-			}
-		}
-		
-		// Light Forward
-		{
-			pElement = xmlNode->first_node("lightFoward");
-			if (pElement)
-			{
-				rapidxml::xml_node<>* subElement = pElement->first_node("forwardMode");
-				if (subElement)
-				{
-					this->projectParameter.forwardMode = XMLConverter::getAttribUnsignedInt(subElement, "value");
-				}
-				if (0 != this->projectParameter.forwardMode)
-				{
-					subElement = pElement->first_node("lightWidth");
-					if (subElement)
-					{
-						this->projectParameter.lightWidth = XMLConverter::getAttribUnsignedInt(subElement, "value");
-					}
-					subElement = pElement->first_node("lightHeight");
-					if (subElement)
-					{
-						this->projectParameter.lightHeight = XMLConverter::getAttribUnsignedInt(subElement, "value");
-					}
-					subElement = pElement->first_node("numLightSlices");
-					if (subElement)
-					{
-						this->projectParameter.numLightSlices = XMLConverter::getAttribUnsignedInt(subElement, "value");
-					}
-					subElement = pElement->first_node("lightsPerCell");
-					if (subElement)
-					{
-						this->projectParameter.lightsPerCell = XMLConverter::getAttribUnsignedInt(subElement, "value");
-					}
-					subElement = pElement->first_node("decalsPerCell");
-					if (subElement)
-					{
-						this->projectParameter.decalsPerCell = XMLConverter::getAttribUnsignedInt(subElement, "value");
-					}
-					subElement = pElement->first_node("cubemapProbesPerCell");
-					if (subElement)
-					{
-						this->projectParameter.cubemapProbesPerCell = XMLConverter::getAttribUnsignedInt(subElement, "value");
-					}
-					subElement = pElement->first_node("minLightDistance");
-					if (subElement)
-					{
-						this->projectParameter.minLightDistance = XMLConverter::getAttribReal(subElement, "value");
-					}
-					subElement = pElement->first_node("maxLightDistance");
-					if (subElement)
-					{
-						this->projectParameter.maxLightDistance = XMLConverter::getAttribReal(subElement, "value");
-					}
-				}
-
-				// Ogre tells that width/height must be modular devideable by 4
-				if (this->projectParameter.lightWidth % ARRAY_PACKED_REALS != 0)
-				{
-					this->projectParameter.lightWidth = 4;
-				}
-				if (this->projectParameter.lightHeight % ARRAY_PACKED_REALS != 0)
-				{
-					this->projectParameter.lightHeight = 4;
-				}
-
-				if (0 == this->projectParameter.forwardMode)
-				{
-					this->sceneManager->setForward3D(false, this->projectParameter.lightWidth, this->projectParameter.lightHeight, this->projectParameter.numLightSlices, 
-						this->projectParameter.lightsPerCell, this->projectParameter.minLightDistance, this->projectParameter.maxLightDistance);
-
-					this->sceneManager->setForwardClustered(false, this->projectParameter.lightWidth, this->projectParameter.lightHeight, this->projectParameter.numLightSlices,
-						this->projectParameter.lightsPerCell, this->projectParameter.decalsPerCell, this->projectParameter.cubemapProbesPerCell,
-						this->projectParameter.minLightDistance, this->projectParameter.maxLightDistance);
-				}
-				else if (1 == this->projectParameter.forwardMode)
-				{
-					this->sceneManager->setForward3D(true, this->projectParameter.lightWidth, this->projectParameter.lightHeight, this->projectParameter.numLightSlices,
-						this->projectParameter.lightsPerCell, this->projectParameter.minLightDistance, this->projectParameter.maxLightDistance);
-				}
-				else if (2 == this->projectParameter.forwardMode)
-				{
-					this->sceneManager->setForwardClustered(true, this->projectParameter.lightWidth, this->projectParameter.lightHeight, this->projectParameter.numLightSlices,
-						this->projectParameter.lightsPerCell, this->projectParameter.decalsPerCell, this->projectParameter.cubemapProbesPerCell,
-						this->projectParameter.minLightDistance, this->projectParameter.maxLightDistance);
-				}
-			}
-			else
-			{
-				// No forward parameter, set default
-				this->projectParameter.forwardMode = 0;
-			}
-		}
-
-		// Main Parameter
-		{
-			pElement = xmlNode->first_node("mainParameter");
-			if (pElement)
-			{
-				rapidxml::xml_node<>* subElement = pElement->first_node("ignoreGlobalScene");
-				if (subElement)
-				{
-					this->projectParameter.ignoreGlobalScene = XMLConverter::getAttribBool(subElement, "value");
-				}
-
-				subElement = pElement->first_node("renderDistance");
-				if (subElement)
-				{
-					this->projectParameter.renderDistance = XMLConverter::getAttribReal(subElement, "renderDistance", Core::getSingletonPtr()->getGlobalRenderDistance());
-					NOWA::Core::getSingletonPtr()->setGlobalRenderDistance(this->projectParameter.renderDistance);
-				}
-
-				subElement = pElement->first_node("useV2Item");
-				if (subElement)
-				{
-					this->projectParameter.useV2Item = XMLConverter::getAttribBool(subElement, "value");
-					Core::getSingletonPtr()->setUseEntityType(!this->projectParameter.useV2Item);
-				}
-			}
-		}
-
-		pElement = xmlNode->first_node("bounds");
-		if (nullptr != pElement)
-		{
-			this->mostLeftNearPosition = XMLConverter::getAttribVector3(pElement, "mostLeftNearPosition", Ogre::Vector3(Ogre::Math::POS_INFINITY, Ogre::Math::POS_INFINITY, Ogre::Math::POS_INFINITY));
-			this->mostRightFarPosition = XMLConverter::getAttribVector3(pElement, "mostRightFarPosition", Ogre::Vector3(Ogre::Math::NEG_INFINITY, Ogre::Math::NEG_INFINITY, Ogre::Math::NEG_INFINITY));
-		}
-	}
-
-	void DotSceneImportModule::processOgreNewt(rapidxml::xml_node<>* xmlNode)
-	{
-		this->projectParameter.hasPhysics = true;
-		// Process attributes
-		this->projectParameter.solverModel = XMLConverter::getAttribInt(xmlNode, "solverModel", 1);
-		// Friction model is no more used in ogre
-		this->projectParameter.solverForSingleIsland = XMLConverter::getAttribInt(xmlNode, "multithreadSolverOnSingleIsland", 1);
-		this->projectParameter.broadPhaseAlgorithm = XMLConverter::getAttribInt(xmlNode, "broadPhaseAlgorithm", 0);
-		this->projectParameter.physicsThreadCount = XMLConverter::getAttribInt(xmlNode, "threadCount", 1);
-		this->projectParameter.physicsUpdateRate = XMLConverter::getAttribReal(xmlNode, "desiredFps", 60.0f);
-		this->projectParameter.linearDamping = XMLConverter::getAttribReal(xmlNode, "defaultLinearDamping", 0.1f);
-		this->projectParameter.gravity = Ogre::Vector3(0.0f, -19.8f, 0.0f);
-		this->projectParameter.angularDamping = Ogre::Vector3(0.01f, 0.01f, 0.01f);
-		rapidxml::xml_node<>* pElement;
-		pElement = xmlNode->first_node("defaultAngularDamping");
-		if (nullptr != pElement)
-			this->projectParameter.angularDamping = XMLConverter::parseVector3(pElement);
-
-		pElement = xmlNode->first_node("globalGravity");
+                // Tells lua script component, that its being cloned (prevents multiple script creations)
+                GameObjectComponents* components = gameObjectPtr->getComponents();
+                for (auto it = components->begin(); it != components->end(); ++it)
+                {
+                    auto luaScriptCompPtr = boost::dynamic_pointer_cast<LuaScriptComponent>(std::get<COMPONENT>(*it));
+                    if (nullptr != luaScriptCompPtr)
+                    {
+                        luaScriptCompPtr->setComponentCloned(true);
+
+                        boost::shared_ptr<EventDataGroupLoaded> eventDataGroupLoaded(new EventDataGroupLoaded(gameObjectPtr->getId()));
+                        AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGroupLoaded);
+                    }
+                }
+
+                gameObjectPtr->postInit();
+            }
+        }
+
+        // Copy the parsed game object ids and clear for next round
+        std::vector<unsigned long> tempParsedGameObjectIds = this->parsedGameObjectIds;
+        this->parsedGameObjectIds.clear();
+
+        return tempParsedGameObjectIds;
+    }
+
+    bool DotSceneImportModule::parseGameObject(const Ogre::String& name)
+    {
+        // do not show progress in gui because it will crash
+        bool success = false;
+        // get the xml file from the resourcegroup
+        Ogre::DataStreamPtr stream = Ogre::ResourceGroupManager::getSingleton().openResource(this->projectParameter.projectName + "/" + this->projectParameter.sceneName + "/" + this->projectParameter.sceneName + ".scene", this->resourceGroupName);
+
+        char* scene = _strdup(stream->getAsString().c_str());
+
+        rapidxml::xml_document<> XMLDoc;
+        // parse the xml document
+        XMLDoc.parse<0>(scene);
+
+        // go to the node, at which the scene nodes occur
+        rapidxml::xml_node<>* XMLRoot = XMLDoc.first_node("scene");
+        rapidxml::xml_node<>* nodesElement = XMLRoot->first_node("nodes");
+        rapidxml::xml_node<>* nodeElement = nodesElement->first_node("node");
+        // go through all nodes
+
+        while (nodeElement)
+        {
+            if (nodeElement && name == nodeElement->first_attribute("name")->value())
+            {
+                // loads the game object internally into the game object controller
+                this->processNode(nodeElement);
+                success = true;
+                break;
+            }
+            else
+            {
+                nodeElement = nodeElement->next_sibling("node");
+            }
+        }
+
+        auto gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromName(name);
+        if (nullptr != gameObjectPtr)
+        {
+            if (!gameObjectPtr->postInit())
+            {
+                AppStateManager::getSingletonPtr()->getGameObjectController()->deleteGameObjectImmediately(gameObjectPtr->getId());
+            }
+        }
+
+        free(scene);
+        return success;
+    }
+
+    bool DotSceneImportModule::parseGameObjects(unsigned int controlledByClientID)
+    {
+        // Do not show progress in gui because it will crash
+        bool success = false;
+        this->parsedGameObjectIds.clear();
+        // Get the xml file from the resourcegroup
+        Ogre::DataStreamPtr stream = Ogre::ResourceGroupManager::getSingleton().openResource(this->projectParameter.projectName + "/" + this->projectParameter.sceneName + "/" + this->projectParameter.sceneName + ".scene", this->resourceGroupName);
+
+        char* scene = _strdup(stream->getAsString().c_str());
+
+        rapidxml::xml_document<> XMLDoc;
+        // Parse the xml document
+        XMLDoc.parse<0>(scene);
+
+        // Go to the node, at which the scene nodes occur
+        rapidxml::xml_node<>* XMLRoot = XMLDoc.first_node("scene");
+        rapidxml::xml_node<>* nodesElement = XMLRoot->first_node("nodes");
+        rapidxml::xml_node<>* nodeElement = nodesElement->first_node("node");
+        // Go through all nodes
+
+        while (nodeElement)
+        {
+            // Search for the entity or item
+            rapidxml::xml_node<>* entityElement = nodeElement->first_node("entity");
+            if (nullptr == entityElement)
+            {
+                entityElement = nodeElement->first_node("item");
+            }
+            if (nullptr != entityElement)
+            {
+                rapidxml::xml_node<>* userDataElement = entityElement->first_node("userData");
+                if (userDataElement)
+                {
+                    rapidxml::xml_node<>* propertyElement = userDataElement->first_node("property");
+
+                    while (propertyElement && propertyElement->first_attribute("name")->value() != Ogre::String("ControlledByClient"))
+                    {
+                        propertyElement = propertyElement->next_sibling("property");
+                    }
+
+                    // If there is no ControlledByClient property, then all property elements had been visited and the element is still null,
+                    // so go to the next node
+                    if (!propertyElement)
+                    {
+                        nodeElement = nodeElement->next_sibling("node");
+                        continue;
+                    }
+
+                    // Check if this game object matches the controlled client id
+                    if (static_cast<unsigned int>(XMLConverter::getAttribReal(propertyElement, "data", 0)) == controlledByClientID)
+                    {
+                        // Loads the game object internally into the game object controller
+                        this->processNode(nodeElement);
+                        success = true;
+                    }
+                }
+            }
+            // Go to the next node
+            nodeElement = nodeElement->next_sibling("node");
+        }
+        free(scene);
+
+        // Now that all gameobject's have been fully created, run the post init phase (now all other components are also available for each game object)
+        for (size_t i = 0; i < this->parsedGameObjectIds.size(); i++)
+        {
+            const auto gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->parsedGameObjectIds[i]);
+            if (nullptr != gameObjectPtr)
+            {
+                if (!gameObjectPtr->postInit())
+                {
+                    AppStateManager::getSingletonPtr()->getGameObjectController()->deleteGameObjectImmediately(gameObjectPtr->getId());
+                }
+            }
+        }
+
+        return success;
+    }
+
+    std::pair<Ogre::Vector3, Ogre::Vector3> DotSceneImportModule::parseBounds(void)
+    {
+        // Do not show progress in gui because it will crash
+        bool success = false;
+        // Get the xml file from the resourcegroup
+        Ogre::DataStreamPtr stream = Ogre::ResourceGroupManager::getSingleton().openResource(this->projectParameter.projectName + "/" + this->projectParameter.sceneName + "/" + this->projectParameter.sceneName + ".scene", this->resourceGroupName);
+
+        char* scene = _strdup(stream->getAsString().c_str());
+
+        rapidxml::xml_document<> XMLDoc;
+        // Parse the xml document
+        XMLDoc.parse<0>(scene);
+
+        // Go to the node, at which the scene nodes occur
+        rapidxml::xml_node<>* XMLRoot = XMLDoc.first_node("scene");
+        rapidxml::xml_node<>* XMLEnvironment = XMLRoot->first_node("environment");
+        rapidxml::xml_node<>* boundsElement = XMLEnvironment->first_node("bounds");
+
+        if (nullptr != boundsElement)
+        {
+            this->mostLeftNearPosition = XMLConverter::getAttribVector3(boundsElement, "mostLeftNearPosition", Ogre::Vector3(Ogre::Math::POS_INFINITY, Ogre::Math::POS_INFINITY, Ogre::Math::POS_INFINITY));
+            this->mostRightFarPosition = XMLConverter::getAttribVector3(boundsElement, "mostRightFarPosition", Ogre::Vector3(Ogre::Math::NEG_INFINITY, Ogre::Math::NEG_INFINITY, Ogre::Math::NEG_INFINITY));
+        }
+        free(scene);
+        return std::make_pair(this->mostLeftNearPosition, this->mostRightFarPosition);
+    }
+
+    std::vector<std::pair<Ogre::Vector2, Ogre::String>> DotSceneImportModule::parseExitDirectionsNextScenes(void)
+    {
+        std::vector<std::pair<Ogre::Vector2, Ogre::String>> exitDirectionsNextScenes;
+
+        bool success = false;
+        // Get the xml file from the resourcegroup
+        Ogre::DataStreamPtr stream = Ogre::ResourceGroupManager::getSingleton().openResource(this->projectParameter.projectName + "/" + this->projectParameter.sceneName + "/" + this->projectParameter.sceneName + ".scene", this->resourceGroupName);
+
+        char* scene = _strdup(stream->getAsString().c_str());
+
+        rapidxml::xml_document<> XMLDoc;
+        // Parse the xml document
+        XMLDoc.parse<0>(scene);
+
+        // Go to the node, at which the scene nodes occur
+        rapidxml::xml_node<>* XMLRoot = XMLDoc.first_node("scene");
+        rapidxml::xml_node<>* nodesElement = XMLRoot->first_node("nodes");
+        rapidxml::xml_node<>* nodeElement = nodesElement->first_node("node");
+        // Go through all nodes
+
+        while (nodeElement)
+        {
+            // Search for the entity or item
+            rapidxml::xml_node<>* entityElement = nodeElement->first_node("entity");
+            if (nullptr == entityElement)
+            {
+                entityElement = nodeElement->first_node("item");
+            }
+            if (nullptr != entityElement)
+            {
+                rapidxml::xml_node<>* userDataElement = entityElement->first_node("userData");
+                if (userDataElement)
+                {
+                    rapidxml::xml_node<>* propertyElement = userDataElement->first_node("property");
+
+                    while (propertyElement && propertyElement->first_attribute("data")->value() != ExitComponent::getStaticClassName())
+                    {
+                        propertyElement = propertyElement->next_sibling("property");
+                    }
+
+                    if (!propertyElement)
+                    {
+                        nodeElement = nodeElement->next_sibling("node");
+                        continue;
+                    }
+
+                    std::pair<Ogre::Vector2, Ogre::String> data;
+                    bool foundExitDirection = false;
+                    bool foundTargetSceneName = false;
+
+                    while (nullptr != propertyElement && (false == foundExitDirection || false == foundTargetSceneName))
+                    {
+                        if (XMLConverter::getAttrib(propertyElement, "name") == "TargetSceneName")
+                        {
+                            data.second = XMLConverter::getAttrib(propertyElement, "data");
+                            foundTargetSceneName = true;
+                        }
+                        else if (XMLConverter::getAttrib(propertyElement, "name") == "ExitDirection")
+                        {
+                            data.first = XMLConverter::getAttribVector2(propertyElement, "data");
+                            foundExitDirection = true;
+                        }
+                        propertyElement = propertyElement->next_sibling("property");
+                    }
+
+                    if (true == foundExitDirection && true == foundTargetSceneName)
+                    {
+                        exitDirectionsNextScenes.emplace_back(data);
+                    }
+                }
+            }
+            // Go to the next node
+            nodeElement = nodeElement->next_sibling("node");
+        }
+        free(scene);
+
+        return exitDirectionsNextScenes;
+    }
+
+    std::pair<bool, Ogre::Vector3> DotSceneImportModule::parseGameObjectPosition(unsigned long id)
+    {
+        Ogre::Vector3 gameObjectPosition = Ogre::Vector3::ZERO;
+
+        bool success = false;
+        // Get the xml file from the resourcegroup
+        Ogre::DataStreamPtr stream = Ogre::ResourceGroupManager::getSingleton().openResource(this->projectParameter.projectName + "/" + this->projectParameter.sceneName + "/" + this->projectParameter.sceneName + ".scene", this->resourceGroupName);
+
+        char* scene = _strdup(stream->getAsString().c_str());
+
+        rapidxml::xml_document<> XMLDoc;
+        // Parse the xml document
+        XMLDoc.parse<0>(scene);
+
+        // Go to the node, at which the scene nodes occur
+        rapidxml::xml_node<>* XMLRoot = XMLDoc.first_node("scene");
+        rapidxml::xml_node<>* nodesElement = XMLRoot->first_node("nodes");
+        rapidxml::xml_node<>* nodeElement = nodesElement->first_node("node");
+
+        // Go through all nodes
+        while (nodeElement && false == success)
+        {
+            // Search for the entity or item
+            rapidxml::xml_node<>* entityElement = nodeElement->first_node("entity");
+            if (nullptr == entityElement)
+            {
+                entityElement = nodeElement->first_node("item");
+            }
+            if (nullptr != entityElement)
+            {
+                rapidxml::xml_node<>* userDataElement = entityElement->first_node("userData");
+                if (userDataElement)
+                {
+                    rapidxml::xml_node<>* propertyElement = userDataElement->first_node("property");
+
+                    while (propertyElement)
+                    {
+                        if (propertyElement->first_attribute("name")->value() != "Id")
+                        {
+                            propertyElement = propertyElement->next_sibling("property");
+                        }
+                        else
+                        {
+                            unsigned long tempId = XMLConverter::getAttribUnsignedLong(propertyElement, "data");
+                            if (tempId == id)
+                            {
+                                rapidxml::xml_node<>* positionElement = nodeElement->first_node("position");
+                                if (positionElement)
+                                {
+                                    gameObjectPosition = XMLConverter::getAttribVector3(propertyElement, "data");
+                                    success = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            // Go to the next node
+            nodeElement = nodeElement->next_sibling("node");
+        }
+        free(scene);
+
+        return std::make_pair(success, gameObjectPosition);
+    }
+
+    void DotSceneImportModule::processScene(rapidxml::xml_node<>* xmlRoot, bool justSetValues)
+    {
+        bool skip = false;
+        // Process the scene parameters
+        Ogre::String version = XMLConverter::getAttrib(xmlRoot, "formatVersion", "unknown");
+        size_t found = version.find(NOWA_DOT_SCENE_FILEVERSION_STR);
+        if (found == Ogre::String::npos)
+        {
+            Ogre::String message = "This scene has been created with an older version, it may be that some components will not work correctly! Please check the log and especially when using id's of other components!";
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, message);
+            boost::shared_ptr<EventDataFeedback> eventDataFeedback(new EventDataFeedback(false, message));
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataFeedback);
+        }
+
+        Ogre::String message = "[DotSceneImportModule] Parsing Scene file with version " + version;
+        if (xmlRoot->first_attribute("ID"))
+        {
+            message += ", id " + Ogre::String(xmlRoot->first_attribute("ID")->value());
+        }
+        if (xmlRoot->first_attribute("sceneManager"))
+        {
+            message += ", scene manager " + Ogre::String(xmlRoot->first_attribute("sceneManager")->value());
+        }
+        if (xmlRoot->first_attribute("minOgreVersion"))
+        {
+            message += ", min. Ogre version " + Ogre::String(xmlRoot->first_attribute("minOgreVersion")->value());
+        }
+        if (xmlRoot->first_attribute("author"))
+        {
+            message += ", author " + Ogre::String(xmlRoot->first_attribute("author")->value());
+        }
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, message);
+
+        rapidxml::xml_node<>* pElement;
+
+        // Process resource locations (?)
+        pElement = xmlRoot->first_node("resourceLocations");
+        if (pElement)
+        {
+            this->processResourceLocations(pElement);
+        }
+
+        // Process environment (?)
+        pElement = xmlRoot->first_node("environment");
+        if (pElement)
+        {
+            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DotSceneImportModule::processEnvironment", _1(&pElement), { this->processEnvironment(pElement); });
+        }
+
+        // Process OgreNewt
+        pElement = xmlRoot->first_node("OgreNewt");
+        if (nullptr != pElement)
+        {
+            this->processOgreNewt(pElement);
+        }
+
+        // Process OgreRecast
+        pElement = xmlRoot->first_node("OgreRecast");
+        if (nullptr != pElement)
+        {
+            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DotSceneImportModule::processScene2", _1(&pElement), { this->processOgreRecast(pElement); });
+        }
+
+        // Process nodes (?)
+        pElement = xmlRoot->first_node("nodes");
+        if (nullptr != pElement)
+        {
+            this->processNodes(pElement, nullptr, justSetValues);
+        }
+    }
+
+    void DotSceneImportModule::processResourceLocations(rapidxml::xml_node<>* xmlNode)
+    {
+        rapidxml::xml_node<>* pElement;
+
+        // resourceGroupName, type, path
+        std::vector<std::tuple<Ogre::String, Ogre::String, Ogre::String>> missingResourceGroupNamesForScene;
+
+        pElement = xmlNode->first_node("resourceLocation");
+        while (pElement)
+        {
+            Ogre::String usedName = pElement->first_attribute("name")->value();
+            Ogre::String usedType = pElement->first_attribute("type")->value();
+            Ogre::String usedPath = pElement->first_attribute("path")->value();
+
+            // Get all currently defined resource group names
+            auto resourceLocations = Ogre::ResourceGroupManager::getSingleton().getResourceGroups();
+            bool foundResourceGroupName = false;
+            bool foundResourceGroupPath = false;
+            for (const auto& resourceGroupName : resourceLocations)
+            {
+                if (usedName == resourceGroupName)
+                {
+                    foundResourceGroupName = true;
+                    // here no break, because a resource group may match, but it may have several locations and it could be that a location is missing
+                }
+                for (const auto& path : Ogre::ResourceGroupManager::getSingleton().getResourceLocationList(resourceGroupName))
+                {
+                    if (usedPath == path->archive->getName())
+                    {
+                        foundResourceGroupPath = true;
+                        break;
+                    }
+                }
+
+                if (true == foundResourceGroupPath)
+                {
+                    break;
+                }
+            }
+
+            // Check if a resource is not defined in the corresponding cfg file and add it to the missing list, to late-initialize the resource, so that the scene can be loaded properly
+            if (false == foundResourceGroupName || false == foundResourceGroupPath)
+            {
+                missingResourceGroupNamesForScene.emplace_back(usedName, usedType, usedPath);
+            }
+
+            pElement = pElement->next_sibling("resourceLocation");
+        }
+
+        for (size_t i = 0; i < missingResourceGroupNamesForScene.size(); i++)
+        {
+            Ogre::ResourceGroupManager::getSingleton().addResourceLocation(std::get<2>(missingResourceGroupNamesForScene[i]), std::get<1>(missingResourceGroupNamesForScene[i]), std::get<0>(missingResourceGroupNamesForScene[i]));
+
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Warning: The resource group: '" + std::get<0>(missingResourceGroupNamesForScene[i]) + "' or its location: '" +
+                                                                                    std::get<2>(missingResourceGroupNamesForScene[i]) +
+                                                                                    "' has not been defined. It will now be initialized during level loading progress. "
+                                                                                    "This may take some time! Please define the data in the corresponding cfg file, so that all necessary resources are loaded at the starup of the application!");
+            Ogre::ResourceGroupManager::getSingleton().initialiseResourceGroup(std::get<0>(missingResourceGroupNamesForScene[i]), false);
+        }
+    }
+
+    void DotSceneImportModule::processEnvironment(rapidxml::xml_node<>* xmlNode)
+    {
+        rapidxml::xml_node<>* pElement;
+        bool skip = false;
+
+        // Process modules (user data of scene manager) (?)
+        pElement = xmlNode->first_node("scenemanager");
+        if (pElement)
+        {
+            Ogre::String name = pElement->first_attribute("name")->value();
+            // Scenemanager has no name anymore
+        }
+
+        // Colour ambient
+        {
+            pElement = xmlNode->first_node("ambient");
+            if (pElement)
+            {
+                rapidxml::xml_node<>* subElement = pElement->first_node("ambientLightUpperHemisphere");
+                if (subElement)
+                {
+                    this->projectParameter.ambientLightUpperHemisphere = XMLConverter::parseColour(subElement);
+                }
+                subElement = pElement->first_node("ambientLightLowerHemisphere");
+                if (subElement)
+                {
+                    this->projectParameter.ambientLightLowerHemisphere = XMLConverter::parseColour(subElement);
+                }
+                subElement = pElement->first_node("hemisphereDir");
+                if (subElement)
+                {
+                    this->projectParameter.hemisphereDir = XMLConverter::parseVector3(subElement);
+                }
+                subElement = pElement->first_node("envmapScale");
+                if (subElement)
+                {
+                    this->projectParameter.envmapScale = XMLConverter::getAttribReal(subElement, "envmapScale", 1.0f);
+                }
+                this->sceneManager->setAmbientLight(this->projectParameter.ambientLightUpperHemisphere, this->projectParameter.ambientLightLowerHemisphere, this->projectParameter.hemisphereDir, this->projectParameter.envmapScale);
+            }
+        }
+
+        // Shadows
+        {
+            pElement = xmlNode->first_node("shadows");
+            if (pElement)
+            {
+                rapidxml::xml_node<>* subElement = pElement->first_node("shadowFarDistance");
+                if (subElement)
+                {
+                    this->projectParameter.shadowFarDistance = XMLConverter::getAttribReal(subElement, "distance", 50.0f);
+                }
+                subElement = pElement->first_node("shadowDirectionalLightExtrusionDistance");
+                if (subElement)
+                {
+                    this->projectParameter.shadowDirectionalLightExtrusionDistance = XMLConverter::getAttribReal(subElement, "distance", 50.0f);
+                }
+                subElement = pElement->first_node("shadowDirLightTextureOffset");
+                if (subElement)
+                {
+                    this->projectParameter.shadowDirLightTextureOffset = XMLConverter::getAttribReal(subElement, "shadowDirLightTextureOffset", 0.0f);
+                }
+            }
+        }
+
+        // Forward mode
+        {
+            pElement = xmlNode->first_node("forward");
+            if (pElement)
+            {
+                this->projectParameter.forwardMode = XMLConverter::getAttribInt(pElement, "forwardMode", 0);
+
+                rapidxml::xml_node<>* subElement = pElement->first_node("lightWidth");
+                if (subElement)
+                {
+                    this->projectParameter.lightWidth = XMLConverter::getAttribInt(subElement, "lightWidth", 0);
+                }
+                subElement = pElement->first_node("lightHeight");
+                if (subElement)
+                {
+                    this->projectParameter.lightHeight = XMLConverter::getAttribInt(subElement, "lightHeight", 0);
+                }
+                subElement = pElement->first_node("numLightSlices");
+                if (subElement)
+                {
+                    this->projectParameter.numLightSlices = XMLConverter::getAttribInt(subElement, "numLightSlices", 0);
+                }
+                subElement = pElement->first_node("lightsPerCell");
+                if (subElement)
+                {
+                    this->projectParameter.lightsPerCell = XMLConverter::getAttribInt(subElement, "lightsPerCell", 0);
+                }
+                subElement = pElement->first_node("decalsPerCell");
+                if (subElement)
+                {
+                    this->projectParameter.decalsPerCell = XMLConverter::getAttribInt(subElement, "decalsPerCell", 0);
+                }
+                subElement = pElement->first_node("cubemapProbesPerCell");
+                if (subElement)
+                {
+                    this->projectParameter.cubemapProbesPerCell = XMLConverter::getAttribInt(subElement, "cubemapProbesPerCell", 0);
+                }
+                subElement = pElement->first_node("minLightDistance");
+                if (subElement)
+                {
+                    this->projectParameter.minLightDistance = XMLConverter::getAttribReal(subElement, "minLightDistance", 0.0f);
+                }
+                subElement = pElement->first_node("maxLightDistance");
+                if (subElement)
+                {
+                    this->projectParameter.maxLightDistance = XMLConverter::getAttribReal(subElement, "maxLightDistance", 500.0f);
+                }
+
+                if (0 == this->projectParameter.forwardMode)
+                {
+                    this->sceneManager->setForwardClustered(false, this->projectParameter.lightWidth, this->projectParameter.lightHeight, this->projectParameter.numLightSlices, this->projectParameter.lightsPerCell,
+                        this->projectParameter.decalsPerCell, this->projectParameter.cubemapProbesPerCell, this->projectParameter.minLightDistance, this->projectParameter.maxLightDistance);
+                }
+                else if (1 == this->projectParameter.forwardMode)
+                {
+                    this->sceneManager->setForward3D(true, this->projectParameter.lightWidth, this->projectParameter.lightHeight, this->projectParameter.numLightSlices, this->projectParameter.lightsPerCell, this->projectParameter.minLightDistance,
+                        this->projectParameter.maxLightDistance);
+                }
+                else if (2 == this->projectParameter.forwardMode)
+                {
+                    this->sceneManager->setForwardClustered(true, this->projectParameter.lightWidth, this->projectParameter.lightHeight, this->projectParameter.numLightSlices, this->projectParameter.lightsPerCell,
+                        this->projectParameter.decalsPerCell, this->projectParameter.cubemapProbesPerCell, this->projectParameter.minLightDistance, this->projectParameter.maxLightDistance);
+                }
+            }
+            else
+            {
+                // No forward parameter, set default
+                this->projectParameter.forwardMode = 0;
+            }
+        }
+
+        // Main Parameter
+        {
+            pElement = xmlNode->first_node("mainParameter");
+            if (pElement)
+            {
+                rapidxml::xml_node<>* subElement = pElement->first_node("ignoreGlobalScene");
+                if (subElement)
+                {
+                    this->projectParameter.ignoreGlobalScene = XMLConverter::getAttribBool(subElement, "value");
+                }
+
+                subElement = pElement->first_node("renderDistance");
+                if (subElement)
+                {
+                    this->projectParameter.renderDistance = XMLConverter::getAttribReal(subElement, "renderDistance", Core::getSingletonPtr()->getGlobalRenderDistance());
+                    NOWA::Core::getSingletonPtr()->setGlobalRenderDistance(this->projectParameter.renderDistance);
+                }
+
+                subElement = pElement->first_node("useV2Item");
+                if (subElement)
+                {
+                    this->projectParameter.useV2Item = XMLConverter::getAttribBool(subElement, "value");
+                    Core::getSingletonPtr()->setUseEntityType(!this->projectParameter.useV2Item);
+                }
+            }
+        }
+
+        pElement = xmlNode->first_node("bounds");
+        if (nullptr != pElement)
+        {
+            this->mostLeftNearPosition = XMLConverter::getAttribVector3(pElement, "mostLeftNearPosition", Ogre::Vector3(Ogre::Math::POS_INFINITY, Ogre::Math::POS_INFINITY, Ogre::Math::POS_INFINITY));
+            this->mostRightFarPosition = XMLConverter::getAttribVector3(pElement, "mostRightFarPosition", Ogre::Vector3(Ogre::Math::NEG_INFINITY, Ogre::Math::NEG_INFINITY, Ogre::Math::NEG_INFINITY));
+        }
+    }
+
+    void DotSceneImportModule::processOgreNewt(rapidxml::xml_node<>* xmlNode)
+    {
+        this->projectParameter.hasPhysics = true;
+        // Process attributes
+        this->projectParameter.solverModel = XMLConverter::getAttribInt(xmlNode, "solverModel", 1);
+        // Friction model is no more used in ogre
+        this->projectParameter.solverForSingleIsland = XMLConverter::getAttribInt(xmlNode, "multithreadSolverOnSingleIsland", 1);
+        this->projectParameter.broadPhaseAlgorithm = XMLConverter::getAttribInt(xmlNode, "broadPhaseAlgorithm", 0);
+        this->projectParameter.physicsThreadCount = XMLConverter::getAttribInt(xmlNode, "threadCount", 1);
+        this->projectParameter.physicsUpdateRate = XMLConverter::getAttribReal(xmlNode, "desiredFps", 60.0f);
+        this->projectParameter.linearDamping = XMLConverter::getAttribReal(xmlNode, "defaultLinearDamping", 0.1f);
+        this->projectParameter.gravity = Ogre::Vector3(0.0f, -19.8f, 0.0f);
+        this->projectParameter.angularDamping = Ogre::Vector3(0.01f, 0.01f, 0.01f);
+        rapidxml::xml_node<>* pElement;
+        pElement = xmlNode->first_node("defaultAngularDamping");
+        if (nullptr != pElement)
+        {
+            this->projectParameter.angularDamping = XMLConverter::parseVector3(pElement);
+        }
+
+        pElement = xmlNode->first_node("globalGravity");
         if (nullptr != pElement)
         {
             this->projectParameter.gravity = XMLConverter::parseVector3(pElement);
         }
 
-		AppStateManager::getSingletonPtr()->getOgreNewtModule()->setGlobalGravity(this->projectParameter.gravity);
-		this->ogreNewt = AppStateManager::getSingletonPtr()->getOgreNewtModule()->createPhysics(AppStateManager::getSingletonPtr()->getCurrentAppStateName() + "_world",
-			this->projectParameter.solverModel, this->projectParameter.broadPhaseAlgorithm,
-			this->projectParameter.solverForSingleIsland, this->projectParameter.physicsThreadCount,
-			this->projectParameter.physicsUpdateRate, this->projectParameter.linearDamping, this->projectParameter.angularDamping);
-	}
+        AppStateManager::getSingletonPtr()->getOgreNewtModule()->setGlobalGravity(this->projectParameter.gravity);
+        this->ogreNewt = AppStateManager::getSingletonPtr()->getOgreNewtModule()->createPhysics(AppStateManager::getSingletonPtr()->getCurrentAppStateName() + "_world", this->projectParameter.solverModel, this->projectParameter.broadPhaseAlgorithm,
+            this->projectParameter.solverForSingleIsland, this->projectParameter.physicsThreadCount, this->projectParameter.physicsUpdateRate, this->projectParameter.linearDamping, this->projectParameter.angularDamping);
+    }
 
-	void DotSceneImportModule::processOgreRecast(rapidxml::xml_node<>* xmlNode)
-	{
-		if (nullptr != xmlNode)
-		{
-			this->projectParameter.hasRecast = true;
+    void DotSceneImportModule::processOgreRecast(rapidxml::xml_node<>* xmlNode)
+    {
+        if (nullptr != xmlNode)
+        {
+            this->projectParameter.hasRecast = true;
 
-			this->projectParameter.cellSize = XMLConverter::getAttribReal(xmlNode, "CellSize", 0.6f);
-			this->projectParameter.cellHeight = XMLConverter::getAttribReal(xmlNode, "CellHeight", 0.2f);
-			this->projectParameter.agentMaxSlope = XMLConverter::getAttribReal(xmlNode, "AgentMaxSlope", 45);
-			this->projectParameter.agentMaxClimb = XMLConverter::getAttribReal(xmlNode, "AgentMaxClimb", 2.5);
-			this->projectParameter.agentHeight = XMLConverter::getAttribReal(xmlNode, "AgentHeight", 1);
-			this->projectParameter.agentRadius = XMLConverter::getAttribReal(xmlNode, "AgentRadius", 0.8f);
-			this->projectParameter.edgeMaxLen = XMLConverter::getAttribReal(xmlNode, "EdgeMaxLen", 12);
-			this->projectParameter.edgeMaxError = XMLConverter::getAttribReal(xmlNode, "EdgeMaxError", 1.3f);
-			this->projectParameter.regionMinSize = XMLConverter::getAttribReal(xmlNode, "RegionMinSize", 50);
-			this->projectParameter.regionMergeSize = XMLConverter::getAttribReal(xmlNode, "RegionMergeSize", 20);
-			this->projectParameter.vertsPerPoly = XMLConverter::getAttribInt(xmlNode, "VertsPerPoly", 5);
-			this->projectParameter.detailSampleDist = XMLConverter::getAttribReal(xmlNode, "DetailSampleDist", 6);
-			this->projectParameter.detailSampleMaxError = XMLConverter::getAttribReal(xmlNode, "DetailSampleMaxError", 1);
-			this->projectParameter.keepInterResults = XMLConverter::getAttribBool(xmlNode, "KeepInterResults", false);
+            this->projectParameter.cellSize = XMLConverter::getAttribReal(xmlNode, "CellSize", 0.6f);
+            this->projectParameter.cellHeight = XMLConverter::getAttribReal(xmlNode, "CellHeight", 0.2f);
+            this->projectParameter.agentMaxSlope = XMLConverter::getAttribReal(xmlNode, "AgentMaxSlope", 45);
+            this->projectParameter.agentMaxClimb = XMLConverter::getAttribReal(xmlNode, "AgentMaxClimb", 2.5);
+            this->projectParameter.agentHeight = XMLConverter::getAttribReal(xmlNode, "AgentHeight", 1);
+            this->projectParameter.agentRadius = XMLConverter::getAttribReal(xmlNode, "AgentRadius", 0.8f);
+            this->projectParameter.edgeMaxLen = XMLConverter::getAttribReal(xmlNode, "EdgeMaxLen", 12);
+            this->projectParameter.edgeMaxError = XMLConverter::getAttribReal(xmlNode, "EdgeMaxError", 1.3f);
+            this->projectParameter.regionMinSize = XMLConverter::getAttribReal(xmlNode, "RegionMinSize", 50);
+            this->projectParameter.regionMergeSize = XMLConverter::getAttribReal(xmlNode, "RegionMergeSize", 20);
+            this->projectParameter.vertsPerPoly = XMLConverter::getAttribInt(xmlNode, "VertsPerPoly", 5);
+            this->projectParameter.detailSampleDist = XMLConverter::getAttribReal(xmlNode, "DetailSampleDist", 6);
+            this->projectParameter.detailSampleMaxError = XMLConverter::getAttribReal(xmlNode, "DetailSampleMaxError", 1);
+            this->projectParameter.keepInterResults = XMLConverter::getAttribBool(xmlNode, "KeepInterResults", false);
 
-			OgreRecastConfigParams params;
-			params.setCellSize(this->projectParameter.cellSize);
-			params.setCellHeight(this->projectParameter.cellHeight);
-			params.setAgentMaxSlope(this->projectParameter.agentMaxSlope);
-			params.setAgentMaxClimb(this->projectParameter.agentMaxClimb);
-			params.setAgentHeight(this->projectParameter.agentHeight);
-			params.setAgentRadius(this->projectParameter.agentRadius);
-			params.setEdgeMaxLen(this->projectParameter.edgeMaxLen);
-			params.setEdgeMaxError(this->projectParameter.edgeMaxError);
-			params.setRegionMinSize(this->projectParameter.regionMergeSize);
-			params.setRegionMergeSize(this->projectParameter.regionMergeSize);
-			params.setVertsPerPoly(this->projectParameter.vertsPerPoly);
-			params.setDetailSampleDist(this->projectParameter.detailSampleDist);
-			params.setDetailSampleMaxError(this->projectParameter.detailSampleMaxError);
-			params.setKeepInterResults(this->projectParameter.keepInterResults);
+            OgreRecastConfigParams params;
+            params.setCellSize(this->projectParameter.cellSize);
+            params.setCellHeight(this->projectParameter.cellHeight);
+            params.setAgentMaxSlope(this->projectParameter.agentMaxSlope);
+            params.setAgentMaxClimb(this->projectParameter.agentMaxClimb);
+            params.setAgentHeight(this->projectParameter.agentHeight);
+            params.setAgentRadius(this->projectParameter.agentRadius);
+            params.setEdgeMaxLen(this->projectParameter.edgeMaxLen);
+            params.setEdgeMaxError(this->projectParameter.edgeMaxError);
+            params.setRegionMinSize(this->projectParameter.regionMergeSize);
+            params.setRegionMergeSize(this->projectParameter.regionMergeSize);
+            params.setVertsPerPoly(this->projectParameter.vertsPerPoly);
+            params.setDetailSampleDist(this->projectParameter.detailSampleDist);
+            params.setDetailSampleMaxError(this->projectParameter.detailSampleMaxError);
+            params.setKeepInterResults(this->projectParameter.keepInterResults);
 
-			rapidxml::xml_node<>* pElement;
-			pElement = xmlNode->first_node("PointExtends");
-			this->projectParameter.pointExtends = XMLConverter::parseVector3(pElement);
- 
-			AppStateManager::getSingletonPtr()->getOgreRecastModule()->createOgreRecast(this->sceneManager, params, this->projectParameter.pointExtends);
-		}
-	}
+            rapidxml::xml_node<>* pElement;
+            pElement = xmlNode->first_node("PointExtends");
+            this->projectParameter.pointExtends = XMLConverter::parseVector3(pElement);
 
-	void DotSceneImportModule::processNodes(rapidxml::xml_node<>* xmlNode, Ogre::SceneNode* parent, bool justSetValues)
-	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[DotSceneImportModule] Parse nodes");
-		float currentTime = static_cast<Ogre::Real>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001f;
+            AppStateManager::getSingletonPtr()->getOgreRecastModule()->createOgreRecast(this->sceneManager, params, this->projectParameter.pointExtends);
+        }
+    }
 
-		rapidxml::xml_node<> *pElement;
+    void DotSceneImportModule::processNodes(rapidxml::xml_node<>* xmlNode, Ogre::SceneNode* parent, bool justSetValues)
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[DotSceneImportModule] Parse nodes");
+        float currentTime = static_cast<Ogre::Real>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001f;
 
-		// Process node (*)
-		pElement = xmlNode->first_node("node");
-		while (pElement)
-		{
-			this->processNode(pElement, parent, justSetValues);
-			pElement = pElement->next_sibling("node");
-		}
+        rapidxml::xml_node<>* pElement;
 
-		if (false == this->missingGameObjectIds.empty())
-		{
-			for (size_t i = 0; i < this->missingGameObjectIds.size(); i++)
-			{
-				// If its just for snapshot values but the game object was destroyed during simulation, post init must be called at last!
-			
-				// Now that the gameobject has been fully created, run the post init phase
-				GameObjectPtr gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->missingGameObjectIds[i]);
-				if (nullptr == gameObjectPtr)
-				{
-					Ogre::String message = "[DotSceneImportModule] Cannot undo deletion of game object id: " + Ogre::StringConverter::toString(this->missingGameObjectIds[i])
-										+ " because somehow the game object has not been snapshotted as the simulation mode started.";
-					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, message);
-					throw Ogre::Exception(Ogre::Exception::ERR_ITEM_NOT_FOUND, message + "\n", "NOWA");
-				}
-				if (false == gameObjectPtr->postInit())
-				{
-					AppStateManager::getSingletonPtr()->getGameObjectController()->deleteGameObjectImmediately(gameObjectPtr->getId());
-				}
-			}
-		}
+        // Process node (*)
+        pElement = xmlNode->first_node("node");
+        while (pElement)
+        {
+            this->processNode(pElement, parent, justSetValues);
+            pElement = pElement->next_sibling("node");
+        }
 
-		this->missingGameObjectIds.clear();
+        if (false == this->missingGameObjectIds.empty())
+        {
+            for (size_t i = 0; i < this->missingGameObjectIds.size(); i++)
+            {
+                // If its just for snapshot values but the game object was destroyed during simulation, post init must be called at last!
 
-		float dt = (static_cast<Ogre::Real>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001f) - currentTime;
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[DotSceneImportModule] Parse end nodes duration: " + Ogre::StringConverter::toString(dt) + " seconds.");
-	}
+                // Now that the gameobject has been fully created, run the post init phase
+                GameObjectPtr gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->missingGameObjectIds[i]);
+                if (nullptr == gameObjectPtr)
+                {
+                    Ogre::String message =
+                        "[DotSceneImportModule] Cannot undo deletion of game object id: " + Ogre::StringConverter::toString(this->missingGameObjectIds[i]) + " because somehow the game object has not been snapshotted as the simulation mode started.";
+                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, message);
+                    throw Ogre::Exception(Ogre::Exception::ERR_ITEM_NOT_FOUND, message + "\n", "NOWA");
+                }
+                if (false == gameObjectPtr->postInit())
+                {
+                    AppStateManager::getSingletonPtr()->getGameObjectController()->deleteGameObjectImmediately(gameObjectPtr->getId());
+                }
+            }
+        }
 
-	void DotSceneImportModule::processNode(rapidxml::xml_node<>* xmlNode, Ogre::SceneNode* parent, bool justSetValues)
-	{
-		bool skip = false;
-		if (true == this->showProgress)
-		{
-			Core::getSingletonPtr()->getEngineResourceListener()->scriptParseStarted("Node", skip);
-		}
+        this->missingGameObjectIds.clear();
 
-		// Namen erstellen
-		Ogre::String name = XMLConverter::getAttrib(xmlNode, "name");
+        float dt = (static_cast<Ogre::Real>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001f) - currentTime;
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[DotSceneImportModule] Parse end nodes duration: " + Ogre::StringConverter::toString(dt) + " seconds.");
+    }
 
-		// Szenenknoten erstellen
-		Ogre::SceneNode* pNode = 0;
-		if (true == name.empty())
-		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DotSceneImportModule::processNode", _2(parent, &pNode),
-			{
-			   pNode = (parent != nullptr) ? parent->createChildSceneNode(Ogre::SCENE_STATIC) : this->sceneManager->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_STATIC);
-			});
-		}
-		else
-		{
-			bool foundNode = false;
-			// Snapshot is loaded, scenenodes should exist already, find the node
-			if (true == this->bIsSnapshot)
-			{
-				// Damn it, scene node names are not unique!
-				const auto nodesList = this->sceneManager->findSceneNodes(name);
-				if (false == nodesList.empty())
-				{
-					if (1 == nodesList.size())
-					{
-						pNode = nodesList[0];
-						foundNode = true;
-					}
-					else
-					{
-						for (size_t i = 0; i < nodesList.size(); i++)
-						{
-							Ogre::Node* node = nodesList[i];
-							if (nullptr != node)
-							{
-								auto gameObject = Ogre::any_cast<GameObject*>(node->getUserObjectBindings().getUserAny());
-								if (nullptr != gameObject)
-								{
-									if (gameObject->getName() == name)
-									{
-										pNode = nodesList[i];
-										foundNode = true;
-										break;
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-			
-			if (false == foundNode)
-			{
-				// Must not set values, because node does not exist and game object does also not exist and must be created!
-				justSetValues = false;
-				ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DotSceneImportModule::processNode1", _3(parent, name, &pNode),
-				{
-					pNode = (parent != nullptr) ? parent->createChildSceneNode(Ogre::SCENE_STATIC) : this->sceneManager->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_STATIC);
-					pNode->setName(name);
-				});
-			}
-		}
+    void DotSceneImportModule::processNode(rapidxml::xml_node<>* xmlNode, Ogre::SceneNode* parent, bool justSetValues)
+    {
+        // Notify loading progress (throttled, enqueueAndWait to render thread — safe from main thread during game loop)
+        Ogre::String nodeName = XMLConverter::getAttrib(xmlNode, "name", "unknown");
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[DotSceneImportModule] Processing node: " + nodeName);
+        this->notifySceneLoadProgress(nodeName);
 
-		// Go through other attributes
-		Ogre::String id = XMLConverter::getAttrib(xmlNode, "id");
-		bool isTarget = XMLConverter::getAttribBool(xmlNode, "isTarget");
+        // Namen erstellen
+        Ogre::String name = XMLConverter::getAttrib(xmlNode, "name");
 
-		rapidxml::xml_node<>* pElement;
+        // Szenenknoten erstellen
+        Ogre::SceneNode* pNode = 0;
+        if (true == name.empty())
+        {
+            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DotSceneImportModule::processNode", _2(parent, &pNode),
+                { pNode = (parent != nullptr) ? parent->createChildSceneNode(Ogre::SCENE_STATIC) : this->sceneManager->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_STATIC); });
+        }
+        else
+        {
+            bool foundNode = false;
+            // Snapshot is loaded, scenenodes should exist already, find the node
+            if (true == this->bIsSnapshot)
+            {
+                // Damn it, scene node names are not unique!
+                const auto nodesList = this->sceneManager->findSceneNodes(name);
+                if (false == nodesList.empty())
+                {
+                    if (1 == nodesList.size())
+                    {
+                        pNode = nodesList[0];
+                        foundNode = true;
+                    }
+                    else
+                    {
+                        for (size_t i = 0; i < nodesList.size(); i++)
+                        {
+                            Ogre::Node* node = nodesList[i];
+                            if (nullptr != node)
+                            {
+                                auto gameObject = Ogre::any_cast<GameObject*>(node->getUserObjectBindings().getUserAny());
+                                if (nullptr != gameObject)
+                                {
+                                    if (gameObject->getName() == name)
+                                    {
+                                        pNode = nodesList[i];
+                                        foundNode = true;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
 
-		// Position (?)
-		pElement = xmlNode->first_node("position");
-		if (pElement)
-		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DotSceneImportModule::processNode2", _2(pElement, &pNode),
-			{
-				pNode->setPosition(XMLConverter::parseVector3(pElement));
-			});
-		}
+            if (false == foundNode)
+            {
+                // Must not set values, because node does not exist and game object does also not exist and must be created!
+                justSetValues = false;
+                ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DotSceneImportModule::processNode1", _3(parent, name, &pNode), {
+                    pNode = (parent != nullptr) ? parent->createChildSceneNode(Ogre::SCENE_STATIC) : this->sceneManager->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_STATIC);
+                    pNode->setName(name);
+                });
+            }
+        }
 
-		// Rotation (?)
-		pElement = xmlNode->first_node("rotation");
-		if (pElement)
-		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DotSceneImportModule::processNode3", _2(pElement, &pNode),
-			{
-				pNode->setOrientation(XMLConverter::parseQuaternion(pElement));
-			});
-		}
+        // Go through other attributes
+        Ogre::String id = XMLConverter::getAttrib(xmlNode, "id");
+        bool isTarget = XMLConverter::getAttribBool(xmlNode, "isTarget");
 
-		// Scale (?)
-		pElement = xmlNode->first_node("scale");
-		if (pElement)
-		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DotSceneImportModule::processNode4", _2(pElement, &pNode),
-			{
-				pNode->setScale(XMLConverter::parseVector3(pElement));
-			});
-		}
+        rapidxml::xml_node<>* pElement;
 
-		// callback to react on postload
-		if (this->sceneLoaderCallback)
-		{
-			this->sceneLoaderCallback->onPostLoadSceneNode(pNode);
-		}
-		// Process node (*)
-		pElement = xmlNode->first_node("node");
-		while (pElement)
-		{
-			// Recursion
-			this->processNode(pElement, pNode, justSetValues);
-			pElement = pElement->next_sibling("node");
-		}
+        // Position (?)
+        pElement = xmlNode->first_node("position");
+        if (pElement)
+        {
+            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DotSceneImportModule::processNode2", _2(pElement, &pNode), { pNode->setPosition(XMLConverter::parseVector3(pElement)); });
+        }
 
-		if (this->showProgress)
-		{
-			Core::getSingletonPtr()->getEngineResourceListener()->scriptParseStarted("Objects", skip);
-		}
+        // Rotation (?)
+        pElement = xmlNode->first_node("rotation");
+        if (pElement)
+        {
+            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DotSceneImportModule::processNode3", _2(pElement, &pNode), { pNode->setOrientation(XMLConverter::parseQuaternion(pElement)); });
+        }
 
-		// Process item (*)
-		pElement = xmlNode->first_node("item");
-		while (pElement)
-		{
-			this->processItem(pElement, pNode, justSetValues);
+        // Scale (?)
+        pElement = xmlNode->first_node("scale");
+        if (pElement)
+        {
+            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DotSceneImportModule::processNode4", _2(pElement, &pNode), { pNode->setScale(XMLConverter::parseVector3(pElement)); });
+        }
 
-			pElement = pElement->next_sibling("item");
-		}
-		// Process terra (*)
-		pElement = xmlNode->first_node("terra");
-		while (pElement)
-		{
-				this->processTerra(pElement, pNode, justSetValues);
-			pElement = pElement->next_sibling("terra");
-		}
-		// Process ocean (*)
-		pElement = xmlNode->first_node("ocean");
-		while (pElement)
-		{
-			this->processOcean(pElement, pNode, justSetValues);
-			pElement = pElement->next_sibling("ocean");
-		}
+        // callback to react on postload
+        if (this->sceneLoaderCallback)
+        {
+            this->sceneLoaderCallback->onPostLoadSceneNode(pNode);
+        }
+        // Process node (*)
+        pElement = xmlNode->first_node("node");
+        while (pElement)
+        {
+            // Recursion
+            this->processNode(pElement, pNode, justSetValues);
+            pElement = pElement->next_sibling("node");
+        }
 
-		if (this->showProgress)
-		{
-			Core::getSingletonPtr()->getEngineResourceListener()->scriptParseEnded("Objects finished", skip);
-		}
+        // Process item (*)
+        pElement = xmlNode->first_node("item");
+        while (pElement)
+        {
+            this->processItem(pElement, pNode, justSetValues);
 
-		// Process plane (*)
-		pElement = xmlNode->first_node("plane");
-		while (pElement)
-		{
-			this->processPlane(pElement, pNode, justSetValues);
+            pElement = pElement->next_sibling("item");
+        }
+        // Process terra (*)
+        pElement = xmlNode->first_node("terra");
+        while (pElement)
+        {
+            this->processTerra(pElement, pNode, justSetValues);
+            pElement = pElement->next_sibling("terra");
+        }
+        // Process ocean (*)
+        pElement = xmlNode->first_node("ocean");
+        while (pElement)
+        {
+            this->processOcean(pElement, pNode, justSetValues);
+            pElement = pElement->next_sibling("ocean");
+        }
 
-			pElement = pElement->next_sibling("plane");
-		}
+        // Process plane (*)
+        pElement = xmlNode->first_node("plane");
+        while (pElement)
+        {
+            this->processPlane(pElement, pNode, justSetValues);
 
-		if (true == this->showProgress)
-		{
-			Core::getSingletonPtr()->getEngineResourceListener()->scriptParseEnded("Node", skip);
-		}
-	}
+            pElement = pElement->next_sibling("plane");
+        }
+    }
 
-	void NOWA::DotSceneImportModule::setMissingGameObjectIds(const std::vector<unsigned long>& missingGameObjectIds)
-	{
-		this->missingGameObjectIds = missingGameObjectIds;
-	}
-	
-	void DotSceneImportModule::findGameObjectId(rapidxml::xml_node<>*& propertyElement, unsigned long& missingGameObjectId)
-	{
-		if (nullptr != propertyElement)
-		{
-			bool found = false;
-			do
-			{
-				Ogre::String attrib = XMLConverter::getAttrib(propertyElement, "name");
-				if (propertyElement && attrib == "Id")
-				{
-					unsigned long tempMissingGameObjectId = XMLConverter::getAttribUnsignedLong(propertyElement, "data");
+    void NOWA::DotSceneImportModule::setMissingGameObjectIds(const std::vector<unsigned long>& missingGameObjectIds)
+    {
+        this->missingGameObjectIds = missingGameObjectIds;
+    }
 
-					for (size_t i = 0; i < this->missingGameObjectIds.size(); i++)
-					{
-						if (tempMissingGameObjectId == this->missingGameObjectIds[i])
-						{
-							missingGameObjectId = tempMissingGameObjectId;
-							found = true;
-						}
-						if (true == found)
-						{
-							break;
-						}
-					}
-					if (true == found)
-					{
-						break;
-					}
-				}
-				propertyElement = propertyElement->next_sibling("property");
+    void DotSceneImportModule::findGameObjectId(rapidxml::xml_node<>*& propertyElement, unsigned long& missingGameObjectId)
+    {
+        if (nullptr != propertyElement)
+        {
+            bool found = false;
+            do
+            {
+                Ogre::String attrib = XMLConverter::getAttrib(propertyElement, "name");
+                if (propertyElement && attrib == "Id")
+                {
+                    unsigned long tempMissingGameObjectId = XMLConverter::getAttribUnsignedLong(propertyElement, "data");
 
-			} while (nullptr != propertyElement && false == found);
-		}
-	}
+                    for (size_t i = 0; i < this->missingGameObjectIds.size(); i++)
+                    {
+                        if (tempMissingGameObjectId == this->missingGameObjectIds[i])
+                        {
+                            missingGameObjectId = tempMissingGameObjectId;
+                            found = true;
+                        }
+                        if (true == found)
+                        {
+                            break;
+                        }
+                    }
+                    if (true == found)
+                    {
+                        break;
+                    }
+                }
+                propertyElement = propertyElement->next_sibling("property");
 
-	void DotSceneImportModule::processItem(rapidxml::xml_node<>* xmlNode, Ogre::SceneNode* parent, bool justSetValues)
+            } while (nullptr != propertyElement && false == found);
+        }
+    }
+
+    void DotSceneImportModule::processItem(rapidxml::xml_node<>* xmlNode, Ogre::SceneNode* parent, bool justSetValues)
     {
         // Process attributes
         Ogre::String name = XMLConverter::getAttrib(xmlNode, "name");
@@ -1618,9 +1540,6 @@ namespace NOWA
             {
                 if (false == justSetValues || missingGameObjectId != 0)
                 {
-                    // ============================================================================
-                    // OPTIMIZED MESH LOADING - V2 FIRST!
-                    // ============================================================================
                     Ogre::MeshPtr v2Mesh = this->loadMeshV2Optimized(tempMeshFile, name, meshFile);
 
                     if (!v2Mesh)
@@ -1629,7 +1548,7 @@ namespace NOWA
                         return;
                     }
 
-					Ogre::String path;
+                    Ogre::String path;
                     DeployResourceModule::getInstance()->tagResource(tempMeshFile, v2Mesh->getGroup(), path);
 
                     // Create Item
@@ -1766,297 +1685,278 @@ namespace NOWA
         }
     }
 
-	void DotSceneImportModule::processTerra(rapidxml::xml_node<>* xmlNode, Ogre::SceneNode* parent, bool justSetValues)
-	{
-		// Process attributes
-		Ogre::String name = XMLConverter::getAttrib(xmlNode, "name");
-		Ogre::String id = XMLConverter::getAttrib(xmlNode, "id");
+    void DotSceneImportModule::processTerra(rapidxml::xml_node<>* xmlNode, Ogre::SceneNode* parent, bool justSetValues)
+    {
+        // Process attributes
+        Ogre::String name = XMLConverter::getAttrib(xmlNode, "name");
+        Ogre::String id = XMLConverter::getAttrib(xmlNode, "id");
 
-		bool castShadows = false; // Shadows must not be casted for terra, else ugly crash shader cache is created
-		bool visible = XMLConverter::getAttribBool(xmlNode, "visible", true);
+        bool castShadows = false; // Shadows must not be casted for terra, else ugly crash shader cache is created
+        bool visible = XMLConverter::getAttribBool(xmlNode, "visible", true);
 
-		parent->setStatic(true);
+        parent->setStatic(true);
 
-		unsigned long missingGameObjectId = 0;
-		if (true == justSetValues && false == this->missingGameObjectIds.empty())
-		{
-			rapidxml::xml_node<>* userDataElement = xmlNode->first_node("userData");
-			if (userDataElement)
-			{
-				rapidxml::xml_node<>* propertyElement = userDataElement->first_node("property");
-				this->findGameObjectId(propertyElement, missingGameObjectId);
-			}
-		}
+        unsigned long missingGameObjectId = 0;
+        if (true == justSetValues && false == this->missingGameObjectIds.empty())
+        {
+            rapidxml::xml_node<>* userDataElement = xmlNode->first_node("userData");
+            if (userDataElement)
+            {
+                rapidxml::xml_node<>* propertyElement = userDataElement->first_node("property");
+                this->findGameObjectId(propertyElement, missingGameObjectId);
+            }
+        }
 
-		GameObjectPtr gameObjectPtr = nullptr;
+        GameObjectPtr gameObjectPtr = nullptr;
 
-		// Check if the entity element has user data, for game object creation
-		rapidxml::xml_node<>* pElement = xmlNode->first_node("userData");
+        // Check if the entity element has user data, for game object creation
+        rapidxml::xml_node<>* pElement = xmlNode->first_node("userData");
 
-		// Maybe create, if its an already missing game object id
-		if (false == justSetValues || missingGameObjectId != 0)
-		{
-			if (pElement)
-			{
-				gameObjectPtr = GameObjectFactory::getInstance()->createOrSetGameObjectFromXML(pElement, this->sceneManager, parent, nullptr, GameObject::TERRA,
-					this->scenePath, this->forceCreation, false);
+        // Maybe create, if its an already missing game object id
+        if (false == justSetValues || missingGameObjectId != 0)
+        {
+            if (pElement)
+            {
+                gameObjectPtr = GameObjectFactory::getInstance()->createOrSetGameObjectFromXML(pElement, this->sceneManager, parent, nullptr, GameObject::TERRA, this->scenePath, this->forceCreation, false);
 
-				if (nullptr != gameObjectPtr)
-				{
-					this->parsedGameObjectIds.emplace_back(gameObjectPtr->getId());
-				}
-			}
-		}
-		else
-		{
-			bool foundId = false;
-			if (pElement)
-			{
-				rapidxml::xml_node<>* propertyElement = pElement->first_node("property");
-				if (nullptr != propertyElement)
-				{
-					do
-					{
-						Ogre::String attrib = XMLConverter::getAttrib(propertyElement, "name");
-						if (propertyElement && attrib == "Id")
-						{
-							unsigned long existingGameObjectId = XMLConverter::getAttribUnsignedLong(propertyElement, "data");
-							GameObjectPtr existingGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(existingGameObjectId);
+                if (nullptr != gameObjectPtr)
+                {
+                    this->parsedGameObjectIds.emplace_back(gameObjectPtr->getId());
+                }
+            }
+        }
+        else
+        {
+            bool foundId = false;
+            if (pElement)
+            {
+                rapidxml::xml_node<>* propertyElement = pElement->first_node("property");
+                if (nullptr != propertyElement)
+                {
+                    do
+                    {
+                        Ogre::String attrib = XMLConverter::getAttrib(propertyElement, "name");
+                        if (propertyElement && attrib == "Id")
+                        {
+                            unsigned long existingGameObjectId = XMLConverter::getAttribUnsignedLong(propertyElement, "data");
+                            GameObjectPtr existingGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(existingGameObjectId);
 
-							gameObjectPtr = GameObjectFactory::getInstance()->createOrSetGameObjectFromXML(pElement, this->sceneManager, parent, nullptr, GameObject::TERRA,
-								this->scenePath, this->forceCreation, false, existingGameObjectPtr);
+                            gameObjectPtr = GameObjectFactory::getInstance()->createOrSetGameObjectFromXML(pElement, this->sceneManager, parent, nullptr, GameObject::TERRA, this->scenePath, this->forceCreation, false, existingGameObjectPtr);
 
-							foundId = true;
-						}
-						else
-						{
-							propertyElement = propertyElement->next_sibling("property");
-						}
-					} while (nullptr != propertyElement && false == foundId);
-				}
-			}
-		}
-	}
+                            foundId = true;
+                        }
+                        else
+                        {
+                            propertyElement = propertyElement->next_sibling("property");
+                        }
+                    } while (nullptr != propertyElement && false == foundId);
+                }
+            }
+        }
+    }
 
-	void DotSceneImportModule::processOcean(rapidxml::xml_node<>* xmlNode, Ogre::SceneNode* parent, bool justSetValues)
-	{
-		// Process attributes
-		Ogre::String name = XMLConverter::getAttrib(xmlNode, "name");
-		Ogre::String id = XMLConverter::getAttrib(xmlNode, "id");
+    void DotSceneImportModule::processOcean(rapidxml::xml_node<>* xmlNode, Ogre::SceneNode* parent, bool justSetValues)
+    {
+        // Process attributes
+        Ogre::String name = XMLConverter::getAttrib(xmlNode, "name");
+        Ogre::String id = XMLConverter::getAttrib(xmlNode, "id");
 
-		bool castShadows = false; // Shadows must not be casted for ocean, else ugly crash shader cache is created
-		bool visible = XMLConverter::getAttribBool(xmlNode, "visible", true);
+        bool castShadows = false; // Shadows must not be casted for ocean, else ugly crash shader cache is created
+        bool visible = XMLConverter::getAttribBool(xmlNode, "visible", true);
 
-		parent->setStatic(false);
+        parent->setStatic(false);
 
-		unsigned long missingGameObjectId = 0;
-		if (true == justSetValues && false == this->missingGameObjectIds.empty())
-		{
-			rapidxml::xml_node<>* userDataElement = xmlNode->first_node("userData");
-			if (userDataElement)
-			{
-				rapidxml::xml_node<>* propertyElement = userDataElement->first_node("property");
-				this->findGameObjectId(propertyElement, missingGameObjectId);
-			}
-		}
+        unsigned long missingGameObjectId = 0;
+        if (true == justSetValues && false == this->missingGameObjectIds.empty())
+        {
+            rapidxml::xml_node<>* userDataElement = xmlNode->first_node("userData");
+            if (userDataElement)
+            {
+                rapidxml::xml_node<>* propertyElement = userDataElement->first_node("property");
+                this->findGameObjectId(propertyElement, missingGameObjectId);
+            }
+        }
 
-		GameObjectPtr gameObjectPtr = nullptr;
+        GameObjectPtr gameObjectPtr = nullptr;
 
-		// Check if the entity element has user data, for game object creation
-		rapidxml::xml_node<>* pElement = xmlNode->first_node("userData");
+        // Check if the entity element has user data, for game object creation
+        rapidxml::xml_node<>* pElement = xmlNode->first_node("userData");
 
-		// Maybe create, if its an already missing game object id
-		if (false == justSetValues || missingGameObjectId != 0)
-		{
-			if (pElement)
-			{
-				gameObjectPtr = GameObjectFactory::getInstance()->createOrSetGameObjectFromXML(pElement, this->sceneManager, parent, nullptr, GameObject::OCEAN,
-					this->scenePath, this->forceCreation, false);
+        // Maybe create, if its an already missing game object id
+        if (false == justSetValues || missingGameObjectId != 0)
+        {
+            if (pElement)
+            {
+                gameObjectPtr = GameObjectFactory::getInstance()->createOrSetGameObjectFromXML(pElement, this->sceneManager, parent, nullptr, GameObject::OCEAN, this->scenePath, this->forceCreation, false);
 
-				if (nullptr != gameObjectPtr)
-				{
-					this->parsedGameObjectIds.emplace_back(gameObjectPtr->getId());
-				}
-			}
-		}
-		else
-		{
-			bool foundId = false;
-			if (pElement)
-			{
-				rapidxml::xml_node<>* propertyElement = pElement->first_node("property");
-				if (nullptr != propertyElement)
-				{
-					do
-					{
-						Ogre::String attrib = XMLConverter::getAttrib(propertyElement, "name");
-						if (propertyElement && attrib == "Id")
-						{
-							unsigned long existingGameObjectId = XMLConverter::getAttribUnsignedLong(propertyElement, "data");
-							GameObjectPtr existingGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(existingGameObjectId);
+                if (nullptr != gameObjectPtr)
+                {
+                    this->parsedGameObjectIds.emplace_back(gameObjectPtr->getId());
+                }
+            }
+        }
+        else
+        {
+            bool foundId = false;
+            if (pElement)
+            {
+                rapidxml::xml_node<>* propertyElement = pElement->first_node("property");
+                if (nullptr != propertyElement)
+                {
+                    do
+                    {
+                        Ogre::String attrib = XMLConverter::getAttrib(propertyElement, "name");
+                        if (propertyElement && attrib == "Id")
+                        {
+                            unsigned long existingGameObjectId = XMLConverter::getAttribUnsignedLong(propertyElement, "data");
+                            GameObjectPtr existingGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(existingGameObjectId);
 
-							gameObjectPtr = GameObjectFactory::getInstance()->createOrSetGameObjectFromXML(pElement, this->sceneManager, parent, nullptr, GameObject::OCEAN,
-								this->scenePath, this->forceCreation, false, existingGameObjectPtr);
+                            gameObjectPtr = GameObjectFactory::getInstance()->createOrSetGameObjectFromXML(pElement, this->sceneManager, parent, nullptr, GameObject::OCEAN, this->scenePath, this->forceCreation, false, existingGameObjectPtr);
 
-							foundId = true;
-						}
-						else
-						{
-							propertyElement = propertyElement->next_sibling("property");
-						}
-					} while (nullptr != propertyElement && false == foundId);
-				}
-			}
-		}
-	}
+                            foundId = true;
+                        }
+                        else
+                        {
+                            propertyElement = propertyElement->next_sibling("property");
+                        }
+                    } while (nullptr != propertyElement && false == foundId);
+                }
+            }
+        }
+    }
 
-	void DotSceneImportModule::processPlane(rapidxml::xml_node<>* xmlNode, Ogre::SceneNode* parent, bool justSetValues)
-	{
-		Ogre::String name = XMLConverter::getAttrib(xmlNode, "name");
-		Ogre::Real distance = XMLConverter::getAttribReal(xmlNode, "distance");
-		Ogre::Real width = XMLConverter::getAttribReal(xmlNode, "width");
-		Ogre::Real height = XMLConverter::getAttribReal(xmlNode, "height");
-		int xSegments = Ogre::StringConverter::parseInt(XMLConverter::getAttrib(xmlNode, "xSegments"));
-		int ySegments = Ogre::StringConverter::parseInt(XMLConverter::getAttrib(xmlNode, "ySegments"));
-		int numTexCoordSets = Ogre::StringConverter::parseInt(XMLConverter::getAttrib(xmlNode, "numTexCoordSets"));
-		Ogre::Real uTile = XMLConverter::getAttribReal(xmlNode, "uTile");
-		Ogre::Real vTile = XMLConverter::getAttribReal(xmlNode, "vTile");
-		Ogre::String materialFile = XMLConverter::getAttrib(xmlNode, "material");
-		bool hasNormals = XMLConverter::getAttribBool(xmlNode, "hasNormals");
+    void DotSceneImportModule::processPlane(rapidxml::xml_node<>* xmlNode, Ogre::SceneNode* parent, bool justSetValues)
+    {
+        Ogre::String name = XMLConverter::getAttrib(xmlNode, "name");
+        Ogre::Real distance = XMLConverter::getAttribReal(xmlNode, "distance");
+        Ogre::Real width = XMLConverter::getAttribReal(xmlNode, "width");
+        Ogre::Real height = XMLConverter::getAttribReal(xmlNode, "height");
+        int xSegments = Ogre::StringConverter::parseInt(XMLConverter::getAttrib(xmlNode, "xSegments"));
+        int ySegments = Ogre::StringConverter::parseInt(XMLConverter::getAttrib(xmlNode, "ySegments"));
+        int numTexCoordSets = Ogre::StringConverter::parseInt(XMLConverter::getAttrib(xmlNode, "numTexCoordSets"));
+        Ogre::Real uTile = XMLConverter::getAttribReal(xmlNode, "uTile");
+        Ogre::Real vTile = XMLConverter::getAttribReal(xmlNode, "vTile");
+        Ogre::String materialFile = XMLConverter::getAttrib(xmlNode, "material");
+        bool hasNormals = XMLConverter::getAttribBool(xmlNode, "hasNormals");
 
-		Ogre::Vector3 normal = XMLConverter::parseVector3(xmlNode->first_node("normal"));
-		Ogre::Vector3 up = XMLConverter::parseVector3(xmlNode->first_node("upVector"));
+        Ogre::Vector3 normal = XMLConverter::parseVector3(xmlNode->first_node("normal"));
+        Ogre::Vector3 up = XMLConverter::parseVector3(xmlNode->first_node("upVector"));
 
-		Ogre::Item* item = nullptr;
+        Ogre::Item* item = nullptr;
 
-		unsigned long missingGameObjectId = 0;
-		if (true == justSetValues && false == this->missingGameObjectIds.empty())
-		{
-			rapidxml::xml_node<>* userDataElement = xmlNode->first_node("userData");
-			if (userDataElement)
-			{
-				rapidxml::xml_node<>* propertyElement = userDataElement->first_node("property");
-				findGameObjectId(propertyElement, missingGameObjectId);
-			}
-		}
+        unsigned long missingGameObjectId = 0;
+        if (true == justSetValues && false == this->missingGameObjectIds.empty())
+        {
+            rapidxml::xml_node<>* userDataElement = xmlNode->first_node("userData");
+            if (userDataElement)
+            {
+                rapidxml::xml_node<>* propertyElement = userDataElement->first_node("property");
+                findGameObjectId(propertyElement, missingGameObjectId);
+            }
+        }
 
-		GraphicsModule::RenderCommand renderCommand = [this, &item, justSetValues, xmlNode, &parent, missingGameObjectId, normal, distance, numTexCoordSets, 
-			uTile, vTile, up, width, height, xSegments, ySegments, hasNormals, name, materialFile]()
-		{
-			// Maybe create, if its an already missing game object id
-			if (false == justSetValues || missingGameObjectId != 0)
-			{
+        GraphicsModule::RenderCommand renderCommand = [this, &item, justSetValues, xmlNode, &parent, missingGameObjectId, normal, distance, numTexCoordSets, uTile, vTile, up, width, height, xSegments, ySegments, hasNormals, name, materialFile]()
+        {
+            // Maybe create, if its an already missing game object id
+            if (false == justSetValues || missingGameObjectId != 0)
+            {
+                Ogre::Plane plane(normal, distance);
+                Ogre::v1::MeshPtr planeMeshV1;
 
-				Ogre::Plane plane(normal, distance);
-				Ogre::v1::MeshPtr planeMeshV1;
+                planeMeshV1 = Ogre::v1::MeshManager::getSingletonPtr()->createPlane(name + "mesh", "General", plane, width, height, xSegments, ySegments, hasNormals, numTexCoordSets, uTile, vTile, up, Ogre::v1::HardwareBuffer::HBU_STATIC,
+                    Ogre::v1::HardwareBuffer::HBU_STATIC);
 
-				planeMeshV1 = Ogre::v1::MeshManager::getSingletonPtr()->createPlane(name + "mesh", "General", plane, width, height, xSegments, ySegments, hasNormals,
-					numTexCoordSets, uTile, vTile, up, Ogre::v1::HardwareBuffer::HBU_STATIC, Ogre::v1::HardwareBuffer::HBU_STATIC);
+                Ogre::String path;
+                DeployResourceModule::getInstance()->tagResource(name + "mesh", planeMeshV1->getGroup(), path);
 
-				Ogre::String path;
-				DeployResourceModule::getInstance()->tagResource(name + "mesh", planeMeshV1->getGroup(), path);
+                Ogre::MeshPtr v2Mesh = Ogre::MeshManager::getSingletonPtr()->createByImportingV1(name, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, planeMeshV1.get(), true, true, true);
+                planeMeshV1->unload();
+                planeMeshV1.setNull();
 
-				Ogre::MeshPtr v2Mesh = Ogre::MeshManager::getSingletonPtr()->createByImportingV1(name, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, planeMeshV1.get(), true, true, true);
-				planeMeshV1->unload();
-				planeMeshV1.setNull();
+                item = this->sceneManager->createItem(v2Mesh, Ogre::SCENE_STATIC);
+                item->setName(name + "mesh");
 
-				// Ogre::MeshPtr v2Mesh = Ogre::MeshManager::getSingleton().createManual("Plane", Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
-				// v2Mesh->importV1(planeMeshV1.get(), true, true, true);
-				// planeMeshV1->unload();
+                Ogre::MaterialPtr objectMaterial = Ogre::MaterialManager::getSingleton().getByName(materialFile);
+                if (false == materialFile.empty())
+                {
+                    item->setDatablock(materialFile);
+                }
 
-				item = this->sceneManager->createItem(v2Mesh, Ogre::SCENE_STATIC);
-				item->setName(name + "mesh");
+                // Change the addressing mode of the roughness map to wrap via code.
+                Ogre::HlmsPbsDatablock* datablock = static_cast<Ogre::HlmsPbsDatablock*>(item->getSubItem(0)->getDatablock());
+                Ogre::HlmsSamplerblock samplerblock(*datablock->getSamplerblock(Ogre::PBSM_ROUGHNESS));
+                samplerblock.mU = Ogre::TAM_WRAP;
+                samplerblock.mV = Ogre::TAM_WRAP;
+                samplerblock.mW = Ogre::TAM_WRAP;
+                datablock->setSamplerblock(Ogre::PBSM_ROUGHNESS, samplerblock);
 
-				// MathHelper::getInstance()->ensureHasTangents(entity->getMesh());
-				// MathHelper::getInstance()->substractOutTangentsForShader(entity);
+                for (size_t i = 0; i < item->getNumSubItems(); i++)
+                {
+                    auto sourceDataBlock = dynamic_cast<Ogre::HlmsPbsDatablock*>(item->getSubItem(i)->getDatablock());
+                    if (nullptr != sourceDataBlock)
+                    {
+                        // Deactivate fresnel by default, because it looks ugly
+                        if (sourceDataBlock->getWorkflow() != Ogre::HlmsPbsDatablock::SpecularAsFresnelWorkflow && sourceDataBlock->getWorkflow() != Ogre::HlmsPbsDatablock::MetallicWorkflow)
+                        {
+                            sourceDataBlock->setFresnel(Ogre::Vector3(0.01f, 0.01f, 0.01f), false);
+                        }
+                    }
+                }
+            }
+        };
 
-				Ogre::MaterialPtr objectMaterial = Ogre::MaterialManager::getSingleton().getByName(materialFile);
-				if (false == materialFile.empty())
-				{
-					item->setDatablock(materialFile);
-				}
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DotSceneImportModule::processPlane");
 
-				// Change the addressing mode of the roughness map to wrap via code.
-				// Detail maps default to wrap, but the rest to clamp.
-				Ogre::HlmsPbsDatablock* datablock = static_cast<Ogre::HlmsPbsDatablock*>(item->getSubItem(0)->getDatablock());
-				//Make a hard copy of the sampler block
-				Ogre::HlmsSamplerblock samplerblock(*datablock->getSamplerblock(Ogre::PBSM_ROUGHNESS));
-				samplerblock.mU = Ogre::TAM_WRAP;
-				samplerblock.mV = Ogre::TAM_WRAP;
-				samplerblock.mW = Ogre::TAM_WRAP;
-				//Set the new samplerblock. The Hlms system will
-				//automatically create the API block if necessary
-				datablock->setSamplerblock(Ogre::PBSM_ROUGHNESS, samplerblock);
+        rapidxml::xml_node<>* element = xmlNode->next_sibling("userData");
 
-				for (size_t i = 0; i < item->getNumSubItems(); i++)
-				{
-					auto sourceDataBlock = dynamic_cast<Ogre::HlmsPbsDatablock*>(item->getSubItem(i)->getDatablock());
-					if (nullptr != sourceDataBlock)
-					{
-						// Deactivate fresnel by default, because it looks ugly
-						if (sourceDataBlock->getWorkflow() != Ogre::HlmsPbsDatablock::SpecularAsFresnelWorkflow && sourceDataBlock->getWorkflow() != Ogre::HlmsPbsDatablock::MetallicWorkflow)
-						{
-							sourceDataBlock->setFresnel(Ogre::Vector3(0.01f, 0.01f, 0.01f), false);
-						}
-					}
-				}
-			}
-		};
+        GameObjectPtr gameObjectPtr = nullptr;
 
-		NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DotSceneImportModule::processPlane");
+        if (false == justSetValues || missingGameObjectId != 0)
+        {
+            gameObjectPtr = GameObjectFactory::getInstance()->createOrSetGameObjectFromXML(element, this->sceneManager, parent, item, GameObject::PLANE, this->scenePath, this->forceCreation, false);
 
-		rapidxml::xml_node<>* element = xmlNode->next_sibling("userData");
+            if (nullptr != gameObjectPtr)
+            {
+                this->parsedGameObjectIds.emplace_back(gameObjectPtr->getId());
 
-		GameObjectPtr gameObjectPtr = nullptr;
+                bool dynamic = true;
+                rapidxml::xml_node<>* propertyElement = element->first_node("property");
 
-		if (false == justSetValues || missingGameObjectId != 0)
-		{
-			gameObjectPtr = GameObjectFactory::getInstance()->createOrSetGameObjectFromXML(element, this->sceneManager, parent, item, 
-				GameObject::PLANE, this->scenePath, this->forceCreation, false);
+                if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Static")
+                {
+                    dynamic = !XMLConverter::getAttribBool(propertyElement, "data", false);
+                    propertyElement = propertyElement->next_sibling("property");
+                }
 
-			if (nullptr != gameObjectPtr)
-			{
-				this->parsedGameObjectIds.emplace_back(gameObjectPtr->getId());
+                parent->setStatic(!dynamic);
+                item->setStatic(!dynamic);
+                parent->attachObject(item);
+            }
+        }
+        else
+        {
+            bool foundId = false;
+            rapidxml::xml_node<>* propertyElement = element->first_node("property");
+            if (nullptr != propertyElement)
+            {
+                do
+                {
+                    Ogre::String attrib = XMLConverter::getAttrib(propertyElement, "name");
+                    if (propertyElement && attrib == "Id")
+                    {
+                        unsigned long existingGameObjectId = XMLConverter::getAttribUnsignedLong(propertyElement, "data");
+                        gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(existingGameObjectId);
 
-				bool dynamic = true;
-				rapidxml::xml_node<>* propertyElement = element->first_node("property");
-
-				if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Static")
-				{
-					dynamic = !XMLConverter::getAttribBool(propertyElement, "data", false);
-					propertyElement = propertyElement->next_sibling("property");
-				}
-			
-				parent->setStatic(!dynamic);
-				item->setStatic(!dynamic);
-				parent->attachObject(item);
-			}
-		}
-		else
-		{
-			bool foundId = false;
-			rapidxml::xml_node<>* propertyElement = element->first_node("property");
-			if (nullptr != propertyElement)
-			{
-				do
-				{
-					Ogre::String attrib = XMLConverter::getAttrib(propertyElement, "name");
-					if (propertyElement && attrib == "Id")
-					{
-						unsigned long existingGameObjectId = XMLConverter::getAttribUnsignedLong(propertyElement, "data");
-						gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(existingGameObjectId);
-
-						gameObjectPtr = GameObjectFactory::getInstance()->createOrSetGameObjectFromXML(element, this->sceneManager, parent, item,
-							GameObject::PLANE, this->scenePath, this->forceCreation, this->bSceneParsed, gameObjectPtr);
-						foundId = true;
-					}
-					else
-					{
-						propertyElement = propertyElement->next_sibling("property");
-					}
-				} while (false == foundId && nullptr != propertyElement);
-			}
-		}
+                        gameObjectPtr = GameObjectFactory::getInstance()->createOrSetGameObjectFromXML(element, this->sceneManager, parent, item, GameObject::PLANE, this->scenePath, this->forceCreation, this->bSceneParsed, gameObjectPtr);
+                        foundId = true;
+                    }
+                    else
+                    {
+                        propertyElement = propertyElement->next_sibling("property");
+                    }
+                } while (false == foundId && nullptr != propertyElement);
+            }
+        }
     }
 
     Ogre::MeshPtr DotSceneImportModule::loadMeshV2Optimized(const Ogre::String& meshName, const Ogre::String& itemName, const Ogre::String& originalMeshFile)
@@ -2149,76 +2049,187 @@ namespace NOWA
         }
     }
 
-	Ogre::SceneManager* DotSceneImportModule::getSceneManager(void) const
-	{
-		return this->sceneManager;
-	}
+    void DotSceneImportModule::createSceneLoadUI(size_t totalObjects)
+    {
+        if (false == this->showLoadingDetails && false == this->showProgressBar)
+        {
+            return;
+        }
 
-	Ogre::Camera* DotSceneImportModule::getMainCamera(void) const
-	{
-		return this->mainCamera;
-	}
+        this->sceneLoadTotalObjects = totalObjects;
+        this->sceneLoadCurrentObject = 0;
 
-	Ogre::Light* DotSceneImportModule::getSunLight(void) const
-	{
-		return this->sunLight;
-	}
+        this->sceneListener = new EngineResourceSceneListener(Core::getSingletonPtr()->getOgreRenderWindow(), this->showProgressBar, this->showLoadingDetails);
 
-	const ProjectParameter& DotSceneImportModule::getProjectParameter(void) const
-	{
-		return this->projectParameter;
-	}
+        Ogre::ResourceGroupManager::getSingleton().addResourceGroupListener(this);
+        MyGUI::PointerManager::getInstancePtr()->setVisible(false);
 
-	void NOWA::DotSceneImportModule::setIsSnapshot(bool bIsSnapshot)
-	{
-		this->bIsSnapshot = bIsSnapshot;
-	}
+        this->sceneListener->showLoadingBar();
+    }
 
-	std::pair<Ogre::String, Ogre::String> NOWA::DotSceneImportModule::getProjectAndSceneName(const Ogre::String& filePathName, bool decrypt)
-	{
-		Ogre::String sceneName;
-		Ogre::String projectName;
-		std::ifstream ifs(filePathName);
-		if (false == ifs.good())
-		{
-			return std::make_pair(projectName, sceneName);
-		}
+    void DotSceneImportModule::destroySceneLoadUI()
+    {
+        if (nullptr == this->sceneListener)
+        {
+            return;
+        }
 
-		std::string content((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
-		DWORD dwFileAttributes = GetFileAttributes(filePathName.c_str());
-		if (dwFileAttributes & FileFlag && true == decrypt)
-		{
-			content = Core::getSingletonPtr()->decode64(content, true);
-		}
-		content += '\0';
+        Ogre::ResourceGroupManager::getSingleton().removeResourceGroupListener(this);
+        MyGUI::PointerManager::getInstancePtr()->setVisible(true);
 
-		{
-			Ogre::String toFind = "projectName=\"";
-			size_t projectNameTagPos = content.find(toFind);
-			if (Ogre::String::npos != projectNameTagPos)
-			{
-				size_t projectNameTagEndPos = content.find("\"", projectNameTagPos + toFind.length());
-				if (Ogre::String::npos != projectNameTagEndPos)
-				{
-					projectName = content.substr(projectNameTagPos + toFind.length(), projectNameTagEndPos - (projectNameTagPos + toFind.length()));
-				}
-			}
-		}
+        this->sceneListener->hideLoadingBar();
+        delete this->sceneListener;
+        this->sceneListener = nullptr;
+    }
 
-		{
-			Ogre::String toFind = "sceneName=\"";
-			size_t sceneNameTagPos = content.find(toFind);
-			if (Ogre::String::npos != sceneNameTagPos)
-			{
-				size_t sceneNameTagEndPos = content.find("\"", sceneNameTagPos + toFind.length());
-				if (Ogre::String::npos != sceneNameTagEndPos)
-				{
-					sceneName = content.substr(sceneNameTagPos + toFind.length(), sceneNameTagEndPos - (sceneNameTagPos + toFind.length()));
-				}
-			}
-		}
-		ifs.close();
-		return std::make_pair(projectName, sceneName);
-	}
+    void DotSceneImportModule::notifySceneLoadProgress(const Ogre::String& objectName)
+    {
+        if (nullptr == this->sceneListener)
+        {
+            return;
+        }
 
-}; //Namespace end
+        ++this->sceneLoadCurrentObject;
+        this->sceneListener->updateProgress(objectName, this->sceneLoadCurrentObject, this->sceneLoadTotalObjects);
+    }
+
+    void DotSceneImportModule::notifyPostInitPhase(const Ogre::String& phase, size_t current, size_t total)
+    {
+        if (nullptr == this->sceneListener)
+        {
+            return;
+        }
+
+        this->sceneListener->updatePostInitPhase(phase, current, total);
+    }
+
+    void DotSceneImportModule::resourceGroupScriptingStarted(const Ogre::String& resourceGroupName, size_t scriptCount)
+    {
+        Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[DotSceneImportModule] Scripting started: " + resourceGroupName + " (" + Ogre::StringConverter::toString(scriptCount) + " scripts)");
+    }
+
+    void DotSceneImportModule::scriptParseStarted(const Ogre::String& scriptName, bool& skipThisScript)
+    {
+        Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[DotSceneImportModule] Parsing script: " + scriptName);
+        if (nullptr != this->sceneListener)
+        {
+            this->sceneListener->updateProgress(scriptName, this->sceneLoadCurrentObject, this->sceneLoadTotalObjects);
+        }
+    }
+
+    void DotSceneImportModule::scriptParseEnded(const Ogre::String& scriptName, bool skipped)
+    {
+    }
+
+    void DotSceneImportModule::resourceGroupScriptingEnded(const Ogre::String& resourceGroupName)
+    {
+    }
+
+    void DotSceneImportModule::resourceGroupLoadStarted(const Ogre::String& resourceGroupName, size_t resourceCount)
+    {
+        Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[DotSceneImportModule] Resource group load started: " + resourceGroupName + " (" + Ogre::StringConverter::toString(resourceCount) + " resources)");
+    }
+
+    void DotSceneImportModule::resourceLoadStarted(const Ogre::ResourcePtr& resource)
+    {
+        Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[DotSceneImportModule] Loading resource: " + resource->getName());
+        if (nullptr != this->sceneListener)
+        {
+            this->sceneListener->updateProgress(resource->getName(), this->sceneLoadCurrentObject, this->sceneLoadTotalObjects);
+        }
+    }
+
+    void DotSceneImportModule::resourceLoadEnded()
+    {
+    }
+
+    void DotSceneImportModule::resourceGroupLoadEnded(const Ogre::String& resourceGroupName)
+    {
+        Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[DotSceneImportModule] Resource group load ended: " + resourceGroupName);
+    }
+
+    // ── Accessors ─────────────────────────────────────────────────────────────
+
+    Ogre::SceneManager* DotSceneImportModule::getSceneManager(void) const
+    {
+        return this->sceneManager;
+    }
+
+    Ogre::Camera* DotSceneImportModule::getMainCamera(void) const
+    {
+        return this->mainCamera;
+    }
+
+    Ogre::Light* DotSceneImportModule::getSunLight(void) const
+    {
+        return this->sunLight;
+    }
+
+    const ProjectParameter& DotSceneImportModule::getProjectParameter(void) const
+    {
+        return this->projectParameter;
+    }
+
+    void DotSceneImportModule::setIsSnapshot(bool bIsSnapshot)
+    {
+        this->bIsSnapshot = bIsSnapshot;
+    }
+
+    std::pair<Ogre::String, Ogre::String> DotSceneImportModule::getProjectAndSceneName(const Ogre::String& filePathName, bool decrypt)
+    {
+        Ogre::String sceneName;
+        Ogre::String projectName;
+        std::ifstream ifs(filePathName);
+        if (false == ifs.good())
+        {
+            return std::make_pair(projectName, sceneName);
+        }
+
+        std::string content((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
+        DWORD dwFileAttributes = GetFileAttributes(filePathName.c_str());
+        if (dwFileAttributes & FileFlag && true == decrypt)
+        {
+            content = Core::getSingletonPtr()->decode64(content, true);
+        }
+        content += '\0';
+
+        {
+            Ogre::String toFind = "projectName=\"";
+            size_t projectNameTagPos = content.find(toFind);
+            if (Ogre::String::npos != projectNameTagPos)
+            {
+                size_t projectNameTagEndPos = content.find("\"", projectNameTagPos + toFind.length());
+                if (Ogre::String::npos != projectNameTagEndPos)
+                {
+                    projectName = content.substr(projectNameTagPos + toFind.length(), projectNameTagEndPos - (projectNameTagPos + toFind.length()));
+                }
+            }
+        }
+
+        {
+            Ogre::String toFind = "sceneName=\"";
+            size_t sceneNameTagPos = content.find(toFind);
+            if (Ogre::String::npos != sceneNameTagPos)
+            {
+                size_t sceneNameTagEndPos = content.find("\"", sceneNameTagPos + toFind.length());
+                if (Ogre::String::npos != sceneNameTagEndPos)
+                {
+                    sceneName = content.substr(sceneNameTagPos + toFind.length(), sceneNameTagEndPos - (sceneNameTagPos + toFind.length()));
+                }
+            }
+        }
+        ifs.close();
+        return std::make_pair(projectName, sceneName);
+    }
+
+    void DotSceneImportModule::setShowLoadingDetails(bool show)
+    {
+        this->showLoadingDetails = show;
+    }
+
+    void DotSceneImportModule::setShowProgressBar(bool show)
+    {
+        this->showProgressBar = show;
+    }
+
+}; // Namespace end

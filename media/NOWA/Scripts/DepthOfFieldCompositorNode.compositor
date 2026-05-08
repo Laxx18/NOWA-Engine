@@ -1,0 +1,142 @@
+// Depth of Field — Gaussian variant
+// 4 passes: CoC → BlurH → BlurV → Blend
+// in 2 depthTexture auto-wired by reconnectAllNodes() Option B
+compositor_node "Depth Of Field Gaussian"
+{
+    in 0 rt_input
+    in 1 rt_output
+    in 2 depthTexture
+
+    custom_id Ogre/Postprocess
+
+    // Half-res intermediates
+    texture rt0 target_width_scaled 0.5 target_height_scaled 0.5 PFG_RGBA16_FLOAT depth_pool 0
+    texture rt1 target_width_scaled 0.5 target_height_scaled 0.5 PFG_RGBA16_FLOAT depth_pool 0
+    texture rt2 target_width_scaled 0.5 target_height_scaled 0.5 PFG_RGBA16_FLOAT depth_pool 0
+
+    target rt0
+    {
+        pass render_quad
+        {
+            load { all dont_care }
+            material Postprocess/DOFGaussianCoC
+            input 0 rt_input
+            input 1 depthTexture
+        }
+    }
+    target rt1
+    {
+        pass render_quad
+        {
+            load { all dont_care }
+            material Postprocess/DOFGaussianBlurH
+            input 0 rt0
+        }
+    }
+    target rt2
+    {
+        pass render_quad
+        {
+            load { all dont_care }
+            material Postprocess/DOFGaussianBlurV
+            input 0 rt1
+        }
+    }
+    target rt_output
+    {
+        pass render_quad
+        {
+            load { all dont_care }
+            material Postprocess/DOFGaussianBlend
+            input 0 rt_input   // sharp original
+            input 1 rt2        // blurred
+            input 2 rt0        // CoC mask
+        }
+    }
+
+    out 0 rt_output
+    out 1 rt_input
+}
+
+// ============================================================
+
+// Depth of Field — Hexagonal Bokeh variant
+// 6 passes: CoC → Dir0 → Dir1 → Dir2 → Combine → Blend
+compositor_node "Depth Of Field Hex Bokeh"
+{
+    in 0 rt_input
+    in 1 rt_output
+    in 2 depthTexture
+
+    custom_id Ogre/Postprocess
+
+    // Half-res intermediates
+    texture rt0 target_width_scaled 0.5 target_height_scaled 0.5 PFG_RGBA16_FLOAT depth_pool 0
+    texture rt1 target_width_scaled 0.5 target_height_scaled 0.5 PFG_RGBA16_FLOAT depth_pool 0
+    texture rt2 target_width_scaled 0.5 target_height_scaled 0.5 PFG_RGBA16_FLOAT depth_pool 0
+    texture rt3 target_width_scaled 0.5 target_height_scaled 0.5 PFG_RGBA16_FLOAT depth_pool 0
+    texture rt4 target_width_scaled 0.5 target_height_scaled 0.5 PFG_RGBA16_FLOAT depth_pool 0
+
+    target rt0
+    {
+        pass render_quad
+        {
+            load { all dont_care }
+            material Postprocess/DOFHexBokehCoC
+            input 0 rt_input
+            input 1 depthTexture
+        }
+    }
+    target rt1
+    {
+        pass render_quad
+        {
+            load { all dont_care }
+            material Postprocess/DOFHexBokehDir0
+            input 0 rt0
+        }
+    }
+    target rt2
+    {
+        pass render_quad
+        {
+            load { all dont_care }
+            material Postprocess/DOFHexBokehDir1
+            input 0 rt0
+        }
+    }
+    target rt3
+    {
+        pass render_quad
+        {
+            load { all dont_care }
+            material Postprocess/DOFHexBokehDir2
+            input 0 rt0
+        }
+    }
+    target rt4
+    {
+        pass render_quad
+        {
+            load { all dont_care }
+            material Postprocess/DOFHexBokehCombine
+            input 0 rt1
+            input 1 rt2
+            input 2 rt3
+        }
+    }
+    target rt_output
+    {
+        pass render_quad
+        {
+            load { all dont_care }
+            material Postprocess/DOFHexBokehBlend
+            input 0 rt_input   // sharp original
+            input 1 rt4        // hex-blurred
+            input 2 rt0        // CoC mask
+        }
+    }
+
+    out 0 rt_output
+    out 1 rt_input
+}

@@ -1,0 +1,54 @@
+// Light Shafts post-process effect — depth-occlusion based crepuscular rays
+//
+// Declares "in 2 depthTexture" — auto-wired by the Option B infrastructure
+// in reconnectAllNodes(). No manual workspace changes required.
+compositor_node "Light Shafts"
+{
+    in 0 rt_input
+    in 1 rt_output
+    in 2 depthTexture    // auto-wired by reconnectAllNodes Option B
+
+    custom_id Ogre/Postprocess
+
+    // ½-res intermediates
+    texture rt0 target_width_scaled 0.5 target_height_scaled 0.5 PFG_RGBA8_UNORM_SRGB depth_pool 0
+    texture rt1 target_width_scaled 0.5 target_height_scaled 0.5 PFG_RGBA8_UNORM_SRGB depth_pool 0
+
+    target rt0
+    {
+        // Pass 1: depth-occlusion mask
+        pass render_quad
+        {
+            load { all dont_care }
+            material Postprocess/LightShaftsOcclusionMask
+            input 0 rt_input      // scene colour  → t0
+            input 1 depthTexture  // depth buffer  → t1
+        }
+    }
+
+    target rt1
+    {
+        // Pass 2: radial blur toward sun
+        pass render_quad
+        {
+            load { all dont_care }
+            material Postprocess/LightShaftsRadialBlur
+            input 0 rt0
+        }
+    }
+
+    target rt_output
+    {
+        // Pass 3: additive blend onto scene
+        pass render_quad
+        {
+            load { all dont_care }
+            material Postprocess/LightShaftsBlend
+            input 0 rt_input  // original scene
+            input 1 rt1       // shaft contribution
+        }
+    }
+
+    out 0 rt_output
+    out 1 rt_input
+}

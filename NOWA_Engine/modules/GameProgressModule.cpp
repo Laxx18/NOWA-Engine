@@ -54,7 +54,9 @@ namespace NOWA
 			}*/
 
 			// Run parsing scene on render thread
-			bool success = this->dotSceneImportModule->parseScene(core->getProjectName(), this->nextSceneName, "Projects", nullptr, nullptr, this->showProgress);
+            this->dotSceneImportModule->setShowLoadingDetails(this->showProgress);
+            this->dotSceneImportModule->setShowProgressBar(this->showProgress); 
+			bool success = this->dotSceneImportModule->parseScene(core->getProjectName(), this->nextSceneName, "Projects", nullptr, nullptr);
 
 			/*if (this->showProgress && engineResourceListener)
 			{
@@ -163,7 +165,9 @@ namespace NOWA
 					engineResourceListener->showLoadingBar();
 				}
 
-				bool success = this->dotSceneImportModule->parseSceneSnapshot(snapshotProjectAndSceneName.first, snapshotProjectAndSceneName.second, "Projects", openFilePathName, this->crypted, this->showProgress);
+				this->dotSceneImportModule->setShowLoadingDetails(this->showProgress);
+                this->dotSceneImportModule->setShowProgressBar(this->showProgress); 
+				bool success = this->dotSceneImportModule->parseSceneSnapshot(snapshotProjectAndSceneName.first, snapshotProjectAndSceneName.second, "Projects", openFilePathName, this->crypted);
 
 				if (false == success)
 				{

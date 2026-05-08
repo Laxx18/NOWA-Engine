@@ -117,57 +117,61 @@ namespace NOWA
             return;
         }
 
-        // BUG FIX (NEW BUG B): If a blend was in progress when init() is called,
-        // cancel it cleanly before iterating all animations. Without this guard, the
-        // loop below calls setEnabled(false) on this->target while timeleft > 0.
-        // addTime() would then try to advance a disabled target for the remaining
-        // timeleft frames, producing a visual snap to source-only mid-transition.
-        if (this->timeleft > 0.0f && nullptr != this->target)
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, animationName, loop]()
         {
-            this->target->setEnabled(false);
-            this->target->mWeight = 0.0f;
-            this->target = nullptr;
-            this->timeleft = 0.0f;
-        }
-
-        // Disable every animation so no previously running animation bleeds through.
-        // setEnabled() has an internal guard (if mEnabled != bEnable), so calling
-        // this on already-disabled animations is harmless.
-        for (auto& anim : this->skeleton->getAnimationsNonConst())
-        {
-            anim.setEnabled(false);
-            anim.mWeight = 0.0f;
-            anim.setTime(0.0f);
-        }
-
-        // Set the new animation as the active source.
-        if (true == this->skeleton->hasAnimation(animationName))
-        {
-            this->source = this->skeleton->getAnimation(animationName);
-            this->source->setEnabled(true);
-            this->source->mWeight = 1.0f;
-            this->source->setTime(0.0f); // BUG FIX (Bug 2a): always start from frame 0,
-                                         // not from a stale position of a previous playthrough.
-            this->timeleft = 0.0f;
-            this->duration = this->source->getDuration();
-            this->target = nullptr;
-            this->complete = false;
-            this->loop = loop;
-
-            // BUG FIX (Bug 2b + NEW BUG C): Ogre's default mLoop is TRUE.
-            // Without calling setLoop() here, a non-looping animation (loop=false)
-            // would incorrectly wrap on the very first addTime() call, because
-            // addFrame() reads mLoop before our deferred setLoop() in addTime()
-            // had a chance to run.
-            this->source->setLoop(loop);
-
-            // Apply current speed to the freshly assigned source.
-            auto it = this->baseFrameRates.find(animationName);
-            if (it != this->baseFrameRates.end())
+            // BUG FIX (NEW BUG B): If a blend was in progress when init() is called,
+            // cancel it cleanly before iterating all animations. Without this guard, the
+            // loop below calls setEnabled(false) on this->target while timeleft > 0.
+            // addTime() would then try to advance a disabled target for the remaining
+            // timeleft frames, producing a visual snap to source-only mid-transition.
+            if (this->timeleft > 0.0f && nullptr != this->target)
             {
-                this->source->mFrameRate = it->second * this->currentSpeed;
+                this->target->setEnabled(false);
+                this->target->mWeight = 0.0f;
+                this->target = nullptr;
+                this->timeleft = 0.0f;
             }
-        }
+
+            // Disable every animation so no previously running animation bleeds through.
+            // setEnabled() has an internal guard (if mEnabled != bEnable), so calling
+            // this on already-disabled animations is harmless.
+            for (auto& anim : this->skeleton->getAnimationsNonConst())
+            {
+                anim.setEnabled(false);
+                anim.mWeight = 0.0f;
+                anim.setTime(0.0f);
+            }
+
+            // Set the new animation as the active source.
+            if (true == this->skeleton->hasAnimation(animationName))
+            {
+                this->source = this->skeleton->getAnimation(animationName);
+                this->source->setEnabled(true);
+                this->source->mWeight = 1.0f;
+                this->source->setTime(0.0f); // BUG FIX (Bug 2a): always start from frame 0,
+                                             // not from a stale position of a previous playthrough.
+                this->timeleft = 0.0f;
+                this->duration = this->source->getDuration();
+                this->target = nullptr;
+                this->complete = false;
+                this->loop = loop;
+
+                // BUG FIX (Bug 2b + NEW BUG C): Ogre's default mLoop is TRUE.
+                // Without calling setLoop() here, a non-looping animation (loop=false)
+                // would incorrectly wrap on the very first addTime() call, because
+                // addFrame() reads mLoop before our deferred setLoop() in addTime()
+                // had a chance to run.
+                this->source->setLoop(loop);
+
+                // Apply current speed to the freshly assigned source.
+                auto it = this->baseFrameRates.find(animationName);
+                if (it != this->baseFrameRates.end())
+                {
+                    this->source->mFrameRate = it->second * this->currentSpeed;
+                }
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "AnimationBlenderV2::setOverlayAnimation");
     }
 
     void AnimationBlenderV2::blend(AnimID animationId, BlendingTransition transition, Ogre::Real duration, bool loop)
@@ -888,7 +892,7 @@ namespace NOWA
             this->overlayTimeleft = this->overlayDuration;
             this->overlayBlendingOut = false;
         };
-        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "AnimationBlenderV2::setOverlayAnimation");
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "AnimationBlenderV2::setOverlayAnimation");
     }
 
     void AnimationBlenderV2::clearOverlayAnimation(Ogre::Real blendOutTime)
@@ -908,7 +912,7 @@ namespace NOWA
             this->overlayDuration = (blendOutTime > 0.0f) ? blendOutTime : 0.001f;
             this->overlayTimeleft = this->overlayDuration;
         };
-        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "AnimationBlenderV2::clearOverlayAnimation");
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "AnimationBlenderV2::clearOverlayAnimation");
     }
 
     bool AnimationBlenderV2::isOverlayAnimationActive(void) const
@@ -978,7 +982,7 @@ namespace NOWA
             this->target = nullptr;
             this->timeleft = 0.0f;
         };
-        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "AnimationBlenderV2::driveBlendSpace");
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "AnimationBlenderV2::driveBlendSpace");
     }
 
     Ogre::Real AnimationBlenderV2::getProgress()
@@ -1197,7 +1201,7 @@ namespace NOWA
             {
                 this->source->setTime(timePosition);
             };
-            NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "AnimationBlenderV2::setTimePosition");
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "AnimationBlenderV2::setTimePosition");
         }
     }
 
@@ -1229,7 +1233,7 @@ namespace NOWA
             {
                 this->source->mWeight = weight;
             };
-            NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "AnimationBlenderV2::setWeight");
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "AnimationBlenderV2::setWeight");
         }
     }
 
@@ -1271,7 +1275,7 @@ namespace NOWA
             {
                 this->skeleton->resetToPose();
             };
-            NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "AnimationBlenderV2::resetBones");
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "AnimationBlenderV2::resetBones");
         }
     }
 
@@ -1288,7 +1292,7 @@ namespace NOWA
             {
                 this->source->setEnabled(bEnable);
             };
-            NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "AnimationBlenderV2::setSourceEnabled");
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "AnimationBlenderV2::setSourceEnabled");
         }
     }
 
@@ -1327,7 +1331,7 @@ namespace NOWA
                 }
             }
         };
-        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "AnimationBlenderV2::setAnimationSpeed");
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "AnimationBlenderV2::setAnimationSpeed");
     }
 
     Ogre::Real AnimationBlenderV2::getAnimationSpeed(void) const
@@ -1482,15 +1486,39 @@ namespace NOWA
 
     void AnimationBlenderV2::resetBlendState(void)
     {
-        // Called on the render thread from resetAnimation().
-        // Nulls out all blend-in-progress state so the persistent addTime closure
-        // cannot fire a stale timeleft completion and re-enable dead animations.
+        // Clears all in-progress blend state.  Called on the render thread from
+        // resetAnimation() to prevent the stale addTime closure from completing
+        // a leftover blend after disconnect and re-enabling dead animations.
+        if (nullptr != this->source)
+        {
+            this->source->setEnabled(false);
+            this->source->mWeight = 0.0f;
+            this->source->setTime(0.0f);
+        }
+        if (nullptr != this->target)
+        {
+            this->target->setEnabled(false);
+            this->target->mWeight = 0.0f;
+            this->target->setTime(0.0f);
+            this->target = nullptr;
+        }
+        if (nullptr != this->previousSource)
+        {
+            this->previousSource->setEnabled(false);
+            this->previousSource->mWeight = 0.0f;
+            this->previousSource = nullptr;
+        }
         this->timeleft = 0.0f;
-        this->target = nullptr;
-        this->previousSource = nullptr;
         this->complete = false;
-        // source is left pointing to the last animation (disabled) so internalBlend
-        // can check source != null on next connect without hitting the early-return.
+        // source is intentionally kept (as a disabled pointer) so internalBlend's
+        // "if (nullptr == this->source)" guard works correctly on next connect.
+
+        // Step 1: post the closure removal to the closureQueue (lock-free, safe from
+        // main thread).  processClosureCommands() will remove it in the same render
+        // frame that the resetBlendState command fires — so the stale closure cannot
+        // run after the state has been cleared.
+        Ogre::String closureId = "AnimationBlenderV2::addTime" + Ogre::StringConverter::toString(this->uniqueId);
+        NOWA::GraphicsModule::getInstance()->removeTrackedClosure(closureId);
     }
 
     Ogre::Vector3 AnimationBlenderV2::getLocalToWorldPosition(Ogre::Bone* bone)

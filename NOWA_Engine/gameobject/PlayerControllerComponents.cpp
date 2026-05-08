@@ -3156,7 +3156,7 @@ namespace NOWA
 			+ " Complete: " + Ogre::StringConverter::toString(this->playerController->getAnimationBlender()->isComplete()));*/
 
 		
-		this->playerController->getAnimationBlender()->addTime(dt * tempAnimationSpeed / this->playerController->getAnimationBlender()->getLength());
+		this->playerController->getAnimationBlender()->addTime(dt * tempAnimationSpeed/* / this->playerController->getAnimationBlender()->getLength()*/);
 	}
 
 	void PathFollowState3D::exit(GameObject* player)
