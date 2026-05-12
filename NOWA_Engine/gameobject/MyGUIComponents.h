@@ -143,10 +143,7 @@ namespace NOWA
 		*/
 		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
-		/**
-		* @brief	Gets called when a skin is changed for a widget
-		*/
-		virtual void onChangeSkin(void) { };
+		virtual void setSkin(const Ogre::String& skin);
 
 		/**
 		* @see		GameObjectComponent::setActivated
@@ -189,9 +186,16 @@ namespace NOWA
 
 		unsigned long getParentId(void) const;
 		
-		void setSkin(const Ogre::String& skin);
-		
 		Ogre::String getSkin(void) const;
+
+		// Virtual with default no-op — only meaningful in derived classes that override it
+        virtual void setStyle(const Ogre::String& style);
+
+        Ogre::String getStyle(void) const;
+
+		virtual void setCommonWidget(bool enable);
+
+        bool getCommonWidget(void) const;
 		
 		MyGUI::Widget* getWidget(void) const;
 
@@ -229,6 +233,8 @@ namespace NOWA
 		static const Ogre::String AttrId(void) { return "Id"; }
 		static const Ogre::String AttrParentId(void) { return "Parent Id"; }
 		static const Ogre::String AttrSkin(void) { return "Skin"; }
+        static Ogre::String AttrStyle() { return "Style"; }
+        static Ogre::String AttrCommonWidget() { return "Common Widget"; }
 	protected:
 		virtual void mouseButtonClick(MyGUI::Widget* sender) = 0;
 
@@ -247,12 +253,27 @@ namespace NOWA
 		MyGUI::Widget* findWidgetAtPosition(MyGUI::Widget* root, const MyGUI::IntPoint& position);
 
 		void onWidgetSelected(MyGUI::Widget* sender);
+
+	    /**
+         * @brief	Gets called when a skin is changed for a widget
+         */
+        virtual void onChangeSkin(void) {};
+
+		virtual void onActivated(void) {};
+
+		virtual Ogre::String getSharedWidgetKey(void) const;
+
+        virtual void createAndRegisterSharedWidgetImpl(GameObjectController* gameObjectController, const Ogre::String& key) {}
+
+        virtual void createOwnWidgetImpl(void) {}
+
 	private:
 		void baseMouseButtonPressed(MyGUI::Widget* _sender, int _left, int _top, MyGUI::MouseButton _id);
 		void baseMouseButtonDoubleClick(MyGUI::Widget* sender);
 	private:
 		void handleWindowChangedDelegate(NOWA::EventDataPtr eventData);
 	
+		void handleTagNameChangedDelegate(EventDataPtr eventData);
 	protected:
 		bool hasParent;
 		bool createWidgetInParent;
@@ -260,6 +281,7 @@ namespace NOWA
 		bool isSimulating;
 		unsigned long priorId;
 		Ogre::Vector4 oldCoordinate;
+        bool bIsCloning;
 		luabind::object mouseButtonClickClosureFunction;
 		luabind::object mouseEnterClosureFunction;
 		luabind::object mouseLeaveClosureFunction;
@@ -274,6 +296,8 @@ namespace NOWA
 		Variant* id;
 		Variant* parentId;
 		Variant* skin;
+        Variant* style;
+        Variant* commonWidget;
 		MyGUI::Widget* widget;
 	};
 	
@@ -375,6 +399,12 @@ namespace NOWA
 		static const Ogre::String AttrWindowCaption(void) { return "WindowCaption"; }
 	protected:
 		virtual void mouseButtonClick(MyGUI::Widget* sender) override;
+
+		virtual void onActivated(void) override;
+
+		virtual void createAndRegisterSharedWidgetImpl(GameObjectController* gameObjectController, const Ogre::String& key) override;
+
+        virtual void createOwnWidgetImpl(void) override;
 	protected:
 		Variant* movable;
 		Variant* windowCaption;
@@ -519,6 +549,12 @@ namespace NOWA
 		void onEditTextChanged(MyGUI::EditBox* sender);
 		
 		void onEditAccepted(MyGUI::EditBox* sender);
+
+		virtual void onActivated(void) override;
+
+		virtual void createAndRegisterSharedWidgetImpl(GameObjectController* gameObjectController, const Ogre::String& key) override;
+
+        virtual void createOwnWidgetImpl(void) override;
 	private:
 		void initTextAttributes(void);
 	protected:
@@ -649,6 +685,12 @@ namespace NOWA
 		static const Ogre::String AttrTextColor(void) { return "Text Color"; }
 	protected:
 		virtual void mouseButtonClick(MyGUI::Widget* sender) override;
+
+		virtual void onActivated(void) override;
+
+		virtual void createAndRegisterSharedWidgetImpl(GameObjectController* gameObjectController, const Ogre::String& key) override;
+
+        virtual void createOwnWidgetImpl(void) override;
 	protected:
 		Variant* caption;
 		Variant* fontHeight;
@@ -775,6 +817,12 @@ namespace NOWA
 		static const Ogre::String AttrTextColor(void) { return "Text Color"; }
 	protected:
 		virtual void mouseButtonClick(MyGUI::Widget* sender) override;
+
+		virtual void onActivated(void) override;
+
+		virtual void createAndRegisterSharedWidgetImpl(GameObjectController* gameObjectController, const Ogre::String& key) override;
+
+        virtual void createOwnWidgetImpl(void) override;
 	protected:
 		Variant* caption;
 		Variant* checked;
@@ -879,6 +927,8 @@ namespace NOWA
 		* @see		MyGUIComponent::onChangeSkin
 		*/
 		virtual void onChangeSkin(void) override;
+
+		virtual void setCommonWidget(bool enable) override;
 		
 		void setImageFileName(const Ogre::String& imageFileName);
 		
@@ -913,6 +963,12 @@ namespace NOWA
 		virtual void mouseButtonPressed(MyGUI::Widget* _sender, int _left, int _top, MyGUI::MouseButton _id) override;
 
 		void callMousePressLuaFunction(void);
+
+		virtual void onActivated(void) override;
+
+		virtual void createAndRegisterSharedWidgetImpl(GameObjectController* gameObjectController, const Ogre::String& key) override;
+
+        virtual void createOwnWidgetImpl(void) override;
 	protected:
 		MyGUI::RotatingSkin* rotatingSkin;
 		CustomPickingMask* pickingMask;
@@ -1028,6 +1084,12 @@ namespace NOWA
 		static const Ogre::String AttrFlowDirection(void) { return "Flow Direction"; }
 	protected:
 		virtual void mouseButtonClick(MyGUI::Widget* sender) override;
+
+		virtual void onActivated(void) override;
+
+		virtual void createAndRegisterSharedWidgetImpl(GameObjectController* gameObjectController, const Ogre::String& key) override;
+
+        virtual void createOwnWidgetImpl(void) override;
 	protected:
 		Variant* value;
 		Variant* range;
@@ -1182,6 +1244,12 @@ namespace NOWA
 		void listSelectAccept(MyGUI::ListBox* sender, size_t index);
 		// Double click or enter pressed
 		void listAccept(MyGUI::ListBox* sender, size_t index);
+
+		virtual void onActivated(void) override;
+
+		virtual void createAndRegisterSharedWidgetImpl(GameObjectController* gameObjectController, const Ogre::String& key) override;
+
+        virtual void createOwnWidgetImpl(void) override;
 	protected:
 		Variant* itemHeight;
 		Variant* fontHeight;
@@ -1351,6 +1419,12 @@ namespace NOWA
 		virtual void mouseButtonClick(MyGUI::Widget* sender) override;
 
 		void comboAccept(MyGUI::ComboBox* sender, size_t index);
+
+		virtual void onActivated(void) override;
+
+		virtual void createAndRegisterSharedWidgetImpl(GameObjectController* gameObjectController, const Ogre::String& key) override;
+
+        virtual void createOwnWidgetImpl(void) override;
 	protected:
 		Variant* itemHeight;
 		Variant* fontHeight;

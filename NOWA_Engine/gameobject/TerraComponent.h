@@ -108,6 +108,10 @@ namespace NOWA
 		void setDimensions(const Ogre::Vector3& dimensions);
 		
 		Ogre::Vector3 getDimensions(void) const;
+
+		void setCenter(const Ogre::Vector3& center);
+
+        Ogre::Vector3 getCenter(void) const;
 		
 		void setLightId(unsigned long lightId);
 

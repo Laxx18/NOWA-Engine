@@ -83,6 +83,26 @@ namespace NOWA
 		typedef boost::shared_ptr<PhysicsCompoundConnectionComponent> PhysicsCompoundConnectionCompPtr;
 		typedef boost::shared_ptr<LuaScriptComponent> LuaScriptCompPtr;
 
+		// ── Shared MyGUI widget registry ─────────────────────────────────────────
+		// Maps a unique widget key (className + "_" + style) to the shared widget data.
+		// Any MyGUI component with commonWidget=true registers here and gets the
+		// single shared widget instance instead of creating its own.
+
+		struct SharedWidgetEntry
+		{
+			MyGUI::Widget* widget;      // the one real MyGUI widget
+			Ogre::String className;   // e.g. "MyGUIItemBoxComponent"
+			Ogre::String style;       // e.g. "ItemBoxInventory"
+			int refCount;    // how many components share this
+			// Raw pointer to current owner — only used to re-wire events on activation.
+			// Never dereferenced after the owner deregisters.
+			void* currentOwner;
+            void* userData;
+		};
+
+		// Key: className + "_" + style  e.g. "MyGUIItemBoxComponent_ItemBoxInventory"
+		using SharedWidgetMap = std::unordered_map<Ogre::String, SharedWidgetEntry>;
+
 		typedef std::unordered_map<unsigned long, GameObjectPtr> GameObjects;
 	public:
 		/**
@@ -975,6 +995,25 @@ namespace NOWA
 		Ogre::HlmsDatablock* cloneDatablockUnique(Ogre::HlmsDatablock* originalDatablock, const Ogre::String& originalDatablockName, unsigned long gameObjectId, size_t subIndex);
 
 		bool isProceduralMeshComponent(const Ogre::String& className);
+
+		void registerSharedWidget(const Ogre::String& className, const Ogre::String& style, MyGUI::Widget* widget);
+
+        void unregisterSharedWidget(const Ogre::String& className, const Ogre::String& style);
+
+        MyGUI::Widget* getSharedWidget(const Ogre::String& className, const Ogre::String& style) const;
+
+        bool hasSharedWidget(const Ogre::String& className, const Ogre::String& style) const;
+
+        void setSharedWidgetOwner(const Ogre::String& className, const Ogre::String& style, void* owner);
+
+        void* getSharedWidgetOwner(const Ogre::String& className, const Ogre::String& style) const;
+
+		void setSharedWidgetUserData(const Ogre::String& className, const Ogre::String& style, void* data);
+
+        void* getSharedWidgetUserData(const Ogre::String& className, const Ogre::String& style) const;
+
+        // Called from destroyContent() — destroys all shared widgets
+        void destroyAllSharedWidgets();
 	public:
 		static constexpr unsigned int ALL_CATEGORIES_ID = 0xFFFFFFFF;
 
@@ -1056,6 +1095,8 @@ namespace NOWA
 		bool bAddListenerFirstTime;
 
 		std::vector<std::pair<int, boost::weak_ptr<LuaScriptComponent>>> managedLuaScripts;
+
+		SharedWidgetMap sharedWidgetMap;
 	};
 
 }; //namespace end NOWA

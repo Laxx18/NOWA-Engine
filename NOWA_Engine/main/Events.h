@@ -2460,6 +2460,51 @@ namespace NOWA
         bool busy;
     };
 
+	class EventDataTagNameChanged : public BaseEventData
+    {
+    public:
+        EventDataTagNameChanged(unsigned long gameObjectId, const Ogre::String& oldTagName, const Ogre::String& newTagName) : gameObjectId(gameObjectId), oldTagName(oldTagName), newTagName(newTagName)
+        {
+        }
+
+        static EventType getStaticEventType(void)
+        {
+            return 0xFA4C8B21;
+        }
+        virtual const EventType getEventType(void) const override
+        {
+            return 0xFA4C8B21;
+        }
+
+        virtual EventDataPtr copy() const override
+        {
+            return EventDataPtr(new EventDataTagNameChanged(this->gameObjectId, this->oldTagName, this->newTagName));
+        }
+
+        virtual const char* getName(void) const override
+        {
+            return "EventDataTagNameChanged";
+        }
+
+        unsigned long getGameObjectId(void) const
+        {
+            return this->gameObjectId;
+        }
+        const Ogre::String& getOldTagName(void) const
+        {
+            return this->oldTagName;
+        }
+        const Ogre::String& getNewTagName(void) const
+        {
+            return this->newTagName;
+        }
+
+    private:
+        unsigned long gameObjectId;
+        Ogre::String oldTagName;
+        Ogre::String newTagName;
+    };
+
 }; // namespace end
 
 #endif

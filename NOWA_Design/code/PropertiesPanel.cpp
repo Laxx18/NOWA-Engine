@@ -2196,6 +2196,31 @@ void PropertiesPanelDynamic::onAutoCompleteComboMousePressed(MyGUI::Widget* send
 	comboBox->beginToItemSelected();
 }
 
+void PropertiesPanelDynamic::onAutoCompleteComboSelectAccept(MyGUI::ComboBox* sender, size_t index)
+{
+    if (index == MyGUI::ITEM_NONE)
+    {
+        return;
+    }
+
+    Ogre::String selectedItem = sender->getItemNameAt(index);
+
+    MyGUI::EditBox* searchEdit = this->getLinkedSearchEdit(sender);
+    if (nullptr != searchEdit)
+    {
+        searchEdit->setOnlyText(selectedItem);
+    }
+
+    sender->hideList();
+    sender->setAutoHideList(true);
+
+    if (nullptr != searchEdit)
+    {
+        MyGUI::InputManager::getInstancePtr()->setKeyFocusWidget(searchEdit);
+        searchEdit->setTextCursor(searchEdit->getTextLength());
+    }
+}
+
 size_t PropertiesPanelDynamic::findIndexByText(MyGUI::ComboBox* comboBox, const Ogre::String& text)
 {
 	if (nullptr == comboBox)
@@ -2461,30 +2486,64 @@ void PropertiesPanelDynamic::onAutoCompleteComboChangePosition(MyGUI::ComboBox* 
 	}
 }
 
-void PropertiesPanelDynamic::onAutoCompleteComboSelectAccept(MyGUI::ComboBox* sender, size_t index)
+void PropertiesPanelComponent::onAutoCompleteComboSelectAccept(MyGUI::ComboBox* sender, size_t index)
 {
-	if (index == MyGUI::ITEM_NONE)
-	{
-		return;
-	}
+    if (index == MyGUI::ITEM_NONE)
+    {
+        return;
+    }
 
-	Ogre::String selectedItem = sender->getItemNameAt(index);
+    Ogre::String selectedItem = sender->getItemNameAt(index);
 
-	// Update the search edit box
-	MyGUI::EditBox* searchEdit = this->getLinkedSearchEdit(sender);
-	if (nullptr != searchEdit)
-	{
-		searchEdit->setOnlyText(selectedItem);
-	}
+    MyGUI::EditBox* searchEdit = this->getLinkedSearchEdit(sender);
+    if (nullptr != searchEdit)
+    {
+        searchEdit->setOnlyText(selectedItem);
+    }
 
-	sender->hideList();
-	sender->setAutoHideList(true);
+    sender->hideList();
+    sender->setAutoHideList(true);
+    sender->setOnlyText(selectedItem);
 
-	if (nullptr != searchEdit)
-	{
-		MyGUI::InputManager::getInstancePtr()->setKeyFocusWidget(searchEdit);
-		searchEdit->setTextCursor(searchEdit->getTextLength());
-	}
+    if (nullptr != searchEdit)
+    {
+        MyGUI::InputManager::getInstancePtr()->setKeyFocusWidget(searchEdit);
+        searchEdit->setTextCursor(searchEdit->getTextLength());
+    }
+
+    NOWA::Variant** attribute = sender->getUserData<NOWA::Variant*>();
+    if (nullptr == attribute)
+    {
+        return;
+    }
+
+    if (false == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionNoUndo()))
+    {
+        this->editorManager->snapshotOldGameObjectComponentAttribute(this->gameObjects, this->gameObjectComponents, (*attribute)->getName());
+    }
+
+    NOWA::Variant* variantCopy = (*attribute)->clone();
+
+    for (size_t i = 0; i < this->gameObjectComponents.size(); i++)
+    {
+        auto currentAttribute = this->gameObjectComponents[i]->getAttribute((*attribute)->getName());
+        variantCopy->setListSelectedOldValue(currentAttribute->getListSelectedValue());
+        variantCopy->setListSelectedValue(selectedItem);
+        this->gameObjectComponents[i]->actualizeValue(variantCopy);
+    }
+
+    delete variantCopy;
+
+    if (false == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionNoUndo()))
+    {
+        this->editorManager->snapshotNewGameObjectComponentAttribute(*attribute);
+
+        if (true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionNeedRefresh()))
+        {
+            boost::shared_ptr<NOWA::EventDataRefreshGui> r(new NOWA::EventDataRefreshGui());
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(r);
+        }
+    }
 }
 
 void PropertiesPanelDynamic::onExecButtonHit(MyGUI::Widget* sender)
@@ -2738,260 +2797,282 @@ void PropertiesPanelGameObject::setNewAttributeValue(MyGUI::EditBox* sender, NOW
 	MyGUIHelper::getInstance()->showAcceptedImage(Ogre::Vector2(sender->getAbsolutePosition().left, sender->getAbsolutePosition().top), Ogre::Vector2(10.0f, 10.0f), 1.0f);
 }
 
+// -----------------------------------------------------------------------------
+// 1.  PropertiesPanelGameObject::notifyEditSelectAccept
+//
+// CHANGES vs original:
+//   • setNewAttributeValue() receives variantCopy instead of *attribute
+//   • All actualizeValue() calls use variantCopy
+//   • snapshotNew(*attribute) — UNCHANGED from original (after setter ran,
+//     *attribute has the new value)
+//   • BUG FIX: duplicate actualizeValue(*attribute) call removed from the
+//     AttrOrientation multi-GO branch
+//   • AttrCategory / AttrRenderCategory: kept original logic (they must modify
+//     the actual GO Variant list in-place; variantCopy not needed there)
+// -----------------------------------------------------------------------------
 void PropertiesPanelGameObject::notifyEditSelectAccept(MyGUI::EditBox* sender)
 {
-	// Let the camera move again
-	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(1.0f);
-	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(1.0f);
+    NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(1.0f);
+    NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(1.0f);
 
-	// Send the text box change to the game object and internally actualize the data
-	NOWA::Variant** attribute = sender->getUserData<NOWA::Variant*>();
+    NOWA::Variant** attribute = sender->getUserData<NOWA::Variant*>();
 
-	// Only proceed if a value changed
-	Ogre::String editCaption = sender->getOnlyText();
+    Ogre::String editCaption = sender->getOnlyText();
+    Ogre::String attributeString = (*attribute)->getString();
 
-	Ogre::String attributeString = (*attribute)->getString();
+    if (true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionForceSet()))
+    {
+        // jump over equality check
+    }
+    else
+    {
+        if (attributeString == editCaption)
+        {
+            return;
+        }
+    }
 
-	if (true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionForceSet()))
-	{
-		// Do nothing but jump over the next condition, so that the value will be reset, even its the same value
-	}
-	else
-	{
-		// Only proceed if a value changed
-		if (attributeString == editCaption)
-		{
-			return;
-		}
-	}
+    if ((*attribute)->getList().size() > 0)
+    {
+        if ((*attribute)->getListSelectedValue() == editCaption)
+        {
+            return;
+        }
+    }
 
-	// If its a list, check the selected value if it has changed
-	if ((*attribute)->getList().size() > 0)
-	{
-		if ((*attribute)->getListSelectedValue() == editCaption)
-		{
-			return;
-		}
-	}
+    // snapshotOld — reads GO's own Variant, still has old value
+    this->editorManager->snapshotOldGameObjectAttribute(this->gameObjects, (*attribute)->getName());
 
-	// Snapshot the old attribute name
-	this->editorManager->snapshotOldGameObjectAttribute(this->gameObjects, (*attribute)->getName());
+    // ---- AttrCategory / AttrRenderCategory: must modify the actual GO Variant list ----
+    // These are handled with the original logic (no variantCopy needed).
+    if (NOWA::GameObject::AttrCategory() == (*attribute)->getName())
+    {
+        for (size_t i = 0; i < this->gameObjects.size(); i++)
+        {
+            if (false == sender->getOnlyText().empty())
+            {
+                auto currentAttribute = this->gameObjects[i]->getAttribute((*attribute)->getName());
+                currentAttribute->setListSelectedOldValue(currentAttribute->getListSelectedValue());
+                auto list = currentAttribute->getList();
+                list.emplace_back(sender->getOnlyText());
+                currentAttribute->setValue(list);
+                currentAttribute->setListSelectedValue(sender->getOnlyText());
+                this->gameObjects[i]->actualizeValue(*attribute);
+            }
+        }
 
-	this->setNewAttributeValue(sender, *attribute);
-
-	// Special treatment for transform because, if the game object has a physics component, those component shall handle the transform
-	if (NOWA::GameObject::AttrPosition() == (*attribute)->getName())
-	{
-		if (1 == this->gameObjects.size())
-		{
-			auto physicsComponent = NOWA::makeStrongPtr(this->gameObject->getComponent<NOWA::PhysicsComponent>());
-			if (nullptr != physicsComponent)
-			{
-				physicsComponent->setPosition((*attribute)->getVector3());
-			}
-			else
-			{
-				this->gameObject->actualizeValue(*attribute);
-			}
-		}
-		else
-		{
-			// If several game objects are selected add the value the user entered relative to the current values
-			for (size_t i = 0; i < this->gameObjects.size(); i++)
-			{
-				auto physicsComponent = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::PhysicsComponent>());
-				if (nullptr != physicsComponent)
-				{
-					physicsComponent->translate((*attribute)->getVector3());
-				}
-				else
-				{
-					this->gameObjects[i]->actualizeValue(*attribute);
-				}
-			}
-		}
-	}
-	else if (NOWA::GameObject::AttrScale() == (*attribute)->getName())
-	{
-		if (1 == this->gameObjects.size())
-		{
-			auto physicsComponent = NOWA::makeStrongPtr(gameObject->getComponent<NOWA::PhysicsComponent>());
-			if (nullptr != physicsComponent)
-			{
-				physicsComponent->setScale((*attribute)->getVector3());
-			}
-			else
-			{
-				this->gameObject->actualizeValue(*attribute);
-			}
-		}
-		else
-		{
-			for (size_t i = 0; i < this->gameObjects.size(); i++)
-			{
-				auto physicsComponent = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::PhysicsComponent>());
-				if (nullptr != physicsComponent)
-				{
-					physicsComponent->setScale((*attribute)->getVector3());
-				}
-				else
-				{
-					this->gameObjects[i]->actualizeValue(*attribute);
-				}
-			}
-		}
-	}
-	else if (NOWA::GameObject::AttrOrientation() == (*attribute)->getName())
-	{
-		if (1 == this->gameObjects.size())
-		{
-			auto physicsComponent = NOWA::makeStrongPtr(gameObject->getComponent<NOWA::PhysicsComponent>());
-			if (nullptr != physicsComponent)
-			{
-				// Transform to form degreeX, degreeY, degreeZ
-				physicsComponent->setOrientation(NOWA::MathHelper::getInstance()->degreesToQuat((*attribute)->getVector3()));
-			}
-			else
-			{
-				this->gameObject->actualizeValue(*attribute);
-			}
-		}
-		else
-		{
-			// If several game objects are selected add the value the user entered relative to the current values
-			for (size_t i = 0; i < this->gameObjects.size(); i++)
-			{
-				auto physicsComponent = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::PhysicsComponent>());
-				if (nullptr != physicsComponent)
-				{
-					physicsComponent->setOrientation(NOWA::MathHelper::getInstance()->degreesToQuat((*attribute)->getVector3()));
-				}
-				else
-				{
-					this->gameObjects[i]->actualizeValue(*attribute);
-				}
-				this->gameObjects[i]->actualizeValue(*attribute);
-			}
-		}
-	}
-	else if (NOWA::GameObject::AttrCategory() == (*attribute)->getName())
-	{
-		// When typed something in the new category text box, set this text as selected
-
-		for (size_t i = 0; i < this->gameObjects.size(); i++)
-		{
-			if (false == sender->getOnlyText().empty())
-			{
-				auto currentAttribute = this->gameObjects[i]->getAttribute((*attribute)->getName());
-				// Store the old category, that was selected, so that when changing internally the category, the old one can be removed, if no game object does use the category
-				currentAttribute->setListSelectedOldValue(currentAttribute->getListSelectedValue());
-				auto list = currentAttribute->getList();
-				list.emplace_back(sender->getOnlyText());
-				currentAttribute->setValue(list);
-				currentAttribute->setListSelectedValue(sender->getOnlyText());
-				this->gameObjects[i]->actualizeValue(*attribute);
-			}
-		}
-
-		NOWA::GraphicsModule::RenderCommand renderCommand = [this, sender]()
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, sender]()
         {
             sender->setCaption("");
         };
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PropertiesPanelDynamic::onMouseDoubleClick");
 
-		// Regenerate categories
-		boost::shared_ptr<NOWA::EventDataGenerateCategories> eventDataGenerateCategories(new NOWA::EventDataGenerateCategories());
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGenerateCategories);
+        boost::shared_ptr<NOWA::EventDataGenerateCategories> eventDataGenerateCategories(new NOWA::EventDataGenerateCategories());
+        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGenerateCategories);
 
-		// Sent when a name has changed, so that the resources panel can be refreshed with new values
-		boost::shared_ptr<EventDataRefreshResourcesPanel> eventDataRefreshResourcesPanel(new EventDataRefreshResourcesPanel());
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshResourcesPanel);
-	}
-	else if (NOWA::GameObject::AttrRenderCategory() == (*attribute)->getName())
-	{
-		// When typed something in the new render category text box, set this text as selected
+        boost::shared_ptr<EventDataRefreshResourcesPanel> eventDataRefreshResourcesPanel(new EventDataRefreshResourcesPanel());
+        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshResourcesPanel);
 
-		for (size_t i = 0; i < this->gameObjects.size(); i++)
-		{
-			if (false == sender->getOnlyText().empty())
-			{
-				auto currentAttribute = this->gameObjects[i]->getAttribute((*attribute)->getName());
-				// Store the old render category, that was selected, so that when changing internally the render category, the old one can be removed, if no game object does use the category
-				currentAttribute->setListSelectedOldValue(currentAttribute->getListSelectedValue());
-				auto list = currentAttribute->getList();
-				list.emplace_back(sender->getOnlyText());
-				currentAttribute->setValue(list);
-				currentAttribute->setListSelectedValue(sender->getOnlyText());
-				this->gameObjects[i]->actualizeValue(*attribute);
-			}
-		}
+        this->editorManager->setGizmoToGameObjectsCenter();
+        this->editorManager->snapshotNewGameObjectAttribute(*attribute);
 
-		NOWA::GraphicsModule::RenderCommand renderCommand = [this, sender]()
+        if (true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionNeedRefresh()))
+        {
+            boost::shared_ptr<NOWA::EventDataRefreshGui> eventDataRefreshPropertiesPanel(new NOWA::EventDataRefreshGui());
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
+        }
+        return;
+    }
+    else if (NOWA::GameObject::AttrRenderCategory() == (*attribute)->getName())
+    {
+        for (size_t i = 0; i < this->gameObjects.size(); i++)
+        {
+            if (false == sender->getOnlyText().empty())
+            {
+                auto currentAttribute = this->gameObjects[i]->getAttribute((*attribute)->getName());
+                currentAttribute->setListSelectedOldValue(currentAttribute->getListSelectedValue());
+                auto list = currentAttribute->getList();
+                list.emplace_back(sender->getOnlyText());
+                currentAttribute->setValue(list);
+                currentAttribute->setListSelectedValue(sender->getOnlyText());
+                this->gameObjects[i]->actualizeValue(*attribute);
+            }
+        }
+
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, sender]()
         {
             sender->setCaption("");
         };
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PropertiesPanelDynamic::notifyEditSelectAccept2");
 
-		// Sent when a name has changed, so that the resources panel can be refreshed with new values
-		boost::shared_ptr<EventDataRefreshResourcesPanel> eventDataRefreshResourcesPanel(new EventDataRefreshResourcesPanel());
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshResourcesPanel);
-	}
-	else if (NOWA::GameObject::AttrName() == (*attribute)->getName())
-	{
-		// Validation of name is required, to remain unique
-		Ogre::String gameObjectName = (*attribute)->getString();
-		NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getValidatedGameObjectName(gameObjectName);
-		
-		NOWA::GraphicsModule::RenderCommand renderCommand = [this, sender, gameObjectName]()
+        boost::shared_ptr<EventDataRefreshResourcesPanel> eventDataRefreshResourcesPanel(new EventDataRefreshResourcesPanel());
+        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshResourcesPanel);
+
+        this->editorManager->setGizmoToGameObjectsCenter();
+        this->editorManager->snapshotNewGameObjectAttribute(*attribute);
+
+        if (true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionNeedRefresh()))
+        {
+            boost::shared_ptr<NOWA::EventDataRefreshGui> eventDataRefreshPropertiesPanel(new NOWA::EventDataRefreshGui());
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
+        }
+        return;
+    }
+
+    // ---- All other attributes: clone approach ----
+    // variantCopy carries the new value; *attribute (GO's own Variant) keeps the old value
+    // so that setters can read the correct old value from this->myVar.
+    NOWA::Variant* variantCopy = (*attribute)->clone();
+    this->setNewAttributeValue(sender, variantCopy);
+
+    if (NOWA::GameObject::AttrPosition() == (*attribute)->getName())
+    {
+        if (1 == this->gameObjects.size())
+        {
+            auto physicsComponent = NOWA::makeStrongPtr(this->gameObject->getComponent<NOWA::PhysicsComponent>());
+            if (nullptr != physicsComponent)
+            {
+                physicsComponent->setPosition(variantCopy->getVector3());
+            }
+            else
+            {
+                this->gameObject->actualizeValue(variantCopy);
+            }
+        }
+        else
+        {
+            for (size_t i = 0; i < this->gameObjects.size(); i++)
+            {
+                auto physicsComponent = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::PhysicsComponent>());
+                if (nullptr != physicsComponent)
+                {
+                    physicsComponent->translate(variantCopy->getVector3());
+                }
+                else
+                {
+                    this->gameObjects[i]->actualizeValue(variantCopy);
+                }
+            }
+        }
+    }
+    else if (NOWA::GameObject::AttrScale() == (*attribute)->getName())
+    {
+        if (1 == this->gameObjects.size())
+        {
+            auto physicsComponent = NOWA::makeStrongPtr(gameObject->getComponent<NOWA::PhysicsComponent>());
+            if (nullptr != physicsComponent)
+            {
+                physicsComponent->setScale(variantCopy->getVector3());
+            }
+            else
+            {
+                this->gameObject->actualizeValue(variantCopy);
+            }
+        }
+        else
+        {
+            for (size_t i = 0; i < this->gameObjects.size(); i++)
+            {
+                auto physicsComponent = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::PhysicsComponent>());
+                if (nullptr != physicsComponent)
+                {
+                    physicsComponent->setScale(variantCopy->getVector3());
+                }
+                else
+                {
+                    this->gameObjects[i]->actualizeValue(variantCopy);
+                }
+            }
+        }
+    }
+    else if (NOWA::GameObject::AttrOrientation() == (*attribute)->getName())
+    {
+        if (1 == this->gameObjects.size())
+        {
+            auto physicsComponent = NOWA::makeStrongPtr(gameObject->getComponent<NOWA::PhysicsComponent>());
+            if (nullptr != physicsComponent)
+            {
+                physicsComponent->setOrientation(NOWA::MathHelper::getInstance()->degreesToQuat(variantCopy->getVector3()));
+            }
+            else
+            {
+                this->gameObject->actualizeValue(variantCopy);
+            }
+        }
+        else
+        {
+            for (size_t i = 0; i < this->gameObjects.size(); i++)
+            {
+                auto physicsComponent = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::PhysicsComponent>());
+                if (nullptr != physicsComponent)
+                {
+                    physicsComponent->setOrientation(NOWA::MathHelper::getInstance()->degreesToQuat(variantCopy->getVector3()));
+                }
+                else
+                {
+                    this->gameObjects[i]->actualizeValue(variantCopy);
+                }
+                // BUG FIX: removed duplicate actualizeValue(*attribute) that was here in original
+            }
+        }
+    }
+    else if (NOWA::GameObject::AttrName() == (*attribute)->getName())
+    {
+        Ogre::String gameObjectName = variantCopy->getString();
+        NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getValidatedGameObjectName(gameObjectName);
+
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, sender, gameObjectName]()
         {
             sender->setOnlyText(gameObjectName);
         };
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PropertiesPanelDynamic::notifyEditSelectAccept3");
 
-		(*attribute)->setValue(gameObjectName);
-		this->gameObject->actualizeValue(*attribute);
+        variantCopy->setValue(gameObjectName);
+        this->gameObject->actualizeValue(variantCopy);
 
-		// Sent when a name has changed, so that the resources panel can be refreshed with new values
-		boost::shared_ptr<EventDataRefreshResourcesPanel> eventDataRefreshResourcesPanel(new EventDataRefreshResourcesPanel());
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshResourcesPanel);
-	}
-	else
-	{
-		for (size_t i = 0; i < this->gameObjects.size(); i++)
-		{
-			this->gameObjects[i]->actualizeValue(*attribute);
-		}
-	}
+        boost::shared_ptr<EventDataRefreshResourcesPanel> eventDataRefreshResourcesPanel(new EventDataRefreshResourcesPanel());
+        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshResourcesPanel);
+    }
+    else
+    {
+        for (size_t i = 0; i < this->gameObjects.size(); i++)
+        {
+            this->gameObjects[i]->actualizeValue(variantCopy);
+        }
+    }
 
-	this->editorManager->setGizmoToGameObjectsCenter();
-	// Snapshot the new attribute
-	this->editorManager->snapshotNewGameObjectAttribute(*attribute);
+    delete variantCopy; // done before snapshotNew, same pattern as notifyEditSelectAccept for components
 
-	if (true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionNeedRefresh()))
-	{
-		boost::shared_ptr<NOWA::EventDataRefreshGui> eventDataRefreshPropertiesPanel(new NOWA::EventDataRefreshGui());
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
-	}
+    this->editorManager->setGizmoToGameObjectsCenter();
+    // snapshotNew uses *attribute — after setter ran, *attribute has the new value ✓
+    this->editorManager->snapshotNewGameObjectAttribute(*attribute);
 
-	// Sent when a property has changed, so that the properties panel can be refreshed with new values
-	// boost::shared_ptr<NOWA::EventDataRefreshGui> eventDataRefreshPropertiesPanel(new NOWA::EventDataRefreshGui());
-	// NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
+    if (true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionNeedRefresh()))
+    {
+        boost::shared_ptr<NOWA::EventDataRefreshGui> eventDataRefreshPropertiesPanel(new NOWA::EventDataRefreshGui());
+        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
+    }
 }
 
+// -----------------------------------------------------------------------------
+// 2.  PropertiesPanelGameObject::buttonHit
+//
+// CHANGE: removed currentAttribute->setValue(). variantCopy carries new bool.
+//         actualizeValue(variantCopy). snapshotNew(*attribute) — UNCHANGED.
+// -----------------------------------------------------------------------------
 void PropertiesPanelGameObject::buttonHit(MyGUI::Widget* sender)
 {
-	MyGUI::Button* button = sender->castType<MyGUI::Button>();
-	if (nullptr != button)
-	{
+    MyGUI::Button* button = sender->castType<MyGUI::Button>();
+    if (nullptr != button)
+    {
         NOWA::GraphicsModule::RenderCommand renderCommand = [this, button]()
         {
             NOWA::Variant** attribute = button->getUserData<NOWA::Variant*>(false);
-            // ColorDialog handling
+
+            // ColorDialog
             if (nullptr != attribute && true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionColorDialog()))
             {
-                // Button hit results in showing properties again, which should not be
                 PropertiesPanel::setShowPropertiesFlag(false);
-                // Must be copied, because the properties are re-created and so the original attribute is gone
                 NOWA::Variant* variantCopy = (*attribute)->clone();
                 ColourPanelManager::getInstance()->getColourPanel()->getWidget()->setUserData(MyGUI::Any(variantCopy));
                 if (NOWA::Variant::VAR_VEC3 == variantCopy->getType())
@@ -3003,30 +3084,23 @@ void PropertiesPanelGameObject::buttonHit(MyGUI::Widget* sender)
                     ColourPanelManager::getInstance()->getColourPanel()->setColour(MyGUI::Colour(variantCopy->getVector4().x, variantCopy->getVector4().y, variantCopy->getVector4().z, variantCopy->getVector4().w));
                 }
                 ColourPanelManager::getInstance()->getColourPanel()->setVisible(true);
-                // MyGUI::InputManager::getInstancePtr()->removeWidgetModal(parent->getMainWidget());
                 MyGUI::InputManager::getInstancePtr()->addWidgetModal(ColourPanelManager::getInstance()->getColourPanel()->getWidget());
                 ColourPanelManager::getInstance()->getColourPanel()->eventColourAccept = MyGUI::newDelegate(this, &PropertiesPanelGameObject::notifyColourAccept);
                 ColourPanelManager::getInstance()->getColourPanel()->eventColourCancel = MyGUI::newDelegate((PropertiesPanelDynamic*)this, &PropertiesPanelGameObject::notifyColourCancel);
             }
-            // FileOpenDialog handling
+            // FileOpenDialog
             else if (nullptr != attribute && true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionFileOpenDialog()))
             {
-                // Button hit results in showing properties again, which should not be
                 PropertiesPanel::setShowPropertiesFlag(false);
-                // Must be copied, because the properties are re-created and so the original attribute is gone
                 NOWA::Variant* variantCopy = (*attribute)->clone();
-
                 Ogre::String resourceGroupName = variantCopy->getUserDataValue(NOWA::GameObject::AttrActionFileOpenDialog());
                 this->openSaveFileDialog->getMainWidget()->setUserData(MyGUI::Any(variantCopy));
-
                 MyGUI::InputManager::getInstancePtr()->setMouseFocusWidget(this->openSaveFileDialog->getMainWidget());
                 MyGUI::InputManager::getInstancePtr()->setKeyFocusWidget(this->openSaveFileDialog->getMainWidget());
-
                 this->showFileOpenDialog("FileOpen", "*.*", resourceGroupName);
             }
             else
             {
-                // Invert the state
                 button->setStateCheck(!button->getStateCheck());
             }
 
@@ -3035,52 +3109,68 @@ void PropertiesPanelGameObject::buttonHit(MyGUI::Widget* sender)
                 return;
             }
 
-            // Snapshot the old attribute name
+            // snapshotOld — *attribute still holds old value
             this->editorManager->snapshotOldGameObjectAttribute(this->gameObjects, (*attribute)->getName());
+
+            // Clone carries new bool; *attribute (GO's own Variant) keeps old value
+            NOWA::Variant* variantCopy = (*attribute)->clone();
+            variantCopy->setValue(button->getStateCheck());
 
             for (size_t i = 0; i < this->gameObjects.size(); i++)
             {
-                auto currentAttribute = this->gameObjects[i]->getAttribute((*attribute)->getName());
-                currentAttribute->setValue(button->getStateCheck());
-                this->gameObjects[i]->actualizeValue(*attribute);
+                // Setter: this->myVar (= *attribute for GO[0]) = old, param = new → proceeds ✓
+                // Setter writes new value into this->myVar (= *attribute)
+                this->gameObjects[i]->actualizeValue(variantCopy);
             }
 
-            // Snapshot the new attribute
+            delete variantCopy;
+
+            // snapshotNew(*attribute) — IDENTICAL to original; setter just wrote new value there ✓
             this->editorManager->snapshotNewGameObjectAttribute(*attribute);
 
             if (nullptr != attribute && true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionNeedRefresh()))
             {
-                // Sent when a property has changed, so that the properties panel can be refreshed with new values
                 boost::shared_ptr<NOWA::EventDataRefreshGui> eventDataRefreshPropertiesPanel(new NOWA::EventDataRefreshGui());
                 NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
             }
         };
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PropertiesPanelGameObject::buttonHit");
-	}
+    }
 }
 
+// -----------------------------------------------------------------------------
+// 3.  PropertiesPanelGameObject::notifyComboChangedPosition
+//
+// CHANGE: removed currentAttribute->setListSelectedValue(). variantCopy carries
+//         new selected value. actualizeValue(variantCopy). snapshotNew(*attribute).
+// -----------------------------------------------------------------------------
 void PropertiesPanelGameObject::notifyComboChangedPosition(MyGUI::ComboBox* sender, size_t index)
 {
-	// Send the combo box change to the game object and internally actualize the data
-	NOWA::Variant** attribute = sender->getUserData<NOWA::Variant*>();
+    NOWA::Variant** attribute = sender->getUserData<NOWA::Variant*>();
 
-	// Snapshot the old attribute name
-	this->editorManager->snapshotOldGameObjectAttribute(this->gameObjects, (*attribute)->getName());
+    this->editorManager->snapshotOldGameObjectAttribute(this->gameObjects, (*attribute)->getName());
 
-	for (size_t i = 0; i < this->gameObjects.size(); i++)
-	{
-		auto currentAttribute = this->gameObjects[i]->getAttribute((*attribute)->getName());
-		currentAttribute->setListSelectedValue(sender->getItem(index));
+    // Clone carries new selected value; *attribute (GO's own Variant) keeps old selected value
+    NOWA::Variant* variantCopy = (*attribute)->clone();
 
-		this->gameObjects[i]->actualizeValue(*attribute);
-	}
+    for (size_t i = 0; i < this->gameObjects.size(); i++)
+    {
+        auto currentAttribute = this->gameObjects[i]->getAttribute((*attribute)->getName());
+        // Preserve old selected value for changeCategory() and undo/redo
+        variantCopy->setListSelectedOldValue(currentAttribute->getListSelectedValue());
+        variantCopy->setListSelectedValue(sender->getItem(index));
+        // Setter: this->myList (= *attribute for GO[0]) = old selected, param = new → proceeds ✓
+        // Setter writes new selected into this->myList (= *attribute)
+        this->gameObjects[i]->actualizeValue(variantCopy);
+    }
 
-	// Snapshot the new attribute
-	this->editorManager->snapshotNewGameObjectAttribute(*attribute);
+    delete variantCopy;
 
-	// Sent when a property has changed, so that the properties panel can be refreshed with new values
-	boost::shared_ptr<NOWA::EventDataRefreshGui> eventDataRefreshPropertiesPanel(new NOWA::EventDataRefreshGui());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
+    // snapshotNew(*attribute) — setter just wrote new selected value into *attribute ✓
+    this->editorManager->snapshotNewGameObjectAttribute(*attribute);
+
+    boost::shared_ptr<NOWA::EventDataRefreshGui> eventDataRefreshPropertiesPanel(new NOWA::EventDataRefreshGui());
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
 }
 
 void PropertiesPanelGameObject::notifyColourAccept(MyGUI::ColourPanel* sender)
@@ -3135,27 +3225,26 @@ void PropertiesPanelGameObject::notifySliderMouseRelease(MyGUI::Widget* sender, 
 
 void PropertiesPanelGameObject::notifySetItemBoxData(MyGUI::ItemBox* sender, const Ogre::String& resourceName)
 {
-	// Send the combo box change to the game object and internally actualize the data
-	NOWA::Variant** attribute = sender->getUserData<NOWA::Variant*>();
+    NOWA::Variant** attribute = sender->getUserData<NOWA::Variant*>();
 
-	// Snapshot the old attribute name
-	this->editorManager->snapshotOldGameObjectAttribute(this->gameObjects, (*attribute)->getName());
+    this->editorManager->snapshotOldGameObjectAttribute(this->gameObjects, (*attribute)->getName());
 
-	for (size_t i = 0; i < this->gameObjects.size(); i++)
-	{
-		auto currentAttribute = this->gameObjects[i]->getAttribute((*attribute)->getName());
+    NOWA::Variant* variantCopy = (*attribute)->clone();
 
-		currentAttribute->setListSelectedValue(resourceName);
+    for (size_t i = 0; i < this->gameObjects.size(); i++)
+    {
+        auto currentAttribute = this->gameObjects[i]->getAttribute((*attribute)->getName());
+        variantCopy->setListSelectedOldValue(currentAttribute->getListSelectedValue());
+        variantCopy->setListSelectedValue(resourceName);
+        this->gameObjects[i]->actualizeValue(variantCopy);
+    }
 
-		this->gameObjects[i]->actualizeValue(*attribute);
-	}
+    delete variantCopy;
 
-	// Snapshot the new attribute
-	this->editorManager->snapshotNewGameObjectAttribute(*attribute);
+    this->editorManager->snapshotNewGameObjectAttribute(*attribute);
 
-	// Sent when a property has changed, so that the properties panel can be refreshed with new values
-	boost::shared_ptr<NOWA::EventDataRefreshGui> eventDataRefreshPropertiesPanel(new NOWA::EventDataRefreshGui());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
+    boost::shared_ptr<NOWA::EventDataRefreshGui> eventDataRefreshPropertiesPanel(new NOWA::EventDataRefreshGui());
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -3307,76 +3396,35 @@ void PropertiesPanelComponent::setNewAttributeValue(MyGUI::EditBox* sender, NOWA
 	MyGUIHelper::getInstance()->showAcceptedImage(Ogre::Vector2(sender->getAbsolutePosition().left, sender->getAbsolutePosition().top), Ogre::Vector2(10.0f, 10.0f), 1.0f);
 }
 
-void PropertiesPanelComponent::onAutoCompleteComboSelectAccept(MyGUI::ComboBox* sender, size_t index)
-{
-	if (index == MyGUI::ITEM_NONE)
-	{
-		return;
-	}
-
-	Ogre::String selectedItem = sender->getItemNameAt(index);
-
-	// Update the search edit box
-	MyGUI::EditBox* searchEdit = this->getLinkedSearchEdit(sender);
-	if (nullptr != searchEdit)
-	{
-		searchEdit->setOnlyText(selectedItem);
-	}
-
-	sender->hideList();
-	sender->setAutoHideList(true);
-
-	// Keep combobox text in sync
-	sender->setOnlyText(selectedItem);
-
-	// Apply the selection (same logic as notifyComboChangedPosition)
-	NOWA::Variant** attribute = sender->getUserData<NOWA::Variant*>();
-	if (nullptr == attribute)
-	{
-		return;
-	}
-
-	if (false == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionNoUndo()))
-	{
-		this->editorManager->snapshotOldGameObjectComponentAttribute(this->gameObjects, this->gameObjectComponents, (*attribute)->getName());
-	}
-
-	for (size_t i = 0; i < this->gameObjectComponents.size(); i++)
-	{
-		auto currentAttribute = this->gameObjectComponents[i]->getAttribute((*attribute)->getName());
-		(*attribute)->setListSelectedOldValue(currentAttribute->getListSelectedValue());
-		currentAttribute->setListSelectedValue(selectedItem);
-
-		this->gameObjectComponents[i]->actualizeValue(*attribute);
-	}
-
-	if (false == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionNoUndo()))
-	{
-		this->editorManager->snapshotNewGameObjectComponentAttribute(*attribute);
-
-		if (true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionNeedRefresh()))
-		{
-			boost::shared_ptr<NOWA::EventDataRefreshGui> eventDataRefreshPropertiesPanel(new NOWA::EventDataRefreshGui());
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
-		}
-	}
-}
-
+// -----------------------------------------------------------------------------
+// 11.  PropertiesPanelComponent::notifyEditSelectAccept
+//
+//  This function already used variantCopy for actualizeValue() and *attribute
+//  for snapshotNew() — both correct.  Two bugs fixed here:
+//
+//  BUG A (memory leak): variantCopy was created before the early-return checks.
+//         Both early returns leaked the clone. Fixed by moving clone creation
+//         to AFTER all early-return checks.
+//
+//  BUG B (harmless but inconsistent): snapshotNew(*attribute) was called after
+//         delete variantCopy. This was actually correct (setter had written the
+//         new value into *attribute), but confusing. Kept exactly as-is since
+//         it matches the proven pattern: delete clone first, then snapshot
+//         *attribute which now holds the new value.
+// -----------------------------------------------------------------------------
 void PropertiesPanelComponent::notifyEditSelectAccept(MyGUI::EditBox* sender)
 {
     NOWA::GraphicsModule::RenderCommand renderCommand = [this, sender]()
     {
-        // Let the camera move again
         NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(1.0f);
         NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(1.0f);
-        // Send the text box change to the game object and internally actualize the data
+
         NOWA::Variant** attribute = sender->getUserData<NOWA::Variant*>();
-        NOWA::Variant* variantCopy = (*attribute)->clone();
 
         Ogre::String editCaption = sender->getOnlyText();
-        // Range adaptation
+
+        // ---- Slider sync (read-only on *attribute — no writes, no clone needed yet) ----
         Ogre::Real editValue = Ogre::StringConverter::parseReal(editCaption);
-        // Check if the edit is paired with a slider, to actualize the slider value
         Ogre::String sliderName = sender->getUserString("slider" + sender->getName());
         if (false == sliderName.empty())
         {
@@ -3399,25 +3447,21 @@ void PropertiesPanelComponent::notifyEditSelectAccept(MyGUI::EditBox* sender)
                 Ogre::Real lowBorder = (*attribute)->getConstraints().first;
                 Ogre::Real highBorder = (*attribute)->getConstraints().second;
 
-                // Checks if int slider or real slider
                 if ((*attribute)->getType() == NOWA::Variant::VAR_INT || (*attribute)->getType() == NOWA::Variant::VAR_UINT || (*attribute)->getType() == NOWA::Variant::VAR_ULONG)
                 {
                     int value;
                     std::istringstream iss(editCaption);
                     if (iss >> value)
                     {
-                        NOWA::Variant** attribute = sender->getUserData<NOWA::Variant*>();
-
                         if (value < lowBorder)
                         {
-                            value = lowBorder;
+                            value = static_cast<int>(lowBorder);
                         }
                         if (value > highBorder)
                         {
-                            value = highBorder;
+                            value = static_cast<int>(highBorder);
                         }
-                        size_t newPosition = static_cast<size_t>(value - lowBorder);
-                        slider->setScrollPosition(newPosition);
+                        slider->setScrollPosition(static_cast<size_t>(value - lowBorder));
                     }
                 }
                 else
@@ -3434,58 +3478,58 @@ void PropertiesPanelComponent::notifyEditSelectAccept(MyGUI::EditBox* sender)
                         {
                             value = highBorder;
                         }
-                        size_t newPosition = static_cast<size_t>((value - lowBorder) / (highBorder - lowBorder) * 1000.0f);
-                        slider->setScrollPosition(newPosition);
+                        slider->setScrollPosition(static_cast<size_t>((value - lowBorder) / (highBorder - lowBorder) * 1000.0f));
                     }
                 }
             }
         }
 
+        // ---- Early-return checks — NO variantCopy created yet, so no leak (BUG A fixed) ----
+        // *attribute still holds OLD value here (not pre-written), so comparisons are correct
         if (true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionForceSet()))
         {
-            // Do nothing but jump over the next condition, so that the value will be reset, even its the same value
+            // skip equality check — force re-apply even if value looks unchanged
         }
         else
         {
-            // Only proceed if a value changed
             if ((*attribute)->getString() == editCaption)
             {
-                return;
+                return; // no variantCopy exists yet — nothing to leak ✓
             }
         }
 
-        // If its a list, check the selected value if it has changed
         if ((*attribute)->getList().size() > 0)
         {
             if ((*attribute)->getListSelectedValue() == editCaption)
             {
-                return;
+                return; // no variantCopy exists yet — nothing to leak ✓
             }
         }
 
-        // Snapshot the old attribute name
+        // snapshotOld — *attribute still holds old value
         this->editorManager->snapshotOldGameObjectComponentAttribute(this->gameObjects, this->gameObjectComponents, (*attribute)->getName());
 
+        // Clone AFTER early returns — carries new value; *attribute keeps old value
+        NOWA::Variant* variantCopy = (*attribute)->clone();
         this->setNewAttributeValue(sender, variantCopy);
 
         for (size_t i = 0; i < this->gameObjectComponents.size(); i++)
         {
+            // Setter: this->myVar (= *attribute) = old value, param = new value → proceeds ✓
+            // Setter writes new value into this->myVar (= *attribute)
             this->gameObjectComponents[i]->actualizeValue(variantCopy);
         }
 
         delete variantCopy;
 
+        // snapshotNew(*attribute) — IDENTICAL to original ordering; setter just wrote new value ✓
         this->editorManager->snapshotNewGameObjectComponentAttribute(*attribute);
 
         if (true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionNeedRefresh()))
         {
-            boost::shared_ptr<NOWA::EventDataRefreshGui> eventDataRefreshPropertiesPanel(new NOWA::EventDataRefreshGui());
-            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
+            boost::shared_ptr<NOWA::EventDataRefreshGui> r(new NOWA::EventDataRefreshGui());
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(r);
         }
-
-        // Sent when a property has changed, so that the properties panel can be refreshed with new values
-        // boost::shared_ptr<NOWA::EventDataRefreshGui> eventDataRefreshPropertiesPanel(new NOWA::EventDataRefreshGui());
-        // NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
     };
     NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PropertiesPanelComponent::notifyEditSelectAccept");
 }
@@ -3562,83 +3606,95 @@ void PropertiesPanelComponent::notifyScrollChangePosition(MyGUI::ScrollBar* send
 	}
 }
 
+// -----------------------------------------------------------------------------
+// 9.  PropertiesPanelComponent::notifySliderMouseRelease
+//
+// CHANGE: merged two loops into one. variantCopy carries new real value.
+//         actualizeValue(variantCopy). snapshotNew(*attribute).
+// -----------------------------------------------------------------------------
 void PropertiesPanelComponent::notifySliderMouseRelease(MyGUI::Widget* sender, int x, int y, MyGUI::MouseButton button)
 {
-	// Is never called why??
-	MyGUI::ScrollBar* scrollBar = sender->castType<MyGUI::ScrollBar>(false);
-	if (nullptr != scrollBar)
-	{
-		MyGUI::EditBox** editPair = sender->getUserData<MyGUI::EditBox*>(false);
-		if (nullptr != editPair)
-		{
-			// Send the text box change to the game object and internally actualize the data
-			NOWA::Variant** attribute = (*editPair)->getUserData<NOWA::Variant*>(false);
+    MyGUI::ScrollBar* scrollBar = sender->castType<MyGUI::ScrollBar>(false);
+    if (nullptr == scrollBar)
+    {
+        return;
+    }
 
-			if (false == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionNoUndo()))
-			{
-				// Snapshot the old attribute name
-				this->editorManager->snapshotOldGameObjectComponentAttribute(this->gameObjects, this->gameObjectComponents, (*attribute)->getName());
-			}
+    MyGUI::EditBox** editPair = sender->getUserData<MyGUI::EditBox*>(false);
+    if (nullptr == editPair)
+    {
+        return;
+    }
 
-			for (size_t i = 0; i < this->gameObjectComponents.size(); i++)
-			{
-				NOWA::Variant* currentAttribute = this->gameObjectComponents[i]->getAttribute((*attribute)->getName());
-				currentAttribute->setValue(Ogre::StringConverter::parseReal((*editPair)->getOnlyText()));
-			}
+    NOWA::Variant** attribute = (*editPair)->getUserData<NOWA::Variant*>(false);
+    if (nullptr == attribute)
+    {
+        return;
+    }
 
-			for (size_t i = 0; i < this->gameObjectComponents.size(); i++)
-			{
-				this->gameObjectComponents[i]->actualizeValue(*attribute);
-			}
+    if (false == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionNoUndo()))
+    {
+        this->editorManager->snapshotOldGameObjectComponentAttribute(this->gameObjects, this->gameObjectComponents, (*attribute)->getName());
+    }
 
-			if (false == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionNoUndo()))
-			{
-				this->editorManager->snapshotNewGameObjectComponentAttribute(*attribute);
+    // Clone carries new real value; *attribute (component's own Variant) keeps old value
+    NOWA::Variant* variantCopy = (*attribute)->clone();
+    variantCopy->setValue(Ogre::StringConverter::parseReal((*editPair)->getOnlyText()));
 
-				if (true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionNeedRefresh()))
-				{
-					boost::shared_ptr<NOWA::EventDataRefreshGui> eventDataRefreshPropertiesPanel(new NOWA::EventDataRefreshGui());
-					NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
-				}
-			}
-		}
-	}
+    for (size_t i = 0; i < this->gameObjectComponents.size(); i++)
+    {
+        // Setter: this->myVar (= *attribute) = old, param = new → proceeds ✓
+        this->gameObjectComponents[i]->actualizeValue(variantCopy);
+    }
+
+    delete variantCopy;
+
+    if (false == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionNoUndo()))
+    {
+        // snapshotNew(*attribute) — UNCHANGED from original; setter wrote new value there ✓
+        this->editorManager->snapshotNewGameObjectComponentAttribute(*attribute);
+
+        if (true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionNeedRefresh()))
+        {
+            boost::shared_ptr<NOWA::EventDataRefreshGui> r(new NOWA::EventDataRefreshGui());
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(r);
+        }
+    }
 }
 
 void PropertiesPanelComponent::notifySetItemBoxData(MyGUI::ItemBox* sender, const Ogre::String& resourceName)
 {
-	this->showDescription(sender);
+    this->showDescription(sender);
 
-	// Send the combo box change to the game object and internally actualize the data
-	NOWA::Variant** attribute = sender->getUserData<NOWA::Variant*>();
+    NOWA::Variant** attribute = sender->getUserData<NOWA::Variant*>();
 
-	if (false == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionNoUndo()))
-	{
-		// Snapshot the old attribute name
-		this->editorManager->snapshotOldGameObjectComponentAttribute(this->gameObjects, this->gameObjectComponents, (*attribute)->getName());
-	}
+    if (false == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionNoUndo()))
+    {
+        this->editorManager->snapshotOldGameObjectComponentAttribute(this->gameObjects, this->gameObjectComponents, (*attribute)->getName());
+    }
 
-	for (size_t i = 0; i < this->gameObjectComponents.size(); i++)
-	{
-		auto currentAttribute = this->gameObjectComponents[i]->getAttribute((*attribute)->getName());
-		// Store also the old value in list
-		(*attribute)->setListSelectedOldValue(currentAttribute->getListSelectedValue());
-		currentAttribute->setListSelectedValue(resourceName);
+    NOWA::Variant* variantCopy = (*attribute)->clone();
 
-		this->gameObjectComponents[i]->actualizeValue(*attribute);
-	}
+    for (size_t i = 0; i < this->gameObjectComponents.size(); i++)
+    {
+        auto currentAttribute = this->gameObjectComponents[i]->getAttribute((*attribute)->getName());
+        variantCopy->setListSelectedOldValue(currentAttribute->getListSelectedValue());
+        variantCopy->setListSelectedValue(resourceName);
+        this->gameObjectComponents[i]->actualizeValue(variantCopy);
+    }
 
-	if (false == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionNoUndo()))
-	{
-		// Snapshot the new attribute
-		this->editorManager->snapshotNewGameObjectComponentAttribute(*attribute);
+    delete variantCopy;
 
-		if (true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionNeedRefresh()))
-		{
-			boost::shared_ptr<NOWA::EventDataRefreshGui> eventDataRefreshPropertiesPanel(new NOWA::EventDataRefreshGui());
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
-		}
-	}
+    if (false == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionNoUndo()))
+    {
+        this->editorManager->snapshotNewGameObjectComponentAttribute(*attribute);
+
+        if (true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionNeedRefresh()))
+        {
+            boost::shared_ptr<NOWA::EventDataRefreshGui> r(new NOWA::EventDataRefreshGui());
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(r);
+        }
+    }
 }
 
 void PropertiesPanelComponent::notifyExecAction(NOWA::Variant* attribute, const Ogre::String& execId)
@@ -3670,253 +3726,237 @@ void PropertiesPanelComponent::notifyExecAction(NOWA::Variant* attribute, const 
 	}
 }
 
+// -----------------------------------------------------------------------------
+// 5.  PropertiesPanelComponent::buttonHit
+//
+// CHANGE (else branch only): removed currentAttribute->setValue(). variantCopy
+//         carries new bool. actualizeValue(variantCopy). snapshotNew(*attribute).
+//         All other branches (dialogs, lua, append/delete/move/debug) unchanged.
+// -----------------------------------------------------------------------------
 void PropertiesPanelComponent::buttonHit(MyGUI::Widget* sender)
 {
-	NOWA::GraphicsModule::RenderCommand renderCommand = [this, sender]()
-	{
-		this->showDescription(sender);
+    NOWA::GraphicsModule::RenderCommand renderCommand = [this, sender]()
+    {
+        this->showDescription(sender);
 
-		MyGUI::Button * button = sender->castType<MyGUI::Button>();
-		bool hasAttribute = false;
-		if (nullptr != button)
-		{
-			NOWA::Variant** attribute = button->getUserData<NOWA::Variant*>(false);
-			if (nullptr != attribute)
-			{
-				hasAttribute = true;
-			}
+        MyGUI::Button* button = sender->castType<MyGUI::Button>();
+        bool hasAttribute = false;
+        if (nullptr == button)
+        {
+            return;
+        }
 
-			if (true == hasAttribute && true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionColorDialog()))
-			{
-				// Button hit results in showing properties again, which should not be
-				PropertiesPanel::setShowPropertiesFlag(false);
-				// Must be copied, because the properties are re-created and so the original attribute is gone
-				NOWA::Variant* variantCopy = (*attribute)->clone();
-				ColourPanelManager::getInstance()->getColourPanel()->getWidget()->setUserData(MyGUI::Any(variantCopy));
-				if (NOWA::Variant::VAR_VEC3 == variantCopy->getType())
-				{
-					ColourPanelManager::getInstance()->getColourPanel()->setColour(MyGUI::Colour(variantCopy->getVector3().x, variantCopy->getVector3().y, variantCopy->getVector3().z, 1.0f));
-				}
-				else if (NOWA::Variant::VAR_VEC4 == variantCopy->getType())
-				{
-					ColourPanelManager::getInstance()->getColourPanel()->setColour(MyGUI::Colour(variantCopy->getVector4().x, variantCopy->getVector4().y, variantCopy->getVector4().z, variantCopy->getVector4().w));
-				}
-				ColourPanelManager::getInstance()->getColourPanel()->setVisible(true);
-				MyGUI::InputManager::getInstancePtr()->addWidgetModal(ColourPanelManager::getInstance()->getColourPanel()->getWidget());
-				ColourPanelManager::getInstance()->getColourPanel()->eventColourAccept = MyGUI::newDelegate(this, &PropertiesPanelComponent::notifyColourAccept);
-				ColourPanelManager::getInstance()->getColourPanel()->eventColourCancel = MyGUI::newDelegate((PropertiesPanelDynamic*)this, &PropertiesPanelDynamic::notifyColourCancel);
-			}
-			// FileOpenDialog handling
-			else if (true == hasAttribute && true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionFileOpenDialog()))
-			{
-				// Button hit results in showing properties again, which should not be
-				PropertiesPanel::setShowPropertiesFlag(false);
+        NOWA::Variant** attribute = button->getUserData<NOWA::Variant*>(false);
+        if (nullptr != attribute)
+        {
+            hasAttribute = true;
+        }
 
-				// Must be copied, because the properties are re-created and so the original attribute is gone
-				NOWA::Variant* variantCopy = (*attribute)->clone();
+        // ColorDialog
+        if (true == hasAttribute && true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionColorDialog()))
+        {
+            PropertiesPanel::setShowPropertiesFlag(false);
+            NOWA::Variant* variantCopy = (*attribute)->clone();
+            ColourPanelManager::getInstance()->getColourPanel()->getWidget()->setUserData(MyGUI::Any(variantCopy));
+            if (NOWA::Variant::VAR_VEC3 == variantCopy->getType())
+            {
+                ColourPanelManager::getInstance()->getColourPanel()->setColour(MyGUI::Colour(variantCopy->getVector3().x, variantCopy->getVector3().y, variantCopy->getVector3().z, 1.0f));
+            }
+            else if (NOWA::Variant::VAR_VEC4 == variantCopy->getType())
+            {
+                ColourPanelManager::getInstance()->getColourPanel()->setColour(MyGUI::Colour(variantCopy->getVector4().x, variantCopy->getVector4().y, variantCopy->getVector4().z, variantCopy->getVector4().w));
+            }
+            ColourPanelManager::getInstance()->getColourPanel()->setVisible(true);
+            MyGUI::InputManager::getInstancePtr()->addWidgetModal(ColourPanelManager::getInstance()->getColourPanel()->getWidget());
+            ColourPanelManager::getInstance()->getColourPanel()->eventColourAccept = MyGUI::newDelegate(this, &PropertiesPanelComponent::notifyColourAccept);
+            ColourPanelManager::getInstance()->getColourPanel()->eventColourCancel = MyGUI::newDelegate((PropertiesPanelDynamic*)this, &PropertiesPanelDynamic::notifyColourCancel);
+        }
+        // FileOpenDialog
+        else if (true == hasAttribute && true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionFileOpenDialog()))
+        {
+            PropertiesPanel::setShowPropertiesFlag(false);
+            NOWA::Variant* variantCopy = (*attribute)->clone();
+            Ogre::String resourceGroupName = variantCopy->getUserDataValue(NOWA::GameObject::AttrActionFileOpenDialog());
+            if (true == resourceGroupName.empty())
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ImageData] ERROR: Could not open file dialog because the resource name is empty!");
+                return;
+            }
+            this->openSaveFileDialog->getMainWidget()->setUserData(MyGUI::Any(variantCopy));
+            MyGUI::InputManager::getInstancePtr()->setMouseFocusWidget(this->openSaveFileDialog->getMainWidget());
+            MyGUI::InputManager::getInstancePtr()->setKeyFocusWidget(this->openSaveFileDialog->getMainWidget());
+            this->showFileOpenDialog("FileOpen", "*.*", resourceGroupName);
+        }
+        // LuaScript
+        else if (nullptr != attribute && true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionLuaScript()))
+        {
+            Ogre::String absoluteLuaScriptFilePathName = (*attribute)->getUserDataValue(NOWA::GameObject::AttrActionLuaScript());
+            NOWA::DeployResourceModule::getInstance()->openNOWALuaScriptEditor(absoluteLuaScriptFilePathName);
+        }
+        // GenerateLuaFunction
+        else if (true == hasAttribute && true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionGenerateLuaFunction()))
+        {
+            if (nullptr != this->gameObject->getLuaScript())
+            {
+                NOWA::AppStateManager::getSingletonPtr()->getLuaScriptModule()->generateLuaFunctionName(this->gameObject->getLuaScript()->getScriptName(), (*attribute)->getUserDataValue(NOWA::GameObject::AttrActionGenerateLuaFunction()),
+                    this->gameObject->getGlobal());
+            }
+        }
+        // Append component
+        else if (button == this->appendComponentButton)
+        {
+            int index = this->gameObjects[0]->getIndexFromComponent(this->gameObjectComponents[0]);
+            if (-1 != index)
+            {
+                boost::shared_ptr<EventDataShowComponentsPanel> eventDataShowComponentsPanel(new EventDataShowComponentsPanel(index));
+                NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataShowComponentsPanel);
+            }
+        }
+        // Delete component
+        else if (button == this->deleteComponentButton)
+        {
+            std::vector<unsigned long> gameObjectIds(this->gameObjects.size());
+            for (size_t i = 0; i < this->gameObjects.size(); i++)
+            {
+                Ogre::String className = this->gameObjectComponents[0]->getClassName();
+                if (NOWA::GameObjectController::MAIN_GAMEOBJECT_ID == this->gameObjects[i]->getId())
+                {
+                    if (className == NOWA::NodeComponent::getStaticClassName())
+                    {
+                        return;
+                    }
+                }
+                else if (NOWA::GameObjectController::MAIN_LIGHT_ID == this->gameObjects[i]->getId())
+                {
+                    if (className == NOWA::LightDirectionalComponent::getStaticClassName())
+                    {
+                        return;
+                    }
+                }
+                else if (NOWA::GameObjectController::MAIN_CAMERA_ID == this->gameObjects[i]->getId())
+                {
+                    if (className == NOWA::CameraComponent::getStaticClassName())
+                    {
+                        return;
+                    }
+                }
+                gameObjectIds[i] = this->gameObjects[i]->getId();
+            }
+            int index = this->gameObjects[0]->getIndexFromComponent(this->gameObjectComponents[0]);
+            if (-1 != index)
+            {
+                this->editorManager->deleteComponent(gameObjectIds, static_cast<unsigned int>(index));
+            }
 
-				Ogre::String resourceGroupName = variantCopy->getUserDataValue(NOWA::GameObject::AttrActionFileOpenDialog());
-				if (true == resourceGroupName.empty())
-				{
-					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ImageData] ERROR: Could not open file dialog because the resource name is empty!");
-					return;
-				}
+            boost::shared_ptr<NOWA::EventDataRefreshGui> r(new NOWA::EventDataRefreshGui());
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(r);
+            boost::shared_ptr<NOWA::EventDataGenerateCategories> c(new NOWA::EventDataGenerateCategories());
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(c);
+        }
+        // Debug data
+        else if (button == this->debugDataComponentButton)
+        {
+            for (size_t i = 0; i < this->gameObjectComponents.size(); i++)
+            {
+                this->gameObjectComponents[i]->showDebugData();
+            }
+            this->debugDataComponentButton->setStateCheck(this->gameObjectComponents[0]->getShowDebugData());
+        }
+        // Move up
+        else if (button == this->moveUpComponentButton)
+        {
+            for (size_t i = 0; i < this->gameObjects.size(); i++)
+            {
+                int index = this->gameObjects[i]->getIndexFromComponent(this->gameObjectComponents[0]);
+                if (-1 != index)
+                {
+                    this->gameObjects[i]->moveComponentUp(index);
+                }
+            }
+            boost::shared_ptr<NOWA::EventDataSceneModified> s(new NOWA::EventDataSceneModified());
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(s);
+            boost::shared_ptr<NOWA::EventDataRefreshGui> r(new NOWA::EventDataRefreshGui());
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(r);
+            boost::shared_ptr<NOWA::EventDataGenerateCategories> c(new NOWA::EventDataGenerateCategories());
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(c);
+        }
+        // Move down
+        else if (button == this->moveDownComponentButton)
+        {
+            for (size_t i = 0; i < this->gameObjects.size(); i++)
+            {
+                int index = this->gameObjects[i]->getIndexFromComponent(this->gameObjectComponents[0]);
+                if (-1 != index)
+                {
+                    this->gameObjects[i]->moveComponentDown(index);
+                }
+            }
+            boost::shared_ptr<NOWA::EventDataSceneModified> s(new NOWA::EventDataSceneModified());
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(s);
+            boost::shared_ptr<NOWA::EventDataRefreshGui> r(new NOWA::EventDataRefreshGui());
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(r);
+            boost::shared_ptr<NOWA::EventDataGenerateCategories> c(new NOWA::EventDataGenerateCategories());
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(c);
+        }
+        // ---- Bool checkbox (generic component attribute) ---- THE KEY FIX ----
+        else
+        {
+            button->setStateCheck(!button->getStateCheck());
+            attribute = button->getUserData<NOWA::Variant*>();
+            hasAttribute = (nullptr != attribute);
 
-				this->openSaveFileDialog->getMainWidget()->setUserData(MyGUI::Any(variantCopy));
-				MyGUI::InputManager::getInstancePtr()->setMouseFocusWidget(this->openSaveFileDialog->getMainWidget());
-				MyGUI::InputManager::getInstancePtr()->setKeyFocusWidget(this->openSaveFileDialog->getMainWidget());
-				// this->openSaveFileDialog->eventEndDialog = MyGUI::newDelegate(this, &PropertiesPanelComponent::notifyEndDialog);
+            if (true == hasAttribute)
+            {
+                if (NOWA::PhysicsActiveComponent::AttrSleep() == (*attribute)->getName())
+                {
+                    return;
+                }
 
-				this->showFileOpenDialog("FileOpen", "*.*", resourceGroupName);
-			}
-			else if (nullptr != attribute && true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionLuaScript()))
-			{
-				Ogre::String absoluteLuaScriptFilePathName = (*attribute)->getUserDataValue(NOWA::GameObject::AttrActionLuaScript());
-				bool success = NOWA::DeployResourceModule::getInstance()->openNOWALuaScriptEditor(absoluteLuaScriptFilePathName);
-			}
-			else if (true == hasAttribute && true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionGenerateLuaFunction()))
-			{
-				if (nullptr != this->gameObject->getLuaScript())
-				{
-					NOWA::AppStateManager::getSingletonPtr()->getLuaScriptModule()->generateLuaFunctionName(this->gameObject->getLuaScript()->getScriptName(), (*attribute)->getUserDataValue(NOWA::GameObject::AttrActionGenerateLuaFunction()), this->gameObject->getGlobal());
-				}
-			}
-			else if (button == this->appendComponentButton)
-			{
-				// Deletes the component
-				std::vector<unsigned long> gameObjectIds(this->gameObjects.size());
+                if (false == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionNoUndo()))
+                {
+                    // snapshotOld — component's own Variant (*attribute) still holds old value
+                    this->editorManager->snapshotOldGameObjectComponentAttribute(this->gameObjects, this->gameObjectComponents, (*attribute)->getName());
+                }
 
-				for (size_t i = 0; i < this->gameObjects.size(); i++)
-				{
-					gameObjectIds[i] = this->gameObjects[i]->getId();
-				}
+                // Clone carries new bool; *attribute (component's own Variant) keeps old value
+                NOWA::Variant* variantCopy = (*attribute)->clone();
+                variantCopy->setValue(button->getStateCheck());
 
-				int index = this->gameObjects[0]->getIndexFromComponent(this->gameObjectComponents[0]);
-				if (-1 != index)
-				{
-					// Sent when a component panel with all components should be shown
-					boost::shared_ptr<EventDataShowComponentsPanel> eventDataShowComponentsPanel(new EventDataShowComponentsPanel(index));
-					NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataShowComponentsPanel);
-				}
-			}
-			else if (button == this->deleteComponentButton)
-			{
-				// Deletes the component
-				std::vector<unsigned long> gameObjectIds(this->gameObjects.size());
+                for (size_t i = 0; i < this->gameObjectComponents.size(); i++)
+                {
+                    // Setter: this->myVar (= *attribute) = old, param = new → proceeds ✓
+                    // Setter writes new value into this->myVar (= *attribute)
+                    this->gameObjectComponents[i]->actualizeValue(variantCopy);
+                }
 
-				for (size_t i = 0; i < this->gameObjects.size(); i++)
-				{
-					// Prevent deleting a component of a kind main game object
-					Ogre::String className = this->gameObjectComponents[0]->getClassName();
+                delete variantCopy;
 
-					if (NOWA::GameObjectController::MAIN_GAMEOBJECT_ID == this->gameObjects[i]->getId())
-					{
-						if (className == NOWA::NodeComponent::getStaticClassName())
-						{
-							return;
-						}
-					}
-					else if (NOWA::GameObjectController::MAIN_LIGHT_ID == this->gameObjects[i]->getId())
-					{
-						if (className == NOWA::LightDirectionalComponent::getStaticClassName())
-						{
-							return;
-						}
-					}
-					else if (NOWA::GameObjectController::MAIN_CAMERA_ID == this->gameObjects[i]->getId())
-					{
-						if (className == NOWA::CameraComponent::getStaticClassName())
-						{
-							return;
-						}
-					}
+                if (false == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionNoUndo()))
+                {
+                    // snapshotNew(*attribute) — UNCHANGED from original; setter wrote new value there ✓
+                    this->editorManager->snapshotNewGameObjectComponentAttribute(*attribute);
+                }
+            }
+        }
 
-					gameObjectIds[i] = this->gameObjects[i]->getId();
-				}
-
-				int index = this->gameObjects[0]->getIndexFromComponent(this->gameObjectComponents[0]);
-				if (-1 != index)
-				{
-					this->editorManager->deleteComponent(gameObjectIds, static_cast<unsigned int>(index));
-				}
-				// Sent when a property has changed, so that the properties panel can be refreshed with new values
-				boost::shared_ptr<NOWA::EventDataRefreshGui> eventDataRefreshPropertiesPanel(new NOWA::EventDataRefreshGui());
-				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
-
-				// Regenerate categories
-				boost::shared_ptr<NOWA::EventDataGenerateCategories> eventDataGenerateCategories(new NOWA::EventDataGenerateCategories());
-				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGenerateCategories);
-			}
-			else if (button == this->debugDataComponentButton)
-			{
-				// Show debug data if pushed
-				for (size_t i = 0; i < this->gameObjectComponents.size(); i++)
-				{
-					this->gameObjectComponents[i]->showDebugData();
-				}
-				this->debugDataComponentButton->setStateCheck(this->gameObjectComponents[0]->getShowDebugData());
-			}
-			else if (button == this->moveUpComponentButton)
-			{
-				// Move up component
-				std::vector<unsigned long> gameObjectIds(this->gameObjects.size());
-				for (size_t i = 0; i < this->gameObjects.size(); i++)
-				{
-					gameObjectIds[i] = this->gameObjects[i]->getId();
-					int index = this->gameObjects[i]->getIndexFromComponent(this->gameObjectComponents[0]);
-					if (-1 != index)
-					{
-						this->gameObjects[i]->moveComponentUp(index);
-					}
-				}
-				boost::shared_ptr<NOWA::EventDataSceneModified> eventDataSceneModified(new NOWA::EventDataSceneModified());
-				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataSceneModified);
-
-				// Sent when a property has changed, so that the properties panel can be refreshed with new values
-				boost::shared_ptr<NOWA::EventDataRefreshGui> eventDataRefreshPropertiesPanel(new NOWA::EventDataRefreshGui());
-				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
-
-				// Regenerate categories
-				boost::shared_ptr<NOWA::EventDataGenerateCategories> eventDataGenerateCategories(new NOWA::EventDataGenerateCategories());
-				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGenerateCategories);
-			}
-			else if (button == this->moveDownComponentButton)
-			{
-				// Move down component
-				std::vector<unsigned long> gameObjectIds(this->gameObjects.size());
-				for (size_t i = 0; i < this->gameObjects.size(); i++)
-				{
-					gameObjectIds[i] = this->gameObjects[i]->getId();
-					int index = this->gameObjects[i]->getIndexFromComponent(this->gameObjectComponents[0]);
-					if (-1 != index)
-					{
-						this->gameObjects[i]->moveComponentDown(index);
-					}
-				}
-				boost::shared_ptr<NOWA::EventDataSceneModified> eventDataSceneModified(new NOWA::EventDataSceneModified());
-				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataSceneModified);
-
-				// Sent when a property has changed, so that the properties panel can be refreshed with new values
-				boost::shared_ptr<NOWA::EventDataRefreshGui> eventDataRefreshPropertiesPanel(new NOWA::EventDataRefreshGui());
-				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
-
-				// Regenerate categories
-				boost::shared_ptr<NOWA::EventDataGenerateCategories> eventDataGenerateCategories(new NOWA::EventDataGenerateCategories());
-				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGenerateCategories);
-			}
-			else
-			{
-				// Invert the state
-				button->setStateCheck(!button->getStateCheck());
-				NOWA::Variant** attribute = button->getUserData<NOWA::Variant*>();
-				if (nullptr != attribute)
-				{
-					hasAttribute = true;
-				}
-
-				if (true == hasAttribute)
-				{
-					// Do not store sleep state for undo redo, because it may become nasty
-					if (NOWA::PhysicsActiveComponent::AttrSleep() == (*attribute)->getName())
-					{
-						return;
-					}
-
-					if (false == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionNoUndo()))
-					{
-						// Snapshot the old attribute name
-						this->editorManager->snapshotOldGameObjectComponentAttribute(this->gameObjects, this->gameObjectComponents, (*attribute)->getName());
-					}
-
-					for (size_t i = 0; i < this->gameObjectComponents.size(); i++)
-					{
-						auto currentAttribute = this->gameObjectComponents[i]->getAttribute((*attribute)->getName());
-						currentAttribute->setValue(button->getStateCheck());
-						this->gameObjectComponents[i]->actualizeValue(*attribute);
-					}
-
-					if (false == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionNoUndo()))
-					{
-						// Snapshot the new attribute
-						this->editorManager->snapshotNewGameObjectComponentAttribute(*attribute);
-					}
-				}
-			}
-
-			if (true == hasAttribute && (false == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionNoUndo())))
-			{
-				// Sent when a property has changed, so that the properties panel can be refreshed with new values
-				if (nullptr != attribute && true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionNeedRefresh()))
-				{
-					boost::shared_ptr<NOWA::EventDataRefreshGui> eventDataRefreshPropertiesPanel(new NOWA::EventDataRefreshGui());
-					NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
-				}
-			}
-		}
-	};
-	NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PropertiesPanelComponent::buttonHit");
+        if (true == hasAttribute && false == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionNoUndo()))
+        {
+            if (nullptr != attribute && true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionNeedRefresh()))
+            {
+                boost::shared_ptr<NOWA::EventDataRefreshGui> r(new NOWA::EventDataRefreshGui());
+                NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(r);
+            }
+        }
+    };
+    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PropertiesPanelComponent::buttonHit");
 }
 
+// -----------------------------------------------------------------------------
+// 6.  PropertiesPanelComponent::notifyComboChangedPosition
+//
+// CHANGE: removed currentAttribute->setListSelectedValue(). variantCopy carries
+//         new selected. actualizeValue(variantCopy). snapshotNew(*attribute).
+// -----------------------------------------------------------------------------
 void PropertiesPanelComponent::notifyComboChangedPosition(MyGUI::ComboBox* sender, size_t index)
 {
     NOWA::GraphicsModule::RenderCommand renderCommand = [this, sender]()
@@ -3925,41 +3965,39 @@ void PropertiesPanelComponent::notifyComboChangedPosition(MyGUI::ComboBox* sende
     };
     NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PropertiesPanelComponent::notifyComboChangedPosition");
 
-	// Send the combo box change to the game object and internally actualize the data
-	NOWA::Variant** attribute = sender->getUserData<NOWA::Variant*>();
+    NOWA::Variant** attribute = sender->getUserData<NOWA::Variant*>();
 
-	if (false == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionNoUndo()))
-	{
-		// Snapshot the old attribute name
-		this->editorManager->snapshotOldGameObjectComponentAttribute(this->gameObjects, this->gameObjectComponents, (*attribute)->getName());
-	}
+    if (false == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionNoUndo()))
+    {
+        this->editorManager->snapshotOldGameObjectComponentAttribute(this->gameObjects, this->gameObjectComponents, (*attribute)->getName());
+    }
 
-	for (size_t i = 0; i < this->gameObjectComponents.size(); i++)
-	{
-		auto currentAttribute = this->gameObjectComponents[i]->getAttribute((*attribute)->getName());
-		// Store also the old value in list
-		(*attribute)->setListSelectedOldValue(currentAttribute->getListSelectedValue());
-		currentAttribute->setListSelectedValue(sender->getItem(index));
+    // Clone carries new selected value; *attribute (component's own Variant) keeps old selected
+    NOWA::Variant* variantCopy = (*attribute)->clone();
 
-		this->gameObjectComponents[i]->actualizeValue(*attribute);
-	}
+    for (size_t i = 0; i < this->gameObjectComponents.size(); i++)
+    {
+        auto currentAttribute = this->gameObjectComponents[i]->getAttribute((*attribute)->getName());
+        variantCopy->setListSelectedOldValue(currentAttribute->getListSelectedValue());
+        variantCopy->setListSelectedValue(sender->getItem(index));
+        // Setter: this->myList (= *attribute for comp[0]) = old selected, param = new → proceeds ✓
+        // Setter writes new selected into this->myList
+        this->gameObjectComponents[i]->actualizeValue(variantCopy);
+    }
 
-	if (false == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionNoUndo()))
-	{
-		// Snapshot the new attribute
-		this->editorManager->snapshotNewGameObjectComponentAttribute(*attribute);
+    delete variantCopy;
 
-		if (true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionNeedRefresh()))
-		{
-			boost::shared_ptr<NOWA::EventDataRefreshGui> eventDataRefreshPropertiesPanel(new NOWA::EventDataRefreshGui());
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
-		}
-	}
+    if (false == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionNoUndo()))
+    {
+        // snapshotNew(*attribute) — IDENTICAL to original; setter wrote new selected there ✓
+        this->editorManager->snapshotNewGameObjectComponentAttribute(*attribute);
 
-	// Disabled: Because it messes up with prior set values in other field, because on refresh somehow they will be resetted!
-		// Sent when a property has changed, so that the properties panel can be refreshed with new values
-		/*boost::shared_ptr<NOWA::EventDataRefreshGui> eventDataRefreshPropertiesPanel(new NOWA::EventDataRefreshGui());
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);*/
+        if (true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionNeedRefresh()))
+        {
+            boost::shared_ptr<NOWA::EventDataRefreshGui> r(new NOWA::EventDataRefreshGui());
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(r);
+        }
+    }
 }
 
 void PropertiesPanelComponent::notifyColourAccept(MyGUI::ColourPanel* sender)

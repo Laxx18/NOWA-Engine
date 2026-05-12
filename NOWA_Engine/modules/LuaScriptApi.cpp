@@ -5074,24 +5074,10 @@ namespace NOWA
 	void bindGameObjectComponent(lua_State* lua)
 	{
 		module(lua)
-			[
-				class_<GameObjectComponent>("GameObjectComponent")
-				.def("getOwner", &getOwner)
-			// .def("init", &GameObjectComponent::init)
-			// .def("postInit", &GameObjectComponent::postInit)
-			// .def("connect", &GameObjectComponent::connect)
-			// .def("disconnect", &GameObjectComponent::disconnect)
-			// .def("onCloned", &GameObjectComponent::onCloned)
-			// .def("onRemoveComponent", &GameObjectComponent::onRemoveComponent)
-			// .def("onOtherComponentRemoved", &GameObjectComponent::onOtherComponentRemoved)
-			// .def("handleEvent", &GameObjectComponent::handleEvent)
-			// .def("update", &GameObjectComponent::update)
-			// .def("writeXML", &GameObjectComponent::writeXML)
-			// .def("getClassName", &GameObjectComponent::getClassName)
+		[
+			class_<GameObjectComponent>("GameObjectComponent")
+			.def("getOwner", &getOwner)
 			.def("getParentClassName", &GameObjectComponent::getParentClassName)
-			// .def("getClassId", &GameObjectComponent::getClassId)
-			// .def("getParentClassId", &GameObjectComponent::getParentClassId)
-			//// .def("clone", &GameObjectComponent::clone)
 			.def("getPosition", &GameObjectComponent::getPosition)
 			.def("getOrientation", &GameObjectComponent::getOrientation)
 			.def("showDebugData", &GameObjectComponent::showDebugData)
@@ -5106,13 +5092,6 @@ namespace NOWA
 
 		AddClassToCollection("GameObjectComponent", "class", "This is the base class for all components.");
 		AddClassToCollection("GameObjectComponent", "GameObject getOwner()", "Gets owner game object of this component.");
-		// AddClassToCollection("GameObjectComponent", "bool connect()", "Connects this game object for simulation start. Normally there is no need to call this function.");
-		// AddClassToCollection("GameObjectComponent", "bool disconnect()", "Disconnects this game object when simulation has ended. Normally there is no need to call this function.");
-		// AddClassToCollection("GameObjectComponent", "GameObjectComponent clone()", "Gets a new cloned game object component from this one.");
-		// // AddClassToCollection(("GameObjectComponent"), "String getClassName()", "Gets the class name of this component as string.");
-		// AddClassToCollection("GameObjectComponent", "String getParentClassName()", "Gets the parent class name (the one this component is derived from) of this component as string.");
-		// AddClassToCollection("GameObjectComponent", "number getClassId()", "Gets the class id of this component.");
-		// AddClassToCollection("GameObjectComponent", "number getParentClassId()", "Gets the parent class id (the one this component is derived from) of this component.");
 		AddClassToCollection("GameObjectComponent", "Vector3 getPosition()", "Gets the position of this game object component.");
 		AddClassToCollection("GameObjectComponent", "void setActivated(bool activated)", "Sets whether this game object component should be activated or not.");
 		AddClassToCollection("GameObject", "void setReferenceId(String referenceId)", "Sets the reference id. Note: If this game object is referenced by another game object, a component with the same id as this game object can be get for activation etc.");
@@ -6172,9 +6151,6 @@ namespace NOWA
 			];
 
 		AddClassToCollection("NodeTrackComponent", "class inherits GameObjectComponent", NodeTrackComponent::getStaticInfoText());
-		// AddClassToCollection("NodeTrackComponent", "String getClassName()", "Gets the class name of this component as string.");
-		// AddClassToCollection("NodeTrackComponent", "GameObjectComponent clone()", "Gets a new cloned game object component from this one.");
-		// AddClassToCollection("NodeTrackComponent", "number getClassId()", "Gets the class id of this component.");
 		AddClassToCollection("NodeTrackComponent", "void setActivated(bool activated)", "Sets whether this node track is activated or not.");
 		AddClassToCollection("NodeTrackComponent", "bool isActivated()", "Gets whether this node track is activated or not.");
 		AddClassToCollection("NodeTrackComponent", "void setNodeTrackCount(unsigned int nodeTrackCount)", "Sets the node track count (how many nodes are used for the tracking).");
@@ -6202,13 +6178,10 @@ namespace NOWA
 	void bindLineComponent(lua_State* lua)
 	{
 		module(lua)
-			[
-				class_<LineComponent, GameObjectComponent>("LineComponent")
-				// .def("getClassName", &LineComponent::getClassName)
-				// .def("clone", &LineComponent::clone)
-				// .def("getClassId", &LineComponent::getClassId)
-				// .def("setTargetId", &LineComponent::setTargetId)
-				// .def("getTargetId", &LineComponent::getTargetId)
+		[
+			class_<LineComponent, GameObjectComponent>("LineComponent")
+			// .def("setTargetId", &LineComponent::setTargetId)
+			// .def("getTargetId", &LineComponent::getTargetId)
 			.def("setTargetId", &setTargetIdLine)
 			.def("getTargetId", &getTargetIdLine)
 			.def("setColor", &LineComponent::setColor)
@@ -6217,12 +6190,9 @@ namespace NOWA
 			.def("getSourceOffsetPosition", &LineComponent::getSourceOffsetPosition)
 			.def("setTargetOffsetPosition", &LineComponent::setTargetOffsetPosition)
 			.def("getTargetOffsetPosition", &LineComponent::getTargetOffsetPosition)
-			];
+		];
 
 		AddClassToCollection("LineComponent", "class inherits GameObjectComponent", LineComponent::getStaticInfoText());
-		// AddClassToCollection("LineComponent", "String getClassName()", "Gets the class name of this component as string.");
-		// AddClassToCollection("LineComponent", "GameObjectComponent clone()", "Gets a new cloned game object component from this one.");
-		// AddClassToCollection("LineComponent", "number getClassId()", "Gets the class id of this component.");
 		AddClassToCollection("LineComponent", "void setTargetId(String targetId)", "Sets target id, to get the target game object to attach the lines end point at. The target id is optional.");
 		AddClassToCollection("LineComponent", "String getTargetId()", "Gets target id of the target game object.");
 		AddClassToCollection("LineComponent", "void setColor(Vector3 color)", "Sets color (r, g, b) of the line.");
@@ -6234,11 +6204,8 @@ namespace NOWA
 		AddClassToCollection("LineComponent", "Vector3 getTargetOffsetPosition()", "Gets the target offset position the line end point.");
 
 		module(lua)
-			[
-				class_<LinesComponent, GameObjectComponent>("LinesComponent")
-				// .def("getClassName", &LinesComponent::getClassName)
-				// .def("clone", &LinesComponent::clone)
-				// .def("getClassId", &LinesComponent::getClassId)
+		[
+			class_<LinesComponent, GameObjectComponent>("LinesComponent")
 			.def("setConnected", &LinesComponent::setConnected)
 			.def("getIsConnected", &LinesComponent::getIsConnected)
 			.def("setOperationType", &LinesComponent::setOperationType)
@@ -6254,9 +6221,6 @@ namespace NOWA
 			];
 
 		AddClassToCollection("LinesComponent", "class inherits GameObjectComponent", LinesComponent::getStaticInfoText());
-		// AddClassToCollection("LinesComponent", "String getClassName()", "Gets the class name of this component as string.");
-		// AddClassToCollection("LinesComponent", "GameObjectComponent clone()", "Gets a new cloned game object component from this one.");
-		// AddClassToCollection("LinesComponent", "number getClassId()", "Gets the class id of this component.");
 		AddClassToCollection("LinesComponent", "void setConnected(bool connected)", "Sets whether the lines should be connected together forming a more complex object.");
 		AddClassToCollection("LinesComponent", "bool getConnected()", "Gets whether the lines are be connected together.");
 		AddClassToCollection("LinesComponent", "void setOperationType(String operationType)", "Sets the operation type. Possible values are: A list of points, "
@@ -6274,11 +6238,8 @@ namespace NOWA
 		AddClassToCollection("LinesComponent", "Vector3 getEndPosition()", "Gets the end position of the line.");
 
 		module(lua)
-			[
-				class_<ManualObjectComponent, GameObjectComponent>("ManualObjectComponent")
-				// .def("getClassName", &ManualObjectComponent::getClassName)
-				// .def("clone", &ManualObjectComponent::clone)
-				// .def("getClassId", &ManualObjectComponent::getClassId)
+		[
+			class_<ManualObjectComponent, GameObjectComponent>("ManualObjectComponent")
 			.def("setConnected", &ManualObjectComponent::setConnected)
 			.def("getIsConnected", &ManualObjectComponent::getIsConnected)
 			.def("setOperationType", &ManualObjectComponent::setOperationType)
@@ -6291,12 +6252,9 @@ namespace NOWA
 			.def("getStartPosition", &ManualObjectComponent::getStartPosition)
 			.def("setEndPosition", &ManualObjectComponent::setEndPosition)
 			.def("getEndPosition", &ManualObjectComponent::getEndPosition)
-			];
+		];
 
 		AddClassToCollection("ManualObjectComponent", "class inherits GameObjectComponent", ManualObjectComponent::getStaticInfoText());
-		// AddClassToCollection("ManualObjectComponent", "String getClassName()", "Gets the class name of this component as string.");
-		// AddClassToCollection("ManualObjectComponent", "GameObjectComponent clone()", "Gets a new cloned game object component from this one.");
-		// AddClassToCollection("ManualObjectComponent", "number getClassId()", "Gets the class id of this component.");
 		AddClassToCollection("ManualObjectComponent", "void setConnected(bool connected)", "Sets whether the manual objects should be connected together forming a more complex object.");
 		AddClassToCollection("ManualObjectComponent", "bool getConnected()", "Gets whether the manual objects are be connected together.");
 		AddClassToCollection("ManualObjectComponent", "void setOperationType(String operationType)", "Sets the operation type. Possible values are: A list of points, "
@@ -7555,9 +7513,6 @@ namespace NOWA
 		];
 
 		AddClassToCollection("AiComponent", "class inherits GameObjectComponent", "Base class for ai components with some attributes. Note: The game Object must have a PhysicsActiveComponent.");
-		// AddClassToCollection("AiComponent", "GameObjectComponent clone()", "Gets a new cloned game object component from this one.");
-		// AddClassToCollection("AiComponent", "String getClassName()", "Gets the class name of this component as string.");
-		// AddClassToCollection("AiComponent", "number getClassId()", "Gets the class id of this component.");
 		AddClassToCollection("AiComponent", "void setActivated(bool activated)", "Sets the ai component is activated. If true, it will move according to its specified behavior.");
 		AddClassToCollection("AiComponent", "bool isActivated()", "Gets whether ai component is activated. If true, it will move according to its specified behavior.");
 		AddClassToCollection("AiComponent", "void setRotationSpeed(float rotationSpeed)", "Sets the rotation speed for the ai controller game object.");
@@ -7922,9 +7877,6 @@ namespace NOWA
 		];
 
 		AddClassToCollection("CameraBehaviorComponent", "class inherits GameObjectComponent", CameraBehaviorComponent::getStaticInfoText());
-		// AddClassToCollection("CameraBehaviorComponent", "GameObjectComponent clone()", "Gets a new cloned game object component from this one.");
-		// AddClassToCollection("CameraBehaviorComponent", "String getClassName()", "Gets the class name of this component as string.");
-		// AddClassToCollection("CameraBehaviorComponent", "number getClassId()", "Gets the class id of this component.");
 		AddClassToCollection("CameraBehaviorComponent", "void setActivated(bool activated)", "Sets the camera behavior component is activated. If true, the camera will do its work according the used behavior.");
 		AddClassToCollection("CameraBehaviorComponent", "bool isActivated()", "Gets whether camera behavior component is activated. If true, the camera will do its work according the used behavior.");
 		AddClassToCollection("CameraBehaviorComponent", "Camera getCamera()", "Gets the used camera pointer for direct manipulation.");
@@ -9010,7 +8962,6 @@ namespace NOWA
 		module(lua)
 		[
 			class_<JointPinComponent, JointComponent>("JointPinComponent")
-			// // .def("clone", &JointPinComponent::clone)
 			.def("setPin", &JointPinComponent::setPin)
 			.def("getPin", &JointPinComponent::getPin)
 		];
@@ -9022,7 +8973,6 @@ namespace NOWA
 		module(lua)
 		[
 			class_<JointPlaneComponent, JointComponent>("JointPlaneComponent")
-			// // .def("clone", &JointPlaneComponent::clone)
 			.def("setAnchorPosition", &JointPlaneComponent::setAnchorPosition)
 			.def("getAnchorPosition", &JointPlaneComponent::getAnchorPosition)
 			.def("setNormal", &JointPlaneComponent::setNormal)
@@ -9038,7 +8988,6 @@ namespace NOWA
 		module(lua)
 		[
 			class_<JointSpringComponent, JointComponent>("JointSpringComponent")
-			// // .def("clone", &JointSpringComponent::clone)
 			.def("setShowLine", &JointSpringComponent::setShowLine)
 			.def("getShowLine", &JointSpringComponent::getShowLine)
 			.def("setAnchorOffsetPosition", &JointSpringComponent::setAnchorOffsetPosition)
@@ -9061,7 +9010,6 @@ namespace NOWA
 		module(lua)
 		[
 			class_<JointAttractorComponent, JointComponent>("JointAttractorComponent")
-			// // .def("clone", &JointAttractorComponent::clone)
 			.def("setMagneticStrength", &JointAttractorComponent::setMagneticStrength)
 			.def("getMagneticStrength", &JointAttractorComponent::getMagneticStrength)
 			.def("setAttractionDistance", &JointAttractorComponent::setAttractionDistance)
@@ -9082,7 +9030,6 @@ namespace NOWA
 		module(lua)
 		[
 			class_<JointCorkScrewComponent, JointComponent>("JointCorkScrewComponent")
-			// // .def("clone", &JointCorkScrewComponent::clone)
 			.def("setAnchorPosition", &JointCorkScrewComponent::setAnchorPosition)
 			.def("getAnchorPosition", &JointCorkScrewComponent::getAnchorPosition)
 			.def("setLinearLimitsEnabled", &JointCorkScrewComponent::setLinearLimitsEnabled)
@@ -9118,7 +9065,6 @@ namespace NOWA
 		module(lua)
 		[
 			class_<JointPassiveSliderComponent, JointComponent>("JointPassiveSliderComponent")
-			// // .def("clone", &JointPassiveSliderComponent::clone)
 			.def("setAnchorPosition", &JointPassiveSliderComponent::setAnchorPosition)
 			.def("getAnchorPosition", &JointPassiveSliderComponent::getAnchorPosition)
 			.def("setPin", &JointPassiveSliderComponent::setPin)
@@ -9150,7 +9096,6 @@ namespace NOWA
 		module(lua)
 		[
 			class_<JointSliderActuatorComponent, JointComponent>("JointSliderActuatorComponent")
-			// // .def("clone", &JointSliderActuatorComponent::clone)
 			.def("setAnchorPosition", &JointSliderActuatorComponent::setAnchorPosition)
 			.def("getAnchorPosition", &JointSliderActuatorComponent::getAnchorPosition)
 			.def("setPin", &JointSliderActuatorComponent::setPin)
@@ -9205,7 +9150,6 @@ namespace NOWA
 		module(lua)
 		[
 			class_<JointSlidingContactComponent, JointComponent>("JointSlidingContactComponent")
-			// // .def("clone", &JointSlidingContactComponent::clone)
 			.def("setAnchorPosition", &JointSlidingContactComponent::setAnchorPosition)
 			.def("getAnchorPosition", &JointSlidingContactComponent::getAnchorPosition)
 			.def("setPin", &JointSlidingContactComponent::setPin)
@@ -9248,7 +9192,6 @@ namespace NOWA
 		module(lua)
 		[
 			class_<JointActiveSliderComponent, JointComponent>("JointActiveSliderComponent")
-			// // .def("clone", &JointActiveSliderComponent::clone)
 			.def("setAnchorPosition", &JointActiveSliderComponent::setAnchorPosition)
 			.def("getAnchorPosition", &JointActiveSliderComponent::getAnchorPosition)
 			.def("setPin", &JointActiveSliderComponent::setPin)
@@ -9289,7 +9232,6 @@ namespace NOWA
 		module(lua)
 		[
 			class_<JointMathSliderComponent, JointComponent>("JointMathSliderComponent")
-			// // .def("clone", &JointMathSliderComponent::clone)
 			.def("setLimitsEnabled", &JointMathSliderComponent::setLimitsEnabled)
 			.def("getLimitsEnabled", &JointMathSliderComponent::getLimitsEnabled)
 			.def("setMinMaxStopDistance", &JointMathSliderComponent::setMinMaxStopDistance)
@@ -9331,7 +9273,6 @@ namespace NOWA
 		module(lua)
 		[
 			class_<JointPointToPointComponent, JointComponent>("JointPointToPointComponent")
-			// // .def("clone", &JointPointToPointComponent::clone)
 			.def("setAnchorPosition1", &JointPointToPointComponent::setAnchorPosition1)
 			.def("getAnchorPosition1", &JointPointToPointComponent::getAnchorPosition1)
 			.def("setAnchorPosition1", &JointPointToPointComponent::setAnchorPosition2)
@@ -9347,7 +9288,6 @@ namespace NOWA
 		module(lua)
 		[
 			class_<JointKinematicComponent, JointComponent>("JointKinematicComponent")
-			// // .def("clone", &JointKinematicComponent::clone)
 			.def("setActivated", &JointKinematicComponent::setActivated)
 			.def("isActivated", &JointKinematicComponent::isActivated)
 			.def("setAnchorPosition", &JointKinematicComponent::setAnchorPosition)
@@ -9404,7 +9344,6 @@ namespace NOWA
 		module(lua)
 		[
 			class_<JointDryRollingFrictionComponent, JointComponent>("JointDryRollingFrictionComponent")
-				// // .def("clone", &JointDryRollingFrictionComponent::clone)
 				.def("setRadius", &JointDryRollingFrictionComponent::setRadius)
 				.def("getRadius", &JointDryRollingFrictionComponent::getRadius)
 				.def("setRollingFrictionCoefficient", &JointDryRollingFrictionComponent::setRollingFrictionCoefficient)
@@ -9435,7 +9374,6 @@ namespace NOWA
 		module(lua)
 		[
 			class_<JointGearComponent, JointComponent>("JointGearComponent")
-			// // .def("clone", &JointGearComponent::clone)
 			.def("setGearRatio", &JointGearComponent::setGearRatio)
 			.def("getGearRatio", &JointGearComponent::getGearRatio)
 		];
@@ -9452,7 +9390,6 @@ namespace NOWA
 		module(lua)
 		[
 			class_<JointWormGearComponent, JointComponent>("JointWormGearComponent")
-			// // .def("clone", &JointWormGearComponent::clone)
 			.def("setGearRatio", &JointWormGearComponent::setGearRatio)
 			.def("getGearRatio", &JointWormGearComponent::getGearRatio)
 			.def("setSlideRatio", &JointWormGearComponent::setSlideRatio)
@@ -9469,7 +9406,6 @@ namespace NOWA
 		module(lua)
 		[
 			class_<JointPulleyComponent, JointComponent>("JointPulleyComponent")
-			// // .def("clone", &JointPulleyComponent::clone)
 			.def("setPulleyRatio", &JointPulleyComponent::setPulleyRatio)
 			.def("getPulleyRatio", &JointPulleyComponent::getPulleyRatio)
 		];
@@ -9553,7 +9489,6 @@ namespace NOWA
 		module(lua)
 		[
 			class_<JointUniversalActuatorComponent, JointComponent>("JointUniversalActuatorComponent")
-			// // .def("clone", &JointUniversalActuatorComponent::clone)
 			.def("setAnchorPosition", &JointUniversalActuatorComponent::setAnchorPosition)
 			.def("getAnchorPosition", &JointUniversalActuatorComponent::getAnchorPosition)
 			.def("setTargetAngle0", &JointUniversalActuatorComponent::setTargetAngle0)
@@ -9621,7 +9556,6 @@ namespace NOWA
 		module(lua)
 		[
 			class_<Joint6DofComponent, JointComponent>("Joint6DofComponent")
-			// // .def("clone", &Joint6DofComponent::clone)
 			.def("setAnchorPosition0", &Joint6DofComponent::setAnchorPosition0)
 			.def("getAnchorPosition0", &Joint6DofComponent::getAnchorPosition0)
 			.def("setAnchorPosition1", &Joint6DofComponent::setAnchorPosition1)
@@ -9765,9 +9699,6 @@ namespace NOWA
 		];
 
 		AddClassToCollection("LightDirectionalComponent", "class inherits GameObjectComponent", "This Light simulates a huge source that is very far away - like daylight. Light hits the entire scene at the same angle everywhere.");
-		// AddClassToCollection("LightDirectionalComponent", "String getClassName()", "Gets the class name of this component as string.");
-		// AddClassToCollection("LightDirectionalComponent", "GameObjectComponent clone()", "Gets a new cloned game object component from this one.");
-		// AddClassToCollection("LightDirectionalComponent", "number getClassId()", "Gets the class id of this component.");
 		AddClassToCollection("LightDirectionalComponent", "void setActivated(bool activated)", "Sets whether this light type is visible.");
 		AddClassToCollection("LightDirectionalComponent", "bool isActivated()", "Gets whether this light type is visible.");
 		AddClassToCollection("LightDirectionalComponent", "void setDiffuseColor(Vector3 diffuseColor)", "Sets the diffuse color (r, g, b) of the light.");
@@ -9822,9 +9753,6 @@ namespace NOWA
 			// .def("getOgreLight", &LightPointComponent::getOgreLight)
 			];
 		AddClassToCollection("LightPointComponent", "class inherits GameObjectComponent inherits GameObjectComponent", "This Light speads out equally in all directions from a point.");
-		// AddClassToCollection("LightPointComponent", "String getClassName()", "Gets the class name of this component as string.");
-		// AddClassToCollection("LightPointComponent", "GameObjectComponent clone()", "Gets a new cloned game object component from this one.");
-		// AddClassToCollection("LightPointComponent", "number getClassId()", "Gets the class id of this component.");
 		AddClassToCollection("LightPointComponent", "void setActivated(bool activated)", "Sets whether this light type is visible.");
 		AddClassToCollection("LightPointComponent", "bool isActivated()", "Gets whether this light type is visible.");
 		AddClassToCollection("LightPointComponent", "void setDiffuseColor(Vector3 diffuseColor)", "Sets the diffuse color (r, g, b) of the light.");
@@ -9892,9 +9820,6 @@ namespace NOWA
 			// .def("getOgreLight", &LightSpotComponent::getOgreLight)
 			];
 		AddClassToCollection("LightSpotComponent", "class inherits GameObjectComponent", "This Light works like a flashlight. It produces a solid cylinder of light that is brighter at the center and fades off.");
-		// AddClassToCollection("SpotLightComponent", "String getClassName()", "Gets the class name of this component as string.");
-		// AddClassToCollection("SpotLightComponent", "GameObjectComponent clone()", "Gets a new cloned game object component from this one.");
-		// AddClassToCollection("SpotLightComponent", "number getClassId()", "Gets the class id of this component.");
 		AddClassToCollection("SpotLightComponent", "void setActivated(bool activated)", "Sets whether this light type is visible.");
 		AddClassToCollection("SpotLightComponent", "bool isActivated()", "Gets whether this light type is visible.");
 		AddClassToCollection("SpotLightComponent", "void setDiffuseColor(Vector3 diffuseColor)", "Sets the diffuse color (r, g, b) of the light.");
@@ -9957,9 +9882,6 @@ namespace NOWA
 			// .def("getOgreLight", &LightAreaComponent::getOgreLight)
 			];
 		AddClassToCollection("LightAreaComponent", "class inherits GameObjectComponent", "An Area Light is defined by a rectangle in space. Light is emitted in all directions uniformly across their surface area, but only from one side of the rectangle.");
-		// AddClassToCollection("LightAreaComponent", "String getClassName()", "Gets the class name of this component as string.");
-		// AddClassToCollection("LightAreaComponent", "GameObjectComponent clone()", "Gets a new cloned game object component from this one.");
-		// AddClassToCollection("LightAreaComponent", "number getClassId()", "Gets the class id of this component.");
 		AddClassToCollection("LightAreaComponent", "void setActivated(bool activated)", "Sets whether this light type is visible.");
 		AddClassToCollection("LightAreaComponent", "bool isActivated()", "Gets whether this light type is visible.");
 		AddClassToCollection("LightAreaComponent", "void setDiffuseColor(Vector3 diffuseColor)", "Sets the diffuse color (r, g, b) of the light.");
@@ -10050,7 +9972,6 @@ namespace NOWA
 			//.def("getFromCast", &PhysicsObject::getFromCast)
 			// .def("getClassName", &PhysicsComponent::getClassName)
 			.def("getParentClassName", &PhysicsComponent::getParentClassName)
-			// .def("clone", &PhysicsComponent::clone)
 			.def("isMovable", &PhysicsComponent::isMovable)
 			.def("setDirection", &PhysicsComponent::setDirection)
 			.def("setOrientation", &PhysicsComponent::setOrientation)
@@ -10083,9 +10004,6 @@ namespace NOWA
 		];
 
 		AddClassToCollection("PhysicsComponent", "class inherits GameObjectComponent", "Base class for some kind of physics components.");
-		// AddClassToCollection("PhysicsComponent", "String getClassName()", "Gets the class name of this component as string.");
-		// AddClassToCollection("PhysicsComponent", "GameObjectComponent clone()", "Gets a new cloned game object component from this one.");
-		// AddClassToCollection("PhysicsComponent", "number getClassId()", "Gets the class id of this component.");
 		AddClassToCollection("PhysicsComponent", "bool isMovable()", "Gets whether this physics component is movable.");
 		AddClassToCollection("PhysicsComponent", "void setDirection(Vector3 direction, Vector3 localDirectionVector)", "Sets the direction vector of the physics component. Note: local direction vector is NEGATIVE_UNIT_Z by default. Attention: Never ever use this function in an update function for physics, as it will mess up parts of physics like ragdolls etc. Only use it for initialization!");
 		AddClassToCollection("PhysicsComponent", "void setOrientation(Quaternion orientation)", "Sets the orientation of the physics component. Attention: Never ever use this function in an update function for physics, as it will mess up parts of physics like ragdolls etc. Only use it for initialization!");
@@ -10170,9 +10088,6 @@ namespace NOWA
 		module(lua)
 		[
 			class_<PhysicsActiveComponent, PhysicsComponent>("PhysicsActiveComponent")
-			// .def("getClassName", &PhysicsActiveComponent::getClassName)
-			// .def("clone", &PhysicsActiveComponent::clone)
-			// .def("getClassId", &PhysicsActiveComponent::getClassId)
 			.def("getParentClassName", &PhysicsActiveComponent::getParentClassName)
 			.def("setActivated", &PhysicsActiveComponent::setActivated)
 			.def("setLinearDamping", &PhysicsActiveComponent::setLinearDamping)
@@ -10402,7 +10317,6 @@ namespace NOWA
 				class_<PhysicsActiveCompoundComponent, PhysicsActiveComponent>("PhysicsActiveCompoundComponent")
 				// .def("getClassName", &PhysicsActiveCompoundComponent::getClassName)
 			.def("getParentClassName", &PhysicsActiveCompoundComponent::getParentClassName)
-			// .def("clone", &PhysicsActiveCompoundComponent::clone)
 			// .def("getClassId", &PhysicsActiveCompoundComponent::getClassId)
 			.def("setMeshCompoundConfigFile", &PhysicsActiveCompoundComponent::setMeshCompoundConfigFile)
 			];
@@ -10419,7 +10333,6 @@ namespace NOWA
 				class_<PhysicsActiveDestructableComponent, PhysicsActiveComponent>("PhysicsActiveDestructableComponent")
 				// .def("getClassName", &PhysicsActiveDestructableComponent::getClassName)
 			.def("getParentClassName", &PhysicsActiveDestructableComponent::getParentClassName)
-			// .def("clone", &PhysicsActiveDestructableComponent::clone)
 			// .def("getClassId", &PhysicsActiveDestructableComponent::getClassId)
 			.def("setOrientation", &PhysicsActiveDestructableComponent::setOrientation)
 			.def("getOrientation", &PhysicsActiveDestructableComponent::getOrientation)
@@ -10452,7 +10365,6 @@ namespace NOWA
 			class_<PhysicsActiveKinematicComponent, PhysicsActiveComponent>("PhysicsActiveKinematicComponent")
 			// .def("getClassName", &PhysicsActiveKinematicComponent::getClassName)
 			.def("getParentClassName", &PhysicsActiveKinematicComponent::getParentClassName)
-			// .def("clone", &PhysicsActiveKinematicComponent::clone)
 			// .def("getClassId", &PhysicsActiveKinematicComponent::getClassId)
 			.def("setCollidable", &PhysicsActiveKinematicComponent::setCollidable)
 			.def("getCollidable", &PhysicsActiveKinematicComponent::getCollidable)
@@ -10491,11 +10403,10 @@ namespace NOWA
 	void bindPhysicsCompoundConnectionComponent(lua_State* lua)
 	{
 		module(lua)
-			[
-				class_<PhysicsCompoundConnectionComponent, PhysicsActiveComponent>("PhysicsCompoundConnectionComponent")
-				// .def("getClassName", &PhysicsCompoundConnectionComponent::getClassName)
+		[
+			class_<PhysicsCompoundConnectionComponent, PhysicsActiveComponent>("PhysicsCompoundConnectionComponent")
+			// .def("getClassName", &PhysicsCompoundConnectionComponent::getClassName)
 			.def("getParentClassName", &PhysicsCompoundConnectionComponent::getParentClassName)
-			// .def("clone", &PhysicsCompoundConnectionComponent::clone)
 			// .def("getClassId", &PhysicsCompoundConnectionComponent::getClassId)
 			// .def("inheritVelOmega", &PhysicsCompoundConnectionComponent::inheritVelOmega)
 			.def("setActivated", &PhysicsCompoundConnectionComponent::setActivated)
@@ -10507,7 +10418,7 @@ namespace NOWA
 			.def("getRootId", &PhysicsCompoundConnectionComponent::getRootId)
 			.def("getPriorId", &PhysicsCompoundConnectionComponent::getPriorId)
 			// .def("addPhysicsActiveComponent", &PhysicsCompoundConnectionComponent::addPhysicsActiveComponent)
-			];
+		];
 		// No lua api?
 	}
 
@@ -10518,7 +10429,6 @@ namespace NOWA
 				class_<PhysicsExplosionComponent, GameObjectComponent>("PhysicsExplosionComponent")
 				// .def("getClassName", &PhysicsExplosionComponent::getClassName)
 			.def("getParentClassName", &PhysicsExplosionComponent::getParentClassName)
-			// .def("clone", &PhysicsExplosionComponent::clone)
 			// .def("getClassId", &PhysicsExplosionComponent::getClassId)
 			.def("setActivated", &PhysicsExplosionComponent::setActivated)
 			.def("isActivated", &PhysicsExplosionComponent::isActivated)
@@ -10554,7 +10464,6 @@ namespace NOWA
 			class_<PhysicsPlayerControllerComponent, PhysicsActiveComponent>("PhysicsPlayerControllerComponent")
 			// .def("getClassName", &PhysicsPlayerControllerComponent::getClassName)
 			.def("getParentClassName", &PhysicsPlayerControllerComponent::getParentClassName)
-			// .def("clone", &PhysicsPlayerControllerComponent::clone)
 			// .def("getClassId", &PhysicsPlayerControllerComponent::getClassId)
 			.def("move", &PhysicsPlayerControllerComponent::move)
 			.def("toggleCrouch", &PhysicsPlayerControllerComponent::toggleCrouch)
@@ -10838,11 +10747,10 @@ namespace NOWA
 		AddClassToCollection("Contact", "string print()", "Gets all the contact properties as string in order to print to log for debugging and analysis reasons.");
 		
 		module(lua)
-			[
-				class_<PhysicsMaterialComponent, GameObjectComponent>("PhysicsMaterialComponent")
-				// .def("getClassName", &PhysicsMaterialComponent::getClassName)
+		[
+			class_<PhysicsMaterialComponent, GameObjectComponent>("PhysicsMaterialComponent")
+			// .def("getClassName", &PhysicsMaterialComponent::getClassName)
 			.def("getParentClassName", &PhysicsMaterialComponent::getParentClassName)
-			// .def("clone", &PhysicsMaterialComponent::clone)
 			// .def("getClassId", &PhysicsMaterialComponent::getClassId)
 			.def("setCategory1", &PhysicsMaterialComponent::setCategory1)
 			.def("getCategory1", &PhysicsMaterialComponent::getCategory1)
@@ -10864,7 +10772,7 @@ namespace NOWA
 			.def("getContactSpeed", &PhysicsMaterialComponent::getContactSpeed)
 			.def("setContactDirection", &PhysicsMaterialComponent::setContactDirection)
 			.def("getContactDirection", &PhysicsMaterialComponent::getContactDirection)
-			];
+		];
 
 		AddClassToCollection("PhysicsMaterialComponent", "class inherits GameObjectComponent", PhysicsMaterialComponent::getStaticInfoText());
 		// AddClassToCollection("PhysicsMaterialComponent", "number getClassId()", "Gets the class id of this component.");
@@ -10891,11 +10799,10 @@ namespace NOWA
 	void bindPlaneComponent(lua_State* lua)
 	{
 		module(lua)
-			[
-				class_<PlaneComponent, GameObjectComponent>("PlaneComponent")
-				// .def("getClassName", &PlaneComponent::getClassName)
+		[
+			class_<PlaneComponent, GameObjectComponent>("PlaneComponent")
+			// .def("getClassName", &PlaneComponent::getClassName)
 			.def("getParentClassName", &PlaneComponent::getParentClassName)
-			// .def("clone", &PlaneComponent::clone)
 			// .def("getClassId", &PlaneComponent::getClassId)
 			// .def("setDistance", &PlaneComponent::setDistance)
 			// .def("getDistance", &PlaneComponent::getDistance)
@@ -10917,7 +10824,7 @@ namespace NOWA
 			// .def("getNormal", &PlaneComponent::getNormal)
 			// .def("setUp", &PlaneComponent::setUp)
 			// .def("getUp", &PlaneComponent::getUp)
-			];
+		];
 
 		AddClassToCollection("PlaneComponent", "class inherits GameObjectComponent", PlaneComponent::getStaticInfoText());
 		AddClassToCollection("PlaneComponent", "void setWidth(float width)", "Sets the width of the plane. Note: Plane will be reconstructed, if there is a @PhysicsArtifactComponent, the collision hull will also be re-generated.");
@@ -11124,7 +11031,6 @@ namespace NOWA
 		[
 			class_<SpawnComponent, GameObjectComponent>("SpawnComponent")
 			// .def("getClassName", &SpawnComponent::getClassName)
-			// .def("clone", &SpawnComponent::clone)
 			// .def("getClassId", &SpawnComponent::getClassId)
 			.def("setActivated", &SpawnComponent::setActivated)
 			.def("isActivated", &SpawnComponent::isActivated)
@@ -11521,7 +11427,6 @@ namespace NOWA
 		[
 			class_<AiLuaComponent, GameObjectComponent>("AiLuaComponent")
 			// .def("getClassName", &AiLuaComponent::getClassName)
-			// .def("clone", &AiLuaComponent::clone)
 			// .def("getClassId", &AiLuaComponent::getClassId)
 			.def("setActivated", &AiLuaComponent::setActivated)
 			.def("isActivated", &AiLuaComponent::isActivated)

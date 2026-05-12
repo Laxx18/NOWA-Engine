@@ -1036,6 +1036,8 @@ void GameObjectController::destroyContent(const std::vector<Ogre::String>& exclu
         this->renderShiftIndex = 0;
         this->triggeredGameObjects.clear();
 
+        this->destroyAllSharedWidgets();
+
         // Attention since GameObjectController is a singleton and the lifecycle is beyond the AppState's lifecycle
         // That means, if an AppState is exited and started and GameObjects are created
 
@@ -3530,6 +3532,154 @@ bool GameObjectController::isProceduralMeshComponent(const Ogre::String& classNa
 
     return std::find(proceduralComponents.begin(), proceduralComponents.end(), className) != proceduralComponents.end();
 }
+
+void GameObjectController::registerSharedWidget(const Ogre::String& className, const Ogre::String& style, MyGUI::Widget* widget)
+{
+    if (className.empty() || style.empty() || nullptr == widget)
+    {
+        return;
+    }
+
+    const Ogre::String key = className + "_" + style;
+
+    auto it = this->sharedWidgetMap.find(key);
+    if (it == this->sharedWidgetMap.end())
+    {
+        SharedWidgetEntry entry;
+        entry.widget = widget;
+        entry.className = className;
+        entry.style = style;
+        entry.refCount = 1;
+        entry.currentOwner = nullptr;
+        this->sharedWidgetMap.insert(std::make_pair(key, entry));
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObjectController] Registered shared widget: " + key);
+    }
+    else
+    {
+        // Already exists — just bump the ref count
+        ++it->second.refCount;
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObjectController] Shared widget ref++ : " + key + " refs=" + Ogre::StringConverter::toString(it->second.refCount));
+    }
+}
+
+void GameObjectController::unregisterSharedWidget(const Ogre::String& className, const Ogre::String& style)
+{
+    if (className.empty() || style.empty())
+    {
+        return;
+    }
+
+    const Ogre::String key = className + "_" + style;
+
+    auto it = this->sharedWidgetMap.find(key);
+    if (it == this->sharedWidgetMap.end())
+    {
+        return;
+    }
+
+    --it->second.refCount;
+
+    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObjectController] Shared widget ref-- : " + key + " refs=" + Ogre::StringConverter::toString(it->second.refCount));
+
+    if (it->second.refCount <= 0)
+    {
+        // Last user gone — destroy the widget on the render thread
+        MyGUI::Widget* widgetToDestroy = it->second.widget;
+        NOWA::GraphicsModule::RenderCommand cmd = [widgetToDestroy]()
+        {
+            if (nullptr != widgetToDestroy)
+            {
+                MyGUI::Gui::getInstancePtr()->destroyWidget(widgetToDestroy);
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "GameObjectController::unregisterSharedWidget");
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObjectController] Destroyed shared widget: " + key);
+
+        this->sharedWidgetMap.erase(it);
+    }
+}
+
+MyGUI::Widget* GameObjectController::getSharedWidget(const Ogre::String& className, const Ogre::String& style) const
+{
+    const Ogre::String key = className + "_" + style;
+    auto it = this->sharedWidgetMap.find(key);
+    if (it != this->sharedWidgetMap.end())
+    {
+        return it->second.widget;
+    }
+    return nullptr;
+}
+
+bool GameObjectController::hasSharedWidget(const Ogre::String& className, const Ogre::String& style) const
+{
+    const Ogre::String key = className + "_" + style;
+    return this->sharedWidgetMap.find(key) != this->sharedWidgetMap.end();
+}
+
+void GameObjectController::setSharedWidgetOwner(const Ogre::String& className, const Ogre::String& style, void* owner)
+{
+    const Ogre::String key = className + "_" + style;
+    auto it = this->sharedWidgetMap.find(key);
+    if (it != this->sharedWidgetMap.end())
+    {
+        it->second.currentOwner = owner;
+    }
+}
+
+void* GameObjectController::getSharedWidgetOwner(const Ogre::String& className, const Ogre::String& style) const
+{
+    const Ogre::String key = className + "_" + style;
+    auto it = this->sharedWidgetMap.find(key);
+    if (it != this->sharedWidgetMap.end())
+    {
+        return it->second.currentOwner;
+    }
+    return nullptr;
+}
+
+void GameObjectController::setSharedWidgetUserData(const Ogre::String& className, const Ogre::String& style, void* data)
+{
+    const Ogre::String key = className + "_" + style;
+    auto it = this->sharedWidgetMap.find(key);
+    if (it != this->sharedWidgetMap.end())
+    {
+        it->second.userData = data;
+    }
+}
+
+void* GameObjectController::getSharedWidgetUserData(const Ogre::String& className, const Ogre::String& style) const
+{
+    const Ogre::String key = className + "_" + style;
+    auto it = this->sharedWidgetMap.find(key);
+    if (it != this->sharedWidgetMap.end())
+    {
+        return it->second.userData;
+    }
+    return nullptr;
+}
+
+void GameObjectController::destroyAllSharedWidgets()
+{
+    for (auto& pair : this->sharedWidgetMap)
+    {
+        MyGUI::Widget* widgetToDestroy = pair.second.widget;
+        if (nullptr != widgetToDestroy)
+        {
+            NOWA::GraphicsModule::RenderCommand cmd = [widgetToDestroy]()
+            {
+                MyGUI::Gui::getInstancePtr()->destroyWidget(widgetToDestroy);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "GameObjectController::destroyAllSharedWidgets");
+        }
+    }
+    this->sharedWidgetMap.clear();
+
+    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObjectController] All shared widgets destroyed.");
+}
+
+
 
 void GameObjectController::tryDestroyDatablockIfUnused(const Ogre::String& datablockName)
 {

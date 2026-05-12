@@ -1791,151 +1791,6 @@ return {
 			}
 		}
 	},
-	AnimationComponent =
-	{
-		type = "class",
-		description = "Usage: Play one animation. Requirements: Entity must have a skeleton with animations.",
-		inherits = "GameObjectComponent",
-		childs = 
-		{
-			setActivated =
-			{
-				type = "method",
-				description = "Sets whether this component should be activated or not (Start the animations).",
-				args = "(boolean activated)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			isActivated =
-			{
-				type = "function",
-				description = "Gets whether this component is activated.",
-				args = "()",
-				returns = "(boolean)",
-				valuetype = "boolean"
-			},
-			setAnimationName =
-			{
-				type = "method",
-				description = "Sets the to be played animation name. If it does not exist, the animation cannot be played later.",
-				args = "(string animationName)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			getAnimationName =
-			{
-				type = "function",
-				description = "Gets currently used animation name.",
-				args = "()",
-				returns = "(string)",
-				valuetype = "string"
-			},
-			setSpeed =
-			{
-				type = "method",
-				description = "Sets the animation speed for the current animation.",
-				args = "(number speed)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			getSpeed =
-			{
-				type = "function",
-				description = "Gets the animation speed for currently used animation.",
-				args = "()",
-				returns = "(number)",
-				valuetype = "number"
-			},
-			setRepeat =
-			{
-				type = "method",
-				description = "Sets whether the current animation should be repeated when finished.",
-				args = "(boolean repeat)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			getRepeat =
-			{
-				type = "function",
-				description = "Gets whether the current animation will be repeated when finished.",
-				args = "()",
-				returns = "(boolean)",
-				valuetype = "boolean"
-			},
-			isComplete =
-			{
-				type = "function",
-				description = "Gets whether the current animation has finished.",
-				args = "()",
-				returns = "(boolean)",
-				valuetype = "boolean"
-			},
-			getAnimationBlender =
-			{
-				type = "function",
-				description = "Gets animation blender to manipulate animations directly.",
-				args = "()",
-				returns = "(AnmationBlender)",
-				valuetype = "AnmationBlender"
-			},
-			getBone =
-			{
-				type = "function",
-				description = "Gets the bone by the given bone name for direct manipulation. Nil is delivered, if the bone name does not exist.",
-				args = "(string boneName)",
-				returns = "(Bone)",
-				valuetype = "Bone"
-			},
-			setTimePosition =
-			{
-				type = "method",
-				description = "Sets the time position for the animation.",
-				args = "(number timePosition)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			getTimePosition =
-			{
-				type = "function",
-				description = "Gets the current animation time position.",
-				args = "()",
-				returns = "(number)",
-				valuetype = "number"
-			},
-			getLength =
-			{
-				type = "function",
-				description = "Gets the animation length.",
-				args = "()",
-				returns = "(number)",
-				valuetype = "number"
-			},
-			setWeight =
-			{
-				type = "method",
-				description = "Sets the animation weight. The more less the weight the more less all bones are moved.",
-				args = "(number weight)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			getWeight =
-			{
-				type = "function",
-				description = "Gets the current animation weight.",
-				args = "()",
-				returns = "(number)",
-				valuetype = "number"
-			},
-			reactOnAnimationFinished =
-			{
-				type = "method",
-				description = "Sets whether to react when the given animation has finished.",
-				args = "(func closureFunction, boolean oneTime)",
-				returns = "(nil)",
-				valuetype = "nil"
-			}
-		}
-	},
 	AnimationComponentV2 =
 	{
 		type = "class",
@@ -2093,8 +1948,8 @@ return {
 				type = "function",
 				description = "Gets animation blender to manipulate animations directly.",
 				args = "()",
-				returns = "(AnmationBlender)",
-				valuetype = "AnmationBlender"
+				returns = "(AnimationBlenderV2)",
+				valuetype = "AnimationBlenderV2"
 			},
 			getBone =
 			{
@@ -2103,38 +1958,6 @@ return {
 				args = "(string boneName)",
 				returns = "(Bone)",
 				valuetype = "Bone"
-			}
-		}
-	},
-	AnimationState =
-	{
-		type = "class",
-		description = "The v1 animation state.",
-		childs = 
-		{
-			getTimePosition =
-			{
-				type = "function",
-				description = "Gets the current time position of this animation state.",
-				args = "()",
-				returns = "(number)",
-				valuetype = "number"
-			},
-			getLength =
-			{
-				type = "function",
-				description = "Gets the animation length.",
-				args = "()",
-				returns = "(number)",
-				valuetype = "number"
-			},
-			setTimePosition =
-			{
-				type = "method",
-				description = "Sets the time position of this animation state.",
-				args = "(number timePosition)",
-				returns = "(nil)",
-				valuetype = "nil"
 			}
 		}
 	},
@@ -4305,6 +4128,127 @@ return {
 			}
 		}
 	},
+	CompositorEffectDepthOfFieldComponent =
+	{
+		type = "class",
+		description = "Requirements: A camera component must exist. Depth of Field: Gaussian (smooth bokeh) or Hex Bokeh (6-sided bokeh). Set focusGameObjectId for auto-focus tracking.",
+		inherits = "GameObjectComponent",
+		childs = 
+		{
+			setDofType =
+			{
+				type = "method",
+				description = "Sets the depth of field mode or algorithm type.",
+				args = "(string dofType)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getDofType =
+			{
+				type = "function",
+				description = "Gets the current depth of field mode.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			setFocusGameObjectId =
+			{
+				type = "method",
+				description = "Sets the game object id used as the dynamic focus target.",
+				args = "(string id)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getFocusGameObjectId =
+			{
+				type = "function",
+				description = "Gets the current focus target game object id.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			setFocusDistance =
+			{
+				type = "method",
+				description = "Sets the camera distance where the image remains sharp.",
+				args = "(number distance)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getFocusDistance =
+			{
+				type = "function",
+				description = "Gets the focus distance.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setNearBlurRange =
+			{
+				type = "method",
+				description = "Sets the blur transition range in front of the focus distance.",
+				args = "(number range)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getNearBlurRange =
+			{
+				type = "function",
+				description = "Gets the near blur transition range.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setFarBlurRange =
+			{
+				type = "method",
+				description = "Sets the blur transition range behind the focus distance.",
+				args = "(number range)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getFarBlurRange =
+			{
+				type = "function",
+				description = "Gets the far blur transition range.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setBlurRadius =
+			{
+				type = "method",
+				description = "Sets the blur kernel radius used for out of focus areas.",
+				args = "(number radius)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getBlurRadius =
+			{
+				type = "function",
+				description = "Gets the blur kernel radius.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setBlendStrength =
+			{
+				type = "method",
+				description = "Controls the blending intensity between sharp and blurred image regions.",
+				args = "(number strength)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getBlendStrength =
+			{
+				type = "function",
+				description = "Gets the final blur blend strength.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			}
+		}
+	},
 	CompositorEffectEmbossedComponent =
 	{
 		type = "class",
@@ -4340,6 +4284,127 @@ return {
 			{
 				type = "function",
 				description = "Gets the embossed weight.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			}
+		}
+	},
+	CompositorEffectFogComponent =
+	{
+		type = "class",
+		description = "Requirements: A camera component must exist. The workspace must provide a depthTexture output channel. Uses the scene depth buffer to compute per pixel fog.  Supports two independent fog layers:  Depth fog: Exponential fog based on camera distance. Useful for atmospheric haze and distant object fading.  Height fog: Exponential fog based on world space height. Useful for ground mist, valleys and low lying fog.  Both fog layers can be combined freely. Setting a fog density to 0 disables that layer.  Camera matrices and projection data are updated per frame through the tracked closure system without game thread stalls.",
+		inherits = "GameObjectComponent",
+		childs = 
+		{
+			setDepthFogDensity =
+			{
+				type = "method",
+				description = "Sets the density/intensity of the distance based fog effect.",
+				args = "(number density)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getDepthFogDensity =
+			{
+				type = "function",
+				description = "Gets the current distance fog density.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setDepthFogStart =
+			{
+				type = "method",
+				description = "Sets the world distance at which depth fog begins.",
+				args = "(number start)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getDepthFogStart =
+			{
+				type = "function",
+				description = "Gets the depth fog start distance.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setHeightFogDensity =
+			{
+				type = "method",
+				description = "Sets the density/intensity of the height based fog effect.",
+				args = "(number density)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getHeightFogDensity =
+			{
+				type = "function",
+				description = "Gets the current height fog density.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setHeightFogStart =
+			{
+				type = "method",
+				description = "Sets the world height where height fog begins.",
+				args = "(number startHeight)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getHeightFogStart =
+			{
+				type = "function",
+				description = "Gets the height fog start height.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setHeightFogEnd =
+			{
+				type = "method",
+				description = "Sets the world height where height fog fully fades out.",
+				args = "(number endHeight)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getHeightFogEnd =
+			{
+				type = "function",
+				description = "Gets the height fog end height.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setFogColor =
+			{
+				type = "method",
+				description = "Sets the fog RGB color.",
+				args = "(Vector3 color)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getFogColor =
+			{
+				type = "function",
+				description = "Gets the current fog RGB color.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			setFogSkyBlend =
+			{
+				type = "method",
+				description = "Sets how much the fog blends with the sky color. 0 = only fog color, 1 = fully blended with sky.",
+				args = "(number blend)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getFogSkyBlend =
+			{
+				type = "function",
+				description = "Gets the sky blend factor.",
 				args = "()",
 				returns = "(number)",
 				valuetype = "number"
@@ -4384,6 +4449,175 @@ return {
 				args = "()",
 				returns = "(number)",
 				valuetype = "number"
+			}
+		}
+	},
+	CompositorEffectLightShaftsComponent =
+	{
+		type = "class",
+		description = "Requirements: A camera component and a LightDirectionalComponent must exist. Depth-occlusion light shafts: geometry casts hard shadows into the rays. Use shaftSharpness to control edge crispness.",
+		inherits = "GameObjectComponent",
+		childs = 
+		{
+			setLightId =
+			{
+				type = "method",
+				description = "Sets the light game object id used as the light shaft source.",
+				args = "(string lightId)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getLightId =
+			{
+				type = "function",
+				description = "Gets the current light shaft source game object id.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			setOcclusionDepthThreshold =
+			{
+				type = "method",
+				description = "Sets the depth threshold used for occlusion masking.",
+				args = "(number threshold)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getOcclusionDepthThreshold =
+			{
+				type = "function",
+				description = "Gets the occlusion depth threshold.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setSunRadius =
+			{
+				type = "method",
+				description = "Sets the apparent size of the light source.",
+				args = "(number radius)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getSunRadius =
+			{
+				type = "function",
+				description = "Gets the apparent light source size.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setBrightnessThreshold =
+			{
+				type = "method",
+				description = "Sets the minimum brightness required for shaft generation.",
+				args = "(number threshold)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getBrightnessThreshold =
+			{
+				type = "function",
+				description = "Gets the brightness threshold.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setDecay =
+			{
+				type = "method",
+				description = "Controls how quickly the light shafts fade over distance.",
+				args = "(number decay)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getDecay =
+			{
+				type = "function",
+				description = "Gets the shaft decay factor.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setDensity =
+			{
+				type = "method",
+				description = "Controls the sampling density of the light shaft effect.",
+				args = "(number density)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getDensity =
+			{
+				type = "function",
+				description = "Gets the shaft sampling density.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setExposure =
+			{
+				type = "method",
+				description = "Controls the exposure multiplier of the light shafts.",
+				args = "(number exposure)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getExposure =
+			{
+				type = "function",
+				description = "Gets the shaft exposure multiplier.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setShaftSharpness =
+			{
+				type = "method",
+				description = "Controls how sharp or blurred the light shafts appear.",
+				args = "(number sharpness)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getShaftSharpness =
+			{
+				type = "function",
+				description = "Gets the shaft sharpness factor.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setShaftStrength =
+			{
+				type = "method",
+				description = "Controls the final intensity of the blended light shafts.",
+				args = "(number strength)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getShaftStrength =
+			{
+				type = "function",
+				description = "Gets the final shaft intensity.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setTint =
+			{
+				type = "method",
+				description = "Sets the RGB tint color of the light shafts.",
+				args = "(Vector3 tint)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getTint =
+			{
+				type = "function",
+				description = "Gets the RGB tint color.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
 			}
 		}
 	},
@@ -4556,6 +4790,79 @@ return {
 			}
 		}
 	},
+	CompositorEffectOutlineComponent =
+	{
+		type = "class",
+		description = "Runs a Sobel operator on the linearised depth buffer to detect geometry silhouette edges.  Because depth instead of colour drives the edge detection, texture details are ignored completely. Only actual geometry discontinuities produce outlines.  This is the correct approach compared to colour based Sobel cartoon edge detection, which detects every texture edge on detailed surfaces like terrain.  Can be combined with the CompositorEffectCartoonComponent: Cartoon handles colour quantisation and saturation, Outline adds clean geometry silhouettes on top.  Parameters: outlineColor: RGB colour of the outline strokes.  outlineThickness: Sobel kernel step size in pixels. 1 creates thin outlines, 3 creates thick outlines.  depthThreshold: Minimum depth gradient required to detect an edge. Lower values detect more small features. Higher values focus on large silhouettes only.  outlineStrength: Final opacity and intensity of the outline effect.  The depth texture is automatically wired through the workspace compositor infrastructure. Projection parameters are updated per frame from the camera.",
+		inherits = "GameObjectComponent",
+		childs = 
+		{
+			setOutlineColor =
+			{
+				type = "method",
+				description = "Sets the RGB color of the outline strokes.",
+				args = "(Vector3 color)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getOutlineColor =
+			{
+				type = "function",
+				description = "Gets the RGB outline color.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			setOutlineThickness =
+			{
+				type = "method",
+				description = "Sets the Sobel kernel step size in pixels. Lower values create thin outlines, higher values thicker outlines.",
+				args = "(number thickness)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getOutlineThickness =
+			{
+				type = "function",
+				description = "Gets the outline thickness.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setDepthThreshold =
+			{
+				type = "method",
+				description = "Sets the minimum depth gradient required to detect an edge. Lower values detect more geometry details.",
+				args = "(number threshold)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getDepthThreshold =
+			{
+				type = "function",
+				description = "Gets the depth edge detection threshold.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setOutlineStrength =
+			{
+				type = "method",
+				description = "Controls the final opacity and intensity of the outline effect.",
+				args = "(number strength)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getOutlineStrength =
+			{
+				type = "function",
+				description = "Gets the final outline intensity.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			}
+		}
+	},
 	CompositorEffectSharpenEdgesComponent =
 	{
 		type = "class",
@@ -4594,6 +4901,143 @@ return {
 				args = "()",
 				returns = "(number)",
 				valuetype = "number"
+			}
+		}
+	},
+	CompositorEffectVolumetricLightComponent =
+	{
+		type = "class",
+		description = "Requirements: A camera component and a LightDirectionalComponent must exist. Screen-space god rays using the Crytek/Kawase three-pass technique. ",
+		inherits = "GameObjectComponent",
+		childs = 
+		{
+			setLightId =
+			{
+				type = "method",
+				description = "Sets the light game object id used as the volumetric light source.",
+				args = "(string lightId)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getLightId =
+			{
+				type = "function",
+				description = "Gets the current volumetric light source game object id.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			setGodRayStrength =
+			{
+				type = "method",
+				description = "Sets the overall intensity of the god ray effect.",
+				args = "(number strength)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getGodRayStrength =
+			{
+				type = "function",
+				description = "Gets the overall god ray intensity.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setSunThreshold =
+			{
+				type = "method",
+				description = "Sets the brightness threshold for light scattering contribution.",
+				args = "(number threshold)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getSunThreshold =
+			{
+				type = "function",
+				description = "Gets the sun brightness threshold.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setSunRadius =
+			{
+				type = "method",
+				description = "Sets the apparent screen space radius of the light source.",
+				args = "(number radius)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getSunRadius =
+			{
+				type = "function",
+				description = "Gets the apparent light source radius.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setDecay =
+			{
+				type = "method",
+				description = "Sets how quickly light scattering fades over distance.",
+				args = "(number decay)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getDecay =
+			{
+				type = "function",
+				description = "Gets the light scattering decay factor.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setDensity =
+			{
+				type = "method",
+				description = "Sets the sample density used for volumetric light scattering.",
+				args = "(number density)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getDensity =
+			{
+				type = "function",
+				description = "Gets the volumetric light sample density.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setExposure =
+			{
+				type = "method",
+				description = "Sets the exposure multiplier of the volumetric light effect.",
+				args = "(number exposure)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getExposure =
+			{
+				type = "function",
+				description = "Gets the volumetric light exposure multiplier.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setTint =
+			{
+				type = "method",
+				description = "Sets the RGB tint color of the volumetric light effect.",
+				args = "(Vector3 tint)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getTint =
+			{
+				type = "function",
+				description = "Gets the RGB tint color.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
 			}
 		}
 	},
@@ -6551,46 +6995,6 @@ return {
 		type = "class",
 		description = "Generates a procedural ellipse shape mesh."
 	},
-	Entity =
-	{
-		type = "class",
-		description = "Base class for an Ogre mesh object.",
-		childs = 
-		{
-			setVisible =
-			{
-				type = "method",
-				description = "Sets the entity visible (rendered) or not.",
-				args = "(boolean visible)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			getVisible =
-			{
-				type = "function",
-				description = "Gets whether the entity is visible or not.",
-				args = "()",
-				returns = "(boolean)",
-				valuetype = "boolean"
-			},
-			getCastShadows =
-			{
-				type = "function",
-				description = "Gets whether shadows are casted or not.",
-				args = "()",
-				returns = "(boolean)",
-				valuetype = "boolean"
-			},
-			getName =
-			{
-				type = "function",
-				description = "Gets the name of the entity.",
-				args = "()",
-				returns = "(string)",
-				valuetype = "string"
-			}
-		}
-	},
 	Extruder =
 	{
 		type = "class",
@@ -7025,6 +7429,14 @@ return {
 			{
 				type = "function",
 				description = "Gets the entity of this game object.",
+				args = "()",
+				returns = "(Entity)",
+				valuetype = "Entity"
+			},
+			getItem =
+			{
+				type = "function",
+				description = "Gets the item of this game object.",
 				args = "()",
 				returns = "(Entity)",
 				valuetype = "Entity"
@@ -7860,14 +8272,6 @@ return {
 				args = "()",
 				returns = "(PhysicsArtifactComponent)",
 				valuetype = "PhysicsArtifactComponent"
-			},
-			getPhysicsRagDollComponent =
-			{
-				type = "function",
-				description = "Gets the physics ragdoll component.",
-				args = "()",
-				returns = "(PhysicsRagDollComponent)",
-				valuetype = "PhysicsRagDollComponent"
 			},
 			getPhysicsCompoundConnectionComponent =
 			{
@@ -8861,14 +9265,6 @@ return {
 				returns = "(PhysicsArtifactComponent)",
 				valuetype = "PhysicsArtifactComponent"
 			},
-			getPhysicsRagDollComponentFromName =
-			{
-				type = "function",
-				description = "Gets the physics ragdoll component.",
-				args = "(string name)",
-				returns = "(PhysicsRagDollComponent)",
-				valuetype = "PhysicsRagDollComponent"
-			},
 			getPhysicsCompoundConnectionComponentFromName =
 			{
 				type = "function",
@@ -9181,30 +9577,6 @@ return {
 				returns = "(AiLuaGoalComponent)",
 				valuetype = "AiLuaGoalComponent"
 			},
-			getAnimationComponent2 =
-			{
-				type = "function",
-				description = "Gets the component by the given occurence index, since a game object may this component maybe several times.",
-				args = "(number occurrenceIndex)",
-				returns = "(AnimationComponent)",
-				valuetype = "AnimationComponent"
-			},
-			getAnimationComponent =
-			{
-				type = "function",
-				description = "Gets the component. This can be used if the game object this component just once.",
-				args = "()",
-				returns = "(AnimationComponent)",
-				valuetype = "AnimationComponent"
-			},
-			getAnimationComponentFromName =
-			{
-				type = "function",
-				description = "Gets the component from name.",
-				args = "(string name)",
-				returns = "(AnimationComponent)",
-				valuetype = "AnimationComponent"
-			},
 			getAnimationComponentV22 =
 			{
 				type = "function",
@@ -9420,6 +9792,86 @@ return {
 				args = "(string name)",
 				returns = "(CameraBehaviorZoomComponent)",
 				valuetype = "CameraBehaviorZoomComponent"
+			},
+			getCompositorEffectDepthOfFieldComponent =
+			{
+				type = "function",
+				description = "Gets the CompositorEffectDepthOfFieldComponent.",
+				args = "()",
+				returns = "(CompositorEffectDepthOfFieldComponent)",
+				valuetype = "CompositorEffectDepthOfFieldComponent"
+			},
+			getCompositorEffectDepthOfFieldComponentFromName =
+			{
+				type = "function",
+				description = "Gets the CompositorEffectDepthOfFieldComponent by name.",
+				args = "(string name)",
+				returns = "(CompositorEffectDepthOfFieldComponent)",
+				valuetype = "CompositorEffectDepthOfFieldComponent"
+			},
+			getCompositorEffectFogComponent =
+			{
+				type = "function",
+				description = "Gets the CompositorEffectFogComponent.",
+				args = "()",
+				returns = "(CompositorEffectFogComponent)",
+				valuetype = "CompositorEffectFogComponent"
+			},
+			getCompositorEffectFogComponentFromName =
+			{
+				type = "function",
+				description = "Gets the CompositorEffectFogComponent by name.",
+				args = "(string name)",
+				returns = "(CompositorEffectFogComponent)",
+				valuetype = "CompositorEffectFogComponent"
+			},
+			getCompositorEffectLightShaftsComponent =
+			{
+				type = "function",
+				description = "Gets the CompositorEffectLightShaftsComponent.",
+				args = "()",
+				returns = "(CompositorEffectLightShaftsComponent)",
+				valuetype = "CompositorEffectLightShaftsComponent"
+			},
+			getCompositorEffectLightShaftsComponentFromName =
+			{
+				type = "function",
+				description = "Gets the CompositorEffectLightShaftsComponent by name.",
+				args = "(string name)",
+				returns = "(CompositorEffectLightShaftsComponent)",
+				valuetype = "CompositorEffectLightShaftsComponent"
+			},
+			getCompositorEffectOutlineComponent =
+			{
+				type = "function",
+				description = "Gets the CompositorEffectOutlineComponent.",
+				args = "()",
+				returns = "(CompositorEffectOutlineComponent)",
+				valuetype = "CompositorEffectOutlineComponent"
+			},
+			getCompositorEffectOutlineComponentFromName =
+			{
+				type = "function",
+				description = "Gets the CompositorEffectOutlineComponent by name.",
+				args = "(string name)",
+				returns = "(CompositorEffectOutlineComponent)",
+				valuetype = "CompositorEffectOutlineComponent"
+			},
+			getCompositorEffectVolumetricLightComponent =
+			{
+				type = "function",
+				description = "Gets the CompositorEffectVolumetricLightComponent.",
+				args = "()",
+				returns = "(CompositorEffectVolumetricLightComponent)",
+				valuetype = "CompositorEffectVolumetricLightComponent"
+			},
+			getCompositorEffectVolumetricLightComponentFromName =
+			{
+				type = "function",
+				description = "Gets the CompositorEffectVolumetricLightComponent by name.",
+				args = "(string name)",
+				returns = "(CompositorEffectVolumetricLightComponent)",
+				valuetype = "CompositorEffectVolumetricLightComponent"
 			},
 			getCrowdComponentFromIndex =
 			{
@@ -9780,22 +10232,6 @@ return {
 				args = "(string name)",
 				returns = "(MinimapComponent)",
 				valuetype = "MinimapComponent"
-			},
-			getMorphAnimationComponentFromName =
-			{
-				type = "function",
-				description = "Gets the morph animation component by the given name. Returns nil if the component does not exist.",
-				args = "(string name)",
-				returns = "(MorphAnimationComponent)",
-				valuetype = "MorphAnimationComponent"
-			},
-			getMorphAnimationComponent =
-			{
-				type = "function",
-				description = "Gets the morph animation component. Returns nil if the component does not exist.",
-				args = "()",
-				returns = "(MorphAnimationComponent)",
-				valuetype = "MorphAnimationComponent"
 			},
 			getMyGUIItemBoxComponent =
 			{
@@ -11325,14 +11761,6 @@ return {
 				returns = "(PhysicsArtifactComponent)",
 				valuetype = "PhysicsArtifactComponent"
 			},
-			castPhysicsRagDollComponent =
-			{
-				type = "function",
-				description = "Casts an incoming type from function for lua auto completion.",
-				args = "(PhysicsRagDollComponent other)",
-				returns = "(PhysicsRagDollComponent)",
-				valuetype = "PhysicsRagDollComponent"
-			},
 			castPhysicsCompoundConnectionComponent =
 			{
 				type = "function",
@@ -11645,14 +12073,6 @@ return {
 				returns = "(GoalResult)",
 				valuetype = "GoalResult"
 			},
-			castAnimationComponent =
-			{
-				type = "function",
-				description = "Casts an incoming type from function for lua auto completion.",
-				args = "(AnimationComponent other)",
-				returns = "(AnimationComponent)",
-				valuetype = "AnimationComponent"
-			},
 			castAnimationComponentV2 =
 			{
 				type = "function",
@@ -11748,6 +12168,46 @@ return {
 				args = "(CameraBehaviorZoomComponent other)",
 				returns = "(CameraBehaviorZoomComponent)",
 				valuetype = "CameraBehaviorZoomComponent"
+			},
+			castCompositorEffectDepthOfFieldComponent =
+			{
+				type = "function",
+				description = "Casts for Lua auto completion.",
+				args = "(CompositorEffectDepthOfFieldComponent other)",
+				returns = "(CompositorEffectDepthOfFieldComponent)",
+				valuetype = "CompositorEffectDepthOfFieldComponent"
+			},
+			castCompositorEffectFogComponent =
+			{
+				type = "function",
+				description = "Casts for Lua auto completion.",
+				args = "(CompositorEffectFogComponent other)",
+				returns = "(CompositorEffectFogComponent)",
+				valuetype = "CompositorEffectFogComponent"
+			},
+			castCompositorEffectLightShaftsComponent =
+			{
+				type = "function",
+				description = "Casts for Lua auto completion.",
+				args = "(CompositorEffectLightShaftsComponent other)",
+				returns = "(CompositorEffectLightShaftsComponent)",
+				valuetype = "CompositorEffectLightShaftsComponent"
+			},
+			castCompositorEffectOutlineComponent =
+			{
+				type = "function",
+				description = "Casts for Lua auto completion.",
+				args = "(CompositorEffectOutlineComponent other)",
+				returns = "(CompositorEffectOutlineComponent)",
+				valuetype = "CompositorEffectOutlineComponent"
+			},
+			castCompositorEffectVolumetricLightComponent =
+			{
+				type = "function",
+				description = "Casts for Lua auto completion.",
+				args = "(CompositorEffectVolumetricLightComponent other)",
+				returns = "(CompositorEffectVolumetricLightComponent)",
+				valuetype = "CompositorEffectVolumetricLightComponent"
 			},
 			castCrowdComponent =
 			{
@@ -12145,7 +12605,7 @@ return {
 			setCategories =
 			{
 				type = "method",
-				description = "Sets the surface categories the object can be placed on. Use 'All' for everything, combine with '+' to include and '-' to exclude. E.g. 'All-Building-Agent' allows placement on all surfaces except those in the Building and Agent categories.",
+				description = "Sets the surface categories the object can be placed on. Use 'All' for everything, combine with '+' to include and '-' to exclude. E.g. 'All-Building-Agent' allows placement on all surfaces except those in the Building and Agent categories. Excluded surfaces show a red preview.",
 				args = "(string categories)",
 				returns = "(nil)",
 				valuetype = "nil"
@@ -12170,6 +12630,38 @@ return {
 			{
 				type = "function",
 				description = "Gets whether the placement preview transparency is enabled.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			setRotateEnabled =
+			{
+				type = "method",
+				description = "If true, the mousewheel rotates the shadow object on its Y axis before placement.",
+				args = "(boolean rotateEnabled)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getRotateEnabled =
+			{
+				type = "function",
+				description = "Gets whether mousewheel Y-axis rotation is enabled during placement.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			setAlignToTerrain =
+			{
+				type = "method",
+				description = "If true, the shadow object tilts to match the slope of the terrain surface. Three downward rays are cast around the object footprint to compute the surface normal.",
+				args = "(boolean alignToTerrain)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getAlignToTerrain =
+			{
+				type = "function",
+				description = "Gets whether terrain-slope alignment is enabled during placement.",
 				args = "()",
 				returns = "(boolean)",
 				valuetype = "boolean"
@@ -19474,191 +19966,6 @@ return {
 			}
 		}
 	},
-	MorphAnimationComponent =
-	{
-		type = "class",
-		description = "Usage: Controls morph/pose animations on v1 meshes with blend shapes. Use mathematical functions to animate pose weights over time. Can also create new poses at runtime. Requirements: v1::Entity with mesh. A pose defines vertex offsets from the original mesh position. For example: A face mesh could have poses like "Smile" (moves mouth vertices up), "EyesClosed" (moves eyelid vertices down). A chest could have a pose like "Open" (moves lid vertices to open position). The Problem: Poses must be baked into the mesh file during export from Blender/Maya/3DS Max. They're called: Shape Keys in Blender, Blend Shapes in Maya, Morph Targets in 3DS Max. How to Use This Component: Option A: Mesh already has poses (from Blender export). In Blender: Create Shape Keys on your mesh. Export to .mesh with OgreExporter (it exports shape keys as poses). Add MorphAnimationComponent -> poses appear in dropdown. Set math function to animate them.",
-		inherits = "GameObjectComponent",
-		childs = 
-		{
-			setActivated =
-			{
-				type = "method",
-				description = "Sets whether the morph animation is activated.",
-				args = "(boolean activated)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			getActivated =
-			{
-				type = "function",
-				description = "Gets whether the morph animation is activated.",
-				args = "()",
-				returns = "(boolean)",
-				valuetype = "boolean"
-			},
-			setBoneName =
-			{
-				type = "method",
-				description = "Sets the bone name to associate with (optional).",
-				args = "(string boneName)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			getBoneName =
-			{
-				type = "function",
-				description = "Gets the associated bone name.",
-				args = "()",
-				returns = "(string)",
-				valuetype = "string"
-			},
-			setPoseAnimationCount =
-			{
-				type = "method",
-				description = "Sets the number of pose animations to control.",
-				args = "(number count)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			getPoseAnimationCount =
-			{
-				type = "function",
-				description = "Gets the number of pose animations.",
-				args = "()",
-				returns = "(number)",
-				valuetype = "number"
-			},
-			setPoseName =
-			{
-				type = "method",
-				description = "Sets the pose name at the given index.",
-				args = "(number index, string poseName)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			getPoseName =
-			{
-				type = "function",
-				description = "Gets the pose name at the given index.",
-				args = "(number index)",
-				returns = "(string)",
-				valuetype = "string"
-			},
-			setWeightFunction =
-			{
-				type = "method",
-				description = "Sets the weight function for the pose at the given index. Example: '(sin(t) + 1) / 2'",
-				args = "(number index, string weightFunction)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			getWeightFunction =
-			{
-				type = "function",
-				description = "Gets the weight function for the pose at the given index.",
-				args = "(number index)",
-				returns = "(string)",
-				valuetype = "string"
-			},
-			setSpeed =
-			{
-				type = "method",
-				description = "Sets the speed multiplier for the pose at the given index.",
-				args = "(number index, number speed)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			getSpeed =
-			{
-				type = "function",
-				description = "Gets the speed multiplier for the pose at the given index.",
-				args = "(number index)",
-				returns = "(number)",
-				valuetype = "number"
-			},
-			setTimeOffset =
-			{
-				type = "method",
-				description = "Sets the time offset for the pose at the given index.",
-				args = "(number index, number timeOffset)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			getTimeOffset =
-			{
-				type = "function",
-				description = "Gets the time offset for the pose at the given index.",
-				args = "(number index)",
-				returns = "(number)",
-				valuetype = "number"
-			},
-			setPoseWeight =
-			{
-				type = "method",
-				description = "Manually sets the weight for a pose by name.",
-				args = "(string poseName, number weight)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			getPoseWeight =
-			{
-				type = "function",
-				description = "Gets the current weight for a pose by name.",
-				args = "(string poseName)",
-				returns = "(number)",
-				valuetype = "number"
-			},
-			resetTime =
-			{
-				type = "method",
-				description = "Resets the time accumulator to zero.",
-				args = "()",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			getAccumulatedTime =
-			{
-				type = "function",
-				description = "Gets the current time accumulator value.",
-				args = "()",
-				returns = "(number)",
-				valuetype = "number"
-			},
-			createPose =
-			{
-				type = "function",
-				description = "Creates a new pose on the mesh. Target 0 = shared geometry, 1+ = submesh index.",
-				args = "(string poseName, unsigned number target = 0)",
-				returns = "(boolean)",
-				valuetype = "boolean"
-			},
-			addPoseVertex =
-			{
-				type = "function",
-				description = "Adds a vertex offset to an existing pose.",
-				args = "(string poseName, number vertexIndex, Vector3 offset, Vector3 normalOffset = Vector3::ZERO)",
-				returns = "(boolean)",
-				valuetype = "boolean"
-			},
-			removePose =
-			{
-				type = "function",
-				description = "Removes a pose from the mesh.",
-				args = "(string poseName)",
-				returns = "(boolean)",
-				valuetype = "boolean"
-			},
-			getMeshPoseCount =
-			{
-				type = "function",
-				description = "Gets the number of poses on the mesh.",
-				args = "()",
-				returns = "(number)",
-				valuetype = "number"
-			}
-		}
-	},
 	Mouse =
 	{
 		type = "class",
@@ -25314,119 +25621,6 @@ return {
 			}
 		}
 	},
-	PhysicsRagDollComponent =
-	{
-		type = "class",
-		description = "Usage: This component is used to create physics rag doll. The ragdoll details are specified in a XML file. This component has also several states, so that it can also behave like an usual physics active component. Even a partial rag doll can be created e.g. just using the right arm of the player as rag doll.Requirements: A game object with mesh and animation (*.skeleton) file. Note: This component will only work with Ogre Entity, as Ogre Item has not been created for such complex animation things.",
-		inherits = "PhysicsActiveComponent",
-		childs = 
-		{
-			setVelocity =
-			{
-				type = "method",
-				description = "Sets the global linear velocity on the physics body. Note: This should only be used for initzialisation. Use @applyRequiredForceForVelocity in simualtion instead. Or it may be called if its a physics active kinematic body.",
-				args = "(Vector3 velocity)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			getVelocity =
-			{
-				type = "function",
-				description = "Gets currently acting velocity on the body.",
-				args = "()",
-				returns = "(Vector3)",
-				valuetype = "Vector3"
-			},
-			getPosition =
-			{
-				type = "function",
-				description = "Gets the position of the physics component.",
-				args = "()",
-				returns = "(Vector3)",
-				valuetype = "Vector3"
-			},
-			setOrientation =
-			{
-				type = "method",
-				description = "Sets the orientation of the physics component. Attention: Never ever use this function in an update function for physics, as it will mess up parts of physics like ragdolls etc. Only use it for initialization!",
-				args = "(Quaternion orientation)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			getOrientation =
-			{
-				type = "function",
-				description = "Gets the orientation of the physics component.",
-				args = "()",
-				returns = "(Quaternion)",
-				valuetype = "Quaternion"
-			},
-			setInitialState =
-			{
-				type = "method",
-				description = "If in ragdoll state, resets all bones ot its initial position and orientation.",
-				args = "()",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			setAnimationEnabled =
-			{
-				type = "method",
-				description = "Enables animation for the ragdoll. That is, the bones are no more controlled manually, but transform comes from animation state.",
-				args = "(boolean enabled)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			isAnimationEnabled =
-			{
-				type = "function",
-				description = "Gets whether the ragdoll is being animated.",
-				args = "()",
-				returns = "(boolean)",
-				valuetype = "boolean"
-			},
-			setBoneConfigFile =
-			{
-				type = "method",
-				description = "Sets the bone configuration file. Which describes in XML, how the ragdoll is configure. The file must be placed in the same folder as the mesh and skeleton file. Note: The file can be exchanged at runtime, if a different ragdoll configuration is desire.",
-				args = "(string boneConfigFile)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			getBoneConfigFile =
-			{
-				type = "function",
-				description = "Gets the currently applied bone config file.",
-				args = "()",
-				returns = "(string)",
-				valuetype = "string"
-			},
-			getRagDataList =
-			{
-				type = "function",
-				description = "Gets List of all configured rag bones.",
-				args = "()",
-				returns = "(Table[RagBone])",
-				valuetype = "Table[RagBone]"
-			},
-			getRagBone =
-			{
-				type = "function",
-				description = "Gets RagBone from the given name or nil, if it does not exist.",
-				args = "(string ragboneName)",
-				returns = "(RagBone)",
-				valuetype = "RagBone"
-			},
-			setBoneRotation =
-			{
-				type = "method",
-				description = "Rotates the given RagBone around the given axis by degree amount.",
-				args = "(string ragboneName, Vector3 axis, number degree)",
-				returns = "(nil)",
-				valuetype = "nil"
-			}
-		}
-	},
 	PhysicsRagDollComponentV2 =
 	{
 		type = "class",
@@ -27923,105 +28117,9 @@ return {
 	RagBone =
 	{
 		type = "class",
-		description = "The inner class RagBone represents one physically controlled rag bone.",
+		description = "RagBone class",
 		childs = 
 		{
-			getName =
-			{
-				type = "function",
-				description = "Gets name of this bone, that has been specified in the bone config file.",
-				args = "()",
-				returns = "(string)",
-				valuetype = "string"
-			},
-			getPosition =
-			{
-				type = "function",
-				description = "Gets the position of this rag bone in global space.",
-				args = "()",
-				returns = "(Vector3)",
-				valuetype = "Vector3"
-			},
-			setOrientation =
-			{
-				type = "method",
-				description = "Sets the orientation of this rag bone in global space. Attention: Never ever use this function in an update function for physics, as it will mess up parts of physics like ragdolls etc. Only use it for initialization!",
-				args = "(Quaternion orientation)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			getOrientation =
-			{
-				type = "function",
-				description = "Gets the orientation of this rag bone in global space.",
-				args = "()",
-				returns = "(Quaternion)",
-				valuetype = "Quaternion"
-			},
-			setInitialState =
-			{
-				type = "method",
-				description = "If in ragdoll state, resets this rag bone ot its initial position and orientation.",
-				args = "()",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			getOgreBone =
-			{
-				type = "function",
-				description = "Gets the Ogre v1 old bone.",
-				args = "()",
-				returns = "(OldBone)",
-				valuetype = "OldBone"
-			},
-			getParentRagBone =
-			{
-				type = "function",
-				description = "Gets the parent rag bone or nil, if its the root.",
-				args = "()",
-				returns = "(RagBone)",
-				valuetype = "RagBone"
-			},
-			getInitialBonePosition =
-			{
-				type = "function",
-				description = "Gets the initial position of this rag bone in global space.",
-				args = "()",
-				returns = "(Vector3)",
-				valuetype = "Vector3"
-			},
-			getInitialBoneOrientation =
-			{
-				type = "function",
-				description = "Gets the initial orientation of this rag bone in global space.",
-				args = "()",
-				returns = "(Quaternion)",
-				valuetype = "Quaternion"
-			},
-			getPhysicsRagDollComponent =
-			{
-				type = "function",
-				description = "Gets PhysicsRagDollComponent outer class object from this rag bone.",
-				args = "()",
-				returns = "(PhysicsRagDollComponent)",
-				valuetype = "PhysicsRagDollComponent"
-			},
-			getPose =
-			{
-				type = "function",
-				description = "Gets the pose of this rag bone. Note: This is a vector if not ZERO, that is used to constraint a specific axis, so that the rag bone can not be moved along that axis.",
-				args = "()",
-				returns = "(Vector3)",
-				valuetype = "Vector3"
-			},
-			applyPose =
-			{
-				type = "method",
-				description = "Applies a the pose to this rag bone. Note: This is a vector if not ZERO, that is used to constraint a specific axis, so that the rag bone can not be moved along that axis.",
-				args = "(Vector3 pose)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
 			getJointComponent =
 			{
 				type = "function",
@@ -28070,6 +28168,102 @@ return {
 				returns = "(JointComponent)",
 				valuetype = "JointComponent"
 			},
+			getName =
+			{
+				type = "function",
+				description = "Gets name of this bone, that has been specified in the bone config file.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			getPosition =
+			{
+				type = "function",
+				description = "Gets the position of this rag bone in global space.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			setOrientation =
+			{
+				type = "method",
+				description = "Sets the orientation of this rag bone in global space. Attention: Never ever use this function in an update function for physics, as it will mess up parts of physics like ragdolls etc. Only use it for initialization!",
+				args = "(Quaternion orientation)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getOrientation =
+			{
+				type = "function",
+				description = "Gets the orientation of this rag bone in global space.",
+				args = "()",
+				returns = "(Quaternion)",
+				valuetype = "Quaternion"
+			},
+			setInitialState =
+			{
+				type = "method",
+				description = "If in ragdoll state, resets this rag bone ot its initial position and orientation.",
+				args = "()",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getOgreBone =
+			{
+				type = "function",
+				description = "Gets the Ogre v2 bone.",
+				args = "()",
+				returns = "(Bone)",
+				valuetype = "Bone"
+			},
+			getParentRagBone =
+			{
+				type = "function",
+				description = "Gets the parent rag bone or nil, if its the root.",
+				args = "()",
+				returns = "(RagBone)",
+				valuetype = "RagBone"
+			},
+			getInitialBonePosition =
+			{
+				type = "function",
+				description = "Gets the initial position of this rag bone in global space.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			getInitialBoneOrientation =
+			{
+				type = "function",
+				description = "Gets the initial orientation of this rag bone in global space.",
+				args = "()",
+				returns = "(Quaternion)",
+				valuetype = "Quaternion"
+			},
+			getPhysicsRagDollComponentV2 =
+			{
+				type = "function",
+				description = "Gets PhysicsRagDollComponentV2 outer class object from this rag bone.",
+				args = "()",
+				returns = "(PhysicsRagDollComponentV2)",
+				valuetype = "PhysicsRagDollComponentV2"
+			},
+			getPose =
+			{
+				type = "function",
+				description = "Gets the pose of this rag bone. Note: This is a vector if not ZERO, that is used to constraint a specific axis, so that the rag bone can not be moved along that axis.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			applyPose =
+			{
+				type = "method",
+				description = "Applies a the pose to this rag bone. Note: This is a vector if not ZERO, that is used to constraint a specific axis, so that the rag bone can not be moved along that axis.",
+				args = "(Vector3 pose)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
 			applyRequiredForceForVelocity =
 			{
 				type = "method",
@@ -28117,22 +28311,6 @@ return {
 				args = "()",
 				returns = "(Body)",
 				valuetype = "Body"
-			},
-			getOgreBone =
-			{
-				type = "function",
-				description = "Gets the Ogre v2 bone.",
-				args = "()",
-				returns = "(Bone)",
-				valuetype = "Bone"
-			},
-			getPhysicsRagDollComponentV2 =
-			{
-				type = "function",
-				description = "Gets PhysicsRagDollComponentV2 outer class object from this rag bone.",
-				args = "()",
-				returns = "(PhysicsRagDollComponentV2)",
-				valuetype = "PhysicsRagDollComponentV2"
 			}
 		}
 	},
@@ -29036,6 +29214,38 @@ return {
 			}
 		}
 	},
+	SkeletonAnimation =
+	{
+		type = "class",
+		description = "The animation state.",
+		childs = 
+		{
+			getCurrentTime =
+			{
+				type = "function",
+				description = "Gets the current time position of this animation state.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			getDuration =
+			{
+				type = "function",
+				description = "Gets the animation length.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setTime =
+			{
+				type = "method",
+				description = "Sets the time position of this animation state.",
+				args = "(number timePosition)",
+				returns = "(nil)",
+				valuetype = "nil"
+			}
+		}
+	},
 	Sound =
 	{
 		type = "class",
@@ -29812,7 +30022,7 @@ return {
 	TagPointComponent =
 	{
 		type = "class",
-		description = "This component can be used to attach another source game object to the local tag point (bone). Info: Several tag point components can be added to one game object. Example : A weapon(source game object) could be attached to the right hand of the player. Requirements : Tags a game object to a bone.Requirements: Entity must have animations.",
+		description = "This component can be used to attach another source game object to the local tag point (bone). Info: Several tag point components can be added to one game object. Example : A weapon(source game object) could be attached to the right hand of the player. Requirements : Tags a game object to a bone.Requirements: Item must have animations.",
 		inherits = "GameObjectComponent",
 		childs = 
 		{

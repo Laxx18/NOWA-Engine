@@ -339,58 +339,52 @@ namespace NOWA
 	}
 
 	void AnimationComponentV2::activateAnimation(void)
-	{
-		if (nullptr == this->gameObjectPtr)
-		{
-			return;
-		}
+    {
+        if (nullptr == this->gameObjectPtr)
+        {
+            return;
+        }
 
-		if (false == this->animationName->getListSelectedValue().empty())
-		{
-            NOWA::GraphicsModule::RenderCommand loadCmd = [this]()
+        if (true == this->animationName->getListSelectedValue().empty())
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AnimationComponentV2] Warning: The given animation name is empty.");
+            return;
+        }
+
+        if (nullptr == this->skeleton || nullptr == this->animationBlender)
+        {
+            return;
+        }
+
+        if (false == this->skeleton->hasAnimation(this->animationName->getListSelectedValue()))
+        {
+            Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
+            if (nullptr != item)
             {
-                if (nullptr != this->skeleton)
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AnimationComponentV2] Error: The item: " + item->getName() + " has no animation: " + this->animationName->getListSelectedValue());
+                for (auto& anim : this->skeleton->getAnimationsNonConst())
                 {
-                    Ogre::SkeletonAnimation* animationState = this->skeleton->getAnimation(this->animationName->getListSelectedValue());
-                    if (nullptr != animationState)
-                    {
-                        // this->resetAnimation();
-                        // this->animationState->setEnabled(true);
-                        // this->animationState->setWeight(5.0f);
-                        // this->animationState->setTimePosition(0.0f);
-                        // this->animationBlender->init(this->animationName->getListSelectedValue(), this->animationRepeat->getBool());
-                        this->animationBlender->blend(this->animationName->getListSelectedValue(), NOWA::AnimationBlenderV2::BlendThenAnimate, 0.2f, this->animationRepeat->getBool());
-                    }
-                    else
-                    {
-                        Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
-                        if (nullptr != item)
-                        {
-                            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AnimationComponentV2] Error: The item: " + item->getName() + " has no animation: " + this->animationName->getListSelectedValue());
-                            for (auto& anim : this->skeleton->getAnimationsNonConst())
-                            {
-                                anim.setEnabled(false);
-                                anim.mWeight = 0.0f;
-                                anim.setTime(0.0f);
-                                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AnimationComponentV2] Available Animations: ");
-                                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-                                    "[AnimationComponentV2] Animation name: " + anim.getName().getFriendlyText() + " length: " + Ogre::StringConverter::toString(anim.getDuration()) + " seconds");
-                            }
-                        }
-                        else
-                        {
-                            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AnimationComponentV2] Error: The game object does not possess an item for animations.");
-                        }
-                    }
+                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AnimationComponentV2] Available animation: " + anim.getName().getFriendlyText() + " length: " + Ogre::StringConverter::toString(anim.getDuration()) + "s");
                 }
-            };
-            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(loadCmd), "AnimationComponentV2::connect");
-		}
-		else
-		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AnimationComponentV2] Warning: The given animation name is empty.");
-		}
-	}
+            }
+            return;
+        }
+
+        // Capture by value — these are read on the render thread, which may run
+        // after this function returns and local variables are gone.
+        Ogre::String animName = this->animationName->getListSelectedValue();
+        bool repeat = this->animationRepeat->getBool();
+
+        // Use init() not blend():
+        //   blend() tries to crossfade FROM the current source, which resetAnimation()
+        //   has left disabled (T-pose) → produces a 0.2 s T-pose flicker on every
+        //   connect().  init() directly enables the animation at full weight with no
+        //   blend phase, which is the correct behaviour for a fresh simulation start.
+        //
+        // internalInit() does skeleton writes (setEnabled, mWeight) so it MUST run
+        // on the render thread — hence ENQUEUE_RENDER_COMMAND, not a direct call.
+        this->animationBlender->init(animName, repeat);
+    }
 
 	bool AnimationComponentV2::isComplete(void) const
 	{

@@ -542,6 +542,12 @@ namespace NOWA
         void handleGeometryModified(NOWA::EventDataPtr eventData);
 
         /**
+         * @brief Handles the event when the geometry of a game object has changed. This can be used to update the navigation mesh if necessary, for example when terra center has changed etc.
+         * @param[in] eventData The event data containing information about the changed geometry.
+         */
+        void handleGeometryChanged(NOWA::EventDataPtr eventData);
+
+        /**
          * @brief Sets whether the navigation mesh must be regenerated.
          * @param[in] mustRegenerate true if the navigation mesh must be regenerated, false otherwise.
          */

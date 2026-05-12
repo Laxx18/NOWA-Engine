@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MyGUI type="Resource">
+	<Resource type="ResourceImageSet" name="pic_ItemBackImage">
+		<Group name="States" texture="InventoryBuildings.png" size="74 74">
+			<Index name="None">
+				<Frame point="675 0"/>
+			</Index>
+			<Index name="Normal">
+				<Frame point="675 0"/>
+			</Index>
+			<Index name="Active">
+				<Frame point="675 75"/>
+			</Index>
+			<Index name="Pressed">
+				<Frame point="675 150"/>
+			</Index>
+			<Index name="Select">
+				<Frame point="675 225"/>
+			</Index>
+		</Group>
+	</Resource>
+	<Resource type="ResourceImageSet" name="pic_ItemSelectImage">
+		<Group name="States" texture="InventoryBuildings.png" size="74 74">
+			<Index name="None">
+				<Frame point="750 225"/>
+			</Index>
+			<Index name="Normal">
+				<Frame point="750 0"/>
+			</Index>
+			<Index name="Refuse">
+				<Frame point="750 75"/>
+			</Index>
+			<Index name="Accept">
+				<Frame point="750 150"/>
+			</Index>
+		</Group>
+	</Resource>
+	<Resource type="ResourceItemInfo" name="ClearItem">
+		<Name/>
+		<Description/>
+		<Image RefID="pic_ClearItem"/>
+	</Resource>
+	<Resource type="ResourceItemInfo" name="TownHallItem">
+		<Name>Townhall</Name>
+		<Description>The main townhall for producing workers.</Description>
+		<Image RefID="pic_TownHallItem"/>
+	</Resource>
+	<Resource type="ResourceItemInfo" name="HouseItem">
+		<Name>House</Name>
+		<Description>Workers must live in houses.</Description>
+		<Image RefID="pic_HouseItem"/>
+	</Resource>
+	<Resource type="ResourceImageSet" name="pic_ClearItem">
+		<Group name="States" texture="InventoryBuildings.png" size="74 74">
+			<Index name="Normal">
+				<Frame point="600 0"/>
+			</Index>
+			<Index name="Refuse">
+				<Frame point="600 75"/>
+			</Index>
+			<Index name="Accept">
+				<Frame point="600 150"/>
+			</Index>
+		</Group>
+		<Group name="ToolTip" texture="InventoryBuildings.png" size="32 32">
+			<Index name="Normal">
+				<Frame point="0 384"/>
+			</Index>
+		</Group>
+	</Resource>
+	<Resource type="ResourceImageSet" name="pic_TownHallItem">
+		<Group name="States" texture="InventoryBuildings.png" size="74 74">
+			<Index name="Normal">
+				<Frame point="0 0"/>
+			</Index>
+			<Index name="Refuse">
+				<Frame point="0 75"/>
+			</Index>
+			<Index name="Accept">
+				<Frame point="0 150"/>
+			</Index>
+		</Group>
+		<Group name="ToolTip" texture="InventoryBuildings.png" size="32 32">
+			<Index name="Normal">
+				<Frame point="33 384"/>
+			</Index>
+		</Group>
+	</Resource>
+	<Resource type="ResourceImageSet" name="pic_HouseItem">
+		<Group name="States" texture="InventoryBuildings.png" size="74 74">
+			<Index name="Normal">
+				<Frame point="75 0"/>
+			</Index>
+			<Index name="Refuse">
+				<Frame point="75 75"/>
+			</Index>
+			<Index name="Accept">
+				<Frame point="75 150"/>
+			</Index>
+		</Group>
+		<Group name="ToolTip" texture="InventoryBuildings.png" size="32 32">
+			<Index name="Normal">
+				<Frame point="66 384"/>
+			</Index>
+		</Group>
+	</Resource>
+</MyGUI>

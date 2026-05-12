@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MyGUI type="Resource" version="1.1">
+
+    <!-- ── Skin: the 9-patch frame drawn from inventory_panel_256x256.png ── -->
+    <Resource type="ResourceSkin" name="InventoryPanelSkin" size="256 256" texture="inventory_panel_256x256.png">
+
+        <!-- Centre fill -->
+        <BasisSkin type="SubSkin" offset="20 20 216 216" align="Stretch">
+            <State name="normal" offset="20 20 216 216"/>
+        </BasisSkin>
+        <!-- Top / Bottom edges -->
+        <BasisSkin type="SubSkin" offset="20 0 216 20" align="HStretch Top">
+            <State name="normal" offset="20 0 216 20"/>
+        </BasisSkin>
+        <BasisSkin type="SubSkin" offset="20 236 216 20" align="HStretch Bottom">
+            <State name="normal" offset="20 236 216 20"/>
+        </BasisSkin>
+        <!-- Left / Right edges -->
+        <BasisSkin type="SubSkin" offset="0 20 20 216" align="Left VStretch">
+            <State name="normal" offset="0 20 20 216"/>
+        </BasisSkin>
+        <BasisSkin type="SubSkin" offset="236 20 20 216" align="Right VStretch">
+            <State name="normal" offset="236 20 20 216"/>
+        </BasisSkin>
+        <!-- Corners -->
+        <BasisSkin type="SubSkin" offset="0 0 20 20" align="Left Top">
+            <State name="normal" offset="0 0 20 20"/>
+        </BasisSkin>
+        <BasisSkin type="SubSkin" offset="236 0 20 20" align="Right Top">
+            <State name="normal" offset="236 0 20 20"/>
+        </BasisSkin>
+        <BasisSkin type="SubSkin" offset="0 236 20 20" align="Left Bottom">
+            <State name="normal" offset="0 236 20 20"/>
+        </BasisSkin>
+        <BasisSkin type="SubSkin" offset="236 236 20 20" align="Right Bottom">
+            <State name="normal" offset="236 236 20 20"/>
+        </BasisSkin>
+    </Resource>
+
+    <!--
+        ── Layout template: ItemBox using the inventory frame ──
+        Root natural size 75x75. Border = 20 px each side, scrollbar = 15 px wide/tall.
+        Client margins: left=20 top=20  right=35(15sb+20border)  bottom=35
+        VScroll: 15 wide, 20 from right edge of widget
+        HScroll: 15 tall,  20 from bottom edge of widget
+    -->
+    <Resource type="ResourceLayout" name="ItemBoxInventory" version="3.2.0">
+        <Widget type="Widget" skin="InventoryPanelSkin" position="5 5 75 75" name="Root">
+            <UserString key="LE_TargetWidgetType" value="ItemBox"/>
+            <UserString key="DragLayer" value="DragAndDrop"/>
+
+            <!-- Client area: inset 20 px each side, leaves room for scrollbars -->
+            <Widget type="Widget" skin="PanelEmpty" position="20 20 20 20" align="Stretch" name="Client"/>
+
+            <!-- Vertical scrollbar: 15 px wide, 20 px gap from right border -->
+            <Widget type="ScrollBar" skin="ScrollBarV" position="40 20 15 35" align="Right VStretch" name="VScroll"/>
+
+            <!-- Horizontal scrollbar: 15 px tall, 20 px gap from bottom border -->
+            <Widget type="ScrollBar" skin="ScrollBarH" position="20 40 35 15" align="HStretch Bottom" name="HScroll"/>
+        </Widget>
+    </Resource>
+
+</MyGUI>

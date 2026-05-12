@@ -55,7 +55,6 @@ namespace NOWA
 		bShowDebugData(false),
 		luaScript(nullptr),
 		bConnectPriority(false),
-        bConnected(false),
 		timeSinceLastUpdate(2.0f),
         cachedLuaScriptComponent(nullptr),
         cachedAiLuaComponent(nullptr),
@@ -894,7 +893,6 @@ namespace NOWA
 
 	bool GameObject::connect(void)
     {
-        this->bConnected = true;
         // Use cached raw pointers — no component scan, no atomic refcount lock.
         // These are set once in postInit() and cleared in destroy().
         LuaScriptComponent* luaScriptRaw = this->cachedLuaScriptComponent;
@@ -941,7 +939,6 @@ namespace NOWA
 
 	bool GameObject::disconnect(void)
 	{
-        this->bConnected = false;
 		for (const auto& component : this->gameObjectComponents)
 		{
 			if (false == std::get<COMPONENT>(component)->disconnect())
@@ -1077,9 +1074,9 @@ namespace NOWA
 				this->movableObject->setVisibilityFlags(this->renderCategoryId->getUInt());
 			});
 		}
-		if (GameObject::AttrTagName() == attribute->getName())
+		else if (GameObject::AttrTagName() == attribute->getName())
 		{
-			this->tagName->setValue(attribute->getString());
+            this->setTagName(attribute->getString());
 		}
 		else if (GameObject::AttrPosition() == attribute->getName())
 		{
@@ -1477,9 +1474,16 @@ namespace NOWA
 	}
 
 	void GameObject::setTagName(const Ogre::String& tagName)
-	{
-		this->tagName->setValue(tagName);
-	}
+    {
+        if (this->tagName->getString() != tagName)
+        {
+            Ogre::String oldTagName = this->tagName->getString();
+            this->tagName->setValue(tagName);
+
+            boost::shared_ptr<EventDataTagNameChanged> evt(new EventDataTagNameChanged(this->id->getULong(), oldTagName, tagName));
+            AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(evt);
+        }
+    }
 
 	Ogre::String GameObject::getTagName(void) const
 	{

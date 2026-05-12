@@ -895,11 +895,9 @@ namespace NOWA
 			this->destroyTerra();
 			this->createTerra();
 		}
-		if (TerraComponent::AttrCenter() == attribute->getName())
+		else if (TerraComponent::AttrCenter() == attribute->getName())
 		{
-			this->center->setValue(attribute->getVector3());
-			this->destroyTerra();
-			this->createTerra();
+			this->setCenter(attribute->getVector3());
 		}
 		else if (TerraComponent::AttrPixelSize() == attribute->getName())
 		{
@@ -1107,12 +1105,35 @@ namespace NOWA
 
 		boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
         NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGeometryModified);
+
+		// For PhysicsTerrainComponent
+        boost::shared_ptr<NOWA::EventDataGeometryChanged> eventDataGeometryChanged(new NOWA::EventDataGeometryChanged(this->gameObjectPtr->getId(), false, false));
+        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGeometryChanged);
 	}
 		
 	Ogre::Vector3 TerraComponent::getDimensions(void) const
 	{
 		return this->dimensions->getVector3();
-	}
+    }
+
+    void TerraComponent::setCenter(const Ogre::Vector3& center)
+    {
+        this->center->setValue(center);
+        this->destroyTerra();
+        this->createTerra();
+
+        boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
+        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGeometryModified);
+
+        // For PhysicsTerrainComponent
+        boost::shared_ptr<NOWA::EventDataGeometryChanged> eventDataGeometryChanged(new NOWA::EventDataGeometryChanged(this->gameObjectPtr->getId(), false, false));
+        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGeometryChanged);
+    }
+
+    Ogre::Vector3 TerraComponent::getCenter(void) const
+    {
+        return this->center->getVector3();
+    }
 	
 	void TerraComponent::setLightId(unsigned long lightId)
 	{

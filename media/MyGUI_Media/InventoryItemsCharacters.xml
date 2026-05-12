@@ -1,0 +1,265 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+===========================================================================
+  InventoryItemsCharacters.png  —  814 x 384 px
+===========================================================================
+
+  ITEM ICON GRID  (74x74 px per cell, border included, step=74)
+
+  +--------+--------+--------+--------+--------+--------+--------+--------+--------+
+  |        | Item 0 | Item 1 | Item 2 | Item 3 | Item 4 | Item 5 | Item 6 | Item 7 | Item 8
+  |        | x=0    | x=74   | x=148  | x=222  | x=296  | x=370  | x=444  | x=518  | x=592
+  +--------+--------+--------+--------+--------+--------+--------+--------+--------+
+  | y=0    | Icon   | Icon   | Icon   | Icon   | Icon   | Icon   | Icon   | Icon   | Icon
+  | Normal |        |        |        |        |        |        |        |        |
+  +--------+--------+--------+--------+--------+--------+--------+--------+--------+
+  | y=74   | Icon   | Icon   | Icon   | Icon   | Icon   | Icon   | Icon   | Icon   | Icon
+  | Refuse |        |        |        |        |        |        |        |        |
+  +--------+--------+--------+--------+--------+--------+--------+--------+--------+
+  | y=148  | Icon   | Icon   | Icon   | Icon   | Icon   | Icon   | Icon   | Icon   | Icon
+  | Accept |        |        |        |        |        |        |        |        |
+  +--------+--------+--------+--------+--------+--------+--------+--------+--------+
+  | y=222  | (only BackImage Select state used here, items leave this row empty)   |
+  +--------+--------+--------+--------+--------+--------+--------+--------+--------+
+
+  TOOLTIP ROW  (32x32 px per cell, step=32)  y=352
+  +------+------+------+------+------+------+------+------+------+
+  | TT 0 | TT 1 | TT 2 | TT 3 | TT 4 | TT 5 | TT 6 | TT 7 | TT 8 ...
+  | x=0  | x=32 | x=64 | x=96 |x=128 |x=160 |x=192 |x=224 |x=256
+  +------+------+------+------+------+------+------+------+------+
+
+  BACKIMAGE  (cell background)  x=666, size=74x74
+    y=0   — None / Normal  (default cell)
+    y=74  — Active         (mouse hover)
+    y=148 — Pressed        (mouse button down)
+    y=222 — Select         (cell selected)
+
+  SELECTIMAGE  (drag-and-drop border overlay)  x=740, size=74x74
+    y=0   — Normal  (drag active, neutral border)
+    y=74  — Refuse  (drop not allowed, red border)
+    y=148 — Accept  (drop allowed, green border)
+    y=222 — None    (invisible, no drag)
+
+===========================================================================
+-->
+<MyGUI type="Resource">
+
+    <!-- ==================================================================
+         CELL BACKGROUND  —  pic_ItemBackImage
+         Texture: InventoryItemsCharacters.png  |  Cell size: 74x74
+         ================================================================== -->
+    <Resource type="ResourceImageSet" name="pic_ItemBackImage">
+        <Group name="States" texture="InventoryItemsCharacters.png" size="74 74">
+            <Index name="None">
+                <Frame point="666 0"/>   <!-- x=666 y=0   — default, no interaction -->
+            </Index>
+            <Index name="Normal">
+                <Frame point="666 0"/>   <!-- x=666 y=0   — default -->
+            </Index>
+            <Index name="Active">
+                <Frame point="666 74"/>  <!-- x=666 y=74  — mouse hover -->
+            </Index>
+            <Index name="Pressed">
+                <Frame point="666 148"/> <!-- x=666 y=148 — mouse button down -->
+            </Index>
+            <Index name="Select">
+                <Frame point="666 222"/> <!-- x=666 y=222 — cell selected -->
+            </Index>
+        </Group>
+    </Resource>
+
+    <!-- ==================================================================
+         DRAG-AND-DROP BORDER  —  pic_ItemSelectImage
+         Texture: InventoryItemsCharacters.png  |  Cell size: 74x74
+         ================================================================== -->
+    <Resource type="ResourceImageSet" name="pic_ItemSelectImage">
+        <Group name="States" texture="InventoryItemsCharacters.png" size="74 74">
+            <Index name="None">
+                <Frame point="740 222"/> <!-- x=740 y=222 — invisible, no drag -->
+            </Index>
+            <Index name="Normal">
+                <Frame point="740 0"/>   <!-- x=740 y=0   — drag active, neutral border -->
+            </Index>
+            <Index name="Refuse">
+                <Frame point="740 74"/>  <!-- x=740 y=74  — drop not allowed, red border -->
+            </Index>
+            <Index name="Accept">
+                <Frame point="740 148"/> <!-- x=740 y=148 — drop allowed, green border -->
+            </Index>
+        </Group>
+    </Resource>
+
+    <!-- ==================================================================
+         ITEM DEFINITIONS
+         To add a new item: copy one block, change name and RefID.
+         ================================================================== -->
+
+    <Resource type="ResourceItemInfo" name="WorkerItem">
+        <Name>Worker 0</Name>
+        <Description>Worker</Description>
+        <Image RefID="pic_Worker0"/>
+    </Resource>
+
+    <Resource type="ResourceItemInfo" name="Item1">
+        <Name>Worker 1</Name>
+        <Description>Worker</Description>
+        <Image RefID="pic_Worker1"/>
+    </Resource>
+
+    <Resource type="ResourceItemInfo" name="Item2">
+        <Name>Worker 2</Name>
+        <Description>Worker</Description>
+        <Image RefID="pic_Worker2"/>
+    </Resource>
+
+    <Resource type="ResourceItemInfo" name="Item3">
+        <Name>Item 3</Name>
+        <Description>Description of item 3.</Description>
+        <Image RefID="pic_Item3"/>
+    </Resource>
+
+    <Resource type="ResourceItemInfo" name="Item4">
+        <Name>Item 4</Name>
+        <Description>Description of item 4.</Description>
+        <Image RefID="pic_Item4"/>
+    </Resource>
+
+    <Resource type="ResourceItemInfo" name="Item5">
+        <Name>Item 5</Name>
+        <Description>Description of item 5.</Description>
+        <Image RefID="pic_Item5"/>
+    </Resource>
+
+    <Resource type="ResourceItemInfo" name="Item6">
+        <Name>Item 6</Name>
+        <Description>Description of item 6.</Description>
+        <Image RefID="pic_Item6"/>
+    </Resource>
+
+    <Resource type="ResourceItemInfo" name="Item7">
+        <Name>Item 7</Name>
+        <Description>Description of item 7.</Description>
+        <Image RefID="pic_Item7"/>
+    </Resource>
+
+    <Resource type="ResourceItemInfo" name="Item8">
+        <Name>Item 8</Name>
+        <Description>Description of item 8.</Description>
+        <Image RefID="pic_Item8"/>
+    </Resource>
+
+    <!-- ==================================================================
+         IMAGE RESOURCES  —  sprite sheet coordinates
+         States group:  74x74,  3 rows  (Normal y=0 / Refuse y=74 / Accept y=148)
+         ToolTip group: 32x32,  y=352
+         ================================================================== -->
+
+    <!-- Item 0  |  Column x=0    |  Tooltip x=0   y=352 -->
+    <Resource type="ResourceImageSet" name="pic_Worker0">
+        <Group name="States" texture="InventoryItemsCharacters.png" size="74 74">
+            <Index name="Normal"> <Frame point="0 0"/>   </Index>
+            <Index name="Refuse"> <Frame point="0 74"/>  </Index>
+            <Index name="Accept"> <Frame point="0 148"/> </Index>
+        </Group>
+        <Group name="ToolTip" texture="InventoryItemsCharacters.png" size="32 32">
+            <Index name="Normal"> <Frame point="0 352"/> </Index>
+        </Group>
+    </Resource>
+
+    <!-- Item 1  |  Column x=74   |  Tooltip x=32  y=352 -->
+    <Resource type="ResourceImageSet" name="pic_Worker1">
+        <Group name="States" texture="InventoryItemsCharacters.png" size="74 74">
+            <Index name="Normal"> <Frame point="74 0"/>   </Index>
+            <Index name="Refuse"> <Frame point="74 74"/>  </Index>
+            <Index name="Accept"> <Frame point="74 148"/> </Index>
+        </Group>
+        <Group name="ToolTip" texture="InventoryItemsCharacters.png" size="32 32">
+            <Index name="Normal"> <Frame point="32 352"/> </Index>
+        </Group>
+    </Resource>
+
+    <!-- Item 2  |  Column x=148  |  Tooltip x=64  y=352 -->
+    <Resource type="ResourceImageSet" name="pic_Worker2">
+        <Group name="States" texture="InventoryItemsCharacters.png" size="74 74">
+            <Index name="Normal"> <Frame point="148 0"/>   </Index>
+            <Index name="Refuse"> <Frame point="148 74"/>  </Index>
+            <Index name="Accept"> <Frame point="148 148"/> </Index>
+        </Group>
+        <Group name="ToolTip" texture="InventoryItemsCharacters.png" size="32 32">
+            <Index name="Normal"> <Frame point="64 352"/> </Index>
+        </Group>
+    </Resource>
+
+    <!-- Item 3  |  Column x=222  |  Tooltip x=96  y=352 -->
+    <Resource type="ResourceImageSet" name="pic_Item3">
+        <Group name="States" texture="InventoryItemsCharacters.png" size="74 74">
+            <Index name="Normal"> <Frame point="222 0"/>   </Index>
+            <Index name="Refuse"> <Frame point="222 74"/>  </Index>
+            <Index name="Accept"> <Frame point="222 148"/> </Index>
+        </Group>
+        <Group name="ToolTip" texture="InventoryItemsCharacters.png" size="32 32">
+            <Index name="Normal"> <Frame point="96 352"/> </Index>
+        </Group>
+    </Resource>
+
+    <!-- Item 4  |  Column x=296  |  Tooltip x=128 y=352 -->
+    <Resource type="ResourceImageSet" name="pic_Item4">
+        <Group name="States" texture="InventoryItemsCharacters.png" size="74 74">
+            <Index name="Normal"> <Frame point="296 0"/>   </Index>
+            <Index name="Refuse"> <Frame point="296 74"/>  </Index>
+            <Index name="Accept"> <Frame point="296 148"/> </Index>
+        </Group>
+        <Group name="ToolTip" texture="InventoryItemsCharacters.png" size="32 32">
+            <Index name="Normal"> <Frame point="128 352"/> </Index>
+        </Group>
+    </Resource>
+
+    <!-- Item 5  |  Column x=370  |  Tooltip x=160 y=352 -->
+    <Resource type="ResourceImageSet" name="pic_Item5">
+        <Group name="States" texture="InventoryItemsCharacters.png" size="74 74">
+            <Index name="Normal"> <Frame point="370 0"/>   </Index>
+            <Index name="Refuse"> <Frame point="370 74"/>  </Index>
+            <Index name="Accept"> <Frame point="370 148"/> </Index>
+        </Group>
+        <Group name="ToolTip" texture="InventoryItemsCharacters.png" size="32 32">
+            <Index name="Normal"> <Frame point="160 352"/> </Index>
+        </Group>
+    </Resource>
+
+    <!-- Item 6  |  Column x=444  |  Tooltip x=192 y=352 -->
+    <Resource type="ResourceImageSet" name="pic_Item6">
+        <Group name="States" texture="InventoryItemsCharacters.png" size="74 74">
+            <Index name="Normal"> <Frame point="444 0"/>   </Index>
+            <Index name="Refuse"> <Frame point="444 74"/>  </Index>
+            <Index name="Accept"> <Frame point="444 148"/> </Index>
+        </Group>
+        <Group name="ToolTip" texture="InventoryItemsCharacters.png" size="32 32">
+            <Index name="Normal"> <Frame point="192 352"/> </Index>
+        </Group>
+    </Resource>
+
+    <!-- Item 7  |  Column x=518  |  Tooltip x=224 y=352 -->
+    <Resource type="ResourceImageSet" name="pic_Item7">
+        <Group name="States" texture="InventoryItemsCharacters.png" size="74 74">
+            <Index name="Normal"> <Frame point="518 0"/>   </Index>
+            <Index name="Refuse"> <Frame point="518 74"/>  </Index>
+            <Index name="Accept"> <Frame point="518 148"/> </Index>
+        </Group>
+        <Group name="ToolTip" texture="InventoryItemsCharacters.png" size="32 32">
+            <Index name="Normal"> <Frame point="224 352"/> </Index>
+        </Group>
+    </Resource>
+
+    <!-- Item 8  |  Column x=592  |  Tooltip x=256 y=352 -->
+    <Resource type="ResourceImageSet" name="pic_Item8">
+        <Group name="States" texture="InventoryItemsCharacters.png" size="74 74">
+            <Index name="Normal"> <Frame point="592 0"/>   </Index>
+            <Index name="Refuse"> <Frame point="592 74"/>  </Index>
+            <Index name="Accept"> <Frame point="592 148"/> </Index>
+        </Group>
+        <Group name="ToolTip" texture="InventoryItemsCharacters.png" size="32 32">
+            <Index name="Normal"> <Frame point="256 352"/> </Index>
+        </Group>
+    </Resource>
+
+</MyGUI>

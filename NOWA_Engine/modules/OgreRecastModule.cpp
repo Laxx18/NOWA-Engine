@@ -43,6 +43,7 @@ namespace NOWA
             // Listen on the app-state manager (NavMeshComponent::connect fires here
             // when simulation starts — connect() is called from app-state context).
             AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->addListener(fastdelegate::MakeDelegate(this, &OgreRecastModule::handleGeometryModified), EventDataGeometryModified::getStaticEventType());
+            AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->addListener(fastdelegate::MakeDelegate(this, &OgreRecastModule::handleGeometryChanged), EventDataGeometryChanged::getStaticEventType());
         }
         else
         {
@@ -55,12 +56,28 @@ namespace NOWA
 	OgreRecastModule::~OgreRecastModule()
 	{
 		AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &OgreRecastModule::handleGeometryModified), EventDataGeometryModified::getStaticEventType());
+        AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &OgreRecastModule::handleGeometryChanged), EventDataGeometryChanged::getStaticEventType());
 		this->destroyContent();
 	}
 
 	void OgreRecastModule::handleGeometryModified(NOWA::EventDataPtr eventData)
     {
         this->mustRegenerate = true;
+    }
+
+    void OgreRecastModule::handleGeometryChanged(NOWA::EventDataPtr eventData)
+    {
+        boost::shared_ptr<NOWA::EventDataGeometryChanged> castEventData = boost::static_pointer_cast<NOWA::EventDataGeometryChanged>(eventData);
+
+        // Event not for this state
+        auto gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->getGameObjectFromId(castEventData->getGameObjectId());
+        if (nullptr != gameObjectPtr)
+        {
+            if (gameObjectPtr->getType() == GameObject::TERRA)
+            {
+                this->mustRegenerate = true;
+            }
+        }
     }
 
     bool OgreRecastModule::isBuildInProgress(void) const

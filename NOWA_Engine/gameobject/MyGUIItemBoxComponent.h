@@ -202,6 +202,11 @@ namespace NOWA
 		virtual bool postInit(void) override;
 
 		/**
+         * @see		GameObjectComponent::onRemoveComponent
+         */
+        virtual void onRemoveComponent(void);
+
+		/**
 		* @see		GameObjectComponent::connect
 		*/
 		virtual bool connect(void) override;
@@ -258,6 +263,15 @@ namespace NOWA
 		* @see		GameObjectComponent::writeXML
 		*/
 		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
+
+		/**
+         * @see		GameObjectComponent::setActivated
+         */
+        virtual void setActivated(bool activated) override;
+
+		virtual void setSkin(const Ogre::String& skin) override;
+
+		virtual void setStyle(const Ogre::String& style) override;
 
 		void setResourceLocationName(const Ogre::String& resourceLocationName);
 
@@ -348,6 +362,21 @@ namespace NOWA
 		static const Ogre::String AttrAllowDragDrop(void) { return "Allow Drag & Drop"; }
 	protected:
 		virtual void mouseButtonClick(MyGUI::Widget* sender) override;
+
+		virtual void onActivated(void) override;
+		
+		/**
+         * @brief	Gets called when a skin is changed for a widget
+         */
+        virtual void onChangeSkin(void);
+
+		virtual Ogre::String getSharedWidgetKey(void) const override;
+
+        virtual void setCommonWidget(bool enable) override;
+
+        virtual void createAndRegisterSharedWidgetImpl(GameObjectController* gameObjectController, const Ogre::String& key) override;
+
+        virtual void createOwnWidgetImpl() override;
 	private:
 		void notifyStartDrop(wraps::BaseLayout* _sender, wraps::DDItemInfo _info, bool& _result);
 		void notifyRequestDrop(wraps::BaseLayout* _sender, wraps::DDItemInfo _info, bool& _result);
@@ -363,6 +392,7 @@ namespace NOWA
 	private:
 		ToolTip* toolTip;
 		ItemBoxWindow* itemBoxWindow;
+        ItemBoxWindow* sharedItemBoxWindow;
 		
 		Variant* resourceLocationName;
 		Variant* useToolTip;
@@ -384,6 +414,8 @@ namespace NOWA
 		Ogre::String oldResourceLocationName;
 		bool dropFinished;
         std::map<Ogre::String, unsigned int> resourceNameToIndex;
+        Ogre::String lastBuiltSkin;
+        Ogre::String lastBuiltStyle;
 	};
 
 	//////////////////////////////////////////////////////////////////////////////////

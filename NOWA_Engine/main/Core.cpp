@@ -1807,6 +1807,8 @@ namespace NOWA
 		MyGUI::ResourceManager::getInstance().load("Brushes.xml");
 		MyGUI::ResourceManager::getInstance().load("Minimap.xml");
 		MyGUI::ResourceManager::getInstance().load("MyGUI_NOWA_Images.xml");
+
+		MyGUI::ResourceManager::getInstancePtr()->load("InventoryPanel.xml");
 	}
 
 	void Core::setSceneManagerForMyGuiPlatform(Ogre::SceneManager* sceneManager)

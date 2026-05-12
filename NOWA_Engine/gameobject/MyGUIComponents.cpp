@@ -111,6 +111,7 @@ namespace NOWA
 		oldActivated(true),
 		priorId(0),
 		oldCoordinate(Ogre::Vector4::ZERO),
+        bIsCloning(false),
 		activated(new Variant(MyGUIComponent::AttrActivated(), true, this->attributes)),
 		position(new Variant(MyGUIComponent::AttrPosition(), Ogre::Vector2(0.5f, 0.5f), this->attributes)),
 		size(new Variant(MyGUIComponent::AttrSize(), Ogre::Vector2(0.2f, 0.1f), this->attributes)),
@@ -119,12 +120,19 @@ namespace NOWA
 		color(new Variant(MyGUIComponent::AttrColor(), Ogre::Vector4(0.5f, 0.5f, 0.5, 1.0f), this->attributes)),
 		enabled(new Variant(MyGUIComponent::AttrEnabled(), true, this->attributes)),
 		id(new Variant(MyGUIComponent::AttrId(), makeUniqueID(), this->attributes, true)),
-		parentId(new Variant(MyGUIComponent::AttrParentId(), static_cast<unsigned long>(0), this->attributes, true))
+		parentId(new Variant(MyGUIComponent::AttrParentId(), static_cast<unsigned long>(0), this->attributes, true)),
+        commonWidget(new Variant(MyGUIComponent::AttrCommonWidget(), false, this->attributes))
 	{
 		this->id->setReadOnly(true);
 		this->layer->setListSelectedValue("Back");
 		this->color->addUserData(GameObject::AttrActionColorDialog());
 		this->skin = nullptr; // Is created in each derived MyGUI Component
+        this->style = nullptr;
+
+		this->commonWidget->setDescription("If true, all instances of the same component type + tagName share one "
+                                           "MyGUI widget. Only the activated instance drives it. Use for RTS units where "
+                                           "many instances exist but at most one is visible at a time (e.g. 1000 workers "
+                                           "sharing one inventory panel). In order to work properly, for the given MyGUIWidgetComponent kind, a tagName via GameObject should be used for proper sharing!");
 
 		// Note:  "ToolTip" removed, because else hittests for mygui layer stuff to detect e.g. if mouse is over a widget will not be detected and also for any Widget kind component, no events would work.
 	}
@@ -187,42 +195,60 @@ namespace NOWA
 		}
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Skin")
 		{
-			this->skin->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data"));
+            if (nullptr != this->style)
+            {
+                this->skin->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data"));
+            }
 			propertyElement = propertyElement->next_sibling("property");
 		}
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Style")
+        {
+            if (nullptr != this->style)
+            {
+                this->style->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data"));
+            }
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "CommonWidget")
+        {
+            this->commonWidget->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
 		return true;
 	}
 
 	bool MyGUIComponent::postInit(void)
-	{
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &MyGUIComponent::handleWindowChangedDelegate), NOWA::EventDataWindowChanged::getStaticEventType());
+    {
+        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &MyGUIComponent::handleWindowChangedDelegate), NOWA::EventDataWindowChanged::getStaticEventType());
+        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &MyGUIComponent::handleTagNameChangedDelegate), NOWA::EventDataTagNameChanged::getStaticEventType());
 
-		if (nullptr != this->widget)
-		{
-			this->widget->eventMouseButtonClick += MyGUI::newDelegate(this, &MyGUIComponent::mouseButtonClick);
-			this->widget->eventMouseButtonPressed += MyGUI::newDelegate(this, &MyGUIComponent::baseMouseButtonPressed);
-			this->widget->eventMouseButtonDoubleClick += MyGUI::newDelegate(this, &MyGUIComponent::baseMouseButtonDoubleClick);
-			this->widget->eventRootMouseChangeFocus += MyGUI::newDelegate(this, &MyGUIComponent::rootMouseChangeFocus);
-			this->widget->eventChangeCoord += MyGUI::newDelegate(this, &MyGUIComponent::changeCoord);
-		}
+        this->bIsCloning = false;
 
-		this->setActivated(this->activated->getBool());
-		this->setRealPosition(this->position->getVector2());
-		this->setRealSize(this->size->getVector2());
-		this->setAlign(this->align->getListSelectedValue());
-		this->setLayer(this->layer->getListSelectedValue());
-		this->setColor(this->color->getVector4());
-		this->setEnabled(this->enabled->getBool());
+        if (nullptr != this->widget)
+        {
+            this->widget->eventMouseButtonClick += MyGUI::newDelegate(this, &MyGUIComponent::mouseButtonClick);
+            this->widget->eventMouseButtonPressed += MyGUI::newDelegate(this, &MyGUIComponent::baseMouseButtonPressed);
+            this->widget->eventMouseButtonDoubleClick += MyGUI::newDelegate(this, &MyGUIComponent::baseMouseButtonDoubleClick);
+            this->widget->eventRootMouseChangeFocus += MyGUI::newDelegate(this, &MyGUIComponent::rootMouseChangeFocus);
+            this->widget->eventChangeCoord += MyGUI::newDelegate(this, &MyGUIComponent::changeCoord);
+        }
 
-		// Attach maybe widget to parent
-		this->setParentId(this->parentId->getULong());
-		// Do not dare to use this one, because it kills all prior set attributes!
-		// this->setSkin(this->skin->getListSelectedValue());
+        this->setActivated(this->activated->getBool());
+        this->setRealPosition(this->position->getVector2());
+        this->setRealSize(this->size->getVector2());
+        this->setAlign(this->align->getListSelectedValue());
+        this->setLayer(this->layer->getListSelectedValue());
+        this->setColor(this->color->getVector4());
+        this->setEnabled(this->enabled->getBool());
+        this->setParentId(this->parentId->getULong());
 
-		// For identification
-		this->widget->setUserData(std::make_pair<unsigned long, unsigned int>(this->gameObjectPtr->getId(), this->getIndex()));
-		return true;
-	}
+        // Guard: shared data-only instances (activated=false) have no widget yet
+        if (nullptr != this->widget)
+        {
+            this->widget->setUserData(std::make_pair<unsigned long, unsigned int>(this->gameObjectPtr->getId(), this->getIndex()));
+        }
+        return true;
+    }
 
 	void MyGUIComponent::baseMouseButtonPressed(MyGUI::Widget* _sender, int _left, int _top, MyGUI::MouseButton _id)
 	{
@@ -363,19 +389,27 @@ namespace NOWA
 	}
 
 	bool MyGUIComponent::connect(void)
-	{
-		GameObjectComponent::connect();
+    {
+        GameObjectComponent::connect();
 
-		this->oldCoordinate = Ogre::Vector4(static_cast<Ogre::Real>(this->widget->getCoord().left), static_cast<Ogre::Real>(this->widget->getCoord().top),
-											static_cast<Ogre::Real>(this->widget->getCoord().width), static_cast<Ogre::Real>(this->widget->getCoord().height));
+        this->isSimulating = true;
 
-		this->setRealPosition(this->position->getVector2());
-		this->setRealSize(this->size->getVector2());
+        // Data-only shared instances have no widget until setActivated(true) claims it.
+        // Skip coordinate/position setup — it will be applied in setActivated(true)
+        // when the shared widget is claimed and onActivated() runs.
+        if (nullptr == this->widget)
+        {
+            return true;
+        }
 
-		this->isSimulating = true;
-		
-		return true;
-	}
+        this->oldCoordinate = Ogre::Vector4(static_cast<Ogre::Real>(this->widget->getCoord().left), static_cast<Ogre::Real>(this->widget->getCoord().top), static_cast<Ogre::Real>(this->widget->getCoord().width),
+            static_cast<Ogre::Real>(this->widget->getCoord().height));
+
+        this->setRealPosition(this->position->getVector2());
+        this->setRealSize(this->size->getVector2());
+
+        return true;
+    }
 
 	bool MyGUIComponent::disconnect(void)
 	{
@@ -462,10 +496,14 @@ namespace NOWA
 		{
 			this->setSkin(attribute->getListSelectedValue());
 		}
-		else if (MyGUIWindowComponent::AttrSkin() == attribute->getName())
-		{
-			this->setSkin(attribute->getListSelectedValue());
-		}
+        else if (MyGUIComponent::AttrStyle() == attribute->getName())
+        {
+            this->setStyle(attribute->getListSelectedValue());
+        }
+        else if (MyGUIComponent::AttrCommonWidget() == attribute->getName())
+        {
+            this->setCommonWidget(attribute->getBool());
+        }
 	}
 
 	void MyGUIComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
@@ -542,6 +580,21 @@ namespace NOWA
 			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->skin->getListSelectedValue())));
 			propertiesXML->append_node(propertyXML);
 		}
+
+		if (nullptr != this->style)
+        {
+            propertyXML = doc.allocate_node(node_element, "property");
+            propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+            propertyXML->append_attribute(doc.allocate_attribute("name", "Style"));
+            propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->style->getListSelectedValue())));
+            propertiesXML->append_node(propertyXML);
+        }
+
+		propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "CommonWidget"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->commonWidget->getBool())));
+        propertiesXML->append_node(propertyXML);
 	}
 
 	Ogre::String MyGUIComponent::getClassName(void) const
@@ -554,36 +607,175 @@ namespace NOWA
 		return "GameObjectComponent";
 	}
 
-	void MyGUIComponent::setActivated(bool activated)
-	{
-		this->activated->setValue(activated);
-		if (nullptr != this->widget)
-		{
-			// auto closureFunction = [this, activated](Ogre::Real renderDt)
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("MyGUIComponent::setActivated", _1(activated),
-			{
-				this->widget->setVisible(activated);
-				// Also cascade visibility
-				for (size_t i = 0; i < this->widget->getChildCount(); i++)
-				{
-					this->widget->getChildAt(i)->setVisible(activated);
-				}
-			});
-			// Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
-			// NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction);
-		}
-	}
+    void MyGUIComponent::setActivated(bool activated)
+    {
+        this->activated->setValue(activated);
+
+        if (true == this->commonWidget->getBool())
+        {
+            auto* goc = AppStateManager::getSingletonPtr()->getGameObjectController();
+            if (nullptr == goc)
+            {
+                return;
+            }
+
+            // ALWAYS use getSharedWidgetKey() — never skin/style directly
+            const Ogre::String key = this->getSharedWidgetKey();
+            MyGUI::Widget* shared = goc->getSharedWidget(this->getClassName(), key);
+
+            if (nullptr == shared)
+            {
+                return;
+            }
+
+            if (true == activated)
+            {
+                goc->setSharedWidgetOwner(this->getClassName(), key, this);
+                this->widget = shared;
+
+                NOWA::GraphicsModule::RenderCommand cmd = [this, shared]()
+                {
+                    shared->setRealPosition(this->position->getVector2().x, this->position->getVector2().y);
+                    shared->setRealSize(this->size->getVector2().x, this->size->getVector2().y);
+                    Ogre::Vector4 c = this->color->getVector4();
+                    shared->setColour(MyGUI::Colour(c.x, c.y, c.z, c.w));
+                    shared->setInheritsAlpha(true);
+                    shared->setVisible(true);
+                };
+                NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MyGUIComponent::setActivated shared show");
+
+                this->onActivated();
+            }
+            else
+            {
+                void* owner = goc->getSharedWidgetOwner(this->getClassName(), key);
+                if (owner == this)
+                {
+                    NOWA::GraphicsModule::RenderCommand cmd = [shared]()
+                    {
+                        shared->setVisible(false);
+                    };
+                    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MyGUIComponent::setActivated shared hide");
+
+                    goc->setSharedWidgetOwner(this->getClassName(), key, nullptr);
+                    this->widget = nullptr;
+                }
+            }
+            return;
+        }
+
+        // Normal path — own widget
+        if (nullptr != this->widget)
+        {
+            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("MyGUIComponent::setActivated", _1(activated), {
+                this->widget->setVisible(activated);
+                for (size_t i = 0; i < this->widget->getChildCount(); i++)
+                {
+                    this->widget->getChildAt(i)->setVisible(activated);
+                }
+            });
+        }
+    }
 
 	bool MyGUIComponent::isActivated(void) const
 	{
 		return this->activated->getBool();
-	}
+    }
+
+    Ogre::String MyGUIComponent::getSharedWidgetKey(void) const
+    {
+        const Ogre::String tagName = this->gameObjectPtr->getTagName();
+        if (false == tagName.empty())
+        {
+            return tagName;
+        }
+
+        return "";
+    }
 
 	void MyGUIComponent::handleWindowChangedDelegate(NOWA::EventDataPtr eventData)
 	{
 		// Messes up in simulation mode, e.g. a position controller is active and when this event occurs, the widget will get its origin position, instead the one of the controller
 		// this->setRealPosition(this->position->getVector2());
-	}
+    }
+
+    void MyGUIComponent::handleTagNameChangedDelegate(EventDataPtr eventData)
+    {
+        auto castEventData = boost::static_pointer_cast<EventDataTagNameChanged>(eventData);
+
+        // Only react if this event is for our own game object
+        if (castEventData->getGameObjectId() != this->gameObjectPtr->getId())
+        {
+            return;
+        }
+
+        // Only matters for components participating in shared widget groups
+        if (false == this->commonWidget->getBool())
+        {
+            return;
+        }
+
+        auto* goc = AppStateManager::getSingletonPtr()->getGameObjectController();
+        if (nullptr == goc)
+        {
+            return;
+        }
+
+        const Ogre::String& oldTagName = castEventData->getOldTagName();
+
+        // Build old key the same way getSharedWidgetKey() does, but using oldTagName.
+        // getSharedWidgetKey() now returns the new key because tagName is already updated.
+        const Ogre::String skinOrStyle = (nullptr != this->style) ? this->style->getListSelectedValue() : this->skin->getListSelectedValue();
+
+        const Ogre::String oldKey = oldTagName.empty() ? skinOrStyle : oldTagName + "_" + skinOrStyle;
+
+        const Ogre::String newKey = this->getSharedWidgetKey(); // uses updated tagName
+
+        if (oldKey == newKey)
+        {
+            return;
+        }
+
+        // Was this instance currently driving the old shared widget?
+        const bool wasOwner = (goc->getSharedWidgetOwner(this->getClassName(), oldKey) == this);
+
+        // Release ownership and hide old shared widget
+        if (wasOwner)
+        {
+            MyGUI::Widget* oldWidget = goc->getSharedWidget(this->getClassName(), oldKey);
+            if (nullptr != oldWidget)
+            {
+                NOWA::GraphicsModule::RenderCommand cmd = [oldWidget]()
+                {
+                    oldWidget->setVisible(false);
+                };
+                NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MyGUIComponent::handleTagNameChangedDelegate hide old");
+            }
+            goc->setSharedWidgetOwner(this->getClassName(), oldKey, nullptr);
+            this->widget = nullptr;
+        }
+
+        // Unregister from old key (destroys shared widget if this was the last instance)
+        goc->unregisterSharedWidget(this->getClassName(), oldKey);
+
+        // Register with new key
+        if (false == goc->hasSharedWidget(this->getClassName(), newKey))
+        {
+            // First instance for the new key — create the shared widget
+            this->createAndRegisterSharedWidgetImpl(goc, newKey);
+        }
+        else
+        {
+            // Shared widget already exists for new key — bump refcount only
+            goc->registerSharedWidget(this->getClassName(), newKey, goc->getSharedWidget(this->getClassName(), newKey));
+        }
+
+        // If this instance was driving the old widget, claim the new one
+        if (wasOwner)
+        {
+            this->setActivated(true);
+        }
+    }
 
 	void MyGUIComponent::setRealPosition(const Ogre::Vector2& position)
 	{
@@ -842,39 +1034,57 @@ namespace NOWA
 	}
 
 	void MyGUIComponent::onRemoveComponent(void)
-	{
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &MyGUIComponent::handleWindowChangedDelegate), NOWA::EventDataWindowChanged::getStaticEventType());
+    {
+        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &MyGUIComponent::handleWindowChangedDelegate), NOWA::EventDataWindowChanged::getStaticEventType());
+        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &MyGUIComponent::handleTagNameChangedDelegate), NOWA::EventDataTagNameChanged::getStaticEventType());
 
-		GameObjectComponent::onRemoveComponent();
+        GameObjectComponent::onRemoveComponent();
 
-		ENQUEUE_RENDER_COMMAND("MyGUIComponent::onRemoveComponent",
-		{
-			this->widget->detachFromWidget();
-			this->hasParent = false;
-
-			// If there are widgets which do have this component as parent, remove them from parent
-			/*for (unsigned int i = 0; i < this->gameObjectPtr->getComponents()->size(); i++)
-			{
-				auto gameObjectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentByIndex(i));
-				if (nullptr != gameObjectCompPtr)
-				{
-					auto myGuiCompPtr = boost::dynamic_pointer_cast<MyGUIComponent>(gameObjectCompPtr);
-					if (nullptr != myGuiCompPtr && this != gameObjectCompPtr.get() && this->parentId->getULong() == myGuiCompPtr->getId())
-					{
-						myGuiCompPtr->getWidget()->detachFromWidget();
-						myGuiCompPtr->hasParent = false;
-						this->hasParent = false;
-					}
-				}
-			}*/
-
-			if (nullptr != this->widget && false == this->hasParent)
-			{
-				MyGUI::Gui::getInstancePtr()->destroyWidget(this->widget);
-				this->widget = nullptr;
-			}
-		});
-	}
+        if (true == this->commonWidget->getBool())
+        {
+            // Shared widget — unregister from GOC. GOC destroys the widget
+            // when the last instance unregisters (refCount reaches 0).
+            // Do NOT call MyGUI::Gui::destroyWidget here.
+            auto* goc = AppStateManager::getSingletonPtr()->getGameObjectController();
+            if (nullptr != goc)
+            {
+                // Release ownership if we are the current driver
+                void* owner = goc->getSharedWidgetOwner(this->getClassName(), this->getSharedWidgetKey());
+                if (owner == this)
+                {
+                    goc->setSharedWidgetOwner(this->getClassName(), this->getSharedWidgetKey(), nullptr);
+                    // Hide the shared widget — next owner will show it
+                    NOWA::GraphicsModule::RenderCommand cmd = [this]()
+                    {
+                        MyGUI::Widget* w = AppStateManager::getSingletonPtr()->getGameObjectController()->getSharedWidget(this->getClassName(), this->getSharedWidgetKey());
+                        if (nullptr != w)
+                        {
+                            w->setVisible(false);
+                        }
+                    };
+                    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MyGUIComponent::onRemoveComponent shared hide");
+                }
+                goc->unregisterSharedWidget(this->getClassName(), this->getSharedWidgetKey());
+            }
+            this->widget = nullptr;
+        }
+        else
+        {
+            // Own widget — existing destruction logic
+            ENQUEUE_RENDER_COMMAND("MyGUIComponent::onRemoveComponent", {
+                if (nullptr != this->widget)
+                {
+                    this->widget->detachFromWidget();
+                    this->hasParent = false;
+                    if (false == this->hasParent)
+                    {
+                        MyGUI::Gui::getInstancePtr()->destroyWidget(this->widget);
+                        this->widget = nullptr;
+                    }
+                }
+            });
+        }
+    }
 
 	void MyGUIComponent::onOtherComponentRemoved(unsigned int index)
 	{
@@ -977,7 +1187,7 @@ namespace NOWA
 		this->skin->setListSelectedValue(skin);
 		if (nullptr != this->widget)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI("MyGUIComponent::setSkin", _1(skin),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("MyGUIComponent::setSkin", _1(skin),
 			{
 				this->widget->changeWidgetSkin(skin);
 				this->onChangeSkin();
@@ -988,7 +1198,132 @@ namespace NOWA
 	Ogre::String MyGUIComponent::getSkin(void) const
 	{
 		return this->skin->getListSelectedValue();
-	}
+    }
+
+    void MyGUIComponent::setStyle(const Ogre::String& style)
+    {
+        // Base no-op: just store the value if the variant exists.
+        // Derived classes that actually use style override this.
+        if (nullptr != this->style)
+        {
+            this->style->setListSelectedValue(style);
+        }
+    }
+
+    Ogre::String MyGUIComponent::getStyle(void) const
+    {
+        if (nullptr != this->style)
+        {
+            return this->style->getListSelectedValue();
+        }
+        return Ogre::String();
+    }
+
+    void MyGUIComponent::setCommonWidget(bool enable)
+    {
+		if (this->commonWidget->getBool() == enable)
+		{
+            return;
+		}
+
+        auto* goc = AppStateManager::getSingletonPtr()->getGameObjectController();
+        if (nullptr == goc)
+        {
+            return;
+        }
+		// Do here set new value and not in derived component, because else the check above does fail!
+		// if (this->commonWidget->getBool() == enable)
+		this->commonWidget->setValue(enabled);
+
+        const Ogre::String key = this->getSharedWidgetKey();
+
+        if (true == enable)
+        {
+            // ── Transitioning: own widget → shared ────────────────────────────
+
+            // Step 1: Destroy existing own widget (if postInit has already run)
+            if (nullptr != this->widget)
+            {
+                NOWA::GraphicsModule::RenderCommand cmd = [this]()
+                {
+                    if (nullptr != this->widget)
+                    {
+                        this->widget->detachFromWidget();
+                        if (false == this->hasParent)
+                        {
+                            MyGUI::Gui::getInstancePtr()->destroyWidget(this->widget);
+                        }
+                        this->widget = nullptr;
+                    }
+                };
+                NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MyGUIComponent::setCommonWidget destroy own");
+            }
+
+            // Step 2: Register with GOC
+            if (false == goc->hasSharedWidget(this->getClassName(), key))
+            {
+                // First instance for this tag+skin group — create the shared widget.
+                // Implemented per component type via virtual.
+                this->createAndRegisterSharedWidgetImpl(goc, key);
+            }
+            else
+            {
+                // Subsequent instance — bump refcount only; widget already exists
+                goc->registerSharedWidget(this->getClassName(), key, goc->getSharedWidget(this->getClassName(), key));
+            }
+
+            // Step 3: Data-only until activated
+            this->widget = nullptr;
+
+            // Step 4: Claim shared widget if this instance is activated
+            if (true == this->activated->getBool())
+            {
+                this->setActivated(true);
+            }
+        }
+        else
+        {
+            // ── Transitioning: shared → own widget ───────────────────────────
+
+            // Step 1: Release ownership and unregister from GOC
+            void* owner = goc->getSharedWidgetOwner(this->getClassName(), key);
+            if (owner == this)
+            {
+                MyGUI::Widget* sharedWidget = goc->getSharedWidget(this->getClassName(), key);
+                if (nullptr != sharedWidget)
+                {
+                    NOWA::GraphicsModule::RenderCommand cmd = [sharedWidget]()
+                    {
+                        sharedWidget->setVisible(false);
+                    };
+                    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MyGUIComponent::setCommonWidget hide shared");
+                }
+                goc->setSharedWidgetOwner(this->getClassName(), key, nullptr);
+            }
+
+            this->widget = nullptr;
+            goc->unregisterSharedWidget(this->getClassName(), key);
+
+            // Step 2: Create own private widget from current variant values.
+            // Implemented per component type via virtual.
+            this->createOwnWidgetImpl();
+
+            // Step 3: Show if activated
+            if (true == this->activated->getBool() && nullptr != this->widget)
+            {
+                NOWA::GraphicsModule::RenderCommand cmd = [this]()
+                {
+                    this->widget->setVisible(true);
+                };
+                NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MyGUIComponent::setCommonWidget show own");
+            }
+        }
+    }
+
+    bool MyGUIComponent::getCommonWidget(void) const
+    {
+        return this->commonWidget->getBool();
+    }
 	
 	MyGUI::Widget* MyGUIComponent::getWidget(void) const
 	{
@@ -1057,6 +1392,10 @@ namespace NOWA
 	{
 		MyGUIWindowCompPtr clonedCompPtr(boost::make_shared<MyGUIWindowComponent>());
 
+		// All setters called below must only copy variant values — no widget operations.
+        // postInit() on the cloned game object will create the widget from those values.
+        clonedCompPtr->bIsCloning = true;
+
 		clonedCompPtr->setActivated(this->activated->getBool());
 		clonedCompPtr->setRealPosition(this->position->getVector2());
 		clonedCompPtr->setRealSize(this->size->getVector2());
@@ -1070,44 +1409,138 @@ namespace NOWA
 		
 		clonedCompPtr->setMovable(this->movable->getBool());
 		clonedCompPtr->setWindowCaption(this->windowCaption->getString());
+
+		clonedGameObjectPtr->addComponent(clonedCompPtr);
+        clonedCompPtr->setOwner(clonedGameObjectPtr);
+
+		clonedCompPtr->setCommonWidget(this->commonWidget->getBool());
 		
 		GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
 		return clonedCompPtr;
 	}
 
 	bool MyGUIWindowComponent::postInit(void)
-	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MyGUIWindowComponent] Init MyGUI window component for game object: " + this->gameObjectPtr->getName());
-		
-		if (true == createWidgetInParent)
-		{
-			ENQUEUE_RENDER_COMMAND("MyGUIWindowComponent::postInit",
-			{
-				this->widget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::Window>(this->skin->getListSelectedValue(),
-					this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x, this->size->getVector2().y,
-					this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_" + this->gameObjectPtr->getName() + Ogre::StringConverter::toString(this->index));
-			});
-		}
-		else
-		{
-			this->setRealPosition(this->position->getVector2());
-			this->setRealSize(this->size->getVector2());
-			this->setAlign(this->align->getListSelectedValue());
-			this->setLayer(this->layer->getListSelectedValue());
-		}
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MyGUIWindowComponent] Init MyGUI window component for game object: " + this->gameObjectPtr->getName());
 
-		this->setMovable(this->movable->getBool());
-		this->setWindowCaption(this->windowCaption->getString());
+        if (true == this->commonWidget->getBool())
+        {
+            auto* goc = AppStateManager::getSingletonPtr()->getGameObjectController();
+            const Ogre::String key = this->getSharedWidgetKey(); // returns skin value
 
-		ENQUEUE_RENDER_COMMAND("MyGUIWindowComponent::postInit",
-		{
-			this->widget->setInheritsAlpha(true);
-			Ogre::Vector4 tempColor = this->color->getVector4();
-			this->widget->setColour(MyGUI::Colour(tempColor.x, tempColor.y, tempColor.z, tempColor.w));
-		});
+            if (false == goc->hasSharedWidget(this->getClassName(), key))
+            {
+                // First instance — create the shared widget on the render thread
+                NOWA::GraphicsModule::RenderCommand cmd = [this, goc, key]()
+                {
+                    MyGUI::Widget* w = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::Window>(this->skin->getListSelectedValue(), this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x,
+                        this->size->getVector2().y, this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_shared_" + key);
+                    w->setInheritsAlpha(true);
+                    w->setVisible(false);
+                    goc->registerSharedWidget(this->getClassName(), key, w);
+                };
+                NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MyGUIWindowComponent::postInit shared create");
+            }
+            else
+            {
+                // Subsequent instances — bump refcount only; widget already exists
+                goc->registerSharedWidget(this->getClassName(), key, goc->getSharedWidget(this->getClassName(), key));
+            }
 
-		return MyGUIComponent::postInit();
-	}
+            // Data-only until setActivated(true) is called
+            this->widget = nullptr;
+
+            // MyGUIComponent::postInit calls setActivated(this->activated->getBool()),
+            // which will claim the shared widget if activated=true
+            return MyGUIComponent::postInit();
+        }
+
+        // ── Normal (own widget) path — unchanged original code ────────────────
+        if (true == createWidgetInParent)
+        {
+            ENQUEUE_RENDER_COMMAND("MyGUIWindowComponent::postInit", {
+                this->widget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::Window>(this->skin->getListSelectedValue(), this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x, this->size->getVector2().y,
+                    this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_" + this->gameObjectPtr->getName() + Ogre::StringConverter::toString(this->index));
+            });
+        }
+        else
+        {
+            this->setRealPosition(this->position->getVector2());
+            this->setRealSize(this->size->getVector2());
+            this->setAlign(this->align->getListSelectedValue());
+            this->setLayer(this->layer->getListSelectedValue());
+        }
+
+        if (true == createWidgetInParent)
+        {
+            this->setMovable(this->movable->getBool());
+            this->setWindowCaption(this->windowCaption->getString());
+        }
+
+        ENQUEUE_RENDER_COMMAND("MyGUIWindowComponent::postInit color", {
+            this->widget->setInheritsAlpha(true);
+            Ogre::Vector4 tempColor = this->color->getVector4();
+            this->widget->setColour(MyGUI::Colour(tempColor.x, tempColor.y, tempColor.z, tempColor.w));
+        });
+
+        return MyGUIComponent::postInit();
+    }
+
+    void MyGUIWindowComponent::onActivated(void)
+    {
+        // Re-apply Window-specific content after claiming shared widget.
+        // this->widget is valid at this point.
+        this->setMovable(this->movable->getBool());
+        this->setWindowCaption(this->windowCaption->getString());
+    }
+
+    // -----------------------------------------------------------------------------
+    // createAndRegisterSharedWidgetImpl
+    // Called by the base setCommonWidget when this is the first instance for a key.
+    // Creates the shared MyGUI::Window and registers it in GOC.
+    // -----------------------------------------------------------------------------
+    void MyGUIWindowComponent::createAndRegisterSharedWidgetImpl(GameObjectController* goc, const Ogre::String& key)
+    {
+        NOWA::GraphicsModule::RenderCommand cmd = [this, goc, key]()
+        {
+            MyGUI::Widget* w = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::Window>(this->skin->getListSelectedValue(), this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x, this->size->getVector2().y,
+                this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_shared_" + key);
+            w->setInheritsAlpha(true);
+            Ogre::Vector4 c = this->color->getVector4();
+            w->setColour(MyGUI::Colour(c.x, c.y, c.z, c.w));
+            w->setVisible(false);
+            goc->registerSharedWidget(this->getClassName(), key, w);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MyGUIWindowComponent::createAndRegisterSharedWidgetImpl");
+    }
+
+    // -----------------------------------------------------------------------------
+    // createOwnWidgetImpl
+    // Called by the base setCommonWidget when switching back to private mode.
+    // Creates a fresh private MyGUI::Window from current variant values.
+    // -----------------------------------------------------------------------------
+    void MyGUIWindowComponent::createOwnWidgetImpl(void)
+    {
+        NOWA::GraphicsModule::RenderCommand cmd = [this]()
+        {
+            this->widget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::Window>(this->skin->getListSelectedValue(), this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x, this->size->getVector2().y,
+                this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_" + this->gameObjectPtr->getName() + Ogre::StringConverter::toString(this->index));
+
+            this->widget->setInheritsAlpha(true);
+            Ogre::Vector4 c = this->color->getVector4();
+            this->widget->setColour(MyGUI::Colour(c.x, c.y, c.z, c.w));
+
+            MyGUI::Window* asWindow = this->widget->castType<MyGUI::Window>(false);
+            if (nullptr != asWindow)
+            {
+                asWindow->setMovable(this->movable->getBool());
+                this->widget->setProperty("Caption", MyGUI::LanguageManager::getInstancePtr()->replaceTags(this->windowCaption->getString()));
+            }
+
+            this->widget->setUserData(std::make_pair<unsigned long, unsigned int>(this->gameObjectPtr->getId(), this->getIndex()));
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MyGUIWindowComponent::createOwnWidgetImpl");
+    }
 
 	void MyGUIWindowComponent::mouseButtonClick(MyGUI::Widget* sender)
 	{
@@ -1211,16 +1644,22 @@ namespace NOWA
 	}
 
 	void MyGUIWindowComponent::setMovable(bool movable)
-	{
-		this->movable->setValue(movable);
-		if (nullptr != this->widget)
-		{
-			ENQUEUE_RENDER_COMMAND_MULTI("MyGUIWindowComponent::setMovable", _1(movable),
-			{
-				widget->castType<MyGUI::Window>()->setMovable(movable);
-			});
-		}
-	}
+    {
+        this->movable->setValue(movable);
+        if (nullptr != this->widget)
+        {
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, movable]()
+            {
+                // Guard: only cast if widget actually is a Window
+                MyGUI::Window* window = this->widget->castType<MyGUI::Window>(false);
+                if (nullptr != window)
+                {
+                    window->setMovable(movable);
+                }
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIWindowComponent::setMovable");
+        }
+    }
 
 	bool MyGUIWindowComponent::getMovable(void) const
 	{
@@ -1318,6 +1757,7 @@ namespace NOWA
 	{
 		MyGUITextCompPtr clonedCompPtr(boost::make_shared<MyGUITextComponent>());
 
+        clonedCompPtr->bIsCloning = true;
 		
 		clonedCompPtr->setActivated(this->activated->getBool());
 		clonedCompPtr->setRealPosition(this->position->getVector2());
@@ -1338,34 +1778,115 @@ namespace NOWA
 		clonedCompPtr->setReadOnly(this->readOnly->getBool());
 		clonedCompPtr->setMultiLine(this->multiLine->getBool());
 		clonedCompPtr->setWordWrap(this->wordWrap->getBool());
+
+		clonedGameObjectPtr->addComponent(clonedCompPtr);
+        clonedCompPtr->setOwner(clonedGameObjectPtr);
+
+		clonedCompPtr->setCommonWidget(this->commonWidget->getBool());
 		
 		GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
 		return clonedCompPtr;
 	}
 
 	bool MyGUITextComponent::postInit(void)
-	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MyGUITextComponent] Init MyGUI text component for game object: " + this->gameObjectPtr->getName());
-		
-		ENQUEUE_RENDER_COMMAND("MyGUITextComponent::postInit",
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MyGUITextComponent] Init MyGUI text component for game object: " + this->gameObjectPtr->getName());
+
+        if (true == this->commonWidget->getBool())
+        {
+            auto* goc = AppStateManager::getSingletonPtr()->getGameObjectController();
+            const Ogre::String key = this->getSharedWidgetKey();
+
+            if (false == goc->hasSharedWidget(this->getClassName(), key))
+            {
+                NOWA::GraphicsModule::RenderCommand cmd = [this, goc, key]()
+                {
+                    MyGUI::Widget* w = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::EditBox>(this->skin->getListSelectedValue(), this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x,
+                        this->size->getVector2().y, this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_shared_" + key);
+
+                    w->castType<MyGUI::EditBox>(false)->eventEditTextChange += MyGUI::newDelegate(this, &MyGUITextComponent::onEditTextChanged);
+                    w->castType<MyGUI::EditBox>(false)->eventEditSelectAccept += MyGUI::newDelegate(this, &MyGUITextComponent::onEditAccepted);
+
+                    w->setInheritsAlpha(true);
+                    w->setVisible(false);
+                    goc->registerSharedWidget(this->getClassName(), key, w);
+                };
+                NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MyGUITextComponent::postInit shared create");
+            }
+            else
+            {
+                goc->registerSharedWidget(this->getClassName(), key, goc->getSharedWidget(this->getClassName(), key));
+            }
+
+            this->widget = nullptr;
+            return MyGUIComponent::postInit();
+        }
+
+        // ── Normal path ───────────────────────────────────────────────────────
+        ENQUEUE_RENDER_COMMAND("MyGUITextComponent::postInit",
 		{
-			if (true == this->createWidgetInParent)
-			{
-				this->widget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::EditBox>(this->skin->getListSelectedValue(),
-					this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x, this->size->getVector2().y,
-					this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_" + this->gameObjectPtr->getName() + Ogre::StringConverter::toString(this->index));
-			}
+            if (true == this->createWidgetInParent)
+            {
+                this->widget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::EditBox>(this->skin->getListSelectedValue(), this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x, this->size->getVector2().y,
+                    this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_" + this->gameObjectPtr->getName() + Ogre::StringConverter::toString(this->index));
+            }
 
-			// this->widget->eventKeyButtonPressed += MyGUI::newDelegate(this, &MyGUITextComponent::onKeyButtonPressed);
+            this->widget->castType<MyGUI::EditBox>(false)->eventEditTextChange += MyGUI::newDelegate(this, &MyGUITextComponent::onEditTextChanged);
+            this->widget->castType<MyGUI::EditBox>(false)->eventEditSelectAccept += MyGUI::newDelegate(this, &MyGUITextComponent::onEditAccepted);
+        });
 
-			this->widget->castType<MyGUI::EditBox>(false)->eventEditTextChange += MyGUI::newDelegate(this, &MyGUITextComponent::onEditTextChanged);
-			this->widget->castType<MyGUI::EditBox>(false)->eventEditSelectAccept += MyGUI::newDelegate(this, &MyGUITextComponent::onEditAccepted);
-		});
+        this->initTextAttributes();
+        return MyGUIComponent::postInit();
+    }
 
-		this->initTextAttributes();
+	void MyGUITextComponent::onActivated(void)
+    {
+        // Re-apply all text attributes to the shared widget (this->widget is valid here)
+        this->initTextAttributes();
+    }
 
-		return MyGUIComponent::postInit();
-	}
+    void MyGUITextComponent::createAndRegisterSharedWidgetImpl(GameObjectController* gameObjectController, const Ogre::String& key)
+    {
+        NOWA::GraphicsModule::RenderCommand cmd = [this, gameObjectController, key]()
+        {
+            MyGUI::Widget* w = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::EditBox>(this->skin->getListSelectedValue(), this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x, this->size->getVector2().y,
+                this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_shared_" + key);
+
+            // Wire events to this first instance; re-wired on each activation via onActivated
+            w->castType<MyGUI::EditBox>()->eventEditTextChange += MyGUI::newDelegate(this, &MyGUITextComponent::onEditTextChanged);
+            w->castType<MyGUI::EditBox>()->eventEditSelectAccept += MyGUI::newDelegate(this, &MyGUITextComponent::onEditAccepted);
+
+            w->setInheritsAlpha(true);
+            Ogre::Vector4 c = this->color->getVector4();
+            w->setColour(MyGUI::Colour(c.x, c.y, c.z, c.w));
+            w->setVisible(false);
+            gameObjectController->registerSharedWidget(this->getClassName(), key, w);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MyGUITextComponent::createAndRegisterSharedWidgetImpl");
+    }
+
+    void MyGUITextComponent::createOwnWidgetImpl(void)
+    {
+        NOWA::GraphicsModule::RenderCommand cmd = [this]()
+        {
+            this->widget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::EditBox>(this->skin->getListSelectedValue(), this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x, this->size->getVector2().y,
+                this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_" + this->gameObjectPtr->getName() + Ogre::StringConverter::toString(this->index));
+
+            this->widget->castType<MyGUI::EditBox>()->eventEditTextChange += MyGUI::newDelegate(this, &MyGUITextComponent::onEditTextChanged);
+            this->widget->castType<MyGUI::EditBox>()->eventEditSelectAccept += MyGUI::newDelegate(this, &MyGUITextComponent::onEditAccepted);
+
+            this->widget->setInheritsAlpha(true);
+            Ogre::Vector4 c = this->color->getVector4();
+            this->widget->setColour(MyGUI::Colour(c.x, c.y, c.z, c.w));
+
+            this->widget->setUserData(std::make_pair<unsigned long, unsigned int>(this->gameObjectPtr->getId(), this->getIndex()));
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MyGUITextComponent::createOwnWidgetImpl");
+
+        // Apply all text attributes using existing setters
+        // (all guard nullptr != this->widget so safe to call after widget is created)
+        this->initTextAttributes();
+    }
 
 	void MyGUITextComponent::initTextAttributes(void)
 	{
@@ -1867,7 +2388,8 @@ namespace NOWA
 	{
 		MyGUIButtonCompPtr clonedCompPtr(boost::make_shared<MyGUIButtonComponent>());
 
-		
+		clonedCompPtr->bIsCloning = true;
+
 		clonedCompPtr->setActivated(this->activated->getBool());
 		clonedCompPtr->setRealPosition(this->position->getVector2());
 		clonedCompPtr->setRealSize(this->size->getVector2());
@@ -1885,37 +2407,110 @@ namespace NOWA
 		clonedCompPtr->setTextAlign(this->align->getListSelectedValue());
 		clonedCompPtr->setTextOffset(this->textOffset->getVector2());
 		clonedCompPtr->setTextColor(this->textColor->getVector4());
+
+		clonedGameObjectPtr->addComponent(clonedCompPtr);
+        clonedCompPtr->setOwner(clonedGameObjectPtr);
+
+		clonedCompPtr->setCommonWidget(this->commonWidget->getBool());
 		
 		GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
 		return clonedCompPtr;
 	}
 
 	bool MyGUIButtonComponent::postInit(void)
-	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MyGUIButtonComponent] Init MyGUI button component for game object: " + this->gameObjectPtr->getName());
-		
-		if (true == this->createWidgetInParent)
-		{
-			ENQUEUE_RENDER_COMMAND("MyGUIButtonComponent::postInit",
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MyGUIButtonComponent] Init MyGUI button component for game object: " + this->gameObjectPtr->getName());
+
+        if (true == this->commonWidget->getBool())
+        {
+            auto* goc = AppStateManager::getSingletonPtr()->getGameObjectController();
+            const Ogre::String key = this->getSharedWidgetKey();
+
+            if (false == goc->hasSharedWidget(this->getClassName(), key))
+            {
+                NOWA::GraphicsModule::RenderCommand cmd = [this, goc, key]()
+                {
+                    MyGUI::Widget* w = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::Button>(this->skin->getListSelectedValue(), this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x,
+                        this->size->getVector2().y, this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_shared_" + key);
+                    w->setInheritsAlpha(true);
+                    w->setVisible(false);
+                    goc->registerSharedWidget(this->getClassName(), key, w);
+                };
+                NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MyGUIButtonComponent::postInit shared create");
+            }
+            else
+            {
+                goc->registerSharedWidget(this->getClassName(), key, goc->getSharedWidget(this->getClassName(), key));
+            }
+
+            this->widget = nullptr;
+            return MyGUIComponent::postInit();
+        }
+
+        if (true == this->createWidgetInParent)
+        {
+            ENQUEUE_RENDER_COMMAND("MyGUIButtonComponent::postInit", 
 			{
-				this->widget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::Button>(this->skin->getListSelectedValue(),
-					this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x, this->size->getVector2().y,
-					this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_" + this->gameObjectPtr->getName() + Ogre::StringConverter::toString(this->index));
-			});
-		}
+                this->widget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::Button>(this->skin->getListSelectedValue(), this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x, this->size->getVector2().y,
+                    this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_" + this->gameObjectPtr->getName() + Ogre::StringConverter::toString(this->index));
+            });
+        }
 
-		this->setCaption(this->caption->getString());
-		this->setFontHeight(this->fontHeight->getUInt());
-		this->setTextAlign(this->textAlign->getListSelectedValue());
-		this->setTextOffset(this->textOffset->getVector2());
-		this->setTextColor(this->textColor->getVector4());
+        this->setCaption(this->caption->getString());
+        this->setFontHeight(this->fontHeight->getUInt());
+        this->setTextAlign(this->textAlign->getListSelectedValue());
+        this->setTextOffset(this->textOffset->getVector2());
+        this->setTextColor(this->textColor->getVector4());
 
-		// widget->castType<MyGUI::Button>()->setCaption
-		// widget->castType<MyGUI::Button>()->setCaptionWithReplacing
-		// widget->castType<MyGUI::Button>()->eventMouseButtonClick
+        return MyGUIComponent::postInit();
+    }
 
-		return MyGUIComponent::postInit();
-	}
+    void MyGUIButtonComponent::onActivated(void)
+    {
+        this->setCaption(this->caption->getString());
+        this->setFontHeight(this->fontHeight->getUInt());
+        this->setTextAlign(this->textAlign->getListSelectedValue());
+        this->setTextOffset(this->textOffset->getVector2());
+        this->setTextColor(this->textColor->getVector4());
+    }
+
+    void MyGUIButtonComponent::createAndRegisterSharedWidgetImpl(GameObjectController* gameObjectController, const Ogre::String& key)
+    {
+        NOWA::GraphicsModule::RenderCommand cmd = [this, gameObjectController, key]()
+        {
+            MyGUI::Widget* w = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::Button>(this->skin->getListSelectedValue(), this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x, this->size->getVector2().y,
+                this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_shared_" + key);
+
+            w->setInheritsAlpha(true);
+            Ogre::Vector4 c = this->color->getVector4();
+            w->setColour(MyGUI::Colour(c.x, c.y, c.z, c.w));
+            w->setVisible(false);
+            gameObjectController->registerSharedWidget(this->getClassName(), key, w);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MyGUIButtonComponent::createAndRegisterSharedWidgetImpl");
+    }
+
+    void MyGUIButtonComponent::createOwnWidgetImpl(void)
+    {
+        NOWA::GraphicsModule::RenderCommand cmd = [this]()
+        {
+            this->widget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::Button>(this->skin->getListSelectedValue(), this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x, this->size->getVector2().y,
+                this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_" + this->gameObjectPtr->getName() + Ogre::StringConverter::toString(this->index));
+
+            this->widget->setInheritsAlpha(true);
+            Ogre::Vector4 c = this->color->getVector4();
+            this->widget->setColour(MyGUI::Colour(c.x, c.y, c.z, c.w));
+
+            this->widget->setUserData(std::make_pair<unsigned long, unsigned int>(this->gameObjectPtr->getId(), this->getIndex()));
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MyGUIButtonComponent::createOwnWidgetImpl");
+
+        this->setCaption(this->caption->getString());
+        this->setFontHeight(this->fontHeight->getUInt());
+        this->setTextAlign(this->textAlign->getListSelectedValue());
+        this->setTextOffset(this->textOffset->getVector2());
+        this->setTextColor(this->textColor->getVector4());
+    }
 
 	void MyGUIButtonComponent::mouseButtonClick(MyGUI::Widget* sender)
 	{
@@ -2196,6 +2791,7 @@ namespace NOWA
 	{
 		MyGUICheckBoxCompPtr clonedCompPtr(boost::make_shared<MyGUICheckBoxComponent>());
 
+		clonedCompPtr->bIsCloning = true;
 		
 		clonedCompPtr->setActivated(this->activated->getBool());
 		clonedCompPtr->setRealPosition(this->position->getVector2());
@@ -2215,34 +2811,117 @@ namespace NOWA
 		clonedCompPtr->setTextAlign(this->align->getListSelectedValue());
 		clonedCompPtr->setTextOffset(this->textOffset->getVector2());
 		clonedCompPtr->setTextColor(this->textColor->getVector4());
+
+		clonedGameObjectPtr->addComponent(clonedCompPtr);
+        clonedCompPtr->setOwner(clonedGameObjectPtr);
+
+		clonedCompPtr->setCommonWidget(this->commonWidget->getBool());
 		
 		GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
 		return clonedCompPtr;
 	}
 
 	bool MyGUICheckBoxComponent::postInit(void)
-	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MyGUICheckBoxComponent] Init MyGUI checkbox component for game object: " + this->gameObjectPtr->getName());
-		
-		if (true == this->createWidgetInParent)
-		{
-			ENQUEUE_RENDER_COMMAND("MyGUICheckBoxComponent::postInit",
-			{
-				this->widget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::Button>(this->skin->getListSelectedValue(),
-					this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x, this->size->getVector2().y,
-					this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_" + this->gameObjectPtr->getName() + Ogre::StringConverter::toString(this->index));
-			});
-		}
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MyGUICheckBoxComponent] Init MyGUI checkbox component for game object: " + this->gameObjectPtr->getName());
 
-		this->setCaption(this->caption->getString());
-		this->setChecked(this->checked->getBool());
-		this->setFontHeight(this->fontHeight->getUInt());
-		this->setTextAlign(this->textAlign->getListSelectedValue());
-		this->setTextOffset(this->textOffset->getVector2());
-		this->setTextColor(this->textColor->getVector4());
+        if (true == this->commonWidget->getBool())
+        {
+            auto* goc = AppStateManager::getSingletonPtr()->getGameObjectController();
+            const Ogre::String key = this->getSharedWidgetKey();
 
-		return MyGUIComponent::postInit();
-	}
+            if (false == goc->hasSharedWidget(this->getClassName(), key))
+            {
+                NOWA::GraphicsModule::RenderCommand cmd = [this, goc, key]()
+                {
+                    MyGUI::Widget* w = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::Button>(this->skin->getListSelectedValue(), this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x,
+                        this->size->getVector2().y, this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_shared_" + key);
+                    // CheckBox uses Button with state-check enabled
+                    w->castType<MyGUI::Button>()->setStateCheck(false);
+                    w->setInheritsAlpha(true);
+                    w->setVisible(false);
+                    goc->registerSharedWidget(this->getClassName(), key, w);
+                };
+                NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MyGUICheckBoxComponent::postInit shared create");
+            }
+            else
+            {
+                goc->registerSharedWidget(this->getClassName(), key, goc->getSharedWidget(this->getClassName(), key));
+            }
+
+            this->widget = nullptr;
+            return MyGUIComponent::postInit();
+        }
+
+        if (true == this->createWidgetInParent)
+        {
+            ENQUEUE_RENDER_COMMAND("MyGUICheckBoxComponent::postInit",
+				{
+                this->widget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::Button>(this->skin->getListSelectedValue(), this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x, this->size->getVector2().y,
+                    this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_" + this->gameObjectPtr->getName() + Ogre::StringConverter::toString(this->index));
+            });
+        }
+
+        this->setCaption(this->caption->getString());
+        this->setChecked(this->checked->getBool());
+        this->setFontHeight(this->fontHeight->getUInt());
+        this->setTextAlign(this->textAlign->getListSelectedValue());
+        this->setTextOffset(this->textOffset->getVector2());
+        this->setTextColor(this->textColor->getVector4());
+
+        return MyGUIComponent::postInit();
+    }
+
+    void MyGUICheckBoxComponent::onActivated(void)
+    {
+        this->setCaption(this->caption->getString());
+        this->setChecked(this->checked->getBool());
+        this->setFontHeight(this->fontHeight->getUInt());
+        this->setTextAlign(this->textAlign->getListSelectedValue());
+        this->setTextOffset(this->textOffset->getVector2());
+        this->setTextColor(this->textColor->getVector4());
+    }
+
+    void MyGUICheckBoxComponent::createAndRegisterSharedWidgetImpl(GameObjectController* gameObjectController, const Ogre::String& key)
+    {
+        NOWA::GraphicsModule::RenderCommand cmd = [this, gameObjectController, key]()
+        {
+            // CheckBox is a MyGUI::Button with StateCheck=true
+            MyGUI::Widget* w = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::Button>(this->skin->getListSelectedValue(), this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x, this->size->getVector2().y,
+                this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_shared_" + key);
+
+            w->castType<MyGUI::Button>()->setStateCheck(this->checked->getBool());
+            w->setInheritsAlpha(true);
+            Ogre::Vector4 c = this->color->getVector4();
+            w->setColour(MyGUI::Colour(c.x, c.y, c.z, c.w));
+            w->setVisible(false);
+            gameObjectController->registerSharedWidget(this->getClassName(), key, w);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MyGUICheckBoxComponent::createAndRegisterSharedWidgetImpl");
+    }
+
+    void MyGUICheckBoxComponent::createOwnWidgetImpl(void)
+    {
+        NOWA::GraphicsModule::RenderCommand cmd = [this]()
+        {
+            this->widget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::Button>(this->skin->getListSelectedValue(), this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x, this->size->getVector2().y,
+                this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_" + this->gameObjectPtr->getName() + Ogre::StringConverter::toString(this->index));
+
+            this->widget->setInheritsAlpha(true);
+            Ogre::Vector4 c = this->color->getVector4();
+            this->widget->setColour(MyGUI::Colour(c.x, c.y, c.z, c.w));
+
+            this->widget->setUserData(std::make_pair<unsigned long, unsigned int>(this->gameObjectPtr->getId(), this->getIndex()));
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MyGUICheckBoxComponent::createOwnWidgetImpl");
+
+        this->setCaption(this->caption->getString());
+        this->setChecked(this->checked->getBool());
+        this->setFontHeight(this->fontHeight->getUInt());
+        this->setTextAlign(this->textAlign->getListSelectedValue());
+        this->setTextOffset(this->textOffset->getVector2());
+        this->setTextColor(this->textColor->getVector4());
+    }
 
 	void MyGUICheckBoxComponent::mouseButtonClick(MyGUI::Widget* sender)
 	{
@@ -2550,6 +3229,8 @@ namespace NOWA
 	{
 		MyGUIImageBoxCompPtr clonedCompPtr(boost::make_shared<MyGUIImageBoxComponent>());
 
+		clonedCompPtr->bIsCloning = true;
+
 		clonedCompPtr->setActivated(this->activated->getBool());
 		clonedCompPtr->setRealPosition(this->position->getVector2());
 		clonedCompPtr->setRealSize(this->size->getVector2());
@@ -2567,49 +3248,141 @@ namespace NOWA
 		clonedCompPtr->setCenter(this->center->getVector2());
 		clonedCompPtr->setAngle(this->angle->getReal());
 		clonedCompPtr->setRotationSpeed(this->rotationSpeed->getReal());
+
+		clonedGameObjectPtr->addComponent(clonedCompPtr);
+        clonedCompPtr->setOwner(clonedGameObjectPtr);
+
+		clonedCompPtr->setCommonWidget(this->commonWidget->getBool());
 		
 		GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
 		return clonedCompPtr;
 	}
 
 	bool MyGUIImageBoxComponent::postInit(void)
-	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MyGUIImageBoxComponent] Init MyGUI image box component for game object: " + this->gameObjectPtr->getName());
-		
-		if (true == this->createWidgetInParent)
-		{
-			ENQUEUE_RENDER_COMMAND("MyGUIImageBoxComponent::postInit",
-			{
-				this->widget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::ImageBox>(this->skin->getListSelectedValue(),
-					this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x, this->size->getVector2().y,
-					this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_" + this->gameObjectPtr->getName() + Ogre::StringConverter::toString(this->index));
-			});
-		}
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MyGUIImageBoxComponent] Init MyGUI image box component for game object: " + this->gameObjectPtr->getName());
 
-		MyGUI::ISubWidget* main = this->widget->getSubWidgetMain();
-		if (nullptr == main)
-		{
-			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[EngineResourceListener] Error: Could not get MyGUI object. Check the resources.cfg, whether 'FileSystem=../../media/MyGUI_Media' is missing!");
-				// throw Ogre::Exception(Ogre::Exception::ERR_ITEM_NOT_FOUND, "[EngineResourceListener] Error: Could not get MyGUI object. Check the resources.cfg, whether 'FileSystem=../../media/MyGUI_Media' is missing!\n", "NOWA");
-		}
+        if (true == this->commonWidget->getBool())
+        {
+            auto* goc = AppStateManager::getSingletonPtr()->getGameObjectController();
+            const Ogre::String key = this->getSharedWidgetKey();
 
-		if ("RotatingSkin" == this->skin->getListSelectedValue())
-		{
-			this->rotatingSkin = main->castType<MyGUI::RotatingSkin>();
-		}
+            if (false == goc->hasSharedWidget(this->getClassName(), key))
+            {
+                NOWA::GraphicsModule::RenderCommand cmd = [this, goc, key]()
+                {
+                    MyGUI::Widget* w = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::ImageBox>(this->skin->getListSelectedValue(), this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x,
+                        this->size->getVector2().y, this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_shared_" + key);
 
-		this->setUsePickingMask(this->usePickingMask->getBool());
-		this->setImageFileName(this->imageFileName->getString());
-		this->setCenter(this->center->getVector2());
-		this->setAngle(this->angle->getReal());
-		this->setRotationSpeed(this->rotationSpeed->getReal());
-	
-		// widget->castType<MyGUI::Button>()->setCaption
-		// widget->castType<MyGUI::Button>()->setCaptionWithReplacing
-		// widget->castType<MyGUI::Button>()->eventMouseButtonClick
+                    // Set up rotatingSkin if applicable
+                    MyGUI::ISubWidget* main = w->getSubWidgetMain();
+                    if (nullptr != main && "RotatingSkin" == this->skin->getListSelectedValue())
+                    {
+                        this->rotatingSkin = main->castType<MyGUI::RotatingSkin>();
+                    }
 
-		return MyGUIComponent::postInit();
-	}
+                    w->setInheritsAlpha(true);
+                    w->setVisible(false);
+                    goc->registerSharedWidget(this->getClassName(), key, w);
+                };
+                NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MyGUIImageBoxComponent::postInit shared create");
+            }
+            else
+            {
+                goc->registerSharedWidget(this->getClassName(), key, goc->getSharedWidget(this->getClassName(), key));
+            }
+
+            this->widget = nullptr;
+            return MyGUIComponent::postInit();
+        }
+
+        if (true == this->createWidgetInParent)
+        {
+            ENQUEUE_RENDER_COMMAND("MyGUIImageBoxComponent::postInit",
+				{
+                this->widget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::ImageBox>(this->skin->getListSelectedValue(), this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x, this->size->getVector2().y,
+                    this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_" + this->gameObjectPtr->getName() + Ogre::StringConverter::toString(this->index));
+            });
+        }
+
+        MyGUI::ISubWidget* main = this->widget->getSubWidgetMain();
+        if (nullptr == main)
+        {
+            Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUIImageBoxComponent] Error: Could not get MyGUI sub widget. Check resources.cfg for MyGUI_Media.");
+        }
+        if ("RotatingSkin" == this->skin->getListSelectedValue())
+        {
+            this->rotatingSkin = main->castType<MyGUI::RotatingSkin>();
+        }
+
+        this->setUsePickingMask(this->usePickingMask->getBool());
+        this->setImageFileName(this->imageFileName->getString());
+        this->setCenter(this->center->getVector2());
+        this->setAngle(this->angle->getReal());
+        this->setRotationSpeed(this->rotationSpeed->getReal());
+
+        return MyGUIComponent::postInit();
+    }
+
+    void MyGUIImageBoxComponent::onActivated(void)
+    {
+        // Re-apply image-specific content to the shared widget (this->widget is valid here)
+        this->setUsePickingMask(this->usePickingMask->getBool());
+        this->setImageFileName(this->imageFileName->getString());
+        this->setCenter(this->center->getVector2());
+        this->setAngle(this->angle->getReal());
+        this->setRotationSpeed(this->rotationSpeed->getReal());
+    }
+
+    void MyGUIImageBoxComponent::createAndRegisterSharedWidgetImpl(GameObjectController* gameObjectController, const Ogre::String& key)
+    {
+        NOWA::GraphicsModule::RenderCommand cmd = [this, gameObjectController, key]()
+        {
+            MyGUI::Widget* w = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::ImageBox>(this->skin->getListSelectedValue(), this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x, this->size->getVector2().y,
+                this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_shared_" + key);
+
+            MyGUI::ISubWidget* main = w->getSubWidgetMain();
+            if (nullptr != main && "RotatingSkin" == this->skin->getListSelectedValue())
+            {
+                this->rotatingSkin = main->castType<MyGUI::RotatingSkin>();
+            }
+
+            w->setInheritsAlpha(true);
+            Ogre::Vector4 c = this->color->getVector4();
+            w->setColour(MyGUI::Colour(c.x, c.y, c.z, c.w));
+            w->setVisible(false);
+            gameObjectController->registerSharedWidget(this->getClassName(), key, w);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MyGUIImageBoxComponent::createAndRegisterSharedWidgetImpl");
+    }
+
+    void MyGUIImageBoxComponent::createOwnWidgetImpl(void)
+    {
+        NOWA::GraphicsModule::RenderCommand cmd = [this]()
+        {
+            this->widget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::ImageBox>(this->skin->getListSelectedValue(), this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x, this->size->getVector2().y,
+                this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_" + this->gameObjectPtr->getName() + Ogre::StringConverter::toString(this->index));
+
+            MyGUI::ISubWidget* main = this->widget->getSubWidgetMain();
+            if (nullptr != main && "RotatingSkin" == this->skin->getListSelectedValue())
+            {
+                this->rotatingSkin = main->castType<MyGUI::RotatingSkin>();
+            }
+
+            this->widget->setInheritsAlpha(true);
+            Ogre::Vector4 c = this->color->getVector4();
+            this->widget->setColour(MyGUI::Colour(c.x, c.y, c.z, c.w));
+
+            this->widget->setUserData(std::make_pair<unsigned long, unsigned int>(this->gameObjectPtr->getId(), this->getIndex()));
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MyGUIImageBoxComponent::createOwnWidgetImpl");
+
+        this->setUsePickingMask(this->usePickingMask->getBool());
+        this->setImageFileName(this->imageFileName->getString());
+        this->setCenter(this->center->getVector2());
+        this->setAngle(this->angle->getReal());
+        this->setRotationSpeed(this->rotationSpeed->getReal());
+    }
 	
 	void MyGUIImageBoxComponent::update(Ogre::Real dt, bool notSimulating)
 	{
@@ -2841,7 +3614,17 @@ namespace NOWA
 		this->setCenter(this->center->getVector2());
 		this->setAngle(this->angle->getReal());
 		this->setRotationSpeed(this->rotationSpeed->getReal());
-	}
+    }
+
+    void MyGUIImageBoxComponent::setCommonWidget(bool enable)
+    {
+        if (false == enable)
+        {
+            // Clear rotatingSkin pointer before base destroys the widget
+            this->rotatingSkin = nullptr;
+        }
+        MyGUIComponent::setCommonWidget(enable);
+    }
 	
 	void MyGUIImageBoxComponent::setImageFileName(const Ogre::String& imageFileName)
 	{
@@ -2987,6 +3770,8 @@ namespace NOWA
 	{
 		MyGUIProgressBarCompPtr clonedCompPtr(boost::make_shared<MyGUIProgressBarComponent>());
 
+		clonedCompPtr->bIsCloning = true;
+
 		clonedCompPtr->setActivated(this->activated->getBool());
 		clonedCompPtr->setRealPosition(this->position->getVector2());
 		clonedCompPtr->setRealSize(this->size->getVector2());
@@ -3002,31 +3787,117 @@ namespace NOWA
 		clonedCompPtr->setValue(this->value->getUInt());
 		clonedCompPtr->setRange(this->range->getUInt());
 		clonedCompPtr->setFlowDirection(this->flowDirection->getListSelectedValue());
+
+		clonedGameObjectPtr->addComponent(clonedCompPtr);
+        clonedCompPtr->setOwner(clonedGameObjectPtr);
+
+		clonedCompPtr->setCommonWidget(this->commonWidget->getBool());
 		
 		GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
 		return clonedCompPtr;
 	}
 
 	bool MyGUIProgressBarComponent::postInit(void)
-	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MyGUIProgressBarComponent] Init MyGUI progress bar component for game object: " + this->gameObjectPtr->getName());
-		
-		if (true == this->createWidgetInParent)
-		{
-			ENQUEUE_RENDER_COMMAND("MyGUIProgressBarComponent::postInit",
-			{
-				this->widget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::ProgressBar>(this->skin->getListSelectedValue(),
-					this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x, this->size->getVector2().y,
-					this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_" + this->gameObjectPtr->getName() + Ogre::StringConverter::toString(this->index));
-			});
-		}
-		// Order is important range must be placed before value can be set
-		this->setRange(this->range->getUInt());
-		this->setValue(this->value->getUInt());
-		this->setFlowDirection(this->flowDirection->getListSelectedValue());
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MyGUIProgressBarComponent] Init MyGUI progress bar component for game object: " + this->gameObjectPtr->getName());
 
-		return MyGUIComponent::postInit();
-	}
+        if (true == this->commonWidget->getBool())
+        {
+            auto* goc = AppStateManager::getSingletonPtr()->getGameObjectController();
+            const Ogre::String key = this->getSharedWidgetKey();
+
+            if (false == goc->hasSharedWidget(this->getClassName(), key))
+            {
+                NOWA::GraphicsModule::RenderCommand cmd = [this, goc, key]()
+                {
+                    MyGUI::Widget* w = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::ProgressBar>(this->skin->getListSelectedValue(), this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x,
+                        this->size->getVector2().y, this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_shared_" + key);
+
+                    // Order matters: range before value
+                    w->castType<MyGUI::ProgressBar>()->setProgressRange(this->range->getUInt());
+                    w->castType<MyGUI::ProgressBar>()->setProgressPosition(this->value->getUInt());
+
+                    w->setInheritsAlpha(true);
+                    w->setVisible(false);
+                    goc->registerSharedWidget(this->getClassName(), key, w);
+                };
+                NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MyGUIProgressBarComponent::postInit shared create");
+            }
+            else
+            {
+                goc->registerSharedWidget(this->getClassName(), key, goc->getSharedWidget(this->getClassName(), key));
+            }
+
+            this->widget = nullptr;
+            return MyGUIComponent::postInit();
+        }
+
+        if (true == this->createWidgetInParent)
+        {
+            ENQUEUE_RENDER_COMMAND("MyGUIProgressBarComponent::postInit",
+			{
+                this->widget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::ProgressBar>(this->skin->getListSelectedValue(), this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x, this->size->getVector2().y,
+                        this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_" + this->gameObjectPtr->getName() + Ogre::StringConverter::toString(this->index));
+            });
+        }
+
+        // Order is important: range before value
+        this->setRange(this->range->getUInt());
+        this->setValue(this->value->getUInt());
+        this->setFlowDirection(this->flowDirection->getListSelectedValue());
+
+        return MyGUIComponent::postInit();
+    }
+
+    void MyGUIProgressBarComponent::onActivated(void)
+    {
+        // Re-apply progress bar content to shared widget.
+        // Order matters: range before value.
+        this->setRange(this->range->getUInt());
+        this->setValue(this->value->getUInt());
+        this->setFlowDirection(this->flowDirection->getListSelectedValue());
+    }
+
+    void MyGUIProgressBarComponent::createAndRegisterSharedWidgetImpl(GameObjectController* gameObjectController, const Ogre::String& key)
+    {
+        NOWA::GraphicsModule::RenderCommand cmd = [this, gameObjectController, key]()
+        {
+            MyGUI::Widget* w = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::ProgressBar>(this->skin->getListSelectedValue(), this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x,
+                this->size->getVector2().y, this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_shared_" + key);
+
+            // Range must be set before value
+            w->castType<MyGUI::ProgressBar>()->setProgressRange(this->range->getUInt());
+            w->castType<MyGUI::ProgressBar>()->setProgressPosition(this->value->getUInt());
+
+            w->setInheritsAlpha(true);
+            Ogre::Vector4 c = this->color->getVector4();
+            w->setColour(MyGUI::Colour(c.x, c.y, c.z, c.w));
+            w->setVisible(false);
+            gameObjectController->registerSharedWidget(this->getClassName(), key, w);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MyGUIProgressBarComponent::createAndRegisterSharedWidgetImpl");
+    }
+
+    void MyGUIProgressBarComponent::createOwnWidgetImpl(void)
+    {
+        NOWA::GraphicsModule::RenderCommand cmd = [this]()
+        {
+            this->widget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::ProgressBar>(this->skin->getListSelectedValue(), this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x, this->size->getVector2().y,
+                this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_" + this->gameObjectPtr->getName() + Ogre::StringConverter::toString(this->index));
+
+            this->widget->setInheritsAlpha(true);
+            Ogre::Vector4 c = this->color->getVector4();
+            this->widget->setColour(MyGUI::Colour(c.x, c.y, c.z, c.w));
+
+            this->widget->setUserData(std::make_pair<unsigned long, unsigned int>(this->gameObjectPtr->getId(), this->getIndex()));
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MyGUIProgressBarComponent::createOwnWidgetImpl");
+
+        // Order matters: range before value
+        this->setRange(this->range->getUInt());
+        this->setValue(this->value->getUInt());
+        this->setFlowDirection(this->flowDirection->getListSelectedValue());
+    }
 
 	void MyGUIProgressBarComponent::mouseButtonClick(MyGUI::Widget* sender)
 	{
@@ -3292,6 +4163,7 @@ namespace NOWA
 	{
 		MyGUIListBoxCompPtr clonedCompPtr(boost::make_shared<MyGUIListBoxComponent>());
 
+		clonedCompPtr->bIsCloning = true;
 		
 		clonedCompPtr->setActivated(this->activated->getBool());
 		clonedCompPtr->setRealPosition(this->position->getVector2());
@@ -3317,45 +4189,184 @@ namespace NOWA
 		clonedCompPtr->setTextOffset(this->textOffset->getVector2());
 		clonedCompPtr->setTextColor(this->textColor->getVector4());
 		
+		clonedGameObjectPtr->addComponent(clonedCompPtr);
+        clonedCompPtr->setOwner(clonedGameObjectPtr);
+
+		clonedCompPtr->setCommonWidget(this->commonWidget->getBool());
 		
 		GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
 		return clonedCompPtr;
 	}
 
 	bool MyGUIListBoxComponent::postInit(void)
-	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MyGUIListBoxComponent] Init MyGUI list box component for game object: " + this->gameObjectPtr->getName());
-		
-		ENQUEUE_RENDER_COMMAND("MyGUIListBoxComponent::postInit",
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MyGUIListBoxComponent] Init MyGUI list box component for game object: " + this->gameObjectPtr->getName());
+
+        if (true == this->commonWidget->getBool())
+        {
+            auto* goc = AppStateManager::getSingletonPtr()->getGameObjectController();
+            const Ogre::String key = this->getSharedWidgetKey();
+
+            if (false == goc->hasSharedWidget(this->getClassName(), key))
+            {
+                NOWA::GraphicsModule::RenderCommand cmd = [this, goc, key]()
+                {
+                    MyGUI::Widget* w = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::ListBox>(this->skin->getListSelectedValue(), this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x,
+                        this->size->getVector2().y, this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_shared_" + key);
+
+                    w->castType<MyGUI::ListBox>()->eventListMouseItemActivate += MyGUI::newDelegate(this, &MyGUIListBoxComponent::listSelectAccept);
+                    w->castType<MyGUI::ListBox>()->eventListSelectAccept += MyGUI::newDelegate(this, &MyGUIListBoxComponent::listAccept);
+
+                    for (size_t i = 0; i < this->itemCount->getUInt(); i++)
+                    {
+                        if (nullptr != this->items[i])
+                        {
+                            w->castType<MyGUI::ListBox>()->addItem(this->items[i]->getString());
+                        }
+                    }
+
+                    w->setInheritsAlpha(true);
+                    w->setVisible(false);
+                    goc->registerSharedWidget(this->getClassName(), key, w);
+                };
+                NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MyGUIListBoxComponent::postInit shared create");
+            }
+            else
+            {
+                goc->registerSharedWidget(this->getClassName(), key, goc->getSharedWidget(this->getClassName(), key));
+            }
+
+            this->widget = nullptr;
+            return MyGUIComponent::postInit();
+        }
+
+        ENQUEUE_RENDER_COMMAND("MyGUIListBoxComponent::postInit",
 		{
-			if (true == this->createWidgetInParent)
-			{
-				this->widget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::ListBox>(this->skin->getListSelectedValue(),
-					this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x, this->size->getVector2().y,
-					this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_" + this->gameObjectPtr->getName() + Ogre::StringConverter::toString(this->index));
-			}
+            if (true == this->createWidgetInParent)
+            {
+                this->widget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::ListBox>(this->skin->getListSelectedValue(), this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x, this->size->getVector2().y,
+                    this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_" + this->gameObjectPtr->getName() + Ogre::StringConverter::toString(this->index));
+            }
 
-			if (nullptr != this->widget)
-			{
-				this->widget->castType<MyGUI::ListBox>()->eventListMouseItemActivate += MyGUI::newDelegate(this, &MyGUIListBoxComponent::listSelectAccept);
-				this->widget->castType<MyGUI::ListBox>()->eventListSelectAccept += MyGUI::newDelegate(this, &MyGUIListBoxComponent::listAccept);
-			}
+            if (nullptr != this->widget)
+            {
+                this->widget->castType<MyGUI::ListBox>()->eventListMouseItemActivate += MyGUI::newDelegate(this, &MyGUIListBoxComponent::listSelectAccept);
+                this->widget->castType<MyGUI::ListBox>()->eventListSelectAccept += MyGUI::newDelegate(this, &MyGUIListBoxComponent::listAccept);
+            }
 
-			for (size_t i = 0; i < this->itemCount->getUInt(); i++)
-			{
-				widget->castType<MyGUI::ListBox>()->addItem(this->items[i]->getString());
-			}
-		});
-		
-		this->setColor(this->color->getVector4());
-		this->setFontHeight(this->fontHeight->getUInt());
-		this->setTextAlign(this->textAlign->getListSelectedValue());
-		this->setTextOffset(this->textOffset->getVector2());
-		this->setTextColor(this->textColor->getVector4());
-		this->setItemHeight(this->itemHeight->getUInt());
-		
-		return MyGUIComponent::postInit();
-	}
+            for (size_t i = 0; i < this->itemCount->getUInt(); i++)
+            {
+                widget->castType<MyGUI::ListBox>()->addItem(this->items[i]->getString());
+            }
+        });
+
+        this->setColor(this->color->getVector4());
+        this->setFontHeight(this->fontHeight->getUInt());
+        this->setTextAlign(this->textAlign->getListSelectedValue());
+        this->setTextOffset(this->textOffset->getVector2());
+        this->setTextColor(this->textColor->getVector4());
+        this->setItemHeight(this->itemHeight->getUInt());
+
+        return MyGUIComponent::postInit();
+    }
+
+    void MyGUIListBoxComponent::onActivated(void)
+    {
+        // Re-wire events to this instance and repopulate items on the shared widget
+        NOWA::GraphicsModule::RenderCommand cmd = [this]()
+        {
+            if (nullptr == this->widget)
+            {
+                return;
+            }
+
+            // Re-wire events to current owner so callbacks go to the right component
+            this->widget->castType<MyGUI::ListBox>()->eventListMouseItemActivate = MyGUI::newDelegate(this, &MyGUIListBoxComponent::listSelectAccept);
+            this->widget->castType<MyGUI::ListBox>()->eventListSelectAccept = MyGUI::newDelegate(this, &MyGUIListBoxComponent::listAccept);
+
+            // Clear existing items and repopulate from this instance's data
+            this->widget->castType<MyGUI::ListBox>()->removeAllItems();
+            for (size_t i = 0; i < this->itemCount->getUInt(); i++)
+            {
+                if (nullptr != this->items[i])
+                {
+                    this->widget->castType<MyGUI::ListBox>()->addItem(this->items[i]->getString());
+                }
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MyGUIListBoxComponent::onActivated repopulate");
+
+        // Apply styling
+        this->setColor(this->color->getVector4());
+        this->setFontHeight(this->fontHeight->getUInt());
+        this->setTextAlign(this->textAlign->getListSelectedValue());
+        this->setTextOffset(this->textOffset->getVector2());
+        this->setTextColor(this->textColor->getVector4());
+        this->setItemHeight(this->itemHeight->getUInt());
+    }
+
+    void MyGUIListBoxComponent::createAndRegisterSharedWidgetImpl(GameObjectController* gameObjectController, const Ogre::String& key)
+    {
+        NOWA::GraphicsModule::RenderCommand cmd = [this, gameObjectController, key]()
+        {
+            MyGUI::Widget* w = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::ListBox>(this->skin->getListSelectedValue(), this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x, this->size->getVector2().y,
+                this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_shared_" + key);
+
+            // Wire events to first instance; re-wired on each activation via onActivated
+            w->castType<MyGUI::ListBox>()->eventListMouseItemActivate += MyGUI::newDelegate(this, &MyGUIListBoxComponent::listSelectAccept);
+            w->castType<MyGUI::ListBox>()->eventListSelectAccept += MyGUI::newDelegate(this, &MyGUIListBoxComponent::listAccept);
+
+            for (size_t i = 0; i < this->itemCount->getUInt(); i++)
+            {
+                if (nullptr != this->items[i])
+                {
+                    w->castType<MyGUI::ListBox>()->addItem(this->items[i]->getString());
+                }
+            }
+
+            w->setInheritsAlpha(true);
+            Ogre::Vector4 c = this->color->getVector4();
+            w->setColour(MyGUI::Colour(c.x, c.y, c.z, c.w));
+            w->setVisible(false);
+            gameObjectController->registerSharedWidget(this->getClassName(), key, w);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MyGUIListBoxComponent::createAndRegisterSharedWidgetImpl");
+    }
+
+    void MyGUIListBoxComponent::createOwnWidgetImpl(void)
+    {
+        NOWA::GraphicsModule::RenderCommand cmd = [this]()
+        {
+            this->widget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::ListBox>(this->skin->getListSelectedValue(), this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x, this->size->getVector2().y,
+                this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_" + this->gameObjectPtr->getName() + Ogre::StringConverter::toString(this->index));
+
+            this->widget->castType<MyGUI::ListBox>()->eventListMouseItemActivate += MyGUI::newDelegate(this, &MyGUIListBoxComponent::listSelectAccept);
+            this->widget->castType<MyGUI::ListBox>()->eventListSelectAccept += MyGUI::newDelegate(this, &MyGUIListBoxComponent::listAccept);
+
+            this->widget->castType<MyGUI::ListBox>()->removeAllItems();
+            for (size_t i = 0; i < this->itemCount->getUInt(); i++)
+            {
+                if (nullptr != this->items[i])
+                {
+                    this->widget->castType<MyGUI::ListBox>()->addItem(this->items[i]->getString());
+                }
+            }
+
+            this->widget->setInheritsAlpha(true);
+            Ogre::Vector4 c = this->color->getVector4();
+            this->widget->setColour(MyGUI::Colour(c.x, c.y, c.z, c.w));
+
+            this->widget->setUserData(std::make_pair<unsigned long, unsigned int>(this->gameObjectPtr->getId(), this->getIndex()));
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MyGUIListBoxComponent::createOwnWidgetImpl");
+
+        this->setColor(this->color->getVector4());
+        this->setFontHeight(this->fontHeight->getUInt());
+        this->setTextAlign(this->textAlign->getListSelectedValue());
+        this->setTextOffset(this->textOffset->getVector2());
+        this->setTextColor(this->textColor->getVector4());
+        this->setItemHeight(this->itemHeight->getUInt());
+    }
 
 	void MyGUIListBoxComponent::mouseButtonClick(MyGUI::Widget* sender)
 	{
@@ -3965,6 +4976,8 @@ namespace NOWA
 	{
 		MyGUIComboBoxCompPtr clonedCompPtr(boost::make_shared<MyGUIComboBoxComponent>());
 
+		clonedCompPtr->bIsCloning = true;
+
 		clonedCompPtr->setActivated(this->activated->getBool());
 		clonedCompPtr->setRealPosition(this->position->getVector2());
 		clonedCompPtr->setRealSize(this->size->getVector2());
@@ -3992,49 +5005,198 @@ namespace NOWA
 		clonedCompPtr->setSmooth(this->smooth->getBool());
 		clonedCompPtr->setModeDrop(this->modeDrop->getBool());
 		clonedCompPtr->setFlowDirection(this->flowDirection->getListSelectedValue());
+
+		clonedGameObjectPtr->addComponent(clonedCompPtr);
+        clonedCompPtr->setOwner(clonedGameObjectPtr);
+
+		clonedCompPtr->setCommonWidget(this->commonWidget->getBool());
 		
 		GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
 		return clonedCompPtr;
 	}
 
 	bool MyGUIComboBoxComponent::postInit(void)
-	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MyGUIComboBoxComponent] Init MyGUI combo box component for game object: " + this->gameObjectPtr->getName());
-		
-		ENQUEUE_RENDER_COMMAND("MyGUIComboBoxComponent::postInit",
-		{
-			if (true == this->createWidgetInParent)
-			{
-				this->widget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::ComboBox>(this->skin->getListSelectedValue(),
-					this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x, this->size->getVector2().y,
-					this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_" + this->gameObjectPtr->getName() + Ogre::StringConverter::toString(this->index));
-			}
-			// this->setActivated(this->activated->getBool());
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MyGUIComboBoxComponent] Init MyGUI combo box component for game object: " + this->gameObjectPtr->getName());
 
-			if (nullptr != this->widget)
-			{
-				this->widget->castType<MyGUI::ComboBox>()->eventComboAccept += MyGUI::newDelegate(this, &MyGUIComboBoxComponent::comboAccept);
-			}
+        if (true == this->commonWidget->getBool())
+        {
+            auto* goc = AppStateManager::getSingletonPtr()->getGameObjectController();
+            const Ogre::String key = this->getSharedWidgetKey(); // skin value ("ComboBox")
 
-			for (size_t i = 0; i < this->itemCount->getUInt(); i++)
-			{
-				widget->castType<MyGUI::ComboBox>()->addItem(this->items[i]->getString());
-			}
-		});
-		
-		this->setColor(this->color->getVector4());
-		this->setFontHeight(this->fontHeight->getUInt());
-		this->setTextAlign(this->textAlign->getListSelectedValue());
-		this->setTextOffset(this->textOffset->getVector2());
-		this->setTextColor(this->textColor->getVector4());
-	
-		this->setModeDrop(this->modeDrop->getBool());
-		this->setSmooth(this->smooth->getBool());
-		this->setFlowDirection(this->flowDirection->getListSelectedValue());
-		this->setItemHeight(this->itemHeight->getUInt());
+            if (false == goc->hasSharedWidget(this->getClassName(), key))
+            {
+                // First instance — create the shared ComboBox on the render thread
+                NOWA::GraphicsModule::RenderCommand cmd = [this, goc, key]()
+                {
+                    MyGUI::Widget* w = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::ComboBox>(this->skin->getListSelectedValue(), this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x,
+                        this->size->getVector2().y, this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_shared_" + key);
 
-		return MyGUIComponent::postInit();
-	}
+                    // Wire comboAccept to this (first) instance; re-wired on each activation
+                    w->castType<MyGUI::ComboBox>()->eventComboAccept += MyGUI::newDelegate(this, &MyGUIComboBoxComponent::comboAccept);
+
+                    // Populate with first instance's items
+                    for (size_t i = 0; i < this->itemCount->getUInt(); i++)
+                    {
+                        if (nullptr != this->items[i])
+                        {
+                            w->castType<MyGUI::ComboBox>()->addItem(this->items[i]->getString());
+                        }
+                    }
+
+                    w->setInheritsAlpha(true);
+                    w->setVisible(false);
+                    goc->registerSharedWidget(this->getClassName(), key, w);
+                };
+                NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MyGUIComboBoxComponent::postInit shared create");
+            }
+            else
+            {
+                // Subsequent instances — bump refcount only; widget already exists
+                goc->registerSharedWidget(this->getClassName(), key, goc->getSharedWidget(this->getClassName(), key));
+            }
+
+            // Data-only until setActivated(true) is called
+            this->widget = nullptr;
+
+            // MyGUIComponent::postInit calls setActivated(this->activated->getBool()),
+            // which will claim the shared widget and call onActivated() if activated=true
+            return MyGUIComponent::postInit();
+        }
+
+        // ── Normal (own widget) path — unchanged original code ────────────────
+        ENQUEUE_RENDER_COMMAND("MyGUIComboBoxComponent::postInit", {
+            if (true == this->createWidgetInParent)
+            {
+                this->widget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::ComboBox>(this->skin->getListSelectedValue(), this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x, this->size->getVector2().y,
+                    this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_" + this->gameObjectPtr->getName() + Ogre::StringConverter::toString(this->index));
+            }
+
+            if (nullptr != this->widget)
+            {
+                this->widget->castType<MyGUI::ComboBox>()->eventComboAccept += MyGUI::newDelegate(this, &MyGUIComboBoxComponent::comboAccept);
+            }
+
+            for (size_t i = 0; i < this->itemCount->getUInt(); i++)
+            {
+                widget->castType<MyGUI::ComboBox>()->addItem(this->items[i]->getString());
+            }
+        });
+
+        this->setColor(this->color->getVector4());
+        this->setFontHeight(this->fontHeight->getUInt());
+        this->setTextAlign(this->textAlign->getListSelectedValue());
+        this->setTextOffset(this->textOffset->getVector2());
+        this->setTextColor(this->textColor->getVector4());
+        this->setModeDrop(this->modeDrop->getBool());
+        this->setSmooth(this->smooth->getBool());
+        this->setFlowDirection(this->flowDirection->getListSelectedValue());
+        this->setItemHeight(this->itemHeight->getUInt());
+
+        return MyGUIComponent::postInit();
+    }
+
+    void MyGUIComboBoxComponent::onActivated(void)
+    {
+        // Re-wire event to this instance and repopulate items on the shared widget.
+        // this->widget is valid here (set by MyGUIComponent::setActivated before calling onActivated).
+        NOWA::GraphicsModule::RenderCommand cmd = [this]()
+        {
+            if (nullptr == this->widget)
+            {
+                return;
+            }
+
+            // Re-wire comboAccept to the current owner so selection callbacks fire correctly
+            this->widget->castType<MyGUI::ComboBox>()->eventComboAccept = MyGUI::newDelegate(this, &MyGUIComboBoxComponent::comboAccept);
+
+            // Clear and repopulate from this instance's item data
+            this->widget->castType<MyGUI::ComboBox>()->removeAllItems();
+            for (size_t i = 0; i < this->itemCount->getUInt(); i++)
+            {
+                if (nullptr != this->items[i])
+                {
+                    this->widget->castType<MyGUI::ComboBox>()->addItem(this->items[i]->getString());
+                }
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MyGUIComboBoxComponent::onActivated repopulate");
+
+        // Re-apply styling using existing setters (all check this->widget != nullptr)
+        this->setColor(this->color->getVector4());
+        this->setFontHeight(this->fontHeight->getUInt());
+        this->setTextAlign(this->textAlign->getListSelectedValue());
+        this->setTextOffset(this->textOffset->getVector2());
+        this->setTextColor(this->textColor->getVector4());
+        this->setModeDrop(this->modeDrop->getBool());
+        this->setSmooth(this->smooth->getBool());
+        this->setFlowDirection(this->flowDirection->getListSelectedValue());
+        this->setItemHeight(this->itemHeight->getUInt());
+    }
+
+    void MyGUIComboBoxComponent::createAndRegisterSharedWidgetImpl(GameObjectController* gameObjectController, const Ogre::String& key)
+    {
+        NOWA::GraphicsModule::RenderCommand cmd = [this, gameObjectController, key]()
+        {
+            MyGUI::Widget* w = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::ComboBox>(this->skin->getListSelectedValue(), this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x, this->size->getVector2().y,
+                this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_shared_" + key);
+
+            // Wire eventComboAccept to first instance; re-wired on each activation via onActivated
+            w->castType<MyGUI::ComboBox>()->eventComboAccept += MyGUI::newDelegate(this, &MyGUIComboBoxComponent::comboAccept);
+
+            for (size_t i = 0; i < this->itemCount->getUInt(); i++)
+            {
+                if (nullptr != this->items[i])
+                {
+                    w->castType<MyGUI::ComboBox>()->addItem(this->items[i]->getString());
+                }
+            }
+
+            w->setInheritsAlpha(true);
+            Ogre::Vector4 c = this->color->getVector4();
+            w->setColour(MyGUI::Colour(c.x, c.y, c.z, c.w));
+            w->setVisible(false);
+            gameObjectController->registerSharedWidget(this->getClassName(), key, w);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MyGUIComboBoxComponent::createAndRegisterSharedWidgetImpl");
+    }
+
+    void MyGUIComboBoxComponent::createOwnWidgetImpl(void)
+    {
+        NOWA::GraphicsModule::RenderCommand cmd = [this]()
+        {
+            this->widget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::ComboBox>(this->skin->getListSelectedValue(), this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x, this->size->getVector2().y,
+                this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_" + this->gameObjectPtr->getName() + Ogre::StringConverter::toString(this->index));
+
+            this->widget->castType<MyGUI::ComboBox>()->eventComboAccept += MyGUI::newDelegate(this, &MyGUIComboBoxComponent::comboAccept);
+
+            this->widget->castType<MyGUI::ComboBox>()->removeAllItems();
+            for (size_t i = 0; i < this->itemCount->getUInt(); i++)
+            {
+                if (nullptr != this->items[i])
+                {
+                    this->widget->castType<MyGUI::ComboBox>()->addItem(this->items[i]->getString());
+                }
+            }
+
+            this->widget->setInheritsAlpha(true);
+            Ogre::Vector4 c = this->color->getVector4();
+            this->widget->setColour(MyGUI::Colour(c.x, c.y, c.z, c.w));
+
+            this->widget->setUserData(std::make_pair<unsigned long, unsigned int>(this->gameObjectPtr->getId(), this->getIndex()));
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MyGUIComboBoxComponent::createOwnWidgetImpl");
+
+        this->setColor(this->color->getVector4());
+        this->setFontHeight(this->fontHeight->getUInt());
+        this->setTextAlign(this->textAlign->getListSelectedValue());
+        this->setTextOffset(this->textOffset->getVector2());
+        this->setTextColor(this->textColor->getVector4());
+        this->setModeDrop(this->modeDrop->getBool());
+        this->setSmooth(this->smooth->getBool());
+        this->setFlowDirection(this->flowDirection->getListSelectedValue());
+        this->setItemHeight(this->itemHeight->getUInt());
+    }
 
 	void MyGUIComboBoxComponent::mouseButtonClick(MyGUI::Widget* sender)
 	{

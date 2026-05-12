@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MyGUI type="Layout">
+    <Widget type="Widget" skin="InventoryPanelSkin" position="600 450 365 256"
+            layer="Overlapped" name="_Main">
+        <Widget type="ItemBox" skin="ItemBoxEmpty"
+                position="20 20 325 216" align="Stretch" name="box_Items">
+            <Property key="HorizontalAlignment" value="false"/>
+            <Property key="NeedToolTip" value="true"/>
+        </Widget>
+    </Widget>
+</MyGUI>

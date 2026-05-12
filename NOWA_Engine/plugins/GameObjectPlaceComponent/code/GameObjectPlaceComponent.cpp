@@ -27,6 +27,8 @@ namespace NOWA
         showPreview(new Variant(GameObjectPlaceComponent::AttrShowPreview(), true, this->attributes)),
         rotateEnabled(new Variant(GameObjectPlaceComponent::AttrRotateEnabled(), false, this->attributes)),
         alignToTerrain(new Variant(GameObjectPlaceComponent::AttrAlignToTerrain(), false, this->attributes)),
+        spacing(new Variant(GameObjectPlaceComponent::AttrSpacing(), 0.0f, this->attributes)),
+        maxPlacementGradient(new Variant(GameObjectPlaceComponent::AttrMaxPlacementGradient(), 3.0f, this->attributes)),
         placeObjectCount(new Variant(GameObjectPlaceComponent::AttrPlaceObjectCount(), 0, this->attributes)),
         activeGameObjectId(0),
         isPlacing(false),
@@ -42,12 +44,19 @@ namespace NOWA
         isOnForbiddenSurface(false),
         isForbiddenVisualActive(false),
         lastHitObject(nullptr),
+        lastSurfaceNormal(Ogre::Vector3::UNIT_Y),
         volumeQuery(nullptr)
     {
         this->placeObjectCount->addUserData(GameObject::AttrActionNeedRefresh());
-        this->categories->setDescription("Categories to place objects on. Use 'All' for everything, or combine with '+' to include and '-' to exclude. E.g. 'All-Building-Agent' places "
-                                         "on everything except Building and Agent categories.");
-        this->alignToTerrain->setDescription("When enabled, the preview object tilts to match the slope of the terrain surface beneath it. Uses three downward rays to compute the surface normal.");
+        this->categories->setDescription("Categories to place objects on. Use 'All' for everything, or combine with '+' to include and '-' to exclude. E.g. 'All-Building-Agent' places on everything except Building and Agent categories.");
+        this->alignToTerrain->setDescription("When enabled, the preview object tilts to match the slope of the terrain surface beneath it. "
+                                             "Uses three downward rays to compute the surface normal.");
+
+        this->spacing->setDescription("Minimum gap in meters between this object and any excluded-category object. The volumetric footprint query is expanded by this amount in all directions. "
+                                      "Set to 0 to allow objects to touch. Increase to enforce spacing between buildings.");
+
+        this->maxPlacementGradient->setDescription("Maximum terrain slope angle in degrees at which placement is still allowed. The surface normal is compared to vertical (UNIT_Y); if the angle exceeds this value "
+                                                   "the placement preview turns red and left-click is blocked. Default: 45 degrees. Set to 90 to allow placement on any surface.");
     }
 
     GameObjectPlaceComponent::~GameObjectPlaceComponent()
@@ -108,6 +117,16 @@ namespace NOWA
         if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == GameObjectPlaceComponent::AttrAlignToTerrain())
         {
             this->alignToTerrain->setValue(XMLConverter::getAttribBool(propertyElement, "data", false));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == GameObjectPlaceComponent::AttrSpacing())
+        {
+            this->spacing->setValue(XMLConverter::getAttribReal(propertyElement, "data", 0.0f));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == GameObjectPlaceComponent::AttrMaxPlacementGradient())
+        {
+            this->maxPlacementGradient->setValue(XMLConverter::getAttribReal(propertyElement, "data", 3.0f));
             propertyElement = propertyElement->next_sibling("property");
         }
         if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == GameObjectPlaceComponent::AttrPlaceObjectCount())
@@ -303,6 +322,14 @@ namespace NOWA
         {
             this->setAlignToTerrain(attribute->getBool());
         }
+        else if (GameObjectPlaceComponent::AttrSpacing() == attribute->getName())
+        {
+            this->setSpacing(attribute->getReal());
+        }
+        else if (GameObjectPlaceComponent::AttrMaxPlacementGradient() == attribute->getName())
+        {
+            this->setMaxPlacementGradient(attribute->getReal());
+        }
         else
         {
             for (unsigned int i = 0; i < this->placeObjectCount->getUInt(); i++)
@@ -348,6 +375,18 @@ namespace NOWA
         propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
         propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, GameObjectPlaceComponent::AttrAlignToTerrain())));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->alignToTerrain->getBool())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, GameObjectPlaceComponent::AttrSpacing())));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->spacing->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, GameObjectPlaceComponent::AttrMaxPlacementGradient())));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->maxPlacementGradient->getReal())));
         propertiesXML->append_node(propertyXML);
 
         propertyXML = doc.allocate_node(node_element, "property");
@@ -466,6 +505,26 @@ namespace NOWA
     bool GameObjectPlaceComponent::getAlignToTerrain(void) const
     {
         return this->alignToTerrain->getBool();
+    }
+
+    void GameObjectPlaceComponent::setSpacing(Ogre::Real spacing)
+    {
+        this->spacing->setValue(Ogre::Math::Clamp(spacing, 0.0f, 1000.0f));
+    }
+
+    Ogre::Real GameObjectPlaceComponent::getSpacing(void) const
+    {
+        return this->spacing->getReal();
+    }
+
+    void GameObjectPlaceComponent::setMaxPlacementGradient(Ogre::Real maxGradientDegrees)
+    {
+        this->maxPlacementGradient->setValue(Ogre::Math::Clamp(maxGradientDegrees, 0.0f, 90.0f));
+    }
+
+    Ogre::Real GameObjectPlaceComponent::getMaxPlacementGradient(void) const
+    {
+        return this->maxPlacementGradient->getReal();
     }
 
     void GameObjectPlaceComponent::applyPreviewTransparency(GameObjectPtr shadowGameObjectPtr)
@@ -865,7 +924,9 @@ namespace NOWA
 
         // Store the hit object so mouseMoved can check its category against the exclusion mask
         this->lastHitObject = hitObject;
-
+        // Cache surface normal for gradient check even when alignToTerrain is off.
+        // 'normal' is already filled by getRaycastFromPoint.
+        this->lastSurfaceNormal = normal;
         return hitPoint;
     }
 
@@ -953,6 +1014,10 @@ namespace NOWA
         //   1. Rotate UNIT_Y to surfaceNormal  (slope tilt)
         //   2. Compose with the user's Y-axis rotation
         Ogre::Quaternion slopeQuat = Ogre::Vector3::UNIT_Y.getRotationTo(surfaceNormal);
+
+        // Cache the surface normal so mouseMoved can check the gradient constraint.
+        this->lastSurfaceNormal = surfaceNormal;
+
         return slopeQuat * baseYRotation;
     }
 
@@ -986,10 +1051,6 @@ namespace NOWA
             return false;
         }
 
-        // Build world-space AABB at placement position from the shadow object's
-        // local extents.  The local Aabb is axis-aligned in model space; we scale
-        // it by the node's current scale so that e.g. a 2× scaled building uses
-        // its actual footprint.
         Ogre::Aabb localAabb = shadowMovable->getLocalAabb();
         Ogre::SceneNode* shadowNode = shadowGO->getSceneNode();
         Ogre::Vector3 scale = (nullptr != shadowNode) ? shadowNode->getScale() : Ogre::Vector3::UNIT_SCALE;
@@ -997,21 +1058,23 @@ namespace NOWA
         Ogre::Vector3 scaledCenter = localAabb.mCenter * scale;
         Ogre::Vector3 scaledHalf = localAabb.mHalfSize * scale;
 
-        // World-space AABB centred at (position + scaled local centre)
+        // Expand the query volume by the spacing value in all directions.
+        // This enforces a minimum gap between the placed object and any
+        // excluded-category object (e.g. another building).
+        const Ogre::Real s = this->spacing->getReal();
+        scaledHalf += Ogre::Vector3(s, s, s);
+
         Ogre::Vector3 worldCenter = position + scaledCenter;
         Ogre::Vector3 minPt = worldCenter - scaledHalf;
         Ogre::Vector3 maxPt = worldCenter + scaledHalf;
 
-        // Six inward-facing planes forming the AABB volume.
-        // Convention: Plane(normal, point) stores d = -normal.dot(point), so the
-        // "inside" half-space is normal.dot(x) >= normal.dot(point).
         Ogre::PlaneBoundedVolume vol;
-        vol.planes.push_back(Ogre::Plane(Ogre::Vector3::UNIT_X, minPt));  // left   (x >= minPt.x)
-        vol.planes.push_back(Ogre::Plane(-Ogre::Vector3::UNIT_X, maxPt)); // right  (x <= maxPt.x)
-        vol.planes.push_back(Ogre::Plane(Ogre::Vector3::UNIT_Y, minPt));  // bottom (y >= minPt.y)
-        vol.planes.push_back(Ogre::Plane(-Ogre::Vector3::UNIT_Y, maxPt)); // top    (y <= maxPt.y)
-        vol.planes.push_back(Ogre::Plane(Ogre::Vector3::UNIT_Z, minPt));  // back   (z >= minPt.z)
-        vol.planes.push_back(Ogre::Plane(-Ogre::Vector3::UNIT_Z, maxPt)); // front  (z <= maxPt.z)
+        vol.planes.push_back(Ogre::Plane(Ogre::Vector3::UNIT_X, minPt));
+        vol.planes.push_back(Ogre::Plane(-Ogre::Vector3::UNIT_X, maxPt));
+        vol.planes.push_back(Ogre::Plane(Ogre::Vector3::UNIT_Y, minPt));
+        vol.planes.push_back(Ogre::Plane(-Ogre::Vector3::UNIT_Y, maxPt));
+        vol.planes.push_back(Ogre::Plane(Ogre::Vector3::UNIT_Z, minPt));
+        vol.planes.push_back(Ogre::Plane(-Ogre::Vector3::UNIT_Z, maxPt));
 
         auto hitFound = std::make_shared<bool>(false);
         auto volCopy = vol;
@@ -1021,41 +1084,31 @@ namespace NOWA
         {
             Ogre::PlaneBoundedVolumeList volList;
             volList.push_back(volCopy);
-
             this->volumeQuery->setVolumes(volList);
             Ogre::SceneQueryResult result = this->volumeQuery->execute();
-
             for (auto* mv : result.movables)
             {
                 if (nullptr == mv || mv == shadowMovable)
                 {
                     continue;
                 }
-
                 if (mv->getMovableType() != "Item")
                 {
                     continue;
                 }
-
                 if (!mv->getVisible())
                 {
                     continue;
                 }
-
-                // The query mask already filters by excludedCategoryId, but do a
-                // flag double-check to be sure (query masks are bit-OR inclusive).
                 if ((mv->getQueryFlags() & excludedId) != 0)
                 {
                     *hitFound = true;
                     break;
                 }
             }
-
             this->volumeQuery->clearResults();
         };
-
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObjectPlaceComponent::checkExcludedCategoryOverlap");
-
         return *hitFound;
     }
 
@@ -1217,13 +1270,24 @@ namespace NOWA
         // against all excluded-category objects in the scene.
         const bool wasOnForbiddenSurface = this->isOnForbiddenSurface;
 
+        // ----------------------------------------------------------------
+        // Gradient check — block placement on slopes steeper than maxPlacementGradient
+        // ----------------------------------------------------------------
+        // The surface normal is cached by getMouseWorldPosition (from the ray hit)
+        // or by computeTerrainAlignOrientation (when alignToTerrain is on).
+        // We measure the angle between the surface normal and straight up (UNIT_Y).
+        // If it exceeds maxPlacementGradient the placement is forbidden.
+        const Ogre::Real gradientAngleDeg = Ogre::Math::ACos(Ogre::Math::Clamp(this->lastSurfaceNormal.dotProduct(Ogre::Vector3::NEGATIVE_UNIT_Y), -1.0f, 1.0f)).valueDegrees();
+
+        const bool gradientForbidden = (gradientAngleDeg > this->maxPlacementGradient->getReal());
+
         if (this->excludedCategoryId != 0)
         {
-            this->isOnForbiddenSurface = this->checkExcludedCategoryOverlap(hitPoint);
+            this->isOnForbiddenSurface = this->checkExcludedCategoryOverlap(hitPoint) || gradientForbidden;
         }
         else
         {
-            this->isOnForbiddenSurface = false;
+            this->isOnForbiddenSurface = gradientForbidden;
         }
 
         // Transition the visual between normal-preview ↔ forbidden-preview
@@ -1251,6 +1315,8 @@ namespace NOWA
                 }
             }
         }
+
+        
 
         // ----------------------------------------------------------------
         // Orientation — Y-rotation base, optionally slope-aligned

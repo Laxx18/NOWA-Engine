@@ -96,6 +96,12 @@ namespace NOWA
 
         bool getAlignToTerrain() const;
 
+        void setSpacing(Ogre::Real spacing);
+        Ogre::Real getSpacing(void) const;
+
+        void setMaxPlacementGradient(Ogre::Real maxGradientDegrees);
+        Ogre::Real getMaxPlacementGradient(void) const;
+
         /**
          * @brief Sets the number of shadow game object slots.
          */
@@ -179,6 +185,14 @@ namespace NOWA
         {
             return "Align To Terrain";
         }
+        static const Ogre::String AttrSpacing(void)
+        {
+            return "Spacing";
+        }
+        static const Ogre::String AttrMaxPlacementGradient(void)
+        {
+            return "Max Placement Gradient";
+        }
         static const Ogre::String AttrPlaceObjectCount(void)
         {
             return "Place Object Count";
@@ -234,6 +248,8 @@ namespace NOWA
         Variant* showPreview;
         Variant* rotateEnabled;
         Variant* alignToTerrain;
+        Variant* spacing;
+        Variant* maxPlacementGradient;
         Variant* placeObjectCount;
         std::vector<Variant*> gameObjectIds;
 
@@ -263,6 +279,7 @@ namespace NOWA
         std::vector<std::pair<Ogre::HlmsDatablock*, unsigned int>> forbiddenClonedDatablocks;
         Ogre::MovableObject* lastHitObject;
         Ogre::Quaternion currentPlacementOrientation;
+        Ogre::Vector3 lastSurfaceNormal;
     };
 
 } // namespace end

@@ -273,6 +273,12 @@ namespace NOWA
                     }
                 }
             }
+
+            if (count > 0)
+            {
+                boost::shared_ptr<NOWA::EventDataRefreshGui> eventDataRefreshGui(new NOWA::EventDataRefreshGui());
+                AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshGui);
+            }
         }
 
         virtual void redo(void)
@@ -347,6 +353,11 @@ namespace NOWA
                     }
                 }
             }
+            if (count > 0)
+            {
+                boost::shared_ptr<NOWA::EventDataRefreshGui> eventDataRefreshGui(new NOWA::EventDataRefreshGui());
+                AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshGui);
+            }
         }
 
     private:
@@ -400,6 +411,12 @@ namespace NOWA
                     gameObjectCompPtr->actualizeValue(this->oldGameObjectDataList[i].oldAttribute);
                 }
             }
+
+            if (count > 0)
+            {
+                boost::shared_ptr<NOWA::EventDataRefreshGui> eventDataRefreshGui(new NOWA::EventDataRefreshGui());
+                AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshGui);
+            }
         }
 
         virtual void redo(void)
@@ -419,6 +436,12 @@ namespace NOWA
                 {
                     gameObjectCompPtr->actualizeValue(this->oldGameObjectDataList[i].newAttribute);
                 }
+            }
+
+            if (count > 0)
+            {
+                boost::shared_ptr<NOWA::EventDataRefreshGui> eventDataRefreshGui(new NOWA::EventDataRefreshGui());
+                AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshGui);
             }
         }
 

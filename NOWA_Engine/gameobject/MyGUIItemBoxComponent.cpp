@@ -317,7 +317,7 @@ namespace NOWA
         else
             _coord.set(0, 0, 90, 74);*/
 
-        _coord.set(0, 0, 90, 74);
+        _coord.set(0, 0, 74, 74);
     }
 
     CellView::CellView(MyGUI::Widget* _parent) : wraps::BaseCellView<ItemData*>("CellView.layout", _parent)
@@ -452,7 +452,8 @@ namespace NOWA
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    ItemBox::ItemBox(MyGUI::Widget* _parent) : wraps::BaseItemBox<CellView>(_parent)
+    ItemBox::ItemBox(MyGUI::Widget* _parent)
+        : wraps::BaseItemBox<CellView>(_parent)
     {
     }
 
@@ -472,7 +473,8 @@ namespace NOWA
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    ItemBoxWindow::ItemBoxWindow(const std::string& _layout) : BaseLayout(_layout)
+    ItemBoxWindow::ItemBoxWindow(const std::string& _layout)
+        : BaseLayout(_layout)
     {
         NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
         {
@@ -486,19 +488,24 @@ namespace NOWA
     using namespace rapidxml;
     using namespace luabind;
 
-    MyGUIItemBoxComponent::MyGUIItemBoxComponent() : MyGUIWindowComponent(), toolTip(nullptr), itemBoxWindow(nullptr), selectedSlotIndex(-1), dragDropData(new DragDropData), dropFinished(false)
+    MyGUIItemBoxComponent::MyGUIItemBoxComponent()
+        : MyGUIWindowComponent(),
+        toolTip(nullptr), 
+        itemBoxWindow(nullptr), 
+        sharedItemBoxWindow(nullptr),
+        selectedSlotIndex(-1),
+        dragDropData(new DragDropData),
+        dropFinished(false)
     {
-        // MyGUIWindowComponent already created this->skin.
-        // Replace its values rather than creating a duplicate Variant.
-        this->skin->setValue({"ItemBox"});
-        this->skin->setListSelectedValue("ItemBox");
-        this->skin->setVisible(false); // ItemBox skin is fixed, hide from editor
+        this->skin->setVisible(false);
 
         this->layer->setListSelectedValue("Overlapped");
 
-        this->resourceLocationName = new Variant(MyGUIItemBoxComponent::AttrResourceLocationName(), "InventoryItemsResources.xml", this->attributes);
+        this->resourceLocationName = new Variant(MyGUIItemBoxComponent::AttrResourceLocationName(), "InventoryItemsTemplateClean.xml", this->attributes);
         this->useToolTip = new Variant(MyGUIItemBoxComponent::AttrUseToolTip(), true, this->attributes);
         this->allowDragDrop = new Variant(MyGUIItemBoxComponent::AttrAllowDragDrop(), true, this->attributes);
+        this->style = new Variant(MyGUIComponent::AttrStyle(), std::vector<Ogre::String>{"ItemBox", "ItemBoxInventory"}, this->attributes);
+        this->style->setListSelectedValue("ItemBox");
         this->itemCount = new Variant(MyGUIItemBoxComponent::AttrItemCount(), 0, this->attributes);
 
         this->resourceNames.resize(this->itemCount->getUInt());
@@ -510,8 +517,6 @@ namespace NOWA
         this->resourceLocationName->addUserData(GameObject::AttrActionFileOpenDialog(), "Essential");
         // Since when node item count is changed, the whole properties must be refreshed, so that new field may come for item tracks
         this->itemCount->addUserData(GameObject::AttrActionNeedRefresh());
-        // ItemBox has its own skin and may not be changed!
-        this->skin->setVisible(false);
 
         this->position->setValue(Ogre::Vector2(0.0f, 0.8f));
         this->size->setValue(Ogre::Vector2(0.2f, 1.0f));
@@ -698,6 +703,8 @@ namespace NOWA
     {
         MyGUIItemBoxCompPtr clonedCompPtr(boost::make_shared<MyGUIItemBoxComponent>());
 
+        clonedCompPtr->bIsCloning = true;
+
         clonedCompPtr->setActivated(this->activated->getBool());
         clonedCompPtr->setRealPosition(this->position->getVector2());
         clonedCompPtr->setRealSize(this->size->getVector2());
@@ -708,6 +715,7 @@ namespace NOWA
         clonedCompPtr->internalSetPriorId(this->id->getULong());
         clonedCompPtr->setParentId(this->parentId->getULong()); // Attention
         clonedCompPtr->setSkin(this->skin->getListSelectedValue());
+        clonedCompPtr->setStyle(this->style->getListSelectedValue());
 
         clonedCompPtr->setMovable(this->movable->getBool());
         clonedCompPtr->setWindowCaption(this->windowCaption->getString());
@@ -726,6 +734,11 @@ namespace NOWA
             clonedCompPtr->setGameObjectId(i, this->gameObjectIds[i]->getULong());
         }
 
+        clonedGameObjectPtr->addComponent(clonedCompPtr);
+        clonedCompPtr->setOwner(clonedGameObjectPtr);
+
+        clonedCompPtr->setCommonWidget(this->commonWidget->getBool());
+
         GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
         return clonedCompPtr;
     }
@@ -734,8 +747,7 @@ namespace NOWA
     {
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MyGUIItemBoxComponent] Init MyGUI item box component for game object: " + this->gameObjectPtr->getName());
 
-        // Is called on render thread
-        // Do not create widget in parent, because it is created here, but use other parent attributes
+        this->bIsCloning = false;
         this->createWidgetInParent = false;
 
         std::string resourceCategory = MyGUI::ResourceManager::getInstance().getCategoryName();
@@ -744,33 +756,61 @@ namespace NOWA
         bool success = MyGUI::ResourceManager::getInstance().load(this->resourceLocationName->getString());
         if (false == success)
         {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MyGUIItemBoxComponent] ERROR: Could not load resource: " + this->resourceLocationName->getString() + ", because it cannot be found in '" +
-                                                                                    this->resourceLocationName->getString() + "', for game object : " + this->gameObjectPtr->getName());
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MyGUIItemBoxComponent] ERROR: Could not load resource: " + this->resourceLocationName->getString() + " for game object: " + this->gameObjectPtr->getName());
         }
-        // MyGUI::ResourceManager::getInstance().load("ItemBox_skin.xml");
 
-        this->itemBoxWindow = new ItemBoxWindow("ItemBox.layout");
+        if (true == this->commonWidget->getBool())
+        {
+            // ── Shared widget path ────────────────────────────────────────────────
+            auto* goc = AppStateManager::getSingletonPtr()->getGameObjectController();
+            const Ogre::String key = this->getSharedWidgetKey();
+
+            if (false == goc->hasSharedWidget(this->getClassName(), key))
+            {
+                this->createAndRegisterSharedWidgetImpl(goc, key);
+            }
+            else
+            {
+                goc->registerSharedWidget(this->getClassName(), key, goc->getSharedWidget(this->getClassName(), key));
+            }
+
+            // Size variant arrays — no widget created yet (data-only)
+            this->setItemCount(this->itemCount->getUInt());
+
+            // Populate resourceNameToIndex directly so getQuantity(name) works
+            // during simulation without needing widget operations
+            for (unsigned int i = 0; i < this->itemCount->getUInt(); i++)
+            {
+                if (nullptr != this->resourceNames[i] && !this->resourceNames[i]->getString().empty())
+                {
+                    this->resourceNameToIndex[this->resourceNames[i]->getString()] = i;
+                }
+            }
+
+            this->itemBoxWindow = nullptr;
+            this->widget = nullptr;
+            this->lastBuiltSkin = this->skin->getListSelectedValue();
+            this->lastBuiltStyle = this->style->getListSelectedValue();
+
+            return MyGUIComponent::postInit();
+        }
+
+        // ── Normal (own widget) path — identical to old working code ─────────────
+        this->itemBoxWindow = new ItemBoxWindow(this->style->getListSelectedValue() + ".layout");
 
         this->itemBoxWindow->getItemBox()->eventStartDrag = MyGUI::newDelegate(this, &MyGUIItemBoxComponent::notifyStartDrop);
         this->itemBoxWindow->getItemBox()->eventRequestDrop = MyGUI::newDelegate(this, &MyGUIItemBoxComponent::notifyRequestDrop);
         this->itemBoxWindow->getItemBox()->eventDropResult = MyGUI::newDelegate(this, &MyGUIItemBoxComponent::notifyEndDrop);
-        this->itemBoxWindow->getItemBox()->eventChangeDDState = newDelegate(this, &MyGUIItemBoxComponent::notifyDropState);
-        this->itemBoxWindow->getItemBox()->eventNotifyItem = newDelegate(this, &MyGUIItemBoxComponent::notifyNotifyItem);
-        // this->itemBoxWindow->getItemBox()->getItemBox()->requestCreateWidgetItem = newDelegate(this, &MyGUIItemBoxComponent::requestCreateWidgetItem);
-        // this->itemBoxWindow->getItemBox()->getItemBox()->requestCoordItem = newDelegate(this, &MyGUIItemBoxComponent::requestCoordItem);
-        // this->itemBoxWindow->getItemBox()->getItemBox()->requestDrawItem = newDelegate(this, &MyGUIItemBoxComponent::requestDrawItem);
-
-        this->itemBoxWindow->getItemBox()->eventToolTip = newDelegate(this, &MyGUIItemBoxComponent::notifyToolTip);
+        this->itemBoxWindow->getItemBox()->eventChangeDDState = MyGUI::newDelegate(this, &MyGUIItemBoxComponent::notifyDropState);
+        this->itemBoxWindow->getItemBox()->eventNotifyItem = MyGUI::newDelegate(this, &MyGUIItemBoxComponent::notifyNotifyItem);
+        this->itemBoxWindow->getItemBox()->eventToolTip = MyGUI::newDelegate(this, &MyGUIItemBoxComponent::notifyToolTip);
 
         this->widget = this->itemBoxWindow->getMainWidget();
-        // Explicitly move to the configured layer so getLayerItemByPoint can find it.
-        // MyGUI detaches from current layer and re-attaches automatically.
         MyGUI::LayerManager::getInstance().attachToLayerNode(this->layer->getListSelectedValue(), this->widget);
 
-        // this->widget->changeWidgetSkin("Window"); // Causes crash
         this->setUseToolTip(this->useToolTip->getBool());
-
         this->setItemCount(this->itemCount->getUInt());
+
         this->resourceNames.resize(this->itemCount->getUInt());
         this->quantities.resize(this->itemCount->getUInt());
         this->sellValues.resize(this->itemCount->getUInt());
@@ -780,22 +820,16 @@ namespace NOWA
         for (unsigned int i = 0; i < this->itemCount->getUInt(); i++)
         {
             this->itemBoxWindow->getItemBox()->addItem(new ItemData(this->gameObjectPtr->getId()));
-            if (nullptr != this->resourceNames[i])
+
+            if (nullptr != this->resourceNames[i] && nullptr != this->quantities[i])
             {
-                if (nullptr != this->quantities[i])
+                if (this->quantities[i]->getUInt() > 0)
                 {
-                    if (this->quantities[i]->getUInt() > 0)
-                    {
-                        // Only set resource name and icon if quantity is higher as zero
-                        this->setResourceName(i, this->resourceNames[i]->getString());
-                    }
-                    else
-                    {
-                        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MyGUIItemBoxComponent] INFO: Item slot " + Ogre::StringConverter::toString(i) + " has resource '" + this->resourceNames[i]->getString() +
-                                                                                                "' but quantity is 0. Resource will be set but item will appear empty until quantity > 0.");
-                    }
+                    // setResourceName also populates resourceNameToIndex
+                    this->setResourceName(i, this->resourceNames[i]->getString());
                 }
             }
+
             if (nullptr != this->quantities[i])
             {
                 this->setQuantity(i, this->quantities[i]->getUInt());
@@ -814,13 +848,84 @@ namespace NOWA
             }
         }
 
+        this->lastBuiltSkin = this->skin->getListSelectedValue();
+        this->lastBuiltStyle = this->style->getListSelectedValue();
+
         return MyGUIWindowComponent::postInit();
+    }
+
+    void MyGUIItemBoxComponent::onRemoveComponent(void)
+    {
+        if (true == this->commonWidget->getBool())
+        {
+            this->itemBoxWindow = nullptr;
+            this->widget = nullptr;
+
+            auto* goc = AppStateManager::getSingletonPtr()->getGameObjectController();
+            if (nullptr != goc)
+            {
+                // ALWAYS use getSharedWidgetKey()
+                const Ogre::String key = this->getSharedWidgetKey();
+
+                void* owner = goc->getSharedWidgetOwner(this->getClassName(), key);
+                if (owner == this)
+                {
+                    goc->setSharedWidgetOwner(this->getClassName(), key, nullptr);
+
+                    MyGUI::Widget* shared = goc->getSharedWidget(this->getClassName(), key);
+                    if (nullptr != shared)
+                    {
+                        NOWA::GraphicsModule::RenderCommand cmd = [shared]()
+                        {
+                            shared->setVisible(false);
+                        };
+                        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MyGUIItemBoxComponent::onRemoveComponent hide");
+                    }
+                }
+
+                // Grab ItemBoxWindow before unregister removes the entry
+                ItemBoxWindow* sharedWindow = static_cast<ItemBoxWindow*>(goc->getSharedWidgetUserData(this->getClassName(), key));
+
+                goc->unregisterSharedWidget(this->getClassName(), key);
+
+                // If last instance: delete the ItemBoxWindow wrapper
+                if (nullptr != sharedWindow && false == goc->hasSharedWidget(this->getClassName(), key))
+                {
+                    NOWA::GraphicsModule::RenderCommand cmd = [sharedWindow]()
+                    {
+                        sharedWindow->getItemBox()->eventStartDrag = nullptr;
+                        sharedWindow->getItemBox()->eventRequestDrop = nullptr;
+                        sharedWindow->getItemBox()->eventDropResult = nullptr;
+                        sharedWindow->getItemBox()->eventChangeDDState = nullptr;
+                        sharedWindow->getItemBox()->eventNotifyItem = nullptr;
+                        sharedWindow->getItemBox()->eventToolTip = nullptr;
+                        delete sharedWindow;
+                    };
+                    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MyGUIItemBoxComponent::onRemoveComponent delete window");
+                }
+            }
+        }
+        else
+        {
+            if (nullptr != this->itemBoxWindow)
+            {
+                this->itemBoxWindow->getItemBox()->eventStartDrag = nullptr;
+                this->itemBoxWindow->getItemBox()->eventRequestDrop = nullptr;
+                this->itemBoxWindow->getItemBox()->eventDropResult = nullptr;
+                this->itemBoxWindow->getItemBox()->eventChangeDDState = nullptr;
+                this->itemBoxWindow->getItemBox()->eventNotifyItem = nullptr;
+                this->itemBoxWindow->getItemBox()->eventToolTip = nullptr;
+                delete this->itemBoxWindow;
+                this->itemBoxWindow = nullptr;
+                this->widget = nullptr;
+            }
+        }
+
+        MyGUIWindowComponent::onRemoveComponent();
     }
 
     void MyGUIItemBoxComponent::mouseButtonClick(MyGUI::Widget* sender)
     {
-        int i = 0;
-        i = 1;
         /*if (true == this->isSimulating)
         {
             MyGUI::Window* window = sender->castType<MyGUI::Window>();
@@ -1496,6 +1601,582 @@ namespace NOWA
         }
     }
 
+    void MyGUIItemBoxComponent::setActivated(bool activated)
+    {
+        this->activated->setValue(activated);
+
+        if (false == this->commonWidget->getBool())
+        {
+            // ── Normal (own widget) path — match old base class behavior exactly ──
+            if (nullptr != this->widget)
+            {
+                NOWA::GraphicsModule::RenderCommand cmd = [this, activated]()
+                {
+                    this->widget->setVisible(activated);
+                    // Show/hide children too — base class MyGUIComponent::setActivated did this
+                    for (size_t i = 0; i < this->widget->getChildCount(); i++)
+                    {
+                        this->widget->getChildAt(i)->setVisible(activated);
+                    }
+                };
+                NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MyGUIItemBoxComponent::setActivated");
+            }
+            return;
+        }
+
+        // ── Shared widget path ────────────────────────────────────────────────────
+        auto* goc = AppStateManager::getSingletonPtr()->getGameObjectController();
+        if (nullptr == goc)
+        {
+            return;
+        }
+
+        const Ogre::String key = this->getSharedWidgetKey();
+        MyGUI::Widget* shared = goc->getSharedWidget(this->getClassName(), key);
+
+        if (nullptr == shared)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MyGUIItemBoxComponent] setActivated: shared widget not found for key: " + key + " (className=" + this->getClassName() + ")");
+            return;
+        }
+
+        if (true == activated)
+        {
+            goc->setSharedWidgetOwner(this->getClassName(), key, this);
+            this->widget = shared;
+
+            // Re-wire events, clear old items, populate from our variant data.
+            // Also sets this->itemBoxWindow = sharedWindow from GOC userData.
+            this->onActivated();
+
+            NOWA::GraphicsModule::RenderCommand cmd = [shared]()
+            {
+                shared->setVisible(true);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MyGUIItemBoxComponent::setActivated shared show");
+        }
+        else
+        {
+            void* currentOwner = goc->getSharedWidgetOwner(this->getClassName(), key);
+            if (currentOwner == this)
+            {
+                NOWA::GraphicsModule::RenderCommand cmd = [shared]()
+                {
+                    shared->setVisible(false);
+                };
+                NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MyGUIItemBoxComponent::setActivated shared hide");
+
+                goc->setSharedWidgetOwner(this->getClassName(), key, nullptr);
+                this->widget = nullptr;
+                this->itemBoxWindow = nullptr;
+            }
+        }
+    }
+
+    // -----------------------------------------------------------------------------
+    void MyGUIItemBoxComponent::onActivated(void)
+    {
+        auto* goc = AppStateManager::getSingletonPtr()->getGameObjectController();
+        if (nullptr == goc)
+        {
+            return;
+        }
+
+        const Ogre::String key = this->getSharedWidgetKey();
+
+        ItemBoxWindow* sharedWindow = static_cast<ItemBoxWindow*>(goc->getSharedWidgetUserData(this->getClassName(), key));
+
+        if (nullptr == sharedWindow)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MyGUIItemBoxComponent] onActivated: sharedWindow not found for key: " + key);
+            return;
+        }
+
+        NOWA::GraphicsModule::RenderCommand cmd = [this, sharedWindow]()
+        {
+            // In onActivated — hides THIS instance's OWN tooltip, not the previous owner's.
+            // Reason: this instance may have had its tooltip left showing from a previous
+            // activation cycle. Starting hidden is always correct — it will show again
+            // when the user hovers over an item via notifyToolTip.
+            if (nullptr != this->toolTip)
+            {
+                this->toolTip->hide();
+            }
+
+            // ── Re-wire ALL events to this instance ───────────────────────────
+            sharedWindow->getItemBox()->eventStartDrag = MyGUI::newDelegate(this, &MyGUIItemBoxComponent::notifyStartDrop);
+            sharedWindow->getItemBox()->eventRequestDrop = MyGUI::newDelegate(this, &MyGUIItemBoxComponent::notifyRequestDrop);
+            sharedWindow->getItemBox()->eventDropResult = MyGUI::newDelegate(this, &MyGUIItemBoxComponent::notifyEndDrop);
+            sharedWindow->getItemBox()->eventChangeDDState = MyGUI::newDelegate(this, &MyGUIItemBoxComponent::notifyDropState);
+            sharedWindow->getItemBox()->eventNotifyItem = MyGUI::newDelegate(this, &MyGUIItemBoxComponent::notifyNotifyItem);
+            sharedWindow->getItemBox()->eventToolTip = MyGUI::newDelegate(this, &MyGUIItemBoxComponent::notifyToolTip);
+
+            // ── Create toolTip for this instance if useToolTip=true ──────────
+            if (nullptr == this->toolTip && true == this->useToolTip->getBool())
+            {
+                this->toolTip = new ToolTip();
+                this->toolTip->hide();
+            }
+
+            // ── Clear items from previous owner ───────────────────────────────
+            while (sharedWindow->getItemBox()->getItemBox()->getItemCount() > 0)
+            {
+                ItemData** item = sharedWindow->getItemBox()->getItemDataAt<ItemData*>(0, false);
+                if (nullptr != item && nullptr != *item)
+                {
+                    delete *item;
+                }
+                sharedWindow->getItemBox()->removeItem(0);
+            }
+
+            // ── Populate from this instance's variant data ────────────────────
+            for (unsigned int i = 0; i < this->itemCount->getUInt(); i++)
+            {
+                sharedWindow->getItemBox()->addItem(new ItemData(this->gameObjectPtr->getId()));
+
+                ItemData** itemData = sharedWindow->getItemBox()->getItemDataAt<ItemData*>(i, false);
+                if (nullptr != itemData && nullptr != *itemData)
+                {
+                    if (nullptr != this->resourceNames[i] && !this->resourceNames[i]->getString().empty())
+                    {
+                        (*itemData)->setResourceName(this->resourceNames[i]->getString());
+                    }
+                    if (nullptr != this->quantities[i])
+                    {
+                        (*itemData)->setQuantity(this->quantities[i]->getUInt());
+                    }
+                    if (nullptr != this->sellValues[i])
+                    {
+                        (*itemData)->setSellValue(this->sellValues[i]->getReal());
+                    }
+                    if (nullptr != this->buyValues[i])
+                    {
+                        (*itemData)->setBuyValue(this->buyValues[i]->getReal());
+                    }
+                }
+            }
+
+            this->widget->setRealPosition(this->position->getVector2().x, this->position->getVector2().y);
+            this->widget->setRealSize(this->size->getVector2().x, this->size->getVector2().y);
+            Ogre::Vector4 c = this->color->getVector4();
+            this->widget->setColour(MyGUI::Colour(c.x, c.y, c.z, c.w));
+            this->widget->setInheritsAlpha(true);
+
+            MyGUI::Window* asWindow = this->widget->castType<MyGUI::Window>(false);
+            if (nullptr != asWindow)
+            {
+                asWindow->setMovable(this->movable->getBool());
+                this->widget->setProperty("Caption", MyGUI::LanguageManager::getInstancePtr()->replaceTags(this->windowCaption->getString()));
+            }
+
+            this->widget->setRealSize(this->size->getVector2().x - 0.001f, this->size->getVector2().y - 0.001f);
+            this->widget->setRealSize(this->size->getVector2().x + 0.001f, this->size->getVector2().y + 0.001f);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MyGUIItemBoxComponent::onActivated populate");
+
+        this->itemBoxWindow = sharedWindow;
+    }
+
+    void MyGUIItemBoxComponent::setSkin(const Ogre::String& skin)
+    {
+        this->skin->setListSelectedValue(skin);
+
+        // Guard against what the widget was actually last built with,
+        // not the variant (which is already updated before this is called)
+        if (this->lastBuiltSkin == skin)
+        {
+            return;
+        }
+
+        if (nullptr != this->widget && true == this->activated->getBool())
+        {
+            this->lastBuiltSkin = skin;
+            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("MyGUIItemBoxComponent::setSkin", _1(skin),
+            {
+                this->onChangeSkin();
+            });
+        }
+    }
+
+    void MyGUIItemBoxComponent::setStyle(const Ogre::String& style)
+    {
+        if (nullptr == this->style)
+        {
+            return;
+        }
+
+        this->style->setListSelectedValue(style);
+
+        // Only rebuild if the widget was actually built with a different style.
+        // The variant is already updated before this is called (undo system, actualizeValue),
+        // so comparing against the variant would always be equal — compare against lastBuiltStyle instead.
+        if (this->lastBuiltStyle == style)
+        {
+            return;
+        }
+
+        if (nullptr == this->itemBoxWindow)
+        {
+            return;
+        }
+
+        // Do not rebuild if component is not activated — avoids zombie widgets
+        // when undo/redo calls setStyle on inactive components after stopping simulation
+        if (false == this->activated->getBool())
+        {
+            return;
+        }
+
+        this->lastBuiltStyle = style;
+
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, style]()
+        {
+            // Save item state
+            std::vector<std::pair<Ogre::String, unsigned int>> saved;
+            saved.reserve(this->resourceNames.size());
+            for (size_t i = 0; i < this->resourceNames.size(); i++)
+            {
+                Ogre::String name;
+                unsigned int qty = 0;
+                if (nullptr != this->resourceNames[i])
+                {
+                    name = this->resourceNames[i]->getString();
+                }
+                if (nullptr != this->quantities[i])
+                {
+                    qty = this->quantities[i]->getUInt();
+                }
+                saved.push_back({name, qty});
+            }
+
+            // Disconnect events before destroying
+            this->itemBoxWindow->getItemBox()->eventStartDrag = nullptr;
+            this->itemBoxWindow->getItemBox()->eventRequestDrop = nullptr;
+            this->itemBoxWindow->getItemBox()->eventDropResult = nullptr;
+            this->itemBoxWindow->getItemBox()->eventChangeDDState = nullptr;
+            this->itemBoxWindow->getItemBox()->eventNotifyItem = nullptr;
+            this->itemBoxWindow->getItemBox()->eventToolTip = nullptr;
+
+            delete this->itemBoxWindow;
+            this->itemBoxWindow = nullptr;
+            this->widget = nullptr;
+
+            // Rebuild with new layout
+            this->itemBoxWindow = new ItemBoxWindow(style + ".layout");
+
+            // Re-wire events
+            this->itemBoxWindow->getItemBox()->eventStartDrag = MyGUI::newDelegate(this, &MyGUIItemBoxComponent::notifyStartDrop);
+            this->itemBoxWindow->getItemBox()->eventRequestDrop = MyGUI::newDelegate(this, &MyGUIItemBoxComponent::notifyRequestDrop);
+            this->itemBoxWindow->getItemBox()->eventDropResult = MyGUI::newDelegate(this, &MyGUIItemBoxComponent::notifyEndDrop);
+            this->itemBoxWindow->getItemBox()->eventChangeDDState = MyGUI::newDelegate(this, &MyGUIItemBoxComponent::notifyDropState);
+            this->itemBoxWindow->getItemBox()->eventNotifyItem = MyGUI::newDelegate(this, &MyGUIItemBoxComponent::notifyNotifyItem);
+            this->itemBoxWindow->getItemBox()->eventToolTip = MyGUI::newDelegate(this, &MyGUIItemBoxComponent::notifyToolTip);
+
+            this->widget = this->itemBoxWindow->getMainWidget();
+
+            MyGUI::LayerManager::getInstance().attachToLayerNode(this->layer->getListSelectedValue(), this->widget);
+            this->widget->setRealPosition(this->position->getVector2().x, this->position->getVector2().y);
+            this->widget->setRealSize(this->size->getVector2().x, this->size->getVector2().y);
+
+            MyGUI::Window* asWindow = this->widget->castType<MyGUI::Window>(false);
+            if (nullptr != asWindow)
+            {
+                this->setMovable(this->movable->getBool());
+                this->setWindowCaption(this->windowCaption->getString());
+            }
+
+            this->widget->setInheritsAlpha(true);
+            Ogre::Vector4 c = this->color->getVector4();
+            this->widget->setColour(MyGUI::Colour(c.x, c.y, c.z, c.w));
+
+            // Restore items — addItem first so getItemDataAt is valid in setResourceName/setQuantity
+            for (unsigned int i = 0; i < static_cast<unsigned int>(saved.size()); i++)
+            {
+                this->itemBoxWindow->getItemBox()->addItem(new ItemData(this->gameObjectPtr->getId()));
+                if (!saved[i].first.empty())
+                {
+                    this->setResourceName(i, saved[i].first);
+                }
+                this->setQuantity(i, saved[i].second);
+            }
+
+            // Hide widget if component is not activated
+            if (false == this->activated->getBool())
+            {
+                this->widget->setVisible(false);
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIItemBoxComponent::setStyle");
+    }
+
+    void MyGUIItemBoxComponent::onChangeSkin(void)
+    {
+        if (nullptr == this->itemBoxWindow)
+        {
+            return;
+        }
+
+        // Save item state from logic-thread variants
+        std::vector<std::pair<Ogre::String, unsigned int>> savedItems;
+        for (size_t i = 0; i < this->resourceNames.size(); i++)
+        {
+            if (nullptr != this->resourceNames[i] && nullptr != this->quantities[i])
+            {
+                savedItems.push_back({this->resourceNames[i]->getString(), this->quantities[i]->getUInt()});
+            }
+        }
+
+        // Disconnect events before destroying
+        this->itemBoxWindow->getItemBox()->eventStartDrag = nullptr;
+        this->itemBoxWindow->getItemBox()->eventRequestDrop = nullptr;
+        this->itemBoxWindow->getItemBox()->eventDropResult = nullptr;
+        this->itemBoxWindow->getItemBox()->eventChangeDDState = nullptr;
+        this->itemBoxWindow->getItemBox()->eventNotifyItem = nullptr;
+        this->itemBoxWindow->getItemBox()->eventToolTip = nullptr;
+
+        delete this->itemBoxWindow;
+        this->itemBoxWindow = nullptr;
+        this->widget = nullptr;
+
+        // Recreate with current style layout
+        const Ogre::String layoutName = this->style->getListSelectedValue() + ".layout";
+        this->itemBoxWindow = new ItemBoxWindow(layoutName);
+
+        // Re-wire events
+        this->itemBoxWindow->getItemBox()->eventStartDrag = MyGUI::newDelegate(this, &MyGUIItemBoxComponent::notifyStartDrop);
+        this->itemBoxWindow->getItemBox()->eventRequestDrop = MyGUI::newDelegate(this, &MyGUIItemBoxComponent::notifyRequestDrop);
+        this->itemBoxWindow->getItemBox()->eventDropResult = MyGUI::newDelegate(this, &MyGUIItemBoxComponent::notifyEndDrop);
+        this->itemBoxWindow->getItemBox()->eventChangeDDState = MyGUI::newDelegate(this, &MyGUIItemBoxComponent::notifyDropState);
+        this->itemBoxWindow->getItemBox()->eventNotifyItem = MyGUI::newDelegate(this, &MyGUIItemBoxComponent::notifyNotifyItem);
+        this->itemBoxWindow->getItemBox()->eventToolTip = MyGUI::newDelegate(this, &MyGUIItemBoxComponent::notifyToolTip);
+
+        this->widget = this->itemBoxWindow->getMainWidget();
+        MyGUI::LayerManager::getInstance().attachToLayerNode(this->layer->getListSelectedValue(), this->widget);
+        this->widget->setRealPosition(this->position->getVector2().x, this->position->getVector2().y);
+        this->widget->setRealSize(this->size->getVector2().x, this->size->getVector2().y);
+
+        MyGUI::Window* asWindow = this->widget->castType<MyGUI::Window>(false);
+        if (nullptr != asWindow)
+        {
+            this->setMovable(this->movable->getBool());
+            this->setWindowCaption(this->windowCaption->getString());
+        }
+
+        this->widget->setInheritsAlpha(true);
+        Ogre::Vector4 c = this->color->getVector4();
+        this->widget->setColour(MyGUI::Colour(c.x, c.y, c.z, c.w));
+
+        // Restore items — MUST addItem first so getItemDataAt is valid in setResourceName/setQuantity.
+        // Do NOT call setItemCount here: it compares against resourceNames.size() which hasn't changed,
+        // sees oldSize == newSize, and skips all addItem calls, leaving the fresh box with 0 items.
+        for (size_t i = 0; i < savedItems.size(); i++)
+        {
+            this->itemBoxWindow->getItemBox()->addItem(new ItemData(this->gameObjectPtr->getId()));
+            if (!savedItems[i].first.empty())
+            {
+                this->setResourceName(static_cast<unsigned int>(i), savedItems[i].first);
+            }
+            this->setQuantity(static_cast<unsigned int>(i), savedItems[i].second);
+        }
+
+        if (false == this->activated->getBool())
+        {
+            this->widget->setVisible(false);
+        }
+    }
+
+    // -----------------------------------------------------------------------------
+    // getSharedWidgetKey (override)
+    // Uses style instead of skin (ItemBox is identified by its layout, not skin).
+    // Incorporates tagName so e.g. "Worker_ItemBoxInventory" and
+    // "Store_ItemBoxInventory" remain separate shared widgets.
+    // -----------------------------------------------------------------------------
+    Ogre::String MyGUIItemBoxComponent::getSharedWidgetKey(void) const
+    {
+        const Ogre::String tagName = this->gameObjectPtr->getTagName();
+        if (false == tagName.empty())
+        {
+            return tagName + "_" + this->style->getListSelectedValue();
+        }
+
+        return this->style->getListSelectedValue();
+    }
+
+    // -----------------------------------------------------------------------------
+    // createAndRegisterSharedWidgetImpl (override)
+    // Creates the shared ItemBoxWindow, registers its main widget in GOC,
+    // and stores the ItemBoxWindow* as GOC userData so onActivated can find it
+    // without a static map.
+    // -----------------------------------------------------------------------------
+    void MyGUIItemBoxComponent::createAndRegisterSharedWidgetImpl(GameObjectController* goc, const Ogre::String& key)
+    {
+        // Create ItemBoxWindow on the MAIN thread.
+        // Its constructor calls enqueueAndWait internally for assignBase — that
+        // only works correctly when initiated from the main thread.
+        ItemBoxWindow* sharedWindow = new ItemBoxWindow(this->style->getListSelectedValue() + ".layout");
+
+        // Now run render-thread-only setup: wire events, attach to layer, register in GOC.
+        NOWA::GraphicsModule::RenderCommand cmd = [this, goc, key, sharedWindow]()
+        {
+            // Wire events to this first instance.
+            // They are re-wired to the current owner on every setActivated(true) via onActivated().
+            sharedWindow->getItemBox()->eventStartDrag = MyGUI::newDelegate(this, &MyGUIItemBoxComponent::notifyStartDrop);
+            sharedWindow->getItemBox()->eventRequestDrop = MyGUI::newDelegate(this, &MyGUIItemBoxComponent::notifyRequestDrop);
+            sharedWindow->getItemBox()->eventDropResult = MyGUI::newDelegate(this, &MyGUIItemBoxComponent::notifyEndDrop);
+            sharedWindow->getItemBox()->eventChangeDDState = MyGUI::newDelegate(this, &MyGUIItemBoxComponent::notifyDropState);
+            sharedWindow->getItemBox()->eventNotifyItem = MyGUI::newDelegate(this, &MyGUIItemBoxComponent::notifyNotifyItem);
+            sharedWindow->getItemBox()->eventToolTip = MyGUI::newDelegate(this, &MyGUIItemBoxComponent::notifyToolTip);
+
+            MyGUI::Widget* w = sharedWindow->getMainWidget();
+            MyGUI::LayerManager::getInstance().attachToLayerNode(this->layer->getListSelectedValue(), w);
+            w->setInheritsAlpha(true);
+            Ogre::Vector4 c = this->color->getVector4();
+            w->setColour(MyGUI::Colour(c.x, c.y, c.z, c.w));
+            w->setVisible(false);
+
+            // Register widget in GOC.
+            // Key already encodes tagName + style — built by caller from getSharedWidgetKey().
+            goc->registerSharedWidget(this->getClassName(), key, w);
+
+            // Store ItemBoxWindow* as GOC userData so onActivated() can retrieve it
+            // for ALL instances (first and subsequent) without a static map.
+            goc->setSharedWidgetUserData(this->getClassName(), key, sharedWindow);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MyGUIItemBoxComponent::createAndRegisterSharedWidgetImpl");
+    }
+
+    // -----------------------------------------------------------------------------
+    // createOwnWidgetImpl (override)
+    // Creates a fresh private ItemBoxWindow from current variant values.
+    // Called when switching from shared back to own mode.
+    // -----------------------------------------------------------------------------
+    void MyGUIItemBoxComponent::createOwnWidgetImpl(void)
+    {
+        NOWA::GraphicsModule::RenderCommand cmd = [this]()
+        {
+            this->itemBoxWindow = new ItemBoxWindow(this->style->getListSelectedValue() + ".layout");
+
+            this->itemBoxWindow->getItemBox()->eventStartDrag = MyGUI::newDelegate(this, &MyGUIItemBoxComponent::notifyStartDrop);
+            this->itemBoxWindow->getItemBox()->eventRequestDrop = MyGUI::newDelegate(this, &MyGUIItemBoxComponent::notifyRequestDrop);
+            this->itemBoxWindow->getItemBox()->eventDropResult = MyGUI::newDelegate(this, &MyGUIItemBoxComponent::notifyEndDrop);
+            this->itemBoxWindow->getItemBox()->eventChangeDDState = MyGUI::newDelegate(this, &MyGUIItemBoxComponent::notifyDropState);
+            this->itemBoxWindow->getItemBox()->eventNotifyItem = MyGUI::newDelegate(this, &MyGUIItemBoxComponent::notifyNotifyItem);
+            this->itemBoxWindow->getItemBox()->eventToolTip = MyGUI::newDelegate(this, &MyGUIItemBoxComponent::notifyToolTip);
+
+            this->widget = this->itemBoxWindow->getMainWidget();
+            MyGUI::LayerManager::getInstance().attachToLayerNode(this->layer->getListSelectedValue(), this->widget);
+
+            this->widget->setInheritsAlpha(true);
+            Ogre::Vector4 c = this->color->getVector4();
+            this->widget->setColour(MyGUI::Colour(c.x, c.y, c.z, c.w));
+
+            MyGUI::Window* asWindow = this->widget->castType<MyGUI::Window>(false);
+            if (nullptr != asWindow)
+            {
+                asWindow->setMovable(this->movable->getBool());
+                this->widget->setProperty("Caption", MyGUI::LanguageManager::getInstancePtr()->replaceTags(this->windowCaption->getString()));
+            }
+
+            // Populate items from variant data
+            for (unsigned int i = 0; i < this->itemCount->getUInt(); i++)
+            {
+                this->itemBoxWindow->getItemBox()->addItem(new ItemData(this->gameObjectPtr->getId()));
+
+                ItemData** itemData = this->itemBoxWindow->getItemBox()->getItemDataAt<ItemData*>(i, false);
+                if (nullptr != itemData && nullptr != *itemData)
+                {
+                    if (nullptr != this->resourceNames[i] && !this->resourceNames[i]->getString().empty())
+                    {
+                        (*itemData)->setResourceName(this->resourceNames[i]->getString());
+                    }
+                    if (nullptr != this->quantities[i])
+                    {
+                        (*itemData)->setQuantity(this->quantities[i]->getUInt());
+                    }
+                    if (nullptr != this->sellValues[i])
+                    {
+                        (*itemData)->setSellValue(this->sellValues[i]->getReal());
+                    }
+                    if (nullptr != this->buyValues[i])
+                    {
+                        (*itemData)->setBuyValue(this->buyValues[i]->getReal());
+                    }
+                }
+            }
+
+            this->widget->setUserData(std::make_pair<unsigned long, unsigned int>(this->gameObjectPtr->getId(), this->getIndex()));
+
+            // Trigger repaint
+            this->widget->setRealSize(this->size->getVector2().x - 0.001f, this->size->getVector2().y - 0.001f);
+            this->widget->setRealSize(this->size->getVector2().x + 0.001f, this->size->getVector2().y + 0.001f);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MyGUIItemBoxComponent::createOwnWidgetImpl");
+
+        this->lastBuiltStyle = this->style->getListSelectedValue();
+        this->lastBuiltSkin = this->skin->getListSelectedValue();
+    }
+
+    // -----------------------------------------------------------------------------
+    // setCommonWidget (override)
+    // ItemBox needs extra handling for ItemBoxWindow* in GOC userData.
+    // For enabling: base handles GOC registration via createAndRegisterSharedWidgetImpl.
+    // For disabling: base handles GOC unregistration, then createOwnWidgetImpl rebuilds.
+    // The only extra work: null itemBoxWindow on disable (base doesn't know about it).
+    // -----------------------------------------------------------------------------
+    void MyGUIItemBoxComponent::setCommonWidget(bool enable)
+    {
+        if (this->commonWidget->getBool() == enable)
+        {
+            return;
+        }
+
+        // Do not set here set new value and not in derived component, because else the check above does fail in base class!
+        // this->commonWidget->setValue(enabled);
+        // if (this->commonWidget->getBool() == enable)
+
+        if (false == enable)
+        {
+            // Before the base unregisters from GOC, null our itemBoxWindow pointer.
+            // The base will call createOwnWidgetImpl which sets a fresh one.
+            this->itemBoxWindow = nullptr;
+
+            // If we are the current shared owner, also null widget so the base
+            // doesn't try to hide a widget we're about to replace.
+            auto* goc = AppStateManager::getSingletonPtr()->getGameObjectController();
+            if (nullptr != goc)
+            {
+                const Ogre::String key = this->getSharedWidgetKey();
+                void* owner = goc->getSharedWidgetOwner(this->getClassName(), key);
+                if (owner == this)
+                {
+                    this->widget = nullptr;
+                }
+
+                // If we are the last instance, delete the ItemBoxWindow wrapper
+                // before base calls unregisterSharedWidget (which destroys the MyGUI widget).
+                // We must check refcount by peeking: unregister will drop it to 0.
+                // Retrieve the ItemBoxWindow* before unregister removes the entry.
+                // Note: base::setCommonWidget calls unregisterSharedWidget which calls
+                // destroyWidget — ItemBoxWindow dtor must NOT destroy the widget again.
+                // So we delete ItemBoxWindow here AFTER the widget is already gone if
+                // refCount would hit 0 — handled inside onRemoveComponent cleanup.
+                // For the hot-switch case (not last instance), just forget the pointer.
+            }
+        }
+
+        // Delegate to base for all GOC management and widget show/hide.
+        // Base calls createAndRegisterSharedWidgetImpl or createOwnWidgetImpl as needed.
+        MyGUIComponent::setCommonWidget(enable);
+
+        // After base completes:
+        if (true == enable)
+        {
+            // Ensure itemBoxWindow is null — we are now data-only.
+            // setActivated(true) called by base will set it via onActivated().
+            this->itemBoxWindow = nullptr;
+        }
+    }
+
     void MyGUIItemBoxComponent::setResourceLocationName(const Ogre::String& resourceLocationName)
     {
         this->oldResourceLocationName = this->resourceLocationName->getString();
@@ -1530,30 +2211,44 @@ namespace NOWA
 
     void MyGUIItemBoxComponent::setUseToolTip(bool useToolTip)
     {
-        if (true == this->useToolTip->getBool())
+        // Update the variant FIRST — was missing entirely
+        this->useToolTip->setValue(useToolTip);
+
+        if (true == useToolTip)
         {
             NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
             {
                 if (nullptr == this->toolTip)
                 {
                     this->toolTip = new ToolTip();
-                    toolTip->hide();
+                    this->toolTip->hide();
                 }
+                // Wire tooltip event only if itemBoxWindow exists (non-shared path).
+                // Shared path re-wires in onActivated().
                 if (nullptr != this->itemBoxWindow)
                 {
-                    this->itemBoxWindow->getItemBox()->eventToolTip = newDelegate(this, &MyGUIItemBoxComponent::notifyToolTip);
+                    this->itemBoxWindow->getItemBox()->eventToolTip = MyGUI::newDelegate(this, &MyGUIItemBoxComponent::notifyToolTip);
                 }
             };
-            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIItemBoxComponent::setUseToolTip");
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIItemBoxComponent::setUseToolTip create");
         }
         else
         {
+            // Destroy tooltip if it exists
             if (nullptr != this->toolTip)
             {
                 NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
                 {
+                    // Hide before deleting — may be visible when switching owners
+                    this->toolTip->hide();
                     delete this->toolTip;
                     this->toolTip = nullptr;
+
+                    // Disconnect the event so notifyToolTip is never called
+                    if (nullptr != this->itemBoxWindow)
+                    {
+                        this->itemBoxWindow->getItemBox()->eventToolTip = nullptr;
+                    }
                 };
                 NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIItemBoxComponent::setUseToolTip delete");
             }
@@ -1678,24 +2373,28 @@ namespace NOWA
 
         this->resourceNames[index]->setValue(resourceName);
 
-        if (nullptr != this->itemBoxWindow)
+        if (true == this->bIsCloning || nullptr == this->itemBoxWindow)
         {
-            NOWA::GraphicsModule::RenderCommand renderCommand = [this, resourceName, index]()
-            {
-                if (this->itemBoxWindow->getItemBox()->getItemBox()->getItemCount() > 0)
-                {
-                    ItemData** item = this->itemBoxWindow->getItemBox()->getItemDataAt<ItemData*>(index, true);
-                    if (nullptr != item)
-                    {
-                        (*item)->setResourceName(resourceName);
-                    }
-
-                    this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x - 0.001f, this->size->getVector2().y - 0.001f);
-                    this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x + 0.001f, this->size->getVector2().y + 0.001f);
-                }
-            };
-            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIItemBoxComponent::setResourceName repaint");
+            return;
         }
+
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, resourceName, index]()
+        {
+            if (index >= this->itemBoxWindow->getItemBox()->getItemBox()->getItemCount())
+            {
+                return;
+            }
+
+            ItemData** item = this->itemBoxWindow->getItemBox()->getItemDataAt<ItemData*>(index, false);
+            if (nullptr != item && nullptr != *item)
+            {
+                (*item)->setResourceName(resourceName);
+            }
+
+            this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x - 0.001f, this->size->getVector2().y - 0.001f);
+            this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x + 0.001f, this->size->getVector2().y + 0.001f);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIItemBoxComponent::setResourceName repaint");
     }
 
     Ogre::String MyGUIItemBoxComponent::getResourceName(unsigned int index)
@@ -1716,29 +2415,33 @@ namespace NOWA
 
         this->quantities[index]->setValue(quantity);
 
-        if (nullptr != this->itemBoxWindow)
+        if (true == this->bIsCloning || nullptr == this->itemBoxWindow)
         {
-            NOWA::GraphicsModule::RenderCommand renderCommand = [this, index, quantity]()
-            {
-                ItemData** item = this->itemBoxWindow->getItemBox()->getItemDataAt<ItemData*>(index, true);
-                if (nullptr != item)
-                {
-                    // If setting quantity > 0 but ItemData has no resourceInfo yet
-                    // (slot was never given a name, or was cleared by setQuantity(0)),
-                    // re-apply the resource name from the variant to restore resourceInfo/resourceImage
-                    if (quantity > 0 && (*item)->isEmpty() && index < this->resourceNames.size() && nullptr != this->resourceNames[index] && !this->resourceNames[index]->getString().empty())
-                    {
-                        (*item)->setResourceName(this->resourceNames[index]->getString());
-                    }
-
-                    (*item)->setQuantity(quantity);
-                }
-
-                this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x - 0.001f, this->size->getVector2().y - 0.001f);
-                this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x + 0.001f, this->size->getVector2().y + 0.001f);
-            };
-            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIItemBoxComponent::setQuantity repaint");
+            return;
         }
+
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, index, quantity]()
+        {
+            // Guard: fresh box may have fewer items than the variant arrays
+            if (index >= this->itemBoxWindow->getItemBox()->getItemBox()->getItemCount())
+            {
+                return;
+            }
+
+            ItemData** item = this->itemBoxWindow->getItemBox()->getItemDataAt<ItemData*>(index, false);
+            if (nullptr != item && nullptr != *item)
+            {
+                if (quantity > 0 && (*item)->isEmpty() && index < this->resourceNames.size() && nullptr != this->resourceNames[index] && !this->resourceNames[index]->getString().empty())
+                {
+                    (*item)->setResourceName(this->resourceNames[index]->getString());
+                }
+                (*item)->setQuantity(quantity);
+            }
+
+            this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x - 0.001f, this->size->getVector2().y - 0.001f);
+            this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x + 0.001f, this->size->getVector2().y + 0.001f);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIItemBoxComponent::setQuantity repaint");
     }
 
     void MyGUIItemBoxComponent::setQuantity(const Ogre::String& resourceName, unsigned int quantity)
@@ -1934,6 +2637,11 @@ namespace NOWA
         }
         this->sellValues[index]->setValue(sellValue);
 
+        if (true == this->bIsCloning || nullptr == this->itemBoxWindow)
+        {
+            return;
+        }
+
         NOWA::GraphicsModule::RenderCommand renderCommand = [this, index, sellValue]()
         {
             if (nullptr != this->itemBoxWindow)
@@ -2002,6 +2710,11 @@ namespace NOWA
             index = static_cast<unsigned int>(this->buyValues.size()) - 1;
         }
         this->buyValues[index]->setValue(buyValue);
+
+        if (true == this->bIsCloning || nullptr == this->itemBoxWindow)
+        {
+            return;
+        }
 
         NOWA::GraphicsModule::RenderCommand renderCommand = [this, index, buyValue]()
         {
