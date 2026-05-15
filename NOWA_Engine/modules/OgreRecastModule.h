@@ -223,7 +223,7 @@ namespace NOWA
          *
          *   Faustregel: mindestens 10 Voxel über den schmalsten Korridor.
          *     Korridor = 2m, cellSize = 0.2  ->  10 Voxel Breite  ✓
-         *     Korridor = 2m, cellSize = 0.5  ->   4 Voxel Breite  ⚠ zu grob
+         *     Korridor = 2m, cellSize = 0.5  ->   4 Voxel Breite   zu grob
          *
          *   Mindestwert liegt bei ca. 0.05 (Gleitkomma-Präzisionsgrenze).
          *   [Limit: > 0] [Einheit: Welteinheiten]
@@ -494,6 +494,8 @@ namespace NOWA
 		*/
 		bool findPath(const Ogre::Vector3& startPosition, const Ogre::Vector3& endPosition, int pathSlot, int targetSlot, bool drawPath = false);
 
+        bool waitForPath(int pathSlot);
+
 		/** 
 		* @brief Removes the drawn path.
 		*/
@@ -552,6 +554,7 @@ namespace NOWA
          * @param[in] mustRegenerate true if the navigation mesh must be regenerated, false otherwise.
          */
         void setMustRegenerate(bool mustRegenerate);
+
 	private:
 		OgreRecastModule(const Ogre::String& appStateName);
 
@@ -577,6 +580,8 @@ namespace NOWA
 		bool debugDraw;
         std::thread navMeshThread;
         std::atomic<bool> buildInProgress;
+        std::unordered_map<int, std::future<int>> pathFutures;
+        std::mutex pathFuturesMutex;
 	};
 
 }; //namespace end

@@ -709,6 +709,21 @@ namespace NOWA
 								 Ogre::Vector3& resultPositionOnModel, size_t& targetMovableObject, float& closestDistance, Ogre::Vector3& normalOnModel,
 								 std::vector<Ogre::MovableObject*>* excludeMovableObjects = nullptr, bool forGizmo = false);
 
+		/**
+         * @brief			Performs a raycast on model based on current mouse position. Speciality: it caches positions, if for the given graphics frame this is called for x instances, so that its calculated once and then cached for all x instances!
+         * @param[in]		X						The absolute mouse x position
+         * @param[in]		Y						The absolute mouse y position
+         * @param[in]		camera					The camera to through the ray from current camera position and orientation to the mouse x and y position
+         * @param[in]		window			The render window to calculate the mouse position in relation to the render window size
+         * @param[in]		raySceneQuery			The ray scene query, to check if the ray cast should be performed for the given object category
+         * @param[in|out]	resultPositionOnModel	The result position on the model
+         * @param[in]		excludeMovableObjects		Optional list of movable objects (entity, item, etc.), that should be excluded from the ray cast
+         * @param[in]		forGizmo				Optional flag, if the query should only match the gizmo, so no query flags will be wasted
+         * @note				Getting information about the normal of the hit model data allows e.g. to snap other objects and rotate them according to the normal
+         * @return			True if the raycast could be performed or hit the object, else false if e.g. the object category was not in the ray scene query filter
+         */
+		bool getRaycastForFrame(int mouseX, int mouseY, Ogre::Camera* camera, Ogre::Window* renderWindow, Ogre::RaySceneQuery* raySceneQuery, std::vector<Ogre::MovableObject*>& excludeObjects, Ogre::Vector3& outPosition);
+
 		/// Ogre Matrix inverse really sucks (it use a full Gaussian pivoting when a simple transpose follow by vector rotation will do.
 		inline Ogre::Matrix4 matrixTransposeInverse(const Ogre::Matrix4& matrix)
 		{
@@ -879,6 +894,17 @@ namespace NOWA
 		void tweakUnlitDatablock(const Ogre::String& datablockName);
 	public:
 		static MathHelper* getInstance();
+
+    private:
+        // Cached raycast result shared by all workers clicking the same frame.
+        // Avoids 7 render thread roundtrips for the same mouse position.
+        struct CachedRaycast
+        {
+            Ogre::Vector3 clickedPosition = Ogre::Vector3::ZERO;
+            bool valid = false;
+            int frameNumber = -1;
+        };
+        CachedRaycast cachedRaycast;
 	};
 
 }; // namespace end

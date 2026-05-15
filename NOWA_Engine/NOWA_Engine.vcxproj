@@ -214,6 +214,7 @@
     <ClInclude Include="gameobject\DecalComponent.h" />
     <ClInclude Include="gameobject\DescriptionComponent.h" />
     <ClInclude Include="gameobject\DistributedComponent.h" />
+    <ClInclude Include="gameobject\GeometricComponentBase.h" />
     <ClInclude Include="gameobject\InputDeviceComponent.h" />
     <ClInclude Include="gameobject\MeshEditComponentBase.h" />
     <ClInclude Include="gameobject\PhysicsActiveComplexVehicleComponent.h" />

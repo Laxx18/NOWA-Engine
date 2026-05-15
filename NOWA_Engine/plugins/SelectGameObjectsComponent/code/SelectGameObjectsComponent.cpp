@@ -423,14 +423,20 @@ namespace NOWA
     {
         if (true == this->bConnected)
         {
-            // Check for MyGUI focus FIRST, before handling selection
             if (nullptr != NOWA::GraphicsModule::getInstance()->getMyGUIFocusWidget())
-			{
-				// MyGUI is handling this click — do not process as world selection
-				return true;
+            {
+                return true;
             }
 
             this->selectionManager->handleMouseRelease(evt, id);
+
+            // Only fire the selection callback for the configured selection button.
+            // Without this check, releasing MB_Middle (used for pathfinding clicks)
+            // also triggers the callback, reassigning path slots mid-movement.
+            if (id != this->selectionManager->getMouseButtonId())
+            {
+                return true;
+            }
 
             const auto selectedGameObjects = this->selectionManager->getSelectedGameObjects();
 
@@ -438,7 +444,6 @@ namespace NOWA
             {
                 NOWA::AppStateManager::LogicCommand logicCommand = [this, selectedGameObjects]()
                 {
-                    // Create a luabind table instead of std::vector
                     luabind::object selectedGameObjectTable = luabind::newtable(LuaScriptApi::getInstance()->getLua());
                     size_t i = 0;
                     for (const auto& selectedGameObject : selectedGameObjects)
@@ -454,8 +459,7 @@ namespace NOWA
                         luabind::object errorMsg(luabind::from_stack(error.state(), -1));
                         std::stringstream msg;
                         msg << errorMsg;
-
-                        Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[SelectGameObjectsComponent] Caught error in 'reactOnGameObjectsSelected' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
+                        Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[SelectGameObjectsComponent] reactOnGameObjectsSelected error: " + Ogre::String(error.what()) + " details: " + msg.str());
                     }
                 };
                 NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));

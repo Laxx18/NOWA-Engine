@@ -508,7 +508,7 @@ namespace NOWA
                 Ogre::MovableObject* newMovableObject = nullptr;
 
                 if (GameObject::OCEAN != this->type && GameObject::TERRA != this->type && GameObject::DECAL != this->type && GameObject::LIGHT_AREA != this->type && GameObject::MAZE != this->type && GameObject::WALL != this->type &&
-                    GameObject::ROAD != this->type && GameObject::DUNGEON != this->type)
+                    GameObject::ROAD != this->type && GameObject::DUNGEON != this->type && GameObject::GEOMETRY != this->type)
                 {
                     meshName = this->meshData[0];
 
@@ -564,6 +564,10 @@ namespace NOWA
                     {
                         meshName = "Dungeon";
                     }
+                    else if (GameObject::GEOMETRY == this->type)
+                    {
+                        meshName = "Geometry";
+                    }
                 }
 
                 // Do not use # anymore, because its reserved in mygui as code-word the # and everything after that will be removed!
@@ -571,7 +575,7 @@ namespace NOWA
                 AppStateManager::getSingletonPtr()->getGameObjectController()->getValidatedGameObjectName(gameObjectName);
 
                 if (GameObject::OCEAN != this->type && GameObject::TERRA != this->type && GameObject::DECAL != this->type && GameObject::LIGHT_AREA != this->type && GameObject::MAZE != this->type && GameObject::WALL != this->type &&
-                    GameObject::ROAD != this->type && GameObject::DUNGEON != this->type)
+                    GameObject::ROAD != this->type && GameObject::DUNGEON != this->type && GameObject::GEOMETRY != this->type)
                 {
                     newMovableObject->setName(gameObjectName);
                 }
@@ -714,6 +718,17 @@ namespace NOWA
                         if (GameObjectFactory::getInstance()->getComponentFactory()->hasComponent("ProceduralDungeonComponent"))
                         {
                             NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, "ProceduralDungeonComponent", true);
+                            gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
+
+                            this->editorManager->currentPlaceType = GameObject::eType::NONE;
+                            this->editorManager->setManipulationMode(EditorManager::EDITOR_MESH_MODIFY_MODE);
+                        }
+                    }
+                    else if (GameObject::GEOMETRY == this->type)
+                    {
+                        if (GameObjectFactory::getInstance()->getComponentFactory()->hasComponent("ProceduralGeometryComponent"))
+                        {
+                            NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, "ProceduralGeometryComponent", true);
                             gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
 
                             this->editorManager->currentPlaceType = GameObject::eType::NONE;
@@ -1785,10 +1800,6 @@ namespace NOWA
         MathHelper::getInstance()->mouseToViewPort(evt.state.X.abs, evt.state.Y.abs, x, y, Core::getSingletonPtr()->getOgreRenderWindow());
         this->mouseHitRay = this->camera->getCameraToViewportRay(x, y);
 
-        Ogre::Ray hitRay;
-        ENQUEUE_GET_CAMERA_TO_VIEWPORT_RAY(this->camera, x, y, hitRay);
-        this->mouseHitRay = hitRay;
-
         if (EDITOR_PLACE_MODE == this->manipulationMode)
         {
             // Handle here, how to place objects
@@ -1854,8 +1865,7 @@ namespace NOWA
         Ogre::Real y = 0.0f;
         MathHelper::getInstance()->mouseToViewPort(evt.state.X.abs, evt.state.Y.abs, x, y, Core::getSingletonPtr()->getOgreRenderWindow());
 
-        Ogre::Ray hitRay;
-        ENQUEUE_GET_CAMERA_TO_VIEWPORT_RAY(this->camera, x, y, hitRay);
+        this->mouseHitRay = this->camera->getCameraToViewportRay(x, y);
 
         if (id == this->mouseButtonId && EDITOR_PLACE_MODE == this->manipulationMode)
         {
@@ -1956,7 +1966,7 @@ namespace NOWA
         else if (id == this->mouseButtonId && EDITOR_SELECT_MODE < this->manipulationMode && EDITOR_ROTATE_MODE2 >= this->manipulationMode && Gizmo::GIZMO_NONE < this->gizmo->getState())
         {
             // Get the first ray hit
-            this->getRayStartPoint(hitRay);
+            this->getRayStartPoint(this->mouseHitRay);
             this->translateStartPoint = this->gizmo->getPosition();
             this->rotateStartOrientation = this->gizmo->getOrientation();
 
@@ -1974,7 +1984,7 @@ namespace NOWA
             this->mouseIdPressed = true;
             if (nullptr != this->terraComponent)
             {
-                auto hitData = this->terraComponent->checkRayIntersect(hitRay);
+                auto hitData = this->terraComponent->checkRayIntersect(this->mouseHitRay);
                 if (true == std::get<0>(hitData))
                 {
                     if (EDITOR_TERRAIN_MODIFY_MODE == this->manipulationMode)
@@ -2000,7 +2010,7 @@ namespace NOWA
 
         if (this->gizmo->isEnabled())
         {
-            this->selectGizmo(evt, hitRay);
+            this->selectGizmo(evt, this->mouseHitRay);
         }
 
         if (EDITOR_PLACE_MODE != this->manipulationMode)
@@ -3065,6 +3075,10 @@ namespace NOWA
             this->attachMeshToPlaceNode("Node.mesh", type);
         }
         else if (GameObject::DUNGEON == type)
+        {
+            this->attachMeshToPlaceNode("Node.mesh", type);
+        }
+        else if (GameObject::GEOMETRY == type)
         {
             this->attachMeshToPlaceNode("Node.mesh", type);
         }

@@ -1,0 +1,711 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<scene formatVersion="1.1.0" generator="NOWA-Engine" sceneName="Scene1">
+	<resourceLocations/>
+	<environment>
+		<sceneManager name="NOWA_SceneManager" id="1980837708"/>
+		<ambient>
+			<ambientLightUpperHemisphere r="0.3" g="0.5" b="0.7"/>
+			<ambientLightLowerHemisphere r="0.6" g="0.45" b="0.3" a="1"/>
+			<hemisphereDir x="0.57735" y="0.577351" z="0.57735"/>
+			<envmapScale x="1"/>
+		</ambient>
+		<shadows>
+			<shadowFarDistance distance="200"/>
+			<shadowDirectionalLightExtrusionDistance distance="10000"/>
+			<shadowDirLightTextureOffset offset="0.6"/>
+			<shadowColor r="0.25" g="0.25" b="0.25"/>
+			<shadowQuality index="2"/>
+			<ambientLightMode index="0"/>
+		</shadows>
+		<mainParameter>
+			<ignoreGlobalScene value="false"/>
+			<renderDistance distance="300"/>
+			<useV2Item value="true"/>
+		</mainParameter>
+		<fog mode="none" start="0" end="0" density="0"/>
+		<bounds mostLeftNearPosition="-100 -75 -100" mostRightFarPosition="100 75 100"/>
+	</environment>
+	<OgreNewt solverModel="4" threadCount="1" desiredFps="120" defaultLinearDamping="0.1">
+		<defaultAngularDamping x="0.1" y="0.1" z="0.1"/>
+		<globalGravity x="0" y="-19.8" z="0"/>
+	</OgreNewt>
+	<OgreRecast CellSize="0.05" CellHeight="0.4" AgentMaxSlope="30" AgentMaxClimb="0.5" AgentHeight="0.8" AgentRadius="0.5" EdgeMaxLen="12" EdgeMaxError="0.1" RegionMinSize="10" RegionMergeSize="10" VertsPerPoly="6" DetailSampleDist="1" DetailSampleMaxError="0.1" KeepInterResults="false">
+		<PointExtends x="5" y="5" z="5"/>
+	</OgreRecast>
+	<nodes>
+		<node name="Terra_0" id="612897194">
+			<position x="0" y="0" z="0"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<terra name="Terra_0" visible="true">
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="2409567104"/>
+					<property type="7" name="Category" data="Terrain"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="true"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 -1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="11"/>
+					<property type="2" name="RenderDistance" data="300"/>
+					<property type="6" name="LodDistance" data="0"/>
+					<property type="6" name="LodLevels" data="0"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="ComponentTerraComponent" data="TerraComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="9" name="Center" data="0 25 0"/>
+					<property type="8" name="PixelSize" data="1024 1024"/>
+					<property type="9" name="Dimensions" data="200 100 200"/>
+					<property type="6" name="LightId" data="1111111113"/>
+					<property type="6" name="CameraId" data="0"/>
+					<property type="6" name="BasePixelDimension" data="64"/>
+					<property type="7" name="ComponentDatablockTerraComponent" data="DatablockTerraComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="7" name="Brdf" data="Default"/>
+					<property type="9" name="DiffuseColor" data="1 1 1"/>
+					<property type="7" name="DiffuseTextureName" data="DiffuseTerrain.png"/>
+					<property type="7" name="Detail0TextureName" data="ground_dirt_gardenD.png"/>
+					<property type="10" name="OffsetScale0" data="0 0 32 32"/>
+					<property type="7" name="Detail1TextureName" data="grass_green_d.jpg"/>
+					<property type="10" name="OffsetScale1" data="0 0 32 32"/>
+					<property type="7" name="Detail2TextureName" data="island_sand_d.jpg"/>
+					<property type="10" name="OffsetScale2" data="0 0 32 32"/>
+					<property type="7" name="Detail3TextureName" data="mntn_black_d.jpg"/>
+					<property type="10" name="OffsetScale3" data="0 0 32 32"/>
+					<property type="7" name="Detail0NMTextureName" data="ground_dirt_gardenN.png"/>
+					<property type="7" name="Detail1NMTextureName" data="grass_green_n.jpg"/>
+					<property type="7" name="Detail2NMTextureName" data="island_sand_n.png"/>
+					<property type="7" name="Detail3NMTextureName" data="mntn_black_n.jpg"/>
+					<property type="7" name="Detail0RTextureName" data="ground_dirt_gardenR.png"/>
+					<property type="6" name="Roughness0" data="0.5"/>
+					<property type="7" name="Detail1RTextureName" data="grass_green_r.png"/>
+					<property type="6" name="Roughness1" data="0.5"/>
+					<property type="7" name="Detail2RTextureName" data="island_sand_r.png"/>
+					<property type="6" name="Roughness2" data="0.5"/>
+					<property type="7" name="Detail3RTextureName" data="mntn_black_r.png"/>
+					<property type="6" name="Roughness3" data="0.5"/>
+					<property type="7" name="Detail0MTextureName" data="ground_dirt_gardenS.png"/>
+					<property type="6" name="Metalness0" data="0.1"/>
+					<property type="7" name="Detail1MTextureName" data="grass_green_s.png"/>
+					<property type="6" name="Metalness1" data="0.1"/>
+					<property type="7" name="Detail2MTextureName" data="island_sand_s.png"/>
+					<property type="6" name="Metalness2" data="0.1"/>
+					<property type="7" name="Detail3MTextureName" data="mntn_black_s.png"/>
+					<property type="6" name="Metalness3" data="0.1"/>
+					<property type="7" name="ReflectionTextureName" data=""/>
+					<property type="7" name="ComponentProceduralTerrainCreationComponent" data="ProceduralTerrainCreationComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="Resolution" data="1024"/>
+					<property type="6" name="Base Height" data="0.5"/>
+					<property type="6" name="Hill Amplitude" data="0.1"/>
+					<property type="6" name="Hill Frequency" data="3"/>
+					<property type="2" name="Octaves" data="3"/>
+					<property type="6" name="Persistence" data="0.328"/>
+					<property type="6" name="Lacunarity" data="2"/>
+					<property type="2" name="Seed" data="666"/>
+					<property type="12" name="Enable Roads" data="true"/>
+					<property type="2" name="Road Count" data="2"/>
+					<property type="6" name="Road Width" data="3"/>
+					<property type="6" name="Road Depth" data="0.05"/>
+					<property type="6" name="Road Smoothness" data="2"/>
+					<property type="6" name="Road Curviness" data="0.4"/>
+					<property type="12" name="Roads Closed" data="false"/>
+					<property type="12" name="Enable Rivers" data="false"/>
+					<property type="2" name="River Count" data="2"/>
+					<property type="6" name="River Width" data="20"/>
+					<property type="6" name="River Depth" data="10"/>
+					<property type="6" name="River Meandering" data="0.5"/>
+					<property type="6" name="River Flow Threshold" data="0.01"/>
+					<property type="6" name="River Width Scale" data="1"/>
+					<property type="6" name="River Erosion Factor" data="0.02"/>
+					<property type="6" name="Max River Depth" data="10"/>
+					<property type="12" name="Enable Canyons" data="false"/>
+					<property type="2" name="Canyon Count" data="1"/>
+					<property type="6" name="Canyon Width" data="50"/>
+					<property type="6" name="Canyon Depth" data="30"/>
+					<property type="6" name="Canyon Steepness" data="0.7"/>
+					<property type="6" name="Canyon Min Width" data="5"/>
+					<property type="6" name="Canyon Max Width" data="20"/>
+					<property type="12" name="Enable Island" data="false"/>
+					<property type="6" name="Island Falloff" data="2"/>
+					<property type="6" name="Island Size" data="0.7"/>
+					<property type="12" name="Enable Erosion" data="false"/>
+					<property type="2" name="Erosion Iterations" data="50000"/>
+					<property type="6" name="Erosion Strength" data="0.5"/>
+					<property type="6" name="Sediment Capacity" data="4"/>
+					<property type="7" name="ComponentPhysicsTerrainComponent" data="PhysicsTerrainComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Serialize" data="true"/>
+					<property type="7" name="ComponentNavMeshTerraComponent" data="NavMeshTerraComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="TerraLayers" data="255,255,255,255"/>
+				</userData>
+			</terra>
+		</node>
+		<node name="MainGameObject" id="1366663313">
+			<position x="0" y="0" z="0"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<item name="MainGameObject" meshFile="Node.mesh" castShadows="true" visible="false">
+				<subitem index="0" datablockName="WhiteLine"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="1111111111"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="false"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="0"/>
+					<property type="6" name="LodLevels" data="0"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="WhiteLine"/>
+					<property type="7" name="ComponentDescriptionComponent" data="DescriptionComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="7" name="Description" data="&lt;p float='left'&gt;&lt;img width='260' height='159'&gt;pic_NOWA&lt;/img&gt; &lt;/p&gt;&lt;br/&gt;&lt;p align='center'&gt;&lt;color value='#FFFFFF'&gt;&lt;url value='https://www.lukas-kalinowski.com'&gt;https://www.lukas-kalinowski.com&lt;/url&gt;&lt;/color&gt;&lt;/p&gt;&lt;br/&gt;&lt;br/&gt;&lt;p&gt;&lt;color value='#1D6EA7'&gt;No description.&lt;/color&gt;&lt;/p&gt;"/>
+					<property type="7" name="ComponentInputDeviceComponent" data="InputDeviceComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="DeviceName" data="Win32InputManager"/>
+					<property type="12" name="IsExclusive" data="false"/>
+					<property type="7" name="ComponentMyGUIWindowComponent" data="MyGUIWindowComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="Id" data="1218530862"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="8" name="Position" data="0 0.5"/>
+					<property type="8" name="Size" data="0.2 0.2"/>
+					<property type="7" name="Align" data="HCenter"/>
+					<property type="7" name="Layer" data="Overlapped"/>
+					<property type="10" name="Color" data="0.5 0.5 0.5 1"/>
+					<property type="12" name="Enabled" data="true"/>
+					<property type="2" name="ParentId" data="0"/>
+					<property type="7" name="Skin" data="WindowCSX"/>
+					<property type="12" name="Movable" data="false"/>
+					<property type="7" name="WindowCaption" data="Details"/>
+					<property type="7" name="ComponentMyGUITextComponent" data="MyGUITextComponent"/>
+					<property type="7" name="Name" data="StatusText"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="Id" data="2540703995"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="8" name="Position" data="0.1 0.1"/>
+					<property type="8" name="Size" data="0.8 0.2"/>
+					<property type="7" name="Align" data="HCenter"/>
+					<property type="7" name="Layer" data="Back"/>
+					<property type="10" name="Color" data="0.5 0.5 0.5 1"/>
+					<property type="12" name="Enabled" data="true"/>
+					<property type="2" name="ParentId" data="1218530862"/>
+					<property type="7" name="Skin" data="EditBox"/>
+					<property type="7" name="Caption" data="My Text"/>
+					<property type="2" name="FontHeight" data="10"/>
+					<property type="7" name="TextAlign" data="Left"/>
+					<property type="8" name="TextOffset" data="0 0"/>
+					<property type="10" name="TextColor" data="0 0 0 1"/>
+					<property type="12" name="ReadOnly" data="true"/>
+					<property type="12" name="MultiLine" data="false"/>
+					<property type="12" name="WordWrap" data="false"/>
+					<property type="7" name="ComponentSelectGameObjectsComponent" data="SelectGameObjectsComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="Categories" data="Agent"/>
+					<property type="12" name="UseMultiSelection" data="true"/>
+					<property type="12" name="UseSelectionRectangle" data="true"/>
+					<property type="12" name="ActivatePlayerController" data="true"/>
+					<property type="7" name="ComponentLuaScriptComponent" data="LuaScriptComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="ScriptFile" data="MainGameObject.lua"/>
+					<property type="12" name="CloneScript" data="false"/>
+					<property type="12" name="HasCommonScript" data="false"/>
+					<property type="2" name="OrderIndex" data="2"/>
+					<property type="7" name="ComponentGameObjectPlaceComponent" data="GameObjectPlaceComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="Categories" data="All-Building-Agent"/>
+					<property type="12" name="Show Preview" data="true"/>
+					<property type="12" name="Rotate Enabled" data="true"/>
+					<property type="12" name="Align To Terrain" data="true"/>
+					<property type="2" name="Place Object Count" data="2"/>
+					<property type="7" name="GameObject Id0" data="2495224329"/>
+					<property type="7" name="GameObject Id1" data="74045720"/>
+				</userData>
+			</item>
+		</node>
+		<node name="SunLight" id="1479238507">
+			<position x="0" y="150" z="50"/>
+			<rotation qw="0.880476" qx="-0.364705" qy="0.279848" qz="-0.115916"/>
+			<scale x="1" y="1" z="1"/>
+			<item name="SunLight" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
+				<subitem index="0" datablockName="WhiteLine"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="1111111113"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="0"/>
+					<property type="6" name="LodLevels" data="0"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="WhiteLine"/>
+					<property type="7" name="ComponentLightDirectionalComponent" data="LightDirectionalComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="9" name="Diffuse" data="1 1 1"/>
+					<property type="9" name="Specular" data="0.8 0.8 0.8"/>
+					<property type="6" name="PowerScale" data="3.14159"/>
+					<property type="9" name="Direction" data="-1 -1 -1"/>
+					<property type="12" name="AffectParentNode" data="true"/>
+					<property type="6" name="AttenuationRadius" data="10"/>
+					<property type="6" name="AttenuationLumThreshold" data="0.00192"/>
+					<property type="12" name="CastShadows" data="true"/>
+					<property type="12" name="ShowDummyEntity" data="false"/>
+				</userData>
+			</item>
+		</node>
+		<node name="MainCamera" id="4010617415">
+			<position x="-1.89638" y="34.3177" z="50.4656"/>
+			<rotation qw="0.975722" qx="-0.212878" qy="0.0504136" qz="0.0103946"/>
+			<scale x="1" y="1" z="1"/>
+			<item name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
+				<subitem index="0" datablockName="WhiteLine"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="1111111112"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="true"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="0"/>
+					<property type="6" name="LodLevels" data="0"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="WhiteLine"/>
+					<property type="7" name="ComponentCameraComponent" data="CameraComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Active" data="true"/>
+					<property type="9" name="CameraPosition" data="-1.89638 34.3177 50.4656"/>
+					<property type="9" name="CameraOrientation" data="-24.6118 5.93167 -0.07433"/>
+					<property type="6" name="NearClipDistance" data="0.1"/>
+					<property type="6" name="FarClipDistance" data="500"/>
+					<property type="6" name="Fovy" data="90"/>
+					<property type="12" name="Orthographic" data="false"/>
+					<property type="8" name="OrthoWindowSize" data="10 10"/>
+					<property type="12" name="FixedYawAxis" data="true"/>
+					<property type="12" name="ShowDummyEntity" data="false"/>
+					<property type="7" name="ExcludeRenderCategories" data="All"/>
+					<property type="7" name="ComponentWorkspaceSkyComponent" data="WorkspaceSkyComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="9" name="BackgroundColor" data="0 0 0"/>
+					<property type="10" name="ViewportRect" data="0 0 1 1"/>
+					<property type="6" name="SuperSampling" data="1"/>
+					<property type="12" name="UseHdr" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="6" name="ReflectionCameraGameObjectId" data="0"/>
+					<property type="12" name="UsePlanarReflection" data="false"/>
+					<property type="12" name="UseSSAO" data="false"/>
+					<property type="12" name="UseDistortion" data="false"/>
+					<property type="12" name="UseMSAA" data="false"/>
+					<property type="12" name="UsePCC" data="false"/>
+					<property type="12" name="UseTerra" data="true"/>
+					<property type="12" name="UseOcean" data="false"/>
+					<property type="6" name="ShadowGlobalBias" data="1"/>
+					<property type="6" name="ShadowGlobalNormalOffset" data="168"/>
+					<property type="6" name="ShadowPSSMLambda" data="0.95"/>
+					<property type="6" name="ShadowSplitBlend" data="0.125"/>
+					<property type="6" name="ShadowSplitFade" data="0.313"/>
+					<property type="6" name="ShadowSplitPadding" data="1"/>
+					<property type="7" name="SkyBoxName" data="mountain_ring_cube.dds"/>
+					<property type="7" name="ComponentCompositorEffectCartoonComponent" data="CompositorEffectCartoonComponent"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="6" name="WorkspaceGameObjectId" data="1111111112"/>
+					<property type="6" name="Edge Threshold" data="0.8"/>
+					<property type="6" name="Edge Strength" data="2"/>
+					<property type="6" name="Num Bands" data="10"/>
+					<property type="6" name="Saturation" data="1.2"/>
+					<property type="6" name="Edge Darkness" data="0.5"/>
+					<property type="7" name="ComponentCompositorEffectVolumetricLightComponent" data="CompositorEffectVolumetricLightComponent"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="6" name="WorkspaceGameObjectId" data="1111111112"/>
+					<property type="2" name="Light Id" data="1111111113"/>
+					<property type="6" name="God Ray Strength" data="1"/>
+					<property type="6" name="Sun Threshold" data="0.8"/>
+					<property type="6" name="Sun Radius" data="0.4"/>
+					<property type="6" name="Decay" data="0.97"/>
+					<property type="6" name="Density" data="0.8"/>
+					<property type="6" name="Exposure" data="0.25"/>
+					<property type="9" name="Tint" data="1 0.9 0.7"/>
+					<property type="7" name="ComponentCompositorEffectFogComponent" data="CompositorEffectFogComponent"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="6" name="WorkspaceGameObjectId" data="1111111112"/>
+					<property type="6" name="Depth Fog Density" data="0.008"/>
+					<property type="6" name="Depth Fog Start" data="20"/>
+					<property type="6" name="Height Fog Density" data="0.06"/>
+					<property type="6" name="Height Fog Start" data="0"/>
+					<property type="6" name="Height Fog End" data="40"/>
+					<property type="9" name="Fog Color" data="0.7 0.75 0.8"/>
+					<property type="6" name="Fog Sky Blend" data="0.3"/>
+					<property type="7" name="ComponentCompositorEffectOutlineComponent" data="CompositorEffectOutlineComponent"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="6" name="WorkspaceGameObjectId" data="1111111112"/>
+					<property type="9" name="Outline Color" data="0 0 0"/>
+					<property type="6" name="Outline Thickness" data="1"/>
+					<property type="6" name="Depth Threshold" data="0.0304891"/>
+					<property type="6" name="Outline Strength" data="1"/>
+					<property type="7" name="ComponentCompositorEffectLightShaftsComponent" data="CompositorEffectLightShaftsComponent"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="6" name="WorkspaceGameObjectId" data="1111111112"/>
+					<property type="2" name="Light Id" data="1111111113"/>
+					<property type="6" name="Occlusion Depth Threshold" data="0.9999"/>
+					<property type="6" name="Sun Radius" data="0.5"/>
+					<property type="6" name="Brightness Threshold" data="0.6"/>
+					<property type="6" name="Decay" data="0.96"/>
+					<property type="6" name="Density" data="0.9"/>
+					<property type="6" name="Exposure" data="0.3"/>
+					<property type="6" name="Shaft Sharpness" data="1.5"/>
+					<property type="6" name="Shaft Strength" data="1"/>
+					<property type="9" name="Tint" data="1 0.92 0.75"/>
+					<property type="7" name="ComponentCompositorEffectDepthOfFieldComponent" data="CompositorEffectDepthOfFieldComponent"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="6" name="WorkspaceGameObjectId" data="1111111112"/>
+					<property type="7" name="Dof Type" data="Depth Of Field Gaussian"/>
+					<property type="2" name="Focus Game Object Id" data="1512204030"/>
+					<property type="6" name="Focus Distance" data="20"/>
+					<property type="6" name="Near Blur Range" data="5"/>
+					<property type="6" name="Far Blur Range" data="30"/>
+					<property type="6" name="Blur Radius" data="0.012"/>
+					<property type="6" name="Blend Strength" data="1"/>
+				</userData>
+			</item>
+		</node>
+		<node name="HouseTemplate" id="3191601065">
+			<position x="14.8963" y="25.1345" z="116.982"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
+			<scale x="0.4" y="0.4" z="0.4"/>
+			<item name="HouseTemplate" meshFile="cg_house_c.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="/dural/structures/ossyja_post/texture"/>
+				<subitem index="1" datablockName="/dural/structures/ossyja_inner_walls/texture"/>
+				<subitem index="2" datablockName="/dural/structures/ossyja_brick/texture"/>
+				<subitem index="3" datablockName="/dural/structures/rezpa_wall/texture"/>
+				<subitem index="4" datablockName="/dural/structures/blue_floor_tile/texture"/>
+				<subitem index="5" datablockName="/dural/structures/ossyja_ceiling_tiles/texture"/>
+				<subitem index="6" datablockName="/dural/structures/ossyja_floor_planks/texture"/>
+				<subitem index="7" datablockName="/dural/structures/roof_shale/texture"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="74045720"/>
+					<property type="7" name="Category" data="Building"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="true"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="0"/>
+					<property type="6" name="LodLevels" data="0"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="/dural/structures/ossyja_post/texture"/>
+					<property type="7" name="DataBlock1" data="/dural/structures/ossyja_inner_walls/texture"/>
+					<property type="7" name="DataBlock2" data="/dural/structures/ossyja_brick/texture"/>
+					<property type="7" name="DataBlock3" data="/dural/structures/rezpa_wall/texture"/>
+					<property type="7" name="DataBlock4" data="/dural/structures/blue_floor_tile/texture"/>
+					<property type="7" name="DataBlock5" data="/dural/structures/ossyja_ceiling_tiles/texture"/>
+					<property type="7" name="DataBlock6" data="/dural/structures/ossyja_floor_planks/texture"/>
+					<property type="7" name="DataBlock7" data="/dural/structures/roof_shale/texture"/>
+					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="6" name="Mass" data="10000"/>
+					<property type="12" name="Serialize" data="false"/>
+					<property type="7" name="ComponentMeshConstructionComponent" data="MeshConstructionComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="6" name="Construction Time (s)" data="25"/>
+					<property type="12" name="Show Progress Bar" data="true"/>
+					<property type="12" name="Show Percentage Text" data="true"/>
+					<property type="12" name="Invert" data="false"/>
+					<property type="9" name="Construction Axis" data="Y"/>
+					<property type="7" name="ComponentNavMeshComponent" data="NavMeshComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="7" name="NavigationType" data="Dynamic Obstacle"/>
+					<property type="12" name="Walkable" data="false"/>
+				</userData>
+			</item>
+		</node>
+		<node name="Monster01_0" id="2507280561">
+			<position x="-4.46643" y="25.0674" z="39.1663"/>
+			<rotation qw="-8.74228e-08" qx="0" qy="-1" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<item name="Monster01_0" meshFile="Monster01.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="Monster01"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="1512204030"/>
+					<property type="7" name="Category" data="Agent"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="0"/>
+					<property type="6" name="LodLevels" data="0"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="Monster01"/>
+					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="9" name="CollisionSize" data="0 0 0"/>
+					<property type="9" name="OffsetPosition" data="0 0 0"/>
+					<property type="9" name="OffsetDirection" data="0 0 0"/>
+					<property type="6" name="Mass" data="10"/>
+					<property type="9" name="MassOrigin" data="0 0 0"/>
+					<property type="6" name="LinearDamping" data="0.1"/>
+					<property type="9" name="AngularDamping" data="0.1 0.1 0.1"/>
+					<property type="9" name="Gravity" data="0 -19.8 0"/>
+					<property type="7" name="GravitySourceCategory" data=""/>
+					<property type="9" name="ConstraintDirection" data="0 1 0"/>
+					<property type="6" name="Speed" data="5"/>
+					<property type="6" name="MinSpeed" data="3"/>
+					<property type="6" name="MaxSpeed" data="10"/>
+					<property type="7" name="CollisionType" data="ConvexHull"/>
+					<property type="9" name="ConstraintAxis" data="0 0 0"/>
+					<property type="12" name="EnableGyroscopicTorque" data="false"/>
+					<property type="12" name="Collidable" data="true"/>
+					<property type="7" name="OnContactFunctionName" data=""/>
+					<property type="7" name="ComponentMyGUIItemBoxComponent" data="MyGUIItemBoxComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="Id" data="4239335910"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="8" name="Position" data="0 0.73"/>
+					<property type="8" name="Size" data="0.2 0.2"/>
+					<property type="7" name="Align" data="HCenter"/>
+					<property type="7" name="Layer" data="Overlapped"/>
+					<property type="10" name="Color" data="0.5 0.5 0.5 1"/>
+					<property type="12" name="Enabled" data="true"/>
+					<property type="2" name="ParentId" data="0"/>
+					<property type="7" name="Skin" data="Window"/>
+					<property type="7" name="Style" data="ItemBoxInventory"/>
+					<property type="12" name="Movable" data="false"/>
+					<property type="7" name="WindowCaption" data="Buildings"/>
+					<property type="7" name="ResourceLocationName" data="InventoryItemsBuildings.xml"/>
+					<property type="12" name="UseToolTip" data="true"/>
+					<property type="12" name="AllowDragDrop" data="true"/>
+					<property type="2" name="ItemCount" data="2"/>
+					<property type="7" name="ResourceName0" data="TownHallItem"/>
+					<property type="7" name="Quantity0" data="1"/>
+					<property type="6" name="SellValue0" data="0"/>
+					<property type="6" name="BuyValue0" data="0"/>
+					<property type="2" name="GameObjectId0" data="2495224329"/>
+					<property type="7" name="ResourceName1" data="HouseItem"/>
+					<property type="7" name="Quantity1" data="1"/>
+					<property type="6" name="SellValue1" data="0"/>
+					<property type="6" name="BuyValue1" data="0"/>
+					<property type="2" name="GameObjectId1" data="74045720"/>
+					<property type="7" name="ComponentLuaScriptComponent" data="LuaScriptComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="ScriptFile" data="Player.lua"/>
+					<property type="12" name="CloneScript" data="false"/>
+					<property type="12" name="HasCommonScript" data="false"/>
+					<property type="2" name="OrderIndex" data="1"/>
+					<property type="7" name="ComponentAiLuaGoalComponent" data="AiLuaGoalComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="6" name="RotationSpeed" data="10"/>
+					<property type="12" name="FlyMode" data="false"/>
+					<property type="7" name="RootGoalName" data="BuildingRootGoal"/>
+					<property type="7" name="ComponentAiRecastPathNavigationComponent" data="AiRecastPathNavigationComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="6" name="RotationSpeed" data="10"/>
+					<property type="12" name="FlyMode" data="false"/>
+					<property type="6" name="StuckTime" data="0"/>
+					<property type="12" name="AutoOrientation" data="true"/>
+					<property type="12" name="AutoAnimation" data="true"/>
+					<property type="6" name="AgentId" data="0"/>
+					<property type="12" name="Repeat" data="false"/>
+					<property type="12" name="DirectionChange" data="false"/>
+					<property type="12" name="InvertDirection" data="false"/>
+					<property type="6" name="GoalRadius" data="0.2"/>
+					<property type="2" name="TargetId" data="0"/>
+					<property type="6" name="ActualizePathDelay" data="1"/>
+					<property type="2" name="PathSlot" data="0"/>
+					<property type="2" name="TargetSlot" data="0"/>
+					<property type="7" name="ComponentPlayerControllerClickToPointComponent" data="PlayerControllerClickToPointComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="6" name="RotationSpeed" data="10"/>
+					<property type="6" name="GoalRadius" data="0.5"/>
+					<property type="6" name="AnimationSpeed" data="1"/>
+					<property type="6" name="Acceleration" data="2"/>
+					<property type="7" name="Categories" data="All"/>
+					<property type="12" name="UseStandUp" data="false"/>
+					<property type="7" name="Categories" data="All"/>
+					<property type="6" name="Range" data="100"/>
+					<property type="2" name="PathSlot" data="0"/>
+					<property type="7" name="AnimIdle1" data="idle-01"/>
+					<property type="7" name="AnimIdle2" data="idle-02"/>
+					<property type="7" name="AnimIdle3" data="idle-03"/>
+					<property type="7" name="AnimWalkNorth" data="walk-01"/>
+					<property type="7" name="AnimRun" data="run-01"/>
+					<property type="12" name="AutoClick" data="false"/>
+				</userData>
+			</item>
+		</node>
+		<node name="TownhallTemplate" id="1548771700">
+			<position x="-2.91866" y="25.5564" z="115.565"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
+			<scale x="0.4" y="0.4" z="0.4"/>
+			<item name="TownhallTemplate" meshFile="cg_house_b.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="/dural/structures/ossyja_wall_cobblestone/texture"/>
+				<subitem index="1" datablockName="/dural/structures/stone_palisade/texture"/>
+				<subitem index="2" datablockName="/dural/structures/ossyja_floor_planks/texture"/>
+				<subitem index="3" datablockName="/dural/structures/ossyja_wall_cobblestone/texture"/>
+				<subitem index="4" datablockName="/dural/structures/ossyja_rough_beams/texture"/>
+				<subitem index="5" datablockName="/dural/structures/ossyja_inner_walls/texture"/>
+				<subitem index="6" datablockName="/dural/structures/roof_shale/texture"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="2495224329"/>
+					<property type="7" name="Category" data="Building"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="true"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="0"/>
+					<property type="6" name="LodLevels" data="0"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="/dural/structures/ossyja_wall_cobblestone/texture"/>
+					<property type="7" name="DataBlock1" data="/dural/structures/stone_palisade/texture"/>
+					<property type="7" name="DataBlock2" data="/dural/structures/ossyja_floor_planks/texture"/>
+					<property type="7" name="DataBlock3" data="/dural/structures/ossyja_wall_cobblestone/texture"/>
+					<property type="7" name="DataBlock4" data="/dural/structures/ossyja_rough_beams/texture"/>
+					<property type="7" name="DataBlock5" data="/dural/structures/ossyja_inner_walls/texture"/>
+					<property type="7" name="DataBlock6" data="/dural/structures/roof_shale/texture"/>
+					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="6" name="Mass" data="10000"/>
+					<property type="12" name="Serialize" data="false"/>
+					<property type="7" name="ComponentMeshConstructionComponent" data="MeshConstructionComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="6" name="Construction Time (s)" data="20"/>
+					<property type="12" name="Show Progress Bar" data="true"/>
+					<property type="12" name="Show Percentage Text" data="true"/>
+					<property type="12" name="Invert" data="false"/>
+					<property type="9" name="Construction Axis" data="Y"/>
+					<property type="7" name="ComponentNavMeshComponent" data="NavMeshComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="7" name="NavigationType" data="Dynamic Obstacle"/>
+					<property type="12" name="Walkable" data="false"/>
+				</userData>
+			</item>
+		</node>
+	</nodes>
+</scene>
+

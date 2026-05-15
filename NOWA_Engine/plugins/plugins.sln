@@ -108,6 +108,10 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MeshConstructionComponent",
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GameObjectPlaceComponent", "GameObjectPlaceComponent\GameObjectPlaceComponent.vcxproj", "{253E587C-E36F-4998-B6CC-F306BEFC8CC1}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ProceduralGeometryComponent", "ProceduralGeometryComponent\ProceduralGeometryComponent.vcxproj", "{52D06544-B2E6-48FB-92F7-76A342B99EB9}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PhysicsActiveMeshCompoundComponent", "PhysicsActiveMeshCompoundComponent\PhysicsActiveMeshCompoundComponent.vcxproj", "{5688D2BB-DD7B-44F9-AE39-B8CA7EFDA0E7}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -318,6 +322,14 @@ Global
 		{253E587C-E36F-4998-B6CC-F306BEFC8CC1}.Debug|x64.Build.0 = Debug|x64
 		{253E587C-E36F-4998-B6CC-F306BEFC8CC1}.Release|x64.ActiveCfg = Release|x64
 		{253E587C-E36F-4998-B6CC-F306BEFC8CC1}.Release|x64.Build.0 = Release|x64
+		{52D06544-B2E6-48FB-92F7-76A342B99EB9}.Debug|x64.ActiveCfg = Debug|x64
+		{52D06544-B2E6-48FB-92F7-76A342B99EB9}.Debug|x64.Build.0 = Debug|x64
+		{52D06544-B2E6-48FB-92F7-76A342B99EB9}.Release|x64.ActiveCfg = Release|x64
+		{52D06544-B2E6-48FB-92F7-76A342B99EB9}.Release|x64.Build.0 = Release|x64
+		{5688D2BB-DD7B-44F9-AE39-B8CA7EFDA0E7}.Debug|x64.ActiveCfg = Debug|x64
+		{5688D2BB-DD7B-44F9-AE39-B8CA7EFDA0E7}.Debug|x64.Build.0 = Debug|x64
+		{5688D2BB-DD7B-44F9-AE39-B8CA7EFDA0E7}.Release|x64.ActiveCfg = Release|x64
+		{5688D2BB-DD7B-44F9-AE39-B8CA7EFDA0E7}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

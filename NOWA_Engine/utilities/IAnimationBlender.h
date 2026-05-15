@@ -279,10 +279,11 @@ namespace NOWA
 		/**
 		* @brief		Adds time to the animation blender to keep the animation process running.
 		* @param[in]	time			The time amount.
+		* @param[in]	ownerId			Call sites — each caller passes its own id like for example "PlayerController_9234234", so that only one of all callers can call add time and not x-callers simulatanously
 		* @Note			This function should be called in each update function. Typical usage is as follows:
 		*				animationBlender->addTime(dt * animationSpeed / animationBlender->getSource()->getLength())
 		*/
-		virtual void addTime(Ogre::Real time) = 0;
+        virtual void addTime(Ogre::Real time, const Ogre::String& ownerId) = 0;
 
 		/**
 		* @brief		Gets the progress in seconds of the current animation.
@@ -357,6 +358,11 @@ namespace NOWA
 		 * @brief		Must be called by the class, which owns the animation blender to delete its observer.
 		 */
 		virtual void deleteAllObservers(void) = 0;
+
+		/**
+         * @brief		Call once per frame to release ownership.
+         */
+		virtual void beginFrame(void) = 0;
 	protected:
 		virtual void queueAnimationFinishedCallback(std::function<void()> callback) = 0;
 

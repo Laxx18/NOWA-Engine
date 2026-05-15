@@ -233,6 +233,8 @@ namespace NOWA
 		{
 			if (nullptr != this->animationBlender && nullptr != this->animationBlender->getSource())
 			{
+                this->animationBlender->beginFrame();
+
 				// BUG FIX: the old formula was:
 				//   addTime(dt * speed / getDuration())
 				//
@@ -246,7 +248,7 @@ namespace NOWA
 				//   speed=1.0  -> animation plays at natural speed (getDuration() seconds)
 				//   speed=0.1  -> animation plays 10x slower (getDuration() * 10 seconds)
 				//   speed=2.0  -> animation plays 2x faster (getDuration() / 2 seconds)
-				this->animationBlender->addTime(dt * this->animationSpeed->getReal());
+				this->animationBlender->addTime(dt * this->animationSpeed->getReal(), this->getClassName());
 			}
 		}
 	}
@@ -347,7 +349,7 @@ namespace NOWA
 
         if (true == this->animationName->getListSelectedValue().empty())
         {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AnimationComponentV2] Warning: The given animation name is empty.");
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AnimationComponentV2] Warning: The given animation name is empty.");
             return;
         }
 
@@ -361,10 +363,9 @@ namespace NOWA
             Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
             if (nullptr != item)
             {
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AnimationComponentV2] Error: The item: " + item->getName() + " has no animation: " + this->animationName->getListSelectedValue());
                 for (auto& anim : this->skeleton->getAnimationsNonConst())
                 {
-                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AnimationComponentV2] Available animation: " + anim.getName().getFriendlyText() + " length: " + Ogre::StringConverter::toString(anim.getDuration()) + "s");
+                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[AnimationComponentV2] Available animation: " + anim.getName().getFriendlyText() + " length: " + Ogre::StringConverter::toString(anim.getDuration()) + "s");
                 }
             }
             return;

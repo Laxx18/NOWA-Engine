@@ -4,6 +4,7 @@
 #include "PhysicsActiveComponent.h"
 #include "NodeComponent.h"
 #include "AiLuaComponent.h"
+#include "PlayerControllerComponents.h"
 
 #include "utilities/XMLConverter.h"
 #include "utilities/MathHelper.h"
@@ -1876,11 +1877,12 @@ namespace NOWA
 		clonedCompPtr->setGoalRadius(this->goalRadius->getReal());
 		clonedCompPtr->setTargetId(this->targetId->getULong());
 		clonedCompPtr->setActualizePathDelaySec(this->actualizePathDelay->getReal());
-		clonedCompPtr->setPathSlot(this->pathSlot->getInt());
 		clonedCompPtr->setTargetId(this->targetSlot->getInt());
 
 		clonedGameObjectPtr->addComponent(clonedCompPtr);
 		clonedCompPtr->setOwner(clonedGameObjectPtr);
+
+		clonedCompPtr->setPathSlot(this->pathSlot->getInt());
 
 		clonedCompPtr->setActivated(this->activated->getBool());
 
@@ -1898,6 +1900,12 @@ namespace NOWA
 	bool AiRecastPathNavigationComponent::connect(void)
 	{
 		bool success = AiComponent::connect();
+
+		auto* ogreRecast = AppStateManager::getSingletonPtr()->getOgreRecastModule()->getOgreRecast();
+        if (nullptr != ogreRecast)
+        {
+            ogreRecast->createNavQueryForSlot(this->pathSlot->getInt()); // creates slot 0 if missing
+        }
 
 		if (this->movingBehaviorPtr != nullptr && nullptr != this->movingBehaviorPtr->getPath())
 		{
@@ -1931,6 +1939,11 @@ namespace NOWA
 			this->movingBehaviorPtr->getPath()->clear();
 		}
 		this->targetGameObject = nullptr;
+
+		if (nullptr != AppStateManager::getSingletonPtr()->getOgreRecastModule()->getOgreRecast())
+        {
+            AppStateManager::getSingletonPtr()->getOgreRecastModule()->getOgreRecast()->destroyNavQueryForSlot(this->pathSlot->getInt());
+        }
 
 		return AiComponent::disconnect();
 	}
@@ -2156,13 +2169,52 @@ namespace NOWA
 	}
 
 	void AiRecastPathNavigationComponent::setPathSlot(int pathSlot)
-	{
-		this->pathSlot->setValue(pathSlot);
-		if (nullptr != this->movingBehaviorPtr)
-		{
-			this->movingBehaviorPtr->setPathSlot(pathSlot);
-		}
-	}
+    {
+        if (nullptr == this->gameObjectPtr)
+        {
+            return;
+        }
+
+        auto* ogreRecast = AppStateManager::getSingletonPtr()->getOgreRecastModule()->getOgreRecast();
+
+        if (nullptr != ogreRecast)
+        {
+            // Designer explicitly set a non-default slot in the editor — respect it.
+            // Default slot 0 on a freshly cloned worker means "not yet assigned".
+            if (this->pathSlot->getInt() == 0 && !ogreRecast->hasNavQueryForSlot(0))
+            {
+                // Slot 0 genuinely free — take it
+                ogreRecast->createNavQueryForSlot(0);
+            }
+            else if (this->pathSlot->getInt() == 0)
+            {
+                // Slot 0 already taken by another worker — get a free one
+                // So sharing = either :
+                //    Corruption /
+                //    crashes if pathfinding runs on multiple threads A serialization bottleneck if you add a mutex — defeating the whole point of having separate queries
+				// So its bad idea to share slots! Each GameObject must have a different slot!
+                int assigned = ogreRecast->acquireNextFreeSlot();
+                this->pathSlot->setValue(assigned);
+
+                // Sync sibling component silently (no destroy/create, slot is fresh)
+                auto aiComp = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PlayerControllerClickToPointComponent>());
+                if (nullptr != aiComp)
+                {
+                    aiComp->setPathSlot(assigned);
+                }
+            }
+            else
+            {
+                // Designer-assigned slot — just ensure it exists
+                ogreRecast->createNavQueryForSlot(this->pathSlot->getInt());
+            }
+        }
+
+        if (nullptr != this->movingBehaviorPtr)
+        {
+            this->movingBehaviorPtr->setPathSlot(pathSlot);
+        }
+    }
 
 	int AiRecastPathNavigationComponent::getPathSlot(void) const
 	{

@@ -29,7 +29,7 @@ namespace NOWA
         collisionPosition(new Variant(PhysicsActiveComponent::AttrCollisionPosition(), Ogre::Vector3::ZERO, this->attributes)),
         collisionDirection(new Variant(PhysicsActiveComponent::AttrCollisionDirection(), Ogre::Vector3::ZERO, this->attributes)),
         massOrigin(new Variant(PhysicsActiveComponent::AttrMassOrigin(), Ogre::Vector3::ZERO, this->attributes)),
-        gravity(new Variant(PhysicsActiveComponent::AttrGravity(), AppStateManager::getSingletonPtr()->getOgreNewtModule()->getGlobalGravity(), this->attributes)),
+        gravity(new Variant(PhysicsActiveComponent::AttrGravity(), Ogre::Vector3(0.0f, -16.9f, 0.0f), this->attributes)),
         gravitySourceCategory(new Variant(PhysicsActiveComponent::AttrGravitySourceCategory(), Ogre::String(), this->attributes)),
         linearDamping(new Variant(PhysicsActiveComponent::AttrLinearDamping(), Ogre::Real(0.1f), this->attributes)),
         angularDamping(new Variant(PhysicsActiveComponent::AttrAngularDamping(), Ogre::Vector3(0.1f, 0.1f, 0.1f), this->attributes)),
@@ -130,6 +130,8 @@ namespace NOWA
 
     bool PhysicsActiveComponent::init(rapidxml::xml_node<>*& propertyElement)
     {
+        this->gravity->setValue(AppStateManager::getSingletonPtr()->getOgreNewtModule()->getGlobalGravity());
+
         this->parseCommonProperties(propertyElement);
 
         return true;

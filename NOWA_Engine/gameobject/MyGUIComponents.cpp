@@ -609,6 +609,10 @@ namespace NOWA
 
     void MyGUIComponent::setActivated(bool activated)
     {
+        if (this->activated->getBool() == activated)
+        {
+            return;
+        }
         this->activated->setValue(activated);
 
         if (true == this->commonWidget->getBool())

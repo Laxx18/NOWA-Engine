@@ -152,6 +152,8 @@ namespace NOWA
 
 		bool canSelectionRedo(void);
 
+		OIS::MouseButtonID getMouseButtonId(void) const;
+
 	private:
         void queueSelectionEvent(unsigned long id, bool bSelected, bool bPartOfMultiselection);
 

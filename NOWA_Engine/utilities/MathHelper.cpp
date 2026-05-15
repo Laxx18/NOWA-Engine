@@ -2631,7 +2631,41 @@ namespace NOWA
 		Ogre::Ray ray = camera->getCameraToViewportRay(resultX, resultY);
 		raySceneQuery->setRay(ray);
 		return this->getRaycastFromPoint(raySceneQuery, camera, resultPositionOnModel, targetMovableObject, closestDistance, normalOnModel, excludeMovableObjects, forGizmo);
-	}
+    }
+
+    bool MathHelper::getRaycastForFrame(int mouseX, int mouseY, Ogre::Camera* camera, Ogre::Window* renderWindow, Ogre::RaySceneQuery* raySceneQuery, std::vector<Ogre::MovableObject*>& excludeObjects, Ogre::Vector3& outPosition)
+    {
+        int currentFrame = static_cast<int>(Ogre::Root::getSingletonPtr()->getNextFrameNumber());
+
+        // Return cached result if already raycasted this frame
+        if (true == this->cachedRaycast.valid && this->cachedRaycast.frameNumber == currentFrame)
+        {
+            outPosition = this->cachedRaycast.clickedPosition;
+            return true;
+        }
+
+        // First worker this frame — do the actual raycast
+        Ogre::Vector3 clickedPositionLocal = Ogre::Vector3::ZERO;
+        Ogre::Vector3 normalLocal = Ogre::Vector3::ZERO;
+        float closestDistLocal = 0.0f;
+        size_t movableObjLocal = 0;
+
+        bool success = this->getRaycastFromPoint(mouseX, mouseY, camera, renderWindow, raySceneQuery, clickedPositionLocal, movableObjLocal, closestDistLocal, normalLocal, &excludeObjects, false);
+
+        if (true == success)
+        {
+            this->cachedRaycast.clickedPosition = clickedPositionLocal;
+            this->cachedRaycast.valid = true;
+            this->cachedRaycast.frameNumber = currentFrame;
+            outPosition = clickedPositionLocal;
+        }
+        else
+        {
+            this->cachedRaycast.valid = false;
+        }
+
+        return success;
+    }
 
 	/*
 	// http://www.flipcode.com/archives/Fast_Approximate_Distance_Functions.shtml

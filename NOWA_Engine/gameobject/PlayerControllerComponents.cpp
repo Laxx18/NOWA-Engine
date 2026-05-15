@@ -1731,7 +1731,6 @@ namespace NOWA
 		clonedCompPtr->setCategories(this->categories->getString());
 		clonedCompPtr->setUseStandUp(this->useStandUp->getBool());
 		clonedCompPtr->setRange(this->range->getReal());
-		clonedCompPtr->setPathSlot(this->pathSlot->getInt());
 
 		for (unsigned int i = 0; i < static_cast<unsigned int>(this->animations.size()); i++)
 		{
@@ -1742,6 +1741,8 @@ namespace NOWA
 
 		clonedGameObjectPtr->addComponent(clonedCompPtr);
 		clonedCompPtr->setOwner(clonedGameObjectPtr);
+
+		clonedCompPtr->setPathSlot(this->pathSlot->getInt());
 
 		GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
 		return clonedCompPtr;
@@ -1816,6 +1817,12 @@ namespace NOWA
 			this->movingBehaviorPtr->setFlyMode(false);
 		}
 
+		auto* ogreRecast = AppStateManager::getSingletonPtr()->getOgreRecastModule()->getOgreRecast();
+        if (nullptr != ogreRecast)
+        {
+            ogreRecast->createNavQueryForSlot(this->pathSlot->getInt()); // creates slot 0 if missing
+        }
+
 		this->stateMachine->setCurrentState(PathFollowState3D::getName());
 		
 		return success;
@@ -1836,6 +1843,11 @@ namespace NOWA
 		}
 
 		this->animationBlender->clearAnimations();
+
+		if (nullptr != AppStateManager::getSingletonPtr()->getOgreRecastModule()->getOgreRecast())
+        {
+            AppStateManager::getSingletonPtr()->getOgreRecastModule()->getOgreRecast()->destroyNavQueryForSlot(this->pathSlot->getInt());
+        }
 
 		AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(1.0f);
 		AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(1.0f);
@@ -2036,9 +2048,47 @@ namespace NOWA
 	}
 
 	void PlayerControllerClickToPointComponent::setPathSlot(int pathSlot)
-	{
-		this->pathSlot->setValue(pathSlot);
-	}
+    {
+        if (nullptr == this->gameObjectPtr)
+        {
+            return;
+        }
+
+        auto* ogreRecast = AppStateManager::getSingletonPtr()->getOgreRecastModule()->getOgreRecast();
+
+        if (nullptr != ogreRecast)
+        {
+            // Designer explicitly set a non-default slot in the editor — respect it.
+            // Default slot 0 on a freshly cloned worker means "not yet assigned".
+            if (this->pathSlot->getInt() == 0 && !ogreRecast->hasNavQueryForSlot(0))
+            {
+                // Slot 0 genuinely free — take it
+                ogreRecast->createNavQueryForSlot(0);
+            }
+            else if (this->pathSlot->getInt() == 0)
+            {
+                // Slot 0 already taken by another worker — get a free one
+                // So sharing = either :
+                //    Corruption /
+                //    crashes if pathfinding runs on multiple threads A serialization bottleneck if you add a mutex — defeating the whole point of having separate queries
+                // So its bad idea to share slots! Each GameObject must have a different slot!
+                int assigned = ogreRecast->acquireNextFreeSlot();
+                this->pathSlot->setValue(assigned);
+
+                // Sync sibling component silently (no destroy/create, slot is fresh)
+                auto aiComp = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<AiRecastPathNavigationComponent>());
+                if (nullptr != aiComp)
+                {
+                    aiComp->setPathSlot(assigned);
+                }
+            }
+            else
+            {
+                // Designer-assigned slot — just ensure it exists
+                ogreRecast->createNavQueryForSlot(this->pathSlot->getInt());
+            }
+        }
+    }
 
 	int PlayerControllerClickToPointComponent::getPathSlot(void) const
 	{
@@ -2170,6 +2220,8 @@ namespace NOWA
 		{
 			return;
 		}
+
+		this->playerController->getAnimationBlender()->beginFrame();
 
 		Ogre::Real yawAtSpeed = 0.0f;
 
@@ -2809,7 +2861,7 @@ namespace NOWA
 		
 		// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "height: " + Ogre::StringConverter::toString(height) + " In Air: " + Ogre::StringConverter::toString(this->inAir));
 
-		this->playerController->getAnimationBlender()->addTime(dt * tempAnimationSpeed / this->playerController->getAnimationBlender()->getLength());
+		this->playerController->getAnimationBlender()->addTime(dt * tempAnimationSpeed / this->playerController->getAnimationBlender()->getLength(), this->playerController->getClassName());
 	}
 
 	void WalkingStateJumpNRun::exit(GameObject* player)
@@ -2875,32 +2927,32 @@ namespace NOWA
 	}
 
 	void PathFollowState3D::enter(GameObject* player)
-	{
-		this->playerController = NOWA::makeStrongPtr(player->getComponent<PlayerControllerClickToPointComponent>()).get();
-		// this->playerController->getAnimationBlender()->init(NOWA::AnimationBlenderV2::ANIM_IDLE_1);
-		this->playerController->getAnimationBlender()->blend(NOWA::AnimationBlenderV2::ANIM_IDLE_1, NOWA::AnimationBlenderV2::BlendWhileAnimating, 0.5f, true);
-		this->boringTimer = 6.0f;
-		
-		this->movingBehavior = this->playerController->getMovingBehavior();
-		this->raySceneQuery = this->playerController->getRaySceneQuery();
-		this->raySceneQuery = this->playerController->getOwner()->getSceneManager()->createRayQuery(Ogre::Ray(), this->playerController->getCategoriesId());
-		this->raySceneQuery->setSortByDistance(true);
+    {
+        this->playerController = NOWA::makeStrongPtr(player->getComponent<PlayerControllerClickToPointComponent>()).get();
 
-		this->maxHeightDifference = AppStateManager::getSingletonPtr()->getOgreRecastModule()->getOgreRecast()->getAgentHeight();
+        // init() in connect() already set ANIM_IDLE_1 at full weight via render command.
+        // Do NOT call blend() here — blending idle->idle produces a 0.5s fake crossfade
+        // from weight=1 down through bind pose and back up, causing the visible jitter.
+        // blend() is only for transitions between DIFFERENT animation clips.
 
-		this->movingBehavior->addBehavior(NOWA::KI::MovingBehavior::FOLLOW_PATH);
+        this->boringTimer = 6.0f;
+        this->movingBehavior = this->playerController->getMovingBehavior();
+        this->raySceneQuery = this->playerController->getOwner()->getSceneManager()->createRayQuery(Ogre::Ray(), this->playerController->getCategoriesId());
+        this->raySceneQuery->setSortByDistance(true);
+        this->maxHeightDifference = AppStateManager::getSingletonPtr()->getOgreRecastModule()->getOgreRecast()->getAgentHeight();
+        this->movingBehavior->addBehavior(NOWA::KI::MovingBehavior::FOLLOW_PATH);
 
-		if (nullptr != this->playerController->getCameraBehaviorComponent())
-		{
-			AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(1.0f);
-			AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(1.0f);
-		}
+        if (nullptr != this->playerController->getCameraBehaviorComponent())
+        {
+            AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(1.0f);
+            AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(1.0f);
+        }
 
-		if (false == this->playerController->getAutoClick())
-		{
-			this->canClick = false;
-		}
-	}
+        if (false == this->playerController->getAutoClick())
+        {
+            this->canClick = false;
+        }
+    }
 
 	void PathFollowState3D::update(GameObject* player, Ogre::Real dt)
 	{
@@ -2911,17 +2963,13 @@ namespace NOWA
 			return;
 		}
 
+		this->playerController->getAnimationBlender()->beginFrame();
+
 		Ogre::Real tempSpeed = this->playerController->getPhysicsComponent()->getSpeed();
 		Ogre::Real tempAnimationSpeed = this->playerController->getAnimationSpeed();
 
 		if (true == this->playerController->getGameObject()->isSelected() && true == ms.buttonDown(OIS::MB_Middle))
 		{
-#if 1
-			// Attention: Why has this been used? Because during simulation the camera transform will be slow
-			// AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(0.1f);
-			// AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(0.1f);
-
-
 			// Add delay to camera behavior if target location has been clicked, so that the scene will not be rotated to early
 			if (nullptr != this->playerController->getCameraBehaviorComponent())
 			{
@@ -2929,26 +2977,25 @@ namespace NOWA
 				delayProcess->attachChild(NOWA::ProcessPtr(new UpdateCameraBehaviorProcess()));
 				NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
 			}
-#endif
 
 			// Get target position
 			/*std::pair<bool, Ogre::Vector3> result = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getTargetBodyPosition(ms.X.abs, ms.Y.abs,
 				AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera(), this->playerController->getPhysicsComponent()->getOgreNewt(),
 				this->playerController->getCategoriesId(), this->playerController->getRange(), true);*/
 
-			if (true == this->canClick)
+			// Only process path request once per click — not every frame
+            if (false == this->canClick)
+            {
+                return; // already processed this click, wait for release
+            }
+
+			this->mouseX = ms.X.abs;
+			this->mouseY = ms.Y.abs;
+
+			if (false == this->playerController->getAutoClick())
 			{
-				this->mouseX = ms.X.abs;
-				this->mouseY = ms.Y.abs;
-
-				if (false == this->playerController->getAutoClick())
-				{
-					this->canClick = false;
-				}
+				this->canClick = false;
 			}
-
-			// bool success = MathHelper::getInstance()->getRaycastFromPoint(this->mouseX, this->mouseY, AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera(),
-			// 	Core::getSingletonPtr()->getOgreRenderWindow(), this->raySceneQuery, clickedPosition, (size_t&)movableObject, closestDistance, normal, &excludeObjects, false);
 
 			Ogre::Vector3 clickedPosition = Ogre::Vector3::ZERO;
 			Ogre::Real closestDistance = 0.0f;
@@ -2961,38 +3008,20 @@ namespace NOWA
 			int mouseXLocal = this->mouseX;
 			int mouseYLocal = this->mouseY;
 
-#if 0
-			//  These locals will be written by the lambda:
-			Ogre::Vector3 clickedPositionLocal = Ogre::Vector3::ZERO;
-			Ogre::Vector3 normalLocal = Ogre::Vector3::ZERO;
-			float closestDistanceLocal = 0.0f;
-			size_t movableObjectLocal = 0;
+            size_t movableObjectLocal = 0;
+			/*bool success = MathHelper::getInstance()->getRaycastFromPoint(mouseX, mouseY, AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera(), 
+				Core::getSingletonPtr()->getOgreRenderWindow(), raySceneQuery, clickedPosition,
+                movableObjectLocal, closestDistance, normal, &excludeObjects, false);*/
 
-			bool success = NOWA::GraphicsModule::getInstance()->enqueueAndWaitWithResult<bool>(
-				[=, &clickedPositionLocal, &normalLocal, &closestDistanceLocal, &movableObjectLocal, &excludeObjects]() -> bool
-				{
-					auto camera = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
-					auto renderWindow = Core::getSingletonPtr()->getOgreRenderWindow();
-					auto raySceneQuery = this->raySceneQuery;
-					auto mathHelper = MathHelper::getInstance();
-
-					return mathHelper->getRaycastFromPoint(mouseXLocal, mouseYLocal, camera, renderWindow, raySceneQuery, clickedPositionLocal, movableObjectLocal, closestDistanceLocal, normalLocal, &excludeObjects, false);
-				}, "PathFollowState3D::update getRaycastFromPoint");
-
-			// Copy back the results safely
-			if (true == success)
-			{
-				clickedPosition = clickedPositionLocal;
-				closestDistance = closestDistanceLocal;
-				normal = normalLocal;
-				movableObject = reinterpret_cast<Ogre::MovableObject*>(movableObjectLocal);
-			}
-#endif
-
-			ENQUEUE_RAYCAST4(mouseXLocal, mouseYLocal, excludeObjects, clickedPosition, closestDistance, normal, movableObject, success);
+			bool success = MathHelper::getInstance()->getRaycastForFrame(mouseXLocal, mouseYLocal, AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera(), Core::getSingletonPtr()->getOgreRenderWindow(),
+				this->raySceneQuery, excludeObjects, clickedPosition);
+			
 
 			if (true == success)
 			{
+                Ogre::String name = this->playerController->getOwner()->getName();
+
+				
 				this->ogreRecastModule->getOgreRecast()->getPath(this->playerController->getPathSlot()).clear();
 				Ogre::Vector3 posOnNavMesh = Ogre::Vector3::ZERO;
 
@@ -3014,11 +3043,29 @@ namespace NOWA
 						this->movingBehavior->getPath()->clear();
 					}
 
+					/*Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PathFollowState3D] " + this->playerController->getOwner()->getName() +
+                                                                                            " attempting findPath with pathSlot=" + Ogre::StringConverter::toString(this->playerController->getPathSlot()) +
+                                                                                            " isSelected=" + Ogre::StringConverter::toString(this->playerController->getGameObject()->isSelected()) +
+                                                                                            " MB_Middle=" + Ogre::StringConverter::toString(ms.buttonDown(OIS::MB_Middle)) + " canClick=" + Ogre::StringConverter::toString(this->canClick));*/
+
+
 					// Attention: What is with targetSlot? Its here 0
 					bool foundPath = this->ogreRecastModule->findPath(this->playerController->getPosition(), posOnNavMesh + Ogre::Vector3(0.0f, 0.3f, 0.0f), this->playerController->getPathSlot(), 0, this->playerController->getDrawPath());
 					/*Ogre::LogManager::getSingletonPtr()->logMessage("#############findPath size: "
 					+ Ogre::StringConverter::toString(this->ogreRecastModule->getOgreRecast()->getPath(0).size())
 					+ " y offset: " + Ogre::StringConverter::toString(this->ogreRecastModule->getOgreRecast()->getNavmeshOffsetFromGround()));*/
+
+					/*Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PathFollowState3D] " + this->playerController->getOwner()->getName() + " findPath result=" + Ogre::StringConverter::toString(foundPath) +
+                                                                                            " pathSize=" + Ogre::StringConverter::toString(this->ogreRecastModule->getOgreRecast()->getPath(this->playerController->getPathSlot()).size()));*/
+
+					// Wait for this slot's result before reading the path store.
+                    // Since each slot has its own query and its own PathStore slot,
+                    // all workers wait in parallel — total wait time = slowest single path,
+                    // not the sum of all paths.
+                    if (true == foundPath)
+                    {
+                        foundPath = this->ogreRecastModule->waitForPath(this->playerController->getPathSlot());
+                    }
 
 					if (false == foundPath)
 					{
@@ -3082,15 +3129,6 @@ namespace NOWA
 
 							this->playerController->setMoveWeight(1.0f);
 							this->playerController->setJumpWeight(1.0f);
-
-							if ((false == this->playerController->getAnimationBlender()->isComplete() && this->movingBehavior->getPath()->getRemainingWaypoints() > 0)
-								&& false == this->playerController->getAnimationBlender()->isAnimationActive(NOWA::AnimationBlenderV2::ANIM_WALK_NORTH))
-							{
-								tempAnimationSpeed = this->playerController->getAnimationSpeed();
-								// 0.02f: Immediately blend to walk
-								// this->playerController->getAnimationBlender()->blend(NOWA::AnimationBlenderV2::ANIM_WALK_NORTH, NOWA::AnimationBlenderV2::BlendSwitch, 0.2f, true);
-								this->playerController->getAnimationBlender()->blend(NOWA::AnimationBlenderV2::ANIM_WALK_NORTH, NOWA::AnimationBlenderV2::BlendWhileAnimating, 0.2f, true);
-							}
 						}
 					}
 				}
@@ -3108,55 +3146,77 @@ namespace NOWA
 			this->canClick = true;
 		}
 		
-		if (this->movingBehavior->getPath()->getRemainingWaypoints() == 0)
-		{
-			if (true == this->hasGoal)
-			{
-				// Start random idle immediately
-				this->boringTimer = 4.9f;
-				this->hasGoal = false;
-			}
+		// -----------------------------------------------------------------------
+        // Per-frame animation state machine.
+        //
+        // Evaluated unconditionally every frame — NOT only on click.
+        // This guarantees transitions are never missed due to the one-frame async
+        // window between ENQUEUE_RENDER_COMMAND_MULTI_WAIT (waypoint population)
+        // and the blender's internalBlend command firing on the render thread.
+        //
+        // Rule: waypoints remaining -> walk. No waypoints -> idle / boring idles.
+        // -----------------------------------------------------------------------
+        const bool hasWaypoints = this->movingBehavior->getPath()->getRemainingWaypoints() > 0;
 
-			this->boringTimer += dt;
-			// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PlayerControllerJumpNRunComponent] Timer: " + Ogre::StringConverter::toString(boringTimer));
+        if (true == hasWaypoints)
+        {
+            // Moving — drive walk animation if not already active.
+            if (false == this->playerController->getAnimationBlender()->isAnimationActive(NOWA::AnimationBlenderV2::ANIM_WALK_NORTH))
+            {
+                tempAnimationSpeed = this->playerController->getAnimationSpeed();
+                this->playerController->getAnimationBlender()->blend(NOWA::AnimationBlenderV2::ANIM_WALK_NORTH, NOWA::AnimationBlenderV2::BlendWhileAnimating, 0.2f, true);
+            }
+        }
+        else
+        {
+            // No waypoints — handle goal arrival and boring idle logic.
+            if (true == this->hasGoal)
+            {
+                // Goal just reached — snap boringTimer close to threshold so a
+                // random idle fires quickly instead of waiting a full 5 seconds.
+                this->boringTimer = 4.9f;
+                this->hasGoal = false;
 
-			// if the user does nothing for 5 seconds, choose a random boring animation state
-			if (this->boringTimer >= 5.0f)
-			{
-				int id = MathHelper::getInstance()->getRandomNumber<int>(0, 3);
-				NOWA::AnimationBlenderV2::AnimID animID;
-				if (0 == id)
-				{
-					animID = NOWA::AnimationBlenderV2::ANIM_IDLE_1;
-				}
-				else if (1 == id)
-				{
-					animID = NOWA::AnimationBlenderV2::ANIM_IDLE_2;
-				}
-				else
-				{
-					animID = NOWA::AnimationBlenderV2::ANIM_IDLE_3;
-				}
-				if (this->playerController->getAnimationBlender()->hasAnimation(animID))
-				{
-					if (false == this->playerController->getAnimationBlender()->isAnimationActive(animID) || this->playerController->getAnimationBlender()->isComplete())
-					{
-						this->playerController->getAnimationBlender()->blend(animID, NOWA::AnimationBlenderV2::BlendWhileAnimating, 0.5f, true);
-						this->boringTimer = 0.0f;
-					}
-				}
-				
-			}
-		}
+                // Immediately blend back to idle_1 when path is exhausted.
+                if (false == this->playerController->getAnimationBlender()->isAnimationActive(NOWA::AnimationBlenderV2::ANIM_IDLE_1))
+                {
+                    this->playerController->getAnimationBlender()->blend(NOWA::AnimationBlenderV2::ANIM_IDLE_1, NOWA::AnimationBlenderV2::BlendWhileAnimating, 0.3f, true);
+                }
+            }
 
-		/*Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PlayerControllerJumpNRunComponent] Anim: " + this->playerController->getAnimationBlender()->getSource()->getAnimationName()
-			+ " Progress: " + Ogre::StringConverter::toString(this->playerController->getAnimationBlender()->getProgress())
-			+ " TimePosition: " + Ogre::StringConverter::toString(this->playerController->getAnimationBlender()->getTimePosition()) 
-			+ " Length: " + Ogre::StringConverter::toString(this->playerController->getAnimationBlender()->getLength())
-			+ " Complete: " + Ogre::StringConverter::toString(this->playerController->getAnimationBlender()->isComplete()));*/
+            this->boringTimer += dt;
 
-		
-		this->playerController->getAnimationBlender()->addTime(dt * tempAnimationSpeed/* / this->playerController->getAnimationBlender()->getLength()*/);
+            // After 5 seconds of standing still, play a random idle variation.
+            if (this->boringTimer >= 5.0f)
+            {
+                int id = MathHelper::getInstance()->getRandomNumber<int>(0, 3);
+                NOWA::AnimationBlenderV2::AnimID animID;
+                if (0 == id)
+                {
+                    animID = NOWA::AnimationBlenderV2::ANIM_IDLE_1;
+                }
+                else if (1 == id)
+                {
+                    animID = NOWA::AnimationBlenderV2::ANIM_IDLE_2;
+                }
+                else
+                {
+                    animID = NOWA::AnimationBlenderV2::ANIM_IDLE_3;
+                }
+
+                if (true == this->playerController->getAnimationBlender()->hasAnimation(animID))
+                {
+                    if (false == this->playerController->getAnimationBlender()->isAnimationActive(animID) || true == this->playerController->getAnimationBlender()->isComplete())
+                    {
+                        this->playerController->getAnimationBlender()->blend(animID, NOWA::AnimationBlenderV2::BlendWhileAnimating, 0.5f, true);
+                        this->boringTimer = 0.0f;
+                    }
+                }
+            }
+        }
+
+        // Advance animation — single call at the end, always.
+        this->playerController->getAnimationBlender()->addTime(dt * tempAnimationSpeed, this->playerController->getClassName());
 	}
 
 	void PathFollowState3D::exit(GameObject* player)

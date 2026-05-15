@@ -201,6 +201,11 @@ namespace NOWA
 		if (nullptr != this->physicsBody)
 			return true;
 
+		if (nullptr == this->ogreNewt)
+		{
+            this->ogreNewt = AppStateManager::getSingletonPtr()->getOgreNewtModule()->getOgreNewt();
+		}
+
 		this->initialPosition = this->gameObjectPtr->getSceneNode()->getPosition();
 		this->initialScale = this->gameObjectPtr->getSceneNode()->getScale();
 		this->initialOrientation = this->gameObjectPtr->getSceneNode()->getOrientation();

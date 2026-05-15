@@ -78,7 +78,22 @@ private:
 
 	void applyMeshToolOperations(void);
 
-	void updateRecentFilesMenu();
+	void updateRecentFilesMenu(void);
+
+	// Creates the Engine-Warnings window (lazy, idempotent, render-thread-safe).
+    void createOgreLogWindow(void);
+
+    // Makes the window visible (creates it first if needed).
+    void showOgreLogWindow(void);
+
+    // Clears accumulated warnings and resets the simulationWindow caption colour.
+    void clearOgreLogErrors(void);
+
+    // --- Private helper to declare ---
+    // Updates the simulationWindow caption to reflect both Lua-error and Ogre-log counts.
+    // Must be called from inside a render command (all MyGUI access is render-thread-only).
+    void updateSimulationWindowCaption(void);
+
 private:
 	void handleProjectManipulation(NOWA::EventDataPtr eventData);
 	void handleSceneValid(NOWA::EventDataPtr eventData);
@@ -86,6 +101,7 @@ private:
 	void handleLuaError(NOWA::EventDataPtr eventData);
 	void handleSceneInvalid(NOWA::EventDataPtr eventData);
     void handleNavMeshBusy(NOWA::EventDataPtr eventData);
+    void handleOgreLog(NOWA::EventDataPtr eventData);
 	void notifyInsideKeyButtonPressed(MyGUI::Widget* sender, MyGUI::KeyCode key, MyGUI::Char ch, const std::string& selectedText);
 	void onClickUrl(MyGUI::HyperTextBox* sender, const std::string& url);
 
@@ -175,6 +191,21 @@ private:
 	bool bToggleMyGUIComponents;
 	// Map to store the visibility state of each MyGUIComponent
 	std::unordered_map<NOWA::MyGUIComponent*, bool> componentVisibilityMap;
+
+	// --- Engine Warnings window ---
+    MyGUI::Window* ogreLogWindow;
+    MyGUI::HyperTextBox* ogreLogEdit;
+    MyGUI::Button* ogreLogButton;
+    MyGUI::VectorWidgetPtr ogreLogWidgets;
+    Ogre::String ogreLogErrors;
+    Ogre::String ogreLogPlainText;
+
+    // Running count of LML_CRITICAL messages since last clear
+    unsigned int ogreLogCount;
+
+    // True until the first critical log arrives (lazy window creation flag)
+    bool ogreLogFirstTime;
+ 
 };
 
 #endif

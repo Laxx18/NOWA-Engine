@@ -164,8 +164,7 @@ namespace NOWA
 		Ogre::Real my = static_cast<Ogre::Real>(this->mousePosition.y) / static_cast<Ogre::Real>(this->renderWindow->getHeight());
 
 		// Get the global position our cursor is at
-		Ogre::Ray ray;
-		ENQUEUE_GET_CAMERA_TO_VIEWPORT_RAY(this->camera, mx, my, ray);
+		Ogre::Ray ray = this->camera->getCameraToViewportRay(mx, my);
 
 		return ray;
 	}
@@ -686,8 +685,7 @@ namespace NOWA
 		Ogre::Real my = static_cast<Ogre::Real>(this->mousePosition.y) / static_cast<Ogre::Real>(this->renderWindow->getHeight());
 
 		// Get the global position our cursor is at
-		Ogre::Ray ray;
-		ENQUEUE_GET_CAMERA_TO_VIEWPORT_RAY(this->camera, mx, my, ray);
+        Ogre::Ray ray = this->camera->getCameraToViewportRay(mx, my);
 
 		return ray;
 	}
@@ -1176,8 +1174,7 @@ namespace NOWA
 		Ogre::Real my = static_cast<Ogre::Real>(this->mousePosition.y) / static_cast<Ogre::Real>(this->renderWindow->getHeight());
 
 		// Get the global position our cursor is at
-		Ogre::Ray ray;
-		ENQUEUE_GET_CAMERA_TO_VIEWPORT_RAY(this->camera, mx, my, ray);
+        Ogre::Ray ray = this->camera->getCameraToViewportRay(mx, my);
 
 		return ray;
 	}

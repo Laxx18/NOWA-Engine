@@ -653,6 +653,9 @@
     <ClInclude Include="utilities\ConcurrentQueue.h">
       <Filter>utilities</Filter>
     </ClInclude>
+    <ClInclude Include="gameobject\GeometricComponentBase.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\NOWA.ico">

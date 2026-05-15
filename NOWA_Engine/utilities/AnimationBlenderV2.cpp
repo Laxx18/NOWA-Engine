@@ -493,12 +493,19 @@ namespace NOWA
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "AnimationBlenderV2::internalBlend");
     }
 
-    void AnimationBlenderV2::addTime(Ogre::Real time)
+    void AnimationBlenderV2::addTime(Ogre::Real time, const Ogre::String& ownerId)
     {
         // Note: If entity is in ragdolling state, animation would explode the ragdoll and since its no possible to avoid, that a developer calls
         // e.g. in a lua script some animation functions, it must be avoided internally
         if (false == this->canAnimate)
         {
+            return;
+        }
+
+        // If someone else already advanced this blender this frame, skip.
+        if (false == this->tryClaimAddTime(ownerId))
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AnimationBlender]: Warning: Add time will not be executed for " + ownerId + ", because another class: " + this->addTimeOwner + " does claim animation blender already.");
             return;
         }
 
@@ -1588,6 +1595,21 @@ namespace NOWA
             }
         }
         return worldOrientation;
+    }
+
+    void AnimationBlenderV2::beginFrame(void)
+    {
+        this->addTimeOwner.clear();
+    }
+
+    bool AnimationBlenderV2::tryClaimAddTime(const Ogre::String& ownerId)
+    {
+        if (this->addTimeOwner.empty())
+        {
+            this->addTimeOwner = ownerId;
+            return true;
+        }
+        return this->addTimeOwner == ownerId;
     }
 
 }; // namespace end

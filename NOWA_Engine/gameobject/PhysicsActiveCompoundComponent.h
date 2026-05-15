@@ -3,6 +3,7 @@
 #define PHYSICS_ACTIVE_COMPOUND_COMPONENT_H
 
 #include "PhysicsActiveComponent.h"
+#include "GeometricComponentBase.h"
 
 namespace NOWA
 {
@@ -87,6 +88,13 @@ namespace NOWA
 		}
 
 		void setMeshCompoundConfigFile(const Ogre::String& meshCompoundConfigFile);
+
+		/**
+         * @brief Build the collision list from a GeometricComponentBase.
+         *        Called from the geometry-driven branch of createDynamicBody().
+         *        Returns true on success and fills collisionList.
+         */
+        bool buildCollisionListFromGeometry(GeometricComponentBase* geometricComp, std::vector<OgreNewt::CollisionPtr>& collisionList, Ogre::Vector3& inertia, Ogre::Real& partVolume);
 	public:
 		static const Ogre::String AttrMeshCompoundConfigFile(void) { return "Mesh Config. File"; }
 	protected:
@@ -97,6 +105,11 @@ namespace NOWA
 	protected:
 		
 		std::vector<CollisionData> collisionDataList;
+        /**
+         * True when a GeometricComponentBase is on the same GO: skip body creation
+         * in postInit() and rebuild it in connect() after all postInits have run.
+         */
+        bool deferredGeometryBody;
 		Variant* meshCompoundConfigFile;
 
 	};

@@ -1367,14 +1367,13 @@ namespace NOWA
     {
         Ogre::SceneManager* sm = this->gameObjectPtr->getSceneManager();
         Ogre::SceneNode* root = sm->getRootSceneNode();
-        const Ogre::SceneMemoryMgrTypes memType = this->gameObjectPtr->isDynamic() ? Ogre::SCENE_DYNAMIC : Ogre::SCENE_STATIC;
 
         this->barCouldDraw = false;
 
         // ── Progress bar ──────────────────────────────────────────────────────────
         if (this->showProgressBar->getBool())
         {
-            this->barLineNode = root->createChildSceneNode(memType);
+            this->barLineNode = root->createChildSceneNode(Ogre::SCENE_DYNAMIC);
             this->barObject = sm->createManualObject();
             this->barObject->setName("MeshConstrBar_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()) + "_" + Ogre::StringConverter::toString(this->index));
             this->barObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
@@ -1400,7 +1399,7 @@ namespace NOWA
             this->percentageText->setQueryFlags(0 << 0);
 
             // Child of ROOT — no inherited transform. Position driven each frame.
-            this->textLineNode = root->createChildSceneNode(memType);
+            this->textLineNode = root->createChildSceneNode(Ogre::SCENE_DYNAMIC);
             this->textLineNode->attachObject(this->percentageText);
 
             // addTrackedNode: render thread will orient this node toward the camera.

@@ -9,6 +9,7 @@
 #include "modules/DotSceneImportModule.h"
 #include "modules/CommandModule.h"
 
+#include <source_location>
 #include <thread>
 
 namespace NOWA
@@ -736,7 +737,33 @@ namespace NOWA
 		 * @param[in]	gameObjectId	Optionally the camera game object id can be set (for e.g. split screen).
 		 * @param[in]	onlyOneActive	Optionally sets whether only one player instance can be controller. If set to false more player can be controlled, that is each player, that is currently selected.
 		 */
-		void activatePlayerController(bool active, const unsigned long gameObjectId, const unsigned long cameraGameObjectId = 0, bool onlyOneActive = true);
+        void activatePlayerController(bool active, const unsigned long gameObjectId, const unsigned long cameraGameObjectId = 0, bool onlyOneActive = true, std::source_location location = std::source_location::current());
+
+		// --- Second overload called exclusively by the Lua wrapper ---
+        // Takes an explicit caller string built from lua_getinfo.
+        // Not exposed to C++ callers directly.
+        void activatePlayerController(bool active, const unsigned long gameObjectId, const unsigned long cameraGameObjectId, bool onlyOneActive, const Ogre::String& luaCallerInfo);
+
+		/**
+         * @brief Activates multiple player controllers simultaneously, assigning each
+         *        a unique Recast path slot so concurrent FindPath calls never overwrite
+         *        each other's results in the shared path store.
+         *
+         * Use this instead of calling activatePlayerController() in a loop when
+         * multiple workers/units are selected and must navigate independently.
+         * The camera behavior is only activated for the first controller in the list
+         * to avoid multiple cameras fighting for control.
+         *
+         * @param[in] gameObjectIds  List of game object ids whose PlayerControllerClickToPointComponent
+         *                           should be activated. Ids not found in the player controller map
+         *                           are silently skipped.
+         * @param[in] onlyOneActive  If true, all currently active player controllers are deactivated
+         *                           before activating the requested ones.
+         *                           If false, previously active controllers remain active alongside
+         *                           the newly activated ones.
+         * @return                   The number of controllers successfully activated.
+         */
+        unsigned int activatePlayerControllers(const std::vector<unsigned long>& gameObjectIds, bool onlyOneActive = false);
 
 		/**
 		 * @brief		Deactivates all player components.
@@ -1048,6 +1075,9 @@ namespace NOWA
 		void updateLuaScriptExecutionOrder(void);
 
 		void internalRemoveJointComponentBreakJointChain(const unsigned long jointId, std::unordered_set<unsigned long>& visitedJoints);
+
+		// Shared implementation — both overloads funnel here.
+        void activatePlayerControllerImpl(bool active, const unsigned long gameObjectId, const unsigned long cameraGameObjectId, bool onlyOneActive, const Ogre::String& callerInfo);
 	private:
 		Ogre::String appStateName;
 

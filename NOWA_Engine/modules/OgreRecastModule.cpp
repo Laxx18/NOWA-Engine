@@ -1055,41 +1055,107 @@ namespace NOWA
         }
     }
 
-	bool OgreRecastModule::findPath(const Ogre::Vector3& startPosition, const Ogre::Vector3& endPosition, int pathSlot, int targetSlot, bool drawPath)
+#if 0
+    bool OgreRecastModule::findPath(const Ogre::Vector3& startPosition, const Ogre::Vector3& endPosition, int pathSlot, int targetSlot, bool drawPath)
     {
-        // Bug fix 1: Guard both conditions — no valid mesh at all, OR a rebuild
-        // is currently running. The old code only checked hasValidNavMesh, which
-        // is true from the PREVIOUS build while a new one rewrites internal Detour
-        // structures concurrently — a guaranteed crash / corrupt path result.
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+            "[OgreRecastModule] findPath called: pathSlot=" + Ogre::StringConverter::toString(pathSlot) + " start=" + Ogre::StringConverter::toString(startPosition) + " end=" + Ogre::StringConverter::toString(endPosition));
+
         if (false == this->hasValidNavMesh || true == this->buildInProgress.load())
         {
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[OgreRecastModule] findPath skipped: nav mesh not ready or build in progress.");
             return false;
         }
 
-        auto ogreRecastPtr = this->ogreRecast;
-
-        int ret = NOWA::GraphicsModule::getInstance()->enqueueAndWaitWithResult<int>([=]() -> int
-        {
-            return ogreRecastPtr->FindPath(startPosition, endPosition, pathSlot, targetSlot);
-        }, "OgreRecastModule::findPath");
+        // FindPath only reads m_navQuery and writes to m_PathStore[pathSlot].
+        // Each worker uses a unique pathSlot so there is no write conflict.
+        // No Ogre render API calls are made — safe to run directly on the logic thread.
+        int ret = this->ogreRecast->FindPath(startPosition, endPosition, pathSlot, targetSlot);
 
         if (ret >= 0)
         {
+            if (true == drawPath)
+            {
+                // Path line drawing IS an Ogre call — enqueue to render thread
+                auto ogreRecastPtr = this->ogreRecast;
+                NOWA::GraphicsModule::RenderCommand renderCommand = [ogreRecastPtr, pathSlot, drawPath]()
+                {
+                    ogreRecastPtr->CreateRecastPathLine(pathSlot, drawPath);
+                };
+                NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "OgreRecastModule::drawPathLine");
+            }
+            return true;
+        }
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[OgreRecastModule] Warning: could not find path (error=" + Ogre::StringConverter::toString(ret) + ").");
+        return false;
+    }
+#endif
+
+#if 1
+    bool OgreRecastModule::findPath(const Ogre::Vector3& startPosition, const Ogre::Vector3& endPosition, int pathSlot, int targetSlot, bool drawPath)
+    {
+        if (false == this->hasValidNavMesh || true == this->buildInProgress.load())
+        {
+            return false;
+        }
+
+        float start[3], end[3];
+        OgreRecast::OgreVect3ToFloatA(startPosition, start);
+        OgreRecast::OgreVect3ToFloatA(endPosition, end);
+
+        dtNavMeshQuery* query = this->ogreRecast->getNavQueryForSlot(pathSlot);
+        if (nullptr == query)
+        {
+            // No per-slot query — fall back to sequential on logic thread
+            int ret = this->ogreRecast->FindPath(start, end, pathSlot, targetSlot);
+            return ret >= 0;
+        }
+
+        // Launch pathfinding on its own thread — each worker has a unique query
+        // so there is no contention. dtNavMesh is read-only and thread-safe.
+        // The future is stored per slot so the result can be collected next frame.
+        auto ogreRecastPtr = this->ogreRecast;
+        auto future = std::async(std::launch::async, [ogreRecastPtr, query, start, end, pathSlot, targetSlot]() -> int
+            {
+                float startCopy[3] = {start[0], start[1], start[2]};
+                float endCopy[3] = {end[0], end[1], end[2]};
+                return ogreRecastPtr->FindPathWithQuery(query, startCopy, endCopy, pathSlot, targetSlot);
+            });
+
+        // Store future so caller can wait for result
+        {
+            std::lock_guard<std::mutex> lock(this->pathFuturesMutex);
+            this->pathFutures[pathSlot] = std::move(future);
+        }
+
+        if (true == drawPath)
+        {
+            auto recastPtr = this->ogreRecast;
             NOWA::GraphicsModule::RenderCommand renderCommand = [ogreRecastPtr, pathSlot, drawPath]()
             {
                 ogreRecastPtr->CreateRecastPathLine(pathSlot, drawPath);
             };
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "OgreRecastModule::drawPathLine");
-            return true;
         }
-        else
+
+        return true;
+    }
+#endif
+
+    bool OgreRecastModule::waitForPath(int pathSlot)
+    {
+        std::lock_guard<std::mutex> lock(this->pathFuturesMutex);
+        auto it = this->pathFutures.find(pathSlot);
+        if (it == this->pathFutures.end())
         {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[OgreRecastModule] Warning: could not find a (full) path (" + this->ogreRecast->getPathFindErrorMsg(ret) + "). It is possible there is a partial path.");
             return false;
         }
-    }
 
+        int ret = it->second.get(); // blocks until this slot's thread finishes
+        this->pathFutures.erase(it);
+        return ret >= 0;
+    }
 
 	void OgreRecastModule::removeDrawnPath(void)
 	{

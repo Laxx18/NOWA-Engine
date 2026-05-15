@@ -53,6 +53,7 @@
 	<Tag name="Pause">Pause</Tag>
 	<Tag name="Grid">Gitter</Tag>
 	<Tag name="ToggleMyGuiComponents">MyGui-Komponenten umschalten</Tag>
+	<Tag name="EngineWarnings">Engine Warnungen</Tag>
 	
 	<Tag name="Key_Up">Hoch</Tag>
 	<Tag name="Key_Down">Runter</Tag>

@@ -1371,56 +1371,150 @@ void GameObjectController::removePlayerController(const unsigned long id)
     }
 }
 
-void GameObjectController::activatePlayerController(bool active, const unsigned long gameObjectId, const unsigned long cameraGameObjectId, bool onlyOneActive)
+void GameObjectController::activatePlayerController(bool active, const unsigned long gameObjectId, const unsigned long cameraGameObjectId, bool onlyOneActive, std::source_location location)
+{
+    const Ogre::String callerInfo = Ogre::String(location.file_name()) + ":" + Ogre::StringConverter::toString(static_cast<int>(location.line())) + " [" + location.function_name() + "]";
+
+    this->activatePlayerControllerImpl(active, gameObjectId, cameraGameObjectId, onlyOneActive, callerInfo);
+}
+
+// --- Lua entry point: receives caller string from lua_getinfo ---
+void GameObjectController::activatePlayerController(bool active, const unsigned long gameObjectId, const unsigned long cameraGameObjectId, bool onlyOneActive, const Ogre::String& luaCallerInfo)
+{
+    this->activatePlayerControllerImpl(active, gameObjectId, cameraGameObjectId, onlyOneActive, luaCallerInfo);
+}
+
+// --- Shared implementation ---
+void GameObjectController::activatePlayerControllerImpl(bool active, const unsigned long gameObjectId, const unsigned long cameraGameObjectId, bool onlyOneActive, const Ogre::String& callerInfo)
 {
     if (true == onlyOneActive)
     {
         for (auto it = this->playerControllerComponentMap.begin(); it != this->playerControllerComponentMap.end(); it++)
         {
             it->second->getOwner()->selected = false;
-            // Do not deactivate if once active, else its no more possible to select one player which shall advance to its goal and select another one to advance to a different goal and animate each
-            // player, because the state machine is not updated if not active
-            // Just deactivate all other camera behaviors for the same camera game object id (splitscreen), or if no cameraGameObjectId set
+
             if (nullptr != it->second->getCameraBehaviorComponent() && 0 == cameraGameObjectId)
             {
                 const auto inputDeviceCompPtr = NOWA::makeStrongPtr(it->second->getOwner()->getComponent<InputDeviceComponent>());
                 if (nullptr != inputDeviceCompPtr)
                 {
-                    InputDeviceComponent* inputDeviceComponent = inputDeviceCompPtr.get();
-                    inputDeviceComponent->setActivated(false);
+                    inputDeviceCompPtr.get()->setActivated(false);
                 }
                 it->second->getCameraBehaviorComponent()->setActivated(false);
             }
         }
     }
-    auto existingPlayerControllerIt = this->playerControllerComponentMap.find(gameObjectId);
-    if (existingPlayerControllerIt != this->playerControllerComponentMap.cend())
-    {
-        const auto inputDeviceCompPtr = NOWA::makeStrongPtr(existingPlayerControllerIt->second->getOwner()->getComponent<InputDeviceComponent>());
-        if (nullptr != inputDeviceCompPtr)
-        {
-            InputDeviceComponent* inputDeviceComponent = inputDeviceCompPtr.get();
-            inputDeviceComponent->setActivated(active);
-        }
 
-        existingPlayerControllerIt->second->getOwner()->selected = active;
-        if (true == active && false == existingPlayerControllerIt->second->isActivated())
+    auto existingIt = this->playerControllerComponentMap.find(gameObjectId);
+
+    if (existingIt == this->playerControllerComponentMap.cend())
+    {
+        /*Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL , "[IMPORTANT] activatePlayerController: gameObject id=" + Ogre::StringConverter::toString(gameObjectId) +
+                                                        " NOT in playerControllerComponentMap (missing PlayerControllerComponent?). Called from: " + callerInfo);*/
+        return;
+    }
+
+    const auto inputDeviceCompPtr = NOWA::makeStrongPtr(existingIt->second->getOwner()->getComponent<InputDeviceComponent>());
+    if (nullptr != inputDeviceCompPtr)
+    {
+        inputDeviceCompPtr.get()->setActivated(active);
+    }
+
+    existingIt->second->getOwner()->selected = active;
+
+    if (true == active && false == existingIt->second->isActivated())
+    {
+        existingIt->second->setActivated(true);
+    }
+    else if (false == active && true == existingIt->second->isActivated())
+    {
+        existingIt->second->setActivated(false);
+    }
+
+    if (nullptr != existingIt->second->getCameraBehaviorComponent())
+    {
+        if (0 != cameraGameObjectId)
         {
-            existingPlayerControllerIt->second->setActivated(true);
+            existingIt->second->getCameraBehaviorComponent()->setCameraGameObjectId(cameraGameObjectId);
         }
-        else if (false == active && true == existingPlayerControllerIt->second->isActivated())
+        existingIt->second->getCameraBehaviorComponent()->setActivated(active);
+    }
+
+    /*Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL , "[IMPORTANT] activatePlayerController: id=" + Ogre::StringConverter::toString(gameObjectId) + (active ? " ACTIVATED" : " DEACTIVATED") +
+                                                    (onlyOneActive ? " (exclusive)" : " (multi)") + ". Called from: " + callerInfo);*/
+}
+
+unsigned int GameObjectController::activatePlayerControllers(const std::vector<unsigned long>& gameObjectIds, bool onlyOneActive)
+{
+    if (true == onlyOneActive)
+    {
+        // Deactivate all existing controllers first
+        for (auto& it : this->playerControllerComponentMap)
         {
-            existingPlayerControllerIt->second->setActivated(false);
-        }
-        if (nullptr != existingPlayerControllerIt->second->getCameraBehaviorComponent())
-        {
-            if (0 != cameraGameObjectId)
+            it.second->getOwner()->selected = false;
+            if (nullptr != it.second->getCameraBehaviorComponent())
             {
-                existingPlayerControllerIt->second->getCameraBehaviorComponent()->setCameraGameObjectId(cameraGameObjectId);
+                it.second->getCameraBehaviorComponent()->setActivated(false);
             }
-            existingPlayerControllerIt->second->getCameraBehaviorComponent()->setActivated(active);
+
+            auto inputDeviceCompPtr = NOWA::makeStrongPtr(it.second->getOwner()->getComponent<InputDeviceComponent>());
+            if (nullptr != inputDeviceCompPtr)
+            {
+                inputDeviceCompPtr->setActivated(false);
+            }
         }
     }
+
+    unsigned int activated = 0;
+    int slotIndex = 0;
+
+    for (unsigned long id : gameObjectIds)
+    {
+        auto it = this->playerControllerComponentMap.find(id);
+        if (it == this->playerControllerComponentMap.cend())
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObjectController] activatePlayerControllers: id " + Ogre::StringConverter::toString(id) + " not found in player controller map.");
+            continue;
+        }
+
+        // Assign a unique path slot to the click-to-point component so that
+        // concurrent FindPath calls from different workers never overwrite each other.
+        // Slots are assigned sequentially starting from 0 for this activation batch.
+        auto clickToPointCompPtr = NOWA::makeStrongPtr(it->second->getOwner()->getComponent<PlayerControllerClickToPointComponent>());
+        if (nullptr != clickToPointCompPtr)
+        {
+            clickToPointCompPtr->setPathSlot(slotIndex);
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObjectController] activatePlayerControllers: assigned path slot " + Ogre::StringConverter::toString(slotIndex) + " to id=" + Ogre::StringConverter::toString(id));
+            ++slotIndex;
+        }
+
+        // Activate input device
+        auto inputDeviceCompPtr = NOWA::makeStrongPtr(it->second->getOwner()->getComponent<InputDeviceComponent>());
+        if (nullptr != inputDeviceCompPtr)
+        {
+            inputDeviceCompPtr->setActivated(true);
+        }
+
+        it->second->getOwner()->selected = true;
+
+        if (false == it->second->isActivated())
+        {
+            it->second->setActivated(true);
+        }
+
+        // Only activate camera for the first controller in the batch —
+        // having 8 cameras fight for control makes no sense
+        if (nullptr != it->second->getCameraBehaviorComponent())
+        {
+            it->second->getCameraBehaviorComponent()->setActivated(activated == 0);
+        }
+
+        ++activated;
+    }
+
+    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObjectController] activatePlayerControllers: activated " + Ogre::StringConverter::toString(activated) + " controllers.");
+
+    return activated;
 }
 
 void GameObjectController::deactivateAllPlayerController(void)

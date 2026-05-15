@@ -56,7 +56,12 @@ MainMenuBar::MainMenuBar(ProjectManager* projectManager, MyGUI::Widget* _parent)
 	bDrawNavigationMesh(false),
 	bDrawCollisionLines(false),
 	bTestSelectedGameObjects(false),
-	pluginNameEdit(nullptr)
+	pluginNameEdit(nullptr),
+    ogreLogWindow(nullptr),
+    ogreLogEdit(nullptr),
+    ogreLogButton(nullptr),
+    ogreLogCount(0),
+    ogreLogFirstTime(true)
 {
 	assignWidget(this->mainMenuBar, "mainMenuBar");
 	assignWidget(this->fileMenuItem, "fileMenuItem");
@@ -360,6 +365,12 @@ MainMenuBar::MainMenuBar(ProjectManager* projectManager, MyGUI::Widget* _parent)
 		menuItem->hideItemChild();
 		menuItem->setEnabled(false);
 		menuItem->eventMouseButtonClick += MyGUI::newDelegate(this, &MainMenuBar::buttonHit);
+
+		menuItem = utilitiesMenuControl->addItem("ogreLogMenuItem", MyGUI::MenuItemType::Normal, Ogre::StringConverter::toString(id++));
+        menuItem->setCaptionWithReplacing("#{EngineWarnings}");
+        menuItem->hideItemChild();
+        menuItem->setEnabled(false);
+        menuItem->eventMouseButtonClick += MyGUI::newDelegate(this, &MainMenuBar::buttonHit);
 	}
 
 	// Create Simulation items
@@ -417,6 +428,7 @@ MainMenuBar::MainMenuBar(ProjectManager* projectManager, MyGUI::Widget* _parent)
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &MainMenuBar::handleLuaError), NOWA::EventDataPrintLuaError::getStaticEventType());
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &MainMenuBar::handleSceneInvalid), EventDataSceneInvalid::getStaticEventType());
     NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &MainMenuBar::handleNavMeshBusy), NOWA::EventDataNavMeshBusy::getStaticEventType());
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &MainMenuBar::handleOgreLog), NOWA::EventDataPrintOgreLog::getStaticEventType());
 }
 
 MainMenuBar::~MainMenuBar()
@@ -428,6 +440,7 @@ MainMenuBar::~MainMenuBar()
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &MainMenuBar::handleLuaError), NOWA::EventDataPrintLuaError::getStaticEventType());
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &MainMenuBar::handleSceneInvalid), EventDataSceneInvalid::getStaticEventType());
     NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &MainMenuBar::handleNavMeshBusy), NOWA::EventDataNavMeshBusy::getStaticEventType());
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &MainMenuBar::handleOgreLog), NOWA::EventDataPrintOgreLog::getStaticEventType());
 
 	MyGUI::LayoutManager::getInstancePtr()->unloadLayout(this->analysisWidgets);
 	MyGUI::LayoutManager::getInstancePtr()->unloadLayout(this->deployWidgets);
@@ -435,6 +448,7 @@ MainMenuBar::~MainMenuBar()
 	MyGUI::LayoutManager::getInstancePtr()->unloadLayout(this->aboutWindowWidgets);
 	MyGUI::LayoutManager::getInstancePtr()->unloadLayout(this->sceneDescriptionWindowWidgets);
 	MyGUI::LayoutManager::getInstancePtr()->unloadLayout(this->createComponentPluginWindowWidgets);
+    MyGUI::LayoutManager::getInstancePtr()->unloadLayout(this->ogreLogWidgets);
 
 	if (nullptr != this->cPlusPlusComponentGenerator)
 	{
@@ -503,6 +517,7 @@ void MainMenuBar::enableMenuEntries(bool enable)
 		this->utilitiesMenuItem->getItemChild()->getItemAt(7)->setEnabled(enable); // Draw Collision Lines
 		this->utilitiesMenuItem->getItemChild()->getItemAt(8)->setEnabled(enable); // Optimize scene
 		this->utilitiesMenuItem->getItemChild()->getItemAt(9)->setEnabled(enable); // Toggle MyGUI Components
+        this->utilitiesMenuItem->getItemChild()->getItemAt(10)->setEnabled(enable); // Engine Warnings
 
 		this->simulationMenuItem->getItemChild()->getItemAt(0)->setEnabled(enable); // control selected player
 		this->simulationMenuItem->getItemChild()->getItemAt(1)->setEnabled(enable); // test selected game objects
@@ -557,17 +572,17 @@ void MainMenuBar::callNewProject(void)
 
 void MainMenuBar::clearLuaErrors(void)
 {
-	this->luaErrors.clear();
-	this->luaErrorFirstTime = true;
-	this->errorCount = 0;
-	if (nullptr != this->simulationWindow)
-	{
-		ENQUEUE_RENDER_COMMAND("MainMenuBar::clearLuaErrors",
+    this->luaErrors.clear();
+    this->luaErrorFirstTime = true;
+    this->errorCount = 0;
+
+    if (nullptr != this->simulationWindow)
+    {
+        ENQUEUE_RENDER_COMMAND("MainMenuBar::clearLuaErrors",
 		{
-			this->simulationWindow->getCaptionWidget()->setTextColour(MyGUIHelper::getInstance()->getImportantTextColour());
-			this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getSceneName());
+			this->updateSimulationWindowCaption();
 		});
-	}
+    }
 }
 
 bool MainMenuBar::hasLuaErrors(void)
@@ -840,177 +855,208 @@ void MainMenuBar::notifyPopupMenuAccept(MyGUI::MenuControl* sender, MyGUI::MenuI
 			this->toggleMyGUIComponents(this->bToggleMyGUIComponents);
 			break;
 		}
-		case 51: // Control selected player
-		{
-			for (auto it = this->projectManager->getEditorManager()->getSelectionManager()->getSelectedGameObjects().begin(); it != this->projectManager->getEditorManager()->getSelectionManager()->getSelectedGameObjects().end(); ++it)
-			{
-				// Start player controller;
-				auto PlayerControllerComponent = NOWA::makeStrongPtr(it->second.gameObject->getComponent<NOWA::PlayerControllerComponent>());
-				if (nullptr != PlayerControllerComponent)
-				{
-					NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->activatePlayerController(true, it->second.gameObject->getId(), true);
-				}
-			}
-			break;
-		}
-		case 52: // Test selected game objects
-		{
-			this->bTestSelectedGameObjects = !this->bTestSelectedGameObjects;
-			this->activateTestSelectedGameObjects(this->bTestSelectedGameObjects);
-			boost::shared_ptr<EventDataTestSelectedGameObjects> eventDataTestSelectedGameObjects(new EventDataTestSelectedGameObjects(this->bTestSelectedGameObjects));
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataTestSelectedGameObjects);
-			break;
-		}
-		case 53: // About
-		{
-			this->showAboutWindow();
-			break;
-		}
-		case 54: // Scene description
-		{
-			this->showSceneDescriptionWindow();
-			break;
-		}
-        case 55: // Lua Wiki
+        case 51: // Engine Warnings
+        {
+            this->showOgreLogWindow();
+            break;
+        }
+        case 52: // Control selected player
+        {
+            for (auto it = this->projectManager->getEditorManager()->getSelectionManager()->getSelectedGameObjects().begin(); it != this->projectManager->getEditorManager()->getSelectionManager()->getSelectedGameObjects().end(); ++it)
+            {
+                auto PlayerControllerComponent = NOWA::makeStrongPtr(it->second.gameObject->getComponent<NOWA::PlayerControllerComponent>());
+                if (nullptr != PlayerControllerComponent)
+                {
+                    NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->activatePlayerController(true, it->second.gameObject->getId(), true);
+                }
+            }
+            break;
+        }
+        case 53: // Test selected game objects
+        {
+            this->bTestSelectedGameObjects = !this->bTestSelectedGameObjects;
+            this->activateTestSelectedGameObjects(this->bTestSelectedGameObjects);
+            boost::shared_ptr<EventDataTestSelectedGameObjects> eventDataTestSelectedGameObjects(new EventDataTestSelectedGameObjects(this->bTestSelectedGameObjects));
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataTestSelectedGameObjects);
+            break;
+        }
+        case 54: // About
+        {
+            this->showAboutWindow();
+            break;
+        }
+        case 55: // Scene description
+        {
+            this->showSceneDescriptionWindow();
+            break;
+        }
+        case 56: // Lua Wiki
         {
             this->showLuaWikiWindow();
             break;
         }
-	}
+    }
 }
 
 void MainMenuBar::buttonHit(MyGUI::Widget* sender)
 {
-	ENQUEUE_RENDER_COMMAND_MULTI("MainMenuBar::buttonHit", _1(sender),
-	{
-		if ("analysisOkButton" == sender->getName())
-		{
-			this->analysisWindow->setVisible(false);
-		}
-		else if ("deployCloseButton" == sender->getName())
-		{
-			this->deployWindow->setVisible(false);
-		}
-		else if (this->luaAnalysisButton == sender)
-		{
-			this->luaAnalysisWindow->setVisible(false);
-		}
-		else if (this->luaApiButton == sender)
-		{
-			this->luaApiWindow->setVisible(false);
-		}
-		else if ("meshToolButtonClose" == sender->getName())
-		{
-			this->meshToolWindow->setVisible(false);
-		}
-		else if ("meshToolButtonApply" == sender->getName())
-		{
-			this->applyMeshToolOperations();
-		}
-		else if ("aboutOkButton" == sender->getName())
-		{
-			this->aboutWindow->setVisible(false);
-		}
-		else if ("sceneDescriptionOkButton" == sender->getName())
-		{
-			this->sceneDescriptionWindow->setVisible(false);
-		}
-		else if ("pluginOkButton" == sender->getName())
-		{
-			Ogre::String componentName = this->pluginNameEdit->getOnlyText();
-			if (false == componentName.empty())
-			{
-				NOWA::DeployResourceModule::getInstance()->createCPlusPlusComponentPluginProject(componentName);
-			}
-			this->createComponentPluginWindow->setVisible(false);
-		}
-		else if ("pluginAbordButton" == sender->getName())
-		{
-			this->createComponentPluginWindow->setVisible(false);
-		}
-		else if ("encryptButton" == sender->getName())
-		{
-			// Encode
-			NOWA::Core::getSingletonPtr()->encodeAllFiles();
-			boost::shared_ptr<NOWA::EventDataFeedback> eventDataFeedback(new NOWA::EventDataFeedback(false, "#{EncodedReadonly}"));
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataFeedback);
-		}
-		else if ("decryptButton" == sender->getName())
-		{
-			int tempKey = Ogre::StringConverter::parseReal(this->keyEdit->getOnlyText());
-			bool success = NOWA::Core::getSingletonPtr()->decodeAllFiles(tempKey);
+    NOWA::GraphicsModule::RenderCommand renderCommand = [this, sender]()
+    {
+        if ("analysisOkButton" == sender->getName())
+        {
+            this->analysisWindow->setVisible(false);
+        }
+        else if ("deployCloseButton" == sender->getName())
+        {
+            this->deployWindow->setVisible(false);
+        }
+        else if (this->luaAnalysisButton == sender)
+        {
+            this->luaAnalysisWindow->setVisible(false);
+        }
+        else if (this->luaApiButton == sender)
+        {
+            this->luaApiWindow->setVisible(false);
+        }
+        else if ("meshToolButtonClose" == sender->getName())
+        {
+            this->meshToolWindow->setVisible(false);
+        }
+        else if ("meshToolButtonApply" == sender->getName())
+        {
+            this->applyMeshToolOperations();
+        }
+        else if ("aboutOkButton" == sender->getName())
+        {
+            this->aboutWindow->setVisible(false);
+        }
+        else if ("sceneDescriptionOkButton" == sender->getName())
+        {
+            this->sceneDescriptionWindow->setVisible(false);
+        }
+        else if (this->ogreLogButton == sender)
+        {
+            this->ogreLogWindow->setVisible(false);
+        }
+        else if ("pluginOkButton" == sender->getName())
+        {
+            Ogre::String componentName = this->pluginNameEdit->getOnlyText();
+            if (false == componentName.empty())
+            {
+                NOWA::DeployResourceModule::getInstance()->createCPlusPlusComponentPluginProject(componentName);
+            }
+            this->createComponentPluginWindow->setVisible(false);
+        }
+        else if ("pluginAbordButton" == sender->getName())
+        {
+            this->createComponentPluginWindow->setVisible(false);
+        }
+        else if ("encryptButton" == sender->getName())
+        {
+            // Encode
+            NOWA::Core::getSingletonPtr()->encodeAllFiles();
+            boost::shared_ptr<NOWA::EventDataFeedback> eventDataFeedback(new NOWA::EventDataFeedback(false, "#{EncodedReadonly}"));
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataFeedback);
+        }
+        else if ("decryptButton" == sender->getName())
+        {
+            int tempKey = Ogre::StringConverter::parseReal(this->keyEdit->getOnlyText());
+            bool success = NOWA::Core::getSingletonPtr()->decodeAllFiles(tempKey);
 
-			if (true == success)
-			{
-				this->resultLabel->setVisible(true);
-				this->resultLabel->setCaptionWithReplacing("#{Success}");
-				this->resultLabel->setTextColour(MyGUI::Colour::Green);
-			}
-			else
-			{
-				this->resultLabel->setVisible(true);
-				this->resultLabel->setCaptionWithReplacing("#{WrongKey}");
-				this->resultLabel->setTextColour(MyGUI::Colour::Red);
-			}
-		}
-		else if ("deployOkButton" == sender->getName())
-		{
-			Ogre::String projectFilePathName = NOWA::Core::getSingletonPtr()->getCurrentProjectPath();
-			const auto sceneNames = NOWA::Core::getSingletonPtr()->getSceneFileNamesInProject(projectFilePathName);
-			if (sceneNames.empty())
-			{
-				return;
-			}
+            if (true == success)
+            {
+                this->resultLabel->setVisible(true);
+                this->resultLabel->setCaptionWithReplacing("#{Success}");
+                this->resultLabel->setTextColour(MyGUI::Colour::Green);
+            }
+            else
+            {
+                this->resultLabel->setVisible(true);
+                this->resultLabel->setCaptionWithReplacing("#{WrongKey}");
+                this->resultLabel->setTextColour(MyGUI::Colour::Red);
+            }
+        }
+        else if ("deployOkButton" == sender->getName())
+        {
+            Ogre::String projectFilePathName = NOWA::Core::getSingletonPtr()->getCurrentProjectPath();
+            const auto sceneNames = NOWA::Core::getSingletonPtr()->getSceneFileNamesInProject(projectFilePathName);
+            if (sceneNames.empty())
+            {
+                return;
+            }
 
-			boost::shared_ptr<EventDataSceneValid> eventDataSceneValid(new EventDataSceneValid(false));
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataSceneValid);
+            boost::shared_ptr<EventDataSceneValid> eventDataSceneValid(new EventDataSceneValid(false));
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataSceneValid);
 
-			// First save resources for this scene
-			Ogre::String currentSceneName = NOWA::Core::getSingletonPtr()->getSceneName();
+            // First save resources for this scene
+            Ogre::String currentSceneName = NOWA::Core::getSingletonPtr()->getSceneName();
 
-			// After that for all other
-			for (const Ogre::String& sceneName : sceneNames)
-			{
-				Ogre::String tempSceneName;
-				size_t found = sceneName.find(".scene");
-				if (found != std::wstring::npos)
-				{
-					tempSceneName = sceneName.substr(0, sceneName.size() - 6);
-				}
-				if (tempSceneName != NOWA::Core::getSingletonPtr()->getSceneName())
-				{
-					this->projectManager->loadProject(projectFilePathName + "/" + tempSceneName + "/" + tempSceneName + ".scene");
-					NOWA::DeployResourceModule::getInstance()->deploy(NOWA::Core::getSingletonPtr()->getProjectName(), tempSceneName, projectFilePathName, false);
-				}
-			}
+            // After that for all other
+            for (const Ogre::String& sceneName : sceneNames)
+            {
+                Ogre::String tempSceneName;
+                size_t found = sceneName.find(".scene");
+                if (found != std::wstring::npos)
+                {
+                    tempSceneName = sceneName.substr(0, sceneName.size() - 6);
+                }
+                if (tempSceneName != NOWA::Core::getSingletonPtr()->getSceneName())
+                {
+                    this->projectManager->loadProject(projectFilePathName + "/" + tempSceneName + "/" + tempSceneName + ".scene");
+                    NOWA::DeployResourceModule::getInstance()->deploy(NOWA::Core::getSingletonPtr()->getProjectName(), tempSceneName, projectFilePathName, false);
+                }
+            }
 
-			// Loads back this scene
-			this->projectManager->loadProject(projectFilePathName + "/" + currentSceneName + "/" + currentSceneName + ".scene");
-			NOWA::DeployResourceModule::getInstance()->deploy(NOWA::Core::getSingletonPtr()->getProjectName(), currentSceneName, projectFilePathName, true);
+            // Loads back this scene
+            this->projectManager->loadProject(projectFilePathName + "/" + currentSceneName + "/" + currentSceneName + ".scene");
+            NOWA::DeployResourceModule::getInstance()->deploy(NOWA::Core::getSingletonPtr()->getProjectName(), currentSceneName, projectFilePathName, true);
 
-			boost::shared_ptr<EventDataSceneValid> eventDataSceneValid2(new EventDataSceneValid(true));
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataSceneValid2);
-		}
-		else if (this->fileMenuItem == sender)
-		{
-			MyGUI::MenuControl* fileMenuControl = fileMenuItem->getItemChild();
-			fileMenuControl->showMenu();
-		}
+            boost::shared_ptr<EventDataSceneValid> eventDataSceneValid2(new EventDataSceneValid(true));
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataSceneValid2);
+        }
+        else if (this->fileMenuItem == sender)
+        {
+            MyGUI::MenuControl* fileMenuControl = fileMenuItem->getItemChild();
+            fileMenuControl->showMenu();
+        }
+        else if ("ogreLogCopyAllButton" == sender->getName())
+        {
+            if (false == this->ogreLogPlainText.empty())
+            {
+                NOWA::Core::getSingletonPtr()->copyTextToClipboard(this->ogreLogPlainText);
+            }
+        }
+        else if ("ogreLogClearButton" == sender->getName())
+        {
+            this->ogreLogErrors.clear();
+            this->ogreLogPlainText.clear();
+            this->ogreLogCount = 0;
+            this->ogreLogEdit->setCaption("No engine warnings.");
+            this->ogreLogEdit->updateContent();
 
-		if (nullptr != this->projectManager->getEditorManager())
-		{
-			this->editMenuItem->getItemChild()->getItemAt(UNDO)->setEnabled(this->projectManager->getEditorManager()->canUndo());
-			this->editMenuItem->getItemChild()->getItemAt(REDO)->setEnabled(this->projectManager->getEditorManager()->canRedo());
-			this->editMenuItem->getItemChild()->getItemAt(SELECTION_UNDO)->setEnabled(this->projectManager->getEditorManager()->getSelectionManager()->canSelectionUndo());
-			this->editMenuItem->getItemChild()->getItemAt(SELECTION_REDO)->setEnabled(this->projectManager->getEditorManager()->getSelectionManager()->canSelectionRedo());
-			this->editMenuItem->getItemChild()->getItemAt(OPEN_PROJECT_FOLDER)->setEnabled(true);
+            if (nullptr != NOWA::LuaConsole::getSingletonPtr())
+            {
+                NOWA::LuaConsole::getSingletonPtr()->clearCriticalLogs();
+            }
 
-			this->cameraMenuItem->getItemChild()->getItemAt(7)->setEnabled(this->projectManager->getEditorManager()->canCameraUndo());
-			this->cameraMenuItem->getItemChild()->getItemAt(8)->setEnabled(this->projectManager->getEditorManager()->canCameraRedo());
+            this->updateSimulationWindowCaption();
+        }
 
-			this->simulationMenuItem->getItemChild()->getItemAt(1)->setEnabled(true);
-		}
-	});
+        if (nullptr != this->projectManager->getEditorManager())
+        {
+            this->editMenuItem->getItemChild()->getItemAt(UNDO)->setEnabled(this->projectManager->getEditorManager()->canUndo());
+            this->editMenuItem->getItemChild()->getItemAt(REDO)->setEnabled(this->projectManager->getEditorManager()->canRedo());
+            this->editMenuItem->getItemChild()->getItemAt(SELECTION_UNDO)->setEnabled(this->projectManager->getEditorManager()->getSelectionManager()->canSelectionUndo());
+            this->editMenuItem->getItemChild()->getItemAt(SELECTION_REDO)->setEnabled(this->projectManager->getEditorManager()->getSelectionManager()->canSelectionRedo());
+            this->editMenuItem->getItemChild()->getItemAt(OPEN_PROJECT_FOLDER)->setEnabled(true);
+
+            this->cameraMenuItem->getItemChild()->getItemAt(7)->setEnabled(this->projectManager->getEditorManager()->canCameraUndo());
+            this->cameraMenuItem->getItemChild()->getItemAt(8)->setEnabled(this->projectManager->getEditorManager()->canCameraRedo());
+
+            this->simulationMenuItem->getItemChild()->getItemAt(1)->setEnabled(true);
+        }
+    };
+    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MainMenuBar::buttonHit");
 }
 
 void MainMenuBar::editTextChange(MyGUI::Widget* sender)
@@ -1058,6 +1104,185 @@ void MainMenuBar::updateRecentFilesMenu()
 			this->recentFileItem[i]->setCaption(file);
 		}
 	});
+}
+
+void MainMenuBar::createOgreLogWindow(void)
+{
+    NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    {
+        if (0 == this->ogreLogWidgets.size())
+        {
+            this->ogreLogWindow = MyGUI::Gui::getInstance().createWidget<MyGUI::Window>("WindowCS", MyGUI::IntCoord(10, 10, 800, 600), MyGUI::Align::Default, "Popup");
+            this->ogreLogWindow->setMinSize(400, 300);
+            MyGUI::IntCoord coord = this->ogreLogWindow->getClientCoord();
+
+            // HyperTextBox: rich colours + selectable for Ctrl+C on selection
+            this->ogreLogEdit = this->ogreLogWindow->createWidget<MyGUI::HyperTextBox>("HyperTextBox", MyGUI::IntCoord(0, 0, coord.width, coord.height - 55), MyGUI::Align::Stretch);
+            this->ogreLogEdit->setTextSelectable(true);
+            this->ogreLogEdit->eventNotifyInsideKeyButtonPressed += newDelegate(this, &MainMenuBar::notifyInsideKeyButtonPressed);
+            this->ogreLogEdit->setCaption("No engine warnings.");
+
+            // Three-button row — all 100px wide, 10px gaps, centred.
+            // Clear: left
+            MyGUI::Button* clearButton = this->ogreLogWindow->createWidget<MyGUI::Button>("Button", MyGUI::IntCoord(coord.width * 0.5f - 160.0f, coord.height - 50, 100, 40), MyGUI::Align::Default, "ogreLogClearButton");
+            clearButton->setCaption("Clear");
+            clearButton->eventMouseButtonClick += MyGUI::newDelegate(this, &MainMenuBar::buttonHit);
+
+            // Copy All: centre
+            MyGUI::Button* copyAllButton = this->ogreLogWindow->createWidget<MyGUI::Button>("Button", MyGUI::IntCoord(coord.width * 0.5f - 50.0f, coord.height - 50, 100, 40), MyGUI::Align::Default, "ogreLogCopyAllButton");
+            copyAllButton->setCaption("Copy All");
+            copyAllButton->eventMouseButtonClick += MyGUI::newDelegate(this, &MainMenuBar::buttonHit);
+
+            // Ok: right
+            this->ogreLogButton = this->ogreLogWindow->createWidget<MyGUI::Button>("Button", MyGUI::IntCoord(coord.width * 0.5f + 60.0f, coord.height - 50, 100, 40), MyGUI::Align::Default);
+            this->ogreLogButton->setCaption("Ok");
+            this->ogreLogButton->eventMouseButtonClick += MyGUI::newDelegate(this, &MainMenuBar::buttonHit);
+
+            // Force layout refresh.
+            this->ogreLogWindow->setSize(this->ogreLogWindow->getSize().width - 1, this->ogreLogWindow->getSize().height - 1);
+            this->ogreLogWindow->setSize(this->ogreLogWindow->getSize().width + 1, this->ogreLogWindow->getSize().height + 1);
+            this->ogreLogWindow->setCaption("Engine Warnings");
+
+            this->ogreLogWidgets.push_back(this->ogreLogWindow);
+            this->ogreLogWidgets.push_back(this->ogreLogEdit);
+            this->ogreLogWidgets.push_back(clearButton);
+            this->ogreLogWidgets.push_back(copyAllButton);
+            this->ogreLogWidgets.push_back(this->ogreLogButton);
+
+            if (nullptr == this->simulationWindow)
+            {
+                this->simulationWindow = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Window>("simulationWindow");
+            }
+        }
+
+        MyGUI::FloatPoint windowPosition;
+        windowPosition.left = 0.32f;
+        windowPosition.top = 0.32f;
+        this->ogreLogWindow->setRealPosition(windowPosition);
+        this->ogreLogWindow->setVisible(false);
+    };
+    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MainMenuBar::createOgreLogWindow");
+}
+
+void MainMenuBar::showOgreLogWindow(void)
+{
+    this->createOgreLogWindow();
+	NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+    {
+        this->ogreLogWindow->setVisible(true);
+    };
+    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MainMenuBar::showOgreLogWindow");
+}
+
+void MainMenuBar::clearOgreLogErrors(void)
+{
+    this->ogreLogErrors.clear();
+    this->ogreLogPlainText.clear();
+    this->ogreLogFirstTime = true;
+    this->ogreLogCount = 0;
+
+    if (nullptr != NOWA::LuaConsole::getSingletonPtr())
+    {
+        NOWA::LuaConsole::getSingletonPtr()->clearCriticalLogs();
+    }
+
+    if (nullptr != this->simulationWindow)
+    {
+        ENQUEUE_RENDER_COMMAND("MainMenuBar::clearOgreLogErrors",
+		{
+			this->updateSimulationWindowCaption();
+		});
+    }
+}
+
+void MainMenuBar::updateSimulationWindowCaption(void)
+{
+    if (nullptr == this->simulationWindow)
+    {
+        return;
+    }
+
+    Ogre::String caption = NOWA::Core::getSingletonPtr()->getProjectName() + "/" + NOWA::Core::getSingletonPtr()->getSceneName();
+    MyGUI::Colour captionColour = MyGUIHelper::getInstance()->getImportantTextColour();
+
+    const bool hasLuaErrors = (this->errorCount > 0);
+    const bool hasOgreErrors = (this->ogreLogCount > 0);
+
+    if (hasLuaErrors)
+    {
+        caption += ", Lua Errors: (" + Ogre::StringConverter::toString(this->errorCount) + ")";
+    }
+    if (hasOgreErrors)
+    {
+        caption += ", Engine Warnings: (" + Ogre::StringConverter::toString(this->ogreLogCount) + ")";
+    }
+
+    if (hasLuaErrors)
+    {
+        captionColour = MyGUI::Colour::Red; // Script errors — red
+    }
+    else if (hasOgreErrors)
+    {
+        captionColour = MyGUI::Colour(1.0f, 0.6f, 0.0f, 1.0f); // Engine warnings only — orange
+    }
+
+    this->simulationWindow->getCaptionWidget()->setTextColour(captionColour);
+    this->simulationWindow->setCaption(caption);
+}
+
+void MainMenuBar::handleOgreLog(NOWA::EventDataPtr eventData)
+{
+    boost::shared_ptr<NOWA::EventDataPrintOgreLog> castEventData = boost::static_pointer_cast<NOWA::EventDataPrintOgreLog>(eventData);
+
+    if (false == castEventData->getMessage().empty())
+    {
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, castEventData]()
+        {
+            if (true == this->ogreLogFirstTime)
+            {
+                MyGUI::PointerManager::getInstancePtr()->setVisible(true);
+                this->createOgreLogWindow();
+                this->ogreLogFirstTime = false;
+            }
+
+            const Ogre::String& msg = castEventData->getMessage();
+            const Ogre::String counter = "[" + Ogre::StringConverter::toString(castEventData->getLogCount()) + "] ";
+            const bool important = (msg.find("[IMPORTANT]") != Ogre::String::npos);
+
+            // --- Markup for HyperTextBox ---
+            if (important)
+            {
+                // Blue, h2 (bigger) for important notices
+                this->ogreLogErrors += "<p align='left'>"
+                                       "<color value='#4499FF'><h2>" +
+                                       counter + msg +
+                                       "</h2></color>"
+                                       "</p><br/>";
+            }
+            else
+            {
+                // Orange, h3 for plain engine warnings
+                this->ogreLogErrors += "<p align='left'>"
+                                       "<color value='#FF8800'><h3>" +
+                                       counter + msg +
+                                       "</h3></color>"
+                                       "</p><br/>";
+            }
+
+            // --- Plain text for Copy All ---
+            this->ogreLogPlainText += counter + msg + "\n";
+
+            if (nullptr != this->ogreLogEdit)
+            {
+                this->ogreLogEdit->setCaption(this->ogreLogErrors);
+                this->ogreLogEdit->updateContent();
+            }
+
+            this->ogreLogCount++;
+            this->updateSimulationWindowCaption();
+        };
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MainMenuBar::handleOgreLog");
+    }
 }
 
 void MainMenuBar::handleProjectManipulation(NOWA::EventDataPtr eventData)
@@ -1109,31 +1334,32 @@ void MainMenuBar::handleProjectEncoded(NOWA::EventDataPtr eventData)
 
 void MainMenuBar::handleLuaError(NOWA::EventDataPtr eventData)
 {
-	boost::shared_ptr<NOWA::EventDataPrintLuaError> castEventData = boost::static_pointer_cast<NOWA::EventDataPrintLuaError>(eventData);
-	if (false == castEventData->getErrorMessage().empty())
-	{
-		ENQUEUE_RENDER_COMMAND_MULTI("MainMenuBar::handleLuaError", _1(castEventData),
-		{
-			if (true == this->luaErrorFirstTime)
-			{
-				MyGUI::PointerManager::getInstancePtr()->setVisible(true);
-				this->createLuaAnalysisWindow();
-				this->luaErrorFirstTime = false;
-			}
+    boost::shared_ptr<NOWA::EventDataPrintLuaError> castEventData = boost::static_pointer_cast<NOWA::EventDataPrintLuaError>(eventData);
 
-			this->luaErrors += "<p align='center'><color value='#000088'><h1>Script: " + castEventData->getScriptName() + "</h1><color></p><br/><br/>"
-				"<p align='left'><color value='#880000'><h2>Line: " + Ogre::StringConverter::toString(castEventData->getLine()) + "</h2></color></p><br/>"
-				"<p align='left'><color value='#FFFFFF'><h3>" + castEventData->getErrorMessage() + "</h3></color></p><br/><br/>";
-			this->luaErrorEdit->setCaption(this->luaErrors);
-			this->luaErrorEdit->updateContent();
-			this->errorCount++;
+    if (false == castEventData->getErrorMessage().empty())
+    {
+        ENQUEUE_RENDER_COMMAND_MULTI("MainMenuBar::handleLuaError", _1(castEventData), {
+            if (true == this->luaErrorFirstTime)
+            {
+                MyGUI::PointerManager::getInstancePtr()->setVisible(true);
+                this->createLuaAnalysisWindow();
+                this->luaErrorFirstTime = false;
+            }
 
-			// zurücksetzen der Farbe fehlt
-			// this->simulationWindow->setColour(MyGUI::Colour(0.6f, 0.1f, 0.1f));
-			this->simulationWindow->getCaptionWidget()->setTextColour(MyGUI::Colour::Red);
-			this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getSceneName() + ", Lua Errors: (" + Ogre::StringConverter::toString(this->errorCount) + ")");
-		});
-	}
+            this->luaErrors += "<p align='center'><color value='#000088'><h1>Script: " + castEventData->getScriptName() +
+                               "</h1><color></p><br/><br/>"
+                               "<p align='left'><color value='#880000'><h2>Line: " +
+                               Ogre::StringConverter::toString(castEventData->getLine()) +
+                               "</h2></color></p><br/>"
+                               "<p align='left'><color value='#FFFFFF'><h3>" +
+                               castEventData->getErrorMessage() + "</h3></color></p><br/><br/>";
+            this->luaErrorEdit->setCaption(this->luaErrors);
+            this->luaErrorEdit->updateContent();
+            this->errorCount++;
+
+            this->updateSimulationWindowCaption();
+        });
+    }
 }
 
 void MainMenuBar::handleSceneInvalid(NOWA::EventDataPtr eventData)

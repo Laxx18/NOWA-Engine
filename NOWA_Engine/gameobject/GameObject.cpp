@@ -394,7 +394,7 @@ namespace NOWA
     {
         if (nullptr == newMovableObject)
         {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObject] assignMesh failed: newMovableObject is null");
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObject] AssignMesh failed: newMovableObject is null");
             return false;
         }
 
@@ -442,7 +442,7 @@ namespace NOWA
     {
         if (nullptr == newMovableObject)
         {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObject] swapMovableObject: newMovableObject is null");
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObject] SwapMovableObject: newMovableObject is null");
             outOldMovableObject = nullptr;
             return;
         }
@@ -515,7 +515,7 @@ namespace NOWA
     {
         if (nullptr == restoredMovableObject)
         {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObject] restoreMovableObject: restoredMovableObject is null");
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObject] RestoreMovableObject: restoredMovableObject is null");
             return;
         }
 
@@ -2131,17 +2131,20 @@ namespace NOWA
 
 	void GameObject::setActivated(bool activated)
 	{
-		for (const auto& component : this->gameObjectComponents)
-		{
-			// ATTENTION: if component has been cloned at runtime, it has never been connected so far, so it must be done!
+        for (const auto& component : this->gameObjectComponents)
+        {
+            // ATTENTION: if component has been cloned at runtime, it has never been connected so far, so it must be done!
             if (false == std::get<COMPONENT>(component)->bConnected)
             {
                 std::get<COMPONENT>(component)->bConnected = true;
                 std::get<COMPONENT>(component)->setActivated(activated);
-                std::get<COMPONENT>(component)->connect();
+                if (true == activated)
+                {
+                    std::get<COMPONENT>(component)->connect();
+                }
             }
-		}
-	}
+        }
+    }
 
 	void GameObject::setUseReflection(bool useReflection)
 	{

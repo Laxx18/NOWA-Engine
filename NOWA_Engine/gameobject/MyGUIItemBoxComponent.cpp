@@ -1571,38 +1571,67 @@ namespace NOWA
 
     void MyGUIItemBoxComponent::notifyToolTip(wraps::BaseLayout* _sender, const MyGUI::ToolTipInfo& _info, ItemData* _data)
     {
-        if (true == this->useToolTip->getBool())
+        // Guard 1: tooltip feature disabled for this component
+        if (false == this->useToolTip->getBool())
         {
-            if (nullptr == _data)
+            return;
+        }
+
+        // Guard 2: component is not the active owner — hide any leftover tooltip and return.
+        // The tooltip widget is separate from the shared ItemBox widget, so hiding the
+        // shared widget does NOT hide the tooltip. This guard catches the case where
+        // MyGUI still fires tooltip events after ownership has been released.
+        if (false == this->activated->getBool())
+        {
+            if (nullptr != this->toolTip)
+            {
+                NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+                {
+                    this->toolTip->hide();
+                };
+                NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIItemBoxComponent::notifyToolTip force hide");
+            }
+            return;
+        }
+
+        if (nullptr == _data)
+        {
+            return;
+        }
+
+        ItemData dataCopy = *_data;
+
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, _info, dataCopy]() mutable
+        {
+            if (nullptr == this->toolTip)
             {
                 return;
             }
-            // In notifyToolTip, copy the data before capturing
-            ItemData dataCopy = *_data; // copy by value, assuming ItemData is copyable
 
-            NOWA::GraphicsModule::RenderCommand renderCommand = [this, _info, &dataCopy]()
+            if (_info.type == MyGUI::ToolTipInfo::Show)
             {
-                if (_info.type == MyGUI::ToolTipInfo::Show)
-                {
-                    ItemData localCopy = dataCopy; // safe, copied into closure
-                    this->toolTip->show(&localCopy);
-                    this->toolTip->move(_info.point);
-                }
-                else if (_info.type == MyGUI::ToolTipInfo::Hide)
-                {
-                    this->toolTip->hide();
-                }
-                else if (_info.type == MyGUI::ToolTipInfo::Move)
-                {
-                    this->toolTip->move(_info.point);
-                }
-            };
-            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIItemBoxComponent::notifyToolTip");
-        }
+                this->toolTip->show(&dataCopy);
+                this->toolTip->move(_info.point);
+            }
+            else if (_info.type == MyGUI::ToolTipInfo::Hide)
+            {
+                this->toolTip->hide();
+            }
+            else if (_info.type == MyGUI::ToolTipInfo::Move)
+            {
+                this->toolTip->move(_info.point);
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIItemBoxComponent::notifyToolTip");
     }
 
     void MyGUIItemBoxComponent::setActivated(bool activated)
     {
+        if (this->activated->getBool() == activated)
+        {
+            return;
+        }
+
         this->activated->setValue(activated);
 
         if (false == this->commonWidget->getBool())
@@ -2185,11 +2214,31 @@ namespace NOWA
         {
             NOWA::GraphicsModule::RenderCommand renderCommand = [this, resourceLocationName]()
             {
-                bool success = MyGUI::ResourceManager::getInstance().load(this->resourceLocationName->getString());
-                if (false == success)
+                // Check if the resources from this XML are already loaded by probing
+                // a well-known resource that every valid inventory XML must define.
+                // If any resource from the file exists, the file was already loaded.
+                // We use the first resource name from our own slots if available,
+                // otherwise just load (MyGUI deduplicates internally after the warning).
+                bool alreadyLoaded = false;
+                for (unsigned int i = 0; i < this->itemCount->getUInt(); i++)
                 {
-                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MyGUIItemBoxComponent] ERROR: Could not load resource: " + this->resourceLocationName->getString() + ", because it cannot be found in '" +
-                                                                                            this->resourceLocationName->getString() + "', for game object : " + this->gameObjectPtr->getName());
+                    if (nullptr != this->resourceNames[i] && !this->resourceNames[i]->getString().empty())
+                    {
+                        if (MyGUI::ResourceManager::getInstance().isExist(this->resourceNames[i]->getString()))
+                        {
+                            alreadyLoaded = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (false == alreadyLoaded)
+                {
+                    bool success = MyGUI::ResourceManager::getInstance().load(this->resourceLocationName->getString());
+                    if (false == success)
+                    {
+                        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MyGUIItemBoxComponent] ERROR: Could not load resource: " + this->resourceLocationName->getString() + " for game object: " + this->gameObjectPtr->getName());
+                    }
                 }
             };
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIItemBoxComponent::setResourceLocationName");

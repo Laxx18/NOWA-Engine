@@ -1,4 +1,4 @@
-#include "NOWAPrecompiled.h"
+﻿#include "NOWAPrecompiled.h"
 
 #include "LuaScriptApi.h"
 
@@ -124,12 +124,19 @@ namespace NOWA
 		[
 			class_<Ogre::Real>("Real")
 		];
-	}*/
+    }*/
+    
 
-	void log(const Ogre::String& message)
+	void luaLogNormal(const Ogre::String& message)
 	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[LuaScriptApi]: " + message);
+        Ogre::LogManager::getSingleton().logMessage(Ogre::LML_NORMAL, "[LuaScriptApi]: " + message);
 	}
+
+	void luaLogCritical(const Ogre::String& message)
+    {
+        // LML_CRITICAL: also fires EventDataPrintOgreLog -> Engine Warnings window.
+        Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScriptApi]: " + message);
+    }
 
 	Ogre::String toString(const Ogre::Vector2& vec)
 	{
@@ -184,67 +191,73 @@ namespace NOWA
 	void bindString(lua_State* lua)
 	{
 		module(lua)
-			[
-				class_<String>("String")
-			];
+		[
+			class_<String>("String")
+		];
 
 		luabind::module(lua)
-			[
-				luabind::def("log", &log)
-			];
+		[
+			luabind::def("log", &luaLogNormal)
+		];
 
 		luabind::module(lua)
-			[
-				luabind::def("toString", (Ogre::String(*)(const Vector2&)) & toString)
-			];
+		[
+			luabind::def("logCritical", &luaLogCritical)
+		];
 
 		luabind::module(lua)
-			[
-				luabind::def("toString", (Ogre::String(*)(const Vector3&)) & toString)
-			];
+		[
+			luabind::def("toString", (Ogre::String(*)(const Vector2&)) & toString)
+		];
 
 		luabind::module(lua)
-			[
-				luabind::def("toString", (Ogre::String(*)(const Vector4&)) & toString)
-			];
+		[
+			luabind::def("toString", (Ogre::String(*)(const Vector3&)) & toString)
+		];
 
 		luabind::module(lua)
-			[
-				luabind::def("toString", (Ogre::String(*)(const Quaternion&)) & toString)
-			];
+		[
+			luabind::def("toString", (Ogre::String(*)(const Vector4&)) & toString)
+		];
 
 		luabind::module(lua)
-			[
-				luabind::def("toString", (Ogre::String(*)(double)) & toString)
-			];
+		[
+			luabind::def("toString", (Ogre::String(*)(const Quaternion&)) & toString)
+		];
 
 		luabind::module(lua)
-			[
-				luabind::def("toString", (Ogre::String(*)(const ColourValue&)) & toString)
-			];
+		[
+			luabind::def("toString", (Ogre::String(*)(double)) & toString)
+		];
 
 		luabind::module(lua)
-			[
-				luabind::def("toString", (Ogre::String(*)(const Degree&)) & toString)
-			];
+		[
+			luabind::def("toString", (Ogre::String(*)(const ColourValue&)) & toString)
+		];
 
 		luabind::module(lua)
-			[
-				luabind::def("toString", (Ogre::String(*)(const Radian&)) & toString)
-			];
+		[
+			luabind::def("toString", (Ogre::String(*)(const Degree&)) & toString)
+		];
 
 		luabind::module(lua)
-			[
-				luabind::def("toString", (Ogre::String(*)(bool)) & toString)
-			];
+		[
+			luabind::def("toString", (Ogre::String(*)(const Radian&)) & toString)
+		];
 
 		luabind::module(lua)
-			[
-				luabind::def("matches", &matches)
-			];
+		[
+			luabind::def("toString", (Ogre::String(*)(bool)) & toString)
+		];
+
+		luabind::module(lua)
+		[
+			luabind::def("matches", &matches)
+		];
 
 		AddClassToCollection("toString", "singleton", "Converts any type to string.");
-		AddClassToCollection("log", "singleton", "Logs a string for Ogre log file.");
+		AddClassToCollection("log", "singleton", "Logs a string for Ogre log file at normal level.");
+        AddClassToCollection("logCritital", "singleton", "Logs a string for Ogre log file at critical level.");
 	}
 
 	void bindMatrix3(lua_State* lua)
@@ -4682,15 +4695,39 @@ namespace NOWA
 		return Ogre::StringConverter::toString(instance->getRenderCategoryId(renderCategory));
 	}
 
-	void activatePlayerController(GameObjectController* instance, bool active, const Ogre::String& gameObjectId, bool onlyOneActive)
-	{
-		instance->activatePlayerController(active, Ogre::StringConverter::parseUnsignedLong(gameObjectId), onlyOneActive);
-	}
+	void activatePlayerController(lua_State* L, GameObjectController* instance, bool active, const Ogre::String& gameObjectId, bool onlyOneActive)
+    {
+        // Walk one level up the Lua call stack to get the script that called this.
+        Ogre::String callerInfo = "Lua: unknown";
+        lua_Debug ar;
+        if (lua_getstack(L, 1, &ar)) // level 1 = immediate Lua caller
+        {
+            lua_getinfo(L, "Sl", &ar);                        // S = source/short_src, l = currentline
+            callerInfo = "Lua: " + Ogre::String(ar.short_src) // e.g. "Player.lua" or "[string]"
+                         + ":" + Ogre::StringConverter::toString(ar.currentline);
+        }
+
+        instance->activatePlayerController(active, Ogre::StringConverter::parseUnsignedLong(gameObjectId), 0, onlyOneActive, callerInfo); // calls the Ogre::String overload -> impl
+    }
 
 	void activatePlayerControllerForCamera(GameObjectController* instance, bool active, const Ogre::String& gameObjectId, const Ogre::String& cameraGameObjectId, bool onlyOneActive)
 	{
 		instance->activatePlayerController(active, Ogre::StringConverter::parseUnsignedLong(gameObjectId), Ogre::StringConverter::parseUnsignedLong(cameraGameObjectId), onlyOneActive);
 	}
+
+	void activatePlayerControllers(GameObjectController* instance, luabind::object gameObjectIds, bool onlyOneActive)
+    {
+        std::vector<unsigned long> ids;
+        if (luabind::type(gameObjectIds) == LUA_TTABLE)
+        {
+            for (luabind::iterator it(gameObjectIds), end; it != end; ++it)
+            {
+                Ogre::String idStr = luabind::object_cast<Ogre::String>(*it);
+                ids.push_back(Ogre::StringConverter::parseUnsignedLong(idStr));
+            }
+        }
+        instance->activatePlayerControllers(ids, onlyOneActive);
+    }
 
 	void bindGameObjectController(lua_State* lua, class_<GameObjectController>& gameObjectControllerClass)
 	{
@@ -4735,6 +4772,7 @@ namespace NOWA
 		gameObjectControllerClass.def("getMaterialIDFromCategory", &GameObjectController::getMaterialID);
 		gameObjectControllerClass.def("activatePlayerController", &activatePlayerController);
 		gameObjectControllerClass.def("activatePlayerControllerForCamera", &activatePlayerControllerForCamera);
+        gameObjectControllerClass.def("activatePlayerControllers", &activatePlayerControllers);
 		gameObjectControllerClass.def("getNextGameObject", (GameObject* (GameObjectController::*)(unsigned int))&GameObjectController::getNextGameObject);
 		gameObjectControllerClass.def("getNextGameObject", (GameObject* (GameObjectController::*)(const Ogre::String&))&GameObjectController::getNextGameObject);
 
@@ -4911,6 +4949,13 @@ namespace NOWA
 		AddClassToCollection("GameObjectController", "void activatePlayerControllerForCamera(bool active, string gameObjectId, string cameraGameObjectId, bool onlyOneActive)", "Activates the given player component from the given game object id and the given camera game object id. "
 			"If set to true, the given player component will be activated, else deactivated. Sets whether only one player instance can be controller. If set to false more player can be controlled, that is each player, that is currently selected."
 			" So if camera game object id is set, this player controller will work e.g. in a split screen scenario for the given camera, not the main active camera.");
+        AddClassToCollection("GameObjectController", "void activatePlayerControllers(table gameObjectIds, bool onlyOneActive)",
+            "Activates multiple player controller components at once, one per game object id in the table. "
+            "Each controller is automatically assigned a unique Recast path slot so workers navigating "
+            "concurrently do not overwrite each other's FindPath results. "
+            "If onlyOneActive is true, all currently active controllers are deactivated first. "
+            "If false, previously active controllers remain active alongside the newly activated ones. "
+            "Only the first controller in the list gets camera behavior activated.");
 		AddClassToCollection("GameObjectController", "GameObject getNextGameObject(int categoryIds)", "Gets the next game object from the given group id. "
 			"The category ids for filtering. Using ALL_CATEGORIES_ID, everything is selectable.");
 		AddClassToCollection("GameObjectController", "GameObject getNextGameObject(int categoryIds)", "Gets the next game object from the given group id as string. E.g. 'Player+Enemy'. "
@@ -10675,7 +10720,7 @@ namespace NOWA
         return msg;
     }
 
-    // Setter stubs � only valid in onContact (non-deferred), no-ops in onContactOnce
+    // Setter stubs — only valid in onContact (non-deferred), no-ops in onContactOnce
     void setterStubR(OgreNewt::ContactSnapshot*, Ogre::Real)
     {
     }

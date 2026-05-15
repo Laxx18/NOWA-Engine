@@ -79,7 +79,7 @@ namespace NOWA
 
 		virtual void driveBlendSpace(Ogre::Real parameter, const IAnimationBlender::BlendSpaceEntryList& entryList) override;
 
-		virtual void addTime(Ogre::Real time) override;
+		virtual void addTime(Ogre::Real time, const Ogre::String& ownerId) override;
 
 		virtual Ogre::Real getProgress(void) override;
 
@@ -129,6 +129,8 @@ namespace NOWA
 
 		virtual void resetBlendState(void) override;
 
+		virtual void beginFrame(void) override;
+
 		Ogre::SkeletonAnimation* getAnimationState(AnimID animationId);
 
 		Ogre::SkeletonAnimation* getAnimationState(const Ogre::String& animationName);
@@ -142,6 +144,7 @@ namespace NOWA
 		Ogre::Vector3 getLocalToWorldPosition(Ogre::Bone* bone);
 
 		Ogre::Quaternion getLocalToWorldOrientation(Ogre::Bone* bone);
+
 	public:
 		static void dumpAllAnimations(Ogre::Node* node, Ogre::String padding);
 	protected:
@@ -154,6 +157,8 @@ namespace NOWA
 		Ogre::SkeletonAnimation* internalGetAnimationState(const Ogre::String& animationName);
         bool isTargetAnimationActive(AnimID animationId);
         void internalSetOverlayAnimation(const Ogre::String& animationName, Ogre::Real blendInTime);
+
+		bool tryClaimAddTime(const Ogre::String& ownerId); // returns true if caller won
 
 		void gameObjectIsInRagDollStateDelegate(EventDataPtr eventData);
 	private:
@@ -192,6 +197,8 @@ namespace NOWA
         Ogre::Real overlayTimeleft;
         Ogre::Real overlayDuration;
         bool overlayBlendingOut;
+
+		Ogre::String addTimeOwner; // empty = unclaimed this frame
 	};
 
 }; // namespace end

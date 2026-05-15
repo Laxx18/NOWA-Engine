@@ -65,7 +65,8 @@ namespace NOWA
 			MAZE,
 			WALL,
 			ROAD,
-			DUNGEON
+			DUNGEON,
+			GEOMETRY
 		};
 
 		friend class GameObjectController;

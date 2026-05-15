@@ -2491,30 +2491,6 @@ bool DesignState::mouseMoved(const OIS::MouseEvent& evt)
 		}
 	}
 
-	//if (false == this->simulating)
-	//{
-	//	if (evt.state.buttonDown(OIS::MB_Middle))
-	//	{
-	//		int mX = evt.state.X.abs;
-	//		int mY = evt.state.Y.abs;
-
-	//		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("MouseMove raycast", _2(mX, mY),
-	//		{
-	//			Ogre::MovableObject* movableObject = nullptr;
-	//			Ogre::Item* item = nullptr;
-	//			Ogre::Vector3 result = Ogre::Vector3::ZERO;
-	//			Ogre::Real closestDistance = 0.0f;
-	//			Ogre::Vector3 normal = Ogre::Vector3::ZERO;
-
-	//			if (NOWA::MathHelper::getInstance()->getRaycastFromPoint(mX, mY, this->camera, NOWA::Core::getSingletonPtr()->getOgreRenderWindow(),
-	//				this->selectQuery, result, (size_t&)movableObject, closestDistance, normal, nullptr, false))
-	//			{
-	//				this->selectedMovableObjectInfo = "GameObject: " + movableObject->getName() + " global pos: " + Ogre::StringConverter::toString(result) + " local pos: " + Ogre::StringConverter::toString(result - movableObject->getParentNode()->_getDerivedPositionUpdated()) + " normal: " + Ogre::StringConverter::toString(normal);
-	//			}
-	//		});
-	//	}
-	//}
-
 	if (false == this->simulating)
 	{
 		if (evt.state.buttonDown(OIS::MB_Middle))
@@ -2522,22 +2498,16 @@ bool DesignState::mouseMoved(const OIS::MouseEvent& evt)
 			int mX = evt.state.X.abs;
 			int mY = evt.state.Y.abs;
 
-			Ogre::Vector3 result = Ogre::Vector3::ZERO;
 			Ogre::MovableObject* movableObject = nullptr;
+			Ogre::Item* item = nullptr;
+			Ogre::Vector3 result = Ogre::Vector3::ZERO;
 			Ogre::Real closestDistance = 0.0f;
 			Ogre::Vector3 normal = Ogre::Vector3::ZERO;
-			std::vector<Ogre::MovableObject*> excludeObjects;
-			bool success = false;
 
-			ENQUEUE_RAYCAST5(mX, mY, this->camera, NOWA::Core::getSingletonPtr()->getOgreRenderWindow(), this->selectQuery, excludeObjects, result, movableObject, closestDistance, normal, success);
-
-			if (success)
+			if (NOWA::MathHelper::getInstance()->getRaycastFromPoint(mX, mY, this->camera, NOWA::Core::getSingletonPtr()->getOgreRenderWindow(),
+				this->selectQuery, result, (size_t&)movableObject, closestDistance, normal, nullptr, false))
 			{
-				this->selectedMovableObjectInfo =
-					"GameObject: " + movableObject->getName() +
-					" global pos: " + Ogre::StringConverter::toString(result) +
-					" local pos: " + Ogre::StringConverter::toString(result - movableObject->getParentNode()->_getDerivedPositionUpdated()) +
-					" normal: " + Ogre::StringConverter::toString(normal);
+				this->selectedMovableObjectInfo = "GameObject: " + movableObject->getName() + " global pos: " + Ogre::StringConverter::toString(result) + " local pos: " + Ogre::StringConverter::toString(result - movableObject->getParentNode()->_getDerivedPositionUpdated()) + " normal: " + Ogre::StringConverter::toString(normal);
 			}
 		}
 	}

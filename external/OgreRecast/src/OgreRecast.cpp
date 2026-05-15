@@ -1469,3 +1469,118 @@ void OgreRecast::recreateDrawer()
 	removeAllDrawnNavmesh();
 	m_debugDrawer->mustRecreate();
 }
+
+void OgreRecast::createNavQueryForSlot(int pathSlot)
+{
+	std::lock_guard<std::mutex> lock(m_slotNavQueriesMutex);
+
+	m_slotRefCounts[pathSlot]++;         // always increment
+
+	if (m_slotNavQueries.find(pathSlot) != m_slotNavQueries.end())
+		return;                          // query already exists, just ref-counted
+
+	dtNavMeshQuery* query = dtAllocNavMeshQuery();
+	query->init(m_navMesh, 2048);
+	m_slotNavQueries[pathSlot] = query;
+}
+
+/*
+Step			Character	oldSlot	newSlot	refCount[0]	 refCount[1]	 refCount[2]
+init			all3           —       0        3            —           	 —
+assign char1	1             0->0     0        3            —           	 —
+assign char2    2             0->1     1        2 ! kept     1               —
+assign char3    3             0->2     2        1 ! kept     1               1
+Slot 0 only gets physically destroyed when its last user leaves it. No character is left stranded.
+*/
+
+void OgreRecast::destroyNavQueryForSlot(int pathSlot)
+{
+	std::lock_guard<std::mutex> lock(m_slotNavQueriesMutex);
+
+	auto refIt = m_slotRefCounts.find(pathSlot);
+	if (refIt == m_slotRefCounts.end())
+		return;
+
+	refIt->second--;
+
+	if (refIt->second > 0)
+		return;                          // others still using this slot — keep it alive
+
+	m_slotRefCounts.erase(refIt);
+
+	auto queryIt = m_slotNavQueries.find(pathSlot);
+	if (queryIt != m_slotNavQueries.end())
+	{
+		dtFreeNavMeshQuery(queryIt->second);
+		m_slotNavQueries.erase(queryIt);
+	}
+}
+
+bool OgreRecast::hasNavQueryForSlot(int pathSlot) const
+{
+	std::lock_guard<std::mutex> lock(m_slotNavQueriesMutex);
+	return m_slotNavQueries.find(pathSlot) != m_slotNavQueries.end();
+}
+
+int OgreRecast::acquireNextFreeSlot()
+{
+	std::lock_guard<std::mutex> lock(m_slotNavQueriesMutex);
+
+	// Find the lowest slot number not currently in use
+	int slot = 0;
+	while (m_slotNavQueries.find(slot) != m_slotNavQueries.end())
+		++slot;
+
+	dtNavMeshQuery* query = dtAllocNavMeshQuery();
+	query->init(m_navMesh, 2048);
+	m_slotNavQueries[slot] = query;
+	m_slotRefCounts[slot] = 1;
+	return slot;
+}
+
+int OgreRecast::FindPathWithQuery(dtNavMeshQuery* query, float* pStartPos, float* pEndPos, int nPathSlot, int nTarget)
+{
+	// Identical to FindPath but uses the provided query — thread-safe
+	// because each thread has its own query instance reading the same
+	// read-only navmesh.
+	dtPolyRef StartPoly, EndPoly;
+	float StartNearest[3], EndNearest[3];
+	dtPolyRef PolyPath[MAX_PATHPOLY];
+	int nPathCount = 0;
+	float StraightPath[MAX_PATHVERT * 3];
+	int nVertCount = 0;
+
+	dtStatus status;
+	status = query->findNearestPoly(pStartPos, mExtents, mFilter, &StartPoly, StartNearest);
+	if ((status & DT_FAILURE) || (status & DT_STATUS_DETAIL_MASK)) return -1;
+	status = query->findNearestPoly(pEndPos, mExtents, mFilter, &EndPoly, EndNearest);
+	if ((status & DT_FAILURE) || (status & DT_STATUS_DETAIL_MASK)) return -2;
+	status = query->findPath(StartPoly, EndPoly, StartNearest, EndNearest,
+		mFilter, PolyPath, &nPathCount, MAX_PATHPOLY);
+	if ((status & DT_FAILURE) || (status & DT_STATUS_DETAIL_MASK)) return -3;
+	if (nPathCount == 0) return -4;
+	status = query->findStraightPath(StartNearest, EndNearest, PolyPath, nPathCount,
+		StraightPath, NULL, NULL, &nVertCount, MAX_PATHVERT);
+	if ((status & DT_FAILURE) || (status & DT_STATUS_DETAIL_MASK)) return -5;
+	if (nVertCount == 0) return -6;
+
+	int nIndex = 0;
+	for (int nVert = 0; nVert < nVertCount; nVert++)
+	{
+		m_PathStore[nPathSlot].PosX[nVert] = StraightPath[nIndex++];
+		m_PathStore[nPathSlot].PosY[nVert] = StraightPath[nIndex++];
+		m_PathStore[nPathSlot].PosZ[nVert] = StraightPath[nIndex++];
+	}
+	m_PathStore[nPathSlot].MaxVertex = nVertCount;
+	m_PathStore[nPathSlot].Target = nTarget;
+	return nVertCount;
+}
+
+dtNavMeshQuery* OgreRecast::getNavQueryForSlot(int pathSlot) const
+{
+	std::lock_guard<std::mutex> lock(m_slotNavQueriesMutex);
+	auto it = m_slotNavQueries.find(pathSlot);
+	if (it != m_slotNavQueries.end())
+		return it->second;
+	return nullptr;
+}

@@ -23,7 +23,7 @@ namespace NOWA
 
     PhysicsComponent::PhysicsComponent() :
         GameObjectComponent(),
-        ogreNewt(AppStateManager::getSingletonPtr()->getOgreNewtModule()->getOgreNewt()), // really important line of code, ogrenewt must be not null, when using it
+        ogreNewt(nullptr), // really important line of code, ogrenewt must be not null, when using it
         physicsBody(nullptr),
         initialPosition(Ogre::Vector3::ZERO),
         initialScale(Ogre::Vector3::UNIT_SCALE),
@@ -37,6 +37,8 @@ namespace NOWA
 
     bool PhysicsComponent::postInit(void)
     {
+        this->ogreNewt = AppStateManager::getSingletonPtr()->getOgreNewtModule()->getOgreNewt();
+
         // If this game object has already an kind of physics component, do not add another one! Else crash, e.g. PhysicsArtifactComponent may not have an additional PhysicsActiveComponent
 
         // Deactivated: Case: Terra with TerrainComponent and foliage with artifactcomponent

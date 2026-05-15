@@ -2463,7 +2463,10 @@ namespace NOWA
 	class EventDataTagNameChanged : public BaseEventData
     {
     public:
-        EventDataTagNameChanged(unsigned long gameObjectId, const Ogre::String& oldTagName, const Ogre::String& newTagName) : gameObjectId(gameObjectId), oldTagName(oldTagName), newTagName(newTagName)
+        EventDataTagNameChanged(unsigned long gameObjectId, const Ogre::String& oldTagName, const Ogre::String& newTagName)
+			: gameObjectId(gameObjectId),
+			oldTagName(oldTagName),
+			newTagName(newTagName)
         {
         }
 
@@ -2471,6 +2474,7 @@ namespace NOWA
         {
             return 0xFA4C8B21;
         }
+
         virtual const EventType getEventType(void) const override
         {
             return 0xFA4C8B21;
@@ -2490,10 +2494,12 @@ namespace NOWA
         {
             return this->gameObjectId;
         }
+
         const Ogre::String& getOldTagName(void) const
         {
             return this->oldTagName;
         }
+
         const Ogre::String& getNewTagName(void) const
         {
             return this->newTagName;
@@ -2503,6 +2509,50 @@ namespace NOWA
         unsigned long gameObjectId;
         Ogre::String oldTagName;
         Ogre::String newTagName;
+    };
+
+	// Fired by LuaConsole::messageLogged whenever Ogre logs a message at LML_CRITICAL level.
+    // MainMenuBar (and any other system) listens to this to display an "Engine Warnings" window.
+    class EventDataPrintOgreLog : public BaseEventData
+    {
+    public:
+        EventDataPrintOgreLog(const Ogre::String& message, unsigned int logCount)
+			: message(message),
+			logCount(logCount)
+        {
+        }
+
+		static EventType getStaticEventType(void)
+        {
+            return 0xFA4C8B22;
+        }
+        virtual const EventType getEventType(void) const override
+        {
+            return 0xFA4C8B22;
+        }
+
+        virtual EventDataPtr copy() const override
+        {
+            return EventDataPtr(new EventDataPrintOgreLog(this->message, this->logCount));
+        }
+
+		virtual const char* getName(void) const override
+        {
+            return "EventDataPrintOgreLog";
+        }
+
+        const Ogre::String& getMessage(void) const
+        {
+            return this->message;
+        }
+        unsigned int getLogCount(void) const
+        {
+            return this->logCount;
+        }
+
+    private:
+        Ogre::String message;
+        unsigned int logCount;
     };
 
 }; // namespace end

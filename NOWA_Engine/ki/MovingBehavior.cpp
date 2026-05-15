@@ -2476,7 +2476,9 @@ namespace NOWA
 			// Apply animation speed
 			if (nullptr != this->animationBlender)
 			{
-				this->animationBlender->addTime(dt * this->oldAnimationSpeed * this->motionDistanceChange/* / this->animationBlender->getLength()*/);
+                this->animationBlender->beginFrame();
+
+				this->animationBlender->addTime(dt * this->oldAnimationSpeed * this->motionDistanceChange /* / this->animationBlender->getLength()*/, "MovingBehavior");
 			}
 
 			this->lastMotionDistanceChange = this->motionDistanceChange;

@@ -5,65 +5,84 @@
 #include "OgreOverlayElement.h"
 #include "OgreOverlayManager.h"
 
-#include <list>
 #include "EditString.h"
 #include "LuaConsoleInterpreter.h"
+#include <list>
 
 namespace NOWA
 {
-	class EXPORTED LuaConsole : public Ogre::Singleton<LuaConsole>, Ogre::LogListener
-	{
-	public:
-		LuaConsole();
-		virtual ~LuaConsole();
+    class EXPORTED LuaConsole : public Ogre::Singleton<LuaConsole>, Ogre::LogListener
+    {
+    public:
+        LuaConsole();
+        virtual ~LuaConsole();
 
-		void init(lua_State *lua);
-		void shutdown(void);
-		void setVisible(bool visible);
-		bool isVisible(void);
-		void print(std::string text);
-		bool injectKeyPress(const OIS::KeyEvent &evt);
+        void init(lua_State* lua);
+        void shutdown(void);
+        void setVisible(bool visible);
+        bool isVisible(void);
+        void print(std::string text);
+        bool injectKeyPress(const OIS::KeyEvent& evt);
 
-		void update(Ogre::Real dt);
+        void update(Ogre::Real dt);
 
-		virtual void messageLogged(const Ogre::String& message, Ogre::LogMessageLevel lml, bool maskDebug, const Ogre::String &logName, bool& skipThisMessage) override;
+        virtual void messageLogged(const Ogre::String& message, Ogre::LogMessageLevel lml, bool maskDebug, const Ogre::String& logName, bool& skipThisMessage) override;
 
-		void clearHistory(void);
+        void clearHistory(void);
+        void clearConsole(void);
 
-		void clearConsole(void);
-	public:
-		static LuaConsole& getSingleton(void);
+        // ---------- Critical log interface ----------
+        // Returns the number of LML_CRITICAL messages received since the last clearCriticalLogs() call.
+        unsigned int getCriticalLogCount(void) const;
 
-		static LuaConsole* getSingletonPtr(void);
-	protected:
-		void addToHistory(const std::string& cmd);
-	protected:
-		bool visible;
-		bool textChanged;
-		float height;
-		int startLine;
-		bool cursorBlink;
-		float cursorBlinkTime;
-		bool initialised;
+        // Returns every LML_CRITICAL message received since the last clearCriticalLogs() call.
+        const std::list<std::string>& getCriticalLogs(void) const;
 
-		Ogre::v1::Overlay* pOverlay;
-		Ogre::v1::OverlayContainer* pPanel;
-		Ogre::v1::OverlayElement* pTextbox;
+        // Resets the critical-log list and counter to zero.
+        void clearCriticalLogs(void);
+        // -------------------------------------------
 
-		EditString editLine;
-		LuaConsoleInterpreter* pInterpreter;
+    public:
+        static LuaConsole& getSingleton(void);
+        static LuaConsole* getSingletonPtr(void);
 
-		std::list<std::string> lines;
-		std::list<std::string> history;
+    protected:
+        void addToHistory(const std::string& cmd);
+        // Fires EventDataPrintOgreLog on the main-thread event queue.
+        // Must only be called after AppStateManager / EventManager are up.
+        void fireOgreLogEvent(const Ogre::String& message);
 
-		std::list<std::string>::iterator historyLine;
+    protected:
+        bool visible;
+        bool textChanged;
+        float height;
+        int startLine;
+        bool cursorBlink;
+        float cursorBlinkTime;
+        bool initialised;
 
-		std::string clipText;
-		bool controlPressed;
-	};
+        Ogre::v1::Overlay* pOverlay;
+        Ogre::v1::OverlayContainer* pPanel;
+        Ogre::v1::OverlayElement* pTextbox;
+
+        EditString editLine;
+        LuaConsoleInterpreter* pInterpreter;
+
+        std::list<std::string> lines;
+        std::list<std::string> history;
+
+        std::list<std::string>::iterator historyLine;
+
+        std::string clipText;
+        bool controlPressed;
+
+        // Critical log storage
+        std::list<std::string> criticalLogs;
+        unsigned int criticalLogCount;
+    };
 
 }; // Namespace end
 
-template<> NOWA::LuaConsole* Ogre::Singleton<NOWA::LuaConsole>::msSingleton = 0;
+template <> NOWA::LuaConsole* Ogre::Singleton<NOWA::LuaConsole>::msSingleton = 0;
 
 #endif

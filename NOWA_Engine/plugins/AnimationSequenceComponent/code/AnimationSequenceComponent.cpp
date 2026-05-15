@@ -328,6 +328,8 @@ namespace NOWA
         {
             if (nullptr != this->animationBlender && nullptr != this->animationBlender->getSource())
             {
+                this->animationBlender->beginFrame();
+
                 this->timePosition += dt;
 
                 if (true == this->firstTimeRepeat)
@@ -363,9 +365,7 @@ namespace NOWA
                 {
                     // See: comments in AnimationComponentV2
                     Ogre::Real deltaTime = dt * this->animationSpeeds[this->currentAnimationIndex]->getReal() /*/ sourceDuration*/;
-                    this->animationBlender->addTime(deltaTime);
-
-                    this->animationBlender->addTime(deltaTime);
+                    this->animationBlender->addTime(deltaTime, this->getClassName());
 
                     if (true == this->bShowDebugData)
                     {

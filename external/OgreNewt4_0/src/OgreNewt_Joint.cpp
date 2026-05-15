@@ -73,7 +73,7 @@ Joint::~Joint()
     OgreNewt::World* world = m_world;
     m_world = nullptr;
 
-    world->enqueuePhysicsAndWait(
+    world->enqueuePhysics(
         [jointPtr](OgreNewt::World& w) mutable
         {
             if (*jointPtr && (*jointPtr)->IsInWorld())

@@ -679,4 +679,9 @@ namespace NOWA
         return false;
     }
 
+    OIS::MouseButtonID SelectionManager::getMouseButtonId(void) const
+    {
+        return this->mouseButtonId;
+    }
+
 }; // namespace end

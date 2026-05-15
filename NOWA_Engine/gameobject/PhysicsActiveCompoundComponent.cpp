@@ -13,6 +13,7 @@ namespace NOWA
 
 	PhysicsActiveCompoundComponent::PhysicsActiveCompoundComponent()
 		: PhysicsActiveComponent(),
+        deferredGeometryBody(false),
 		meshCompoundConfigFile(new Variant(PhysicsActiveCompoundComponent::AttrMeshCompoundConfigFile(), Ogre::String(), this->attributes))
 	{
 		this->meshCompoundConfigFile->addUserData(GameObject::AttrActionFileOpenDialog(), "Compounds");
@@ -207,21 +208,51 @@ namespace NOWA
 		}
 
 		auto physicsCompoundConnectionCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsCompoundConnectionComponent>());
-		if (nullptr == physicsCompoundConnectionCompPtr)
-		{
-			if (!this->createDynamicBody())
-			{
-				return false;
-			}
-		}
-		return success;
+
+        // New: also defer if a GeometricComponentBase is present —
+        // it may not have finished postInit yet, so getConvexParts() would be stale.
+        auto geometricCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<GeometricComponentBase>());
+
+        if (nullptr == physicsCompoundConnectionCompPtr)
+        {
+            if (nullptr != geometricCompPtr && geometricCompPtr->hasConvexParts())
+            {
+                // Defer: geometry component is not guaranteed to be postInit'd before us.
+                // connect() is called only after ALL components on this GO have postInit'd.
+                this->deferredGeometryBody = true;
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PhysicsActiveCompoundComponent] Deferring body creation to connect() "
+                                                                                   "— GeometricComponentBase found on: " + this->gameObjectPtr->getName());
+            }
+            else
+            {
+                if (!this->createDynamicBody())
+                {
+                    return false;
+                }
+            }
+        }
+
+        return success;
 	}
 
 	bool PhysicsActiveCompoundComponent::connect(void)
-	{
-		bool success = PhysicsActiveComponent::connect();
-		return success;
-	}
+    {
+        bool success = PhysicsActiveComponent::connect();
+
+        if (true == this->deferredGeometryBody)
+        {
+            this->deferredGeometryBody = false;
+            // All components on this GO are now fully postInit'd;
+            // GeometricComponentBase::getConvexParts() is safe to call.
+            if (!this->createDynamicBody())
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsActiveCompoundComponent] Deferred createDynamicBody() failed for: " + this->gameObjectPtr->getName());
+                success = false;
+            }
+        }
+
+        return success;
+    }
 
 	bool PhysicsActiveCompoundComponent::disconnect(void)
 	{
@@ -315,26 +346,143 @@ namespace NOWA
 		}
 	}
 
-	bool PhysicsActiveCompoundComponent::createDynamicBody(void)
-	{
-		this->destroyCollision();
-		this->destroyBody();
+	bool PhysicsActiveCompoundComponent::buildCollisionListFromGeometry(GeometricComponentBase* geometricComp, std::vector<OgreNewt::CollisionPtr>& collisionList, Ogre::Vector3& inertia, Ogre::Real& partVolume)
+    {
+        const auto convexParts = geometricComp->getConvexParts();
 
-		Ogre::Vector3 inertia = Ogre::Vector3(1.0f, 1.0f, 1.0f);
-		Ogre::Vector3 calculatedMassOrigin = Ogre::Vector3::ZERO;
+        if (convexParts.empty())
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsActiveCompoundComponent] GeometricComponentBase returned no convex parts for: " + this->gameObjectPtr->getName());
+            return false;
+        }
 
-		this->initialPosition = this->gameObjectPtr->getSceneNode()->getPosition();
-		this->initialScale = this->gameObjectPtr->getSceneNode()->getScale();
-		this->initialOrientation = this->gameObjectPtr->getSceneNode()->getOrientation();
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PhysicsActiveCompoundComponent] Building " + Ogre::StringConverter::toString(convexParts.size()) + " convex part(s) from geometry for: " + this->gameObjectPtr->getName());
 
-		std::vector<OgreNewt::CollisionPtr> collisionList;
+        // Separate ConvexHull parts (need vertex data on render thread) from primitives
+        std::vector<GeometricComponentBase::ConvexPart> hullParts;
+        std::vector<GeometricComponentBase::ConvexPart> primitiveParts;
 
-		unsigned int partsCount = 0;
-		Ogre::Real partVolume = 0.0f;
+        for (const auto& part : convexParts)
+        {
+            if (part.type == "ConvexHull")
+            {
+                hullParts.push_back(part);
+            }
+            else
+            {
+                primitiveParts.push_back(part);
+            }
+        }
 
-		// either load parts from mesh compound config file, the parts will have its correct position and rotation offset
-		// this enables creation of complex physics collision hulls like rings, gears etc.
-		if (false == this->meshCompoundConfigFile->getString().empty())
+        // ── Primitive parts via existing createCollisionPrimitive() ───────────────
+        if (false == primitiveParts.empty())
+        {
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, &inertia, &partVolume, &collisionList, &primitiveParts]()
+            {
+                for (const auto& part : primitiveParts)
+                {
+                    OgreNewt::CollisionPtr collisionPtr = this->createCollisionPrimitive(part.type, part.position, part.orientation, part.size, inertia, this->massOrigin->getVector3(), this->gameObjectPtr->getCategoryId());
+
+                    partVolume += this->volume;
+
+                    if (nullptr != collisionPtr)
+                    {
+                        collisionList.emplace_back(collisionPtr);
+                        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PhysicsActiveCompoundComponent] Created primitive part: " + part.type);
+                    }
+                }
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PhysicsActiveCompoundComponent::buildGeomPrimitives");
+        }
+
+        // ── ConvexHull parts — build directly from the vertex cloud ──────────────
+        for (const auto& hullPart : hullParts)
+        {
+            if (hullPart.vertices.empty())
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsActiveCompoundComponent] ConvexHull part has no vertices — skipped.");
+                continue;
+            }
+
+            // Capture by value for the render-thread lambda
+            const std::vector<Ogre::Vector3> verts = hullPart.vertices;
+            const Ogre::Quaternion orient = hullPart.orientation;
+            const Ogre::Vector3 pos = hullPart.position;
+            const Ogre::Vector3 scale = this->initialScale;
+            const unsigned int categoryId = this->gameObjectPtr->getCategoryId();
+
+            OgreNewt::CollisionPtr hullCollision;
+
+            NOWA::GraphicsModule::RenderCommand renderCmd = [this, &hullCollision, &partVolume, verts, orient, pos, scale, categoryId]()
+            {
+                // Scale the vertex cloud by the GO's current scale
+                std::vector<Ogre::Vector3> scaledVerts;
+                scaledVerts.reserve(verts.size());
+                for (const auto& v : verts)
+                {
+                    scaledVerts.push_back(v * scale);
+                }
+
+                OgreNewt::CollisionPrimitives::ConvexHull* hull = new OgreNewt::CollisionPrimitives::ConvexHull(this->ogreNewt, &scaledVerts[0], scaledVerts.size(), categoryId, orient, pos, 0.001f);
+
+                if (nullptr != hull)
+                {
+                    partVolume += hull->calculateVolume();
+                    hullCollision = OgreNewt::CollisionPtr(hull);
+                }
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCmd), "PhysicsActiveCompoundComponent::buildConvexHullPart");
+
+            if (nullptr != hullCollision)
+            {
+                collisionList.emplace_back(hullCollision);
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PhysicsActiveCompoundComponent] Created ConvexHull part from " + Ogre::StringConverter::toString(verts.size()) + " verts.");
+            }
+        }
+
+        if (collisionList.empty())
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsActiveCompoundComponent] buildCollisionListFromGeometry produced no collisions for: " + this->gameObjectPtr->getName());
+            return false;
+        }
+
+        return true;
+    }
+
+    bool PhysicsActiveCompoundComponent::createDynamicBody(void)
+    {
+        this->destroyCollision();
+        this->destroyBody();
+
+        Ogre::Vector3 inertia = Ogre::Vector3(1.0f, 1.0f, 1.0f);
+        Ogre::Vector3 calculatedMassOrigin = Ogre::Vector3::ZERO;
+
+        this->initialPosition = this->gameObjectPtr->getSceneNode()->getPosition();
+        this->initialScale = this->gameObjectPtr->getSceneNode()->getScale();
+        this->initialOrientation = this->gameObjectPtr->getSceneNode()->getOrientation();
+
+        std::vector<OgreNewt::CollisionPtr> collisionList;
+        Ogre::Real partVolume = 0.0f;
+        unsigned int partsCount = 0;
+
+        // ══════════════════════════════════════════════════════════════════════════
+        // BRANCH 1 (NEW): Geometry-driven — read convex parts from GeometricComponentBase
+        // ══════════════════════════════════════════════════════════════════════════
+        auto geometricCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<GeometricComponentBase>());
+
+        if (nullptr != geometricCompPtr && geometricCompPtr->hasConvexParts())
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PhysicsActiveCompoundComponent] Building compound from GeometricComponentBase for: " + this->gameObjectPtr->getName());
+
+            if (!this->buildCollisionListFromGeometry(geometricCompPtr.get(), collisionList, inertia, partVolume))
+            {
+                return false;
+            }
+        }
+        // ══════════════════════════════════════════════════════════════════════════
+        // BRANCH 2 (unchanged): XML config file — mesh-part convex hulls
+        // ══════════════════════════════════════════════════════════════════════════
+        else if (false == this->meshCompoundConfigFile->getString().empty())
 		{
 			Ogre::DataStreamPtr stream = Ogre::ResourceGroupManager::getSingleton().openResource(this->meshCompoundConfigFile->getString());
 			if (stream.isNull())

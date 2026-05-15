@@ -8,6 +8,7 @@ GPL v3
 #include "OgreAbiUtils.h"
 #include "gameobject/GameObjectFactory.h"
 #include "gameobject/PhysicsComponent.h"
+#include "gameobject/TerraComponent.h"
 #include "main/AppStateManager.h"
 #include "main/InputDeviceCore.h"
 #include "modules/LuaScriptApi.h"
@@ -29,6 +30,8 @@ namespace NOWA
         alignToTerrain(new Variant(GameObjectPlaceComponent::AttrAlignToTerrain(), false, this->attributes)),
         spacing(new Variant(GameObjectPlaceComponent::AttrSpacing(), 0.0f, this->attributes)),
         maxPlacementGradient(new Variant(GameObjectPlaceComponent::AttrMaxPlacementGradient(), 3.0f, this->attributes)),
+        targetTerraId(new Variant(GameObjectPlaceComponent::AttrTargetTerraId(), static_cast<unsigned long>(0), this->attributes)),
+        forbiddenTerraLayers(new Variant(GameObjectPlaceComponent::AttrForbiddenTerraLayers(), Ogre::String("255,255,255,255"), this->attributes)),
         placeObjectCount(new Variant(GameObjectPlaceComponent::AttrPlaceObjectCount(), 0, this->attributes)),
         activeGameObjectId(0),
         isPlacing(false),
@@ -44,8 +47,8 @@ namespace NOWA
         isOnForbiddenSurface(false),
         isForbiddenVisualActive(false),
         lastHitObject(nullptr),
-        lastSurfaceNormal(Ogre::Vector3::UNIT_Y),
-        volumeQuery(nullptr)
+        volumeQuery(nullptr),
+        terra(nullptr)
     {
         this->placeObjectCount->addUserData(GameObject::AttrActionNeedRefresh());
         this->categories->setDescription("Categories to place objects on. Use 'All' for everything, or combine with '+' to include and '-' to exclude. E.g. 'All-Building-Agent' places on everything except Building and Agent categories.");
@@ -57,6 +60,11 @@ namespace NOWA
 
         this->maxPlacementGradient->setDescription("Maximum terrain slope angle in degrees at which placement is still allowed. The surface normal is compared to vertical (UNIT_Y); if the angle exceeds this value "
                                                    "the placement preview turns red and left-click is blocked. Default: 45 degrees. Set to 90 to allow placement on any surface.");
+        this->targetTerraId->setDescription("Id of the game object that owns a TerraComponent. If 0, the first Terra in the scene is used automatically.");
+        this->forbiddenTerraLayers->setDescription("Terra layer thresholds (4 values, comma-separated, e.g. '255,255,0,255'). "
+                                                   "Placement is forbidden if the terrain layer at the footprint center is at or below the threshold. "
+                                                   "Set a layer to 255 to ignore it. Set to 0 to forbid placement on that layer entirely. "
+                                                   "Example: '255,255,0,255' forbids placement wherever layer 3 is active (threshold 0 = always blocked).");
     }
 
     GameObjectPlaceComponent::~GameObjectPlaceComponent()
@@ -129,6 +137,17 @@ namespace NOWA
             this->maxPlacementGradient->setValue(XMLConverter::getAttribReal(propertyElement, "data", 3.0f));
             propertyElement = propertyElement->next_sibling("property");
         }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == GameObjectPlaceComponent::AttrTargetTerraId())
+        {
+            this->targetTerraId->setValue(XMLConverter::getAttribUnsignedLong(propertyElement, "data", 0));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == GameObjectPlaceComponent::AttrForbiddenTerraLayers())
+        {
+            this->forbiddenTerraLayers->setValue(XMLConverter::getAttrib(propertyElement, "data"));
+            this->checkAndSetForbiddenTerraLayers(this->forbiddenTerraLayers->getString());
+            propertyElement = propertyElement->next_sibling("property");
+        }
         if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == GameObjectPlaceComponent::AttrPlaceObjectCount())
         {
             this->placeObjectCount->setValue(XMLConverter::getAttribUnsignedInt(propertyElement, "data"));
@@ -187,9 +206,37 @@ namespace NOWA
     bool GameObjectPlaceComponent::connect(void)
     {
         GameObjectComponent::connect();
-
-        // Apply categories to the ray query now that all game objects are registered
         this->setCategories(this->categories->getString());
+
+        // Resolve Terra — used for forbidden-layer placement checks.
+        // Try the explicitly configured targetTerraId first, then fall back
+        // to the first TerraComponent found in the scene.
+        this->terra = nullptr;
+        unsigned long terraId = this->targetTerraId->getULong();
+        if (terraId != 0)
+        {
+            auto targetGO = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(terraId);
+            if (nullptr != targetGO)
+            {
+                auto terraCompPtr = NOWA::makeStrongPtr(targetGO->getComponent<TerraComponent>());
+                if (nullptr != terraCompPtr)
+                {
+                    this->terra = terraCompPtr->getTerra();
+                }
+            }
+        }
+        if (nullptr == this->terra)
+        {
+            auto terraList = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromComponent(TerraComponent::getStaticClassName());
+            if (false == terraList.empty())
+            {
+                auto terraCompPtr = NOWA::makeStrongPtr(terraList[0]->getComponent<TerraComponent>());
+                if (nullptr != terraCompPtr)
+                {
+                    this->terra = terraCompPtr->getTerra();
+                }
+            }
+        }
 
         NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.25f));
         auto ptrFunction = [this]()
@@ -200,7 +247,6 @@ namespace NOWA
         NOWA::ProcessPtr closureProcess(new NOWA::ClosureProcess(ptrFunction));
         delayProcess->attachChild(closureProcess);
         NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
-
         return true;
     }
 
@@ -216,6 +262,7 @@ namespace NOWA
         // endPlacement already clears shadowPhysicsComponent,
         // but guard here in case isPlacing was false
         this->shadowPhysicsComponent = nullptr;
+        this->terra = nullptr;
 
         InputDeviceCore::getSingletonPtr()->removeKeyListener(GameObjectPlaceComponent::getStaticClassName());
         InputDeviceCore::getSingletonPtr()->removeMouseListener(GameObjectPlaceComponent::getStaticClassName());
@@ -330,6 +377,14 @@ namespace NOWA
         {
             this->setMaxPlacementGradient(attribute->getReal());
         }
+        else if (GameObjectPlaceComponent::AttrTargetTerraId() == attribute->getName())
+        {
+            this->setTargetTerraId(attribute->getULong());
+        }
+        else if (GameObjectPlaceComponent::AttrForbiddenTerraLayers() == attribute->getName())
+        {
+            this->setForbiddenTerraLayers(attribute->getString());
+        }
         else
         {
             for (unsigned int i = 0; i < this->placeObjectCount->getUInt(); i++)
@@ -387,6 +442,18 @@ namespace NOWA
         propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
         propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, GameObjectPlaceComponent::AttrMaxPlacementGradient())));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->maxPlacementGradient->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, GameObjectPlaceComponent::AttrTargetTerraId())));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->targetTerraId->getULong())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, GameObjectPlaceComponent::AttrForbiddenTerraLayers())));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->forbiddenTerraLayers->getString())));
         propertiesXML->append_node(propertyXML);
 
         propertyXML = doc.allocate_node(node_element, "property");
@@ -525,6 +592,59 @@ namespace NOWA
     Ogre::Real GameObjectPlaceComponent::getMaxPlacementGradient(void) const
     {
         return this->maxPlacementGradient->getReal();
+    }
+
+   
+    void GameObjectPlaceComponent::setTargetTerraId(unsigned long id)
+    {
+        this->targetTerraId->setValue(id);
+        // Re-resolve terra immediately if already connected
+        if (false == this->bConnected)
+        {
+            return;
+        }
+
+        this->terra = nullptr;
+        if (id != 0)
+        {
+            auto targetGO = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(id);
+            if (nullptr != targetGO)
+            {
+                auto terraCompPtr = NOWA::makeStrongPtr(targetGO->getComponent<TerraComponent>());
+                if (nullptr != terraCompPtr)
+                {
+                    this->terra = terraCompPtr->getTerra();
+                }
+            }
+        }
+        if (nullptr == this->terra)
+        {
+            auto terraList = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromComponent(TerraComponent::getStaticClassName());
+            if (false == terraList.empty())
+            {
+                auto terraCompPtr = NOWA::makeStrongPtr(terraList[0]->getComponent<TerraComponent>());
+                if (nullptr != terraCompPtr)
+                {
+                    this->terra = terraCompPtr->getTerra();
+                }
+            }
+        }
+    }
+
+    unsigned long GameObjectPlaceComponent::getTargetTerraId(void) const
+    {
+        return this->targetTerraId->getULong();
+    }
+
+    void GameObjectPlaceComponent::setForbiddenTerraLayers(const Ogre::String& terraLayers)
+    {
+        this->checkAndSetForbiddenTerraLayers(terraLayers);
+        this->forbiddenTerraLayers->setValue(terraLayers);
+    }
+
+    Ogre::String GameObjectPlaceComponent::getForbiddenTerraLayers(void) const
+    {
+        return this->forbiddenTerraLayers->getString();
     }
 
     void GameObjectPlaceComponent::applyPreviewTransparency(GameObjectPtr shadowGameObjectPtr)
@@ -899,9 +1019,7 @@ namespace NOWA
             return Ogre::Vector3::ZERO;
         }
 
-        Ogre::Ray mouseRay;
-        ENQUEUE_GET_CAMERA_TO_VIEWPORT_RAY(camera, x, y, mouseRay);
-
+        Ogre::Ray mouseRay = camera->getCameraToViewportRay(x, y);
         this->raySceneQuery->setRay(mouseRay);
 
         Ogre::Vector3 hitPoint = Ogre::Vector3::ZERO;
@@ -924,9 +1042,6 @@ namespace NOWA
 
         // Store the hit object so mouseMoved can check its category against the exclusion mask
         this->lastHitObject = hitObject;
-        // Cache surface normal for gradient check even when alignToTerrain is off.
-        // 'normal' is already filled by getRaycastFromPoint.
-        this->lastSurfaceNormal = normal;
         return hitPoint;
     }
 
@@ -1014,9 +1129,6 @@ namespace NOWA
         //   1. Rotate UNIT_Y to surfaceNormal  (slope tilt)
         //   2. Compose with the user's Y-axis rotation
         Ogre::Quaternion slopeQuat = Ogre::Vector3::UNIT_Y.getRotationTo(surfaceNormal);
-
-        // Cache the surface normal so mouseMoved can check the gradient constraint.
-        this->lastSurfaceNormal = surfaceNormal;
 
         return slopeQuat * baseYRotation;
     }
@@ -1110,6 +1222,158 @@ namespace NOWA
         };
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "GameObjectPlaceComponent::checkExcludedCategoryOverlap");
         return *hitFound;
+    }
+
+    bool GameObjectPlaceComponent::checkGradientForbidden(const Ogre::Vector3& position) const
+    {
+        if (nullptr == this->terrainRayQuery)
+        {
+            return false;
+        }
+
+        auto shadowGO = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->activeGameObjectId);
+        if (nullptr == shadowGO || nullptr == shadowGO->getMovableObject())
+        {
+            return false;
+        }
+
+        Ogre::Aabb localAabb = shadowGO->getMovableObject()->getLocalAabb();
+        Ogre::SceneNode* shadowNode = shadowGO->getSceneNode();
+        Ogre::Vector3 scale = (nullptr != shadowNode) ? shadowNode->getScale() : Ogre::Vector3::UNIT_SCALE;
+
+        Ogre::Vector3 scaledHalf = localAabb.mHalfSize * scale;
+
+        // Expand by spacing — same footprint as the volume overlap query
+        const Ogre::Real s = this->spacing->getReal();
+        scaledHalf.x += s;
+        scaledHalf.z += s;
+        // Y expansion not needed for gradient — we only care about XZ footprint
+
+        // Exclude shadow object from rays
+        std::vector<Ogre::MovableObject*> excludeObjects;
+        excludeObjects.push_back(shadowGO->getMovableObject());
+
+        Ogre::Camera* camera = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
+        const Ogre::Real rayStartHeight = 20.0f;
+        const Ogre::Real maxAngle = this->maxPlacementGradient->getReal();
+
+        // Sample a grid across the full XZ footprint.
+        // 3x3 = 9 samples covers corners, edges and center — enough to detect
+        // a building partially overlapping a hill without being too expensive.
+        const int steps = 3;
+        for (int xi = 0; xi < steps; ++xi)
+        {
+            for (int zi = 0; zi < steps; ++zi)
+            {
+                // Map [0..steps-1] to [-1..+1] then scale by half extents
+                Ogre::Real tx = (steps > 1) ? ((Ogre::Real)xi / (steps - 1)) * 2.0f - 1.0f : 0.0f;
+                Ogre::Real tz = (steps > 1) ? ((Ogre::Real)zi / (steps - 1)) * 2.0f - 1.0f : 0.0f;
+
+                Ogre::Vector3 samplePos = position + Ogre::Vector3(tx * scaledHalf.x, 0.0f, tz * scaledHalf.z);
+
+                Ogre::Ray downRay(samplePos + Ogre::Vector3(0.0f, rayStartHeight, 0.0f), Ogre::Vector3::NEGATIVE_UNIT_Y);
+                this->terrainRayQuery->setRay(downRay);
+
+                Ogre::Vector3 sampleHit = Ogre::Vector3::ZERO;
+                Ogre::MovableObject* obj = nullptr;
+                Ogre::Real dist = 0.0f;
+                Ogre::Vector3 sampleNormal = Ogre::Vector3::UNIT_Y;
+
+                MathHelper::getInstance()->getRaycastFromPoint(this->terrainRayQuery, camera, sampleHit, (size_t&)obj, dist, sampleNormal, &excludeObjects);
+
+                if (sampleHit == Ogre::Vector3::ZERO)
+                {
+                    continue; // no hit at this sample — skip
+                }
+
+                // User confirmed: NEGATIVE_UNIT_Y is correct for this dot product
+                const Ogre::Real gradientAngleDeg = Ogre::Math::ACos(Ogre::Math::Clamp(sampleNormal.dotProduct(Ogre::Vector3::NEGATIVE_UNIT_Y), -1.0f, 1.0f)).valueDegrees();
+
+                if (gradientAngleDeg > maxAngle)
+                {
+                    return true; // any point over threshold → forbidden
+                }
+            }
+        }
+
+        return false;
+    }
+
+    void GameObjectPlaceComponent::checkAndSetForbiddenTerraLayers(const Ogre::String& terraLayers)
+    {
+        this->forbiddenTerraLayerList.clear();
+
+        // Parse "255,255,0,255" — four comma-separated values in [0..255].
+        // Values default to 255 (ignore) if fewer than 4 are provided.
+        std::vector<Ogre::String> tokens;
+        Ogre::String token;
+        for (size_t i = 0; i <= terraLayers.size(); ++i)
+        {
+            const char c = (i < terraLayers.size()) ? terraLayers[i] : '\0';
+            if (c == ',' || c == '\0')
+            {
+                if (false == token.empty())
+                {
+                    tokens.push_back(token);
+                }
+                token.clear();
+            }
+            else
+            {
+                token += c;
+            }
+        }
+
+        for (size_t i = 0; i < tokens.size() && i < 4; ++i)
+        {
+            int value = Ogre::StringConverter::parseInt(tokens[i]);
+            this->forbiddenTerraLayerList.emplace_back(Ogre::Math::Clamp(value, 0, 255));
+        }
+
+        // Pad to 4 entries with 255 (= ignore that layer)
+        while (this->forbiddenTerraLayerList.size() < 4)
+        {
+            this->forbiddenTerraLayerList.emplace_back(255);
+        }
+    }
+
+    bool GameObjectPlaceComponent::checkTerraLayerForbidden(const Ogre::Vector3& position) const
+    {
+        // No terra found or all layers set to 255 (ignore) -> never forbidden
+        if (nullptr == this->terra)
+        {
+            return false;
+        }
+
+        bool allIgnored = true;
+        for (int v : this->forbiddenTerraLayerList)
+        {
+            if (v < 255)
+            {
+                allIgnored = false;
+                break;
+            }
+        }
+        if (allIgnored)
+        {
+            return false;
+        }
+
+        // Sample the terra layer values at the footprint center.
+        // getLayerAt() returns the blend weights [0..255] for each of the 4 layers.
+        std::vector<int> layers = this->terra->getLayerAt(position);
+
+        for (size_t i = 0; i < std::min(layers.size(), this->forbiddenTerraLayerList.size()); ++i)
+        {
+            // Threshold 255 = ignore this layer.
+            // Otherwise: forbidden if the layer weight at this position is
+            // greater than the threshold (i.e. that layer is "active" here).
+            if (this->forbiddenTerraLayerList[i] < 255 && layers[i] > this->forbiddenTerraLayerList[i])
+            {
+                return true;
+            }
+        }
+        return false;
     }
 
     void GameObjectPlaceComponent::resolveShadowPhysicsComponent(void)
@@ -1219,7 +1483,7 @@ namespace NOWA
             return true;
         }
 
-        // Handle mousewheel rotation — only when rotate is enabled
+        // Mousewheel rotation — only when rotate is enabled
         if (true == this->rotateEnabled->getBool() && evt.state.Z.rel != 0)
         {
             this->currentRotationDegrees += (evt.state.Z.rel > 0) ? 15.0f : -15.0f;
@@ -1231,7 +1495,6 @@ namespace NOWA
         }
 
         Ogre::Vector3 hitPoint = this->getMouseWorldPosition(evt);
-        // lastHitObject is now set as a side-effect of getMouseWorldPosition
 
         if (hitPoint == Ogre::Vector3::ZERO)
         {
@@ -1260,38 +1523,42 @@ namespace NOWA
             return true;
         }
 
-        // ----------------------------------------------------------------
-        // Forbidden-surface detection — volume-based footprint overlap
-        // ----------------------------------------------------------------
-        // A single ray only detects the object directly under the cursor.
-        // A wide object (e.g. a building) may extend over an excluded-category
-        // object (e.g. an agent) even when the cursor is on open ground.
-        // We therefore check the full AABB footprint of the shadow object
-        // against all excluded-category objects in the scene.
-        const bool wasOnForbiddenSurface = this->isOnForbiddenSurface;
+        Ogre::Quaternion baseYRotation(Ogre::Degree(this->currentRotationDegrees), Ogre::Vector3::UNIT_Y);
+        Ogre::Quaternion targetOrientation;
 
-        // ----------------------------------------------------------------
-        // Gradient check — block placement on slopes steeper than maxPlacementGradient
-        // ----------------------------------------------------------------
-        // The surface normal is cached by getMouseWorldPosition (from the ray hit)
-        // or by computeTerrainAlignOrientation (when alignToTerrain is on).
-        // We measure the angle between the surface normal and straight up (UNIT_Y).
-        // If it exceeds maxPlacementGradient the placement is forbidden.
-        const Ogre::Real gradientAngleDeg = Ogre::Math::ACos(Ogre::Math::Clamp(this->lastSurfaceNormal.dotProduct(Ogre::Vector3::NEGATIVE_UNIT_Y), -1.0f, 1.0f)).valueDegrees();
-
-        const bool gradientForbidden = (gradientAngleDeg > this->maxPlacementGradient->getReal());
-
-        if (this->excludedCategoryId != 0)
+        if (this->alignToTerrain->getBool())
         {
-            this->isOnForbiddenSurface = this->checkExcludedCategoryOverlap(hitPoint) || gradientForbidden;
+            targetOrientation = this->computeTerrainAlignOrientation(hitPoint, baseYRotation);
         }
         else
         {
-            this->isOnForbiddenSurface = gradientForbidden;
+            targetOrientation = baseYRotation;
         }
 
-        // Transition the visual between normal-preview ↔ forbidden-preview
-        // to avoid redundant datablock churn, we only switch on state changes.
+        // Cache for use in mousePressed so the clone gets the correct orientation
+        this->currentPlacementOrientation = targetOrientation;
+
+        // ----------------------------------------------------------------
+        // Forbidden placement checks — evaluated in order of cost (cheapest first)
+        // ----------------------------------------------------------------
+
+        // 1. Gradient — sampled across full footprint AABB + spacing expansion.
+        //    A single center point would allow partial placement inside a hill.
+        const bool gradientForbidden = this->checkGradientForbidden(hitPoint);
+
+        // 2. Terra layer — forbidden if the terrain layer at hitPoint is active
+        const bool terraLayerForbidden = this->checkTerraLayerForbidden(hitPoint);
+
+        // 3. Category overlap — most expensive (volumetric query), only run if needed
+        const bool categoryForbidden = (this->excludedCategoryId != 0) && this->checkExcludedCategoryOverlap(hitPoint);
+
+        const bool wasOnForbiddenSurface = this->isOnForbiddenSurface;
+        this->isOnForbiddenSurface = gradientForbidden || terraLayerForbidden || categoryForbidden;
+
+        // ----------------------------------------------------------------
+        // Forbidden visual transition — only switch on state change to avoid
+        // redundant datablock churn every mouse move frame
+        // ----------------------------------------------------------------
         if (this->isOnForbiddenSurface != wasOnForbiddenSurface)
         {
             if (this->isOnForbiddenSurface)
@@ -1316,37 +1583,19 @@ namespace NOWA
             }
         }
 
-        
-
         // ----------------------------------------------------------------
-        // Orientation — Y-rotation base, optionally slope-aligned
+        // Move shadow object to hit position
         // ----------------------------------------------------------------
-        Ogre::Quaternion baseYRotation(Ogre::Degree(this->currentRotationDegrees), Ogre::Vector3::UNIT_Y);
-
-        Ogre::Quaternion targetOrientation;
-        if (this->alignToTerrain->getBool())
-        {
-            targetOrientation = this->computeTerrainAlignOrientation(hitPoint, baseYRotation);
-        }
-        else
-        {
-            targetOrientation = baseYRotation;
-        }
-
-        // Cache for use in mousePressed so the clone gets the correct orientation
-        this->currentPlacementOrientation = targetOrientation;
-
-        Ogre::Vector3 targetPosition = hitPoint;
-
         if (nullptr != this->shadowPhysicsComponent)
         {
-            this->shadowPhysicsComponent->setPosition(targetPosition);
+            this->shadowPhysicsComponent->setPosition(hitPoint);
             this->shadowPhysicsComponent->setOrientation(targetOrientation);
         }
         else
         {
-            NOWA::GraphicsModule::getInstance()->updateNodeTransform(node, targetPosition, targetOrientation, Ogre::Vector3::UNIT_SCALE, false, true);
+            NOWA::GraphicsModule::getInstance()->updateNodeTransform(node, hitPoint, targetOrientation, Ogre::Vector3::UNIT_SCALE, false, true);
         }
+
         return true;
     }
 

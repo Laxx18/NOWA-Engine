@@ -568,7 +568,7 @@ namespace NOWA
 			{
 				// start next state
 				this->changeAppState(this->findByName(this->nextAppStateName));
-				return true;
+				return;
 			}
 
 			// Check if the key does not exist already

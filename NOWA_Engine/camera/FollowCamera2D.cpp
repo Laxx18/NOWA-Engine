@@ -75,7 +75,7 @@ namespace NOWA
 		this->minimumBounds = minimumBounds/* + this->borderOffset*/;
 		this->maximumBounds = maximumBounds/* - this->borderOffset*/;
 
-		Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[FollowCamera2D] minimum bounds: " + Ogre::StringConverter::toString(this->minimumBounds)
+		Ogre::LogManager::getSingleton().logMessage(Ogre::LML_NORMAL, "[FollowCamera2D] minimum bounds: " + Ogre::StringConverter::toString(this->minimumBounds)
 		 + "maximum bounds: " + Ogre::StringConverter::toString(this->maximumBounds));
 
 		if (nullptr == this->camera)
@@ -258,7 +258,7 @@ namespace NOWA
 
 			NOWA::GraphicsModule::getInstance()->updateCameraPosition(this->camera, Ogre::Vector3(cameraPosition.x, this->minimumBounds.y + this->mostRightUp.y, cameraPosition.z));
 		}
-		// Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[FollowCamera2D] Position: " + Ogre::StringConverter::toString(this->camera->getPosition()));
+		// Ogre::LogManager::getSingleton().logMessage(Ogre::LML_NORMAL, "[FollowCamera2D] Position: " + Ogre::StringConverter::toString(this->camera->getPosition()));
 	}
 
 	void FollowCamera2D::rotateCamera(Ogre::Real dt, bool forJoyStick)

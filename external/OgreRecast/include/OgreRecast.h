@@ -701,6 +701,21 @@ public:
 
    void recreateDrawer(void);
 
+   // Creates a dedicated NavMeshQuery for a specific path slot.
+   // Allows concurrent pathfinding from multiple threads safely.
+   // Each slot must have exactly one query — call once per worker at connect time.
+   void createNavQueryForSlot(int pathSlot);
+
+   void destroyNavQueryForSlot(int pathSlot);
+
+   bool hasNavQueryForSlot(int pathSlot) const;
+
+   int acquireNextFreeSlot();
+
+   int FindPathWithQuery(dtNavMeshQuery* query, float* pStartPos, float* pEndPos, int nPathSlot, int nTarget);
+
+   dtNavMeshQuery* getNavQueryForSlot(int pathSlot) const;
+
    /**
      * Calculate visual Ogre meshes to visualize the recast navigation mesh for debugging.
      *
@@ -957,6 +972,12 @@ private:
    OgreRecastConfigParams m_configParams;
 
    OgreRecastDebugDraw* m_debugDrawer;
+
+   // Per-slot queries for concurrent threaded pathfinding.
+   // m_navQuery is kept for backward compat (single-threaded callers).
+   std::unordered_map<int, dtNavMeshQuery*> m_slotNavQueries;
+   std::map<int, int>             m_slotRefCounts;
+   mutable std::mutex m_slotNavQueriesMutex; // only for map access, not for query calls
 };
 
 #endif // #ifndef __OgreRecast_h_

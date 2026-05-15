@@ -10,6 +10,11 @@ GPL v3
 #include "gameobject/GameObjectComponent.h"
 #include "main/Events.h"
 
+namespace Ogre
+{
+    class Terra;
+}
+
 namespace NOWA
 {
     class PhysicsComponent;
@@ -97,10 +102,20 @@ namespace NOWA
         bool getAlignToTerrain() const;
 
         void setSpacing(Ogre::Real spacing);
+
         Ogre::Real getSpacing(void) const;
 
         void setMaxPlacementGradient(Ogre::Real maxGradientDegrees);
+
         Ogre::Real getMaxPlacementGradient(void) const;
+
+        void setTargetTerraId(unsigned long id);
+
+        unsigned long getTargetTerraId(void) const;
+
+        void setForbiddenTerraLayers(const Ogre::String& terraLayers);
+
+        Ogre::String getForbiddenTerraLayers(void) const;
 
         /**
          * @brief Sets the number of shadow game object slots.
@@ -193,6 +208,14 @@ namespace NOWA
         {
             return "Max Placement Gradient";
         }
+        static const Ogre::String AttrTargetTerraId(void)
+        {
+            return "Target Terra Id";
+        }
+        static const Ogre::String AttrForbiddenTerraLayers(void)
+        {
+            return "Forbidden Terra Layers";
+        }
         static const Ogre::String AttrPlaceObjectCount(void)
         {
             return "Place Object Count";
@@ -240,6 +263,12 @@ namespace NOWA
         Ogre::Quaternion computeTerrainAlignOrientation(const Ogre::Vector3& hitPoint, const Ogre::Quaternion& baseYRotation);
 
         bool checkExcludedCategoryOverlap(const Ogre::Vector3& position);
+
+        bool checkGradientForbidden(const Ogre::Vector3& position) const;
+
+        void checkAndSetForbiddenTerraLayers(const Ogre::String& terraLayers);
+
+        bool checkTerraLayerForbidden(const Ogre::Vector3& position) const;
     private:
         Ogre::String name;
 
@@ -250,6 +279,8 @@ namespace NOWA
         Variant* alignToTerrain;
         Variant* spacing;
         Variant* maxPlacementGradient;
+        Variant* targetTerraId;
+        Variant* forbiddenTerraLayers;
         Variant* placeObjectCount;
         std::vector<Variant*> gameObjectIds;
 
@@ -279,7 +310,8 @@ namespace NOWA
         std::vector<std::pair<Ogre::HlmsDatablock*, unsigned int>> forbiddenClonedDatablocks;
         Ogre::MovableObject* lastHitObject;
         Ogre::Quaternion currentPlacementOrientation;
-        Ogre::Vector3 lastSurfaceNormal;
+        std::vector<int> forbiddenTerraLayerList;
+        Ogre::Terra* terra;
     };
 
 } // namespace end
