@@ -80,6 +80,17 @@ namespace NOWA
 			return "Usage: Creates a reflection camera that will be used in a workspace with dynamic cubemap reflection.";
 		}
 
+		static std::optional<NOWA::GameObjectTypeDescriptor> getStaticTypeDescriptor()
+        {
+            NOWA::GameObjectTypeDescriptor desc;
+            desc.type = NOWA::REFLECTION_CAMERA;
+            desc.displayName = "Reflection Camera";
+            desc.meshToDisplay = "Camera.mesh";
+            desc.needsMeshItem = true;
+            desc.autoComponents = {ReflectionCameraComponent::getStaticClassName()};
+            return desc;
+        }
+
 		/**
 		 * @see		GameObjectComponent::update
 		 */

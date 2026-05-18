@@ -549,4 +549,15 @@ namespace NOWA
 		return this->dataBlockName;
 	}
 
+	std::optional<NOWA::GameObjectTypeDescriptor> PlaneComponent::getStaticTypeDescriptor()
+    {
+        NOWA::GameObjectTypeDescriptor desc;
+        desc.type = NOWA::PLANE;
+        desc.displayName = "Plane";
+        desc.meshToDisplay = "";
+        desc.needsMeshItem = true;
+        desc.autoComponents = {DatablockPbsComponent::getStaticClassName(), PlaneComponent::getStaticClassName()};
+        return desc;
+    }
+
 }; // namespace end

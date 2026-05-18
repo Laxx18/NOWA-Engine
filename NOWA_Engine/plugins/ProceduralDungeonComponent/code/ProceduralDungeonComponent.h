@@ -275,6 +275,19 @@ namespace NOWA
                    "Use 'Generate Now' to re-generate at the current position.";
         }
 
+        static std::optional<NOWA::GameObjectTypeDescriptor> getStaticTypeDescriptor()
+        {
+            NOWA::GameObjectTypeDescriptor desc;
+            desc.type = eType::CUSTOM;
+            desc.displayName = "Dungeon";
+            desc.meshToDisplay = "Node.mesh";
+            desc.needsMeshItem = false;
+            desc.enterMeshModifyMode = true;
+            desc.autoComponents = {"ProceduralDungeonComponent"};
+            desc.guardWithPluginCheck = true;
+            return desc;
+        }
+
         virtual Ogre::String getClassName(void) const override
         {
             return "ProceduralDungeonComponent";

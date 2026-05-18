@@ -263,6 +263,19 @@ namespace NOWA
                    "- setRoadStyle(s) sets the style string: Paved, Highway, Trail, Dirt, Cobblestone.\n";
         }
 
+        static std::optional<NOWA::GameObjectTypeDescriptor> getStaticTypeDescriptor()
+        {
+            NOWA::GameObjectTypeDescriptor desc;
+            desc.type = eType::CUSTOM;
+            desc.displayName = "Road";
+            desc.meshToDisplay = "Node.mesh";
+            desc.needsMeshItem = false;
+            desc.enterMeshModifyMode = true;
+            desc.autoComponents = {"ProceduralRoadComponent"};
+            desc.guardWithPluginCheck = true;
+            return desc;
+        }
+
         static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass);
 
         virtual Ogre::String getClassName(void) const override

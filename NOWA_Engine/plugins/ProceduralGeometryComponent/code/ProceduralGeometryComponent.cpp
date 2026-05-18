@@ -58,11 +58,6 @@ namespace NOWA
         previewMesh(nullptr),
         previewItem(nullptr),
         previewNode(nullptr),
-        buildState(BuildState::IDLE),
-        isEditorMeshModifyMode(false),
-        isSelected(false),
-        originPositionSet(false),
-        groundQuery(nullptr),
         physicsArtifactComponent(nullptr)
     {
         // ── Activation ────────────────────────────────────────────────────────
@@ -104,17 +99,17 @@ namespace NOWA
 
         // ── Descriptions ──────────────────────────────────────────────────────
         activated->setDescription("Activate / deactivate geometry placement mode.");
-        shape->setDescription("Primitive shape to generate.\n"
-                                "Box      : Size = width x height x depth\n"
-                                "Pyramid  : Size = baseW x height x baseD\n"
-                                "Sphere   : Size.x = radius (Y/Z ignored)\n"
-                                "Cylinder : Size.x = radius, Size.y = height\n"
-                                "Cone     : Size.x = radius, Size.y = height\n"
-                                "Capsule  : Size.x = radius, Size.y = body height (caps add 2xradius)\n"
-                                "Torus    : Size.x = major radius, Size.z = tube radius\n"
-                                "Plane    : Size.x = width, Size.z = depth\n"
-                                "Prism    : Size = baseW x height x baseD (triangular cross-section)\n"
-                                "Disc     : Size.x = outer radius, Size.z = inner radius (0 = solid)\n"
+        shape->setDescription("Primitive shape to generate. "
+                                "Box      : Size = width x height x depth "
+                                "Pyramid  : Size = baseW x height x baseD "
+                                "Sphere   : Size.x = radius (Y/Z ignored) "
+                                "Cylinder : Size.x = radius, Size.y = height "
+                                "Cone     : Size.x = radius, Size.y = height "
+                                "Capsule  : Size.x = radius, Size.y = body height (caps add 2xradius) "
+                                "Torus    : Size.x = major radius, Size.z = tube radius "
+                                "Plane    : Size.x = width, Size.z = depth "
+                                "Prism    : Size = baseW x height x baseD (triangular cross-section) "
+                                "Disc     : Size.x = outer radius, Size.z = inner radius (0 = solid) "
                                 "Wedge    : Size = width x height x depth (inclined ramp)");
         size->setDescription("Shape dimensions.  Interpretation depends on the selected Shape (see Shape tooltip).");
         segmentsH->setDescription("Horizontal (angular / width) tessellation.  Min = 3 for round shapes.");
@@ -123,8 +118,8 @@ namespace NOWA
         datablock->setDescription("PBS datablock name used for this geometry.");
         uvTiling->setDescription("UV tiling multiplier applied to all faces  (x = U repeat, y = V repeat).");
 
-        convertToMesh->setDescription("Bakes this procedural geometry to a static .mesh file and replaces the component\n"
-                                        "with a plain MeshComponent for optimal runtime performance.\n"
+        convertToMesh->setDescription("Bakes this procedural geometry to a static .mesh file and replaces the component "
+                                        "with a plain MeshComponent for optimal runtime performance. "
                                         "THIS IS A ONE-WAY, IRREVERSIBLE OPERATION.");
         convertToMesh->addUserData(GameObject::AttrActionExec());
         convertToMesh->addUserData(GameObject::AttrActionNeedRefresh());
@@ -232,16 +227,6 @@ namespace NOWA
     {
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralGeometryComponent] Init component for game object: " + this->gameObjectPtr->getName());
 
-        // ── Event subscriptions ───────────────────────────────────────────────
-        AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &ProceduralGeometryComponent::handleMeshModifyMode), NOWA::EventDataEditorMode::getStaticEventType());
-        AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &ProceduralGeometryComponent::handleGameObjectSelected), NOWA::EventDataGameObjectSelected::getStaticEventType());
-        AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &ProceduralGeometryComponent::handleComponentManuallyDeleted), EventDataDeleteComponent::getStaticEventType());
-
-        // ── Ground raycast query ──────────────────────────────────────────────
-        groundQuery = this->gameObjectPtr->getSceneManager()->createRayQuery(Ogre::Ray(), GameObjectController::ALL_CATEGORIES_ID);
-        groundQuery->setSortByDistance(true);
-        groundPlane = Ogre::Plane(Ogre::Vector3::UNIT_Y, 0.0f);
-
         // ── Preview scene node (always exists; item attached on demand) ────────
         NOWA::GraphicsModule::RenderCommand makeNode = [this]()
         {
@@ -252,9 +237,6 @@ namespace NOWA
 
         // ── Build geometry from loaded (or default) parameters ────────────────
         this->rebuildMesh();
-
-        // Mark that the GO position is already valid (loaded from scene file)
-        originPositionSet = true;
 
         return true;
     }
@@ -267,7 +249,6 @@ namespace NOWA
     bool ProceduralGeometryComponent::disconnect(void)
     {
         this->destroyPreviewMesh();
-        buildState = BuildState::IDLE;
         return true;
     }
 
@@ -279,32 +260,13 @@ namespace NOWA
     // ── When the component is added in the editor → enter placement mode ─────
     void ProceduralGeometryComponent::onAddComponent(void)
     {
-        // Signal the editor to enter Geometry Modify Mode
-        boost::shared_ptr<EventDataEditorMode> editorModeEvent(new EventDataEditorMode(EditorManager::EDITOR_MESH_MODIFY_MODE));
-        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(editorModeEvent);
 
-        isSelected = true;
-        buildState = BuildState::PLACING;
-        originPositionSet = false; // First click will set the GO position
-
-        this->addInputListener();
     }
 
     void ProceduralGeometryComponent::onRemoveComponent(void)
     {
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralGeometryComponent] onRemoveComponent");
 
-        AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ProceduralGeometryComponent::handleMeshModifyMode), NOWA::EventDataEditorMode::getStaticEventType());
-        AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ProceduralGeometryComponent::handleGameObjectSelected), NOWA::EventDataGameObjectSelected::getStaticEventType());
-        AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ProceduralGeometryComponent::handleComponentManuallyDeleted), EventDataDeleteComponent::getStaticEventType());
-
-        if (nullptr != groundQuery)
-        {
-            this->gameObjectPtr->getSceneManager()->destroyQuery(groundQuery);
-            groundQuery = nullptr;
-        }
-
-        this->removeInputListener();
         this->destroyPreviewMesh();
         this->destroyGeometryMesh();
 
@@ -650,144 +612,6 @@ namespace NOWA
     }
 
     // =========================================================================
-    //  Mouse / Keyboard handlers
-    // =========================================================================
-
-    bool ProceduralGeometryComponent::mousePressed(const OIS::MouseEvent& evt, OIS::MouseButtonID id)
-    {
-        if (false == activated->getBool())
-        {
-            return true;
-        }
-        // Ignore if MyGUI has focus (property panel click-through guard)
-        if (nullptr != NOWA::GraphicsModule::getInstance()->getMyGUIFocusWidget())
-        {
-            return true;
-        }
-
-        Ogre::Camera* camera = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
-        if (nullptr == camera)
-        {
-            return true;
-        }
-
-        if (buildState != BuildState::PLACING)
-        {
-            return true;
-        }
-
-        Ogre::Real screenX = 0.0f;
-        Ogre::Real screenY = 0.0f;
-        MathHelper::getInstance()->mouseToViewPort(evt.state.X.abs, evt.state.Y.abs, screenX, screenY, Core::getSingletonPtr()->getOgreRenderWindow());
-
-        // ── Right-click / middle-click → cancel placement ─────────────────────
-        if (id == OIS::MB_Right || id == OIS::MB_Middle)
-        {
-            this->destroyPreviewMesh();
-            buildState = BuildState::IDLE;
-            this->removeInputListener();
-
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralGeometryComponent] Placement cancelled by right-click");
-            return false;
-        }
-
-        if (id != OIS::MB_Left)
-        {
-            return true;
-        }
-
-        // ── Left-click → confirm placement position ───────────────────────────
-        Ogre::Vector3 hitPosition;
-        if (this->raycastGround(screenX, screenY, hitPosition))
-        {
-            // ── Undo: begin transaction ───────────────────────────────────────
-            boost::shared_ptr<NOWA::EventDataCommandTransactionBegin> evtBegin(new NOWA::EventDataCommandTransactionBegin("Place Geometry"));
-            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(evtBegin);
-
-            // ── Move the GameObject to the placement point ────────────────────
-            NOWA::GraphicsModule::RenderCommand setPos = [this, hitPosition]()
-            {
-                this->gameObjectPtr->getSceneNode()->setPosition(hitPosition);
-            };
-            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(setPos), "ProceduralGeometryComponent::placement_setPos");
-
-            originPositionSet = true;
-
-            // ── Undo: end transaction ─────────────────────────────────────────
-            boost::shared_ptr<NOWA::EventDataCommandTransactionEnd> evtEnd(new NOWA::EventDataCommandTransactionEnd());
-            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(evtEnd);
-
-            // ── Finalize: destroy preview, build real mesh ────────────────────
-            this->destroyPreviewMesh();
-            this->rebuildMesh();
-
-            buildState = BuildState::IDLE;
-            this->removeInputListener();
-
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralGeometryComponent] Geometry placed at: " + Ogre::StringConverter::toString(hitPosition));
-        }
-
-        return false;
-    }
-
-    bool ProceduralGeometryComponent::mouseReleased(const OIS::MouseEvent& evt, OIS::MouseButtonID id)
-    {
-        return true;
-    }
-
-    bool ProceduralGeometryComponent::mouseMoved(const OIS::MouseEvent& evt)
-    {
-        if (false == activated->getBool() || buildState != BuildState::PLACING)
-        {
-            return true;
-        }
-
-        Ogre::Real screenX = 0.0f;
-        Ogre::Real screenY = 0.0f;
-        MathHelper::getInstance()->mouseToViewPort(evt.state.X.abs, evt.state.Y.abs, screenX, screenY, Core::getSingletonPtr()->getOgreRenderWindow());
-
-        Ogre::Vector3 hitPosition;
-        if (this->raycastGround(screenX, screenY, hitPosition))
-        {
-            // Lazy creation: by the time the user moves the mouse, postInit() has
-            // already run, so previewNode is guaranteed to be valid.
-            if (nullptr == previewItem)
-            {
-                this->createPreviewMesh();
-            }
-
-            this->updatePreviewPosition(hitPosition);
-        }
-
-        return true;
-    }
-
-    bool ProceduralGeometryComponent::keyPressed(const OIS::KeyEvent& evt)
-    {
-        if (false == activated->getBool())
-        {
-            return true;
-        }
-
-        if (evt.key == OIS::KC_ESCAPE && buildState == BuildState::PLACING)
-        {
-            this->destroyPreviewMesh();
-            buildState = BuildState::IDLE;
-            this->removeInputListener();
-
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralGeometryComponent] Placement cancelled by ESC");
-            return false;
-        }
-
-        return true;
-    }
-
-    bool ProceduralGeometryComponent::keyReleased(const OIS::KeyEvent& evt)
-    {
-        return true;
-    }
-
-    // =========================================================================
     //  Geometry build pipeline
     // =========================================================================
 
@@ -1010,13 +834,6 @@ namespace NOWA
             {
                 geomItem->getSubItem(0)->setDatablock(db);
             }
-        }
-
-        // Position the GO at placement point (only on very first creation)
-        if (false == originPositionSet)
-        {
-            // postInit sets this to true after the first scene-load build.
-            // During interactive placement the LMB handler sets the position.
         }
 
         this->gameObjectPtr->getSceneNode()->attachObject(geomItem);
@@ -2072,155 +1889,6 @@ namespace NOWA
             return GeometryShape::WEDGE;
         }
         return GeometryShape::BOX;
-    }
-
-    // =========================================================================
-    //  Raycast helpers
-    // =========================================================================
-
-    bool ProceduralGeometryComponent::raycastGround(Ogre::Real screenX, Ogre::Real screenY, Ogre::Vector3& outHitPosition)
-    {
-        Ogre::Camera* camera = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
-        if (nullptr == camera || nullptr == groundQuery)
-        {
-            return false;
-        }
-
-        // Build pick ray
-        Ogre::Ray ray = camera->getCameraToViewportRay(screenX, screenY);
-        groundQuery->setRay(ray);
-        groundQuery->setQueryMask(GameObjectController::ALL_CATEGORIES_ID);
-
-        Ogre::RaySceneQueryResult& results = groundQuery->execute();
-
-        for (const auto& hit : results)
-        {
-            if (hit.movable && hit.movable != geomItem && hit.movable != previewItem)
-            {
-                outHitPosition = ray.getPoint(hit.distance);
-                return true;
-            }
-        }
-
-        // Fallback: intersect with the world Y=0 plane
-        std::pair<bool, Ogre::Real> planeHit = ray.intersects(groundPlane);
-        if (planeHit.first)
-        {
-            outHitPosition = ray.getPoint(planeHit.second);
-            return true;
-        }
-
-        return false;
-    }
-
-    Ogre::Real ProceduralGeometryComponent::getGroundHeight(const Ogre::Vector3& worldXZPosition)
-    {
-        if (nullptr == groundQuery)
-        {
-            return 0.0f;
-        }
-
-        Ogre::Ray downRay(Ogre::Vector3(worldXZPosition.x, 1000.0f, worldXZPosition.z), Ogre::Vector3::NEGATIVE_UNIT_Y);
-        groundQuery->setRay(downRay);
-
-        Ogre::RaySceneQueryResult& res = groundQuery->execute();
-        if (false == res.empty())
-        {
-            return 1000.0f - res.front().distance;
-        }
-
-        return 0.0f;
-    }
-
-    // =========================================================================
-    //  Event handlers
-    // =========================================================================
-
-    void ProceduralGeometryComponent::handleMeshModifyMode(NOWA::EventDataPtr eventData)
-    {
-        auto cast = boost::static_pointer_cast<EventDataEditorMode>(eventData);
-        isEditorMeshModifyMode = (cast->getManipulationMode() == EditorManager::EDITOR_MESH_MODIFY_MODE);
-        this->updateModificationState();
-    }
-
-    void ProceduralGeometryComponent::handleGameObjectSelected(NOWA::EventDataPtr eventData)
-    {
-        auto cast = boost::static_pointer_cast<EventDataGameObjectSelected>(eventData);
-
-        if (cast->getGameObjectId() == this->gameObjectPtr->getId())
-        {
-            isSelected = cast->getIsSelected();
-        }
-        else if (cast->getIsSelected())
-        {
-            isSelected = false;
-        }
-
-        this->updateModificationState();
-    }
-
-    void ProceduralGeometryComponent::handleComponentManuallyDeleted(NOWA::EventDataPtr eventData)
-    {
-        auto cast = boost::static_pointer_cast<EventDataDeleteComponent>(eventData);
-        // Nothing special needed here for geometry – no external data file to clean up
-        (void)cast;
-    }
-
-    // =========================================================================
-    //  Input listener (render-thread-safe)
-    // =========================================================================
-
-    void ProceduralGeometryComponent::addInputListener(void)
-    {
-        const Ogre::String listenerName = ProceduralGeometryComponent::getStaticClassName() + "_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
-
-        NOWA::GraphicsModule::RenderCommand cmd = [this, listenerName]()
-        {
-            if (auto* core = InputDeviceCore::getSingletonPtr())
-            {
-                core->addKeyListener(this, listenerName);
-                core->addMouseListener(this, listenerName);
-            }
-        };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "ProceduralGeometryComponent::addInputListener");
-    }
-
-    void ProceduralGeometryComponent::removeInputListener(void)
-    {
-        const Ogre::String listenerName = ProceduralGeometryComponent::getStaticClassName() + "_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
-
-        NOWA::GraphicsModule::RenderCommand cmd = [this, listenerName]()
-        {
-            if (auto* core = InputDeviceCore::getSingletonPtr())
-            {
-                core->removeKeyListener(listenerName);
-                core->removeMouseListener(listenerName);
-            }
-        };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "ProceduralGeometryComponent::removeInputListener");
-    }
-
-    void ProceduralGeometryComponent::updateModificationState(void)
-    {
-        const bool shouldBeActive = activated->getBool() && isEditorMeshModifyMode && isSelected;
-
-        if (shouldBeActive)
-        {
-            // Re-activate input only if in PLACING mode (e.g. when re-selecting a GO)
-            if (buildState == BuildState::PLACING)
-            {
-                this->addInputListener();
-            }
-        }
-        else
-        {
-            if (buildState == BuildState::PLACING)
-            {
-                this->destroyPreviewMesh();
-                buildState = BuildState::IDLE;
-            }
-            this->removeInputListener();
-        }
     }
 
     // =========================================================================

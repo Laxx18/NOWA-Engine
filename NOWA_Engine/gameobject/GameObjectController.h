@@ -577,7 +577,7 @@ namespace NOWA
 		 * @note		Be careful with this game object as the life cycle will be extended. E.g. when using this game object as a part in the app state. Call gameObjectPtr.reset() in the @AppState::exit() method.
 		 * 				Better use @GameObjectController::getGameObjectFromId() function, as it is faster in lookup and saver as game object names may change.
 		 */
-		std::vector<GameObjectPtr> getGameObjectsFromType(GameObject::eType type) const;
+		std::vector<GameObjectPtr> getGameObjectsFromType(NOWA::eType type) const;
 
 		/**
 		 * @brief		Gets the first game object that matches the pattern. E.g. pattern = "Enemy*" would get "Enemy1Abdcdedf". This function can used if the developer does not now the name exactly.

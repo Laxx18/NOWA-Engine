@@ -72,50 +72,48 @@ Ogre::Light* ProjectManager::createSunLight(void)
 {
 	Ogre::Light* sunLight = nullptr;
 
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ProjectManager::createSunLight", _1(&sunLight),
-	{
-		try
-		{
-			Ogre::SceneNode* lightNode = this->sceneManager->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_DYNAMIC);
-			lightNode->setPosition(0, 35.0f, 50.0f);
-			lightNode->setOrientation(NOWA::MathHelper::getInstance()->degreesToQuat(Ogre::Vector3(-45.0f, 0.0f, 0.0f)));
+	NOWA::GraphicsModule::RenderCommand renderCommand = [this, &sunLight]()
+    {
+        try
+        {
+            Ogre::SceneNode* lightNode = this->sceneManager->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_DYNAMIC);
+            lightNode->setPosition(0, 35.0f, 50.0f);
+            lightNode->setOrientation(NOWA::MathHelper::getInstance()->degreesToQuat(Ogre::Vector3(-45.0f, 0.0f, 0.0f)));
 
-			Ogre::Item* newItem = this->sceneManager->createItem("LightDirectional.mesh");
-			lightNode->attachObject(newItem);
+            Ogre::Item* newItem = this->sceneManager->createItem("LightDirectional.mesh");
+            lightNode->attachObject(newItem);
 
-			Ogre::String gameObjectName = "SunLight";
-			newItem->setName(gameObjectName);
-			lightNode->setName(gameObjectName);
+            Ogre::String gameObjectName = "SunLight";
+            newItem->setName(gameObjectName);
+            lightNode->setName(gameObjectName);
 
-			NOWA::GameObjectPtr gameObjectPtr = NOWA::GameObjectFactory::getInstance()->createGameObject(
-				this->sceneManager, lightNode, newItem, NOWA::GameObject::LIGHT_DIRECTIONAL,
-				NOWA::GameObjectController::MAIN_LIGHT_ID);
+            NOWA::GameObjectPtr gameObjectPtr = NOWA::GameObjectFactory::getInstance()->createGameObject(this->sceneManager, lightNode, newItem, NOWA::eType::LIGHT_DIRECTIONAL, NOWA::GameObjectController::MAIN_LIGHT_ID);
 
-			if (nullptr != gameObjectPtr)
-			{
-				gameObjectPtr->getAttribute(NOWA::GameObject::AttrName())->setReadOnly(true);
+            if (nullptr != gameObjectPtr)
+            {
+                gameObjectPtr->getAttribute(NOWA::GameObject::AttrName())->setReadOnly(true);
 
-				NOWA::LightDirectionalCompPtr lightComponentPtr = boost::dynamic_pointer_cast<NOWA::LightDirectionalComponent>(
-					NOWA::GameObjectFactory::getInstance()->createComponent(
-						gameObjectPtr, NOWA::LightDirectionalComponent::getStaticClassName()));
+                NOWA::LightDirectionalCompPtr lightComponentPtr =
+                    boost::dynamic_pointer_cast<NOWA::LightDirectionalComponent>(NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, NOWA::LightDirectionalComponent::getStaticClassName()));
 
-				lightComponentPtr->setPowerScale(Ogre::Math::PI);
-				lightComponentPtr->setSpecularColor(Ogre::Vector3(0.8f, 0.8f, 0.8f));
+                lightComponentPtr->setPowerScale(Ogre::Math::PI);
+                lightComponentPtr->setSpecularColor(Ogre::Vector3(0.8f, 0.8f, 0.8f));
 
-				sunLight = lightComponentPtr->getOgreLight();
-				sunLight->setName("SunLight");
+                sunLight = lightComponentPtr->getOgreLight();
+                sunLight->setName("SunLight");
 
-				NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->registerGameObject(gameObjectPtr);
-			}
-		}
-		catch (const Ogre::Exception& exception)
-		{
-			Ogre::String message = "[ProjectManager] Failed to create sun light: " + exception.getDescription();
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, message);
-			boost::shared_ptr<NOWA::EventDataFeedback> eventData(new NOWA::EventDataFeedback(false, message));
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventData);
-		}
-	});
+                NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->registerGameObject(gameObjectPtr);
+            }
+        }
+        catch (const Ogre::Exception& exception)
+        {
+            Ogre::String message = "[ProjectManager] Failed to create sun light: " + exception.getDescription();
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, message);
+            boost::shared_ptr<NOWA::EventDataFeedback> eventData(new NOWA::EventDataFeedback(false, message));
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventData);
+        }
+    };
+    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ProjectManager::createSunLight");
 
 	return sunLight;
 }
@@ -138,7 +136,7 @@ Ogre::Camera* ProjectManager::createMainCamera(void)
         newItem->setName(gameObjectName);
         cameraNode->setName(gameObjectName);
 
-        NOWA::GameObjectPtr gameObjectPtr = NOWA::GameObjectFactory::getInstance()->createGameObject(this->sceneManager, cameraNode, newItem, NOWA::GameObject::CAMERA, NOWA::GameObjectController::MAIN_CAMERA_ID);
+        NOWA::GameObjectPtr gameObjectPtr = NOWA::GameObjectFactory::getInstance()->createGameObject(this->sceneManager, cameraNode, newItem, NOWA::CAMERA, NOWA::GameObjectController::MAIN_CAMERA_ID);
         if (nullptr != gameObjectPtr)
         {
             // Do not permit to change the name of the sun light
@@ -184,7 +182,7 @@ void ProjectManager::createMainGameObject(void)
 		mainGameObjectItem->setName(gameObjectName);
 		mainGameObjectNode->setName(gameObjectName);
 
-		NOWA::GameObjectPtr gameObjectPtr = NOWA::GameObjectFactory::getInstance()->createGameObject(this->sceneManager, mainGameObjectNode, mainGameObjectItem, NOWA::GameObject::SCENE_NODE, NOWA::GameObjectController::MAIN_GAMEOBJECT_ID);
+		NOWA::GameObjectPtr gameObjectPtr = NOWA::GameObjectFactory::getInstance()->createGameObject(this->sceneManager, mainGameObjectNode, mainGameObjectItem, NOWA::SCENE_NODE, NOWA::GameObjectController::MAIN_GAMEOBJECT_ID);
 		if (nullptr != gameObjectPtr)
 		{
 			// Do not permit to change the name of the sun light
@@ -400,8 +398,9 @@ void ProjectManager::loadProject(const Ogre::String& filePathName, unsigned shor
 				);
 
 			// Internally calls invalidate cache, so that all newton data is set to default for deterministic simulations, when started again
-            this->dotSceneImportModule->setShowLoadingDetails(true);
-            this->dotSceneImportModule->setShowProgressBar(true); 
+			// Causes crash in release mode
+            // this->dotSceneImportModule->setShowLoadingDetails(true);
+            // this->dotSceneImportModule->setShowProgressBar(true); 
 			success = this->dotSceneImportModule->parseScene(this->projectParameter.projectName, this->projectParameter.sceneName, "Projects", nullptr, nullptr);
 		};
 		NOWA::AppStateManager::getSingletonPtr()->enqueueAndWait(std::move(logicCommand));

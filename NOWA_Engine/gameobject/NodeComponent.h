@@ -74,6 +74,17 @@ namespace NOWA
 			return "Usage: This Component is used as waypoint for several cases, e.g. AI-Pathfollow, Camera tracking etc.";
 		}
 
+		static std::optional<NOWA::GameObjectTypeDescriptor> getStaticTypeDescriptor()
+        {
+            NOWA::GameObjectTypeDescriptor desc;
+            desc.type = NOWA::SCENE_NODE;
+            desc.displayName = "Node";
+            desc.meshToDisplay = "Node.mesh";
+            desc.needsMeshItem = true;
+            desc.autoComponents = {NodeComponent::getStaticClassName()};
+            return desc;
+        }
+
 		virtual void update(Ogre::Real dt, bool notSimulating = false) override;
 
 		/**

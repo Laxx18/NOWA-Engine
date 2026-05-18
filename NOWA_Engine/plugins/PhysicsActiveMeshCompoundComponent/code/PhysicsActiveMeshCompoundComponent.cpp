@@ -61,7 +61,7 @@ namespace NOWA
 
     PhysicsActiveMeshCompoundComponent::~PhysicsActiveMeshCompoundComponent()
     {
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PhysicsActiveMeshCompoundComponent] Destructor for: " + this->gameObjectPtr->getName());
+        
     }
 
     void PhysicsActiveMeshCompoundComponent::install(const Ogre::NameValuePairList* options)

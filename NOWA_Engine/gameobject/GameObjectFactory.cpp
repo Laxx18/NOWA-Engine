@@ -90,6 +90,9 @@ namespace NOWA
 {
 	GameObjectFactory::GameObjectFactory()
 	{
+        // Set before any registerClass call so the pointer is valid throughout.
+        this->componentFactory.setGameObjectFactory(this);
+
 		// Component factory is of type: GameObjectComponent and the specific id, register searches for the hashed id and puts it in a map for a later creation
 
 		this->componentFactory.registerClass<DescriptionComponent>(DescriptionComponent::getStaticClassId(), DescriptionComponent::getStaticClassName());
@@ -289,8 +292,31 @@ namespace NOWA
 		return &instance;
 	}
 
-	GameObjectPtr GameObjectFactory::createOrSetGameObjectFromXML(rapidxml::xml_node<>* xmlNode, Ogre::SceneManager* sceneManager, Ogre::SceneNode* sceneNode,
-		Ogre::MovableObject* movableObject, GameObject::eType type, const Ogre::String& filename, bool forceCreation, bool forceClampY, GameObjectPtr existingGameObjectPtr)
+	void GameObjectFactory::registerGameObjectType(unsigned int id, GameObjectTypeDescriptor descriptor)
+    {
+        if (this->registeredTypes.find(id) == this->registeredTypes.end())
+        {
+            this->registeredTypes.emplace(id, std::move(descriptor));
+        }
+    }
+
+    const GameObjectTypeDescriptor* GameObjectFactory::findTypeDescriptor(unsigned int id) const
+    {
+        auto it = this->registeredTypes.find(id);
+        if (it != this->registeredTypes.cend())
+        {
+            return &it->second;
+        }
+        return nullptr;
+    }
+
+    const std::map<unsigned int, GameObjectTypeDescriptor>& GameObjectFactory::getRegisteredTypes() const
+    {
+        return this->registeredTypes;
+    }
+
+    GameObjectPtr GameObjectFactory::createOrSetGameObjectFromXML(rapidxml::xml_node<>* xmlNode, Ogre::SceneManager* sceneManager, Ogre::SceneNode* sceneNode,
+		Ogre::MovableObject* movableObject, NOWA::eType type, const Ogre::String& filename, bool forceCreation, bool forceClampY, GameObjectPtr existingGameObjectPtr)
 	{
 		rapidxml::xml_node<>* propertyElement = xmlNode->first_node("property");
 		Ogre::String gameObjectName;
@@ -741,7 +767,7 @@ namespace NOWA
 		return resultComp;
 	}
 
-	GameObjectPtr GameObjectFactory::createGameObject(Ogre::SceneManager* sceneManager, Ogre::SceneNode* sceneNode, Ogre::MovableObject* movableObject, GameObject::eType type, const unsigned long id)
+	GameObjectPtr GameObjectFactory::createGameObject(Ogre::SceneManager* sceneManager, Ogre::SceneNode* sceneNode, Ogre::MovableObject* movableObject, NOWA::eType type, const unsigned long id)
 	{
 		Ogre::String category = "Default";
 		Ogre::String renderCategory = "All";

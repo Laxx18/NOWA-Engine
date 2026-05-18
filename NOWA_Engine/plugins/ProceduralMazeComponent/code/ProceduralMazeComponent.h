@@ -300,6 +300,18 @@ namespace NOWA
 				"and materials. Use getSolutionPath() to get the solution.";
 		}
 
+		static std::optional<NOWA::GameObjectTypeDescriptor> getStaticTypeDescriptor()
+        {
+            NOWA::GameObjectTypeDescriptor desc;
+            desc.type = eType::CUSTOM;
+            desc.displayName = "Maze";
+            desc.meshToDisplay = "Node.mesh";
+            desc.needsMeshItem = false;
+            desc.autoComponents = {"ProceduralMazeComponent"};
+            desc.guardWithPluginCheck = true;
+            return desc;
+        }
+
 		static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass);
 
 	public:

@@ -454,13 +454,14 @@ namespace NOWA
     class AddGameObjectUndoCommand : public ICommand
     {
     public:
-        AddGameObjectUndoCommand(Ogre::SceneManager* sceneManager, Ogre::SceneNode* placeNode, std::vector<Ogre::String> meshData, GameObject::eType type, EditorManager* editorManager) :
+        AddGameObjectUndoCommand(Ogre::SceneManager* sceneManager, Ogre::SceneNode* placeNode, std::vector<Ogre::String> meshData, NOWA::eType type, unsigned int descriptorId, EditorManager* editorManager) :
             sceneManager(sceneManager),
             position(placeNode->getPosition()),
             scale(placeNode->getScale()),
             orientation(placeNode->getOrientation()),
             meshData(meshData),
             type(type),
+            descriptorId(descriptorId),
             objectNode(nullptr),
             id(0),
             editorManager(editorManager)
@@ -476,7 +477,7 @@ namespace NOWA
         {
             if (0 != this->id)
             {
-                AppStateManager::getSingletonPtr()->getGameObjectController()->deleteGameObject(id);
+                AppStateManager::getSingletonPtr()->getGameObjectController()->deleteGameObject(this->id);
             }
         }
 
@@ -484,21 +485,22 @@ namespace NOWA
         {
             NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
             {
-                // Create custom scenenode to store temporary data
-                this->objectNode = this->sceneManager->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_STATIC);
+                // ITEM has no descriptor by design — nullptr is the correct result.
+                // Every other eType must have a registered descriptor.
+                const auto* desc = GameObjectFactory::getInstance()->findTypeDescriptor(this->descriptorId);
 
-                if (GameObject::OCEAN == this->type || GameObject::TERRA == this->type)
+                if (nullptr != desc && desc->forceZeroTransform)
                 {
                     this->position = Ogre::Vector3::ZERO;
                     this->orientation = Ogre::Quaternion::IDENTITY;
                     this->scale = Ogre::Vector3::UNIT_SCALE;
                 }
 
+                this->objectNode = this->sceneManager->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_STATIC);
                 this->objectNode->setPosition(this->position);
                 this->objectNode->setScale(this->scale);
                 this->objectNode->setOrientation(this->orientation);
 
-                // Only create id once, so that when undo, redo, the id is the same
                 if (0 == this->id)
                 {
                     this->id = NOWA::makeUniqueID();
@@ -507,233 +509,77 @@ namespace NOWA
                 Ogre::String meshName;
                 Ogre::MovableObject* newMovableObject = nullptr;
 
-                if (GameObject::OCEAN != this->type && GameObject::TERRA != this->type && GameObject::DECAL != this->type && GameObject::LIGHT_AREA != this->type && GameObject::MAZE != this->type && GameObject::WALL != this->type &&
-                    GameObject::ROAD != this->type && GameObject::DUNGEON != this->type && GameObject::GEOMETRY != this->type)
+                // desc == nullptr -> ITEM: mesh file chosen by the user in the asset browser.
+                // desc with needsMeshItem=true  -> placeholderMeshName stored in meshData[0]
+                //     by attachMeshToPlaceNode; becomes the persistent Ogre::Item.
+                // desc with needsMeshItem=false -> no Ogre::Item; displayName drives naming.
+                if (nullptr == desc || desc->needsMeshItem)
                 {
                     meshName = this->meshData[0];
 
                     Ogre::Item* newItem = this->sceneManager->createItem(meshName, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, Ogre::SCENE_STATIC);
-                    this->objectNode->attachObject(newItem);
 
+                    this->objectNode->attachObject(newItem);
                     newMovableObject = newItem;
 
-                    // Copy the datablocks from place entity to new one
                     for (size_t i = 1; i < this->meshData.size(); i++)
                     {
                         newItem->getSubItem(i - 1)->setDatablock(this->meshData[i]);
                     }
 
-                    // Get name without .mesh
-                    size_t found = meshName.find(".");
-                    if (Ogre::String::npos != found)
+                    size_t dotPos = meshName.find('.');
+                    if (Ogre::String::npos != dotPos)
                     {
-                        meshName = meshName.substr(0, found);
+                        meshName = meshName.substr(0, dotPos);
                     }
                 }
                 else
                 {
-                    if (GameObject::OCEAN == this->type)
-                    {
-                        meshName = "Ocean";
-                    }
-                    else if (GameObject::TERRA == this->type)
-                    {
-                        meshName = "Terra";
-                    }
-                    else if (GameObject::LIGHT_AREA == this->type)
-                    {
-                        meshName = "LightArea";
-                    }
-                    else if (GameObject::DECAL == this->type)
-                    {
-                        meshName = "Decal";
-                    }
-                    else if (GameObject::MAZE == this->type)
-                    {
-                        meshName = "Maze";
-                    }
-                    else if (GameObject::WALL == this->type)
-                    {
-                        meshName = "Wall";
-                    }
-                    else if (GameObject::ROAD == this->type)
-                    {
-                        meshName = "Road";
-                    }
-                    else if (GameObject::DUNGEON == this->type)
-                    {
-                        meshName = "Dungeon";
-                    }
-                    else if (GameObject::GEOMETRY == this->type)
-                    {
-                        meshName = "Geometry";
-                    }
+                    // needsMeshItem=false — desc is guaranteed non-null here.
+                    meshName = desc->displayName;
                 }
 
-                // Do not use # anymore, because its reserved in mygui as code-word the # and everything after that will be removed!
                 Ogre::String gameObjectName = meshName + "_0";
                 AppStateManager::getSingletonPtr()->getGameObjectController()->getValidatedGameObjectName(gameObjectName);
 
-                if (GameObject::OCEAN != this->type && GameObject::TERRA != this->type && GameObject::DECAL != this->type && GameObject::LIGHT_AREA != this->type && GameObject::MAZE != this->type && GameObject::WALL != this->type &&
-                    GameObject::ROAD != this->type && GameObject::DUNGEON != this->type && GameObject::GEOMETRY != this->type)
+                if (nullptr != newMovableObject)
                 {
                     newMovableObject->setName(gameObjectName);
                 }
 
                 this->objectNode->setName(gameObjectName);
+
                 GameObjectPtr gameObjectPtr = GameObjectFactory::getInstance()->createGameObject(this->sceneManager, this->objectNode, newMovableObject, this->type, this->id);
-                if (nullptr != gameObjectPtr)
+
+                if (nullptr != gameObjectPtr && nullptr != desc)
                 {
-                    if (GameObject::PLANE == this->type)
-                    {
-                        // Add the plane component
-                        NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, DatablockPbsComponent::getStaticClassName());
-                        NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, PlaneComponent::getStaticClassName());
-                        gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
-                    }
-                    else if (GameObject::MIRROR == this->type)
-                    {
-                        // Add the planar reflection component
-                        NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, PlanarReflectionComponent::getStaticClassName());
-                        gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
-                    }
-                    else if (GameObject::LIGHT_DIRECTIONAL == this->type)
-                    {
-                        // Add the light direcitional component
-                        NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, LightDirectionalComponent::getStaticClassName());
-                        gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
-                    }
-                    else if (GameObject::LIGHT_SPOT == this->type)
-                    {
-                        // Add the light spot component
-                        NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, LightSpotComponent::getStaticClassName());
-                        gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
-                    }
-                    else if (GameObject::LIGHT_POINT == this->type)
-                    {
-                        // Add the light point component
-                        NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, LightPointComponent::getStaticClassName());
-                        gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
-                    }
-                    else if (GameObject::LIGHT_AREA == this->type)
-                    {
-                        // Add the light area component
-                        NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, LightAreaComponent::getStaticClassName());
-                        gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
-                    }
-                    else if (GameObject::CAMERA == this->type)
-                    {
-                        // This is required, because when a camera is created via the editor, it must be placed where placenode has been when the user clicked the mouse button
-                        // But when a camera is loaded from scene, it must not have an orientation, else there are ugly side effects
-                        CameraComponent::setJustCreated(true);
-                        // Add the camera component
-                        NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, CameraComponent::getStaticClassName());
-                        NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, WorkspacePbsComponent::getStaticClassName());
-                        gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
+                    gameObjectPtr->setDefaultDirection(desc->defaultDirection);
 
-                        CameraComponent::setJustCreated(true);
-                    }
-                    else if (GameObject::REFLECTION_CAMERA == this->type)
+                    if (desc->preComponentsCallback)
                     {
-                        // Add the camera component
-                        NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, ReflectionCameraComponent::getStaticClassName());
-                        gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
+                        desc->preComponentsCallback();
                     }
-                    else if (GameObject::SCENE_NODE == this->type)
-                    {
-                        // Add the scene node component
-                        NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, NodeComponent::getStaticClassName());
-                        gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
-                    }
-                    else if (GameObject::LINES == this->type)
-                    {
-                        // Add the lines component
-                        NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, LinesComponent::getStaticClassName());
-                        gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
-                    }
-                    else if (GameObject::MANUAL_OBJECT == this->type)
-                    {
-                        // Add the manual object component
-                        NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, ManualObjectComponent::getStaticClassName());
-                        gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
-                    }
-                    else if (GameObject::RECTANGLE == this->type)
-                    {
-                        // Add the manual object component
-                        NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, RectangleComponent::getStaticClassName());
-                        gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
-                    }
-                    else if (GameObject::DECAL == this->type)
-                    {
-                        // Add the scene decal component
-                        NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, DecalComponent::getStaticClassName());
-                        // NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, PlaneComponent::getStaticClassName());
-                        gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
-                    }
-                    else if (GameObject::OCEAN == this->type)
-                    {
-                        // Add the ocean component
-                        NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, OceanComponent::getStaticClassName());
-                        gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
-                    }
-                    else if (GameObject::TERRA == this->type)
-                    {
-                        // Add the terra component
-                        NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, TerraComponent::getStaticClassName());
-                        NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, DatablockTerraComponent::getStaticClassName());
-                        gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
-                    }
-                    else if (GameObject::MAZE == this->type)
-                    {
-                        if (GameObjectFactory::getInstance()->getComponentFactory()->hasComponent("ProceduralMazeComponent"))
-                        {
-                            NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, "ProceduralMazeComponent");
-                            gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
-                        }
-                    }
-                    else if (GameObject::WALL == this->type)
-                    {
-                        if (GameObjectFactory::getInstance()->getComponentFactory()->hasComponent("ProceduralWallComponent"))
-                        {
-                            NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, "ProceduralWallComponent", true);
-                            gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
 
-                            this->editorManager->currentPlaceType = GameObject::eType::NONE;
-                            this->editorManager->setManipulationMode(EditorManager::EDITOR_MESH_MODIFY_MODE);
-                        }
-                    }
-                    else if (GameObject::ROAD == this->type)
+                    for (const Ogre::String& compName : desc->autoComponents)
                     {
-                        if (GameObjectFactory::getInstance()->getComponentFactory()->hasComponent("ProceduralRoadComponent"))
+                        if (desc->guardWithPluginCheck && !GameObjectFactory::getInstance()->getComponentFactory()->hasComponent(compName))
                         {
-                            NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, "ProceduralRoadComponent", true);
-                            gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
-
-                            this->editorManager->currentPlaceType = GameObject::eType::NONE;
-                            this->editorManager->setManipulationMode(EditorManager::EDITOR_MESH_MODIFY_MODE);
+                            continue;
                         }
+
+                        const bool isNewComponent = desc->enterMeshModifyMode;
+                        GameObjectFactory::getInstance()->createComponent(gameObjectPtr, compName, isNewComponent);
                     }
-                    else if (GameObject::DUNGEON == this->type)
-                    {
-                        if (GameObjectFactory::getInstance()->getComponentFactory()->hasComponent("ProceduralDungeonComponent"))
-                        {
-                            NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, "ProceduralDungeonComponent", true);
-                            gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
 
-                            this->editorManager->currentPlaceType = GameObject::eType::NONE;
-                            this->editorManager->setManipulationMode(EditorManager::EDITOR_MESH_MODIFY_MODE);
-                        }
+                    if (desc->postComponentsCallback)
+                    {
+                        desc->postComponentsCallback();
                     }
-                    else if (GameObject::GEOMETRY == this->type)
-                    {
-                        if (GameObjectFactory::getInstance()->getComponentFactory()->hasComponent("ProceduralGeometryComponent"))
-                        {
-                            NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, "ProceduralGeometryComponent", true);
-                            gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
 
-                            this->editorManager->currentPlaceType = GameObject::eType::NONE;
-                            this->editorManager->setManipulationMode(EditorManager::EDITOR_MESH_MODIFY_MODE);
-                        }
+                    if (desc->enterMeshModifyMode)
+                    {
+                        this->editorManager->currentPlaceType = NOWA::eType::NONE;
+                        this->editorManager->setManipulationMode(EditorManager::EDITOR_MESH_MODIFY_MODE);
                     }
                 }
             };
@@ -750,8 +596,9 @@ namespace NOWA
         Ogre::Vector3 scale;
         Ogre::Quaternion orientation;
         std::vector<Ogre::String> meshData;
-        GameObject::eType type;
+        NOWA::eType type;
         unsigned long id;
+        unsigned int descriptorId;
         EditorManager* editorManager;
     };
 
@@ -1593,7 +1440,8 @@ namespace NOWA
         movePicker(nullptr),
         movePicker2(nullptr),
         timeSinceLastUpdate(1.0f),
-        currentPlaceType(GameObject::NONE),
+        currentPlaceType(NOWA::NONE),
+        currentDescriptorId(0),
         pickForce(20.0f),
         constraintAxis(Ogre::Vector3::ZERO),
         isInSimulation(false),
@@ -1890,7 +1738,7 @@ namespace NOWA
                 this->applyPlaceMovableTransform();
 
                 // Create GameObject etc. and push to undo stack
-                this->sceneManipulationCommandModule.pushCommand(std::make_shared<AddGameObjectUndoCommand>(this->sceneManager, this->tempPlaceMovableNode, meshData, this->currentPlaceType, this));
+                this->sceneManipulationCommandModule.pushCommand(std::make_shared<AddGameObjectUndoCommand>(this->sceneManager, this->tempPlaceMovableNode, meshData, this->currentPlaceType, this->currentDescriptorId, this));
                 // Sent event that scene has been modified
                 boost::shared_ptr<NOWA::EventDataSceneModified> eventDataSceneModified(new NOWA::EventDataSceneModified());
                 NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataSceneModified);
@@ -2019,7 +1867,8 @@ namespace NOWA
             {
                 this->destroyTempPlaceMovableObjectNode();
                 this->placeNode->setVisible(false);
-                this->currentPlaceType = GameObject::NONE;
+                this->currentPlaceType = NOWA::NONE;
+                this->currentDescriptorId = 0;
             }
         }
     }
@@ -2757,7 +2606,7 @@ namespace NOWA
 
     // More modern version: Everything placed is now item be default instead of entity! Even animation does work for item!
     // Unfortunately causes crash e.g. with spaceGun2.mesh
-    void EditorManager::attachMeshToPlaceNode(const Ogre::String& meshName, GameObject::eType type, Ogre::v1::Mesh* mesh)
+    void EditorManager::attachMeshToPlaceNode(const Ogre::String& meshName, NOWA::eType type, unsigned int descriptorId, Ogre::v1::Mesh* mesh)
     {
         // Note: Its always an entity, no matter if internally its an billboard or something else, because the entity is visible geometry for the editor!
         this->destroyTempPlaceMovableObjectNode();
@@ -2798,7 +2647,7 @@ namespace NOWA
 
         try
         {
-            if (GameObject::PLANE == type || GameObject::MIRROR == type)
+            if (NOWA::PLANE == type || NOWA::MIRROR == type)
             {
                 // These are special-cased below (mesh pointer passed in)
                 throw Ogre::Exception(Ogre::Exception::ERR_RT_ASSERTION_FAILED, "", "");
@@ -2831,7 +2680,7 @@ namespace NOWA
             // 2) V2 failed (e.g. serializer "MeshSerializer_v2.1 R2" not found) -> fallback to V1
             try
             {
-                if (GameObject::PLANE == type || GameObject::MIRROR == type)
+                if (NOWA::PLANE == type || NOWA::MIRROR == type)
                 {
                     // Plane/Mirror come in as v1 mesh pointer
                     if (nullptr == mesh)
@@ -2899,7 +2748,7 @@ namespace NOWA
         Ogre::Item* tempItem = dynamic_cast<Ogre::Item*>(this->tempPlaceMovableObject);
         if (nullptr != tempItem)
         {
-            if (GameObject::PLANE == type)
+            if (NOWA::PLANE == type)
             {
                 tempItem->setDatablock("GroundDirtPlane");
             }
@@ -2930,10 +2779,10 @@ namespace NOWA
             }
         }
 
-        this->createMeshPlaceNode(type);
+        this->createMeshPlaceNode(type, descriptorId);
     }
 
-    void EditorManager::createMeshPlaceNode(GameObject::eType type)
+    void EditorManager::createMeshPlaceNode(NOWA::eType type, unsigned int descriptorId)
     {
         this->tempPlaceMovableNode = this->sceneManager->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_DYNAMIC, Ogre::Vector3(0.0f, 20.0f, 0.0f));
         this->tempPlaceMovableNode->setName("TempPlaceEntityNode");
@@ -2945,142 +2794,69 @@ namespace NOWA
         this->applyPlaceMovableTransform();
 
         this->currentPlaceType = type;
+        this->currentDescriptorId = descriptorId;
         this->manipulationMode = EDITOR_PLACE_MODE;
 
         boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(this->manipulationMode));
         NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataEditorMode);
     }
 
-    void EditorManager::attachOtherResourceToPlaceNode(GameObject::eType type)
+    void EditorManager::attachOtherResourceToPlaceNode(NOWA::eType type, unsigned int descriptorId)
     {
         this->manipulationMode = EDITOR_PLACE_MODE;
-
         this->currentPlaceType = type;
+        this->currentDescriptorId = descriptorId;
 
-        // Note: Its always an entity, no matter if internally its an billboard or something else, because the entity is visible geometry for the editor!
-        if (GameObject::PLANE == type)
+        // PLANE and MIRROR need procedural v1 mesh creation — editor logic, stays here.
+        if (NOWA::PLANE == type)
         {
             Ogre::ResourcePtr resourceV1 = Ogre::v1::MeshManager::getSingletonPtr()->getResourceByName("Plane");
-            // Destroy a potential plane v1, because an error occurs (plane with name ... already exists)
             if (nullptr != resourceV1)
             {
                 Ogre::v1::MeshManager::getSingletonPtr()->destroyResourcePool("Plane");
                 Ogre::v1::MeshManager::getSingletonPtr()->remove(resourceV1->getHandle());
             }
-
-            // Destroy a potential plane v2, because an error occurs (plane with name ... already exists)
             Ogre::ResourcePtr resourceV2 = Ogre::MeshManager::getSingletonPtr()->getResourceByName("Plane");
             if (nullptr != resourceV2)
             {
                 Ogre::MeshManager::getSingletonPtr()->destroyResourcePool("Plane");
                 Ogre::MeshManager::getSingletonPtr()->remove(resourceV2->getHandle());
             }
-
             Ogre::v1::MeshPtr meshV1 = Ogre::v1::MeshManager::getSingleton().createPlane("Plane", "General", Ogre::Plane(Ogre::Vector3::UNIT_Y, 0.0f), 50.0f, 50.0f, 2, 2, true, 1, 20.0f, 20.0f, Ogre::Vector3::UNIT_Z,
                 Ogre::v1::HardwareBuffer::HBU_STATIC, Ogre::v1::HardwareBuffer::HBU_STATIC);
-
-            this->attachMeshToPlaceNode(meshV1->getName(), type, meshV1.get());
+            this->attachMeshToPlaceNode(meshV1->getName(), type, descriptorId, meshV1.get());
         }
-        else if (GameObject::MIRROR == type)
+        else if (NOWA::MIRROR == type)
         {
             Ogre::ResourcePtr resourceV1 = Ogre::v1::MeshManager::getSingletonPtr()->getResourceByName("Mirror");
-            // Destroy a potential plane v1, because an error occurs (plane with name ... already exists)
             if (nullptr != resourceV1)
             {
                 Ogre::v1::MeshManager::getSingletonPtr()->destroyResourcePool("Mirror");
                 Ogre::v1::MeshManager::getSingletonPtr()->remove(resourceV1->getHandle());
             }
-
-            // Destroy a potential plane v2, because an error occurs (plane with name ... already exists)
             Ogre::ResourcePtr resourceV2 = Ogre::MeshManager::getSingletonPtr()->getResourceByName("Mirror");
             if (nullptr != resourceV2)
             {
                 Ogre::MeshManager::getSingletonPtr()->destroyResourcePool("Mirror");
                 Ogre::MeshManager::getSingletonPtr()->remove(resourceV2->getHandle());
             }
-
-            Ogre::v1::MeshPtr meshV1 =
-                Ogre::v1::MeshManager::getSingleton().createPlane("Mirror", "General", Ogre::Plane(Ogre::Vector3::UNIT_Z, Ogre::Vector3::ZERO /* or here distance 1??*/), 1.0f, 1.0f, 1, 1, true, 1, 1.0f, 1.0f, Ogre::Vector3::UNIT_Y);
-
-            this->attachMeshToPlaceNode(meshV1->getName(), type, meshV1.get());
-
+            Ogre::v1::MeshPtr meshV1 = Ogre::v1::MeshManager::getSingleton().createPlane("Mirror", "General", Ogre::Plane(Ogre::Vector3::UNIT_Z, Ogre::Vector3::ZERO), 1.0f, 1.0f, 1, 1, true, 1, 1.0f, 1.0f, Ogre::Vector3::UNIT_Y,
+                Ogre::v1::HardwareBuffer::HBU_STATIC, Ogre::v1::HardwareBuffer::HBU_STATIC);
+            this->attachMeshToPlaceNode(meshV1->getName(), type, descriptorId, meshV1.get());
             Ogre::Item* tempItem = dynamic_cast<Ogre::Item*>(this->tempPlaceMovableObject);
             if (nullptr != tempItem)
             {
                 tempItem->setDatablock("NOWAGlassRoughness2");
             }
         }
-        else if (GameObject::LIGHT_DIRECTIONAL == type)
+        else
         {
-            this->attachMeshToPlaceNode("LightDirectional.mesh", type);
-        }
-        else if (GameObject::LIGHT_SPOT == type)
-        {
-            this->attachMeshToPlaceNode("LightSpot.mesh", type);
-        }
-        else if (GameObject::LIGHT_POINT == type)
-        {
-            this->attachMeshToPlaceNode("LightPoint.mesh", type);
-        }
-        else if (GameObject::LIGHT_AREA == type)
-        {
-            this->attachMeshToPlaceNode("LightDirectional.mesh", type);
-        }
-        else if (GameObject::CAMERA == type)
-        {
-            this->attachMeshToPlaceNode("Camera.mesh", type);
-        }
-        else if (GameObject::REFLECTION_CAMERA == type)
-        {
-            this->attachMeshToPlaceNode("Camera.mesh", type);
-        }
-        else if (GameObject::SCENE_NODE == type)
-        {
-            this->attachMeshToPlaceNode("Node.mesh", type);
-        }
-        else if (GameObject::LINES == type)
-        {
-            this->attachMeshToPlaceNode("Node.mesh", type);
-        }
-        else if (GameObject::MANUAL_OBJECT == type)
-        {
-            this->attachMeshToPlaceNode("Node.mesh", type);
-        }
-        else if (GameObject::RECTANGLE == type)
-        {
-            this->attachMeshToPlaceNode("Node.mesh", type);
-        }
-        else if (GameObject::DECAL == type)
-        {
-            this->attachMeshToPlaceNode("Node.mesh", type);
-        }
-        else if (GameObject::OCEAN == type)
-        {
-            this->attachMeshToPlaceNode("Node.mesh", type);
-        }
-        else if (GameObject::TERRA == type)
-        {
-            this->attachMeshToPlaceNode("Node.mesh", type);
-        }
-        else if (GameObject::MAZE == type)
-        {
-            this->attachMeshToPlaceNode("Node.mesh", type);
-        }
-        else if (GameObject::WALL == type)
-        {
-            this->attachMeshToPlaceNode("Node.mesh", type);
-        }
-        else if (GameObject::ROAD == type)
-        {
-            this->attachMeshToPlaceNode("Node.mesh", type);
-        }
-        else if (GameObject::DUNGEON == type)
-        {
-            this->attachMeshToPlaceNode("Node.mesh", type);
-        }
-        else if (GameObject::GEOMETRY == type)
-        {
-            this->attachMeshToPlaceNode("Node.mesh", type);
+            // Everything else is fully descriptor-driven.
+            const auto* desc = GameObjectFactory::getInstance()->findTypeDescriptor(descriptorId);
+            if (nullptr != desc)
+            {
+                this->attachMeshToPlaceNode(desc->meshToDisplay, type, descriptorId);
+            }
         }
 
         boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(this->manipulationMode));
@@ -3951,7 +3727,7 @@ namespace NOWA
         }
         else if (EDITOR_TERRAIN_MODIFY_MODE == this->manipulationMode || EDITOR_TERRAIN_SMOOTH_MODE == this->manipulationMode || EDITOR_TERRAIN_PAINT_MODE == this->manipulationMode)
         {
-            auto terraGameObjectList = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromType(GameObject::TERRA);
+            auto terraGameObjectList = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromType(NOWA::TERRA);
             for (const auto& terraGameObjectPtr : terraGameObjectList)
             {
                 if (nullptr != terraGameObjectPtr)

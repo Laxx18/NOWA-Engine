@@ -40,7 +40,7 @@ namespace NOWA
 
 	GameObject::GameObject(Ogre::SceneManager* sceneManager, Ogre::SceneNode* sceneNode, Ogre::MovableObject* movableObject,
 		const Ogre::String& category, const Ogre::String& renderCategory,
-		bool dynamic, GameObject::eType type, unsigned long id)
+		bool dynamic, NOWA::eType type, unsigned long id)
 		: sceneManager(sceneManager),
 		sceneNode(sceneNode),
 		movableObject(movableObject),
@@ -159,14 +159,14 @@ namespace NOWA
 		// Note: referenceId will not be cloned, because its to special. The designer must adapt each time the ids!
 		this->referenceId = new Variant(GameObject::AttrReferenceId(), static_cast<unsigned long>(0), this->attributes, false);
 
-		if (GameObject::ITEM == type || GameObject::PLANE == type || GameObject::MIRROR == type || GameObject::LIGHT_AREA == type)
+		// if (NOWA::ITEM == type || NOWA::PLANE == type || NOWA::MIRROR == type || NOWA::LIGHT_AREA == type)
 		{
 			this->renderQueueIndex = new Variant(GameObject::AttrRenderQueueIndex(), static_cast<unsigned int>(NOWA::RENDER_QUEUE_V2_MESH), this->attributes, false);
 		}
-		else
-		{
-			this->renderQueueIndex = new Variant(GameObject::AttrRenderQueueIndex(), static_cast<unsigned int>(NOWA::RENDER_QUEUE_V1_MESH), this->attributes, false);
-		}
+		// else
+		// {
+		// 	this->renderQueueIndex = new Variant(GameObject::AttrRenderQueueIndex(), static_cast<unsigned int>(NOWA::RENDER_QUEUE_V1_MESH), this->attributes, false);
+		// }
 		this->renderDistance = new Variant(GameObject::AttrRenderDistance(), static_cast<unsigned int>(1000), this->attributes, false);
 		this->lodDistance = new Variant(GameObject::AttrLodDistance(), 0, this->attributes, false);
 		this->lodLevels = new Variant(GameObject::AttrLodLevels(), 0.0f, this->attributes, false);
@@ -347,7 +347,7 @@ namespace NOWA
 				// Ogre::AxisAlignedBox boundingBox = newEntity->getMesh()->getBounds();
 				this->refreshSize(this->sceneNode->getScale());
 
-				if (GameObject::ITEM == this->type || GameObject::PLANE == this->type)
+				if (NOWA::ITEM == this->type || NOWA::PLANE == this->type)
 				{
 					Ogre::Item* item = this->getMovableObjectUnsafe<Ogre::Item>();
 					for (size_t i = 0; i < item->getNumSubItems(); i++)
@@ -414,7 +414,7 @@ namespace NOWA
             // Update GameObject type based on movable object type
             if (dynamic_cast<Ogre::Item*>(this->movableObject))
             {
-                this->type = GameObject::ITEM;
+                this->type = NOWA::ITEM;
                 this->typeName->setReadOnly(false);
                 this->typeName->setValue(Ogre::String(GameObject::typeToString(this->type)));
                 this->typeName->setReadOnly(true);
@@ -472,7 +472,7 @@ namespace NOWA
             this->refreshSize(this->sceneNode->getScale());
 
             // Apply fresnel fix to new subitems, same as init()
-            if (GameObject::ITEM == this->type || GameObject::PLANE == this->type)
+            if (NOWA::ITEM == this->type || NOWA::PLANE == this->type)
             {
                 Ogre::Item* item = this->getMovableObjectUnsafe<Ogre::Item>();
                 for (size_t i = 0; i < item->getNumSubItems(); ++i)
@@ -553,7 +553,7 @@ namespace NOWA
 
             this->refreshSize(this->sceneNode->getScale());
 
-            if (GameObject::ITEM == this->type || GameObject::PLANE == this->type)
+            if (NOWA::ITEM == this->type || NOWA::PLANE == this->type)
             {
                 Ogre::Item* item = this->getMovableObjectUnsafe<Ogre::Item>();
                 for (size_t i = 0; i < item->getNumSubItems(); ++i)
@@ -646,7 +646,7 @@ namespace NOWA
 
 	void GameObject::actualizeDatablocks(void)
     {
-        if (GameObject::ITEM == this->type || GameObject::PLANE == this->type)
+        if (NOWA::ITEM == this->type || NOWA::PLANE == this->type)
         {
             NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
             {
@@ -724,33 +724,34 @@ namespace NOWA
         return this->cachedAiLuaGoalComponent;
     }
 
-	const char* GameObject::typeToString(GameObject::eType t)
-	{
-		switch (t)
-		{
-		case NONE:               return "NONE";
-		case ITEM:               return "ITEM";
-		case SCENE_NODE:         return "SCENE_NODE";
-		case PLANE:              return "PLANE";
-		case MIRROR:             return "MIRROR";
-		case CAMERA:             return "CAMERA";
-		case REFLECTION_CAMERA:  return "REFLECTION_CAMERA";
-		case TERRA:              return "TERRA";
-		case OCEAN:              return "OCEAN";
-		case LIGHT_DIRECTIONAL:  return "LIGHT_DIRECTIONAL";
-		case LIGHT_SPOT:         return "LIGHT_SPOT";
-		case LIGHT_POINT:        return "LIGHT_POINT";
-		case LIGHT_AREA:         return "LIGHT_AREA";
-		case MANUAL_OBJECT:      return "MANUAL_OBJECT";
-		case RECTANGLE:          return "RECTANGLE";
-		case LINES:              return "LINES";
-		case DECAL:              return "DECAL";
-		case BILL_BOARD:         return "BILL_BOARD";
-		case BILL_BOARD_CHAIN:   return "BILL_BOARD_CHAIN";
-		case SIMPLE_RENDERABLE:  return "SIMPLE_RENDERABLE";
-		default:                 return "UNKNOWN";
-		}
-	}
+	const char* GameObject::typeToString(NOWA::eType t)
+    {
+        switch (t)
+        {
+        case NOWA::NONE:
+            return "NONE";
+        case NOWA::ITEM:
+            return "ITEM";
+        case NOWA::SCENE_NODE:
+            return "SCENE_NODE";
+        case NOWA::PLANE:
+            return "PLANE";
+        case NOWA::MIRROR:
+            return "MIRROR";
+        case NOWA::CAMERA:
+            return "CAMERA";
+        case NOWA::REFLECTION_CAMERA:
+            return "REFLECTION_CAMERA";
+        case NOWA::TERRA:
+            return "TERRA";
+        case NOWA::OCEAN:
+            return "OCEAN";
+        case NOWA::CUSTOM:
+            return "CUSTOM";
+        default:
+            return "UNKNOWN";
+        }
+    }
 
     bool GameObject::postInit(void)
 	{
@@ -1186,7 +1187,7 @@ namespace NOWA
 
 	void GameObject::setDatablock(NOWA::Variant* attribute)
 	{
-		if (GameObject::ITEM == this->type)
+		if (NOWA::ITEM == this->type)
 		{
 			GraphicsModule::RenderCommand renderCommand = [this, attribute]()
 			{
@@ -2035,7 +2036,7 @@ namespace NOWA
 	const Ogre::Vector3 GameObject::getBottomOffset(void) const
 	{
 		Ogre::Vector3 bottomCenterOfMesh = Ogre::Vector3::ZERO;
-		if (GameObject::ITEM == this->type)
+		if (NOWA::ITEM == this->type)
 		{
 			bottomCenterOfMesh = MathHelper::getInstance()->getBottomCenterOfMesh(this->sceneNode, this->getMovableObjectUnsafe<Ogre::Item>());
 		}
@@ -2047,7 +2048,7 @@ namespace NOWA
 	{
 		Ogre::Vector3 centerBottom = Ogre::Vector3::ZERO;
 
-		if (GameObject::ITEM == this->type)
+		if (NOWA::ITEM == this->type)
 		{
 			centerBottom = MathHelper::getInstance()->getBottomCenterOfMesh(this->sceneNode, this->getMovableObjectUnsafe<Ogre::Item>());
 		}
@@ -2150,7 +2151,7 @@ namespace NOWA
 	{
 		this->useReflection->setValue(useReflection);
 
-		if (GameObject::ITEM == this->type || GameObject::PLANE == this->type)
+		if (NOWA::ITEM == this->type || NOWA::PLANE == this->type)
 		{
 			ENQUEUE_RENDER_COMMAND_WAIT("GameObject::setUseReflection1",
 			{
@@ -2197,7 +2198,7 @@ namespace NOWA
 				}
 			});
 		}
-		else if (GameObject::OCEAN == this->type)
+		else if (NOWA::OCEAN == this->type)
 		{
 			NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
 				{
@@ -2712,7 +2713,7 @@ namespace NOWA
 		return this->attributes;
 	}
 
-	GameObject::eType GameObject::getType(void) const
+	NOWA::eType GameObject::getType(void) const
 	{
 		return this->type;
 	}

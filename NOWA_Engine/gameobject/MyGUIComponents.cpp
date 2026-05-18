@@ -897,12 +897,12 @@ namespace NOWA
 		if (nullptr == userData)
 		{
 			boost::shared_ptr<NOWA::EventDataMyGUIWidgetSelected> eventDataMyGUIWidgetSelected(new NOWA::EventDataMyGUIWidgetSelected());
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataMyGUIWidgetSelected);
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataMyGUIWidgetSelected);
 			return;
 		}
 
 		boost::shared_ptr<NOWA::EventDataMyGUIWidgetSelected> eventDataMyGUIWidgetSelected(new NOWA::EventDataMyGUIWidgetSelected(this->gameObjectPtr->getId(), this->getIndex()));
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataMyGUIWidgetSelected);
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataMyGUIWidgetSelected);
 	}
 	
 	MyGUI::Align MyGUIComponent::mapStringToAlign(const Ogre::String& strAlign)

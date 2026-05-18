@@ -67,7 +67,13 @@ namespace NOWA
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    ItemData::ItemData(unsigned long inventoryOwnerId) : inventoryOwnerId(inventoryOwnerId), quantity(0), sellValue(0.0f), buyValue(0.0f), resourceInfo(nullptr), resourceImage(nullptr)
+    ItemData::ItemData(unsigned long inventoryOwnerId)
+        : inventoryOwnerId(inventoryOwnerId),
+        quantity(0),
+        sellValue(0.0f),
+        buyValue(0.0f),
+        resourceInfo(nullptr),
+        resourceImage(nullptr)
     {
     }
 
@@ -490,12 +496,16 @@ namespace NOWA
 
     MyGUIItemBoxComponent::MyGUIItemBoxComponent()
         : MyGUIWindowComponent(),
-        toolTip(nullptr), 
-        itemBoxWindow(nullptr), 
+        toolTip(nullptr),
+        itemBoxWindow(nullptr),
         sharedItemBoxWindow(nullptr),
         selectedSlotIndex(-1),
         dragDropData(new DragDropData),
-        dropFinished(false)
+        dropFinished(false),
+        pendingSprite(nullptr),
+        spriteAnimationPending(false),
+        pendingButtonId(OIS::MB_Left),
+        pendingSlotIndex(0)
     {
         this->skin->setVisible(false);
 
@@ -513,6 +523,8 @@ namespace NOWA
         this->sellValues.resize(this->itemCount->getUInt());
         this->buyValues.resize(this->itemCount->getUInt());
         this->gameObjectIds.resize(this->itemCount->getUInt());
+        this->spriteComponentIndices.resize(this->itemCount->getUInt());
+        this->spriteComponents.resize(this->itemCount->getUInt(), nullptr);
         // Automatically also triggers needRefresh!
         this->resourceLocationName->addUserData(GameObject::AttrActionFileOpenDialog(), "Essential");
         // Since when node item count is changed, the whole properties must be refreshed, so that new field may come for item tracks
@@ -605,6 +617,8 @@ namespace NOWA
             this->sellValues.resize(this->itemCount->getUInt());
             this->buyValues.resize(this->itemCount->getUInt());
             this->gameObjectIds.resize(this->itemCount->getUInt());
+            this->spriteComponentIndices.resize(this->itemCount->getUInt());
+            this->spriteComponents.resize(this->itemCount->getUInt());
         }
 
         for (size_t i = 0; i < this->itemCount->getUInt(); i++)
@@ -693,7 +707,26 @@ namespace NOWA
                 this->gameObjectIds[i] = new Variant(MyGUIItemBoxComponent::AttrGameObjectId() + Ogre::StringConverter::toString(i), static_cast<unsigned long>(0), this->attributes);
             }
             this->gameObjectIds[i]->setDescription("Optional: id of the GameObject associated with this slot (e.g. a building template). Passed to reactOnMouseButtonClick. 0 = none.");
-            this->gameObjectIds[i]->addUserData(GameObject::AttrActionSeparator());
+
+            // Optional per-slot sprite component occurrence index (-1 = none)
+            if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == MyGUIItemBoxComponent::AttrSpriteComponentIndex() + Ogre::StringConverter::toString(i))
+            {
+                if (nullptr == this->spriteComponentIndices[i])
+                {
+                    this->spriteComponentIndices[i] = new Variant(MyGUIItemBoxComponent::AttrSpriteComponentIndex() + Ogre::StringConverter::toString(i), XMLConverter::getAttribUnsignedInt(propertyElement, "data"), this->attributes);
+                }
+                else
+                {
+                    this->spriteComponentIndices[i]->setValue(XMLConverter::getAttribUnsignedInt(propertyElement, "data"));
+                }
+                propertyElement = propertyElement->next_sibling("property");
+            }
+            else
+            {
+                this->spriteComponentIndices[i] = new Variant(MyGUIItemBoxComponent::AttrSpriteComponentIndex() + Ogre::StringConverter::toString(i), static_cast<int>(-1), this->attributes);
+            }
+            this->spriteComponentIndices[i]->setDescription("Optional: Occurrence index of a MyGuiSpriteComponent on the same game object to overlay and animate over this slot on click. See in NOWA-Design: MyGuiSpriteComponent (i). Setting to -1 = disabled.");
+            this->spriteComponentIndices[i]->addUserData(GameObject::AttrActionSeparator());
         }
 
         return success;
@@ -704,6 +737,9 @@ namespace NOWA
         MyGUIItemBoxCompPtr clonedCompPtr(boost::make_shared<MyGUIItemBoxComponent>());
 
         clonedCompPtr->bIsCloning = true;
+
+        clonedGameObjectPtr->addComponent(clonedCompPtr);
+        clonedCompPtr->setOwner(clonedGameObjectPtr);
 
         clonedCompPtr->setActivated(this->activated->getBool());
         clonedCompPtr->setRealPosition(this->position->getVector2());
@@ -732,10 +768,9 @@ namespace NOWA
             clonedCompPtr->setSellValue(i, this->sellValues[i]->getReal());
             clonedCompPtr->setBuyValue(i, this->buyValues[i]->getReal());
             clonedCompPtr->setGameObjectId(i, this->gameObjectIds[i]->getULong());
+            clonedCompPtr->setSpriteComponentIndex(i, this->spriteComponentIndices[i]->getInt());
+            
         }
-
-        clonedGameObjectPtr->addComponent(clonedCompPtr);
-        clonedCompPtr->setOwner(clonedGameObjectPtr);
 
         clonedCompPtr->setCommonWidget(this->commonWidget->getBool());
 
@@ -944,13 +979,51 @@ namespace NOWA
     {
         bool success = MyGUIWindowComponent::connect();
 
+        // Resolve per-slot MyGuiSpriteComponent pointers (1-based; 0 = disabled)
+        this->spriteComponents.resize(this->itemCount->getUInt(), nullptr);
+        for (unsigned int i = 0; i < this->itemCount->getUInt(); i++)
+        {
+            this->spriteComponents[i] = nullptr;
+            if (nullptr == this->spriteComponentIndices[i])
+            {
+                continue;
+            }
+            const unsigned int occIdx = this->spriteComponentIndices[i]->getInt();
+            if (occIdx == -1)
+            {
+                continue;
+            }
+            auto spriteCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentWithOccurrence<MyGUISpriteComponentBase>(occIdx));
+            if (nullptr != spriteCompPtr)
+            {
+                this->spriteComponents[i] = spriteCompPtr.get();
+                // Ensure the sprite does NOT repeat so we get the finished event
+                this->spriteComponents[i]->setRepeat(false);
+            }
+            else
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MyGUIItemBoxComponent] Slot " + Ogre::StringConverter::toString(i) + ": SpriteComponentIndex=" + Ogre::StringConverter::toString(occIdx) +
+                                                                                        " but no MyGuiSpriteComponent found at occurrence " + Ogre::StringConverter::toString(occIdx) + " on game object: " + this->gameObjectPtr->getName());
+            }
+        }
+
+        // Listen for sprite animation finished to fire deferred Lua callbacks
+        AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &MyGUIItemBoxComponent::handleSpriteAnimationFinished), EventDataSpriteAnimationFinished::getStaticEventType());
+
         return success;
     }
 
     bool MyGUIItemBoxComponent::disconnect(void)
     {
-        /*this->setSkin(this->skin->getListSelectedValue());
-        this->setMovable(this->movable->getBool());*/
+        AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &MyGUIItemBoxComponent::handleSpriteAnimationFinished), EventDataSpriteAnimationFinished::getStaticEventType());
+
+        // Clear sprite state
+        this->pendingSprite = nullptr;
+        this->spriteAnimationPending = false;
+        for (auto& sp : this->spriteComponents)
+        {
+            sp = nullptr;
+        }
 
         return MyGUIWindowComponent::disconnect();
     }
@@ -967,7 +1040,6 @@ namespace NOWA
         {
             this->setUseToolTip(attribute->getBool());
         }
-
         else if (MyGUIItemBoxComponent::AttrAllowDragDrop() == attribute->getName())
         {
             this->setAllowDragDrop(attribute->getBool());
@@ -999,6 +1071,10 @@ namespace NOWA
                 else if (MyGUIItemBoxComponent::AttrGameObjectId() + Ogre::StringConverter::toString(i) == attribute->getName())
                 {
                     this->setGameObjectId(i, attribute->getULong());
+                }
+                else if (MyGUIItemBoxComponent::AttrSpriteComponentIndex() + Ogre::StringConverter::toString(i) == attribute->getName())
+                {
+                    this->setSpriteComponentIndex(i, attribute->getInt());
                 }
             }
         }
@@ -1069,6 +1145,12 @@ namespace NOWA
             propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
             propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "GameObjectId" + Ogre::StringConverter::toString(i))));
             propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->gameObjectIds[i]->getULong())));
+            propertiesXML->append_node(propertyXML);
+
+            propertyXML = doc.allocate_node(node_element, "property");
+            propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
+            propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, MyGUIItemBoxComponent::AttrSpriteComponentIndex() + Ogre::StringConverter::toString(i))));
+            propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, nullptr != this->spriteComponentIndices[i] ? this->spriteComponentIndices[i]->getInt() : -1)));
             propertiesXML->append_node(propertyXML);
         }
     }
@@ -1403,13 +1485,37 @@ namespace NOWA
         {
             this->selectedSlotIndex = static_cast<int>(slotIndex);
 
-            // Force repaint of all cells so select/pressed visual state updates
-            NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+            // Resolve the optional per-slot associated GameObject id
+            Ogre::String slotGameObjectId = "0";
+            if (_info.index < this->gameObjectIds.size() && nullptr != this->gameObjectIds[_info.index])
+            {
+                const Ogre::String& id = this->gameObjectIds[_info.index]->getString();
+                if (!id.empty())
+                {
+                    slotGameObjectId = id;
+                }
+            }
+
+            // Resolve the sprite component for this slot (may be null)
+            MyGUISpriteComponentBase* spriteComp = nullptr;
+            if (slotIndex < this->spriteComponents.size())
+            {
+                spriteComp = this->spriteComponents[slotIndex];
+            }
+            else
+            {
+                spriteComp = nullptr;
+            }
+
+            // Render-thread: repaint cells AND, if a sprite is configured, snap it over this slot
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, slotIndex, spriteComp]()
             {
                 if (nullptr == this->itemBoxWindow)
                 {
                     return;
                 }
+
+                // Force repaint so select/pressed visual state updates
                 unsigned int count = static_cast<unsigned int>(this->itemBoxWindow->getItemBox()->getItemBox()->getItemCount());
                 for (unsigned int i = 0; i < count; i++)
                 {
@@ -1421,57 +1527,100 @@ namespace NOWA
                 }
                 this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x - 0.001f, this->size->getVector2().y - 0.001f);
                 this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x + 0.001f, this->size->getVector2().y + 0.001f);
-            };
-            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIItemBoxComponent::notifyNotifyItem repaint");
 
-            // Fire legacy reactOnMouseButtonClick (left-click only, matches old Lua API)
-            if (buttonId == OIS::MB_Left && this->mouseButtonClickClosureFunction.is_valid())
-            {
-                // Resolve the optional per-slot associated GameObject id
-                Ogre::String slotGameObjectId = "0";
-                if (_info.index < this->gameObjectIds.size() && nullptr != this->gameObjectIds[_info.index])
+                // Position the sprite widget directly over the clicked cell
+                if (nullptr != spriteComp)
                 {
-                    const Ogre::String& id = this->gameObjectIds[_info.index]->getString();
-                    if (!id.empty())
+                    MyGUI::IntCoord cellCoord;
+                    bool foundCell = false;
+
+                    // Try to get the cell widget by slot index for pixel-perfect positioning
+                    MyGUI::ItemBox* myguiBox = this->itemBoxWindow->getItemBox()->getItemBox();
+                    if (slotIndex < myguiBox->getItemCount())
                     {
-                        slotGameObjectId = id;
+                        MyGUI::Widget* cellWidget = myguiBox->getWidgetByIndex(slotIndex);
+                        if (nullptr != cellWidget)
+                        {
+                            cellCoord = cellWidget->getAbsoluteCoord();
+                            foundCell = true;
+                        }
                     }
+
+                    // Fallback: compute coordinates from item box position + cell grid
+                    if (false == foundCell)
+                    {
+                        const int cellW = 74;
+                        const int cellH = 74;
+                        MyGUI::IntCoord boxCoord = this->widget->getAbsoluteCoord();
+                        int cols = std::max(1, boxCoord.width / cellW);
+                        int row = static_cast<int>(slotIndex) / cols;
+                        int col = static_cast<int>(slotIndex) % cols;
+                        cellCoord.left = boxCoord.left + col * cellW;
+                        cellCoord.top = boxCoord.top + row * cellH;
+                        cellCoord.width = cellW;
+                        cellCoord.height = cellH;
+                    }
+
+                    // spriteComp->positionOverCell(cellCoord);
+                }
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIItemBoxComponent::notifyNotifyItem repaint+overlay");
+
+            if (nullptr != spriteComp)
+            {
+                // Sprite mode: store pending callback data and restart animation.
+                // Lua callbacks fire only after the animation finishes (handleSpriteAnimationFinished).
+                this->pendingResourceName = resourceName;
+                this->pendingGameObjectId = slotGameObjectId;
+                this->pendingButtonId = buttonId;
+                this->pendingSlotIndex = slotIndex;
+                this->pendingSprite = spriteComp;
+                this->spriteAnimationPending = true;
+
+                // Reset and start the animation from frame 0
+                spriteComp->setActivated(false);
+                spriteComp->setActivated(true);
+            }
+            else
+            {
+                // No sprite: fire Lua callbacks immediately (original behavior)
+                if (buttonId == OIS::MB_Left && this->mouseButtonClickClosureFunction.is_valid())
+                {
+                    NOWA::AppStateManager::LogicCommand cmd = [this, resourceName, slotGameObjectId, buttonId]()
+                    {
+                        try
+                        {
+                            luabind::call_function<void>(this->mouseButtonClickClosureFunction, resourceName, slotGameObjectId, buttonId);
+                        }
+                        catch (luabind::error& error)
+                        {
+                            luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                            std::stringstream msg;
+                            msg << errorMsg;
+                            Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUIItemBoxComponent] reactOnMouseButtonClick error: " + Ogre::String(error.what()) + " " + msg.str());
+                        }
+                    };
+                    NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(cmd));
                 }
 
-                NOWA::AppStateManager::LogicCommand cmd = [this, resourceName, slotGameObjectId, buttonId]()
+                if (this->mouseButtonPressedClosureFunction.is_valid())
                 {
-                    try
+                    NOWA::AppStateManager::LogicCommand cmd = [this, slotIndex, resourceName, buttonId]()
                     {
-                        luabind::call_function<void>(this->mouseButtonClickClosureFunction, resourceName, slotGameObjectId, buttonId);
-                    }
-                    catch (luabind::error& error)
-                    {
-                        luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-                        std::stringstream msg;
-                        msg << errorMsg;
-                        Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUIItemBoxComponent] reactOnMouseButtonClick error: " + Ogre::String(error.what()) + " " + msg.str());
-                    }
-                };
-                NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(cmd));
-            }
-
-            if (this->mouseButtonPressedClosureFunction.is_valid())
-            {
-                NOWA::AppStateManager::LogicCommand cmd = [this, slotIndex, resourceName, buttonId]()
-                {
-                    try
-                    {
-                        luabind::call_function<void>(this->mouseButtonPressedClosureFunction, slotIndex, resourceName, buttonId);
-                    }
-                    catch (luabind::error& error)
-                    {
-                        luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-                        std::stringstream msg;
-                        msg << errorMsg;
-                        Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUIItemBoxComponent] reactOnMouseButtonPressed error: " + Ogre::String(error.what()) + " " + msg.str());
-                    }
-                };
-                NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(cmd));
+                        try
+                        {
+                            luabind::call_function<void>(this->mouseButtonPressedClosureFunction, slotIndex, resourceName, buttonId);
+                        }
+                        catch (luabind::error& error)
+                        {
+                            luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                            std::stringstream msg;
+                            msg << errorMsg;
+                            Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUIItemBoxComponent] reactOnMouseButtonPressed error: " + Ogre::String(error.what()) + " " + msg.str());
+                        }
+                    };
+                    NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(cmd));
+                }
             }
         }
         else if (_info.notify == MyGUI::IBNotifyItemData::NotifyItem::MouseReleased)
@@ -1820,10 +1969,7 @@ namespace NOWA
         if (nullptr != this->widget && true == this->activated->getBool())
         {
             this->lastBuiltSkin = skin;
-            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("MyGUIItemBoxComponent::setSkin", _1(skin),
-            {
-                this->onChangeSkin();
-            });
+            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("MyGUIItemBoxComponent::setSkin", _1(skin), { this->onChangeSkin(); });
         }
     }
 
@@ -2327,6 +2473,8 @@ namespace NOWA
             this->sellValues.resize(itemCount);
             this->buyValues.resize(itemCount);
             this->gameObjectIds.resize(itemCount);
+            this->spriteComponentIndices.resize(itemCount);
+            this->spriteComponents.resize(itemCount, nullptr);
 
             for (size_t i = oldSize; i < this->resourceNames.size(); i++)
             {
@@ -2336,7 +2484,12 @@ namespace NOWA
                 this->buyValues[i] = new Variant(MyGUIItemBoxComponent::AttrBuyValue() + Ogre::StringConverter::toString(i), 0.0f, this->attributes);
                 this->gameObjectIds[i] = new Variant(MyGUIItemBoxComponent::AttrGameObjectId() + Ogre::StringConverter::toString(i), static_cast<unsigned long>(0), this->attributes);
                 this->gameObjectIds[i]->setDescription("Optional: id of the GameObject associated with this slot (e.g. a building template). Passed to reactOnMouseButtonClick. 0 = none.");
-                this->gameObjectIds[i]->addUserData(GameObject::AttrActionSeparator());
+
+                this->spriteComponentIndices[i] = new Variant(MyGUIItemBoxComponent::AttrSpriteComponentIndex() + Ogre::StringConverter::toString(i), static_cast<int>(-1), this->attributes);
+                this->spriteComponentIndices[i]
+                    ->setDescription("Optional: Occurrence index of a MyGuiSpriteComponent on the same game object to overlay and animate over this slot on click. See in NOWA-Design: MyGuiSpriteComponent (i). Setting to -1 = disabled.");
+                this->spriteComponentIndices[i]->addUserData(GameObject::AttrActionSeparator());
+                this->spriteComponents[i] = nullptr;
 
                 if (nullptr != this->itemBoxWindow)
                 {
@@ -2368,6 +2521,8 @@ namespace NOWA
             this->eraseVariants(this->sellValues, itemCount);
             this->eraseVariants(this->buyValues, itemCount);
             this->eraseVariants(this->gameObjectIds, itemCount);
+            this->eraseVariants(this->spriteComponentIndices, itemCount);
+            this->spriteComponents.resize(itemCount);
 
             if (nullptr != this->itemBoxWindow)
             {
@@ -2910,6 +3065,112 @@ namespace NOWA
         this->closureFunctionRequestDropAccepted = closureFunction;
     }
 
+    void MyGUIItemBoxComponent::setSpriteComponentIndex(unsigned int slotIndex, int occurrenceIndex)
+    {
+        if (slotIndex >= this->spriteComponentIndices.size())
+        {
+            return;
+        }
+
+        if (nullptr == this->spriteComponentIndices[slotIndex])
+        {
+            this->spriteComponentIndices[slotIndex] = new Variant(MyGUIItemBoxComponent::AttrSpriteComponentIndex() + Ogre::StringConverter::toString(slotIndex), occurrenceIndex, this->attributes);
+        }
+        else
+        {
+            this->spriteComponentIndices[slotIndex]->setValue(occurrenceIndex);
+        }
+
+        // Re-resolve the sprite pointer immediately if already connected
+        if (slotIndex < this->spriteComponents.size())
+        {
+            this->spriteComponents[slotIndex] = nullptr;
+            if (occurrenceIndex >= 0)
+            {
+                auto spriteCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentWithOccurrence<MyGUISpriteComponentBase>(occurrenceIndex));
+                if (nullptr != spriteCompPtr)
+                {
+                    this->spriteComponents[slotIndex] = spriteCompPtr.get();
+                    this->spriteComponents[slotIndex]->setRepeat(false);
+                }
+            }
+        }
+    }
+
+    unsigned int MyGUIItemBoxComponent::getSpriteComponentIndex(int slotIndex) const
+    {
+        if (slotIndex >= this->spriteComponentIndices.size() || nullptr == this->spriteComponentIndices[slotIndex])
+        {
+            return -1;
+        }
+        return this->spriteComponentIndices[slotIndex]->getUInt();
+    }
+
+    void MyGUIItemBoxComponent::handleSpriteAnimationFinished(NOWA::EventDataPtr eventData)
+    {
+        auto cast = boost::static_pointer_cast<EventDataSpriteAnimationFinished>(eventData);
+
+        // Only react to our own game object
+        if (cast->getGameObjectId() != this->gameObjectPtr->getId())
+        {
+            return;
+        }
+
+        // Only react if this exact sprite component is the one we started
+        if (false == this->spriteAnimationPending || cast->getComponent() != this->pendingSprite)
+        {
+            return;
+        }
+
+        this->spriteAnimationPending = false;
+        this->pendingSprite = nullptr;
+
+        // Deactivate the sprite so it hides (ImageBox becomes invisible / no longer updating)
+        // Fire deferred Lua callbacks now that the animation has completed
+        const Ogre::String resourceName = this->pendingResourceName;
+        const Ogre::String slotGameObjectId = this->pendingGameObjectId;
+        const OIS::MouseButtonID buttonId = this->pendingButtonId;
+        const unsigned int slotIndex = this->pendingSlotIndex;
+
+        if (buttonId == OIS::MB_Left && this->mouseButtonClickClosureFunction.is_valid())
+        {
+            NOWA::AppStateManager::LogicCommand cmd = [this, resourceName, slotGameObjectId, buttonId]()
+            {
+                try
+                {
+                    luabind::call_function<void>(this->mouseButtonClickClosureFunction, resourceName, slotGameObjectId, buttonId);
+                }
+                catch (luabind::error& error)
+                {
+                    luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                    std::stringstream msg;
+                    msg << errorMsg;
+                    Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUIItemBoxComponent] reactOnMouseButtonClick (post-sprite) error: " + Ogre::String(error.what()) + " " + msg.str());
+                }
+            };
+            NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(cmd));
+        }
+
+        if (this->mouseButtonPressedClosureFunction.is_valid())
+        {
+            NOWA::AppStateManager::LogicCommand cmd = [this, slotIndex, resourceName, buttonId]()
+            {
+                try
+                {
+                    luabind::call_function<void>(this->mouseButtonPressedClosureFunction, slotIndex, resourceName, buttonId);
+                }
+                catch (luabind::error& error)
+                {
+                    luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                    std::stringstream msg;
+                    msg << errorMsg;
+                    Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUIItemBoxComponent] reactOnMouseButtonPressed (post-sprite) error: " + Ogre::String(error.what()) + " " + msg.str());
+                }
+            };
+            NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(cmd));
+        }
+    }
+
     MyGUIItemBoxComponent* getMyGUIItemBoxComponentComponent(GameObject* gameObject)
     {
         return makeStrongPtr<MyGUIItemBoxComponent>(gameObject->getComponent<MyGUIItemBoxComponent>()).get();
@@ -2927,39 +3188,36 @@ namespace NOWA
 
     void MyGUIItemBoxComponent::createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass)
     {
-        module(lua)
-        [
-            class_<MyGUIItemBoxComponent, MyGUIWindowComponent>("MyGUIItemBoxComponent")
-            .def("getItemCount", &MyGUIItemBoxComponent::getItemCount)
-            .def("getResourceName", &MyGUIItemBoxComponent::getResourceName)
-            .def("setQuantity2", (void (MyGUIItemBoxComponent::*)(unsigned int, unsigned int))&MyGUIItemBoxComponent::setQuantity)
-            .def("setQuantity", (void (MyGUIItemBoxComponent::*)(const Ogre::String&, unsigned int))&MyGUIItemBoxComponent::setQuantity)
-            .def("getQuantity2", (unsigned int (MyGUIItemBoxComponent::*)(unsigned int))&MyGUIItemBoxComponent::getQuantity)
-            .def("getQuantity", (unsigned int (MyGUIItemBoxComponent::*)(const Ogre::String&))&MyGUIItemBoxComponent::getQuantity)
-            .def("addQuantity", &MyGUIItemBoxComponent::addQuantity)
-            .def("increaseQuantity", (void (MyGUIItemBoxComponent::*)(const Ogre::String&, unsigned int))&MyGUIItemBoxComponent::increaseQuantity)
-            .def("decreaseQuantity", (void (MyGUIItemBoxComponent::*)(const Ogre::String&, unsigned int))&MyGUIItemBoxComponent::decreaseQuantity)
-            .def("removeQuantity", &MyGUIItemBoxComponent::removeQuantity)
+        module(lua)[class_<MyGUIItemBoxComponent, MyGUIWindowComponent>("MyGUIItemBoxComponent")
+                .def("getItemCount", &MyGUIItemBoxComponent::getItemCount)
+                .def("getResourceName", &MyGUIItemBoxComponent::getResourceName)
+                .def("setQuantity2", (void (MyGUIItemBoxComponent::*)(unsigned int, unsigned int))&MyGUIItemBoxComponent::setQuantity)
+                .def("setQuantity", (void (MyGUIItemBoxComponent::*)(const Ogre::String&, unsigned int))&MyGUIItemBoxComponent::setQuantity)
+                .def("getQuantity2", (unsigned int (MyGUIItemBoxComponent::*)(unsigned int))&MyGUIItemBoxComponent::getQuantity)
+                .def("getQuantity", (unsigned int (MyGUIItemBoxComponent::*)(const Ogre::String&))&MyGUIItemBoxComponent::getQuantity)
+                .def("addQuantity", &MyGUIItemBoxComponent::addQuantity)
+                .def("increaseQuantity", (void (MyGUIItemBoxComponent::*)(const Ogre::String&, unsigned int))&MyGUIItemBoxComponent::increaseQuantity)
+                .def("decreaseQuantity", (void (MyGUIItemBoxComponent::*)(const Ogre::String&, unsigned int))&MyGUIItemBoxComponent::decreaseQuantity)
+                .def("removeQuantity", &MyGUIItemBoxComponent::removeQuantity)
 
-            .def("setSellValue2", (void (MyGUIItemBoxComponent::*)(unsigned int, Ogre::Real))&MyGUIItemBoxComponent::setSellValue)
-            .def("setSellValue", (void (MyGUIItemBoxComponent::*)(const Ogre::String&, Ogre::Real))&MyGUIItemBoxComponent::setSellValue)
-            .def("getSellValue2", (Ogre::Real (MyGUIItemBoxComponent::*)(unsigned int))&MyGUIItemBoxComponent::getSellValue)
-            .def("getSellValue", (Ogre::Real (MyGUIItemBoxComponent::*)(const Ogre::String&))&MyGUIItemBoxComponent::getSellValue)
+                .def("setSellValue2", (void (MyGUIItemBoxComponent::*)(unsigned int, Ogre::Real))&MyGUIItemBoxComponent::setSellValue)
+                .def("setSellValue", (void (MyGUIItemBoxComponent::*)(const Ogre::String&, Ogre::Real))&MyGUIItemBoxComponent::setSellValue)
+                .def("getSellValue2", (Ogre::Real (MyGUIItemBoxComponent::*)(unsigned int))&MyGUIItemBoxComponent::getSellValue)
+                .def("getSellValue", (Ogre::Real (MyGUIItemBoxComponent::*)(const Ogre::String&))&MyGUIItemBoxComponent::getSellValue)
 
-            .def("setBuyValue2", (void (MyGUIItemBoxComponent::*)(unsigned int, Ogre::Real))&MyGUIItemBoxComponent::setBuyValue)
-            .def("setBuyValue", (void (MyGUIItemBoxComponent::*)(const Ogre::String&, Ogre::Real))&MyGUIItemBoxComponent::setBuyValue)
-            .def("getBuyValue2", (Ogre::Real (MyGUIItemBoxComponent::*)(unsigned int))&MyGUIItemBoxComponent::getBuyValue)
-            .def("getBuyValue", (Ogre::Real (MyGUIItemBoxComponent::*)(const Ogre::String&))&MyGUIItemBoxComponent::getBuyValue)
+                .def("setBuyValue2", (void (MyGUIItemBoxComponent::*)(unsigned int, Ogre::Real))&MyGUIItemBoxComponent::setBuyValue)
+                .def("setBuyValue", (void (MyGUIItemBoxComponent::*)(const Ogre::String&, Ogre::Real))&MyGUIItemBoxComponent::setBuyValue)
+                .def("getBuyValue2", (Ogre::Real (MyGUIItemBoxComponent::*)(unsigned int))&MyGUIItemBoxComponent::getBuyValue)
+                .def("getBuyValue", (Ogre::Real (MyGUIItemBoxComponent::*)(const Ogre::String&))&MyGUIItemBoxComponent::getBuyValue)
 
-            .def("clearItems", &MyGUIItemBoxComponent::clearItems)
-            .def("reactOnMouseButtonPressed", &MyGUIItemBoxComponent::reactOnMouseButtonPressed)
-            .def("reactOnMouseButtonReleased", &MyGUIItemBoxComponent::reactOnMouseButtonReleased)
-            .def("reactOnDropItemRequest", &MyGUIItemBoxComponent::reactOnDropItemRequest)
-            .def("reactOnDropItemAccepted", &MyGUIItemBoxComponent::reactOnDropItemAccepted)
-            .def("reactOnMouseButtonClick", &MyGUIItemBoxComponent::reactOnMouseButtonClick)
-            .def("setGameObjectId", &MyGUIItemBoxComponent::setGameObjectId)
-            .def("getGameObjectId", &MyGUIItemBoxComponent::getGameObjectId)
-        ];
+                .def("clearItems", &MyGUIItemBoxComponent::clearItems)
+                .def("reactOnMouseButtonPressed", &MyGUIItemBoxComponent::reactOnMouseButtonPressed)
+                .def("reactOnMouseButtonReleased", &MyGUIItemBoxComponent::reactOnMouseButtonReleased)
+                .def("reactOnDropItemRequest", &MyGUIItemBoxComponent::reactOnDropItemRequest)
+                .def("reactOnDropItemAccepted", &MyGUIItemBoxComponent::reactOnDropItemAccepted)
+                .def("reactOnMouseButtonClick", &MyGUIItemBoxComponent::reactOnMouseButtonClick)
+                .def("setGameObjectId", &MyGUIItemBoxComponent::setGameObjectId)
+                .def("getGameObjectId", &MyGUIItemBoxComponent::getGameObjectId)];
 
         LuaScriptApi::getInstance()->addClassToCollection("MyGUIItemBoxComponent", "class inherits MyGUIWindowComponent", MyGUIItemBoxComponent::getStaticInfoText());
         LuaScriptApi::getInstance()->addClassToCollection("MyGUIItemBoxComponent", "int getItemCount()", "Gets the max inventory item count.");
@@ -3007,18 +3265,15 @@ namespace NOWA
             "This value is also configurable per-slot in NOWA-Design and is passed automatically to reactOnMouseButtonClick.");
         LuaScriptApi::getInstance()->addClassToCollection("MyGUIItemBoxComponent", "String getGameObjectId(int index)", "Gets the associated GameObject id for the given slot index. Returns '0' if none is set.");
 
-        module(lua)
-        [
-            class_<DragDropData>("DragDropData")
-            .def("getResourceName", &DragDropData::getResourceName)
-            .def("getQuantity", &DragDropData::getQuantity)
-            .def("getSellValue", &DragDropData::getSellValue)
-            .def("getBuyValue", &DragDropData::getBuyValue)
-            .def("getSenderReceiverIsSame", &DragDropData::getSenderReceiverIsSame)
-            .def("getSenderInventoryId", &getSenderInventoryId)
-            .def("setCanDrop", &DragDropData::setCanDrop)
-            .def("getCanDrop", &DragDropData::getCanDrop)
-        ];
+        module(lua)[class_<DragDropData>("DragDropData")
+                .def("getResourceName", &DragDropData::getResourceName)
+                .def("getQuantity", &DragDropData::getQuantity)
+                .def("getSellValue", &DragDropData::getSellValue)
+                .def("getBuyValue", &DragDropData::getBuyValue)
+                .def("getSenderReceiverIsSame", &DragDropData::getSenderReceiverIsSame)
+                .def("getSenderInventoryId", &getSenderInventoryId)
+                .def("setCanDrop", &DragDropData::setCanDrop)
+                .def("getCanDrop", &DragDropData::getCanDrop)];
 
         LuaScriptApi::getInstance()->addClassToCollection("DragDropData", "DragDropData", "It can be used when an item is dragged from one inventory to another to get some data and control if it may be dropped.");
         LuaScriptApi::getInstance()->addClassToCollection("DragDropData", "String getResourceName()", "Gets the resource name.");

@@ -159,9 +159,9 @@ namespace NOWA
 
 		void setConstraintAxis(const Ogre::Vector3& constraintAxis);
 
-		void attachMeshToPlaceNode(const Ogre::String& meshName, GameObject::eType type, Ogre::v1::Mesh* mesh = nullptr);
+		void attachMeshToPlaceNode(const Ogre::String& meshName, NOWA::eType type, unsigned int descriptorId, Ogre::v1::Mesh* mesh = nullptr);
 
-		void attachOtherResourceToPlaceNode(GameObject::eType type);
+		void attachOtherResourceToPlaceNode(NOWA::eType type, unsigned int descriptorId);
 
 		void attachGroupToPlaceNode(const std::vector<unsigned long>& gameObjectIds);
 
@@ -306,7 +306,7 @@ namespace NOWA
 		Ogre::Vector3 calculateGizmoGridTranslation(const Ogre::Vector3& gridFactor, const Ogre::Vector3& internalHitPoint, Ogre::MovableObject* movableObject);
 		Ogre::Vector3 rotateAroundPoint(const Ogre::Vector3& point, const Ogre::Vector3& center, const Ogre::Quaternion& rotation);
 
-		void createMeshPlaceNode(GameObject::eType type);
+		void createMeshPlaceNode(NOWA::eType type, unsigned int descriptorId);
 	private:
 		void handleTerraModifyEnd(EventDataPtr eventData);
 
@@ -368,7 +368,8 @@ namespace NOWA
 		KinematicPicker* movePicker;
 		Picker* movePicker2;
 		Ogre::Real timeSinceLastUpdate;
-		GameObject::eType currentPlaceType;
+		NOWA::eType currentPlaceType;
+        unsigned int currentDescriptorId;
 		std::vector<std::tuple<unsigned long, Ogre::Vector3, Ogre::Quaternion>> groupGameObjectIds;
 		std::vector<Ogre::Vector3> selectedObjectsStartOffsets;
 		Ogre::Real pickForce;

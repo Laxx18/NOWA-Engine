@@ -3943,7 +3943,7 @@ namespace NOWA
                 item->setName(goName);
                 node->setName(goName);
 
-                GameObjectPtr goPtr = GameObjectFactory::getInstance()->createGameObject(sm, node, item, GameObject::ITEM);
+                GameObjectPtr goPtr = GameObjectFactory::getInstance()->createGameObject(sm, node, item, NOWA::ITEM);
 
                 if (nullptr != goPtr)
                 {

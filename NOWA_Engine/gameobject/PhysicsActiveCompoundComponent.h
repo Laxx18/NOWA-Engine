@@ -44,6 +44,11 @@ namespace NOWA
 
 		virtual bool disconnect(void) override;
 
+		/**
+         * @see		GameObjectComponent::onRemoveComponent
+         */
+        virtual void onRemoveComponent(void) override;
+
 		virtual Ogre::String getClassName(void) const override;
 
 		virtual Ogre::String getParentClassName(void) const override;

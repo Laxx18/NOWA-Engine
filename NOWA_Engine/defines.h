@@ -111,6 +111,36 @@ namespace NOWA
 
 	static int FileFlag = FILE_ATTRIBUTE_OFFLINE;
 
+	enum eType
+    {
+        NONE = 0,
+        ITEM,
+        SCENE_NODE, // E.g. for waypoints
+        PLANE,
+        MIRROR,
+        CAMERA,
+        REFLECTION_CAMERA,
+        LIGHT_DIRECTIONAL,
+        TERRA,
+        OCEAN,
+        CUSTOM
+    };
+
+	struct EXPORTED GameObjectTypeDescriptor
+    {
+        eType type = eType::CUSTOM;
+        Ogre::String displayName;
+        Ogre::String meshToDisplay;
+        bool needsMeshItem = true;
+        bool forceZeroTransform = false;
+        bool enterMeshModifyMode = false;
+        Ogre::Vector3 defaultDirection = Ogre::Vector3::NEGATIVE_UNIT_Z;
+        std::vector<Ogre::String> autoComponents;
+        bool guardWithPluginCheck = false;
+        std::function<void()> preComponentsCallback;
+        std::function<void()> postComponentsCallback;
+    };
+
 }; // namespace end
 
 #endif // DEFINES_H

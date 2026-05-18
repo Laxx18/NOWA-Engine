@@ -234,6 +234,19 @@ namespace NOWA
                    "- setUVTiling(Vector2) controls texture repeat on wall faces.";
         }
 
+        static std::optional<NOWA::GameObjectTypeDescriptor> getStaticTypeDescriptor()
+        {
+            NOWA::GameObjectTypeDescriptor desc;
+            desc.type = eType::CUSTOM;
+            desc.displayName = "Wall";
+            desc.meshToDisplay = "Node.mesh";
+            desc.needsMeshItem = false;
+            desc.enterMeshModifyMode = true;
+            desc.autoComponents = {"ProceduralWallComponent"};
+            desc.guardWithPluginCheck = true;
+            return desc;
+        }
+
         virtual Ogre::String getClassName(void) const override
         {
             return "ProceduralWallComponent";

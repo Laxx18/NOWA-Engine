@@ -2555,6 +2555,58 @@ namespace NOWA
         unsigned int logCount;
     };
 
+	//---------------------------------------------------------------------------------------------------------------------
+    // EventDataSpriteAnimationFinished
+    // Fired (on the logic thread) when a MyGuiSpriteComponent finishes a non-repeating animation (repeat=false).
+    // Carries the owning game object id and the component occurrence index so listeners can identify the exact component.
+    //---------------------------------------------------------------------------------------------------------------------
+    class EXPORTED EventDataSpriteAnimationFinished : public BaseEventData
+    {
+    public:
+        // component: raw pointer used only as an opaque identity token.
+        // The pointer is never dereferenced by the listener — it is only compared
+        // against the stored pendingSprite pointer. The component is guaranteed to
+        // outlive this event (it lives on a game object that is alive during simulation).
+        explicit EventDataSpriteAnimationFinished(unsigned long gameObjectId, GameObjectComponent* component)
+			: gameObjectId(gameObjectId),
+			component(component)
+        {
+        }
+
+        static EventType getStaticEventType(void)
+        {
+            return 0xB3C4D5E6;
+        }
+
+        virtual const EventType getEventType(void) const override
+        {
+            return 0xB3C4D5E6;
+        }
+
+        virtual EventDataPtr copy(void) const override
+        {
+            return EventDataPtr(new EventDataSpriteAnimationFinished(this->gameObjectId, this->component));
+        }
+
+        virtual const char* getName(void) const override
+        {
+            return "EventDataSpriteAnimationFinished";
+        }
+
+        unsigned long getGameObjectId(void) const
+        {
+            return this->gameObjectId;
+        }
+        GameObjectComponent* getComponent(void) const
+        {
+            return this->component;
+        }
+
+    private:
+        unsigned long gameObjectId;
+        GameObjectComponent* component;
+    };
+
 }; // namespace end
 
 #endif

@@ -73,7 +73,7 @@ namespace NOWA
         auto gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->getGameObjectFromId(castEventData->getGameObjectId());
         if (nullptr != gameObjectPtr)
         {
-            if (gameObjectPtr->getType() == GameObject::TERRA)
+            if (gameObjectPtr->getType() == NOWA::TERRA)
             {
                 this->mustRegenerate = true;
             }

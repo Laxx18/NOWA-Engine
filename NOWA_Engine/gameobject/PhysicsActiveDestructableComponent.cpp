@@ -919,7 +919,7 @@ namespace NOWA
 		this->sceneNode->setName("DestructableNode"
 			+ Ogre::StringConverter::toString(this->physicsActiveDestructableComponent->parts.size()) + "_" + this->physicsActiveDestructableComponent->getOwner()->getUniqueName());
 
-		if (GameObject::ITEM == this->physicsActiveDestructableComponent->getOwner()->getType())
+		if (NOWA::ITEM == this->physicsActiveDestructableComponent->getOwner()->getType())
 		{
 			this->item = sceneManager->createItem(meshName);
 			this->sceneNode->attachObject(this->item);
@@ -946,7 +946,7 @@ namespace NOWA
 
 		Ogre::Vector3 boundingBoxHalfSize = Ogre::Vector3::ZERO;
 		Ogre::Vector3 scale = originScale * shapeSizeFactor;
-		if (GameObject::ITEM == this->physicsActiveDestructableComponent->getOwner()->getType())
+		if (NOWA::ITEM == this->physicsActiveDestructableComponent->getOwner()->getType())
 		{
 			this->partPosition = (item->getMesh()->getAabb().mCenter) * originScale;
 			boundingBoxHalfSize = item->getMesh()->getAabb().mHalfSize * scale;
@@ -969,7 +969,7 @@ namespace NOWA
 			// when scene node is scaled to 0.5, 0.5, 0.5 the collision scale will be 0.25, 0.25, 0.25
 			// This works because the collision is made of peaces and each peace has an offset position, so scaling will also more offsetting the position in all directions
 			OgreNewt::CollisionPrimitives::ConvexHull* col = nullptr;
-			if (GameObject::ITEM == this->physicsActiveDestructableComponent->getOwner()->getType())
+			if (NOWA::ITEM == this->physicsActiveDestructableComponent->getOwner()->getType())
 			{
 				col = new OgreNewt::CollisionPrimitives::ConvexHull(
 					this->physicsActiveDestructableComponent->getOgreNewt(), item, 0, Ogre::Quaternion::IDENTITY, Ogre::Vector3::ZERO, 0.001f, scale * scale);
@@ -999,7 +999,7 @@ namespace NOWA
 		Ogre::Vector3 splitPartBoundingBoxSize = Ogre::Vector3::ZERO;
 		Ogre::Vector3 originalBoundingBoxSize = Ogre::Vector3::ZERO;
 
-		if (GameObject::ITEM == this->physicsActiveDestructableComponent->getOwner()->getType())
+		if (NOWA::ITEM == this->physicsActiveDestructableComponent->getOwner()->getType())
 		{
 			ownerItem = this->physicsActiveDestructableComponent->getOwner()->getMovableObjectUnsafe<Ogre::Item>();
 			splitPartBoundingBoxSize = ownerItem->getMesh()->getAabb().getSize() * scale;

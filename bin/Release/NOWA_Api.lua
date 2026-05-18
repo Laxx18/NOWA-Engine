@@ -10457,6 +10457,22 @@ return {
 				returns = "(PickerComponent)",
 				valuetype = "PickerComponent"
 			},
+			getProceduralGeometryComponent =
+			{
+				type = "function",
+				description = "Gets the first ProceduralGeometryComponent from this GameObject.",
+				args = "()",
+				returns = "(ProceduralGeometryComponent)",
+				valuetype = "ProceduralGeometryComponent"
+			},
+			getProceduralGeometryComponentFromName =
+			{
+				type = "function",
+				description = "Gets a named ProceduralGeometryComponent from this GameObject.",
+				args = "(string name)",
+				returns = "(ProceduralGeometryComponent)",
+				valuetype = "ProceduralGeometryComponent"
+			},
 			getProceduralMazeComponent =
 			{
 				type = "function",
@@ -10496,6 +10512,22 @@ return {
 				args = "(string name)",
 				returns = "(ProceduralRoadComponent)",
 				valuetype = "ProceduralRoadComponent"
+			},
+			getProceduralStairsComponent =
+			{
+				type = "function",
+				description = "Gets the first ProceduralStairsComponent from this GameObject.",
+				args = "()",
+				returns = "(ProceduralStairsComponent)",
+				valuetype = "ProceduralStairsComponent"
+			},
+			getProceduralStairsComponentFromName =
+			{
+				type = "function",
+				description = "Gets a named ProceduralStairsComponent from this GameObject.",
+				args = "(string name)",
+				returns = "(ProceduralStairsComponent)",
+				valuetype = "ProceduralStairsComponent"
 			},
 			getProceduralTerrainCreationComponent =
 			{
@@ -11142,6 +11174,14 @@ return {
 				type = "method",
 				description = "Activates the given player component from the given game object id and the given camera game object id. If set to true, the given player component will be activated, else deactivated. Sets whether only one player instance can be controller. If set to false more player can be controlled, that is each player, that is currently selected. So if camera game object id is set, this player controller will work e.g. in a split screen scenario for the given camera, not the main active camera.",
 				args = "(boolean active, string gameObjectId, string cameraGameObjectId, boolean onlyOneActive)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			activatePlayerControllers =
+			{
+				type = "method",
+				description = "Activates multiple player controller components at once, one per game object id in the table. Each controller is automatically assigned a unique Recast path slot so workers navigating concurrently do not overwrite each other's FindPath results. If onlyOneActive is true, all currently active controllers are deactivated first. If false, previously active controllers remain active alongside the newly activated ones. Only the first controller in the list gets camera behavior activated.",
+				args = "(table gameObjectIds, boolean onlyOneActive)",
 				returns = "(nil)",
 				valuetype = "nil"
 			},
@@ -12433,6 +12473,14 @@ return {
 				returns = "(PickerComponent)",
 				valuetype = "PickerComponent"
 			},
+			castProceduralGeometryComponent =
+			{
+				type = "function",
+				description = "Casts for Lua auto-completion support.",
+				args = "(ProceduralGeometryComponent other)",
+				returns = "(ProceduralGeometryComponent)",
+				valuetype = "ProceduralGeometryComponent"
+			},
 			castProceduralMazeComponent =
 			{
 				type = "function",
@@ -12448,6 +12496,14 @@ return {
 				args = "(ProceduralRoadComponent other)",
 				returns = "(ProceduralRoadComponent)",
 				valuetype = "ProceduralRoadComponent"
+			},
+			castProceduralStairsComponent =
+			{
+				type = "function",
+				description = "Cast for Lua auto-completion support.",
+				args = "(ProceduralStairsComponent other)",
+				returns = "(ProceduralStairsComponent)",
+				valuetype = "ProceduralStairsComponent"
 			},
 			castProceduralTerrainCreationComponent =
 			{
@@ -26590,6 +26646,103 @@ return {
 		type = "class",
 		description = "Generates a procedural mesh prism."
 	},
+	ProceduralGeometryComponent =
+	{
+		type = "class",
+		description = "Usage: Creates a procedural geometry primitive directly in the viewport.  PLACEMENT: - When the component is added, a ghost preview mesh follows the mouse cursor. - Left-click on any surface to confirm placement (snaps the GameObject there). - Right-click or press ESC to cancel without moving the GameObject.  SHAPES: - Box      : standard cuboid.  Size = width × height × depth. - Pyramid  : rectangular base, apex at top.  Size = baseW × height × baseD. - Sphere   : UV sphere.  Size.x = radius.  Use Segments H/V for smoothness. - Cylinder : capped cylinder.  Size.x = radius, Size.y = height. - Cone     : cone with base cap.  Size.x = radius, Size.y = height. - Capsule  : cylinder + hemispherical caps.  Size.x = radius, Size.y = body height. - Torus    : donut / ring.  Size.x = major radius, Size.z = tube radius. - Plane    : subdivided flat quad.  Size.x = width, Size.z = depth. - Prism    : triangular prism (isosceles triangle extruded).  Size = baseW × height × baseD. - Disc     : flat circle.  Size.x = outer radius.  Set Size.z > 0 for a ring/annulus. - Wedge    : inclined ramp.  Size = width × height × depth.  EDITING: - Every property change instantly rebuilds the mesh; full undo/redo is supported. - 'Flip Normals' inverts face winding (useful for inside-out geometry, skyboxes). - Segments H controls horizontal/angular resolution.  Segments V controls vertical. - UV Tiling scales texture coordinates across all faces.  CONVERT TO MESH: - Bakes the current shape to a static .mesh file and replaces this component   with a plain MeshComponent for optimal runtime performance. - This operation is permanent and cannot be undone procedurally.  LUA API: - getProceduralGeometryComponent() on a GameObject returns this component. - setShape(name) sets the primitive: 'Box', 'Sphere', 'Cylinder', etc. - setSize(Vector3) sets shape dimensions (interpretation is per-shape). - setSegmentsH(n) / setSegmentsV(n) control mesh tessellation. - setDatablock(name) assigns a PBS datablock material. - setUVTiling(Vector2) controls texture repeat. - setFlipNormals(bool) inverts face normals. - rebuildMesh() forces a full geometry rebuild.",
+		inherits = "GameObjectComponent",
+		childs = 
+		{
+			setActivated =
+			{
+				type = "method",
+				description = "Activates or deactivates the geometry placement mode.",
+				args = "(boolean activated)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setShape =
+			{
+				type = "method",
+				description = "Sets the primitive shape. Valid values: 'Box', 'Pyramid', 'Sphere', 'Cylinder', 'Cone', 'Capsule', 'Torus', 'Plane', 'Prism', 'Disc', 'Wedge'. Triggers a mesh rebuild.",
+				args = "(string shape)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getShape =
+			{
+				type = "function",
+				description = "Returns the currently selected shape name.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			setSize =
+			{
+				type = "method",
+				description = "Sets shape dimensions. Interpretation varies per shape: Box=widthXheightXdepth, Sphere=radius(x), Cylinder=radius(x)/height(y), Torus=majorR(x)/tubeR(z), Plane=width(x)/depth(z), Disc=outerR(x)/innerR(z). Always triggers a mesh rebuild.",
+				args = "(Vector3 size)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getSize =
+			{
+				type = "function",
+				description = "Returns the current size Vector3.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			setSegmentsH =
+			{
+				type = "method",
+				description = "Sets the horizontal (angular/width) tessellation count (min 3). Affects all round shapes and the Plane. Triggers a mesh rebuild.",
+				args = "(number n)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setSegmentsV =
+			{
+				type = "method",
+				description = "Sets the vertical tessellation count (min 2). Affects Sphere, Capsule, Plane and the Torus tube. Triggers a mesh rebuild.",
+				args = "(number n)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setFlipNormals =
+			{
+				type = "method",
+				description = "If true, reverses face winding so normals point inward. Use for skybox cubes, inside-out rooms, etc. Triggers a mesh rebuild.",
+				args = "(boolean flip)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setDatablock =
+			{
+				type = "method",
+				description = "Assigns a PBS datablock material by name. This is a live swap and does NOT trigger a full mesh rebuild.",
+				args = "(string name)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setUVTiling =
+			{
+				type = "method",
+				description = "Sets the UV tiling multiplier for all faces (x=U repeat, y=V repeat). Triggers a mesh rebuild.",
+				args = "(Vector2 tiling)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			rebuildMesh =
+			{
+				type = "method",
+				description = "Forces a complete geometry rebuild from current parameter values. Call this after making several changes via Lua to rebuild only once.",
+				args = "()",
+				returns = "(nil)",
+				valuetype = "nil"
+			}
+		}
+	},
 	ProceduralMazeComponent =
 	{
 		type = "class",
@@ -26853,6 +27006,119 @@ return {
 				type = "method",
 				description = "Adds a single road segment from start to end world position and rebuilds.",
 				args = "(Vector3 start, Vector3 end)",
+				returns = "(nil)",
+				valuetype = "nil"
+			}
+		}
+	},
+	ProceduralStairsComponent =
+	{
+		type = "class",
+		description = "Usage: Creates procedural stair geometry directly in the viewport.  SHAPES:   Linear  – straight flight.  Step Width sets the lateral size.   Curved  – steps radiate from a centre point over a configurable arc.   Spiral  – like Curved but Arc Angle can exceed 360 degrees.  STEP PARAMETERS:   Step Count   – number of steps (min 1).   Step Height  – vertical rise per step in world units.   Step Depth   – horizontal run (tread depth) per step.   Step Width   – lateral width (Linear) or use Inner/Outer Radius (Curved).   Step Nosing  – tread overhang beyond the riser (0 = flush).   Open Riser   – omit the front vertical face for a floating look.  STRUCTURAL:   Stringer Style – None: no sides.  Closed: solid diagonal panel.                    Open: notched panel cut under each tread.   Bottom Style   – None: hollow underside.  Sloped: one diagonal soffit.                    Stepped: mirrors the step geometry underneath.  CURVED / SPIRAL:   Inner Radius  – radius of the central pole / void.   Outer Radius  – radius of the outer step edge.   Arc Angle     – total rotation in degrees (180=half-turn, 360=full spiral).   Rotation Dir  – Clockwise or Counter-Clockwise.   Centre Pole   – generate a solid cylinder at the inner radius.  MATERIALS:   Tread / Riser / Stringer datablocks are separate PBS material slots.  UV:   Box        – each face projected from its dominant axis.   Continuous – UVs flow along the stair flight direction.  PIVOT:   Bottom-Front  – origin at the base of the first step.   Bottom-Centre – origin at the horizontal midpoint of the flight.   Bottom-Back   – origin at the base of the top step.  PHYSICS:   When combined with PhysicsActiveCompoundComponent, each step produces   an exact Box (Linear) or ConvexHull (Curved) collision primitive.  CONVERT TO MESH:   Bakes to a static .mesh file and replaces this component with a plain   MeshComponent.  This is a one-way irreversible operation.  LUA API:   getProceduralStairsComponent() on a GameObject returns this component.   setStairShape(name) – 'Linear', 'Curved', 'Spiral'.   setStepCount(n) / setStepHeight(h) / setStepDepth(d) / setStepWidth(w).   setStepNosing(n) / setOpenRiser(bool) / setStringerStyle(name).   setBottomStyle(name) / setPivotPosition(name).   setInnerRadius(r) / setOuterRadius(r) / setArcAngle(deg).   setTreadDatablock(name) / setRiserDatablock(name) / setStringerDatablock(name).   setUVMode(name) / setUVTiling(Vector2) / rebuildMesh().",
+		inherits = "GameObjectComponent",
+		childs = 
+		{
+			setStairShape =
+			{
+				type = "method",
+				description = "Sets the stair shape: 'Linear', 'Curved', or 'Spiral'. Rebuilds the mesh.",
+				args = "(string shape)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setStepCount =
+			{
+				type = "method",
+				description = "Sets the number of steps. Rebuilds the mesh.",
+				args = "(number n)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setStepHeight =
+			{
+				type = "method",
+				description = "Sets the vertical rise per step in world units. Rebuilds the mesh.",
+				args = "(number h)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setStepDepth =
+			{
+				type = "method",
+				description = "Sets the horizontal run (tread depth) per step. Rebuilds the mesh.",
+				args = "(number d)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setStepWidth =
+			{
+				type = "method",
+				description = "Sets the lateral width of the flight (Linear only). Rebuilds the mesh.",
+				args = "(number w)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setStepNosing =
+			{
+				type = "method",
+				description = "Sets the tread overhang beyond the riser (0=flush). Rebuilds the mesh.",
+				args = "(number n)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setOpenRiser =
+			{
+				type = "method",
+				description = "When true, omits the front vertical riser face. Rebuilds the mesh.",
+				args = "(boolean open)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setStringerStyle =
+			{
+				type = "method",
+				description = "Sets the side panel style: 'None', 'Closed', or 'Open'. Rebuilds the mesh.",
+				args = "(string style)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setBottomStyle =
+			{
+				type = "method",
+				description = "Sets the underside style: 'None', 'Sloped', or 'Stepped'. Rebuilds the mesh.",
+				args = "(string style)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setInnerRadius =
+			{
+				type = "method",
+				description = "Sets the inner void radius (Curved/Spiral only). Rebuilds the mesh.",
+				args = "(number r)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setOuterRadius =
+			{
+				type = "method",
+				description = "Sets the outer edge radius (Curved/Spiral only). Rebuilds the mesh.",
+				args = "(number r)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setArcAngle =
+			{
+				type = "method",
+				description = "Sets the total arc in degrees (Curved/Spiral only). Rebuilds the mesh.",
+				args = "(number deg)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			rebuildMesh =
+			{
+				type = "method",
+				description = "Forces a complete geometry rebuild. Call after multiple Lua parameter changes to avoid redundant rebuilds.",
+				args = "()",
 				returns = "(nil)",
 				valuetype = "nil"
 			}
@@ -32304,7 +32570,12 @@ return {
 	log =
 	{
 		type = "singleton",
-		description = "Logs a string for Ogre log file."
+		description = "Logs a string for Ogre log file at normal level."
+	},
+	logCritital =
+	{
+		type = "singleton",
+		description = "Logs a string for Ogre log file at critical level."
 	},
 	toString =
 	{

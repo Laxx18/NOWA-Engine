@@ -603,7 +603,7 @@ GameObjectPtr GameObjectController::internalClone(GameObjectPtr originalGameObje
 
     // Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObjectController]: Cloning game object name " + validatedName + " from the original name : " + originalGameObjectPtr->getName());
 
-    if (GameObject::ITEM == originalGameObjectPtr->getType())
+    if (NOWA::ITEM == originalGameObjectPtr->getType())
     {
         clonedMovableObject = sceneManager->createItem(static_cast<Ogre::Item*>(originalMovableObject)->getMesh(), originalSceneNode->isStatic() ? Ogre::SCENE_STATIC : Ogre::SCENE_DYNAMIC);
     }
@@ -611,7 +611,7 @@ GameObjectPtr GameObjectController::internalClone(GameObjectPtr originalGameObje
     clonedSceneNode->attachObject(clonedMovableObject);
     if (nullptr != clonedMovableObject)
     {
-        if (GameObject::ITEM == originalGameObjectPtr->getType())
+        if (NOWA::ITEM == originalGameObjectPtr->getType())
         {
             // also clone each sub material, so that each cloned entity has its own material which can be manipulated, whithout affecting the other entities
             for (unsigned int i = 0; i < static_cast<Ogre::Item*>(originalMovableObject)->getNumSubItems(); i++)
@@ -784,11 +784,6 @@ void GameObjectController::update(Ogre::Real dt, bool notSimulating)
         {
             it->second->update(dt);
         }
-        // Update moving behaviors 2D
-        /*for (auto it = this->movingBehaviors2D.cbegin(); it != this->movingBehaviors2D.cend(); ++it)
-        {
-            it->second->update(dt);
-        }*/
     }
 
     // Looks if there are some GameObjects to delete post mortem and deletes them
@@ -2070,7 +2065,7 @@ std::vector<GameObjectPtr> GameObjectController::getGameObjectsFromNamePrefix(co
     return vec;
 }
 
-std::vector<GameObjectPtr> GameObjectController::getGameObjectsFromType(GameObject::eType type) const
+std::vector<GameObjectPtr> GameObjectController::getGameObjectsFromType(NOWA::eType type) const
 {
     std::vector<GameObjectPtr> vec;
 
@@ -3350,7 +3345,7 @@ void GameObjectController::createAllGameObjectsForShaderCacheGeneration(Ogre::Sc
 
                     item->setName(gameObjectName);
                     node->setName(gameObjectName);
-                    GameObjectPtr newGameObjectPtr = GameObjectFactory::getInstance()->createGameObject(sceneManager, node, item, GameObject::ITEM);
+                    GameObjectPtr newGameObjectPtr = GameObjectFactory::getInstance()->createGameObject(sceneManager, node, item, NOWA::ITEM);
                     if (nullptr == newGameObjectPtr)
                     {
                         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectController]: Could not create game object for mesh name: '" + meshName + "'");

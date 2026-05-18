@@ -148,6 +148,11 @@ namespace NOWA
 		* @see		GameObjectComponent::disconnect
 		*/
 		virtual bool disconnect(void) override;
+
+		/**
+         * @see		GameObjectComponent::onRemoveComponent
+         */
+        virtual void onRemoveComponent(void) override;
 		
 		/**
 		* @see		GameObjectComponent::update

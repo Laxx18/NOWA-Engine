@@ -70,6 +70,17 @@ namespace NOWA
 			return "Usage: Creates a directional light.";
 		}
 
+		static std::optional<NOWA::GameObjectTypeDescriptor> getStaticTypeDescriptor()
+        {
+            NOWA::GameObjectTypeDescriptor desc;
+            desc.type = NOWA::CUSTOM;
+            desc.displayName = "Light (Directional)";
+            desc.meshToDisplay = "LightDirectional.mesh";
+            desc.needsMeshItem = true;
+            desc.autoComponents = {LightDirectionalComponent::getStaticClassName()};
+            return desc;
+        }
+
 		/**
 		 * @see		GameObjectComponent::update
 		 */

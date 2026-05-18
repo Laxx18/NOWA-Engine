@@ -60,9 +60,7 @@ namespace NOWA
 
     PhysicsComponent::~PhysicsComponent()
     {
-        // delete the body
-        this->destroyBody();
-        // Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PhysicsComponent] Destructor physics component for game object: " + this->gameObjectPtr->getName());
+        
     }
 
     bool PhysicsComponent::connect(void)
@@ -87,6 +85,10 @@ namespace NOWA
     void PhysicsComponent::onRemoveComponent(void)
     {
         GameObjectComponent::onRemoveComponent();
+
+        // delete the body
+        this->destroyBody();
+        // Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PhysicsComponent] Destructor physics component for game object: " + this->gameObjectPtr->getName());
     }
 
     OgreNewt::CollisionPtr PhysicsComponent::createDynamicCollision(Ogre::Vector3& inertia, const Ogre::Vector3& collisionSize, const Ogre::Vector3& collisionPosition, const Ogre::Quaternion& collisionOrientation, Ogre::Vector3& massOrigin,
@@ -105,7 +107,7 @@ namespace NOWA
             Ogre::Item* item = nullptr;
             OgreNewt::CollisionPrimitives::ConvexHull* col = nullptr;
 
-            if (GameObject::ITEM == this->gameObjectPtr->getType())
+            if (NOWA::ITEM == this->gameObjectPtr->getType())
             {
                 item = this->gameObjectPtr->getMovableObjectUnsafe<Ogre::Item>();
                 if (nullptr != item)
@@ -249,7 +251,7 @@ namespace NOWA
             Ogre::Item* item = nullptr;
             OgreNewt::CollisionPrimitives::ConvexHull* col = nullptr;
 
-            if (GameObject::ITEM == this->gameObjectPtr->getType())
+            if (NOWA::ITEM == this->gameObjectPtr->getType())
             {
                 item = this->gameObjectPtr->getMovableObjectUnsafe<Ogre::Item>();
                 col = new OgreNewt::CollisionPrimitives::ConvexHull(this->ogreNewt, item, categoryId, collisionOrientation, collisionPosition, 0.001f /*, this->gameObjectPtr->getSceneNode()->getScale()*/);
@@ -868,7 +870,7 @@ namespace NOWA
             OgreNewt::CollisionSerializer saveWorldCollision;
             Ogre::Item* item = nullptr;
 
-            if (GameObject::ITEM == this->gameObjectPtr->getType())
+            if (NOWA::ITEM == this->gameObjectPtr->getType())
             {
                 item = this->gameObjectPtr->getMovableObjectUnsafe<Ogre::Item>();
                 this->collisionPtr = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::TreeCollision(this->ogreNewt, item, true, categoryId));
@@ -896,7 +898,7 @@ namespace NOWA
 
                 Ogre::Item* item = nullptr;
 
-                if (GameObject::ITEM == this->gameObjectPtr->getType())
+                if (NOWA::ITEM == this->gameObjectPtr->getType())
                 {
                     item = this->gameObjectPtr->getMovableObjectUnsafe<Ogre::Item>();
                     return OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::TreeCollision(this->ogreNewt, item, true, categoryId));
@@ -911,7 +913,7 @@ namespace NOWA
                     OgreNewt::CollisionSerializer saveWorldCollision;
                     Ogre::Item* item = nullptr;
 
-                    if (GameObject::ITEM == this->gameObjectPtr->getType())
+                    if (NOWA::ITEM == this->gameObjectPtr->getType())
                     {
                         item = this->gameObjectPtr->getMovableObjectUnsafe<Ogre::Item>();
                         this->collisionPtr = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::TreeCollision(this->ogreNewt, item, true, categoryId));

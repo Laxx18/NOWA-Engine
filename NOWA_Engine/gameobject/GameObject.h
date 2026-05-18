@@ -40,35 +40,6 @@ namespace NOWA
 	{
 	public:
 
-		enum eType
-		{
-			NONE = 0,
-			ITEM,
-			SCENE_NODE, // E.g. for waypoints
-			PLANE,
-			MIRROR,
-			CAMERA,
-			REFLECTION_CAMERA,
-			TERRA,
-			OCEAN,
-			LIGHT_DIRECTIONAL,
-			LIGHT_SPOT,
-			LIGHT_POINT,
-			LIGHT_AREA,
-			MANUAL_OBJECT,
-			RECTANGLE,
-			LINES,
-			DECAL,
-			BILL_BOARD,
-			BILL_BOARD_CHAIN,
-			SIMPLE_RENDERABLE,
-			MAZE,
-			WALL,
-			ROAD,
-			DUNGEON,
-			GEOMETRY
-		};
-
 		friend class GameObjectController;
 		friend class GameObjectFactory;
 		friend class SelectionManager;
@@ -78,8 +49,8 @@ namespace NOWA
 		friend class LuaScriptComponent;
 		friend class CameraComponent;
 	public:
-		GameObject(Ogre::SceneManager* sceneManager, Ogre::SceneNode* sceneNode, Ogre::MovableObject* movableObject, const Ogre::String& category = "Default", const Ogre::String& renderCategory = "Default",
-			bool dynamic = true, eType type = eType::ITEM, unsigned long id = 0);
+		GameObject(Ogre::SceneManager* sceneManager, Ogre::SceneNode* sceneNode, Ogre::MovableObject* movableObject, const Ogre::String& category = "Default", const Ogre::String& renderCategory = "Default", bool dynamic = true,
+            NOWA::eType type = NOWA::eType::ITEM, unsigned long id = 0);
 
 		~GameObject();
 
@@ -661,7 +632,7 @@ namespace NOWA
 		 * @brief  Gets the game object type.
 		 * @return type The game object type to get.
 		 */
-		GameObject::eType getType(void) const;
+		NOWA::eType getType(void) const;
 
 		/**
 		 * @brief		Sets the original mesh name, when the mesh could not be loaded. This is necessary to set because:
@@ -1058,7 +1029,7 @@ namespace NOWA
 		Ogre::SceneManager* sceneManager;
 		Ogre::SceneNode* sceneNode;
 		Ogre::MovableObject* movableObject;
-		eType type;
+		NOWA::eType type;
 		Ogre::RaySceneQuery* clampObjectQuery;
 
 		// Cached raw non-owning pointers — set in postInit(), cleared in destroy()

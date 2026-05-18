@@ -95,6 +95,17 @@ namespace NOWA
 			return "Usage: Creates one or several lines. It can be used in lua script e.g. for an audio spectrum visualization";
 		}
 
+		static std::optional<NOWA::GameObjectTypeDescriptor> getStaticTypeDescriptor()
+        {
+            NOWA::GameObjectTypeDescriptor desc;
+            desc.type = NOWA::CUSTOM;
+            desc.displayName = "Lines";
+            desc.meshToDisplay = "Node.mesh";
+            desc.needsMeshItem = true;
+            desc.autoComponents = {LinesComponent::getStaticClassName()};
+            return desc;
+        }
+
 		/**
 		 * @brief Sets whether the lines should be connected together
 		 * @param[in] connected if set to true the lines will be connected forming a more complex object

@@ -89,6 +89,18 @@ namespace NOWA
 				"Fantasy Water: WavesIntensity=1.60 OceanWavesScale=1.10 ShaderWavesScale=1.30 WaveTimeScale=2.10 WaveFrequencyScale=1.35 WaveChaos=0.65\n";
 		}
 
+		static std::optional<NOWA::GameObjectTypeDescriptor> getStaticTypeDescriptor()
+        {
+            NOWA::GameObjectTypeDescriptor desc;
+            desc.type = NOWA::OCEAN;
+            desc.displayName = "Ocean";
+            desc.meshToDisplay = "Node.mesh";
+            desc.needsMeshItem = false;
+            desc.forceZeroTransform = true;
+            desc.autoComponents = {OceanComponent::getStaticClassName()};
+            return desc;
+        }
+
 		/**
 		 * @see		GameObjectComponent::update
 		 */

@@ -359,6 +359,14 @@ void ResourcesPanelMeshes::loadMeshes(const Ogre::String& filter)
 				parent->add(child);
 			}
 		}
+        // Add Stairs
+        {
+            if (NOWA::GameObjectFactory::getInstance()->getComponentFactory()->hasComponent("ProceduralStairsComponent"))
+            {
+                child = new MyGUI::TreeControl::Node("Stairs", "Data");
+                parent->add(child);
+            }
+        }
 		root->add(parent);
 	}
 
@@ -428,106 +436,31 @@ void ResourcesPanelMeshes::clear(void)
 
 void ResourcesPanelMeshes::notifyTreeNodeSelected(MyGUI::TreeControl* treeControl, MyGUI::TreeControl::Node* node)
 {
-	if (nullptr == node)
-	{
-		return;
-	}
+    if (nullptr == node)
+    {
+        return;
+    }
 
-	ENQUEUE_RENDER_COMMAND_MULTI("ResourcesPanelMeshes::notifyTreeNodeSelected", _2(treeControl, node),
-	{
-		if ("Plane" == Ogre::String(node->getText()))
-		{
-			this->editorManager->attachOtherResourceToPlaceNode(NOWA::GameObject::PLANE);
-		}
-		else if ("Mirror" == Ogre::String(node->getText()))
-		{
-			this->editorManager->attachOtherResourceToPlaceNode(NOWA::GameObject::MIRROR);
-		}
-		else if ("Light (Directional)" == Ogre::String(node->getText()))
-		{
-			this->editorManager->attachOtherResourceToPlaceNode(NOWA::GameObject::LIGHT_DIRECTIONAL);
-			// Later attachLightToPlaceNode: Internally like Ogitor a light mesh is created
-		}
-		else if ("Light (Spot)" == Ogre::String(node->getText()))
-		{
-			this->editorManager->attachOtherResourceToPlaceNode(NOWA::GameObject::LIGHT_SPOT);
-		}
-		else if ("Light (Point)" == Ogre::String(node->getText()))
-		{
-			this->editorManager->attachOtherResourceToPlaceNode(NOWA::GameObject::LIGHT_POINT);
-		}
-		else if ("Light (Area)" == Ogre::String(node->getText()))
-		{
-			this->editorManager->attachOtherResourceToPlaceNode(NOWA::GameObject::LIGHT_AREA);
-		}
-		else if ("Camera" == Ogre::String(node->getText()))
-		{
-			this->editorManager->attachOtherResourceToPlaceNode(NOWA::GameObject::CAMERA);
-		}
-		else if ("Reflection Camera" == Ogre::String(node->getText()))
-		{
-			this->editorManager->attachOtherResourceToPlaceNode(NOWA::GameObject::REFLECTION_CAMERA);
-		}
-		else if ("Node" == Ogre::String(node->getText()))
-		{
-			this->editorManager->attachOtherResourceToPlaceNode(NOWA::GameObject::SCENE_NODE);
-		}
-		else if ("Lines" == Ogre::String(node->getText()))
-		{
-			this->editorManager->attachOtherResourceToPlaceNode(NOWA::GameObject::LINES);
-		}
-		else if ("ManualObject" == Ogre::String(node->getText()))
-		{
-			this->editorManager->attachOtherResourceToPlaceNode(NOWA::GameObject::MANUAL_OBJECT);
-		}
-		else if ("Rectangle" == Ogre::String(node->getText()))
-		{
-			this->editorManager->attachOtherResourceToPlaceNode(NOWA::GameObject::RECTANGLE);
-		}
-		else if ("Decal" == Ogre::String(node->getText()))
-		{
-			this->editorManager->attachOtherResourceToPlaceNode(NOWA::GameObject::DECAL);
-		}
-		else if ("Ocean" == Ogre::String(node->getText()))
-		{
-			this->editorManager->attachOtherResourceToPlaceNode(NOWA::GameObject::OCEAN);
-		}
-		else if ("Terra" == Ogre::String(node->getText()))
-		{
-			this->editorManager->attachOtherResourceToPlaceNode(NOWA::GameObject::TERRA);
-		}
-		else if ("Maze" == Ogre::String(node->getText()))
-		{
-			this->editorManager->attachOtherResourceToPlaceNode(NOWA::GameObject::MAZE);
-		}
-		else if ("Wall" == Ogre::String(node->getText()))
-		{
-			this->editorManager->attachOtherResourceToPlaceNode(NOWA::GameObject::WALL);
-		}
-		else if ("Road" == Ogre::String(node->getText()))
-		{
-			this->editorManager->attachOtherResourceToPlaceNode(NOWA::GameObject::ROAD);
-		}
-		else if ("Dungeon" == Ogre::String(node->getText()))
-		{
-			this->editorManager->attachOtherResourceToPlaceNode(NOWA::GameObject::DUNGEON);
-		}
-        else if ("Geometry" == Ogre::String(node->getText()))
+    NOWA::GraphicsModule::RenderCommand renderCommand = [this, node]()
+    {
+        const Ogre::String nodeText = node->getText();
+        const auto& registeredTypes = NOWA::GameObjectFactory::getInstance()->getRegisteredTypes();
+
+        for (const auto& pair : registeredTypes)
         {
-            this->editorManager->attachOtherResourceToPlaceNode(NOWA::GameObject::GEOMETRY);
+            if (nodeText == pair.second.displayName)
+            {
+                this->editorManager->attachOtherResourceToPlaceNode(pair.second.type, pair.first);
+                return;
+            }
         }
-		else
-		{
-			Ogre::String meshName = node->getText();
-			size_t pos = meshName.rfind(".mesh");
-			if (Ogre::String::npos != pos)
-			{
-				this->editorManager->attachMeshToPlaceNode(meshName, NOWA::GameObject::ITEM);
-				// Escape should detach, and if attached and in place mode, all other modes must be disabled
-				// when clicking in place mode in editor, a new game object etc. must be created
-			}
-		}
-	});
+
+        if (nodeText.rfind(".mesh") != Ogre::String::npos)
+        {
+            this->editorManager->attachMeshToPlaceNode(nodeText, NOWA::ITEM, 0);
+        }
+    };
+    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "ResourcesPanelMeshes::notifyTreeNodeSelected");
 }
 
 void ResourcesPanelMeshes::notifyTreeNodePrepare(MyGUI::TreeControl* treeControl, MyGUI::TreeControl::Node* node)

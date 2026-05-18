@@ -1813,7 +1813,7 @@ namespace NOWA
 			this->movingBehaviorPtr->setRotationSpeed(this->rotationSpeed->getReal());
 			this->movingBehaviorPtr->setGoalRadius(this->goalRadius->getReal());
 			// this->movingBehaviorPtr->setGoalRadius(0.5f);
-			this->movingBehaviorPtr->setStuckCheckTime(1000.0f);
+			this->movingBehaviorPtr->setStuckCheckTime(5000.0f);
 			this->movingBehaviorPtr->setFlyMode(false);
 		}
 

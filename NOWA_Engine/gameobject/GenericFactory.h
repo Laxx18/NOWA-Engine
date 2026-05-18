@@ -48,44 +48,66 @@ namespace NOWA
 			bool isPlugin = false;
 		};
 	public:
-		template <class SubClass>
-		bool registerClass(IdType id, const Ogre::String& name)
-		{
-			GenericObjectFactory::ComponentProperties componentProperties;
-			componentProperties.isPlugin = false;
-			componentProperties.infoText = SubClass::getStaticInfoText();
-			this->registeredComponentNames.emplace(name, componentProperties);
-			auto findIt = this->creationFunctions.find(id);
-			if (findIt == this->creationFunctions.end())
-			{
-				this->canAddFunctions[id] = &genericCanAddFunction<SubClass>;
-				this->creationFunctions[id] = &genericObjectCreationFunction<BaseClass, SubClass>;  // insert() is giving compiler errors
-				this->createApiForLuaFunctions[id] = &genericCreateApiForLuaFunction<SubClass>;
-				return true;
-			}
+        void setGameObjectFactory(GameObjectFactory* factory)
+        {
+            this->gameObjectFactory = factory;
+        }
 
-			return false;
-		}
+        template <class SubClass> bool registerClass(IdType id, const Ogre::String& name)
+        {
+            GenericObjectFactory::ComponentProperties componentProperties;
+            componentProperties.isPlugin = false;
+            componentProperties.infoText = SubClass::getStaticInfoText();
+            this->registeredComponentNames.emplace(name, componentProperties);
 
-		template <class SubClass>
-		bool registerPluginComponentClass(IdType id, const Ogre::String& name)
-		{
-			GenericObjectFactory::ComponentProperties componentProperties;
-			componentProperties.isPlugin = true;
-			componentProperties.infoText = SubClass::getStaticInfoText();
+            auto findIt = this->creationFunctions.find(id);
+            if (findIt == this->creationFunctions.end())
+            {
+                this->canAddFunctions[id] = &genericCanAddFunction<SubClass>;
+                this->creationFunctions[id] = &genericObjectCreationFunction<BaseClass, SubClass>;
+                this->createApiForLuaFunctions[id] = &genericCreateApiForLuaFunction<SubClass>;
 
-			this->registeredComponentNames.emplace(name, componentProperties);
-			auto findIt = this->creationFunctions.find(id);
-			if (findIt == this->creationFunctions.end())
-			{
-				this->canAddFunctions[id] = &genericCanAddFunction<SubClass>;
-				this->creationFunctions[id] = &genericObjectCreationFunction<BaseClass, SubClass>;  // insert() is giving compiler errors
-				this->createApiForLuaFunctions[id] = &genericCreateApiForLuaFunction<SubClass>;
-				return true;
-			}
+                if (nullptr != this->gameObjectFactory)
+                {
+                    auto descriptor = SubClass::getStaticTypeDescriptor();
+                    if (descriptor.has_value())
+                    {
+                        this->gameObjectFactory->registerGameObjectType(id, std::move(descriptor.value()));
+                    }
+                }
 
-			return false;
-		}
+                return true;
+            }
+            return false;
+        }
+
+        template <class SubClass> bool registerPluginComponentClass(IdType id, const Ogre::String& name)
+        {
+            GenericObjectFactory::ComponentProperties componentProperties;
+            componentProperties.isPlugin = true;
+            componentProperties.infoText = SubClass::getStaticInfoText();
+            this->registeredComponentNames.emplace(name, componentProperties);
+
+            auto findIt = this->creationFunctions.find(id);
+            if (findIt == this->creationFunctions.end())
+            {
+                this->canAddFunctions[id] = &genericCanAddFunction<SubClass>;
+                this->creationFunctions[id] = &genericObjectCreationFunction<BaseClass, SubClass>;
+                this->createApiForLuaFunctions[id] = &genericCreateApiForLuaFunction<SubClass>;
+
+                if (nullptr != this->gameObjectFactory)
+                {
+                    auto descriptor = SubClass::getStaticTypeDescriptor();
+                    if (descriptor.has_value())
+                    {
+                        this->gameObjectFactory->registerGameObjectType(id, std::move(descriptor.value()));
+                    }
+                }
+
+                return true;
+            }
+            return false;
+        }
 
 		bool hasComponent(const Ogre::String& componentName)
 		{
@@ -177,6 +199,8 @@ namespace NOWA
 		std::map<IdType, BaseClass*> pluginComponents;
 
 		std::map<Ogre::String, GenericObjectFactory::ComponentProperties> registeredComponentNames;
+
+		GameObjectFactory* gameObjectFactory = nullptr;
 	};
 
 }; //Namespace end

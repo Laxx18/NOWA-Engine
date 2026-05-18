@@ -72,6 +72,17 @@ namespace NOWA
 			return "Usage: This component is used to create a mirror effect. ";
 		}
 
+		static std::optional<NOWA::GameObjectTypeDescriptor> getStaticTypeDescriptor()
+        {
+            NOWA::GameObjectTypeDescriptor desc;
+            desc.type = NOWA::MIRROR;
+            desc.displayName = "Mirror";
+            desc.meshToDisplay = "";
+            desc.needsMeshItem = true;
+            desc.autoComponents = {PlanarReflectionComponent::getStaticClassName()};
+            return desc;
+        }
+
 		/**
 		 * @see		GameObjectComponent::update
 		 */

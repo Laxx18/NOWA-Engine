@@ -6,7 +6,7 @@
 		<ambient>
 			<ambientLightUpperHemisphere r="0.3" g="0.5" b="0.7"/>
 			<ambientLightLowerHemisphere r="0.6" g="0.45" b="0.3" a="1"/>
-			<hemisphereDir x="0.57735" y="0.57735" z="0.57735"/>
+			<hemisphereDir x="0.57735" y="0.577351" z="0.57735"/>
 			<envmapScale x="1"/>
 		</ambient>
 		<shadows>
@@ -318,7 +318,7 @@
 		</node>
 		<node name="MainCamera" id="4010617415">
 			<position x="-2.43579" y="9.55844" z="46.468"/>
-			<rotation qw="0.972074" qx="-0.188952" qy="0.136616" qz="0.0265555"/>
+			<rotation qw="0.963516" qx="-0.196029" qy="0.178577" qz="0.0363319"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
 				<subitem index="0" datablockName="WhiteLine"/>
@@ -348,7 +348,7 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Active" data="true"/>
 					<property type="9" name="CameraPosition" data="-2.43579 9.55844 46.468"/>
-					<property type="9" name="CameraOrientation" data="-22.2945 15.7567 -0.11313"/>
+					<property type="9" name="CameraOrientation" data="-23.2107 21.3749 -0.113706"/>
 					<property type="6" name="NearClipDistance" data="0.1"/>
 					<property type="6" name="FarClipDistance" data="500"/>
 					<property type="6" name="Fovy" data="90"/>
@@ -585,11 +585,13 @@
 					<property type="6" name="SellValue0" data="0"/>
 					<property type="6" name="BuyValue0" data="0"/>
 					<property type="2" name="GameObjectId0" data="2495224329"/>
+					<property type="2" name="SpriteComponentIndex0" data="-1"/>
 					<property type="7" name="ResourceName1" data="HouseItem"/>
 					<property type="7" name="Quantity1" data="1"/>
 					<property type="6" name="SellValue1" data="0"/>
 					<property type="6" name="BuyValue1" data="0"/>
 					<property type="2" name="GameObjectId1" data="74045720"/>
+					<property type="2" name="SpriteComponentIndex1" data="-1"/>
 					<property type="7" name="ComponentLuaScriptComponent" data="LuaScriptComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -660,7 +662,7 @@
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data="Townhall"/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="true"/>
+					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -729,6 +731,30 @@
 					<property type="6" name="SellValue0" data="0"/>
 					<property type="6" name="BuyValue0" data="0"/>
 					<property type="2" name="GameObjectId0" data="1512204030"/>
+					<property type="2" name="SpriteComponentIndex0" data="0"/>
+					<property type="7" name="ComponentMyGuiSpriteComponent" data="MyGuiSpriteComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="Id" data="3567725965"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="8" name="Position" data="0.5 0.5"/>
+					<property type="8" name="Size" data="0.02 0.04"/>
+					<property type="7" name="Align" data="HCenter"/>
+					<property type="7" name="Layer" data="Modal"/>
+					<property type="10" name="Color" data="0.5 0.5 0.5 1"/>
+					<property type="12" name="Enabled" data="true"/>
+					<property type="2" name="ParentId" data="0"/>
+					<property type="12" name="CommonWidget" data="false"/>
+					<property type="7" name="Image" data="SpriteRevealSpinner36x256.png"/>
+					<property type="8" name="TileSize" data="256 256"/>
+					<property type="8" name="RowsCols" data="36 1"/>
+					<property type="12" name="Horizontal" data="true"/>
+					<property type="12" name="InverseDirection" data="false"/>
+					<property type="6" name="Speed" data="10"/>
+					<property type="8" name="StartEndIndex" data="0 0"/>
+					<property type="12" name="Repeat" data="false"/>
+					<property type="12" name="UsePickingMask" data="true"/>
 				</userData>
 			</item>
 		</node>

@@ -1,185 +1,20 @@
-17:25:05: Exporting bones..
-17:25:05: Bones exported.
-17:25:05: Exporting animations, count=91
-17:25:05: Exporting animation: T-pose
-17:25:05: Animation exported.
-17:25:05: Exporting animation: attack-01
-17:25:05: Animation exported.
-17:25:05: Exporting animation: attack-02
-17:25:05: Animation exported.
-17:25:05: Exporting animation: attack-03
-17:25:05: Animation exported.
-17:25:05: Exporting animation: attack-04
-17:25:05: Animation exported.
-17:25:05: Exporting animation: attack-05
-17:25:05: Animation exported.
-17:25:05: Exporting animation: attack-06
-17:25:05: Animation exported.
-17:25:05: Exporting animation: attack-07
-17:25:05: Animation exported.
-17:25:05: Exporting animation: attack-08
-17:25:05: Animation exported.
-17:25:05: Exporting animation: bow_shoot
-17:25:05: Animation exported.
-17:25:05: Exporting animation: braking
-17:25:05: Animation exported.
-17:25:05: Exporting animation: carry_sack
-17:25:05: Animation exported.
-17:25:05: Exporting animation: carry_wood
-17:25:05: Animation exported.
-17:25:05: Exporting animation: cast-01
-17:25:05: Animation exported.
-17:25:05: Exporting animation: cast-02
-17:25:05: Animation exported.
-17:25:05: Exporting animation: cast-03
-17:25:05: Animation exported.
-17:25:05: Exporting animation: choping
-17:25:05: Animation exported.
-17:25:05: Exporting animation: cooking
-17:25:05: Animation exported.
-17:25:05: Exporting animation: crying
-17:25:05: Animation exported.
-17:25:05: Exporting animation: death-01
-17:25:05: Animation exported.
-17:25:05: Exporting animation: death-02
-17:25:05: Animation exported.
-17:25:05: Exporting animation: death-03
-17:25:05: Animation exported.
-17:25:05: Exporting animation: death-04
-17:25:05: Animation exported.
-17:25:05: Exporting animation: digging
-17:25:05: Animation exported.
-17:25:05: Exporting animation: dodge-left
-17:25:05: Animation exported.
-17:25:05: Exporting animation: dodge-right
-17:25:05: Animation exported.
-17:25:05: Exporting animation: dragging
-17:25:05: Animation exported.
-17:25:05: Exporting animation: drinking
-17:25:05: Animation exported.
-17:25:05: Exporting animation: drop-obj
-17:25:05: Animation exported.
-17:25:05: Exporting animation: eating
-17:25:05: Animation exported.
-17:25:05: Exporting animation: fixing
-17:25:05: Animation exported.
-17:25:05: Exporting animation: frying
-17:25:05: Animation exported.
-17:25:05: Exporting animation: get-up
-17:25:05: Animation exported.
-17:25:05: Exporting animation: hit-01
-17:25:05: Animation exported.
-17:25:05: Exporting animation: hit-02
-17:25:05: Animation exported.
-17:25:05: Exporting animation: hit-03
-17:25:05: Animation exported.
-17:25:05: Exporting animation: hit-fall
-17:25:05: Animation exported.
-17:25:05: Exporting animation: idle-01
-17:25:05: Animation exported.
-17:25:05: Exporting animation: idle-02
-17:25:05: Animation exported.
-17:25:05: Exporting animation: idle-03
-17:25:05: Animation exported.
-17:25:05: Exporting animation: idle-05
-17:25:05: Animation exported.
-17:25:05: Exporting animation: idle-06
-17:25:05: Animation exported.
-17:25:05: Exporting animation: joke
-17:25:05: Animation exported.
-17:25:05: Exporting animation: joy-01
-17:25:05: Animation exported.
-17:25:05: Exporting animation: joy-02
-17:25:05: Animation exported.
-17:25:05: Exporting animation: joy-03
-17:25:05: Animation exported.
-17:25:05: Exporting animation: jump-01
-17:25:05: Animation exported.
-17:25:05: Exporting animation: jump-0p
-17:25:05: Animation exported.
-17:25:05: Exporting animation: jump-pose
-17:25:05: Animation exported.
-17:25:05: Exporting animation: knock_ground
-17:25:05: Animation exported.
-17:25:05: Exporting animation: knock_shield
-17:25:05: Animation exported.
-17:25:05: Exporting animation: mining
-17:25:05: Animation exported.
-17:25:05: Exporting animation: mowing
-17:25:05: Animation exported.
-17:25:05: Exporting animation: no
-17:25:05: Animation exported.
-17:25:05: Exporting animation: pick-obj
-17:25:05: Animation exported.
-17:25:05: Exporting animation: roll-backward
-17:25:05: Animation exported.
-17:25:05: Exporting animation: roll-forward
-17:25:05: Animation exported.
-17:25:05: Exporting animation: roll-left
-17:25:05: Animation exported.
-17:25:05: Exporting animation: roll-right
-17:25:05: Animation exported.
-17:25:05: Exporting animation: rollout
-17:25:05: Animation exported.
-17:25:05: Exporting animation: run-01
-17:25:05: Animation exported.
-17:25:05: Exporting animation: run-02
-17:25:05: Animation exported.
-17:25:05: Exporting animation: run-03
-17:25:05: Animation exported.
-17:25:05: Exporting animation: run-left-45
-17:25:05: Animation exported.
-17:25:05: Exporting animation: run-left-90
-17:25:05: Animation exported.
-17:25:05: Exporting animation: run-right-45
-17:25:05: Animation exported.
-17:25:05: Exporting animation: run-right-90
-17:25:05: Animation exported.
-17:25:05: Exporting animation: sitting
-17:25:05: Animation exported.
-17:25:05: Exporting animation: sleep
-17:25:05: Animation exported.
-17:25:05: Exporting animation: sowing
-17:25:05: Animation exported.
-17:25:05: Exporting animation: spell-01
-17:25:05: Animation exported.
-17:25:05: Exporting animation: spell-02
-17:25:05: Animation exported.
-17:25:05: Exporting animation: spell-03
-17:25:05: Animation exported.
-17:25:05: Exporting animation: talk-01
-17:25:05: Animation exported.
-17:25:05: Exporting animation: talk-02
-17:25:05: Animation exported.
-17:25:05: Exporting animation: throw
-17:25:05: Animation exported.
-17:25:05: Exporting animation: throw-obj
-17:25:05: Animation exported.
-17:25:05: Exporting animation: throw_bomb
-17:25:05: Animation exported.
-17:25:05: Exporting animation: walk-01
-17:25:05: Animation exported.
-17:25:05: Exporting animation: walk-02
-17:25:05: Animation exported.
-17:25:05: Exporting animation: walk-03
-17:25:05: Animation exported.
-17:25:05: Exporting animation: walk-back
-17:25:05: Animation exported.
-17:25:05: Exporting animation: walk-left-45
-17:25:05: Animation exported.
-17:25:05: Exporting animation: walk-left-90
-17:25:05: Animation exported.
-17:25:05: Exporting animation: walk-right-45
-17:25:05: Animation exported.
-17:25:05: Exporting animation: walk-right-90
-17:25:05: Animation exported.
-17:25:05: Exporting animation: warcry-01
-17:25:05: Animation exported.
-17:25:05: Exporting animation: warcry-02
-17:25:05: Animation exported.
-17:25:05: Exporting animation: woodcut_above
-17:25:05: Animation exported.
-17:25:05: Exporting animation: woodcut_side
-17:25:05: Animation exported.
-17:25:05: Exporting animation: yes
-17:25:05: Animation exported.
+15:40:36: Skeleton: Loading Chibi_Warriors.skeleton
+15:40:36: OGRE EXCEPTION(6:FileNotFoundException): Cannot locate resource Chibi_Warriors.skeleton in resource group General or any other group. in ResourceGroupManager::openResource at E:\Ogre2.2SDK\OgreMain\src\OgreResourceGroupManager.cpp (line 737)
+15:40:36: Unable to load skeleton Chibi_Warriors.skeleton for Mesh conversionSrcV1. This Mesh will not be animated. You can ignore this message if you are using an offline tool.
+15:40:36: MeshSerializer writing mesh data to stream ...
+15:40:36: File header written.
+15:40:36: Writing mesh data...
+15:40:36: Writing submesh...
+15:40:36: Submesh exported.
+15:40:36: Exporting skeleton link...
+15:40:36: Skeleton link exported.
+15:40:36: Exporting LOD level thresholds....
+15:40:36: LOD level thresholds exported.
+15:40:36: Exporting bounds information....
+15:40:36: Bounds information exported.
+15:40:36: Exporting submesh name table...
+15:40:36: Submesh name table exported.
+15:40:36: Exporting hash for caches...
+15:40:36: Exporting hash for caches exported.
+15:40:36: Mesh data exported.
+15:40:36: MeshSerializer export successful.

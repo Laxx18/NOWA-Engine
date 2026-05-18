@@ -48,6 +48,8 @@ namespace NOWA
 			return "Usage: This component is used to create a plane.";
 		}
 
+		static std::optional<NOWA::GameObjectTypeDescriptor> getStaticTypeDescriptor();
+
 		virtual void update(Ogre::Real dt, bool notSimulating = false) override { };
 
 		/**

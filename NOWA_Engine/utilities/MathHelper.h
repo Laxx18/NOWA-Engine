@@ -897,12 +897,13 @@ namespace NOWA
 
     private:
         // Cached raycast result shared by all workers clicking the same frame.
-        // Avoids 7 render thread roundtrips for the same mouse position.
         struct CachedRaycast
         {
             Ogre::Vector3 clickedPosition = Ogre::Vector3::ZERO;
             bool valid = false;
-            int frameNumber = -1;
+            int cachedMouseX = -1;
+            int cachedMouseY = -1;
+            bool inProgress = false;
         };
         CachedRaycast cachedRaycast;
 	};

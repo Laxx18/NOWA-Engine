@@ -9,10 +9,12 @@
 #include "ItemBox/BaseCellView.h"
 #include "ItemBox/BaseItemBox.h"
 
+#include "MyGUISpriteComponentBase.h"
+
 namespace NOWA
 {
-
 	class ResourceItemInfo;
+
 	typedef ResourceItemInfo* ResourceItemInfoPtr;
 
 	class EXPORTED ResourceItemInfo :
@@ -341,6 +343,10 @@ namespace NOWA
 
 		bool getAllowDragDrop(void) const;
 
+		void setSpriteComponentIndex(unsigned int slotIndex, int occurrenceIndex);
+
+        unsigned int getSpriteComponentIndex(int slotIndex) const;
+
 		void clearItems(void);
 
 		void reactOnMouseButtonPressed(luabind::object closureFunction);
@@ -360,6 +366,7 @@ namespace NOWA
 		static const Ogre::String AttrBuyValue(void) { return "Buy Value "; }
         static const Ogre::String AttrGameObjectId(void) { return "GameObject Id "; }
 		static const Ogre::String AttrAllowDragDrop(void) { return "Allow Drag & Drop"; }
+        static const Ogre::String AttrSpriteComponentIndex(void) { return "SpriteComponentIndex"; }
 	protected:
 		virtual void mouseButtonClick(MyGUI::Widget* sender) override;
 
@@ -387,6 +394,7 @@ namespace NOWA
 		void requestCreateWidgetItem(MyGUI::ItemBox* _sender, MyGUI::Widget* _item);
 		void requestCoordItem(MyGUI::ItemBox* _sender, MyGUI::IntCoord& _coord, bool _drag);
 		void notifyToolTip(wraps::BaseLayout* _sender, const MyGUI::ToolTipInfo& _info, ItemData* _data);
+        void handleSpriteAnimationFinished(NOWA::EventDataPtr eventData);
 	private:
 		int getIndexFromResourceName(const Ogre::String& resourceName);
 	private:
@@ -416,6 +424,15 @@ namespace NOWA
         std::map<Ogre::String, unsigned int> resourceNameToIndex;
         Ogre::String lastBuiltSkin;
         Ogre::String lastBuiltStyle;
+
+		std::vector<Variant*> spriteComponentIndices;
+        std::vector<MyGUISpriteComponentBase*> spriteComponents;
+        MyGUISpriteComponentBase* pendingSprite;
+        bool spriteAnimationPending;
+        Ogre::String pendingResourceName;
+        Ogre::String pendingGameObjectId;
+        OIS::MouseButtonID pendingButtonId;
+        unsigned int pendingSlotIndex;
 	};
 
 	//////////////////////////////////////////////////////////////////////////////////

@@ -83,6 +83,8 @@ namespace NOWA
 			return "Usage: Creates a camera for camera switching or viewport tiling or vr etc.";
 		}
 
+		static std::optional<NOWA::GameObjectTypeDescriptor> getStaticTypeDescriptor();
+
 		/**
 		 * @see		GameObjectComponent::update
 		 */

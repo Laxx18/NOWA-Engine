@@ -112,6 +112,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ProceduralGeometryComponent
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PhysicsActiveMeshCompoundComponent", "PhysicsActiveMeshCompoundComponent\PhysicsActiveMeshCompoundComponent.vcxproj", "{5688D2BB-DD7B-44F9-AE39-B8CA7EFDA0E7}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ProceduralStairsComponent", "ProceduralStairsComponent\ProceduralStairsComponent.vcxproj", "{83D22507-461C-4ABF-9175-3F45CE5D33F8}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -330,6 +332,10 @@ Global
 		{5688D2BB-DD7B-44F9-AE39-B8CA7EFDA0E7}.Debug|x64.Build.0 = Debug|x64
 		{5688D2BB-DD7B-44F9-AE39-B8CA7EFDA0E7}.Release|x64.ActiveCfg = Release|x64
 		{5688D2BB-DD7B-44F9-AE39-B8CA7EFDA0E7}.Release|x64.Build.0 = Release|x64
+		{83D22507-461C-4ABF-9175-3F45CE5D33F8}.Debug|x64.ActiveCfg = Debug|x64
+		{83D22507-461C-4ABF-9175-3F45CE5D33F8}.Debug|x64.Build.0 = Debug|x64
+		{83D22507-461C-4ABF-9175-3F45CE5D33F8}.Release|x64.ActiveCfg = Release|x64
+		{83D22507-461C-4ABF-9175-3F45CE5D33F8}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

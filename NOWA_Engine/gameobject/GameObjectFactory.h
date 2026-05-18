@@ -9,7 +9,6 @@
 
 namespace NOWA
 {
-
 	class EXPORTED GameObjectFactory
 	{
 	protected:
@@ -20,18 +19,25 @@ namespace NOWA
 		// forward declaration of typedefs is not possible, therefore the the typedef is 
 		// transfered to the first class of the 2 classes that are bidirectional associated
 		typedef boost::shared_ptr<GameObjectComponent> GameObjectCompPtr;
-	public:
+
 		friend class DotSceneImportModule;
+	public:
+
+        void registerGameObjectType(unsigned int id, GameObjectTypeDescriptor descriptor);
+
+        const GameObjectTypeDescriptor* findTypeDescriptor(unsigned int id) const;
+
+        const std::map<unsigned int, GameObjectTypeDescriptor>& getRegisteredTypes() const;
 
 		/*
 		* @brief Creates a new game object from XML or sets data for existing game object
 		*/
 		GameObjectPtr createOrSetGameObjectFromXML(rapidxml::xml_node<>* xmlNode, Ogre::SceneManager* sceneManager, Ogre::SceneNode* sceneNode,
-			Ogre::MovableObject* movableObject, GameObject::eType type, const Ogre::String& filename = Ogre::String(), bool forceCreation = false, bool forceClampY = false, GameObjectPtr existingGameObjectPtr = nullptr);
+			Ogre::MovableObject* movableObject, NOWA::eType type, const Ogre::String& filename = Ogre::String(), bool forceCreation = false, bool forceClampY = false, GameObjectPtr existingGameObjectPtr = nullptr);
 
 		GenericObjectFactory<GameObjectComponent, unsigned int>* getComponentFactory(void);
 
-		GameObjectPtr createGameObject(Ogre::SceneManager* sceneManager, Ogre::SceneNode* sceneNode, Ogre::MovableObject* movableObject, GameObject::eType type, 
+		GameObjectPtr createGameObject(Ogre::SceneManager* sceneManager, Ogre::SceneNode* sceneNode, Ogre::MovableObject* movableObject, NOWA::eType type, 
 			const unsigned long id = NOWA::makeUniqueID());
 
 		// This function can be overridden by a subclass so you can create game-specific C++ components.  If you do
@@ -63,6 +69,9 @@ namespace NOWA
 	private:
 		GameObjectFactory();
 		~GameObjectFactory();
+
+    private:
+        std::map<unsigned int, GameObjectTypeDescriptor> registeredTypes;
 	};
 
 }; //Namespace end

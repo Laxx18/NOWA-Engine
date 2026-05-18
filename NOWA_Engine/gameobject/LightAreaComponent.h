@@ -59,6 +59,17 @@ namespace NOWA
 			return "Usage: Creates an erea light, from a given texture for nice light shinning patterns.";
 		}
 
+		static std::optional<NOWA::GameObjectTypeDescriptor> getStaticTypeDescriptor()
+        {
+            NOWA::GameObjectTypeDescriptor desc;
+            desc.type = NOWA::CUSTOM;
+            desc.displayName = "Light (Area)";
+            desc.meshToDisplay = "LightDirectional.mesh";
+            desc.needsMeshItem = false;
+            desc.autoComponents = {LightAreaComponent::getStaticClassName()};
+            return desc;
+        }
+
 		/**
 		 * @see		GameObjectComponent::update
 		 */

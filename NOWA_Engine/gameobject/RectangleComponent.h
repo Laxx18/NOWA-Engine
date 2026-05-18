@@ -99,6 +99,17 @@ namespace NOWA
 				"The difference to LinesComponent is, that each end - position is also the next start position.";
 		}
 
+		static std::optional<NOWA::GameObjectTypeDescriptor> getStaticTypeDescriptor()
+        {
+            NOWA::GameObjectTypeDescriptor desc;
+            desc.type = NOWA::CUSTOM;
+            desc.displayName = "Rectangle";
+            desc.meshToDisplay = "Node.mesh";
+            desc.needsMeshItem = true;
+            desc.autoComponents = {RectangleComponent::getStaticClassName()};
+            return desc;
+        }
+
 		/**
 		 * @brief Sets whether to cast shadows
 		 * @param[in] castShadows if set to true shadows will be rendered.

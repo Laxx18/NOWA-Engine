@@ -11,6 +11,7 @@
 #include "PhysicsArtifactComponent.h"
 #include "main/ProcessManager.h"
 #include "main/AppStateManager.h"
+#include "editor/EditorManager.h"
 
 namespace NOWA
 {

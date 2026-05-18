@@ -59,6 +59,17 @@ namespace NOWA
 			return "Usage: Creates a point light.";
 		}
 
+		static std::optional<NOWA::GameObjectTypeDescriptor> getStaticTypeDescriptor()
+        {
+            NOWA::GameObjectTypeDescriptor desc;
+            desc.type = NOWA::CUSTOM;
+            desc.displayName = "Light (Point)";
+            desc.meshToDisplay = "LightPoint.mesh";
+            desc.needsMeshItem = true;
+            desc.autoComponents = {LightPointComponent::getStaticClassName()};
+            return desc;
+        }
+
 		/**
 		 * @see		GameObjectComponent::update
 		 */

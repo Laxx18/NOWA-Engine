@@ -2635,34 +2635,43 @@ namespace NOWA
 
     bool MathHelper::getRaycastForFrame(int mouseX, int mouseY, Ogre::Camera* camera, Ogre::Window* renderWindow, Ogre::RaySceneQuery* raySceneQuery, std::vector<Ogre::MovableObject*>& excludeObjects, Ogre::Vector3& outPosition)
     {
-        int currentFrame = static_cast<int>(Ogre::Root::getSingletonPtr()->getNextFrameNumber());
-
-        // Return cached result if already raycasted this frame
-        if (true == this->cachedRaycast.valid && this->cachedRaycast.frameNumber == currentFrame)
+        // If another worker already computed the raycast for this exact mouse
+        // position, return the cached result immediately — no second raycast needed.
+        // Mouse position only changes when the user actually moves the mouse,
+        // so this is a reliable key: same pixel = same world position.
+        if (true == this->cachedRaycast.valid && this->cachedRaycast.cachedMouseX == mouseX && this->cachedRaycast.cachedMouseY == mouseY)
         {
             outPosition = this->cachedRaycast.clickedPosition;
             return true;
         }
 
-        // First worker this frame — do the actual raycast
-        Ogre::Vector3 clickedPositionLocal = Ogre::Vector3::ZERO;
+        // If a raycast is already in progress for a different position,
+        // return the last known valid result to avoid stalling
+        if (true == this->cachedRaycast.inProgress)
+        {
+            if (true == this->cachedRaycast.valid)
+            {
+                outPosition = this->cachedRaycast.clickedPosition;
+                return true;
+            }
+            return false;
+        }
+
+        // New mouse position — perform raycast
+        this->cachedRaycast.inProgress = true;
+        this->cachedRaycast.valid = false;
+        this->cachedRaycast.cachedMouseX = mouseX;
+        this->cachedRaycast.cachedMouseY = mouseY;
+
+        size_t movableObjLocal = 0;
         Ogre::Vector3 normalLocal = Ogre::Vector3::ZERO;
         float closestDistLocal = 0.0f;
-        size_t movableObjLocal = 0;
 
-        bool success = this->getRaycastFromPoint(mouseX, mouseY, camera, renderWindow, raySceneQuery, clickedPositionLocal, movableObjLocal, closestDistLocal, normalLocal, &excludeObjects, false);
+        bool success = this->getRaycastFromPoint(mouseX, mouseY, camera, renderWindow, raySceneQuery, outPosition, movableObjLocal, closestDistLocal, normalLocal, &excludeObjects, false);
 
-        if (true == success)
-        {
-            this->cachedRaycast.clickedPosition = clickedPositionLocal;
-            this->cachedRaycast.valid = true;
-            this->cachedRaycast.frameNumber = currentFrame;
-            outPosition = clickedPositionLocal;
-        }
-        else
-        {
-            this->cachedRaycast.valid = false;
-        }
+        this->cachedRaycast.valid = success;
+        this->cachedRaycast.clickedPosition = outPosition;
+        this->cachedRaycast.inProgress = false;
 
         return success;
     }

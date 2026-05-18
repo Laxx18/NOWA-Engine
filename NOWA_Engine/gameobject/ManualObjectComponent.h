@@ -99,6 +99,17 @@ namespace NOWA
 				"The difference to LinesComponent is, that each end - position is also the next start position.";
 		}
 
+		static std::optional<NOWA::GameObjectTypeDescriptor> getStaticTypeDescriptor()
+        {
+            NOWA::GameObjectTypeDescriptor desc;
+            desc.type = NOWA::CUSTOM;
+            desc.displayName = "ManualObject";
+            desc.meshToDisplay = "Node.mesh";
+            desc.needsMeshItem = true;
+            desc.autoComponents = {ManualObjectComponent::getStaticClassName()};
+            return desc;
+        }
+
 		/**
 		 * @brief Sets whether the lines should be connected together
 		 * @param[in] connected if set to true the lines will be connected forming a more complex object

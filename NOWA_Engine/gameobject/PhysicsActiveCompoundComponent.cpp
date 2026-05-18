@@ -22,9 +22,7 @@ namespace NOWA
 
 	PhysicsActiveCompoundComponent::~PhysicsActiveCompoundComponent()
 	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PhysicsActiveCompoundComponent] Destructor physics active compound component for game object: " 
-			+ this->gameObjectPtr->getName());
-		this->collisionDataList.clear();
+
 	}
 
 	bool PhysicsActiveCompoundComponent::init(rapidxml::xml_node<>*& propertyElement)
@@ -173,7 +171,7 @@ namespace NOWA
 		if (false == this->meshCompoundConfigFile->getString().empty())
 		{
 			Ogre::String meshName;
-			if (GameObject::ITEM == this->gameObjectPtr->getType())
+			if (NOWA::ITEM == this->gameObjectPtr->getType())
 			{
 				meshName = this->gameObjectPtr->getMovableObjectUnsafe<Ogre::Item>()->getMesh()->getName();
 			}
@@ -323,7 +321,12 @@ namespace NOWA
 		}
 	}
 
-	Ogre::String PhysicsActiveCompoundComponent::getClassName(void) const
+	void PhysicsActiveCompoundComponent::onRemoveComponent(void)
+    {
+        PhysicsActiveComponent::onRemoveComponent();
+    }
+
+    Ogre::String PhysicsActiveCompoundComponent::getClassName(void) const
 	{
 		return "PhysicsActiveCompoundComponent";
 	}
@@ -523,7 +526,7 @@ namespace NOWA
                     Ogre::SceneNode* sceneNode = this->gameObjectPtr->getSceneNode()->createChildSceneNode();
                     sceneNode->setName(sceneNodeName);
 
-                    if (GameObject::ITEM == this->gameObjectPtr->getType())
+                    if (NOWA::ITEM == this->gameObjectPtr->getType())
                     {
                         item = this->gameObjectPtr->getSceneManager()->createItem(meshName);
                         sceneNode->attachObject(item);
@@ -535,7 +538,7 @@ namespace NOWA
 				// scaling also does reposition the collision parts! how nice! Use the created entity part for the convex hull!
 				OgreNewt::CollisionPrimitives::ConvexHull* col = nullptr;
 
-				if (GameObject::ITEM == this->gameObjectPtr->getType())
+				if (NOWA::ITEM == this->gameObjectPtr->getType())
 				{
 					col = new OgreNewt::CollisionPrimitives::ConvexHull(
 						this->ogreNewt, item, this->gameObjectPtr->getCategoryId(), Ogre::Quaternion::IDENTITY, Ogre::Vector3::ZERO, 0.001f, this->initialScale);

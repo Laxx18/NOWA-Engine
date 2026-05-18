@@ -363,6 +363,14 @@ namespace NOWA
 				return boost::shared_ptr<Type>();
 			}
 		}
+
+		// Default: this component is not a standalone placeable editor type.
+        // Override in components that ARE top-level placed objects (OceanComponent,
+        // LightDirectionalComponent, ProceduralWallComponent, etc.).
+        static std::optional<NOWA::GameObjectTypeDescriptor> getStaticTypeDescriptor()
+        {
+            return std::nullopt;
+        }
 	public:
 		static const Ogre::String AttrName(void) { return "Name"; }
 		static const Ogre::String AttrReferenceId(void) { return "Reference Id"; }

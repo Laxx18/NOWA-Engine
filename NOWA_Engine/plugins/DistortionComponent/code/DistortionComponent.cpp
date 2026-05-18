@@ -214,7 +214,7 @@ namespace NOWA
 
 			}
 
-			if (GameObject::ITEM == this->gameObjectPtr->getType())
+			if (NOWA::ITEM == this->gameObjectPtr->getType())
 			{
 				Ogre::Item* item = this->gameObjectPtr->getMovableObjectUnsafe<Ogre::Item>();
 				if (nullptr != item)

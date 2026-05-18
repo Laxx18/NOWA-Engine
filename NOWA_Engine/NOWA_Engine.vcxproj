@@ -217,6 +217,7 @@
     <ClInclude Include="gameobject\GeometricComponentBase.h" />
     <ClInclude Include="gameobject\InputDeviceComponent.h" />
     <ClInclude Include="gameobject\MeshEditComponentBase.h" />
+    <ClInclude Include="gameobject\MyGUISpriteComponentBase.h" />
     <ClInclude Include="gameobject\PhysicsActiveComplexVehicleComponent.h" />
     <ClInclude Include="gameobject\PhysicsActiveSpiderComponent.h" />
     <ClInclude Include="gameobject\PhysicsActiveVehicleComponent.h" />

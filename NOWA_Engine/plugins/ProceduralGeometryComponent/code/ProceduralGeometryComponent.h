@@ -46,7 +46,7 @@ namespace NOWA
      *
      * Vertex format:  pos(3) + normal(3) + tangent(4) + uv(2)  =  12 floats
      */
-    class EXPORTED ProceduralGeometryComponent : public GeometricComponentBase, public Ogre::Plugin, public OIS::MouseListener, public OIS::KeyListener
+    class EXPORTED ProceduralGeometryComponent : public GeometricComponentBase, public Ogre::Plugin
     {
     public:
         typedef boost::shared_ptr<ProceduralGeometryComponent> ProceduralGeometryComponentPtr;
@@ -126,11 +126,14 @@ namespace NOWA
         {
             return NOWA::getIdFromName("ProceduralGeometryComponent");
         }
+
         static Ogre::String getStaticClassName(void)
         {
             return "ProceduralGeometryComponent";
         }
+
         static bool canStaticAddComponent(GameObject* gameObject);
+
         static Ogre::String getStaticInfoText(void)
         {
             return "Usage: Creates a procedural geometry primitive directly in the viewport.\n\n"
@@ -168,6 +171,19 @@ namespace NOWA
                    "- setUVTiling(Vector2) controls texture repeat.\n"
                    "- setFlipNormals(bool) inverts face normals.\n"
                    "- rebuildMesh() forces a full geometry rebuild.";
+        }
+
+        static std::optional<NOWA::GameObjectTypeDescriptor> getStaticTypeDescriptor()
+        {
+            NOWA::GameObjectTypeDescriptor desc;
+            desc.type = eType::CUSTOM;
+            desc.displayName = "Geometry";
+            desc.meshToDisplay = "Node.mesh";
+            desc.needsMeshItem = false;
+            desc.enterMeshModifyMode = false;
+            desc.autoComponents = {"ProceduralGeometryComponent"};
+            desc.guardWithPluginCheck = true;
+            return desc;
         }
 
         virtual Ogre::String getClassName(void) const override
@@ -214,10 +230,6 @@ namespace NOWA
         void setUVTiling(const Ogre::Vector2& tiling);
         Ogre::Vector2 getUVTiling(void) const;
 
-        // ── Raycast helpers (used by mouse placement) ─────────────────────────
-        bool raycastGround(Ogre::Real screenX, Ogre::Real screenY, Ogre::Vector3& outHitPosition);
-        Ogre::Real getGroundHeight(const Ogre::Vector3& worldXZPosition);
-
     public:
         // ── Static attribute name strings ─────────────────────────────────────
         static Ogre::String AttrActivated(void)
@@ -258,13 +270,6 @@ namespace NOWA
         }
 
     protected:
-        // ── OIS input (run on render thread) ─────────────────────────────────
-        virtual bool mousePressed(const OIS::MouseEvent& evt, OIS::MouseButtonID id) override;
-        virtual bool mouseReleased(const OIS::MouseEvent& evt, OIS::MouseButtonID id) override;
-        virtual bool mouseMoved(const OIS::MouseEvent& evt) override;
-        virtual bool keyPressed(const OIS::KeyEvent& evt) override;
-        virtual bool keyReleased(const OIS::KeyEvent& evt) override;
-
         virtual bool executeAction(const Ogre::String& actionId, NOWA::Variant* attribute) override;
 
     private:
@@ -312,16 +317,6 @@ namespace NOWA
         // ── Enum helpers ──────────────────────────────────────────────────────
         GeometryShape getShapeEnum(void) const;
 
-        // ── Event handlers ────────────────────────────────────────────────────
-        void handleMeshModifyMode(NOWA::EventDataPtr eventData);
-        void handleGameObjectSelected(NOWA::EventDataPtr eventData);
-        void handleComponentManuallyDeleted(NOWA::EventDataPtr eventData);
-
-        // ── Input listener registration (render-thread-safe) ─────────────────
-        void addInputListener(void);
-        void removeInputListener(void);
-        void updateModificationState(void);
-
         // ── Mesh export / bake ────────────────────────────────────────────────
         bool convertToMeshApply(void);
         bool exportMesh(const Ogre::String& filename);
@@ -352,16 +347,6 @@ namespace NOWA
         Ogre::MeshPtr previewMesh;
         Ogre::Item* previewItem;
         Ogre::SceneNode* previewNode;
-
-        // ── Placement state ───────────────────────────────────────────────────
-        BuildState buildState;
-        bool isEditorMeshModifyMode;
-        bool isSelected;
-        bool originPositionSet; ///< Has the GO been positioned by first placement yet?
-
-        // ── Raycast query (ground detection) ─────────────────────────────────
-        Ogre::RaySceneQuery* groundQuery;
-        Ogre::Plane groundPlane; ///< Fallback Y=0 plane
 
         // ── Physics (optional) ────────────────────────────────────────────────
         PhysicsArtifactComponent* physicsArtifactComponent;

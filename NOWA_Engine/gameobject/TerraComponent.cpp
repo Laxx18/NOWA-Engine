@@ -10,6 +10,7 @@
 #include "PhysicsTerrainComponent.h"
 #include "CameraComponent.h"
 #include "WorkspaceComponents.h"
+#include "DatablockTerraComponent.h"
 
 namespace
 {
@@ -1290,5 +1291,17 @@ namespace NOWA
 	{
 		return this->terra;
 	}
+
+	std::optional<NOWA::GameObjectTypeDescriptor> TerraComponent::getStaticTypeDescriptor()
+    {
+        NOWA::GameObjectTypeDescriptor desc;
+        desc.type = NOWA::TERRA;
+        desc.displayName = "Terra";
+        desc.meshToDisplay = "Node.mesh";
+        desc.needsMeshItem = false;
+        desc.forceZeroTransform = true;
+        desc.autoComponents = {TerraComponent::getStaticClassName(), DatablockTerraComponent::getStaticClassName()};
+        return desc;
+    }
 
 }; // namespace end

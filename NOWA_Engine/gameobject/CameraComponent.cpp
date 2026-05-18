@@ -967,4 +967,23 @@ namespace NOWA
 		return this->fixedYawAxis->getBool();
 	}
 
+	std::optional<NOWA::GameObjectTypeDescriptor> CameraComponent::getStaticTypeDescriptor()
+    {
+        NOWA::GameObjectTypeDescriptor desc;
+        desc.type = NOWA::CAMERA;
+        desc.displayName = "Camera";
+        desc.meshToDisplay = "Camera.mesh";
+        desc.needsMeshItem = true;
+        desc.autoComponents = {CameraComponent::getStaticClassName(), WorkspacePbsComponent::getStaticClassName()};
+        desc.preComponentsCallback = []()
+        {
+            CameraComponent::setJustCreated(true);
+        };
+        desc.postComponentsCallback = []()
+        {
+            CameraComponent::setJustCreated(true);
+        };
+        return desc;
+    }
+
 }; // namespace end

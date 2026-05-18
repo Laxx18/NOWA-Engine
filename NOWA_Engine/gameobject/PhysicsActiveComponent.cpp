@@ -113,19 +113,7 @@ namespace NOWA
 
     PhysicsActiveComponent::~PhysicsActiveComponent()
     {
-        /*if (nullptr != this->physicsBody)
-            this->physicsBody->removeNodeUpdateNotify();*/
-
-        this->releaseConstraintDirection();
-        this->releaseConstraintAxis();
-
-        this->destroyLineMap();
-
-        this->physicsAttractors.clear();
-        this->springs.clear();
-        this->detachAndDestroyAllForceObserver();
-
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PhysicsActiveComponent] Destructor physics active component for game object: " + this->gameObjectPtr->getName());
+        
     }
 
     bool PhysicsActiveComponent::init(rapidxml::xml_node<>*& propertyElement)
@@ -357,6 +345,25 @@ namespace NOWA
         this->destroyLineMap();
 
         return true;
+    }
+
+    void PhysicsActiveComponent::onRemoveComponent(void)
+    {
+        /*if (nullptr != this->physicsBody)
+            this->physicsBody->removeNodeUpdateNotify();*/
+
+        this->releaseConstraintDirection();
+        this->releaseConstraintAxis();
+
+        this->destroyLineMap();
+
+        this->physicsAttractors.clear();
+        this->springs.clear();
+        this->detachAndDestroyAllForceObserver();
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PhysicsActiveComponent] Destructor physics active component for game object: " + this->gameObjectPtr->getName());
+
+        PhysicsComponent::onRemoveComponent();
     }
 
     void PhysicsActiveComponent::update(Ogre::Real dt, bool notSimulating)

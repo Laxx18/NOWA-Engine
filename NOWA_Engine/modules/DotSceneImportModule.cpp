@@ -352,7 +352,7 @@ namespace NOWA
         Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[DotSceneImportModule] Scene node count: " + Ogre::StringConverter::toString(totalObjects));
 
         // Creates MyGUI widgets on the render thread (enqueueAndWait from main thread — safe during game loop)
-        this->createSceneLoadUI(totalObjects);
+        // this->createSceneLoadUI(totalObjects);
 
         // Sequential parse — notifySceneLoadProgress is called per node in processNode
         this->processScene(xmlRoot);
@@ -372,7 +372,7 @@ namespace NOWA
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DotSceneImportModule::waitForStreamingCompletion");
 
         // Destroy progress UI on render thread
-        this->destroySceneLoadUI();
+        // this->destroySceneLoadUI();
 
         this->bSceneParsed = false;
         this->savedGameFilePathName.clear();
@@ -1637,7 +1637,7 @@ namespace NOWA
             GameObjectPtr gameObjectPtr = nullptr;
             if (false == justSetValues || missingGameObjectId != 0)
             {
-                gameObjectPtr = GameObjectFactory::getInstance()->createOrSetGameObjectFromXML(pElement, this->sceneManager, parent, item, GameObject::ITEM, this->scenePath, this->forceCreation, this->bSceneParsed);
+                gameObjectPtr = GameObjectFactory::getInstance()->createOrSetGameObjectFromXML(pElement, this->sceneManager, parent, item, NOWA::ITEM, this->scenePath, this->forceCreation, this->bSceneParsed);
             }
             else
             {
@@ -1659,7 +1659,7 @@ namespace NOWA
                                 break;
                             }
 
-                            gameObjectPtr = GameObjectFactory::getInstance()->createOrSetGameObjectFromXML(pElement, this->sceneManager, parent, item, GameObject::ITEM, this->scenePath, this->forceCreation, this->bSceneParsed, existingGameObjectPtr);
+                            gameObjectPtr = GameObjectFactory::getInstance()->createOrSetGameObjectFromXML(pElement, this->sceneManager, parent, item, NOWA::ITEM, this->scenePath, this->forceCreation, this->bSceneParsed, existingGameObjectPtr);
                             foundId = true;
                         }
                         else
@@ -1717,7 +1717,7 @@ namespace NOWA
         {
             if (pElement)
             {
-                gameObjectPtr = GameObjectFactory::getInstance()->createOrSetGameObjectFromXML(pElement, this->sceneManager, parent, nullptr, GameObject::TERRA, this->scenePath, this->forceCreation, false);
+                gameObjectPtr = GameObjectFactory::getInstance()->createOrSetGameObjectFromXML(pElement, this->sceneManager, parent, nullptr, NOWA::TERRA, this->scenePath, this->forceCreation, false);
 
                 if (nullptr != gameObjectPtr)
                 {
@@ -1741,7 +1741,7 @@ namespace NOWA
                             unsigned long existingGameObjectId = XMLConverter::getAttribUnsignedLong(propertyElement, "data");
                             GameObjectPtr existingGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(existingGameObjectId);
 
-                            gameObjectPtr = GameObjectFactory::getInstance()->createOrSetGameObjectFromXML(pElement, this->sceneManager, parent, nullptr, GameObject::TERRA, this->scenePath, this->forceCreation, false, existingGameObjectPtr);
+                            gameObjectPtr = GameObjectFactory::getInstance()->createOrSetGameObjectFromXML(pElement, this->sceneManager, parent, nullptr, NOWA::TERRA, this->scenePath, this->forceCreation, false, existingGameObjectPtr);
 
                             foundId = true;
                         }
@@ -1787,7 +1787,7 @@ namespace NOWA
         {
             if (pElement)
             {
-                gameObjectPtr = GameObjectFactory::getInstance()->createOrSetGameObjectFromXML(pElement, this->sceneManager, parent, nullptr, GameObject::OCEAN, this->scenePath, this->forceCreation, false);
+                gameObjectPtr = GameObjectFactory::getInstance()->createOrSetGameObjectFromXML(pElement, this->sceneManager, parent, nullptr, NOWA::OCEAN, this->scenePath, this->forceCreation, false);
 
                 if (nullptr != gameObjectPtr)
                 {
@@ -1811,7 +1811,7 @@ namespace NOWA
                             unsigned long existingGameObjectId = XMLConverter::getAttribUnsignedLong(propertyElement, "data");
                             GameObjectPtr existingGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(existingGameObjectId);
 
-                            gameObjectPtr = GameObjectFactory::getInstance()->createOrSetGameObjectFromXML(pElement, this->sceneManager, parent, nullptr, GameObject::OCEAN, this->scenePath, this->forceCreation, false, existingGameObjectPtr);
+                            gameObjectPtr = GameObjectFactory::getInstance()->createOrSetGameObjectFromXML(pElement, this->sceneManager, parent, nullptr, NOWA::OCEAN, this->scenePath, this->forceCreation, false, existingGameObjectPtr);
 
                             foundId = true;
                         }
@@ -1913,7 +1913,7 @@ namespace NOWA
 
         if (false == justSetValues || missingGameObjectId != 0)
         {
-            gameObjectPtr = GameObjectFactory::getInstance()->createOrSetGameObjectFromXML(element, this->sceneManager, parent, item, GameObject::PLANE, this->scenePath, this->forceCreation, false);
+            gameObjectPtr = GameObjectFactory::getInstance()->createOrSetGameObjectFromXML(element, this->sceneManager, parent, item, NOWA::PLANE, this->scenePath, this->forceCreation, false);
 
             if (nullptr != gameObjectPtr)
             {
@@ -1947,7 +1947,7 @@ namespace NOWA
                         unsigned long existingGameObjectId = XMLConverter::getAttribUnsignedLong(propertyElement, "data");
                         gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(existingGameObjectId);
 
-                        gameObjectPtr = GameObjectFactory::getInstance()->createOrSetGameObjectFromXML(element, this->sceneManager, parent, item, GameObject::PLANE, this->scenePath, this->forceCreation, this->bSceneParsed, gameObjectPtr);
+                        gameObjectPtr = GameObjectFactory::getInstance()->createOrSetGameObjectFromXML(element, this->sceneManager, parent, item, NOWA::PLANE, this->scenePath, this->forceCreation, this->bSceneParsed, gameObjectPtr);
                         foundId = true;
                     }
                     else
@@ -2090,7 +2090,7 @@ namespace NOWA
         }
 
         ++this->sceneLoadCurrentObject;
-        this->sceneListener->updateProgress(objectName, this->sceneLoadCurrentObject, this->sceneLoadTotalObjects);
+        // this->sceneListener->updateProgress(objectName, this->sceneLoadCurrentObject, this->sceneLoadTotalObjects);
     }
 
     void DotSceneImportModule::notifyPostInitPhase(const Ogre::String& phase, size_t current, size_t total)
@@ -2100,7 +2100,7 @@ namespace NOWA
             return;
         }
 
-        this->sceneListener->updatePostInitPhase(phase, current, total);
+        // this->sceneListener->updatePostInitPhase(phase, current, total);
     }
 
     void DotSceneImportModule::resourceGroupScriptingStarted(const Ogre::String& resourceGroupName, size_t scriptCount)
@@ -2110,11 +2110,12 @@ namespace NOWA
 
     void DotSceneImportModule::scriptParseStarted(const Ogre::String& scriptName, bool& skipThisScript)
     {
+        // Causes in release sudden crashes during scene load
         Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[DotSceneImportModule] Parsing script: " + scriptName);
-        if (nullptr != this->sceneListener)
+        /*if (nullptr != this->sceneListener)
         {
             this->sceneListener->updateProgress(scriptName, this->sceneLoadCurrentObject, this->sceneLoadTotalObjects);
-        }
+        }*/
     }
 
     void DotSceneImportModule::scriptParseEnded(const Ogre::String& scriptName, bool skipped)
@@ -2133,10 +2134,10 @@ namespace NOWA
     void DotSceneImportModule::resourceLoadStarted(const Ogre::ResourcePtr& resource)
     {
         Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[DotSceneImportModule] Loading resource: " + resource->getName());
-        if (nullptr != this->sceneListener)
+        /*if (nullptr != this->sceneListener)
         {
             this->sceneListener->updateProgress(resource->getName(), this->sceneLoadCurrentObject, this->sceneLoadTotalObjects);
-        }
+        }*/
     }
 
     void DotSceneImportModule::resourceLoadEnded()

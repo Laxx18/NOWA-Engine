@@ -1,0 +1,1528 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="3072" height="2304" viewBox="0 0 3072 2304">
+<defs>
+<radialGradient id="eg0" cx="38%" cy="32%" r="60%">
+  <stop offset="0%"   stop-color="rgba(255,255,255,0.55)"/>
+  <stop offset="100%" stop-color="#E79844"/>
+</radialGradient>
+<radialGradient id="eg1" cx="38%" cy="32%" r="60%">
+  <stop offset="0%"   stop-color="rgba(255,255,255,0.55)"/>
+  <stop offset="100%" stop-color="#8DB258"/>
+</radialGradient>
+<radialGradient id="eg2" cx="38%" cy="32%" r="60%">
+  <stop offset="0%"   stop-color="rgba(255,255,255,0.55)"/>
+  <stop offset="100%" stop-color="#CA4E66"/>
+</radialGradient>
+</defs>
+<g id="r0c0">
+<clipPath id="clip0_0"><rect x="0" y="0" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip0_0)">
+<circle cx="128.0" cy="128.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/>
+<ellipse cx="128.0" cy="128.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 128.0 128.0)"/>
+<ellipse cx="128.0" cy="128.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 128.0 128.0)"/>
+<ellipse cx="128.0" cy="128.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 128.0 128.0)"/>
+<circle cx="80.2" cy="108.9" r="19.0" fill="rgba(0,0,0,0.18)"/>
+<circle cx="78.2" cy="105.9" r="19.0" fill="url(#eg1)"/>
+<circle cx="218.0" cy="131.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="216.0" cy="128.0" r="20.7" fill="url(#eg0)"/>
+<circle cx="179.8" cy="108.9" r="22.4" fill="rgba(0,0,0,0.18)"/>
+<circle cx="177.8" cy="105.9" r="22.4" fill="url(#eg2)"/>
+</g></g>
+<g id="r0c1">
+<clipPath id="clip0_1"><rect x="256" y="0" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip0_1)">
+<circle cx="384.0" cy="128.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/>
+<ellipse cx="384.0" cy="128.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 384.0 128.0)"/>
+<ellipse cx="384.0" cy="128.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 384.0 128.0)"/>
+<ellipse cx="384.0" cy="128.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 384.0 128.0)"/>
+<circle cx="331.9" cy="74.3" r="19.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="329.9" cy="71.3" r="19.7" fill="url(#eg1)"/>
+<circle cx="462.2" cy="149.5" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="460.2" cy="146.5" r="20.7" fill="url(#eg0)"/>
+<circle cx="418.0" cy="149.5" r="22.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="416.0" cy="146.5" r="22.7" fill="url(#eg2)"/>
+</g></g>
+<g id="r0c2">
+<clipPath id="clip0_2"><rect x="512" y="0" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip0_2)">
+<circle cx="640.0" cy="128.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/>
+<ellipse cx="640.0" cy="128.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 640.0 128.0)"/>
+<ellipse cx="640.0" cy="128.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 640.0 128.0)"/>
+<ellipse cx="640.0" cy="128.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 640.0 128.0)"/>
+<circle cx="598.0" cy="54.8" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="596.0" cy="51.8" r="20.7" fill="url(#eg1)"/>
+<circle cx="686.0" cy="163.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="684.0" cy="160.0" r="20.7" fill="url(#eg0)"/>
+<circle cx="647.8" cy="185.1" r="22.4" fill="rgba(0,0,0,0.18)"/>
+<circle cx="645.8" cy="182.1" r="22.4" fill="url(#eg2)"/>
+</g></g>
+<g id="r0c3">
+<clipPath id="clip0_3"><rect x="768" y="0" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip0_3)">
+<circle cx="896.0" cy="128.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/>
+<ellipse cx="896.0" cy="128.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 896.0 128.0)"/>
+<ellipse cx="896.0" cy="128.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 896.0 128.0)"/>
+<ellipse cx="896.0" cy="128.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 896.0 128.0)"/>
+<circle cx="898.0" cy="168.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="896.0" cy="165.0" r="20.7" fill="url(#eg0)"/>
+<circle cx="875.9" cy="55.8" r="21.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="873.9" cy="52.8" r="21.7" fill="url(#eg1)"/>
+<circle cx="875.9" cy="206.2" r="21.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="873.9" cy="203.2" r="21.7" fill="url(#eg2)"/>
+</g></g>
+<g id="r0c4">
+<clipPath id="clip0_4"><rect x="1024" y="0" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip0_4)">
+<circle cx="1152.0" cy="128.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/>
+<ellipse cx="1152.0" cy="128.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 1152.0 128.0)"/>
+<ellipse cx="1152.0" cy="128.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 1152.0 128.0)"/>
+<ellipse cx="1152.0" cy="128.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 1152.0 128.0)"/>
+<circle cx="1110.0" cy="163.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1108.0" cy="160.0" r="20.7" fill="url(#eg0)"/>
+<circle cx="1110.0" cy="207.2" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1108.0" cy="204.2" r="20.7" fill="url(#eg2)"/>
+<circle cx="1159.8" cy="76.9" r="22.4" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1157.8" cy="73.9" r="22.4" fill="url(#eg1)"/>
+</g></g>
+<g id="r0c5">
+<clipPath id="clip0_5"><rect x="1280" y="0" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip0_5)">
+<circle cx="1408.0" cy="128.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/>
+<ellipse cx="1408.0" cy="128.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 1408.0 128.0)"/>
+<ellipse cx="1408.0" cy="128.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 1408.0 128.0)"/>
+<ellipse cx="1408.0" cy="128.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 1408.0 128.0)"/>
+<circle cx="1355.9" cy="187.8" r="19.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1353.9" cy="184.8" r="19.7" fill="url(#eg2)"/>
+<circle cx="1333.8" cy="149.5" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1331.8" cy="146.5" r="20.7" fill="url(#eg0)"/>
+<circle cx="1442.0" cy="112.5" r="22.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1440.0" cy="109.5" r="22.7" fill="url(#eg1)"/>
+</g></g>
+<g id="r0c6">
+<clipPath id="clip0_6"><rect x="1536" y="0" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip0_6)">
+<circle cx="1664.0" cy="128.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/>
+<ellipse cx="1664.0" cy="128.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 1664.0 128.0)"/>
+<ellipse cx="1664.0" cy="128.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 1664.0 128.0)"/>
+<ellipse cx="1664.0" cy="128.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 1664.0 128.0)"/>
+<circle cx="1616.2" cy="153.1" r="19.0" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1614.2" cy="150.1" r="19.0" fill="url(#eg2)"/>
+<circle cx="1578.0" cy="131.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1576.0" cy="128.0" r="20.7" fill="url(#eg0)"/>
+<circle cx="1715.8" cy="153.1" r="22.4" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1713.8" cy="150.1" r="22.4" fill="url(#eg1)"/>
+</g></g>
+<g id="r0c7">
+<clipPath id="clip0_7"><rect x="1792" y="0" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip0_7)">
+<circle cx="1920.0" cy="128.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/>
+<ellipse cx="1920.0" cy="128.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 1920.0 128.0)"/>
+<ellipse cx="1920.0" cy="128.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 1920.0 128.0)"/>
+<ellipse cx="1920.0" cy="128.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 1920.0 128.0)"/>
+<circle cx="1890.0" cy="112.5" r="18.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1888.0" cy="109.5" r="18.7" fill="url(#eg2)"/>
+<circle cx="1845.8" cy="112.5" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1843.8" cy="109.5" r="20.7" fill="url(#eg0)"/>
+<circle cx="1976.1" cy="187.8" r="21.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1974.1" cy="184.8" r="21.7" fill="url(#eg1)"/>
+</g></g>
+<g id="r0c8">
+<clipPath id="clip0_8"><rect x="2048" y="0" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip0_8)">
+<circle cx="2176.0" cy="128.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/>
+<ellipse cx="2176.0" cy="128.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 2176.0 128.0)"/>
+<ellipse cx="2176.0" cy="128.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 2176.0 128.0)"/>
+<ellipse cx="2176.0" cy="128.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 2176.0 128.0)"/>
+<circle cx="2172.2" cy="76.9" r="19.0" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2170.2" cy="73.9" r="19.0" fill="url(#eg2)"/>
+<circle cx="2134.0" cy="99.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2132.0" cy="96.0" r="20.7" fill="url(#eg0)"/>
+<circle cx="2222.0" cy="207.2" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2220.0" cy="204.2" r="20.7" fill="url(#eg1)"/>
+</g></g>
+<g id="r0c9">
+<clipPath id="clip0_9"><rect x="2304" y="0" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip0_9)">
+<circle cx="2432.0" cy="128.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/>
+<ellipse cx="2432.0" cy="128.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 2432.0 128.0)"/>
+<ellipse cx="2432.0" cy="128.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 2432.0 128.0)"/>
+<ellipse cx="2432.0" cy="128.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 2432.0 128.0)"/>
+<circle cx="2456.1" cy="55.8" r="19.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2454.1" cy="52.8" r="19.7" fill="url(#eg2)"/>
+<circle cx="2456.1" cy="206.2" r="19.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2454.1" cy="203.2" r="19.7" fill="url(#eg1)"/>
+<circle cx="2434.0" cy="94.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2432.0" cy="91.0" r="20.7" fill="url(#eg0)"/>
+</g></g>
+<g id="r0c10">
+<clipPath id="clip0_10"><rect x="2560" y="0" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip0_10)">
+<circle cx="2688.0" cy="128.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/>
+<ellipse cx="2688.0" cy="128.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 2688.0 128.0)"/>
+<ellipse cx="2688.0" cy="128.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 2688.0 128.0)"/>
+<ellipse cx="2688.0" cy="128.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 2688.0 128.0)"/>
+<circle cx="2684.2" cy="185.1" r="19.0" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2682.2" cy="182.1" r="19.0" fill="url(#eg1)"/>
+<circle cx="2734.0" cy="54.8" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2732.0" cy="51.8" r="20.7" fill="url(#eg2)"/>
+<circle cx="2734.0" cy="99.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2732.0" cy="96.0" r="20.7" fill="url(#eg0)"/>
+</g></g>
+<g id="r0c11">
+<clipPath id="clip0_11"><rect x="2816" y="0" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip0_11)">
+<circle cx="2944.0" cy="128.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/>
+<ellipse cx="2944.0" cy="128.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 2944.0 128.0)"/>
+<ellipse cx="2944.0" cy="128.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 2944.0 128.0)"/>
+<ellipse cx="2944.0" cy="128.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 2944.0 128.0)"/>
+<circle cx="2914.0" cy="149.5" r="18.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2912.0" cy="146.5" r="18.7" fill="url(#eg1)"/>
+<circle cx="3022.2" cy="112.5" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="3020.2" cy="109.5" r="20.7" fill="url(#eg0)"/>
+<circle cx="3000.1" cy="74.2" r="21.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2998.1" cy="71.2" r="21.7" fill="url(#eg2)"/>
+</g></g>
+<g id="r1c0">
+<clipPath id="clip1_0"><rect x="0" y="256" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip1_0)">
+<circle cx="128.0" cy="384.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 128.00 268.00 A 116 116 0 0 1 210.02 301.98" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="128.0" cy="384.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 128.0 384.0)"/>
+<ellipse cx="128.0" cy="384.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 128.0 384.0)"/>
+<ellipse cx="128.0" cy="384.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 128.0 384.0)"/>
+<circle cx="80.2" cy="364.9" r="19.0" fill="rgba(0,0,0,0.18)"/>
+<circle cx="78.2" cy="361.9" r="19.0" fill="url(#eg1)"/>
+<circle cx="218.0" cy="387.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="216.0" cy="384.0" r="20.7" fill="url(#eg0)"/>
+<circle cx="179.8" cy="364.9" r="22.4" fill="rgba(0,0,0,0.18)"/>
+<circle cx="177.8" cy="361.9" r="22.4" fill="url(#eg2)"/>
+</g></g>
+<g id="r1c1">
+<clipPath id="clip1_1"><rect x="256" y="256" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip1_1)">
+<circle cx="384.0" cy="384.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 384.00 268.00 A 116 116 0 0 1 466.02 301.98" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="384.0" cy="384.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 384.0 384.0)"/>
+<ellipse cx="384.0" cy="384.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 384.0 384.0)"/>
+<ellipse cx="384.0" cy="384.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 384.0 384.0)"/>
+<circle cx="331.9" cy="330.2" r="19.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="329.9" cy="327.2" r="19.7" fill="url(#eg1)"/>
+<circle cx="462.2" cy="405.5" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="460.2" cy="402.5" r="20.7" fill="url(#eg0)"/>
+<circle cx="418.0" cy="405.5" r="22.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="416.0" cy="402.5" r="22.7" fill="url(#eg2)"/>
+</g></g>
+<g id="r1c2">
+<clipPath id="clip1_2"><rect x="512" y="256" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip1_2)">
+<circle cx="640.0" cy="384.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 640.00 268.00 A 116 116 0 0 1 722.02 301.98" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="640.0" cy="384.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 640.0 384.0)"/>
+<ellipse cx="640.0" cy="384.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 640.0 384.0)"/>
+<ellipse cx="640.0" cy="384.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 640.0 384.0)"/>
+<circle cx="598.0" cy="310.8" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="596.0" cy="307.8" r="20.7" fill="url(#eg1)"/>
+<circle cx="686.0" cy="419.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="684.0" cy="416.0" r="20.7" fill="url(#eg0)"/>
+<circle cx="647.8" cy="441.1" r="22.4" fill="rgba(0,0,0,0.18)"/>
+<circle cx="645.8" cy="438.1" r="22.4" fill="url(#eg2)"/>
+</g></g>
+<g id="r1c3">
+<clipPath id="clip1_3"><rect x="768" y="256" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip1_3)">
+<circle cx="896.0" cy="384.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 896.00 268.00 A 116 116 0 0 1 978.02 301.98" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="896.0" cy="384.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 896.0 384.0)"/>
+<ellipse cx="896.0" cy="384.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 896.0 384.0)"/>
+<ellipse cx="896.0" cy="384.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 896.0 384.0)"/>
+<circle cx="898.0" cy="424.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="896.0" cy="421.0" r="20.7" fill="url(#eg0)"/>
+<circle cx="875.9" cy="311.8" r="21.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="873.9" cy="308.8" r="21.7" fill="url(#eg1)"/>
+<circle cx="875.9" cy="462.2" r="21.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="873.9" cy="459.2" r="21.7" fill="url(#eg2)"/>
+</g></g>
+<g id="r1c4">
+<clipPath id="clip1_4"><rect x="1024" y="256" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip1_4)">
+<circle cx="1152.0" cy="384.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 1152.00 268.00 A 116 116 0 0 1 1234.02 301.98" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="1152.0" cy="384.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 1152.0 384.0)"/>
+<ellipse cx="1152.0" cy="384.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 1152.0 384.0)"/>
+<ellipse cx="1152.0" cy="384.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 1152.0 384.0)"/>
+<circle cx="1110.0" cy="419.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1108.0" cy="416.0" r="20.7" fill="url(#eg0)"/>
+<circle cx="1110.0" cy="463.2" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1108.0" cy="460.2" r="20.7" fill="url(#eg2)"/>
+<circle cx="1159.8" cy="332.9" r="22.4" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1157.8" cy="329.9" r="22.4" fill="url(#eg1)"/>
+</g></g>
+<g id="r1c5">
+<clipPath id="clip1_5"><rect x="1280" y="256" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip1_5)">
+<circle cx="1408.0" cy="384.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 1408.00 268.00 A 116 116 0 0 1 1490.02 301.98" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="1408.0" cy="384.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 1408.0 384.0)"/>
+<ellipse cx="1408.0" cy="384.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 1408.0 384.0)"/>
+<ellipse cx="1408.0" cy="384.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 1408.0 384.0)"/>
+<circle cx="1355.9" cy="443.8" r="19.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1353.9" cy="440.8" r="19.7" fill="url(#eg2)"/>
+<circle cx="1333.8" cy="405.5" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1331.8" cy="402.5" r="20.7" fill="url(#eg0)"/>
+<circle cx="1442.0" cy="368.5" r="22.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1440.0" cy="365.5" r="22.7" fill="url(#eg1)"/>
+</g></g>
+<g id="r1c6">
+<clipPath id="clip1_6"><rect x="1536" y="256" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip1_6)">
+<circle cx="1664.0" cy="384.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 1664.00 268.00 A 116 116 0 0 1 1746.02 301.98" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="1664.0" cy="384.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 1664.0 384.0)"/>
+<ellipse cx="1664.0" cy="384.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 1664.0 384.0)"/>
+<ellipse cx="1664.0" cy="384.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 1664.0 384.0)"/>
+<circle cx="1616.2" cy="409.1" r="19.0" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1614.2" cy="406.1" r="19.0" fill="url(#eg2)"/>
+<circle cx="1578.0" cy="387.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1576.0" cy="384.0" r="20.7" fill="url(#eg0)"/>
+<circle cx="1715.8" cy="409.1" r="22.4" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1713.8" cy="406.1" r="22.4" fill="url(#eg1)"/>
+</g></g>
+<g id="r1c7">
+<clipPath id="clip1_7"><rect x="1792" y="256" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip1_7)">
+<circle cx="1920.0" cy="384.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 1920.00 268.00 A 116 116 0 0 1 2002.02 301.98" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="1920.0" cy="384.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 1920.0 384.0)"/>
+<ellipse cx="1920.0" cy="384.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 1920.0 384.0)"/>
+<ellipse cx="1920.0" cy="384.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 1920.0 384.0)"/>
+<circle cx="1890.0" cy="368.5" r="18.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1888.0" cy="365.5" r="18.7" fill="url(#eg2)"/>
+<circle cx="1845.8" cy="368.5" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1843.8" cy="365.5" r="20.7" fill="url(#eg0)"/>
+<circle cx="1976.1" cy="443.8" r="21.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1974.1" cy="440.8" r="21.7" fill="url(#eg1)"/>
+</g></g>
+<g id="r1c8">
+<clipPath id="clip1_8"><rect x="2048" y="256" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip1_8)">
+<circle cx="2176.0" cy="384.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 2176.00 268.00 A 116 116 0 0 1 2258.02 301.98" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="2176.0" cy="384.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 2176.0 384.0)"/>
+<ellipse cx="2176.0" cy="384.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 2176.0 384.0)"/>
+<ellipse cx="2176.0" cy="384.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 2176.0 384.0)"/>
+<circle cx="2172.2" cy="332.9" r="19.0" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2170.2" cy="329.9" r="19.0" fill="url(#eg2)"/>
+<circle cx="2134.0" cy="355.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2132.0" cy="352.0" r="20.7" fill="url(#eg0)"/>
+<circle cx="2222.0" cy="463.2" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2220.0" cy="460.2" r="20.7" fill="url(#eg1)"/>
+</g></g>
+<g id="r1c9">
+<clipPath id="clip1_9"><rect x="2304" y="256" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip1_9)">
+<circle cx="2432.0" cy="384.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 2432.00 268.00 A 116 116 0 0 1 2514.02 301.98" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="2432.0" cy="384.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 2432.0 384.0)"/>
+<ellipse cx="2432.0" cy="384.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 2432.0 384.0)"/>
+<ellipse cx="2432.0" cy="384.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 2432.0 384.0)"/>
+<circle cx="2456.1" cy="311.8" r="19.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2454.1" cy="308.8" r="19.7" fill="url(#eg2)"/>
+<circle cx="2456.1" cy="462.2" r="19.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2454.1" cy="459.2" r="19.7" fill="url(#eg1)"/>
+<circle cx="2434.0" cy="350.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2432.0" cy="347.0" r="20.7" fill="url(#eg0)"/>
+</g></g>
+<g id="r1c10">
+<clipPath id="clip1_10"><rect x="2560" y="256" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip1_10)">
+<circle cx="2688.0" cy="384.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 2688.00 268.00 A 116 116 0 0 1 2770.02 301.98" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="2688.0" cy="384.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 2688.0 384.0)"/>
+<ellipse cx="2688.0" cy="384.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 2688.0 384.0)"/>
+<ellipse cx="2688.0" cy="384.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 2688.0 384.0)"/>
+<circle cx="2684.2" cy="441.1" r="19.0" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2682.2" cy="438.1" r="19.0" fill="url(#eg1)"/>
+<circle cx="2734.0" cy="310.8" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2732.0" cy="307.8" r="20.7" fill="url(#eg2)"/>
+<circle cx="2734.0" cy="355.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2732.0" cy="352.0" r="20.7" fill="url(#eg0)"/>
+</g></g>
+<g id="r1c11">
+<clipPath id="clip1_11"><rect x="2816" y="256" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip1_11)">
+<circle cx="2944.0" cy="384.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 2944.00 268.00 A 116 116 0 0 1 3026.02 301.98" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="2944.0" cy="384.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 2944.0 384.0)"/>
+<ellipse cx="2944.0" cy="384.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 2944.0 384.0)"/>
+<ellipse cx="2944.0" cy="384.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 2944.0 384.0)"/>
+<circle cx="2914.0" cy="405.5" r="18.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2912.0" cy="402.5" r="18.7" fill="url(#eg1)"/>
+<circle cx="3022.2" cy="368.5" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="3020.2" cy="365.5" r="20.7" fill="url(#eg0)"/>
+<circle cx="3000.1" cy="330.2" r="21.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2998.1" cy="327.2" r="21.7" fill="url(#eg2)"/>
+</g></g>
+<g id="r2c0">
+<clipPath id="clip2_0"><rect x="0" y="512" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip2_0)">
+<circle cx="128.0" cy="640.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 128.00 524.00 A 116 116 0 0 1 244.00 640.00" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="128.0" cy="640.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 128.0 640.0)"/>
+<ellipse cx="128.0" cy="640.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 128.0 640.0)"/>
+<ellipse cx="128.0" cy="640.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 128.0 640.0)"/>
+<circle cx="80.2" cy="620.9" r="19.0" fill="rgba(0,0,0,0.18)"/>
+<circle cx="78.2" cy="617.9" r="19.0" fill="url(#eg1)"/>
+<circle cx="218.0" cy="643.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="216.0" cy="640.0" r="20.7" fill="url(#eg0)"/>
+<circle cx="179.8" cy="620.9" r="22.4" fill="rgba(0,0,0,0.18)"/>
+<circle cx="177.8" cy="617.9" r="22.4" fill="url(#eg2)"/>
+</g></g>
+<g id="r2c1">
+<clipPath id="clip2_1"><rect x="256" y="512" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip2_1)">
+<circle cx="384.0" cy="640.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 384.00 524.00 A 116 116 0 0 1 500.00 640.00" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="384.0" cy="640.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 384.0 640.0)"/>
+<ellipse cx="384.0" cy="640.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 384.0 640.0)"/>
+<ellipse cx="384.0" cy="640.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 384.0 640.0)"/>
+<circle cx="331.9" cy="586.2" r="19.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="329.9" cy="583.2" r="19.7" fill="url(#eg1)"/>
+<circle cx="462.2" cy="661.5" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="460.2" cy="658.5" r="20.7" fill="url(#eg0)"/>
+<circle cx="418.0" cy="661.5" r="22.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="416.0" cy="658.5" r="22.7" fill="url(#eg2)"/>
+</g></g>
+<g id="r2c2">
+<clipPath id="clip2_2"><rect x="512" y="512" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip2_2)">
+<circle cx="640.0" cy="640.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 640.00 524.00 A 116 116 0 0 1 756.00 640.00" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="640.0" cy="640.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 640.0 640.0)"/>
+<ellipse cx="640.0" cy="640.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 640.0 640.0)"/>
+<ellipse cx="640.0" cy="640.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 640.0 640.0)"/>
+<circle cx="598.0" cy="566.8" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="596.0" cy="563.8" r="20.7" fill="url(#eg1)"/>
+<circle cx="686.0" cy="675.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="684.0" cy="672.0" r="20.7" fill="url(#eg0)"/>
+<circle cx="647.8" cy="697.1" r="22.4" fill="rgba(0,0,0,0.18)"/>
+<circle cx="645.8" cy="694.1" r="22.4" fill="url(#eg2)"/>
+</g></g>
+<g id="r2c3">
+<clipPath id="clip2_3"><rect x="768" y="512" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip2_3)">
+<circle cx="896.0" cy="640.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 896.00 524.00 A 116 116 0 0 1 1012.00 640.00" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="896.0" cy="640.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 896.0 640.0)"/>
+<ellipse cx="896.0" cy="640.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 896.0 640.0)"/>
+<ellipse cx="896.0" cy="640.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 896.0 640.0)"/>
+<circle cx="898.0" cy="680.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="896.0" cy="677.0" r="20.7" fill="url(#eg0)"/>
+<circle cx="875.9" cy="567.8" r="21.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="873.9" cy="564.8" r="21.7" fill="url(#eg1)"/>
+<circle cx="875.9" cy="718.2" r="21.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="873.9" cy="715.2" r="21.7" fill="url(#eg2)"/>
+</g></g>
+<g id="r2c4">
+<clipPath id="clip2_4"><rect x="1024" y="512" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip2_4)">
+<circle cx="1152.0" cy="640.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 1152.00 524.00 A 116 116 0 0 1 1268.00 640.00" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="1152.0" cy="640.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 1152.0 640.0)"/>
+<ellipse cx="1152.0" cy="640.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 1152.0 640.0)"/>
+<ellipse cx="1152.0" cy="640.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 1152.0 640.0)"/>
+<circle cx="1110.0" cy="675.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1108.0" cy="672.0" r="20.7" fill="url(#eg0)"/>
+<circle cx="1110.0" cy="719.2" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1108.0" cy="716.2" r="20.7" fill="url(#eg2)"/>
+<circle cx="1159.8" cy="588.9" r="22.4" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1157.8" cy="585.9" r="22.4" fill="url(#eg1)"/>
+</g></g>
+<g id="r2c5">
+<clipPath id="clip2_5"><rect x="1280" y="512" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip2_5)">
+<circle cx="1408.0" cy="640.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 1408.00 524.00 A 116 116 0 0 1 1524.00 640.00" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="1408.0" cy="640.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 1408.0 640.0)"/>
+<ellipse cx="1408.0" cy="640.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 1408.0 640.0)"/>
+<ellipse cx="1408.0" cy="640.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 1408.0 640.0)"/>
+<circle cx="1355.9" cy="699.8" r="19.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1353.9" cy="696.8" r="19.7" fill="url(#eg2)"/>
+<circle cx="1333.8" cy="661.5" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1331.8" cy="658.5" r="20.7" fill="url(#eg0)"/>
+<circle cx="1442.0" cy="624.5" r="22.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1440.0" cy="621.5" r="22.7" fill="url(#eg1)"/>
+</g></g>
+<g id="r2c6">
+<clipPath id="clip2_6"><rect x="1536" y="512" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip2_6)">
+<circle cx="1664.0" cy="640.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 1664.00 524.00 A 116 116 0 0 1 1780.00 640.00" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="1664.0" cy="640.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 1664.0 640.0)"/>
+<ellipse cx="1664.0" cy="640.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 1664.0 640.0)"/>
+<ellipse cx="1664.0" cy="640.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 1664.0 640.0)"/>
+<circle cx="1616.2" cy="665.1" r="19.0" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1614.2" cy="662.1" r="19.0" fill="url(#eg2)"/>
+<circle cx="1578.0" cy="643.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1576.0" cy="640.0" r="20.7" fill="url(#eg0)"/>
+<circle cx="1715.8" cy="665.1" r="22.4" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1713.8" cy="662.1" r="22.4" fill="url(#eg1)"/>
+</g></g>
+<g id="r2c7">
+<clipPath id="clip2_7"><rect x="1792" y="512" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip2_7)">
+<circle cx="1920.0" cy="640.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 1920.00 524.00 A 116 116 0 0 1 2036.00 640.00" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="1920.0" cy="640.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 1920.0 640.0)"/>
+<ellipse cx="1920.0" cy="640.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 1920.0 640.0)"/>
+<ellipse cx="1920.0" cy="640.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 1920.0 640.0)"/>
+<circle cx="1890.0" cy="624.5" r="18.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1888.0" cy="621.5" r="18.7" fill="url(#eg2)"/>
+<circle cx="1845.8" cy="624.5" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1843.8" cy="621.5" r="20.7" fill="url(#eg0)"/>
+<circle cx="1976.1" cy="699.8" r="21.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1974.1" cy="696.8" r="21.7" fill="url(#eg1)"/>
+</g></g>
+<g id="r2c8">
+<clipPath id="clip2_8"><rect x="2048" y="512" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip2_8)">
+<circle cx="2176.0" cy="640.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 2176.00 524.00 A 116 116 0 0 1 2292.00 640.00" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="2176.0" cy="640.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 2176.0 640.0)"/>
+<ellipse cx="2176.0" cy="640.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 2176.0 640.0)"/>
+<ellipse cx="2176.0" cy="640.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 2176.0 640.0)"/>
+<circle cx="2172.2" cy="588.9" r="19.0" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2170.2" cy="585.9" r="19.0" fill="url(#eg2)"/>
+<circle cx="2134.0" cy="611.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2132.0" cy="608.0" r="20.7" fill="url(#eg0)"/>
+<circle cx="2222.0" cy="719.2" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2220.0" cy="716.2" r="20.7" fill="url(#eg1)"/>
+</g></g>
+<g id="r2c9">
+<clipPath id="clip2_9"><rect x="2304" y="512" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip2_9)">
+<circle cx="2432.0" cy="640.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 2432.00 524.00 A 116 116 0 0 1 2548.00 640.00" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="2432.0" cy="640.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 2432.0 640.0)"/>
+<ellipse cx="2432.0" cy="640.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 2432.0 640.0)"/>
+<ellipse cx="2432.0" cy="640.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 2432.0 640.0)"/>
+<circle cx="2456.1" cy="567.8" r="19.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2454.1" cy="564.8" r="19.7" fill="url(#eg2)"/>
+<circle cx="2456.1" cy="718.2" r="19.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2454.1" cy="715.2" r="19.7" fill="url(#eg1)"/>
+<circle cx="2434.0" cy="606.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2432.0" cy="603.0" r="20.7" fill="url(#eg0)"/>
+</g></g>
+<g id="r2c10">
+<clipPath id="clip2_10"><rect x="2560" y="512" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip2_10)">
+<circle cx="2688.0" cy="640.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 2688.00 524.00 A 116 116 0 0 1 2804.00 640.00" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="2688.0" cy="640.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 2688.0 640.0)"/>
+<ellipse cx="2688.0" cy="640.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 2688.0 640.0)"/>
+<ellipse cx="2688.0" cy="640.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 2688.0 640.0)"/>
+<circle cx="2684.2" cy="697.1" r="19.0" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2682.2" cy="694.1" r="19.0" fill="url(#eg1)"/>
+<circle cx="2734.0" cy="566.8" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2732.0" cy="563.8" r="20.7" fill="url(#eg2)"/>
+<circle cx="2734.0" cy="611.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2732.0" cy="608.0" r="20.7" fill="url(#eg0)"/>
+</g></g>
+<g id="r2c11">
+<clipPath id="clip2_11"><rect x="2816" y="512" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip2_11)">
+<circle cx="2944.0" cy="640.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 2944.00 524.00 A 116 116 0 0 1 3060.00 640.00" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="2944.0" cy="640.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 2944.0 640.0)"/>
+<ellipse cx="2944.0" cy="640.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 2944.0 640.0)"/>
+<ellipse cx="2944.0" cy="640.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 2944.0 640.0)"/>
+<circle cx="2914.0" cy="661.5" r="18.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2912.0" cy="658.5" r="18.7" fill="url(#eg1)"/>
+<circle cx="3022.2" cy="624.5" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="3020.2" cy="621.5" r="20.7" fill="url(#eg0)"/>
+<circle cx="3000.1" cy="586.2" r="21.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2998.1" cy="583.2" r="21.7" fill="url(#eg2)"/>
+</g></g>
+<g id="r3c0">
+<clipPath id="clip3_0"><rect x="0" y="768" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip3_0)">
+<circle cx="128.0" cy="896.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 128.00 780.00 A 116 116 0 0 1 210.02 978.02" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="128.0" cy="896.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 128.0 896.0)"/>
+<ellipse cx="128.0" cy="896.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 128.0 896.0)"/>
+<ellipse cx="128.0" cy="896.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 128.0 896.0)"/>
+<circle cx="80.2" cy="876.9" r="19.0" fill="rgba(0,0,0,0.18)"/>
+<circle cx="78.2" cy="873.9" r="19.0" fill="url(#eg1)"/>
+<circle cx="218.0" cy="899.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="216.0" cy="896.0" r="20.7" fill="url(#eg0)"/>
+<circle cx="179.8" cy="876.9" r="22.4" fill="rgba(0,0,0,0.18)"/>
+<circle cx="177.8" cy="873.9" r="22.4" fill="url(#eg2)"/>
+</g></g>
+<g id="r3c1">
+<clipPath id="clip3_1"><rect x="256" y="768" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip3_1)">
+<circle cx="384.0" cy="896.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 384.00 780.00 A 116 116 0 0 1 466.02 978.02" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="384.0" cy="896.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 384.0 896.0)"/>
+<ellipse cx="384.0" cy="896.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 384.0 896.0)"/>
+<ellipse cx="384.0" cy="896.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 384.0 896.0)"/>
+<circle cx="331.9" cy="842.2" r="19.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="329.9" cy="839.2" r="19.7" fill="url(#eg1)"/>
+<circle cx="462.2" cy="917.5" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="460.2" cy="914.5" r="20.7" fill="url(#eg0)"/>
+<circle cx="418.0" cy="917.5" r="22.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="416.0" cy="914.5" r="22.7" fill="url(#eg2)"/>
+</g></g>
+<g id="r3c2">
+<clipPath id="clip3_2"><rect x="512" y="768" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip3_2)">
+<circle cx="640.0" cy="896.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 640.00 780.00 A 116 116 0 0 1 722.02 978.02" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="640.0" cy="896.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 640.0 896.0)"/>
+<ellipse cx="640.0" cy="896.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 640.0 896.0)"/>
+<ellipse cx="640.0" cy="896.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 640.0 896.0)"/>
+<circle cx="598.0" cy="822.8" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="596.0" cy="819.8" r="20.7" fill="url(#eg1)"/>
+<circle cx="686.0" cy="931.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="684.0" cy="928.0" r="20.7" fill="url(#eg0)"/>
+<circle cx="647.8" cy="953.1" r="22.4" fill="rgba(0,0,0,0.18)"/>
+<circle cx="645.8" cy="950.1" r="22.4" fill="url(#eg2)"/>
+</g></g>
+<g id="r3c3">
+<clipPath id="clip3_3"><rect x="768" y="768" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip3_3)">
+<circle cx="896.0" cy="896.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 896.00 780.00 A 116 116 0 0 1 978.02 978.02" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="896.0" cy="896.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 896.0 896.0)"/>
+<ellipse cx="896.0" cy="896.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 896.0 896.0)"/>
+<ellipse cx="896.0" cy="896.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 896.0 896.0)"/>
+<circle cx="898.0" cy="936.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="896.0" cy="933.0" r="20.7" fill="url(#eg0)"/>
+<circle cx="875.9" cy="823.8" r="21.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="873.9" cy="820.8" r="21.7" fill="url(#eg1)"/>
+<circle cx="875.9" cy="974.2" r="21.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="873.9" cy="971.2" r="21.7" fill="url(#eg2)"/>
+</g></g>
+<g id="r3c4">
+<clipPath id="clip3_4"><rect x="1024" y="768" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip3_4)">
+<circle cx="1152.0" cy="896.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 1152.00 780.00 A 116 116 0 0 1 1234.02 978.02" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="1152.0" cy="896.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 1152.0 896.0)"/>
+<ellipse cx="1152.0" cy="896.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 1152.0 896.0)"/>
+<ellipse cx="1152.0" cy="896.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 1152.0 896.0)"/>
+<circle cx="1110.0" cy="931.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1108.0" cy="928.0" r="20.7" fill="url(#eg0)"/>
+<circle cx="1110.0" cy="975.2" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1108.0" cy="972.2" r="20.7" fill="url(#eg2)"/>
+<circle cx="1159.8" cy="844.9" r="22.4" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1157.8" cy="841.9" r="22.4" fill="url(#eg1)"/>
+</g></g>
+<g id="r3c5">
+<clipPath id="clip3_5"><rect x="1280" y="768" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip3_5)">
+<circle cx="1408.0" cy="896.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 1408.00 780.00 A 116 116 0 0 1 1490.02 978.02" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="1408.0" cy="896.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 1408.0 896.0)"/>
+<ellipse cx="1408.0" cy="896.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 1408.0 896.0)"/>
+<ellipse cx="1408.0" cy="896.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 1408.0 896.0)"/>
+<circle cx="1355.9" cy="955.8" r="19.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1353.9" cy="952.8" r="19.7" fill="url(#eg2)"/>
+<circle cx="1333.8" cy="917.5" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1331.8" cy="914.5" r="20.7" fill="url(#eg0)"/>
+<circle cx="1442.0" cy="880.5" r="22.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1440.0" cy="877.5" r="22.7" fill="url(#eg1)"/>
+</g></g>
+<g id="r3c6">
+<clipPath id="clip3_6"><rect x="1536" y="768" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip3_6)">
+<circle cx="1664.0" cy="896.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 1664.00 780.00 A 116 116 0 0 1 1746.02 978.02" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="1664.0" cy="896.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 1664.0 896.0)"/>
+<ellipse cx="1664.0" cy="896.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 1664.0 896.0)"/>
+<ellipse cx="1664.0" cy="896.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 1664.0 896.0)"/>
+<circle cx="1616.2" cy="921.1" r="19.0" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1614.2" cy="918.1" r="19.0" fill="url(#eg2)"/>
+<circle cx="1578.0" cy="899.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1576.0" cy="896.0" r="20.7" fill="url(#eg0)"/>
+<circle cx="1715.8" cy="921.1" r="22.4" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1713.8" cy="918.1" r="22.4" fill="url(#eg1)"/>
+</g></g>
+<g id="r3c7">
+<clipPath id="clip3_7"><rect x="1792" y="768" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip3_7)">
+<circle cx="1920.0" cy="896.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 1920.00 780.00 A 116 116 0 0 1 2002.02 978.02" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="1920.0" cy="896.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 1920.0 896.0)"/>
+<ellipse cx="1920.0" cy="896.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 1920.0 896.0)"/>
+<ellipse cx="1920.0" cy="896.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 1920.0 896.0)"/>
+<circle cx="1890.0" cy="880.5" r="18.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1888.0" cy="877.5" r="18.7" fill="url(#eg2)"/>
+<circle cx="1845.8" cy="880.5" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1843.8" cy="877.5" r="20.7" fill="url(#eg0)"/>
+<circle cx="1976.1" cy="955.8" r="21.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1974.1" cy="952.8" r="21.7" fill="url(#eg1)"/>
+</g></g>
+<g id="r3c8">
+<clipPath id="clip3_8"><rect x="2048" y="768" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip3_8)">
+<circle cx="2176.0" cy="896.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 2176.00 780.00 A 116 116 0 0 1 2258.02 978.02" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="2176.0" cy="896.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 2176.0 896.0)"/>
+<ellipse cx="2176.0" cy="896.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 2176.0 896.0)"/>
+<ellipse cx="2176.0" cy="896.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 2176.0 896.0)"/>
+<circle cx="2172.2" cy="844.9" r="19.0" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2170.2" cy="841.9" r="19.0" fill="url(#eg2)"/>
+<circle cx="2134.0" cy="867.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2132.0" cy="864.0" r="20.7" fill="url(#eg0)"/>
+<circle cx="2222.0" cy="975.2" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2220.0" cy="972.2" r="20.7" fill="url(#eg1)"/>
+</g></g>
+<g id="r3c9">
+<clipPath id="clip3_9"><rect x="2304" y="768" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip3_9)">
+<circle cx="2432.0" cy="896.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 2432.00 780.00 A 116 116 0 0 1 2514.02 978.02" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="2432.0" cy="896.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 2432.0 896.0)"/>
+<ellipse cx="2432.0" cy="896.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 2432.0 896.0)"/>
+<ellipse cx="2432.0" cy="896.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 2432.0 896.0)"/>
+<circle cx="2456.1" cy="823.8" r="19.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2454.1" cy="820.8" r="19.7" fill="url(#eg2)"/>
+<circle cx="2456.1" cy="974.2" r="19.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2454.1" cy="971.2" r="19.7" fill="url(#eg1)"/>
+<circle cx="2434.0" cy="862.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2432.0" cy="859.0" r="20.7" fill="url(#eg0)"/>
+</g></g>
+<g id="r3c10">
+<clipPath id="clip3_10"><rect x="2560" y="768" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip3_10)">
+<circle cx="2688.0" cy="896.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 2688.00 780.00 A 116 116 0 0 1 2770.02 978.02" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="2688.0" cy="896.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 2688.0 896.0)"/>
+<ellipse cx="2688.0" cy="896.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 2688.0 896.0)"/>
+<ellipse cx="2688.0" cy="896.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 2688.0 896.0)"/>
+<circle cx="2684.2" cy="953.1" r="19.0" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2682.2" cy="950.1" r="19.0" fill="url(#eg1)"/>
+<circle cx="2734.0" cy="822.8" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2732.0" cy="819.8" r="20.7" fill="url(#eg2)"/>
+<circle cx="2734.0" cy="867.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2732.0" cy="864.0" r="20.7" fill="url(#eg0)"/>
+</g></g>
+<g id="r3c11">
+<clipPath id="clip3_11"><rect x="2816" y="768" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip3_11)">
+<circle cx="2944.0" cy="896.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 2944.00 780.00 A 116 116 0 0 1 3026.02 978.02" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="2944.0" cy="896.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 2944.0 896.0)"/>
+<ellipse cx="2944.0" cy="896.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 2944.0 896.0)"/>
+<ellipse cx="2944.0" cy="896.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 2944.0 896.0)"/>
+<circle cx="2914.0" cy="917.5" r="18.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2912.0" cy="914.5" r="18.7" fill="url(#eg1)"/>
+<circle cx="3022.2" cy="880.5" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="3020.2" cy="877.5" r="20.7" fill="url(#eg0)"/>
+<circle cx="3000.1" cy="842.2" r="21.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2998.1" cy="839.2" r="21.7" fill="url(#eg2)"/>
+</g></g>
+<g id="r4c0">
+<clipPath id="clip4_0"><rect x="0" y="1024" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip4_0)">
+<circle cx="128.0" cy="1152.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 128.00 1036.00 A 116 116 0 0 1 128.00 1268.00" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="128.0" cy="1152.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 128.0 1152.0)"/>
+<ellipse cx="128.0" cy="1152.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 128.0 1152.0)"/>
+<ellipse cx="128.0" cy="1152.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 128.0 1152.0)"/>
+<circle cx="80.2" cy="1132.9" r="19.0" fill="rgba(0,0,0,0.18)"/>
+<circle cx="78.2" cy="1129.9" r="19.0" fill="url(#eg1)"/>
+<circle cx="218.0" cy="1155.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="216.0" cy="1152.0" r="20.7" fill="url(#eg0)"/>
+<circle cx="179.8" cy="1132.9" r="22.4" fill="rgba(0,0,0,0.18)"/>
+<circle cx="177.8" cy="1129.9" r="22.4" fill="url(#eg2)"/>
+</g></g>
+<g id="r4c1">
+<clipPath id="clip4_1"><rect x="256" y="1024" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip4_1)">
+<circle cx="384.0" cy="1152.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 384.00 1036.00 A 116 116 0 0 1 384.00 1268.00" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="384.0" cy="1152.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 384.0 1152.0)"/>
+<ellipse cx="384.0" cy="1152.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 384.0 1152.0)"/>
+<ellipse cx="384.0" cy="1152.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 384.0 1152.0)"/>
+<circle cx="331.9" cy="1098.2" r="19.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="329.9" cy="1095.2" r="19.7" fill="url(#eg1)"/>
+<circle cx="462.2" cy="1173.5" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="460.2" cy="1170.5" r="20.7" fill="url(#eg0)"/>
+<circle cx="418.0" cy="1173.5" r="22.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="416.0" cy="1170.5" r="22.7" fill="url(#eg2)"/>
+</g></g>
+<g id="r4c2">
+<clipPath id="clip4_2"><rect x="512" y="1024" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip4_2)">
+<circle cx="640.0" cy="1152.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 640.00 1036.00 A 116 116 0 0 1 640.00 1268.00" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="640.0" cy="1152.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 640.0 1152.0)"/>
+<ellipse cx="640.0" cy="1152.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 640.0 1152.0)"/>
+<ellipse cx="640.0" cy="1152.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 640.0 1152.0)"/>
+<circle cx="598.0" cy="1078.8" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="596.0" cy="1075.8" r="20.7" fill="url(#eg1)"/>
+<circle cx="686.0" cy="1187.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="684.0" cy="1184.0" r="20.7" fill="url(#eg0)"/>
+<circle cx="647.8" cy="1209.1" r="22.4" fill="rgba(0,0,0,0.18)"/>
+<circle cx="645.8" cy="1206.1" r="22.4" fill="url(#eg2)"/>
+</g></g>
+<g id="r4c3">
+<clipPath id="clip4_3"><rect x="768" y="1024" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip4_3)">
+<circle cx="896.0" cy="1152.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 896.00 1036.00 A 116 116 0 0 1 896.00 1268.00" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="896.0" cy="1152.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 896.0 1152.0)"/>
+<ellipse cx="896.0" cy="1152.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 896.0 1152.0)"/>
+<ellipse cx="896.0" cy="1152.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 896.0 1152.0)"/>
+<circle cx="898.0" cy="1192.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="896.0" cy="1189.0" r="20.7" fill="url(#eg0)"/>
+<circle cx="875.9" cy="1079.8" r="21.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="873.9" cy="1076.8" r="21.7" fill="url(#eg1)"/>
+<circle cx="875.9" cy="1230.2" r="21.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="873.9" cy="1227.2" r="21.7" fill="url(#eg2)"/>
+</g></g>
+<g id="r4c4">
+<clipPath id="clip4_4"><rect x="1024" y="1024" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip4_4)">
+<circle cx="1152.0" cy="1152.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 1152.00 1036.00 A 116 116 0 0 1 1152.00 1268.00" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="1152.0" cy="1152.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 1152.0 1152.0)"/>
+<ellipse cx="1152.0" cy="1152.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 1152.0 1152.0)"/>
+<ellipse cx="1152.0" cy="1152.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 1152.0 1152.0)"/>
+<circle cx="1110.0" cy="1187.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1108.0" cy="1184.0" r="20.7" fill="url(#eg0)"/>
+<circle cx="1110.0" cy="1231.2" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1108.0" cy="1228.2" r="20.7" fill="url(#eg2)"/>
+<circle cx="1159.8" cy="1100.9" r="22.4" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1157.8" cy="1097.9" r="22.4" fill="url(#eg1)"/>
+</g></g>
+<g id="r4c5">
+<clipPath id="clip4_5"><rect x="1280" y="1024" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip4_5)">
+<circle cx="1408.0" cy="1152.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 1408.00 1036.00 A 116 116 0 0 1 1408.00 1268.00" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="1408.0" cy="1152.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 1408.0 1152.0)"/>
+<ellipse cx="1408.0" cy="1152.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 1408.0 1152.0)"/>
+<ellipse cx="1408.0" cy="1152.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 1408.0 1152.0)"/>
+<circle cx="1355.9" cy="1211.8" r="19.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1353.9" cy="1208.8" r="19.7" fill="url(#eg2)"/>
+<circle cx="1333.8" cy="1173.5" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1331.8" cy="1170.5" r="20.7" fill="url(#eg0)"/>
+<circle cx="1442.0" cy="1136.5" r="22.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1440.0" cy="1133.5" r="22.7" fill="url(#eg1)"/>
+</g></g>
+<g id="r4c6">
+<clipPath id="clip4_6"><rect x="1536" y="1024" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip4_6)">
+<circle cx="1664.0" cy="1152.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 1664.00 1036.00 A 116 116 0 0 1 1664.00 1268.00" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="1664.0" cy="1152.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 1664.0 1152.0)"/>
+<ellipse cx="1664.0" cy="1152.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 1664.0 1152.0)"/>
+<ellipse cx="1664.0" cy="1152.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 1664.0 1152.0)"/>
+<circle cx="1616.2" cy="1177.1" r="19.0" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1614.2" cy="1174.1" r="19.0" fill="url(#eg2)"/>
+<circle cx="1578.0" cy="1155.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1576.0" cy="1152.0" r="20.7" fill="url(#eg0)"/>
+<circle cx="1715.8" cy="1177.1" r="22.4" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1713.8" cy="1174.1" r="22.4" fill="url(#eg1)"/>
+</g></g>
+<g id="r4c7">
+<clipPath id="clip4_7"><rect x="1792" y="1024" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip4_7)">
+<circle cx="1920.0" cy="1152.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 1920.00 1036.00 A 116 116 0 0 1 1920.00 1268.00" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="1920.0" cy="1152.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 1920.0 1152.0)"/>
+<ellipse cx="1920.0" cy="1152.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 1920.0 1152.0)"/>
+<ellipse cx="1920.0" cy="1152.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 1920.0 1152.0)"/>
+<circle cx="1890.0" cy="1136.5" r="18.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1888.0" cy="1133.5" r="18.7" fill="url(#eg2)"/>
+<circle cx="1845.8" cy="1136.5" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1843.8" cy="1133.5" r="20.7" fill="url(#eg0)"/>
+<circle cx="1976.1" cy="1211.8" r="21.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1974.1" cy="1208.8" r="21.7" fill="url(#eg1)"/>
+</g></g>
+<g id="r4c8">
+<clipPath id="clip4_8"><rect x="2048" y="1024" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip4_8)">
+<circle cx="2176.0" cy="1152.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 2176.00 1036.00 A 116 116 0 0 1 2176.00 1268.00" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="2176.0" cy="1152.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 2176.0 1152.0)"/>
+<ellipse cx="2176.0" cy="1152.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 2176.0 1152.0)"/>
+<ellipse cx="2176.0" cy="1152.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 2176.0 1152.0)"/>
+<circle cx="2172.2" cy="1100.9" r="19.0" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2170.2" cy="1097.9" r="19.0" fill="url(#eg2)"/>
+<circle cx="2134.0" cy="1123.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2132.0" cy="1120.0" r="20.7" fill="url(#eg0)"/>
+<circle cx="2222.0" cy="1231.2" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2220.0" cy="1228.2" r="20.7" fill="url(#eg1)"/>
+</g></g>
+<g id="r4c9">
+<clipPath id="clip4_9"><rect x="2304" y="1024" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip4_9)">
+<circle cx="2432.0" cy="1152.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 2432.00 1036.00 A 116 116 0 0 1 2432.00 1268.00" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="2432.0" cy="1152.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 2432.0 1152.0)"/>
+<ellipse cx="2432.0" cy="1152.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 2432.0 1152.0)"/>
+<ellipse cx="2432.0" cy="1152.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 2432.0 1152.0)"/>
+<circle cx="2456.1" cy="1079.8" r="19.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2454.1" cy="1076.8" r="19.7" fill="url(#eg2)"/>
+<circle cx="2456.1" cy="1230.2" r="19.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2454.1" cy="1227.2" r="19.7" fill="url(#eg1)"/>
+<circle cx="2434.0" cy="1118.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2432.0" cy="1115.0" r="20.7" fill="url(#eg0)"/>
+</g></g>
+<g id="r4c10">
+<clipPath id="clip4_10"><rect x="2560" y="1024" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip4_10)">
+<circle cx="2688.0" cy="1152.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 2688.00 1036.00 A 116 116 0 0 1 2688.00 1268.00" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="2688.0" cy="1152.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 2688.0 1152.0)"/>
+<ellipse cx="2688.0" cy="1152.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 2688.0 1152.0)"/>
+<ellipse cx="2688.0" cy="1152.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 2688.0 1152.0)"/>
+<circle cx="2684.2" cy="1209.1" r="19.0" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2682.2" cy="1206.1" r="19.0" fill="url(#eg1)"/>
+<circle cx="2734.0" cy="1078.8" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2732.0" cy="1075.8" r="20.7" fill="url(#eg2)"/>
+<circle cx="2734.0" cy="1123.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2732.0" cy="1120.0" r="20.7" fill="url(#eg0)"/>
+</g></g>
+<g id="r4c11">
+<clipPath id="clip4_11"><rect x="2816" y="1024" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip4_11)">
+<circle cx="2944.0" cy="1152.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 2944.00 1036.00 A 116 116 0 0 1 2944.00 1268.00" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="2944.0" cy="1152.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 2944.0 1152.0)"/>
+<ellipse cx="2944.0" cy="1152.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 2944.0 1152.0)"/>
+<ellipse cx="2944.0" cy="1152.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 2944.0 1152.0)"/>
+<circle cx="2914.0" cy="1173.5" r="18.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2912.0" cy="1170.5" r="18.7" fill="url(#eg1)"/>
+<circle cx="3022.2" cy="1136.5" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="3020.2" cy="1133.5" r="20.7" fill="url(#eg0)"/>
+<circle cx="3000.1" cy="1098.2" r="21.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2998.1" cy="1095.2" r="21.7" fill="url(#eg2)"/>
+</g></g>
+<g id="r5c0">
+<clipPath id="clip5_0"><rect x="0" y="1280" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip5_0)">
+<circle cx="128.0" cy="1408.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 128.00 1292.00 A 116 116 0 1 1 45.98 1490.02" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="128.0" cy="1408.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 128.0 1408.0)"/>
+<ellipse cx="128.0" cy="1408.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 128.0 1408.0)"/>
+<ellipse cx="128.0" cy="1408.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 128.0 1408.0)"/>
+<circle cx="80.2" cy="1388.9" r="19.0" fill="rgba(0,0,0,0.18)"/>
+<circle cx="78.2" cy="1385.9" r="19.0" fill="url(#eg1)"/>
+<circle cx="218.0" cy="1411.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="216.0" cy="1408.0" r="20.7" fill="url(#eg0)"/>
+<circle cx="179.8" cy="1388.9" r="22.4" fill="rgba(0,0,0,0.18)"/>
+<circle cx="177.8" cy="1385.9" r="22.4" fill="url(#eg2)"/>
+</g></g>
+<g id="r5c1">
+<clipPath id="clip5_1"><rect x="256" y="1280" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip5_1)">
+<circle cx="384.0" cy="1408.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 384.00 1292.00 A 116 116 0 1 1 301.98 1490.02" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="384.0" cy="1408.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 384.0 1408.0)"/>
+<ellipse cx="384.0" cy="1408.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 384.0 1408.0)"/>
+<ellipse cx="384.0" cy="1408.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 384.0 1408.0)"/>
+<circle cx="331.9" cy="1354.2" r="19.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="329.9" cy="1351.2" r="19.7" fill="url(#eg1)"/>
+<circle cx="462.2" cy="1429.5" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="460.2" cy="1426.5" r="20.7" fill="url(#eg0)"/>
+<circle cx="418.0" cy="1429.5" r="22.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="416.0" cy="1426.5" r="22.7" fill="url(#eg2)"/>
+</g></g>
+<g id="r5c2">
+<clipPath id="clip5_2"><rect x="512" y="1280" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip5_2)">
+<circle cx="640.0" cy="1408.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 640.00 1292.00 A 116 116 0 1 1 557.98 1490.02" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="640.0" cy="1408.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 640.0 1408.0)"/>
+<ellipse cx="640.0" cy="1408.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 640.0 1408.0)"/>
+<ellipse cx="640.0" cy="1408.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 640.0 1408.0)"/>
+<circle cx="598.0" cy="1334.8" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="596.0" cy="1331.8" r="20.7" fill="url(#eg1)"/>
+<circle cx="686.0" cy="1443.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="684.0" cy="1440.0" r="20.7" fill="url(#eg0)"/>
+<circle cx="647.8" cy="1465.1" r="22.4" fill="rgba(0,0,0,0.18)"/>
+<circle cx="645.8" cy="1462.1" r="22.4" fill="url(#eg2)"/>
+</g></g>
+<g id="r5c3">
+<clipPath id="clip5_3"><rect x="768" y="1280" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip5_3)">
+<circle cx="896.0" cy="1408.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 896.00 1292.00 A 116 116 0 1 1 813.98 1490.02" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="896.0" cy="1408.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 896.0 1408.0)"/>
+<ellipse cx="896.0" cy="1408.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 896.0 1408.0)"/>
+<ellipse cx="896.0" cy="1408.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 896.0 1408.0)"/>
+<circle cx="898.0" cy="1448.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="896.0" cy="1445.0" r="20.7" fill="url(#eg0)"/>
+<circle cx="875.9" cy="1335.8" r="21.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="873.9" cy="1332.8" r="21.7" fill="url(#eg1)"/>
+<circle cx="875.9" cy="1486.2" r="21.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="873.9" cy="1483.2" r="21.7" fill="url(#eg2)"/>
+</g></g>
+<g id="r5c4">
+<clipPath id="clip5_4"><rect x="1024" y="1280" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip5_4)">
+<circle cx="1152.0" cy="1408.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 1152.00 1292.00 A 116 116 0 1 1 1069.98 1490.02" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="1152.0" cy="1408.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 1152.0 1408.0)"/>
+<ellipse cx="1152.0" cy="1408.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 1152.0 1408.0)"/>
+<ellipse cx="1152.0" cy="1408.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 1152.0 1408.0)"/>
+<circle cx="1110.0" cy="1443.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1108.0" cy="1440.0" r="20.7" fill="url(#eg0)"/>
+<circle cx="1110.0" cy="1487.2" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1108.0" cy="1484.2" r="20.7" fill="url(#eg2)"/>
+<circle cx="1159.8" cy="1356.9" r="22.4" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1157.8" cy="1353.9" r="22.4" fill="url(#eg1)"/>
+</g></g>
+<g id="r5c5">
+<clipPath id="clip5_5"><rect x="1280" y="1280" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip5_5)">
+<circle cx="1408.0" cy="1408.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 1408.00 1292.00 A 116 116 0 1 1 1325.98 1490.02" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="1408.0" cy="1408.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 1408.0 1408.0)"/>
+<ellipse cx="1408.0" cy="1408.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 1408.0 1408.0)"/>
+<ellipse cx="1408.0" cy="1408.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 1408.0 1408.0)"/>
+<circle cx="1355.9" cy="1467.8" r="19.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1353.9" cy="1464.8" r="19.7" fill="url(#eg2)"/>
+<circle cx="1333.8" cy="1429.5" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1331.8" cy="1426.5" r="20.7" fill="url(#eg0)"/>
+<circle cx="1442.0" cy="1392.5" r="22.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1440.0" cy="1389.5" r="22.7" fill="url(#eg1)"/>
+</g></g>
+<g id="r5c6">
+<clipPath id="clip5_6"><rect x="1536" y="1280" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip5_6)">
+<circle cx="1664.0" cy="1408.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 1664.00 1292.00 A 116 116 0 1 1 1581.98 1490.02" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="1664.0" cy="1408.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 1664.0 1408.0)"/>
+<ellipse cx="1664.0" cy="1408.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 1664.0 1408.0)"/>
+<ellipse cx="1664.0" cy="1408.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 1664.0 1408.0)"/>
+<circle cx="1616.2" cy="1433.1" r="19.0" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1614.2" cy="1430.1" r="19.0" fill="url(#eg2)"/>
+<circle cx="1578.0" cy="1411.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1576.0" cy="1408.0" r="20.7" fill="url(#eg0)"/>
+<circle cx="1715.8" cy="1433.1" r="22.4" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1713.8" cy="1430.1" r="22.4" fill="url(#eg1)"/>
+</g></g>
+<g id="r5c7">
+<clipPath id="clip5_7"><rect x="1792" y="1280" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip5_7)">
+<circle cx="1920.0" cy="1408.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 1920.00 1292.00 A 116 116 0 1 1 1837.98 1490.02" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="1920.0" cy="1408.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 1920.0 1408.0)"/>
+<ellipse cx="1920.0" cy="1408.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 1920.0 1408.0)"/>
+<ellipse cx="1920.0" cy="1408.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 1920.0 1408.0)"/>
+<circle cx="1890.0" cy="1392.5" r="18.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1888.0" cy="1389.5" r="18.7" fill="url(#eg2)"/>
+<circle cx="1845.8" cy="1392.5" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1843.8" cy="1389.5" r="20.7" fill="url(#eg0)"/>
+<circle cx="1976.1" cy="1467.8" r="21.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1974.1" cy="1464.8" r="21.7" fill="url(#eg1)"/>
+</g></g>
+<g id="r5c8">
+<clipPath id="clip5_8"><rect x="2048" y="1280" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip5_8)">
+<circle cx="2176.0" cy="1408.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 2176.00 1292.00 A 116 116 0 1 1 2093.98 1490.02" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="2176.0" cy="1408.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 2176.0 1408.0)"/>
+<ellipse cx="2176.0" cy="1408.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 2176.0 1408.0)"/>
+<ellipse cx="2176.0" cy="1408.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 2176.0 1408.0)"/>
+<circle cx="2172.2" cy="1356.9" r="19.0" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2170.2" cy="1353.9" r="19.0" fill="url(#eg2)"/>
+<circle cx="2134.0" cy="1379.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2132.0" cy="1376.0" r="20.7" fill="url(#eg0)"/>
+<circle cx="2222.0" cy="1487.2" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2220.0" cy="1484.2" r="20.7" fill="url(#eg1)"/>
+</g></g>
+<g id="r5c9">
+<clipPath id="clip5_9"><rect x="2304" y="1280" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip5_9)">
+<circle cx="2432.0" cy="1408.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 2432.00 1292.00 A 116 116 0 1 1 2349.98 1490.02" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="2432.0" cy="1408.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 2432.0 1408.0)"/>
+<ellipse cx="2432.0" cy="1408.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 2432.0 1408.0)"/>
+<ellipse cx="2432.0" cy="1408.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 2432.0 1408.0)"/>
+<circle cx="2456.1" cy="1335.8" r="19.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2454.1" cy="1332.8" r="19.7" fill="url(#eg2)"/>
+<circle cx="2456.1" cy="1486.2" r="19.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2454.1" cy="1483.2" r="19.7" fill="url(#eg1)"/>
+<circle cx="2434.0" cy="1374.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2432.0" cy="1371.0" r="20.7" fill="url(#eg0)"/>
+</g></g>
+<g id="r5c10">
+<clipPath id="clip5_10"><rect x="2560" y="1280" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip5_10)">
+<circle cx="2688.0" cy="1408.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 2688.00 1292.00 A 116 116 0 1 1 2605.98 1490.02" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="2688.0" cy="1408.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 2688.0 1408.0)"/>
+<ellipse cx="2688.0" cy="1408.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 2688.0 1408.0)"/>
+<ellipse cx="2688.0" cy="1408.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 2688.0 1408.0)"/>
+<circle cx="2684.2" cy="1465.1" r="19.0" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2682.2" cy="1462.1" r="19.0" fill="url(#eg1)"/>
+<circle cx="2734.0" cy="1334.8" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2732.0" cy="1331.8" r="20.7" fill="url(#eg2)"/>
+<circle cx="2734.0" cy="1379.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2732.0" cy="1376.0" r="20.7" fill="url(#eg0)"/>
+</g></g>
+<g id="r5c11">
+<clipPath id="clip5_11"><rect x="2816" y="1280" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip5_11)">
+<circle cx="2944.0" cy="1408.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 2944.00 1292.00 A 116 116 0 1 1 2861.98 1490.02" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="2944.0" cy="1408.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 2944.0 1408.0)"/>
+<ellipse cx="2944.0" cy="1408.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 2944.0 1408.0)"/>
+<ellipse cx="2944.0" cy="1408.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 2944.0 1408.0)"/>
+<circle cx="2914.0" cy="1429.5" r="18.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2912.0" cy="1426.5" r="18.7" fill="url(#eg1)"/>
+<circle cx="3022.2" cy="1392.5" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="3020.2" cy="1389.5" r="20.7" fill="url(#eg0)"/>
+<circle cx="3000.1" cy="1354.2" r="21.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2998.1" cy="1351.2" r="21.7" fill="url(#eg2)"/>
+</g></g>
+<g id="r6c0">
+<clipPath id="clip6_0"><rect x="0" y="1536" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip6_0)">
+<circle cx="128.0" cy="1664.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 128.00 1548.00 A 116 116 0 1 1 12.00 1664.00" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="128.0" cy="1664.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 128.0 1664.0)"/>
+<ellipse cx="128.0" cy="1664.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 128.0 1664.0)"/>
+<ellipse cx="128.0" cy="1664.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 128.0 1664.0)"/>
+<circle cx="80.2" cy="1644.9" r="19.0" fill="rgba(0,0,0,0.18)"/>
+<circle cx="78.2" cy="1641.9" r="19.0" fill="url(#eg1)"/>
+<circle cx="218.0" cy="1667.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="216.0" cy="1664.0" r="20.7" fill="url(#eg0)"/>
+<circle cx="179.8" cy="1644.9" r="22.4" fill="rgba(0,0,0,0.18)"/>
+<circle cx="177.8" cy="1641.9" r="22.4" fill="url(#eg2)"/>
+</g></g>
+<g id="r6c1">
+<clipPath id="clip6_1"><rect x="256" y="1536" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip6_1)">
+<circle cx="384.0" cy="1664.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 384.00 1548.00 A 116 116 0 1 1 268.00 1664.00" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="384.0" cy="1664.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 384.0 1664.0)"/>
+<ellipse cx="384.0" cy="1664.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 384.0 1664.0)"/>
+<ellipse cx="384.0" cy="1664.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 384.0 1664.0)"/>
+<circle cx="331.9" cy="1610.2" r="19.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="329.9" cy="1607.2" r="19.7" fill="url(#eg1)"/>
+<circle cx="462.2" cy="1685.5" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="460.2" cy="1682.5" r="20.7" fill="url(#eg0)"/>
+<circle cx="418.0" cy="1685.5" r="22.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="416.0" cy="1682.5" r="22.7" fill="url(#eg2)"/>
+</g></g>
+<g id="r6c2">
+<clipPath id="clip6_2"><rect x="512" y="1536" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip6_2)">
+<circle cx="640.0" cy="1664.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 640.00 1548.00 A 116 116 0 1 1 524.00 1664.00" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="640.0" cy="1664.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 640.0 1664.0)"/>
+<ellipse cx="640.0" cy="1664.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 640.0 1664.0)"/>
+<ellipse cx="640.0" cy="1664.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 640.0 1664.0)"/>
+<circle cx="598.0" cy="1590.8" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="596.0" cy="1587.8" r="20.7" fill="url(#eg1)"/>
+<circle cx="686.0" cy="1699.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="684.0" cy="1696.0" r="20.7" fill="url(#eg0)"/>
+<circle cx="647.8" cy="1721.1" r="22.4" fill="rgba(0,0,0,0.18)"/>
+<circle cx="645.8" cy="1718.1" r="22.4" fill="url(#eg2)"/>
+</g></g>
+<g id="r6c3">
+<clipPath id="clip6_3"><rect x="768" y="1536" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip6_3)">
+<circle cx="896.0" cy="1664.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 896.00 1548.00 A 116 116 0 1 1 780.00 1664.00" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="896.0" cy="1664.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 896.0 1664.0)"/>
+<ellipse cx="896.0" cy="1664.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 896.0 1664.0)"/>
+<ellipse cx="896.0" cy="1664.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 896.0 1664.0)"/>
+<circle cx="898.0" cy="1704.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="896.0" cy="1701.0" r="20.7" fill="url(#eg0)"/>
+<circle cx="875.9" cy="1591.8" r="21.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="873.9" cy="1588.8" r="21.7" fill="url(#eg1)"/>
+<circle cx="875.9" cy="1742.2" r="21.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="873.9" cy="1739.2" r="21.7" fill="url(#eg2)"/>
+</g></g>
+<g id="r6c4">
+<clipPath id="clip6_4"><rect x="1024" y="1536" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip6_4)">
+<circle cx="1152.0" cy="1664.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 1152.00 1548.00 A 116 116 0 1 1 1036.00 1664.00" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="1152.0" cy="1664.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 1152.0 1664.0)"/>
+<ellipse cx="1152.0" cy="1664.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 1152.0 1664.0)"/>
+<ellipse cx="1152.0" cy="1664.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 1152.0 1664.0)"/>
+<circle cx="1110.0" cy="1699.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1108.0" cy="1696.0" r="20.7" fill="url(#eg0)"/>
+<circle cx="1110.0" cy="1743.2" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1108.0" cy="1740.2" r="20.7" fill="url(#eg2)"/>
+<circle cx="1159.8" cy="1612.9" r="22.4" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1157.8" cy="1609.9" r="22.4" fill="url(#eg1)"/>
+</g></g>
+<g id="r6c5">
+<clipPath id="clip6_5"><rect x="1280" y="1536" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip6_5)">
+<circle cx="1408.0" cy="1664.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 1408.00 1548.00 A 116 116 0 1 1 1292.00 1664.00" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="1408.0" cy="1664.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 1408.0 1664.0)"/>
+<ellipse cx="1408.0" cy="1664.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 1408.0 1664.0)"/>
+<ellipse cx="1408.0" cy="1664.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 1408.0 1664.0)"/>
+<circle cx="1355.9" cy="1723.8" r="19.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1353.9" cy="1720.8" r="19.7" fill="url(#eg2)"/>
+<circle cx="1333.8" cy="1685.5" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1331.8" cy="1682.5" r="20.7" fill="url(#eg0)"/>
+<circle cx="1442.0" cy="1648.5" r="22.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1440.0" cy="1645.5" r="22.7" fill="url(#eg1)"/>
+</g></g>
+<g id="r6c6">
+<clipPath id="clip6_6"><rect x="1536" y="1536" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip6_6)">
+<circle cx="1664.0" cy="1664.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 1664.00 1548.00 A 116 116 0 1 1 1548.00 1664.00" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="1664.0" cy="1664.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 1664.0 1664.0)"/>
+<ellipse cx="1664.0" cy="1664.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 1664.0 1664.0)"/>
+<ellipse cx="1664.0" cy="1664.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 1664.0 1664.0)"/>
+<circle cx="1616.2" cy="1689.1" r="19.0" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1614.2" cy="1686.1" r="19.0" fill="url(#eg2)"/>
+<circle cx="1578.0" cy="1667.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1576.0" cy="1664.0" r="20.7" fill="url(#eg0)"/>
+<circle cx="1715.8" cy="1689.1" r="22.4" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1713.8" cy="1686.1" r="22.4" fill="url(#eg1)"/>
+</g></g>
+<g id="r6c7">
+<clipPath id="clip6_7"><rect x="1792" y="1536" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip6_7)">
+<circle cx="1920.0" cy="1664.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 1920.00 1548.00 A 116 116 0 1 1 1804.00 1664.00" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="1920.0" cy="1664.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 1920.0 1664.0)"/>
+<ellipse cx="1920.0" cy="1664.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 1920.0 1664.0)"/>
+<ellipse cx="1920.0" cy="1664.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 1920.0 1664.0)"/>
+<circle cx="1890.0" cy="1648.5" r="18.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1888.0" cy="1645.5" r="18.7" fill="url(#eg2)"/>
+<circle cx="1845.8" cy="1648.5" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1843.8" cy="1645.5" r="20.7" fill="url(#eg0)"/>
+<circle cx="1976.1" cy="1723.8" r="21.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1974.1" cy="1720.8" r="21.7" fill="url(#eg1)"/>
+</g></g>
+<g id="r6c8">
+<clipPath id="clip6_8"><rect x="2048" y="1536" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip6_8)">
+<circle cx="2176.0" cy="1664.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 2176.00 1548.00 A 116 116 0 1 1 2060.00 1664.00" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="2176.0" cy="1664.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 2176.0 1664.0)"/>
+<ellipse cx="2176.0" cy="1664.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 2176.0 1664.0)"/>
+<ellipse cx="2176.0" cy="1664.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 2176.0 1664.0)"/>
+<circle cx="2172.2" cy="1612.9" r="19.0" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2170.2" cy="1609.9" r="19.0" fill="url(#eg2)"/>
+<circle cx="2134.0" cy="1635.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2132.0" cy="1632.0" r="20.7" fill="url(#eg0)"/>
+<circle cx="2222.0" cy="1743.2" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2220.0" cy="1740.2" r="20.7" fill="url(#eg1)"/>
+</g></g>
+<g id="r6c9">
+<clipPath id="clip6_9"><rect x="2304" y="1536" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip6_9)">
+<circle cx="2432.0" cy="1664.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 2432.00 1548.00 A 116 116 0 1 1 2316.00 1664.00" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="2432.0" cy="1664.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 2432.0 1664.0)"/>
+<ellipse cx="2432.0" cy="1664.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 2432.0 1664.0)"/>
+<ellipse cx="2432.0" cy="1664.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 2432.0 1664.0)"/>
+<circle cx="2456.1" cy="1591.8" r="19.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2454.1" cy="1588.8" r="19.7" fill="url(#eg2)"/>
+<circle cx="2456.1" cy="1742.2" r="19.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2454.1" cy="1739.2" r="19.7" fill="url(#eg1)"/>
+<circle cx="2434.0" cy="1630.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2432.0" cy="1627.0" r="20.7" fill="url(#eg0)"/>
+</g></g>
+<g id="r6c10">
+<clipPath id="clip6_10"><rect x="2560" y="1536" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip6_10)">
+<circle cx="2688.0" cy="1664.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 2688.00 1548.00 A 116 116 0 1 1 2572.00 1664.00" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="2688.0" cy="1664.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 2688.0 1664.0)"/>
+<ellipse cx="2688.0" cy="1664.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 2688.0 1664.0)"/>
+<ellipse cx="2688.0" cy="1664.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 2688.0 1664.0)"/>
+<circle cx="2684.2" cy="1721.1" r="19.0" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2682.2" cy="1718.1" r="19.0" fill="url(#eg1)"/>
+<circle cx="2734.0" cy="1590.8" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2732.0" cy="1587.8" r="20.7" fill="url(#eg2)"/>
+<circle cx="2734.0" cy="1635.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2732.0" cy="1632.0" r="20.7" fill="url(#eg0)"/>
+</g></g>
+<g id="r6c11">
+<clipPath id="clip6_11"><rect x="2816" y="1536" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip6_11)">
+<circle cx="2944.0" cy="1664.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 2944.00 1548.00 A 116 116 0 1 1 2828.00 1664.00" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="2944.0" cy="1664.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 2944.0 1664.0)"/>
+<ellipse cx="2944.0" cy="1664.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 2944.0 1664.0)"/>
+<ellipse cx="2944.0" cy="1664.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 2944.0 1664.0)"/>
+<circle cx="2914.0" cy="1685.5" r="18.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2912.0" cy="1682.5" r="18.7" fill="url(#eg1)"/>
+<circle cx="3022.2" cy="1648.5" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="3020.2" cy="1645.5" r="20.7" fill="url(#eg0)"/>
+<circle cx="3000.1" cy="1610.2" r="21.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2998.1" cy="1607.2" r="21.7" fill="url(#eg2)"/>
+</g></g>
+<g id="r7c0">
+<clipPath id="clip7_0"><rect x="0" y="1792" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip7_0)">
+<circle cx="128.0" cy="1920.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 128.00 1804.00 A 116 116 0 1 1 45.98 1837.98" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="128.0" cy="1920.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 128.0 1920.0)"/>
+<ellipse cx="128.0" cy="1920.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 128.0 1920.0)"/>
+<ellipse cx="128.0" cy="1920.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 128.0 1920.0)"/>
+<circle cx="80.2" cy="1900.9" r="19.0" fill="rgba(0,0,0,0.18)"/>
+<circle cx="78.2" cy="1897.9" r="19.0" fill="url(#eg1)"/>
+<circle cx="218.0" cy="1923.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="216.0" cy="1920.0" r="20.7" fill="url(#eg0)"/>
+<circle cx="179.8" cy="1900.9" r="22.4" fill="rgba(0,0,0,0.18)"/>
+<circle cx="177.8" cy="1897.9" r="22.4" fill="url(#eg2)"/>
+</g></g>
+<g id="r7c1">
+<clipPath id="clip7_1"><rect x="256" y="1792" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip7_1)">
+<circle cx="384.0" cy="1920.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 384.00 1804.00 A 116 116 0 1 1 301.98 1837.98" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="384.0" cy="1920.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 384.0 1920.0)"/>
+<ellipse cx="384.0" cy="1920.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 384.0 1920.0)"/>
+<ellipse cx="384.0" cy="1920.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 384.0 1920.0)"/>
+<circle cx="331.9" cy="1866.2" r="19.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="329.9" cy="1863.2" r="19.7" fill="url(#eg1)"/>
+<circle cx="462.2" cy="1941.5" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="460.2" cy="1938.5" r="20.7" fill="url(#eg0)"/>
+<circle cx="418.0" cy="1941.5" r="22.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="416.0" cy="1938.5" r="22.7" fill="url(#eg2)"/>
+</g></g>
+<g id="r7c2">
+<clipPath id="clip7_2"><rect x="512" y="1792" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip7_2)">
+<circle cx="640.0" cy="1920.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 640.00 1804.00 A 116 116 0 1 1 557.98 1837.98" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="640.0" cy="1920.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 640.0 1920.0)"/>
+<ellipse cx="640.0" cy="1920.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 640.0 1920.0)"/>
+<ellipse cx="640.0" cy="1920.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 640.0 1920.0)"/>
+<circle cx="598.0" cy="1846.8" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="596.0" cy="1843.8" r="20.7" fill="url(#eg1)"/>
+<circle cx="686.0" cy="1955.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="684.0" cy="1952.0" r="20.7" fill="url(#eg0)"/>
+<circle cx="647.8" cy="1977.1" r="22.4" fill="rgba(0,0,0,0.18)"/>
+<circle cx="645.8" cy="1974.1" r="22.4" fill="url(#eg2)"/>
+</g></g>
+<g id="r7c3">
+<clipPath id="clip7_3"><rect x="768" y="1792" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip7_3)">
+<circle cx="896.0" cy="1920.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 896.00 1804.00 A 116 116 0 1 1 813.98 1837.98" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="896.0" cy="1920.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 896.0 1920.0)"/>
+<ellipse cx="896.0" cy="1920.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 896.0 1920.0)"/>
+<ellipse cx="896.0" cy="1920.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 896.0 1920.0)"/>
+<circle cx="898.0" cy="1960.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="896.0" cy="1957.0" r="20.7" fill="url(#eg0)"/>
+<circle cx="875.9" cy="1847.8" r="21.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="873.9" cy="1844.8" r="21.7" fill="url(#eg1)"/>
+<circle cx="875.9" cy="1998.2" r="21.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="873.9" cy="1995.2" r="21.7" fill="url(#eg2)"/>
+</g></g>
+<g id="r7c4">
+<clipPath id="clip7_4"><rect x="1024" y="1792" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip7_4)">
+<circle cx="1152.0" cy="1920.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 1152.00 1804.00 A 116 116 0 1 1 1069.98 1837.98" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="1152.0" cy="1920.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 1152.0 1920.0)"/>
+<ellipse cx="1152.0" cy="1920.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 1152.0 1920.0)"/>
+<ellipse cx="1152.0" cy="1920.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 1152.0 1920.0)"/>
+<circle cx="1110.0" cy="1955.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1108.0" cy="1952.0" r="20.7" fill="url(#eg0)"/>
+<circle cx="1110.0" cy="1999.2" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1108.0" cy="1996.2" r="20.7" fill="url(#eg2)"/>
+<circle cx="1159.8" cy="1868.9" r="22.4" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1157.8" cy="1865.9" r="22.4" fill="url(#eg1)"/>
+</g></g>
+<g id="r7c5">
+<clipPath id="clip7_5"><rect x="1280" y="1792" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip7_5)">
+<circle cx="1408.0" cy="1920.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 1408.00 1804.00 A 116 116 0 1 1 1325.98 1837.98" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="1408.0" cy="1920.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 1408.0 1920.0)"/>
+<ellipse cx="1408.0" cy="1920.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 1408.0 1920.0)"/>
+<ellipse cx="1408.0" cy="1920.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 1408.0 1920.0)"/>
+<circle cx="1355.9" cy="1979.8" r="19.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1353.9" cy="1976.8" r="19.7" fill="url(#eg2)"/>
+<circle cx="1333.8" cy="1941.5" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1331.8" cy="1938.5" r="20.7" fill="url(#eg0)"/>
+<circle cx="1442.0" cy="1904.5" r="22.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1440.0" cy="1901.5" r="22.7" fill="url(#eg1)"/>
+</g></g>
+<g id="r7c6">
+<clipPath id="clip7_6"><rect x="1536" y="1792" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip7_6)">
+<circle cx="1664.0" cy="1920.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 1664.00 1804.00 A 116 116 0 1 1 1581.98 1837.98" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="1664.0" cy="1920.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 1664.0 1920.0)"/>
+<ellipse cx="1664.0" cy="1920.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 1664.0 1920.0)"/>
+<ellipse cx="1664.0" cy="1920.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 1664.0 1920.0)"/>
+<circle cx="1616.2" cy="1945.1" r="19.0" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1614.2" cy="1942.1" r="19.0" fill="url(#eg2)"/>
+<circle cx="1578.0" cy="1923.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1576.0" cy="1920.0" r="20.7" fill="url(#eg0)"/>
+<circle cx="1715.8" cy="1945.1" r="22.4" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1713.8" cy="1942.1" r="22.4" fill="url(#eg1)"/>
+</g></g>
+<g id="r7c7">
+<clipPath id="clip7_7"><rect x="1792" y="1792" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip7_7)">
+<circle cx="1920.0" cy="1920.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 1920.00 1804.00 A 116 116 0 1 1 1837.98 1837.98" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="1920.0" cy="1920.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 1920.0 1920.0)"/>
+<ellipse cx="1920.0" cy="1920.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 1920.0 1920.0)"/>
+<ellipse cx="1920.0" cy="1920.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 1920.0 1920.0)"/>
+<circle cx="1890.0" cy="1904.5" r="18.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1888.0" cy="1901.5" r="18.7" fill="url(#eg2)"/>
+<circle cx="1845.8" cy="1904.5" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1843.8" cy="1901.5" r="20.7" fill="url(#eg0)"/>
+<circle cx="1976.1" cy="1979.8" r="21.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1974.1" cy="1976.8" r="21.7" fill="url(#eg1)"/>
+</g></g>
+<g id="r7c8">
+<clipPath id="clip7_8"><rect x="2048" y="1792" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip7_8)">
+<circle cx="2176.0" cy="1920.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 2176.00 1804.00 A 116 116 0 1 1 2093.98 1837.98" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="2176.0" cy="1920.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 2176.0 1920.0)"/>
+<ellipse cx="2176.0" cy="1920.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 2176.0 1920.0)"/>
+<ellipse cx="2176.0" cy="1920.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 2176.0 1920.0)"/>
+<circle cx="2172.2" cy="1868.9" r="19.0" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2170.2" cy="1865.9" r="19.0" fill="url(#eg2)"/>
+<circle cx="2134.0" cy="1891.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2132.0" cy="1888.0" r="20.7" fill="url(#eg0)"/>
+<circle cx="2222.0" cy="1999.2" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2220.0" cy="1996.2" r="20.7" fill="url(#eg1)"/>
+</g></g>
+<g id="r7c9">
+<clipPath id="clip7_9"><rect x="2304" y="1792" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip7_9)">
+<circle cx="2432.0" cy="1920.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 2432.00 1804.00 A 116 116 0 1 1 2349.98 1837.98" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="2432.0" cy="1920.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 2432.0 1920.0)"/>
+<ellipse cx="2432.0" cy="1920.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 2432.0 1920.0)"/>
+<ellipse cx="2432.0" cy="1920.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 2432.0 1920.0)"/>
+<circle cx="2456.1" cy="1847.8" r="19.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2454.1" cy="1844.8" r="19.7" fill="url(#eg2)"/>
+<circle cx="2456.1" cy="1998.2" r="19.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2454.1" cy="1995.2" r="19.7" fill="url(#eg1)"/>
+<circle cx="2434.0" cy="1886.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2432.0" cy="1883.0" r="20.7" fill="url(#eg0)"/>
+</g></g>
+<g id="r7c10">
+<clipPath id="clip7_10"><rect x="2560" y="1792" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip7_10)">
+<circle cx="2688.0" cy="1920.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 2688.00 1804.00 A 116 116 0 1 1 2605.98 1837.98" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="2688.0" cy="1920.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 2688.0 1920.0)"/>
+<ellipse cx="2688.0" cy="1920.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 2688.0 1920.0)"/>
+<ellipse cx="2688.0" cy="1920.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 2688.0 1920.0)"/>
+<circle cx="2684.2" cy="1977.1" r="19.0" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2682.2" cy="1974.1" r="19.0" fill="url(#eg1)"/>
+<circle cx="2734.0" cy="1846.8" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2732.0" cy="1843.8" r="20.7" fill="url(#eg2)"/>
+<circle cx="2734.0" cy="1891.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2732.0" cy="1888.0" r="20.7" fill="url(#eg0)"/>
+</g></g>
+<g id="r7c11">
+<clipPath id="clip7_11"><rect x="2816" y="1792" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip7_11)">
+<circle cx="2944.0" cy="1920.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><path d="M 2944.00 1804.00 A 116 116 0 1 1 2861.98 1837.98" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="2944.0" cy="1920.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 2944.0 1920.0)"/>
+<ellipse cx="2944.0" cy="1920.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 2944.0 1920.0)"/>
+<ellipse cx="2944.0" cy="1920.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 2944.0 1920.0)"/>
+<circle cx="2914.0" cy="1941.5" r="18.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2912.0" cy="1938.5" r="18.7" fill="url(#eg1)"/>
+<circle cx="3022.2" cy="1904.5" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="3020.2" cy="1901.5" r="20.7" fill="url(#eg0)"/>
+<circle cx="3000.1" cy="1866.2" r="21.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2998.1" cy="1863.2" r="21.7" fill="url(#eg2)"/>
+</g></g>
+<g id="r8c0">
+<clipPath id="clip8_0"><rect x="0" y="2048" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip8_0)">
+<circle cx="128.0" cy="2176.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><circle cx="128.0" cy="2176.0" r="116" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="128.0" cy="2176.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 128.0 2176.0)"/>
+<ellipse cx="128.0" cy="2176.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 128.0 2176.0)"/>
+<ellipse cx="128.0" cy="2176.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 128.0 2176.0)"/>
+<circle cx="80.2" cy="2156.9" r="19.0" fill="rgba(0,0,0,0.18)"/>
+<circle cx="78.2" cy="2153.9" r="19.0" fill="url(#eg1)"/>
+<circle cx="218.0" cy="2179.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="216.0" cy="2176.0" r="20.7" fill="url(#eg0)"/>
+<circle cx="179.8" cy="2156.9" r="22.4" fill="rgba(0,0,0,0.18)"/>
+<circle cx="177.8" cy="2153.9" r="22.4" fill="url(#eg2)"/>
+</g></g>
+<g id="r8c1">
+<clipPath id="clip8_1"><rect x="256" y="2048" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip8_1)">
+<circle cx="384.0" cy="2176.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><circle cx="384.0" cy="2176.0" r="116" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="384.0" cy="2176.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 384.0 2176.0)"/>
+<ellipse cx="384.0" cy="2176.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 384.0 2176.0)"/>
+<ellipse cx="384.0" cy="2176.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 384.0 2176.0)"/>
+<circle cx="331.9" cy="2122.2" r="19.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="329.9" cy="2119.2" r="19.7" fill="url(#eg1)"/>
+<circle cx="462.2" cy="2197.5" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="460.2" cy="2194.5" r="20.7" fill="url(#eg0)"/>
+<circle cx="418.0" cy="2197.5" r="22.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="416.0" cy="2194.5" r="22.7" fill="url(#eg2)"/>
+</g></g>
+<g id="r8c2">
+<clipPath id="clip8_2"><rect x="512" y="2048" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip8_2)">
+<circle cx="640.0" cy="2176.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><circle cx="640.0" cy="2176.0" r="116" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="640.0" cy="2176.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 640.0 2176.0)"/>
+<ellipse cx="640.0" cy="2176.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 640.0 2176.0)"/>
+<ellipse cx="640.0" cy="2176.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 640.0 2176.0)"/>
+<circle cx="598.0" cy="2102.8" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="596.0" cy="2099.8" r="20.7" fill="url(#eg1)"/>
+<circle cx="686.0" cy="2211.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="684.0" cy="2208.0" r="20.7" fill="url(#eg0)"/>
+<circle cx="647.8" cy="2233.1" r="22.4" fill="rgba(0,0,0,0.18)"/>
+<circle cx="645.8" cy="2230.1" r="22.4" fill="url(#eg2)"/>
+</g></g>
+<g id="r8c3">
+<clipPath id="clip8_3"><rect x="768" y="2048" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip8_3)">
+<circle cx="896.0" cy="2176.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><circle cx="896.0" cy="2176.0" r="116" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="896.0" cy="2176.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 896.0 2176.0)"/>
+<ellipse cx="896.0" cy="2176.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 896.0 2176.0)"/>
+<ellipse cx="896.0" cy="2176.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 896.0 2176.0)"/>
+<circle cx="898.0" cy="2216.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="896.0" cy="2213.0" r="20.7" fill="url(#eg0)"/>
+<circle cx="875.9" cy="2103.8" r="21.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="873.9" cy="2100.8" r="21.7" fill="url(#eg1)"/>
+<circle cx="875.9" cy="2254.2" r="21.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="873.9" cy="2251.2" r="21.7" fill="url(#eg2)"/>
+</g></g>
+<g id="r8c4">
+<clipPath id="clip8_4"><rect x="1024" y="2048" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip8_4)">
+<circle cx="1152.0" cy="2176.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><circle cx="1152.0" cy="2176.0" r="116" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="1152.0" cy="2176.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 1152.0 2176.0)"/>
+<ellipse cx="1152.0" cy="2176.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 1152.0 2176.0)"/>
+<ellipse cx="1152.0" cy="2176.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 1152.0 2176.0)"/>
+<circle cx="1110.0" cy="2211.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1108.0" cy="2208.0" r="20.7" fill="url(#eg0)"/>
+<circle cx="1110.0" cy="2255.2" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1108.0" cy="2252.2" r="20.7" fill="url(#eg2)"/>
+<circle cx="1159.8" cy="2124.9" r="22.4" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1157.8" cy="2121.9" r="22.4" fill="url(#eg1)"/>
+</g></g>
+<g id="r8c5">
+<clipPath id="clip8_5"><rect x="1280" y="2048" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip8_5)">
+<circle cx="1408.0" cy="2176.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><circle cx="1408.0" cy="2176.0" r="116" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="1408.0" cy="2176.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 1408.0 2176.0)"/>
+<ellipse cx="1408.0" cy="2176.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 1408.0 2176.0)"/>
+<ellipse cx="1408.0" cy="2176.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 1408.0 2176.0)"/>
+<circle cx="1355.9" cy="2235.8" r="19.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1353.9" cy="2232.8" r="19.7" fill="url(#eg2)"/>
+<circle cx="1333.8" cy="2197.5" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1331.8" cy="2194.5" r="20.7" fill="url(#eg0)"/>
+<circle cx="1442.0" cy="2160.5" r="22.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1440.0" cy="2157.5" r="22.7" fill="url(#eg1)"/>
+</g></g>
+<g id="r8c6">
+<clipPath id="clip8_6"><rect x="1536" y="2048" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip8_6)">
+<circle cx="1664.0" cy="2176.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><circle cx="1664.0" cy="2176.0" r="116" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="1664.0" cy="2176.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 1664.0 2176.0)"/>
+<ellipse cx="1664.0" cy="2176.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 1664.0 2176.0)"/>
+<ellipse cx="1664.0" cy="2176.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 1664.0 2176.0)"/>
+<circle cx="1616.2" cy="2201.1" r="19.0" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1614.2" cy="2198.1" r="19.0" fill="url(#eg2)"/>
+<circle cx="1578.0" cy="2179.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1576.0" cy="2176.0" r="20.7" fill="url(#eg0)"/>
+<circle cx="1715.8" cy="2201.1" r="22.4" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1713.8" cy="2198.1" r="22.4" fill="url(#eg1)"/>
+</g></g>
+<g id="r8c7">
+<clipPath id="clip8_7"><rect x="1792" y="2048" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip8_7)">
+<circle cx="1920.0" cy="2176.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><circle cx="1920.0" cy="2176.0" r="116" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="1920.0" cy="2176.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 1920.0 2176.0)"/>
+<ellipse cx="1920.0" cy="2176.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 1920.0 2176.0)"/>
+<ellipse cx="1920.0" cy="2176.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 1920.0 2176.0)"/>
+<circle cx="1890.0" cy="2160.5" r="18.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1888.0" cy="2157.5" r="18.7" fill="url(#eg2)"/>
+<circle cx="1845.8" cy="2160.5" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1843.8" cy="2157.5" r="20.7" fill="url(#eg0)"/>
+<circle cx="1976.1" cy="2235.8" r="21.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="1974.1" cy="2232.8" r="21.7" fill="url(#eg1)"/>
+</g></g>
+<g id="r8c8">
+<clipPath id="clip8_8"><rect x="2048" y="2048" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip8_8)">
+<circle cx="2176.0" cy="2176.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><circle cx="2176.0" cy="2176.0" r="116" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="2176.0" cy="2176.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 2176.0 2176.0)"/>
+<ellipse cx="2176.0" cy="2176.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 2176.0 2176.0)"/>
+<ellipse cx="2176.0" cy="2176.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 2176.0 2176.0)"/>
+<circle cx="2172.2" cy="2124.9" r="19.0" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2170.2" cy="2121.9" r="19.0" fill="url(#eg2)"/>
+<circle cx="2134.0" cy="2147.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2132.0" cy="2144.0" r="20.7" fill="url(#eg0)"/>
+<circle cx="2222.0" cy="2255.2" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2220.0" cy="2252.2" r="20.7" fill="url(#eg1)"/>
+</g></g>
+<g id="r8c9">
+<clipPath id="clip8_9"><rect x="2304" y="2048" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip8_9)">
+<circle cx="2432.0" cy="2176.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><circle cx="2432.0" cy="2176.0" r="116" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="2432.0" cy="2176.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 2432.0 2176.0)"/>
+<ellipse cx="2432.0" cy="2176.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 2432.0 2176.0)"/>
+<ellipse cx="2432.0" cy="2176.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 2432.0 2176.0)"/>
+<circle cx="2456.1" cy="2103.8" r="19.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2454.1" cy="2100.8" r="19.7" fill="url(#eg2)"/>
+<circle cx="2456.1" cy="2254.2" r="19.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2454.1" cy="2251.2" r="19.7" fill="url(#eg1)"/>
+<circle cx="2434.0" cy="2142.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2432.0" cy="2139.0" r="20.7" fill="url(#eg0)"/>
+</g></g>
+<g id="r8c10">
+<clipPath id="clip8_10"><rect x="2560" y="2048" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip8_10)">
+<circle cx="2688.0" cy="2176.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><circle cx="2688.0" cy="2176.0" r="116" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="2688.0" cy="2176.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 2688.0 2176.0)"/>
+<ellipse cx="2688.0" cy="2176.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 2688.0 2176.0)"/>
+<ellipse cx="2688.0" cy="2176.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 2688.0 2176.0)"/>
+<circle cx="2684.2" cy="2233.1" r="19.0" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2682.2" cy="2230.1" r="19.0" fill="url(#eg1)"/>
+<circle cx="2734.0" cy="2102.8" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2732.0" cy="2099.8" r="20.7" fill="url(#eg2)"/>
+<circle cx="2734.0" cy="2147.0" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2732.0" cy="2144.0" r="20.7" fill="url(#eg0)"/>
+</g></g>
+<g id="r8c11">
+<clipPath id="clip8_11"><rect x="2816" y="2048" width="256" height="256"/></clipPath>
+<g clip-path="url(#clip8_11)">
+<circle cx="2944.0" cy="2176.0" r="116" fill="none" stroke="rgba(200,200,210,0.25)" stroke-width="9"/><circle cx="2944.0" cy="2176.0" r="116" fill="none" stroke="#5090DC" stroke-width="9" stroke-linecap="round"/>
+<ellipse cx="2944.0" cy="2176.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(0 2944.0 2176.0)"/>
+<ellipse cx="2944.0" cy="2176.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(60 2944.0 2176.0)"/>
+<ellipse cx="2944.0" cy="2176.0" rx="88" ry="37" fill="none" stroke="rgba(185,185,192,0.40)" stroke-width="1.8" transform="rotate(120 2944.0 2176.0)"/>
+<circle cx="2914.0" cy="2197.5" r="18.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2912.0" cy="2194.5" r="18.7" fill="url(#eg1)"/>
+<circle cx="3022.2" cy="2160.5" r="20.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="3020.2" cy="2157.5" r="20.7" fill="url(#eg0)"/>
+<circle cx="3000.1" cy="2122.2" r="21.7" fill="rgba(0,0,0,0.18)"/>
+<circle cx="2998.1" cy="2119.2" r="21.7" fill="url(#eg2)"/>
+</g></g>
+</svg>

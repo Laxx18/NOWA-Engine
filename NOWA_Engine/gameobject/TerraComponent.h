@@ -89,6 +89,8 @@ namespace NOWA
 			return "This component creates an Ogre terrain (called Terra).";
 		}
 
+		static std::optional<NOWA::GameObjectTypeDescriptor> getStaticTypeDescriptor();
+
 		/**
 		 * @see		GameObjectComponent::update
 		 */
