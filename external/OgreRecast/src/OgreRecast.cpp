@@ -762,13 +762,70 @@ void OgreRecast::drawNavMesh(bool draw)
 {
 	m_debugDrawer->resetForNewFrame();
 	m_debugDrawer->draw(draw);
+
 	if (m_pmesh)
 	{
 		if (true == draw)
+		{
 			duDebugDrawPolyMesh(m_debugDrawer, *m_pmesh);
+			// NEU: erst hier wird die akkumulierte Geometrie auf die GPU geschrieben
+			m_debugDrawer->flushToGPU();
+		}
 		else
+		{
 			removeDrawnNavmesh(0);
+		}
 	}
+}
+
+void OgreRecast::beginNavMeshAccum()
+{
+	m_navMeshAccum.clear();
+}
+
+void OgreRecast::flushNavMesh()
+{
+	// Helper: creates one ManualObject from accumulated vertex/index data.
+	auto buildMO = [&](
+		const Ogre::String& name,
+		const std::vector<NavMeshVertex>& accVerts,
+		const std::vector<uint32_t>& accIndices,
+		Ogre::OperationType                opType) -> Ogre::ManualObject*
+	{
+		if (accVerts.empty())
+			return nullptr;
+
+		Ogre::ManualObject* mo = m_pSceneMgr->createManualObject();
+		mo->setRenderQueueGroup(10);
+		mo->setCastShadows(false);
+		mo->setName(name);
+		mo->begin("recastdebug", opType);
+
+		for (const NavMeshVertex& v : accVerts)
+		{
+			mo->position(v.pos);
+			mo->colour(v.col);
+		}
+		for (uint32_t idx : accIndices)
+			mo->index(idx);
+
+		mo->end();
+		m_pRecastSN->attachObject(mo);
+		return mo;
+	};
+
+	// Create exactly ONE ManualObject per primitive type for the entire navmesh.
+	// Names do not include tile refs — we always remove all and recreate.
+	buildMO("RecastMOWalk_All", m_navMeshAccum.walkVerts,
+		m_navMeshAccum.walkIndices, Ogre::OT_TRIANGLE_LIST);
+
+	buildMO("RecastMONeighbour_All", m_navMeshAccum.neighbourVerts,
+		m_navMeshAccum.neighbourIndices, Ogre::OT_LINE_LIST);
+
+	buildMO("RecastMOBoundary_All", m_navMeshAccum.boundaryVerts,
+		m_navMeshAccum.boundaryIndices, Ogre::OT_LINE_LIST);
+
+	m_navMeshAccum.clear(); // Free CPU memory after upload
 }
 
 void OgreRecast::drawPolyMesh(const rcPolyMesh &mesh, bool draw, bool colorRegions)
@@ -792,229 +849,139 @@ void OgreRecast::drawPolyMesh(const rcPolyMesh &mesh, bool draw, bool colorRegio
 
 
 // TODO make this only create an ogre entity, put the demo specific drawing in a separate DebugDrawing class __declspec( dllexport ) to separate it from the reusable recast wrappers
-void OgreRecast::CreateRecastPolyMesh(const Ogre::String name, const unsigned short *verts, const int nverts, const unsigned short *polys, const int npolys, 
-	const unsigned char *areas, const int maxpolys, const unsigned short *regions, const int nvp, const float cs, const float ch, const float *orig, bool draw, bool colorRegions)
+void OgreRecast::CreateRecastPolyMesh(const Ogre::String name,
+	const unsigned short* verts, const int nverts,
+	const unsigned short* polys, const int npolys,
+	const unsigned char* areas, const int maxpolys,
+	const unsigned short* regions, const int nvp,
+	const float cs, const float ch, const float* orig,
+	bool draw, bool colorRegions)
 {
 	if (false == draw)
 	{
-		auto safeDestroy = [&](Ogre::ManualObject*& mo)
-		{
-			if (nullptr != mo)
-			{
-				mo->clear();
-				m_pRecastSN->detachObject(mo);
-				m_pSceneMgr->destroyManualObject(mo);
-				mo = nullptr;
-			}
-		};
-		safeDestroy(m_pRecastMOWalk);
-		safeDestroy(m_pRecastMONeighbour);
-		safeDestroy(m_pRecastMOBoundary);
+		// Caller (drawNavMesh false-path) handles ManualObject cleanup via
+		// removeAllDrawnNavmesh() — nothing to do here for the accum path.
 		return;
 	}
-	
-	m_flDataX = npolys;
-	m_flDataY = nverts;
 
-	// When drawing regions choose different random colors for each region
- // TODO maybe cache generated colors so when rebuilding tiles the same colors can be reused? If possible
-	Ogre::ColourValue* regionColors = NULL;
+	if (0 == npolys)
+		return;
+
+	// Choose per-region random colors when requested.
+	// Use the region id as seed so colors are stable across tiles.
+	std::vector<Ogre::ColourValue> regionColors;
 	if (colorRegions)
 	{
-		regionColors = new Ogre::ColourValue[maxpolys];
+		regionColors.resize(maxpolys);
 		for (int i = 0; i < maxpolys; ++i)
 		{
-			regionColors[i] = Ogre::ColourValue(Ogre::Math::RangeRandom(0, 1), Ogre::Math::RangeRandom(0, 1), Ogre::Math::RangeRandom(0, 1), 1);
+			// Deterministic color from region index so adjacent tiles match.
+			uint32_t seed = static_cast<uint32_t>(regions[i]) * 2654435761u;
+			regionColors[i] = Ogre::ColourValue(
+				((seed >> 16) & 0xFF) / 255.0f,
+				((seed >> 8) & 0xFF) / 255.0f,
+				((seed) & 0xFF) / 255.0f, 1.0f);
 		}
 	}
 
-	int nIndex = 0;
-	m_nAreaCount = npolys;
-
-	if (m_nAreaCount)
+	// ── Walkable polygon fill ────────────────────────────────────────────
+	for (int i = 0; i < npolys; ++i)
 	{
+		if (areas[i] != SAMPLE_POLYAREA_GROUND && areas[i] != DT_TILECACHE_WALKABLE_AREA)
+			continue;
 
-		// start defining the manualObject with the navmesh planes
-		m_pRecastMOWalk = m_pSceneMgr->createManualObject();
-		m_pRecastMOWalk->setRenderQueueGroup(10);
-		m_pRecastMOWalk->setCastShadows(false);
-		m_pRecastMOWalk->setName("RecastMOWalk_" + name);
-		m_pRecastMOWalk->begin("recastdebug", Ogre::OperationType::OT_TRIANGLE_LIST);
-		for (int i = 0; i < npolys; ++i)
-		{    // go through all polygons
-			if (areas[i] == SAMPLE_POLYAREA_GROUND || areas[i] == DT_TILECACHE_WALKABLE_AREA)
-			{
-				const unsigned short* p = &polys[i*nvp * 2];
-
-				unsigned short vi[3];
-				for (int j = 2; j < nvp; ++j) // go through all verts in the polygon
-				{
-					if (p[j] == RC_MESH_NULL_IDX) break;
-					vi[0] = p[0];
-					vi[1] = p[j - 1];
-					vi[2] = p[j];
-					for (int k = 0; k < 3; ++k) // create a 3-vert triangle for each 3 verts in the polygon.
-					{
-						const unsigned short* v = &verts[vi[k] * 3];
-						const float x = orig[0] + v[0] * cs;
-						const float y = orig[1] + (v[1]/*+1*/)*ch;
-						const float z = orig[2] + v[2] * cs;
-
-						m_pRecastMOWalk->position(x, y + m_navMeshOffsetFromGround, z);
-						if (colorRegions)
-						{
-							m_pRecastMOWalk->colour(regionColors[regions[i]]);  // Assign vertex color
-						}
-						else
-						{
-							if (areas[i] == SAMPLE_POLYAREA_GROUND)
-								m_pRecastMOWalk->colour(m_navmeshGroundPolygonCol);
-							else
-								m_pRecastMOWalk->colour(m_navmeshOtherPolygonCol);
-						}
-
-					}
-					m_pRecastMOWalk->triangle(nIndex, nIndex + 1, nIndex + 2);
-					nIndex += 3;
-				}
-			}
-		}
-		m_pRecastMOWalk->end();
-
-
-		nIndex = 0;
-
-		// Define manualObject with the navmesh edges between neighbouring polygons
-		m_pRecastMONeighbour = m_pSceneMgr->createManualObject();
-		m_pRecastMONeighbour->setRenderQueueGroup(10);
-		m_pRecastMONeighbour->setCastShadows(false);
-		m_pRecastMONeighbour->setName("RecastMONeighbour_" + name);
-		m_pRecastMONeighbour->begin("recastdebug", Ogre::OperationType::OT_LINE_LIST);
-
-		for (int i = 0; i < npolys; ++i)
+		const unsigned short* p = &polys[i * nvp * 2];
+		for (int j = 2; j < nvp; ++j)
 		{
-			const unsigned short* p = &polys[i*nvp * 2];
-			for (int j = 0; j < nvp; ++j)
+			if (p[j] == RC_MESH_NULL_IDX) break;
+
+			const int vi[3] = { p[0], p[j - 1], p[j] };
+			const uint32_t base = static_cast<uint32_t>(m_navMeshAccum.walkVerts.size());
+
+			for (int k = 0; k < 3; ++k)
 			{
-				if (p[j] == RC_MESH_NULL_IDX) break;
-				if (p[nvp + j] == RC_MESH_NULL_IDX) continue;
-				int vi[2];
-				vi[0] = p[j];
-				if (j + 1 >= nvp || p[j + 1] == RC_MESH_NULL_IDX)
-					vi[1] = p[0];
+				const unsigned short* v = &verts[vi[k] * 3];
+				NavMeshVertex vtx;
+				vtx.pos = Ogre::Vector3(
+					orig[0] + v[0] * cs,
+					orig[1] + v[1] * ch + m_navMeshOffsetFromGround,
+					orig[2] + v[2] * cs);
+
+				if (colorRegions)
+					vtx.col = regionColors[regions[i]];
+				else if (areas[i] == SAMPLE_POLYAREA_GROUND)
+					vtx.col = m_navmeshGroundPolygonCol;
 				else
-					vi[1] = p[j + 1];
-				for (int k = 0; k < 2; ++k)
-				{
-					const unsigned short* v = &verts[vi[k] * 3];
-					const float x = orig[0] + v[0] * cs;
-					const float y = orig[1] + (v[1]/*+1*/)*ch /*+ 0.1f*/;
-					const float z = orig[2] + v[2] * cs;
-					//dd->vertex(x, y, z, coln);
-					m_pRecastMONeighbour->position(x, y + m_navMeshEdgesOffsetFromGround, z);
-					m_pRecastMONeighbour->colour(m_navmeshNeighbourEdgeCol);
-					m_pRecastMONeighbour->index(nIndex++);
-				}
+					vtx.col = m_navmeshOtherPolygonCol;
+
+				m_navMeshAccum.walkVerts.push_back(vtx);
 			}
+			m_navMeshAccum.walkIndices.push_back(base);
+			m_navMeshAccum.walkIndices.push_back(base + 1);
+			m_navMeshAccum.walkIndices.push_back(base + 2);
 		}
-
-		m_pRecastMONeighbour->end();
-
-		nIndex = 0;
-
-		// Define manualObject with navmesh outer edges (boundaries)
-		m_pRecastMOBoundary = m_pSceneMgr->createManualObject();
-		m_pRecastMOBoundary->setRenderQueueGroup(10);
-		m_pRecastMOBoundary->setCastShadows(false);
-		m_pRecastMOBoundary->setName("RecastMOBoundary_" + name);
-		m_pRecastMOBoundary->begin("recastdebug", Ogre::OperationType::OT_LINE_LIST);
-
-		for (int i = 0; i < npolys; ++i)
-		{
-			const unsigned short* p = &polys[i*nvp * 2];
-			for (int j = 0; j < nvp; ++j)
-			{
-				if (p[j] == RC_MESH_NULL_IDX) break;
-				if (p[nvp + j] != RC_MESH_NULL_IDX) continue;
-				int vi[2];
-				vi[0] = p[j];
-				if (j + 1 >= nvp || p[j + 1] == RC_MESH_NULL_IDX)
-					vi[1] = p[0];
-				else
-					vi[1] = p[j + 1];
-				for (int k = 0; k < 2; ++k)
-				{
-					const unsigned short* v = &verts[vi[k] * 3];
-					const float x = orig[0] + v[0] * cs;
-					const float y = orig[1] + (v[1]/*+1*/)*ch /*+ 0.1f*/;
-					const float z = orig[2] + v[2] * cs;
-					//dd->vertex(x, y, z, colb);
-
-					m_pRecastMOBoundary->position(x, y + m_navMeshEdgesOffsetFromGround, z);
-					m_pRecastMOBoundary->colour(m_navmeshOuterEdgeCol);
-					m_pRecastMOBoundary->index(nIndex++);
-				}
-			}
-		}
-
-		m_pRecastMOBoundary->end();
-#if OGRE_RECAST_DEBUG
-		// Render navmesh tiles more efficiently using staticGeometry
-
-		// Early out if empty meshes drawn
-		if (m_pRecastMOWalk->getNumSections() == 0)
-			return;
-
-		if (!m_sg)
-		{
-			m_sg = m_pSceneMgr->createStaticGeometry("NavmeshDebugStaticGeom");
-			Ogre::Vector3 bmin; Ogre::Vector3 bmax; Ogre::Vector3 bsize;
-			FloatAToOgreVect3(m_cfg.bmin, bmin);
-			FloatAToOgreVect3(m_cfg.bmax, bmax);
-			bsize = bmax - bmin;
-			m_sg->setRegionDimensions(bsize);
-			m_sg->setOrigin(bmin);
-		}
-
-
-		m_pRecastMOWalk->convertToMesh("mesh_" + m_pRecastMOWalk->getName());
-		Ogre::v1::Entity *walkEnt = m_pSceneMgr->createEntity("ent_" + m_pRecastMOWalk->getName(), "mesh_" + m_pRecastMOWalk->getName());
-		m_sg->addEntity(walkEnt, Ogre::Vector3::ZERO);
-
-		// TODO line drawing does not work with staticGeometry
-		if (false && m_pRecastMONeighbour->getNumSections() > 0)
-		{
-			m_pRecastMONeighbour->convertToMesh("mesh_" + m_pRecastMONeighbour->getName());     // Creating meshes from manualobjects without polygons is not a good idea!
-			Ogre::v1::Entity *neighbourEnt = m_pSceneMgr->createEntity("ent_" + m_pRecastMONeighbour->getName(), "mesh_" + m_pRecastMONeighbour->getName());
-			m_sg->addEntity(neighbourEnt, Ogre::Vector3::ZERO);
-		}
-
-		if (false && m_pRecastMOBoundary->getNumSections() > 0)
-		{
-			m_pRecastMOBoundary->convertToMesh("mesh_" + m_pRecastMOBoundary->getName());
-			Ogre::v1::Entity *boundaryEnt = m_pSceneMgr->createEntity("ent_" + m_pRecastMOBoundary->getName(), "mesh_" + m_pRecastMOBoundary->getName());
-			m_sg->addEntity(boundaryEnt, Ogre::Vector3::ZERO);
-			}
-
-		// Set dirty flag of solid geometry so it will be rebuilt next update()
-		m_rebuildSg = true;
-#else
-		// Add manualobjects directly to scene (can be slow for lots of tiles)
-		m_pRecastSN->attachObject(m_pRecastMOWalk);
-		m_pRecastSN->attachObject(m_pRecastMONeighbour);
-		m_pRecastSN->attachObject(m_pRecastMOBoundary);
-#endif
-
-
-		}// end areacount
-
-	if (regionColors)
-		delete[] regionColors;
-
-#if OGRE_RECAST_DEBUG
-	Ogre::LogManager::getSingletonPtr()->logMessage("Added navmesh part " + name + " to the scene.");
-#endif
 	}
+
+	// ── Neighbour edges (shared edges between polys) ─────────────────────
+	for (int i = 0; i < npolys; ++i)
+	{
+		const unsigned short* p = &polys[i * nvp * 2];
+		for (int j = 0; j < nvp; ++j)
+		{
+			if (p[j] == RC_MESH_NULL_IDX) break;
+			if (p[nvp + j] == RC_MESH_NULL_IDX) continue; // boundary, not neighbour
+
+			const int vi[2] = {
+				p[j],
+				(j + 1 >= nvp || p[j + 1] == RC_MESH_NULL_IDX) ? p[0] : p[j + 1]
+			};
+
+			for (int k = 0; k < 2; ++k)
+			{
+				const unsigned short* v = &verts[vi[k] * 3];
+				NavMeshVertex vtx;
+				vtx.pos = Ogre::Vector3(
+					orig[0] + v[0] * cs,
+					orig[1] + v[1] * ch + m_navMeshEdgesOffsetFromGround,
+					orig[2] + v[2] * cs);
+				vtx.col = m_navmeshNeighbourEdgeCol;
+				m_navMeshAccum.neighbourIndices.push_back(
+					static_cast<uint32_t>(m_navMeshAccum.neighbourVerts.size()));
+				m_navMeshAccum.neighbourVerts.push_back(vtx);
+			}
+		}
+	}
+
+	// ── Boundary edges (outer edges) ─────────────────────────────────────
+	for (int i = 0; i < npolys; ++i)
+	{
+		const unsigned short* p = &polys[i * nvp * 2];
+		for (int j = 0; j < nvp; ++j)
+		{
+			if (p[j] == RC_MESH_NULL_IDX) break;
+			if (p[nvp + j] != RC_MESH_NULL_IDX) continue; // neighbour, not boundary
+
+			const int vi[2] = {
+				p[j],
+				(j + 1 >= nvp || p[j + 1] == RC_MESH_NULL_IDX) ? p[0] : p[j + 1]
+			};
+
+			for (int k = 0; k < 2; ++k)
+			{
+				const unsigned short* v = &verts[vi[k] * 3];
+				NavMeshVertex vtx;
+				vtx.pos = Ogre::Vector3(
+					orig[0] + v[0] * cs,
+					orig[1] + v[1] * ch + m_navMeshEdgesOffsetFromGround,
+					orig[2] + v[2] * cs);
+				vtx.col = m_navmeshOuterEdgeCol;
+				m_navMeshAccum.boundaryIndices.push_back(
+					static_cast<uint32_t>(m_navMeshAccum.boundaryVerts.size()));
+				m_navMeshAccum.boundaryVerts.push_back(vtx);
+			}
+		}
+	}
+}
 
 float OgreRecast::getAgentRadius()
 {
@@ -1444,19 +1411,22 @@ OgreRecastNavmeshPruner* OgreRecast::getNavmeshPruner()
 
 void OgreRecast::removeAllDrawnNavmesh()
 {
-	// Collect all RecastMO* objects to avoid iterator invalidation
 	std::vector<Ogre::MovableObject*> toRemove;
 	auto itor = m_pRecastSN->getAttachedObjectIterator();
 	while (itor.hasMoreElements())
 	{
 		Ogre::MovableObject* obj = itor.peekNext();
-		const Ogre::String& n = obj->getName();
-		if (Ogre::StringUtil::startsWith(n, "RecastMOWalk_") || Ogre::StringUtil::startsWith(n, "RecastMONeighbour_") || Ogre::StringUtil::startsWith(n, "RecastMOBoundary_"))
+		const Ogre::String& name = obj->getName();
+		// Now only 3 possible names (All-suffix) — O(1) check
+		if (name == "RecastMOWalk_All" ||
+			name == "RecastMONeighbour_All" ||
+			name == "RecastMOBoundary_All")
 		{
 			toRemove.push_back(obj);
 		}
 		itor.moveNext();
 	}
+
 	for (Ogre::MovableObject* obj : toRemove)
 	{
 		obj->detachFromParent();
@@ -1466,6 +1436,8 @@ void OgreRecast::removeAllDrawnNavmesh()
 
 void OgreRecast::recreateDrawer()
 {
+	// Remove all tile visuals first so rebuilt tiles (with new dtCompressedTileRefs)
+	// don't leave stale ManualObjects alongside the new ones (overdraw bug).
 	removeAllDrawnNavmesh();
 	m_debugDrawer->mustRecreate();
 }

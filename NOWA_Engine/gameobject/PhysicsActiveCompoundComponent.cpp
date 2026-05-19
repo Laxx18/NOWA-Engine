@@ -664,6 +664,7 @@ namespace NOWA
 		for (size_t i = 0; i < toBeDeletedSceneNodes.size(); i++)
 		{
 			this->gameObjectPtr->getSceneNode()->removeChild(toBeDeletedSceneNodes[i]);
+            NOWA::GraphicsModule::getInstance()->removeTrackedNode(toBeDeletedSceneNodes[i]);
 			this->gameObjectPtr->getSceneManager()->destroySceneNode(toBeDeletedSceneNodes[i]);
 		}
 

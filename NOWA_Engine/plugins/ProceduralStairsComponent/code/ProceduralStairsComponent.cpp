@@ -121,6 +121,8 @@ namespace NOWA
         pivots.push_back("Bottom-Back");
         this->pivotPosition = new Variant(ProceduralStairsComponent::AttrPivotPosition(), pivots, this->attributes);
 
+        this->rampCollider = new Variant(ProceduralStairsComponent::AttrRampCollider(), false, this->attributes);
+
         // ── UV ───────────────────────────────────────────────────────────────
         std::vector<Ogre::String> uvModes;
         uvModes.push_back("Box");
@@ -157,6 +159,12 @@ namespace NOWA
                                             "Linear: Bottom-Front/Centre/Back shifts along the run direction. "
                                             "Curved: Bottom-Front = entry angle faces +X (default). "
                                             "        Bottom-Back  = exit angle faces +X (stair reversed).");
+        this->rampCollider->setDescription("When enabled, generates an invisible diagonal ramp face over the stair flight. "
+                                           "This lets physics-driven characters walk up stairs smoothly without "
+                                           "stairstep jitter — the collider ramp is fully transparent (opacity 0). "
+                                           "Works for both Linear and Curved stairs. "
+                                           "The ramp uses an auto-created PBS datablock named 'StairsRamp_<id>'. "
+                                           "Combine with a PhysicsArtifactComponent for best results.");
         this->innerRadius->setDescription("Inner void radius in world units (Curved / Spiral only).");
         this->outerRadius->setDescription("Outer step edge radius in world units (Curved / Spiral only).");
         this->arcAngle->setDescription("Total rotation of the stair flight in degrees. "
@@ -305,6 +313,11 @@ namespace NOWA
             this->pivotPosition->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data", "Bottom-Front"));
             propertyElement = propertyElement->next_sibling("property");
         }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralStairsComponent::AttrRampCollider())
+        {
+            this->rampCollider->setValue(XMLConverter::getAttribBool(propertyElement, "data", false));
+            propertyElement = propertyElement->next_sibling("property");
+        }
         if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralStairsComponent::AttrUVMode())
         {
             this->uvMode->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data", "Box"));
@@ -387,6 +400,7 @@ namespace NOWA
         {
             if (nullptr != this->previewNode)
             {
+                NOWA::GraphicsModule::getInstance()->removeTrackedNode(this->previewNode);
                 this->gameObjectPtr->getSceneManager()->destroySceneNode(this->previewNode);
                 this->previewNode = nullptr;
             }
@@ -441,6 +455,7 @@ namespace NOWA
         cloned->setRotationDir(this->rotationDir->getListSelectedValue());
         cloned->setCentrePole(this->centrePole->getBool());
         cloned->setPivotPosition(this->pivotPosition->getListSelectedValue());
+        cloned->setRampCollider(this->rampCollider->getBool());
         cloned->setUVMode(this->uvMode->getListSelectedValue());
         cloned->setUVTiling(this->uvTiling->getVector2());
         cloned->setTreadDatablock(this->treadDatablock->getString());
@@ -525,6 +540,10 @@ namespace NOWA
         else if (ProceduralStairsComponent::AttrPivotPosition() == attribute->getName())
         {
             this->setPivotPosition(attribute->getListSelectedValue());
+        }
+        else if (ProceduralStairsComponent::AttrRampCollider() == attribute->getName())
+        {
+            this->setRampCollider(attribute->getBool());
         }
         else if (ProceduralStairsComponent::AttrUVMode() == attribute->getName())
         {
@@ -614,6 +633,7 @@ namespace NOWA
         appendStr(AttrRotationDir(), this->rotationDir->getListSelectedValue());
         appendBool(AttrCentrePole(), this->centrePole->getBool());
         appendStr(AttrPivotPosition(), this->pivotPosition->getListSelectedValue());
+        appendBool(AttrRampCollider(), this->rampCollider->getBool());
         appendStr(AttrUVMode(), this->uvMode->getListSelectedValue());
         appendV2(AttrUVTiling(), this->uvTiling->getVector2());
         appendStr(AttrTreadDatablock(), this->treadDatablock->getString());
@@ -720,6 +740,31 @@ namespace NOWA
     {
         this->st(i0, i1, i2);
         this->st(i0, i2, i3);
+    }
+
+    void ProceduralStairsComponent::pv(Ogre::Real px, Ogre::Real py, Ogre::Real pz, Ogre::Real nx, Ogre::Real ny, Ogre::Real nz, Ogre::Real u, Ogre::Real v)
+    {
+        this->rampVertices.push_back(px);
+        this->rampVertices.push_back(py);
+        this->rampVertices.push_back(pz);
+        this->rampVertices.push_back(nx);
+        this->rampVertices.push_back(ny);
+        this->rampVertices.push_back(nz);
+        this->rampVertices.push_back(u);
+        this->rampVertices.push_back(v);
+    }
+
+    void ProceduralStairsComponent::pt(Ogre::uint32 i0, Ogre::uint32 i1, Ogre::uint32 i2)
+    {
+        this->rampIndices.push_back(this->rampVertexBase + i0);
+        this->rampIndices.push_back(this->rampVertexBase + i1);
+        this->rampIndices.push_back(this->rampVertexBase + i2);
+    }
+
+    void ProceduralStairsComponent::pq(Ogre::uint32 i0, Ogre::uint32 i1, Ogre::uint32 i2, Ogre::uint32 i3)
+    {
+        this->pt(i0, i1, i2);
+        this->pt(i0, i2, i3);
     }
 
     // =========================================================================
@@ -832,15 +877,194 @@ namespace NOWA
         this->stringerIndices.clear();
         this->stringerVertexBase = 0u;
 
+        // ── Ramp buffer ───────────────────────────────────────────────────────────
+        this->rampVertices.clear();
+        this->rampIndices.clear();
+        this->rampVertexBase = 0u;
+
         switch (this->getStairShapeEnum())
         {
         case StairShape::LINEAR:
             this->generateLinearStairs();
+            if (this->rampCollider->getBool())
+            {
+                this->generateLinearRamp(/* pivotOffsetX= */ 0.0f, /* pivotOffsetZ= */ 0.0f);
+                // Recompute pivot — generateLinearStairs already called computePivotOffset
+                // internally, but ramp needs it independently.
+                Ogre::Real pox = 0.0f, poz = 0.0f;
+                this->computePivotOffset(pox, poz);
+                this->rampVertices.clear();
+                this->rampIndices.clear();
+                this->rampVertexBase = 0u;
+                this->generateLinearRamp(pox, poz);
+            }
             break;
         case StairShape::CURVED:
             this->generateCurvedStairs();
+            if (this->rampCollider->getBool())
+            {
+                this->generateCurvedRamp();
+            }
             break;
         }
+    }
+
+    void ProceduralStairsComponent::generateLinearRamp(Ogre::Real pivotOffsetX, Ogre::Real pivotOffsetZ)
+    {
+        const int n = std::max(1, this->stepCount->getInt());
+        const float sh = this->stepHeight->getReal();
+        const float sd = this->stepDepth->getReal();
+        const float sw = this->stepWidth->getReal();
+
+        const float xL = -sw * 0.5f - pivotOffsetX;
+        const float xR = sw * 0.5f - pivotOffsetX;
+
+        // ── Ramp bottom: nose of step 0 ───────────────────────────────────────────
+        // Step 0 nose = front edge of tread at tread height = (z0, sh).
+        // Starting at y=0 would bury the ramp inside the steps by exactly sh.
+        const float rampZ0 = -pivotOffsetZ; // z of step 0 riser
+        const float rampY0 = sh;            // y of step 0 nose
+
+        // ── Ramp top: nose of last step ───────────────────────────────────────────
+        // Step (n-1) nose = (z0 + (n-1)*sd, n*sh).
+        // NOT z1 = z0+n*sd (back of last step) — that would overshoot and dip.
+        const float rampZ1 = rampZ0 + (n - 1) * sd;      // z of step (n-1) nose
+        const float rampY1 = static_cast<float>(n) * sh; // = totalH
+
+        // ── Verify: ramp passes through all step noses ────────────────────────────
+        // At step i nose: z=rampZ0+i*sd, y_ramp = sh + i*(rampY1-sh)/((n-1)*sd) * sd
+        //   = sh + i*(n-1)*sh/(n-1) = sh + i*sh = (i+1)*sh = nose height ✓
+
+        // ── Normal: perpendicular to slope and width ───────────────────────────────
+        // Slope vector S = (0, rampY1-rampY0, rampZ1-rampZ0) = (0, (n-1)*sh, (n-1)*sd)
+        //   simplified: (0, sh, sd).
+        // Width vector W = (1, 0, 0).
+        // N = S × W = (sh*0-sd*0, sd*1-0*0, 0*0-sh*1) ... let us do it properly:
+        // N = W × S to get outward-upward normal:
+        //   W × S = (1,0,0) × (0,sh,sd) = (0*sd-0*sh, 0*0-1*sd, 1*sh-0*0) = (0,-sd,sh)
+        // Normalise (0,-sd,sh): points upward-forward (positive y, positive z component)
+        // which is the outward normal of a ramp facing the approaching person ✓
+        const float slopeLen = std::sqrt(sd * sd + sh * sh);
+        const float nx = 0.0f;
+        const float ny = (slopeLen > 1e-6f) ? sh / slopeLen : 1.0f;
+        const float nz = (slopeLen > 1e-6f) ? -sd / slopeLen : 0.0f;
+        // Wait: (0,-sd,sh) normalised: ny=-sd/len, nz=sh/len. Let me re-examine sign.
+        // The ramp faces UPward and toward the approaching person (lower z).
+        // Approaching person is at z < rampZ0. Outward = toward lower z = -Z direction.
+        // So nz should be negative. N = (0, sh, -sd)/len:
+        //   ny = sh/len > 0 (upward) ✓
+        //   nz = -sd/len < 0 (toward -Z = toward approaching person) ✓
+        // Recalculate: slope direction is +Z and +Y. Normal to slope pointing upward/outward:
+        //   perpendicular to (0,sh,sd) in YZ plane = (sd,-sh) rotated 90° CCW = (sd, -sh)?
+        //   No: rotate (sh,sd) by 90° CCW in YZ = (-sd, sh). So N.y=-sd, N.z=sh → wrong sign.
+        //   Rotate 90° CW in YZ: (sd, -sh). So N.y=sd, N.z=-sh. Normalise:
+        const float nxFinal = 0.0f;
+        const float nyFinal = (slopeLen > 1e-6f) ? sd / slopeLen : 1.0f;
+        const float nzFinal = (slopeLen > 1e-6f) ? -sh / slopeLen : 0.0f;
+        // Verify: dot with slope (0,sh,sd) = sd*sh + (-sh)*sd = 0 ✓ (perpendicular)
+        //         ny=sd/len > 0 (points up) ✓
+        //         nz=-sh/len < 0 (points toward approaching person at -Z) ✓
+
+        this->rampVertexBase = static_cast<Ogre::uint32>(this->rampVertices.size() / 8u);
+
+        // pq(0,3,2,1): CCW from above-front:
+        // (v3-v0)×(v2-v0) = (0, rampY1-rampY0, rampZ1-rampZ0) × (sw,0,0)
+        //   = (0*(0) - 0*(0), 0*sw - (rampZ1-rampZ0)*0...
+        // Use the component formula:
+        // v3-v0 = (0, rampY1-rampY0, 0)  [same z, different y]  — wait no:
+        // v0=(xL,rampY0,rampZ0), v1=(xR,rampY0,rampZ0), v2=(xR,rampY1,rampZ1), v3=(xL,rampY1,rampZ1)
+        // pq(0,3,2,1) → st(0,3,2):
+        //   v3-v0 = (0, rampY1-rampY0, rampZ1-rampZ0) = (0,(n-1)*sh,(n-1)*sd)
+        //   v2-v0 = (sw,(n-1)*sh,(n-1)*sd)
+        //   cross = ((n-1)*sh*(n-1)*sd-(n-1)*sd*(n-1)*sh,  (n-1)*sd*sw-0,  0-(n-1)*sh*sw)
+        //         = (0, (n-1)*sd*sw, -(n-1)*sh*sw)
+        //         ∝ (0, sd, -sh) → ny>0, nz<0 ✓ outward-upward ✓
+        pv(xL, rampY0, rampZ0, nxFinal, nyFinal, nzFinal, 0.0f, 0.0f); // [0] bottom-front-left
+        pv(xR, rampY0, rampZ0, nxFinal, nyFinal, nzFinal, 1.0f, 0.0f); // [1] bottom-front-right
+        pv(xR, rampY1, rampZ1, nxFinal, nyFinal, nzFinal, 1.0f, 1.0f); // [2] top-back-right
+        pv(xL, rampY1, rampZ1, nxFinal, nyFinal, nzFinal, 0.0f, 1.0f); // [3] top-back-left
+
+        pq(0, 3, 2, 1); // N=(0,+sd,-sh)/len → upward-outward ✓
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralStairsComponent] Linear ramp: "
+                                                                           "bottom=(" + Ogre::StringConverter::toString(rampZ0) + ", " + Ogre::StringConverter::toString(rampY0) +
+                                                                               ") top=(" + Ogre::StringConverter::toString(rampZ1) + ", " + Ogre::StringConverter::toString(rampY1) +
+                                                                               ") slope=" + Ogre::StringConverter::toString(sh / sd));
+    }
+
+    void ProceduralStairsComponent::generateCurvedRamp(void)
+    {
+        const int n = std::max(1, this->stepCount->getInt());
+        const float sh = this->stepHeight->getReal();
+        const float rInner = std::max(0.01f, this->innerRadius->getReal());
+        const float rOuter = std::max(rInner + 0.01f, this->outerRadius->getReal());
+        const float totalArcDeg = this->arcAngle->getReal();
+        const float stepArcDeg = totalArcDeg / n;
+        const bool cw = (this->rotationDir->getListSelectedValue() == "Clockwise");
+        const float dirMul = cw ? -1.0f : 1.0f;
+
+        float startAngleDeg = 0.0f;
+        switch (this->getPivotPositionEnum())
+        {
+        case PivotPosition::BOTTOM_FRONT:
+            startAngleDeg = 0.0f;
+            break;
+        case PivotPosition::BOTTOM_CENTRE:
+            startAngleDeg = -totalArcDeg * 0.5f;
+            break;
+        case PivotPosition::BOTTOM_BACK:
+            startAngleDeg = -totalArcDeg;
+            break;
+        }
+
+        // ── Ramp geometry: n-1 sectors connecting consecutive step noses ──────────
+        //
+        // Nose of step i:
+        //   angle = aStart_i   (the ENTRY radial edge of step i)
+        //   y     = (i+1)*sh   (the TREAD TOP height of step i)
+        //
+        // Sector j connects nose j → nose j+1:
+        //   angle range : aStart_j  →  aEnd_j  (= aStart_{j+1})
+        //   y at entry  : (j+1)*sh             (nose of step j)
+        //   y at exit   : (j+2)*sh             (nose of step j+1)
+        //
+        // This places the ramp surface exactly on the front-top corners of each step.
+        // Previous version used y=i*sh (step BOTTOM) → ramp was buried inside steps.
+
+        for (int j = 0; j < n - 1; ++j)
+        {
+            const float yBottom = static_cast<float>(j + 1) * sh; // nose of step j
+            const float yTop = static_cast<float>(j + 2) * sh;    // nose of step j+1
+
+            const float aS = Ogre::Math::DegreesToRadians(startAngleDeg + j * stepArcDeg) * dirMul;
+            const float aE = Ogre::Math::DegreesToRadians(startAngleDeg + (j + 1) * stepArcDeg) * dirMul;
+
+            const float csS = std::cos(aS), snS = std::sin(aS);
+            const float csE = std::cos(aE), snE = std::sin(aE);
+
+            // pq(0,3,2,1) CCW:
+            //   v3-v0 = (0, yTop-yBottom, 0) = (0, sh, 0)
+            //   v2-v0 ≈ (rOuter*(csE-csS), sh, rOuter*(snE-snS))
+            //   cross Y = sh*rOuter*(csE-csS)... well, the face curves but N≈(0,+1,0) ✓
+            this->rampVertexBase = static_cast<Ogre::uint32>(this->rampVertices.size() / 8u);
+
+            pv(rInner * csS, yBottom, rInner * snS, 0, 1, 0, 0.0f, 0.0f); // [0] inner start (nose j)
+            pv(rOuter * csS, yBottom, rOuter * snS, 0, 1, 0, 1.0f, 0.0f); // [1] outer start (nose j)
+            pv(rOuter * csE, yTop, rOuter * snE, 0, 1, 0, 1.0f, 1.0f);    // [2] outer end   (nose j+1)
+            pv(rInner * csE, yTop, rInner * snE, 0, 1, 0, 0.0f, 1.0f);    // [3] inner end   (nose j+1)
+
+            if (!cw)
+            {
+                pq(0, 3, 2, 1);
+            }
+            else
+            {
+                pq(0, 1, 2, 3);
+            }
+        }
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+            "[ProceduralStairsComponent] Curved ramp: " + Ogre::StringConverter::toString(n - 1) + " sectors  y: " + Ogre::StringConverter::toString(sh) + " → " + Ogre::StringConverter::toString(static_cast<float>(n) * sh));
     }
 
     // =========================================================================
@@ -872,7 +1096,7 @@ namespace NOWA
         // ── Tread top (N=(0,+1,0)) ────────────────────────────────────────────────
         // Tread spans from z0n (nosing edge, closer to person) to z1 (back of tread).
         // Cross check tq(0,3,2,1): (v3-v0)×(v2-v0) = (0,0,z1-z0n)×(sw,0,z1-z0n)
-        //   = (0,(z1-z0n)*sw,0) → N=(0,+1,0) ✓
+        //   = (0,(z1-z0n)*sw,0) → N=(0,+1,0)  
         this->treadVertexBase = static_cast<Ogre::uint32>(this->treadVertices.size() / 8u);
         tv(xL, y1, z0n, 0, 1, 0, 0.0f, 0.0f);
         tv(xR, y1, z0n, 0, 1, 0, 1.0f, 0.0f);
@@ -882,7 +1106,7 @@ namespace NOWA
 
         // ── Riser (N=(0,0,−1)) ────────────────────────────────────────────────────
         // Riser at z=z0 faces the approaching person (−Z direction).
-        // Cross check rq(0,3,2,1): (v3-v0)×(v2-v0) = (0,sh,0)×(sw,sh,0) = (0,0,-sh*sw) ✓
+        // Cross check rq(0,3,2,1): (v3-v0)×(v2-v0) = (0,sh,0)×(sw,sh,0) = (0,0,-sh*sw)  
         if (!this->openRiser->getBool())
         {
             this->riserVertexBase = static_cast<Ogre::uint32>(this->riserVertices.size() / 8u);
@@ -929,7 +1153,7 @@ namespace NOWA
         }
 
         // ── Bottom face at y=0 (N=(0,-1,0)) ──────────────────────────────────────
-        // sq(0,1,2,3): (sw,0,0)×(sw,0,totalD) = (0,-sw*totalD,0) → N=(0,-1,0) ✓
+        // sq(0,1,2,3): (sw,0,0)×(sw,0,totalD) = (0,-sw*totalD,0) → N=(0,-1,0)  
         this->stringerVertexBase = static_cast<Ogre::uint32>(this->stringerVertices.size() / 8u);
         sv(xL, 0.0f, z0, 0, -1, 0, 0.0f, 0.0f);
         sv(xR, 0.0f, z0, 0, -1, 0, 1.0f, 0.0f);
@@ -938,7 +1162,7 @@ namespace NOWA
         sq(0, 1, 2, 3);
 
         // ── Back face at z=z1 (N=(0,0,+1)) ───────────────────────────────────────
-        // sq(0,1,2,3): (sw,0,0)×(sw,totalH,0) = (0,0,sw*totalH) → N=(0,0,+1) ✓
+        // sq(0,1,2,3): (sw,0,0)×(sw,totalH,0) = (0,0,sw*totalH) → N=(0,0,+1)  
         this->stringerVertexBase = static_cast<Ogre::uint32>(this->stringerVertices.size() / 8u);
         sv(xL, 0.0f, z1, 0, 0, +1, 0.0f, 0.0f);
         sv(xR, 0.0f, z1, 0, 0, +1, 1.0f, 0.0f);
@@ -1005,9 +1229,9 @@ namespace NOWA
             sv(xS, totalH, z0, nxS, 0, 0, 0.0f, 1.0f); // [3] top-front
 
             // Left:  sq(0,1,2,3): st(0,1,2): (0,0,totalD)×(0,totalH,totalD)
-            //        = (-totalH*totalD,0,0) → N=(-1,0,0) ✓
+            //        = (-totalH*totalD,0,0) → N=(-1,0,0)  
             // Right: sq(0,3,2,1): st(0,3,2): (0,totalH,0)×(0,totalH,totalD)
-            //        = (totalH*totalD,0,0) → N=(+1,0,0) ✓
+            //        = (totalH*totalD,0,0) → N=(+1,0,0)  
             if (side == 0)
             {
                 sq(0, 1, 2, 3);
@@ -1051,8 +1275,8 @@ namespace NOWA
 
                 // ── Tread-level side band: y=[y0s,y1s], z=[z0sn,z1s] ─────────────
                 // Left:  sq(0,3,2,1): st(0,3,2): (0,0,z1s-z0sn)×(0,sh,z1s-z0sn)
-                //        = (-sh*(z1s-z0sn),0,0) → N=(-1,0,0) ✓
-                // Right: sq(0,1,2,3): same → N=(+1,0,0) ✓
+                //        = (-sh*(z1s-z0sn),0,0) → N=(-1,0,0)  
+                // Right: sq(0,1,2,3): same → N=(+1,0,0)  
                 this->stringerVertexBase = static_cast<Ogre::uint32>(this->stringerVertices.size() / 8u);
                 sv(xS, y0s, z0sn, nxS, 0, 0, 0.0f, 0.0f);
                 sv(xS, y1s, z0sn, nxS, 0, 0, 0.0f, 1.0f);
@@ -1232,7 +1456,7 @@ namespace NOWA
             const float oFx = rOuter * csF, oFz = rOuter * snF;
 
             // ── Face 1: Tread top (N=(0,+1,0)) ───────────────────────────────────
-            // CCW tq(0,3,2,1): 2D cross in XZ plane = +Y ✓
+            // CCW tq(0,3,2,1): 2D cross in XZ plane = +Y  
             this->treadVertexBase = static_cast<Ogre::uint32>(this->treadVertices.size() / 8u);
             tv(iFx, y1, iFz, 0, 1, 0, 0.0f, 0.0f); // [0] nosing-inner
             tv(oFx, y1, oFz, 0, 1, 0, 1.0f, 0.0f); // [1] nosing-outer
@@ -1248,7 +1472,7 @@ namespace NOWA
             }
 
             // ── Face 2: Riser at aStart (against travel) ──────────────────────────
-            // N = (snS*dirMul, 0, -csS*dirMul). CCW rq(0,3,2,1) ✓
+            // N = (snS*dirMul, 0, -csS*dirMul). CCW rq(0,3,2,1)  
             if (!this->openRiser->getBool())
             {
                 const float rNx = snS * dirMul;
@@ -1271,7 +1495,7 @@ namespace NOWA
             // ── Face 3: Inner arc (N = outward from inner cylinder) ───────────────
             // N = (+csM,0,+snM): visible from stair body (rInner < r < rOuter).
             // Proof CCW sq(0,3,2,1): (v3-v0)×(v2-v0) = sh*dr*(snE-snS, 0, -(csE-csS))
-            //   at step0 CCW 30°: (0.5sh*rInner, 0, 0.134sh*rInner) → N∝(+csM,+snM) ✓
+            //   at step0 CCW 30°: (0.5sh*rInner, 0, 0.134sh*rInner) → N∝(+csM,+snM)  
             this->stringerVertexBase = static_cast<Ogre::uint32>(this->stringerVertices.size() / 8u);
             sv(iSx, y0, iSz, csM, 0, snM, 0.0f, 0.0f); // [0] start-bot
             sv(iEx, y0, iEz, csM, 0, snM, 1.0f, 0.0f); // [1] end-bot
@@ -1310,7 +1534,7 @@ namespace NOWA
             // Proof CCW tq(0,3,2,1): st(0,3,2):
             //   v3-v0 = rInner*(cos30-1, 0, sin30),  v2-v0 = (rOuter*cos30-rInner, 0, rOuter*sin30)
             //   Y = rInner*(cos30-1)*rOuter*sin30 - rInner*sin30*(rOuter*cos30-rInner)
-            //     = rInner*sin30*(rInner-rOuter) < 0  →  N=(0,-1,0) ✓
+            //     = rInner*sin30*(rInner-rOuter) < 0  →  N=(0,-1,0)  
             // FIX: was tq(0,1,2,3) for CCW → N=(0,+1,0) WRONG (step bottoms lit from below)
             {
                 const bool addBottom = (this->getBottomStyleEnum() == BottomStyle::STEPPED) || (this->getBottomStyleEnum() == BottomStyle::SLOPED && i == 0);
@@ -1339,7 +1563,7 @@ namespace NOWA
             // Without this face the wedge was open at aEnd — visible as dark holes
             // between steps when viewed from outside the stair.
             // N = (-snE*dirMul, 0, csE*dirMul).
-            // CCW rq(0,1,2,3): (v1-v0)×(v2-v0) = dr*sh*(-snE,0,csE) ✓
+            // CCW rq(0,1,2,3): (v1-v0)×(v2-v0) = dr*sh*(-snE,0,csE)  
             // Only intermediate steps — last step gets Face 8 (exit cap) instead.
             if (i < n - 1)
             {
@@ -1366,7 +1590,7 @@ namespace NOWA
         // Sloped:  full annular disk at y=0 (flat base, one sector per step)
         // Stepped: fill sectors i=1..n-1 at y=0 only (sector 0 covered by Face 5 step0)
         //
-        // Proof CCW tq(0,3,2,1): same analysis as Face 5 → N=(0,-1,0) ✓
+        // Proof CCW tq(0,3,2,1): same analysis as Face 5 → N=(0,-1,0)  
         // FIX: was tq(0,1,2,3) for CCW → N=(0,+1,0) WRONG (visible as dark disk from below)
         if (this->getBottomStyleEnum() != BottomStyle::NONE)
         {
@@ -1436,7 +1660,7 @@ namespace NOWA
             // FIX: was sq(0,1,2,3) → st(0,1,2): (rΔc,0,rΔs)×(rΔc,h,rΔs) → INWARD.
             // sq(0,3,2,1) → st(0,3,2): (v3-v0)×(v2-v0)=(0,h,0)×(rΔc,h,rΔs)
             //   =(h*rΔs-0*h, 0*rΔc-0*rΔs, 0*h-h*rΔc)=(h*rΔs,0,-h*rΔc)
-            //   ∝ (sin(dθ),0,-Δc) = (sin,0,1-cos) which is outward ✓
+            //   ∝ (sin(dθ),0,-Δc) = (sin,0,1-cos) which is outward  
             sq(0, 3, 2, 1);
 
             // ── Top cap ───────────────────────────────────────────────────────────
@@ -1446,7 +1670,7 @@ namespace NOWA
             sv(r * c1, h, r * s1, 0, 1, 0, 0.5f + c1 * 0.5f, 0.5f + s1 * 0.5f);
             // st(0,2,1): (v2-v0)×(v1-v0)=(rcos1,0,rsin1)×(rcos0,0,0)
             //   =(0*0-rsin1*0, rsin1*rcos0-rcos1*0, rcos1*0-0*rcos0)
-            //   =(0,rsin1*rcos0,0) → for sl=0 sin1>0 → N=(0,+1,0) ✓
+            //   =(0,rsin1*rcos0,0) → for sl=0 sin1>0 → N=(0,+1,0)  
             st(0, 2, 1);
         }
     }
@@ -1531,7 +1755,6 @@ namespace NOWA
     {
         this->buildGeometry();
 
-        // Capture copies for the render-thread lambda
         const std::vector<float> tVerts = this->treadVertices;
         const std::vector<Ogre::uint32> tIdx = this->treadIndices;
         const size_t tNV = this->treadVertices.size() / 8u;
@@ -1544,19 +1767,19 @@ namespace NOWA
         const std::vector<Ogre::uint32> sIdx = this->stringerIndices;
         const size_t sNV = this->stringerVertices.size() / 8u;
 
-        NOWA::GraphicsModule::RenderCommand cmd = [this, tVerts, tIdx, tNV, rVerts, rIdx, rNV, sVerts, sIdx, sNV]()
+        const std::vector<float> pVerts = this->rampVertices;
+        const std::vector<Ogre::uint32> pIdx = this->rampIndices;
+        const size_t pNV = this->rampVertices.size() / 8u;
+
+        NOWA::GraphicsModule::RenderCommand cmd = [this, tVerts, tIdx, tNV, rVerts, rIdx, rNV, sVerts, sIdx, sNV, pVerts, pIdx, pNV]()
         {
-            this->createStairsMeshInternal(tVerts, tIdx, tNV, rVerts, rIdx, rNV, sVerts, sIdx, sNV);
+            this->createStairsMeshInternal(tVerts, tIdx, tNV, rVerts, rIdx, rNV, sVerts, sIdx, sNV, pVerts, pIdx, pNV);
         };
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "ProceduralStairsComponent::createStairsMesh");
     }
 
-    // =========================================================================
-    //  createStairsMeshInternal  (render thread)
-    // =========================================================================
-
     void ProceduralStairsComponent::createStairsMeshInternal(const std::vector<float>& treadVerts, const std::vector<Ogre::uint32>& treadIdx, size_t numTreadVerts, const std::vector<float>& riserVerts, const std::vector<Ogre::uint32>& riserIdx,
-        size_t numRiserVerts, const std::vector<float>& stringerVerts, const std::vector<Ogre::uint32>& stringerIdx, size_t numStringerVerts)
+        size_t numRiserVerts, const std::vector<float>& stringerVerts, const std::vector<Ogre::uint32>& stringerIdx, size_t numStringerVerts, const std::vector<float>& rampVerts, const std::vector<Ogre::uint32>& rampIdx, size_t numRampVerts)
     {
         if (numTreadVerts == 0)
         {
@@ -1583,27 +1806,34 @@ namespace NOWA
         Ogre::Vector3 minBB(std::numeric_limits<float>::max());
         Ogre::Vector3 maxBB(-std::numeric_limits<float>::max());
 
-        // ── Submesh 0 – Tread ─────────────────────────────────────────────────
+        // ── Submesh 0: Tread ──────────────────────────────────────────────────────
         {
             Ogre::SubMesh* sm = this->stairsMesh->createSubMesh();
             this->uploadSubMesh(sm, treadVerts, treadIdx, numTreadVerts, vaoManager, minBB, maxBB);
         }
 
-        // ── Submesh 1 – Riser (only if not open-riser) ────────────────────────
+        // ── Submesh 1: Riser ──────────────────────────────────────────────────────
         if (numRiserVerts > 0 && !riserIdx.empty())
         {
             Ogre::SubMesh* sm = this->stairsMesh->createSubMesh();
             this->uploadSubMesh(sm, riserVerts, riserIdx, numRiserVerts, vaoManager, minBB, maxBB);
         }
 
-        // ── Submesh 2 – Stringer / soffit / pole ──────────────────────────────
+        // ── Submesh 2: Stringer / soffit ──────────────────────────────────────────
         if (numStringerVerts > 0 && !stringerIdx.empty())
         {
             Ogre::SubMesh* sm = this->stairsMesh->createSubMesh();
             this->uploadSubMesh(sm, stringerVerts, stringerIdx, numStringerVerts, vaoManager, minBB, maxBB);
         }
 
-        // ── Bounds ────────────────────────────────────────────────────────────
+        // ── Submesh 3: Ramp collider (invisible physics helper) ───────────────────
+        if (numRampVerts > 0 && !rampIdx.empty())
+        {
+            Ogre::SubMesh* sm = this->stairsMesh->createSubMesh();
+            this->uploadSubMesh(sm, rampVerts, rampIdx, numRampVerts, vaoManager, minBB, maxBB);
+        }
+
+        // ── Bounds ────────────────────────────────────────────────────────────────
         if (minBB.x > maxBB.x)
         {
             minBB = Ogre::Vector3(-1.0f);
@@ -1614,7 +1844,7 @@ namespace NOWA
         this->stairsMesh->_setBounds(aabb, false);
         this->stairsMesh->_setBoundingSphereRadius(aabb.getRadius());
 
-        // ── Create Item ───────────────────────────────────────────────────────
+        // ── Create Item ───────────────────────────────────────────────────────────
         this->stairsItem = this->gameObjectPtr->getSceneManager()->createItem(this->stairsMesh, this->gameObjectPtr->isDynamic() ? Ogre::SCENE_DYNAMIC : Ogre::SCENE_STATIC);
 
         this->applyDatablocks(this->stairsItem);
@@ -1642,12 +1872,13 @@ namespace NOWA
             return;
         }
 
+        Ogre::HlmsManager* hlmsManager = Ogre::Root::getSingleton().getHlmsManager();
+
+        // ── Submesh 0: Tread ──────────────────────────────────────────────────────
         unsigned int subIdx = 0;
-
-        // Submesh 0 – Tread
-        if (subIdx < item->getNumSubItems() && !this->treadDatablock->getString().empty())
+        if (subIdx < item->getNumSubItems() && false == this->treadDatablock->getString().empty())
         {
-            Ogre::HlmsDatablock* db = Ogre::Root::getSingleton().getHlmsManager()->getDatablockNoDefault(this->treadDatablock->getString());
+            Ogre::HlmsDatablock* db = hlmsManager->getDatablockNoDefault(this->treadDatablock->getString());
             if (nullptr != db)
             {
                 item->getSubItem(subIdx)->setDatablock(db);
@@ -1655,10 +1886,10 @@ namespace NOWA
         }
         ++subIdx;
 
-        // Submesh 1 – Riser
-        if (subIdx < item->getNumSubItems() && !this->riserDatablock->getString().empty())
+        // ── Submesh 1: Riser ──────────────────────────────────────────────────────
+        if (subIdx < item->getNumSubItems() && false == this->riserDatablock->getString().empty())
         {
-            Ogre::HlmsDatablock* db = Ogre::Root::getSingleton().getHlmsManager()->getDatablockNoDefault(this->riserDatablock->getString());
+            Ogre::HlmsDatablock* db = hlmsManager->getDatablockNoDefault(this->riserDatablock->getString());
             if (nullptr != db)
             {
                 item->getSubItem(subIdx)->setDatablock(db);
@@ -1666,14 +1897,58 @@ namespace NOWA
         }
         ++subIdx;
 
-        // Submesh 2 – Stringer / soffit
-        if (subIdx < item->getNumSubItems() && !this->stringerDatablock->getString().empty())
+        // ── Submesh 2: Stringer / soffit / centre pole ────────────────────────────
+        if (subIdx < item->getNumSubItems() && false == this->stringerDatablock->getString().empty())
         {
-            Ogre::HlmsDatablock* db = Ogre::Root::getSingleton().getHlmsManager()->getDatablockNoDefault(this->stringerDatablock->getString());
+            Ogre::HlmsDatablock* db = hlmsManager->getDatablockNoDefault(this->stringerDatablock->getString());
             if (nullptr != db)
             {
                 item->getSubItem(subIdx)->setDatablock(db);
             }
+        }
+        ++subIdx;
+
+        // ── Submesh 3: Ramp collider (auto-created fully transparent datablock) ────
+        // Only present when Ramp Collider = true AND the ramp submesh was generated.
+        if (subIdx < item->getNumSubItems() && this->rampCollider->getBool())
+        {
+            // Unique name per GameObject so multiple stair instances never share
+            // the same datablock object (each may be destroyed independently).
+            const Ogre::String rampDbName = "StairsRamp_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
+
+            // Get the PBS HLMS — the ramp datablock must be a PBS datablock so that
+            // setTransparency() is available (it is a PBS-specific method).
+            Ogre::HlmsPbs* hlmsPbs = static_cast<Ogre::HlmsPbs*>(hlmsManager->getHlms(Ogre::HLMS_PBS));
+
+            // Try to reuse an existing datablock from a previous rebuildMesh call.
+            Ogre::HlmsPbsDatablock* rampDb = static_cast<Ogre::HlmsPbsDatablock*>(hlmsManager->getDatablockNoDefault(rampDbName));
+
+            if (nullptr == rampDb)
+            {
+                // First time: create the datablock with default macro/blend blocks.
+                // The blend block will be overridden by setTransparency() below.
+                rampDb = static_cast<Ogre::HlmsPbsDatablock*>(hlmsPbs->createDatablock(rampDbName, // internal name (IdString)
+                    rampDbName,                                                                    // human-readable name
+                    Ogre::HlmsMacroblock(),                                                        // default: depth write on, no cull
+                    Ogre::HlmsBlendblock(),                                                        // default: opaque — overridden below
+                    Ogre::HlmsParamVec()));                                                        // no extra params
+
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralStairsComponent] Created transparent ramp datablock: " + rampDbName);
+            }
+
+            // transparency = 1.0  → fully transparent (alpha = 0, invisible).
+            // Ogre::HlmsPbsDatablock::Transparent → alpha-blend mode (not fade/none).
+            // useAlphaFromTextures = false → ignore any texture alpha; use the
+            //   transparency value alone so the face is always invisible regardless
+            //   of which texture (if any) the user later assigns.
+            // TODO: Comment out to see it. And its a nice effect, if it would be always visible!
+            rampDb->setTransparency(0.0f, Ogre::HlmsPbsDatablock::Transparent, false /*useAlphaFromTextures*/);
+
+            // Apply to the ramp submesh subitem.
+            // subIdx is 3 here (tread=0, riser=1, stringer=2, ramp=3).
+            item->getSubItem(subIdx)->setDatablock(rampDb);
+
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralStairsComponent] Applied ramp datablock '" + rampDbName + "' to subItem " + Ogre::StringConverter::toString(subIdx));
         }
     }
 
@@ -2226,6 +2501,17 @@ namespace NOWA
         return this->pivotPosition->getListSelectedValue();
     }
 
+    void ProceduralStairsComponent::setRampCollider(bool enabled)
+    {
+        this->rampCollider->setValue(enabled);
+        this->rebuildMesh();
+    }
+
+    bool ProceduralStairsComponent::getRampCollider(void) const
+    {
+        return this->rampCollider->getBool();
+    }
+
     void ProceduralStairsComponent::setUVMode(const Ogre::String& mode)
     {
         this->uvMode->setListSelectedValue(mode);
@@ -2337,77 +2623,252 @@ namespace NOWA
 
     void ProceduralStairsComponent::createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass)
     {
-        luabind::module(lua)[luabind::class_<ProceduralStairsComponent, GameObjectComponent>("ProceduralStairsComponent")
-
-                .def("setActivated", &ProceduralStairsComponent::setActivated)
-                .def("isActivated", &ProceduralStairsComponent::isActivated)
-                .def("setStairShape", &ProceduralStairsComponent::setStairShape)
-                .def("getStairShape", &ProceduralStairsComponent::getStairShape)
-                .def("setStepCount", &ProceduralStairsComponent::setStepCount)
-                .def("getStepCount", &ProceduralStairsComponent::getStepCount)
-                .def("setStepHeight", &ProceduralStairsComponent::setStepHeight)
-                .def("getStepHeight", &ProceduralStairsComponent::getStepHeight)
-                .def("setStepDepth", &ProceduralStairsComponent::setStepDepth)
-                .def("getStepDepth", &ProceduralStairsComponent::getStepDepth)
-                .def("setStepWidth", &ProceduralStairsComponent::setStepWidth)
-                .def("getStepWidth", &ProceduralStairsComponent::getStepWidth)
-                .def("setStepNosing", &ProceduralStairsComponent::setStepNosing)
-                .def("getStepNosing", &ProceduralStairsComponent::getStepNosing)
-                .def("setOpenRiser", &ProceduralStairsComponent::setOpenRiser)
-                .def("getOpenRiser", &ProceduralStairsComponent::getOpenRiser)
-                .def("setStringerStyle", &ProceduralStairsComponent::setStringerStyle)
-                .def("getStringerStyle", &ProceduralStairsComponent::getStringerStyle)
-                .def("setBottomStyle", &ProceduralStairsComponent::setBottomStyle)
-                .def("getBottomStyle", &ProceduralStairsComponent::getBottomStyle)
-                .def("setInnerRadius", &ProceduralStairsComponent::setInnerRadius)
-                .def("getInnerRadius", &ProceduralStairsComponent::getInnerRadius)
-                .def("setOuterRadius", &ProceduralStairsComponent::setOuterRadius)
-                .def("getOuterRadius", &ProceduralStairsComponent::getOuterRadius)
-                .def("setArcAngle", &ProceduralStairsComponent::setArcAngle)
-                .def("getArcAngle", &ProceduralStairsComponent::getArcAngle)
-                .def("setRotationDir", &ProceduralStairsComponent::setRotationDir)
-                .def("getRotationDir", &ProceduralStairsComponent::getRotationDir)
-                .def("setCentrePole", &ProceduralStairsComponent::setCentrePole)
-                .def("getCentrePole", &ProceduralStairsComponent::getCentrePole)
-                .def("setPivotPosition", &ProceduralStairsComponent::setPivotPosition)
-                .def("getPivotPosition", &ProceduralStairsComponent::getPivotPosition)
-                .def("setUVMode", &ProceduralStairsComponent::setUVMode)
-                .def("getUVMode", &ProceduralStairsComponent::getUVMode)
-                .def("setUVTiling", &ProceduralStairsComponent::setUVTiling)
-                .def("getUVTiling", &ProceduralStairsComponent::getUVTiling)
-                .def("setTreadDatablock", &ProceduralStairsComponent::setTreadDatablock)
-                .def("getTreadDatablock", &ProceduralStairsComponent::getTreadDatablock)
-                .def("setRiserDatablock", &ProceduralStairsComponent::setRiserDatablock)
-                .def("getRiserDatablock", &ProceduralStairsComponent::getRiserDatablock)
-                .def("setStringerDatablock", &ProceduralStairsComponent::setStringerDatablock)
-                .def("getStringerDatablock", &ProceduralStairsComponent::getStringerDatablock)
-                .def("rebuildMesh", &ProceduralStairsComponent::rebuildMesh)];
+        luabind::module(lua)
+        [
+            luabind::class_<ProceduralStairsComponent, GameObjectComponent>("ProceduralStairsComponent")
+            .def("setActivated", &ProceduralStairsComponent::setActivated)
+            .def("isActivated", &ProceduralStairsComponent::isActivated)
+            .def("setStairShape", &ProceduralStairsComponent::setStairShape)
+            .def("getStairShape", &ProceduralStairsComponent::getStairShape)
+            .def("setStepCount", &ProceduralStairsComponent::setStepCount)
+            .def("getStepCount", &ProceduralStairsComponent::getStepCount)
+            .def("setStepHeight", &ProceduralStairsComponent::setStepHeight)
+            .def("getStepHeight", &ProceduralStairsComponent::getStepHeight)
+            .def("setStepDepth", &ProceduralStairsComponent::setStepDepth)
+            .def("getStepDepth", &ProceduralStairsComponent::getStepDepth)
+            .def("setStepWidth", &ProceduralStairsComponent::setStepWidth)
+            .def("getStepWidth", &ProceduralStairsComponent::getStepWidth)
+            .def("setStepNosing", &ProceduralStairsComponent::setStepNosing)
+            .def("getStepNosing", &ProceduralStairsComponent::getStepNosing)
+            .def("setOpenRiser", &ProceduralStairsComponent::setOpenRiser)
+            .def("getOpenRiser", &ProceduralStairsComponent::getOpenRiser)
+            .def("setStringerStyle", &ProceduralStairsComponent::setStringerStyle)
+            .def("getStringerStyle", &ProceduralStairsComponent::getStringerStyle)
+            .def("setBottomStyle", &ProceduralStairsComponent::setBottomStyle)
+            .def("getBottomStyle", &ProceduralStairsComponent::getBottomStyle)
+            .def("setInnerRadius", &ProceduralStairsComponent::setInnerRadius)
+            .def("getInnerRadius", &ProceduralStairsComponent::getInnerRadius)
+            .def("setOuterRadius", &ProceduralStairsComponent::setOuterRadius)
+            .def("getOuterRadius", &ProceduralStairsComponent::getOuterRadius)
+            .def("setArcAngle", &ProceduralStairsComponent::setArcAngle)
+            .def("getArcAngle", &ProceduralStairsComponent::getArcAngle)
+            .def("setRotationDir", &ProceduralStairsComponent::setRotationDir)
+            .def("getRotationDir", &ProceduralStairsComponent::getRotationDir)
+            .def("setCentrePole", &ProceduralStairsComponent::setCentrePole)
+            .def("getCentrePole", &ProceduralStairsComponent::getCentrePole)
+            .def("setPivotPosition", &ProceduralStairsComponent::setPivotPosition)
+            .def("getPivotPosition", &ProceduralStairsComponent::getPivotPosition)
+            .def("setRampCollider", &ProceduralStairsComponent::setRampCollider)
+            .def("getRampCollider", &ProceduralStairsComponent::getRampCollider)
+            .def("setUVMode", &ProceduralStairsComponent::setUVMode)
+            .def("getUVMode", &ProceduralStairsComponent::getUVMode)
+            .def("setUVTiling", &ProceduralStairsComponent::setUVTiling)
+            .def("getUVTiling", &ProceduralStairsComponent::getUVTiling)
+            .def("setTreadDatablock", &ProceduralStairsComponent::setTreadDatablock)
+            .def("getTreadDatablock", &ProceduralStairsComponent::getTreadDatablock)
+            .def("setRiserDatablock", &ProceduralStairsComponent::setRiserDatablock)
+            .def("getRiserDatablock", &ProceduralStairsComponent::getRiserDatablock)
+            .def("setStringerDatablock", &ProceduralStairsComponent::setStringerDatablock)
+            .def("getStringerDatablock", &ProceduralStairsComponent::getStringerDatablock)
+            .def("rebuildMesh", &ProceduralStairsComponent::rebuildMesh)
+        ];
 
         LuaScriptApi::getInstance()->addClassToCollection("ProceduralStairsComponent", "class inherits GameObjectComponent", ProceduralStairsComponent::getStaticInfoText());
 
-        LuaScriptApi::getInstance()->addClassToCollection("ProceduralStairsComponent", "void setStairShape(string shape)", "Sets the stair shape: 'Linear', 'Curved', or 'Spiral'. Rebuilds the mesh.");
-        LuaScriptApi::getInstance()->addClassToCollection("ProceduralStairsComponent", "void setStepCount(int n)", "Sets the number of steps. Rebuilds the mesh.");
-        LuaScriptApi::getInstance()->addClassToCollection("ProceduralStairsComponent", "void setStepHeight(float h)", "Sets the vertical rise per step in world units. Rebuilds the mesh.");
-        LuaScriptApi::getInstance()->addClassToCollection("ProceduralStairsComponent", "void setStepDepth(float d)", "Sets the horizontal run (tread depth) per step. Rebuilds the mesh.");
-        LuaScriptApi::getInstance()->addClassToCollection("ProceduralStairsComponent", "void setStepWidth(float w)", "Sets the lateral width of the flight (Linear only). Rebuilds the mesh.");
-        LuaScriptApi::getInstance()->addClassToCollection("ProceduralStairsComponent", "void setStepNosing(float n)", "Sets the tread overhang beyond the riser (0=flush). Rebuilds the mesh.");
-        LuaScriptApi::getInstance()->addClassToCollection("ProceduralStairsComponent", "void setOpenRiser(bool open)", "When true, omits the front vertical riser face. Rebuilds the mesh.");
-        LuaScriptApi::getInstance()->addClassToCollection("ProceduralStairsComponent", "void setStringerStyle(string style)", "Sets the side panel style: 'None', 'Closed', or 'Open'. Rebuilds the mesh.");
-        LuaScriptApi::getInstance()->addClassToCollection("ProceduralStairsComponent", "void setBottomStyle(string style)", "Sets the underside style: 'None', 'Sloped', or 'Stepped'. Rebuilds the mesh.");
-        LuaScriptApi::getInstance()->addClassToCollection("ProceduralStairsComponent", "void setInnerRadius(float r)", "Sets the inner void radius (Curved/Spiral only). Rebuilds the mesh.");
-        LuaScriptApi::getInstance()->addClassToCollection("ProceduralStairsComponent", "void setOuterRadius(float r)", "Sets the outer edge radius (Curved/Spiral only). Rebuilds the mesh.");
-        LuaScriptApi::getInstance()->addClassToCollection("ProceduralStairsComponent", "void setArcAngle(float deg)", "Sets the total arc in degrees (Curved/Spiral only). Rebuilds the mesh.");
-        LuaScriptApi::getInstance()->addClassToCollection("ProceduralStairsComponent", "void rebuildMesh()",
-            "Forces a complete geometry rebuild. Call after multiple Lua parameter changes "
-            "to avoid redundant rebuilds.");
+        // ── Activation ────────────────────────────────────────────────────────────
+        LuaScriptApi::getInstance()->addClassToCollection("ProceduralStairsComponent", "void setActivated(bool activated)",
+            "Activates or deactivates the stair placement mode. "
+            "When false, mouse input for placement is ignored.");
+        LuaScriptApi::getInstance()->addClassToCollection("ProceduralStairsComponent", "bool isActivated()", "Returns true if the stair placement mode is active.");
 
+        // ── Shape ─────────────────────────────────────────────────────────────────
+        LuaScriptApi::getInstance()->addClassToCollection("ProceduralStairsComponent", "void setStairShape(string shape)",
+            "Sets the stair shape and rebuilds the mesh. "
+            "Valid values: 'Linear', 'Curved'. "
+            "Curved supports Arc Angle > 360 degrees for full spirals.");
+        LuaScriptApi::getInstance()->addClassToCollection("ProceduralStairsComponent", "string getStairShape()", "Returns the currently selected stair shape name: 'Linear' or 'Curved'.");
+
+        // ── Step count ────────────────────────────────────────────────────────────
+        LuaScriptApi::getInstance()->addClassToCollection("ProceduralStairsComponent", "void setStepCount(int n)",
+            "Sets the number of steps in the flight (minimum 1). Rebuilds the mesh. "
+            "Total stair height = StepCount × StepHeight. "
+            "Total stair depth  = StepCount × StepDepth (Linear only).");
+        LuaScriptApi::getInstance()->addClassToCollection("ProceduralStairsComponent", "int getStepCount()", "Returns the current number of steps.");
+
+        // ── Step height ───────────────────────────────────────────────────────────
+        LuaScriptApi::getInstance()->addClassToCollection("ProceduralStairsComponent", "void setStepHeight(float h)",
+            "Sets the vertical rise per step in world units. Rebuilds the mesh. "
+            "Minimum clamped to 0.01. Standard architectural value: 0.15 – 0.20 m.");
+        LuaScriptApi::getInstance()->addClassToCollection("ProceduralStairsComponent", "float getStepHeight()", "Returns the vertical rise per step in world units.");
+
+        // ── Step depth ────────────────────────────────────────────────────────────
+        LuaScriptApi::getInstance()->addClassToCollection("ProceduralStairsComponent", "void setStepDepth(float d)",
+            "Sets the horizontal run (tread depth) per step in world units. Rebuilds the mesh. "
+            "Linear only — for Curved the arc geometry determines effective depth. "
+            "Minimum clamped to 0.01. Standard architectural value: 0.25 – 0.30 m.");
+        LuaScriptApi::getInstance()->addClassToCollection("ProceduralStairsComponent", "float getStepDepth()", "Returns the horizontal run per step in world units.");
+
+        // ── Step width ────────────────────────────────────────────────────────────
+        LuaScriptApi::getInstance()->addClassToCollection("ProceduralStairsComponent", "void setStepWidth(float w)",
+            "Sets the lateral width of the stair flight in world units. Rebuilds the mesh. "
+            "Linear only — for Curved use setInnerRadius() and setOuterRadius() instead. "
+            "Minimum clamped to 0.01.");
+        LuaScriptApi::getInstance()->addClassToCollection("ProceduralStairsComponent", "float getStepWidth()", "Returns the lateral width of the stair flight in world units.");
+
+        // ── Nosing ────────────────────────────────────────────────────────────────
+        LuaScriptApi::getInstance()->addClassToCollection("ProceduralStairsComponent", "void setStepNosing(float n)",
+            "Sets the tread overhang beyond the riser in world units. Rebuilds the mesh. "
+            "0 = flush (no overhang). Automatically clamped to less than StepDepth. "
+            "For Curved stairs the value is converted to an angular extension at the mid-radius. "
+            "Standard architectural value: 0.02 – 0.04 m.");
+        LuaScriptApi::getInstance()->addClassToCollection("ProceduralStairsComponent", "float getStepNosing()", "Returns the tread nosing overhang in world units.");
+
+        // ── Open riser ────────────────────────────────────────────────────────────
+        LuaScriptApi::getInstance()->addClassToCollection("ProceduralStairsComponent", "void setOpenRiser(bool open)",
+            "When true, omits the front vertical riser face giving a floating/open stair look. "
+            "Rebuilds the mesh. The Riser Datablock is ignored when this is true.");
+        LuaScriptApi::getInstance()->addClassToCollection("ProceduralStairsComponent", "bool getOpenRiser()", "Returns true if the vertical riser faces are omitted.");
+
+        // ── Stringer style ────────────────────────────────────────────────────────
+        LuaScriptApi::getInstance()->addClassToCollection("ProceduralStairsComponent", "void setStringerStyle(string style)",
+            "Sets the side panel style. Rebuilds the mesh. Valid values: "
+            "'None'   – no side panels; steps appear to float with open sides. "
+            "'Closed' – one solid rectangular board per side spanning the full profile. "
+            "           Uses the Stringer Datablock material. "
+            "'Open'   – per-step notched profile on each side, same silhouette as the "
+            "           stair profile but rendered with the Stringer Datablock material. "
+            "           Useful for wooden open-riser stairs with a visible stringer board.");
+        LuaScriptApi::getInstance()->addClassToCollection("ProceduralStairsComponent", "string getStringerStyle()", "Returns the current stringer style: 'None', 'Closed', or 'Open'.");
+
+        // ── Bottom style ──────────────────────────────────────────────────────────
+        LuaScriptApi::getInstance()->addClassToCollection("ProceduralStairsComponent", "void setBottomStyle(string style)",
+            "Sets the underside geometry style. Rebuilds the mesh. Valid values: "
+            "'None'    – hollow / open underside. No geometry below the steps. "
+            "'Sloped'  – one flat diagonal soffit panel under the entire Linear flight. "
+            "            For Curved: a flat annular disk at y=0 closes the base. "
+            "'Stepped' – the underside mirrors the step geometry (fully closed solid). "
+            "            Recommended when the stair is visible from below.");
+        LuaScriptApi::getInstance()->addClassToCollection("ProceduralStairsComponent", "string getBottomStyle()", "Returns the current bottom style: 'None', 'Sloped', or 'Stepped'.");
+
+        // ── Curved: inner radius ──────────────────────────────────────────────────
+        LuaScriptApi::getInstance()->addClassToCollection("ProceduralStairsComponent", "void setInnerRadius(float r)",
+            "Sets the inner void radius for Curved stairs in world units. Rebuilds the mesh. "
+            "This is the radius of the central column / void at the centre of the spiral. "
+            "Minimum clamped to 0.01. Must be less than Outer Radius.");
+        LuaScriptApi::getInstance()->addClassToCollection("ProceduralStairsComponent", "float getInnerRadius()", "Returns the inner void radius for Curved stairs in world units.");
+
+        // ── Curved: outer radius ──────────────────────────────────────────────────
+        LuaScriptApi::getInstance()->addClassToCollection("ProceduralStairsComponent", "void setOuterRadius(float r)",
+            "Sets the outer edge radius for Curved stairs in world units. Rebuilds the mesh. "
+            "The difference (OuterRadius - InnerRadius) is the effective step width. "
+            "Automatically clamped to be at least 0.01 greater than Inner Radius.");
+        LuaScriptApi::getInstance()->addClassToCollection("ProceduralStairsComponent", "float getOuterRadius()", "Returns the outer edge radius for Curved stairs in world units.");
+
+        // ── Curved: arc angle ─────────────────────────────────────────────────────
+        LuaScriptApi::getInstance()->addClassToCollection("ProceduralStairsComponent", "void setArcAngle(float deg)",
+            "Sets the total rotation of the stair flight in degrees. Rebuilds the mesh. "
+            "90  = quarter turn.  180 = half turn.  270 = three-quarter turn. "
+            "360 = full spiral.   Any value > 360 creates a multi-revolution spiral. "
+            "Minimum clamped to 1 degree.");
+        LuaScriptApi::getInstance()->addClassToCollection("ProceduralStairsComponent", "float getArcAngle()", "Returns the total arc angle of the stair flight in degrees.");
+
+        // ── Curved: rotation direction ────────────────────────────────────────────
+        LuaScriptApi::getInstance()->addClassToCollection("ProceduralStairsComponent", "void setRotationDir(string dir)",
+            "Sets the direction the stair turns when ascending. Rebuilds the mesh. "
+            "Valid values: 'Counter-Clockwise', 'Clockwise'. "
+            "Curved only — has no effect on Linear stairs.");
+        LuaScriptApi::getInstance()->addClassToCollection("ProceduralStairsComponent", "string getRotationDir()", "Returns the rotation direction: 'Counter-Clockwise' or 'Clockwise'.");
+
+        // ── Curved: centre pole ───────────────────────────────────────────────────
+        LuaScriptApi::getInstance()->addClassToCollection("ProceduralStairsComponent", "void setCentrePole(bool enabled)",
+            "When true, generates a solid cylinder at the inner radius as a structural pole. "
+            "Curved only — has no effect on Linear stairs. Rebuilds the mesh. "
+            "The pole uses the Stringer Datablock material.");
+        LuaScriptApi::getInstance()->addClassToCollection("ProceduralStairsComponent", "bool getCentrePole()", "Returns true if the centre pole cylinder is enabled.");
+
+        // ── Pivot position ────────────────────────────────────────────────────────
+        LuaScriptApi::getInstance()->addClassToCollection("ProceduralStairsComponent", "void setPivotPosition(string pivot)",
+            "Sets where the scene node origin sits relative to the stair geometry. "
+            "Rebuilds the mesh. Valid values: "
+            "'Bottom-Front'  – origin at the base of the first step (default). "
+            "                  Place the GO at ground level at the foot of the stair. "
+            "'Bottom-Centre' – origin at the horizontal midpoint of the flight. "
+            "                  Useful for symmetric placement around a centre point. "
+            "'Bottom-Back'   – origin at the base of the top step. "
+            "                  Place the GO where the stair meets the upper floor.");
+        LuaScriptApi::getInstance()->addClassToCollection("ProceduralStairsComponent", "string getPivotPosition()", "Returns the pivot position: 'Bottom-Front', 'Bottom-Centre', or 'Bottom-Back'.");
+
+        // ── Ramp collider ─────────────────────────────────────────────────────────
+        LuaScriptApi::getInstance()->addClassToCollection("ProceduralStairsComponent", "void setRampCollider(bool enabled)",
+            "When true, generates an invisible diagonal ramp face over the stair flight. "
+            "This lets physics-driven characters walk up stairs smoothly without "
+            "stairstep jitter — the ramp face is fully transparent (PBS opacity = 0). "
+            "Works for both Linear (single diagonal quad) and Curved (helical sectors). "
+            "The auto-created datablock is named 'StairsRamp_<gameObjectId>'. "
+            "Combine with a PhysicsArtifactComponent for collision detection. Rebuilds the mesh.");
+        LuaScriptApi::getInstance()->addClassToCollection("ProceduralStairsComponent", "bool getRampCollider()", "Returns true if the invisible diagonal ramp collider submesh is active.");
+
+        // ── UV mode ───────────────────────────────────────────────────────────────
+        LuaScriptApi::getInstance()->addClassToCollection("ProceduralStairsComponent", "void setUVMode(string mode)",
+            "Sets the UV projection mode applied to all faces. Rebuilds the mesh. "
+            "Valid values: "
+            "'Box'        – each face projected from its dominant axis (best for untiled textures). "
+            "'Continuous' – UVs flow along the stair flight direction (best for tiling textures).");
+        LuaScriptApi::getInstance()->addClassToCollection("ProceduralStairsComponent", "string getUVMode()", "Returns the current UV mode: 'Box' or 'Continuous'.");
+
+        // ── UV tiling ─────────────────────────────────────────────────────────────
+        LuaScriptApi::getInstance()->addClassToCollection("ProceduralStairsComponent", "void setUVTiling(Vector2 tiling)",
+            "Sets the UV tiling multiplier applied to all faces. Rebuilds the mesh. "
+            "x = U repeat, y = V repeat. Default is (1, 1) = no tiling. "
+            "Increase to tile a texture across multiple steps, e.g. (4, 2).");
+        LuaScriptApi::getInstance()->addClassToCollection("ProceduralStairsComponent", "Vector2 getUVTiling()", "Returns the current UV tiling multiplier as a Vector2.");
+
+        // ── Tread datablock ───────────────────────────────────────────────────────
+        LuaScriptApi::getInstance()->addClassToCollection("ProceduralStairsComponent", "void setTreadDatablock(string name)",
+            "Assigns a PBS datablock by name to the top (horizontal tread) faces. "
+            "This is a live swap — does NOT trigger a full mesh rebuild. "
+            "The datablock must already be registered with the HlmsManager.");
+        LuaScriptApi::getInstance()->addClassToCollection("ProceduralStairsComponent", "string getTreadDatablock()", "Returns the PBS datablock name currently applied to the tread faces.");
+
+        // ── Riser datablock ───────────────────────────────────────────────────────
+        LuaScriptApi::getInstance()->addClassToCollection("ProceduralStairsComponent", "void setRiserDatablock(string name)",
+            "Assigns a PBS datablock by name to the front (vertical riser) faces. "
+            "This is a live swap — does NOT trigger a full mesh rebuild. "
+            "Ignored when Open Riser = true (no riser faces are generated).");
+        LuaScriptApi::getInstance()->addClassToCollection("ProceduralStairsComponent", "string getRiserDatablock()", "Returns the PBS datablock name currently applied to the riser faces.");
+
+        // ── Stringer datablock ────────────────────────────────────────────────────
+        LuaScriptApi::getInstance()->addClassToCollection("ProceduralStairsComponent", "void setStringerDatablock(string name)",
+            "Assigns a PBS datablock by name to the stringer side panels, soffit, and centre pole. "
+            "This is a live swap — does NOT trigger a full mesh rebuild. "
+            "Ignored when Stringer Style = None and Bottom Style = None and Centre Pole = false.");
+        LuaScriptApi::getInstance()->addClassToCollection("ProceduralStairsComponent", "string getStringerDatablock()", "Returns the PBS datablock name currently applied to stringer/soffit/pole faces.");
+
+        // ── Rebuild ───────────────────────────────────────────────────────────────
+        LuaScriptApi::getInstance()->addClassToCollection("ProceduralStairsComponent", "void rebuildMesh()",
+            "Forces a complete geometry rebuild from all current parameter values. "
+            "Call this once after making several parameter changes via Lua to avoid "
+            "triggering a redundant rebuild after every individual setter call. "
+            "Example: "
+            "  local s = go:getProceduralStairsComponent() "
+            "  s:setStepCount(16)    -- no rebuild yet if called internally "
+            "  s:setStepHeight(0.18) "
+            "  s:setStepDepth(0.28) "
+            "  s:rebuildMesh()        -- single rebuild covering all changes");
+
+        // ── GameObject / GameObjectController registration ─────────────────────────
         gameObjectClass.def("getProceduralStairsComponent", (ProceduralStairsComponent * (*)(GameObject*)) & getProceduralStairsComponent);
         gameObjectClass.def("getProceduralStairsComponentFromName", &getProceduralStairsComponentFromName);
         gameObjectControllerClass.def("castProceduralStairsComponent", &GameObjectController::cast<ProceduralStairsComponent>);
 
-        LuaScriptApi::getInstance()->addClassToCollection("GameObject", "ProceduralStairsComponent getProceduralStairsComponent()", "Gets the first ProceduralStairsComponent from this GameObject.");
-        LuaScriptApi::getInstance()->addClassToCollection("GameObject", "ProceduralStairsComponent getProceduralStairsComponentFromName(string name)", "Gets a named ProceduralStairsComponent from this GameObject.");
-        LuaScriptApi::getInstance()->addClassToCollection("GameObjectController", "ProceduralStairsComponent castProceduralStairsComponent(ProceduralStairsComponent other)", "Cast for Lua auto-completion support.");
+        LuaScriptApi::getInstance()->addClassToCollection("GameObject", "ProceduralStairsComponent getProceduralStairsComponent()",
+            "Gets the first ProceduralStairsComponent attached to this GameObject. "
+            "Returns nil if no such component exists.");
+        LuaScriptApi::getInstance()->addClassToCollection("GameObject", "ProceduralStairsComponent getProceduralStairsComponentFromName(string name)",
+            "Gets a named ProceduralStairsComponent from this GameObject. "
+            "Use this when the GameObject has more than one stair component.");
+        LuaScriptApi::getInstance()->addClassToCollection("GameObjectController", "ProceduralStairsComponent castProceduralStairsComponent(ProceduralStairsComponent other)",
+            "Casts a GameObjectComponent to ProceduralStairsComponent for Lua auto-completion support.");
     }
 
 } // namespace NOWA

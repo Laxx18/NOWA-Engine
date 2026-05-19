@@ -525,6 +525,18 @@ namespace NOWA
 
         void dumpBufferState(void) const;
 
+        /*
+        Do only use enqueueDestroy if:
+        Situation
+        macroGame 
+        loop: projectile dies, enemy killed, spawned object gone
+        ENQUEUE_DESTROY_COMMAND — deferred ring-buffer, no stall
+
+        Else use enqueueAndWait(...):
+        Situation:
+        Editor action:
+        escape, undo, load scene, place mode offe
+        */
         void enqueueDestroy(DestroyCommand destroyCommand, const char* commandName);
 
         void advanceFrameAndDestroyOld(void);

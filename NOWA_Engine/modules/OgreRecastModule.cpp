@@ -315,7 +315,12 @@ namespace NOWA
 
                     if (nullptr != inputGeom)
                     {
-                        convexVolume = (nullptr != externalConvexVolume) ? externalConvexVolume : inputGeom->getConvexHull(this->ogreRecast->getAgentRadius());
+                        // Expand convex hull by 2x agentRadius:
+                        // - 1x because dtTileCache::addBoxObstacle does NOT apply walkableRadius erosion
+                        //   internally (unlike the initial full navmesh build which runs rcErodeWalkableArea).
+                        //   Without this, agent centers can reach the box boundary — bodies overlap the building.
+                        // - 1x additional safety margin for mesh-bound discretization and tile-cell rounding.
+                        convexVolume = (nullptr != externalConvexVolume) ? externalConvexVolume : inputGeom->getConvexHull(this->ogreRecast->getAgentRadius() * 2.0f);
 
                         convexVolume->area = walkable ? RC_WALKABLE_AREA : RC_NULL_AREA;
                         this->detourTileCache->addConvexShapeObstacle(convexVolume);
@@ -337,6 +342,13 @@ namespace NOWA
             }
         };
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "OgreRecastModule::addDynamicObstacle");
+
+        // Invalidate all active path futures so no stale async results arrive after
+        // the obstacle tiles are rebuilt. Agents will recompute via their actualize cycle.
+        {
+            std::lock_guard<std::mutex> lock(this->pathFuturesMutex);
+            this->pathFutures.clear();
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────────────────
@@ -569,7 +581,9 @@ namespace NOWA
                         }
 
                         it->second.first = inputGeom;
-                        ConvexVolume* convexVolume = inputGeom->getConvexHull(this->ogreRecast->getAgentRadius());
+                        // createInputGeom() fills placeholder entries after build/load.
+                        // Uses same 2x radius as addDynamicObstacle for consistency.
+                        ConvexVolume* convexVolume = inputGeom->getConvexHull(this->ogreRecast->getAgentRadius() * 2.0f);
                         it->second.second = convexVolume;
 
                         convexVolume->area = RC_NULL_AREA;
@@ -774,6 +788,184 @@ namespace NOWA
         this->mustRegenerate = mustRegenerate;
     }
 
+    void OgreRecastModule::debugLogPath(int pathSlot, unsigned long agentId) const
+    {
+        if (nullptr == this->ogreRecast)
+        {
+            return;
+        }
+
+        const std::vector<Ogre::Vector3>& path = this->ogreRecast->getPath(pathSlot);
+        if (path.empty())
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[PathDebug] Agent " + Ogre::StringConverter::toString(agentId) + " pathSlot=" + Ogre::StringConverter::toString(pathSlot) + ": EMPTY path");
+            return;
+        }
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
+            "[PathDebug] Agent " + Ogre::StringConverter::toString(agentId) + " pathSlot=" + Ogre::StringConverter::toString(pathSlot) + " waypoints=" + Ogre::StringConverter::toString(path.size()));
+
+        // Collect all active obstacle AABBs for intersection test
+        struct ObstacleAABB
+        {
+            float bmin[3];
+            float bmax[3];
+        };
+        std::vector<ObstacleAABB> obstacles;
+
+        if (nullptr != this->detourTileCache)
+        {
+            const int nobs = this->detourTileCache->getObstacleCount();
+            for (int i = 0; i < nobs; ++i)
+            {
+                const dtTileCacheObstacle* ob = this->detourTileCache->getObstacle(i);
+                if (!ob || ob->state != DT_OBSTACLE_PROCESSED)
+                {
+                    continue;
+                }
+                if (ob->type != DT_OBSTACLE_BOX)
+                {
+                    continue;
+                }
+
+                ObstacleAABB aabb;
+                aabb.bmin[0] = ob->box.bmin[0];
+                aabb.bmin[1] = ob->box.bmin[1];
+                aabb.bmin[2] = ob->box.bmin[2];
+                aabb.bmax[0] = ob->box.bmax[0];
+                aabb.bmax[1] = ob->box.bmax[1];
+                aabb.bmax[2] = ob->box.bmax[2];
+                obstacles.push_back(aabb);
+            }
+        }
+
+        for (size_t wi = 0; wi < path.size(); ++wi)
+        {
+            const Ogre::Vector3& wp = path[wi];
+
+            // Check if this waypoint is inside any obstacle AABB (XZ only — Y ignored)
+            bool insideObstacle = false;
+            int obstacleIdx = -1;
+            for (int oi = 0; oi < (int)obstacles.size(); ++oi)
+            {
+                const ObstacleAABB& aabb = obstacles[oi];
+                if (wp.x >= aabb.bmin[0] && wp.x <= aabb.bmax[0] && wp.z >= aabb.bmin[2] && wp.z <= aabb.bmax[2])
+                {
+                    insideObstacle = true;
+                    obstacleIdx = oi;
+                    break;
+                }
+            }
+
+            Ogre::String msg = "  wp[" + Ogre::StringConverter::toString(wi) + "]=" + Ogre::StringConverter::toString(wp);
+            if (insideObstacle)
+            {
+                msg += " <<< INSIDE OBSTACLE[" + Ogre::StringConverter::toString(obstacleIdx) + "]!";
+            }
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, msg);
+        }
+    }
+
+    void OgreRecastModule::debugDrawObstacleBoxes(Ogre::SceneManager* scnMgr)
+    {
+        // Destroy previous debug boxes
+        static Ogre::SceneNode* debugNode = nullptr;
+        if (nullptr != debugNode)
+        {
+            for (unsigned short i = 0; i < debugNode->numAttachedObjects(); ++i)
+            {
+                scnMgr->destroyManualObject(static_cast<Ogre::ManualObject*>(debugNode->getAttachedObject(i)));
+            }
+            scnMgr->destroySceneNode(debugNode);
+            debugNode = nullptr;
+        }
+
+        if (nullptr == this->detourTileCache)
+        {
+            return;
+        }
+
+        const int nobs = this->detourTileCache->getObstacleCount();
+        if (nobs == 0)
+        {
+            return;
+        }
+
+        debugNode = scnMgr->getRootSceneNode()->createChildSceneNode();
+
+        for (int i = 0; i < nobs; ++i)
+        {
+            const dtTileCacheObstacle* ob = this->detourTileCache->getObstacle(i);
+            if (!ob || ob->state != DT_OBSTACLE_PROCESSED)
+            {
+                continue;
+            }
+            if (ob->type != DT_OBSTACLE_BOX)
+            {
+                continue;
+            }
+
+            const Ogre::Vector3 bmin(ob->box.bmin[0], ob->box.bmin[1], ob->box.bmin[2]);
+            const Ogre::Vector3 bmax(ob->box.bmax[0], ob->box.bmax[1], ob->box.bmax[2]);
+            // Draw at agent height only — full Y range [-50,50] is not useful visually
+            const float drawY = (ob->box.bmin[0] + ob->box.bmax[0]) * 0.0f; // unused
+            const float groundY = 0.5f;                                     // slightly above terrain for visibility
+
+            Ogre::ManualObject* mo = scnMgr->createManualObject();
+            mo->setName("ObstacleDebug_" + Ogre::StringConverter::toString(i));
+            mo->setRenderQueueGroup(10);
+            mo->begin("recastdebug", Ogre::OT_LINE_LIST);
+
+            // Bottom face
+            const float y = groundY;
+            mo->position(bmin.x, y, bmin.z);
+            mo->colour(1, 1, 0, 1);
+            mo->position(bmax.x, y, bmin.z);
+            mo->colour(1, 1, 0, 1);
+            mo->position(bmax.x, y, bmin.z);
+            mo->colour(1, 1, 0, 1);
+            mo->position(bmax.x, y, bmax.z);
+            mo->colour(1, 1, 0, 1);
+            mo->position(bmax.x, y, bmax.z);
+            mo->colour(1, 1, 0, 1);
+            mo->position(bmin.x, y, bmax.z);
+            mo->colour(1, 1, 0, 1);
+            mo->position(bmin.x, y, bmax.z);
+            mo->colour(1, 1, 0, 1);
+            mo->position(bmin.x, y, bmin.z);
+            mo->colour(1, 1, 0, 1);
+
+            // Vertical lines at corners
+            const float y2 = y + 2.0f;
+            mo->position(bmin.x, y, bmin.z);
+            mo->colour(1, 0.5f, 0, 1);
+            mo->position(bmin.x, y2, bmin.z);
+            mo->colour(1, 0.5f, 0, 1);
+            mo->position(bmax.x, y, bmin.z);
+            mo->colour(1, 0.5f, 0, 1);
+            mo->position(bmax.x, y2, bmin.z);
+            mo->colour(1, 0.5f, 0, 1);
+            mo->position(bmax.x, y, bmax.z);
+            mo->colour(1, 0.5f, 0, 1);
+            mo->position(bmax.x, y2, bmax.z);
+            mo->colour(1, 0.5f, 0, 1);
+            mo->position(bmin.x, y, bmax.z);
+            mo->colour(1, 0.5f, 0, 1);
+            mo->position(bmin.x, y2, bmax.z);
+            mo->colour(1, 0.5f, 0, 1);
+
+            for (uint32_t idx = 0; idx < 16; ++idx)
+            {
+                mo->index(idx);
+            }
+
+            mo->end();
+            debugNode->attachObject(mo);
+        }
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[ObstacleDebug] Drew " + Ogre::StringConverter::toString(nobs) + " obstacle AABB boxes in yellow.");
+    }
+
     void OgreRecastModule::buildNavigationMesh(void)
     {
         if (this->staticObstacles.empty() && this->dynamicObstacles.empty() && this->terraInputGeomCells.empty())
@@ -969,6 +1161,11 @@ namespace NOWA
 
 	void OgreRecastModule::debugDrawNavMesh(bool draw)
     {
+        if (this->debugDraw == draw)
+        {
+            return;
+        }
+
         this->debugDraw = draw;
 
         if (true == this->buildInProgress.load())
@@ -1039,11 +1236,6 @@ namespace NOWA
 
 	void OgreRecastModule::update(Ogre::Real dt)
     {
-        // Bug fix 3: handleUpdate ticks the tile cache obstacle system (processes
-        // deferred add/remove of convex obstacles, rebuilds affected tiles).
-        // If a full rebuild is running on the background thread, the tile cache
-        // pointer and its internal state are being rewritten — calling handleUpdate
-        // concurrently is a data race and will corrupt or crash the rebuild.
         if (true == this->buildInProgress.load())
         {
             return;
@@ -1052,51 +1244,52 @@ namespace NOWA
         if (nullptr != this->detourTileCache)
         {
             this->detourTileCache->handleUpdate(dt);
+
+            // When box obstacles finish processing (mloadedFromDisk path), redraw the
+            // navmesh debug visualization to reflect the new blocked areas.
+            // Safe now because:
+            // - removeAllDrawnNavmesh() destroys only 3 ManualObjects (was 20k+)
+            // - drawDetail() uses a local allocator (no race with handleUpdate)
+            if (true == this->debugDraw && this->detourTileCache->getNeedsRedraw())
+            {
+                NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+                {
+                    if (nullptr != this->detourTileCache && nullptr != this->ogreRecast)
+                    {
+                        this->detourTileCache->drawNavMesh(true);
+                        this->detourTileCache->clearNeedsRedraw();
+                    }
+                };
+                NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "OgreRecastModule::update::redrawAfterObstacle");
+            }
         }
     }
 
-#if 0
     bool OgreRecastModule::findPath(const Ogre::Vector3& startPosition, const Ogre::Vector3& endPosition, int pathSlot, int targetSlot, bool drawPath)
     {
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
-            "[OgreRecastModule] findPath called: pathSlot=" + Ogre::StringConverter::toString(pathSlot) + " start=" + Ogre::StringConverter::toString(startPosition) + " end=" + Ogre::StringConverter::toString(endPosition));
-
         if (false == this->hasValidNavMesh || true == this->buildInProgress.load())
         {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[OgreRecastModule] findPath skipped: nav mesh not ready or build in progress.");
             return false;
         }
 
-        // FindPath only reads m_navQuery and writes to m_PathStore[pathSlot].
-        // Each worker uses a unique pathSlot so there is no write conflict.
-        // No Ogre render API calls are made — safe to run directly on the logic thread.
-        int ret = this->ogreRecast->FindPath(startPosition, endPosition, pathSlot, targetSlot);
-
-        if (ret >= 0)
+        // TEMPORARY RACE CONDITION TEST:
+        // If obstacle update is still in flight, wait for one handleUpdate cycle
+        // before computing the path. Remove this after diagnosis.
+        if (this->detourTileCache->getObstaclesWereUpdating())
         {
-            if (true == drawPath)
-            {
-                // Path line drawing IS an Ogre call — enqueue to render thread
-                auto ogreRecastPtr = this->ogreRecast;
-                NOWA::GraphicsModule::RenderCommand renderCommand = [ogreRecastPtr, pathSlot, drawPath]()
-                {
-                    ogreRecastPtr->CreateRecastPathLine(pathSlot, drawPath);
-                };
-                NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "OgreRecastModule::drawPathLine");
-            }
-            return true;
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[PathDebug] findPath called WHILE obstacle still processing — deferring!");
+            // Returning false forces MovingBehavior to retry next frame
+            return false;
         }
 
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[OgreRecastModule] Warning: could not find path (error=" + Ogre::StringConverter::toString(ret) + ").");
-        return false;
-    }
-#endif
-
-#if 1
-    bool OgreRecastModule::findPath(const Ogre::Vector3& startPosition, const Ogre::Vector3& endPosition, int pathSlot, int targetSlot, bool drawPath)
-    {
-        if (false == this->hasValidNavMesh || true == this->buildInProgress.load())
+        // Block pathfinding while obstacle tiles are being rebuilt.
+        // The navmesh polygons in affected tiles are stale until dtTileCache::update()
+        // reports upToDate=true. Any path computed in this window would route through
+        // the obstacle area as if it were walkable — the agent would walk into the building.
+        // Returning false causes MovingBehavior to retry on the next actualize cycle.
+        if (nullptr != this->detourTileCache && this->detourTileCache->hasPendingObstacles())
         {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[OgreRecastModule] findPath deferred: obstacle tiles not yet rebuilt (slot=" + Ogre::StringConverter::toString(pathSlot) + ")");
             return false;
         }
 
@@ -1129,6 +1322,9 @@ namespace NOWA
             this->pathFutures[pathSlot] = std::move(future);
         }
 
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+            "[PathDebug] findPath called: start=" + Ogre::StringConverter::toString(startPosition) + " end=" + Ogre::StringConverter::toString(endPosition) + " slot=" + Ogre::StringConverter::toString(pathSlot));
+
         if (true == drawPath)
         {
             auto recastPtr = this->ogreRecast;
@@ -1141,7 +1337,6 @@ namespace NOWA
 
         return true;
     }
-#endif
 
     bool OgreRecastModule::waitForPath(int pathSlot)
     {

@@ -727,6 +727,7 @@ namespace NOWA
 					if (nullptr != this->debugGeometryNode)
 					{
 						this->debugGeometryNode->detachAllObjects();
+                        NOWA::GraphicsModule::getInstance()->removeTrackedNode(this->debugGeometryNode);
 						this->gameObjectPtr->getSceneManager()->destroySceneNode(this->debugGeometryNode);
 						this->debugGeometryNode = nullptr;
 						this->gameObjectPtr->getSceneManager()->destroyMovableObject(this->debugGeometryItem);
@@ -735,6 +736,7 @@ namespace NOWA
 					if (nullptr != this->debugGeometryNode2)
 					{
 						this->debugGeometryNode2->detachAllObjects();
+                        NOWA::GraphicsModule::getInstance()->removeTrackedNode(this->debugGeometryNode2);
 						this->gameObjectPtr->getSceneManager()->destroySceneNode(this->debugGeometryNode2);
 						this->debugGeometryNode2 = nullptr;
 						this->gameObjectPtr->getSceneManager()->destroyMovableObject(this->debugGeometryItem2);
@@ -3395,6 +3397,7 @@ namespace NOWA
 			ENQUEUE_RENDER_COMMAND_WAIT("JointPointToPointComponent::~JointPointToPointComponent",
 			{
 				this->debugGeometryNode2->detachAllObjects();
+                NOWA::GraphicsModule::getInstance()->removeTrackedNode(this->debugGeometryNode2);
 				this->gameObjectPtr->getSceneManager()->destroySceneNode(this->debugGeometryNode2);
 				this->debugGeometryNode2 = nullptr;
 				this->gameObjectPtr->getSceneManager()->destroyMovableObject(this->debugGeometryItem2);
@@ -3904,6 +3907,7 @@ namespace NOWA
 //			if (nullptr != this->debugGeometryNode)
 //			{
 //				this->debugGeometryNode->detachAllObjects();
+//				NOWA::GraphicsModule::getInstance()->removeTrackedNode(this->debugGeometryNode);
 //				this->gameObjectPtr->getSceneManager()->destroySceneNode(this->debugGeometryNode);
 //				this->debugGeometryNode = nullptr;
 //				this->gameObjectPtr->getSceneManager()->destroyMovableObject(this->debugGeometryItem);
@@ -4816,6 +4820,7 @@ namespace NOWA
 			if (nullptr != this->dragLineNode)
 			{
 				this->dragLineNode->detachAllObjects();
+                NOWA::GraphicsModule::getInstance()->removeTrackedNode(this->debugGeometryNode);
 				this->gameObjectPtr->getSceneManager()->destroySceneNode(this->dragLineNode);
 				this->dragLineNode = nullptr;
 

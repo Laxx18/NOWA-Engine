@@ -67,10 +67,10 @@ namespace NOWA
 			this->grid = nullptr;
 			auto sceneManager = this->sceneManager;
 
-			ENQUEUE_DESTROY_COMMAND("ViewportGrid::DestroyManualObject", _2(sceneManager, gridLocal),
-			{
-				sceneManager->destroyManualObject(gridLocal);
-			});
+			NOWA::GraphicsModule::getInstance()->enqueueAndWait([sceneManager, gridLocal]()
+            {
+                sceneManager->destroyManualObject(gridLocal);
+            }, "ViewportGrid::DestroyManualObject");
 		}
 
 		if (this->node != nullptr)
@@ -81,10 +81,10 @@ namespace NOWA
 			NOWA::GraphicsModule::getInstance()->removeTrackedNode(this->node);
 			this->node = nullptr;
 
-			ENQUEUE_DESTROY_COMMAND("ViewportGrid::DestroySceneNode", _2(sceneManager, nodeLocal),
-			{
-				sceneManager->destroySceneNode(nodeLocal);
-			});
+			NOWA::GraphicsModule::getInstance()->enqueueAndWait([sceneManager, nodeLocal]()
+            {
+               sceneManager->destroySceneNode(nodeLocal);
+            }, "ViewportGrid::DestroySceneNode");
 		}
 	}
 

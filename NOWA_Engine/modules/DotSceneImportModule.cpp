@@ -520,6 +520,13 @@ namespace NOWA
             // No .nav file yet — build from scratch and auto-save
             NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->buildNavigationMesh();
         }
+
+        // After scene loading, when all initial GameObjects are registered.
+        size_t gameObjectCount = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects()->size();
+        if (gameObjectCount > 0)
+        {
+            AppStateManager::getSingletonPtr()->getGameObjectController()->reserveGameObjectCapacity(gameObjectCount);
+        }
     }
 
     std::vector<unsigned long> DotSceneImportModule::parseGroup(const Ogre::String& fileName, const Ogre::String& resourceGroupName)

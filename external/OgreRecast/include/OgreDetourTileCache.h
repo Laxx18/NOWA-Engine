@@ -651,14 +651,28 @@ public:
       **/
     void drawObstacles(const dtTileCache* tc);
 
-	InputGeom* getInputGeom(void) const
-	{
-		return m_geom;
-	}
+    bool getObstaclesWereUpdating() const;
+
+    int getObstacleCount() const;
+
+    const dtTileCacheObstacle* getObstacle(int index) const;
+
 
     // Sets InputGeom after loadAll() so dynamic obstacles can rebuild tiles.
     // Unlike configure(), does NOT overwrite tile cache params or bounding boxes.
     void setInputGeom(InputGeom* geom);
+
+    // True from the moment an obstacle is queued (addBoxObstacle called) until
+    // dtTileCache::update() reports upToDate=true for that batch.
+    // findPath must not be called while this is true — the tiles are not yet
+    // rebuilt and pathfinding would route through the obstacle area.
+    bool hasPendingObstacles() const;
+
+    InputGeom* getInputGeom(void) const;
+
+    bool getNeedsRedraw() const;
+
+    void clearNeedsRedraw();
 
     /**
       * Ogre Recast component that holds the recast config and where the navmesh will be built.
@@ -805,6 +819,11 @@ protected:
 
     std::unordered_map<ConvexVolume*, dtObstacleRef> mBoxObstacleRefs;
     bool mloadedFromDisk;
+
+    bool m_needsRedraw;           // set when box obstacles were processed; cleared after redraw
+    bool m_isDrawing;             // true while debug draw is active
+    bool m_obstaclesWereUpdating; // tracks upToDate transition for edge-detection
+    bool m_pendingObstacles;
 
     static const int TILECACHESET_MAGIC = 'T'<<24 | 'S'<<16 | 'E'<<8 | 'T'; //'TSET';
     static const int TILECACHESET_VERSION = 2;

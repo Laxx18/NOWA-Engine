@@ -555,6 +555,10 @@ namespace NOWA
          */
         void setMustRegenerate(bool mustRegenerate);
 
+        void debugLogPath(int pathSlot, unsigned long agentId) const;
+
+        void debugDrawObstacleBoxes(Ogre::SceneManager* scnMgr);
+
 	private:
 		OgreRecastModule(const Ogre::String& appStateName);
 

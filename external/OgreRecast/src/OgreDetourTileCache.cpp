@@ -73,7 +73,11 @@ OgreDetourTileCache::OgreDetourTileCache(OgreRecast *recast, int tileSize)
       m_tw(0),
       mChangedConvexVolumesCount(0),
       mDebugRebuiltBB(0),
-      mloadedFromDisk(false)
+      mloadedFromDisk(false),
+      m_needsRedraw(false),
+      m_isDrawing(false),
+      m_obstaclesWereUpdating(false),
+      m_pendingObstacles(false)
 {
     m_talloc = new LinearAllocator(32000);
     m_tcomp = new FastLZCompressor;
@@ -386,6 +390,15 @@ bool OgreDetourTileCache::buildTile(const int tx, const int ty, InputGeom *input
 // TODO extract debug drawing to a separate class
     drawDetail(tx, ty, false);
 
+    // After buildNavMeshTilesAt():
+    // If debug draw is active, trigger a full redraw on the next update() tick.
+    // Per-tile incremental redraw is replaced by the consolidated ManualObject approach —
+    // we cannot patch a single tile into the merged ManualObjects without a full rebuild.
+    if (m_isDrawing)
+    {
+        m_needsRedraw = true;
+        m_obstaclesWereUpdating = true;
+    }
 
     return true;
 }
@@ -592,20 +605,42 @@ void OgreDetourTileCache::handleUpdate(float dt)
     if (!m_tileCache || !m_recast->m_navMesh)
         return;
 
-// TODO deferred rebuilding of tiles when adding or removing convex shape obstacles
-/*
-    // Update convex shapes
-    if (mChangedConvexVolumesCount >0) {
-        for(int i=0; i < mChangedConvexVolumesCount; i++) {
-            m_tileCache->get
+    bool upToDate = false;
+    m_tileCache->update(dt, m_recast->m_navMesh, &upToDate);
+
+    if (m_obstaclesWereUpdating && upToDate)
+    {
+        m_obstaclesWereUpdating = false;
+        m_pendingObstacles = false; // tiles rebuilt — findPath may proceed
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
+            "[OgreDetourTileCache] handleUpdate: obstacle tiles rebuilt, pathfinding unblocked.");
+
+        // Log final obstacle states for diagnosis
+        const int nobs = m_tileCache->getObstacleCount();
+        for (int i = 0; i < nobs; ++i)
+        {
+            const dtTileCacheObstacle* ob = m_tileCache->getObstacle(i);
+            if (!ob || ob->type != DT_OBSTACLE_BOX) continue;
+
+            const char* stateStr =
+                ob->state == DT_OBSTACLE_PROCESSED ? "PROCESSED" :
+                ob->state == DT_OBSTACLE_PROCESSING ? "PROCESSING" :
+                ob->state == DT_OBSTACLE_REMOVING ? "REMOVING" : "EMPTY";
+
+            // TODO: Comment in for debugging
+            /*Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
+                "  Obstacle[" + Ogre::StringConverter::toString(i) + "]"
+                " state=" + stateStr
+                + " ntouched=" + Ogre::StringConverter::toString((int)ob->ntouched)
+                + " bmin=(" + Ogre::StringConverter::toString(ob->box.bmin[0])
+                + "," + Ogre::StringConverter::toString(ob->box.bmin[1])
+                + "," + Ogre::StringConverter::toString(ob->box.bmin[2]) + ")"
+                + " bmax=(" + Ogre::StringConverter::toString(ob->box.bmax[0])
+                + "," + Ogre::StringConverter::toString(ob->box.bmax[1])
+                + "," + Ogre::StringConverter::toString(ob->box.bmax[2]) + ")");*/
         }
     }
-*/
-
-    // Processes deferred temp obstacles (addBoxObstacle/removeObstacle calls).
-    // Each frame this rebuilds dirty tile layers with new obstacle data —
-    // no original geometry needed, works entirely on compressed tile data.
-    m_tileCache->update(dt, m_recast->m_navMesh);
 }
 
 void OgreDetourTileCache::getTileAtPos(const float* pos, int& tx, int& ty)
@@ -829,13 +864,51 @@ void drawObstacles(const dtTileCache* tc)
 
 void OgreDetourTileCache::drawNavMesh(bool draw)
 {
+    m_isDrawing = draw;
+
+    if (false == draw)
+    {
+        // Remove the 3 consolidated ManualObjects
+        m_recast->removeAllDrawnNavmesh();
+        return;
+    }
+
+    if (!DEBUG_DRAW)
+        return;
+
+    // Clear existing visuals and start accumulating fresh geometry
+    m_recast->removeAllDrawnNavmesh();
+    m_recast->beginNavMeshAccum();
+
     for (int y = 0; y < m_th; ++y)
     {
         for (int x = 0; x < m_tw; ++x)
         {
-            drawDetail(x, y, draw);
+            drawDetail(x, y, true);
         }
     }
+
+    // Upload all accumulated tile geometry as a single set of 3 ManualObjects
+    m_recast->flushNavMesh();
+}
+
+bool OgreDetourTileCache::getObstaclesWereUpdating() const
+{
+    return m_obstaclesWereUpdating;
+}
+
+int OgreDetourTileCache::getObstacleCount() const
+{
+    if (!m_tileCache)
+        return 0;
+    return m_tileCache->getObstacleCount();
+}
+
+const dtTileCacheObstacle* OgreDetourTileCache::getObstacle(int index) const
+{
+    if (!m_tileCache)
+        return nullptr;
+    return m_tileCache->getObstacle(index);
 }
 
 void OgreDetourTileCache::setInputGeom(InputGeom* geom)
@@ -856,103 +929,137 @@ void OgreDetourTileCache::setInputGeom(InputGeom* geom)
         m_tmproc->init(m_geom);
 }
 
+bool OgreDetourTileCache::hasPendingObstacles() const
+{
+    return m_pendingObstacles;
+}
+
+InputGeom* OgreDetourTileCache::getInputGeom(void) const
+{
+    return m_geom;
+}
+
+bool OgreDetourTileCache::getNeedsRedraw() const
+{
+    return this->m_needsRedraw;
+}
+
+void OgreDetourTileCache::clearNeedsRedraw()
+{
+    this->m_needsRedraw = false;
+}
+
 void OgreDetourTileCache::drawDetail(const int tx, const int ty, bool draw)
 {
-    dtCompressedTileRef tiles[MAX_LAYERS];
-    const int ntiles = m_tileCache->getTilesAt(tx,ty,tiles,MAX_LAYERS);
-
-    if (false == draw)
-    {
-        for (int i = 0; i < ntiles; ++i)
-        {
-            m_recast->removeDrawnNavmesh(tiles[i]);
-        }
+    if (!DEBUG_DRAW || !draw)
         return;
-    }
 
-	if (!DEBUG_DRAW)
-        return; // Don't debug draw for huge performance gain!
+    dtCompressedTileRef tiles[MAX_LAYERS];
+    const int ntiles = m_tileCache->getTilesAt(tx, ty, tiles, MAX_LAYERS);
+    if (ntiles == 0)
+        return;
+
+    // Use a LOCAL allocator so we never touch the tile cache's shared allocator.
+    // The shared allocator (m_tileCache->getAlloc()) is used by dtTileCache::update()
+    // on the logic thread — resetting it here from the render thread is a data race
+    // that corrupts the allocator and crashes the D3D11 device.
+    // 256KB is sufficient for the largest tiles (typical tiles need <64KB).
+    LinearAllocator localAlloc(256 * 1024);
 
     struct TileCacheBuildContext
     {
-        inline TileCacheBuildContext(struct dtTileCacheAlloc* a) : layer(0), lcset(0), lmesh(0), alloc(a) {}
-        inline ~TileCacheBuildContext() { purge(); }
+        explicit TileCacheBuildContext(dtTileCacheAlloc* a)
+        : layer(nullptr),
+            lcset(nullptr),
+            lmesh(nullptr),
+            alloc(a)
+        {
+
+        }
+
+        ~TileCacheBuildContext()
+        {
+            purge();
+        }
+
         void purge()
         {
-            dtFreeTileCacheLayer(alloc, layer);
-            layer = 0;
-            dtFreeTileCacheContourSet(alloc, lcset);
-            lcset = 0;
-            dtFreeTileCachePolyMesh(alloc, lmesh);
-            lmesh = 0;
+            dtFreeTileCacheLayer(alloc, layer);      layer = nullptr;
+            dtFreeTileCacheContourSet(alloc, lcset); lcset = nullptr;
+            dtFreeTileCachePolyMesh(alloc, lmesh);   lmesh = nullptr;
         }
-        struct dtTileCacheLayer* layer;
-        struct dtTileCacheContourSet* lcset;
-        struct dtTileCachePolyMesh* lmesh;
-        struct dtTileCacheAlloc* alloc;
+
+        dtTileCacheLayer* layer;
+        dtTileCacheContourSet* lcset;
+        dtTileCachePolyMesh* lmesh;
+        dtTileCacheAlloc* alloc;
     };
 
-    dtTileCacheAlloc* talloc = m_tileCache->getAlloc();
     dtTileCacheCompressor* tcomp = m_tileCache->getCompressor();
     const dtTileCacheParams* params = m_tileCache->getParams();
 
     for (int i = 0; i < ntiles; ++i)
     {
-		const dtCompressedTile* tile = m_tileCache->getTileByRef(tiles[i]);
+        const dtCompressedTile* tile = m_tileCache->getTileByRef(tiles[i]);
+        if (!tile)
+            continue;
 
-		talloc->reset();
+        // Reset local allocator for each tile layer (independent of tileCache)
+        localAlloc.reset();
 
-		TileCacheBuildContext bc(talloc);
-		const int walkableClimbVx = (int)(params->walkableClimb / params->ch);
-		dtStatus status;
+        TileCacheBuildContext bc(&localAlloc);
+        const int walkableClimbVx = static_cast<int>(params->walkableClimb / params->ch);
+        dtStatus status;
 
-		// Decompress tile layer data.
-		status = dtDecompressTileCacheLayer(talloc, tcomp, tile->data, tile->dataSize, &bc.layer);
-		if (dtStatusFailed(status))
-			return;
+        status = dtDecompressTileCacheLayer(&localAlloc, tcomp, tile->data, tile->dataSize, &bc.layer);
+        if (dtStatusFailed(status))
+            continue;
 
-		// Build navmesh
-		status = dtBuildTileCacheRegions(talloc, *bc.layer, walkableClimbVx);
-		if (dtStatusFailed(status))
-			return;
+        // Replicate obstacle markings so the debug draw matches what
+        // buildNavMeshTile() produces for pathfinding.
+        // The compressed tile data stores base geometry only — obstacle cell
+        // markings are applied transiently inside dtTileCache::update() and
+        // never written back to the compressed stream.
+        {
+            const int nobs = m_tileCache->getObstacleCount();
+            for (int oi = 0; oi < nobs; ++oi)
+            {
+                const dtTileCacheObstacle* ob = m_tileCache->getObstacle(oi);
+                if (ob->state == DT_OBSTACLE_EMPTY || ob->state == DT_OBSTACLE_REMOVING)
+                    continue;
 
-		//TODO this part is replicated from navmesh tile building in DetourTileCache. Maybe that can be reused. Also is it really necessary to do an extra navmesh rebuild from compressed tile just to draw it? Can't I just draw it somewhere where the navmesh is rebuilt?
-		bc.lcset = dtAllocTileCacheContourSet(talloc);
-		if (!bc.lcset)
-			return;
-		status = dtBuildTileCacheContours(talloc, *bc.layer, walkableClimbVx,
-			params->maxSimplificationError, *bc.lcset);
-		if (dtStatusFailed(status))
-			return;
+                if (ob->type == DT_OBSTACLE_BOX)
+                {
+                    dtMarkBoxArea(*bc.layer, tile->header->bmin, params->cs, params->ch, ob->box.bmin, ob->box.bmax, DT_TILECACHE_NULL_AREA);
+                }
+                else if (ob->type == DT_OBSTACLE_CYLINDER)
+                {
+                    dtMarkCylinderArea(*bc.layer, tile->header->bmin, params->cs, params->ch, ob->cylinder.pos, ob->cylinder.radius, ob->cylinder.height, DT_TILECACHE_NULL_AREA);
+                }
+            }
+        }
 
-		bc.lmesh = dtAllocTileCachePolyMesh(talloc);
-		if (!bc.lmesh)
-			return;
-		status = dtBuildTileCachePolyMesh(talloc, *bc.lcset, *bc.lmesh);
-		if (dtStatusFailed(status))
-			return;
+        status = dtBuildTileCacheRegions(&localAlloc, *bc.layer, walkableClimbVx);
+        if (dtStatusFailed(status))
+            continue;
 
-		// Draw navmesh
-		Ogre::String tileName = Ogre::StringConverter::toString(tiles[i]);
-		//        Ogre::LogManager::getSingletonPtr()->logMessage("Drawing tile: "+tileName);
-// TODO this is a dirty quickfix that should be gone as soon as there is a rebuildTile(tileref) method
-		// if (m_recast->m_pSceneMgr->hasMovableObject("RecastMOWalk_" + tileName))
-		// 	return;
+        bc.lcset = dtAllocTileCacheContourSet(&localAlloc);
+        if (!bc.lcset)
+            continue;
+        status = dtBuildTileCacheContours(&localAlloc, *bc.layer, walkableClimbVx, params->maxSimplificationError, *bc.lcset);
+        if (dtStatusFailed(status))
+            continue;
 
-// Attention: Is that correct with "ManualObject"??
-		auto itor = m_recast->m_pSceneMgr->getMovableObjectIterator("ManualObject");
-		while (itor.hasMoreElements())
-		{
-			Ogre::MovableObject* object = itor.peekNext();
-			if (object->getName() == "RecastMOWalk_" + tileName)
-			{
-				return;
-			}
-			itor.moveNext();
-		}
+        bc.lmesh = dtAllocTileCachePolyMesh(&localAlloc);
+        if (!bc.lmesh)
+            continue;
+        status = dtBuildTileCachePolyMesh(&localAlloc, *bc.lcset, *bc.lmesh);
+        if (dtStatusFailed(status))
+            continue;
 
-        drawPolyMesh(tileName, *bc.lmesh, tile->header->bmin, params->cs, params->ch, *bc.layer, true, draw);
-
+        // Accumulate into OgreRecast's CPU-side buffers — no ManualObject
+        // creation here. flushNavMesh() does the single GPU upload at the end.
+        drawPolyMesh("All", *bc.lmesh, tile->header->bmin, params->cs, params->ch, *bc.layer, true, true);
     }
 }
 
@@ -999,14 +1106,51 @@ int OgreDetourTileCache::addConvexShapeObstacle(ConvexVolume* obstacle)
         // Use dtTileCache's native temp obstacle API instead: it modifies the
         // existing compressed tile layer data without needing geometry.
         // The obstacle is processed asynchronously by handleUpdate() each frame.
+
+        // The obstacle's bmin[1]/bmax[1] comes from the mesh bounds, which may be
+        // in local space or at a different height than the actual navmesh tiles.
+        // dtTileCache::queryTiles() uses all three axes to find touched tiles, so
+        // if the Y interval does not overlap any tile's Y range, ntouched = 0 and
+        // the obstacle has no effect on pathfinding.
+        // Fix: always use the navmesh configuration Y extent for the box Y bounds.
+        // The XZ footprint (from the convex hull with offset) remains unchanged.
+        float bmin[3] = { obstacle->bmin[0], m_recast->m_cfg.bmin[1], obstacle->bmin[2] };
+        float bmax[3] = { obstacle->bmax[0], m_recast->m_cfg.bmax[1], obstacle->bmax[2] };
+
+        // Also update the stored obstacle Y so hmin/hmax stay consistent.
+        obstacle->bmin[1] = bmin[1];
+        obstacle->bmax[1] = bmax[1];
+        obstacle->hmin = bmin[1];
+        obstacle->hmax = bmax[1];
+
         dtObstacleRef ref = 0;
-        dtStatus status = m_tileCache->addBoxObstacle(obstacle->bmin, obstacle->bmax, &ref);
+        dtStatus status = m_tileCache->addBoxObstacle(bmin, bmax, &ref);
         if (dtStatusFailed(status))
         {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[OgreDetourTileCache] addConvexShapeObstacle: addBoxObstacle failed (status=" + Ogre::StringConverter::toString(status) + ").");
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                "[OgreDetourTileCache] addConvexShapeObstacle: addBoxObstacle failed (status="
+                + Ogre::StringConverter::toString(status) + ").");
             return -1;
         }
         mBoxObstacleRefs[obstacle] = ref;
+
+        // Tiles will be rebuilt asynchronously by the next handleUpdate() call.
+        // Signal that a debug draw refresh is needed once processing completes.
+        m_needsRedraw = true;
+        m_obstaclesWereUpdating = true;
+        m_pendingObstacles = true;
+
+        /*Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+            "[OgreDetourTileCache] addBoxObstacle Y-corrected:"
+            " bmin=(" + Ogre::StringConverter::toString(bmin[0])
+            + ", " + Ogre::StringConverter::toString(bmin[1])
+            + ", " + Ogre::StringConverter::toString(bmin[2]) + ")"
+            " bmax=(" + Ogre::StringConverter::toString(bmax[0])
+            + ", " + Ogre::StringConverter::toString(bmax[1])
+            + ", " + Ogre::StringConverter::toString(bmax[2]) + ")"
+            " navmesh cfg Y: [" + Ogre::StringConverter::toString(m_recast->m_cfg.bmin[1])
+            + ", " + Ogre::StringConverter::toString(m_recast->m_cfg.bmax[1]) + "]");*/
+
         return result;
     }
 
@@ -1031,7 +1175,6 @@ int OgreDetourTileCache::addConvexShapeObstacle(ConvexVolume* obstacle)
 
     return result;
 }
-
 
 TileSelection OgreDetourTileCache::getTileSelection(const Ogre::AxisAlignedBox &selectionArea)
 {
@@ -1250,6 +1393,9 @@ bool OgreDetourTileCache::removeConvexShapeObstacle(ConvexVolume* convexHull)
         // Tile rebuild is deferred to next handleUpdate() call.
         dtStatus status = m_tileCache->removeObstacle(boxIt->second);
         mBoxObstacleRefs.erase(boxIt);
+        m_pendingObstacles = true;
+        m_needsRedraw = true;
+        m_obstaclesWereUpdating = true;
 
         // Also remove from m_geom tracking so index/ray tests stay consistent.
         int id = m_geom->getConvexVolumeId(convexHull);
@@ -1288,6 +1434,8 @@ bool OgreDetourTileCache::removeConvexShapeObstacleById(int obstacleIndex,
     {
         m_tileCache->removeObstacle(boxIt->second);
         mBoxObstacleRefs.erase(boxIt);
+        m_needsRedraw = true;
+        m_obstaclesWereUpdating = true;
         return true;
     }
 

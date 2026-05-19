@@ -148,6 +148,7 @@ namespace NOWA
 				this->gameObjectPtr->getSceneManager()->destroyMovableObject(*it);
 			}
 
+			NOWA::GraphicsModule::getInstance()->removeTrackedNode(this->debugWaypointNode);
 			this->gameObjectPtr->getSceneManager()->destroySceneNode(this->debugWaypointNode);
 			this->debugWaypointNode = nullptr;
 		}
@@ -663,7 +664,7 @@ namespace NOWA
 	{
 		if (nullptr != this->animationBlender)
 		{
-			this->animationBlender->setDebugLog(this->bShowDebugData);
+			// this->animationBlender->setDebugLog(this->bShowDebugData);
 		}
 		if (false == this->bShowDebugData)
 		{
@@ -1896,13 +1897,13 @@ namespace NOWA
 		{
 			this->stateMachine->update(dt);
 		}
-		if (true == this->bShowDebugData)
+		/*if (true == this->bShowDebugData)
 		{
 			if (nullptr != this->movingBehaviorPtr)
 			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MovingBehavior] Current behavior: " + this->movingBehaviorPtr->getCurrentBehavior());
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MovingBehavior] Current behavior: " + this->movingBehaviorPtr->getCurrentBehavior());
 			}
-		}
+		}*/
 	}
 
 	void PlayerControllerClickToPointComponent::actualizeValue(Variant* attribute)
@@ -3169,6 +3170,8 @@ namespace NOWA
         }
         else
         {
+			// TODO: Just a test
+            // this->ogreRecastModule->debugLogPath(this->playerController->getPathSlot(), this->movingBehavior->getAgentId());
             // No waypoints — handle goal arrival and boring idle logic.
             if (true == this->hasGoal)
             {

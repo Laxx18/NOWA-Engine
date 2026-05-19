@@ -1486,7 +1486,10 @@ namespace NOWA
 
             NOWA::GraphicsModule::getInstance()->removeTrackedNode(placeNodeToDestroy);
 
-            ENQUEUE_DESTROY_COMMAND("Destroy placeNode", _2(sceneManager, placeNodeToDestroy), { sceneManager->destroySceneNode(placeNodeToDestroy); });
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait([sceneManager, placeNodeToDestroy]()
+                {
+                    sceneManager->destroySceneNode(placeNodeToDestroy);
+                }, "Destroy placeNode");
 
             this->placeNode = nullptr;
         }
@@ -1511,21 +1514,35 @@ namespace NOWA
         {
             auto query = this->gizmoQuery;
             auto sceneManager = this->sceneManager;
-            ENQUEUE_DESTROY_COMMAND("Destroy gizmoQuery", _2(sceneManager, query), { sceneManager->destroyQuery(query); });
+
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait([sceneManager, query]()
+                {
+                    sceneManager->destroyQuery(query);
+                }, "Destroy gizmoQuery");
             this->gizmoQuery = nullptr;
         }
         if (this->placeObjectQuery)
         {
             auto query = this->placeObjectQuery;
             auto sceneManager = this->sceneManager;
-            ENQUEUE_DESTROY_COMMAND("Destroy placeObjectQuery", _2(sceneManager, query), { sceneManager->destroyQuery(query); });
+
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait([sceneManager, query]()
+            {
+                sceneManager->destroyQuery(query);
+            }, "Destroy placeObjectQuery");
+
             this->placeObjectQuery = nullptr;
         }
         if (this->toBePlacedObjectQuery)
         {
             auto query = this->toBePlacedObjectQuery;
             auto sceneManager = this->sceneManager;
-            ENQUEUE_DESTROY_COMMAND("Destroy toBePlacedObjectQuery", _2(sceneManager, query), { sceneManager->destroyQuery(query); });
+
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait([sceneManager, query]()
+            {
+                sceneManager->destroyQuery(query);
+            }, "Destroy toBePlacedObjectQuery");
+
             this->toBePlacedObjectQuery = nullptr;
         }
 
@@ -2553,55 +2570,37 @@ namespace NOWA
         }
     }
 
-#if 0
-	void EditorManager::destroyTempPlaceMovableObjectNode(void)
-	{
-		if (nullptr != this->tempPlaceMovableNode)
-		{
-			this->tempPlaceMovableNode->detachAllObjects();
-			NOWA::GraphicsModule::getInstance()->removeTrackedNode(this->tempPlaceMovableNode);
-			this->sceneManager->destroySceneNode(this->tempPlaceMovableNode);
-
-			if (nullptr != this->tempPlaceMovableObject)
-			{
-				this->sceneManager->destroyMovableObject(this->tempPlaceMovableObject);
-			}
-			this->tempPlaceMovableNode = nullptr;
-			this->tempPlaceMovableObject = nullptr;
-		}
-	}
-#endif
-
     void EditorManager::destroyTempPlaceMovableObjectNode()
     {
-        if (this->tempPlaceMovableNode != nullptr)
+        if (nullptr == this->tempPlaceMovableNode)
         {
-            // Detach all objects immediately (safe, local pointer)
-            this->tempPlaceMovableNode->detachAllObjects();
-
-            // Remove tracking on logic thread (must be done with original pointer)
-            NOWA::GraphicsModule::getInstance()->removeTrackedNode(this->tempPlaceMovableNode);
-
-            // Store local copies for lambda capture
-            auto nodeLocal = this->tempPlaceMovableNode;
-            auto sceneManagerLocal = this->sceneManager;
-
-            // Reset pointers on logic thread ASAP
-            this->tempPlaceMovableNode = nullptr;
-
-            // Enqueue node destruction on render thread
-            ENQUEUE_DESTROY_COMMAND("EditorManager::DestroyTempPlaceMovableNode", _2(sceneManagerLocal, nodeLocal), { sceneManagerLocal->destroySceneNode(nodeLocal); });
-
-            if (this->tempPlaceMovableObject != nullptr)
-            {
-                auto objectLocal = this->tempPlaceMovableObject;
-                // Reset pointer on logic thread
-                this->tempPlaceMovableObject = nullptr;
-
-                // Enqueue object destruction on render thread
-                ENQUEUE_DESTROY_COMMAND("EditorManager::DestroyTempPlaceMovableObject", _2(sceneManagerLocal, objectLocal), { sceneManagerLocal->destroyMovableObject(objectLocal); });
-            }
+            return;
         }
+
+        this->tempPlaceMovableNode->detachAllObjects();
+
+        // Remove from tracking on main thread BEFORE any render-thread destroy.
+        NOWA::GraphicsModule::getInstance()->removeTrackedNode(this->tempPlaceMovableNode);
+
+        auto nodeLocal = this->tempPlaceMovableNode;
+        auto objectLocal = this->tempPlaceMovableObject;
+        auto sceneManagerLocal = this->sceneManager;
+
+        // Null out BEFORE the wait so nothing can re-add these during the wait window.
+        this->tempPlaceMovableNode = nullptr;
+        this->tempPlaceMovableObject = nullptr;
+
+        // enqueueAndWait: main thread blocks here until render thread has finished
+        // executing the lambda. Node and object are guaranteed fully destroyed
+        // when this returns. No ring-buffer delay, no stale-pointer window.
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait([sceneManagerLocal, nodeLocal, objectLocal]()
+        {
+            if (nullptr != objectLocal)
+            {
+                sceneManagerLocal->destroyMovableObject(objectLocal);
+            }
+            sceneManagerLocal->destroySceneNode(nodeLocal);
+        }, "EditorManager::destroyTempPlaceMovableObjectNode");
     }
 
     // More modern version: Everything placed is now item be default instead of entity! Even animation does work for item!

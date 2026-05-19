@@ -29,7 +29,7 @@
 		<defaultAngularDamping x="0.1" y="0.1" z="0.1"/>
 		<globalGravity x="0" y="-19.8" z="0"/>
 	</OgreNewt>
-	<OgreRecast CellSize="0.05" CellHeight="0.4" AgentMaxSlope="30" AgentMaxClimb="0.5" AgentHeight="0.8" AgentRadius="0.5" EdgeMaxLen="12" EdgeMaxError="0.1" RegionMinSize="10" RegionMergeSize="10" VertsPerPoly="6" DetailSampleDist="1" DetailSampleMaxError="0.1" KeepInterResults="false">
+	<OgreRecast CellSize="0.05" CellHeight="0.8" AgentMaxSlope="30" AgentMaxClimb="0.5" AgentHeight="0.8" AgentRadius="0.5" EdgeMaxLen="12" EdgeMaxError="0.1" RegionMinSize="10" RegionMergeSize="10" VertsPerPoly="6" DetailSampleDist="1" DetailSampleMaxError="0.1" KeepInterResults="false">
 		<PointExtends x="5" y="5" z="5"/>
 	</OgreRecast>
 	<nodes>

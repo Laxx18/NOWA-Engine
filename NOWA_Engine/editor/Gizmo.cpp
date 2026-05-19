@@ -75,36 +75,37 @@ namespace NOWA
         auto arrowItemZ = this->arrowItemZ;
         auto sphereItem = this->sphereItem;
 
-        ENQUEUE_DESTROY_COMMAND("Destroy Gizmo", _10(sceneManager, arrowNodeX, arrowNodeY, arrowNodeZ, sphereNode, selectNode, arrowItemX, arrowItemY, arrowItemZ, sphereItem), {
-                arrowNodeX->detachAllObjects();
-                arrowNodeY->detachAllObjects();
-                arrowNodeZ->detachAllObjects();
-                sphereNode->detachAllObjects();
-                selectNode->detachAllObjects();
+         NOWA::GraphicsModule::getInstance()->enqueueAndWait([sceneManager, arrowNodeX, arrowNodeY, arrowNodeZ, sphereNode, selectNode, arrowItemX, arrowItemY, arrowItemZ, sphereItem]()
+         {
+            arrowNodeX->detachAllObjects();
+            arrowNodeY->detachAllObjects();
+            arrowNodeZ->detachAllObjects();
+            sphereNode->detachAllObjects();
+            selectNode->detachAllObjects();
 
-                if (arrowItemX)
-                {
-                    sceneManager->destroyItem(arrowItemX);
-                }
-                if (arrowItemY)
-                {
-                    sceneManager->destroyItem(arrowItemY);
-                }
-                if (arrowItemZ)
-                {
-                    sceneManager->destroyItem(arrowItemZ);
-                }
-                if (sphereItem)
-                {
-                    sceneManager->destroyItem(sphereItem);
-                }
+            if (arrowItemX)
+            {
+                sceneManager->destroyItem(arrowItemX);
+            }
+            if (arrowItemY)
+            {
+                sceneManager->destroyItem(arrowItemY);
+            }
+            if (arrowItemZ)
+            {
+                sceneManager->destroyItem(arrowItemZ);
+            }
+            if (sphereItem)
+            {
+                sceneManager->destroyItem(sphereItem);
+            }
 
-                sceneManager->destroySceneNode(arrowNodeX);
-                sceneManager->destroySceneNode(arrowNodeY);
-                sceneManager->destroySceneNode(arrowNodeZ);
-                sceneManager->destroySceneNode(sphereNode);
-                sceneManager->destroySceneNode(selectNode);
-            });
+            sceneManager->destroySceneNode(arrowNodeX);
+            sceneManager->destroySceneNode(arrowNodeY);
+            sceneManager->destroySceneNode(arrowNodeZ);
+            sceneManager->destroySceneNode(sphereNode);
+            sceneManager->destroySceneNode(selectNode);
+        }, "Destroy Gizmo");
 
         this->destroyLine();
         this->destroyCircle();

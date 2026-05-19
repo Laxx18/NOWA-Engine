@@ -1440,6 +1440,9 @@ namespace NOWA
                 return true;
             }
 
+            // TODO: Just for debugging
+            // AppStateManager::getSingletonPtr()->getOgreRecastModule()->debugDrawObstacleBoxes(this->gameObjectPtr->getSceneManager());
+
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObjectPlaceComponent] Placed game object: " + clonedGameObjectPtr->getName() + " at " + Ogre::StringConverter::toString(placePosition));
 
             if (this->placedClosureFunction.is_valid())

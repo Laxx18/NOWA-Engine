@@ -835,6 +835,9 @@ public:
 
    OgreRecastNavmeshPruner* getNavmeshPruner(void);
 
+   // Removes all tile visualization ManualObjects from the scene node.
+   // Must be called before drawNavMesh() when tiles have been rebuilt, to
+   // prevent stale tile-ref visuals accumulating (overdraw).
    void removeAllDrawnNavmesh(void);
 
    // helper debug drawing stuff
@@ -847,6 +850,13 @@ public:
    Ogre::SceneManager* m_pSceneMgr;
 
 
+   // Called once before all drawDetail() tile iterations begin.
+   void beginNavMeshAccum();
+
+   // Called once after all drawDetail() tile iterations complete.
+   // Creates exactly 3 ManualObjects (walk, neighbour, boundary) from the
+   // accumulated geometry and attaches them to m_pRecastSN.
+   void flushNavMesh();
 protected:
    /**
      * Draw the specified recast poly mesh to scene for debugging.
@@ -978,6 +988,34 @@ private:
    std::unordered_map<int, dtNavMeshQuery*> m_slotNavQueries;
    std::map<int, int>             m_slotRefCounts;
    mutable std::mutex m_slotNavQueriesMutex; // only for map access, not for query calls
+
+   // Accumulated navmesh geometry — filled by CreateRecastPolyMesh() for each
+    // tile, flushed to GPU as a single set of 3 ManualObjects by flushNavMesh().
+    // Resets at the start of each drawNavMesh() call via beginNavMeshAccum().
+   struct NavMeshVertex
+   {
+       Ogre::Vector3      pos;
+       Ogre::ColourValue  col;
+   };
+
+   struct NavMeshAccum
+   {
+       std::vector<NavMeshVertex> walkVerts;
+       std::vector<uint32_t>      walkIndices;
+
+       std::vector<NavMeshVertex> neighbourVerts;
+       std::vector<uint32_t>      neighbourIndices;
+
+       std::vector<NavMeshVertex> boundaryVerts;
+       std::vector<uint32_t>      boundaryIndices;
+
+       void clear()
+       {
+           walkVerts.clear();       walkIndices.clear();
+           neighbourVerts.clear();  neighbourIndices.clear();
+           boundaryVerts.clear();   boundaryIndices.clear();
+       }
+   } m_navMeshAccum;
 };
 
 #endif // #ifndef __OgreRecast_h_

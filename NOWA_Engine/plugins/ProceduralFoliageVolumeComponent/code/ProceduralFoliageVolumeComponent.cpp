@@ -1534,6 +1534,7 @@ namespace NOWA
                 if (batch.nodes[i])
                 {
                     batch.nodes[i]->detachAllObjects();
+                    NOWA::GraphicsModule::getInstance()->removeTrackedNode(batch.nodes[i]);
                     sceneManager->destroySceneNode(batch.nodes[i]);
                 }
 

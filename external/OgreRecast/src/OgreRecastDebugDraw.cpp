@@ -57,17 +57,6 @@ void OgreRecastDebugDraw::texture(bool state)
 {
 }
 
-void OgreRecastDebugDraw::begin(duDebugDrawPrimitives prim, float size)
-{
-	m_crtShape = prim;
-	m_lstCrtVertex.clear();
-
-	// First begin() of a new draw sequence — clear all old sections
-	if (0 == m_sectionCount && nullptr != m_pManualObject)
-		m_pManualObject->clear();
-}
-
-
 void OgreRecastDebugDraw::vertex(const float * pos, unsigned int color)
 {
 	oduVertex crtVertex;
@@ -96,102 +85,132 @@ void OgreRecastDebugDraw::vertex(const float x, const float y, const float z, un
 	vertex(x, y, z, color);
 }
 
+void OgreRecastDebugDraw::begin(duDebugDrawPrimitives prim, float size)
+{
+    m_crtShape = prim;
+    m_lstCrtVertex.clear();
+
+    // Beim ersten begin() einer neuen Draw-Sequenz: ManualObject und Akkumulation leeren
+    if (0 == m_sectionCount)
+    {
+        m_accumBatches.clear();
+        if (nullptr != m_pManualObject)
+            m_pManualObject->clear();
+    }
+
+    // Material und OpType für diesen Batch merken
+    switch (prim)
+    {
+    case DU_DRAW_POINTS: m_crtOpType = Ogre::OT_POINT_LIST;    m_crtMaterial = "Rocks"; break;
+    case DU_DRAW_LINES:  m_crtOpType = Ogre::OT_LINE_LIST;     m_crtMaterial = "Rocks"; break;
+    case DU_DRAW_TRIS:   m_crtOpType = Ogre::OT_TRIANGLE_LIST; m_crtMaterial = "Rocks"; break;
+    case DU_DRAW_QUADS:  m_crtOpType = Ogre::OT_TRIANGLE_LIST; m_crtMaterial = "Rocks"; break; // QUADS → TRIS
+    default:             m_crtOpType = Ogre::OT_TRIANGLE_LIST; m_crtMaterial = "Rocks"; break;
+    }
+}
+
 void OgreRecastDebugDraw::end()
 {
-	int idx = 0;
-	int connectIdx = 0;
-	bool bSuccessSet = false;
-	switch (m_crtShape)
-	{
-	case DU_DRAW_POINTS:
-		m_pManualObject->begin("Rocks", Ogre::OT_POINT_LIST);
-		for (int i = 0, n = m_lstCrtVertex.size(); i < n; ++i)
-		{
-			idx = i;
-			m_pManualObject->position(m_lstCrtVertex[idx].pos);
-			m_pManualObject->colour(m_lstCrtVertex[idx].color);
+    if (m_lstCrtVertex.empty())
+        return;
 
-			m_pManualObject->index(idx);
-			bSuccessSet = true;
-		}
-		break;
-	case DU_DRAW_LINES:
-		m_pManualObject->begin("Rocks", Ogre::OT_LINE_LIST);
-		if (m_lstCrtVertex.size() % 2 == 0)
-		{
-			for (int i = 0, n = m_lstCrtVertex.size(); i < n; i += 2)
-			{
-				idx = i;
-				m_pManualObject->position(m_lstCrtVertex[idx].pos);
-				m_pManualObject->colour(m_lstCrtVertex[idx].color);
-				++idx;
-				m_pManualObject->position(m_lstCrtVertex[idx].pos);
-				m_pManualObject->colour(m_lstCrtVertex[idx].color);
+    // Nicht sofort an ManualObject übergeben — stattdessen CPU-seitig akkumulieren
+    AccumBatch& batch = m_accumBatches[static_cast<int>(m_crtOpType)];
+    batch.opType = m_crtOpType;
+    batch.material = m_crtMaterial;
 
-				connectIdx = i;
-				m_pManualObject->index(connectIdx++);
-				m_pManualObject->index(connectIdx++);
-				bSuccessSet = true;
-			}
-		}
-		break;
-	case DU_DRAW_TRIS:
-		m_pManualObject->begin("Rocks", Ogre::OT_TRIANGLE_LIST);
-		if (m_lstCrtVertex.size() % 3 == 0)
-		{
-			for (int i = 0, n = m_lstCrtVertex.size(); i < n; i += 3)
-			{
-				idx = i;
-				m_pManualObject->position(m_lstCrtVertex[idx].pos);
-				m_pManualObject->colour(m_lstCrtVertex[idx].color);
-				++idx;
-				m_pManualObject->position(m_lstCrtVertex[idx].pos);
-				m_pManualObject->colour(m_lstCrtVertex[idx].color);
-				++idx;
-				m_pManualObject->position(m_lstCrtVertex[idx].pos);
-				m_pManualObject->colour(m_lstCrtVertex[idx].color);
+    switch (m_crtShape)
+    {
+    case DU_DRAW_POINTS:
+    case DU_DRAW_LINES:
+    case DU_DRAW_TRIS:
+        // Direkt anhängen
+        batch.verts.insert(batch.verts.end(),
+            m_lstCrtVertex.begin(), m_lstCrtVertex.end());
+        break;
 
-				connectIdx = i;
-				m_pManualObject->triangle(connectIdx++, connectIdx++, connectIdx++);
-				bSuccessSet = true;
-			}
+    case DU_DRAW_QUADS:
+        // Quad (0,1,2,3) → zwei Dreiecke (0,1,2) + (0,2,3)
+        if (m_lstCrtVertex.size() % 4 == 0)
+        {
+            for (size_t i = 0; i < m_lstCrtVertex.size(); i += 4)
+            {
+                batch.verts.push_back(m_lstCrtVertex[i + 0]);
+                batch.verts.push_back(m_lstCrtVertex[i + 1]);
+                batch.verts.push_back(m_lstCrtVertex[i + 2]);
+                batch.verts.push_back(m_lstCrtVertex[i + 0]);
+                batch.verts.push_back(m_lstCrtVertex[i + 2]);
+                batch.verts.push_back(m_lstCrtVertex[i + 3]);
+            }
+        }
+        break;
 
-		}
-		break;
-	case DU_DRAW_QUADS:
-		m_pManualObject->begin("Rocks", Ogre::OT_TRIANGLE_LIST);
-		if (m_lstCrtVertex.size() % 4 == 0)
-		{
-			for (int i = 0, n = m_lstCrtVertex.size(); i < n; i += 4)
-			{
-				idx = i;
-				m_pManualObject->position(m_lstCrtVertex[idx].pos);
-				m_pManualObject->colour(m_lstCrtVertex[idx].color);
-				++idx;
-				m_pManualObject->position(m_lstCrtVertex[idx].pos);
-				m_pManualObject->colour(m_lstCrtVertex[idx].color);
-				++idx;
-				m_pManualObject->position(m_lstCrtVertex[idx].pos);
-				m_pManualObject->colour(m_lstCrtVertex[idx].color);
-				++idx;
-				m_pManualObject->position(m_lstCrtVertex[idx].pos);
-				m_pManualObject->colour(m_lstCrtVertex[idx].color);
+    default:
+        break;
+    }
 
-				connectIdx = i;
-				m_pManualObject->quad(connectIdx++, connectIdx++, connectIdx++, connectIdx++);
-				bSuccessSet = true;
-			}
-		}
-		break;
-	default:
-		break;
-	}
+    ++m_sectionCount;
+    // KEIN m_pManualObject->begin()/end() hier — das passiert in flushToGPU()
+}
 
-	if (false == bSuccessSet)
-	{
-		return;
-	}
+void OgreRecastDebugDraw::flushToGPU()
+{
+    // Wird einmalig aufgerufen, nachdem alle duDebugDraw*-Callbacks durch sind.
+    // Erzeugt pro Primitive-Typ EINE ManualObject-Section → minimal GPU-Allocations.
+    if (nullptr == m_pManualObject || m_accumBatches.empty())
+        return;
 
-	m_pManualObject->end();
-	++m_sectionCount;
+    for (auto& [opTypeInt, batch] : m_accumBatches)
+    {
+        if (batch.verts.empty())
+            continue;
+
+        const size_t n = batch.verts.size();
+
+        m_pManualObject->begin(batch.material, batch.opType);
+
+        if (batch.opType == Ogre::OT_TRIANGLE_LIST)
+        {
+            // Dreiecke: 3 Verts pro Tri, Indices sequenziell
+            if (n % 3 == 0)
+            {
+                for (size_t i = 0; i < n; ++i)
+                {
+                    m_pManualObject->position(batch.verts[i].pos);
+                    m_pManualObject->colour(batch.verts[i].color);
+                }
+                for (uint32_t i = 0; i < static_cast<uint32_t>(n); i += 3)
+                    m_pManualObject->triangle(i, i + 1, i + 2);
+            }
+        }
+        else if (batch.opType == Ogre::OT_LINE_LIST)
+        {
+            if (n % 2 == 0)
+            {
+                for (size_t i = 0; i < n; ++i)
+                {
+                    m_pManualObject->position(batch.verts[i].pos);
+                    m_pManualObject->colour(batch.verts[i].color);
+                }
+                for (uint32_t i = 0; i < static_cast<uint32_t>(n); i += 2)
+                {
+                    m_pManualObject->index(i);
+                    m_pManualObject->index(i + 1);
+                }
+            }
+        }
+        else // OT_POINT_LIST
+        {
+            for (size_t i = 0; i < n; ++i)
+            {
+                m_pManualObject->position(batch.verts[i].pos);
+                m_pManualObject->colour(batch.verts[i].color);
+                m_pManualObject->index(static_cast<uint32_t>(i));
+            }
+        }
+
+        m_pManualObject->end();
+    }
+
+    m_accumBatches.clear();
 }

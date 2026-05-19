@@ -445,6 +445,7 @@ namespace NOWA
 
         if (nullptr != this->previewNode)
         {
+            NOWA::GraphicsModule::getInstance()->removeTrackedNode(this->previewNode);
             this->gameObjectPtr->getSceneManager()->destroySceneNode(this->previewNode);
             this->previewNode = nullptr;
         }

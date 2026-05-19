@@ -620,66 +620,64 @@ namespace NOWA
 		this->ocean = nullptr;
 		this->datablock = nullptr;
 
-		NOWA::GraphicsModule::DestroyCommand destroyCommand = [ocean, gameObjectPtr, workspaceBaseComponent, appState, datablock]() mutable
-		{
-			if (nullptr != workspaceBaseComponent)
-			{
-				if (nullptr != appState && false == appState->bShutdown)
-				{
-					workspaceBaseComponent->setUseOcean(false, nullptr);
-				}
-			}
+		NOWA::GraphicsModule::getInstance()->enqueueAndWait([ocean, gameObjectPtr, workspaceBaseComponent, appState, datablock]() mutable
+        {
+            if (nullptr != workspaceBaseComponent)
+            {
+                if (nullptr != appState && false == appState->bShutdown)
+                {
+                    workspaceBaseComponent->setUseOcean(false, nullptr);
+                }
+            }
 
-			if (nullptr != ocean)
-			{
-				if (true == ocean->isAttached())
-				{
-					Ogre::SceneNode* parentNode = ocean->getParentSceneNode();
-					if (nullptr != parentNode)
-					{
-						parentNode->detachObject(ocean);
-					}
-				}
-				else if (nullptr != gameObjectPtr && nullptr != gameObjectPtr->getSceneNode())
-				{
-					gameObjectPtr->getSceneNode()->detachObject(ocean);
-				}
+            if (nullptr != ocean)
+            {
+                if (true == ocean->isAttached())
+                {
+                    Ogre::SceneNode* parentNode = ocean->getParentSceneNode();
+                    if (nullptr != parentNode)
+                    {
+                        parentNode->detachObject(ocean);
+                    }
+                }
+                else if (nullptr != gameObjectPtr && nullptr != gameObjectPtr->getSceneNode())
+                {
+                    gameObjectPtr->getSceneNode()->detachObject(ocean);
+                }
 
-				delete ocean;
-				ocean = nullptr;
-			}
+                delete ocean;
+                ocean = nullptr;
+            }
 
-			if (nullptr != gameObjectPtr)
-			{
-				gameObjectPtr->nullMovableObject();
-			}
+            if (nullptr != gameObjectPtr)
+            {
+                gameObjectPtr->nullMovableObject();
+            }
 
-			if (nullptr != gameObjectPtr && nullptr != gameObjectPtr->sceneManager &&
-				nullptr != gameObjectPtr->boundingBoxDraw)
-			{
-				gameObjectPtr->sceneManager->destroyWireAabb(gameObjectPtr->boundingBoxDraw);
-				gameObjectPtr->boundingBoxDraw = nullptr;
-			}
+            if (nullptr != gameObjectPtr && nullptr != gameObjectPtr->sceneManager && nullptr != gameObjectPtr->boundingBoxDraw)
+            {
+                gameObjectPtr->sceneManager->destroyWireAabb(gameObjectPtr->boundingBoxDraw);
+                gameObjectPtr->boundingBoxDraw = nullptr;
+            }
 
-			if (nullptr != datablock)
-			{
-				Ogre::Hlms* hlms = Ogre::Root::getSingleton().getHlmsManager()->getHlms(Ogre::HLMS_USER1);
-				if (nullptr != hlms)
-				{
-					Ogre::HlmsDatablock* db = hlms->getDatablock(datablock->getName());
-					if (nullptr != db)
-					{
-						auto linkedRenderables = db->getLinkedRenderables();
-						if (true == linkedRenderables.empty())
-						{
-							db->getCreator()->destroyDatablock(db->getName());
-						}
-					}
-				}
-				datablock = nullptr;
-			}
-		};
-		GraphicsModule::getInstance()->enqueueDestroy(destroyCommand, "OceanComponent::destroyOcean");
+            if (nullptr != datablock)
+            {
+                Ogre::Hlms* hlms = Ogre::Root::getSingleton().getHlmsManager()->getHlms(Ogre::HLMS_USER1);
+                if (nullptr != hlms)
+                {
+                    Ogre::HlmsDatablock* db = hlms->getDatablock(datablock->getName());
+                    if (nullptr != db)
+                    {
+                        auto linkedRenderables = db->getLinkedRenderables();
+                        if (true == linkedRenderables.empty())
+                        {
+                            db->getCreator()->destroyDatablock(db->getName());
+                        }
+                    }
+                }
+                datablock = nullptr;
+            }
+        }, "OceanComponent::destroyOcean");
 	}
 
 	void OceanComponent::actualizeValue(Variant* attribute)

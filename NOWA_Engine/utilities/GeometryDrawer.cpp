@@ -281,6 +281,7 @@ namespace NOWA
 
 	//void GeometryDrawer::shutdown()
 	//{
+	//   NOWA::GraphicsModule::getInstance()->removeTrackedNode(debug_object);
 	//	//sceneManager->destroySceneNode("debug_object");
 	////	sceneManager->destroyManualObject(manualObject);
 	//}

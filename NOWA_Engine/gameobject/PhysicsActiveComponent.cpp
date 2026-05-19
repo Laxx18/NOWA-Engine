@@ -2798,6 +2798,7 @@ namespace NOWA
             debugLineObject->clear();
 
             debugLineNode->detachAllObjects();
+            NOWA::GraphicsModule::getInstance()->removeTrackedNode(debugLineNode);
             this->gameObjectPtr->getSceneManager()->destroySceneNode(debugLineNode);
             debugLineNode = nullptr;
 

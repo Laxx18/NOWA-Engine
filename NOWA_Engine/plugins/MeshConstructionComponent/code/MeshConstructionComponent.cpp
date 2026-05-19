@@ -738,7 +738,7 @@ namespace NOWA
                 const Ogre::Real w = 0.5f;   // half-width of full bar
                 const Ogre::Real h = 0.07f;  // bar height
                 const Ogre::Real bs = 0.01f; // border thickness
-                const Ogre::Real inset = -0.01f;
+                const Ogre::Real inset = 0.1f;
 
                 const Ogre::Real fillW = (w * 2.0f) * static_cast<Ogre::Real>(capturedProgress);
 

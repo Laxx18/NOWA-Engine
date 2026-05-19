@@ -1015,6 +1015,7 @@ namespace NOWA
                 if (node)
                 {
                     node->detachAllObjects();
+                    NOWA::GraphicsModule::getInstance()->removeTrackedNode(node);
                     sceneManager->destroySceneNode(node);
                 }
 

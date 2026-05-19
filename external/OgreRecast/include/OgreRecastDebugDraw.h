@@ -19,6 +19,20 @@ private:
 
 	std::vector<oduVertex> m_lstCrtVertex;
 	int m_sectionCount;
+
+	// Akkumulierte Geometrie pro OpType, gefüllt von end(), geleert von flushToGPU()
+	struct AccumBatch
+	{
+		std::vector<oduVertex>   verts;
+		Ogre::OperationType      opType = Ogre::OT_TRIANGLE_LIST;
+		std::string              material;
+		// Für QUADS: wir wandeln in Tris um, daher gleich OT_TRIANGLE_LIST
+	};
+	// Keyed by opType (int), 4 mögliche Batches
+	std::unordered_map<int, AccumBatch> m_accumBatches;
+
+	Ogre::OperationType m_crtOpType = Ogre::OT_TRIANGLE_LIST;
+	std::string         m_crtMaterial;
 public:
 	OgreRecastDebugDraw(Ogre::SceneManager* scnMgr);
 
@@ -27,6 +41,8 @@ public:
 	void mustRecreate(void);
 
 	void resetForNewFrame(void);
+
+	void flushToGPU();
 
 	virtual void depthMask(bool state);
 	virtual void texture(bool state);

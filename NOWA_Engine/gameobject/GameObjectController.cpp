@@ -410,9 +410,21 @@ private:
 ////////////////////////////////////////////////////////////////////////////////////////////
 
 GameObjectController::GameObjectController(const Ogre::String& appStateName)
-    : appStateName(appStateName), gameObjects(new GameObjects), shiftIndex(0), // 0 - 4 are reserved for gizmo, see defines.h
-      renderShiftIndex(0), triggerUpdateTimer(0.0f), sphereSceneQuery(nullptr), currentSceneManager(nullptr), sphereQueryUpdateFrequency(0.5f), alreadyDestroyed(false), isSimulating(false), deleteGameObjectsUndoCommand(nullptr),
-      nextGameObjectIndex(0), bIsDestroying(false), bAddListenerFirstTime(true)
+    : appStateName(appStateName),
+    gameObjects(new GameObjects),
+    shiftIndex(0), // 0 - 4 are reserved for gizmo, see defines.h
+    renderShiftIndex(0),
+    triggerUpdateTimer(0.0f),
+    sphereSceneQuery(nullptr),
+    currentSceneManager(nullptr),
+    sphereQueryUpdateFrequency(0.5f),
+    alreadyDestroyed(false),
+    isSimulating(false),
+    deleteGameObjectsUndoCommand(nullptr),
+    nextGameObjectIndex(0),
+    bIsDestroying(false),
+    bAddListenerFirstTime(true),
+    isUpdating(false)
 {
     // Sets the "All" visibility flags, for all future movable objects
     Ogre::MovableObject::setDefaultVisibilityFlags(static_cast<Ogre::uint32>(0xFFFFFFFF));
@@ -772,18 +784,30 @@ GameObjectPtr GameObjectController::internalClone(GameObjectPtr originalGameObje
 
 void GameObjectController::update(Ogre::Real dt, bool notSimulating)
 {
-    // updates the active GameObjects
+    this->isUpdating = true;
+
     for (const auto& gameObjectPtr : this->gameObjectsList)
     {
         gameObjectPtr->update(dt, notSimulating);
     }
+
     if (false == notSimulating)
     {
-        // Update moving behaviors
         for (auto it = this->movingBehaviors.cbegin(); it != this->movingBehaviors.cend(); ++it)
         {
             it->second->update(dt);
         }
+    }
+
+    this->isUpdating = false;
+
+    // Flush any GameObjects registered from the render thread during iteration.
+    // In the vast majority of frames this queue is empty — try_dequeue returns
+    // immediately with false and costs nothing.
+    GameObjectPtr pending;
+    while (this->pendingRegisterQueue.try_dequeue(pending))
+    {
+        this->gameObjectsList.push_back(pending);
     }
 
     // Looks if there are some GameObjects to delete post mortem and deletes them
@@ -856,14 +880,22 @@ void GameObjectController::registerGameObject(GameObjectPtr gameObjectPtr)
 {
     this->alreadyDestroyed = false;
 
-    // emplace returns a pair<iterator, bool> — bool is false if key already existed
     const auto result = this->gameObjects->emplace(gameObjectPtr->getId(), gameObjectPtr);
 
-    // Only add to the flat list if this is a genuinely new registration,
-    // preventing duplicates when registerGameObject is called twice for the same game object
     if (true == result.second)
     {
-        this->gameObjectsList.push_back(gameObjectPtr);
+        // Guard: if render thread triggers registerGameObject while main thread
+        // is iterating gameObjectsList, a push_back reallocation corrupts the
+        // range-for iterators. Defer via the lock-free queue in that case.
+        if (true == this->isUpdating)
+        {
+            // Lock-free enqueue — safe from render thread.
+            this->pendingRegisterQueue.enqueue(gameObjectPtr);
+        }
+        else
+        {
+            this->gameObjectsList.push_back(gameObjectPtr);
+        }
     }
 
     this->registerType(gameObjectPtr, gameObjectPtr->category->getListSelectedValue(), gameObjectPtr->renderCategory->getListSelectedValue());
@@ -1007,6 +1039,7 @@ void GameObjectController::destroyContent(const std::vector<Ogre::String>& exclu
         this->triggerUpdateTimer = 0.0f;
         this->sphereQueryUpdateFrequency = 0.5f;
         this->isSimulating = false;
+        this->isUpdating = false;
 
         // delete the sphere scene query
         if (nullptr != this->currentSceneManager)
@@ -2501,6 +2534,11 @@ bool GameObjectController::hasRenderCategory(const Ogre::String& renderCategory)
 GameObjectController::GameObjects const* GameObjectController::getGameObjects(void) const
 {
     return this->gameObjects;
+}
+
+void GameObjectController::reserveGameObjectCapacity(size_t expected)
+{
+    this->gameObjectsList.reserve(expected + 128); // 128 slots headroom for runtime clones
 }
 
 const std::vector<GameObjectPtr>& GameObjectController::getGameObjectsList(void) const

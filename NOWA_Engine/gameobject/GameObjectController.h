@@ -351,6 +351,13 @@ namespace NOWA
 		GameObjects const* getGameObjects(void) const;
 
 		/**
+         * @brief		Reserves expected count of game objects for the container
+         * @param[in]	expected		The expected count of game objects for the container
+         * @note		This is called if a scene has been loaded.
+         */
+        void reserveGameObjectCapacity(size_t expected);
+
+		/**
          * @brief		Gets all game objects in the as list for manipulation, which is faster.
          * @return		gameObjects	The list with all game objects for read only operations. If nothing can be found, an empty list will be delivered.
          */
@@ -1127,6 +1134,9 @@ namespace NOWA
 		std::vector<std::pair<int, boost::weak_ptr<LuaScriptComponent>>> managedLuaScripts;
 
 		SharedWidgetMap sharedWidgetMap;
+
+		bool isUpdating;
+        moodycamel::ConcurrentQueue<GameObjectPtr> pendingRegisterQueue;
 	};
 
 }; //namespace end NOWA

@@ -365,6 +365,10 @@ namespace NOWA
             std::swap(this->currentRow, this->currentCol);
         }
 
+        Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGuiSpriteComponent] updateFrame widget visible: " + Ogre::StringConverter::toString(this->widget->getVisible()) + " currentFrame: " 
+            + Ogre::StringConverter::toString(this->currentFrame) + " currentRow: " + Ogre::StringConverter::toString(this->currentRow) +
+                                                                            " currentCol: " + Ogre::StringConverter::toString(this->currentCol) + " finished: " + Ogre::StringConverter::toString(this->finished));
+
         if (nullptr != this->widget)
         {
             auto closureFunction = [this](Ogre::Real renderDt)
@@ -491,18 +495,15 @@ namespace NOWA
     {
         MyGUIComponent::setActivated(activated);
 
-        // Sets the current frame to correct index!
-        this->setInverseDirection(this->inverseDirection->getBool());
-
         if (nullptr != this->widget)
         {
             this->widget->setVisible(activated);
         }
 
-        if (true == activated)
-        {
-            this->finished = false;
-        }
+        this->finished = false;
+
+        // Sets the current frame to correct index!
+        this->setInverseDirection(this->inverseDirection->getBool());
     }
 
     Ogre::String MyGuiSpriteComponent::getClassName(void) const

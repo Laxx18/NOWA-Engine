@@ -12,6 +12,8 @@ GPL v3
 
 namespace NOWA
 {
+    class PhysicsArtifactComponent;
+
     /**
      * @class ProceduralStairsComponent
      * @brief Procedural stair generator supporting Linear and Curved/Spiral flights.
@@ -273,6 +275,9 @@ namespace NOWA
         void setPivotPosition(const Ogre::String& pivot);
         Ogre::String getPivotPosition(void) const;
 
+        void setRampCollider(bool enabled);
+        bool getRampCollider(void) const;
+
         void setUVMode(const Ogre::String& mode);
         Ogre::String getUVMode(void) const;
 
@@ -354,6 +359,10 @@ namespace NOWA
         {
             return "Pivot Position";
         }
+        static Ogre::String AttrRampCollider(void)
+        {
+            return "Ramp Collider";
+        }
         static Ogre::String AttrUVMode(void)
         {
             return "UV Mode";
@@ -387,7 +396,7 @@ namespace NOWA
         void buildGeometry(void);
         void createStairsMesh(void);
         void createStairsMeshInternal(const std::vector<float>& treadVerts, const std::vector<Ogre::uint32>& treadIdx, size_t numTreadVerts, const std::vector<float>& riserVerts, const std::vector<Ogre::uint32>& riserIdx, size_t numRiserVerts,
-            const std::vector<float>& stringerVerts, const std::vector<Ogre::uint32>& stringerIdx, size_t numStringerVerts);
+            const std::vector<float>& stringerVerts, const std::vector<Ogre::uint32>& stringerIdx, size_t numStringerVerts, const std::vector<float>& rampVerts, const std::vector<Ogre::uint32>& rampIdx, size_t numRampVerts);
         void destroyStairsMesh(void);
 
         // ── Preview mesh ──────────────────────────────────────────────────────
@@ -421,6 +430,12 @@ namespace NOWA
         void sv(Ogre::Real px, Ogre::Real py, Ogre::Real pz, Ogre::Real nx, Ogre::Real ny, Ogre::Real nz, Ogre::Real u, Ogre::Real v);
         void st(Ogre::uint32 i0, Ogre::uint32 i1, Ogre::uint32 i2);
         void sq(Ogre::uint32 i0, Ogre::uint32 i1, Ogre::uint32 i2, Ogre::uint32 i3);
+
+        void pv(Ogre::Real px, Ogre::Real py, Ogre::Real pz, Ogre::Real nx, Ogre::Real ny, Ogre::Real nz, Ogre::Real u, Ogre::Real v);
+        void pt(Ogre::uint32 i0, Ogre::uint32 i1, Ogre::uint32 i2);
+        void pq(Ogre::uint32 i0, Ogre::uint32 i1, Ogre::uint32 i2, Ogre::uint32 i3);
+        void generateLinearRamp(Ogre::Real pivotOffsetX, Ogre::Real pivotOffsetZ);
+        void generateCurvedRamp(void);
 
         // ── Enum helpers ──────────────────────────────────────────────────────
         StairShape getStairShapeEnum(void) const;
@@ -471,6 +486,7 @@ namespace NOWA
         Variant* rotationDir;
         Variant* centrePole;
         Variant* pivotPosition;
+        Variant* rampCollider;
         Variant* uvMode;
         Variant* uvTiling;
         Variant* treadDatablock;
@@ -491,6 +507,11 @@ namespace NOWA
         std::vector<float> stringerVertices; // submesh 2 – stringer sides + soffit
         std::vector<Ogre::uint32> stringerIndices;
         Ogre::uint32 stringerVertexBase;
+
+        // ── 4th CPU geometry buffer ───────────────────────────────────────────────────
+        std::vector<float> rampVertices; // submesh 3 – invisible physics ramp
+        std::vector<Ogre::uint32> rampIndices;
+        Ogre::uint32 rampVertexBase;
 
         // ── Ogre-Next scene objects ───────────────────────────────────────────
         Ogre::MeshPtr stairsMesh;

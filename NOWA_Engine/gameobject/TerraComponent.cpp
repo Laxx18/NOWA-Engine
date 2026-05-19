@@ -283,46 +283,46 @@ namespace NOWA
 		this->hlmsPbsTerraShadows = nullptr;
 		this->terraWorkspaceListener = nullptr;
 
-		ENQUEUE_DESTROY_COMMAND("TerraComponent::destroyTerra", _7(terra, hlmsPbsTerraShadows, terraWorkspaceListener, gameObjectPtr, core, appState, workspaceBaseComponent),
-		{
-			if (terra)
-			{
-				if (core)
-				{
-					core->getBaseListenerContainer()->removeConcreteListener(hlmsPbsTerraShadows);
-				}
+		NOWA::GraphicsModule::getInstance()->enqueueAndWait([terra, hlmsPbsTerraShadows, terraWorkspaceListener, gameObjectPtr, core, appState, workspaceBaseComponent]()
+        {
+            if (terra)
+            {
+                if (core)
+                {
+                    core->getBaseListenerContainer()->removeConcreteListener(hlmsPbsTerraShadows);
+                }
 
-				if (workspaceBaseComponent && appState && !appState->bShutdown)
-				{
-					workspaceBaseComponent->setUseTerra(false);
-					if (terraWorkspaceListener)
-					{
-						workspaceBaseComponent->getWorkspace()->removeListener(terraWorkspaceListener);
-						delete terraWorkspaceListener;
-					}
-				}
+                if (workspaceBaseComponent && appState && !appState->bShutdown)
+                {
+                    workspaceBaseComponent->setUseTerra(false);
+                    if (terraWorkspaceListener)
+                    {
+                        workspaceBaseComponent->getWorkspace()->removeListener(terraWorkspaceListener);
+                        delete terraWorkspaceListener;
+                    }
+                }
 
-				if (gameObjectPtr && gameObjectPtr->movableObject)
-				{
-					if (gameObjectPtr->sceneNode && terra)
-						gameObjectPtr->sceneNode->detachObject(terra);
+                if (gameObjectPtr && gameObjectPtr->movableObject)
+                {
+                    if (gameObjectPtr->sceneNode && terra)
+                    {
+                        gameObjectPtr->sceneNode->detachObject(terra);
+                    }
 
-					Ogre::LogManager::getSingletonPtr()->logMessage(
-						Ogre::LML_TRIVIAL, "[GameObject] Destroying movable object: " +
-						gameObjectPtr->movableObject->getName());
+                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObject] Destroying movable object: " + gameObjectPtr->movableObject->getName());
 
-					gameObjectPtr->nullMovableObject();
+                    gameObjectPtr->nullMovableObject();
 
-					delete terra;
+                    delete terra;
 
-					if (gameObjectPtr->boundingBoxDraw && gameObjectPtr->sceneManager)
-					{
-						gameObjectPtr->sceneManager->destroyWireAabb(gameObjectPtr->boundingBoxDraw);
-						gameObjectPtr->boundingBoxDraw = nullptr;
-					}
-				}
-			}
-		});
+                    if (gameObjectPtr->boundingBoxDraw && gameObjectPtr->sceneManager)
+                    {
+                        gameObjectPtr->sceneManager->destroyWireAabb(gameObjectPtr->boundingBoxDraw);
+                        gameObjectPtr->boundingBoxDraw = nullptr;
+                    }
+                }
+            }
+        }, "TerraComponent::destroyTerra");
 	}
 
 	void TerraComponent::handleSwitchCamera(NOWA::EventDataPtr eventData)
