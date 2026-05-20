@@ -53,14 +53,18 @@
 			"macroblock" : "Macroblock_6534",
 			"blendblock" : "Blendblock_6534",
 			"shadow_const_bias" : 0.01,
-			"diffuse" : [1, 0, 0, 1]
+			"diffuse" : [1, 0, 0, 1],
+			"scene_blend": "alpha_blend",
+			"transparency_mode": 1
 		},
 		"recastdebug1" :
 		{
 			"macroblock" : "Macroblock_6534",
 			"blendblock" : "Blendblock_6534",
 			"shadow_const_bias" : 0.01,
-			"diffuse" : [1, 1, 1, 1]
+			"diffuse" : [1, 1, 1, 1],
+			"scene_blend": "alpha_blend",
+			"transparency_mode": 1
 		}
 	}
 }

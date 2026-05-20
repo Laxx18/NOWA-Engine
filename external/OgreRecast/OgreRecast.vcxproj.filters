@@ -153,6 +153,9 @@
     <ClInclude Include="include\Detour\DetourMath.h">
       <Filter>Header Files\Detour</Filter>
     </ClInclude>
+    <ClInclude Include="include\OgreRecastNavmeshVisual.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\OgreRecast.cpp">
@@ -271,6 +274,9 @@
     </ClCompile>
     <ClCompile Include="src\Recast\RecastAssert.cpp">
       <Filter>Source Files\Recast</Filter>
+    </ClCompile>
+    <ClCompile Include="src\OgreRecastNavmeshVisual.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

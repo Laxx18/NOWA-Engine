@@ -995,7 +995,7 @@ namespace NOWA
 		 */
 		const char* typeToString(eType t);
 	private:
-		void destroyGameObjectResources(Ogre::SceneNode* sceneNode, Ogre::MovableObject* movableObject, Ogre::WireAabb* boundingBoxDraw, 
+		static void destroyGameObjectResources(Ogre::SceneNode* sceneNode, Ogre::MovableObject* movableObject, Ogre::WireAabb* boundingBoxDraw, 
 			Ogre::RaySceneQuery* clampObjectQuery, Ogre::SceneManager* sceneManager);
 
 		bool internalDeleteComponent(const Ogre::String& componentClassName, unsigned int componentClassId, unsigned int componentOccurrenceIndex = 0);

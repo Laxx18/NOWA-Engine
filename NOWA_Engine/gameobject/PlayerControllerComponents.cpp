@@ -3051,7 +3051,7 @@ namespace NOWA
 
 
 					// Attention: What is with targetSlot? Its here 0
-					bool foundPath = this->ogreRecastModule->findPath(this->playerController->getPosition(), posOnNavMesh + Ogre::Vector3(0.0f, 0.3f, 0.0f), this->playerController->getPathSlot(), 0, this->playerController->getDrawPath());
+					bool foundPath = this->ogreRecastModule->findPath(this->playerController->getPosition(), posOnNavMesh + Ogre::Vector3(0.0f, 0.3f, 0.0f), this->playerController->getPathSlot(), 0, false);
 					/*Ogre::LogManager::getSingletonPtr()->logMessage("#############findPath size: "
 					+ Ogre::StringConverter::toString(this->ogreRecastModule->getOgreRecast()->getPath(0).size())
 					+ " y offset: " + Ogre::StringConverter::toString(this->ogreRecastModule->getOgreRecast()->getNavmeshOffsetFromGround()));*/
@@ -3063,9 +3063,27 @@ namespace NOWA
                     // Since each slot has its own query and its own PathStore slot,
                     // all workers wait in parallel — total wait time = slowest single path,
                     // not the sum of all paths.
+
+					// STATTDESSEN: Path ist bereits in m_PathStore gespeichert wenn findPath true zurückgibt.
+                    // Der async Task hat ihn geschrieben bevor future.get() ready ist — aber wir lesen
+                    // ihn ohnehin erst im NÄCHSTEN Frame wenn MovingBehavior die Waypoints braucht.
+                    // Kein Blocking nötig.
                     if (true == foundPath)
                     {
                         foundPath = this->ogreRecastModule->waitForPath(this->playerController->getPathSlot());
+                    }
+
+					// Now draw the path line — m_PathStore is stable (no concurrent writer).
+                    if (true == foundPath && true == this->playerController->getDrawPath())
+                    {
+                        auto recastPtr = this->ogreRecastModule->getOgreRecast();
+                        int slot = this->playerController->getPathSlot();
+                        // Non-blocking enqueue: no logic thread stall, no staging buffer pressure.
+						NOWA::GraphicsModule::RenderCommand renderCommand = [recastPtr, slot]()
+                        {
+                            recastPtr->CreateRecastPathLine(slot, true);
+                        };
+                        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "PathFollowState3D::DrawPathLine");
                     }
 
 					if (false == foundPath)

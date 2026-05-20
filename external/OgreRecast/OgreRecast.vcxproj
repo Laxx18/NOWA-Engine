@@ -318,6 +318,7 @@
     <ClInclude Include="include\OgreRecastDebugDraw.h" />
     <ClInclude Include="include\OgreRecastDefinitions.h" />
     <ClInclude Include="include\OgreRecastNavmeshPruner.h" />
+    <ClInclude Include="include\OgreRecastNavmeshVisual.h" />
     <ClInclude Include="include\RecastContrib\fastlz\fastlz.h" />
     <ClInclude Include="include\RecastConvexHull.h" />
     <ClInclude Include="include\RecastInputGeom.h" />
@@ -351,6 +352,7 @@
     <ClCompile Include="src\OgreRecast.cpp" />
     <ClCompile Include="src\OgreRecastDebugDraw.cpp" />
     <ClCompile Include="src\OgreRecastNavmeshPruner.cpp" />
+    <ClCompile Include="src\OgreRecastNavmeshVisual.cpp" />
     <ClCompile Include="src\RecastContrib\fastlz\fastlz.c" />
     <ClCompile Include="src\RecastConvexHull.cpp" />
     <ClCompile Include="src\RecastInputGeom.cpp" />

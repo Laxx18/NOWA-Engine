@@ -1,55 +1,72 @@
-#include "debugUtils/DebugDraw.h"
+/*
+    OgreCrowd
+    ---------
+
+    Copyright (c) 2012 Jonas Hauquier
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy
+    of this software and associated documentation files (the "Software"), to deal
+    in the Software without restriction, including without limitation the rights
+    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in
+    all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+    THE SOFTWARE.
+*/
+
+#pragma once
+
 #include <OgreSceneNode.h>
 #include <OgreManualObject2.h>
 
-struct oduVertex
+// ---------------------------------------------------------------------------
+// OgreRecastDebugDraw
+//
+// Minimal debug draw helper — used ONLY for the path line visualisation.
+// Navmesh polygon/edge geometry is handled by OgreRecastNavmeshVisual
+// (static Ogre::Mesh via VaoManager, not ManualObject).
+//
+// The path line is a simple OT_LINE_STRIP ManualObject with a handful of
+// vertices created once per findPath result — ManualObject overhead is
+// negligible here.
+// ---------------------------------------------------------------------------
+class __declspec(dllexport) OgreRecastDebugDraw
 {
-	Ogre::Vector3 pos;
-	Ogre::ColourValue color;
-	Ogre::Vector2 uv;
-};
-
-class __declspec(dllexport) OgreRecastDebugDraw :public duDebugDraw
-{
-private:
-	Ogre::SceneManager* m_pScnMgr;
-	Ogre::SceneNode* m_pNode;
-	Ogre::ManualObject* m_pManualObject;
-	duDebugDrawPrimitives m_crtShape;
-
-	std::vector<oduVertex> m_lstCrtVertex;
-	int m_sectionCount;
-
-	// Akkumulierte Geometrie pro OpType, gefüllt von end(), geleert von flushToGPU()
-	struct AccumBatch
-	{
-		std::vector<oduVertex>   verts;
-		Ogre::OperationType      opType = Ogre::OT_TRIANGLE_LIST;
-		std::string              material;
-		// Für QUADS: wir wandeln in Tris um, daher gleich OT_TRIANGLE_LIST
-	};
-	// Keyed by opType (int), 4 mögliche Batches
-	std::unordered_map<int, AccumBatch> m_accumBatches;
-
-	Ogre::OperationType m_crtOpType = Ogre::OT_TRIANGLE_LIST;
-	std::string         m_crtMaterial;
 public:
-	OgreRecastDebugDraw(Ogre::SceneManager* scnMgr);
+    explicit OgreRecastDebugDraw(Ogre::SceneManager* scnMgr);
+    ~OgreRecastDebugDraw();
 
-	void draw(bool enable);
+    // Show or hide the path line node.
+    void draw(bool enable);
 
-	void mustRecreate(void);
+    // Destroy the ManualObject and SceneNode, resetting this object to its
+    // initial state. Call before recreating the path line.
+    void mustRecreate();
 
-	void resetForNewFrame(void);
+    // Access the ManualObject for direct path line construction.
+    Ogre::ManualObject* getManualObject() const
+    {
+        return m_pManualObject;
+    }
+    Ogre::SceneNode* getNode()         const
+    {
+        return m_pNode;
+    }
 
-	void flushToGPU();
+private:
+    Ogre::SceneManager* m_pScnMgr;
+    Ogre::SceneNode* m_pNode;
+    Ogre::ManualObject* m_pManualObject;
 
-	virtual void depthMask(bool state);
-	virtual void texture(bool state);
-	virtual void begin(duDebugDrawPrimitives prim, float size = 1.0f);
-	virtual void vertex(const float* pos, unsigned int color);
-	virtual void vertex(const float x, const float y, const float z, unsigned int color);
-	virtual void vertex(const float* pos, unsigned int color, const float* uv);
-	virtual void vertex(const float x, const float y, const float z, unsigned int color, const float u, const float v);
-	virtual void end();
+    OgreRecastDebugDraw(const OgreRecastDebugDraw&) = delete;
+    OgreRecastDebugDraw& operator=(const OgreRecastDebugDraw&) = delete;
 };

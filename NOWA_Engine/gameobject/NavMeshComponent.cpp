@@ -109,6 +109,21 @@ namespace NOWA
         // The destructor already calls both remove functions, so nothing extra required.
     }
 
+	bool NavMeshComponent::connect(void)
+    {
+        if (false == this->activated->getBool())
+        {
+            return true;
+        }
+        return true;
+    }
+
+	bool NavMeshComponent::disconnect(void)
+	{
+		
+		return true;
+	}
+
 	void NavMeshComponent::manageNavMesh(void)
 	{
 		/*if ("Dynamic Obstacle" == this->oldNavigationType)
@@ -149,27 +164,12 @@ namespace NOWA
 		}
 	}
 
-	bool NavMeshComponent::connect(void)
-    {
-        if (false == this->activated->getBool())
-        {
-            return true;
-        }
-        return true;
-    }
-
-	bool NavMeshComponent::disconnect(void)
-	{
-		
-		return true;
-	}
-
 	void NavMeshComponent::update(Ogre::Real dt, bool notSimulating)
     {
         if (false == notSimulating)
         {
             this->transformUpdateTimer += dt;
-            if (this->transformUpdateTimer >= 5.0f)
+            if (this->transformUpdateTimer >= 1.0f)
             {
                 this->transformUpdateTimer = 0.0f;
 
@@ -178,68 +178,67 @@ namespace NOWA
 
                 if (posChanged || rotChanged)
                 {
-                    // Bug fix 1: Single remove for both branches.
-                    // The old code had two independent if-blocks each calling
-                    // removeDynamicObstacle. If both pos and rot changed, the
-                    // first block removed+re-added the obstacle, then the second
-                    // block removed the freshly re-added one — operating on a
-                    // different InputGeom than the one that was moved.
-                    auto dataPair = AppStateManager::getSingletonPtr()->getOgreRecastModule()->removeDynamicObstacle(this->gameObjectPtr->getId(), false);
+                    auto* recastModule = AppStateManager::getSingletonPtr()->getOgreRecastModule();
 
-                    InputGeom* inputGeom = dataPair.first;
-                    ConvexVolume* convexVolume = dataPair.second;
-
-                    // Bug fix 2: Early return no longer skips oldPosition/oldOrientation
-                    // update. The old code had bare 'return' inside the if-blocks which
-                    // skipped the reference update at the bottom, causing the same
-                    // (failed) change to be retried every 5 seconds forever.
-                    if (nullptr == inputGeom || nullptr == convexVolume)
+                    // Do not update while the tile cache is still processing a previous
+                    // request.  Retry on next timer tick — oldPosition is NOT updated
+                    // so the change is preserved.
+                    if (nullptr != recastModule->getOgreDetourTileCache() && recastModule->getOgreDetourTileCache()->hasPendingObstacles())
                     {
-                        this->oldPosition = this->gameObjectPtr->getPosition();
-                        this->oldOrientation = this->gameObjectPtr->getOrientation();
                         return;
                     }
 
-                    if (posChanged)
+                    if (posChanged && false == rotChanged)
                     {
-                        // Bug fix 3: Direction was inverted in the original code.
-                        // (oldPosition - newPosition) moves the hull backward.
-                        // We want to move it forward by the delta the object actually moved.
-                        convexVolume->move(this->gameObjectPtr->getPosition() - this->oldPosition);
+                        // ── Position-only change ──────────────────────────────────
+                        // Destroy the old ConvexVolume entirely (bmin/bmax are stale
+                        // — move() does not update them).  addDynamicObstacle without
+                        // an external ConvexVolume creates a fresh one from the
+                        // current item->getWorldAabb(), so coordinates are correct.
+                        recastModule->removeDynamicObstacle(this->gameObjectPtr->getId(), true);
+                        recastModule->addDynamicObstacle(this->gameObjectPtr->getId(), this->walkable->getBool());
                     }
-
-                    if (rotChanged)
+                    else
                     {
-                        // Bug fix 4: Relative orientation direction was wrong.
-                        // old * new^-1 gives the rotation FROM new BACK TO old.
-                        // We want new * old^-1: the rotation applied since last tick.
-                        Ogre::Quaternion relativeOrientation = this->gameObjectPtr->getOrientation() * this->oldOrientation.Inverse();
-                        relativeOrientation.normalise();
+                        // ── Rotation (with or without position) ──────────────────
+                        // Take ownership of the existing geometry.
+                        auto dataPair = recastModule->removeDynamicObstacle(this->gameObjectPtr->getId(), false);
+                        InputGeom* inputGeom = dataPair.first;
+                        ConvexVolume* convexVolume = dataPair.second;
 
-                        // Rotate the raw geometry vertices around the object's current
-                        // world position (correct pivot whether or not pos also changed,
-                        // because convexVolume->move() already shifted the hull above).
-                        inputGeom->applyOrientation(relativeOrientation, this->gameObjectPtr->getPosition());
+                        if (nullptr == inputGeom)
+                        {
+                            // No InputGeom available (loaded-from-disk path).
+                            // Fall back to fresh AABB — same as the position-only case.
+                            delete convexVolume;
+                            recastModule->addDynamicObstacle(this->gameObjectPtr->getId(), this->walkable->getBool());
+                        }
+                        else
+                        {
+                            // Apply translation first, then rotation, on the InputGeom
+                            // vertex cloud so applyOrientation() pivots around the
+                            // already-moved centre.
+                            if (posChanged)
+                            {
+                                inputGeom->move(this->gameObjectPtr->getPosition() - this->oldPosition);
+                            }
 
-                        // Bug fix 5: The old position-only branch called
-                        // addDynamicObstacle(id, walkable) without passing inputGeom and
-                        // convexVolume — so the moved hull was discarded and a brand-new
-                        // InputGeom was created from the live entity, wasting the move().
-                        // We always recompute the hull from the modified inputGeom here.
-                        delete convexVolume;
-                        convexVolume = inputGeom->getConvexHull(AppStateManager::getSingletonPtr()->getOgreRecastModule()->getOgreRecast()->getAgentRadius());
+                            Ogre::Quaternion rel = this->gameObjectPtr->getOrientation() * this->oldOrientation.Inverse();
+                            rel.normalise();
+                            inputGeom->applyOrientation(rel, this->gameObjectPtr->getPosition());
 
-                        convexVolume->area = this->walkable->getBool() ? RC_WALKABLE_AREA : RC_NULL_AREA;
-                        convexVolume->hmin -= 0.1f;
+                            // getConvexHull() recomputes bmin/bmax from the updated
+                            // vertex cloud — correct by construction.
+                            delete convexVolume;
+                            convexVolume = inputGeom->getConvexHull(recastModule->getOgreRecast()->getAgentRadius() * 2.0f);
+                            convexVolume->area = this->walkable->getBool() ? RC_WALKABLE_AREA : RC_NULL_AREA;
+                            convexVolume->hmin -= 0.1f;
+
+                            recastModule->addDynamicObstacle(this->gameObjectPtr->getId(), this->walkable->getBool(), inputGeom, convexVolume);
+                        }
                     }
-
-                    // Always re-add with the explicitly modified geometry so nothing
-                    // is discarded. Works correctly for pos-only, rot-only, or both.
-                    AppStateManager::getSingletonPtr()->getOgreRecastModule()->addDynamicObstacle(this->gameObjectPtr->getId(), this->walkable->getBool(), inputGeom, convexVolume);
                 }
 
-                // Bug fix 6: Reference values are updated unconditionally at the end,
-                // not buried inside the if-blocks where an early return could skip them.
                 this->oldPosition = this->gameObjectPtr->getPosition();
                 this->oldOrientation = this->gameObjectPtr->getOrientation();
             }

@@ -657,6 +657,7 @@ public:
 
     const dtTileCacheObstacle* getObstacle(int index) const;
 
+    bool isLoadedFromDisk(void) const;
 
     // Sets InputGeom after loadAll() so dynamic obstacles can rebuild tiles.
     // Unlike configure(), does NOT overwrite tile cache params or bounding boxes.
@@ -824,6 +825,9 @@ protected:
     bool m_isDrawing;             // true while debug draw is active
     bool m_obstaclesWereUpdating; // tracks upToDate transition for edge-detection
     bool m_pendingObstacles;
+    float m_pendingObstaclesTimer;
+
+    LinearAllocator* m_drawAlloc;
 
     static const int TILECACHESET_MAGIC = 'T'<<24 | 'S'<<16 | 'E'<<8 | 'T'; //'TSET';
     static const int TILECACHESET_VERSION = 2;

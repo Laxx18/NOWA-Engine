@@ -1,1558 +1,903 @@
 /*
-	OgreCrowd
-	---------
+    OgreCrowd — OgreRecast.cpp
 
-	Copyright (c) 2012 Jonas Hauquier
+    Copyright (c) 2012 Jonas Hauquier
+    Additional contributions by mkultra333, Paul Wilson.
 
-	Additional contributions by:
+    Permission is hereby granted, free of charge, to any person obtaining a copy
+    of this software and associated documentation files (the "Software"), to deal
+    in the Software without restriction, including without limitation the rights
+    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
 
-	- mkultra333
-	- Paul Wilson
+    The above copyright notice and this permission notice shall be included in
+    all copies or substantial portions of the Software.
 
-	Sincere thanks and to:
-
-	- Mikko Mononen (developer of Recast navigation libraries)
-
-	Permission is hereby granted, free of charge, to any person obtaining a copy
-	of this software and associated documentation files (the "Software"), to deal
-	in the Software without restriction, including without limitation the rights
-	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-	copies of the Software, and to permit persons to whom the Software is
-	furnished to do so, subject to the following conditions:
-
-	The above copyright notice and this permission notice shall be included in
-	all copies or substantial portions of the Software.
-
-	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-	THE SOFTWARE.
-
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+    THE SOFTWARE.
 */
 
 #include "OgreRecast.h"
 #include "RecastInputGeom.h"
 #include "DetourTileCache/DetourTileCacheBuilder.h"
 #include "OgreRecastNavmeshPruner.h"
-#include "RecastDebugDraw.h"
 
 #include "OgreHlmsUnlitDatablock.h"
 #include "OgreHlmsUnlit.h"
 
+// ---------------------------------------------------------------------------
+// Local helper: create an unlit datablock for debug drawing
+// ---------------------------------------------------------------------------
 namespace
 {
-	void createUnlitDatablock(const Ogre::String& datablockName)
-	{
-		Ogre::Hlms* hlms = Ogre::Root::getSingleton().getHlmsManager()->getHlms(Ogre::HLMS_UNLIT);
-		Ogre::HlmsUnlit* hlmsUnlit = static_cast<Ogre::HlmsUnlit*>(hlms);
+    void createUnlitDatablock(const Ogre::String& name)
+    {
+        Ogre::Hlms* hlms = Ogre::Root::getSingleton()
+            .getHlmsManager()->getHlms(Ogre::HLMS_UNLIT);
+        Ogre::HlmsUnlit* hlmsUnlit = static_cast<Ogre::HlmsUnlit*>(hlms);
 
-		Ogre::HlmsBlendblock blendblock;
-		blendblock.setBlendType(Ogre::SBT_TRANSPARENT_ALPHA); // Example: Transparent alpha blending
+        Ogre::HlmsBlendblock blendblock;
+        blendblock.setBlendType(Ogre::SBT_TRANSPARENT_ALPHA);
 
-		Ogre::HlmsMacroblock macroblock;
-		macroblock.mCullMode = Ogre::CULL_NONE; // Example: No culling
-		macroblock.mDepthCheck = true;
-		macroblock.mDepthWrite = true;
+        Ogre::HlmsMacroblock macroblock;
+        macroblock.mCullMode = Ogre::CULL_NONE;
+        macroblock.mDepthCheck = true;
+        macroblock.mDepthWrite = true;
 
-		// Check if datablock already exists
-		Ogre::HlmsDatablock* existingDatablock = hlmsUnlit->getDatablock(datablockName);
+        Ogre::HlmsDatablock* db = hlmsUnlit->getDatablock(name);
+        if (nullptr == db)
+        {
+            db = hlmsUnlit->createDatablock(name, name,
+                Ogre::HlmsMacroblock(macroblock),
+                Ogre::HlmsBlendblock(blendblock),
+                Ogre::HlmsParamVec());
+        }
+        db->setMacroblock(macroblock);
+        db->setBlendblock(blendblock);
+        static_cast<Ogre::HlmsUnlitDatablock*>(db)->setUseColour(true);
+    }
 
-		if (nullptr == existingDatablock)
-		{
-			Ogre::HlmsUnlitDatablock* datablock = static_cast<Ogre::HlmsUnlitDatablock*>(
-				hlmsUnlit->createDatablock(datablockName, datablockName, Ogre::HlmsMacroblock(macroblock), Ogre::HlmsBlendblock(blendblock), Ogre::HlmsParamVec()));
-
-			existingDatablock = datablock;
-		}
-
-		existingDatablock->setMacroblock(macroblock);
-		existingDatablock->setBlendblock(blendblock);
-
-		// Set color usage
-		static_cast<Ogre::HlmsUnlitDatablock*>(existingDatablock)->setUseColour(true); // Enable manual colour
-	}
+    static float frand()
+    {
+        return static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+    }
 }
 
-OgreRecast::OgreRecast(Ogre::SceneManager* sceneMgr, const OgreRecastConfigParams& configParams)
-	: m_pSceneMgr(sceneMgr),
-	m_pRecastSN(NULL),
-#if OGRE_RECAST_DEBUG
-	m_sg(NULL),
-#endif
-	m_rebuildSg(false),
-	mFilter(0),
-	mNavmeshPruner(0),
-	m_ctx(0),
-	m_pRecastMOWalk(nullptr),
-	m_pRecastMONeighbour(nullptr),
-	m_pRecastMOBoundary(nullptr),
-	m_configParams(configParams),
-	m_debugDrawer(new OgreRecastDebugDraw(sceneMgr))
+// ===========================================================================
+// Construction / destruction
+// ===========================================================================
+
+OgreRecast::OgreRecast(Ogre::SceneManager* sceneMgr,
+    const OgreRecastConfigParams& configParams)
+    : m_pSceneMgr(sceneMgr),
+    m_debugDrawer(new OgreRecastDebugDraw(sceneMgr)),
+    m_pRecastMOPath(nullptr),
+    m_pRecastSN(nullptr),
+    m_triareas(nullptr),
+    m_solid(nullptr),
+    m_chf(nullptr),
+    m_cset(nullptr),
+    m_pmesh(nullptr),
+    m_dmesh(nullptr),
+    m_ctx(nullptr),
+    m_geom(nullptr),
+    m_navMesh(nullptr),
+    m_navQuery(nullptr),
+    m_offMeshConCount(0),
+    m_rebuildSg(false),
+    mNavmeshPruner(nullptr),
+    mFilter(nullptr),
+    m_configParams(configParams)
 {
-	// Init recast stuff in a safe state
+    m_pLog = Ogre::LogManager::getSingletonPtr();
 
-	m_triareas = NULL;
-	m_solid = NULL;
-	m_chf = NULL;
-	m_cset = NULL;
-	m_pmesh = NULL;
-	//m_cfg;   
-	m_dmesh = NULL;
-	m_geom = NULL;
-	m_navMesh = NULL;
-	m_navQuery = NULL;
-	//m_navMeshDrawFlags;
-	m_ctx = NULL;
+    RecastCleanup();
 
-	RecastCleanup(); // TODO ?? don't know if I should do this prior to making any recast stuff, but the demo did.
-	m_pRecastMOPath = NULL;
+    m_pRecastSN = m_pSceneMgr->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_DYNAMIC);
+    m_pRecastSN->setName("RecastSN");
 
-	m_pRecastSN = m_pSceneMgr->getRootSceneNode()->createChildSceneNode();
-	m_pRecastSN->setName("RecastSN");
+    // Default search extents
+    mExtents[0] = 32.0f; mExtents[1] = 32.0f; mExtents[2] = 32.0f;
 
+    mFilter = new dtQueryFilter();
+    mFilter->setIncludeFlags(0xFFFF);
+    mFilter->setExcludeFlags(0);
+    mFilter->setAreaCost(SAMPLE_POLYAREA_GROUND, 1.0f);
+    mFilter->setAreaCost(DT_TILECACHE_WALKABLE_AREA, 1.0f);
 
-	m_pLog = Ogre::LogManager::getSingletonPtr();
+    for (int i = 0; i < MAX_PATHSLOT; ++i)
+    {
+        m_PathStore[i].MaxVertex = 0;
+        m_PathStore[i].Target = 0;
+    }
 
+    // Datablocks for debug drawing (navmesh visual + path line)
+    createUnlitDatablock("recastdebug");
+    createUnlitDatablock("recastdebug1");
 
-	// Set default size of box around points to look for nav polygons
-	mExtents[0] = 32.0f; mExtents[1] = 32.0f; mExtents[2] = 32.0f;
-
-	// Setup the default query filter
-	mFilter = new dtQueryFilter();
-	mFilter->setIncludeFlags(0xFFFF);    // Include all
-	mFilter->setExcludeFlags(0);         // Exclude none
-	// Area flags for polys to consider in search, and their cost
-	mFilter->setAreaCost(SAMPLE_POLYAREA_GROUND, 1.0f);       // TODO have a way of configuring the filter
-	mFilter->setAreaCost(DT_TILECACHE_WALKABLE_AREA, 1.0f);
-
-
-	// Init path store. MaxVertex 0 means empty path slot
-	for (int i = 0; i < MAX_PATHSLOT; i++)
-	{
-		m_PathStore[i].MaxVertex = 0;
-		m_PathStore[i].Target = 0;
-	}
-
-	// Must be called, so that nav mesh debug colls do not overpaint other rendered enities/items
-	createUnlitDatablock("recastdebug");
-	createUnlitDatablock("recastdebug1");
-
-	// Set configuration
-	configure(m_configParams);
+    configure(m_configParams);
 }
 
-OgreRecast::~OgreRecast(void)
+OgreRecast::~OgreRecast()
 {
-	if (nullptr != m_debugDrawer)
-	{
-		delete m_debugDrawer;
-		m_debugDrawer = nullptr;
-	}
+    delete m_debugDrawer;
+    m_debugDrawer = nullptr;
+
+    delete mFilter;
+    mFilter = nullptr;
+
+    delete mNavmeshPruner;
+    mNavmeshPruner = nullptr;
+
+    // Per-slot queries
+    {
+        std::lock_guard<std::mutex> lk(m_slotNavQueriesMutex);
+        for (auto& kv : m_slotNavQueries)
+            dtFreeNavMeshQuery(kv.second);
+        m_slotNavQueries.clear();
+        m_slotRefCounts.clear();
+    }
 }
 
+// ===========================================================================
+// Configuration
+// ===========================================================================
 
-/**
- * Cleanup recast stuff, not debug manualobjects.
-**/
 void OgreRecast::RecastCleanup()
 {
-	if (m_triareas) delete[] m_triareas;
-	m_triareas = 0;
-
-	rcFreeHeightField(m_solid);
-	m_solid = 0;
-	rcFreeCompactHeightfield(m_chf);
-	m_chf = 0;
-	rcFreeContourSet(m_cset);
-	m_cset = 0;
-	rcFreePolyMesh(m_pmesh);
-	m_pmesh = 0;
-	rcFreePolyMeshDetail(m_dmesh);
-	m_dmesh = 0;
-	dtFreeNavMesh(m_navMesh);
-	m_navMesh = 0;
-
-	dtFreeNavMeshQuery(m_navQuery);
-	m_navQuery = 0;
-
-	if (m_ctx)
-	{
-		delete m_ctx;
-		m_ctx = 0;
-	}
+    delete[] m_triareas; m_triareas = nullptr;
+    rcFreeHeightField(m_solid);         m_solid = nullptr;
+    rcFreeCompactHeightfield(m_chf);    m_chf = nullptr;
+    rcFreeContourSet(m_cset);           m_cset = nullptr;
+    rcFreePolyMesh(m_pmesh);            m_pmesh = nullptr;
+    rcFreePolyMeshDetail(m_dmesh);      m_dmesh = nullptr;
+    dtFreeNavMesh(m_navMesh);           m_navMesh = nullptr;
+    dtFreeNavMeshQuery(m_navQuery);     m_navQuery = nullptr;
+    delete m_ctx;                       m_ctx = nullptr;
 }
-
 
 void OgreRecast::configure(const OgreRecastConfigParams& params)
 {
-	m_configParams = params;
-	// NOTE: this is one of the most important parts to get it right!!
-	// Perhaps the most important part of the above is setting the agent size with m_agentHeight and m_agentRadius,
-	// and the voxel cell size used, m_cellSize and m_cellHeight. In my project 1 units is a little less than 1 meter,
-	// so I've set the agent to 2.5 units high, and the cell sizes to sub-meter size.
-	// This is about the same as in the original cell sizes in the Recast/Detour demo.
+    m_configParams = params;
 
-	// Smaller cellsizes are the most accurate at finding all the places we could go, but are also slow to generate.
-	// Might be suitable for pre-generated meshes. Though it also produces a lot more polygons.
+    delete m_ctx;
+    m_ctx = new rcContext(true);
 
-	if (m_ctx)
-	{
-		delete m_ctx;
-		m_ctx = 0;
-	}
-	m_ctx = new rcContext(true);
+    m_cellSize = params.getCellSize();
+    m_cellHeight = params.getCellHeight();
+    m_agentMaxSlope = params.getAgentMaxSlope();
+    m_agentHeight = params.getAgentHeight();
+    m_agentMaxClimb = params.getAgentMaxClimb();
+    m_agentRadius = params.getAgentRadius();
+    m_edgeMaxLen = params.getEdgeMaxLen();
+    m_edgeMaxError = params.getEdgeMaxError();
+    m_regionMinSize = params.getRegionMinSize();
+    m_regionMergeSize = params.getRegionMergeSize();
+    m_vertsPerPoly = params.getVertsPerPoly();
+    m_detailSampleDist = params.getDetailSampleDist();
+    m_detailSampleMaxError = params.getDetailSampleMaxError();
+    m_keepInterResults = params.getKeepInterResults();
 
-	m_cellSize = m_configParams.getCellSize();
-	m_cellHeight = m_configParams.getCellHeight();
-	m_agentMaxSlope = m_configParams.getAgentMaxSlope();
-	m_agentHeight = m_configParams.getAgentHeight();
-	m_agentMaxClimb = m_configParams.getAgentMaxClimb();
-	m_agentRadius = m_configParams.getAgentRadius();
-	m_edgeMaxLen = m_configParams.getEdgeMaxLen();
-	m_edgeMaxError = m_configParams.getEdgeMaxError();
-	m_regionMinSize = m_configParams.getRegionMinSize();
-	m_regionMergeSize = m_configParams.getRegionMergeSize();
-	m_vertsPerPoly = m_configParams.getVertsPerPoly();
-	m_detailSampleDist = m_configParams.getDetailSampleDist();
-	m_detailSampleMaxError = m_configParams.getDetailSampleMaxError();
-	m_keepInterResults = m_configParams.getKeepInterResults();
+    memset(&m_cfg, 0, sizeof(m_cfg));
+    m_cfg.cs = m_cellSize;
+    m_cfg.ch = m_cellHeight;
+    m_cfg.walkableSlopeAngle = m_agentMaxSlope;
+    m_cfg.walkableHeight = params._getWalkableheight();
+    m_cfg.walkableClimb = params._getWalkableClimb();
+    m_cfg.walkableRadius = params._getWalkableRadius();
+    m_cfg.maxEdgeLen = params._getMaxEdgeLen();
+    m_cfg.maxSimplificationError = m_edgeMaxError;
+    m_cfg.minRegionArea = params._getMinRegionArea();
+    m_cfg.mergeRegionArea = params._getMergeRegionArea();
+    m_cfg.maxVertsPerPoly = m_vertsPerPoly;
+    m_cfg.detailSampleDist = (float)params._getDetailSampleDist();
+    m_cfg.detailSampleMaxError = (float)params._getDetailSampleMaxError();
 
-	// Init cfg object
-	memset(&m_cfg, 0, sizeof(m_cfg));
-	m_cfg.cs = m_cellSize;
-	m_cfg.ch = m_cellHeight;
-	m_cfg.walkableSlopeAngle = m_agentMaxSlope;
-	m_cfg.walkableHeight = m_configParams._getWalkableheight();
-	m_cfg.walkableClimb = m_configParams._getWalkableClimb();
-	m_cfg.walkableRadius = m_configParams._getWalkableRadius();
-	m_cfg.maxEdgeLen = m_configParams._getMaxEdgeLen();
-	m_cfg.maxSimplificationError = m_edgeMaxError;
-	m_cfg.minRegionArea = m_configParams._getMinRegionArea();
-	m_cfg.mergeRegionArea = m_configParams._getMergeRegionArea();
-	m_cfg.maxVertsPerPoly = m_vertsPerPoly;
-	m_cfg.detailSampleDist = (float)m_configParams._getDetailSampleDist();
-	m_cfg.detailSampleMaxError = (float)m_configParams._getDetailSampleMaxError();
+    // Debug draw offsets derived from cell dimensions
+    m_navMeshOffsetFromGround = m_cellHeight / 5.0f;
+    m_navMeshEdgesOffsetFromGround = m_cellHeight / 3.0f;
+    m_pathOffsetFromGround = m_agentHeight + m_navMeshOffsetFromGround;
 
-
-	// Demo specific parameters
-	m_navMeshOffsetFromGround = m_cellHeight / 5;         // Distance above ground for drawing navmesh polygons
-	m_navMeshEdgesOffsetFromGround = m_cellHeight / 3;    // Distance above ground for drawing edges of navmesh (should be slightly higher than navmesh polygons)
-	m_pathOffsetFromGround = m_agentHeight + m_navMeshOffsetFromGround; // Distance above ground for drawing path debug lines relative to cellheight (should be higher than navmesh polygons)
-
-	// Colors for navmesh debug drawing
-	m_navmeshNeighbourEdgeCol = Ogre::ColourValue(0.9, 0.9, 0.9);   // Light Grey
-	m_navmeshOuterEdgeCol = Ogre::ColourValue(0, 0, 0);         // Black
-	m_navmeshGroundPolygonCol = Ogre::ColourValue(0, 0.7, 0);       // Green
-	m_navmeshOtherPolygonCol = Ogre::ColourValue(0, 0.175, 0);     // Dark green
-	m_pathCol = Ogre::ColourValue(1, 0, 0);         // Red
+    // Debug draw colours
+    m_navmeshNeighbourEdgeCol = Ogre::ColourValue(0.9f, 0.9f, 0.9f);   // light grey
+    m_navmeshOuterEdgeCol = Ogre::ColourValue(0.0f, 0.0f, 0.0f);   // black
+    m_navmeshGroundPolygonCol = Ogre::ColourValue(0.0f, 0.7f, 0.0f);   // green
+    m_navmeshOtherPolygonCol = Ogre::ColourValue(0.0f, 0.175f, 0.0f); // dark green
+    m_pathCol = Ogre::ColourValue(1.0f, 0.0f, 0.0f);   // red
 }
 
+// ===========================================================================
+// Navmesh build (single non-tiled mesh — used when no TileCache)
+// ===========================================================================
 
-
-/**
- * Now for the navmesh creation function.
- * I've mostly taken this from the demo, apart from the top part where I create the triangles. Recast needs a bunch of input vertices and triangles from your map to build the navigation mesh. Where you get those verts amd triangles is up to you, my map loader was already outputing verts and triangle so it was easy to use those. Make sure the triangles wind the correct way or Recast will try to build the navmesh on the outside of your map.
- * There's some potentially groovy stuff in there that I haven't touched, like filtering and different weights for different types of zones. Also I've just gone for the simplest navmesh type, there's also other modes like tiling navmeshes which I've ignored.
- * This method is heavily based on Sample_SoloMesh::handleBuild() from the recastnavigation demo.
- *
- * Perhaps the most important part of the above is setting the agent size with m_agentHeight and m_agentRadius, and the voxel cell size used, m_cellSize and m_cellHeight. In my project 32.0 units is 1 meter, so I've set the agent to 48 units high, and the cell sizes are quite large. The original cell sizes in the Recast/Detour demo were down around 0.3.
-**/
-bool OgreRecast::NavMeshBuild(const std::vector<Ogre::v1::Entity*>& srcMeshes, const std::vector<Ogre::Item*>& srcItemsA)
+bool OgreRecast::NavMeshBuild(const std::vector<Ogre::v1::Entity*>& srcMeshes,
+    const std::vector<Ogre::Item*>& srcItems)
 {
-	if (srcMeshes.empty())
-	{
-		Ogre::LogManager::getSingletonPtr()->logMessage("Warning: Called NavMeshBuild without any entities/items. No navmesh was built.");
-		return false;
-	}
-
-	return NavMeshBuild(new InputGeom(srcMeshes, srcItemsA));
+    if (srcMeshes.empty() && srcItems.empty())
+    {
+        m_pLog->logMessage("[OgreRecast] NavMeshBuild: no source geometry supplied.");
+        return false;
+    }
+    return NavMeshBuild(new InputGeom(srcMeshes, srcItems));
 }
 
 bool OgreRecast::NavMeshBuild(InputGeom* input)
 {
-	// TODO: clean up unused variables
-
-
-	m_pLog->logMessage("NavMeshBuild Start");
-
-
-	//
-	// Step 1. Initialize build config.
-	//
-
-	// Reset build times gathering.
-	m_ctx->resetTimers();
-
-	// Start the build process.
-	m_ctx->startTimer(RC_TIMER_TOTAL);
-
-
-
-	//
-	// Step 2. Rasterize input polygon soup.
-	//
-
-	InputGeom *inputGeom = input;
-	rcVcopy(m_cfg.bmin, inputGeom->getMeshBoundsMin());
-	rcVcopy(m_cfg.bmax, inputGeom->getMeshBoundsMax());
-	rcCalcGridSize(m_cfg.bmin, m_cfg.bmax, m_cfg.cs, &m_cfg.width, &m_cfg.height);
-
-	int nverts = inputGeom->getVertCount();
-	int ntris = inputGeom->getTriCount();
-	Ogre::Vector3 min; FloatAToOgreVect3(inputGeom->getMeshBoundsMin(), min);
-	Ogre::Vector3 max; FloatAToOgreVect3(inputGeom->getMeshBoundsMax(), max);
-
-	//Ogre::LogManager::getSingletonPtr()->logMessage("Bounds: "+Ogre::StringConverter::toString(min) + "   "+ Ogre::StringConverter::toString(max));
-
-
-	m_pLog->logMessage("Building navigation:");
-	m_pLog->logMessage(" - " + Ogre::StringConverter::toString(m_cfg.width) + " x " + Ogre::StringConverter::toString(m_cfg.height) + " cells");
-	m_pLog->logMessage(" - " + Ogre::StringConverter::toString(nverts / 1000.0f) + " K verts, " + Ogre::StringConverter::toString(ntris / 1000.0f) + " K tris");
-
-	// Allocate voxel heightfield where we rasterize our input data to.
-	m_solid = rcAllocHeightfield();
-	if (!m_solid)
-	{
-		m_pLog->logMessage("ERROR: buildNavigation: Out of memory 'solid'.");
-		return false;
-	}
-	if (!rcCreateHeightfield(m_ctx, *m_solid, m_cfg.width, m_cfg.height, m_cfg.bmin, m_cfg.bmax, m_cfg.cs, m_cfg.ch))
-	{
-		m_pLog->logMessage("ERROR: buildNavigation: Could not create solid heightfield. Possibly it requires too much memory, try setting a higher cellSize and cellHeight value.");
-		return false;
-	}
-
-	// Allocate array that can hold triangle area types.
-	// If you have multiple meshes you need to process, allocate
-	// an array which can hold the max number of triangles you need to process.
-	m_triareas = new unsigned char[ntris];
-	if (!m_triareas)
-	{
-		m_pLog->logMessage("ERROR: buildNavigation: Out of memory 'm_triareas' (" + Ogre::StringConverter::toString(ntris) + ").");
-		return false;
-	}
-
-	// Find triangles which are walkable based on their slope and rasterize them.
-	// If your input data is multiple meshes, you can transform them here, calculate
-	// the are type for each of the meshes and rasterize them.
-	memset(m_triareas, 0, ntris * sizeof(unsigned char));
-	rcMarkWalkableTriangles(m_ctx, m_cfg.walkableSlopeAngle, inputGeom->getVerts(), inputGeom->getVertCount(), inputGeom->getTris(), inputGeom->getTriCount(), m_triareas);
-	rcRasterizeTriangles(m_ctx, inputGeom->getVerts(), inputGeom->getVertCount(), inputGeom->getTris(), m_triareas, inputGeom->getTriCount(), *m_solid, m_cfg.walkableClimb);
-
-	if (!m_keepInterResults)
-	{
-		delete[] m_triareas;
-		m_triareas = 0;
-	}
-
-
-
-
-
-	//
-	// Step 3. Filter walkables surfaces.
-	//
-
-	// Once all geoemtry is rasterized, we do initial pass of filtering to
-	// remove unwanted overhangs caused by the conservative rasterization
-	// as well as filter spans where the character cannot possibly stand.
-	rcFilterLowHangingWalkableObstacles(m_ctx, m_cfg.walkableClimb, *m_solid);
-	rcFilterLedgeSpans(m_ctx, m_cfg.walkableHeight, m_cfg.walkableClimb, *m_solid);
-	rcFilterWalkableLowHeightSpans(m_ctx, m_cfg.walkableHeight, *m_solid);
-
-
-
-
-
-
-
-
-	//
-	// Step 4. Partition walkable surface to simple regions.
-	//
-
-	// Compact the heightfield so that it is faster to handle from now on.
-	// This will result more cache coherent data as well as the neighbours
-	// between walkable cells will be calculated.
-	m_chf = rcAllocCompactHeightfield();
-	if (!m_chf)
-	{
-		m_pLog->logMessage("ERROR: buildNavigation: Out of memory 'chf'.");
-		return false;
-	}
-	if (!rcBuildCompactHeightfield(m_ctx, m_cfg.walkableHeight, m_cfg.walkableClimb, *m_solid, *m_chf))
-	{
-		m_pLog->logMessage("ERROR: buildNavigation: Could not build compact data.");
-		return false;
-	}
-
-	if (!m_keepInterResults)
-	{
-		rcFreeHeightField(m_solid);
-		m_solid = 0;
-	}
-
-
-	// Erode the walkable area by agent radius.
-	if (!rcErodeWalkableArea(m_ctx, m_cfg.walkableRadius, *m_chf))
-	{
-		m_pLog->logMessage("ERROR: buildNavigation: Could not erode walkable areas.");
-		return false;
-	}
-
-	// TODO implement
-	   // (Optional) Mark areas.
-	   //const ConvexVolume* vols = m_geom->getConvexVolumes();
-	   //for (int i  = 0; i < m_geom->getConvexVolumeCount(); ++i)
-	   //   rcMarkConvexPolyArea(m_ctx, vols[i].verts, vols[i].nverts, vols[i].hmin, vols[i].hmax, (unsigned char)vols[i].area, *m_chf);
-
-
-	   // Prepare for region partitioning, by calculating distance field along the walkable surface.
-	if (!rcBuildDistanceField(m_ctx, *m_chf))
-	{
-		m_pLog->logMessage("ERROR: buildNavigation: Could not build distance field.");
-		return false;
-	}
-
-	// Partition the walkable surface into simple regions without holes.
-	if (!rcBuildRegions(m_ctx, *m_chf, m_cfg.borderSize, m_cfg.minRegionArea, m_cfg.mergeRegionArea))
-	{
-		m_pLog->logMessage("ERROR: buildNavigation: Could not build regions.");
-		return false;
-	}
-
-
-
-
-
-
-
-
-	//
-	// Step 5. Trace and simplify region contours.
-	//
-
-	// Create contours.
-	m_cset = rcAllocContourSet();
-	if (!m_cset)
-	{
-		m_pLog->logMessage("ERROR: buildNavigation: Out of memory 'cset'.");
-		return false;
-	}
-	if (!rcBuildContours(m_ctx, *m_chf, m_cfg.maxSimplificationError, m_cfg.maxEdgeLen, *m_cset))
-	{
-		m_pLog->logMessage("ERROR: buildNavigation: Could not create contours.");
-		return false;
-	}
-
-	if (m_cset->nconts == 0)
-	{
-		// In case of errors see: http://groups.google.com/group/recastnavigation/browse_thread/thread/a6fbd509859a12c8
-		// You should probably tweak the parameters
-		m_pLog->logMessage("ERROR: No contours created (Recast)!");
-	}
-
-
-
-
-
-	//
-	// Step 6. Build polygons mesh from contours.
-	//
-
-	// Build polygon navmesh from the contours.
-	m_pmesh = rcAllocPolyMesh();
-	if (!m_pmesh)
-	{
-		m_pLog->logMessage("ERROR: buildNavigation: Out of memory 'pmesh'.");
-		return false;
-	}
-	if (!rcBuildPolyMesh(m_ctx, *m_cset, m_cfg.maxVertsPerPoly, *m_pmesh))
-	{
-		// Try modifying the parameters. I experienced this error when setting agentMaxClimb too high.
-		m_pLog->logMessage("ERROR: buildNavigation: Could not triangulate contours.");
-		return false;
-	}
-
-
-
-
-
-
-
-
-
-	//
-	// Step 7. Create detail mesh which allows to access approximate height on each polygon.
-	//
-
-	m_dmesh = rcAllocPolyMeshDetail();
-	if (!m_dmesh)
-	{
-		m_pLog->logMessage("ERROR: buildNavigation: Out of memory 'pmdtl'.");
-		return false;
-	}
-
-	if (!rcBuildPolyMeshDetail(m_ctx, *m_pmesh, *m_chf, m_cfg.detailSampleDist, m_cfg.detailSampleMaxError, *m_dmesh))
-	{
-		m_pLog->logMessage("ERROR: buildNavigation: Could not build detail mesh.");
-		return false;
-	}
-
-	if (!m_keepInterResults)
-	{
-		rcFreeCompactHeightfield(m_chf);
-		m_chf = 0;
-		rcFreeContourSet(m_cset);
-		m_cset = 0;
-	}
-
-	// At this point the navigation mesh data is ready, you can access it from m_pmesh.
-	// See duDebugDrawPolyMesh or dtCreateNavMeshData as examples how to access the data.
-
-
-
-
-
-
-
-
-	//
-	// (Optional) Step 8. Create Detour data from Recast poly mesh.
-	//
-
-	// The GUI may allow more max points per polygon than Detour can handle.
-	// Only build the detour navmesh if we do not exceed the limit.
-
-
-	if (m_cfg.maxVertsPerPoly <= DT_VERTS_PER_POLYGON)
-	{
-		m_pLog->logMessage("Detour 1000");
-
-		unsigned char* navData = 0;
-		int navDataSize = 0;
-
-
-		// Update poly flags from areas.
-		for (int i = 0; i < m_pmesh->npolys; ++i)
-		{
-			if (m_pmesh->areas[i] == RC_WALKABLE_AREA)
-			{
-				m_pmesh->areas[i] = SAMPLE_POLYAREA_GROUND;
-				m_pmesh->flags[i] = SAMPLE_POLYFLAGS_WALK;
-			}
-		}
-
-
-		// Set navmesh params
-		dtNavMeshCreateParams params;
-		memset(&params, 0, sizeof(params));
-		params.verts = m_pmesh->verts;
-		params.vertCount = m_pmesh->nverts;
-		params.polys = m_pmesh->polys;
-		params.polyAreas = m_pmesh->areas;
-		params.polyFlags = m_pmesh->flags;
-		params.polyCount = m_pmesh->npolys;
-		params.nvp = m_pmesh->nvp;
-		params.detailMeshes = m_dmesh->meshes;
-		params.detailVerts = m_dmesh->verts;
-		params.detailVertsCount = m_dmesh->nverts;
-		params.detailTris = m_dmesh->tris;
-		params.detailTriCount = m_dmesh->ntris;
-
-		// no off mesh connections yet
-		m_offMeshConCount = 0;
-		params.offMeshConVerts = m_offMeshConVerts;
-		params.offMeshConRad = m_offMeshConRads;
-		params.offMeshConDir = m_offMeshConDirs;
-		params.offMeshConAreas = m_offMeshConAreas;
-		params.offMeshConFlags = m_offMeshConFlags;
-		params.offMeshConUserID = m_offMeshConId;
-		params.offMeshConCount = m_offMeshConCount;
-
-		params.walkableHeight = m_agentHeight;
-		params.walkableRadius = m_agentRadius;
-		params.walkableClimb = m_agentMaxClimb;
-		rcVcopy(params.bmin, m_pmesh->bmin);
-		rcVcopy(params.bmax, m_pmesh->bmax);
-		params.cs = m_cfg.cs;
-		params.ch = m_cfg.ch;
-
-
-		m_pLog->logMessage("Detour 2000");
-
-		if (!dtCreateNavMeshData(&params, &navData, &navDataSize))
-		{
-			m_pLog->logMessage("ERROR: Could not build Detour navmesh.");
-			return false;
-		}
-
-		m_pLog->logMessage("Detour 3000");
-
-		m_navMesh = dtAllocNavMesh();
-		if (!m_navMesh)
-		{
-			dtFree(navData);
-			m_pLog->logMessage("ERROR: Could not create Detour navmesh");
-			return false;
-		}
-
-		m_pLog->logMessage("Detour 4000");
-
-		dtStatus status;
-
-		status = m_navMesh->init(navData, navDataSize, DT_TILE_FREE_DATA);
-		if (dtStatusFailed(status))
-		{
-			dtFree(navData);
-			m_pLog->logMessage("ERROR: Could not init Detour navmesh");
-			return false;
-		}
-
-		m_pLog->logMessage("Detour 5000");
-
-		m_navQuery = dtAllocNavMeshQuery();
-		status = m_navQuery->init(m_navMesh, 65535);
-
-		m_pLog->logMessage("Detour 5500");
-
-		if (dtStatusFailed(status))
-		{
-			m_pLog->logMessage("ERROR: Could not init Detour navmesh query");
-			return false;
-		}
-
-		m_pLog->logMessage("Detour 6000");
-	}
-
-	m_ctx->stopTimer(RC_TIMER_TOTAL);
-
-
-	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-	// cleanup stuff we don't need
- //   delete [] rc_verts ;
- //   delete [] rc_tris ;
- //   delete [] rc_trinorms ;
-
-	//CreateRecastPolyMesh(*m_pmesh) ;   // Debug render it
-
-	m_pLog->logMessage("NavMeshBuild End");
-	return true;
+    m_pLog->logMessage("[OgreRecast] NavMeshBuild start");
+
+    // ── Step 1: Rasterize ──────────────────────────────────────────────────
+    m_geom = input;
+
+    const float* bmin = m_geom->getMeshBoundsMin();
+    const float* bmax = m_geom->getMeshBoundsMax();
+
+    rcVcopy(m_cfg.bmin, bmin);
+    rcVcopy(m_cfg.bmax, bmax);
+    rcCalcGridSize(m_cfg.bmin, m_cfg.bmax, m_cfg.cs,
+        &m_cfg.width, &m_cfg.height);
+
+    m_solid = rcAllocHeightfield();
+    if (!m_solid)
+    {
+        m_pLog->logMessage("ERROR: NavMeshBuild: out of memory 'solid'."); return false;
+    }
+    if (!rcCreateHeightfield(m_ctx, *m_solid,
+        m_cfg.width, m_cfg.height,
+        m_cfg.bmin, m_cfg.bmax,
+        m_cfg.cs, m_cfg.ch))
+    {
+        m_pLog->logMessage("ERROR: NavMeshBuild: rcCreateHeightfield failed."); return false;
+    }
+
+    m_triareas = new unsigned char[m_geom->getTriCount()];
+    memset(m_triareas, 0, m_geom->getTriCount() * sizeof(unsigned char));
+
+    rcMarkWalkableTriangles(m_ctx, m_cfg.walkableSlopeAngle,
+        m_geom->getVerts(), m_geom->getVertCount(),
+        m_geom->getTris(), m_geom->getTriCount(), m_triareas);
+    rcRasterizeTriangles(m_ctx,
+        m_geom->getVerts(), m_geom->getVertCount(),
+        m_geom->getTris(), m_triareas, m_geom->getTriCount(),
+        *m_solid, m_cfg.walkableClimb);
+
+    if (!m_keepInterResults)
+    {
+        delete[] m_triareas; m_triareas = nullptr;
+    }
+
+    // ── Step 2: Filter ─────────────────────────────────────────────────────
+    rcFilterLowHangingWalkableObstacles(m_ctx, m_cfg.walkableClimb, *m_solid);
+    rcFilterLedgeSpans(m_ctx, m_cfg.walkableHeight,
+        m_cfg.walkableClimb, *m_solid);
+    rcFilterWalkableLowHeightSpans(m_ctx, m_cfg.walkableHeight, *m_solid);
+
+    // ── Step 3: Compact heightfield ────────────────────────────────────────
+    m_chf = rcAllocCompactHeightfield();
+    if (!m_chf)
+    {
+        m_pLog->logMessage("ERROR: NavMeshBuild: out of memory 'chf'."); return false;
+    }
+    if (!rcBuildCompactHeightfield(m_ctx,
+        m_cfg.walkableHeight, m_cfg.walkableClimb, *m_solid, *m_chf))
+    {
+        m_pLog->logMessage("ERROR: NavMeshBuild: rcBuildCompactHeightfield failed."); return false;
+    }
+
+    if (!m_keepInterResults)
+    {
+        rcFreeHeightField(m_solid); m_solid = nullptr;
+    }
+
+    if (!rcErodeWalkableArea(m_ctx, m_cfg.walkableRadius, *m_chf))
+    {
+        m_pLog->logMessage("ERROR: NavMeshBuild: rcErodeWalkableArea failed."); return false;
+    }
+
+    // ── Step 4: Regions ────────────────────────────────────────────────────
+    if (!rcBuildDistanceField(m_ctx, *m_chf))
+    {
+        m_pLog->logMessage("ERROR: NavMeshBuild: rcBuildDistanceField failed."); return false;
+    }
+    if (!rcBuildRegions(m_ctx, *m_chf, m_cfg.borderSize,
+        m_cfg.minRegionArea, m_cfg.mergeRegionArea))
+    {
+        m_pLog->logMessage("ERROR: NavMeshBuild: rcBuildRegions failed."); return false;
+    }
+
+    // ── Step 5: Contours ───────────────────────────────────────────────────
+    m_cset = rcAllocContourSet();
+    if (!m_cset)
+    {
+        m_pLog->logMessage("ERROR: NavMeshBuild: out of memory 'cset'."); return false;
+    }
+    if (!rcBuildContours(m_ctx, *m_chf,
+        m_cfg.maxSimplificationError, m_cfg.maxEdgeLen, *m_cset))
+    {
+        m_pLog->logMessage("ERROR: NavMeshBuild: rcBuildContours failed."); return false;
+    }
+
+    // ── Step 6: Poly mesh ──────────────────────────────────────────────────
+    m_pmesh = rcAllocPolyMesh();
+    if (!m_pmesh)
+    {
+        m_pLog->logMessage("ERROR: NavMeshBuild: out of memory 'pmesh'."); return false;
+    }
+    if (!rcBuildPolyMesh(m_ctx, *m_cset, m_cfg.maxVertsPerPoly, *m_pmesh))
+    {
+        m_pLog->logMessage("ERROR: NavMeshBuild: rcBuildPolyMesh failed."); return false;
+    }
+
+    // ── Step 7: Detail mesh ────────────────────────────────────────────────
+    m_dmesh = rcAllocPolyMeshDetail();
+    if (!m_dmesh)
+    {
+        m_pLog->logMessage("ERROR: NavMeshBuild: out of memory 'dmesh'."); return false;
+    }
+    if (!rcBuildPolyMeshDetail(m_ctx, *m_pmesh, *m_chf,
+        m_cfg.detailSampleDist, m_cfg.detailSampleMaxError, *m_dmesh))
+    {
+        m_pLog->logMessage("ERROR: NavMeshBuild: rcBuildPolyMeshDetail failed."); return false;
+    }
+
+    if (!m_keepInterResults)
+    {
+        rcFreeCompactHeightfield(m_chf); m_chf = nullptr;
+        rcFreeContourSet(m_cset);        m_cset = nullptr;
+    }
+
+    // ── Step 8: Detour navmesh ─────────────────────────────────────────────
+    if (m_cfg.maxVertsPerPoly <= DT_VERTS_PER_POLYGON)
+    {
+        for (int i = 0; i < m_pmesh->npolys; ++i)
+        {
+            if (m_pmesh->areas[i] == RC_WALKABLE_AREA)
+            {
+                m_pmesh->areas[i] = SAMPLE_POLYAREA_GROUND;
+                m_pmesh->flags[i] = SAMPLE_POLYFLAGS_WALK;
+            }
+        }
+
+        dtNavMeshCreateParams params;
+        memset(&params, 0, sizeof(params));
+        params.verts = m_pmesh->verts;
+        params.vertCount = m_pmesh->nverts;
+        params.polys = m_pmesh->polys;
+        params.polyAreas = m_pmesh->areas;
+        params.polyFlags = m_pmesh->flags;
+        params.polyCount = m_pmesh->npolys;
+        params.nvp = m_pmesh->nvp;
+        params.detailMeshes = m_dmesh->meshes;
+        params.detailVerts = m_dmesh->verts;
+        params.detailVertsCount = m_dmesh->nverts;
+        params.detailTris = m_dmesh->tris;
+        params.detailTriCount = m_dmesh->ntris;
+        params.offMeshConVerts = m_offMeshConVerts;
+        params.offMeshConRad = m_offMeshConRads;
+        params.offMeshConDir = m_offMeshConDirs;
+        params.offMeshConAreas = m_offMeshConAreas;
+        params.offMeshConFlags = m_offMeshConFlags;
+        params.offMeshConUserID = m_offMeshConId;
+        params.offMeshConCount = 0;
+        params.walkableHeight = m_agentHeight;
+        params.walkableRadius = m_agentRadius;
+        params.walkableClimb = m_agentMaxClimb;
+        rcVcopy(params.bmin, m_pmesh->bmin);
+        rcVcopy(params.bmax, m_pmesh->bmax);
+        params.cs = m_cfg.cs;
+        params.ch = m_cfg.ch;
+
+        unsigned char* navData = nullptr;
+        int navDataSize = 0;
+        if (!dtCreateNavMeshData(&params, &navData, &navDataSize))
+        {
+            m_pLog->logMessage("ERROR: NavMeshBuild: dtCreateNavMeshData failed."); return false;
+        }
+
+        m_navMesh = dtAllocNavMesh();
+        if (!m_navMesh)
+        {
+            dtFree(navData); m_pLog->logMessage("ERROR: NavMeshBuild: dtAllocNavMesh failed."); return false;
+        }
+
+        dtStatus status = m_navMesh->init(navData, navDataSize, DT_TILE_FREE_DATA);
+        if (dtStatusFailed(status))
+        {
+            dtFree(navData); m_pLog->logMessage("ERROR: NavMeshBuild: m_navMesh->init failed."); return false;
+        }
+
+        m_navQuery = dtAllocNavMeshQuery();
+        status = m_navQuery->init(m_navMesh, 65535);
+        if (dtStatusFailed(status))
+        {
+            m_pLog->logMessage("ERROR: NavMeshBuild: m_navQuery->init failed."); return false;
+        }
+    }
+
+    m_pLog->logMessage("[OgreRecast] NavMeshBuild end");
+    return true;
 }
 
-
-
-
-
-
-#include <math.h>
-
-
-/**
- * Now for the pathfinding code.
- * This takes a start point and an end point and, if possible, generates a list of lines in a path. It might fail if the start or end points aren't near any navmesh polygons, or if the path is too long, or it can't make a path, or various other reasons. So far I've not had problems though.
- *
- * nTarget: The index number for the slot in which the found path is to be stored
- * nPathSlot: Number identifying the target the path leads to
- *
- * Return codes:
- *  0   found path
- *  -1  Couldn't find polygon nearest to start point
- *  -2  Couldn't find polygon nearest to end point
- *  -3  Couldn't create a path
- *  -4  Couldn't find a path
- *  -5  Couldn't create a straight path
- *  -6  Couldn't find a straight path
-**/
-int OgreRecast::FindPath(float* pStartPos, float* pEndPos, int nPathSlot, int nTarget)
-{
-	dtStatus status;
-	dtPolyRef StartPoly;
-	float StartNearest[3];
-	dtPolyRef EndPoly;
-	float EndNearest[3];
-	dtPolyRef PolyPath[MAX_PATHPOLY];
-	int nPathCount = 0;
-	float StraightPath[MAX_PATHVERT * 3];
-	int nVertCount = 0;
-
-
-	// find the start polygon
-	status = m_navQuery->findNearestPoly(pStartPos, mExtents, mFilter, &StartPoly, StartNearest);
-	if ((status&DT_FAILURE) || (status&DT_STATUS_DETAIL_MASK)) return -1; // couldn't find a polygon
-
-	// find the end polygon
-	status = m_navQuery->findNearestPoly(pEndPos, mExtents, mFilter, &EndPoly, EndNearest);
-	if ((status&DT_FAILURE) || (status&DT_STATUS_DETAIL_MASK)) return -2; // couldn't find a polygon
-
-	status = m_navQuery->findPath(StartPoly, EndPoly, StartNearest, EndNearest, mFilter, PolyPath, &nPathCount, MAX_PATHPOLY);
-	if ((status&DT_FAILURE) || (status&DT_STATUS_DETAIL_MASK)) return -3; // couldn't create a path
-	if (nPathCount == 0) return -4; // couldn't find a path
-
-	status = m_navQuery->findStraightPath(StartNearest, EndNearest, PolyPath, nPathCount, StraightPath, NULL, NULL, &nVertCount, MAX_PATHVERT);
-	if ((status&DT_FAILURE) || (status&DT_STATUS_DETAIL_MASK)) return -5; // couldn't create a path
-	if (nVertCount == 0) return -6; // couldn't find a path
-
-	// At this point we have our path.  Copy it to the path store
-	int nIndex = 0;
-	for (int nVert = 0; nVert < nVertCount; nVert++)
-	{
-		m_PathStore[nPathSlot].PosX[nVert] = StraightPath[nIndex++];
-		m_PathStore[nPathSlot].PosY[nVert] = StraightPath[nIndex++];
-		m_PathStore[nPathSlot].PosZ[nVert] = StraightPath[nIndex++];
-
-		//sprintf(m_chBug, "Path Vert %i, %f %f %f", nVert, m_PathStore[nPathSlot].PosX[nVert], m_PathStore[nPathSlot].PosY[nVert], m_PathStore[nPathSlot].PosZ[nVert]) ;
-		//m_pLog->logMessage(m_chBug);
-	}
-	m_PathStore[nPathSlot].MaxVertex = nVertCount;
-	m_PathStore[nPathSlot].Target = nTarget;
-
-	return nVertCount;
-
-}
-
-int OgreRecast::FindPath(Ogre::Vector3 startPos, Ogre::Vector3 endPos, int nPathSlot, int nTarget)
-{
-	float start[3];
-	float end[3];
-	OgreVect3ToFloatA(startPos, start);
-	OgreVect3ToFloatA(endPos, end);
-
-	return FindPath(start, end, nPathSlot, nTarget);
-}
-
-std::vector<Ogre::Vector3> OgreRecast::getPath(int pathSlot)
-{
-	std::vector<Ogre::Vector3> result;
-	if (pathSlot < 0 || pathSlot >= MAX_PATHSLOT || m_PathStore[pathSlot].MaxVertex <= 0)
-		return result;
-
-	PATHDATA *path = &(m_PathStore[pathSlot]);
-	result.reserve(path->MaxVertex);
-	for (int i = 0; i < path->MaxVertex; i++)
-	{
-		result.push_back(Ogre::Vector3(path->PosX[i], path->PosY[i], path->PosZ[i]));
-	}
-
-	return result;
-}
-
-
-int OgreRecast::getTarget(int pathSlot)
-{
-	if (pathSlot < 0 || pathSlot >= MAX_PATHSLOT)
-		return 0;
-
-	return m_PathStore[pathSlot].Target;
-}
-
-
-
-
-/**
- * Debug drawing functionality:
-**/
-
-void OgreRecast::drawNavMesh(bool draw)
-{
-	m_debugDrawer->resetForNewFrame();
-	m_debugDrawer->draw(draw);
-
-	if (m_pmesh)
-	{
-		if (true == draw)
-		{
-			duDebugDrawPolyMesh(m_debugDrawer, *m_pmesh);
-			// NEU: erst hier wird die akkumulierte Geometrie auf die GPU geschrieben
-			m_debugDrawer->flushToGPU();
-		}
-		else
-		{
-			removeDrawnNavmesh(0);
-		}
-	}
-}
+// ===========================================================================
+// Navmesh visual accumulation (used by OgreDetourTileCache::drawDetail)
+// ===========================================================================
 
 void OgreRecast::beginNavMeshAccum()
 {
-	m_navMeshAccum.clear();
+    m_navVisual.beginAccum();
 }
 
 void OgreRecast::flushNavMesh()
 {
-	// Helper: creates one ManualObject from accumulated vertex/index data.
-	auto buildMO = [&](
-		const Ogre::String& name,
-		const std::vector<NavMeshVertex>& accVerts,
-		const std::vector<uint32_t>& accIndices,
-		Ogre::OperationType                opType) -> Ogre::ManualObject*
-	{
-		if (accVerts.empty())
-			return nullptr;
-
-		Ogre::ManualObject* mo = m_pSceneMgr->createManualObject();
-		mo->setRenderQueueGroup(10);
-		mo->setCastShadows(false);
-		mo->setName(name);
-		mo->begin("recastdebug", opType);
-
-		for (const NavMeshVertex& v : accVerts)
-		{
-			mo->position(v.pos);
-			mo->colour(v.col);
-		}
-		for (uint32_t idx : accIndices)
-			mo->index(idx);
-
-		mo->end();
-		m_pRecastSN->attachObject(mo);
-		return mo;
-	};
-
-	// Create exactly ONE ManualObject per primitive type for the entire navmesh.
-	// Names do not include tile refs — we always remove all and recreate.
-	buildMO("RecastMOWalk_All", m_navMeshAccum.walkVerts,
-		m_navMeshAccum.walkIndices, Ogre::OT_TRIANGLE_LIST);
-
-	buildMO("RecastMONeighbour_All", m_navMeshAccum.neighbourVerts,
-		m_navMeshAccum.neighbourIndices, Ogre::OT_LINE_LIST);
-
-	buildMO("RecastMOBoundary_All", m_navMeshAccum.boundaryVerts,
-		m_navMeshAccum.boundaryIndices, Ogre::OT_LINE_LIST);
-
-	m_navMeshAccum.clear(); // Free CPU memory after upload
+    m_navVisual.flush(m_pSceneMgr, m_pRecastSN);
 }
 
-void OgreRecast::drawPolyMesh(const rcPolyMesh &mesh, bool draw, bool colorRegions)
+void OgreRecast::destroyNavMesh()
 {
-	const int nvp = mesh.nvp;
-	const float cs = mesh.cs;
-	const float ch = mesh.ch;
-	const float* orig = mesh.bmin;
-
-	const unsigned short* verts = mesh.verts;
-	const unsigned short* polys = mesh.polys;
-	const unsigned char* areas = mesh.areas;
-	const unsigned short* regions = mesh.regs;
-	const int nverts = mesh.nverts;
-	const int npolys = mesh.npolys;
-	const int maxpolys = mesh.maxpolys;
-
-
-	CreateRecastPolyMesh("SingleNavmesh", verts, nverts, polys, npolys, areas, maxpolys, regions, nvp, cs, ch, orig, draw, colorRegions);
-}
-
-
-// TODO make this only create an ogre entity, put the demo specific drawing in a separate DebugDrawing class __declspec( dllexport ) to separate it from the reusable recast wrappers
-void OgreRecast::CreateRecastPolyMesh(const Ogre::String name,
-	const unsigned short* verts, const int nverts,
-	const unsigned short* polys, const int npolys,
-	const unsigned char* areas, const int maxpolys,
-	const unsigned short* regions, const int nvp,
-	const float cs, const float ch, const float* orig,
-	bool draw, bool colorRegions)
-{
-	if (false == draw)
-	{
-		// Caller (drawNavMesh false-path) handles ManualObject cleanup via
-		// removeAllDrawnNavmesh() — nothing to do here for the accum path.
-		return;
-	}
-
-	if (0 == npolys)
-		return;
-
-	// Choose per-region random colors when requested.
-	// Use the region id as seed so colors are stable across tiles.
-	std::vector<Ogre::ColourValue> regionColors;
-	if (colorRegions)
-	{
-		regionColors.resize(maxpolys);
-		for (int i = 0; i < maxpolys; ++i)
-		{
-			// Deterministic color from region index so adjacent tiles match.
-			uint32_t seed = static_cast<uint32_t>(regions[i]) * 2654435761u;
-			regionColors[i] = Ogre::ColourValue(
-				((seed >> 16) & 0xFF) / 255.0f,
-				((seed >> 8) & 0xFF) / 255.0f,
-				((seed) & 0xFF) / 255.0f, 1.0f);
-		}
-	}
-
-	// ── Walkable polygon fill ────────────────────────────────────────────
-	for (int i = 0; i < npolys; ++i)
-	{
-		if (areas[i] != SAMPLE_POLYAREA_GROUND && areas[i] != DT_TILECACHE_WALKABLE_AREA)
-			continue;
-
-		const unsigned short* p = &polys[i * nvp * 2];
-		for (int j = 2; j < nvp; ++j)
-		{
-			if (p[j] == RC_MESH_NULL_IDX) break;
-
-			const int vi[3] = { p[0], p[j - 1], p[j] };
-			const uint32_t base = static_cast<uint32_t>(m_navMeshAccum.walkVerts.size());
-
-			for (int k = 0; k < 3; ++k)
-			{
-				const unsigned short* v = &verts[vi[k] * 3];
-				NavMeshVertex vtx;
-				vtx.pos = Ogre::Vector3(
-					orig[0] + v[0] * cs,
-					orig[1] + v[1] * ch + m_navMeshOffsetFromGround,
-					orig[2] + v[2] * cs);
-
-				if (colorRegions)
-					vtx.col = regionColors[regions[i]];
-				else if (areas[i] == SAMPLE_POLYAREA_GROUND)
-					vtx.col = m_navmeshGroundPolygonCol;
-				else
-					vtx.col = m_navmeshOtherPolygonCol;
-
-				m_navMeshAccum.walkVerts.push_back(vtx);
-			}
-			m_navMeshAccum.walkIndices.push_back(base);
-			m_navMeshAccum.walkIndices.push_back(base + 1);
-			m_navMeshAccum.walkIndices.push_back(base + 2);
-		}
-	}
-
-	// ── Neighbour edges (shared edges between polys) ─────────────────────
-	for (int i = 0; i < npolys; ++i)
-	{
-		const unsigned short* p = &polys[i * nvp * 2];
-		for (int j = 0; j < nvp; ++j)
-		{
-			if (p[j] == RC_MESH_NULL_IDX) break;
-			if (p[nvp + j] == RC_MESH_NULL_IDX) continue; // boundary, not neighbour
-
-			const int vi[2] = {
-				p[j],
-				(j + 1 >= nvp || p[j + 1] == RC_MESH_NULL_IDX) ? p[0] : p[j + 1]
-			};
-
-			for (int k = 0; k < 2; ++k)
-			{
-				const unsigned short* v = &verts[vi[k] * 3];
-				NavMeshVertex vtx;
-				vtx.pos = Ogre::Vector3(
-					orig[0] + v[0] * cs,
-					orig[1] + v[1] * ch + m_navMeshEdgesOffsetFromGround,
-					orig[2] + v[2] * cs);
-				vtx.col = m_navmeshNeighbourEdgeCol;
-				m_navMeshAccum.neighbourIndices.push_back(
-					static_cast<uint32_t>(m_navMeshAccum.neighbourVerts.size()));
-				m_navMeshAccum.neighbourVerts.push_back(vtx);
-			}
-		}
-	}
-
-	// ── Boundary edges (outer edges) ─────────────────────────────────────
-	for (int i = 0; i < npolys; ++i)
-	{
-		const unsigned short* p = &polys[i * nvp * 2];
-		for (int j = 0; j < nvp; ++j)
-		{
-			if (p[j] == RC_MESH_NULL_IDX) break;
-			if (p[nvp + j] != RC_MESH_NULL_IDX) continue; // neighbour, not boundary
-
-			const int vi[2] = {
-				p[j],
-				(j + 1 >= nvp || p[j + 1] == RC_MESH_NULL_IDX) ? p[0] : p[j + 1]
-			};
-
-			for (int k = 0; k < 2; ++k)
-			{
-				const unsigned short* v = &verts[vi[k] * 3];
-				NavMeshVertex vtx;
-				vtx.pos = Ogre::Vector3(
-					orig[0] + v[0] * cs,
-					orig[1] + v[1] * ch + m_navMeshEdgesOffsetFromGround,
-					orig[2] + v[2] * cs);
-				vtx.col = m_navmeshOuterEdgeCol;
-				m_navMeshAccum.boundaryIndices.push_back(
-					static_cast<uint32_t>(m_navMeshAccum.boundaryVerts.size()));
-				m_navMeshAccum.boundaryVerts.push_back(vtx);
-			}
-		}
-	}
-}
-
-float OgreRecast::getAgentRadius()
-{
-	return m_agentRadius;
-}
-
-float OgreRecast::getAgentHeight()
-{
-	return m_agentHeight;
-}
-
-float OgreRecast::getPathOffsetFromGround()
-{
-	return m_pathOffsetFromGround;
-}
-
-float OgreRecast::getNavmeshOffsetFromGround()
-{
-	return m_navMeshOffsetFromGround;
-}
-
-rcConfig OgreRecast::getConfig()
-{
-	return m_cfg;
-}
-
-OgreRecastConfigParams OgreRecast::getConfigParams(void) const
-{
-	return m_configParams;
-}
-
-void OgreRecast::update()
-{
-	// Fully rebuild static geometry after a reset (when tiles should be removed)
-	if (m_rebuildSg)
-	{
-#if OGRE_RECAST_DEBUG
-		m_sg->reset();
-
-		// Add navmesh tiles (polys) to static geometry
-		Ogre::SceneManager::MovableObjectIterator iterator = m_pSceneMgr->getMovableObjectIterator("Entity");
-		while (iterator.hasMoreElements())
-		{
-			Ogre::v1::Entity* ent = static_cast<Ogre::v1::Entity*>(iterator.getNext());
-			// Add all navmesh poly debug entities
-			if (Ogre::StringUtil::startsWith(ent->getName(), "ent_recastmowalk_"))
-				m_sg->addEntity(ent, Ogre::Vector3::ZERO);
-		}
-		m_sg->build();
-#else
-		Ogre::SceneManager::MovableObjectIterator iterator = m_pSceneMgr->getMovableObjectIterator("Entity");
-#endif
-
-		// Batch all lines together in one single manualObject (since we cannot use staticGeometry for lines)
-
-		auto itor = m_pSceneMgr->getMovableObjectIterator("ManualObject");
-		while (itor.hasMoreElements())
-		{
-			// is that correct??
-			Ogre::ManualObject* object = static_cast<Ogre::ManualObject*>(itor.peekNext());
-			if (object->getName() == "AllNeighbourLines")
-			{
-				m_pRecastSN->detachObject(object);
-				m_pSceneMgr->destroyManualObject(object);
-				break;
-			}
-			itor.moveNext();
-		}
-
-		itor = m_pSceneMgr->getMovableObjectIterator("ManualObject");
-		while (itor.hasMoreElements())
-		{
-			// is that correct??
-			Ogre::ManualObject* object = static_cast<Ogre::ManualObject*>(itor.peekNext());
-			if (object->getName() == "AllBoundaryLines")
-			{
-				m_pRecastSN->detachObject(object);
-				m_pSceneMgr->destroyManualObject(object);
-				break;
-			}
-			itor.moveNext();
-		}
-
-		Ogre::ManualObject *allNeighbourLines = m_pSceneMgr->createManualObject();
-		allNeighbourLines->setRenderQueueGroup(10);
-		allNeighbourLines->setName("AllNeighbourLines");
-		allNeighbourLines->begin("recastdebug", Ogre::OperationType::OT_LINE_LIST);
-		allNeighbourLines->colour(m_navmeshNeighbourEdgeCol);
-
-		Ogre::ManualObject *allBoundaryLines = m_pSceneMgr->createManualObject();
-		allBoundaryLines->setRenderQueueGroup(10);
-		allBoundaryLines->setName("AllBoundaryLines");
-		allBoundaryLines->begin("recastdebug", Ogre::OperationType::OT_LINE_LIST);
-		allBoundaryLines->colour(m_navmeshOuterEdgeCol);
-
-		iterator = m_pSceneMgr->getMovableObjectIterator("ManualObject");
-		while (iterator.hasMoreElements())
-		{
-			Ogre::ManualObject* man = static_cast<Ogre::ManualObject*>(iterator.getNext());
-
-			if (Ogre::StringUtil::startsWith(man->getName(), "recastmoneighbour_"))
-			{
-				std::vector<Ogre::Vector3> verts = getManualObjectVertices(man);
-
-				for (std::vector<Ogre::Vector3>::iterator iter = verts.begin(); iter != verts.end(); iter++)
-				{
-					allNeighbourLines->position(*iter);
-				}
-			}
-			else if (Ogre::StringUtil::startsWith(man->getName(), "recastmoboundary_"))
-			{
-				std::vector<Ogre::Vector3> verts = getManualObjectVertices(man);
-
-				for (std::vector<Ogre::Vector3>::iterator iter = verts.begin(); iter != verts.end(); iter++)
-				{
-					allBoundaryLines->position(*iter);
-				}
-			}
-		}
-		allNeighbourLines->end();
-		allBoundaryLines->end();
-
-		m_pRecastSN->attachObject(allNeighbourLines);
-		m_pRecastSN->attachObject(allBoundaryLines);
-
-
-		m_rebuildSg = false;
-	}
-}
-
-std::vector<Ogre::Vector3> OgreRecast::getManualObjectVertices(Ogre::ManualObject *manual)
-{
-	std::vector<Ogre::Vector3> returnVertices;
-	unsigned long thisSectionStart = 0;
-	for (size_t i = 0; i < manual->getNumSections(); i++)
-	{
-		Ogre::ManualObject::ManualObjectSection * section = manual->getSection(i);
-		Ogre::v1::RenderOperation * renderOp = nullptr;
-		section->getRenderOperation(*renderOp, false);
-		//Collect the vertices
-		{
-			const Ogre::v1::VertexElement * vertexElement = renderOp->vertexData->vertexDeclaration->findElementBySemantic(Ogre::VES_POSITION);
-			Ogre::v1::HardwareVertexBufferSharedPtr vertexBuffer = renderOp->vertexData->vertexBufferBinding->getBuffer(vertexElement->getSource());
-
-			char * verticesBuffer = (char*)vertexBuffer->lock(Ogre::v1::HardwareBuffer::HBL_READ_ONLY);
-			float * positionArrayHolder;
-
-			thisSectionStart = returnVertices.size();
-
-			returnVertices.reserve(returnVertices.size() + renderOp->vertexData->vertexCount);
-
-			for (unsigned int j = 0; j < renderOp->vertexData->vertexCount; j++)
-			{
-				vertexElement->baseVertexPointerToElement(verticesBuffer + j * vertexBuffer->getVertexSize(), &positionArrayHolder);
-				Ogre::Vector3 vertexPos = Ogre::Vector3(positionArrayHolder[0],
-					positionArrayHolder[1],
-					positionArrayHolder[2]);
-
-				//vertexPos = (orient * (vertexPos * scale)) + position;
-
-				returnVertices.push_back(vertexPos);
-			}
-
-			vertexBuffer->unlock();
-		}
-	}
-
-	return returnVertices;
-}
-
-void OgreRecast::CreateRecastPathLine(int nPathSlot, bool enable)
-{
-	// Remove previously drawn line
-	if (m_pRecastMOPath)
-	{
-		try
-		{
-			m_pRecastSN->detachObject(m_pRecastMOPath);
-			m_pSceneMgr->destroyManualObject(m_pRecastMOPath);
-			// delete m_pRecastMOPath;
-			m_pRecastMOPath = nullptr;
-		}
-		catch(...)
-		{
-		
-		}
-	}
-
-	if (true == enable)
-	{
-		// Create new manualobject for the line
-		m_pRecastMOPath = m_pSceneMgr->createManualObject();
-		// m_pRecastMOPath = new Ogre::v1::ManualObject(0, &m_pSceneMgr->_getEntityMemoryManager(Ogre::SCENE_DYNAMIC), m_pSceneMgr);
-		m_pRecastMOPath->setRenderQueueGroup(10);
-		m_pRecastMOPath->setName("recastdebug1");
-
-		int nVertCount = m_PathStore[nPathSlot].MaxVertex;
-		m_pRecastMOPath->estimateVertexCount(nVertCount);
-		m_pRecastMOPath->estimateIndexCount(nVertCount / 2);
-		m_pRecastMOPath->begin("recastdebug1", Ogre::OperationType::OT_LINE_STRIP);
-
-		for (int nVert = 0; nVert < nVertCount; nVert++)
-		{
-			m_pRecastMOPath->position(m_PathStore[nPathSlot].PosX[nVert], m_PathStore[nPathSlot].PosY[nVert] + m_pathOffsetFromGround, m_PathStore[nPathSlot].PosZ[nVert]);
-			m_pRecastMOPath->colour(Ogre::ColourValue::White);   // Assign vertex color
-			m_pRecastMOPath->index(nVert);
-			//sprintf(m_chBug, "Line Vert %i, %f %f %f", nVert, m_PathStore[nPathSlot].PosX[nVert], m_PathStore[nPathSlot].PosY[nVert], m_PathStore[nPathSlot].PosZ[nVert]) ;
-			//m_pLog->logMessage(m_chBug);
-		}
-
-		m_pRecastMOPath->end();
-		m_pRecastSN->attachObject(m_pRecastMOPath);
-	}
-}
-
-void OgreRecast::RemoveRecastPathLine(void)
-{
-	if (m_pRecastMOPath)
-	{
-		try
-		{
-			m_pRecastSN->detachObject(m_pRecastMOPath);
-			m_pSceneMgr->destroyManualObject(m_pRecastMOPath);
-			// delete m_pRecastMOPath;
-			m_pRecastMOPath = nullptr;
-		}
-		catch(...)
-		{
-		
-		}
-	}
-}
-
-
-
-
-
-
-/**
-  * Helpers
-  **/
-
-void OgreRecast::OgreVect3ToFloatA(const Ogre::Vector3 vect, float* result)
-{
-	result[0] = vect[0];
-	result[1] = vect[1];
-	result[2] = vect[2];
-};
-
-void OgreRecast::FloatAToOgreVect3(const float* vect, Ogre::Vector3 &result)
-{
-	result.x = vect[0];
-	result.y = vect[1];
-	result.z = vect[2];
-}
-
-/**
-  * Random number generator implementation used by getRandomNavMeshPoint method.
-  **/
-static float frand()
-{
-	return (float)rand() / (float)RAND_MAX;
-}
-
-Ogre::Vector3 OgreRecast::getRandomNavMeshPoint()
-{
-	float resultPoint[3];
-	dtPolyRef resultPoly;
-	m_navQuery->findRandomPoint(mFilter, frand, &resultPoly, resultPoint);
-
-	return Ogre::Vector3(resultPoint[0], resultPoint[1], resultPoint[2]);
-}
-
-dtQueryFilter OgreRecast::getFilter()
-{
-	return *mFilter;    // Copy-on-return
-}
-
-void OgreRecast::setFilter(const dtQueryFilter filter)
-{
-	*mFilter = filter;    // Copy
-		// TODO will this work? As I'm making a shallow copy of a class __declspec( dllexport ) that contains pointers
-}
-
-Ogre::Vector3 OgreRecast::getPointExtents()
-{
-	Ogre::Vector3 result;
-	FloatAToOgreVect3(mExtents, result);
-	return result;
-}
-
-void OgreRecast::setPointExtents(Ogre::Vector3 extents)
-{
-	OgreVect3ToFloatA(extents, mExtents);
-}
-
-Ogre::Vector3 OgreRecast::getRandomNavMeshPointInCircle(Ogre::Vector3 center, Ogre::Real radius)
-{
-	// First find nearest navmesh poly to center
-	float pt[3];
-	OgreVect3ToFloatA(center, pt);
-	float rPt[3];
-	dtPolyRef navmeshPoly;
-	dtStatus status = m_navQuery->findNearestPoly(pt, mExtents, mFilter, &navmeshPoly, rPt);
-	if ((status&DT_FAILURE) || (status&DT_STATUS_DETAIL_MASK))
-		return center; // couldn't find a polygon
-
-
-	// Then start searching at this poly for a random point within specified radius
-	dtPolyRef resultPoly;
-	m_navQuery->findRandomPointAroundCircle(navmeshPoly, pt, radius, mFilter, frand, &resultPoly, rPt);
-	Ogre::Vector3 resultPt;
-	FloatAToOgreVect3(rPt, resultPt);
-
-	return resultPt;
-}
-
-Ogre::String OgreRecast::getPathFindErrorMsg(int errorCode)
-{
-	Ogre::String code = Ogre::StringConverter::toString(errorCode);
-	switch (errorCode)
-	{
-	case 0:
-		return code + " -- No error.";
-	case -1:
-		return code + " -- Couldn't find polygon nearest to start point.";
-	case -2:
-		return code + " -- Couldn't find polygon nearest to end point.";
-	case -3:
-		return code + " -- Couldn't create a path.";
-	case -4:
-		return code + " -- Couldn't find a path.";
-	case -5:
-		return code + " -- Couldn't create a straight path.";
-	case -6:
-		return code + " -- Couldn't find a straight path.";
-	default:
-		return code + " -- Unknown detour error code.";
-	}
-}
-
-bool OgreRecast::findNearestPointOnNavmesh(Ogre::Vector3 position, Ogre::Vector3 &resultPt)
-{
-	dtPolyRef navmeshPoly;
-	return findNearestPolyOnNavmesh(position, resultPt, navmeshPoly);
-}
-
-bool OgreRecast::findNearestPolyOnNavmesh(Ogre::Vector3 position, Ogre::Vector3 &resultPt, dtPolyRef &resultPoly)
-{
-	float pt[3];
-	OgreVect3ToFloatA(position, pt);
-	float rPt[3];
-	dtStatus status = m_navQuery->findNearestPoly(pt, mExtents, mFilter, &resultPoly, rPt);
-	if ((status&DT_FAILURE) || (status&DT_STATUS_DETAIL_MASK))
-		return false; // couldn't find a polygon
-
-	/*float height = 0.0f;
-	m_navQuery->getPolyHeight(resultPoly, rPt, &height);
-	Ogre::LogManager::getSingletonPtr()->logMessage("---->height: " + Ogre::StringConverter::toString(height));*/
-
-	if (rPt[0] == 107374176. || rPt[0] == -107374176.)
-		return false;
-
-	FloatAToOgreVect3(rPt, resultPt);
-	return true;
-}
-
-
-void OgreRecast::removeDrawnNavmesh(unsigned int tileRef)
-{
-	Ogre::String name = "RecastMOWalk_" + Ogre::StringConverter::toString(tileRef);
-	Ogre::String entName = "";
-
-	Ogre::MovableObject* object = nullptr;
-	auto itor = m_pRecastSN->getAttachedObjectIterator();
-	while (itor.hasMoreElements())
-	{
-		object = itor.peekNext();
-		if (object->getName() == name)
-		{
-			break;
-		}
-		itor.moveNext();
-	}
-
-	if (nullptr != object)
-	{
-		object->detachFromParent();
-		m_pSceneMgr->destroyManualObject(dynamic_cast<Ogre::ManualObject*>(object));
-
-		name = "RecastMONeighbour_" + Ogre::StringConverter::toString(tileRef);
-		try
-		{
-			object = m_pRecastSN->getAttachedObject(name);
-			object->detachFromParent();
-			m_pSceneMgr->destroyManualObject(dynamic_cast<Ogre::ManualObject*>(object));
-		}
-		catch (...)
-		{
-
-		}
-
-		try
-		{
-			name = "RecastMOBoundary_" + Ogre::StringConverter::toString(tileRef);
-			object = m_pRecastSN->getAttachedObject(name);
-			object->detachFromParent();
-			m_pSceneMgr->destroyManualObject(dynamic_cast<Ogre::ManualObject*>(object));
-		}
-		catch (...)
-		{
-
-		}
-	}
-}
-
-OgreRecastNavmeshPruner* OgreRecast::getNavmeshPruner()
-{
-	// Store singleton instance
-	if (!mNavmeshPruner)
-		mNavmeshPruner = new OgreRecastNavmeshPruner(this, m_navMesh);
-	// TODO does m_navMesh object not change when navmesh is rebuilt?
-
-// Return navmesh pruner for this recast mesh
-	return mNavmeshPruner;
-}
-
-void OgreRecast::removeAllDrawnNavmesh()
-{
-	std::vector<Ogre::MovableObject*> toRemove;
-	auto itor = m_pRecastSN->getAttachedObjectIterator();
-	while (itor.hasMoreElements())
-	{
-		Ogre::MovableObject* obj = itor.peekNext();
-		const Ogre::String& name = obj->getName();
-		// Now only 3 possible names (All-suffix) — O(1) check
-		if (name == "RecastMOWalk_All" ||
-			name == "RecastMONeighbour_All" ||
-			name == "RecastMOBoundary_All")
-		{
-			toRemove.push_back(obj);
-		}
-		itor.moveNext();
-	}
-
-	for (Ogre::MovableObject* obj : toRemove)
-	{
-		obj->detachFromParent();
-		m_pSceneMgr->destroyManualObject(static_cast<Ogre::ManualObject*>(obj));
-	}
+    m_navVisual.destroy(m_pSceneMgr);
 }
 
 void OgreRecast::recreateDrawer()
 {
-	// Remove all tile visuals first so rebuilt tiles (with new dtCompressedTileRefs)
-	// don't leave stale ManualObjects alongside the new ones (overdraw bug).
-	removeAllDrawnNavmesh();
-	m_debugDrawer->mustRecreate();
+    // Destroy the static navmesh Ogre::Mesh items
+    m_navVisual.destroy(m_pSceneMgr);
+    // Destroy the path line ManualObject
+    m_debugDrawer->mustRecreate();
 }
+
+// ---------------------------------------------------------------------------
+// CreateRecastPolyMesh
+// Accumulates one poly mesh tile into m_navVisual CPU buffers.
+// OgreDetourTileCache calls this for each tile; drawNavMesh calls
+// flushNavMesh() once at the end to upload everything to the GPU as a
+// single Ogre::Mesh (2 draw calls: triangles + lines).
+// ---------------------------------------------------------------------------
+void OgreRecast::CreateRecastPolyMesh(
+    const Ogre::String /*name*/,
+    const unsigned short* verts, const int nverts,
+    const unsigned short* polys, const int npolys,
+    const unsigned char* areas, const int /*maxpolys*/,
+    const unsigned short* regions, const int nvp,
+    const float cs, const float ch, const float* orig,
+    bool draw, bool colorRegions)
+{
+    if (false == draw || 0 == npolys)
+        return;
+
+    auto toVec = [&](int vi, float yOffset) -> Ogre::Vector3
+    {
+        const unsigned short* v = &verts[vi * 3];
+        return Ogre::Vector3(
+            orig[0] + v[0] * cs,
+            orig[1] + v[1] * ch + yOffset,
+            orig[2] + v[2] * cs);
+    };
+
+    // ── Walkable polygon fill ──────────────────────────────────────────────
+    for (int i = 0; i < npolys; ++i)
+    {
+        if (areas[i] != SAMPLE_POLYAREA_GROUND
+            && areas[i] != DT_TILECACHE_WALKABLE_AREA)
+            continue;
+
+        Ogre::ColourValue col;
+        if (colorRegions)
+        {
+            const unsigned short reg = regions[i];
+            if (reg != 0xFFFF) // RC_NULL_REGION
+            {
+                const uint32_t seed = static_cast<uint32_t>(reg) * 2654435761u;
+                col = Ogre::ColourValue(
+                    ((seed >> 16) & 0xFF) / 255.0f,
+                    ((seed >> 8) & 0xFF) / 255.0f,
+                    ((seed) & 0xFF) / 255.0f, 0.6f);
+            }
+            else
+            {
+                col = Ogre::ColourValue(0.4f, 0.4f, 0.4f, 0.5f); // RC_NULL_REGION: grey
+            }
+        }
+        else
+        {
+            col = (areas[i] == SAMPLE_POLYAREA_GROUND)
+                ? m_navmeshGroundPolygonCol
+                : m_navmeshOtherPolygonCol;
+        }
+
+        const unsigned short* p = &polys[i * nvp * 2];
+        for (int j = 2; j < nvp; ++j)
+        {
+            if (p[j] == RC_MESH_NULL_IDX)
+                break;
+
+            m_navVisual.addWalkPoly(
+                toVec(p[0], m_navMeshOffsetFromGround),
+                toVec(p[j - 1], m_navMeshOffsetFromGround),
+                toVec(p[j], m_navMeshOffsetFromGround),
+                col);
+        }
+    }
+
+    // ── Neighbour edges (shared between adjacent polys) ───────────────────
+    for (int i = 0; i < npolys; ++i)
+    {
+        const unsigned short* p = &polys[i * nvp * 2];
+        for (int j = 0; j < nvp; ++j)
+        {
+            if (p[j] == RC_MESH_NULL_IDX) break;
+            if (p[nvp + j] == RC_MESH_NULL_IDX) continue; // boundary, not neighbour
+
+            const int jNext = (j + 1 < nvp && p[j + 1] != RC_MESH_NULL_IDX) ? j + 1 : 0;
+            m_navVisual.addEdge(
+                toVec(p[j], m_navMeshEdgesOffsetFromGround),
+                toVec(p[jNext], m_navMeshEdgesOffsetFromGround),
+                m_navmeshNeighbourEdgeCol);
+        }
+    }
+
+    // ── Boundary edges (outer edges without neighbour) ────────────────────
+    for (int i = 0; i < npolys; ++i)
+    {
+        const unsigned short* p = &polys[i * nvp * 2];
+        for (int j = 0; j < nvp; ++j)
+        {
+            if (p[j] == RC_MESH_NULL_IDX) break;
+            if (p[nvp + j] != RC_MESH_NULL_IDX) continue; // neighbour, not boundary
+
+            const int jNext = (j + 1 < nvp && p[j + 1] != RC_MESH_NULL_IDX) ? j + 1 : 0;
+            m_navVisual.addEdge(
+                toVec(p[j], m_navMeshEdgesOffsetFromGround),
+                toVec(p[jNext], m_navMeshEdgesOffsetFromGround),
+                m_navmeshOuterEdgeCol);
+        }
+    }
+}
+
+// ===========================================================================
+// Path line (ManualObject, a handful of vertices per path)
+// ===========================================================================
+
+void OgreRecast::CreateRecastPathLine(int nPathSlot, bool enable)
+{
+    // Remove any previously drawn line
+    RemoveRecastPathLine();
+
+    if (!enable)
+        return;
+
+    const int nVertCount = m_PathStore[nPathSlot].MaxVertex;
+    if (nVertCount < 2)
+        return;
+
+    m_pRecastMOPath = m_pSceneMgr->createManualObject();
+    m_pRecastMOPath->setRenderQueueGroup(10);
+    m_pRecastMOPath->setName("recastdebug1");
+    m_pRecastMOPath->estimateVertexCount(nVertCount);
+    m_pRecastMOPath->estimateIndexCount(nVertCount);
+    m_pRecastMOPath->begin("recastdebug1", Ogre::OT_LINE_STRIP);
+
+    for (int nVert = 0; nVert < nVertCount; ++nVert)
+    {
+        m_pRecastMOPath->position(
+            m_PathStore[nPathSlot].PosX[nVert],
+            m_PathStore[nPathSlot].PosY[nVert] + m_pathOffsetFromGround,
+            m_PathStore[nPathSlot].PosZ[nVert]);
+        m_pRecastMOPath->colour(Ogre::ColourValue::White);
+        m_pRecastMOPath->index(nVert);
+    }
+
+    m_pRecastMOPath->end();
+    m_pRecastSN->attachObject(m_pRecastMOPath);
+}
+
+void OgreRecast::RemoveRecastPathLine()
+{
+    if (nullptr != m_pRecastMOPath)
+    {
+        try
+        {
+            m_pRecastSN->detachObject(m_pRecastMOPath);
+            m_pSceneMgr->destroyManualObject(m_pRecastMOPath);
+        }
+        catch (...)
+        {
+        }
+        m_pRecastMOPath = nullptr;
+    }
+}
+
+// ===========================================================================
+// Pathfinding
+// ===========================================================================
+
+int OgreRecast::FindPath(float* pStartPos, float* pEndPos,
+    int nPathSlot, int nTarget)
+{
+    dtStatus status;
+    dtPolyRef StartPoly, EndPoly;
+    float StartNearest[3], EndNearest[3];
+    dtPolyRef PolyPath[MAX_PATHPOLY];
+    int nPathCount = 0;
+    float StraightPath[MAX_PATHVERT * 3];
+    int nVertCount = 0;
+
+    status = m_navQuery->findNearestPoly(pStartPos, mExtents, mFilter, &StartPoly, StartNearest);
+    if ((status & DT_FAILURE) || (status & DT_STATUS_DETAIL_MASK)) return -1;
+
+    status = m_navQuery->findNearestPoly(pEndPos, mExtents, mFilter, &EndPoly, EndNearest);
+    if ((status & DT_FAILURE) || (status & DT_STATUS_DETAIL_MASK)) return -2;
+
+    status = m_navQuery->findPath(StartPoly, EndPoly, StartNearest, EndNearest,
+        mFilter, PolyPath, &nPathCount, MAX_PATHPOLY);
+    if ((status & DT_FAILURE) || (status & DT_STATUS_DETAIL_MASK)) return -3;
+    if (nPathCount == 0) return -4;
+
+    status = m_navQuery->findStraightPath(StartNearest, EndNearest,
+        PolyPath, nPathCount,
+        StraightPath, nullptr, nullptr,
+        &nVertCount, MAX_PATHVERT);
+    if ((status & DT_FAILURE) || (status & DT_STATUS_DETAIL_MASK)) return -5;
+    if (nVertCount == 0) return -6;
+
+    int nIndex = 0;
+    for (int nVert = 0; nVert < nVertCount; ++nVert)
+    {
+        m_PathStore[nPathSlot].PosX[nVert] = StraightPath[nIndex++];
+        m_PathStore[nPathSlot].PosY[nVert] = StraightPath[nIndex++];
+        m_PathStore[nPathSlot].PosZ[nVert] = StraightPath[nIndex++];
+    }
+    m_PathStore[nPathSlot].MaxVertex = nVertCount;
+    m_PathStore[nPathSlot].Target = nTarget;
+    return nVertCount;
+}
+
+int OgreRecast::FindPath(Ogre::Vector3 startPos, Ogre::Vector3 endPos,
+    int nPathSlot, int nTarget)
+{
+    float start[3], end[3];
+    OgreVect3ToFloatA(startPos, start);
+    OgreVect3ToFloatA(endPos, end);
+    return FindPath(start, end, nPathSlot, nTarget);
+}
+
+int OgreRecast::FindPathWithQuery(dtNavMeshQuery* query,
+    float* pStartPos, float* pEndPos,
+    int nPathSlot, int nTarget)
+{
+    // Shared lock: multiple agents read m_navMesh concurrently.
+    // OgreDetourTileCache::handleUpdate holds unique_lock during tile rebuilds.
+    std::shared_lock<std::shared_mutex> readLock(m_navMeshMutex);
+
+    dtPolyRef StartPoly, EndPoly;
+    float StartNearest[3], EndNearest[3];
+    dtPolyRef PolyPath[MAX_PATHPOLY];
+    int nPathCount = 0;
+    float StraightPath[MAX_PATHVERT * 3];
+    int nVertCount = 0;
+
+    dtStatus status;
+    status = query->findNearestPoly(pStartPos, mExtents, mFilter, &StartPoly, StartNearest);
+    if ((status & DT_FAILURE) || (status & DT_STATUS_DETAIL_MASK)) return -1;
+    status = query->findNearestPoly(pEndPos, mExtents, mFilter, &EndPoly, EndNearest);
+    if ((status & DT_FAILURE) || (status & DT_STATUS_DETAIL_MASK)) return -2;
+    status = query->findPath(StartPoly, EndPoly, StartNearest, EndNearest,
+        mFilter, PolyPath, &nPathCount, MAX_PATHPOLY);
+    if ((status & DT_FAILURE) || (status & DT_STATUS_DETAIL_MASK)) return -3;
+    if (nPathCount == 0) return -4;
+    status = query->findStraightPath(StartNearest, EndNearest,
+        PolyPath, nPathCount,
+        StraightPath, nullptr, nullptr,
+        &nVertCount, MAX_PATHVERT);
+    if ((status & DT_FAILURE) || (status & DT_STATUS_DETAIL_MASK)) return -5;
+    if (nVertCount == 0) return -6;
+
+    int nIndex = 0;
+    for (int nVert = 0; nVert < nVertCount; ++nVert)
+    {
+        m_PathStore[nPathSlot].PosX[nVert] = StraightPath[nIndex++];
+        m_PathStore[nPathSlot].PosY[nVert] = StraightPath[nIndex++];
+        m_PathStore[nPathSlot].PosZ[nVert] = StraightPath[nIndex++];
+    }
+    m_PathStore[nPathSlot].MaxVertex = nVertCount;
+    m_PathStore[nPathSlot].Target = nTarget;
+    return nVertCount;
+}
+
+std::vector<Ogre::Vector3> OgreRecast::getPath(int pathSlot)
+{
+    std::vector<Ogre::Vector3> result;
+    if (pathSlot < 0 || pathSlot >= MAX_PATHSLOT
+        || m_PathStore[pathSlot].MaxVertex <= 0)
+        return result;
+
+    result.reserve(m_PathStore[pathSlot].MaxVertex);
+    for (int i = 0; i < m_PathStore[pathSlot].MaxVertex; ++i)
+        result.emplace_back(m_PathStore[pathSlot].PosX[i],
+        m_PathStore[pathSlot].PosY[i],
+        m_PathStore[pathSlot].PosZ[i]);
+    return result;
+}
+
+int OgreRecast::getTarget(int pathSlot)
+{
+    if (pathSlot < 0 || pathSlot >= MAX_PATHSLOT) return 0;
+    return m_PathStore[pathSlot].Target;
+}
+
+// ===========================================================================
+// Per-slot nav query management (concurrent pathfinding)
+// ===========================================================================
 
 void OgreRecast::createNavQueryForSlot(int pathSlot)
 {
-	std::lock_guard<std::mutex> lock(m_slotNavQueriesMutex);
-
-	m_slotRefCounts[pathSlot]++;         // always increment
-
-	if (m_slotNavQueries.find(pathSlot) != m_slotNavQueries.end())
-		return;                          // query already exists, just ref-counted
-
-	dtNavMeshQuery* query = dtAllocNavMeshQuery();
-	query->init(m_navMesh, 2048);
-	m_slotNavQueries[pathSlot] = query;
+    std::lock_guard<std::mutex> lk(m_slotNavQueriesMutex);
+    m_slotRefCounts[pathSlot]++;
+    if (m_slotNavQueries.find(pathSlot) == m_slotNavQueries.end())
+    {
+        dtNavMeshQuery* q = dtAllocNavMeshQuery();
+        q->init(m_navMesh, 2048);
+        m_slotNavQueries[pathSlot] = q;
+    }
 }
-
-/*
-Step			Character	oldSlot	newSlot	refCount[0]	 refCount[1]	 refCount[2]
-init			all3           —       0        3            —           	 —
-assign char1	1             0->0     0        3            —           	 —
-assign char2    2             0->1     1        2 ! kept     1               —
-assign char3    3             0->2     2        1 ! kept     1               1
-Slot 0 only gets physically destroyed when its last user leaves it. No character is left stranded.
-*/
 
 void OgreRecast::destroyNavQueryForSlot(int pathSlot)
 {
-	std::lock_guard<std::mutex> lock(m_slotNavQueriesMutex);
-
-	auto refIt = m_slotRefCounts.find(pathSlot);
-	if (refIt == m_slotRefCounts.end())
-		return;
-
-	refIt->second--;
-
-	if (refIt->second > 0)
-		return;                          // others still using this slot — keep it alive
-
-	m_slotRefCounts.erase(refIt);
-
-	auto queryIt = m_slotNavQueries.find(pathSlot);
-	if (queryIt != m_slotNavQueries.end())
-	{
-		dtFreeNavMeshQuery(queryIt->second);
-		m_slotNavQueries.erase(queryIt);
-	}
+    std::lock_guard<std::mutex> lk(m_slotNavQueriesMutex);
+    auto refIt = m_slotRefCounts.find(pathSlot);
+    if (refIt == m_slotRefCounts.end()) return;
+    if (--refIt->second > 0) return;
+    m_slotRefCounts.erase(refIt);
+    auto qIt = m_slotNavQueries.find(pathSlot);
+    if (qIt != m_slotNavQueries.end())
+    {
+        dtFreeNavMeshQuery(qIt->second);
+        m_slotNavQueries.erase(qIt);
+    }
 }
 
 bool OgreRecast::hasNavQueryForSlot(int pathSlot) const
 {
-	std::lock_guard<std::mutex> lock(m_slotNavQueriesMutex);
-	return m_slotNavQueries.find(pathSlot) != m_slotNavQueries.end();
+    std::lock_guard<std::mutex> lk(m_slotNavQueriesMutex);
+    return m_slotNavQueries.count(pathSlot) > 0;
 }
 
 int OgreRecast::acquireNextFreeSlot()
 {
-	std::lock_guard<std::mutex> lock(m_slotNavQueriesMutex);
-
-	// Find the lowest slot number not currently in use
-	int slot = 0;
-	while (m_slotNavQueries.find(slot) != m_slotNavQueries.end())
-		++slot;
-
-	dtNavMeshQuery* query = dtAllocNavMeshQuery();
-	query->init(m_navMesh, 2048);
-	m_slotNavQueries[slot] = query;
-	m_slotRefCounts[slot] = 1;
-	return slot;
-}
-
-int OgreRecast::FindPathWithQuery(dtNavMeshQuery* query, float* pStartPos, float* pEndPos, int nPathSlot, int nTarget)
-{
-	// Identical to FindPath but uses the provided query — thread-safe
-	// because each thread has its own query instance reading the same
-	// read-only navmesh.
-	dtPolyRef StartPoly, EndPoly;
-	float StartNearest[3], EndNearest[3];
-	dtPolyRef PolyPath[MAX_PATHPOLY];
-	int nPathCount = 0;
-	float StraightPath[MAX_PATHVERT * 3];
-	int nVertCount = 0;
-
-	dtStatus status;
-	status = query->findNearestPoly(pStartPos, mExtents, mFilter, &StartPoly, StartNearest);
-	if ((status & DT_FAILURE) || (status & DT_STATUS_DETAIL_MASK)) return -1;
-	status = query->findNearestPoly(pEndPos, mExtents, mFilter, &EndPoly, EndNearest);
-	if ((status & DT_FAILURE) || (status & DT_STATUS_DETAIL_MASK)) return -2;
-	status = query->findPath(StartPoly, EndPoly, StartNearest, EndNearest,
-		mFilter, PolyPath, &nPathCount, MAX_PATHPOLY);
-	if ((status & DT_FAILURE) || (status & DT_STATUS_DETAIL_MASK)) return -3;
-	if (nPathCount == 0) return -4;
-	status = query->findStraightPath(StartNearest, EndNearest, PolyPath, nPathCount,
-		StraightPath, NULL, NULL, &nVertCount, MAX_PATHVERT);
-	if ((status & DT_FAILURE) || (status & DT_STATUS_DETAIL_MASK)) return -5;
-	if (nVertCount == 0) return -6;
-
-	int nIndex = 0;
-	for (int nVert = 0; nVert < nVertCount; nVert++)
-	{
-		m_PathStore[nPathSlot].PosX[nVert] = StraightPath[nIndex++];
-		m_PathStore[nPathSlot].PosY[nVert] = StraightPath[nIndex++];
-		m_PathStore[nPathSlot].PosZ[nVert] = StraightPath[nIndex++];
-	}
-	m_PathStore[nPathSlot].MaxVertex = nVertCount;
-	m_PathStore[nPathSlot].Target = nTarget;
-	return nVertCount;
+    std::lock_guard<std::mutex> lk(m_slotNavQueriesMutex);
+    int slot = 0;
+    while (m_slotNavQueries.count(slot)) ++slot;
+    dtNavMeshQuery* q = dtAllocNavMeshQuery();
+    q->init(m_navMesh, 2048);
+    m_slotNavQueries[slot] = q;
+    m_slotRefCounts[slot] = 1;
+    return slot;
 }
 
 dtNavMeshQuery* OgreRecast::getNavQueryForSlot(int pathSlot) const
 {
-	std::lock_guard<std::mutex> lock(m_slotNavQueriesMutex);
-	auto it = m_slotNavQueries.find(pathSlot);
-	if (it != m_slotNavQueries.end())
-		return it->second;
-	return nullptr;
+    std::lock_guard<std::mutex> lk(m_slotNavQueriesMutex);
+    auto it = m_slotNavQueries.find(pathSlot);
+    return (it != m_slotNavQueries.end()) ? it->second : nullptr;
+}
+
+// ===========================================================================
+// Miscellaneous
+// ===========================================================================
+
+OgreRecastNavmeshPruner* OgreRecast::getNavmeshPruner()
+{
+    if (!mNavmeshPruner)
+        mNavmeshPruner = new OgreRecastNavmeshPruner(this, m_navMesh);
+    return mNavmeshPruner;
+}
+
+void OgreRecast::update()
+{
+    // Legacy: static geometry rebuild. Not used in tiled navmesh builds.
+    // Kept as a no-op to satisfy any existing callers.
+}
+
+bool OgreRecast::findNearestPointOnNavmesh(Ogre::Vector3 position,
+    Ogre::Vector3& resultPt)
+{
+    dtPolyRef poly;
+    return findNearestPolyOnNavmesh(position, resultPt, poly);
+}
+
+bool OgreRecast::findNearestPolyOnNavmesh(Ogre::Vector3 position,
+    Ogre::Vector3& resultPt,
+    dtPolyRef& resultPoly)
+{
+    float pt[3], rPt[3];
+    OgreVect3ToFloatA(position, pt);
+    dtStatus status = m_navQuery->findNearestPoly(pt, mExtents, mFilter,
+        &resultPoly, rPt);
+    if ((status & DT_FAILURE) || (status & DT_STATUS_DETAIL_MASK))
+        return false;
+    if (rPt[0] == 107374176.0f || rPt[0] == -107374176.0f)
+        return false;
+    FloatAToOgreVect3(rPt, resultPt);
+    return true;
+}
+
+Ogre::Vector3 OgreRecast::getRandomNavMeshPoint()
+{
+    float rPt[3];
+    dtPolyRef poly;
+    m_navQuery->findRandomPoint(mFilter, frand, &poly, rPt);
+    return Ogre::Vector3(rPt[0], rPt[1], rPt[2]);
+}
+
+Ogre::Vector3 OgreRecast::getRandomNavMeshPointInCircle(Ogre::Vector3 center,
+    Ogre::Real radius)
+{
+    float pt[3], rPt[3];
+    OgreVect3ToFloatA(center, pt);
+    dtPolyRef navPoly;
+    dtStatus status = m_navQuery->findNearestPoly(pt, mExtents, mFilter,
+        &navPoly, rPt);
+    if ((status & DT_FAILURE) || (status & DT_STATUS_DETAIL_MASK))
+        return center;
+    dtPolyRef resultPoly;
+    m_navQuery->findRandomPointAroundCircle(navPoly, pt, radius, mFilter,
+        frand, &resultPoly, rPt);
+    Ogre::Vector3 result;
+    FloatAToOgreVect3(rPt, result);
+    return result;
+}
+
+dtQueryFilter OgreRecast::getFilter()
+{
+    return *mFilter;
+}
+
+void OgreRecast::setFilter(const dtQueryFilter filter)
+{
+    *mFilter = filter;
+}
+
+Ogre::Vector3 OgreRecast::getPointExtents()
+{
+    Ogre::Vector3 v;
+    FloatAToOgreVect3(mExtents, v);
+    return v;
+}
+
+void OgreRecast::setPointExtents(Ogre::Vector3 extents)
+{
+    OgreVect3ToFloatA(extents, mExtents);
+}
+
+Ogre::String OgreRecast::getPathFindErrorMsg(int errorCode)
+{
+    switch (errorCode)
+    {
+    case  0: return "0 -- No error.";
+    case -1: return "-1 -- Couldn't find polygon nearest to start point.";
+    case -2: return "-2 -- Couldn't find polygon nearest to end point.";
+    case -3: return "-3 -- Couldn't create a path.";
+    case -4: return "-4 -- Couldn't find a path.";
+    case -5: return "-5 -- Couldn't create a straight path.";
+    case -6: return "-6 -- Couldn't find a straight path.";
+    default: return Ogre::StringConverter::toString(errorCode) + " -- Unknown error.";
+    }
+}
+
+void OgreRecast::OgreVect3ToFloatA(const Ogre::Vector3 vect, float* result)
+{
+    result[0] = vect.x;
+    result[1] = vect.y;
+    result[2] = vect.z;
+}
+
+void OgreRecast::FloatAToOgreVect3(const float* vect, Ogre::Vector3& result)
+{
+    result.x = vect[0];
+    result.y = vect[1];
+    result.z = vect[2];
 }

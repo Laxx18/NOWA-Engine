@@ -559,6 +559,8 @@ namespace NOWA
 
         void debugDrawObstacleBoxes(Ogre::SceneManager* scnMgr);
 
+        void stopSimulation(void);
+
 	private:
 		OgreRecastModule(const Ogre::String& appStateName);
 

@@ -203,55 +203,52 @@ namespace NOWA
 	}
 
 	GameObject::~GameObject()
-	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObject] Destroying Gameobject "
-			+ this->id->getString());
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObject] Destroying Gameobject " + this->id->getString());
 
-		this->delayedAddCommponentList.clear();
+        this->delayedAddCommponentList.clear();
+        this->luaScript = nullptr;
 
-		this->luaScript = nullptr;
+        auto it = this->attributes.begin();
+        while (it != this->attributes.end())
+        {
+            Variant* variant = it->second;
+            delete variant;
+            variant = nullptr;
+            ++it;
+        }
+        this->attributes.clear();
 
-		// Delete all attributes
-		auto it = this->attributes.begin();
+        NOWA::GraphicsModule::getInstance()->removeTrackedNode(this->sceneNode);
 
-		while (it != this->attributes.end())
-		{
-			Variant* variant = it->second;
-			delete variant;
-			variant = nullptr;
-			++it;
-		}
-		this->attributes.clear();
+        if (nullptr != this->sceneNode)
+        {
+            this->sceneNode->getUserObjectBindings().clear();
+        }
 
-		NOWA::GraphicsModule::getInstance()->removeTrackedNode(this->sceneNode);
+        if (nullptr != this->sceneNode || nullptr != this->movableObject || nullptr != this->boundingBoxDraw || nullptr != this->clampObjectQuery)
+        {
+            auto sceneNode = this->sceneNode;
+            auto movableObject = this->movableObject;
+            auto boundingBoxDraw = this->boundingBoxDraw;
+            auto clampObjectQuery = this->clampObjectQuery;
+            auto sceneManager = this->sceneManager;
 
-		// Clear bindings immediately on main thread
-		if (nullptr != this->sceneNode)
-		{
-			this->sceneNode->getUserObjectBindings().clear();
-		}
+            this->sceneNode = nullptr;
+            this->movableObject = nullptr;
+            this->boundingBoxDraw = nullptr;
+            this->clampObjectQuery = nullptr;
+            this->sceneManager = nullptr;
 
-		if (nullptr != this->sceneNode || nullptr != this->movableObject || nullptr != this->boundingBoxDraw || nullptr != this->clampObjectQuery)
-		{
-			auto sceneNode = this->sceneNode;
-			auto movableObject = this->movableObject;
-			auto boundingBoxDraw = this->boundingBoxDraw;
-			auto clampObjectQuery = this->clampObjectQuery;
-			auto sceneManager = this->sceneManager;
-
-			this->sceneNode = nullptr;
-			this->movableObject = nullptr;
-			this->boundingBoxDraw = nullptr;
-			this->clampObjectQuery = nullptr;
-			this->sceneManager = nullptr;
-
-            NOWA::GraphicsModule::DestroyCommand destroyCommand = [this, sceneNode, movableObject, boundingBoxDraw, clampObjectQuery, sceneManager]() mutable
+            // No 'this' capture — this is a destructor, 'this' is freed before
+            // the render thread executes this lambda.
+            NOWA::GraphicsModule::DestroyCommand destroyCommand = [sceneNode, movableObject, boundingBoxDraw, clampObjectQuery, sceneManager]()
             {
-				this->destroyGameObjectResources(sceneNode, movableObject, boundingBoxDraw, clampObjectQuery, sceneManager);
+                GameObject::destroyGameObjectResources(sceneNode, movableObject, boundingBoxDraw, clampObjectQuery, sceneManager);
             };
             GraphicsModule::getInstance()->enqueueDestroy(destroyCommand, "GameObject::~GameObject");
-		}
-	}
+        }
+    }
 
 	void GameObject::destroyGameObjectResources(Ogre::SceneNode* sceneNode, Ogre::MovableObject* movableObject, Ogre::WireAabb* boundingBoxDraw, Ogre::RaySceneQuery* clampObjectQuery, Ogre::SceneManager* sceneManager)
 	{
