@@ -46,20 +46,20 @@ namespace NOWA
 		renderDistance(Core::getSingletonPtr()->getGlobalRenderDistance()),
 
 		hasRecast(false),
-		cellSize(0.1),
+		cellSize(0.2),
 		cellHeight(0.1),
-		agentMaxSlope(65),
+		agentMaxSlope(45),
 		agentHeight(1.6),
 		agentMaxClimb(1.0f),
 		agentRadius(0.3),
 		edgeMaxLen(12),
 		edgeMaxError(1.3),
-		regionMinSize(50),
+		regionMinSize(8),
 		regionMergeSize(20),
-		vertsPerPoly(5),
+		vertsPerPoly(6),
 		detailSampleDist(6),
 		detailSampleMaxError(1),
-		pointExtends(Ogre::Vector3(5.0f, 5.0f, 5.0f)),
+		pointExtends(Ogre::Vector3(2.0f, 2.0f, 2.0f)),
 		keepInterResults(false)
 	{
 

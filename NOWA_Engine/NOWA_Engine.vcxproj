@@ -358,7 +358,6 @@
     <ClInclude Include="camera\BasePhysicsCamera.h" />
     <ClInclude Include="utilities\AutoCompleteSearch.h" />
     <ClInclude Include="utilities\BoundingBoxDraw.h" />
-    <ClInclude Include="utilities\C2DMatrix.h" />
     <ClInclude Include="utilities\ConcurrentQueue.h" />
     <ClInclude Include="utilities\CPlusPlusComponentGenerator.h" />
     <ClInclude Include="utilities\DrawRenderer.hpp" />

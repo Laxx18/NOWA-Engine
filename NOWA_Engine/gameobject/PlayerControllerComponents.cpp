@@ -2905,7 +2905,16 @@ namespace NOWA
 		canClick(true),
 		mouseX(0),
 		mouseY(0),
-		maxHeightDifference(1.0f)
+		maxHeightDifference(1.0f),
+        middleButtonWasDown(false),
+        lastPathMouseX(-1),
+        lastPathMouseY(-1),
+        pendingPath(false),
+        pendingPosOnNavMesh(Ogre::Vector3::ZERO),
+        raycastThrottleTimer(0.0f),
+        raycastThrottleInterval(0.125f),
+        lastKnownClickPosition(Ogre::Vector3::ZERO),
+        hasLastKnownClickPosition(false)
 	{
 		/*this->walkSound = OgreALModule::getInstance()->createSound("PlayerWalk1", "Walk.wav");
 		this->walkSound->setGain(0.5f);
@@ -2955,217 +2964,295 @@ namespace NOWA
         }
     }
 
-	void PathFollowState3D::update(GameObject* player, Ogre::Real dt)
-	{
-		const OIS::MouseState& ms = NOWA::InputDeviceCore::getSingletonPtr()->getMouse()->getMouseState();
+	// ============================================================================
+    // PathFollowState3D.h — add these members:
+    //
+    // bool          middleButtonWasDown         = false;
+    //   Tracks the button state from the previous frame to detect edge transitions.
+    //
+    // int           lastPathMouseX              = -1;
+    // int           lastPathMouseY              = -1;
+    //   Last mouse position for which a path was requested. Used to detect mouse
+    //   movement so autoClick only fires when the cursor actually moved.
+    //
+    // bool          pendingPath                 = false;
+    //   True while an async path task has been launched but not yet consumed.
+    //   The poll section at the top of update() clears this when the task finishes.
+    //
+    // Ogre::Vector3 pendingPosOnNavMesh         = Ogre::Vector3::ZERO;
+    //   The navmesh target stored when findPath() was launched. Passed to the Lua
+    //   onNavMeshClicked callback once the path result is ready.
+    //
+    // Ogre::Real    raycastThrottleTimer        = 0.0f;
+    //   Countdown timer for autoClick raycast throttling. When > 0, new raycasts
+    //   are suppressed. Reset to RAYCAST_THROTTLE_INTERVAL after each fire.
+    //
+    // static constexpr Ogre::Real RAYCAST_THROTTLE_INTERVAL = 0.125f;
+    //   Minimum seconds between successive raycasts in autoClick mode (8x/second).
+    //   Limits how often getMeshInformation2 can trigger an enqueueAndWait cache
+    //   fill. After the first hit on a mesh the cache is warm and raycasts are pure
+    //   CPU, but the throttle protects against stutter during cold-cache frames.
+    // ============================================================================
 
-		if (nullptr == this->playerController->getPhysicsComponent())
-		{
-			return;
-		}
+    void PathFollowState3D::update(GameObject* player, Ogre::Real dt)
+    {
+        const OIS::MouseState& ms = NOWA::InputDeviceCore::getSingletonPtr()->getMouse()->getMouseState();
 
-		this->playerController->getAnimationBlender()->beginFrame();
+        if (nullptr == this->playerController->getPhysicsComponent())
+        {
+            return;
+        }
 
-		Ogre::Real tempSpeed = this->playerController->getPhysicsComponent()->getSpeed();
-		Ogre::Real tempAnimationSpeed = this->playerController->getAnimationSpeed();
+        this->playerController->getAnimationBlender()->beginFrame();
 
-		if (true == this->playerController->getGameObject()->isSelected() && true == ms.buttonDown(OIS::MB_Middle))
-		{
-			// Add delay to camera behavior if target location has been clicked, so that the scene will not be rotated to early
-			if (nullptr != this->playerController->getCameraBehaviorComponent())
-			{
-				NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(1.0f));
-				delayProcess->attachChild(NOWA::ProcessPtr(new UpdateCameraBehaviorProcess()));
-				NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
-			}
+        Ogre::Real tempSpeed = this->playerController->getPhysicsComponent()->getSpeed();
+        Ogre::Real tempAnimationSpeed = this->playerController->getAnimationSpeed();
 
-			// Get target position
-			/*std::pair<bool, Ogre::Vector3> result = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getTargetBodyPosition(ms.X.abs, ms.Y.abs,
-				AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera(), this->playerController->getPhysicsComponent()->getOgreNewt(),
-				this->playerController->getCategoriesId(), this->playerController->getRange(), true);*/
+        // ── Poll: apply new waypoints as soon as the async path task finishes ─────
+        //
+        // This section runs every frame without blocking the logic thread.
+        //
+        // Design rationale — why polling instead of waitForPath():
+        //   waitForPath() blocks the logic thread until Recast finishes. At 144fps
+        //   that is invisible for a single click, but with autoClick + mouse movement
+        //   it fires multiple times per second and causes visible frame stutter.
+        //   Polling with isPathReady() (wait_for(0ms)) never blocks — it returns
+        //   immediately with true/false and only collects the future result when ready.
+        //
+        // Design rationale — why the path is NOT cleared in the click handler:
+        //   The old approach cleared movingBehavior->getPath() the moment a new click
+        //   was detected, before the async path task had finished. The agent then had
+        //   zero waypoints for 1-3 frames → stopped → stuttered → resumed. This was
+        //   the root cause of the jerky autoClick movement.
+        //   Now the agent keeps following the current path while the new one is being
+        //   calculated. The path is cleared and replaced atomically here, only when
+        //   the new path data is fully ready. The direction change is seamless.
+        if (true == this->pendingPath && true == this->ogreRecastModule->isPathReady(this->playerController->getPathSlot()))
+        {
+            this->pendingPath = false;
 
-			// Only process path request once per click — not every frame
-            if (false == this->canClick)
+            std::vector<Ogre::Vector3> path = this->ogreRecastModule->getOgreRecast()->getPath(this->playerController->getPathSlot());
+
+            if (false == path.empty())
             {
-                return; // already processed this click, wait for release
+                // Fire the Lua callback now that the target position is confirmed reachable.
+                LuaScript* luaScript = this->playerController->getOwner()->getLuaScript();
+                if (nullptr != luaScript)
+                {
+                    Ogre::Vector3 pos = this->pendingPosOnNavMesh;
+                    NOWA::AppStateManager::LogicCommand logicCommand = [this, luaScript, pos]()
+                    {
+                        luaScript->callTableFunction("onNavMeshClicked", pos);
+                    };
+                    NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+                }
+
+                this->hasGoal = true;
+
+                // Clear the old path and install the new one NOW — path data is fully
+                // written by the async task and isPathReady() has confirmed this.
+                // No data race: the shared_lock in FindPathWithQuery was released before
+                // the future became ready, and we hold no lock here on the logic thread.
+                this->movingBehavior->getPath()->clear();
+
+                // Add each time behavior, because if goal is reached, or no path, the behavior will be removed
+                this->movingBehavior->removeBehavior(NOWA::KI::MovingBehavior::FOLLOW_PATH);
+                this->movingBehavior->addBehavior(NOWA::KI::MovingBehavior::FOLLOW_PATH);
+
+                AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(0.1f);
+                AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(0.1f);
+
+                if (true == this->playerController->getDrawPath())
+                {
+                    auto recastPtr = this->ogreRecastModule->getOgreRecast();
+                    int slot = this->playerController->getPathSlot();
+                    // Non-blocking enqueue: no logic thread stall, no staging buffer pressure.
+                    // Path data is stable here so there is no race with CreateRecastPathLine
+                    // reading m_PathStore on the render thread.
+                    NOWA::GraphicsModule::RenderCommand renderCommand = [recastPtr, slot]()
+                    {
+                        recastPtr->CreateRecastPathLine(slot, true);
+                    };
+                    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "PathFollowState3D::DrawPathLine");
+                }
+
+                auto playerController = this->playerController;
+                ENQUEUE_RENDER_COMMAND_MULTI_WAIT("AddWaypoints", _2(path, playerController), {
+                    for (size_t i = 0; i < path.size(); i++)
+                    {
+                        Ogre::Vector3 resultWaypoint = path[i];
+                        // resultWaypoint.y += this->playerController->getOwner()->getPosition().y /** 2.0f*/;
+
+                        // First wp is useless at it is at the same position as the player
+                        if (i > 0)
+                        {
+                            this->movingBehavior->getPath()->addWayPoint(resultWaypoint);
+
+                            if (true == this->playerController->getDrawPath())
+                            {
+                                if (nullptr == this->playerController->debugWaypointNode)
+                                {
+                                    this->playerController->debugWaypointNode = this->playerController->getOwner()->getSceneManager()->getRootSceneNode()->createChildSceneNode();
+                                    Ogre::Item* item = this->playerController->getOwner()->getSceneManager()->createItem("Node.mesh");
+                                    this->playerController->debugWaypointNode->attachObject(item);
+                                }
+                                this->playerController->debugWaypointNode->setPosition(resultWaypoint);
+                            }
+                        }
+                    }
+                });
+
+                this->playerController->setMoveWeight(1.0f);
+                this->playerController->setJumpWeight(1.0f);
+            }
+        }
+
+        // ── Click / hold detection ────────────────────────────────────────────────
+        //
+        // Edge trigger: only act on the TRANSITION from not-pressed to pressed.
+        //
+        // Why not a level trigger (ms.buttonDown every frame)?
+        //   A level trigger fires every frame while the button is held — up to 144
+        //   times per second. Each fire launches a raycast and a path request. Even
+        //   with the async path design this causes unnecessary CPU/GPU load and can
+        //   overwhelm the raycast cache warm-up (enqueueAndWait per unique mesh hit).
+        //
+        // buttonJustPressed is true for exactly ONE frame per physical click.
+        // The animation state machine at the bottom always runs regardless.
+        const bool buttonDown = ms.buttonDown(OIS::MB_Middle);
+        const bool buttonJustPressed = buttonDown && false == this->middleButtonWasDown;
+        this->middleButtonWasDown = buttonDown;
+
+        // autoClick = false: fire only on the rising edge (one path per click).
+        // autoClick = true:  Continous RTS Style — also fire while held if the mouse moved,
+        //                    but throttled to RAYCAST_THROTTLE_INTERVAL seconds between
+        //                    fires so getMeshInformation2 cache misses (enqueueAndWait,
+        //                    ~7ms render-frame stall) happen at most 8x per second
+        //                    instead of 144x. After the cache is warm all raycasts are
+        //                    pure CPU and the throttle has negligible effect on feel.
+        const bool mouseMoved = (ms.X.abs != this->lastPathMouseX || ms.Y.abs != this->lastPathMouseY);
+        const bool autoClickFire = buttonDown && true == this->playerController->getAutoClick() && true == mouseMoved && this->raycastThrottleTimer <= 0.0f;
+        const bool shouldProcess = buttonJustPressed || autoClickFire;
+
+        // Count down the throttle timer every frame.
+        if (this->raycastThrottleTimer > 0.0f)
+        {
+            this->raycastThrottleTimer -= dt;
+        }
+
+        if (true == this->playerController->getGameObject()->isSelected() && true == shouldProcess)
+        {
+            // Record mouse position so the next frame can detect movement.
+            this->lastPathMouseX = ms.X.abs;
+            this->lastPathMouseY = ms.Y.abs;
+
+            // Reset throttle so the next autoClick fire is delayed.
+            if (true == autoClickFire)
+            {
+                this->raycastThrottleTimer = 1.0f / 8.0f;
             }
 
-			this->mouseX = ms.X.abs;
-			this->mouseY = ms.Y.abs;
+            // Add delay to camera behavior if target location has been clicked, so that the scene will not be rotated to early
+            if (nullptr != this->playerController->getCameraBehaviorComponent())
+            {
+                NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(1.0f));
+                delayProcess->attachChild(NOWA::ProcessPtr(new UpdateCameraBehaviorProcess()));
+                NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
+            }
 
-			if (false == this->playerController->getAutoClick())
-			{
-				this->canClick = false;
-			}
+            std::vector<Ogre::MovableObject*> excludeObjects;
+            excludeObjects.emplace_back(this->playerController->getOwner()->getMovableObject());
 
-			Ogre::Vector3 clickedPosition = Ogre::Vector3::ZERO;
-			Ogre::Real closestDistance = 0.0f;
-			Ogre::Vector3 normal = Ogre::Vector3::ZERO;
-			Ogre::MovableObject* movableObject = nullptr;
+            Ogre::Vector3 clickedPosition = Ogre::Vector3::ZERO;
 
-			std::vector<Ogre::MovableObject*> excludeObjects;
-			excludeObjects.emplace_back(this->playerController->getOwner()->getMovableObject());
-
-			int mouseXLocal = this->mouseX;
-			int mouseYLocal = this->mouseY;
-
-            size_t movableObjectLocal = 0;
-			/*bool success = MathHelper::getInstance()->getRaycastFromPoint(mouseX, mouseY, AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera(), 
-				Core::getSingletonPtr()->getOgreRenderWindow(), raySceneQuery, clickedPosition,
+            /*bool success = MathHelper::getInstance()->getRaycastFromPoint(mouseX, mouseY, AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera(),
+                Core::getSingletonPtr()->getOgreRenderWindow(), raySceneQuery, clickedPosition,
                 movableObjectLocal, closestDistance, normal, &excludeObjects, false);*/
 
-			bool success = MathHelper::getInstance()->getRaycastForFrame(mouseXLocal, mouseYLocal, AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera(), Core::getSingletonPtr()->getOgreRenderWindow(),
-				this->raySceneQuery, excludeObjects, clickedPosition);
-			
+            // Raycast against the full scene (terrain, items, buildings, everything).
+            // On the first hit of a new mesh getMeshInformation2 will enqueueAndWait
+            // once to fill the CPU cache. All subsequent hits on the same mesh are
+            // pure CPU (shared_ptr cache lookup, no GPU access, no fence). The throttle
+            // above limits how often this first-hit stall can occur in autoClick mode.
+            bool success = MathHelper::getInstance()->getRaycastForFrame(ms.X.abs, ms.Y.abs, AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera(), Core::getSingletonPtr()->getOgreRenderWindow(), this->raySceneQuery,
+                excludeObjects, clickedPosition);
 
-			if (true == success)
-			{
+            if (true == success)
+            {
                 Ogre::String name = this->playerController->getOwner()->getName();
 
-				
-				this->ogreRecastModule->getOgreRecast()->getPath(this->playerController->getPathSlot()).clear();
-				Ogre::Vector3 posOnNavMesh = Ogre::Vector3::ZERO;
+                this->ogreRecastModule->getOgreRecast()->getPath(this->playerController->getPathSlot()).clear();
+                Ogre::Vector3 posOnNavMesh = Ogre::Vector3::ZERO;
 
-				// http://www.stevefsp.org/projects/rcndoc/prod/classdtNavMeshQuery.html
-				// https://forums.ogre3d.org/viewtopic.php?t=62079
-				// Attention: This line will always find a path, even the user clicked on a non navigable place, so the nearest position to that place is used, which may not be what the user wants for his game
-				if (this->ogreRecastModule->getOgreRecast()->findNearestPointOnNavmesh(clickedPosition + Ogre::Vector3(0.0f, 0.3f, 0.0f), posOnNavMesh))
-				{
-					// Check if the result is within an acceptable height range
-					if (std::abs(posOnNavMesh.y - clickedPosition.y) > this->maxHeightDifference)
-					{
-						posOnNavMesh.y = clickedPosition.y; // Ignore the result if it's too far from the click
-					}
-					// y immer 0.5 statt höher argghhh
-					// Ogre::LogManager::getSingletonPtr()->logMessage("findNearestPointOnNavmesh: " + Ogre::StringConverter::toString(posOnNavMesh));
+                // http://www.stevefsp.org/projects/rcndoc/prod/classdtNavMeshQuery.html
+                // https://forums.ogre3d.org/viewtopic.php?t=62079
+                // Attention: This line will always find a path, even the user clicked on a non navigable place, so the nearest position to that place is used, which may not be what the user wants for his game
+                if (this->ogreRecastModule->getOgreRecast()->findNearestPointOnNavmesh(clickedPosition + Ogre::Vector3(0.0f, 0.3f, 0.0f), posOnNavMesh))
+                {
+                    // Check if the result is within an acceptable height range
+                    if (std::abs(posOnNavMesh.y - clickedPosition.y) > this->maxHeightDifference)
+                    {
+                        posOnNavMesh.y = clickedPosition.y; // Ignore the result if it's too far from the click
+                    }
+                    // y immer 0.5 statt höher argghhh
+                    // Ogre::LogManager::getSingletonPtr()->logMessage("findNearestPointOnNavmesh: " + Ogre::StringConverter::toString(posOnNavMesh));
 
-					if (nullptr != this->movingBehavior->getPath())
-					{
-						this->movingBehavior->getPath()->clear();
-					}
-
-					/*Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PathFollowState3D] " + this->playerController->getOwner()->getName() +
+                    /*Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PathFollowState3D] " + this->playerController->getOwner()->getName() +
                                                                                             " attempting findPath with pathSlot=" + Ogre::StringConverter::toString(this->playerController->getPathSlot()) +
                                                                                             " isSelected=" + Ogre::StringConverter::toString(this->playerController->getGameObject()->isSelected()) +
-                                                                                            " MB_Middle=" + Ogre::StringConverter::toString(ms.buttonDown(OIS::MB_Middle)) + " canClick=" + Ogre::StringConverter::toString(this->canClick));*/
+                                                                                            " MB_Middle=" + Ogre::StringConverter::toString(ms.buttonDown(OIS::MB_Middle)));*/
 
+                    // Attention: What is with targetSlot? Its here 0
+                    //
+                    // Launch the async path task — returns immediately without blocking.
+                    // The task runs FindPathWithQuery on its own dtNavMeshQuery instance
+                    // (one per pathSlot) so there is no shared state with other slots or
+                    // the render thread.
+                    //
+                    // CRITICAL: we do NOT clear movingBehavior->getPath() here.
+                    // The agent keeps following the current path while the new one is
+                    // being calculated. Clearing it here would leave the agent with zero
+                    // waypoints for 1-3 frames, causing the stutter / stop / resume
+                    // pattern that was the root complaint. The path is cleared and
+                    // replaced in the poll section above, only after isPathReady().
+                    bool launched = this->ogreRecastModule->findPath(this->playerController->getPosition(), posOnNavMesh + Ogre::Vector3(0.0f, 0.3f, 0.0f), this->playerController->getPathSlot(), 0, false);
 
-					// Attention: What is with targetSlot? Its here 0
-					bool foundPath = this->ogreRecastModule->findPath(this->playerController->getPosition(), posOnNavMesh + Ogre::Vector3(0.0f, 0.3f, 0.0f), this->playerController->getPathSlot(), 0, false);
-					/*Ogre::LogManager::getSingletonPtr()->logMessage("#############findPath size: "
-					+ Ogre::StringConverter::toString(this->ogreRecastModule->getOgreRecast()->getPath(0).size())
-					+ " y offset: " + Ogre::StringConverter::toString(this->ogreRecastModule->getOgreRecast()->getNavmeshOffsetFromGround()));*/
+                    /*Ogre::LogManager::getSingletonPtr()->logMessage("#############findPath size: "
+                    + Ogre::StringConverter::toString(this->ogreRecastModule->getOgreRecast()->getPath(0).size())
+                    + " y offset: " + Ogre::StringConverter::toString(this->ogreRecastModule->getOgreRecast()->getNavmeshOffsetFromGround()));*/
 
-					/*Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PathFollowState3D] " + this->playerController->getOwner()->getName() + " findPath result=" + Ogre::StringConverter::toString(foundPath) +
-                                                                                            " pathSize=" + Ogre::StringConverter::toString(this->ogreRecastModule->getOgreRecast()->getPath(this->playerController->getPathSlot()).size()));*/
-
-					// Wait for this slot's result before reading the path store.
-                    // Since each slot has its own query and its own PathStore slot,
-                    // all workers wait in parallel — total wait time = slowest single path,
-                    // not the sum of all paths.
-
-					// STATTDESSEN: Path ist bereits in m_PathStore gespeichert wenn findPath true zurückgibt.
-                    // Der async Task hat ihn geschrieben bevor future.get() ready ist — aber wir lesen
-                    // ihn ohnehin erst im NÄCHSTEN Frame wenn MovingBehavior die Waypoints braucht.
-                    // Kein Blocking nötig.
-                    if (true == foundPath)
+                    if (true == launched)
                     {
-                        foundPath = this->ogreRecastModule->waitForPath(this->playerController->getPathSlot());
+                        // Mark that a path result is incoming. The poll section will pick
+                        // it up in the next frame where isPathReady() returns true.
+                        this->pendingPath = true;
+                        this->pendingPosOnNavMesh = posOnNavMesh;
                     }
-
-					// Now draw the path line — m_PathStore is stable (no concurrent writer).
-                    if (true == foundPath && true == this->playerController->getDrawPath())
+                    else if (false == this->playerController->getAutoClick())
                     {
-                        auto recastPtr = this->ogreRecastModule->getOgreRecast();
-                        int slot = this->playerController->getPathSlot();
-                        // Non-blocking enqueue: no logic thread stall, no staging buffer pressure.
-						NOWA::GraphicsModule::RenderCommand renderCommand = [recastPtr, slot]()
+                        // findPath returned false (pending obstacles, build in progress, etc.)
+                        // For a single click (autoClick=false) it is correct to clear the path
+                        // here — the user explicitly clicked somewhere unreachable right now.
+                        // For autoClick the agent just keeps moving on the previous path until
+                        // obstacles are resolved and the next throttle interval fires.
+                        if (nullptr != this->movingBehavior->getPath())
                         {
-                            recastPtr->CreateRecastPathLine(slot, true);
-                        };
-                        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "PathFollowState3D::DrawPathLine");
+                            this->movingBehavior->getPath()->clear();
+                        }
                     }
+                }
+                else
+                {
+                    // findNearestPointOnNavmesh failed — click was completely off-navmesh.
+                    if (nullptr != this->movingBehavior->getPath())
+                    {
+                        this->movingBehavior->getPath()->clear();
+                    }
+                }
+            }
+        }
 
-					if (false == foundPath)
-					{
-						// Ogre::LogManager::getSingletonPtr()->logMessage("No path found!!!");
-						// this->movingBehavior->reset();
-						// this->movingBehavior->setBehavior(KI::MovingBehavior::NONE);
-					}
-					else
-					{
-						AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(0.1f);
-						AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(0.1f);
-
-						std::vector<Ogre::Vector3> path = this->ogreRecastModule->getOgreRecast()->getPath(this->playerController->getPathSlot());
-
-						LuaScript* luaScript = this->playerController->getOwner()->getLuaScript();
-						if (nullptr != luaScript)
-						{
-							NOWA::AppStateManager::LogicCommand logicCommand = [this, luaScript, posOnNavMesh]()
-							{
-								luaScript->callTableFunction("onNavMeshClicked", posOnNavMesh);
-							};
-							NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-						}
-							
-						this->hasGoal = true;
-						this->movingBehavior->getPath()->clear();
-
-						// Add each time behavior, because if goal is reached, or no path, the behavior will be removed
-						this->movingBehavior->removeBehavior(NOWA::KI::MovingBehavior::FOLLOW_PATH);
-						this->movingBehavior->addBehavior(NOWA::KI::MovingBehavior::FOLLOW_PATH);
-
-						if (false == path.empty())
-						{
-							auto playerController = this->playerController;
-							ENQUEUE_RENDER_COMMAND_MULTI_WAIT("AddWaypoints", _2(path, playerController),
-							{
-								for (size_t i = 0; i < path.size(); i++)
-								{
-									Ogre::Vector3 resultWaypoint = path[i];
-									// resultWaypoint.y += this->playerController->getOwner()->getPosition().y /** 2.0f*/;
-
-									// First wp is useless at it is at the same position as the player
-									if (i > 0)
-									{
-										this->movingBehavior->getPath()->addWayPoint(resultWaypoint);
-
-										if (true == this->playerController->getDrawPath())
-										{
-											if (nullptr == this->playerController->debugWaypointNode)
-											{
-												this->playerController->debugWaypointNode = this->playerController->getOwner()->getSceneManager()->getRootSceneNode()->createChildSceneNode();
-												Ogre::Item* item = this->playerController->getOwner()->getSceneManager()->createItem("Node.mesh");
-                                                this->playerController->debugWaypointNode->attachObject(item);
-											}
-
-											this->playerController->debugWaypointNode->setPosition(resultWaypoint);
-										}
-									}
-								}
-							});
-
-							this->playerController->setMoveWeight(1.0f);
-							this->playerController->setJumpWeight(1.0f);
-						}
-					}
-				}
-				else
-				{
-					if (nullptr != this->movingBehavior->getPath())
-					{
-						this->movingBehavior->getPath()->clear();
-					}
-				}
-			}
-		}
-		else
-		{
-			this->canClick = true;
-		}
-		
-		// -----------------------------------------------------------------------
+        // -----------------------------------------------------------------------
         // Per-frame animation state machine.
         //
         // Evaluated unconditionally every frame — NOT only on click.
@@ -3188,7 +3275,7 @@ namespace NOWA
         }
         else
         {
-			// TODO: Just a test
+            // TODO: Just a test
             // this->ogreRecastModule->debugLogPath(this->playerController->getPathSlot(), this->movingBehavior->getAgentId());
             // No waypoints — handle goal arrival and boring idle logic.
             if (true == this->hasGoal)
@@ -3238,7 +3325,7 @@ namespace NOWA
 
         // Advance animation — single call at the end, always.
         this->playerController->getAnimationBlender()->addTime(dt * tempAnimationSpeed, this->playerController->getClassName());
-	}
+    }
 
 	void PathFollowState3D::exit(GameObject* player)
 	{

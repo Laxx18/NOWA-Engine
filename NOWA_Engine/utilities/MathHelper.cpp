@@ -1,6 +1,5 @@
 #include "NOWAPrecompiled.h"
 #include "MathHelper.h"
-#include "C2DMatrix.h"
 #include "OgreMesh2.h"
 #include "OgreSubMesh2.h"
 #include "OgreBitwise.h"
@@ -8,6 +7,7 @@
 #include "Terra.h"
 #include "OgreMeshManager2.h"
 #include "OgreMesh2.h"
+#include "modules/GraphicsModule.h"
 
 namespace NOWA
 {
@@ -843,6 +843,7 @@ namespace NOWA
         return Ogre::Vector3(0.0f, -minimumScaled.y, 0.0f);
     }
 
+#if 0
 	void MathHelper::getMeshInformationWithSkeleton(Ogre::v1::Entity* entity, size_t& vertexCount, Ogre::Vector3*& vertices, size_t& indexCount, unsigned long*& indices,
 		const Ogre::Vector3& position, const Ogre::Quaternion& orient, const Ogre::Vector3& scale)
 	{
@@ -982,774 +983,798 @@ namespace NOWA
 			currentOffset = nextOffset;
 		}
 	}
+#endif
 
-	void MathHelper::getMeshInformation(const Ogre::v1::MeshPtr mesh, size_t& vertexCount, Ogre::Vector3*& vertexBuffer, size_t& indexCount, unsigned long*& indexBuffer,
-		const Ogre::Vector3& position, const Ogre::Quaternion& orientation, const Ogre::Vector3& scale)
-	{
-		bool addedShared = false;
-		size_t currentOffset = 0;
-		size_t sharedOffset = 0;
-		size_t nextOffset = 0;
-		size_t indexOffset = 0;
-		unsigned int vertexBufferSize = 0;
-		unsigned int indexBufferSize = 0;
+	void MathHelper::getMeshInformation(const Ogre::MeshPtr mesh, size_t& vertexCount, Ogre::Vector3*& vertices, size_t& indexCount, unsigned long*& indices, const Ogre::Vector3& position, const Ogre::Quaternion& orientation,
+        const Ogre::Vector3& scale)
+    {
+        // Safe null outputs — callers check vertexCount/indexCount before using
+        // the pointers, so setting them to 0/nullptr here covers error cases.
+        vertexCount = indexCount = 0;
+        vertices = nullptr;
+        indices = nullptr;
 
-		vertexCount = indexCount = 0;
+        if (mesh.isNull())
+        {
+            return;
+        }
 
-		// Calculate how many vertices and indices we're going to need
-		for (unsigned short i = 0; i < mesh->getNumSubMeshes(); ++i)
-		{
-			Ogre::v1::SubMesh* subMesh = mesh->getSubMesh(i);
+        const size_t meshHandle = mesh->getHandle();
 
-			// We only need to add the shared vertices once
-			if (subMesh->useSharedVertices)
-			{
-				if (!addedShared)
-				{
-					vertexCount += mesh->sharedVertexData[0]->vertexCount;
-					addedShared = true;
-				}
-			}
-			else
-			{
-				vertexCount += subMesh->vertexData[0]->vertexCount;
-			}
-
-			// Add the indices
-			indexCount += subMesh->indexData[0]->indexCount;
-		}
-
-
-		if (vertexCount > vertexBufferSize)
-		{
-			vertexBuffer = OGRE_ALLOC_T(Ogre::Vector3, vertexCount, Ogre::MEMCATEGORY_GEOMETRY);
-			vertexBufferSize = static_cast<unsigned int>(vertexCount);
-		}
-
-		if (indexCount > indexBufferSize)
-		{
-			indexBuffer = OGRE_ALLOC_T(unsigned long, indexCount, Ogre::MEMCATEGORY_GEOMETRY);
-			indexBufferSize = static_cast<unsigned int>(indexCount);
-		}
-
-		addedShared = false;
-
-		// Run through the submeshes again, adding the data into the arrays
-		for (unsigned short i = 0; i < mesh->getNumSubMeshes(); ++i)
-		{
-			Ogre::v1::SubMesh* subMesh = mesh->getSubMesh(i);
-
-			Ogre::v1::VertexData* vertexData = subMesh->useSharedVertices ? mesh->sharedVertexData[0] : subMesh->vertexData[0];
-
-			if ((!subMesh->useSharedVertices) || (subMesh->useSharedVertices && !addedShared))
-			{
-				if (subMesh->useSharedVertices)
-				{
-					addedShared = true;
-					sharedOffset = currentOffset;
-				}
-
-				const Ogre::v1::VertexElement* posElem = vertexData->vertexDeclaration->findElementBySemantic(Ogre::VES_POSITION);
-
-				Ogre::v1::HardwareVertexBufferSharedPtr vbuf = vertexData->vertexBufferBinding->getBuffer(posElem->getSource());
-
-				unsigned char* vertex = static_cast<unsigned char*>(vbuf->lock(Ogre::v1::HardwareBuffer::HBL_READ_ONLY));
-
-				// There is _no_ baseVertexPointerToElement() which takes an Ogre::Real or a double
-				//  as second argument. So make it float, to avoid trouble when Ogre::Real will
-				//  be compiled/typedef-ed as double:
-				//      Ogre::Real* pReal;
-				float* pReal;
-
-				for (size_t j = 0; j < vertexData->vertexCount; ++j, vertex += vbuf->getVertexSize())
-				{
-					posElem->baseVertexPointerToElement(vertex, &pReal);
-
-					Ogre::Vector3 pt(pReal[0], pReal[1], pReal[2]);
-
-					vertexBuffer[currentOffset + j] = (orientation * (pt * scale)) + position;
-				}
-
-				vbuf->unlock();
-				nextOffset += vertexData->vertexCount;
-			}
-
-
-			Ogre::v1::IndexData* indexData = subMesh->indexData[0];
-			size_t numTris = indexData->indexCount / 3;
-			Ogre::v1::HardwareIndexBufferSharedPtr ibuf = indexData->indexBuffer;
-
-			bool use32bitindexes = (ibuf->getType() == Ogre::v1::HardwareIndexBuffer::IT_32BIT);
-
-			unsigned long* pLong = static_cast<unsigned long*>(ibuf->lock(Ogre::v1::HardwareBuffer::HBL_READ_ONLY));
-			unsigned short* pShort = reinterpret_cast<unsigned short*>(pLong);
-
-			size_t offset = (subMesh->useSharedVertices) ? sharedOffset : currentOffset;
-
-			if (use32bitindexes)
-			{
-				for (size_t k = 0; k < numTris * 3; ++k)
-				{
-					indexBuffer[indexOffset++] = pLong[k] + static_cast<unsigned long>(offset);
-				}
-			}
-			else
-			{
-				for (size_t k = 0; k < numTris * 3; ++k)
-				{
-					indexBuffer[indexOffset++] = static_cast<unsigned long>(pShort[k]) + static_cast<unsigned long>(offset);
-				}
-			}
-
-			ibuf->unlock();
-			currentOffset = nextOffset;
-		}
-		indexCount = indexOffset;
-	}
-
-	void MathHelper::getMeshInformation2(const Ogre::MeshPtr mesh, size_t& vertexCount, Ogre::Vector3*& vertices, size_t& indexCount, unsigned long*& indices,
-		const Ogre::Vector3& position, const Ogre::Quaternion& orientation, const Ogre::Vector3& scale)
-	{
-		//First, we compute the total number of vertices and indices and init the buffers.
-		unsigned int numVertices = 0;
-		unsigned int numIndices = 0;
-		//MeshInfo outInfo; 
-
-		Ogre::Mesh::SubMeshVec::const_iterator subMeshIterator = mesh->getSubMeshes().begin();
-
-		while (subMeshIterator != mesh->getSubMeshes().end())
-		{
-			Ogre::SubMesh* subMesh = *subMeshIterator;
-			numVertices += static_cast<unsigned int>(subMesh->mVao[0][0]->getVertexBuffers()[0]->getNumElements());
-			numIndices += static_cast<unsigned int>(subMesh->mVao[0][0]->getIndexBuffer()->getNumElements());
-
-			subMeshIterator++;
-		}
-
-		//allocate memory to the input array reference, handleRequest calls delete on this memory
-		vertices = OGRE_ALLOC_T(Ogre::Vector3, numVertices, Ogre::MEMCATEGORY_GEOMETRY);
-		indices = OGRE_ALLOC_T(unsigned long, numIndices, Ogre::MEMCATEGORY_GEOMETRY);
-
-		vertexCount = numVertices; //used later in handleRequest.
-		indexCount = numIndices;
-
-		unsigned int addedVertices = 0;
-		unsigned int addedIndices = 0;
-
-		unsigned int index_offset = 0;
-		unsigned int subMeshOffset = 0;
-
-		/*
-		Read submeshes
-		*/
-		subMeshIterator = mesh->getSubMeshes().begin();
-		while (subMeshIterator != mesh->getSubMeshes().end())
-		{
-			Ogre::SubMesh* subMesh = *subMeshIterator;
-			Ogre::VertexArrayObjectArray vaos = subMesh->mVao[0];
-
-			if (!vaos.empty())
-			{
-				//Get the first LOD level 
-				Ogre::VertexArrayObject* vao = vaos[0];
-				bool indices32 = (vao->getIndexBuffer()->getIndexType() == Ogre::IndexBufferPacked::IT_32BIT);
-
-				const Ogre::VertexBufferPackedVec& vertexBuffers = vao->getVertexBuffers();
-				Ogre::IndexBufferPacked* indexBuffer = vao->getIndexBuffer();
-
-				//request async read from buffer 
-				Ogre::VertexArrayObject::ReadRequestsVec requests;
-				requests.push_back(Ogre::VertexArrayObject::ReadRequests(Ogre::VES_POSITION));
-
-				vao->readRequests(requests);
-				vao->mapAsyncTickets(requests);
-				unsigned int subMeshVerticiesNum = static_cast<unsigned int>(requests[0].vertexBuffer->getNumElements());
-				if (requests[0].type == Ogre::VET_HALF4)
-				{
-					for (size_t i = 0; i < subMeshVerticiesNum; ++i)
-					{
-						const Ogre::uint16* pos = reinterpret_cast<const Ogre::uint16*>(requests[0].data);
-						Ogre::Vector3 vec;
-						vec.x = Ogre::Bitwise::halfToFloat(pos[0]);
-						vec.y = Ogre::Bitwise::halfToFloat(pos[1]);
-						vec.z = Ogre::Bitwise::halfToFloat(pos[2]);
-
-						requests[0].data += requests[0].vertexBuffer->getBytesPerElement();
-						vertices[i + subMeshOffset] = (orientation * (vec * scale)) + position;
-					}
-				}
-				else if (requests[0].type == Ogre::VET_FLOAT3)
-				{
-					for (size_t i = 0; i < subMeshVerticiesNum; ++i)
-					{
-						const float* pos = reinterpret_cast<const float*>(requests[0].data);
-						Ogre::Vector3 vec;
-						vec.x = *pos++;
-						vec.y = *pos++;
-						vec.z = *pos++;
-						requests[0].data += requests[0].vertexBuffer->getBytesPerElement();
-						vertices[i + subMeshOffset] = (orientation * (vec * scale)) + position;
-					}
-				}
-                else if (requests[0].type == Ogre::VET_FLOAT4)
+        // ── 1. Fast path: CPU cache ───────────────────────────────────────────────
+        // Grab a ref-counted pointer to the cache entry under the lock, then
+        // release the lock before doing any allocation or transform work.
+        // This keeps the critical section tiny and avoids holding the lock while
+        // calling OGRE_ALLOC_T (which may block on the allocator).
+        {
+            std::shared_ptr<const RaycastMeshCache> cached;
+            {
+                std::lock_guard<std::mutex> lk(this->meshCacheMutex);
+                auto it = this->meshCache.find(meshHandle);
+                if (it != this->meshCache.end())
                 {
-                    for (size_t i = 0; i < subMeshVerticiesNum; ++i)
+                    cached = it->second;
+                }
+            }
+
+            if (cached)
+            {
+                vertexCount = cached->localVerts.size();
+                indexCount = cached->indices.size();
+
+                if (0 == vertexCount || 0 == indexCount)
+                {
+                    return; // valid cached empty mesh (e.g. dummy VAO)
+                }
+
+                // allocate memory to the input array reference, handleRequest calls delete on this memory
+                vertices = OGRE_ALLOC_T(Ogre::Vector3, vertexCount, Ogre::MEMCATEGORY_GEOMETRY);
+                indices = OGRE_ALLOC_T(unsigned long, indexCount, Ogre::MEMCATEGORY_GEOMETRY);
+
+                // Apply world transform on-the-fly from the cached local-space data.
+                // This matches exactly what the slow path produced before: each
+                // vertex is (orientation * (localPos * scale)) + position.
+                for (size_t i = 0; i < vertexCount; ++i)
+                {
+                    vertices[i] = (orientation * (cached->localVerts[i] * scale)) + position;
+                }
+
+                for (size_t i = 0; i < indexCount; ++i)
+                {
+                    indices[i] = cached->indices[i];
+                }
+
+                return;
+            }
+        }
+
+        // ── 2. Cache miss — GPU readback on render thread ─────────────────────────
+        // enqueueAndWait blocks the logic thread until the render thread has run
+        // the lambda. Inside the lambda we are on the render thread, so all Ogre
+        // GPU operations (readRequests / mapAsyncTickets / readRequest) are safe.
+        //
+        // This stall is at most one render-frame long (~7 ms at 144 fps) and
+        // happens ONLY ONCE per unique mesh handle. After this call returns, every
+        // subsequent call for the same mesh hits the fast path above.
+        //
+        // The new cache entry is built inside the lambda into a local struct on the
+        // stack of this function (newData). enqueueAndWait guarantees the lambda
+        // has finished before we touch newData again, so there is no race.
+
+        auto newData = std::make_shared<RaycastMeshCache>();
+
+        {
+            Ogre::MeshPtr meshCopy = mesh; // keep mesh alive across the wait
+            RaycastMeshCache* dst = newData.get();
+
+            NOWA::GraphicsModule::RenderCommand gpuReadback = [meshCopy, dst]()
+            {
+                for (Ogre::SubMesh* subMesh : meshCopy->getSubMeshes())
+                {
+                    if (subMesh->mVao[0].empty())
                     {
-                        const float* pos = reinterpret_cast<const float*>(requests[0].data);
+                        continue;
+                    }
 
-                        Ogre::Vector3 vec;
-                        vec.x = pos[0];
-                        vec.y = pos[1];
-                        vec.z = pos[2];
-                        // pos[3] = w (often 1.0f) -> ignore
+                    Ogre::VertexArrayObject* vao = subMesh->mVao[0][0];
+                    Ogre::IndexBufferPacked* ib = vao->getIndexBuffer();
 
-                        requests[0].data += requests[0].vertexBuffer->getBytesPerElement();
-                        vertices[i + subMeshOffset] = (orientation * (vec * scale)) + position;
+                    // Skip VAOs without an index buffer (e.g. navmesh visual debug
+                    // geometry, which is created with nullptr as the index buffer).
+                    // Those Items have queryFlags=0 so they never reach this code in
+                    // normal operation, but we guard here for safety.
+                    if (nullptr == ib || 0 == ib->getNumElements())
+                    {
+                        continue;
+                    }
+
+                    // ── Vertex readback ──────────────────────────────────────────
+                    Ogre::VertexArrayObject::ReadRequestsVec requests;
+                    requests.push_back(Ogre::VertexArrayObject::ReadRequests(Ogre::VES_POSITION));
+                    vao->readRequests(requests);
+                    vao->mapAsyncTickets(requests);
+
+                    const size_t indexBase = dst->localVerts.size();
+                    const size_t numVerts = requests[0].vertexBuffer->getNumElements();
+
+                    if (requests[0].type == Ogre::VET_HALF4)
+                    {
+                        for (size_t i = 0; i < numVerts; ++i)
+                        {
+                            const Ogre::uint16* pos = reinterpret_cast<const Ogre::uint16*>(requests[0].data);
+                            Ogre::Vector3 vec;
+                            vec.x = Ogre::Bitwise::halfToFloat(pos[0]);
+                            vec.y = Ogre::Bitwise::halfToFloat(pos[1]);
+                            vec.z = Ogre::Bitwise::halfToFloat(pos[2]);
+                            requests[0].data += requests[0].vertexBuffer->getBytesPerElement();
+                            dst->localVerts.push_back(vec);
+                        }
+                    }
+                    else if (requests[0].type == Ogre::VET_FLOAT3)
+                    {
+                        for (size_t i = 0; i < numVerts; ++i)
+                        {
+                            const float* pos = reinterpret_cast<const float*>(requests[0].data);
+                            Ogre::Vector3 vec;
+                            vec.x = *pos++;
+                            vec.y = *pos++;
+                            vec.z = *pos++;
+                            requests[0].data += requests[0].vertexBuffer->getBytesPerElement();
+                            dst->localVerts.push_back(vec);
+                        }
+                    }
+                    else if (requests[0].type == Ogre::VET_FLOAT4)
+                    {
+                        for (size_t i = 0; i < numVerts; ++i)
+                        {
+                            const float* pos = reinterpret_cast<const float*>(requests[0].data);
+                            Ogre::Vector3 vec;
+                            vec.x = pos[0];
+                            vec.y = pos[1];
+                            vec.z = pos[2];
+                            // pos[3] = w (often 1.0f) -> ignore
+                            requests[0].data += requests[0].vertexBuffer->getBytesPerElement();
+                            dst->localVerts.push_back(vec);
+                        }
+                    }
+                    else
+                    {
+                        vao->unmapAsyncTickets(requests);
+                        Ogre::LogManager::getSingletonPtr()->logMessage("[MathHelper]: Vertex Buffer type not recognised");
+                        // Leave dst empty for this submesh — safe, we just miss
+                        // those triangles in the raycast.
+                        continue;
+                    }
+
+                    vao->unmapAsyncTickets(requests);
+
+                    // ── Index readback ───────────────────────────────────────────
+                    const bool is32 = (ib->getIndexType() == Ogre::IndexBufferPacked::IT_32BIT);
+                    Ogre::AsyncTicketPtr asyncTicket = ib->readRequest(0, ib->getNumElements());
+
+                    const unsigned int* pIndices = nullptr;
+                    if (is32)
+                    {
+                        pIndices = reinterpret_cast<const unsigned int*>(asyncTicket->map());
+                    }
+                    else
+                    {
+                        const unsigned short* pShortIndices = reinterpret_cast<const unsigned short*>(asyncTicket->map());
+                        unsigned int* tmp = new unsigned int[ib->getNumElements()];
+                        for (size_t k = 0; k < ib->getNumElements(); ++k)
+                        {
+                            tmp[k] = static_cast<unsigned int>(pShortIndices[k]);
+                        }
+                        asyncTicket->unmap();
+
+                        for (size_t i = 0; i < ib->getNumElements(); ++i)
+                        {
+                            dst->indices.push_back(static_cast<unsigned long>(tmp[i]) + static_cast<unsigned long>(indexBase));
+                        }
+
+                        delete[] tmp;
+                        continue; // index data already pushed, skip the push loop below
+                    }
+
+                    for (size_t i = 0; i < ib->getNumElements(); ++i)
+                    {
+                        dst->indices.push_back(static_cast<unsigned long>(pIndices[i]) + static_cast<unsigned long>(indexBase));
+                    }
+
+                    asyncTicket->unmap();
+                }
+            };
+
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(gpuReadback), "MathHelper::getMeshInformation::gpuCache");
+        }
+
+        // Store in cache (under lock) before serving.
+        // The shared_ptr is immutable from this point on — readers don't need a lock.
+        {
+            std::lock_guard<std::mutex> lk(this->meshCacheMutex);
+            this->meshCache[meshHandle] = newData;
+        }
+
+        // ── Serve from the freshly populated cache ────────────────────────────────
+        vertexCount = newData->localVerts.size();
+        indexCount = newData->indices.size();
+
+        if (0 == vertexCount || 0 == indexCount)
+        {
+            return;
+        }
+
+        // allocate memory to the input array reference, handleRequest calls delete on this memory
+        vertices = OGRE_ALLOC_T(Ogre::Vector3, vertexCount, Ogre::MEMCATEGORY_GEOMETRY);
+        indices = OGRE_ALLOC_T(unsigned long, indexCount, Ogre::MEMCATEGORY_GEOMETRY);
+
+        for (size_t i = 0; i < vertexCount; ++i)
+        {
+            vertices[i] = (orientation * (newData->localVerts[i] * scale)) + position;
+        }
+        for (size_t i = 0; i < indexCount; ++i)
+        {
+            indices[i] = newData->indices[i];
+        }
+    }
+
+	void MathHelper::getDetailedMeshInformation(const Ogre::MeshPtr mesh, size_t& vertexCount, Ogre::Vector3*& vertices, size_t& indexCount, unsigned long*& indices, const Ogre::Vector3& position, const Ogre::Quaternion& orientation,
+        const Ogre::Vector3& scale, bool& isVET_HALF4, bool& isIndices32)
+    {
+        // Safe null outputs
+        vertexCount = indexCount = 0;
+        vertices = nullptr;
+        indices = nullptr;
+        isVET_HALF4 = isIndices32 = false;
+
+        if (mesh.isNull())
+        {
+            return;
+        }
+
+        const size_t meshHandle = mesh->getHandle();
+
+        // ── 1. Fast path: CPU cache ───────────────────────────────────────────────
+        {
+            std::shared_ptr<const RaycastMeshCache> cached;
+            {
+                std::lock_guard<std::mutex> lk(this->meshCacheMutex);
+                auto it = this->meshCache.find(meshHandle);
+                if (it != this->meshCache.end())
+                {
+                    cached = it->second;
+                }
+            }
+            if (cached)
+            {
+                vertexCount = cached->localVerts.size();
+                indexCount = cached->indices.size();
+                isVET_HALF4 = cached->isVET_HALF4;
+                isIndices32 = cached->isIndices32;
+                if (0 == vertexCount || 0 == indexCount)
+                {
+                    return;
+                }
+
+                // Compute matrix for normals that handles both rotation and non-uniform scaling
+                Ogre::Matrix3 rotMatrix;
+                orientation.ToRotationMatrix(rotMatrix);
+
+                // Create a scaling matrix for normal transformation
+                Ogre::Matrix3 scaleMatrix;
+                scaleMatrix[0][0] = scale.x;
+                scaleMatrix[1][1] = scale.y;
+                scaleMatrix[2][2] = scale.z;
+
+                // Combine rotation and scaling, then compute inverse-transpose
+                Ogre::Matrix3 normalMatrix = rotMatrix * scaleMatrix;
+                Ogre::Matrix3 invNormalMatrix = normalMatrix.Inverse().Transpose();
+
+                vertices = OGRE_ALLOC_T(Ogre::Vector3, vertexCount, Ogre::MEMCATEGORY_GEOMETRY);
+                indices = OGRE_ALLOC_T(unsigned long, indexCount, Ogre::MEMCATEGORY_GEOMETRY);
+                for (size_t i = 0; i < vertexCount; ++i)
+                {
+                    vertices[i] = (orientation * (cached->localVerts[i] * scale)) + position;
+                }
+                for (size_t i = 0; i < indexCount; ++i)
+                {
+                    indices[i] = cached->indices[i];
+                }
+                return;
+            }
+        }
+
+        // ── 2. Cache miss — GPU readback on render thread (one-time cost) ─────────
+        auto newData = std::make_shared<RaycastMeshCache>();
+        {
+            Ogre::MeshPtr meshCopy = mesh;
+            RaycastMeshCache* dst = newData.get();
+
+            NOWA::GraphicsModule::RenderCommand gpuReadback = [meshCopy, dst]()
+            {
+                for (const auto& subMesh : meshCopy->getSubMeshes())
+                {
+                    Ogre::VertexArrayObjectArray vaos = subMesh->mVao[0];
+                    if (vaos.empty())
+                    {
+                        continue;
+                    }
+
+                    Ogre::VertexArrayObject* vao = vaos[0];
+                    Ogre::IndexBufferPacked* ib = vao->getIndexBuffer();
+                    if (nullptr == ib || 0 == ib->getNumElements())
+                    {
+                        continue;
+                    }
+
+                    dst->isIndices32 = (ib->getIndexType() == Ogre::IndexBufferPacked::IT_32BIT);
+
+                    // ── Vertex positions ──────────────────────────────────────────
+                    Ogre::VertexArrayObject::ReadRequestsVec requests;
+                    requests.push_back(Ogre::VertexArrayObject::ReadRequests(Ogre::VES_POSITION));
+                    vao->readRequests(requests);
+                    vao->mapAsyncTickets(requests);
+
+                    const size_t indexBase = dst->localVerts.size();
+                    const size_t numVerts = requests[0].vertexBuffer->getNumElements();
+
+                    // Check vertex format and set isVET_HALF4 appropriately
+                    dst->isVET_HALF4 = (requests[0].type == Ogre::VET_HALF4);
+
+                    // Assuming interleaved data where:
+                    // position is first (x, y, z), followed by normal (nx, ny, nz) for each vertex
+                    if (requests[0].type == Ogre::VET_HALF4)
+                    {
+                        for (size_t i = 0; i < numVerts; ++i)
+                        {
+                            const Ogre::uint16* data = reinterpret_cast<const Ogre::uint16*>(requests[0].data);
+                            // Extract position
+                            Ogre::Vector3 pos;
+                            pos.x = Ogre::Bitwise::halfToFloat(data[0]);
+                            pos.y = Ogre::Bitwise::halfToFloat(data[1]);
+                            pos.z = Ogre::Bitwise::halfToFloat(data[2]);
+                            // Update data pointers to next vertex (for interleaved data)
+                            requests[0].data += requests[0].vertexBuffer->getBytesPerElement();
+                            dst->localVerts.push_back(pos);
+                        }
+                    }
+                    else if (requests[0].type == Ogre::VET_FLOAT3)
+                    {
+                        for (size_t i = 0; i < numVerts; ++i)
+                        {
+                            // Read position data
+                            const float* pos = reinterpret_cast<const float*>(requests[0].data);
+                            Ogre::Vector3 vertexPosition;
+                            vertexPosition.x = *pos++;
+                            vertexPosition.y = *pos++;
+                            vertexPosition.z = *pos++;
+                            // Apply transformations - fixed to use the input position parameter correctly
+                            requests[0].data += requests[0].vertexBuffer->getBytesPerElement();
+                            dst->localVerts.push_back(vertexPosition);
+                        }
+                    }
+                    else if (requests[0].type == Ogre::VET_FLOAT4)
+                    {
+                        for (size_t i = 0; i < numVerts; ++i)
+                        {
+                            const float* pos = reinterpret_cast<const float*>(requests[0].data);
+                            Ogre::Vector3 vec;
+                            vec.x = pos[0];
+                            vec.y = pos[1];
+                            vec.z = pos[2];
+                            // pos[3] = w (often 1.0f) -> ignore
+                            requests[0].data += requests[0].vertexBuffer->getBytesPerElement();
+                            dst->localVerts.push_back(vec);
+                        }
+                    }
+                    else
+                    {
+                        vao->unmapAsyncTickets(requests);
+                        OGRE_EXCEPT(Ogre::Exception::ERR_INVALIDPARAMS, "Unsupported vertex format!", "getDetailedMeshInformation");
+                    }
+
+                    vao->unmapAsyncTickets(requests);
+
+                    // ── Index readback ────────────────────────────────────────────
+                    Ogre::AsyncTicketPtr asyncTicket = ib->readRequest(0, ib->getNumElements());
+                    if (dst->isIndices32)
+                    {
+                        const unsigned int* pIndices = reinterpret_cast<const unsigned int*>(asyncTicket->map());
+                        for (size_t i = 0; i < ib->getNumElements(); ++i)
+                        {
+                            dst->indices.push_back(static_cast<unsigned long>(pIndices[i]) + static_cast<unsigned long>(indexBase));
+                        }
+                        asyncTicket->unmap();
+                    }
+                    else
+                    {
+                        const unsigned short* pShortIndices = reinterpret_cast<const unsigned short*>(asyncTicket->map());
+                        for (size_t i = 0; i < ib->getNumElements(); ++i)
+                        {
+                            dst->indices.push_back(static_cast<unsigned long>(pShortIndices[i]) + static_cast<unsigned long>(indexBase));
+                        }
+                        asyncTicket->unmap();
                     }
                 }
-				else
-				{
-					Ogre::LogManager::getSingletonPtr()->logMessage("[MathHelper]: Vertex Buffer type not recognised");
-					throw Ogre::Exception(0, "[MathHelper]: Vertex Buffer type not recognised", "getMeshInformation");
-				}
-				subMeshOffset += subMeshVerticiesNum;
-				vao->unmapAsyncTickets(requests);
+            };
 
-				////Read index data
-				if (indexBuffer)
-				{
-					Ogre::AsyncTicketPtr asyncTicket = indexBuffer->readRequest(0, indexBuffer->getNumElements());
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(gpuReadback), "MathHelper::getDetailedMeshInformation::gpuCache");
+        }
 
-					unsigned int* pIndices = 0;
-					if (indices32)
-					{
-						pIndices = (unsigned*)(asyncTicket->map());
-					}
-					else
-					{
-						unsigned short* pShortIndices = (unsigned short*)(asyncTicket->map());
-						pIndices = new unsigned int[indexBuffer->getNumElements()];
-						for (size_t k = 0; k < indexBuffer->getNumElements(); k++)
-						{
-							pIndices[k] = static_cast<unsigned int>(pShortIndices[k]);
-						}
-					}
-					unsigned int bufferIndex = 0;
+        {
+            std::lock_guard<std::mutex> lk(this->meshCacheMutex);
+            this->meshCache[meshHandle] = newData;
+        }
 
-					for (size_t i = addedIndices; i < addedIndices + indexBuffer->getNumElements(); i++)
-					{
-						indices[i] = pIndices[bufferIndex] + index_offset;
-						bufferIndex++;
-					}
-					addedIndices += static_cast<unsigned int>(indexBuffer->getNumElements());
+        // ── Serve from freshly populated cache ─────────────────────────────────
+        vertexCount = newData->localVerts.size();
+        indexCount = newData->indices.size();
+        isVET_HALF4 = newData->isVET_HALF4;
+        isIndices32 = newData->isIndices32;
+        if (0 == vertexCount || 0 == indexCount)
+        {
+            return;
+        }
 
-					if (!indices32)
-						delete[] pIndices;
+        // Compute matrix for normals that handles both rotation and non-uniform scaling
+        Ogre::Matrix3 rotMatrix;
+        orientation.ToRotationMatrix(rotMatrix);
 
-					asyncTicket->unmap();
-				}
-				index_offset += static_cast<unsigned int>(vertexBuffers[0]->getNumElements());
-			}
-			subMeshIterator++;
-		}
-	}
+        // Create a scaling matrix for normal transformation
+        Ogre::Matrix3 scaleMatrix;
+        scaleMatrix[0][0] = scale.x;
+        scaleMatrix[1][1] = scale.y;
+        scaleMatrix[2][2] = scale.z;
 
-	void MathHelper::getDetailedMeshInformation2(
-		const Ogre::MeshPtr mesh, size_t& vertexCount, Ogre::Vector3*& vertices,
-		size_t& indexCount, unsigned long*& indices,
-		const Ogre::Vector3& position, const Ogre::Quaternion& orientation, const Ogre::Vector3& scale,
-		bool& isVET_HALF4, bool& isIndices32)
-	{
-		// Compute total number of vertices and indices
-		unsigned int numVertices = 0;
-		unsigned int numIndices = 0;
+        // Combine rotation and scaling, then compute inverse-transpose
+        Ogre::Matrix3 normalMatrix = rotMatrix * scaleMatrix;
+        Ogre::Matrix3 invNormalMatrix = normalMatrix.Inverse().Transpose();
 
-		for (const auto& subMesh : mesh->getSubMeshes())
-		{
-			numVertices += static_cast<unsigned int>(subMesh->mVao[0][0]->getVertexBuffers()[0]->getNumElements());
-			numIndices += static_cast<unsigned int>(subMesh->mVao[0][0]->getIndexBuffer()->getNumElements());
-		}
+        vertices = OGRE_ALLOC_T(Ogre::Vector3, vertexCount, Ogre::MEMCATEGORY_GEOMETRY);
+        indices = OGRE_ALLOC_T(unsigned long, indexCount, Ogre::MEMCATEGORY_GEOMETRY);
+        for (size_t i = 0; i < vertexCount; ++i)
+        {
+            vertices[i] = (orientation * (newData->localVerts[i] * scale)) + position;
+        }
+        for (size_t i = 0; i < indexCount; ++i)
+        {
+            indices[i] = newData->indices[i];
+        }
+    }
 
-		// Allocate memory
-		vertices = OGRE_ALLOC_T(Ogre::Vector3, numVertices, Ogre::MEMCATEGORY_GEOMETRY);
-		indices = OGRE_ALLOC_T(unsigned long, numIndices, Ogre::MEMCATEGORY_GEOMETRY);
+	void MathHelper::getDetailedMeshInformation2(const Ogre::MeshPtr mesh, size_t& vertexCount, Ogre::Vector3*& vertices, Ogre::Vector3*& normals,
+        Ogre::Vector2*& textureCoords, // Added parameter for texture coordinates
+        size_t& indexCount, unsigned long*& indices, const Ogre::Vector3& position, const Ogre::Quaternion& orientation, const Ogre::Vector3& scale, bool& isVET_HALF4, bool& isIndices32)
+    {
+        // Safe null outputs
+        vertexCount = indexCount = 0;
+        vertices = normals = nullptr;
+        textureCoords = nullptr;
+        indices = nullptr;
+        isVET_HALF4 = isIndices32 = false;
 
-		vertexCount = numVertices;
-		indexCount = numIndices;
+        if (mesh.isNull())
+        {
+            return;
+        }
 
-		unsigned int addedVertices = 0;
-		unsigned int addedIndices = 0;
-		unsigned int index_offset = 0;
-		unsigned int subMeshOffset = 0;
+        const size_t meshHandle = mesh->getHandle();
 
-		for (const auto& subMesh : mesh->getSubMeshes())
-		{
-			Ogre::VertexArrayObjectArray vaos = subMesh->mVao[0];
-			if (vaos.empty()) continue;
-
-			Ogre::VertexArrayObject* vao = vaos[0];
-			isIndices32 = (vao->getIndexBuffer()->getIndexType() == Ogre::IndexBufferPacked::IT_32BIT);
-
-			Ogre::VertexArrayObject::ReadRequestsVec requests;
-			requests.push_back(Ogre::VertexArrayObject::ReadRequests(Ogre::VES_POSITION));
-
-			vao->readRequests(requests);
-			vao->mapAsyncTickets(requests);
-
-			unsigned int subMeshVerticesNum = static_cast<unsigned int>(requests[0].vertexBuffer->getNumElements());
-
-			// Compute matrix for normals that handles both rotation and non-uniform scaling
-			Ogre::Matrix3 rotMatrix;
-			orientation.ToRotationMatrix(rotMatrix);
-
-			// Create a scaling matrix for normal transformation
-			Ogre::Matrix3 scaleMatrix;
-			scaleMatrix[0][0] = scale.x;
-			scaleMatrix[1][1] = scale.y;
-			scaleMatrix[2][2] = scale.z;
-
-			// Combine rotation and scaling, then compute inverse-transpose
-			Ogre::Matrix3 normalMatrix = rotMatrix * scaleMatrix;
-			Ogre::Matrix3 invNormalMatrix = normalMatrix.Inverse().Transpose();
-
-			// Check vertex format and set isVET_HALF4 appropriately
-			isVET_HALF4 = (requests[0].type == Ogre::VET_HALF4);
-
-			// Extract Positions
-			if (requests[0].type == Ogre::VET_HALF4)
-			{
-				for (size_t i = 0; i < subMeshVerticesNum; ++i)
-				{
-					// Assuming interleaved data where:
-					// position is first (x, y, z), followed by normal (nx, ny, nz) for each vertex
-					const Ogre::uint16* data = reinterpret_cast<const Ogre::uint16*>(requests[0].data);
-
-					// Extract position
-					Ogre::Vector3 pos;
-					pos.x = Ogre::Bitwise::halfToFloat(data[0]);
-					pos.y = Ogre::Bitwise::halfToFloat(data[1]);
-					pos.z = Ogre::Bitwise::halfToFloat(data[2]);
-
-					// Update data pointers to next vertex (for interleaved data)
-					requests[0].data += requests[0].vertexBuffer->getBytesPerElement();
-
-					// Store the transformed data - fixed to use the input position parameter correctly
-					vertices[i + subMeshOffset] = (orientation * (pos * scale)) + position;
-				}
-			}
-			else if (requests[0].type == Ogre::VET_FLOAT3)
-			{
-				for (size_t i = 0; i < subMeshVerticesNum; ++i)
-				{
-					// Read position data
-					const float* pos = reinterpret_cast<const float*>(requests[0].data);
-					Ogre::Vector3 vertexPosition;
-					vertexPosition.x = *pos++;
-					vertexPosition.y = *pos++;
-					vertexPosition.z = *pos++;
-					requests[0].data += requests[0].vertexBuffer->getBytesPerElement();
-
-					// Apply transformations - fixed to use the input position parameter correctly
-					vertices[i + subMeshOffset] = (orientation * (vertexPosition * scale)) + position;
-				}
-			}
-            else if (requests[0].type == Ogre::VET_FLOAT4)
+        // ── 1. Fast path: CPU cache ───────────────────────────────────────────────
+        {
+            std::shared_ptr<const DetailedMeshCache> cached;
             {
-                for (size_t i = 0; i < subMeshVerticesNum; ++i)
+                std::lock_guard<std::mutex> lk(this->meshCacheMutex);
+                auto it = this->detailedMeshCache.find(meshHandle);
+                if (it != this->detailedMeshCache.end())
                 {
-                    const float* pos = reinterpret_cast<const float*>(requests[0].data);
-
-                    Ogre::Vector3 vec;
-                    vec.x = pos[0];
-                    vec.y = pos[1];
-                    vec.z = pos[2];
-                    // pos[3] = w (often 1.0f) -> ignore
-
-                    requests[0].data += requests[0].vertexBuffer->getBytesPerElement();
-                    vertices[i + subMeshOffset] = (orientation * (vec * scale)) + position;
+                    cached = it->second;
                 }
             }
-			else
-			{
-				OGRE_EXCEPT(Ogre::Exception::ERR_INVALIDPARAMS, "Unsupported vertex format!", "getMeshInformation2");
-			}
-
-			subMeshOffset += subMeshVerticesNum;
-			vao->unmapAsyncTickets(requests);
-
-			// Read index data
-			Ogre::IndexBufferPacked* indexBuffer = vao->getIndexBuffer();
-			if (indexBuffer)
-			{
-				Ogre::AsyncTicketPtr asyncTicket = indexBuffer->readRequest(0, indexBuffer->getNumElements());
-
-				unsigned int* pIndices = nullptr;
-				if (isIndices32)
-				{
-					pIndices = (unsigned*)(asyncTicket->map());
-				}
-				else
-				{
-					unsigned short* pShortIndices = (unsigned short*)(asyncTicket->map());
-					pIndices = new unsigned int[indexBuffer->getNumElements()];
-					for (size_t k = 0; k < indexBuffer->getNumElements(); k++)
-					{
-						pIndices[k] = static_cast<unsigned int>(pShortIndices[k]);
-					}
-				}
-
-				for (size_t i = 0; i < indexBuffer->getNumElements(); i++)
-				{
-					indices[addedIndices++] = pIndices[i] + index_offset;
-				}
-
-				if (!isIndices32)
-					delete[] pIndices;
-
-				asyncTicket->unmap();
-			}
-			index_offset += static_cast<unsigned int>(vao->getVertexBuffers()[0]->getNumElements());
-		}
-	}
-
-	void MathHelper::getDetailedMeshInformation2(
-		const Ogre::MeshPtr mesh, size_t& vertexCount, Ogre::Vector3*& vertices, Ogre::Vector3*& normals,
-		Ogre::Vector2*& textureCoords, // Added parameter for texture coordinates
-		size_t& indexCount, unsigned long*& indices,
-		const Ogre::Vector3& position, const Ogre::Quaternion& orientation, const Ogre::Vector3& scale,
-		bool& isVET_HALF4, bool& isIndices32)
-	{
-		// Compute total number of vertices and indices
-		unsigned int numVertices = 0;
-		unsigned int numIndices = 0;
-
-		for (const auto& subMesh : mesh->getSubMeshes())
-		{
-			numVertices += static_cast<unsigned int>(subMesh->mVao[0][0]->getVertexBuffers()[0]->getNumElements());
-			numIndices += static_cast<unsigned int>(subMesh->mVao[0][0]->getIndexBuffer()->getNumElements());
-		}
-
-		// Allocate memory
-		vertices = OGRE_ALLOC_T(Ogre::Vector3, numVertices, Ogre::MEMCATEGORY_GEOMETRY);
-		normals = OGRE_ALLOC_T(Ogre::Vector3, numVertices, Ogre::MEMCATEGORY_GEOMETRY);
-		textureCoords = OGRE_ALLOC_T(Ogre::Vector2, numVertices, Ogre::MEMCATEGORY_GEOMETRY); // Allocate for texture coordinates
-		indices = OGRE_ALLOC_T(unsigned long, numIndices, Ogre::MEMCATEGORY_GEOMETRY);
-
-		vertexCount = numVertices;
-		indexCount = numIndices;
-
-		unsigned int addedVertices = 0;
-		unsigned int addedIndices = 0;
-		unsigned int index_offset = 0;
-		unsigned int subMeshOffset = 0;
-
-		for (const auto& subMesh : mesh->getSubMeshes())
-		{
-			Ogre::VertexArrayObjectArray vaos = subMesh->mVao[0];
-			if (vaos.empty()) continue;
-
-			Ogre::VertexArrayObject* vao = vaos[0];
-			isIndices32 = (vao->getIndexBuffer()->getIndexType() == Ogre::IndexBufferPacked::IT_32BIT);
-
-			Ogre::VertexArrayObject::ReadRequestsVec requests;
-			requests.push_back(Ogre::VertexArrayObject::ReadRequests(Ogre::VES_POSITION));
-			requests.push_back(Ogre::VertexArrayObject::ReadRequests(Ogre::VES_NORMAL));
-			requests.push_back(Ogre::VertexArrayObject::ReadRequests(Ogre::VES_TEXTURE_COORDINATES)); // Add request for texture coordinates
-
-			vao->readRequests(requests);
-			vao->mapAsyncTickets(requests);
-
-			unsigned int subMeshVerticesNum = static_cast<unsigned int>(requests[0].vertexBuffer->getNumElements());
-
-			// Compute matrix for normals that handles both rotation and non-uniform scaling
-			Ogre::Matrix3 rotMatrix;
-			orientation.ToRotationMatrix(rotMatrix);
-
-			// Create a scaling matrix for normal transformation
-			Ogre::Matrix3 scaleMatrix;
-			scaleMatrix[0][0] = scale.x;
-			scaleMatrix[1][1] = scale.y;
-			scaleMatrix[2][2] = scale.z;
-
-			// Combine rotation and scaling, then compute inverse-transpose
-			Ogre::Matrix3 normalMatrix = rotMatrix * scaleMatrix;
-			Ogre::Matrix3 invNormalMatrix = normalMatrix.Inverse().Transpose();
-
-			// Check vertex format and set isVET_HALF4 appropriately
-			isVET_HALF4 = (requests[0].type == Ogre::VET_HALF4);
-
-			// Extract Positions
-			if (requests[0].type == Ogre::VET_HALF4)
-			{
-				for (size_t i = 0; i < subMeshVerticesNum; ++i)
-				{
-					// Assuming interleaved data where:
-					// position is first (x, y, z), followed by normal (nx, ny, nz) for each vertex
-					const Ogre::uint16* data = reinterpret_cast<const Ogre::uint16*>(requests[0].data);
-
-					// Extract position
-					Ogre::Vector3 pos;
-					pos.x = Ogre::Bitwise::halfToFloat(data[0]);
-					pos.y = Ogre::Bitwise::halfToFloat(data[1]);
-					pos.z = Ogre::Bitwise::halfToFloat(data[2]);
-
-					// Extract normal
-					const Ogre::uint16* norm = reinterpret_cast<const Ogre::uint16*>(requests[1].data);
-					Ogre::Vector3 normal;
-					normal.x = Ogre::Bitwise::halfToFloat(norm[0]);
-					normal.y = Ogre::Bitwise::halfToFloat(norm[1]);
-					normal.z = Ogre::Bitwise::halfToFloat(norm[2]);
-
-					// Extract texture coordinates
-					const Ogre::uint16* texCoords = reinterpret_cast<const Ogre::uint16*>(requests[2].data);
-					Ogre::Vector2 uv;
-					uv.x = Ogre::Bitwise::halfToFloat(texCoords[0]);
-					uv.y = Ogre::Bitwise::halfToFloat(texCoords[1]);
-
-					// Update data pointers to next vertex (for interleaved data)
-					requests[0].data += requests[0].vertexBuffer->getBytesPerElement();
-					requests[1].data += requests[1].vertexBuffer->getBytesPerElement();
-					requests[2].data += requests[2].vertexBuffer->getBytesPerElement();
-
-					// Store the transformed data - fixed to use the input position parameter correctly
-					vertices[i + subMeshOffset] = (orientation * (pos * scale)) + position;
-					normals[i + subMeshOffset] = invNormalMatrix * normal;
-					textureCoords[i + subMeshOffset] = uv; // Store texture coordinates
-				}
-			}
-			else if (requests[0].type == Ogre::VET_FLOAT3)
-			{
-				for (size_t i = 0; i < subMeshVerticesNum; ++i)
-				{
-					// Read position data
-					const float* pos = reinterpret_cast<const float*>(requests[0].data);
-					Ogre::Vector3 vertexPosition;
-					vertexPosition.x = *pos++;
-					vertexPosition.y = *pos++;
-					vertexPosition.z = *pos++;
-					requests[0].data += requests[0].vertexBuffer->getBytesPerElement();
-
-					// Read normal data
-					const float* norm = reinterpret_cast<const float*>(requests[1].data);
-					Ogre::Vector3 normal;
-					normal.x = *norm++;
-					normal.y = *norm++;
-					normal.z = *norm++;
-					requests[1].data += requests[1].vertexBuffer->getBytesPerElement();
-
-					// Read texture coordinate data
-					const float* texCoords = reinterpret_cast<const float*>(requests[2].data);
-					Ogre::Vector2 uv;
-					uv.x = *texCoords++;
-					uv.y = *texCoords++;
-					requests[2].data += requests[2].vertexBuffer->getBytesPerElement();
-
-					// Apply transformations - fixed to use the input position parameter correctly
-					vertices[i + subMeshOffset] = (orientation * (vertexPosition * scale)) + position;
-					normals[i + subMeshOffset] = invNormalMatrix * normal;
-					textureCoords[i + subMeshOffset] = uv; // Store texture coordinates
-				}
-			}
-            else if (requests[0].type == Ogre::VET_FLOAT4)
+            if (cached)
             {
-                for (size_t i = 0; i < subMeshVerticesNum; ++i)
+                vertexCount = cached->localVerts.size();
+                indexCount = cached->indices.size();
+                isVET_HALF4 = cached->isVET_HALF4;
+                isIndices32 = cached->isIndices32;
+                if (0 == vertexCount || 0 == indexCount)
                 {
-                    // Read position data (float4: x,y,z,w) -> ignore w
-                    const float* pos = reinterpret_cast<const float*>(requests[0].data);
-                    Ogre::Vector3 vertexPosition;
-                    vertexPosition.x = pos[0];
-                    vertexPosition.y = pos[1];
-                    vertexPosition.z = pos[2];
-                    requests[0].data += requests[0].vertexBuffer->getBytesPerElement();
-
-                    // Read normal data
-                    const float* norm = reinterpret_cast<const float*>(requests[1].data);
-                    Ogre::Vector3 normal;
-                    normal.x = norm[0];
-                    normal.y = norm[1];
-                    normal.z = norm[2];
-                    requests[1].data += requests[1].vertexBuffer->getBytesPerElement();
-
-                    // Read texture coordinate data
-                    const float* texCoords = reinterpret_cast<const float*>(requests[2].data);
-                    Ogre::Vector2 uv;
-                    uv.x = texCoords[0];
-                    uv.y = texCoords[1];
-                    requests[2].data += requests[2].vertexBuffer->getBytesPerElement();
-
-                    // Apply transformations
-                    vertices[i + subMeshOffset] = (orientation * (vertexPosition * scale)) + position;
-                    normals[i + subMeshOffset] = invNormalMatrix * normal;
-                    textureCoords[i + subMeshOffset] = uv;
+                    return;
                 }
+
+                // Compute matrix for normals that handles both rotation and non-uniform scaling
+                Ogre::Matrix3 rotMatrix;
+                orientation.ToRotationMatrix(rotMatrix);
+
+                // Create a scaling matrix for normal transformation
+                Ogre::Matrix3 scaleMatrix;
+                scaleMatrix[0][0] = scale.x;
+                scaleMatrix[1][1] = scale.y;
+                scaleMatrix[2][2] = scale.z;
+
+                // Combine rotation and scaling, then compute inverse-transpose
+                Ogre::Matrix3 normalMatrix = rotMatrix * scaleMatrix;
+                Ogre::Matrix3 invNormalMatrix = normalMatrix.Inverse().Transpose();
+
+                vertices = OGRE_ALLOC_T(Ogre::Vector3, vertexCount, Ogre::MEMCATEGORY_GEOMETRY);
+                normals = OGRE_ALLOC_T(Ogre::Vector3, vertexCount, Ogre::MEMCATEGORY_GEOMETRY);
+                textureCoords = OGRE_ALLOC_T(Ogre::Vector2, vertexCount, Ogre::MEMCATEGORY_GEOMETRY); // Allocate for texture coordinates
+                indices = OGRE_ALLOC_T(unsigned long, indexCount, Ogre::MEMCATEGORY_GEOMETRY);
+
+                for (size_t i = 0; i < vertexCount; ++i)
+                {
+                    // Store the transformed data - fixed to use the input position parameter correctly
+                    vertices[i] = (orientation * (cached->localVerts[i] * scale)) + position;
+                    normals[i] = invNormalMatrix * cached->localNormals[i];
+                    textureCoords[i] = cached->localUVs[i]; // Store texture coordinates
+                }
+                for (size_t i = 0; i < indexCount; ++i)
+                {
+                    indices[i] = cached->indices[i];
+                }
+                return;
             }
-			else
-			{
-				OGRE_EXCEPT(Ogre::Exception::ERR_INVALIDPARAMS, "Unsupported vertex format!", "getMeshInformation2");
-			}
+        }
 
-			subMeshOffset += subMeshVerticesNum;
-			vao->unmapAsyncTickets(requests);
+        // ── 2. Cache miss — GPU readback on render thread (one-time cost) ─────────
+        auto newData = std::make_shared<DetailedMeshCache>();
+        {
+            Ogre::MeshPtr meshCopy = mesh;
+            DetailedMeshCache* dst = newData.get();
 
-			// Read index data
-			Ogre::IndexBufferPacked* indexBuffer = vao->getIndexBuffer();
-			if (indexBuffer)
-			{
-				Ogre::AsyncTicketPtr asyncTicket = indexBuffer->readRequest(0, indexBuffer->getNumElements());
+            NOWA::GraphicsModule::RenderCommand gpuReadback = [meshCopy, dst]()
+            {
+                for (const auto& subMesh : meshCopy->getSubMeshes())
+                {
+                    Ogre::VertexArrayObjectArray vaos = subMesh->mVao[0];
+                    if (vaos.empty())
+                    {
+                        continue;
+                    }
 
-				unsigned int* pIndices = nullptr;
-				if (isIndices32)
-				{
-					pIndices = (unsigned*)(asyncTicket->map());
-				}
-				else
-				{
-					unsigned short* pShortIndices = (unsigned short*)(asyncTicket->map());
-					pIndices = new unsigned int[indexBuffer->getNumElements()];
-					for (size_t k = 0; k < indexBuffer->getNumElements(); k++)
-					{
-						pIndices[k] = static_cast<unsigned int>(pShortIndices[k]);
-					}
-				}
+                    Ogre::VertexArrayObject* vao = vaos[0];
+                    Ogre::IndexBufferPacked* ib = vao->getIndexBuffer();
+                    if (nullptr == ib || 0 == ib->getNumElements())
+                    {
+                        continue;
+                    }
 
-				for (size_t i = 0; i < indexBuffer->getNumElements(); i++)
-				{
-					indices[addedIndices++] = pIndices[i] + index_offset;
-				}
+                    dst->isIndices32 = (ib->getIndexType() == Ogre::IndexBufferPacked::IT_32BIT);
 
-				if (!isIndices32)
-					delete[] pIndices;
+                    Ogre::VertexArrayObject::ReadRequestsVec requests;
+                    requests.push_back(Ogre::VertexArrayObject::ReadRequests(Ogre::VES_POSITION));
+                    requests.push_back(Ogre::VertexArrayObject::ReadRequests(Ogre::VES_NORMAL));
+                    requests.push_back(Ogre::VertexArrayObject::ReadRequests(Ogre::VES_TEXTURE_COORDINATES)); // Add request for texture coordinates
+                    vao->readRequests(requests);
+                    vao->mapAsyncTickets(requests);
 
-				asyncTicket->unmap();
-			}
-			index_offset += static_cast<unsigned int>(vao->getVertexBuffers()[0]->getNumElements());
-		}
-	}
+                    const size_t indexBase = dst->localVerts.size();
+                    const size_t numVerts = requests[0].vertexBuffer->getNumElements();
 
-	void MathHelper::getManualMeshInformation(const Ogre::v1::ManualObject* manualObject, size_t& vertexCount, Ogre::Vector3*& vertices,
-		size_t& indexCount, unsigned long*& indices, const Ogre::Vector3& position, const Ogre::Quaternion& orient, const Ogre::Vector3& scale)
-	{
-		std::vector<Ogre::Vector3> returnVertices;
-		std::vector<unsigned long> returnIndices;
-		unsigned long thisSectionStart = 0;
-		for (unsigned int i = 0; i < manualObject->getNumSections(); i++)
-		{
-			Ogre::v1::ManualObject::ManualObjectSection* section = manualObject->getSection(i);
-			Ogre::v1::RenderOperation* renderOp = section->getRenderOperation();
-			std::vector<Ogre::Vector3> pushVertices;
-			//Collect the vertices
-			{
-				const Ogre::v1::VertexElement* vertexElement = renderOp->vertexData->vertexDeclaration->findElementBySemantic(Ogre::VES_POSITION);
-				Ogre::v1::HardwareVertexBufferSharedPtr vertexBuffer = renderOp->vertexData->vertexBufferBinding->getBuffer(vertexElement->getSource());
+                    // Check vertex format and set isVET_HALF4 appropriately
+                    dst->isVET_HALF4 = (requests[0].type == Ogre::VET_HALF4);
 
-				char* verticesBuffer = (char*)vertexBuffer->lock(Ogre::v1::HardwareBuffer::HBL_READ_ONLY);
-				float* positionArrayHolder;
+                    // Assuming interleaved data where:
+                    // position is first (x, y, z), followed by normal (nx, ny, nz) for each vertex
+                    if (requests[0].type == Ogre::VET_HALF4)
+                    {
+                        for (size_t i = 0; i < numVerts; ++i)
+                        {
+                            const Ogre::uint16* data = reinterpret_cast<const Ogre::uint16*>(requests[0].data);
+                            // Extract position
+                            Ogre::Vector3 pos;
+                            pos.x = Ogre::Bitwise::halfToFloat(data[0]);
+                            pos.y = Ogre::Bitwise::halfToFloat(data[1]);
+                            pos.z = Ogre::Bitwise::halfToFloat(data[2]);
 
-				thisSectionStart = static_cast<unsigned int>(pushVertices.size());
+                            // Extract normal
+                            const Ogre::uint16* norm = reinterpret_cast<const Ogre::uint16*>(requests[1].data);
+                            Ogre::Vector3 n;
+                            n.x = Ogre::Bitwise::halfToFloat(norm[0]);
+                            n.y = Ogre::Bitwise::halfToFloat(norm[1]);
+                            n.z = Ogre::Bitwise::halfToFloat(norm[2]);
 
-				pushVertices.reserve(renderOp->vertexData->vertexCount);
+                            // Extract texture coordinates
+                            const Ogre::uint16* texCoords = reinterpret_cast<const Ogre::uint16*>(requests[2].data);
+                            Ogre::Vector2 uv;
+                            uv.x = Ogre::Bitwise::halfToFloat(texCoords[0]);
+                            uv.y = Ogre::Bitwise::halfToFloat(texCoords[1]);
 
-				for (unsigned int j = 0; j < renderOp->vertexData->vertexCount; j++)
-				{
-					vertexElement->baseVertexPointerToElement(verticesBuffer + j * vertexBuffer->getVertexSize(), &positionArrayHolder);
-					Ogre::Vector3 vertexPos = Ogre::Vector3(positionArrayHolder[0],
-						positionArrayHolder[1],
-						positionArrayHolder[2]);
+                            // Update data pointers to next vertex (for interleaved data)
+                            requests[0].data += requests[0].vertexBuffer->getBytesPerElement();
+                            requests[1].data += requests[1].vertexBuffer->getBytesPerElement();
+                            requests[2].data += requests[2].vertexBuffer->getBytesPerElement();
 
-					vertexPos = (orient * (vertexPos * scale)) + position;
+                            dst->localVerts.push_back(pos);
+                            dst->localNormals.push_back(n);
+                            dst->localUVs.push_back(uv);
+                        }
+                    }
+                    else if (requests[0].type == Ogre::VET_FLOAT3)
+                    {
+                        for (size_t i = 0; i < numVerts; ++i)
+                        {
+                            // Read position data
+                            const float* pos = reinterpret_cast<const float*>(requests[0].data);
+                            Ogre::Vector3 vertexPosition;
+                            vertexPosition.x = *pos++;
+                            vertexPosition.y = *pos++;
+                            vertexPosition.z = *pos++;
+                            requests[0].data += requests[0].vertexBuffer->getBytesPerElement();
 
-					pushVertices.push_back(vertexPos);
-				}
+                            // Read normal data
+                            const float* norm = reinterpret_cast<const float*>(requests[1].data);
+                            Ogre::Vector3 n;
+                            n.x = *norm++;
+                            n.y = *norm++;
+                            n.z = *norm++;
+                            requests[1].data += requests[1].vertexBuffer->getBytesPerElement();
 
-				vertexBuffer->unlock();
-			}
-			//Collect the indices
-			{
-				if (renderOp->useIndexes)
-				{
-					Ogre::v1::HardwareIndexBufferSharedPtr indexBuffer = renderOp->indexData->indexBuffer;
+                            // Read texture coordinate data
+                            const float* texCoords = reinterpret_cast<const float*>(requests[2].data);
+                            Ogre::Vector2 uv;
+                            uv.x = *texCoords++;
+                            uv.y = *texCoords++;
+                            requests[2].data += requests[2].vertexBuffer->getBytesPerElement();
 
-					if (indexBuffer.isNull() || renderOp->operationType != Ogre::OperationType::OT_TRIANGLE_LIST)
-					{
-						//No triangles here, so we just drop the collected vertices and move along to the next section.
-						continue;
-					}
-					else
-					{
-						returnVertices.reserve(returnVertices.size() + pushVertices.size());
-						returnVertices.insert(returnVertices.end(), pushVertices.begin(), pushVertices.end());
-					}
+                            // Apply transformations - fixed to use the input position parameter correctly
+                            dst->localVerts.push_back(vertexPosition);
+                            dst->localNormals.push_back(n);
+                            dst->localUVs.push_back(uv); // Store texture coordinates
+                        }
+                    }
+                    else if (requests[0].type == Ogre::VET_FLOAT4)
+                    {
+                        for (size_t i = 0; i < numVerts; ++i)
+                        {
+                            // Read position data (float4: x,y,z,w) -> ignore w
+                            const float* pos = reinterpret_cast<const float*>(requests[0].data);
+                            Ogre::Vector3 vertexPosition;
+                            vertexPosition.x = pos[0];
+                            vertexPosition.y = pos[1];
+                            vertexPosition.z = pos[2];
+                            requests[0].data += requests[0].vertexBuffer->getBytesPerElement();
 
-					unsigned int* pLong = (unsigned int*)indexBuffer->lock(Ogre::v1::HardwareBuffer::HBL_READ_ONLY);
-					unsigned short* pShort = (unsigned short*)pLong;
+                            // Read normal data
+                            const float* norm = reinterpret_cast<const float*>(requests[1].data);
+                            Ogre::Vector3 n;
+                            n.x = norm[0];
+                            n.y = norm[1];
+                            n.z = norm[2];
+                            requests[1].data += requests[1].vertexBuffer->getBytesPerElement();
 
-					returnIndices.reserve(returnIndices.size() + renderOp->indexData->indexCount);
+                            // Read texture coordinate data
+                            const float* texCoords = reinterpret_cast<const float*>(requests[2].data);
+                            Ogre::Vector2 uv;
+                            uv.x = texCoords[0];
+                            uv.y = texCoords[1];
+                            requests[2].data += requests[2].vertexBuffer->getBytesPerElement();
 
-					for (size_t j = 0; j < renderOp->indexData->indexCount; j++)
-					{
-						unsigned long index;
-						//We also have got to remember that for a multi section object, each section has
-						//different vertices, so the indices will not be correct. To correct this, we
-						//have to add the position of the first vertex in this section to the index
+                            // Apply transformations
+                            dst->localVerts.push_back(vertexPosition);
+                            dst->localNormals.push_back(n);
+                            dst->localUVs.push_back(uv);
+                        }
+                    }
+                    else
+                    {
+                        vao->unmapAsyncTickets(requests);
+                        OGRE_EXCEPT(Ogre::Exception::ERR_INVALIDPARAMS, "Unsupported vertex format!", "getDetailedMeshInformation2");
+                    }
 
-						//(At least I think so...)
-						if (indexBuffer->getType() == Ogre::v1::HardwareIndexBuffer::IT_32BIT)
-							index = (unsigned long)pLong[j] + thisSectionStart;
-						else
-							index = (unsigned long)pShort[j] + thisSectionStart;
+                    vao->unmapAsyncTickets(requests);
 
-						returnIndices.push_back(index);
-					}
+                    // ── Index readback ────────────────────────────────────────────
+                    Ogre::AsyncTicketPtr asyncTicket = ib->readRequest(0, ib->getNumElements());
+                    if (dst->isIndices32)
+                    {
+                        const unsigned int* pIndices = reinterpret_cast<const unsigned int*>(asyncTicket->map());
+                        for (size_t i = 0; i < ib->getNumElements(); ++i)
+                        {
+                            dst->indices.push_back(static_cast<unsigned long>(pIndices[i]) + static_cast<unsigned long>(indexBase));
+                        }
+                        asyncTicket->unmap();
+                    }
+                    else
+                    {
+                        const unsigned short* pShortIndices = reinterpret_cast<const unsigned short*>(asyncTicket->map());
+                        for (size_t i = 0; i < ib->getNumElements(); ++i)
+                        {
+                            dst->indices.push_back(static_cast<unsigned long>(pShortIndices[i]) + static_cast<unsigned long>(indexBase));
+                        }
+                        asyncTicket->unmap();
+                    }
+                }
+            };
 
-					indexBuffer->unlock();
-				}
-			}
-		}
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(gpuReadback), "MathHelper::getDetailedMeshInformation2::gpuCache");
+        }
 
-		//Now we simply return the data.
-		indexCount = returnIndices.size();
-		vertexCount = returnVertices.size();
-		vertices = OGRE_ALLOC_T(Ogre::Vector3, vertexCount, Ogre::MEMCATEGORY_GEOMETRY);
-		indices = OGRE_ALLOC_T(unsigned long, indexCount, Ogre::MEMCATEGORY_GEOMETRY);
-		for (unsigned long i = 0; i < vertexCount; i++)
-		{
-			vertices[i] = returnVertices[i];
-		}
-		for (unsigned long i = 0; i < indexCount; i++)
-		{
-			indices[i] = returnIndices[i];
-		}
-	}
+        {
+            std::lock_guard<std::mutex> lk(this->meshCacheMutex);
+            this->detailedMeshCache[meshHandle] = newData;
+        }
 
-	void MathHelper::getManualMeshInformation2(const Ogre::ManualObject* manualObject, size_t& vertexCount, Ogre::Vector3*& vertices,
-		size_t& indexCount, unsigned long*& indices, const Ogre::Vector3& position, const Ogre::Quaternion& orient, const Ogre::Vector3& scale)
-	{
-		std::vector<Ogre::Vector3> returnVertices;
-		std::vector<unsigned long> returnIndices;
-		unsigned long thisSectionStart = 0;
+        // ── Serve from freshly populated cache ─────────────────────────────────
+        vertexCount = newData->localVerts.size();
+        indexCount = newData->indices.size();
+        isVET_HALF4 = newData->isVET_HALF4;
+        isIndices32 = newData->isIndices32;
+        if (0 == vertexCount || 0 == indexCount)
+        {
+            return;
+        }
 
-		Ogre::MeshPtr meshPtr = Ogre::MeshManager::getSingleton().createManual("Dummy", "General");
+        // Compute matrix for normals that handles both rotation and non-uniform scaling
+        Ogre::Matrix3 rotMatrix;
+        orientation.ToRotationMatrix(rotMatrix);
 
-		// Create sub mesh from section
-		for (unsigned int i = 0; i < manualObject->getNumSections(); i++)
-		{
-			Ogre::SubMesh* subMesh = meshPtr->createSubMesh();
-			Ogre::ManualObject::ManualObjectSection* section = manualObject->getSection(i);
+        // Create a scaling matrix for normal transformation
+        Ogre::Matrix3 scaleMatrix;
+        scaleMatrix[0][0] = scale.x;
+        scaleMatrix[1][1] = scale.y;
+        scaleMatrix[2][2] = scale.z;
 
-			//Each Vao pushed to the vector refers to an LOD level.
-			subMesh->mVao[0].push_back(section->getVaos(Ogre::VertexPass::VpNormal)[0]); //main buffer
-			subMesh->mVao[1].push_back(section->getVaos(Ogre::VertexPass::VpShadow)[0]); //shadow buffer
-		}
+        // Combine rotation and scaling, then compute inverse-transpose
+        Ogre::Matrix3 normalMatrix = rotMatrix * scaleMatrix;
+        Ogre::Matrix3 invNormalMatrix = normalMatrix.Inverse().Transpose();
 
-		// get the mesh information
-		this->getMeshInformation2(meshPtr, vertexCount, vertices,
-			indexCount, indices, manualObject->getParentNode()->_getDerivedPositionUpdated(),
-			manualObject->getParentNode()->_getDerivedOrientationUpdated(),
-			manualObject->getParentNode()->getScale());
+        vertices = OGRE_ALLOC_T(Ogre::Vector3, vertexCount, Ogre::MEMCATEGORY_GEOMETRY);
+        normals = OGRE_ALLOC_T(Ogre::Vector3, vertexCount, Ogre::MEMCATEGORY_GEOMETRY);
+        textureCoords = OGRE_ALLOC_T(Ogre::Vector2, vertexCount, Ogre::MEMCATEGORY_GEOMETRY); // Allocate for texture coordinates
+        indices = OGRE_ALLOC_T(unsigned long, indexCount, Ogre::MEMCATEGORY_GEOMETRY);
 
-		// Remove the mesh, because its no more required
-		Ogre::MeshManager::getSingleton().remove(meshPtr->getHandle());
-	}
+        for (size_t i = 0; i < vertexCount; ++i)
+        {
+            // Store the transformed data - fixed to use the input position parameter correctly
+            vertices[i] = (orientation * (newData->localVerts[i] * scale)) + position;
+            normals[i] = invNormalMatrix * newData->localNormals[i];
+            textureCoords[i] = newData->localUVs[i]; // Store texture coordinates
+        }
+        for (size_t i = 0; i < indexCount; ++i)
+        {
+            indices[i] = newData->indices[i];
+        }
+    }
+
+	void MathHelper::getManualMeshInformation(const Ogre::ManualObject* manualObject, size_t& vertexCount, Ogre::Vector3*& vertices, size_t& indexCount, unsigned long*& indices, const Ogre::Vector3& position, const Ogre::Quaternion& orient,
+        const Ogre::Vector3& scale)
+    {
+        // Use a unique mesh name per ManualObject pointer to avoid MeshManager
+        // name collisions when this is called for multiple different ManualObjects
+        // in the same frame (e.g. the editor selecting multiple objects).
+        Ogre::String meshName = "Dummy_" + Ogre::StringConverter::toString(reinterpret_cast<size_t>(manualObject));
+
+        // Remove any leftover mesh from a previous call for this ManualObject.
+        // Its cache entry in meshCache remains valid (same handle is not reused).
+        {
+            Ogre::MeshPtr existing = Ogre::MeshManager::getSingleton().getByName(meshName, "General");
+            if (!existing.isNull())
+            {
+                Ogre::MeshManager::getSingleton().remove(existing->getHandle());
+            }
+        }
+
+        Ogre::MeshPtr meshPtr = Ogre::MeshManager::getSingleton().createManual(meshName, "General");
+
+        // Create sub mesh from section
+        for (unsigned int i = 0; i < manualObject->getNumSections(); i++)
+        {
+            Ogre::SubMesh* subMesh = meshPtr->createSubMesh();
+            Ogre::ManualObject::ManualObjectSection* section = manualObject->getSection(i);
+
+            // Each Vao pushed to the vector refers to an LOD level.
+            subMesh->mVao[0].push_back(section->getVaos(Ogre::VertexPass::VpNormal)[0]); // main buffer
+            subMesh->mVao[1].push_back(section->getVaos(Ogre::VertexPass::VpShadow)[0]); // shadow buffer
+        }
+
+        // get the mesh information
+        this->getMeshInformation(meshPtr, vertexCount, vertices, indexCount, indices, manualObject->getParentNode()->_getDerivedPositionUpdated(), manualObject->getParentNode()->_getDerivedOrientationUpdated(),
+            manualObject->getParentNode()->getScale());
+
+        // Remove the mesh, because its no more required
+        Ogre::MeshManager::getSingleton().remove(meshPtr->getHandle());
+    }
 
 	bool MathHelper::getRaycastFromPoint(Ogre::RaySceneQuery* raySceneQuery, Ogre::Camera* camera, Ogre::Vector3& resultPostionOnModel, std::vector<Ogre::MovableObject*>* excludeMovableObjects)
 	{
@@ -1822,7 +1847,7 @@ namespace NOWA
 				unsigned long* indices = nullptr;
 
 				// get the mesh information
-                this->getMeshInformation2(item->getMesh(), vertexCount, vertices, indexCount, indices, item->getParentNode()->_getDerivedPositionUpdated(), item->getParentNode()->_getDerivedOrientationUpdated(),
+                this->getMeshInformation(item->getMesh(), vertexCount, vertices, indexCount, indices, item->getParentNode()->_getDerivedPositionUpdated(), item->getParentNode()->_getDerivedOrientationUpdated(),
                     item->getParentNode()->_getDerivedScaleUpdated());
 
 				// test for hitting individual triangles on the mesh
@@ -1954,7 +1979,7 @@ namespace NOWA
 				unsigned long* indices;
 
 				// get the mesh information
-                this->getMeshInformation2(item->getMesh(), vertexCount, vertices, indexCount, indices, item->getParentNode()->_getDerivedPosition(), item->getParentNode()->_getDerivedOrientation(), item->getParentNode()->_getDerivedScale());
+                this->getMeshInformation(item->getMesh(), vertexCount, vertices, indexCount, indices, item->getParentNode()->_getDerivedPosition(), item->getParentNode()->_getDerivedOrientation(), item->getParentNode()->_getDerivedScale());
 
 				// test for hitting individual triangles on the mesh
 				bool newClosestFound = false;
@@ -2079,7 +2104,7 @@ namespace NOWA
 					unsigned long* indices = nullptr;
 
 					// get the mesh information
-					this->getMeshInformation2(item->getMesh(), vertexCount, vertices,
+					this->getMeshInformation(item->getMesh(), vertexCount, vertices,
 						indexCount, indices, item->getParentNode()->_getDerivedPositionUpdated(),
 						item->getParentNode()->_getDerivedOrientationUpdated(),
 						item->getParentNode()->getScale());
@@ -2210,7 +2235,7 @@ namespace NOWA
 					unsigned long* indices = nullptr;
 
 					// get the mesh information
-					this->getMeshInformation2(item->getMesh(), vertexCount, vertices,
+					this->getMeshInformation(item->getMesh(), vertexCount, vertices,
 						indexCount, indices, item->getParentNode()->_getDerivedPositionUpdated(),
 						item->getParentNode()->_getDerivedOrientationUpdated(),
 						item->getParentNode()->getScale());
@@ -2329,7 +2354,7 @@ namespace NOWA
 				unsigned long* indices;
 
 				// get the mesh information
-                this->getMeshInformation2(item->getMesh(), vertexCount, vertices, indexCount, indices, item->getParentNode()->_getDerivedPositionUpdated(), item->getParentNode()->_getDerivedOrientationUpdated(), item->getParentNode()->getScale());
+                this->getMeshInformation(item->getMesh(), vertexCount, vertices, indexCount, indices, item->getParentNode()->_getDerivedPositionUpdated(), item->getParentNode()->_getDerivedOrientationUpdated(), item->getParentNode()->getScale());
 
 				// test for hitting individual triangles on the mesh
 
@@ -2480,7 +2505,7 @@ namespace NOWA
                 unsigned long* indices = nullptr;
 
                 // get the mesh information
-                this->getMeshInformation2(item->getMesh(), vertexCount, vertices, indexCount, indices, item->getParentNode()->_getDerivedPositionUpdated(), item->getParentNode()->_getDerivedOrientationUpdated(), item->getParentNode()->getScale());
+                this->getMeshInformation(item->getMesh(), vertexCount, vertices, indexCount, indices, item->getParentNode()->_getDerivedPositionUpdated(), item->getParentNode()->_getDerivedOrientationUpdated(), item->getParentNode()->getScale());
 
                 // test for hitting individual triangles on the mesh
                 for (int i = 0; i < static_cast<int>(indexCount); i += 3)
@@ -2566,7 +2591,7 @@ namespace NOWA
                     unsigned long* indices = nullptr;
 
                     // get the manual mesh information
-                    this->getManualMeshInformation2(manualObject, vertexCount, vertices, indexCount, indices, manualObject->getParentNode()->_getDerivedPositionUpdated(), manualObject->getParentNode()->_getDerivedOrientationUpdated(),
+                    this->getManualMeshInformation(manualObject, vertexCount, vertices, indexCount, indices, manualObject->getParentNode()->_getDerivedPositionUpdated(), manualObject->getParentNode()->_getDerivedOrientationUpdated(),
                         manualObject->getParentNode()->getScale());
 
                     // test for hitting individual triangles on the mesh
@@ -2731,67 +2756,6 @@ namespace NOWA
 	Ogre::Real MathHelper::mapValue2(Ogre::Real valueToMap, Ogre::Real sourceMin, Ogre::Real sourceMax, Ogre::Real targetMin, Ogre::Real targetMax)
 	{
 		return targetMin + ((targetMax - targetMin) * (valueToMap - sourceMin)) / (sourceMax - sourceMin);
-	}
-
-	Ogre::Vector3 MathHelper::pointToLocalSpace(const Ogre::Vector3& point, Ogre::Vector3& heading, Ogre::Vector3& side, Ogre::Vector3& position)
-	{
-		// http://www.codinglabs.net/article_world_view_projection_matrix.aspx
-		// Make a copy of the point
-		Ogre::Vector3 transPoint = point;
-		Ogre::Vector3 transPosition = position;
-
-		// Create a transformation matrix
-		C2DMatrix matTransform;
-
-		Ogre::Real tx = -transPosition.dotProduct(heading);
-		Ogre::Real tz = -transPosition.dotProduct(side);
-
-		// Create the transformation matrix
-		matTransform._11(heading.x); matTransform._12(side.x);
-		matTransform._21(heading.z); matTransform._22(side.z);
-		matTransform._31(tx);           matTransform._32(tz);
-
-		//now transform the vertices
-		matTransform.TransformVector2Ds(transPoint);
-
-		return transPoint;
-	}
-
-	Ogre::Vector3 MathHelper::vectorToWorldSpace(const Ogre::Vector3& vector, const Ogre::Vector3& heading, const Ogre::Vector3& side)
-	{
-		// Make a copy of the point
-		Ogre::Vector3 transVec = vector;
-
-		//create a transformation matrix
-		C2DMatrix matTransform;
-
-		// Rotate
-		matTransform.Rotate(heading, side);
-
-		// Now transform the vertices
-		matTransform.TransformVector2Ds(transVec);
-
-		return transVec;
-	}
-
-	Ogre::Vector3 MathHelper::pointToWorldSpace(const Ogre::Vector3& point, const Ogre::Vector3& heading, const Ogre::Vector3& side, const Ogre::Vector3& position)
-	{
-		// Make a copy of the point
-		Ogre::Vector3 transPoint = point;
-
-		// Create a transformation matrix
-		C2DMatrix matTransform;
-
-		// Rotate
-		matTransform.Rotate(heading, side);
-
-		//and translate
-		matTransform.Translate(position.x, position.z);
-
-		//now transform the vertices
-		matTransform.TransformVector2Ds(transPoint);
-
-		return transPoint;
 	}
 
 	void MathHelper::tweakUnlitDatablock(const Ogre::String& datablockName)

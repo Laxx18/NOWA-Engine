@@ -200,24 +200,30 @@ namespace NOWA
                     }
                     else
                     {
-                        // ── Rotation (with or without position) ──────────────────
-                        // Take ownership of the existing geometry.
+                        // ── Rotation (with or without position) ──────────────────────
                         auto dataPair = recastModule->removeDynamicObstacle(this->gameObjectPtr->getId(), false);
                         InputGeom* inputGeom = dataPair.first;
                         ConvexVolume* convexVolume = dataPair.second;
 
+                        // For World-AABB based obstacles (inputGeom == nullptr), we
+                        // don't need to apply rotation to a mesh — the AABB is always
+                        // axis-aligned and is recomputed from item->getWorldAabb().
+                        // Just delete the old volume and let addDynamicObstacle
+                        // create a fresh one from the current world transform.
+                        //
+                        // For InputGeom-based obstacles (rotation of the actual mesh
+                        // hull), apply the rotation and rebuild the hull.
                         if (nullptr == inputGeom)
                         {
-                            // No InputGeom available (loaded-from-disk path).
-                            // Fall back to fresh AABB — same as the position-only case.
+                            // World-AABB path: delete stale volume, rebuild from current
+                            // item->getWorldAabb() which already includes the new rotation.
                             delete convexVolume;
+                            convexVolume = nullptr;
                             recastModule->addDynamicObstacle(this->gameObjectPtr->getId(), this->walkable->getBool());
                         }
                         else
                         {
-                            // Apply translation first, then rotation, on the InputGeom
-                            // vertex cloud so applyOrientation() pivots around the
-                            // already-moved centre.
+                            // InputGeom mesh-hull path: apply transforms, rebuild hull.
                             if (posChanged)
                             {
                                 inputGeom->move(this->gameObjectPtr->getPosition() - this->oldPosition);
@@ -227,10 +233,13 @@ namespace NOWA
                             rel.normalise();
                             inputGeom->applyOrientation(rel, this->gameObjectPtr->getPosition());
 
-                            // getConvexHull() recomputes bmin/bmax from the updated
-                            // vertex cloud — correct by construction.
+                            // Delete the OLD convex volume (it was removed from m_geom
+                            // by removeDynamicObstacle, so we own it and must delete it).
                             delete convexVolume;
-                            convexVolume = inputGeom->getConvexHull(recastModule->getOgreRecast()->getAgentRadius() * 2.0f);
+
+                            // Build a fresh hull from the now-rotated inputGeom vertices.
+                            // getConvexHull recomputes bmin/bmax from current verts — correct.
+                            convexVolume = inputGeom->getConvexHull(recastModule->getOgreRecast()->getAgentRadius());
                             convexVolume->area = this->walkable->getBool() ? RC_WALKABLE_AREA : RC_NULL_AREA;
                             convexVolume->hmin -= 0.1f;
 

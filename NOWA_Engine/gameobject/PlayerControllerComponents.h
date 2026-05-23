@@ -742,6 +742,15 @@ namespace NOWA
 		int mouseX;
 		int mouseY;
 		Ogre::Real maxHeightDifference;
+        bool middleButtonWasDown;
+        int lastPathMouseX;
+        int lastPathMouseY;
+        bool pendingPath;
+        Ogre::Vector3 pendingPosOnNavMesh;
+        Ogre::Real raycastThrottleTimer;
+        Ogre::Real raycastThrottleInterval;
+        Ogre::Vector3 lastKnownClickPosition;
+        bool hasLastKnownClickPosition;
 	};
 
 }; //namespace end

@@ -226,6 +226,9 @@ namespace NOWA
             return false;
         }
 
+        // Cache the real Item pointer — it must never leave the SceneNode.
+        this->originalItem = item;
+
         this->originalMeshName = item->getMesh()->getName();
         const Ogre::Aabb& b = item->getMesh()->getAabb();
         this->meshMinY = b.getMinimum().y;
@@ -281,6 +284,37 @@ namespace NOWA
     //  connect
     // =========================================================================
 
+    void MeshConstructionComponent::restoreOriginalItemAndCleanup(void)
+    {
+        NOWA::GraphicsModule::RenderCommand cmd = [this]()
+        {
+            this->destroyOverlays();
+
+            if (nullptr != this->constructionItem)
+            {
+                // Detach and destroy the construction Item.
+                // The original Item is already on the SceneNode and just needs
+                // to be made visible again.
+                if (nullptr != this->constructionItem->getParentSceneNode())
+                {
+                    this->constructionItem->getParentSceneNode()->detachObject(this->constructionItem);
+                }
+                this->gameObjectPtr->getSceneManager()->destroyItem(this->constructionItem);
+                this->constructionItem = nullptr;
+                this->destroyConstructionResources();
+            }
+
+            // Make the original Item visible again.
+            // originalItem is always on the SceneNode — never swapped out.
+            if (nullptr != this->originalItem)
+            {
+                this->originalItem->setVisible(true);
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MeshConstructionComponent::restoreOriginalItemAndCleanup");
+    }
+
+    // ─── connect — hide original, attach constructionItem alongside it ────────────
     bool MeshConstructionComponent::connect(void)
     {
         GameObjectComponent::connect();
@@ -298,12 +332,22 @@ namespace NOWA
                 return;
             }
 
-            Ogre::MovableObject* old = nullptr;
-            this->gameObjectPtr->swapMovableObject(this->constructionItem, old);
-            if (nullptr != old)
+            // Hide the original Item — it stays on the SceneNode so that
+            // getWorldAabb(), NavMesh, raycasts and physics always see the
+            // correct bounds. Only the visual is hidden during construction.
+            if (nullptr != this->originalItem)
             {
-                this->gameObjectPtr->getSceneManager()->destroyItem(static_cast<Ogre::Item*>(old));
+                this->originalItem->setVisible(false);
             }
+
+            // Attach the construction Item to the SAME SceneNode.
+            // No swap — both Items live on the node simultaneously.
+            // constructionItem was created in extractMeshDataAndCreateBuffers().
+            if (nullptr != this->constructionItem)
+            {
+                this->gameObjectPtr->getSceneNode()->attachObject(this->constructionItem);
+            }
+
             this->createOverlays();
             success = true;
         };
@@ -318,7 +362,6 @@ namespace NOWA
         this->elapsed = 0.0f;
         this->constructionProgress = 0.0f;
         this->isConstructionFinished = false;
-        // barCouldDraw starts false (set in constructor, reset in destroyOverlays)
 
         // Inverted mode: seed GPU with all-real indices so the complete mesh
         // is visible immediately and deconstructs from there.

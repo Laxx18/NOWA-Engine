@@ -268,6 +268,7 @@ namespace NOWA
     //   Optional pre-built geometry (used by NavMeshComponent::update for rotation/
     //   position changes). If provided, ownership is taken — do not delete externally.
     // ─────────────────────────────────────────────────────────────────────────────
+#if 0
     void OgreRecastModule::addDynamicObstacle(unsigned long id, bool walkable, InputGeom* externalInputGeom, ConvexVolume* externalConvexVolume)
     {
         if (nullptr == this->detourTileCache)
@@ -354,6 +355,97 @@ namespace NOWA
             }
         }
     }
+#else
+    void OgreRecastModule::addDynamicObstacle(unsigned long id, bool walkable, InputGeom* externalInputGeom, ConvexVolume* externalConvexVolume)
+    {
+        if (nullptr == this->detourTileCache)
+        {
+            return;
+        }
+
+        this->removeStaticObstacle(id);
+
+        auto& it = this->dynamicObstacles.find(id);
+        if (it == this->dynamicObstacles.end())
+        {
+            auto& gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->getGameObjectFromId(id);
+
+            if (nullptr == gameObjectPtr)
+            {
+                this->dynamicObstacles.emplace(id, std::make_pair(nullptr, nullptr));
+                return;
+            }
+
+            InputGeom* inputGeom = nullptr;
+            ConvexVolume* convexVolume = nullptr;
+
+            if (nullptr != externalConvexVolume)
+            {
+                // Caller supplies a ready-made ConvexVolume (e.g. from NavMeshComponent::update
+                // after rotation). Use it directly — area and hmin already set by caller.
+                convexVolume = externalConvexVolume;
+                inputGeom = externalInputGeom;
+            }
+            else
+            {
+                // Build ConvexVolume from World-AABB.
+                //
+                // WHY World-AABB instead of InputGeom::getConvexHull():
+                //   getConvexHull() computes a 2D convex hull of local-space mesh vertices
+                //   without applying the scene node scale. For scale=0.4 the hull is 2.5x
+                //   too large. Complex meshes (houses) produce many hull points, each
+                //   consuming one ConvexVolume array slot in m_geom. When the slot count
+                //   approaches MAX_VOLUMES, new obstacles are silently rejected.
+                //
+                //   item->getWorldAabb() is always correct: world-space, scale included.
+                //   ConvexVolume(AxisAlignedBox, offset) produces exactly 4 XZ hull verts
+                //   per obstacle — slot consumption is O(1) regardless of mesh complexity.
+                Ogre::Item* item = gameObjectPtr->getMovableObject<Ogre::Item>();
+                if (nullptr == item)
+                {
+                    this->dynamicObstacles.emplace(id, std::make_pair(nullptr, nullptr));
+                    return;
+                }
+
+                if (nullptr == this->detourTileCache->getInputGeom())
+                {
+                    // NavMesh not yet built — register as placeholder. createInputGeom()
+                    // will pick this up and build the obstacle when the navmesh is ready.
+                    this->dynamicObstacles.emplace(id, std::make_pair(nullptr, nullptr));
+                    return;
+                }
+
+                Ogre::Aabb worldAabb = item->getWorldAabb();
+                Ogre::AxisAlignedBox aabb(worldAabb.getMinimum(), worldAabb.getMaximum());
+
+                // ConvexVolume(AxisAlignedBox, agentRadius) builds a simple 4-vertex
+                // box hull expanded by agentRadius on all XZ sides.
+                convexVolume = new ConvexVolume(aabb, this->ogreRecast->getAgentRadius());
+                convexVolume->area = walkable ? RC_WALKABLE_AREA : RC_NULL_AREA;
+                convexVolume->hmin -= 0.1f; // Extend downwards to ensure it cuts the navmesh surface
+            }
+
+            if (nullptr != convexVolume)
+            {
+                this->detourTileCache->addConvexShapeObstacle(convexVolume);
+            }
+
+            this->dynamicObstacles.emplace(id, std::make_pair(inputGeom, convexVolume));
+        }
+        else
+        {
+            // Already registered — update area flag on existing ConvexVolume.
+            // The ConvexVolume is already in m_geom and tiles are already rebuilt.
+            // No need to remove and re-add — just update the area field in place.
+            // The next tile rebuild (triggered by any other obstacle change) will
+            // pick up the updated area value via rcMarkConvexPolyArea.
+            if (nullptr != it->second.second)
+            {
+                it->second.second->area = walkable ? RC_WALKABLE_AREA : RC_NULL_AREA;
+            }
+        }
+    }
+#endif
 
     // ─────────────────────────────────────────────────────────────────────────────
     // removeDynamicObstacle
@@ -370,43 +462,45 @@ namespace NOWA
     // ─────────────────────────────────────────────────────────────────────────────
     std::pair<InputGeom*, ConvexVolume*> OgreRecastModule::removeDynamicObstacle(unsigned long id, bool destroy)
     {
-        InputGeom* inputGeom = nullptr;
         ConvexVolume* convexVolume = nullptr;
+        InputGeom* inputGeom = nullptr;
 
         if (nullptr == this->detourTileCache)
         {
             return std::make_pair(inputGeom, convexVolume);
         }
 
-        auto it = this->dynamicObstacles.find(id);
-        if (it == this->dynamicObstacles.end())
+        auto& it = this->dynamicObstacles.find(id);
+        if (it != this->dynamicObstacles.end())
         {
-            return std::make_pair(inputGeom, convexVolume);
+            auto& gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->getGameObjectFromId(id);
+
+            if (nullptr != gameObjectPtr)
+            {
+                convexVolume = it->second.second;
+                inputGeom = it->second.first;
+
+                if (nullptr != convexVolume)
+                {
+                    // Remove from m_geom and rebuild affected tiles.
+                    // removeConvexShapeObstacle finds the volume by pointer in m_geom,
+                    // deletes it from the array, and rebuilds touched tiles.
+                    // After this call, convexVolume is removed from m_geom but the
+                    // pointer is still valid (m_geom's deleteConvexVolume does not
+                    // delete the object — it only removes it from its array).
+                    this->detourTileCache->removeConvexShapeObstacle(convexVolume);
+                }
+
+                if (true == destroy)
+                {
+                    delete convexVolume;
+                    convexVolume = nullptr;
+                    // Note: inputGeom is NOT deleted here — caller may reuse it.
+                }
+
+                this->dynamicObstacles.erase(it);
+            }
         }
-
-        inputGeom = it->second.first;
-        convexVolume = it->second.second;
-
-        // Remove convex hull from tile cache only if it was actually registered.
-        // Placeholder entries {nullptr, nullptr} were never added to the tile cache
-        // so calling removeConvexShapeObstacle on null would crash.
-        if (nullptr != convexVolume)
-        {
-            this->detourTileCache->removeConvexShapeObstacle(convexVolume);
-        }
-
-        // Erase from map regardless of geometry state
-        this->dynamicObstacles.erase(it);
-
-        if (true == destroy)
-        {
-            delete inputGeom;
-            inputGeom = nullptr;
-
-            delete convexVolume;
-            convexVolume = nullptr;
-        }
-        // If destroy = false, caller receives ownership via the returned pair
 
         return std::make_pair(inputGeom, convexVolume);
     }
@@ -430,12 +524,12 @@ namespace NOWA
     // ─────────────────────────────────────────────────────────────────────────────
     void OgreRecastModule::activateDynamicObstacle(unsigned long id, bool activate)
     {
-        if (nullptr == this->detourTileCache || false == this->hasValidNavMesh)
+        if (nullptr == this->detourTileCache || nullptr == this->detourTileCache->getInputGeom())
         {
             return;
         }
 
-        auto it = this->dynamicObstacles.find(id);
+        auto& it = this->dynamicObstacles.find(id);
         if (it == this->dynamicObstacles.end())
         {
             return;
@@ -449,12 +543,20 @@ namespace NOWA
 
         if (false == activate)
         {
-            this->detourTileCache->removeConvexShapeObstacle(convexVolume);
+            // Deactivate: remove from m_geom so tiles rebuild without this obstacle.
+            // Only remove if it is currently registered (getConvexShapeObstacleId != -1).
+            if (this->detourTileCache->getConvexShapeObstacleId(convexVolume) != -1)
+            {
+                this->detourTileCache->removeConvexShapeObstacle(convexVolume);
+            }
         }
         else
         {
-            int obstacleId = this->detourTileCache->getConvexShapeObstacleId(convexVolume);
-            if (-1 == obstacleId)
+            // Activate: add to m_geom if not already registered.
+            // This handles the case where the component was deactivated and then
+            // reactivated, or where the obstacle was registered as a placeholder
+            // (inputGeom=nullptr) before the navmesh was built.
+            if (this->detourTileCache->getConvexShapeObstacleId(convexVolume) == -1)
             {
                 this->detourTileCache->addConvexShapeObstacle(convexVolume);
             }
@@ -548,74 +650,56 @@ namespace NOWA
 
     void OgreRecastModule::createInputGeom(void)
     {
-        // Fills {nullptr,nullptr} placeholder entries that were stored when
-        // addDynamicObstacle() was called before the navmesh existed.
-        // Called after a successful build or load.
-
         for (auto it = this->dynamicObstacles.begin(); it != this->dynamicObstacles.end(); ++it)
         {
-            if (nullptr != it->second.first)
+            // Only process placeholders — obstacles already having a ConvexVolume
+            // were successfully registered in addDynamicObstacle (navmesh already
+            // existed at that point) and must not be touched here.
+            if (nullptr != it->second.second)
             {
-                continue; // Already has geometry
+                continue;
             }
 
-            auto gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->getGameObjectFromId(it->first);
+            auto& gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->getGameObjectFromId(it->first);
+
             if (nullptr == gameObjectPtr)
             {
                 continue;
             }
 
-            InputGeom* inputGeom = nullptr;
-            ConvexVolume* convexVolume = nullptr;
-
             Ogre::Item* item = gameObjectPtr->getMovableObject<Ogre::Item>();
-
-            if (this->detourTileCache->getInputGeom() != nullptr)
+            if (nullptr == item)
             {
-                // Built this session — use full mesh geometry (original path)
-                if (nullptr != item)
-                {
-                    inputGeom = new InputGeom(item);
-                }
-
-                if (nullptr == inputGeom)
-                {
-                    continue;
-                }
-
-                convexVolume = inputGeom->getConvexHull(this->ogreRecast->getAgentRadius() * 2.0f);
-            }
-            else if (this->detourTileCache->isLoadedFromDisk())
-            {
-                // Loaded from disk — use AABB (no GPU readback needed)
-                if (nullptr != item)
-                {
-                    Ogre::Aabb worldAabb = item->getWorldAabb();
-                    const float offset = this->ogreRecast->getAgentRadius() * 2.0f;
-                    convexVolume = new ConvexVolume(Ogre::AxisAlignedBox(worldAabb.getMinimum(), worldAabb.getMaximum()), offset);
-                }
-
-                if (nullptr == convexVolume)
-                {
-                    continue;
-                }
-            }
-            else
-            {
-                continue; // Navmesh still not ready
+                continue;
             }
 
+            // Build ConvexVolume from World-AABB.
+            // item->getWorldAabb() is fully world-space and includes scale, position
+            // and orientation — the ConvexVolume will be exactly the right size
+            // regardless of how the mesh was scaled in the scene.
+            // ConvexVolume(AxisAlignedBox, offset) produces 4 XZ hull verts (a box),
+            // consuming exactly one slot in m_geom regardless of mesh complexity.
+            Ogre::Aabb worldAabb = item->getWorldAabb();
+            Ogre::AxisAlignedBox aabb(worldAabb.getMinimum(), worldAabb.getMaximum());
+
+            ConvexVolume* convexVolume = new ConvexVolume(aabb, this->ogreRecast->getAgentRadius());
+
+            // Default to non-walkable; read actual setting from NavMeshComponent.
             convexVolume->area = RC_NULL_AREA;
-
-            auto navMeshCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NavMeshComponent>());
-            if (nullptr != navMeshCompPtr && navMeshCompPtr->getWalkable())
+            auto& navMeshCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NavMeshComponent>());
+            if (nullptr != navMeshCompPtr)
             {
-                convexVolume->area = RC_WALKABLE_AREA;
+                if (true == navMeshCompPtr->getWalkable())
+                {
+                    convexVolume->area = RC_WALKABLE_AREA;
+                }
             }
 
+            // Extend a bit downwards so it reliably cuts the navmesh surface.
             convexVolume->hmin -= 0.1f;
 
-            it->second.first = inputGeom; // nullptr for AABB path — that is fine
+            // Store in map (inputGeom stays nullptr — AABB hull is self-contained).
+            it->second.first = nullptr;
             it->second.second = convexVolume;
 
             this->detourTileCache->addConvexShapeObstacle(convexVolume);
@@ -1389,6 +1473,23 @@ namespace NOWA
         int ret = it->second.get();
         this->pathFutures.erase(it);
         return ret >= 0;
+    }
+
+    bool OgreRecastModule::isPathReady(int pathSlot)
+    {
+        std::lock_guard<std::mutex> lock(this->pathFuturesMutex);
+        auto it = this->pathFutures.find(pathSlot);
+        if (it == this->pathFutures.end())
+        {
+            return true; // no pending task
+        }
+        if (it->second.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready)
+        {
+            it->second.get();
+            this->pathFutures.erase(it);
+            return true;
+        }
+        return false; // still running
     }
 
 	void OgreRecastModule::removeDrawnPath(void)

@@ -562,6 +562,7 @@ namespace NOWA
          */
 		Ogre::Vector3 getPlacementYOffset(Ogre::SceneNode* sceneNode, Ogre::MovableObject* movableObject) const;
 
+#if 0
 		/**
 		* @brief			Gets geometry information about a given mesh from entity
 		* @param[in]		entity		The entity to get the mesh and geometry data from
@@ -576,14 +577,12 @@ namespace NOWA
 		*/
 		void getMeshInformationWithSkeleton(Ogre::v1::Entity* entity, size_t& vertexCount, Ogre::Vector3*& vertices, size_t& indexCount, unsigned long*& indices,
 											const Ogre::Vector3& position, const Ogre::Quaternion& orientation, const Ogre::Vector3& scale);
+#endif
 
-		void getMeshInformation(const Ogre::v1::MeshPtr mesh, size_t& vertexCount, Ogre::Vector3*& vertexBuffer, size_t& indexCount, unsigned long*& indexBuffer,
-								const Ogre::Vector3& position, const Ogre::Quaternion& orientation, const Ogre::Vector3& scale);
-
-		void getMeshInformation2(const Ogre::MeshPtr mesh, size_t& vertexCount, Ogre::Vector3*& vertices, size_t& indexCount, unsigned long*& indices,
+		void getMeshInformation(const Ogre::MeshPtr mesh, size_t& vertexCount, Ogre::Vector3*& vertices, size_t& indexCount, unsigned long*& indices,
 								 const Ogre::Vector3& position, const Ogre::Quaternion& orientation, const Ogre::Vector3& scale);
 
-		void getDetailedMeshInformation2(const Ogre::MeshPtr mesh, size_t& vertexCount, Ogre::Vector3*& vertices,
+		void getDetailedMeshInformation(const Ogre::MeshPtr mesh, size_t& vertexCount, Ogre::Vector3*& vertices,
 			size_t& indexCount, unsigned long*& indices,
 			const Ogre::Vector3& position, const Ogre::Quaternion& orientation, const Ogre::Vector3& scale,
 			bool& isVET_HALF4, bool& isIndices32);
@@ -606,13 +605,7 @@ namespace NOWA
 		* @param[in]		scale			The scale as offset (can be the given manualObject->getParentNode()->_getDerivedScale())
 		* @note				The vertices-, indices-data can be used to perform raycast on the model. See @raycastFromPoint
 		*/
-		void getManualMeshInformation(const Ogre::v1::ManualObject* manualObject, size_t& vertexCount, Ogre::Vector3*& vertices,
-									  size_t& indexCount, unsigned long*& indices, const Ogre::Vector3& position, const Ogre::Quaternion& orientation, const Ogre::Vector3& scale);
-
-		/**
-		* @see	getManualMeshInformation
-		*/
-		void getManualMeshInformation2(const Ogre::ManualObject* manualObject, size_t& vertexCount, Ogre::Vector3*& vertices,
+		void getManualMeshInformation(const Ogre::ManualObject* manualObject, size_t& vertexCount, Ogre::Vector3*& vertices,
 									   size_t& indexCount, unsigned long*& indices, const Ogre::Vector3& position, const Ogre::Quaternion& orientation, const Ogre::Vector3& scale);
 
 		/**
@@ -815,12 +808,6 @@ namespace NOWA
 			return (val1 == 0 || val2 == 0) ? 0 : val1 / val2;
 		}
 
-		inline Ogre::Vector3 pointToLocalSpace(const Ogre::Vector3& point, Ogre::Vector3& heading, Ogre::Vector3& side, Ogre::Vector3& position);
-
-		inline Ogre::Vector3 vectorToWorldSpace(const Ogre::Vector3& vector, const Ogre::Vector3& heading, const Ogre::Vector3& side);
-
-		inline Ogre::Vector3 pointToWorldSpace(const Ogre::Vector3& point, const Ogre::Vector3& heading, const Ogre::Vector3& side, const Ogre::Vector3& position);
-
 		template <typename T>
 		void localToGlobal(T* node, const Ogre::Quaternion& localOrient, const Ogre::Vector3& localPos, Ogre::Quaternion& globalOrient, Ogre::Vector3& globalPos)
 		{
@@ -906,6 +893,28 @@ namespace NOWA
             bool inProgress = false;
         };
         CachedRaycast cachedRaycast;
+
+		struct RaycastMeshCache
+        {
+            std::vector<Ogre::Vector3> localVerts;
+            std::vector<unsigned long> indices;
+            bool isVET_HALF4 = false;
+            bool isIndices32 = false;
+        };
+
+        struct DetailedMeshCache
+        {
+            std::vector<Ogre::Vector3> localVerts;
+            std::vector<Ogre::Vector3> localNormals;
+            std::vector<Ogre::Vector2> localUVs;
+            std::vector<unsigned long> indices;
+            bool isVET_HALF4 = false;
+            bool isIndices32 = false;
+        };
+        
+        std::unordered_map<size_t, std::shared_ptr<const RaycastMeshCache>>  meshCache;
+        std::unordered_map<size_t, std::shared_ptr<const DetailedMeshCache>> detailedMeshCache;
+        mutable std::mutex meshCacheMutex;
 	};
 
 }; // namespace end

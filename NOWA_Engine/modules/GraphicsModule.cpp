@@ -1683,8 +1683,24 @@ namespace NOWA
     void GraphicsModule::updateTrackedClosure(const Ogre::String& uniqueName, std::function<void(Ogre::Real)> closureFunc, bool fireAndForget)
     {
         // Ensure queue is initialized
-        if (!this->queueInitialized.load())
+        if (false == this->queueInitialized.load())
         {
+            return;
+        }
+
+        // If already on the render thread, execute the closure immediately.
+        // Queuing it would cause a one-frame delay and — in the case of
+        // updateTrackedClosure — could stack duplicate entries if called
+        // repeatedly from render-thread code (e.g. navmesh redraw callbacks).
+        if (true == this->isRenderThread())
+        {
+            // Execute with dt=0 — tracked closures that run immediately are
+            // one-shot context calls, not per-frame updates. Callers that
+            // need the real dt should not be calling from the render thread.
+            if (nullptr != closureFunc)
+            {
+                closureFunc(0.0f);
+            }
             return;
         }
 
@@ -1694,7 +1710,7 @@ namespace NOWA
         // Use producer token for better performance
         bool success = this->closureQueue.enqueue(producerToken, std::move(command));
 
-        if (!success)
+        if (false == success)
         {
             // Queue is full or memory allocation failed
             // In practice, this should rarely happen with moodycamel::ConcurrentQueue

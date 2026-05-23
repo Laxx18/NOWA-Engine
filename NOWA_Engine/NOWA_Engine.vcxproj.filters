@@ -216,9 +216,6 @@
     <ClInclude Include="utilities\AnimationSerializer.h">
       <Filter>utilities</Filter>
     </ClInclude>
-    <ClInclude Include="utilities\C2DMatrix.h">
-      <Filter>utilities</Filter>
-    </ClInclude>
     <ClInclude Include="utilities\FastDelegate.h">
       <Filter>utilities</Filter>
     </ClInclude>

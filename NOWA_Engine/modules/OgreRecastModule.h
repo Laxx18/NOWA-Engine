@@ -561,6 +561,10 @@ namespace NOWA
 
         void stopSimulation(void);
 
+        // Returns true if no async path task is running for this slot
+        // (either finished or never started). Does NOT block.
+        bool isPathReady(int pathSlot);
+
 	private:
 		OgreRecastModule(const Ogre::String& appStateName);
 

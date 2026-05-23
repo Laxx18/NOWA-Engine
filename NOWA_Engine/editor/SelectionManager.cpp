@@ -518,7 +518,7 @@ namespace NOWA
                 unsigned long* indices = nullptr;
 
                 Ogre::Item* item = static_cast<Ogre::Item*>(movable);
-                MathHelper::getInstance()->getMeshInformation2(item->getMesh(), vertexCount, vertices, indexCount, indices, item->getParentNode()->_getDerivedPosition(), item->getParentNode()->_getDerivedOrientation(),
+                MathHelper::getInstance()->getMeshInformation(item->getMesh(), vertexCount, vertices, indexCount, indices, item->getParentNode()->_getDerivedPosition(), item->getParentNode()->_getDerivedOrientation(),
                     item->getParentNode()->getScale());
 
                 bool hitfound = false;
