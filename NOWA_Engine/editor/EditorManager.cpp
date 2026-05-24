@@ -958,10 +958,11 @@ namespace NOWA
 
         virtual void redo(void) override
         {
+            ENQUEUE_RENDER_COMMAND_WAIT("CloneGameObjectsUndoCommand::undo", { AppStateManager::getSingletonPtr()->getGameObjectController()->stop(); });
+
             this->editorManager->getSelectionManager()->clearSelection();
             // First disconnect game objects, because during clone, when there are joint components etc. only those to be cloned joint components may be in a list
             // to find the new predecessor. If there would be all other, a wrong predecessor joint could be found!
-            ENQUEUE_RENDER_COMMAND_WAIT("CloneGameObjectsUndoCommand::redo", { AppStateManager::getSingletonPtr()->getGameObjectController()->stop(); });
 
             for (size_t i = 0; i < this->gameObjectIds.size(); i++)
             {
@@ -969,10 +970,7 @@ namespace NOWA
                 GameObjectPtr clonedGameObject = AppStateManager::getSingletonPtr()->getGameObjectController()->clone(this->gameObjectIds[i], nullptr, this->gameObjectClonedIds[i]);
                 if (nullptr != clonedGameObject)
                 {
-                    // ENQUEUE_RENDER_COMMAND_MULTI_WAIT("", _1(clonedGameObject),
-                    // {
                     this->editorManager->getSelectionManager()->select(clonedGameObject->getId());
-                    // });
                     // Important: Set the cloned name, for undo redo
                     this->gameObjectClonedIds[i] = clonedGameObject->getId();
                 }
@@ -990,10 +988,13 @@ namespace NOWA
             // Internally game object component can react on onCloned method and search for its target game object that has been cloned by its prior id
             AppStateManager::getSingletonPtr()->getGameObjectController()->connectClonedGameObjects(this->gameObjectClonedIds);
 
-            ENQUEUE_RENDER_COMMAND_WAIT("CloneGameObjectsUndoCommand::redo2", {
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+            {
                 this->editorManager->setManipulationMode(EditorManager::EDITOR_TRANSLATE_MODE);
                 this->editorManager->setGizmoToGameObjectsCenter();
-            });
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CloneGameObjectsUndoCommand::redo");
+
 
             boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
             NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGeometryModified);
@@ -3954,7 +3955,12 @@ namespace NOWA
 
         this->isInSimulation = false;
 
+        // Delete all user defined attributes (when lua script has been disconnected and re-connected, this is required)
+        AppStateManager::getSingletonPtr()->getGameProgressModule()->stop();
+        AppStateManager::getSingletonPtr()->getScriptEventManager()->destroyContent();
+        AppStateManager::getSingletonPtr()->getOgreRecastModule()->stopSimulation();
         AppStateManager::getSingletonPtr()->getGameObjectController()->stop();
+
         if (true == withUndo)
         {
             // this->undoAll();

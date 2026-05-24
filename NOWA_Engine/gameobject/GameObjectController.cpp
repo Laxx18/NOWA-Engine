@@ -1909,10 +1909,6 @@ void GameObjectController::stop(void)
             this->deleteGameObjectsUndoCommand.reset();
         }
         this->nextGameObjectIndex = 0;
-        // Delete all user defined attributes (when lua script has been disconnected and re-connected, this is required)
-        AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->stop();
-        AppStateManager::getSingletonPtr()->getScriptEventManager(this->appStateName)->destroyContent();
-        AppStateManager::getSingletonPtr()->getOgreRecastModule(this->appStateName)->stopSimulation();
 
         this->deactivateAllPlayerController();
 

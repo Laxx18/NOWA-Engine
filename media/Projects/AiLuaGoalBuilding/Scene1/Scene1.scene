@@ -660,7 +660,7 @@
 		<node name="TownhallTemplate" id="1548771700">
 			<position x="-2.91866" y="-3.32185" z="115.565"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
-			<scale x="0.4" y="0.4" z="0.4"/>
+			<scale x="0.6" y="0.6" z="0.6"/>
 			<item name="TownhallTemplate" meshFile="cg_house_b.mesh" castShadows="true" visible="true">
 				<subitem index="0" datablockName="/dural/structures/ossyja_wall_cobblestone/texture"/>
 				<subitem index="1" datablockName="/dural/structures/stone_palisade/texture"/>

@@ -1083,6 +1083,12 @@ int OgreDetourTileCache::addConvexShapeObstacle(ConvexVolume* obstacle)
     }
 
     int result = m_geom->addConvexVolume(obstacle);
+
+    /*Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+        "[DIAG] m_geom->getConvexVolumeCount()=" + Ogre::StringConverter::toString(m_geom->getConvexVolumeCount())
+        + " mBoxObstacleRefs.size=" + Ogre::StringConverter::toString(mBoxObstacleRefs.size()));*/
+
+
     if (result == -1)
     {
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
@@ -1353,6 +1359,11 @@ int OgreDetourTileCache::getConvexShapeObstacleId(ConvexVolume *convexHull)
 
 bool OgreDetourTileCache::removeConvexShapeObstacle(ConvexVolume* convexHull)
 {
+    /*Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+        "[DIAG] removeConvexShapeObstacle convexHull=" + Ogre::StringConverter::toString((size_t)convexHull)
+        + " mBoxObstacleRefs.size=" + Ogre::StringConverter::toString(mBoxObstacleRefs.size())
+        + " m_geom->getConvexVolumeCount()=" + Ogre::StringConverter::toString(m_geom->getConvexVolumeCount()));*/
+
     // Check if this was added via the temp obstacle path (loaded-from-disk).
     auto boxIt = mBoxObstacleRefs.find(convexHull);
     if (boxIt != mBoxObstacleRefs.end())

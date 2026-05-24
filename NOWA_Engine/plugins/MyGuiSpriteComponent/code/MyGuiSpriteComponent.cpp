@@ -365,9 +365,9 @@ namespace NOWA
             std::swap(this->currentRow, this->currentCol);
         }
 
-        Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGuiSpriteComponent] updateFrame widget visible: " + Ogre::StringConverter::toString(this->widget->getVisible()) + " currentFrame: " 
+        /*Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGuiSpriteComponent] updateFrame widget visible: " + Ogre::StringConverter::toString(this->widget->getVisible()) + " currentFrame: " 
             + Ogre::StringConverter::toString(this->currentFrame) + " currentRow: " + Ogre::StringConverter::toString(this->currentRow) +
-                                                                            " currentCol: " + Ogre::StringConverter::toString(this->currentCol) + " finished: " + Ogre::StringConverter::toString(this->finished));
+                                                                            " currentCol: " + Ogre::StringConverter::toString(this->currentCol) + " finished: " + Ogre::StringConverter::toString(this->finished));*/
 
         if (nullptr != this->widget)
         {

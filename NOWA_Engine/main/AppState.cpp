@@ -86,6 +86,10 @@ namespace NOWA
 		this->hasStarted = false;
 
 		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &AppState::handleSceneLoaded), NOWA::EventDataSceneLoaded::getStaticEventType());
+        // Delete all user defined attributes (when lua script has been disconnected and re-connected, this is required)
+        NOWA::AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->stop();
+        NOWA::AppStateManager::getSingletonPtr()->getScriptEventManager(this->appStateName)->destroyContent();
+        NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule(this->appStateName)->stopSimulation();
 		NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->stop();
 		this->destroyModules();
 	}
