@@ -318,6 +318,8 @@ namespace NOWA
 
 		void handleMeshEditModifyEnd(EventDataPtr eventData);
 
+		void handlePlanetTerraModifyEnd(EventDataPtr eventData);
+
 		void handleUndoTransactionBegin(EventDataPtr eventData);
 		
 		void handleUndoTransactionEnd(EventDataPtr eventData);

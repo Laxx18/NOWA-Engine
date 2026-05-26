@@ -63,11 +63,11 @@ namespace NOWA
 	{
 		CrowdComponentPtr clonedCompPtr(boost::make_shared<CrowdComponent>());
 
+		clonedGameObjectPtr->addComponent(clonedCompPtr);
+        clonedCompPtr->setOwner(clonedGameObjectPtr);
+
 		clonedCompPtr->setActivated(this->activated->getBool());
 		clonedCompPtr->setControlled(this->controlled->getBool());
-
-		clonedGameObjectPtr->addComponent(clonedCompPtr);
-		clonedCompPtr->setOwner(clonedGameObjectPtr);
 
 		GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
 		return clonedCompPtr;
@@ -159,9 +159,34 @@ namespace NOWA
 	}
 	
 	void CrowdComponent::update(Ogre::Real dt, bool notSimulating)
-	{
-		this->detourCrowd->updateTick(dt);
-	}
+    {
+        if (true == notSimulating || false == this->inSimulation || false == this->activated->getBool() || false == this->controlled->getBool() || -1 == this->agentId)
+        {
+            return;
+        }
+
+        // Transfer Detour agent world position to this component (removes old tempObstacle
+        // if uncontrolled, translates the scene node). Returns the new world position.
+        Ogre::Vector3 agentPos = this->beginUpdateVelocity();
+
+        if (nullptr != this->physicsActiveComponent)
+        {
+            // Physics-driven crowd agent:
+            // Do NOT set position or velocity directly — that corrupts Newton4 body state.
+            // Instead request a force that will produce the desired crowd velocity.
+            // applyRequiredForceForVelocity is queued and applied in the Newton callback
+            // so the force is applied at the correct simulation timestep.
+            Ogre::Vector3 crowdVelocity = this->getVelocity();
+            this->physicsActiveComponent->applyRequiredForceForVelocity(crowdVelocity);
+        }
+        else
+        {
+            // No physics — move SceneNode directly (kinematic crowd agents, e.g. ambient NPCs).
+            this->gameObjectPtr->getSceneNode()->setPosition(agentPos);
+        }
+
+        this->endUpdateVelocity();
+    }
 
 	void CrowdComponent::actualizeValue(Variant* attribute)
 	{

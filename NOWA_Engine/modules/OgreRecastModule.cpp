@@ -756,6 +756,16 @@ namespace NOWA
             return false;
         }
 
+        // Always initialize crowd after navmesh is ready, even if no crowd agents exist yet.
+        if (nullptr != this->detourCrowd)
+        {
+            // Initialize with maximum capacity once — dtCrowd::init() purges all agents,
+            // so it must never be called again after agents have been added.
+            // In a Warcraft-style game, agents are cloned dynamically at runtime,
+            // so we reserve the full MAX_AGENTS slots upfront.
+            this->detourCrowd->setMaxAgents(OgreDetourCrowd::MAX_AGENTS);
+        }
+
         // ── Always set InputGeom — regardless of hasValidNavMesh state ────────────
         // This is critical: even if hasValidNavMesh was already true from a previous
         // load, a new detourTileCache was just created above and its m_geom is null.
@@ -1340,6 +1350,11 @@ namespace NOWA
                 };
                 NOWA::GraphicsModule::getInstance()->updateTrackedClosure("OgreRecastModule::drawNavMesh", renderClosure, true);
             }
+        }
+
+        if (nullptr != this->detourCrowd && this->detourCrowd->getMaxNbAgents() > 0)
+        {
+            this->detourCrowd->updateTick(dt);
         }
     }
 

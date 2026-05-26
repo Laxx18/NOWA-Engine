@@ -711,7 +711,7 @@ namespace NOWA
 			}
 
 			// Sends event, that component has been created
-			boost::shared_ptr<EventDataNewComponent> eventDataNewComponent(new EventDataNewComponent(componentClassName));
+			boost::shared_ptr<EventDataNewComponent> eventDataNewComponent(new EventDataNewComponent(gameObjectPtr->getId(), componentClassName));
 			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataNewComponent);
 
 			return componentPtr;
@@ -752,7 +752,7 @@ namespace NOWA
 				// return;
 			}
 
-			auto createdEvent = boost::make_shared<EventDataNewComponent>(name);
+			auto createdEvent = boost::make_shared<EventDataNewComponent>(gameObjectPtr->getId(), name);
 			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(createdEvent);
 
 			resultComp = componentPtr;

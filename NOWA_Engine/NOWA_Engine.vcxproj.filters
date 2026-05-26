@@ -37,6 +37,9 @@
     <Filter Include="ocean">
       <UniqueIdentifier>{7b0e6637-c9b9-4c13-b409-59899a4053e7}</UniqueIdentifier>
     </Filter>
+    <Filter Include="planetterra">
+      <UniqueIdentifier>{67caafc5-cb3b-48ab-8ab0-85f19e417309}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="console\EditString.h">
@@ -656,6 +659,12 @@
     <ClInclude Include="gameobject\MyGUISpriteComponentBase.h">
       <Filter>gameobject</Filter>
     </ClInclude>
+    <ClInclude Include="planetterra\PlanetTerra.h">
+      <Filter>planetterra</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\PlanetTerraComponentBase.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\NOWA.ico">
@@ -1213,6 +1222,9 @@
     </ClCompile>
     <ClCompile Include="editor\ScreenRectSelector.cpp">
       <Filter>editor</Filter>
+    </ClCompile>
+    <ClCompile Include="planetterra\PlanetTerra.cpp">
+      <Filter>planetterra</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

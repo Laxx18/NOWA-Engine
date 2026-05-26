@@ -226,9 +226,6 @@ namespace NOWA
             return false;
         }
 
-        // Cache the real Item pointer — it must never leave the SceneNode.
-        this->originalItem = item;
-
         this->originalMeshName = item->getMesh()->getName();
         const Ogre::Aabb& b = item->getMesh()->getAabb();
         this->meshMinY = b.getMinimum().y;
@@ -284,37 +281,6 @@ namespace NOWA
     //  connect
     // =========================================================================
 
-    void MeshConstructionComponent::restoreOriginalItemAndCleanup(void)
-    {
-        NOWA::GraphicsModule::RenderCommand cmd = [this]()
-        {
-            this->destroyOverlays();
-
-            if (nullptr != this->constructionItem)
-            {
-                // Detach and destroy the construction Item.
-                // The original Item is already on the SceneNode and just needs
-                // to be made visible again.
-                if (nullptr != this->constructionItem->getParentSceneNode())
-                {
-                    this->constructionItem->getParentSceneNode()->detachObject(this->constructionItem);
-                }
-                this->gameObjectPtr->getSceneManager()->destroyItem(this->constructionItem);
-                this->constructionItem = nullptr;
-                this->destroyConstructionResources();
-            }
-
-            // Make the original Item visible again.
-            // originalItem is always on the SceneNode — never swapped out.
-            if (nullptr != this->originalItem)
-            {
-                this->originalItem->setVisible(true);
-            }
-        };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MeshConstructionComponent::restoreOriginalItemAndCleanup");
-    }
-
-    // ─── connect — hide original, attach constructionItem alongside it ────────────
     bool MeshConstructionComponent::connect(void)
     {
         GameObjectComponent::connect();
@@ -332,22 +298,12 @@ namespace NOWA
                 return;
             }
 
-            // Hide the original Item — it stays on the SceneNode so that
-            // getWorldAabb(), NavMesh, raycasts and physics always see the
-            // correct bounds. Only the visual is hidden during construction.
-            if (nullptr != this->originalItem)
+            Ogre::MovableObject* old = nullptr;
+            this->gameObjectPtr->swapMovableObject(this->constructionItem, old);
+            if (nullptr != old)
             {
-                this->originalItem->setVisible(false);
+                this->gameObjectPtr->getSceneManager()->destroyItem(static_cast<Ogre::Item*>(old));
             }
-
-            // Attach the construction Item to the SAME SceneNode.
-            // No swap — both Items live on the node simultaneously.
-            // constructionItem was created in extractMeshDataAndCreateBuffers().
-            if (nullptr != this->constructionItem)
-            {
-                this->gameObjectPtr->getSceneNode()->attachObject(this->constructionItem);
-            }
-
             this->createOverlays();
             success = true;
         };
@@ -362,6 +318,7 @@ namespace NOWA
         this->elapsed = 0.0f;
         this->constructionProgress = 0.0f;
         this->isConstructionFinished = false;
+        // barCouldDraw starts false (set in constructor, reset in destroyOverlays)
 
         // Inverted mode: seed GPU with all-real indices so the complete mesh
         // is visible immediately and deconstructs from there.
@@ -487,8 +444,8 @@ namespace NOWA
     //  tracked closure is removed, guaranteeing the GPU sees the correct
     //  terminal state regardless of any closure race.
     //
-    //  makeAllVisible == true  -> normal mode:   complete mesh, all real indices
-    //  makeAllVisible == false -> inverted mode: empty mesh, all degenerate [0]
+    //  makeAllVisible == true  → normal mode:   complete mesh, all real indices
+    //  makeAllVisible == false → inverted mode: empty mesh, all degenerate [0]
     // =========================================================================
 
     void MeshConstructionComponent::uploadFinalIndicesBlocking(bool makeAllVisible)
@@ -610,37 +567,20 @@ namespace NOWA
         // Local-space cutoff along the chosen axis, used with upper_bound(sortedCentroid).
         // Triangles with centroid <= cutoff are visible.
         //
-        // Normal  (invert=false): cutoff rises  meshAxisMin -> meshAxisMax
-        // Inverted(invert=true ): cutoff falls  meshAxisMax -> meshAxisMin
+        // Normal  (invert=false): cutoff rises  meshAxisMin → meshAxisMax
+        // Inverted(invert=true ): cutoff falls  meshAxisMax → meshAxisMin
         //
         // Epsilon offsets ensure boundary triangles are always included.
-        float cutoff = 0.0f;
-
+        float cutoff;
         if (false == this->invert->getBool())
         {
-            if (this->constructionProgress >= 1.0f)
-            {
-                cutoff = this->meshAxisMax + 1.0f;
-            }
-            else
-            {
-                cutoff = static_cast<float>(this->meshAxisMin + this->constructionProgress * (this->meshAxisMax - this->meshAxisMin));
-            }
+            cutoff = (this->constructionProgress >= 1.0f) ? this->meshAxisMax + 1.0f : static_cast<float>(this->meshAxisMin + this->constructionProgress * (this->meshAxisMax - this->meshAxisMin));
         }
         else
         {
-            if (this->constructionProgress <= 0.0f)
-            {
-                cutoff = this->meshAxisMax + 1.0f;
-            }
-            else if (this->constructionProgress >= 1.0f)
-            {
-                cutoff = this->meshAxisMin - 1.0f;
-            }
-            else
-            {
-                cutoff = static_cast<float>(this->meshAxisMax - this->constructionProgress * (this->meshAxisMax - this->meshAxisMin));
-            }
+            cutoff = (this->constructionProgress <= 0.0f)   ? this->meshAxisMax + 1.0f
+                     : (this->constructionProgress >= 1.0f) ? this->meshAxisMin - 1.0f
+                                                            : static_cast<float>(this->meshAxisMax - this->constructionProgress * (this->meshAxisMax - this->meshAxisMin));
         }
 
         // ── 2. Index packets ──────────────────────────────────────────────────────
@@ -716,8 +656,8 @@ namespace NOWA
         //
         //  CRITICAL: barCouldDraw is a member variable that
         //  PERSIST across frames — they are NEVER reset inside the closure.
-        //  Frame 1: getNumSections()==0  -> begin() is called -> barCouldDraw=true
-        //  Frame 2: getNumSections()>0 AND barCouldDraw==true -> beginUpdate(0)
+        //  Frame 1: getNumSections()==0  → begin() is called → barCouldDraw=true
+        //  Frame 2: getNumSections()>0 AND barCouldDraw==true → beginUpdate(0)
         //  This exactly mirrors ValueBarComponent::update() / drawValueBar().
 
         auto renderClosure = [this, packets = std::move(packets), capturedProgress, capturedCutoff, doBar, doText, pctStr, capturedMeshMaxY](Ogre::Real) mutable
@@ -775,27 +715,22 @@ namespace NOWA
             if (nullptr != this->barObject && doBar)
             {
                 // Bar anchor: above the mesh in world Y.
-                const Ogre::Real barGap = 0.4f;
+                const Ogre::Real barGap = 0.4f; // world-space gap above mesh top
                 const Ogre::Vector3 p(objPos.x, meshTopWorld + barGap, objPos.z);
 
                 const Ogre::Real w = 0.5f;   // half-width of full bar
                 const Ogre::Real h = 0.07f;  // bar height
                 const Ogre::Real bs = 0.01f; // border thickness
-                const Ogre::Real inset = 0.1f;
-
                 const Ogre::Real fillW = (w * 2.0f) * static_cast<Ogre::Real>(capturedProgress);
-
-                // Inner fill area with padding
-                const Ogre::Real leftX = -w + inset;
-                const Ogre::Real rightX = std::max(leftX, (-w + fillW) - inset);
-
-                const Ogre::Real topY = h - inset;
-                const Ogre::Real bottomY = inset;
+                const Ogre::Real fillR = -w + fillW; // right edge of fill
 
                 const Ogre::ColourValue outer(0.15f, 0.15f, 0.15f, 1.0f);
                 const Ogre::ColourValue fTop(0.15f, 0.9f, 0.15f, 1.0f);
                 const Ogre::ColourValue fBot(0.10f, 0.65f, 0.10f, 1.0f);
 
+                // *** THE FIX: couldDraw is NEVER reset inside the closure ***
+                // Frame 1: getNumSections()==0  → begin()
+                // Frame 2+: getNumSections()>0 AND barCouldDraw==true → beginUpdate(0)
                 if (this->barObject->getNumSections() > 0)
                 {
                     if (true == this->barCouldDraw)
@@ -811,113 +746,89 @@ namespace NOWA
 
                 unsigned long idx = 0;
 
-                // ------------------------------------------------------------------------
-                // Outer background
-                // ------------------------------------------------------------------------
-
+                // Outer background — two quads (upper + lower half, same as ValueBarComponent)
                 // Upper face
                 this->barObject->position(p + (o * (so * (sp + Ogre::Vector3(-w - bs, h + bs, 0.0f)))));
                 this->barObject->colour(outer);
                 this->barObject->normal(0, 0, 1);
                 this->barObject->textureCoord(0, 0);
-
                 this->barObject->position(p + (o * (so * (sp + Ogre::Vector3(-w - bs, h + bs, 0.0f)))));
                 this->barObject->colour(outer);
                 this->barObject->normal(0, 0, 1);
                 this->barObject->textureCoord(0, 1);
-
                 this->barObject->position(p + (o * (so * (sp + Ogre::Vector3(w + bs, h + bs, 0.0f)))));
                 this->barObject->colour(outer);
                 this->barObject->normal(0, 0, 1);
                 this->barObject->textureCoord(1, 1);
-
                 this->barObject->position(p + (o * (so * (sp + Ogre::Vector3(w + bs, h + bs, 0.0f)))));
                 this->barObject->colour(outer);
                 this->barObject->normal(0, 0, 1);
                 this->barObject->textureCoord(1, 0);
-
                 this->barObject->quad(idx + 0, idx + 1, idx + 2, idx + 3);
                 idx += 4;
-
                 // Lower face
                 this->barObject->position(p + (o * (so * (sp + Ogre::Vector3(-w - bs, h + bs, 0.0f)))));
                 this->barObject->colour(outer);
                 this->barObject->normal(0, 0, 1);
                 this->barObject->textureCoord(0, 0);
-
                 this->barObject->position(p + (o * (so * (sp + Ogre::Vector3(-w - bs, -bs, 0.0f)))));
                 this->barObject->colour(outer);
                 this->barObject->normal(0, 0, 1);
                 this->barObject->textureCoord(0, 1);
-
                 this->barObject->position(p + (o * (so * (sp + Ogre::Vector3(w + bs, -bs, 0.0f)))));
                 this->barObject->colour(outer);
                 this->barObject->normal(0, 0, 1);
                 this->barObject->textureCoord(1, 1);
-
                 this->barObject->position(p + (o * (so * (sp + Ogre::Vector3(w + bs, h + bs, 0.0f)))));
                 this->barObject->colour(outer);
                 this->barObject->normal(0, 0, 1);
                 this->barObject->textureCoord(1, 0);
-
                 this->barObject->quad(idx + 0, idx + 1, idx + 2, idx + 3);
                 idx += 4;
 
-                // ------------------------------------------------------------------------
-                // Green fill
-                // ------------------------------------------------------------------------
-
+                // Green fill (only when progress > epsilon)
                 if (capturedProgress > 0.001f)
                 {
-                    // Top face
-                    this->barObject->position(p + (o * (so * (sp + Ogre::Vector3(leftX, topY, 0.0f)))));
+                    this->barObject->position(p + (o * (so * (sp + Ogre::Vector3(-w, h, 0.0f)))));
                     this->barObject->colour(fTop);
                     this->barObject->normal(0, 0, 1);
                     this->barObject->textureCoord(0, 0);
-
-                    this->barObject->position(p + (o * (so * (sp + Ogre::Vector3(leftX, topY, 0.0f)))));
+                    this->barObject->position(p + (o * (so * (sp + Ogre::Vector3(-w, h, 0.0f)))));
                     this->barObject->colour(fTop);
                     this->barObject->normal(0, 0, 1);
                     this->barObject->textureCoord(0, 1);
-
-                    this->barObject->position(p + (o * (so * (sp + Ogre::Vector3(rightX, topY, 0.0f)))));
+                    this->barObject->position(p + (o * (so * (sp + Ogre::Vector3(fillR, h, 0.0f)))));
                     this->barObject->colour(fTop);
                     this->barObject->normal(0, 0, 1);
                     this->barObject->textureCoord(1, 1);
-
-                    this->barObject->position(p + (o * (so * (sp + Ogre::Vector3(rightX, topY, 0.0f)))));
+                    this->barObject->position(p + (o * (so * (sp + Ogre::Vector3(fillR, h, 0.0f)))));
                     this->barObject->colour(fTop);
                     this->barObject->normal(0, 0, 1);
                     this->barObject->textureCoord(1, 0);
-
                     this->barObject->quad(idx + 0, idx + 1, idx + 2, idx + 3);
                     idx += 4;
 
-                    // Main fill
-                    this->barObject->position(p + (o * (so * (sp + Ogre::Vector3(leftX, topY, 0.0f)))));
+                    this->barObject->position(p + (o * (so * (sp + Ogre::Vector3(-w, h, 0.0f)))));
                     this->barObject->colour(fTop);
                     this->barObject->normal(0, 0, 1);
                     this->barObject->textureCoord(0, 0);
-
-                    this->barObject->position(p + (o * (so * (sp + Ogre::Vector3(leftX, bottomY, 0.0f)))));
+                    this->barObject->position(p + (o * (so * (sp + Ogre::Vector3(-w, 0.0f, 0.0f)))));
                     this->barObject->colour(fBot);
                     this->barObject->normal(0, 0, 1);
                     this->barObject->textureCoord(0, 1);
-
-                    this->barObject->position(p + (o * (so * (sp + Ogre::Vector3(rightX, bottomY, 0.0f)))));
+                    this->barObject->position(p + (o * (so * (sp + Ogre::Vector3(fillR, 0.0f, 0.0f)))));
                     this->barObject->colour(fBot);
                     this->barObject->normal(0, 0, 1);
                     this->barObject->textureCoord(1, 1);
-
-                    this->barObject->position(p + (o * (so * (sp + Ogre::Vector3(rightX, topY, 0.0f)))));
+                    this->barObject->position(p + (o * (so * (sp + Ogre::Vector3(fillR, h, 0.0f)))));
                     this->barObject->colour(fTop);
                     this->barObject->normal(0, 0, 1);
                     this->barObject->textureCoord(1, 0);
-
                     this->barObject->quad(idx + 0, idx + 1, idx + 2, idx + 3);
                     idx += 4;
                 }
 
+                // Mark successful draw for beginUpdate on the NEXT frame.
                 this->barCouldDraw = true;
 
                 this->barObject->index(0);
@@ -1456,13 +1367,14 @@ namespace NOWA
     {
         Ogre::SceneManager* sm = this->gameObjectPtr->getSceneManager();
         Ogre::SceneNode* root = sm->getRootSceneNode();
+        const Ogre::SceneMemoryMgrTypes memType = this->gameObjectPtr->isDynamic() ? Ogre::SCENE_DYNAMIC : Ogre::SCENE_STATIC;
 
         this->barCouldDraw = false;
 
         // ── Progress bar ──────────────────────────────────────────────────────────
         if (this->showProgressBar->getBool())
         {
-            this->barLineNode = root->createChildSceneNode(Ogre::SCENE_DYNAMIC);
+            this->barLineNode = root->createChildSceneNode(memType);
             this->barObject = sm->createManualObject();
             this->barObject->setName("MeshConstrBar_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()) + "_" + Ogre::StringConverter::toString(this->index));
             this->barObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
@@ -1488,7 +1400,7 @@ namespace NOWA
             this->percentageText->setQueryFlags(0 << 0);
 
             // Child of ROOT — no inherited transform. Position driven each frame.
-            this->textLineNode = root->createChildSceneNode(Ogre::SCENE_DYNAMIC);
+            this->textLineNode = root->createChildSceneNode(memType);
             this->textLineNode->attachObject(this->percentageText);
 
             // addTrackedNode: render thread will orient this node toward the camera.

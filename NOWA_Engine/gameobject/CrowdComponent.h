@@ -271,10 +271,17 @@ namespace NOWA
 		/**
 		 * @see	GameObjectComponent::getStaticInfoText
 		 */
-		static Ogre::String getStaticInfoText(void)
-		{
-			return "Usage: This component is used, in order to tag this game object, that it will be part of OgreRecast crowd system. Its possible to move an army of game objects as crowd.";
-		}
+        static Ogre::String getStaticInfoText(void)
+        {
+            return "Usage: This component is used in order to tag this game object so that it becomes part of the OgreRecast crowd system. It allows moving an army of game objects as a crowd.\n\n"
+                   "Typical crowding scenarios:\n"
+                   "Scenario 1 - RTS unit group: Multiple workers are selected and sent to a target. Each has a CrowdComponent. Detour crowding automatically handles collision avoidance between them - they find space beside each other without "
+                   "explicit formation logic.\n\n"
+                   "Scenario 2 - City inhabitants: NPCs wander randomly (WANDER behavior in MovingBehavior), avoid each other, and react to the player. NPCs with controlled=false are registered as temporary obstacles so others can route around "
+                   "them.\n\n"
+                   "Scenario 3 - Mixed mode: Some agents are under crowd control (groups), others under OgreNewt control (player, physics objects). The player is not a crowd agent but a NavMeshComponent dynamic obstacle - the crowd automatically "
+                   "avoids them.";
+        }
 		
 		/**
 		 * @see	GameObjectComponent::createStaticApiForLua

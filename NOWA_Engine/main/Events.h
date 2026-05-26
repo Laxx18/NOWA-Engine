@@ -231,8 +231,9 @@ namespace NOWA
 		{
 		}
 
-		explicit EventDataNewComponent(const Ogre::String& componentName)
-			: componentName(componentName)
+		explicit EventDataNewComponent(unsigned long gameObjectId, const Ogre::String& componentName)
+			: gameObjectId(gameObjectId),
+			componentName(componentName)
 		{
 		}
 
@@ -248,7 +249,7 @@ namespace NOWA
 
 		virtual EventDataPtr copy(void) const
 		{
-			return EventDataPtr(new EventDataNewComponent(this->componentName));
+			return EventDataPtr(new EventDataNewComponent(this->gameObjectId, this->componentName));
 		}
 
 		virtual const char* getName(void) const
@@ -256,11 +257,17 @@ namespace NOWA
 			return "EventDataNewComponent";
 		}
 
+		unsigned long getGameObjectId(void) const
+        {
+            return this->gameObjectId;
+		}
+
 		Ogre::String getComponentName(void) const
 		{
 			return this->componentName;
 		}
 	private:
+        unsigned long gameObjectId;
 		Ogre::String componentName;
 	};
 
@@ -2261,6 +2268,67 @@ namespace NOWA
 		std::vector<unsigned char> newWallData;
 		unsigned long gameObjectId;
 	};
+
+	// -----------------------------------------------------------------------
+    // EventDataPlanetTerraModifyEnd
+    // Sent when a sculpt or paint brush stroke on a PlanetTerraComponent ends
+    // (on mouseReleased). The EditorManager is the sole subscriber; it pushes
+    // old/new onto its undo stack and calls setPlanetData() on undo/redo.
+    // -----------------------------------------------------------------------
+    class EXPORTED EventDataPlanetTerraModifyEnd : public BaseEventData
+    {
+    public:
+        EventDataPlanetTerraModifyEnd(void)
+        {
+        }
+
+        explicit EventDataPlanetTerraModifyEnd(const std::vector<unsigned char>& oldPlanetData, const std::vector<unsigned char>& newPlanetData, unsigned long gameObjectId) :
+            oldPlanetData(oldPlanetData),
+            newPlanetData(newPlanetData),
+            gameObjectId(gameObjectId)
+        {
+        }
+
+        static EventType getStaticEventType(void)
+        {
+            return 0xF3A1B2C4;
+        }
+
+        virtual const EventType getEventType(void) const
+        {
+            return 0xF3A1B2C4;
+        }
+
+        virtual EventDataPtr copy(void) const
+        {
+            return EventDataPtr(new EventDataPlanetTerraModifyEnd(this->oldPlanetData, this->newPlanetData, this->gameObjectId));
+        }
+
+        virtual const char* getName(void) const
+        {
+            return "EventDataPlanetTerraModifyEnd";
+        }
+
+        std::vector<unsigned char> getOldPlanetData(void) const
+        {
+            return this->oldPlanetData;
+        }
+
+        std::vector<unsigned char> getNewPlanetData(void) const
+        {
+            return this->newPlanetData;
+        }
+
+        unsigned long getGameObjectId(void) const
+        {
+            return this->gameObjectId;
+        }
+
+    private:
+        std::vector<unsigned char> oldPlanetData;
+        std::vector<unsigned char> newPlanetData;
+        unsigned long gameObjectId;
+    };
 
 	//---------------------------------------------------------------------------------------------------------------------
 	// EventDataUndoTransactionBegin - This event starts an undo transaction

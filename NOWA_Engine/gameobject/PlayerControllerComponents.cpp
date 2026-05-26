@@ -2964,36 +2964,6 @@ namespace NOWA
         }
     }
 
-	// ============================================================================
-    // PathFollowState3D.h — add these members:
-    //
-    // bool          middleButtonWasDown         = false;
-    //   Tracks the button state from the previous frame to detect edge transitions.
-    //
-    // int           lastPathMouseX              = -1;
-    // int           lastPathMouseY              = -1;
-    //   Last mouse position for which a path was requested. Used to detect mouse
-    //   movement so autoClick only fires when the cursor actually moved.
-    //
-    // bool          pendingPath                 = false;
-    //   True while an async path task has been launched but not yet consumed.
-    //   The poll section at the top of update() clears this when the task finishes.
-    //
-    // Ogre::Vector3 pendingPosOnNavMesh         = Ogre::Vector3::ZERO;
-    //   The navmesh target stored when findPath() was launched. Passed to the Lua
-    //   onNavMeshClicked callback once the path result is ready.
-    //
-    // Ogre::Real    raycastThrottleTimer        = 0.0f;
-    //   Countdown timer for autoClick raycast throttling. When > 0, new raycasts
-    //   are suppressed. Reset to RAYCAST_THROTTLE_INTERVAL after each fire.
-    //
-    // static constexpr Ogre::Real RAYCAST_THROTTLE_INTERVAL = 0.125f;
-    //   Minimum seconds between successive raycasts in autoClick mode (8x/second).
-    //   Limits how often getMeshInformation2 can trigger an enqueueAndWait cache
-    //   fill. After the first hit on a mesh the cache is warm and raycasts are pure
-    //   CPU, but the throttle protects against stutter during cold-cache frames.
-    // ============================================================================
-
     void PathFollowState3D::update(GameObject* player, Ogre::Real dt)
     {
         const OIS::MouseState& ms = NOWA::InputDeviceCore::getSingletonPtr()->getMouse()->getMouseState();
@@ -3077,7 +3047,9 @@ namespace NOWA
                 }
 
                 auto playerController = this->playerController;
-                ENQUEUE_RENDER_COMMAND_MULTI_WAIT("AddWaypoints", _2(path, playerController), {
+
+				NOWA::GraphicsModule::RenderCommand renderCommand = [this, path, playerController]()
+                {
                     for (size_t i = 0; i < path.size(); i++)
                     {
                         Ogre::Vector3 resultWaypoint = path[i];
@@ -3100,7 +3072,8 @@ namespace NOWA
                             }
                         }
                     }
-                });
+                };
+                NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "OgreRecastModule::AddWaypoints");
 
                 this->playerController->setMoveWeight(1.0f);
                 this->playerController->setJumpWeight(1.0f);

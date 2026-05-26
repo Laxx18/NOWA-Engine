@@ -691,6 +691,24 @@ namespace NOWA
 		Ogre::HlmsPbsDatablock* getDataBlock(void) const;
 
 		void doNotCloneDataBlock(void);
+
+		/**
+         * @brief Sets a PBS texture slot directly from a live TextureGpu pointer.
+         *
+         * Unlike setDetailWeightTextureName / internalSetTextureName, this method
+         * does NOT go through resourceExistsInAnyGroup or createOrRetrieveTexture.
+         * It is intended for runtime-generated textures (like PlanetTerraComponent's
+         * blend weight texture) that exist only in the TextureGpuManager, not on disk.
+         *
+         * Must be called from the render thread (uses enqueueAndWait internally).
+         * The caller is responsible for keeping the TextureGpu alive.
+         *
+         * Matching the pattern used by DatablockTerraComponent::setBlendWeightTexture().
+         *
+         * @param pbsTextureType  Target slot, e.g. Ogre::PBSM_DETAIL_WEIGHT
+         * @param texture         Runtime TextureGpu pointer. Pass nullptr to clear the slot.
+         */
+        void setTextureDirectly(Ogre::PbsTextureTypes pbsTextureType, Ogre::TextureGpu* texture);
 	public:
 		static const Ogre::String AttrSubItemIndex(void) { return "Sub-Item Index"; }
 		static const Ogre::String AttrWorkflow(void) { return "Workflow"; }
@@ -823,6 +841,7 @@ namespace NOWA
 		bool alreadyCloned;
 		bool isCloned;
 		bool newlyCreated;
+        bool postInitDone;
 		unsigned int oldSubIndex;
 	};
 

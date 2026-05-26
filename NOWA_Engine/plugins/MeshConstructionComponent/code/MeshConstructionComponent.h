@@ -57,20 +57,16 @@ namespace NOWA
 
         // ── Ogre::Plugin ──────────────────────────────────────────────────────
         virtual void install(const Ogre::NameValuePairList* options) override;
-
         virtual void initialise() override
         {
         }
-
         virtual void shutdown() override
         {
         }
-
         virtual void uninstall() override
         {
         }
         virtual const Ogre::String& getName() const override;
-
         virtual void getAbiCookie(Ogre::AbiCookie& outAbiCookie) override;
 
         // ── GameObjectComponent ───────────────────────────────────────────────
@@ -93,21 +89,17 @@ namespace NOWA
         {
             return NOWA::getIdFromName("MeshConstructionComponent");
         }
-
         static Ogre::String getStaticClassName(void)
         {
             return "MeshConstructionComponent";
         }
-
         static bool canStaticAddComponent(GameObject* gameObject);
-
         static Ogre::String getStaticInfoText(void)
         {
             return "Warcraft-2-style bottom-to-top mesh construction animation. "
                    "Simulation-only — editor always shows the full mesh. "
                    "Optional camera-facing progress bar and percentage text.";
         }
-
         static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass);
 
     public:

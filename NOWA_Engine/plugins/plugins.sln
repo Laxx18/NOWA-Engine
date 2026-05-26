@@ -114,6 +114,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PhysicsActiveMeshCompoundCo
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ProceduralStairsComponent", "ProceduralStairsComponent\ProceduralStairsComponent.vcxproj", "{83D22507-461C-4ABF-9175-3F45CE5D33F8}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PlanetTerraComponent", "PlanetTerraComponent\PlanetTerraComponent.vcxproj", "{DA99534D-FBEE-4598-BF4C-14CF6BEA49BF}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -336,6 +338,10 @@ Global
 		{83D22507-461C-4ABF-9175-3F45CE5D33F8}.Debug|x64.Build.0 = Debug|x64
 		{83D22507-461C-4ABF-9175-3F45CE5D33F8}.Release|x64.ActiveCfg = Release|x64
 		{83D22507-461C-4ABF-9175-3F45CE5D33F8}.Release|x64.Build.0 = Release|x64
+		{DA99534D-FBEE-4598-BF4C-14CF6BEA49BF}.Debug|x64.ActiveCfg = Debug|x64
+		{DA99534D-FBEE-4598-BF4C-14CF6BEA49BF}.Debug|x64.Build.0 = Debug|x64
+		{DA99534D-FBEE-4598-BF4C-14CF6BEA49BF}.Release|x64.ActiveCfg = Release|x64
+		{DA99534D-FBEE-4598-BF4C-14CF6BEA49BF}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

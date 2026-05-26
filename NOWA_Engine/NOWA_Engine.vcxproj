@@ -224,6 +224,7 @@
     <ClInclude Include="gameobject\PhysicsActiveVehicleComponentV2.h" />
     <ClInclude Include="gameobject\PhysicsRagDollComponentV2.h" />
     <ClInclude Include="gameobject\PhysicsRagDollComponentV3.h" />
+    <ClInclude Include="gameobject\PlanetTerraComponentBase.h" />
     <ClInclude Include="gameobject\RoadComponentBase.h" />
     <ClInclude Include="gameobject\ValueBarComponent.h" />
     <ClInclude Include="gameobject\ExitComponent.h" />
@@ -349,6 +350,7 @@
     <ClInclude Include="ocean\OgreHlmsOcean.h" />
     <ClInclude Include="ocean\OgreHlmsOceanDatablock.h" />
     <ClInclude Include="ocean\OgreHlmsOceanPrerequisites.h" />
+    <ClInclude Include="planetterra\PlanetTerra.h" />
     <ClInclude Include="res\resource.h" />
     <ClInclude Include="shader\HlmsBaseListenerContainer.h" />
     <ClInclude Include="shader\HlmsFog.h" />
@@ -562,6 +564,7 @@
     <ClCompile Include="ocean\OgreHlmsJsonOcean.cpp" />
     <ClCompile Include="ocean\OgreHlmsOcean.cpp" />
     <ClCompile Include="ocean\OgreHlmsOceanDatablock.cpp" />
+    <ClCompile Include="planetterra\PlanetTerra.cpp" />
     <ClCompile Include="shader\HlmsBaseListenerContainer.cpp" />
     <ClCompile Include="shader\HlmsFog.cpp" />
     <ClCompile Include="shader\HlmsWind.cpp" />

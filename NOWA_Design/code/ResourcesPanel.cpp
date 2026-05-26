@@ -351,6 +351,14 @@ void ResourcesPanelMeshes::loadMeshes(const Ogre::String& filter)
 				parent->add(child);
 			}
 		}
+        // Add Dungeon
+        {
+            if (NOWA::GameObjectFactory::getInstance()->getComponentFactory()->hasComponent("ProceduralDungeonComponent"))
+            {
+                child = new MyGUI::TreeControl::Node("Dungeon", "Data");
+                parent->add(child);
+            }
+        }
 		// Add Geometry
 		{
 			if (NOWA::GameObjectFactory::getInstance()->getComponentFactory()->hasComponent("ProceduralGeometryComponent"))
@@ -364,6 +372,14 @@ void ResourcesPanelMeshes::loadMeshes(const Ogre::String& filter)
             if (NOWA::GameObjectFactory::getInstance()->getComponentFactory()->hasComponent("ProceduralStairsComponent"))
             {
                 child = new MyGUI::TreeControl::Node("Stairs", "Data");
+                parent->add(child);
+            }
+        }
+        // Add TerraPlanet
+        {
+            if (NOWA::GameObjectFactory::getInstance()->getComponentFactory()->hasComponent("PlanetTerraComponent"))
+            {
+                child = new MyGUI::TreeControl::Node("Planet Terra", "Data");
                 parent->add(child);
             }
         }

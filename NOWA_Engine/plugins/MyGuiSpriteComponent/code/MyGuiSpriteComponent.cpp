@@ -356,7 +356,7 @@ namespace NOWA
             numCols = userCols;
         }
 
-        // Frame index always advances left-to-right, top-to-bottom → divide/mod by numCols
+        // Frame index always advances left-to-right, top-to-bottom -> divide/mod by numCols
         this->currentRow = this->currentFrame / numCols;
         this->currentCol = this->currentFrame % numCols;
 
