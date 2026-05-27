@@ -102,11 +102,46 @@ namespace NOWA
 	}
 
 	bool LightAreaOfInterestComponent::postInit(void)
-	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[LightAreaOfInterestComponent] Init component for game object: " + this->gameObjectPtr->getName());
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[LightAreaOfInterestComponent] Init component for game object: " + this->gameObjectPtr->getName());
 
-		return true;
-	}
+        // Auto-derive halfSize and sphereRadius from mesh bounds if still at default values
+        if (nullptr != this->gameObjectPtr)
+        {
+            Ogre::v1::Entity* entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
+            Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
+
+            Ogre::Aabb aabb;
+            bool validBounds = false;
+
+            if (nullptr != item)
+            {
+                aabb = item->getLocalAabb();
+                validBounds = true;
+            }
+
+            if (validBounds)
+            {
+                // Only auto-set if user has not customized (still at constructor default)
+                Ogre::Vector3 autoHalfSize = aabb.mHalfSize;
+                Ogre::Real autoRadius = aabb.mHalfSize.length();
+
+                if (this->halfSize->getVector3() == Ogre::Vector3(1.0f, 1.0f, 0.5f))
+                {
+                    this->halfSize->setValue(autoHalfSize);
+                }
+                if (Ogre::Math::RealEqual(this->sphereRadius->getReal(), 30.0f))
+                {
+                    this->sphereRadius->setValue(autoRadius);
+                }
+
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+                    "[LightAreaOfInterestComponent] Auto-derived bounds: halfSize=" + Ogre::StringConverter::toString(this->halfSize->getVector3()) + " sphereRadius=" + Ogre::StringConverter::toString(this->sphereRadius->getReal()));
+            }
+        }
+
+        return true;
+    }
 
 	bool LightAreaOfInterestComponent::connect(void)
 	{

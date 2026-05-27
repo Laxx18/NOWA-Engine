@@ -129,7 +129,7 @@
 					<property type="10" name="BackgroundColor" data="1 1 1 1"/>
 					<property type="9" name="SpecularColor" data="0.1 0.1 0.1"/>
 					<property type="7" name="DiffuseTextureName" data="ground_dirt_gardenD.png"/>
-					<property type="7" name="NormalTextureName" data="ground_dirt_gardenN.png"/>
+					<property type="7" name="NormalTextureName" data="ground_dirt_gardenN.DDS"/>
 					<property type="7" name="SpecularTextureName" data="ground_dirt_gardenS.png"/>
 					<property type="7" name="RoughnessTextureName" data="ground_dirt_gardenR.png"/>
 					<property type="7" name="ReflectionTextureName" data=""/>

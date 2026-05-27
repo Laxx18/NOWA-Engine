@@ -481,7 +481,7 @@
 					<property type="9" name="SpecularColor" data="1 1 1"/>
 					<property type="9" name="EmissiveColor" data="0 0 0"/>
 					<property type="7" name="DiffuseTextureName" data="ground_dirt_gardenD.png"/>
-					<property type="7" name="NormalTextureName" data="ground_dirt_gardenN.png"/>
+					<property type="7" name="NormalTextureName" data="ground_dirt_gardenN.DDS"/>
 					<property type="6" name="NormalMapWeight" data="1"/>
 					<property type="6" name="ClearCoat" data="0"/>
 					<property type="6" name="ClearCoatRoughness" data="0.2"/>

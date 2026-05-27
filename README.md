@@ -42,6 +42,11 @@ The NOWA-Design editor uses the NOWA-Engine intensively. The editor can be used 
 - Possibility to write own Component Plugins also with Lua Integration
 - Coorporation with NOWALuaScript for lua editing (which also can be used as standalone app for other projects)
 
+# Deep Wiki
+- [https://app.devin.ai/org/laxx18/wiki/Laxx18/NOWA-Engine?branch=main#10.2](Deep Wiki Link)
+- [https://app.devin.ai/](Deep Wiki Ask)
+
+
 # Demos
 See: [http://www.lukas-kalinowski.com/Homepage/?page_id=1787](http://www.lukas-kalinowski.com/Homepage/?page_id=1787)
 

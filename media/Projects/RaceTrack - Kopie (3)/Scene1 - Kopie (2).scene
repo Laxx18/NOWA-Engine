@@ -227,10 +227,10 @@
 					<property type="10" name="OffsetScale2" data="0 0 128 128"/>
 					<property type="7" name="Detail3TextureName" data="mntn_black_d.jpg"/>
 					<property type="10" name="OffsetScale3" data="0 0 128 128"/>
-					<property type="7" name="Detail0NMTextureName" data="ground_dirt_gardenN.png"/>
-					<property type="7" name="Detail1NMTextureName" data="grass_green_n.jpg"/>
-					<property type="7" name="Detail2NMTextureName" data="island_sand_n.png"/>
-					<property type="7" name="Detail3NMTextureName" data="mntn_black_n.jpg"/>
+					<property type="7" name="Detail0NMTextureName" data="ground_dirt_gardenN.DDS"/>
+					<property type="7" name="Detail1NMTextureName" data="grass_green_n.dds"/>
+					<property type="7" name="Detail2NMTextureName" data="island_sand_n.dds"/>
+					<property type="7" name="Detail3NMTextureName" data="mntn_black_n.dds"/>
 					<property type="7" name="Detail0RTextureName" data="ground_dirt_gardenR.png"/>
 					<property type="6" name="Roughness0" data="0.5"/>
 					<property type="7" name="Detail1RTextureName" data="grass_green_r.png"/>

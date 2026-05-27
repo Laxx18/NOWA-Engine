@@ -1235,6 +1235,8 @@ namespace NOWA
             Ogre::String meshName = item->getMesh()->getName();
             Ogre::String meshFileToExport = meshName;
 
+			this->calculateBounds(item->getWorldAabbUpdated());
+
             // Check if GameObject has a procedural mesh component
             bool hasProceduralComponent = false;
 

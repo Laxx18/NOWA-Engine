@@ -929,28 +929,16 @@ namespace NOWA
             return;
         }
 
-        // Wire blend texture into PBSM_DETAIL_WEIGHT directly (bypasses resourceExistsInAnyGroup).
+        // Wire the runtime blend texture directly, bypassing resourceExistsInAnyGroup.
         datablockComp->setTextureDirectly(Ogre::PBSM_DETAIL_WEIGHT, this->planet->getBlendTex());
 
-        // Main diffuse and normal use UV set 1 (UV0 * baseUVScale, baked into vertex data).
-        // Detail textures (0..3 and their NMs) use UV set 0 (equirectangular 0..1).
-        // This is the same pattern the dungeon uses for its floor/wall UV tiling.
-        Ogre::HlmsPbsDatablock* pbsDb = dynamic_cast<Ogre::HlmsPbsDatablock*>(this->planet->getItem()->getSubItem(0)->getDatablock());
-
-        if (pbsDb)
-        {
-            pbsDb->setTextureUvSource(Ogre::PBSM_DIFFUSE, 1u);
-            pbsDb->setTextureUvSource(Ogre::PBSM_NORMAL, 1u);
-            pbsDb->setTextureUvSource(Ogre::PBSM_DETAIL_WEIGHT, 0u);
-            pbsDb->setTextureUvSource(Ogre::PBSM_DETAIL0, 0u);
-            pbsDb->setTextureUvSource(Ogre::PBSM_DETAIL1, 0u);
-            pbsDb->setTextureUvSource(Ogre::PBSM_DETAIL2, 0u);
-            pbsDb->setTextureUvSource(Ogre::PBSM_DETAIL3, 0u);
-            pbsDb->setTextureUvSource(Ogre::PBSM_DETAIL0_NM, 0u);
-            pbsDb->setTextureUvSource(Ogre::PBSM_DETAIL1_NM, 0u);
-            pbsDb->setTextureUvSource(Ogre::PBSM_DETAIL2_NM, 0u);
-            pbsDb->setTextureUvSource(Ogre::PBSM_DETAIL3_NM, 0u);
-        }
+        // NOTE: setTextureUvSource calls flushRenderables() IMMEDIATELY and SYNCHRONOUSLY
+        // (OgreHlmsPbsDatablock.cpp line 668). When called here, the NM textures from
+        // DatablockPbsComponent::postInit are still in the deferred scheduleForUpdate queue
+        // and mTexturesDescSet is NULL. calculateHashForPreCreate then sees num_textures = 0,
+        // textureMaps[] is not declared in the shader, crash.
+        // UV sources must be set via the material JSON "uv" parameter instead so they are
+        // inherited through cloneImpl without triggering flushRenderables.
 
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PlanetTerraComponent] Blend texture wired to PBSM_DETAIL_WEIGHT on '" + this->gameObjectPtr->getName() + "'.");
     }

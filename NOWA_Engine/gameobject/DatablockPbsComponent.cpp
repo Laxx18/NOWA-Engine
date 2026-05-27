@@ -93,7 +93,6 @@ namespace NOWA
         alreadyCloned(false),
         isCloned(false),
         newlyCreated(true),
-        postInitDone(false),
         oldSubIndex(0),
         originalMacroblock(nullptr),
         originalBlendblock(nullptr)
@@ -512,16 +511,7 @@ namespace NOWA
     {
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[DatablockPbsComponent] Init datablock pbs component for game object: " + this->gameObjectPtr->getName());
 
-        bool success = true;
-
-        // Prevents double post init, if it has been already manually triggered by PlanetTerraComponent, because that component needs some stuff from DatablockPbsComponent, but DatablockPbsComponent is below the PlanetTerraComponent in the hierarchy
-        if (false == this->postInitDone)
-        {
-            success = this->preReadDatablock();
-        }
-        this->postInitDone = true;
-
-        return success;
+        return this->preReadDatablock();
     }
 
     Ogre::String DatablockPbsComponent::getPbsTextureName(Ogre::HlmsPbsDatablock* datablock, Ogre::PbsTextureTypes type)
@@ -910,16 +900,13 @@ namespace NOWA
             return false;
         }
 
-        NOWA::GraphicsModule::RenderCommand renderCommand = [this, &success]()
-        {
+        ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DatablockPbsComponent::preReadDatablock", _1(&success), {
             Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
             if (nullptr != item)
             {
                 success = this->readDatablockItem(item);
             }
-        };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DatablockPbsComponent::preReadDatablock");
-        ;
+        });
 
         if (false == success)
         {
@@ -1754,15 +1741,6 @@ namespace NOWA
             if (this->datablock->suggestUsingSRGB(pbsTextureType))
             {
                 textureFlags |= Ogre::TextureFlags::PrefersLoadingFromFileAsSRGB;
-            }
-
-            // Apply AutomaticBatching for all normal map slots so they enter the
-            // textureMaps[] pool. detail_maps_normal and normal_map_tex properties
-            // in the HLMS piece only generate textureMaps and SampleDetailMapNm
-            // pieces when textures are in the pool (num_textures > 0).
-            if (pbsTextureType == Ogre::PBSM_NORMAL || (pbsTextureType >= Ogre::PBSM_DETAIL0_NM && pbsTextureType <= Ogre::PBSM_DETAIL3_NM))
-            {
-                textureFlags |= Ogre::TextureFlags::AutomaticBatching;
             }
 
             Ogre::TextureTypes::TextureTypes internalTextureType = Ogre::TextureTypes::Type2D;
@@ -2902,10 +2880,7 @@ namespace NOWA
         {
             if (false == newlyCreated || true == this->isCloned)
             {
-                ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setUseEmissiveAsLightMap", _1(useEmissiveAsLightMap),
-                {
-                        this->datablock->setUseEmissiveAsLightmap(useEmissiveAsLightMap);
-                });
+                ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setUseEmissiveAsLightMap", _1(useEmissiveAsLightMap), { this->datablock->setUseEmissiveAsLightmap(useEmissiveAsLightMap); });
             }
             else
             {

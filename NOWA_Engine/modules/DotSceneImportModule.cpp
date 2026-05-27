@@ -597,7 +597,7 @@ namespace NOWA
                         luaScriptCompPtr->setComponentCloned(true);
 
                         boost::shared_ptr<EventDataGroupLoaded> eventDataGroupLoaded(new EventDataGroupLoaded(gameObjectPtr->getId()));
-                        AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGroupLoaded);
+                        AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGroupLoaded);
                     }
                 }
 
@@ -1102,57 +1102,77 @@ namespace NOWA
                 subElement = pElement->first_node("shadowDirLightTextureOffset");
                 if (subElement)
                 {
-                    this->projectParameter.shadowDirLightTextureOffset = XMLConverter::getAttribReal(subElement, "shadowDirLightTextureOffset", 0.0f);
+                    this->projectParameter.shadowDirLightTextureOffset = XMLConverter::getAttribReal(subElement, "offset", 0.0f);
+                }
+                subElement = pElement->first_node("shadowColor");
+                if (subElement)
+                {
+                    this->projectParameter.shadowColor.r = XMLConverter::getAttribReal(subElement, "r", 0.25f);
+                    this->projectParameter.shadowColor.g = XMLConverter::getAttribReal(subElement, "g", 0.25f);
+                    this->projectParameter.shadowColor.b = XMLConverter::getAttribReal(subElement, "b", 0.25f);
+                }
+                subElement = pElement->first_node("shadowQuality");
+                if (subElement)
+                {
+                    this->projectParameter.shadowQualityIndex = XMLConverter::getAttribInt(subElement, "index", 2);
+                }
+                subElement = pElement->first_node("ambientLightMode");
+                if (subElement)
+                {
+                    this->projectParameter.ambientLightModeIndex = XMLConverter::getAttribInt(subElement, "index", 0);
                 }
             }
         }
 
         // Forward mode
         {
-            pElement = xmlNode->first_node("forward");
+            pElement = xmlNode->first_node("lightFoward");
             if (pElement)
             {
-                this->projectParameter.forwardMode = XMLConverter::getAttribInt(pElement, "forwardMode", 0);
-
-                rapidxml::xml_node<>* subElement = pElement->first_node("lightWidth");
+                rapidxml::xml_node<>* subElement = pElement->first_node("forwardMode");
                 if (subElement)
                 {
-                    this->projectParameter.lightWidth = XMLConverter::getAttribInt(subElement, "lightWidth", 0);
+                    this->projectParameter.forwardMode = XMLConverter::getAttribInt(subElement, "value", 0);
+                }
+                subElement = pElement->first_node("lightWidth");
+                if (subElement)
+                {
+                    this->projectParameter.lightWidth = XMLConverter::getAttribInt(subElement, "value", 0);
                 }
                 subElement = pElement->first_node("lightHeight");
                 if (subElement)
                 {
-                    this->projectParameter.lightHeight = XMLConverter::getAttribInt(subElement, "lightHeight", 0);
+                    this->projectParameter.lightHeight = XMLConverter::getAttribInt(subElement, "value", 0);
                 }
                 subElement = pElement->first_node("numLightSlices");
                 if (subElement)
                 {
-                    this->projectParameter.numLightSlices = XMLConverter::getAttribInt(subElement, "numLightSlices", 0);
+                    this->projectParameter.numLightSlices = XMLConverter::getAttribInt(subElement, "value", 0);
                 }
                 subElement = pElement->first_node("lightsPerCell");
                 if (subElement)
                 {
-                    this->projectParameter.lightsPerCell = XMLConverter::getAttribInt(subElement, "lightsPerCell", 0);
+                    this->projectParameter.lightsPerCell = XMLConverter::getAttribInt(subElement, "value", 0);
                 }
                 subElement = pElement->first_node("decalsPerCell");
                 if (subElement)
                 {
-                    this->projectParameter.decalsPerCell = XMLConverter::getAttribInt(subElement, "decalsPerCell", 0);
+                    this->projectParameter.decalsPerCell = XMLConverter::getAttribInt(subElement, "value", 0);
                 }
                 subElement = pElement->first_node("cubemapProbesPerCell");
                 if (subElement)
                 {
-                    this->projectParameter.cubemapProbesPerCell = XMLConverter::getAttribInt(subElement, "cubemapProbesPerCell", 0);
+                    this->projectParameter.cubemapProbesPerCell = XMLConverter::getAttribInt(subElement, "value", 0);
                 }
                 subElement = pElement->first_node("minLightDistance");
                 if (subElement)
                 {
-                    this->projectParameter.minLightDistance = XMLConverter::getAttribReal(subElement, "minLightDistance", 0.0f);
+                    this->projectParameter.minLightDistance = XMLConverter::getAttribReal(subElement, "value", 0.0f);
                 }
                 subElement = pElement->first_node("maxLightDistance");
                 if (subElement)
                 {
-                    this->projectParameter.maxLightDistance = XMLConverter::getAttribReal(subElement, "maxLightDistance", 500.0f);
+                    this->projectParameter.maxLightDistance = XMLConverter::getAttribReal(subElement, "value", 500.0f);
                 }
 
                 if (0 == this->projectParameter.forwardMode)

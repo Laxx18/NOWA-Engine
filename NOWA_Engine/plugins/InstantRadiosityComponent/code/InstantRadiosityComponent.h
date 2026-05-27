@@ -361,41 +361,139 @@ namespace NOWA
 		/**
 		 * @see	GameObjectComponent::getStaticInfoText
 		 */
-		static Ogre::String getStaticInfoText(void)
-		{
-			return "Usage: Instant Radiosity for Global Illumination. Traces rays and creates Virtual Point Lights (VPLs) "
-				"at hit points to simulate indirect lighting. Works on dynamic objects.\n\n"
+        static Ogre::String getStaticInfoText(void)
+        {
+            return "Usage: Instant Radiosity for Global Illumination. Traces rays and creates Virtual Point Lights (VPLs) "
+                   "at hit points to simulate indirect lighting. Works on dynamic objects.\n\n"
 
-				"For directional lights in enclosed spaces (buildings with windows), place LightAreaOfInterestComponent markers "
-				"at windows/openings. The AoI tells the system: \"Shoot rays HERE specifically\" - because directional light rays "
-				"come from infinity and need to know where openings are to enter a building.\n\n"
+                   "For directional lights in enclosed spaces (buildings with windows), place LightAreaOfInterestComponent markers "
+                   "at windows/openings. The AoI tells the system: Shoot rays HERE specifically - because directional light rays "
+                   "come from infinity and need to know where openings are to enter a building.\n\n"
 
-				"Scenario example:\n"
-				"You have a house mesh with 3 windows. Without AoIs, directional light rays would be shot randomly and most would "
-				"hit the exterior walls, wasting computation and missing the interior.\n\n"
+                   "Scenario example:\n"
+                   "You have a house mesh with 3 windows. Without AoIs, directional light rays would be shot randomly and most would "
+                   "hit the exterior walls, wasting computation and missing the interior.\n\n"
 
-				"Solution:\n"
-				"Create empty GameObjects at each window opening and add LightAreaOfInterestComponent.\n\n"
+                   "Solution:\n"
+                   "Add LightAreaOfInterestComponent directly to the house GameObject. Set halfSize to cover the interior volume. "
+                   "No empty or invisible GameObjects are needed - attach AoIs to existing visible meshes that represent the zone.\n\n"
 
-				"Scene:\n"
-				"--> House (mesh with windows baked in)\n"
-				"--> Window1_AoI (empty GO at window position)\n"
-				"  |--> LightAreaOfInterestComponent (halfSize matches window size)\n"
-				"--> Window2_AoI\n"
-				"  |--> LightAreaOfInterestComponent\n"
-				"--> Window3_AoI\n"
-				"  |--> LightAreaOfInterestComponent\n"
-				"--> SunLight (directional)\n"
-				"--> IRController\n"
-				"  | --> InstantRadiosityComponent\n\n"
-				"When is EventDataBoundsUpdated sufficient?\n"
-				"For outdoor scenes or scenes with only point/spot lights - you don't need specific AoIs. "
-				"The scene bounds fallback works fine because:\n"
-				"- Point/spot lights have a defined position, rays radiate from there\n"
-				"- Outdoor scenes don't have \"openings\" to target\n\n"
+                   "Scene setup examples:\n\n"
 
-				"Requirements: Forward+ rendering with VPLs enabled. Only one instance allowed per scene.";
-		}
+                   "Example 1 - House interior with sunlight:\n"
+                   "--> House (mesh)\n"
+                   "  |--> LightAreaOfInterestComponent (halfSize covers interior)\n"
+                   "--> SunLight (directional)\n"
+                   "--> MainGameObject (global config, no visible mesh needed)\n"
+                   "  |--> InstantRadiosityComponent\n"
+                   "Result: Sunlight bounces off interior walls, fills rooms with indirect light.\n\n"
+
+                   "Example 2 - Cave entrance:\n"
+                   "--> CaveMesh\n"
+                   "  |--> LightAreaOfInterestComponent (halfSize covers cave mouth area only)\n"
+                   "--> SunLight (directional)\n"
+                   "--> MainGameObject\n"
+                   "  |--> InstantRadiosityComponent\n"
+                   "Result: Sunlight bounces off rock walls at cave entrance, warm indirect glow spills inward.\n\n"
+
+                   "Example 3 - Courtyard between buildings:\n"
+                   "--> Courtyard (floor or center mesh)\n"
+                   "  |--> LightAreaOfInterestComponent (halfSize covers courtyard area)\n"
+                   "--> BuildingA\n"
+                   "--> BuildingB\n"
+                   "--> SunLight (directional)\n"
+                   "--> MainGameObject\n"
+                   "  |--> InstantRadiosityComponent\n"
+                   "Result: Sun bounces off building walls into courtyard, soft fill light between buildings.\n\n"
+
+                   "Example 4 - Multiple rooms in one scene:\n"
+                   "--> Room1_Mesh\n"
+                   "  |--> LightAreaOfInterestComponent (halfSize = room1 interior)\n"
+                   "--> Room2_Mesh\n"
+                   "  |--> LightAreaOfInterestComponent (halfSize = room2 interior)\n"
+                   "--> CaveMesh\n"
+                   "  |--> LightAreaOfInterestComponent (halfSize = cave volume)\n"
+                   "--> MainGameObject\n"
+                   "  |--> InstantRadiosityComponent\n"
+                   "Result: Each zone computed independently, very efficient, no wasted rays outside zones.\n\n"
+
+                   "Example 5 - Dungeon corridor with torches:\n"
+                   "--> Corridor_Mesh\n"
+                   "  |--> LightAreaOfInterestComponent (halfSize covers corridor length)\n"
+                   "--> Torch1 (point light)\n"
+                   "--> Torch2 (point light)\n"
+                   "--> MainGameObject\n"
+                   "  |--> InstantRadiosityComponent\n"
+                   "Result: Torch light bounces off stone walls and floor, realistic warm indirect fill.\n\n"
+
+                   "Example 6 - Outdoor scene, no AoI needed:\n"
+                   "--> Terrain\n"
+                   "--> Trees, Rocks (meshes)\n"
+                   "--> SunLight (directional)\n"
+                   "--> MainGameObject\n"
+                   "  |--> InstantRadiosityComponent (useSceneBoundsAsFallback = true)\n"
+                   "Result: Whole scene used as AoI fallback. Fine for small outdoor areas. "
+                   "For large worlds keep vplMaxRange small (8-15) to avoid leaking and performance issues.\n\n"
+
+                   "Example 7 - Test box / light probe room:\n"
+                   "--> CubeRoom (mesh with inward facing faces)\n"
+                   "  |--> LightAreaOfInterestComponent (halfSize = cube interior)\n"
+                   "--> CaseMesh (object inside cube)\n"
+                   "--> SunLight or PointLight\n"
+                   "--> MainGameObject\n"
+                   "  |--> InstantRadiosityComponent\n"
+                   "Result: Light bounces off inner cube walls and illuminates CaseMesh with indirect light. "
+                   "Classic use case for validating radiosity setup.\n\n"
+
+                   "Do I need LightAreaOfInterestComponent for a house interior?\n"
+                   "Yes, always preferred. Without it the fallback covers the whole scene bounds which wastes rays "
+                   "on areas outside the house. Add LightAreaOfInterestComponent to the house mesh GameObject itself "
+                   "and set halfSize to match the interior. This focuses all rays where they matter.\n\n"
+
+                   "Where to place InstantRadiosityComponent?\n"
+                   "Always on MainGameObject or any global config GameObject. Only one instance is allowed per scene. "
+                   "It is a scene-wide system, not per-object. The GameObject it lives on has no effect on which "
+                   "geometry gets illuminated - that is controlled entirely by AoIs or scene bounds fallback.\n\n"
+
+                   "Forward+ lighting requirement:\n"
+                   "Instant Radiosity REQUIRES Forward+ or Forward3D rendering to be enabled. This is because VPLs are "
+                   "real Ogre lights inserted into the scene at runtime. Traditional deferred/forward rendering has a hard "
+                   "limit of typically 3-8 lights per object. Forward+ and Forward3D lift this limit by binning lights into "
+                   "a grid or cluster structure, allowing hundreds of lights per pixel.\n\n"
+
+                   "How many lights get created?\n"
+                   "numRays controls how many rays are cast. Each ray that hits a surface can produce one VPL. So with "
+                   "numRays=128 and numRayBounces=1, you could get up to 128 VPLs inserted as real lights into the scene. "
+                   "With numRayBounces=2, each bounce can spawn another set, so up to 256 VPLs. The cellSize parameter "
+                   "clusters nearby VPLs together to reduce the actual count - larger cellSize means fewer but stronger VPLs.\n\n"
+
+                   "VPL count budget guide:\n"
+                   "- numRays=64,  cellSize=1.0 -> ~20-40  actual lights  (fast, low quality)\n"
+                   "- numRays=128, cellSize=1.0 -> ~40-80  actual lights  (balanced)\n"
+                   "- numRays=256, cellSize=0.5 -> ~80-150 actual lights  (slow, high quality)\n"
+                   "Forward+ handles up to 1024 lights per cell, so even 150 VPLs is well within budget.\n\n"
+
+                   "VPL vs real lights:\n"
+                   "VPLs are NOT manually created Ogre::Light objects you would place in the editor. They are injected "
+                   "internally by InstantRadiosity into the Forward+ light list each frame. They do not appear in the "
+                   "scene graph and are invisible to the editor. They are destroyed and recreated on every build() call.\n\n"
+
+                   "IrradianceVolume mode:\n"
+                   "Instead of keeping all VPLs as individual lights (expensive), IrradianceVolume bakes them into a 3D "
+                   "texture grid. This is much faster at runtime since the GPU samples the texture instead of iterating "
+                   "over hundreds of lights. Use IrradianceVolume for static or rarely changing scenes. Use raw VPLs for "
+                   "fully dynamic scenes where lights or geometry move frequently.\n\n"
+
+                   "Best practices:\n"
+                   "- Must be place under MainGameObject, only one per scene\n"
+                   "- Add LightAreaOfInterestComponent to mesh GameObjects that define important zones\n"
+                   "- Start with numRays=128, numRayBounces=1, cellSize=1.0 and tune from there\n"
+                   "- Keep vplMaxRange as small as possible to avoid light leaking through walls\n"
+                   "- Prefer IrradianceVolume for static scenes for best performance\n"
+                   "- For large outdoor worlds use useSceneBoundsAsFallback with small vplMaxRange\n\n"
+
+                   "Requirements: Forward+ or Forward3D rendering with VPLs enabled. Only one instance allowed per scene.";
+        }
 
 		/**
 		 * @see	GameObjectComponent::createStaticApiForLua

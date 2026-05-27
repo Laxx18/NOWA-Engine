@@ -37,7 +37,7 @@ namespace NOWA
 		numSpreadIterations(new Variant(InstantRadiosityComponent::AttrNumSpreadIterations(), static_cast<unsigned int>(1), this->attributes)),
 		cellSize(new Variant(InstantRadiosityComponent::AttrCellSize(), 1.0f, this->attributes)),
 		bias(new Variant(InstantRadiosityComponent::AttrBias(), 0.02f, this->attributes)),
-		vplMaxRange(new Variant(InstantRadiosityComponent::AttrVplMaxRange(), 8.0f, this->attributes)),
+		vplMaxRange(new Variant(InstantRadiosityComponent::AttrVplMaxRange(), 20.0f, this->attributes)),
 		vplPowerBoost(new Variant(InstantRadiosityComponent::AttrVplPowerBoost(), 1.0f, this->attributes)),
 		vplThreshold(new Variant(InstantRadiosityComponent::AttrVplThreshold(), 0.0005f, this->attributes)),
 		vplUseIntensityForMaxRange(new Variant(InstantRadiosityComponent::AttrVplUseIntensityForMaxRange(), false, this->attributes)),
@@ -192,33 +192,36 @@ namespace NOWA
 	}
 
 	bool InstantRadiosityComponent::postInit(void)
-	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[InstantRadiosityComponent] Init component for game object: " + this->gameObjectPtr->getName());
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[InstantRadiosityComponent] Init component for game object: " + this->gameObjectPtr->getName());
 
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &InstantRadiosityComponent::handleUpdateBounds), EventDataBoundsUpdated::getStaticEventType());
+        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &InstantRadiosityComponent::handleUpdateBounds), EventDataBoundsUpdated::getStaticEventType());
 
-		if (true == this->activated->getBool())
-		{
-			this->createInstantRadiosity();
-		}
+        // Create the radiosity object but do NOT build yet
+        // AoIs are not collected until connect() is called on Play
+        if (true == this->activated->getBool())
+        {
+            this->createInstantRadiosity();
+        }
 
-		return true;
-	}
+        return true;
+    }
 
-	bool InstantRadiosityComponent::connect(void)
-	{
-		GameObjectComponent::connect();
+    bool InstantRadiosityComponent::connect(void)
+    {
+        GameObjectComponent::connect();
 
-		if (nullptr != this->instantRadiosity && true == this->activated->getBool())
-		{
-			this->sceneBounds.setExtents(Core::getSingletonPtr()->getCurrentSceneBoundLeftNear(), Core::getSingletonPtr()->getCurrentSceneBoundRightFar());
+        if (nullptr != this->instantRadiosity && true == this->activated->getBool())
+        {
+            this->sceneBounds.setExtents(Core::getSingletonPtr()->getCurrentSceneBoundLeftNear(), Core::getSingletonPtr()->getCurrentSceneBoundRightFar());
 
-			this->collectAreasOfInterest();
-			this->needsRebuild = true;
-		}
+            // Collect AoIs first, then trigger build
+            this->collectAreasOfInterest();
+            this->needsRebuild = true;
+        }
 
-		return true;
-	}
+        return true;
+    }
 
 	bool InstantRadiosityComponent::disconnect(void)
 	{
@@ -795,11 +798,26 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[InstantRadiosityComponent] Collected " + Ogre::StringConverter::toString(this->instantRadiosity->mAoI.size()) + " Areas of Interest");
 	}
 
-	void InstantRadiosityComponent::handleUpdateBounds(NOWA::EventDataPtr eventData)
-	{
-		boost::shared_ptr<NOWA::EventDataBoundsUpdated> castEventData = boost::static_pointer_cast<EventDataBoundsUpdated>(eventData);
-		this->sceneBounds.setExtents(castEventData->getCalculatedBounds().first, castEventData->getCalculatedBounds().second);
-	}
+    void InstantRadiosityComponent::handleUpdateBounds(NOWA::EventDataPtr eventData)
+    {
+        boost::shared_ptr<NOWA::EventDataBoundsUpdated> castEventData = boost::static_pointer_cast<EventDataBoundsUpdated>(eventData);
+
+        const auto& bounds = castEventData->getCalculatedBounds();
+
+        const Ogre::Vector3& min = bounds.first;
+        const Ogre::Vector3& max = bounds.second;
+
+        const bool valid = std::isfinite(min.x) && std::isfinite(min.y) && std::isfinite(min.z) && std::isfinite(max.x) && std::isfinite(max.y) && std::isfinite(max.z);
+
+        if (false == valid)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[InstantRadiosityComponent] Ignoring invalid bounds (inf/nan).");
+
+            return;
+        }
+
+        this->sceneBounds.setExtents(min, max);
+    }
 
 	void InstantRadiosityComponent::createInstantRadiosity(void)
 	{
@@ -842,8 +860,6 @@ namespace NOWA
 				if (true == this->useIrradianceVolume->getBool())
 				{
 					this->irradianceVolume = new Ogre::IrradianceVolume(hlmsManager);
-					Ogre::HlmsPbs* hlmsPbs = static_cast<Ogre::HlmsPbs*>(hlmsManager->getHlms(Ogre::HLMS_PBS));
-					hlmsPbs->setIrradianceVolume(this->irradianceVolume);
 					this->instantRadiosity->setUseIrradianceVolume(true);
 				}
 
@@ -895,53 +911,65 @@ namespace NOWA
 	}
 
 	void InstantRadiosityComponent::internalBuild(void)
-	{
-		if (nullptr == this->instantRadiosity)
-		{
-			return;
-		}
+    {
+        if (nullptr == this->instantRadiosity)
+        {
+            return;
+        }
 
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[InstantRadiosityComponent] Building...");
-		this->instantRadiosity->build();
+        // Re-collect AoIs every build so changes always use correct zones
+        this->collectAreasOfInterest();
 
-		if (true == this->useIrradianceVolume->getBool())
-		{
-			this->internalUpdateIrradianceVolume();
-		}
+        Ogre::Root* root = Ogre::Root::getSingletonPtr();
+        Ogre::HlmsManager* hlmsManager = root->getHlmsManager();
+        Ogre::HlmsPbs* hlmsPbs = static_cast<Ogre::HlmsPbs*>(hlmsManager->getHlms(Ogre::HLMS_PBS));
 
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[InstantRadiosityComponent] Build complete.");
-	}
+        if (true == this->useIrradianceVolume->getBool() && nullptr != this->irradianceVolume)
+        {
+            hlmsPbs->setIrradianceVolume(nullptr);
+        }
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[InstantRadiosityComponent] Building...");
+        this->instantRadiosity->build();
+
+        if (true == this->useIrradianceVolume->getBool() && nullptr != this->irradianceVolume)
+        {
+            this->internalUpdateIrradianceVolume();
+            hlmsPbs->setIrradianceVolume(this->irradianceVolume);
+        }
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[InstantRadiosityComponent] Build complete.");
+    }
 
 	void InstantRadiosityComponent::internalUpdateIrradianceVolume(void)
-	{
-		if (nullptr == this->instantRadiosity || nullptr == this->irradianceVolume)
-		{
-			return;
-		}
+    {
+        if (nullptr == this->instantRadiosity || nullptr == this->irradianceVolume)
+        {
+            return;
+        }
 
-		Ogre::Root* root = Ogre::Root::getSingletonPtr();
-		Ogre::HlmsManager* hlmsManager = root->getHlmsManager();
-		Ogre::HlmsPbs* hlmsPbs = static_cast<Ogre::HlmsPbs*>(hlmsManager->getHlms(Ogre::HLMS_PBS));
+        Ogre::Root* root = Ogre::Root::getSingletonPtr();
+        Ogre::HlmsManager* hlmsManager = root->getHlmsManager();
+        Ogre::HlmsPbs* hlmsPbs = static_cast<Ogre::HlmsPbs*>(hlmsManager->getHlms(Ogre::HLMS_PBS));
 
-		if (nullptr == hlmsPbs->getIrradianceVolume())
-		{
-			return;
-		}
+        // Detach while texture is being recreated
+        hlmsPbs->setIrradianceVolume(nullptr);
 
-		Ogre::Vector3 volumeOrigin;
-		Ogre::Real lightMaxPower;
-		Ogre::uint32 numBlocksX, numBlocksY, numBlocksZ;
-		Ogre::Real cellSize = this->irradianceCellSize->getReal();
+        Ogre::Vector3 volumeOrigin;
+        Ogre::Real lightMaxPower;
+        Ogre::uint32 numBlocksX, numBlocksY, numBlocksZ;
+        Ogre::Real cellSize = this->irradianceCellSize->getReal();
 
-		this->instantRadiosity->suggestIrradianceVolumeParameters(
-			Ogre::Vector3(cellSize), volumeOrigin, lightMaxPower, numBlocksX, numBlocksY, numBlocksZ);
+        this->instantRadiosity->suggestIrradianceVolumeParameters(Ogre::Vector3(cellSize), volumeOrigin, lightMaxPower, numBlocksX, numBlocksY, numBlocksZ);
 
-		this->irradianceVolume->createIrradianceVolumeTexture(numBlocksX, numBlocksY, numBlocksZ);
-		this->instantRadiosity->fillIrradianceVolume(
-			this->irradianceVolume, Ogre::Vector3(cellSize), volumeOrigin, lightMaxPower, false);
+        this->irradianceVolume->createIrradianceVolumeTexture(numBlocksX, numBlocksY, numBlocksZ);
+        this->instantRadiosity->fillIrradianceVolume(this->irradianceVolume, Ogre::Vector3(cellSize), volumeOrigin, lightMaxPower, false);
 
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[InstantRadiosityComponent] Irradiance volume updated.");
-	}
+        // Re-attach now that texture is ready
+        hlmsPbs->setIrradianceVolume(this->irradianceVolume);
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[InstantRadiosityComponent] Irradiance volume updated.");
+    }
 
 	// Lua registration
 
@@ -1037,6 +1065,11 @@ namespace NOWA
 
 	bool InstantRadiosityComponent::canStaticAddComponent(GameObject* gameObject)
 	{
+		if (gameObject->getId() != GameObjectController::MAIN_GAMEOBJECT_ID)
+		{
+            return false;
+		}
+
 		auto gameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects();
 		for (auto& it : *gameObjects)
 		{
