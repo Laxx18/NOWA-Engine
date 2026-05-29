@@ -972,7 +972,6 @@ namespace NOWA
     void GraphicsModule::updateNodePosition(Ogre::Node* node, const Ogre::Vector3& position, bool useDerived, bool fireAndForget)
     {
         GraphicsModule::NodeTransforms* nodeTransforms = this->findNodeTransforms(node);
-
         if (nullptr == nodeTransforms)
         {
             this->addTrackedNode(node);
@@ -981,22 +980,22 @@ namespace NOWA
 
         if (true == fireAndForget)
         {
-            // Set all buffers to the same value so prev == curr, interpolation has no effect
             for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
             {
                 nodeTransforms->transforms[i].position = position;
             }
-            // Force eviction after next advanceTransformBuffer
-            nodeTransforms->stableFrames = 4;
+
+            nodeTransforms->active = false;
+            nodeTransforms->stableFrames = 0;
             nodeTransforms->updatedThisFrame = false;
         }
         else
         {
             nodeTransforms->transforms[this->currentTransformNodeIdx].position = position;
+            nodeTransforms->active = true;
             nodeTransforms->updatedThisFrame = true;
         }
 
-        nodeTransforms->active = true;
         nodeTransforms->useDerived = useDerived;
 
         if (true == this->debugVisualization)
@@ -1009,7 +1008,6 @@ namespace NOWA
     void GraphicsModule::updateNodeOrientation(Ogre::Node* node, const Ogre::Quaternion& orientation, bool useDerived, bool fireAndForget)
     {
         GraphicsModule::NodeTransforms* nodeTransforms = this->findNodeTransforms(node);
-
         if (nullptr == nodeTransforms)
         {
             this->addTrackedNode(node);
@@ -1022,16 +1020,18 @@ namespace NOWA
             {
                 nodeTransforms->transforms[i].orientation = orientation;
             }
-            nodeTransforms->stableFrames = 4;
+
+            nodeTransforms->active = false;
+            nodeTransforms->stableFrames = 0;
             nodeTransforms->updatedThisFrame = false;
         }
         else
         {
             nodeTransforms->transforms[this->currentTransformNodeIdx].orientation = orientation;
+            nodeTransforms->active = true;
             nodeTransforms->updatedThisFrame = true;
         }
 
-        nodeTransforms->active = true;
         nodeTransforms->useDerived = useDerived;
 
         if (true == this->debugVisualization)
@@ -1044,7 +1044,6 @@ namespace NOWA
     void GraphicsModule::updateNodeScale(Ogre::Node* node, const Ogre::Vector3& scale, bool useDerived, bool fireAndForget)
     {
         GraphicsModule::NodeTransforms* nodeTransforms = this->findNodeTransforms(node);
-
         if (nullptr == nodeTransforms)
         {
             this->addTrackedNode(node);
@@ -1057,16 +1056,18 @@ namespace NOWA
             {
                 nodeTransforms->transforms[i].scale = scale;
             }
-            nodeTransforms->stableFrames = 4;
+
+            nodeTransforms->active = false;
+            nodeTransforms->stableFrames = 0;
             nodeTransforms->updatedThisFrame = false;
         }
         else
         {
             nodeTransforms->transforms[this->currentTransformNodeIdx].scale = scale;
+            nodeTransforms->active = true;
             nodeTransforms->updatedThisFrame = true;
         }
 
-        nodeTransforms->active = true;
         nodeTransforms->useDerived = useDerived;
 
         if (true == this->debugVisualization)
@@ -1088,13 +1089,35 @@ namespace NOWA
 
         if (true == fireAndForget)
         {
+            // Write all buffers identically so interpolation always yields
+            // exactly this transform regardless of weight or buffer index.
             for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
             {
                 nodeTransforms->transforms[i].position = position;
                 nodeTransforms->transforms[i].orientation = orientation;
                 nodeTransforms->transforms[i].scale = scale;
             }
-            nodeTransforms->stableFrames = 4;
+
+            // Apply immediately to the scene node right now, on this thread,
+            // bypassing updateAllTransforms entirely. This is the authoritative
+            // write — no interpolation, no deferral, no possibility of being
+            // overwritten by a stale pending update.
+            if (!useDerived)
+            {
+                node->setPosition(position);
+                node->setOrientation(orientation);
+                node->setScale(scale);
+            }
+            else
+            {
+                node->_setDerivedPosition(position);
+                node->_setDerivedOrientation(orientation);
+            }
+
+            // Deactivate: updateAllTransforms must not touch this node again
+            // until new physics data arrives via a non-fireAndForget write.
+            nodeTransforms->active = false;
+            nodeTransforms->stableFrames = 0;
             nodeTransforms->updatedThisFrame = false;
         }
         else
@@ -1103,9 +1126,9 @@ namespace NOWA
             nodeTransforms->transforms[this->currentTransformNodeIdx].orientation = orientation;
             nodeTransforms->transforms[this->currentTransformNodeIdx].scale = scale;
             nodeTransforms->updatedThisFrame = true;
+            nodeTransforms->active = true;
         }
 
-        nodeTransforms->active = true;
         nodeTransforms->useDerived = useDerived;
     }
 
@@ -1172,7 +1195,6 @@ namespace NOWA
     void GraphicsModule::updateCameraPosition(Ogre::Camera* camera, const Ogre::Vector3& position, bool fireAndForget)
     {
         GraphicsModule::CameraTransforms* cameraTransforms = this->findCameraTransforms(camera);
-
         if (nullptr == cameraTransforms)
         {
             this->addTrackedCamera(camera);
@@ -1185,19 +1207,22 @@ namespace NOWA
             {
                 cameraTransforms->transforms[i].position = position;
             }
+
+            cameraTransforms->active = false;
+            cameraTransforms->stableFrames = 0;
+            cameraTransforms->updatedThisFrame = false;
         }
         else
         {
             cameraTransforms->transforms[this->currentTransformCameraIdx].position = position;
+            cameraTransforms->active = true;
+            cameraTransforms->updatedThisFrame = true;
         }
-
-        cameraTransforms->active = true;
     }
 
     void GraphicsModule::updateCameraOrientation(Ogre::Camera* camera, const Ogre::Quaternion& orientation, bool fireAndForget)
     {
         GraphicsModule::CameraTransforms* cameraTransforms = this->findCameraTransforms(camera);
-
         if (nullptr == cameraTransforms)
         {
             this->addTrackedCamera(camera);
@@ -1210,19 +1235,22 @@ namespace NOWA
             {
                 cameraTransforms->transforms[i].orientation = orientation;
             }
+
+            cameraTransforms->active = false;
+            cameraTransforms->stableFrames = 0;
+            cameraTransforms->updatedThisFrame = false;
         }
         else
         {
             cameraTransforms->transforms[this->currentTransformCameraIdx].orientation = orientation;
+            cameraTransforms->active = true;
+            cameraTransforms->updatedThisFrame = true;
         }
-
-        cameraTransforms->active = true;
     }
 
     void GraphicsModule::updateCameraTransform(Ogre::Camera* camera, const Ogre::Vector3& position, const Ogre::Quaternion& orientation, bool fireAndForget)
     {
         GraphicsModule::CameraTransforms* cameraTransforms = this->findCameraTransforms(camera);
-
         if (nullptr == cameraTransforms)
         {
             this->addTrackedCamera(camera);
@@ -1236,14 +1264,18 @@ namespace NOWA
                 cameraTransforms->transforms[i].position = position;
                 cameraTransforms->transforms[i].orientation = orientation;
             }
+
+            cameraTransforms->active = false;
+            cameraTransforms->stableFrames = 0;
+            cameraTransforms->updatedThisFrame = false;
         }
         else
         {
             cameraTransforms->transforms[this->currentTransformCameraIdx].position = position;
             cameraTransforms->transforms[this->currentTransformCameraIdx].orientation = orientation;
+            cameraTransforms->active = true;
+            cameraTransforms->updatedThisFrame = true;
         }
-
-        cameraTransforms->active = true;
     }
 
     void GraphicsModule::addTrackedOldBone(Ogre::v1::OldBone* oldBone)
@@ -1309,7 +1341,6 @@ namespace NOWA
     void GraphicsModule::updateOldBonePosition(Ogre::v1::OldBone* oldBone, const Ogre::Vector3& position, bool fireAndForget)
     {
         GraphicsModule::OldBoneTransforms* oldBoneTransforms = this->findOldBoneTransforms(oldBone);
-
         if (nullptr == oldBoneTransforms)
         {
             this->addTrackedOldBone(oldBone);
@@ -1322,19 +1353,22 @@ namespace NOWA
             {
                 oldBoneTransforms->transforms[i].position = position;
             }
+
+            oldBoneTransforms->active = false;
+            oldBoneTransforms->stableFrames = 0;
+            oldBoneTransforms->updatedThisFrame = false;
         }
         else
         {
             oldBoneTransforms->transforms[this->currentTransformOldBoneIdx].position = position;
+            oldBoneTransforms->active = true;
+            oldBoneTransforms->updatedThisFrame = true;
         }
-
-        oldBoneTransforms->active = true;
     }
 
     void GraphicsModule::updateOldBoneOrientation(Ogre::v1::OldBone* oldBone, const Ogre::Quaternion& orientation, bool fireAndForget)
     {
         GraphicsModule::OldBoneTransforms* oldBoneTransforms = this->findOldBoneTransforms(oldBone);
-
         if (nullptr == oldBoneTransforms)
         {
             this->addTrackedOldBone(oldBone);
@@ -1347,19 +1381,22 @@ namespace NOWA
             {
                 oldBoneTransforms->transforms[i].orientation = orientation;
             }
+
+            oldBoneTransforms->active = false;
+            oldBoneTransforms->stableFrames = 0;
+            oldBoneTransforms->updatedThisFrame = false;
         }
         else
         {
             oldBoneTransforms->transforms[this->currentTransformOldBoneIdx].orientation = orientation;
+            oldBoneTransforms->active = true;
+            oldBoneTransforms->updatedThisFrame = true;
         }
-
-        oldBoneTransforms->active = true;
     }
 
     void GraphicsModule::updateOldBoneTransform(Ogre::v1::OldBone* oldBone, const Ogre::Vector3& position, const Ogre::Quaternion& orientation, bool fireAndForget)
     {
         GraphicsModule::OldBoneTransforms* oldBoneTransforms = this->findOldBoneTransforms(oldBone);
-
         if (nullptr == oldBoneTransforms)
         {
             this->addTrackedOldBone(oldBone);
@@ -1373,14 +1410,18 @@ namespace NOWA
                 oldBoneTransforms->transforms[i].position = position;
                 oldBoneTransforms->transforms[i].orientation = orientation;
             }
+
+            oldBoneTransforms->active = false;
+            oldBoneTransforms->stableFrames = 0;
+            oldBoneTransforms->updatedThisFrame = false;
         }
         else
         {
             oldBoneTransforms->transforms[this->currentTransformOldBoneIdx].position = position;
             oldBoneTransforms->transforms[this->currentTransformOldBoneIdx].orientation = orientation;
+            oldBoneTransforms->active = true;
+            oldBoneTransforms->updatedThisFrame = true;
         }
-
-        oldBoneTransforms->active = true;
     }
 
     void GraphicsModule::addTrackedBone(Ogre::Bone* bone)
@@ -1436,7 +1477,6 @@ namespace NOWA
     void GraphicsModule::updateBonePosition(Ogre::Bone* bone, const Ogre::Vector3& position, bool fireAndForget)
     {
         GraphicsModule::BoneTransforms* boneTransforms = this->findBoneTransforms(bone);
-
         if (nullptr == boneTransforms)
         {
             this->addTrackedBone(bone);
@@ -1449,19 +1489,22 @@ namespace NOWA
             {
                 boneTransforms->transforms[i].position = position;
             }
+
+            boneTransforms->active = false;
+            boneTransforms->stableFrames = 0;
+            boneTransforms->updatedThisFrame = false;
         }
         else
         {
             boneTransforms->transforms[this->currentTransformBoneIdx].position = position;
+            boneTransforms->active = true;
+            boneTransforms->updatedThisFrame = true;
         }
-
-        boneTransforms->active = true;
     }
 
     void GraphicsModule::updateBoneOrientation(Ogre::Bone* bone, const Ogre::Quaternion& orientation, bool fireAndForget)
     {
         GraphicsModule::BoneTransforms* boneTransforms = this->findBoneTransforms(bone);
-
         if (nullptr == boneTransforms)
         {
             this->addTrackedBone(bone);
@@ -1474,19 +1517,22 @@ namespace NOWA
             {
                 boneTransforms->transforms[i].orientation = orientation;
             }
+
+            boneTransforms->active = false;
+            boneTransforms->stableFrames = 0;
+            boneTransforms->updatedThisFrame = false;
         }
         else
         {
             boneTransforms->transforms[this->currentTransformBoneIdx].orientation = orientation;
+            boneTransforms->active = true;
+            boneTransforms->updatedThisFrame = true;
         }
-
-        boneTransforms->active = true;
     }
 
     void GraphicsModule::updateBoneTransform(Ogre::Bone* bone, const Ogre::Vector3& position, const Ogre::Quaternion& orientation, bool fireAndForget)
     {
         GraphicsModule::BoneTransforms* boneTransforms = this->findBoneTransforms(bone);
-
         if (nullptr == boneTransforms)
         {
             this->addTrackedBone(bone);
@@ -1500,14 +1546,18 @@ namespace NOWA
                 boneTransforms->transforms[i].position = position;
                 boneTransforms->transforms[i].orientation = orientation;
             }
+
+            boneTransforms->active = false;
+            boneTransforms->stableFrames = 0;
+            boneTransforms->updatedThisFrame = false;
         }
         else
         {
             boneTransforms->transforms[this->currentTransformBoneIdx].position = position;
             boneTransforms->transforms[this->currentTransformBoneIdx].orientation = orientation;
+            boneTransforms->active = true;
+            boneTransforms->updatedThisFrame = true;
         }
-
-        boneTransforms->active = true;
     }
 
     void GraphicsModule::addTrackedPass(Ogre::Pass* pass)
@@ -1926,7 +1976,11 @@ namespace NOWA
     {
         // Runs in Main thread
 
-        // Move to the next buffer - this is the key operation that separates logic and render threads
+        const int maxStableFrames = 4;
+
+        // =========================================================================
+        // Node transforms
+        // =========================================================================
         size_t prevIdx = this->currentTransformNodeIdx;
         this->currentTransformNodeIdx = (this->currentTransformNodeIdx + 1) % NUM_TRANSFORM_BUFFERS;
 
@@ -1935,23 +1989,16 @@ namespace NOWA
             this->logCommandEvent("[RenderCommandQueueModule]: Advanced buffer from " + Ogre::StringConverter::toString(prevIdx) + " to " + Ogre::StringConverter::toString(this->currentTransformNodeIdx), Ogre::LML_TRIVIAL);
         }
 
-        // Deactivates nodes that have not been updated for a while
-        const int maxStableFrames = 4;
-
-        // For newly added nodes, we need to copy the current transform to all buffers
-        // For existing nodes, we copy the previous buffer to the new current buffer
-        // This ensures that if an object doesn't move during a frame, it maintains its position
         for (auto& nodeTransform : this->trackedNodes)
         {
             if (true == nodeTransform.isNew)
             {
                 if (nullptr == nodeTransform.node)
                 {
-                    nodeTransform.stableFrames = maxStableFrames; // will be evicted below
+                    nodeTransform.stableFrames = maxStableFrames;
                     continue;
                 }
 
-                // For new nodes, initialize all buffers with current transform
                 GraphicsModule::TransformData currentTransform;
                 if (true == nodeTransform.useDerived)
                 {
@@ -1979,49 +2026,39 @@ namespace NOWA
             {
                 if (nodeTransform.updatedThisFrame)
                 {
-                    // Got a new transform this frame
                     nodeTransform.stableFrames = 0;
                 }
                 else
                 {
-                    ++nodeTransform.stableFrames; // <<< THIS is the increment
+                    ++nodeTransform.stableFrames;
                 }
 
-                // For existing active nodes, copy from previous buffer to new current buffer
-                // This is important - we're not copying from the node's current transform
-                // but from the previous buffer, which preserves the transform history
                 nodeTransform.transforms[this->currentTransformNodeIdx] = nodeTransform.transforms[prevIdx];
-
-                // Reset update flag for next frame
                 nodeTransform.updatedThisFrame = false;
             }
+            // active==false (fireAndForget): do nothing — buffer is already correct,
+            // stableFrames==0 so no eviction, node just sits dormant until next physics write.
         }
 
         for (int i = static_cast<int>(this->trackedNodes.size()) - 1; i >= 0; --i)
         {
             NodeTransforms& nodeTransform = this->trackedNodes[i];
-
-            // Optionally also check !active, but not needed if you just rely on stableFrames
             if (nodeTransform.stableFrames >= maxStableFrames)
             {
                 this->removeTrackedNode(nodeTransform.node);
             }
         }
 
-        // Advance camera transform buffer
-
-        // Move to the next buffer - this is the key operation that separates logic and render threads
+        // =========================================================================
+        // Camera transforms
+        // =========================================================================
         size_t prevCameraIdx = this->currentTransformCameraIdx;
         this->currentTransformCameraIdx = (this->currentTransformCameraIdx + 1) % NUM_TRANSFORM_BUFFERS;
 
-        // For newly added cameras, we need to copy the current transform to all buffers
-        // For existing cameras, we copy the previous buffer to the new current buffer
-        // This ensures that if an object doesn't move during a frame, it maintains its position
         for (auto& cameraTransform : this->trackedCameras)
         {
             if (true == cameraTransform.isNew)
             {
-                // For new cameras, initialize all buffers with current transform
                 GraphicsModule::CameraTransformData currentTransform;
                 currentTransform.position = cameraTransform.camera->getPosition();
                 currentTransform.orientation = cameraTransform.camera->getOrientation();
@@ -2032,30 +2069,44 @@ namespace NOWA
                 }
 
                 cameraTransform.isNew = false;
+                cameraTransform.stableFrames = 0;
+                cameraTransform.updatedThisFrame = false;
             }
             else if (true == cameraTransform.active)
             {
-                // For existing active cameras, copy from previous buffer to new current buffer
-                // This is important - we're not copying from the camera's current transform
-                // but from the previous buffer, which preserves the transform history
+                if (cameraTransform.updatedThisFrame)
+                {
+                    cameraTransform.stableFrames = 0;
+                }
+                else
+                {
+                    ++cameraTransform.stableFrames;
+                }
+
                 cameraTransform.transforms[this->currentTransformCameraIdx] = cameraTransform.transforms[prevCameraIdx];
+                cameraTransform.updatedThisFrame = false;
             }
         }
 
-        // Advance oldBone transform buffer
+        for (int i = static_cast<int>(this->trackedCameras.size()) - 1; i >= 0; --i)
+        {
+            CameraTransforms& cameraTransform = this->trackedCameras[i];
+            if (cameraTransform.stableFrames >= maxStableFrames)
+            {
+                this->removeTrackedCamera(cameraTransform.camera);
+            }
+        }
 
-        // Move to the next buffer - this is the key operation that separates logic and render threads
+        // =========================================================================
+        // OldBone transforms
+        // =========================================================================
         size_t prevOldBoneIdx = this->currentTransformOldBoneIdx;
         this->currentTransformOldBoneIdx = (this->currentTransformOldBoneIdx + 1) % NUM_TRANSFORM_BUFFERS;
 
-        // For newly added oldBones, we need to copy the current transform to all buffers
-        // For existing oldBones, we copy the previous buffer to the new current buffer
-        // This ensures that if an object doesn't move during a frame, it maintains its position
         for (auto& oldBoneTransform : this->trackedOldBones)
         {
             if (true == oldBoneTransform.isNew)
             {
-                // For new oldBones, initialize all buffers with current transform
                 GraphicsModule::TransformData currentTransform;
                 currentTransform.position = oldBoneTransform.oldBone->getPosition();
                 currentTransform.orientation = oldBoneTransform.oldBone->getOrientation();
@@ -2066,18 +2117,37 @@ namespace NOWA
                 }
 
                 oldBoneTransform.isNew = false;
+                oldBoneTransform.stableFrames = 0;
+                oldBoneTransform.updatedThisFrame = false;
             }
             else if (true == oldBoneTransform.active)
             {
-                // For existing active oldBones, copy from previous buffer to new current buffer
-                // This is important - we're not copying from the oldBone's current transform
-                // but from the previous buffer, which preserves the transform history
+                if (oldBoneTransform.updatedThisFrame)
+                {
+                    oldBoneTransform.stableFrames = 0;
+                }
+                else
+                {
+                    ++oldBoneTransform.stableFrames;
+                }
+
                 oldBoneTransform.transforms[this->currentTransformOldBoneIdx] = oldBoneTransform.transforms[prevOldBoneIdx];
+                oldBoneTransform.updatedThisFrame = false;
             }
         }
 
-        // Advance bone transform buffer
+        for (int i = static_cast<int>(this->trackedOldBones.size()) - 1; i >= 0; --i)
+        {
+            OldBoneTransforms& oldBoneTransform = this->trackedOldBones[i];
+            if (oldBoneTransform.stableFrames >= maxStableFrames)
+            {
+                this->removeTrackedOldBone(oldBoneTransform.oldBone);
+            }
+        }
 
+        // =========================================================================
+        // Bone transforms
+        // =========================================================================
         size_t prevBoneIdx = this->currentTransformBoneIdx;
         this->currentTransformBoneIdx = (this->currentTransformBoneIdx + 1) % NUM_TRANSFORM_BUFFERS;
 
@@ -2095,10 +2165,31 @@ namespace NOWA
                 }
 
                 boneTransform.isNew = false;
+                boneTransform.stableFrames = 0;
+                boneTransform.updatedThisFrame = false;
             }
             else if (true == boneTransform.active)
             {
+                if (boneTransform.updatedThisFrame)
+                {
+                    boneTransform.stableFrames = 0;
+                }
+                else
+                {
+                    ++boneTransform.stableFrames;
+                }
+
                 boneTransform.transforms[this->currentTransformBoneIdx] = boneTransform.transforms[prevBoneIdx];
+                boneTransform.updatedThisFrame = false;
+            }
+        }
+
+        for (int i = static_cast<int>(this->trackedBones.size()) - 1; i >= 0; --i)
+        {
+            BoneTransforms& boneTransform = this->trackedBones[i];
+            if (boneTransform.stableFrames >= maxStableFrames)
+            {
+                this->removeTrackedBone(boneTransform.bone);
             }
         }
 

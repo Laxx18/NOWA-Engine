@@ -68,10 +68,9 @@ namespace NOWA
         }
 
         setDatablockByName(datablockName);
-        attachedNode->attachObject(planetItem);
-
         createBlendWeightTexture();
         uploadBlendData();
+        attachedNode->attachObject(planetItem); 
 
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PlanetTerra] Created planet '" + objectName + "' radius=" + Ogre::StringConverter::toString(radius) + " segH=" + Ogre::StringConverter::toString(segmentsH) +
                                                                                " segV=" + Ogre::StringConverter::toString(segmentsV) + " verts=" + Ogre::StringConverter::toString(static_cast<unsigned int>(vertexCount)));
@@ -451,24 +450,36 @@ namespace NOWA
 
     void PlanetTerra::setDatablockByName(const Ogre::String& name)
     {
-        if (!planetItem || name.empty())
+        if (nullptr == this->planetItem || name.empty())
         {
             return;
         }
-        Ogre::HlmsDatablock* db = Ogre::Root::getSingleton().getHlmsManager()->getDatablockNoDefault(name);
-        if (db)
-        {
-            planetItem->getSubItem(0)->setDatablock(db);
-        }
-        else
+
+        Ogre::HlmsPbsDatablock* db = static_cast<Ogre::HlmsPbsDatablock*>(Ogre::Root::getSingleton().getHlmsManager()->getDatablockNoDefault(name));
+
+        if (nullptr == db)
         {
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PlanetTerra] Datablock '" + name + "' not found.");
+            return;
         }
+
+        // Blend weight is a runtime RenderToTexture — set directly, no pool needed.
+        if (nullptr != this->getBlendTex())
+        {
+            db->setTexture(Ogre::PBSM_DETAIL_WEIGHT, this->getBlendTex());
+        }
+
+        this->planetItem->getSubItem(0)->setDatablock(db);
     }
 
     // =========================================================================
     //  MAIN THREAD  —  sphere geometry generation
     // =========================================================================
+
+    const std::vector<Ogre::Vector2>& PlanetTerra::getUvCoords(void) const
+    {
+        return this->uvCoords;
+    }
 
     void PlanetTerra::generateBaseSphere()
     {

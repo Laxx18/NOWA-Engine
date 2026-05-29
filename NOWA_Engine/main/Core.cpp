@@ -1683,7 +1683,7 @@ namespace NOWA
 		}
 
 		// Disable the nasty shader cache files creation on exe dir
-		hlmsPbs->setDebugOutputPath(false, false);
+		hlmsPbs->setDebugOutputPath(true, true);
 		hlmsUnlit->setDebugOutputPath(false, false);
 		hlmsTerra->setDebugOutputPath(false, false);
 		hlmsOcean->setDebugOutputPath(false, false);

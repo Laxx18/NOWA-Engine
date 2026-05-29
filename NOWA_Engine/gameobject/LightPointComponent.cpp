@@ -186,29 +186,34 @@ namespace NOWA
 	{
 		if (nullptr == this->light)
 		{
-			ENQUEUE_RENDER_COMMAND_WAIT("LightPointComponent::createLight",
-			{
-				this->light = this->gameObjectPtr->getSceneManager()->createLight();
+			NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+            {
+                this->light = this->gameObjectPtr->getSceneManager()->createLight();
 
-				this->light->setType(Ogre::Light::LightTypes::LT_POINT);
-				this->light->setCastShadows(true);
-				this->light->setDiffuseColour(this->diffuseColor->getVector3().x, this->diffuseColor->getVector3().y, this->diffuseColor->getVector3().z);
-				this->light->setSpecularColour(this->specularColor->getVector3().x, this->specularColor->getVector3().y, this->specularColor->getVector3().z);
-				this->light->setPowerScale(this->powerScale->getReal());
-				if ("Range" == this->attenuationMode->getListSelectedValue())
-					this->light->setAttenuation(this->attenuationRange->getReal(), this->attenuationConstant->getReal(), this->attenuationLinear->getReal(), this->attenuationQuadratic->getReal());
-				else
-					this->light->setAttenuationBasedOnRadius(this->attenuationRadius->getReal(), this->attenuationLumThreshold->getReal());
-				this->light->setCastShadows(this->castShadows->getBool());
+                this->light->setType(Ogre::Light::LightTypes::LT_POINT);
+                this->light->setCastShadows(true);
+                this->light->setDiffuseColour(this->diffuseColor->getVector3().x, this->diffuseColor->getVector3().y, this->diffuseColor->getVector3().z);
+                this->light->setSpecularColour(this->specularColor->getVector3().x, this->specularColor->getVector3().y, this->specularColor->getVector3().z);
+                this->light->setPowerScale(this->powerScale->getReal());
+                if ("Range" == this->attenuationMode->getListSelectedValue())
+                {
+                    this->light->setAttenuation(this->attenuationRange->getReal(), this->attenuationConstant->getReal(), this->attenuationLinear->getReal(), this->attenuationQuadratic->getReal());
+                }
+                else
+                {
+                    this->light->setAttenuationBasedOnRadius(this->attenuationRadius->getReal(), this->attenuationLumThreshold->getReal());
+                }
+                this->light->setCastShadows(this->castShadows->getBool());
 
-				this->gameObjectPtr->getSceneNode()->attachObject(light);
+                this->gameObjectPtr->getSceneNode()->attachObject(light);
 
-				Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
-				if (item != nullptr)
-				{
-					item->setCastShadows(false);
-				}
-			});
+                this->dummyItem = this->gameObjectPtr->getMovableObject<Ogre::Item>();
+                if (this->dummyItem != nullptr)
+                {
+                    this->dummyItem->setCastShadows(false);
+                }
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "LightPointComponent::createLight");
 		}
 	}
 

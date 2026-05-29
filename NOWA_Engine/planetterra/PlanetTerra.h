@@ -185,6 +185,8 @@ namespace NOWA
             return this->baseUVScale;
         }
 
+        const std::vector<Ogre::Vector2>& getUvCoords(void) const;
+
     private:
         // Internal CPU helpers (MAIN THREAD)
         void generateBaseSphere();

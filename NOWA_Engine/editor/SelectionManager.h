@@ -166,6 +166,8 @@ namespace NOWA
 		 * @param[in]	bPartOfMultiselection	Whether the game object is part of a multiselection (e.g. when selecting with a rectangle), so that the selection observer can react differently, e.g. to set another outline template strategy
          */
 		void applySelectInternal(GameObject* gameObject, bool bSelect, bool bPartOfMultiselection);
+
+		void internalSnapshotGameObjectSelection(const std::vector<unsigned long>& oldIds);
 	private:
 		Ogre::Camera* camera;
 		Ogre::SceneManager* sceneManager;

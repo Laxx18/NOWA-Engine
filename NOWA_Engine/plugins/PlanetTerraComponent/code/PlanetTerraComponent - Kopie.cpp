@@ -97,26 +97,6 @@ namespace NOWA
                                     "Set 64 for a radius-50 planet to tile every ~5m for close-up base terrain. "
                                     "Changing this triggers a mesh rebuild.");
 
-        // ── Detail NM textures ────────────────────────────────────────────────
-        // These are NOT loaded via the material JSON (doing so causes @piece blocks
-        // to be emitted literally as HLSL code → shader crash). They are set here
-        // as configurable Variants and applied programmatically in wireBlend.
-        detail0NMTextureName = new Variant(PlanetTerraComponent::AttrDetail0NMTextureName(), Ogre::String("adesert_cracks_n.dds"), this->attributes);
-        detail0NMTextureName->setDescription("BC5_SNORM DDS normal map for detail layer 0.");
-        this->addAttributeFilePathData(detail0NMTextureName);
-
-        detail1NMTextureName = new Variant(PlanetTerraComponent::AttrDetail1NMTextureName(), Ogre::String("grass_green_n.dds"), this->attributes);
-        detail1NMTextureName->setDescription("BC5_SNORM DDS normal map for detail layer 1.");
-        this->addAttributeFilePathData(detail1NMTextureName);
-
-        detail2NMTextureName = new Variant(PlanetTerraComponent::AttrDetail2NMTextureName(), Ogre::String("island_sand_n.dds"), this->attributes);
-        detail2NMTextureName->setDescription("BC5_SNORM DDS normal map for detail layer 2.");
-        this->addAttributeFilePathData(detail2NMTextureName);
-
-        detail3NMTextureName = new Variant(PlanetTerraComponent::AttrDetail3NMTextureName(), Ogre::String("mntn_black_n.dds"), this->attributes);
-        detail3NMTextureName->setDescription("BC5_SNORM DDS normal map for detail layer 3.");
-        this->addAttributeFilePathData(detail3NMTextureName);
-
         // ── Constraints ───────────────────────────────────────────────────────
         radius->setConstraints(10.0f, 50000.0f);
         segmentsH->setConstraints(4u, 512u);
@@ -517,10 +497,11 @@ namespace NOWA
             }
 
             // Apply default planet datablock directly on render thread, same as TerraComponent.
-            Ogre::HlmsDatablock* db = WorkspaceModule::getInstance()->getHlmsManager()->getDatablock(PlanetTerraComponent::DefaultMaterialName());
+            Ogre::HlmsPbsDatablock* db = static_cast<Ogre::HlmsPbsDatablock*>(WorkspaceModule::getInstance()->getHlmsManager()->getDatablock(PlanetTerraComponent::DefaultMaterialName()));
             if (nullptr != db)
             {
-                this->planet->getItem()->getSubItem(0)->setDatablock(db);
+                db->setTexture(Ogre::PBSM_DETAIL_WEIGHT, this->planet->getBlendTex());
+                this->planet->getItem()->setDatablock(db);
                 Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PlanetTerraComponent] Applied datablock '" + PlanetTerraComponent::DefaultMaterialName() + "' to '" + this->gameObjectPtr->getName() + "'.");
             }
             else
@@ -935,7 +916,36 @@ namespace NOWA
     //  Serialization  —  binary sidecar file
     // =========================================================================
 
-#if 0
+    //void PlanetTerraComponent::wireBlendTextureToPbsDatablockInternal(void)
+    //{
+    //    if (!this->planet || !this->planet->getBlendTex())
+    //    {
+    //        return;
+    //    }
+
+    //    auto datablockComp = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<DatablockPbsComponent>());
+    //    if (!datablockComp)
+    //    {
+    //        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PlanetTerraComponent] wireBlend: no DatablockPbsComponent on '" + this->gameObjectPtr->getName() + "'.");
+    //        return;
+    //    }
+
+    //    //// Wire the runtime blend texture directly, bypassing resourceExistsInAnyGroup.
+    //    //datablockComp->setTextureDirectly(Ogre::PBSM_DETAIL_WEIGHT, this->planet->getBlendTex());
+
+    //    // NOTE: setTextureUvSource calls flushRenderables() IMMEDIATELY and SYNCHRONOUSLY
+    //    // (OgreHlmsPbsDatablock.cpp line 668). When called here, the NM textures from
+    //    // DatablockPbsComponent::postInit are still in the deferred scheduleForUpdate queue
+    //    // and mTexturesDescSet is NULL. calculateHashForPreCreate then sees num_textures = 0,
+    //    // textureMaps[] is not declared in the shader, crash.
+    //    // UV sources must be set via the material JSON "uv" parameter instead so they are
+    //    // inherited through cloneImpl without triggering flushRenderables.
+
+
+
+    //    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PlanetTerraComponent] Blend texture wired to PBSM_DETAIL_WEIGHT on '" + this->gameObjectPtr->getName() + "'.");
+    //}
+
     void PlanetTerraComponent::wireBlendTextureToPbsDatablockInternal(void)
     {
         if (!this->planet || !this->planet->getBlendTex())
@@ -950,16 +960,18 @@ namespace NOWA
             return;
         }
 
-        // Wire the runtime blend texture directly, bypassing resourceExistsInAnyGroup.
+        // Wire the runtime blend texture directly — bypasses resourceExistsInAnyGroup.
         datablockComp->setTextureDirectly(Ogre::PBSM_DETAIL_WEIGHT, this->planet->getBlendTex());
 
-        // Detail NM textures are NOT in the material JSON — putting them there causes
-        // the PBS HLMS template processor to emit @piece(SampleDetailMapNm1-3) blocks
-        // as literal HLSL code, leaving @value/@insertpiece directives unresolved → crash.
-        // Names come from our own Variants (configurable in NOWA-Design).
-        // Load with Discard + AutomaticBatching + TypePrepareForNormalMapping and
-        // transition to Resident BEFORE setTexture so the datablock is not yet a
-        // listener when notifyTextureChanged fires during streaming.
+        // Detail NM textures are NOT in the JSON (putting them there causes the PBS
+        // template processor to emit @piece(SampleDetailMapNm1-3) as literal HLSL code
+        // instead of capturing them → @value/@insertpiece survive into HLSL → D3D crash).
+        // DatablockPbsComponent::internalSetTextureName stored the names in its variants
+        // but skipped GPU loading. Set them here with the correct flags:
+        //   Discard + AutomaticBatching + TypePrepareForNormalMapping
+        // and transition to Resident BEFORE setTexture so the datablock is not yet
+        // a listener when notifyTextureChanged fires during streaming.
+
         Ogre::HlmsPbsDatablock* pbsDb = dynamic_cast<Ogre::HlmsPbsDatablock*>(this->planet->getItem()->getSubItem(0)->getDatablock());
 
         if (nullptr == pbsDb)
@@ -978,10 +990,10 @@ namespace NOWA
         };
 
         const NmSlot slots[4] = {
-            {this->detail0NMTextureName->getString(), Ogre::PBSM_DETAIL0_NM},
-            {this->detail1NMTextureName->getString(), Ogre::PBSM_DETAIL1_NM},
-            {this->detail2NMTextureName->getString(), Ogre::PBSM_DETAIL2_NM},
-            {this->detail3NMTextureName->getString(), Ogre::PBSM_DETAIL3_NM},
+            {"adesert_cracks_n.dds", Ogre::PBSM_DETAIL0_NM},
+            {"grass_green_n.dds", Ogre::PBSM_DETAIL1_NM},
+            {"island_sand_n.dds", Ogre::PBSM_DETAIL2_NM},
+            {"mntn_black_n.dds", Ogre::PBSM_DETAIL3_NM},
         };
 
         // Phase A: create + schedule ALL four Resident before touching the datablock.
@@ -997,7 +1009,8 @@ namespace NOWA
                 Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PlanetTerraComponent] NM texture not found: '" + slots[i].name + "'.");
                 continue;
             }
-            nmTex[i] = texMgr->createOrRetrieveTexture(slots[i].name, Ogre::GpuPageOutStrategy::Discard, Ogre::TextureFlags::AutomaticBatching, Ogre::TextureTypes::Type2D, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, nmFilters, 0u);
+            nmTex[i] =
+                texMgr->createOrRetrieveTexture(slots[i].name, Ogre::GpuPageOutStrategy::Discard, Ogre::TextureFlags::AutomaticBatching, Ogre::TextureTypes::Type2D, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, nmFilters, 0u);
             if (nullptr != nmTex[i])
             {
                 nmTex[i]->scheduleTransitionTo(Ogre::GpuResidency::Resident);
@@ -1024,22 +1037,6 @@ namespace NOWA
                 pbsDb->setTexture(slots[i].slot, nmTex[i], &samplerNM);
             }
         }
-
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PlanetTerraComponent] Blend + NM textures wired on '" + this->gameObjectPtr->getName() + "'.");
-    }
-#endif
-    
-    void PlanetTerraComponent::wireBlendTextureToPbsDatablockInternal(void)
-    {
-        if (!this->planet || !this->planet->getBlendTex())
-        {
-            return;
-        }
-
-        // internally weight texture is set
-        this->planet->setDatablockByName(PlanetTerraComponent::DefaultMaterialName());
-
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PlanetTerraComponent] Blend + NM textures wired on '" + this->gameObjectPtr->getName() + "'.");
     }
 
     void PlanetTerraComponent::wireBlendTextureToPbsDatablock(void)
@@ -1356,26 +1353,16 @@ namespace NOWA
         return activated->getBool();
     }
 
-    void PlanetTerraComponent::setRadius(Ogre::Real r)
+    void PlanetTerraComponent::setRadius(float r)
     {
         radius->setValue(r);
         destroyPlanet();
         createPlanet();
     }
 
-    Ogre::Real PlanetTerraComponent::getRadius() const
+    float PlanetTerraComponent::getRadius() const
     {
         return radius->getReal();
-    }
-
-    const std::vector<Ogre::Vector2>& PlanetTerraComponent::getUvCoords(void) const
-    {
-        if (nullptr != this->planet)
-        {
-            return this->planet->getUvCoords();
-        }
-
-        return std::vector<Ogre::Vector2>();
     }
 
     void PlanetTerraComponent::setSegmentsH(unsigned int s)

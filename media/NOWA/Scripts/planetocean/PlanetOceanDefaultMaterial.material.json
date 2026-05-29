@@ -1,0 +1,96 @@
+{
+    "comment" :
+    [
+        "PlanetOcean default PBS material.",
+        "Deep / shallow colour and transparency are driven at runtime by PlanetOceanComponent.",
+        "Add a cubemap to ReflectionMap in NOWA-Design for reflections.",
+        "No detail normal maps in this JSON -- they cause HLMS template crash (see PlanetTerra notes).",
+        "If you want fine wave normals, add a PBSM_NORMAL texture programmatically."
+    ],
+
+    "samplers" :
+    {
+        "Ocean_Sampler" :
+        {
+            "min"              : "anisotropic",
+            "mag"              : "anisotropic",
+            "mip"              : "anisotropic",
+            "u"                : "wrap",
+            "v"                : "wrap",
+            "w"                : "wrap",
+            "miplodbias"       : 0,
+            "max_anisotropic"  : 8,
+            "compare_function" : "disabled",
+            "border"           : [1, 1, 1, 1],
+            "min_lod"          : -3.40282e+38,
+            "max_lod"          : 3.40282e+38
+        }
+    },
+
+    "macroblocks" :
+    {
+        "Ocean_Macroblock" :
+        {
+            "scissor_test"           : false,
+            "depth_check"            : true,
+            "depth_write"            : true,
+            "depth_function"         : "less_equal",
+            "depth_bias_constant"    : 0,
+            "depth_bias_slope_scale" : 0,
+            "cull_mode"              : "none",
+            "polygon_mode"           : "solid"
+        }
+    },
+
+    "blendblocks" :
+    {
+        "Ocean_Blendblock_Transparent" :
+        {
+            "alpha_to_coverage"       : false,
+            "blendmask"               : "rgba",
+            "separate_blend"          : false,
+            "src_blend_factor"        : "src_alpha",
+            "dst_blend_factor"        : "one_minus_src_alpha",
+            "blend_operation"         : "add",
+            "force_transparent_sort"  : true
+        }
+    },
+
+    "pbs" :
+    {
+        "PlanetOceanDefaultMaterial" :
+        {
+            "macroblock"        : "Ocean_Macroblock",
+            "blendblock"        : "Ocean_Blendblock_Transparent",
+            "shadow_const_bias" : 0.001,
+
+            "workflow" : "metallic",
+            "brdf"     : "default",
+
+            "roughness" : 0.04,
+
+            "fresnel" :
+            {
+                "value" : [0.02, 0.02, 0.02],
+                "mode"  : "coeff"
+            },
+
+            "diffuse" :
+            {
+                "value"      : [0.0, 0.03, 0.07],
+                "background" : [0.0, 0.03, 0.07, 0.7]
+            },
+
+            "specular" :
+            {
+                "value" : [1.0, 1.0, 1.0]
+            },
+
+            "transparency" :
+            {
+                "value" : 0.7,
+                "mode"  : "transparent"
+            }
+        }
+    }
+}

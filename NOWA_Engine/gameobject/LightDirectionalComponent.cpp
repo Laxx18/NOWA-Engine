@@ -204,30 +204,31 @@ namespace NOWA
 	{
 		if (nullptr == this->light)
 		{
-			ENQUEUE_RENDER_COMMAND_WAIT("LightDirectionalComponent::createLight",
-			{
-				this->light = this->gameObjectPtr->getSceneManager()->createLight();
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+            {
+                this->light = this->gameObjectPtr->getSceneManager()->createLight();
 
-				this->light->setType(Ogre::Light::LightTypes::LT_DIRECTIONAL);
-				this->light->setCastShadows(true);
-				this->light->setDiffuseColour(this->diffuseColor->getVector3().x, this->diffuseColor->getVector3().y, this->diffuseColor->getVector3().z);
-				this->light->setSpecularColour(this->specularColor->getVector3().x, this->specularColor->getVector3().y, this->specularColor->getVector3().z);
-				this->light->setPowerScale(this->powerScale->getReal());
-				this->light->setAffectParentNode(this->affectParentNode->getBool());
-				this->light->setAttenuationBasedOnRadius(this->attenuationRadius->getReal(), this->attenuationLumThreshold->getReal());
-				// this->light->setAttenuation(this->attenuationRange->getReal(), this->attenuationConstant->getReal(), this->attenuationLinear->getReal(), this->attenuationQuadratic->getReal());
-				this->light->setCastShadows(this->castShadows->getBool());
-				// light->setDirection(this->gameObjectPtr->getSceneNode()->getOrientation() * Ogre::Vector3::NEGATIVE_UNIT_Z);
-				this->gameObjectPtr->getSceneNode()->attachObject(this->light);
+                this->light->setType(Ogre::Light::LightTypes::LT_DIRECTIONAL);
+                this->light->setCastShadows(true);
+                this->light->setDiffuseColour(this->diffuseColor->getVector3().x, this->diffuseColor->getVector3().y, this->diffuseColor->getVector3().z);
+                this->light->setSpecularColour(this->specularColor->getVector3().x, this->specularColor->getVector3().y, this->specularColor->getVector3().z);
+                this->light->setPowerScale(this->powerScale->getReal());
+                this->light->setAffectParentNode(this->affectParentNode->getBool());
+                this->light->setAttenuationBasedOnRadius(this->attenuationRadius->getReal(), this->attenuationLumThreshold->getReal());
+                // this->light->setAttenuation(this->attenuationRange->getReal(), this->attenuationConstant->getReal(), this->attenuationLinear->getReal(), this->attenuationQuadratic->getReal());
+                this->light->setCastShadows(this->castShadows->getBool());
+                // light->setDirection(this->gameObjectPtr->getSceneNode()->getOrientation() * Ogre::Vector3::NEGATIVE_UNIT_Z);
+                this->gameObjectPtr->getSceneNode()->attachObject(this->light);
 
-				Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
-				if (item != nullptr)
-				{
-					item->setCastShadows(false);
-				}
-				this->setDirection(this->direction->getVector3());
-			});
-		}
+                this->dummyItem = this->gameObjectPtr->getMovableObject<Ogre::Item>();
+                if (this->dummyItem != nullptr)
+                {
+                    this->dummyItem->setCastShadows(false);
+                }
+                this->setDirection(this->direction->getVector3());
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "LightDirectionalComponent::createLight");
+        }
 	}
 
 	void LightDirectionalComponent::actualizeValue(Variant* attribute)

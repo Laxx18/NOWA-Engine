@@ -1,0 +1,414 @@
+#ifndef PLANET_OCEAN_COMPONENT_H
+#define PLANET_OCEAN_COMPONENT_H
+
+#include "OgrePlugin.h"
+#include "gameobject/GameObjectComponent.h"
+#include "planetocean/PlanetOcean.h"
+
+namespace NOWA
+{
+    /**
+     * @brief Spherical ocean component animated via CPU Gerstner waves.
+     *        Drop onto any GameObject. The ocean sphere is created automatically
+     *        during postInit and animated each frame. Radius should be set slightly
+     *        larger than any terrain sphere beneath it.
+     */
+    class EXPORTED PlanetOceanComponent : public GameObjectComponent, public Ogre::Plugin
+    {
+    public:
+        typedef boost::shared_ptr<PlanetOceanComponent> PlanetOceanComponentPtr;
+
+    public:
+        PlanetOceanComponent();
+
+        virtual ~PlanetOceanComponent();
+
+        /**
+         * @see Ogre::Plugin::install
+         */
+        virtual void install(const Ogre::NameValuePairList* options) override;
+
+        /**
+         * @see Ogre::Plugin::initialise
+         */
+        virtual void initialise() override;
+
+        /**
+         * @see Ogre::Plugin::shutdown
+         */
+        virtual void shutdown() override;
+
+        /**
+         * @see Ogre::Plugin::uninstall
+         */
+        virtual void uninstall() override;
+
+        /**
+         * @see Ogre::Plugin::getName
+         */
+        virtual const Ogre::String& getName() const override;
+
+        /**
+         * @see Ogre::Plugin::getAbiCookie
+         */
+        virtual void getAbiCookie(Ogre::AbiCookie& outAbiCookie) override;
+
+        /**
+         * @see GameObjectComponent::init
+         */
+        virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
+
+        /**
+         * @see GameObjectComponent::postInit
+         */
+        virtual bool postInit(void) override;
+
+        /**
+         * @see GameObjectComponent::connect
+         */
+        virtual bool connect(void) override;
+
+        /**
+         * @see GameObjectComponent::disconnect
+         */
+        virtual bool disconnect(void) override;
+
+        /**
+         * @see GameObjectComponent::onRemoveComponent
+         */
+        virtual void onRemoveComponent(void) override;
+
+        /**
+         * @see GameObjectComponent::getClassName
+         */
+        virtual Ogre::String getClassName(void) const override;
+
+        /**
+         * @see GameObjectComponent::getParentClassName
+         */
+        virtual Ogre::String getParentClassName(void) const override;
+
+        /**
+         * @see GameObjectComponent::clone
+         */
+        virtual GameObjectCompPtr clone(GameObjectPtr clonedGameObjectPtr) override;
+
+        /**
+         * @see GameObjectComponent::update
+         */
+        virtual void update(Ogre::Real dt, bool notSimulating = false) override;
+
+        /**
+         * @see GameObjectComponent::actualizeValue
+         */
+        virtual void actualizeValue(Variant* attribute) override;
+
+        /**
+         * @see GameObjectComponent::writeXML
+         */
+        virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
+
+        /**
+         * @brief Sets whether the component is activated.
+         * @param[in] activated Whether to activate the component
+         */
+        void setActivated(bool activated);
+
+        /**
+         * @brief Gets whether the component is activated.
+         * @return True if activated
+         */
+        bool isActivated(void) const;
+
+        /**
+         * @brief Sets the ocean sphere radius. Should be slightly larger than the terrain sphere.
+         * @param[in] radius Radius in world units
+         */
+        void setRadius(Ogre::Real radius);
+
+        /**
+         * @brief Gets the ocean sphere radius.
+         */
+        Ogre::Real getRadius(void) const;
+
+        /**
+         * @brief Sets the deep ocean diffuse colour.
+         */
+        void setDeepColour(const Ogre::Vector3& colour);
+
+        /**
+         * @brief Gets the deep ocean colour.
+         */
+        Ogre::Vector3 getDeepColour(void) const;
+
+        /**
+         * @brief Sets the shallow / crest colour blended in at wave peaks.
+         */
+        void setShallowColour(const Ogre::Vector3& colour);
+
+        /**
+         * @brief Gets the shallow colour.
+         */
+        Ogre::Vector3 getShallowColour(void) const;
+
+        /**
+         * @brief Sets the PBS roughness of the water surface. Low values = mirror reflections.
+         * @param[in] roughness Roughness in range [0.001, 1]
+         */
+        void setRoughness(Ogre::Real roughness);
+
+        /**
+         * @brief Gets the roughness.
+         */
+        Ogre::Real getRoughness(void) const;
+
+        /**
+         * @brief Sets the PBS metalness.
+         * @param[in] metalness Metalness in range [0, 1]. Usually 0 for water.
+         */
+        void setMetalness(Ogre::Real metalness);
+
+        /**
+         * @brief Gets the metalness.
+         */
+        Ogre::Real getMetalness(void) const;
+
+        /**
+         * @brief Sets the water transparency.
+         * @param[in] transparency Range [0=opaque, 1=fully transparent]
+         */
+        void setTransparency(Ogre::Real transparency);
+
+        /**
+         * @brief Gets the transparency.
+         */
+        Ogre::Real getTransparency(void) const;
+
+        /**
+         * @brief Sets an optional cubemap texture name for environment reflections.
+         * @param[in] cubemapName Texture name, or empty to skip.
+         */
+        void setReflectionMap(const Ogre::String& cubemapName);
+
+        /**
+         * @brief Gets the reflection cubemap name.
+         */
+        Ogre::String getReflectionMap(void) const;
+
+        /**
+         * @brief Sets the global amplitude multiplier for all waves. 0 = flat ocean.
+         */
+        void setWaveAmplitudeScale(Ogre::Real scale);
+
+        /**
+         * @brief Gets the wave amplitude scale.
+         */
+        Ogre::Real getWaveAmplitudeScale(void) const;
+
+        /**
+         * @brief Gets the underlying PlanetOcean object.
+         */
+        PlanetOcean* getOcean(void) const;
+
+    public:
+        /**
+         * @see GameObjectComponent::getStaticClassId
+         */
+        static unsigned int getStaticClassId(void)
+        {
+            return NOWA::getIdFromName("PlanetOceanComponent");
+        }
+
+        /**
+         * @see GameObjectComponent::getStaticClassName
+         */
+        static Ogre::String getStaticClassName(void)
+        {
+            return "PlanetOceanComponent";
+        }
+
+        /**
+         * @see GameObjectComponent::canStaticAddComponent
+         */
+        static bool canStaticAddComponent(GameObject* gameObject);
+
+        /**
+         * @see GameObjectComponent::getStaticInfoText
+         */
+        static Ogre::String getStaticInfoText(void)
+        {
+            return "Usage: Creates an animated spherical ocean around the parent GameObject. "
+                   "Set Radius slightly larger than any terrain sphere beneath it. "
+                   "Four independent Gerstner waves are configurable with direction, amplitude, "
+                   "frequency and speed. Transparency and reflection cubemap are also configurable.";
+        }
+
+        /**
+         * @see GameObjectComponent::createStaticApiForLua
+         */
+        static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass);
+
+    public:
+        static const Ogre::String AttrActivated(void)
+        {
+            return "Activated";
+        }
+        static const Ogre::String AttrRadius(void)
+        {
+            return "Radius";
+        }
+        static const Ogre::String AttrSegmentsH(void)
+        {
+            return "SegmentsH";
+        }
+        static const Ogre::String AttrSegmentsV(void)
+        {
+            return "SegmentsV";
+        }
+        static const Ogre::String AttrDatablock(void)
+        {
+            return "Datablock";
+        }
+        static const Ogre::String AttrDeepColour(void)
+        {
+            return "Deep Colour";
+        }
+        static const Ogre::String AttrShallowColour(void)
+        {
+            return "Shallow Colour";
+        }
+        static const Ogre::String AttrRoughness(void)
+        {
+            return "Roughness";
+        }
+        static const Ogre::String AttrMetalness(void)
+        {
+            return "Metalness";
+        }
+        static const Ogre::String AttrTransparency(void)
+        {
+            return "Transparency";
+        }
+        static const Ogre::String AttrReflectionMap(void)
+        {
+            return "Reflection Map";
+        }
+        static const Ogre::String AttrWaveAmplitudeScale(void)
+        {
+            return "Wave Amplitude Scale";
+        }
+        static const Ogre::String AttrWave0Amplitude(void)
+        {
+            return "Wave0 Amplitude";
+        }
+        static const Ogre::String AttrWave0Frequency(void)
+        {
+            return "Wave0 Frequency";
+        }
+        static const Ogre::String AttrWave0Speed(void)
+        {
+            return "Wave0 Speed";
+        }
+        static const Ogre::String AttrWave0Direction(void)
+        {
+            return "Wave0 Direction";
+        }
+        static const Ogre::String AttrWave1Amplitude(void)
+        {
+            return "Wave1 Amplitude";
+        }
+        static const Ogre::String AttrWave1Frequency(void)
+        {
+            return "Wave1 Frequency";
+        }
+        static const Ogre::String AttrWave1Speed(void)
+        {
+            return "Wave1 Speed";
+        }
+        static const Ogre::String AttrWave1Direction(void)
+        {
+            return "Wave1 Direction";
+        }
+        static const Ogre::String AttrWave2Amplitude(void)
+        {
+            return "Wave2 Amplitude";
+        }
+        static const Ogre::String AttrWave2Frequency(void)
+        {
+            return "Wave2 Frequency";
+        }
+        static const Ogre::String AttrWave2Speed(void)
+        {
+            return "Wave2 Speed";
+        }
+        static const Ogre::String AttrWave2Direction(void)
+        {
+            return "Wave2 Direction";
+        }
+        static const Ogre::String AttrWave3Amplitude(void)
+        {
+            return "Wave3 Amplitude";
+        }
+        static const Ogre::String AttrWave3Frequency(void)
+        {
+            return "Wave3 Frequency";
+        }
+        static const Ogre::String AttrWave3Speed(void)
+        {
+            return "Wave3 Speed";
+        }
+        static const Ogre::String AttrWave3Direction(void)
+        {
+            return "Wave3 Direction";
+        }
+
+        static Ogre::String DefaultMaterialName(void)
+        {
+            return "PlanetOceanDefaultMaterial";
+        }
+
+    private:
+        void createOcean(void);
+        void destroyOcean(void);
+        void applyWaveParam(int waveIndex);
+
+    private:
+        Ogre::String name;
+
+        PlanetOcean* ocean;
+
+        Variant* activated;
+        Variant* radius;
+        Variant* segmentsH;
+        Variant* segmentsV;
+        Variant* datablock;
+        Variant* deepColour;
+        Variant* shallowColour;
+        Variant* roughness;
+        Variant* metalness;
+        Variant* transparency;
+        Variant* reflectionMap;
+        Variant* waveAmplitudeScale;
+        Variant* wave0Amplitude;
+        Variant* wave0Frequency;
+        Variant* wave0Speed;
+        Variant* wave0Direction;
+        Variant* wave1Amplitude;
+        Variant* wave1Frequency;
+        Variant* wave1Speed;
+        Variant* wave1Direction;
+        Variant* wave2Amplitude;
+        Variant* wave2Frequency;
+        Variant* wave2Speed;
+        Variant* wave2Direction;
+        Variant* wave3Amplitude;
+        Variant* wave3Frequency;
+        Variant* wave3Speed;
+        Variant* wave3Direction;
+
+        bool postInitDone;
+    };
+
+} // namespace NOWA
+
+#endif // PLANET_OCEAN_COMPONENT_H

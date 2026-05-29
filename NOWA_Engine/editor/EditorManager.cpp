@@ -56,7 +56,9 @@ namespace NOWA
     class GameObjectManipulationUndoCommand : public ICommand
     {
     public:
-        GameObjectManipulationUndoCommand(std::vector<EditorManager::GameObjectData> oldGameObjectDataList, std::vector<unsigned long> gameObjectIds) : gameObjectIds(std::move(gameObjectIds)), oldGameObjectDataList(std::move(oldGameObjectDataList))
+        GameObjectManipulationUndoCommand(std::vector<EditorManager::GameObjectData> oldGameObjectDataList, std::vector<unsigned long> gameObjectIds)
+            : gameObjectIds(std::move(gameObjectIds)),
+            oldGameObjectDataList(std::move(oldGameObjectDataList))
         {
         }
 
@@ -101,6 +103,7 @@ namespace NOWA
                     this->oldGameObjectDataList[i].newPosition = physicsComponent->getPosition();
                     this->oldGameObjectDataList[i].newScale = physicsComponent->getScale();
                     this->oldGameObjectDataList[i].newOrientation = physicsComponent->getOrientation();
+
                     physicsComponent->setPosition(this->oldGameObjectDataList[i].oldPosition);
                     physicsComponent->setScale(this->oldGameObjectDataList[i].oldScale);
                     physicsComponent->setOrientation(this->oldGameObjectDataList[i].oldOrientation);
@@ -114,14 +117,18 @@ namespace NOWA
                 }
                 else
                 {
+                    Ogre::String name = gameObjectPtr->getName();
+
                     // If there is no physics component set the data directly for the game object scene node
                     this->oldGameObjectDataList[i].newPosition = gameObjectPtr->getSceneNode()->getPosition();
                     this->oldGameObjectDataList[i].newScale = gameObjectPtr->getSceneNode()->getScale();
                     this->oldGameObjectDataList[i].newOrientation = gameObjectPtr->getSceneNode()->getOrientation();
 
+                    // Not suitable for setting a hard position
                     NOWA::GraphicsModule::getInstance()->updateNodeTransform(gameObjectPtr->getSceneNode(), this->oldGameObjectDataList[i].oldPosition, this->oldGameObjectDataList[i].oldOrientation, this->oldGameObjectDataList[i].oldScale, false,
                         true);
 
+                    // Already on render thread
                     /*gameObjectPtr->getSceneNode()->setPosition(this->oldGameObjectDataList[i].oldPosition);
                     gameObjectPtr->getSceneNode()->setScale(this->oldGameObjectDataList[i].oldScale);
                     gameObjectPtr->getSceneNode()->setOrientation(this->oldGameObjectDataList[i].oldOrientation);*/
@@ -180,13 +187,14 @@ namespace NOWA
                 }
                 else
                 {
-                    // If there is no physics component set the data directly for the game object scene node
+                    // Not suitable for setting a hard position
                     NOWA::GraphicsModule::getInstance()->updateNodeTransform(gameObjectPtr->getSceneNode(), this->oldGameObjectDataList[i].newPosition, this->oldGameObjectDataList[i].newOrientation, this->oldGameObjectDataList[i].newScale, false,
                         true);
 
-                    // gameObjectPtr->getSceneNode()->setPosition(this->oldGameObjectDataList[i].newPosition);
-                    // gameObjectPtr->getSceneNode()->setScale(this->oldGameObjectDataList[i].newScale);
-                    // gameObjectPtr->getSceneNode()->setOrientation(this->oldGameObjectDataList[i].newOrientation);
+                    // Already on render thread
+                    /*gameObjectPtr->getSceneNode()->setPosition(this->oldGameObjectDataList[i].newPosition);
+                    gameObjectPtr->getSceneNode()->setScale(this->oldGameObjectDataList[i].newScale);
+                    gameObjectPtr->getSceneNode()->setOrientation(this->oldGameObjectDataList[i].newOrientation);*/
                 }
                 i++;
             }
@@ -371,7 +379,8 @@ namespace NOWA
     class AttributeGameObjectComponentUndoCommand : public ICommand
     {
     public:
-        AttributeGameObjectComponentUndoCommand(std::vector<EditorManager::GameObjectData> oldGameObjectDataList) : oldGameObjectDataList(std::move(oldGameObjectDataList))
+        AttributeGameObjectComponentUndoCommand(std::vector<EditorManager::GameObjectData> oldGameObjectDataList)
+            : oldGameObjectDataList(std::move(oldGameObjectDataList))
         {
         }
 
@@ -456,8 +465,8 @@ namespace NOWA
     class AddGameObjectUndoCommand : public ICommand
     {
     public:
-        AddGameObjectUndoCommand(Ogre::SceneManager* sceneManager, Ogre::SceneNode* placeNode, std::vector<Ogre::String> meshData, NOWA::eType type, unsigned int descriptorId, EditorManager* editorManager) :
-            sceneManager(sceneManager),
+        AddGameObjectUndoCommand(Ogre::SceneManager* sceneManager, Ogre::SceneNode* placeNode, std::vector<Ogre::String> meshData, NOWA::eType type, unsigned int descriptorId, EditorManager* editorManager)
+            : sceneManager(sceneManager),
             position(placeNode->getPosition()),
             scale(placeNode->getScale()),
             orientation(placeNode->getOrientation()),
@@ -485,107 +494,103 @@ namespace NOWA
 
         virtual void redo(void) override
         {
-            NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+            // ITEM has no descriptor by design — nullptr is the correct result.
+            // Every other eType must have a registered descriptor.
+            const auto* desc = GameObjectFactory::getInstance()->findTypeDescriptor(this->descriptorId);
+
+            if (nullptr != desc && desc->forceZeroTransform)
             {
-                // ITEM has no descriptor by design — nullptr is the correct result.
-                // Every other eType must have a registered descriptor.
-                const auto* desc = GameObjectFactory::getInstance()->findTypeDescriptor(this->descriptorId);
+                this->position = Ogre::Vector3::ZERO;
+                this->orientation = Ogre::Quaternion::IDENTITY;
+                this->scale = Ogre::Vector3::UNIT_SCALE;
+            }
 
-                if (nullptr != desc && desc->forceZeroTransform)
+            this->objectNode = this->sceneManager->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_STATIC);
+            this->objectNode->setPosition(this->position);
+            this->objectNode->setScale(this->scale);
+            this->objectNode->setOrientation(this->orientation);
+
+            if (0 == this->id)
+            {
+                this->id = NOWA::makeUniqueID();
+            }
+
+            Ogre::String meshName;
+            Ogre::MovableObject* newMovableObject = nullptr;
+
+            // desc == nullptr -> ITEM: mesh file chosen by the user in the asset browser.
+            // desc with needsMeshItem=true  -> placeholderMeshName stored in meshData[0]
+            //     by attachMeshToPlaceNode; becomes the persistent Ogre::Item.
+            // desc with needsMeshItem=false -> no Ogre::Item; displayName drives naming.
+            if (nullptr == desc || desc->needsMeshItem)
+            {
+                meshName = this->meshData[0];
+
+                Ogre::Item* newItem = this->sceneManager->createItem(meshName, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, Ogre::SCENE_STATIC);
+
+                this->objectNode->attachObject(newItem);
+                newMovableObject = newItem;
+
+                for (size_t i = 1; i < this->meshData.size(); i++)
                 {
-                    this->position = Ogre::Vector3::ZERO;
-                    this->orientation = Ogre::Quaternion::IDENTITY;
-                    this->scale = Ogre::Vector3::UNIT_SCALE;
+                    newItem->getSubItem(i - 1)->setDatablock(this->meshData[i]);
                 }
 
-                this->objectNode = this->sceneManager->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_STATIC);
-                this->objectNode->setPosition(this->position);
-                this->objectNode->setScale(this->scale);
-                this->objectNode->setOrientation(this->orientation);
-
-                if (0 == this->id)
+                size_t dotPos = meshName.find('.');
+                if (Ogre::String::npos != dotPos)
                 {
-                    this->id = NOWA::makeUniqueID();
+                    meshName = meshName.substr(0, dotPos);
+                }
+            }
+            else
+            {
+                // needsMeshItem=false — desc is guaranteed non-null here.
+                meshName = desc->displayName;
+            }
+
+            Ogre::String gameObjectName = meshName + "_0";
+            AppStateManager::getSingletonPtr()->getGameObjectController()->getValidatedGameObjectName(gameObjectName);
+
+            if (nullptr != newMovableObject)
+            {
+                newMovableObject->setName(gameObjectName);
+            }
+
+            this->objectNode->setName(gameObjectName);
+
+            GameObjectPtr gameObjectPtr = GameObjectFactory::getInstance()->createGameObject(this->sceneManager, this->objectNode, newMovableObject, this->type, this->id);
+
+            if (nullptr != gameObjectPtr && nullptr != desc)
+            {
+                gameObjectPtr->setDefaultDirection(desc->defaultDirection);
+
+                if (desc->preComponentsCallback)
+                {
+                    desc->preComponentsCallback();
                 }
 
-                Ogre::String meshName;
-                Ogre::MovableObject* newMovableObject = nullptr;
-
-                // desc == nullptr -> ITEM: mesh file chosen by the user in the asset browser.
-                // desc with needsMeshItem=true  -> placeholderMeshName stored in meshData[0]
-                //     by attachMeshToPlaceNode; becomes the persistent Ogre::Item.
-                // desc with needsMeshItem=false -> no Ogre::Item; displayName drives naming.
-                if (nullptr == desc || desc->needsMeshItem)
+                for (const Ogre::String& compName : desc->autoComponents)
                 {
-                    meshName = this->meshData[0];
-
-                    Ogre::Item* newItem = this->sceneManager->createItem(meshName, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, Ogre::SCENE_STATIC);
-
-                    this->objectNode->attachObject(newItem);
-                    newMovableObject = newItem;
-
-                    for (size_t i = 1; i < this->meshData.size(); i++)
+                    if (desc->guardWithPluginCheck && !GameObjectFactory::getInstance()->getComponentFactory()->hasComponent(compName))
                     {
-                        newItem->getSubItem(i - 1)->setDatablock(this->meshData[i]);
+                        continue;
                     }
 
-                    size_t dotPos = meshName.find('.');
-                    if (Ogre::String::npos != dotPos)
-                    {
-                        meshName = meshName.substr(0, dotPos);
-                    }
-                }
-                else
-                {
-                    // needsMeshItem=false — desc is guaranteed non-null here.
-                    meshName = desc->displayName;
+                    const bool isNewComponent = desc->enterMeshModifyMode;
+                    GameObjectFactory::getInstance()->createComponent(gameObjectPtr, compName, isNewComponent);
                 }
 
-                Ogre::String gameObjectName = meshName + "_0";
-                AppStateManager::getSingletonPtr()->getGameObjectController()->getValidatedGameObjectName(gameObjectName);
-
-                if (nullptr != newMovableObject)
+                if (desc->postComponentsCallback)
                 {
-                    newMovableObject->setName(gameObjectName);
+                    desc->postComponentsCallback();
                 }
 
-                this->objectNode->setName(gameObjectName);
-
-                GameObjectPtr gameObjectPtr = GameObjectFactory::getInstance()->createGameObject(this->sceneManager, this->objectNode, newMovableObject, this->type, this->id);
-
-                if (nullptr != gameObjectPtr && nullptr != desc)
+                if (desc->enterMeshModifyMode)
                 {
-                    gameObjectPtr->setDefaultDirection(desc->defaultDirection);
-
-                    if (desc->preComponentsCallback)
-                    {
-                        desc->preComponentsCallback();
-                    }
-
-                    for (const Ogre::String& compName : desc->autoComponents)
-                    {
-                        if (desc->guardWithPluginCheck && !GameObjectFactory::getInstance()->getComponentFactory()->hasComponent(compName))
-                        {
-                            continue;
-                        }
-
-                        const bool isNewComponent = desc->enterMeshModifyMode;
-                        GameObjectFactory::getInstance()->createComponent(gameObjectPtr, compName, isNewComponent);
-                    }
-
-                    if (desc->postComponentsCallback)
-                    {
-                        desc->postComponentsCallback();
-                    }
-
-                    if (desc->enterMeshModifyMode)
-                    {
-                        this->editorManager->currentPlaceType = NOWA::eType::NONE;
-                        this->editorManager->setManipulationMode(EditorManager::EDITOR_MESH_MODIFY_MODE);
-                    }
+                    this->editorManager->currentPlaceType = NOWA::eType::NONE;
+                    this->editorManager->setManipulationMode(EditorManager::EDITOR_MESH_MODIFY_MODE);
                 }
-            };
-            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "AddGameObjectUndoCommand::redo");
+            }
 
             boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
             NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGeometryModified);
@@ -788,8 +793,8 @@ namespace NOWA
     class CloneGameObjectGroupUndoCommand : public ICommand
     {
     public:
-        CloneGameObjectGroupUndoCommand(EditorManager* editorManager, std::vector<unsigned long> gameObjectIds) :
-            editorManager(editorManager),
+        CloneGameObjectGroupUndoCommand(EditorManager* editorManager, std::vector<unsigned long> gameObjectIds)
+            : editorManager(editorManager),
             gameObjectIds(gameObjectIds),
             dotSceneExportModule(new DotSceneExportModule()),
             dotSceneImportModule(new DotSceneImportModule(editorManager->getSceneManager()))
@@ -923,7 +928,9 @@ namespace NOWA
     class CloneGameObjectsUndoCommand : public ICommand
     {
     public:
-        CloneGameObjectsUndoCommand(EditorManager* editorManager, std::vector<unsigned long> gameObjectIds) : editorManager(editorManager), gameObjectIds(gameObjectIds)
+        CloneGameObjectsUndoCommand(EditorManager* editorManager, std::vector<unsigned long> gameObjectIds)
+            : editorManager(editorManager),
+            gameObjectIds(gameObjectIds)
         {
             // Resize with zero, because the id's will be filled later
             this->gameObjectClonedIds.resize(this->gameObjectIds.size(), 0);
@@ -936,7 +943,7 @@ namespace NOWA
 
         virtual void undo(void) override
         {
-            ENQUEUE_RENDER_COMMAND_WAIT("CloneGameObjectsUndoCommand::undo", { AppStateManager::getSingletonPtr()->getGameObjectController()->stop(); });
+            AppStateManager::getSingletonPtr()->getGameObjectController()->stop();
 
             for (size_t i = 0; i < this->gameObjectIds.size(); i++)
             {
@@ -960,7 +967,7 @@ namespace NOWA
 
         virtual void redo(void) override
         {
-            ENQUEUE_RENDER_COMMAND_WAIT("CloneGameObjectsUndoCommand::undo", { AppStateManager::getSingletonPtr()->getGameObjectController()->stop(); });
+            AppStateManager::getSingletonPtr()->getGameObjectController()->stop();
 
             this->editorManager->getSelectionManager()->clearSelection();
             // First disconnect game objects, because during clone, when there are joint components etc. only those to be cloned joint components may be in a list
@@ -1014,19 +1021,31 @@ namespace NOWA
     class CameraPositionUndoCommand : public ICommand
     {
     public:
-        CameraPositionUndoCommand(Ogre::Camera* camera) : camera(camera), oldPosition(camera->getPositionForViewUpdate()), newPosition(Ogre::Vector3::ZERO)
+        CameraPositionUndoCommand(Ogre::Camera* camera)
+            : camera(camera),
+            oldPosition(camera->getPositionForViewUpdate()),
+            newPosition(Ogre::Vector3::ZERO)
         {
         }
 
         virtual void undo(void) override
         {
             this->newPosition = this->camera->getPosition();
-            NOWA::GraphicsModule::getInstance()->updateCameraPosition(this->camera, this->oldPosition);
+
+            auto baseCamera = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior(this->camera);
+            if (nullptr != baseCamera)
+            {
+                baseCamera->snapToPosition(this->oldPosition);
+            }
         }
 
         virtual void redo(void) override
         {
-            NOWA::GraphicsModule::getInstance()->updateCameraPosition(this->camera, this->newPosition);
+            auto baseCamera = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior(this->camera);
+            if (nullptr != baseCamera)
+            {
+                baseCamera->snapToPosition(this->newPosition);
+            }
         }
 
     private:
@@ -1040,19 +1059,30 @@ namespace NOWA
     class CameraOrientationUndoCommand : public ICommand
     {
     public:
-        CameraOrientationUndoCommand(Ogre::Camera* camera) : camera(camera), oldOrientation(camera->getOrientationForViewUpdate()), newOrientation(Ogre::Quaternion::IDENTITY)
+        CameraOrientationUndoCommand(Ogre::Camera* camera)
+            : camera(camera),
+            oldOrientation(camera->getOrientationForViewUpdate()),
+            newOrientation(Ogre::Quaternion::IDENTITY)
         {
         }
 
         virtual void undo(void) override
         {
             this->newOrientation = this->camera->getOrientation();
-            NOWA::GraphicsModule::getInstance()->updateCameraOrientation(this->camera, this->oldOrientation);
+            auto baseCamera = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior(this->camera);
+            if (nullptr != baseCamera)
+            {
+                baseCamera->snapToOrientation(this->oldOrientation);
+            }
         }
 
         virtual void redo(void) override
         {
-            NOWA::GraphicsModule::getInstance()->updateCameraOrientation(this->camera, this->newOrientation);
+            auto baseCamera = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior(this->camera);
+            if (nullptr != baseCamera)
+            {
+                baseCamera->snapToOrientation(this->newOrientation);
+            }
         }
 
     private:
@@ -1066,8 +1096,8 @@ namespace NOWA
     class CameraTransformUndoCommand : public ICommand
     {
     public:
-        CameraTransformUndoCommand(Ogre::Camera* camera) :
-            camera(camera),
+        CameraTransformUndoCommand(Ogre::Camera* camera)
+            : camera(camera),
             oldPosition(camera->getPositionForViewUpdate()),
             newPosition(Ogre::Vector3::ZERO),
             oldOrientation(camera->getOrientationForViewUpdate()),
@@ -1079,12 +1109,22 @@ namespace NOWA
         {
             this->newPosition = this->camera->getPosition();
             this->newOrientation = this->camera->getOrientation();
-            NOWA::GraphicsModule::getInstance()->updateCameraTransform(this->camera, this->oldPosition, this->oldOrientation);
+            auto baseCamera = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior(this->camera);
+            if (nullptr != baseCamera)
+            {
+                baseCamera->snapToPosition(this->oldPosition);
+                baseCamera->snapToOrientation(this->oldOrientation);
+            }
         }
 
         virtual void redo(void) override
         {
-            NOWA::GraphicsModule::getInstance()->updateCameraTransform(this->camera, this->newPosition, this->newOrientation);
+            auto baseCamera = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior(this->camera);
+            if (nullptr != baseCamera)
+            {
+                baseCamera->snapToPosition(this->newPosition);
+                baseCamera->snapToOrientation(this->newOrientation);
+            }
         }
 
     private:
@@ -1101,8 +1141,8 @@ namespace NOWA
     class TerrainModifyUndoCommand : public ICommand
     {
     public:
-        TerrainModifyUndoCommand(const std::vector<Ogre::uint16>& oldHeightData, const std::vector<Ogre::uint16>& newHeightData, unsigned long gameObjectId, bool isAdditional = false) :
-            oldHeightData(oldHeightData),
+        TerrainModifyUndoCommand(const std::vector<Ogre::uint16>& oldHeightData, const std::vector<Ogre::uint16>& newHeightData, unsigned long gameObjectId, bool isAdditional = false)
+            : oldHeightData(oldHeightData),
             newHeightData(newHeightData),
             gameObjectId(gameObjectId)
         {
@@ -1167,8 +1207,8 @@ namespace NOWA
     class TerrainPaintUndoCommand : public ICommand
     {
     public:
-        TerrainPaintUndoCommand(const std::vector<Ogre::uint8>& oldBlendWeightData, const std::vector<Ogre::uint8>& newBlendWeightData, unsigned long gameObjectId, bool isAdditional = false) :
-            oldBlendWeightData(oldBlendWeightData),
+        TerrainPaintUndoCommand(const std::vector<Ogre::uint8>& oldBlendWeightData, const std::vector<Ogre::uint8>& newBlendWeightData, unsigned long gameObjectId, bool isAdditional = false)
+            : oldBlendWeightData(oldBlendWeightData),
             newBlendWeightData(newBlendWeightData),
             gameObjectId(gameObjectId)
         {
@@ -1227,8 +1267,8 @@ namespace NOWA
     class RoadModifyUndoCommand : public ICommand
     {
     public:
-        RoadModifyUndoCommand(const std::vector<unsigned char>& oldRoadData, const std::vector<unsigned char>& newRoadData, unsigned long gameObjectId, bool isAdditional = false) :
-            oldRoadData(oldRoadData),
+        RoadModifyUndoCommand(const std::vector<unsigned char>& oldRoadData, const std::vector<unsigned char>& newRoadData, unsigned long gameObjectId, bool isAdditional = false)
+            : oldRoadData(oldRoadData),
             newRoadData(newRoadData),
             gameObjectId(gameObjectId)
         {
@@ -1294,12 +1334,10 @@ namespace NOWA
     class WallModifyUndoCommand : public ICommand
     {
     public:
-        WallModifyUndoCommand(const std::vector<unsigned char>& oldWallData, const std::vector<unsigned char>& newWallData,
-            unsigned long gameObjectId, // <- Store ID, not pointer
-            bool isAdditional = false) :
-            oldWallData(oldWallData),
+        WallModifyUndoCommand(const std::vector<unsigned char>& oldWallData, const std::vector<unsigned char>& newWallData, unsigned long gameObjectId, bool isAdditional = false)
+            : oldWallData(oldWallData),
             newWallData(newWallData),
-            gameObjectId(gameObjectId) // <- Store ID
+            gameObjectId(gameObjectId)
         {
             this->isAdditional = isAdditional;
         }
@@ -1365,7 +1403,10 @@ namespace NOWA
     class MeshEditUndoCommand : public ICommand
     {
     public:
-        MeshEditUndoCommand(const std::vector<unsigned char>& oldData, const std::vector<unsigned char>& newData, unsigned long gameObjectId) : oldData(oldData), newData(newData), gameObjectId(gameObjectId)
+        MeshEditUndoCommand(const std::vector<unsigned char>& oldData, const std::vector<unsigned char>& newData, unsigned long gameObjectId)
+            : oldData(oldData),
+            newData(newData),
+            gameObjectId(gameObjectId)
         {
         }
 
@@ -1410,7 +1451,10 @@ namespace NOWA
     class PlanetTerraModifyUndoCommand : public ICommand
     {
     public:
-        PlanetTerraModifyUndoCommand(const std::vector<unsigned char>& oldData, const std::vector<unsigned char>& newData, unsigned long gameObjectId) : oldData(oldData), newData(newData), gameObjectId(gameObjectId)
+        PlanetTerraModifyUndoCommand(const std::vector<unsigned char>& oldData, const std::vector<unsigned char>& newData, unsigned long gameObjectId)
+            : oldData(oldData),
+            newData(newData),
+            gameObjectId(gameObjectId)
         {
         }
 

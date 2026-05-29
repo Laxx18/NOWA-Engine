@@ -116,6 +116,10 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ProceduralStairsComponent",
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PlanetTerraComponent", "PlanetTerraComponent\PlanetTerraComponent.vcxproj", "{DA99534D-FBEE-4598-BF4C-14CF6BEA49BF}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ProceduralPlanetComponent", "ProceduralPlanetComponent\ProceduralPlanetComponent.vcxproj", "{345BF13C-3CB4-4ABA-95C4-901CC1577514}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PlanetOceanComponent", "PlanetOceanComponent\PlanetOceanComponent.vcxproj", "{62AD74CD-E722-4429-A187-F19D3D87625D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -342,6 +346,14 @@ Global
 		{DA99534D-FBEE-4598-BF4C-14CF6BEA49BF}.Debug|x64.Build.0 = Debug|x64
 		{DA99534D-FBEE-4598-BF4C-14CF6BEA49BF}.Release|x64.ActiveCfg = Release|x64
 		{DA99534D-FBEE-4598-BF4C-14CF6BEA49BF}.Release|x64.Build.0 = Release|x64
+		{345BF13C-3CB4-4ABA-95C4-901CC1577514}.Debug|x64.ActiveCfg = Debug|x64
+		{345BF13C-3CB4-4ABA-95C4-901CC1577514}.Debug|x64.Build.0 = Debug|x64
+		{345BF13C-3CB4-4ABA-95C4-901CC1577514}.Release|x64.ActiveCfg = Release|x64
+		{345BF13C-3CB4-4ABA-95C4-901CC1577514}.Release|x64.Build.0 = Release|x64
+		{62AD74CD-E722-4429-A187-F19D3D87625D}.Debug|x64.ActiveCfg = Debug|x64
+		{62AD74CD-E722-4429-A187-F19D3D87625D}.Debug|x64.Build.0 = Debug|x64
+		{62AD74CD-E722-4429-A187-F19D3D87625D}.Release|x64.ActiveCfg = Release|x64
+		{62AD74CD-E722-4429-A187-F19D3D87625D}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

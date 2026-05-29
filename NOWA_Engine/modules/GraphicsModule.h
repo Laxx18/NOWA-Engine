@@ -128,6 +128,8 @@ namespace NOWA
             CameraTransformData transforms[NUM_TRANSFORM_BUFFERS];
             bool active = false;
             bool isNew = false;
+            bool updatedThisFrame = false;
+            int stableFrames = 0;
         };
 
         struct OldBoneTransforms
@@ -136,6 +138,8 @@ namespace NOWA
             TransformData transforms[NUM_TRANSFORM_BUFFERS];
             bool active = false;
             bool isNew = false;
+            bool updatedThisFrame = false;
+            int stableFrames = 0;
         };
 
         struct BoneTransforms
@@ -144,6 +148,8 @@ namespace NOWA
             TransformData transforms[NUM_TRANSFORM_BUFFERS];
             bool active = false;
             bool isNew = false;
+            bool updatedThisFrame = false;
+            int stableFrames = 0;
         };
 
         struct PassTransforms

@@ -338,6 +338,38 @@ namespace NOWA
         this->lastValue = rotationValue;
     }
 
+    void BaseCamera::snapToPosition(const Ogre::Vector3& position)
+    {
+        this->lastMoveValue = Ogre::Vector3::ZERO;
+        this->lastValue = Ogre::Vector2::ZERO;
+        this->firstTimeMoveValueSet = true;
+        this->firstTimeValueSet = true;
+
+        // Set directly on the camera so getPositionForViewUpdate() returns
+        // the correct value immediately on the next moveCamera call.
+        // This is safe here because we're on the main thread and snapToPosition
+        // is only called when the simulation is stopped (editor mode).
+        this->camera->setPosition(position);
+
+        // Also write into GraphicsModule so the render thread interpolates
+        // from the correct position and not from stale buffer history.
+        NOWA::GraphicsModule::getInstance()->updateCameraPosition(this->camera, position, true);
+    }
+
+    void BaseCamera::snapToOrientation(const Ogre::Quaternion& orientation)
+    {
+        this->lastMoveValue = Ogre::Vector3::ZERO;
+        this->lastValue = Ogre::Vector2::ZERO;
+        this->firstTimeMoveValueSet = true;
+        this->firstTimeValueSet = true;
+
+        this->camera->setOrientation(orientation);
+
+        // Now write the authoritative position — fireAndForget=true deactivates
+        // the tracked entry so updateAllTransforms won't interpolate over it.
+        NOWA::GraphicsModule::getInstance()->updateCameraOrientation(this->camera, orientation, true);
+    }
+
     Ogre::Vector3 BaseCamera::getPosition(void)
     {
         return this->camera->getPositionForViewUpdate();

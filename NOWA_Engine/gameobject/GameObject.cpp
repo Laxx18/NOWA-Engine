@@ -2672,16 +2672,17 @@ namespace NOWA
 
 	void GameObject::showBoundingBox(bool show)
 	{
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObject::showBoundingBox", _1(show),
-		{
-			if (this->boundingBoxDraw)
-			{
-				if (show)
-					this->boundingBoxDraw->track(this->movableObject);
-				else
-					this->boundingBoxDraw->track(nullptr);
-			}
-		});
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait([this, show]()
+        {
+            if (show)
+            {
+                this->boundingBoxDraw->track(this->movableObject);
+            }
+            else
+            {
+                this->boundingBoxDraw->track(nullptr);
+            }
+        }, "GameObject::showBoundingBox");
 	}
 
 	Variant* GameObject::getAttribute(const Ogre::String& attributeName)

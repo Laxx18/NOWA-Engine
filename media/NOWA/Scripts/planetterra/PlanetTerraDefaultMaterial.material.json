@@ -1,0 +1,141 @@
+{
+    "comment" :
+    [
+        "PlanetTerra default PBS material - INITIAL TEMPLATE ONLY.",
+        "DatablockPbsComponent clones this on first use and stores its own per-instance data.",
+        "",
+        "Normal maps: all detail NMs must be BC5_SNORM DDS.",
+        "UV scale: adjust via PlanetTerraComponent AttrDetailUVScale (default 128)."
+    ],
+
+    "samplers" :
+    {
+        "PlanetTerra_Sampler" :
+        {
+            "min"              : "anisotropic",
+            "mag"              : "anisotropic",
+            "mip"              : "anisotropic",
+            "u"                : "wrap",
+            "v"                : "wrap",
+            "w"                : "wrap",
+            "miplodbias"       : 0,
+            "max_anisotropic"  : 8,
+            "compare_function" : "disabled",
+            "border"           : [1, 1, 1, 1],
+            "min_lod"          : -3.40282e+38,
+            "max_lod"          : 3.40282e+38
+        }
+    },
+
+    "macroblocks" :
+    {
+        "PlanetTerra_Macroblock" :
+        {
+            "scissor_test"           : false,
+            "depth_check"            : true,
+            "depth_write"            : true,
+            "depth_function"         : "less_equal",
+            "depth_bias_constant"    : 0,
+            "depth_bias_slope_scale" : 0,
+            "cull_mode"              : "clockwise",
+            "polygon_mode"           : "solid"
+        }
+    },
+
+    "blendblocks" :
+    {
+        "PlanetTerra_Blendblock" :
+        {
+            "alpha_to_coverage"  : false,
+            "blendmask"          : "rgba",
+            "separate_blend"     : false,
+            "src_blend_factor"   : "one",
+            "dst_blend_factor"   : "zero",
+            "blend_operation"    : "add"
+        }
+    },
+
+    "pbs" :
+    {
+        "PlanetTerraDefaultMaterial" :
+        {
+            "macroblock"        : "PlanetTerra_Macroblock",
+            "blendblock"        : "PlanetTerra_Blendblock",
+            "shadow_const_bias" : 0.001,
+
+            "workflow" : "specular_fresnel",
+            "brdf"     : "cook_torrance",
+
+            "roughness" : 0.85,
+
+            "fresnel" :
+            {
+                "value" : 0.02,
+                "mode"  : "coeff"
+            },
+
+            "specular" :
+            {
+                "value" : [0.04, 0.04, 0.04]
+            },
+
+            "diffuse" :
+            {
+                "value"      : [1, 1, 1],
+                "background" : [1, 1, 1, 1],
+                "texture"    : "ground_dirt_gardenD.png",
+                "sampler"    : "PlanetTerra_Sampler"
+            },
+			
+			"normal" :
+            {
+                "comment" : "flat_normal.dds (BC5_SNORM) - required to declare textureMaps array in shader.",
+                "value"   : 0.0,
+                "texture" : "ground_dirt_gardenN.dds",
+                "sampler" : "PlanetTerra_Sampler"
+            },
+
+            "detail_weight" :
+            {
+                "texture" : "PlanetTerraBlendDefault.png",
+                "sampler" : "PlanetTerra_Sampler"
+            },
+
+            "detail_diffuse0" :
+            {
+                "mode"    : "NormalNonPremul",
+                "offset"  : [0, 0],
+                "scale"   : [128, 128],
+                "texture" : "adesert_cracks_d.jpg",
+                "sampler" : "PlanetTerra_Sampler"
+            },
+
+            "detail_diffuse1" :
+            {
+                "mode"    : "NormalNonPremul",
+                "offset"  : [0, 0],
+                "scale"   : [128, 128],
+                "texture" : "grass_green_d.jpg",
+                "sampler" : "PlanetTerra_Sampler"
+            },
+
+            "detail_diffuse2" :
+            {
+                "mode"    : "NormalNonPremul",
+                "offset"  : [0, 0],
+                "scale"   : [128, 128],
+                "texture" : "island_sand_d.jpg",
+                "sampler" : "PlanetTerra_Sampler"
+            },
+
+            "detail_diffuse3" :
+            {
+                "mode"    : "NormalNonPremul",
+                "offset"  : [0, 0],
+                "scale"   : [128, 128],
+                "texture" : "mntn_black_d.jpg",
+                "sampler" : "PlanetTerra_Sampler"
+            }
+        }
+    }
+}

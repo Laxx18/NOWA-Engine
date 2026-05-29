@@ -20,27 +20,22 @@ namespace NOWA
         {
         }
 
-        ~GameObjectsSelectUndoCommand()
-        {
-        }
-
         virtual void undo(void) override
         {
-            // Store the new selection
-            this->newSelectedGameObjectIds.resize(this->selectionManager->getSelectedGameObjects().size());
-            unsigned int i = 0;
-            for (auto it = this->selectionManager->getSelectedGameObjects().cbegin(); it != this->selectionManager->getSelectedGameObjects().cend(); ++it)
+            // Capture new selection now (before we overwrite it)
+            this->newSelectedGameObjectIds.clear();
+            for (auto& kv : this->selectionManager->getSelectedGameObjects())
             {
-                this->newSelectedGameObjectIds[i++] = it->second.gameObject->getId();
+                this->newSelectedGameObjectIds.push_back(kv.second.gameObject->getId());
             }
 
             this->selectionManager->clearSelection();
-            for (size_t i = 0; i < this->oldSelectedGameObjectIds.size(); i++)
+            for (unsigned long id : this->oldSelectedGameObjectIds)
             {
-                GameObjectPtr gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->oldSelectedGameObjectIds[i]);
-                if (nullptr != gameObjectPtr)
+                GameObjectPtr go = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(id);
+                if (nullptr != go)
                 {
-                    this->selectionManager->select(gameObjectPtr->getId());
+                    this->selectionManager->select(go->getId());
                 }
             }
         }
@@ -48,12 +43,12 @@ namespace NOWA
         virtual void redo(void) override
         {
             this->selectionManager->clearSelection();
-            for (size_t i = 0; i < this->newSelectedGameObjectIds.size(); i++)
+            for (unsigned long id : this->newSelectedGameObjectIds)
             {
-                GameObjectPtr gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->newSelectedGameObjectIds[i]);
-                if (nullptr != gameObjectPtr)
+                GameObjectPtr go = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(id);
+                if (nullptr != go)
                 {
-                    this->selectionManager->select(gameObjectPtr->getId());
+                    this->selectionManager->select(go->getId());
                 }
             }
         }
@@ -64,8 +59,10 @@ namespace NOWA
         std::vector<unsigned long> newSelectedGameObjectIds;
     };
 
-    SelectionManager::SelectionManager() :
-        sceneManager(nullptr),
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    SelectionManager::SelectionManager()
+        : sceneManager(nullptr),
         camera(nullptr),
         mouseButtonId(OIS::MB_Left),
         selectionRect(nullptr),
@@ -149,16 +146,12 @@ namespace NOWA
 
         this->categoryId = AppStateManager::getSingletonPtr()->getGameObjectController()->generateCategoryId(this->categories);
 
-        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
-        {
-            this->selectionRect = new SelectionRectangle("SelectionRectangle", this->sceneManager, this->camera);
-            this->selectionNode = this->sceneManager->getRootSceneNode()->createChildSceneNode();
-            this->selectionNode->attachObject(this->selectionRect);
-            this->volumeQuery = this->sceneManager->createPlaneBoundedVolumeQuery(Ogre::PlaneBoundedVolumeList(), this->categoryId);
-            this->selectQuery = this->sceneManager->createRayQuery(Ogre::Ray(), this->categoryId);
-            this->selectQuery->setSortByDistance(true);
-        };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "SelectionManager::init");
+        this->selectionRect = new SelectionRectangle("SelectionRectangle", this->sceneManager, this->camera);
+        this->selectionNode = this->sceneManager->getRootSceneNode()->createChildSceneNode();
+        this->selectionNode->attachObject(this->selectionRect);
+        this->volumeQuery = this->sceneManager->createPlaneBoundedVolumeQuery(Ogre::PlaneBoundedVolumeList(), this->categoryId);
+        this->selectQuery = this->sceneManager->createRayQuery(Ogre::Ray(), this->categoryId);
+        this->selectQuery->setSortByDistance(true);
 
         AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &SelectionManager::handleDeleteGameObject), EventDataDeleteGameObject::getStaticEventType());
     }
@@ -236,6 +229,14 @@ namespace NOWA
         }
     }
 
+    void SelectionManager::internalSnapshotGameObjectSelection(const std::vector<unsigned long>& oldIds)
+    {
+        if (oldIds.size() > 0)
+        {
+            this->selectionCommandModule.pushCommand(std::make_shared<GameObjectsSelectUndoCommand>(this, oldIds));
+        }
+    }
+
     void SelectionManager::handleKeyPress(const OIS::KeyEvent& keyEventRef)
     {
         if (NOWA_K_SELECT == keyEventRef.key)
@@ -266,10 +267,6 @@ namespace NOWA
     void SelectionManager::handleMousePress(const OIS::MouseEvent& evt, OIS::MouseButtonID id)
     {
         this->isSelecting = false;
-
-        // Ugly workaround, because shit OIS is not possible to handle mouse release and key release at once!
-        // That means, if user holds shift and selects game objects and at the same moment release the shift key at the same time as the mouse release,
-        // only the mouse release is detected and shift variable remains switched on!
         this->shiftDown = InputDeviceCore::getSingletonPtr()->isSelectDown();
 
         if (id != this->mouseButtonId)
@@ -279,13 +276,17 @@ namespace NOWA
 
         if (false == this->isSelectingRectangle)
         {
-            // Snapshot for undo redo selection
+            // Capture OLD selection before any changes
+            std::vector<unsigned long> oldIds;
             if (false == Core::getSingletonPtr()->getIsGame())
             {
-                this->snapshotGameObjectSelection();
+                oldIds.reserve(this->selectedGameObjects.size());
+                for (auto& kv : this->selectedGameObjects)
+                {
+                    oldIds.push_back(kv.second.gameObject->getId());
+                }
             }
 
-            // Clear all selected objects, if shift is not hold
             if (false == this->shiftDown)
             {
                 this->clearSelection();
@@ -293,15 +294,11 @@ namespace NOWA
 
             const Ogre::Real absX = evt.state.X.abs;
             const Ogre::Real absY = evt.state.Y.abs;
-
-            // Do only raycast on render thread, no selection modifications there
             unsigned long pickedId = 0;
 
             NOWA::GraphicsModule::RenderCommand renderCommand = [this, absX, absY, &pickedId]()
             {
-                // true at the end: raycast from point does not work correctly so far
                 GameObject* selectedGameObject = AppStateManager::getSingletonPtr()->getGameObjectController()->selectGameObject(absX, absY, this->camera, this->selectQuery, true);
-
                 if (nullptr != selectedGameObject)
                 {
                     pickedId = selectedGameObject->getId();
@@ -309,15 +306,12 @@ namespace NOWA
             };
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "SelectionManager::handleMousePress raycast");
 
-            // ---- MAIN THREAD applies selection changes ----
             if (0 != pickedId)
             {
                 GameObjectPtr gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(pickedId);
                 if (nullptr != gameObjectPtr)
                 {
                     auto it = this->selectedGameObjects.find(pickedId);
-
-                    // Toggle behaviour: if already selected -> unselect, else select
                     if (it != this->selectedGameObjects.end())
                     {
                         this->applySelectInternal(gameObjectPtr.get(), false, false);
@@ -330,12 +324,16 @@ namespace NOWA
             }
             else
             {
-                // Nothing found => unselect everything (only if shift is not down)
-                // If shift is down, user usually expects "add/remove" behaviour, not wipe selection on empty space click.
                 if (false == this->shiftDown)
                 {
                     this->clearSelection();
                 }
+            }
+
+            // Snapshot with the OLD ids captured before any changes
+            if (false == Core::getSingletonPtr()->getIsGame())
+            {
+                this->internalSnapshotGameObjectSelection(oldIds);
             }
         }
 
@@ -484,99 +482,93 @@ namespace NOWA
         auto hitIds = std::make_shared<std::vector<unsigned long>>();
         auto volCopy = vol;
 
-        NOWA::GraphicsModule::RenderCommand renderCommand = [this, hitIds, volCopy, viewMatrix, projMatrix, camPos, ndcLeft, ndcRight, ndcTop, ndcBottom, backDistance]()
+        Ogre::PlaneBoundedVolumeList volList;
+        volList.push_back(volCopy);
+
+        this->volumeQuery->setVolumes(volList);
+        Ogre::SceneQueryResult qryresult = this->volumeQuery->execute();
+
+        for (auto* movable : qryresult.movables)
         {
-            Ogre::PlaneBoundedVolumeList volList;
-            volList.push_back(volCopy);
-
-            this->volumeQuery->setVolumes(volList);
-            Ogre::SceneQueryResult qryresult = this->volumeQuery->execute();
-
-            for (auto* movable : qryresult.movables)
+            if (!movable)
             {
-                if (!movable)
+                continue;
+            }
+
+            const Ogre::String& type = movable->getMovableType();
+            if (type != "Entity" && type != "Item")
+            {
+                continue;
+            }
+
+            // visibility check
+            Ogre::Item* it = static_cast<Ogre::Item*>(movable);
+            if (!it->getVisible())
+            {
+                continue;
+            }
+
+            size_t vertexCount = 0;
+            size_t indexCount = 0;
+            Ogre::Vector3* vertices = nullptr;
+            unsigned long* indices = nullptr;
+
+            Ogre::Item* item = static_cast<Ogre::Item*>(movable);
+            MathHelper::getInstance()->getMeshInformation(item->getMesh(), vertexCount, vertices, indexCount, indices, item->getParentNode()->_getDerivedPosition(), item->getParentNode()->_getDerivedOrientation(),
+                item->getParentNode()->getScale());
+
+            bool hitfound = false;
+
+            for (size_t i = 0; i < indexCount; ++i)
+            {
+                const Ogre::Vector3 vertexPos = vertices[indices[i]];
+
+                if ((vertexPos - camPos).length() > backDistance)
                 {
                     continue;
                 }
 
-                const Ogre::String& type = movable->getMovableType();
-                if (type != "Entity" && type != "Item")
+                const Ogre::Vector3 eyeSpacePos = viewMatrix * vertexPos;
+                if (eyeSpacePos.z >= 0) // behind camera
                 {
                     continue;
                 }
 
-                // visibility check
-                Ogre::Item* it = static_cast<Ogre::Item*>(movable);
-                if (!it->getVisible())
+                const Ogre::Vector3 screenSpacePos = projMatrix * eyeSpacePos;
+
+                if (screenSpacePos.x > ndcLeft && screenSpacePos.x < ndcRight && screenSpacePos.y < ndcTop && screenSpacePos.y > ndcBottom)
                 {
-                    continue;
-                }
+                    hitfound = true;
 
-                size_t vertexCount = 0;
-                size_t indexCount = 0;
-                Ogre::Vector3* vertices = nullptr;
-                unsigned long* indices = nullptr;
-
-                Ogre::Item* item = static_cast<Ogre::Item*>(movable);
-                MathHelper::getInstance()->getMeshInformation(item->getMesh(), vertexCount, vertices, indexCount, indices, item->getParentNode()->_getDerivedPosition(), item->getParentNode()->_getDerivedOrientation(),
-                    item->getParentNode()->getScale());
-
-                bool hitfound = false;
-
-                for (size_t i = 0; i < indexCount; ++i)
-                {
-                    const Ogre::Vector3 vertexPos = vertices[indices[i]];
-
-                    if ((vertexPos - camPos).length() > backDistance)
+                    GameObject* go = nullptr;
+                    try
                     {
-                        continue;
+                        go = Ogre::any_cast<GameObject*>(movable->getUserObjectBindings().getUserAny());
+                    }
+                    catch (...)
+                    {
+                        go = nullptr;
                     }
 
-                    const Ogre::Vector3 eyeSpacePos = viewMatrix * vertexPos;
-                    if (eyeSpacePos.z >= 0) // behind camera
+                    if (go)
                     {
-                        continue;
+                        hitIds->push_back(go->getId());
                     }
 
-                    const Ogre::Vector3 screenSpacePos = projMatrix * eyeSpacePos;
-
-                    if (screenSpacePos.x > ndcLeft && screenSpacePos.x < ndcRight && screenSpacePos.y < ndcTop && screenSpacePos.y > ndcBottom)
-                    {
-                        hitfound = true;
-
-                        GameObject* go = nullptr;
-                        try
-                        {
-                            go = Ogre::any_cast<GameObject*>(movable->getUserObjectBindings().getUserAny());
-                        }
-                        catch (...)
-                        {
-                            go = nullptr;
-                        }
-
-                        if (go)
-                        {
-                            hitIds->push_back(go->getId());
-                        }
-
-                        break;
-                    }
-                }
-
-                OGRE_FREE(vertices, Ogre::MEMCATEGORY_GEOMETRY);
-                OGRE_FREE(indices, Ogre::MEMCATEGORY_GEOMETRY);
-
-                if (!hitfound)
-                {
-                    continue;
+                    break;
                 }
             }
 
-            this->volumeQuery->clearResults();
-        };
+            OGRE_FREE(vertices, Ogre::MEMCATEGORY_GEOMETRY);
+            OGRE_FREE(indices, Ogre::MEMCATEGORY_GEOMETRY);
 
-        // IMPORTANT: wait so hitIds is ready and we avoid races.
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "SelectionManager::selectGameObjects gather");
+            if (!hitfound)
+            {
+                continue;
+            }
+        }
+
+        this->volumeQuery->clearResults();
 
         // ---- MAIN THREAD applies selection changes (safe) ----
 
@@ -632,13 +624,13 @@ namespace NOWA
 
     void SelectionManager::snapshotGameObjectSelection(void)
     {
-        // Work with ids instead of pointers for undo/redo, because pointer may become invalid when deleted via undo/redo
         std::vector<unsigned long> gameObjectIds(this->selectedGameObjects.size());
         unsigned int i = 0;
         for (auto it = this->selectedGameObjects.cbegin(); it != this->selectedGameObjects.cend(); ++it)
         {
             gameObjectIds[i++] = it->second.gameObject->getId();
         }
+
         if (gameObjectIds.size() > 0)
         {
             this->selectionCommandModule.pushCommand(std::make_shared<GameObjectsSelectUndoCommand>(this, gameObjectIds));

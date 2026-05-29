@@ -147,10 +147,8 @@ namespace NOWA
         bool isActivated(void) const;
 
         /** @brief Sets the planet radius and fully recreates the mesh. */
-        void setRadius(Ogre::Real radius);
-        virtual Ogre::Real getRadius(void) const override;
-
-        virtual const std::vector<Ogre::Vector2>& getUvCoords(void) const override;
+        void setRadius(float radius);
+        float getRadius(void) const;
 
         /** @brief Sets horizontal (longitude) tessellation and recreates the mesh. */
         void setSegmentsH(unsigned int segs);
@@ -312,29 +310,10 @@ namespace NOWA
         {
             return "DetailUVScale";
         }
-
-        static Ogre::String AttrDetail0NMTextureName()
-        {
-            return "Detail0NMTexture";
-        }
-        static Ogre::String AttrDetail1NMTextureName()
-        {
-            return "Detail1NMTexture";
-        }
-        static Ogre::String AttrDetail2NMTextureName()
-        {
-            return "Detail2NMTexture";
-        }
-        static Ogre::String AttrDetail3NMTextureName()
-        {
-            return "Detail3NMTexture";
-        }
-
         static Ogre::String AttrBakeMesh()
         {
             return "Bake Mesh";
         }
-        
         static Ogre::String ActionBakeMesh()
         {
             return "PlanetTerraComponent.BakeMesh";
@@ -438,10 +417,6 @@ namespace NOWA
         Variant* bakeMesh = nullptr;
         Variant* baseUVScale = nullptr;
         Variant* detailUVScale = nullptr;
-        Variant* detail0NMTextureName = nullptr;
-        Variant* detail1NMTextureName = nullptr;
-        Variant* detail2NMTextureName = nullptr;
-        Variant* detail3NMTextureName = nullptr;
     };
 
     using PlanetTerraComponentPtr = boost::shared_ptr<PlanetTerraComponent>;

@@ -24,6 +24,10 @@ namespace NOWA
 
 		virtual void rotateCamera(Ogre::Real dt, bool forJoyStick = false);
 
+		virtual void snapToPosition(const Ogre::Vector3& position);
+
+		virtual void snapToOrientation(const Ogre::Quaternion& orientation);
+
 		virtual Ogre::Vector3 getPosition(void);
 
 		virtual Ogre::Quaternion getOrientation(void);
