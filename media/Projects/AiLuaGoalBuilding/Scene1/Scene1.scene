@@ -762,7 +762,7 @@
 					<property type="12" name="CommonWidget" data="false"/>
 					<property type="7" name="Image" data="SpriteRevealSpinner36x256.png"/>
 					<property type="8" name="TileSize" data="256 256"/>
-					<property type="8" name="RowsCols" data="36 1"/>
+					<property type="8" name="RowsCols" data="1 36"/>
 					<property type="12" name="Horizontal" data="true"/>
 					<property type="12" name="InverseDirection" data="false"/>
 					<property type="6" name="Speed" data="10"/>

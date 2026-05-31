@@ -516,6 +516,39 @@ namespace NOWA
         return "MyGUISpriteComponentBase";
     }
 
+    void MyGuiSpriteComponent::resetAnimation(void)
+    {
+        this->finished = false;
+        this->currentFrame = static_cast<int>(this->startEndIndex->getVector2().x);
+        this->currentRow = 0;
+        this->currentCol = 0;
+        this->timeSinceLastUpdate = 0.0f;
+        this->activated->setValue(true);
+
+        if (nullptr != this->widget)
+        {
+            NOWA::GraphicsModule::RenderCommand cmd = [this]()
+            {
+                if (nullptr != this->widget)
+                {
+                    // Make sprite invisible to mouse so clicks pass through to ItemBox
+                    this->widget->setNeedMouseFocus(false);
+                    this->widget->setInheritsPick(false);
+                    // this->widget->setMaskPick(false);
+                    this->widget->setVisible(true);
+                }
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "MyGuiSpriteComponent::resetAnimation");
+        }
+
+        this->updateFrame();
+    }
+
+    bool MyGuiSpriteComponent::isFinished(void) const
+    {
+        return this->finished;
+    }
+
     void MyGuiSpriteComponent::setImage(const Ogre::String& image)
     {
         this->image->setValue(image);

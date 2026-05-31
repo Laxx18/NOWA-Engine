@@ -25,6 +25,16 @@ namespace NOWA
         virtual void setActivated(bool activated) = 0;
 
         /**
+         * @brief   Resets and starts the animation from frame 0.
+         *          Used by MyGUIItemBoxComponent to restart the animation on slot click
+         *          without going through setActivated(false/true) which has an early-return guard.
+         *          Must be called from the main thread.
+         */
+        virtual void resetAnimation(void) = 0;
+
+        virtual bool isFinished(void) const = 0;
+
+        /**
          * @brief   Repositions and resizes the sprite widget to overlay a specific inventory cell.
          *          Must be called from the render thread.
          */

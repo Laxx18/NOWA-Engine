@@ -8,10 +8,6 @@
 #include "OgreVector3.h"
 #include "OgreVector4.h"
 
-#include <array>
-#include <string>
-#include <vector>
-
 #include "defines.h"
 
 namespace Ogre
@@ -20,55 +16,53 @@ namespace Ogre
     class SceneNode;
     class VertexBufferPacked;
     class HlmsPbsDatablock;
+    class StagingTexture;
+    class TextureGpu;
 }
 
 namespace NOWA
 {
     /**
      * @class PlanetOcean
-     * @brief Spherical ocean mesh animated via CPU Gerstner waves each frame.
+     * @brief Spherical ocean mesh animated via CPU Gerstner waves.
      *
      * Vertex format: pos(3) + normal(3) + tangent(4) + uv(2) = 12 floats.
-     * Uses BT_DYNAMIC_DEFAULT so wave displacement is re-uploaded every frame.
+     * The vertex buffer is BT_DYNAMIC_DEFAULT and re-uploaded every render frame.
      *
-     * Wave model: up to 4 Gerstner waves parameterised by direction, amplitude,
-     * frequency and speed. Each vertex is displaced radially along its unit sphere
-     * normal by the sum of all wave contributions.
+     * Wave model: 4 configurable Gerstner waves. frequency = cycles per hemisphere
+     * (radius-independent). amplitude calibrated for 50m reference planet, scales with radius.
+     *
+     * Normal map: procedurally generated 64x64 texture re-uploaded every frame with
+     * time-varying phase offsets, giving animated water ripple appearance without
+     * any PBS UV animation support. Frequencies scale with radius so physical wave
+     * size is consistent regardless of planet scale.
      */
     class EXPORTED PlanetOcean
     {
     public:
-        // One Gerstner-like wave definition.
         struct WaveParams
         {
             float directionAngle; // Propagation direction angle in radians (0 = +X axis)
-            float amplitude;      // World-space height in metres
-            float frequency;      // Spatial frequency (cycles per metre)
-            float speed;          // Phase speed (metres per second)
-            float steepness;      // Gerstner Q [0..1], 0 = sinusoidal
+            float amplitude;      // Crest height in metres on 50m reference planet
+            float frequency;      // Cycles per hemisphere (radius-independent)
+            float speed;          // Phase speed in radians per second
+            float steepness;      // Reserved for future Gerstner Q term
         };
 
     public:
-        /**
-         * @brief Constructor. Does not allocate GPU resources.
-         * @param objectName Unique name used for the mesh and item.
-         * @param sceneManager Scene manager that owns the item.
-         */
         PlanetOcean(const Ogre::String& objectName, Ogre::SceneManager* sceneManager);
-
         ~PlanetOcean();
 
-        // ---- Lifecycle --------------------------------------------------------
+        // ---- Lifecycle (render thread only) ----------------------------------
 
-        /** Must be called on the render thread (inside enqueueAndWait). */
         bool create(float radius, int segmentsH, int segmentsV, Ogre::SceneNode* attachNode, const Ogre::String& datablockName);
 
         void destroy();
 
-        /** Animate waves and upload new vertex data to GPU. Render thread only. */
+        /** Advance time, update geometry and normal map. Render thread only. */
         void update(float deltaTime);
 
-        // ---- Material ---------------------------------------------------------
+        // ---- Material --------------------------------------------------------
 
         void setDatablockByName(const Ogre::String& name);
         void setDeepColour(const Ogre::Vector3& colour);
@@ -77,17 +71,16 @@ namespace NOWA
         void setTransparency(float transparency);
         void setReflectionTextureName(const Ogre::String& cubemapName);
 
-        // ---- Wave configuration -----------------------------------------------
+        // ---- Wave configuration ----------------------------------------------
 
         void setWave(int index, const WaveParams& params);
         WaveParams getWave(int index) const;
-
         static int getWaveCount();
 
         void setWaveAmplitudeScale(float scale);
         float getWaveAmplitudeScale() const;
 
-        // ---- Accessors --------------------------------------------------------
+        // ---- Accessors -------------------------------------------------------
 
         Ogre::Item* getItem() const;
         Ogre::SceneNode* getAttachedNode() const;
@@ -97,11 +90,23 @@ namespace NOWA
 
     private:
         void generateBaseSphere();
-        void recalculateNormals();
-        void recalculateTangents();
-        Ogre::Item* buildItemFromCPUArrays(const Ogre::String& meshName);
-        void applyWaves();
-        void uploadVertexData();
+        Ogre::Item* buildItem(const Ogre::String& meshName);
+
+        /** Single-pass wave + sphere-normal + pack + geometry upload. */
+        void updateAndUpload();
+
+        /**
+         * @brief Regenerates the 64x64 water normal map with time-varying phases
+         *        and uploads to GPU. Called every frame from update().
+         *        Frequencies are scaled by radius so physical wave size is constant.
+         */
+        void updateNormalMap();
+
+        /**
+         * @brief Creates the GPU texture and staging resources. Called once from create().
+         *        Sets PBSM_NORMAL on the PBS datablock.
+         */
+        void initNormalMapTexture();
 
     private:
         Ogre::String objectName;
@@ -110,21 +115,19 @@ namespace NOWA
         Ogre::Item* oceanItem;
         Ogre::MeshPtr oceanMesh;
 
-        // Dynamic vertex buffer owned by the sub-mesh VAO.
         Ogre::VertexBufferPacked* vertexBuffer;
+        Ogre::TextureGpu* noiseTexture;
+        float normalMapWeight;
+        int noiseTexCounter; // Incremented each create() to guarantee unique texture name
 
-        // Base sphere geometry (CPU, never modified after create()).
+        // Base sphere data computed once at create().
         std::vector<Ogre::Vector3> baseDirs;
-        std::vector<Ogre::Vector3> basePositions;
         std::vector<Ogre::Vector2> uvCoords;
+        std::vector<Ogre::Vector4> tangents;
         std::vector<uint32_t> indices;
+
         size_t vertexCount;
         size_t indexCount;
-
-        // Animated data rebuilt every frame.
-        std::vector<Ogre::Vector3> vertices;
-        std::vector<Ogre::Vector3> normals;
-        std::vector<Ogre::Vector4> tangents;
 
         std::array<WaveParams, 4> waves;
         float oceanTime;

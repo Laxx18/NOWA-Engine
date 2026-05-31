@@ -91,7 +91,7 @@ namespace NOWA
                                       "Formula: sphere_circumference / desired_tile_size_in_metres. "
                                       "Radius 50 (circumference ~314m): 128 = ~2.5m per tile, 64 = ~5m per tile.");
 
-        baseUVScale = new Variant(PlanetTerraComponent::AttrBaseUVScale(), 1.0f, this->attributes);
+        baseUVScale = new Variant(PlanetTerraComponent::AttrBaseUVScale(), 128.0f, this->attributes);
         baseUVScale->setDescription("UV tiling scale for the main diffuse and normal texture (UV set 1). "
                                     "1 = tiles once across the whole sphere (good from-orbit look). "
                                     "Set 64 for a radius-50 planet to tile every ~5m for close-up base terrain. "
@@ -516,23 +516,13 @@ namespace NOWA
                 return;
             }
 
-            // Apply default planet datablock directly on render thread, same as TerraComponent.
-            Ogre::HlmsDatablock* db = WorkspaceModule::getInstance()->getHlmsManager()->getDatablock(PlanetTerraComponent::DefaultMaterialName());
-            if (nullptr != db)
-            {
-                this->planet->getItem()->getSubItem(0)->setDatablock(db);
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PlanetTerraComponent] Applied datablock '" + PlanetTerraComponent::DefaultMaterialName() + "' to '" + this->gameObjectPtr->getName() + "'.");
-            }
-            else
-            {
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-                    "[PlanetTerraComponent] Default datablock '" + PlanetTerraComponent::DefaultMaterialName() + "' not found. Ensure PlanetTerraDefaultMaterial.material.json is in the resource path.");
-            }
+            // internally weight texture is set
+            this->planet->setDatablockByName(PlanetTerraComponent::DefaultMaterialName());
 
             // Prevent the planet Item from being caught by the editor's rubber-band
             // selection box. The planet is picked only via our explicit ray cast in
             // mousePressed, not through the generic editor selection mechanism.
-            this->planet->getItem()->setQueryFlags(0u);
+            // this->planet->getItem()->setQueryFlags(0u);
 
             // Restore sculpt / paint data if loaded from file
             if (!loadedHeightData.empty())
@@ -1036,10 +1026,32 @@ namespace NOWA
             return;
         }
 
-        // internally weight texture is set
-        this->planet->setDatablockByName(PlanetTerraComponent::DefaultMaterialName());
+        auto datablockComp = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<DatablockPbsComponent>());
+        if (!datablockComp)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PlanetTerraComponent] wireBlend: no DatablockPbsComponent on '" + this->gameObjectPtr->getName() + "'.");
+            return;
+        }
 
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PlanetTerraComponent] Blend + NM textures wired on '" + this->gameObjectPtr->getName() + "'.");
+        // Wire the runtime blend texture into the cloned datablock
+        datablockComp->setTextureDirectly(Ogre::PBSM_DETAIL_WEIGHT, this->planet->getBlendTex());
+
+        // Get the cloned datablock from DatablockPbsComponent — NOT from
+        // planet->getItem(), which may still point to the original template
+        // assigned by setDatablockByName() inside create().
+        Ogre::HlmsPbsDatablock* pbsDb = datablockComp->getDataBlock();
+        if (!pbsDb)
+        {
+            return;
+        }
+
+        // Ensure the planet item actually uses this cloned datablock
+        this->planet->getItem()->getSubItem(0)->setDatablock(pbsDb);
+
+        pbsDb->setTextureUvSource(Ogre::PBSM_DIFFUSE, 1u);
+        pbsDb->setTextureUvSource(Ogre::PBSM_NORMAL, 1u);
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PlanetTerraComponent] Blend texture wired + UV1 assigned for '" + this->gameObjectPtr->getName() + "'.");
     }
 
     void PlanetTerraComponent::wireBlendTextureToPbsDatablock(void)
@@ -1356,11 +1368,16 @@ namespace NOWA
         return activated->getBool();
     }
 
-    void PlanetTerraComponent::setRadius(Ogre::Real r)
+    void PlanetTerraComponent::setRadius(float r)
     {
         radius->setValue(r);
         destroyPlanet();
         createPlanet();
+        // Re-wire the new blend texture and NM textures after rebuild.
+        // Without this call, the recreated planet uses the original material's
+        // static weight map (PlanetTerraBlendDefault.png) which may have A=255
+        // causing mntn_black to render at full weight everywhere.
+        this->wireBlendTextureToPbsDatablock();
     }
 
     Ogre::Real PlanetTerraComponent::getRadius() const
@@ -1375,7 +1392,10 @@ namespace NOWA
             return this->planet->getUvCoords();
         }
 
-        return std::vector<Ogre::Vector2>();
+        // The warning is correct — returning a reference to a temporary that gets destroyed immediately.Fix it with a static empty vector
+        // static means it lives for the duration of the program, so the reference is always valid.
+        static const std::vector<Ogre::Vector2> empty;
+        return empty;
     }
 
     void PlanetTerraComponent::setSegmentsH(unsigned int s)
@@ -1490,6 +1510,7 @@ namespace NOWA
         {
             scale = 0.1f;
         }
+
         this->baseUVScale->setValue(scale);
 
         if (!this->planet)
@@ -1497,14 +1518,25 @@ namespace NOWA
             return;
         }
 
-        // UV1 is baked into vertex data so the mesh must be rebuilt.
         this->planet->setBaseUVScale(scale);
 
         NOWA::GraphicsModule::RenderCommand cmd = [this]()
         {
+            // Null out BEFORE destroy so GUI sees nullptr not dangling ptr
+            this->gameObjectPtr->nullMovableObject();
+
             this->planet->rebuildDynamicBuffers();
+
+            // Re-wire blend texture + UV sources since Item was recreated.
+            // Do NOT call init() here — it would displace the ocean item
+            // from the scene node and break PlanetOcean::destroy().
+            // rebuildDynamicBuffers already attaches the new item to the node.
+            // We only need movableObject updated — use assignMesh which does
+            // exactly that without detaching other attached objects.
+            this->gameObjectPtr->assignMesh(this->planet->getItem());
+
+            this->wireBlendTextureToPbsDatablockInternal();
         };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "PlanetTerraComponent::setBaseUVScale");
     }
 
     float PlanetTerraComponent::getBaseUVScale(void) const
@@ -1520,8 +1552,6 @@ namespace NOWA
         }
         this->detailUVScale->setValue(scale);
 
-        // Apply to all four detail layers (diffuse + NM share the same UV scale block).
-        // Must run on render thread since it modifies the HlmsPbsDatablock.
         NOWA::GraphicsModule::RenderCommand cmd = [this, scale]()
         {
             if (!this->planet || !this->planet->getItem())
@@ -1530,12 +1560,12 @@ namespace NOWA
             }
 
             Ogre::HlmsPbsDatablock* pbsDb = dynamic_cast<Ogre::HlmsPbsDatablock*>(this->planet->getItem()->getSubItem(0)->getDatablock());
-
             if (!pbsDb)
             {
                 return;
             }
 
+            // Detail layers 0-3
             for (Ogre::uint8 layer = 0u; layer < 4u; ++layer)
             {
                 pbsDb->setDetailMapOffsetScale(layer, Ogre::Vector4(0.0f, 0.0f, scale, scale));

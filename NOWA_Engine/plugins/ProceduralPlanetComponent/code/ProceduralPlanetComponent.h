@@ -145,6 +145,22 @@ namespace NOWA
         {
             return "Generate";
         }
+        static Ogre::String AttrLayerSandThresh()
+        {
+            return "LayerSandThresh";
+        }
+        static Ogre::String AttrLayerGrassThresh()
+        {
+            return "LayerGrassThresh";
+        }
+        static Ogre::String AttrLayerRockThresh()
+        {
+            return "LayerRockThresh";
+        }
+        static Ogre::String AttrLayerSlopeRock()
+        {
+            return "LayerSlopeRock";
+        }
 
         static Ogre::String ActionGenerate()
         {
@@ -298,6 +314,15 @@ namespace NOWA
          */
         void generateProceduralPlanet(void);
 
+        void setLayerSandThresh(Ogre::Real v);
+        Ogre::Real getLayerSandThresh(void) const;
+        void setLayerGrassThresh(Ogre::Real v);
+        Ogre::Real getLayerGrassThresh(void) const;
+        void setLayerRockThresh(Ogre::Real v);
+        Ogre::Real getLayerRockThresh(void) const;
+        void setLayerSopeRock(Ogre::Real v);
+        Ogre::Real getLayerSlopeRock(void) const;
+
         static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass);
 
         static Ogre::String getStaticInfoText(void)
@@ -359,6 +384,10 @@ namespace NOWA
         // Finds the sibling PlanetTerraComponentBase; returns nullptr if absent.
         PlanetTerraComponentBase* findPlanetTerraBase(void) const;
 
+        // Paints RGBA blend using bilinear grid interpolation + corrected slope.
+        // amplitude is passed so depth clamping is available without a member.
+        void autoRPaintLayers(const std::vector<float>& heights, const std::vector<Ogre::Vector2>& uvCoords, int vertexCount, float radius, float amplitude, uint32_t blendSize, unsigned char* blendOut) const;
+
     private:
         Ogre::String name;
 
@@ -392,10 +421,13 @@ namespace NOWA
         Variant* roadSmoothness = nullptr;
         Variant* roadCurviness = nullptr;
         Variant* generate = nullptr;
+        Variant* layerSandThresh = nullptr;
+        Variant* layerGrassThresh = nullptr;
+        Variant* layerRockThresh = nullptr;
+        Variant* layerSlopeRock = nullptr;
 
-        // Set at the start of generateProceduralPlanet() so UV-conversion helpers
-        // can use the actual sphere radius without changing their signatures.
-        mutable float currentRadius = 50.0f;
+        mutable float currentRadius;
+        mutable float currentRadiusScale;
     };
 
     using ProceduralPlanetComponentPtr = boost::shared_ptr<ProceduralPlanetComponent>;

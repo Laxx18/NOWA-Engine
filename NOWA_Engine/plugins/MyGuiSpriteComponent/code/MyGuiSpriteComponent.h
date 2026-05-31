@@ -131,6 +131,16 @@ namespace NOWA
 
         virtual void setActivated(bool activated) override;
 
+        /**
+         * @brief   Resets and starts the animation from frame 0.
+         *          Used by MyGUIItemBoxComponent to restart the animation on slot click
+         *          without going through setActivated(false/true) which has an early-return guard.
+         *          Must be called from the main thread.
+         */
+        virtual void resetAnimation(void) override;
+
+        virtual bool isFinished(void) const override;
+
         void setImage(const Ogre::String& image);
 
         Ogre::String getImage(void) const;

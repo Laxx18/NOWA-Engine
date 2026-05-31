@@ -8,47 +8,62 @@ local selectGameObjectsComponent = nil
 local currentActiveItemBox       = nil
 local currentlySelectedBuilding  = nil
 local activeTemplateGameObject   = nil
+local isProcessingSlotClick      = false  -- blocks selection re-fire during slot click
 
 MainGameObject = {}
 
--- Shared click handler for both worker inventory and townhall inventory
-local function onInventoryItemClicked(resourceName, gameObjectId, mouseButtonId)
-    log("[MainGameObject] onInventoryItemClicked: resource=" .. tostring(resourceName)
-        .. " gameObjectId=" .. tostring(gameObjectId)
-        .. " building=" .. tostring(currentlySelectedBuilding ~= nil))
+local function activateItemBox(itemBox, isBuilding)
+    if currentActiveItemBox ~= nil and currentActiveItemBox ~= itemBox then
+        currentActiveItemBox:setActivated(false)
+    end
+    currentActiveItemBox = itemBox
+    currentActiveItemBox:setActivated(true)
+    currentActiveItemBox:reactOnMouseButtonClick(function(resourceName, gameObjectId, mouseButtonId)
+        -- Block selection system from reacting to this click
+        isProcessingSlotClick = true
 
-    -- Townhall selected -> spawn a worker
-    if currentlySelectedBuilding ~= nil then
-        if gameObjectId == "0" then
-            statusText:setCaption("No worker template configured for slot '" .. resourceName .. "'.")
-            return
-        end
-        local workerTemplate = AppStateManager:getGameObjectController():getGameObjectFromId(gameObjectId)
-        if workerTemplate == nil then
-            statusText:setCaption("Worker template id " .. gameObjectId .. " not found.")
-            return
-        end
-        local spawnPos = currentlySelectedBuilding:getPosition() + Vector3(4, 0, 4)
-        AppStateManager:getGameObjectController():clone(workerTemplate:getId(), nil, "0", spawnPos, Quaternion.IDENTITY, Vector3.UNIT_SCALE)
-        statusText:setCaption("Worker spawned!")
-        return
-    end
+        log("[MainGameObject] onInventoryItemClicked: resource=" .. tostring(resourceName)
+            .. " gameObjectId=" .. tostring(gameObjectId)
+            .. " building=" .. tostring(isBuilding))
 
-    -- Worker selected -> enter building placement mode
-    if gameObjectId == "0" then
-        statusText:setCaption("Slot '" .. resourceName .. "' has no building template configured.")
-        return
-    end
-    activeTemplateGameObject = AppStateManager:getGameObjectController():getGameObjectFromId(gameObjectId)
-    if activeTemplateGameObject == nil then
-        statusText:setCaption("Building template id " .. gameObjectId .. " not found.")
-        return
-    end
-    activeTemplateGameObject:setVisible(false)
-    gameObjectPlaceComponent:setActivated(true)
-    gameObjectPlaceComponent:activatePlacement(gameObjectId)
-    statusText:setCaption("Move mouse to spot, left-click to place " .. resourceName .. ". Right-click to cancel.")
-    log("[MainGameObject] Placement mode activated for: " .. resourceName)
+        if isBuilding then
+            -- Townhall selected -> spawn a worker
+            if gameObjectId == "0" then
+                statusText:setCaption("No worker template configured for slot '" .. resourceName .. "'.")
+                isProcessingSlotClick = false
+                return
+            end
+            local workerTemplate = AppStateManager:getGameObjectController():getGameObjectFromId(gameObjectId)
+            if workerTemplate == nil then
+                statusText:setCaption("Worker template id " .. tostring(gameObjectId) .. " not found.")
+                isProcessingSlotClick = false
+                return
+            end
+            local spawnPos = currentlySelectedBuilding:getPosition() + Vector3(4, 0, 4)
+            AppStateManager:getGameObjectController():clone(workerTemplate:getId(), nil, "0", spawnPos, Quaternion.IDENTITY, Vector3.UNIT_SCALE)
+            statusText:setCaption("Worker spawned!")
+        else
+            -- Worker selected -> enter building placement mode
+            if gameObjectId == "0" then
+                statusText:setCaption("Slot '" .. resourceName .. "' has no building template configured.")
+                isProcessingSlotClick = false
+                return
+            end
+            activeTemplateGameObject = AppStateManager:getGameObjectController():getGameObjectFromId(gameObjectId)
+            if activeTemplateGameObject == nil then
+                statusText:setCaption("Building template id " .. tostring(gameObjectId) .. " not found.")
+                isProcessingSlotClick = false
+                return
+            end
+            activeTemplateGameObject:setVisible(false)
+            gameObjectPlaceComponent:setActivated(true)
+            gameObjectPlaceComponent:activatePlacement(gameObjectId)
+            statusText:setCaption("Move mouse to spot, left-click to place " .. resourceName .. ". Right-click to cancel.")
+            log("[MainGameObject] Placement mode activated for: " .. resourceName)
+        end
+
+        isProcessingSlotClick = false
+    end)
 end
 
 MainGameObject["connect"] = function(gameObject)
@@ -57,7 +72,6 @@ MainGameObject["connect"] = function(gameObject)
     gameObjectPlaceComponent   = mainGameObject:getGameObjectPlaceComponent()
     selectGameObjectsComponent = mainGameObject:getSelectGameObjectsComponent()
 
-    -- Building placed callback lives here now — MainGameObject owns placement
     gameObjectPlaceComponent:reactOnGameObjectPlaced(function(newGameObjectId)
         log("[MainGameObject] reactOnGameObjectPlaced: id=" .. tostring(newGameObjectId))
         local clonedGO = AppStateManager:getGameObjectController():getGameObjectFromId(newGameObjectId)
@@ -80,13 +94,14 @@ MainGameObject["connect"] = function(gameObject)
     end)
 
     selectGameObjectsComponent:reactOnGameObjectsSelected(function(selectedGameObjects)
-        log("[MainGameObject] reactOnGameObjectsSelected fired")
-
-        if currentActiveItemBox ~= nil then
-            currentActiveItemBox:setActivated(false)
-            currentActiveItemBox = nil
+        -- A slot click inside the ItemBox also triggers selection —
+        -- ignore re-selection while we are processing a slot click
+        if isProcessingSlotClick then
+            log("[MainGameObject] reactOnGameObjectsSelected suppressed during slot click")
+            return
         end
-        currentlySelectedBuilding = nil
+
+        log("[MainGameObject] reactOnGameObjectsSelected fired")
 
         if gameObjectPlaceComponent:isActivated() then
             gameObjectPlaceComponent:cancelPlacement()
@@ -101,25 +116,10 @@ MainGameObject["connect"] = function(gameObject)
             log("[MainGameObject] Selected GO: name=" .. selectedGO:getName() .. " tag=" .. tostring(tag))
 
             if tag == "Worker" then
-                
-                 --or via loop of tables which go into this function:
-                --local workerIds = {}
-                --for index, selectedGO in pairs(selectedGameObjects) do
-                    --selectedGO = AppStateManager:getGameObjectController():castGameObject(selectedGO)
-                    --if selectedGO:getTagName() == "Worker" then
-                        --table.insert(workerIds, tostring(selectedGO:getId()))
-                    --end
-                --end
-                
-                --if #workerIds > 0 then
-                    --AppStateManager:getGameObjectController():activatePlayerControllers(workerIds, false)
-                --end
-                
                 AppStateManager:getGameObjectController():activatePlayerController(true, selectedGO:getId(), false)
                 if firstWorker == nil then
                     firstWorker = selectedGO
                 end
-
             elseif tag == "Townhall" and foundTownhall == nil then
                 foundTownhall = selectedGO
                 AppStateManager:getGameObjectController():activatePlayerController(true, selectedGO:getId(), true)
@@ -127,21 +127,22 @@ MainGameObject["connect"] = function(gameObject)
         end
 
         if firstWorker ~= nil then
-            currentActiveItemBox = firstWorker:getMyGUIItemBoxComponent()
-            currentActiveItemBox:setActivated(true)
-            -- onInventoryItemClicked is now in this same scope — no nil error
-            currentActiveItemBox:reactOnMouseButtonClick(onInventoryItemClicked)
+            currentlySelectedBuilding = nil
+            activateItemBox(firstWorker:getMyGUIItemBoxComponent(), false)
             statusText:setCaption("Left-click to place a building.")
-
         elseif foundTownhall ~= nil then
             currentlySelectedBuilding = foundTownhall
-            currentActiveItemBox = foundTownhall:getMyGUIItemBoxComponent()
-            currentActiveItemBox:setActivated(true)
-            currentActiveItemBox:reactOnMouseButtonClick(onInventoryItemClicked)
+            activateItemBox(foundTownhall:getMyGUIItemBoxComponent(), true)
             statusText:setCaption("Left-click an item to spawn a worker.")
         else
-            log("[MainGameObject] No relevant selection")
+            -- Nothing relevant selected — hide active itembox
+            if currentActiveItemBox ~= nil then
+                currentActiveItemBox:setActivated(false)
+                currentActiveItemBox = nil
+            end
+            currentlySelectedBuilding = nil
             statusText:setCaption("")
+            log("[MainGameObject] No relevant selection")
         end
     end)
 
@@ -150,6 +151,8 @@ MainGameObject["connect"] = function(gameObject)
 end
 
 MainGameObject["disconnect"] = function()
+    isProcessingSlotClick = false
+
     if currentActiveItemBox ~= nil then
         currentActiveItemBox:setActivated(false)
         currentActiveItemBox = nil

@@ -131,83 +131,68 @@ namespace NOWA
          */
         Ogre::Real getRadius(void) const;
 
-        /**
-         * @brief Sets the deep ocean diffuse colour.
-         */
         void setDeepColour(const Ogre::Vector3& colour);
-
-        /**
-         * @brief Gets the deep ocean colour.
-         */
         Ogre::Vector3 getDeepColour(void) const;
 
-        /**
-         * @brief Sets the shallow / crest colour blended in at wave peaks.
-         */
         void setShallowColour(const Ogre::Vector3& colour);
-
-        /**
-         * @brief Gets the shallow colour.
-         */
         Ogre::Vector3 getShallowColour(void) const;
 
-        /**
-         * @brief Sets the PBS roughness of the water surface. Low values = mirror reflections.
-         * @param[in] roughness Roughness in range [0.001, 1]
-         */
+        /** @brief PBS roughness [0.001, 1]. Uses specular_fresnel workflow. 0.06 = calm ocean. */
         void setRoughness(Ogre::Real roughness);
-
-        /**
-         * @brief Gets the roughness.
-         */
         Ogre::Real getRoughness(void) const;
 
-        /**
-         * @brief Sets the PBS metalness.
-         * @param[in] metalness Metalness in range [0, 1]. Usually 0 for water.
-         */
-        void setMetalness(Ogre::Real metalness);
-
-        /**
-         * @brief Gets the metalness.
-         */
-        Ogre::Real getMetalness(void) const;
-
-        /**
-         * @brief Sets the water transparency.
-         * @param[in] transparency Range [0=opaque, 1=fully transparent]
-         */
+        /** @brief Water transparency [0=opaque, 1=fully transparent]. */
         void setTransparency(Ogre::Real transparency);
-
-        /**
-         * @brief Gets the transparency.
-         */
         Ogre::Real getTransparency(void) const;
 
-        /**
-         * @brief Sets an optional cubemap texture name for environment reflections.
-         * @param[in] cubemapName Texture name, or empty to skip.
-         */
+        /** @brief Optional cubemap name for reflections, empty to skip. */
         void setReflectionMap(const Ogre::String& cubemapName);
-
-        /**
-         * @brief Gets the reflection cubemap name.
-         */
         Ogre::String getReflectionMap(void) const;
 
-        /**
-         * @brief Sets the global amplitude multiplier for all waves. 0 = flat ocean.
-         */
+        /** @brief Global amplitude multiplier for all waves. 0 = flat ocean. */
         void setWaveAmplitudeScale(Ogre::Real scale);
-
-        /**
-         * @brief Gets the wave amplitude scale.
-         */
         Ogre::Real getWaveAmplitudeScale(void) const;
 
-        /**
-         * @brief Gets the underlying PlanetOcean object.
-         */
+        /** @brief Wave crest height in metres on a 50m reference planet. Scales with radius. */
+        void setWave0Amplitude(Ogre::Real v);
+        Ogre::Real getWave0Amplitude(void) const;
+        /** @brief Cycles per hemisphere (radius-independent). 2 = two crests across equator. */
+        void setWave0Frequency(Ogre::Real v);
+        Ogre::Real getWave0Frequency(void) const;
+        /** @brief Phase speed in radians per second. */
+        void setWave0Speed(Ogre::Real v);
+        Ogre::Real getWave0Speed(void) const;
+        /** @brief Propagation direction in radians (0 = +X axis). */
+        void setWave0Direction(Ogre::Real v);
+        Ogre::Real getWave0Direction(void) const;
+
+        void setWave1Amplitude(Ogre::Real v);
+        Ogre::Real getWave1Amplitude(void) const;
+        void setWave1Frequency(Ogre::Real v);
+        Ogre::Real getWave1Frequency(void) const;
+        void setWave1Speed(Ogre::Real v);
+        Ogre::Real getWave1Speed(void) const;
+        void setWave1Direction(Ogre::Real v);
+        Ogre::Real getWave1Direction(void) const;
+
+        void setWave2Amplitude(Ogre::Real v);
+        Ogre::Real getWave2Amplitude(void) const;
+        void setWave2Frequency(Ogre::Real v);
+        Ogre::Real getWave2Frequency(void) const;
+        void setWave2Speed(Ogre::Real v);
+        Ogre::Real getWave2Speed(void) const;
+        void setWave2Direction(Ogre::Real v);
+        Ogre::Real getWave2Direction(void) const;
+
+        void setWave3Amplitude(Ogre::Real v);
+        Ogre::Real getWave3Amplitude(void) const;
+        void setWave3Frequency(Ogre::Real v);
+        Ogre::Real getWave3Frequency(void) const;
+        void setWave3Speed(Ogre::Real v);
+        Ogre::Real getWave3Speed(void) const;
+        void setWave3Direction(Ogre::Real v);
+        Ogre::Real getWave3Direction(void) const;
+
         PlanetOcean* getOcean(void) const;
 
     public:
@@ -280,10 +265,6 @@ namespace NOWA
         static const Ogre::String AttrRoughness(void)
         {
             return "Roughness";
-        }
-        static const Ogre::String AttrMetalness(void)
-        {
-            return "Metalness";
         }
         static const Ogre::String AttrTransparency(void)
         {
@@ -361,7 +342,6 @@ namespace NOWA
         {
             return "Wave3 Direction";
         }
-
         static Ogre::String DefaultMaterialName(void)
         {
             return "PlanetOceanDefaultMaterial";
@@ -385,7 +365,6 @@ namespace NOWA
         Variant* deepColour;
         Variant* shallowColour;
         Variant* roughness;
-        Variant* metalness;
         Variant* transparency;
         Variant* reflectionMap;
         Variant* waveAmplitudeScale;
@@ -407,6 +386,7 @@ namespace NOWA
         Variant* wave3Direction;
 
         bool postInitDone;
+        Ogre::String oceanUpdateClosureId;
     };
 
 } // namespace NOWA

@@ -1502,9 +1502,11 @@ namespace NOWA
             {
                 spriteComp = this->spriteComponents[slotIndex];
             }
-            else
+
+            // If a sprite is configured and still animating, block the click
+            if (nullptr != spriteComp && false == spriteComp->isFinished())
             {
-                spriteComp = nullptr;
+                return;
             }
 
             // Render-thread: repaint cells AND, if a sprite is configured, snap it over this slot
@@ -1561,15 +1563,13 @@ namespace NOWA
                         cellCoord.height = cellH;
                     }
 
-                    // spriteComp->positionOverCell(cellCoord);
+                    spriteComp->positionOverCell(cellCoord);
                 }
             };
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIItemBoxComponent::notifyNotifyItem repaint+overlay");
 
             if (nullptr != spriteComp)
             {
-                // Sprite mode: store pending callback data and restart animation.
-                // Lua callbacks fire only after the animation finishes (handleSpriteAnimationFinished).
                 this->pendingResourceName = resourceName;
                 this->pendingGameObjectId = slotGameObjectId;
                 this->pendingButtonId = buttonId;
@@ -1577,9 +1577,7 @@ namespace NOWA
                 this->pendingSprite = spriteComp;
                 this->spriteAnimationPending = true;
 
-                // Reset and start the animation from frame 0
-                spriteComp->setActivated(false);
-                spriteComp->setActivated(true);
+                spriteComp->resetAnimation();
             }
             else
             {

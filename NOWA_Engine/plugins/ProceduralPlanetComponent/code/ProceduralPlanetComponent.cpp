@@ -42,9 +42,9 @@ namespace NOWA
     ProceduralPlanetComponent::ProceduralPlanetComponent() :
         GameObjectComponent(),
         name("ProceduralPlanetComponent"),
-        hillAmplitude(new Variant(ProceduralPlanetComponent::AttrHillAmplitude(), 5.0f, this->attributes)),
-        hillFrequency(new Variant(ProceduralPlanetComponent::AttrHillFrequency(), 3.0f, this->attributes)),
-        octaves(new Variant(ProceduralPlanetComponent::AttrOctaves(), static_cast<Ogre::uint32>(4), this->attributes)),
+        hillAmplitude(new Variant(ProceduralPlanetComponent::AttrHillAmplitude(), 12.0f, this->attributes)),
+        hillFrequency(new Variant(ProceduralPlanetComponent::AttrHillFrequency(), 2.0f, this->attributes)),
+        octaves(new Variant(ProceduralPlanetComponent::AttrOctaves(), static_cast<Ogre::uint32>(6), this->attributes)),
         persistence(new Variant(ProceduralPlanetComponent::AttrPersistence(), 0.5f, this->attributes)),
         lacunarity(new Variant(ProceduralPlanetComponent::AttrLacunarity(), 2.0f, this->attributes)),
         seed(new Variant(ProceduralPlanetComponent::AttrSeed(), static_cast<Ogre::uint32>(12345), this->attributes)),
@@ -54,12 +54,12 @@ namespace NOWA
         enableRivers(new Variant(ProceduralPlanetComponent::AttrEnableRivers(), false, this->attributes)),
         riverCount(new Variant(ProceduralPlanetComponent::AttrRiverCount(), static_cast<Ogre::uint32>(3), this->attributes)),
         riverWidth(new Variant(ProceduralPlanetComponent::AttrRiverWidth(), 3.0f, this->attributes)),
-        riverDepth(new Variant(ProceduralPlanetComponent::AttrRiverDepth(), 2.0f, this->attributes)),
+        riverDepth(new Variant(ProceduralPlanetComponent::AttrRiverDepth(), 1.5f, this->attributes)),
         riverMeandering(new Variant(ProceduralPlanetComponent::AttrRiverMeandering(), 0.5f, this->attributes)),
         enableCanyons(new Variant(ProceduralPlanetComponent::AttrEnableCanyons(), false, this->attributes)),
         canyonCount(new Variant(ProceduralPlanetComponent::AttrCanyonCount(), static_cast<Ogre::uint32>(1), this->attributes)),
         canyonWidth(new Variant(ProceduralPlanetComponent::AttrCanyonWidth(), 8.0f, this->attributes)),
-        canyonDepth(new Variant(ProceduralPlanetComponent::AttrCanyonDepth(), 4.0f, this->attributes)),
+        canyonDepth(new Variant(ProceduralPlanetComponent::AttrCanyonDepth(), 3.0f, this->attributes)),
         canyonSteepness(new Variant(ProceduralPlanetComponent::AttrCanyonSteepness(), 0.7f, this->attributes)),
         enableRoads(new Variant(ProceduralPlanetComponent::AttrEnableRoads(), false, this->attributes)),
         roadCount(new Variant(ProceduralPlanetComponent::AttrRoadCount(), static_cast<Ogre::uint32>(2), this->attributes)),
@@ -68,7 +68,12 @@ namespace NOWA
         roadSmoothness(new Variant(ProceduralPlanetComponent::AttrRoadSmoothness(), 2.0f, this->attributes)),
         roadCurviness(new Variant(ProceduralPlanetComponent::AttrRoadCurviness(), 0.3f, this->attributes)),
         generate(new Variant(ProceduralPlanetComponent::AttrGenerate(), Ogre::String("Generate"), this->attributes)),
-        currentRadius(50.0f)
+        layerSandThresh(new Variant(ProceduralPlanetComponent::AttrLayerSandThresh(), 0.2f, this->attributes)),
+        layerGrassThresh(new Variant(ProceduralPlanetComponent::AttrLayerGrassThresh(), 0.5f, this->attributes)),
+        layerRockThresh(new Variant(ProceduralPlanetComponent::AttrLayerRockThresh(), 0.75f, this->attributes)),
+        layerSlopeRock(new Variant(ProceduralPlanetComponent::AttrLayerSlopeRock(), 0.45f, this->attributes)),
+        currentRadius(50.0f),
+        currentRadiusScale(1.0f)
     {
         this->hillAmplitude->setDescription("Hill height variation in world units (metres). "
                                             "This is the maximum displacement above/below the base sphere surface. "
@@ -127,6 +132,19 @@ namespace NOWA
         this->generate->addUserData(GameObject::AttrActionExec());
         this->generate->addUserData(GameObject::AttrActionNeedRefresh());
         this->generate->addUserData(GameObject::AttrActionExecId(), ProceduralPlanetComponent::ActionGenerate());
+
+        this->layerSandThresh->setDescription("Relative height fraction [0..1] below which sand (layer 2) is painted. "
+                                              "0.2 = lowest 20% of terrain relief gets sand.");
+        this->layerGrassThresh->setDescription("Relative height fraction [0..1] below which grass (layer 1) is painted.");
+        this->layerRockThresh->setDescription("Relative height fraction [0..1] above which rock (layer 3) is painted on peaks. "
+                                              "0.75 = top 25% of terrain relief gets rock.");
+        this->layerSlopeRock->setDescription("Slope steepness [0..1] above which rock is forced. "
+                                             "Slope is normalized by total terrain relief: 0.45 means a slope of "
+                                             "45%% of the full terrain range per pixel triggers rock.");
+        this->layerSandThresh->setConstraints(0.0f, 1.0f);
+        this->layerGrassThresh->setConstraints(0.0f, 1.0f);
+        this->layerRockThresh->setConstraints(0.0f, 1.0f);
+        this->layerSlopeRock->setConstraints(0.0f, 1.0f);
     }
 
     ProceduralPlanetComponent::~ProceduralPlanetComponent()
@@ -307,6 +325,26 @@ namespace NOWA
             this->roadCurviness->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
             propertyElement = propertyElement->next_sibling("property");
         }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrLayerSandThresh())
+        {
+            this->layerSandThresh->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrLayerGrassThresh())
+        {
+            this->layerGrassThresh->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrLayerRockThresh())
+        {
+            this->layerRockThresh->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AttrLayerSlopeRock())
+        {
+            this->layerSlopeRock->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
 
         return success;
     }
@@ -436,6 +474,10 @@ namespace NOWA
         writeReal(AttrRoadDepth(), this->roadDepth->getReal());
         writeReal(AttrRoadSmoothness(), this->roadSmoothness->getReal());
         writeReal(AttrRoadCurviness(), this->roadCurviness->getReal());
+        writeReal(AttrLayerSandThresh(), this->layerSandThresh->getReal());
+        writeReal(AttrLayerGrassThresh(), this->layerGrassThresh->getReal());
+        writeReal(AttrLayerRockThresh(), this->layerRockThresh->getReal());
+        writeReal(AttrLayerSlopeRock(), this->layerSlopeRock->getReal());
     }
 
     // =========================================================================
@@ -546,6 +588,22 @@ namespace NOWA
         {
             this->setRoadCurviness(attribute->getReal());
         }
+        else if (AttrLayerSandThresh() == attribute->getName())
+        {
+            this->setLayerSandThresh(attribute->getReal());
+        }
+        else if (AttrLayerGrassThresh() == attribute->getName())
+        {
+            this->setLayerGrassThresh(attribute->getReal());
+        }
+        else if (AttrLayerRockThresh() == attribute->getName())
+        {
+            this->setLayerRockThresh(attribute->getReal());
+        }
+        else if (AttrLayerSlopeRock() == attribute->getName())
+        {
+            this->setLayerSopeRock(attribute->getReal());
+        }
     }
 
     bool ProceduralPlanetComponent::executeAction(const Ogre::String& actionId, NOWA::Variant* attribute)
@@ -582,139 +640,85 @@ namespace NOWA
 
     float ProceduralPlanetComponent::noise2D(float x, float y, int noiseSeed) const
     {
-        // 3D gradient noise evaluated at (x, y, 0) but exposed via the same
-        // 2D signature for backwards compatibility.  Internally we use a 3D
-        // hash so all three axes contribute and the function is smooth.
         int xi = static_cast<int>(std::floor(x));
         int yi = static_cast<int>(std::floor(y));
-
         int X = xi & 255;
         int Y = yi & 255;
-
         float xf = x - static_cast<float>(xi);
         float yf = y - static_cast<float>(yi);
-
         float u = this->fade(xf);
         float v = this->fade(yf);
-
         int s = noiseSeed & 255;
-
         int A = permutation[(X + s) & 255] + Y;
         int B = permutation[(X + 1 + s) & 255] + Y;
         int aa = permutation[A & 255];
         int ab = permutation[(A + 1) & 255];
         int ba = permutation[B & 255];
         int bb = permutation[(B + 1) & 255];
-
         float x1 = lerpF(u, this->grad(aa, xf, yf), this->grad(ba, xf - 1.0f, yf));
         float x2 = lerpF(u, this->grad(ab, xf, yf - 1.0f), this->grad(bb, xf - 1.0f, yf - 1.0f));
-
         return lerpF(v, x1, x2);
     }
 
-    // -------------------------------------------------------------------------
-    //  3D gradient noise — seamless on a sphere because it uses the 3D
-    //  direction vector (no UV mapping discontinuity at the seam or poles).
-    // -------------------------------------------------------------------------
+    // 3D gradient noise - seamless on a sphere (no UV seam, no pole pinch).
     float ProceduralPlanetComponent::noise3D(float x, float y, float z, int noiseSeed) const
     {
-        // Lattice cell
         int xi = static_cast<int>(std::floor(x));
         int yi = static_cast<int>(std::floor(y));
         int zi = static_cast<int>(std::floor(z));
-
         int X = xi & 255;
         int Y = yi & 255;
         int Z = zi & 255;
-
         float xf = x - static_cast<float>(xi);
         float yf = y - static_cast<float>(yi);
         float zf = z - static_cast<float>(zi);
-
         float u = this->fade(xf);
         float v = this->fade(yf);
         float w = this->fade(zf);
-
         int s = noiseSeed & 255;
-
-        // 12-direction gradient lookup (Perlin classic)
-        // grad3[h & 15] where h = hash, returns dot(gradient, (xf,yf,zf))
-        auto grad3 = [](int hash, float px, float py, float pz) -> float
+        auto g3 = [](int hash, float px, float py, float pz) -> float
         {
             int h = hash & 15;
             float ua = (h < 8) ? px : py;
             float ub = (h < 4) ? py : ((h == 12 || h == 14) ? px : pz);
             return ((h & 1) ? -ua : ua) + ((h & 2) ? -ub : ub);
         };
-
         int A = permutation[(X + s) & 255] + Y;
         int B = permutation[(X + 1 + s) & 255] + Y;
         int AA = permutation[A & 255] + Z;
         int AB = permutation[(A + 1) & 255] + Z;
         int BA = permutation[B & 255] + Z;
         int BB = permutation[(B + 1) & 255] + Z;
-
-        float n000 = grad3(permutation[AA & 255], xf, yf, zf);
-        float n100 = grad3(permutation[BA & 255], xf - 1.f, yf, zf);
-        float n010 = grad3(permutation[AB & 255], xf, yf - 1.f, zf);
-        float n110 = grad3(permutation[BB & 255], xf - 1.f, yf - 1.f, zf);
-        float n001 = grad3(permutation[(AA + 1) & 255], xf, yf, zf - 1.f);
-        float n101 = grad3(permutation[(BA + 1) & 255], xf - 1.f, yf, zf - 1.f);
-        float n011 = grad3(permutation[(AB + 1) & 255], xf, yf - 1.f, zf - 1.f);
-        float n111 = grad3(permutation[(BB + 1) & 255], xf - 1.f, yf - 1.f, zf - 1.f);
-
-        float x1 = lerpF(u, n000, n100);
-        float x2 = lerpF(u, n010, n110);
-        float x3 = lerpF(u, n001, n101);
-        float x4 = lerpF(u, n011, n111);
-
-        float y1 = lerpF(v, x1, x2);
-        float y2 = lerpF(v, x3, x4);
-
+        float y1 = lerpF(v, lerpF(u, g3(permutation[AA & 255], xf, yf, zf), g3(permutation[BA & 255], xf - 1.f, yf, zf)), lerpF(u, g3(permutation[AB & 255], xf, yf - 1.f, zf), g3(permutation[BB & 255], xf - 1.f, yf - 1.f, zf)));
+        float y2 = lerpF(v, lerpF(u, g3(permutation[(AA + 1) & 255], xf, yf, zf - 1.f), g3(permutation[(BA + 1) & 255], xf - 1.f, yf, zf - 1.f)),
+            lerpF(u, g3(permutation[(AB + 1) & 255], xf, yf - 1.f, zf - 1.f), g3(permutation[(BB + 1) & 255], xf - 1.f, yf - 1.f, zf - 1.f)));
         return lerpF(w, y1, y2);
     }
 
-    // perlinFBM now takes the 3D sphere-surface direction (unit vector) so
-    // the noise is seamless everywhere on the sphere.
+    // perlinFBM: UV -> 3D sphere direction -> 3D noise. Completely seamless.
     float ProceduralPlanetComponent::perlinFBM(float u, float v) const
     {
-        // Convert UV to 3D sphere direction — this completely eliminates seams.
-        // phi = polar angle from north pole (0..PI), theta = longitude (0..2PI).
-        const float PI = Ogre::Math::PI;
-        const float TWO_PI = Ogre::Math::TWO_PI;
-
-        float phi = v * PI;
-        float theta = u * TWO_PI;
-
+        float phi = v * Ogre::Math::PI;
+        float theta = u * Ogre::Math::TWO_PI;
         float sinPhi = std::sin(phi);
         float dx = sinPhi * std::cos(theta);
         float dy = std::cos(phi);
         float dz = sinPhi * std::sin(theta);
-
         float total = 0.0f;
         float maxValue = 0.0f;
         float amplitude = 1.0f;
         float frequency = this->hillFrequency->getReal();
         int noiseSeed = static_cast<int>(this->seed->getUInt());
-
         Ogre::uint32 octaveCount = this->octaves->getUInt();
         float persist = this->persistence->getReal();
         float lacun = this->lacunarity->getReal();
-
         for (Ogre::uint32 i = 0; i < octaveCount; ++i)
         {
-            float sx = dx * frequency;
-            float sy = dy * frequency;
-            float sz = dz * frequency;
-
-            total += this->noise3D(sx, sy, sz, noiseSeed + static_cast<int>(i)) * amplitude;
+            total += this->noise3D(dx * frequency, dy * frequency, dz * frequency, noiseSeed + static_cast<int>(i)) * amplitude;
             maxValue += amplitude;
-
             amplitude *= persist;
             frequency *= lacun;
         }
-
-        // Normalize to [0, 1]
         return (total / maxValue + 1.0f) * 0.5f;
     }
 
@@ -762,18 +766,17 @@ namespace NOWA
 
         for (int i = 0; i < vertexCount; ++i)
         {
-            // Wrap dx across u=0/u=1 seam.
-            float dx = uvCoords[i].x - uv.x;
-            if (dx > 0.5f)
+            float ddx = uvCoords[i].x - uv.x;
+            if (ddx > 0.5f)
             {
-                dx -= 1.0f;
+                ddx -= 1.0f;
             }
-            if (dx < -0.5f)
+            if (ddx < -0.5f)
             {
-                dx += 1.0f;
+                ddx += 1.0f;
             }
-            float dy = uvCoords[i].y - uv.y;
-            float d = dx * dx + dy * dy;
+            float ddy = uvCoords[i].y - uv.y;
+            float d = ddx * ddx + ddy * ddy;
             if (d < bestDist)
             {
                 bestDist = d;
@@ -925,13 +928,14 @@ namespace NOWA
             for (size_t seg = 0; seg < canyon.uvPoints.size(); ++seg)
             {
                 const Ogre::Vector2& cUV = canyon.uvPoints[seg];
-                float halfWidthUV = canyon.widths[seg] / (2.0f * Ogre::Math::PI * this->currentRadius);
-                float depth = canyon.depths[seg];
+                // width in UV = world_units / circumference; depth clamped to terrain amplitude
+                float halfWidthUV = canyon.widths[seg] * this->currentRadiusScale / (2.0f * Ogre::Math::PI * this->currentRadius);
+                float maxDepth = std::fabs(this->hillAmplitude->getReal() * this->currentRadiusScale) * 1.5f;
+                float depth = Ogre::Math::Clamp(canyon.depths[seg] * this->currentRadiusScale, 0.0f, maxDepth);
                 float halfWidthSq = halfWidthUV * halfWidthUV;
 
                 for (int v = 0; v < vertexCount; ++v)
                 {
-                    // Wrap dx across the u=0/u=1 seam so both sides are affected equally.
                     float dx = uvCoords[v].x - cUV.x;
                     if (dx > 0.5f)
                     {
@@ -956,6 +960,7 @@ namespace NOWA
                     float erosion = depth * profile;
                     float targetH = heights[v] - erosion;
 
+                    // Smooth blend
                     heights[v] = heights[v] * 0.3f + targetH * 0.7f;
                 }
             }
@@ -967,9 +972,11 @@ namespace NOWA
         {
             for (int v = 0; v < vertexCount; ++v)
             {
+                // Simple average with UV neighbours (cheap approximation for sparse vertex sets)
                 float sum = heights[v] * 4.0f;
                 int count = 4;
 
+                // Look at a small local neighbourhood by UV proximity
                 const Ogre::Vector2& uv = uvCoords[v];
                 for (int nb = 0; nb < vertexCount; ++nb)
                 {
@@ -977,18 +984,7 @@ namespace NOWA
                     {
                         continue;
                     }
-                    // Wrap-aware distance for smoothing neighbourhood too.
-                    float ndx = uv.x - uvCoords[nb].x;
-                    if (ndx > 0.5f)
-                    {
-                        ndx -= 1.0f;
-                    }
-                    if (ndx < -0.5f)
-                    {
-                        ndx += 1.0f;
-                    }
-                    float ndy = uv.y - uvCoords[nb].y;
-                    float d = ndx * ndx + ndy * ndy;
+                    float d = uv.squaredDistance(uvCoords[nb]);
                     if (d < 0.0001f)
                     {
                         sum += heights[nb];
@@ -1121,7 +1117,8 @@ namespace NOWA
     void ProceduralPlanetComponent::carveRivers(std::vector<float>& heights, const std::vector<RiverPath>& rivers, int vertexCount, const std::vector<Ogre::Vector2>& uvCoords) const
     {
         float maxDepth = this->riverDepth->getReal();
-        float halfWidthUV = this->riverWidth->getReal() / (2.0f * Ogre::Math::PI * this->currentRadius);
+        float halfWidthUV = this->riverWidth->getReal() * this->currentRadiusScale / (2.0f * Ogre::Math::PI * this->currentRadius);
+        float riverMaxDepth = std::fabs(this->hillAmplitude->getReal() * this->currentRadiusScale) * 1.5f;
 
         for (const auto& river : rivers)
         {
@@ -1136,7 +1133,6 @@ namespace NOWA
 
                 for (int v = 0; v < vertexCount; ++v)
                 {
-                    // Wrap dx across u=0/u=1 seam.
                     float dx = uvCoords[v].x - rUV.x;
                     if (dx > 0.5f)
                     {
@@ -1243,7 +1239,7 @@ namespace NOWA
 
     void ProceduralPlanetComponent::applyRoads(std::vector<float>& heights, const std::vector<std::vector<RoadPoint>>& roads, int vertexCount, const std::vector<Ogre::Vector2>& uvCoords) const
     {
-        float halfWidthUV = this->roadWidth->getReal() / (2.0f * Ogre::Math::PI * this->currentRadius);
+        float halfWidthUV = this->roadWidth->getReal() * this->currentRadiusScale / (2.0f * Ogre::Math::PI * this->currentRadius);
         float smoothFactor = this->roadSmoothness->getReal();
         float blendWidthUV = halfWidthUV * smoothFactor;
 
@@ -1257,7 +1253,6 @@ namespace NOWA
             {
                 for (int v = 0; v < vertexCount; ++v)
                 {
-                    // Wrap dx across u=0/u=1 seam.
                     float dx = uvCoords[v].x - rp.uv.x;
                     if (dx > 0.5f)
                     {
@@ -1335,6 +1330,8 @@ namespace NOWA
 
         int vc = static_cast<int>(vertexCount);
         float radius = planetBase->getRadius();
+        this->currentRadius = radius;
+        this->currentRadiusScale = radius / 50.0f;
 
         // Retrieve UV coordinates from the planet (needed for UV-space feature generation).
         const std::vector<Ogre::Vector2>& uvCoords = planetBase->getUvCoords();
@@ -1344,23 +1341,16 @@ namespace NOWA
             return;
         }
 
-        // Store radius for use in UV-space conversion inside the feature functions.
-        // The UV-to-world conversion factor: 1 world unit = 1/(2*PI*radius) UV units
-        // on the sphere equator. Features pass world-unit widths; we divide by sphere
-        // circumference to get the correct UV-space half-width.
-        this->currentRadius = radius;
-
         // ---- Step 1: Base Perlin FBM noise ----
         // Heights are in world units (metres above/below the sphere surface).
-        // amplitude is already in world units so no radius scaling needed here.
-        // A value of 5 on a radius-50 sphere = 10% relief which looks natural.
+        // Scale amplitude by radius so the same value gives same visual relief at any radius.
+        // amplitude=5 -> +-5m on r=50, +-50m on r=500. Same 10% relief both times.
         std::vector<float> heights(vc, 0.0f);
-        float amplitude = this->hillAmplitude->getReal();
+        float amplitude = this->hillAmplitude->getReal() * this->currentRadiusScale;
 
         for (int i = 0; i < vc; ++i)
         {
             float n = this->perlinFBM(uvCoords[i].x, uvCoords[i].y);
-            // Map [0,1] to [-amplitude, +amplitude] for symmetric hills and valleys
             heights[i] = (n - 0.5f) * 2.0f * amplitude;
         }
 
@@ -1437,46 +1427,37 @@ namespace NOWA
         }
 
         // ---- Step 6: Seam sync ----
-        // The UV sphere has duplicate vertices at the u=0 and u=1 column — they map to
-        // the same world position but sit at different indices. Each processing step may
-        // have written slightly different heights to them, causing a visible gap.
-        // Find every vertex with u < 0.01 and copy its height to every vertex at u > 0.99
-        // that has the same v coordinate (same row on the sphere).
+        // UV sphere has duplicate vertex columns at u=0 and u=1 (same world position).
+        // Copy u<0.01 heights to matching u>0.99 vertices.
         for (int i = 0; i < vc; ++i)
         {
             if (uvCoords[i].x < 0.01f)
             {
                 for (int j = 0; j < vc; ++j)
                 {
-                    if (uvCoords[j].x > 0.99f)
+                    if (uvCoords[j].x > 0.99f && std::fabs(uvCoords[i].y - uvCoords[j].y) < 0.001f)
                     {
-                        float dv = std::fabs(uvCoords[i].y - uvCoords[j].y);
-                        if (dv < 0.001f)
-                        {
-                            heights[j] = heights[i];
-                        }
+                        heights[j] = heights[i];
                     }
                 }
             }
         }
 
-        // ---- Step 7: Pack into blob and apply via base interface ----
-        // Preserve the existing blend data (painting should not be wiped by re-generating).
+        // ---- Step 7: Pack blob ----
         std::vector<unsigned char> newData(currentData.size());
         memcpy(&newData[0], &vertexCount, 4);
         memcpy(&newData[4], &blendSize, 4);
-
         for (int i = 0; i < vc; ++i)
         {
             float h = heights[i];
             memcpy(&newData[8 + i * sizeof(float)], &h, sizeof(float));
         }
 
-        // Copy existing blend data unchanged
+        // ---- Step 8: Auto-paint blend layers ----
         size_t blendOffset = 8 + static_cast<size_t>(vc) * sizeof(float);
-        if (currentData.size() >= blendOffset + blendSize)
+        if (newData.size() >= blendOffset + blendSize && blendSize > 0)
         {
-            memcpy(&newData[blendOffset], &currentData[blendOffset], blendSize);
+            this->autoRPaintLayers(heights, uvCoords, vc, radius, amplitude, blendSize, &newData[blendOffset]);
         }
 
         planetBase->setPlanetData(newData);
@@ -1743,6 +1724,331 @@ namespace NOWA
     Ogre::Real ProceduralPlanetComponent::getRoadCurviness(void) const
     {
         return this->roadCurviness->getReal();
+    }
+
+    void ProceduralPlanetComponent::setLayerSandThresh(Ogre::Real v)
+    {
+        this->layerSandThresh->setValue(Ogre::Math::Clamp(v, 0.0f, 1.0f));
+    }
+    Ogre::Real ProceduralPlanetComponent::getLayerSandThresh(void) const
+    {
+        return this->layerSandThresh->getReal();
+    }
+
+    void ProceduralPlanetComponent::setLayerGrassThresh(Ogre::Real v)
+    {
+        this->layerGrassThresh->setValue(Ogre::Math::Clamp(v, 0.0f, 1.0f));
+    }
+    Ogre::Real ProceduralPlanetComponent::getLayerGrassThresh(void) const
+    {
+        return this->layerGrassThresh->getReal();
+    }
+
+    void ProceduralPlanetComponent::setLayerRockThresh(Ogre::Real v)
+    {
+        this->layerRockThresh->setValue(Ogre::Math::Clamp(v, 0.0f, 1.0f));
+    }
+    Ogre::Real ProceduralPlanetComponent::getLayerRockThresh(void) const
+    {
+        return this->layerRockThresh->getReal();
+    }
+
+    void ProceduralPlanetComponent::setLayerSopeRock(Ogre::Real v)
+    {
+        this->layerSlopeRock->setValue(Ogre::Math::Clamp(v, 0.0f, 1.0f));
+    }
+    Ogre::Real ProceduralPlanetComponent::getLayerSlopeRock(void) const
+    {
+        return this->layerSlopeRock->getReal();
+    }
+
+    // =========================================================================
+    // autoRPaintLayers
+    //
+    // Bilinear interpolation over the regular UV vertex grid -- no rectangular
+    // Voronoi artifacts from nearest-neighbor lookup.
+    //
+    // Slope fix: slopeN = (height_diff_per_pixel) / range
+    // where range = total terrain relief in world units.
+    // This makes slopeRock=0.45 mean "a height change equal to 45% of the full
+    // terrain range per blend-pixel triggers rock" -- independent of radius or
+    // amplitude so the threshold works the same on any planet.
+    // =========================================================================
+
+#if 0
+    void ProceduralPlanetComponent::autoRPaintLayers(const std::vector<float>& heights, const std::vector<Ogre::Vector2>& uvCoords, int vertexCount, float radius, float amplitude, uint32_t blendSize, unsigned char* blendOut) const
+    {
+        int bts = static_cast<int>(std::round(std::sqrt(static_cast<float>(blendSize) / 4.0f)));
+        if (bts < 1 || vertexCount < 4)
+        {
+            return;
+        }
+
+        // Detect segH by counting the first row (all vertices with same v=0).
+        int segH = 0;
+        while (segH + 1 < vertexCount && std::fabs(uvCoords[segH + 1].y - uvCoords[0].y) < 1e-5f)
+        {
+            ++segH;
+        }
+        if (segH < 1)
+        {
+            return;
+        }
+        int colsPerRow = segH + 1;
+        int segV = (vertexCount / colsPerRow) - 1;
+        if (segV < 1)
+        {
+            return;
+        }
+
+        float minH = std::numeric_limits<float>::max();
+        float maxH = -std::numeric_limits<float>::max();
+        for (int i = 0; i < vertexCount; ++i)
+        {
+            if (heights[i] < minH)
+            {
+                minH = heights[i];
+            }
+            if (heights[i] > maxH)
+            {
+                maxH = heights[i];
+            }
+        }
+        float range = maxH - minH;
+        if (range < 1e-6f)
+        {
+            range = 1.0f;
+        }
+
+        float sandThresh = this->layerSandThresh->getReal();
+        float grassThresh = this->layerGrassThresh->getReal();
+        float rockThresh = this->layerRockThresh->getReal();
+        float slopeCut = this->layerSlopeRock->getReal();
+
+        const float invBts = 1.0f / static_cast<float>(bts);
+
+        for (int py = 0; py < bts; ++py)
+        {
+            for (int px = 0; px < bts; ++px)
+            {
+                float u = (static_cast<float>(px) + 0.5f) * invBts;
+                float v = (static_cast<float>(py) + 0.5f) * invBts;
+
+                // Bilinear sample helper (inline lambda).
+                auto bilerp = [&](float su, float sv) -> float
+                {
+                    float cf = Ogre::Math::Clamp(su, 0.0f, 1.0f) * static_cast<float>(segH);
+                    float rf = Ogre::Math::Clamp(sv, 0.0f, 1.0f) * static_cast<float>(segV);
+                    int c0 = static_cast<int>(cf);
+                    int c1 = std::min(c0 + 1, segH);
+                    int r0 = static_cast<int>(rf);
+                    int r1 = std::min(r0 + 1, segV);
+                    float fc = cf - static_cast<float>(c0);
+                    float fr = rf - static_cast<float>(r0);
+                    int i00 = r0 * colsPerRow + c0;
+                    int i10 = r0 * colsPerRow + c1;
+                    int i01 = r1 * colsPerRow + c0;
+                    int i11 = r1 * colsPerRow + c1;
+                    return lerpF(fr, lerpF(fc, heights[i00], heights[i10]), lerpF(fc, heights[i01], heights[i11]));
+                };
+
+                float h = bilerp(u, v);
+                float hr = bilerp(u + invBts, v);
+                float hu = bilerp(u, v + invBts);
+
+                float hn = (h - minH) / range;
+
+                // Slope = height change per pixel, normalised by total relief.
+                // This is independent of radius and amplitude.
+                float slope = std::sqrt((hr - h) * (hr - h) + (hu - h) * (hu - h));
+                float slopeN = Ogre::Math::Clamp(slope / range, 0.0f, 1.0f);
+
+                // Layer weights:
+                // R = layer0 (dirt)   -- mid elevations, base fill
+                // G = layer1 (grass)  -- low-mid, gentle slope
+                // B = layer2 (sand)   -- lowest elevations
+                // A = layer3 (rock)   -- high altitude OR steep slope
+                float wRock = 0.0f;
+                float wSand = 0.0f;
+                float wGrass = 0.0f;
+
+                if (slopeN >= slopeCut || hn >= rockThresh)
+                {
+                    float sb = Ogre::Math::Clamp((slopeN - slopeCut) / 0.2f, 0.0f, 1.0f);
+                    float hb = Ogre::Math::Clamp((hn - rockThresh) / 0.15f, 0.0f, 1.0f);
+                    wRock = std::max(sb, hb);
+                }
+                if (hn < sandThresh)
+                {
+                    wSand = Ogre::Math::Clamp(1.0f - hn / (sandThresh + 1e-6f), 0.0f, 1.0f);
+                    wSand *= (1.0f - wRock);
+                }
+                if (hn >= sandThresh && hn < grassThresh && slopeN < slopeCut * 0.6f)
+                {
+                    float t = (hn - sandThresh) / (grassThresh - sandThresh + 1e-6f);
+                    wGrass = Ogre::Math::Clamp(t * 1.4f, 0.0f, 1.0f);
+                    wGrass *= (1.0f - wRock) * (1.0f - wSand);
+                }
+                float wDirt = Ogre::Math::Clamp(1.0f - wSand - wGrass - wRock, 0.0f, 1.0f);
+
+                float total = wDirt + wGrass + wSand + wRock;
+                if (total < 1e-6f)
+                {
+                    wDirt = 1.0f;
+                    total = 1.0f;
+                }
+
+                int idx = (py * bts + px) * 4;
+                blendOut[idx + 0] = static_cast<unsigned char>(Ogre::Math::Clamp((wDirt / total) * 255.0f, 0.0f, 255.0f));
+                blendOut[idx + 1] = static_cast<unsigned char>(Ogre::Math::Clamp((wGrass / total) * 255.0f, 0.0f, 255.0f));
+                blendOut[idx + 2] = static_cast<unsigned char>(Ogre::Math::Clamp((wSand / total) * 255.0f, 0.0f, 255.0f));
+                blendOut[idx + 3] = static_cast<unsigned char>(Ogre::Math::Clamp((wRock / total) * 255.0f, 0.0f, 255.0f));
+            }
+        }
+    }
+#endif
+
+    void ProceduralPlanetComponent::autoRPaintLayers(const std::vector<float>& heights, const std::vector<Ogre::Vector2>& uvCoords, int vertexCount, float radius, float amplitude, uint32_t blendSize, unsigned char* blendOut) const
+    {
+        int bts = static_cast<int>(std::round(std::sqrt(static_cast<float>(blendSize) / 4.0f)));
+        if (bts < 1 || vertexCount < 4)
+        {
+            return;
+        }
+
+        // Detect segH by counting the first row (all vertices with same v=0).
+        int segH = 0;
+        while (segH + 1 < vertexCount && std::fabs(uvCoords[segH + 1].y - uvCoords[0].y) < 1e-5f)
+        {
+            ++segH;
+        }
+        if (segH < 1)
+        {
+            return;
+        }
+        int colsPerRow = segH + 1;
+        int segV = (vertexCount / colsPerRow) - 1;
+        if (segV < 1)
+        {
+            return;
+        }
+
+        float minH = std::numeric_limits<float>::max();
+        float maxH = -std::numeric_limits<float>::max();
+        for (int i = 0; i < vertexCount; ++i)
+        {
+            if (heights[i] < minH)
+            {
+                minH = heights[i];
+            }
+            if (heights[i] > maxH)
+            {
+                maxH = heights[i];
+            }
+        }
+        float range = maxH - minH;
+        if (range < 1e-6f)
+        {
+            range = 1.0f;
+        }
+
+        float sandThresh = this->layerSandThresh->getReal();
+        float grassThresh = this->layerGrassThresh->getReal();
+        float rockThresh = this->layerRockThresh->getReal();
+        float slopeCut = this->layerSlopeRock->getReal();
+
+        // Pixels whose sampled height is within this threshold of zero are
+        // considered unmodified flat terrain — skip them so the base diffuse
+        // (ground_dirt_gardenD) and any manual brush strokes show through.
+        const float flatThreshold = amplitude * 0.05f;
+
+        const float invBts = 1.0f / static_cast<float>(bts);
+
+        for (int py = 0; py < bts; ++py)
+        {
+            for (int px = 0; px < bts; ++px)
+            {
+                float u = (static_cast<float>(px) + 0.5f) * invBts;
+                float v = (static_cast<float>(py) + 0.5f) * invBts;
+
+                // Bilinear sample helper (inline lambda).
+                auto bilerp = [&](float su, float sv) -> float
+                {
+                    float cf = Ogre::Math::Clamp(su, 0.0f, 1.0f) * static_cast<float>(segH);
+                    float rf = Ogre::Math::Clamp(sv, 0.0f, 1.0f) * static_cast<float>(segV);
+                    int c0 = static_cast<int>(cf);
+                    int c1 = std::min(c0 + 1, segH);
+                    int r0 = static_cast<int>(rf);
+                    int r1 = std::min(r0 + 1, segV);
+                    float fc = cf - static_cast<float>(c0);
+                    float fr = rf - static_cast<float>(r0);
+                    int i00 = r0 * colsPerRow + c0;
+                    int i10 = r0 * colsPerRow + c1;
+                    int i01 = r1 * colsPerRow + c0;
+                    int i11 = r1 * colsPerRow + c1;
+                    return lerpF(fr, lerpF(fc, heights[i00], heights[i10]), lerpF(fc, heights[i01], heights[i11]));
+                };
+
+                float h = bilerp(u, v);
+                float hr = bilerp(u + invBts, v);
+                float hu = bilerp(u, v + invBts);
+
+                // Skip unmodified flat pixels — preserve existing blend data so
+                // base diffuse and manual brush strokes are not overwritten.
+                if (std::fabs(h) < flatThreshold)
+                {
+                    continue;
+                }
+
+                float hn = (h - minH) / range;
+
+                // Slope = height change per pixel, normalised by total relief.
+                // Independent of radius and amplitude.
+                float slope = std::sqrt((hr - h) * (hr - h) + (hu - h) * (hu - h));
+                float slopeN = Ogre::Math::Clamp(slope / range, 0.0f, 1.0f);
+
+                // Layer weights:
+                // R = layer0 (dirt)   -- mid elevations, base fill
+                // G = layer1 (grass)  -- low-mid, gentle slope
+                // B = layer2 (sand)   -- lowest elevations
+                // A = layer3 (rock)   -- high altitude OR steep slope
+                float wRock = 0.0f;
+                float wSand = 0.0f;
+                float wGrass = 0.0f;
+
+                if (slopeN >= slopeCut || hn >= rockThresh)
+                {
+                    float sb = Ogre::Math::Clamp((slopeN - slopeCut) / 0.2f, 0.0f, 1.0f);
+                    float hb = Ogre::Math::Clamp((hn - rockThresh) / 0.15f, 0.0f, 1.0f);
+                    wRock = std::max(sb, hb);
+                }
+                if (hn < sandThresh)
+                {
+                    wSand = Ogre::Math::Clamp(1.0f - hn / (sandThresh + 1e-6f), 0.0f, 1.0f);
+                    wSand *= (1.0f - wRock);
+                }
+                if (hn >= sandThresh && hn < grassThresh && slopeN < slopeCut * 0.6f)
+                {
+                    float t = (hn - sandThresh) / (grassThresh - sandThresh + 1e-6f);
+                    wGrass = Ogre::Math::Clamp(t * 1.4f, 0.0f, 1.0f);
+                    wGrass *= (1.0f - wRock) * (1.0f - wSand);
+                }
+                float wDirt = Ogre::Math::Clamp(1.0f - wSand - wGrass - wRock, 0.0f, 1.0f);
+
+                float total = wDirt + wGrass + wSand + wRock;
+                if (total < 1e-6f)
+                {
+                    wDirt = 1.0f;
+                    total = 1.0f;
+                }
+
+                int idx = (py * bts + px) * 4;
+                blendOut[idx + 0] = static_cast<unsigned char>(Ogre::Math::Clamp((wDirt / total) * 255.0f, 0.0f, 255.0f));
+                blendOut[idx + 1] = static_cast<unsigned char>(Ogre::Math::Clamp((wGrass / total) * 255.0f, 0.0f, 255.0f));
+                blendOut[idx + 2] = static_cast<unsigned char>(Ogre::Math::Clamp((wSand / total) * 255.0f, 0.0f, 255.0f));
+                blendOut[idx + 3] = static_cast<unsigned char>(Ogre::Math::Clamp((wRock / total) * 255.0f, 0.0f, 255.0f));
+            }
+        }
     }
 
     // =========================================================================

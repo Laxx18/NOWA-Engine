@@ -2,30 +2,12 @@
     "comment" :
     [
         "PlanetOcean default PBS material.",
-        "Deep / shallow colour and transparency are driven at runtime by PlanetOceanComponent.",
-        "Add a cubemap to ReflectionMap in NOWA-Design for reflections.",
-        "No detail normal maps in this JSON -- they cause HLMS template crash (see PlanetTerra notes).",
-        "If you want fine wave normals, add a PBSM_NORMAL texture programmatically."
+        "specular_fresnel workflow: physically correct for water.",
+        "Fresnel 0.02 = real water at normal incidence (rises to 1.0 at grazing via Schlick).",
+        "Keep metalness at 0 -- water is dielectric.",
+        "Detail normal map slot 0 is used for tiled wave surface detail (set programmatically).",
+        "Roughness 0.25: broad specular highlights visible from space + surface."
     ],
-
-    "samplers" :
-    {
-        "Ocean_Sampler" :
-        {
-            "min"              : "anisotropic",
-            "mag"              : "anisotropic",
-            "mip"              : "anisotropic",
-            "u"                : "wrap",
-            "v"                : "wrap",
-            "w"                : "wrap",
-            "miplodbias"       : 0,
-            "max_anisotropic"  : 8,
-            "compare_function" : "disabled",
-            "border"           : [1, 1, 1, 1],
-            "min_lod"          : -3.40282e+38,
-            "max_lod"          : 3.40282e+38
-        }
-    },
 
     "macroblocks" :
     {
@@ -44,15 +26,15 @@
 
     "blendblocks" :
     {
-        "Ocean_Blendblock_Transparent" :
+        "Ocean_Blendblock_Opaque" :
         {
             "alpha_to_coverage"       : false,
             "blendmask"               : "rgba",
             "separate_blend"          : false,
-            "src_blend_factor"        : "src_alpha",
-            "dst_blend_factor"        : "one_minus_src_alpha",
+            "src_blend_factor"        : "one",
+            "dst_blend_factor"        : "zero",
             "blend_operation"         : "add",
-            "force_transparent_sort"  : true
+            "force_transparent_sort"  : false
         }
     },
 
@@ -61,24 +43,18 @@
         "PlanetOceanDefaultMaterial" :
         {
             "macroblock"        : "Ocean_Macroblock",
-            "blendblock"        : "Ocean_Blendblock_Transparent",
+            "blendblock"        : "Ocean_Blendblock_Opaque",
             "shadow_const_bias" : 0.001,
 
-            "workflow" : "metallic",
+            "workflow" : "specular_fresnel",
             "brdf"     : "default",
 
-            "roughness" : 0.04,
+            "roughness" : 0.25,
 
             "fresnel" :
             {
-                "value" : [0.02, 0.02, 0.02],
+                "value" : 0.035,
                 "mode"  : "coeff"
-            },
-
-            "diffuse" :
-            {
-                "value"      : [0.0, 0.03, 0.07],
-                "background" : [0.0, 0.03, 0.07, 0.7]
             },
 
             "specular" :
@@ -86,10 +62,9 @@
                 "value" : [1.0, 1.0, 1.0]
             },
 
-            "transparency" :
+            "diffuse" :
             {
-                "value" : 0.7,
-                "mode"  : "transparent"
+                "value" : [0.0, 0.012, 0.035]
             }
         }
     }
